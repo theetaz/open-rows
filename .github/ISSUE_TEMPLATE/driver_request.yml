@@ -1,0 +1,23 @@
+name: Database driver request
+description: Ask for support for a database or a database-specific feature
+labels: ["driver", "triage"]
+body:
+  - type: input
+    id: database
+    attributes:
+      label: Database and versions
+      placeholder: "e.g. CockroachDB 24.x, Snowflake"
+    validations:
+      required: true
+  - type: textarea
+    id: usage
+    attributes:
+      label: How do you use it?
+      description: Browse, query, edit, export, admin? Any must-have features?
+    validations:
+      required: true
+  - type: textarea
+    id: protocol
+    attributes:
+      label: Protocol / client libraries you know of
+      description: Wire protocol, official SDKs, licences, compatibility with an existing driver (e.g. PostgreSQL wire).

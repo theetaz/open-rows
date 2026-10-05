@@ -1,0 +1,42 @@
+# Rust
+/target/
+**/target/
+*.rs.bk
+
+# Node / frontend
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+coverage/
+playwright-report/
+test-results/
+
+# Tauri
+apps/desktop/src-tauri/gen/
+apps/desktop/src-tauri/target/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+
+# Logs and local data
+*.log
+logs/
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+
+# Benchmarks and profiling output
+perf-results/
+flamegraph*.svg
+*.profraw
+*.trace
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
+#
+# commit-msg hook: enforces the project's commit message rules.
+# Enable once per clone:  git config core.hooksPath scripts/git-hooks
+#
+# Rules (see CONTRIBUTING.md#commit-messages):
+#   1. Header follows Conventional Commits: <type>(<scope>)!: <subject>
+#   2. Header is at most 72 characters; subject does not end with a period.
+#   3. Body (if any) is separated from the header by a blank line.
+#   4. No Co-authored-by trailers and no "generated with/by" attribution footers.
+
+set -euo pipefail
+
+msg_file="$1"
+
+# Strip comment lines (git's template) before checking.
+msg="$(grep -v '^#' "$msg_file" || true)"
+header="$(printf '%s\n' "$msg" | sed -n '1p')"
+
+fail() {
+  printf '\n\033[31mcommit-msg: %s\033[0m\n' "$1" >&2
+  printf 'Header was: %s\n' "$header" >&2
+  printf 'See CONTRIBUTING.md#commit-messages\n\n' >&2
+  exit 1
+}
+
+# Allow git-generated messages.
+case "$header" in
+  "Merge "*|"Revert \""*|"fixup! "*|"squash! "*|"amend! "*) exit 0 ;;
+esac
+
+types='feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert'
+pattern="^(${types})(\([a-z0-9][a-z0-9._/-]*\))?!?: [^ ].*[^.]$"
+
+if ! printf '%s' "$header" | grep -Eq "$pattern"; then
+  fail "header must match '<type>(<scope>)!: <subject>' with type one of: ${types//|/, }"
+fi
+
+if [ "${#header}" -gt 72 ]; then
+  fail "header is ${#header} characters; keep it at 72 or fewer"
+fi
+
+second_line="$(printf '%s\n' "$msg" | sed -n '2p')"
+if [ -n "$second_line" ]; then
+  fail "leave a blank line between the header and the body"
+fi
+
+if printf '%s\n' "$msg" | grep -Eiq '^co-authored-by:'; then
+  fail "Co-authored-by trailers are not used in this project"
+fi
+
+if printf '%s\n' "$msg" | grep -Eiq 'generated (with|by) '; then
+  fail "remove tool attribution footers (\"generated with/by ...\")"
+fi
+
+exit 0

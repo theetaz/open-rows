@@ -1,0 +1,57 @@
+name: Bug report
+description: Something is broken or behaves unexpectedly
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please redact credentials, hostnames and data you cannot share.
+        Security issues: do not file here — see SECURITY.md.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Connect to PostgreSQL 16 over SSH
+        2. Open table ...
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      placeholder: "0.1.0 (Help › About)"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [macOS (Apple Silicon), macOS (Intel), Windows, Linux]
+    validations:
+      required: true
+  - type: input
+    id: database
+    attributes:
+      label: Database / API and version
+      placeholder: "PostgreSQL 16.4 via SSH; or REST over HTTP/2"
+  - type: dropdown
+    id: data-risk
+    attributes:
+      label: Could this cause data loss or wrong data?
+      options: ["No", "Possibly", "Yes"]
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: Attach the diagnostics bundle (Help › Export Diagnostics). Review it before attaching.
