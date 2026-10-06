@@ -1,0 +1,23 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.panel,
+.toolbar {
+  background: var(--or-panel);
+  border: var(--or-border-width) solid var(--or-separator);
+  box-shadow: var(--or-panel-shadow);
+  -webkit-backdrop-filter: var(--or-glass-panel);
+  backdrop-filter: var(--or-glass-panel);
+}
+.panel {
+  padding: var(--or-space-16);
+  border-radius: var(--or-radius-panel);
+  transition: opacity var(--or-motion-panel) var(--or-motion-easing);
+}
+.toolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--or-space-4);
+  padding: var(--or-space-4);
+  border-radius: var(--or-radius-capsule);
+  -webkit-backdrop-filter: var(--or-glass-toolbar);
+  backdrop-filter: var(--or-glass-toolbar);
+}

@@ -3,18 +3,18 @@
   min-block-size: 100vh;
   display: flex;
   flex-direction: column;
+  border-radius: var(--or-radius-window);
 }
 .toolbar {
-  block-size: 48px;
-  padding-inline: 96px 24px;
+  block-size: var(--or-toolbar-height);
+  padding-inline: var(--or-traffic-light-clearance) var(--or-space-24);
   display: flex;
   align-items: center;
   user-select: none;
-  border-block-end: 1px solid GrayText;
+  border-block-end: var(--or-border-width) solid var(--or-separator);
+  flex-shrink: 0;
 }
 .content {
   flex: 1;
-  display: grid;
-  place-items: center;
-  padding: 24px;
+  padding: var(--or-space-24);
 }

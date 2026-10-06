@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useAppInfo } from './useAppInfo';
-import styles from './InfoCard.module.css';
+import styles from './AppFooter.module.css';
 
-/** Display Rust application metadata with explicit loading and error states. */
-export function InfoCard(): React.JSX.Element {
+/** Small native metadata footer with explicit IPC loading and error states. */
+export function AppFooter(): React.JSX.Element {
   const state = useAppInfo();
-
   return (
-    <section className={styles.card} aria-label="Application information">
+    <footer className={styles.footer} aria-label="Application information">
       {state.status === 'loading' && (
         <p role="status">Loading application information…</p>
       )}
@@ -17,12 +16,10 @@ export function InfoCard(): React.JSX.Element {
         </p>
       )}
       {state.status === 'success' && (
-        <>
-          <h1>{state.info.name}</h1>
-          <p>Version {state.info.version}</p>
-          <p>{state.info.buildProfile}</p>
-        </>
+        <p>
+          {state.info.name} {state.info.version} · {state.info.buildProfile}
+        </p>
       )}
-    </section>
+    </footer>
   );
 }

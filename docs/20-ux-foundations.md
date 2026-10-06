@@ -132,8 +132,16 @@ The app must feel like it was designed for the current macOS, not merely ported 
 - **Typography:** system UI font for chrome (SF Pro on macOS), user-selectable monospace for grid/editor (default to a bundled open-licence monospace such as JetBrains Mono or IBM Plex Mono — both OFL).
 - **Colour:** neutral greys for chrome; one accent colour; semantic colours for success/warning/danger; environment tag palette (local=grey, dev=green, staging=amber, prod=red, custom) chosen to remain distinguishable for common colour-vision deficiencies and paired with text labels.
 - **Iconography:** single consistent line icon set; database "logos" rendered as neutral, original glyphs or official marks only where their trademark guidelines permit use in tooling (checked per vendor).
-- **Motion:** subtle, ≤ 150 ms, functional only (panel open, tab move); disabled under reduced motion.
+- **Motion:** functional opacity/transform only; approved panel timing 360 ms and disclosure 220 ms with `cubic-bezier(0.32, 0.72, 0, 1)`. Other small feedback stays ≤ 150 ms. Animations and transitions are disabled under reduced motion.
 - **Density modes:** compact / default / comfortable.
+
+### M0-T4 token values and accessibility adjustments
+
+`packages/ui/src/tokens/` is the implemented source for the gallery. System UI/SF Mono stacks are used without font downloads; the 11/11.5/12/12.5/13/15/17/30 px type scale, 400/500/600/700 weights, 2–32 px spacing, capsule/10/12/14/18/26 px concentric radii, accent `#0B6BD6`, and prototype surface colours are preserved. Panels use 30 px blur and toolbar capsules 20 px, both with saturation 1.8 and the per-theme inset highlights. Native vibrancy is outside M0-T4.
+
+To meet NFR-UX-01, light secondary/tertiary text is `#4F4F55` (replacing `#6A6A70`/`#76767C`), including the darkest nested control-fill surface. Dark secondary/tertiary text is `#C0C0C6` (replacing `#A1A1A6`/`#98989E`). Light danger/prod foreground is `#93241F` (replacing `#A42A24`), with the original `#FDE2E0` badge background. Dark success/dev foreground is `#8AEFA5`, warning/staging `#FFDC9F`, danger/prod `#FFBCB8`, info `#9CCAFF`, and neutral/local `#D1D1D6` over 20% tinted fills. Environment identity colours remain the original grey/green/amber/red tokens. Small dots use the corresponding readable semantic foreground and are accompanied by labels.
+
+Focus rings use `#0960C0` in light and `#79B9FF` in dark, 2 px thick with 3 px separation. Destructive buttons use `#B4231B` with white text; white-on-accent also passes AA. Disabled controls preserve readable text rather than reducing opacity. High contrast uses stronger separators (`#606066`/`#C0C0C6`), opaque panels and control fills (`#E4E4E8`/`#38383C`). Reduced transparency makes both panels and toolbar capsules solid and removes backdrop filtering. `just contrast-report` reports all text/badge pairs ≥ 4.5 and focus ≥ 3, including translucency composition.
 
 ## 6. Accessibility requirements for design
 
