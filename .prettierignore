@@ -1,0 +1,8 @@
+pnpm-lock.yaml
+Cargo.lock
+node_modules/
+**/dist/
+**/gen/
+**/generated/
+target/
+docs/

@@ -1,6 +1,7 @@
 # Verify installed tools and enable repository git hooks.
 setup:
     bash scripts/check-tools.sh
+    pnpm install
     if [ "$(git config --get core.hooksPath)" != scripts/git-hooks ]; then git config core.hooksPath scripts/git-hooks; fi
 
 # Format all Rust sources.
@@ -39,7 +40,33 @@ check:
     just deny
     just machete
     just hygiene
+    pnpm lint
+    pnpm format:check
+    pnpm typecheck
+    pnpm test
+    pnpm knip
+    just ipc-check
 
 # Remove Cargo build output (including the configured shared target).
 clean:
     cargo clean
+
+# Launch the native desktop shell with frontend hot reload.
+dev:
+    pnpm --filter @openrows/desktop tauri dev
+
+# Build the unsigned release macOS application in the shared Cargo target.
+build-app:
+    pnpm --filter @openrows/desktop tauri build --bundles app
+
+# Regenerate the TypeScript command contract from Rust.
+gen-ipc:
+    cargo run -p openrows-app --bin gen-ipc --locked
+
+# Compare regenerated IPC bindings without modifying the committed contract.
+ipc-check:
+    cargo nextest run -p openrows-app --locked bindings_are_fresh
+
+# Measure five fresh release processes to the frontend paint-ready event.
+bench-startup executable:
+    python3 scripts/bench-startup.py "{{executable}}"

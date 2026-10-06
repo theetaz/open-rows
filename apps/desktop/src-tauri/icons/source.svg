@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- SPDX-License-Identifier: Apache-2.0; original OpenRows artwork -->
+  <rect x="32" y="32" width="960" height="960" rx="216" fill="#0B6BD6"/>
+  <g fill="none" stroke="#fff" stroke-width="56" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="512" cy="302" rx="240" ry="90"/>
+    <path d="M272 302v420c0 50 108 90 240 90s240-40 240-90V302M272 442c0 50 108 90 240 90s240-40 240-90M272 582c0 50 108 90 240 90s240-40 240-90"/>
+  </g>
+</svg>

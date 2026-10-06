@@ -11,7 +11,7 @@ Thanks for helping build a free, fast, open database and API client. This guide 
 
 ## 1. First-time setup
 
-Install `rustup`, `just`, `cargo-nextest`, `cargo-deny` and `cargo-machete`; `sccache` is optional. With rustup installed:
+Install Node.js >= 24, pnpm 12.9.1 (`npm install --global pnpm@12.9.1`), `rustup`, `just`, `cargo-nextest`, `cargo-deny` and `cargo-machete`; `sccache` is optional. On macOS, install Xcode Command Line Tools (`xcode-select --install`). Linux compilation needs the [Tauri prerequisites](https://tauri.app/start/prerequisites/). With rustup installed:
 
 ```bash
 cargo install just cargo-nextest cargo-deny cargo-machete --locked
@@ -19,9 +19,11 @@ rustup toolchain install 1.94.0 --profile minimal --component rustfmt --componen
 just setup
 just check
 just --list
+just dev          # native OpenRows window with frontend hot reload
+just build-app    # unsigned release .app in the configured Cargo target
 ```
 
-Run these commands from the repository root. `just setup` verifies the required tools and the pinned toolchain, prints installation hints for missing tools, and sets `core.hooksPath` to `scripts/git-hooks`. The current `commit-msg` hook checks commit messages against the rules below.
+Run these commands from the repository root. `just setup` verifies the required tools and the pinned toolchain, checks Node.js and the pinned pnpm version, installs workspace dependencies, prints installation hints for missing tools, and sets `core.hooksPath` to `scripts/git-hooks`. The current `commit-msg` hook checks commit messages against the rules below.
 
 Optionally share build output across worktrees to save disk space:
 

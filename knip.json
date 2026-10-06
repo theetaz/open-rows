@@ -1,0 +1,14 @@
+{
+  "workspaces": {
+    ".": {
+      "project": ["*.ts"]
+    },
+    "apps/desktop": {
+      "entry": ["src/**/*.test.tsx"],
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "packages/ipc": {
+      "project": ["src/**/*.ts"]
+    }
+  }
+}

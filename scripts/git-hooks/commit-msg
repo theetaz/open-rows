@@ -50,7 +50,9 @@ if printf '%s\n' "$msg" | grep -Eiq '^co-authored-by:'; then
   fail "Co-authored-by trailers are not used in this project"
 fi
 
-if printf '%s\n' "$msg" | grep -Eiq 'generated (with|by) '; then
+# Attribution footers sit on their own line, optionally behind an emoji or
+# punctuation; ordinary prose that mentions generated code is allowed.
+if printf '%s\n' "$msg" | grep -Eiq '^[^[:alnum:]]*generated (with|by) '; then
   fail "remove tool attribution footers (\"generated with/by ...\")"
 fi
 
