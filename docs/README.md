@@ -33,12 +33,13 @@ Diagrams are written in [Mermaid](https://mermaid.js.org/) so they render on Git
 | 23 | [AI assistant, agents and MCP](23-ai-assistant.md) | BYOK providers, agent-CLI bridges, MCP server/client, data-sharing policy |
 | 24 | [Networking and protocols](24-networking-and-protocols.md) | Routes and hops, SSH, TLS, cloud tunnels, sleep/wake resilience, protocol handling |
 | 25 | [Engineering standards and delivery](25-engineering-standards.md) | Task specs, acceptance reports, code-quality limits, performance policy, local green-light gate, clean-up |
+| 26 | [Feature inventory and parity plan](26-feature-parity.md) | Public-source TablePlus benchmark, requirement mappings, 1.0 gaps, deliberate deferrals and OpenRows improvements |
 | — | [Glossary](glossary.md) | Terms used across these docs |
 | — | [ADRs](adr/README.md) | Architecture Decision Records |
 
 ## Conventions
 
 - **MUST / SHOULD / MAY** follow RFC 2119 meaning.
-- Numeric targets are measured on the reference machines defined in [13-performance.md](13-performance.md#reference-hardware).
+- Numeric targets are measured on the reference machines defined in [13-performance.md](13-performance.md#1-reference-hardware).
 - Rust crates use the prefix `openrows-`, npm packages the scope `@openrows/`, and the CLI is `openrows`. In API-client scripts the runtime object is `ors` (with a `pm` compatibility shim).
 - When a doc and an ADR disagree, the newer accepted ADR wins and the doc gets fixed.
