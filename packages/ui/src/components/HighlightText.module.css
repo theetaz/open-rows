@@ -1,0 +1,8 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.match {
+  color: inherit;
+  background: transparent;
+  font-weight: var(--or-weight-bold);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

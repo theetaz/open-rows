@@ -4,7 +4,7 @@
   font-family: var(--or-font-ui);
   font-size: 100%;
   color: var(--or-text);
-  background: var(--or-page);
+  background: transparent;
   -webkit-font-smoothing: var(--or-font-smoothing);
   font-variant-numeric: var(--or-font-numeric);
 }

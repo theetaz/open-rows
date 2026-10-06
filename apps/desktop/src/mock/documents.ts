@@ -1,0 +1,90 @@
+// SPDX-License-Identifier: Apache-2.0
+import { initialTabs } from './data/content';
+import type { WorkspaceTab } from './data/content';
+import { databaseFor } from './data/databases';
+import type { DatabaseObject } from './data/databases';
+export type Documents = {
+  tabs: readonly WorkspaceTab[];
+  active: string;
+  next: number;
+  schema: string;
+};
+/** Initial tabs for a database, created only on its first opening. */
+export function initialDocuments(
+  connection: number,
+  database: string,
+): Documents {
+  const catalog = databaseFor(connection, database);
+  const schema = catalog.schemas[0] ?? 'public';
+  const first = catalog.objects[0];
+  const tabs: readonly WorkspaceTab[] =
+    connection === 0 && database === 'orders'
+      ? initialTabs.map((tab) => ({ ...tab, schema }))
+      : first
+        ? [
+            {
+              id: first.name,
+              label: first.name,
+              kind: 'table',
+              schema: first.schema,
+            },
+          ]
+        : [];
+  return { tabs, active: tabs[0]?.id ?? '', next: 1, schema };
+}
+/** Add a query descriptor to the current database's tabs. */
+export function newQuery(state: Documents, sql?: string): Documents {
+  const tab: WorkspaceTab = {
+    id: `sql-${String(state.next)}`,
+    label: `SQL Query ${String(state.next)}`,
+    kind: 'query',
+    schema: state.schema,
+    ...(sql ? { sql } : {}),
+  };
+  return {
+    ...state,
+    tabs: [...state.tabs, tab],
+    active: tab.id,
+    next: state.next + 1,
+  };
+}
+/** Close one descriptor and focus its nearest remaining neighbour. */
+export function closeDocument(state: Documents, id: string): Documents {
+  const index = state.tabs.findIndex((tab) => tab.id === id);
+  const tabs = state.tabs.filter((tab) => tab.id !== id);
+  const active =
+    state.active === id
+      ? (tabs[Math.max(0, index - 1)]?.id ?? '')
+      : state.active;
+  return {
+    ...state,
+    tabs,
+    active,
+    schema: tabs.find((tab) => tab.id === active)?.schema ?? state.schema,
+  };
+}
+/** Focus an existing object descriptor or append a schema-qualified object tab. */
+export function tableDocument(
+  state: Documents,
+  object: DatabaseObject,
+): Documents {
+  const existing = state.tabs.find(
+    (tab) => tab.label === object.name && tab.schema === object.schema,
+  );
+  const id =
+    existing?.id ??
+    (state.tabs.some((tab) => tab.id === object.name)
+      ? `${object.schema}.${object.name}`
+      : object.name);
+  return {
+    ...state,
+    schema: object.schema,
+    active: id,
+    tabs: existing
+      ? state.tabs
+      : [
+          ...state.tabs,
+          { id, label: object.name, kind: 'table', schema: object.schema },
+        ],
+  };
+}

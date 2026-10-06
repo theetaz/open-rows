@@ -1,0 +1,207 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.inspector {
+  border: 0;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-8);
+  height: 100%;
+  padding: var(--or-space-8);
+}
+.inspector > [role='radiogroup'] {
+  flex-wrap: nowrap;
+}
+.inspector [role='radio'] {
+  flex: 1;
+  min-height: var(--or-control-compact);
+  font-size: var(--or-text-12);
+}
+.assistant {
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-8);
+  min-height: 0;
+  flex: 1;
+}
+.provider {
+  display: flex;
+  text-align: left;
+  align-items: center;
+  gap: var(--or-space-8);
+  border-radius: var(--or-radius-group);
+  padding: var(--or-space-8);
+  background: var(--or-window);
+}
+.provider > span:nth-child(2) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: var(--or-text-12-5);
+}
+.provider small {
+  color: var(--or-secondary);
+  font-size: var(--or-text-11);
+  font-weight: var(--or-weight-regular);
+}
+.providerTile {
+  background: var(--or-accent);
+  color: var(--or-on-accent);
+  border-radius: 8px;
+  padding: var(--or-space-6);
+  font-family: var(--or-font-mono);
+}
+.policies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--or-space-6);
+}
+.policies > span {
+  font-size: var(--or-text-11);
+}
+.conversation {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  font-size: var(--or-text-12-5);
+  line-height: 1.5;
+}
+.conversation p {
+  margin-block: var(--or-space-10);
+}
+.conversation code {
+  font-size: var(--or-text-11-5);
+  font-family: var(--or-font-mono);
+}
+.bubble {
+  background: var(--or-info-bg);
+  color: var(--or-info-fg);
+  border-radius: var(--or-radius-group) var(--or-radius-group) var(--or-space-4)
+    var(--or-radius-group);
+  padding: var(--or-space-8) var(--or-space-10);
+  margin-inline-start: 14%;
+}
+.trace {
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-4);
+  color: var(--or-secondary);
+  font-size: var(--or-text-11-5);
+}
+.trace span span {
+  color: var(--or-success-fg);
+}
+.sqlCard {
+  border: var(--or-border-width) solid var(--or-separator);
+  border-radius: var(--or-radius-group);
+  overflow: hidden;
+  background: var(--or-window);
+}
+.sqlActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--or-space-6);
+  padding: var(--or-space-8);
+  border-top: var(--or-border-width) solid var(--or-separator);
+}
+.sqlActions button {
+  padding-inline: var(--or-space-8);
+}
+.composer {
+  border: var(--or-border-width) solid var(--or-separator);
+  border-radius: var(--or-radius-card);
+  padding: var(--or-space-8);
+  background: var(--or-window);
+}
+.composer textarea {
+  display: block;
+  width: 100%;
+  resize: none;
+  border: 0;
+  font: inherit;
+  background: transparent;
+  color: var(--or-text);
+  line-height: 1.45;
+  font-size: var(--or-text-12-5);
+}
+.composer textarea:focus-visible {
+  outline: var(--or-focus-width) solid var(--or-focus);
+  border-radius: var(--or-radius-field);
+}
+.composer > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-block-start: var(--or-space-6);
+}
+.composer small {
+  color: var(--or-secondary);
+  font-size: var(--or-text-11);
+}
+.details {
+  min-height: 0;
+  overflow: auto;
+}
+.details h2 {
+  font-size: var(--or-text-15);
+  margin-block: 0 var(--or-space-4);
+}
+.details small {
+  color: var(--or-secondary);
+  font-size: var(--or-text-11-5);
+}
+.fields {
+  border-radius: var(--or-radius-group);
+  background: var(--or-window);
+  border: var(--or-border-width) solid var(--or-separator);
+  overflow: hidden;
+}
+.fields > div {
+  display: flex;
+  align-items: center;
+  min-height: var(--or-grid-row-height);
+  gap: var(--or-space-10);
+  padding-inline: var(--or-space-12);
+}
+.fields > div + div {
+  border-top: var(--or-border-width) solid var(--or-separator);
+}
+.fields dt {
+  color: var(--or-secondary);
+  font-size: var(--or-text-12-5);
+}
+.fields dd {
+  margin-inline-start: auto;
+  max-width: 160px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--or-weight-medium);
+  font-size: var(--or-text-12-5);
+}
+.fields dd[data-null='true'] {
+  color: var(--or-secondary);
+  font-style: italic;
+}
+.edited {
+  color: var(--or-warning-fg);
+}
+
+.sqlCard pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  overflow: visible;
+  padding: var(--or-space-8);
+  line-height: 1.5;
+}
+.sqlActions button {
+  min-height: var(--or-control-compact);
+  padding-block: 0;
+  padding-inline: var(--or-space-6);
+  font-size: var(--or-text-11-5);
+}
+.sqlActions {
+  gap: var(--or-space-4);
+  padding: var(--or-space-6);
+}

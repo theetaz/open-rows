@@ -1,0 +1,128 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.rail {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: var(--or-space-12);
+  flex: 0 0 64px;
+  padding: var(--or-space-4) 0 var(--or-space-8);
+  background: var(--or-page);
+  border: 0;
+}
+.space {
+  flex: 1;
+}
+.item {
+  width: 100%;
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+.connection {
+  border: 0;
+  outline: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+.tile {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--or-rail-tile-size);
+  height: var(--or-rail-tile-size);
+  border-radius: var(--or-radius-field);
+  background: var(--or-connection-pg);
+  color: var(--or-on-accent);
+  font-size: var(--or-text-13);
+  font-weight: var(--or-weight-semibold);
+  opacity: var(--or-rail-inactive-opacity);
+}
+.tile[data-engine='ch'] {
+  background: var(--or-connection-ch);
+}
+.tile[data-engine='sqlite'] {
+  background: var(--or-connection-sqlite);
+}
+.connection[aria-pressed='true'] .tile,
+.connection:hover .tile,
+.connection:focus-visible .tile {
+  opacity: 1;
+}
+.tile i {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: var(--or-dot-size);
+  height: var(--or-dot-size);
+  box-sizing: content-box;
+  border: 2px solid var(--or-page);
+  border-radius: var(--or-radius-capsule);
+  background: var(--or-staging-fg);
+}
+.tile i[data-environment='prod'] {
+  background: var(--or-prod-fg);
+}
+.tile i[data-environment='dev'] {
+  background: var(--or-dev-fg);
+}
+.tile i[data-environment='local'] {
+  background: var(--or-local-fg);
+}
+.indicator {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 0;
+  border-radius: var(--or-radius-capsule);
+  background: var(--or-text);
+  transition: height var(--or-motion-popover) var(--or-motion-easing);
+}
+.indicator[data-state='selected'] {
+  height: 20px;
+}
+.indicator[data-state='hover'] {
+  height: 8px;
+}
+.connection:focus-visible .tile {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.indicator[data-motion='reduced'] {
+  transition: none;
+}
+.tooltip {
+  position: fixed;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: var(--or-space-6);
+  padding: var(--or-space-8) var(--or-space-10);
+  border-radius: var(--or-radius-card);
+  background: var(--or-panel);
+  backdrop-filter: var(--or-glass-panel);
+  box-shadow: var(--or-panel-shadow);
+  color: var(--or-text);
+  pointer-events: none;
+  font-size: var(--or-text-12);
+}
+.tooltip strong {
+  font-weight: var(--or-weight-semibold);
+}
+.tooltip small {
+  grid-column: 1 / -1;
+  color: var(--or-secondary);
+  font-size: var(--or-text-11);
+}
+@media (prefers-reduced-motion: reduce) {
+  .indicator {
+    transition: none;
+  }
+}
+
+.rail > button {
+  border: 0;
+}

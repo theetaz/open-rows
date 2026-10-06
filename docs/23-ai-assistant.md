@@ -106,9 +106,9 @@ Writes are impossible through MCP by design: there is no write tool. The model c
 
 ### 3.2 App as MCP client
 
-- Users add MCP servers (stdio command or HTTP URL) in Settings → AI → MCP servers, globally or per workspace.
+- Users add MCP servers (stdio command or HTTP URL) in Settings → AI → MCP servers, globally or per Project.
 - Tools from those servers are available to API-provider and local-model conversations (CLI bridges use their own MCP config plus ours).
-- Each server shows its tool list; tools can be disabled individually; first use of a server's tool asks for confirmation; servers from workspace files require the workspace to be trusted (same rule as collection scripts).
+- Each server shows its tool list; tools can be disabled individually; first use of a server's tool asks for confirmation; servers from Project files require the Project to be trusted (same rule as collection scripts).
 
 ## 4. Data-sharing policy (per connection)
 

@@ -22,7 +22,7 @@ Diagrams are written in [Mermaid](https://mermaid.js.org/) so they render on Git
 | 12 | [Security](12-security.md) | Threat model, credentials, SSH/TLS, webview hardening |
 | 13 | [Performance](13-performance.md) | Budgets, techniques, benchmarks, profiling |
 | 14 | [Reliability and observability](14-reliability-and-observability.md) | Failure handling, reconnection, logging, crash reports |
-| 15 | [Storage and persistence](15-storage-and-persistence.md) | Local app data, history, workspace files, migrations |
+| 15 | [Storage and persistence](15-storage-and-persistence.md) | Local app data, history, Project files, migrations |
 | 16 | [Platform and distribution](16-platform-and-distribution.md) | macOS first, then Windows/Linux; signing, updates |
 | 17 | [Testing strategy](17-testing-strategy.md) | Unit, conformance, integration matrix, E2E, perf CI |
 | 18 | [Repository and dev workflow](18-repository-and-dev-workflow.md) | Monorepo layout, tooling, CI, conventions |

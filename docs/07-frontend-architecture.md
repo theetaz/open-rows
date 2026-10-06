@@ -32,7 +32,7 @@ apps/desktop/src/
     editing/              # change set UI, commit preview
     documents/            # MongoDB views
     keyvalue/             # Redis views
-    api/                  # API client workspace
+    api/                  # API client mode
     admin/                # process list, roles
     settings/
   lib/                    # shared hooks, formatters, keyboard system
@@ -80,7 +80,7 @@ Rules:
 
 ## 4. Tabs and windows
 
-- A **workspace window** contains a sidebar (connections / schema tree / API collections) and a tab area.
+- A **workspace window** hosts connection Workspaces with multiple databases, a schema sidebar and per-database tab areas. API collections are loaded separately from a **Project** folder (`.openrows/project.yaml`, Open Project Folder).
 - Tab kinds: `QueryTab`, `TableTab`, `StructureTab`, `DocumentCollectionTab`, `RedisKeyTab`, `ApiRequestTab`, `ErDiagramTab`, `ProcessListTab`, `SettingsTab`.
 - Each tab has a serialisable descriptor (`{ kind, connectionId, objectPath?, fileRef?, viewState }`) → restore on launch, move to another window, or "reopen closed tab".
 - **Tab virtualisation:** only the active tab and the last 2 visited tabs stay mounted. Other tabs are unmounted but keep their descriptor and lightweight view state (scroll position, selection), so 100 open tabs cost little.

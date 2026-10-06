@@ -6,6 +6,7 @@ export const typography = {
   'font-mono': '"SF Mono", ui-monospace, Menlo, monospace',
   'font-smoothing': 'antialiased',
   'font-numeric': 'tabular-nums',
+  'text-10': '0.625rem',
   'text-11': '0.6875rem',
   'text-11-5': '0.71875rem',
   'text-12': '0.75rem',

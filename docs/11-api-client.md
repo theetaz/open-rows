@@ -1,6 +1,6 @@
 # 11 — API Client
 
-The API client lives in the same app as a second workspace mode (sidebar switch: **Databases | APIs**). It shares the Rust network stack, secret store, environment system, editor and viewers with the database side. Collections are plain files in a folder you can commit to git — no account, no cloud sync.
+The API client lives in the same app as a second application mode (sidebar switch: **Databases | APIs**). It shares the Rust network stack, secret store, environment system, editor and viewers with the database side. Collections are plain files in a folder you can commit to git — no account, no cloud sync.
 
 ## 1. Scope
 
@@ -33,7 +33,7 @@ flowchart TB
         coll["Collection tree"]
     end
     subgraph core["Rust core"]
-        ws["Workspace FS<br/>(collection files, watcher)"]
+        ws["Project FS<br/>(collection files, watcher)"]
         res["Variable resolver<br/>(env → collection → folder → request → runtime)"]
         scr["Script sandbox<br/>openrows-script (QuickJS)"]
         eng["openrows-http engine"]

@@ -1,5 +1,7 @@
 # 18 — Repository and Development Workflow
 
+Product terminology: **Workspace = connection** to a server/host; **Project = git-friendly folder** of saved queries and API collections, opened via **Open Project Folder** with `.openrows/project.yaml`. Cargo/pnpm “workspace” below is the build-tool term.
+
 ## 1. Monorepo layout
 
 The current M0-T4 layout is below. The full planned crate and package map remains in [03-architecture-overview.md §5](03-architecture-overview.md#5-crate-and-package-map).

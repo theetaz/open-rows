@@ -22,7 +22,7 @@ flowchart LR
         app["OpenRows<br/>desktop app"]
         cli["openrows CLI<br/>(headless runner)"]
         keychain[("OS keychain")]
-        files[("Workspace folder<br/>(git repo)")]
+        files[("Project folder<br/>(git repo)")]
         localdata[("App data dir<br/>history, cache, settings")]
         tools["User-installed tools<br/>pg_dump, mysqldump,<br/>Oracle Instant Client"]
     end

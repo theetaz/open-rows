@@ -4,7 +4,7 @@
 .switch {
   font: inherit;
   font-weight: var(--or-weight-medium);
-  border: var(--or-border-width) solid var(--or-separator);
+  border: var(--or-border-width) solid transparent;
   border-radius: var(--or-radius-capsule);
   cursor: pointer;
   color: var(--or-text);
@@ -37,7 +37,7 @@
 .button:hover:not(:disabled),
 .segment:hover:not(:disabled),
 .switch:hover:not(:disabled) {
-  box-shadow: inset 0 0 0 var(--or-border-width) currentColor;
+  border-color: var(--or-separator);
 }
 .button:active:not(:disabled) {
   transform: translateY(var(--or-border-width));
@@ -54,7 +54,7 @@
   cursor: not-allowed;
   color: var(--or-secondary);
   background: var(--or-control-fill);
-  border-color: var(--or-separator);
+  border-color: transparent;
 }
 .iconButton {
   display: inline-grid;
@@ -81,7 +81,7 @@
 }
 .segment[aria-checked='true'] {
   background: var(--or-control-active);
-  border-color: var(--or-separator);
+  border-color: transparent;
 }
 .switch {
   inline-size: calc(var(--or-control-md) + var(--or-space-16));

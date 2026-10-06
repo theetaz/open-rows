@@ -20,13 +20,21 @@
         "minHeight": 600,
         "titleBarStyle": "Overlay",
         "hiddenTitle": true,
-        "visible": false
+        "visible": false,
+        "transparent": true,
+        "shadow": true,
+        "trafficLightPosition": {
+          "x": 16,
+          "y": 26
+        },
+        "decorations": true
       }
     ],
     "security": {
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src ipc: http://ipc.localhost",
       "capabilities": ["main"]
-    }
+    },
+    "macOSPrivateApi": true
   },
   "bundle": {
     "active": true,

@@ -15,6 +15,13 @@ This document is the bridge into the UI design phase. It fixes the information a
 
 ## 2. Information architecture
 
+**Workspace = connection** to one server/host. A workspace contains multiple
+databases; opened databases have their own schemas and tab sets. **Project =
+git-friendly folder** of saved queries, API collections and shared connection
+definitions, opened via **Open Project Folder** (`.openrows/project.yaml`).
+Project trust and files are independent of the connection workspace.
+
+
 ```mermaid
 flowchart TB
     App["App"] --> Welcome["Welcome / connection home<br/>(groups, search, recent)"]
@@ -23,10 +30,11 @@ flowchart TB
     Mode --> DBM["Databases"]
     Mode --> APIM["APIs"]
     DBM --> Conn["Connection"]
-    Conn --> Dbs["Databases / schemas"]
-    Dbs --> Objs["Tables · Views · Functions · ..."]
+    Conn --> Dbs["Databases"]
+    Dbs --> Schemas["Schemas"]
+    Schemas --> Objs["Tables · Views · Functions · ..."]
     Objs --> TableTab["Table tab<br/>Data | Structure | DDL | Info"]
-    Conn --> QueryTab["Query tab<br/>Editor + Results"]
+    Dbs --> QueryTab["Query tab<br/>Editor + Results"]
     Conn --> Admin["Admin tabs<br/>Processes · Roles"]
     Conn --> Hist["History panel"]
     APIM --> Coll["Collection"]
@@ -34,7 +42,8 @@ flowchart TB
     Folder --> Req["Request tab<br/>Request | Response"]
     Coll --> Envs["Environments"]
     App --> Settings["Settings"]
-    App --> Palette["Command palette (⌘K)"]
+    App --> Palette["Command palette (⌘⇧P)"]
+    App --> Switch["Database switcher (⌘K)"]
     App --> Quick["Quick open (⌘P)"]
 ```
 
@@ -79,16 +88,84 @@ The approved direction refines the skeleton above:
 
 | Region | v2 decision |
 | --- | --- |
-| **Connection rail** (far left, ~64 px) | One rounded tile per open connection (engine initials, env-colour dot, health). Click to switch instantly; `+` opens a new connection. Settings at the bottom. |
-| **Sidebar** (floating rounded panel) | Segmented **Items / Queries / History**; search; object tree; schema picker and "create object" at the bottom. |
-| **Toolbar** | One unified, full-width titlebar row that never wraps: traffic lights → sidebar toggle → back/forward → safe mode → context bar (flexes, truncates) → actions → inspector toggle pinned at the far right above the inspector. Contents: back/forward (per-tab navigation history), **Safe mode** toggle (always on for prod), **context bar** like a browser address bar: env badge · connection › database › schema › object · engine · route (SSH, proxy…) · live latency. |
+| **Workspace rail** (far left, 64 px in the mock) | Workspaces only: 36 px engine-tinted tiles, 10 px corners, 13 px semibold name monograms and 8 px environment dots. No labels or database sub-items. A left-edge pill marks selection (4 × 20 px) or hover (4 × 8 px), with a 160 ms token-eased height transition; reduced motion disables it. Hover/focus glass tooltips show workspace, environment, engine and host. Tab and ↑/↓ navigate; ⌘1–4 switch. Borderless `+`, API and settings controls sit at the bottom. |
+| **Sidebar header** | Truncating workspace name, environment badge and a mock actions menu (Connection settings…, Duplicate, Disconnect). Below, a database icon/name/chevron opens a glass menu of opened databases: active check, hover/focus close, wrapping ↑/↓, Home/End, Enter, Esc/Tab dismissal and opener focus return. Open database… (⌘K) opens the existing switcher. Database and workspace changes preserve per-database tabs. |
+| **Sidebar** (floating rounded panel) | Header above segmented **Items / Queries / History**, search and object tree; schema picker and "create object" at the bottom. |
+| **Toolbar** | One unified, full-width titlebar row that never wraps: traffic lights → sidebar toggle → back/forward → safe mode → context bar (flexes, truncates) → actions → inspector toggle pinned at the far right above the inspector. Contents: back/forward (per-tab navigation history), **Safe mode** toggle (always on for prod), **context bar** like a browser address bar: env badge · workspace › database › schema › object · engine · route (SSH, proxy…) · live latency. |
 | **Tabs** | Chrome-style tabs for every table, query, structure view and API request; drag to reorder or tear off into a new window; middle-click closes. |
 | **Table view switcher** | Data · Structure · Indexes · Triggers · DDL inside each table tab; filter chips and "+ Row" next to it. |
 | **Right panel** (floating) | Segmented **Details / Assistant**: row/object details, or the AI assistant with provider switcher, policy chips, tool trace and proposal cards. |
 | **Commit bar** | Floating glass capsule over the grid whenever a change set is pending. |
 | **Footer** | Pagination and query timing. |
 
-Visual language: macOS-native — system font, rounded window and panels (16–22 px), capsule controls, Finder-style rounded row selection, soft status pills, light and dark themes.
+Visual language: macOS-native — system font, rounded window and compact 12 px panels, capsule controls, flat full-row selection, soft status pills, light and dark themes.
+
+### M0-T4b workspace mock
+
+The desktop app now defaults to a hard-coded workspace in `apps/desktop/src/mock/`;
+all sample connections, rows, schema metadata and transcripts live in `mock/data/`.
+The rail gear opens the M0-T4 component gallery; Back or Escape returns with the
+workspace state intact. These controls only change local preview state. No
+connection, query, write or assistant call is made; Copy SQL uses the clipboard.
+
+Reusable document tabs, split panels, disclosure sections, object rows and review
+sheets live in `@openrows/ui`. Sidebar widths clamp to 200–360 px (reset 228),
+inspector widths to 280–440 px (reset 316). Drag the panel edge, double-click to
+reset, or focus the divider and use arrows/Home/End/Enter. Widths persist in local
+storage under `openrows.mock.sidebar` and `openrows.mock.inspector`.
+
+Below 1100 CSS px, the inspector automatically collapses; its toolbar button or
+⌥⌘I reopens it as a trailing overlay above the content. Crossing back to 1100 px
+restores the inline inspector. The titlebar never wraps: address and engine text
+truncate first. Tabs shrink to 90 px then scroll; the 712 px grid scrolls
+horizontally. At the 900×600 minimum, the rail and sidebar stay inline.
+
+Panel collapse uses the approved 360 ms easing; disclosure uses 220 ms. Reduced
+motion disables both. Width previews use direct CSS updates and persist once on
+release, with no React updates per pointer move. Unlike the eventual canvas grid,
+this forty-row mock deliberately animates split layout dimensions to reproduce
+the approved prototype; the render-count benchmark protects the grid from React
+work throughout dragging and collapse. This scoped mock exception does not alter
+the production performance policy in docs/13. Actual frame time and visual polish
+remain maintainer checks on native hardware.
+
+The connection tile colours are tokens; ClickHouse gold is darkened to meet AA
+for its white initials. SQL syntax uses the tested semantic foregrounds. System
+light/dark, increased contrast, reduced motion and solid transparency fallbacks
+reuse ThemeProvider and the existing token system. Native material setup is
+specified in [docs/16 §3](16-platform-and-distribution.md#3-macos-specifics).
+
+### M0-T4c database navigation and search
+
+⌘K or the context bar database segment opens a glass database switcher. It lists
+the selected workspace's hard-coded catalog, marks already-open databases and
+hides system databases until **Show system databases** is enabled. Choosing an
+entry opens/activates it. The sidebar header menu lists opened databases; its
+close controls keep at least one database open. Switching workspaces
+or databases retains tab sets and schema selection; object tooltips use
+`database.schema.table`. Sidebar objects follow the active database/schema.
+
+Sidebar search filters live, underlines matched characters, forces matching
+sections open, displays **No matches**, and clears with Esc. ⌘F focuses search
+only when focus is within the sidebar. ⌘P fuzzy-searches tables/views/functions
+across every schema in the active database, with kind, schema and row estimates;
+Enter opens a descriptor or focuses its existing tab. ⌘⇧P opens twelve mock
+commands and their shortcuts. Refresh announces a mock refresh; other commands
+change panel, safe-mode, tab, schema, search, gallery or palette state.
+
+All three palettes share `@openrows/ui` combobox/listbox semantics: input focus,
+↑/↓ wrapping, Home/End, Enter, Esc, a trapped Tab cycle and restored opener focus.
+IME composition does not execute or navigate commands. Palette selection stays
+visible when scrolling. Glass uses the existing solid/reduced-transparency
+fallback and 12 px corners. Open/close scale + fade lasts **160 ms** via
+`motion-popover`; rail indicator height lasts **160 ms** via the same token,
+with `cubic-bezier(0.32, 0.72, 0, 1)`. Reduced motion removes both and closes
+palettes without an animation delay. The fixed-size rail pill height transition
+is a scoped exception to docs/13 layout animation policy, alongside the bounded
+forty-row panel mock above; production performance policies remain unchanged. Search ranking has a
+Performance API benchmark with a **16 ms p95 per 1,000 objects** budget.
+Native toolbar geometry is documented in [docs/16 §3](16-platform-and-distribution.md#3-macos-specifics).
+These interactions use mock/data only; no catalog, query or command contacts a server.
 
 ### 3.2 macOS-native design methodology (macOS 26 era)
 
@@ -98,7 +175,7 @@ The app must feel like it was designed for the current macOS, not merely ported 
 | --- | --- |
 | **Everything collapsible** | Sidebar (⌃⌘S, standard "Show/Hide Sidebar"), inspector/assistant panel (⌥⌘I), connection rail, results pane, and every sidebar section (disclosure triangles). Panels animate with a spring-like ease (≈360 ms, `cubic-bezier(0.32, 0.72, 0, 1)`), remember their state per window, and can also be collapsed by dragging the divider past a threshold — like `NSSplitView` sidebars. Toolbar toggle buttons reflect state (tinted when open). |
 | **Liquid Glass materials** | Sidebar, inspector and toolbar controls use translucent "glass" panels (blur + saturation, bright top edge highlight, soft shadow) floating above content, with content allowed to scroll beneath the toolbar edge. Implemented natively where possible (window vibrancy / glass effect behind a transparent webview on macOS 26; `NSVisualEffectView` on older versions) and with CSS `backdrop-filter` inside the webview. |
-| **Concentric geometry** | Corner radii nest: window 26 px → floating panels 18 px (window radius − 8 px inset) → controls capsules/10 px. Nothing has sharp corners next to a rounded container. |
+| **Concentric geometry** | Corner radii nest: window 26 px → floating panels 12 px → controls capsules/10 px. Nothing has sharp corners next to a rounded container. |
 | **Capsule controls** | Toolbar buttons grouped into capsules; segmented controls are pills; primary actions use the accent fill. |
 | **Toolbar in the titlebar** | Unified titlebar/toolbar; traffic lights stay native; toolbar is user-customisable (add/remove/reorder items, icon/text modes) like `NSToolbar`. |
 | **Native tabs behaviour** | Tabs reorder, tear off to new windows, merge windows (Window → Merge All Windows), ⌘⇧[ / ⌘⇧] to switch, ⌘W closes, "Reopen closed tab" ⌘⇧T. |
@@ -132,16 +209,53 @@ The app must feel like it was designed for the current macOS, not merely ported 
 - **Typography:** system UI font for chrome (SF Pro on macOS), user-selectable monospace for grid/editor (default to a bundled open-licence monospace such as JetBrains Mono or IBM Plex Mono — both OFL).
 - **Colour:** neutral greys for chrome; one accent colour; semantic colours for success/warning/danger; environment tag palette (local=grey, dev=green, staging=amber, prod=red, custom) chosen to remain distinguishable for common colour-vision deficiencies and paired with text labels.
 - **Iconography:** single consistent line icon set; database "logos" rendered as neutral, original glyphs or official marks only where their trademark guidelines permit use in tooling (checked per vendor).
-- **Motion:** functional opacity/transform only; approved panel timing 360 ms and disclosure 220 ms with `cubic-bezier(0.32, 0.72, 0, 1)`. Other small feedback stays ≤ 150 ms. Animations and transitions are disabled under reduced motion.
+- **Motion:** functional opacity/transform only; approved panel timing 360 ms and disclosure 220 ms with `cubic-bezier(0.32, 0.72, 0, 1)`. Palette scale/fade uses 160 ms; other small feedback stays ≤ 150 ms. Animations and transitions are disabled under reduced motion.
 - **Density modes:** compact / default / comfortable.
 
 ### M0-T4 token values and accessibility adjustments
 
-`packages/ui/src/tokens/` is the implemented source for the gallery. System UI/SF Mono stacks are used without font downloads; the 11/11.5/12/12.5/13/15/17/30 px type scale, 400/500/600/700 weights, 2–32 px spacing, capsule/10/12/14/18/26 px concentric radii, accent `#0B6BD6`, and prototype surface colours are preserved. Panels use 30 px blur and toolbar capsules 20 px, both with saturation 1.8 and the per-theme inset highlights. Native vibrancy is outside M0-T4.
+`packages/ui/src/tokens/` supplies both themes and the component gallery. UI labels
+remain 13 px; workspace grid and tree text are 12.5 px, secondary metadata is
+11–11.5 px, context text is 12 px, and environment labels are 10 px. Rail monograms are 13 px semibold. Grid rows
+and headers are 26 px, tree rows 24 px, tabs and titlebar controls 28 px, table
+controls 24 px, and rail tiles 36 px with 10 px corners. Status pills use 11 px
+text in an 18 px box with 6 px corners. Floating panels use 12 px corners.
 
-To meet NFR-UX-01, light secondary/tertiary text is `#4F4F55` (replacing `#6A6A70`/`#76767C`), including the darkest nested control-fill surface. Dark secondary/tertiary text is `#C0C0C6` (replacing `#A1A1A6`/`#98989E`). Light danger/prod foreground is `#93241F` (replacing `#A42A24`), with the original `#FDE2E0` badge background. Dark success/dev foreground is `#8AEFA5`, warning/staging `#FFDC9F`, danger/prod `#FFBCB8`, info `#9CCAFF`, and neutral/local `#D1D1D6` over 20% tinted fills. Environment identity colours remain the original grey/green/amber/red tokens. Small dots use the corresponding readable semantic foreground and are accompanied by labels.
+| Surface token | Dark | Light |
+| --- | --- | --- |
+| Grid/content (`window`) | `#242424` | `#FAFAFA` |
+| Sidebar/inspector fallback (`panel-solid`) | `#222222` | `#EDEDED` |
+| Sidebar/inspector glass (`panel`) | `rgba(34,34,34,0.9)` | `rgba(237,237,237,0.9)` |
+| Window/rail (`page`) | `#1B1B1B` | `#DADADA` |
 
-Focus rings use `#0960C0` in light and `#79B9FF` in dark, 2 px thick with 3 px separation. Destructive buttons use `#B4231B` with white text; white-on-accent also passes AA. Disabled controls preserve readable text rather than reducing opacity. High contrast uses stronger separators (`#606066`/`#C0C0C6`), opaque panels and control fills (`#E4E4E8`/`#38383C`). Reduced transparency makes both panels and toolbar capsules solid and removes backdrop filtering. `just contrast-report` reports all text/badge pairs ≥ 4.5 and focus ≥ 3, including translucency composition.
+Rail and workspace panels have no outline strokes. Surface tone separates the
+window/rail, sidebar/inspector and content; the dark content is the lightest
+base surface. Panel radii and glass/transparency fallbacks remain. Inactive
+rail tiles use 90% opacity, included in the contrast report. Keyboard focus
+underlines the rail monogram and reveals its pill; other controls use focus indicators.
+
+Rows are flat and edge-to-edge with a faint zebra tint. Edited cells use an 18%
+amber tint and an accessible edited-cell label; inserted rows show a gutter plus;
+deleted rows use a faint red tint, muted text and strikethrough. Selected rows
+use the existing `#0B6BD6` accent and white text. Inactive tab close controls appear
+on hover or keyboard focus; active tabs merge into the content surface.
+
+The table toolbar stays on one line: the filter text and Add Filter action yield
+space before the view labels and trailing Add Row action. In very narrow content
+panes, the view labels scroll on one line while Add Row remains pinned. Assistant SQL wraps
+long lines and its action area follows the code without overlapping scrollbars.
+The 38 px floating change capsule uses 28 px controls; the grid reserves its
+height plus 24 px in both bottom padding and keyboard scroll padding, keeping
+the final row clear when scrolled to the bottom.
+
+Search fields use a quiet fill and transparent border, with a focus ring on focus.
+Default separators are 5.5% black/white; control fills are 3.5%. Secondary text is
+`#B8B8B8` in dark and `#505050` in light. `just contrast-report` covers glass,
+nested controls, row states, edited cells and semantic badges; text requires 4.5:1
+and focus indicators 3:1. Increased contrast uses stronger neutral separators
+and opaque fills; reduced transparency and reduced motion retain their fallbacks.
+All palettes and measurements originate in tokens; the reference was used only
+for density and visual weight, with no copied colours, assets, icons or text.
 
 ## 6. Accessibility requirements for design
 

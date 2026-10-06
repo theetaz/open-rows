@@ -9,15 +9,15 @@
 .frame {
   display: flex;
   align-items: center;
-  background: var(--or-window);
-  border: var(--or-border-width) solid var(--or-secondary);
+  background: var(--or-control-fill);
+  border: var(--or-border-width) solid transparent;
   border-radius: var(--or-radius-field);
 }
 .frame input {
   inline-size: 100%;
   min-inline-size: 0;
-  min-block-size: var(--or-control-md);
-  padding: var(--or-space-8) var(--or-space-10);
+  min-block-size: var(--or-control-sm);
+  padding: var(--or-space-4) var(--or-space-8);
   border: none;
   border-radius: inherit;
   background: transparent;

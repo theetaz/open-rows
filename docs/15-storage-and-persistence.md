@@ -15,8 +15,8 @@ flowchart LR
         resp["responses/*.body"]
         thumbs["previews/"]
     end
-    subgraph ws["Workspace folder (user chosen, git-friendly)"]
-        wsmeta[".openrows/workspace.yaml"]
+    subgraph ws["Project folder (user chosen, git-friendly)"]
+        wsmeta[".openrows/project.yaml"]
         queries["queries/**/*.sql"]
         apis["apis/<collection>/**"]
         shared["connections/*.yaml<br/>(shared, secret-free)"]
@@ -118,7 +118,7 @@ Two layers, merged at runtime:
 | Layer | Location | Contains |
 | --- | --- | --- |
 | **Personal** | App data `connections/<id>.json` | Everything for the user's own connections (minus secrets). |
-| **Shared** | Workspace `connections/*.yaml` | Team-shared definitions: driver, host, port, database, SSH bastion host, TLS mode, env tag. No usernames or secrets by default. Each user binds personal credentials to a shared definition locally. |
+| **Shared** | Project `connections/*.yaml` | Team-shared definitions: driver, host, port, database, SSH bastion host, TLS mode, env tag. No usernames or secrets by default. Each user binds personal credentials to a shared definition locally. |
 
 ```json
 {
@@ -140,17 +140,19 @@ Two layers, merged at runtime:
 ## 4. Settings
 
 - `settings.json`: user-level preferences (theme, fonts, grid density, editor options, history retention, telemetry opt-in, update channel).
-- Workspace `.openrows/workspace.yaml` may override a safe subset (formatting style, default page size) so teams share conventions.
+- Project `.openrows/project.yaml` may override a safe subset (formatting style, default page size) so teams share conventions.
 - JSON Schema provided; settings UI and file stay in sync (file watcher).
 
-## 5. Workspaces
+<a id="5-workspaces"></a>
 
-A workspace is a folder the user opens (or the default personal workspace in app data):
+## 5. Projects
+
+A Project is a folder the user opens with **Open Project Folder** (or the default personal Project in app data). A Workspace is a connection to a server/host and can contain multiple databases; it is separate from the Project folder:
 
 ```text
-my-team-workspace/
+my-team-project/
   .openrows/
-    workspace.yaml        # name, defaults, trusted flag is stored locally, NOT here
+    project.yaml        # name, defaults, trusted flag is stored locally, NOT here
   connections/            # shared, secret-free connection definitions
   queries/                # .sql files, any folder structure
   apis/                   # API collections (see 11-api-client.md)
@@ -158,7 +160,7 @@ my-team-workspace/
   .gitignore              # generated: .env, .openrows/local/
 ```
 
-"Trusted" state (allowing scripts, `ors.db.query`) is stored in the local store keyed by workspace path + git remote, never in the workspace itself — otherwise a malicious repo could mark itself trusted.
+"Trusted" state (allowing scripts, `ors.db.query`) is stored in the local store keyed by Project path + git remote, never in the Project itself — otherwise a malicious repo could mark itself trusted.
 
 ## 6. Migrations
 

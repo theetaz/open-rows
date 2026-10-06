@@ -29,3 +29,21 @@ it('reports a failed native reveal handshake', async () => {
     'Unable to show the native window',
   );
 });
+
+it('defaults to workspace, opens the gallery from the rail and returns by Back/Escape', async () => {
+  const { default: userEvent } = await import('@testing-library/user-event');
+  const user = userEvent.setup();
+  render(<App />);
+  expect(screen.getByRole('grid', { name: 'Orders data' })).toBeVisible();
+  await user.click(screen.getByRole('button', { name: 'Component gallery' }));
+  expect(
+    screen.getByRole('heading', { name: 'Made for the desktop.' }),
+  ).toBeVisible();
+  await user.keyboard('{Meta>}t{/Meta}');
+  await user.click(screen.getByRole('button', { name: 'Back to workspace' }));
+  expect(screen.queryByRole('tab', { name: /SQL Query 1/ })).toBeNull();
+  expect(screen.getByRole('grid')).toBeVisible();
+  await user.click(screen.getByRole('button', { name: 'Component gallery' }));
+  await user.keyboard('{Escape}');
+  expect(screen.getByRole('grid')).toBeVisible();
+});

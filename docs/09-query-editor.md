@@ -89,9 +89,9 @@ flowchart LR
 
 ## 7. Files and snippets
 
-- Query tabs can be **scratch** (stored in app data) or **file-backed** (`.sql` in a workspace folder). File-backed tabs save with ⌘S and detect external changes (file watcher) with a reload prompt.
-- A tab remembers its connection via a header comment the user can opt into (`-- openrows: connection=analytics-prod`) or via workspace metadata, so shared `.sql` files open on the right connection for each teammate's local profile name.
-- Snippets: user-defined templates with tab stops, scoped per dialect, stored in `snippets/*.json` in the workspace or user settings.
+- Query tabs can be **scratch** (stored in app data) or **file-backed** (`.sql` in a Project folder). File-backed tabs save with ⌘S and detect external changes (file watcher) with a reload prompt.
+- A tab remembers its connection via a header comment the user can opt into (`-- openrows: connection=analytics-prod`) or via Project metadata, so shared `.sql` files open on the right connection for each teammate's local profile name.
+- Snippets: user-defined templates with tab stops, scoped per dialect, stored in `snippets/*.json` in the Project or user settings.
 
 ## 8. Native query languages
 
