@@ -26,7 +26,7 @@ The [feature parity inventory](26-feature-parity.md) maps the public benchmark t
 
 | Spike | Question | Exit criteria |
 | --- | --- | --- |
-| S1 IPC throughput | Can Arrow IPC tiles over Tauri 2 raw responses meet the tile budget in WKWebView? | 256×20 mixed tile end-to-end ≤ 3 ms p95 on mac-low |
+| S1 IPC throughput | Can Arrow IPC tiles over Tauri 2 raw responses meet the tile budget in WKWebView? | **Met** on Mac mini M4: 256×20 mixed tile end-to-end p95 1.00 ms in both runs (≤ 3 ms); mac-low run to revisit. [ADR-0002](adr/0002-arrow-ipc-for-results.md#m0-s1-evidence--2026-10-06) |
 | S2 Grid renderer | Custom canvas painter vs Glide Data Grid behind our adapter | 1 M rows scroll with 0 frames > 32 ms; decision recorded in ADR-0004 |
 | S3 PG streaming | `tokio-postgres` binary decode into Arrow builders | ≥ 1 M cells/s/core; first batch ≤ 5 ms |
 | S4 SSH | `russh` tunnels with agent, jump host, keyboard-interactive | Works against OpenSSH container + real bastion |

@@ -3,11 +3,21 @@
 mod commands;
 #[cfg(target_os = "macos")]
 mod material;
+mod results;
+mod spike;
 mod startup;
 mod startup_report;
 
 fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
-    tauri_specta::Builder::new().commands(tauri_specta::collect_commands![commands::app_info])
+    tauri_specta::Builder::new()
+        .commands(tauri_specta::collect_commands![
+            commands::app_info,
+            spike::spike_finish,
+            spike::spike_start,
+            spike::spike_progress
+        ])
+        .typ::<results::WindowRequest>()
+        .typ::<results::ResultError>()
 }
 
 /// Export the same command registry used by the running application.
@@ -28,9 +38,18 @@ pub fn export_bindings(path: &std::path::Path) -> Result<(), specta_typescript::
 pub fn run() -> Result<(), tauri::Error> {
     startup_report::initialize();
     startup_report::record(startup_report::Phase::BuilderStart);
-    let builder = tauri::Builder::default();
+    let builder = spike::configure(tauri::Builder::default())?;
+    let controls = command_builder().invoke_handler();
+    let binary: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool =
+        tauri::generate_handler![results::result_window];
     startup_report::instrument(builder)
-        .invoke_handler(command_builder().invoke_handler())
+        .invoke_handler(move |invoke| {
+            if invoke.message.command() == "result_window" {
+                binary(invoke)
+            } else {
+                controls(invoke)
+            }
+        })
         .setup(startup::install)
         .run(tauri::generate_context!())
 }

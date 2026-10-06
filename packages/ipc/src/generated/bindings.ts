@@ -6,6 +6,9 @@ import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 /** Commands */
 export const commands = {
 	appInfo: () => __TAURI_INVOKE<AppInfo>("app_info"),
+	spikeFinish: (report: SpikeReport) => typedError<null, SpikeError>(__TAURI_INVOKE("spike_finish", { report })),
+	spikeStart: () => typedError<boolean, SpikeError>(__TAURI_INVOKE("spike_start")),
+	spikeProgress: (stage: string, detail: string) => typedError<null, SpikeError>(__TAURI_INVOKE("spike_progress", { stage, detail })),
 };
 
 /* Types */
@@ -16,4 +19,45 @@ export type AppInfo = {
 };
 
 export type BuildProfile = "debug" | "release";
+
+export type PageTimer = {
+	resolutionMs: number | null,
+	crossOriginIsolated: boolean,
+};
+
+export type ResultError = { kind: "unknownResult"; message: string } | { kind: "outOfRange" } | { kind: "encoding"; message: string } | { kind: "unavailable"; message: string };
+
+export type SpikeError = { kind: "disabled" } | { kind: "missingPath" } | { kind: "failed"; message: string };
+
+export type SpikeReport = {
+	samples: TileTiming[],
+	timer: PageTimer,
+	error: string | null,
+};
+
+export type TileTiming = {
+	rowStart: number,
+	invokeMs: number | null,
+	decodeMs: number | null,
+	workerDecodeMs: number | null,
+	totalMs: number | null,
+};
+
+export type WindowRequest = {
+	resultId: string,
+	rowStart: number,
+	rowCount: number,
+	colStart: number,
+	colCount: number,
+};
+
+/* Tauri Specta runtime */
+async function typedError<T, E>(result: Promise<T>): Promise<{ status: "ok"; data: T } | { status: "error"; error: E }> {
+    try {
+        return { status: "ok", data: await result };
+    } catch (e) {
+        if (e instanceof Error) throw e;
+        return { status: "error", error: e as any };
+    }
+}
 
