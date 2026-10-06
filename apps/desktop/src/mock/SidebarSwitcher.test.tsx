@@ -6,7 +6,7 @@ import { Workspace } from './Workspace';
 afterEach(() => {
   vi.useRealTimers();
 });
-it('sidebar menu opens the existing switcher and returns focus to its persistent selector', () => {
+it('sidebar menu opens the existing switcher and returns focus to its persistent selector', async () => {
   vi.useFakeTimers();
   render(
     <ThemeProvider>
@@ -18,9 +18,14 @@ it('sidebar menu opens the existing switcher and returns focus to its persistent
   });
   opener.focus();
   fireEvent.click(opener);
-  fireEvent.click(screen.getByRole('menuitem', { name: /Open database/ }));
+  await act(async () => {
+    fireEvent.click(screen.getByRole('menuitem', { name: /Open database/ }));
+    await import('./WorkspacePalettes');
+  });
   expect(screen.queryByRole('menu')).toBeNull();
-  const input = screen.getByRole('combobox', { name: 'Switch database' });
+  const input = screen.getByRole('combobox', {
+    name: 'Switch database',
+  });
   expect(input).toHaveFocus();
   fireEvent.change(input, { target: { value: 'orders_archive' } });
   fireEvent.keyDown(input, { key: 'Enter' });
@@ -32,9 +37,12 @@ it('sidebar menu opens the existing switcher and returns focus to its persistent
   ).toHaveFocus();
   fireEvent.click(opener);
   expect(screen.getAllByRole('menuitemradio')).toHaveLength(2);
-  fireEvent.keyDown(document.activeElement ?? document.body, {
-    key: 'k',
-    metaKey: true,
+  await act(async () => {
+    fireEvent.keyDown(document.activeElement ?? document.body, {
+      key: 'k',
+      metaKey: true,
+    });
+    await import('./WorkspacePalettes');
   });
   expect(screen.queryByRole('menu')).toBeNull();
   expect(

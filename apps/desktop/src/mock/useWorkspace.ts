@@ -3,7 +3,9 @@ import { useCallback, useState } from 'react';
 import { connections } from './data/connections';
 import { databaseFor, databases } from './data/databases';
 import type { DatabaseObject } from './data/databases';
+import type { TableState } from './data/content';
 import {
+  editDocument,
   initialDocuments,
   newQuery,
   closeDocument,
@@ -125,6 +127,8 @@ function useWorkspaceValue(input: {
   selectTab: (id: string) => void;
   addTab: (sql?: string) => void;
   closeTab: (id: string) => void;
+  editSql: (sql: string) => void;
+  editTable: (tableState: TableState) => void;
   openTable: (object: DatabaseObject) => void;
 } {
   const { document, update } = input;
@@ -155,6 +159,12 @@ function useWorkspaceValue(input: {
       },
       [update],
     ),
+    editTable: (tableState) => {
+      update((state) => editDocument(state, { tableState }));
+    },
+    editSql: (sql) => {
+      update((state) => editDocument(state, { sql }));
+    },
     closeTab: (id) => {
       update((state) => closeDocument(state, id));
     },

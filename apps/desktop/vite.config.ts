@@ -7,5 +7,5 @@ export default defineConfig({
   plugins: [react(), babel({ presets: [reactCompilerPreset()] })],
   server: { port: 1420, strictPort: true, host: '127.0.0.1' },
   clearScreen: false,
-  build: { target: 'safari15' },
+  build: { target: 'safari15', manifest: true },
 });

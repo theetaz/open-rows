@@ -92,7 +92,9 @@ it('adds, switches and closes tabs with buttons and middle click', async () => {
     'aria-selected',
     'true',
   );
-  expect(screen.getByRole('textbox', { name: 'SQL editor' })).toBeVisible();
+  expect(
+    await screen.findByRole('textbox', { name: 'SQL editor' }),
+  ).toBeVisible();
   await user.click(screen.getByRole('button', { name: 'Close SQL Query 1' }));
   expect(screen.queryByRole('tab', { name: /SQL Query 1/ })).toBeNull();
   await user.click(screen.getByRole('tab', { name: /orders/ }));
@@ -104,16 +106,20 @@ it('adds, switches and closes tabs with buttons and middle click', async () => {
 it('shows all five table views and handles filter removal, re-addition and a draft row', async () => {
   const user = mount();
   await user.click(screen.getByRole('radio', { name: 'Structure' }));
-  expect(screen.getByRole('table')).toHaveTextContent('numeric(12,2)');
+  expect(await screen.findByRole('table')).toHaveTextContent('numeric(12,2)');
   await user.click(screen.getByRole('radio', { name: 'Indexes' }));
-  expect(screen.getByRole('table')).toHaveTextContent(
+  expect(await screen.findByRole('table')).toHaveTextContent(
     'orders_status_created_idx',
   );
   await user.click(screen.getByRole('radio', { name: 'Triggers' }));
   expect(screen.getByRole('heading', { name: 'Triggers' })).toBeVisible();
   await user.click(screen.getByRole('radio', { name: 'DDL' }));
   expect(
-    screen.getAllByText('CREATE', { selector: '[data-token="keyword"]' })[0],
+    (
+      await screen.findAllByText('CREATE', {
+        selector: '[data-token="keyword"]',
+      })
+    )[0],
   ).toBeVisible();
   await user.click(screen.getByRole('radio', { name: 'Data' }));
   await user.click(screen.getByRole('button', { name: 'Remove filter' }));
@@ -130,7 +136,9 @@ it('selects rows by pointer and bounded keyboard navigation and switches to Deta
     'aria-checked',
     'true',
   );
-  expect(screen.getByRole('heading', { name: 'Order 10422' })).toBeVisible();
+  expect(
+    await screen.findByRole('heading', { name: 'Order 10422' }),
+  ).toBeVisible();
   const grid = screen.getByRole('grid');
   fireEvent.keyDown(grid, { key: 'ArrowDown' });
   expect(screen.getByRole('heading', { name: 'Order 10423' })).toBeVisible();
@@ -144,6 +152,7 @@ it('selects rows by pointer and bounded keyboard navigation and switches to Deta
   fireEvent.keyDown(grid, { key: 'End' });
   fireEvent.keyDown(grid, { key: 'ArrowDown' });
   expect(grid).toHaveAttribute('aria-activedescendant', 'order-row-39');
+  fireEvent.keyDown(grid, { key: 'Home' });
   const edited = grid.querySelectorAll('[data-edited="true"]');
   expect(edited).toHaveLength(2);
   for (const cell of edited) {

@@ -68,10 +68,12 @@ class CommandTests(unittest.TestCase):
             paths = list((Path(directory) / "perf-results").glob("memory-*.json"))
             self.assertEqual(len(paths), 1)
             result = json.loads(paths[0].read_text())
-            self.assertEqual(result["total_rss_bytes"], 206_290_000)
+            self.assertEqual(len(result["samples"]), 3)
+            self.assertEqual(result["samples"][0]["total_rss_bytes"], 206_290_000)
+            self.assertEqual(wait.call_count, 3)
             total = None if footprint is None else 50_000_000 + footprint
-            self.assertEqual(result["total_footprint_bytes"], total)
-            self.assertEqual(result["gated_metric"], "total_footprint_bytes")
+            self.assertEqual(result["samples"][0]["total_footprint_bytes"], total)
+            self.assertEqual(result["gated_metrics"], ["median_total_footprint_bytes", "median_webview_footprint_bytes"])
             self.assertEqual(result["budgets"][0]["passed"], status == 0)
             if footprint is None:
                 self.assertIn("PID 43", result["budgets"][0]["error"])
@@ -79,5 +81,42 @@ class CommandTests(unittest.TestCase):
                                     for call in output.call_args_list))
             printed = "\n".join(str(call) for call in output.call_args_list)
             self.assertIn("TOTAL RSS (informational): 206.29 MB", printed)
-            self.assertIn("TOTAL footprint (gated):", printed)
+            self.assertIn("TOTAL footprint (run sample):", printed)
             self.assertIn("com.apple.WebKit.WebContent", printed)
+
+    def test_memory_launches_requested_count_sequentially_after_cleanup(self):
+        command = load_command("bench-memory")
+        events = []
+        @contextmanager
+        def fake_launch(_):
+            index = len([event for event in events if event.startswith("enter")])
+            events.append(f"enter {index}")
+            try:
+                yield index, dict(timestamps_ns={"first_paint_ready": 123})
+            finally:
+                events.append(f"exit {index}")
+        def fake_measure(index):
+            events.append(f"measure {index}")
+            return [dict(pid=index, name="com.apple.WebKit.WebContent", rss_bytes=1,
+                         footprint_bytes=140_000_000)]
+        with ExitStack() as stack:
+            stack.enter_context(patch("sys.argv", ["bench-memory.py", "2"]))
+            stack.enter_context(patch.object(command, "release_executable", return_value=Path("fake")))
+            stack.enter_context(patch.object(command, "launch", fake_launch))
+            stack.enter_context(patch.object(command, "measure", fake_measure))
+            stack.enter_context(patch.object(command, "wait_until"))
+            result = stack.enter_context(patch.object(command, "write_result"))
+            stack.enter_context(patch("builtins.print"))
+            self.assertEqual(command.main(), 0)
+            self.assertEqual(len(result.call_args.args[1]["samples"]), 2)
+        self.assertEqual(events, ["enter 0", "measure 0", "exit 0",
+                                  "enter 1", "measure 1", "exit 1"])
+
+    def test_invalid_memory_run_count_never_resolves_or_launches_app(self):
+        from bench_metrics import BenchmarkError
+        command = load_command("bench-memory")
+        for value in ("0", "-1"):
+            with patch("sys.argv", ["bench-memory.py", value]), patch.object(command, "release_executable") as executable:
+                with self.assertRaises(BenchmarkError):
+                    command.main()
+                executable.assert_not_called()

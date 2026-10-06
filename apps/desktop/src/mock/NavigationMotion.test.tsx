@@ -68,14 +68,17 @@ it('native window buttons use the screenshot-verified inset for the 48 px toolba
   expect(geometry['toolbar-height']).toBe('48px');
   expect(geometry['traffic-light-clearance']).toBe('78px');
 });
-it('system database selection produces an empty tab set and rail state without opening a connection', () => {
+it('system database selection produces an empty tab set and rail state without opening a connection', async () => {
   vi.useFakeTimers();
   render(
     <ThemeProvider>
       <Workspace onGallery={vi.fn()} />
     </ThemeProvider>,
   );
-  fireEvent.keyDown(window, { key: 'k', metaKey: true });
+  await act(async () => {
+    fireEvent.keyDown(window, { key: 'k', metaKey: true });
+    await import('./WorkspacePalettes');
+  });
   fireEvent.click(
     screen.getByRole('checkbox', { name: 'Show system databases' }),
   );

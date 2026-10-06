@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useState } from 'react';
-import { Palette } from '@openrows/ui';
+import { Palette } from '@openrows/ui/palette';
 import { databases } from './data/databases';
 import type { Database, DatabaseObject } from './data/databases';
 import { paletteCommands } from './data/commands';

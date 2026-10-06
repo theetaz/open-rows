@@ -11,11 +11,14 @@ function mount(): void {
     </ThemeProvider>,
   );
 }
-function key(key: string, shiftKey = false): void {
-  fireEvent.keyDown(window, { key, metaKey: true, shiftKey });
+async function key(key: string, shiftKey = false): Promise<void> {
+  await act(async () => {
+    fireEvent.keyDown(window, { key, metaKey: true, shiftKey });
+    await import('./WorkspacePalettes');
+  });
 }
-function pickDatabase(name: string): void {
-  key('k');
+async function pickDatabase(name: string): Promise<void> {
+  await key('k');
   fireEvent.change(screen.getByRole('combobox', { name: 'Switch database' }), {
     target: { value: name },
   });
@@ -35,14 +38,14 @@ function selectOpened(name: string): void {
 afterEach(() => {
   vi.useRealTimers();
 });
-it('opens databases by keyboard, updates header/context/sidebar and preserves independent tab sets', () => {
+it('opens databases by keyboard, updates header/context/sidebar and preserves independent tab sets', async () => {
   mount();
-  key('t');
+  await key('t');
   expect(screen.getByRole('tab', { name: /SQL Query 1/ })).toHaveAttribute(
     'title',
     'orders.public.SQL Query 1',
   );
-  pickDatabase('orders_archive');
+  await pickDatabase('orders_archive');
   expect(screen.getByLabelText('Connection context')).toHaveTextContent(
     'orders-staging › orders_archive › public › orders_2024',
   );
@@ -54,7 +57,7 @@ it('opens databases by keyboard, updates header/context/sidebar and preserves in
     'orders_archive.public.orders_2024',
   );
   expect(screen.queryByRole('tab', { name: /SQL Query 1/ })).toBeNull();
-  key('t');
+  await key('t');
   const sidebar = within(
     screen.getByRole('complementary', { name: 'Sidebar' }),
   );
@@ -96,13 +99,16 @@ it('opens databases by keyboard, updates header/context/sidebar and preserves in
     }),
   ).toBeNull();
 });
-it('context opens the database switcher, marks opened entries and hides system databases until requested', () => {
+it('context opens the database switcher, marks opened entries and hides system databases until requested', async () => {
   mount();
   const opener = screen.getByRole('button', {
     name: 'Switch database (orders)',
   });
   opener.focus();
-  fireEvent.click(opener);
+  await act(async () => {
+    fireEvent.click(opener);
+    await import('./WorkspacePalettes');
+  });
   expect(
     screen.getByRole('option', { name: /orders.*Already open/ }),
   ).toBeVisible();
@@ -120,7 +126,7 @@ it('context opens the database switcher, marks opened entries and hides system d
     vi.advanceTimersByTime(160);
   });
   expect(opener).toHaveFocus();
-  key('k');
+  await key('k');
   fireEvent.keyDown(within(screen.getByRole('dialog')).getByRole('combobox'), {
     key: 'ArrowDown',
   });
@@ -137,7 +143,7 @@ it('context opens the database switcher, marks opened entries and hides system d
     screen.getAllByRole('button', { name: 'Opened databases (orders)' }),
   ).toHaveLength(1);
 });
-it('search auto-expands matches, highlights literal characters, shows empty state and clears with Esc', () => {
+it('search auto-expands matches, highlights literal characters, shows empty state and clears with Esc', async () => {
   mount();
   const sidebar = within(
     screen.getByRole('complementary', { name: 'Sidebar' }),
@@ -163,6 +169,6 @@ it('search auto-expands matches, highlights literal characters, shows empty stat
   fireEvent.keyDown(tables, { key: 'f', metaKey: true });
   expect(input).toHaveFocus();
   screen.getByRole('button', { name: 'Safe mode' }).focus();
-  key('f');
+  await key('f');
   expect(input).not.toHaveFocus();
 });

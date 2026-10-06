@@ -20,7 +20,9 @@ function mount(): ReturnType<typeof userEvent.setup> {
 it('opens review, switches Changes/SQL, blocks workspace shortcuts and cancels', async () => {
   const user = mount();
   await user.click(screen.getByRole('button', { name: 'Review & Commit' }));
-  const sheet = within(screen.getByRole('dialog', { name: 'Review & Commit' }));
+  const sheet = within(
+    await screen.findByRole('dialog', { name: 'Review & Commit' }),
+  );
   expect(sheet.getAllByRole('listitem')).toHaveLength(4);
   await user.click(sheet.getByRole('radio', { name: 'SQL' }));
   expect(sheet.getByText('COMMIT', { selector: 'span' })).toBeVisible();
@@ -58,7 +60,9 @@ it('discards directly from the capsule and cancels a sheet with Escape', async (
 });
 it('composes locally, copies SQL and opens the assistant proposal in a new tab', async () => {
   const user = mount();
-  expect(screen.getByRole('button', { name: /Claude Code CLI/ })).toBeVisible();
+  expect(
+    await screen.findByRole('button', { name: /Claude Code CLI/ }),
+  ).toBeVisible();
   await user.type(
     screen.getByRole('textbox', { name: 'Ask the assistant' }),
     'Show revenue',
@@ -73,9 +77,9 @@ it('composes locally, copies SQL and opens the assistant proposal in a new tab',
   expect(write).toHaveBeenCalledWith(assistantSql);
   expect(screen.getByRole('button', { name: 'SQL copied' })).toBeVisible();
   await user.click(screen.getByRole('button', { name: 'Open in tab' }));
-  expect(screen.getByRole('textbox', { name: 'SQL editor' })).toHaveValue(
-    assistantSql,
-  );
+  expect(
+    await screen.findByRole('textbox', { name: 'SQL editor' }),
+  ).toHaveValue(assistantSql);
   await user.click(
     within(screen.getByRole('complementary', { name: 'Inspector' })).getByRole(
       'button',

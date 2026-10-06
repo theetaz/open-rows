@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useState } from 'react';
-import { Button, SegmentedControl, Sheet } from '@openrows/ui';
+import { Button, SegmentedControl } from '@openrows/ui';
+import { Sheet } from '@openrows/ui/sheet';
 import { changes, changeSql, reviewSegments } from './data/content';
 import { SqlCode } from './SqlCode';
 import styles from './Content.module.css';

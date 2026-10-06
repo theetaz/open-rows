@@ -6,6 +6,7 @@ import { connections } from './data/connections';
 import type { Connection } from './data/connections';
 import { workspaceMonogram } from './monogram';
 import styles from './Rail.module.css';
+import tooltipStyles from './Tooltip.module.css';
 /** Workspace-only navigation; databases belong to the sidebar header. */
 export function ConnectionRail(props: {
   selected: number;
@@ -94,7 +95,12 @@ function WorkspaceTooltip({
   position: { left: number; top: number };
 }): React.JSX.Element {
   return createPortal(
-    <div role="tooltip" id={id} className={styles.tooltip} style={position}>
+    <div
+      role="tooltip"
+      id={id}
+      className={tooltipStyles.tooltip}
+      style={position}
+    >
       <strong>{connection.name}</strong>
       <EnvBadge environment={connection.environment} />
       <small>

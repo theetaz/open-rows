@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { lazy, Suspense } from 'react';
 import { connections } from './data/connections';
 import { SplitPanel } from '@openrows/ui';
 import type { useWorkspace } from './useWorkspace';
@@ -6,7 +7,11 @@ import type { OrderRow } from './data/rows';
 import { inspectorRange, sidebarRange } from './layout';
 import { ConnectionRail } from './ConnectionRail';
 import { WorkspaceSidebar } from './WorkspaceSidebar';
-import { WorkspaceInspector } from './WorkspaceInspector';
+const WorkspaceInspector = lazy(() =>
+  import('./WorkspaceInspector').then((module) => ({
+    default: module.WorkspaceInspector,
+  })),
+);
 import { TableContent } from './TableContent';
 import styles from './Workspace.module.css';
 type Props = {
@@ -73,6 +78,8 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
         onTab={state.selectTab}
         onClose={state.closeTab}
         onAdd={addQuery}
+        onSql={state.editSql}
+        onTable={state.editTable}
       />
       <SplitPanel
         label="Inspector"
@@ -82,15 +89,17 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
         edge="left"
         overlay={compact}
       >
-        <WorkspaceInspector
-          row={selection.row}
-          index={selection.index}
-          panel={panel}
-          onPanel={onPanel}
-          onQuery={state.addTab}
-          table={state.table}
-          schema={state.schema}
-        />
+        <Suspense fallback={null}>
+          <WorkspaceInspector
+            row={selection.row}
+            index={selection.index}
+            panel={panel}
+            onPanel={onPanel}
+            onQuery={state.addTab}
+            table={state.table}
+            schema={state.schema}
+          />
+        </Suspense>
       </SplitPanel>
     </div>
   );

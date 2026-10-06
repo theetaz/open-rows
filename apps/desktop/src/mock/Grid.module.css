@@ -46,7 +46,7 @@
   cursor: pointer;
   border-radius: 0;
 }
-.row:nth-child(odd) {
+.row[data-striped='true'] {
   background: var(--or-row-stripe);
 }
 .row[data-inserted='true'] {

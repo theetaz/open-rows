@@ -12,8 +12,11 @@ function mount(enabled = true): void {
     </ThemeProvider>,
   );
 }
-function key(key: string, shiftKey = false): void {
-  fireEvent.keyDown(window, { key, metaKey: true, shiftKey });
+async function key(key: string, shiftKey = false): Promise<void> {
+  await act(async () => {
+    fireEvent.keyDown(window, { key, metaKey: true, shiftKey });
+    await import('./WorkspacePalettes');
+  });
 }
 function choose(query: string): void {
   const input = within(screen.getByRole('dialog')).getByRole('combobox');
@@ -26,10 +29,10 @@ function choose(query: string): void {
 afterEach(() => {
   vi.useRealTimers();
 });
-it('⌘P opens/focuses existing tables, views and functions in all schemas of the active database', () => {
+it('⌘P opens/focuses existing tables, views and functions in all schemas of the active database', async () => {
   vi.useFakeTimers();
   mount();
-  key('p');
+  await key('p');
   expect(screen.getByRole('dialog', { name: 'Quick open' })).toBeVisible();
   expect(
     within(screen.getByRole('dialog')).getByRole('option', {
@@ -42,19 +45,19 @@ it('⌘P opens/focuses existing tables, views and functions in all schemas of th
     'aria-selected',
     'true',
   );
-  key('p');
+  await key('p');
   choose('order_summary');
   expect(screen.getByRole('tab', { name: /order_summary/ })).toHaveAttribute(
     'title',
     'orders.public.order_summary',
   );
-  key('p');
+  await key('p');
   choose('calc_tax');
   expect(screen.getByRole('tab', { name: /calc_tax/ })).toHaveAttribute(
     'title',
     'orders.public.calc_tax()',
   );
-  key('p');
+  await key('p');
   choose('session_notes');
   expect(screen.getByRole('tab', { name: /session_notes/ })).toHaveAttribute(
     'title',
@@ -63,7 +66,7 @@ it('⌘P opens/focuses existing tables, views and functions in all schemas of th
   expect(screen.getByRole('combobox', { name: 'Schema' })).toHaveValue(
     'archive',
   );
-  key('p');
+  await key('p');
   choose('session_notes');
   expect(screen.getAllByRole('tab', { name: /session_notes/ })).toHaveLength(1);
   fireEvent.click(screen.getByRole('button', { name: 'Close session_notes' }));
@@ -71,10 +74,10 @@ it('⌘P opens/focuses existing tables, views and functions in all schemas of th
     'public',
   );
 });
-it('⌘⇧P lists twelve commands and executes mock sidebar, inspector, query, refresh and safe mode actions', () => {
+it('⌘⇧P lists twelve commands and executes mock sidebar, inspector, query, refresh and safe mode actions', async () => {
   vi.useFakeTimers();
   mount();
-  key('p', true);
+  await key('p', true);
   const palette = within(
     screen.getByRole('dialog', { name: 'Command palette' }),
   );
@@ -92,7 +95,7 @@ it('⌘⇧P lists twelve commands and executes mock sidebar, inspector, query, r
     'Refresh',
     'Toggle safe mode',
   ]) {
-    key('p', true);
+    await key('p', true);
     choose(command);
   }
   expect(
@@ -109,17 +112,20 @@ it('⌘⇧P lists twelve commands and executes mock sidebar, inspector, query, r
   expect(screen.getByRole('status')).toHaveTextContent(
     'Mock catalog refreshed (1)',
   );
-  key('p', true);
+  await key('p', true);
   choose('Switch database');
   expect(screen.getByRole('dialog', { name: 'Switch database' })).toBeVisible();
 });
-it('toolbar palette returns focus on Escape and exact shortcuts are suspended while modal or disabled', () => {
+it('toolbar palette returns focus on Escape and exact shortcuts are suspended while modal or disabled', async () => {
   vi.useFakeTimers();
   mount();
   const opener = screen.getByRole('button', { name: 'Command palette' });
   opener.focus();
-  fireEvent.click(opener);
-  key('t');
+  await act(async () => {
+    fireEvent.click(opener);
+    await import('./WorkspacePalettes');
+  });
+  await key('t');
   expect(screen.queryByRole('tab', { name: /SQL Query 1/ })).toBeNull();
   fireEvent.keyDown(within(screen.getByRole('dialog')).getByRole('combobox'), {
     key: 'Escape',
@@ -131,18 +137,18 @@ it('toolbar palette returns focus on Escape and exact shortcuts are suspended wh
   fireEvent.keyDown(window, { key: 'p', metaKey: true, altKey: true });
   expect(screen.queryByRole('dialog')).toBeNull();
 });
-it('disabled workspace ignores palette shortcuts', () => {
+it('disabled workspace ignores palette shortcuts', async () => {
   mount(false);
-  key('k');
-  key('p');
-  key('p', true);
+  await key('k');
+  await key('p');
+  await key('p', true);
   expect(screen.queryByRole('dialog')).toBeNull();
 });
 it.each(['database', 'quick', 'commands'])(
   'axe: %s palette has clean semantics',
   async (mode) => {
     mount();
-    key(mode === 'database' ? 'k' : 'p', mode === 'commands');
+    await key(mode === 'database' ? 'k' : 'p', mode === 'commands');
     const result = await axe.run(screen.getByRole('dialog'), {
       rules: { 'color-contrast': { enabled: false } },
     });

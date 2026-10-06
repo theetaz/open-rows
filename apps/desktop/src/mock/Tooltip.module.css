@@ -1,0 +1,25 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.tooltip {
+  position: fixed;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: var(--or-space-6);
+  padding: var(--or-space-8) var(--or-space-10);
+  border-radius: var(--or-radius-card);
+  background: var(--or-panel);
+  backdrop-filter: var(--or-glass-panel);
+  box-shadow: var(--or-panel-shadow);
+  color: var(--or-text);
+  pointer-events: none;
+  font-size: var(--or-text-12);
+}
+.tooltip strong {
+  font-weight: var(--or-weight-semibold);
+}
+.tooltip small {
+  grid-column: 1 / -1;
+  color: var(--or-secondary);
+  font-size: var(--or-text-11);
+}

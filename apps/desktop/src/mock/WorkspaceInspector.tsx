@@ -1,9 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
+import { lazy, Suspense } from 'react';
 import { GlassPanel, SegmentedControl } from '@openrows/ui';
 import { inspectorSegments } from './data/content';
-import { columns, isEdited } from './data/rows';
 import type { OrderRow } from './data/rows';
-import { Assistant } from './Assistant';
+const Assistant = lazy(() =>
+  import('./Assistant').then((module) => ({ default: module.Assistant })),
+);
+const InspectorDetails = lazy(() =>
+  import('./InspectorDetails').then((module) => ({
+    default: module.InspectorDetails,
+  })),
+);
 import styles from './Inspector.module.css';
 
 /** Row details and assistant share the optional glass inspector surface. */
@@ -25,34 +32,13 @@ export function WorkspaceInspector(props: {
         onValueChange={props.onPanel}
       />
       {props.panel === 'Assistant' ? (
-        <Assistant onQuery={props.onQuery} />
+        <Suspense fallback={null}>
+          <Assistant onQuery={props.onQuery} />
+        </Suspense>
       ) : (
-        <div className={styles.details}>
-          <div>
-            <h2>Order {props.row[0]}</h2>
-            <small>
-              Row {props.index + 1} · {props.schema}.{props.table}
-            </small>
-          </div>
-          <dl className={styles.fields}>
-            {columns.map((column, index) => (
-              <div key={column}>
-                <dt>{column}</dt>
-                <dd
-                  data-null={props.row[index] === null}
-                  title={String(props.row[index] ?? 'NULL')}
-                >
-                  {isEdited(props.index, index) && (
-                    <span className={styles.edited} aria-label="Edited field">
-                      ✎{' '}
-                    </span>
-                  )}
-                  {props.row[index] ?? 'NULL'}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </div>
+        <Suspense fallback={null}>
+          <InspectorDetails {...props} />
+        </Suspense>
       )}
     </GlassPanel>
   );
