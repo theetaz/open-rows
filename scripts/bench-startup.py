@@ -1,41 +1,33 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Fresh-process startup samples; OS disk caches are intentionally not purged."""
-import json
-import os
-from pathlib import Path
-import statistics
-import subprocess
-import sys
-import tempfile
-import time
-
-
-def launch(executable, report):
-    """Include process creation and linking; stop at the Rust paint-ready receipt."""
-    environment = dict(os.environ, OPENROWS_STARTUP_REPORT=str(report))
-    started = time.time_ns()
-    process = subprocess.Popen([executable], env=environment)
-    try:
-        deadline = time.monotonic() + 30
-        while not report.exists() or report.stat().st_size == 0:
-            if process.poll() is not None:
-                raise RuntimeError(f"App exited before first paint: {process.returncode}")
-            if time.monotonic() > deadline:
-                raise TimeoutError("No first-paint-ready event within 30 seconds")
-        return (int(report.read_text()) - started) / 1_000_000
-    finally:
-        if process.poll() is None:
-            process.terminate()
-        process.wait(timeout=10)
+"""Repeatable release startup benchmark; OS disk caches are never purged."""
+from bench_common import launch, parser, release_executable, run, write_result
+from bench_metrics import PHASES, print_budgets, startup_budgets, summary
 
 
 def main():
-    """Launch five sequential processes and remove their reports on exit."""
-    executable = str(Path(sys.argv[1]).resolve(strict=True))
-    with tempfile.TemporaryDirectory(prefix=".startup-", dir=Path.cwd()) as directory:
-        samples = [launch(executable, Path(directory) / str(index)) for index in range(5)]
-    print(json.dumps({"samples_ms": samples, "median_ms": statistics.median(samples)}, indent=2))
+    arguments = parser(__doc__)
+    arguments.add_argument("runs", type=int, nargs="?", default=10)
+    options = arguments.parse_args()
+    if options.runs < 2:
+        arguments.error("runs must be at least 2 (first launch + warm launches)")
+    executable = release_executable(options.executable)
+    samples = []
+    for index in range(options.runs):
+        with launch(executable) as (_, sample):
+            sample["launch"] = "first launch" if index == 0 else "warm"
+            samples.append(sample)
+        print(f'{index + 1:>3} {sample["launch"]:<12} {sample["total_ms"]:>8.2f} ms')
+    phases = {phase: summary([s["phases_ms"][phase] for s in samples]) for phase in PHASES}
+    phases["spawn → window shown"] = summary([s["total_ms"] for s in samples])
+    print("Phase (interval ending at milestone)       min      p50      p95      max ms")
+    for name, values in phases.items():
+        print(f'{name:<39}' + "".join(f'{values[key]:>9.2f}' for key in ("min", "p50", "p95", "max")))
+    budgets = startup_budgets([s["total_ms"] for s in samples])
+    write_result("startup", dict(executable=executable.name, samples=samples,
+                                 phase_summary_ms=phases, budgets=budgets,
+                                 method="CLOCK_MONOTONIC spawn → window.show() return; first run not OS-cold"))
+    return print_budgets(budgets)
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(run(main))

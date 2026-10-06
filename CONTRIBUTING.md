@@ -21,6 +21,9 @@ just check
 just --list
 just dev          # native OpenRows window with frontend hot reload
 just build-app    # unsigned release .app in the configured Cargo target
+just bench-startup # ten release launches and budget gates (macOS GUI only)
+just bench-memory  # all-process idle physical-footprint budget (macOS GUI only)
+just bench-test    # synthetic budgets/reports/cleanup tests (no GUI)
 ```
 
 Run these commands from the repository root. `just setup` verifies the required tools and the pinned toolchain, checks Node.js and the pinned pnpm version, installs workspace dependencies, prints installation hints for missing tools, and sets `core.hooksPath` to `scripts/git-hooks`. The current `commit-msg` hook checks commit messages against the rules below.

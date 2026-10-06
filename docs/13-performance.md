@@ -52,10 +52,15 @@ Techniques:
 
 ### 2.3 Memory
 
+Total idle physical footprint across the app and all its webview processes must be ≤ 200 MB
+(NFR-PERF-02), in addition to the component targets below. Physical footprint
+(the Activity Monitor metric) avoids summed RSS double-counting shared system
+and WebKit pages.
+
 | Component | Budget |
 | --- | --- |
 | Rust core baseline | ≤ 40 MB |
-| Webview (WebContent + GPU + networking processes on macOS) | ≤ 140 MB at idle with one tab |
+| Webview (WebContent + GPU + networking processes on macOS) | ≤ 140 MB physical footprint at idle with one tab |
 | Per open (unmounted) tab | ≤ 200 KB in webview |
 | Result store | Configurable global budget, default 512 MB, spill beyond |
 | Per session (driver buffers) | ≤ 4 MB typical |
@@ -105,14 +110,63 @@ Techniques:
 | `decode_pg_*` (int, text, mixed, wide) | `criterion` | cells/s | −5 % vs main fails |
 | `result_window_encode` | `criterion` | µs per 256×20 tile | ≤ 1 ms |
 | `sql_split_*` (10 KB, 1 MB scripts) | `criterion` | MB/s | −10 % fails |
-| `startup_cold` | custom harness launching the app, measuring `first-paint` mark via IPC | ms | ≤ budget on mac-low (nightly), relative on CI |
+| `startup_cold` | `just bench-startup [runs=10]` after `just build-app`; sequential release processes, shared monotonic phase timestamps, spawn → window shown | per-phase min / p50 / p95 / max (ms) | warm runs 2..N p50 ≤ 400 ms; all-runs p95 ≤ 800 ms (NFR-PERF-01); macOS GUI only, not Linux CI |
 | `grid_scroll_1m` | Playwright + Performance API on synthetic source | long frames, avg frame time | 0 frames > 32 ms |
 | `query_1m_rows_pg` | integration harness against container | time to first paint, total time, peak RSS | within budgets |
 | `editor_type_5k_lines` | Playwright | input latency p95 | ≤ 16 ms |
-| `idle_memory` | harness reads RSS of all app processes after 60 s | MB | ≤ 200 MB |
+| `idle_memory` | `just bench-memory` after `just build-app`; first-paint receipt + 5 s settle, `ps` RSS for app + descendants + responsible WebKit XPC services; required `footprint -f bytes` | per-process and total footprint and informational RSS in decimal MB | total physical footprint ≤ 200 MB (NFR-PERF-02); macOS GUI only, not Linux CI |
 | `export_csv_10m` | integration | MB/s vs `psql \copy` baseline | ≥ 80 % |
 
-Results are stored per commit (JSON in a `perf-results` branch or artefact store) and charted; PRs get a comment with deltas.
+The startup and memory harnesses use Python 3's standard library and build nothing.
+They write timestamped JSON to the gitignored `perf-results/startup-*.json` and
+`perf-results/memory-*.json`, including samples, methods, machine metadata and
+budget verdicts. A missed budget or invalid measurement returns a nonzero status.
+`just bench-test` tests statistics, budgets, report validation, process attribution
+and cleanup without opening the application; it is part of `just check`.
+
+The first sample is labelled **first launch**, not OS-cold. Run immediately after
+`just build-app` for a first launch of that build. True OS-cold measurement requires
+a reboot, then running the already-built executable before another OpenRows launch.
+There is no cache purge or privileged command. Runs 2..N are warm. p50 is the median;
+p95 uses nearest rank (with ten runs it is the maximum). These are local maintainer
+gates; CI integration awaits a macOS GUI runner.
+
+When `OPENROWS_STARTUP_REPORT` is set, Rust records absolute `CLOCK_MONOTONIC`
+nanoseconds for main entry, builder start, main webview creation, setup completion,
+page-load completion, first-paint receipt and return from `window.show()`. Normal
+launches do not install benchmark hooks, read the clock, create threads or write
+reports. The main webview is created before Tauri's application setup callback.
+The phase table shows intervals ending at each milestone in actual timestamp order;
+JSON also includes cumulative elapsed times. A late page-load callback does not
+extend the window-show total. Callbacks can overlap; these intervals
+are milestones, not exclusive CPU costs. Window-show return is a paint-ready proxy,
+not a compositor timestamp.
+
+Memory sampling uses an event-driven report wait and a timed Python wait until
+five seconds after first paint. It counts WebContent, GPU and Networking even when
+launchd is their parent, using macOS's exported libSystem responsibility query.
+When spawned by the harness, the app can inherit responsibility from the launching
+terminal or GUI host. WebKit XPC services are attributed when their responsible
+PID matches the app root's responsible PID or an already selected app process,
+and their `ps lstart` time is at or after the root's start time. Start times are
+parsed chronologically at one-second resolution; older host-owned WebKit services
+are excluded. Cleanup retains start-time/name identity guards against PID reuse.
+The responsibility symbol is not a public API: if unavailable, or no owned WebContent is found,
+the benchmark fails rather than certifying an incomplete memory total. Physical
+footprint must be measured for every attributed process; unavailable, invalid or
+permission-denied measurements fail explicitly, with no RSS fallback. JSON keeps
+both totals and identifies `total_footprint_bytes` as the gated metric. RSS is
+informational and sums shared mappings without deduplication; MB means 1,000,000 bytes. The current M0 shell
+has no connection implementation, so its idle result is a shell baseline, not yet
+the one-connection/one-tab workload in NFR-PERF-02.
+
+Each instance receives a benchmark-only stop-file request for Tauri's normal exit.
+Timeouts escalate to TERM then KILL of its isolated process group; surviving owned
+XPC processes are signalled by PID with start-time/name guards against reuse.
+Survivors cause a cleanup failure. Temporary reports, partial writes and stop files
+live in a context-managed directory and are removed on success, errors and Ctrl-C.
+Retained performance JSON is intentional. Do not force-kill the harness itself;
+SIGKILL cannot execute cleanup.
 
 ## 5. Profiling playbook
 
@@ -124,7 +178,7 @@ Results are stored per commit (JSON in a `perf-results` branch or artefact store
 | Webview JS/paint | Safari Web Inspector (WKWebView, enable via dev build `devtools` feature); Chrome DevTools on Windows (WebView2) |
 | Long tasks | Dev-build long-task observer logs any main-thread task > 50 ms with a stack |
 | Memory in webview | Safari Timelines → JavaScript Allocations; heap snapshots |
-| Startup | `startup trace` mode: timestamps from process start through first paint written to log |
+| Startup | `just bench-startup`: monotonic milestones through window shown in `perf-results/startup-*.json` |
 
 ## 6. Performance anti-patterns (review checklist)
 
