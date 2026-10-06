@@ -105,7 +105,11 @@ and WebKit pages.
   Palette and sheet primitives have separate `@openrows/ui/palette` and `@openrows/ui/sheet`
   entry points so the shell barrel cannot pull their code/styles into the initial graph.
   `just bench-ui` sums all manifest entry/static-import chunks (deduplicated), excluding
-  dynamic chunks, and enforces the 350,000-byte gzip limit.
+  dynamic chunks, and enforces the 350,000-byte gzip limit. `just check` runs this
+  same gate. `packages/ui/scripts/bundle-size.ts` also checks emitted chunk-module
+  metadata to reject `apache-arrow` in that static graph; configure package names
+  with the comma-separated `BUNDLE_DENY_MODULES` environment variable (default:
+  `apache-arrow`). Vite only emits evidence; all assertions live in the script.
   The default wide-window Assistant remains visible and loads on that first render.
 - Workers for decoding and formatting.
 - React Compiler; components subscribe to narrow Zustand selectors.
@@ -122,7 +126,8 @@ and WebKit pages.
 | Benchmark | Tool | Metric | Gate |
 | --- | --- | --- | --- |
 | `decode_pg_*` (int, text, mixed, wide) | `criterion` | cells/s | −5 % vs main fails |
-| `result_window_encode` | `criterion` | µs per 256×20 tile | ≤ 1 ms |
+| `result_window_encode` | `criterion`, `just bench-result-encode` | µs per tile; local M4: 256×20 11.49, 1024×20 17.32, 256×100 46.27 | 256×20 mean upper 95% confidence bound ≤ 1 ms; M4 pass; revisit on mac-low |
+| `ipc_tile_round_trip` (M0 S1) | `just bench-ipc` after `just build-app`; 500 unique random tiles, warm worker, full client/worker message path | M4 runs 1/2 (p50/p95/max ms): invoke 0/1/6 both; decode 0/1/4 and 0/1/3; total 0/1.00/6 both; run 2 total mean 0.524 ms | total p95 ≤ 3 ms: M4 PASS both runs; 1 ms page clock, isolation false; revisit on mac-low |
 | `sql_split_*` (10 KB, 1 MB scripts) | `criterion` | MB/s | −10 % fails |
 | `startup_cold` | `just bench-startup [runs=10]` after `just build-app`; sequential release processes, shared monotonic phase timestamps, spawn → window shown | per-phase min / p50 / p95 / max (ms) | warm runs 2..N p50 ≤ 400 ms; all-runs p95 ≤ 800 ms (NFR-PERF-01); macOS GUI only, not Linux CI |
 | `grid_scroll_1m` | Playwright + Performance API on synthetic source | long frames, avg frame time | 0 frames > 32 ms |
@@ -131,9 +136,9 @@ and WebKit pages.
 | `idle_memory` | `just bench-memory [runs=3]` after `just build-app`; first-paint receipt + 5 s settle, `ps` RSS for app + descendants + responsible WebKit XPC services; required `footprint -f bytes` | per-run totals, per-process medians and informational RSS in decimal MB | median total physical footprint ≤ 200 MB; median WebContent + GPU + Networking ≤ 140 MB (NFR-PERF-02); macOS GUI only, not Linux CI |
 | `export_csv_10m` | integration | MB/s vs `psql \copy` baseline | ≥ 80 % |
 
-The startup and memory harnesses use Python 3's standard library and build nothing.
+The startup, memory and IPC harnesses use Python 3's standard library and build nothing.
 They write timestamped JSON to the gitignored `perf-results/startup-*.json` and
-`perf-results/memory-*.json`, including samples, methods, machine metadata and
+`perf-results/memory-*.json` (IPC: `perf-results/ipc-*.json`), including samples, methods, machine metadata and
 budget verdicts. A missed budget or invalid measurement returns a nonzero status.
 `just bench-test` tests statistics, budgets, report validation, process attribution
 and cleanup without opening the application; it is part of `just check`.
@@ -193,6 +198,82 @@ Survivors cause a cleanup failure. Temporary reports, partial writes and stop fi
 live in a context-managed directory and are removed on success, errors and Ctrl-C.
 Retained performance JSON is intentional. Do not force-kill the harness itself;
 SIGKILL cannot execute cleanup.
+
+### M0 S1 measurement boundary
+
+The encoder numbers above were measured on a Mac mini M4 / 24 GB, not mac-low.
+There is no main baseline for the new encoder. The Arrow transport decision is
+accepted after two maintainer release WKWebView runs of 500 tiles each; see [ADR-0002](adr/0002-arrow-ipc-for-results.md#m0-s1-evidence--2026-10-06)
+for the workload, command, confidence intervals, binary typing and dependency
+rationale. Both runs measured total p95 1.00 ms against the 3 ms limit.
+The page timer resolution was 1.0 ms, with `crossOriginIsolated: false`; ineffective
+COOP/COEP configuration was removed. With this quantisation, p95 ≤ 1 ms implies
+true p95 < 2 ms. Run 2 mean total was 0.524 ms across 500 quantised samples,
+supporting acceptance without implying finer timer precision. Per-stage means
+were not supplied for those runs. Revisit on mac-low and real driver data.
+
+`OPENROWS_SPIKE=ipc` is an explicit release-app measurement mode.
+`OPENROWS_SPIKE_REPORT` receives an atomic JSON report and the app then exits.
+The ordinary startup path does not generate synthetic rows or start an Arrow
+worker. IPC total time starts at the tile client request and ends when typed
+columns are returned; it includes the two worker messages and cache insertion.
+Invoke and decode use the same page clock as total. Decode is measured from
+posting bytes to receiving typed columns and includes both transfers; the
+worker's internal decode is retained as informational `workerDecodeMs`.
+Library/worker startup is excluded, but all 500 samples (including the first
+actual decode) are retained. Offsets are unique so the deduplicating 64-tile LRU
+cannot hide a cache hit. `just bench-test` validates the IPC and encoding gates
+without launching the app. If a real run fails, profile before implementing the
+minimal custom columnar alternative in ADR-0002.
+
+Before sampling, the page probes 100000 consecutive `performance.now()` reads
+and records the minimum positive delta in `timer.resolutionMs`, plus the actual
+`timer.crossOriginIsolated` flag. No observed tick is reported as null and fails
+validation. These are observed timer properties, not a promise of precision on
+every WebKit version. The stage-containment check permits invoke + decode to
+exceed total by at most twice that measured resolution (plus floating-point
+comparison precision); it still rejects missing, negative or nonfinite timings,
+wrong workloads, partial runs and duplicate offsets. Worker time is excluded
+from this sum. The total p95 gate remains exactly 3 ms with no rounding allowance.
+The harness prints resolution/isolation and p50/p95/max/mean for all four timings.
+JSON `stage_summary_ms` also includes each stage’s arithmetic mean of the
+quantised samples; worker means remain informational.
+It retains JSON even after validation, app-exit or cleanup failure, with raw
+samples, diagnostic summaries and `verdict`/`error`; `spike_error` preserves the
+original page failure. Diagnostic summaries on invalid runs do not certify a
+passing benchmark.
+
+
+#### M0 S1 macOS failure diagnostics
+
+The frontend queries spike mode through `spike_start`; the command logs page
+script entry and the spike flag, shows and focuses the native window, and only
+then returns permission to load the spike and create its worker. This removes
+reliance on an injected global and keeps the measured workload out of hidden
+WKWebView startup. Normal mode returns false and loads no worker.
+
+Release workers use Vite's `?worker&inline` constructor and `iife` format, with a
+static decoder import bundled into the blob. No worker module or decoder fetch
+uses `tauri://localhost`. CSP allows `blob:` for `worker-src` and `script-src`;
+`data:` scripts and `unsafe-eval` remain disallowed. Arrow stays outside the
+initial JS graph; the spike chunk remains lazy.
+
+Startup handshake/module loading and worker initialization have 10-second
+watchdogs; every full tile request (invoke plus worker decoding) has a 2-second
+watchdog. Window errors, resource errors and unhandled rejections produce one
+terminal error report. Progress logs native setup, page script entry, mode,
+window shown, worker creation/readiness, first request/bytes/decode, every 100
+samples and finishing. Diagnostic IPC is queued without waiting inside sample
+measurements; diagnostic commands also have a 2-second watchdog.
+
+Each milestone appends one line to the report path with `.progress` replacing
+`.json`, and to stderr. The harness captures stderr in its temporary directory
+and prints both tails (last 30 lines, at most 8192 bytes per file) on timeout,
+early exit or invalid report. Reports, progress and stderr are removed with the
+existing context-managed cleanup. These changes were tested without launching
+the app. The subsequent maintainer M4 runs passed; mac-low validation remains
+a revisit point.
+
 
 ## 5. Profiling playbook
 

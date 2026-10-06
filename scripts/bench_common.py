@@ -13,6 +13,7 @@ import tempfile
 import threading
 import time
 
+from ipc_diagnostics import print_diagnostics
 from bench_metrics import BenchmarkError, startup_sample
 from bench_processes import Responsibility, app_processes, process_table, signal_if_same
 
@@ -149,3 +150,58 @@ def run(command):
     except (BenchmarkError, OSError, ValueError, subprocess.SubprocessError) as error:
         print(f"Benchmark failed: {error}")
         return 1
+
+
+@contextmanager
+def launch_ipc(executable):
+    """Opt-in self-exiting spike; retain root identity to clean orphaned WebKit XPCs."""
+    owner = Responsibility()
+    with tempfile.TemporaryDirectory(prefix=".bench-ipc-", dir=ROOT) as directory, \
+         (Path(directory) / "stderr.log").open("w") as stderr:
+        report = Path(directory) / "ipc.json"
+        environment = dict(os.environ, OPENROWS_SPIKE="ipc", OPENROWS_SPIKE_REPORT=str(report))
+        environment.pop("OPENROWS_STARTUP_REPORT", None)
+        process = subprocess.Popen([str(executable)], env=environment, start_new_session=True, stderr=stderr)
+        root_row = None
+        root_owner = None
+        try:
+            root_row = process_table().get(process.pid)
+            if root_row is None:
+                raise BenchmarkError("IPC app exited before ownership capture")
+            root_owner = owner(process.pid)
+            data = read_ipc_report(process, report)
+            yield process, data
+            process.wait(timeout=5)
+            if process.returncode != 0:
+                raise BenchmarkError(f"IPC app exited with status {process.returncode}")
+        except (BenchmarkError, OSError, ValueError, subprocess.SubprocessError):
+            stderr.flush()
+            print_diagnostics(report, Path(stderr.name))
+            raise
+        finally:
+            owned = []
+            try:
+                rows = process_table()
+                if root_row is not None:
+                    rows.setdefault(process.pid, root_row)
+                if root_owner is not None:
+                    def captured_owner(pid):
+                        return root_owner if pid == process.pid else owner(pid)
+                    owned = app_processes(rows, process.pid, captured_owner)
+                else:
+                    owned = [row for row in rows.values() if row["group"] == process.pid]
+            finally:
+                stop_process(process, report, owned)
+
+
+def read_ipc_report(process, report):
+    """Allow atomic-report/self-exit races without accepting a missing report."""
+    deadline = clock_ns() + 120_000_000_000
+    event = threading.Event()
+    while not report.exists():
+        if clock_ns() >= deadline:
+            raise BenchmarkError("No IPC report within 120 seconds")
+        if process.poll() is not None and not report.exists():
+            raise BenchmarkError(f"IPC app exited without report ({process.returncode})")
+        event.wait(0.02)
+    return json.loads(report.read_text())

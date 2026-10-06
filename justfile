@@ -41,6 +41,7 @@ check:
     just machete
     just hygiene
     just ui-check
+    just bench-ui
     just bench-test
     pnpm lint
     pnpm format:check
@@ -98,3 +99,12 @@ contrast-report:
 bench-ui:
     pnpm build
     pnpm --filter @openrows/ui size:report
+
+# Measure 500 Arrow IPC tiles in WKWebView; builds nothing, maintainer-only GUI run.
+bench-ipc:
+    python3 -B scripts/bench-ipc.py
+
+# Benchmark result slicing + encoding, then gate the 256x20 mean upper bound at 1 ms.
+bench-result-encode:
+    cargo bench -p openrows-results --bench result_window_encode --locked
+    python3 -B scripts/bench-result-encode.py

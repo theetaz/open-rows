@@ -14,6 +14,7 @@ workspace = true
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+openrows-results = { path = "../../../crates/openrows-results" }
 serde = { workspace = true, features = ["derive"] }
 tauri = { version = "2", features = ["specta", "macos-private-api"] }
 specta = { version = "=2.0.0-rc.25", features = ["derive", "function"] }

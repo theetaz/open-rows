@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { readFile, readdir } from 'node:fs/promises';
 import { gzipSync } from 'node:zlib';
-import { initialFiles } from './initial-bundle.ts';
+import { assertInitialModules, initialFiles } from './initial-bundle.ts';
 import type { BundleChunk } from './initial-bundle.ts';
 
 const components = new URL('../src/components/', import.meta.url);
@@ -29,10 +29,20 @@ const dist = new URL('../../../apps/desktop/dist/', import.meta.url);
 const manifest = JSON.parse(
   await readFile(new URL('.vite/manifest.json', dist), 'utf8'),
 ) as Record<string, BundleChunk>;
+const files = initialFiles(manifest);
+const modules = JSON.parse(
+  await readFile(new URL('.vite/chunk-modules.json', dist), 'utf8'),
+) as Record<string, string[]>;
+// Override with comma-separated package names to configure heavy-module exclusions.
+const denyList = (process.env.BUNDLE_DENY_MODULES ?? 'apache-arrow')
+  .split(',')
+  .map((name) => name.trim())
+  .filter(Boolean);
+assertInitialModules(files, modules, denyList);
 let initialSize = 0;
-for (const file of initialFiles(manifest))
+for (const file of files)
   initialSize += gzipSync(await readFile(new URL(file, dist))).length;
 process.stdout.write(
-  `Initial JS (all static chunks): ${String(initialSize)} gzip bytes / 350000 budget\n`,
+  `Initial JS (all static chunks): ${String(initialSize)} gzip bytes / 350000 budget; ${denyList.join(', ')} absent\n`,
 );
 if (initialSize > 350000) process.exitCode = 1;

@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/openrows-types", "apps/desktop/src-tauri"]
+members = ["crates/openrows-types", "crates/openrows-results", "apps/desktop/src-tauri"]
 resolver = "3"
 
 [workspace.package]

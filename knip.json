@@ -4,7 +4,7 @@
       "project": ["*.ts"]
     },
     "apps/desktop": {
-      "entry": ["src/**/*.test.tsx"],
+      "entry": ["src/**/*.test.{ts,tsx}"],
       "project": ["src/**/*.{ts,tsx}"]
     },
     "packages/ipc": {
