@@ -87,7 +87,7 @@ open-db-client/
 | `sccache` (optional) | Compiler cache; set `RUSTC_WRAPPER=sccache` |
 | `scripts/git-hooks` | Git hooks enabled by `just setup`; currently `commit-msg` |
 
-See [CONTRIBUTING.md §1](../CONTRIBUTING.md#1-first-time-setup) for installation and optional shared `CARGO_TARGET_DIR` setup. Frontend, Tauri, database containers and CI tooling are planned for later tasks.
+See [CONTRIBUTING.md §1](../CONTRIBUTING.md#1-first-time-setup) for installation and optional shared `CARGO_TARGET_DIR` setup. Frontend, Tauri and database containers are planned for later tasks. CI tooling is described in §4.
 
 ### 2.1 Common commands
 
@@ -130,7 +130,7 @@ The full rules, with examples, live in [CONTRIBUTING.md](../CONTRIBUTING.md). Su
 
 - **Conventional Commits 1.0.0** for every commit: `<type>(<scope>)!: <subject>`, header ≤ 72 characters, imperative subject, no trailing period, blank line before the body. Types: `feat`, `fix`, `perf`, `refactor`, `docs`, `test`, `build`, `ci`, `style`, `chore`, `revert`. Scopes are crate/package/area names without the `openrows-` prefix.
 - **Attribution:** commit messages, PR titles, PR descriptions and review comments describe the change only — no `Co-authored-by` trailers, co-author sections, signatures or "generated with/by" footers.
-- **Enforcement:** `scripts/git-hooks/commit-msg` checks all of the above locally (enable once per clone with `git config core.hooksPath scripts/git-hooks`). CI will run the same check on every commit and on the PR title (M0).
+- **Enforcement:** `scripts/git-hooks/commit-msg` checks all of the above locally (enable once per clone with `git config core.hooksPath scripts/git-hooks`). CI runs the same hook on every non-merge commit in the PR range and on the PR title.
 - **Branches:** `<type>/<short-description>` (e.g. `feat/grid-column-pinning`), rebased on `main`.
 - **Merging:** squash-merge only; the PR title is the squash commit header, so it must be a valid Conventional Commit header.
 - Small PRs; every PR links an issue, requirement ID or ADR; UI changes include screenshots in both themes; docs updated in the same PR.
@@ -144,24 +144,23 @@ The full rules, with examples, live in [CONTRIBUTING.md](../CONTRIBUTING.md). Su
 
 ## 4. CI pipeline
 
-This is the planned pipeline; no CI workflows exist in M0-T1. Local gates run with `just check`.
+The implemented workflow, [.github/workflows/ci.yml](../.github/workflows/ci.yml), runs on every push to `main`, manual dispatch, and pull requests opened, synchronized, reopened or edited. Editing a PR title rechecks it. Local Rust gates run with `just check`.
 
-```mermaid
-flowchart LR
-    PR["Pull request"] --> L["Lint + format<br/>(Rust, TS, CSS)"]
-    PR --> T["Unit tests<br/>macOS, Windows, Linux"]
-    PR --> I["Tier 1 driver integration<br/>(Linux + containers)"]
-    PR --> U["Frontend tests<br/>Playwright WebKit + Chromium"]
-    PR --> S["Supply chain<br/>deny, audit, licences"]
-    PR --> B["Benchmarks vs main"]
-    L & T & I & U & S & B --> M["Merge allowed"]
-    M --> N["Nightly: full DB matrix, fuzzing,<br/>E2E Linux/Windows, perf on reference Macs"]
-    N --> R["Tagged release: build, sign,<br/>notarize, SBOM, publish draft"]
-```
+| Job | Runner | Checks |
+| --- | --- | --- |
+| `commits` | Ubuntu, PRs only | Full-history checkout; `scripts/ci/check-commit-messages.sh` feeds every non-merge commit in the base-to-head range to the local `commit-msg` hook, then the same hook checks the PR title |
+| `rust` | Ubuntu, macOS, Windows | Toolchain and components from `rust-toolchain.toml`; format check on Ubuntu; full workspace Clippy (all targets, warnings as errors) and nextest on every OS, using the lockfile |
+| `supply-chain` | Ubuntu | `cargo deny --locked check` (advisories, licences, bans, sources) and `cargo machete` |
+| `hygiene` | Ubuntu | Source hygiene, ShellCheck on every shell script and git hook, actionlint on all workflows |
+| `ci-ok` | Ubuntu | Always evaluates all four jobs; fails on any failure, cancellation or unexpected skip; accepts the skipped `commits` job only outside PR events |
 
-- Caching: `sccache`/`Swatinem/rust-cache` for Rust, pnpm store cache.
-- macOS runners used for unit tests and bundling; integration tests on Linux (Docker available).
-- Workflows use least-privilege `permissions:` and SHA-pinned actions; release signing secrets only available to the release workflow on protected tags.
+**Required branch-protection check: `ci-ok`.** The maintainer configures this after merge; the workflow does not change repository settings. Matrix fail-fast is disabled so every OS gets its full suite (NFR-PORT-03).
+
+Rust builds use `Swatinem/rust-cache`, separated by runner/toolchain with lockfile-aware keys. Rust tools and ShellCheck are installed with `taiki-e/install-action`; actionlint v1.7.7 is installed with Go (it is not supported by install-action). All action references are pinned to full commit SHAs with version comments. The workflow grants only `contents: read`, disables persisted checkout credentials, and passes PR metadata through environment variables rather than shell interpolation. Concurrency is grouped by workflow and ref; newer PR runs cancel older ones, while main pushes and manual runs are not cancelled automatically.
+
+[Dependabot](../.github/dependabot.yml) checks Actions and Cargo weekly, groups minor/patch updates per ecosystem, and uses `ci(deps)` / `build(deps)` Conventional Commit prefixes.
+
+**Planned:** frontend lint/types/tests with the Tauri app task; Tier 1 driver integration on Linux with containers; benchmarks against `main`. Nightly workflows will cover the full database matrix, fuzzing, E2E on Linux/Windows and performance on reference Macs. Tagged release workflows will build, sign, notarize, generate SBOMs and publish drafts; signing secrets will be limited to protected release tags.
 
 ## 5. Branching and versioning
 

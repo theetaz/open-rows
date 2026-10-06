@@ -147,7 +147,8 @@ Every PR carries an **acceptance report** and a **How to try it** section ([docs
 
 - [ ] Branch is rebased on `main`.
 - [ ] Commits follow the rules above (the hook passes).
-- [ ] Tests added or updated; all checks pass locally.
+- [ ] Tests added or updated; all checks pass locally. CI must be green before merge (`ci-ok`).
+- [ ] PR title passes the same `commit-msg` hook as commits; CI checks it on opening, updates and title edits.
 - [ ] Docs updated (`docs/`, ADR if a decision changed) — see §6.
 - [ ] No secrets, credentials, personal data or local tool configuration files in the diff (`git diff --cached --stat` and review every file).
 - [ ] Code meets the size/complexity limits and has no dead code ([docs/25 §4](docs/25-engineering-standards.md#4-code-quality-rules)).
@@ -156,6 +157,8 @@ Every PR carries an **acceptance report** and a **How to try it** section ([docs
 - [ ] UI changes include screenshots in both themes.
 
 ### 4.3 Review and merge
+
+- CI must be green, including the checked Conventional Commit PR title and aggregate `ci-ok` status.
 
 - One approving review is required; two for security-sensitive code, FFI crates, the change-set apply path, value codecs, and update/signing configuration ([docs/18](docs/18-repository-and-dev-workflow.md#commits-and-prs)).
 - Authors resolve review threads by pushing fixes; reviewers resolve their own threads.
