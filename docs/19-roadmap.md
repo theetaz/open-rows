@@ -55,7 +55,7 @@ Also: repo skeleton, CI, lint/format, `tauri-specta` bindings pipeline, design t
 - Import CSV/JSON with bulk-load fast paths; run SQL file; Excel/Parquet/Markdown export.
 - ER diagram (read-only).
 - Process list / kill; users and roles viewer.
-- Formatter, parameters bar, snippets, file-backed queries, workspaces.
+- Formatter, parameters bar, snippets, file-backed queries, Projects.
 - Driver host process for DuckDB.
 
 ## M3 — NoSQL
@@ -111,4 +111,4 @@ Also: repo skeleton, CI, lint/format, `tauri-specta` bindings pipeline, design t
 - Visual query builder; editable ER diagrams.
 - Mock servers and OpenAPI generation for the API client.
 - Mac App Store build.
-- Team features without a server: shared workspaces via git with merge-friendly formats (already in place), signed connection definitions.
+- Team features without a server: shared Projects via git with merge-friendly formats (already in place), signed connection definitions.

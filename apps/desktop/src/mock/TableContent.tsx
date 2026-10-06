@@ -14,6 +14,7 @@ import { CommitCapsule, ContentFooter } from './ContentControls';
 type Props = {
   tabs: readonly WorkspaceTab[];
   active: string;
+  database: string;
   selected: number;
   onSelect: (index: number, row: OrderRow) => void;
   onTab: (id: string) => void;
@@ -29,6 +30,7 @@ export const TableContent = memo(function TableContent(
   const [pending, setPending] = useState(true);
   const [added, setAdded] = useState(false);
   const [review, setReview] = useState(false);
+  const tabs = useTabTitles(props);
   const tab = props.tabs.find((item) => item.id === props.active);
   const data = useMemo(
     () => [...(pending ? rows : discardedRows()), ...(added ? [addedRow] : [])],
@@ -42,7 +44,7 @@ export const TableContent = memo(function TableContent(
   return (
     <main className={styles.content}>
       <Tabs
-        tabs={props.tabs}
+        tabs={tabs}
         active={props.active}
         onSelect={props.onTab}
         onClose={props.onClose}
@@ -98,3 +100,14 @@ export const TableContent = memo(function TableContent(
     </main>
   );
 });
+
+function useTabTitles(props: Props): Props['tabs'] {
+  return useMemo(
+    () =>
+      props.tabs.map((tab) => ({
+        ...tab,
+        title: `${props.database}.${tab.schema ?? 'public'}.${tab.label}`,
+      })),
+    [props.tabs, props.database],
+  );
+}

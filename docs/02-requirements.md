@@ -44,7 +44,7 @@ IDs are stable so issues, tests and PRs can reference them (`FR-CONN-03`, `NFR-P
 | FR-EDIT-05 | Format SQL (configurable style). | P1 |
 | FR-EDIT-06 | Named/positional parameters prompt (`:name`, `$1`, `?`). | P1 |
 | FR-EDIT-07 | Explain / explain analyze with visual plan tree and hotspots. | P1 |
-| FR-EDIT-08 | Snippets and saved queries stored as `.sql` files in a workspace folder. | P1 |
+| FR-EDIT-08 | Snippets and saved queries stored as `.sql` files in a Project folder. | P1 |
 | FR-EDIT-09 | Vim keybindings option. | P1 |
 | FR-EDIT-10 | Native query languages: MongoDB shell-like syntax, Redis commands, CQL, PartiQL, Elasticsearch JSON DSL. | P1 |
 
@@ -92,13 +92,15 @@ IDs are stable so issues, tests and PRs can reference them (`FR-CONN-03`, `NFR-P
 | FR-ADMIN-02 | Users/roles and grants viewer; editor in P2. | P1 |
 | FR-ADMIN-03 | Server metrics overview (connections, cache hit ratio, replication lag where exposed). | P2 |
 
-### 1.8 History and workspace (`FR-WS`)
+<a id="18-history-and-workspace-fr-ws"></a>
+
+### 1.8 History and Projects (`FR-WS`)
 
 | ID | Requirement | P |
 | --- | --- | --- |
 | FR-WS-01 | Every executed statement recorded with connection, duration, row count, status; full-text search. | P0 |
 | FR-WS-02 | History can be disabled per connection (e.g. for sensitive prod). | P0 |
-| FR-WS-03 | Workspaces: a folder containing saved queries, API collections and shared (non-secret) connection definitions, suitable for git. | P1 |
+| FR-WS-03 | Projects: a folder containing saved queries, API collections and shared (non-secret) connection definitions, suitable for git. | P1 |
 
 ### 1.9 API client (`FR-API`)
 

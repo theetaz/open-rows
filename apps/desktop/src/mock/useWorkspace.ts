@@ -1,99 +1,165 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useCallback, useState } from 'react';
 import { connections } from './data/connections';
-import { initialTabs } from './data/content';
-import type { WorkspaceTab } from './data/content';
-
-type Documents = {
-  tabs: readonly WorkspaceTab[];
+import { databaseFor, databases } from './data/databases';
+import type { DatabaseObject } from './data/databases';
+import {
+  initialDocuments,
+  newQuery,
+  closeDocument,
+  tableDocument,
+} from './documents';
+import type { Documents } from './documents';
+type Session = {
   active: string;
-  next: number;
+  opened: string[];
+  documents: Record<string, Documents>;
 };
-type WorkspaceState = Documents & {
+const initialSessions = (): Session[] =>
+  connections.map((connection, index) => ({
+    active: connection.database,
+    opened: [connection.database],
+    documents: {
+      [connection.database]: initialDocuments(index, connection.database),
+    },
+  }));
+/** UI-only workspace → database state; tab sets survive database and workspace switches. */
+export function useWorkspace(): ReturnType<typeof useWorkspaceValue> {
+  const [connection, setConnection] = useState(0);
+  const [sessions, setSessions] = useState(initialSessions);
+  const session = sessions[connection] ?? initialSessions()[0];
+  const database = session?.active ?? 'orders';
+  const document =
+    session?.documents[database] ?? initialDocuments(connection, database);
+  const update = useCallback(
+    (change: (current: Documents) => Documents) => {
+      setSessions((current) =>
+        current.map((item, index) =>
+          index !== connection
+            ? item
+            : {
+                ...item,
+                documents: {
+                  ...item.documents,
+                  [item.active]: change(
+                    item.documents[item.active] ??
+                      initialDocuments(index, item.active),
+                  ),
+                },
+              },
+        ),
+      );
+    },
+    [connection],
+  );
+  const selectConnection = useCallback((index: number) => {
+    if (connections[index]) setConnection(index);
+  }, []);
+  const openDatabase = (name: string): void => {
+    if (!databases[connection]?.some((item) => item.name === name)) return;
+    setSessions((current) =>
+      current.map((item, index) =>
+        index !== connection
+          ? item
+          : {
+              ...item,
+              active: name,
+              opened: item.opened.includes(name)
+                ? item.opened
+                : [...item.opened, name],
+              documents: {
+                ...item.documents,
+                [name]: item.documents[name] ?? initialDocuments(index, name),
+              },
+            },
+      ),
+    );
+  };
+  const closeDatabase = (name: string): void => {
+    setSessions((current) =>
+      current.map((item, index) => {
+        if (index !== connection || item.opened.length < 2) return item;
+        const opened = item.opened.filter((database) => database !== name);
+        return {
+          ...item,
+          opened,
+          active:
+            item.active === name ? (opened[0] ?? item.active) : item.active,
+        };
+      }),
+    );
+  };
+  return useWorkspaceValue({
+    connection,
+    database,
+    document,
+    session,
+    update,
+    selectConnection,
+    openDatabase,
+    closeDatabase,
+  });
+}
+function useWorkspaceValue(input: {
   connection: number;
-  schema: string;
-  setSchema: (schema: string) => void;
+  database: string;
+  document: Documents;
+  session: Session | undefined;
+  update: (change: (current: Documents) => Documents) => void;
   selectConnection: (index: number) => void;
+  openDatabase: (name: string) => void;
+  closeDatabase: (name: string) => void;
+}): {
+  connection: number;
+  database: string;
+  catalog: ReturnType<typeof databaseFor>;
+  tabs: Documents['tabs'];
+  active: string;
+  table: string;
+  schema: string;
+  opened: readonly string[];
+  selectConnection: (index: number) => void;
+  openDatabase: (name: string) => void;
+  closeDatabase: (name: string) => void;
+  setSchema: (schema: string) => void;
   selectTab: (id: string) => void;
   addTab: (sql?: string) => void;
   closeTab: (id: string) => void;
-  openTable: (label: string) => void;
-};
-/** UI-only connection and document state; never opens a connection. */
-export function useWorkspace(): WorkspaceState {
-  const [connection, setConnection] = useState(0);
-  const [schema, setSchema] = useState('public');
-  const [documents, setDocuments] = useState<Documents>({
-    tabs: initialTabs,
-    active: 'orders',
-    next: 1,
-  });
-  const selectTab = useCallback((id: string) => {
-    setDocuments((state) => ({ ...state, active: id }));
-  }, []);
-  const addTab = useCallback((sql?: string) => {
-    setDocuments((state) => newQuery(state, sql));
-  }, []);
-  const closeTab = useCallback((id: string) => {
-    setDocuments((state) => closeDocument(state, id));
-  }, []);
-  const openTable = useCallback((label: string) => {
-    setDocuments((state) => tableDocument(state, label));
-  }, []);
-  const selectConnection = useCallback((index: number) => {
-    const selected = connections[index];
-    if (!selected) return;
-    setConnection(index);
-    setSchema(selected.schemas[0] ?? 'public');
-    setDocuments((state) => ({
-      ...state,
-      tabs: selected.tables.map(([label]) => ({
-        id: label,
-        label,
-        kind: 'table',
-      })),
-      active: selected.tables[0]?.[0] ?? '',
-    }));
-  }, []);
+  openTable: (object: DatabaseObject) => void;
+} {
+  const { document, update } = input;
+  const tab = document.tabs.find((tab) => tab.id === document.active);
   return {
-    connection,
-    schema,
-    setSchema,
-    ...documents,
-    selectTab,
-    addTab,
-    closeTab,
-    openTable,
-    selectConnection,
-  };
-}
-function newQuery(state: Documents, sql?: string): Documents {
-  const tab: WorkspaceTab = {
-    id: `sql-${String(state.next)}`,
-    label: `SQL Query ${String(state.next)}`,
-    kind: 'query',
-    ...(sql ? { sql } : {}),
-  };
-  return { tabs: [...state.tabs, tab], active: tab.id, next: state.next + 1 };
-}
-function closeDocument(state: Documents, id: string): Documents {
-  const index = state.tabs.findIndex((tab) => tab.id === id);
-  const tabs = state.tabs.filter((tab) => tab.id !== id);
-  return {
-    ...state,
-    tabs,
-    active:
-      state.active === id
-        ? (tabs[Math.max(0, index - 1)]?.id ?? '')
-        : state.active,
-  };
-}
-function tableDocument(state: Documents, label: string): Documents {
-  return {
-    ...state,
-    active: label,
-    tabs: state.tabs.some((tab) => tab.id === label)
-      ? state.tabs
-      : [...state.tabs, { id: label, label, kind: 'table' }],
+    connection: input.connection,
+    database: input.database,
+    catalog: databaseFor(input.connection, input.database),
+    ...document,
+    table: tab?.label ?? '',
+    opened: input.session?.opened ?? [],
+    selectConnection: input.selectConnection,
+    openDatabase: input.openDatabase,
+    closeDatabase: input.closeDatabase,
+    setSchema: (schema) => {
+      update((state) => ({ ...state, schema }));
+    },
+    selectTab: (id) => {
+      update((state) => ({
+        ...state,
+        active: id,
+        schema: state.tabs.find((tab) => tab.id === id)?.schema ?? state.schema,
+      }));
+    },
+    addTab: useCallback(
+      (sql?: string) => {
+        update((state) => newQuery(state, sql));
+      },
+      [update],
+    ),
+    closeTab: (id) => {
+      update((state) => closeDocument(state, id));
+    },
+    openTable: (object) => {
+      update((state) => tableDocument(state, object));
+    },
   };
 }

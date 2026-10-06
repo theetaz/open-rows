@@ -1,0 +1,112 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: var(--or-control-fill);
+}
+.popover {
+  position: fixed;
+  inset-block-start: calc(var(--or-toolbar-height) + var(--or-space-16));
+  margin-block: 0;
+  width: min(560px, 90vw);
+  max-height: calc(100vh - 100px);
+  overflow: auto;
+  padding: var(--or-space-12);
+  border: var(--or-border-width) solid var(--or-separator);
+  border-radius: var(--or-radius-panel);
+  background: var(--or-panel);
+  color: var(--or-text);
+  box-shadow: var(--or-panel-shadow);
+  -webkit-backdrop-filter: var(--or-glass-panel);
+  backdrop-filter: var(--or-glass-panel);
+  animation: enter var(--or-motion-popover) var(--or-motion-easing) both;
+}
+.popover[data-state='closing'] {
+  animation-name: leave;
+}
+.popover[data-motion='reduced'] {
+  animation: none;
+}
+.popover::backdrop {
+  background: var(--or-control-fill);
+}
+.popover header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.popover h2 {
+  font-size: var(--or-text-13);
+  margin: 0;
+}
+.popover button,
+.popover input {
+  color: inherit;
+  font: inherit;
+  background: var(--or-control-fill);
+  border: 0;
+  border-radius: var(--or-radius-field);
+  padding: var(--or-space-8);
+}
+.popover input[role='combobox'] {
+  width: 100%;
+  margin-block: var(--or-space-12);
+}
+.popover :focus-visible {
+  outline: var(--or-focus-width) solid var(--or-focus);
+  outline-offset: -2px;
+}
+.results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 360px;
+  overflow: auto;
+}
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-8);
+  padding: var(--or-space-8);
+  border-radius: var(--or-radius-field);
+  cursor: pointer;
+}
+.option[aria-selected='true'] {
+  background: var(--or-accent);
+  color: var(--or-on-accent);
+}
+.option small {
+  display: block;
+  font-size: var(--or-text-11);
+}
+.option kbd {
+  margin-inline-start: auto;
+  font: inherit;
+  font-size: var(--or-text-11);
+}
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes leave {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .popover {
+    animation: none;
+  }
+}

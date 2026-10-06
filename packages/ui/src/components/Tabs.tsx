@@ -3,7 +3,12 @@ import type { KeyboardEvent } from 'react';
 import { IconButton } from './Button';
 import styles from './Navigation.module.css';
 
-type Tab = { id: string; label: string; kind?: 'table' | 'query' };
+type Tab = {
+  id: string;
+  label: string;
+  kind?: 'table' | 'query';
+  title?: string;
+};
 type Props = {
   tabs: readonly Tab[];
   active: string;
@@ -53,6 +58,7 @@ function DocumentTab({
       <button
         type="button"
         role="tab"
+        title={tab.title}
         aria-selected={active}
         tabIndex={active ? 0 : -1}
         onClick={() => {

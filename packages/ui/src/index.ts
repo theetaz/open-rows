@@ -13,3 +13,8 @@ export { DisclosureSection } from './components/DisclosureSection';
 export { TreeItem } from './components/TreeItem';
 export { Sheet } from './components/Sheet';
 export { SplitPanel } from './components/split/SplitPanel';
+export { Palette } from './components/Palette';
+export { HighlightText } from './components/HighlightText';
+export { fuzzyMatch } from './search/fuzzy';
+export { useReducedMotion } from './components/useReducedMotion';
+export type { PaletteItem } from './components/Palette';

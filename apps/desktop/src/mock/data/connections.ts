@@ -75,7 +75,10 @@ export const connections: readonly Connection[] = [
     ],
   },
 ];
-export const objectSections = [
+export const objectSections: readonly {
+  name: 'Views' | 'Functions' | 'Triggers' | 'Sequences';
+  items: readonly string[];
+}[] = [
   {
     name: 'Views',
     items: ['order_summary', 'active_customers', 'daily_revenue'],

@@ -35,6 +35,27 @@ Rules:
 | Deep links | `openrows://` scheme for OAuth callbacks and "open connection" links (with confirmation). |
 | Services / Quick actions | P2: "Open in OpenRows" for `.sqlite`/`.db`/`.duckdb` files via document types in `Info.plist`. |
 
+### M0-T4c toolbar geometry
+
+The overlay window explicitly enables decorations and sets `trafficLightPosition`
+to `{ "x": 16, "y": 26 }` in logical pixels. The toolbar is 48 CSS px tall,
+with centre line y = 24; all controls and context children use flex centring.
+The native close button starts at x = 16; with the standard 14 px button frame
+and 20 px native button pitch, the cluster ends at x = 70. The first toolbar
+group starts at x = 78, leaving the same 8 px gap used between toolbar groups.
+The outer 8 px workspace inset is subtracted from the 78 px clearance token.
+These pixel geometry tokens stay fixed when text scales.
+
+Tauri's y value is a titlebar inset, not a button-centre coordinate, so the
+value was set empirically: with y = 26 the button centres sit on the toolbar
+centre line within 1 px in a Retina screenshot of the release build (the
+computed y = 20 left them about 6 pt high). Re-check by screenshot whenever the
+toolbar height or the window inset changes.
+See [Tauri window configuration](https://v2.tauri.app/reference/config/#trafficlightposition)
+and [Tao native inset implementation](https://github.com/tauri-apps/tao/blob/tao-v0.34.5/src/platform_impl/macos/view.rs#L1078).
+This establishes the intended alignment; the maintainer must verify the actual
+native frame by screenshot on their macOS version. No synthetic buttons are drawn.
+
 ### Implemented M0-T4b native material
 
 `apps/desktop/src-tauri/src/material.rs` applies Tauri's `Effect::Sidebar` through

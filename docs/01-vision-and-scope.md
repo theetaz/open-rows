@@ -18,7 +18,7 @@ API clients have the same split: the popular ones push cloud accounts and sync, 
 1. **Speed is a feature.** Start in under a second. Never block typing or scrolling. Show the first rows before the last ones arrive.
 2. **Safe by default.** Edits are staged and previewed before they hit the database. Production connections are visibly marked and guarded.
 3. **Local-first, no accounts.** Everything works offline. Nothing leaves the machine unless the user sends it to their own database or API.
-4. **Plain files you own.** Saved queries, API collections and workspace settings are human-readable text that diffs well in git.
+4. **Plain files you own.** Saved queries, API collections and Project settings are human-readable text that diffs well in git.
 5. **Native feel.** Respect platform conventions: menus, shortcuts, keychain, dark mode, window behaviour.
 6. **Keyboard-first, mouse-friendly.** Every action reachable from the keyboard and a command palette; nothing *requires* the keyboard.
 7. **One engine, many surfaces.** The same Rust core powers the desktop app and a headless CLI.
@@ -74,7 +74,7 @@ API clients have the same split: the popular ones push cloud accounts and sync, 
 - Proactive recovery after sleep/wake and network changes; per-hop diagnostics.
 
 **Workspace UX**
-- Connection rail for instant switching between open connections; browser-style context bar; Chrome-style tabs for tables and queries with back/forward history; global safe-mode toggle.
+- Workspace (connection) rail for instant switching between open server/host connections and their opened databases; per-database tab sets; browser-style context bar; Chrome-style tabs for tables and queries with back/forward history; global safe-mode toggle.
 
 **Platforms**
 - macOS 12+ (Apple Silicon and Intel) first. Windows 10/11 and mainstream Linux distros before 1.0 GA.

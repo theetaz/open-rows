@@ -1,123 +1,117 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
-  DisclosureSection,
   GlassPanel,
   IconButton,
   SegmentedControl,
   TextField,
   TreeItem,
+  HighlightText,
 } from '@openrows/ui';
-import type { Connection } from './data/connections';
-import { objectSections, savedQueries, history } from './data/connections';
+import type { Database, DatabaseObject } from './data/databases';
+import { savedQueries, history } from './data/connections';
 import { sidebarSegments } from './data/content';
+import { SidebarObjects, substringIndices } from './SidebarObjects';
 import styles from './Sidebar.module.css';
-
 type Props = {
-  connection: Connection;
+  database: Database;
   table: string;
   schema: string;
   onSchema: (schema: string) => void;
-  onTable: (table: string) => void;
+  onTable: (object: DatabaseObject) => void;
   onQuery: () => void;
 };
-/** Glass object browser with independent segment, disclosure and search state. */
+/** Live object search scoped to the active database and schema. */
 export function WorkspaceSidebar(props: Props): React.JSX.Element {
   const [segment, setSegment] = useState('Items');
   const [search, setSearch] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+  const names = (segment === 'Queries' ? savedQueries : history).filter(
+    (name) => name.toLowerCase().includes(search.toLowerCase()),
+  );
   return (
-    <GlassPanel className={styles.sidebar}>
-      <SegmentedControl
-        aria-label="Sidebar mode"
-        options={sidebarSegments}
-        value={segment}
-        onValueChange={setSegment}
-      />
-      <TextField
-        aria-label="Search items"
-        placeholder="Search tables, views…"
-        value={search}
-        onChange={(event) => {
-          setSearch(event.target.value);
-        }}
-      />
-      <div className={styles.objects}>
-        {segment === 'Items' ? (
-          <Objects {...props} search={search} />
-        ) : (
-          (segment === 'Queries' ? savedQueries : history)
-            .filter((name) => name.toLowerCase().includes(search.toLowerCase()))
-            .map((name) => (
-              <TreeItem
-                key={name}
-                label={name}
-                selected={false}
-                onSelect={props.onQuery}
-              />
-            ))
-        )}
-      </div>
-      <div className={styles.schema}>
-        <IconButton aria-label="Create object" size="sm">
-          +
-        </IconButton>
-        <select
-          aria-label="Schema"
-          value={props.schema}
+    <div
+      ref={ref}
+      data-sidebar
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          setSearch('');
+        }
+        if (
+          event.metaKey &&
+          event.key.toLowerCase() === 'f' &&
+          !event.altKey &&
+          !event.ctrlKey &&
+          !event.shiftKey &&
+          !event.nativeEvent.isComposing
+        ) {
+          event.preventDefault();
+          ref.current?.querySelector('input')?.focus();
+        }
+      }}
+      className={styles.container}
+    >
+      <GlassPanel className={styles.sidebar}>
+        <SegmentedControl
+          aria-label="Sidebar mode"
+          options={sidebarSegments}
+          value={segment}
+          onValueChange={setSegment}
+        />
+        <TextField
+          aria-label="Search items"
+          placeholder="Search tables, views…"
+          value={search}
           onChange={(event) => {
-            props.onSchema(event.target.value);
+            setSearch(event.target.value);
           }}
-        >
-          {props.connection.schemas.map((schema) => (
-            <option key={schema}>{schema}</option>
-          ))}
-        </select>
-      </div>
-    </GlassPanel>
+        />
+        <div className={styles.objects}>
+          {segment === 'Items' ? (
+            <SidebarObjects {...props} search={search} />
+          ) : (
+            <>
+              {names.map((name) => (
+                <TreeItem
+                  key={name}
+                  label={name}
+                  selected={false}
+                  onSelect={props.onQuery}
+                >
+                  <HighlightText
+                    text={name}
+                    indices={substringIndices(name, search)}
+                  />
+                </TreeItem>
+              ))}
+              {!names.length && <p role="status">No matches</p>}
+            </>
+          )}
+        </div>
+        <SchemaPicker {...props} />
+      </GlassPanel>
+    </div>
   );
 }
-function Objects(props: Props & { search: string }): React.JSX.Element {
-  const includes = (name: string): boolean =>
-    name.toLowerCase().includes(props.search.toLowerCase());
+
+function SchemaPicker(props: Props): React.JSX.Element {
   return (
-    <>
-      <DisclosureSection
-        label="Tables"
-        count={props.connection.tables.length}
-        defaultOpen
+    <div className={styles.schema}>
+      <IconButton aria-label="Create object" size="sm">
+        +
+      </IconButton>
+      <select
+        aria-label="Schema"
+        value={props.schema}
+        onChange={(event) => {
+          props.onSchema(event.target.value);
+        }}
       >
-        {props.connection.tables
-          .filter(([name]) => includes(name))
-          .map(([name, count]) => (
-            <TreeItem
-              key={name}
-              label={name}
-              count={count}
-              selected={name === props.table}
-              onSelect={() => {
-                props.onTable(name);
-              }}
-            />
-          ))}
-      </DisclosureSection>
-      {objectSections.map((section) => (
-        <DisclosureSection
-          key={section.name}
-          label={section.name}
-          count={section.items.length}
-        >
-          {section.items.filter(includes).map((name) => (
-            <TreeItem
-              key={name}
-              label={name}
-              selected={name === props.table}
-              onSelect={() => {
-                props.onTable(name);
-              }}
-            />
-          ))}
-        </DisclosureSection>
-      ))}
-    </>
+        {props.database.schemas.map((schema) => (
+          <option key={schema}>{schema}</option>
+        ))}
+      </select>
+    </div>
   );
 }

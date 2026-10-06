@@ -4,6 +4,8 @@ export type WorkspaceTab = {
   label: string;
   kind: 'table' | 'query';
   sql?: string;
+  schema?: string;
+  title?: string;
 };
 export const initialTabs: readonly WorkspaceTab[] = [
   { id: 'orders', label: 'orders', kind: 'table' },

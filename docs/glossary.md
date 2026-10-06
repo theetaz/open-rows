@@ -25,4 +25,5 @@
 | **Tile** | Block of 256 rows × visible columns transferred from core to grid. |
 | **Tier** | Support level for a driver (1, 2, 3, Bridge) with defined test and feature commitments. |
 | **Window (result)** | A row/column range of a result requested by the grid. |
-| **Workspace** | A user folder with saved queries, API collections, shared connection definitions and settings, meant for git. |
+| **Workspace** | A connection to a database server/host, containing multiple databases. Open databases keep independent tabs and schemas. |
+| **Project** | A user folder with saved queries, API collections, shared connection definitions and settings, meant for git; metadata in `.openrows/project.yaml`, opened with Open Project Folder. |

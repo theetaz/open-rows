@@ -6,6 +6,10 @@ import styles from './Workspace.module.css';
 type Props = {
   connection: Connection;
   table: string;
+  database: string;
+  onDatabase: () => void;
+  onPalette: () => void;
+  onRefresh: () => void;
   schema: string;
   safe: boolean;
   onSafe: () => void;
@@ -57,23 +61,10 @@ export function WorkspaceToolbar(props: Props): React.JSX.Element {
         connection={props.connection}
         table={props.table}
         schema={props.schema}
+        database={props.database}
+        onDatabase={props.onDatabase}
       />
-      <ToolbarGroup aria-label="Workspace actions">
-        <IconButton aria-label="Refresh" variant="ghost" size="sm">
-          <Icon name="refresh" />
-        </IconButton>
-        <Button
-          aria-label="New SQL query"
-          variant="ghost"
-          size="sm"
-          onClick={props.onQuery}
-        >
-          SQL
-        </Button>
-        <IconButton aria-label="Command palette" variant="ghost" size="sm">
-          ⌘
-        </IconButton>
-      </ToolbarGroup>
+      <WorkspaceActions {...props} />
       <ToolbarGroup aria-label="Inspector controls">
         <IconButton
           aria-label="Toggle inspector (⌥⌘I)"
@@ -92,13 +83,30 @@ function Context({
   connection,
   table,
   schema,
-}: Pick<Props, 'connection' | 'table' | 'schema'>): React.JSX.Element {
-  const address = `${connection.name} › ${connection.database} › ${schema} › ${table}`;
+  database,
+  onDatabase,
+}: Pick<
+  Props,
+  'connection' | 'table' | 'schema' | 'database' | 'onDatabase'
+>): React.JSX.Element {
+  const address = `${connection.name} › ${database} › ${schema} › ${table}`;
   return (
     <div className={styles.context} aria-label="Connection context">
       <EnvBadge environment={connection.environment} />
       <span className={styles.address} title={address}>
-        {address}
+        <span>{connection.name} › </span>
+        <button
+          className={styles.databaseSegment}
+          type="button"
+          aria-label={`Switch database (${database})`}
+          onClick={onDatabase}
+        >
+          {database}
+        </button>
+        <span>
+          {' '}
+          › {schema} › {table}
+        </span>
       </span>
       <span
         className={styles.engine}
@@ -110,5 +118,36 @@ function Context({
         {connection.engine} · {connection.route} · 12 ms
       </span>
     </div>
+  );
+}
+
+function WorkspaceActions(props: Props): React.JSX.Element {
+  return (
+    <ToolbarGroup aria-label="Workspace actions">
+      <IconButton
+        aria-label="Refresh"
+        onClick={props.onRefresh}
+        variant="ghost"
+        size="sm"
+      >
+        <Icon name="refresh" />
+      </IconButton>
+      <Button
+        aria-label="New SQL query"
+        variant="ghost"
+        size="sm"
+        onClick={props.onQuery}
+      >
+        SQL
+      </Button>
+      <IconButton
+        aria-label="Command palette"
+        onClick={props.onPalette}
+        variant="ghost"
+        size="sm"
+      >
+        ⌘
+      </IconButton>
+    </ToolbarGroup>
   );
 }

@@ -15,6 +15,13 @@ This document is the bridge into the UI design phase. It fixes the information a
 
 ## 2. Information architecture
 
+**Workspace = connection** to one server/host. A workspace contains multiple
+databases; opened databases have their own schemas and tab sets. **Project =
+git-friendly folder** of saved queries, API collections and shared connection
+definitions, opened via **Open Project Folder** (`.openrows/project.yaml`).
+Project trust and files are independent of the connection workspace.
+
+
 ```mermaid
 flowchart TB
     App["App"] --> Welcome["Welcome / connection home<br/>(groups, search, recent)"]
@@ -23,10 +30,11 @@ flowchart TB
     Mode --> DBM["Databases"]
     Mode --> APIM["APIs"]
     DBM --> Conn["Connection"]
-    Conn --> Dbs["Databases / schemas"]
-    Dbs --> Objs["Tables · Views · Functions · ..."]
+    Conn --> Dbs["Databases"]
+    Dbs --> Schemas["Schemas"]
+    Schemas --> Objs["Tables · Views · Functions · ..."]
     Objs --> TableTab["Table tab<br/>Data | Structure | DDL | Info"]
-    Conn --> QueryTab["Query tab<br/>Editor + Results"]
+    Dbs --> QueryTab["Query tab<br/>Editor + Results"]
     Conn --> Admin["Admin tabs<br/>Processes · Roles"]
     Conn --> Hist["History panel"]
     APIM --> Coll["Collection"]
@@ -34,7 +42,8 @@ flowchart TB
     Folder --> Req["Request tab<br/>Request | Response"]
     Coll --> Envs["Environments"]
     App --> Settings["Settings"]
-    App --> Palette["Command palette (⌘K)"]
+    App --> Palette["Command palette (⌘⇧P)"]
+    App --> Switch["Database switcher (⌘K)"]
     App --> Quick["Quick open (⌘P)"]
 ```
 
@@ -79,9 +88,9 @@ The approved direction refines the skeleton above:
 
 | Region | v2 decision |
 | --- | --- |
-| **Connection rail** (far left, ~64 px) | One rounded tile per open connection (engine initials, env-colour dot, health). Click to switch instantly; `+` opens a new connection. Settings at the bottom. |
+| **Workspace rail** (far left, 112 px in the mock) | One rounded tile per open workspace (connection), with opened database sub-items below the selected tile. Click a tile or database to switch instantly; `+` opens a new connection. Settings at the bottom. |
 | **Sidebar** (floating rounded panel) | Segmented **Items / Queries / History**; search; object tree; schema picker and "create object" at the bottom. |
-| **Toolbar** | One unified, full-width titlebar row that never wraps: traffic lights → sidebar toggle → back/forward → safe mode → context bar (flexes, truncates) → actions → inspector toggle pinned at the far right above the inspector. Contents: back/forward (per-tab navigation history), **Safe mode** toggle (always on for prod), **context bar** like a browser address bar: env badge · connection › database › schema › object · engine · route (SSH, proxy…) · live latency. |
+| **Toolbar** | One unified, full-width titlebar row that never wraps: traffic lights → sidebar toggle → back/forward → safe mode → context bar (flexes, truncates) → actions → inspector toggle pinned at the far right above the inspector. Contents: back/forward (per-tab navigation history), **Safe mode** toggle (always on for prod), **context bar** like a browser address bar: env badge · workspace › database › schema › object · engine · route (SSH, proxy…) · live latency. |
 | **Tabs** | Chrome-style tabs for every table, query, structure view and API request; drag to reorder or tear off into a new window; middle-click closes. |
 | **Table view switcher** | Data · Structure · Indexes · Triggers · DDL inside each table tab; filter chips and "+ Row" next to it. |
 | **Right panel** (floating) | Segmented **Details / Assistant**: row/object details, or the AI assistant with provider switcher, policy chips, tool trace and proposal cards. |
@@ -125,6 +134,38 @@ light/dark, increased contrast, reduced motion and solid transparency fallbacks
 reuse ThemeProvider and the existing token system. Native material setup is
 specified in [docs/16 §3](16-platform-and-distribution.md#3-macos-specifics).
 
+### M0-T4c database navigation and search
+
+⌘K or the context bar database segment opens a glass database switcher. It lists
+the selected workspace's hard-coded catalog, marks already-open databases and
+hides system databases until **Show system databases** is enabled. Choosing an
+entry opens/activates it. Rail sub-items show database name plus an original
+engine glyph; close controls keep at least one database open. Switching workspaces
+or databases retains tab sets and schema selection; object tooltips use
+`database.schema.table`. Sidebar objects follow the active database/schema.
+
+Sidebar search filters live, underlines matched characters, forces matching
+sections open, displays **No matches**, and clears with Esc. ⌘F focuses search
+only when focus is within the sidebar. ⌘P fuzzy-searches tables/views/functions
+across every schema in the active database, with kind, schema and row estimates;
+Enter opens a descriptor or focuses its existing tab. ⌘⇧P opens twelve mock
+commands and their shortcuts. Refresh announces a mock refresh; other commands
+change panel, safe-mode, tab, schema, search, gallery or palette state.
+
+All three palettes share `@openrows/ui` combobox/listbox semantics: input focus,
+↑/↓ wrapping, Home/End, Enter, Esc, a trapped Tab cycle and restored opener focus.
+IME composition does not execute or navigate commands. Palette selection stays
+visible when scrolling. Glass uses the existing solid/reduced-transparency
+fallback and 12 px corners. Open/close scale + fade lasts **160 ms** via
+`motion-popover`; database item height + fade lasts **220 ms** via
+`motion-disclosure`, both with `cubic-bezier(0.32, 0.72, 0, 1)`. Reduced motion
+removes both and closes palettes without an animation delay. The bounded mock
+catalog's height animation is the same scoped exception as the forty-row panel
+mock above; production docs/13 policies remain unchanged. Search ranking has a
+Performance API benchmark with a **16 ms p95 per 1,000 objects** budget.
+Native toolbar geometry is documented in [docs/16 §3](16-platform-and-distribution.md#3-macos-specifics).
+These interactions use mock/data only; no catalog, query or command contacts a server.
+
 ### 3.2 macOS-native design methodology (macOS 26 era)
 
 The app must feel like it was designed for the current macOS, not merely ported to it.
@@ -167,7 +208,7 @@ The app must feel like it was designed for the current macOS, not merely ported 
 - **Typography:** system UI font for chrome (SF Pro on macOS), user-selectable monospace for grid/editor (default to a bundled open-licence monospace such as JetBrains Mono or IBM Plex Mono — both OFL).
 - **Colour:** neutral greys for chrome; one accent colour; semantic colours for success/warning/danger; environment tag palette (local=grey, dev=green, staging=amber, prod=red, custom) chosen to remain distinguishable for common colour-vision deficiencies and paired with text labels.
 - **Iconography:** single consistent line icon set; database "logos" rendered as neutral, original glyphs or official marks only where their trademark guidelines permit use in tooling (checked per vendor).
-- **Motion:** functional opacity/transform only; approved panel timing 360 ms and disclosure 220 ms with `cubic-bezier(0.32, 0.72, 0, 1)`. Other small feedback stays ≤ 150 ms. Animations and transitions are disabled under reduced motion.
+- **Motion:** functional opacity/transform only; approved panel timing 360 ms and disclosure 220 ms with `cubic-bezier(0.32, 0.72, 0, 1)`. Palette scale/fade uses 160 ms; other small feedback stays ≤ 150 ms. Animations and transitions are disabled under reduced motion.
 - **Density modes:** compact / default / comfortable.
 
 ### M0-T4 token values and accessibility adjustments

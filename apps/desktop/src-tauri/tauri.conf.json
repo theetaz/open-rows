@@ -22,7 +22,12 @@
         "hiddenTitle": true,
         "visible": false,
         "transparent": true,
-        "shadow": true
+        "shadow": true,
+        "trafficLightPosition": {
+          "x": 16,
+          "y": 26
+        },
+        "decorations": true
       }
     ],
     "security": {

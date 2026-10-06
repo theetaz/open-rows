@@ -50,13 +50,14 @@
   --or-control-md: 2rem;
   --or-icon-size: 0.9375rem;
   --or-dot-size: 0.5rem;
-  --or-toolbar-height: 3rem;
-  --or-traffic-light-clearance: 6rem;
+  --or-toolbar-height: 48px;
+  --or-traffic-light-clearance: 78px;
   --or-sidebar-width: 12rem;
   --or-gallery-width: 64rem;
   --or-swatch-size: 3rem;
   --or-glass-panel: blur(30px) saturate(1.8);
   --or-glass-toolbar: blur(20px) saturate(1.8);
+  --or-motion-popover: 160ms;
   --or-motion-panel: 360ms;
   --or-motion-disclosure: 220ms;
   --or-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);

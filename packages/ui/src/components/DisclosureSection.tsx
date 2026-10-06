@@ -9,25 +9,32 @@ export function DisclosureSection({
   count,
   defaultOpen = false,
   children,
+  forceOpen = false,
 }: {
   label: string;
   count: number;
   defaultOpen?: boolean;
   children: ReactNode;
+  forceOpen?: boolean;
 }): React.JSX.Element {
   const [open, setOpen] = useState(defaultOpen);
   const id = useId();
+  const expanded = open || forceOpen;
   return (
     <section className={styles.section}>
       <button
         type="button"
-        aria-expanded={open}
+        aria-expanded={expanded}
         aria-controls={id}
         onClick={() => {
           setOpen(!open);
         }}
       >
-        <span className={styles.chevron} data-open={open} aria-hidden="true">
+        <span
+          className={styles.chevron}
+          data-open={expanded}
+          aria-hidden="true"
+        >
           ›
         </span>
         {label}
@@ -36,9 +43,9 @@ export function DisclosureSection({
       <div
         id={id}
         className={styles.disclosure}
-        data-open={open}
-        inert={!open}
-        aria-hidden={!open}
+        data-open={expanded}
+        inert={!expanded}
+        aria-hidden={!expanded}
       >
         <div>{children}</div>
       </div>

@@ -49,7 +49,7 @@ flowchart TB
 | Editor text (scratch tabs) | 300 ms debounce after change, on blur, on quit | Local store `drafts` table |
 | File-backed tab unsaved changes | Same | Local store `drafts` (does not overwrite the file until ⌘S) |
 | Pending change sets | Every mutation | Local store `change_sets` |
-| Tab layout and view state | 1 s debounce | Local store `workspace_state` |
+| Tab layout and view state | 1 s debounce | Local store `workspace_state` (per connection/database; Project file drafts remain file-backed) |
 | API request edits (unsaved) | 300 ms debounce | Local store `drafts` |
 
 All writes go through a single writer task with WAL mode; batched to avoid fsync storms.

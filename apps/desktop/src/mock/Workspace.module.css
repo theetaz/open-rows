@@ -15,7 +15,9 @@
   gap: var(--or-space-8);
   height: var(--or-toolbar-height);
   flex-shrink: 0;
-  padding-inline-start: var(--or-traffic-light-clearance);
+  padding-inline-start: calc(
+    var(--or-traffic-light-clearance) - var(--or-space-8)
+  );
   user-select: none;
   min-width: 0;
   white-space: nowrap;
@@ -51,6 +53,8 @@
   font-size: var(--or-text-10);
 }
 .address {
+  display: flex;
+  align-items: center;
   flex: 1 1 auto;
   min-width: 0;
   white-space: nowrap;
@@ -58,6 +62,10 @@
   text-overflow: ellipsis;
   font-weight: var(--or-weight-medium);
   font-size: var(--or-text-12);
+}
+.address > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .engine {
   flex: 0 1 230px;
@@ -87,7 +95,7 @@
   align-items: center;
   flex-direction: column;
   gap: var(--or-space-10);
-  flex: 0 0 64px;
+  flex: 0 0 112px;
   padding: var(--or-space-4) 0 var(--or-space-8);
 }
 .railSpace {
@@ -194,4 +202,114 @@
 }
 .toolbar button:hover {
   color: var(--or-text);
+}
+
+.databaseSegment {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  padding-inline: var(--or-space-2);
+}
+.databaseSegment:focus-visible {
+  outline: var(--or-focus-width) solid var(--or-focus);
+}
+.workspaceTile {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.databaseReveal {
+  width: 100%;
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    grid-template-rows var(--or-motion-disclosure) var(--or-motion-easing),
+    opacity var(--or-motion-disclosure) var(--or-motion-easing),
+    visibility var(--or-motion-disclosure);
+}
+.databaseReveal[data-open='true'] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  visibility: visible;
+}
+.databaseReveal > div {
+  overflow: hidden;
+}
+.databaseRow {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  padding: 0 var(--or-space-6);
+}
+.databaseRow button {
+  background: transparent;
+  border: 0;
+  color: var(--or-secondary);
+  font: inherit;
+  cursor: pointer;
+}
+.databaseRow button:first-child {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--or-space-2);
+  min-width: 0;
+  padding: var(--or-space-6) var(--or-space-4);
+  border-radius: var(--or-radius-field);
+  font-size: var(--or-text-10);
+}
+.databaseRow button:first-child:hover,
+.databaseRow button[aria-pressed='true'] {
+  background: var(--or-control-fill);
+  color: var(--or-text);
+}
+.databaseRow button span:last-child {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.databaseRow button:last-child {
+  position: absolute;
+  top: var(--or-space-2);
+  right: var(--or-space-6);
+  opacity: 0;
+  font-size: var(--or-text-11);
+}
+.databaseRow:hover button:last-child,
+.databaseRow:focus-within button:last-child {
+  opacity: 1;
+}
+.databaseRow button[aria-pressed='true'] {
+  background: var(--or-control-fill);
+  color: var(--or-text);
+  border-radius: var(--or-radius-field);
+}
+.databaseRow button:focus-visible {
+  outline: var(--or-focus-width) solid var(--or-focus);
+  outline-offset: -2px;
+}
+.databaseRow button:disabled {
+  visibility: hidden;
+}
+.databaseReveal[data-motion='reduced'] {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .databaseReveal {
+    transition: none;
+  }
+}
+
+.announcement {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
 }

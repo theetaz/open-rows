@@ -7,10 +7,10 @@ A database client holds the keys to production. Security failures here are catas
 | Asset | Where it lives |
 | --- | --- |
 | Database passwords, SSH key passphrases, tokens, API secrets, OAuth tokens | OS keychain only |
-| Connection profiles (hosts, users, options) | App data dir (JSON) / workspace files (shared definitions, no secrets) |
+| Connection profiles (hosts, users, options) | App data dir (JSON) / Project files (shared definitions, no secrets) |
 | Query text and history | Local store (SQLite) |
 | Result data | Memory, spill temp files |
-| API collections and responses | Workspace folder / local store |
+| API collections and responses | Project folder / local store |
 | Update signing private key | Offline/HSM-backed CI secret, never on dev machines |
 
 ## 2. Threat model (STRIDE summary)
@@ -23,7 +23,7 @@ flowchart LR
         KC[("Keychain")]
     end
     subgraph semi["Semi-trusted inputs"]
-        WSF["Workspace files from git<br/>(collections, saved queries)"]
+        WSF["Project files from git<br/>(collections, saved queries)"]
         DBData["Data returned by databases"]
         APIResp["API responses"]
     end
@@ -44,7 +44,7 @@ flowchart LR
 | --- | --- | --- |
 | **Spoofing** server | MITM on café Wi-Fi impersonates DB or SSH server | TLS verify-full by default with OS trust store (`rustls-platform-verifier`); SSH host key check against `known_hosts` with TOFU prompt showing SHA256 fingerprint; changed host key = hard stop with explanation. |
 | **Tampering** with updates | Malicious update payload | Tauri updater signature verification (Ed25519/minisign) + platform code signing + notarization; HTTPS-only feed; pinned public key in the binary. |
-| **Tampering** via workspace files | Malicious collection in a cloned repo runs scripts | Scripts sandboxed (no FS/process); untrusted collections open in restricted mode (scripts disabled) until user trusts the folder; `ors.db.query` off by default. |
+| **Tampering** via Project files | Malicious collection in a cloned repo runs scripts | Scripts sandboxed (no FS/process); untrusted collections open in restricted mode (scripts disabled) until user trusts the folder; `ors.db.query` off by default. |
 | **Repudiation** | "I didn't run that DELETE" | Local history records every executed statement with timestamp and connection (user-controllable). |
 | **Information disclosure** — XSS in webview | DB cell contains `<script>` or a crafted SVG | Cells rendered on canvas or as text nodes, never `innerHTML`; strict CSP; HTML/SVG/PDF previews only in sandboxed iframes without script permission and with an opaque origin. |
 | **Information disclosure** — logs | Password or query values in logs | Structured logging with redaction layer: known secret fields never logged; query text logged only at `trace` level and off by default; connection URLs redacted. |

@@ -24,11 +24,15 @@ export function useCompact(): boolean {
 export function useInspectorOpen(compact: boolean): {
   open: boolean;
   toggle: () => void;
+  show: () => void;
 } {
   const [choice, setChoice] = useState({ compact, open: !compact });
   if (choice.compact !== compact) setChoice({ compact, open: !compact });
   return {
     open: choice.compact === compact ? choice.open : !compact,
+    show: () => {
+      setChoice({ compact, open: true });
+    },
     toggle: () => {
       setChoice({ compact, open: !choice.open });
     },

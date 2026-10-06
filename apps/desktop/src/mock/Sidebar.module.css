@@ -41,3 +41,7 @@
 .schema select:focus-visible {
   outline: var(--or-focus-width) solid var(--or-focus);
 }
+
+.container {
+  height: 100%;
+}
