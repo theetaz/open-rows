@@ -80,8 +80,8 @@ These benchmarks are new; main has no comparable result encoder baseline.
 `just bench-result-encode` runs Criterion and gates the mean's upper 95% confidence
 bound at 1 ms using the existing shared Cargo target directory.
 
-`pnpm build` checks the complete static initial JS graph, rejects Arrow modules,
-and gates its gzip sum at 350000 bytes. Arrow and decoding are loaded only by a
+`just bench-ui` (also run by `just check`) checks the complete static initial JS
+graph, rejects Arrow modules, and gates its gzip sum at 350000 bytes. Arrow and decoding are loaded only by a
 worker; the spike client is also a lazy chunk. The original S1 build measured
 99731 bytes gzip (99.731 KB) for initial JS, 40232 bytes gzip for the separate
 Arrow decoder chunk and 341 bytes gzip for the module-worker entry. The macOS
@@ -89,7 +89,9 @@ fix now bundles the decoder into a classic blob worker inside the lazy spike
 chunk. The correction build measured 100785 bytes gzip for the initial graph
 (1054 bytes / 1.06% above the original S1 measurement, still below 350000);
 the lazy spike chunk is about 41.98 KB gzip. These are build-size measurements,
-not native IPC timings. `pnpm build` continues to enforce the initial-graph budget.
+not native IPC timings. `packages/ui/scripts/bundle-size.ts` is the single
+initial-graph budget and heavy-module gate, using Vite manifest edges and emitted
+chunk-module identities.
 
 ### Binary contract and worker representation
 

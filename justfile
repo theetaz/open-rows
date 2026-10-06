@@ -41,6 +41,7 @@ check:
     just machete
     just hygiene
     just ui-check
+    just bench-ui
     just bench-test
     pnpm lint
     pnpm format:check

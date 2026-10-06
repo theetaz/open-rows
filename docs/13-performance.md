@@ -105,7 +105,11 @@ and WebKit pages.
   Palette and sheet primitives have separate `@openrows/ui/palette` and `@openrows/ui/sheet`
   entry points so the shell barrel cannot pull their code/styles into the initial graph.
   `just bench-ui` sums all manifest entry/static-import chunks (deduplicated), excluding
-  dynamic chunks, and enforces the 350,000-byte gzip limit.
+  dynamic chunks, and enforces the 350,000-byte gzip limit. `just check` runs this
+  same gate. `packages/ui/scripts/bundle-size.ts` also checks emitted chunk-module
+  metadata to reject `apache-arrow` in that static graph; configure package names
+  with the comma-separated `BUNDLE_DENY_MODULES` environment variable (default:
+  `apache-arrow`). Vite only emits evidence; all assertions live in the script.
   The default wide-window Assistant remains visible and loads on that first render.
 - Workers for decoding and formatting.
 - React Compiler; components subscribe to narrow Zustand selectors.
