@@ -34,6 +34,7 @@ Diagrams are written in [Mermaid](https://mermaid.js.org/) so they render on Git
 | 24 | [Networking and protocols](24-networking-and-protocols.md) | Routes and hops, SSH, TLS, cloud tunnels, sleep/wake resilience, protocol handling |
 | 25 | [Engineering standards and delivery](25-engineering-standards.md) | Task specs, acceptance reports, code-quality limits, performance policy, local green-light gate, clean-up |
 | 26 | [Feature inventory and parity plan](26-feature-parity.md) | Public-source TablePlus benchmark, requirement mappings, 1.0 gaps, deliberate deferrals and OpenRows improvements |
+| 27 | [Delivery plan](27-delivery-plan.md) | Ordered task backlog from the current state to 1.0, per milestone, with requirement IDs, dependencies, gates and status |
 | — | [Glossary](glossary.md) | Terms used across these docs |
 | — | [ADRs](adr/README.md) | Architecture Decision Records |
 
