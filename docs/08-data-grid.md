@@ -52,27 +52,58 @@ Splitting layers keeps selection changes (frequent) from repainting all text (ex
 4. Text drawing uses cached glyph-width measurements per font to truncate with ellipsis without calling `measureText` per cell per frame.
 5. Device pixel ratio handled by scaling the backing store; integer-snapped coordinates to keep text crisp.
 
-Implementation candidates (decided by the M0 spike, ADR-0004): **build our own** painter on Canvas 2D (≈ 3–5 k lines, full control), or **adopt Glide Data Grid** (MIT, canvas-based, proven at millions of rows) behind our `@openrows/grid` adapter interface. Either way, the rest of the app only sees the adapter API below.
+**Accepted design: Option A, our own Canvas 2D painter**, recorded in
+[ADR-0004](adr/0004-canvas-data-grid.md). The app sees the adapter API below;
+renderer internals own the layers, edit-state visuals, pinned columns,
+multi-range selection and ARIA shadow grid. No external grid renderer is shipped.
 
 ## 3. Grid API (adapter boundary)
 
+The M0-S2 spike exposes the following minimal public boundary in `packages/grid/src/index.ts`.
+The painter is a deferred entry point (`@openrows/grid/canvas`), exporting `mountGrid(host, props): GridHandle`.
+
 ```ts
 interface GridDataSource {
-  rowCount(): number;                        // may grow while streaming
-  columns(): ColumnMeta[];
-  getTile(tileIndex: number): Tile | undefined;   // sync lookup
-  requestTile(tileIndex: number): void;           // async fill, emits 'tile'
-  on(event: "tile" | "rows" | "columns", cb: () => void): Unsubscribe;
+  readonly rows: number;
+  readonly columns: readonly GridColumn[]; // id, title, width, pinned (leading prefix)
+  readonly metrics: { requested: number; hits: number };
+  cell(row: number, column: number): DisplayCell | undefined; // synchronous; no I/O
+  window(range: CellRange, direction: number): Promise<void>;
+  subscribe(listener: () => void): () => void;
 }
-
 interface GridProps {
   source: GridDataSource;
-  editState?: EditOverlay;                   // pending changes keyed by (rowKey, col)
-  selection: SelectionModel;
-  readOnlyReason?: string;
-  onCommand(cmd: GridCommand): void;         // copy, edit, delete rows, open inspector, fk-jump, ...
+  selection: SelectionModel; // focused row/column + inclusive, zero-based ranges
+  theme: GridTheme; // gridTheme("light" | "dark") resolves @openrows/ui tokens
+  onSelection(selection: SelectionModel): void;
+  onError(error: unknown): void;
+}
+interface GridHandle {
+  readonly viewport: { x: number; y: number; width: number; height: number };
+  readonly metrics: { milliseconds: number; placeholders: number; paints: number };
+  scrollTo(x: number, y: number): void; // CSS pixels, native scroll container
+  destroy(): void;
 }
 ```
+
+`TileSource(resultId, rows, columns, load)` reuses S1's `TileClient`, moved to
+`@openrows/grid/tile-client`; the desktop re-export keeps S1 imports compatible.
+`load` returns worker-decoded S1 typed tiles, not JSON rows. Tiles are 256×20,
+clamped at the result edges, held in one deduplicating 64-entry LRU. Conversion
+to display strings occurs once on arrival. Visible windows include pinned
+columns and prefetch one vertical tile in `direction` (-1/0/+1) and one horizontal
+tile in the observed column direction. Cache hits count requested windows already
+resident, not every painted cell lookup. The spike repeats the twenty S1 columns
+for the 100-column scenario; all windows still go through binary IPC and the worker.
+
+Own canvas uses four layers, backing-store DPR scaling, snapped text origins,
+a weak text measurement cache prepared on arrival, and persistent paint callbacks.
+The painter allocates no JS arrays/objects/strings per cell or per frame. Tile
+requests, conversion, and measurement run outside that hot loop. Headers repaint
+on horizontal/data changes; pinned cells on vertical/data changes; selection
+changes repaint the selection layer. NULL, changed cells and deleted rows use
+the shared tokens. Editing and copy remain future work.
+This spike is not connected to the workspace mock.
 
 ## 4. Selection model
 
@@ -120,12 +151,16 @@ All staging goes through the core's change-set API ([10-schema-and-data-editing.
 
 ## 8. Accessibility
 
-Canvas content is invisible to assistive technology, so the grid maintains a **shadow ARIA grid**:
+The S2 prototype exposes a shadow ARIA grid beside the canvas layers. It exposes one
+focused logical cell with `aria-activedescendant`, a row index of model row + 2
+(the header counts as row 1), column index + 1, and real row/column totals. Tile
+arrival updates the announced header/value. Tab focuses the shadow grid; arrows
+move its focused cell. Canvas clicks and arrow navigation update the same selection model.
+No million-row DOM is created.
 
-- A visually hidden `role="grid"` element mirrors the active row and its neighbours (± 10 rows) with `aria-rowindex`/`aria-colindex` and `aria-rowcount` set to the real totals.
-- The focused cell in the shadow grid moves with the active cell; screen readers announce column header + value.
-- Live region announces selection size changes and edit commits.
-- High-contrast themes increase grid line contrast and use patterns (not only colour) for edit states.
+This is a hook prototype, not accessibility certification. Neighbouring rows,
+selection live announcements, screen-reader testing and the complete keyboard
+model remain future work; test VoiceOver before production accessibility sign-off.
 
 ## 9. Performance budget per frame (16.6 ms at 60 Hz)
 
@@ -137,4 +172,18 @@ Canvas content is invisible to assistive technology, so the grid maintains a **s
 | Tile requests (async, off frame) | — |
 | Headroom for GC, compositor | ≥ 8 ms |
 
-Measured in CI with a synthetic 1 M-row data source driving a scripted scroll through Playwright and the Performance API (long frame count must be 0 above 32 ms).
+Measured with `just bench-grid [repeats=3]` in the release app's
+`OPENROWS_SPIKE=grid` mode in **WKWebView**, after the native show-window handshake.
+The maintainer's three M4/60 Hz release runs establish the S2 decision:
+complete mean paint 0.5–1.9 ms/frame (≤6 ms body budget), zero painter allocations
+and zero blank-placeholder frames. [ADR-0004](adr/0004-canvas-data-grid.md) retains
+all supplied comparison numbers and the environmental-stall analysis.
+
+Every repeat starts with fresh app, scroll and cache state. All sampled rAF
+intervals and attribution are retained. Gate on the best repeat per scenario
+with zero frames >32 ms, plus zero frames >32 ms with ≥16 ms tracked main-thread
+work in **every** repeat. See [docs/13 §4](13-performance.md#4-benchmark-suite).
+`performance.now()` times the complete layered paint, excluding compositor/GPU
+time; mean paint includes zero-repaint frames. The measured page clock resolution
+is reported (commonly 1 ms); thresholds have no rounding allowance. React commit
+instrumentation is retained for attribution and fails on changed signatures.

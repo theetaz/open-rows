@@ -7,9 +7,22 @@ import { measurePageTimer } from './timer';
 export async function startIpcSpike(): Promise<void> {
   let session: SpikeSession | undefined;
   try {
-    if (!(await withTimeout(startSpike(), 10_000, 'Spike startup handshake')))
-      return;
+    const mode = await withTimeout(
+      startSpike(),
+      10_000,
+      'Spike startup handshake',
+    );
+    if (!mode) return;
     session = new SpikeSession();
+    if (mode === 'grid') {
+      const { runGridSpike } = await withTimeout(
+        import('./grid'),
+        10_000,
+        'Grid module loading',
+      );
+      await runGridSpike(session);
+      return;
+    }
     const { runIpcSpike } = await withTimeout(
       import('./ipc'),
       10_000,

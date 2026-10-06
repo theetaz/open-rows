@@ -33,7 +33,9 @@ export function assertInitialModules(
     const ids = modules[file];
     if (!ids) throw new Error(`Missing build module metadata: ${file}`);
     for (const name of denyList) {
-      const marker = `/node_modules/${name}/`;
+      const marker = name.startsWith('packages/')
+        ? `/${name}`
+        : `/node_modules/${name}/`;
       if (ids.some((id) => id.replaceAll('\\', '/').includes(marker)))
         throw new Error(`${name} found in initial chunk ${file}`);
     }

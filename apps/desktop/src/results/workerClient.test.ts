@@ -117,3 +117,29 @@ it('measures post-to-reply transfer on the page clock independently of worker de
   });
   worker.stop();
 });
+
+it('requests ready-to-paint display cells from the worker with the logical window coordinates', async () => {
+  const worker = new ArrowWorker();
+  native().reply({ kind: 'ready' });
+  const bytes = new ArrayBuffer(16);
+  const display = {
+    resultId: 'spike',
+    rowStart: 512,
+    rowCount: 256,
+    colStart: 40,
+    colCount: 20,
+  };
+  const pending = worker.display(bytes, display);
+  await Promise.resolve();
+  expect(native().postMessage).toHaveBeenCalledWith({ id: 1, bytes, display }, [
+    bytes,
+  ]);
+  const result = {
+    cells: [{ text: '9007199254740993', state: 'normal' as const }],
+    columns: 1,
+    convertMs: 2,
+  };
+  native().reply({ kind: 'display', id: 1, result });
+  await expect(pending).resolves.toBe(result);
+  worker.stop();
+});

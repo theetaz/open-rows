@@ -6,8 +6,8 @@ import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 /** Commands */
 export const commands = {
 	appInfo: () => __TAURI_INVOKE<AppInfo>("app_info"),
-	spikeFinish: (report: SpikeReport) => typedError<null, SpikeError>(__TAURI_INVOKE("spike_finish", { report })),
-	spikeStart: () => typedError<boolean, SpikeError>(__TAURI_INVOKE("spike_start")),
+	spikeFinish: (report: SpikeReport_Deserialize) => typedError<null, SpikeError>(__TAURI_INVOKE("spike_finish", { report })),
+	spikeStart: () => typedError<string | null, SpikeError>(__TAURI_INVOKE("spike_start")),
 	spikeProgress: (stage: string, detail: string) => typedError<null, SpikeError>(__TAURI_INVOKE("spike_progress", { stage, detail })),
 };
 
@@ -20,6 +20,45 @@ export type AppInfo = {
 
 export type BuildProfile = "debug" | "release";
 
+/**  Per-rAF interval diagnostics. Timings may overlap; worker CPU is informational. */
+export type GridFrame = {
+	index: number,
+	frameMs: number | null,
+	step: string,
+	scrollHandlerMs: number | null,
+	reactCommitMs: number | null,
+	canvasResizeMs: number | null,
+	canvasResizeEvents: number,
+	prepareMs: number | null,
+	paintMs: number | null,
+	tileApplyMs: number | null,
+	tileConvertMs: number | null,
+	workerConvertMs: number | null,
+	tileAllocations: number,
+	arrayAllocations: number,
+	cellAllocations: number,
+	driverMs: number | null,
+};
+
+export type GridRun = {
+	option: string,
+	scenario: string,
+	cols: number,
+	frameMs: (number | null)[],
+	frameBreakdown: GridFrame[],
+	longestFrames: GridFrame[],
+	paintMs: (number | null)[],
+	blankCellFrames: number,
+	tilesRequested: number,
+	cacheHits: number,
+	durationMs: number | null,
+	startRow: number,
+	endRow: number,
+	endColumn: number,
+	paintMethod: string,
+	maxScrollErrorPx: number | null,
+};
+
 export type PageTimer = {
 	resolutionMs: number | null,
 	crossOriginIsolated: boolean,
@@ -29,10 +68,20 @@ export type ResultError = { kind: "unknownResult"; message: string } | { kind: "
 
 export type SpikeError = { kind: "disabled" } | { kind: "missingPath" } | { kind: "failed"; message: string };
 
-export type SpikeReport = {
+export type SpikeReport = SpikeReport_Serialize | SpikeReport_Deserialize;
+
+export type SpikeReport_Deserialize = {
 	samples: TileTiming[],
 	timer: PageTimer,
 	error: string | null,
+	grid?: GridRun[] | null,
+};
+
+export type SpikeReport_Serialize = {
+	samples: TileTiming[],
+	timer: PageTimer,
+	error: string | null,
+	grid?: GridRun[] | null,
 };
 
 export type TileTiming = {

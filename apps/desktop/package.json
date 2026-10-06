@@ -16,7 +16,8 @@
     "@tauri-apps/api": "^2.0.0",
     "apache-arrow": "^21.2.0",
     "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react-dom": "^19.3.0",
+    "@openrows/grid": "workspace:*"
   },
   "devDependencies": {
     "@babel/core": "^8.0.6",

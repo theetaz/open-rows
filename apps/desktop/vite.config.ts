@@ -3,6 +3,7 @@ import { defineConfig } from 'vite';
 import type { Plugin } from 'vite';
 import react, { reactCompilerPreset } from '@vitejs/plugin-react';
 import babel from '@rolldown/plugin-babel';
+import { gridInstrumentation } from './src/build/gridInstrumentation.ts';
 
 // Vite's manifest omits module identities; emit evidence for the single size gate.
 function chunkModules(): Plugin {
@@ -27,6 +28,7 @@ export default defineConfig({
     react(),
     babel({ presets: [reactCompilerPreset()] }),
     chunkModules(),
+    gridInstrumentation(),
   ],
   server: {
     port: 1420,

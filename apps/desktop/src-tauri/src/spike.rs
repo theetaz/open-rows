@@ -11,7 +11,7 @@ use std::{
 #[derive(Debug, Serialize, Type, thiserror::Error)]
 #[serde(tag = "kind", content = "message", rename_all = "camelCase")]
 pub(crate) enum SpikeError {
-    #[error("IPC spike mode is disabled")]
+    #[error("Spike mode is disabled")]
     Disabled,
     #[error("OPENROWS_SPIKE_REPORT is required")]
     MissingPath,
@@ -20,17 +20,21 @@ pub(crate) enum SpikeError {
 }
 
 fn enabled() -> bool {
-    std::env::var("OPENROWS_SPIKE").is_ok_and(|value| value == "ipc")
+    std::env::var("OPENROWS_SPIKE").is_ok_and(|value| value == "ipc" || value == "grid")
 }
 
 #[tauri::command]
 #[specta::specta]
-pub(crate) async fn spike_start(window: tauri::WebviewWindow) -> Result<bool, SpikeError> {
+pub(crate) async fn spike_start(
+    window: tauri::WebviewWindow,
+) -> Result<Option<String>, SpikeError> {
     if !enabled() {
-        return Ok(false);
+        return Ok(None);
     }
     spike_progress("page-script-started", "")?;
-    spike_progress("spike-flag-seen", "ipc")?;
+    let mode =
+        std::env::var("OPENROWS_SPIKE").map_err(|error| SpikeError::Failed(error.to_string()))?;
+    spike_progress("spike-flag-seen", &mode)?;
     window
         .show()
         .map_err(|error| SpikeError::Failed(error.to_string()))?;
@@ -38,7 +42,7 @@ pub(crate) async fn spike_start(window: tauri::WebviewWindow) -> Result<bool, Sp
         .set_focus()
         .map_err(|error| SpikeError::Failed(error.to_string()))?;
     spike_progress("window-shown", "")?;
-    Ok(true)
+    Ok(Some(mode))
 }
 
 #[tauri::command]
@@ -49,7 +53,7 @@ pub(crate) fn spike_progress(stage: &str, detail: &str) -> Result<(), SpikeError
 
 fn append_progress(path: &Path, stage: &str, detail: &str) -> Result<(), SpikeError> {
     let line = format!("{stage}: {detail}").replace(['\r', '\n'], " ");
-    writeln!(std::io::stderr().lock(), "IPC spike {line}")
+    writeln!(std::io::stderr().lock(), "OpenRows spike {line}")
         .map_err(|error| SpikeError::Failed(error.to_string()))?;
     let mut file = std::fs::OpenOptions::new()
         .create(true)
@@ -102,6 +106,8 @@ pub(crate) struct SpikeReport {
     samples: Vec<TileTiming>,
     timer: PageTimer,
     error: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    grid: Option<Vec<crate::grid_report::GridRun>>,
 }
 
 #[tauri::command]
@@ -110,16 +116,18 @@ pub(crate) fn spike_finish(app: tauri::AppHandle, report: SpikeReport) -> Result
     let path = report_path()?;
     let status = i32::from(report.error.is_some());
     let stage_summary = summaries(&report.samples);
+    let grid = report.grid.is_some();
     let samples =
         serde_json::to_value(report).map_err(|error| SpikeError::Failed(error.to_string()))?;
     let payload = serde_json::json!({
         "schema_version": 1, "pid": std::process::id(), "seed": synthetic::SPIKE_SEED,
         "rows": synthetic::SPIKE_ROWS, "cols": synthetic::SPIKE_COLS,
         "tile_rows": 256, "samples": samples["samples"], "error": samples["error"],
-        "timer": samples["timer"],
+        "timer": samples["timer"], "grid": samples["grid"],
+        "mode": std::env::var("OPENROWS_SPIKE").unwrap_or_default(),
         "verdict": if status == 0 { "collected" } else { "invalid" },
         "stage_summary_ms": stage_summary,
-        "method": "Page Performance API: invoke to bytes, post bytes to typed reply (decodeMs), request to typed columns (totalMs); workerDecodeMs uses worker clock and is informational; timer is min positive delta of 100000 consecutive page reads; worker cold start excluded; no cache hits",
+        "method": if grid { "WKWebView rAF deltas and Performance API around complete canvas painters; four scenarios per option; virtual 100-column variant; no discarded frame samples" } else { "Page Performance API: invoke to bytes, post bytes to typed reply (decodeMs), request to typed columns (totalMs); workerDecodeMs uses worker clock and is informational; timer is min positive delta of 100000 consecutive page reads; worker cold start excluded; no cache hits" },
     });
     let bytes =
         serde_json::to_vec(&payload).map_err(|error| SpikeError::Failed(error.to_string()))?;

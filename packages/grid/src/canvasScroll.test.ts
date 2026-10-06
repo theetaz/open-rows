@@ -1,0 +1,55 @@
+// SPDX-License-Identifier: Apache-2.0
+import { afterEach, expect, it, vi } from 'vitest';
+import { mountGrid } from './canvas';
+import { props } from './testFixture';
+function mockCanvas(): void {
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
+    function (this: HTMLCanvasElement) {
+      return new Proxy(
+        { canvas: this },
+        {
+          get: (target, key) =>
+            key === 'canvas' ? target.canvas : () => ({ width: 1 }),
+        },
+      ) as unknown as CanvasRenderingContext2D;
+    },
+  );
+  vi.stubGlobal(
+    'requestAnimationFrame',
+    vi.fn(() => 1),
+  );
+  vi.stubGlobal('cancelAnimationFrame', vi.fn());
+}
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
+it('writes native offsets once and waits for scroll delivery before reading, without resizing on scroll', () => {
+  mockCanvas();
+  const top = vi
+    .spyOn(HTMLElement.prototype, 'scrollTop', 'get')
+    .mockReturnValue(0);
+  const left = vi
+    .spyOn(HTMLElement.prototype, 'scrollLeft', 'get')
+    .mockReturnValue(0);
+  const host = document.createElement('div');
+  const handle = mountGrid(host, props());
+  const scroller = host.firstElementChild as HTMLElement;
+  const write = vi.fn();
+  scroller.scrollTo = write;
+  top.mockClear();
+  left.mockClear();
+  const resizes = handle.metrics.canvasResizeEvents;
+  handle.scrollTo(240, 13_000_000);
+  expect(write).toHaveBeenCalledExactlyOnceWith(240, 13_000_000);
+  expect(top).not.toHaveBeenCalled();
+  expect(left).not.toHaveBeenCalled();
+  top.mockReturnValue(13_000_000);
+  left.mockReturnValue(240);
+  scroller.dispatchEvent(new Event('scroll'));
+  expect(top).toHaveBeenCalledTimes(1);
+  expect(left).toHaveBeenCalledTimes(1);
+  expect(handle.viewport).toMatchObject({ x: 240, y: 13_000_000 });
+  expect(handle.metrics.canvasResizeEvents).toBe(resizes);
+  handle.destroy();
+});

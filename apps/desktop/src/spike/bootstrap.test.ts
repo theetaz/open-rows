@@ -9,6 +9,7 @@ vi.mock('./timer', () => ({
 const mocks = vi.hoisted(() => ({
   start: vi.fn(),
   run: vi.fn(),
+  grid: vi.fn(),
   finish: vi.fn(),
   progress: vi.fn(),
 }));
@@ -18,6 +19,7 @@ vi.mock('@openrows/ipc', () => ({
   spikeProgress: mocks.progress,
 }));
 vi.mock('./ipc', () => ({ runIpcSpike: mocks.run }));
+vi.mock('./grid', () => ({ runGridSpike: mocks.grid }));
 beforeEach(() => {
   vi.resetAllMocks();
   vi.useFakeTimers();
@@ -33,9 +35,9 @@ it('does not start workers outside spike mode', async () => {
 });
 
 it('waits for the show-window handshake before starting the spike', async () => {
-  let shown: ((enabled: boolean) => void) | undefined;
+  let shown: ((enabled: 'ipc') => void) | undefined;
   mocks.start.mockReturnValue(
-    new Promise<boolean>((resolve) => {
+    new Promise<'ipc'>((resolve) => {
       shown = resolve;
     }),
   );
@@ -45,7 +47,7 @@ it('waits for the show-window handshake before starting the spike', async () => 
   const running = startIpcSpike();
   await Promise.resolve();
   expect(mocks.run).not.toHaveBeenCalled();
-  shown?.(true);
+  shown?.('ipc');
   await running;
   expect(mocks.run).toHaveBeenCalledOnce();
   expect(vi.getTimerCount()).toBe(0);
@@ -61,4 +63,15 @@ it('writes an error report if the startup handshake never returns', async () => 
     samples: [],
     error: 'Error: Spike startup handshake timed out after 10000 ms',
   });
+});
+
+it('routes grid mode to its lazy module after the native handshake', async () => {
+  mocks.start.mockResolvedValue('grid');
+  mocks.grid.mockImplementation(
+    async (session: { finish: () => Promise<void> }) => session.finish(),
+  );
+  await startIpcSpike();
+  expect(mocks.grid).toHaveBeenCalledOnce();
+  expect(mocks.run).not.toHaveBeenCalled();
+  expect(vi.getTimerCount()).toBe(0);
 });

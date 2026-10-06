@@ -1,0 +1,21 @@
+{
+  "name": "@openrows/grid",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./canvas": "./src/canvas.ts",
+    "./display-tile": "./src/displayTile.ts",
+    "./tiles": "./src/tiles.ts",
+    "./tile-client": "./src/tileClient.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@openrows/ipc": "workspace:*",
+    "@openrows/ui": "workspace:*"
+  }
+}

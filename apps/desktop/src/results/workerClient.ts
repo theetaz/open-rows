@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { DecodedTile, WorkerReply } from './types';
+import type { DisplayTile } from '@openrows/grid/display-tile';
+import type { WindowRequest } from '@openrows/ipc';
 import InlineArrowWorker from './arrow.worker?worker&inline';
 
 interface Pending {
-  resolve: (tile: ReceivedTile) => void;
+  resolve: (tile: ReceivedTile | DisplayTile) => void;
   reject: (error: Error) => void;
   postedAt: number;
 }
@@ -50,6 +52,23 @@ export class ArrowWorker {
 
   /** Decode with ownership transferred to the worker. */
   async decode(bytes: ArrayBuffer): Promise<ReceivedTile> {
+    const result = await this.request(bytes);
+    if (!('tile' in result)) throw new Error('Unexpected display reply');
+    return result;
+  }
+  /** Format grid cells in the worker; S1's binary decode protocol stays unchanged. */
+  async display(
+    bytes: ArrayBuffer,
+    display: WindowRequest,
+  ): Promise<DisplayTile> {
+    const result = await this.request(bytes, display);
+    if (!('cells' in result)) throw new Error('Unexpected binary reply');
+    return result;
+  }
+  private async request(
+    bytes: ArrayBuffer,
+    display?: WindowRequest,
+  ): Promise<ReceivedTile | DisplayTile> {
     await this.ready;
     if (this.failure) throw this.failure;
     const id = ++this.sequence;
@@ -58,7 +77,10 @@ export class ArrowWorker {
       this.pending.set(id, pending);
       try {
         pending.postedAt = performance.now();
-        this.worker.postMessage({ id, bytes }, [bytes]);
+        this.worker.postMessage(
+          display ? { id, bytes, display } : { id, bytes },
+          [bytes],
+        );
       } catch (error) {
         this.pending.delete(id);
         reject(error instanceof Error ? error : new Error(String(error)));
@@ -85,6 +107,7 @@ export class ArrowWorker {
         ...reply.result,
         transferMs: receivedAt - pending.postedAt,
       });
+    else if (reply.kind === 'display') pending.resolve(reply.result);
     else pending.reject(new Error(reply.message));
   }
 }
