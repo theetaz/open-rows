@@ -1,4 +1,4 @@
-# Contributing to OpenDB Client
+# Contributing to OpenRows
 
 Thanks for helping build a free, fast, open database and API client. This guide covers how we work with git, how to write commits and pull requests, and where to find the design documentation.
 
@@ -75,7 +75,7 @@ We use [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.
 
 ### 3.3 Scopes
 
-Use the crate, package or area you touched, without the `odb-` / `@odb/` prefix:
+Use the crate, package or area you touched, without the `openrows-` / `@openrows/` prefix:
 
 | Area | Scopes |
 | --- | --- |
@@ -109,7 +109,7 @@ instead of being rounded through f64.
 feat(ipc)!: return result windows as Arrow IPC bytes
 
 BREAKING CHANGE: result_window now returns an ArrayBuffer instead of
-JSON rows. Callers must decode with @odb/arrow-worker.
+JSON rows. Callers must decode with @openrows/arrow-worker.
 ```
 
 ```text

@@ -13,7 +13,7 @@ Tauri 2 offers several mechanisms. We use each for what it is best at:
 | **Channels** (`tauri::ipc::Channel<T>`) | Ordered stream to one caller | Query progress events, WebSocket/SSE messages, export progress, log tail |
 | **Global events** (`emit`) | Broadcast | Session state changes, update available, settings changed in another window |
 
-All command signatures are declared in Rust and exported to TypeScript with `tauri-specta`, producing `@odb/ipc`:
+All command signatures are declared in Rust and exported to TypeScript with `tauri-specta`, producing `@openrows/ipc`:
 
 ```ts
 // generated — do not edit

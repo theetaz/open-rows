@@ -11,7 +11,7 @@ Users want API collections versioned in git alongside code, reviewable in PRs, s
 
 - A collection is a **folder**; each request is **one YAML file** (`*.req.yaml`, `*.ws.yaml`, `*.grpc.yaml`), folders may have `_folder.yaml`, environments live in `environments/*.yaml`.
 - Secrets are never in files: environment files list secret names; values live in the OS keychain (or env vars in CI).
-- Stable key ordering, defaults omitted, unknown keys preserved, versioned with `odb: <n>`; JSON Schemas published.
+- Stable key ordering, defaults omitted, unknown keys preserved, versioned with `openrows: <n>`; JSON Schemas published.
 
 Full spec: [11-api-client.md §3](../11-api-client.md#3-collection-file-format).
 

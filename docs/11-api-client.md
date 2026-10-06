@@ -35,14 +35,14 @@ flowchart TB
     subgraph core["Rust core"]
         ws["Workspace FS<br/>(collection files, watcher)"]
         res["Variable resolver<br/>(env → collection → folder → request → runtime)"]
-        scr["Script sandbox<br/>odb-script (QuickJS)"]
-        eng["odb-http engine"]
+        scr["Script sandbox<br/>openrows-script (QuickJS)"]
+        eng["openrows-http engine"]
         h1["hyper client<br/>HTTP/1.1 + HTTP/2"]
         wsk["tokio-tungstenite"]
         grpc["tonic + prost-reflect"]
         auth["Auth providers<br/>OAuth2, SigV4, Digest"]
         jar["Cookie jar"]
-        net["odb-net<br/>(TLS, proxy, DNS, timing)"]
+        net["openrows-net<br/>(TLS, proxy, DNS, timing)"]
         store["Response store<br/>(memory → temp file)"]
         hist["History (local store)"]
     end
@@ -112,7 +112,7 @@ We use **YAML** for structure with body content stored inline as block scalars (
 
 ```text
 my-api/                          # a collection = a folder
-  odb-collection.yaml            # collection metadata, defaults, scripts
+  openrows-collection.yaml            # collection metadata, defaults, scripts
   environments/
     local.yaml
     staging.yaml
@@ -136,7 +136,7 @@ my-api/                          # a collection = a folder
 
 ```yaml
 # users/create-user.req.yaml
-odb: 1                      # format version
+openrows: 1                      # format version
 name: Create user
 seq: 3                      # order within folder
 method: POST
@@ -157,12 +157,12 @@ body:
     }
 scripts:
   preRequest: |
-    odb.variables.set("userEmail", `ada+${Date.now()}@example.com`);
+    ors.variables.set("userEmail", `ada+${Date.now()}@example.com`);
   postResponse: |
-    odb.variables.set("userId", odb.response.json().id);
+    ors.variables.set("userId", ors.response.json().id);
 tests: |
-  test("created", () => expect(odb.response.status).toBe(201));
-  test("has id", () => expect(odb.response.json().id).toBeTruthy());
+  test("created", () => expect(ors.response.status).toBe(201));
+  test("has id", () => expect(ors.response.json().id).toBeTruthy());
 docs: |
   Creates a user. Requires `users:write` scope.
 ```
@@ -171,7 +171,7 @@ docs: |
 
 ```yaml
 # environments/staging.yaml
-odb: 1
+openrows: 1
 name: Staging
 color: amber
 variables:
@@ -182,14 +182,14 @@ secrets:                    # names only; values live in the OS keychain
   - oauthClientSecret
 ```
 
-Secret values are stored in the keychain under `odb/api/<collection-id>/<env>/<name>`. A teammate cloning the repo sees which secrets are needed and is prompted to fill them in. Optional `.env` file values override variables locally (and is added to `.gitignore` on collection creation).
+Secret values are stored in the keychain under `openrows/api/<collection-id>/<env>/<name>`. A teammate cloning the repo sees which secrets are needed and is prompted to fill them in. Optional `.env` file values override variables locally (and is added to `.gitignore` on collection creation).
 
 ### 3.3 Format rules
 
 - Serializer writes keys in a fixed order and omits defaults so files stay minimal.
 - Unknown keys are preserved on round-trip (forward compatibility).
 - A JSON Schema for each file type ships with the app and is published so editors can validate.
-- Format version `odb: 1`; migrations are explicit and never silent across major versions.
+- Format version `openrows: 1`; migrations are explicit and never silent across major versions.
 
 ## 4. Variables and scopes
 
@@ -204,7 +204,7 @@ The URL bar and editors highlight variables: resolved (with hover showing the va
 - Engine: QuickJS via `rquickjs`, one fresh context per script run (or per runner iteration), with:
   - memory limit (default 64 MB), execution time limit (default 5 s, configurable), interrupt handler for cancellation;
   - **no** filesystem, process, or raw network access;
-  - a curated `odb` API: `odb.request` (mutable before send), `odb.response`, `odb.variables`, `odb.environment`, `odb.cookies`, `odb.sendRequest()` (goes through the same engine and respects the collection's proxy/TLS settings), `odb.test()`, `expect()` (Jest-like matchers), `console.log` (to a script console panel);
+  - a curated `ors` API: `ors.request` (mutable before send), `ors.response`, `ors.variables`, `ors.environment`, `ors.cookies`, `ors.sendRequest()` (goes through the same engine and respects the collection's proxy/TLS settings), `ors.test()`, `expect()` (Jest-like matchers), `console.log` (to a script console panel);
   - bundled pure-JS helpers: crypto hashes/HMAC (implemented in Rust, exposed as functions), base64, URL utilities, a JSON schema validator, date utilities.
 - Postman-compatible shim (`pm.*`) maps the common subset (`pm.environment`, `pm.variables`, `pm.response`, `pm.test`, `pm.expect` via chai-style adapter) so imported collections mostly run unchanged; unsupported calls produce clear errors listing what to adjust.
 - Imported collections with scripts open in **restricted mode** until the user reviews and trusts the collection (scripts can still make network requests to arbitrary hosts via `sendRequest`).
@@ -242,15 +242,15 @@ flowchart LR
     R --> O4["HTML report"]
 ```
 
-CLI (`odb`), built from the same crates:
+CLI (`openrows`), built from the same crates:
 
 ```bash
-odb api run ./my-api --env staging --folder users --reporter junit --out results.xml
-odb api run ./my-api --env ci --data users.csv --bail
-odb api import postman ./export.postman_collection.json --into ./my-api
+openrows api run ./my-api --env staging --folder users --reporter junit --out results.xml
+openrows api run ./my-api --env ci --data users.csv --bail
+openrows api import postman ./export.postman_collection.json --into ./my-api
 ```
 
-- Secrets in CI come from environment variables (`ODB_SECRET_<NAME>`) or a `--secrets-file` — never from a keychain on headless systems.
+- Secrets in CI come from environment variables (`OPENROWS_SECRET_<NAME>`) or a `--secrets-file` — never from a keychain on headless systems.
 - Exit code non-zero on any failed test or request error.
 
 ## 10. Importers
@@ -270,6 +270,6 @@ Every importer produces a report: imported, adjusted, unsupported items.
 
 Because both live in one app:
 
-- Request scripts can query a configured database connection (read-only by default) via `odb.db.query(connectionName, sql, params)` — opt-in per collection, disabled in CLI unless explicitly allowed. Useful for fetching test fixtures or verifying side effects.
+- Request scripts can query a configured database connection (read-only by default) via `ors.db.query(connectionName, sql, params)` — opt-in per collection, disabled in CLI unless explicitly allowed. Useful for fetching test fixtures or verifying side effects.
 - "Send as request" from a grid selection: turn rows into a JSON body.
 - Response JSON arrays can be opened in the data grid for sorting/filtering/exporting.

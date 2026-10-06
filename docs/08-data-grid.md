@@ -16,7 +16,7 @@ DOM-based virtualised grids cost one or more DOM nodes per visible cell. With 60
 
 ```mermaid
 flowchart TB
-    subgraph grid["@odb/grid"]
+    subgraph grid["@openrows/grid"]
         model["Grid model<br/>rows, columns, sizes,<br/>selection, edit state"]
         layout["Layout engine<br/>prefix sums for col widths,<br/>fixed row height"]
         tiles["Tile cache<br/>(decoded display strings)"]
@@ -52,7 +52,7 @@ Splitting layers keeps selection changes (frequent) from repainting all text (ex
 4. Text drawing uses cached glyph-width measurements per font to truncate with ellipsis without calling `measureText` per cell per frame.
 5. Device pixel ratio handled by scaling the backing store; integer-snapped coordinates to keep text crisp.
 
-Implementation candidates (decided by the M0 spike, ADR-0004): **build our own** painter on Canvas 2D (≈ 3–5 k lines, full control), or **adopt Glide Data Grid** (MIT, canvas-based, proven at millions of rows) behind our `@odb/grid` adapter interface. Either way, the rest of the app only sees the adapter API below.
+Implementation candidates (decided by the M0 spike, ADR-0004): **build our own** painter on Canvas 2D (≈ 3–5 k lines, full control), or **adopt Glide Data Grid** (MIT, canvas-based, proven at millions of rows) behind our `@openrows/grid` adapter interface. Either way, the rest of the app only sees the adapter API below.
 
 ## 3. Grid API (adapter boundary)
 

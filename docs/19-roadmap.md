@@ -73,8 +73,8 @@ Also: repo skeleton, CI, lint/format, `tauri-specta` bindings pipeline, design t
 
 ## M4.5 — Native AI and MCP
 
-- `odb-ai`: API-key providers (Anthropic, OpenAI, Gemini, OpenAI-compatible), local models, CLI bridges (Claude Code, Codex CLI, Cursor CLI, Gemini CLI).
-- `odb-mcp`: MCP server with read-only tools + `propose_sql`; MCP client for user servers; optional localhost endpoint.
+- `openrows-ai`: API-key providers (Anthropic, OpenAI, Gemini, OpenAI-compatible), local models, CLI bridges (Claude Code, Codex CLI, Cursor CLI, Gemini CLI).
+- `openrows-mcp`: MCP server with read-only tools + `propose_sql`; MCP client for user servers; optional localhost endpoint.
 - Assistant panel, ⌘I inline edit, fix-error, plan analysis.
 - Data-sharing policy, redaction, context preview, audit log.
 
@@ -83,7 +83,7 @@ Also: repo skeleton, CI, lint/format, `tauri-specta` bindings pipeline, design t
 ## M5 — Long tail
 
 - Drivers: Oracle (driver host, user-installed Instant Client), Cassandra/ScyllaDB, DynamoDB, Elasticsearch/OpenSearch (Tier 3).
-- API: WebSocket, SSE, gRPC (reflection + `.proto`), collection runner, `odb` CLI with JUnit/JSON/HTML reports.
+- API: WebSocket, SSE, gRPC (reflection + `.proto`), collection runner, `openrows` CLI with JUnit/JSON/HTML reports.
 - DB ↔ API integration features.
 
 ## M6 — Windows and Linux beta

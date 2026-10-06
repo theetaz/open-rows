@@ -9,7 +9,7 @@ We need editors for SQL dialects, MQL, Redis commands, JSON, GraphQL, JavaScript
 
 ## Decision
 
-Use **CodeMirror 6** for every code-editing surface, wrapped in `@odb/editor`.
+Use **CodeMirror 6** for every code-editing surface, wrapped in `@openrows/editor`.
 
 ## Consequences
 

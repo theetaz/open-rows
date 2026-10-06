@@ -24,9 +24,9 @@ AI is a first-class, **native** part of the app — not a cloud add-on. Three pr
 
 ```mermaid
 flowchart LR
-    subgraph app["OpenDB Client (odb-ai)"]
+    subgraph app["OpenRows (openrows-ai)"]
         orch["Assistant orchestrator<br/>(context builder, policy, tool router)"]
-        mcpS["Built-in MCP server<br/>odb tools"]
+        mcpS["Built-in MCP server<br/>openrows tools"]
         mcpC["MCP client<br/>user's servers"]
     end
     subgraph api["API providers (BYOK)"]
@@ -56,7 +56,7 @@ flowchart LR
 
 - Native adapters: Anthropic Messages API, OpenAI (Responses/Chat Completions), Google Gemini, AWS Bedrock, Google Vertex AI, Azure OpenAI.
 - A generic **OpenAI-compatible** adapter covers Together AI, Groq, Mistral, Fireworks, DeepSeek, OpenRouter and self-hosted gateways (base URL + key + model id).
-- Keys stored in the OS keychain (`odb/ai/<provider-id>`); never in settings files, never logged.
+- Keys stored in the OS keychain (`openrows/ai/<provider-id>`); never in settings files, never logged.
 - Model list fetched from the provider when it offers a models endpoint; otherwise free-text model id.
 - Streaming responses, tool calling, prompt caching where the provider supports it (schema context is a large, stable prefix → big cost/latency win).
 - Per-provider usage meter (tokens in/out, estimated cost from user-editable price table) shown in Settings.
@@ -72,12 +72,12 @@ Many users already pay for an AI coding tool. Instead of asking for a second API
 
 | CLI | Detection | Invocation model |
 | --- | --- | --- |
-| Claude Code | `claude` on PATH, version check | Headless print mode with streaming JSON output; our MCP server passed via its MCP config flag; tool allowlist limited to our `odb` tools. |
+| Claude Code | `claude` on PATH, version check | Headless print mode with streaming JSON output; our MCP server passed via its MCP config flag; tool allowlist limited to our `openrows` tools. |
 | Codex CLI | `codex` on PATH | Non-interactive exec mode with JSON event output; MCP server registered for the run. |
 | Cursor CLI | `cursor-agent` on PATH | Print/headless mode with JSON output; MCP config for the run. |
 | Gemini CLI | `gemini` on PATH | Non-interactive prompt mode; MCP server configured for the run. |
 
-Exact flags differ per CLI and change across versions, so each bridge is a small adapter (`odb-ai/bridges/<cli>.rs`) with:
+Exact flags differ per CLI and change across versions, so each bridge is a small adapter (`openrows-ai/bridges/<cli>.rs`) with:
 
 - **Detection & health:** path, version, "logged in?" probe; shown in Settings → AI with a status light.
 - **Sandboxing:** the CLI runs in an empty temporary working directory, with its own file-editing and shell tools **disabled or denied** where the CLI supports it, and only our MCP tools allowed. The CLI therefore cannot read the user's files or run commands — it can only use the database tools we expose, under the same policy as any other provider.
@@ -87,7 +87,7 @@ Exact flags differ per CLI and change across versions, so each bridge is a small
 
 ## 3. MCP support
 
-### 3.1 App as MCP server (`odb-mcp`)
+### 3.1 App as MCP server (`openrows-mcp`)
 
 Exposes a curated tool set over MCP (stdio for spawned CLIs; optional local Streamable HTTP endpoint bound to `127.0.0.1` with a per-session token for external agents such as Claude Desktop or Cursor IDE).
 
@@ -152,7 +152,7 @@ sequenceDiagram
 
 - **Schema digest**: compact DDL-like text of relevant tables (columns, types, PK/FK, indexes, enum values, row estimates), ranked by relevance; stable ordering to maximise prompt caching.
 - **Dialect guardrails** in the system prompt: target engine and version, quoting rules, "never produce DDL/DML unless asked", "prefer index-friendly predicates", "always LIMIT exploratory queries".
-- Proposed SQL is parsed by `odb-sql`; classification (read/write/DDL) is shown on the proposal card and decides which run button appears (writes → "Open in tab" only).
+- Proposed SQL is parsed by `openrows-sql`; classification (read/write/DDL) is shown on the proposal card and decides which run button appears (writes → "Open in tab" only).
 
 ## 6. UX surfaces
 
@@ -166,11 +166,11 @@ sequenceDiagram
 
 | Crate | Responsibility |
 | --- | --- |
-| `odb-ai` | Orchestrator, provider adapters, CLI bridges, context builder, event model, usage accounting |
-| `odb-mcp` | MCP server (tools above) and MCP client (connect to user servers), transports: stdio, Streamable HTTP |
-| `odb-sql` | Classification of proposed SQL (reused) |
+| `openrows-ai` | Orchestrator, provider adapters, CLI bridges, context builder, event model, usage accounting |
+| `openrows-mcp` | MCP server (tools above) and MCP client (connect to user servers), transports: stdio, Streamable HTTP |
+| `openrows-sql` | Classification of proposed SQL (reused) |
 
-Provider HTTP traffic uses `odb-net` (proxy, custom CA, timeouts) so corporate proxies work the same for AI and databases.
+Provider HTTP traffic uses `openrows-net` (proxy, custom CA, timeouts) so corporate proxies work the same for AI and databases.
 
 ## 8. Testing
 

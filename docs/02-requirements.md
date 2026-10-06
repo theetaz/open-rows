@@ -115,7 +115,7 @@ Detailed in [11-api-client.md](11-api-client.md).
 | FR-API-07 | WebSocket and SSE with message log, send composer, filters. | P1 |
 | FR-API-08 | gRPC unary and streaming via server reflection or imported `.proto`. | P1 |
 | FR-API-09 | Importers: Postman v2.1, Insomnia v4, Bruno, OpenAPI 3.0/3.1, HAR, cURL. | P1 |
-| FR-API-10 | Collection runner (in-app and `odb` CLI) with JUnit/JSON reports. | P1 |
+| FR-API-10 | Collection runner (in-app and `openrows` CLI) with JUnit/JSON reports. | P1 |
 | FR-API-11 | Code generation: cURL, fetch, Python requests, Go, and more. | P1 |
 
 ### 1.10 AI assistant (`FR-AI`)
@@ -222,4 +222,4 @@ Targets are p95 on the reference hardware unless stated. Each has a benchmark in
 | --- | --- |
 | NFR-MAINT-01 | Adding a new SQL driver requires implementing the driver traits and passing the conformance suite; no UI changes for baseline features. |
 | NFR-MAINT-02 | Typed IPC: TypeScript bindings generated from Rust; no hand-written duplicates. |
-| NFR-MAINT-03 | Core logic test coverage ≥ 80 % lines for `odb-core`, `odb-sql`, drivers' value codecs. |
+| NFR-MAINT-03 | Core logic test coverage ≥ 80 % lines for `openrows-core`, `openrows-sql`, drivers' value codecs. |

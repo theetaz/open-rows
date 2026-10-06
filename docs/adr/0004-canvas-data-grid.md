@@ -9,7 +9,7 @@ The grid must scroll at display refresh rate with 1 M+ rows and 100+ columns, re
 
 ## Decision
 
-Render the cell area with **Canvas 2D**, keep DOM for overlays (editor, menus, tooltips) and a shadow ARIA grid for accessibility. Hide the implementation behind the `@odb/grid` adapter API so the rest of the app is independent of the choice below.
+Render the cell area with **Canvas 2D**, keep DOM for overlays (editor, menus, tooltips) and a shadow ARIA grid for accessibility. Hide the implementation behind the `@openrows/grid` adapter API so the rest of the app is independent of the choice below.
 
 - **Option A — Own renderer:** custom painter (layers for header/body/selection/pinned), our tile cache, our input controller.
 - **Option B — Glide Data Grid (MIT):** proven canvas grid, adapted through our adapter; contribute fixes upstream or maintain a fork if needed.

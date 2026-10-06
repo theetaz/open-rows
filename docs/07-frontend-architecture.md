@@ -13,8 +13,8 @@
 | Layout panes | `react-resizable-panels` |
 | UI state | Zustand stores (sliced per feature) |
 | Core-backed data | TanStack Query over generated IPC bindings |
-| Editor | CodeMirror 6 (`@odb/editor`) |
-| Grid | Canvas grid (`@odb/grid`), see [08-data-grid.md](08-data-grid.md) |
+| Editor | CodeMirror 6 (`@openrows/editor`) |
+| Grid | Canvas grid (`@openrows/grid`), see [08-data-grid.md](08-data-grid.md) |
 | Icons | Own SVG icon set (Lucide-style geometry, MIT-compatible sources only) |
 | Tests | Vitest, Testing Library, Playwright |
 

@@ -9,7 +9,7 @@ API collections need pre-request/post-response scripts and tests in JavaScript (
 
 ## Decision
 
-Run scripts in **QuickJS** embedded via `rquickjs` inside the Rust core, one fresh context per run, with memory limit, interrupt-based time limit, and only a curated `odb` (and `pm` compatibility) API exposed. Crypto and other helpers are implemented in Rust and exposed as functions.
+Run scripts in **QuickJS** embedded via `rquickjs` inside the Rust core, one fresh context per run, with memory limit, interrupt-based time limit, and only a curated `ors` (and `pm` compatibility) API exposed. Crypto and other helpers are implemented in Rust and exposed as functions.
 
 ## Consequences
 

@@ -7,8 +7,8 @@ flowchart LR
     subgraph appdata["App data dir (per user, per machine)"]
         settings["settings.json<br/>keybindings.json"]
         profiles["connections/*.json<br/>(no secrets)"]
-        db[("odb.sqlite<br/>history, drafts, change sets,<br/>schema snapshots, workspace state")]
-        backups["backups/odb.sqlite.N"]
+        db[("openrows.sqlite<br/>history, drafts, change sets,<br/>schema snapshots, workspace state")]
+        backups["backups/openrows.sqlite.N"]
     end
     subgraph cache["Cache dir"]
         spill["spill/<session>/*.arrow"]
@@ -16,7 +16,7 @@ flowchart LR
         thumbs["previews/"]
     end
     subgraph ws["Workspace folder (user chosen, git-friendly)"]
-        wsmeta[".odb/workspace.yaml"]
+        wsmeta[".openrows/workspace.yaml"]
         queries["queries/**/*.sql"]
         apis["apis/<collection>/**"]
         shared["connections/*.yaml<br/>(shared, secret-free)"]
@@ -28,11 +28,11 @@ flowchart LR
 
 | Platform | App data | Cache | Logs |
 | --- | --- | --- | --- |
-| macOS | `~/Library/Application Support/dev.opendb.client/` | `~/Library/Caches/dev.opendb.client/` | `~/Library/Logs/OpenDB Client/` |
-| Windows | `%APPDATA%\OpenDB\Client\` | `%LOCALAPPDATA%\OpenDB\Client\Cache\` | `%LOCALAPPDATA%\OpenDB\Client\Logs\` |
-| Linux | `$XDG_DATA_HOME/opendb-client/` | `$XDG_CACHE_HOME/opendb-client/` | `$XDG_STATE_HOME/opendb-client/logs/` |
+| macOS | `~/Library/Application Support/com.prabhavalabs.openrows/` | `~/Library/Caches/com.prabhavalabs.openrows/` | `~/Library/Logs/OpenRows/` |
+| Windows | `%APPDATA%\OpenRows\Client\` | `%LOCALAPPDATA%\OpenRows\Client\Cache\` | `%LOCALAPPDATA%\OpenRows\Client\Logs\` |
+| Linux | `$XDG_DATA_HOME/openrows/` | `$XDG_CACHE_HOME/openrows/` | `$XDG_STATE_HOME/openrows/logs/` |
 
-Paths come from Tauri's path resolver / the `directories` crate; the bundle identifier (`dev.opendb.client`) is a placeholder until the project is named.
+Paths come from Tauri's path resolver / the `directories` crate; the bundle identifier is `com.prabhavalabs.openrows`.
 
 ## 2. Local store (SQLite)
 
@@ -122,7 +122,7 @@ Two layers, merged at runtime:
 
 ```json
 {
-  "odb": 1,
+  "openrows": 1,
   "id": "4f0b5b4e-…",
   "name": "Orders – staging",
   "driver": "postgres",
@@ -140,7 +140,7 @@ Two layers, merged at runtime:
 ## 4. Settings
 
 - `settings.json`: user-level preferences (theme, fonts, grid density, editor options, history retention, telemetry opt-in, update channel).
-- Workspace `.odb/workspace.yaml` may override a safe subset (formatting style, default page size) so teams share conventions.
+- Workspace `.openrows/workspace.yaml` may override a safe subset (formatting style, default page size) so teams share conventions.
 - JSON Schema provided; settings UI and file stay in sync (file watcher).
 
 ## 5. Workspaces
@@ -149,21 +149,21 @@ A workspace is a folder the user opens (or the default personal workspace in app
 
 ```text
 my-team-workspace/
-  .odb/
+  .openrows/
     workspace.yaml        # name, defaults, trusted flag is stored locally, NOT here
   connections/            # shared, secret-free connection definitions
   queries/                # .sql files, any folder structure
   apis/                   # API collections (see 11-api-client.md)
   snippets/
-  .gitignore              # generated: .env, .odb/local/
+  .gitignore              # generated: .env, .openrows/local/
 ```
 
-"Trusted" state (allowing scripts, `odb.db.query`) is stored in the local store keyed by workspace path + git remote, never in the workspace itself — otherwise a malicious repo could mark itself trusted.
+"Trusted" state (allowing scripts, `ors.db.query`) is stored in the local store keyed by workspace path + git remote, never in the workspace itself — otherwise a malicious repo could mark itself trusted.
 
 ## 6. Migrations
 
-- Local store: numbered SQL migrations embedded in the binary (`odb-store/migrations/0001_init.sql` …), applied at startup inside a transaction after a file-level backup.
-- Files (profiles, settings, collections): `odb: <version>` field; loaders upgrade in memory and write back only on the next user-initiated save, keeping a `.bak` the first time a file is upgraded across a major version.
+- Local store: numbered SQL migrations embedded in the binary (`openrows-store/migrations/0001_init.sql` …), applied at startup inside a transaction after a file-level backup.
+- Files (profiles, settings, collections): `openrows: <version>` field; loaders upgrade in memory and write back only on the next user-initiated save, keeping a `.bak` the first time a file is upgraded across a major version.
 - Downgrades: a newer local store version opened by an older app → read-only safe mode with a clear message, never corruption.
 
 ## 7. Backup and portability

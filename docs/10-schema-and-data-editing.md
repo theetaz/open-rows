@@ -4,7 +4,7 @@
 
 ```mermaid
 flowchart TB
-    UI["Schema tree / autocomplete / search"] --> SC["Schema cache (odb-schema)"]
+    UI["Schema tree / autocomplete / search"] --> SC["Schema cache (openrows-schema)"]
     SC -->|hit + fresh| UI
     SC -->|miss or stale| INT["Driver Introspector<br/>(metadata session)"]
     INT --> SC

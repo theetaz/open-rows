@@ -2,7 +2,7 @@
 
 ## 1. Editor foundation
 
-CodeMirror 6 (`@odb/editor`) configured with:
+CodeMirror 6 (`@openrows/editor`) configured with:
 
 - Language packages: `@codemirror/lang-sql` with per-dialect configuration (PostgreSQL, MySQL, SQLite, MSSQL, PL/SQL, ClickHouse, DuckDB, CQL), custom Lezer grammars for MQL (MongoDB shell subset) and Redis commands, JSON for Elasticsearch DSL.
 - Extensions: search/replace, multiple cursors, bracket matching, code folding, rectangular selection, linting gutter, optional Vim mode (`@replit/codemirror-vim`), optional Emacs keys.
@@ -64,7 +64,7 @@ The schema mirror for autocomplete is the same `search_index` data used for fuzz
 
 ## 4. Formatting
 
-- SQL formatting done in Rust (`odb-sql::format`) so the CLI and app agree; options: keyword case, indent width, comma position, line width, dialect.
+- SQL formatting done in Rust (`openrows-sql::format`) so the CLI and app agree; options: keyword case, indent width, comma position, line width, dialect.
 - Candidate implementation: adapt `sqlformat` crate (MIT/Apache) and extend for dialect quirks, or a custom pretty-printer over the tokenizer. Formatting must be **lossless** for comments and must never change semantics — tested by re-tokenizing and comparing token streams ignoring whitespace.
 
 ## 5. Parameters
@@ -90,7 +90,7 @@ flowchart LR
 ## 7. Files and snippets
 
 - Query tabs can be **scratch** (stored in app data) or **file-backed** (`.sql` in a workspace folder). File-backed tabs save with ⌘S and detect external changes (file watcher) with a reload prompt.
-- A tab remembers its connection via a header comment the user can opt into (`-- odb: connection=analytics-prod`) or via workspace metadata, so shared `.sql` files open on the right connection for each teammate's local profile name.
+- A tab remembers its connection via a header comment the user can opt into (`-- openrows: connection=analytics-prod`) or via workspace metadata, so shared `.sql` files open on the right connection for each teammate's local profile name.
 - Snippets: user-defined templates with tab stops, scoped per dialect, stored in `snippets/*.json` in the workspace or user settings.
 
 ## 8. Native query languages

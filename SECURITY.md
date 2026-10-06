@@ -1,6 +1,6 @@
 # Security Policy
 
-OpenDB Client handles database credentials and production data, so we treat security reports as a top priority.
+OpenRows handles database credentials and production data, so we treat security reports as a top priority.
 
 ## Reporting a vulnerability
 
@@ -21,7 +21,7 @@ Reporters are credited in the release notes unless they ask not to be.
 
 ## Scope
 
-In scope: the desktop app, the `odb` CLI, the driver host, the MCP server, update and signing infrastructure, and the collection/workspace file parsers.
+In scope: the desktop app, the `openrows` CLI, the driver host, the MCP server, update and signing infrastructure, and the collection/workspace file parsers.
 
 Out of scope: vulnerabilities in databases, APIs or third-party tools the app connects to (report those upstream), and issues requiring a compromised local user account.
 

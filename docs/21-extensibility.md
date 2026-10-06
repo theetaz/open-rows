@@ -25,7 +25,7 @@ Plugins are a post-1.0 feature, but the architecture keeps the door open from da
 The WIT interface mirrors the Rust `Driver`/`Connection` traits but in a message-oriented form:
 
 ```wit
-package odb:driver@0.1.0;
+package openrows:driver@0.1.0;
 
 interface driver {
   record connect-config { params: list<tuple<string, string>>, secrets: list<tuple<string, string>> }
@@ -61,7 +61,7 @@ Host imports provide: TCP/TLS sockets restricted to the configured endpoint (the
 
 ## 5. What we do now to stay plugin-ready
 
-- Drivers depend only on `odb-driver-api` + `odb-types` + `odb-net` (no reaching into core).
+- Drivers depend only on `openrows-driver-api` + `openrows-types` + `openrows-net` (no reaching into core).
 - Driver-host protocol is already message-oriented and Arrow-based ([05-database-drivers.md](05-database-drivers.md#9-out-of-process-driver-host)).
 - Exporters implemented against an `Exporter` trait consuming `RecordBatch` streams.
 - Themes are token files from the start ([07-frontend-architecture.md](07-frontend-architecture.md#8-theming)).

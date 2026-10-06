@@ -9,10 +9,10 @@ We need a cross-platform (macOS first, then Windows and Linux) database and API 
 
 ## Decision
 
-- All protocol, data and storage logic in a set of **Rust crates** with no UI dependency (`odb-core` and friends).
+- All protocol, data and storage logic in a set of **Rust crates** with no UI dependency (`openrows-core` and friends).
 - Desktop shell built with **Tauri 2**, using the system webview.
 - UI in **React + TypeScript**, built with **Vite**.
-- The CLI (`odb`) reuses the same crates.
+- The CLI (`openrows`) reuses the same crates.
 
 ## Consequences
 

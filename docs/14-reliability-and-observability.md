@@ -87,7 +87,7 @@ Hints come from a curated table keyed by error kind + database code.
 
 ## 6. Logging
 
-- `tracing` with structured fields; logs written to the platform log dir (`~/Library/Logs/OpenDB Client/` on macOS) as JSON lines, rotated daily, 7 days / 50 MB max.
+- `tracing` with structured fields; logs written to the platform log dir (`~/Library/Logs/OpenRows/` on macOS) as JSON lines, rotated daily, 7 days / 50 MB max.
 - Levels: `error`, `warn`, `info` (default), `debug`, `trace`. Changeable at runtime from Settings → Diagnostics.
 - **Redaction layer** before the writer: fields named or tagged as secret are replaced; URLs pass through a redactor that strips userinfo and sensitive query params (`password`, `token`, `key`, `secret`, `sig`, …); query text and parameter values only at `trace`.
 - In-app log viewer (filter by level/component/session) and "Export diagnostics bundle" (logs + app version + OS + redacted settings) for bug reports; the bundle is shown to the user before saving.

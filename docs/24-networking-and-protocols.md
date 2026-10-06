@@ -11,7 +11,7 @@ flowchart TB
         http["API engine<br/>(HTTP/1.1, HTTP/2, WS, SSE, gRPC)"]
         ai["AI providers / MCP HTTP"]
     end
-    subgraph net["odb-net"]
+    subgraph net["openrows-net"]
         route["Route planner<br/>(profile → ordered hops)"]
         hops["Hop implementations"]
         tls["TLS (rustls)"]
@@ -31,7 +31,7 @@ flowchart TB
     hops --> diag
 ```
 
-Drivers never open sockets themselves. They ask `odb-net` for a **stream** (`AsyncRead + AsyncWrite`) to a logical endpoint; `odb-net` builds it from the profile's route.
+Drivers never open sockets themselves. They ask `openrows-net` for a **stream** (`AsyncRead + AsyncWrite`) to a logical endpoint; `openrows-net` builds it from the profile's route.
 
 ## 2. Routes and hops
 
@@ -106,7 +106,7 @@ stateDiagram-v2
     Offline --> Probing: path available
 ```
 
-- macOS: `NWPathMonitor` (Network framework) + `NSWorkspace` sleep/wake notifications via `odb-platform`; Windows: Network List Manager + power events; Linux: NetworkManager D-Bus / netlink.
+- macOS: `NWPathMonitor` (Network framework) + `NSWorkspace` sleep/wake notifications via `openrows-platform`; Windows: Network List Manager + power events; Linux: NetworkManager D-Bus / netlink.
 - On wake or path change, the app **proactively probes** sessions instead of waiting for TCP timeouts (which can take minutes), reconnecting idle sessions and tunnels immediately.
 - Busy/in-transaction sessions are never silently replayed (see [14-reliability-and-observability.md](14-reliability-and-observability.md)).
 - UI: connection health dot in the rail and context bar (green / amber reconnecting / red offline) with last-latency.
@@ -147,5 +147,5 @@ stateDiagram-v2
 
 - toxiproxy scenarios: latency, jitter, bandwidth caps, resets mid-stream, black-holed packets (half-open), DNS failures.
 - SSH matrix: OpenSSH container with key/password/MFA/cert auth, 2-hop jump, host-key change.
-- Sleep/wake and network-change simulations through `odb-platform` test hooks.
+- Sleep/wake and network-change simulations through `openrows-platform` test hooks.
 - Helper-process lifecycle tests (crash, slow start, port conflict) with fake binaries.

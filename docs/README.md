@@ -1,4 +1,4 @@
-# OpenDB Client — Design Documentation
+# OpenRows — Design Documentation
 
 This folder is the source of truth for what we are building and how. Every significant technical decision is recorded here or in an [ADR](adr/README.md) before code depends on it.
 
@@ -39,5 +39,5 @@ Diagrams are written in [Mermaid](https://mermaid.js.org/) so they render on Git
 
 - **MUST / SHOULD / MAY** follow RFC 2119 meaning.
 - Numeric targets are measured on the reference machines defined in [13-performance.md](13-performance.md#reference-hardware).
-- Crate names use the working prefix `odb-`; package names use `@odb/`. Both change if the project is renamed.
+- Rust crates use the prefix `openrows-`, npm packages the scope `@openrows/`, and the CLI is `openrows`. In API-client scripts the runtime object is `ors` (with a `pm` compatibility shim).
 - When a doc and an ADR disagree, the newer accepted ADR wins and the doc gets fixed.

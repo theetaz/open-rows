@@ -44,7 +44,7 @@ flowchart LR
 | --- | --- | --- |
 | **Spoofing** server | MITM on café Wi-Fi impersonates DB or SSH server | TLS verify-full by default with OS trust store (`rustls-platform-verifier`); SSH host key check against `known_hosts` with TOFU prompt showing SHA256 fingerprint; changed host key = hard stop with explanation. |
 | **Tampering** with updates | Malicious update payload | Tauri updater signature verification (Ed25519/minisign) + platform code signing + notarization; HTTPS-only feed; pinned public key in the binary. |
-| **Tampering** via workspace files | Malicious collection in a cloned repo runs scripts | Scripts sandboxed (no FS/process); untrusted collections open in restricted mode (scripts disabled) until user trusts the folder; `odb.db.query` off by default. |
+| **Tampering** via workspace files | Malicious collection in a cloned repo runs scripts | Scripts sandboxed (no FS/process); untrusted collections open in restricted mode (scripts disabled) until user trusts the folder; `ors.db.query` off by default. |
 | **Repudiation** | "I didn't run that DELETE" | Local history records every executed statement with timestamp and connection (user-controllable). |
 | **Information disclosure** — XSS in webview | DB cell contains `<script>` or a crafted SVG | Cells rendered on canvas or as text nodes, never `innerHTML`; strict CSP; HTML/SVG/PDF previews only in sandboxed iframes without script permission and with an opaque origin. |
 | **Information disclosure** — logs | Password or query values in logs | Structured logging with redaction layer: known secret fields never logged; query text logged only at `trace` level and off by default; connection URLs redacted. |
@@ -62,7 +62,7 @@ sequenceDiagram
     participant KC as OS Keychain
 
     UI->>Core: save profile {host, user, password: "•••"}
-    Core->>KC: set(service="dev.opendb.client", account="conn/<profileId>/password", secret)
+    Core->>KC: set(service="com.prabhavalabs.openrows", account="conn/<profileId>/password", secret)
     Core->>Core: write profile JSON with passwordRef = "keychain:conn/<id>/password"
     Note over UI: The webview never receives the stored password back
     UI->>Core: connect(profileId)
@@ -104,7 +104,7 @@ SOCKS5 and HTTP CONNECT proxies supported for both database and API connections;
 - Tauri **isolation pattern** enabled to validate IPC messages in an isolated iframe.
 - Capabilities file per window kind; plugins limited to: dialog (scoped), clipboard, updater, window-state, deep-link (for OAuth redirect), single-instance.
 - External links open in the system browser after URL scheme validation (`https`, `http`, `mailto` only).
-- OAuth 2.0 redirects use a loopback listener with PKCE, or the system browser + `opendb://` deep link; never an embedded login webview (users should see the real browser URL bar).
+- OAuth 2.0 redirects use a loopback listener with PKCE, or the system browser + `openrows://` deep link; never an embedded login webview (users should see the real browser URL bar).
 
 ## 6. Data at rest
 

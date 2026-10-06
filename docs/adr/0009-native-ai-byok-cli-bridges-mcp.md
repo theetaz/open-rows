@@ -10,7 +10,7 @@ Users want AI help (NL→SQL, explain, fix, optimise) inside the client. They al
 
 ## Decision
 
-- AI is a core 1.0 feature, implemented in `odb-ai` and `odb-mcp`.
+- AI is a core 1.0 feature, implemented in `openrows-ai` and `openrows-mcp`.
 - Three provider kinds behind one event model: **API keys** (native + OpenAI-compatible adapters), **local models**, and **agent-CLI bridges** that drive the user's installed CLI headlessly, sandboxed to our MCP tools only.
 - The app is an **MCP server** (read-only DB tools, `propose_sql` instead of write tools) and an **MCP client** (user-configured servers).
 - A per-connection **data-sharing policy** (off / schema / samples / results) with redaction, provider allowlists and audit log; prod defaults to schema-only.

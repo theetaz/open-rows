@@ -31,7 +31,7 @@ flowchart TB
 
 ### 2.2 Driver conformance and integration
 
-- `odb-driver-conformance` suite (see [05-database-drivers.md](05-database-drivers.md#8-conformance-suite)) run against real servers via `testcontainers` (Docker on Linux CI runners).
+- `openrows-driver-conformance` suite (see [05-database-drivers.md](05-database-drivers.md#8-conformance-suite)) run against real servers via `testcontainers` (Docker on Linux CI runners).
 - **Version matrix** (Tier 1 on every PR, others nightly):
 
 | Database | Versions |

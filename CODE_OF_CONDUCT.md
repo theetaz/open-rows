@@ -11,4 +11,4 @@ This project adopts the [Contributor Covenant, version 2.1](https://www.contribu
 
 ## Reporting
 
-Report unacceptable behaviour privately to the maintainers at **[CONDUCT CONTACT EMAIL]**. Reports are handled confidentially. Maintainers will review, investigate and respond in line with the enforcement guidelines of the Contributor Covenant 2.1.
+Report unacceptable behaviour privately to the maintainers at **[info@prabhavalabs.com](mailto:info@prabhavalabs.com)**. Reports are handled confidentially. Maintainers will review, investigate and respond in line with the enforcement guidelines of the Contributor Covenant 2.1.

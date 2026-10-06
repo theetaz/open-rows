@@ -19,8 +19,8 @@ The shape of the system follows from a handful of requirements:
 flowchart LR
     user(["User"])
     subgraph machine["User's machine"]
-        app["OpenDB Client<br/>desktop app"]
-        cli["odb CLI<br/>(headless runner)"]
+        app["OpenRows<br/>desktop app"]
+        cli["openrows CLI<br/>(headless runner)"]
         keychain[("OS keychain")]
         files[("Workspace folder<br/>(git repo)")]
         localdata[("App data dir<br/>history, cache, settings")]
@@ -53,19 +53,19 @@ Nothing in this diagram is a server we operate, except the static release feed.
 flowchart TB
     subgraph tauri["Desktop app process (Rust)"]
         direction TB
-        shell["App shell<br/>odb-app (Tauri 2)<br/>windows, menus, updater, IPC router"]
+        shell["App shell<br/>openrows-app (Tauri 2)<br/>windows, menus, updater, IPC router"]
         subgraph core["Core engine (no Tauri dependency)"]
-            sessions["Session manager<br/>odb-core"]
-            results["Result store<br/>odb-results (Arrow + spill)"]
-            sql["SQL toolkit<br/>odb-sql"]
-            schema["Schema cache<br/>odb-schema"]
-            http["API engine<br/>odb-http"]
-            script["Script sandbox<br/>odb-script (QuickJS)"]
-            net["Network layer<br/>odb-net (SSH, TLS, proxy)"]
-            store["Local store<br/>odb-store (SQLite)"]
-            secrets["Secrets<br/>odb-secrets (keychain)"]
-            ai["AI + MCP<br/>odb-ai, odb-mcp"]
-            drivers["Drivers<br/>odb-driver-*"]
+            sessions["Session manager<br/>openrows-core"]
+            results["Result store<br/>openrows-results (Arrow + spill)"]
+            sql["SQL toolkit<br/>openrows-sql"]
+            schema["Schema cache<br/>openrows-schema"]
+            http["API engine<br/>openrows-http"]
+            script["Script sandbox<br/>openrows-script (QuickJS)"]
+            net["Network layer<br/>openrows-net (SSH, TLS, proxy)"]
+            store["Local store<br/>openrows-store (SQLite)"]
+            secrets["Secrets<br/>openrows-secrets (keychain)"]
+            ai["AI + MCP<br/>openrows-ai, openrows-mcp"]
+            drivers["Drivers<br/>openrows-driver-*"]
         end
         shell --> sessions
         shell --> results
@@ -106,7 +106,7 @@ flowchart TB
 
 | Container | Owns | Does not own |
 | --- | --- | --- |
-| **App shell** (`odb-app`) | Tauri setup, window lifecycle, native menus, IPC command registration, capability permissions, updater, mapping IPC to core APIs | Any database or HTTP logic |
+| **App shell** (`openrows-app`) | Tauri setup, window lifecycle, native menus, IPC command registration, capability permissions, updater, mapping IPC to core APIs | Any database or HTTP logic |
 | **Core engine** | Connections, sessions, query execution, result storage, schema caching, HTTP engine, scripting, secrets, persistence | UI concerns, rendering, Tauri types |
 | **Webview UI** | Presentation, interaction, layout, ephemeral view state | Long-lived data, credentials, protocol logic |
 | **Driver host** (optional) | Running C/C++ driver libraries out of process so a segfault cannot take down the app | Anything else |
@@ -150,24 +150,24 @@ Rules:
 
 ```mermaid
 flowchart BT
-    types["odb-types<br/>value model, ids, errors"]
-    driverapi["odb-driver-api<br/>traits, capabilities"]
-    net["odb-net"]
-    secrets["odb-secrets"]
-    sqlk["odb-sql"]
-    resultsk["odb-results"]
-    storek["odb-store"]
-    schemak["odb-schema"]
-    corek["odb-core"]
-    httpk["odb-http"]
-    scriptk["odb-script"]
-    pg["odb-driver-postgres"]
-    my["odb-driver-mysql"]
-    lite["odb-driver-sqlite"]
-    more["odb-driver-* ..."]
-    app["odb-app (Tauri)"]
-    cli["odb-cli"]
-    hostk["odb-driver-host"]
+    types["openrows-types<br/>value model, ids, errors"]
+    driverapi["openrows-driver-api<br/>traits, capabilities"]
+    net["openrows-net"]
+    secrets["openrows-secrets"]
+    sqlk["openrows-sql"]
+    resultsk["openrows-results"]
+    storek["openrows-store"]
+    schemak["openrows-schema"]
+    corek["openrows-core"]
+    httpk["openrows-http"]
+    scriptk["openrows-script"]
+    pg["openrows-driver-postgres"]
+    my["openrows-driver-mysql"]
+    lite["openrows-driver-sqlite"]
+    more["openrows-driver-* ..."]
+    app["openrows-app (Tauri)"]
+    cli["openrows-cli"]
+    hostk["openrows-driver-host"]
 
     driverapi --> types
     resultsk --> types
@@ -197,12 +197,12 @@ flowchart BT
 
 Dependency rules (enforced in CI with `cargo-deny` bans and a custom check):
 
-- `odb-types` depends on nothing internal.
-- Drivers depend only on `odb-driver-api`, `odb-types`, `odb-net`. Drivers never depend on each other or on `odb-core`.
+- `openrows-types` depends on nothing internal.
+- Drivers depend only on `openrows-driver-api`, `openrows-types`, `openrows-net`. Drivers never depend on each other or on `openrows-core`.
 - Nothing in `crates/` depends on Tauri. Only `apps/desktop/src-tauri` does.
 - Each driver is behind a Cargo feature so slim builds (e.g. the CLI) can exclude drivers.
 
-The front-end packages mirror this: `@odb/ipc` (generated bindings) ← `@odb/grid`, `@odb/editor`, `@odb/ui` ← `apps/desktop/src`.
+The front-end packages mirror this: `@openrows/ipc` (generated bindings) ← `@openrows/grid`, `@openrows/editor`, `@openrows/ui` ← `apps/desktop/src`.
 
 ## 6. Key flows
 

@@ -94,7 +94,7 @@ The UI reads capabilities to decide which toolbar buttons, tree nodes and editor
 | SQL Server 2017+ / Azure SQL | TDS | `tiberius` | MIT/Apache | 2 | `rustls` TLS; Azure AD token auth (P2); cancel via TDS attention where supported, else `KILL` on side connection; `GO` batch separator handled by splitter. |
 | ClickHouse | HTTP interface (and native later) | own client on `hyper` using `FORMAT ArrowStream` | — | 2 | Server streams Arrow directly → near-zero decode cost. Cancel via `KILL QUERY WHERE query_id = …` using client-generated `query_id`. |
 | DuckDB | in-process | `duckdb` crate (C++ library) | MIT | 2 | Native Arrow output. FFI → eligible for out-of-process driver host. |
-| MongoDB 5.0+ | OP_MSG | official `mongodb` crate | Apache-2.0 | 2 | Shell-like query parser in `odb-sql/mql`; documents → JSON column + flattened tabular view; `killOp` for cancel. |
+| MongoDB 5.0+ | OP_MSG | official `mongodb` crate | Apache-2.0 | 2 | Shell-like query parser in `openrows-sql/mql`; documents → JSON column + flattened tabular view; `killOp` for cancel. |
 | Redis 6+ / Valkey / KeyDB / Dragonfly | RESP2/RESP3 | `redis` crate | BSD-3 | 2 | `SCAN`-based key browser (never `KEYS *`); type-aware editors; cluster and sentinel support. |
 | Oracle 19c+ | OCI | `oracle` crate (ODPI-C, loads **user-installed** Instant Client at runtime) | UPL/Apache | 3 | Not bundled; app detects/locates Instant Client and guides installation. Runs in driver host. |
 | Cassandra 4+ / ScyllaDB | CQL native protocol | `scylla` crate | MIT/Apache | 3 | Paging via paging state; editing by full primary key only. |
@@ -167,7 +167,7 @@ If all non-computed columns map to one table and that table has a usable key pre
 
 ## 8. Conformance suite
 
-A shared test crate (`odb-driver-conformance`) parameterised by driver. Every driver must pass the applicable groups:
+A shared test crate (`openrows-driver-conformance`) parameterised by driver. Every driver must pass the applicable groups:
 
 | Group | Examples |
 | --- | --- |
@@ -182,13 +182,13 @@ A shared test crate (`odb-driver-conformance`) parameterised by driver. Every dr
 
 ## 9. Out-of-process driver host
 
-Drivers built on C/C++ libraries (Oracle via ODPI-C, DuckDB, ADBC drivers) can crash the process on bugs we cannot catch. These drivers can run inside `odb-driver-host`, a small helper executable:
+Drivers built on C/C++ libraries (Oracle via ODPI-C, DuckDB, ADBC drivers) can crash the process on bugs we cannot catch. These drivers can run inside `openrows-driver-host`, a small helper executable:
 
 ```mermaid
 sequenceDiagram
     participant Core as Core (session actor)
     participant Proxy as RemoteDriver proxy
-    participant Host as odb-driver-host process
+    participant Host as openrows-driver-host process
     participant Lib as Native library
 
     Core->>Proxy: connect(cfg)

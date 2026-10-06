@@ -1,8 +1,8 @@
-# OpenDB Client
+# OpenRows
 
-> Working name. A free, open-source, fast, native-feeling database client and API client for macOS, Windows and Linux.
+> A free, open-source, fast, native-feeling database client and API client for macOS, Windows and Linux.
 
-OpenDB Client is a community-built alternative to paid database GUIs. It aims to match or beat them on speed, polish and reliability while staying fully open source (Apache-2.0), local-first and free of accounts, telemetry and paywalls.
+OpenRows is a community-built alternative to paid database GUIs. It aims to match or beat them on speed, polish and reliability while staying fully open source (Apache-2.0), local-first and free of accounts, telemetry and paywalls.
 
 ## What it will do
 

@@ -1,6 +1,6 @@
 # 04 — Core Engine
 
-The core engine is a set of Rust crates with no UI or Tauri dependency. The desktop app, the CLI and the test harness all drive it through the same public API (`odb-core::Engine`).
+The core engine is a set of Rust crates with no UI or Tauri dependency. The desktop app, the CLI and the test harness all drive it through the same public API (`openrows-core::Engine`).
 
 ## 1. Concepts
 
@@ -153,7 +153,7 @@ Max sessions per profile defaults to 4 (configurable) to respect server `max_con
 
 ```mermaid
 flowchart LR
-    A["Editor text"] --> B["Split into statements<br/>(odb-sql, dialect-aware)"]
+    A["Editor text"] --> B["Split into statements<br/>(openrows-sql, dialect-aware)"]
     B --> C["Classify<br/>read / write / DDL / tx-control / unknown"]
     C --> D{"Safety policy"}
     D -->|blocked| X["Error: read-only connection"]
@@ -191,10 +191,10 @@ All drivers convert native values into a shared type system that maps 1:1 onto A
 | Date, Time, Timestamp(tz?) | `Date32`, `Time64(µs)`, `Timestamp(µs, tz)` | | Out-of-range (PG `infinity`, year 0) stored as tagged text. |
 | Interval | `Interval(MonthDayNano)` | | |
 | UUID | `FixedSizeBinary(16)` + extension tag | | |
-| JSON | `Utf8` + `odb.json` extension | PG `json/jsonb`, MySQL `JSON` | |
+| JSON | `Utf8` + `openrows.json` extension | PG `json/jsonb`, MySQL `JSON` | |
 | Array | `List<T>` | PG arrays | |
 | Composite / Document | `Utf8` (canonical JSON/EJSON) + extension tag | Mongo documents, PG composite | Also offered as tree in document view. |
-| Geometry | `Binary` (WKB) + `odb.geo` tag | PostGIS, MySQL spatial | Rendered as WKT in grid; map preview in inspector (P2). |
+| Geometry | `Binary` (WKB) + `openrows.geo` tag | PostGIS, MySQL spatial | Rendered as WKT in grid; map preview in inspector (P2). |
 | Unknown | `Utf8` (server text representation) + original type name | Exotic extension types | Never fail a query because we don't know a type. |
 
 Every column carries metadata: source type name, nullability, source table/column (when known), and whether it is part of the edit key. That metadata travels in the Arrow schema's field metadata.
