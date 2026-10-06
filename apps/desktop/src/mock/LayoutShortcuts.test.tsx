@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
@@ -91,17 +91,21 @@ it('auto-collapses at 1099 and reopens an overlay at 900 without shrinking conte
   expect(isCompact(1099)).toBe(true);
   vi.stubGlobal('innerWidth', 900);
   fireEvent(window, new Event('resize'));
-  const inspector = screen.getByLabelText('Inspector', { selector: 'aside' });
-  expect(inspector).toHaveAttribute('data-open', 'false');
-  expect(inspector).toHaveAttribute('data-overlay', 'true');
+  const inspector = (): HTMLElement =>
+    screen.getByLabelText('Inspector', { selector: 'aside' });
+  expect(inspector()).toHaveAttribute('data-open', 'false');
+  expect(inspector()).toHaveAttribute('data-overlay', 'true');
   await user.click(
     screen.getByRole('button', { name: 'Toggle inspector (⌥⌘I)' }),
   );
-  expect(inspector).toHaveAttribute('data-open', 'true');
+  // A closed panel unmounts after its exit motion, so re-query each time.
+  await waitFor(() => {
+    expect(inspector()).toHaveAttribute('data-open', 'true');
+  });
   vi.stubGlobal('innerWidth', 1100);
   fireEvent(window, new Event('resize'));
-  expect(inspector).toHaveAttribute('data-overlay', 'false');
-  expect(inspector).toHaveAttribute('data-open', 'true');
+  expect(inspector()).toHaveAttribute('data-overlay', 'false');
+  expect(inspector()).toHaveAttribute('data-open', 'true');
 });
 it('opens and closes both panels with toolbar controls', async () => {
   const user = userEvent.setup();
