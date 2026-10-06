@@ -53,6 +53,11 @@ function surfaces(palette: typeof light): Record<string, Colour> {
     panel,
     'panel/window': panelOnWindow,
     'panel-solid': parse(palette['panel-solid']),
+    ...Object.fromEntries(
+      (
+        ['row-stripe', 'row-inserted', 'row-deleted', 'cell-edited'] as const
+      ).map((state) => [state, composite(parse(palette[state]), window)]),
+    ),
   };
   const controls = Object.fromEntries(
     Object.entries(bases).flatMap(([name, base]) => {
@@ -88,7 +93,14 @@ function paletteRows(theme: string, palette: typeof light): Row[] {
     }
     rows.push(...badgeRows({ theme, palette, name, background }));
   }
-  for (const background of ['accent', 'destructive'] as const)
+  for (const background of [
+    'accent',
+    'destructive',
+    'connection-pg',
+    'connection-prod',
+    'connection-ch',
+    'connection-sqlite',
+  ] as const)
     rows.push({
       theme,
       pair: `on-accent/${background}`,

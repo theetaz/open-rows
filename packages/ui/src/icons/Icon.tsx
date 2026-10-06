@@ -6,6 +6,8 @@ const paths = {
   plus: 'M12 5v14M5 12h14',
   refresh: 'M20 8a8 8 0 1 0 0 8M20 3v5h-5',
   sidebar: 'M4 4h16v16H4ZM9 4v16',
+  inspector: 'M4 4h16v16H4ZM15 4v16',
+  settings: 'M3 7h9m6 0h3M3 17h3m6 0h9M15 4v6M9 14v6',
 };
 /** Original line geometry drawn for the gallery, with inherited colour. */
 export function Icon({

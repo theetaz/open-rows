@@ -88,7 +88,42 @@ The approved direction refines the skeleton above:
 | **Commit bar** | Floating glass capsule over the grid whenever a change set is pending. |
 | **Footer** | Pagination and query timing. |
 
-Visual language: macOS-native — system font, rounded window and panels (16–22 px), capsule controls, Finder-style rounded row selection, soft status pills, light and dark themes.
+Visual language: macOS-native — system font, rounded window and compact 12 px panels, capsule controls, flat full-row selection, soft status pills, light and dark themes.
+
+### M0-T4b workspace mock
+
+The desktop app now defaults to a hard-coded workspace in `apps/desktop/src/mock/`;
+all sample connections, rows, schema metadata and transcripts live in `mock/data/`.
+The rail gear opens the M0-T4 component gallery; Back or Escape returns with the
+workspace state intact. These controls only change local preview state. No
+connection, query, write or assistant call is made; Copy SQL uses the clipboard.
+
+Reusable document tabs, split panels, disclosure sections, object rows and review
+sheets live in `@openrows/ui`. Sidebar widths clamp to 200–360 px (reset 228),
+inspector widths to 280–440 px (reset 316). Drag the panel edge, double-click to
+reset, or focus the divider and use arrows/Home/End/Enter. Widths persist in local
+storage under `openrows.mock.sidebar` and `openrows.mock.inspector`.
+
+Below 1100 CSS px, the inspector automatically collapses; its toolbar button or
+⌥⌘I reopens it as a trailing overlay above the content. Crossing back to 1100 px
+restores the inline inspector. The titlebar never wraps: address and engine text
+truncate first. Tabs shrink to 90 px then scroll; the 712 px grid scrolls
+horizontally. At the 900×600 minimum, the rail and sidebar stay inline.
+
+Panel collapse uses the approved 360 ms easing; disclosure uses 220 ms. Reduced
+motion disables both. Width previews use direct CSS updates and persist once on
+release, with no React updates per pointer move. Unlike the eventual canvas grid,
+this forty-row mock deliberately animates split layout dimensions to reproduce
+the approved prototype; the render-count benchmark protects the grid from React
+work throughout dragging and collapse. This scoped mock exception does not alter
+the production performance policy in docs/13. Actual frame time and visual polish
+remain maintainer checks on native hardware.
+
+The connection tile colours are tokens; ClickHouse gold is darkened to meet AA
+for its white initials. SQL syntax uses the tested semantic foregrounds. System
+light/dark, increased contrast, reduced motion and solid transparency fallbacks
+reuse ThemeProvider and the existing token system. Native material setup is
+specified in [docs/16 §3](16-platform-and-distribution.md#3-macos-specifics).
 
 ### 3.2 macOS-native design methodology (macOS 26 era)
 
@@ -98,7 +133,7 @@ The app must feel like it was designed for the current macOS, not merely ported 
 | --- | --- |
 | **Everything collapsible** | Sidebar (⌃⌘S, standard "Show/Hide Sidebar"), inspector/assistant panel (⌥⌘I), connection rail, results pane, and every sidebar section (disclosure triangles). Panels animate with a spring-like ease (≈360 ms, `cubic-bezier(0.32, 0.72, 0, 1)`), remember their state per window, and can also be collapsed by dragging the divider past a threshold — like `NSSplitView` sidebars. Toolbar toggle buttons reflect state (tinted when open). |
 | **Liquid Glass materials** | Sidebar, inspector and toolbar controls use translucent "glass" panels (blur + saturation, bright top edge highlight, soft shadow) floating above content, with content allowed to scroll beneath the toolbar edge. Implemented natively where possible (window vibrancy / glass effect behind a transparent webview on macOS 26; `NSVisualEffectView` on older versions) and with CSS `backdrop-filter` inside the webview. |
-| **Concentric geometry** | Corner radii nest: window 26 px → floating panels 18 px (window radius − 8 px inset) → controls capsules/10 px. Nothing has sharp corners next to a rounded container. |
+| **Concentric geometry** | Corner radii nest: window 26 px → floating panels 12 px → controls capsules/10 px. Nothing has sharp corners next to a rounded container. |
 | **Capsule controls** | Toolbar buttons grouped into capsules; segmented controls are pills; primary actions use the accent fill. |
 | **Toolbar in the titlebar** | Unified titlebar/toolbar; traffic lights stay native; toolbar is user-customisable (add/remove/reorder items, icon/text modes) like `NSToolbar`. |
 | **Native tabs behaviour** | Tabs reorder, tear off to new windows, merge windows (Window → Merge All Windows), ⌘⇧[ / ⌘⇧] to switch, ⌘W closes, "Reopen closed tab" ⌘⇧T. |
@@ -137,11 +172,42 @@ The app must feel like it was designed for the current macOS, not merely ported 
 
 ### M0-T4 token values and accessibility adjustments
 
-`packages/ui/src/tokens/` is the implemented source for the gallery. System UI/SF Mono stacks are used without font downloads; the 11/11.5/12/12.5/13/15/17/30 px type scale, 400/500/600/700 weights, 2–32 px spacing, capsule/10/12/14/18/26 px concentric radii, accent `#0B6BD6`, and prototype surface colours are preserved. Panels use 30 px blur and toolbar capsules 20 px, both with saturation 1.8 and the per-theme inset highlights. Native vibrancy is outside M0-T4.
+`packages/ui/src/tokens/` supplies both themes and the component gallery. UI labels
+remain 13 px; workspace grid and tree text are 12.5 px, secondary metadata is
+11–11.5 px, context text is 12 px, and rail/environment labels are 10 px. Grid rows
+and headers are 26 px, tree rows 24 px, tabs and titlebar controls 28 px, table
+controls 24 px, and rail tiles 34 px with 10 px corners. Status pills use 11 px
+text in an 18 px box with 6 px corners. Floating panels use 12 px corners.
 
-To meet NFR-UX-01, light secondary/tertiary text is `#4F4F55` (replacing `#6A6A70`/`#76767C`), including the darkest nested control-fill surface. Dark secondary/tertiary text is `#C0C0C6` (replacing `#A1A1A6`/`#98989E`). Light danger/prod foreground is `#93241F` (replacing `#A42A24`), with the original `#FDE2E0` badge background. Dark success/dev foreground is `#8AEFA5`, warning/staging `#FFDC9F`, danger/prod `#FFBCB8`, info `#9CCAFF`, and neutral/local `#D1D1D6` over 20% tinted fills. Environment identity colours remain the original grey/green/amber/red tokens. Small dots use the corresponding readable semantic foreground and are accompanied by labels.
+| Surface token | Dark | Light |
+| --- | --- | --- |
+| Grid/content (`window`) | `#242424` | `#FAFAFA` |
+| Sidebar/inspector fallback (`panel-solid`) | `#2B2B2B` | `#EDEDED` |
+| Sidebar/inspector glass (`panel`) | `rgba(43,43,43,0.9)` | `rgba(237,237,237,0.9)` |
+| Window/rail (`page`) | `#1B1B1B` | `#DADADA` |
 
-Focus rings use `#0960C0` in light and `#79B9FF` in dark, 2 px thick with 3 px separation. Destructive buttons use `#B4231B` with white text; white-on-accent also passes AA. Disabled controls preserve readable text rather than reducing opacity. High contrast uses stronger separators (`#606066`/`#C0C0C6`), opaque panels and control fills (`#E4E4E8`/`#38383C`). Reduced transparency makes both panels and toolbar capsules solid and removes backdrop filtering. `just contrast-report` reports all text/badge pairs ≥ 4.5 and focus ≥ 3, including translucency composition.
+Rows are flat and edge-to-edge with a faint zebra tint. Edited cells use an 18%
+amber tint and an accessible edited-cell label; inserted rows show a gutter plus;
+deleted rows use a faint red tint, muted text and strikethrough. Selected rows
+use the existing `#0B6BD6` accent and white text. Inactive tab close controls appear
+on hover or keyboard focus; active tabs merge into the content surface.
+
+The table toolbar stays on one line: the filter text and Add Filter action yield
+space before the view labels and trailing Add Row action. In very narrow content
+panes, the view labels scroll on one line while Add Row remains pinned. Assistant SQL wraps
+long lines and its action area follows the code without overlapping scrollbars.
+The 38 px floating change capsule uses 28 px controls; the grid reserves its
+height plus 24 px in both bottom padding and keyboard scroll padding, keeping
+the final row clear when scrolled to the bottom.
+
+Search fields use a quiet fill and transparent border, with a focus ring on focus.
+Default separators are 5.5% black/white; control fills are 3.5%. Secondary text is
+`#B8B8B8` in dark and `#505050` in light. `just contrast-report` covers glass,
+nested controls, row states, edited cells and semantic badges; text requires 4.5:1
+and focus indicators 3:1. Increased contrast uses stronger neutral separators
+and opaque fills; reduced transparency and reduced motion retain their fallbacks.
+All palettes and measurements originate in tokens; the reference was used only
+for density and visual weight, with no copied colours, assets, icons or text.
 
 ## 6. Accessibility requirements for design
 

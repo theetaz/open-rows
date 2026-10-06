@@ -16,7 +16,9 @@
   display: inline-flex;
   align-items: center;
   gap: var(--or-space-4);
-  padding: var(--or-space-4);
+  padding: var(--or-space-2);
+  box-shadow: none;
+  border-color: transparent;
   border-radius: var(--or-radius-capsule);
   -webkit-backdrop-filter: var(--or-glass-toolbar);
   backdrop-filter: var(--or-glass-toolbar);

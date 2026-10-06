@@ -1,0 +1,51 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: var(--or-control-fill);
+}
+.sheet {
+  position: fixed;
+  inset-block-start: var(--or-toolbar-height);
+  margin-block-start: 0;
+  width: min(560px, 90vw);
+  max-block-size: calc(100vh - 100px);
+  padding: 0;
+  color: var(--or-text);
+  background: var(--or-window);
+  border: var(--or-border-width) solid var(--or-separator);
+  border-radius: 0 0 var(--or-radius-panel) var(--or-radius-panel);
+  box-shadow: var(--or-panel-shadow);
+  overflow: auto;
+}
+.sheet::backdrop {
+  background: var(--or-control-fill);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+.body {
+  padding: var(--or-space-20);
+}
+.body header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.body h2 {
+  font-size: var(--or-text-17);
+  margin-block: 0 var(--or-space-16);
+}
+.body header button {
+  border: 0;
+  font: inherit;
+  background: var(--or-control-fill);
+  color: var(--or-text);
+  border-radius: var(--or-radius-capsule);
+  min-width: 28px;
+  min-height: 28px;
+  cursor: pointer;
+}
+.body header button:focus-visible {
+  outline: var(--or-focus-width) solid var(--or-focus);
+}

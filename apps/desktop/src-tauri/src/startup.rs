@@ -18,6 +18,8 @@ pub(crate) fn install(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Er
     let window = app
         .get_webview_window("main")
         .ok_or(StartupError::MissingWindow)?;
+    #[cfg(target_os = "macos")]
+    crate::material::install(&window)?;
     let handle = app.handle().clone();
     window.clone().once("openrows:first-paint-ready", move |_| {
         if reveal(&window).is_err() {
@@ -28,6 +30,8 @@ pub(crate) fn install(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Er
 }
 
 fn reveal(window: &tauri::WebviewWindow) -> Result<(), StartupError> {
+    #[cfg(target_os = "macos")]
+    crate::material::synchronize(window)?;
     window.show()?;
     if let Some(path) = std::env::var_os("OPENROWS_STARTUP_REPORT") {
         let timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos();

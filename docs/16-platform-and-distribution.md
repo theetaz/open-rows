@@ -35,6 +35,40 @@ Rules:
 | Deep links | `openrows://` scheme for OAuth callbacks and "open connection" links (with confirmation). |
 | Services / Quick actions | P2: "Open in OpenRows" for `.sqlite`/`.db`/`.duckdb` files via document types in `Info.plist`. |
 
+### Implemented M0-T4b native material
+
+`apps/desktop/src-tauri/src/material.rs` applies Tauri's `Effect::Sidebar` through
+its existing `window-vibrancy` integration. This installs an `NSVisualEffectView`
+behind the transparent WKWebView. `FollowsWindowActiveState` follows the native
+window; the effect radius is 26 px, native decorations and shadow remain enabled,
+and `titleBarStyle: Overlay` retains the real traffic lights. DOM traffic lights
+are not drawn. The webview root is transparent; the table, grid, SQL and sheet
+surfaces use opaque theme tokens for legibility. Rail, sidebar and inspector use
+the glass tokens over the desktop material.
+
+Transparent WKWebView requires `app.macOSPrivateApi: true` in `tauri.conf.json`
+and Tauri's `macos-private-api` Cargo feature. This uses private WebKit APIs and
+is appropriate for the planned Developer ID distribution; a Mac App Store build
+would need to remove that dependency on private API and redesign the material
+boundary. This task uses NSVisualEffectView on all supported macOS versions;
+NSGlassEffectView and Windows/Linux vibrancy are not implemented.
+
+The macOS-only `objc2-app-kit` dependency exposes the safe `NSWorkspace` Reduce
+Transparency accessor (no custom unsafe FFI). At setup, first-paint readiness and
+window focus, the app checks the native preference, clears native effects when
+reduced, and sets `data-transparency="reduced"` on the document root so glass
+becomes solid. Native accessibility changes made in System Settings are reflected
+when returning focus to OpenRows. The CSS reduced-transparency media query is also
+retained. No IPC command is added. Other platforms compile without the native
+material module. See Apple's [Reduce Transparency accessor](https://developer.apple.com/documentation/appkit/nsworkspace/accessibilitydisplayshouldreducetransparency)
+and [Tauri window effects](https://docs.rs/tauri/latest/tauri/webview/struct.WebviewWindow.html#method.set_effects).
+
+The review sheet uses native HTML dialog focus containment and dismissal; a fixed
+modal, inert-background and focus-loop fallback supports WebKit before dialog
+support (macOS 12.0–12.2). Build/tests cannot prove desktop translucency, native
+rounding/shadow, or light/dark appearance over different wallpapers: verify these
+locally along with Reduce Transparency and inactive-window material changes.
+
 ## 4. Windows specifics (pre-1.0)
 
 - Installers: MSI (WiX) for enterprise and NSIS `.exe` for consumers; per-user install by default (no admin).

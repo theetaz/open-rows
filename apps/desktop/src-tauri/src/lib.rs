@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //! `OpenRows` native shell and its generated IPC contract.
 mod commands;
+#[cfg(target_os = "macos")]
+mod material;
 mod startup;
 
 fn command_builder() -> tauri_specta::Builder<tauri::Wry> {

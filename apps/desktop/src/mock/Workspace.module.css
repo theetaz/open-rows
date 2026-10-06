@@ -1,0 +1,197 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.workspace {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  border-radius: var(--or-radius-window);
+  padding: 0 var(--or-space-8) var(--or-space-8);
+  background: var(--or-page);
+}
+.toolbar {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--or-space-8);
+  height: var(--or-toolbar-height);
+  flex-shrink: 0;
+  padding-inline-start: var(--or-traffic-light-clearance);
+  user-select: none;
+  min-width: 0;
+  white-space: nowrap;
+}
+.toolbar > :not(.context) {
+  flex-shrink: 0;
+}
+.toolbar [role='group'] {
+  padding: var(--or-space-2);
+}
+.toolbar [aria-pressed='true'] {
+  color: var(--or-info-fg);
+}
+.toolbar .safe[aria-pressed='true'] {
+  background: var(--or-success-bg);
+  color: var(--or-success-fg);
+}
+.context {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  height: var(--or-control-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-8);
+  padding: var(--or-space-4) var(--or-space-6);
+  border-radius: var(--or-radius-capsule);
+  background: var(--or-control-fill);
+}
+.context > :first-child {
+  flex-shrink: 0;
+  text-transform: uppercase;
+  font-size: var(--or-text-10);
+}
+.address {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: var(--or-weight-medium);
+  font-size: var(--or-text-12);
+}
+.engine {
+  flex: 0 1 230px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-radius: var(--or-radius-capsule);
+  padding: var(--or-space-4) var(--or-space-8);
+  font-size: var(--or-text-11-5);
+  color: var(--or-secondary);
+  background: var(--or-control-fill);
+}
+.health {
+  color: var(--or-success-fg);
+}
+.body {
+  display: flex;
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  gap: 0;
+  overflow: hidden;
+}
+.rail {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: var(--or-space-10);
+  flex: 0 0 64px;
+  padding: var(--or-space-4) 0 var(--or-space-8);
+}
+.railSpace {
+  flex: 1;
+}
+.connection {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: var(--or-space-4);
+  border: 0;
+  font: inherit;
+  background: transparent;
+  color: var(--or-secondary);
+  padding: 0;
+  cursor: pointer;
+}
+.connection small {
+  max-width: 60px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: var(--or-text-10);
+}
+.tile {
+  display: grid;
+  position: relative;
+  place-items: center;
+  width: var(--or-rail-tile-size);
+  height: var(--or-rail-tile-size);
+  border-radius: var(--or-radius-field);
+  color: var(--or-on-accent);
+  background: var(--or-connection-pg);
+  font-size: var(--or-text-12);
+  font-weight: var(--or-weight-bold);
+}
+.tile[data-environment='prod'] {
+  background: var(--or-connection-prod);
+}
+.tile[data-environment='dev'] {
+  background: var(--or-connection-ch);
+}
+.tile[data-environment='local'] {
+  background: var(--or-connection-sqlite);
+}
+.tile i {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--or-radius-capsule);
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  border: 2px solid var(--or-panel-solid);
+  background: var(--or-warning-fg);
+}
+.tile[data-environment='prod'] i {
+  background: var(--or-danger-fg);
+}
+.tile[data-environment='dev'] i {
+  background: var(--or-success-fg);
+}
+.tile[data-environment='local'] i {
+  background: var(--or-local-fg);
+}
+.connection[aria-pressed='true'] .tile {
+  outline: 2px solid var(--or-focus);
+  outline-offset: 3px;
+}
+.connection:active {
+  transform: translateY(1px);
+}
+.connection:focus-visible {
+  outline: var(--or-focus-width) solid var(--or-focus);
+  outline-offset: 3px;
+  border-radius: var(--or-radius-group);
+}
+.addConnection {
+  border: 1px dashed var(--or-separator);
+  border-radius: var(--or-radius-group);
+}
+.gallery {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--or-space-24);
+  background: var(--or-window);
+}
+@media (max-width: 1099px) {
+  .engine {
+    flex-basis: 100px;
+  }
+}
+
+.toolbar > button,
+.toolbar [role='group'] {
+  height: var(--or-control-sm);
+  padding-block: 0;
+}
+.toolbar button {
+  height: var(--or-control-sm);
+  min-height: var(--or-control-sm);
+  padding-block: 0;
+  color: var(--or-secondary);
+}
+.toolbar button:hover {
+  color: var(--or-text);
+}

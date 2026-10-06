@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 .shell {
-  min-block-size: 100vh;
+  block-size: 100vh;
+  background: var(--or-panel-solid);
   display: flex;
   flex-direction: column;
   border-radius: var(--or-radius-window);
@@ -16,5 +17,7 @@
 }
 .content {
   flex: 1;
+  overflow: auto;
+  min-block-size: 0;
   padding: var(--or-space-24);
 }
