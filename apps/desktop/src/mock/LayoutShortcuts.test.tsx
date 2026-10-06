@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
@@ -97,7 +97,9 @@ it('auto-collapses at 1099 and reopens an overlay at 900 without shrinking conte
   await user.click(
     screen.getByRole('button', { name: 'Toggle inspector (⌥⌘I)' }),
   );
-  expect(inspector).toHaveAttribute('data-open', 'true');
+  await waitFor(() => {
+    expect(inspector).toHaveAttribute('data-open', 'true');
+  });
   vi.stubGlobal('innerWidth', 1100);
   fireEvent(window, new Event('resize'));
   expect(inspector).toHaveAttribute('data-overlay', 'false');
