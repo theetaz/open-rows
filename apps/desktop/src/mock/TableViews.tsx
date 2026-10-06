@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useState } from 'react';
 import { Button } from '@openrows/ui';
 import {
   structures,
@@ -62,10 +61,11 @@ export function TableView({ view }: { view: string }): React.JSX.Element {
 /** Lightweight editable SQL mock with visual action feedback only. */
 export function QueryView({
   sql = assistantSql,
+  onChange,
 }: {
   sql?: string | undefined;
+  onChange: (sql: string) => void;
 }): React.JSX.Element {
-  const [text, setText] = useState(sql);
   return (
     <div className={styles.view}>
       <div className={styles.queryActions}>
@@ -77,9 +77,9 @@ export function QueryView({
       <textarea
         className={styles.editor}
         aria-label="SQL editor"
-        value={text}
+        value={sql}
         onChange={(event) => {
-          setText(event.target.value);
+          onChange(event.target.value);
         }}
         spellCheck={false}
       />

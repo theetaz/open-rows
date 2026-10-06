@@ -52,7 +52,7 @@ Techniques:
 
 ### 2.3 Memory
 
-Total idle physical footprint across the app and all its webview processes must be ≤ 200 MB
+Total idle physical footprint across the app and all its webview processes must be ≤ 200 MB (median of sequential launches)
 (NFR-PERF-02), in addition to the component targets below. Physical footprint
 (the Activity Monitor metric) avoids summed RSS double-counting shared system
 and WebKit pages.
@@ -92,7 +92,21 @@ and WebKit pages.
 ### 3.4 UI
 
 - Canvas grid; DOM only for chrome and overlays.
-- Tab virtualisation (unmount inactive tabs).
+- Tab virtualisation (unmount inactive tabs; retain descriptors, SQL drafts and view state).
+- The current mock DOM grid mounts viewport rows plus three rows of overscan on each edge,
+  observes viewport resizing and scrolls keyboard selection into the mounted range.
+- Persistent panels/toolbars use tone tokens over native macOS vibrancy, without CSS
+  backdrop filters or compositing hints. Blur is confined to mounted palettes, sheets
+  and rail tooltips; a stylesheet allowlist test in `just check` guards this boundary.
+- Closed split panels unmount after the 360 ms exit (immediately under reduced motion);
+  palette exit retains DOM for at most 160 ms. Gallery unmounts when closed; the workspace
+  keeps its controller state while its content DOM is unmounted during gallery visits.
+- Non-initial gallery, palettes, review, SQL views and inspector modes use dynamic imports.
+  Palette and sheet primitives have separate `@openrows/ui/palette` and `@openrows/ui/sheet`
+  entry points so the shell barrel cannot pull their code/styles into the initial graph.
+  `just bench-ui` sums all manifest entry/static-import chunks (deduplicated), excluding
+  dynamic chunks, and enforces the 350,000-byte gzip limit.
+  The default wide-window Assistant remains visible and loads on that first render.
 - Workers for decoding and formatting.
 - React Compiler; components subscribe to narrow Zustand selectors.
 - No CSS layout animations; `content-visibility: auto` for long static panels.
@@ -114,7 +128,7 @@ and WebKit pages.
 | `grid_scroll_1m` | Playwright + Performance API on synthetic source | long frames, avg frame time | 0 frames > 32 ms |
 | `query_1m_rows_pg` | integration harness against container | time to first paint, total time, peak RSS | within budgets |
 | `editor_type_5k_lines` | Playwright | input latency p95 | ≤ 16 ms |
-| `idle_memory` | `just bench-memory` after `just build-app`; first-paint receipt + 5 s settle, `ps` RSS for app + descendants + responsible WebKit XPC services; required `footprint -f bytes` | per-process and total footprint and informational RSS in decimal MB | total physical footprint ≤ 200 MB (NFR-PERF-02); macOS GUI only, not Linux CI |
+| `idle_memory` | `just bench-memory [runs=3]` after `just build-app`; first-paint receipt + 5 s settle, `ps` RSS for app + descendants + responsible WebKit XPC services; required `footprint -f bytes` | per-run totals, per-process medians and informational RSS in decimal MB | median total physical footprint ≤ 200 MB; median WebContent + GPU + Networking ≤ 140 MB (NFR-PERF-02); macOS GUI only, not Linux CI |
 | `export_csv_10m` | integration | MB/s vs `psql \copy` baseline | ≥ 80 % |
 
 The startup and memory harnesses use Python 3's standard library and build nothing.
@@ -142,6 +156,17 @@ extend the window-show total. Callbacks can overlap; these intervals
 are milestones, not exclusive CPU costs. Window-show return is a paint-ready proxy,
 not a compositor timestamp.
 
+Memory runs launch sequentially, completing guarded process cleanup before the next launch.
+The default is three; a positive explicit count supports diagnostic single runs and even counts.
+Each run reports app and webview footprint totals; JSON retains process samples and startup
+reports. Both budget gates take the median of complete per-run sums, never the sum of
+per-process medians. Process medians group duplicate names within a run and count an absent
+process name as zero in other complete runs. Any invalid footprint fails the whole report,
+even if other runs would give a passing median. RSS remains informational.
+
+M0-T6 / issue #17 real-Mac footprint and visual parity are pending maintainer measurement;
+source and synthetic tests do not certify either physical-footprint budget.
+
 Memory sampling uses an event-driven report wait and a timed Python wait until
 five seconds after first paint. It counts WebContent, GPU and Networking even when
 launchd is their parent, using macOS's exported libSystem responsibility query.
@@ -155,9 +180,10 @@ The responsibility symbol is not a public API: if unavailable, or no owned WebCo
 the benchmark fails rather than certifying an incomplete memory total. Physical
 footprint must be measured for every attributed process; unavailable, invalid or
 permission-denied measurements fail explicitly, with no RSS fallback. JSON keeps
-both totals and identifies `total_footprint_bytes` as the gated metric. RSS is
-informational and sums shared mappings without deduplication; MB means 1,000,000 bytes. The current M0 shell
-has no connection implementation, so its idle result is a shell baseline, not yet
+per-run totals; the gates identify `median_total_footprint_bytes` and
+`median_webview_footprint_bytes`. RSS is
+informational and sums shared mappings without deduplication; MB means 1,000,000 bytes. The current M0 workspace mock
+has no live connection implementation, so its idle result is a preview baseline, not yet
 the one-connection/one-tab workload in NFR-PERF-02.
 
 Each instance receives a benchmark-only stop-file request for Tauri's normal exit.

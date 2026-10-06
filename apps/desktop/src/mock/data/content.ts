@@ -1,4 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
+export type TableState = {
+  view: string;
+  filter: boolean;
+  pending: boolean;
+  added: boolean;
+};
 export type WorkspaceTab = {
   id: string;
   label: string;
@@ -6,6 +12,7 @@ export type WorkspaceTab = {
   sql?: string;
   schema?: string;
   title?: string;
+  tableState?: TableState;
 };
 export const initialTabs: readonly WorkspaceTab[] = [
   { id: 'orders', label: 'orders', kind: 'table' },

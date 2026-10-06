@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
+import { lazy, Suspense } from 'react';
 import { WorkspaceToolbar } from './WorkspaceToolbar';
 import { WorkspaceBody } from './WorkspaceBody';
-import { WorkspacePalettes } from './WorkspacePalettes';
+const WorkspacePalettes = lazy(() =>
+  import('./WorkspacePalettes').then((module) => ({
+    default: module.WorkspacePalettes,
+  })),
+);
 import { useWorkspaceController } from './useWorkspaceController';
 import styles from './Workspace.module.css';
 /** Hard-coded connection workspace; all commands mutate local preview state only. */
@@ -31,7 +36,7 @@ export function Workspace({
     toggleSafe,
     refresh,
   } = controller;
-  if (!connection || !selection.row) return <></>;
+  if (!enabled || !connection || !selection.row) return <></>;
   return (
     <div className={styles.workspace}>
       <WorkspaceToolbar
@@ -85,27 +90,29 @@ function WorkspaceOverlay({
   const { mode, setMode, state, command } = controller;
   if (!mode) return null;
   return (
-    <WorkspacePalettes
-      key={mode}
-      mode={mode}
-      connection={state.connection}
-      catalog={state.catalog}
-      opened={state.opened}
-      onClose={() => {
-        setMode(null);
-      }}
-      onDatabase={(name) => {
-        setMode(null);
-        state.openDatabase(name);
-      }}
-      onObject={(object) => {
-        setMode(null);
-        state.openTable(object);
-      }}
-      onCommand={(id) => {
-        setMode(null);
-        command(id);
-      }}
-    />
+    <Suspense fallback={null}>
+      <WorkspacePalettes
+        key={mode}
+        mode={mode}
+        connection={state.connection}
+        catalog={state.catalog}
+        opened={state.opened}
+        onClose={() => {
+          setMode(null);
+        }}
+        onDatabase={(name) => {
+          setMode(null);
+          state.openDatabase(name);
+        }}
+        onObject={(object) => {
+          setMode(null);
+          state.openTable(object);
+        }}
+        onCommand={(id) => {
+          setMode(null);
+          command(id);
+        }}
+      />
+    </Suspense>
   );
 }

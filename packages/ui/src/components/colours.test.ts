@@ -31,3 +31,25 @@ it('rejects hard-coded hex and functional colour notation', () => {
     ),
   ).toBe(false);
 });
+
+const overlayStyles = new Set([
+  'packages/ui/src/components/Palette.module.css',
+  'packages/ui/src/components/Sheet.module.css',
+  'apps/desktop/src/mock/Tooltip.module.css',
+]);
+async function assertCompositing(directory: string): Promise<void> {
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) await assertCompositing(path);
+    else if (entry.name.endsWith('.css')) {
+      const css = await readFile(path, 'utf8');
+      if (!overlayStyles.has(path))
+        expect(css, path).not.toMatch(/backdrop-filter\s*:/);
+      expect(css, path).not.toMatch(/will-change\s*:|translateZ\s*\(/);
+    }
+  }
+}
+it('limits backdrop filters to mounted overlay styles and forbids permanent layer hints', async () => {
+  await assertCompositing('packages/ui/src');
+  await assertCompositing('apps/desktop/src');
+});

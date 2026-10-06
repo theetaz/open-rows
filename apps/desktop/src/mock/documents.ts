@@ -88,3 +88,16 @@ export function tableDocument(
         ],
   };
 }
+
+/** Retain editable state in descriptors while inactive content is unmounted. */
+export function editDocument(
+  state: Documents,
+  fields: Partial<Pick<WorkspaceTab, 'sql' | 'tableState'>>,
+): Documents {
+  return {
+    ...state,
+    tabs: state.tabs.map((item) =>
+      item.id === state.active ? { ...item, ...fields } : item,
+    ),
+  };
+}

@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """Idle physical footprint across the app and its WebKit processes, five seconds after paint."""
 from bench_common import clock_ns, launch, parser, release_executable, run, wait_until, write_result
-from bench_metrics import BenchmarkError, memory_budget, print_budgets
+from bench_metrics import BenchmarkError, print_budgets
+from bench_memory_metrics import memory_sample, memory_report
 from bench_processes import Responsibility, add_footprints, app_processes, process_table, require_webcontent
 
 
@@ -24,29 +25,42 @@ def print_memory(rows):
     footprint = sum(row["footprint_bytes"] or 0 for row in rows)
     complete = all(row["footprint_bytes"] is not None for row in rows)
     print(f'TOTAL RSS (informational): {sum(row["rss_bytes"] for row in rows) / 1_000_000:.2f} MB')
-    print(f'TOTAL footprint (gated): {footprint / 1_000_000:.2f} MB' if complete else "TOTAL footprint (gated): unavailable")
+    print(f'TOTAL footprint (run sample): {footprint / 1_000_000:.2f} MB' if complete else "TOTAL footprint (run sample): unavailable")
 
 
-def main():
-    options = parser(__doc__).parse_args()
-    executable = release_executable(options.executable)
+def sample_run(executable, index):
     with launch(executable) as (process, startup):
         deadline = startup["timestamps_ns"]["first_paint_ready"] + 5_000_000_000
         wait_until(process, deadline)
         sampled_ns = clock_ns()
         rows = measure(process)
-    budget = memory_budget(rows)
+    print(f"Run {index + 1}")
     print_memory(rows)
-    result_rows = [dict(row, name=row["name"].split("/")[-1]) for row in rows]
-    write_result("memory", dict(executable=executable.name, processes=result_rows, budgets=[budget],
-                                gated_metric="total_footprint_bytes",
-                                total_rss_bytes=sum(row["rss_bytes"] for row in rows),
-                                total_footprint_bytes=(sum(row["footprint_bytes"] for row in rows)
-                                    if all(row["footprint_bytes"] is not None for row in rows) else None),
-                                sampled_ns=sampled_ns, startup=startup,
-                                method="footprint -f bytes (gate); ps RSS (informational); descendants + process group + direct/inherited XPC responsibility "
-                                       "with ps lstart >= root start; decimal MB"))
-    return print_budgets([budget])
+    sample = memory_sample(rows)
+    webview = sample["webview_footprint_bytes"]
+    print(f'Webview footprint: {webview / 1_000_000:.2f} MB' if webview is not None else "Webview footprint: unavailable")
+    return dict(sample, sampled_ns=sampled_ns, startup=startup)
+
+
+def main():
+    arguments = parser(__doc__)
+    arguments.add_argument("runs", type=int, nargs="?", default=3)
+    options = arguments.parse_args()
+    if options.runs < 1:
+        raise BenchmarkError("At least one memory run is required")
+    executable = release_executable(options.executable)
+    samples = [sample_run(executable, index) for index in range(options.runs)]
+    report = memory_report(samples)
+    medians = report["process_median_footprint_bytes"]
+    if medians is not None:
+        print("Per-process median footprint (MB):")
+        for name, value in medians.items():
+            print(f"{name:<38} {value / 1_000_000:.2f}")
+    write_result("memory", dict(report, executable=executable.name,
+                               method="Sequential launches; first paint + 5 s; footprint -f bytes; "
+                                      "ps RSS informational; descendants + process group + direct/inherited "
+                                      "XPC responsibility with ps lstart >= root start; decimal MB"))
+    return print_budgets(report["budgets"])
 
 
 if __name__ == "__main__":

@@ -6,6 +6,13 @@ import { afterEach, beforeEach, vi } from 'vitest';
 beforeEach(() => {
   localStorage.clear();
   vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe(): void {}
+      disconnect(): void {}
+    },
+  );
+  vi.stubGlobal(
     'matchMedia',
     vi.fn(() => ({
       matches: false,

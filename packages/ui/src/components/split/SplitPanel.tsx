@@ -5,6 +5,7 @@ import { readWidth, writeWidth, boundedWidth } from './width';
 import type { PanelRange } from './width';
 import { ResizeHandle } from './ResizeHandle';
 import styles from './SplitPanel.module.css';
+import { usePanelPresence } from './usePanelPresence';
 
 type Props = {
   label: string;
@@ -16,7 +17,8 @@ type Props = {
   children: ReactNode;
 };
 /** Collapsible split region; CSS handles animation and drag previews, never its sibling tree. */
-export function SplitPanel(props: Props): React.JSX.Element {
+export function SplitPanel(props: Props): React.JSX.Element | null {
+  const present = usePanelPresence(props.open);
   const [width, setWidth] = useState(() =>
     readWidth(props.storageKey, props.range),
   );
@@ -32,6 +34,7 @@ export function SplitPanel(props: Props): React.JSX.Element {
     writeWidth(props.storageKey, next);
     setWidth(next);
   }
+  if (!present) return null;
   return (
     <aside
       ref={ref}

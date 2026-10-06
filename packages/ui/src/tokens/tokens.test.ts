@@ -34,7 +34,7 @@ describe('generated tokens', () => {
       'utf8',
     );
     expect(panelCss).toContain('background: var(--or-panel)');
-    expect(panelCss).toContain('backdrop-filter: var(--or-glass-panel)');
+    expect(panelCss).not.toContain('backdrop-filter');
   });
   it.each(contrastRows())('$theme $pair ≥ $minimum', (row) => {
     expect(

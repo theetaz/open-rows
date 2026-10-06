@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { SplitPanel } from './SplitPanel';
@@ -132,4 +132,43 @@ it('collapses to an inert region and uses the shared reduced-motion timing token
   expect(tokens).toContain('cubic-bezier(0.32, 0.72, 0, 1)');
   expect(tokens).toContain('@media (prefers-reduced-motion: reduce)');
   expect(tokens).toContain('--or-motion-panel: 0ms');
+});
+
+it('unmounts closed content at 360 ms and cancels exit when reopened', () => {
+  vi.useFakeTimers();
+  try {
+    const renderPanel = (open: boolean): React.JSX.Element => (
+      <SplitPanel
+        label="Inspector"
+        storageKey="test.presence"
+        range={range}
+        open={open}
+        edge="left"
+        overlay
+      >
+        <p>Panel content</p>
+      </SplitPanel>
+    );
+    const { rerender } = render(renderPanel(false));
+    expect(screen.queryByText('Panel content')).toBeNull();
+    rerender(renderPanel(true));
+    rerender(renderPanel(false));
+    act(() => {
+      vi.advanceTimersByTime(359);
+    });
+    expect(screen.getByText('Panel content')).toBeInTheDocument();
+    rerender(renderPanel(true));
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(screen.getByText('Panel content')).toBeVisible();
+    rerender(renderPanel(false));
+    act(() => {
+      vi.advanceTimersByTime(360);
+    });
+    expect(screen.queryByText('Panel content')).toBeNull();
+    expect(document.querySelector('[aria-label="Inspector"]')).toBeNull();
+  } finally {
+    vi.useRealTimers();
+  }
 });

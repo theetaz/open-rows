@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Button, ThemeProvider } from '@openrows/ui';
 import { useWindowReady } from './useWindowReady';
-import { Gallery } from '../gallery/Gallery';
+const Gallery = lazy(() =>
+  import('../gallery/Gallery').then((module) => ({ default: module.Gallery })),
+);
 import { Workspace } from '../mock/Workspace';
 import styles from './App.module.css';
 
@@ -51,7 +53,9 @@ export function App(): React.JSX.Element {
             </Button>
           </header>
           <main className={styles.content}>
-            <Gallery />
+            <Suspense fallback={null}>
+              <Gallery />
+            </Suspense>
           </main>
         </div>
       )}

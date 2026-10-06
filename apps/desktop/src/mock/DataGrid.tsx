@@ -5,6 +5,7 @@ import { Badge } from '@openrows/ui';
 import { columns, isEdited, statusTones } from './data/rows';
 import type { OrderRow } from './data/rows';
 import styles from './Grid.module.css';
+import { useGridWindow } from './useGridWindow';
 
 type Props = {
   rows: readonly OrderRow[];
@@ -16,6 +17,9 @@ type Props = {
 export const DataGrid = memo(function DataGrid(
   props: Props,
 ): React.JSX.Element {
+  const { ref, start, end, top, bottom, onScroll, reveal } = useGridWindow(
+    props.rows.length,
+  );
   function move(event: KeyboardEvent<HTMLDivElement>): void {
     if (!['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return;
     event.preventDefault();
@@ -34,14 +38,12 @@ export const DataGrid = memo(function DataGrid(
     const row = props.rows[index];
     if (!row) return;
     props.onSelect(index, row);
-    const visible =
-      event.currentTarget.querySelectorAll<HTMLElement>('[data-row]');
-    const target = visible.item(index);
-    if (typeof target.scrollIntoView === 'function')
-      target.scrollIntoView({ block: 'nearest' });
+    reveal(index);
   }
   return (
     <div
+      ref={ref}
+      onScroll={onScroll}
       role="grid"
       aria-label="Orders data"
       aria-rowcount={props.rows.length + 1}
@@ -49,7 +51,11 @@ export const DataGrid = memo(function DataGrid(
       tabIndex={0}
       className={styles.grid}
       onKeyDown={move}
-      aria-activedescendant={`order-row-${String(props.selected)}`}
+      aria-activedescendant={
+        props.selected >= start && props.selected < end
+          ? `order-row-${String(props.selected)}`
+          : undefined
+      }
     >
       <div role="row" className={styles.header}>
         {['#', ...columns].map((column, index) => (
@@ -62,9 +68,16 @@ export const DataGrid = memo(function DataGrid(
           </div>
         ))}
       </div>
-      {props.rows.map((row, index) => (
-        <GridRow key={String(row[0])} row={row} index={index} owner={props} />
+      <div aria-hidden="true" style={{ height: top }} />
+      {props.rows.slice(start, end).map((row, offset) => (
+        <GridRow
+          key={String(row[0])}
+          row={row}
+          index={start + offset}
+          owner={props}
+        />
       ))}
+      <div aria-hidden="true" style={{ height: bottom }} />
     </div>
   );
 });
@@ -93,6 +106,7 @@ function GridRow({
             : `Order ${String(row[0])}`
       }
       data-row={index}
+      data-striped={index % 2 === 1}
       data-inserted={inserted}
       data-deleted={deleted}
       className={styles.row}

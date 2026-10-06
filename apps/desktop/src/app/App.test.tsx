@@ -37,8 +37,9 @@ it('defaults to workspace, opens the gallery from the rail and returns by Back/E
   expect(screen.getByRole('grid', { name: 'Orders data' })).toBeVisible();
   await user.click(screen.getByRole('button', { name: 'Component gallery' }));
   expect(
-    screen.getByRole('heading', { name: 'Made for the desktop.' }),
+    await screen.findByRole('heading', { name: 'Made for the desktop.' }),
   ).toBeVisible();
+  expect(document.querySelector('[role="grid"]')).toBeNull();
   await user.keyboard('{Meta>}t{/Meta}');
   await user.click(screen.getByRole('button', { name: 'Back to workspace' }));
   expect(screen.queryByRole('tab', { name: /SQL Query 1/ })).toBeNull();

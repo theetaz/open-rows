@@ -20,7 +20,7 @@
   box-shadow: var(--or-panel-shadow);
   -webkit-backdrop-filter: var(--or-glass-panel);
   backdrop-filter: var(--or-glass-panel);
-  animation: enter var(--or-motion-popover) var(--or-motion-easing) both;
+  animation: enter var(--or-motion-popover) var(--or-motion-easing);
 }
 .popover[data-state='closing'] {
   animation-name: leave;

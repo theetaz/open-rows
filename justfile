@@ -74,8 +74,8 @@ bench-startup runs="10":
     python3 -B scripts/bench-startup.py "{{runs}}"
 
 # Measure all-process idle physical footprint five seconds after first paint on macOS.
-bench-memory:
-    python3 -B scripts/bench-memory.py
+bench-memory runs="3":
+    python3 -B scripts/bench-memory.py "{{runs}}"
 
 # Test benchmark budgets, reports and cleanup without launching the app.
 bench-test:

@@ -51,7 +51,11 @@ export function useWorkspaceController(
     setSidebar,
     setPanel,
   });
-  useWorkspaceKeys({ enabled, command, connection: state.selectConnection });
+  useWorkspaceKeys({
+    enabled: enabled && !mode,
+    command,
+    connection: state.selectConnection,
+  });
   return {
     state,
     compact,
