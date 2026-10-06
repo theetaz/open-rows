@@ -65,6 +65,9 @@ export function Workspace({
         inspector={inspector.open}
         compact={compact}
         onGallery={onGallery}
+        onSwitcher={() => {
+          setMode('database');
+        }}
       />
       <span className={styles.announcement} role="status">
         {refreshes ? `Mock catalog refreshed (${String(refreshes)})` : ''}

@@ -42,7 +42,8 @@
   --or-tree-row-height: 24px;
   --or-tab-height: 28px;
   --or-control-compact: 24px;
-  --or-rail-tile-size: 34px;
+  --or-rail-tile-size: 36px;
+  --or-rail-inactive-opacity: 0.9;
   --or-status-height: 18px;
   --or-commit-height: 38px;
   --or-footer-height: 32px;
@@ -113,8 +114,8 @@
 [data-theme="dark"] {
   --or-page: #1B1B1B;
   --or-window: #242424;
-  --or-panel: rgba(43,43,43,0.9);
-  --or-panel-solid: #2B2B2B;
+  --or-panel: rgba(34,34,34,0.9);
+  --or-panel-solid: #222222;
   --or-row-stripe: rgba(255,255,255,0.018);
   --or-row-inserted: rgba(104,157,117,0.10);
   --or-row-deleted: rgba(180,104,99,0.10);
@@ -162,8 +163,8 @@
 [data-theme="system"] {
   --or-page: #1B1B1B;
   --or-window: #242424;
-  --or-panel: rgba(43,43,43,0.9);
-  --or-panel-solid: #2B2B2B;
+  --or-panel: rgba(34,34,34,0.9);
+  --or-panel-solid: #222222;
   --or-row-stripe: rgba(255,255,255,0.018);
   --or-row-inserted: rgba(104,157,117,0.10);
   --or-row-deleted: rgba(180,104,99,0.10);
@@ -216,13 +217,13 @@
 }
 [data-theme="dark"] {
   --or-separator: #C0C0C0;
-  --or-panel: #2B2B2B;
+  --or-panel: #222222;
   --or-control-fill: #383838;
 }
 @media (prefers-color-scheme: dark) {
 [data-theme="system"] {
   --or-separator: #C0C0C0;
-  --or-panel: #2B2B2B;
+  --or-panel: #222222;
   --or-control-fill: #383838;
 }
 }

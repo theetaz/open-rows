@@ -88,8 +88,9 @@ The approved direction refines the skeleton above:
 
 | Region | v2 decision |
 | --- | --- |
-| **Workspace rail** (far left, 112 px in the mock) | One rounded tile per open workspace (connection), with opened database sub-items below the selected tile. Click a tile or database to switch instantly; `+` opens a new connection. Settings at the bottom. |
-| **Sidebar** (floating rounded panel) | Segmented **Items / Queries / History**; search; object tree; schema picker and "create object" at the bottom. |
+| **Workspace rail** (far left, 64 px in the mock) | Workspaces only: 36 px engine-tinted tiles, 10 px corners, 13 px semibold name monograms and 8 px environment dots. No labels or database sub-items. A left-edge pill marks selection (4 × 20 px) or hover (4 × 8 px), with a 160 ms token-eased height transition; reduced motion disables it. Hover/focus glass tooltips show workspace, environment, engine and host. Tab and ↑/↓ navigate; ⌘1–4 switch. Borderless `+`, API and settings controls sit at the bottom. |
+| **Sidebar header** | Truncating workspace name, environment badge and a mock actions menu (Connection settings…, Duplicate, Disconnect). Below, a database icon/name/chevron opens a glass menu of opened databases: active check, hover/focus close, wrapping ↑/↓, Home/End, Enter, Esc/Tab dismissal and opener focus return. Open database… (⌘K) opens the existing switcher. Database and workspace changes preserve per-database tabs. |
+| **Sidebar** (floating rounded panel) | Header above segmented **Items / Queries / History**, search and object tree; schema picker and "create object" at the bottom. |
 | **Toolbar** | One unified, full-width titlebar row that never wraps: traffic lights → sidebar toggle → back/forward → safe mode → context bar (flexes, truncates) → actions → inspector toggle pinned at the far right above the inspector. Contents: back/forward (per-tab navigation history), **Safe mode** toggle (always on for prod), **context bar** like a browser address bar: env badge · workspace › database › schema › object · engine · route (SSH, proxy…) · live latency. |
 | **Tabs** | Chrome-style tabs for every table, query, structure view and API request; drag to reorder or tear off into a new window; middle-click closes. |
 | **Table view switcher** | Data · Structure · Indexes · Triggers · DDL inside each table tab; filter chips and "+ Row" next to it. |
@@ -139,8 +140,8 @@ specified in [docs/16 §3](16-platform-and-distribution.md#3-macos-specifics).
 ⌘K or the context bar database segment opens a glass database switcher. It lists
 the selected workspace's hard-coded catalog, marks already-open databases and
 hides system databases until **Show system databases** is enabled. Choosing an
-entry opens/activates it. Rail sub-items show database name plus an original
-engine glyph; close controls keep at least one database open. Switching workspaces
+entry opens/activates it. The sidebar header menu lists opened databases; its
+close controls keep at least one database open. Switching workspaces
 or databases retains tab sets and schema selection; object tooltips use
 `database.schema.table`. Sidebar objects follow the active database/schema.
 
@@ -157,11 +158,11 @@ All three palettes share `@openrows/ui` combobox/listbox semantics: input focus,
 IME composition does not execute or navigate commands. Palette selection stays
 visible when scrolling. Glass uses the existing solid/reduced-transparency
 fallback and 12 px corners. Open/close scale + fade lasts **160 ms** via
-`motion-popover`; database item height + fade lasts **220 ms** via
-`motion-disclosure`, both with `cubic-bezier(0.32, 0.72, 0, 1)`. Reduced motion
-removes both and closes palettes without an animation delay. The bounded mock
-catalog's height animation is the same scoped exception as the forty-row panel
-mock above; production docs/13 policies remain unchanged. Search ranking has a
+`motion-popover`; rail indicator height lasts **160 ms** via the same token,
+with `cubic-bezier(0.32, 0.72, 0, 1)`. Reduced motion removes both and closes
+palettes without an animation delay. The fixed-size rail pill height transition
+is a scoped exception to docs/13 layout animation policy, alongside the bounded
+forty-row panel mock above; production performance policies remain unchanged. Search ranking has a
 Performance API benchmark with a **16 ms p95 per 1,000 objects** budget.
 Native toolbar geometry is documented in [docs/16 §3](16-platform-and-distribution.md#3-macos-specifics).
 These interactions use mock/data only; no catalog, query or command contacts a server.
@@ -215,17 +216,23 @@ The app must feel like it was designed for the current macOS, not merely ported 
 
 `packages/ui/src/tokens/` supplies both themes and the component gallery. UI labels
 remain 13 px; workspace grid and tree text are 12.5 px, secondary metadata is
-11–11.5 px, context text is 12 px, and rail/environment labels are 10 px. Grid rows
+11–11.5 px, context text is 12 px, and environment labels are 10 px. Rail monograms are 13 px semibold. Grid rows
 and headers are 26 px, tree rows 24 px, tabs and titlebar controls 28 px, table
-controls 24 px, and rail tiles 34 px with 10 px corners. Status pills use 11 px
+controls 24 px, and rail tiles 36 px with 10 px corners. Status pills use 11 px
 text in an 18 px box with 6 px corners. Floating panels use 12 px corners.
 
 | Surface token | Dark | Light |
 | --- | --- | --- |
 | Grid/content (`window`) | `#242424` | `#FAFAFA` |
-| Sidebar/inspector fallback (`panel-solid`) | `#2B2B2B` | `#EDEDED` |
-| Sidebar/inspector glass (`panel`) | `rgba(43,43,43,0.9)` | `rgba(237,237,237,0.9)` |
+| Sidebar/inspector fallback (`panel-solid`) | `#222222` | `#EDEDED` |
+| Sidebar/inspector glass (`panel`) | `rgba(34,34,34,0.9)` | `rgba(237,237,237,0.9)` |
 | Window/rail (`page`) | `#1B1B1B` | `#DADADA` |
+
+Rail and workspace panels have no outline strokes. Surface tone separates the
+window/rail, sidebar/inspector and content; the dark content is the lightest
+base surface. Panel radii and glass/transparency fallbacks remain. Inactive
+rail tiles use 90% opacity, included in the contrast report. Keyboard focus
+underlines the rail monogram and reveals its pill; other controls use focus indicators.
 
 Rows are flat and edge-to-edge with a faint zebra tint. Edited cells use an 18%
 amber tint and an accessible edited-cell label; inserted rows show a gutter plus;

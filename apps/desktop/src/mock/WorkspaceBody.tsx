@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { connections } from './data/connections';
 import { SplitPanel } from '@openrows/ui';
 import type { useWorkspace } from './useWorkspace';
 import type { OrderRow } from './data/rows';
@@ -8,19 +9,7 @@ import { WorkspaceSidebar } from './WorkspaceSidebar';
 import { WorkspaceInspector } from './WorkspaceInspector';
 import { TableContent } from './TableContent';
 import styles from './Workspace.module.css';
-/** Database-specific documents and object browser inside the preview shell. */
-export function WorkspaceBody({
-  state,
-  selection,
-  panel,
-  onPanel,
-  onSelect,
-  addQuery,
-  sidebar,
-  inspector,
-  compact,
-  onGallery,
-}: {
+type Props = {
   state: ReturnType<typeof useWorkspace>;
   selection: { index: number; row: OrderRow };
   panel: string;
@@ -31,17 +20,29 @@ export function WorkspaceBody({
   inspector: boolean;
   compact: boolean;
   onGallery: () => void;
-}): React.JSX.Element {
+  onSwitcher: () => void;
+};
+/** Database-specific documents and object browser inside the preview shell. */
+export function WorkspaceBody(props: Props): React.JSX.Element {
+  const {
+    state,
+    selection,
+    panel,
+    onPanel,
+    onSelect,
+    addQuery,
+    sidebar,
+    inspector,
+    compact,
+    onGallery,
+    onSwitcher,
+  } = props;
   return (
     <div className={styles.body}>
       <ConnectionRail
         selected={state.connection}
         onSelect={state.selectConnection}
         onGallery={onGallery}
-        opened={state.opened}
-        database={state.database}
-        onDatabase={state.openDatabase}
-        onCloseDatabase={state.closeDatabase}
       />
       <SplitPanel
         label="Sidebar"
@@ -51,6 +52,11 @@ export function WorkspaceBody({
         edge="right"
       >
         <WorkspaceSidebar
+          connection={connections[state.connection] ?? connections[0]}
+          opened={state.opened}
+          onDatabase={state.openDatabase}
+          onCloseDatabase={state.closeDatabase}
+          onSwitcher={onSwitcher}
           database={state.catalog}
           table={state.table}
           schema={state.schema}

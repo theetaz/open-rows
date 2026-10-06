@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 .sidebar {
+  border: 0;
+  box-shadow: none;
   display: flex;
   flex-direction: column;
   gap: var(--or-space-10);

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 export type Connection = {
   name: string;
-  short: string;
   database: string;
-  initials: string;
+  tint: 'pg' | 'ch' | 'sqlite';
+  host: string;
   environment: 'staging' | 'prod' | 'dev' | 'local';
   engine: string;
   route: string;
@@ -13,9 +13,9 @@ export type Connection = {
 export const connections: readonly Connection[] = [
   {
     name: 'orders-staging',
-    short: 'orders',
     database: 'orders',
-    initials: 'PG',
+    tint: 'pg',
+    host: 'db.example.test',
     environment: 'staging',
     engine: 'PostgreSQL 16.4',
     route: 'SSH',
@@ -31,9 +31,9 @@ export const connections: readonly Connection[] = [
   },
   {
     name: 'analytics-prod',
-    short: 'analytics',
     database: 'analytics',
-    initials: 'PG',
+    tint: 'pg',
+    host: 'db.example.test',
     environment: 'prod',
     engine: 'PostgreSQL 15.8',
     route: 'Cloud SQL proxy',
@@ -46,9 +46,9 @@ export const connections: readonly Connection[] = [
   },
   {
     name: 'events',
-    short: 'events',
     database: 'default',
-    initials: 'CH',
+    tint: 'ch',
+    host: 'events.example.test',
     environment: 'dev',
     engine: 'ClickHouse 24.8',
     route: 'HTTPS',
@@ -61,9 +61,9 @@ export const connections: readonly Connection[] = [
   },
   {
     name: 'app.sqlite',
-    short: 'app.sqlite',
     database: 'main',
-    initials: 'SL',
+    tint: 'sqlite',
+    host: 'local file',
     environment: 'local',
     engine: 'SQLite 3.46',
     route: 'file',

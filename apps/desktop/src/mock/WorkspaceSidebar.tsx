@@ -12,9 +12,16 @@ import type { Database, DatabaseObject } from './data/databases';
 import { savedQueries, history } from './data/connections';
 import { sidebarSegments } from './data/content';
 import { SidebarObjects, substringIndices } from './SidebarObjects';
+import type { Connection } from './data/connections';
+import { SidebarHeader } from './SidebarHeader';
 import styles from './Sidebar.module.css';
 type Props = {
   database: Database;
+  connection: Connection | undefined;
+  opened: readonly string[];
+  onDatabase: (name: string) => void;
+  onCloseDatabase: (name: string) => void;
+  onSwitcher: () => void;
   table: string;
   schema: string;
   onSchema: (schema: string) => void;
@@ -53,6 +60,14 @@ export function WorkspaceSidebar(props: Props): React.JSX.Element {
       className={styles.container}
     >
       <GlassPanel className={styles.sidebar}>
+        {props.connection && (
+          <SidebarHeader
+            key={props.connection.name}
+            {...props}
+            connection={props.connection}
+            database={props.database.name}
+          />
+        )}
         <SegmentedControl
           aria-label="Sidebar mode"
           options={sidebarSegments}

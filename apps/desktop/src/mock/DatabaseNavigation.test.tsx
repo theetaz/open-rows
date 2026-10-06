@@ -26,10 +26,16 @@ function pickDatabase(name: string): void {
     vi.advanceTimersByTime(160);
   });
 }
+function selectOpened(name: string): void {
+  fireEvent.click(screen.getByRole('button', { name: /^Opened databases/ }));
+  fireEvent.click(
+    screen.getByRole('menuitemradio', { name: `Activate database ${name}` }),
+  );
+}
 afterEach(() => {
   vi.useRealTimers();
 });
-it('opens databases by keyboard, updates rail/context/sidebar and preserves independent tab sets', () => {
+it('opens databases by keyboard, updates header/context/sidebar and preserves independent tab sets', () => {
   mount();
   key('t');
   expect(screen.getByRole('tab', { name: /SQL Query 1/ })).toHaveAttribute(
@@ -41,8 +47,8 @@ it('opens databases by keyboard, updates rail/context/sidebar and preserves inde
     'orders-staging › orders_archive › public › orders_2024',
   );
   expect(
-    screen.getByRole('button', { name: 'Activate database orders_archive' }),
-  ).toHaveAttribute('aria-pressed', 'true');
+    screen.getByRole('button', { name: 'Opened databases (orders_archive)' }),
+  ).toHaveAttribute('aria-expanded', 'false');
   expect(screen.getByRole('tab', { name: /orders_2024/ })).toHaveAttribute(
     'title',
     'orders_archive.public.orders_2024',
@@ -56,16 +62,12 @@ it('opens databases by keyboard, updates rail/context/sidebar and preserves inde
     sidebar.getByRole('button', { name: /archived_customers/ }),
   ).toBeVisible();
   expect(sidebar.queryByRole('button', { name: /order_items/ })).toBeNull();
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Activate database orders' }),
-  );
+  selectOpened('orders');
   expect(screen.getByRole('tab', { name: /SQL Query 1/ })).toHaveAttribute(
     'aria-selected',
     'true',
   );
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Activate database orders_archive' }),
-  );
+  selectOpened('orders_archive');
   expect(screen.getByRole('tab', { name: /SQL Query 1/ })).toHaveAttribute(
     'title',
     'orders_archive.public.SQL Query 1',
@@ -80,14 +82,18 @@ it('opens databases by keyboard, updates rail/context/sidebar and preserves inde
     'title',
     'orders_archive.public.SQL Query 1',
   );
+  fireEvent.click(screen.getByRole('button', { name: /^Opened databases/ }));
   fireEvent.click(
-    screen.getByRole('button', { name: 'Close database orders_archive' }),
+    screen.getByRole('menuitem', { name: 'Close database orders_archive' }),
   );
+  fireEvent.click(screen.getByRole('button', { name: /^Opened databases/ }));
   expect(
-    screen.getByRole('button', { name: 'Activate database orders' }),
-  ).toHaveAttribute('aria-pressed', 'true');
+    screen.getByRole('menuitemradio', { name: 'Activate database orders' }),
+  ).toHaveAttribute('aria-checked', 'true');
   expect(
-    screen.queryByRole('button', { name: 'Activate database orders_archive' }),
+    screen.queryByRole('menuitemradio', {
+      name: 'Activate database orders_archive',
+    }),
   ).toBeNull();
 });
 it('context opens the database switcher, marks opened entries and hides system databases until requested', () => {
@@ -128,7 +134,7 @@ it('context opens the database switcher, marks opened entries and hides system d
     vi.advanceTimersByTime(160);
   });
   expect(
-    screen.getAllByRole('button', { name: 'Activate database orders' }),
+    screen.getAllByRole('button', { name: 'Opened databases (orders)' }),
   ).toHaveLength(1);
 });
 it('search auto-expands matches, highlights literal characters, shows empty state and clears with Esc', () => {

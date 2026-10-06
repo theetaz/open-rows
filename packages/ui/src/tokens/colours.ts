@@ -52,8 +52,8 @@ export const light = {
 export const dark: typeof light = {
   page: '#1B1B1B',
   window: '#242424',
-  panel: 'rgba(43,43,43,0.9)',
-  'panel-solid': '#2B2B2B',
+  panel: 'rgba(34,34,34,0.9)',
+  'panel-solid': '#222222',
   'row-stripe': 'rgba(255,255,255,0.018)',
   'row-inserted': 'rgba(104,157,117,0.10)',
   'row-deleted': 'rgba(180,104,99,0.10)',

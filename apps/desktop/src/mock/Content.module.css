@@ -9,7 +9,7 @@
   container-type: inline-size;
   container-name: workspace-content;
   background: var(--or-window);
-  border: var(--or-border-width) solid var(--or-separator);
+  border: 0;
   border-radius: var(--or-radius-group);
   overflow: hidden;
 }

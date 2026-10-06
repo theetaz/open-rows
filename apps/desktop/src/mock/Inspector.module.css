@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 .inspector {
+  border: 0;
+  box-shadow: none;
   display: flex;
   flex-direction: column;
   gap: var(--or-space-8);

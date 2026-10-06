@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { light, dark, highContrast } from './colours.ts';
+import { geometry } from './geometry.ts';
 
 type Colour = readonly [number, number, number, number];
 function parse(value: string): Colour {
@@ -32,10 +33,13 @@ function luminance(colour: Colour): number {
     (linear[2] ?? 0) * 0.0722
   );
 }
-function ratio(foreground: string, background: Colour): number {
-  const first = luminance(composite(parse(foreground), background));
+function colourRatio(foreground: Colour, background: Colour): number {
+  const first = luminance(foreground);
   const second = luminance(background);
   return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
+}
+function ratio(foreground: string, background: Colour): number {
+  return colourRatio(composite(parse(foreground), background), background);
 }
 /** WCAG ratio for a foreground composited over an opaque sRGB background. */
 export function contrastRatio(foreground: string, background: string): number {
@@ -107,6 +111,7 @@ function paletteRows(theme: string, palette: typeof light): Row[] {
       ratio: ratio(palette['on-accent'], parse(palette[background])),
       minimum: 4.5,
     });
+  rows.push(...railRows(theme, palette));
   return rows;
 }
 /** Full WCAG sRGB coverage of text/focus pairs, composited glass and badge fills. */
@@ -153,4 +158,21 @@ function badgeRows({
     });
   }
   return rows;
+}
+
+function railRows(theme: string, palette: typeof light): Row[] {
+  const opacity = Number(geometry['rail-inactive-opacity']);
+  const page = parse(palette.page);
+  const faded = (value: string): Colour => {
+    const colour = parse(value);
+    return composite([colour[0], colour[1], colour[2], opacity], page);
+  };
+  return (['connection-pg', 'connection-ch', 'connection-sqlite'] as const).map(
+    (engine) => ({
+      theme,
+      pair: `rail-inactive/${engine}`,
+      ratio: colourRatio(faded(palette['on-accent']), faded(palette[engine])),
+      minimum: 4.5,
+    }),
+  );
 }

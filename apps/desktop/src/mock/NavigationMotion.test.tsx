@@ -9,32 +9,16 @@ import { geometry, material } from '@openrows/ui/tokens';
 afterEach(() => {
   vi.useRealTimers();
 });
-it('rail opening/closing uses retained height/fade state, inertness and reduced-motion logic', () => {
-  const props = {
-    selected: 0,
-    opened: ['orders'],
-    database: 'orders',
-    onSelect: vi.fn(),
-    onGallery: vi.fn(),
-    onDatabase: vi.fn(),
-    onCloseDatabase: vi.fn(),
-  };
+it('rail indicator responds to reduced motion without database disclosures', () => {
+  const props = { selected: 0, onSelect: vi.fn(), onGallery: vi.fn() };
   const { rerender } = render(<ConnectionRail {...props} />);
   const item = screen
-    .getByRole('button', {
-      name: 'Activate database orders_archive',
-      hidden: true,
-    })
-    .closest('[data-open]');
-  expect(item).toHaveAttribute('data-open', 'false');
-  expect(item).toHaveAttribute('inert');
-  rerender(<ConnectionRail {...props} opened={['orders', 'orders_archive']} />);
-  expect(item).toHaveAttribute('data-open', 'true');
-  expect(item).not.toHaveAttribute('inert');
+    .getByRole('button', { name: 'Switch to orders-staging' })
+    .querySelector('[data-state]');
+  expect(item).toHaveAttribute('data-state', 'selected');
   expect(item).toHaveAttribute('data-motion', 'full');
-  rerender(<ConnectionRail {...props} />);
-  expect(item).toHaveAttribute('data-open', 'false');
-  expect(item).toHaveAttribute('inert');
+  rerender(<ConnectionRail {...props} selected={1} />);
+  expect(item).toHaveAttribute('data-state', 'idle');
   vi.stubGlobal(
     'matchMedia',
     vi.fn(() => ({
@@ -47,10 +31,7 @@ it('rail opening/closing uses retained height/fade state, inertness and reduced-
   expect(item).toHaveAttribute('data-motion', 'reduced');
 });
 it('uses token durations/easing and removes rail/popover animations under reduced motion', () => {
-  const rail = readFileSync(
-    'apps/desktop/src/mock/Workspace.module.css',
-    'utf8',
-  );
+  const rail = readFileSync('apps/desktop/src/mock/Rail.module.css', 'utf8');
   const palette = readFileSync(
     'packages/ui/src/components/Palette.module.css',
     'utf8',
@@ -58,8 +39,9 @@ it('uses token durations/easing and removes rail/popover animations under reduce
   expect(material['motion-disclosure']).toBe('220ms');
   expect(material['motion-popover']).toBe('160ms');
   expect(material['motion-easing']).toBe('cubic-bezier(0.32, 0.72, 0, 1)');
-  expect(rail).toContain('grid-template-rows var(--or-motion-disclosure)');
-  expect(rail).toContain('opacity var(--or-motion-disclosure)');
+  expect(rail).toContain(
+    'height var(--or-motion-popover) var(--or-motion-easing)',
+  );
   for (const css of [rail, palette]) {
     expect(css).toContain('prefers-reduced-motion: reduce');
     expect(css).toContain("[data-motion='reduced']");

@@ -8,6 +8,7 @@ const paths = {
   sidebar: 'M4 4h16v16H4ZM9 4v16',
   inspector: 'M4 4h16v16H4ZM15 4v16',
   settings: 'M3 7h9m6 0h3M3 17h3m6 0h9M15 4v6M9 14v6',
+  chevronDown: 'M6 9l6 6 6-6',
   database:
     'M5 6c0-1.7 3.1-3 7-3s7 1.3 7 3-3.1 3-7 3-7-1.3-7-3ZM5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3',
 };
