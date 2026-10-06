@@ -1,19 +1,17 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 :root {
-  color-scheme: light;
-  font-family: system-ui, sans-serif;
-  color: CanvasText;
-  background: Canvas;
+  color-scheme: var(--or-color-scheme);
+  font-family: var(--or-font-ui);
+  font-size: 100%;
+  color: var(--or-text);
+  background: var(--or-page);
+  -webkit-font-smoothing: var(--or-font-smoothing);
+  font-variant-numeric: var(--or-font-numeric);
 }
 body {
   margin: 0;
+  font-size: var(--or-text-13);
 }
 * {
   box-sizing: border-box;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-  }
 }

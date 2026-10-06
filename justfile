@@ -40,6 +40,7 @@ check:
     just deny
     just machete
     just hygiene
+    just ui-check
     pnpm lint
     pnpm format:check
     pnpm typecheck
@@ -70,3 +71,21 @@ ipc-check:
 # Measure five fresh release processes to the frontend paint-ready event.
 bench-startup executable:
     python3 scripts/bench-startup.py "{{executable}}"
+
+# Emit CSS custom properties from the UI TypeScript token source.
+gen-tokens:
+    pnpm --filter @openrows/ui gen-tokens
+
+# Reject stale generated tokens and raw component colours.
+ui-check:
+    pnpm --filter @openrows/ui tokens:check
+    pnpm --filter @openrows/ui colours:check
+
+# Print minimum WCAG ratios across all component surfaces and themes.
+contrast-report:
+    pnpm --filter @openrows/ui contrast:report
+
+# Build and enforce gzip budgets for UI styles and the initial JS bundle.
+bench-ui:
+    pnpm build
+    pnpm --filter @openrows/ui size:report

@@ -9,6 +9,13 @@
     },
     "packages/ipc": {
       "project": ["src/**/*.ts"]
+    },
+    "packages/ui": {
+      "entry": [
+        "src/**/*.test.{ts,tsx}",
+        "scripts/{generate-tokens,check-colours,contrast-report,bundle-size}.ts"
+      ],
+      "project": ["src/**/*.{ts,tsx}", "scripts/*.ts"]
     }
   }
 }

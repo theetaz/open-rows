@@ -1,0 +1,57 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.field {
+  display: grid;
+  gap: var(--or-space-6);
+}
+.field label {
+  font-weight: var(--or-weight-medium);
+}
+.frame {
+  display: flex;
+  align-items: center;
+  background: var(--or-window);
+  border: var(--or-border-width) solid var(--or-secondary);
+  border-radius: var(--or-radius-field);
+}
+.frame input {
+  inline-size: 100%;
+  min-inline-size: 0;
+  min-block-size: var(--or-control-md);
+  padding: var(--or-space-8) var(--or-space-10);
+  border: none;
+  border-radius: inherit;
+  background: transparent;
+  color: var(--or-text);
+  font: inherit;
+}
+.frame input::placeholder {
+  color: var(--or-secondary);
+  opacity: 1;
+}
+.frame input:focus-visible {
+  outline: var(--or-focus-width) solid var(--or-focus);
+  outline-offset: var(--or-focus-offset);
+}
+.frame:has(input:disabled) {
+  background: var(--or-control-fill);
+}
+.frame input:disabled {
+  color: var(--or-secondary);
+  cursor: not-allowed;
+}
+.frame[data-invalid='true'] {
+  border-color: var(--or-danger-fg);
+}
+.icon {
+  display: inline-flex;
+  padding-inline-start: var(--or-space-10);
+  color: var(--or-secondary);
+}
+.icon svg {
+  inline-size: var(--or-icon-size);
+  block-size: var(--or-icon-size);
+}
+.error {
+  color: var(--or-danger-fg);
+  font-size: var(--or-text-12);
+}

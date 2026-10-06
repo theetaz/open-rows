@@ -1,0 +1,30 @@
+// SPDX-License-Identifier: Apache-2.0
+import type { SVGProps } from 'react';
+
+const paths = {
+  search: 'M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13Zm4.6-1.9L21 21',
+  plus: 'M12 5v14M5 12h14',
+  refresh: 'M20 8a8 8 0 1 0 0 8M20 3v5h-5',
+  sidebar: 'M4 4h16v16H4ZM9 4v16',
+};
+/** Original line geometry drawn for the gallery, with inherited colour. */
+export function Icon({
+  name,
+  ...props
+}: SVGProps<SVGSVGElement> & { name: keyof typeof paths }): React.JSX.Element {
+  return (
+    <svg
+      {...props}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d={paths[name]} />
+    </svg>
+  );
+}

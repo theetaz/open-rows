@@ -1,0 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.footer {
+  color: var(--or-secondary);
+  font-size: var(--or-text-11);
+  padding-block: var(--or-space-12);
+}

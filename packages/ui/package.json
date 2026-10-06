@@ -1,0 +1,26 @@
+{
+  "name": "@openrows/ui",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./tokens.css": "./src/tokens/tokens.css",
+    "./tokens": "./src/tokens/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "gen-tokens": "node scripts/generate-tokens.ts",
+    "tokens:check": "node scripts/generate-tokens.ts --check",
+    "colours:check": "node scripts/check-colours.ts",
+    "contrast:report": "node scripts/contrast-report.ts",
+    "size:report": "node scripts/bundle-size.ts"
+  },
+  "peerDependencies": {
+    "react": "^19.3.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0"
+  }
+}
