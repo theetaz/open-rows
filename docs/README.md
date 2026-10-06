@@ -32,6 +32,7 @@ Diagrams are written in [Mermaid](https://mermaid.js.org/) so they render on Git
 | 22 | [Governance and licensing](22-governance-and-licensing.md) | License, clean-room policy, contribution rules |
 | 23 | [AI assistant, agents and MCP](23-ai-assistant.md) | BYOK providers, agent-CLI bridges, MCP server/client, data-sharing policy |
 | 24 | [Networking and protocols](24-networking-and-protocols.md) | Routes and hops, SSH, TLS, cloud tunnels, sleep/wake resilience, protocol handling |
+| 25 | [Engineering standards and delivery](25-engineering-standards.md) | Task specs, acceptance reports, code-quality limits, performance policy, local green-light gate, clean-up |
 | — | [Glossary](glossary.md) | Terms used across these docs |
 | — | [ADRs](adr/README.md) | Architecture Decision Records |
 
