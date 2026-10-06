@@ -144,23 +144,30 @@ The full rules, with examples, live in [CONTRIBUTING.md](../CONTRIBUTING.md). Su
 
 ## 4. CI pipeline
 
-The implemented workflow, [.github/workflows/ci.yml](../.github/workflows/ci.yml), runs on every push to `main`, manual dispatch, and pull requests opened, synchronized, reopened or edited. Editing a PR title rechecks it. Local Rust gates run with `just check`.
+### 4.1 Current: minimal pipeline (private repository)
 
-| Job | Runner | Checks |
-| --- | --- | --- |
-| `commits` | Ubuntu, PRs only | Full-history checkout; `scripts/ci/check-commit-messages.sh` feeds every non-merge commit in the base-to-head range to the local `commit-msg` hook, then the same hook checks the PR title |
-| `rust` | Ubuntu, macOS, Windows | Toolchain and components from `rust-toolchain.toml`; format check on Ubuntu; full workspace Clippy (all targets, warnings as errors) and nextest on every OS, using the lockfile |
-| `supply-chain` | Ubuntu | `cargo deny --locked check` (advisories, licences, bans, sources) and `cargo machete` |
-| `hygiene` | Ubuntu | Source hygiene, ShellCheck on every shell script and git hook, actionlint on all workflows |
-| `ci-ok` | Ubuntu | Always evaluates all four jobs; fails on any failure, cancellation or unexpected skip; accepts the skipped `commits` job only outside PR events |
+While the repository is private (GitHub's free plan offers no branch protection for private repositories, and macOS/Windows runner minutes are costly), CI is deliberately minimal. [.github/workflows/ci.yml](../.github/workflows/ci.yml) runs one Ubuntu job on every pull request and every push to `main`:
 
-**Required branch-protection check: `ci-ok`.** The maintainer configures this after merge; the workflow does not change repository settings. Matrix fail-fast is disabled so every OS gets its full suite (NFR-PORT-03).
+| Step | What it checks |
+| --- | --- |
+| Commit messages (PRs only) | Every non-merge commit in the PR goes through `scripts/git-hooks/commit-msg` via `scripts/ci/check-commit-messages.sh` |
+| PR title (PRs only) | The title goes through the same hook (passed via an environment variable, never interpolated into shell) |
+| Format | `cargo fmt --all --check` |
+| Lint | `cargo clippy --workspace --all-targets --locked -- -D warnings` |
+| Tests | `cargo nextest run --workspace --locked` |
 
-Rust builds use `Swatinem/rust-cache`, separated by runner/toolchain with lockfile-aware keys. Rust tools and ShellCheck are installed with `taiki-e/install-action`; actionlint v1.7.7 is installed with Go (it is not supported by install-action). All action references are pinned to full commit SHAs with version comments. The workflow grants only `contents: read`, disables persisted checkout credentials, and passes PR metadata through environment variables rather than shell interpolation. Concurrency is grouped by workflow and ref; newer PR runs cancel older ones, while main pushes and manual runs are not cancelled automatically.
+Every other gate runs locally with `just check` (cargo-deny, cargo-machete, hygiene) and stays mandatory before opening a PR. Actions are pinned to full commit SHAs, the workflow has read-only permissions, and checkout does not persist credentials. Merging with red CI is not allowed by convention.
 
-[Dependabot](../.github/dependabot.yml) checks Actions and Cargo weekly, groups minor/patch updates per ecosystem, and uses `ci(deps)` / `build(deps)` Conventional Commit prefixes.
+### 4.2 Planned: full pipeline (when the repository goes public)
 
-**Planned:** frontend lint/types/tests with the Tauri app task; Tier 1 driver integration on Linux with containers; benchmarks against `main`. Nightly workflows will cover the full database matrix, fuzzing, E2E on Linux/Windows and performance on reference Macs. Tagged release workflows will build, sign, notarize, generate SBOMs and publish drafts; signing secrets will be limited to protected release tags.
+Restored when the repository is made public (the full version is preserved in the first commit of PR #5):
+
+- Rust matrix on Ubuntu, macOS and Windows (NFR-PORT-03).
+- `supply-chain` job: cargo-deny and cargo-machete.
+- `hygiene` job: hygiene script, ShellCheck, actionlint.
+- `ci-ok` aggregate job as the single required status check, plus branch protection on `main` (PRs only, `ci-ok` required, linear history, no force pushes).
+- Dependabot for GitHub Actions and Cargo with `ci(deps)` / `build(deps)` prefixes.
+- Later: frontend jobs, Tier 1 driver integration with containers, benchmarks against `main`, nightly matrix/fuzzing/E2E, and signed release workflows.
 
 ## 5. Branching and versioning
 
