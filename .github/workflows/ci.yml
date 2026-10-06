@@ -46,6 +46,27 @@ jobs:
           trap 'rm -f -- "$message"' EXIT
           printf '%s\n' "$PR_TITLE" > "$message"
           bash scripts/git-hooks/commit-msg "$message"
+      - name: Install Tauri Linux prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          cache: pnpm
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Frontend lint
+        run: pnpm lint
+      - name: Frontend format
+        run: pnpm format:check
+      - name: TypeScript
+        run: pnpm typecheck
+      - name: Component tests
+        run: pnpm test
+      - name: Frontend dead code
+        run: pnpm knip
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - uses: taiki-e/install-action@183e4297cca2404691e9380e1307288dced5c82a # v2.87.25
         with:
@@ -56,3 +77,5 @@ jobs:
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Tests
         run: cargo nextest run --workspace --locked
+      - name: Binding freshness
+        run: cargo nextest run -p openrows-app --locked bindings_are_fresh

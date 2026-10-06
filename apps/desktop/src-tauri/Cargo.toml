@@ -1,0 +1,25 @@
+[package]
+name = "openrows-app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+default-run = "openrows-app"
+
+[lints]
+workspace = true
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+serde = { workspace = true, features = ["derive"] }
+tauri = { version = "2", features = ["specta"] }
+specta = { version = "=2.0.0-rc.25", features = ["derive", "function"] }
+specta-typescript = "0.0.12"
+tauri-specta = { version = "=2.0.0-rc.25", features = ["typescript"] }
+thiserror.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

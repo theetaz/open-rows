@@ -1,0 +1,19 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+:root {
+  color-scheme: light;
+  font-family: system-ui, sans-serif;
+  color: CanvasText;
+  background: Canvas;
+}
+body {
+  margin: 0;
+}
+* {
+  box-sizing: border-box;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+  }
+}

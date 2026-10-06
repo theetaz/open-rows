@@ -1,0 +1,20 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.shell {
+  min-block-size: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.toolbar {
+  block-size: 48px;
+  padding-inline: 96px 24px;
+  display: flex;
+  align-items: center;
+  user-select: none;
+  border-block-end: 1px solid GrayText;
+}
+.content {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}

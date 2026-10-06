@@ -1,6 +1,9 @@
 [advisories]
 # Vulnerabilities are errors by default; do not ignore any advisories.
 yanked = "deny"
+# Unmaintained notices fail only for crates we depend on directly; transitive
+# ones (e.g. paste, proc-macro-error via specta/tauri) are tracked upstream.
+unmaintained = "workspace"
 
 [licenses]
 allow = [
