@@ -4,6 +4,7 @@ mod commands;
 #[cfg(target_os = "macos")]
 mod material;
 mod startup;
+mod startup_report;
 
 fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
     tauri_specta::Builder::new().commands(tauri_specta::collect_commands![commands::app_info])
@@ -25,7 +26,10 @@ pub fn export_bindings(path: &std::path::Path) -> Result<(), specta_typescript::
 /// # Errors
 /// Returns a Tauri error if setup or the event loop fails.
 pub fn run() -> Result<(), tauri::Error> {
-    tauri::Builder::default()
+    startup_report::initialize();
+    startup_report::record(startup_report::Phase::BuilderStart);
+    let builder = tauri::Builder::default();
+    startup_report::instrument(builder)
         .invoke_handler(command_builder().invoke_handler())
         .setup(startup::install)
         .run(tauri::generate_context!())

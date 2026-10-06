@@ -4,7 +4,7 @@ Product terminology: **Workspace = connection** to a server/host; **Project = gi
 
 ## 1. Monorepo layout
 
-The current M0-T4 layout is below. The full planned crate and package map remains in [03-architecture-overview.md §5](03-architecture-overview.md#5-crate-and-package-map).
+The current M0-T5 layout is below. The full planned crate and package map remains in [03-architecture-overview.md §5](03-architecture-overview.md#5-crate-and-package-map).
 
 ```text
 open-rows/
@@ -48,6 +48,7 @@ open-rows/
 | Vite, React 19 + React Compiler | Desktop frontend bundle and hot reload |
 | Tauri 2, tauri-specta / Specta | Native shell and generated TypeScript commands |
 | Vitest, Testing Library, Knip | Component/gallery accessibility tests and unused-code scan |
+| Python 3 (standard library) | macOS startup/memory harnesses and headless benchmark tests |
 | `just` | One-command quality gate (`just check`) |
 | `sccache` (optional) | Compiler cache; set `RUSTC_WRAPPER=sccache` |
 | `scripts/git-hooks` | Git hooks enabled by `just setup`; currently `commit-msg` |
@@ -73,6 +74,10 @@ just contrast-report # WCAG ratio table for normal and high-contrast themes
 just bench-ui       # production build and enforced UI CSS/JS gzip budgets
 just dev            # native hidden-until-render window + Vite hot reload
 just build-app      # unsigned release .app, shared CARGO_TARGET_DIR respected
+just bench-startup  # ten sequential release launches, macOS GUI required
+just bench-startup 20 # optional run count (minimum two)
+just bench-memory   # total idle physical footprint (gate) + RSS (informational), macOS GUI required
+just bench-test     # synthetic benchmark tests, no GUI
 pnpm lint           # type-aware ESLint, complexity/size limits, IPC boundary
 pnpm format:check   # frontend/config formatting
 pnpm build          # production frontend bundle (no native window)
@@ -88,7 +93,20 @@ Hygiene checks tracked and new non-ignored Rust/TypeScript sources using `git ls
 
 `just build-app` writes `release/bundle/macos/OpenRows.app` beneath `CARGO_TARGET_DIR` (or the normal Cargo target when unset). The initial window is hidden. After React commits, two animation frames schedule a paint-ready event; Rust then shows the window. The CSP and the main-window capability grant only metadata, event emission and window dragging. The build manifest declares `app_info`, generating its application permission before capabilities are compiled. No plugins are installed. The M0-T4 shell uses `@openrows/ui` tokens and displays a component gallery, with native metadata in its footer. See [07 §8](07-frontend-architecture.md#8-theming) for the implemented token pipeline.
 
-To measure fresh-process startup on a Mac, run `just bench-startup "$CARGO_TARGET_DIR/release/bundle/macos/OpenRows.app/Contents/MacOS/openrows-app"`. The standard-library Python harness launches five sequential processes, timestamps immediately before process creation, reads the Rust receipt timestamp after the UI paint-ready event and window show, terminates each process, and deletes its temporary reports. This includes linking, native setup, webview startup and the render handshake, but is a paint-ready proxy rather than a compositor timestamp. OS disk caches are not purged. M0-T5 adds the formal reference-hardware gate.
+On a Mac in a GUI session, run `just build-app`, then `just bench-startup`
+(or `just bench-startup 20`) and `just bench-memory`. The harnesses build nothing
+and locate the release `.app` executable using Cargo metadata, respecting
+`CARGO_TARGET_DIR` and Cargo configuration. Set `OPENROWS_BENCH_EXECUTABLE` to a
+release executable if using a separate build layout. Startup reports the first
+launch separately and gates warm p50 ≤ 400 ms and all-runs p95 ≤ 800 ms. The memory
+harness waits until first paint plus five seconds, reports app and owned WebKit
+processes, and gates total physical footprint ≤ 200 decimal MB. Both save timestamped JSON in
+`perf-results/` (gitignored), fail on invalid measurements or missed budgets, and
+remove temporary reports while stopping each app normally with bounded signal
+fallbacks. True OS-cold startup requires rebooting before the benchmark; no cache
+purge is performed. These commands are not run on Linux CI. See
+[13 §4](13-performance.md#4-benchmark-suite) for clock, process attribution and
+required physical-footprint measurements. `just bench-test` and `just check` require no GUI.
 
 ## 3. Coding conventions
 

@@ -41,6 +41,7 @@ check:
     just machete
     just hygiene
     just ui-check
+    just bench-test
     pnpm lint
     pnpm format:check
     pnpm typecheck
@@ -68,9 +69,17 @@ gen-ipc:
 ipc-check:
     cargo nextest run -p openrows-app --locked bindings_are_fresh
 
-# Measure five fresh release processes to the frontend paint-ready event.
-bench-startup executable:
-    python3 scripts/bench-startup.py "{{executable}}"
+# Measure release startup phases; requires build-app and a macOS GUI session.
+bench-startup runs="10":
+    python3 -B scripts/bench-startup.py "{{runs}}"
+
+# Measure all-process idle physical footprint five seconds after first paint on macOS.
+bench-memory:
+    python3 -B scripts/bench-memory.py
+
+# Test benchmark budgets, reports and cleanup without launching the app.
+bench-test:
+    python3 -B -m unittest discover -s scripts -p 'test_bench_*.py'
 
 # Emit CSS custom properties from the UI TypeScript token source.
 gen-tokens:

@@ -198,7 +198,7 @@ Targets are p95 on the reference hardware unless stated. Each has a benchmark in
 | ID | Target |
 | --- | --- |
 | NFR-PERF-01 | Cold start to interactive window ≤ 800 ms; warm start ≤ 400 ms. |
-| NFR-PERF-02 | Idle RSS (app + webview processes), one connection, one tab ≤ 200 MB. |
+| NFR-PERF-02 | Idle physical footprint (app + webview processes), one connection, one tab ≤ 200 MB. |
 | NFR-PERF-03 | First rows painted ≤ 50 ms after the first result batch reaches the core. |
 | NFR-PERF-04 | Grid scrolling at display refresh rate with 1 M rows × 20 columns loaded; no frame > 32 ms. |
 | NFR-PERF-05 | Core decode throughput ≥ 1 M cells/s per core for primitive types (PostgreSQL binary format). |
