@@ -5,6 +5,7 @@ Thanks for helping build a free, fast, open database and API client. This guide 
 - Design docs: [docs/README.md](docs/README.md)
 - Repository layout and tooling: [docs/18-repository-and-dev-workflow.md](docs/18-repository-and-dev-workflow.md)
 - Licence, clean-room policy and governance: [docs/22-governance-and-licensing.md](docs/22-governance-and-licensing.md)
+- Engineering standards, acceptance criteria and performance policy: [docs/25-engineering-standards.md](docs/25-engineering-standards.md)
 - Code of conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 - Reporting vulnerabilities: [SECURITY.md](SECURITY.md)
 
@@ -128,11 +129,17 @@ Bad examples the hook rejects: `Updated stuff`, `feat: Add grid.` (trailing peri
 
 ### 4.2 Before opening a PR
 
+Every PR carries an **acceptance report** and a **How to try it** section ([docs/25 §3](docs/25-engineering-standards.md#3-acceptance-report)). PRs merge only after the maintainer has run the change locally and given a green light.
+
+
 - [ ] Branch is rebased on `main`.
 - [ ] Commits follow the rules above (the hook passes).
 - [ ] Tests added or updated; all checks pass locally.
 - [ ] Docs updated (`docs/`, ADR if a decision changed) — see §6.
 - [ ] No secrets, credentials, personal data or local tool configuration files in the diff (`git diff --cached --stat` and review every file).
+- [ ] Code meets the size/complexity limits and has no dead code ([docs/25 §4](docs/25-engineering-standards.md#4-code-quality-rules)).
+- [ ] Performance-relevant changes include benchmark results against `main`.
+- [ ] Clean-up done: worktree, temporary files, containers ([docs/25 §7](docs/25-engineering-standards.md#7-clean-up-policy)).
 - [ ] UI changes include screenshots in both themes.
 
 ### 4.3 Review and merge
