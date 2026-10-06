@@ -183,7 +183,7 @@ The inventory covers the macOS benchmark unless qualified. TablePlus's [new over
 | E21 | Stop on script error | Choose whether failures halt a script. | New FR-EDIT-15 | M2 | Stop by default; show skipped statements. | [S41] |
 | E22 | Current-statement highlight | Show which statement will execute. | New FR-EDIT-15 | M2 | Match the splitter used for execution. | [S46] |
 | E23 | Server notices | Show database notices. | New FR-EDIT-15 | M2 | Scrubbed non-blocking notification stream. | [S46] |
-| E24 | Save SQL file | Export editor text. | Covered FR-EDIT-08 | M2 | Portable UTF-8 workspace files. | [S37] |
+| E24 | Save SQL file | Export editor text. | Covered FR-EDIT-08 | M2 | Portable UTF-8 Project files. | [S37] |
 
 ### Import, export, backup and restore
 
@@ -373,7 +373,7 @@ These requirements are new in this task. They close specification gaps, not impl
 | G20 | DB20–DB23 | Greenplum, Vertica, SingleStore and other untested flavours need catalog and protocol conformance work before claiming support. | Post-1.0; existing tested flavours keep docs/05 tiers |
 | G21 | T21 | The existing 1.0 ER diagram is read-only; visual table/key editing is an existing post-1.0 candidate. | Post-1.0 |
 
-Shortcut decision: TablePlus uses ⌘K for databases and ⌘P for quick-open. OpenRows [20](20-ux-foundations.md#2-information-architecture) reserves ⌘K for the command palette and ⌘P for quick-open. FR-WS-04 adds named database/connection-switch actions within the palette; FR-APP-01 makes bindings configurable. Preserve the existing OpenRows defaults. Workspaces in FR-WS-03 are portable folders; FR-WS-04 adds window contexts without conflating those concepts.
+Shortcut decision: OpenRows [20](20-ux-foundations.md#2-information-architecture) uses ⌘K for the database switcher, ⌘P for quick-open and ⌘⇧P for the command palette; FR-APP-01 makes bindings configurable. Projects in FR-WS-03 are portable folders of saved queries and collections; FR-WS-04 adds window contexts (Workspace = connection) without conflating those concepts.
 
 ## Sources
 
