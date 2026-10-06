@@ -2,6 +2,8 @@
 
 ## 1. Monorepo layout
 
+The tree below is the planned layout. M0-T1 implements only the root Rust workspace, quality tooling, git hooks and `crates/openrows-types`; frontend packages and other crates come later.
+
 ```text
 open-db-client/
 ├── Cargo.toml                    # Rust workspace
@@ -77,27 +79,33 @@ open-db-client/
 
 | Tool | Purpose |
 | --- | --- |
-| Rust stable (pinned in `rust-toolchain.toml`), edition 2024 | Core |
-| `cargo-nextest` | Faster, isolated Rust test runs |
-| `cargo-deny`, `cargo-audit`, `cargo-machete` | Supply chain, unused deps |
-| Node LTS + pnpm (via Corepack) | Frontend |
-| Vite, Vitest, Playwright | Build and tests |
-| `just` (justfile) | Task runner: `just dev`, `just test`, `just bench`, `just gen-ipc` |
-| Docker / OrbStack / Colima | Database containers for integration tests |
-| `tauri-cli` v2 | Dev and bundling |
-| `lefthook` | Git hooks: format + lint on staged files |
+| `rustup`, Rust 1.94.0 (`rust-toolchain.toml`), edition 2024 | Pinned compiler, rustfmt and Clippy |
+| `cargo-nextest` | Isolated Rust unit test runs |
+| `cargo-deny` | Dependency licences, advisories, bans and sources |
+| `cargo-machete` | Unused dependency detection |
+| `just` | One-command quality gate (`just check`) |
+| `sccache` (optional) | Compiler cache; set `RUSTC_WRAPPER=sccache` |
+| `scripts/git-hooks` | Git hooks enabled by `just setup`; currently `commit-msg` |
+
+See [CONTRIBUTING.md §1](../CONTRIBUTING.md#1-first-time-setup) for installation and optional shared `CARGO_TARGET_DIR` setup. Frontend, Tauri, database containers and CI tooling are planned for later tasks.
 
 ### 2.1 Common commands
 
 ```bash
-just setup          # install toolchains, pnpm install, fetch test containers
-just dev            # tauri dev with Vite HMR
-just test           # rust unit + frontend unit
-just test-int pg    # driver conformance against PostgreSQL containers
-just gen-ipc        # regenerate TypeScript bindings from Rust
-just bench          # criterion + perf harness
-just bundle         # production build for current platform
+just setup          # verify installed tools and enable git hooks
+just fmt            # format all Rust sources
+just fmt-check      # check formatting without edits
+just lint           # Clippy on every workspace target, warnings are errors
+just test           # cargo-nextest workspace unit tests
+just deny           # licences, advisories, bans, sources
+just machete        # unused dependency scan
+just hygiene        # file length and issue-linked TODO/FIXME checks
+just check          # all gates above, in order, failing fast
+just clean          # remove Cargo output (also affects a shared target)
+just --list         # descriptions of every recipe
 ```
+
+Hygiene checks tracked and new non-ignored Rust/TypeScript sources using `git ls-files`; paths containing `/generated/` are exempt from the file-length limit. Clippy thresholds are configured in `clippy.toml`, with workspace lints inherited by every crate.
 
 ## 3. Coding conventions
 
@@ -135,6 +143,8 @@ The full rules, with examples, live in [CONTRIBUTING.md](../CONTRIBUTING.md). Su
 - Personal editor and tool configuration, including local AI coding assistant instruction/config files. These are excluded per developer through their global git excludes file or the clone's `.git/info/exclude`, never through tracked files. Ignore rules do not untrack files already committed, so reviewers check the PR file list for such files and ask for their removal.
 
 ## 4. CI pipeline
+
+This is the planned pipeline; no CI workflows exist in M0-T1. Local gates run with `just check`.
 
 ```mermaid
 flowchart LR
