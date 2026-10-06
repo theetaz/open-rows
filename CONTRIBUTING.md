@@ -11,13 +11,26 @@ Thanks for helping build a free, fast, open database and API client. This guide 
 
 ## 1. First-time setup
 
+Install `rustup`, `just`, `cargo-nextest`, `cargo-deny` and `cargo-machete`; `sccache` is optional. With rustup installed:
+
 ```bash
-git clone <repo-url> open-db-client
-cd open-db-client
-git config core.hooksPath scripts/git-hooks
+cargo install just cargo-nextest cargo-deny cargo-machete --locked
+rustup toolchain install 1.94.0 --profile minimal --component rustfmt --component clippy
+just setup
+just check
+just --list
 ```
 
-The last command enables the repository's git hooks (currently `commit-msg`, which checks commit messages against the rules below). Toolchain setup (`just setup`) will be added with the code skeleton in milestone M0.
+Run these commands from the repository root. `just setup` verifies the required tools and the pinned toolchain, prints installation hints for missing tools, and sets `core.hooksPath` to `scripts/git-hooks`. The current `commit-msg` hook checks commit messages against the rules below.
+
+Optionally share build output across worktrees to save disk space:
+
+```bash
+export CARGO_TARGET_DIR=/path/to/shared/openrows-target
+export RUSTC_WRAPPER=sccache  # only if sccache is installed
+```
+
+Cargo respects both variables. `just clean` removes the configured target output, so use it carefully with a shared cache.
 
 ## 2. Branching model
 
