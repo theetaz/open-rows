@@ -130,7 +130,7 @@ and WebKit pages.
 | `ipc_tile_round_trip` (M0 S1) | `just bench-ipc` after `just build-app`; 500 unique random tiles, warm worker, full client/worker message path | M4 runs 1/2 (p50/p95/max ms): invoke 0/1/6 both; decode 0/1/4 and 0/1/3; total 0/1.00/6 both; run 2 total mean 0.524 ms | total p95 ≤ 3 ms: M4 PASS both runs; 1 ms page clock, isolation false; revisit on mac-low |
 | `sql_split_*` (10 KB, 1 MB scripts) | `criterion` | MB/s | −10 % fails |
 | `startup_cold` | `just bench-startup [runs=10]` after `just build-app`; sequential release processes, shared monotonic phase timestamps, spawn → window shown | per-phase min / p50 / p95 / max (ms) | warm runs 2..N p50 ≤ 400 ms; all-runs p95 ≤ 800 ms (NFR-PERF-01); macOS GUI only, not Linux CI |
-| `grid_scroll_1m` | Playwright + Performance API on synthetic source | long frames, avg frame time | 0 frames > 32 ms |
+| `grid_scroll_1m` (M0 S2) | `just bench-grid [repeats=3]` after `just build-app`; own Canvas 2D in release WKWebView, S1 tile/worker path; four scenarios per fresh launch/repeat | All repeats: p50/p95/p99/max, >20/>32 counts, frames >32 with tracked work ≥16 ms, refresh, paint, tile/cache/blank counters, raw attribution | Best repeat per scenario: 0 frames >32 ms; every repeat: 0 frames >32 ms with tracked work ≥16 ms. S2 met on supplied M4/60 Hz evidence; [accepted ADR-0004](adr/0004-canvas-data-grid.md) |
 | `query_1m_rows_pg` | integration harness against container | time to first paint, total time, peak RSS | within budgets |
 | `editor_type_5k_lines` | Playwright | input latency p95 | ≤ 16 ms |
 | `idle_memory` | `just bench-memory [runs=3]` after `just build-app`; first-paint receipt + 5 s settle, `ps` RSS for app + descendants + responsible WebKit XPC services; required `footprint -f bytes` | per-run totals, per-process medians and informational RSS in decimal MB | median total physical footprint ≤ 200 MB; median WebContent + GPU + Networking ≤ 140 MB (NFR-PERF-02); macOS GUI only, not Linux CI |
@@ -273,6 +273,72 @@ early exit or invalid report. Reports, progress and stderr are removed with the
 existing context-managed cleanup. These changes were tested without launching
 the app. The subsequent maintainer M4 runs passed; mac-low validation remains
 a revisit point.
+
+
+### M0 S2 grid measurement and robust gate
+
+[ADR-0004](adr/0004-canvas-data-grid.md) accepts our own Canvas 2D painter based
+on three maintainer release runs on a Mac mini M4 at 60 Hz: mean complete paint
+0.5–1.9 ms/frame, zero per-frame painter allocations and zero blank-placeholder
+frames. Each scenario has a supplied run with zero intervals >32 ms. Large random
+stalls in both comparison renderers had zero tracked work under unrelated machine
+load (load average 6–8), supporting the maintainer's environmental classification.
+This does not identify a particular scheduling/compositor/GC mechanism.
+
+`just bench-grid [repeats=3]` runs the four scenarios N times. Each repeat launches
+a fresh release app; every scenario remounts at scroll position zero with a new
+64-tile LRU and three unsampled mount frames. Gate **each scenario's best repeat**
+(fewest >32 ms frames; lowest max interval breaks ties) on **zero frames strictly
+>32 ms**. A second gate requires **zero frames >32 ms with tracked work ≥16 ms
+in every repeat**, including repeats not selected as best. This prevents repeated
+renderer work from being hidden by a quiet run, while allowing unrelated system
+load to affect some repeats. If all repeats of a scenario stall, it still fails.
+
+Tracked work is the inclusive sum of scroll handler, complete synchronous React
+commit, canvas resize, prepare, complete paint, tile apply, main-thread conversion
+and scripted driver timings. Worker conversion CPU runs off-thread and is excluded;
+allocation counts are diagnostics, not milliseconds. Timings may overlap, so the
+sum is deliberately conservative rather than exact CPU accounting. A zero-work
+stall is retained as unexplained/environmental noise; it is never discarded or
+labelled GC without a profiler trace. Exactly 32 ms does not fail; exactly 16 ms
+of tracked work on a >32 ms interval does fail. Thresholds have no timer rounding
+allowance. All repeats print p50/p95/p99/max, >20/>32 counts, own-cost violations,
+mean paint, refresh and tile/cache/blank counters, plus their top ten attributed
+intervals. JSON keeps every raw sample, report, selected-repeat gate and verdict.
+Missing repeats/scenarios, short or over-budget durations, wrong observed endpoints,
+nonfinite values, missing timer/counters/breakdown or ownership/cleanup failures
+fail closed. Synthetic tests cover the policy without launching the app.
+
+The fixed host is 1040×600 CSS pixels, with 26 px rows, 120 px columns and two
+pinned columns. Every scenario includes a sampled two-second token/style preview:
+
+- Ten seconds of smooth vertical scrolling at 6000 px/s, split equally among
+  top, middle and near-bottom starts.
+- Sixty large jumps permuted across rows 0–999,000, then sixty 574 px page-down
+  steps from the middle, one command every 100 ms.
+- Five seconds of horizontal scrolling at 3000 px/s across 100 virtual columns
+  (twenty S1 mixed columns repeated), at row 500,000; hold at the right edge.
+- Jump to row 999,000 and stop at the first observed placeholder-free frame;
+  fail if it does not settle within two seconds after preview.
+
+Non-jump scenarios hold endpoints for 500 ms. All windows traverse binary IPC and
+Arrow worker decoding; the Rust fixture stays 1 M×20. Observed offsets validate
+endpoints; continuous sweeps require ≤1000 px deviation from commanded offsets.
+Bounded 100 ms scripted destination lookahead warms known teleport destinations
+without awaiting IPC in the driver; it is benchmark input, not prediction of
+arbitrary user jumps. Arrivals remain sampled. Worker-ready display cells remove
+main-thread Arrow formatting; backing stores change only on observed resize/DPR.
+
+Maximum sampling is 38.5 seconds per repeat (115.5 seconds for default N=3).
+Each repeat has a 60-second scenario-sequence watchdog and a 130-second report
+deadline; the total command scales with N and startup/cleanup, with no fixed
+three-minute promise. Progress streams immediately; keep the window visible.
+`perf-results/grid-*.json` records partial evidence even on failure. The harness
+uses isolated-process ownership and guarded cleanup. Paint measures the complete
+layered painter with the page clock (resolution reported, typically 1 ms), not
+GPU completion. Preallocated counters become JSON arrays after sampling. React's
+pinned production commit hook excludes delayed passive effects and reads no clock
+in normal mode. No new native run or main baseline is claimed by this change.
 
 
 ## 5. Profiling playbook

@@ -33,11 +33,17 @@ const files = initialFiles(manifest);
 const modules = JSON.parse(
   await readFile(new URL('.vite/chunk-modules.json', dist), 'utf8'),
 ) as Record<string, string[]>;
-// Override with comma-separated package names to configure heavy-module exclusions.
-const denyList = (process.env.BUNDLE_DENY_MODULES ?? 'apache-arrow')
-  .split(',')
-  .map((name) => name.trim())
-  .filter(Boolean);
+// Required exclusions cannot be disabled; environment values add project-specific checks.
+const denyList = [
+  ...new Set([
+    'apache-arrow',
+    'packages/grid/src/',
+    ...(process.env.BUNDLE_DENY_MODULES ?? '')
+      .split(',')
+      .map((name) => name.trim())
+      .filter(Boolean),
+  ]),
+];
 assertInitialModules(files, modules, denyList);
 let initialSize = 0;
 for (const file of files)

@@ -108,3 +108,7 @@ bench-ipc:
 bench-result-encode:
     cargo bench -p openrows-results --bench result_window_encode --locked
     python3 -B scripts/bench-result-encode.py
+
+# Measure the accepted canvas grid with fresh scenarios per repeat; maintainer-only GUI run.
+bench-grid repeats="3":
+    python3 -B scripts/bench-grid.py "{{repeats}}"

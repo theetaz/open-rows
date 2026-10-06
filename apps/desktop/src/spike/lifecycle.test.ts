@@ -48,6 +48,19 @@ it.each(['error', 'unhandledrejection'])(
   },
 );
 
+it('records a ResizeObserver loop notice as a warning, not a failure', async () => {
+  const session = new SpikeSession();
+  const message =
+    'ResizeObserver loop completed with undelivered notifications.';
+  window.dispatchEvent(new ErrorEvent('error', { message }));
+  expect(session.signal.aborted).toBe(false);
+  await session.finish();
+  expect(mocks.progress).toHaveBeenCalledWith('warning', message);
+  expect(mocks.finish).toHaveBeenCalledWith(
+    expect.objectContaining({ error: null }),
+  );
+});
+
 it('reports a progress-channel failure without recursive global failures', async () => {
   mocks.progress.mockRejectedValue(new Error('diagnostics unavailable'));
   const session = new SpikeSession();

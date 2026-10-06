@@ -153,13 +153,13 @@ def run(command):
 
 
 @contextmanager
-def launch_ipc(executable):
+def launch_ipc(executable, mode="ipc"):
     """Opt-in self-exiting spike; retain root identity to clean orphaned WebKit XPCs."""
     owner = Responsibility()
     with tempfile.TemporaryDirectory(prefix=".bench-ipc-", dir=ROOT) as directory, \
          (Path(directory) / "stderr.log").open("w") as stderr:
         report = Path(directory) / "ipc.json"
-        environment = dict(os.environ, OPENROWS_SPIKE="ipc", OPENROWS_SPIKE_REPORT=str(report))
+        environment = dict(os.environ, OPENROWS_SPIKE=mode, OPENROWS_SPIKE_REPORT=str(report))
         environment.pop("OPENROWS_STARTUP_REPORT", None)
         process = subprocess.Popen([str(executable)], env=environment, start_new_session=True, stderr=stderr)
         root_row = None
@@ -169,7 +169,7 @@ def launch_ipc(executable):
             if root_row is None:
                 raise BenchmarkError("IPC app exited before ownership capture")
             root_owner = owner(process.pid)
-            data = read_ipc_report(process, report)
+            data = read_ipc_report(process, report, timeout=130, progress=True) if mode == "grid" else read_ipc_report(process, report)
             yield process, data
             process.wait(timeout=5)
             if process.returncode != 0:
@@ -194,14 +194,28 @@ def launch_ipc(executable):
                 stop_process(process, report, owned)
 
 
-def read_ipc_report(process, report):
+def read_ipc_report(process, report, timeout=120, progress=False):
     """Allow atomic-report/self-exit races without accepting a missing report."""
-    deadline = clock_ns() + 120_000_000_000
+    deadline = clock_ns() + timeout * 1_000_000_000
     event = threading.Event()
+    printed = 0
     while not report.exists():
+        if progress:
+            printed = print_progress(report, printed)
         if clock_ns() >= deadline:
-            raise BenchmarkError("No IPC report within 120 seconds")
+            raise BenchmarkError(f"No spike report within {timeout} seconds")
         if process.poll() is not None and not report.exists():
             raise BenchmarkError(f"IPC app exited without report ({process.returncode})")
         event.wait(0.02)
+    if progress:
+        print_progress(report, printed)
     return json.loads(report.read_text())
+
+
+def print_progress(report, printed):
+    """Stream new milestones once, including those immediately before the report."""
+    path = report.with_suffix(".progress")
+    lines = path.read_text().splitlines() if path.exists() else []
+    for line in lines[printed:]:
+        print(line, flush=True)
+    return len(lines)

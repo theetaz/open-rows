@@ -17,6 +17,8 @@ export type {
   ResultError,
   TileTiming,
   PageTimer,
+  GridRun,
+  GridFrame,
 } from './generated/bindings';
 
 export { resultWindow } from './binary';
@@ -28,11 +30,13 @@ export async function finishSpike(report: SpikeReport): Promise<void> {
 }
 
 /** Query spike mode and show the native window before the worker starts. */
-export async function startSpike(): Promise<boolean> {
+export async function startSpike(): Promise<false | 'ipc' | 'grid'> {
   if (!isTauri()) return false;
   const result = await commands.spikeStart();
   if (result.status === 'error') throw spikeFailure(result.error);
-  return result.data;
+  if (result.data === null) return false;
+  if (result.data === 'ipc' || result.data === 'grid') return result.data;
+  throw new Error('Unknown spike mode');
 }
 
 /** Append one diagnostic line to the benchmark progress channel. */

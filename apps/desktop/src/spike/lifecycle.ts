@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { finishSpike, spikeProgress } from '@openrows/ipc';
-import type { TileTiming } from '@openrows/ipc';
+import type { TileTiming, GridRun } from '@openrows/ipc';
 import { measurePageTimer } from './timer';
 
 /** Bound a spike operation and clear the watchdog on every settlement. */
@@ -22,14 +22,22 @@ export async function withTimeout<T>(
   }
 }
 
+/** Browsers report deferred ResizeObserver delivery as an error; it is not a failure. */
+const BENIGN_ERROR = /^ResizeObserver loop/;
+
 /** Own progress, global failures and exactly one terminal report for the spike. */
 export class SpikeSession {
   readonly samples: TileTiming[] = [];
+  readonly grid: GridRun[] = [];
   readonly timer = measurePageTimer();
   private terminal: Promise<void> | undefined;
   private progressQueue = Promise.resolve();
   private readonly abort = new AbortController();
   private readonly error = (event: ErrorEvent): void => {
+    if (BENIGN_ERROR.test(event.message)) {
+      this.progress('warning', event.message);
+      return;
+    }
     void this.finish(event.message || 'Window script/resource error');
   };
   private readonly rejection = (event: PromiseRejectionEvent): void => {
@@ -85,6 +93,11 @@ export class SpikeSession {
     } catch (caught) {
       error = error ?? String(caught);
     }
-    await finishSpike({ samples: this.samples, timer: this.timer, error });
+    await finishSpike({
+      samples: this.samples,
+      timer: this.timer,
+      error,
+      ...(this.grid.length ? { grid: this.grid } : {}),
+    });
   }
 }

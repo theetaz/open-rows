@@ -71,3 +71,15 @@ it('fails closed if an initial chunk has no module metadata', () => {
     assertInitialModules(['missing.js'], {}, ['apache-arrow']);
   }).toThrow('Missing build module metadata: missing.js');
 });
+
+it('rejects workspace renderer modules in the initial graph', () => {
+  expect(() => {
+    assertInitialModules(
+      ['entry.js'],
+      {
+        'entry.js': ['/repo/packages/grid/src/painter.ts'],
+      },
+      ['packages/grid/src/'],
+    );
+  }).toThrow('packages/grid/src/ found in initial chunk');
+});

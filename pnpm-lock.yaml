@@ -211,6 +211,9 @@ importers:
 
   apps/desktop:
     dependencies:
+      '@openrows/grid':
+        specifier: workspace:*
+        version: link:../../packages/grid
       '@openrows/ipc':
         specifier: workspace:*
         version: link:../../packages/ipc
@@ -257,6 +260,15 @@ importers:
       vite:
         specifier: ^8.3.3
         version: 8.3.3(@types/node@24.19.1)(jiti@2.7.0)(yaml@2.9.1)
+
+  packages/grid:
+    dependencies:
+      '@openrows/ipc':
+        specifier: workspace:*
+        version: link:../ipc
+      '@openrows/ui':
+        specifier: workspace:*
+        version: link:../ui
 
   packages/ipc:
     dependencies:
