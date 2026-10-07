@@ -1,51 +1,64 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/* macOS sheet: panel radius (window 26 → panel 12 → control 7), 13 px type. */
 .overlay {
   position: fixed;
   inset: 0;
   z-index: 20;
-  background: var(--or-control-fill);
+  background: var(--or-sheet-scrim);
 }
 .sheet {
   position: fixed;
-  inset-block-start: var(--or-toolbar-height);
+  inset-block-start: calc(var(--or-toolbar-height) + var(--or-space-8));
   margin-block-start: 0;
-  width: min(560px, 90vw);
-  max-block-size: calc(100vh - 100px);
+  box-sizing: border-box;
+  inline-size: min(var(--or-sheet-width), calc(100vw - var(--or-space-32)));
+  max-block-size: calc(100vh - var(--or-toolbar-height) - var(--or-space-32));
   padding: 0;
   color: var(--or-text);
+  font-size: var(--or-text-13);
   background: var(--or-window);
-  border: var(--or-border-width) solid var(--or-separator);
-  border-radius: 0 0 var(--or-radius-panel) var(--or-radius-panel);
+  border: var(--or-border-width) solid var(--or-control-stroke);
+  border-radius: var(--or-radius-panel);
   box-shadow: var(--or-panel-shadow);
   overflow: auto;
+  cursor: default;
+  animation: sheet-in var(--or-motion-popover) var(--or-motion-easing);
+}
+.sheet[data-size='alert'] {
+  inline-size: min(var(--or-alert-width), calc(100vw - var(--or-space-32)));
 }
 .sheet::backdrop {
-  background: var(--or-control-fill);
-  -webkit-backdrop-filter: blur(3px);
-  backdrop-filter: blur(3px);
+  background: transparent;
 }
 .body {
-  padding: var(--or-space-20);
-}
-.body header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
+  gap: var(--or-space-12);
+  padding: var(--or-space-12) var(--or-space-20) var(--or-space-16);
 }
 .body h2 {
-  font-size: var(--or-text-17);
-  margin-block: 0 var(--or-space-16);
+  margin: 0;
+  font-size: var(--or-text-13);
+  font-weight: var(--or-weight-semibold);
+  text-align: center;
 }
-.body header button {
-  border: 0;
-  font: inherit;
-  background: var(--or-control-fill);
-  color: var(--or-text);
-  border-radius: var(--or-radius-capsule);
-  min-width: 28px;
-  min-height: 28px;
-  cursor: pointer;
+.body p {
+  margin: 0;
 }
-.body header button:focus-visible {
-  outline: var(--or-focus-width) solid var(--or-focus);
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-8);
+  padding-block-start: var(--or-space-4);
+}
+.actions button {
+  min-inline-size: 5.5em;
+}
+.spacer {
+  flex: 1;
+}
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--or-space-8)));
+  }
 }

@@ -5,7 +5,9 @@ import { expect, it, vi } from 'vitest';
 import { Tabs } from './Tabs';
 import { DisclosureSection } from './DisclosureSection';
 import { TreeItem } from './TreeItem';
-import { Sheet } from './Sheet';
+import { Sheet, SheetActions } from './Sheet';
+import { Button } from './Button';
+import { TextField } from './TextField';
 
 it('document tabs wrap keyboard focus and support Home, End, close and add', async () => {
   const select = vi.fn();
@@ -102,13 +104,15 @@ it('sheet contains focus, closes on Escape and restores background inert state',
     <div>
       <button type="button">Background</button>
       <Sheet title="Review" onClose={close}>
+        <button type="button">First</button>
         <button type="button">Last</button>
       </Sheet>
     </div>,
   );
-  const first = screen.getByRole('button', { name: 'Close sheet' });
+  const first = screen.getByRole('button', { name: 'First' });
   const last = screen.getByRole('button', { name: 'Last' });
   expect(first).toHaveFocus();
+  expect(screen.queryByRole('button', { name: 'Close sheet' })).toBeNull();
   await user.keyboard('{Shift>}{Tab}{/Shift}');
   expect(last).toHaveFocus();
   await user.keyboard('{Tab}');
@@ -119,6 +123,30 @@ it('sheet contains focus, closes on Escape and restores background inert state',
   expect(close).toHaveBeenCalledOnce();
   unmount();
   expect(background).not.toHaveAttribute('inert');
+});
+it('sheet focuses the first field and Return runs the default push button', async () => {
+  const confirm = vi.fn();
+  const cancel = vi.fn();
+  const user = userEvent.setup();
+  render(
+    <Sheet title="Rename" size="alert" onClose={cancel}>
+      <TextField label="Name" defaultValue="" />
+      <SheetActions>
+        <Button onClick={cancel}>Cancel</Button>
+        <Button variant="primary" onClick={confirm}>
+          Rename
+        </Button>
+      </SheetActions>
+    </Sheet>,
+  );
+  const field = screen.getByRole('textbox', { name: 'Name' });
+  expect(field).toHaveFocus();
+  await user.type(field, 'orders{Enter}');
+  expect(confirm).toHaveBeenCalledOnce();
+  screen.getByRole('button', { name: 'Cancel' }).focus();
+  await user.keyboard('{Enter}');
+  expect(cancel).toHaveBeenCalledOnce();
+  expect(confirm).toHaveBeenCalledOnce();
 });
 it('sheet uses native showModal/close when available and handles cancel', () => {
   const show = vi.fn(function (this: HTMLDialogElement) {

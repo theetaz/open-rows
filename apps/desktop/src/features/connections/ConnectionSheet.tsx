@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { Button, StatusDot } from '@openrows/ui';
-import { Sheet } from '@openrows/ui/sheet';
+import { Sheet, SheetActions } from '@openrows/ui/sheet';
 import type { ProfileDto } from '@openrows/ipc';
 import { ConnectionFields } from './ConnectionFields';
 import { EnvironmentFields } from './EnvironmentFields';
@@ -18,7 +18,7 @@ type Props = {
   onDuplicate: (profile: ProfileDto) => void;
 };
 
-/** New/edit PostgreSQL connection: URL fill, fields, environment, safety, test and save. */
+/** New/edit PostgreSQL connection: URL ↔ fields, environment, safety, test and save. */
 export function ConnectionSheet(props: Props): React.JSX.Element {
   const { profile } = props;
   const form = useConnectionForm(profile, props.onSaved);
@@ -35,7 +35,8 @@ export function ConnectionSheet(props: Props): React.JSX.Element {
           void form.save();
         }}
       >
-        <UrlField error={form.urlError} onFill={form.pasteUrl} />
+        <UrlField url={form.url} />
+        <hr className={styles.separator} />
         <ConnectionFields form={form} />
         <EnvironmentFields form={form} />
         <TestResult state={form.test} />
@@ -44,9 +45,9 @@ export function ConnectionSheet(props: Props): React.JSX.Element {
             {form.saveError}
           </p>
         )}
-        <footer className={styles.footer}>
-          {profile && <ProfileActions {...props} profile={profile} />}
-          <span className={styles.spacer} />
+        <SheetActions
+          leading={profile && <ProfileActions {...props} profile={profile} />}
+        >
           <Button
             onClick={() => void form.runTest()}
             disabled={form.test.status === 'testing'}
@@ -57,7 +58,7 @@ export function ConnectionSheet(props: Props): React.JSX.Element {
           <Button type="submit" variant="primary" disabled={form.saving}>
             Save
           </Button>
-        </footer>
+        </SheetActions>
       </form>
     </Sheet>
   );
@@ -69,7 +70,6 @@ function ProfileActions(
   return (
     <>
       <Button
-        variant="destructive"
         onClick={() => {
           props.onDelete(props.profile);
         }}
@@ -77,7 +77,6 @@ function ProfileActions(
         Delete…
       </Button>
       <Button
-        variant="ghost"
         onClick={() => {
           props.onDuplicate(props.profile);
         }}

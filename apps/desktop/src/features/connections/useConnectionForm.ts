@@ -1,11 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useState } from 'react';
-import {
-  createProfile,
-  parsePostgresUrl,
-  testConnection,
-  updateProfile,
-} from '@openrows/ipc';
+import { createProfile, testConnection, updateProfile } from '@openrows/ipc';
 import type { EnvKindDto, ProfileDto, TestReport } from '@openrows/ipc';
 import {
   draftFromProfile,
@@ -14,9 +9,11 @@ import {
   validate,
   withEnvironment,
   withPassword,
-  withUrl,
+  withPatch,
 } from './form';
 import type { Draft, DraftErrors } from './form';
+import { useUrlField } from './useUrlField';
+import type { UrlField } from './useUrlField';
 
 export type TestState =
   | { status: 'idle' }
@@ -30,15 +27,25 @@ export type ConnectionForm = {
   test: TestState;
   saving: boolean;
   saveError: string | null;
-  urlError: string | null;
+  /** The connection URL, kept in sync with the fields both ways. */
+  url: UrlField;
   update: (patch: Partial<Draft>) => void;
   setEnvironment: (kind: EnvKindDto) => void;
   setPassword: (value: string) => void;
-  /** Resolves `true` when the URL filled the form. */
-  pasteUrl: (url: string) => Promise<boolean>;
   runTest: () => Promise<void>;
   save: () => Promise<void>;
 };
+
+/** Fields that appear in the connection URL. */
+const URL_FIELDS = new Set<string>([
+  'host',
+  'port',
+  'database',
+  'user',
+  'tlsMode',
+  'password',
+  'passwordMode',
+]);
 
 const message = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
@@ -52,7 +59,7 @@ export function useConnectionForm(
     profile ? draftFromProfile(profile) : emptyDraft(),
   );
   const [submitted, setSubmitted] = useState(false);
-  const [urlError, setUrlError] = useState<string | null>(null);
+  const url = useUrlField(draft, setDraft);
   const checked = (): boolean => {
     setSubmitted(true);
     return Object.keys(validate(draft)).length === 0;
@@ -65,26 +72,17 @@ export function useConnectionForm(
     test: test.state,
     saving: saving.busy,
     saveError: saving.error,
-    urlError,
+    url,
     update: (patch) => {
-      setDraft((current) => ({ ...current, ...patch }));
+      setDraft((current) => withPatch(current, patch));
+      if (Object.keys(patch).some((key) => URL_FIELDS.has(key))) url.release();
     },
     setEnvironment: (kind) => {
       setDraft((current) => withEnvironment(current, kind));
     },
     setPassword: (value) => {
       setDraft((current) => withPassword(current, value));
-    },
-    pasteUrl: async (url) => {
-      try {
-        const parsed = await parsePostgresUrl(url);
-        setDraft((current) => withUrl(current, parsed, url));
-        setUrlError(null);
-        return true;
-      } catch (error) {
-        setUrlError(message(error));
-        return false;
-      }
+      url.release();
     },
     runTest: test.run,
     save: saving.run,

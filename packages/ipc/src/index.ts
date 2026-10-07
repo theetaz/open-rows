@@ -41,6 +41,9 @@ export {
   testConnection,
   updateProfile,
 } from './connections';
+/** Native alerts for destructive confirmations (scoped dialog plugin). */
+export { confirmDestructive } from './dialog';
+export type { DestructivePrompt } from './dialog';
 /** Schema tree catalog reads on per-database metadata sessions (D-06). */
 export {
   closeCatalog,

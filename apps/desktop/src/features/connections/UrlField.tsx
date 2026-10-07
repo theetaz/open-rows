@@ -1,42 +1,37 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useState } from 'react';
-import { Button, TextField } from '@openrows/ui';
+import { useRef } from 'react';
+import { TextField } from '@openrows/ui';
 import { fieldError } from './form';
+import type { UrlField as UrlState } from './useUrlField';
 import styles from './ConnectionSheet.module.css';
 
-/** Paste a postgres:// URL to fill the form; the core parses it. */
-export function UrlField(props: {
-  error: string | null;
-  onFill: (url: string) => Promise<boolean>;
-}): React.JSX.Element {
-  const [url, setUrl] = useState('');
-  const fill = (): void => {
-    if (!url.trim()) return;
-    void props.onFill(url.trim()).then((filled) => {
-      if (filled) setUrl('');
-    });
-  };
+/**
+ * Connection URL in sync with the fields: typing fills them after a short
+ * pause, a paste fills them at once, and any password shows only as dots.
+ */
+export function UrlField({ url }: { url: UrlState }): React.JSX.Element {
+  const pasted = useRef(false);
   return (
-    <div className={styles.url}>
-      <TextField
-        label="Paste connection URL"
-        placeholder="postgres://user:password@host:5432/database"
-        autoComplete="off"
-        spellCheck={false}
-        value={url}
-        {...fieldError(props.error)}
-        onChange={(event) => {
-          setUrl(event.target.value);
-        }}
-        onKeyDown={(event) => {
-          if (event.key !== 'Enter' || event.nativeEvent.isComposing) return;
-          event.preventDefault();
-          fill();
-        }}
-      />
-      <Button size="sm" onClick={fill} disabled={!url.trim()}>
-        Fill from URL
-      </Button>
-    </div>
+    <TextField
+      className={styles.row}
+      label="URL"
+      placeholder="postgres://user:password@host:5432/database"
+      autoComplete="off"
+      spellCheck={false}
+      value={url.value}
+      {...fieldError(url.error)}
+      onPaste={() => {
+        pasted.current = true;
+      }}
+      onChange={(event) => {
+        url.edit(event.target.value, pasted.current);
+        pasted.current = false;
+      }}
+      onKeyDown={(event) => {
+        if (event.key !== 'Enter' || !url.pending) return;
+        event.preventDefault();
+        url.flush();
+      }}
+    />
   );
 }

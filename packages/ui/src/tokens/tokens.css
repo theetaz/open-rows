@@ -41,14 +41,26 @@
   --or-grid-row-height: 26px;
   --or-tree-row-height: 24px;
   --or-tab-height: 28px;
-  --or-control-compact: 24px;
+  --or-control-compact: var(--or-control-height-compact);
   --or-rail-tile-size: 36px;
   --or-rail-inactive-opacity: 0.9;
   --or-status-height: 18px;
   --or-commit-height: 38px;
   --or-footer-height: 32px;
-  --or-control-sm: 1.75rem;
-  --or-control-md: 2rem;
+  --or-control-height: 28px;
+  --or-control-height-compact: 24px;
+  --or-radius-control: 7px;
+  --or-radius-control-compact: 6px;
+  --or-control-padding: 10px;
+  --or-control-padding-compact: 8px;
+  --or-segment-inset: 2px;
+  --or-switch-width: 26px;
+  --or-switch-height: 15px;
+  --or-switch-thumb: 13px;
+  --or-sheet-width: 480px;
+  --or-alert-width: 300px;
+  --or-control-sm: var(--or-control-height);
+  --or-control-md: var(--or-control-height);
   --or-icon-size: 0.9375rem;
   --or-dot-size: 0.5rem;
   --or-toolbar-height: 48px;
@@ -78,6 +90,10 @@
   --or-separator: rgba(0,0,0,0.055);
   --or-control-fill: rgba(0,0,0,0.035);
   --or-control-active: #FFFFFF;
+  --or-control-stroke: rgba(0,0,0,0.12);
+  --or-switch-track: rgba(0,0,0,0.14);
+  --or-switch-knob: #FFFFFF;
+  --or-sheet-scrim: rgba(0,0,0,0.12);
   --or-accent: #0B6BD6;
   --or-on-accent: #FFFFFF;
   --or-connection-pg: #336791;
@@ -126,6 +142,10 @@
   --or-separator: rgba(255,255,255,0.055);
   --or-control-fill: rgba(255,255,255,0.035);
   --or-control-active: #3B3B3B;
+  --or-control-stroke: rgba(255,255,255,0.1);
+  --or-switch-track: rgba(255,255,255,0.16);
+  --or-switch-knob: #DCDCDC;
+  --or-sheet-scrim: rgba(0,0,0,0.28);
   --or-accent: #0B6BD6;
   --or-on-accent: #FFFFFF;
   --or-connection-pg: #336791;
@@ -175,6 +195,10 @@
   --or-separator: rgba(255,255,255,0.055);
   --or-control-fill: rgba(255,255,255,0.035);
   --or-control-active: #3B3B3B;
+  --or-control-stroke: rgba(255,255,255,0.1);
+  --or-switch-track: rgba(255,255,255,0.16);
+  --or-switch-knob: #DCDCDC;
+  --or-sheet-scrim: rgba(0,0,0,0.28);
   --or-accent: #0B6BD6;
   --or-on-accent: #FFFFFF;
   --or-connection-pg: #336791;
@@ -214,17 +238,23 @@
   --or-separator: #606060;
   --or-panel: #EDEDED;
   --or-control-fill: #E4E4E4;
+  --or-control-stroke: #606060;
+  --or-switch-track: #8A8A8A;
 }
 [data-theme="dark"] {
   --or-separator: #C0C0C0;
   --or-panel: #222222;
   --or-control-fill: #383838;
+  --or-control-stroke: #C0C0C0;
+  --or-switch-track: #7A7A7A;
 }
 @media (prefers-color-scheme: dark) {
 [data-theme="system"] {
   --or-separator: #C0C0C0;
   --or-panel: #222222;
   --or-control-fill: #383838;
+  --or-control-stroke: #C0C0C0;
+  --or-switch-track: #7A7A7A;
 }
 }
 }

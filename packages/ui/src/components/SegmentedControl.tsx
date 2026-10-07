@@ -13,7 +13,7 @@ type Props<Value extends string> = {
   onValueChange: (value: Value) => void;
   'aria-label': string;
   disabled?: boolean;
-  className?: string;
+  className?: string | undefined;
 };
 function nextIndex(
   key: string,

@@ -1,5 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-/** Spacing in rem respects browser text scaling; radii are concentric. */
+/**
+ * Spacing in rem respects browser text scaling; radii are concentric
+ * (window 26 → panel 12 → control 7 / compact 6). Every text input, select,
+ * search field, button and segmented control uses `control-height(-compact)`
+ * and `radius-control(-compact)`; `control-sm`/`control-md`/`control-compact`
+ * are aliases kept for existing styles.
+ */
 export const geometry = {
   'space-2': '0.125rem',
   'space-4': '0.25rem',
@@ -24,14 +30,26 @@ export const geometry = {
   'grid-row-height': '26px',
   'tree-row-height': '24px',
   'tab-height': '28px',
-  'control-compact': '24px',
+  'control-compact': 'var(--or-control-height-compact)',
   'rail-tile-size': '36px',
   'rail-inactive-opacity': '0.9',
   'status-height': '18px',
   'commit-height': '38px',
   'footer-height': '32px',
-  'control-sm': '1.75rem',
-  'control-md': '2rem',
+  'control-height': '28px',
+  'control-height-compact': '24px',
+  'radius-control': '7px',
+  'radius-control-compact': '6px',
+  'control-padding': '10px',
+  'control-padding-compact': '8px',
+  'segment-inset': '2px',
+  'switch-width': '26px',
+  'switch-height': '15px',
+  'switch-thumb': '13px',
+  'sheet-width': '480px',
+  'alert-width': '300px',
+  'control-sm': 'var(--or-control-height)',
+  'control-md': 'var(--or-control-height)',
   'icon-size': '0.9375rem',
   'dot-size': '0.5rem',
   'toolbar-height': '48px',

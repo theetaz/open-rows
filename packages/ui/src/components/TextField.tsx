@@ -3,16 +3,26 @@ import { useId } from 'react';
 import type { InputHTMLAttributes, ReactNode } from 'react';
 import styles from './TextField.module.css';
 
+/** Regular (28 px) or compact (24 px) control size; see docs/20 §3.3. */
+export type ControlSize = 'regular' | 'compact';
 type Name =
   | { label: string; 'aria-label'?: string }
   | { label?: never; 'aria-label': string };
 type Props = Omit<InputHTMLAttributes<HTMLInputElement>, 'aria-label'> &
-  Name & { leadingIcon?: ReactNode; error?: string };
+  Name & {
+    leadingIcon?: ReactNode;
+    /** Accessory inside the frame after the input, such as a reveal button. */
+    trailing?: ReactNode;
+    error?: string;
+    controlSize?: ControlSize;
+  };
 /** Labelled input with optional original icon and associated validation message. */
 export function TextField({
   label,
   leadingIcon,
+  trailing,
   error,
+  controlSize = 'regular',
   id,
   className = '',
   ...props
@@ -27,7 +37,11 @@ export function TextField({
   return (
     <div className={`${styles.field ?? ''} ${className}`}>
       {label && <label htmlFor={inputId}>{label}</label>}
-      <div className={styles.frame} data-invalid={Boolean(error)}>
+      <div
+        className={styles.frame}
+        data-invalid={Boolean(error)}
+        data-size={controlSize}
+      >
         {leadingIcon && (
           <span aria-hidden="true" className={styles.icon}>
             {leadingIcon}
@@ -39,6 +53,7 @@ export function TextField({
           aria-invalid={Boolean(error)}
           aria-describedby={describedBy}
         />
+        {trailing && <span className={styles.trailing}>{trailing}</span>}
       </div>
       {error && (
         <span id={errorId} className={styles.error}>

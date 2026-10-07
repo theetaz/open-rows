@@ -8,6 +8,7 @@ import {
   validate,
   withEnvironment,
   withPassword,
+  withPatch,
   withUrl,
 } from './form';
 
@@ -41,22 +42,20 @@ it('prod turns confirm writes on; leaving prod keeps the choice', () => {
   expect(withEnvironment(emptyDraft(), 'staging').confirmWrites).toBe(false);
 });
 
-it('keeps a URL only when it carried a password, and typing replaces it', () => {
-  const url = 'postgres://app:pw@db/orders';
+it('fills fields from a parsed URL; a typed name sticks, a URL-derived one follows', () => {
   const parsed = {
     host: 'db',
     port: 5433,
     database: 'orders',
     user: 'app',
     tlsMode: 'require' as const,
-    passwordProvided: true,
+    passwordProvided: false,
   };
-  const draft = withUrl(emptyDraft(), parsed, url);
-  expect(toInput(draft).password).toEqual({ kind: 'fromUrl', url });
-  expect(draft.name).toBe('orders');
-  expect(
-    withUrl(emptyDraft(), { ...parsed, passwordProvided: false }, url).url,
-  ).toBe('');
+  const draft = withUrl(emptyDraft(), parsed);
+  expect(draft).toMatchObject({ name: 'orders', host: 'db', port: '5433' });
+  expect(withUrl(draft, { ...parsed, database: 'sales' }).name).toBe('sales');
+  const named = withPatch(draft, { name: 'Mine' });
+  expect(withUrl(named, { ...parsed, database: 'sales' }).name).toBe('Mine');
   const typed = withPassword(draft, 'typed');
   expect(toInput(typed).password).toEqual({ kind: 'set', value: 'typed' });
   expect(toInput(withPassword(typed, '')).password).toEqual({ kind: 'keep' });

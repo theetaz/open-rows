@@ -248,8 +248,8 @@ The app must feel like it was designed for the current macOS, not merely ported 
 | --- | --- |
 | **Everything collapsible** | Sidebar (⌃⌘S, standard "Show/Hide Sidebar"), inspector/assistant panel (⌥⌘I), connection rail, results pane, and every sidebar section (disclosure triangles). Panels animate with a spring-like ease (≈360 ms, `cubic-bezier(0.32, 0.72, 0, 1)`), remember their state per window, and can also be collapsed by dragging the divider past a threshold — like `NSSplitView` sidebars. Toolbar toggle buttons reflect state (tinted when open). |
 | **Liquid Glass materials** | Sidebar, inspector and toolbar controls use translucent "glass" panels (blur + saturation, bright top edge highlight, soft shadow) floating above content, with content allowed to scroll beneath the toolbar edge. Implemented natively where possible (window vibrancy / glass effect behind a transparent webview on macOS 26; `NSVisualEffectView` on older versions) with semi-transparent tone tokens on persistent webview surfaces. CSS `backdrop-filter` is reserved for mounted transient palettes, sheets and tooltips to avoid redundant Retina backdrop textures (issue #17). |
-| **Concentric geometry** | Corner radii nest: window 26 px → floating panels 12 px → controls capsules/10 px. Nothing has sharp corners next to a rounded container. |
-| **Capsule controls** | Toolbar buttons grouped into capsules; segmented controls are pills; primary actions use the accent fill. |
+| **Concentric geometry** | Corner radii nest: window 26 px → floating panels and sheets 12 px → controls 7 px (compact 6 px, see §3.3). Nothing has sharp corners next to a rounded container. |
+| **Grouped controls** | Toolbar buttons are grouped in capsules. Segmented controls, fields and push buttons share the control radius (§3.3). Primary actions use the accent fill. |
 | **Toolbar in the titlebar** | Unified titlebar/toolbar; traffic lights stay native; toolbar is user-customisable (add/remove/reorder items, icon/text modes) like `NSToolbar`. |
 | **Native tabs behaviour** | Tabs reorder, tear off to new windows, merge windows (Window → Merge All Windows), ⌘⇧[ / ⌘⇧] to switch, ⌘W closes, "Reopen closed tab" ⌘⇧T. |
 | **Menu bar parity** | Every command in the native menu bar with its shortcut; Help menu search finds commands. |
@@ -258,6 +258,23 @@ The app must feel like it was designed for the current macOS, not merely ported 
 | **Window behaviour** | Full screen with auto-hiding toolbar, Stage Manager and Split View friendly, window state restoration, multiple windows per workspace. |
 | **Interaction details** | Hover-reveal controls, context menus everywhere, drag-and-drop (tables into the editor, rows out as CSV), Quick Look (space) on cells and files, inline rename, type-to-select in lists. |
 | **App icon** | Layered icon compatible with macOS light, dark, clear and tinted icon modes. |
+
+### 3.3 Control consistency rules
+
+These rules are enforced by `packages/ui/src/tokens/controls.test.ts`. Follow them for every new control:
+
+| Size | Height | Corner radius | Text | Used by |
+| --- | --- | --- | --- | --- |
+| Regular (default) | `--or-control-height` 28 px | `--or-radius-control` 7 px | 13 px | text fields, search fields, selects (`SelectField`), push buttons, segmented controls |
+| Compact | `--or-control-height-compact` 24 px | `--or-radius-control-compact` 6 px | 12 px | toolbar/table controls, inline buttons (`Button size="sm"`, `controlSize="compact"`) |
+
+- One height and one radius per size. Inputs, selects, buttons and segmented controls of the same size never differ. A select uses the text-field frame, so it is exactly the size of a text input. Do not set heights or radii in feature CSS. Use the shared components or the tokens.
+- Segments sit inside their control with a 2 px inset (`--or-segment-inset`). Their radius is the control radius minus the inset, so the corners are concentric.
+- Switches are macOS-sized: 26 × 15 px track and 13 px knob (`--or-switch-*`).
+- Concentric geometry: window 26 px → panels and sheets 12 px → controls 7 / 6 px. Capsules (`--or-radius-capsule`) are only for pills, badges and switch tracks, not for push buttons or fields.
+- Arrow cursor everywhere: never use `cursor: pointer` on buttons, rows or tabs. Text inputs keep the I-beam, and disabled controls dim instead of changing the cursor.
+- Sheets (`Sheet` + `SheetActions`) have a compact, centred 13 px semibold title and no close button. Push buttons are right-aligned: Cancel, then the default action in blue. Return runs the default action, Escape cancels, and focus starts in the first text field. Destructive confirmations use the native macOS alert (`confirmDestructive`), with Cancel as the safe choice.
+- `control-sm`, `control-md` and `control-compact` are aliases of the regular and compact heights, kept for older styles.
 
 ## 4. Key flows to design
 
@@ -291,7 +308,7 @@ The app must feel like it was designed for the current macOS, not merely ported 
 remain 13 px; workspace grid and tree text are 12.5 px, secondary metadata is
 11–11.5 px, context text is 12 px, and environment labels are 10 px. Rail monograms are 13 px semibold. Grid rows
 and headers are 26 px, tree rows 24 px, tabs and titlebar controls 28 px, table
-controls 24 px, and rail tiles 36 px with 10 px corners. Status pills use 11 px
+controls 24 px (see §3.3 for the control height/radius rules), and rail tiles 36 px with 10 px corners. Status pills use 11 px
 text in an 18 px box with 6 px corners. Floating panels use 12 px corners.
 
 | Surface token | Dark | Light |

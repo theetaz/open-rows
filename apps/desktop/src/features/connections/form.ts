@@ -10,7 +10,7 @@ import type {
 } from '@openrows/ipc';
 
 /** How the password is handled on save; the value never comes back from the core. */
-export type PasswordMode = 'keep' | 'set' | 'clear' | 'url';
+export type PasswordMode = 'keep' | 'set' | 'clear';
 
 /** Editable connection form values (strings as typed). */
 export type Draft = {
@@ -28,9 +28,9 @@ export type Draft = {
   confirmWrites: boolean;
   password: string;
   passwordMode: PasswordMode;
-  /** The pasted URL, kept only when it carried a password. */
-  url: string;
   hasStoredPassword: boolean;
+  /** The name was derived from the URL, so later URL edits may replace it. */
+  nameFromUrl: boolean;
 };
 
 export type DraftErrors = Partial<
@@ -60,8 +60,8 @@ export function emptyDraft(): Draft {
     confirmWrites: false,
     password: '',
     passwordMode: 'keep',
-    url: '',
     hasStoredPassword: false,
+    nameFromUrl: false,
   };
 }
 
@@ -96,30 +96,33 @@ export function withEnvironment(draft: Draft, kind: EnvKindDto): Draft {
   };
 }
 
-/** Fill connection fields from a parsed URL; the URL is kept only for its password. */
-export function withUrl(draft: Draft, parsed: UrlDraft, url: string): Draft {
+/** Fill connection fields from a parsed URL (its password is handled in the webview). */
+export function withUrl(draft: Draft, parsed: UrlDraft): Draft {
+  const derive = !draft.name || draft.nameFromUrl;
   return {
     ...draft,
-    name: draft.name || parsed.database || parsed.host,
+    name: derive ? parsed.database || parsed.host : draft.name,
+    nameFromUrl: derive,
     host: parsed.host,
     port: String(parsed.port),
     database: parsed.database ?? '',
-    user: parsed.user ?? draft.user,
+    user: parsed.user ?? '',
     tlsMode: parsed.tlsMode,
-    password: '',
-    passwordMode: parsed.passwordProvided ? 'url' : draft.passwordMode,
-    url: parsed.passwordProvided ? url : '',
+  };
+}
+
+/** A field edit; typing a name stops the URL from renaming the connection. */
+export function withPatch(draft: Draft, patch: Partial<Draft>): Draft {
+  return {
+    ...draft,
+    ...patch,
+    nameFromUrl: 'name' in patch ? false : draft.nameFromUrl,
   };
 }
 
 /** A typed password replaces the stored one; clearing the field keeps it. */
 export function withPassword(draft: Draft, value: string): Draft {
-  return {
-    ...draft,
-    password: value,
-    passwordMode: value ? 'set' : 'keep',
-    url: '',
-  };
+  return { ...draft, password: value, passwordMode: value ? 'set' : 'keep' };
 }
 
 export function validate(draft: Draft): DraftErrors {
@@ -141,8 +144,6 @@ function password(draft: Draft): PasswordInput {
       return { kind: 'set', value: draft.password };
     case 'clear':
       return { kind: 'clear' };
-    case 'url':
-      return { kind: 'fromUrl', url: draft.url };
     case 'keep':
       return { kind: 'keep' };
   }

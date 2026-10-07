@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
 import {
   closeSession,
+  confirmDestructive,
   deleteProfile,
   duplicateProfile,
   listProfiles,
@@ -82,17 +83,31 @@ it('duplicates and deletes only after confirmation', async () => {
   await menu(user, 'Duplicate');
   expect(duplicateProfile).toHaveBeenCalledWith('id-analytics-prod');
   expect(await screen.findByTitle('analytics-prod copy')).toBeVisible();
+  vi.mocked(confirmDestructive).mockResolvedValueOnce(false);
   await menu(user, 'Delete…');
-  const dialog = screen.getByRole('dialog', { name: 'Delete connection' });
-  await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+  expect(confirmDestructive).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      title: 'Delete “analytics-prod copy”?',
+      action: 'Delete',
+    }),
+  );
   expect(deleteProfile).not.toHaveBeenCalled();
   await menu(user, 'Delete…');
+  const dialog = await screen.findByRole('dialog', {
+    name: 'Delete “analytics-prod copy”?',
+  });
+  expect(within(dialog).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+  await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+  expect(deleteProfile).not.toHaveBeenCalled();
+  vi.mocked(confirmDestructive).mockResolvedValueOnce(true);
   vi.mocked(listProfiles).mockResolvedValueOnce({
     profiles: [...sampleProfiles],
     unreadable: [],
   });
-  await user.click(screen.getByRole('button', { name: 'Delete connection' }));
-  expect(deleteProfile).toHaveBeenCalledWith('id-analytics-prod copy');
+  await menu(user, 'Delete…');
+  await waitFor(() => {
+    expect(deleteProfile).toHaveBeenCalledWith('id-analytics-prod copy');
+  });
   expect(
     await screen.findByText('Choose a connection in the rail.'),
   ).toBeVisible();
