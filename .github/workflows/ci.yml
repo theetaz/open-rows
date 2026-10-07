@@ -1,23 +1,22 @@
 name: CI
 
-# Minimal pipeline while the repository is private. The full pipeline
-# (Linux/macOS/Windows matrix, supply-chain, hygiene and an aggregate
-# required check) returns when the repository goes public; see
-# docs/18-repository-and-dev-workflow.md §4. Run `just check` locally for
-# every gate.
+# Runs only on pushes to `main` (squash-merged PRs) and on manual dispatch.
+# Feature branches and pull requests do not trigger CI: run `just check`
+# locally before pushing. This keeps free GitHub Actions minutes for the
+# integration gate on `main`. The full pipeline returns when the project
+# goes public; see docs/18-repository-and-dev-workflow.md §4.
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened, edited]
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: true
 
 defaults:
   run:
@@ -26,26 +25,18 @@ defaults:
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
       - name: Check commit messages
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000'
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
         run: bash scripts/ci/check-commit-messages.sh "$BASE_SHA" "$HEAD_SHA"
-      - name: Check PR title
-        if: github.event_name == 'pull_request'
-        env:
-          PR_TITLE: ${{ github.event.pull_request.title }}
-        run: |
-          message=$(mktemp)
-          trap 'rm -f -- "$message"' EXIT
-          printf '%s\n' "$PR_TITLE" > "$message"
-          bash scripts/git-hooks/commit-msg "$message"
       - name: Install Tauri Linux prerequisites
         run: |
           sudo apt-get update

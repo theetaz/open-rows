@@ -21,7 +21,7 @@ Status values: `done`, `todo`, `blocked` (state the blocker), `hw` (needs specif
 ### 1.2 Definition of done (every task)
 
 1. All acceptance criteria pass with evidence in the PR's acceptance report.
-2. `just check` passes locally and CI is green **before** merge (the repository has no branch protection while private; verify CI manually).
+2. `just check` passes locally **before** pushing and merging. CI runs only on `main` after merge (docs/18 §4); if it fails, fix `main` immediately.
 3. Limits from docs/25 §4 hold (functions ≤ 40 lines target / 80 hard, files ≤ 300 / 600, complexity ≤ 10 / 20, ≤ 4 params), no dead code, no TODO without an issue link.
 4. Benchmarks for touched hot paths run and stay within budget; regressions are explained.
 5. Docs updated in the same PR (requirements status, architecture docs, ADRs, this plan).
