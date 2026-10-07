@@ -1,55 +1,96 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/* Text inputs, search fields and selects share one frame (docs/20 §3.3). */
 .field {
   display: grid;
-  gap: var(--or-space-6);
+  gap: var(--or-space-4);
+  font-size: var(--or-text-13);
 }
 .field label {
-  font-weight: var(--or-weight-medium);
+  font-weight: var(--or-weight-regular);
 }
 .frame {
+  position: relative;
   display: flex;
   align-items: center;
+  box-sizing: border-box;
+  block-size: var(--or-control-height);
+  min-inline-size: 0;
   background: var(--or-control-fill);
-  border: var(--or-border-width) solid transparent;
-  border-radius: var(--or-radius-field);
+  border: var(--or-border-width) solid var(--or-control-stroke);
+  border-radius: var(--or-radius-control);
 }
-.frame input {
+.frame[data-size='compact'] {
+  block-size: var(--or-control-height-compact);
+  border-radius: var(--or-radius-control-compact);
+  font-size: var(--or-text-12);
+}
+.frame input,
+.frame select {
+  box-sizing: border-box;
   inline-size: 100%;
   min-inline-size: 0;
-  min-block-size: var(--or-control-sm);
-  padding: var(--or-space-4) var(--or-space-8);
+  block-size: 100%;
+  padding: 0 var(--or-control-padding-compact);
   border: none;
   border-radius: inherit;
   background: transparent;
   color: var(--or-text);
   font: inherit;
+  cursor: default;
+}
+.frame input {
+  cursor: text;
+}
+.frame select {
+  appearance: none;
+  padding-inline-end: calc(var(--or-control-padding) + var(--or-icon-size));
 }
 .frame input::placeholder {
   color: var(--or-secondary);
   opacity: 1;
 }
-.frame input:focus-visible {
+/* Native text fields ring on any focus; the ring wraps icon and accessories. */
+.frame:focus-within {
   outline: var(--or-focus-width) solid var(--or-focus);
-  outline-offset: var(--or-focus-offset);
+  outline-offset: var(--or-border-width);
 }
-.frame:has(input:disabled) {
-  background: var(--or-control-fill);
+.frame input:focus-visible,
+.frame select:focus-visible {
+  outline: none;
 }
-.frame input:disabled {
+.frame input:disabled,
+.frame select:disabled {
   color: var(--or-secondary);
-  cursor: not-allowed;
+  opacity: 0.6;
 }
 .frame[data-invalid='true'] {
   border-color: var(--or-danger-fg);
 }
 .icon {
   display: inline-flex;
-  padding-inline-start: var(--or-space-10);
+  padding-inline-start: var(--or-control-padding-compact);
   color: var(--or-secondary);
 }
-.icon svg {
+.icon + input {
+  padding-inline-start: var(--or-space-6);
+}
+.icon svg,
+.chevron svg {
   inline-size: var(--or-icon-size);
   block-size: var(--or-icon-size);
+}
+.chevron {
+  position: absolute;
+  inset-inline-end: var(--or-control-padding-compact);
+  display: inline-flex;
+  color: var(--or-secondary);
+  pointer-events: none;
+}
+.trailing {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--or-space-2);
+  padding-inline-end: var(--or-space-2);
 }
 .error {
   color: var(--or-danger-fg);

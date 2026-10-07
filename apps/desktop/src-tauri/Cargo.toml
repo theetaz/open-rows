@@ -28,6 +28,7 @@ serde = { workspace = true, features = ["derive"] }
 tauri = { version = "2", features = ["specta", "macos-private-api"] }
 specta = { version = "=2.0.0-rc.25", features = ["derive", "function"] }
 specta-typescript = "0.0.12"
+tauri-plugin-dialog = "2"
 tauri-specta = { version = "=2.0.0-rc.25", features = ["typescript"] }
 thiserror.workspace = true
 serde_json.workspace = true

@@ -21,17 +21,21 @@ export function EnvironmentFields({
 }): React.JSX.Element {
   const { draft, errors, update } = form;
   return (
-    <fieldset className={styles.section}>
-      <legend>Environment and safety</legend>
-      <SegmentedControl
-        aria-label="Environment"
-        options={environments}
-        value={draft.envKind}
-        onValueChange={form.setEnvironment}
-      />
+    <>
+      <div className={styles.row}>
+        <span className={styles.label}>Environment</span>
+        <SegmentedControl
+          className={styles.segmented}
+          aria-label="Environment"
+          options={environments}
+          value={draft.envKind}
+          onValueChange={form.setEnvironment}
+        />
+      </div>
       {draft.envKind === 'custom' && (
-        <div className={styles.custom}>
+        <div className={styles.pair}>
           <TextField
+            className={styles.row}
             label="Label"
             value={draft.envLabel}
             {...fieldError(errors.envLabel)}
@@ -39,7 +43,7 @@ export function EnvironmentFields({
               update({ envLabel: event.target.value });
             }}
           />
-          <label className={styles.colour}>
+          <label className={`${styles.port ?? ''} ${styles.colour ?? ''}`}>
             <span>Colour</span>
             <input
               type="color"
@@ -67,7 +71,7 @@ export function EnvironmentFields({
           update({ confirmWrites });
         }}
       />
-    </fieldset>
+    </>
   );
 }
 
@@ -79,15 +83,15 @@ function SafetySwitch(props: {
 }): React.JSX.Element {
   return (
     <div className={styles.switchRow}>
-      <span>
-        <strong>{props.label}</strong>
-        <small>{props.detail}</small>
-      </span>
       <Switch
         aria-label={props.label}
         checked={props.checked}
         onCheckedChange={props.onChange}
       />
+      <span>
+        {props.label}
+        <small>{props.detail}</small>
+      </span>
     </div>
   );
 }

@@ -70,7 +70,7 @@
   gap: var(--or-space-8);
   padding: var(--or-space-8);
   border-radius: var(--or-radius-field);
-  cursor: pointer;
+  cursor: default;
 }
 .option[aria-selected='true'] {
   background: var(--or-accent);

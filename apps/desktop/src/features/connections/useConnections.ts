@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useState } from 'react';
-import { deleteProfile, duplicateProfile } from '@openrows/ipc';
+import {
+  confirmDestructive,
+  deleteProfile,
+  duplicateProfile,
+} from '@openrows/ipc';
 import type { ProfileDto } from '@openrows/ipc';
 import { useProfiles } from './useProfiles';
 import { useSessions } from './useSessions';
@@ -27,10 +31,40 @@ export type Connections = {
   saved: (profile: ProfileDto) => void;
   duplicate: (profile: ProfileDto) => Promise<void>;
   remove: (profile: ProfileDto) => Promise<void>;
+  /** Native alert first; the in-app alert sheet outside the native shell. */
+  confirmRemove: (profile: ProfileDto) => void;
 };
+
+/** The macOS alert text for deleting a connection. */
+export function deletePrompt(profile: ProfileDto): {
+  title: string;
+  message: string;
+  action: string;
+} {
+  return {
+    title: `Delete “${profile.name}”?`,
+    message:
+      'Its saved password is removed from the Keychain. Databases are not touched.',
+    action: 'Delete',
+  };
+}
 
 const message = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
+
+function askToRemove(
+  profile: ProfileDto,
+  remove: (profile: ProfileDto) => Promise<void>,
+  setSheet: (sheet: SheetState) => void,
+): void {
+  const fallback = (): void => {
+    setSheet({ kind: 'delete', profile });
+  };
+  confirmDestructive(deletePrompt(profile)).then((answer) => {
+    if (answer === null) fallback();
+    else if (answer) void remove(profile);
+  }, fallback);
+}
 
 /** Saved connections, the active one, its session and the open sheet. */
 export function useConnections(): Connections {
@@ -55,6 +89,14 @@ export function useConnections(): Connections {
       setActionError(message(error));
     }
   };
+  const remove = (profile: ProfileDto): Promise<void> =>
+    run(async () => {
+      await sessions.disconnect(profile.id);
+      await deleteProfile(profile.id);
+      setSheet(null);
+      if (activeId === profile.id) setActiveId(null);
+      reload();
+    });
   return {
     profiles,
     problem: actionError ?? problem,
@@ -85,13 +127,9 @@ export function useConnections(): Connections {
         reload();
         setActiveId(copy.id);
       }),
-    remove: (profile) =>
-      run(async () => {
-        await sessions.disconnect(profile.id);
-        await deleteProfile(profile.id);
-        setSheet(null);
-        if (activeId === profile.id) setActiveId(null);
-        reload();
-      }),
+    remove,
+    confirmRemove: (profile) => {
+      askToRemove(profile, remove, setSheet);
+    },
   };
 }

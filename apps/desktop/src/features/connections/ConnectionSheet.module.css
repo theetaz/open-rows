@@ -1,110 +1,102 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/* AppKit form layout: trailing-aligned labels, one control height (docs/20 §3.3). */
 .form {
+  --label-column: 6rem;
   display: grid;
-  gap: var(--or-space-16);
+  gap: var(--or-space-8);
   font-size: var(--or-text-13);
 }
 .form p {
   margin: 0;
 }
-.url {
+.form .row {
   display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: end;
-  gap: var(--or-space-8);
+  grid-template-columns: var(--label-column) minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--or-space-8);
 }
-.grid {
+.form .row > label,
+.label {
+  text-align: end;
+  color: var(--or-text);
+}
+.form .row > span:last-child:not(:nth-child(2)) {
+  grid-column: 2;
+}
+.pair {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--or-space-12);
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: var(--or-space-12);
 }
-.password {
+.form .port {
+  display: grid;
+  grid-template-columns: auto 4.5rem;
+  align-items: center;
+  column-gap: var(--or-space-8);
+}
+.form .port > span:last-child:not(:nth-child(2)) {
+  grid-column: 1 / -1;
+}
+.segmented {
+  justify-self: start;
+}
+.stack {
   display: grid;
   gap: var(--or-space-4);
-  justify-items: start;
 }
-.password > div {
-  inline-size: 100%;
-}
-.password small,
-.switchRow small {
+.hint {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--or-space-6);
+  margin-inline-start: calc(var(--label-column) + var(--or-space-8));
   color: var(--or-secondary);
   font-size: var(--or-text-11);
 }
-.select,
-.colour {
-  display: grid;
-  gap: var(--or-space-6);
-  align-content: start;
-}
-.select span,
-.colour span {
-  font-weight: var(--or-weight-medium);
-}
-.select select {
-  min-block-size: var(--or-control-sm);
-  padding: var(--or-space-4) var(--or-space-8);
-  border: var(--or-border-width) solid transparent;
-  border-radius: var(--or-radius-field);
-  background: var(--or-control-fill);
-  color: var(--or-text);
-  font: inherit;
-}
-.select select:focus-visible,
-.colour input:focus-visible {
-  outline: var(--or-focus-width) solid var(--or-focus);
-  outline-offset: var(--or-focus-offset);
-}
 .colour input {
-  inline-size: var(--or-control-md);
-  block-size: var(--or-control-sm);
+  inline-size: var(--or-control-height);
+  block-size: var(--or-control-height);
   padding: 0;
   border: 0;
   background: transparent;
 }
-.section {
-  display: grid;
-  gap: var(--or-space-10);
-  margin: 0;
-  padding: 0;
+.colour input:focus-visible {
+  outline: var(--or-focus-width) solid var(--or-focus);
+  outline-offset: var(--or-border-width);
+}
+.colour span {
+  text-align: end;
+}
+.separator {
+  margin: var(--or-space-2) 0;
   border: 0;
-}
-.section legend {
-  margin-block-end: var(--or-space-8);
-  padding: 0;
-  font-weight: var(--or-weight-semibold);
-}
-.custom {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: var(--or-space-12);
+  border-block-start: var(--or-border-width) solid var(--or-separator);
 }
 .switchRow {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--or-space-12);
+  align-items: flex-start;
+  gap: var(--or-space-8);
+  margin-inline-start: calc(var(--label-column) + var(--or-space-8));
+}
+.switchRow > button {
+  margin-block-start: var(--or-space-2);
 }
 .switchRow > span {
   display: grid;
   gap: var(--or-space-2);
 }
+.switchRow small {
+  color: var(--or-secondary);
+  font-size: var(--or-text-11);
+}
 .test {
   display: grid;
   gap: var(--or-space-4);
-  min-block-size: var(--or-control-sm);
+  min-block-size: var(--or-control-height-compact);
+  align-content: center;
 }
 .error {
   color: var(--or-danger-fg);
   font-size: var(--or-text-12);
   overflow-wrap: anywhere;
-}
-.footer {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--or-space-8);
-}
-.spacer {
-  flex: 1;
 }

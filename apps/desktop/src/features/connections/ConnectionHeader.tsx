@@ -90,7 +90,7 @@ function ConnectionMenu(props: {
     [
       'Delete…',
       () => {
-        connections.setSheet({ kind: 'delete', profile });
+        connections.confirmRemove(profile);
       },
     ],
   ];

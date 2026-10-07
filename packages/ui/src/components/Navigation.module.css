@@ -33,7 +33,7 @@
   color: inherit;
   border: 0;
   background: transparent;
-  cursor: pointer;
+  cursor: default;
   block-size: var(--or-tab-height);
 }
 .document button[role='tab'] {
@@ -79,7 +79,7 @@
   font-size: var(--or-text-11);
   font-weight: var(--or-weight-semibold);
   min-block-size: var(--or-tree-row-height);
-  cursor: pointer;
+  cursor: default;
 }
 .count {
   margin-inline-start: auto;
@@ -119,7 +119,7 @@
   font: inherit;
   font-size: var(--or-text-12-5);
   text-align: start;
-  cursor: pointer;
+  cursor: default;
 }
 .treeItem span:nth-child(2) {
   white-space: nowrap;

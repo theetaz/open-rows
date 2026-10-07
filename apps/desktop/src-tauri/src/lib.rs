@@ -68,7 +68,9 @@ pub fn export_bindings(path: &std::path::Path) -> Result<(), specta_typescript::
 pub fn run() -> Result<(), tauri::Error> {
     startup_report::initialize();
     startup_report::record(startup_report::Phase::BuilderStart);
-    let builder = spike::configure(tauri::Builder::default())?.manage(queries::Queries::default());
+    let builder = spike::configure(tauri::Builder::default())?
+        .plugin(tauri_plugin_dialog::init())
+        .manage(queries::Queries::default());
     let specta = command_builder();
     let controls = specta.invoke_handler();
     let binary: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool =

@@ -17,7 +17,7 @@ it('all interactive component selectors have a visible focus ring from tokens', 
     '.switch:focus-visible',
   ])
     expect(controls).toContain(selector);
-  expect(field).toContain('input:focus-visible');
+  expect(field).toContain('.frame:focus-within');
   for (const css of [controls, field])
     expect(css).toContain(
       'outline: var(--or-focus-width) solid var(--or-focus)',

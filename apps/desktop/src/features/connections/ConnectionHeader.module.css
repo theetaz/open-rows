@@ -60,7 +60,7 @@
   background: transparent;
   color: var(--or-text);
   font: inherit;
-  cursor: pointer;
+  cursor: default;
   border-radius: var(--or-radius-field);
 }
 .menuButton:focus-visible {

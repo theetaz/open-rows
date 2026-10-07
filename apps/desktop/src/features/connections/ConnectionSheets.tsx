@@ -29,9 +29,7 @@ export function ConnectionSheets({
       profile={profile}
       onClose={close}
       onSaved={connections.saved}
-      onDelete={(target) => {
-        setSheet({ kind: 'delete', profile: target });
-      }}
+      onDelete={connections.confirmRemove}
       onDuplicate={(target) => void connections.duplicate(target)}
     />
   );

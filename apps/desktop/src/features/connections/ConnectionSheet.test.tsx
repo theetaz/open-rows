@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
 import {
@@ -33,37 +33,88 @@ function mount(existing?: ReturnType<typeof profile>) {
   return { user: userEvent.setup(), handlers };
 }
 
-it('fills the form from a pasted URL and saves its password only as a fromUrl input', async () => {
-  vi.mocked(parsePostgresUrl).mockResolvedValue({
-    host: 'db.test',
-    port: 6543,
-    database: 'orders',
-    user: 'app',
-    tlsMode: 'prefer',
-    passwordProvided: true,
-  });
+const PARSED = {
+  host: 'db.test',
+  port: 6543,
+  database: 'orders',
+  user: 'app',
+  tlsMode: 'prefer' as const,
+  passwordProvided: false,
+};
+
+it('fills the fields from a pasted URL at once, masks its password and saves it as typed', async () => {
+  vi.mocked(parsePostgresUrl).mockResolvedValue(PARSED);
   const saved = profile('orders');
   vi.mocked(createProfile).mockResolvedValue(saved);
   const { user, handlers } = mount();
-  const url = screen.getByRole('textbox', { name: 'Paste connection URL' });
-  await user.type(url, `${URL_WITH_SECRET}{Enter}`);
-  expect(parsePostgresUrl).toHaveBeenCalledWith(URL_WITH_SECRET);
-  expect(url).toHaveValue('');
-  expect(screen.getByRole('textbox', { name: 'Host' })).toHaveValue('db.test');
+  const url = screen.getByRole('textbox', { name: 'URL' });
+  expect(url).toHaveFocus();
+  await user.clear(url);
+  await user.paste(URL_WITH_SECRET);
+  expect(parsePostgresUrl).toHaveBeenLastCalledWith(
+    'postgres://app@db.test:6543/orders',
+  );
+  expect(url).toHaveValue('postgres://app:••••@db.test:6543/orders');
+  expect(await screen.findByDisplayValue('db.test')).toBeVisible();
   expect(screen.getByRole('textbox', { name: 'Port' })).toHaveValue('6543');
   expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('orders');
-  expect(screen.getByLabelText('Password')).toHaveValue('');
-  expect(screen.getByText(/Password provided in the URL/)).toBeVisible();
+  const password = screen.getByLabelText('Password');
+  expect(password).toHaveAttribute('type', 'password');
+  expect(password).toHaveValue('pw-synthetic');
   await user.click(screen.getByRole('button', { name: 'Save' }));
   expect(createProfile).toHaveBeenCalledWith(
     expect.objectContaining({
       host: 'db.test',
       port: 6543,
       user: 'app',
-      password: { kind: 'fromUrl', url: URL_WITH_SECRET },
+      password: { kind: 'set', value: 'pw-synthetic' },
     }),
   );
   expect(handlers.onSaved).toHaveBeenCalledWith(saved);
+});
+
+it('parses typed URLs after a pause, shows invalid URLs inline and mirrors field edits', async () => {
+  vi.mocked(parsePostgresUrl).mockRejectedValue(
+    new Error('malformed connection URL: invalid port number'),
+  );
+  const { user } = mount();
+  const url = screen.getByRole('textbox', { name: 'URL' });
+  expect(url).toHaveValue('postgres://localhost:5432');
+  await user.clear(url);
+  await user.type(url, 'postgres://h:x');
+  expect(
+    await screen.findByText('malformed connection URL: invalid port number'),
+  ).toBeVisible();
+  expect(parsePostgresUrl).toHaveBeenCalledTimes(1);
+  await user.clear(screen.getByRole('textbox', { name: 'Host' }));
+  await user.type(screen.getByRole('textbox', { name: 'Host' }), 'db.test');
+  await user.type(screen.getByRole('textbox', { name: 'User' }), 'app');
+  await user.type(screen.getByLabelText('Password'), 'pw');
+  expect(url).toHaveValue('postgres://app:••••@db.test:5432?sslmode=prefer');
+  expect(screen.queryByText(/malformed/)).toBeNull();
+});
+
+it('reveals a typed password only on request and blocks copying it while masked', async () => {
+  const { user } = mount();
+  const password = screen.getByLabelText('Password');
+  const reveal = screen.getByRole('button', { name: 'Show password' });
+  expect(reveal).toBeDisabled();
+  await user.type(password, 'pw-synthetic');
+  expect(fireEvent.copy(password)).toBe(false);
+  await user.click(reveal);
+  expect(password).toHaveAttribute('type', 'text');
+  await user.click(screen.getByRole('button', { name: 'Hide password' }));
+  expect(password).toHaveAttribute('type', 'password');
+});
+
+it('closes on Escape and saves on Return like a native sheet', async () => {
+  vi.mocked(createProfile).mockResolvedValue(profile('quick'));
+  const { user, handlers } = mount();
+  await user.type(screen.getByRole('textbox', { name: 'Name' }), 'quick');
+  await user.type(screen.getByRole('textbox', { name: 'User' }), 'app{Enter}');
+  expect(createProfile).toHaveBeenCalledOnce();
+  await user.keyboard('{Escape}');
+  expect(handlers.onClose).toHaveBeenCalledOnce();
 });
 
 it('validates required fields before saving or testing', async () => {
@@ -98,7 +149,10 @@ it('tests an existing profile with its stored password and shows version or erro
     .mockResolvedValueOnce({ server: server('17.2'), elapsedMs: 12 })
     .mockRejectedValueOnce(new Error('authentication failed: bad password'));
   const { user } = mount(existing);
-  expect(screen.getByText(/Saved in the keychain/)).toBeVisible();
+  expect(screen.getByPlaceholderText('Saved in Keychain')).toHaveValue('');
+  expect(screen.getByRole('textbox', { name: 'URL' })).toHaveValue(
+    'postgres://app:••••@localhost:5432/orders',
+  );
   await user.click(screen.getByRole('button', { name: 'Test' }));
   expect(testConnection).toHaveBeenCalledWith(
     'id-orders',
