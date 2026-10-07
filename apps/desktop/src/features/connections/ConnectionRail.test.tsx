@@ -40,28 +40,25 @@ const props = {
 it('shows saved connections as tiles with connection-status dots, status tooltips and add', () => {
   render(<ConnectionRail {...props} />);
   const rail = screen.getByRole('navigation', { name: 'Workspaces' });
-  expect(within(rail).getAllByRole('button')).toHaveLength(6);
-  expect(rail).toHaveTextContent('OSAPQB');
+  expect(
+    within(rail).getAllByRole('button', { name: /^Switch to/ }),
+  ).toHaveLength(3);
+  for (const monogram of ['OS', 'AP', 'QB'])
+    expect(rail).toHaveTextContent(monogram);
   const dots = Array.from(rail.querySelectorAll('i[data-status]')).map((dot) =>
     dot.getAttribute('data-status'),
   );
   expect(dots).toEqual(['none', 'connected', 'failed']);
-  expect(rail.querySelector('[data-environment]')).toBeNull();
+  expect(rail.querySelectorAll('section[data-environment]')).toHaveLength(3);
   const selected = screen.getByRole('button', {
     name: 'Switch to orders-staging',
   });
   const other = screen.getByRole('button', {
     name: 'Switch to analytics-prod',
   });
-  expect(selected.querySelector('[data-state]')).toHaveAttribute(
-    'data-state',
-    'selected',
-  );
+  expect(selected).toHaveAttribute('aria-pressed', 'true');
+  expect(selected).toHaveTextContent('orders-staging');
   fireEvent.mouseEnter(other);
-  expect(other.querySelector('[data-state]')).toHaveAttribute(
-    'data-state',
-    'hover',
-  );
   expect(screen.getByRole('tooltip')).toHaveTextContent(
     'analytics-prodprodPostgreSQL · db.example.test:5432Connected · PostgreSQL 16.4',
   );
@@ -78,6 +75,14 @@ it('supports Tab and wrapping arrows with focus tooltips', async () => {
   render(<ConnectionRail {...props} />);
   const tiles = screen.getAllByRole('button', { name: /^Switch to/ });
   await user.tab();
+  expect(
+    screen.getByRole('button', { name: 'Collapse workspace sidebar' }),
+  ).toHaveFocus();
+  await user.tab();
+  expect(
+    screen.getByRole('button', { name: 'Collapse Staging' }),
+  ).toHaveFocus();
+  await user.tab();
   expect(tiles[0]).toHaveFocus();
   expect(screen.getByRole('tooltip')).toHaveTextContent('Not connected');
   await user.keyboard('{ArrowUp}');
@@ -85,6 +90,23 @@ it('supports Tab and wrapping arrows with focus tooltips', async () => {
   expect(screen.getByRole('tooltip')).toHaveTextContent('qa box');
   await user.keyboard('{ArrowDown}{Enter}');
   expect(props.onSelect).toHaveBeenCalledWith('id-orders-staging');
+});
+
+it('folds the entire sidebar while keeping database controls and remembering the choice', async () => {
+  const user = userEvent.setup();
+  const first = render(<ConnectionRail {...props} />);
+  await user.click(
+    screen.getByRole('button', { name: 'Collapse workspace sidebar' }),
+  );
+  expect(
+    screen.getByRole('navigation', { name: 'Workspaces' }),
+  ).toHaveAttribute('data-compact', 'true');
+  expect(screen.getAllByRole('button', { name: /^Switch to/ })).toHaveLength(3);
+  first.unmount();
+  render(<ConnectionRail {...props} />);
+  expect(
+    screen.getByRole('button', { name: 'Expand workspace sidebar' }),
+  ).toBeInTheDocument();
 });
 
 it('lists the active connection opened databases as tiles with switch and close', async () => {
@@ -121,4 +143,50 @@ it('lists the active connection opened databases as tiles with switch and close'
   await user.click(screen.getByRole('menuitem', { name: 'Close database' }));
   expect(rail.onCloseDatabase).toHaveBeenCalledWith('orders');
   expect(tiles[0]).toHaveFocus();
+});
+
+it('collapses environment and connection lists without closing sessions, and scopes equal database names', async () => {
+  localStorage.clear();
+  const user = userEvent.setup();
+  const local = profile('local');
+  const production = profile('production', {
+    env: { kind: 'prod', label: null, color: '#dc2626' },
+  });
+  const onProfileDatabase = vi.fn();
+  const onCloseProfileDatabase = vi.fn();
+  const renderRail = () => (
+    <ConnectionRail
+      {...props}
+      profiles={[local, production]}
+      activeId={local.id}
+      statusOf={() => ({
+        state: 'connected',
+        server: server('17'),
+        databases: [{ name: 'orders', state: 'open', sessionId: 's' }],
+        generation: 1,
+      })}
+      onProfileDatabase={onProfileDatabase}
+      onCloseProfileDatabase={onCloseProfileDatabase}
+    />
+  );
+  const rendered = render(renderRail());
+  const databases = screen.getAllByRole('button', { name: 'Database orders' });
+  await user.click(databases[1] as HTMLElement);
+  expect(onProfileDatabase).toHaveBeenCalledWith(production.id, 'orders');
+  await user.click(
+    screen.getByRole('button', { name: 'Collapse production databases' }),
+  );
+  expect(
+    screen.getAllByRole('button', { name: 'Database orders' }),
+  ).toHaveLength(1);
+  await user.click(screen.getByRole('button', { name: 'Collapse Local' }));
+  expect(screen.queryByRole('button', { name: 'Switch to local' })).toBeNull();
+  expect(onCloseProfileDatabase).not.toHaveBeenCalled();
+  rendered.unmount();
+  render(renderRail());
+  expect(screen.getByRole('button', { name: 'Expand Local' })).toHaveAttribute(
+    'aria-expanded',
+    'false',
+  );
+  localStorage.clear();
 });

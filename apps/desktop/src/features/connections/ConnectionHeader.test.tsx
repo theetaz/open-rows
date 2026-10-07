@@ -62,10 +62,12 @@ it('connects on selection, shows failures and disconnects from the menu', async 
     'connection refused',
   );
   await menu(user, 'Connect');
-  expect(await screen.findByText('Connected · PostgreSQL 17.2')).toBeVisible();
+  expect(await screen.findByRole('status')).toHaveTextContent(
+    'Connected · PostgreSQL 17.2',
+  );
   await menu(user, 'Disconnect');
   expect(closeConnection).toHaveBeenCalledWith('id-orders-local');
-  expect(await screen.findByText('Not connected')).toBeVisible();
+  expect(await screen.findByRole('status')).toHaveTextContent('Not connected');
 });
 
 it('duplicates and deletes only after confirmation', async () => {

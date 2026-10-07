@@ -8,6 +8,8 @@ import type { Sessions } from './useSessions';
 export type Databases = {
   /** Opened databases of the active connection, in opening order. */
   databases: readonly OpenedDatabase[];
+  chooseDatabase: (profileId: string, name: string) => void;
+  closeProfileDatabase: (profileId: string, name: string) => void;
   /** Active database of the active connection; empty when none is open. */
   database: string;
   /** Open `name` on the active connection (if needed) and make it active. */
@@ -46,6 +48,16 @@ export function useDatabases(
   return {
     databases,
     database,
+    chooseDatabase: (id, name) => {
+      choose(id, name);
+      void sessions.openDatabase(id, name);
+    },
+    closeProfileDatabase: (id, name) => {
+      const status = sessions.statusOf(id);
+      const opened = status.state === 'connected' ? status.databases : [];
+      if (chosen[id] === name) choose(id, neighbour(opened, name));
+      void sessions.closeDatabase(id, name);
+    },
     openDatabase: (name) => {
       if (!profileId) return;
       choose(profileId, name);

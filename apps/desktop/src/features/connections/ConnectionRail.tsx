@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-import { Icon, IconButton, useReducedMotion } from '@openrows/ui';
+import { Icon, IconButton } from '@openrows/ui';
 import type { ProfileDto } from '@openrows/ipc';
+import { workspaceGroups } from './workspaceGroups';
+import { WorkspaceDisclosure } from './WorkspaceDisclosure';
 import { DatabaseTiles } from './DatabaseTiles';
-import { workspaceMonogram } from './monogram';
-import { RailTooltip, useTileTooltip } from './RailTooltip';
-import { statusLabel, statusTone } from './sessions';
+import { WorkspaceConnection } from './WorkspaceConnection';
+import { useWorkspaceCollapse } from './useWorkspaceCollapse';
 import type { OpenedDatabase, SessionStatus } from './sessions';
 import styles from './Rail.module.css';
 
@@ -14,13 +15,12 @@ type RailDatabases = {
   database?: string;
   onDatabase?: (name: string) => void;
   onCloseDatabase?: (name: string) => void;
+  onProfileDatabase?: (id: string, name: string) => void;
+  onCloseProfileDatabase?: (id: string, name: string) => void;
 };
 
-const ignore = (): void => undefined;
-
 /**
- * Saved connections as monogram tiles with a connection-status dot, the
- * active connection's opened databases, then add, API and gallery controls.
+ * A foldable server/database hierarchy with full names and environment accents.
  */
 export function ConnectionRail(
   props: RailDatabases & {
@@ -32,33 +32,29 @@ export function ConnectionRail(
     onGallery: () => void;
   },
 ): React.JSX.Element {
+  const [compact, toggle] = useWorkspaceCollapse('rail');
   return (
-    <nav className={styles.rail} aria-label="Workspaces">
-      {props.profiles.map((profile) => (
-        <WorkspaceTile
-          key={profile.id}
-          profile={profile}
-          status={props.statusOf(profile.id)}
-          selected={props.activeId === profile.id}
-          onSelect={() => {
-            props.onSelect(profile.id);
-          }}
+    <nav className={styles.rail} aria-label="Workspaces" data-compact={compact}>
+      <div className={styles.railHeading}>
+        <span>Workspaces</span>
+        <IconButton
+          aria-label={
+            compact ? 'Expand workspace sidebar' : 'Collapse workspace sidebar'
+          }
+          variant="ghost"
+          onClick={toggle}
         >
-          <DatabaseTiles
-            databases={props.databases ?? []}
-            active={props.database ?? ''}
-            onSelect={props.onDatabase ?? ignore}
-            onClose={props.onCloseDatabase ?? ignore}
-            onKeyDown={navigateRail}
-          />
-        </WorkspaceTile>
-      ))}
+          <span aria-hidden="true">{compact ? '»' : '«'}</span>
+        </IconButton>
+      </div>
+      <WorkspaceGroups {...props} />
       <IconButton
         aria-label="New connection"
         variant="ghost"
         onClick={props.onNew}
       >
         <Icon name="plus" />
+        <span className={styles.controlLabel}>New connection</span>
       </IconButton>
       <div className={styles.space} />
       <IconButton aria-label="API client" variant="ghost">
@@ -75,55 +71,61 @@ export function ConnectionRail(
   );
 }
 
-function WorkspaceTile(props: {
-  profile: ProfileDto;
-  status: SessionStatus;
-  selected: boolean;
-  onSelect: () => void;
-  /** Opened database tiles, shown only for the selected connection. */
-  children: React.ReactNode;
-}): React.JSX.Element {
-  const tooltip = useTileTooltip();
-  const reduced = useReducedMotion();
-  const { profile, selected } = props;
+type RailProps = Parameters<typeof ConnectionRail>[0];
+function WorkspaceGroups(props: RailProps): React.JSX.Element {
   return (
-    <>
-      <div className={styles.item}>
-        <button
-          type="button"
-          className={styles.connection}
-          aria-label={`Switch to ${profile.name}`}
-          aria-pressed={selected}
-          aria-describedby={tooltip.visible ? tooltip.id : undefined}
-          data-session={props.status.state}
-          onClick={props.onSelect}
-          onKeyDown={navigateRail}
-          {...tooltip.events}
+    <div className={styles.workspaces}>
+      {workspaceGroups(props.profiles).map((group) => (
+        <WorkspaceDisclosure
+          key={group.id}
+          id={group.id}
+          label={group.label}
+          environment={group.environment}
+          count={group.profiles.length}
         >
-          <span
-            aria-hidden="true"
-            className={styles.indicator}
-            data-state={
-              selected ? 'selected' : tooltip.visible ? 'hover' : 'idle'
-            }
-            data-motion={reduced ? 'reduced' : 'full'}
-          />
-          <span className={styles.tile}>
-            {workspaceMonogram(profile.name)}
-            <i aria-hidden="true" data-status={statusTone(props.status)} />
-          </span>
-        </button>
-        {tooltip.visible && (
-          <RailTooltip
-            profile={profile}
-            status={statusLabel(props.status)}
-            id={tooltip.id}
-            position={tooltip.position}
-          />
-        )}
-      </div>
-      {selected && props.children}
-    </>
+          {group.profiles.map((profile) => {
+            const status = props.statusOf(profile.id);
+            const selected = props.activeId === profile.id;
+            const databases =
+              status.state === 'connected' ? status.databases : [];
+            const opened = props.onProfileDatabase
+              ? databases
+              : selected
+                ? (props.databases ?? [])
+                : [];
+            return (
+              <WorkspaceConnection
+                key={profile.id}
+                profile={profile}
+                status={status}
+                selected={selected}
+                hasDatabases={opened.length > 0}
+                onKeyDown={navigateRail}
+                onSelect={() => {
+                  props.onSelect(profile.id);
+                }}
+              >
+                <DatabaseTiles
+                  databases={opened}
+                  active={selected ? (props.database ?? '') : ''}
+                  onSelect={(name) => {
+                    if (props.onProfileDatabase)
+                      props.onProfileDatabase(profile.id, name);
+                    else props.onDatabase?.(name);
+                  }}
+                  onClose={(name) => {
+                    if (props.onCloseProfileDatabase)
+                      props.onCloseProfileDatabase(profile.id, name);
+                    else props.onCloseDatabase?.(name);
+                  }}
+                  onKeyDown={navigateRail}
+                />
+              </WorkspaceConnection>
+            );
+          })}
+        </WorkspaceDisclosure>
+      ))}
+    </div>
   );
 }
 

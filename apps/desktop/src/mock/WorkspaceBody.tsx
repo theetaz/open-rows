@@ -88,6 +88,11 @@ function Rail(props: {
       database={connections.database}
       onDatabase={connections.openDatabase}
       onCloseDatabase={connections.closeDatabase}
+      onProfileDatabase={(id, name) => {
+        connections.select(id);
+        connections.chooseDatabase(id, name);
+      }}
+      onCloseProfileDatabase={connections.closeProfileDatabase}
       onNew={() => {
         connections.setSheet({ kind: 'new' });
       }}
