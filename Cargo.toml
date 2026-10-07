@@ -7,6 +7,8 @@ members = [
     "crates/openrows-driver-postgres",
     "crates/openrows-net",
     "crates/openrows-sql",
+    "crates/openrows-secrets",
+    "crates/openrows-store",
     "apps/desktop/src-tauri",
 ]
 resolver = "3"

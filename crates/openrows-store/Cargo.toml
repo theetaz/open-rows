@@ -1,0 +1,24 @@
+[package]
+name = "openrows-store"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "OpenRows local SQLite store and secret-free connection profiles"
+
+[dependencies]
+openrows-secrets = { path = "../openrows-secrets" }
+percent-encoding = "2.3"
+rusqlite = { version = "0.40", features = ["bundled"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+thiserror.workspace = true
+url = "2.5"
+uuid = { workspace = true, features = ["serde"] }
+
+[dev-dependencies]
+tempfile = "3.27"
+
+[lints]
+workspace = true

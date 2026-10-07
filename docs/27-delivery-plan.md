@@ -72,7 +72,7 @@ Feature-first mode ([docs/25 §0](25-engineering-standards.md#0-current-delivery
 | --- | --- | --- | --- |
 | D-01 | M1-01 session manager | Actor-per-session runtime: open/close, command queue, cancel, typed errors, panic isolation, coalesced progress events | done (#33) |
 | D-02 | M1-15 SQL toolkit | PostgreSQL statement splitter, current-statement detection, read/write/DDL/dangerous classification (data-safety: thorough tests) | done (#34) |
-| D-03 | M1-02, M1-03, M1-05 | Local store with profiles and history; macOS Keychain secrets; PostgreSQL connection profiles from form fields or a `postgres://` URL; env tag and read-only / confirm-before-write flags | todo |
+| D-03 | M1-02, M1-03, M1-05 | Local store with profiles and history; macOS Keychain secrets; PostgreSQL connection profiles from form fields or a `postgres://` URL; env tag and read-only / confirm-before-write flags | done (#35) |
 | D-04 | M1-11 PostgreSQL driver | Promote the M0-S3 prototype: plain TCP (TLS later), cancel, notices, tagged-text fallback for out-of-range values; container happy-path test | todo |
 | D-05 | M1-04, M1-09 | Typed IPC for connections, sessions, queries and result windows; connection list, new/edit sheet and Test connection | todo |
 | D-06 | M1-16, M1-18 | Schema tree (databases → schemas → tables/views) on the real connection; replace the corresponding mock workspace code | todo |

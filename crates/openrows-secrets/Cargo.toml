@@ -1,0 +1,32 @@
+[package]
+name = "openrows-secrets"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "OS keychain and in-memory secret stores for OpenRows credentials"
+
+[dependencies]
+thiserror.workspace = true
+zeroize = "1.8"
+
+# One native credential store per OS (NFR-PORT-03). Linux uses kernel
+# keyutils until the Secret Service / encrypted vault lands (docs/12 §3).
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3.6", default-features = false, features = ["apple-native"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+keyring = { version = "3.6", default-features = false, features = ["windows-native"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring = { version = "3.6", default-features = false, features = ["linux-native"] }
+
+[target.'cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))'.dependencies]
+keyring = { version = "3.6", default-features = false }
+
+[dev-dependencies]
+uuid.workspace = true
+
+[lints]
+workspace = true

@@ -127,7 +127,7 @@ Two layers, merged at runtime:
   "name": "Orders – staging",
   "driver": "postgres",
   "group": "Orders",
-  "envTag": "staging",
+  "envTag": { "kind": "staging", "color": "#d97706" },
   "params": { "host": "orders-db.staging.internal", "port": 5432, "database": "orders", "user": "app_user" },
   "secrets": { "password": "keychain" },
   "ssh": { "host": "bastion.staging", "user": "app_user", "auth": "agent" },
@@ -172,3 +172,19 @@ my-team-project/
 
 - "Export everything" produces an archive of profiles (optionally with encrypted secrets), settings, snippets, and scratch queries.
 - History is excluded by default (sensitive and large) but can be included.
+
+## 8. Implementation notes (D-03: local store and connection profiles)
+
+First slice of M1-02 (local store) and M1-03 (profiles). Nothing here depends on Tauri; the app wiring comes with the connection UI.
+
+| Area | What exists |
+| --- | --- |
+| Crate | `crates/openrows-store`: `LocalStore` (SQLite) and the `profile` module (model, `postgres://` parser, file repository, `ProfileService`). The profile model lives here rather than in `openrows-core` so it can ship before the core crate; it moves (or is re-exported) when `openrows-core` takes over connection orchestration. |
+| SQLite | `rusqlite` 0.40 with bundled SQLite; `journal_mode=WAL`, `synchronous=NORMAL`, `foreign_keys=ON`. One writer connection behind a `Mutex` (single-writer design); no reader pool yet. |
+| Schema v1 | `migrations/0001_init.sql`: `meta` and `history` (+ `history_profile_time` index) from §2, with `CHECK` constraints on `status` / `source`. `history_fts`, drafts, change sets, snapshots, workspace state, usage stats and API history arrive with their features as later numbered migrations. |
+| Migrations | Embedded with `include_str!`; the applied version is `PRAGMA user_version` (mirrored to `meta.schema_version`). Pending steps run in one transaction; re-opening is a no-op. Before upgrading a non-empty database it is copied with `VACUUM INTO` to `backups/openrows.sqlite.v<old>` next to the DB (consistent with WAL, unlike a raw file copy). A database newer than the build fails with `StoreError::NewerSchema` and is not touched; the read-only safe mode of §6 is the caller's job. |
+| History API | `record_history(&HistoryRecord) -> id`, `recent_history(profile_id, limit)` (newest first). No retention sweep or FTS yet. |
+| Profiles | Personal profiles are JSON files `connections/<uuid-v7>.json`, as §3 specifies, rather than SQLite rows: they are human-readable, diff-able, easy to export, and match the shared `connections/*.yaml` layer. Groups are a `group` string on each profile; `groups()` lists the distinct names. Writes are atomic (temp file + rename) and `0600` on Unix. `load_all` returns readable profiles plus a list of unreadable files, so one corrupt file never hides the rest. Files with `openrows` > 1 are rejected (`UnsupportedFormat`). |
+| Format | As in §3 with `envTag` as `{ kind, label?, color }`, `params.applicationName` and `params.options` (other libpq parameters). `ssh` and `session` are not in the model yet (M1-05/M1-06). |
+| Secrets | `secrets.password` is only `"keychain"` or absent; the value lives in `openrows-secrets` under `conn/<id>/password` (docs/12 §8). |
+
