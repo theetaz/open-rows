@@ -105,6 +105,7 @@
 }
 .mono {
   font-family: var(--or-font-mono);
+  font-size: var(--or-text-mono, var(--or-text-13));
   font-variant-numeric: var(--or-font-numeric);
 }
 @media (max-width: 800px) {

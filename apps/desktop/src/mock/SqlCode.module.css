@@ -6,7 +6,7 @@
   background: var(--or-window);
   color: var(--or-text);
   font-family: var(--or-font-mono);
-  font-size: var(--or-text-11-5);
+  font-size: var(--or-text-mono, var(--or-text-13));
   line-height: 1.6;
 }
 .code [data-token='keyword'] {

@@ -44,6 +44,7 @@
   flex: 1;
   min-width: 80px;
   font-family: var(--or-font-mono);
+  font-size: var(--or-text-mono, var(--or-text-13));
 }
 /* Native, small checkboxes in the accent colour (filter enable, columns). */
 .check {
@@ -66,7 +67,7 @@
   border-radius: var(--or-radius-control);
   background: var(--or-control-fill);
   font-family: var(--or-font-mono);
-  font-size: var(--or-text-12);
+  font-size: var(--or-text-mono, var(--or-text-13));
   white-space: pre-wrap;
   word-break: break-word;
   user-select: text;
@@ -92,7 +93,7 @@
   margin: 0;
   padding: var(--or-space-12) var(--or-space-16);
   font-family: var(--or-font-mono);
-  font-size: var(--or-text-12);
+  font-size: var(--or-text-mono, var(--or-text-13));
   color: var(--or-danger-fg);
   user-select: text;
 }
@@ -108,7 +109,7 @@
   width: 100%;
   border-collapse: collapse;
   font-family: var(--or-font-mono);
-  font-size: var(--or-text-13);
+  font-size: var(--or-text-mono, var(--or-text-13));
 }
 .structure th,
 .structure td {
@@ -126,6 +127,7 @@
 }
 .structure td {
   font-family: var(--or-font-mono);
+  font-size: var(--or-text-mono, var(--or-text-13));
   user-select: text;
 }
 .structure td[data-null='true'] {
@@ -157,7 +159,7 @@
 }
 .columns label {
   font-family: var(--or-font-mono);
-  font-size: var(--or-text-13);
+  font-size: var(--or-text-mono, var(--or-text-13));
   display: flex;
   align-items: center;
   gap: var(--or-space-6);
@@ -217,7 +219,7 @@
   border-radius: var(--or-radius-control);
   background: var(--or-control-fill);
   font-family: var(--or-font-mono);
-  font-size: var(--or-text-13);
+  font-size: var(--or-text-mono, var(--or-text-13));
   white-space: pre-wrap;
   word-break: break-word;
   user-select: text;
@@ -288,7 +290,7 @@
 }
 .editField input[type='text'] {
   font-family: var(--or-font-mono);
-  font-size: var(--or-text-13);
+  font-size: var(--or-text-mono, var(--or-text-13));
 }
 
 .stagedRows {

@@ -29,6 +29,12 @@ export function mountGrid(host: HTMLElement, props: GridProps): GridHandle {
     scrollTo: (x, y) => {
       scroll.scrollTo(x, y);
     },
+    setTheme: (theme) => {
+      painter.setTheme(theme);
+      spacer.style.height = `${String((props.source.rows + 1) * theme.rowHeight)}px`;
+      controller.update();
+      controller.invalidate();
+    },
     destroy: () => {
       controller.destroy();
       host.removeEventListener('keydown', controller.invalidate);

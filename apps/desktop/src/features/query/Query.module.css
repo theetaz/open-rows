@@ -88,7 +88,7 @@
   overflow: auto;
   flex-shrink: 0;
   font-family: var(--or-font-mono);
-  font-size: var(--or-text-12);
+  font-size: var(--or-text-mono, var(--or-text-13));
   -webkit-user-select: text;
   user-select: text;
 }
@@ -146,7 +146,7 @@
   border-radius: var(--or-radius-field);
   background: var(--or-control-fill);
   font-family: var(--or-font-mono);
-  font-size: var(--or-text-12);
+  font-size: var(--or-text-mono, var(--or-text-13));
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -189,7 +189,7 @@
 }
 .history code {
   font-family: var(--or-font-mono);
-  font-size: var(--or-text-12);
+  font-size: var(--or-text-mono, var(--or-text-13));
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -223,7 +223,7 @@
   border-radius: var(--or-radius-field);
   background: var(--or-control-fill);
   font-family: var(--or-font-mono);
-  font-size: var(--or-text-13);
+  font-size: var(--or-text-mono, var(--or-text-13));
   white-space: pre-wrap;
   word-break: break-word;
   overflow: auto;

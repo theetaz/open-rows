@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useRef, useState } from 'react';
-import { TileSource, gridTheme } from '@openrows/grid';
+import { TileSource } from '@openrows/grid';
 import type {
   GridColumn,
-  GridHandle,
   GridProps,
   GridContextTarget,
   GridDataSource,
 } from '@openrows/grid';
 import type { ColumnDto, SortDto } from '@openrows/ipc';
-import { useTheme } from '@openrows/ui';
+import { mountCanvas } from '../../results/mountCanvas';
+import { useGridAppearance } from '../../results/useGridAppearance';
 import { displayWindow } from '../../results/displayWindow';
 import type { ResultMeta } from '../query/run';
 import { EditedSource } from './EditedSource';
@@ -70,7 +70,7 @@ export function TableGrid({
 }: Props): React.JSX.Element {
   const host = useRef<HTMLDivElement>(null);
   const handlers = useRef({ onHeader, onRow, onEdit, onContextMenu });
-  const { resolved } = useTheme();
+  const { theme, handle } = useGridAppearance();
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     handlers.current = { onHeader, onRow, onEdit, onContextMenu };
@@ -78,8 +78,6 @@ export function TableGrid({
   useEffect(() => {
     const element = host.current;
     if (!element) return;
-    let handle: GridHandle | undefined;
-    let cancelled = false;
     const props: GridProps = {
       source: tableSource({
         result,
@@ -89,7 +87,6 @@ export function TableGrid({
         rowNumbers,
         offset,
       }),
-      ...(rowNumbers ? { rowHeaderColumn: 0 } : {}),
       striped,
       onEdit: (cell) => {
         handlers.current.onEdit?.(dataCell(cell, rowNumbers));
@@ -97,7 +94,7 @@ export function TableGrid({
       onContextMenu: (target) => {
         handlers.current.onContextMenu(dataCell(target, rowNumbers));
       },
-      theme: gridTheme(resolved),
+      theme: theme.current,
       selection: { row: 0, column: rowNumbers ? 1 : 0, ranges: [] },
       onSelection: (selection) => {
         props.selection = selection;
@@ -110,30 +107,26 @@ export function TableGrid({
         setError(failure instanceof Error ? failure.message : String(failure));
       },
     };
-    import('@openrows/grid/canvas').then(
-      ({ mountGrid }) => {
-        if (cancelled) return;
-        handle = mountGrid(element, props);
-        if (result.rows > 0) handlers.current.onRow(0);
+    if (rowNumbers) props.rowHeaderColumn = 0;
+    return mountCanvas(element, props, {
+      theme,
+      handle,
+      onMounted: () => {
+        initialRow(result.rows, handlers.current.onRow);
       },
-      (failure: unknown) => {
-        props.onError(failure);
-      },
-    );
-    return () => {
-      cancelled = true;
-      handle?.destroy();
-    };
-  }, [result, sort, resolved, offset, rowNumbers, striped, changes, editKeys]);
-  return (
-    <div className={styles.grid} ref={host}>
-      {error && (
-        <p role="alert" className={styles.gridError}>
-          Could not show rows: {error}
-        </p>
-      )}
-    </div>
-  );
+    });
+  }, [
+    result,
+    sort,
+    theme,
+    handle,
+    offset,
+    rowNumbers,
+    striped,
+    changes,
+    editKeys,
+  ]);
+  return <GridFrame host={host} error={error} />;
 }
 
 function dataCell<T extends { column: number }>(
@@ -171,4 +164,26 @@ function columnWidth(type: string | null): number {
   if (type && /text|char|json|uuid/.test(type)) return 180;
   if (type && /date|time|numeric|decimal/.test(type)) return 168;
   return 96;
+}
+
+function initialRow(rows: number, onRow: (row: number) => void): void {
+  if (rows > 0) onRow(0);
+}
+
+function GridFrame({
+  host,
+  error,
+}: {
+  host: React.RefObject<HTMLDivElement | null>;
+  error: string | null;
+}): React.JSX.Element {
+  return (
+    <div className={styles.grid} ref={host}>
+      {error && (
+        <p role="alert" className={styles.gridError}>
+          Could not show rows: {error}
+        </p>
+      )}
+    </div>
+  );
 }

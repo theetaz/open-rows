@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useRef, useState } from 'react';
-import { TileSource, gridTheme } from '@openrows/grid';
-import type { GridColumn, GridHandle, GridProps } from '@openrows/grid';
+import { TileSource } from '@openrows/grid';
+import type { GridColumn, GridProps } from '@openrows/grid';
 import type { ColumnDto } from '@openrows/ipc';
-import { useTheme } from '@openrows/ui';
+import { mountCanvas } from '../../results/mountCanvas';
+import { useGridAppearance } from '../../results/useGridAppearance';
 import { displayWindow } from '../../results/displayWindow';
 import type { ResultMeta } from './run';
 import type { SelectedCell } from './cell';
@@ -27,7 +28,7 @@ type Props = {
 export function ResultGrid({ result, onCell }: Props): React.JSX.Element {
   const host = useRef<HTMLDivElement>(null);
   const select = useRef(onCell);
-  const { resolved } = useTheme();
+  const { theme, handle } = useGridAppearance();
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     select.current = onCell;
@@ -35,8 +36,6 @@ export function ResultGrid({ result, onCell }: Props): React.JSX.Element {
   useEffect(() => {
     const element = host.current;
     if (!element) return;
-    let handle: GridHandle | undefined;
-    let cancelled = false;
     const source = new TileSource(
       result.id,
       result.rows,
@@ -45,7 +44,7 @@ export function ResultGrid({ result, onCell }: Props): React.JSX.Element {
     );
     const props: GridProps = {
       source,
-      theme: gridTheme(resolved),
+      theme: theme.current,
       selection: { row: 0, column: 0, ranges: [] },
       onSelection: (selection) => {
         props.selection = selection;
@@ -61,19 +60,8 @@ export function ResultGrid({ result, onCell }: Props): React.JSX.Element {
         setError(failure instanceof Error ? failure.message : String(failure));
       },
     };
-    import('@openrows/grid/canvas').then(
-      ({ mountGrid }) => {
-        if (!cancelled) handle = mountGrid(element, props);
-      },
-      (failure: unknown) => {
-        props.onError(failure);
-      },
-    );
-    return () => {
-      cancelled = true;
-      handle?.destroy();
-    };
-  }, [result, resolved]);
+    return mountCanvas(element, props, { theme, handle });
+  }, [result, theme, handle]);
   return (
     <div className={styles.grid} ref={host}>
       {error && (

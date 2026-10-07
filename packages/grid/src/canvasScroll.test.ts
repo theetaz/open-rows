@@ -107,3 +107,32 @@ it('right-clicks target rows and columns without sorting, and ignores blank spac
   expect(onContextMenu).toHaveBeenCalledTimes(2);
   handle.destroy();
 });
+it('updates colors and fonts in place without losing selection, scroll or canvas layers', () => {
+  mockCanvas();
+  const input = props();
+  const host = document.createElement('div');
+  const handle = mountGrid(host, input);
+  const scroll = host.firstElementChild as HTMLElement;
+  scroll.scrollTop = 260;
+  scroll.dispatchEvent(new Event('scroll'));
+  const selection = { row: 12, column: 2, ranges: [] };
+  input.selection = selection;
+  const layers = Array.from(host.querySelectorAll('canvas'));
+  const next = {
+    ...input.theme,
+    fontSize: 17,
+    fontFamily: 'Menlo, monospace',
+    rowHeight: 29,
+    colours: { ...input.theme.colours, accent: '#7842C1' },
+  };
+  expect(typeof handle.setTheme).toBe('function');
+  handle.setTheme?.(next);
+  expect(input.theme).toEqual(next);
+  expect(input.selection).toBe(selection);
+  expect(handle.viewport.y).toBe(260);
+  expect(Array.from(host.querySelectorAll('canvas'))).toEqual(layers);
+  expect((scroll.firstElementChild as HTMLElement).style.height).toBe(
+    `${String((input.source.rows + 1) * 29)}px`,
+  );
+  handle.destroy();
+});

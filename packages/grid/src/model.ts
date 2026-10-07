@@ -96,6 +96,8 @@ export interface GridHandle {
   readonly metrics: PaintMetrics;
   readonly viewport: { x: number; y: number; width: number; height: number };
   scrollTo(x: number, y: number): void;
+  /** Canvas can update paint settings without discarding loaded tiles. */
+  setTheme?(theme: GridTheme): void;
   destroy(): void;
 }
 /** A renderer is only imported on demand after the native window is shown. */

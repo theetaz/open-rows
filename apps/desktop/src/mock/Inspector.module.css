@@ -52,6 +52,7 @@
   border-radius: 8px;
   padding: var(--or-space-6);
   font-family: var(--or-font-mono);
+  font-size: var(--or-text-mono, var(--or-text-13));
 }
 .policies {
   display: flex;
@@ -72,7 +73,7 @@
   margin-block: var(--or-space-10);
 }
 .conversation code {
-  font-size: var(--or-text-11-5);
+  font-size: var(--or-text-mono, var(--or-text-13));
   font-family: var(--or-font-mono);
 }
 .bubble {

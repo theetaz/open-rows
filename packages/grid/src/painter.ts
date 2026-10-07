@@ -10,10 +10,10 @@ import { paintMetrics } from './metrics';
 export class CanvasPainter {
   readonly view: Viewport = { x: 0, y: 0, width: 0, height: 0 };
   readonly range: CellRange = { r0: 0, r1: 0, c0: 0, c1: 0 };
-  readonly layout: GridLayout;
+  layout: GridLayout;
   readonly metrics: PaintMetrics = paintMetrics();
   private readonly contexts: CanvasRenderingContext2D[];
-  private readonly text = new TextCache();
+  private text = new TextCache();
   private dirty = true;
   private previousX = -1;
   private previousY = -1;
@@ -34,6 +34,22 @@ export class CanvasPainter {
       if (!context) throw new GridError('canvas', 'Canvas 2D unavailable');
       return context;
     });
+  }
+  /** Invalidate font measurements outside painting and retain the viewport. */
+  setTheme(theme: GridProps['theme']): void {
+    const previous = this.props.theme;
+    const metricsChanged =
+      previous.fontSize !== theme.fontSize ||
+      previous.fontFamily !== theme.fontFamily ||
+      previous.rowHeight !== theme.rowHeight;
+    this.props.theme = theme;
+    if (metricsChanged) {
+      this.layout = new GridLayout(this.props.source.columns, theme.rowHeight);
+      this.text = new TextCache();
+      for (const context of this.contexts)
+        context.font = `${String(theme.fontSize)}px ${theme.fontFamily}`;
+    }
+    this.prepare();
   }
   /** Resize only on host geometry changes, avoiding per-frame backing allocations. */
   resize(width: number, height: number): void {
