@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! `OpenRows` native shell and its generated IPC contract.
 mod commands;
+mod editor_report;
 mod grid_report;
 #[cfg(target_os = "macos")]
 mod material;

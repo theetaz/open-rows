@@ -34,7 +34,9 @@ open-rows/
 ├── crates/openrows-net/        # SSH tunnel prototype (M0-S4); tests/ssh_container + fixtures/sshd
 ├── packages/ipc/               # @openrows/ipc: wrapper + generated/bindings.ts
 ├── packages/ui/                # tokens, generator, CSS modules, theme and icons
-├── scripts/                    # tool/hygiene checks, git hooks and startup harness
+├── packages/grid/              # @openrows/grid: canvas grid adapter and painter (S2)
+├── packages/editor/            # @openrows/editor: CodeMirror 6 SQL editor; ./vim entry (S5)
+├── scripts/                    # tool/hygiene checks, git hooks and benchmark harnesses
 ├── docs/
 └── .github/workflows/ci.yml     # one Ubuntu Rust + frontend job
 ```
@@ -82,6 +84,9 @@ just build-app      # unsigned release .app, shared CARGO_TARGET_DIR respected
 just bench-startup  # ten sequential release launches, macOS GUI required
 just bench-startup 20 # optional run count (minimum two)
 just bench-memory   # total idle physical footprint (gate) + RSS (informational), macOS GUI required
+just bench-ipc      # S1 Arrow tile round trip in release WKWebView, macOS GUI required
+just bench-grid     # S2 canvas grid scroll scenarios (3 fresh launches), macOS GUI required
+just bench-editor   # S5 editor keystroke-to-paint, 5 000-line SQL, macOS GUI required
 just bench-test     # synthetic benchmark tests, no GUI
 just bench-pg-decode # Criterion decode_pg_* + gates (>= 1 M cells/s/core, first batch <= 5 ms)
 just test-pg 17     # PostgreSQL integration tests in a throwaway container (skips without Docker)

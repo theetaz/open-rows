@@ -107,9 +107,12 @@ and WebKit pages.
   `just bench-ui` sums all manifest entry/static-import chunks (deduplicated), excluding
   dynamic chunks, and enforces the 350,000-byte gzip limit. `just check` runs this
   same gate. `packages/ui/scripts/bundle-size.ts` also checks emitted chunk-module
-  metadata to reject `apache-arrow` in that static graph; configure package names
-  with the comma-separated `BUNDLE_DENY_MODULES` environment variable (default:
-  `apache-arrow`). Vite only emits evidence; all assertions live in the script.
+  metadata to reject heavy modules in that static graph. The required list is
+  `apache-arrow`, `packages/grid/src/`, `packages/editor/src/`, `@codemirror`,
+  `@lezer` and `@replit/codemirror-vim`. Add more with the comma-separated
+  `BUNDLE_DENY_MODULES` environment variable. With the S5 editor, the initial JS is
+  95,222 gzip bytes; CodeMirror + PostgreSQL is ≈ 123 KB gzip in lazy chunks and the Vim chunk
+  ≈ 41 KB gzip. Vite only emits evidence; all assertions live in the script.
   The default wide-window Assistant remains visible and loads on that first render.
 - Workers for decoding and formatting.
 - React Compiler; components subscribe to narrow Zustand selectors.
@@ -132,7 +135,7 @@ and WebKit pages.
 | `startup_cold` | `just bench-startup [runs=10]` after `just build-app`; sequential release processes, shared monotonic phase timestamps, spawn → window shown | per-phase min / p50 / p95 / max (ms) | warm runs 2..N p50 ≤ 400 ms; all-runs p95 ≤ 800 ms (NFR-PERF-01); macOS GUI only, not Linux CI |
 | `grid_scroll_1m` (M0 S2) | `just bench-grid [repeats=3]` after `just build-app`; own Canvas 2D in release WKWebView, S1 tile/worker path; four scenarios per fresh launch/repeat | All repeats: p50/p95/p99/max, >20/>32 counts, frames >32 with tracked work ≥16 ms, refresh, paint, tile/cache/blank counters, raw attribution | Best repeat per scenario: 0 frames >32 ms; every repeat: 0 frames >32 ms with tracked work ≥16 ms. S2 met on supplied M4/60 Hz evidence; [accepted ADR-0004](adr/0004-canvas-data-grid.md) |
 | `query_1m_rows_pg` | integration harness against container | time to first paint, total time, peak RSS | within budgets |
-| `editor_type_5k_lines` | Playwright | input latency p95 | ≤ 16 ms |
+| `editor_type_5k_lines` (M0 S5) | `just bench-editor` after `just build-app`; CodeMirror 6 in release WKWebView, 5 000-line PostgreSQL document, 240 scripted keystrokes per configuration (`sql`: highlighting + completion; `vim`: plus Vim mode) at top/middle/end | keystroke-to-paint p50/p95/max, >16 ms count, per-phase and per-site p95, wall latency incl. vsync wait; M4 implementer runs 1–4 p95: sql 11/9/10/9 ms, vim 9/9/9/10 ms | p95 ≤ 16 ms per configuration (NFR-PERF-07): M4 PASS on all four valid runs; maintainer confirmation pending; 1 ms page clock; [ADR-0003](adr/0003-codemirror-6-editor.md) |
 | `idle_memory` | `just bench-memory [runs=3]` after `just build-app`; first-paint receipt + 5 s settle, `ps` RSS for app + descendants + responsible WebKit XPC services; required `footprint -f bytes` | per-run totals, per-process medians and informational RSS in decimal MB | median total physical footprint ≤ 200 MB; median WebContent + GPU + Networking ≤ 140 MB (NFR-PERF-02); macOS GUI only, not Linux CI |
 | `export_csv_10m` | integration | MB/s vs `psql \copy` baseline | ≥ 80 % |
 
@@ -339,6 +342,83 @@ layered painter with the page clock (resolution reported, typically 1 ms), not
 GPU completion. Preallocated counters become JSON arrays after sampling. React's
 pinned production commit hook excludes delayed passive effects and reads no clock
 in normal mode. No new native run or main baseline is claimed by this change.
+
+### M0 S5 editor keystroke measurement
+
+`OPENROWS_SPIKE=editor` uses the S1 handshake, watchdogs, progress file and atomic
+report. The Rust shell skips the synthetic 1 M-row store in this mode. The page
+lazily loads `spike/editor.ts`, `@openrows/editor` and the `@openrows/editor/vim`
+chunk, then runs two configurations, each on a freshly mounted editor
+(1040×600 CSS px host) with the same deterministic 5 000-line PostgreSQL document
+(`spike/sqlDocument.ts`: DDL, CTEs with window functions, JSONB operators, casts,
+`E''` strings, dollar-quoted PL/pgSQL bodies):
+
+- `sql`: PostgreSQL highlighting, keyword completion (`autocompletion()`), line
+  numbers, active line, history and bracket matching.
+- `vim`: the same plus Vim mode, ahead of every other keymap.
+
+Mounting, a forced full parse, 30 refresh-calibration frames and three settle
+frames per edit site are unsampled. At the end of lines 2, 2 500 and 5 000 the
+script types 60 characters
+(`" AND lower(c.email) ILIKE '%@example.org' OR o.total >= 4200"`), one at a time
+through `document.execCommand('insertText')`. This is WebKit's native editing path
+(`beforeinput`, DOM mutation, CodeMirror's DOM observer), so it is as close as the
+page can get to real typing. It then deletes 20 characters with `keydown` events
+(`Backspace`, or Vim normal-mode `x`). Vim enters insert mode with `A` and leaves
+with `Escape`; these mode switches are unsampled and verified with `vimModeOf`.
+Each keystroke is scheduled 50 ms after the previous paint, so 240 samples per
+configuration are taken with no discarded samples.
+
+Per keystroke, using the page clock: `queueMs` is the scheduled time to the dispatch
+(it includes main-thread contention such as CodeMirror's background parse slices);
+`inputMs` is the dispatch to the first `docChanged` update; `vsyncWaitMs` runs from
+that update to the first rAF's frame timestamp (zero if the update lands inside the
+frame); and `frameMs` runs from the frame start to a `MessageChannel` task posted
+from that rAF. The task runs after the frame's style, layout and paint, so it
+includes CodeMirror's measure cycle but not GPU display. The gated
+**`keystrokeToPaintMs` = queue + input + frame** excludes only the idle vsync
+alignment, because a uniformly random keystroke phase would otherwise add
+≈ 8 ms on average and ≈ 16 ms at p95 at 60 Hz, whatever the editor costs.
+`wallMs` (dispatch → after paint, including that wait) is reported for every sample.
+Gate: nearest-rank p95 ≤ 16 ms per configuration; exactly 16 passes, and there is
+no allowance for timer quantisation.
+Reports fail closed on: refused insertion; no document update before the paint;
+the wrong length change; missing/reordered/extra samples; a wrong site, kind or
+delete key; non-finite timings; phases that do not add up; a wrong line count,
+mode or PID; or missing timer metadata. Watchdogs are 10 s for module loading,
+60 s per configuration and a 130 s report deadline.
+
+WebKit refuses `insertText` until the native window is key. Before each edit site
+(unsampled), the page refocuses the editor for up to 300 frames and fails with
+"Editor never gained keyboard focus" if the window does not become key. Run it on
+an otherwise idle Mac, with the window frontmost and no keyboard or mouse input.
+Keystrokes from a person can also land in the editor and cause a
+"changed the wrong text" failure.
+
+M4 evidence (Mac mini, Apple M4, macOS 26.5, 60 Hz display, release build, 2026-10-07,
+page timer 1.0 ms, `crossOriginIsolated: false`). These are implementer runs, not
+maintainer runs. Runs 1–3 were consecutive, using the spike build before the gallery
+specimen, editor `aria-label` and focus wait were added; none of those changes
+the sampled path. Run 4 includes the `aria-label`. Five later runs of the final
+build were rejected with focus errors while the Mac was in interactive use.
+None of those runs is counted here.
+
+| Run | sql p50 / p95 / max | vim p50 / p95 / max | >16 ms (sql / vim) | wall p95 (sql / vim) |
+| --- | --- | --- | --- | --- |
+| 1 | 5 / 11 / 32 | 5 / 9 / 20 | 3 / 3 | 17 / 17 |
+| 2 | 4 / 9 / 30 | 6 / 9 / 23 | 2 / 2 | 11 / 10 |
+| 3 | 6 / 10 / 31 | 6 / 9 / 26 | 2 / 2 | 10 / 9 |
+| 4 | 6 / 9 / 30 | 6 / 10 / 20 | 3 / 3 | 8 / 11 |
+
+All values are in ms. In every run the slowest keystrokes are at the top site, and
+most are the `'` that opens or closes a string literal on line 2. That re-tokenises
+and re-highlights the rest of the 5 000-line document, so `inputMs` is 18–26 ms.
+Every other keystroke stays within one 60 Hz frame. This tail is acceptable for
+the spike; M1-21 should keep watching it (for example, quote auto-closing removes
+the unbalanced intermediate state). Mac-low is still to be measured.
+
+IME cannot be automated reliably; the manual check is in ADR-0003 and in the S5
+PR's "How to try it".
 
 
 ### M0 S3 PostgreSQL decode measurement boundary

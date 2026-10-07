@@ -125,3 +125,7 @@ test-pg version="17":
 # Measure the accepted canvas grid with fresh scenarios per repeat; maintainer-only GUI run.
 bench-grid repeats="3":
     python3 -B scripts/bench-grid.py "{{repeats}}"
+
+# Measure CodeMirror keystroke-to-paint on 5000 SQL lines in WKWebView; maintainer-only GUI run.
+bench-editor:
+    python3 -B scripts/bench-editor.py

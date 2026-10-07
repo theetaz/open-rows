@@ -121,7 +121,7 @@ The M0-T4 implementation is `@openrows/ui` in `packages/ui`. Its public componen
 - **Gallery:** `apps/desktop/src/gallery/` exercises all components, themes, swatches, typography and applicable interaction states; `shell/AppFooter.tsx` shows native `app_info`. The native traffic-light area retains its 96 px toolbar clearance.
 - **Verification:** token contrast tests composite translucent fills over every supported surface in normal/high-contrast themes. Keyboard/ARIA, theme persistence/OS changes/storage failures and gallery axe tests run in Vitest. `just contrast-report` prints worst-case ratios; `just bench-ui` enforces style and bundle gzip budgets.
 
-Native window vibrancy/appearance synchronisation, the canvas grid and CodeMirror integration remain later work. This task provides CSS glass within the webview only.
+Native window vibrancy/appearance synchronisation, the canvas grid and CodeMirror integration remain later work. This task provides CSS glass within the webview only. Since M0-S5, `@openrows/editor` exists as a lazily loaded package whose highlight and editor theme read these CSS custom properties ([09 §1.1](09-query-editor.md#11-current-implementation-m0-s5)); it is not yet mounted in the workspace, only in the gallery's lazy **SQL editor** specimen.
 
 ## 9. Error and empty states
 

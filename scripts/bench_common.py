@@ -169,7 +169,8 @@ def launch_ipc(executable, mode="ipc"):
             if root_row is None:
                 raise BenchmarkError("IPC app exited before ownership capture")
             root_owner = owner(process.pid)
-            data = read_ipc_report(process, report, timeout=130, progress=True) if mode == "grid" else read_ipc_report(process, report)
+            data = (read_ipc_report(process, report, timeout=130, progress=True)
+                    if mode in ("grid", "editor") else read_ipc_report(process, report))
             yield process, data
             process.wait(timeout=5)
             if process.returncode != 0:

@@ -23,6 +23,15 @@ export async function startIpcSpike(): Promise<void> {
       await runGridSpike(session);
       return;
     }
+    if (mode === 'editor') {
+      const { runEditorSpike } = await withTimeout(
+        import('./editor'),
+        10_000,
+        'Editor module loading',
+      );
+      await runEditorSpike(session);
+      return;
+    }
     const { runIpcSpike } = await withTimeout(
       import('./ipc'),
       10_000,

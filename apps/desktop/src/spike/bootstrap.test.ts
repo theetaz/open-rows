@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   start: vi.fn(),
   run: vi.fn(),
   grid: vi.fn(),
+  editor: vi.fn(),
   finish: vi.fn(),
   progress: vi.fn(),
 }));
@@ -20,6 +21,7 @@ vi.mock('@openrows/ipc', () => ({
 }));
 vi.mock('./ipc', () => ({ runIpcSpike: mocks.run }));
 vi.mock('./grid', () => ({ runGridSpike: mocks.grid }));
+vi.mock('./editor', () => ({ runEditorSpike: mocks.editor }));
 beforeEach(() => {
   vi.resetAllMocks();
   vi.useFakeTimers();
@@ -72,6 +74,18 @@ it('routes grid mode to its lazy module after the native handshake', async () =>
   );
   await startIpcSpike();
   expect(mocks.grid).toHaveBeenCalledOnce();
+  expect(mocks.run).not.toHaveBeenCalled();
+  expect(vi.getTimerCount()).toBe(0);
+});
+
+it('routes editor mode to its lazy module and loads no other spike', async () => {
+  mocks.start.mockResolvedValue('editor');
+  mocks.editor.mockImplementation(
+    async (session: { finish: () => Promise<void> }) => session.finish(),
+  );
+  await startIpcSpike();
+  expect(mocks.editor).toHaveBeenCalledOnce();
+  expect(mocks.grid).not.toHaveBeenCalled();
   expect(mocks.run).not.toHaveBeenCalled();
   expect(vi.getTimerCount()).toBe(0);
 });

@@ -38,6 +38,10 @@ const denyList = [
   ...new Set([
     'apache-arrow',
     'packages/grid/src/',
+    'packages/editor/src/',
+    '@codemirror',
+    '@lezer',
+    '@replit/codemirror-vim',
     ...(process.env.BUNDLE_DENY_MODULES ?? '')
       .split(',')
       .map((name) => name.trim())

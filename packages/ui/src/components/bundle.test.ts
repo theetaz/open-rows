@@ -83,3 +83,19 @@ it('rejects workspace renderer modules in the initial graph', () => {
     );
   }).toThrow('packages/grid/src/ found in initial chunk');
 });
+
+it('rejects any package of a denied scope, such as CodeMirror', () => {
+  const editor = [
+    '/repo/node_modules/.pnpm/@codemirror+view@6/node_modules/@codemirror/view/dist/index.js',
+  ];
+  expect(() => {
+    assertInitialModules(['entry.js'], { 'entry.js': editor }, ['@codemirror']);
+  }).toThrow('@codemirror found in initial chunk');
+  expect(() => {
+    assertInitialModules(
+      ['entry.js'],
+      { 'entry.js': ['/repo/node_modules/@codemirror-like/x/index.js'] },
+      ['@codemirror'],
+    );
+  }).not.toThrow();
+});

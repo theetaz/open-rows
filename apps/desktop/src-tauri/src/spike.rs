@@ -19,8 +19,38 @@ pub(crate) enum SpikeError {
     Failed(String),
 }
 
+/// Explicit release-app measurement modes; any other value leaves spike mode off.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum SpikeMode {
+    Ipc,
+    Grid,
+    Editor,
+}
+
+impl SpikeMode {
+    fn parse(value: &str) -> Option<Self> {
+        match value {
+            "ipc" => Some(Self::Ipc),
+            "grid" => Some(Self::Grid),
+            "editor" => Some(Self::Editor),
+            _ => None,
+        }
+    }
+
+    /// Only the tile-based spikes read the synthetic result store.
+    fn needs_rows(self) -> bool {
+        self != Self::Editor
+    }
+}
+
+fn mode() -> Option<SpikeMode> {
+    std::env::var("OPENROWS_SPIKE")
+        .ok()
+        .and_then(|value| SpikeMode::parse(&value))
+}
+
 fn enabled() -> bool {
-    std::env::var("OPENROWS_SPIKE").is_ok_and(|value| value == "ipc" || value == "grid")
+    mode().is_some()
 }
 
 #[tauri::command]
@@ -67,8 +97,7 @@ pub(crate) fn configure(
     builder: tauri::Builder<tauri::Wry>,
 ) -> tauri::Result<tauri::Builder<tauri::Wry>> {
     let mut store = ResultStore::default();
-    let enabled = enabled();
-    if enabled {
+    if mode().is_some_and(SpikeMode::needs_rows) {
         spike_progress("native-configuring", "generating synthetic rows")
             .map_err(|error| tauri::Error::Anyhow(error.into()))?;
         let source = synthetic::batch(
@@ -108,6 +137,8 @@ pub(crate) struct SpikeReport {
     error: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     grid: Option<Vec<crate::grid_report::GridRun>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    editor: Option<Vec<crate::editor_report::EditorRun>>,
 }
 
 #[tauri::command]
@@ -116,18 +147,18 @@ pub(crate) fn spike_finish(app: tauri::AppHandle, report: SpikeReport) -> Result
     let path = report_path()?;
     let status = i32::from(report.error.is_some());
     let stage_summary = summaries(&report.samples);
-    let grid = report.grid.is_some();
+    let method = method(&report);
     let samples =
         serde_json::to_value(report).map_err(|error| SpikeError::Failed(error.to_string()))?;
     let payload = serde_json::json!({
         "schema_version": 1, "pid": std::process::id(), "seed": synthetic::SPIKE_SEED,
         "rows": synthetic::SPIKE_ROWS, "cols": synthetic::SPIKE_COLS,
         "tile_rows": 256, "samples": samples["samples"], "error": samples["error"],
-        "timer": samples["timer"], "grid": samples["grid"],
+        "timer": samples["timer"], "grid": samples["grid"], "editor": samples["editor"],
         "mode": std::env::var("OPENROWS_SPIKE").unwrap_or_default(),
         "verdict": if status == 0 { "collected" } else { "invalid" },
         "stage_summary_ms": stage_summary,
-        "method": if grid { "WKWebView rAF deltas and Performance API around complete canvas painters; four scenarios per option; virtual 100-column variant; no discarded frame samples" } else { "Page Performance API: invoke to bytes, post bytes to typed reply (decodeMs), request to typed columns (totalMs); workerDecodeMs uses worker clock and is informational; timer is min positive delta of 100000 consecutive page reads; worker cold start excluded; no cache hits" },
+        "method": method,
     });
     let bytes =
         serde_json::to_vec(&payload).map_err(|error| SpikeError::Failed(error.to_string()))?;
@@ -138,6 +169,16 @@ pub(crate) fn spike_finish(app: tauri::AppHandle, report: SpikeReport) -> Result
     app.exit(status);
     drop(app);
     Ok(())
+}
+
+fn method(report: &SpikeReport) -> &'static str {
+    if report.editor.is_some() {
+        "WKWebView page clock per scripted keystroke: execCommand insertText or keydown dispatch, first docChanged update, first rAF after it, then a MessageChannel task posted from that rAF (after the rendering update, not GPU display); keystrokeToPaintMs = queue + input + frame, excluding only the wait from the update to the rAF frame start; fresh 5000-line document per configuration; no discarded samples"
+    } else if report.grid.is_some() {
+        "WKWebView rAF deltas and Performance API around complete canvas painters; four scenarios per option; virtual 100-column variant; no discarded frame samples"
+    } else {
+        "Page Performance API: invoke to bytes, post bytes to typed reply (decodeMs), request to typed columns (totalMs); workerDecodeMs uses worker clock and is informational; timer is min positive delta of 100000 consecutive page reads; worker cold start excluded; no cache hits"
+    }
 }
 
 fn report_path() -> Result<PathBuf, SpikeError> {
@@ -202,6 +243,17 @@ mod tests {
             std::fs::remove_file(progress)?;
         }
         result
+    }
+
+    #[test]
+    fn modes_are_explicit_and_editor_skips_synthetic_rows() {
+        assert_eq!(SpikeMode::parse("ipc"), Some(SpikeMode::Ipc));
+        assert_eq!(SpikeMode::parse("grid"), Some(SpikeMode::Grid));
+        assert_eq!(SpikeMode::parse("editor"), Some(SpikeMode::Editor));
+        assert_eq!(SpikeMode::parse("Editor"), None);
+        assert_eq!(SpikeMode::parse(""), None);
+        assert!(SpikeMode::Ipc.needs_rows() && SpikeMode::Grid.needs_rows());
+        assert!(!SpikeMode::Editor.needs_rows());
     }
 
     #[test]

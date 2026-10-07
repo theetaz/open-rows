@@ -20,6 +20,16 @@ export type AppInfo = {
 
 export type BuildProfile = "debug" | "release";
 
+/**  One editor configuration measured on a freshly mounted 5 000-line document. */
+export type EditorRun = {
+	config: string,
+	lines: number,
+	documentChars: number,
+	refreshIntervalMs: number | null,
+	durationMs: number | null,
+	samples: KeystrokeSample[],
+};
+
 /**  Per-rAF interval diagnostics. Timings may overlap; worker CPU is informational. */
 export type GridFrame = {
 	index: number,
@@ -59,6 +69,20 @@ export type GridRun = {
 	maxScrollErrorPx: number | null,
 };
 
+/**  Page-clock phases of one keystroke; `keystrokeToPaintMs` excludes only `vsyncWaitMs`. */
+export type KeystrokeSample = {
+	index: number,
+	position: string,
+	kind: string,
+	key: string,
+	queueMs: number | null,
+	inputMs: number | null,
+	vsyncWaitMs: number | null,
+	frameMs: number | null,
+	wallMs: number | null,
+	keystrokeToPaintMs: number | null,
+};
+
 export type PageTimer = {
 	resolutionMs: number | null,
 	crossOriginIsolated: boolean,
@@ -75,6 +99,7 @@ export type SpikeReport_Deserialize = {
 	timer: PageTimer,
 	error: string | null,
 	grid?: GridRun[] | null,
+	editor?: EditorRun[] | null,
 };
 
 export type SpikeReport_Serialize = {
@@ -82,6 +107,7 @@ export type SpikeReport_Serialize = {
 	timer: PageTimer,
 	error: string | null,
 	grid?: GridRun[] | null,
+	editor?: EditorRun[] | null,
 };
 
 export type TileTiming = {
