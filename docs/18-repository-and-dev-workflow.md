@@ -56,7 +56,7 @@ open-rows/
 | Vitest, Testing Library, Knip | Component/gallery accessibility tests and unused-code scan |
 | Python 3 (standard library) | macOS startup/memory harnesses and headless benchmark tests |
 | `just` | One-command quality gate (`just check`) |
-| `sccache` (optional) | Compiler cache; set `RUSTC_WRAPPER=sccache` |
+| `sccache` (optional) | Compiler cache; set `RUSTC_WRAPPER=sccache`; sandbox behaviour in §2.2 |
 | `scripts/git-hooks` | Git hooks enabled by `just setup`; currently `commit-msg` |
 
 See [CONTRIBUTING.md §1](../CONTRIBUTING.md#1-first-time-setup) for installation and optional shared `CARGO_TARGET_DIR` setup. On macOS, Xcode Command Line Tools are required. Linux builds need the [Tauri system prerequisites](https://tauri.app/start/prerequisites/). Docker is optional: `just test-pg [version]` runs the PostgreSQL integration tests in a throwaway `postgres:<version>-alpine` container bound to 127.0.0.1, removes it on exit, and skips with exit 0 when Docker is unavailable. Docker (Docker Desktop on macOS) also runs the OpenSSH container matrix of `openrows-net`; those tests skip when Docker is unavailable, and `just test-ssh` fails instead of skipping. `ssh-keygen`, `ssh-agent` and `ssh-add` (OpenSSH client tools) generate test keys at test time. CI tooling is described in §4.
@@ -88,6 +88,7 @@ just bench-ipc      # S1 Arrow tile round trip in release WKWebView, macOS GUI r
 just bench-grid     # S2 canvas grid scroll scenarios (3 fresh launches), macOS GUI required
 just bench-editor   # S5 editor keystroke-to-paint, 5 000-line SQL, macOS GUI required
 just bench-test     # synthetic benchmark tests, no GUI
+just script-test    # sccache guard tests with a stub sccache (§2.2)
 just bench-pg-decode # Criterion decode_pg_* + gates (>= 1 M cells/s/core, first batch <= 5 ms)
 just test-pg 17     # PostgreSQL integration tests in a throwaway container (skips without Docker)
 pnpm lint           # type-aware ESLint, complexity/size limits, IPC boundary
@@ -119,6 +120,35 @@ fallbacks. True OS-cold startup requires rebooting before the benchmark; no cach
 purge is performed. These commands are not run on Linux CI. See
 [13 §4](13-performance.md#4-benchmark-suite) for clock, process attribution and
 required physical-footprint measurements. `just bench-test` and `just check` require no GUI.
+
+### 2.2 sccache and sandboxed runs
+
+With `RUSTC_WRAPPER=sccache`, every compiler call is a client that talks to one
+background server over `127.0.0.1:4226` (`SCCACHE_SERVER_PORT`). The server stays alive
+until `SCCACHE_IDLE_TIMEOUT` (600 s by default) passes without requests. Two
+macOS Seatbelt effects make sandboxed agent runs fail with
+`sccache: error: Operation not permitted (os error 1)`. Both were reproduced with
+`codex sandbox -P ':workspace'` and `sandbox-exec`:
+
+| Cause | When | Symptom |
+| --- | --- | --- |
+| The sandbox denies outbound network, including localhost (`network-outbound remote:*:<port>`); binding a server or a `SCCACHE_SERVER_UDS` socket is denied too | Every wrapped call inside a network-restricted sandbox | Cargo's first probe fails: `process didn't exit successfully: sccache …/clippy-driver …/rustc -vV` |
+| A server spawned inside a sandbox keeps that sandbox. Later clients from other contexts reuse it while it lives | After a sandboxed run that could reach localhost but could only write its own workspace | Cacheable (non-incremental) units, such as dependencies or `CARGO_INCREMENTAL=0` builds, fail writing outputs into the caller's target: `error writing dependencies to …: Operation not permitted` |
+
+Incremental workspace crates are not cacheable, so the client compiles them locally.
+That is why the failure looks intermittent.
+
+Fix: every recipe that compiles Rust runs through `scripts/sccache-guard.sh`. When
+`RUSTC_WRAPPER` names `sccache`, the guard compiles an empty crate through the server into
+the Cargo target directory. If that fails, it restarts the server from the current context
+and probes again. If the server is still unreachable, it runs the command with an empty
+`RUSTC_WRAPPER` (no cache) and prints a warning. Other or unset wrappers are left alone.
+`just script-test` covers the guard with a stub `sccache`.
+
+Manual recovery outside `just`: run `sccache --stop-server`, then retry the build from
+the normal (unsandboxed) terminal. For network-restricted sandboxes, leave
+`RUSTC_WRAPPER` unset. A restart can disturb other builds that are using the shared server
+at that moment. Re-run them if they fail.
 
 ## 3. Coding conventions
 
