@@ -5,11 +5,8 @@ import axe from 'axe-core';
 import { expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
 import { SidebarHeader } from './SidebarHeader';
-import { connections } from './data/connections';
-const connection = connections[0];
-if (!connection) throw new Error('Missing mock workspace');
 const props = {
-  connection,
+  children: <strong>Connection slot</strong>,
   database: 'orders_archive',
   opened: ['orders', 'orders_archive'],
   onDatabase: vi.fn(),
@@ -24,24 +21,10 @@ function mount(): ReturnType<typeof userEvent.setup> {
   );
   return userEvent.setup();
 }
-it('shows workspace identity and local connection menu pressed states', async () => {
-  const user = mount();
-  expect(screen.getByText('orders-staging')).toBeVisible();
-  expect(screen.getByText('staging')).toBeVisible();
-  const opener = screen.getByRole('button', { name: 'Workspace menu' });
-  await user.click(opener);
-  expect(opener).toHaveAttribute('aria-pressed', 'true');
-  for (const name of ['Connection settings…', 'Duplicate', 'Disconnect']) {
-    await user.click(screen.getByRole('menuitemcheckbox', { name }));
-    expect(screen.getByRole('menuitemcheckbox', { name })).toHaveAttribute(
-      'aria-checked',
-      'true',
-    );
-  }
-  expect(props.onDatabase).not.toHaveBeenCalled();
-  await user.keyboard('{Escape}');
-  expect(opener).toHaveFocus();
-  expect(opener).toHaveAttribute('aria-pressed', 'false');
+it('hosts the real connection header and labels the sample catalog', () => {
+  mount();
+  expect(screen.getByText('Connection slot')).toBeVisible();
+  expect(screen.getByText('Sample data')).toBeVisible();
 });
 it('lists opened databases with active check and keyboard switch, close and focus return', async () => {
   const user = mount();
@@ -109,14 +92,11 @@ it('protects the last database and leaves close reachable only when enabled', as
   expect(screen.getByRole('menuitem', { name: /Open database/ })).toHaveFocus();
 });
 it.each(['light', 'dark'] as const)(
-  'axe: header and both menus clean in %s',
+  'axe: header and database menu clean in %s',
   async (theme) => {
     localStorage.setItem('openrows.theme', theme);
     const user = mount();
-    for (const name of [
-      'Workspace menu',
-      'Opened databases (orders_archive)',
-    ]) {
+    for (const name of ['Opened databases (orders_archive)']) {
       await user.click(screen.getByRole('button', { name }));
       const result = await axe.run(document.body, {
         rules: {

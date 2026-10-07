@@ -167,6 +167,34 @@ Performance API benchmark with a **16 ms p95 per 1,000 objects** budget.
 Native toolbar geometry is documented in [docs/16 §3](16-platform-and-distribution.md#3-macos-specifics).
 These interactions use mock/data only; no catalog, query or command contacts a server.
 
+### D-05 real connections in the workspace
+
+The rail now lists saved PostgreSQL connections (monogram tiles, environment
+dot from tokens; custom tags use their stored colour via `--env-color`), with
+`+` opening the **New connection** sheet. ⌘1–4 select the
+first four saved connections. Selecting a tile opens a session; the sidebar
+header shows the real name, environment badge, a live status
+(Not connected / Connecting… / Connected · PostgreSQL x.y / Connection failed
+plus the message) and a **Connection menu**: Connect/Disconnect, Connection
+settings…, Duplicate, Delete… (always confirmed in a sheet). The toolbar
+context bar shows the real connection name, environment and status; Safe mode
+is forced on for prod-tagged connections.
+
+The connection sheet has: paste-URL (Enter or **Fill from URL**; the core parses
+it, the password never returns to the webview), name, group, host, port,
+database, user, password (keychain; "Forget saved password" when editing), TLS
+mode, environment segmented control (local/dev/staging/prod/custom with label
+and colour), Read-only and Confirm writes switches (choosing Prod turns
+Confirm writes on), **Test** (server version and latency, or the typed error),
+Cancel/Save, and Delete…/Duplicate when editing. Validation messages appear
+after the first Test or Save.
+
+Everything below the header is still the M0-T4b sample catalog, tabs and rows,
+marked with a **Sample data** badge next to the database selector. D-06
+replaces the sample database selector, object tree and schema picker; D-07
+replaces the sample tabs, SQL editor and grid. The removed mock pieces are the
+mock rail, the mock workspace menu and the four sample connections.
+
 ### 3.2 macOS-native design methodology (macOS 26 era)
 
 The app must feel like it was designed for the current macOS, not merely ported to it.

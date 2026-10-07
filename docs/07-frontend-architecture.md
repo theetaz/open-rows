@@ -123,6 +123,13 @@ The M0-T4 implementation is `@openrows/ui` in `packages/ui`. Its public componen
 
 Native window vibrancy/appearance synchronisation, the canvas grid and CodeMirror integration remain later work. This task provides CSS glass within the webview only. Since M0-S5, `@openrows/editor` exists as a lazily loaded package whose highlight and editor theme read these CSS custom properties ([09 §1.1](09-query-editor.md#11-current-implementation-m0-s5)); it is not yet mounted in the workspace, only in the gallery's lazy **SQL editor** specimen.
 
+### 8.1 Implementation notes (D-05: connections feature)
+
+- `apps/desktop/src/features/connections/` is the first feature folder; other code imports it through its `index.ts` (`ConnectionRail`, `ConnectionHeader`, `ConnectionSheets`, `EnvironmentBadge`, `statusLabel`, `useConnections`).
+- TanStack Query and Zustand are not dependencies yet, so state is local React state: `useProfiles` (reloads `profiles_list` after each change), `useSessions` (profile → `disconnected | connecting | connected | failed`, updated by command results and `session-state-changed` events) and `useConnections` (active profile, open sheet, duplicate/delete). Pure logic lives in `form.ts` (draft ↔ `ProfileInput`, URL fill, prod default, validation) and `sessions.ts` (event reducer, labels).
+- Only `@openrows/ipc` wrappers are called; jsdom tests replace them with `src/test/ipcStub.ts` (no native shell, no keychain).
+- `shell/SidebarMenu.tsx` and `shell/useSidebarMenu.ts` (anchored glass menu) moved out of `mock/` because the real connection menu and the sample database menu share them.
+
 ## 9. Error and empty states
 
 - Every async view has explicit loading, empty, error and partial states (design phase defines visuals).

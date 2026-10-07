@@ -8,6 +8,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "spike_finish",
             "spike_start",
             "spike_progress",
+            "profiles_list",
+            "profiles_search",
+            "profile_get",
+            "profile_create",
+            "profile_update",
+            "profile_duplicate",
+            "profile_delete",
+            "profile_parse_url",
+            "connection_test",
+            "session_open",
+            "session_close",
         ]),
     ))?;
     Ok(())

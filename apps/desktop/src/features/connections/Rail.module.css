@@ -38,12 +38,6 @@
   font-weight: var(--or-weight-semibold);
   opacity: var(--or-rail-inactive-opacity);
 }
-.tile[data-engine='ch'] {
-  background: var(--or-connection-ch);
-}
-.tile[data-engine='sqlite'] {
-  background: var(--or-connection-sqlite);
-}
 .connection[aria-pressed='true'] .tile,
 .connection:hover .tile,
 .connection:focus-visible .tile {
@@ -68,6 +62,9 @@
 }
 .tile i[data-environment='local'] {
   background: var(--or-local-fg);
+}
+.tile i[data-environment='custom'] {
+  background: var(--env-color, var(--or-local-fg));
 }
 .indicator {
   position: absolute;

@@ -14,7 +14,15 @@ workspace = true
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+arrow-array = "60"
+arrow-schema = "60"
+openrows-core = { path = "../../../crates/openrows-core" }
+openrows-driver-api = { path = "../../../crates/openrows-driver-api" }
+openrows-driver-postgres = { path = "../../../crates/openrows-driver-postgres" }
 openrows-results = { path = "../../../crates/openrows-results" }
+openrows-secrets = { path = "../../../crates/openrows-secrets" }
+openrows-store = { path = "../../../crates/openrows-store" }
+openrows-types = { path = "../../../crates/openrows-types" }
 serde = { workspace = true, features = ["derive"] }
 tauri = { version = "2", features = ["specta", "macos-private-api"] }
 specta = { version = "=2.0.0-rc.25", features = ["derive", "function"] }
@@ -22,6 +30,10 @@ specta-typescript = "0.0.12"
 tauri-specta = { version = "=2.0.0-rc.25", features = ["typescript"] }
 thiserror.workspace = true
 serde_json.workspace = true
+tokio = { version = "1.53", features = ["sync", "time"] }
+
+[dev-dependencies]
+tempfile = "3.27"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSWorkspace", "NSAccessibility"] }

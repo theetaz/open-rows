@@ -4,6 +4,10 @@ import { afterEach, expect, it, vi } from 'vitest';
 import axe from 'axe-core';
 import { ThemeProvider } from '@openrows/ui';
 import { Workspace } from './Workspace';
+
+vi.mock('@openrows/ipc', async () =>
+  (await import('../test/ipcStub')).ipcStub(),
+);
 function mount(enabled = true): void {
   vi.stubGlobal('innerWidth', 1280);
   render(

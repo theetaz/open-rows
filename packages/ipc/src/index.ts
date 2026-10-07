@@ -25,6 +25,38 @@ export type {
 
 export { resultWindow } from './binary';
 
+/** Connection profiles and sessions (D-05); secrets only travel to the core. */
+export {
+  CommandError,
+  closeSession,
+  createProfile,
+  deleteProfile,
+  duplicateProfile,
+  getProfile,
+  listProfiles,
+  onSessionState,
+  openSession,
+  parsePostgresUrl,
+  searchProfiles,
+  testConnection,
+  updateProfile,
+} from './connections';
+export { DEFAULT_CUSTOM_ENV_COLOR } from './generated/bindings';
+export type {
+  EnvDto,
+  EnvKindDto,
+  IpcErrorKind,
+  PasswordInput,
+  ProfileDto,
+  ProfileInput,
+  ProfileList,
+  SafetyDto,
+  SessionStateChanged,
+  TestReport,
+  TlsModeDto,
+  UrlDraft,
+} from './generated/bindings';
+
 /** Atomically persist benchmark samples and exit; available only in spike mode. */
 export async function finishSpike(report: SpikeReport): Promise<void> {
   const result = await commands.spikeFinish(report);

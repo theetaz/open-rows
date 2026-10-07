@@ -5,6 +5,10 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
 import { Workspace } from './Workspace';
 
+vi.mock('@openrows/ipc', async () =>
+  (await import('../test/ipcStub')).ipcStub(),
+);
+
 const renders = vi.hoisted(() => ({ grid: vi.fn() }));
 vi.mock('./DataGrid', async () => {
   const actual =

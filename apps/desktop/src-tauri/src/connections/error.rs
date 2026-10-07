@@ -1,0 +1,140 @@
+// SPDX-License-Identifier: Apache-2.0
+//! The typed, user-readable error every connection command rejects with.
+//!
+//! Messages never contain a password or a raw connection URL.
+use openrows_core::{CoreError, ErrorKind};
+use openrows_store::profile::{ProfileError, UrlError};
+use serde::Serialize;
+use specta::Type;
+
+/// Failure category; the UI picks wording and recovery from it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) enum IpcErrorKind {
+    /// A field or identifier failed validation.
+    Invalid,
+    /// The profile or session does not exist.
+    NotFound,
+    /// Profile files could not be read or written.
+    Storage,
+    /// The OS keychain failed.
+    Secret,
+    /// The pasted connection URL is not a valid `postgres://` URL.
+    Url,
+    /// The server could not be reached or the connection dropped.
+    Network,
+    /// The server rejected the credentials.
+    Auth,
+    /// The server or driver broke the wire protocol.
+    Protocol,
+    /// The server reported an error (SQLSTATE in `code`).
+    Server,
+    /// The requested option is not supported yet.
+    Unsupported,
+    /// A bug or broken invariant.
+    Internal,
+}
+
+/// Typed command failure, safe to render to the user.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Type, thiserror::Error)]
+#[serde(rename_all = "camelCase")]
+#[error("{message}")]
+pub(crate) struct IpcError {
+    /// Failure category.
+    pub(crate) kind: IpcErrorKind,
+    /// Human-readable message.
+    pub(crate) message: String,
+    /// Database error code (SQLSTATE), when the server sent one.
+    pub(crate) code: Option<String>,
+}
+
+impl IpcError {
+    pub(crate) fn new(kind: IpcErrorKind, message: impl Into<String>) -> Self {
+        Self {
+            kind,
+            message: message.into(),
+            code: None,
+        }
+    }
+
+    pub(crate) fn invalid(message: impl Into<String>) -> Self {
+        Self::new(IpcErrorKind::Invalid, message)
+    }
+}
+
+impl From<ProfileError> for IpcError {
+    fn from(error: ProfileError) -> Self {
+        let kind = match &error {
+            ProfileError::NotFound { .. } => IpcErrorKind::NotFound,
+            ProfileError::Invalid { field, reason } => {
+                return Self::invalid(format!("{} {reason}", field_label(field)));
+            }
+            ProfileError::AlreadyExists { .. } => IpcErrorKind::Invalid,
+            ProfileError::Secret(_) => IpcErrorKind::Secret,
+            _ => IpcErrorKind::Storage,
+        };
+        Self::new(kind, error.to_string())
+    }
+}
+
+impl From<UrlError> for IpcError {
+    fn from(error: UrlError) -> Self {
+        Self::new(IpcErrorKind::Url, error.to_string())
+    }
+}
+
+impl From<CoreError> for IpcError {
+    fn from(error: CoreError) -> Self {
+        let kind = match error.kind {
+            ErrorKind::Network => IpcErrorKind::Network,
+            ErrorKind::Auth => IpcErrorKind::Auth,
+            ErrorKind::Protocol | ErrorKind::Decode => IpcErrorKind::Protocol,
+            ErrorKind::Server => IpcErrorKind::Server,
+            ErrorKind::Unsupported => IpcErrorKind::Unsupported,
+            ErrorKind::UnknownSession | ErrorKind::SessionClosed => IpcErrorKind::NotFound,
+            ErrorKind::QueueFull | ErrorKind::Internal => IpcErrorKind::Internal,
+        };
+        Self {
+            kind,
+            message: error.message,
+            code: error.db_code,
+        }
+    }
+}
+
+/// Field names as the connection form labels them.
+fn field_label(field: &str) -> &str {
+    match field {
+        "name" => "Name",
+        "params.host" => "Host",
+        "params.port" => "Port",
+        "id" => "Connection id",
+        other => other,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn profile_validation_names_the_form_field() {
+        let error = IpcError::from(ProfileError::Invalid {
+            field: "params.host",
+            reason: "must not be empty",
+        });
+        assert_eq!(error.kind, IpcErrorKind::Invalid);
+        assert_eq!(error.message, "Host must not be empty");
+    }
+
+    #[test]
+    fn server_errors_keep_their_sqlstate() {
+        let error = IpcError::from(CoreError {
+            kind: ErrorKind::Server,
+            message: "database \"nope\" does not exist".to_owned(),
+            db_code: Some("3D000".to_owned()),
+        });
+        assert_eq!(error.kind, IpcErrorKind::Server);
+        assert_eq!(error.code.as_deref(), Some("3D000"));
+    }
+}

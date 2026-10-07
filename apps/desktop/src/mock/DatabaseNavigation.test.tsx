@@ -3,6 +3,10 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
 import { Workspace } from './Workspace';
+
+vi.mock('@openrows/ipc', async () =>
+  (await import('../test/ipcStub')).ipcStub(),
+);
 function mount(): void {
   vi.useFakeTimers();
   render(
@@ -47,7 +51,7 @@ it('opens databases by keyboard, updates header/context/sidebar and preserves in
   );
   await pickDatabase('orders_archive');
   expect(screen.getByLabelText('Connection context')).toHaveTextContent(
-    'orders-staging › orders_archive › public › orders_2024',
+    'No connection › orders_archive › public › orders_2024',
   );
   expect(
     screen.getByRole('button', { name: 'Opened databases (orders_archive)' }),
@@ -71,16 +75,6 @@ it('opens databases by keyboard, updates header/context/sidebar and preserves in
     'true',
   );
   selectOpened('orders_archive');
-  expect(screen.getByRole('tab', { name: /SQL Query 1/ })).toHaveAttribute(
-    'title',
-    'orders_archive.public.SQL Query 1',
-  );
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Switch to analytics-prod' }),
-  );
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Switch to orders-staging' }),
-  );
   expect(screen.getByRole('tab', { name: /SQL Query 1/ })).toHaveAttribute(
     'title',
     'orders_archive.public.SQL Query 1',
