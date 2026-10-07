@@ -67,6 +67,8 @@ jobs:
       - name: Clippy
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Tests
-        run: cargo nextest run --workspace --locked
+        # Docker-backed SSH container tests run locally in `just check`;
+        # building their fixture image here costs minutes per run.
+        run: cargo nextest run --workspace --locked -E 'not binary(ssh_container)'
       - name: Binding freshness
         run: cargo nextest run -p openrows-app --locked bindings_are_fresh

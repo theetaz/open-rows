@@ -141,7 +141,7 @@ required physical-footprint measurements. `just bench-test` and `just check` req
 
 The full rules, with examples, live in [CONTRIBUTING.md](../CONTRIBUTING.md). Summary:
 
-- **Conventional Commits 1.0.0** for every commit: `<type>(<scope>)!: <subject>`, header ≤ 72 characters, imperative subject, no trailing period, blank line before the body. Types: `feat`, `fix`, `perf`, `refactor`, `docs`, `test`, `build`, `ci`, `style`, `chore`, `revert`. Scopes are crate/package/area names without the `openrows-` prefix.
+- **Conventional Commits 1.0.0** for every commit: `<type>(<scope>)!: <subject>`, header ≤ 72 characters (PR titles ≤ 66, because squash merge appends ` (#NN)`), imperative subject, no trailing period, blank line before the body. Types: `feat`, `fix`, `perf`, `refactor`, `docs`, `test`, `build`, `ci`, `style`, `chore`, `revert`. Scopes are crate/package/area names without the `openrows-` prefix.
 - **Attribution:** commit messages, PR titles, PR descriptions and review comments describe the change only — no `Co-authored-by` trailers, co-author sections, signatures or "generated with/by" footers.
 - **Enforcement:** `scripts/git-hooks/commit-msg` checks all of the above locally (enable once per clone with `git config core.hooksPath scripts/git-hooks`). Run the same hook on the PR title before opening a PR (`printf '%s\n' "<title>" > /tmp/t && bash scripts/git-hooks/commit-msg /tmp/t`). CI re-checks the squash commits that land on `main`.
 - **Branches:** `<type>/<short-description>` (e.g. `feat/grid-column-pinning`), rebased on `main`.
@@ -176,7 +176,7 @@ Pull requests and pushes to feature branches do **not** trigger CI. Steps:
 | Binding freshness | Rust `bindings_are_fresh` test (same registry as the app) |
 | Format | `cargo fmt --all --check` |
 | Lint | `cargo clippy --workspace --all-targets --locked -- -D warnings` |
-| Tests | `cargo nextest run --workspace --locked`; container-backed driver tests are `#[ignore]`d there (reported as skipped) and run locally with `just test-pg` |
+| Tests | `cargo nextest run --workspace --locked -E 'not binary(ssh_container)'`; container-backed driver tests are `#[ignore]`d there (reported as skipped) and run locally with `just test-pg`; the `openrows-net` SSH container matrix is filtered out in CI and runs locally in `just check` / `just test-ssh` |
 
 Every gate, including those CI skips (cargo-deny, cargo-machete, hygiene, UI and benchmark checks), runs locally with `just check` and is mandatory before pushing a branch or opening a PR; the acceptance report carries the evidence. Actions are pinned to full commit SHAs, the workflow has read-only permissions, and checkout does not persist credentials. A red run on `main` is fixed immediately with a follow-up PR. PR-triggered CI and branch protection return with the full pipeline (§4.2) once the project has outside contributors.
 
