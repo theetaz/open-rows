@@ -49,6 +49,22 @@ pub enum FilterOp {
     IsNotNull,
     /// `BETWEEN value AND second`.
     Between,
+    /// Negated IN list.
+    NotIn,
+    /// Negated inclusive range.
+    NotBetween,
+    /// Case-insensitive SQL pattern, with explicit wildcards.
+    Like,
+    /// Negated SQL pattern.
+    NotLike,
+    /// `PostgreSQL` regular expression.
+    Regex,
+    /// Negated regular expression.
+    NotRegex,
+    /// Empty string (not NULL).
+    IsEmpty,
+    /// Non-empty string (not NULL).
+    IsNotEmpty,
 }
 
 /// One enabled filter row.
@@ -254,11 +270,27 @@ fn predicate(
     let text = match filter.op {
         FilterOp::IsNull => format!("{column} IS NULL"),
         FilterOp::IsNotNull => format!("{column} IS NOT NULL"),
-        FilterOp::In => in_list(&column, filter, params)?,
-        FilterOp::Between => {
+        FilterOp::In | FilterOp::NotIn => in_list(&column, filter, params)?,
+        FilterOp::IsEmpty => format!("{column}::text = ''"),
+        FilterOp::IsNotEmpty => format!("{column}::text <> ''"),
+        FilterOp::Like | FilterOp::NotLike | FilterOp::Regex | FilterOp::NotRegex => {
+            let operator = match filter.op {
+                FilterOp::Like => "ILIKE",
+                FilterOp::NotLike => "NOT ILIKE",
+                FilterOp::Regex => "~",
+                _ => "!~",
+            };
+            format!("{column}::text {operator} {}", bind(params, value())?)
+        }
+        FilterOp::Between | FilterOp::NotBetween => {
             let low = bind(params, value())?;
             let high = bind(params, filter.second.clone())?;
-            format!("{column} BETWEEN {low} AND {high}")
+            let operator = if filter.op == FilterOp::NotBetween {
+                "NOT BETWEEN"
+            } else {
+                "BETWEEN"
+            };
+            format!("{column} {operator} {low} AND {high}")
         }
         FilterOp::Contains | FilterOp::NotContains | FilterOp::StartsWith | FilterOp::EndsWith => {
             pattern(&column, filter, params)?
@@ -300,7 +332,12 @@ fn in_list(
         .into_iter()
         .map(|item| bind(params, item.to_owned()))
         .collect::<Result<Vec<_>, _>>()?;
-    Ok(format!("{column} IN ({})", placeholders.join(", ")))
+    let operator = if filter.op == FilterOp::NotIn {
+        "NOT IN"
+    } else {
+        "IN"
+    };
+    Ok(format!("{column} {operator} ({})", placeholders.join(", ")))
 }
 
 /// `ILIKE` on the column's text form; `%`, `_` and `\` in the value match literally.

@@ -68,6 +68,14 @@ export function FilterBar({
         />
       ))}
       <div className={styles.filterActions}>
+        <Button
+          size="sm"
+          onClick={() => {
+            actions.addRow();
+          }}
+        >
+          Add filter
+        </Button>
         <Button size="sm" aria-pressed={preview !== null} onClick={showSql}>
           SQL
         </Button>

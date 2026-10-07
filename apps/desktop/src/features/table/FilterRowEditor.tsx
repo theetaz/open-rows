@@ -65,7 +65,11 @@ function Values({ row, actions, label, edit }: Part): React.JSX.Element {
         className={styles.value}
         controlSize="compact"
         aria-label={`Value of ${label}`}
-        placeholder={row.operator === 'in' ? 'a, b, c' : 'Value'}
+        placeholder={
+          row.operator === 'in' || row.operator === 'notIn'
+            ? 'a, b, c'
+            : 'Value'
+        }
         disabled={fields === 0}
         value={fields === 0 ? '' : row.value}
         onChange={(event) => {

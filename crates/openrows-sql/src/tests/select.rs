@@ -299,3 +299,30 @@ fn errors_explain_themselves() {
     assert!(SelectError::NoColumns.to_string().contains("no columns"));
     assert!(SelectError::NulCharacter.to_string().contains("NUL"));
 }
+
+#[test]
+fn expanded_operators_keep_patterns_and_lists_in_parameters() -> Result<(), SelectError> {
+    for (op, operator) in [
+        (FilterOp::NotIn, "NOT IN"),
+        (FilterOp::Like, "ILIKE"),
+        (FilterOp::NotLike, "NOT ILIKE"),
+        (FilterOp::Regex, "~"),
+        (FilterOp::NotRegex, "!~"),
+    ] {
+        let bound = page(&with(vec![filter("name", op, "'; DROP TABLE users; --")]))?;
+        assert!(bound.sql.contains(operator));
+        assert!(!bound.sql.contains("DROP"));
+        assert_eq!(bound.params, some(&["'; DROP TABLE users; --"]));
+    }
+    let mut range = filter("id", FilterOp::NotBetween, "2");
+    range.second = "9".into();
+    let bound = page(&with(vec![range]))?;
+    assert!(bound.sql.contains("NOT BETWEEN $1 AND $2"));
+    assert_eq!(bound.params, some(&["2", "9"]));
+    for (op, operator) in [(FilterOp::IsEmpty, "= ''"), (FilterOp::IsNotEmpty, "<> ''")] {
+        let bound = page(&with(vec![filter("name", op, "ignored")]))?;
+        assert!(bound.sql.contains(operator));
+        assert!(bound.params.is_empty());
+    }
+    Ok(())
+}

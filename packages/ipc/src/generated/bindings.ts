@@ -198,7 +198,7 @@ export type FilterDto = {
 };
 
 /**  Filter-row comparisons (FR-GRID-11 subset). */
-export type FilterOperatorDto = "equal" | "notEqual" | "less" | "greater" | "lessOrEqual" | "greaterOrEqual" | "contains" | "notContains" | "startsWith" | "endsWith" | "in" | "isNull" | "isNotNull" | "between";
+export type FilterOperatorDto = "equal" | "notEqual" | "less" | "greater" | "lessOrEqual" | "greaterOrEqual" | "contains" | "notContains" | "startsWith" | "endsWith" | "in" | "isNull" | "isNotNull" | "between" | "notIn" | "notBetween" | "like" | "notLike" | "regex" | "notRegex" | "isEmpty" | "isNotEmpty";
 
 /**  Per-rAF interval diagnostics. Timings may overlap; worker CPU is informational. */
 export type GridFrame = {

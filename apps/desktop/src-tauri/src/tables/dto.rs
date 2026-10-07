@@ -35,6 +35,14 @@ pub(crate) enum FilterOperatorDto {
     IsNull,
     IsNotNull,
     Between,
+    NotIn,
+    NotBetween,
+    Like,
+    NotLike,
+    Regex,
+    NotRegex,
+    IsEmpty,
+    IsNotEmpty,
 }
 
 /// One enabled filter row; `second` is BETWEEN's upper bound.
@@ -205,6 +213,14 @@ impl From<FilterOperatorDto> for FilterOp {
             FilterOperatorDto::IsNull => Self::IsNull,
             FilterOperatorDto::IsNotNull => Self::IsNotNull,
             FilterOperatorDto::Between => Self::Between,
+            FilterOperatorDto::NotIn => Self::NotIn,
+            FilterOperatorDto::NotBetween => Self::NotBetween,
+            FilterOperatorDto::Like => Self::Like,
+            FilterOperatorDto::NotLike => Self::NotLike,
+            FilterOperatorDto::Regex => Self::Regex,
+            FilterOperatorDto::NotRegex => Self::NotRegex,
+            FilterOperatorDto::IsEmpty => Self::IsEmpty,
+            FilterOperatorDto::IsNotEmpty => Self::IsNotEmpty,
         }
     }
 }

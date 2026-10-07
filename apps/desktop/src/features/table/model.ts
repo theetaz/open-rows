@@ -78,6 +78,14 @@ export const operators: readonly OperatorInfo[] = [
   { value: 'isNull', label: 'IS NULL', arity: 0 },
   { value: 'isNotNull', label: 'IS NOT NULL', arity: 0 },
   { value: 'between', label: 'BETWEEN', arity: 2 },
+  { value: 'notBetween', label: 'NOT BETWEEN', arity: 2 },
+  { value: 'notIn', label: 'NOT IN', arity: 1 },
+  { value: 'like', label: 'LIKE pattern', arity: 1 },
+  { value: 'notLike', label: 'NOT LIKE pattern', arity: 1 },
+  { value: 'regex', label: 'Regex', arity: 1 },
+  { value: 'notRegex', label: 'Not regex', arity: 1 },
+  { value: 'isEmpty', label: 'IS EMPTY', arity: 0 },
+  { value: 'isNotEmpty', label: 'IS NOT EMPTY', arity: 0 },
 ];
 
 /** How many value fields an operator takes. */
