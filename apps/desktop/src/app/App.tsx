@@ -7,11 +7,29 @@ const Gallery = lazy(() =>
 );
 import { Workspace } from '../mock/Workspace';
 import styles from './App.module.css';
+const AppearanceSettings = lazy(() =>
+  import('../features/appearance/AppearanceSettings').then((module) => ({
+    default: module.AppearanceSettings,
+  })),
+);
 
 /** Workspace is the default; the design gallery remains one click away. */
 export function App(): React.JSX.Element {
   const startupError = useWindowReady();
   const [gallery, setGallery] = useState(false);
+  const [appearance, setAppearance] = useState(false);
+  useEffect(() => {
+    const open = (event: KeyboardEvent): void => {
+      if ((event.metaKey || event.ctrlKey) && event.key === ',') {
+        event.preventDefault();
+        setAppearance(true);
+      }
+    };
+    window.addEventListener('keydown', open);
+    return () => {
+      window.removeEventListener('keydown', open);
+    };
+  }, []);
   useEffect(() => {
     if (!gallery) return;
     const escape = (event: KeyboardEvent): void => {
@@ -30,11 +48,23 @@ export function App(): React.JSX.Element {
         <div hidden={gallery}>
           <Workspace
             enabled={!gallery}
+            onAppearance={() => {
+              setAppearance(true);
+            }}
             onGallery={() => {
               setGallery(true);
             }}
           />
         </div>
+      )}
+      {appearance && (
+        <Suspense fallback={null}>
+          <AppearanceSettings
+            onClose={() => {
+              setAppearance(false);
+            }}
+          />
+        </Suspense>
       )}
       {gallery && (
         <div className={styles.shell}>

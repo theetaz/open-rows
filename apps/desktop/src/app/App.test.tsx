@@ -50,3 +50,24 @@ it('defaults to workspace, opens the gallery from the rail and returns by Back/E
   await user.keyboard('{Escape}');
   expect(screen.getByText(/open a query tab/)).toBeVisible();
 });
+it('opens appearance by gear or shortcut, preserves the workspace and returns focus', async () => {
+  const { default: userEvent } = await import('@testing-library/user-event');
+  const user = userEvent.setup();
+  render(<App />);
+  const workspace = screen.getByRole('navigation', { name: 'Workspaces' });
+  const opener = screen.getByRole('button', { name: 'Appearance settings' });
+  await user.click(opener);
+  expect(
+    await screen.findByRole('dialog', { name: 'Appearance' }),
+  ).toBeVisible();
+  expect(workspace.isConnected).toBe(true);
+  await user.click(screen.getByRole('button', { name: 'Done' }));
+  expect(workspace).toBeVisible();
+  expect(opener).toHaveFocus();
+  await user.keyboard('{Meta>},{/Meta}');
+  expect(
+    await screen.findByRole('dialog', { name: 'Appearance' }),
+  ).toBeVisible();
+  await user.keyboard('{Escape}');
+  expect(screen.queryByRole('dialog', { name: 'Appearance' })).toBeNull();
+});

@@ -19,7 +19,7 @@ export function Sheet({
   onClose: () => void;
   children: ReactNode;
   /** `alert` is the narrow confirmation width. */
-  size?: 'form' | 'alert';
+  size?: 'form' | 'alert' | 'appearance';
 }): React.JSX.Element {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -35,6 +35,11 @@ export function Sheet({
         aria-label={title}
         aria-modal="true"
         onKeyDown={(event) => {
+          if (
+            event.target instanceof Element &&
+            event.target.closest('dialog') !== event.currentTarget
+          )
+            return;
           sheetKey(event, onClose);
         }}
         onCancel={(event) => {

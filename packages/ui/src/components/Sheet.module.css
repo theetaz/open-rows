@@ -62,3 +62,9 @@
     transform: translateY(calc(-1 * var(--or-space-8)));
   }
 }
+
+.sheet[data-size='appearance'] {
+  inline-size: min(1020px, calc(100vw - var(--or-space-32)));
+  block-size: calc(100vh - var(--or-toolbar-height) - var(--or-space-32));
+  background: var(--or-page);
+}

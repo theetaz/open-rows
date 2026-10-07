@@ -17,6 +17,7 @@ type Props = {
   connections: Connections;
   controller: ReturnType<typeof useWorkspaceController>;
   onGallery: () => void;
+  onAppearance?: (() => void) | undefined;
   onSwitcher: () => void;
 };
 /** Rail, object browser, query tabs and the inspector. */
@@ -25,7 +26,11 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
   const { catalog, tabs, scope } = controller;
   return (
     <div className={styles.body}>
-      <Rail connections={connections} onGallery={props.onGallery} />
+      <Rail
+        connections={connections}
+        onGallery={props.onGallery}
+        onAppearance={props.onAppearance}
+      />
       <SplitPanel
         label="Sidebar"
         storageKey="openrows.mock.sidebar"
@@ -76,6 +81,7 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
 function Rail(props: {
   connections: Connections;
   onGallery: () => void;
+  onAppearance?: (() => void) | undefined;
 }): React.JSX.Element {
   const { connections } = props;
   return (
@@ -97,6 +103,7 @@ function Rail(props: {
         connections.setSheet({ kind: 'new' });
       }}
       onGallery={props.onGallery}
+      onAppearance={props.onAppearance}
     />
   );
 }

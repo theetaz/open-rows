@@ -30,6 +30,7 @@ export function ConnectionRail(
     onSelect: (profileId: string) => void;
     onNew: () => void;
     onGallery: () => void;
+    onAppearance?: (() => void) | undefined;
   },
 ): React.JSX.Element {
   const [compact, toggle] = useWorkspaceCollapse('rail');
@@ -60,12 +61,22 @@ export function ConnectionRail(
       <IconButton aria-label="API client" variant="ghost">
         API
       </IconButton>
+      {props.onAppearance && (
+        <IconButton
+          aria-label="Appearance settings"
+          variant="ghost"
+          onClick={props.onAppearance}
+        >
+          <Icon name="settings" />
+          <span className={styles.controlLabel}>Appearance</span>
+        </IconButton>
+      )}
       <IconButton
         aria-label="Component gallery"
         variant="ghost"
         onClick={props.onGallery}
       >
-        <Icon name="settings" />
+        <span aria-hidden="true">◇</span>
       </IconButton>
     </nav>
   );

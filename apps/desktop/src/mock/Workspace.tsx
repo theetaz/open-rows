@@ -14,9 +14,11 @@ import styles from './Workspace.module.css';
 /** Real connections, catalog, query tabs and results. */
 export function Workspace({
   onGallery,
+  onAppearance,
   enabled = true,
 }: {
   onGallery: () => void;
+  onAppearance?: (() => void) | undefined;
   enabled?: boolean;
 }): React.JSX.Element {
   const connections = useConnections();
@@ -62,6 +64,7 @@ export function Workspace({
         connections={connections}
         controller={controller}
         onGallery={onGallery}
+        onAppearance={onAppearance}
         onSwitcher={() => {
           setMode('database');
         }}
