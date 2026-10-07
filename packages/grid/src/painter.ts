@@ -169,6 +169,10 @@ export class CanvasPainter {
     context.beginPath();
     context.rect(x, y, width, height);
     context.clip();
+    if (this.props.striped !== false && row % 2 === 1) {
+      context.fillStyle = theme.colours['row-stripe'];
+      context.fillRect(x, y, width, height);
+    }
     if (!cell) {
       this.metrics.placeholders++;
       context.fillStyle = theme.colours['control-fill'];

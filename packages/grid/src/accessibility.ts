@@ -21,7 +21,48 @@ export function shadowGrid(
     cell.textContent = `${props.source.columns[selection.column]?.title ?? ''}: ${props.source.cell(selection.row, selection.column)?.text ?? 'Loading'}`;
   };
   grid.onkeydown = (event): void => {
-    const selection = moveFocus(props.selection, event.key, props);
+    if (
+      event.key === 'ContextMenu' ||
+      (event.key === 'F10' && event.shiftKey)
+    ) {
+      event.preventDefault();
+      const bounds = host.getBoundingClientRect();
+      props.onContextMenu?.({
+        ...props.selection,
+        kind: 'cell',
+        x: bounds.left + 48,
+        y: bounds.top + 48,
+      });
+      return;
+    }
+    if (event.key === 'Enter' && props.source.rows > 0) {
+      event.preventDefault();
+      props.onEdit?.({
+        row: props.selection.row,
+        column: props.selection.column,
+      });
+      return;
+    }
+    if (event.key === ' ' && props.source.rows > 0) {
+      event.preventDefault();
+      const { row, column } = props.selection;
+      const ranges =
+        event.ctrlKey || event.metaKey
+          ? [{ r0: 0, r1: props.source.rows - 1, c0: column, c1: column }]
+          : [
+              {
+                r0: row,
+                r1: row,
+                c0: props.rowHeaderColumn === 0 ? 1 : 0,
+                c1: props.source.columns.length - 1,
+              },
+            ];
+      props.selection = { row, column, ranges };
+      update(props.selection);
+      props.onSelection(props.selection);
+      return;
+    }
+    const selection = moveFocus(props.selection, event, props);
     if (!selection) return;
     event.preventDefault();
     props.selection = selection;
@@ -43,7 +84,7 @@ export function shadowGrid(
 let sequence = 0;
 function moveFocus(
   current: SelectionModel,
-  key: string,
+  event: KeyboardEvent,
   props: GridProps,
 ): SelectionModel | undefined {
   const delta = {
@@ -51,21 +92,29 @@ function moveFocus(
     ArrowDown: [1, 0],
     ArrowLeft: [0, -1],
     ArrowRight: [0, 1],
-  }[key];
+  }[event.key];
   if (!delta) return undefined;
+  const row = Math.max(
+    0,
+    Math.min(props.source.rows - 1, current.row + (delta[0] ?? 0)),
+  );
+  const column = Math.max(
+    props.rowHeaderColumn === 0 ? 1 : 0,
+    Math.min(props.source.columns.length - 1, current.column + (delta[1] ?? 0)),
+  );
+  const anchor = event.shiftKey ? (current.anchor ?? current) : { row, column };
   return {
-    ...current,
-    row: Math.max(
-      0,
-      Math.min(props.source.rows - 1, current.row + (delta[0] ?? 0)),
-    ),
-    column: Math.max(
-      0,
-      Math.min(
-        props.source.columns.length - 1,
-        current.column + (delta[1] ?? 0),
-      ),
-    ),
+    row,
+    column,
+    anchor: { row: anchor.row, column: anchor.column },
+    ranges: [
+      {
+        r0: Math.min(anchor.row, row),
+        r1: Math.max(anchor.row, row),
+        c0: Math.min(anchor.column, column),
+        c1: Math.max(anchor.column, column),
+      },
+    ],
   };
 }
 

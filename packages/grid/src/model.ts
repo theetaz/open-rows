@@ -20,6 +20,8 @@ export interface SelectionModel {
   row: number;
   column: number;
   ranges: readonly CellRange[];
+  /** Fixed origin while extending a selection with Shift. */
+  anchor?: { row: number; column: number };
 }
 /** Converted once on tile arrival, outside the painter; `empty` is an empty string shown as `EMPTY`. */
 export interface DisplayCell {
@@ -53,6 +55,14 @@ export interface GridTheme {
   fontSize: number;
   fontFamily: string;
 }
+/** Logical target and CSS-pixel pointer anchor for a contextual action menu. */
+export type GridContextTarget = {
+  row: number;
+  column: number;
+  kind: 'cell' | 'row' | 'column';
+  x: number;
+  y: number;
+};
 /** Both renderers emit the same focus/selection events and terminal errors. */
 export interface GridProps {
   source: GridDataSource;
@@ -62,6 +72,11 @@ export interface GridProps {
   onError(error: unknown): void;
   /** Header click on a model column, e.g. to sort a table view server-side. */
   onHeader?(column: number): void;
+  /** Optional pinned row-label column, excluded from data selection. */
+  rowHeaderColumn?: number;
+  striped?: boolean;
+  onEdit?(cell: { row: number; column: number }): void;
+  onContextMenu?(target: GridContextTarget): void;
 }
 /** Paint counters reset at each benchmark frame; placeholder draws flag blank frames. */
 export interface PaintMetrics {

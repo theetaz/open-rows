@@ -53,3 +53,57 @@ it('writes native offsets once and waits for scroll delivery before reading, wit
   expect(handle.metrics.canvasResizeEvents).toBe(resizes);
   handle.destroy();
 });
+it('right-clicks target rows and columns without sorting, and ignores blank space', () => {
+  mockCanvas();
+  const input = props();
+  input.rowHeaderColumn = 0;
+  const onContextMenu = vi.fn();
+  const onHeader = vi.fn();
+  input.onContextMenu = onContextMenu;
+  input.onHeader = onHeader;
+  const host = document.createElement('div');
+  const handle = mountGrid(host, input);
+  const scroll = host.firstElementChild as HTMLElement;
+  scroll.dispatchEvent(
+    new MouseEvent('pointerdown', { button: 2, clientX: 300, clientY: 10 }),
+  );
+  scroll.dispatchEvent(
+    new MouseEvent('contextmenu', {
+      clientX: 300,
+      clientY: 10,
+      cancelable: true,
+    }),
+  );
+  expect(onHeader).not.toHaveBeenCalled();
+  expect(onContextMenu).toHaveBeenLastCalledWith({
+    row: 0,
+    column: 2,
+    kind: 'column',
+    x: 300,
+    y: 10,
+  });
+  scroll.dispatchEvent(
+    new MouseEvent('contextmenu', {
+      clientX: 10,
+      clientY: 39,
+      cancelable: true,
+    }),
+  );
+  expect(onContextMenu).toHaveBeenLastCalledWith({
+    row: 0,
+    column: 1,
+    kind: 'row',
+    x: 10,
+    y: 39,
+  });
+  expect(input.selection.ranges[0]).toEqual({ r0: 0, r1: 0, c0: 1, c1: 99 });
+  scroll.dispatchEvent(
+    new MouseEvent('contextmenu', {
+      clientX: 15_000,
+      clientY: 39,
+      cancelable: true,
+    }),
+  );
+  expect(onContextMenu).toHaveBeenCalledTimes(2);
+  handle.destroy();
+});

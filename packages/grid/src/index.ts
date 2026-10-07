@@ -5,6 +5,7 @@ export type {
   GridDataSource,
   MountGrid,
   GridColumn,
+  GridContextTarget,
   CellRange,
   SelectionModel,
   DisplayCell,

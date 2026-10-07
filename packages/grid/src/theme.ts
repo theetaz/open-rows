@@ -6,7 +6,7 @@ export function gridTheme(mode: 'light' | 'dark'): GridTheme {
   return {
     colours: mode === 'light' ? light : dark,
     rowHeight: parseFloat(geometry['grid-row-height']),
-    fontSize: parseFloat(typography['text-12-5']) * 16,
-    fontFamily: typography['font-ui'],
+    fontSize: parseFloat(typography['text-13']) * 16,
+    fontFamily: typography['font-mono'],
   };
 }

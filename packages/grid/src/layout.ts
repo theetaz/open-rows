@@ -63,7 +63,8 @@ export class GridLayout {
     x: number,
     y: number,
   ): { row: number; column: number } | undefined {
-    if (y < this.rowHeight || x < 0) return undefined;
+    if (y < this.rowHeight || x < 0 || !this.columns.length) return undefined;
+    if ((x < this.pinnedWidth ? x : x + view.x) >= this.width) return undefined;
     return {
       row: Math.floor((y - this.rowHeight + view.y) / this.rowHeight),
       column: this.columnAt(x < this.pinnedWidth ? x : x + view.x),
