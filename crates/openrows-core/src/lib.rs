@@ -8,11 +8,18 @@
 //! [`Canceller`] fires the query's token and the actor sends the driver's
 //! cancel request without waiting for the statement. A panicking driver only
 //! fails its own session. No Tauri dependency (docs/03 §5).
+//!
+//! [`openrows_results::ResultStore`] is the production [`BatchSink`].
+//! [`script::run_script`] runs editor text statement by statement after
+//! [`safety::SafetyPlan`] has gated it (read-only, confirm-before-write).
 #![forbid(unsafe_code)]
 mod actor;
 mod error;
 mod event;
 mod manager;
+mod results;
+pub mod safety;
+pub mod script;
 mod shared;
 mod sink;
 #[cfg(test)]

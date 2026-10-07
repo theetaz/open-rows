@@ -96,7 +96,7 @@ fn append_progress(path: &Path, stage: &str, detail: &str) -> Result<(), SpikeEr
 pub(crate) fn configure(
     builder: tauri::Builder<tauri::Wry>,
 ) -> tauri::Result<tauri::Builder<tauri::Wry>> {
-    let mut store = ResultStore::default();
+    let store = ResultStore::default();
     if mode().is_some_and(SpikeMode::needs_rows) {
         spike_progress("native-configuring", "generating synthetic rows")
             .map_err(|error| tauri::Error::Anyhow(error.into()))?;

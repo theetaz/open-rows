@@ -29,7 +29,7 @@ type Result<T> =
   { status: 'ok'; data: T } | { status: 'error'; error: unknown };
 
 /** Tauri rejects with plain strings for permission or transport failures. */
-function toCommandError(error: unknown): CommandError {
+export function toCommandError(error: unknown): CommandError {
   if (typeof error === 'object' && error !== null && 'kind' in error)
     return new CommandError(error as IpcError);
   const message = error instanceof Error ? error.message : String(error);

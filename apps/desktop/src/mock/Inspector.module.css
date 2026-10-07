@@ -138,56 +138,6 @@
   color: var(--or-secondary);
   font-size: var(--or-text-11);
 }
-.details {
-  min-height: 0;
-  overflow: auto;
-}
-.details h2 {
-  font-size: var(--or-text-15);
-  margin-block: 0 var(--or-space-4);
-}
-.details small {
-  color: var(--or-secondary);
-  font-size: var(--or-text-11-5);
-}
-.fields {
-  border-radius: var(--or-radius-group);
-  background: var(--or-window);
-  border: var(--or-border-width) solid var(--or-separator);
-  overflow: hidden;
-}
-.fields > div {
-  display: flex;
-  align-items: center;
-  min-height: var(--or-grid-row-height);
-  gap: var(--or-space-10);
-  padding-inline: var(--or-space-12);
-}
-.fields > div + div {
-  border-top: var(--or-border-width) solid var(--or-separator);
-}
-.fields dt {
-  color: var(--or-secondary);
-  font-size: var(--or-text-12-5);
-}
-.fields dd {
-  margin-inline-start: auto;
-  max-width: 160px;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  font-variant-numeric: tabular-nums;
-  font-weight: var(--or-weight-medium);
-  font-size: var(--or-text-12-5);
-}
-.fields dd[data-null='true'] {
-  color: var(--or-secondary);
-  font-style: italic;
-}
-.edited {
-  color: var(--or-warning-fg);
-}
-
 .sqlCard pre {
   white-space: pre-wrap;
   overflow-wrap: anywhere;

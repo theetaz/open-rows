@@ -3,9 +3,9 @@ import { forceParsing } from '@codemirror/language';
 import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { sqlEditorExtensions } from './extensions';
-import type { SqlEditorOptions } from './extensions';
+import type { EditorKey, SqlEditorOptions } from './extensions';
 
-export type { SqlEditorOptions };
+export type { EditorKey, SqlEditorOptions };
 export type { EditorView } from '@codemirror/view';
 
 /** A mounted SQL editor; callers own its lifetime. */

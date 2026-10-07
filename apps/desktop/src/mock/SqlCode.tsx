@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import styles from './Content.module.css';
+import styles from './SqlCode.module.css';
 
 const keywords =
   /^(SELECT|AS|FROM|WHERE|AND|GROUP|BY|ORDER|DESC|CREATE|TABLE|PRIMARY|KEY|NOT|NULL|DEFAULT|INDEX|ON|BEGIN|UPDATE|SET|INSERT|INTO|VALUES|DELETE|COMMIT|interval)$/i;

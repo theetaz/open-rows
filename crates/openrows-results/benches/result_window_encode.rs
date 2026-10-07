@@ -8,7 +8,7 @@ fn window_encode(criterion: &mut Criterion) -> Result<(), Box<dyn std::error::Er
     let mut group = criterion.benchmark_group("result_window_encode");
     for (rows, cols) in [(256, 20), (1024, 20), (256, 100)] {
         let source = synthetic::batch(synthetic::SPIKE_ROWS, cols, synthetic::SPIKE_SEED)?;
-        let mut store = ResultStore::default();
+        let store = ResultStore::default();
         store.insert("bench".to_owned(), vec![source])?;
         let window = Window {
             row_start: 543_219,

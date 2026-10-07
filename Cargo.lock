@@ -3168,6 +3168,7 @@ dependencies = [
  "openrows-driver-postgres",
  "openrows-results",
  "openrows-secrets",
+ "openrows-sql",
  "openrows-store",
  "openrows-types",
  "rustix",
@@ -3188,9 +3189,12 @@ name = "openrows-core"
 version = "0.1.0"
 dependencies = [
  "arrow-array",
+ "arrow-ipc",
  "arrow-schema",
  "openrows-driver-api",
  "openrows-driver-postgres",
+ "openrows-results",
+ "openrows-sql",
  "openrows-types",
  "thiserror 2.0.21",
  "tokio",

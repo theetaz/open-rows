@@ -1,0 +1,20 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.code {
+  margin: 0;
+  padding: var(--or-space-12);
+  overflow: auto;
+  background: var(--or-window);
+  color: var(--or-text);
+  font-family: var(--or-font-mono);
+  font-size: var(--or-text-11-5);
+  line-height: 1.6;
+}
+.code [data-token='keyword'] {
+  color: var(--or-info-fg);
+}
+.code [data-token='string'] {
+  color: var(--or-danger-fg);
+}
+.code [data-token='function'] {
+  color: var(--or-success-fg);
+}

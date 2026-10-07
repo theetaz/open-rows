@@ -6,6 +6,7 @@ mod editor_report;
 mod grid_report;
 #[cfg(target_os = "macos")]
 mod material;
+mod queries;
 mod results;
 mod spike;
 mod startup;
@@ -34,7 +35,11 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
             catalog::catalog_schemas,
             catalog::catalog_objects,
             catalog::catalog_search,
-            catalog::catalog_close
+            catalog::catalog_close,
+            queries::commands::query_execute,
+            queries::commands::query_cancel,
+            queries::commands::results_release,
+            queries::commands::history_recent
         ])
         .events(tauri_specta::collect_events![sessions::SessionStateChanged])
         .constant(
@@ -63,7 +68,7 @@ pub fn export_bindings(path: &std::path::Path) -> Result<(), specta_typescript::
 pub fn run() -> Result<(), tauri::Error> {
     startup_report::initialize();
     startup_report::record(startup_report::Phase::BuilderStart);
-    let builder = spike::configure(tauri::Builder::default())?;
+    let builder = spike::configure(tauri::Builder::default())?.manage(queries::Queries::default());
     let specta = command_builder();
     let controls = specta.invoke_handler();
     let binary: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool =

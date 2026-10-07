@@ -71,12 +71,7 @@ it('dispatches panel, tab and saved-connection shortcuts', async () => {
     screen.getByRole('button', { name: 'Toggle inspector (⌥⌘I)' }),
   ).toHaveAttribute('aria-pressed', 'false');
   key('t');
-  expect(screen.getByRole('tab', { name: /SQL Query 1/ })).toHaveAttribute(
-    'aria-selected',
-    'true',
-  );
-  key('w');
-  expect(screen.queryByRole('tab', { name: /SQL Query 1/ })).toBeNull();
+  expect(screen.queryByRole('tab', { name: /SQL Query/ })).toBeNull();
   for (const [index, name] of [
     'orders-local',
     'analytics-prod',
@@ -91,6 +86,13 @@ it('dispatches panel, tab and saved-connection shortcuts', async () => {
   expect(
     screen.getByRole('button', { name: 'Switch to events-dev' }),
   ).toHaveAttribute('aria-pressed', 'true');
+  key('t');
+  expect(screen.getByRole('tab', { name: /SQL Query 1/ })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  key('w');
+  expect(screen.queryByRole('tab', { name: /SQL Query 1/ })).toBeNull();
   await screen.findAllByText('Connected · PostgreSQL 17.2');
 });
 it('auto-collapses at 1099 and reopens an overlay at 900 without shrinking content', async () => {

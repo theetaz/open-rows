@@ -7,7 +7,7 @@ use std::io::Cursor;
 
 fn source_store() -> Result<(RecordBatch, ResultStore), Box<dyn std::error::Error>> {
     let source = synthetic::batch(73, 20, 42)?;
-    let mut store = ResultStore::default();
+    let store = ResultStore::default();
     store.insert(
         "source".into(),
         vec![source.slice(0, 31), source.slice(31, 42)],
@@ -71,7 +71,7 @@ fn empty_clamped_and_overflowing_windows() -> Result<(), Box<dyn std::error::Err
 
 #[test]
 fn errors_are_typed() -> Result<(), Box<dyn std::error::Error>> {
-    let (_, mut store) = source_store()?;
+    let (_, store) = source_store()?;
     let window = Window {
         row_start: 0,
         row_count: 10,
@@ -120,7 +120,7 @@ fn errors_are_typed() -> Result<(), Box<dyn std::error::Error>> {
 fn deterministic_source_and_zero_rows() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(synthetic::batch(73, 20, 42)?, synthetic::batch(73, 20, 42)?);
     assert_ne!(synthetic::batch(73, 20, 42)?, synthetic::batch(73, 20, 43)?);
-    let mut store = ResultStore::default();
+    let store = ResultStore::default();
     store.insert("empty".into(), vec![synthetic::batch(0, 20, 42)?])?;
     let bytes = store.window(
         "empty",

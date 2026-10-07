@@ -44,6 +44,14 @@ The Rust side lives in `crates/openrows-sql` (pure, no I/O); PostgreSQL rules on
 - `statement_at(&statements, cursor) -> Option<usize>`: the statement containing the cursor; between statements (after `;`, blank lines, a trailing same-line comment) the closest **preceding** statement, so ⌘↵ right after typing `…;` runs it; before the first statement, the first one. A cursor exactly on a statement's first byte selects that statement.
 - `placeholders(text, dialect)` returns `$n`, `:name` and `?` positions (see §5).
 
+### 2.2 Current implementation (D-07, slices of M1-14, M1-19, M1-21)
+
+- The workspace content area is a real query tab per connection (`apps/desktop/src/features/query/`). `@openrows/editor` loads lazily with the first tab; `mountSqlEditor` gained a `keys` option (application shortcuts ahead of the default keymaps), used for ⌘↵ (run current) and ⇧⌘↵ (run all). ⌘↵ with a non-empty selection runs exactly the selected text. The same chords work anywhere in the tab (toolbar, results).
+- Statement awareness still runs in Rust: the editor sends the full text and the cursor (UTF-16 offset) and `query_execute` applies `split` / `statement_at` (§2.1), so there is no TypeScript port yet; range highlighting and gutter status are later work.
+- Before execution every statement is classified and gated (read-only blocks writes, confirm-writes and dangerous statements open a confirmation sheet listing them); see [06 §9](06-ipc-and-result-pipeline.md#9-implementation-notes-d-07-query-execution-and-results).
+- Editor text is kept per tab in memory (saved from the editor at most every 300 ms and on unmount); persisting it to the local store (§7, NFR-REL-01) is later work.
+- To open a tab from elsewhere (schema tree, history, assistant), call `QueryTabs.open(connectionId, { sql?, title?, objectPath? })` from `useQueryTabs()`; the workspace controller exposes it as `addQuery(sql?)` and `openObject(object)`, which refocuses an open tab for the same object.
+
 ## 3. Autocomplete
 
 ```mermaid

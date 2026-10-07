@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "OpenRows engine core: actor-per-session runtime, cancellation and query events"
+description = "OpenRows engine core: actor-per-session runtime, cancellation, query events, scripts and safety gating"
 
 [lints]
 workspace = true
@@ -14,11 +14,14 @@ workspace = true
 arrow-array = "60"
 arrow-schema = "60"
 openrows-driver-api = { path = "../openrows-driver-api" }
+openrows-results = { path = "../openrows-results" }
+openrows-sql = { path = "../openrows-sql" }
 openrows-types = { path = "../openrows-types" }
 thiserror.workspace = true
 tokio = { version = "1.53", features = ["macros", "rt", "sync", "time"] }
 tokio-util = "0.7.19"
 
 [dev-dependencies]
+arrow-ipc = { version = "60", default-features = false }
 openrows-driver-postgres = { path = "../openrows-driver-postgres" }
 tokio = { version = "1.53", features = ["macros", "rt-multi-thread", "sync", "time"] }

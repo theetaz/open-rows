@@ -24,6 +24,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "catalog_objects",
             "catalog_search",
             "catalog_close",
+            "query_execute",
+            "query_cancel",
+            "results_release",
+            "history_recent",
         ]),
     ))?;
     Ok(())
