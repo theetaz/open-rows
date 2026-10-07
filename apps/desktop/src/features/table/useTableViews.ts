@@ -12,11 +12,17 @@ import type { PageRequest, TableQueryDto } from '@openrows/ipc';
 import { isActive } from '../query/run';
 import { emptyEntry, entriesReducer } from './entries';
 import type { EntryAction, TableEntry } from './entries';
+import type { EditHistory } from './editHistory';
 import type { TableTargetRef, TableView } from './model';
 
 /** State and IPC actions of every open table tab. */
 export type TableViews = {
+  hasChanges: () => boolean;
   entryOf: (tabId: string) => TableEntry;
+  setEdits: (
+    tabId: string,
+    change: (edits: EditHistory) => EditHistory,
+  ) => void;
   setView: (tabId: string, change: (view: TableView) => TableView) => void;
   /** Run one page; `key` identifies it so a remount does not reload. */
   loadPage: (tabId: string, key: string, request: PageRequest) => void;
@@ -148,7 +154,15 @@ export function useTableViews(): TableViews {
     dispatch({ tabId, action });
   };
   return {
+    hasChanges: () =>
+      Object.values(entries).some(
+        (entry) =>
+          entry && (entry.edits.current.length > 0 || entry.edits.pending),
+      ),
     entryOf: (tabId) => entries[tabId] ?? emptyEntry,
+    setEdits: (tabId, change) => {
+      send(tabId, { type: 'edits', change });
+    },
     setView: (tabId, change) => {
       send(tabId, { type: 'view', change });
     },

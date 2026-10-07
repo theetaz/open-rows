@@ -3,6 +3,11 @@ import { useRef } from 'react';
 import { Button } from '@openrows/ui';
 import type { ResultMeta } from '../query/run';
 import type { TableObject } from '../query/tabs';
+import { StagedRows } from './StagedRows';
+import { EditToolbar } from './EditToolbar';
+import { RowEditSheet } from './RowEditSheet';
+import { useRowEditing } from './useRowEditing';
+import { useTableContext } from './TableContextMenu';
 import { ColumnsPanel } from './ColumnsPanel';
 import { FilterBar } from './FilterBar';
 import { StructureView } from './StructureView';
@@ -14,6 +19,8 @@ import { useTableKeys } from './useTableKeys';
 import { useTableTab } from './useTableTab';
 import type { TableViews } from './useTableViews';
 import styles from './Table.module.css';
+
+const noKeys: readonly string[] = [];
 
 type TableTabProps = {
   tabId: string;
@@ -32,21 +39,30 @@ type TableTabProps = {
 export function TableTab(props: TableTabProps): React.JSX.Element {
   const { table, sessionId } = props;
   const root = useRef<HTMLElement>(null);
+  const rowSequence = useRef(0);
   const state = useTableTab(props);
   const { view, actions, columns } = state;
   useTableKeys(root, actions);
+  const editing = useRowEditing({
+    ...props,
+    target: state.query.target,
+    offset: view.offset,
+  });
   const showRow = (result: ResultMeta, row: number): void => {
-    readRow(result, row).then(
-      (fields) => {
-        props.onRow({
-          table: table.name,
-          number: view.offset + row + 1,
-          fields,
-        });
-      },
-      () => undefined,
-    );
+    rowHandler({
+      table,
+      view,
+      editing,
+      onRow: props.onRow,
+      sequence: rowSequence,
+    })(result, row);
   };
+  const context = useTableContext({
+    editing,
+    changeView: (update) => {
+      props.views.setView(props.tabId, update);
+    },
+  });
   return (
     <section
       ref={root}
@@ -63,7 +79,16 @@ export function TableTab(props: TableTabProps): React.JSX.Element {
         />
       )}
       {view.mode === 'data' ? (
-        sessionId && <TableData state={state} onRow={showRow} />
+        sessionId && (
+          <TableData
+            state={state}
+            onRow={showRow}
+            onEdit={editing.open}
+            onContextMenu={context.show}
+            changes={editing.history.current}
+            editKeys={editing.info?.key ?? noKeys}
+          />
+        )
       ) : (
         <StructureView structure={state.entry.structure} show={view.mode} />
       )}
@@ -74,6 +99,17 @@ export function TableTab(props: TableTabProps): React.JSX.Element {
           actions={actions}
         />
       )}
+      <StagedRows editing={editing} />
+      {view.mode === 'data' && (
+        <EditToolbar editing={editing} ready={sessionId !== null} />
+      )}
+      {editing.error && !editing.review && (
+        <p role="alert" className={styles.banner}>
+          {editing.error}
+        </p>
+      )}
+      <RowEditSheet editing={editing} />
+      {context.menu}
       <TableFooter state={state} ready={sessionId !== null} />
     </section>
   );
@@ -96,4 +132,50 @@ function Banner(props: TableTabProps): React.JSX.Element | null {
       </Button>
     </p>
   );
+}
+
+function rowHandler({
+  table,
+  view,
+  editing,
+  onRow,
+  sequence,
+}: {
+  table: TableObject;
+  view: import('./model').TableView;
+  editing: import('./useRowEditing').RowEditing;
+  onRow: TableTabProps['onRow'];
+  sequence: React.RefObject<number>;
+}) {
+  return (result: ResultMeta, row: number): void => {
+    const ticket = ++sequence.current;
+    readRow(result, row).then(
+      (fields) => {
+        if (ticket !== sequence.current) return;
+        onRow({
+          table: table.name,
+          number: view.offset + row + 1,
+          fields,
+          ...(editing.info && !editing.info.readOnly && editing.info.key.length
+            ? {
+                onEdit: (name: string) => {
+                  const column = result.columns.findIndex(
+                    (item) => item.name === name,
+                  );
+                  if (column >= 0) editing.open(result, { row, column });
+                },
+              }
+            : {}),
+        });
+      },
+      (error: unknown) => {
+        onRow({
+          table: table.name,
+          number: view.offset + row + 1,
+          fields: [],
+          error: error instanceof Error ? error.message : String(error),
+        });
+      },
+    );
+  };
 }

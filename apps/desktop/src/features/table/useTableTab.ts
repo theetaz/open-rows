@@ -49,6 +49,7 @@ export type TableActions = {
   addRow: (after?: number) => void;
   toggleFilters: () => void;
   toggleColumns: () => void;
+  display: (setting: 'rowNumbers' | 'striped') => void;
   toggleHidden: (name: string) => void;
   mode: (mode: ViewMode) => void;
   count: () => void;
@@ -193,9 +194,7 @@ function actions(
       change((view) => ({ ...view, combinator }));
     },
     editRow: (id: number, patch: Partial<FilterRow>) => {
-      editRows((rows) =>
-        rows.map((row) => (row.id === id ? { ...row, ...patch } : row)),
-      );
+      editRows((rows) => updateFilter(rows, id, patch));
     },
     removeRow: (id: number) => {
       editRows((rows) => rows.filter((row) => row.id !== id));
@@ -205,8 +204,11 @@ function actions(
       if (!entry.view.filtersOpen && !entry.view.rows.length) addRow();
       else change((view) => ({ ...view, filtersOpen: !view.filtersOpen }));
     },
-    toggleColumns: () => {
+    toggleColumns() {
       change((view) => ({ ...view, columnsOpen: !view.columnsOpen }));
+    },
+    display: (setting) => {
+      change((view) => ({ ...view, [setting]: !view[setting] }));
     },
     toggleHidden: (name: string) => {
       change((view) => ({
@@ -229,4 +231,12 @@ export function canNext(entry: TableEntry): boolean {
   return (
     !isActive(entry.run) && !!result?.done && result.rows >= entry.view.limit
   );
+}
+
+function updateFilter(
+  rows: readonly FilterRow[],
+  id: number,
+  patch: Partial<FilterRow>,
+): FilterRow[] {
+  return rows.map((row) => (row.id === id ? { ...row, ...patch } : row));
 }

@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 import { lazy, Suspense } from 'react';
 import { Button } from '@openrows/ui';
+import type { GridContextTarget } from '@openrows/grid';
 import { isActive } from '../query/run';
 import type { ResultMeta } from '../query/run';
 import type { TableTabState } from './useTableTab';
+import type { StagedEdit } from './editHistory';
 import styles from './Table.module.css';
 const TableGrid = lazy(() =>
   import('./TableGrid').then((module) => ({ default: module.TableGrid })),
@@ -11,11 +13,22 @@ const TableGrid = lazy(() =>
 
 type Props = {
   state: TableTabState;
+  changes: readonly StagedEdit[];
+  editKeys: readonly string[];
+  onEdit: (result: ResultMeta, cell: { row: number; column: number }) => void;
   onRow: (result: ResultMeta, row: number) => void;
+  onContextMenu: (result: ResultMeta, target: GridContextTarget) => void;
 };
 
 /** The page's grid, or why there is none yet (loading, error, no rows). */
-export function TableData({ state, onRow }: Props): React.JSX.Element {
+export function TableData({
+  state,
+  onRow,
+  onEdit,
+  changes,
+  editKeys,
+  onContextMenu,
+}: Props): React.JSX.Element {
   const { entry, result, view, actions } = state;
   const errors = entry.run.messages.filter((item) => item.level === 'error');
   if (errors.length)
@@ -50,6 +63,17 @@ export function TableData({ state, onRow }: Props): React.JSX.Element {
         key={result.id}
         result={result}
         sort={view.sort}
+        changes={changes}
+        editKeys={editKeys}
+        onEdit={(cell) => {
+          onEdit(result, cell);
+        }}
+        onContextMenu={(target) => {
+          onContextMenu(result, target);
+        }}
+        offset={view.offset}
+        rowNumbers={view.rowNumbers}
+        striped={view.striped}
         onHeader={(column) => {
           actions.sort(result, column);
         }}

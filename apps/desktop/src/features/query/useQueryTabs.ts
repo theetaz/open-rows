@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   closeTab,
   editTab,
@@ -21,13 +21,21 @@ export type QueryTabs = {
   tabsFor: (scope: TabScope) => readonly QueryTab[];
   activeFor: (scope: TabScope) => QueryTab | undefined;
   open: OpenQueryTab;
-  close: (id: string) => void;
+  close: (id: string, options?: { discard: boolean }) => void;
+  installCloseGuard?: (guard: (id: string) => boolean) => () => void;
   select: (id: string) => void;
   edit: (id: string, sql: string) => void;
 };
 
 /** Query tabs of every connection and database; descriptors only, never result rows. */
 export function useQueryTabs(): QueryTabs {
+  const guard = useRef<((id: string) => boolean) | null>(null);
+  const installCloseGuard = useCallback((next: (id: string) => boolean) => {
+    guard.current = next;
+    return () => {
+      if (guard.current === next) guard.current = null;
+    };
+  }, []);
   const [state, setState] = useState<TabsState>(emptyTabs);
   const open = useCallback<OpenQueryTab>((scope, init) => {
     setState((current) => openTab(current, scope, init));
@@ -42,7 +50,9 @@ export function useQueryTabs(): QueryTabs {
       return state.tabs.find((tab) => tab.id === id);
     },
     open,
-    close: (id) => {
+    installCloseGuard,
+    close: (id, options) => {
+      if (!options?.discard && guard.current && !guard.current(id)) return;
       setState((current) => closeTab(current, id));
     },
     select: (id) => {

@@ -24,6 +24,8 @@
   padding: var(--or-space-6) var(--or-space-8);
   border-bottom: var(--or-border-width) solid var(--or-separator);
   background: var(--or-panel-solid);
+  max-height: 40%;
+  overflow: auto;
 }
 .filterRow,
 .filterActions {
@@ -31,6 +33,9 @@
   align-items: center;
   gap: var(--or-space-6);
   min-width: 0;
+}
+.filterRow {
+  flex-wrap: wrap;
 }
 .picker {
   max-width: 180px;
@@ -102,7 +107,8 @@
 .structure {
   width: 100%;
   border-collapse: collapse;
-  font-size: var(--or-text-12);
+  font-family: var(--or-font-mono);
+  font-size: var(--or-text-13);
 }
 .structure th,
 .structure td {
@@ -150,23 +156,27 @@
   color: var(--or-secondary);
 }
 .columns label {
+  font-family: var(--or-font-mono);
+  font-size: var(--or-text-13);
   display: flex;
   align-items: center;
   gap: var(--or-space-6);
 }
 .footer {
   flex-shrink: 0;
-  height: var(--or-footer-height);
+  min-height: var(--or-footer-height);
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--or-space-6);
-  padding-inline: var(--or-space-6);
+  padding: var(--or-space-4) var(--or-space-6);
   border-top: var(--or-border-width) solid var(--or-separator);
   background: var(--or-panel-solid);
   white-space: nowrap;
-  overflow: hidden;
+  overflow-x: auto;
 }
 .range {
+  flex-shrink: 0;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -182,6 +192,8 @@
 }
 .details small {
   color: var(--or-secondary);
+  font-family: var(--or-font-ui);
+  font-size: var(--or-text-11-5);
 }
 .details dl {
   display: flex;
@@ -191,7 +203,12 @@
   overflow: auto;
 }
 .details dt {
-  font-size: var(--or-text-11-5);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--or-space-8);
+  font-family: var(--or-font-ui);
+  font-size: var(--or-text-12);
   color: var(--or-secondary);
 }
 .details dd {
@@ -200,12 +217,99 @@
   border-radius: var(--or-radius-control);
   background: var(--or-control-fill);
   font-family: var(--or-font-mono);
-  font-size: var(--or-text-12);
+  font-size: var(--or-text-13);
   white-space: pre-wrap;
   word-break: break-word;
   user-select: text;
+  -webkit-user-select: text;
 }
 .details dd[data-state='null'],
 .details dd[data-state='empty'] {
   color: var(--or-tertiary);
+}
+
+.details dt small {
+  max-width: 50%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.details dd summary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: default;
+}
+.details dd pre {
+  margin: var(--or-space-4) 0 0;
+  font: inherit;
+  white-space: pre-wrap;
+}
+
+.editToolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-6);
+  padding: var(--or-space-4) var(--or-space-8);
+  border-top: var(--or-border-width) solid var(--or-separator);
+  background: var(--or-panel-solid);
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+.editNote {
+  font-size: var(--or-text-11-5);
+  color: var(--or-secondary);
+  margin: 0;
+}
+.editFields {
+  max-height: 55vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-8);
+}
+.editField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-4);
+}
+.editField > label {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-6);
+  font-size: var(--or-text-12);
+}
+.editField > label:first-child {
+  justify-content: space-between;
+}
+.editField small {
+  color: var(--or-secondary);
+  font-size: var(--or-text-11-5);
+}
+.editField input[type='text'] {
+  font-family: var(--or-font-mono);
+  font-size: var(--or-text-13);
+}
+
+.stagedRows {
+  padding: var(--or-space-4) var(--or-space-8);
+  max-height: 120px;
+  overflow: auto;
+  background: var(--or-info-bg);
+  color: var(--or-info-fg);
+  font-size: var(--or-text-12);
+}
+.stagedRows > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--or-space-8);
+}
+
+.details dt button {
+  opacity: 0;
+}
+.details dl > div:hover dt button,
+.details dl > div:focus-within dt button {
+  opacity: 1;
 }

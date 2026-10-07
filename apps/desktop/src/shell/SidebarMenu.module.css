@@ -27,9 +27,21 @@
   text-align: left;
   cursor: default;
 }
-.menu button:hover,
+.menu button:hover:not(:disabled),
 .menu button[aria-checked='true'] {
   background: var(--or-control-fill);
+}
+.menu button:disabled {
+  color: var(--or-secondary);
+  opacity: 0.55;
+}
+.menu hr {
+  border: 0;
+  border-top: 1px solid var(--or-separator);
+  margin: var(--or-space-4);
+}
+.menu button[data-danger='true'] {
+  color: var(--or-danger-fg);
 }
 .menu kbd {
   margin-inline-start: auto;

@@ -2,6 +2,8 @@
 import type { TableStructureDto } from '@openrows/ipc';
 import { idleRun, runReducer } from '../query/run';
 import type { RunAction, RunState } from '../query/run';
+import { emptyEdits } from './editHistory';
+import type { EditHistory } from './editHistory';
 import { initialView } from './model';
 import type { TableView } from './model';
 
@@ -28,6 +30,7 @@ export type TableEntry = {
   sql: string | null;
   structure: StructureState;
   count: CountState;
+  edits: EditHistory;
 };
 
 export const emptyEntry: TableEntry = {
@@ -37,6 +40,7 @@ export const emptyEntry: TableEntry = {
   sql: null,
   structure: { status: 'idle' },
   count: { status: 'idle' },
+  edits: emptyEdits,
 };
 
 export type EntryAction =
@@ -45,12 +49,24 @@ export type EntryAction =
   | { type: 'requested'; key: string }
   | { type: 'sql'; sql: string }
   | { type: 'structure'; structure: StructureState }
-  | { type: 'count'; count: CountState };
+  | { type: 'count'; count: CountState }
+  | { type: 'edits'; change: (edits: EditHistory) => EditHistory };
 
 function entryReducer(entry: TableEntry, action: EntryAction): TableEntry {
   switch (action.type) {
-    case 'view':
-      return { ...entry, view: action.change(entry.view) };
+    case 'edits':
+      return { ...entry, edits: action.change(entry.edits) };
+    case 'view': {
+      const view = action.change(entry.view);
+      return view.revision !== entry.view.revision
+        ? {
+            ...entry,
+            view,
+            count: { status: 'idle' },
+            structure: { status: 'idle' },
+          }
+        : { ...entry, view };
+    }
     case 'run':
       return { ...entry, run: runReducer(entry.run, action.action) };
     case 'requested':

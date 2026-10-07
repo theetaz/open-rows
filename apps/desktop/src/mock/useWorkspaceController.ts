@@ -56,7 +56,7 @@ export function useWorkspaceController(
   const [mode, setMode] = useState<PaletteMode | null>(null);
   useDatabasePrompt(connections, setMode);
   const [refreshes, setRefreshes] = useState(0);
-  const details = useDetails(setPanel);
+  const details = useDetails(setPanel, activeTabId(tabs, scope));
   const commands = queryCommands(tabs, scope, scopeOf);
   const { addQuery, closeTab } = commands;
   /** Relations open as table views (D-08); routines and sequences as query tabs. */
@@ -194,4 +194,11 @@ function shellCommand(input: {
     };
     actions[id]?.();
   };
+}
+
+function activeTabId(
+  tabs: QueryTabs,
+  scope: TabScope | undefined,
+): string | undefined {
+  return scope ? tabs.activeFor(scope)?.id : undefined;
 }

@@ -71,12 +71,12 @@ export function TableFooter({
         value={view.mode}
         onValueChange={actions.mode}
       />
-      <span title="Editing arrives in D-09">
-        <Button size="sm" disabled title="Editing arrives in D-09">
-          + Row
-        </Button>
-      </span>
-      <span className={styles.range} role="status" aria-label="Rows shown">
+      <span
+        className={styles.range}
+        role="status"
+        aria-label="Rows shown"
+        title={pageText(state)}
+      >
         {pageText(state)}
       </span>
       {ready && view.mode === 'data' && <CountControl state={state} />}
@@ -88,6 +88,7 @@ export function TableFooter({
       >
         Filters
       </Button>
+      <DisplayControls state={state} />
       <Button
         size="sm"
         aria-pressed={view.columnsOpen}
@@ -118,5 +119,37 @@ export function TableFooter({
         ›
       </IconButton>
     </footer>
+  );
+}
+
+function DisplayControls({
+  state: { view, actions },
+}: {
+  state: TableTabState;
+}): React.JSX.Element {
+  return (
+    <>
+      <Button
+        size="sm"
+        aria-pressed={view.rowNumbers}
+        onClick={() => {
+          actions.display('rowNumbers');
+        }}
+        aria-label="Row numbers"
+        title="Show row numbers across pages"
+      >
+        #
+      </Button>
+      <Button
+        size="sm"
+        aria-pressed={view.striped}
+        onClick={() => {
+          actions.display('striped');
+        }}
+        title="Alternate row backgrounds"
+      >
+        Stripes
+      </Button>
+    </>
   );
 }

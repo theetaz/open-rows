@@ -12,19 +12,28 @@ export type Details = {
 };
 
 /** The latest selection wins and brings the Details panel forward. */
-export function useDetails(setPanel: (panel: string) => void): Details {
-  const [cell, setCell] = useState<SelectedCell | null>(null);
-  const [row, setRow] = useState<SelectedRow | null>(null);
+export function useDetails(
+  setPanel: (panel: string) => void,
+  scope: string | undefined,
+): Details {
+  const [cell, setCell] = useState<{
+    scope: string | undefined;
+    value: SelectedCell;
+  } | null>(null);
+  const [row, setRow] = useState<{
+    scope: string | undefined;
+    value: SelectedRow;
+  } | null>(null);
   return {
-    cell,
-    row,
+    cell: cell?.scope === scope ? (cell?.value ?? null) : null,
+    row: row?.scope === scope ? (row?.value ?? null) : null,
     onCell: (selected) => {
-      setCell(selected);
+      setCell({ scope, value: selected });
       setRow(null);
       setPanel('Details');
     },
     onRow: (selected) => {
-      setRow(selected);
+      setRow({ scope, value: selected });
       setCell(null);
       setPanel('Details');
     },

@@ -1,0 +1,230 @@
+// SPDX-License-Identifier: Apache-2.0
+import { useState } from 'react';
+import { Button, TextField } from '@openrows/ui';
+import { Sheet, SheetActions } from '@openrows/ui/sheet';
+import type { EditInfoDto } from '@openrows/ipc';
+import type { StagedEdit } from './editHistory';
+import type { RowEditing } from './useRowEditing';
+import { duplicateRow } from './quickEdits';
+import styles from './Table.module.css';
+
+/** Review precise text values; NULL and DEFAULT are explicit, different choices. */
+function EditForm(props: {
+  draft: StagedEdit;
+  info: EditInfoDto;
+  editing: RowEditing;
+}): React.JSX.Element {
+  const { draft, info, editing } = props;
+  const [values, setValues] = useState(draft.values);
+  const set = (name: string, value: string | null): void => {
+    setValues((current) => ({ ...current, [name]: value }));
+  };
+  const inserting = draft.kind === 'insert';
+  return (
+    <Sheet
+      title={inserting ? 'Add row' : `Edit row ${String(draft.number)}`}
+      onClose={editing.close}
+    >
+      <p className={styles.editNote}>
+        Changes are staged until you review and commit them.
+      </p>
+      <EditFields
+        draft={draft}
+        info={info}
+        values={values}
+        set={set}
+        setValues={setValues}
+      />
+      <SheetActions
+        leading={
+          !inserting && (
+            <>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  editing.change({ ...draft, kind: 'delete', values: {} });
+                }}
+              >
+                Stage deletion
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  editing.change(duplicateRow({ ...draft, values }, info));
+                }}
+              >
+                Stage duplicate
+              </Button>
+            </>
+          )
+        }
+      >
+        <Button onClick={editing.close}>Cancel</Button>
+        <Button
+          variant="primary"
+          onClick={() => {
+            editing.change({ ...draft, values });
+          }}
+        >
+          Stage changes
+        </Button>
+      </SheetActions>
+    </Sheet>
+  );
+}
+type Values = StagedEdit['values'];
+function EditFields({
+  draft,
+  info,
+  values,
+  set,
+  setValues,
+}: {
+  draft: StagedEdit;
+  info: EditInfoDto;
+  values: Values;
+  set: (name: string, value: string | null) => void;
+  setValues: React.Dispatch<React.SetStateAction<Values>>;
+}): React.JSX.Element {
+  const inserting = draft.kind === 'insert';
+  return (
+    <div className={styles.editFields}>
+      {info.columns.map((column) => {
+        const protectedField = info.protected.includes(column.name);
+        const active = Object.hasOwn(values, column.name);
+        const value = active
+          ? values[column.name]
+          : draft.original[column.name];
+        return (
+          <div key={column.name} className={styles.editField}>
+            <label>
+              <span>{column.name}</span>
+              <small>{column.dataType}</small>
+            </label>
+            {inserting && (
+              <label>
+                <input
+                  type="checkbox"
+                  aria-label={`Set ${column.name}`}
+                  disabled={protectedField}
+                  checked={active}
+                  onChange={(event) => {
+                    if (event.target.checked) set(column.name, '');
+                    else
+                      setValues((current) =>
+                        Object.fromEntries(
+                          Object.entries(current).filter(
+                            ([name]) => name !== column.name,
+                          ),
+                        ),
+                      );
+                  }}
+                />
+                Use a value{' '}
+                {protectedField ? '(generated)' : '(otherwise DEFAULT)'}
+              </label>
+            )}
+            <TextField
+              aria-label={`Edit ${column.name}`}
+              data-initial-focus={draft.focusField === column.name}
+              value={value ?? ''}
+              placeholder={
+                value === null ? 'NULL' : inserting && !active ? 'DEFAULT' : ''
+              }
+              disabled={
+                protectedField || (inserting && !active) || value === null
+              }
+              onChange={(event) => {
+                set(column.name, event.target.value);
+              }}
+            />
+            {column.nullable && !protectedField && (!inserting || active) && (
+              <NullValue
+                name={column.name}
+                value={value}
+                set={set}
+                focus={draft.focusField === column.name}
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Value editor or transactional commit preview. */
+export function RowEditSheet({
+  editing,
+}: {
+  editing: RowEditing;
+}): React.JSX.Element | null {
+  if (editing.review)
+    return (
+      <Sheet title="Review table changes" onClose={editing.close}>
+        <p>
+          {editing.history.current.length} staged row changes. Conflicts and
+          statement errors roll back the transaction. If the connection is lost
+          during commit, reload before retrying.
+        </p>
+        <pre className={styles.preview}>
+          {editing.review.statements
+            .map(
+              (statement) =>
+                `${statement.sql}\n${statement.params.map((value, index) => `-- $${String(index + 1)} = ${value === null ? 'NULL' : JSON.stringify(value)}`).join('\n')}`,
+            )
+            .join('\n\n')}
+        </pre>
+        {editing.error && <p role="alert">{editing.error}</p>}
+        <SheetActions>
+          <Button disabled={editing.busy} onClick={editing.close}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            disabled={editing.busy || editing.history.uncertain}
+            onClick={() => {
+              editing.commit(editing.review?.token);
+            }}
+          >
+            {editing.busy ? 'Committing…' : 'Commit changes'}
+          </Button>
+        </SheetActions>
+      </Sheet>
+    );
+  return editing.draft && editing.info ? (
+    <EditForm
+      key={editing.draft.id}
+      draft={editing.draft}
+      info={editing.info}
+      editing={editing}
+    />
+  ) : null;
+}
+
+function NullValue({
+  name,
+  value,
+  set,
+  focus,
+}: {
+  name: string;
+  value: string | null | undefined;
+  set: (name: string, value: string | null) => void;
+  focus: boolean;
+}): React.JSX.Element {
+  return (
+    <label>
+      <input
+        type="checkbox"
+        aria-label={`NULL ${name}`}
+        data-initial-focus={focus && value === null}
+        checked={value === null}
+        onChange={(event) => {
+          set(name, event.target.checked ? null : '');
+        }}
+      />
+      NULL
+    </label>
+  );
+}

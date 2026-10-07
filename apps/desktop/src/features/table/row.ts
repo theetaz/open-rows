@@ -18,6 +18,8 @@ export type SelectedRow = {
   /** Row number within the table view, 1-based across pages. */
   number: number;
   fields: readonly RowField[];
+  onEdit?: (field: string) => void;
+  error?: string;
 };
 
 /** Read one row of a page from the result store for the Details panel. */

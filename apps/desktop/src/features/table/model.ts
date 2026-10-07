@@ -39,6 +39,9 @@ export type TableView = {
   filtersOpen: boolean;
   columnsOpen: boolean;
   nextRow: number;
+  rowNumbers: boolean;
+  striped: boolean;
+  revision: number;
 };
 
 export const initialView: TableView = {
@@ -53,6 +56,9 @@ export const initialView: TableView = {
   filtersOpen: false,
   columnsOpen: false,
   nextRow: 1,
+  rowNumbers: true,
+  striped: true,
+  revision: 0,
 };
 
 type OperatorInfo = {
@@ -158,7 +164,13 @@ export function pageKey(
   view: TableView,
   sessionId: string,
 ): string {
-  return JSON.stringify([sessionId, query, view.offset, view.limit]);
+  return JSON.stringify([
+    sessionId,
+    query,
+    view.offset,
+    view.limit,
+    view.revision,
+  ]);
 }
 
 /** Identity of the rows a count covers (filters only). */

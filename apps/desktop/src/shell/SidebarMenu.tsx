@@ -60,7 +60,8 @@ export function SidebarMenu(props: Props): React.JSX.Element {
     document.body,
   );
 }
-function menuKey(event: React.KeyboardEvent, close: () => void): void {
+/** Shared arrow/Home/End navigation and Escape dismissal for action menus. */
+export function menuKey(event: React.KeyboardEvent, close: () => void): void {
   if (event.nativeEvent.isComposing) return;
   if (event.metaKey) {
     close();

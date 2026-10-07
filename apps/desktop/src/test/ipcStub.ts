@@ -111,6 +111,18 @@ export function ipcStub(
     cancelQuery: vi.fn(() => Promise.resolve()),
     releaseResults: vi.fn(() => Promise.resolve()),
     recentHistory: vi.fn(() => Promise.resolve([])),
+    tableEditInfo: vi.fn(() =>
+      Promise.resolve({
+        key: [],
+        protected: [],
+        columns: sampleStructure.columns,
+        readOnly: false,
+      }),
+    ),
+    tableEditRow: vi.fn(() => Promise.resolve({ id: '7', name: '' })),
+    tableEdit: vi.fn(() =>
+      Promise.resolve({ kind: 'prepared', token: 'review', statements: [] }),
+    ),
     tableStructure: vi.fn(() => Promise.resolve(sampleStructure)),
     tablePage: vi.fn(() => new Promise(() => {})),
     tableCount: vi.fn(() => new Promise(() => {})),

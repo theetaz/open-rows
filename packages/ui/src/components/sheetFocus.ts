@@ -66,7 +66,9 @@ function lockBackground(dialog: HTMLElement): () => void {
 /** Like AppKit: the first text field, else the default button, else the first control. */
 function initialFocus(dialog: HTMLElement): HTMLElement | null {
   return (
-    dialog.querySelector<HTMLElement>('[autofocus]') ??
+    dialog.querySelector<HTMLElement>(
+      '[data-initial-focus="true"]:not(:disabled), [autofocus]:not(:disabled)',
+    ) ??
     dialog.querySelector<HTMLElement>(FIELD) ??
     dialog.querySelector<HTMLElement>(DEFAULT_ACTION) ??
     dialog.querySelector<HTMLElement>(FOCUSABLE)

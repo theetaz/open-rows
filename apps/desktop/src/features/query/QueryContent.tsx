@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { lazy, Suspense } from 'react';
+import { useTableCloseGuard } from '../table/useTableCloseGuard';
 import { Button, Tabs } from '@openrows/ui';
 import { sessionOf } from '../connections';
 import type { Connections } from '../connections';
@@ -39,6 +40,7 @@ type Props = {
 export function QueryContent(props: Props): React.JSX.Element {
   const runs = useQueryRuns();
   const tables = useTableViews();
+  const closeGuard = useTableCloseGuard({ tables, runs, tabs: props.tabs });
   const connection = props.connections.active;
   if (!connection)
     return (
@@ -66,6 +68,7 @@ export function QueryContent(props: Props): React.JSX.Element {
   };
   return (
     <main className={styles.content}>
+      {closeGuard}
       <Tabs
         tabs={list.map((item) => ({
           id: item.id,
@@ -75,11 +78,7 @@ export function QueryContent(props: Props): React.JSX.Element {
         }))}
         active={tab?.id ?? ''}
         onSelect={tabs.select}
-        onClose={(id) => {
-          runs.release(id);
-          tables.release(id);
-          tabs.close(id);
-        }}
+        onClose={tabs.close}
         onAdd={open}
       />
       {tab ? (
