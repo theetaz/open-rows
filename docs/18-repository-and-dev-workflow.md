@@ -131,7 +131,7 @@ The full rules, with examples, live in [CONTRIBUTING.md](../CONTRIBUTING.md). Su
 
 - **Conventional Commits 1.0.0** for every commit: `<type>(<scope>)!: <subject>`, header ≤ 72 characters, imperative subject, no trailing period, blank line before the body. Types: `feat`, `fix`, `perf`, `refactor`, `docs`, `test`, `build`, `ci`, `style`, `chore`, `revert`. Scopes are crate/package/area names without the `openrows-` prefix.
 - **Attribution:** commit messages, PR titles, PR descriptions and review comments describe the change only — no `Co-authored-by` trailers, co-author sections, signatures or "generated with/by" footers.
-- **Enforcement:** `scripts/git-hooks/commit-msg` checks all of the above locally (enable once per clone with `git config core.hooksPath scripts/git-hooks`). CI runs the same hook on every non-merge commit in the PR range and on the PR title.
+- **Enforcement:** `scripts/git-hooks/commit-msg` checks all of the above locally (enable once per clone with `git config core.hooksPath scripts/git-hooks`). Run the same hook on the PR title before opening a PR (`printf '%s\n' "<title>" > /tmp/t && bash scripts/git-hooks/commit-msg /tmp/t`). CI re-checks the squash commits that land on `main`.
 - **Branches:** `<type>/<short-description>` (e.g. `feat/grid-column-pinning`), rebased on `main`.
 - **Merging:** squash-merge only; the PR title is the squash commit header, so it must be a valid Conventional Commit header.
 - Small PRs; every PR links an issue, requirement ID or ADR; UI changes include screenshots in both themes; docs updated in the same PR.
@@ -147,12 +147,16 @@ The full rules, with examples, live in [CONTRIBUTING.md](../CONTRIBUTING.md). Su
 
 ### 4.1 Current: minimal pipeline (private repository)
 
-While the repository is private (GitHub's free plan offers no branch protection for private repositories, and macOS/Windows runner minutes are costly), CI is deliberately minimal. [.github/workflows/ci.yml](../.github/workflows/ci.yml) runs one Ubuntu job on every pull request and every push to `main`:
+While the project is solo and private, CI uses free GitHub Actions minutes sparingly. **Local `just check` is the gate for every branch and PR**; CI is a final integration check on `main` only. [.github/workflows/ci.yml](../.github/workflows/ci.yml) runs one Ubuntu job (15-minute timeout; a newer push to `main` cancels an older run) on:
+
+- every push to `main`, i.e. each squash-merged PR;
+- manual dispatch (`gh workflow run CI --ref <branch>`), for the rare case where a branch needs a Linux check before merge.
+
+Pull requests and pushes to feature branches do **not** trigger CI. Steps:
 
 | Step | What it checks |
 | --- | --- |
-| Commit messages (PRs only) | Every non-merge commit in the PR goes through `scripts/git-hooks/commit-msg` via `scripts/ci/check-commit-messages.sh` |
-| PR title (PRs only) | The title goes through the same hook (passed via an environment variable, never interpolated into shell) |
+| Commit messages (push only) | Every non-merge commit pushed to `main` (the squash commit, whose header is the PR title) goes through `scripts/git-hooks/commit-msg` via `scripts/ci/check-commit-messages.sh` |
 | Linux prerequisites | WebKitGTK 4.1, build-essential, curl, wget, file, libxdo, OpenSSL, Ayatana appindicator, librsvg |
 | Node / pnpm | Node 24, pinned pnpm, pnpm store cache, frozen lockfile install |
 | Frontend lint / format | `pnpm lint`, `pnpm format:check` |
@@ -162,7 +166,7 @@ While the repository is private (GitHub's free plan offers no branch protection 
 | Lint | `cargo clippy --workspace --all-targets --locked -- -D warnings` |
 | Tests | `cargo nextest run --workspace --locked` |
 
-Every other gate runs locally with `just check` (cargo-deny, cargo-machete, hygiene) and stays mandatory before opening a PR. Actions are pinned to full commit SHAs, the workflow has read-only permissions, and checkout does not persist credentials. Merging with red CI is not allowed by convention.
+Every gate, including those CI skips (cargo-deny, cargo-machete, hygiene, UI and benchmark checks), runs locally with `just check` and is mandatory before pushing a branch or opening a PR; the acceptance report carries the evidence. Actions are pinned to full commit SHAs, the workflow has read-only permissions, and checkout does not persist credentials. A red run on `main` is fixed immediately with a follow-up PR. PR-triggered CI and branch protection return with the full pipeline (§4.2) once the project has outside contributors.
 
 ### 4.2 Planned: full pipeline (when the repository goes public)
 
