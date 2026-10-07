@@ -12,7 +12,7 @@ use super::pg::{self, Target};
 use super::profiles::profile_id;
 
 /// Resolve a saved connection's target, reading its password from the keychain.
-fn profile_target(state: &Connections, id: &str) -> Result<Target, IpcError> {
+pub(crate) fn profile_target(state: &Connections, id: &str) -> Result<Target, IpcError> {
     let profile = state.profiles.get(profile_id(id)?)?;
     let password = state.profiles.password(&profile)?;
     pg::target(&profile.params, profile.tls.mode, password.as_ref())

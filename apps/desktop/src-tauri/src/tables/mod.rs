@@ -9,3 +9,6 @@
 //! `query_cancel`. `table_structure` serves the Structure and Indexes tabs.
 pub(crate) mod commands;
 mod dto;
+
+pub(crate) mod edit_commands;
+mod edit_dto;

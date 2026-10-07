@@ -45,7 +45,10 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
             tables::commands::table_structure,
             tables::commands::table_sql,
             tables::commands::table_page,
-            tables::commands::table_count
+            tables::commands::table_count,
+            tables::edit_commands::table_edit_info,
+            tables::edit_commands::table_edit_row,
+            tables::edit_commands::table_edit
         ])
         .events(tauri_specta::collect_events![sessions::SessionStateChanged])
         .constant(
@@ -99,6 +102,46 @@ pub fn run() -> Result<(), tauri::Error> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn exported_commands_are_registered_and_allowed_in_the_main_window()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let bindings =
+            std::fs::read_to_string(root.join("../../../packages/ipc/src/generated/bindings.ts"))?;
+        let manifest = std::fs::read_to_string(root.join("build.rs"))?;
+        let capability: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
+            root.join("capabilities/main.json"),
+        )?)?;
+        let permissions = capability["permissions"]
+            .as_array()
+            .ok_or("Missing permissions")?;
+        let mut checked = 0;
+        for line in bindings
+            .lines()
+            .filter(|line| line.contains("__TAURI_INVOKE"))
+        {
+            let Some((_, rest)) = line.rsplit_once("(\"") else {
+                continue;
+            };
+            let Some((command, _)) = rest.split_once('"') else {
+                continue;
+            };
+            assert!(
+                manifest.contains(&format!("\"{command}\"")),
+                "Unregistered command: {command}"
+            );
+            let permission = format!("allow-{}", command.replace('_', "-"));
+            assert!(
+                permissions
+                    .iter()
+                    .any(|item| item.as_str() == Some(&permission)),
+                "Missing permission: {permission}"
+            );
+            checked += 1;
+        }
+        assert!(checked >= 30, "No command contract was checked");
+        Ok(())
+    }
     #[test]
     fn bindings_are_fresh() -> Result<(), Box<dyn std::error::Error>> {
         let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));

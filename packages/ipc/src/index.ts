@@ -61,8 +61,20 @@ export {
   releaseResults,
 } from './queries';
 /** Table views: structure, parameterised pages, exact counts, SQL preview (D-08). */
-export { tableCount, tablePage, tableSql, tableStructure } from './tables';
+export {
+  tableCount,
+  tablePage,
+  tableSql,
+  tableStructure,
+  tableEditInfo,
+  tableEditRow,
+  tableEdit,
+} from './tables';
 export type {
+  EditInfoDto,
+  EditRequest,
+  EditReply,
+  RowEditDto,
   CombinatorDto,
   CountReply,
   FilterDto,

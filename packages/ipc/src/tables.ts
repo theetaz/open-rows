@@ -2,6 +2,8 @@
 import { Channel } from '@tauri-apps/api/core';
 import { commands } from './generated/bindings';
 import type {
+  EditInfoDto,
+  EditReply,
   CountReply,
   CountRequest,
   PageReply,
@@ -47,4 +49,22 @@ export function tableSql(
   limit: number,
 ): Promise<SqlPreviewDto> {
   return unwrap(commands.tableSql(query, offset, limit));
+}
+
+/** Catalog identity and write restrictions for a table. */
+export function tableEditInfo(target: TableTarget): Promise<EditInfoDto> {
+  return unwrap(commands.tableEditInfo(target));
+}
+/** Exact original values for one stable key, with no formatting loss. */
+export function tableEditRow(
+  target: TableTarget,
+  keys: Record<string, string>,
+): Promise<Record<string, string | null>> {
+  return unwrap(commands.tableEditRow(target, keys));
+}
+/** Review bound SQL, then commit only the reviewed payload atomically. */
+export function tableEdit(
+  request: import('./generated/bindings').EditRequest,
+): Promise<EditReply> {
+  return unwrap(commands.tableEdit(request));
 }

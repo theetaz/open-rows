@@ -14,6 +14,7 @@
 mod cancel;
 mod connect;
 mod decode;
+mod edits;
 pub mod fixture;
 mod info;
 mod introspect;
@@ -26,7 +27,9 @@ mod types;
 mod wire;
 
 pub use decode::ResultDecoder;
+pub use edits::BoundEdit;
 pub use info::{Flavour, ServerInfo, TlsStatus};
+pub use introspect::RowEditInfo;
 pub use options::{ConnectOptions, ConnectTimeouts, SslMode};
 pub use session::PgSession;
 pub use startup::PgConfig;

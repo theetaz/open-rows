@@ -83,6 +83,12 @@ export const commands = {
 	tablePage: (request: PageRequest, onEvent: Channel<QueryEventDto>) => typedError<PageReply, IpcError>(__TAURI_INVOKE("table_page", { request, onEvent })),
 	/**  Exact `count(*)` with the current filters; `query_cancel(ticket)` stops it. */
 	tableCount: (request: CountRequest) => typedError<CountReply, IpcError>(__TAURI_INVOKE("table_count", { request })),
+	/**  Catalog key and generated columns, without modifying data. */
+	tableEditInfo: (target: TableTarget) => typedError<EditInfoDto, IpcError>(__TAURI_INVOKE("table_edit_info", { target })),
+	/**  Read exact original values for an identified row; reject unknown/missing keys. */
+	tableEditRow: (target: TableTarget, keys: { [key in string]: string }) => typedError<{ [key in string]: string | null }, IpcError>(__TAURI_INVOKE("table_edit_row", { target, keys })),
+	/**  Prepare exact SQL/binds, then commit only when that preview's token is supplied. */
+	tableEdit: (request: EditRequest) => typedError<EditReply, IpcError>(__TAURI_INVOKE("table_edit", { request })),
 };
 
 /** Events */
@@ -139,6 +145,29 @@ export type DatabaseDto = {
 	/**  Maintenance or provider database, hidden unless "Show system databases". */
 	system: boolean,
 	comment: string | null,
+};
+
+export type EditInfoDto = {
+	key: string[],
+	protected: string[],
+	columns: TableColumnDto[],
+	readOnly: boolean,
+};
+
+export type EditKindDto = "update" | "insert" | "delete";
+
+export type EditReply = { kind: "prepared"; token: string; statements: EditStatementDto[] } | { kind: "committed" };
+
+export type EditRequest = {
+	sessionId: string,
+	target: TableTarget,
+	changes: RowEditDto[],
+	confirmToken: string | null,
+};
+
+export type EditStatementDto = {
+	sql: string,
+	params: (string | null)[],
 };
 
 /**  One editor configuration measured on a freshly mounted 5 000-line document. */
@@ -400,6 +429,12 @@ export type QueryEventDto = { type: "statementStarted"; statement: number } | { 
 { type: "resultEnd"; statement: number; resultId: string; rows: number; truncated: boolean } | { type: "rowsAffected"; statement: number; count: number } | { type: "notice"; statement: number; level: NoticeLevelDto; message: string } | { type: "statementDone"; statement: number; elapsedMs: number } | { type: "failed"; statement: number; error: IpcError } | { type: "cancelled"; statement: number } | { type: "finished"; outcome: RunOutcomeDto; elapsedMs: number };
 
 export type ResultError = { kind: "unknownResult"; message: string } | { kind: "outOfRange" } | { kind: "encoding"; message: string } | { kind: "unavailable"; message: string };
+
+export type RowEditDto = {
+	kind: EditKindDto,
+	original: { [key in string]: string | null },
+	values: { [key in string]: string | null },
+};
 
 /**  Which statements of the editor text to run. */
 export type RunMode = 

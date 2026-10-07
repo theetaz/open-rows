@@ -11,7 +11,9 @@ use crate::simple::TextRow;
 use openrows_driver_api::DriverError;
 use openrows_driver_api::catalog::{DatabaseSummary, ObjectKind, ObjectSummary, SchemaSummary};
 
+mod edit;
 mod table;
+pub use edit::RowEditInfo;
 
 const DATABASES_SQL: &str = include_str!("sql/databases.sql");
 const SCHEMAS_SQL: &str = include_str!("sql/schemas.sql");

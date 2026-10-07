@@ -201,7 +201,7 @@ fn ensure_read(bound: &BoundSql) -> Result<(), IpcError> {
 
 /// The open session, which must belong to the target's saved connection and
 /// database (each opened database has its own session).
-fn owned_session(
+pub(crate) fn owned_session(
     connections: &Connections,
     session_id: &str,
     target: &TableTarget,

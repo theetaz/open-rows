@@ -38,6 +38,9 @@
     "allow-table-structure",
     "allow-table-sql",
     "allow-table-page",
-    "allow-table-count"
+    "allow-table-count",
+    "allow-table-edit-info",
+    "allow-table-edit-row",
+    "allow-table-edit"
   ]
 }

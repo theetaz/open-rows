@@ -26,6 +26,7 @@
 #![forbid(unsafe_code)]
 
 mod classify;
+pub mod edit;
 mod lexer;
 mod placeholders;
 pub mod select;

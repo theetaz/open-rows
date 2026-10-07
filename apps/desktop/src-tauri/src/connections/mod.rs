@@ -15,7 +15,7 @@ mod enums;
 mod error;
 mod metadata;
 mod owners;
-mod pg;
+pub(crate) mod pg;
 pub(crate) mod profiles;
 pub(crate) mod sessions;
 
