@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Pure SQL toolkit for `OpenRows`: statement splitting, current-statement
-//! detection, safety classification and placeholder detection.
+//! detection, safety classification, placeholder detection and the
+//! parameterised table-browsing `SELECT`s of [`select`].
 //!
 //! Everything here is synchronous, allocation-light and free of I/O. No
-//! function fails or panics on any input; byte offsets always refer to the
+//! function panics on any input (only [`select`] refuses invalid names with
+//! a typed error); byte offsets always refer to the
 //! original text so the editor can map results back to the document.
 //!
 //! ```
@@ -26,6 +28,7 @@
 mod classify;
 mod lexer;
 mod placeholders;
+pub mod select;
 mod split;
 
 #[cfg(test)]

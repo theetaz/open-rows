@@ -76,9 +76,15 @@ impl PgSession {
     async fn run(
         &mut self,
         sql: &str,
+        params: &[Option<String>],
         sink: &mut dyn ResultSink,
     ) -> Result<ExecSummary, DriverError> {
-        let columns = self.describe(sql).await?;
+        if params.iter().flatten().any(|value| value.contains('\0')) {
+            return Err(DriverError::Unsupported(
+                "parameter values containing NUL characters".to_owned(),
+            ));
+        }
+        let columns = self.describe(sql, params.len()).await?;
         let reparse = self
             .resolve_type_names(columns.as_deref().unwrap_or_default())
             .await?;
@@ -86,13 +92,18 @@ impl PgSession {
         let formats = decoder
             .as_ref()
             .map_or(&[][..], ResultDecoder::result_formats);
-        send_execute(self.wire.out(), sql, reparse, formats)?;
+        send_execute(self.wire.out(), Statement { sql, params }, reparse, formats)?;
         self.wire.flush().await?;
         stream::collect(&mut self.wire, decoder, sink).await
     }
 
     /// Parse + Describe the unnamed statement; `None` when it returns no rows.
-    async fn describe(&mut self, sql: &str) -> Result<Option<Vec<ColumnDesc>>, DriverError> {
+    /// Parameter types are left to the server; it must expect `params` values.
+    async fn describe(
+        &mut self,
+        sql: &str,
+        params: usize,
+    ) -> Result<Option<Vec<ColumnDesc>>, DriverError> {
         let out = self.wire.out();
         frontend::parse("", sql, iter::empty(), out)?;
         frontend::describe(b'S', "", out)?;
@@ -101,14 +112,14 @@ impl PgSession {
         let (mut columns, mut failure) = (None, None);
         loop {
             match self.wire.next().await? {
-                Message::ParameterDescription(body) if body.parameters().count()? > 0 => {
-                    failure.get_or_insert(DriverError::Unsupported("bind parameters".to_owned()));
+                Message::ParameterDescription(body) => {
+                    let expected = body.parameters().count()?;
+                    failure = failure.or_else(|| parameter_mismatch(expected, params));
                 }
                 Message::RowDescription(body) => columns = Some(column_descs(&body)?),
                 Message::ErrorResponse(body) => failure = Some(server_error(&body)),
                 Message::ReadyForQuery(_) => return failure.map_or(Ok(columns), Err),
                 Message::ParseComplete
-                | Message::ParameterDescription(_)
                 | Message::NoData
                 | Message::NoticeResponse(_)
                 | Message::ParameterStatus(_) => {}
@@ -162,22 +173,50 @@ fn column_descs(body: &RowDescriptionBody) -> Result<Vec<ColumnDesc>, DriverErro
     Ok(descs)
 }
 
+/// Statement text with its text-format parameter values.
+#[derive(Clone, Copy)]
+struct Statement<'a> {
+    sql: &'a str,
+    params: &'a [Option<String>],
+}
+
+/// `None` when the counts agree. Editor SQL has no parameters, so a `$1`
+/// there is reported as unsupported.
+fn parameter_mismatch(expected: usize, given: usize) -> Option<DriverError> {
+    match (expected, given) {
+        _ if expected == given => None,
+        (_, 0) => Some(DriverError::Unsupported("bind parameters".to_owned())),
+        _ => Some(DriverError::Protocol(format!(
+            "the statement expects {expected} parameters but {given} were bound"
+        ))),
+    }
+}
+
+/// Bind (all parameters in text format, so the server applies each inferred
+/// type's input function), Execute and Sync; Parse again when `reparse`.
 fn send_execute(
     out: &mut bytes::BytesMut,
-    sql: &str,
+    statement: Statement<'_>,
     reparse: bool,
     formats: &[i16],
 ) -> Result<(), DriverError> {
     if reparse {
-        frontend::parse("", sql, iter::empty(), out)?;
+        frontend::parse("", statement.sql, iter::empty(), out)?;
     }
-    let no_values = iter::empty::<()>();
     frontend::bind(
         "",
         "",
         iter::empty(),
-        no_values,
-        |(), _| Ok(IsNull::Yes),
+        statement.params.iter(),
+        |value, buffer| {
+            Ok(match value {
+                Some(text) => {
+                    buffer.extend_from_slice(text.as_bytes());
+                    IsNull::No
+                }
+                None => IsNull::Yes,
+            })
+        },
         formats.iter().copied(),
         out,
     )
@@ -193,7 +232,16 @@ impl Session for PgSession {
         sql: &'a str,
         sink: &'a mut dyn ResultSink,
     ) -> BoxFuture<'a, Result<ExecSummary, DriverError>> {
-        Box::pin(self.run(sql, sink))
+        Box::pin(self.run(sql, &[], sink))
+    }
+
+    fn execute_bound<'a>(
+        &'a mut self,
+        sql: &'a str,
+        params: &'a [Option<String>],
+        sink: &'a mut dyn ResultSink,
+    ) -> BoxFuture<'a, Result<ExecSummary, DriverError>> {
+        Box::pin(self.run(sql, params, sink))
     }
 
     fn cancel_handle(&self) -> Option<Arc<dyn CancelHandle>> {

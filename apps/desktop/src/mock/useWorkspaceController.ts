@@ -4,7 +4,10 @@ import type { Connections } from '../features/connections';
 import { useCatalog } from '../features/schema';
 import type { Catalog, ObjectRef } from '../features/schema';
 import { useQueryTabs } from '../features/query';
-import type { QueryTabs, SelectedCell, TabScope } from '../features/query';
+import type { QueryTabs, TabScope } from '../features/query';
+import { openTableView } from '../features/table';
+import { useDetails } from './useDetails';
+import type { Details } from './useDetails';
 import { queryCommands } from './queryCommands';
 import { useCompact, useInspectorOpen } from './layout';
 import { useWorkspaceKeys } from './useWorkspaceKeys';
@@ -53,12 +56,15 @@ export function useWorkspaceController(
   const [mode, setMode] = useState<PaletteMode | null>(null);
   useDatabasePrompt(connections, setMode);
   const [refreshes, setRefreshes] = useState(0);
-  const [cell, setCell] = useState<SelectedCell | null>(null);
+  const details = useDetails(setPanel);
   const commands = queryCommands(tabs, scope, scopeOf);
   const { addQuery, closeTab } = commands;
+  /** Relations open as table views (D-08); routines and sequences as query tabs. */
   const openObject = (object: ObjectRef): void => {
     catalog.setSchema(object.schema);
-    commands.openObject(object);
+    const target = scopeOf(object.database);
+    if (!target || !openTableView(tabs, target, object))
+      commands.openObject(object);
   };
   const prod = connections.active?.env.kind === 'prod';
   const toggleSafe = (): void => {
@@ -102,11 +108,7 @@ export function useWorkspaceController(
     mode,
     setMode,
     refreshes,
-    cell,
-    onCell: (selected) => {
-      setCell(selected);
-      setPanel('Details');
-    },
+    ...details,
     toggleSidebar: () => {
       setSidebar((open) => !open);
     },
@@ -118,7 +120,7 @@ export function useWorkspaceController(
   };
 }
 
-type WorkspaceController = {
+type WorkspaceController = Details & {
   catalog: Catalog;
   tabs: QueryTabs;
   /** Tab scope of the browsed connection and database. */
@@ -133,12 +135,10 @@ type WorkspaceController = {
   mode: PaletteMode | null;
   setMode: (mode: PaletteMode | null) => void;
   refreshes: number;
-  cell: SelectedCell | null;
-  onCell: (cell: SelectedCell) => void;
   toggleSidebar: () => void;
   /** Open a query tab on the active connection, optionally with SQL. */
   addQuery: (sql?: string) => void;
-  /** Open (or refocus) the tab that selects from a tree or ⌘P object. */
+  /** Open (or refocus) the table view or query tab of a tree or ⌘P object. */
   openObject: (object: ObjectRef) => void;
   toggleSafe: () => void;
   refresh: () => void;

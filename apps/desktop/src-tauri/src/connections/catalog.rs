@@ -2,7 +2,7 @@
 //! Schema-tree commands (D-06): databases, schemas, objects and the name
 //! index, read on the connection's per-database metadata sessions (closed by
 //! `session_close` and `connection_close`).
-use openrows_driver_api::catalog::ObjectKind;
+use openrows_driver_api::catalog::{ColumnSummary, ObjectKind, TableStructure};
 use tauri::State;
 
 use super::Connections;
@@ -96,4 +96,38 @@ pub(crate) async fn catalog_search(
         )
         .await?;
     Ok(objects.into_iter().map(ObjectDto::from).collect())
+}
+
+/// A relation's columns, indexes and row estimate on `database`'s metadata
+/// session (the D-08 table view's Structure and Indexes tabs).
+pub(crate) async fn read_structure(
+    state: &Connections,
+    (profile_id, database): (&str, &str),
+    (schema, name): (String, String),
+) -> Result<TableStructure, IpcError> {
+    state
+        .metadata
+        .read(
+            (profile_id, database),
+            || profile_target(state, profile_id),
+            move |session| Box::pin(async move { session.table_structure(&schema, &name).await }),
+        )
+        .await
+}
+
+/// A relation's catalog columns on `database`'s metadata session; table
+/// browsing validates every requested identifier against them.
+pub(crate) async fn read_columns(
+    state: &Connections,
+    (profile_id, database): (&str, &str),
+    (schema, name): (String, String),
+) -> Result<Vec<ColumnSummary>, IpcError> {
+    state
+        .metadata
+        .read(
+            (profile_id, database),
+            || profile_target(state, profile_id),
+            move |session| Box::pin(async move { session.table_columns(&schema, &name).await }),
+        )
+        .await
 }

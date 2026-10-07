@@ -69,6 +69,10 @@ D-06 implements the listing slice of §1–§2 for PostgreSQL. There is no `open
 | Commands | `catalog_databases`, `catalog_schemas`, `catalog_objects(kinds)`, `catalog_search` (all take `profileId` and `database`); `catalog_databases` reads through the connection's home database. DTOs: `DatabaseDto`, `SchemaDto`, `ObjectDto` (`rowEstimate` is a number) and `ObjectKindDto`. Errors use the D-05 `IpcError`. |
 | Tests | Unit tests cover literal quoting, row mapping and malformed rows, DTO serialisation and target derivation. `just test-pg` creates a schema with a table, view, materialized view, sequence, function and procedure and checks every listing, the row estimate and the name index. |
 
+### 2.2 Implementation notes (D-08: table structure)
+
+`PgSession::table_structure(schema, name)` (and `table_columns`) read a relation's columns (`name`, formatted type, nullable, default or identity, comment) from `introspect/sql/columns.sql`, its indexes (`name`, key columns/expressions without INCLUDE columns, unique, primary, access method, partial predicate) from `indexes.sql` and the planner estimate from `estimate.sql`, on the metadata session (`table_structure` command). The model types are `ColumnSummary`, `IndexSummary` and `TableStructure` in `openrows_driver_api::catalog`. The table view's Structure and Indexes tabs show them read-only, and table browsing validates every identifier against the listed columns (docs/08 §10). Constraints, triggers, DDL (T02) and structure editing come later.
+
 ## 3. Structure editing (DDL generation)
 
 Structure edits follow the same **stage → preview → apply** model as data edits.

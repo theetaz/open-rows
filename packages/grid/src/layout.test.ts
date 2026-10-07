@@ -48,3 +48,12 @@ it('rejects invalid widths and non-leading pins', () => {
       ),
   ).toThrow('lead');
 });
+it('hit-tests header cells for sorting, respecting pinned columns', () => {
+  const layout = new GridLayout(columns, 26);
+  const view = { x: 100, y: 260, width: 300, height: 260 };
+  expect(layout.headerHit(view, 100, 12)).toBe(1);
+  expect(layout.headerHit(view, 230, 12)).toBe(3);
+  expect(layout.headerHit(view, 230, 30)).toBeUndefined();
+  expect(layout.headerHit({ ...view, x: 0 }, 470, 4)).toBeUndefined();
+  expect(new GridLayout([], 26).headerHit(view, 4, 4)).toBeUndefined();
+});

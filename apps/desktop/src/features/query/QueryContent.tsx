@@ -3,13 +3,23 @@ import { lazy, Suspense } from 'react';
 import { Button, Tabs } from '@openrows/ui';
 import { sessionOf } from '../connections';
 import type { Connections } from '../connections';
+import type { ProfileDto } from '@openrows/ipc';
+import { useTableViews } from '../table';
+import type { SelectedRow, TableViews } from '../table';
 import type { QueryTabs } from './useQueryTabs';
 import { useQueryRuns } from './useQueryRuns';
+import type { QueryRuns } from './useQueryRuns';
+import type { QueryTab as Tab } from './tabs';
 import type { SelectedCell } from './cell';
 import styles from './Query.module.css';
 type SessionStatus = ReturnType<Connections['statusOf']>;
 const QueryTab = lazy(() =>
   import('./QueryTab').then((module) => ({ default: module.QueryTab })),
+);
+const TableTab = lazy(() =>
+  import('../table/TableTab').then((module) => ({
+    default: module.TableTab,
+  })),
 );
 
 type Props = {
@@ -18,6 +28,8 @@ type Props = {
   /** Active database of the connection; empty when none is open. */
   database: string;
   onCell: (cell: SelectedCell) => void;
+  /** A table view's selected row, for the inspector's Details. */
+  onRow: (row: SelectedRow) => void;
 };
 
 /**
@@ -26,6 +38,7 @@ type Props = {
  */
 export function QueryContent(props: Props): React.JSX.Element {
   const runs = useQueryRuns();
+  const tables = useTableViews();
   const connection = props.connections.active;
   if (!connection)
     return (
@@ -57,35 +70,75 @@ export function QueryContent(props: Props): React.JSX.Element {
         tabs={list.map((item) => ({
           id: item.id,
           label: item.title,
-          kind: 'query' as const,
+          kind: item.kind,
           title: `${connection.name} · ${item.title}`,
         }))}
         active={tab?.id ?? ''}
         onSelect={tabs.select}
         onClose={(id) => {
           runs.release(id);
+          tables.release(id);
           tabs.close(id);
         }}
         onAdd={open}
       />
       {tab ? (
-        <Suspense fallback={<p className={styles.empty}>Loading editor…</p>}>
-          <QueryTab
-            key={tab.id}
+        <Suspense fallback={<p className={styles.empty}>Loading…</p>}>
+          <TabBody
+            {...props}
             tab={tab}
             connection={connection}
-            sessionId={sessionOf(status, tab.database)}
-            notice={notice(status, tab.database)}
+            status={status}
             runs={runs}
-            onSql={tabs.edit}
-            onCell={props.onCell}
-            onConnect={props.connections.connect}
+            tables={tables}
           />
         </Suspense>
       ) : (
         <NoTabs database={props.database} onOpen={open} />
       )}
     </main>
+  );
+}
+
+/** The active tab: a table view or a query editor. */
+function TabBody(
+  props: Props & {
+    tab: Tab;
+    connection: ProfileDto;
+    status: SessionStatus;
+    runs: QueryRuns;
+    tables: TableViews;
+  },
+): React.JSX.Element {
+  const { tab, status } = props;
+  const sessionId = sessionOf(status, tab.database);
+  const reason = notice(status, tab.database);
+  if (tab.kind === 'table' && tab.table)
+    return (
+      <TableTab
+        key={tab.id}
+        tabId={tab.id}
+        table={tab.table}
+        profileId={props.connection.id}
+        sessionId={sessionId}
+        notice={reason}
+        views={props.tables}
+        onRow={props.onRow}
+        onConnect={props.connections.connect}
+      />
+    );
+  return (
+    <QueryTab
+      key={tab.id}
+      tab={tab}
+      connection={props.connection}
+      sessionId={sessionId}
+      notice={reason}
+      runs={props.runs}
+      onSql={props.tabs.edit}
+      onCell={props.onCell}
+      onConnect={props.connections.connect}
+    />
   );
 }
 

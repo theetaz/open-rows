@@ -3,6 +3,9 @@
 //!
 //! Ignored by `just test`; `just test-pg [version]` starts the container, runs
 //! them with `--run-ignored only` and removes it (skipping when Docker is absent).
+#[path = "postgres/table_view.rs"]
+mod table_view;
+
 use arrow_array::{RecordBatch, StringArray};
 use arrow_ipc::reader::StreamReader;
 use arrow_schema::SchemaRef;

@@ -159,3 +159,28 @@ fn rust_encoder_golden_fixture() -> Result<(), Box<dyn std::error::Error>> {
     );
     Ok(())
 }
+
+#[test]
+fn first_integer_reads_a_count() -> Result<(), Box<dyn std::error::Error>> {
+    use arrow_array::{Int64Array, StringArray};
+    use arrow_schema::{DataType, Field, Schema};
+    use std::sync::Arc;
+    let schema = Arc::new(Schema::new(vec![Field::new(
+        "count",
+        DataType::Int64,
+        true,
+    )]));
+    let store = ResultStore::default();
+    let count = RecordBatch::try_new(schema.clone(), vec![Arc::new(Int64Array::from(vec![1811]))])?;
+    store.insert("count".into(), vec![count])?;
+    assert_eq!(store.first_integer("count"), Some(1811));
+    let null = RecordBatch::try_new(schema, vec![Arc::new(Int64Array::from(vec![None::<i64>]))])?;
+    store.insert("null".into(), vec![null])?;
+    assert_eq!(store.first_integer("null"), None);
+    let text_schema = Arc::new(Schema::new(vec![Field::new("t", DataType::Utf8, true)]));
+    let text = RecordBatch::try_new(text_schema, vec![Arc::new(StringArray::from(vec!["1"]))])?;
+    store.insert("text".into(), vec![text])?;
+    assert_eq!(store.first_integer("text"), None);
+    assert_eq!(store.first_integer("missing"), None);
+    Ok(())
+}

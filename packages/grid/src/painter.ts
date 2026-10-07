@@ -176,7 +176,9 @@ export class CanvasPainter {
     } else {
       this.cellBackground(context, cell.state);
       context.fillStyle =
-        cell.state === 'null' ? theme.colours.tertiary : theme.colours.text;
+        cell.state === 'null' || cell.state === 'empty'
+          ? theme.colours.tertiary
+          : theme.colours.text;
       context.fillText(this.text.get(cell), x + 8, y + height / 2);
       if (cell.state === 'deleted') {
         context.fillStyle = theme.colours.destructive;

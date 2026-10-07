@@ -133,7 +133,7 @@ async fn run_statement(
     queued: &Queued,
     sink: &mut dyn ResultSink,
 ) -> Outcome {
-    let mut exec = session.execute(&queued.sql, sink);
+    let mut exec = session.execute_bound(&queued.sql, &queued.params, sink);
     tokio::select! {
         biased;
         result = &mut exec => return Outcome::Done(result),

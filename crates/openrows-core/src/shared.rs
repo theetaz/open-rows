@@ -21,6 +21,8 @@ pub(crate) enum Command {
 pub(crate) struct Queued {
     pub(crate) query: QueryId,
     pub(crate) sql: String,
+    /// Positional text parameters (`$1`, …); empty for editor SQL.
+    pub(crate) params: Vec<Option<String>>,
     pub(crate) token: CancellationToken,
     pub(crate) events: UnboundedSender<QueryEvent>,
 }

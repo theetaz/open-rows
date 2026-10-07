@@ -14,6 +14,8 @@ type Props<Value extends string> = {
   'aria-label': string;
   disabled?: boolean;
   className?: string | undefined;
+  /** Regular (28 px) or compact (24 px) for toolbars and footers (docs/20 §3.3). */
+  size?: 'regular' | 'compact';
 };
 function nextIndex(
   key: string,
@@ -39,6 +41,7 @@ export function SegmentedControl<Value extends string>(
     <div
       className={[styles.segmented, props.className].filter(Boolean).join(' ')}
       role="radiogroup"
+      data-size={props.size ?? 'regular'}
       aria-label={props['aria-label']}
       aria-disabled={props.disabled}
     >

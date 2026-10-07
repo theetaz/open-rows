@@ -106,6 +106,20 @@
   border-radius: calc(var(--or-radius-control) - var(--or-segment-inset));
   background: transparent;
 }
+.segmented[data-size='compact'] {
+  block-size: var(--or-control-height-compact);
+  border-radius: var(--or-radius-control-compact);
+}
+.segmented[data-size='compact'] .segment {
+  block-size: calc(
+    var(--or-control-height-compact) - 2 * var(--or-segment-inset)
+  );
+  padding: 0 var(--or-control-padding-compact);
+  font-size: var(--or-text-12);
+  border-radius: calc(
+    var(--or-radius-control-compact) - var(--or-segment-inset)
+  );
+}
 .segment[aria-checked='true'] {
   background: var(--or-control-active);
   box-shadow: 0 0 0 var(--or-border-width) var(--or-control-stroke);

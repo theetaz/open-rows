@@ -23,6 +23,7 @@ const regular = [
 ] as const;
 const compact = [
   [controls, ".button[data-size='sm']"],
+  [controls, ".segmented[data-size='compact']"],
   [fields, ".frame[data-size='compact']"],
 ] as const;
 
@@ -83,6 +84,7 @@ it('native controls keep the arrow cursor (no pointer hand)', () => {
     ...stylesheets('packages/ui/src'),
     'apps/desktop/src/features/connections/ConnectionSheet.module.css',
     'apps/desktop/src/features/connections/ConnectionHeader.module.css',
+    'apps/desktop/src/features/table/Table.module.css',
   ];
   for (const path of owned)
     expect(read(path), path).not.toMatch(/cursor:\s*pointer/);

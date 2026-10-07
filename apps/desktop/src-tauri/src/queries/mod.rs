@@ -8,7 +8,7 @@
 //! Tauri channel and each executed statement is written to the local history.
 pub(crate) mod commands;
 mod dto;
-mod events;
+pub(crate) mod events;
 mod history;
 
 use std::collections::HashMap;
@@ -23,11 +23,11 @@ pub(crate) struct Queries {
 }
 
 impl Queries {
-    fn track(&self, query_id: &str, cancel: ScriptCanceller) {
+    pub(crate) fn track(&self, query_id: &str, cancel: ScriptCanceller) {
         self.lock().insert(query_id.to_owned(), cancel);
     }
 
-    fn forget(&self, query_id: &str) {
+    pub(crate) fn forget(&self, query_id: &str) {
         self.lock().remove(query_id);
     }
 

@@ -21,10 +21,10 @@ export interface SelectionModel {
   column: number;
   ranges: readonly CellRange[];
 }
-/** Converted once on tile arrival, outside the painter. */
+/** Converted once on tile arrival, outside the painter; `empty` is an empty string shown as `EMPTY`. */
 export interface DisplayCell {
   text: string;
-  state: 'normal' | 'null' | 'changed' | 'deleted';
+  state: 'normal' | 'null' | 'empty' | 'changed' | 'deleted';
 }
 /** Mutable counters are sampled outside painting. */
 export interface SourceMetrics {
@@ -60,6 +60,8 @@ export interface GridProps {
   theme: GridTheme;
   onSelection(selection: SelectionModel): void;
   onError(error: unknown): void;
+  /** Header click on a model column, e.g. to sort a table view server-side. */
+  onHeader?(column: number): void;
 }
 /** Paint counters reset at each benchmark frame; placeholder draws flag blank frames. */
 export interface PaintMetrics {

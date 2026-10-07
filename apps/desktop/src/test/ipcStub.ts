@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { vi } from 'vitest';
-import type { ProfileDto, ServerDto } from '@openrows/ipc';
+import type { ProfileDto, ServerDto, TableStructureDto } from '@openrows/ipc';
 import { catalogStub } from './catalogStub';
 
 /** A saved profile with synthetic, non-secret values. */
@@ -41,6 +41,37 @@ export function server(serverVersion: string, database = 'orders'): ServerDto {
   return { product: 'PostgreSQL', serverVersion, flavour: null, database };
 }
 
+/** A synthetic table structure: `id` (primary key) and `name`. */
+const sampleStructure: TableStructureDto = {
+  columns: [
+    {
+      name: 'id',
+      dataType: 'integer',
+      nullable: false,
+      default: null,
+      comment: null,
+    },
+    {
+      name: 'name',
+      dataType: 'text',
+      nullable: true,
+      default: "'anon'::text",
+      comment: 'Display name',
+    },
+  ],
+  indexes: [
+    {
+      name: 'orders_pkey',
+      columns: 'id',
+      unique: true,
+      primary: true,
+      method: 'btree',
+      predicate: null,
+    },
+  ],
+  rowEstimate: 1811,
+};
+
 /** `@openrows/ipc` replacement for jsdom tests: no native shell, no keychain. */
 export function ipcStub(
   profiles: readonly ProfileDto[] = sampleProfiles,
@@ -80,5 +111,9 @@ export function ipcStub(
     cancelQuery: vi.fn(() => Promise.resolve()),
     releaseResults: vi.fn(() => Promise.resolve()),
     recentHistory: vi.fn(() => Promise.resolve([])),
+    tableStructure: vi.fn(() => Promise.resolve(sampleStructure)),
+    tablePage: vi.fn(() => new Promise(() => {})),
+    tableCount: vi.fn(() => new Promise(() => {})),
+    tableSql: vi.fn(() => Promise.resolve({ sql: 'SELECT 1', params: [] })),
   };
 }

@@ -2,24 +2,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { TileSource, gridTheme } from '@openrows/grid';
 import type { GridColumn, GridHandle, GridProps } from '@openrows/grid';
-import { resultWindow } from '@openrows/ipc';
-import type { ColumnDto, WindowRequest } from '@openrows/ipc';
+import type { ColumnDto } from '@openrows/ipc';
 import { useTheme } from '@openrows/ui';
-import { ArrowWorker } from '../../results/workerClient';
+import { displayWindow } from '../../results/displayWindow';
 import type { ResultMeta } from './run';
 import type { SelectedCell } from './cell';
 import styles from './Query.module.css';
-
-let shared: ArrowWorker | undefined;
-/** One Arrow decode worker for every result grid, started on first use. */
-function worker(): ArrowWorker {
-  shared ??= new ArrowWorker();
-  return shared;
-}
-
-async function load(request: WindowRequest) {
-  return worker().display(await resultWindow(request), request);
-}
 
 function columnsOf(columns: readonly ColumnDto[]): GridColumn[] {
   return columns.map((column, index) => ({
@@ -53,7 +41,7 @@ export function ResultGrid({ result, onCell }: Props): React.JSX.Element {
       result.id,
       result.rows,
       columnsOf(result.columns),
-      load,
+      displayWindow,
     );
     const props: GridProps = {
       source,

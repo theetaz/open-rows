@@ -3,6 +3,7 @@
 //! one at a time on a session, stopping at the first error (docs/04 §4.5).
 use crate::error::ErrorKind;
 use crate::{Canceller, CoreError, QueryEvent, SessionManager};
+use openrows_sql::select::BoundSql;
 use openrows_sql::{Dialect, split, statement_at};
 use openrows_types::SessionId;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -113,21 +114,53 @@ pub async fn run_script(
             send(QueryEvent::Cancelled);
             return ScriptOutcome::Cancelled;
         }
-        let outcome = match manager.execute(session, sql.as_str()) {
-            Ok(mut handle) => {
-                cancel.track(&handle.canceller());
-                drain(&mut handle, &mut send).await
-            }
-            Err(error) => {
-                send(QueryEvent::Failed { error });
-                ScriptOutcome::Failed
-            }
-        };
+        let outcome = follow(manager.execute(session, sql.as_str()), cancel, &mut send).await;
         if outcome != ScriptOutcome::Completed {
             return outcome;
         }
     }
     ScriptOutcome::Completed
+}
+
+/// Execute one generated statement with bind parameters (table browsing,
+/// D-08); its events carry statement index 0.
+pub async fn run_bound(
+    manager: &SessionManager,
+    session: SessionId,
+    statement: BoundSql,
+    cancel: &ScriptCanceller,
+    mut emit: impl FnMut(ScriptEvent),
+) -> ScriptOutcome {
+    let mut send = |event| {
+        emit(ScriptEvent {
+            statement: 0,
+            event,
+        });
+    };
+    if cancel.is_cancelled() {
+        send(QueryEvent::Cancelled);
+        return ScriptOutcome::Cancelled;
+    }
+    let submitted = manager.execute_bound(session, statement.sql, statement.params);
+    follow(submitted, cancel, &mut send).await
+}
+
+/// Track a submitted statement for cancellation and forward its events.
+async fn follow(
+    submitted: Result<crate::QueryHandle, CoreError>,
+    cancel: &ScriptCanceller,
+    send: &mut impl FnMut(QueryEvent),
+) -> ScriptOutcome {
+    match submitted {
+        Ok(mut handle) => {
+            cancel.track(&handle.canceller());
+            drain(&mut handle, send).await
+        }
+        Err(error) => {
+            send(QueryEvent::Failed { error });
+            ScriptOutcome::Failed
+        }
+    }
 }
 
 /// Forward one statement's events up to and including its terminal event.

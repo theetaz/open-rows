@@ -31,19 +31,18 @@ export function convertDisplayTile(
     for (const [index, column] of tile.columns.entries()) {
       const part = locate(column.chunks, row);
       const missing = isMissing(part.chunk, part.row);
+      const value = missing
+        ? ''
+        : displayValue(part.chunk, column.type, part.row);
       cells.push({
-        text: missing
-          ? 'NULL'
-          : displayValue(part.chunk, column.type, part.row),
+        text: missing ? 'NULL' : value || 'EMPTY',
         state: spike
           ? spikeState(
               request.rowStart + row,
               request.colStart + index,
               missing,
             )
-          : missing
-            ? 'null'
-            : 'normal',
+          : markerState(missing, value),
       });
     }
   }
@@ -52,6 +51,12 @@ export function convertDisplayTile(
     columns: tile.columns.length,
     convertMs: performance.now() - started,
   };
+}
+
+/** NULL and empty strings paint as dimmed markers, like TablePlus. */
+function markerState(missing: boolean, value: string): DisplayCell['state'] {
+  if (missing) return 'null';
+  return value ? 'normal' : 'empty';
 }
 
 const decoder = new TextDecoder();

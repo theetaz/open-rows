@@ -60,6 +60,20 @@ export {
   recentHistory,
   releaseResults,
 } from './queries';
+/** Table views: structure, parameterised pages, exact counts, SQL preview (D-08). */
+export { tableCount, tablePage, tableSql, tableStructure } from './tables';
+export type {
+  CombinatorDto,
+  CountReply,
+  FilterDto,
+  FilterOperatorDto,
+  PageRequest,
+  SortDto,
+  TableColumnDto,
+  TableIndexDto,
+  TableQueryDto,
+  TableStructureDto,
+} from './generated/bindings';
 export type {
   ColumnDto,
   ExecuteReply,
