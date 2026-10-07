@@ -1,9 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 use crate::{DriverError, ExecSummary, ResultSink};
-use std::{future::Future, pin::Pin};
+use std::{future::Future, pin::Pin, sync::Arc};
 
 /// Boxed `Send` future, keeping [`Session`] object-safe without extra crates.
 pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
+
+/// Out-of-band cancellation for whatever statement is running on one session.
+///
+/// Obtained before execution and held outside the session actor, so a cancel
+/// request never waits behind the running statement (ADR-0007, docs/04 §6).
+pub trait CancelHandle: Send + Sync {
+    /// Ask the server to abort the current statement; the running `execute`
+    /// then finishes with an error and the session stays usable.
+    ///
+    /// # Errors
+    /// Transport failures while delivering the request.
+    fn cancel(&self) -> BoxFuture<'static, Result<(), DriverError>>;
+}
 
 /// One live connection, exclusively owned by its session actor (ADR-0007).
 ///
@@ -19,6 +32,11 @@ pub trait Session: Send {
         sql: &'a str,
         sink: &'a mut dyn ResultSink,
     ) -> BoxFuture<'a, Result<ExecSummary, DriverError>>;
+
+    /// Out-of-band cancel handle; `None` when the driver cannot cancel server-side.
+    fn cancel_handle(&self) -> Option<Arc<dyn CancelHandle>> {
+        None
+    }
 
     /// Gracefully terminate the connection.
     ///
@@ -92,6 +110,7 @@ mod tests {
         let mut sink = Count::default();
         let summary = ready(session.execute("select", &mut sink))?;
         assert_eq!((summary.batches, sink.0), (1, 1));
+        assert!(session.cancel_handle().is_none());
         ready(session.close())
     }
 }

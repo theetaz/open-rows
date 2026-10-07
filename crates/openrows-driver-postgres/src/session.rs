@@ -1,22 +1,26 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Extended-protocol execution with per-column result formats.
+use crate::cancel::PgCancel;
 use crate::decode::{ResultDecoder, next_cell};
 use crate::startup::{PgConfig, startup};
 use crate::stream;
 use crate::types::{self, ColumnDesc};
 use crate::wire::{Wire, server_error, unexpected};
 use fallible_iterator::FallibleIterator;
-use openrows_driver_api::{BatchPolicy, BoxFuture, DriverError, ExecSummary, ResultSink, Session};
+use openrows_driver_api::{
+    BatchPolicy, BoxFuture, CancelHandle, DriverError, ExecSummary, ResultSink, Session,
+};
 use postgres_protocol::IsNull;
 use postgres_protocol::message::backend::{Message, RowDescriptionBody};
 use postgres_protocol::message::frontend;
-use std::{collections::HashMap, fmt::Write, iter};
+use std::{collections::HashMap, fmt::Write, iter, sync::Arc};
 
 /// One `PostgreSQL` connection, owned by a single session actor (ADR-0007).
 pub struct PgSession {
     wire: Wire,
     type_names: HashMap<u32, String>,
     policy: BatchPolicy,
+    cancel: Option<Arc<PgCancel>>,
 }
 
 impl PgSession {
@@ -26,11 +30,13 @@ impl PgSession {
     /// `Network`, `Auth`, `Server` or `Protocol` failures during startup.
     pub async fn connect(config: &PgConfig) -> Result<Self, DriverError> {
         let mut wire = Wire::connect(&config.host, config.port).await?;
-        startup(&mut wire, config).await?;
+        let key = startup(&mut wire, config).await?;
+        let cancel = key.map(|key| Arc::new(PgCancel::new(config.host.clone(), config.port, key)));
         Ok(Self {
             wire,
             type_names: HashMap::new(),
             policy: BatchPolicy::default(),
+            cancel,
         })
     }
 
@@ -174,6 +180,12 @@ impl Session for PgSession {
         sink: &'a mut dyn ResultSink,
     ) -> BoxFuture<'a, Result<ExecSummary, DriverError>> {
         Box::pin(self.run(sql, sink))
+    }
+
+    fn cancel_handle(&self) -> Option<Arc<dyn CancelHandle>> {
+        self.cancel
+            .clone()
+            .map(|cancel| cancel as Arc<dyn CancelHandle>)
     }
 
     fn close(self: Box<Self>) -> BoxFuture<'static, Result<(), DriverError>> {

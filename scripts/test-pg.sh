@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
-# Run the ignored PostgreSQL integration tests against a throwaway container.
+# Run the ignored PostgreSQL integration tests (driver and session actor) against
+# a throwaway container.
 # Skips (exit 0) when Docker is unavailable; always removes the container.
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
@@ -32,5 +33,5 @@ docker exec "$name" pg_isready --host 127.0.0.1 --quiet
 port="$(docker port "$name" 5432/tcp | head -n 1 | sed 's/.*://')"
 echo "PostgreSQL ${version} ($(docker exec "$name" postgres --version)) on 127.0.0.1:${port}"
 OPENROWS_TEST_PG_PORT="$port" OPENROWS_TEST_PG_PASSWORD="$password" \
-    cargo nextest run -p openrows-driver-postgres --locked --test postgres \
+    cargo nextest run -p openrows-driver-postgres -p openrows-core --locked --test postgres \
     --run-ignored only --no-capture

@@ -240,3 +240,22 @@ pub struct OdbError {
 
 - Each running query writes into the result store through a bounded channel. If the store's memory budget is reached and spilling is slower than the network, the driver stream is paused (natural TCP back-pressure), never buffered unboundedly.
 - Global limits: max concurrent queries (default 16), max concurrent introspection tasks per session (1), max export jobs (4).
+
+## 10. Implementation notes (M1-01 session manager slice)
+
+`crates/openrows-core` implements the session actor runtime from §3, §6 and §7. It does not depend on Tauri. Transactions, reconnect, keepalive, timeouts and the result store are not implemented yet.
+
+| Piece | As built |
+| --- | --- |
+| `SessionManager` | `open(connect_future)` starts one tokio task (the actor) per session. The actor awaits the driver's connect future, so the session is `Connecting` until the handshake finishes. `execute(session, sql)` returns a `QueryHandle` straight away. `close(session)` cancels the session's queries, closes the connection and forgets the session. `subscribe()` broadcasts `SessionEvent` state changes. `state(session)` reads the current state without messaging the actor. |
+| Command queue | Each session has a bounded `mpsc` queue of 32 commands (`Execute`, `Close`). When the queue is full, `execute` returns `QueueFull` instead of waiting. `Close` replies on a `oneshot`. Query progress uses an unbounded per-query event channel. This channel stays small because the sink coalesces `Progress` and the UI pulls rows through windows. |
+| States | `Connecting → Idle ↔ Busy → Closed / Failed`. Terminal states are never left. A server, decode or unsupported error leaves the session `Idle`, because the driver has drained to `ReadyForQuery`. Transport and protocol errors move it to `Failed`. |
+| Cancellation | Uses a `tokio_util` `CancellationToken` tree: manager root → session → query. `QueryHandle::canceller()` can be cloned and fires without waiting for the actor. A queued query never starts and ends with `Cancelled`. For a running query, the actor races the driver future against the token. On cancel it spawns the driver's `CancelHandle::cancel()`, which is obtained before execution; for PostgreSQL this sends `CancelRequest` on a new socket. The actor then waits up to 2 s for the driver to drain. If the driver has no cancel handle, or the grace period runs out, the actor drops the connection and the session becomes `Failed`. |
+| Panic isolation | A supervisor task awaits each actor's `JoinHandle`. On a panic it marks only that session `Failed`, sends `Failed { kind: Internal }` to the running query and broadcasts a `SessionEvent`. Other sessions and the manager keep working (NFR-REL-02). |
+| Errors | `CoreError { kind, message, db_code }` is a cloneable subset of `OdbError`. `ErrorKind` maps every `DriverError` variant, plus `UnknownSession`, `SessionClosed`, `QueueFull` and `Internal`. Position, detail, hint and correlation id come later. |
+| Events | `QueryEvent` follows docs/06 §4: `Started`, `ResultBegin`, `Progress` (at most 10 Hz), `ResultEnd { truncated }`, `RowsAffected` (taken from DML command tags when no result set opened), `Notice`, then exactly one of `Completed`, `Failed` or `Cancelled`. |
+| Result sink | Batches go to the `BatchSink` trait (`begin`, `push → SinkFlow`, `end`), keyed by `ResultId`. When the sink returns `Stop`, the stream is truncated. Wiring this to `openrows-results` is left to the result-store step. |
+
+Driver API changes for this slice: `Session::cancel_handle()` (default `None`), the `CancelHandle` trait, and `ResultSink::notice()` with `NoticeLevel` (default no-op). The PostgreSQL driver records `BackendKeyData` and forwards `NoticeResponse` during execution.
+
+Tests: `cargo nextest run -p openrows-core` uses a scripted fake session. It covers ordered events, progress coalescing, truncation, rows affected, notices, server and transport errors, Busy state, cancel within 200 ms, cancel of queued queries, cancel without driver support, close, a full queue, connect failure, and driver panics while running or connecting. `just test-pg` also runs `crates/openrows-core/tests/postgres.rs` against a real server: a 100 000-row stream, a `RAISE WARNING` notice, cancelling `pg_sleep(30)`, and reusing the session afterwards.

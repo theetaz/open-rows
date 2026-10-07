@@ -21,7 +21,17 @@ pub struct PgConfig {
     pub database: String,
 }
 
-pub(crate) async fn startup(wire: &mut Wire, config: &PgConfig) -> Result<(), DriverError> {
+/// Process id and secret from `BackendKeyData`, needed for `CancelRequest`.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct BackendKey {
+    pub(crate) process_id: i32,
+    pub(crate) secret_key: i32,
+}
+
+pub(crate) async fn startup(
+    wire: &mut Wire,
+    config: &PgConfig,
+) -> Result<Option<BackendKey>, DriverError> {
     let parameters = [
         ("user", config.user.as_str()),
         ("database", config.database.as_str()),
@@ -31,12 +41,17 @@ pub(crate) async fn startup(wire: &mut Wire, config: &PgConfig) -> Result<(), Dr
     frontend::startup_message(parameters, wire.out())?;
     wire.flush().await?;
     authenticate(wire, config).await?;
+    let mut key = None;
     loop {
         match wire.next().await? {
-            Message::ReadyForQuery(_) => return Ok(()),
-            Message::ParameterStatus(_)
-            | Message::BackendKeyData(_)
-            | Message::NoticeResponse(_) => {}
+            Message::ReadyForQuery(_) => return Ok(key),
+            Message::BackendKeyData(body) => {
+                key = Some(BackendKey {
+                    process_id: body.process_id(),
+                    secret_key: body.secret_key(),
+                });
+            }
+            Message::ParameterStatus(_) | Message::NoticeResponse(_) => {}
             Message::ErrorResponse(body) => return Err(server_error(&body)),
             _ => return Err(unexpected("startup")),
         }

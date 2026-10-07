@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Execute-phase message loop: rows → decoder → sink, always draining to `ReadyForQuery`.
 use crate::decode::ResultDecoder;
-use crate::wire::{Wire, server_error, unexpected};
+use crate::wire::{Wire, notice, server_error, unexpected};
 use arrow_array::RecordBatch;
 use openrows_driver_api::{DriverError, ExecSummary, ResultSink, SinkFlow};
 use postgres_protocol::message::backend::Message;
@@ -27,11 +27,14 @@ pub(crate) async fn collect(
             Message::DataRow(body) => state.row(body.buffer()),
             Message::CommandComplete(body) => state.complete(body.tag()?),
             Message::ErrorResponse(body) => state.fail(server_error(&body)),
+            Message::NoticeResponse(body) => {
+                let (level, message) = notice(&body);
+                state.sink.notice(level, &message);
+            }
             Message::ReadyForQuery(_) => return state.finish(),
             Message::ParseComplete
             | Message::BindComplete
             | Message::EmptyQueryResponse
-            | Message::NoticeResponse(_)
             | Message::ParameterStatus(_) => {}
             _ => return Err(unexpected("execute")),
         }

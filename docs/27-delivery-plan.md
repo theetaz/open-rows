@@ -70,7 +70,7 @@ Feature-first mode ([docs/25 §0](25-engineering-standards.md#0-current-delivery
 
 | Step | Slice (from M1 tasks) | Scope for the dogfood alpha | Status |
 | --- | --- | --- | --- |
-| D-01 | M1-01 session manager | Actor-per-session runtime: open/close, command queue, cancel, typed errors, panic isolation, coalesced progress events | todo |
+| D-01 | M1-01 session manager | Actor-per-session runtime: open/close, command queue, cancel, typed errors, panic isolation, coalesced progress events | done (#33) |
 | D-02 | M1-15 SQL toolkit | PostgreSQL statement splitter, current-statement detection, read/write/DDL/dangerous classification (data-safety: thorough tests) | todo |
 | D-03 | M1-02, M1-03, M1-05 | Local store with profiles and history; macOS Keychain secrets; PostgreSQL connection profiles from form fields or a `postgres://` URL; env tag and read-only / confirm-before-write flags | todo |
 | D-04 | M1-11 PostgreSQL driver | Promote the M0-S3 prototype: plain TCP (TLS later), cancel, notices, tagged-text fallback for out-of-range values; container happy-path test | todo |
