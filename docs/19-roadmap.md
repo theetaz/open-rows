@@ -37,6 +37,8 @@ Also: repo skeleton, CI, lint/format, `tauri-specta` bindings pipeline, design t
 
 ## M1 — macOS alpha (Tier 1 databases)
 
+M1 starts with a PostgreSQL **dogfood track** ([docs/27 §3a](27-delivery-plan.md#3a-dogfood-track-postgresql-first)): narrow slices of the tasks below, built feature-first ([docs/25 §0](25-engineering-standards.md#0-current-delivery-mode-feature-first-until-the-postgresql-dogfood-alpha)) so the maintainer can use the app on real databases early and steer the rest by feedback.
+
 - Connections: profiles, groups, env tags, keychain, SSH, TLS, test diagnostics, URL import.
 - Drivers: PostgreSQL (+ compatible flavours detected), MySQL/MariaDB, SQLite — full conformance.
 - Schema tree with persistent cache, fuzzy search, structure view, DDL view.

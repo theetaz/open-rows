@@ -2,6 +2,22 @@
 
 How every change in OpenRows is specified, built, verified, accepted and cleaned up. These rules apply to all contributors and all code, regardless of who or what writes it.
 
+## 0. Current delivery mode: feature-first (until the PostgreSQL dogfood alpha)
+
+From 2026-10-07 the project optimises for **shipping usable features fast** and for maintainer feedback from real databases. The maintainer dogfoods each feature against their own PostgreSQL databases (local first, then SSH/TLS and the other databases) and the next tasks follow that feedback. Feature-first changes order and testing depth only: TablePlus parity (docs/26), including every connection type, remains the 1.0 target. Until the dogfood alpha in [docs/27 §3a](27-delivery-plan.md#3a-dogfood-track-postgresql-first) is usable, these rules **override** the stricter parts of §1–§5:
+
+| Area | Feature-first rule |
+| --- | --- |
+| Spec | Short: goal, scope, a few user-visible acceptance criteria, how to try it. No full template needed. |
+| Tests | Basic tests at the lowest useful layer: unit tests for logic and one happy-path integration test against a local PostgreSQL container for driver/query features. No property tests, fuzzing or golden matrices unless a bug shows they are needed. |
+| Data safety (keep strict) | Anything that can change or delete user data keeps thorough tests: change-set SQL generation and commit/rollback, safe-mode classification, read-only and confirm-before-write. Bugs here are still release blockers. |
+| Performance | No per-task budgets, benchmarks or benchmark runs, no mac-low runs and no regression comparison. Keep the existing architecture (Arrow tiles, canvas grid, workers) and avoid obvious anti-patterns (docs/13 §6). Budgets and regression benchmarks are checked at milestone checkpoints instead (dogfood alpha, M1 exit, beta). |
+| Gates | `just check` before pushing stays mandatory (it is fast and catches lint, type, test and dead-code failures). CI runs only on `main` (docs/18 §4). |
+| Report | Short PR description: what, how tested, how to try it, known gaps. The full §3 acceptance report is only needed at milestone checkpoints. |
+| Code quality | §4 limits stay: they are lint-enforced and cheap, and they keep fast iteration maintainable. |
+
+When the dogfood alpha is usable and stable, the maintainer decides when to switch back to the full process below.
+
 ## 1. Delivery loop
 
 ```mermaid
@@ -147,6 +163,8 @@ Enforcement: `clippy::too_many_lines`, `clippy::cognitive_complexity`, `clippy::
 Speed is the product's main differentiator ([13-performance.md](13-performance.md)). Performance is designed in, measured continuously, and never traded away silently.
 
 ### 5.1 Rules
+
+While §0's feature-first mode applies, these rules are checked at milestone checkpoints, not per task.
 
 1. **Budgets first.** Every performance-relevant task states its budget in the acceptance criteria.
 2. **Measure, then optimise.** Profile (`samply`, Instruments, `cargo flamegraph`, WebKit inspector) before changing code; attach the before/after numbers.
