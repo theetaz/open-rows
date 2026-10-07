@@ -2,8 +2,8 @@
 //! Connection test, session open/close and the session state event.
 use std::str::FromStr;
 
-use openrows_core::{CoreError, SessionEvent, SessionState};
-use openrows_driver_api::{DriverError, Session};
+use openrows_core::{SessionEvent, SessionState};
+use openrows_driver_api::Session;
 use openrows_store::profile::{ConnectionProfile, EnvKind, EnvTag, ProfileService};
 use openrows_types::SessionId;
 use serde::{Deserialize, Serialize};
@@ -14,14 +14,14 @@ use tokio::sync::oneshot;
 use super::Connections;
 use super::dto::ProfileInput;
 use super::error::{IpcError, IpcErrorKind};
-use super::pg;
+use super::pg::{self, ServerDto};
 use super::profiles::{profile_id, resolve_password};
 
 /// A successful connection test.
 #[derive(Clone, Debug, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct TestReport {
-    server_version: String,
+    server: ServerDto,
     elapsed_ms: u32,
 }
 
@@ -30,7 +30,7 @@ pub(crate) struct TestReport {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct SessionOpened {
     session_id: String,
-    server_version: String,
+    server: ServerDto,
 }
 
 /// Session lifecycle states the UI shows (docs/04 §3 subset).
@@ -75,17 +75,13 @@ impl From<SessionEvent> for SessionStateChanged {
     }
 }
 
-fn driver_error(error: &DriverError) -> IpcError {
-    IpcError::from(CoreError::from(error))
-}
-
 /// Driver settings for the form values, using the stored password when the
 /// form keeps it.
-fn test_config(
+fn test_target(
     service: &ProfileService,
     id: Option<&str>,
     input: &ProfileInput,
-) -> Result<openrows_driver_postgres::PgConfig, IpcError> {
+) -> Result<pg::Target, IpcError> {
     let stored = id
         .map(|id| profile_id(id).and_then(|id| Ok(service.get(id)?)))
         .transpose()?;
@@ -93,10 +89,10 @@ fn test_config(
     let mut draft =
         ConnectionProfile::new_postgres(&input.name, input.params(), EnvTag::new(EnvKind::Local));
     input.apply(&mut draft)?;
-    pg::config(&draft.params, draft.tls.mode, password.as_ref())
+    pg::target(&draft.params, draft.tls.mode, password.as_ref())
 }
 
-/// Connect with the form values, report the server version and disconnect.
+/// Connect with the form values, report the server and disconnect.
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn connection_test(
@@ -104,12 +100,12 @@ pub(crate) async fn connection_test(
     profile_id: Option<String>,
     input: ProfileInput,
 ) -> Result<TestReport, IpcError> {
-    let config = test_config(&state.profiles, profile_id.as_deref(), &input)?;
-    let connected = pg::connect(config)
+    let target = test_target(&state.profiles, profile_id.as_deref(), &input)?;
+    let connected = pg::connect(&target)
         .await
-        .map_err(|error| driver_error(&error))?;
+        .map_err(|error| IpcError::from(&error))?;
     let report = TestReport {
-        server_version: connected.server_version,
+        server: connected.server,
         elapsed_ms: u32::try_from(connected.elapsed.as_millis()).unwrap_or(u32::MAX),
     };
     // The test already succeeded; a failed goodbye on a throwaway connection changes nothing.
@@ -128,21 +124,27 @@ pub(crate) async fn session_open(
         .profiles
         .get(super::profiles::profile_id(&profile_id)?)?;
     let password = state.profiles.password(&profile)?;
-    let config = pg::config(&profile.params, profile.tls.mode, password.as_ref())?;
-    let (version, received) = oneshot::channel();
+    let target = pg::target(&profile.params, profile.tls.mode, password.as_ref())?;
+    let (server, received) = oneshot::channel();
     let session = state
         .sessions
         .open(async move {
-            let connected = pg::connect(config).await?;
+            let connected = pg::connect(&target).await?;
             // `open` awaits this future, so the receiver is still alive.
-            let _ = version.send(connected.server_version);
+            let _ = server.send(connected.server);
             let session: Box<dyn Session> = Box::new(connected.session);
             Ok(session)
         })
         .await?;
+    let server = received.await.map_err(|_| {
+        IpcError::new(
+            IpcErrorKind::Internal,
+            "The session opened without server info",
+        )
+    })?;
     Ok(SessionOpened {
         session_id: session.to_string(),
-        server_version: received.await.unwrap_or_default(),
+        server,
     })
 }
 
@@ -161,6 +163,8 @@ pub(crate) async fn session_close(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use openrows_core::CoreError;
+    use openrows_driver_api::DriverError;
 
     #[test]
     fn failed_events_carry_the_message() -> Result<(), serde_json::Error> {

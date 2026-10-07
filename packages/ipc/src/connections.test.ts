@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { expect, it, vi } from 'vitest';
+import { listObjects } from './catalog';
 import { CommandError, deleteProfile, listProfiles } from './connections';
 
 const mockInvoke = vi.hoisted(() => vi.fn());
@@ -30,5 +31,16 @@ it('wraps plain Tauri string rejections as internal errors', async () => {
   await expect(listProfiles()).rejects.toMatchObject({
     kind: 'internal',
     message: 'Command profiles_list not allowed',
+  });
+});
+
+it('reads catalog objects with the profile, database, schema and kinds', async () => {
+  mockInvoke.mockResolvedValue([]);
+  expect(await listObjects('p', 'orders', 'public', ['table'])).toEqual([]);
+  expect(mockInvoke).toHaveBeenCalledWith('catalog_objects', {
+    profileId: 'p',
+    database: 'orders',
+    schema: 'public',
+    kinds: ['table'],
   });
 });

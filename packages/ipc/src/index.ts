@@ -41,16 +41,29 @@ export {
   testConnection,
   updateProfile,
 } from './connections';
+/** Schema tree catalog reads on per-database metadata sessions (D-06). */
+export {
+  closeCatalog,
+  listDatabases,
+  listObjects,
+  listSchemas,
+  searchCatalog,
+} from './catalog';
 export { DEFAULT_CUSTOM_ENV_COLOR } from './generated/bindings';
 export type {
+  DatabaseDto,
   EnvDto,
   EnvKindDto,
   IpcErrorKind,
+  ObjectDto,
+  ObjectKindDto,
   PasswordInput,
   ProfileDto,
   ProfileInput,
   ProfileList,
   SafetyDto,
+  SchemaDto,
+  ServerDto,
   SessionStateChanged,
   TestReport,
   TlsModeDto,

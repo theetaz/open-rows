@@ -3,10 +3,14 @@
 //!
 //! Startup opens the local store and profiles in the app-data dir (docs/15
 //! §1), the OS keychain and a [`SessionManager`]; commands live in
-//! [`profiles`] and [`sessions`].
+//! [`profiles`] and [`sessions`]; [`catalog`] serves the schema tree from
+//! per-database metadata sessions.
+pub(crate) mod catalog;
+mod catalog_dto;
 mod dto;
 mod enums;
 mod error;
+mod metadata;
 mod pg;
 pub(crate) mod profiles;
 pub(crate) mod sessions;
@@ -31,6 +35,7 @@ use sessions::SessionStateChanged;
 pub(crate) struct Connections {
     profiles: ProfileService,
     sessions: SessionManager,
+    metadata: metadata::MetadataSessions,
 }
 
 /// Drops result batches until the result store is wired to sessions (D-07);
@@ -61,7 +66,11 @@ pub(crate) fn install(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Er
     );
     let sessions = SessionManager::new(Arc::new(NoResults));
     forward_session_events(app.handle().clone(), &sessions);
-    app.manage(Connections { profiles, sessions });
+    app.manage(Connections {
+        profiles,
+        sessions,
+        metadata: metadata::MetadataSessions::default(),
+    });
     Ok(())
 }
 

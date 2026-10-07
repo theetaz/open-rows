@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { vi } from 'vitest';
-import type { ProfileDto } from '@openrows/ipc';
+import type { ProfileDto, ServerDto } from '@openrows/ipc';
+import { catalogStub } from './catalogStub';
 
 /** A saved profile with synthetic, non-secret values. */
 export function profile(
@@ -35,6 +36,11 @@ export const sampleProfiles: readonly ProfileDto[] = [
   }),
 ];
 
+/** What a synthetic PostgreSQL server reports after connecting. */
+export function server(serverVersion: string, database = 'orders'): ServerDto {
+  return { product: 'PostgreSQL', serverVersion, flavour: null, database };
+}
+
 /** `@openrows/ipc` replacement for jsdom tests: no native shell, no keychain. */
 export function ipcStub(
   profiles: readonly ProfileDto[] = sampleProfiles,
@@ -49,9 +55,10 @@ export function ipcStub(
     openSession: vi.fn((profileId: string) =>
       Promise.resolve({
         sessionId: `session-${profileId}`,
-        serverVersion: '17.2',
+        server: server('17.2'),
       }),
     ),
+    ...catalogStub(),
     closeSession: vi.fn(() => Promise.resolve()),
     parsePostgresUrl: vi.fn(),
     testConnection: vi.fn(),

@@ -65,6 +65,14 @@ impl PgSession {
         &self.info
     }
 
+    /// Run internal SQL through the simple-query protocol and collect text rows.
+    pub(crate) async fn text_query(
+        &mut self,
+        sql: &str,
+    ) -> Result<Vec<simple::TextRow>, DriverError> {
+        simple::query(&mut self.wire, sql).await
+    }
+
     async fn run(
         &mut self,
         sql: &str,

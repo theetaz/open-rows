@@ -3,39 +3,41 @@ import { useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
   GlassPanel,
-  IconButton,
   SegmentedControl,
   TextField,
   TreeItem,
   HighlightText,
 } from '@openrows/ui';
-import type { Database, DatabaseObject } from './data/databases';
+import {
+  DatabaseSelector,
+  ObjectTree,
+  SchemaPicker,
+  substringIndices,
+} from '../features/schema';
+import type { Catalog, ObjectRef } from '../features/schema';
 import { savedQueries, history } from './data/connections';
 import { sidebarSegments } from './data/content';
-import { SidebarObjects, substringIndices } from './SidebarObjects';
-import { SidebarHeader } from './SidebarHeader';
 import styles from './Sidebar.module.css';
 type Props = {
-  database: Database;
+  catalog: Catalog;
   header: ReactNode;
-  opened: readonly string[];
-  onDatabase: (name: string) => void;
-  onCloseDatabase: (name: string) => void;
   onSwitcher: () => void;
-  table: string;
-  schema: string;
-  onSchema: (schema: string) => void;
-  onTable: (object: DatabaseObject) => void;
+  onOpen: (object: ObjectRef) => void;
   onQuery: () => void;
 };
-/** Live object search scoped to the active database and schema. */
+const exact = (event: React.KeyboardEvent, key: string): boolean =>
+  event.metaKey &&
+  event.key.toLowerCase() === key &&
+  !event.altKey &&
+  !event.ctrlKey &&
+  !event.shiftKey &&
+  !event.nativeEvent.isComposing;
+/** Real object tree of the active database; sample saved queries and history. */
 export function WorkspaceSidebar(props: Props): React.JSX.Element {
+  const { catalog } = props;
   const [segment, setSegment] = useState('Items');
   const [search, setSearch] = useState('');
   const ref = useRef<HTMLDivElement>(null);
-  const names = (segment === 'Queries' ? savedQueries : history).filter(
-    (name) => name.toLowerCase().includes(search.toLowerCase()),
-  );
   return (
     <div
       ref={ref}
@@ -44,25 +46,27 @@ export function WorkspaceSidebar(props: Props): React.JSX.Element {
         if (event.key === 'Escape') {
           event.preventDefault();
           setSearch('');
-        }
-        if (
-          event.metaKey &&
-          event.key.toLowerCase() === 'f' &&
-          !event.altKey &&
-          !event.ctrlKey &&
-          !event.shiftKey &&
-          !event.nativeEvent.isComposing
-        ) {
+        } else if (exact(event, 'f')) {
           event.preventDefault();
           ref.current?.querySelector('input')?.focus();
+        } else if (exact(event, 'r')) {
+          event.preventDefault();
+          catalog.refresh();
         }
       }}
       className={styles.container}
     >
       <GlassPanel className={styles.sidebar}>
-        <SidebarHeader {...props} database={props.database.name}>
+        <header className={styles.header}>
           {props.header}
-        </SidebarHeader>
+          <DatabaseSelector
+            database={catalog.database}
+            opened={catalog.opened}
+            onDatabase={catalog.openDatabase}
+            onCloseDatabase={catalog.closeDatabase}
+            onSwitcher={props.onSwitcher}
+          />
+        </header>
         <SegmentedControl
           aria-label="Sidebar mode"
           options={sidebarSegments}
@@ -79,49 +83,49 @@ export function WorkspaceSidebar(props: Props): React.JSX.Element {
         />
         <div className={styles.objects}>
           {segment === 'Items' ? (
-            <SidebarObjects {...props} search={search} />
+            <ObjectTree
+              catalog={catalog}
+              search={search}
+              onOpen={props.onOpen}
+            />
           ) : (
-            <>
-              {names.map((name) => (
-                <TreeItem
-                  key={name}
-                  label={name}
-                  selected={false}
-                  onSelect={props.onQuery}
-                >
-                  <HighlightText
-                    text={name}
-                    indices={substringIndices(name, search)}
-                  />
-                </TreeItem>
-              ))}
-              {!names.length && <p role="status">No matches</p>}
-            </>
+            <SampleList
+              names={segment === 'Queries' ? savedQueries : history}
+              search={search}
+              onQuery={props.onQuery}
+            />
           )}
         </div>
-        <SchemaPicker {...props} />
+        <SchemaPicker catalog={catalog} />
       </GlassPanel>
     </div>
   );
 }
 
-function SchemaPicker(props: Props): React.JSX.Element {
+function SampleList(props: {
+  names: readonly string[];
+  search: string;
+  onQuery: () => void;
+}): React.JSX.Element {
+  const names = props.names.filter((name) =>
+    name.toLowerCase().includes(props.search.toLowerCase()),
+  );
   return (
-    <div className={styles.schema}>
-      <IconButton aria-label="Create object" size="sm">
-        +
-      </IconButton>
-      <select
-        aria-label="Schema"
-        value={props.schema}
-        onChange={(event) => {
-          props.onSchema(event.target.value);
-        }}
-      >
-        {props.database.schemas.map((schema) => (
-          <option key={schema}>{schema}</option>
-        ))}
-      </select>
-    </div>
+    <>
+      {names.map((name) => (
+        <TreeItem
+          key={name}
+          label={name}
+          selected={false}
+          onSelect={props.onQuery}
+        >
+          <HighlightText
+            text={name}
+            indices={substringIndices(name, props.search)}
+          />
+        </TreeItem>
+      ))}
+      {!names.length && <p role="status">No matches</p>}
+    </>
   );
 }

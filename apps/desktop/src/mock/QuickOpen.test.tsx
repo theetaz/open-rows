@@ -3,6 +3,8 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import axe from 'axe-core';
 import { ThemeProvider } from '@openrows/ui';
+import { searchCatalog } from '@openrows/ipc';
+import { connectTo } from '../test/connect';
 import { Workspace } from './Workspace';
 
 vi.mock('@openrows/ipc', async () =>
@@ -33,14 +35,15 @@ function choose(query: string): void {
 afterEach(() => {
   vi.useRealTimers();
 });
-it('⌘P opens/focuses existing tables, views and functions in all schemas of the active database', async () => {
-  vi.useFakeTimers();
+it('⌘P searches the real name index and opens objects by their catalog path', async () => {
   mount();
+  await connectTo();
+  vi.useFakeTimers();
   await key('p');
-  expect(screen.getByRole('dialog', { name: 'Quick open' })).toBeVisible();
+  const dialog = within(screen.getByRole('dialog', { name: 'Quick open' }));
   expect(
-    within(screen.getByRole('dialog')).getByRole('option', {
-      name: /customers.*public.*412K/,
+    dialog.getByRole('option', {
+      name: /customers.*Table · public · ~412K rows \(estimate\)/,
     }),
   ).toBeVisible();
   choose('cstm');
@@ -50,16 +53,10 @@ it('⌘P opens/focuses existing tables, views and functions in all schemas of th
     'true',
   );
   await key('p');
-  choose('order_summary');
-  expect(screen.getByRole('tab', { name: /order_summary/ })).toHaveAttribute(
-    'title',
-    'orders.public.order_summary',
-  );
-  await key('p');
   choose('calc_tax');
   expect(screen.getByRole('tab', { name: /calc_tax/ })).toHaveAttribute(
     'title',
-    'orders.public.calc_tax()',
+    'orders.public.calc_tax(total numeric)',
   );
   await key('p');
   choose('session_notes');
@@ -70,15 +67,18 @@ it('⌘P opens/focuses existing tables, views and functions in all schemas of th
   expect(screen.getByRole('combobox', { name: 'Schema' })).toHaveValue(
     'archive',
   );
-  await key('p');
-  choose('session_notes');
-  expect(screen.getAllByRole('tab', { name: /session_notes/ })).toHaveLength(1);
-  fireEvent.click(screen.getByRole('button', { name: 'Close session_notes' }));
-  expect(screen.getByRole('combobox', { name: 'Schema' })).toHaveValue(
-    'public',
-  );
+  expect(searchCatalog).toHaveBeenCalledOnce();
 });
-it('⌘⇧P lists twelve commands and executes mock sidebar, inspector, query, refresh and safe mode actions', async () => {
+it('⌘P without a connection explains why nothing is listed', async () => {
+  mount();
+  await key('p');
+  expect(
+    within(screen.getByRole('dialog', { name: 'Quick open' })).getByText(
+      'Select a connection to browse its objects',
+    ),
+  ).toBeVisible();
+});
+it('⌘⇧P lists twelve commands and executes sidebar, inspector, query, refresh and safe mode actions', async () => {
   vi.useFakeTimers();
   mount();
   await key('p', true);
@@ -113,9 +113,7 @@ it('⌘⇧P lists twelve commands and executes mock sidebar, inspector, query, r
     'aria-pressed',
     'true',
   );
-  expect(screen.getByRole('status')).toHaveTextContent(
-    'Mock catalog refreshed (1)',
-  );
+  expect(screen.getByRole('status')).toHaveTextContent('Catalog refreshed (1)');
   await key('p', true);
   choose('Switch database');
   expect(screen.getByRole('dialog', { name: 'Switch database' })).toBeVisible();
