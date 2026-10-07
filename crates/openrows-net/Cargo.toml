@@ -1,0 +1,28 @@
+[package]
+name = "openrows-net"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "SSH tunnel prototype for OpenRows network routes"
+
+[lints]
+workspace = true
+
+[dependencies]
+data-encoding = "2.11"
+hmac = "0.13"
+ring = "0.17"
+# The `rsa` feature is off: the `rsa` crate carries RUSTSEC-2023-0071. RSA user
+# keys are signed with ring instead (see src/auth/rsa.rs).
+russh = { version = "0.64", default-features = false, features = ["ring"] }
+sha1 = "0.11"
+thiserror.workspace = true
+tokio = { version = "1.53", features = ["net", "rt", "time"] }
+zeroize = "1.8"
+
+[dev-dependencies]
+proptest = "1.11"
+tempfile = "3.27"
+tokio = { version = "1.53", features = ["io-util", "macros", "rt-multi-thread", "test-util"] }

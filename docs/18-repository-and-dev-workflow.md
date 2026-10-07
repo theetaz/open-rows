@@ -31,6 +31,7 @@ open-rows/
 ├── crates/openrows-results/    # Arrow result store and window encoder (M0 S1)
 ├── crates/openrows-driver-api/ # draft session/result-sink contract (M0 S3)
 ├── crates/openrows-driver-postgres/ # prototype PG wire → Arrow decoder, benches, container tests
+├── crates/openrows-net/        # SSH tunnel prototype (M0-S4); tests/ssh_container + fixtures/sshd
 ├── packages/ipc/               # @openrows/ipc: wrapper + generated/bindings.ts
 ├── packages/ui/                # tokens, generator, CSS modules, theme and icons
 ├── scripts/                    # tool/hygiene checks, git hooks and startup harness
@@ -56,7 +57,7 @@ open-rows/
 | `sccache` (optional) | Compiler cache; set `RUSTC_WRAPPER=sccache` |
 | `scripts/git-hooks` | Git hooks enabled by `just setup`; currently `commit-msg` |
 
-See [CONTRIBUTING.md §1](../CONTRIBUTING.md#1-first-time-setup) for installation and optional shared `CARGO_TARGET_DIR` setup. On macOS, Xcode Command Line Tools are required. Linux builds need the [Tauri system prerequisites](https://tauri.app/start/prerequisites/). Docker is optional: `just test-pg [version]` runs the PostgreSQL integration tests in a throwaway `postgres:<version>-alpine` container bound to 127.0.0.1, removes it on exit, and skips with exit 0 when Docker is unavailable. CI tooling is described in §4.
+See [CONTRIBUTING.md §1](../CONTRIBUTING.md#1-first-time-setup) for installation and optional shared `CARGO_TARGET_DIR` setup. On macOS, Xcode Command Line Tools are required. Linux builds need the [Tauri system prerequisites](https://tauri.app/start/prerequisites/). Docker is optional: `just test-pg [version]` runs the PostgreSQL integration tests in a throwaway `postgres:<version>-alpine` container bound to 127.0.0.1, removes it on exit, and skips with exit 0 when Docker is unavailable. Docker (Docker Desktop on macOS) also runs the OpenSSH container matrix of `openrows-net`; those tests skip when Docker is unavailable, and `just test-ssh` fails instead of skipping. `ssh-keygen`, `ssh-agent` and `ssh-add` (OpenSSH client tools) generate test keys at test time. CI tooling is described in §4.
 
 ### 2.1 Common commands
 
@@ -66,6 +67,7 @@ just fmt            # format all Rust sources
 just fmt-check      # check formatting without edits
 just lint           # Clippy on every workspace target, warnings are errors
 just test           # cargo-nextest workspace unit tests
+just test-ssh       # OpenSSH container matrix with timings (requires Docker)
 just deny           # licences, advisories, bans, sources
 just machete        # unused dependency scan
 just hygiene        # file length and issue-linked TODO/FIXME checks
