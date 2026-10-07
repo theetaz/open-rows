@@ -20,7 +20,7 @@ export function EnvironmentBadge({ env }: { env: EnvDto }): React.JSX.Element {
 }
 
 /** Inline custom property carrying a user-chosen colour (never a theme colour). */
-export function customColour(env: EnvDto): CSSProperties | undefined {
+function customColour(env: EnvDto): CSSProperties | undefined {
   return env.kind === 'custom'
     ? ({ '--env-color': env.color } as CSSProperties)
     : undefined;

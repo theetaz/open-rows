@@ -6,6 +6,7 @@ import { expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
 import { DatabaseSelector } from './DatabaseSelector';
 const props = {
+  connected: true,
   database: 'orders_archive',
   opened: ['orders', 'orders_archive'],
   onDatabase: vi.fn(),
@@ -20,12 +21,18 @@ function mount(): ReturnType<typeof userEvent.setup> {
   );
   return userEvent.setup();
 }
-it('is disabled without an active database', () => {
-  render(<DatabaseSelector {...props} database="" opened={[]} />);
+it('is disabled until connected and invites opening a database without one', () => {
+  const { rerender } = render(
+    <DatabaseSelector {...props} connected={false} database="" opened={[]} />,
+  );
   expect(
     screen.getByRole('button', { name: 'Opened databases' }),
   ).toBeDisabled();
-  expect(screen.getByText('No database')).toBeVisible();
+  rerender(<DatabaseSelector {...props} database="" opened={[]} />);
+  expect(
+    screen.getByRole('button', { name: 'Opened databases' }),
+  ).toBeEnabled();
+  expect(screen.getByText('No database selected')).toBeVisible();
 });
 it('lists opened databases with active check and keyboard switch, close and focus return', async () => {
   const user = mount();
@@ -80,17 +87,22 @@ it('wraps navigation, ignores composition, closes with Tab/Escape/outside pointe
   expect(screen.queryByRole('menu')).toBeNull();
   expect(opener).toHaveFocus();
 });
-it('protects the last database and leaves close reachable only when enabled', async () => {
+it('can close the last database and names long databases in a tooltip', async () => {
   const user = userEvent.setup();
-  render(<DatabaseSelector {...props} database="orders" opened={['orders']} />);
-  await user.click(
-    screen.getByRole('button', { name: 'Opened databases (orders)' }),
-  );
+  const long = 'a_database_name_much_longer_than_the_sidebar';
+  render(<DatabaseSelector {...props} database={long} opened={[long]} />);
+  const opener = screen.getByRole('button', {
+    name: `Opened databases (${long})`,
+  });
+  expect(opener).toHaveAttribute('title', long);
+  await user.click(opener);
   expect(
-    screen.getByRole('menuitem', { name: 'Close database orders' }),
-  ).toBeDisabled();
-  await user.keyboard('{ArrowDown}');
-  expect(screen.getByRole('menuitem', { name: /Open database/ })).toHaveFocus();
+    screen.getByRole('menuitemradio', { name: `Activate database ${long}` }),
+  ).toHaveAttribute('title', long);
+  await user.click(
+    screen.getByRole('menuitem', { name: `Close database ${long}` }),
+  );
+  expect(props.onCloseDatabase).toHaveBeenCalledWith(long);
 });
 it.each(['light', 'dark'] as const)(
   'axe: database menu clean in %s',

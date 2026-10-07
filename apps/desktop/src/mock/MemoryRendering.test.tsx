@@ -56,39 +56,48 @@ it('closed inspector, palettes, menus and tooltips leave no content DOM', async 
   await user.unhover(tile);
   expect(document.querySelector('[role="tooltip"]')).toBeNull();
 });
-it.each(['k', 'p', 'P'])(
-  'palette %s unmounts at the exit duration',
-  async (key) => {
-    await mount();
-    vi.useFakeTimers();
-    try {
-      await act(async () => {
-        fireEvent.keyDown(window, {
-          key,
-          metaKey: true,
-          shiftKey: key === 'P',
-        });
-        await import('./WorkspacePalettes');
+it('the ⌘K open-database sheet unmounts on Escape', async () => {
+  await mount();
+  await act(async () => {
+    fireEvent.keyDown(window, { key: 'k', metaKey: true });
+    await import('./WorkspacePalettes');
+  });
+  fireEvent.keyDown(
+    screen.getByRole('combobox', { name: 'Search for database' }),
+    { key: 'Escape' },
+  );
+  expect(document.querySelector('dialog')).toBeNull();
+});
+it.each(['p', 'P'])('palette %s unmounts at the exit duration', async (key) => {
+  await mount();
+  vi.useFakeTimers();
+  try {
+    await act(async () => {
+      fireEvent.keyDown(window, {
+        key,
+        metaKey: true,
+        shiftKey: key === 'P',
       });
-      fireEvent.keyDown(
-        screen.getByRole('combobox', {
-          name: /Switch database|Quick open|Command palette/,
-        }),
-        { key: 'Escape' },
-      );
-      act(() => {
-        vi.advanceTimersByTime(159);
-      });
-      expect(document.querySelector('dialog')).not.toBeNull();
-      act(() => {
-        vi.advanceTimersByTime(1);
-      });
-      expect(document.querySelector('dialog')).toBeNull();
-    } finally {
-      vi.useRealTimers();
-    }
-  },
-);
+      await import('./WorkspacePalettes');
+    });
+    fireEvent.keyDown(
+      screen.getByRole('combobox', {
+        name: /Quick open|Command palette/,
+      }),
+      { key: 'Escape' },
+    );
+    act(() => {
+      vi.advanceTimersByTime(159);
+    });
+    expect(document.querySelector('dialog')).not.toBeNull();
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(document.querySelector('dialog')).toBeNull();
+  } finally {
+    vi.useRealTimers();
+  }
+});
 it('inactive query tabs keep their SQL without editor DOM', async () => {
   const user = await mount();
   await connectTo();

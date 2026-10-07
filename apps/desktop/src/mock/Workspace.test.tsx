@@ -9,7 +9,12 @@ import {
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
-import { openSession, recentHistory } from '@openrows/ipc';
+import {
+  executeQuery,
+  openConnection,
+  openSession,
+  recentHistory,
+} from '@openrows/ipc';
 import { connectTo } from '../test/connect';
 import { Workspace } from './Workspace';
 
@@ -37,15 +42,17 @@ it('connects saved profiles from the rail and forces safe mode for prod', async 
   await user.click(safe);
   expect(safe).toHaveAttribute('aria-pressed', 'false');
   const context = screen.getByLabelText('Connection context');
-  expect(context).toHaveTextContent('No connection › No database');
+  expect(context).toHaveTextContent('Not connected : No connection');
   await user.click(
     await screen.findByRole('button', { name: 'Switch to analytics-prod' }),
   );
-  expect(openSession).toHaveBeenCalledWith('id-analytics-prod');
+  expect(openConnection).toHaveBeenCalledWith('id-analytics-prod');
   await waitFor(() => {
-    expect(context).toHaveTextContent('analytics-prod › orders › public');
+    expect(context).toHaveTextContent(
+      'PROD | PostgreSQL 17.2 : analytics-prod : orders : public',
+    );
   });
-  expect(context).toHaveTextContent('Connected · PostgreSQL 17.2');
+  expect(openSession).toHaveBeenCalledWith('id-analytics-prod', 'orders');
   expect(safe).toHaveAttribute('aria-pressed', 'true');
   await user.click(safe);
   expect(safe).toHaveAttribute('aria-pressed', 'true');
@@ -53,7 +60,9 @@ it('connects saved profiles from the rail and forces safe mode for prod', async 
     screen.getByRole('button', { name: 'Switch to events-dev' }),
   );
   await waitFor(() => {
-    expect(context).toHaveTextContent('events-dev › orders');
+    expect(context).toHaveTextContent(
+      'DEV | PostgreSQL 17.2 : events-dev : orders',
+    );
   });
   expect(safe).toHaveAttribute('aria-pressed', 'false');
   await screen.findByRole('option', { name: 'archive' });
@@ -111,16 +120,20 @@ it('switches sidebar segments, lazily expands real sections and opens objects on
     'true',
   );
 });
-it('opens objects of another database in its own tab set without running them', async () => {
+it('opens objects of another database in its own tab set on its own session', async () => {
   const user = mount();
   await connectTo();
   await user.click(screen.getByRole('button', { name: 'New tab' }));
   fireEvent.keyDown(window, { key: 'k', metaKey: true });
   const input = await screen.findByRole('combobox', {
-    name: 'Switch database',
+    name: 'Search for database',
   });
   fireEvent.change(input, { target: { value: 'orders_archive' } });
   fireEvent.keyDown(input, { key: 'Enter' });
+  expect(openSession).toHaveBeenLastCalledWith(
+    'id-orders-local',
+    'orders_archive',
+  );
   await user.dblClick(
     await screen.findByRole('button', { name: 'orders_2024 ~820K' }),
   );
@@ -132,14 +145,20 @@ it('opens objects of another database in its own tab set without running them', 
   expect(
     await screen.findByRole('textbox', { name: 'SQL editor' }),
   ).toHaveTextContent('SELECT * FROM "public"."orders_2024" LIMIT 1000;');
-  expect(
-    screen.getByText(
-      'Runs on orders only; orders_archive is browse-only for now',
-    ),
-  ).toBeVisible();
-  expect(
-    screen.getByRole('button', { name: 'Run current statement' }),
-  ).toBeDisabled();
+  vi.mocked(executeQuery).mockResolvedValueOnce({
+    kind: 'blocked',
+    message: 'stop here',
+    statements: [],
+  });
+  await user.click(
+    await screen.findByRole('button', { name: 'Run all statements' }),
+  );
+  expect(executeQuery).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      sessionId: 'session-id-orders-local-orders_archive',
+    }),
+    expect.any(Function),
+  );
 });
 it('opens, switches and closes query tabs per connection', async () => {
   const user = mount();

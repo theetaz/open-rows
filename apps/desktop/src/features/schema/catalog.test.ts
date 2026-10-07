@@ -7,7 +7,6 @@ import {
   objectRef,
   sameObject,
 } from './catalog';
-import { closeIn } from './useNavigation';
 
 it('formats planner estimates compactly and marks them approximate', () => {
   expect(formatEstimate(null)).toBeUndefined();
@@ -44,16 +43,4 @@ it('labels routines with their arguments and tells overloads apart', () => {
   const one = objectRef('db', tax);
   expect(sameObject(one, { ...one })).toBe(true);
   expect(sameObject(one, { ...one, arguments: 'integer' })).toBe(false);
-});
-
-it('keeps the last opened database and moves off a closed active one', () => {
-  const nav = {
-    active: 'a',
-    opened: ['a', 'b'],
-    schemas: {},
-    systemSchemas: false,
-  };
-  expect(closeIn(nav, 'a')).toMatchObject({ active: 'b', opened: ['b'] });
-  const single = { ...nav, opened: ['a'] };
-  expect(closeIn(single, 'a')).toBe(single);
 });

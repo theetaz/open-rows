@@ -13,7 +13,7 @@
   color: var(--or-text);
   font: inherit;
   font-size: var(--or-text-12);
-  cursor: pointer;
+  cursor: default;
 }
 .selector span {
   flex: 1;
@@ -60,9 +60,6 @@
 .databaseRow:hover .close,
 .databaseRow:focus-within .close {
   opacity: 1;
-}
-.databaseRow .close:disabled {
-  visibility: hidden;
 }
 .divider {
   height: var(--or-border-width);

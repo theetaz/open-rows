@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Palette } from '@openrows/ui/palette';
 import type { PaletteItem } from '@openrows/ui';
 import type { ObjectDto } from '@openrows/ipc';
@@ -13,53 +13,6 @@ function statusText(resource: Resource<unknown>, noun: string): string | null {
   if (resource.status === 'error') return resource.message;
   if (resource.status === 'ready') return null;
   return `Loading ${noun}…`;
-}
-
-/** ⌘K: the server's databases; system databases only when requested. */
-export function DatabaseSwitcher(props: {
-  catalog: Catalog;
-  onChoose: (name: string) => void;
-  onClose: () => void;
-}): React.JSX.Element {
-  const [system, setSystem] = useState(false);
-  const { databases, opened } = props.catalog;
-  const items: PaletteItem[] =
-    databases.status === 'ready'
-      ? databases.data
-          .filter((database) => system || !database.system)
-          .map((database) => ({
-            id: database.name,
-            label: database.name,
-            glyph: '▱',
-            detail: opened.includes(database.name)
-              ? 'Already open'
-              : (database.comment ?? 'Available'),
-          }))
-      : [];
-  const status = props.catalog.offline ?? statusText(databases, 'databases');
-  return (
-    <Palette
-      title="Switch database"
-      onClose={props.onClose}
-      onChoose={props.onChoose}
-      items={items}
-      footer={
-        <>
-          {status && <span role="status">{status}</span>}
-          <label>
-            <input
-              type="checkbox"
-              checked={system}
-              onChange={(event) => {
-                setSystem(event.target.checked);
-              }}
-            />
-            Show system databases
-          </label>
-        </>
-      }
-    />
-  );
 }
 
 const entryId = (object: ObjectDto): string =>
@@ -88,7 +41,9 @@ export function QuickOpen(props: {
     loadSearch();
   }, [loadSearch]);
   const objects = search.status === 'ready' ? search.data : [];
-  const status = props.catalog.offline ?? statusText(search, 'objects');
+  const status =
+    props.catalog.offline ??
+    (database ? statusText(search, 'objects') : 'No database selected');
   return (
     <Palette
       title="Quick open"

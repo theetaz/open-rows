@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { lazy, Suspense } from 'react';
 import { Button, Tabs } from '@openrows/ui';
-import type { ProfileDto } from '@openrows/ipc';
+import { sessionOf } from '../connections';
 import type { Connections } from '../connections';
 import type { QueryTabs } from './useQueryTabs';
 import { useQueryRuns } from './useQueryRuns';
@@ -15,7 +15,7 @@ const QueryTab = lazy(() =>
 type Props = {
   connections: Connections;
   tabs: QueryTabs;
-  /** Browsed database; empty for the connection's own database. */
+  /** Active database of the connection; empty when none is open. */
   database: string;
   onCell: (cell: SelectedCell) => void;
 };
@@ -32,6 +32,14 @@ export function QueryContent(props: Props): React.JSX.Element {
       <main className={styles.content}>
         <p className={styles.empty}>
           Choose a connection in the rail to open a query tab.
+        </p>
+      </main>
+    );
+  if (!props.database)
+    return (
+      <main className={styles.content}>
+        <p className={styles.empty}>
+          Open a database with ⌘K to start a query tab.
         </p>
       </main>
     );
@@ -66,8 +74,8 @@ export function QueryContent(props: Props): React.JSX.Element {
             key={tab.id}
             tab={tab}
             connection={connection}
-            sessionId={runnable(status, tab.database)}
-            notice={elsewhere(status, tab.database)}
+            sessionId={sessionOf(status, tab.database)}
+            notice={notice(status, tab.database)}
             runs={runs}
             onSql={tabs.edit}
             onCell={props.onCell}
@@ -75,35 +83,29 @@ export function QueryContent(props: Props): React.JSX.Element {
           />
         </Suspense>
       ) : (
-        <NoTabs connection={connection} onOpen={open} />
+        <NoTabs database={props.database} onOpen={open} />
       )}
     </main>
   );
 }
 
 function NoTabs(props: {
-  connection: ProfileDto;
+  database: string;
   onOpen: () => void;
 }): React.JSX.Element {
   return (
     <div className={styles.empty}>
-      <p>No query tabs on {props.connection.name}.</p>
+      <p>No query tabs on {props.database}.</p>
       <Button onClick={props.onOpen}>New query tab (⌘T)</Button>
     </div>
   );
 }
 
-/**
- * The session a tab on `database` runs on: only tabs of the connection's own
- * database run until per-database query sessions exist.
- */
-function runnable(status: SessionStatus, database: string): string | null {
-  return status.state === 'connected' && !database ? status.sessionId : null;
-}
-
-/** Why a tab of another database cannot run on the connection's session. */
-function elsewhere(status: SessionStatus, database: string): string | null {
-  if (!database) return null;
-  const own = status.state === 'connected' ? status.server.database : '';
-  return `Runs on ${own || 'the connection database'} only; ${database} is browse-only for now`;
+/** Why a tab cannot run although its connection is up. */
+function notice(status: SessionStatus, database: string): string | null {
+  if (status.state !== 'connected') return null;
+  const opened = status.databases.find((item) => item.name === database);
+  if (!opened) return `${database} is closed; open it again with ⌘K`;
+  if (opened.state === 'opening') return `Opening ${database}…`;
+  return opened.state === 'failed' ? opened.message : null;
 }

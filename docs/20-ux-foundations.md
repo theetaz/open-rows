@@ -88,10 +88,10 @@ The approved direction refines the skeleton above:
 
 | Region | v2 decision |
 | --- | --- |
-| **Workspace rail** (far left, 64 px in the mock) | Workspaces only: 36 px engine-tinted tiles, 10 px corners, 13 px semibold name monograms and 8 px environment dots. No labels or database sub-items. A left-edge pill marks selection (4 × 20 px) or hover (4 × 8 px), with a 160 ms token-eased height transition; reduced motion disables it. Hover/focus glass tooltips show workspace, environment, engine and host. Tab and ↑/↓ navigate; ⌘1–4 switch. Borderless `+`, API and settings controls sit at the bottom. |
-| **Sidebar header** | Truncating workspace name, environment badge and a mock actions menu (Connection settings…, Duplicate, Disconnect). Below, a database icon/name/chevron opens a glass menu of opened databases: active check, hover/focus close, wrapping ↑/↓, Home/End, Enter, Esc/Tab dismissal and opener focus return. Open database… (⌘K) opens the existing switcher. Database and workspace changes preserve per-database tabs. |
+| **Workspace rail** (far left, 64 px in the mock) | Connections: 36 px engine-tinted tiles, 10 px corners, 13 px semibold name monograms and an 8 px **connection-status** dot (green connected, amber connecting, red failed, none when disconnected; the environment shows in the badge, tooltip and context bar). Under the active connection, its opened databases as small database-icon tiles with truncated names (see *Databases per connection* below). A left-edge pill marks selection (4 × 20 px) or hover (4 × 8 px), with a 160 ms token-eased height transition; reduced motion disables it. Hover/focus glass tooltips show workspace, environment, engine and host. Tab and ↑/↓ navigate; ⌘1–4 switch. Borderless `+`, API and settings controls sit at the bottom. |
+| **Sidebar header** | Truncating workspace name, environment badge and a mock actions menu (Connection settings…, Duplicate, Disconnect). Below, a database icon/name/chevron opens a glass menu of opened databases: active check, hover/focus close (the last one too), wrapping ↑/↓, Home/End, Enter, Esc/Tab dismissal and opener focus return; the menu takes the selector's width and never leaves the sidebar, long names truncate with a full-name tooltip. Open database… (⌘K) opens the Open database panel. Database and workspace changes preserve per-database tabs. |
 | **Sidebar** (floating rounded panel) | Header above segmented **Items / Queries / History**, search and object tree; schema picker and "create object" at the bottom. |
-| **Toolbar** | One unified, full-width titlebar row that never wraps: traffic lights → sidebar toggle → back/forward → safe mode → context bar (flexes, truncates) → actions → inspector toggle pinned at the far right above the inspector. Contents: back/forward (per-tab navigation history), **Safe mode** toggle (always on for prod), **context bar** like a browser address bar: env badge · workspace › database › schema › object · engine · route (SSH, proxy…) · live latency. |
+| **Toolbar** | One unified, full-width titlebar row that never wraps: traffic lights → sidebar toggle → back/forward → safe mode → context bar (flexes, truncates) → actions → inspector toggle pinned at the far right above the inspector. Contents: back/forward (per-tab navigation history), **Safe mode** toggle (always on for prod), **context bar** like TablePlus: `ENV | PostgreSQL 14.17 : connection : database : schema.object` (route and live latency later). |
 | **Tabs** | Chrome-style tabs for every table, query, structure view and API request; drag to reorder or tear off into a new window; middle-click closes. |
 | **Table view switcher** | Data · Structure · Indexes · Triggers · DDL inside each table tab; filter chips and "+ Row" next to it. |
 | **Right panel** (floating) | Segmented **Details / Assistant**: row/object details, or the AI assistant with provider switcher, policy chips, tool trace and proposal cards. |
@@ -239,6 +239,36 @@ query tabs; opening an object opens (or refocuses) its `SELECT … LIMIT 1000`
 tab. Saved queries and the sidebar history segment remain sample data. Catalog reads are
 cached in memory only (no snapshot, no fingerprint); see
 [docs/10 §2.1](10-schema-and-data-editing.md#21-implementation-notes-d-06-postgresql-schema-tree).
+
+### UX-B databases per connection
+
+PostgreSQL cannot switch databases on a connection, so a connection now holds
+**several opened databases, each with its own user session** (plus its own
+metadata session). Selecting a connection reaches the server first
+(`connection_open`, on the profile's database or `postgres`); the profile's
+database, when set, opens right away.
+
+- **Open database panel (⌘K)**, a sheet like TablePlus: title *Open database*,
+  focused search field, database list with icons (system databases only with
+  **Show system databases**, already opened ones marked *Open*), ↑/↓ select,
+  Return or double-click opens, Esc or **Cancel** dismisses, **New…** is
+  disabled with the tooltip "Creating databases is coming soon" (FR-SCHEMA-12).
+  It opens by itself after connecting a connection without a database; until a
+  database is open the sidebar says *No database selected, press ⌘K to select
+  a database*. ⌘⇧P's command is now *Open database…*.
+- **Rail**: the tile dot shows connection status (green/amber/red/none). Under
+  the active connection its opened databases appear as tiles (database icon,
+  truncated name, active one highlighted, tooltip with the full name and any
+  open failure, context menu *Close database*). Clicking one switches the
+  sidebar, schema picker and tab set.
+- **Tabs and running**: tab sets are per connection and database; every tab
+  runs on its database's own session (no browse-only tabs). Closing a database
+  closes its sessions; its tabs stay and say how to reopen it.
+- **Context bar**: `ENV | PostgreSQL 17.2 : connection : database : schema.object`
+  (the selected schema when no object tab is active); the database segment
+  opens the panel.
+- Native feel: arrow cursor on rail tiles, database selector, menus and the
+  panel; tokens only.
 
 ### 3.2 macOS-native design methodology (macOS 26 era)
 

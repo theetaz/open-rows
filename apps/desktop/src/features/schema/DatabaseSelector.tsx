@@ -5,27 +5,37 @@ import { useSidebarMenu } from '../../shell/useSidebarMenu';
 import styles from './DatabaseSelector.module.css';
 
 type Props = {
-  /** Active database; empty when nothing is connected. */
+  /** Active database; empty when none is open. */
   database: string;
+  /** Whether the connection is up, so databases can be opened. */
+  connected: boolean;
   opened: readonly string[];
   onDatabase: (name: string) => void;
   onCloseDatabase: (name: string) => void;
   onSwitcher: () => void;
 };
 
-/** Opened databases of the active connection, with ⌘K to open another. */
+/**
+ * Opened databases of the active connection (each with its own session),
+ * with ⌘K to open another. The menu stays inside the sidebar.
+ */
 export function DatabaseSelector(props: Props): React.JSX.Element {
   const menu = useSidebarMenu();
   const { opener, id, open, close } = menu;
   return (
     <>
-      <DatabaseTrigger {...menu} database={props.database} />
+      <DatabaseTrigger
+        {...menu}
+        database={props.database}
+        connected={props.connected}
+      />
       {open && (
         <SidebarMenu
           id={id}
           label="Opened databases"
           opener={opener}
           onClose={close}
+          fit
         >
           {props.opened.map((name) => (
             <DatabaseRow key={name} {...props} close={close} name={name} />
@@ -49,7 +59,10 @@ export function DatabaseSelector(props: Props): React.JSX.Element {
 }
 
 function DatabaseTrigger(
-  props: ReturnType<typeof useSidebarMenu> & { database: string },
+  props: ReturnType<typeof useSidebarMenu> & {
+    database: string;
+    connected: boolean;
+  },
 ): React.JSX.Element {
   const { opener, database, open, id, toggle } = props;
   return (
@@ -63,11 +76,12 @@ function DatabaseTrigger(
       aria-haspopup="menu"
       aria-expanded={open}
       aria-controls={open ? id : undefined}
-      disabled={!database}
+      title={database || undefined}
+      disabled={!props.connected}
       onClick={toggle}
     >
       <Icon name="database" />
-      <span>{database || 'No database'}</span>
+      <span>{database || 'No database selected'}</span>
       <Icon name="chevronDown" />
     </button>
   );
@@ -84,6 +98,7 @@ function DatabaseRow(
         role="menuitemradio"
         aria-checked={props.database === name}
         aria-label={`Activate database ${name}`}
+        title={name}
         onClick={() => {
           close();
           props.onDatabase(name);
@@ -97,7 +112,6 @@ function DatabaseRow(
         role="menuitem"
         className={styles.close}
         aria-label={`Close database ${name}`}
-        disabled={props.opened.length < 2}
         onClick={() => {
           close();
           props.onCloseDatabase(name);

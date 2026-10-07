@@ -21,9 +21,11 @@ const profiles = [
 const statuses: Record<string, SessionStatus> = {
   'id-analytics-prod': {
     state: 'connected',
-    sessionId: 's',
     server: server('16.4'),
+    databases: [],
+    generation: 1,
   },
+  'id-qa box': { state: 'failed', message: 'refused' },
 };
 const props = {
   profiles,
@@ -35,15 +37,16 @@ const props = {
   onGallery: vi.fn(),
 };
 
-it('shows saved connections as tiles with environment dots, status tooltips and add', () => {
+it('shows saved connections as tiles with connection-status dots, status tooltips and add', () => {
   render(<ConnectionRail {...props} />);
   const rail = screen.getByRole('navigation', { name: 'Workspaces' });
   expect(within(rail).getAllByRole('button')).toHaveLength(6);
   expect(rail).toHaveTextContent('OSAPQB');
-  expect(rail.querySelectorAll('[data-environment]')).toHaveLength(3);
-  expect(rail.querySelector('[data-environment="custom"]')).toHaveStyle({
-    '--env-color': '#123456',
-  });
+  const dots = Array.from(rail.querySelectorAll('i[data-status]')).map((dot) =>
+    dot.getAttribute('data-status'),
+  );
+  expect(dots).toEqual(['none', 'connected', 'failed']);
+  expect(rail.querySelector('[data-environment]')).toBeNull();
   const selected = screen.getByRole('button', {
     name: 'Switch to orders-staging',
   });
@@ -82,4 +85,40 @@ it('supports Tab and wrapping arrows with focus tooltips', async () => {
   expect(screen.getByRole('tooltip')).toHaveTextContent('qa box');
   await user.keyboard('{ArrowDown}{Enter}');
   expect(props.onSelect).toHaveBeenCalledWith('id-orders-staging');
+});
+
+it('lists the active connection opened databases as tiles with switch and close', async () => {
+  const user = userEvent.setup();
+  const rail = {
+    ...props,
+    databases: [
+      { name: 'orders', state: 'open', sessionId: 's1' },
+      { name: 'a_very_long_reporting_database', state: 'opening' },
+      { name: 'broken', state: 'failed', message: 'does not exist' },
+    ] as const,
+    database: 'orders',
+    onDatabase: vi.fn(),
+    onCloseDatabase: vi.fn(),
+  };
+  render(<ConnectionRail {...rail} />);
+  const group = screen.getByRole('group', { name: 'Opened databases' });
+  const tiles = within(group).getAllByRole('button');
+  expect(tiles.map((tile) => tile.getAttribute('aria-pressed'))).toEqual([
+    'true',
+    'false',
+    'false',
+  ]);
+  expect(tiles[1]).toHaveAttribute(
+    'title',
+    'a_very_long_reporting_database — opening…',
+  );
+  expect(tiles[2]).toHaveAttribute('title', 'broken — does not exist');
+  await user.click(tiles[1] as HTMLElement);
+  expect(rail.onDatabase).toHaveBeenCalledWith(
+    'a_very_long_reporting_database',
+  );
+  fireEvent.contextMenu(tiles[0] as HTMLElement);
+  await user.click(screen.getByRole('menuitem', { name: 'Close database' }));
+  expect(rail.onCloseDatabase).toHaveBeenCalledWith('orders');
+  expect(tiles[0]).toHaveFocus();
 });

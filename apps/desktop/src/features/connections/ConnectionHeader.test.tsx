@@ -3,12 +3,12 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
 import {
-  closeSession,
+  closeConnection,
   confirmDestructive,
   deleteProfile,
   duplicateProfile,
   listProfiles,
-  openSession,
+  openConnection,
 } from '@openrows/ipc';
 import { ThemeProvider } from '@openrows/ui';
 import { profile, sampleProfiles } from '../../test/ipcStub';
@@ -52,7 +52,7 @@ it('connects on selection, shows failures and disconnects from the menu', async 
   expect(
     await screen.findByText('Choose a connection in the rail.'),
   ).toBeVisible();
-  vi.mocked(openSession).mockRejectedValueOnce(
+  vi.mocked(openConnection).mockRejectedValueOnce(
     new Error('network error: localhost:5432: connection refused'),
   );
   await user.click(
@@ -64,7 +64,7 @@ it('connects on selection, shows failures and disconnects from the menu', async 
   await menu(user, 'Connect');
   expect(await screen.findByText('Connected · PostgreSQL 17.2')).toBeVisible();
   await menu(user, 'Disconnect');
-  expect(closeSession).toHaveBeenCalledWith('session-id-orders-local');
+  expect(closeConnection).toHaveBeenCalledWith('id-orders-local');
   expect(await screen.findByText('Not connected')).toBeVisible();
 });
 

@@ -8,6 +8,7 @@ const WorkspacePalettes = lazy(() =>
   })),
 );
 import { useWorkspaceController } from './useWorkspaceController';
+import { contextSegments } from './contextBar';
 import { ConnectionSheets, useConnections } from '../features/connections';
 import styles from './Workspace.module.css';
 /** Real connections, catalog, query tabs and results. */
@@ -26,13 +27,19 @@ export function Workspace({
   const tab = controller.scope
     ? controller.tabs.activeFor(controller.scope)
     : undefined;
+  const profile = connections.active;
+  const status = profile ? connections.statusOf(profile.id) : undefined;
   return (
     <div className={styles.workspace}>
       <WorkspaceToolbar
-        connections={connections}
-        table={tab?.title ?? ''}
-        schema={catalog.schema || '—'}
-        database={catalog.database || 'No database'}
+        context={contextSegments({
+          profile,
+          status,
+          database: catalog.database,
+          schema: catalog.schema,
+          objectPath: tab?.objectPath,
+        })}
+        health={status?.state ?? 'disconnected'}
         onDatabase={() => {
           setMode('database');
         }}

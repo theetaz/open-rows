@@ -1,30 +1,59 @@
 // SPDX-License-Identifier: Apache-2.0
 import { expect, it } from 'vitest';
-import { applySessionEvent, statusLabel } from './sessions';
-import type { Statuses } from './sessions';
+import {
+  applySessionEvent,
+  removeDatabase,
+  sessionOf,
+  setDatabase,
+  statusLabel,
+  statusTone,
+} from './sessions';
+import type { SessionStatus, Statuses } from './sessions';
+import { neighbour } from './useDatabases';
 import { server } from '../../test/ipcStub';
 
+const connected = (
+  databases: Extract<SessionStatus, { state: 'connected' }>['databases'],
+): SessionStatus => ({
+  state: 'connected',
+  server: server('17.2'),
+  databases,
+  generation: 1,
+});
+
 const statuses: Statuses = {
-  a: { state: 'connected', sessionId: 's-a', server: server('17.2') },
+  a: connected([
+    { name: 'orders', state: 'open', sessionId: 's-orders' },
+    { name: 'reports', state: 'open', sessionId: 's-reports' },
+  ]),
   b: { state: 'connecting' },
 };
 
-it('marks the owning profile failed or disconnected from core events', () => {
+it('marks the owning database failed or closed from core events', () => {
   const failed = applySessionEvent(statuses, {
-    sessionId: 's-a',
+    sessionId: 's-reports',
     state: 'failed',
     message: 'network error: broken pipe',
   });
-  expect(failed.a).toEqual({
-    state: 'failed',
-    message: 'network error: broken pipe',
+  expect(failed.a).toMatchObject({
+    state: 'connected',
+    databases: [
+      { name: 'orders', state: 'open' },
+      {
+        name: 'reports',
+        state: 'failed',
+        message: 'network error: broken pipe',
+      },
+    ],
   });
   const closed = applySessionEvent(statuses, {
-    sessionId: 's-a',
+    sessionId: 's-orders',
     state: 'closed',
     message: null,
   });
-  expect(closed.a).toEqual({ state: 'disconnected' });
+  expect(closed.a).toMatchObject({
+    databases: [{ name: 'reports', state: 'open' }],
+  });
 });
 
 it('ignores unknown sessions and non-terminal states', () => {
@@ -34,21 +63,60 @@ it('ignores unknown sessions and non-terminal states', () => {
     message: null,
   } as const;
   expect(applySessionEvent(statuses, unknown)).toBe(statuses);
-  const busy = { sessionId: 's-a', state: 'busy', message: null } as const;
+  const busy = { sessionId: 's-orders', state: 'busy', message: null } as const;
   expect(applySessionEvent(statuses, busy)).toBe(statuses);
+});
+
+it('keeps each opened database in place and only on connected profiles', () => {
+  const opening = setDatabase(statuses, 'a', {
+    name: 'archive',
+    state: 'opening',
+  });
+  const opened = setDatabase(opening, 'a', {
+    name: 'archive',
+    state: 'open',
+    sessionId: 's-archive',
+  });
+  const status = opened.a ?? { state: 'disconnected' };
+  expect(sessionOf(status, 'archive')).toBe('s-archive');
+  expect(sessionOf(status, 'orders')).toBe('s-orders');
+  expect(sessionOf(status, 'missing')).toBeNull();
+  expect(sessionOf(opening.a ?? status, 'archive')).toBeNull();
+  expect(setDatabase(statuses, 'b', { name: 'x', state: 'opening' })).toBe(
+    statuses,
+  );
+  const removed = removeDatabase(opened, 'a', 'orders');
+  expect(sessionOf(removed.a ?? status, 'orders')).toBeNull();
+});
+
+it('makes a neighbour active when the active database closes', () => {
+  const databases = [
+    { name: 'a', state: 'opening' },
+    { name: 'b', state: 'opening' },
+    { name: 'c', state: 'opening' },
+  ] as const;
+  expect(neighbour(databases, 'b')).toBe('a');
+  expect(neighbour(databases, 'a')).toBe('b');
+  expect(neighbour([databases[0]], 'a')).toBeUndefined();
+});
+
+it('maps connection states to the rail status dot', () => {
+  expect(statusTone(connected([]))).toBe('connected');
+  expect(statusTone({ state: 'connecting' })).toBe('connecting');
+  expect(statusTone({ state: 'failed', message: 'x' })).toBe('failed');
+  expect(statusTone({ state: 'disconnected' })).toBe('none');
 });
 
 it('labels every state', () => {
   expect(statusLabel({ state: 'connecting' })).toBe('Connecting…');
   expect(
-    statusLabel({ state: 'connected', sessionId: 's', server: server('') }),
+    statusLabel({ ...connected([]), server: server('') } as SessionStatus),
   ).toBe('Connected');
   expect(
     statusLabel({
-      state: 'connected',
-      sessionId: 's',
+      ...connected([]),
       server: { ...server('16.4'), flavour: 'Neon' },
-    }),
+    } as SessionStatus),
   ).toBe('Connected · PostgreSQL 16.4 · Neon');
   expect(statusLabel({ state: 'failed', message: 'x' })).toBe(
     'Connection failed',

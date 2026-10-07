@@ -63,9 +63,19 @@ impl MetadataSessions {
 
     /// Disconnect every metadata session of `profile`.
     pub(crate) async fn close(&self, profile: &str) {
+        self.close_where(|key| key.0 == profile).await;
+    }
+
+    /// Disconnect the metadata session of `profile` on `database`.
+    pub(crate) async fn close_database(&self, profile: &str, database: &str) {
+        self.close_where(|key| key.0 == profile && key.1 == database)
+            .await;
+    }
+
+    async fn close_where(&self, matches: impl Fn(&Key) -> bool) {
         let slots: Vec<Slot> = {
             let mut map = self.slots.lock().unwrap_or_else(PoisonError::into_inner);
-            let keys: Vec<Key> = map.keys().filter(|key| key.0 == profile).cloned().collect();
+            let keys: Vec<Key> = map.keys().filter(|key| matches(key)).cloned().collect();
             keys.iter().filter_map(|key| map.remove(key)).collect()
         };
         for slot in slots {
@@ -112,5 +122,17 @@ mod tests {
         let other = sessions.slot(("p".to_owned(), "reports".to_owned()));
         assert!(Arc::ptr_eq(&first, &again));
         assert!(!Arc::ptr_eq(&first, &other));
+    }
+
+    #[test]
+    fn closing_a_database_keeps_the_other_slots() {
+        let sessions = MetadataSessions::default();
+        let orders = sessions.slot(("p".to_owned(), "orders".to_owned()));
+        let reports = sessions.slot(("p".to_owned(), "reports".to_owned()));
+        tauri::async_runtime::block_on(sessions.close_database("p", "orders"));
+        let reopened = sessions.slot(("p".to_owned(), "orders".to_owned()));
+        assert!(!Arc::ptr_eq(&orders, &reopened));
+        let kept = sessions.slot(("p".to_owned(), "reports".to_owned()));
+        assert!(Arc::ptr_eq(&reports, &kept));
     }
 }

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
-export { DatabaseSwitcher, QuickOpen } from './CatalogPalettes';
+export { QuickOpen } from './CatalogPalettes';
 export { DatabaseSelector } from './DatabaseSelector';
 export { ObjectTree } from './ObjectTree';
+export { OpenDatabasePanel } from './OpenDatabasePanel';
 export { SchemaPicker } from './SchemaPicker';
 export { substringIndices } from './catalog';
 export type { ObjectRef } from './catalog';

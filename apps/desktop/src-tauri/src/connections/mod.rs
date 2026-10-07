@@ -5,26 +5,27 @@
 //! §1), the OS keychain and a [`SessionManager`] that streams result batches
 //! into the shared [`ResultStore`]; commands live in [`profiles`] and
 //! [`sessions`]; [`catalog`] serves the schema tree from per-database
-//! metadata sessions.
+//! metadata sessions. Each opened database of a connection has its own user
+//! session, recorded in [`owners`].
 pub(crate) mod catalog;
 mod catalog_dto;
+pub(crate) mod connection;
 mod dto;
 mod enums;
 mod error;
 mod metadata;
+mod owners;
 mod pg;
 pub(crate) mod profiles;
 pub(crate) mod sessions;
 
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use std::sync::Arc;
 
 use openrows_core::SessionManager;
 use openrows_results::ResultStore;
 use openrows_secrets::KeychainSecretStore;
 use openrows_store::LocalStore;
-use openrows_store::profile::{ProfileFiles, ProfileId, ProfileService};
-use openrows_types::SessionId;
+use openrows_store::profile::{ProfileFiles, ProfileService};
 use tauri::Manager;
 use tauri_specta::Event;
 use tokio::sync::broadcast::error::RecvError;
@@ -37,28 +38,8 @@ pub(crate) struct Connections {
     pub(crate) profiles: ProfileService,
     pub(crate) sessions: SessionManager,
     metadata: metadata::MetadataSessions,
-    /// Which saved connection each open session belongs to.
-    owners: Mutex<HashMap<SessionId, ProfileId>>,
-}
-
-impl Connections {
-    /// Remember that `session` was opened for `profile`.
-    fn bind(&self, session: SessionId, profile: ProfileId) {
-        self.owners().insert(session, profile);
-    }
-
-    fn unbind(&self, session: SessionId) {
-        self.owners().remove(&session);
-    }
-
-    /// The saved connection an open session belongs to.
-    pub(crate) fn owner(&self, session: SessionId) -> Option<ProfileId> {
-        self.owners().get(&session).copied()
-    }
-
-    fn owners(&self) -> MutexGuard<'_, HashMap<SessionId, ProfileId>> {
-        self.owners.lock().unwrap_or_else(PoisonError::into_inner)
-    }
+    /// Which saved connection and database each open session belongs to.
+    pub(crate) owners: owners::Owners,
 }
 
 /// Open the stores, manage [`Connections`] and forward session events.
@@ -81,7 +62,7 @@ pub(crate) fn install(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Er
         profiles,
         sessions,
         metadata: metadata::MetadataSessions::default(),
-        owners: Mutex::default(),
+        owners: owners::Owners::default(),
     });
     Ok(())
 }

@@ -28,9 +28,24 @@ export const commands = {
 	profileParseUrl: (url: string) => typedError<UrlDraft, IpcError>(__TAURI_INVOKE("profile_parse_url", { url })),
 	/**  Connect with the form values, report the server and disconnect. */
 	connectionTest: (profileId: string | null, input: ProfileInput) => typedError<TestReport, IpcError>(__TAURI_INVOKE("connection_test", { profileId, input })),
-	/**  Open a session for a saved connection; state changes follow as events. */
-	sessionOpen: (profileId: string) => typedError<SessionOpened, IpcError>(__TAURI_INVOKE("session_open", { profileId })),
-	/**  Cancel the session's work and disconnect. */
+	/**
+	 *  Check that a saved connection is reachable and report its server. The
+	 *  check runs on the home database's metadata session, which also lists the
+	 *  server's databases; user sessions open per database with `session_open`.
+	 */
+	connectionOpen: (profileId: string) => typedError<ConnectionOpened, IpcError>(__TAURI_INVOKE("connection_open", { profileId })),
+	/**  Close every database session and metadata session of a saved connection. */
+	connectionClose: (profileId: string) => typedError<null, IpcError>(__TAURI_INVOKE("connection_close", { profileId })),
+	/**
+	 *  Open a user session on `database` (the profile's database when `None`);
+	 *  state changes follow as events. `PostgreSQL` cannot switch databases on a
+	 *  connection, so every opened database has its own session.
+	 */
+	sessionOpen: (profileId: string, database: string | null) => typedError<SessionOpened, IpcError>(__TAURI_INVOKE("session_open", { profileId, database })),
+	/**
+	 *  Cancel the session's work and disconnect; the database's metadata session
+	 *  closes with its last user session.
+	 */
 	sessionClose: (sessionId: string) => typedError<null, IpcError>(__TAURI_INVOKE("session_close", { sessionId })),
 	/**  Databases on the server, read through `database`'s metadata session. */
 	catalogDatabases: (profileId: string, database: string) => typedError<DatabaseDto[], IpcError>(__TAURI_INVOKE("catalog_databases", { profileId, database })),
@@ -43,8 +58,6 @@ export const commands = {
 	 *  for quick open.
 	 */
 	catalogSearch: (profileId: string, database: string) => typedError<ObjectDto[], IpcError>(__TAURI_INVOKE("catalog_search", { profileId, database })),
-	/**  Disconnect the connection's metadata sessions (on disconnect). */
-	catalogClose: (profileId: string) => typedError<null, IpcError>(__TAURI_INVOKE("catalog_close", { profileId })),
 	/**
 	 *  Split, gate and start SQL on an open session.
 	 * 
@@ -83,6 +96,17 @@ export type ColumnDto = {
 	name: string,
 	/**  Database type name, e.g. `int4` or `timestamptz`. */
 	sourceType: string | null,
+};
+
+/**  A reachable saved connection. */
+export type ConnectionOpened = {
+	/**
+	 *  The server, read on the connection's home database (the profile's
+	 *  database, else `postgres`); `server.database` names that database.
+	 */
+	server: ServerDto,
+	/**  The profile's database to open right away; `None` lets the user choose. */
+	database: string | null,
 };
 
 /**  A database on the server. */
@@ -366,7 +390,7 @@ export type ServerDto = {
 	database: string,
 };
 
-/**  An open session. */
+/**  An open session on one database. */
 export type SessionOpened = {
 	sessionId: string,
 	server: ServerDto,

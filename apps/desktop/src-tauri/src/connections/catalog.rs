@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Schema-tree commands (D-06): databases, schemas, objects and the name
-//! index, read on the connection's metadata sessions.
+//! index, read on the connection's per-database metadata sessions (closed by
+//! `session_close` and `connection_close`).
 use openrows_driver_api::catalog::ObjectKind;
 use tauri::State;
 
@@ -95,15 +96,4 @@ pub(crate) async fn catalog_search(
         )
         .await?;
     Ok(objects.into_iter().map(ObjectDto::from).collect())
-}
-
-/// Disconnect the connection's metadata sessions (on disconnect).
-#[tauri::command]
-#[specta::specta]
-pub(crate) async fn catalog_close(
-    state: State<'_, Connections>,
-    profile_id: String,
-) -> Result<(), IpcError> {
-    state.metadata.close(&profile_id).await;
-    Ok(())
 }

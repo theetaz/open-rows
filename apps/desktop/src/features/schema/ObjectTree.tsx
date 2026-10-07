@@ -20,6 +20,12 @@ export function ObjectTree(props: {
   const [selected, setSelected] = useState<ObjectRef | null>(null);
   const { offline, schemas } = catalog;
   if (offline) return <p className={styles.note}>{offline}</p>;
+  if (!catalog.database)
+    return (
+      <p className={styles.noDatabase}>
+        No database selected, press ⌘K to select a database
+      </p>
+    );
   if (schemas.status === 'error')
     return (
       <div className={styles.error} role="alert">

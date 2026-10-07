@@ -15,6 +15,11 @@ use super::error::{IpcError, IpcErrorKind};
 /// `application_name` when the profile does not set one.
 const APPLICATION_NAME: &str = "OpenRows";
 
+/// Database a connection without a configured database connects to: the
+/// maintenance database every `PostgreSQL` server creates, so the user can
+/// list and choose databases from there.
+const HOME_DATABASE: &str = "postgres";
+
 /// Where and how to connect: target, credentials and connect options.
 #[derive(Clone)]
 pub(crate) struct Target {
@@ -61,7 +66,10 @@ pub(crate) fn target(
     let config = PgConfig {
         host: params.host.clone(),
         port: params.port,
-        database: params.database.clone().unwrap_or_else(|| user.clone()),
+        database: params
+            .database
+            .clone()
+            .unwrap_or_else(|| HOME_DATABASE.to_owned()),
         user,
         password: password.map(|secret| secret.expose().to_owned()),
     };
@@ -170,13 +178,13 @@ mod tests {
     }
 
     #[test]
-    fn database_defaults_to_the_user_like_libpq() -> Result<(), IpcError> {
+    fn database_defaults_to_the_maintenance_database() -> Result<(), IpcError> {
         let secret = SecretString::from("synthetic");
         let target = target(&params(Some("app"), None), TlsMode::Prefer, Some(&secret))?;
         let config = &target.config;
         assert_eq!(
             (config.user.as_str(), config.database.as_str()),
-            ("app", "app")
+            ("app", "postgres")
         );
         assert_eq!(config.password.as_deref(), Some("synthetic"));
         assert_eq!(target.options.application_name, "OpenRows");

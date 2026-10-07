@@ -1,17 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 import { Button, Icon, IconButton, ToolbarGroup } from '@openrows/ui';
-import { EnvironmentBadge, statusLabel } from '../features/connections';
-import type { Connections } from '../features/connections';
+import type { ContextSegments } from './contextBar';
 import styles from './Workspace.module.css';
 
 type Props = {
-  connections: Connections;
-  table: string;
-  database: string;
+  context: ContextSegments;
+  /** Connection state for the context bar's health dot. */
+  health: string;
   onDatabase: () => void;
   onPalette: () => void;
   onRefresh: () => void;
-  schema: string;
   safe: boolean;
   prod: boolean;
   onSafe: () => void;
@@ -60,10 +58,8 @@ export function WorkspaceToolbar(props: Props): React.JSX.Element {
         {props.safe ? 'Safe mode' : 'Safe mode off'}
       </Button>
       <Context
-        connections={props.connections}
-        table={props.table}
-        schema={props.schema}
-        database={props.database}
+        context={props.context}
+        health={props.health}
         onDatabase={props.onDatabase}
       />
       <WorkspaceActions {...props} />
@@ -81,50 +77,50 @@ export function WorkspaceToolbar(props: Props): React.JSX.Element {
     </header>
   );
 }
+/** `ENV | PostgreSQL 14.17 : connection : database : schema.object`. */
 function Context({
-  connections,
-  table,
-  schema,
-  database,
+  context,
+  health,
   onDatabase,
-}: Pick<
-  Props,
-  'connections' | 'table' | 'schema' | 'database' | 'onDatabase'
->): React.JSX.Element {
-  const { active } = connections;
-  const name = active?.name ?? 'No connection';
-  const status = active ? connections.statusOf(active.id) : undefined;
-  const engine = status ? statusLabel(status) : 'Not connected';
-  const tail = table ? ` › ${table}` : '';
-  const address = `${name} › ${database} › ${schema}${tail}`;
+}: Pick<Props, 'context' | 'health' | 'onDatabase'>): React.JSX.Element {
+  const { env, engine, name, database, object } = context;
+  const address = [engine, name, database, object].filter(Boolean).join(' : ');
+  const title = env ? `${env} | ${address}` : address;
   return (
-    <div className={styles.context} aria-label="Connection context">
-      {active && <EnvironmentBadge env={active.env} />}
-      <span className={styles.address} title={address}>
-        <span>{name} › </span>
-        <button
-          className={styles.databaseSegment}
-          type="button"
-          aria-label={`Switch database (${database})`}
-          onClick={onDatabase}
-        >
-          {database}
-        </button>
-        <span>
-          {' '}
-          › {schema}
-          {tail}
-        </span>
+    <div
+      className={styles.context}
+      aria-label="Connection context"
+      title={title}
+    >
+      <span aria-hidden="true" className={styles.health} data-state={health}>
+        ●
       </span>
-      <span className={styles.engine} title={engine}>
-        <span
-          aria-hidden="true"
-          className={styles.health}
-          data-state={status?.state ?? 'disconnected'}
-        >
-          ●
-        </span>{' '}
-        {engine}
+      {env && (
+        <span className={styles.env}>
+          {env}
+          <span className={styles.bar} aria-hidden="true">
+            {' | '}
+          </span>
+        </span>
+      )}
+      <span className={styles.address}>
+        <span>
+          {engine} : {name}
+        </span>
+        {name !== 'No connection' && (
+          <>
+            <span aria-hidden="true">{' : '}</span>
+            <button
+              className={styles.databaseSegment}
+              type="button"
+              aria-label={`Open database (${database || 'none'})`}
+              onClick={onDatabase}
+            >
+              {database || 'No database'}
+            </button>
+          </>
+        )}
+        {object && <span>{` : ${object}`}</span>}
       </span>
     </div>
   );

@@ -50,7 +50,16 @@ fn config() -> TestResult<PgConfig> {
 }
 
 async fn open(manager: &SessionManager) -> TestResult<SessionId> {
-    let config = config()?;
+    open_on(manager, "postgres").await
+}
+
+/// A session on `database`: `PostgreSQL` cannot switch databases on a
+/// connection, so the app opens one session per opened database.
+async fn open_on(manager: &SessionManager, database: &str) -> TestResult<SessionId> {
+    let config = PgConfig {
+        database: database.to_owned(),
+        ..config()?
+    };
     let id = manager
         .open(async move {
             let session: Box<dyn Session> = Box::new(PgSession::connect(&config).await?);
@@ -192,5 +201,63 @@ async fn script_streams_into_the_result_store_and_serves_windows() -> TestResult
     assert_eq!(rows.first().map(String::as_str), Some("row 4991"));
     assert!(store.remove(&result));
     manager.close(session).await?;
+    Ok(())
+}
+
+/// Run `sql` as one script on `session` and return the `label` column of its
+/// single-row result.
+async fn single_label(
+    manager: &SessionManager,
+    store: &ResultStore,
+    session: SessionId,
+    sql: &str,
+) -> TestResult<Vec<String>> {
+    let mut seen = Vec::new();
+    let statements = script::statements(sql, Scope::All);
+    let cancel = ScriptCanceller::default();
+    let outcome = script::run_script(manager, session, &statements, &cancel, |event| {
+        seen.push(event);
+    })
+    .await;
+    assert_eq!(outcome, ScriptOutcome::Completed);
+    let result = result_with(&seen, 1)?.to_string();
+    let window = Window {
+        row_start: 0,
+        row_count: 1,
+        col_start: 0,
+        col_count: 2,
+    };
+    labels(store.window(&result, window)?)
+}
+
+/// Run one statement on `session` and expect it to complete.
+async fn completes(manager: &SessionManager, session: SessionId, sql: &str) -> TestResult {
+    let mut handle = manager.execute(session, sql)?;
+    assert!(matches!(
+        events(&mut handle).await?.pop(),
+        Some(QueryEvent::Completed { .. })
+    ));
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "needs PostgreSQL; run with `just test-pg`"]
+async fn two_databases_of_one_connection_run_side_by_side() -> TestResult {
+    let store = Arc::new(ResultStore::default());
+    let manager = SessionManager::new(store.clone());
+    let home = open(&manager).await?;
+    completes(&manager, home, "CREATE DATABASE openrows_second").await?;
+    let second = open_on(&manager, "openrows_second").await?;
+    let sql = "SELECT 1 AS n, current_database()::text AS label";
+    let (first, other) = tokio::join!(
+        single_label(&manager, &store, home, sql),
+        single_label(&manager, &store, second, sql)
+    );
+    assert_eq!(first?, ["postgres"]);
+    assert_eq!(other?, ["openrows_second"]);
+    manager.close(second).await?;
+    assert_eq!(manager.state(home), Some(SessionState::Idle));
+    completes(&manager, home, "DROP DATABASE openrows_second").await?;
+    manager.close(home).await?;
     Ok(())
 }

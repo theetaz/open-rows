@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { commands, events } from './generated/bindings';
 import type {
+  ConnectionOpened,
   IpcError,
   IpcErrorKind,
   ProfileDto,
@@ -93,12 +94,25 @@ export function testConnection(
   return unwrap(commands.connectionTest(profileId, input));
 }
 
-/** Open a session for a saved connection. */
-export function openSession(profileId: string): Promise<SessionOpened> {
-  return unwrap(commands.sessionOpen(profileId));
+/** Reach a saved connection's server; databases open with `openSession`. */
+export function openConnection(profileId: string): Promise<ConnectionOpened> {
+  return unwrap(commands.connectionOpen(profileId));
 }
 
-/** Disconnect a session. */
+/** Close every database session and metadata session of a connection. */
+export async function closeConnection(profileId: string): Promise<void> {
+  await unwrap(commands.connectionClose(profileId));
+}
+
+/** Open a session on one database (the profile's database when `null`). */
+export function openSession(
+  profileId: string,
+  database: string | null,
+): Promise<SessionOpened> {
+  return unwrap(commands.sessionOpen(profileId, database));
+}
+
+/** Disconnect a database session (and its metadata session with the last one). */
 export async function closeSession(sessionId: string): Promise<void> {
   await unwrap(commands.sessionClose(sessionId));
 }
