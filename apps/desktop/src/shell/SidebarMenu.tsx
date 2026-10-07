@@ -3,26 +3,45 @@ import { useEffect, useLayoutEffect, useRef } from 'react';
 import type { ReactNode, RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { GlassPanel } from '@openrows/ui';
+import { menuPlacement } from './menuPlacement';
 import styles from './SidebarMenu.module.css';
 type Props = {
   id: string;
   label: string;
   opener: RefObject<HTMLButtonElement | null>;
   onClose: () => void;
+  /** Match the opener's width instead of the default menu width. */
+  fit?: boolean;
   children: ReactNode;
 };
+/** Place the menu below its opener, inside the sidebar (else the window). */
+function place(
+  menu: HTMLElement | null,
+  opener: HTMLElement | null,
+  fit: boolean,
+): void {
+  if (!menu || !opener) return;
+  const area = opener.closest('[data-sidebar]')?.getBoundingClientRect() ?? {
+    left: 0,
+    right: window.innerWidth,
+  };
+  const { left, top, width } = menuPlacement(
+    opener.getBoundingClientRect(),
+    area,
+    fit,
+  );
+  menu.style.setProperty('left', `${String(left)}px`);
+  menu.style.setProperty('top', `${String(top)}px`);
+  menu.style.setProperty('width', `${String(width)}px`);
+}
 /** Anchored glass menu with wrapping keyboard focus and opener restoration. */
 export function SidebarMenu(props: Props): React.JSX.Element {
   const ref = useRef<HTMLDivElement>(null);
   const { opener, onClose } = props;
+  const fit = props.fit ?? false;
   useLayoutEffect(() => {
-    const bounds = opener.current?.getBoundingClientRect();
-    ref.current?.style.setProperty(
-      'left',
-      `${String(Math.max(8, Math.min(bounds?.left ?? 0, window.innerWidth - 248)))}px`,
-    );
-    ref.current?.style.setProperty('top', `${String(bounds?.bottom ?? 0)}px`);
-  }, [opener]);
+    place(ref.current, opener.current, fit);
+  }, [opener, fit]);
   useMenuFocus({ ref, opener, onClose });
   return createPortal(
     <div ref={ref} className={styles.anchor}>

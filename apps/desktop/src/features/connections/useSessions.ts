@@ -1,66 +1,133 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  closeCatalog,
+  closeConnection,
   closeSession,
   onSessionState,
+  openConnection,
   openSession,
 } from '@openrows/ipc';
-import { applySessionEvent, disconnected } from './sessions';
+import {
+  applySessionEvent,
+  disconnected,
+  removeDatabase,
+  setDatabase,
+} from './sessions';
 import type { SessionStatus, Statuses } from './sessions';
 
-type Sessions = {
+export type Sessions = {
   statusOf: (profileId: string) => SessionStatus;
+  /** Reach the server, then open the profile's database when it has one. */
   connect: (profileId: string) => Promise<void>;
   disconnect: (profileId: string) => Promise<void>;
+  /** Open a session on `database`; already open databases are kept. */
+  openDatabase: (profileId: string, database: string) => Promise<void>;
+  closeDatabase: (profileId: string, database: string) => Promise<void>;
 };
 
 const message = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
-/** One session per saved connection, kept in sync with core session events. */
+type Update = (change: (current: Statuses) => Statuses) => void;
+
+/** Connections and their per-database sessions, synced with core events. */
 export function useSessions(): Sessions {
   const [statuses, setStatuses] = useState<Statuses>({});
-  const set = useCallback((profileId: string, status: SessionStatus) => {
-    setStatuses((current) => ({ ...current, [profileId]: status }));
-  }, []);
+  const generation = useRef(0);
   useSessionEvents(setStatuses);
   const statusOf = (profileId: string): SessionStatus =>
     statuses[profileId] ?? disconnected;
+  const set = (profileId: string, status: SessionStatus): void => {
+    setStatuses((now) => ({ ...now, [profileId]: status }));
+  };
+  const openDatabase = async (profileId: string, database: string) => {
+    const status = statuses[profileId];
+    const known =
+      status?.state === 'connected' &&
+      status.databases.some(
+        (item) => item.name === database && item.state !== 'failed',
+      );
+    if (!known) await openIn(setStatuses, profileId, database);
+  };
   const connect = async (profileId: string): Promise<void> => {
     set(profileId, { state: 'connecting' });
     try {
-      const opened = await openSession(profileId);
-      set(profileId, { state: 'connected', ...opened });
+      const opened = await openConnection(profileId);
+      generation.current += 1;
+      set(profileId, {
+        state: 'connected',
+        server: opened.server,
+        databases: [],
+        generation: generation.current,
+      });
+      if (opened.database)
+        await openIn(setStatuses, profileId, opened.database);
     } catch (error) {
       set(profileId, { state: 'failed', message: message(error) });
     }
   };
   const disconnect = async (profileId: string): Promise<void> => {
-    const status = statuses[profileId];
-    if (status?.state !== 'connected') {
+    if (statuses[profileId]?.state !== 'connected') {
       set(profileId, disconnected);
       return;
     }
     try {
-      await closeSession(status.sessionId);
-      await closeCatalog(profileId);
+      await closeConnection(profileId);
       set(profileId, disconnected);
     } catch (error) {
       set(profileId, { state: 'failed', message: message(error) });
     }
   };
-  return { statusOf, connect, disconnect };
+  const closeDatabase = async (profileId: string, database: string) => {
+    const status = statuses[profileId];
+    const opened =
+      status?.state === 'connected'
+        ? status.databases.find((item) => item.name === database)
+        : undefined;
+    setStatuses((now) => removeDatabase(now, profileId, database));
+    if (opened?.state !== 'open') return;
+    try {
+      await closeSession(opened.sessionId);
+    } catch {
+      // The database is already gone from the UI; a failed goodbye changes nothing.
+    }
+  };
+  return { statusOf, connect, disconnect, openDatabase, closeDatabase };
 }
 
-function useSessionEvents(
-  setStatuses: (change: (current: Statuses) => Statuses) => void,
-): void {
+/** Open one database session and record its progress. */
+async function openIn(
+  update: Update,
+  profileId: string,
+  name: string,
+): Promise<void> {
+  update((now) => setDatabase(now, profileId, { name, state: 'opening' }));
+  try {
+    const opened = await openSession(profileId, name);
+    update((now) =>
+      setDatabase(now, profileId, {
+        name,
+        state: 'open',
+        sessionId: opened.sessionId,
+      }),
+    );
+  } catch (error) {
+    update((now) =>
+      setDatabase(now, profileId, {
+        name,
+        state: 'failed',
+        message: message(error),
+      }),
+    );
+  }
+}
+
+function useSessionEvents(update: Update): void {
   useEffect(() => {
     let active = true;
     let stop: (() => void) | undefined;
     onSessionState((event) => {
-      setStatuses((current) => applySessionEvent(current, event));
+      update((now) => applySessionEvent(now, event));
     }).then(
       (unlisten) => {
         if (active) stop = unlisten;
@@ -74,5 +141,5 @@ function useSessionEvents(
       active = false;
       stop?.();
     };
-  }, [setStatuses]);
+  }, [update]);
 }

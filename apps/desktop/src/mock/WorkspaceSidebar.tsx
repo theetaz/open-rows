@@ -61,6 +61,7 @@ export function WorkspaceSidebar(props: Props): React.JSX.Element {
           {props.header}
           <DatabaseSelector
             database={catalog.database}
+            connected={!catalog.offline}
             opened={catalog.opened}
             onDatabase={catalog.openDatabase}
             onCloseDatabase={catalog.closeDatabase}

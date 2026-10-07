@@ -41,8 +41,3 @@ export function searchCatalog(
 ): Promise<ObjectDto[]> {
   return unwrap(commands.catalogSearch(profileId, database));
 }
-
-/** Disconnect the profile's metadata sessions. */
-export async function closeCatalog(profileId: string): Promise<void> {
-  await unwrap(commands.catalogClose(profileId));
-}

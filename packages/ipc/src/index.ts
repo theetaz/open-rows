@@ -28,6 +28,7 @@ export { resultWindow } from './binary';
 /** Connection profiles and sessions (D-05); secrets only travel to the core. */
 export {
   CommandError,
+  closeConnection,
   closeSession,
   createProfile,
   deleteProfile,
@@ -35,6 +36,7 @@ export {
   getProfile,
   listProfiles,
   onSessionState,
+  openConnection,
   openSession,
   parsePostgresUrl,
   searchProfiles,
@@ -46,7 +48,6 @@ export { confirmDestructive } from './dialog';
 export type { DestructivePrompt } from './dialog';
 /** Schema tree catalog reads on per-database metadata sessions (D-06). */
 export {
-  closeCatalog,
   listDatabases,
   listObjects,
   listSchemas,
@@ -70,6 +71,7 @@ export type {
 } from './generated/bindings';
 export { DEFAULT_CUSTOM_ENV_COLOR } from './generated/bindings';
 export type {
+  ConnectionOpened,
   DatabaseDto,
   EnvDto,
   EnvKindDto,

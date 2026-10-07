@@ -28,6 +28,8 @@ struct Run {
     query_id: String,
     session: SessionId,
     profile: ConnectionProfile,
+    /// The database the session runs on, recorded in history.
+    database: String,
     statements: Vec<String>,
     cancel: ScriptCanceller,
     events: Channel<QueryEventDto>,
@@ -49,10 +51,11 @@ pub(crate) async fn query_execute(
 ) -> Result<ExecuteReply, IpcError> {
     let session = SessionId::from_str(&request.session_id)
         .map_err(|_| IpcError::invalid("Invalid session id"))?;
-    let profile_id = connections
+    let owner = connections
+        .owners
         .owner(session)
         .ok_or_else(|| IpcError::new(IpcErrorKind::NotFound, "The session is not open"))?;
-    let profile = connections.profiles.get(profile_id)?;
+    let profile = connections.profiles.get(owner.profile)?;
     let statements = request.statements();
     if statements.is_empty() {
         return Err(IpcError::invalid("There is no SQL statement to run"));
@@ -65,6 +68,7 @@ pub(crate) async fn query_execute(
         query_id: QueryId::new().to_string(),
         session,
         profile,
+        database: owner.database,
         statements: plan.statements.iter().map(|s| s.sql.clone()).collect(),
         cancel: ScriptCanceller::default(),
         events: on_event,
@@ -112,7 +116,7 @@ async fn execute(app: AppHandle, run: Run) {
     let local = app.state::<LocalStore>();
     let mut history = HistoryLog::new(
         run.profile.id.to_string(),
-        run.profile.params.database.clone(),
+        Some(run.database.clone()),
         run.statements.clone(),
     );
     let started = Instant::now();

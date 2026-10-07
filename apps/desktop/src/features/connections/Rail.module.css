@@ -23,7 +23,7 @@
   outline: none;
   background: transparent;
   padding: 0;
-  cursor: pointer;
+  cursor: default;
 }
 .tile {
   position: relative;
@@ -52,19 +52,66 @@
   box-sizing: content-box;
   border: 2px solid var(--or-page);
   border-radius: var(--or-radius-capsule);
-  background: var(--or-staging-fg);
+  background: var(--or-tertiary);
 }
-.tile i[data-environment='prod'] {
-  background: var(--or-prod-fg);
+.tile i[data-status='none'] {
+  display: none;
 }
-.tile i[data-environment='dev'] {
-  background: var(--or-dev-fg);
+.tile i[data-status='connected'] {
+  background: var(--or-success-fg);
 }
-.tile i[data-environment='local'] {
-  background: var(--or-local-fg);
+.tile i[data-status='connecting'] {
+  background: var(--or-warning-fg);
 }
-.tile i[data-environment='custom'] {
-  background: var(--env-color, var(--or-local-fg));
+.tile i[data-status='failed'] {
+  background: var(--or-danger-fg);
+}
+.databases {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--or-space-4);
+  width: 100%;
+  margin-block: calc(-1 * var(--or-space-6)) 0;
+}
+.database {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--or-space-2);
+  width: calc(100% - var(--or-space-8));
+  padding: var(--or-space-4) var(--or-space-2);
+  border: 0;
+  border-radius: var(--or-radius-field);
+  background: transparent;
+  color: var(--or-secondary);
+  font: inherit;
+  font-size: var(--or-text-10);
+  cursor: default;
+}
+.database svg {
+  width: var(--or-icon-size);
+  height: var(--or-icon-size);
+}
+.database span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.database[aria-pressed='true'] {
+  background: var(--or-control-active);
+  color: var(--or-text);
+}
+.database[data-state='opening'] {
+  opacity: var(--or-rail-inactive-opacity);
+}
+.database[data-state='failed'] svg {
+  color: var(--or-danger-fg);
+}
+.database:focus-visible {
+  outline: var(--or-focus-width) solid var(--or-focus);
+  outline-offset: -2px;
 }
 .indicator {
   position: absolute;

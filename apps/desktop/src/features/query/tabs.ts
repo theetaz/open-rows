@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 /**
- * Where a tab set lives: a saved connection and a database on it. `database`
- * is empty for the connection's own database (the one its session runs on),
- * so tabs opened before connecting stay in that set.
+ * Where a tab set lives: a saved connection and one of its databases. Tabs
+ * run on that database's own session, so they keep their set across
+ * reconnects and database switches.
  */
 export type TabScope = { connectionId: string; database: string };
 

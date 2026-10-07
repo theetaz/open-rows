@@ -150,8 +150,8 @@ it('⌘⇧P lists twelve commands and executes sidebar, inspector, query, refres
   );
   expect(screen.getByText('Catalog refreshed (1)')).toBeInTheDocument();
   await key('p', true);
-  choose('Switch database');
-  expect(screen.getByRole('dialog', { name: 'Switch database' })).toBeVisible();
+  choose('Open database');
+  expect(screen.getByRole('dialog', { name: 'Open database' })).toBeVisible();
 });
 it('toolbar palette returns focus on Escape and exact shortcuts are suspended while modal or disabled', async () => {
   vi.useFakeTimers();

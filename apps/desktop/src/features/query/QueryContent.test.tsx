@@ -29,8 +29,7 @@ const connections = {
   active: connection,
   statusOf: () => ({
     state: 'connected',
-    sessionId: 'session-1',
-    serverVersion: '17.2',
+    databases: [{ name: 'orders', state: 'open', sessionId: 'session-1' }],
   }),
   connect: vi.fn(),
 } as unknown as Connections;
@@ -90,7 +89,7 @@ function Harness(): React.JSX.Element {
     <QueryContent
       connections={connections}
       tabs={tabs}
-      database=""
+      database="orders"
       onCell={vi.fn()}
     />
   );

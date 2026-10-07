@@ -8,6 +8,8 @@ import {
 import type { ProfileDto } from '@openrows/ipc';
 import { useProfiles } from './useProfiles';
 import { useSessions } from './useSessions';
+import { useDatabases } from './useDatabases';
+import type { Databases } from './useDatabases';
 import type { SessionStatus } from './sessions';
 
 /** Which modal sheet is open over the workspace. */
@@ -17,7 +19,7 @@ export type SheetState =
   | { kind: 'delete'; profile: ProfileDto }
   | null;
 
-export type Connections = {
+export type Connections = Databases & {
   profiles: readonly ProfileDto[];
   problem: string | null;
   active: ProfileDto | undefined;
@@ -74,6 +76,7 @@ export function useConnections(): Connections {
   const [sheet, setSheet] = useState<SheetState>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const active = profiles.find((profile) => profile.id === activeId);
+  const databases = useDatabases(sessions, active?.id);
   const select = (profileId: string): void => {
     setActiveId(profileId);
     setActionError(null);
@@ -98,6 +101,7 @@ export function useConnections(): Connections {
       reload();
     });
   return {
+    ...databases,
     profiles,
     problem: actionError ?? problem,
     active,

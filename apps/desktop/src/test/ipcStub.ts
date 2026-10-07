@@ -15,7 +15,7 @@ export function profile(
     env: { kind: 'local', label: null, color: '#6b7280' },
     host: 'localhost',
     port: 5432,
-    database: name,
+    database: 'orders',
     user: 'app',
     tlsMode: 'prefer',
     hasPassword: false,
@@ -52,10 +52,18 @@ export function ipcStub(
       Promise.resolve({ profiles: [...profiles], unreadable: [] }),
     ),
     onSessionState: vi.fn(() => Promise.resolve(() => {})),
-    openSession: vi.fn((profileId: string) =>
+    openConnection: vi.fn((profileId: string) =>
       Promise.resolve({
-        sessionId: `session-${profileId}`,
-        server: server('17.2'),
+        server: server('17.2', 'postgres'),
+        database:
+          profiles.find((item) => item.id === profileId)?.database ?? null,
+      }),
+    ),
+    closeConnection: vi.fn(() => Promise.resolve()),
+    openSession: vi.fn((profileId: string, database: string) =>
+      Promise.resolve({
+        sessionId: `session-${profileId}-${database}`,
+        server: server('17.2', database),
       }),
     ),
     ...catalogStub(),

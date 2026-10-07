@@ -82,6 +82,10 @@ function Rail(props: {
       activeId={connections.active?.id}
       statusOf={connections.statusOf}
       onSelect={connections.select}
+      databases={connections.databases}
+      database={connections.database}
+      onDatabase={connections.openDatabase}
+      onCloseDatabase={connections.closeDatabase}
       onNew={() => {
         connections.setSheet({ kind: 'new' });
       }}

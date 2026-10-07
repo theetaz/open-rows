@@ -19,6 +19,14 @@ import type { Resource, Resources } from './useResources';
 export type Catalog = Omit<NavigationState, 'chosenSchema'> & {
   /** Why there is nothing to browse, or `null` when connected. */
   offline: string | null;
+  /** Active database; empty when the connection has none open. */
+  database: string;
+  /** Names of the connection's opened databases. */
+  opened: readonly string[];
+  /** Open (if needed) and activate a database of the connection. */
+  openDatabase: (name: string) => void;
+  /** Close an opened database and its sessions. */
+  closeDatabase: (name: string) => void;
   databases: Resource<DatabaseDto[]>;
   schemas: Resource<SchemaDto[]>;
   /** Selected schema; empty until schemas are known. */
@@ -48,27 +56,45 @@ export function useCatalog(connections: Connections): Catalog {
     : undefined;
   const connected = status?.state === 'connected' ? status : undefined;
   const profileId = connected ? (connections.active?.id ?? null) : null;
-  const navigation = useNavigation(profileId, connected?.server.database ?? '');
-  const { database, chosenSchema, ...rest } = navigation;
-  const prefix = `${profileId ?? ''}\n${connected?.sessionId ?? ''}\n${database}\n`;
-  const reads = useReads(resources, prefix, profileId, database);
-  const schema = pickSchema(reads.schemas, chosenSchema, rest.systemSchemas);
-  return {
-    ...rest,
+  const database = profileId ? connections.database : '';
+  const { chosenSchema, ...navigation } = useNavigation(profileId, database);
+  const prefix = `${profileId ?? ''}
+${String(connected?.generation ?? '')}
+`;
+  const reads = useReads(resources, prefix, profileId, {
+    home: connected?.server.database ?? '',
     database,
+  });
+  const schema = pickSchema(
+    reads.schemas,
+    chosenSchema,
+    navigation.systemSchemas,
+  );
+  const objectsKey = (group: ObjectGroup): string =>
+    `${prefix}${database}
+objects
+${schema}
+${group.id}`;
+  return {
+    ...navigation,
+    database,
+    opened: profileId ? connections.databases.map(({ name }) => name) : [],
+    openDatabase: connections.openDatabase,
+    closeDatabase: connections.closeDatabase,
     offline: offlineReason(connections),
     ...reads,
     schema,
-    objects: (group) =>
-      resources.get(`${prefix}objects\n${schema}\n${group.id}`),
+    objects: (group) => resources.get(objectsKey(group)),
     loadObjects: (group) => {
       if (!profileId || !schema) return;
-      resources.load(`${prefix}objects\n${schema}\n${group.id}`, () =>
+      resources.load(objectsKey(group), () =>
         listObjects(profileId, database, schema, group.kinds),
       );
     },
     refresh: () => {
-      resources.invalidate(prefix);
+      resources.invalidate(`${prefix}${database}
+`);
+      resources.invalidate(`${prefix}databases`);
     },
   };
 }
@@ -85,28 +111,36 @@ function pickSchema(
     : defaultSchema(visible);
 }
 
-/** Databases and schemas load as soon as a database is active; search on demand. */
+/**
+ * The server's databases load through the home database as soon as the
+ * connection is up; schemas once a database is active; search on demand.
+ */
 function useReads(
   resources: Resources,
   prefix: string,
   profileId: string | null,
-  database: string,
+  { home, database }: { home: string; database: string },
 ): Pick<Catalog, 'databases' | 'schemas' | 'search' | 'loadSearch'> {
   const { load } = resources;
+  const scoped = `${prefix}${database}
+`;
   const databases = resources.get<DatabaseDto[]>(`${prefix}databases`);
-  const schemas = resources.get<SchemaDto[]>(`${prefix}schemas`);
+  const schemas = resources.get<SchemaDto[]>(`${scoped}schemas`);
+  useEffect(() => {
+    if (!profileId || !home) return;
+    load(`${prefix}databases`, () => listDatabases(profileId, home));
+  }, [load, prefix, profileId, home, databases.status]);
   useEffect(() => {
     if (!profileId || !database) return;
-    load(`${prefix}databases`, () => listDatabases(profileId, database));
-    load(`${prefix}schemas`, () => listSchemas(profileId, database));
-  }, [load, prefix, profileId, database, databases.status, schemas.status]);
+    load(`${scoped}schemas`, () => listSchemas(profileId, database));
+  }, [load, scoped, profileId, database, schemas.status]);
   return {
     databases,
     schemas,
-    search: resources.get<ObjectDto[]>(`${prefix}search`),
+    search: resources.get<ObjectDto[]>(`${scoped}search`),
     loadSearch: () => {
       if (!profileId || !database) return;
-      load(`${prefix}search`, () => searchCatalog(profileId, database));
+      load(`${scoped}search`, () => searchCatalog(profileId, database));
     },
   };
 }

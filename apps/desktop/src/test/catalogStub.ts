@@ -105,6 +105,5 @@ export function catalogStub(): Record<string, unknown> {
         objects.filter((item) => item.database === database).map(strip),
       ),
     ),
-    closeCatalog: vi.fn(() => Promise.resolve()),
   };
 }

@@ -18,3 +18,14 @@
   min-width: 0;
   overflow-wrap: anywhere;
 }
+.noDatabase {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  height: 100%;
+  margin: 0;
+  padding: var(--or-space-16);
+  color: var(--or-secondary);
+  font-size: var(--or-text-13);
+  text-align: center;
+}

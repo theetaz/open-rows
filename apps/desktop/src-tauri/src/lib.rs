@@ -13,7 +13,7 @@ mod startup;
 mod startup_report;
 
 fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
-    use connections::{catalog, profiles, sessions};
+    use connections::{catalog, connection, profiles, sessions};
     tauri_specta::Builder::new()
         .commands(tauri_specta::collect_commands![
             commands::app_info,
@@ -29,13 +29,14 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
             profiles::profile_delete,
             profiles::profile_parse_url,
             sessions::connection_test,
+            connection::connection_open,
+            connection::connection_close,
             sessions::session_open,
             sessions::session_close,
             catalog::catalog_databases,
             catalog::catalog_schemas,
             catalog::catalog_objects,
             catalog::catalog_search,
-            catalog::catalog_close,
             queries::commands::query_execute,
             queries::commands::query_cancel,
             queries::commands::results_release,

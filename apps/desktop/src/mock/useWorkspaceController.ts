@@ -8,6 +8,7 @@ import type { QueryTabs, SelectedCell, TabScope } from '../features/query';
 import { queryCommands } from './queryCommands';
 import { useCompact, useInspectorOpen } from './layout';
 import { useWorkspaceKeys } from './useWorkspaceKeys';
+import { useDatabasePrompt } from './useDatabasePrompt';
 import type { PaletteMode } from './WorkspacePalettes';
 /** The visible schema after the selected one, wrapping around. */
 function nextSchema(catalog: Catalog): string {
@@ -21,25 +22,19 @@ function nextSchema(catalog: Catalog): string {
   );
 }
 /**
- * Tab scopes of the active connection: the browsed database's scope and a
- * mapper for any database. The session's own database maps to `''`.
+ * Tab scopes of the active connection: the active database's scope (the
+ * profile's database until one is open, so tabs can be prepared before
+ * connecting; none without either) and a mapper for any database.
  */
-function scopes(
-  connections: Connections,
-  catalog: Catalog,
-): {
+function scopes(connections: Connections): {
   scope: TabScope | undefined;
   scopeOf: (database: string) => TabScope | undefined;
 } {
   const profile = connections.active;
-  const status = profile ? connections.statusOf(profile.id) : undefined;
-  const own = status?.state === 'connected' ? status.server.database : '';
   const scopeOf = (database: string): TabScope | undefined =>
-    profile && {
-      connectionId: profile.id,
-      database: database === own ? '' : database,
-    };
-  return { scope: scopeOf(catalog.database), scopeOf };
+    profile && database ? { connectionId: profile.id, database } : undefined;
+  const database = connections.database || (profile?.database ?? '');
+  return { scope: scopeOf(database), scopeOf };
 }
 /** Shell state and command wiring, isolated from rendering. */
 export function useWorkspaceController(
@@ -49,13 +44,14 @@ export function useWorkspaceController(
 ): WorkspaceController {
   const catalog = useCatalog(connections);
   const tabs = useQueryTabs();
-  const { scope, scopeOf } = scopes(connections, catalog);
+  const { scope, scopeOf } = scopes(connections);
   const compact = useCompact();
   const inspector = useInspectorOpen(compact);
   const [sidebar, setSidebar] = useState(true);
   const [safe, setSafe] = useState(false);
   const [panel, setPanel] = useState('Details');
   const [mode, setMode] = useState<PaletteMode | null>(null);
+  useDatabasePrompt(connections, setMode);
   const [refreshes, setRefreshes] = useState(0);
   const [cell, setCell] = useState<SelectedCell | null>(null);
   const commands = queryCommands(tabs, scope, scopeOf);

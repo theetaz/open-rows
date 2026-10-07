@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-//! Connection test, session open/close and the session state event.
+//! Connection test, per-database session open/close and the session state
+//! event.
 use std::str::FromStr;
 
 use openrows_core::{SessionEvent, SessionState};
@@ -14,6 +15,7 @@ use tokio::sync::oneshot;
 use super::Connections;
 use super::dto::ProfileInput;
 use super::error::{IpcError, IpcErrorKind};
+use super::owners::Owner;
 use super::pg::{self, ServerDto};
 use super::profiles::{profile_id, resolve_password};
 
@@ -25,7 +27,7 @@ pub(crate) struct TestReport {
     elapsed_ms: u32,
 }
 
-/// An open session.
+/// An open session on one database.
 #[derive(Clone, Debug, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct SessionOpened {
@@ -113,18 +115,24 @@ pub(crate) async fn connection_test(
     Ok(report)
 }
 
-/// Open a session for a saved connection; state changes follow as events.
+/// Open a user session on `database` (the profile's database when `None`);
+/// state changes follow as events. `PostgreSQL` cannot switch databases on a
+/// connection, so every opened database has its own session.
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn session_open(
     state: State<'_, Connections>,
     profile_id: String,
+    database: Option<String>,
 ) -> Result<SessionOpened, IpcError> {
     let profile = state
         .profiles
         .get(super::profiles::profile_id(&profile_id)?)?;
     let password = state.profiles.password(&profile)?;
-    let target = pg::target(&profile.params, profile.tls.mode, password.as_ref())?;
+    let mut target = pg::target(&profile.params, profile.tls.mode, password.as_ref())?;
+    if let Some(database) = &database {
+        target = target.with_database(database);
+    }
     let (server, received) = oneshot::channel();
     let session = state
         .sessions
@@ -142,14 +150,19 @@ pub(crate) async fn session_open(
             "The session opened without server info",
         )
     })?;
-    state.bind(session, profile.id);
+    let owner = Owner {
+        profile: profile.id,
+        database: server.database.clone(),
+    };
+    state.owners.bind(session, owner);
     Ok(SessionOpened {
         session_id: session.to_string(),
         server,
     })
 }
 
-/// Cancel the session's work and disconnect.
+/// Cancel the session's work and disconnect; the database's metadata session
+/// closes with its last user session.
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn session_close(
@@ -158,8 +171,18 @@ pub(crate) async fn session_close(
 ) -> Result<(), IpcError> {
     let id = SessionId::from_str(&session_id)
         .map_err(|_| IpcError::new(IpcErrorKind::Invalid, "Invalid session id"))?;
-    state.unbind(id);
-    Ok(state.sessions.close(id).await?)
+    let owner = state.owners.unbind(id);
+    let closed = state.sessions.close(id).await;
+    if let Some(owner) = owner
+        && !state.owners.in_use(owner.profile, &owner.database)
+    {
+        let profile = owner.profile.to_string();
+        state
+            .metadata
+            .close_database(&profile, &owner.database)
+            .await;
+    }
+    Ok(closed?)
 }
 
 #[cfg(test)]
