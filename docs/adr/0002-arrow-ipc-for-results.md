@@ -1,7 +1,7 @@
 # 0002 — Apache Arrow for result storage and IPC transport
 
-- Status: Accepted: keep Arrow IPC transport
-- Date: 2026-10-05
+- Status: Accepted
+- Date: 2026-10-05; S1 decision 2026-10-06 (keep Arrow IPC transport); reviewed 2026-10-07 (M0-11)
 
 ## Context
 
@@ -213,3 +213,10 @@ anticipated (`arrow.uuid`, `openrows.json`, `openrows.decimal`). Unknown types a
 a typed error and need a per-value tagged-text design in M1-11. See
 [05 §11](../05-database-drivers.md#11-m0-s3-postgresql-streaming-spike) and
 [13 §4](../13-performance.md#m0-s3-postgresql-decode-measurement-boundary).
+
+## Validation / evidence — 2026-10-07 (M0-11 review)
+
+Accepted with evidence; no revision. M0-S1 (#20) met the exit criterion's 3 ms p95 limit on the M4 with 1.00 ms, so the transport stays Arrow IPC. M0-S3 (#25) confirmed that a real driver decodes straight into Arrow with the planned extension metadata. Open points that do not reopen the decision:
+
+- mac-low run of `just bench-ipc` and a run with real driver data instead of the synthetic source: revisit triggers. There is no dedicated task yet; X-02 records mac-low baselines and M1-32 checks budgets on mac-low.
+- Disk spill (M1-14) and the per-value fallback for values without an exact Arrow form (M1-11).

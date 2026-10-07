@@ -1,7 +1,7 @@
 # 0009 — Native AI with BYOK, agent-CLI bridges and MCP
 
-- Status: Accepted
-- Date: 2026-10-05
+- Status: Accepted — validation deferred (M45-09)
+- Date: 2026-10-05; reviewed 2026-10-07 (M0-11)
 - Supersedes: AI assistant listed as post-1.0 in [19-roadmap.md](../19-roadmap.md)
 
 ## Context
@@ -30,3 +30,14 @@ Details: [23-ai-assistant.md](../23-ai-assistant.md).
 - **Hosted AI service by the project:** costs money, requires accounts, conflicts with local-first.
 - **API keys only:** excludes users who only have CLI subscriptions.
 - **Giving the model write tools with confirmation:** rejected; proposals routed through the normal editor + safe-mode path are clearer and auditable.
+
+## Validation / evidence — 2026-10-07 (M0-11 review)
+
+Accepted as a design decision; there is no M0 spike and no code yet. [19](../19-roadmap.md) and [27 §8](../27-delivery-plan.md#8-m45--native-ai-and-mcp) already schedule AI as milestone M4.5, as this ADR requires. Validation is deferred to the M4.5 tasks:
+
+- M45-01 (API-key and local providers) and M45-04 (agent-CLI bridges sandboxed to the app's MCP tools).
+- M45-02 (data-sharing policy with golden-payload tests), M45-03 (read-only MCP server with `propose_sql`) and M45-07 (MCP client).
+- M45-08 (no write path from model output, tested).
+- **M45-09** (M4.5 exit): golden payloads green, no write path, NL→SQL eval baseline per provider.
+
+If a provider kind cannot meet the data-sharing or write-safety gates, this ADR is revised explicitly for that kind.

@@ -1,7 +1,7 @@
 # 0006 — File-per-request YAML collections for the API client
 
-- Status: Accepted
-- Date: 2026-10-05
+- Status: Accepted — validation deferred (M4-02)
+- Date: 2026-10-05; reviewed 2026-10-07 (M0-11)
 
 ## Context
 
@@ -28,3 +28,12 @@ Full spec: [11-api-client.md §3](../11-api-client.md#3-collection-file-format).
 - **Single JSON file per collection:** simple, poor diffs and conflicts.
 - **Custom DSL (like `.bru`):** compact and readable, but needs its own parser/tooling ecosystem; YAML gets editor support and schemas for free.
 - **`.http` files:** great for simple requests, too limited for auth, scripts and tests; supported as import (later).
+
+## Validation / evidence — 2026-10-07 (M0-11 review)
+
+Accepted as a design decision; there is no M0 spike and no code yet. [11 §3](../11-api-client.md#3-collection-file-format) specifies the format and no doc contradicts this ADR. Validation is deferred to:
+
+- **M4-02** (collection format, `openrows-collection`): tests for the format rules above (stable key ordering, omitted defaults, unknown keys preserved, ambiguous scalars quoted, YAML 1.2 core schema, `openrows: <n>` versioning) and for secret values never being written to files.
+- **M4-09** (M4 exit, journey 7): import a Postman collection, run it with an environment, tests pass.
+
+If M4-02 shows that YAML cannot meet these rules, this ADR is revised explicitly before M4-03 builds on it.
