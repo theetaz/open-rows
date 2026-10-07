@@ -128,3 +128,10 @@
   outline: var(--or-focus-width) solid var(--or-focus);
   outline-offset: var(--or-focus-offset);
 }
+.editor {
+  block-size: 240px;
+  overflow: hidden;
+  margin-block-start: var(--or-space-12);
+  border: var(--or-border-width) solid var(--or-separator);
+  border-radius: var(--or-radius-field);
+}

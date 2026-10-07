@@ -19,6 +19,8 @@ export type {
   PageTimer,
   GridRun,
   GridFrame,
+  EditorRun,
+  KeystrokeSample,
 } from './generated/bindings';
 
 export { resultWindow } from './binary';
@@ -30,12 +32,17 @@ export async function finishSpike(report: SpikeReport): Promise<void> {
 }
 
 /** Query spike mode and show the native window before the worker starts. */
-export async function startSpike(): Promise<false | 'ipc' | 'grid'> {
+export async function startSpike(): Promise<false | 'ipc' | 'grid' | 'editor'> {
   if (!isTauri()) return false;
   const result = await commands.spikeStart();
   if (result.status === 'error') throw spikeFailure(result.error);
   if (result.data === null) return false;
-  if (result.data === 'ipc' || result.data === 'grid') return result.data;
+  if (
+    result.data === 'ipc' ||
+    result.data === 'grid' ||
+    result.data === 'editor'
+  )
+    return result.data;
   throw new Error('Unknown spike mode');
 }
 

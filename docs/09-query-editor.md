@@ -10,6 +10,16 @@ CodeMirror 6 (`@openrows/editor`) configured with:
 
 Why not Monaco: Monaco's bundle and memory are several times larger, it assumes a VS Code-like environment, and CodeMirror 6 handles very large documents and IME input more gracefully in WebKit webviews. (ADR-0003.)
 
+### 1.1 Current implementation (M0-S5)
+
+`packages/editor` (`@openrows/editor`) is the S5 foundation, not yet the production editor (M1-21):
+
+- `mountSqlEditor(parent, { doc, label, keyMode?, onDocChange? })` (`label` is the accessible name) mounts CodeMirror 6 with the PostgreSQL dialect of `@codemirror/lang-sql`, dialect keyword completion (`autocompletion()`), line numbers, active line, history, bracket matching and the default/completion/history keymaps. `parseFully(view, budgetMs)` forces a complete parse (used before measuring).
+- Syntax colours use `@openrows/ui` CSS custom properties (`--or-accent`, `--or-success-fg`, …) so theme switching needs no editor reconfiguration. Dedicated syntax tokens with contrast checks are later work.
+- Vim mode is a separate entry, `@openrows/editor/vim` (`vimMode()`, `vimModeOf(view)`), passed as `keyMode` so it precedes every other keymap. It loads as its own lazy chunk; non-Vim users never download it.
+- The package and all `@codemirror/*`, `@lezer/*` and `@replit/codemirror-vim` modules are denied in the initial JS graph by `just bench-ui`; today only the `OPENROWS_SPIKE=editor` benchmark and the component gallery's **SQL editor** specimen (with a Vim switch, used for the manual IME check) load them.
+- Other dialects, statement awareness, schema completion, search/replace, folding and Emacs keys arrive with M1-21. IME is verified manually (see [13 §4, M0 S5](13-performance.md#m0-s5-editor-keystroke-measurement)).
+
 ## 2. Statement awareness
 
 ```mermaid

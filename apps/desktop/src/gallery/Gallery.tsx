@@ -2,6 +2,7 @@
 import { GlassPanel, SegmentedControl, useTheme } from '@openrows/ui';
 import type { ThemeMode } from '@openrows/ui';
 import { ButtonGallery } from './ButtonGallery';
+import { EditorGallery } from './EditorGallery';
 import { FieldGallery } from './FieldGallery';
 import { IndicatorGallery } from './IndicatorGallery';
 import { TokenGallery } from './TokenGallery';
@@ -13,7 +14,7 @@ const themes: readonly { value: ThemeMode; label: string }[] = [
   { value: 'light', label: 'Light' },
   { value: 'dark', label: 'Dark' },
 ];
-const sections = ['Controls', 'Fields', 'Indicators', 'Tokens'];
+const sections = ['Controls', 'Fields', 'Editor', 'Indicators', 'Tokens'];
 /** Inspectable design-system gallery; no workspace/database behaviour. */
 export function Gallery(): React.JSX.Element {
   return (
@@ -35,6 +36,7 @@ export function Gallery(): React.JSX.Element {
         <GalleryHeader />
         <ButtonGallery />
         <FieldGallery />
+        <EditorGallery />
         <IndicatorGallery />
         <TokenGallery />
         <AppFooter />
