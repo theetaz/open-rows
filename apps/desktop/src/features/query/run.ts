@@ -63,6 +63,8 @@ export const idleRun: RunState = {
 export type RunAction =
   | { type: 'begin' }
   | { type: 'reply'; reply: ExecuteReply; request: ExecuteRequest }
+  /** A generated statement (table page) started without a safety plan. */
+  | { type: 'started'; queryId: string }
   | { type: 'rejected'; message: string; code: string | null }
   | { type: 'event'; event: QueryEventDto }
   | { type: 'dismiss' };
@@ -73,6 +75,12 @@ export function runReducer(state: RunState, action: RunAction): RunState {
       return { ...idleRun, status: 'starting' };
     case 'reply':
       return applyReply(state, action.reply, action.request);
+    case 'started':
+      return {
+        ...state,
+        queryId: action.queryId,
+        status: state.status === 'starting' ? 'running' : state.status,
+      };
     case 'rejected':
       return {
         ...idleRun,

@@ -29,6 +29,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "query_cancel",
             "results_release",
             "history_recent",
+            "table_structure",
+            "table_sql",
+            "table_page",
+            "table_count",
         ]),
     ))?;
     Ok(())

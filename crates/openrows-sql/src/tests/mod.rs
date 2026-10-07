@@ -5,6 +5,7 @@ mod classify;
 mod classify_session;
 mod placeholders;
 mod properties;
+mod select;
 mod split;
 
 use crate::{Classification, Dialect, StatementKind};

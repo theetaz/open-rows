@@ -6,20 +6,33 @@
  */
 export type TabScope = { connectionId: string; database: string };
 
-/** A query tab; its editor text lives here so it survives tab switches. */
+/** The relation a table tab browses; `database` is its real name. */
+export type TableObject = {
+  database: string;
+  schema: string;
+  name: string;
+};
+
+/**
+ * A query or table tab; a query tab's editor text lives here so it survives
+ * tab switches. Table tabs (D-08) carry the browsed relation instead.
+ */
 export type QueryTab = TabScope & {
   id: string;
+  kind: 'query' | 'table';
   title: string;
   sql: string;
   /** Schema object the tab was opened for, e.g. `['public', 'orders']`. */
   objectPath?: readonly string[];
+  table?: TableObject;
 };
 
-/** What a new tab starts with; every field is optional. */
+/** What a new tab starts with; every field is optional. `table` makes a table tab. */
 export type QueryTabInit = {
   sql?: string;
   title?: string;
   objectPath?: readonly string[];
+  table?: TableObject;
 };
 
 /** Every open query tab, the active tab per scope and the title counter. */
@@ -51,12 +64,14 @@ export function openTab(
   init: QueryTabInit = {},
 ): TabsState {
   const tab: QueryTab = {
-    id: `query-${String(state.next)}`,
+    id: `${init.table ? 'table' : 'query'}-${String(state.next)}`,
+    kind: init.table ? 'table' : 'query',
     title: init.title ?? `SQL Query ${String(state.next)}`,
     connectionId: scope.connectionId,
     database: scope.database,
     sql: init.sql ?? '',
     ...(init.objectPath ? { objectPath: init.objectPath } : {}),
+    ...(init.table ? { table: init.table } : {}),
   };
   return {
     tabs: [...state.tabs, tab],

@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Statement selection and sequential multi-statement runs.
 use super::{FakeCancel, TestResult, manager, open};
-use crate::script::{Scope, ScriptCanceller, ScriptEvent, ScriptOutcome, run_script, statements};
+use crate::script::{
+    Scope, ScriptCanceller, ScriptEvent, ScriptOutcome, run_bound, run_script, statements,
+};
 use crate::{QueryEvent, SessionManager};
+use openrows_sql::select::BoundSql;
 use openrows_types::SessionId;
 use std::sync::Arc;
 use std::time::Duration;
@@ -155,5 +158,30 @@ async fn an_unknown_session_fails_the_run() -> TestResult {
             event: QueryEvent::Failed { .. }
         }]
     ));
+    Ok(())
+}
+
+#[tokio::test]
+async fn bound_statements_reach_the_session_with_their_parameters() -> TestResult {
+    let (manager, _store) = manager();
+    let session = open(&manager, None).await?;
+    let cancel = ScriptCanceller::default();
+    let mut seen = Vec::new();
+    let plain = BoundSql {
+        sql: "rows 1 3".to_owned(),
+        params: Vec::new(),
+    };
+    let outcome = run_bound(&manager, session, plain, &cancel, |event| seen.push(event)).await;
+    assert_eq!(outcome, ScriptOutcome::Completed);
+    assert!(seen.iter().all(|event| event.statement == 0));
+    let bound = BoundSql {
+        sql: "rows 1 3".to_owned(),
+        params: vec![Some("x".to_owned())],
+    };
+    let refused = run_bound(&manager, session, bound.clone(), &cancel, |_| {}).await;
+    assert_eq!(refused, ScriptOutcome::Failed, "the fake cannot bind");
+    cancel.cancel();
+    let skipped = run_bound(&manager, session, bound, &cancel, |_| {}).await;
+    assert_eq!(skipped, ScriptOutcome::Cancelled);
     Ok(())
 }

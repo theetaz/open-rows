@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Catalog listing for the schema tree (docs/05 §6, docs/10 §1), D-06 slice.
 //!
+//! [`table`] adds a relation's columns, indexes and estimate (D-08).
 //! The SQL lives in `sql/*.sql`. Values reach the server as quoted literals
-//! because the driver has no bind parameters yet; the simple-query protocol
-//! keeps each listing to one round trip. Run these on a dedicated metadata
+//! because these run through the simple-query protocol (no bind parameters),
+//! which keeps each listing to one round trip. Run these on a dedicated metadata
 //! session so they never queue behind user queries.
 use crate::session::PgSession;
 use crate::simple::TextRow;
 use openrows_driver_api::DriverError;
 use openrows_driver_api::catalog::{DatabaseSummary, ObjectKind, ObjectSummary, SchemaSummary};
+
+mod table;
 
 const DATABASES_SQL: &str = include_str!("sql/databases.sql");
 const SCHEMAS_SQL: &str = include_str!("sql/schemas.sql");

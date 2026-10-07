@@ -50,6 +50,13 @@ export class GridLayout {
     );
     target.c1 = this.columnAt(view.x + view.width);
   }
+  /** The model column under a point in the fixed header row, if any. */
+  headerHit(view: Viewport, x: number, y: number): number | undefined {
+    if (y < 0 || y >= this.rowHeight || x < 0 || !this.columns.length)
+      return undefined;
+    const content = x < this.pinnedWidth ? x : x + view.x;
+    return content < this.width ? this.columnAt(content) : undefined;
+  }
   /** Hit testing respects the fixed header and pinned prefix. */
   hit(
     view: Viewport,

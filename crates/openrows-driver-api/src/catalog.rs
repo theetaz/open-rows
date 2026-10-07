@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-//! Schema-browser object model (docs/10 §2), the subset the D-06 tree lists.
+//! Schema-browser object model (docs/10 §2): the subset the D-06 tree lists
+//! and the table structure the D-08 table view shows.
 
 /// Kinds of catalog objects a driver lists below a schema.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -90,6 +91,49 @@ pub struct ObjectSummary {
     pub row_estimate: Option<u64>,
     /// Comment, when set.
     pub comment: Option<String>,
+}
+
+/// One column of a table-like relation, in ordinal order (docs/10 §2).
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ColumnSummary {
+    /// Column name.
+    pub name: String,
+    /// Formatted type, e.g. `character varying(40)` or `timestamp with time zone`.
+    pub data_type: String,
+    /// `false` for `NOT NULL` columns.
+    pub nullable: bool,
+    /// Default or generation expression, when set.
+    pub default: Option<String>,
+    /// Comment, when set.
+    pub comment: Option<String>,
+}
+
+/// One index of a table or materialized view.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct IndexSummary {
+    /// Index name.
+    pub name: String,
+    /// Key columns or expressions, comma-separated, in key order.
+    pub columns: String,
+    /// Enforces uniqueness.
+    pub unique: bool,
+    /// Backs the primary key.
+    pub primary: bool,
+    /// Access method, e.g. `btree` or `gin`.
+    pub method: String,
+    /// Partial-index predicate, when set.
+    pub predicate: Option<String>,
+}
+
+/// A browsed relation's columns, indexes and planner row estimate.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct TableStructure {
+    /// Columns in ordinal order; empty when the relation does not exist.
+    pub columns: Vec<ColumnSummary>,
+    /// Indexes ordered by name.
+    pub indexes: Vec<IndexSummary>,
+    /// Planner estimate (`reltuples`); `None` when never analysed or not a table.
+    pub row_estimate: Option<u64>,
 }
 
 #[cfg(test)]

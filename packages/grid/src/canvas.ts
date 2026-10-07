@@ -56,11 +56,14 @@ function pointerFocus({
 }: PointerContext): void {
   scroll.onpointerdown = (event): void => {
     const bounds = scroll.getBoundingClientRect(),
-      focus = painter.layout.hit(
-        painter.view,
-        event.clientX - bounds.left,
-        event.clientY - bounds.top,
-      );
+      x = event.clientX - bounds.left,
+      y = event.clientY - bounds.top;
+    const header = painter.layout.headerHit(painter.view, x, y);
+    if (header !== undefined) {
+      props.onHeader?.(header);
+      return;
+    }
+    const focus = painter.layout.hit(painter.view, x, y);
     if (!focus || focus.row >= props.source.rows) return;
     const range = {
       r0: focus.row,

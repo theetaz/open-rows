@@ -3,6 +3,8 @@ import { lazy, Suspense } from 'react';
 import { GlassPanel, SegmentedControl } from '@openrows/ui';
 import { CellDetails, HistoryPanel } from '../features/query';
 import type { SelectedCell } from '../features/query';
+import { RowDetails } from '../features/table';
+import type { SelectedRow } from '../features/table';
 const Assistant = lazy(() =>
   import('./Assistant').then((module) => ({ default: module.Assistant })),
 );
@@ -13,9 +15,10 @@ const segments = ['Details', 'History', 'Assistant'].map((label) => ({
   label,
 }));
 
-/** Cell details, query history and the (sample) assistant share the inspector. */
+/** Row or cell details, query history and the (sample) assistant share the inspector. */
 export function WorkspaceInspector(props: {
   cell: SelectedCell | null;
+  row: SelectedRow | null;
   connectionId: string | undefined;
   panel: string;
   onPanel: (panel: string) => void;
@@ -38,6 +41,8 @@ export function WorkspaceInspector(props: {
           connectionId={props.connectionId}
           onOpen={props.onQuery}
         />
+      ) : props.row ? (
+        <RowDetails row={props.row} />
       ) : (
         <CellDetails cell={props.cell} />
       )}

@@ -72,6 +72,17 @@ export const commands = {
 	resultsRelease: (resultIds: string[]) => __TAURI_INVOKE<void>("results_release", { resultIds }),
 	/**  The newest statements run on a saved connection, newest first. */
 	historyRecent: (profileId: string, limit: number) => typedError<HistoryItemDto[], IpcError>(__TAURI_INVOKE("history_recent", { profileId, limit })),
+	/**  Columns, indexes and row estimate of a relation, read on the metadata session. */
+	tableStructure: (target: TableTarget) => typedError<TableStructureDto, IpcError>(__TAURI_INVOKE("table_structure", { target })),
+	/**  The page `SELECT` and its bind parameters, without running it (SQL preview). */
+	tableSql: (query: TableQueryDto, offset: number, limit: number) => typedError<SqlPreviewDto, IpcError>(__TAURI_INVOKE("table_sql", { query, offset, limit })),
+	/**
+	 *  Start one page on the target database's session; events stream like a query
+	 *  run and `query_cancel(queryId)` cancels it. Nothing is written to history.
+	 */
+	tablePage: (request: PageRequest, onEvent: Channel<QueryEventDto>) => typedError<PageReply, IpcError>(__TAURI_INVOKE("table_page", { request, onEvent })),
+	/**  Exact `count(*)` with the current filters; `query_cancel(ticket)` stops it. */
+	tableCount: (request: CountRequest) => typedError<CountReply, IpcError>(__TAURI_INVOKE("table_count", { request })),
 };
 
 /** Events */
@@ -98,6 +109,9 @@ export type ColumnDto = {
 	sourceType: string | null,
 };
 
+/**  Whether every filter or any filter must match. */
+export type CombinatorDto = "and" | "or";
+
 /**  A reachable saved connection. */
 export type ConnectionOpened = {
 	/**
@@ -107,6 +121,16 @@ export type ConnectionOpened = {
 	server: ServerDto,
 	/**  The profile's database to open right away; `None` lets the user choose. */
 	database: string | null,
+};
+
+/**  How an exact count ended. */
+export type CountReply = { kind: "counted"; rows: number | null } | { kind: "cancelled" };
+
+/**  An exact, cancellable count; `ticket` is the id `query_cancel` takes. */
+export type CountRequest = {
+	sessionId: string,
+	query: TableQueryDto,
+	ticket: string,
 };
 
 /**  A database on the server. */
@@ -164,6 +188,17 @@ export type ExecuteRequest = {
 	/**  Token from a `confirmationRequired` reply the user accepted. */
 	confirmToken: string | null,
 };
+
+/**  One enabled filter row; `second` is BETWEEN's upper bound. */
+export type FilterDto = {
+	column: string,
+	operator: FilterOperatorDto,
+	value: string,
+	second: string,
+};
+
+/**  Filter-row comparisons (FR-GRID-11 subset). */
+export type FilterOperatorDto = "equal" | "notEqual" | "less" | "greater" | "lessOrEqual" | "greaterOrEqual" | "contains" | "notContains" | "startsWith" | "endsWith" | "in" | "isNull" | "isNotNull" | "between";
 
 /**  Per-rAF interval diagnostics. Timings may overlap; worker CPU is informational. */
 export type GridFrame = {
@@ -284,6 +319,20 @@ export type ObjectDto = {
 
 /**  Object kinds the schema tree lists. */
 export type ObjectKindDto = "table" | "view" | "materializedView" | "foreignTable" | "function" | "procedure" | "sequence";
+
+/**  A started page: cancel with `query_cancel(queryId)`; events follow. */
+export type PageReply = {
+	queryId: string,
+	sql: string,
+};
+
+/**  One page of rows on an open session. */
+export type PageRequest = {
+	sessionId: string,
+	query: TableQueryDto,
+	offset: number,
+	limit: number,
+};
 
 export type PageTimer = {
 	resolutionMs: number | null,
@@ -407,6 +456,12 @@ export type SessionStateChanged = {
 /**  Session lifecycle states the UI shows (docs/04 §3 subset). */
 export type SessionStateDto = "connecting" | "idle" | "busy" | "closed" | "failed";
 
+/**  Server-side sort on one column. */
+export type SortDto = {
+	column: string,
+	descending: boolean,
+};
+
 export type SpikeError = { kind: "disabled" } | { kind: "missingPath" } | { kind: "failed"; message: string };
 
 export type SpikeReport = SpikeReport_Serialize | SpikeReport_Deserialize;
@@ -427,6 +482,12 @@ export type SpikeReport_Serialize = {
 	editor?: EditorRun[] | null,
 };
 
+/**  Generated SQL and its bind parameters, for the SQL preview. */
+export type SqlPreviewDto = {
+	sql: string,
+	params: (string | null)[],
+};
+
 /**  One statement of the run with its classification. */
 export type StatementDto = {
 	index: number,
@@ -438,6 +499,49 @@ export type StatementDto = {
 
 /**  What a statement does, for the confirmation dialog. */
 export type StatementKindDto = "read" | "write" | "ddl" | "txControl" | "unknown";
+
+/**  A column on the Structure tab. */
+export type TableColumnDto = {
+	name: string,
+	dataType: string,
+	nullable: boolean,
+	default: string | null,
+	comment: string | null,
+};
+
+/**  An index on the Indexes tab. */
+export type TableIndexDto = {
+	name: string,
+	columns: string,
+	unique: boolean,
+	primary: boolean,
+	method: string,
+	predicate: string | null,
+};
+
+/**  What a table page shows: projection (empty = every column), filters, sort. */
+export type TableQueryDto = {
+	target: TableTarget,
+	columns: string[],
+	filters: FilterDto[],
+	combinator: CombinatorDto,
+	sort: SortDto | null,
+};
+
+/**  Columns, indexes and the planner row estimate of a relation. */
+export type TableStructureDto = {
+	columns: TableColumnDto[],
+	indexes: TableIndexDto[],
+	rowEstimate: number | null,
+};
+
+/**  The browsed relation on a saved connection's database. */
+export type TableTarget = {
+	profileId: string,
+	database: string,
+	schema: string,
+	table: string,
+};
 
 /**  A successful connection test. */
 export type TestReport = {

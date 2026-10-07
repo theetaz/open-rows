@@ -33,6 +33,26 @@ pub trait Session: Send {
         sink: &'a mut dyn ResultSink,
     ) -> BoxFuture<'a, Result<ExecSummary, DriverError>>;
 
+    /// Execute one statement with positional text parameters (`$1`, `$2`, …;
+    /// `None` is SQL NULL). The server parses each value with the input
+    /// function of the type it infers for the placeholder.
+    ///
+    /// The default supports only an empty parameter list.
+    ///
+    /// # Errors
+    /// As [`Session::execute`]; `Unsupported` when the driver cannot bind.
+    fn execute_bound<'a>(
+        &'a mut self,
+        sql: &'a str,
+        params: &'a [Option<String>],
+        sink: &'a mut dyn ResultSink,
+    ) -> BoxFuture<'a, Result<ExecSummary, DriverError>> {
+        if params.is_empty() {
+            return self.execute(sql, sink);
+        }
+        Box::pin(async { Err(DriverError::Unsupported("bind parameters".to_owned())) })
+    }
+
     /// Out-of-band cancel handle; `None` when the driver cannot cancel server-side.
     fn cancel_handle(&self) -> Option<Arc<dyn CancelHandle>> {
         None
@@ -111,6 +131,10 @@ mod tests {
         let summary = ready(session.execute("select", &mut sink))?;
         assert_eq!((summary.batches, sink.0), (1, 1));
         assert!(session.cancel_handle().is_none());
+        let bound = ready(session.execute_bound("select", &[], &mut sink))?;
+        assert_eq!(bound.batches, 1);
+        let refused = ready(session.execute_bound("select $1", &[None], &mut sink));
+        assert!(matches!(refused, Err(DriverError::Unsupported(_))));
         ready(session.close())
     }
 }

@@ -6,16 +6,20 @@ import type { ControlSize } from './TextField';
 import styles from './TextField.module.css';
 
 type Option<Value extends string> = { value: Value; label: string };
+/** A visible label, or only an accessible name for inline pickers. */
+type Name =
+  | { label: string; 'aria-label'?: string }
+  | { label?: never; 'aria-label': string };
 type Props<Value extends string> = Omit<
   SelectHTMLAttributes<HTMLSelectElement>,
-  'value' | 'onChange'
-> & {
-  label: string;
-  value: Value;
-  options: readonly Option<Value>[];
-  onValueChange: (value: Value) => void;
-  controlSize?: ControlSize;
-};
+  'value' | 'onChange' | 'aria-label'
+> &
+  Name & {
+    value: Value;
+    options: readonly Option<Value>[];
+    onValueChange: (value: Value) => void;
+    controlSize?: ControlSize;
+  };
 
 /** Native pop-up button in the shared text-field frame: same height and radius. */
 export function SelectField<Value extends string>({
@@ -32,7 +36,7 @@ export function SelectField<Value extends string>({
   const selectId = id ?? generated;
   return (
     <div className={`${styles.field ?? ''} ${className}`}>
-      <label htmlFor={selectId}>{label}</label>
+      {label && <label htmlFor={selectId}>{label}</label>}
       <div className={styles.frame} data-size={controlSize}>
         <select
           {...props}

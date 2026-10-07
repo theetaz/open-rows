@@ -62,6 +62,7 @@ const objects = [
   object('orders_archive', 'public', 'orders_2024', 'table', {
     rowEstimate: 820_000,
   }),
+  object('orders_archive', 'public', 'orders_2024_id_seq', 'sequence'),
 ];
 
 const strip = (item: ObjectDto & { database: string }): ObjectDto => ({

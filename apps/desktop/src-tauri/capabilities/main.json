@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main",
-  "description": "Main window: first-render and session-state events, window dragging, native ask alerts for destructive confirmations, metadata, connection profiles, sessions and catalog reads, query execution and history, result tiles and opt-in IPC spike.",
+  "description": "Main window: first-render and session-state events, window dragging, native ask alerts for destructive confirmations, metadata, connection profiles, sessions and catalog reads, query execution and history, table browsing, result tiles and opt-in IPC spike.",
   "windows": ["main"],
   "permissions": [
     "core:event:allow-emit-to",
@@ -34,6 +34,10 @@
     "allow-query-execute",
     "allow-query-cancel",
     "allow-results-release",
-    "allow-history-recent"
+    "allow-history-recent",
+    "allow-table-structure",
+    "allow-table-sql",
+    "allow-table-page",
+    "allow-table-count"
   ]
 }

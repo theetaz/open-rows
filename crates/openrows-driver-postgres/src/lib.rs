@@ -7,8 +7,9 @@
 //! a Unix socket with per-stage timeouts, reports [`ServerInfo`], runs startup
 //! commands, cancels out of band and forwards notices. Values with no exact
 //! Arrow form fall back to tagged text. Lists databases, schemas and objects
-//! for the schema tree (`PgSession::list_*`, `search_index`). No TLS (D-11)
-//! or bind parameters yet.
+//! for the schema tree (`PgSession::list_*`, `search_index`) and a table's
+//! columns and indexes (`table_columns`, `table_indexes`). Binds positional
+//! text-format parameters (`Session::execute_bound`). No TLS yet (D-11).
 #![forbid(unsafe_code)]
 mod cancel;
 mod connect;

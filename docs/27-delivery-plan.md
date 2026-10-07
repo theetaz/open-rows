@@ -77,7 +77,7 @@ Feature-first mode ([docs/25 §0](25-engineering-standards.md#0-current-delivery
 | D-05 | M1-04, M1-09 | Typed IPC for connections, sessions, queries and result windows; connection list, new/edit sheet and Test connection | done (#37) |
 | D-06 | M1-16, M1-18 | Schema tree (databases → schemas → tables/views) on the real connection; replace the corresponding mock workspace code | done (#38) |
 | D-07 | M1-14, M1-19, M1-21 | Query tab: CodeMirror editor, run current / selection / all, cancel, results in the canvas grid over result-store windows; basic history | done (#39) |
-| D-08 | M1-19 table browse | Open a table with pagination, header sort and a simple filter; copy cells/rows | todo |
+| D-08 | M1-19 table browse | Open a table with pagination, header sort and a simple filter; copy cells/rows | done (#42) |
 | D-09 | M1-23, M1-24 | Edit, insert, duplicate and delete rows as a staged change set; SQL preview; transactional commit with rollback; safe mode (read-only, confirm writes, dangerous-statement confirmation) | todo |
 | D-10 | M1-06 SSH | SSH tunnel in the connection form, promoted from the M0-S4 prototype: password, key, agent, keyboard-interactive, jump hosts, `~/.ssh/config` aliases, `known_hosts` first-use prompt | todo |
 | D-11 | M1-06 TLS, M1-07 | TLS modes (`disable` … `verify-full`), custom CA, client certificates and visible skip-verify; step-by-step Test connection diagnostics | todo |

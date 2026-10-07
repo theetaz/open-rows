@@ -14,6 +14,7 @@ import {
   openConnection,
   openSession,
   recentHistory,
+  tablePage,
 } from '@openrows/ipc';
 import { connectTo } from '../test/connect';
 import { Workspace } from './Workspace';
@@ -24,6 +25,7 @@ vi.mock('@openrows/ipc', async () =>
 
 beforeEach(() => {
   vi.stubGlobal('innerWidth', 1280);
+  vi.mocked(tablePage).mockClear();
 });
 function mount(): ReturnType<typeof userEvent.setup> {
   render(
@@ -113,12 +115,34 @@ it('switches sidebar segments, lazily expands real sections and opens objects on
   expect(screen.queryByRole('tab', { name: /^orders/ })).toBeNull();
   await user.dblClick(orders);
   expect(
-    await screen.findByRole('textbox', { name: 'SQL editor' }),
-  ).toHaveTextContent('SELECT * FROM "public"."orders" LIMIT 1000;');
+    await screen.findByRole('region', { name: 'orders table' }),
+  ).toBeVisible();
+  expect(tablePage).toHaveBeenCalledWith(
+    {
+      sessionId: 'session-id-orders-local-orders',
+      offset: 0,
+      limit: 300,
+      query: {
+        target: {
+          profileId: 'id-orders-local',
+          database: 'orders',
+          schema: 'public',
+          table: 'orders',
+        },
+        columns: [],
+        filters: [],
+        combinator: 'and',
+        sort: null,
+      },
+    },
+    expect.any(Function),
+  );
   expect(screen.getByRole('tab', { name: /^orders/ })).toHaveAttribute(
     'aria-selected',
     'true',
   );
+  await user.dblClick(orders);
+  expect(screen.getAllByRole('tab', { name: /^orders/ })).toHaveLength(1);
 });
 it('opens objects of another database in its own tab set on its own session', async () => {
   const user = mount();
@@ -143,8 +167,29 @@ it('opens objects of another database in its own tab set on its own session', as
     'true',
   );
   expect(
+    await screen.findByRole('region', { name: 'orders_2024 table' }),
+  ).toBeVisible();
+  await waitFor(() => {
+    expect(tablePage).toHaveBeenCalled();
+  });
+  const [request] = vi.mocked(tablePage).mock.lastCall ?? [];
+  expect(request?.sessionId).toBe('session-id-orders-local-orders_archive');
+  expect(request?.query.target).toEqual({
+    profileId: 'id-orders-local',
+    database: 'orders_archive',
+    schema: 'public',
+    table: 'orders_2024',
+  });
+  expect(screen.queryByText(/browse-only/)).toBeNull();
+  await user.click(screen.getByRole('button', { name: /^Sequences/ }));
+  await user.dblClick(
+    await screen.findByRole('button', { name: 'orders_2024_id_seq' }),
+  );
+  expect(
     await screen.findByRole('textbox', { name: 'SQL editor' }),
-  ).toHaveTextContent('SELECT * FROM "public"."orders_2024" LIMIT 1000;');
+  ).toHaveTextContent(
+    'SELECT * FROM "public"."orders_2024_id_seq" LIMIT 1000;',
+  );
   vi.mocked(executeQuery).mockResolvedValueOnce({
     kind: 'blocked',
     message: 'stop here',

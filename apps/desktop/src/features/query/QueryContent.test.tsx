@@ -91,6 +91,7 @@ function Harness(): React.JSX.Element {
       tabs={tabs}
       database="orders"
       onCell={vi.fn()}
+      onRow={vi.fn()}
     />
   );
 }

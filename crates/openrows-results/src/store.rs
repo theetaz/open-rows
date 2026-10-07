@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 use crate::limits::{Append, Limits};
 use crate::slice::{project_slice, ranges};
-use arrow_array::RecordBatch;
+use arrow_array::cast::AsArray;
+use arrow_array::types::Int64Type;
+use arrow_array::{Array, RecordBatch};
 use arrow_ipc::writer::StreamWriter;
 use arrow_schema::{ArrowError, SchemaRef};
 use std::collections::HashMap;
@@ -191,6 +193,16 @@ impl ResultStore {
             .results
             .get(id)
             .map(|result| (result.rows, result.truncated))
+    }
+
+    /// The first row's first value as an integer, e.g. a `count(*)`; `None`
+    /// when the result is unknown, empty, NULL there or not a 64-bit integer.
+    #[must_use]
+    pub fn first_integer(&self, id: &str) -> Option<i64> {
+        let inner = self.read();
+        let batch = inner.results.get(id)?.batches.first()?;
+        let column = batch.columns().first()?.as_primitive_opt::<Int64Type>()?;
+        column.is_valid(0).then(|| column.value(0))
     }
 
     /// Arrow memory held by all results.

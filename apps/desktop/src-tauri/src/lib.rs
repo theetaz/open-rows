@@ -11,6 +11,7 @@ mod results;
 mod spike;
 mod startup;
 mod startup_report;
+mod tables;
 
 fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
     use connections::{catalog, connection, profiles, sessions};
@@ -40,7 +41,11 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
             queries::commands::query_execute,
             queries::commands::query_cancel,
             queries::commands::results_release,
-            queries::commands::history_recent
+            queries::commands::history_recent,
+            tables::commands::table_structure,
+            tables::commands::table_sql,
+            tables::commands::table_page,
+            tables::commands::table_count
         ])
         .events(tauri_specta::collect_events![sessions::SessionStateChanged])
         .constant(

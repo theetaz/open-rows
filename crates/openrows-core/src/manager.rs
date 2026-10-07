@@ -143,6 +143,19 @@ impl SessionManager {
         session: SessionId,
         sql: impl Into<String>,
     ) -> Result<QueryHandle, CoreError> {
+        self.execute_bound(session, sql, Vec::new())
+    }
+
+    /// Queue `sql` with positional text parameters (`$1`, …; `None` is NULL).
+    ///
+    /// # Errors
+    /// As [`SessionManager::execute`].
+    pub fn execute_bound(
+        &self,
+        session: SessionId,
+        sql: impl Into<String>,
+        params: Vec<Option<String>>,
+    ) -> Result<QueryHandle, CoreError> {
         let (sender, events) = mpsc::unbounded_channel();
         let (commands, token) = self
             .with_entry(session, |entry| {
@@ -153,6 +166,7 @@ impl SessionManager {
         let queued = Queued {
             query: id,
             sql: sql.into(),
+            params,
             token: token.clone(),
             events: sender,
         };
