@@ -9,10 +9,12 @@ Every task follows [25 — Engineering Standards](25-engineering-standards.md): 
 - **Pick the first task whose status is `todo` and whose dependencies are `done`.** Tasks within a milestone are listed in a workable order; independent tasks may run in parallel in separate worktrees.
 - **Create a GitHub issue per task** titled `<ID>: <title>`, containing the full spec in the docs/25 §2 template. The rows here are the seed: goal, requirement IDs, dependencies and the gates that must appear among the acceptance criteria.
 - **Requirement IDs** refer to [02 — Requirements](02-requirements.md). A task is only done when the acceptance text of each listed requirement is fully met (or the task states which part it covers and which later task covers the rest).
-- **Benchmarks** refer to [13 — Performance](13-performance.md) §4. A task that touches a hot path adds or updates a benchmark and reports numbers against budget.
+- **Benchmarks** refer to [13 — Performance](13-performance.md) §4. Outside feature-first mode, a task that touches a hot path adds or updates a benchmark and reports numbers against budget; in feature-first mode benchmarks run at milestone checkpoints.
 - **Update this file in the same PR** that completes a task (status → `done`, PR link). Add new tasks here when scope is discovered rather than growing an existing task.
 
-Status values: `done`, `todo`, `blocked` (state the blocker), `hw` (needs specific hardware or a manual run).
+Status values: `done`, `todo`, `blocked` (state the blocker), `hw` (needs specific hardware or a manual run), `deferred` (parked until a milestone checkpoint).
+
+**Current mode: feature-first.** Work the [dogfood track (§3a)](#3a-dogfood-track-postgresql-first) before anything else. While docs/25 §0 applies, definition-of-done item 4 (benchmarks) and full acceptance reports are replaced by its lighter rules.
 
 ### 1.1 Task ID scheme
 
@@ -55,12 +57,35 @@ Existing crates and packages: `openrows-types`, `openrows-results`, `openrows-ap
 | M0-S3 | **PostgreSQL streaming spike.** Draft `openrows-driver-api` (minimal session/stream traits) and a prototype `openrows-driver-postgres` decoding the binary protocol directly into Arrow builders; containerised PostgreSQL fixture; Criterion `decode_pg_int`, `decode_pg_text`, `decode_pg_mixed`, `decode_pg_wide`. | NFR-PERF-05, NFR-PERF-03; docs/04, docs/05, docs/06; ADR-0002, ADR-0007 | M0-S1 | ≥ 1 M cells/s/core (primitive types); first batch ≤ 5 ms; no per-cell heap allocation for primitives | done (#25) |
 | M0-S4 | **SSH spike.** `openrows-net` prototype with `russh`: password, private key (ed25519/ecdsa/rsa, OpenSSH/PEM, passphrase), ssh-agent, keyboard-interactive, multi-hop jump host, `~/.ssh/config` aliases, `known_hosts` verification with first-use fingerprint. | FR-CONN-04, FR-NET-01, FR-NET-02, NFR-SEC-04; docs/24 | — | Works against an OpenSSH container matrix in tests; manual run against a real bastion recorded | hw (container matrix green; real-bastion run pending, see docs/24 §11) |
 | M0-S5 | **Editor spike.** CodeMirror 6 in WKWebView: 5 000-line SQL file, PostgreSQL dialect highlighting, Vim mode, IME (Japanese/Chinese input) check; spike-mode benchmark `just bench-editor` (pattern of `bench-ipc`/`bench-grid`). | NFR-PERF-07, FR-EDIT-02, FR-EDIT-09; docs/09; ADR-0003 | — | Keystroke-to-paint p95 ≤ 16 ms; editor chunk lazy, outside the initial bundle; ADR-0003 accepted with numbers | hw (M4 implementer runs p95 sql 9–11 ms, vim 9–10 ms; maintainer bench-editor confirmation, manual IME check and mac-low run pending) |
-| M0-09 | **Startup follow-up.** Warm p50 rose ≈ 35 ms when panels became lazy (#18). Preload first-view chunks during idle or inline them; keep the initial bundle ≤ 350 KB. | NFR-PERF-01; docs/13 §2.1 | — | Warm p50 back near 290 ms on the M4; memory budget still met | todo |
+| M0-09 | **Startup follow-up.** Warm p50 rose ≈ 35 ms when panels became lazy (#18). Preload first-view chunks during idle or inline them; keep the initial bundle ≤ 350 KB. | NFR-PERF-01; docs/13 §2.1 | — | Warm p50 back near 290 ms on the M4; memory budget still met | deferred |
 | M0-10 | **Build cache issue.** `sccache` intermittently fails with "Operation not permitted" for `clippy-driver` after sandboxed agent runs; find the cause (server started inside a sandbox, socket/permissions) and document the fix in docs/18. | docs/18 | — | `just check` with `RUSTC_WRAPPER=sccache` works reliably | todo |
 | M0-11 | **ADR review.** Accept or revise ADR-0001, 0003 (after S5), 0005, 0006, 0007 (after S3), 0008 (may stay Proposed until M4), 0009; record evidence. | docs/adr | S3, S5 | Every ADR has an explicit status and evidence | done (#30) |
-| M0-S6b | **Startup on mac-low.** Run `just bench-startup` and `just bench-memory` on the reference low-end Mac (docs/13 hardware table) and record results. | NFR-PERF-01/02 | — | Budgets met on mac-low or an optimisation task is filed | hw |
+| M0-S6b | **Startup on mac-low.** Run `just bench-startup` and `just bench-memory` on the reference low-end Mac (docs/13 hardware table) and record results. | NFR-PERF-01/02 | — | Budgets met on mac-low or an optimisation task is filed | deferred |
 
 **M0 exit:** all spikes met or a decision recorded; ADRs settled; budgets met on reference hardware.
+
+## 3a. Dogfood track (PostgreSQL first)
+
+Feature-first mode ([docs/25 §0](25-engineering-standards.md#0-current-delivery-mode-feature-first-until-the-postgresql-dogfood-alpha)). Goal: as soon as possible, the maintainer can open OpenRows, connect to their own PostgreSQL databases (starting direct/localhost, then over SSH and TLS), browse schemas, run queries, and edit, insert and delete rows safely. Each step is a narrow slice of the listed M1 task; the rest of that task stays in §4 for later. Order follows dependencies; independent steps may run in parallel. After each step the maintainer tries it on real databases and feedback becomes the next tasks.
+
+| Step | Slice (from M1 tasks) | Scope for the dogfood alpha | Status |
+| --- | --- | --- | --- |
+| D-01 | M1-01 session manager | Actor-per-session runtime: open/close, command queue, cancel, typed errors, panic isolation, coalesced progress events | todo |
+| D-02 | M1-15 SQL toolkit | PostgreSQL statement splitter, current-statement detection, read/write/DDL/dangerous classification (data-safety: thorough tests) | todo |
+| D-03 | M1-02, M1-03, M1-05 | Local store with profiles and history; macOS Keychain secrets; PostgreSQL connection profiles from form fields or a `postgres://` URL; env tag and read-only / confirm-before-write flags | todo |
+| D-04 | M1-11 PostgreSQL driver | Promote the M0-S3 prototype: plain TCP (TLS later), cancel, notices, tagged-text fallback for out-of-range values; container happy-path test | todo |
+| D-05 | M1-04, M1-09 | Typed IPC for connections, sessions, queries and result windows; connection list, new/edit sheet and Test connection | todo |
+| D-06 | M1-16, M1-18 | Schema tree (databases → schemas → tables/views) on the real connection; replace the corresponding mock workspace code | todo |
+| D-07 | M1-14, M1-19, M1-21 | Query tab: CodeMirror editor, run current / selection / all, cancel, results in the canvas grid over result-store windows; basic history | todo |
+| D-08 | M1-19 table browse | Open a table with pagination, header sort and a simple filter; copy cells/rows | todo |
+| D-09 | M1-23, M1-24 | Edit, insert, duplicate and delete rows as a staged change set; SQL preview; transactional commit with rollback; safe mode (read-only, confirm writes, dangerous-statement confirmation) | todo |
+| D-10 | M1-06 SSH | SSH tunnel in the connection form, promoted from the M0-S4 prototype: password, key, agent, keyboard-interactive, jump hosts, `~/.ssh/config` aliases, `known_hosts` first-use prompt | todo |
+| D-11 | M1-06 TLS, M1-07 | TLS modes (`disable` … `verify-full`), custom CA, client certificates and visible skip-verify; step-by-step Test connection diagnostics | todo |
+| D-12 | M1-12, M1-13 | MySQL/MariaDB and SQLite (local files) through the same flows | todo |
+
+**Scope is not reduced.** TablePlus remains the feature benchmark ([docs/26](26-feature-parity.md)): every TablePlus capability, including every connection type and route (SSH, TLS, socket, proxies, cloud hops), stays required for 1.0. Feature-first changes the order and the testing depth, not the target. The track starts with local PostgreSQL to tune the core flows, then adds SSH/TLS (D-10, D-11) and the other Tier 1 databases (D-12); the remaining M1/M2 parity tasks follow in §4–§5.
+
+**Deferred until a milestone checkpoint:** M0-09, M0-S6b and the pending `hw` evidence for M0-S4/M0-S5, benchmark and regression work (X-02, M1-30 benchmarks, fuzzing) and M1-29 E2E automation.
 
 ## 4. M1 — macOS alpha (PostgreSQL, MySQL/MariaDB, SQLite)
 

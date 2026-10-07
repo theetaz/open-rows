@@ -157,7 +157,7 @@ Every PR carries an **acceptance report** and a **How to try it** section ([docs
 - [ ] Docs updated (`docs/`, ADR if a decision changed) — see §6.
 - [ ] No secrets, credentials, personal data or local tool configuration files in the diff (`git diff --cached --stat` and review every file).
 - [ ] Code meets the size/complexity limits and has no dead code ([docs/25 §4](docs/25-engineering-standards.md#4-code-quality-rules)).
-- [ ] Performance-relevant changes include benchmark results against `main`.
+- [ ] Performance-relevant changes include benchmark results against `main` (not required per PR while [feature-first mode](docs/25-engineering-standards.md#0-current-delivery-mode-feature-first-until-the-postgresql-dogfood-alpha) applies; measured at milestone checkpoints).
 - [ ] Clean-up done: worktree, temporary files, containers ([docs/25 §7](docs/25-engineering-standards.md#7-clean-up-policy)).
 - [ ] UI changes include screenshots in both themes.
 
