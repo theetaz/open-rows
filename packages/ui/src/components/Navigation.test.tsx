@@ -64,6 +64,37 @@ it('disclosures make collapsed children inert and tree rows activate by keyboard
   expect(select).toHaveBeenCalledOnce();
   expect(item).toHaveAttribute('aria-pressed', 'true');
 });
+it('lazy disclosures report toggles and openable rows open on double-click or Enter', async () => {
+  const toggle = vi.fn();
+  const select = vi.fn();
+  const open = vi.fn();
+  const user = userEvent.setup();
+  render(
+    <DisclosureSection label="Views" onOpenChange={toggle}>
+      <TreeItem
+        label="summary"
+        glyph="▤"
+        selected={false}
+        onSelect={select}
+        onOpen={open}
+      />
+    </DisclosureSection>,
+  );
+  const section = screen.getByRole('button', { name: 'Views' });
+  await user.click(section);
+  expect(toggle).toHaveBeenLastCalledWith(true);
+  const item = screen.getByRole('button', { name: 'summary' });
+  await user.click(item);
+  expect(select).toHaveBeenCalledOnce();
+  expect(open).not.toHaveBeenCalled();
+  await user.dblClick(item);
+  expect(open).toHaveBeenCalledOnce();
+  item.focus();
+  await user.keyboard('{Enter}');
+  expect(open).toHaveBeenCalledTimes(2);
+  await user.click(section);
+  expect(toggle).toHaveBeenLastCalledWith(false);
+});
 it('sheet contains focus, closes on Escape and restores background inert state', async () => {
   const close = vi.fn();
   const user = userEvent.setup();

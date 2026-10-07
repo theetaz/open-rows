@@ -9,6 +9,7 @@ import {
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
+import { connectTo } from '../test/connect';
 import { Workspace } from './Workspace';
 import { DataGrid } from './DataGrid';
 import type { OrderRow } from './data/rows';
@@ -47,6 +48,7 @@ it('closed inspector, review, palettes, menus and tooltips leave no content DOM'
   await screen.findByRole('dialog', { name: 'Review & Commit' });
   await user.click(screen.getByRole('button', { name: 'Cancel' }));
   expect(document.querySelector('dialog')).toBeNull();
+  await connectTo();
   await user.click(
     screen.getByRole('button', { name: 'Opened databases (orders)' }),
   );
@@ -95,6 +97,7 @@ it.each(['k', 'p', 'P'])(
 );
 it('inactive tabs and databases retain SQL drafts and table state without content DOM', async () => {
   const user = await mount();
+  await connectTo();
   await user.click(screen.getByRole('button', { name: 'Remove filter' }));
   await user.click(screen.getByRole('button', { name: 'New tab' }));
   const editor = await screen.findByRole('textbox', { name: 'SQL editor' });

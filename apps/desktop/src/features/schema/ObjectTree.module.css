@@ -1,0 +1,20 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.note {
+  margin: 0;
+  padding: var(--or-space-4) var(--or-space-8);
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+}
+.error {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-6);
+  padding: var(--or-space-4) var(--or-space-8);
+  color: var(--or-danger-fg);
+  font-size: var(--or-text-12);
+}
+.error > span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

@@ -128,7 +128,8 @@ Native window vibrancy/appearance synchronisation, the canvas grid and CodeMirro
 - `apps/desktop/src/features/connections/` is the first feature folder; other code imports it through its `index.ts` (`ConnectionRail`, `ConnectionHeader`, `ConnectionSheets`, `EnvironmentBadge`, `statusLabel`, `useConnections`).
 - TanStack Query and Zustand are not dependencies yet, so state is local React state: `useProfiles` (reloads `profiles_list` after each change), `useSessions` (profile → `disconnected | connecting | connected | failed`, updated by command results and `session-state-changed` events) and `useConnections` (active profile, open sheet, duplicate/delete). Pure logic lives in `form.ts` (draft ↔ `ProfileInput`, URL fill, prod default, validation) and `sessions.ts` (event reducer, labels).
 - Only `@openrows/ipc` wrappers are called; jsdom tests replace them with `src/test/ipcStub.ts` (no native shell, no keychain).
-- `shell/SidebarMenu.tsx` and `shell/useSidebarMenu.ts` (anchored glass menu) moved out of `mock/` because the real connection menu and the sample database menu share them.
+- `shell/SidebarMenu.tsx` and `shell/useSidebarMenu.ts` (anchored glass menu) moved out of `mock/` because the real connection menu and the database menu share them.
+- D-06 adds `features/schema/` (`index.ts` exports `useCatalog`, `DatabaseSelector`, `ObjectTree`, `SchemaPicker`, `DatabaseSwitcher`, `QuickOpen`). `useResources` is a small keyed async cache (idle/loading/ready/error, invalidate by key prefix); keys include the session id, so a reconnect reads afresh. `useNavigation` keeps opened databases and the chosen schema per connection. Opening an object calls the workspace's `openTable(ObjectRef)` with `{ database, schema, name, kind, arguments }`; until D-07/D-08 that opens the sample table tab. Tests mock IPC with `src/test/catalogStub.ts`.
 
 ## 9. Error and empty states
 

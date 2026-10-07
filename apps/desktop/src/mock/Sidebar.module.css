@@ -19,31 +19,16 @@
   min-height: var(--or-control-compact);
   padding-inline: var(--or-space-4);
 }
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-6);
+}
 .objects {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
 }
-.schema {
-  display: flex;
-  align-items: center;
-  gap: var(--or-space-6);
-}
-.schema select {
-  flex: 1;
-  min-width: 0;
-  background: var(--or-control-fill);
-  border: var(--or-border-width) solid transparent;
-  border-radius: var(--or-radius-field);
-  color: var(--or-text);
-  font: inherit;
-  min-height: var(--or-control-sm);
-  padding-inline: var(--or-space-8);
-}
-.schema select:focus-visible {
-  outline: var(--or-focus-width) solid var(--or-focus);
-}
-
 .container {
   height: 100%;
 }

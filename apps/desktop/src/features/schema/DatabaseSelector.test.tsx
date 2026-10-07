@@ -4,9 +4,8 @@ import userEvent from '@testing-library/user-event';
 import axe from 'axe-core';
 import { expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
-import { SidebarHeader } from './SidebarHeader';
+import { DatabaseSelector } from './DatabaseSelector';
 const props = {
-  children: <strong>Connection slot</strong>,
   database: 'orders_archive',
   opened: ['orders', 'orders_archive'],
   onDatabase: vi.fn(),
@@ -16,15 +15,17 @@ const props = {
 function mount(): ReturnType<typeof userEvent.setup> {
   render(
     <ThemeProvider>
-      <SidebarHeader {...props} />
+      <DatabaseSelector {...props} />
     </ThemeProvider>,
   );
   return userEvent.setup();
 }
-it('hosts the real connection header and labels the sample catalog', () => {
-  mount();
-  expect(screen.getByText('Connection slot')).toBeVisible();
-  expect(screen.getByText('Sample data')).toBeVisible();
+it('is disabled without an active database', () => {
+  render(<DatabaseSelector {...props} database="" opened={[]} />);
+  expect(
+    screen.getByRole('button', { name: 'Opened databases' }),
+  ).toBeDisabled();
+  expect(screen.getByText('No database')).toBeVisible();
 });
 it('lists opened databases with active check and keyboard switch, close and focus return', async () => {
   const user = mount();
@@ -81,7 +82,7 @@ it('wraps navigation, ignores composition, closes with Tab/Escape/outside pointe
 });
 it('protects the last database and leaves close reachable only when enabled', async () => {
   const user = userEvent.setup();
-  render(<SidebarHeader {...props} database="orders" opened={['orders']} />);
+  render(<DatabaseSelector {...props} database="orders" opened={['orders']} />);
   await user.click(
     screen.getByRole('button', { name: 'Opened databases (orders)' }),
   );
@@ -92,7 +93,7 @@ it('protects the last database and leaves close reachable only when enabled', as
   expect(screen.getByRole('menuitem', { name: /Open database/ })).toHaveFocus();
 });
 it.each(['light', 'dark'] as const)(
-  'axe: header and database menu clean in %s',
+  'axe: database menu clean in %s',
   async (theme) => {
     localStorage.setItem('openrows.theme', theme);
     const user = mount();

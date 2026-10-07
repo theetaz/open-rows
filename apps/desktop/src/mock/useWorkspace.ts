@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useCallback, useState } from 'react';
-import { sampleCatalog } from './data/connections';
-import { databaseFor, databases } from './data/databases';
-import type { DatabaseObject } from './data/databases';
 import type { TableState } from './data/content';
+import type { ObjectRef } from '../features/schema';
 import {
   editDocument,
   initialDocuments,
@@ -12,110 +10,47 @@ import {
   tableDocument,
 } from './documents';
 import type { Documents } from './documents';
-type Session = {
-  active: string;
-  opened: string[];
-  documents: Record<string, Documents>;
-};
-const initialSession = (): Session => ({
-  active: sampleCatalog.database,
-  opened: [sampleCatalog.database],
-  documents: {
-    [sampleCatalog.database]: initialDocuments(sampleCatalog.database),
-  },
-});
-/** UI-only sample database state; tab sets survive database switches. */
-export function useWorkspace(): ReturnType<typeof useWorkspaceValue> {
-  const [session, setSession] = useState(initialSession);
-  const database = session.active;
-  const document = session.documents[database] ?? initialDocuments(database);
-  const update = useCallback((change: (current: Documents) => Documents) => {
-    setSession((item) => ({
-      ...item,
-      documents: {
-        ...item.documents,
-        [item.active]: change(
-          item.documents[item.active] ?? initialDocuments(item.active),
-        ),
-      },
-    }));
-  }, []);
-  const openDatabase = (name: string): void => {
-    if (!databases.some((item) => item.name === name)) return;
-    setSession((item) => ({
-      ...item,
-      active: name,
-      opened: item.opened.includes(name) ? item.opened : [...item.opened, name],
-      documents: {
-        ...item.documents,
-        [name]: item.documents[name] ?? initialDocuments(name),
-      },
-    }));
-  };
-  const closeDatabase = (name: string): void => {
-    setSession((item) => {
-      if (item.opened.length < 2) return item;
-      const opened = item.opened.filter((database) => database !== name);
-      return {
-        ...item,
-        opened,
-        active: item.active === name ? (opened[0] ?? item.active) : item.active,
-      };
-    });
-  };
-  return useWorkspaceValue({
-    database,
-    document,
-    session,
-    update,
-    openDatabase,
-    closeDatabase,
-  });
+/**
+ * Sample tab sets per connection and database (`scope`); they survive
+ * database and connection switches. Replaced by real tabs in D-07.
+ */
+export function useWorkspace(
+  scope: string,
+): ReturnType<typeof useWorkspaceValue> {
+  const [sets, setSets] = useState<Readonly<Record<string, Documents>>>({});
+  const document = sets[scope] ?? initialDocuments();
+  const update = useCallback(
+    (change: (current: Documents) => Documents) => {
+      setSets((current) => ({
+        ...current,
+        [scope]: change(current[scope] ?? initialDocuments()),
+      }));
+    },
+    [scope],
+  );
+  return useWorkspaceValue(document, update);
 }
-function useWorkspaceValue(input: {
-  database: string;
-  document: Documents;
-  session: Session;
-  update: (change: (current: Documents) => Documents) => void;
-  openDatabase: (name: string) => void;
-  closeDatabase: (name: string) => void;
-}): {
-  database: string;
-  catalog: ReturnType<typeof databaseFor>;
+function useWorkspaceValue(
+  document: Documents,
+  update: (change: (current: Documents) => Documents) => void,
+): {
   tabs: Documents['tabs'];
   active: string;
   table: string;
-  schema: string;
-  opened: readonly string[];
-  openDatabase: (name: string) => void;
-  closeDatabase: (name: string) => void;
-  setSchema: (schema: string) => void;
   selectTab: (id: string) => void;
   addTab: (sql?: string) => void;
   closeTab: (id: string) => void;
   editSql: (sql: string) => void;
   editTable: (tableState: TableState) => void;
-  openTable: (object: DatabaseObject) => void;
+  openTable: (object: ObjectRef) => void;
 } {
-  const { document, update } = input;
   const tab = document.tabs.find((tab) => tab.id === document.active);
   return {
-    database: input.database,
-    catalog: databaseFor(input.database),
-    ...document,
+    tabs: document.tabs,
+    active: document.active,
     table: tab?.label ?? '',
-    opened: input.session.opened,
-    openDatabase: input.openDatabase,
-    closeDatabase: input.closeDatabase,
-    setSchema: (schema) => {
-      update((state) => ({ ...state, schema }));
-    },
     selectTab: (id) => {
-      update((state) => ({
-        ...state,
-        active: id,
-        schema: state.tabs.find((tab) => tab.id === id)?.schema ?? state.schema,
-      }));
+      update((state) => ({ ...state, active: id }));
     },
     addTab: useCallback(
       (sql?: string) => {

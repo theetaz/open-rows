@@ -2,6 +2,7 @@
 import { lazy, Suspense } from 'react';
 import { SplitPanel } from '@openrows/ui';
 import type { useWorkspace } from './useWorkspace';
+import type { Catalog, ObjectRef } from '../features/schema';
 import type { OrderRow } from './data/rows';
 import { inspectorRange, sidebarRange } from './layout';
 import { ConnectionHeader, ConnectionRail } from '../features/connections';
@@ -17,6 +18,8 @@ import styles from './Workspace.module.css';
 type Props = {
   connections: Connections;
   state: ReturnType<typeof useWorkspace>;
+  catalog: Catalog;
+  onOpen: (object: ObjectRef) => void;
   selection: { index: number; row: OrderRow };
   panel: string;
   onPanel: (panel: string) => void;
@@ -33,6 +36,7 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
   const {
     connections,
     state,
+    catalog,
     selection,
     panel,
     onPanel,
@@ -56,20 +60,14 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
       >
         <WorkspaceSidebar
           header={<ConnectionHeader connections={connections} />}
-          opened={state.opened}
-          onDatabase={state.openDatabase}
-          onCloseDatabase={state.closeDatabase}
+          catalog={catalog}
           onSwitcher={onSwitcher}
-          database={state.catalog}
-          table={state.table}
-          schema={state.schema}
-          onSchema={state.setSchema}
-          onTable={state.openTable}
+          onOpen={props.onOpen}
           onQuery={addQuery}
         />
       </SplitPanel>
       <TableContent
-        {...{ database: state.database, tabs: state.tabs }}
+        {...{ database: catalog.database, tabs: state.tabs }}
         active={state.active}
         selected={selection.index}
         onSelect={onSelect}
@@ -95,7 +93,7 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
             onPanel={onPanel}
             onQuery={state.addTab}
             table={state.table}
-            schema={state.schema}
+            schema={catalog.schema}
           />
         </Suspense>
       </SplitPanel>

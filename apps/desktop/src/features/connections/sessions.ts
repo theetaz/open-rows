@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { SessionStateChanged } from '@openrows/ipc';
+import type { ServerDto, SessionStateChanged } from '@openrows/ipc';
 
 /** What the UI shows for one saved connection's session. */
 export type SessionStatus =
   | { state: 'disconnected' }
   | { state: 'connecting' }
-  | { state: 'connected'; sessionId: string; serverVersion: string }
+  | { state: 'connected'; sessionId: string; server: ServerDto }
   | { state: 'failed'; message: string };
 
 export type Statuses = Readonly<Record<string, SessionStatus | undefined>>;
@@ -40,12 +40,18 @@ export function statusLabel(status: SessionStatus): string {
     case 'connecting':
       return 'Connecting…';
     case 'connected':
-      return status.serverVersion
-        ? `Connected · PostgreSQL ${status.serverVersion}`
+      return status.server.serverVersion
+        ? `Connected · ${serverLabel(status.server)}`
         : 'Connected';
     case 'failed':
       return 'Connection failed';
     case 'disconnected':
       return 'Not connected';
   }
+}
+
+/** Product, version and flavour, e.g. `PostgreSQL 17.2 · Neon`. */
+export function serverLabel(server: ServerDto): string {
+  const product = `${server.product} ${server.serverVersion}`;
+  return server.flavour ? `${product} · ${server.flavour}` : product;
 }

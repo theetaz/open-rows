@@ -10,12 +10,16 @@ export function DisclosureSection({
   defaultOpen = false,
   children,
   forceOpen = false,
+  onOpenChange,
 }: {
   label: string;
-  count: number;
+  /** Child count; omitted while the children are still unknown. */
+  count?: number;
   defaultOpen?: boolean;
   children: ReactNode;
   forceOpen?: boolean;
+  /** Called with the user-toggled state (lazy loading on expand). */
+  onOpenChange?: (open: boolean) => void;
 }): React.JSX.Element {
   const [open, setOpen] = useState(defaultOpen);
   const id = useId();
@@ -28,6 +32,7 @@ export function DisclosureSection({
         aria-controls={id}
         onClick={() => {
           setOpen(!open);
+          onOpenChange?.(!open);
         }}
       >
         <span
@@ -38,7 +43,7 @@ export function DisclosureSection({
           ›
         </span>
         {label}
-        <span className={styles.count}>{count}</span>
+        {count !== undefined && <span className={styles.count}>{count}</span>}
       </button>
       <div
         id={id}

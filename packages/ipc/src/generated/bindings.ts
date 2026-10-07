@@ -26,12 +26,25 @@ export const commands = {
 	profileDelete: (id: string) => typedError<null, IpcError>(__TAURI_INVOKE("profile_delete", { id })),
 	/**  Form fields from a pasted `postgres://` URL, without the password itself. */
 	profileParseUrl: (url: string) => typedError<UrlDraft, IpcError>(__TAURI_INVOKE("profile_parse_url", { url })),
-	/**  Connect with the form values, report the server version and disconnect. */
+	/**  Connect with the form values, report the server and disconnect. */
 	connectionTest: (profileId: string | null, input: ProfileInput) => typedError<TestReport, IpcError>(__TAURI_INVOKE("connection_test", { profileId, input })),
 	/**  Open a session for a saved connection; state changes follow as events. */
 	sessionOpen: (profileId: string) => typedError<SessionOpened, IpcError>(__TAURI_INVOKE("session_open", { profileId })),
 	/**  Cancel the session's work and disconnect. */
 	sessionClose: (sessionId: string) => typedError<null, IpcError>(__TAURI_INVOKE("session_close", { sessionId })),
+	/**  Databases on the server, read through `database`'s metadata session. */
+	catalogDatabases: (profileId: string, database: string) => typedError<DatabaseDto[], IpcError>(__TAURI_INVOKE("catalog_databases", { profileId, database })),
+	/**  Schemas of `database`, user schemas first. */
+	catalogSchemas: (profileId: string, database: string) => typedError<SchemaDto[], IpcError>(__TAURI_INVOKE("catalog_schemas", { profileId, database })),
+	/**  Objects of `kinds` in `database`.`schema`, ordered by name. */
+	catalogObjects: (profileId: string, database: string, schema: string, kinds: ObjectKindDto[]) => typedError<ObjectDto[], IpcError>(__TAURI_INVOKE("catalog_objects", { profileId, database, schema, kinds })),
+	/**
+	 *  Bounded name index of `database` (tables, views, sequences, routines)
+	 *  for quick open.
+	 */
+	catalogSearch: (profileId: string, database: string) => typedError<ObjectDto[], IpcError>(__TAURI_INVOKE("catalog_search", { profileId, database })),
+	/**  Disconnect the connection's metadata sessions (on disconnect). */
+	catalogClose: (profileId: string) => typedError<null, IpcError>(__TAURI_INVOKE("catalog_close", { profileId })),
 };
 
 /** Events */
@@ -50,6 +63,14 @@ export type AppInfo = {
 };
 
 export type BuildProfile = "debug" | "release";
+
+/**  A database on the server. */
+export type DatabaseDto = {
+	name: string,
+	/**  Maintenance or provider database, hidden unless "Show system databases". */
+	system: boolean,
+	comment: string | null,
+};
 
 /**  One editor configuration measured on a freshly mounted 5 000-line document. */
 export type EditorRun = {
@@ -167,6 +188,21 @@ export type KeystrokeSample = {
 	keystrokeToPaintMs: number | null,
 };
 
+/**  One object; its path is `[database, schema, name]`. */
+export type ObjectDto = {
+	schema: string,
+	name: string,
+	kind: ObjectKindDto,
+	/**  Routine identity arguments, e.g. `integer, text`. */
+	arguments: string | null,
+	/**  Planner estimate (`pg_class.reltuples`), never an exact count. */
+	rowEstimate: number | null,
+	comment: string | null,
+};
+
+/**  Object kinds the schema tree lists. */
+export type ObjectKindDto = "table" | "view" | "materializedView" | "foreignTable" | "function" | "procedure" | "sequence";
+
 export type PageTimer = {
 	resolutionMs: number | null,
 	crossOriginIsolated: boolean,
@@ -230,10 +266,30 @@ export type SafetyDto = {
 	confirmWrites: boolean,
 };
 
+/**  A schema of the browsed database. */
+export type SchemaDto = {
+	name: string,
+	/**  `pg_catalog` or `information_schema`, hidden unless "Show system schemas". */
+	system: boolean,
+	comment: string | null,
+};
+
+/**  What the UI shows about the server after connecting. */
+export type ServerDto = {
+	/**  `PostgreSQL` or `CockroachDB`. */
+	product: string,
+	/**  `server_version`, e.g. `17.2`. */
+	serverVersion: string,
+	/**  Hosting or extension flavour worth naming, e.g. `Neon`. */
+	flavour: string | null,
+	/**  The database the session is connected to. */
+	database: string,
+};
+
 /**  An open session. */
 export type SessionOpened = {
 	sessionId: string,
-	serverVersion: string,
+	server: ServerDto,
 };
 
 /**  Broadcast whenever a session changes state. */
@@ -269,7 +325,7 @@ export type SpikeReport_Serialize = {
 
 /**  A successful connection test. */
 export type TestReport = {
-	serverVersion: string,
+	server: ServerDto,
 	elapsedMs: number,
 };
 

@@ -1,9 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
 import { openSession } from '@openrows/ipc';
+import { connectTo } from '../test/connect';
 import { Workspace } from './Workspace';
 
 vi.mock('@openrows/ipc', async () =>
@@ -30,12 +37,14 @@ it('connects saved profiles from the rail and forces safe mode for prod', async 
   await user.click(safe);
   expect(safe).toHaveAttribute('aria-pressed', 'false');
   const context = screen.getByLabelText('Connection context');
-  expect(context).toHaveTextContent('No connection › orders');
+  expect(context).toHaveTextContent('No connection › No database');
   await user.click(
     await screen.findByRole('button', { name: 'Switch to analytics-prod' }),
   );
   expect(openSession).toHaveBeenCalledWith('id-analytics-prod');
-  expect(context).toHaveTextContent('analytics-prod › orders › public');
+  await waitFor(() => {
+    expect(context).toHaveTextContent('analytics-prod › orders › public');
+  });
   expect(context).toHaveTextContent('Connected · PostgreSQL 17.2');
   expect(safe).toHaveAttribute('aria-pressed', 'true');
   await user.click(safe);
@@ -43,20 +52,29 @@ it('connects saved profiles from the rail and forces safe mode for prod', async 
   await user.click(
     screen.getByRole('button', { name: 'Switch to events-dev' }),
   );
-  expect(context).toHaveTextContent('events-dev › orders');
+  await waitFor(() => {
+    expect(context).toHaveTextContent('events-dev › orders');
+  });
   expect(safe).toHaveAttribute('aria-pressed', 'false');
+  await screen.findByRole('option', { name: 'archive' });
   await user.selectOptions(
     screen.getByRole('combobox', { name: 'Schema' }),
     'archive',
   );
   expect(context).toHaveTextContent('archive');
 });
-it('switches sidebar segments, searches objects and expands all disclosure sections', async () => {
+it('switches sidebar segments, lazily expands real sections and opens objects on double-click', async () => {
   const user = mount();
+  await connectTo();
   const sidebar = within(
     screen.getByRole('complementary', { name: 'Sidebar' }),
   );
-  for (const name of ['Views', 'Functions', 'Triggers', 'Sequences']) {
+  for (const name of [
+    'Views',
+    'Materialized views',
+    'Functions',
+    'Sequences',
+  ]) {
     const section = sidebar.getByRole('button', {
       name: new RegExp(`^${name}`),
     });
@@ -64,20 +82,28 @@ it('switches sidebar segments, searches objects and expands all disclosure secti
     await user.click(section);
     expect(section).toHaveAttribute('aria-expanded', 'true');
   }
+  expect(
+    await sidebar.findByRole('button', { name: 'calc_tax(total numeric)' }),
+  ).toBeVisible();
   await user.type(
     screen.getByRole('textbox', { name: 'Search items' }),
     'customers',
   );
   expect(sidebar.queryByRole('button', { name: /order_items/ })).toBeNull();
-  expect(sidebar.getByRole('button', { name: /customers 412K/ })).toBeVisible();
+  const customers = sidebar.getByRole('button', { name: 'customers ~412K' });
+  expect(customers).toHaveAttribute('title', 'orders.public.customers · Table');
   await user.clear(screen.getByRole('textbox', { name: 'Search items' }));
   await user.click(screen.getByRole('radio', { name: 'Queries' }));
   expect(sidebar.getByRole('button', { name: /Top customers/ })).toBeVisible();
   await user.click(screen.getByRole('radio', { name: 'History' }));
   expect(sidebar.getByRole('button', { name: /Yesterday/ })).toBeVisible();
   await user.click(screen.getByRole('radio', { name: 'Items' }));
-  await user.click(sidebar.getByRole('button', { name: /customers 412K/ }));
-  expect(screen.getByRole('tab', { name: /customers/ })).toHaveAttribute(
+  const orders = sidebar.getByRole('button', { name: 'orders ~2.4M' });
+  await user.click(orders);
+  expect(orders).toHaveAttribute('aria-pressed', 'true');
+  await user.click(screen.getByRole('tab', { name: /customers/ }));
+  await user.dblClick(orders);
+  expect(screen.getByRole('tab', { name: /^orders/ })).toHaveAttribute(
     'aria-selected',
     'true',
   );

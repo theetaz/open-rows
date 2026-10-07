@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useCallback, useEffect, useState } from 'react';
-import { closeSession, onSessionState, openSession } from '@openrows/ipc';
+import {
+  closeCatalog,
+  closeSession,
+  onSessionState,
+  openSession,
+} from '@openrows/ipc';
 import { applySessionEvent, disconnected } from './sessions';
 import type { SessionStatus, Statuses } from './sessions';
 
@@ -39,6 +44,7 @@ export function useSessions(): Sessions {
     }
     try {
       await closeSession(status.sessionId);
+      await closeCatalog(profileId);
       set(profileId, disconnected);
     } catch (error) {
       set(profileId, { state: 'failed', message: message(error) });

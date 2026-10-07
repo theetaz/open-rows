@@ -9,7 +9,7 @@ import {
   updateProfile,
 } from '@openrows/ipc';
 import { ThemeProvider } from '@openrows/ui';
-import { profile } from '../../test/ipcStub';
+import { profile, server } from '../../test/ipcStub';
 import { ConnectionSheet } from './ConnectionSheet';
 
 vi.mock('@openrows/ipc', async () =>
@@ -95,7 +95,7 @@ it('turns on confirm writes for prod and requires a custom label', async () => {
 it('tests an existing profile with its stored password and shows version or error', async () => {
   const existing = profile('orders', { hasPassword: true });
   vi.mocked(testConnection)
-    .mockResolvedValueOnce({ serverVersion: '17.2', elapsedMs: 12 })
+    .mockResolvedValueOnce({ server: server('17.2'), elapsedMs: 12 })
     .mockRejectedValueOnce(new Error('authentication failed: bad password'));
   const { user } = mount(existing);
   expect(screen.getByText(/Saved in the keychain/)).toBeVisible();

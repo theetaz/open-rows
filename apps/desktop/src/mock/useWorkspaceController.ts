@@ -1,19 +1,45 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useCallback, useState } from 'react';
 import type { Connections } from '../features/connections';
+import { useCatalog } from '../features/schema';
+import type { Catalog, ObjectRef } from '../features/schema';
 import { rows } from './data/rows';
 import type { OrderRow } from './data/rows';
 import { useWorkspace } from './useWorkspace';
 import { useCompact, useInspectorOpen } from './layout';
 import { useWorkspaceKeys } from './useWorkspaceKeys';
 import type { PaletteMode } from './WorkspacePalettes';
+/** The visible schema after the selected one, wrapping around. */
+function nextSchema(catalog: Catalog): string {
+  const { schemas } = catalog;
+  if (schemas.status !== 'ready') return catalog.schema;
+  const names = schemas.data
+    .filter((schema) => catalog.systemSchemas || !schema.system)
+    .map((schema) => schema.name);
+  return (
+    names[(names.indexOf(catalog.schema) + 1) % names.length] ?? catalog.schema
+  );
+}
+/** Open an object path in a tab and show its schema in the tree. */
+function opener(
+  catalog: Catalog,
+  state: ReturnType<typeof useWorkspace>,
+): (object: ObjectRef) => void {
+  return (object) => {
+    catalog.setSchema(object.schema);
+    state.openTable(object);
+  };
+}
 /** Preview shell state and command wiring, isolated from rendering. */
 export function useWorkspaceController(
   onGallery: () => void,
   enabled: boolean,
   connections: Connections,
 ): WorkspaceController {
-  const state = useWorkspace();
+  const catalog = useCatalog(connections);
+  const state = useWorkspace(
+    `${connections.active?.id ?? ''}\n${catalog.database}`,
+  );
   const compact = useCompact();
   const inspector = useInspectorOpen(compact);
   const [sidebar, setSidebar] = useState(true);
@@ -38,10 +64,13 @@ export function useWorkspaceController(
     if (!prod) setSafe(!safe);
   };
   const refresh = (): void => {
+    catalog.refresh();
     setRefreshes((count) => count + 1);
   };
+  const openObject = opener(catalog, state);
   const command = mockCommand({
     state,
+    catalog,
     inspector,
     toggleSidebar,
     addQuery,
@@ -59,6 +88,8 @@ export function useWorkspaceController(
   });
   return {
     state,
+    catalog,
+    openObject,
     compact,
     inspector,
     sidebar,
@@ -80,6 +111,8 @@ export function useWorkspaceController(
 }
 type WorkspaceController = {
   state: ReturnType<typeof useWorkspace>;
+  catalog: Catalog;
+  openObject: (object: ObjectRef) => void;
   compact: boolean;
   inspector: ReturnType<typeof useInspectorOpen>;
   sidebar: boolean;
@@ -100,6 +133,7 @@ type WorkspaceController = {
 };
 function mockCommand(input: {
   state: ReturnType<typeof useWorkspace>;
+  catalog: Catalog;
   inspector: ReturnType<typeof useInspectorOpen>;
   toggleSidebar: () => void;
   addQuery: () => void;
@@ -112,6 +146,7 @@ function mockCommand(input: {
 }): (id: string) => void {
   const {
     state,
+    catalog,
     inspector,
     toggleSidebar,
     addQuery,
@@ -151,11 +186,7 @@ function mockCommand(input: {
         });
       },
       schema: () => {
-        const schemas = state.catalog.schemas;
-        state.setSchema(
-          schemas[(schemas.indexOf(state.schema) + 1) % schemas.length] ??
-            state.schema,
-        );
+        catalog.setSchema(nextSchema(catalog));
       },
       assistant: () => {
         inspector.show();

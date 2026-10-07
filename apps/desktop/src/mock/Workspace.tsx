@@ -10,7 +10,7 @@ const WorkspacePalettes = lazy(() =>
 import { useWorkspaceController } from './useWorkspaceController';
 import { ConnectionSheets, useConnections } from '../features/connections';
 import styles from './Workspace.module.css';
-/** Real connections in the rail and sidebar header; sample catalog, tabs and rows elsewhere. */
+/** Real connections and catalog in the rail and sidebar; sample tabs and rows elsewhere. */
 export function Workspace({
   onGallery,
   enabled = true,
@@ -22,6 +22,7 @@ export function Workspace({
   const controller = useWorkspaceController(onGallery, enabled, connections);
   const {
     state,
+    catalog,
     compact,
     inspector,
     sidebar,
@@ -44,8 +45,8 @@ export function Workspace({
       <WorkspaceToolbar
         connections={connections}
         table={state.table}
-        schema={state.schema}
-        database={state.database}
+        schema={catalog.schema || '—'}
+        database={catalog.database || 'No database'}
         onDatabase={() => {
           setMode('database');
         }}
@@ -65,6 +66,8 @@ export function Workspace({
       <WorkspaceBody
         connections={connections}
         state={state}
+        catalog={catalog}
+        onOpen={controller.openObject}
         selection={{ index: selection.index, row: selection.row }}
         panel={panel}
         onPanel={setPanel}
@@ -79,7 +82,7 @@ export function Workspace({
         }}
       />
       <span className={styles.announcement} role="status">
-        {refreshes ? `Mock catalog refreshed (${String(refreshes)})` : ''}
+        {refreshes ? `Catalog refreshed (${String(refreshes)})` : ''}
       </span>
       <WorkspaceOverlay controller={controller} />
       <ConnectionSheets connections={connections} />
@@ -92,25 +95,24 @@ function WorkspaceOverlay({
 }: {
   controller: ReturnType<typeof useWorkspaceController>;
 }): React.JSX.Element | null {
-  const { mode, setMode, state, command } = controller;
+  const { mode, setMode, catalog, command } = controller;
   if (!mode) return null;
   return (
     <Suspense fallback={null}>
       <WorkspacePalettes
         key={mode}
         mode={mode}
-        catalog={state.catalog}
-        opened={state.opened}
+        catalog={catalog}
         onClose={() => {
           setMode(null);
         }}
         onDatabase={(name) => {
           setMode(null);
-          state.openDatabase(name);
+          catalog.openDatabase(name);
         }}
         onObject={(object) => {
           setMode(null);
-          state.openTable(object);
+          controller.openObject(object);
         }}
         onCommand={(id) => {
           setMode(null);

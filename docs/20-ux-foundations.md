@@ -195,6 +195,50 @@ replaces the sample database selector, object tree and schema picker; D-07
 replaces the sample tabs, SQL editor and grid. The removed mock pieces are the
 mock rail, the mock workspace menu and the four sample connections.
 
+### D-06 real schema tree
+
+The sidebar now browses the selected connection's real catalog
+(`apps/desktop/src/features/schema/`). Before a connection is selected or while
+it is not connected, the tree says why (**Select a connection to browse its
+objects**, **Connecting…**, **Connect to browse objects**). Once connected:
+
+- **Database selector** (below the connection header) starts with the
+  session's database and lists opened databases with ✓, close (the last one
+  stays) and **Open database… ⌘K**. The **Sample data** badge is gone.
+- **⌘K / context-bar database segment** lists the server's databases
+  (templates and closed databases never appear; `postgres` and provider
+  maintenance databases only with **Show system databases**), marks open ones
+  and shows a loading or error line in the footer. Choosing one opens it; its
+  catalog loads on its own metadata session.
+- **Schema picker** (sidebar footer) defaults to `public` (else the first user
+  schema). The gear button (**Show system schemas**) adds `pg_catalog` and
+  `information_schema`. **Next schema** in ⌘⇧P cycles visible schemas.
+- **Object tree**: Tables (with foreign tables), Views, Materialized views,
+  Functions (with procedures) and Sequences. Tables load at once; every other
+  section loads the first time it is expanded and shows **Loading…**, an error
+  line with **Retry**, or "No views" and the like. Counts appear once a section
+  has loaded. Rows show the kind glyph, `~` row estimates (planner estimates,
+  never exact) and a `database.schema.name · Kind · comment` tooltip; routines
+  show identity arguments, e.g. `calc_tax(total numeric)`.
+- **Selection and opening**: click selects; double-click or Enter opens the
+  object in a (still placeholder) tab with the real path, so the tab title is
+  `database.schema.name`.
+- **Search** filters loaded names live, underlines matches, forces sections
+  open (which loads them), hides empty sections, shows **No matches**, clears
+  with Esc; ⌘F focuses it when focus is in the sidebar.
+- **Refresh**: ⌘R while focus is in the sidebar, the toolbar Refresh button or
+  ⌘⇧P **Refresh catalog** forget everything read for the active database and
+  read it again (announced as "Catalog refreshed").
+- **⌘P** fuzzy-searches the database's bulk name index (tables, views,
+  sequences, routines in every non-system schema) with kind, schema and row
+  estimate; choosing an entry switches the schema picker to its schema and
+  opens it.
+
+Tab sets are kept per connection and database. Saved queries, history, tabs,
+editor, grid and inspector remain sample data until D-07. Catalog reads are
+cached in memory only (no snapshot, no fingerprint); see
+[docs/10 §2.1](10-schema-and-data-editing.md#21-implementation-notes-d-06-postgresql-schema-tree).
+
 ### 3.2 macOS-native design methodology (macOS 26 era)
 
 The app must feel like it was designed for the current macOS, not merely ported to it.

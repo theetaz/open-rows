@@ -8,7 +8,7 @@ export const paletteCommands: readonly PaletteItem[] = [
   { id: 'close-tab', label: 'Close current tab', shortcut: '⌘W' },
   { id: 'database', label: 'Switch database…', shortcut: '⌘K' },
   { id: 'quick', label: 'Quick open…', shortcut: '⌘P' },
-  { id: 'refresh', label: 'Refresh', shortcut: '—' },
+  { id: 'refresh', label: 'Refresh catalog', shortcut: '⌘R in sidebar' },
   { id: 'safe', label: 'Toggle safe mode', shortcut: '—' },
   { id: 'search', label: 'Search sidebar', shortcut: '⌘F in sidebar' },
   { id: 'schema', label: 'Next schema', shortcut: '—' },

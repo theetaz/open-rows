@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 import { readFileSync } from 'node:fs';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { ConnectionRail } from '../features/connections';
 import { profile } from '../test/ipcStub';
-import { Workspace } from './Workspace';
-import { ThemeProvider } from '@openrows/ui';
 import { geometry, material } from '@openrows/ui/tokens';
 
 vi.mock('@openrows/ipc', async () =>
@@ -82,30 +80,4 @@ it('native window buttons use the screenshot-verified inset for the 48 px toolba
   expect(window?.decorations).toBe(true);
   expect(geometry['toolbar-height']).toBe('48px');
   expect(geometry['traffic-light-clearance']).toBe('78px');
-});
-it('system database selection produces an empty tab set and rail state without opening a connection', async () => {
-  vi.useFakeTimers();
-  render(
-    <ThemeProvider>
-      <Workspace onGallery={vi.fn()} />
-    </ThemeProvider>,
-  );
-  await act(async () => {
-    fireEvent.keyDown(window, { key: 'k', metaKey: true });
-    await import('./WorkspacePalettes');
-  });
-  fireEvent.click(
-    screen.getByRole('checkbox', { name: 'Show system databases' }),
-  );
-  fireEvent.change(screen.getByRole('combobox', { name: 'Switch database' }), {
-    target: { value: 'postgres' },
-  });
-  fireEvent.keyDown(screen.getByRole('combobox', { name: 'Switch database' }), {
-    key: 'Enter',
-  });
-  act(() => {
-    vi.advanceTimersByTime(160);
-  });
-  expect(screen.queryAllByRole('tab')).toHaveLength(0);
-  expect(screen.getByText('No open tabs')).toBeVisible();
 });

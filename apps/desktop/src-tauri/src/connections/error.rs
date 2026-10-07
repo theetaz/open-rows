@@ -3,6 +3,7 @@
 //!
 //! Messages never contain a password or a raw connection URL.
 use openrows_core::{CoreError, ErrorKind};
+use openrows_driver_api::DriverError;
 use openrows_store::profile::{ProfileError, UrlError};
 use serde::Serialize;
 use specta::Type;
@@ -99,6 +100,12 @@ impl From<CoreError> for IpcError {
             message: error.message,
             code: error.db_code,
         }
+    }
+}
+
+impl From<&DriverError> for IpcError {
+    fn from(error: &DriverError) -> Self {
+        Self::from(CoreError::from(error))
     }
 }
 

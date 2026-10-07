@@ -36,7 +36,7 @@ function toCommandError(error: unknown): CommandError {
   return new CommandError({ kind: 'internal', message, code: null });
 }
 
-async function unwrap<T>(pending: Promise<Result<T>>): Promise<T> {
+export async function unwrap<T>(pending: Promise<Result<T>>): Promise<T> {
   const result = await pending;
   if (result.status === 'error') throw toCommandError(result.error);
   return result.data;

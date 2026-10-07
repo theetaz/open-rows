@@ -1,33 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { ReactNode } from 'react';
-import { Badge, Icon } from '@openrows/ui';
-import { SidebarMenu } from '../shell/SidebarMenu';
-import { useSidebarMenu } from '../shell/useSidebarMenu';
-import styles from './SidebarHeader.module.css';
-type DatabaseProps = {
+import { Icon } from '@openrows/ui';
+import { SidebarMenu } from '../../shell/SidebarMenu';
+import { useSidebarMenu } from '../../shell/useSidebarMenu';
+import styles from './DatabaseSelector.module.css';
+
+type Props = {
+  /** Active database; empty when nothing is connected. */
   database: string;
   opened: readonly string[];
   onDatabase: (name: string) => void;
   onCloseDatabase: (name: string) => void;
   onSwitcher: () => void;
 };
-/** Real connection header (children) above the sample database navigation. */
-export function SidebarHeader(
-  props: DatabaseProps & { children: ReactNode },
-): React.JSX.Element {
-  return (
-    <header className={styles.header}>
-      {props.children}
-      <div className={styles.sample}>
-        <DatabaseSelector {...props} />
-        <Badge tone="info" title="Sample objects until schema browsing lands">
-          Sample data
-        </Badge>
-      </div>
-    </header>
-  );
-}
-function DatabaseSelector(props: DatabaseProps): React.JSX.Element {
+
+/** Opened databases of the active connection, with ⌘K to open another. */
+export function DatabaseSelector(props: Props): React.JSX.Element {
   const menu = useSidebarMenu();
   const { opener, id, open, close } = menu;
   return (
@@ -60,6 +47,7 @@ function DatabaseSelector(props: DatabaseProps): React.JSX.Element {
     </>
   );
 }
+
 function DatabaseTrigger(
   props: ReturnType<typeof useSidebarMenu> & { database: string },
 ): React.JSX.Element {
@@ -69,20 +57,24 @@ function DatabaseTrigger(
       ref={opener}
       type="button"
       className={styles.selector}
-      aria-label={`Opened databases (${database})`}
+      aria-label={
+        database ? `Opened databases (${database})` : 'Opened databases'
+      }
       aria-haspopup="menu"
       aria-expanded={open}
       aria-controls={open ? id : undefined}
+      disabled={!database}
       onClick={toggle}
     >
       <Icon name="database" />
-      <span>{database}</span>
+      <span>{database || 'No database'}</span>
       <Icon name="chevronDown" />
     </button>
   );
 }
+
 function DatabaseRow(
-  props: DatabaseProps & { name: string; close: () => void },
+  props: Props & { name: string; close: () => void },
 ): React.JSX.Element {
   const { name, close } = props;
   return (

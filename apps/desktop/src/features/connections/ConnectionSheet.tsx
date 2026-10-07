@@ -4,6 +4,7 @@ import { Sheet } from '@openrows/ui/sheet';
 import type { ProfileDto } from '@openrows/ipc';
 import { ConnectionFields } from './ConnectionFields';
 import { EnvironmentFields } from './EnvironmentFields';
+import { serverLabel } from './sessions';
 import { UrlField } from './UrlField';
 import { useConnectionForm } from './useConnectionForm';
 import type { TestState } from './useConnectionForm';
@@ -102,7 +103,7 @@ function TestResult({ state }: { state: TestState }): React.JSX.Element {
         <div role="status" className={styles.test}>
           <StatusDot
             tone="success"
-            label={`Connected · PostgreSQL ${state.report.serverVersion} · ${String(state.report.elapsedMs)} ms`}
+            label={`Connected · ${serverLabel(state.report.server)} · ${String(state.report.elapsedMs)} ms`}
           />
         </div>
       );

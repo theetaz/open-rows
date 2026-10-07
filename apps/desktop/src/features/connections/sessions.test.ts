@@ -2,9 +2,10 @@
 import { expect, it } from 'vitest';
 import { applySessionEvent, statusLabel } from './sessions';
 import type { Statuses } from './sessions';
+import { server } from '../../test/ipcStub';
 
 const statuses: Statuses = {
-  a: { state: 'connected', sessionId: 's-a', serverVersion: '17.2' },
+  a: { state: 'connected', sessionId: 's-a', server: server('17.2') },
   b: { state: 'connecting' },
 };
 
@@ -40,8 +41,15 @@ it('ignores unknown sessions and non-terminal states', () => {
 it('labels every state', () => {
   expect(statusLabel({ state: 'connecting' })).toBe('Connecting…');
   expect(
-    statusLabel({ state: 'connected', sessionId: 's', serverVersion: '' }),
+    statusLabel({ state: 'connected', sessionId: 's', server: server('') }),
   ).toBe('Connected');
+  expect(
+    statusLabel({
+      state: 'connected',
+      sessionId: 's',
+      server: { ...server('16.4'), flavour: 'Neon' },
+    }),
+  ).toBe('Connected · PostgreSQL 16.4 · Neon');
   expect(statusLabel({ state: 'failed', message: 'x' })).toBe(
     'Connection failed',
   );

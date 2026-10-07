@@ -75,7 +75,7 @@ Feature-first mode ([docs/25 §0](25-engineering-standards.md#0-current-delivery
 | D-03 | M1-02, M1-03, M1-05 | Local store with profiles and history; macOS Keychain secrets; PostgreSQL connection profiles from form fields or a `postgres://` URL; env tag and read-only / confirm-before-write flags | done (#35) |
 | D-04 | M1-11 PostgreSQL driver | Promote the M0-S3 prototype: plain TCP (TLS later), cancel, notices, tagged-text fallback for out-of-range values; container happy-path test | done (#36) |
 | D-05 | M1-04, M1-09 | Typed IPC for connections, sessions, queries and result windows; connection list, new/edit sheet and Test connection | done (#37) |
-| D-06 | M1-16, M1-18 | Schema tree (databases → schemas → tables/views) on the real connection; replace the corresponding mock workspace code | todo |
+| D-06 | M1-16, M1-18 | Schema tree (databases → schemas → tables/views) on the real connection; replace the corresponding mock workspace code | done (#38) |
 | D-07 | M1-14, M1-19, M1-21 | Query tab: CodeMirror editor, run current / selection / all, cancel, results in the canvas grid over result-store windows; basic history | todo |
 | D-08 | M1-19 table browse | Open a table with pagination, header sort and a simple filter; copy cells/rows | todo |
 | D-09 | M1-23, M1-24 | Edit, insert, duplicate and delete rows as a staged change set; SQL preview; transactional commit with rollback; safe mode (read-only, confirm writes, dangerous-statement confirmation) | todo |

@@ -19,6 +19,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "connection_test",
             "session_open",
             "session_close",
+            "catalog_databases",
+            "catalog_schemas",
+            "catalog_objects",
+            "catalog_search",
+            "catalog_close",
         ]),
     ))?;
     Ok(())

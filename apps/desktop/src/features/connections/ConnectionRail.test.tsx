@@ -2,7 +2,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
-import { profile } from '../../test/ipcStub';
+import { profile, server } from '../../test/ipcStub';
 import { ConnectionRail } from './ConnectionRail';
 import type { SessionStatus } from './sessions';
 
@@ -22,7 +22,7 @@ const statuses: Record<string, SessionStatus> = {
   'id-analytics-prod': {
     state: 'connected',
     sessionId: 's',
-    serverVersion: '16.4',
+    server: server('16.4'),
   },
 };
 const props = {

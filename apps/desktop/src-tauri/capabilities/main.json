@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main",
-  "description": "Main window: first-render and session-state events, window dragging, metadata, connection profiles and sessions, result tiles and opt-in IPC spike.",
+  "description": "Main window: first-render and session-state events, window dragging, metadata, connection profiles, sessions and catalog reads, result tiles and opt-in IPC spike.",
   "windows": ["main"],
   "permissions": [
     "core:event:allow-emit-to",
@@ -23,6 +23,11 @@
     "allow-profile-parse-url",
     "allow-connection-test",
     "allow-session-open",
-    "allow-session-close"
+    "allow-session-close",
+    "allow-catalog-databases",
+    "allow-catalog-schemas",
+    "allow-catalog-objects",
+    "allow-catalog-search",
+    "allow-catalog-close"
   ]
 }
