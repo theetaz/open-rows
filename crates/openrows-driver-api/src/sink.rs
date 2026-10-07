@@ -11,6 +11,15 @@ pub enum SinkFlow {
     Stop,
 }
 
+/// Severity of a server notice forwarded to the user (docs/06 §4).
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum NoticeLevel {
+    /// Informational message, e.g. `PostgreSQL` `NOTICE` or `INFO`.
+    Info,
+    /// Something the user should look at, e.g. `PostgreSQL` `WARNING`.
+    Warning,
+}
+
 /// Outcome of one executed statement.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct ExecSummary {
@@ -30,4 +39,6 @@ pub trait ResultSink: Send {
     fn begin_result(&mut self, schema: SchemaRef);
     /// Called for every batch in order.
     fn push_batch(&mut self, batch: RecordBatch) -> SinkFlow;
+    /// Called for each server notice raised while the statement runs.
+    fn notice(&mut self, _level: NoticeLevel, _message: &str) {}
 }

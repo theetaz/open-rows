@@ -28,6 +28,7 @@ open-rows/
 │       ├── icons/              # original SVG and Tauri-generated platform icons
 │       └── src/                # entry point, commands, startup and gen-ipc binary
 ├── crates/openrows-types/      # shared value model, ids and errors
+├── crates/openrows-core/       # session manager: actor per session, cancel, query events (M1-01)
 ├── crates/openrows-results/    # Arrow result store and window encoder (M0 S1)
 ├── crates/openrows-driver-api/ # draft session/result-sink contract (M0 S3)
 ├── crates/openrows-driver-postgres/ # prototype PG wire → Arrow decoder, benches, container tests

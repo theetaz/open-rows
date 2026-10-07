@@ -3095,6 +3095,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "openrows-core"
+version = "0.1.0"
+dependencies = [
+ "arrow-array",
+ "arrow-schema",
+ "openrows-driver-api",
+ "openrows-driver-postgres",
+ "openrows-types",
+ "thiserror 2.0.21",
+ "tokio",
+ "tokio-util",
+]
+
+[[package]]
 name = "openrows-driver-api"
 version = "0.1.0"
 dependencies = [

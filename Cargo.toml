@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "crates/openrows-types",
+    "crates/openrows-core",
     "crates/openrows-results",
     "crates/openrows-driver-api",
     "crates/openrows-driver-postgres",

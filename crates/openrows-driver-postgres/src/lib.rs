@@ -4,8 +4,10 @@
 //! Speaks the v3 wire protocol through `postgres-protocol`, requests binary
 //! results for known types and text for the rest (per column), and decodes
 //! `DataRow` cells straight into pre-sized Arrow builders. Not the production
-//! M1-11 driver: no TLS, cancel, parameters, notices or flavour detection.
+//! M1-11 driver: no TLS, parameters or flavour detection. Out-of-band cancel
+//! and execute-phase notices were added for the M1-01 session actor.
 #![forbid(unsafe_code)]
+mod cancel;
 mod decode;
 pub mod fixture;
 mod session;
