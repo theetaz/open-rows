@@ -11,3 +11,7 @@ pub const UUID_EXTENSION: &str = "arrow.uuid";
 pub const JSON_EXTENSION: &str = "openrows.json";
 /// Exact decimal text for values that do not fit `Decimal128`.
 pub const DECIMAL_EXTENSION: &str = "openrows.decimal";
+/// `"true"` on a temporal or decimal field that holds the server's text form
+/// because some value had no exact Arrow representation (e.g. `infinity`);
+/// [`SOURCE_TYPE`] still names the original type (docs/04 §5, docs/05 §11).
+pub const TEXT_FALLBACK: &str = "openrows.text_fallback";

@@ -35,7 +35,9 @@ pub struct ExecSummary {
 
 /// Receives the columnar result of one statement.
 pub trait ResultSink: Send {
-    /// Called once, before any batch, with the result schema.
+    /// Called before the first batch of each result with its schema. A driver
+    /// may call it again within one statement when a column's representation
+    /// has to change mid-stream; later batches belong to the new result.
     fn begin_result(&mut self, schema: SchemaRef);
     /// Called for every batch in order.
     fn push_batch(&mut self, batch: RecordBatch) -> SinkFlow;

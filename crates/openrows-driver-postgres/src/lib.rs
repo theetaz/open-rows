@@ -1,22 +1,29 @@
 // SPDX-License-Identifier: Apache-2.0
-//! Prototype `PostgreSQL` driver from the M0-S3 streaming spike.
+//! `PostgreSQL` driver (dogfood slice D-04 of M1-11).
 //!
 //! Speaks the v3 wire protocol through `postgres-protocol`, requests binary
 //! results for known types and text for the rest (per column), and decodes
-//! `DataRow` cells straight into pre-sized Arrow builders. Not the production
-//! M1-11 driver: no TLS, parameters or flavour detection. Out-of-band cancel
-//! and execute-phase notices were added for the M1-01 session actor.
+//! `DataRow` cells straight into pre-sized Arrow builders. Connects over TCP or
+//! a Unix socket with per-stage timeouts, reports [`ServerInfo`], runs startup
+//! commands, cancels out of band and forwards notices. Values with no exact
+//! Arrow form fall back to tagged text. No TLS (D-11) or bind parameters yet.
 #![forbid(unsafe_code)]
 mod cancel;
+mod connect;
 mod decode;
 pub mod fixture;
+mod info;
+mod options;
 mod session;
+mod simple;
 mod startup;
 mod stream;
 mod types;
 mod wire;
 
 pub use decode::ResultDecoder;
+pub use info::{Flavour, ServerInfo, TlsStatus};
+pub use options::{ConnectOptions, ConnectTimeouts, SslMode};
 pub use session::PgSession;
 pub use startup::PgConfig;
 pub use types::ColumnDesc;

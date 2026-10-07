@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "Prototype PostgreSQL driver decoding wire-protocol rows into Arrow (M0-S3 spike)"
+description = "PostgreSQL driver decoding wire-protocol rows straight into Arrow"
 
 [lints]
 workspace = true
@@ -18,12 +18,12 @@ fallible-iterator = "0.2"
 openrows-driver-api = { path = "../openrows-driver-api" }
 postgres-protocol = "0.6.12"
 thiserror.workspace = true
-tokio = { version = "1.53", features = ["net", "io-util"] }
+tokio = { version = "1.53", features = ["net", "io-util", "time"] }
 
 [dev-dependencies]
 criterion = { version = "0.8", default-features = false }
 dhat = "0.3.3"
-tokio = { version = "1.53", features = ["net", "io-util", "rt", "macros"] }
+tokio = { version = "1.53", features = ["net", "io-util", "time", "rt", "macros"] }
 
 [[bench]]
 name = "decode_pg"

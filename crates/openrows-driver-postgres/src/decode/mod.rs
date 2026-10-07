@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! `DataRow` bodies → Arrow `RecordBatch`es, flushed per [`BatchPolicy`].
 mod column;
+mod fallback;
 mod numeric;
 mod scalar;
 
@@ -13,7 +14,11 @@ use std::{collections::HashMap, sync::Arc};
 
 /// Streaming decoder for one result set.
 ///
-/// After [`ResultDecoder::decode_row`] fails the decoder is poisoned: drop it.
+/// A timestamp, date or `numeric(p, s)` value with no exact Arrow form (±infinity,
+/// beyond Arrow's µs range, `NaN`) switches that column to tagged text for the
+/// rest of the result: [`ResultDecoder::schema`] changes and later batches carry
+/// the new schema. After [`ResultDecoder::decode_row`] fails the decoder is
+/// poisoned: drop it.
 pub struct ResultDecoder {
     schema: SchemaRef,
     columns: Vec<ColumnDecoder>,
@@ -53,7 +58,7 @@ impl ResultDecoder {
         }
     }
 
-    /// Arrow schema with per-field source-type metadata.
+    /// Current Arrow schema with per-field source-type metadata.
     #[must_use]
     pub fn schema(&self) -> SchemaRef {
         self.schema.clone()
@@ -68,14 +73,14 @@ impl ResultDecoder {
     /// Decode one `DataRow` body (the bytes after its column count).
     ///
     /// # Errors
-    /// `Decode` for malformed or unrepresentable cells, `Arrow` on batch assembly.
+    /// `Decode` for malformed cells, `Arrow` on batch assembly.
     pub fn decode_row(&mut self, mut row: &[u8]) -> Result<Option<RecordBatch>, DriverError> {
         self.bytes += row.len();
-        for (index, column) in self.columns.iter_mut().enumerate() {
+        for index in 0..self.columns.len() {
             let cell = next_cell(&mut row).map_err(|reason| decode_error(index, reason))?;
-            column
-                .append(cell)
-                .map_err(|reason| decode_error(index, reason))?;
+            if let Err(reason) = self.columns[index].append(cell) {
+                self.fall_back(index, cell, reason)?;
+            }
         }
         if !row.is_empty() {
             return Err(DriverError::Protocol(
@@ -98,6 +103,29 @@ impl ResultDecoder {
             return Ok(None);
         }
         self.flush().map(Some)
+    }
+
+    /// Retry a failed cell as tagged text and retag the column's field.
+    fn fall_back(
+        &mut self,
+        index: usize,
+        cell: Option<&[u8]>,
+        reason: scalar::CellError,
+    ) -> Result<(), DriverError> {
+        let Some(value) = cell.filter(|_| matches!(reason, scalar::CellError::Unrepresentable(_)))
+        else {
+            return Err(decode_error(index, reason));
+        };
+        self.columns[index]
+            .fall_back(value, reason)
+            .map_err(|reason| decode_error(index, reason))?;
+        let mut fields: Vec<_> = self.schema.fields().iter().cloned().collect();
+        fields[index] = Arc::new(types::tagged_text(&fields[index]));
+        self.schema = Arc::new(Schema::new_with_metadata(
+            fields,
+            self.schema.metadata().clone(),
+        ));
+        Ok(())
     }
 
     fn flush(&mut self) -> Result<RecordBatch, DriverError> {

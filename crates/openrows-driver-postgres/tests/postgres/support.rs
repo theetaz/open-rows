@@ -3,7 +3,7 @@
 use arrow_array::cast::AsArray;
 use arrow_array::{ArrayRef, RecordBatch};
 use arrow_schema::SchemaRef;
-use openrows_driver_api::{DriverError, ExecSummary, ResultSink, Session, SinkFlow};
+use openrows_driver_api::{DriverError, ExecSummary, NoticeLevel, ResultSink, Session, SinkFlow};
 use openrows_driver_postgres::{PgConfig, PgSession};
 use std::time::{Duration, Instant};
 
@@ -11,6 +11,9 @@ use std::time::{Duration, Instant};
 #[derive(Default)]
 pub struct Collect {
     pub schema: Option<SchemaRef>,
+    /// Number of `begin_result` calls.
+    pub results: usize,
+    pub notices: Vec<String>,
     pub batches: Vec<RecordBatch>,
     pub started: Option<Instant>,
     pub first_batch_after: Option<Duration>,
@@ -20,6 +23,11 @@ pub struct Collect {
 impl ResultSink for Collect {
     fn begin_result(&mut self, schema: SchemaRef) {
         self.schema = Some(schema);
+        self.results += 1;
+    }
+
+    fn notice(&mut self, _level: NoticeLevel, message: &str) {
+        self.notices.push(message.to_owned());
     }
 
     fn push_batch(&mut self, batch: RecordBatch) -> SinkFlow {

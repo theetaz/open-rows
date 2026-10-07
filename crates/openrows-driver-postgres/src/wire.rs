@@ -1,31 +1,33 @@
 // SPDX-License-Identifier: Apache-2.0
-//! Buffered message I/O over a plain TCP stream (TLS arrives with M1-06).
+//! Buffered message I/O over a plain TCP or Unix stream (TLS arrives with D-11).
 use bytes::BytesMut;
 use openrows_driver_api::{DriverError, NoticeLevel};
 use postgres_protocol::message::backend::{
     ErrorFields, ErrorResponseBody, Message, NoticeResponseBody,
 };
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::TcpStream;
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 /// Socket read granularity; one read usually carries many `DataRow`s.
 const READ_CHUNK: usize = 64 * 1024;
 
+/// Byte stream under the protocol; boxed so TCP, Unix and (later) TLS share one type.
+pub(crate) trait Io: AsyncRead + AsyncWrite + Unpin + Send {}
+
+impl<T: AsyncRead + AsyncWrite + Unpin + Send> Io for T {}
+
 pub(crate) struct Wire {
-    stream: TcpStream,
+    stream: Box<dyn Io>,
     read: BytesMut,
     write: BytesMut,
 }
 
 impl Wire {
-    pub(crate) async fn connect(host: &str, port: u16) -> Result<Self, DriverError> {
-        let stream = TcpStream::connect((host, port)).await?;
-        stream.set_nodelay(true)?;
-        Ok(Self {
+    pub(crate) fn new(stream: Box<dyn Io>) -> Self {
+        Self {
             stream,
             read: BytesMut::with_capacity(READ_CHUNK),
             write: BytesMut::with_capacity(1024),
-        })
+        }
     }
 
     /// Outgoing buffer for `postgres_protocol::message::frontend` encoders.

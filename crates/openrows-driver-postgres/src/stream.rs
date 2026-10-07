@@ -1,11 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Execute-phase message loop: rows → decoder → sink, always draining to `ReadyForQuery`.
+//!
+//! The schema is published with the first batch rather than at `Describe`, so a
+//! column that falls back to tagged text in the first batch (docs/05 §11) never
+//! changes the schema the sink saw. A fallback after that starts a new result.
 use crate::decode::ResultDecoder;
 use crate::wire::{Wire, notice, server_error, unexpected};
 use arrow_array::RecordBatch;
-use openrows_driver_api::{DriverError, ExecSummary, ResultSink, SinkFlow};
+use arrow_schema::SchemaRef;
+use openrows_driver_api::{DriverError, ExecSummary, NoticeLevel, ResultSink, SinkFlow};
 use postgres_protocol::message::backend::Message;
+use std::sync::Arc;
 use std::time::Instant;
+
+/// Explains why one statement produced a second result set.
+const CONTINUED: &str = "a column held values outside its Arrow type (e.g. infinity);     the remaining rows continue in a new result with that column as text";
 
 /// Stream one statement's results; errors are reported only after the
 /// connection is back at `ReadyForQuery`, so the session stays usable.
@@ -21,6 +30,7 @@ pub(crate) async fn collect(
         failure: None,
         stopped: false,
         first_row: None,
+        published: None,
     };
     loop {
         match wire.next().await? {
@@ -48,6 +58,7 @@ struct Collector<'a> {
     failure: Option<DriverError>,
     stopped: bool,
     first_row: Option<Instant>,
+    published: Option<SchemaRef>,
 }
 
 impl Collector<'_> {
@@ -79,9 +90,26 @@ impl Collector<'_> {
             Some(Err(error)) => self.fail(error),
             Some(Ok(None)) | None => {}
         }
+        if self.published.is_none()
+            && let Some(decoder) = &self.decoder
+        {
+            self.publish(decoder.schema());
+        }
+    }
+
+    /// Start the result on first use and again whenever the schema changed.
+    fn publish(&mut self, schema: SchemaRef) {
+        match &self.published {
+            Some(published) if Arc::ptr_eq(published, &schema) => return,
+            Some(_) => self.sink.notice(NoticeLevel::Warning, CONTINUED),
+            None => {}
+        }
+        self.sink.begin_result(schema.clone());
+        self.published = Some(schema);
     }
 
     fn push(&mut self, batch: RecordBatch) {
+        self.publish(batch.schema());
         if self.summary.batches == 0 {
             self.summary.first_batch_latency = self.first_row.map(|start| start.elapsed());
         }
