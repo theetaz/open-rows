@@ -141,7 +141,7 @@ Bad examples the hook rejects: `Updated stuff`, `feat: Add grid.` (trailing peri
 
 ### 4.1 Title and description
 
-- **Title** is a Conventional Commit header (it becomes the squash commit header), e.g. `feat(editor): add vim mode toggle`.
+- **Title** is a Conventional Commit header (it becomes the squash commit header), e.g. `feat(editor): add vim mode toggle`. Keep it at **66 characters or fewer**: GitHub appends ` (#NN)` on squash merge, and the resulting header must still fit the 72-character limit that CI checks on `main`.
 - **Description** uses the template in [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md): what, why, how it was tested, screenshots for UI changes (light and dark), and linked issues/ADRs.
 - The same attribution rule applies: no co-author sections, signatures or generated-by footers in PR titles, descriptions or comments.
 
