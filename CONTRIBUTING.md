@@ -35,7 +35,7 @@ export CARGO_TARGET_DIR=/path/to/shared/openrows-target
 export RUSTC_WRAPPER=sccache  # only if sccache is installed
 ```
 
-Cargo respects both variables. `just clean` removes the configured target output, so use it carefully with a shared cache.
+Cargo respects both variables. `just` recipes check that sccache works in the current process context. They restart a server inherited from a sandboxed run, or build without the wrapper when the server is unreachable ([docs/18 §2.2](docs/18-repository-and-dev-workflow.md#22-sccache-and-sandboxed-runs)). `just clean` removes the configured target output, so use it carefully with a shared cache.
 
 ## 2. Branching model
 
