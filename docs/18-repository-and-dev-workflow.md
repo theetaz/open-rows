@@ -28,6 +28,9 @@ open-rows/
 │       ├── icons/              # original SVG and Tauri-generated platform icons
 │       └── src/                # entry point, commands, startup and gen-ipc binary
 ├── crates/openrows-types/      # shared value model, ids and errors
+├── crates/openrows-results/    # Arrow result store and window encoder (M0 S1)
+├── crates/openrows-driver-api/ # draft session/result-sink contract (M0 S3)
+├── crates/openrows-driver-postgres/ # prototype PG wire → Arrow decoder, benches, container tests
 ├── packages/ipc/               # @openrows/ipc: wrapper + generated/bindings.ts
 ├── packages/ui/                # tokens, generator, CSS modules, theme and icons
 ├── scripts/                    # tool/hygiene checks, git hooks and startup harness
@@ -53,7 +56,7 @@ open-rows/
 | `sccache` (optional) | Compiler cache; set `RUSTC_WRAPPER=sccache` |
 | `scripts/git-hooks` | Git hooks enabled by `just setup`; currently `commit-msg` |
 
-See [CONTRIBUTING.md §1](../CONTRIBUTING.md#1-first-time-setup) for installation and optional shared `CARGO_TARGET_DIR` setup. On macOS, Xcode Command Line Tools are required. Linux builds need the [Tauri system prerequisites](https://tauri.app/start/prerequisites/). Database containers come in later tasks. CI tooling is described in §4.
+See [CONTRIBUTING.md §1](../CONTRIBUTING.md#1-first-time-setup) for installation and optional shared `CARGO_TARGET_DIR` setup. On macOS, Xcode Command Line Tools are required. Linux builds need the [Tauri system prerequisites](https://tauri.app/start/prerequisites/). Docker is optional: `just test-pg [version]` runs the PostgreSQL integration tests in a throwaway `postgres:<version>-alpine` container bound to 127.0.0.1, removes it on exit, and skips with exit 0 when Docker is unavailable. CI tooling is described in §4.
 
 ### 2.1 Common commands
 
@@ -78,6 +81,8 @@ just bench-startup  # ten sequential release launches, macOS GUI required
 just bench-startup 20 # optional run count (minimum two)
 just bench-memory   # total idle physical footprint (gate) + RSS (informational), macOS GUI required
 just bench-test     # synthetic benchmark tests, no GUI
+just bench-pg-decode # Criterion decode_pg_* + gates (>= 1 M cells/s/core, first batch <= 5 ms)
+just test-pg 17     # PostgreSQL integration tests in a throwaway container (skips without Docker)
 pnpm lint           # type-aware ESLint, complexity/size limits, IPC boundary
 pnpm format:check   # frontend/config formatting
 pnpm build          # production frontend bundle (no native window)
@@ -164,7 +169,7 @@ Pull requests and pushes to feature branches do **not** trigger CI. Steps:
 | Binding freshness | Rust `bindings_are_fresh` test (same registry as the app) |
 | Format | `cargo fmt --all --check` |
 | Lint | `cargo clippy --workspace --all-targets --locked -- -D warnings` |
-| Tests | `cargo nextest run --workspace --locked` |
+| Tests | `cargo nextest run --workspace --locked`; container-backed driver tests are `#[ignore]`d there (reported as skipped) and run locally with `just test-pg` |
 
 Every gate, including those CI skips (cargo-deny, cargo-machete, hygiene, UI and benchmark checks), runs locally with `just check` and is mandatory before pushing a branch or opening a PR; the acceptance report carries the evidence. Actions are pinned to full commit SHAs, the workflow has read-only permissions, and checkout does not persist credentials. A red run on `main` is fixed immediately with a follow-up PR. PR-triggered CI and branch protection return with the full pipeline (§4.2) once the project has outside contributors.
 

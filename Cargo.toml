@@ -1,5 +1,11 @@
 [workspace]
-members = ["crates/openrows-types", "crates/openrows-results", "apps/desktop/src-tauri"]
+members = [
+    "crates/openrows-types",
+    "crates/openrows-results",
+    "crates/openrows-driver-api",
+    "crates/openrows-driver-postgres",
+    "apps/desktop/src-tauri",
+]
 resolver = "3"
 
 [workspace.package]

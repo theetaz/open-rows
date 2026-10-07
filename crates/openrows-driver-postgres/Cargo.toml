@@ -1,0 +1,30 @@
+[package]
+name = "openrows-driver-postgres"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Prototype PostgreSQL driver decoding wire-protocol rows into Arrow (M0-S3 spike)"
+
+[lints]
+workspace = true
+
+[dependencies]
+arrow-array = "60"
+arrow-schema = "60"
+bytes = "1.12"
+fallible-iterator = "0.2"
+openrows-driver-api = { path = "../openrows-driver-api" }
+postgres-protocol = "0.6.12"
+thiserror.workspace = true
+tokio = { version = "1.53", features = ["net", "io-util"] }
+
+[dev-dependencies]
+criterion = { version = "0.8", default-features = false }
+dhat = "0.3.3"
+tokio = { version = "1.53", features = ["net", "io-util", "rt", "macros"] }
+
+[[bench]]
+name = "decode_pg"
+harness = false

@@ -25,3 +25,18 @@ See [04-core-engine.md §3](../04-core-engine.md#3-session-actors).
 
 - **Shared connection behind `Arc<Mutex<_>>`:** simple, but cancel would contend on the lock, and state transitions spread across callers.
 - **Connection pool only (e.g. deadpool/bb8):** good for servers, but a GUI needs pinned sessions per tab with transaction affinity and visible state.
+
+## M0-S3 evidence — 2026-10-07
+
+The draft `openrows-driver-api::Session` fits this model. It is `Send` but not `Sync`,
+`execute` takes `&mut self` so only the owning actor can run a statement, and
+`close(self: Box<Self>)` consumes the connection. Boxed `Send` futures keep
+`Box<dyn Session>` object-safe without an `async-trait` dependency
+(`boxed_session_is_object_safe_and_send`). The prototype PostgreSQL session holds
+one TCP stream and one read buffer, with no locks. Server errors, decode errors and
+a sink `Stop` all drain the connection to `ReadyForQuery` before returning. A
+following statement on the same session succeeds against PostgreSQL 12, 17 and 18
+(`errors_are_typed_and_the_session_stays_usable`,
+`statements_without_rows_and_stopped_streams`). Out-of-band cancel and the actor
+loop are not exercised yet (M1-01, M1-11). This evidence supports, and does not
+change, the accepted decision.

@@ -198,3 +198,18 @@ New JS transitives are `flatbuffers` (Apache-2.0), `json-with-bigint` (MIT) and
 `tslib` 2.8.1 was already in the lockfile; no new version was introduced.
 Python harnesses use only the standard library. `thiserror`, serde and Tauri/Specta
 reuse existing dependencies. No grid, driver or spill dependencies were added.
+
+## M0-S3 evidence — 2026-10-07
+
+The first decision point, "drivers decode directly into Arrow `RecordBatch`es", holds
+for PostgreSQL. The prototype `openrows-driver-postgres` appends wire cells straight
+into typed Arrow builders, with no intermediate value type. On a Mac mini M4 it
+decodes 63–330 M cells/s per core (mean upper bounds; NFR-PERF-05 asks for 1 M), and
+the 200-row first batch takes 0.036 ms. Primitive cells cause zero heap allocations
+(`dhat` test). UUID, JSON and exact-decimal text carry the extension metadata this ADR
+anticipated (`arrow.uuid`, `openrows.json`, `openrows.decimal`). Unknown types are
+`Utf8` with `openrows.source_type`. Values without an exact Arrow form (±infinity,
+`NaN` in a constrained `numeric`, timestamps after 294247-01-10) currently fail with
+a typed error and need a per-value tagged-text design in M1-11. See
+[05 §11](../05-database-drivers.md#11-m0-s3-postgresql-streaming-spike) and
+[13 §4](../13-performance.md#m0-s3-postgresql-decode-measurement-boundary).
