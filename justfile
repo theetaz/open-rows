@@ -109,6 +109,15 @@ bench-result-encode:
     cargo bench -p openrows-results --bench result_window_encode --locked
     python3 -B scripts/bench-result-encode.py
 
+# Benchmark PostgreSQL binary decoding, then gate >= 1 M cells/s/core and first batch <= 5 ms.
+bench-pg-decode:
+    cargo bench -p openrows-driver-postgres --bench decode_pg --locked
+    python3 -B scripts/bench-pg-decode.py
+
+# Run PostgreSQL integration tests in a throwaway container; skips when Docker is unavailable.
+test-pg version="17":
+    bash scripts/test-pg.sh "{{version}}"
+
 # Measure the accepted canvas grid with fresh scenarios per repeat; maintainer-only GUI run.
 bench-grid repeats="3":
     python3 -B scripts/bench-grid.py "{{repeats}}"

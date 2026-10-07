@@ -125,7 +125,7 @@ and WebKit pages.
 
 | Benchmark | Tool | Metric | Gate |
 | --- | --- | --- | --- |
-| `decode_pg_*` (int, text, mixed, wide) | `criterion` | cells/s | −5 % vs main fails |
+| `decode_pg_*` (int, text, mixed, wide, first_batch) (M0 S3) | `criterion`, `just bench-pg-decode`; synthetic PG binary `DataRow` frames, no network | cells/s per core from the mean's upper 95% bound; local M4 (M cells/s): int 330, text 62.9, mixed 139, wide 169; first_batch (20×200) 0.036 ms | each ≥ 1 M cells/s/core (NFR-PERF-05) and first batch ≤ 5 ms: M4 pass; −5 % vs main once CI compares; revisit on mac-low |
 | `result_window_encode` | `criterion`, `just bench-result-encode` | µs per tile; local M4: 256×20 11.49, 1024×20 17.32, 256×100 46.27 | 256×20 mean upper 95% confidence bound ≤ 1 ms; M4 pass; revisit on mac-low |
 | `ipc_tile_round_trip` (M0 S1) | `just bench-ipc` after `just build-app`; 500 unique random tiles, warm worker, full client/worker message path | M4 runs 1/2 (p50/p95/max ms): invoke 0/1/6 both; decode 0/1/4 and 0/1/3; total 0/1.00/6 both; run 2 total mean 0.524 ms | total p95 ≤ 3 ms: M4 PASS both runs; 1 ms page clock, isolation false; revisit on mac-low |
 | `sql_split_*` (10 KB, 1 MB scripts) | `criterion` | MB/s | −10 % fails |
@@ -340,6 +340,48 @@ GPU completion. Preallocated counters become JSON arrays after sampling. React's
 pinned production commit hook excludes delayed passive effects and reads no clock
 in normal mode. No new native run or main baseline is claimed by this change.
 
+
+### M0 S3 PostgreSQL decode measurement boundary
+
+`just bench-pg-decode` runs `cargo bench -p openrows-driver-postgres --bench decode_pg`
+and then `scripts/bench-pg-decode.py`. The script builds nothing; it reads the latest
+Criterion `estimates.json` and `benchmark.json` for each group from the shared Cargo
+target. Throughput is element count ÷ the mean's upper 95% confidence bound, a
+pessimistic figure; Criterion runs on one thread, so this is per core. Missing,
+duplicate or non-finite results fail closed, and `just bench-test` covers the gate logic.
+
+Workloads (`openrows_driver_postgres::fixture`, seed 42, NULL in every seventh cell):
+int = 10 alternating `int4`/`int8` columns × 100 000 rows; text = 10 `text` columns
+(ASCII plus 0–7 two-byte characters) × 100 000; mixed = 15 types (all supported binary
+types including `numeric(18,4)`, unconstrained `numeric` and `jsonb`) plus 5
+primitive/text columns × 50 000; wide = 200 columns cycling `int4`/`int8`/`float8`/`text`
+× 5 000; first_batch = the mixed schema × 200 rows. Timed work covers frame parsing
+(`postgres-protocol` `Message::parse`), decoder construction, cell decoding and every
+batch flush. Generating fixtures and copying input frames per iteration are excluded.
+The ignored integration test `benchmark_fixture_matches_server_output` proves that
+real servers send the same values: the decoded `RecordBatch`es from PostgreSQL equal
+those from the synthetic frames.
+
+Local machine: Mac mini, Apple M4, 24 GB, Rust 1.94.0, bench profile (fat LTO, one
+codegen unit), Arrow Rust 60. Criterion central estimates: int 3.01 ms (332 M cells/s),
+text 15.8 ms (63.3 M), mixed 7.12 ms (140 M), wide 5.91 ms (169 M), first_batch 35.3 µs.
+The gate figures in the table use upper bounds. There is no main baseline; these
+benchmarks are new.
+
+No per-cell allocation: `tests/allocations.rs` installs `dhat` as the global allocator.
+After a 7-row warm-up it decodes 4 992 rows × 11 primitive columns and asserts 0 heap
+blocks. The warm-up covers one-off costs: the first frame split shares the read buffer,
+and Arrow allocates each column's validity bitmap at its first NULL. Each column also
+allocates once per batch when the next builder is pre-sized from the previous batch's
+byte length. Arrow buffers move into the finished batch, so they cannot be reused.
+
+First batch end to end: `just test-pg <version>` measures a 200 000-row temp-table scan
+(`int4`, `text`, `float8`). Times run from the first `DataRow` to the 200-row batch
+reaching the sink, then from `execute()` (describe round trip, execute round trip and
+server time). On the M4 with Docker Desktop: PG 12.22 0.142 / 0.867 ms,
+PG 17.11 0.141 / 0.884 ms, PG 18.6 0.152 / 1.786 ms. The test asserts the driver part
+≤ 5 ms. A `generate_series` source is not suitable here: it materialises all rows
+before sending the first (26 ms observed).
 
 ## 5. Profiling playbook
 

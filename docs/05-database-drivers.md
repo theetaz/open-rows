@@ -48,6 +48,8 @@ pub trait ResultSink: Send {
 
 Drivers build Arrow `RecordBatch`es directly with typed builders (no intermediate `Vec<Value>`), targeting ~64 k cells or 4 MB per batch, whichever comes first, and always flushing the first batch early (after ≤ 200 rows) so the UI can paint quickly.
 
+The M0-S3 draft in `crates/openrows-driver-api` implements only the streaming core of this contract: `Session` (`execute`, `close`; `Send`, not `Sync`, owned by one actor per ADR-0007), a minimal `ResultSink` (`begin_result`, `push_batch` → `Continue | Stop`), `ExecSummary`, a typed `DriverError` and `BatchPolicy`. `BatchPolicy` caps the first batch at min(200 rows, 64 Ki cells). Later batches hold ⌊65 536 / columns⌋ rows, or flush once 4 MiB of wire bytes has been decoded. Capabilities, cancel, notices, introspection and editing facets remain M1-10 work. See [§11](#11-m0-s3-postgresql-streaming-spike).
+
 ### 2.1 Capabilities
 
 ```rust
@@ -84,7 +86,7 @@ The UI reads capabilities to decide which toolbar buttons, tree nodes and editor
 
 | Database | Family / wire | Rust library | Licence | Tier | Notes |
 | --- | --- | --- | --- | --- | --- |
-| PostgreSQL 12–17+ | PG wire v3 | `tokio-postgres` (+ `postgres-types`, own binary decoders into Arrow) | MIT/Apache | 1 | Binary format for known types, text fallback; `COPY` for import/export; cancel via `CancelToken`; `EXPLAIN (FORMAT JSON)`. |
+| PostgreSQL 12–17+ | PG wire v3 | `tokio-postgres` (+ `postgres-types`, own binary decoders into Arrow); M0-S3 prototype uses `postgres-protocol` directly, see [§11](#11-m0-s3-postgresql-streaming-spike) | MIT/Apache | 1 | Binary format for known types, text fallback; `COPY` for import/export; cancel via `CancelToken`; `EXPLAIN (FORMAT JSON)`. |
 | CockroachDB, YugabyteDB, Neon, Supabase, Timescale, AlloyDB, Aurora PG | PG wire | same driver, **flavour** profile | — | 1 (PG-compatible), flavour quirks Tier 2 | Flavour detected from `version()` / `SHOW` settings; introspection queries adapted per flavour. |
 | Amazon Redshift | PG wire (old protocol subset) | same driver, Redshift flavour | — | 3 | Different catalog, no cancel token in some setups. |
 | MySQL 5.7, 8.0, 8.4 | MySQL protocol | `mysql_async` | MIT/Apache | 1 | Streaming `query_iter`; cancel via `KILL QUERY <id>` on side connection; column metadata gives `org_table` for editability. |
@@ -217,3 +219,28 @@ sequenceDiagram
 | Wide-column (Cassandra) | Table grid | Native | CQL |
 | Search (Elasticsearch) | Hits grid + raw JSON | `_source` flattened | JSON DSL, SQL endpoint |
 | Key-value/document (DynamoDB) | Item grid | Attributes flattened | PartiQL, Scan/Query builder |
+
+## 11. M0-S3 PostgreSQL streaming spike
+
+`crates/openrows-driver-postgres` is a prototype, not the M1-11 driver. It covers plain-TCP connect (cleartext, MD5 and SCRAM-SHA-256 without channel binding) and parameterless statements over the extended protocol. Results are decoded from `DataRow` cells straight into pre-sized Arrow builders. It has no TLS, cancel, bind parameters, notices or flavour detection.
+
+**Library finding.** `tokio-postgres` 0.7 always binds every result column in binary format: `encode_bind_raw` passes the single result-format code `1`. Its public API cannot request text for some columns, so the docs/04 §5 rule "unknown type → server text plus type name" is impossible with it. `Row` also allocates per row. The spike therefore drives the wire protocol with `postgres-protocol` (same upstream project and licence, and the layer `tokio-postgres` itself uses). It sends `Parse`/`Describe`/`Sync`, picks a format code per column (binary for known types, text otherwise), then sends `Bind`/`Execute`/`Sync`. Each `DataRow` is decoded in place from the shared read buffer. Names of non-built-in types come from one cached `format_type` lookup per session. M1-11 decides between this approach (adding rustls TLS from M1-06, the cancel request and notices) and contributing per-column result formats upstream.
+
+| PostgreSQL type | Arrow type | Field metadata |
+| --- | --- | --- |
+| `int2` / `int4` / `int8` | `Int16` / `Int32` / `Int64` | `openrows.source_type` on every field |
+| `float4` / `float8` | `Float32` / `Float64` | |
+| `bool` | `Boolean` | |
+| `text`, `varchar`, `bpchar`, `name` | `Utf8` | |
+| `bytea` | `Binary` | |
+| `timestamp` / `timestamptz` | `Timestamp(µs)` / `Timestamp(µs, "UTC")` | |
+| `date` | `Date32` | |
+| `uuid` | `FixedSizeBinary(16)` | `ARROW:extension:name = arrow.uuid` |
+| `numeric(p, s)`, 0 ≤ s ≤ p ≤ 38 | `Decimal128(p, s)` | |
+| other `numeric` | `Utf8`, exact canonical text | `openrows.decimal` |
+| `json` / `jsonb` | `Utf8` (jsonb version byte stripped) | `openrows.json` |
+| anything else | `Utf8`, server text format | source type from `format_type`, e.g. `integer[]`, `interval` |
+
+**Open points for M1-11.** Some values have no exact form in their column's Arrow type: ±infinity timestamps and dates, `NaN`/±infinity in a constrained `numeric`, and timestamps after 294247-01-10. PostgreSQL accepts timestamps up to 294276 AD, but Arrow µs-since-1970 `i64` ends there. Today these fail with a typed `DriverError::Decode` and the session stays usable. docs/04 §5 asks for tagged text instead, which needs a per-value fallback (for example a sparse override column); M1-11 must design it. The spike also has no row cap, `Pause`, or COPY path.
+
+Evidence on a Mac mini M4, release profile: Criterion decodes 63–330 M cells/s per core at the mean's upper 95% bound (budget 1 M, NFR-PERF-05), and a 200-row × 20-column first batch takes 0.036 ms (budget 5 ms). A `dhat` test counts zero heap allocations while decoding 54 912 primitive cells. Against real PostgreSQL 12.22, 17.11 and 18.6 (`just test-pg <version>`), the first batch reached the sink 0.14–0.15 ms after the first `DataRow` and 0.87–1.79 ms after `execute()` for a 200 000-row heap scan. Numbers and commands are in [13 §4](13-performance.md#4-benchmark-suite).
