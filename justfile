@@ -20,6 +20,10 @@ lint:
 test:
     cargo nextest run --workspace --locked
 
+# Run the OpenSSH container matrix with timings; fails (not skips) when Docker is unavailable.
+test-ssh:
+    OPENROWS_REQUIRE_DOCKER=1 cargo nextest run -p openrows-net --locked --test ssh_container --no-capture
+
 # Check dependency licences, advisories, bans and sources.
 deny:
     cargo deny --locked check
