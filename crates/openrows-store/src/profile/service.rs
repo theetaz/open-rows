@@ -74,10 +74,10 @@ impl ProfileService {
         password: PasswordChange,
     ) -> Result<ConnectionProfile, ProfileError> {
         profile.validate()?;
-        let stored = self.files.load(profile.id)?;
+        let had_password = self.files.load(profile.id)?.secrets.password;
         let key = profile.password_key();
         match password {
-            PasswordChange::Keep => profile.secrets.password = stored.secrets.password,
+            PasswordChange::Keep => profile.secrets.password = had_password,
             PasswordChange::Set(value) => {
                 self.secrets.set(&key, &value)?;
                 profile.secrets.password = Some(SecretRef::Keychain);
@@ -85,7 +85,9 @@ impl ProfileService {
             PasswordChange::Clear => profile.secrets.password = None,
         }
         self.files.save(&profile)?;
-        if profile.secrets.password.is_none() {
+        // The store is only touched for a password that exists: every keychain
+        // access by an untrusted binary is a macOS prompt.
+        if had_password.is_some() && profile.secrets.password.is_none() {
             self.secrets.delete(&key)?;
         }
         Ok(profile)
@@ -111,7 +113,9 @@ impl ProfileService {
     pub fn delete(&self, id: ProfileId) -> Result<(), ProfileError> {
         let profile = self.files.load(id)?;
         self.files.delete(id)?;
-        self.secrets.delete(&profile.password_key())?;
+        if profile.secrets.password.is_some() {
+            self.secrets.delete(&profile.password_key())?;
+        }
         Ok(())
     }
 
@@ -150,7 +154,8 @@ impl ProfileService {
     }
 
     /// The stored password of `profile`, for the connect path only. The
-    /// webview never receives it (docs/12 §3).
+    /// webview never receives it (docs/12 §3). A profile without a password
+    /// never touches the secret store.
     ///
     /// # Errors
     /// `Secret` when the store cannot be read.

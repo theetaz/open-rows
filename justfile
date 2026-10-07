@@ -62,9 +62,18 @@ check:
 clean:
     cargo clean
 
+# On macOS, `just dev` runs the app through a Cargo runner that signs it with the stable
+# "OpenRows Dev" identity (when present), so keychain "Always Allow" survives rebuilds.
+# Set only for this recipe: tests, CI and other platforms never see it.
+dev_runner := if os() == "macos" { "env CARGO_TARGET_" + uppercase(replace(arch() + "-apple-darwin", "-", "_")) + "_RUNNER=" + quote(justfile_directory() / "scripts/dev-sign-run.sh") } else { "" }
+
 # Launch the native desktop shell with frontend hot reload.
 dev:
-    {{sccache_guard}} pnpm --filter @openrows/desktop tauri dev
+    {{sccache_guard}} {{dev_runner}} pnpm --filter @openrows/desktop tauri dev
+
+# One-time on macOS: create the self-signed "OpenRows Dev" code-signing identity for `just dev`.
+dev-cert:
+    bash scripts/dev-cert.sh
 
 # Build the unsigned release macOS application in the shared Cargo target.
 build-app:

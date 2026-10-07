@@ -2,17 +2,20 @@
 //! Credential storage for `OpenRows` (docs/12 §3, FR-CONN-03).
 //!
 //! Secrets live only in a [`SecretStore`]: the OS keychain in the app
-//! ([`KeychainSecretStore`]) or memory in tests ([`MemorySecretStore`]).
+//! ([`KeychainSecretStore`], behind a [`CachingSecretStore`] so each secret is
+//! read at most once per run) or memory in tests ([`MemorySecretStore`]).
 //! Profiles on disk hold a [`SecretKey`] reference, never the value.
 
 #![forbid(unsafe_code)]
 
+mod cache;
 mod error;
 mod key;
 mod keychain;
 mod memory;
 mod secret;
 
+pub use cache::CachingSecretStore;
 pub use error::SecretError;
 pub use key::{SERVICE, SecretKey};
 pub use keychain::KeychainSecretStore;
