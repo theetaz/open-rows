@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //! One typed Arrow builder per column; enum dispatch keeps the per-cell path static.
+use super::fallback;
 use super::numeric::{self, Numeric};
 use super::scalar::{self, CellError, array};
 use crate::types::ColumnKind;
@@ -29,11 +30,14 @@ enum Builder {
     Date(Date32Builder),
     Uuid(FixedSizeBinaryBuilder),
     Decimal(Decimal128Builder, i8),
+    /// Tagged-text fallback: every value of the column as `PostgreSQL` text.
+    Tagged(StringBuilder, ColumnKind),
 }
 
 /// Pre-sized builder for one column, re-created after each batch.
 pub(crate) struct ColumnDecoder {
     kind: ColumnKind,
+    tagged: bool,
     builder: Builder,
 }
 
@@ -41,8 +45,23 @@ impl ColumnDecoder {
     pub(crate) fn new(kind: ColumnKind, rows: usize) -> Self {
         Self {
             kind,
+            tagged: false,
             builder: Builder::new(kind, rows, rows * DEFAULT_CELL_BYTES),
         }
+    }
+
+    /// Switch to tagged text for the rest of the result after `value` failed with
+    /// `reason`: converts the open batch's values, then appends `value` as text.
+    /// Returns `reason` unchanged when this column cannot fall back.
+    pub(crate) fn fall_back(&mut self, value: &[u8], reason: CellError) -> Result<(), CellError> {
+        if self.tagged || !fallback::supports(self.kind) {
+            return Err(reason);
+        }
+        let mut text = StringBuilder::with_capacity(DEFAULT_CELL_BYTES, DEFAULT_CELL_BYTES * 32);
+        fallback::append_array(self.kind, self.builder.finish().as_ref(), &mut text)?;
+        fallback::append_wire(self.kind, value, &mut text)?;
+        (self.builder, self.tagged) = (Builder::Tagged(text, self.kind), true);
+        Ok(())
     }
 
     /// Append one wire value (`None` = SQL NULL).
@@ -62,7 +81,11 @@ impl ColumnDecoder {
             .builder
             .data_bytes()
             .max(next_rows * DEFAULT_CELL_BYTES);
-        let next = Builder::new(self.kind, next_rows, bytes);
+        let next = if self.tagged {
+            Builder::Tagged(StringBuilder::with_capacity(next_rows, bytes), self.kind)
+        } else {
+            Builder::new(self.kind, next_rows, bytes)
+        };
         std::mem::replace(&mut self.builder, next).finish()
     }
 }
@@ -116,6 +139,7 @@ impl Builder {
                 .append_value(array::<16>(bytes)?)
                 .map_err(|_| CellError::Truncated)?,
             Self::Decimal(b, scale) => b.append_value(decimal(bytes, *scale)?),
+            Self::Tagged(b, kind) => fallback::append_wire(*kind, bytes, b)?,
         }
         Ok(())
     }
@@ -128,7 +152,9 @@ impl Builder {
             Self::Float32(b) => b.append_null(),
             Self::Float64(b) => b.append_null(),
             Self::Bool(b) => b.append_null(),
-            Self::Text(b) | Self::Jsonb(b) | Self::Numeric(b) => b.append_null(),
+            Self::Text(b) | Self::Jsonb(b) | Self::Numeric(b) | Self::Tagged(b, _) => {
+                b.append_null();
+            }
             Self::Binary(b) => b.append_null(),
             Self::Timestamp(b) => b.append_null(),
             Self::Date(b) => b.append_null(),
@@ -139,21 +165,26 @@ impl Builder {
 
     fn data_bytes(&self) -> usize {
         match self {
-            Self::Text(b) | Self::Jsonb(b) | Self::Numeric(b) => b.values_slice().len(),
+            Self::Text(b) | Self::Jsonb(b) | Self::Numeric(b) | Self::Tagged(b, _) => {
+                b.values_slice().len()
+            }
             Self::Binary(b) => b.values_slice().len(),
             _ => 0,
         }
     }
 
-    fn finish(mut self) -> ArrayRef {
-        match &mut self {
+    /// Finish the values so far; the builder is left empty.
+    fn finish(&mut self) -> ArrayRef {
+        match self {
             Self::Int16(b) => Arc::new(b.finish()),
             Self::Int32(b) => Arc::new(b.finish()),
             Self::Int64(b) => Arc::new(b.finish()),
             Self::Float32(b) => Arc::new(b.finish()),
             Self::Float64(b) => Arc::new(b.finish()),
             Self::Bool(b) => Arc::new(b.finish()),
-            Self::Text(b) | Self::Jsonb(b) | Self::Numeric(b) => Arc::new(b.finish()),
+            Self::Text(b) | Self::Jsonb(b) | Self::Numeric(b) | Self::Tagged(b, _) => {
+                Arc::new(b.finish())
+            }
             Self::Binary(b) => Arc::new(b.finish()),
             Self::Timestamp(b) => Arc::new(b.finish()),
             Self::Date(b) => Arc::new(b.finish()),

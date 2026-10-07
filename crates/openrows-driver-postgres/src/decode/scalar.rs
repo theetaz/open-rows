@@ -14,15 +14,18 @@ pub(crate) enum CellError {
     JsonbVersion(u8),
     #[error("malformed numeric")]
     Numeric,
-    /// docs/04 §5 wants tagged text here; that needs a per-value fallback (M1-11).
+    /// No exact Arrow value; the decoder switches the column to tagged text.
     #[error("{0} cannot be represented in the column's Arrow type")]
     Unrepresentable(&'static str),
+    /// Writing a fallback text value failed.
+    #[error("cannot format value as text")]
+    Format,
 }
 
 /// Microseconds between 1970-01-01 and `PostgreSQL`'s 2000-01-01 epoch.
-const PG_EPOCH_MICROS: i64 = 946_684_800_000_000;
+pub(crate) const PG_EPOCH_MICROS: i64 = 946_684_800_000_000;
 /// Days between 1970-01-01 and 2000-01-01.
-const PG_EPOCH_DAYS: i32 = 10_957;
+pub(crate) const PG_EPOCH_DAYS: i32 = 10_957;
 
 pub(crate) fn array<const N: usize>(bytes: &[u8]) -> Result<[u8; N], CellError> {
     bytes.try_into().map_err(|_| CellError::Length {

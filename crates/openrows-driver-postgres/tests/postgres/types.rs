@@ -2,8 +2,8 @@
 //! Round trip of every supported type: NULL, extremes, unicode, unknown types.
 //!
 //! Timestamps after 294247-01-10 (`i64::MAX` µs since 1970) exceed Arrow's
-//! range although `PostgreSQL` accepts them; see the error test.
-use crate::support::{TestResult, column, connect, metadata, single_batch, strings};
+//! range although `PostgreSQL` accepts them; they fall back to tagged text.
+use crate::support::{Collect, TestResult, column, connect, metadata, run, single_batch, strings};
 use arrow_array::cast::AsArray;
 use arrow_array::types::{
     Date32Type, Decimal128Type, Float32Type, Float64Type, Int16Type, Int32Type, Int64Type,
@@ -15,6 +15,7 @@ use arrow_schema::{DataType, TimeUnit};
 const MICROS_PER_DAY: i64 = 86_400_000_000;
 const SOURCE: &str = "openrows.source_type";
 const EXTENSION: &str = "ARROW:extension:name";
+const FALLBACK: &str = "openrows.text_fallback";
 
 fn assert_first_row_null(batch: &RecordBatch) {
     assert!(
@@ -192,5 +193,62 @@ fn assert_source_types(batch: &RecordBatch) -> TestResult {
     }
     assert_eq!(metadata(batch, "u", EXTENSION)?, "arrow.uuid");
     assert_eq!(metadata(batch, "num", EXTENSION)?, "openrows.decimal");
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "needs PostgreSQL: run `just test-pg`"]
+async fn out_of_range_values_fall_back_to_tagged_text() -> TestResult {
+    let sql = "SELECT * FROM (VALUES
+        (NULL::timestamp, NULL::timestamptz, NULL::date, NULL::numeric(10,2), NULL::int4),
+        ('infinity'::timestamp, '-infinity'::timestamptz, 'infinity'::date, 'NaN'::numeric(10,2), 1),
+        ('294276-12-31 23:59:59.999999'::timestamp, '2024-05-06 07:08:09.5+00'::timestamptz,
+         '0044-03-15 BC'::date, 12.5::numeric(10,2), 2)
+        ) AS t(ts, tz, d, n, i)";
+    let batch = single_batch(&mut connect().await?, sql).await?;
+    assert_first_row_null(&batch);
+    let expected = [
+        (
+            "ts",
+            "timestamp",
+            ["infinity", "294276-12-31 23:59:59.999999"],
+        ),
+        (
+            "tz",
+            "timestamptz",
+            ["-infinity", "2024-05-06 07:08:09.5+00"],
+        ),
+        ("d", "date", ["infinity", "0044-03-15 BC"]),
+        ("n", "numeric", ["NaN", "12.50"]),
+    ];
+    for (name, source, values) in expected {
+        assert_eq!(strings(&batch, name)?, values, "{name}");
+        assert_eq!(metadata(&batch, name, SOURCE)?, source, "{name}");
+        assert_eq!(metadata(&batch, name, FALLBACK)?, "true", "{name}");
+    }
+    let i = column(&batch, "i")?;
+    assert_eq!(i.as_primitive::<Int32Type>().values()[1..], [1, 2]);
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "needs PostgreSQL: run `just test-pg`"]
+async fn a_late_fallback_continues_in_a_new_result() -> TestResult {
+    let sql = "SELECT CASE WHEN g = 300 THEN 'infinity'::date ELSE DATE '2000-01-01' + g END AS d
+        FROM generate_series(1, 300) AS g";
+    let mut session = connect().await?;
+    let (summary, sink) = run(&mut session, sql, Collect::default()).await;
+    assert_eq!(summary?.rows, 300);
+    assert_eq!((sink.results, sink.notices.len()), (2, 1));
+    let [typed, text] = <[RecordBatch; 2]>::try_from(sink.batches)
+        .map_err(|batches| format!("expected two batches, got {}", batches.len()))?;
+    assert_eq!(typed.column(0).data_type(), &DataType::Date32);
+    assert_eq!(text.column(0).data_type(), &DataType::Utf8);
+    let values = text.column(0).as_string::<i32>();
+    assert_eq!(
+        (values.value(0), values.value(99)),
+        ("2000-07-20", "infinity")
+    );
+    assert_eq!(sink.schema.as_ref(), Some(&text.schema()));
     Ok(())
 }

@@ -70,18 +70,6 @@ async fn errors_are_typed_and_the_session_stays_usable() -> TestResult {
         .await
         .0;
     assert!(matches!(unsupported, Err(DriverError::Unsupported(_))));
-    let unrepresentable = [
-        "SELECT 'infinity'::timestamp",
-        "SELECT '294276-12-31 23:59:59.999999'::timestamp",
-        "SELECT 'NaN'::numeric(10,2)",
-    ];
-    for sql in unrepresentable {
-        let error = run(&mut session, sql, Collect::default()).await.0;
-        assert!(
-            matches!(error, Err(DriverError::Decode { column: 0, .. })),
-            "{sql}: {error:?}"
-        );
-    }
     let (summary, sink) = run(
         &mut session,
         "SELECT 42::int4 AS answer",

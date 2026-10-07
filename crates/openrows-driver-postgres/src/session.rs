@@ -1,8 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Extended-protocol execution with per-column result formats.
 use crate::cancel::PgCancel;
-use crate::decode::{ResultDecoder, next_cell};
-use crate::startup::{PgConfig, startup};
+use crate::connect::establish;
+use crate::decode::ResultDecoder;
+use crate::info::ServerInfo;
+use crate::options::ConnectOptions;
+use crate::simple;
+use crate::startup::PgConfig;
 use crate::stream;
 use crate::types::{self, ColumnDesc};
 use crate::wire::{Wire, server_error, unexpected};
@@ -21,23 +25,44 @@ pub struct PgSession {
     type_names: HashMap<u32, String>,
     policy: BatchPolicy,
     cancel: Option<Arc<PgCancel>>,
+    info: ServerInfo,
 }
 
 impl PgSession {
-    /// Connect and authenticate over plain TCP.
+    /// Connect with default [`ConnectOptions`]: `sslmode=prefer` (plaintext
+    /// until D-11), docs/14 §4 timeouts, no startup commands.
     ///
     /// # Errors
-    /// `Network`, `Auth`, `Server` or `Protocol` failures during startup.
+    /// As [`PgSession::connect_with`].
     pub async fn connect(config: &PgConfig) -> Result<Self, DriverError> {
-        let mut wire = Wire::connect(&config.host, config.port).await?;
-        let key = startup(&mut wire, config).await?;
-        let cancel = key.map(|key| Arc::new(PgCancel::new(config.host.clone(), config.port, key)));
+        Self::connect_with(config, &ConnectOptions::default()).await
+    }
+
+    /// Connect, authenticate, read [`ServerInfo`] and run the startup commands.
+    ///
+    /// # Errors
+    /// `Unsupported` for TLS-only `sslmode`s; `Network` for transport failures
+    /// and stage timeouts (`io::ErrorKind::TimedOut`, message names the stage);
+    /// `Auth`; `Server` when the server refuses the session or a startup
+    /// command fails (message prefixed `startup command <n>:`); `Protocol`.
+    pub async fn connect_with(
+        config: &PgConfig,
+        options: &ConnectOptions,
+    ) -> Result<Self, DriverError> {
+        let established = establish(config, options).await?;
         Ok(Self {
-            wire,
+            wire: established.wire,
             type_names: HashMap::new(),
             policy: BatchPolicy::default(),
-            cancel,
+            cancel: established.cancel.map(Arc::new),
+            info: established.info,
         })
+    }
+
+    /// Product, version, current database and user, flavour and TLS state.
+    #[must_use]
+    pub fn server_info(&self) -> &ServerInfo {
+        &self.info
     }
 
     async fn run(
@@ -55,9 +80,6 @@ impl PgSession {
             .map_or(&[][..], ResultDecoder::result_formats);
         send_execute(self.wire.out(), sql, reparse, formats)?;
         self.wire.flush().await?;
-        if let Some(decoder) = &decoder {
-            sink.begin_result(decoder.schema());
-        }
         stream::collect(&mut self.wire, decoder, sink).await
     }
 
@@ -104,33 +126,17 @@ impl PgSession {
         let sql = format!(
             "SELECT oid, format_type(oid, NULL) FROM pg_catalog.pg_type WHERE oid IN ({oids})"
         );
-        frontend::query(&sql, self.wire.out())?;
-        self.wire.flush().await?;
-        let mut failure = None;
-        loop {
-            match self.wire.next().await? {
-                Message::DataRow(body) => self.record_type_name(body.buffer())?,
-                Message::ErrorResponse(body) => failure = Some(server_error(&body)),
-                Message::ReadyForQuery(_) => return failure.map_or(Ok(true), Err),
-                Message::RowDescription(_)
-                | Message::CommandComplete(_)
-                | Message::NoticeResponse(_)
-                | Message::ParameterStatus(_) => {}
-                _ => return Err(unexpected("type lookup")),
-            }
+        for row in simple::query(&mut self.wire, &sql).await? {
+            let invalid = || DriverError::Protocol("invalid type lookup row".to_owned());
+            let [Some(oid), Some(name)] =
+                <[Option<String>; 2]>::try_from(row).map_err(|_| invalid())?
+            else {
+                return Err(invalid());
+            };
+            self.type_names
+                .insert(oid.parse().map_err(|_| invalid())?, name);
         }
-    }
-
-    fn record_type_name(&mut self, mut row: &[u8]) -> Result<(), DriverError> {
-        let invalid = || DriverError::Protocol("invalid type lookup row".to_owned());
-        let mut text = || -> Result<&str, DriverError> {
-            let cell = next_cell(&mut row).ok().flatten().ok_or_else(invalid)?;
-            std::str::from_utf8(cell).map_err(|_| invalid())
-        };
-        let oid = text()?.parse().map_err(|_| invalid())?;
-        let name = text()?.to_owned();
-        self.type_names.insert(oid, name);
-        Ok(())
+        Ok(true)
     }
 }
 

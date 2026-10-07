@@ -201,3 +201,107 @@ fn zero_column_results_still_count_rows() -> Result<(), DriverError> {
     assert_eq!(batch, Some(3));
     Ok(())
 }
+
+fn wire_row(cells: &[Option<&[u8]>]) -> Vec<u8> {
+    let mut row = Vec::new();
+    for cell in cells {
+        match cell {
+            Some(bytes) => {
+                let length = i32::try_from(bytes.len()).unwrap_or(i32::MAX);
+                row.extend_from_slice(&length.to_be_bytes());
+                row.extend_from_slice(bytes);
+            }
+            None => row.extend_from_slice(&(-1_i32).to_be_bytes()),
+        }
+    }
+    row
+}
+
+fn columns(specs: &[(&str, u32, i32)]) -> Vec<crate::types::ColumnDesc> {
+    specs
+        .iter()
+        .map(
+            |&(name, type_oid, type_modifier)| crate::types::ColumnDesc {
+                name: name.to_owned(),
+                type_oid,
+                type_modifier,
+            },
+        )
+        .collect()
+}
+
+fn texts(batch: &RecordBatch, column: usize) -> Vec<Option<String>> {
+    batch
+        .column(column)
+        .as_string::<i32>()
+        .iter()
+        .map(|value| value.map(str::to_owned))
+        .collect()
+}
+
+fn missing() -> DriverError {
+    DriverError::Protocol("expected a batch".to_owned())
+}
+
+#[test]
+fn unrepresentable_values_switch_their_column_to_tagged_text() -> Result<(), DriverError> {
+    // timestamp, numeric(10, 2), int4
+    let desc = columns(&[
+        ("ts", 1114, -1),
+        ("n", 1700, (10 << 16 | 2) + 4),
+        ("i", 23, -1),
+    ]);
+    let mut decoder = ResultDecoder::new(&desc, &HashMap::new(), BatchPolicy::default());
+    let twelve = [0, 1, 0, 0, 0, 0, 0, 2, 0, 12];
+    let nan = [0, 0, 0, 0, 0xc0, 0, 0, 0];
+    let (epoch, one) = (0_i64.to_be_bytes(), 1_i32.to_be_bytes());
+    decoder.decode_row(&wire_row(&[Some(&epoch), Some(&twelve), Some(&one)]))?;
+    decoder.decode_row(&wire_row(&[Some(&i64::MAX.to_be_bytes()), None, None]))?;
+    decoder.decode_row(&wire_row(&[None, Some(&nan), Some(&one)]))?;
+    let batch = decoder.finish()?.ok_or_else(missing)?;
+    let schema = batch.schema();
+    assert_eq!(schema.field(0).data_type(), &DataType::Utf8);
+    assert_eq!(schema.field(1).data_type(), &DataType::Utf8);
+    assert_eq!(schema.field(2).data_type(), &DataType::Int32);
+    for field in &schema.fields()[..2] {
+        assert_eq!(field.metadata()["openrows.text_fallback"], "true");
+    }
+    assert_eq!(
+        schema.field(0).metadata()["openrows.source_type"],
+        "timestamp"
+    );
+    assert_eq!(
+        schema.field(1).metadata()["openrows.source_type"],
+        "numeric"
+    );
+    let timestamps = [
+        Some("2000-01-01 00:00:00".into()),
+        Some("infinity".into()),
+        None,
+    ];
+    assert_eq!(texts(&batch, 0), timestamps);
+    assert_eq!(
+        texts(&batch, 1),
+        [Some("12.00".into()), None, Some("NaN".into())]
+    );
+    Ok(())
+}
+
+#[test]
+fn a_late_fallback_changes_the_schema_of_later_batches_only() -> Result<(), DriverError> {
+    let desc = columns(&[("d", 1082, -1)]);
+    let policy = BatchPolicy {
+        first_batch_rows: 1,
+        ..BatchPolicy::default()
+    };
+    let mut decoder = ResultDecoder::new(&desc, &HashMap::new(), policy);
+    let typed = decoder.decode_row(&wire_row(&[Some(&0_i32.to_be_bytes())]))?;
+    let typed = typed.ok_or_else(missing)?;
+    assert_eq!(typed.schema().field(0).data_type(), &DataType::Date32);
+    decoder.decode_row(&wire_row(&[Some(&i32::MIN.to_be_bytes())]))?;
+    let text = decoder.finish()?.ok_or_else(missing)?;
+    assert_eq!(text.schema(), decoder.schema());
+    assert_ne!(text.schema(), typed.schema());
+    assert_eq!(texts(&text, 0), [Some("-infinity".to_owned())]);
+    Ok(())
+}

@@ -2,7 +2,7 @@
 //! `PostgreSQL` type OIDs → logical kinds and Arrow fields (docs/04 §5).
 use arrow_schema::{DataType, Field, TimeUnit};
 use openrows_driver_api::metadata::{
-    DECIMAL_EXTENSION, EXTENSION_NAME, JSON_EXTENSION, SOURCE_TYPE, UUID_EXTENSION,
+    DECIMAL_EXTENSION, EXTENSION_NAME, JSON_EXTENSION, SOURCE_TYPE, TEXT_FALLBACK, UUID_EXTENSION,
 };
 use std::collections::HashMap;
 
@@ -164,6 +164,15 @@ pub(crate) fn field(desc: &ColumnDesc, kind: ColumnKind, names: &HashMap<u32, St
         metadata.insert(EXTENSION_NAME.to_owned(), extension.to_owned());
     }
     Field::new(&desc.name, kind.data_type(), true).with_metadata(metadata)
+}
+
+/// The same column as tagged text: `Utf8`, original source type kept, marked
+/// with [`TEXT_FALLBACK`].
+pub(crate) fn tagged_text(field: &Field) -> Field {
+    let mut metadata = field.metadata().clone();
+    metadata.remove(EXTENSION_NAME);
+    metadata.insert(TEXT_FALLBACK.to_owned(), "true".to_owned());
+    Field::new(field.name(), DataType::Utf8, true).with_metadata(metadata)
 }
 
 #[cfg(test)]
