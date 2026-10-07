@@ -13,6 +13,7 @@ export const typography = {
   'text-12': '0.75rem',
   'text-12-5': '0.78125rem',
   'text-13': '0.8125rem',
+  'text-mono': '0.8125rem',
   'text-15': '0.9375rem',
   'text-17': '1.0625rem',
   'text-30': '1.875rem',

@@ -19,3 +19,13 @@ export { HighlightText } from './components/HighlightText';
 export { fuzzyMatch } from './search/fuzzy';
 export { useReducedMotion } from './components/useReducedMotion';
 export type { PaletteItem } from './components/Palette';
+
+export {
+  defaultAppearance,
+  fontFamily,
+  uiFonts,
+  monoFonts,
+} from './theme/appearance';
+export type { Appearance } from './theme/appearance';
+export { builtInThemes, importTheme, validTheme } from './theme/palettes';
+export type { ThemeDefinition } from './theme/palettes';

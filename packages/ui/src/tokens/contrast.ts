@@ -77,7 +77,7 @@ function surfaces(palette: typeof light): Record<string, Colour> {
   );
   return { ...bases, ...controls, active: parse(palette['control-active']) };
 }
-function paletteRows(theme: string, palette: typeof light): Row[] {
+export function paletteRows(theme: string, palette: typeof light): Row[] {
   const backgrounds = surfaces(palette);
   const rows: Row[] = [];
   for (const [name, background] of Object.entries(backgrounds)) {

@@ -1,13 +1,32 @@
 // SPDX-License-Identifier: Apache-2.0
-import { createContext, useContext, useEffect, useState } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useMemo,
+  useLayoutEffect,
+} from 'react';
 import type { ReactNode } from 'react';
 import { readTheme, saveTheme } from './storage';
 import type { ThemeMode } from './storage';
+import {
+  readAppearance,
+  saveAppearance,
+  parseAppearance,
+  fontFamily,
+} from './appearance';
+import type { Appearance } from './appearance';
+import { appearanceCss, resolvePalette } from './resolveAppearance';
+import { useAppearanceMedia } from './useAppearanceMedia';
 
 type Theme = {
   mode: ThemeMode;
   resolved: 'light' | 'dark';
   setMode: (mode: ThemeMode) => void;
+  appearance: Appearance;
+  setAppearance: (patch: Partial<Appearance>) => void;
+  gridAppearance: ReturnType<typeof gridAppearance>;
 };
 const ThemeContext = createContext<Theme | null>(null);
 const query = '(prefers-color-scheme: dark)';
@@ -17,6 +36,17 @@ export function ThemeProvider({
 }: {
   children: ReactNode;
 }): React.JSX.Element {
+  const [appearance, updateAppearance] = useState(readAppearance);
+
+  useLayoutEffect(() => {
+    const style = document.createElement('style');
+    style.dataset.openrowsAppearance = '';
+    style.textContent = appearanceCss(appearance);
+    document.head.append(style);
+    return () => {
+      style.remove();
+    };
+  }, [appearance]);
   const [mode, updateMode] = useState<ThemeMode>(readTheme);
   const [systemDark, setSystemDark] = useState(
     () => window.matchMedia(query).matches,
@@ -31,6 +61,7 @@ export function ThemeProvider({
       media.removeEventListener('change', listener);
     };
   }, []);
+  const media = useAppearanceMedia();
   useEffect(() => {
     document.documentElement.dataset.theme = mode;
   }, [mode]);
@@ -38,9 +69,31 @@ export function ThemeProvider({
     updateMode(next);
     saveTheme(next);
   }
+  function setAppearance(patch: Partial<Appearance>): void {
+    updateAppearance((previous) => {
+      const next = parseAppearance({ ...previous, ...patch });
+      saveAppearance(next);
+      return next;
+    });
+  }
   const resolved = mode === 'system' ? (systemDark ? 'dark' : 'light') : mode;
+  const grid = useMemo(
+    () => gridAppearance(appearance, resolved, media),
+    [appearance, resolved, media],
+  );
   return (
-    <ThemeContext value={{ mode, resolved, setMode }}>{children}</ThemeContext>
+    <ThemeContext
+      value={{
+        mode,
+        resolved,
+        setMode,
+        appearance,
+        setAppearance,
+        gridAppearance: grid,
+      }}
+    >
+      {children}
+    </ThemeContext>
   );
 }
 /** Read or change appearance within a ThemeProvider. */
@@ -48,4 +101,25 @@ export function useTheme(): Theme {
   const theme = useContext(ThemeContext);
   if (!theme) throw new Error('useTheme requires ThemeProvider');
   return theme;
+}
+
+function gridAppearance(
+  settings: Appearance,
+  mode: 'light' | 'dark',
+  media: ReturnType<typeof useAppearanceMedia>,
+): {
+  colours: ReturnType<typeof resolvePalette>;
+  fontFamily: string;
+  fontSize: number;
+} {
+  const colours = resolvePalette(settings, mode);
+  if (media.contrast) {
+    colours.separator = mode === 'light' ? '#606060' : '#C0C0C0';
+    colours['control-fill'] = mode === 'light' ? '#E4E4E4' : '#383838';
+  }
+  return {
+    colours,
+    fontFamily: fontFamily('mono', settings.monoFont),
+    fontSize: settings.monoSize,
+  };
 }
