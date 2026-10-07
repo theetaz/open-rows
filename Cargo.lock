@@ -3162,6 +3162,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "openrows-sql"
+version = "0.1.0"
+dependencies = [
+ "proptest",
+]
+
+[[package]]
 name = "openrows-types"
 version = "0.1.0"
 dependencies = [

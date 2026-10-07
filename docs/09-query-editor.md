@@ -36,6 +36,14 @@ flowchart LR
 - Gutter shows per-statement status after execution: ✓ duration, ✗ error, ● running.
 - Errors with positions draw a squiggle at the mapped offset; hover shows message + hint.
 
+### 2.1 Current implementation (D-02, slice of M1-15)
+
+The Rust side lives in `crates/openrows-sql` (pure, no I/O); PostgreSQL rules only so far. The TypeScript port and incremental updates arrive with M1-21 and must reuse the Rust test tables as shared vectors.
+
+- `split(text, Dialect::Postgres) -> Vec<Statement>`: never fails. `Statement.range` is a byte range into the original text from the first non-whitespace token (leading comments included) to the last non-whitespace token, excluding the `;`; `terminator` is the `;` offset, and `range_with_terminator()` is what the editor highlights. A `;` splits only outside `'…'` (with `''`), `E'…'` (with backslash escapes), `"…"`, `$$…$$`/`$tag$…$tag$`, `--` and nested `/* */` comments, parentheses and `BEGIN ATOMIC … END` bodies (same rules as `psql`). Unterminated constructs extend to the end of the text. Empty and comment-only statements are dropped; a comment on the same line after a `;` belongs to no statement.
+- `statement_at(&statements, cursor) -> Option<usize>`: the statement containing the cursor; between statements (after `;`, blank lines, a trailing same-line comment) the closest **preceding** statement, so ⌘↵ right after typing `…;` runs it; before the first statement, the first one. A cursor exactly on a statement's first byte selects that statement.
+- `placeholders(text, dialect)` returns `$n`, `:name` and `?` positions (see §5).
+
 ## 3. Autocomplete
 
 ```mermaid
@@ -82,6 +90,7 @@ The schema mirror for autocomplete is the same `search_index` data used for fuzz
 - Detected placeholders: `:name`, `@name` (SQL Server), `$1`, `?`.
 - Running a statement with placeholders opens an inline parameter bar with typed inputs (type inferred from usage when possible) and remembers last values per query file.
 - Values are always bound as real parameters, never string-interpolated.
+- Implemented detection (`openrows_sql::placeholders`, PostgreSQL rules): `$n`, `:name` and `?` outside strings, quoted identifiers, dollar quotes and comments, returned with byte ranges including the sigil. Excluded: `::type` casts, `:=`, array slices `a[lo:hi]`, psql variables `:'v'`/`:"v"`, and the `jsonb` operators `?|`/`?&`. A bare `?` is also the PostgreSQL `jsonb` key-exists operator, so the UI should ignore `Anonymous` placeholders for PostgreSQL connections. `@name` (SQL Server) arrives with that dialect.
 
 ## 6. Explain and plan visualiser
 
