@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
-/** System type, numeric alignment and the approved prototype scale. */
+/** Native system chrome; one monospace scale for database names, columns and values. */
 export const typography = {
   'font-ui':
-    '-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif',
-  'font-mono': '"SF Mono", ui-monospace, Menlo, monospace',
+    'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  'font-mono': 'ui-monospace, "SF Mono", Menlo, Consolas, monospace',
+  'line-height-ui': '1.35',
   'font-smoothing': 'antialiased',
   'font-numeric': 'tabular-nums',
   'text-10': '0.625rem',

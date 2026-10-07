@@ -46,7 +46,12 @@ export function StatusDot({
     </span>
   );
 }
-/** Monospace shortcut hint. */
-export function Kbd(props: HTMLAttributes<HTMLElement>): React.JSX.Element {
-  return <kbd {...props} className={styles.kbd} />;
+/** Native shortcut hint: keycaps in palettes, inline glyphs in action buttons. */
+export function Kbd({
+  variant = 'keycap',
+  ...props
+}: HTMLAttributes<HTMLElement> & {
+  variant?: 'keycap' | 'inline';
+}): React.JSX.Element {
+  return <kbd {...props} data-variant={variant} className={styles.kbd} />;
 }

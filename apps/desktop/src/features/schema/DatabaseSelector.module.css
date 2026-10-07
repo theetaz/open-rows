@@ -12,7 +12,8 @@
   background: var(--or-control-fill);
   color: var(--or-text);
   font: inherit;
-  font-size: var(--or-text-12);
+  font-family: var(--or-font-ui);
+  font-size: var(--or-text-13);
   cursor: default;
 }
 .selector span {
@@ -39,6 +40,7 @@
   align-items: center;
 }
 .databaseRow > button:first-child {
+  font-family: var(--or-font-ui);
   flex: 1;
   min-width: 0;
 }

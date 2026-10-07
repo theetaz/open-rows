@@ -16,7 +16,6 @@
   flex: 1;
   min-width: 0;
   font-size: var(--or-text-12);
-  min-height: var(--or-control-compact);
   padding-inline: var(--or-space-4);
 }
 .header {

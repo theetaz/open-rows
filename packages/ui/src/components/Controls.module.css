@@ -98,9 +98,13 @@
 .segment {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  min-inline-size: 0;
   block-size: calc(var(--or-control-height) - 2 * var(--or-segment-inset));
   padding: 0 var(--or-control-padding);
   font-size: var(--or-text-13);
+  line-height: 1;
+  text-align: center;
   white-space: nowrap;
   border: 0;
   border-radius: calc(var(--or-radius-control) - var(--or-segment-inset));
@@ -121,6 +125,7 @@
   );
 }
 .segment[aria-checked='true'] {
+  font-weight: var(--or-weight-medium);
   background: var(--or-control-active);
   box-shadow: 0 0 0 var(--or-border-width) var(--or-control-stroke);
 }

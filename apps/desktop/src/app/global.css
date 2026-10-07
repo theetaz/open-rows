@@ -11,7 +11,26 @@
 body {
   margin: 0;
   font-size: var(--or-text-13);
+  line-height: var(--or-line-height-ui);
+  cursor: default;
+  -webkit-user-select: none;
+  user-select: none;
 }
 * {
   box-sizing: border-box;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+/* Native chrome never becomes a text selection; content remains copyable. */
+input,
+textarea,
+[contenteditable='true'],
+pre {
+  -webkit-user-select: text;
+  user-select: text;
+  cursor: text;
 }

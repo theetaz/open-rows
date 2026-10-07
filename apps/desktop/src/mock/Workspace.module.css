@@ -46,7 +46,7 @@
   padding: var(--or-space-4) var(--or-space-10);
   border-radius: var(--or-radius-capsule);
   background: var(--or-control-fill);
-  font-family: var(--or-font-mono);
+  font-family: var(--or-font-ui);
 }
 .context > * {
   flex-shrink: 0;
@@ -70,8 +70,9 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-weight: var(--or-weight-medium);
-  font-size: var(--or-text-12);
+  font-family: var(--or-font-ui);
+  font-weight: var(--or-weight-regular);
+  font-size: var(--or-text-13);
 }
 .address > span {
   overflow: hidden;

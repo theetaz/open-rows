@@ -10,11 +10,13 @@
 }
 .inspector > [role='radiogroup'] {
   flex-wrap: nowrap;
+  width: 100%;
 }
 .inspector [role='radio'] {
   flex: 1;
-  min-height: var(--or-control-compact);
+  min-width: 0;
   font-size: var(--or-text-12);
+  padding-inline: var(--or-space-4);
 }
 .assistant {
   display: flex;

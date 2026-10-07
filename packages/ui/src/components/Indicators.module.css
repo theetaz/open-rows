@@ -47,13 +47,25 @@
   background: currentColor;
 }
 .kbd {
-  font-family: var(--or-font-mono);
-  font-size: var(--or-text-11);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-family: var(--or-font-ui);
+  font-size: var(--or-text-12);
+  font-weight: var(--or-weight-regular);
+  line-height: 1;
   color: var(--or-secondary);
   background: var(--or-control-fill);
   border: var(--or-border-width) solid var(--or-separator);
-  border-radius: var(--or-radius-group);
+  border-radius: var(--or-radius-control-compact);
   padding: var(--or-space-2) var(--or-space-6);
+}
+.kbd[data-variant='inline'] {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
 }
 
 [data-tone='dev'] {

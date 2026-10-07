@@ -30,13 +30,14 @@
   display: flex;
   align-items: center;
   gap: var(--or-space-6);
-  padding: var(--or-space-6);
+  padding: var(--or-space-6) var(--or-space-8);
   flex-shrink: 0;
   white-space: nowrap;
-  overflow: hidden;
+  overflow-x: auto;
 }
-.toolbar kbd {
-  margin-inline-start: var(--or-space-4);
+.toolbar > button {
+  flex-shrink: 0;
+  gap: var(--or-space-8);
 }
 .notice {
   overflow: hidden;
@@ -88,6 +89,8 @@
   flex-shrink: 0;
   font-family: var(--or-font-mono);
   font-size: var(--or-text-12);
+  -webkit-user-select: text;
+  user-select: text;
 }
 .messages li[data-level='error'] {
   color: var(--or-danger-fg);
@@ -206,10 +209,13 @@
 }
 .cell h2 {
   margin: 0;
-  font-size: var(--or-text-15);
+  font-family: var(--or-font-ui);
+  font-size: var(--or-text-12);
 }
 .cell small {
   color: var(--or-secondary);
+  font-family: var(--or-font-ui);
+  font-size: var(--or-text-11-5);
 }
 .cell pre {
   margin: 0;
@@ -217,7 +223,7 @@
   border-radius: var(--or-radius-field);
   background: var(--or-control-fill);
   font-family: var(--or-font-mono);
-  font-size: var(--or-text-12);
+  font-size: var(--or-text-13);
   white-space: pre-wrap;
   word-break: break-word;
   overflow: auto;

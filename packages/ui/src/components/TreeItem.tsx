@@ -42,7 +42,9 @@ export function TreeItem({
         onOpen();
       }}
     >
-      <span aria-hidden="true">{glyph}</span>
+      <span aria-hidden="true" data-glyph={glyph}>
+        {glyph}
+      </span>
       <span>{children ?? label}</span>
       <small>{count}</small>
     </button>

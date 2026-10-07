@@ -48,6 +48,7 @@ function DocumentTab({
     <div
       className={styles.document}
       data-active={active}
+      data-kind={tab.kind ?? 'table'}
       onAuxClick={(event) => {
         if (event.button === 1) {
           event.preventDefault();

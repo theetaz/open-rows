@@ -97,23 +97,30 @@ function Toolbar(
         size="sm"
         variant="primary"
         aria-label="Run current statement"
-        title="Runs the selection when text is selected"
+        title="Run current statement or selection (⌘↵)"
         disabled={!ready}
         onClick={() => {
           props.onRun('current');
         }}
       >
-        Run <Kbd>⌘↵</Kbd>
+        Run{' '}
+        <Kbd variant="inline" aria-hidden="true">
+          ⌘↵
+        </Kbd>
       </Button>
       <Button
         size="sm"
         aria-label="Run all statements"
+        title="Run all statements (⇧⌘↵)"
         disabled={!ready}
         onClick={() => {
           props.onRun('all');
         }}
       >
-        Run all <Kbd>⇧⌘↵</Kbd>
+        Run all{' '}
+        <Kbd variant="inline" aria-hidden="true">
+          ⇧⌘↵
+        </Kbd>
       </Button>
       <Button
         size="sm"
