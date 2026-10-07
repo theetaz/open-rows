@@ -1,8 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
-use arrow_array::{RecordBatch, RecordBatchOptions};
+use crate::limits::{Append, Limits};
+use crate::slice::{project_slice, ranges};
+use arrow_array::RecordBatch;
 use arrow_ipc::writer::StreamWriter;
 use arrow_schema::{ArrowError, SchemaRef};
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
+use std::ops::Range;
+use std::sync::{Arc, PoisonError, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 /// A viewport request; counts are clamped, starts beyond the end are errors.
 #[derive(Clone, Copy, Debug)]
@@ -38,20 +42,71 @@ struct ResultSet {
     schema: SchemaRef,
     batches: Vec<RecordBatch>,
     rows: usize,
+    bytes: usize,
+    truncated: bool,
+}
+
+impl ResultSet {
+    fn new(schema: SchemaRef) -> Self {
+        Self {
+            schema,
+            batches: Vec::new(),
+            rows: 0,
+            bytes: 0,
+            truncated: false,
+        }
+    }
+}
+
+/// The batches (shared, not copied) and row ranges one window encodes.
+struct WindowPlan {
+    schema: SchemaRef,
+    indices: Vec<usize>,
+    slices: Vec<(RecordBatch, Range<usize>)>,
+}
+
+#[derive(Default)]
+struct Inner {
+    results: HashMap<String, ResultSet>,
+    bytes: usize,
+}
+
+impl Inner {
+    fn remove(&mut self, id: &str) -> bool {
+        let Some(old) = self.results.remove(id) else {
+            return false;
+        };
+        self.bytes = self.bytes.saturating_sub(old.bytes);
+        true
+    }
 }
 
 /// Result ownership stays in the core; slices share the original Arrow buffers.
+///
+/// Thread-safe: session actors append while the UI reads windows. Results stay
+/// in memory (spilling to disk is later work, docs/06 §3); [`Limits`] caps rows
+/// per result and Arrow memory across all results.
 #[derive(Default)]
 pub struct ResultStore {
-    results: HashMap<String, ResultSet>,
+    inner: RwLock<Inner>,
+    limits: Limits,
 }
 
 impl ResultStore {
-    /// Insert or replace a result. An empty result uses a zero-row batch.
+    /// An empty store with explicit limits.
+    #[must_use]
+    pub fn with_limits(limits: Limits) -> Self {
+        Self {
+            inner: RwLock::default(),
+            limits,
+        }
+    }
+
+    /// Insert or replace a complete result. An empty result uses a zero-row batch.
     ///
     /// # Errors
     /// Returns `InvalidBatches` for missing or inconsistent batches.
-    pub fn insert(&mut self, id: String, batches: Vec<RecordBatch>) -> Result<(), WindowError> {
+    pub fn insert(&self, id: String, batches: Vec<RecordBatch>) -> Result<(), WindowError> {
         let schema = batches.first().ok_or(WindowError::InvalidBatches)?.schema();
         if batches.iter().any(|batch| batch.schema() != schema) {
             return Err(WindowError::InvalidBatches);
@@ -60,15 +115,88 @@ impl ResultStore {
             rows.checked_add(batch.num_rows())
                 .ok_or(WindowError::InvalidBatches)
         })?;
-        self.results.insert(
+        let bytes = batches.iter().map(RecordBatch::get_array_memory_size).sum();
+        let mut inner = self.write();
+        inner.remove(&id);
+        inner.bytes = inner.bytes.saturating_add(bytes);
+        inner.results.insert(
             id,
             ResultSet {
                 schema,
                 batches,
                 rows,
+                bytes,
+                truncated: false,
             },
         );
         Ok(())
+    }
+
+    /// Start a streamed result with no rows, replacing any result with the same id.
+    pub fn begin(&self, id: &str, schema: SchemaRef) {
+        let mut inner = self.write();
+        inner.remove(id);
+        inner.results.insert(id.to_owned(), ResultSet::new(schema));
+    }
+
+    /// Append a batch to a streamed result.
+    ///
+    /// Returns [`Append::Full`] when the result hit the row cap (the batch is
+    /// cut to fit), the global memory budget is exhausted (the batch is
+    /// dropped), the id is unknown (released) or the schema does not match.
+    pub fn append(&self, id: &str, batch: RecordBatch) -> Append {
+        let mut guard = self.write();
+        let inner = &mut *guard;
+        let Some(result) = inner.results.get_mut(id) else {
+            return Append::Full;
+        };
+        if batch.schema() != result.schema {
+            result.truncated = true;
+            return Append::Full;
+        }
+        let room = self.limits.max_rows.saturating_sub(result.rows);
+        let batch = if batch.num_rows() > room {
+            result.truncated = true;
+            batch.slice(0, room)
+        } else {
+            batch
+        };
+        let bytes = batch.get_array_memory_size();
+        if inner.bytes.saturating_add(bytes) > self.limits.max_bytes {
+            result.truncated = true;
+            return Append::Full;
+        }
+        inner.bytes += bytes;
+        result.bytes += bytes;
+        result.rows += batch.num_rows();
+        if batch.num_rows() > 0 {
+            result.batches.push(batch);
+        }
+        if result.truncated {
+            Append::Full
+        } else {
+            Append::Continue
+        }
+    }
+
+    /// Drop a result and its memory; returns false when the id is unknown.
+    pub fn remove(&self, id: &str) -> bool {
+        self.write().remove(id)
+    }
+
+    /// Rows stored so far and whether a limit cut the result short.
+    #[must_use]
+    pub fn rows(&self, id: &str) -> Option<(usize, bool)> {
+        self.read()
+            .results
+            .get(id)
+            .map(|result| (result.rows, result.truncated))
+    }
+
+    /// Arrow memory held by all results.
+    #[must_use]
+    pub fn memory(&self) -> usize {
+        self.read().bytes
     }
 
     /// Slice rows and columns and encode an uncompressed Arrow IPC stream.
@@ -76,88 +204,57 @@ impl ResultStore {
     /// # Errors
     /// Returns typed identifier, bounds or Arrow encoding errors.
     pub fn window(&self, id: &str, window: Window) -> Result<Vec<u8>, WindowError> {
-        let result = self
+        let plan = self.slices(id, window)?;
+        let mut bytes = Vec::new();
+        let mut writer = StreamWriter::try_new(&mut bytes, &plan.schema)?;
+        for (batch, rows) in &plan.slices {
+            writer.write(&project_slice(
+                batch,
+                plan.schema.clone(),
+                &plan.indices,
+                rows.clone(),
+            )?)?;
+        }
+        writer.finish()?;
+        Ok(bytes)
+    }
+
+    /// Projected schema, column indices and the batch row ranges of a window,
+    /// collected under the read lock; encoding happens after it is released.
+    fn slices(&self, id: &str, window: Window) -> Result<WindowPlan, WindowError> {
+        let inner = self.read();
+        let result = inner
             .results
             .get(id)
             .ok_or_else(|| WindowError::UnknownResult(id.to_owned()))?;
-        let (rows, cols) = result.ranges(window)?;
+        let (rows, cols) = ranges(result.rows, result.schema.fields().len(), window)?;
         let indices: Vec<_> = cols.collect();
         let schema = Arc::new(result.schema.project(&indices)?);
-        let mut bytes = Vec::new();
-        let mut writer = StreamWriter::try_new(&mut bytes, &schema)?;
+        let mut slices = Vec::new();
         let mut offset = 0;
         for batch in &result.batches {
             let start = rows.start.saturating_sub(offset).min(batch.num_rows());
             let end = rows.end.saturating_sub(offset).min(batch.num_rows());
             if start < end {
-                writer.write(&project_slice(batch, schema.clone(), &indices, start..end)?)?;
+                slices.push((batch.clone(), start..end));
             }
             offset += batch.num_rows();
             if offset >= rows.end {
                 break;
             }
         }
-        writer.finish()?;
-        Ok(bytes)
+        Ok(WindowPlan {
+            schema,
+            indices,
+            slices,
+        })
     }
-}
 
-impl ResultSet {
-    fn ranges(
-        &self,
-        window: Window,
-    ) -> Result<(std::ops::Range<usize>, std::ops::Range<usize>), WindowError> {
-        if window.row_start > self.rows || window.col_start > self.schema.fields().len() {
-            return Err(WindowError::OutOfRange);
-        }
-        Ok((
-            window.row_start
-                ..window
-                    .row_start
-                    .saturating_add(window.row_count)
-                    .min(self.rows),
-            window.col_start
-                ..window
-                    .col_start
-                    .saturating_add(window.col_count)
-                    .min(self.schema.fields().len()),
-        ))
+    fn read(&self) -> RwLockReadGuard<'_, Inner> {
+        self.inner.read().unwrap_or_else(PoisonError::into_inner)
     }
-}
 
-fn project_slice(
-    batch: &RecordBatch,
-    schema: SchemaRef,
-    indices: &[usize],
-    rows: std::ops::Range<usize>,
-) -> Result<RecordBatch, ArrowError> {
-    let columns = indices
-        .iter()
-        .map(|&i| batch.column(i).slice(rows.start, rows.len()))
-        .collect();
-    let options = RecordBatchOptions::new().with_row_count(Some(rows.len()));
-    RecordBatch::try_new_with_options(schema, columns, &options)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn primitive_slice_shares_source_allocation() -> Result<(), Box<dyn std::error::Error>> {
-        let source = crate::synthetic::batch(100, 20, 42)?;
-        let tile = project_slice(
-            &source,
-            Arc::new(source.schema().project(&[0])?),
-            &[0],
-            13..30,
-        )?;
-        let source_data = source.column(0).to_data();
-        let tile_data = tile.column(0).to_data();
-        assert_eq!(
-            tile_data.buffers()[0].as_ptr(),
-            source_data.buffers()[0].as_ptr().wrapping_add(13 * 4)
-        );
-        Ok(())
+    fn write(&self) -> RwLockWriteGuard<'_, Inner> {
+        self.inner.write().unwrap_or_else(PoisonError::into_inner)
     }
 }

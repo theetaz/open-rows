@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import type { Connections } from '../features/connections';
 import { useCatalog } from '../features/schema';
 import type { Catalog, ObjectRef } from '../features/schema';
-import { rows } from './data/rows';
-import type { OrderRow } from './data/rows';
-import { useWorkspace } from './useWorkspace';
+import { useQueryTabs } from '../features/query';
+import type { QueryTabs, SelectedCell, TabScope } from '../features/query';
+import { queryCommands } from './queryCommands';
 import { useCompact, useInspectorOpen } from './layout';
 import { useWorkspaceKeys } from './useWorkspaceKeys';
 import type { PaletteMode } from './WorkspacePalettes';
@@ -20,45 +20,50 @@ function nextSchema(catalog: Catalog): string {
     names[(names.indexOf(catalog.schema) + 1) % names.length] ?? catalog.schema
   );
 }
-/** Open an object path in a tab and show its schema in the tree. */
-function opener(
+/**
+ * Tab scopes of the active connection: the browsed database's scope and a
+ * mapper for any database. The session's own database maps to `''`.
+ */
+function scopes(
+  connections: Connections,
   catalog: Catalog,
-  state: ReturnType<typeof useWorkspace>,
-): (object: ObjectRef) => void {
-  return (object) => {
-    catalog.setSchema(object.schema);
-    state.openTable(object);
-  };
+): {
+  scope: TabScope | undefined;
+  scopeOf: (database: string) => TabScope | undefined;
+} {
+  const profile = connections.active;
+  const status = profile ? connections.statusOf(profile.id) : undefined;
+  const own = status?.state === 'connected' ? status.server.database : '';
+  const scopeOf = (database: string): TabScope | undefined =>
+    profile && {
+      connectionId: profile.id,
+      database: database === own ? '' : database,
+    };
+  return { scope: scopeOf(catalog.database), scopeOf };
 }
-/** Preview shell state and command wiring, isolated from rendering. */
+/** Shell state and command wiring, isolated from rendering. */
 export function useWorkspaceController(
   onGallery: () => void,
   enabled: boolean,
   connections: Connections,
 ): WorkspaceController {
   const catalog = useCatalog(connections);
-  const state = useWorkspace(
-    `${connections.active?.id ?? ''}\n${catalog.database}`,
-  );
+  const tabs = useQueryTabs();
+  const { scope, scopeOf } = scopes(connections, catalog);
   const compact = useCompact();
   const inspector = useInspectorOpen(compact);
   const [sidebar, setSidebar] = useState(true);
   const [safe, setSafe] = useState(false);
-  const [panel, setPanel] = useState('Assistant');
+  const [panel, setPanel] = useState('Details');
   const [mode, setMode] = useState<PaletteMode | null>(null);
   const [refreshes, setRefreshes] = useState(0);
-  const [selection, setSelection] = useState({ index: 3, row: rows[3] });
-  const onSelect = useCallback((index: number, row: OrderRow) => {
-    setSelection({ index, row });
-    setPanel('Details');
-  }, []);
-  const toggleSidebar = (): void => {
-    setSidebar((open) => !open);
+  const [cell, setCell] = useState<SelectedCell | null>(null);
+  const commands = queryCommands(tabs, scope, scopeOf);
+  const { addQuery, closeTab } = commands;
+  const openObject = (object: ObjectRef): void => {
+    catalog.setSchema(object.schema);
+    commands.openObject(object);
   };
-  const { addTab } = state;
-  const addQuery = useCallback(() => {
-    addTab();
-  }, [addTab]);
   const prod = connections.active?.env.kind === 'prod';
   const toggleSafe = (): void => {
     if (!prod) setSafe(!safe);
@@ -67,13 +72,14 @@ export function useWorkspaceController(
     catalog.refresh();
     setRefreshes((count) => count + 1);
   };
-  const openObject = opener(catalog, state);
-  const command = mockCommand({
-    state,
+  const command = shellCommand({
     catalog,
     inspector,
-    toggleSidebar,
+    toggleSidebar: () => {
+      setSidebar((open) => !open);
+    },
     addQuery,
+    closeTab,
     setMode,
     refresh,
     toggleSafe,
@@ -87,9 +93,9 @@ export function useWorkspaceController(
     connection: connections.selectIndex,
   });
   return {
-    state,
     catalog,
-    openObject,
+    tabs,
+    scope,
     compact,
     inspector,
     sidebar,
@@ -100,19 +106,27 @@ export function useWorkspaceController(
     mode,
     setMode,
     refreshes,
-    selection,
-    onSelect,
-    toggleSidebar,
+    cell,
+    onCell: (selected) => {
+      setCell(selected);
+      setPanel('Details');
+    },
+    toggleSidebar: () => {
+      setSidebar((open) => !open);
+    },
     addQuery,
+    openObject,
     toggleSafe,
     refresh,
     command,
   };
 }
+
 type WorkspaceController = {
-  state: ReturnType<typeof useWorkspace>;
   catalog: Catalog;
-  openObject: (object: ObjectRef) => void;
+  tabs: QueryTabs;
+  /** Tab scope of the browsed connection and database. */
+  scope: TabScope | undefined;
   compact: boolean;
   inspector: ReturnType<typeof useInspectorOpen>;
   sidebar: boolean;
@@ -123,20 +137,23 @@ type WorkspaceController = {
   mode: PaletteMode | null;
   setMode: (mode: PaletteMode | null) => void;
   refreshes: number;
-  selection: { index: number; row: OrderRow | undefined };
-  onSelect: (index: number, row: OrderRow) => void;
+  cell: SelectedCell | null;
+  onCell: (cell: SelectedCell) => void;
   toggleSidebar: () => void;
-  addQuery: () => void;
+  /** Open a query tab on the active connection, optionally with SQL. */
+  addQuery: (sql?: string) => void;
+  /** Open (or refocus) the tab that selects from a tree or ⌘P object. */
+  openObject: (object: ObjectRef) => void;
   toggleSafe: () => void;
   refresh: () => void;
   command: (id: string) => void;
 };
-function mockCommand(input: {
-  state: ReturnType<typeof useWorkspace>;
+function shellCommand(input: {
   catalog: Catalog;
   inspector: ReturnType<typeof useInspectorOpen>;
   toggleSidebar: () => void;
   addQuery: () => void;
+  closeTab: () => void;
   setMode: (mode: PaletteMode | null) => void;
   refresh: () => void;
   toggleSafe: () => void;
@@ -144,27 +161,13 @@ function mockCommand(input: {
   setSidebar: (value: boolean) => void;
   setPanel: (panel: string) => void;
 }): (id: string) => void {
-  const {
-    state,
-    catalog,
-    inspector,
-    toggleSidebar,
-    addQuery,
-    setMode,
-    refresh,
-    toggleSafe,
-    onGallery,
-    setSidebar,
-    setPanel,
-  } = input;
+  const { catalog, inspector, setMode, setSidebar, setPanel } = input;
   return (id: string): void => {
     const actions: Record<string, (() => void) | undefined> = {
-      sidebar: toggleSidebar,
+      sidebar: input.toggleSidebar,
       inspector: inspector.toggle,
-      'new-tab': addQuery,
-      'close-tab': () => {
-        state.closeTab(state.active);
-      },
+      'new-tab': input.addQuery,
+      'close-tab': input.closeTab,
       database: () => {
         setMode('database');
       },
@@ -174,9 +177,9 @@ function mockCommand(input: {
       commands: () => {
         setMode('commands');
       },
-      refresh,
-      safe: toggleSafe,
-      gallery: onGallery,
+      refresh: input.refresh,
+      safe: input.toggleSafe,
+      gallery: input.onGallery,
       search: () => {
         setSidebar(true);
         requestAnimationFrame(() => {

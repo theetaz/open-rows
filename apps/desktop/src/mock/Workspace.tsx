@@ -10,7 +10,7 @@ const WorkspacePalettes = lazy(() =>
 import { useWorkspaceController } from './useWorkspaceController';
 import { ConnectionSheets, useConnections } from '../features/connections';
 import styles from './Workspace.module.css';
-/** Real connections and catalog in the rail and sidebar; sample tabs and rows elsewhere. */
+/** Real connections, catalog, query tabs and results. */
 export function Workspace({
   onGallery,
   enabled = true,
@@ -20,31 +20,17 @@ export function Workspace({
 }): React.JSX.Element {
   const connections = useConnections();
   const controller = useWorkspaceController(onGallery, enabled, connections);
-  const {
-    state,
-    catalog,
-    compact,
-    inspector,
-    sidebar,
-    safe,
-    prod,
-    panel,
-    setPanel,
-    setMode,
-    refreshes,
-    selection,
-    onSelect,
-    toggleSidebar,
-    addQuery,
-    toggleSafe,
-    refresh,
-  } = controller;
-  if (!enabled || !selection.row) return <></>;
+  const { catalog, inspector, sidebar, safe, prod, setMode, refreshes } =
+    controller;
+  if (!enabled) return <></>;
+  const tab = controller.scope
+    ? controller.tabs.activeFor(controller.scope)
+    : undefined;
   return (
     <div className={styles.workspace}>
       <WorkspaceToolbar
         connections={connections}
-        table={state.table}
+        table={tab?.title ?? ''}
         schema={catalog.schema || '—'}
         database={catalog.database || 'No database'}
         onDatabase={() => {
@@ -53,29 +39,21 @@ export function Workspace({
         onPalette={() => {
           setMode('commands');
         }}
-        onRefresh={refresh}
+        onRefresh={controller.refresh}
         safe={safe}
         prod={prod}
-        onSafe={toggleSafe}
+        onSafe={controller.toggleSafe}
         sidebar={sidebar}
         inspector={inspector.open}
-        onSidebar={toggleSidebar}
+        onSidebar={controller.toggleSidebar}
         onInspector={inspector.toggle}
-        onQuery={addQuery}
+        onQuery={() => {
+          controller.addQuery();
+        }}
       />
       <WorkspaceBody
         connections={connections}
-        state={state}
-        catalog={catalog}
-        onOpen={controller.openObject}
-        selection={{ index: selection.index, row: selection.row }}
-        panel={panel}
-        onPanel={setPanel}
-        onSelect={onSelect}
-        addQuery={addQuery}
-        sidebar={sidebar}
-        inspector={inspector.open}
-        compact={compact}
+        controller={controller}
         onGallery={onGallery}
         onSwitcher={() => {
           setMode('database');

@@ -103,7 +103,7 @@ requests, conversion, and measurement run outside that hot loop. Headers repaint
 on horizontal/data changes; pinned cells on vertical/data changes; selection
 changes repaint the selection layer. NULL, changed cells and deleted rows use
 the shared tokens. Editing and copy remain future work.
-This spike is not connected to the workspace mock.
+Since D-07 the query tab mounts this grid over real `result_window` tiles (see [06 §9](06-ipc-and-result-pipeline.md#9-implementation-notes-d-07-query-execution-and-results)); the cell text conversion handles the PostgreSQL Arrow types and marks only the `spike` result with sample edit states.
 
 ## 4. Selection model
 

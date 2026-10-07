@@ -3,7 +3,12 @@ import { readFileSync } from 'node:fs';
 import { expect, it } from 'vitest';
 import { dark, light, geometry } from '@openrows/ui/tokens';
 function css(file: string): string {
-  const folder = file === 'Rail' ? 'features/connections' : 'mock';
+  const folder =
+    file === 'Rail'
+      ? 'features/connections'
+      : file === 'Query'
+        ? 'features/query'
+        : 'mock';
   return readFileSync(`apps/desktop/src/${folder}/${file}.module.css`, 'utf8');
 }
 it('workspace surfaces are borderless and use ordered theme tones with concentric radii', () => {
@@ -11,7 +16,7 @@ it('workspace surfaces are borderless and use ordered theme tones with concentri
     ['Rail', 'rail'],
     ['Sidebar', 'sidebar'],
     ['Inspector', 'inspector'],
-    ['Content', 'content'],
+    ['Query', 'content'],
   ]) {
     const style = css(file ?? '');
     const rule = style.match(
@@ -28,8 +33,8 @@ it('workspace surfaces are borderless and use ordered theme tones with concentri
     expect(tones[1]).toBeLessThan(tones[2] ?? 0);
   }
   expect(css('Rail')).toContain('background: var(--or-page)');
-  expect(css('Content')).toContain('background: var(--or-window)');
-  expect(css('Content')).toContain('border-radius: var(--or-radius-group)');
+  expect(css('Query')).toContain('background: var(--or-window)');
+  expect(css('Query')).toContain('border-radius: var(--or-radius-group)');
   expect(geometry['rail-tile-size']).toBe('36px');
   expect(geometry['radius-field']).toBe('10px');
 });

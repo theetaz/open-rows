@@ -286,7 +286,7 @@ pub struct OdbError {
 | Panic isolation | A supervisor task awaits each actor's `JoinHandle`. On a panic it marks only that session `Failed`, sends `Failed { kind: Internal }` to the running query and broadcasts a `SessionEvent`. Other sessions and the manager keep working (NFR-REL-02). |
 | Errors | `CoreError { kind, message, db_code }` is a cloneable subset of `OdbError`. `ErrorKind` maps every `DriverError` variant, plus `UnknownSession`, `SessionClosed`, `QueueFull` and `Internal`. Position, detail, hint and correlation id come later. |
 | Events | `QueryEvent` follows docs/06 §4: `Started`, `ResultBegin`, `Progress` (at most 10 Hz), `ResultEnd { truncated }`, `RowsAffected` (taken from DML command tags when no result set opened), `Notice`, then exactly one of `Completed`, `Failed` or `Cancelled`. |
-| Result sink | Batches go to the `BatchSink` trait (`begin`, `push → SinkFlow`, `end`), keyed by `ResultId`. When the sink returns `Stop`, the stream is truncated. Wiring this to `openrows-results` is left to the result-store step. |
+| Result sink | Batches go to the `BatchSink` trait (`begin`, `push → SinkFlow`, `end`), keyed by `ResultId`. When the sink returns `Stop`, the stream is truncated. Since D-07, `openrows_results::ResultStore` implements it (see [06 §9](06-ipc-and-result-pipeline.md#9-implementation-notes-d-07-query-execution-and-results)). |
 
 Driver API changes for this slice: `Session::cancel_handle()` (default `None`), the `CancelHandle` trait, and `ResultSink::notice()` with `NoticeLevel` (default no-op). The PostgreSQL driver records `BackendKeyData` and forwards `NoticeResponse` during execution.
 

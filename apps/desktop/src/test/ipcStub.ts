@@ -66,5 +66,10 @@ export function ipcStub(
     updateProfile: vi.fn(),
     duplicateProfile: vi.fn(),
     deleteProfile: vi.fn(() => Promise.resolve()),
+    CommandError: class CommandError extends Error {},
+    executeQuery: vi.fn(),
+    cancelQuery: vi.fn(() => Promise.resolve()),
+    releaseResults: vi.fn(() => Promise.resolve()),
+    recentHistory: vi.fn(() => Promise.resolve([])),
   };
 }

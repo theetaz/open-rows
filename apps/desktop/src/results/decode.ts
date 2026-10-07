@@ -39,7 +39,9 @@ function describeType(type: unknown): string {
     DataType.isUtf8(type) ||
     DataType.isTimestamp(type) ||
     DataType.isDecimal(type) ||
-    DataType.isBinary(type)
+    DataType.isBinary(type) ||
+    DataType.isDate(type) ||
+    DataType.isFixedSizeBinary(type)
   )
     return type.toString();
   throw new Error('Unsupported Arrow tile type');

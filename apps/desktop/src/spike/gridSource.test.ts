@@ -28,7 +28,7 @@ it('renders S1 golden Arrow buffers with exact large integers, decimals, NULL an
   expect(read(source, 1, 2)).toBe('82267.75');
   expect(read(source, 1, 3)).toBe('true');
   expect(read(source, 1, 4)).toBe('短-658142');
-  expect(read(source, 1, 6)).toBe('2023-11-14T22:13:20.658Z');
+  expect(read(source, 1, 6)).toBe('2023-11-14 22:13:20.658142');
   expect(read(source, 1, 7)).toBe('1234567890123522.6032');
   expect(read(source, 1, 8)).toBe('8 bytes');
   expect(read(source, 1, 9)).toBe('{"value":658142}');

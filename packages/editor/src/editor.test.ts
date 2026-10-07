@@ -80,3 +80,34 @@ it('drives Vim normal and insert modes through key events', () => {
   press(view.contentDOM, 'Escape');
   expect(vimModeOf(view)).toBe('normal');
 });
+
+it('runs application keys before the default Mod-Enter binding', () => {
+  const parent = document.createElement('div');
+  document.body.append(parent);
+  const runs: string[] = [];
+  editor = mountSqlEditor(parent, {
+    doc: 'SELECT 1;',
+    label: 'SQL',
+    keys: [
+      {
+        key: 'Mod-Enter',
+        run: () => {
+          runs.push('current');
+          return true;
+        },
+      },
+    ],
+  });
+
+  const event = new KeyboardEvent('keydown', {
+    key: 'Enter',
+    metaKey: false,
+    ctrlKey: true,
+    bubbles: true,
+    cancelable: true,
+  });
+  editor.view.contentDOM.dispatchEvent(event);
+  expect(runs).toEqual(['current']);
+  expect(event.defaultPrevented).toBe(true);
+  expect(editor.view.state.doc.toString()).toBe('SELECT 1;');
+});

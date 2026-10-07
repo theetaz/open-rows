@@ -21,6 +21,7 @@ openrows-driver-api = { path = "../../../crates/openrows-driver-api" }
 openrows-driver-postgres = { path = "../../../crates/openrows-driver-postgres" }
 openrows-results = { path = "../../../crates/openrows-results" }
 openrows-secrets = { path = "../../../crates/openrows-secrets" }
+openrows-sql = { path = "../../../crates/openrows-sql" }
 openrows-store = { path = "../../../crates/openrows-store" }
 openrows-types = { path = "../../../crates/openrows-types" }
 serde = { workspace = true, features = ["derive"] }

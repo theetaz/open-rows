@@ -27,6 +27,24 @@ export interface SqlEditorOptions {
   keyMode?: Extension;
   /** Called synchronously after every transaction that changes the document. */
   onDocChange?: () => void;
+  /**
+   * Application shortcuts (CodeMirror key names such as `Mod-Enter`) that win
+   * over the default keymaps; `run` returns true when it handled the key.
+   */
+  keys?: readonly EditorKey[];
+}
+
+/** One application shortcut inside the editor. */
+export interface EditorKey {
+  key: string;
+  run: () => boolean;
+}
+
+function appKeys(keys: readonly EditorKey[] | undefined): Extension {
+  if (!keys?.length) return [];
+  return keymap.of(
+    keys.map(({ key, run }) => ({ key, run, preventDefault: true })),
+  );
 }
 
 function docChangeListener(listener: (() => void) | undefined): Extension {
@@ -43,6 +61,7 @@ function docChangeListener(listener: (() => void) | undefined): Extension {
 export function sqlEditorExtensions(options: SqlEditorOptions): Extension {
   return [
     options.keyMode ?? [],
+    appKeys(options.keys),
     lineNumbers(),
     highlightActiveLineGutter(),
     history(),

@@ -9,7 +9,7 @@ import {
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
-import { openSession } from '@openrows/ipc';
+import { openSession, recentHistory } from '@openrows/ipc';
 import { connectTo } from '../test/connect';
 import { Workspace } from './Workspace';
 
@@ -93,96 +93,119 @@ it('switches sidebar segments, lazily expands real sections and opens objects on
   const customers = sidebar.getByRole('button', { name: 'customers ~412K' });
   expect(customers).toHaveAttribute('title', 'orders.public.customers · Table');
   await user.clear(screen.getByRole('textbox', { name: 'Search items' }));
-  await user.click(screen.getByRole('radio', { name: 'Queries' }));
+  await user.click(sidebar.getByRole('radio', { name: 'Queries' }));
   expect(sidebar.getByRole('button', { name: /Top customers/ })).toBeVisible();
-  await user.click(screen.getByRole('radio', { name: 'History' }));
+  await user.click(sidebar.getByRole('radio', { name: 'History' }));
   expect(sidebar.getByRole('button', { name: /Yesterday/ })).toBeVisible();
-  await user.click(screen.getByRole('radio', { name: 'Items' }));
+  await user.click(sidebar.getByRole('radio', { name: 'Items' }));
   const orders = sidebar.getByRole('button', { name: 'orders ~2.4M' });
   await user.click(orders);
   expect(orders).toHaveAttribute('aria-pressed', 'true');
-  await user.click(screen.getByRole('tab', { name: /customers/ }));
+  expect(screen.queryByRole('tab', { name: /^orders/ })).toBeNull();
   await user.dblClick(orders);
+  expect(
+    await screen.findByRole('textbox', { name: 'SQL editor' }),
+  ).toHaveTextContent('SELECT * FROM "public"."orders" LIMIT 1000;');
   expect(screen.getByRole('tab', { name: /^orders/ })).toHaveAttribute(
     'aria-selected',
     'true',
   );
 });
-it('adds, switches and closes tabs with buttons and middle click', async () => {
+it('opens objects of another database in its own tab set without running them', async () => {
   const user = mount();
+  await connectTo();
   await user.click(screen.getByRole('button', { name: 'New tab' }));
-  expect(screen.getByRole('tab', { name: /SQL Query 1/ })).toHaveAttribute(
+  fireEvent.keyDown(window, { key: 'k', metaKey: true });
+  const input = await screen.findByRole('combobox', {
+    name: 'Switch database',
+  });
+  fireEvent.change(input, { target: { value: 'orders_archive' } });
+  fireEvent.keyDown(input, { key: 'Enter' });
+  await user.dblClick(
+    await screen.findByRole('button', { name: 'orders_2024 ~820K' }),
+  );
+  expect(screen.queryByRole('tab', { name: /SQL Query 1/ })).toBeNull();
+  expect(screen.getByRole('tab', { name: /orders_2024/ })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  expect(
+    await screen.findByRole('textbox', { name: 'SQL editor' }),
+  ).toHaveTextContent('SELECT * FROM "public"."orders_2024" LIMIT 1000;');
+  expect(
+    screen.getByText(
+      'Runs on orders only; orders_archive is browse-only for now',
+    ),
+  ).toBeVisible();
+  expect(
+    screen.getByRole('button', { name: 'Run current statement' }),
+  ).toBeDisabled();
+});
+it('opens, switches and closes query tabs per connection', async () => {
+  const user = mount();
+  expect(
+    screen.getByText('Choose a connection in the rail to open a query tab.'),
+  ).toBeVisible();
+  await user.click(
+    await screen.findByRole('button', { name: 'Switch to orders-local' }),
+  );
+  await user.click(screen.getByRole('button', { name: 'New tab' }));
+  await user.click(screen.getByRole('button', { name: 'New SQL query' }));
+  expect(screen.getByRole('tab', { name: /SQL Query 2/ })).toHaveAttribute(
     'aria-selected',
     'true',
   );
   expect(
     await screen.findByRole('textbox', { name: 'SQL editor' }),
   ).toBeVisible();
-  await user.click(screen.getByRole('button', { name: 'Close SQL Query 1' }));
-  expect(screen.queryByRole('tab', { name: /SQL Query 1/ })).toBeNull();
-  await user.click(screen.getByRole('tab', { name: /orders/ }));
-  expect(screen.getByRole('grid')).toBeVisible();
-  const tab = screen.getByRole('tab', { name: /customers/ });
-  fireEvent(tab, new MouseEvent('auxclick', { button: 1, bubbles: true }));
-  expect(screen.queryByRole('tab', { name: /customers/ })).toBeNull();
-});
-it('shows all five table views and handles filter removal, re-addition and a draft row', async () => {
-  const user = mount();
-  await user.click(screen.getByRole('radio', { name: 'Structure' }));
-  expect(await screen.findByRole('table')).toHaveTextContent('numeric(12,2)');
-  await user.click(screen.getByRole('radio', { name: 'Indexes' }));
-  expect(await screen.findByRole('table')).toHaveTextContent(
-    'orders_status_created_idx',
-  );
-  await user.click(screen.getByRole('radio', { name: 'Triggers' }));
-  expect(screen.getByRole('heading', { name: 'Triggers' })).toBeVisible();
-  await user.click(screen.getByRole('radio', { name: 'DDL' }));
-  expect(
-    (
-      await screen.findAllByText('CREATE', {
-        selector: '[data-token="keyword"]',
-      })
-    )[0],
-  ).toBeVisible();
-  await user.click(screen.getByRole('radio', { name: 'Data' }));
-  await user.click(screen.getByRole('button', { name: 'Remove filter' }));
-  expect(screen.queryByRole('button', { name: 'Remove filter' })).toBeNull();
-  await user.click(screen.getByRole('button', { name: '+ Filter' }));
-  expect(screen.getByRole('button', { name: 'Remove filter' })).toBeVisible();
-  await user.click(screen.getByRole('button', { name: '+ Row' }));
-  expect(screen.getByRole('grid')).toHaveAttribute('aria-rowcount', '42');
-});
-it('selects rows by pointer and bounded keyboard navigation and switches to Details', async () => {
-  const user = mount();
-  await user.click(screen.getByRole('row', { name: 'Order 10422' }));
-  expect(screen.getByRole('radio', { name: 'Details' })).toHaveAttribute(
-    'aria-checked',
-    'true',
-  );
-  expect(
-    await screen.findByRole('heading', { name: 'Order 10422' }),
-  ).toBeVisible();
-  const grid = screen.getByRole('grid');
-  fireEvent.keyDown(grid, { key: 'ArrowDown' });
-  expect(screen.getByRole('heading', { name: 'Order 10423' })).toBeVisible();
-  fireEvent.keyDown(grid, { key: 'ArrowUp' });
-  fireEvent.keyDown(grid, { key: 'Home' });
-  fireEvent.keyDown(grid, { key: 'ArrowUp' });
-  expect(screen.getByRole('row', { name: 'Order 10421' })).toHaveAttribute(
+  await user.click(screen.getByRole('tab', { name: /SQL Query 1/ }));
+  expect(screen.getByRole('tab', { name: /SQL Query 1/ })).toHaveAttribute(
     'aria-selected',
     'true',
   );
-  fireEvent.keyDown(grid, { key: 'End' });
-  fireEvent.keyDown(grid, { key: 'ArrowDown' });
-  expect(grid).toHaveAttribute('aria-activedescendant', 'order-row-39');
-  fireEvent.keyDown(grid, { key: 'Home' });
-  const edited = grid.querySelectorAll('[data-edited="true"]');
-  expect(edited).toHaveLength(2);
-  for (const cell of edited) {
-    expect(cell).toHaveAccessibleName(/^Edited cell:/);
-    expect(cell).not.toHaveTextContent('✎');
-  }
+  await user.click(
+    screen.getByRole('button', { name: 'Switch to events-dev' }),
+  );
+  expect(screen.queryByRole('tab', { name: /SQL Query/ })).toBeNull();
+  await user.click(
+    screen.getByRole('button', { name: 'Switch to orders-local' }),
+  );
+  const tab = screen.getByRole('tab', { name: /SQL Query 1/ });
+  fireEvent(tab, new MouseEvent('auxclick', { button: 1, bubbles: true }));
+  await user.click(screen.getByRole('button', { name: 'Close SQL Query 2' }));
+  expect(screen.queryByRole('tab', { name: /SQL Query/ })).toBeNull();
   expect(
-    screen.getByRole('row', { name: 'Deleted order 10427' }),
-  ).toHaveTextContent('−');
+    screen.getByRole('button', { name: 'New query tab (⌘T)' }),
+  ).toBeVisible();
+});
+it('shows the focused cell and the connection history in the inspector', async () => {
+  vi.mocked(recentHistory).mockResolvedValue([
+    {
+      id: 1,
+      statement: 'SELECT 42',
+      startedAtMs: 0,
+      durationMs: 3,
+      status: 'ok',
+      rows: 1,
+      errorMessage: null,
+    },
+  ]);
+  const user = mount();
+  expect(
+    await screen.findByText('Select a cell in a result to see its value.'),
+  ).toBeVisible();
+  await user.click(
+    await screen.findByRole('button', { name: 'Switch to orders-local' }),
+  );
+  const inspector = within(
+    screen.getByRole('complementary', { name: 'Inspector' }),
+  );
+  await user.click(inspector.getByRole('radio', { name: 'History' }));
+  const history = await screen.findByRole('list', { name: 'Query history' });
+  expect(recentHistory).toHaveBeenCalledWith('id-orders-local', 100);
+  await user.click(within(history).getByRole('button', { name: /SELECT 42/ }));
+  expect(screen.getByRole('tab', { name: /SQL Query 1/ })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
 });

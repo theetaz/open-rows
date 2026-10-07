@@ -32,10 +32,19 @@ function choose(query: string): void {
     vi.advanceTimersByTime(160);
   });
 }
+/** Make orders-local the active connection once profiles have loaded. */
+async function connect(): Promise<void> {
+  await act(async () => {
+    await Promise.resolve();
+  });
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Switch to orders-local' }),
+  );
+}
 afterEach(() => {
   vi.useRealTimers();
 });
-it('⌘P searches the real name index and opens objects by their catalog path', async () => {
+it('⌘P searches the real name index, opens a query tab per object and refocuses an open one', async () => {
   mount();
   await connectTo();
   vi.useFakeTimers();
@@ -47,6 +56,24 @@ it('⌘P searches the real name index and opens objects by their catalog path', 
     }),
   ).toBeVisible();
   choose('cstm');
+  expect(screen.getByRole('tab', { name: /customers/ })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  expect(screen.getByRole('tab', { name: /customers/ })).toHaveAttribute(
+    'title',
+    'orders-local · customers',
+  );
+  await key('p');
+  choose('order_summary');
+  expect(screen.getByRole('tab', { name: /order_summary/ })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await key('p');
+  choose('session_notes');
+  await key('p');
+  choose('cstm');
   expect(screen.getAllByRole('tab', { name: /customers/ })).toHaveLength(1);
   expect(screen.getByRole('tab', { name: /customers/ })).toHaveAttribute(
     'aria-selected',
@@ -56,18 +83,25 @@ it('⌘P searches the real name index and opens objects by their catalog path', 
   choose('calc_tax');
   expect(screen.getByRole('tab', { name: /calc_tax/ })).toHaveAttribute(
     'title',
-    'orders.public.calc_tax(total numeric)',
+    'orders-local · calc_tax(total numeric)',
+  );
+  expect(screen.getByRole('combobox', { name: 'Schema' })).toHaveValue(
+    'public',
   );
   await key('p');
   choose('session_notes');
+  expect(screen.getAllByRole('tab', { name: /session_notes/ })).toHaveLength(1);
   expect(screen.getByRole('tab', { name: /session_notes/ })).toHaveAttribute(
-    'title',
-    'orders.archive.session_notes',
+    'aria-selected',
+    'true',
   );
   expect(screen.getByRole('combobox', { name: 'Schema' })).toHaveValue(
     'archive',
   );
   expect(searchCatalog).toHaveBeenCalledOnce();
+  expect(screen.getAllByRole('tab')).toHaveLength(4);
+  fireEvent.click(screen.getByRole('button', { name: 'Close session_notes' }));
+  expect(screen.queryByRole('tab', { name: /session_notes/ })).toBeNull();
 });
 it('⌘P without a connection explains why nothing is listed', async () => {
   mount();
@@ -81,6 +115,7 @@ it('⌘P without a connection explains why nothing is listed', async () => {
 it('⌘⇧P lists twelve commands and executes sidebar, inspector, query, refresh and safe mode actions', async () => {
   vi.useFakeTimers();
   mount();
+  await connect();
   await key('p', true);
   const palette = within(
     screen.getByRole('dialog', { name: 'Command palette' }),
@@ -113,7 +148,7 @@ it('⌘⇧P lists twelve commands and executes sidebar, inspector, query, refres
     'aria-pressed',
     'true',
   );
-  expect(screen.getByRole('status')).toHaveTextContent('Catalog refreshed (1)');
+  expect(screen.getByText('Catalog refreshed (1)')).toBeInTheDocument();
   await key('p', true);
   choose('Switch database');
   expect(screen.getByRole('dialog', { name: 'Switch database' })).toBeVisible();

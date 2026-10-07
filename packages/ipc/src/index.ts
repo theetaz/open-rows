@@ -49,6 +49,22 @@ export {
   listSchemas,
   searchCatalog,
 } from './catalog';
+/** Query execution, cancellation, result lifetime and history (D-07). */
+export {
+  cancelQuery,
+  executeQuery,
+  recentHistory,
+  releaseResults,
+} from './queries';
+export type {
+  ColumnDto,
+  ExecuteReply,
+  ExecuteRequest,
+  HistoryItemDto,
+  QueryEventDto,
+  RunMode,
+  StatementDto,
+} from './generated/bindings';
 export { DEFAULT_CUSTOM_ENV_COLOR } from './generated/bindings';
 export type {
   DatabaseDto,

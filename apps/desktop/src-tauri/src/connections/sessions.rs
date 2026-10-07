@@ -142,6 +142,7 @@ pub(crate) async fn session_open(
             "The session opened without server info",
         )
     })?;
+    state.bind(session, profile.id);
     Ok(SessionOpened {
         session_id: session.to_string(),
         server,
@@ -157,6 +158,7 @@ pub(crate) async fn session_close(
 ) -> Result<(), IpcError> {
     let id = SessionId::from_str(&session_id)
         .map_err(|_| IpcError::new(IpcErrorKind::Invalid, "Invalid session id"))?;
+    state.unbind(id);
     Ok(state.sessions.close(id).await?)
 }
 

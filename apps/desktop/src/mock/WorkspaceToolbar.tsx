@@ -95,7 +95,8 @@ function Context({
   const name = active?.name ?? 'No connection';
   const status = active ? connections.statusOf(active.id) : undefined;
   const engine = status ? statusLabel(status) : 'Not connected';
-  const address = `${name} › ${database} › ${schema} › ${table}`;
+  const tail = table ? ` › ${table}` : '';
+  const address = `${name} › ${database} › ${schema}${tail}`;
   return (
     <div className={styles.context} aria-label="Connection context">
       {active && <EnvironmentBadge env={active.env} />}
@@ -111,7 +112,8 @@ function Context({
         </button>
         <span>
           {' '}
-          › {schema} › {table}
+          › {schema}
+          {tail}
         </span>
       </span>
       <span className={styles.engine} title={engine}>

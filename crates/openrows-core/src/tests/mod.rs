@@ -4,6 +4,8 @@ mod cancel;
 mod fake;
 mod isolation;
 mod lifecycle;
+mod safety;
+mod script;
 
 use crate::{QueryEvent, QueryHandle, SessionManager};
 use fake::{Fake, FakeCancel, Store};

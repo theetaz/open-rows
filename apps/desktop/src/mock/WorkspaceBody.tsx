@@ -1,99 +1,69 @@
 // SPDX-License-Identifier: Apache-2.0
 import { lazy, Suspense } from 'react';
 import { SplitPanel } from '@openrows/ui';
-import type { useWorkspace } from './useWorkspace';
-import type { Catalog, ObjectRef } from '../features/schema';
-import type { OrderRow } from './data/rows';
+import type { useWorkspaceController } from './useWorkspaceController';
 import { inspectorRange, sidebarRange } from './layout';
 import { ConnectionHeader, ConnectionRail } from '../features/connections';
 import type { Connections } from '../features/connections';
+import { QueryContent } from '../features/query';
 import { WorkspaceSidebar } from './WorkspaceSidebar';
 const WorkspaceInspector = lazy(() =>
   import('./WorkspaceInspector').then((module) => ({
     default: module.WorkspaceInspector,
   })),
 );
-import { TableContent } from './TableContent';
 import styles from './Workspace.module.css';
 type Props = {
   connections: Connections;
-  state: ReturnType<typeof useWorkspace>;
-  catalog: Catalog;
-  onOpen: (object: ObjectRef) => void;
-  selection: { index: number; row: OrderRow };
-  panel: string;
-  onPanel: (panel: string) => void;
-  onSelect: (index: number, row: OrderRow) => void;
-  addQuery: () => void;
-  sidebar: boolean;
-  inspector: boolean;
-  compact: boolean;
+  controller: ReturnType<typeof useWorkspaceController>;
   onGallery: () => void;
   onSwitcher: () => void;
 };
-/** Database-specific documents and object browser inside the preview shell. */
+/** Rail, object browser, query tabs and the inspector. */
 export function WorkspaceBody(props: Props): React.JSX.Element {
-  const {
-    connections,
-    state,
-    catalog,
-    selection,
-    panel,
-    onPanel,
-    onSelect,
-    addQuery,
-    sidebar,
-    inspector,
-    compact,
-    onGallery,
-    onSwitcher,
-  } = props;
+  const { connections, controller } = props;
+  const { catalog, tabs, scope } = controller;
   return (
     <div className={styles.body}>
-      <Rail connections={connections} onGallery={onGallery} />
+      <Rail connections={connections} onGallery={props.onGallery} />
       <SplitPanel
         label="Sidebar"
         storageKey="openrows.mock.sidebar"
         range={sidebarRange}
-        open={sidebar}
+        open={controller.sidebar}
         edge="right"
       >
         <WorkspaceSidebar
           header={<ConnectionHeader connections={connections} />}
           catalog={catalog}
-          onSwitcher={onSwitcher}
-          onOpen={props.onOpen}
-          onQuery={addQuery}
+          onSwitcher={props.onSwitcher}
+          onOpen={controller.openObject}
+          onQuery={() => {
+            controller.addQuery();
+          }}
         />
       </SplitPanel>
-      <TableContent
-        {...{ database: catalog.database, tabs: state.tabs }}
-        active={state.active}
-        selected={selection.index}
-        onSelect={onSelect}
-        onTab={state.selectTab}
-        onClose={state.closeTab}
-        onAdd={addQuery}
-        onSql={state.editSql}
-        onTable={state.editTable}
+      <QueryContent
+        connections={connections}
+        tabs={tabs}
+        database={scope?.database ?? ''}
+        onCell={controller.onCell}
       />
       <SplitPanel
         label="Inspector"
         storageKey="openrows.mock.inspector"
         range={inspectorRange}
-        open={inspector}
+        open={controller.inspector.open}
         edge="left"
-        overlay={compact}
+        overlay={controller.compact}
       >
         <Suspense fallback={null}>
           <WorkspaceInspector
-            row={selection.row}
-            index={selection.index}
-            panel={panel}
-            onPanel={onPanel}
-            onQuery={state.addTab}
-            table={state.table}
-            schema={catalog.schema}
+            cell={controller.cell}
+            connectionId={connections.active?.id}
+            panel={controller.panel}
+            onPanel={controller.setPanel}
+            onQuery={controller.addQuery}
           />
         </Suspense>
       </SplitPanel>
