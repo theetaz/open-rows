@@ -166,25 +166,55 @@
 }
 .footer {
   flex-shrink: 0;
-  min-height: var(--or-footer-height);
+  min-height: 38px;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: var(--or-space-6);
-  padding: var(--or-space-4) var(--or-space-6);
+  padding: var(--or-space-6) var(--or-space-8);
   border-top: var(--or-border-width) solid var(--or-separator);
   background: var(--or-panel-solid);
   white-space: nowrap;
   overflow-x: auto;
+}
+.footer {
+  container: table-footer / inline-size;
+}
+.footer svg {
+  width: 13px;
+  height: 13px;
+}
+/* Narrow footers keep icons and the row count; labels return when there is room. */
+@container table-footer (max-width: 760px) {
+  .label {
+    display: none;
+  }
+}
+.footer > button {
+  flex-shrink: 0;
+}
+/* Centred range and count, like TablePlus' "1 of ~5,192,641 rows". */
+.status {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--or-space-6);
 }
 .range {
   flex-shrink: 0;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: var(--or-text-11-5);
+  font-size: var(--or-text-12);
   color: var(--or-secondary);
   font-variant-numeric: tabular-nums;
+}
+.paging {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--or-secondary);
 }
 .details {
   display: flex;
@@ -252,16 +282,22 @@
   display: flex;
   align-items: center;
   gap: var(--or-space-6);
-  padding: var(--or-space-4) var(--or-space-8);
+  padding: var(--or-space-6) var(--or-space-8);
   border-top: var(--or-border-width) solid var(--or-separator);
-  background: var(--or-panel-solid);
+  background: var(--or-info-bg);
   flex-shrink: 0;
   overflow-x: auto;
 }
+.editToolbar svg {
+  width: 12px;
+  height: 12px;
+}
 .editNote {
-  font-size: var(--or-text-11-5);
-  color: var(--or-secondary);
-  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--or-info-fg);
 }
 .editFields {
   max-height: 55vh;
@@ -294,11 +330,13 @@
 }
 
 .stagedRows {
-  padding: var(--or-space-4) var(--or-space-8);
-  max-height: 120px;
+  display: grid;
+  gap: var(--or-space-2);
+  padding: var(--or-space-6) var(--or-space-12);
+  max-height: 160px;
   overflow: auto;
-  background: var(--or-info-bg);
-  color: var(--or-info-fg);
+  border-top: var(--or-border-width) solid var(--or-separator);
+  background: var(--or-panel-solid);
   font-size: var(--or-text-12);
 }
 .stagedRows > div {

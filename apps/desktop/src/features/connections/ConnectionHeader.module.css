@@ -3,66 +3,13 @@
   display: grid;
   gap: var(--or-space-4);
   min-width: 0;
-}
-.identity {
-  display: flex;
-  align-items: center;
-  gap: var(--or-space-4);
-  min-width: 0;
-}
-.identity strong {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--or-text-13);
-  font-weight: var(--or-weight-semibold);
-}
-.identity > span {
-  flex-shrink: 0;
-  font-size: var(--or-text-10);
-}
-.identity > button {
-  flex-shrink: 0;
-  width: var(--or-control-compact);
-  min-height: var(--or-control-compact);
-}
-.status {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--or-space-6);
-  min-width: 0;
-}
-.status > span {
-  min-width: 0;
-  font-size: var(--or-text-11);
+  padding: var(--or-space-6) var(--or-space-8);
+  border-radius: var(--or-radius-control);
+  background: var(--or-danger-bg);
 }
 .problem {
   margin: 0;
   color: var(--or-danger-fg);
-  font-size: var(--or-text-11);
+  font-size: var(--or-text-11-5);
   overflow-wrap: anywhere;
-}
-.empty {
-  display: grid;
-  gap: var(--or-space-6);
-  justify-items: start;
-  color: var(--or-secondary);
-  font-size: var(--or-text-12);
-}
-.empty p {
-  margin: 0;
-}
-.menuButton {
-  border: 0;
-  background: transparent;
-  color: var(--or-text);
-  font: inherit;
-  cursor: default;
-  border-radius: var(--or-radius-field);
-}
-.menuButton:focus-visible {
-  outline: var(--or-focus-width) solid var(--or-focus);
 }

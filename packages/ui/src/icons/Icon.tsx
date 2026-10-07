@@ -15,7 +15,25 @@ const paths = {
     'M2 12s3.6-7 10-7c2 0 3.8.7 5.2 1.6M22 12s-3.6 7-10 7c-2 0-3.8-.7-5.2-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2M4 4l16 16',
   database:
     'M5 6c0-1.7 3.1-3 7-3s7 1.3 7 3-3.1 3-7 3-7-1.3-7-3ZM5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3',
+  chevronLeft: 'M14.5 6l-6 6 6 6',
+  chevronRight: 'M9.5 6l6 6-6 6',
+  lock: 'M6 11h12v9H6ZM8.5 11V8a3.5 3.5 0 0 1 7 0v3',
+  unlock: 'M6 11h12v9H6ZM8.5 11V8a3.5 3.5 0 0 1 6.9-.8',
+  terminal: 'M4 5h16v14H4ZM8 10l2.5 2L8 14M12.5 15h3.5',
+  command:
+    'M9 9h6v6H9ZM9 9H7a2 2 0 1 1 2-2v2M15 9V7a2 2 0 1 1 2 2h-2M15 15h2a2 2 0 1 1-2 2v-2M9 15v2a2 2 0 1 1-2-2h2',
+  filter: 'M4 5h16l-6 7.5V19l-4-2v-4.5Z',
+  columns: 'M4 5h16v14H4ZM9.5 5v14M14.5 5v14',
+  table: 'M4 5h16v14H4ZM4 10h16M4 14.5h16M10 10v9',
+  code: 'M8 8l-4 4 4 4M16 8l4 4-4 4M13.5 5.5l-3 13',
+  more: 'M5.5 12h.01M12 12h.01M18.5 12h.01',
+  close: 'M7 7l10 10M17 7 7 17',
+  function:
+    'M14.5 4.5c-2.2-.6-3.4.6-3.9 3L8.9 16.5c-.5 2.4-1.7 3.6-3.9 3M7.5 10H15',
+  list: 'M9 7h11M9 12h11M9 17h11M4.5 7h.01M4.5 12h.01M4.5 17h.01',
 };
+/** Names of the original line icons. */
+export type IconName = keyof typeof paths;
 /** Original line geometry drawn for the gallery, with inherited colour. */
 export function Icon({
   name,

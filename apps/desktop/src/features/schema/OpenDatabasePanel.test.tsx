@@ -124,11 +124,12 @@ it('double-click opens; rail tiles switch databases and keep per-database tab se
   await waitFor(() => {
     expect(closeSession).toHaveBeenCalledWith('session-id-orders-local-orders');
   });
+  await waitFor(() => {
+    expect(rail.queryByRole('button', { name: 'Database orders' })).toBeNull();
+  });
   expect(
-    screen.getByRole('button', {
-      name: 'Opened databases (analytics_scratch)',
-    }),
-  ).toBeVisible();
+    rail.getByRole('button', { name: 'Database analytics_scratch' }),
+  ).toHaveAttribute('aria-pressed', 'true');
 });
 
 it('a connection without a database asks for one and the sidebar explains ⌘K', async () => {

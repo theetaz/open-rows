@@ -28,6 +28,8 @@ export type Connections = Databases & {
   selectIndex: (index: number) => void;
   connect: () => void;
   disconnect: () => void;
+  /** Disconnect any saved profile, active or not. */
+  disconnectProfile: (profileId: string) => void;
   sheet: SheetState;
   setSheet: (sheet: SheetState) => void;
   saved: (profile: ProfileDto) => void;
@@ -116,6 +118,9 @@ export function useConnections(): Connections {
     },
     disconnect: () => {
       if (active) void sessions.disconnect(active.id);
+    },
+    disconnectProfile: (profileId) => {
+      void sessions.disconnect(profileId);
     },
     sheet,
     setSheet,

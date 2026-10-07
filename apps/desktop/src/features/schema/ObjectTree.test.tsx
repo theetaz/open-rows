@@ -31,7 +31,7 @@ const sidebar = (): BoundFunctions<typeof queries> =>
 it('explains the empty tree before a connection is selected', () => {
   mount();
   expect(
-    sidebar().getByText('Select a connection to browse its objects'),
+    sidebar().getByText('Choose a connection to browse its objects.'),
   ).toBeVisible();
   expect(listSchemas).not.toHaveBeenCalled();
 });

@@ -11,7 +11,7 @@ function css(file: string): string {
         : 'mock';
   return readFileSync(`apps/desktop/src/${folder}/${file}.module.css`, 'utf8');
 }
-it('content panels are borderless with distinct theme surfaces and concentric radii', () => {
+it('panes are edge-to-edge: borderless, unrounded, with a distinct content surface', () => {
   for (const [file, selector] of [
     ['Sidebar', 'sidebar'],
     ['Inspector', 'inspector'],
@@ -23,15 +23,13 @@ it('content panels are borderless with distinct theme surfaces and concentric ra
     )?.[1];
     expect(rule).toContain('border: 0;');
     expect(rule).not.toMatch(/outline:/);
+    expect(rule).not.toMatch(/border-radius: var\(--or-radius-(group|panel)\)/);
   }
   for (const palette of [light, dark]) {
-    expect(
-      new Set([palette.page, palette['panel-solid'], palette.window]).size,
-    ).toBe(3);
+    expect(palette.window).not.toBe(palette['panel-solid']);
+    expect(palette.window).not.toBe(palette.page);
   }
   expect(css('Rail')).toContain('background: var(--or-page)');
   expect(css('Query')).toContain('background: var(--or-window)');
-  expect(css('Query')).toContain('border-radius: var(--or-radius-group)');
-  expect(geometry['rail-tile-size']).toBe('36px');
-  expect(geometry['radius-field']).toBe('10px');
+  expect(geometry['radius-field']).toBe('6px');
 });

@@ -199,7 +199,13 @@ export class CanvasPainter {
         cell.state === 'null' || cell.state === 'empty'
           ? theme.colours.tertiary
           : theme.colours.text;
-      context.fillText(this.text.get(cell), x + 8, y + height / 2);
+      const end = source.columns[col]?.align === 'end';
+      context.textAlign = end ? 'right' : 'left';
+      context.fillText(
+        this.text.get(cell),
+        end ? x + width - 8 : x + 8,
+        y + height / 2,
+      );
       if (cell.state === 'deleted') {
         context.fillStyle = theme.colours.destructive;
         context.fillRect(x + 8, y + height / 2, width - 16, 1 / this.dpr);

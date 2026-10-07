@@ -7,6 +7,8 @@ export interface GridColumn {
   title: string;
   width: number;
   pinned: boolean;
+  /** `end` right-aligns values, e.g. numbers; headers stay start-aligned. */
+  align?: 'start' | 'end';
 }
 /** Inclusive logical ranges; never materialize the selected rows. */
 export interface CellRange {

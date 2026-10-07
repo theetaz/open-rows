@@ -326,7 +326,7 @@ These rules are enforced by `packages/ui/src/tokens/controls.test.ts`. Follow th
 ## 5. Visual language guidance (inputs to the design phase)
 
 - **Typography:** system UI font for chrome (SF Pro on macOS); system monospace at 13 px for table identifiers, table display, SQL editors and inspector values. Appearance settings provide independent local font choices and 11–18 px sizes for interface and monospace content. Bundled open-licence fonts remain future work.
-- **Colour:** navy surfaces in dark mode and cool light surfaces, blue selection, brighter semantic colours for success/warning/danger; environment tag palette (local=emerald, dev=green, staging=amber, prod=coral, custom) chosen to remain distinguishable for common colour-vision deficiencies and paired with text labels.
+- **Colour:** neutral graphite surfaces (no hue tint) in dark mode and neutral light surfaces, blue `#2563EB` selection, brighter semantic colours for success/warning/danger; environment tag palette (local=emerald, dev=green, staging=amber, prod=coral, custom) chosen to remain distinguishable for common colour-vision deficiencies and paired with text labels.
 - **Iconography:** single consistent line icon set; database "logos" rendered as neutral, original glyphs or official marks only where their trademark guidelines permit use in tooling (checked per vendor).
 - **Motion:** functional opacity/transform only; approved panel timing 360 ms and disclosure 220 ms with `cubic-bezier(0.32, 0.72, 0, 1)`. Palette scale/fade uses 160 ms; other small feedback stays ≤ 150 ms. Animations and transitions are disabled under reduced motion.
 - **Density modes:** compact / default / comfortable.
@@ -342,13 +342,18 @@ text in an 18 px box with 6 px corners. Floating panels use 12 px corners.
 
 | Surface token | Dark | Light |
 | --- | --- | --- |
-| Grid/content (`window`) | `#1B2432` | `#F8FAFD` |
-| Sidebar/inspector fallback (`panel-solid`) | `#1F2A3A` | `#F0F4FA` |
-| Sidebar/inspector glass (`panel`) | `rgba(31,42,58,0.95)` | `rgba(240,244,250,0.95)` |
-| Window/rail (`page`) | `#151D2A` | `#E8EDF5` |
+| Grid/content (`window`) | `#0C0C0E` | `#FFFFFF` |
+| Sidebar/inspector fallback (`panel-solid`) | `#141416` | `#F4F4F5` |
+| Sidebar/inspector glass (`panel`) | `rgba(20,20,22,0.95)` | `rgba(244,244,245,0.95)` |
+| Window/rail (`page`) | `#141416` | `#F4F4F5` |
 
-Rail and workspace panels have no outline strokes. Surface tone separates the
-window/rail, sidebar/inspector and content; the dark sidebar has a slightly lighter navy tone than the content. Panel radii and glass/transparency fallbacks remain. Inactive
+Panes are edge-to-edge like TablePlus: the toolbar, workspace list, sidebar,
+content and inspector meet at 1 px separators with no gaps or rounded panel
+corners. Chrome (toolbar, workspace list, sidebar, inspector) shares one surface;
+the content and grid sit on the darker (dark mode) or white (light mode) `window`
+surface. Document tabs are equal-width with centred titles; the active tab is a
+raised control. Workspace selection is neutral (`control-active`), while object
+tree and grid selection stay solid blue. Glass/transparency fallbacks remain. Inactive
 rail tiles use 90% opacity, included in the contrast report. Keyboard focus uses a visible focus ring on workspace controls.
 
 Rows are flat and edge-to-edge with a blue zebra tint. Edited cells use an amber tint (18% light, 12% dark) and an accessible edited-cell label; inserted rows show a gutter plus;
@@ -364,7 +369,7 @@ height plus 24 px in both bottom padding and keyboard scroll padding, keeping
 the final row clear when scrolled to the bottom.
 
 Search fields use a quiet fill and transparent border, with a focus ring on focus.
-Default separators are 5.5% black in light and 12% blue-grey in dark; control fills are 3.5% black and 4.5% blue-grey respectively. Secondary text is `#B4C4D9` in dark and `#505050` in light. `just contrast-report` covers glass,
+Default separators are 8% black in light and 8% white in dark; control fills are 4% black and 5% white respectively. Secondary text is `#BABAC2` in dark and `#52525B` in light. `just contrast-report` covers glass,
 nested controls, row states, edited cells and semantic badges; text requires 4.5:1
 and focus indicators 3:1. Increased contrast uses stronger neutral separators
 and opaque fills; reduced transparency and reduced motion retain their fallbacks.

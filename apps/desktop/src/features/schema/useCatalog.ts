@@ -41,7 +41,7 @@ export type Catalog = Omit<NavigationState, 'chosenSchema'> & {
 
 const offlineReason = (connections: Connections): string | null => {
   const profile = connections.active;
-  if (!profile) return 'Select a connection to browse its objects';
+  if (!profile) return 'Choose a connection to browse its objects.';
   const status = connections.statusOf(profile.id);
   if (status.state === 'connected') return null;
   if (status.state === 'connecting') return 'Connecting…';

@@ -189,10 +189,12 @@ it('opens a table tab and pages through rows with buttons and ⌘[ ⌘]', async 
   await waitFor(() => {
     expect(lastRequest().offset).toBe(300);
   });
-  expect(screen.getByRole('button', { name: '+ Row' })).toBeDisabled();
-  expect(
-    screen.getByText('Read-only: no supported non-null unique key'),
-  ).toBeInTheDocument();
+  const insert = screen.getByRole('button', { name: 'Add row' });
+  expect(insert).toBeDisabled();
+  expect(insert).toHaveAttribute(
+    'title',
+    'Read-only: no supported non-null unique key',
+  );
 });
 
 it('sorts server-side from header clicks: ascending, descending, none', async () => {

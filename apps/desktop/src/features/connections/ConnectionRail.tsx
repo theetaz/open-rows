@@ -6,6 +6,7 @@ import { WorkspaceDisclosure } from './WorkspaceDisclosure';
 import { DatabaseTiles } from './DatabaseTiles';
 import { WorkspaceConnection } from './WorkspaceConnection';
 import { useWorkspaceCollapse } from './useWorkspaceCollapse';
+import type { ConnectionAction } from './connectionActions';
 import type { OpenedDatabase, SessionStatus } from './sessions';
 import styles from './Rail.module.css';
 
@@ -20,7 +21,8 @@ type RailDatabases = {
 };
 
 /**
- * A foldable server/database hierarchy with full names and environment accents.
+ * Full-height workspace sidebar: environment groups, one-line server rows and
+ * their opened databases, with app-level actions at the bottom.
  */
 export function ConnectionRail(
   props: RailDatabases & {
@@ -29,55 +31,57 @@ export function ConnectionRail(
     statusOf: (profileId: string) => SessionStatus;
     onSelect: (profileId: string) => void;
     onNew: () => void;
-    onGallery: () => void;
+    actionsFor?: (profile: ProfileDto) => readonly ConnectionAction[];
     onAppearance?: (() => void) | undefined;
   },
 ): React.JSX.Element {
   const [compact, toggle] = useWorkspaceCollapse('rail');
   return (
     <nav className={styles.rail} aria-label="Workspaces" data-compact={compact}>
+      <div className={styles.railTop} data-tauri-drag-region />
       <div className={styles.railHeading}>
-        <span>Workspaces</span>
+        <span>Connections</span>
+        <IconButton
+          aria-label="New connection"
+          title="New connection"
+          variant="ghost"
+          size="sm"
+          onClick={props.onNew}
+        >
+          <Icon name="plus" />
+        </IconButton>
+      </div>
+      <WorkspaceGroups {...props} />
+      <div className={styles.space} />
+      <footer className={styles.railFooter}>
+        <button type="button" className={styles.footerRow}>
+          <Icon name="code" />
+          <span className={styles.controlLabel}>API client</span>
+        </button>
+        {props.onAppearance && (
+          <button
+            type="button"
+            className={styles.footerRow}
+            aria-label="Appearance settings"
+            onClick={props.onAppearance}
+          >
+            <Icon name="settings" />
+            <span className={styles.controlLabel}>Settings</span>
+          </button>
+        )}
         <IconButton
           aria-label={
             compact ? 'Expand workspace sidebar' : 'Collapse workspace sidebar'
           }
+          title={compact ? 'Expand sidebar' : 'Collapse sidebar'}
           variant="ghost"
+          size="sm"
+          className={styles.collapse}
           onClick={toggle}
         >
-          <span aria-hidden="true">{compact ? '»' : '«'}</span>
+          <Icon name={compact ? 'chevronRight' : 'chevronLeft'} />
         </IconButton>
-      </div>
-      <WorkspaceGroups {...props} />
-      <IconButton
-        aria-label="New connection"
-        variant="ghost"
-        onClick={props.onNew}
-      >
-        <Icon name="plus" />
-        <span className={styles.controlLabel}>New connection</span>
-      </IconButton>
-      <div className={styles.space} />
-      <IconButton aria-label="API client" variant="ghost">
-        API
-      </IconButton>
-      {props.onAppearance && (
-        <IconButton
-          aria-label="Appearance settings"
-          variant="ghost"
-          onClick={props.onAppearance}
-        >
-          <Icon name="settings" />
-          <span className={styles.controlLabel}>Appearance</span>
-        </IconButton>
-      )}
-      <IconButton
-        aria-label="Component gallery"
-        variant="ghost"
-        onClick={props.onGallery}
-      >
-        <span aria-hidden="true">◇</span>
-      </IconButton>
+      </footer>
     </nav>
   );
 }
@@ -107,6 +111,7 @@ function WorkspaceGroups(props: RailProps): React.JSX.Element {
             return (
               <WorkspaceConnection
                 key={profile.id}
+                actions={props.actionsFor?.(profile)}
                 profile={profile}
                 status={status}
                 selected={selected}

@@ -3,8 +3,7 @@ import { useRef } from 'react';
 import { Button } from '@openrows/ui';
 import type { ResultMeta } from '../query/run';
 import type { TableObject } from '../query/tabs';
-import { StagedRows } from './StagedRows';
-import { EditToolbar } from './EditToolbar';
+import { canEdit, EditToolbar, editingNote } from './EditToolbar';
 import { RowEditSheet } from './RowEditSheet';
 import { useRowEditing } from './useRowEditing';
 import { useTableContext } from './TableContextMenu';
@@ -99,19 +98,43 @@ export function TableTab(props: TableTabProps): React.JSX.Element {
           actions={actions}
         />
       )}
-      <StagedRows editing={editing} />
-      {view.mode === 'data' && (
-        <EditToolbar editing={editing} ready={sessionId !== null} />
-      )}
+      {context.menu}
+      <EditingFooter
+        state={state}
+        editing={editing}
+        ready={sessionId !== null}
+      />
+    </section>
+  );
+}
+
+/** Staged rows, the pending-changes bar, edit errors and the table footer. */
+function EditingFooter({
+  state,
+  editing,
+  ready,
+}: {
+  state: ReturnType<typeof useTableTab>;
+  editing: ReturnType<typeof useRowEditing>;
+  ready: boolean;
+}): React.JSX.Element {
+  const data = state.view.mode === 'data';
+  return (
+    <>
+      {data && <EditToolbar editing={editing} ready={ready} />}
       {editing.error && !editing.review && (
         <p role="alert" className={styles.banner}>
           {editing.error}
         </p>
       )}
       <RowEditSheet editing={editing} />
-      {context.menu}
-      <TableFooter state={state} ready={sessionId !== null} />
-    </section>
+      <TableFooter
+        state={state}
+        ready={ready}
+        onInsert={data && canEdit(editing, ready) ? editing.insert : undefined}
+        insertTitle={editingNote(editing)}
+      />
+    </>
   );
 }
 

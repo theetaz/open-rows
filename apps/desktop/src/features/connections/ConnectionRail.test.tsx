@@ -75,9 +75,7 @@ it('supports Tab and wrapping arrows with focus tooltips', async () => {
   render(<ConnectionRail {...props} />);
   const tiles = screen.getAllByRole('button', { name: /^Switch to/ });
   await user.tab();
-  expect(
-    screen.getByRole('button', { name: 'Collapse workspace sidebar' }),
-  ).toHaveFocus();
+  expect(screen.getByRole('button', { name: 'New connection' })).toHaveFocus();
   await user.tab();
   expect(
     screen.getByRole('button', { name: 'Collapse Staging' }),

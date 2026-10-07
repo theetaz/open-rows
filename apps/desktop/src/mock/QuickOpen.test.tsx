@@ -108,7 +108,7 @@ it('⌘P without a connection explains why nothing is listed', async () => {
   await key('p');
   expect(
     within(screen.getByRole('dialog', { name: 'Quick open' })).getByText(
-      'Select a connection to browse its objects',
+      'Choose a connection to browse its objects.',
     ),
   ).toBeVisible();
 });

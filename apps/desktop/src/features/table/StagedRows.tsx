@@ -5,13 +5,14 @@ import styles from './Table.module.css';
 /** Inserted/deleted rows remain individually reviewable before commit. */
 export function StagedRows({
   editing,
+  id,
 }: {
   editing: RowEditing;
+  id: string;
 }): React.JSX.Element | null {
   if (!editing.history.current.length) return null;
   return (
-    <details className={styles.stagedRows}>
-      <summary>{editing.history.current.length} staged row changes</summary>
+    <div id={id} className={styles.stagedRows} aria-label="Staged rows">
       {editing.history.current.map((edit) => (
         <div key={edit.id}>
           <span>
@@ -29,6 +30,6 @@ export function StagedRows({
           </Button>
         </div>
       ))}
-    </details>
+    </div>
   );
 }

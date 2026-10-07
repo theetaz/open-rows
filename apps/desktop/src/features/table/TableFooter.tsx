@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-import { Button, IconButton, SegmentedControl } from '@openrows/ui';
+import { useState } from 'react';
+import { Button, Icon, IconButton, SegmentedControl } from '@openrows/ui';
+import { PointMenu } from '../../shell/PointMenu';
 import { isActive } from '../query/run';
 import { canNext } from './useTableTab';
 import type { TableTabState } from './useTableTab';
@@ -56,46 +58,85 @@ function CountControl({
 export function TableFooter({
   state,
   ready,
+  onInsert,
+  insertTitle,
 }: {
   state: TableTabState;
   /** A session is available for paging and counting. */
   ready: boolean;
+  /** Stage a new row; absent when the table cannot be edited. */
+  onInsert?: (() => void) | undefined;
+  /** Why rows cannot be added, or how editing works. */
+  insertTitle: string;
 }): React.JSX.Element {
-  const { view, actions, entry } = state;
+  const { view, actions } = state;
   return (
     <footer className={styles.footer} aria-label="Table footer">
       <SegmentedControl
         aria-label="Table view"
         size="compact"
+        tone="accent"
         options={modes}
         value={view.mode}
         onValueChange={actions.mode}
       />
-      <span
-        className={styles.range}
-        role="status"
-        aria-label="Rows shown"
-        title={pageText(state)}
-      >
-        {pageText(state)}
-      </span>
-      {ready && view.mode === 'data' && <CountControl state={state} />}
-      <span className={styles.spacer} />
       <Button
         size="sm"
+        aria-label="Add row"
+        disabled={!onInsert}
+        title={insertTitle}
+        onClick={onInsert}
+      >
+        <Icon name="plus" />
+        <span className={styles.label}>Row</span>
+      </Button>
+      <span className={styles.status}>
+        <span
+          className={styles.range}
+          role="status"
+          aria-label="Rows shown"
+          title={pageText(state)}
+        >
+          {pageText(state)}
+        </span>
+        {ready && view.mode === 'data' && <CountControl state={state} />}
+      </span>
+      <Button
+        size="sm"
+        aria-label="Filters"
+        title="Filters (⌘F)"
         aria-pressed={view.filtersOpen}
         onClick={actions.toggleFilters}
       >
-        Filters
+        <Icon name="filter" />
+        <span className={styles.label}>Filters</span>
       </Button>
-      <DisplayControls state={state} />
       <Button
         size="sm"
+        aria-label="Columns"
+        title="Columns"
         aria-pressed={view.columnsOpen}
         onClick={actions.toggleColumns}
       >
-        Columns
+        <Icon name="columns" />
+        <span className={styles.label}>Columns</span>
       </Button>
+      <Paging state={state} ready={ready} />
+    </footer>
+  );
+}
+
+/** ‹ display options › like TablePlus' page controls. */
+function Paging({
+  state,
+  ready,
+}: {
+  state: TableTabState;
+  ready: boolean;
+}): React.JSX.Element {
+  const { view, actions, entry } = state;
+  return (
+    <span className={styles.paging}>
       <IconButton
         size="sm"
         variant="ghost"
@@ -105,8 +146,9 @@ export function TableFooter({
           actions.page(-1);
         }}
       >
-        ‹
+        <Icon name="chevronLeft" />
       </IconButton>
+      <DisplayMenu state={state} />
       <IconButton
         size="sm"
         variant="ghost"
@@ -116,40 +158,63 @@ export function TableFooter({
           actions.page(1);
         }}
       >
-        ›
+        <Icon name="chevronRight" />
       </IconButton>
-    </footer>
+    </span>
   );
 }
 
-function DisplayControls({
+/** Row numbers and stripes, toggled from a small menu. */
+function DisplayMenu({
   state: { view, actions },
 }: {
   state: TableTabState;
 }): React.JSX.Element {
+  const [at, setAt] = useState<{ x: number; y: number } | null>(null);
+  const items = [
+    ['rowNumbers', 'Row numbers', view.rowNumbers],
+    ['striped', 'Alternate row backgrounds', view.striped],
+  ] as const;
   return (
     <>
-      <Button
+      <IconButton
         size="sm"
-        aria-pressed={view.rowNumbers}
-        onClick={() => {
-          actions.display('rowNumbers');
+        variant="ghost"
+        aria-label="Display options"
+        aria-haspopup="menu"
+        aria-expanded={at !== null}
+        onClick={(event) => {
+          const box = event.currentTarget.getBoundingClientRect();
+          setAt({ x: box.left, y: box.top });
         }}
-        aria-label="Row numbers"
-        title="Show row numbers across pages"
       >
-        #
-      </Button>
-      <Button
-        size="sm"
-        aria-pressed={view.striped}
-        onClick={() => {
-          actions.display('striped');
-        }}
-        title="Alternate row backgrounds"
-      >
-        Stripes
-      </Button>
+        <Icon name="settings" />
+      </IconButton>
+      {at && (
+        <PointMenu
+          x={at.x}
+          y={at.y - 80}
+          label="Display options"
+          onClose={() => {
+            setAt(null);
+          }}
+        >
+          {items.map(([key, label, checked]) => (
+            <button
+              key={key}
+              type="button"
+              role="menuitemcheckbox"
+              aria-checked={checked}
+              onClick={() => {
+                actions.display(key);
+              }}
+            >
+              {label}
+              <kbd>{checked ? '✓' : ''}</kbd>
+            </button>
+          ))}
+        </PointMenu>
+      )}
     </>
   );
 }

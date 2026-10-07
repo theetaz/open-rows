@@ -58,25 +58,14 @@ function tintedPalette(
   mode: 'light' | 'dark',
 ): Palette {
   const lightMode = mode === 'light';
-  const panel = mix(
-    half.canvas,
-    lightMode ? '#FFFFFF' : '#F0F5FC',
-    lightMode ? 0.38 : 0.045,
-  );
   return {
     ...base,
     page: half.canvas,
-    window: mix(
-      half.canvas,
-      lightMode ? '#FFFFFF' : '#F0F5FC',
-      lightMode ? 0.78 : 0.025,
-    ),
-    'panel-solid': panel,
-    'control-active': mix(
-      panel,
-      lightMode ? '#FFFFFF' : '#F0F5FC',
-      lightMode ? 0.8 : 0.05,
-    ),
+    'panel-solid': half.canvas,
+    window: lightMode
+      ? mix(half.canvas, '#FFFFFF', 0.85)
+      : mix(half.canvas, '#000000', 0.3),
+    'control-active': lightMode ? '#FFFFFF' : mix(half.canvas, '#FFFFFF', 0.1),
     accent: half.accent,
     'on-accent': '#FFFFFF',
     focus: lightMode
@@ -85,7 +74,7 @@ function tintedPalette(
     'danger-fg': lightMode
       ? base['danger-fg']
       : mix(base['danger-fg'], '#FFFFFF', 0.14),
-    'row-stripe': alpha(half.accent, lightMode ? 0.07 : 0.12),
+    'row-stripe': alpha(half.accent, lightMode ? 0.05 : 0.08),
     'info-fg': lightMode
       ? mix(half.accent, '#000000', 0.25)
       : mix(half.accent, '#FFFFFF', 0.85),

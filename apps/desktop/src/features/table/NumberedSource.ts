@@ -3,7 +3,7 @@ import type { CellRange, DisplayCell, GridDataSource } from '@openrows/grid';
 
 /** A pinned, page-aware row gutter; result column indices are never sent to IPC shifted. */
 export class NumberedSource implements GridDataSource {
-  readonly columns;
+  readonly columns: GridDataSource['columns'];
   private readonly numbers: readonly DisplayCell[];
   constructor(
     private readonly source: GridDataSource,
@@ -19,6 +19,7 @@ export class NumberedSource implements GridDataSource {
         title: '#',
         width: Math.max(48, String(offset + source.rows).length * 8 + 16),
         pinned: true,
+        align: 'end',
       },
       ...source.columns,
     ];

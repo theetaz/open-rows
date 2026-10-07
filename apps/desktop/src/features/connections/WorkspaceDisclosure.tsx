@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { Icon } from '@openrows/ui';
 import { useWorkspaceCollapse } from './useWorkspaceCollapse';
 import styles from './Rail.module.css';
 
@@ -21,7 +22,9 @@ export function WorkspaceDisclosure(props: {
         title={props.label}
         onClick={toggle}
       >
-        <span aria-hidden="true">{collapsed ? '›' : '⌄'}</span>
+        <span aria-hidden="true">
+          <Icon name={collapsed ? 'chevronRight' : 'chevronDown'} />
+        </span>
         <span>{props.label}</span>
         <small className={styles.groupCount}>{props.count}</small>
       </button>

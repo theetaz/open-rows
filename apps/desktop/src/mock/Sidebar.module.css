@@ -1,12 +1,13 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 .sidebar {
   border: 0;
+  border-radius: 0;
   box-shadow: none;
   display: flex;
   flex-direction: column;
-  gap: var(--or-space-10);
+  gap: var(--or-space-8);
   height: 100%;
-  padding: var(--or-space-8);
+  padding: var(--or-space-8) var(--or-space-8) var(--or-space-6);
 }
 .sidebar > [role='radiogroup'] {
   flex-wrap: nowrap;
@@ -15,18 +16,28 @@
 .sidebar [role='radio'] {
   flex: 1;
   min-width: 0;
-  font-size: var(--or-text-12);
+  font-size: var(--or-text-12-5);
   padding-inline: var(--or-space-4);
 }
-.header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--or-space-6);
+/* Mode switch like a source list: no track, only the selected pill. */
+.modes {
+  background: transparent;
+}
+/* Source-list search field: capsule frame with a leading magnifier. */
+.search > [data-size] {
+  border-radius: var(--or-radius-capsule);
+  border-color: var(--or-separator);
+}
+.search svg {
+  width: 14px;
+  height: 14px;
 }
 .objects {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  margin-inline: calc(-1 * var(--or-space-4));
+  padding-inline: var(--or-space-4);
 }
 .container {
   height: 100%;

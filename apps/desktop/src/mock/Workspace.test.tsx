@@ -208,7 +208,7 @@ it('opens objects of another database in its own tab set on its own session', as
 it('opens, switches and closes query tabs per connection', async () => {
   const user = mount();
   expect(
-    screen.getByText('Choose a connection in the rail to open a query tab.'),
+    screen.getByText('Choose a connection in the sidebar to open a query tab.'),
   ).toBeVisible();
   await user.click(
     await screen.findByRole('button', { name: 'Switch to orders-local' }),

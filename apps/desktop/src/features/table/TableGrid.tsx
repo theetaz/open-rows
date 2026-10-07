@@ -16,6 +16,7 @@ import { EditedSource } from './EditedSource';
 import type { StagedEdit } from './editHistory';
 import { NumberedSource } from './NumberedSource';
 import styles from './Table.module.css';
+import { columnAlign } from '../../results/align';
 
 /** Header title with the server-side sort direction, e.g. `name ▲`. */
 function headerTitle(name: string, sort: SortDto | null): string {
@@ -35,6 +36,7 @@ function columnsOf(
       Math.max(columnWidth(column.sourceType), column.name.length * 8 + 56),
     ),
     pinned: false,
+    align: columnAlign(column.sourceType),
   }));
 }
 

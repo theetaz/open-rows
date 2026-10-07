@@ -3,7 +3,11 @@ import { lazy, Suspense } from 'react';
 import { SplitPanel } from '@openrows/ui';
 import type { useWorkspaceController } from './useWorkspaceController';
 import { inspectorRange, sidebarRange } from './layout';
-import { ConnectionHeader, ConnectionRail } from '../features/connections';
+import {
+  ConnectionHeader,
+  ConnectionRail,
+  connectionActions,
+} from '../features/connections';
 import type { Connections } from '../features/connections';
 import { QueryContent } from '../features/query';
 import { WorkspaceSidebar } from './WorkspaceSidebar';
@@ -16,21 +20,13 @@ import styles from './Workspace.module.css';
 type Props = {
   connections: Connections;
   controller: ReturnType<typeof useWorkspaceController>;
-  onGallery: () => void;
-  onAppearance?: (() => void) | undefined;
-  onSwitcher: () => void;
 };
-/** Rail, object browser, query tabs and the inspector. */
+/** Object browser, query tabs and the inspector. */
 export function WorkspaceBody(props: Props): React.JSX.Element {
   const { connections, controller } = props;
   const { catalog, tabs, scope } = controller;
   return (
     <div className={styles.body}>
-      <Rail
-        connections={connections}
-        onGallery={props.onGallery}
-        onAppearance={props.onAppearance}
-      />
       <SplitPanel
         label="Sidebar"
         storageKey="openrows.mock.sidebar"
@@ -41,7 +37,6 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
         <WorkspaceSidebar
           header={<ConnectionHeader connections={connections} />}
           catalog={catalog}
-          onSwitcher={props.onSwitcher}
           onOpen={controller.openObject}
           onQuery={() => {
             controller.addQuery();
@@ -78,9 +73,9 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
   );
 }
 
-function Rail(props: {
+/** Full-height workspace sidebar: connections and their opened databases. */
+export function WorkspaceRail(props: {
   connections: Connections;
-  onGallery: () => void;
   onAppearance?: (() => void) | undefined;
 }): React.JSX.Element {
   const { connections } = props;
@@ -102,7 +97,7 @@ function Rail(props: {
       onNew={() => {
         connections.setSheet({ kind: 'new' });
       }}
-      onGallery={props.onGallery}
+      actionsFor={(profile) => connectionActions(profile, connections)}
       onAppearance={props.onAppearance}
     />
   );

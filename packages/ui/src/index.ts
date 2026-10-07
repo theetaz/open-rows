@@ -9,6 +9,7 @@ export { SecureField } from './components/SecureField';
 export { Switch } from './components/Switch';
 export { Badge, EnvBadge, StatusDot, Kbd } from './components/Indicators';
 export { Icon } from './icons/Icon';
+export type { IconName } from './icons/Icon';
 export { ThemeProvider, useTheme } from './theme/ThemeProvider';
 export type { ThemeMode } from './theme/storage';
 export { Tabs } from './components/Tabs';

@@ -134,11 +134,9 @@ function AppearanceHeader({
 }): React.JSX.Element {
   return (
     <header className={styles.header}>
-      <div>
-        <p className={styles.eyebrow}>Settings / Appearance</p>
-        <h1>Make it yours.</h1>
-        <p>Colors, clarity and type. Changes apply instantly.</p>
-      </div>
+      <h1>
+        <span>Settings /</span> Appearance
+      </h1>
       <Button onClick={onClose} data-initial-focus="true">
         Done
       </Button>
