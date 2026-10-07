@@ -1,7 +1,7 @@
 # 0003 — CodeMirror 6 for all code editors
 
-- Status: Accepted-pending-evidence (implementer M4 runs meet the S5 budget; maintainer `bench-editor` confirmation and the manual IME check remain)
-- Date: 2026-10-05; evidence 2026-10-07
+- Status: Accepted — validation pending (M0-S5: maintainer `just bench-editor` run, manual IME check, mac-low run)
+- Date: 2026-10-05; evidence 2026-10-07; reviewed 2026-10-07 (M0-11)
 - Task: M0-S5; NFR-PERF-07, FR-EDIT-02, FR-EDIT-09; docs/09; docs/13 §4
 
 ## Context
@@ -65,3 +65,13 @@ Still open:
   frontmost. The final build's own runs were rejected because the window lost focus
   during interactive use (see docs/13).
 - **mac-low.** Re-run `just bench-editor` on the reference low-end Mac.
+
+## Validation / evidence — 2026-10-07 (M0-11 review)
+
+Status stays pending. The repository holds only the implementer's four M4 runs above; none of the three open items has a recorded result. They all belong to M0-S5 (status `hw` in [27 §3](../27-delivery-plan.md#3-m0--foundations-and-spikes-remaining)). Steps that move this ADR to plain `Accepted`:
+
+1. Maintainer: `just build-app`, then `just bench-editor` on an idle M4 with the window frontmost. Pass: p95 ≤ 16 ms for both `sql` and `vim`. Record the run table here and in [13 §4](../13-performance.md#m0-s5-editor-keystroke-measurement).
+2. Manual IME check, as in the S5 PR (#27) "How to try it": `just dev`, **Component gallery** → **SQL editor**. Japanese – Romaji: type `nihongo` at the end of line 1, Space cycles candidates, Return commits 日本語. Pinyin – Simplified: type `zhongwen` then `1`, giving 中文. Pass: nothing is lost or doubled and highlighting continues afterwards; the same holds in Vim insert mode. Record the outcome here.
+3. mac-low: `just bench-editor` on the reference low-end Mac. Pass: the same p95 budget. Record it here and in docs/13.
+
+If step 1 or 3 misses the budget, profile the `'` re-highlight tail first (see above; M1-21 keeps watching it). If step 2 fails, record the failure here and revise this ADR explicitly before M1-21 builds on it.

@@ -1,7 +1,7 @@
 # 0007 — One actor per database session
 
-- Status: Accepted
-- Date: 2026-10-05
+- Status: Accepted — validation pending (M1-01, M1-11)
+- Date: 2026-10-05; S3 evidence 2026-10-07; reviewed 2026-10-07 (M0-11)
 
 ## Context
 
@@ -40,3 +40,11 @@ following statement on the same session succeeds against PostgreSQL 12, 17 and 1
 `statements_without_rows_and_stopped_streams`). Out-of-band cancel and the actor
 loop are not exercised yet (M1-01, M1-11). This evidence supports, and does not
 change, the accepted decision.
+
+## Validation / evidence — 2026-10-07 (M0-11 review)
+
+Accepted; no revision. The M0-S3 evidence above (#25) validates the session contract the actor will own. M0-S3 drove the wire protocol with `postgres-protocol` instead of `tokio-postgres` ([05 §11](../05-database-drivers.md#11-m0-s3-postgresql-streaming-spike)); this ADR names no driver library, so that finding does not affect it. The remaining consequences are pending:
+
+- **M1-01** (session manager): actor loop, command queue, panic isolation and cancellation tokens. Its gates test that a panicking driver task does not take down the app and that a cancel request is sent ≤ 200 ms after the command.
+- **M1-11** (PostgreSQL driver): out-of-band cancel through the PostgreSQL cancel request, obtained before execution and held outside the actor.
+- Blocking drivers on a dedicated OS thread: no M1 task names this yet; the first candidate is the SQLite driver (M1-13).

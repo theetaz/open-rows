@@ -1,7 +1,7 @@
 # 0004 — Canvas-rendered data grid behind an adapter
 
-- Status: **Accepted: Option A**
-- Date: 2026-10-06
+- Status: Accepted
+- Date: 2026-10-06 (Option A accepted); reviewed 2026-10-07 (M0-11)
 - Task: M0-S2 / issue #22; NFR-PERF-04; docs/08; docs/13 §4
 
 ## Decision
@@ -108,3 +108,7 @@ At that revision, run `just build-app` then `just bench-grid` on the reference
 Mac; it prints both options. The Glide adapter is intentionally absent from the
 accepted revision. At the current revision, `just check` tests gates without a
 GUI; `just build-app` then `just bench-grid 3` measures the retained painter.
+
+## Validation / evidence — 2026-10-07 (M0-11 review)
+
+Accepted with evidence; no revision. The M0-S2 frame gate (best repeat per scenario: zero frames > 32 ms) is met on the maintainer's M4/60 Hz runs above (#23). The S2 acceptance covers the renderer only. The production grid, editing, copy and screen-reader testing are M1-19 (`just bench-grid` must still pass there). Runs on mac-low and on other webviews are revisit points: X-02 and M1-32 for mac-low, M6-02 for WebView2 and WebKitGTK.
