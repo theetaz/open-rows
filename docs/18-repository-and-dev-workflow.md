@@ -33,6 +33,7 @@ open-rows/
 ├── crates/openrows-driver-api/ # draft session/result-sink contract (M0 S3)
 ├── crates/openrows-driver-postgres/ # prototype PG wire → Arrow decoder, benches, container tests
 ├── crates/openrows-net/        # SSH tunnel prototype (M0-S4); tests/ssh_container + fixtures/sshd
+├── crates/openrows-sql/        # pure SQL toolkit: lexer, splitter, classifier, placeholders (D-02)
 ├── packages/ipc/               # @openrows/ipc: wrapper + generated/bindings.ts
 ├── packages/ui/                # tokens, generator, CSS modules, theme and icons
 ├── packages/grid/              # @openrows/grid: canvas grid adapter and painter (S2)

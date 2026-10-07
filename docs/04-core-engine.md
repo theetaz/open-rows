@@ -175,6 +175,38 @@ Details:
 4. **Auto-limit** applies only to table-browse queries the app generates, never silently to user SQL. User queries are streamed and the grid fetches windows; the result store protects memory instead.
 5. **Multi-statement runs** produce one result tab per result-producing statement. Execution stops on first error unless the user chose "continue on error".
 
+### 4.1 Current implementation: `openrows-sql` (D-02, slice of M1-15)
+
+Splitting and current-statement detection are described in [09 §2.1](09-query-editor.md#21-current-implementation-d-02-slice-of-m1-15). Classification is `classify(statement_text, Dialect::Postgres) -> Classification { kind, dangerous }` with `kind ∈ {Read, Write, Ddl, TxControl, Unknown}`; `is_write()` is true for `Write`, `Ddl` and `Unknown`.
+
+- **No `sqlparser` dependency yet.** The classifier is token-based over the splitter's lexer, so it works on incomplete SQL, cannot fail, and needs no parser fallback. `sqlparser-rs` may still be added later for editability analysis; its failure must stay non-fatal.
+- Leading comments, whitespace and `(` are skipped; then the first keyword decides, followed by an escalation scan for `Read` statements and a dangerous-DML scan for all statements except plain `EXPLAIN`.
+- Anything not recognised is `Unknown` (treated as a write).
+
+| Statement | Kind | Dangerous |
+| --- | --- | --- |
+| `SELECT`, `VALUES`, `TABLE`, `SHOW`, `FETCH`, `MOVE`, `CLOSE`, `LISTEN`, `UNLISTEN`, `DEALLOCATE` | Read | — |
+| …but containing `INTO`, `FOR UPDATE/NO KEY UPDATE/SHARE/KEY SHARE`, a nested `(INSERT/UPDATE/DELETE/MERGE`, or a known side-effecting built-in call (`nextval`, `setval`, `set_config`, `pg_terminate_backend`, `lo_*`, `dblink*`, `pg_advisory*`, …) | Write | if nested unbounded DML |
+| `WITH … <body>` | class of the body, escalated as above (data-modifying CTEs → Write) | if any `DELETE`/`UPDATE` (main or CTE) has no `WHERE` at its level |
+| `EXPLAIN [options] stmt` without `ANALYZE` (or `ANALYZE false/off/0`) | Read | no (nothing executes) |
+| `EXPLAIN ANALYZE stmt`, `EXPLAIN (ANALYZE[, …]) stmt` | class of `stmt` | as `stmt` |
+| `INSERT`, `UPDATE`, `DELETE`, `MERGE`, `VACUUM`, `ANALYZE`, `CLUSTER`, `REINDEX`, `REFRESH`, `LOCK`, `NOTIFY`, `CHECKPOINT` | Write | `DELETE`/`UPDATE` without `WHERE` (`WHERE CURRENT OF` counts as bounded) |
+| `TRUNCATE` | Write | yes |
+| `COPY … TO STDOUT` / `COPY (query) TO STDOUT` | Read (escalated if the query is DML) | if the query is unbounded DML |
+| `COPY … FROM …`, `COPY … TO 'file'`, `COPY … TO PROGRAM` | Write | — |
+| `CREATE`, `COMMENT`, `GRANT`, `REVOKE`, `SECURITY LABEL`, `IMPORT FOREIGN SCHEMA`, `REASSIGN` | Ddl | if a nested unbounded DML (e.g. `CREATE RULE … DO (DELETE …)`) |
+| `ALTER …` | Ddl | if it contains `DROP` anywhere (`DROP COLUMN`, `DROP NOT NULL`, …) |
+| `DROP …` | Ddl | yes |
+| `BEGIN`, `START TRANSACTION`, `COMMIT`, `END`, `ROLLBACK`, `ABORT`, `SAVEPOINT`, `RELEASE`, `PREPARE TRANSACTION`, `SET TRANSACTION` / `SET SESSION CHARACTERISTICS` | TxControl | — |
+| …with `READ WRITE` | Unknown | — |
+| `SET`/`RESET` of a harmless setting (`search_path`, `TIME ZONE`, `statement_timeout`, `application_name`, …; allowlist in `classify/session.rs`) | Read | — |
+| any other `SET`/`RESET` (`ROLE`, `SESSION AUTHORIZATION`, `default_transaction_read_only`, custom `x.y`, `RESET ALL`) | Unknown | — |
+| `PREPARE name AS stmt`, `DECLARE … CURSOR … FOR query` | class of the inner statement | as inner |
+| `CALL`, `DO`, `EXECUTE`, `DISCARD`, `LOAD`, empty input, anything else | Unknown | — |
+| Any statement still holding a `;` (kept by an unbalanced `(`) | never Read (Unknown unless escalated to Write) | if an unbounded `DELETE`/`UPDATE` follows the `;` |
+
+Known limits: user-defined volatile functions in a `SELECT` cannot be detected without the catalog, so read-only connections must also be enforced server-side (read-only transaction); `WHERE true` counts as bounded; psql meta-commands (`\gexec`) are not understood.
+
 ## 5. Value model
 
 All drivers convert native values into a shared type system that maps 1:1 onto Arrow types. This is what lets one grid, one exporter and one editor serve every database.
