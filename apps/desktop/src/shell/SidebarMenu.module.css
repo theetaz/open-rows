@@ -1,0 +1,41 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.anchor {
+  position: fixed;
+  z-index: 15;
+}
+.menu {
+  width: 240px;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: var(--or-space-4);
+  border: 0;
+  font-size: var(--or-text-12);
+}
+.menu button {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-6);
+  width: 100%;
+  padding: var(--or-space-6) var(--or-space-8);
+  min-height: var(--or-control-sm);
+  background: transparent;
+  border: 0;
+  border-radius: var(--or-radius-field);
+  color: var(--or-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.menu button:hover,
+.menu button[aria-checked='true'] {
+  background: var(--or-control-fill);
+}
+.menu kbd {
+  margin-inline-start: auto;
+  color: var(--or-secondary);
+  font: inherit;
+}
+.menu button:focus-visible {
+  outline: var(--or-focus-width) solid var(--or-focus);
+  outline-offset: -2px;
+}

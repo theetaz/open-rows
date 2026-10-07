@@ -1,0 +1,8 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.customDot {
+  display: inline-block;
+  inline-size: var(--or-dot-size);
+  block-size: var(--or-dot-size);
+  border-radius: var(--or-radius-capsule);
+  background: var(--env-color, currentColor);
+}

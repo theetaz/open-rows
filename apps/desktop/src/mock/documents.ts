@@ -10,15 +10,12 @@ export type Documents = {
   schema: string;
 };
 /** Initial tabs for a database, created only on its first opening. */
-export function initialDocuments(
-  connection: number,
-  database: string,
-): Documents {
-  const catalog = databaseFor(connection, database);
+export function initialDocuments(database: string): Documents {
+  const catalog = databaseFor(database);
   const schema = catalog.schemas[0] ?? 'public';
   const first = catalog.objects[0];
   const tabs: readonly WorkspaceTab[] =
-    connection === 0 && database === 'orders'
+    database === 'orders'
       ? initialTabs.map((tab) => ({ ...tab, schema }))
       : first
         ? [

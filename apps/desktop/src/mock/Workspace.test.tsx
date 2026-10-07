@@ -3,7 +3,12 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
+import { openSession } from '@openrows/ipc';
 import { Workspace } from './Workspace';
+
+vi.mock('@openrows/ipc', async () =>
+  (await import('../test/ipcStub')).ipcStub(),
+);
 
 beforeEach(() => {
   vi.stubGlobal('innerWidth', 1280);
@@ -16,7 +21,7 @@ function mount(): ReturnType<typeof userEvent.setup> {
   );
   return userEvent.setup();
 }
-it('switches connections, context, schema, table list and forced prod safe mode', async () => {
+it('connects saved profiles from the rail and forces safe mode for prod', async () => {
   const user = mount();
   const safe = screen.getByRole('button', { name: 'Safe mode' });
   expect(safe).toHaveAttribute('aria-pressed', 'false');
@@ -24,35 +29,27 @@ it('switches connections, context, schema, table list and forced prod safe mode'
   expect(safe).toHaveAttribute('aria-pressed', 'true');
   await user.click(safe);
   expect(safe).toHaveAttribute('aria-pressed', 'false');
+  const context = screen.getByLabelText('Connection context');
+  expect(context).toHaveTextContent('No connection › orders');
   await user.click(
-    screen.getByRole('button', { name: 'Switch to analytics-prod' }),
+    await screen.findByRole('button', { name: 'Switch to analytics-prod' }),
   );
-  expect(screen.getByLabelText('Connection context')).toHaveTextContent(
-    'analytics-prod › analytics › public › daily_revenue',
-  );
-  expect(screen.getByLabelText('Connection context')).toHaveTextContent(
-    'PostgreSQL 15.8',
-  );
+  expect(openSession).toHaveBeenCalledWith('id-analytics-prod');
+  expect(context).toHaveTextContent('analytics-prod › orders › public');
+  expect(context).toHaveTextContent('Connected · PostgreSQL 17.2');
   expect(safe).toHaveAttribute('aria-pressed', 'true');
   await user.click(safe);
   expect(safe).toHaveAttribute('aria-pressed', 'true');
-  expect(screen.getByRole('button', { name: /cohorts 18K/ })).toBeVisible();
-  await user.click(screen.getByRole('button', { name: 'Switch to events' }));
-  expect(screen.getByLabelText('Connection context')).toHaveTextContent(
-    'ClickHouse 24.8',
-  );
-  expect(screen.getByRole('button', { name: /sessions 920K/ })).toBeVisible();
   await user.click(
-    screen.getByRole('button', { name: 'Switch to app.sqlite' }),
+    screen.getByRole('button', { name: 'Switch to events-dev' }),
   );
-  expect(screen.getByLabelText('Connection context')).toHaveTextContent(
-    'app.sqlite › main › main › users',
-  );
+  expect(context).toHaveTextContent('events-dev › orders');
+  expect(safe).toHaveAttribute('aria-pressed', 'false');
   await user.selectOptions(
     screen.getByRole('combobox', { name: 'Schema' }),
-    'temp',
+    'archive',
   );
-  expect(screen.getByLabelText('Connection context')).toHaveTextContent('temp');
+  expect(context).toHaveTextContent('archive');
 });
 it('switches sidebar segments, searches objects and expands all disclosure sections', async () => {
   const user = mount();

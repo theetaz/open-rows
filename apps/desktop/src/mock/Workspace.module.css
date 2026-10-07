@@ -79,7 +79,16 @@
   background: var(--or-control-fill);
 }
 .health {
+  color: var(--or-tertiary);
+}
+.health[data-state='connected'] {
   color: var(--or-success-fg);
+}
+.health[data-state='connecting'] {
+  color: var(--or-info-fg);
+}
+.health[data-state='failed'] {
+  color: var(--or-danger-fg);
 }
 .body {
   display: flex;

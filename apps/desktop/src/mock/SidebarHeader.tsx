@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useState } from 'react';
-import { EnvBadge, Icon } from '@openrows/ui';
-import type { Connection } from './data/connections';
-import { SidebarMenu } from './SidebarMenu';
-import { useSidebarMenu } from './useSidebarMenu';
+import type { ReactNode } from 'react';
+import { Badge, Icon } from '@openrows/ui';
+import { SidebarMenu } from '../shell/SidebarMenu';
+import { useSidebarMenu } from '../shell/useSidebarMenu';
 import styles from './SidebarHeader.module.css';
 type DatabaseProps = {
   database: string;
@@ -12,72 +11,20 @@ type DatabaseProps = {
   onCloseDatabase: (name: string) => void;
   onSwitcher: () => void;
 };
-/** Workspace identity and database navigation above the object browser. */
+/** Real connection header (children) above the sample database navigation. */
 export function SidebarHeader(
-  props: DatabaseProps & { connection: Connection },
+  props: DatabaseProps & { children: ReactNode },
 ): React.JSX.Element {
   return (
     <header className={styles.header}>
-      <div className={styles.identity}>
-        <strong title={props.connection.name}>{props.connection.name}</strong>
-        <EnvBadge environment={props.connection.environment} />
-        <ConnectionMenu />
+      {props.children}
+      <div className={styles.sample}>
+        <DatabaseSelector {...props} />
+        <Badge tone="info" title="Sample objects until schema browsing lands">
+          Sample data
+        </Badge>
       </div>
-      <DatabaseSelector {...props} />
     </header>
-  );
-}
-function ConnectionMenu(): React.JSX.Element {
-  const { opener, id, open, close, toggle } = useSidebarMenu();
-  const [pressed, setPressed] = useState('');
-  return (
-    <>
-      <button
-        type="button"
-        className={styles.menuButton}
-        ref={opener}
-        aria-label="Workspace menu"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-controls={open ? id : undefined}
-        aria-pressed={open}
-        onClick={toggle}
-      >
-        ⋯
-      </button>
-      {open && (
-        <SidebarMenu
-          id={id}
-          label="Workspace actions"
-          opener={opener}
-          onClose={close}
-        >
-          <ConnectionActions pressed={pressed} onPress={setPressed} />
-        </SidebarMenu>
-      )}
-    </>
-  );
-}
-function ConnectionActions(props: {
-  pressed: string;
-  onPress: (name: string) => void;
-}): React.JSX.Element {
-  return (
-    <>
-      {['Connection settings…', 'Duplicate', 'Disconnect'].map((name) => (
-        <button
-          key={name}
-          type="button"
-          role="menuitemcheckbox"
-          aria-checked={props.pressed === name}
-          onClick={() => {
-            props.onPress(name);
-          }}
-        >
-          {name}
-        </button>
-      ))}
-    </>
   );
 }
 function DatabaseSelector(props: DatabaseProps): React.JSX.Element {

@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs';
 import { expect, it } from 'vitest';
 import { dark, light, geometry } from '@openrows/ui/tokens';
 function css(file: string): string {
-  return readFileSync(`apps/desktop/src/mock/${file}.module.css`, 'utf8');
+  const folder = file === 'Rail' ? 'features/connections' : 'mock';
+  return readFileSync(`apps/desktop/src/${folder}/${file}.module.css`, 'utf8');
 }
 it('workspace surfaces are borderless and use ordered theme tones with concentric radii', () => {
   for (const [file, selector] of [

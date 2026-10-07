@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 import { lazy, Suspense } from 'react';
-import { connections } from './data/connections';
 import { SplitPanel } from '@openrows/ui';
 import type { useWorkspace } from './useWorkspace';
 import type { OrderRow } from './data/rows';
 import { inspectorRange, sidebarRange } from './layout';
-import { ConnectionRail } from './ConnectionRail';
+import { ConnectionHeader, ConnectionRail } from '../features/connections';
+import type { Connections } from '../features/connections';
 import { WorkspaceSidebar } from './WorkspaceSidebar';
 const WorkspaceInspector = lazy(() =>
   import('./WorkspaceInspector').then((module) => ({
@@ -15,6 +15,7 @@ const WorkspaceInspector = lazy(() =>
 import { TableContent } from './TableContent';
 import styles from './Workspace.module.css';
 type Props = {
+  connections: Connections;
   state: ReturnType<typeof useWorkspace>;
   selection: { index: number; row: OrderRow };
   panel: string;
@@ -30,6 +31,7 @@ type Props = {
 /** Database-specific documents and object browser inside the preview shell. */
 export function WorkspaceBody(props: Props): React.JSX.Element {
   const {
+    connections,
     state,
     selection,
     panel,
@@ -44,11 +46,7 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
   } = props;
   return (
     <div className={styles.body}>
-      <ConnectionRail
-        selected={state.connection}
-        onSelect={state.selectConnection}
-        onGallery={onGallery}
-      />
+      <Rail connections={connections} onGallery={onGallery} />
       <SplitPanel
         label="Sidebar"
         storageKey="openrows.mock.sidebar"
@@ -57,7 +55,7 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
         edge="right"
       >
         <WorkspaceSidebar
-          connection={connections[state.connection] ?? connections[0]}
+          header={<ConnectionHeader connections={connections} />}
           opened={state.opened}
           onDatabase={state.openDatabase}
           onCloseDatabase={state.closeDatabase}
@@ -102,5 +100,24 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
         </Suspense>
       </SplitPanel>
     </div>
+  );
+}
+
+function Rail(props: {
+  connections: Connections;
+  onGallery: () => void;
+}): React.JSX.Element {
+  const { connections } = props;
+  return (
+    <ConnectionRail
+      profiles={connections.profiles}
+      activeId={connections.active?.id}
+      statusOf={connections.statusOf}
+      onSelect={connections.select}
+      onNew={() => {
+        connections.setSheet({ kind: 'new' });
+      }}
+      onGallery={props.onGallery}
+    />
   );
 }

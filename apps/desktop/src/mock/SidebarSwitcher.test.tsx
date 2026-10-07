@@ -3,6 +3,10 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
 import { Workspace } from './Workspace';
+
+vi.mock('@openrows/ipc', async () =>
+  (await import('../test/ipcStub')).ipcStub(),
+);
 afterEach(() => {
   vi.useRealTimers();
 });

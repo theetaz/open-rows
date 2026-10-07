@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useCallback, useState } from 'react';
-import { connections } from './data/connections';
+import type { Connections } from '../features/connections';
 import { rows } from './data/rows';
 import type { OrderRow } from './data/rows';
 import { useWorkspace } from './useWorkspace';
@@ -11,6 +11,7 @@ import type { PaletteMode } from './WorkspacePalettes';
 export function useWorkspaceController(
   onGallery: () => void,
   enabled: boolean,
+  connections: Connections,
 ): WorkspaceController {
   const state = useWorkspace();
   const compact = useCompact();
@@ -32,9 +33,9 @@ export function useWorkspaceController(
   const addQuery = useCallback(() => {
     addTab();
   }, [addTab]);
-  const connection = connections[state.connection];
+  const prod = connections.active?.env.kind === 'prod';
   const toggleSafe = (): void => {
-    if (connection?.environment !== 'prod') setSafe(!safe);
+    if (!prod) setSafe(!safe);
   };
   const refresh = (): void => {
     setRefreshes((count) => count + 1);
@@ -54,14 +55,15 @@ export function useWorkspaceController(
   useWorkspaceKeys({
     enabled: enabled && !mode,
     command,
-    connection: state.selectConnection,
+    connection: connections.selectIndex,
   });
   return {
     state,
     compact,
     inspector,
     sidebar,
-    safe,
+    safe: safe || prod,
+    prod,
     panel,
     setPanel,
     mode,
@@ -71,7 +73,6 @@ export function useWorkspaceController(
     onSelect,
     toggleSidebar,
     addQuery,
-    connection,
     toggleSafe,
     refresh,
     command,
@@ -83,6 +84,7 @@ type WorkspaceController = {
   inspector: ReturnType<typeof useInspectorOpen>;
   sidebar: boolean;
   safe: boolean;
+  prod: boolean;
   panel: string;
   setPanel: (panel: string) => void;
   mode: PaletteMode | null;
@@ -92,7 +94,6 @@ type WorkspaceController = {
   onSelect: (index: number, row: OrderRow) => void;
   toggleSidebar: () => void;
   addQuery: () => void;
-  connection: (typeof connections)[number] | undefined;
   toggleSafe: () => void;
   refresh: () => void;
   command: (id: string) => void;

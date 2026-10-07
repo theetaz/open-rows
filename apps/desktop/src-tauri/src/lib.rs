@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! `OpenRows` native shell and its generated IPC contract.
 mod commands;
+mod connections;
 mod editor_report;
 mod grid_report;
 #[cfg(target_os = "macos")]
@@ -11,13 +12,30 @@ mod startup;
 mod startup_report;
 
 fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
+    use connections::{profiles, sessions};
     tauri_specta::Builder::new()
         .commands(tauri_specta::collect_commands![
             commands::app_info,
             spike::spike_finish,
             spike::spike_start,
-            spike::spike_progress
+            spike::spike_progress,
+            profiles::profiles_list,
+            profiles::profiles_search,
+            profiles::profile_get,
+            profiles::profile_create,
+            profiles::profile_update,
+            profiles::profile_duplicate,
+            profiles::profile_delete,
+            profiles::profile_parse_url,
+            sessions::connection_test,
+            sessions::session_open,
+            sessions::session_close
         ])
+        .events(tauri_specta::collect_events![sessions::SessionStateChanged])
+        .constant(
+            "DEFAULT_CUSTOM_ENV_COLOR",
+            openrows_store::profile::EnvTag::new(openrows_store::profile::EnvKind::Custom).color,
+        )
         .typ::<results::WindowRequest>()
         .typ::<results::ResultError>()
 }
@@ -41,7 +59,8 @@ pub fn run() -> Result<(), tauri::Error> {
     startup_report::initialize();
     startup_report::record(startup_report::Phase::BuilderStart);
     let builder = spike::configure(tauri::Builder::default())?;
-    let controls = command_builder().invoke_handler();
+    let specta = command_builder();
+    let controls = specta.invoke_handler();
     let binary: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool =
         tauri::generate_handler![results::result_window];
     startup_report::instrument(builder)
@@ -52,7 +71,11 @@ pub fn run() -> Result<(), tauri::Error> {
                 controls(invoke)
             }
         })
-        .setup(startup::install)
+        .setup(move |app| {
+            specta.mount_events(app);
+            connections::install(app)?;
+            startup::install(app)
+        })
         .run(tauri::generate_context!())
 }
 

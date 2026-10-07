@@ -7,6 +7,10 @@ import { Workspace } from './Workspace';
 import { isCompact } from './layout';
 import { shortcut } from './shortcuts';
 
+vi.mock('@openrows/ipc', async () =>
+  (await import('../test/ipcStub')).ipcStub(),
+);
+
 beforeEach(() => {
   vi.stubGlobal('innerWidth', 1280);
 });
@@ -55,8 +59,9 @@ it('handles the exact shortcut modifiers and ignores composing or shifted input'
     expect(shortcut({ ...event, key: String(number) })).toBe(number - 1);
   expect(shortcut({ ...event, key: '5' })).toBeUndefined();
 });
-it('dispatches panel, tab and all four connection shortcuts', () => {
+it('dispatches panel, tab and saved-connection shortcuts', async () => {
   mount();
+  await screen.findByRole('button', { name: 'Switch to orders-local' });
   key('s', { ctrlKey: true });
   expect(
     screen.getByRole('button', { name: 'Toggle sidebar (⌃⌘S)' }),
@@ -73,16 +78,20 @@ it('dispatches panel, tab and all four connection shortcuts', () => {
   key('w');
   expect(screen.queryByRole('tab', { name: /SQL Query 1/ })).toBeNull();
   for (const [index, name] of [
-    'orders-staging',
+    'orders-local',
     'analytics-prod',
-    'events',
-    'app.sqlite',
+    'events-dev',
   ].entries()) {
     key(String(index + 1));
     expect(
       screen.getByRole('button', { name: `Switch to ${name}` }),
     ).toHaveAttribute('aria-pressed', 'true');
   }
+  key('4');
+  expect(
+    screen.getByRole('button', { name: 'Switch to events-dev' }),
+  ).toHaveAttribute('aria-pressed', 'true');
+  await screen.findAllByText('Connected · PostgreSQL 17.2');
 });
 it('auto-collapses at 1099 and reopens an overlay at 900 without shrinking content', async () => {
   const user = userEvent.setup();

@@ -2,22 +2,34 @@
 import { readFileSync } from 'node:fs';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
-import { ConnectionRail } from './ConnectionRail';
+import { ConnectionRail } from '../features/connections';
+import { profile } from '../test/ipcStub';
 import { Workspace } from './Workspace';
 import { ThemeProvider } from '@openrows/ui';
 import { geometry, material } from '@openrows/ui/tokens';
+
+vi.mock('@openrows/ipc', async () =>
+  (await import('../test/ipcStub')).ipcStub(),
+);
 afterEach(() => {
   vi.useRealTimers();
 });
 it('rail indicator responds to reduced motion without database disclosures', () => {
-  const props = { selected: 0, onSelect: vi.fn(), onGallery: vi.fn() };
+  const props = {
+    profiles: [profile('orders'), profile('events')],
+    activeId: 'id-orders',
+    statusOf: () => ({ state: 'disconnected' as const }),
+    onSelect: vi.fn(),
+    onNew: vi.fn(),
+    onGallery: vi.fn(),
+  };
   const { rerender } = render(<ConnectionRail {...props} />);
   const item = screen
-    .getByRole('button', { name: 'Switch to orders-staging' })
+    .getByRole('button', { name: 'Switch to orders' })
     .querySelector('[data-state]');
   expect(item).toHaveAttribute('data-state', 'selected');
   expect(item).toHaveAttribute('data-motion', 'full');
-  rerender(<ConnectionRail {...props} selected={1} />);
+  rerender(<ConnectionRail {...props} activeId="id-events" />);
   expect(item).toHaveAttribute('data-state', 'idle');
   vi.stubGlobal(
     'matchMedia',
@@ -31,7 +43,10 @@ it('rail indicator responds to reduced motion without database disclosures', () 
   expect(item).toHaveAttribute('data-motion', 'reduced');
 });
 it('uses token durations/easing and removes rail/popover animations under reduced motion', () => {
-  const rail = readFileSync('apps/desktop/src/mock/Rail.module.css', 'utf8');
+  const rail = readFileSync(
+    'apps/desktop/src/features/connections/Rail.module.css',
+    'utf8',
+  );
   const palette = readFileSync(
     'packages/ui/src/components/Palette.module.css',
     'utf8',

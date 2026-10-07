@@ -15,7 +15,6 @@ const glyphs: Record<DatabaseObject['kind'], string> = {
 /** Mock catalog adapters for the shared palette. */
 export function WorkspacePalettes(props: {
   mode: PaletteMode;
-  connection: number;
   catalog: Database;
   opened: readonly string[];
   onDatabase: (name: string) => void;
@@ -30,7 +29,7 @@ export function WorkspacePalettes(props: {
         title="Switch database"
         onClose={props.onClose}
         onChoose={props.onDatabase}
-        items={(databases[props.connection] ?? [])
+        items={databases
           .filter((database) => system || !database.system)
           .map((database) => ({
             id: database.name,

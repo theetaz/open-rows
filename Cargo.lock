@@ -3160,8 +3160,16 @@ checksum = "d6790f58c7ff633d8771f42965289203411a5e5c68388703c06e14f24770b41e"
 name = "openrows-app"
 version = "0.1.0"
 dependencies = [
+ "arrow-array",
+ "arrow-schema",
  "objc2-app-kit",
+ "openrows-core",
+ "openrows-driver-api",
+ "openrows-driver-postgres",
  "openrows-results",
+ "openrows-secrets",
+ "openrows-store",
+ "openrows-types",
  "rustix",
  "serde",
  "serde_json",
@@ -3170,7 +3178,9 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tauri-specta",
+ "tempfile",
  "thiserror 2.0.21",
+ "tokio",
 ]
 
 [[package]]

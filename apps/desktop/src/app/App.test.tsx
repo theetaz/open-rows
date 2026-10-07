@@ -4,7 +4,9 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import { emitTo } from '@tauri-apps/api/event';
 import { App } from './App';
 
-vi.mock('@openrows/ipc', () => ({ getAppInfo: () => new Promise(() => {}) }));
+vi.mock('@openrows/ipc', async () =>
+  (await import('../test/ipcStub')).ipcStub(),
+);
 vi.mock('@tauri-apps/api/event', () => ({ emitTo: vi.fn() }));
 
 beforeEach(() => {

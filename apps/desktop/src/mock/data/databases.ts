@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { connections, objectSections } from './connections';
+import { objectSections, sampleCatalog } from './connections';
 /** Hard-coded catalog objects; no server introspection. */
 export type DatabaseObject = {
   name: string;
@@ -47,45 +47,40 @@ const system = ['postgres', 'template1'].map((name): Database => ({
   system: true,
   objects: [],
 }));
-export const databases: readonly (readonly Database[])[] = connections.map(
-  (connection, index) => {
-    const schema = connection.schemas[0] ?? 'public';
-    const primary: Database = {
-      name: connection.database,
-      schemas: connection.schemas,
-      objects: [
-        ...connection.tables.map(([name, count]): DatabaseObject => ({
-          name,
-          count,
-          schema,
-          kind: 'Tables',
-        })),
-        ...(index === 0
-          ? objectSections.flatMap((section) =>
-              section.items.map((name): DatabaseObject => ({
-                name,
-                schema,
-                kind: section.name,
-              })),
-            )
-          : []),
-        {
-          name: 'session_notes',
-          schema: connection.schemas[1] ?? schema,
-          kind: 'Tables',
-          count: '16',
-        },
-      ],
-    };
-    return index === 0
-      ? [primary, archive, scratch, ...system]
-      : [primary, scratch];
-  },
-);
-/** Validated catalog lookup; callers supply a known workspace index. */
-export function databaseFor(connection: number, name: string): Database {
-  const catalog = databases[connection] ?? databases[0] ?? [];
-  return (
-    catalog.find((database) => database.name === name) ?? catalog[0] ?? scratch
-  );
+const schema = sampleCatalog.schemas[0] ?? 'public';
+const primary: Database = {
+  name: sampleCatalog.database,
+  schemas: sampleCatalog.schemas,
+  objects: [
+    ...sampleCatalog.tables.map(([name, count]): DatabaseObject => ({
+      name,
+      count,
+      schema,
+      kind: 'Tables',
+    })),
+    ...objectSections.flatMap((section) =>
+      section.items.map((name): DatabaseObject => ({
+        name,
+        schema,
+        kind: section.name,
+      })),
+    ),
+    {
+      name: 'session_notes',
+      schema: sampleCatalog.schemas[1] ?? schema,
+      kind: 'Tables',
+      count: '16',
+    },
+  ],
+};
+/** The sample workspace catalog: primary, two extra and two system databases. */
+export const databases: readonly Database[] = [
+  primary,
+  archive,
+  scratch,
+  ...system,
+];
+/** Validated catalog lookup; unknown names fall back to the primary database. */
+export function databaseFor(name: string): Database {
+  return databases.find((database) => database.name === name) ?? primary;
 }

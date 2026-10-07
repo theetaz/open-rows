@@ -6,6 +6,10 @@ import { ThemeProvider } from '@openrows/ui';
 import { Workspace } from './Workspace';
 import { assistantSql } from './data/content';
 
+vi.mock('@openrows/ipc', async () =>
+  (await import('../test/ipcStub')).ipcStub(),
+);
+
 beforeEach(() => {
   vi.stubGlobal('innerWidth', 1280);
 });

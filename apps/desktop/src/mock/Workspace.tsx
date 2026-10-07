@@ -8,8 +8,9 @@ const WorkspacePalettes = lazy(() =>
   })),
 );
 import { useWorkspaceController } from './useWorkspaceController';
+import { ConnectionSheets, useConnections } from '../features/connections';
 import styles from './Workspace.module.css';
-/** Hard-coded connection workspace; all commands mutate local preview state only. */
+/** Real connections in the rail and sidebar header; sample catalog, tabs and rows elsewhere. */
 export function Workspace({
   onGallery,
   enabled = true,
@@ -17,13 +18,15 @@ export function Workspace({
   onGallery: () => void;
   enabled?: boolean;
 }): React.JSX.Element {
-  const controller = useWorkspaceController(onGallery, enabled);
+  const connections = useConnections();
+  const controller = useWorkspaceController(onGallery, enabled, connections);
   const {
     state,
     compact,
     inspector,
     sidebar,
     safe,
+    prod,
     panel,
     setPanel,
     setMode,
@@ -32,15 +35,14 @@ export function Workspace({
     onSelect,
     toggleSidebar,
     addQuery,
-    connection,
     toggleSafe,
     refresh,
   } = controller;
-  if (!enabled || !connection || !selection.row) return <></>;
+  if (!enabled || !selection.row) return <></>;
   return (
     <div className={styles.workspace}>
       <WorkspaceToolbar
-        connection={connection}
+        connections={connections}
         table={state.table}
         schema={state.schema}
         database={state.database}
@@ -51,7 +53,8 @@ export function Workspace({
           setMode('commands');
         }}
         onRefresh={refresh}
-        safe={safe || connection.environment === 'prod'}
+        safe={safe}
+        prod={prod}
         onSafe={toggleSafe}
         sidebar={sidebar}
         inspector={inspector.open}
@@ -60,6 +63,7 @@ export function Workspace({
         onQuery={addQuery}
       />
       <WorkspaceBody
+        connections={connections}
         state={state}
         selection={{ index: selection.index, row: selection.row }}
         panel={panel}
@@ -78,6 +82,7 @@ export function Workspace({
         {refreshes ? `Mock catalog refreshed (${String(refreshes)})` : ''}
       </span>
       <WorkspaceOverlay controller={controller} />
+      <ConnectionSheets connections={connections} />
     </div>
   );
 }
@@ -94,7 +99,6 @@ function WorkspaceOverlay({
       <WorkspacePalettes
         key={mode}
         mode={mode}
-        connection={state.connection}
         catalog={state.catalog}
         opened={state.opened}
         onClose={() => {

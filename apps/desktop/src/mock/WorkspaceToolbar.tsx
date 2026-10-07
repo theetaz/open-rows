@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-import { Button, EnvBadge, Icon, IconButton, ToolbarGroup } from '@openrows/ui';
-import type { Connection } from './data/connections';
+import { Button, Icon, IconButton, ToolbarGroup } from '@openrows/ui';
+import { EnvironmentBadge, statusLabel } from '../features/connections';
+import type { Connections } from '../features/connections';
 import styles from './Workspace.module.css';
 
 type Props = {
-  connection: Connection;
+  connections: Connections;
   table: string;
   database: string;
   onDatabase: () => void;
@@ -12,6 +13,7 @@ type Props = {
   onRefresh: () => void;
   schema: string;
   safe: boolean;
+  prod: boolean;
   onSafe: () => void;
   sidebar: boolean;
   inspector: boolean;
@@ -51,14 +53,14 @@ export function WorkspaceToolbar(props: Props): React.JSX.Element {
         className={styles.safe}
         aria-label="Safe mode"
         aria-pressed={props.safe}
-        aria-disabled={props.connection.environment === 'prod'}
+        aria-disabled={props.prod}
         onClick={props.onSafe}
       >
         <span aria-hidden="true">♢</span>{' '}
         {props.safe ? 'Safe mode' : 'Safe mode off'}
       </Button>
       <Context
-        connection={props.connection}
+        connections={props.connections}
         table={props.table}
         schema={props.schema}
         database={props.database}
@@ -80,21 +82,25 @@ export function WorkspaceToolbar(props: Props): React.JSX.Element {
   );
 }
 function Context({
-  connection,
+  connections,
   table,
   schema,
   database,
   onDatabase,
 }: Pick<
   Props,
-  'connection' | 'table' | 'schema' | 'database' | 'onDatabase'
+  'connections' | 'table' | 'schema' | 'database' | 'onDatabase'
 >): React.JSX.Element {
-  const address = `${connection.name} › ${database} › ${schema} › ${table}`;
+  const { active } = connections;
+  const name = active?.name ?? 'No connection';
+  const status = active ? connections.statusOf(active.id) : undefined;
+  const engine = status ? statusLabel(status) : 'Not connected';
+  const address = `${name} › ${database} › ${schema} › ${table}`;
   return (
     <div className={styles.context} aria-label="Connection context">
-      <EnvBadge environment={connection.environment} />
+      {active && <EnvironmentBadge env={active.env} />}
       <span className={styles.address} title={address}>
-        <span>{connection.name} › </span>
+        <span>{name} › </span>
         <button
           className={styles.databaseSegment}
           type="button"
@@ -108,14 +114,15 @@ function Context({
           › {schema} › {table}
         </span>
       </span>
-      <span
-        className={styles.engine}
-        title={`${connection.engine} · ${connection.route} · 12 ms`}
-      >
-        <span aria-hidden="true" className={styles.health}>
+      <span className={styles.engine} title={engine}>
+        <span
+          aria-hidden="true"
+          className={styles.health}
+          data-state={status?.state ?? 'disconnected'}
+        >
           ●
         </span>{' '}
-        {connection.engine} · {connection.route} · 12 ms
+        {engine}
       </span>
     </div>
   );

@@ -13,6 +13,10 @@ import { Workspace } from './Workspace';
 import { DataGrid } from './DataGrid';
 import type { OrderRow } from './data/rows';
 
+vi.mock('@openrows/ipc', async () =>
+  (await import('../test/ipcStub')).ipcStub(),
+);
+
 async function mount(): Promise<ReturnType<typeof userEvent.setup>> {
   vi.stubGlobal('innerWidth', 1280);
   await act(async () => {
@@ -43,10 +47,14 @@ it('closed inspector, review, palettes, menus and tooltips leave no content DOM'
   await screen.findByRole('dialog', { name: 'Review & Commit' });
   await user.click(screen.getByRole('button', { name: 'Cancel' }));
   expect(document.querySelector('dialog')).toBeNull();
-  await user.click(screen.getByRole('button', { name: 'Workspace menu' }));
+  await user.click(
+    screen.getByRole('button', { name: 'Opened databases (orders)' }),
+  );
   await user.keyboard('{Escape}');
   expect(document.querySelector('[role="menu"]')).toBeNull();
-  const tile = screen.getByRole('button', { name: 'Switch to events' });
+  const tile = await screen.findByRole('button', {
+    name: 'Switch to events-dev',
+  });
   await user.hover(tile);
   expect(screen.getByRole('tooltip')).toBeVisible();
   await user.unhover(tile);

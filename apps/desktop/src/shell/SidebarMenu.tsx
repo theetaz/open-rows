@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useRef } from 'react';
 import type { ReactNode, RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { GlassPanel } from '@openrows/ui';
-import styles from './SidebarHeader.module.css';
+import styles from './SidebarMenu.module.css';
 type Props = {
   id: string;
   label: string;
