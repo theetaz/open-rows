@@ -8,6 +8,7 @@ export default tseslint.config(
     ignores: [
       '**/generated/**',
       '**/dist/**',
+      '**/target/**',
       '**/node_modules/**',
       '**/gen/**',
     ],
