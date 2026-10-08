@@ -63,7 +63,7 @@ open-rows/
 | `sccache` (optional) | Compiler cache; set `RUSTC_WRAPPER=sccache`; sandbox behaviour in §2.2 |
 | `scripts/git-hooks` | Git hooks enabled by `just setup`; currently `commit-msg` |
 
-See [CONTRIBUTING.md §1](../CONTRIBUTING.md#1-first-time-setup) for installation and optional shared `CARGO_TARGET_DIR` setup. On macOS, Xcode Command Line Tools are required. Linux builds need the [Tauri system prerequisites](https://tauri.app/start/prerequisites/). Docker is optional: `just test-pg [version]` runs the PostgreSQL integration tests in a throwaway `postgres:<version>-alpine` container bound to 127.0.0.1 with TLS on (a throwaway CA, server and client certificates from `scripts/test-pg-certs.sh`, which needs `openssl`), removes the container and certificates on exit, and skips with exit 0 when Docker is unavailable. Docker (Docker Desktop on macOS) also runs the OpenSSH container matrix of `openrows-net`; those tests skip when Docker is unavailable, and `just test-ssh` fails instead of skipping. `ssh-keygen`, `ssh-agent` and `ssh-add` (OpenSSH client tools) generate test keys at test time. CI tooling is described in §4.
+See [CONTRIBUTING.md §1](../CONTRIBUTING.md#1-first-time-setup) for installation and optional shared `CARGO_TARGET_DIR` setup. On macOS, Xcode Command Line Tools are required. Linux builds need the [Tauri system prerequisites](https://tauri.app/start/prerequisites/). Docker is optional: `just test-pg [version]` runs the PostgreSQL integration tests in a throwaway `postgres:<version>-alpine` container bound to 127.0.0.1 with TLS on (a throwaway CA, server and client certificates from `scripts/test-pg-certs.sh`, which needs `openssl`), removes the container and certificates on exit, and skips with exit 0 when Docker is unavailable. `just test-mysql [images…]` does the same for the MySQL/MariaDB driver (default `mysql:8.4` then `mariadb:11.4`, bound to 127.0.0.1, TLS from the images' auto-generated certificates); SQLite driver tests use temporary files and run in the normal `just test`. Docker (Docker Desktop on macOS) also runs the OpenSSH container matrix of `openrows-net`; those tests skip when Docker is unavailable, and `just test-ssh` fails instead of skipping. `ssh-keygen`, `ssh-agent` and `ssh-add` (OpenSSH client tools) generate test keys at test time. CI tooling is described in §4.
 
 ### 2.1 Common commands
 
@@ -95,6 +95,8 @@ just bench-test     # synthetic benchmark tests, no GUI
 just script-test    # sccache guard tests with a stub sccache (§2.2)
 just bench-pg-decode # Criterion decode_pg_* + gates (>= 1 M cells/s/core, first batch <= 5 ms)
 just test-pg 17     # PostgreSQL integration tests in a throwaway container (skips without Docker)
+just test-mysql     # MySQL 8.4 and MariaDB 11.4 integration tests in throwaway containers (skips without Docker)
+just test-mysql mariadb:10.11 # any mysql:<tag> / mariadb:<tag> images, one after another
 pnpm lint           # type-aware ESLint, complexity/size limits, IPC boundary
 pnpm format:check   # frontend/config formatting
 pnpm build          # production frontend bundle (no native window)
@@ -210,7 +212,7 @@ Pull requests and pushes to feature branches do **not** trigger CI. Steps:
 | Binding freshness | Rust `bindings_are_fresh` test (same registry as the app) |
 | Format | `cargo fmt --all --check` |
 | Lint | `cargo clippy --workspace --all-targets --locked -- -D warnings` |
-| Tests | `cargo nextest run --workspace --locked -E 'not binary(ssh_container)'`; container-backed driver tests are `#[ignore]`d there (reported as skipped) and run locally with `just test-pg`; the `openrows-net` SSH container matrix is filtered out in CI and runs locally in `just check` / `just test-ssh` |
+| Tests | `cargo nextest run --workspace --locked -E 'not binary(ssh_container)'`; container-backed driver tests are `#[ignore]`d there (reported as skipped) and run locally with `just test-pg` and `just test-mysql`; the `openrows-net` SSH container matrix is filtered out in CI and runs locally in `just check` / `just test-ssh` |
 
 Every gate, including those CI skips (cargo-deny, cargo-machete, hygiene, UI and benchmark checks), runs locally with `just check` and is mandatory before pushing a branch or opening a PR; the acceptance report carries the evidence. Actions are pinned to full commit SHAs, the workflow has read-only permissions, and checkout does not persist credentials. A red run on `main` is fixed immediately with a follow-up PR. PR-triggered CI and branch protection return with the full pipeline (§4.2) once the project has outside contributors.
 
