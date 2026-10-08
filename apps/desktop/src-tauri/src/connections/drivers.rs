@@ -3,11 +3,13 @@
 //! command resolves a profile's engine here (docs/05 §2).
 use openrows_driver_api::Driver;
 use openrows_driver_postgres::PgDriver;
+use openrows_driver_sqlite::SqliteDriver;
 use openrows_store::profile::Driver as Engine;
 
 use super::error::{IpcError, IpcErrorKind};
 
 static POSTGRES: PgDriver = PgDriver;
+static SQLITE: SqliteDriver = SqliteDriver;
 
 /// The driver serving `engine`.
 ///
@@ -16,7 +18,8 @@ static POSTGRES: PgDriver = PgDriver;
 pub(crate) fn driver(engine: Engine) -> Result<&'static dyn Driver, IpcError> {
     match engine {
         Engine::Postgres => Ok(&POSTGRES),
-        other => Err(IpcError::new(
+        Engine::Sqlite => Ok(&SQLITE),
+        other @ (Engine::Mysql | Engine::Mariadb) => Err(IpcError::new(
             IpcErrorKind::Unsupported,
             format!("{} connections are not available yet", other.name()),
         )),

@@ -3315,6 +3315,7 @@ dependencies = [
  "openrows-core",
  "openrows-driver-api",
  "openrows-driver-postgres",
+ "openrows-driver-sqlite",
  "openrows-net",
  "openrows-results",
  "openrows-secrets",
@@ -3379,6 +3380,19 @@ dependencies = [
  "openrows-sql",
  "postgres-protocol",
  "thiserror 2.0.21",
+ "tokio",
+]
+
+[[package]]
+name = "openrows-driver-sqlite"
+version = "0.1.0"
+dependencies = [
+ "arrow-array",
+ "arrow-schema",
+ "openrows-driver-api",
+ "openrows-sql",
+ "rusqlite",
+ "tempfile",
  "tokio",
 ]
 

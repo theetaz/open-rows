@@ -28,7 +28,7 @@ export const commands = {
 	profileParseUrl: (url: string) => typedError<UrlDraft, IpcError>(__TAURI_INVOKE("profile_parse_url", { url })),
 	/**  Connect with the form values step by step, report, and disconnect. */
 	connectionTest: (profileId: string | null, input: ProfileInput) => typedError<TestReport, IpcError>(__TAURI_INVOKE("connection_test", { profileId, input })),
-	/**  Pick a key or certificate file; `null` when the panel is cancelled. */
+	/**  Pick a key, certificate or database file; `null` when the panel is cancelled. */
 	connectionPickFile: (kind: PickFileKind) => typedError<string | null, IpcError>(__TAURI_INVOKE("connection_pick_file", { kind })),
 	/**  Answer an open SSH prompt (host-key trust or challenge answers). */
 	sshPromptAnswer: (id: string, answer: SshPromptAnswer) => typedError<null, IpcError>(__TAURI_INVOKE("ssh_prompt_answer", { id, answer })),
@@ -518,7 +518,11 @@ export type PickFileKind =
 /**  TLS client certificate. */
 "clientCertificate" | 
 /**  TLS client key. */
-"clientKey";
+"clientKey" | 
+/**  An existing `SQLite` database file. */
+"sqliteDatabase" | 
+/**  Where to create a new `SQLite` database file (save panel). */
+"newSqliteDatabase";
 
 /**
  *  A saved connection without secrets; `hasPassword` says whether the
