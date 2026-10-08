@@ -24,7 +24,7 @@ export const commands = {
 	profileDuplicate: (id: string) => typedError<ProfileDto, IpcError>(__TAURI_INVOKE("profile_duplicate", { id })),
 	/**  Delete a connection and its stored secrets. */
 	profileDelete: (id: string) => typedError<null, IpcError>(__TAURI_INVOKE("profile_delete", { id })),
-	/**  Form fields from a pasted `postgres://` URL, without the password itself. */
+	/**  Form fields from a pasted connection URL, without the password itself. */
 	profileParseUrl: (url: string) => typedError<UrlDraft, IpcError>(__TAURI_INVOKE("profile_parse_url", { url })),
 	/**  Connect with the form values step by step, report, and disconnect. */
 	connectionTest: (profileId: string | null, input: ProfileInput) => typedError<TestReport, IpcError>(__TAURI_INVOKE("connection_test", { profileId, input })),
@@ -47,7 +47,8 @@ export const commands = {
 	/**
 	 *  Open a user session on `database` (the profile's database when `None`);
 	 *  state changes follow as events. `PostgreSQL` cannot switch databases on a
-	 *  connection, so every opened database has its own session.
+	 *  connection, so every opened database has its own session (every engine
+	 *  follows that model; a `SQLite` file has the one database `main`).
 	 */
 	sessionOpen: (profileId: string, database: string | null) => typedError<SessionOpened, IpcError>(__TAURI_INVOKE("session_open", { profileId, database })),
 	/**
@@ -187,7 +188,8 @@ export type CombinatorDto = "and" | "or";
 export type ConnectionOpened = {
 	/**
 	 *  The server, read on the connection's home database (the profile's
-	 *  database, else `postgres`); `server.database` names that database.
+	 *  database, else the driver's home database: `postgres`,
+	 *  `information_schema` or `main`); `server.database` names that database.
 	 */
 	server: ServerDto,
 	/**  The profile's database to open right away; `None` lets the user choose. */
@@ -252,6 +254,9 @@ export type EditorRun = {
 	samples: KeystrokeSample[],
 };
 
+/**  Database engine of a profile. */
+export type EngineDto = "postgres" | "mysql" | "mariadb" | "sqlite";
+
 /**  Environment tag as shown in the rail, header and toolbar. */
 export type EnvDto = {
 	kind: EnvKindDto,
@@ -288,6 +293,16 @@ export type ExecuteRequest = {
 	cursor: number | null,
 	/**  Token from a `confirmationRequired` reply the user accepted. */
 	confirmToken: string | null,
+};
+
+/**  The database file of a file engine, in the form and in saved profiles. */
+export type FileDto = {
+	/**  Absolute path. */
+	path: string,
+	/**  Open read-only (the engine refuses writes). */
+	readOnly: boolean,
+	/**  Create the file on connect when it is missing ("New file…"). */
+	create: boolean,
 };
 
 /**  How the picked file becomes `PostgreSQL` text input. */
@@ -491,7 +506,7 @@ export type PasswordInput =
 { kind: "clear" } | 
 /**  A typed password. */
 { kind: "set"; value: string } | 
-/**  The password inside a pasted `postgres://` URL. */
+/**  The password inside a pasted connection URL. */
 { kind: "fromUrl"; url: string };
 
 /**  Which file the connection form asks for. */
@@ -514,6 +529,9 @@ export type ProfileDto = {
 	name: string,
 	group: string | null,
 	env: EnvDto,
+	engine: EngineDto,
+	/**  The database file of a file engine. */
+	file: FileDto | null,
 	host: string,
 	port: number,
 	database: string | null,
@@ -530,6 +548,10 @@ export type ProfileInput = {
 	name: string,
 	group: string | null,
 	env: EnvInput,
+	/**  Absent in forms written before D-12: `PostgreSQL`. */
+	engine?: EngineDto,
+	/**  The database file of a file engine. */
+	file?: FileDto | null,
 	host: string,
 	port: number,
 	database: string | null,
@@ -623,11 +645,11 @@ export type SecretInput =
 
 /**  What the UI shows about the server after connecting. */
 export type ServerDto = {
-	/**  `PostgreSQL` or `CockroachDB`. */
+	/**  `PostgreSQL`, `CockroachDB`, `MySQL`, `MariaDB` or `SQLite`. */
 	product: string,
-	/**  `server_version`, e.g. `17.2`. */
+	/**  Server or library version, e.g. `17.2`. */
 	serverVersion: string,
-	/**  Hosting or extension flavour worth naming, e.g. `Neon`. */
+	/**  Hosting or compatible-product flavour worth naming, e.g. `Neon`. */
 	flavour: string | null,
 	/**  The database the session is connected to. */
 	database: string,
@@ -939,6 +961,8 @@ export type TriggerTimingDto = "before" | "after" | "insteadOf";
 
 /**  Form fields filled from a pasted URL; only says whether it had a password. */
 export type UrlDraft = {
+	engine: EngineDto,
+	file: FileDto | null,
 	host: string,
 	port: number,
 	database: string | null,

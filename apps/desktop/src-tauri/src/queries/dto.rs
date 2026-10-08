@@ -2,7 +2,7 @@
 //! Request and reply types of `query_execute` and `history_recent`.
 use openrows_core::safety::{SafetyPlan, Verdict};
 use openrows_core::script::{self, Scope};
-use openrows_sql::StatementKind;
+use openrows_sql::{Dialect, StatementKind};
 use openrows_store::{HistoryEntry, HistoryStatus};
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -33,8 +33,9 @@ pub(crate) struct ExecuteRequest {
 }
 
 impl ExecuteRequest {
-    /// Statement texts the request selects, in execution order.
-    pub(crate) fn statements(&self) -> Vec<String> {
+    /// Statement texts the request selects, in execution order, split with
+    /// the session engine's `dialect`.
+    pub(crate) fn statements(&self, dialect: Dialect) -> Vec<String> {
         let scope = match self.mode {
             RunMode::All | RunMode::Selection => Scope::All,
             RunMode::Current => {
@@ -42,7 +43,7 @@ impl ExecuteRequest {
                 Scope::AtCursor(byte_offset(&self.sql, cursor))
             }
         };
-        script::statements(&self.sql, scope)
+        script::statements(&self.sql, scope, dialect)
     }
 }
 
@@ -215,25 +216,30 @@ mod tests {
     #[test]
     fn modes_select_statements() {
         let sql = "SELECT 'ü';\nSELECT 2;\nSELECT 3";
-        assert_eq!(request(sql, RunMode::All, None).statements().len(), 3);
+        assert_eq!(
+            request(sql, RunMode::All, None)
+                .statements(Dialect::Postgres)
+                .len(),
+            3
+        );
         assert_eq!(
             request("SELECT 1; SELECT 2", RunMode::Selection, None)
-                .statements()
+                .statements(Dialect::Postgres)
                 .len(),
             2
         );
         let second = u32::try_from("SELECT 'ü';\nSEL".encode_utf16().count()).unwrap_or(0);
         assert_eq!(
-            request(sql, RunMode::Current, Some(second)).statements(),
+            request(sql, RunMode::Current, Some(second)).statements(Dialect::Postgres),
             vec!["SELECT 2".to_owned()]
         );
         assert_eq!(
-            request(sql, RunMode::Current, None).statements(),
+            request(sql, RunMode::Current, None).statements(Dialect::Postgres),
             vec!["SELECT 'ü'".to_owned()]
         );
         assert!(
             request(" -- nothing ", RunMode::All, None)
-                .statements()
+                .statements(Dialect::Postgres)
                 .is_empty()
         );
     }

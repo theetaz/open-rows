@@ -3,8 +3,8 @@
 use crate::simple::{self, TextRow};
 use crate::startup::PgConfig;
 use crate::wire::Wire;
-use openrows_driver_api::DriverError;
-use openrows_net::tls::TlsDetails;
+pub use openrows_driver_api::trace::TlsStatus;
+use openrows_driver_api::{DriverError, ServerSummary};
 
 /// One round trip; the extension probe makes flavour detection free.
 const INFO_SQL: &str = "SELECT current_database(), current_user, version(), \
@@ -37,20 +37,6 @@ impl Flavour {
     }
 }
 
-/// Whether and how the connection is encrypted.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum TlsStatus {
-    /// `sslmode=disable`, or `allow` and the server accepted plaintext.
-    Disabled,
-    /// A Unix-domain socket: TLS does not apply.
-    LocalSocket,
-    /// `sslmode=prefer` and the server does not offer TLS: plaintext. Show
-    /// this to the user.
-    PlaintextFallback,
-    /// Encrypted; the details name protocol, cipher and certificate.
-    Encrypted(TlsDetails),
-}
-
 /// What the server reported about itself right after connecting.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ServerInfo {
@@ -73,6 +59,26 @@ impl ServerInfo {
     #[must_use]
     pub fn product(&self) -> &'static str {
         self.flavour.product()
+    }
+
+    /// The engine-neutral summary the app shows: the hosting or extension
+    /// flavour is named only when it adds something to the product.
+    #[must_use]
+    pub fn summary(&self) -> ServerSummary {
+        let flavour = match self.flavour {
+            Flavour::Timescale => Some("TimescaleDB"),
+            Flavour::Supabase => Some("Supabase"),
+            Flavour::Neon => Some("Neon"),
+            Flavour::Postgres | Flavour::CockroachDb => None,
+        };
+        ServerSummary {
+            product: self.product().to_owned(),
+            version: self.server_version.clone(),
+            flavour: flavour.map(str::to_owned),
+            database: self.database.clone(),
+            user: self.user.clone(),
+            tls: self.tls.clone(),
+        }
     }
 }
 

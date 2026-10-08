@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 //! The on-disk connection profile model (docs/15 §3). Contains no secrets.
 
-use std::{collections::BTreeMap, fmt, str::FromStr};
+use std::{fmt, str::FromStr};
 
 use openrows_secrets::SecretKey;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{EnvKind, EnvTag, ProfileError, Safety, SshSettings, TlsSettings};
+use super::{
+    Driver, EnvKind, EnvTag, FileParams, ProfileError, Safety, ServerParams, SshSettings,
+    TlsSettings,
+};
 
 /// Newest profile file format version (`"openrows": 1`).
 pub const PROFILE_FORMAT: u32 = 1;
-
-/// Default `PostgreSQL` port.
-const DEFAULT_PORT: u16 = 5432;
 
 /// Stable UUID v7 identifier of a connection profile.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -51,15 +51,6 @@ impl FromStr for ProfileId {
                 reason: "not a UUID",
             })
     }
-}
-
-/// Database driver of a profile. Only `PostgreSQL` exists so far.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum Driver {
-    /// `PostgreSQL` and wire-compatible servers.
-    #[default]
-    Postgres,
 }
 
 /// libpq `sslmode` values (docs/12 §4.1).
@@ -106,41 +97,6 @@ impl TlsMode {
     }
 }
 
-/// `PostgreSQL` connection parameters (everything except secrets).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PgParams {
-    /// Host name, IP literal (IPv6 without brackets) or socket directory.
-    pub host: String,
-    /// TCP port.
-    pub port: u16,
-    /// Database name; the server defaults it to the user name when absent.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub database: Option<String>,
-    /// Login role.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub user: Option<String>,
-    /// `application_name` reported to the server.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub application_name: Option<String>,
-    /// Other libpq parameters (e.g. `connect_timeout`), passed through.
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub options: BTreeMap<String, String>,
-}
-
-impl Default for PgParams {
-    fn default() -> Self {
-        Self {
-            host: "localhost".to_owned(),
-            port: DEFAULT_PORT,
-            database: None,
-            user: None,
-            application_name: None,
-            options: BTreeMap::new(),
-        }
-    }
-}
-
 /// Where a secret is kept; the value itself never appears in the profile.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -177,15 +133,19 @@ pub struct ConnectionProfile {
     pub id: ProfileId,
     /// Display name.
     pub name: String,
-    /// Database driver.
+    /// Database engine (`postgres`, `mysql`, `mariadb`, `sqlite`).
     pub driver: Driver,
     /// Sidebar group; `None` means ungrouped.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub group: Option<String>,
     /// Environment tag.
     pub env_tag: EnvTag,
-    /// Connection parameters.
-    pub params: PgParams,
+    /// Server parameters; kept at their defaults (and ignored) for file engines.
+    #[serde(default)]
+    pub params: ServerParams,
+    /// The database file of a file engine (`SQLite`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub file: Option<FileParams>,
     /// Secret references (never values).
     #[serde(default)]
     pub secrets: SecretRefs,
@@ -199,23 +159,39 @@ pub struct ConnectionProfile {
 }
 
 impl ConnectionProfile {
-    /// A new `PostgreSQL` profile with a fresh id, env-based safety defaults
-    /// and a host-based TLS default.
+    /// A new server profile with a fresh id, env-based safety defaults and a
+    /// host-based TLS default.
     #[must_use]
-    pub fn new_postgres(name: &str, params: PgParams, env_tag: EnvTag) -> Self {
+    pub fn new(name: &str, driver: Driver, params: ServerParams, env_tag: EnvTag) -> Self {
         Self {
             openrows: PROFILE_FORMAT,
             id: ProfileId::new(),
             name: name.to_owned(),
-            driver: Driver::Postgres,
+            driver,
             group: None,
             safety: Safety::default_for(env_tag.kind),
             env_tag,
             tls: TlsSettings::new(TlsMode::default_for_host(&params.host)),
             ssh: None,
             params,
+            file: None,
             secrets: SecretRefs::default(),
         }
+    }
+
+    /// A new `PostgreSQL` profile (see [`ConnectionProfile::new`]).
+    #[must_use]
+    pub fn new_postgres(name: &str, params: ServerParams, env_tag: EnvTag) -> Self {
+        Self::new(name, Driver::Postgres, params, env_tag)
+    }
+
+    /// A new `SQLite` profile for `file`; TLS does not apply.
+    #[must_use]
+    pub fn new_file(name: &str, file: FileParams, env_tag: EnvTag) -> Self {
+        let mut profile = Self::new(name, Driver::Sqlite, ServerParams::default(), env_tag);
+        profile.tls = TlsSettings::new(TlsMode::Disable);
+        profile.file = Some(file);
+        profile
     }
 
     /// Change the environment tag; moving to prod turns on confirm-writes.
@@ -232,7 +208,8 @@ impl ConnectionProfile {
         SecretKey::password(&self.id.to_string())
     }
 
-    /// Check required fields.
+    /// Check required fields: a host and port for servers, a file path and
+    /// no SSH tunnel for file engines.
     ///
     /// # Errors
     /// [`ProfileError::Invalid`] naming the first bad field.
@@ -241,6 +218,9 @@ impl ConnectionProfile {
         if self.name.trim().is_empty() {
             return invalid("name", "must not be empty");
         }
+        if self.driver.is_file() {
+            return self.validate_file();
+        }
         if self.params.host.trim().is_empty() {
             return invalid("params.host", "must not be empty");
         }
@@ -248,5 +228,22 @@ impl ConnectionProfile {
             return invalid("params.port", "must be 1-65535");
         }
         self.ssh.as_ref().map_or(Ok(()), SshSettings::validate)
+    }
+
+    fn validate_file(&self) -> Result<(), ProfileError> {
+        let invalid = |field, reason| Err(ProfileError::Invalid { field, reason });
+        let Some(file) = &self.file else {
+            return invalid("file.path", "must not be empty");
+        };
+        if file.path.as_os_str().is_empty() {
+            return invalid("file.path", "must not be empty");
+        }
+        if !file.path.is_absolute() {
+            return invalid("file.path", "must be an absolute path");
+        }
+        if self.ssh.is_some() {
+            return invalid("ssh", "local files cannot use an SSH tunnel");
+        }
+        Ok(())
     }
 }

@@ -1,24 +1,38 @@
 // SPDX-License-Identifier: Apache-2.0
-//! `postgres://` / `postgresql://` connection URL parsing (FR-CONN-02).
+//! Connection URL parsing (FR-CONN-02) for every engine.
 //!
-//! Follows libpq's URI form: `postgresql://[user[:password]@][host][:port]
-//! [/dbname][?param=value&...]`. Components are percent-decoded (`+` stays a
-//! plus, as in libpq). Passwords, from userinfo or `?password=`, come back as
-//! a [`SecretString`] and never reach [`PgParams`]. Malformed input yields a
-//! [`UrlError`]; the parser never panics.
+//! - `postgres://` and `postgresql://` follow libpq's URI form:
+//!   `postgresql://[user[:password]@][host][:port][/dbname][?param=value&...]`.
+//! - `mysql://` and `mariadb://` take the same shape (default port 3306);
+//!   `ssl-mode` accepts the `MySQL` names (`DISABLED`, `PREFERRED`,
+//!   `REQUIRED`, `VERIFY_CA`, `VERIFY_IDENTITY`) as well as libpq `sslmode`.
+//! - `sqlite:` names an absolute file path (`sqlite:/data/app.db` or
+//!   `sqlite:///data/app.db`); `?mode=ro` opens it read-only.
+//!
+//! Components are percent-decoded (`+` stays a plus, as in libpq).
+//! Passwords, from userinfo or `?password=`, come back as a [`SecretString`]
+//! and never reach [`ServerParams`]. Malformed input yields a [`UrlError`];
+//! the parser never panics.
+
+use std::path::PathBuf;
 
 use openrows_secrets::SecretString;
 use percent_encoding::percent_decode_str;
 use url::{Host, Url};
 
-use super::{ConnectionProfile, EnvTag, PgParams, TlsMode, UrlError};
+use super::{ConnectionProfile, Driver, EnvTag, FileParams, ServerParams, TlsMode, UrlError};
 
-/// A parsed URL: profile parameters plus the password, kept apart.
+/// A parsed URL: engine, profile parameters and the password, kept apart.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParsedUrl {
-    /// Connection parameters with defaults applied (`localhost`, `5432`).
-    pub params: PgParams,
-    /// `sslmode`, or the host-based default when absent.
+    /// The engine the scheme names.
+    pub driver: Driver,
+    /// Server parameters with defaults applied (`localhost`, default port);
+    /// defaults only for file engines.
+    pub params: ServerParams,
+    /// The database file of a `sqlite:` URL.
+    pub file: Option<FileParams>,
+    /// `sslmode`, or the host-based default when absent (`disable` for files).
     pub tls_mode: TlsMode,
     /// Password from the URL, if any.
     pub password: Option<SecretString>,
@@ -33,28 +47,39 @@ impl ParsedUrl {
         name: &str,
         env_tag: EnvTag,
     ) -> (ConnectionProfile, Option<SecretString>) {
-        let mut profile = ConnectionProfile::new_postgres(name, self.params, env_tag);
+        let mut profile = match self.file {
+            Some(file) => ConnectionProfile::new_file(name, file, env_tag),
+            None => ConnectionProfile::new(name, self.driver, self.params, env_tag),
+        };
         profile.tls.mode = self.tls_mode;
         (profile, self.password)
     }
 }
 
-/// Parse a `postgres://` or `postgresql://` URL.
+/// Parse a `postgres://`, `postgresql://`, `mysql://`, `mariadb://` or
+/// `sqlite:` URL.
 ///
 /// # Errors
 /// A [`UrlError`] describing the first problem; it never contains the
 /// password or the raw URL.
-pub fn parse_postgres_url(input: &str) -> Result<ParsedUrl, UrlError> {
+pub fn parse_url(input: &str) -> Result<ParsedUrl, UrlError> {
     let input = input.trim();
     reject_multiple_hosts(input)?;
     let url = Url::parse(input)?;
-    if !matches!(url.scheme(), "postgres" | "postgresql") {
-        return Err(UrlError::UnsupportedScheme {
-            scheme: url.scheme().to_owned(),
-        });
-    }
+    let driver = match url.scheme() {
+        "postgres" | "postgresql" => Driver::Postgres,
+        "mysql" => Driver::Mysql,
+        "mariadb" => Driver::Mariadb,
+        "sqlite" => return parse_sqlite(&url),
+        scheme => {
+            return Err(UrlError::UnsupportedScheme {
+                scheme: scheme.to_owned(),
+            });
+        }
+    };
     let mut draft = Draft {
-        params: base_params(&url)?,
+        driver,
+        params: base_params(&url, driver)?,
         tls_mode: None,
         password: decode_optional(url.password(), "password")?.map(SecretString::new),
     };
@@ -64,8 +89,36 @@ pub fn parse_postgres_url(input: &str) -> Result<ParsedUrl, UrlError> {
     Ok(draft.finish())
 }
 
+/// `sqlite:/abs/path` or `sqlite:///abs/path`, optionally `?mode=ro`.
+fn parse_sqlite(url: &Url) -> Result<ParsedUrl, UrlError> {
+    let path = PathBuf::from(decode(url.path(), "path")?);
+    if !path.is_absolute()
+        || url
+            .host()
+            .is_some_and(|host| host != Host::Domain("localhost"))
+    {
+        return Err(UrlError::InvalidFilePath);
+    }
+    let pairs = query_pairs(url.query().unwrap_or_default())?;
+    let read_only = pairs
+        .iter()
+        .any(|(key, value)| key == "mode" && value == "ro");
+    Ok(ParsedUrl {
+        driver: Driver::Sqlite,
+        params: ServerParams::default(),
+        file: Some(FileParams {
+            path,
+            read_only,
+            create: false,
+        }),
+        tls_mode: TlsMode::Disable,
+        password: None,
+    })
+}
+
 struct Draft {
-    params: PgParams,
+    driver: Driver,
+    params: ServerParams,
     tls_mode: Option<TlsMode>,
     password: Option<SecretString>,
 }
@@ -74,7 +127,9 @@ impl Draft {
     fn apply(&mut self, key: &str, value: String) -> Result<(), UrlError> {
         match key {
             "password" => self.password = Some(SecretString::new(value)),
-            "sslmode" => self.tls_mode = Some(parse_ssl_mode(value)?),
+            "sslmode" | "ssl-mode" | "ssl_mode" => {
+                self.tls_mode = Some(parse_ssl_mode(value)?);
+            }
             "host" => self.params.host = value,
             "port" => self.params.port = parse_port(value)?,
             "user" => self.params.user = Some(value),
@@ -92,6 +147,8 @@ impl Draft {
             .tls_mode
             .unwrap_or_else(|| TlsMode::default_for_host(&self.params.host));
         ParsedUrl {
+            driver: self.driver,
+            file: None,
             params: self.params,
             tls_mode,
             password: self.password,
@@ -114,8 +171,8 @@ fn reject_multiple_hosts(input: &str) -> Result<(), UrlError> {
     Ok(())
 }
 
-fn base_params(url: &Url) -> Result<PgParams, UrlError> {
-    let mut params = PgParams::default();
+fn base_params(url: &Url, driver: Driver) -> Result<ServerParams, UrlError> {
+    let mut params = ServerParams::local(driver.default_port().unwrap_or(5432));
     if let Some(host) = host_text(url)? {
         params.host = host;
     }
@@ -179,6 +236,15 @@ fn check_port(port: u16, text: &str) -> Result<u16, UrlError> {
     Ok(port)
 }
 
+/// libpq `sslmode` or `MySQL` `ssl-mode` (case-insensitive).
 fn parse_ssl_mode(value: String) -> Result<TlsMode, UrlError> {
-    TlsMode::parse(&value).ok_or(UrlError::InvalidSslMode { value })
+    let mode = match value.to_ascii_uppercase().as_str() {
+        "DISABLED" => Some(TlsMode::Disable),
+        "PREFERRED" => Some(TlsMode::Prefer),
+        "REQUIRED" => Some(TlsMode::Require),
+        "VERIFY_CA" => Some(TlsMode::VerifyCa),
+        "VERIFY_IDENTITY" => Some(TlsMode::VerifyFull),
+        _ => TlsMode::parse(&value.to_ascii_lowercase()),
+    };
+    mode.ok_or(UrlError::InvalidSslMode { value })
 }

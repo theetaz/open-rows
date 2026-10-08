@@ -18,10 +18,11 @@ pub enum Scope {
     AtCursor(usize),
 }
 
-/// Statement texts (without `;`) selected by `scope`; empty when there is no SQL.
+/// Statement texts (without terminator) selected by `scope`, split with the
+/// rules of `dialect`; empty when there is no SQL.
 #[must_use]
-pub fn statements(sql: &str, scope: Scope) -> Vec<String> {
-    let all = split(sql, Dialect::Postgres);
+pub fn statements(sql: &str, scope: Scope, dialect: Dialect) -> Vec<String> {
+    let all = split(sql, dialect);
     let text = |statement: &openrows_sql::Statement| statement.text(sql).to_owned();
     match scope {
         Scope::All => all.iter().map(text).collect(),

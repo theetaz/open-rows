@@ -13,7 +13,8 @@ use crate::types::{self, ColumnDesc};
 use crate::wire::{Wire, server_error, unexpected};
 use fallible_iterator::FallibleIterator;
 use openrows_driver_api::{
-    BatchPolicy, BoxFuture, CancelHandle, DriverError, ExecSummary, ResultSink, Session,
+    BatchPolicy, BoxFuture, CancelHandle, DriverError, ExecSummary, ResultSink, ServerSummary,
+    Session,
 };
 use postgres_protocol::IsNull;
 use postgres_protocol::message::backend::{Message, RowDescriptionBody};
@@ -27,6 +28,7 @@ pub struct PgSession {
     policy: BatchPolicy,
     cancel: Option<Arc<PgCancel>>,
     info: ServerInfo,
+    summary: ServerSummary,
 }
 
 impl PgSession {
@@ -64,16 +66,33 @@ impl PgSession {
         options: &ConnectOptions,
     ) -> (Result<Self, DriverError>, ConnectTrace) {
         let mut trace = ConnectTrace::default();
-        let session = establish(config, options, &mut trace)
-            .await
-            .map(|established| Self {
-                wire: established.wire,
-                type_names: HashMap::new(),
-                policy: BatchPolicy::default(),
-                cancel: established.cancel.map(Arc::new),
-                info: established.info,
-            });
+        let session = Self::connect_recording(config, options, &mut trace).await;
         (session, trace)
+    }
+
+    /// As [`PgSession::connect_with`], recording the stages in `trace`.
+    ///
+    /// # Errors
+    /// As [`PgSession::connect_with`].
+    pub async fn connect_recording(
+        config: &PgConfig,
+        options: &ConnectOptions,
+        trace: &mut ConnectTrace,
+    ) -> Result<Self, DriverError> {
+        let established = establish(config, options, trace).await?;
+        Ok(Self {
+            wire: established.wire,
+            type_names: HashMap::new(),
+            policy: BatchPolicy::default(),
+            cancel: established.cancel.map(Arc::new),
+            summary: established.info.summary(),
+            info: established.info,
+        })
+    }
+
+    /// The engine-neutral server summary (see [`ServerInfo::summary`]).
+    pub(crate) fn summary(&self) -> &ServerSummary {
+        &self.summary
     }
 
     /// Product, version, current database and user, flavour and TLS state.

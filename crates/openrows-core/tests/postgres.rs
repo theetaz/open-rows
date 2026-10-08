@@ -182,7 +182,7 @@ async fn script_streams_into_the_result_store_and_serves_windows() -> TestResult
     let sql = "SELECT n, 'row ' || n AS label FROM generate_series(1, 5000) AS n;\n\
                CREATE TEMP TABLE scratch (id int);\n\
                INSERT INTO scratch SELECT generate_series(1, 3);";
-    let statements = script::statements(sql, Scope::All);
+    let statements = script::statements(sql, Scope::All, openrows_sql::Dialect::Postgres);
     assert_eq!(statements.len(), 3);
     let mut seen = Vec::new();
     let cancel = ScriptCanceller::default();
@@ -218,7 +218,7 @@ async fn single_label(
     sql: &str,
 ) -> TestResult<Vec<String>> {
     let mut seen = Vec::new();
-    let statements = script::statements(sql, Scope::All);
+    let statements = script::statements(sql, Scope::All, openrows_sql::Dialect::Postgres);
     let cancel = ScriptCanceller::default();
     let outcome = script::run_script(manager, session, &statements, &cancel, |event| {
         seen.push(event);

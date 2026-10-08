@@ -2,19 +2,18 @@
 //! Dedicated metadata sessions (docs/10 §1): one connection per open
 //! connection and database, opened lazily, so catalog reads never queue
 //! behind user queries. `PostgreSQL` cannot switch databases on a connection,
-//! so each browsed database gets its own.
+//! so each browsed database gets its own (for every engine, to keep one model).
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, PoisonError};
 
-use openrows_driver_api::{BoxFuture, DriverError, Session};
-use openrows_driver_postgres::PgSession;
+use openrows_driver_api::{BoxFuture, Connection, DriverError};
 
 use super::error::{IpcError, IpcErrorKind};
-use super::pg::{self, Target};
+use super::target::{self, Target};
 
 /// Saved connection id and database name.
 type Key = (String, String);
-type Slot = Arc<tokio::sync::Mutex<Option<PgSession>>>;
+type Slot = Arc<tokio::sync::Mutex<Option<Box<dyn Connection>>>>;
 
 /// Metadata sessions by connection and database.
 #[derive(Default)]
@@ -35,7 +34,7 @@ impl MetadataSessions {
         &self,
         (profile, database): (&str, &str),
         target: impl FnOnce() -> F,
-        read: impl for<'s> FnOnce(&'s mut PgSession) -> BoxFuture<'s, Result<T, DriverError>>,
+        read: impl for<'s> FnOnce(&'s mut dyn Connection) -> BoxFuture<'s, Result<T, DriverError>>,
     ) -> Result<T, IpcError>
     where
         F: Future<Output = Result<Target, IpcError>>,
@@ -47,10 +46,10 @@ impl MetadataSessions {
                 .await?
                 .with_database(database)
                 .with_application_suffix("metadata");
-            let connected = pg::connect(&target)
+            let connected = target::connect(&target)
                 .await
                 .map_err(|error| IpcError::from(&error))?;
-            *guard = Some(connected.session);
+            *guard = Some(connected.connection);
         }
         let Some(session) = guard.as_mut() else {
             return Err(IpcError::new(
@@ -58,7 +57,7 @@ impl MetadataSessions {
                 "The metadata session was not stored",
             ));
         };
-        let result = read(session).await;
+        let result = read(session.as_mut()).await;
         if result.as_ref().is_err_and(breaks_session) {
             *guard = None;
         }
@@ -85,7 +84,7 @@ impl MetadataSessions {
         for slot in slots {
             if let Some(session) = slot.lock().await.take() {
                 // Closing is a courtesy goodbye; the socket is dropped either way.
-                let _ = Box::new(session).close().await;
+                let _ = session.close().await;
             }
         }
     }

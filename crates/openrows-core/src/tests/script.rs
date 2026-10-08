@@ -5,6 +5,7 @@ use crate::script::{
     Scope, ScriptCanceller, ScriptEvent, ScriptOutcome, run_bound, run_script, statements,
 };
 use crate::{QueryEvent, SessionManager};
+use openrows_sql::Dialect;
 use openrows_sql::select::BoundSql;
 use openrows_types::SessionId;
 use std::sync::Arc;
@@ -38,26 +39,29 @@ fn statements_seen(seen: &[ScriptEvent]) -> Vec<usize> {
 fn scope_selects_all_or_the_statement_at_the_cursor() {
     let sql = "SELECT 1;\n-- two\nSELECT 2;  \n\nSELECT 3";
     assert_eq!(
-        statements(sql, Scope::All),
+        statements(sql, Scope::All, Dialect::Postgres),
         owned(&["SELECT 1", "-- two\nSELECT 2", "SELECT 3"])
     );
-    assert_eq!(statements(sql, Scope::AtCursor(0)), owned(&["SELECT 1"]));
+    assert_eq!(
+        statements(sql, Scope::AtCursor(0), Dialect::Postgres),
+        owned(&["SELECT 1"])
+    );
     let second = sql.find("SELECT 2").unwrap_or_default() + 3;
     assert_eq!(
-        statements(sql, Scope::AtCursor(second)),
+        statements(sql, Scope::AtCursor(second), Dialect::Postgres),
         owned(&["-- two\nSELECT 2"])
     );
     let after_semicolon = sql.find("SELECT 2;").unwrap_or_default() + 10;
     assert_eq!(
-        statements(sql, Scope::AtCursor(after_semicolon)),
+        statements(sql, Scope::AtCursor(after_semicolon), Dialect::Postgres),
         owned(&["-- two\nSELECT 2"])
     );
     assert_eq!(
-        statements(sql, Scope::AtCursor(sql.len())),
+        statements(sql, Scope::AtCursor(sql.len()), Dialect::Postgres),
         owned(&["SELECT 3"])
     );
-    assert!(statements("  -- only a comment\n", Scope::All).is_empty());
-    assert!(statements("", Scope::AtCursor(0)).is_empty());
+    assert!(statements("  -- only a comment\n", Scope::All, Dialect::Postgres).is_empty());
+    assert!(statements("", Scope::AtCursor(0), Dialect::Postgres).is_empty());
 }
 
 #[tokio::test]

@@ -3,8 +3,7 @@
 use super::dto::TableTarget;
 use super::edit_commands::session;
 use crate::connections::{Connections, IpcError};
-use openrows_driver_api::Session;
-use openrows_driver_postgres::PgSession;
+use openrows_driver_api::{Connection, editor};
 use std::collections::BTreeMap;
 use tauri::State;
 
@@ -39,8 +38,8 @@ pub(crate) async fn table_edit_rows(
         return Err(IpcError::invalid("Read between 1 and 1,000 rows at a time"));
     }
     let mut session = session(&state, &target).await?;
-    let result = snapshots(&mut session, &target, keys).await;
-    let closed = Box::new(session)
+    let result = snapshots(session.as_mut(), &target, keys).await;
+    let closed = session
         .close()
         .await
         .map_err(|error| IpcError::from(&error));
@@ -49,11 +48,12 @@ pub(crate) async fn table_edit_rows(
 }
 
 async fn snapshots(
-    session: &mut PgSession,
+    session: &mut dyn Connection,
     target: &TableTarget,
     keys: Vec<Keys>,
 ) -> Result<Vec<Snapshot>, IpcError> {
-    let info = session
+    let editor = editor(session).map_err(|error| IpcError::from(&error))?;
+    let info = editor
         .row_edit_info(&target.schema, &target.table)
         .await
         .map_err(|error| IpcError::from(&error))?;
@@ -69,7 +69,7 @@ async fn snapshots(
     }
     let mut rows = Vec::with_capacity(keys.len());
     for row in keys {
-        let snapshot = session
+        let snapshot = editor
             .edit_snapshot(
                 (&target.schema, &target.table),
                 &row.into_iter().collect::<Vec<_>>(),

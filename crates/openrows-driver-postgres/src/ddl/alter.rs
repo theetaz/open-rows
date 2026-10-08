@@ -10,29 +10,8 @@ use super::{data_type, default_sql, quote, relation, text};
 use openrows_driver_api::schema::{
     DefaultValue, IndexMethod, NewColumn, NewIndex, RelationKind, SchemaChange, TableDetail,
 };
+pub use openrows_driver_api::structure::{AlterPlan, AlterTable};
 use std::collections::{BTreeMap, BTreeSet};
-
-/// The table a change set applies to, with its current catalog detail.
-#[derive(Clone, Copy, Debug)]
-pub struct AlterTable<'a> {
-    /// Schema name.
-    pub schema: &'a str,
-    /// Current table name.
-    pub table: &'a str,
-    /// Catalog detail read just before generating.
-    pub detail: &'a TableDetail,
-}
-
-/// Ordered statements, user-facing warnings and whether data can be lost.
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct AlterPlan {
-    /// Statements to run in one transaction, without trailing `;`.
-    pub statements: Vec<String>,
-    /// Lock, rewrite and failure warnings for the review sheet.
-    pub warnings: Vec<String>,
-    /// Drops a column or index, or changes a column type.
-    pub destructive: bool,
-}
 
 /// Why a change set cannot be turned into DDL.
 #[derive(Clone, Debug, Eq, PartialEq, thiserror::Error)]

@@ -21,6 +21,7 @@ use super::Queries;
 use super::dto::{ExecuteReply, ExecuteRequest, HistoryItemDto, statement_dtos};
 use super::events::{QueryEventDto, finished, translate};
 use super::history::HistoryLog;
+use crate::connections::drivers::driver;
 use crate::connections::{Connections, IpcError, IpcErrorKind};
 
 /// Everything a started run needs after the command returned.
@@ -56,11 +57,12 @@ pub(crate) async fn query_execute(
         .owner(session)
         .ok_or_else(|| IpcError::new(IpcErrorKind::NotFound, "The session is not open"))?;
     let profile = connections.profiles.get(owner.profile)?;
-    let statements = request.statements();
+    let policy = policy(&profile)?;
+    let statements = request.statements(policy.dialect);
     if statements.is_empty() {
         return Err(IpcError::invalid("There is no SQL statement to run"));
     }
-    let plan = SafetyPlan::check(policy(&profile), statements);
+    let plan = SafetyPlan::check(policy, statements);
     if let Some(reply) = refusal(&plan, &request) {
         return Ok(reply);
     }
@@ -82,11 +84,13 @@ pub(crate) async fn query_execute(
     Ok(reply)
 }
 
-fn policy(profile: &ConnectionProfile) -> SafetyPolicy {
-    SafetyPolicy {
+/// The profile's safety switches, judged in its engine's dialect.
+fn policy(profile: &ConnectionProfile) -> Result<SafetyPolicy, IpcError> {
+    Ok(SafetyPolicy {
         read_only: profile.safety.read_only,
         confirm_writes: profile.safety.confirm_writes,
-    }
+        dialect: driver(profile.driver)?.dialect(),
+    })
 }
 
 /// The reply when the gate does not let the run start yet (or ever).

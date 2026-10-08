@@ -10,12 +10,9 @@ mod steps;
 use std::sync::Arc;
 use std::time::Instant;
 
-use openrows_driver_api::Session;
-use openrows_driver_postgres::PgSession;
+use openrows_driver_api::Endpoint;
 use openrows_net::{SshTunnel, TunnelDialer};
-use openrows_store::profile::{
-    ConnectionProfile, EnvKind, EnvTag, ProfileService, SecretChanges, SecretSlot,
-};
+use openrows_store::profile::{ConnectionProfile, ProfileService, SecretChanges, SecretSlot};
 use serde::Serialize;
 use specta::Type;
 use tauri::State;
@@ -26,8 +23,8 @@ use steps::{DatabaseRun, Steps};
 use super::Connections;
 use super::dto::ProfileInput;
 use super::error::IpcError;
-use super::pg::{self, DriverSecrets, ServerDto, Target};
 use super::profiles::{profile_id, resolve_password, resolve_secret};
+use super::target::{self, DriverSecrets, ServerDto, Target};
 use super::tunnels::{SshSecrets, route_spec};
 
 /// The outcome of Test connection: every step that ran, the server on
@@ -61,8 +58,7 @@ pub(crate) fn plan(
     let stored = id
         .map(|id| profile_id(id).and_then(|id| Ok(service.get(id)?)))
         .transpose()?;
-    let mut profile =
-        ConnectionProfile::new_postgres(&input.name, input.params(), EnvTag::new(EnvKind::Local));
+    let mut profile = input.new_profile();
     input.apply(&mut profile)?;
     profile.validate()?;
     let changes: SecretChanges = input.secret_changes()?;
@@ -96,16 +92,19 @@ pub(crate) async fn connection_test(
     input: ProfileInput,
 ) -> Result<TestReport, IpcError> {
     let plan = plan(&state.profiles, profile_id.as_deref(), &input)?;
-    let target = pg::target(&plan.profile.params, &plan.profile.tls, &plan.driver)?;
+    let target = target::target(&plan.profile, &plan.driver)?;
     let started = Instant::now();
-    let mut steps = Steps::default();
+    let mut steps = Steps {
+        engine: plan.profile.driver,
+        ..Steps::default()
+    };
     let outcome = run(&state, plan, target, &mut steps).await;
     let (server, error) = match outcome {
         Ok(server) => (Some(server), None),
         Err(error) => (None, Some(error)),
     };
     Ok(TestReport {
-        steps: steps.0,
+        steps: steps.steps,
         server,
         error,
         elapsed_ms: u32::try_from(started.elapsed().as_millis()).unwrap_or(u32::MAX),
@@ -156,24 +155,30 @@ async fn database(
     tunnelled: bool,
     steps: &mut Steps,
 ) -> Result<ServerDto, IpcError> {
-    let (result, trace) = PgSession::connect_traced(&target.config, &target.options).await;
+    let (result, trace) = target::connect_traced(target).await;
     let server = result
         .as_ref()
         .ok()
-        .map(|session| ServerDto::from(session.server_info()));
+        .map(|connection| ServerDto::from(connection.server()));
+    let request = &target.request;
+    let (host, port, file) = match &request.endpoint {
+        Endpoint::Server { host, port } => (host.clone(), *port, false),
+        Endpoint::File { path, .. } => (path.display().to_string(), 0, true),
+    };
     let run = DatabaseRun {
         trace: &trace,
-        host: &target.config.host,
-        port: target.config.port,
-        user: &target.config.user,
+        host: &host,
+        port,
+        user: &request.user,
         tunnelled,
+        file,
         server: server.as_ref(),
     };
     steps.database(&run, result.as_ref().err());
     match (result, server) {
-        (Ok(session), Some(server)) => {
+        (Ok(connection), Some(server)) => {
             // The test already succeeded; a failed goodbye changes nothing.
-            let _ = Box::new(session).close().await;
+            let _ = connection.close().await;
             Ok(server)
         }
         (Err(error), _) => Err(IpcError::from(&error)),

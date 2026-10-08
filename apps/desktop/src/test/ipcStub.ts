@@ -14,6 +14,8 @@ export function profile(
     name,
     group: null,
     env: { kind: 'local', label: null, color: '#6b7280' },
+    engine: 'postgres',
+    file: null,
     host: 'localhost',
     port: 5432,
     database: 'orders',

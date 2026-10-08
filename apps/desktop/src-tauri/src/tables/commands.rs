@@ -18,6 +18,7 @@ use super::dto::{
     TableStructureDto, TableTarget,
 };
 use crate::connections::catalog::{read_columns, read_structure};
+use crate::connections::drivers::profile_driver;
 use crate::connections::{Connections, IpcError, IpcErrorKind};
 use crate::queries::Queries;
 use crate::queries::events::{QueryEventDto, finished, translate};
@@ -163,6 +164,7 @@ async fn generate(
     page: Option<(u32, u32)>,
 ) -> Result<BoundSql, IpcError> {
     let target = &query.target;
+    let dialect = profile_driver(connections, &target.profile_id)?.dialect();
     let columns = read_columns(
         connections,
         (&target.profile_id, &target.database),
@@ -179,7 +181,7 @@ async fn generate(
     let model = query.to_query();
     let bound = match page {
         Some((limit, offset)) => page_sql(
-            Dialect::Postgres,
+            dialect,
             &model,
             &known,
             Page {
@@ -187,16 +189,16 @@ async fn generate(
                 offset: offset.into(),
             },
         ),
-        None => count_sql(Dialect::Postgres, &model, &known),
+        None => count_sql(dialect, &model, &known),
     }
     .map_err(|error| IpcError::invalid(error.to_string()))?;
-    ensure_read(&bound)?;
+    ensure_read(&bound, dialect)?;
     Ok(bound)
 }
 
 /// Defence in depth: table browsing only ever runs plain reads.
-fn ensure_read(bound: &BoundSql) -> Result<(), IpcError> {
-    let class = classify(&bound.sql, Dialect::Postgres);
+fn ensure_read(bound: &BoundSql, dialect: Dialect) -> Result<(), IpcError> {
+    let class = classify(&bound.sql, dialect);
     if class.kind == StatementKind::Read && !class.dangerous {
         Ok(())
     } else {
@@ -260,12 +262,12 @@ mod tests {
             sql: "SELECT * FROM \"t\" LIMIT 1 OFFSET 0".to_owned(),
             params: Vec::new(),
         };
-        assert!(ensure_read(&read).is_ok());
+        assert!(ensure_read(&read, Dialect::Postgres).is_ok());
         let write = BoundSql {
             sql: "DELETE FROM \"t\"".to_owned(),
             params: Vec::new(),
         };
-        assert!(ensure_read(&write).is_err());
+        assert!(ensure_read(&write, Dialect::Postgres).is_err());
     }
 
     #[test]

@@ -1,0 +1,186 @@
+// SPDX-License-Identifier: Apache-2.0
+//! A live connection and its facets (docs/05 §2, §6, §7).
+//!
+//! Every [`Connection`] is a [`Session`] (statement execution for the session
+//! actor). Catalog reads ([`Catalog`]) and row and structure commits
+//! ([`Editor`]) are facets a driver offers when its engine supports them; a
+//! missing facet surfaces as `Unsupported`.
+use openrows_sql::select::BoundSql;
+
+use crate::catalog::TableStructure;
+use crate::catalog::{ColumnSummary, DatabaseSummary, ObjectKind, ObjectSummary, SchemaSummary};
+use crate::schema::TableDetail;
+use crate::trace::TlsStatus;
+use crate::{BoxFuture, DriverError, Session};
+
+/// What the server reported about itself right after connecting.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ServerSummary {
+    /// Product name, e.g. `PostgreSQL`, `MySQL`, `MariaDB` or `SQLite`.
+    pub product: String,
+    /// Server or library version, e.g. `17.2` or `8.4.3`.
+    pub version: String,
+    /// Hosting or compatible-product flavour worth naming, e.g. `Neon`.
+    pub flavour: Option<String>,
+    /// The database the connection is on (`main` for `SQLite`).
+    pub database: String,
+    /// The authenticated user; empty for files.
+    pub user: String,
+    /// Transport encryption.
+    pub tls: TlsStatus,
+}
+
+/// Catalog row identity and the columns the server generates.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct RowEditInfo {
+    /// Supported non-null unique key columns.
+    pub key: Vec<String>,
+    /// Generated or always-identity columns, never written.
+    pub protected: Vec<String>,
+}
+
+/// One row as `(column, exact text)` pairs in column order; `None` is NULL.
+pub type RowSnapshot = Vec<(String, Option<String>)>;
+
+/// One live connection: a [`Session`] plus its facets.
+pub trait Connection: Session {
+    /// Product, version, flavour, current database, user and TLS state.
+    fn server(&self) -> &ServerSummary;
+
+    /// Catalog reads; `None` when the engine has no browsable catalog.
+    fn catalog(&mut self) -> Option<&mut dyn Catalog> {
+        None
+    }
+
+    /// Row and structure commits; `None` when the engine cannot edit.
+    fn editor(&mut self) -> Option<&mut dyn Editor> {
+        None
+    }
+}
+
+/// Catalog reads for the schema tree and the table views (docs/05 §6).
+pub trait Catalog: Send {
+    /// Databases on the server.
+    ///
+    /// # Errors
+    /// Server or transport failures.
+    fn list_databases(&mut self) -> BoxFuture<'_, Result<Vec<DatabaseSummary>, DriverError>>;
+
+    /// Schemas (namespaces) of the current database, user schemas first.
+    ///
+    /// # Errors
+    /// Server or transport failures.
+    fn list_schemas(&mut self) -> BoxFuture<'_, Result<Vec<SchemaSummary>, DriverError>>;
+
+    /// Objects of `kinds` in `schema`, ordered by name.
+    ///
+    /// # Errors
+    /// Server or transport failures.
+    fn list_objects<'a>(
+        &'a mut self,
+        schema: &'a str,
+        kinds: &'a [ObjectKind],
+    ) -> BoxFuture<'a, Result<Vec<ObjectSummary>, DriverError>>;
+
+    /// Bounded name index of the current database for quick open.
+    ///
+    /// # Errors
+    /// Server or transport failures.
+    fn search_index(&mut self) -> BoxFuture<'_, Result<Vec<ObjectSummary>, DriverError>>;
+
+    /// A relation's columns in ordinal order; empty when it does not exist.
+    ///
+    /// # Errors
+    /// Server or transport failures.
+    fn table_columns<'a>(
+        &'a mut self,
+        schema: &'a str,
+        table: &'a str,
+    ) -> BoxFuture<'a, Result<Vec<ColumnSummary>, DriverError>>;
+
+    /// A relation's columns, indexes and row estimate.
+    ///
+    /// # Errors
+    /// Server or transport failures.
+    fn table_structure<'a>(
+        &'a mut self,
+        schema: &'a str,
+        table: &'a str,
+    ) -> BoxFuture<'a, Result<TableStructure, DriverError>>;
+
+    /// Columns, constraints, indexes, triggers, sizes, comment and (when the
+    /// engine stores one) the server's own definition.
+    ///
+    /// # Errors
+    /// Server or transport failures.
+    fn table_detail<'a>(
+        &'a mut self,
+        schema: &'a str,
+        table: &'a str,
+    ) -> BoxFuture<'a, Result<TableDetail, DriverError>>;
+}
+
+/// Exact-row snapshots and atomic commits on a dedicated connection (docs/05 §7).
+pub trait Editor: Send {
+    /// The table's row key and server-generated columns.
+    ///
+    /// # Errors
+    /// Server or transport failures.
+    fn row_edit_info<'a>(
+        &'a mut self,
+        schema: &'a str,
+        table: &'a str,
+    ) -> BoxFuture<'a, Result<RowEditInfo, DriverError>>;
+
+    /// One complete row as exact text, identified by `keys` (name, value);
+    /// the text form is the dialect's `text_of` so commit guards compare it.
+    ///
+    /// # Errors
+    /// Missing or ambiguous row identity, invalid names, server failures.
+    fn edit_snapshot<'a>(
+        &'a mut self,
+        target: (&'a str, &'a str),
+        keys: &'a [(String, String)],
+    ) -> BoxFuture<'a, Result<RowSnapshot, DriverError>>;
+
+    /// Run row edits in one transaction; each must affect exactly one row.
+    ///
+    /// # Errors
+    /// Server or transport failures, a row conflict (SQLSTATE `40001`) or an
+    /// uncertain commit (`08007`); everything else is rolled back.
+    fn commit_edits<'a>(
+        &'a mut self,
+        edits: &'a [BoundSql],
+    ) -> BoxFuture<'a, Result<(), DriverError>>;
+
+    /// Run DDL statements in one transaction where the engine allows it.
+    ///
+    /// # Errors
+    /// Server or transport failures, or an uncertain commit (`08007`).
+    fn commit_ddl<'a>(
+        &'a mut self,
+        statements: &'a [String],
+    ) -> BoxFuture<'a, Result<(), DriverError>>;
+}
+
+/// The connection's catalog facet, or `Unsupported` naming the product.
+///
+/// # Errors
+/// `Unsupported` when the driver offers no catalog.
+pub fn catalog(connection: &mut dyn Connection) -> Result<&mut dyn Catalog, DriverError> {
+    let product = connection.server().product.clone();
+    connection
+        .catalog()
+        .ok_or_else(|| DriverError::Unsupported(format!("browsing {product} catalogs")))
+}
+
+/// The connection's edit facet, or `Unsupported` naming the product.
+///
+/// # Errors
+/// `Unsupported` when the driver cannot edit.
+pub fn editor(connection: &mut dyn Connection) -> Result<&mut dyn Editor, DriverError> {
+    let product = connection.server().product.clone();
+    connection
+        .editor()
+        .ok_or_else(|| DriverError::Unsupported(format!("editing {product} data")))
+}

@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "Minimal driver session and result-streaming contract for OpenRows (M0-S3 draft)"
+description = "Driver contract for OpenRows: sessions, result streaming, connect requests, catalog and edit facets"
 
 [lints]
 workspace = true
@@ -13,4 +13,6 @@ workspace = true
 [dependencies]
 arrow-array = "60"
 arrow-schema = "60"
+openrows-net = { path = "../openrows-net" }
+openrows-sql = { path = "../openrows-sql" }
 thiserror.workspace = true

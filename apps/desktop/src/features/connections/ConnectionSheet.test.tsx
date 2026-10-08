@@ -40,6 +40,8 @@ const PARSED = {
   user: 'app',
   tlsMode: 'prefer' as const,
   passwordProvided: false,
+  engine: 'postgres' as const,
+  file: null,
 };
 
 it('fills the fields from a pasted URL at once, masks its password and saves it as typed', async () => {

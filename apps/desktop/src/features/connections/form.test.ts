@@ -57,6 +57,8 @@ it('fills fields from a parsed URL; a typed name sticks, a URL-derived one follo
     user: 'app',
     tlsMode: 'require' as const,
     passwordProvided: false,
+    engine: 'postgres' as const,
+    file: null,
   };
   const draft = withUrl(emptyDraft(), parsed);
   expect(draft).toMatchObject({ name: 'orders', host: 'db', port: '5433' });
