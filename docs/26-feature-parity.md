@@ -296,9 +296,9 @@ Each row is engine access, not a promise of identical editing/admin capabilities
 | Key | Feature | What it does | OpenRows status / FR | Target | OpenRows improvement | Source |
 | --- | --- | --- | --- | --- | --- | --- |
 | DB01 | PostgreSQL | Access PostgreSQL databases. | New FR-APP-07 | M1 | Binary decoding and conformance. | [S01] |
-| DB02 | MySQL | Access MySQL databases. | New FR-APP-07 | M1 | Streaming and typed values. | [S01] |
-| DB03 | MariaDB | Access MariaDB databases. | New FR-APP-07 | M1 | Detected flavour semantics. | [S01] |
-| DB04 | SQLite | Open local SQLite databases. | New FR-APP-07 | M1 | Interruptible dedicated-thread execution. | [S01] |
+| DB02 | MySQL | Access MySQL databases. | New FR-APP-07; dogfood slice in D-12 (browse, query, edit; SSH/TLS) | M1 | Streaming and typed values. | [S01] |
+| DB03 | MariaDB | Access MariaDB databases. | New FR-APP-07; dogfood slice in D-12 (own engine entry, detected from the version) | M1 | Detected flavour semantics. | [S01] |
+| DB04 | SQLite | Open local SQLite databases. | New FR-APP-07; dogfood slice in D-12 (local files, read-only open, create new file) | M1 | Interruptible dedicated-thread execution. | [S01] |
 | DB05 | SQL Server | Access TDS servers. | New FR-APP-07 | M2 | Capability-aware cancellation and TLS. | [S01] |
 | DB06 | ClickHouse | Access analytical datasets. | New FR-APP-07 | M2 | Arrow stream transport. | [S01] |
 | DB07 | DuckDB | Query embedded analytical databases. | New FR-APP-07 | M2 | Isolated native driver host. | [S01] |

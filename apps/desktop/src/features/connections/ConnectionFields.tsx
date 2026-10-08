@@ -5,26 +5,49 @@ import { PasswordField } from './PasswordField';
 import type { ConnectionForm } from './useConnectionForm';
 import styles from './ConnectionSheet.module.css';
 
+type TextKey = 'name' | 'group' | 'host' | 'port' | 'user' | 'database';
+
+/** Props of a text field bound to one draft value. */
+function binder(form: ConnectionForm) {
+  return (key: TextKey) => ({
+    className: styles.row,
+    value: form.draft[key],
+    onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
+      form.update({ [key]: event.target.value });
+    },
+  });
+}
+
+/** Name and group, shared by every engine. */
+export function NameFields({
+  form,
+}: {
+  form: ConnectionForm;
+}): React.JSX.Element {
+  const text = binder(form);
+  return (
+    <>
+      <TextField
+        label="Name"
+        {...text('name')}
+        {...fieldError(form.errors.name)}
+      />
+      <TextField label="Group" placeholder="Optional" {...text('group')} />
+    </>
+  );
+}
+
 /** Name, group, address and credentials, labels leading as in AppKit forms. */
 export function ConnectionFields({
   form,
 }: {
   form: ConnectionForm;
 }): React.JSX.Element {
-  const { draft, errors, update } = form;
-  const text = (
-    key: 'name' | 'group' | 'host' | 'port' | 'user' | 'database',
-  ) => ({
-    className: styles.row,
-    value: draft[key],
-    onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
-      update({ [key]: event.target.value });
-    },
-  });
+  const { draft, errors } = form;
+  const text = binder(form);
   return (
     <>
-      <TextField label="Name" {...text('name')} {...fieldError(errors.name)} />
-      <TextField label="Group" placeholder="Optional" {...text('group')} />
+      <NameFields form={form} />
       <div className={styles.pair}>
         <TextField
           label="Host"
@@ -43,7 +66,7 @@ export function ConnectionFields({
       <PasswordField form={form} />
       <TextField
         label="Database"
-        placeholder="Same as user"
+        placeholder={draft.engine === 'postgres' ? 'postgres' : 'Optional'}
         {...text('database')}
       />
     </>

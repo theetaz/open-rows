@@ -161,7 +161,7 @@ fn keeps_byte_offsets_and_terminators() {
     let expected = vec![
         Statement {
             range: 2..10,
-            terminator: Some(11),
+            terminator: Some(11..12),
         },
         Statement {
             range: 13..source.len(),

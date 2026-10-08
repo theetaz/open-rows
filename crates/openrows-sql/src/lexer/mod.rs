@@ -1,30 +1,36 @@
 // SPDX-License-Identifier: Apache-2.0
-//! Hand-written `PostgreSQL` lexer shared by the splitter, classifier and
-//! placeholder scanner.
+//! Hand-written, dialect-aware SQL lexer shared by the splitter, classifier
+//! and placeholder scanner.
 //!
 //! The lexer never fails: every byte of the input belongs to exactly one token,
 //! and unterminated strings, quoted identifiers, dollar quotes and block
 //! comments extend to the end of the input. Token boundaries always fall on
 //! ASCII bytes or the end of input, so they are valid `str` slice boundaries.
+//! The per-dialect byte rules live in [`rules`].
+
+mod rules;
+
+use crate::Dialect;
 
 /// Lexical category of a [`Token`].
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum TokenKind {
     /// ASCII whitespace run.
     Whitespace,
-    /// `-- …` up to (not including) the line break.
+    /// `-- …` (and `MySQL` `# …`) up to (not including) the line break.
     LineComment,
-    /// `/* … */`, nesting aware.
+    /// `/* … */` (nesting aware for `PostgreSQL`), and the `/*!` opener and
+    /// `*/` closer of a `MySQL` executable comment, whose body is lexed as code.
     BlockComment,
     /// Unquoted identifier or keyword.
     Word,
-    /// `"…"` with `""` escapes.
+    /// `"…"`, `` `…` `` or `[…]` quoted identifier.
     QuotedIdent,
-    /// `'…'` or `E'…'` string literal.
+    /// `'…'` (and `MySQL` `"…"`) string literal.
     String,
-    /// `$$…$$` or `$tag$…$tag$` string.
+    /// `PostgreSQL` `$$…$$` or `$tag$…$tag$` string.
     DollarString,
-    /// Positional parameter such as `$1`.
+    /// Positional or named parameter such as `$1`, `?2` or `$name`.
     Param,
     /// Numeric literal.
     Number,
@@ -72,15 +78,31 @@ impl Token {
     }
 }
 
-/// Iterator over the tokens of a `PostgreSQL` source text.
+/// Iterator over the tokens of a source text in one dialect.
 pub(crate) struct Lexer<'a> {
     source: &'a str,
     pos: usize,
+    dialect: Dialect,
+    /// Inside a `MySQL` `/*! … */` executable comment.
+    executable: bool,
 }
 
 impl<'a> Lexer<'a> {
-    pub(crate) fn new(source: &'a str) -> Self {
-        Self { source, pos: 0 }
+    pub(crate) fn new(source: &'a str, dialect: Dialect) -> Self {
+        Self {
+            source,
+            pos: 0,
+            dialect,
+            executable: false,
+        }
+    }
+
+    /// Continue lexing `source` from byte `pos` (a token boundary).
+    pub(crate) fn resume(source: &'a str, pos: usize, dialect: Dialect) -> Self {
+        Self {
+            pos,
+            ..Self::new(source, dialect)
+        }
     }
 
     fn byte(&self, index: usize) -> Option<u8> {
@@ -100,15 +122,16 @@ impl<'a> Lexer<'a> {
         self.scan_while(self.pos, |byte| byte != b'\n')
     }
 
-    fn block_comment_end(&self) -> usize {
+    /// End of a block comment; `PostgreSQL` comments nest, others do not.
+    fn block_comment_end(&self, nested: bool) -> usize {
         let mut depth = 0_usize;
         let mut index = self.pos;
         while let Some(byte) = self.byte(index) {
             let next = self.byte(index + 1);
-            if byte == b'/' && next == Some(b'*') {
+            if byte == b'/' && next == Some(b'*') && (nested || depth == 0) {
                 depth += 1;
                 index += 2;
-            } else if byte == b'*' && next == Some(b'/') && depth == 1 {
+            } else if byte == b'*' && next == Some(b'/') && depth <= 1 {
                 return index + 2;
             } else if byte == b'*' && next == Some(b'/') {
                 depth -= 1;
@@ -137,37 +160,10 @@ impl<'a> Lexer<'a> {
         self.source.len()
     }
 
-    fn word(&self) -> Token {
-        let end = self.scan_while(self.pos, is_ident_continue);
-        let is_escape_prefix = end == self.pos + 1
-            && matches!(self.byte(self.pos), Some(b'e' | b'E'))
-            && self.byte(end) == Some(b'\'');
-        if is_escape_prefix {
-            let string_end = self.quoted_end(end, b'\'', true);
-            return self.token(TokenKind::String, string_end);
-        }
-        self.token(TokenKind::Word, end)
-    }
-
-    fn dollar(&self) -> Token {
-        let after = self.pos + 1;
-        if self.byte(after).is_some_and(|byte| byte.is_ascii_digit()) {
-            let end = self.scan_while(after, |byte| byte.is_ascii_digit());
-            return self.token(TokenKind::Param, end);
-        }
-        let tag_end = self.scan_while(after, |byte| is_ident_continue(byte) && byte != b'$');
-        let valid_tag = tag_end == after || self.byte(after).is_some_and(is_ident_start);
-        if !valid_tag || self.byte(tag_end) != Some(b'$') {
-            return self.token(TokenKind::Punct, after);
-        }
-        let body = tag_end + 1;
-        let delimiter = self.source.get(self.pos..body).unwrap_or_default();
-        let end = self
-            .source
-            .get(body..)
-            .and_then(|rest| rest.find(delimiter))
-            .map_or(self.source.len(), |offset| body + offset + delimiter.len());
-        self.token(TokenKind::DollarString, end)
+    /// End of a run closed by `close` with no escapes (`SQLite` `[ident]`).
+    fn until_end(&self, close: u8) -> usize {
+        let end = self.scan_while(self.pos + 1, |byte| byte != close);
+        (end + 1).min(self.source.len())
     }
 
     fn token(&self, kind: TokenKind, end: usize) -> Token {
@@ -179,34 +175,21 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn next_token(&self, byte: u8) -> Token {
-        let next = self.byte(self.pos + 1);
-        match byte {
-            b if b.is_ascii_whitespace() => {
-                let end = self.scan_while(self.pos, |b| b.is_ascii_whitespace());
-                self.token(TokenKind::Whitespace, end)
-            }
-            b'-' if next == Some(b'-') => {
-                self.token(TokenKind::LineComment, self.line_comment_end())
-            }
-            b'/' if next == Some(b'*') => {
-                self.token(TokenKind::BlockComment, self.block_comment_end())
-            }
-            b'\'' => self.token(TokenKind::String, self.quoted_end(self.pos, b'\'', false)),
-            b'"' => self.token(
-                TokenKind::QuotedIdent,
-                self.quoted_end(self.pos, b'"', false),
-            ),
-            b'$' => self.dollar(),
-            b if is_ident_start(b) => self.word(),
-            b if b.is_ascii_digit() => {
-                let end = self.scan_while(self.pos, |b| {
-                    b.is_ascii_alphanumeric() || b == b'_' || b == b'.'
-                });
-                self.token(TokenKind::Number, end)
-            }
-            _ => self.token(single_byte_kind(byte), self.pos + 1),
-        }
+    fn whitespace(&self) -> Token {
+        let end = self.scan_while(self.pos, |b| b.is_ascii_whitespace());
+        self.token(TokenKind::Whitespace, end)
+    }
+
+    fn number(&self) -> Token {
+        let end = self.scan_while(self.pos, |b| {
+            b.is_ascii_alphanumeric() || b == b'_' || b == b'.'
+        });
+        self.token(TokenKind::Number, end)
+    }
+
+    fn plain_word(&self) -> Token {
+        let end = self.scan_while(self.pos, is_ident_continue);
+        self.token(TokenKind::Word, end)
     }
 }
 
@@ -221,7 +204,7 @@ impl Iterator for Lexer<'_> {
     }
 }
 
-fn single_byte_kind(byte: u8) -> TokenKind {
+pub(crate) fn single_byte_kind(byte: u8) -> TokenKind {
     match byte {
         b';' => TokenKind::Semicolon,
         b'(' => TokenKind::OpenParen,
@@ -232,18 +215,18 @@ fn single_byte_kind(byte: u8) -> TokenKind {
     }
 }
 
-/// `PostgreSQL` identifier start: letter, underscore or any non-ASCII byte.
-fn is_ident_start(byte: u8) -> bool {
+/// Identifier start: letter, underscore or any non-ASCII byte.
+pub(crate) fn is_ident_start(byte: u8) -> bool {
     byte.is_ascii_alphabetic() || byte == b'_' || !byte.is_ascii()
 }
 
-fn is_ident_continue(byte: u8) -> bool {
+pub(crate) fn is_ident_continue(byte: u8) -> bool {
     is_ident_start(byte) || byte.is_ascii_digit() || byte == b'$'
 }
 
 /// Tokens of `source` that are not whitespace or comments.
-pub(crate) fn significant(source: &str) -> Vec<Token> {
-    Lexer::new(source)
+pub(crate) fn significant(source: &str, dialect: Dialect) -> Vec<Token> {
+    Lexer::new(source, dialect)
         .filter(|token| !token.kind.is_trivia())
         .collect()
 }

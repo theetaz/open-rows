@@ -62,12 +62,14 @@ pub enum ProfileError {
     Secret(#[from] SecretError),
 }
 
-/// Every way a `postgres://` URL can be rejected.
+/// Every way a connection URL can be rejected.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[non_exhaustive]
 pub enum UrlError {
-    /// The scheme is not `postgres` or `postgresql`.
-    #[error("unsupported URL scheme {scheme:?}; expected postgres:// or postgresql://")]
+    /// The scheme names no supported engine.
+    #[error(
+        "unsupported URL scheme {scheme:?}; expected postgres://, mysql://, mariadb:// or sqlite:"
+    )]
     UnsupportedScheme {
         /// Scheme found (lower-cased).
         scheme: String,
@@ -90,10 +92,13 @@ pub enum UrlError {
         /// Component that failed to decode.
         field: &'static str,
     },
-    /// `sslmode` is not a libpq mode.
+    /// `sslmode` is not a libpq or `MySQL` mode.
     #[error("invalid sslmode {value:?}")]
     InvalidSslMode {
         /// The rejected mode.
         value: String,
     },
+    /// A `sqlite:` URL must name an absolute local file path.
+    #[error("a sqlite: URL needs an absolute file path, e.g. sqlite:/data/app.db")]
+    InvalidFilePath,
 }

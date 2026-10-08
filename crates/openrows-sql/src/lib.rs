@@ -26,6 +26,7 @@
 #![forbid(unsafe_code)]
 
 mod classify;
+mod dialect;
 pub mod edit;
 mod lexer;
 mod placeholders;
@@ -39,14 +40,19 @@ pub use classify::{Classification, StatementKind, classify};
 pub use placeholders::{Placeholder, PlaceholderKind, placeholders};
 pub use split::{Statement, split, statement_at};
 
-/// SQL dialect whose lexical and classification rules apply.
+/// SQL dialect whose lexical, classification and generation rules apply.
 ///
-/// Only `PostgreSQL` is implemented; further dialects (`MySQL` `DELIMITER`,
-/// SQL Server `GO`, …) are added as new variants with their own lexer rules.
+/// Further dialects (SQL Server `GO`, …) are added as new variants with
+/// their own lexer rules.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 #[non_exhaustive]
 pub enum Dialect {
     /// `PostgreSQL` (and wire-compatible servers).
     #[default]
     Postgres,
+    /// `MySQL` and `MariaDB` (default `sql_mode`: backslash escapes in strings,
+    /// `"…"` strings, `` `…` `` identifiers, `#` comments, `DELIMITER`).
+    MySql,
+    /// `SQLite` 3.
+    Sqlite,
 }

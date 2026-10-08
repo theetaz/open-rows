@@ -40,7 +40,7 @@ export {
   onSshPrompt,
   openConnection,
   openSession,
-  parsePostgresUrl,
+  parseConnectionUrl,
   pickConnectionFile,
   searchProfiles,
   testConnection,
@@ -128,6 +128,8 @@ export { DEFAULT_CUSTOM_ENV_COLOR } from './generated/bindings';
 export type {
   ConnectionOpened,
   DatabaseDto,
+  EngineDto,
+  FileDto,
   EnvDto,
   EnvKindDto,
   IpcErrorKind,

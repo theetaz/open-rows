@@ -122,7 +122,7 @@ impl ConnectionProfile {
     pub fn uses_secret(&self, slot: SecretSlot) -> bool {
         let auth = self.ssh.as_ref().map(|ssh| &ssh.auth);
         match slot {
-            SecretSlot::Password => true,
+            SecretSlot::Password => !self.driver.is_file(),
             SecretSlot::SshPassword => matches!(auth, Some(SshAuthMethod::Password)),
             SecretSlot::SshPassphrase => matches!(auth, Some(SshAuthMethod::PrivateKey { .. })),
             SecretSlot::TlsKeyPassphrase => self.tls.client_key.is_some(),

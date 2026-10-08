@@ -3,6 +3,7 @@
 //! find unbounded `DELETE`/`UPDATE` anywhere in a statement.
 
 use super::Sql;
+use crate::Dialect;
 use crate::lexer::TokenKind;
 
 /// Data-modifying keywords when they start a (sub)statement.
@@ -11,7 +12,21 @@ const DML_HEADS: &[&str] = &["INSERT", "UPDATE", "DELETE", "MERGE"];
 /// Locking clauses after `FOR` (`FOR UPDATE`, `FOR NO KEY UPDATE`, `FOR SHARE`, `FOR KEY SHARE`).
 const LOCK_STRENGTHS: &[&str] = &["UPDATE", "NO", "SHARE", "KEY"];
 
-/// Built-in functions with side effects. Heuristic: user-defined volatile
+/// `MySQL`/`MariaDB` built-ins with side effects (locks, sequences, UDF shells).
+const MYSQL_SIDE_EFFECTS: &[&str] = &[
+    "get_lock",
+    "release_lock",
+    "release_all_locks",
+    "nextval",
+    "setval",
+    "sys_exec",
+    "sys_eval",
+];
+
+/// `SQLite` functions with side effects (extension loading, CLI file writes).
+const SQLITE_SIDE_EFFECTS: &[&str] = &["load_extension", "writefile", "edit"];
+
+/// `PostgreSQL` built-ins with side effects. Heuristic: user-defined volatile
 /// functions cannot be detected without the catalog.
 const SIDE_EFFECT_FUNCTIONS: &[&str] = &[
     "nextval",
@@ -45,12 +60,14 @@ const SIDE_EFFECT_PREFIXES: &[&str] = &[
 ];
 
 /// Whether a statement whose head reads actually writes: nested DML,
-/// `SELECT … INTO`, a locking clause, or a side-effecting function call.
+/// `SELECT … INTO`, a locking clause (`FOR UPDATE`, `MySQL` `LOCK IN SHARE
+/// MODE`), or a side-effecting function call.
 pub(super) fn has_write_marker(sql: Sql<'_>) -> bool {
     (0..sql.tokens.len()).any(|index| {
-        (is_head(sql, index) && is_any_word(sql, index, DML_HEADS))
+        (is_head(sql, index) && (is_any_word(sql, index, DML_HEADS) || is_replace(sql, index)))
             || sql.is_word(index, "INTO")
             || (sql.is_word(index, "FOR") && is_any_word(sql, index + 1, LOCK_STRENGTHS))
+            || (sql.is_word(index, "LOCK") && sql.is_word(index + 1, "IN"))
             || is_side_effect_call(sql, index)
     })
 }
@@ -65,13 +82,26 @@ pub(super) fn has_unbounded_dml(sql: Sql<'_>) -> bool {
     })
 }
 
-/// A (sub)statement starts at the beginning, after `(` or after a stray `;`.
+/// `REPLACE [INTO] t …` (`MySQL`, `SQLite`), not the `replace(…)` function.
+fn is_replace(sql: Sql<'_>, index: usize) -> bool {
+    sql.dialect != Dialect::Postgres
+        && sql.is_word(index, "REPLACE")
+        && sql.kind(index + 1) != Some(TokenKind::OpenParen)
+}
+
+/// A (sub)statement starts at the beginning, after `(`, after a stray `;`,
+/// or, inside an anonymous block that runs at once (`MariaDB` `BEGIN NOT
+/// ATOMIC … END`), after `ATOMIC`, `BEGIN`, `THEN` or `ELSE`, so DML hidden
+/// in the block is still inspected.
 fn is_head(sql: Sql<'_>, index: usize) -> bool {
-    index == 0
-        || matches!(
-            sql.kind(index - 1),
-            Some(TokenKind::OpenParen | TokenKind::Semicolon)
-        )
+    let Some(previous) = index.checked_sub(1) else {
+        return true;
+    };
+    matches!(
+        sql.kind(previous),
+        Some(TokenKind::OpenParen | TokenKind::Semicolon)
+    ) || (sql.is_word(0, "BEGIN")
+        && is_any_word(sql, previous, &["BEGIN", "ATOMIC", "THEN", "ELSE"]))
 }
 
 fn is_any_word(sql: Sql<'_>, index: usize, keywords: &[&str]) -> bool {
@@ -101,8 +131,14 @@ fn is_side_effect_call(sql: Sql<'_>, index: usize) -> bool {
         return false;
     };
     let name = name.to_ascii_lowercase();
-    SIDE_EFFECT_FUNCTIONS.contains(&name.as_str())
-        || SIDE_EFFECT_PREFIXES
-            .iter()
-            .any(|prefix| name.starts_with(prefix))
+    match sql.dialect {
+        Dialect::Postgres => {
+            SIDE_EFFECT_FUNCTIONS.contains(&name.as_str())
+                || SIDE_EFFECT_PREFIXES
+                    .iter()
+                    .any(|prefix| name.starts_with(prefix))
+        }
+        Dialect::MySql => MYSQL_SIDE_EFFECTS.contains(&name.as_str()),
+        Dialect::Sqlite => SQLITE_SIDE_EFFECTS.contains(&name.as_str()),
+    }
 }

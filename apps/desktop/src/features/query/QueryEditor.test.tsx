@@ -13,6 +13,7 @@ it('mounts CodeMirror lazily, exposes text and cursor, and runs on ⌘↵ / ⇧�
     <QueryEditor
       doc={'SELECT 1;\nSELECT 2;'}
       label="SQL editor"
+      dialect="postgres"
       onChange={onChange}
       onRun={onRun}
       onReady={(editor) => {

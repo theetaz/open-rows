@@ -177,6 +177,9 @@ pub struct TableInfo {
     pub view_definition: Option<String>,
     /// `PARTITION BY` clause body of a partitioned table, e.g. `RANGE (day)`.
     pub partition_key: Option<String>,
+    /// The server's own `CREATE` statement (`MySQL` `SHOW CREATE TABLE`,
+    /// `SQLite` `sqlite_schema.sql`); `None` when it must be rebuilt.
+    pub definition: Option<String>,
 }
 
 /// Everything the Structure, Index, Triggers and DDL views show.

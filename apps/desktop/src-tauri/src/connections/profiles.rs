@@ -10,8 +10,7 @@ use std::str::FromStr;
 
 use openrows_secrets::SecretString;
 use openrows_store::profile::{
-    ConnectionProfile, EnvKind, EnvTag, PasswordChange, ProfileId, ProfileService, SecretSlot,
-    parse_postgres_url,
+    ConnectionProfile, PasswordChange, ProfileId, ProfileService, SecretSlot, parse_url,
 };
 use tauri::State;
 
@@ -49,7 +48,7 @@ pub(crate) fn resolve_password(
 ) -> Result<Option<SecretString>, IpcError> {
     if let PasswordInput::FromUrl { url } = input {
         // A URL without a password means no password, not the stored one.
-        return Ok(parse_postgres_url(url)?.password);
+        return Ok(parse_url(url)?.password);
     }
     resolve_secret(
         service,
@@ -68,8 +67,7 @@ fn list(service: &ProfileService) -> Result<ProfileList, IpcError> {
 }
 
 fn create(service: &ProfileService, input: &ProfileInput) -> Result<ProfileDto, IpcError> {
-    let mut profile =
-        ConnectionProfile::new_postgres(&input.name, input.params(), EnvTag::new(EnvKind::Local));
+    let mut profile = input.new_profile();
     input.apply(&mut profile)?;
     let changes = input.secret_changes()?;
     Ok(ProfileDto::from(&service.create_with(profile, &changes)?))
@@ -166,11 +164,11 @@ pub(crate) fn profile_delete(state: State<'_, Connections>, id: String) -> Resul
     Ok(())
 }
 
-/// Form fields from a pasted `postgres://` URL, without the password itself.
+/// Form fields from a pasted connection URL, without the password itself.
 #[tauri::command]
 #[specta::specta]
 pub(crate) fn profile_parse_url(url: String) -> Result<UrlDraft, IpcError> {
-    Ok(parse_postgres_url(&url)?.into())
+    Ok(parse_url(&url)?.into())
 }
 
 #[cfg(test)]

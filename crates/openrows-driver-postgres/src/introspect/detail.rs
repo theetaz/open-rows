@@ -179,6 +179,7 @@ fn table_info(row: &TextRow) -> Result<TableInfo, DriverError> {
         comment: optional(row, 5),
         view_definition: optional(row, 6),
         partition_key: optional(row, 7),
+        definition: None,
     })
 }
 

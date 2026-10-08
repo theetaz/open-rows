@@ -19,6 +19,7 @@ mod cancel;
 mod connect;
 pub mod ddl;
 mod decode;
+mod driver;
 mod edits;
 pub mod fixture;
 mod info;
@@ -34,6 +35,7 @@ mod types;
 mod wire;
 
 pub use decode::ResultDecoder;
+pub use driver::PgDriver;
 pub use edits::BoundEdit;
 pub use info::{Flavour, ServerInfo, TlsStatus};
 pub use introspect::RowEditInfo;

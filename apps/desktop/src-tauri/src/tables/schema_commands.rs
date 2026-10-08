@@ -8,13 +8,13 @@ use super::edit_commands::{ensure_writable, session};
 use super::schema_dto::{AlterReply, AlterRequest, TableDetailDto};
 use super::schema_map::detail_dto;
 use crate::connections::catalog::read_detail;
+use crate::connections::drivers::{driver, profile_driver};
 use crate::connections::profiles::profile_id;
 use crate::connections::{Connections, IpcError, IpcErrorKind};
 use openrows_core::safety::{SafetyPlan, SafetyPolicy};
-use openrows_driver_api::Session;
 use openrows_driver_api::schema::SchemaChange;
-use openrows_driver_postgres::PgSession;
-use openrows_driver_postgres::ddl::{AlterPlan, AlterTable, alter_sql, create_table_sql};
+use openrows_driver_api::structure::{AlterPlan, AlterTable};
+use openrows_driver_api::{Connection, Driver, catalog, editor};
 use openrows_sql::{Dialect, StatementKind, classify, split};
 use openrows_store::profile::EnvKind;
 use tauri::State;
@@ -35,15 +35,19 @@ pub(crate) async fn table_detail(
         .get(profile_id(&target.profile_id)?)?
         .safety
         .read_only;
+    let driver = profile_driver(&state, &target.profile_id)?;
     let detail = read_detail(
         &state,
         (&target.profile_id, &target.database),
         (target.schema.clone(), target.table.clone()),
     )
     .await?;
-    let ddl = create_table_sql(&target.schema, &target.table, &detail)
+    let ddl = driver
+        .table_ddl((&target.schema, &target.table), &detail)
         .map_err(|error| IpcError::invalid(error.to_string()))?;
-    detail_dto(detail, ddl, read_only).ok_or_else(|| {
+    // Engines without a structure editor show their structure read-only.
+    let editable = !read_only && driver.supports_alter();
+    detail_dto(detail, ddl, !editable).ok_or_else(|| {
         IpcError::new(
             IpcErrorKind::NotFound,
             format!("{}.{} was not found", target.schema, target.table),
@@ -70,9 +74,10 @@ pub(crate) async fn table_alter(
         ));
     }
     let guarded = profile.safety.confirm_writes || profile.env_tag.kind == EnvKind::Prod;
+    let driver = driver(profile.driver);
     let mut session = session(&state, &request.target).await?;
-    let result = prepare_alter(&mut session, &request, guarded).await;
-    let closed = Box::new(session)
+    let result = prepare_alter(session.as_mut(), driver, &request, guarded).await;
+    let closed = session
         .close()
         .await
         .map_err(|error| IpcError::from(&error));
@@ -85,27 +90,31 @@ pub(crate) async fn table_alter(
 }
 
 async fn prepare_alter(
-    session: &mut PgSession,
+    session: &mut dyn Connection,
+    driver: &dyn Driver,
     request: &AlterRequest,
     guarded: bool,
 ) -> Result<AlterReply, IpcError> {
     let target = &request.target;
-    let detail = session
+    let detail = catalog(session)
+        .map_err(|error| IpcError::from(&error))?
         .table_detail(&target.schema, &target.table)
         .await
         .map_err(|error| IpcError::from(&error))?;
     let changes: Vec<SchemaChange> = request.changes.iter().map(Into::into).collect();
-    let plan = alter_sql(
-        &AlterTable {
-            schema: &target.schema,
-            table: &target.table,
-            detail: &detail,
-        },
-        &changes,
-    )
-    .map_err(|error| IpcError::invalid(error.to_string()))?;
-    ensure_single_ddl(&plan.statements)?;
-    let token = review_token(request, &plan.statements)?;
+    let plan = driver
+        .alter_sql(
+            &AlterTable {
+                schema: &target.schema,
+                table: &target.table,
+                detail: &detail,
+            },
+            &changes,
+        )
+        .map_err(|error| IpcError::invalid(error.to_string()))?;
+    let dialect = driver.dialect();
+    ensure_single_ddl(&plan.statements, dialect)?;
+    let token = review_token(request, &plan.statements, dialect)?;
     let confirm_name = (guarded && plan.destructive).then(|| target.table.clone());
     if request.confirm_token.as_deref() != Some(token.as_str()) {
         return Ok(prepared(token, plan, confirm_name));
@@ -117,7 +126,8 @@ async fn prepare_alter(
             "Type the table name {name:?} to confirm these destructive changes"
         )));
     }
-    session
+    editor(session)
+        .map_err(|error| IpcError::from(&error))?
         .commit_ddl(&plan.statements)
         .await
         .map_err(|error| IpcError::from(&error))?;
@@ -136,10 +146,10 @@ fn prepared(token: String, plan: AlterPlan, confirm_name: Option<String>) -> Alt
 
 /// Defence in depth: every generated text must be exactly one DDL statement
 /// (a default expression cannot smuggle in a second one).
-fn ensure_single_ddl(statements: &[String]) -> Result<(), IpcError> {
+fn ensure_single_ddl(statements: &[String], dialect: Dialect) -> Result<(), IpcError> {
     for sql in statements {
-        let single = split(sql, Dialect::Postgres).len() == 1;
-        if !single || classify(sql, Dialect::Postgres).kind != StatementKind::Ddl {
+        let single = split(sql, dialect).len() == 1;
+        if !single || classify(sql, dialect).kind != StatementKind::Ddl {
             return Err(IpcError::invalid(
                 "A default expression must be a single SQL expression",
             ));
@@ -149,11 +159,16 @@ fn ensure_single_ddl(statements: &[String]) -> Result<(), IpcError> {
 }
 
 /// Binds a review to the session, the exact change set and its statements.
-fn review_token(request: &AlterRequest, statements: &[String]) -> Result<String, IpcError> {
+fn review_token(
+    request: &AlterRequest,
+    statements: &[String],
+    dialect: Dialect,
+) -> Result<String, IpcError> {
     let plan = SafetyPlan::check(
         SafetyPolicy {
             read_only: false,
             confirm_writes: true,
+            dialect,
         },
         statements.to_vec(),
     );
@@ -188,11 +203,19 @@ mod tests {
 
     #[test]
     fn only_single_ddl_statements_pass() {
-        assert!(ensure_single_ddl(&["ALTER TABLE \"t\" DROP COLUMN \"c\"".into()]).is_ok());
-        assert!(ensure_single_ddl(&["COMMENT ON TABLE \"t\" IS 'x'".into()]).is_ok());
+        assert!(
+            ensure_single_ddl(
+                &["ALTER TABLE \"t\" DROP COLUMN \"c\"".into()],
+                Dialect::Postgres
+            )
+            .is_ok()
+        );
+        assert!(
+            ensure_single_ddl(&["COMMENT ON TABLE \"t\" IS 'x'".into()], Dialect::Postgres).is_ok()
+        );
         let smuggled = "ALTER TABLE \"t\" ALTER COLUMN \"c\" SET DEFAULT ('a'); DROP TABLE t; --)";
-        assert!(ensure_single_ddl(&[smuggled.into()]).is_err());
-        assert!(ensure_single_ddl(&["DELETE FROM t".into()]).is_err());
+        assert!(ensure_single_ddl(&[smuggled.into()], Dialect::Postgres).is_err());
+        assert!(ensure_single_ddl(&["DELETE FROM t".into()], Dialect::Postgres).is_err());
     }
 
     #[test]
@@ -202,12 +225,15 @@ mod tests {
         };
         let mut first = request(vec![comment("a")]);
         let statements = vec!["COMMENT ON TABLE \"public\".\"t\" IS 'a'".to_owned()];
-        let token = review_token(&first, &statements)?;
-        assert_eq!(token, review_token(&first, &statements)?);
+        let token = review_token(&first, &statements, Dialect::Postgres)?;
+        assert_eq!(token, review_token(&first, &statements, Dialect::Postgres)?);
         let changed = request(vec![comment("b")]);
-        assert_ne!(token, review_token(&changed, &statements)?);
+        assert_ne!(
+            token,
+            review_token(&changed, &statements, Dialect::Postgres)?
+        );
         first.session_id = "session-b".into();
-        assert_ne!(token, review_token(&first, &statements)?);
+        assert_ne!(token, review_token(&first, &statements, Dialect::Postgres)?);
         Ok(())
     }
 

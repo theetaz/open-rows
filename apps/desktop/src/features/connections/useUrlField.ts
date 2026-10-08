@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
-import { parsePostgresUrl } from '@openrows/ipc';
-import { withPassword, withUrl } from './form';
+import { parseConnectionUrl } from '@openrows/ipc';
+import { urlConflict, withPassword, withUrl } from './form';
 import type { Draft } from './form';
 import { composeUrl, splitUrl } from './urlText';
 import type { UrlPassword } from './urlText';
@@ -33,18 +33,24 @@ function applyPassword(draft: Draft, password: UrlPassword): Draft {
 
 type Sink = {
   ticket: { current: number };
+  /** The draft as last rendered (engine and lock do not change while parsing). */
+  draft: { current: Draft };
   setDraft: Dispatch<SetStateAction<Draft>>;
   setError: (error: string | null) => void;
 };
 
-/** Parse in the core; a newer edit or a field change discards stale results. */
+/**
+ * Parse in the core; a newer edit or a field change discards stale results.
+ * A saved connection keeps its engine: a URL for another engine is refused.
+ */
 function parse(stripped: string, sink: Sink): void {
   const current = ++sink.ticket.current;
-  parsePostgresUrl(stripped).then(
+  parseConnectionUrl(stripped).then(
     (parsed) => {
       if (current !== sink.ticket.current) return;
-      sink.setDraft((value) => withUrl(value, parsed));
-      sink.setError(null);
+      const conflict = urlConflict(sink.draft.current, parsed);
+      if (!conflict) sink.setDraft((value) => withUrl(value, parsed));
+      sink.setError(conflict);
     },
     (failure: unknown) => {
       if (current === sink.ticket.current) sink.setError(message(failure));
@@ -61,11 +67,15 @@ export function useUrlField(
   const [error, setError] = useState<string | null>(null);
   const [queued, setQueued] = useState<string | null>(null);
   const ticket = useRef(0);
+  const latest = useRef(draft);
+  useEffect(() => {
+    latest.current = draft;
+  });
   useEffect(() => {
     if (queued === null) return;
     const timer = setTimeout(() => {
       setQueued(null);
-      parse(queued, { ticket, setDraft, setError });
+      parse(queued, { ticket, draft: latest, setDraft, setError });
     }, URL_PARSE_DELAY_MS);
     return () => {
       clearTimeout(timer);
@@ -73,7 +83,7 @@ export function useUrlField(
   }, [queued, setDraft]);
   const now = (stripped: string): void => {
     setQueued(null);
-    parse(stripped, { ticket, setDraft, setError });
+    parse(stripped, { ticket, draft: latest, setDraft, setError });
   };
   return {
     value: text ?? composeUrl(draft),

@@ -1,0 +1,25 @@
+[package]
+name = "openrows-driver-sqlite"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "SQLite driver for OpenRows: local database files on a dedicated thread, streamed into Arrow"
+
+[lints]
+workspace = true
+
+[dependencies]
+arrow-array = "60"
+arrow-schema = "60"
+openrows-driver-api = { path = "../openrows-driver-api" }
+openrows-sql = { path = "../openrows-sql" }
+# Same version and bundled build the local store already uses (no new crate).
+rusqlite = { version = "0.40", features = ["bundled", "column_decltype"] }
+tokio = { version = "1.53", features = ["sync"] }
+
+[dev-dependencies]
+openrows-sql = { path = "../openrows-sql" }
+tempfile = "3.27"
+tokio = { version = "1.53", features = ["sync", "rt", "macros", "time"] }

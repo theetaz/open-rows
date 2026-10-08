@@ -2,7 +2,8 @@
 import { autocompletion, completionKeymap } from '@codemirror/autocomplete';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { bracketMatching } from '@codemirror/language';
-import { PostgreSQL, sql } from '@codemirror/lang-sql';
+import { MariaSQL, MySQL, PostgreSQL, SQLite, sql } from '@codemirror/lang-sql';
+import type { SQLDialect } from '@codemirror/lang-sql';
 import { EditorState } from '@codemirror/state';
 import type { Extension } from '@codemirror/state';
 import {
@@ -35,7 +36,19 @@ export interface SqlEditorOptions {
   keys?: readonly EditorKey[];
   /** A read-only viewer (DDL, trigger definitions): no edits, still selectable. */
   readOnly?: boolean;
+  /** Highlighting and keyword completion; `postgres` when absent. */
+  dialect?: EditorDialect;
 }
+
+/** SQL dialects the editor highlights, one per connection engine. */
+export type EditorDialect = 'postgres' | 'mysql' | 'mariadb' | 'sqlite';
+
+const DIALECTS: Record<EditorDialect, SQLDialect> = {
+  postgres: PostgreSQL,
+  mysql: MySQL,
+  mariadb: MariaSQL,
+  sqlite: SQLite,
+};
 
 /** One application shortcut inside the editor. */
 export interface EditorKey {
@@ -58,8 +71,8 @@ function docChangeListener(listener: (() => void) | undefined): Extension {
 }
 
 /**
- * PostgreSQL dialect highlighting and keyword completion with the standard
- * editing extensions; other dialects arrive with the production editor (M1).
+ * Dialect highlighting and keyword completion (PostgreSQL, MySQL, MariaDB or
+ * SQLite) with the standard editing extensions.
  */
 export function sqlEditorExtensions(options: SqlEditorOptions): Extension {
   return [
@@ -72,7 +85,7 @@ export function sqlEditorExtensions(options: SqlEditorOptions): Extension {
     highlightActiveLine(),
     bracketMatching(),
     autocompletion(),
-    sql({ dialect: PostgreSQL }),
+    sql({ dialect: DIALECTS[options.dialect ?? 'postgres'] }),
     editorAppearance(),
     EditorView.contentAttributes.of({ 'aria-label': options.label }),
     keymap.of([...completionKeymap, ...defaultKeymap, ...historyKeymap]),

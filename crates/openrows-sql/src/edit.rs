@@ -1,13 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Parameterised, optimistic table edits; identifiers come from catalog metadata.
-use crate::select::{BoundSql, SelectError, TableRef, quote_ident};
+//!
+//! Every `UPDATE` and `DELETE` is guarded by the row's complete original
+//! snapshot: each column's text form (see [`Dialect::text_of`]) must still
+//! equal the snapshot, NULL-safely and byte for byte, so a row changed by
+//! someone else matches nothing and the commit rolls back.
+use crate::Dialect;
+use crate::select::{BoundSql, SelectError, TableRef};
 use std::collections::BTreeMap;
 
-/// Exact `PostgreSQL` text values, never display-formatted or rounded values.
+/// Exact server text values, never display-formatted or rounded values.
 pub type Values = BTreeMap<String, Option<String>>;
 /// Staged field values by column name.
 pub type Changes = BTreeMap<String, CellValue>;
-/// One staged field value: NULL, the column default, or exact `PostgreSQL` text input.
+/// One staged field value: NULL, the column default, or exact server text input.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CellValue {
     /// SQL NULL, bound as a NULL parameter.
@@ -52,57 +58,100 @@ pub struct EditTable {
 /// Reject unknown/protected columns and incomplete snapshots before constructing SQL.
 ///
 /// `DEFAULT` values become the `DEFAULT` keyword in an `UPDATE` and are omitted from an
-/// `INSERT` column list (all omitted: `DEFAULT VALUES`); they never become parameters.
+/// `INSERT` column list (all omitted: `DEFAULT VALUES`, or `() VALUES ()` for `MySQL`);
+/// they never become parameters. `SQLite` has no `DEFAULT` in `UPDATE`.
 ///
 /// # Errors
-/// Invalid identifiers, NUL data, unknown columns or a missing stable row identity.
-pub fn edit_sql(table: &EditTable, edit: &Edit) -> Result<BoundSql, SelectError> {
+/// Invalid identifiers, NUL data, unknown columns, a missing stable row
+/// identity, or a `DEFAULT` the dialect cannot express.
+pub fn edit_sql(dialect: Dialect, table: &EditTable, edit: &Edit) -> Result<BoundSql, SelectError> {
     if table.key.is_empty() || table.columns.is_empty() {
         return Err(SelectError::NoColumns);
     }
     validate(table, edit)?;
-    let relation = format!(
-        "{}.{}",
-        quote_ident(&table.table.schema)?,
-        quote_ident(&table.table.name)?
-    );
-    let mut params = Vec::new();
+    let relation = dialect.qualified(&table.table.schema, &table.table.name)?;
+    let mut binder = Binder {
+        dialect,
+        params: Vec::new(),
+    };
     let sql = match edit.kind {
-        EditKind::Insert => insert_sql(&relation, &assignments(edit, &mut params)?),
+        EditKind::Insert => insert_sql(dialect, &relation, &binder.assignments(edit)?),
         EditKind::Update => format!(
             "UPDATE {relation} SET {} WHERE {}",
-            assignments(edit, &mut params)?
+            binder
+                .assignments(edit)?
                 .iter()
                 .map(|(name, value)| format!("{name} = {value}"))
                 .collect::<Vec<_>>()
                 .join(", "),
-            guard(edit, &mut params)?
+            binder.guard(edit)?
         ),
-        EditKind::Delete => format!("DELETE FROM {relation} WHERE {}", guard(edit, &mut params)?),
+        EditKind::Delete => format!("DELETE FROM {relation} WHERE {}", binder.guard(edit)?),
     };
-    Ok(BoundSql { sql, params })
+    Ok(BoundSql {
+        sql,
+        params: binder.params,
+    })
 }
-/// Quoted column and SQL value expression pairs; inserts leave DEFAULT columns out.
-fn assignments(
-    edit: &Edit,
-    params: &mut Vec<Option<String>>,
-) -> Result<Vec<(String, String)>, SelectError> {
-    edit.values
-        .iter()
-        .filter(|(_, value)| edit.kind != EditKind::Insert || **value != CellValue::Default)
-        .map(|(name, value)| {
-            let expression = match value {
-                CellValue::Default => "DEFAULT".to_owned(),
-                CellValue::Null => bind(params, None)?,
-                CellValue::Text(text) => bind(params, Some(text))?,
-            };
-            Ok((quote_ident(name)?, expression))
-        })
-        .collect()
+
+/// Collects bind parameters in placeholder order.
+struct Binder {
+    dialect: Dialect,
+    params: Vec<Option<String>>,
 }
-fn insert_sql(relation: &str, pairs: &[(String, String)]) -> String {
+
+impl Binder {
+    fn bind(&mut self, value: Option<&String>) -> Result<String, SelectError> {
+        if value.is_some_and(|value| value.contains('\0')) {
+            return Err(SelectError::NulCharacter);
+        }
+        self.params.push(value.cloned());
+        Ok(self.dialect.placeholder(self.params.len()))
+    }
+
+    /// Quoted column and SQL value expression pairs; inserts leave DEFAULT columns out.
+    fn assignments(&mut self, edit: &Edit) -> Result<Vec<(String, String)>, SelectError> {
+        edit.values
+            .iter()
+            .filter(|(_, value)| edit.kind != EditKind::Insert || **value != CellValue::Default)
+            .map(|(name, value)| {
+                let expression = match value {
+                    CellValue::Default if self.dialect == Dialect::Sqlite => {
+                        return Err(SelectError::Unsupported(
+                            "SQLite cannot set a column back to its default in an UPDATE",
+                        ));
+                    }
+                    CellValue::Default => "DEFAULT".to_owned(),
+                    CellValue::Null => self.bind(None)?,
+                    CellValue::Text(text) => self.bind(Some(text))?,
+                };
+                Ok((self.dialect.quote_ident(name)?, expression))
+            })
+            .collect()
+    }
+
+    /// Every original column must still hold its snapshot text.
+    fn guard(&mut self, edit: &Edit) -> Result<String, SelectError> {
+        edit.original
+            .iter()
+            .map(|(name, value)| {
+                let column = self.dialect.quote_ident(name)?;
+                let placeholder = self.bind(value.as_ref())?;
+                Ok(self.dialect.same_text(&column, &placeholder))
+            })
+            .collect::<Result<Vec<_>, SelectError>>()
+            .map(|parts| parts.join(" AND "))
+    }
+}
+
+fn insert_sql(dialect: Dialect, relation: &str, pairs: &[(String, String)]) -> String {
     if pairs.is_empty() {
-        return format!("INSERT INTO {relation} DEFAULT VALUES");
+        return match dialect {
+            Dialect::MySql => format!("INSERT INTO {relation} () VALUES ()"),
+            Dialect::Postgres | Dialect::Sqlite => {
+                format!("INSERT INTO {relation} DEFAULT VALUES")
+            }
+        };
     }
     let (names, values): (Vec<&str>, Vec<&str>) = pairs
         .iter()
@@ -147,26 +196,6 @@ fn validate(table: &EditTable, edit: &Edit) -> Result<(), SelectError> {
         return Err(SelectError::NoColumns);
     }
     Ok(())
-}
-fn bind(params: &mut Vec<Option<String>>, value: Option<&String>) -> Result<String, SelectError> {
-    if value.is_some_and(|value| value.contains('\0')) {
-        return Err(SelectError::NulCharacter);
-    }
-    params.push(value.cloned());
-    Ok(format!("${}", params.len()))
-}
-fn guard(edit: &Edit, params: &mut Vec<Option<String>>) -> Result<String, SelectError> {
-    edit.original
-        .iter()
-        .map(|(name, value)| {
-            Ok(format!(
-                "{}::text IS NOT DISTINCT FROM {}::text",
-                quote_ident(name)?,
-                bind(params, value.as_ref())?
-            ))
-        })
-        .collect::<Result<Vec<_>, SelectError>>()
-        .map(|parts| parts.join(" AND "))
 }
 #[cfg(test)]
 mod tests;

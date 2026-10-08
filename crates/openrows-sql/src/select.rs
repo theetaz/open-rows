@@ -2,12 +2,16 @@
 //! Table-browsing `SELECT`s with server-side filters, sort and pagination
 //! (FR-GRID-04/08/11, docs/08 §10).
 //!
-//! Identifiers are double-quoted and must name a column the catalog listed
-//! for the table; user values never enter the SQL text — they become
-//! positional bind parameters (`$1`, `$2`, …) sent in text format, so the
-//! server parses them with the column's own input function. `LIMIT` and
-//! `OFFSET` are integers formatted by Rust.
+//! Identifiers are quoted for the [`Dialect`] and must name a column the
+//! catalog listed for the table; user values never enter the SQL text — they
+//! become bind parameters (`$1`, `?` or `?1`) sent as text, so the server
+//! converts them to the column's type. `LIMIT` and `OFFSET` are integers
+//! formatted by Rust.
+mod predicate;
+
 use std::fmt::{self, Write as _};
+
+use crate::Dialect;
 
 /// The relation being browsed.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -57,7 +61,7 @@ pub enum FilterOp {
     Like,
     /// Negated SQL pattern.
     NotLike,
-    /// `PostgreSQL` regular expression.
+    /// Regular expression (`PostgreSQL` `~`, `MySQL` `REGEXP`; not `SQLite`).
     Regex,
     /// Negated regular expression.
     NotRegex,
@@ -93,9 +97,9 @@ pub enum Combinator {
 /// Sort direction of the ordered column.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SortDirection {
-    /// Ascending (`NULLS LAST`, the `PostgreSQL` default).
+    /// Ascending (the server's default NULL placement).
     Ascending,
-    /// Descending (`NULLS FIRST`, the `PostgreSQL` default).
+    /// Descending (the server's default NULL placement).
     Descending,
 }
 
@@ -123,10 +127,19 @@ pub struct TableQuery {
     pub sort: Option<Sort>,
 }
 
+/// One page of a table browse.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct Page {
+    /// Most rows to return.
+    pub limit: u32,
+    /// Rows to skip.
+    pub offset: u64,
+}
+
 /// SQL text plus its positional text parameters (`None` is SQL NULL).
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct BoundSql {
-    /// Statement text with `$n` placeholders.
+    /// Statement text with the dialect's placeholders.
     pub sql: String,
     /// Parameter values in placeholder order.
     pub params: Vec<Option<String>>,
@@ -143,6 +156,8 @@ pub enum SelectError {
     EmptyList(String),
     /// The catalog listed no columns, so nothing can be validated.
     NoColumns,
+    /// The dialect cannot express this request.
+    Unsupported(&'static str),
 }
 
 impl fmt::Display for SelectError {
@@ -154,44 +169,35 @@ impl fmt::Display for SelectError {
                 write!(f, "the IN filter on {name:?} needs at least one value")
             }
             Self::NoColumns => f.write_str("the table has no columns to select"),
+            Self::Unsupported(what) => f.write_str(what),
         }
     }
 }
 
 impl std::error::Error for SelectError {}
 
-/// A double-quoted `PostgreSQL` identifier (embedded quotes doubled).
-///
-/// # Errors
-/// [`SelectError::NulCharacter`] when the name contains NUL.
-pub fn quote_ident(name: &str) -> Result<String, SelectError> {
-    if name.contains('\0') {
-        return Err(SelectError::NulCharacter);
-    }
-    Ok(format!("\"{}\"", name.replace('"', "\"\"")))
-}
-
 /// `SELECT … LIMIT limit OFFSET offset` for one page.
 ///
 /// # Errors
 /// See [`SelectError`]; `known` are the table's catalog column names.
 pub fn page_sql(
+    dialect: Dialect,
     query: &TableQuery,
     known: &[String],
-    limit: u32,
-    offset: u64,
+    page: Page,
 ) -> Result<BoundSql, SelectError> {
-    let mut bound = select(query, known, &projection(query, known)?)?;
+    let projection = projection(dialect, query, known)?;
+    let mut bound = select(dialect, query, known, &projection)?;
     if let Some(sort) = &query.sort {
         let direction = match sort.direction {
             SortDirection::Ascending => "ASC",
             SortDirection::Descending => "DESC",
         };
-        let column = column(&sort.column, known)?;
+        let column = predicate::column(dialect, &sort.column, known)?;
         let _ = write!(bound.sql, " ORDER BY {column} {direction}");
     }
     // Writing to a `String` cannot fail.
-    let _ = write!(bound.sql, " LIMIT {limit} OFFSET {offset}");
+    let _ = write!(bound.sql, " LIMIT {} OFFSET {}", page.limit, page.offset);
     Ok(bound)
 }
 
@@ -199,36 +205,45 @@ pub fn page_sql(
 ///
 /// # Errors
 /// As [`page_sql`].
-pub fn count_sql(query: &TableQuery, known: &[String]) -> Result<BoundSql, SelectError> {
-    select(query, known, "count(*)")
+pub fn count_sql(
+    dialect: Dialect,
+    query: &TableQuery,
+    known: &[String],
+) -> Result<BoundSql, SelectError> {
+    select(dialect, query, known, "count(*)")
 }
 
-fn projection(query: &TableQuery, known: &[String]) -> Result<String, SelectError> {
+fn projection(
+    dialect: Dialect,
+    query: &TableQuery,
+    known: &[String],
+) -> Result<String, SelectError> {
     if query.columns.is_empty() {
         return Ok("*".to_owned());
     }
     let columns = query
         .columns
         .iter()
-        .map(|name| column(name, known))
+        .map(|name| predicate::column(dialect, name, known))
         .collect::<Result<Vec<_>, _>>()?;
     Ok(columns.join(", "))
 }
 
-fn select(query: &TableQuery, known: &[String], projection: &str) -> Result<BoundSql, SelectError> {
+fn select(
+    dialect: Dialect,
+    query: &TableQuery,
+    known: &[String],
+    projection: &str,
+) -> Result<BoundSql, SelectError> {
     if known.is_empty() {
         return Err(SelectError::NoColumns);
     }
-    let table = format!(
-        "{}.{}",
-        quote_ident(&query.table.schema)?,
-        quote_ident(&query.table.name)?
-    );
+    let table = dialect.qualified(&query.table.schema, &query.table.name)?;
     let mut params = Vec::new();
     let predicates = query
         .filters
         .iter()
-        .map(|filter| predicate(filter, known, &mut params))
+        .map(|filter| predicate::predicate(dialect, filter, known, &mut params))
         .collect::<Result<Vec<_>, _>>()?;
     let mut sql = format!("SELECT {projection} FROM {table}");
     if !predicates.is_empty() {
@@ -240,132 +255,4 @@ fn select(query: &TableQuery, known: &[String], projection: &str) -> Result<Boun
         sql.push_str(&predicates.join(joiner));
     }
     Ok(BoundSql { sql, params })
-}
-
-/// A catalog column, quoted; anything else is refused.
-fn column(name: &str, known: &[String]) -> Result<String, SelectError> {
-    if known.iter().any(|candidate| candidate == name) {
-        quote_ident(name)
-    } else {
-        Err(SelectError::UnknownColumn(name.to_owned()))
-    }
-}
-
-/// Append a parameter and return its placeholder.
-fn bind(params: &mut Vec<Option<String>>, value: String) -> Result<String, SelectError> {
-    if value.contains('\0') {
-        return Err(SelectError::NulCharacter);
-    }
-    params.push(Some(value));
-    Ok(format!("${}", params.len()))
-}
-
-fn predicate(
-    filter: &Filter,
-    known: &[String],
-    params: &mut Vec<Option<String>>,
-) -> Result<String, SelectError> {
-    let column = column(&filter.column, known)?;
-    let value = || filter.value.clone();
-    let text = match filter.op {
-        FilterOp::IsNull => format!("{column} IS NULL"),
-        FilterOp::IsNotNull => format!("{column} IS NOT NULL"),
-        FilterOp::In | FilterOp::NotIn => in_list(&column, filter, params)?,
-        FilterOp::IsEmpty => format!("{column}::text = ''"),
-        FilterOp::IsNotEmpty => format!("{column}::text <> ''"),
-        FilterOp::Like | FilterOp::NotLike | FilterOp::Regex | FilterOp::NotRegex => {
-            let operator = match filter.op {
-                FilterOp::Like => "ILIKE",
-                FilterOp::NotLike => "NOT ILIKE",
-                FilterOp::Regex => "~",
-                _ => "!~",
-            };
-            format!("{column}::text {operator} {}", bind(params, value())?)
-        }
-        FilterOp::Between | FilterOp::NotBetween => {
-            let low = bind(params, value())?;
-            let high = bind(params, filter.second.clone())?;
-            let operator = if filter.op == FilterOp::NotBetween {
-                "NOT BETWEEN"
-            } else {
-                "BETWEEN"
-            };
-            format!("{column} {operator} {low} AND {high}")
-        }
-        FilterOp::Contains | FilterOp::NotContains | FilterOp::StartsWith | FilterOp::EndsWith => {
-            pattern(&column, filter, params)?
-        }
-        comparison => {
-            let operator = comparison_operator(comparison);
-            format!("{column} {operator} {}", bind(params, value())?)
-        }
-    };
-    Ok(format!("({text})"))
-}
-
-fn comparison_operator(op: FilterOp) -> &'static str {
-    match op {
-        FilterOp::NotEqual => "<>",
-        FilterOp::Less => "<",
-        FilterOp::Greater => ">",
-        FilterOp::LessOrEqual => "<=",
-        FilterOp::GreaterOrEqual => ">=",
-        _ => "=",
-    }
-}
-
-fn in_list(
-    column: &str,
-    filter: &Filter,
-    params: &mut Vec<Option<String>>,
-) -> Result<String, SelectError> {
-    let items: Vec<&str> = filter
-        .value
-        .split(',')
-        .map(str::trim)
-        .filter(|item| !item.is_empty())
-        .collect();
-    if items.is_empty() {
-        return Err(SelectError::EmptyList(filter.column.clone()));
-    }
-    let placeholders = items
-        .into_iter()
-        .map(|item| bind(params, item.to_owned()))
-        .collect::<Result<Vec<_>, _>>()?;
-    let operator = if filter.op == FilterOp::NotIn {
-        "NOT IN"
-    } else {
-        "IN"
-    };
-    Ok(format!("{column} {operator} ({})", placeholders.join(", ")))
-}
-
-/// `ILIKE` on the column's text form; `%`, `_` and `\` in the value match literally.
-fn pattern(
-    column: &str,
-    filter: &Filter,
-    params: &mut Vec<Option<String>>,
-) -> Result<String, SelectError> {
-    let escaped = escape_like(&filter.value);
-    let (value, negate) = match filter.op {
-        FilterOp::StartsWith => (format!("{escaped}%"), false),
-        FilterOp::EndsWith => (format!("%{escaped}"), false),
-        FilterOp::NotContains => (format!("%{escaped}%"), true),
-        _ => (format!("%{escaped}%"), false),
-    };
-    let operator = if negate { "NOT ILIKE" } else { "ILIKE" };
-    let placeholder = bind(params, value)?;
-    Ok(format!("{column}::text {operator} {placeholder}"))
-}
-
-/// Escape `LIKE` wildcards with the default escape character `\`.
-fn escape_like(value: &str) -> String {
-    let mut escaped = String::with_capacity(value.len());
-    for character in value.chars() {
-        if matches!(character, '\\' | '%' | '_') {
-            escaped.push('\\');
-        }
-        escaped.push(character);
-    }
-    escaped
 }

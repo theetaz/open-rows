@@ -5,12 +5,13 @@
 //! a password back.
 use openrows_secrets::SecretString;
 use openrows_store::profile::{
-    ConnectionProfile, EnvKind, EnvTag, ParsedUrl, PasswordChange, PgParams, Safety, SecretChanges,
-    parse_postgres_url,
+    ConnectionProfile, EnvKind, EnvTag, ParsedUrl, PasswordChange, Safety, SecretChanges,
+    ServerParams, TlsMode, parse_url,
 };
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
+pub(crate) use super::engine_dto::{EngineDto, FileDto};
 pub(crate) use super::enums::{EnvKindDto, TlsModeDto};
 use super::error::IpcError;
 use super::route_dto::{
@@ -52,6 +53,9 @@ pub(crate) struct ProfileDto {
     name: String,
     group: Option<String>,
     env: EnvDto,
+    engine: EngineDto,
+    /// The database file of a file engine.
+    file: Option<FileDto>,
     host: String,
     port: u16,
     database: Option<String>,
@@ -74,6 +78,8 @@ impl From<&ConnectionProfile> for ProfileDto {
                 label: profile.env_tag.label.clone(),
                 color: profile.env_tag.color.clone(),
             },
+            engine: profile.driver.into(),
+            file: profile.file.as_ref().map(FileDto::from),
             host: profile.params.host.clone(),
             port: profile.params.port,
             database: profile.params.database.clone(),
@@ -116,7 +122,7 @@ pub(crate) enum PasswordInput {
     Clear,
     /// A typed password.
     Set { value: String },
-    /// The password inside a pasted `postgres://` URL.
+    /// The password inside a pasted connection URL.
     FromUrl { url: String },
 }
 
@@ -138,6 +144,12 @@ pub(crate) struct ProfileInput {
     pub(crate) name: String,
     pub(crate) group: Option<String>,
     pub(crate) env: EnvInput,
+    /// Absent in forms written before D-12: `PostgreSQL`.
+    #[serde(default)]
+    pub(crate) engine: EngineDto,
+    /// The database file of a file engine.
+    #[serde(default)]
+    pub(crate) file: Option<FileDto>,
     pub(crate) host: String,
     pub(crate) port: u16,
     pub(crate) database: Option<String>,
@@ -155,23 +167,35 @@ pub(crate) struct ProfileInput {
 
 impl ProfileInput {
     /// Connection parameters with blank optional fields removed.
-    pub(crate) fn params(&self) -> PgParams {
-        PgParams {
+    pub(crate) fn params(&self) -> ServerParams {
+        ServerParams {
             host: self.host.trim().to_owned(),
             port: self.port,
             database: non_blank(self.database.as_deref()),
             user: non_blank(self.user.as_deref()),
-            ..PgParams::default()
+            ..ServerParams::default()
         }
     }
 
+    /// A new profile for the form's engine (fields applied by [`Self::apply`]).
+    pub(crate) fn new_profile(&self) -> ConnectionProfile {
+        ConnectionProfile::new(
+            &self.name,
+            self.engine.into(),
+            self.params(),
+            EnvTag::new(EnvKind::Local),
+        )
+    }
+
     /// Copy the form values onto `profile`, keeping fields the form does not
-    /// edit (application name, extra options).
+    /// edit (application name, extra options). File engines get their file
+    /// and never a route (no SSH, no TLS).
     ///
     /// # Errors
     /// `Invalid` for a custom environment without a label or with a bad colour.
     pub(crate) fn apply(&self, profile: &mut ConnectionProfile) -> Result<(), IpcError> {
         let params = self.params();
+        profile.driver = self.engine.into();
         self.name.trim().clone_into(&mut profile.name);
         profile.group = non_blank(self.group.as_deref());
         profile.env_tag = env_tag(&self.env)?;
@@ -181,6 +205,12 @@ impl ProfileInput {
         profile.params.user = params.user;
         profile.tls.mode = self.tls_mode.into();
         apply_route(&self.tls_files, self.ssh.as_ref(), profile);
+        profile.file = self.file.as_ref().map(Into::into);
+        if profile.driver.is_file() {
+            profile.params = ServerParams::default();
+            profile.ssh = None;
+            profile.tls.mode = TlsMode::Disable;
+        }
         profile.safety = self.safety.into();
         Ok(())
     }
@@ -204,6 +234,8 @@ impl ProfileInput {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct UrlDraft {
+    engine: EngineDto,
+    file: Option<FileDto>,
     host: String,
     port: u16,
     database: Option<String>,
@@ -215,6 +247,8 @@ pub(crate) struct UrlDraft {
 impl From<ParsedUrl> for UrlDraft {
     fn from(parsed: ParsedUrl) -> Self {
         Self {
+            engine: parsed.driver.into(),
+            file: parsed.file.as_ref().map(FileDto::from),
             host: parsed.params.host,
             port: parsed.params.port,
             database: parsed.params.database,
@@ -231,7 +265,7 @@ pub(crate) fn password_change(input: &PasswordInput) -> Result<PasswordChange, I
         PasswordInput::Keep => PasswordChange::Keep,
         PasswordInput::Clear => PasswordChange::Clear,
         PasswordInput::Set { value } => PasswordChange::Set(SecretString::from(value.as_str())),
-        PasswordInput::FromUrl { url } => parse_postgres_url(url)?
+        PasswordInput::FromUrl { url } => parse_url(url)?
             .password
             .map_or(PasswordChange::Keep, PasswordChange::Set),
     })

@@ -6,15 +6,15 @@
 use std::time::Duration;
 
 use openrows_driver_api::DriverError;
-use openrows_driver_postgres::{ConnectStage, ConnectTrace, TlsStatus};
+use openrows_driver_api::{ConnectStage, ConnectTrace, TlsStatus};
 use openrows_net::tls::{TlsDetails, Verification};
 use openrows_net::{SshError, Stage};
-use openrows_store::profile::is_local_host;
+use openrows_store::profile::{Driver as Engine, is_local_host};
 use serde::Serialize;
 use specta::Type;
 
 use super::super::error::IpcError;
-use super::super::pg::ServerDto;
+use super::super::target::ServerDto;
 use super::super::tunnels::{TunnelAttempt, ssh_error};
 use super::hints::hint;
 
@@ -63,13 +63,16 @@ pub(crate) struct TestStepDto {
     pub(crate) elapsed_ms: Option<u32>,
 }
 
-/// Steps collected so far.
+/// Steps collected so far, for a profile of `engine`.
 #[derive(Default)]
-pub(crate) struct Steps(pub(crate) Vec<TestStepDto>);
+pub(crate) struct Steps {
+    pub(crate) steps: Vec<TestStepDto>,
+    pub(crate) engine: Engine,
+}
 
 impl Steps {
     fn push(&mut self, kind: TestStepKind, label: String, status: StepStatus) -> &mut TestStepDto {
-        self.0.push(TestStepDto {
+        self.steps.push(TestStepDto {
             kind,
             label,
             status,
@@ -77,8 +80,8 @@ impl Steps {
             hint: None,
             elapsed_ms: None,
         });
-        let last = self.0.len() - 1;
-        &mut self.0[last]
+        let last = self.steps.len() - 1;
+        &mut self.steps[last]
     }
 
     fn timed(&mut self, kind: TestStepKind, label: String, elapsed: Duration) -> &mut TestStepDto {
@@ -88,9 +91,10 @@ impl Steps {
     }
 
     fn failed(&mut self, kind: TestStepKind, label: String, error: &IpcError) {
+        let advice = hint(kind, error, self.engine).map(str::to_owned);
         let step = self.push(kind, label, StepStatus::Failed);
         step.detail = Some(error.message.clone());
-        step.hint = hint(kind, error).map(str::to_owned);
+        step.hint = advice;
     }
 
     /// One connect and one authentication step per hop that came up; the
@@ -155,10 +159,14 @@ impl Steps {
         }
     }
 
-    /// The connect or tunnel step, then the TLS step when TLS was not negotiated.
+    /// The connect or tunnel step, then the TLS step when TLS was not
+    /// negotiated (files have none).
     fn connected(&mut self, run: &DatabaseRun<'_>, elapsed: Duration) {
         let (kind, label) = run.connect_step();
         self.timed(kind, label, elapsed);
+        if run.file {
+            return;
+        }
         let negotiated = run
             .trace
             .completed
@@ -211,11 +219,16 @@ pub(crate) struct DatabaseRun<'a> {
     pub(crate) port: u16,
     pub(crate) user: &'a str,
     pub(crate) tunnelled: bool,
+    /// A local database file: `host` is its path and there is no TLS.
+    pub(crate) file: bool,
     pub(crate) server: Option<&'a ServerDto>,
 }
 
 impl DatabaseRun<'_> {
     fn connect_step(&self) -> (TestStepKind, String) {
+        if self.file {
+            return (TestStepKind::Connect, format!("Open {}", self.host));
+        }
         let target = format!("{}:{}", self.host, self.port);
         if self.tunnelled {
             (TestStepKind::Tunnel, format!("Open tunnel to {target}"))

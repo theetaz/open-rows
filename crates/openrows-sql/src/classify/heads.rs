@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
-//! `PostgreSQL` classification by the statement's leading keyword.
+//! `PostgreSQL` classification by the statement's leading keyword, plus the
+//! `ALTER` and `WITH` rules every dialect shares.
 
 use super::{Classification, Sql, StatementKind, session};
 use crate::lexer::TokenKind;
 
 use StatementKind::{Ddl, Read, Unknown, Write};
 
-/// Statement keywords that can follow a `WITH` clause.
+/// Statement keywords that can follow a `WITH` clause in any dialect.
 const WITH_BODIES: &[&str] = &[
-    "SELECT", "VALUES", "TABLE", "INSERT", "UPDATE", "DELETE", "MERGE",
+    "SELECT", "VALUES", "TABLE", "INSERT", "UPDATE", "DELETE", "MERGE", "REPLACE",
 ];
 
 /// Classify by the first keyword; `EXPLAIN` is handled by [`explain`].
@@ -35,7 +36,7 @@ pub(super) fn dispatch(sql: Sql<'_>) -> Classification {
     }
 }
 
-fn alter(sql: Sql<'_>) -> Classification {
+pub(super) fn alter(sql: Sql<'_>) -> Classification {
     Classification {
         kind: Ddl,
         dangerous: sql.has_word("DROP"),
@@ -44,7 +45,7 @@ fn alter(sql: Sql<'_>) -> Classification {
 
 /// `WITH … <body>`: classify the main body; data-modifying CTEs are caught by
 /// the caller's escalation scan.
-fn with(sql: Sql<'_>) -> Classification {
+pub(super) fn with(sql: Sql<'_>) -> Classification {
     sql.find_top_level(1, WITH_BODIES)
         .map_or(Classification::new(Unknown), |body| {
             sql.from(body).classify()

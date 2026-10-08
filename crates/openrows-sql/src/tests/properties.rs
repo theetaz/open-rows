@@ -4,6 +4,7 @@
 use proptest::prelude::*;
 
 use super::PG;
+use crate::Dialect;
 use crate::lexer::{Lexer, TokenKind};
 use crate::{classify, placeholders, split, statement_at};
 
@@ -17,7 +18,7 @@ fn sqlish() -> impl Strategy<Value = String> {
 
 /// The text between statements must hold only whitespace, comments and `;`.
 fn gap_is_separator(gap: &str) -> bool {
-    Lexer::new(gap).all(|token| token.kind.is_trivia() || token.kind == TokenKind::Semicolon)
+    Lexer::new(gap, PG).all(|token| token.kind.is_trivia() || token.kind == TokenKind::Semicolon)
 }
 
 fn check_lossless(source: &str) -> Result<(), TestCaseError> {
@@ -65,11 +66,41 @@ proptest! {
     #[test]
     fn lexer_covers_every_byte(source in sqlish()) {
         let mut end = 0;
-        for token in Lexer::new(&source) {
+        for token in Lexer::new(&source, PG) {
             prop_assert_eq!(token.start, end);
             prop_assert!(token.end > token.start && source.is_char_boundary(token.end));
             end = token.end;
         }
         prop_assert_eq!(end, source.len());
     }
+
+    #[test]
+    fn every_dialect_is_total_and_in_bounds(source in mysqlish(), cursor in any::<usize>()) {
+        for dialect in [Dialect::MySql, Dialect::Sqlite] {
+            let mut end = 0;
+            for token in Lexer::new(&source, dialect) {
+                prop_assert_eq!(token.start, end);
+                prop_assert!(token.end > token.start && source.is_char_boundary(token.end));
+                end = token.end;
+            }
+            prop_assert_eq!(end, source.len());
+            let statements = split(&source, dialect);
+            prop_assert_eq!(statement_at(&statements, cursor).is_none(), statements.is_empty());
+            for statement in &statements {
+                prop_assert!(source.get(statement.range_with_terminator()).is_some());
+                let _ = classify(statement.text(&source), dialect);
+            }
+            for placeholder in placeholders(&source, dialect) {
+                prop_assert!(source.get(placeholder.range).is_some());
+            }
+        }
+    }
+}
+
+/// Text dense in `MySQL`/`SQLite` quoting, comments and `DELIMITER` lines.
+fn mysqlish() -> impl Strategy<Value = String> {
+    proptest::string::string_regex(
+        "([-;'\"`#/*()\\\\\\[\\] \nab1é$?]|DELIMITER //\n|DELIMITER ;\n|//|/\\*!50000 |\\*/|BEGIN|END|CASE|CREATE TRIGGER|NOT ATOMIC){0,40}",
+    )
+    .unwrap()
 }

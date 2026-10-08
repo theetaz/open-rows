@@ -1,115 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Connection options beyond host and credentials: TLS mode and files, the
 //! route, timeouts, startup SQL.
-use std::{fmt, path::PathBuf, sync::Arc, time::Duration};
+use std::{fmt, sync::Arc};
 
-use openrows_net::{
-    Dialer, SecretString,
-    tls::{TlsParams, Verification},
-};
-
-/// libpq `sslmode`, with libpq's semantics (docs/12 §4.1).
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub enum SslMode {
-    /// Never use TLS.
-    Disable,
-    /// Plaintext first; TLS only when the server rejects the plaintext session.
-    Allow,
-    /// TLS when the server offers it, else plaintext. Certificates are not checked.
-    #[default]
-    Prefer,
-    /// TLS required; the certificate is checked only against a configured CA file.
-    Require,
-    /// TLS with the chain checked against the CA file (no host-name check).
-    VerifyCa,
-    /// TLS with chain and host-name checks; system trust store without a CA file.
-    VerifyFull,
-}
-
-impl SslMode {
-    /// The libpq spelling, e.g. `verify-full`.
-    #[must_use]
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::Disable => "disable",
-            Self::Allow => "allow",
-            Self::Prefer => "prefer",
-            Self::Require => "require",
-            Self::VerifyCa => "verify-ca",
-            Self::VerifyFull => "verify-full",
-        }
-    }
-
-    /// True when the mode cannot be satisfied without TLS.
-    #[must_use]
-    pub fn requires_tls(self) -> bool {
-        matches!(self, Self::Require | Self::VerifyCa | Self::VerifyFull)
-    }
-
-    /// The certificate check libpq performs: `require` with a CA file
-    /// behaves like `verify-ca`; `allow` and `prefer` never verify.
-    #[must_use]
-    pub fn verification(self, has_ca_file: bool) -> Verification {
-        match self {
-            Self::Require if has_ca_file => Verification::Chain,
-            Self::Disable | Self::Allow | Self::Prefer | Self::Require => Verification::None,
-            Self::VerifyCa => Verification::Chain,
-            Self::VerifyFull => Verification::Full,
-        }
-    }
-}
-
-/// Certificate files for TLS. `Debug` redacts the key passphrase.
-#[derive(Clone, Debug, Default)]
-pub struct TlsFiles {
-    /// PEM CA bundle; the only trust anchor when set (libpq `sslrootcert`).
-    pub ca_file: Option<PathBuf>,
-    /// PEM client certificate (libpq `sslcert`).
-    pub client_cert: Option<PathBuf>,
-    /// PEM client key (libpq `sslkey`), optionally encrypted PKCS#8.
-    pub client_key: Option<PathBuf>,
-    /// Passphrase of an encrypted client key (libpq `sslpassword`).
-    pub key_passphrase: Option<SecretString>,
-}
-
-impl TlsFiles {
-    /// TLS parameters for `mode`.
-    #[must_use]
-    pub fn params(&self, mode: SslMode) -> TlsParams {
-        TlsParams {
-            verification: mode.verification(self.ca_file.is_some()),
-            ca_file: self.ca_file.clone(),
-            client_cert: self.client_cert.clone(),
-            client_key: self.client_key.clone(),
-            key_passphrase: self.key_passphrase.clone(),
-        }
-    }
-}
-
-/// Per-stage connect timeouts; defaults from docs/14 §4.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct ConnectTimeouts {
-    /// Host name resolution.
-    pub dns: Duration,
-    /// TCP (or Unix socket, or routed stream) connect, across all resolved addresses.
-    pub tcp: Duration,
-    /// TLS negotiation and handshake.
-    pub tls: Duration,
-    /// Startup and authentication up to the first `ReadyForQuery`, plus the
-    /// server-info query.
-    pub auth: Duration,
-}
-
-impl Default for ConnectTimeouts {
-    fn default() -> Self {
-        Self {
-            dns: Duration::from_secs(5),
-            tcp: Duration::from_secs(10),
-            tls: Duration::from_secs(10),
-            auth: Duration::from_secs(15),
-        }
-    }
-}
+pub use openrows_driver_api::connect::{ConnectTimeouts, SslMode, TlsFiles};
+use openrows_net::Dialer;
 
 /// Everything about a connection that is not the target or the credentials.
 #[derive(Clone)]
@@ -161,21 +56,7 @@ impl fmt::Debug for ConnectOptions {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn verification_follows_libpq() {
-        let cases = [
-            (SslMode::Prefer, false, Verification::None),
-            (SslMode::Require, false, Verification::None),
-            (SslMode::Require, true, Verification::Chain),
-            (SslMode::VerifyCa, true, Verification::Chain),
-            (SslMode::VerifyFull, false, Verification::Full),
-            (SslMode::VerifyFull, true, Verification::Full),
-        ];
-        for (mode, has_ca, expected) in cases {
-            assert_eq!(mode.verification(has_ca), expected, "{mode:?} ca={has_ca}");
-        }
-    }
+    use openrows_net::SecretString;
 
     #[test]
     fn debug_never_shows_the_key_passphrase() {

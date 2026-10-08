@@ -10,8 +10,8 @@ use std::{path::PathBuf, sync::Arc};
 
 use openrows_secrets::{MemorySecretStore, SecretStore, SecretString};
 use openrows_store::profile::{
-    ConnectionProfile, EnvKind, EnvTag, PasswordChange, PgParams, ProfileError, ProfileFiles,
-    ProfileService, SecretChanges, SecretRef, SecretSlot, SshAuthMethod, SshSettings, TlsMode,
+    ConnectionProfile, EnvKind, EnvTag, PasswordChange, ProfileError, ProfileFiles, ProfileService,
+    SecretChanges, SecretRef, SecretSlot, ServerParams, SshAuthMethod, SshSettings, TlsMode,
     TlsSettings,
 };
 
@@ -50,10 +50,10 @@ fn ssh(auth: SshAuthMethod) -> SshSettings {
 }
 
 fn profile() -> ConnectionProfile {
-    let params = PgParams {
+    let params = ServerParams {
         host: "db.internal".to_owned(),
         user: Some("app".to_owned()),
-        ..PgParams::default()
+        ..ServerParams::default()
     };
     ConnectionProfile::new_postgres("Orders", params, EnvTag::new(EnvKind::Dev))
 }

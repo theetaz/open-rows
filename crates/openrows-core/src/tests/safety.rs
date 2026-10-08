@@ -7,18 +7,22 @@ use openrows_sql::{Classification, Dialect, StatementKind, classify};
 const OPEN: SafetyPolicy = SafetyPolicy {
     read_only: false,
     confirm_writes: false,
+    dialect: Dialect::Postgres,
 };
 const CONFIRM: SafetyPolicy = SafetyPolicy {
     read_only: false,
     confirm_writes: true,
+    dialect: Dialect::Postgres,
 };
 const READ_ONLY: SafetyPolicy = SafetyPolicy {
     read_only: true,
     confirm_writes: false,
+    dialect: Dialect::Postgres,
 };
 const LOCKED: SafetyPolicy = SafetyPolicy {
     read_only: true,
     confirm_writes: true,
+    dialect: Dialect::Postgres,
 };
 
 fn judge(policy: SafetyPolicy, sql: &str) -> Verdict {
@@ -214,4 +218,56 @@ fn tokens_are_stable_for_identical_runs() {
         second.confirmation_token("s")
     );
     assert_eq!(first.confirmation_token("s").len(), 16);
+}
+
+/// The same gate holds for `MySQL` and `SQLite` statements, classified with
+/// their own dialect (D-12).
+#[test]
+fn mysql_and_sqlite_writes_are_blocked_on_read_only_connections() {
+    let cases = [
+        (Dialect::MySql, "REPLACE INTO t VALUES (1)"),
+        (Dialect::MySql, "/*!40000 ALTER TABLE `t` DISABLE KEYS */"),
+        (Dialect::MySql, "SET GLOBAL read_only = 0"),
+        (Dialect::MySql, "SELECT * FROM t LOCK IN SHARE MODE"),
+        (Dialect::Sqlite, "INSERT OR REPLACE INTO t VALUES (1)"),
+        (Dialect::Sqlite, "PRAGMA journal_mode = DELETE"),
+        (Dialect::Sqlite, "ATTACH 'x.db' AS x"),
+    ];
+    for (dialect, sql) in cases {
+        let policy = SafetyPolicy {
+            dialect,
+            ..READ_ONLY
+        };
+        let checked = SafetyPlan::check(policy, vec![sql.to_owned()]);
+        assert_eq!(checked.gate(), Gate::Block, "{dialect:?}: {sql}");
+    }
+    let reads = [
+        (Dialect::MySql, "SELECT `delete` FROM t # DROP TABLE t"),
+        (Dialect::MySql, "SHOW CREATE TABLE t"),
+        (Dialect::Sqlite, "PRAGMA table_info([t])"),
+    ];
+    for (dialect, sql) in reads {
+        let policy = SafetyPolicy {
+            dialect,
+            ..READ_ONLY
+        };
+        let checked = SafetyPlan::check(policy, vec![sql.to_owned()]);
+        assert_eq!(checked.gate(), Gate::Run, "{dialect:?}: {sql}");
+    }
+}
+
+#[test]
+fn mysql_and_sqlite_dangerous_statements_always_confirm() {
+    let cases = [
+        (Dialect::MySql, "DELETE FROM t"),
+        (Dialect::MySql, "TRUNCATE t"),
+        (Dialect::MySql, "DROP DATABASE shop"),
+        (Dialect::Sqlite, "UPDATE t SET a = 1"),
+        (Dialect::Sqlite, "DROP TABLE t"),
+    ];
+    for (dialect, sql) in cases {
+        let policy = SafetyPolicy { dialect, ..OPEN };
+        let checked = SafetyPlan::check(policy, vec![sql.to_owned()]);
+        assert_eq!(checked.gate(), Gate::Confirm, "{dialect:?}: {sql}");
+    }
 }

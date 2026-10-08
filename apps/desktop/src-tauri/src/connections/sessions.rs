@@ -13,8 +13,8 @@ use tokio::sync::oneshot;
 use super::Connections;
 use super::error::{IpcError, IpcErrorKind};
 use super::owners::Owner;
-use super::pg::{self, ServerDto};
 use super::route;
+use super::target::{self, ServerDto};
 
 /// An open session on one database.
 #[derive(Clone, Debug, Serialize, Type)]
@@ -68,7 +68,8 @@ impl From<SessionEvent> for SessionStateChanged {
 
 /// Open a user session on `database` (the profile's database when `None`);
 /// state changes follow as events. `PostgreSQL` cannot switch databases on a
-/// connection, so every opened database has its own session.
+/// connection, so every opened database has its own session (every engine
+/// follows that model; a `SQLite` file has the one database `main`).
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn session_open(
@@ -87,10 +88,10 @@ pub(crate) async fn session_open(
     let session = state
         .sessions
         .open(async move {
-            let connected = pg::connect(&target).await?;
+            let connected = target::connect(&target).await?;
             // `open` awaits this future, so the receiver is still alive.
             let _ = server.send(connected.server);
-            let session: Box<dyn Session> = Box::new(connected.session);
+            let session: Box<dyn Session> = connected.connection;
             Ok(session)
         })
         .await?;

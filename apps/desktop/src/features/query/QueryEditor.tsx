@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useRef } from 'react';
-import type { EditorView, SqlEditor } from '@openrows/editor';
+import type { EditorDialect, EditorView, SqlEditor } from '@openrows/editor';
 import type { EditorHandle, RunScope } from './request';
 import styles from './Query.module.css';
 
@@ -11,6 +11,8 @@ type Props = {
   /** Initial text; later edits stay in the editor until saved through `onChange`. */
   doc: string;
   label: string;
+  /** Highlighting dialect of the tab's connection. */
+  dialect: EditorDialect;
   onChange: (sql: string) => void;
   onRun: (scope: RunScope) => void;
   /** Called with the editor once mounted, and with `null` when it goes. */
@@ -57,6 +59,7 @@ export function QueryEditor(props: Props): React.JSX.Element {
       editor = mountSqlEditor(parent, {
         doc: latest.current.doc,
         label: latest.current.label,
+        dialect: latest.current.dialect,
         keys: [
           { key: 'Mod-Enter', run: run('current') },
           { key: 'Shift-Mod-Enter', run: run('all') },

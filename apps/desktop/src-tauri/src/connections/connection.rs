@@ -7,16 +7,17 @@ use tauri::State;
 
 use super::Connections;
 use super::error::IpcError;
-use super::pg::ServerDto;
 use super::profiles::profile_id;
 use super::route;
+use super::target::ServerDto;
 
 /// A reachable saved connection.
 #[derive(Clone, Debug, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ConnectionOpened {
     /// The server, read on the connection's home database (the profile's
-    /// database, else `postgres`); `server.database` names that database.
+    /// database, else the driver's home database: `postgres`,
+    /// `information_schema` or `main`); `server.database` names that database.
     server: ServerDto,
     /// The profile's database to open right away; `None` lets the user choose.
     database: Option<String>,
@@ -34,14 +35,14 @@ pub(crate) async fn connection_open(
 ) -> Result<ConnectionOpened, IpcError> {
     let profile = state.profiles.get(self::profile_id(&profile_id)?)?;
     let target = route::profile_target(&state, &profile_id).await?;
-    let home = target.config.database.clone();
+    let home = target.database().to_owned();
     let server = state
         .metadata
         .read(
             (&profile_id, &home),
             || async { Ok(target) },
-            |session| {
-                let server = ServerDto::from(session.server_info());
+            |connection| {
+                let server = ServerDto::from(connection.server());
                 Box::pin(async move { Ok(server) })
             },
         )

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 use super::*;
+use crate::Dialect;
 fn table() -> EditTable {
     EditTable {
         table: TableRef {
@@ -27,7 +28,7 @@ fn edit() -> Edit {
 }
 #[test]
 fn values_are_bound_and_complete_snapshot_guards_conflicts() -> Result<(), SelectError> {
-    let bound = edit_sql(&table(), &edit())?;
+    let bound = edit_sql(Dialect::Postgres, &table(), &edit())?;
     assert!(
         bound
             .sql
@@ -48,19 +49,19 @@ fn missing_keys_snapshots_protected_and_unknown_columns_are_refused() {
     let mut t = table();
     let mut e = edit();
     t.key.clear();
-    assert!(edit_sql(&t, &e).is_err());
+    assert!(edit_sql(Dialect::Postgres, &t, &e).is_err());
     t = table();
     e.original.remove("id");
-    assert!(edit_sql(&t, &e).is_err());
+    assert!(edit_sql(Dialect::Postgres, &t, &e).is_err());
     e = edit();
     e.values.insert("computed".into(), CellValue::Null);
-    assert!(edit_sql(&t, &e).is_err());
+    assert!(edit_sql(Dialect::Postgres, &t, &e).is_err());
     e = edit();
     e.values.insert("stranger".into(), CellValue::Null);
-    assert!(edit_sql(&t, &e).is_err());
+    assert!(edit_sql(Dialect::Postgres, &t, &e).is_err());
     e = edit();
     e.values.insert("name".into(), CellValue::Text("\0".into()));
-    assert!(edit_sql(&t, &e).is_err());
+    assert!(edit_sql(Dialect::Postgres, &t, &e).is_err());
 }
 #[test]
 fn insert_defaults_and_delete_are_parameterised() -> Result<(), SelectError> {
@@ -69,18 +70,27 @@ fn insert_defaults_and_delete_are_parameterised() -> Result<(), SelectError> {
         original: Values::new(),
         values: Changes::new(),
     };
-    assert!(edit_sql(&table(), &e)?.sql.ends_with("DEFAULT VALUES"));
+    assert!(
+        edit_sql(Dialect::Postgres, &table(), &e)?
+            .sql
+            .ends_with("DEFAULT VALUES")
+    );
     e = edit();
     e.kind = EditKind::Delete;
     e.values.clear();
-    assert!(edit_sql(&table(), &e)?.sql.starts_with("DELETE FROM"));
+    assert!(
+        edit_sql(Dialect::Postgres, &table(), &e)?
+            .sql
+            .starts_with("DELETE FROM")
+    );
     Ok(())
 }
 fn update(values: Changes) -> Result<BoundSql, SelectError> {
-    edit_sql(&table(), &Edit { values, ..edit() })
+    edit_sql(Dialect::Postgres, &table(), &Edit { values, ..edit() })
 }
 fn insert(values: Changes) -> Result<BoundSql, SelectError> {
     edit_sql(
+        Dialect::Postgres,
         &table(),
         &Edit {
             kind: EditKind::Insert,
@@ -123,7 +133,7 @@ fn null_empty_and_text_bind_distinct_parameters() -> Result<(), SelectError> {
         ("name".into(), CellValue::Null),
         ("note".into(), CellValue::Text(String::new())),
     ]);
-    let bound = edit_sql(&t, &e)?;
+    let bound = edit_sql(Dialect::Postgres, &t, &e)?;
     assert!(bound.sql.contains("SET \"name\" = $1, \"note\" = $2 WHERE"));
     assert_eq!(bound.params[0], None);
     assert_eq!(bound.params[1].as_deref(), Some(""));
@@ -168,5 +178,5 @@ fn file_bytea_hex_is_bound_verbatim() -> Result<(), SelectError> {
 fn protected_columns_refuse_default_too() {
     let mut e = edit();
     e.values.insert("computed".into(), CellValue::Default);
-    assert!(edit_sql(&table(), &e).is_err());
+    assert!(edit_sql(Dialect::Postgres, &table(), &e).is_err());
 }

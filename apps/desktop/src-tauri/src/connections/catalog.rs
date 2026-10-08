@@ -4,12 +4,32 @@
 //! `session_close` and `connection_close`).
 use openrows_driver_api::catalog::{ColumnSummary, ObjectKind, TableStructure};
 use openrows_driver_api::schema::TableDetail;
+use openrows_driver_api::{BoxFuture, Catalog, DriverError, catalog};
 use tauri::State;
 
 use super::Connections;
 use super::catalog_dto::{DatabaseDto, ObjectDto, ObjectKindDto, SchemaDto};
 use super::error::IpcError;
 use super::route::profile_target;
+
+/// Run `read` on the catalog facet of `database`'s metadata session.
+async fn read_catalog<T>(
+    state: &Connections,
+    (profile_id, database): (&str, &str),
+    read: impl for<'s> FnOnce(&'s mut dyn Catalog) -> BoxFuture<'s, Result<T, DriverError>>,
+) -> Result<T, IpcError> {
+    state
+        .metadata
+        .read(
+            (profile_id, database),
+            || profile_target(state, profile_id),
+            move |connection| match catalog(connection) {
+                Ok(facet) => read(facet),
+                Err(error) => Box::pin(async move { Err(error) }),
+            },
+        )
+        .await
+}
 
 /// Databases on the server, read through `database`'s metadata session.
 #[tauri::command]
@@ -19,14 +39,10 @@ pub(crate) async fn catalog_databases(
     profile_id: String,
     database: String,
 ) -> Result<Vec<DatabaseDto>, IpcError> {
-    let databases = state
-        .metadata
-        .read(
-            (&profile_id, &database),
-            || profile_target(&state, &profile_id),
-            |session| Box::pin(session.list_databases()),
-        )
-        .await?;
+    let databases = read_catalog(&state, (&profile_id, &database), |catalog| {
+        catalog.list_databases()
+    })
+    .await?;
     Ok(databases.into_iter().map(DatabaseDto::from).collect())
 }
 
@@ -38,14 +54,10 @@ pub(crate) async fn catalog_schemas(
     profile_id: String,
     database: String,
 ) -> Result<Vec<SchemaDto>, IpcError> {
-    let schemas = state
-        .metadata
-        .read(
-            (&profile_id, &database),
-            || profile_target(&state, &profile_id),
-            |session| Box::pin(session.list_schemas()),
-        )
-        .await?;
+    let schemas = read_catalog(&state, (&profile_id, &database), |catalog| {
+        catalog.list_schemas()
+    })
+    .await?;
     Ok(schemas.into_iter().map(SchemaDto::from).collect())
 }
 
@@ -60,14 +72,10 @@ pub(crate) async fn catalog_objects(
     kinds: Vec<ObjectKindDto>,
 ) -> Result<Vec<ObjectDto>, IpcError> {
     let kinds: Vec<ObjectKind> = kinds.into_iter().map(ObjectKind::from).collect();
-    let objects = state
-        .metadata
-        .read(
-            (&profile_id, &database),
-            || profile_target(&state, &profile_id),
-            move |session| Box::pin(async move { session.list_objects(&schema, &kinds).await }),
-        )
-        .await?;
+    let objects = read_catalog(&state, (&profile_id, &database), move |catalog| {
+        Box::pin(async move { catalog.list_objects(&schema, &kinds).await })
+    })
+    .await?;
     Ok(objects.into_iter().map(ObjectDto::from).collect())
 }
 
@@ -80,14 +88,10 @@ pub(crate) async fn catalog_search(
     profile_id: String,
     database: String,
 ) -> Result<Vec<ObjectDto>, IpcError> {
-    let objects = state
-        .metadata
-        .read(
-            (&profile_id, &database),
-            || profile_target(&state, &profile_id),
-            |session| Box::pin(session.search_index()),
-        )
-        .await?;
+    let objects = read_catalog(&state, (&profile_id, &database), |catalog| {
+        catalog.search_index()
+    })
+    .await?;
     Ok(objects.into_iter().map(ObjectDto::from).collect())
 }
 
@@ -98,14 +102,10 @@ pub(crate) async fn read_structure(
     (profile_id, database): (&str, &str),
     (schema, name): (String, String),
 ) -> Result<TableStructure, IpcError> {
-    state
-        .metadata
-        .read(
-            (profile_id, database),
-            || profile_target(state, profile_id),
-            move |session| Box::pin(async move { session.table_structure(&schema, &name).await }),
-        )
-        .await
+    read_catalog(state, (profile_id, database), move |catalog| {
+        Box::pin(async move { catalog.table_structure(&schema, &name).await })
+    })
+    .await
 }
 
 /// A relation's catalog columns on `database`'s metadata session; table
@@ -115,14 +115,10 @@ pub(crate) async fn read_columns(
     (profile_id, database): (&str, &str),
     (schema, name): (String, String),
 ) -> Result<Vec<ColumnSummary>, IpcError> {
-    state
-        .metadata
-        .read(
-            (profile_id, database),
-            || profile_target(state, profile_id),
-            move |session| Box::pin(async move { session.table_columns(&schema, &name).await }),
-        )
-        .await
+    read_catalog(state, (profile_id, database), move |catalog| {
+        Box::pin(async move { catalog.table_columns(&schema, &name).await })
+    })
+    .await
 }
 
 /// A relation's columns, constraints, indexes, triggers, sizes and comment on
@@ -132,12 +128,8 @@ pub(crate) async fn read_detail(
     (profile_id, database): (&str, &str),
     (schema, name): (String, String),
 ) -> Result<TableDetail, IpcError> {
-    state
-        .metadata
-        .read(
-            (profile_id, database),
-            || profile_target(state, profile_id),
-            move |session| Box::pin(async move { session.table_detail(&schema, &name).await }),
-        )
-        .await
+    read_catalog(state, (profile_id, database), move |catalog| {
+        Box::pin(async move { catalog.table_detail(&schema, &name).await })
+    })
+    .await
 }

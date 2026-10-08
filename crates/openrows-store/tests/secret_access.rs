@@ -9,7 +9,7 @@ use std::sync::{
 
 use openrows_secrets::{MemorySecretStore, SecretError, SecretKey, SecretStore, SecretString};
 use openrows_store::profile::{
-    ConnectionProfile, EnvKind, EnvTag, PasswordChange, PgParams, ProfileFiles, ProfileService,
+    ConnectionProfile, EnvKind, EnvTag, PasswordChange, ProfileFiles, ProfileService, ServerParams,
 };
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
@@ -55,10 +55,10 @@ fn service(dir: &tempfile::TempDir) -> (ProfileService, Arc<Counting>) {
 }
 
 fn draft() -> ConnectionProfile {
-    let params = PgParams {
+    let params = ServerParams {
         host: "localhost".to_owned(),
         user: Some("app_user".to_owned()),
-        ..PgParams::default()
+        ..ServerParams::default()
     };
     ConnectionProfile::new_postgres("Local", params, EnvTag::new(EnvKind::Local))
 }

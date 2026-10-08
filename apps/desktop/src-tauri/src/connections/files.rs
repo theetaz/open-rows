@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
-//! "Choose…" for key and certificate files: a native open panel attached to
-//! the window. Only the chosen path goes to the webview; files are read by
-//! the core when connecting, never by the webview.
+//! "Choose…" for key, certificate and database files: a native open panel
+//! (or, for a new `SQLite` file, a save panel) attached to the window. Only
+//! the chosen path goes to the webview; files are read by the core when
+//! connecting, never by the webview.
 use serde::Deserialize;
 use specta::Type;
 use tauri::State;
@@ -22,6 +23,10 @@ pub(crate) enum PickFileKind {
     ClientCertificate,
     /// TLS client key.
     ClientKey,
+    /// An existing `SQLite` database file.
+    SqliteDatabase,
+    /// Where to create a new `SQLite` database file (save panel).
+    NewSqliteDatabase,
 }
 
 impl PickFileKind {
@@ -31,11 +36,13 @@ impl PickFileKind {
             Self::CaCertificate => "Choose CA certificate",
             Self::ClientCertificate => "Choose client certificate",
             Self::ClientKey => "Choose client key",
+            Self::SqliteDatabase => "Open SQLite database",
+            Self::NewSqliteDatabase => "New SQLite database",
         }
     }
 }
 
-/// Pick a key or certificate file; `null` when the panel is cancelled.
+/// Pick a key, certificate or database file; `null` when the panel is cancelled.
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn connection_pick_file(
@@ -52,10 +59,14 @@ pub(crate) async fn connection_pick_file(
     if matches!(kind, PickFileKind::SshKey) {
         panel = panel.set_directory(state.opener.environment.home.join(".ssh"));
     }
-    panel.pick_file(move |picked| {
+    let reply = move |picked| {
         // The receiver only disappears when the command was dropped.
         let _ = sender.send(picked);
-    });
+    };
+    match kind {
+        PickFileKind::NewSqliteDatabase => panel.set_file_name("database.sqlite").save_file(reply),
+        _ => panel.pick_file(reply),
+    }
     let picked = receiver
         .await
         .map_err(|_| IpcError::new(IpcErrorKind::Internal, "The file panel closed unexpectedly"))?;

@@ -1,0 +1,34 @@
+[package]
+name = "openrows-driver-mysql"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "MySQL and MariaDB driver for OpenRows: wire protocol over openrows-net routes, decoded into Arrow"
+
+[lints]
+workspace = true
+
+[dependencies]
+arrow-array = "60"
+arrow-schema = "60"
+# Protocol packets and the sans-IO auth plugins (caching_sha2_password with
+# its own RSA, mysql_native_password); I/O, TLS and routes stay ours.
+mysql_common = { version = "0.38", default-features = false }
+# mysql_common links flate2 without a backend; compression is never
+# negotiated, but flate2 needs one to build. The pure-Rust miniz_oxide
+# backend is already in the app through tauri.
+flate2 = { version = "1.1", default-features = false, features = ["rust_backend"] }
+openrows-driver-api = { path = "../openrows-driver-api" }
+openrows-net = { path = "../openrows-net" }
+openrows-sql = { path = "../openrows-sql" }
+tokio = { version = "1.53", features = ["net", "io-util", "time"] }
+
+[package.metadata.cargo-machete]
+# Only selects mysql_common's flate2 backend (see above).
+ignored = ["flate2"]
+
+[dev-dependencies]
+openrows-sql = { path = "../openrows-sql" }
+tokio = { version = "1.53", features = ["net", "io-util", "time", "rt", "macros"] }

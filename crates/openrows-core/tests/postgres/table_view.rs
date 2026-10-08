@@ -10,9 +10,10 @@ use openrows_driver_api::Session;
 use openrows_driver_api::{ResultSink, SinkFlow};
 use openrows_driver_postgres::PgSession;
 use openrows_results::{ResultStore, Window};
+use openrows_sql::Dialect;
 use openrows_sql::select::{
-    BoundSql, Combinator, Filter, FilterOp, Sort, SortDirection, TableQuery, TableRef, count_sql,
-    page_sql,
+    BoundSql, Combinator, Filter, FilterOp, Page, Sort, SortDirection, TableQuery, TableRef,
+    count_sql, page_sql,
 };
 use openrows_types::SessionId;
 use std::io::Cursor;
@@ -121,7 +122,17 @@ async fn page(
     query: &TableQuery,
     offset: u64,
 ) -> TestResult<Vec<i32>> {
-    let result = fetch(manager, session, page_sql(query, &known(), 300, offset)?).await?;
+    let result = fetch(
+        manager,
+        session,
+        page_sql(
+            Dialect::Postgres,
+            query,
+            &known(),
+            Page { limit: 300, offset },
+        )?,
+    )
+    .await?;
     let rows = ids(store, &result)?;
     store.remove(&result);
     Ok(rows)
@@ -131,7 +142,12 @@ async fn count(
     (manager, store, session): (&SessionManager, &ResultStore, SessionId),
     query: &TableQuery,
 ) -> TestResult<Option<i64>> {
-    let result = fetch(manager, session, count_sql(query, &known())?).await?;
+    let result = fetch(
+        manager,
+        session,
+        count_sql(Dialect::Postgres, query, &known())?,
+    )
+    .await?;
     let rows = store.first_integer(&result);
     store.remove(&result);
     Ok(rows)

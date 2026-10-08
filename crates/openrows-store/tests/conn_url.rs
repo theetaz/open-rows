@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
-//! `postgres://` URL parser table tests (FR-CONN-02). All credentials are
+//! Connection URL parser table tests (FR-CONN-02). All credentials are
 //! synthetic.
 
-use openrows_store::profile::{EnvKind, EnvTag, TlsMode, UrlError, parse_postgres_url};
+use openrows_store::profile::{Driver, EnvKind, EnvTag, TlsMode, UrlError, parse_url};
 
 struct Case {
     url: &'static str,
@@ -92,7 +92,7 @@ const CASES: &[Case] = &[
 #[test]
 fn valid_urls_parse_into_params_and_secret() {
     for case in CASES {
-        let parsed = parse_postgres_url(case.url).expect(case.url);
+        let parsed = parse_url(case.url).expect(case.url);
         assert_eq!(parsed.params.host, case.host, "{}", case.url);
         assert_eq!(parsed.params.port, case.port, "{}", case.url);
         assert_eq!(
@@ -111,7 +111,7 @@ fn valid_urls_parse_into_params_and_secret() {
 
 #[test]
 fn extra_query_params_are_kept() {
-    let parsed = parse_postgres_url(
+    let parsed = parse_url(
         "postgres://h/d?application_name=open%20rows&connect_timeout=5&options=-c%20x%3Dy",
     )
     .unwrap();
@@ -125,7 +125,7 @@ type ErrorCheck = fn(&UrlError) -> bool;
 #[test]
 fn malformed_urls_return_typed_errors() {
     let cases: &[(&str, ErrorCheck)] = &[
-        ("mysql://h/d", |e| {
+        ("redis://h/d", |e| {
             matches!(e, UrlError::UnsupportedScheme { .. })
         }),
         ("not a url", |e| matches!(e, UrlError::Malformed(_))),
@@ -160,7 +160,7 @@ fn malformed_urls_return_typed_errors() {
         }),
     ];
     for (url, expected) in cases {
-        let error = parse_postgres_url(url).expect_err(url);
+        let error = parse_url(url).expect_err(url);
         assert!(expected(&error), "{url}: unexpected {error:?}");
     }
 }
@@ -175,20 +175,73 @@ fn errors_and_debug_never_contain_the_password() {
         format!("postgres://u:{secret}@h:abc/d"),
     ];
     for url in &urls {
-        let error = parse_postgres_url(url).unwrap_err();
+        let error = parse_url(url).unwrap_err();
         assert!(!format!("{error} {error:?}").contains(secret), "{error:?}");
     }
-    let parsed = parse_postgres_url(&format!("postgres://u:{secret}@h/d")).unwrap();
+    let parsed = parse_url(&format!("postgres://u:{secret}@h/d")).unwrap();
     assert!(!format!("{parsed:?}").contains(secret));
 }
 
 #[test]
 fn into_profile_applies_env_defaults_and_keeps_secret_apart() {
-    let parsed = parse_postgres_url("postgres://u:pw@prod-db/app?sslmode=verify-ca").unwrap();
+    let parsed = parse_url("postgres://u:pw@prod-db/app?sslmode=verify-ca").unwrap();
     let (profile, password) = parsed.into_profile("App prod", EnvTag::new(EnvKind::Prod));
     assert!(profile.safety.confirm_writes);
     assert!(!profile.safety.read_only);
     assert_eq!(profile.tls.mode, TlsMode::VerifyCa);
     assert!(profile.secrets.password.is_none());
     assert_eq!(password.unwrap().expose(), "pw");
+}
+
+#[test]
+fn mysql_and_mariadb_urls_name_their_engine_and_default_port() {
+    let parsed = parse_url("mysql://app:pw@db.example.com/shop?ssl-mode=VERIFY_CA").unwrap();
+    assert_eq!(parsed.driver, Driver::Mysql);
+    assert_eq!(
+        (parsed.params.host.as_str(), parsed.params.port),
+        ("db.example.com", 3306)
+    );
+    assert_eq!(parsed.params.database.as_deref(), Some("shop"));
+    assert_eq!(parsed.tls_mode, TlsMode::VerifyCa);
+    assert_eq!(parsed.password.unwrap().expose(), "pw");
+    let maria = parse_url("mariadb://root@127.0.0.1:3307?sslmode=disable").unwrap();
+    assert_eq!(maria.driver, Driver::Mariadb);
+    assert_eq!(maria.params.port, 3307);
+    assert_eq!(maria.tls_mode, TlsMode::Disable);
+    let identity = parse_url("mysql://h/d?ssl-mode=verify_identity").unwrap();
+    assert_eq!(identity.tls_mode, TlsMode::VerifyFull);
+    let preferred = parse_url("mysql://localhost").unwrap();
+    assert_eq!(preferred.tls_mode, TlsMode::Prefer);
+    assert!(matches!(
+        parse_url("mysql://h/d?ssl-mode=SOMETIMES"),
+        Err(UrlError::InvalidSslMode { .. })
+    ));
+}
+
+#[test]
+fn sqlite_urls_name_an_absolute_file() {
+    for url in ["sqlite:/data/app.db", "sqlite:///data/app.db"] {
+        let parsed = parse_url(url).unwrap();
+        assert_eq!(parsed.driver, Driver::Sqlite, "{url}");
+        let file = parsed.file.unwrap();
+        assert_eq!(file.path.to_str(), Some("/data/app.db"));
+        assert!(!file.read_only);
+        assert_eq!(parsed.tls_mode, TlsMode::Disable);
+    }
+    let spaced = parse_url("sqlite:/tmp/my%20data.sqlite?mode=ro").unwrap();
+    let file = spaced.file.unwrap();
+    assert_eq!(file.path.to_str(), Some("/tmp/my data.sqlite"));
+    assert!(file.read_only);
+    for bad in ["sqlite:relative.db", "sqlite://server/data/app.db"] {
+        assert!(
+            matches!(parse_url(bad), Err(UrlError::InvalidFilePath)),
+            "{bad}"
+        );
+    }
+    let (profile, password) = parse_url("sqlite:/data/app.db")
+        .unwrap()
+        .into_profile("App", EnvTag::new(EnvKind::Local));
+    assert_eq!(profile.driver, Driver::Sqlite);
+    assert!(password.is_none());
+    assert!(profile.validate().is_ok());
 }

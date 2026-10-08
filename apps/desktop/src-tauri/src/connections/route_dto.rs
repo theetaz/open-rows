@@ -186,7 +186,7 @@ fn non_blank(text: Option<&str>) -> Option<String> {
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
-    use openrows_store::profile::{EnvKind, EnvTag, PgParams, SecretRef};
+    use openrows_store::profile::{EnvKind, EnvTag, SecretRef, ServerParams};
 
     pub(crate) fn ssh_input(auth: SshAuthDto) -> SshInput {
         SshInput {
@@ -202,8 +202,11 @@ pub(crate) mod tests {
 
     #[test]
     fn route_fields_are_trimmed_and_blank_entries_dropped() {
-        let mut profile =
-            ConnectionProfile::new_postgres("p", PgParams::default(), EnvTag::new(EnvKind::Dev));
+        let mut profile = ConnectionProfile::new_postgres(
+            "p",
+            ServerParams::default(),
+            EnvTag::new(EnvKind::Dev),
+        );
         let tls = TlsFilesInput {
             ca_file: Some(" /certs/ca.pem ".to_owned()),
             client_cert: Some(String::new()),
@@ -227,8 +230,11 @@ pub(crate) mod tests {
 
     #[test]
     fn dtos_say_whether_secrets_exist_but_never_carry_them() -> Result<(), serde_json::Error> {
-        let mut profile =
-            ConnectionProfile::new_postgres("p", PgParams::default(), EnvTag::new(EnvKind::Dev));
+        let mut profile = ConnectionProfile::new_postgres(
+            "p",
+            ServerParams::default(),
+            EnvTag::new(EnvKind::Dev),
+        );
         apply_route(
             &TlsFilesInput::default(),
             Some(&ssh_input(SshAuthDto::Password)),

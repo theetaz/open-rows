@@ -7,8 +7,8 @@ use openrows_secrets::{MemorySecretStore, SecretStore, SecretString};
 use openrows_store::{
     HistoryRecord, HistorySource, HistoryStatus, LocalStore,
     profile::{
-        ConnectionProfile, EnvKind, EnvTag, PasswordChange, PgParams, ProfileError, ProfileFiles,
-        ProfileService, SecretRef, parse_postgres_url,
+        ConnectionProfile, EnvKind, EnvTag, PasswordChange, ProfileError, ProfileFiles,
+        ProfileService, SecretRef, ServerParams, parse_url,
     },
 };
 
@@ -20,12 +20,12 @@ fn service(dir: &Path) -> (ProfileService, Arc<MemorySecretStore>) {
     (ProfileService::new(files, secrets.clone()), secrets)
 }
 
-fn params(host: &str, database: &str) -> PgParams {
-    PgParams {
+fn params(host: &str, database: &str) -> ServerParams {
+    ServerParams {
         host: host.to_owned(),
         database: Some(database.to_owned()),
         user: Some("app_user".to_owned()),
-        ..PgParams::default()
+        ..ServerParams::default()
     }
 }
 
@@ -142,8 +142,11 @@ fn list_search_and_groups() {
 
 #[test]
 fn prod_defaults_to_confirm_writes_including_on_retag() {
-    let mut profile =
-        ConnectionProfile::new_postgres("x", PgParams::default(), EnvTag::new(EnvKind::Staging));
+    let mut profile = ConnectionProfile::new_postgres(
+        "x",
+        ServerParams::default(),
+        EnvTag::new(EnvKind::Staging),
+    );
     assert!(!profile.safety.confirm_writes);
     profile.set_env_tag(EnvTag::new(EnvKind::Prod));
     assert!(profile.safety.confirm_writes);
@@ -156,12 +159,13 @@ fn invalid_profiles_are_rejected() {
     let dir = tempfile::tempdir().unwrap();
     let (service, _) = service(dir.path());
     let blank =
-        ConnectionProfile::new_postgres(" ", PgParams::default(), EnvTag::new(EnvKind::Dev));
+        ConnectionProfile::new_postgres(" ", ServerParams::default(), EnvTag::new(EnvKind::Dev));
     assert!(matches!(
         service.create(blank, None),
         Err(ProfileError::Invalid { field: "name", .. })
     ));
-    let ok = ConnectionProfile::new_postgres("a", PgParams::default(), EnvTag::new(EnvKind::Dev));
+    let ok =
+        ConnectionProfile::new_postgres("a", ServerParams::default(), EnvTag::new(EnvKind::Dev));
     let created = service.create(ok.clone(), None).unwrap();
     assert!(matches!(
         service.create(created, None),
@@ -175,7 +179,7 @@ fn secrets_never_reach_profile_files_store_or_debug_output() {
     let (service, secrets) = service(dir.path());
     let store = LocalStore::open(&dir.path().join("openrows.sqlite")).unwrap();
     let url = format!("postgres://app:{CANARY}@db.internal/orders?password={CANARY}x");
-    let (draft, password) = parse_postgres_url(&url)
+    let (draft, password) = parse_url(&url)
         .unwrap()
         .into_profile("Orders", EnvTag::new(EnvKind::Prod));
     let profile = service.create(draft, password.as_ref()).unwrap();

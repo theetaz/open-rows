@@ -18,6 +18,8 @@ pub struct SafetyPolicy {
     pub read_only: bool,
     /// Ask before running anything that may modify the database.
     pub confirm_writes: bool,
+    /// The engine's SQL dialect, whose rules classify each statement.
+    pub dialect: Dialect,
 }
 
 /// What the gate decided for one statement.
@@ -67,7 +69,7 @@ impl SafetyPlan {
         let statements = statements
             .into_iter()
             .map(|sql| {
-                let class = classify(&sql, Dialect::Postgres);
+                let class = classify(&sql, policy.dialect);
                 CheckedStatement {
                     verdict: verdict(policy, class),
                     sql,

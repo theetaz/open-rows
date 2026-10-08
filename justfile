@@ -139,6 +139,10 @@ bench-pg-decode:
 test-pg version="17":
     {{sccache_guard}} bash scripts/test-pg.sh "{{version}}"
 
+# Run MySQL/MariaDB integration tests in throwaway containers (default mysql:8.4 and mariadb:11.4); skips when Docker is unavailable.
+test-mysql *images:
+    {{sccache_guard}} bash scripts/test-mysql.sh {{images}}
+
 # Measure the accepted canvas grid with fresh scenarios per repeat; maintainer-only GUI run.
 bench-grid repeats="3":
     python3 -B scripts/bench-grid.py "{{repeats}}"

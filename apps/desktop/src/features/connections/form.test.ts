@@ -10,6 +10,7 @@ import {
   withPassword,
   withPatch,
   withUrl,
+  urlConflict,
 } from './form';
 
 vi.mock('@openrows/ipc', () => ({ DEFAULT_CUSTOM_ENV_COLOR: '#7c3aed' }));
@@ -22,6 +23,8 @@ it('maps a profile to a draft and back without inventing a password', () => {
   });
   const input = toInput(draftFromProfile(stored));
   expect(input).toEqual({
+    engine: 'postgres',
+    file: null,
     name: 'orders',
     group: 'Team',
     env: { kind: 'local', label: null, color: null },
@@ -57,6 +60,8 @@ it('fills fields from a parsed URL; a typed name sticks, a URL-derived one follo
     user: 'app',
     tlsMode: 'require' as const,
     passwordProvided: false,
+    engine: 'postgres' as const,
+    file: null,
   };
   const draft = withUrl(emptyDraft(), parsed);
   expect(draft).toMatchObject({ name: 'orders', host: 'db', port: '5433' });
@@ -84,4 +89,69 @@ it('validates name, host, port range, user and custom label', () => {
   ]);
   const custom = toInput({ ...draft, envLabel: ' qa ', envColor: '#010203' });
   expect(custom.env).toEqual({ kind: 'custom', label: 'qa', color: '#010203' });
+});
+
+it('fills a file connection from a sqlite: URL and validates its path', () => {
+  const parsed = {
+    engine: 'sqlite' as const,
+    file: { path: '/data/shop.sqlite', readOnly: true, create: false },
+    host: 'localhost',
+    port: 5432,
+    database: null,
+    user: null,
+    tlsMode: 'disable' as const,
+    passwordProvided: false,
+  };
+  const draft = withUrl(emptyDraft(), parsed);
+  expect(draft).toMatchObject({
+    engine: 'sqlite',
+    name: 'shop',
+    filePath: '/data/shop.sqlite',
+    fileReadOnly: true,
+  });
+  expect(validate(draft)).toEqual({});
+  expect(validate({ ...draft, filePath: 'shop.sqlite' }).filePath).toBe(
+    'Use an absolute path',
+  );
+  expect(validate({ ...draft, filePath: ' ' }).filePath).toBe(
+    'Choose a database file',
+  );
+  const input = toInput(draft);
+  expect(input.file).toEqual({
+    path: '/data/shop.sqlite',
+    readOnly: true,
+    create: false,
+  });
+  expect(input.ssh).toBeNull();
+  expect(input.password).toEqual({ kind: 'clear' });
+});
+
+it('starts new connections with the engine default port', () => {
+  expect(emptyDraft('mysql').port).toBe('3306');
+  expect(emptyDraft('mariadb').port).toBe('3306');
+  expect(emptyDraft('postgres').port).toBe('5432');
+  expect(emptyDraft('sqlite').port).toBe('');
+});
+
+it('a saved connection refuses a URL for another engine', () => {
+  const draft = draftFromProfile(profile('orders'));
+  const mysql = {
+    engine: 'mysql' as const,
+    file: null,
+    host: 'db',
+    port: 3306,
+    database: 'shop',
+    user: 'app',
+    tlsMode: 'prefer' as const,
+    passwordProvided: false,
+  };
+  expect(urlConflict(draft, mysql)).toBe(
+    'This is a MySQL URL; the connection uses PostgreSQL',
+  );
+  expect(urlConflict(emptyDraft(), mysql)).toBeNull();
+  expect(withUrl(emptyDraft(), mysql)).toMatchObject({
+    engine: 'mysql',
+    port: '3306',
+    database: 'shop',
+  });
 });

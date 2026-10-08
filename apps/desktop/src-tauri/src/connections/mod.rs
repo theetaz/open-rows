@@ -8,25 +8,28 @@
 //! [`sessions`]; [`catalog`] serves the schema tree from per-database
 //! metadata sessions. Each opened database of a connection has its own user
 //! session, recorded in [`owners`]. [`route`] resolves every connect: keychain
-//! secrets, TLS files and the profile's shared SSH tunnel ([`tunnels`]), with
+//! secrets, TLS files and the profile's shared SSH tunnel ([`tunnels`]) into
+//! a driver [`target`] for the profile's engine ([`drivers`]), with
 //! host-key and keyboard-interactive [`prompts`] in the webview;
 //! [`diagnostics`] runs Test connection step by step.
 pub(crate) mod catalog;
 mod catalog_dto;
 pub(crate) mod connection;
 pub(crate) mod diagnostics;
+pub(crate) mod drivers;
 mod dto;
+mod engine_dto;
 mod enums;
 mod error;
 pub(crate) mod files;
 mod metadata;
 mod owners;
-pub(crate) mod pg;
 pub(crate) mod profiles;
 pub(crate) mod prompts;
 pub(crate) mod route;
 mod route_dto;
 pub(crate) mod sessions;
+pub(crate) mod target;
 mod tunnels;
 
 use std::sync::Arc;

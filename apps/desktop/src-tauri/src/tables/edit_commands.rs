@@ -1,30 +1,46 @@
 // SPDX-License-Identifier: Apache-2.0
-//! Review and commit table edits on a dedicated, short-lived `PostgreSQL` connection.
+//! Review and commit table edits on a dedicated, short-lived connection of
+//! the table's engine, with SQL in that engine's dialect.
 use super::commands::owned_session;
 use super::dto::TableTarget;
 use super::edit_dto::{EditInfoDto, EditReply, EditRequest, EditStatementDto};
 use crate::connections::{Connections, IpcError};
-use crate::connections::{pg, profiles::profile_id, route};
+use crate::connections::{profiles::profile_id, route, target};
 use openrows_core::safety::{SafetyPlan, SafetyPolicy};
-use openrows_driver_api::Session;
-use openrows_driver_postgres::{BoundEdit, PgSession};
+use openrows_driver_api::{Connection, DriverError, RowEditInfo, catalog, editor};
+use openrows_sql::Dialect;
 use openrows_sql::edit::{Edit, EditTable, edit_sql};
 use openrows_sql::select::TableRef;
 use openrows_store::profile::EnvKind;
 use tauri::State;
 
+/// A dedicated connection to the target's database; closing it rolls back
+/// anything still open.
 pub(crate) async fn session(
     state: &Connections,
     target: &TableTarget,
-) -> Result<PgSession, IpcError> {
+) -> Result<Box<dyn Connection>, IpcError> {
     let destination = route::profile_target(state, &target.profile_id)
         .await?
         .with_database(&target.database)
         .with_application_suffix("table edits");
-    pg::connect(&destination)
+    target::connect(&destination)
         .await
-        .map(|connected| connected.session)
+        .map(|connected| connected.connection)
         .map_err(|error| IpcError::from(&error))
+}
+
+/// The table's key, generated columns and catalog column names.
+pub(crate) async fn edit_shape(
+    connection: &mut dyn Connection,
+    (schema, table): (&str, &str),
+) -> Result<(RowEditInfo, Vec<String>), DriverError> {
+    let info = editor(connection)?.row_edit_info(schema, table).await?;
+    let columns = catalog(connection)?.table_columns(schema, table).await?;
+    Ok((
+        info,
+        columns.into_iter().map(|column| column.name).collect(),
+    ))
 }
 fn writable(state: &Connections, target: &TableTarget) -> Result<(), IpcError> {
     let profile = state.profiles.get(profile_id(&target.profile_id)?)?;
@@ -53,9 +69,13 @@ pub(crate) async fn table_edit_info(
     );
     let mut session = session(&state, &target).await?;
     let result = async {
-        let info = session.row_edit_info(&target.schema, &target.table).await?;
-        let columns = session.table_columns(&target.schema, &target.table).await?;
-        Ok::<_, openrows_driver_api::DriverError>(EditInfoDto {
+        let info = editor(session.as_mut())?
+            .row_edit_info(&target.schema, &target.table)
+            .await?;
+        let columns = catalog(session.as_mut())?
+            .table_columns(&target.schema, &target.table)
+            .await?;
+        Ok::<_, DriverError>(EditInfoDto {
             key: info.key,
             protected: info.protected,
             columns: columns.into_iter().map(Into::into).collect(),
@@ -66,7 +86,7 @@ pub(crate) async fn table_edit_info(
     }
     .await
     .map_err(|error| IpcError::from(&error));
-    let closed = Box::new(session)
+    let closed = session
         .close()
         .await
         .map_err(|error| IpcError::from(&error));
@@ -87,10 +107,12 @@ pub(crate) async fn table_edit(
             "Stage between 1 and 1,000 changes per commit",
         ));
     }
+    let dialect =
+        crate::connections::drivers::profile_driver(&state, &request.target.profile_id)?.dialect();
     let mut session = session(&state, &request.target).await?;
-    let result = prepare_commit(&mut session, &request).await;
+    let result = prepare_commit(session.as_mut(), &request, dialect).await;
     // Closing rolls back transactions still open; a lost COMMIT reply remains uncertain.
-    let closed = Box::new(session)
+    let closed = session
         .close()
         .await
         .map_err(|error| IpcError::from(&error));
@@ -102,23 +124,20 @@ pub(crate) async fn table_edit(
     result
 }
 async fn prepare_commit(
-    session: &mut PgSession,
+    session: &mut dyn Connection,
     request: &EditRequest,
+    dialect: Dialect,
 ) -> Result<EditReply, IpcError> {
-    let info = session
-        .row_edit_info(&request.target.schema, &request.target.table)
-        .await
-        .map_err(|error| IpcError::from(&error))?;
-    let columns = session
-        .table_columns(&request.target.schema, &request.target.table)
+    let target = &request.target;
+    let (info, columns) = edit_shape(session, (&target.schema, &target.table))
         .await
         .map_err(|error| IpcError::from(&error))?;
     let table = EditTable {
         table: TableRef {
-            schema: request.target.schema.clone(),
-            name: request.target.table.clone(),
+            schema: target.schema.clone(),
+            name: target.table.clone(),
         },
-        columns: columns.into_iter().map(|column| column.name).collect(),
+        columns,
         key: info.key,
         protected: info.protected,
     };
@@ -126,11 +145,11 @@ async fn prepare_commit(
         .changes
         .iter()
         .map(|change| {
-            edit_sql(&table, &Edit::from(change))
+            edit_sql(dialect, &table, &Edit::from(change))
                 .map_err(|error| IpcError::invalid(error.to_string()))
         })
         .collect::<Result<Vec<_>, _>>()?;
-    let token = preview_token(request, &edits)?;
+    let token = preview_token(request, &edits, dialect)?;
     if request.confirm_token.as_deref() != Some(token.as_str()) {
         return Ok(EditReply::Prepared {
             token,
@@ -143,14 +162,8 @@ async fn prepare_commit(
                 .collect(),
         });
     }
-    let edits = edits
-        .into_iter()
-        .map(|edit| BoundEdit {
-            sql: edit.sql,
-            params: edit.params,
-        })
-        .collect::<Vec<_>>();
-    session
+    editor(session)
+        .map_err(|error| IpcError::from(&error))?
         .commit_edits(&edits)
         .await
         .map_err(|error| IpcError::from(&error))?;
@@ -160,11 +173,13 @@ async fn prepare_commit(
 fn preview_token(
     request: &EditRequest,
     edits: &[openrows_sql::select::BoundSql],
+    dialect: Dialect,
 ) -> Result<String, IpcError> {
     let plan = SafetyPlan::check(
         SafetyPolicy {
             read_only: false,
             confirm_writes: true,
+            dialect,
         },
         edits.iter().map(|edit| edit.sql.clone()).collect(),
     );
@@ -214,21 +229,21 @@ mod tests {
             sql: "UPDATE t SET name = $1 WHERE id = $2".into(),
             params: vec![Some("first".into()), Some("1".into())],
         }];
-        let first = preview_token(&request, &sql)?;
+        let first = preview_token(&request, &sql, Dialect::Postgres)?;
         request.changes[0].values.insert(
             "name".into(),
             CellValueDto::Text {
                 value: "second".into(),
             },
         );
-        let second = preview_token(&request, &sql)?;
+        let second = preview_token(&request, &sql, Dialect::Postgres)?;
         assert_ne!(first, second);
         request.changes[0]
             .values
             .insert("name".into(), CellValueDto::Default);
-        assert_ne!(second, preview_token(&request, &sql)?);
+        assert_ne!(second, preview_token(&request, &sql, Dialect::Postgres)?);
         request.session_id = "session-b".into();
-        assert_ne!(first, preview_token(&request, &sql)?);
+        assert_ne!(first, preview_token(&request, &sql, Dialect::Postgres)?);
         Ok(())
     }
     fn users() -> EditTable {
@@ -277,7 +292,7 @@ mod tests {
         ]
         .into_iter()
         .map(|kind| {
-            edit_sql(&users(), &Edit::from(&staged(kind)))
+            edit_sql(Dialect::Postgres, &users(), &Edit::from(&staged(kind)))
                 .map(|bound| bound.sql)
                 .map_err(|error| IpcError::invalid(error.to_string()))
         })
@@ -288,6 +303,7 @@ mod tests {
             SafetyPolicy {
                 read_only: false,
                 confirm_writes: false,
+                dialect: Dialect::Postgres,
             },
             sql.clone(),
         );
@@ -302,6 +318,7 @@ mod tests {
             SafetyPolicy {
                 read_only: true,
                 confirm_writes: false,
+                dialect: Dialect::Postgres,
             },
             sql,
         );
@@ -314,9 +331,16 @@ mod tests {
     fn a_delete_without_a_key_is_refused_before_any_sql_exists() {
         let mut table = users();
         table.key.clear();
-        assert!(edit_sql(&table, &Edit::from(&staged(EditKindDto::Delete))).is_err());
+        assert!(
+            edit_sql(
+                Dialect::Postgres,
+                &table,
+                &Edit::from(&staged(EditKindDto::Delete))
+            )
+            .is_err()
+        );
         let mut change = staged(EditKindDto::Delete);
         change.original.remove("id");
-        assert!(edit_sql(&users(), &Edit::from(&change)).is_err());
+        assert!(edit_sql(Dialect::Postgres, &users(), &Edit::from(&change)).is_err());
     }
 }
