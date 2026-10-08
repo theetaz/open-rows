@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
+import type { TlsModeDto } from '@openrows/ipc';
+import { isFileEngine, urlScheme } from './engines';
 import type { Draft } from './form';
 
 /** What the URL field shows in place of any password. */
@@ -90,8 +92,31 @@ function hasPassword(draft: Draft): boolean {
   return draft.hasStoredPassword && draft.passwordMode === 'keep';
 }
 
+/** `MySQL` `ssl-mode` names; `allow` has none and keeps the libpq spelling. */
+const MYSQL_SSL: Partial<Record<TlsModeDto, string>> = {
+  disable: 'DISABLED',
+  prefer: 'PREFERRED',
+  require: 'REQUIRED',
+  'verify-ca': 'VERIFY_CA',
+  'verify-full': 'VERIFY_IDENTITY',
+};
+
+function tlsQuery(draft: Draft): string {
+  if (draft.tlsMode === defaultTls(draft.host)) return '';
+  const mysql = draft.engine === 'mysql' || draft.engine === 'mariadb';
+  const name = mysql ? MYSQL_SSL[draft.tlsMode] : undefined;
+  return name ? `?ssl-mode=${name}` : `?sslmode=${draft.tlsMode}`;
+}
+
+/** `sqlite:/path`, `?mode=ro` when the file opens read-only. */
+function fileUrl(draft: Draft): string {
+  const path = encodeURI(draft.filePath.trim());
+  return `sqlite:${path}${draft.fileReadOnly ? '?mode=ro' : ''}`;
+}
+
 /** The URL for the current fields, with any password shown only as the mask. */
 export function composeUrl(draft: Draft): string {
+  if (isFileEngine(draft.engine)) return fileUrl(draft);
   const user = encodeURIComponent(draft.user.trim());
   const secret = hasPassword(draft) ? `:${PASSWORD_MASK}` : '';
   const auth = user || secret ? `${user}${secret}@` : '';
@@ -100,7 +125,6 @@ export function composeUrl(draft: Draft): string {
   const database = draft.database.trim()
     ? `/${encodeURIComponent(draft.database.trim())}`
     : '';
-  const tls =
-    draft.tlsMode === defaultTls(draft.host) ? '' : `?sslmode=${draft.tlsMode}`;
-  return `postgres://${auth}${host.trim()}${port}${database}${tls}`;
+  const scheme = urlScheme(draft.engine);
+  return `${scheme}://${auth}${host.trim()}${port}${database}${tlsQuery(draft)}`;
 }

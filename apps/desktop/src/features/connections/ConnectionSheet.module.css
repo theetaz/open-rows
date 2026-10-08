@@ -178,3 +178,20 @@
   color: var(--or-secondary);
   font-size: var(--or-text-11);
 }
+.fileRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: start;
+  column-gap: var(--or-space-8);
+}
+.engineRow {
+  display: grid;
+  grid-template-columns: var(--label-column) auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--or-space-8);
+}
+.form .fileNote {
+  margin-inline-start: calc(var(--label-column) + var(--or-space-8));
+  color: var(--or-secondary);
+  font-size: var(--or-text-11);
+}

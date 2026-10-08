@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-import { SegmentedControl, Switch, TextField } from '@openrows/ui';
+import { SegmentedControl, TextField } from '@openrows/ui';
 import type { EnvKindDto } from '@openrows/ipc';
 import { fieldError } from './form';
 import type { ConnectionForm } from './useConnectionForm';
+import { SwitchRow } from './SwitchRow';
 import styles from './ConnectionSheet.module.css';
 
 const environments: readonly { value: EnvKindDto; label: string }[] = [
@@ -55,7 +56,7 @@ export function EnvironmentFields({
           </label>
         </div>
       )}
-      <SafetySwitch
+      <SwitchRow
         label="Read-only"
         detail="Reject every write statement."
         checked={draft.readOnly}
@@ -63,7 +64,7 @@ export function EnvironmentFields({
           update({ readOnly });
         }}
       />
-      <SafetySwitch
+      <SwitchRow
         label="Confirm writes"
         detail="Ask before running a write statement. On by default for prod."
         checked={draft.confirmWrites}
@@ -72,26 +73,5 @@ export function EnvironmentFields({
         }}
       />
     </>
-  );
-}
-
-function SafetySwitch(props: {
-  label: string;
-  detail: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-}): React.JSX.Element {
-  return (
-    <div className={styles.switchRow}>
-      <Switch
-        aria-label={props.label}
-        checked={props.checked}
-        onCheckedChange={props.onChange}
-      />
-      <span>
-        {props.label}
-        <small>{props.detail}</small>
-      </span>
-    </div>
   );
 }

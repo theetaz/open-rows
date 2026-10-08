@@ -3,9 +3,9 @@ import { forceParsing } from '@codemirror/language';
 import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { sqlEditorExtensions } from './extensions';
-import type { EditorKey, SqlEditorOptions } from './extensions';
+import type { EditorDialect, EditorKey, SqlEditorOptions } from './extensions';
 
-export type { EditorKey, SqlEditorOptions };
+export type { EditorDialect, EditorKey, SqlEditorOptions };
 export type { EditorView } from '@codemirror/view';
 
 /** A mounted SQL editor; callers own its lifetime. */
@@ -16,7 +16,7 @@ export interface SqlEditor {
   destroy(): void;
 }
 
-/** Mount a PostgreSQL editor into `parent`. Load this module lazily. */
+/** Mount a SQL editor into `parent`. Load this module lazily. */
 export function mountSqlEditor(
   parent: HTMLElement,
   options: SqlEditorOptions,

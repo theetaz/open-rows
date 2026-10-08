@@ -114,7 +114,7 @@ export function ipcStub(
     ),
     ...catalogStub(),
     closeSession: vi.fn(() => Promise.resolve()),
-    parsePostgresUrl: vi.fn(),
+    parseConnectionUrl: vi.fn(),
     testConnection: vi.fn(),
     pickConnectionFile: vi.fn(() => Promise.resolve(null)),
     onSshPrompt: vi.fn(() => Promise.resolve(() => {})),

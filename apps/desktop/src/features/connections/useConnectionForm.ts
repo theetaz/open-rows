@@ -2,7 +2,12 @@
 import { useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { createProfile, testConnection, updateProfile } from '@openrows/ipc';
-import type { EnvKindDto, ProfileDto, TestReport } from '@openrows/ipc';
+import type {
+  EngineDto,
+  EnvKindDto,
+  ProfileDto,
+  TestReport,
+} from '@openrows/ipc';
 import {
   draftFromProfile,
   emptyDraft,
@@ -46,6 +51,8 @@ export type ConnectionForm = {
 
 /** Fields that appear in the connection URL. */
 const URL_FIELDS = new Set<string>([
+  'filePath',
+  'fileReadOnly',
   'host',
   'port',
   'database',
@@ -62,9 +69,10 @@ const message = (error: unknown): string =>
 export function useConnectionForm(
   profile: ProfileDto | undefined,
   onSaved: (profile: ProfileDto) => void,
+  engine: EngineDto = 'postgres',
 ): ConnectionForm {
   const [draft, setDraft] = useState(() =>
-    profile ? draftFromProfile(profile) : emptyDraft(),
+    profile ? draftFromProfile(profile) : emptyDraft(engine),
   );
   const [submitted, setSubmitted] = useState(false);
   const url = useUrlField(draft, setDraft);

@@ -58,6 +58,7 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
       <QueryEditor
         doc={tab.sql}
         label="SQL editor"
+        dialect={props.connection.engine}
         onChange={(sql) => {
           props.onSql(tab.id, sql);
         }}

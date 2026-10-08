@@ -2,6 +2,7 @@
 import { useId, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { ProfileDto } from '@openrows/ipc';
+import { profileLocation } from './engines';
 import { EnvironmentBadge } from './EnvironmentBadge';
 import styles from './Tooltip.module.css';
 
@@ -28,9 +29,7 @@ export function RailTooltip(props: {
         <EnvironmentBadge env={profile.env} />
         {props.shortcut && <kbd>{props.shortcut}</kbd>}
       </span>
-      <small>
-        PostgreSQL · {profile.host}:{String(profile.port)}
-      </small>
+      <small>{profileLocation(profile)}</small>
       <small>{props.status}</small>
     </div>,
     document.body,

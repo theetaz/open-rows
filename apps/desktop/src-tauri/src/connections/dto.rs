@@ -207,6 +207,7 @@ impl ProfileInput {
         apply_route(&self.tls_files, self.ssh.as_ref(), profile);
         profile.file = self.file.as_ref().map(Into::into);
         if profile.driver.is_file() {
+            profile.params = ServerParams::default();
             profile.ssh = None;
             profile.tls.mode = TlsMode::Disable;
         }

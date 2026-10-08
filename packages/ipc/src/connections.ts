@@ -85,8 +85,8 @@ export async function deleteProfile(id: string): Promise<void> {
   await unwrap(commands.profileDelete(id));
 }
 
-/** Form fields from a `postgres://` URL; reports only whether it had a password. */
-export function parsePostgresUrl(url: string): Promise<UrlDraft> {
+/** Form fields from a `postgres://`, `mysql://`, `mariadb://` or `sqlite:` URL; reports only whether it had a password. */
+export function parseConnectionUrl(url: string): Promise<UrlDraft> {
   return unwrap(commands.profileParseUrl(url));
 }
 
@@ -134,7 +134,7 @@ export function onSessionState(
   });
 }
 
-/** Pick a key or certificate file natively; `null` when cancelled or outside the shell. */
+/** Pick a key, certificate or database file natively; `null` when cancelled or outside the shell. */
 export async function pickConnectionFile(
   kind: PickFileKind,
 ): Promise<string | null> {

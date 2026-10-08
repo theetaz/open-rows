@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
 import {
   createProfile,
-  parsePostgresUrl,
+  parseConnectionUrl,
   testConnection,
   updateProfile,
 } from '@openrows/ipc';
@@ -45,7 +45,7 @@ const PARSED = {
 };
 
 it('fills the fields from a pasted URL at once, masks its password and saves it as typed', async () => {
-  vi.mocked(parsePostgresUrl).mockResolvedValue(PARSED);
+  vi.mocked(parseConnectionUrl).mockResolvedValue(PARSED);
   const saved = profile('orders');
   vi.mocked(createProfile).mockResolvedValue(saved);
   const { user, handlers } = mount();
@@ -53,7 +53,7 @@ it('fills the fields from a pasted URL at once, masks its password and saves it 
   expect(url).toHaveFocus();
   await user.clear(url);
   await user.paste(URL_WITH_SECRET);
-  expect(parsePostgresUrl).toHaveBeenLastCalledWith(
+  expect(parseConnectionUrl).toHaveBeenLastCalledWith(
     'postgres://app@db.test:6543/orders',
   );
   expect(url).toHaveValue('postgres://app:••••@db.test:6543/orders');
@@ -76,7 +76,7 @@ it('fills the fields from a pasted URL at once, masks its password and saves it 
 });
 
 it('parses typed URLs after a pause, shows invalid URLs inline and mirrors field edits', async () => {
-  vi.mocked(parsePostgresUrl).mockRejectedValue(
+  vi.mocked(parseConnectionUrl).mockRejectedValue(
     new Error('malformed connection URL: invalid port number'),
   );
   const { user } = mount();
@@ -87,7 +87,7 @@ it('parses typed URLs after a pause, shows invalid URLs inline and mirrors field
   expect(
     await screen.findByText('malformed connection URL: invalid port number'),
   ).toBeVisible();
-  expect(parsePostgresUrl).toHaveBeenCalledTimes(1);
+  expect(parseConnectionUrl).toHaveBeenCalledTimes(1);
   await user.clear(screen.getByRole('textbox', { name: 'Host' }));
   await user.type(screen.getByRole('textbox', { name: 'Host' }), 'db.test');
   await user.type(screen.getByRole('textbox', { name: 'User' }), 'app');
