@@ -6,8 +6,8 @@ import type {
   GridDataSource,
   GridHandle,
   GridProps,
-  GridContextTarget,
   GridTheme,
+  SelectionModel,
 } from '@openrows/grid';
 import type { ColumnDto, SortDto } from '@openrows/ipc';
 import { mountCanvas } from '../../results/mountCanvas';
@@ -21,10 +21,14 @@ import { useInlineEditor } from './inline/useInlineEditor';
 import type { InlineEditor } from './inline/useInlineEditor';
 import { InlineEditorView } from './inline/InlineEditor';
 import { useGridEditing } from './inline/useGridEditing';
+import { dataRanges } from './bulk/cells';
+import { usePaste } from './bulk/usePaste';
+import type { ContextTarget } from './contextMenuActions';
 import styles from './Table.module.css';
 import { columnAlign } from '../../results/align';
 
 const noKeys: readonly string[] = [];
+const noSelection: SelectionModel = { row: 0, column: 0, ranges: [] };
 
 /** Header title with the server-side sort direction, e.g. `name ▲`. */
 function headerTitle(name: string, sort: SortDto | null): string {
@@ -61,7 +65,8 @@ type Props = {
   offset: number;
   rowNumbers: boolean;
   striped: boolean;
-  onContextMenu: (target: GridContextTarget) => void;
+  /** Right-click target with the selection it belongs to (data coordinates). */
+  onContextMenu: (target: ContextTarget) => void;
 };
 type Latest = Props & { editor: InlineEditor };
 
@@ -72,11 +77,13 @@ export function TableGrid(props: Props): React.JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(0);
   const { theme, handle } = useGridAppearance();
+  const selectionRef = useRef<SelectionModel>(noSelection);
   const editor = useInlineEditor({
     host,
     handle,
     theme,
     source: sourceRef,
+    selection: selectionRef,
     ...props,
   });
   const latest = useRef<Latest>({ ...props, editor });
@@ -90,10 +97,12 @@ export function TableGrid(props: Props): React.JSX.Element {
     theme,
     handle,
     sourceRef,
+    selectionRef,
     setMounted,
     ...props,
   });
   useGridEditing({ ...props, handle, source: sourceRef, editor, mounted });
+  usePaste(host, latest, selectionRef);
   return (
     <GridFrame host={host} error={error}>
       <InlineEditorView editor={editor} />
@@ -111,6 +120,7 @@ type CanvasArgs = Pick<
   theme: React.RefObject<GridTheme>;
   handle: React.RefObject<GridHandle | undefined>;
   sourceRef: React.RefObject<EditedSource | undefined>;
+  selectionRef: React.RefObject<SelectionModel>;
   setMounted: React.Dispatch<React.SetStateAction<number>>;
 };
 
@@ -122,6 +132,7 @@ function useTableCanvas({
   theme,
   handle,
   sourceRef,
+  selectionRef,
   setMounted,
   result,
   sort,
@@ -150,7 +161,9 @@ function useTableCanvas({
       striped,
       theme: theme.current,
       setError,
+      selectionRef,
     });
+    selectionRef.current = props.selection;
     const unmount = mountCanvas(element, props, {
       theme,
       handle,
@@ -169,6 +182,7 @@ function useTableCanvas({
     setError,
     setMounted,
     sourceRef,
+    selectionRef,
     result,
     sort,
     theme,
@@ -184,9 +198,13 @@ function gridProps({
   latest,
   rowNumbers,
   setError,
+  selectionRef,
   ...rest
 }: Pick<GridProps, 'source' | 'striped' | 'theme'> &
-  Pick<CanvasArgs, 'latest' | 'rowNumbers' | 'setError'>): GridProps {
+  Pick<
+    CanvasArgs,
+    'latest' | 'rowNumbers' | 'setError' | 'selectionRef'
+  >): GridProps {
   const props: GridProps = {
     ...rest,
     onEdit: (cell, text) => {
@@ -196,13 +214,16 @@ function gridProps({
       latest.current.editor.reposition();
     },
     onContextMenu: (target) => {
-      latest.current.onContextMenu(dataCell(target, rowNumbers));
+      latest.current.onContextMenu({
+        ...dataCell(target, rowNumbers),
+        ranges: dataRanges(props.selection.ranges, rowNumbers),
+      });
     },
     selection: { row: 0, column: rowNumbers ? 1 : 0, ranges: [] },
-    onSelection: (selection) => {
-      props.selection = selection;
-      if (selection.row < latest.current.result.rows)
-        latest.current.onRow(selection.row);
+    onSelection: (next) => {
+      props.selection = next;
+      selectionRef.current = next;
+      if (next.row < latest.current.result.rows) latest.current.onRow(next.row);
     },
     onHeader: (column) => {
       latest.current.onHeader(column - (rowNumbers ? 1 : 0));

@@ -164,7 +164,7 @@ export function RowEditSheet({
     return (
       <ReviewSheet
         title="Review table changes"
-        summary={`${String(editing.history.current.length)} staged row changes. Conflicts and statement errors roll back the transaction. If the connection is lost during commit, reload before retrying.`}
+        summary={reviewSummary(editing)}
         sql={editing.review.statements
           .map(
             (statement) =>
@@ -188,6 +188,21 @@ export function RowEditSheet({
       editing={editing}
     />
   ) : null;
+}
+
+/** Counts per operation, with the environment named when the connection is production. */
+function reviewSummary(editing: RowEditing): string {
+  const counts = { update: 0, insert: 0, delete: 0 };
+  for (const change of editing.history.current) counts[change.kind] += 1;
+  const parts = [
+    counts.update && `${String(counts.update)} updated`,
+    counts.insert && `${String(counts.insert)} inserted`,
+    counts.delete && `${String(counts.delete)} deleted`,
+  ].filter((part): part is string => typeof part === 'string');
+  const where = editing.info?.production
+    ? 'Production connection: these statements change production data. '
+    : '';
+  return `${where}Rows: ${parts.join(', ')}. One transaction: conflicts and statement errors roll everything back. If the connection is lost during commit, reload before retrying.`;
 }
 
 function NullValue({

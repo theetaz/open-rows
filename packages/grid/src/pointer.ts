@@ -91,17 +91,18 @@ export function contextFocus({
   scroll.oncontextmenu = (event): void => {
     event.preventDefault();
     const bounds = scroll.getBoundingClientRect();
-    const x = event.clientX - bounds.left;
-    const y = event.clientY - bounds.top;
-    const header = painter.layout.headerHit(painter.view, x, y);
-    const cell = painter.layout.hit(painter.view, x, y);
-    if (header === undefined && (!cell || cell.row >= props.source.rows))
-      return;
-    if (header === props.rowHeaderColumn) return;
-    const focus = header !== undefined ? { row: 0, column: header } : cell;
-    if (!focus) return;
-    const rowHeader = focus.column === props.rowHeaderColumn;
-    selectPointer(props, { ...focus }, event);
+    const target = contextTarget(
+      painter,
+      props,
+      event.clientX - bounds.left,
+      event.clientY - bounds.top,
+    );
+    if (!target) return;
+    const { header, focus, rowHeader } = target;
+    // A right-click inside the selection keeps it, so its actions apply to every selected cell.
+    if (header === undefined && !rowHeader && inSelection(props, focus))
+      props.selection = { ...props.selection, ...focus };
+    else selectPointer(props, { ...focus }, event);
     if (header !== undefined)
       props.selection.ranges = [
         {
@@ -123,6 +124,44 @@ export function contextFocus({
       y: event.clientY,
     });
   };
+}
+
+type ContextTarget = {
+  header: number | undefined;
+  focus: { row: number; column: number };
+  rowHeader: boolean;
+};
+
+/** The header or cell under a right-click, or `undefined` for blank space and the row-number header. */
+function contextTarget(
+  painter: CanvasPainter,
+  props: GridProps,
+  x: number,
+  y: number,
+): ContextTarget | undefined {
+  const header = painter.layout.headerHit(painter.view, x, y);
+  const cell = painter.layout.hit(painter.view, x, y);
+  if (header === undefined && (!cell || cell.row >= props.source.rows))
+    return undefined;
+  // The row-number header has no actions; without a row-number column every header counts.
+  if (header !== undefined && header === props.rowHeaderColumn)
+    return undefined;
+  const focus = header !== undefined ? { row: 0, column: header } : cell;
+  if (!focus) return undefined;
+  return { header, focus, rowHeader: focus.column === props.rowHeaderColumn };
+}
+
+function inSelection(
+  props: GridProps,
+  cell: { row: number; column: number },
+): boolean {
+  return props.selection.ranges.some(
+    (range) =>
+      cell.row >= range.r0 &&
+      cell.row <= range.r1 &&
+      cell.column >= range.c0 &&
+      cell.column <= range.c1,
+  );
 }
 
 function selectPointer(

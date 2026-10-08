@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { GridContextTarget } from '@openrows/grid';
+import type { CellRange, GridContextTarget } from '@openrows/grid';
 import type { ResultMeta } from '../query/run';
 import type { RowField } from './row';
 import { filterRow, toFilters } from './model';
@@ -9,21 +9,29 @@ import { stagedInserts } from './EditedSource';
 import { DEFAULT_VALUE, NULL_VALUE, textValue } from './cellValue';
 import type { CellValue } from './cellValue';
 import { fieldActions } from './fieldActions';
+import { selectionActions } from './selectionActions';
+import { selectedCells } from './bulk/cells';
 import type { TableColumnDto } from '@openrows/ipc';
-export type MenuSelection = GridContextTarget & { result: ResultMeta };
+/** A right-click target plus the grid selection it belongs to, in data coordinates. */
+export type ContextTarget = GridContextTarget & {
+  ranges: readonly CellRange[];
+};
+export type MenuSelection = ContextTarget & { result: ResultMeta };
 export type ContextMenuProps = {
   selection: MenuSelection;
   editing: RowEditing;
   changeView: (update: (view: TableView) => TableView) => void;
+  /** Ask for one value to stage in every selected cell. */
+  onPrompt: (count: number) => void;
   onClose: () => void;
 };
-type Action = {
+export type Action = {
   label: string;
   disabled?: boolean;
   danger?: boolean;
   run: () => void;
 };
-type Context = ContextMenuProps & {
+export type Context = ContextMenuProps & {
   name: string;
   writable: boolean;
   run: (action: () => void) => () => void;
@@ -45,7 +53,10 @@ export function contextActions(
       action();
     },
   };
-  if (selection.kind === 'column') return columnActions(context, copy);
+  const cells = selectedCells(selection.ranges, 2).length;
+  if (selection.kind === 'column')
+    return [...columnActions(context, copy), ...selectionActions(context)];
+  if (cells > 1) return selectionActions(context);
   const rows = rowActions(context, fields, copy);
   return selection.kind === 'row'
     ? rows
@@ -126,7 +137,12 @@ function rowActions(
       label: 'Copy row',
       disabled: !fields,
       run: () => {
-        if (fields) copy(fields.map((item) => tsv(item.text)).join('\t'));
+        if (fields)
+          copy(
+            fields
+              .map((item) => tsv(item.state === 'empty' ? '' : item.text))
+              .join('\t'),
+          );
       },
     },
     { label: 'Add row', disabled: !writable, run: run(editing.insert) },

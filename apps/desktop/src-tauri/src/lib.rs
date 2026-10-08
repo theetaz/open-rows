@@ -49,8 +49,12 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
             tables::commands::table_page,
             tables::commands::table_count,
             tables::edit_commands::table_edit_info,
-            tables::edit_commands::table_edit_row,
+            tables::snapshot_commands::table_edit_row,
+            tables::snapshot_commands::table_edit_rows,
             tables::edit_commands::table_edit,
+            tables::recovery_commands::table_edits_save,
+            tables::recovery_commands::table_edits_saved,
+            tables::recovery_commands::table_edits_clear,
             tables::file_value::table_edit_file,
             tables::schema_commands::table_detail,
             tables::schema_commands::table_alter

@@ -28,7 +28,39 @@ export const emptyHistory: History<never> = {
 /** Merge changes by stable original row identity; insert then delete cancels itself. */
 export function stage(history: EditHistory, edit: StagedEdit): EditHistory {
   if (history.pending || history.uncertain) return history;
-  const existing = history.current.find((item) => item.id === edit.id);
+  return record(history, merge(history.current, edit));
+}
+/** Stage several edits (a bulk action) as one undoable step. */
+export function stageMany(
+  history: EditHistory,
+  edits: readonly StagedEdit[],
+): EditHistory {
+  if (history.pending || history.uncertain || !edits.length) return history;
+  return record(
+    history,
+    edits.reduce<readonly StagedEdit[]>(merge, history.current),
+  );
+}
+/** Journaled edits from an earlier run; undo returns to nothing staged. */
+export function restored(edits: readonly StagedEdit[]): EditHistory {
+  return { pending: false, current: edits, past: [[]], future: [] };
+}
+function record(
+  history: EditHistory,
+  current: readonly StagedEdit[],
+): EditHistory {
+  return {
+    pending: false,
+    current,
+    past: [...history.past.slice(-49), history.current],
+    future: [],
+  };
+}
+function merge(
+  staged: readonly StagedEdit[],
+  edit: StagedEdit,
+): readonly StagedEdit[] {
+  const existing = staged.find((item) => item.id === edit.id);
   const combined = existing
     ? {
         ...existing,
@@ -49,14 +81,9 @@ export function stage(history: EditHistory, edit: StagedEdit): EditHistory {
   const keep =
     !(existing?.kind === 'insert' && edit.kind === 'delete') &&
     !(combined.kind === 'update' && !Object.keys(combined.values).length);
-  const current = history.current.filter((item) => item.id !== edit.id);
+  const current = staged.filter((item) => item.id !== edit.id);
   if (keep) current.push(combined);
-  return {
-    pending: false,
-    current,
-    past: [...history.past.slice(-49), history.current],
-    future: [],
-  };
+  return current;
 }
 /** Undo/redo affects staged values only, never database contents. */
 export function travel<T>(

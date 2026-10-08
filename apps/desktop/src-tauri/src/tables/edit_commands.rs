@@ -10,7 +10,7 @@ use openrows_driver_api::Session;
 use openrows_driver_postgres::{BoundEdit, PgSession};
 use openrows_sql::edit::{Edit, EditTable, edit_sql};
 use openrows_sql::select::TableRef;
-use std::collections::BTreeMap;
+use openrows_store::profile::EnvKind;
 use tauri::State;
 
 pub(crate) async fn session(
@@ -37,18 +37,19 @@ pub(crate) fn ensure_writable(read_only: bool) -> Result<(), IpcError> {
     }
     Ok(())
 }
-/// Catalog key and generated columns, without modifying data.
+/// Catalog key, generated columns and the profile's safety switches, without modifying data.
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn table_edit_info(
     state: State<'_, Connections>,
     target: TableTarget,
 ) -> Result<EditInfoDto, IpcError> {
-    let read_only = state
-        .profiles
-        .get(profile_id(&target.profile_id)?)?
-        .safety
-        .read_only;
+    let profile = state.profiles.get(profile_id(&target.profile_id)?)?;
+    let safety = (
+        profile.safety.read_only,
+        profile.safety.confirm_writes,
+        profile.env_tag.kind == EnvKind::Prod,
+    );
     let mut session = session(&state, &target).await?;
     let result = async {
         let info = session.row_edit_info(&target.schema, &target.table).await?;
@@ -57,50 +58,13 @@ pub(crate) async fn table_edit_info(
             key: info.key,
             protected: info.protected,
             columns: columns.into_iter().map(Into::into).collect(),
-            read_only,
+            read_only: safety.0,
+            confirm_writes: safety.1,
+            production: safety.2,
         })
     }
     .await
     .map_err(|error| IpcError::from(&error));
-    let closed = Box::new(session)
-        .close()
-        .await
-        .map_err(|error| IpcError::from(&error));
-    closed?;
-    result
-}
-/// Read exact original values for an identified row; reject unknown/missing keys.
-#[tauri::command]
-#[specta::specta]
-pub(crate) async fn table_edit_row(
-    state: State<'_, Connections>,
-    target: TableTarget,
-    keys: BTreeMap<String, String>,
-) -> Result<BTreeMap<String, Option<String>>, IpcError> {
-    let mut session = session(&state, &target).await?;
-    let result = async {
-        let info = session
-            .row_edit_info(&target.schema, &target.table)
-            .await
-            .map_err(|error| IpcError::from(&error))?;
-        if info.key.is_empty()
-            || info.key.len() != keys.len()
-            || info.key.iter().any(|name| !keys.contains_key(name))
-        {
-            return Err(IpcError::invalid(
-                "This row needs a complete, supported unique key",
-            ));
-        }
-        session
-            .edit_snapshot(
-                (&target.schema, &target.table),
-                &keys.into_iter().collect::<Vec<_>>(),
-            )
-            .await
-            .map(|row| row.into_iter().collect())
-            .map_err(|error| IpcError::from(&error))
-    }
-    .await;
     let closed = Box::new(session)
         .close()
         .await
@@ -215,6 +179,8 @@ fn preview_token(
 mod tests {
     use super::super::edit_dto::{CellValueDto, EditKindDto, RowEditDto};
     use super::*;
+    use openrows_core::safety::Gate;
+    use std::collections::BTreeMap;
     #[test]
     fn read_only_refuses_table_writes() {
         assert!(ensure_writable(true).is_err());
@@ -263,5 +229,93 @@ mod tests {
         request.session_id = "session-b".into();
         assert_ne!(first, preview_token(&request, &sql)?);
         Ok(())
+    }
+    fn users() -> EditTable {
+        EditTable {
+            table: TableRef {
+                schema: "public".into(),
+                name: "users".into(),
+            },
+            columns: vec!["id".into(), "name".into()],
+            key: vec!["id".into()],
+            protected: vec![],
+        }
+    }
+    fn staged(kind: EditKindDto) -> RowEditDto {
+        let original = BTreeMap::from([
+            ("id".into(), Some("1".into())),
+            ("name".into(), Some("old".into())),
+        ]);
+        let values = BTreeMap::from([("name".into(), CellValueDto::Null)]);
+        match kind {
+            EditKindDto::Update => RowEditDto {
+                kind,
+                original,
+                values,
+            },
+            EditKindDto::Delete => RowEditDto {
+                kind,
+                original,
+                values: BTreeMap::new(),
+            },
+            EditKindDto::Insert => RowEditDto {
+                kind,
+                original: BTreeMap::new(),
+                values,
+            },
+        }
+    }
+    /// The editor can never produce an unbounded DELETE/UPDATE: every statement
+    /// carries the full original-row guard and a read-only profile blocks all of them.
+    #[test]
+    fn generated_statements_are_bounded_and_blocked_on_read_only() -> Result<(), IpcError> {
+        let sql = [
+            EditKindDto::Update,
+            EditKindDto::Delete,
+            EditKindDto::Insert,
+        ]
+        .into_iter()
+        .map(|kind| {
+            edit_sql(&users(), &Edit::from(&staged(kind)))
+                .map(|bound| bound.sql)
+                .map_err(|error| IpcError::invalid(error.to_string()))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+        assert!(sql[0].contains(" WHERE \"id\"::text IS NOT DISTINCT FROM $"));
+        assert!(sql[1].contains(" WHERE \"id\"::text IS NOT DISTINCT FROM $"));
+        let plan = SafetyPlan::check(
+            SafetyPolicy {
+                read_only: false,
+                confirm_writes: false,
+            },
+            sql.clone(),
+        );
+        assert!(
+            plan.statements
+                .iter()
+                .all(|statement| !statement.class.dangerous),
+            "bounded DML is never classified dangerous"
+        );
+        assert_eq!(plan.gate(), Gate::Run);
+        let blocked = SafetyPlan::check(
+            SafetyPolicy {
+                read_only: true,
+                confirm_writes: false,
+            },
+            sql,
+        );
+        assert_eq!(blocked.gate(), Gate::Block);
+        assert!(ensure_writable(true).is_err());
+        Ok(())
+    }
+    /// A commit needs the preview token, so the review sheet is shown on every commit.
+    #[test]
+    fn a_delete_without_a_key_is_refused_before_any_sql_exists() {
+        let mut table = users();
+        table.key.clear();
+        assert!(edit_sql(&table, &Edit::from(&staged(EditKindDto::Delete))).is_err());
+        let mut change = staged(EditKindDto::Delete);
+        change.original.remove("id");
+        assert!(edit_sql(&users(), &Edit::from(&change)).is_err());
     }
 }

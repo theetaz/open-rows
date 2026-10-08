@@ -83,12 +83,25 @@ export const commands = {
 	tablePage: (request: PageRequest, onEvent: Channel<QueryEventDto>) => typedError<PageReply, IpcError>(__TAURI_INVOKE("table_page", { request, onEvent })),
 	/**  Exact `count(*)` with the current filters; `query_cancel(ticket)` stops it. */
 	tableCount: (request: CountRequest) => typedError<CountReply, IpcError>(__TAURI_INVOKE("table_count", { request })),
-	/**  Catalog key and generated columns, without modifying data. */
+	/**  Catalog key, generated columns and the profile's safety switches, without modifying data. */
 	tableEditInfo: (target: TableTarget) => typedError<EditInfoDto, IpcError>(__TAURI_INVOKE("table_edit_info", { target })),
 	/**  Read exact original values for an identified row; reject unknown/missing keys. */
 	tableEditRow: (target: TableTarget, keys: { [key in string]: string }) => typedError<{ [key in string]: string | null }, IpcError>(__TAURI_INVOKE("table_edit_row", { target, keys })),
+	/**  Exact original values of several identified rows on one connection, in request order. */
+	tableEditRows: (target: TableTarget, keys: { [key in string]: string }[]) => typedError<({ [key in string]: string | null })[], IpcError>(__TAURI_INVOKE("table_edit_rows", { target, keys })),
 	/**  Prepare exact SQL/binds, then commit only when that preview's token is supplied. */
 	tableEdit: (request: EditRequest) => typedError<EditReply, IpcError>(__TAURI_INVOKE("table_edit", { request })),
+	/**  Journal the staged edits of a table; an empty change set clears the journal. */
+	tableEditsSave: (target: TableTarget, edits: SavedEditsDto) => typedError<null, IpcError>(__TAURI_INVOKE("table_edits_save", { target, edits })),
+	/**  The journaled edits of a table, if any; a journal this build cannot read is an error. */
+	tableEditsSaved: (target: TableTarget) => typedError<{
+	key: string[],
+	changes: StagedRowDto[],
+	/**  When the journal was last written, Unix epoch milliseconds. */
+	savedAtMs: number | null,
+} | null, IpcError>(__TAURI_INVOKE("table_edits_saved", { target })),
+	/**  Forget a table's journaled edits (commit, discard, or an unreadable journal). */
+	tableEditsClear: (target: TableTarget) => typedError<null, IpcError>(__TAURI_INVOKE("table_edits_clear", { target })),
 	/**
 	 *  Pick a file in a native open panel attached to the window and return its contents
 	 *  as a field value; `null` when the panel is cancelled. Nothing is staged here.
@@ -191,6 +204,10 @@ export type EditInfoDto = {
 	protected: string[],
 	columns: TableColumnDto[],
 	readOnly: boolean,
+	/**  The profile asks before writes (always on for `prod`). */
+	confirmWrites: boolean,
+	/**  The profile is tagged `prod`: the review names the environment. */
+	production: boolean,
 };
 
 export type EditKindDto = "update" | "insert" | "delete";
@@ -532,6 +549,14 @@ export type SafetyDto = {
 	confirmWrites: boolean,
 };
 
+/**  A table's journaled change set: the key it was staged against and its rows. */
+export type SavedEditsDto = {
+	key: string[],
+	changes: StagedRowDto[],
+	/**  When the journal was last written, Unix epoch milliseconds. */
+	savedAtMs: number | null,
+};
+
 /**  One staged structure change; columns are named by their current name. */
 export type SchemaChangeDto = { kind: "renameTable"; name: string } | { kind: "tableComment"; comment: string | null } | { kind: "renameColumn"; column: string; name: string } | { kind: "columnType"; column: string; dataType: string } | { kind: "columnNullable"; column: string; nullable: boolean } | { kind: "columnDefault"; column: string; default: DefaultDto } | { kind: "columnComment"; column: string; comment: string | null } | { kind: "addColumn"; name: string; dataType: string; nullable: boolean; default: DefaultDto; comment: string | null } | { kind: "dropColumn"; column: string } | { kind: "createIndex"; name: string | null; columns: string[]; unique: boolean; method: IndexMethodDto } | { kind: "dropIndex"; name: string };
 
@@ -602,6 +627,17 @@ export type SpikeReport_Serialize = {
 export type SqlPreviewDto = {
 	sql: string,
 	params: (string | null)[],
+};
+
+/**  One journaled staged row, exactly as the webview keeps it (docs/10 §4.5). */
+export type StagedRowDto = {
+	/**  Stable identity: the key values of an existing row, or a random id for an insert. */
+	id: string,
+	/**  Row number shown when it was staged (0 for inserts). */
+	number: number,
+	kind: EditKindDto,
+	original: { [key in string]: string | null },
+	values: { [key in string]: CellValueDto },
 };
 
 /**  One statement of the run with its classification. */

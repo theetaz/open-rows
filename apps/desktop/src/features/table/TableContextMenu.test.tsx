@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
-import type { GridContextTarget } from '@openrows/grid';
+import type { CellRange, GridContextTarget } from '@openrows/grid';
 import { useTableContext } from './TableContextMenu';
 import type { RowEditing } from './useRowEditing';
 import { initialView } from './model';
@@ -68,14 +68,22 @@ function editing(readOnly = false): RowEditing {
     draftFor: vi.fn(() => draft),
     stageCell: vi.fn(),
     fail: vi.fn(),
+    bulk: {
+      set: vi.fn(),
+      paste: vi.fn(),
+      deleteRows: vi.fn(),
+      duplicateRows: vi.fn(),
+    },
   } as unknown as RowEditing;
 }
 function Harness({
   editor,
   kind = 'cell',
+  ranges = [{ r0: 0, r1: 0, c0: 1, c1: 1 }],
 }: {
   editor: RowEditing;
   kind?: GridContextTarget['kind'];
+  ranges?: CellRange[];
 }): React.JSX.Element {
   const [view, setView] = useState(initialView);
   const context = useTableContext({ editing: editor, changeView: setView });
@@ -84,7 +92,14 @@ function Harness({
       <button
         type="button"
         onClick={() => {
-          context.show(result, { row: 0, column: 1, kind, x: 25, y: 25 });
+          context.show(result, {
+            row: 0,
+            column: 1,
+            kind,
+            x: 25,
+            y: 25,
+            ranges,
+          });
         }}
       >
         Open actions
@@ -196,4 +211,64 @@ it('right-click header actions set sorting without exposing row edits', async ()
   expect(screen.queryByRole('menuitem', { name: 'Delete row' })).toBeNull();
   await user.click(screen.getByRole('menuitem', { name: 'Sort descending' }));
   expect(screen.getByLabelText('Sort')).toHaveTextContent('"descending":true');
+});
+
+const block = [{ r0: 0, r1: 1, c0: 0, c1: 1 }];
+it('offers selection-wide actions for several cells and stages them through bulk editing', async () => {
+  const user = userEvent.setup();
+  const editor = editing();
+  render(<Harness editor={editor} ranges={block} />);
+  const opener = screen.getByRole('button', { name: 'Open actions' });
+  await user.click(opener);
+  expect(screen.queryByRole('menuitem', { name: 'Edit value…' })).toBeNull();
+  await user.click(screen.getByRole('menuitem', { name: 'Set NULL' }));
+  expect(editor.bulk.set).toHaveBeenLastCalledWith(result, block, NULL_VALUE);
+  await user.click(opener);
+  await user.click(screen.getByRole('menuitem', { name: 'Delete 2 rows' }));
+  expect(editor.bulk.deleteRows).toHaveBeenCalledWith(result, block);
+  await user.click(opener);
+  await user.click(screen.getByRole('menuitem', { name: 'Duplicate 2 rows' }));
+  expect(editor.bulk.duplicateRows).toHaveBeenCalledWith(result, block);
+  vi.spyOn(navigator.clipboard, 'readText').mockResolvedValue('a\tb');
+  await user.click(opener);
+  await user.click(
+    screen.getByRole('menuitem', { name: 'Paste into 4 cells' }),
+  );
+  await waitFor(() => {
+    expect(editor.bulk.paste).toHaveBeenCalledWith(result, block, 'a\tb');
+  });
+  await user.click(opener);
+  await user.click(
+    screen.getByRole('menuitem', { name: 'Set value for 4 cells…' }),
+  );
+  const value = await screen.findByRole('textbox', {
+    name: 'Value for the selected cells',
+  });
+  await user.type(value, 'same{Enter}');
+  expect(editor.bulk.set).toHaveBeenLastCalledWith(
+    result,
+    block,
+    textValue('same'),
+  );
+  expect(
+    screen.queryByRole('textbox', { name: 'Value for the selected cells' }),
+  ).toBeNull();
+});
+it('disables every selection-wide mutation on a read-only connection', async () => {
+  const user = userEvent.setup();
+  render(<Harness editor={editing(true)} ranges={block} kind="column" />);
+  await user.click(screen.getByRole('button', { name: 'Open actions' }));
+  for (const name of [
+    'Set value for 4 cells…',
+    'Paste into 4 cells',
+    'Set NULL',
+    'Set DEFAULT',
+    'Set EMPTY',
+    'Duplicate 2 rows',
+    'Delete 2 rows',
+  ])
+    expect(screen.getByRole('menuitem', { name })).toBeDisabled();
+  expect(
+    screen.getByRole('menuitem', { name: 'Sort ascending' }),
+  ).toBeEnabled();
 });

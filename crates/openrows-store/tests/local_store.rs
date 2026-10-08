@@ -2,7 +2,8 @@
 //! Local store: migrations, WAL, downgrade protection and history.
 
 use openrows_store::{
-    HistoryRecord, HistorySource, HistoryStatus, LocalStore, SCHEMA_VERSION, StoreError,
+    ChangeSetRecord, HistoryRecord, HistorySource, HistoryStatus, LocalStore, SCHEMA_VERSION,
+    StoreError,
 };
 
 fn record(profile_id: &str, started_at_ms: i64, status: HistoryStatus) -> HistoryRecord {
@@ -25,7 +26,7 @@ fn fresh_database_is_migrated_in_wal_mode() {
     let path = dir.path().join("openrows.sqlite");
     let store = LocalStore::open(&path).unwrap();
     assert_eq!(store.schema_version().unwrap(), SCHEMA_VERSION);
-    assert_eq!(store.meta("schema_version").unwrap().as_deref(), Some("1"));
+    assert_eq!(store.meta("schema_version").unwrap().as_deref(), Some("2"));
     drop(store);
     let conn = rusqlite::Connection::open(&path).unwrap();
     let mode: String = conn
@@ -88,4 +89,33 @@ fn history_round_trips_newest_first_per_profile() {
     assert_eq!(entries[0].record, failed);
     assert_eq!(entries[1].record.started_at_ms, 1_000);
     assert_eq!(store.recent_history("p1", 1).unwrap().len(), 1);
+}
+
+#[test]
+fn change_sets_are_journaled_per_table_until_cleared() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = LocalStore::open(&dir.path().join("openrows.sqlite")).unwrap();
+    let mut record = ChangeSetRecord {
+        id: "p1/orders/public/users".to_owned(),
+        profile_id: "p1".to_owned(),
+        target: r#"{"table":"users"}"#.to_owned(),
+        ops: r#"[{"kind":"update"}]"#.to_owned(),
+        updated_at_ms: 1_000,
+    };
+    assert!(store.change_set(&record.id).unwrap().is_none());
+    store.save_change_set(&record).unwrap();
+    assert_eq!(
+        store.change_set(&record.id).unwrap().as_ref(),
+        Some(&record)
+    );
+    record.ops = r#"[{"kind":"update"},{"kind":"delete"}]"#.to_owned();
+    record.updated_at_ms = 2_000;
+    store.save_change_set(&record).unwrap();
+    assert_eq!(
+        store.change_set(&record.id).unwrap().as_ref(),
+        Some(&record)
+    );
+    store.clear_change_set(&record.id).unwrap();
+    store.clear_change_set(&record.id).unwrap();
+    assert!(store.change_set(&record.id).unwrap().is_none());
 }

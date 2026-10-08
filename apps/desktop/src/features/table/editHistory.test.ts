@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 import { expect, it } from 'vitest';
-import { emptyHistory, stage, travel } from './editHistory';
+import {
+  emptyHistory,
+  restored,
+  stage,
+  stageMany,
+  travel,
+} from './editHistory';
 import type { StagedEdit } from './editHistory';
 import { DEFAULT_VALUE, NULL_VALUE, textValue } from './cellValue';
 const edit: StagedEdit = {
@@ -76,4 +82,26 @@ it('keeps NULL, EMPTY and DEFAULT distinct from each other and from the original
   });
   const back = stage(defaults, { ...edit, values: { name: textValue('old') } });
   expect(back.current[0]?.values).toEqual({ note: DEFAULT_VALUE });
+});
+it('stages a bulk action as one undo step and restores journaled edits with undo to nothing', () => {
+  const other: StagedEdit = { ...edit, id: 'row-2', number: 2 };
+  const bulk = stageMany(emptyHistory, [
+    edit,
+    other,
+    { ...edit, values: { note: textValue('x') } },
+  ]);
+  expect(bulk.current).toHaveLength(2);
+  expect(bulk.current.find((item) => item.id === 'row-1')?.values).toEqual({
+    name: textValue('new'),
+    note: textValue('x'),
+  });
+  expect(bulk.past).toHaveLength(1);
+  expect(travel(bulk, 'undo').current).toEqual([]);
+  expect(stageMany(bulk, [])).toBe(bulk);
+  const pending = { ...bulk, pending: true };
+  expect(stageMany(pending, [edit])).toBe(pending);
+  const back = restored([edit, other]);
+  expect(back.current).toHaveLength(2);
+  expect(travel(back, 'undo').current).toEqual([]);
+  expect(travel(travel(back, 'undo'), 'redo').current).toEqual(back.current);
 });

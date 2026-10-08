@@ -36,6 +36,8 @@ beforeEach(() => {
     key: ['id'],
     protected: [],
     readOnly: false,
+    confirmWrites: false,
+    production: false,
     columns: ['id', 'name'].map((name) => ({
       name,
       dataType: name === 'id' ? 'integer' : 'text',

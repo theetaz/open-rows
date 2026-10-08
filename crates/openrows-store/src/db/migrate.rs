@@ -18,13 +18,19 @@ pub(crate) struct Migration {
 }
 
 /// Every migration shipped with this build, in ascending version order.
-pub(crate) const MIGRATIONS: &[Migration] = &[Migration {
-    version: 1,
-    sql: include_str!("../../migrations/0001_init.sql"),
-}];
+pub(crate) const MIGRATIONS: &[Migration] = &[
+    Migration {
+        version: 1,
+        sql: include_str!("../../migrations/0001_init.sql"),
+    },
+    Migration {
+        version: 2,
+        sql: include_str!("../../migrations/0002_change_sets.sql"),
+    },
+];
 
 /// Newest local store schema version this build understands.
-pub const SCHEMA_VERSION: u32 = 1;
+pub const SCHEMA_VERSION: u32 = 2;
 
 pub(crate) fn user_version(conn: &Connection) -> Result<u32, StoreError> {
     conn.pragma_query_value(None, "user_version", |row| row.get(0))
@@ -104,8 +110,8 @@ mod tests {
 
     use super::{MIGRATIONS, Migration, SCHEMA_VERSION, migrate, user_version};
 
-    const V2: Migration = Migration {
-        version: 2,
+    const V3: Migration = Migration {
+        version: 3,
         sql: "CREATE TABLE drafts (tab_id TEXT PRIMARY KEY);",
     };
 
@@ -126,13 +132,13 @@ mod tests {
         conn.execute("INSERT INTO meta VALUES ('marker', 'v1')", [])
             .unwrap();
 
-        let upgraded = [MIGRATIONS[0], V2];
+        let upgraded = [MIGRATIONS[0], MIGRATIONS[1], V3];
         migrate(&mut conn, &upgraded, &backups).unwrap();
         migrate(&mut conn, &upgraded, &backups).unwrap();
-        assert_eq!(user_version(&conn).unwrap(), 2);
+        assert_eq!(user_version(&conn).unwrap(), 3);
 
-        let backup = Connection::open(backups.join("openrows.sqlite.v1")).unwrap();
-        assert_eq!(user_version(&backup).unwrap(), 1);
+        let backup = Connection::open(backups.join("openrows.sqlite.v2")).unwrap();
+        assert_eq!(user_version(&backup).unwrap(), 2);
         let marker: String = backup
             .query_row("SELECT value FROM meta WHERE key = 'marker'", [], |row| {
                 row.get(0)

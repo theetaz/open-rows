@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! The `SQLite` local store: one writer connection behind a mutex.
 
+mod change_sets;
 mod error;
 mod history;
 mod migrate;
@@ -12,6 +13,7 @@ use std::{
 
 use rusqlite::{Connection, OptionalExtension};
 
+pub use change_sets::ChangeSetRecord;
 pub use error::StoreError;
 use error::sqlite;
 pub use history::{HistoryEntry, HistoryRecord, HistorySource, HistoryStatus};

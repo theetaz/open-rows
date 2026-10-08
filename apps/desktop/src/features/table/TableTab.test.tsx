@@ -287,6 +287,8 @@ it('edits inspector fields in place: staged values show and the row stays select
     key: ['id'],
     protected: [],
     readOnly: false,
+    confirmWrites: false,
+    production: false,
     columns: [
       {
         ...facts,

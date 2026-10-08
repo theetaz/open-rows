@@ -3,10 +3,12 @@ import { useState } from 'react';
 import { CommandError, tableEdit } from '@openrows/ipc';
 import type { EditReply, EditInfoDto } from '@openrows/ipc';
 import type { ResultMeta } from '../query/run';
-import type { TableTargetRef } from './model';
+import type { TableTargetRef, TableView } from './model';
 import type { TableViews } from './useTableViews';
 import type { StagedEdit, EditHistory } from './editHistory';
-import { emptyHistory, stage, travel } from './editHistory';
+import { emptyHistory, stage, stageMany, travel } from './editHistory';
+import { bulkEditing } from './bulk/bulkEditing';
+import type { BulkEditing } from './bulk/bulkEditing';
 import { editDraft } from './editingIo';
 import type { EditIo } from './useEditIo';
 import { useEditIo } from './useEditIo';
@@ -40,6 +42,11 @@ export function useRowEditing(args: Args): RowEditing {
     setDraft(null);
     setReview(null);
   };
+  const changeMany = (edits: readonly StagedEdit[]): void => {
+    args.views.setEdits(args.tabId, (current) => stageMany(current, edits));
+    setDraft(null);
+    setReview(null);
+  };
   const open = (
     result: ResultMeta,
     cell: { row: number; column: number },
@@ -54,6 +61,7 @@ export function useRowEditing(args: Args): RowEditing {
   };
   return {
     ...cellEditing({ args, io, history, change }),
+    bulk: bulkEditing({ ...args, io, history, stage: changeMany }),
     inline,
     edit: setInline,
     fail: io.fail,
@@ -172,6 +180,8 @@ export type RowEditing = {
     name: string,
     value: CellValue,
   ) => void;
+  /** Multi-cell and multi-row staging for a grid selection. */
+  bulk: BulkEditing;
   info: EditInfoDto | null;
   error: string | null;
   busy: boolean;
@@ -302,8 +312,6 @@ function cellEditing({
   };
 }
 
-function refreshView(
-  view: import('./model').TableView,
-): import('./model').TableView {
+function refreshView(view: TableView): TableView {
   return { ...view, revision: view.revision + 1 };
 }

@@ -1,25 +1,49 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useCallback, useEffect, useState } from 'react';
-import type { GridContextTarget } from '@openrows/grid';
 import { PointMenu } from '../../shell/PointMenu';
 import type { ResultMeta } from '../query/run';
 import { readRow } from './row';
 import type { RowField } from './row';
+import { BulkValueSheet } from './BulkValueSheet';
 import { contextActions } from './contextMenuActions';
 import type {
   ContextMenuProps as Props,
+  ContextTarget,
   MenuSelection as Selection,
 } from './contextMenuActions';
 
 /** Own the menu above the imperative canvas; opening a menu never changes data. */
-export function useTableContext(props: Omit<Props, 'selection' | 'onClose'>): {
-  show: (result: ResultMeta, target: GridContextTarget) => void;
+export function useTableContext(
+  props: Omit<Props, 'selection' | 'onClose' | 'onPrompt'>,
+): {
+  show: (result: ResultMeta, target: ContextTarget) => void;
   menu: React.JSX.Element | null;
 } {
   const [selection, setSelection] = useState<Selection | null>(null);
+  const [prompt, setPrompt] = useState<{
+    selection: Selection;
+    count: number;
+  } | null>(null);
   const close = useCallback(() => {
     setSelection(null);
   }, []);
+  const { editing } = props;
+  if (prompt)
+    return {
+      show: () => undefined,
+      menu: (
+        <BulkValueSheet
+          count={prompt.count}
+          onApply={(value) => {
+            const { result, ranges } = prompt.selection;
+            editing.bulk.set(result, ranges, value);
+          }}
+          onClose={() => {
+            setPrompt(null);
+          }}
+        />
+      ),
+    };
   return {
     show: (result, target) => {
       setSelection({ ...target, result });
@@ -29,6 +53,9 @@ export function useTableContext(props: Omit<Props, 'selection' | 'onClose'>): {
         key={`${selection.result.id}:${String(selection.row)}:${String(selection.column)}`}
         {...props}
         selection={selection}
+        onPrompt={(count) => {
+          setPrompt({ selection, count });
+        }}
         onClose={close}
       />
     ),
