@@ -30,6 +30,7 @@ export const light = {
   'connection-sqlite': '#536778',
   destructive: '#B4231B',
   focus: '#2563EB',
+  'field-focus': 'rgba(37,99,235,0.5)',
   'success-bg': '#E4EDE5',
   'success-fg': '#18702F',
   'warning-bg': '#F1E8D8',
@@ -86,6 +87,7 @@ export const dark: typeof light = {
   'connection-sqlite': '#536778',
   destructive: '#B4231B',
   focus: '#60A5FA',
+  'field-focus': 'rgba(96,165,250,0.5)',
   'success-bg': 'rgba(66,217,158,0.14)',
   'success-fg': '#70E3B1',
   'warning-bg': 'rgba(255,194,91,0.14)',
@@ -119,6 +121,7 @@ export const highContrast = {
     'control-fill': '#E4E4E7',
     'control-stroke': '#606060',
     'switch-track': '#8A8A8A',
+    'field-focus': light.focus,
   },
   dark: {
     separator: '#C0C0C0',
@@ -126,5 +129,6 @@ export const highContrast = {
     'control-fill': '#2E2E33',
     'control-stroke': '#C0C0C0',
     'switch-track': '#7A7A7A',
+    'field-focus': dark.focus,
   },
 };

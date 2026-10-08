@@ -26,6 +26,8 @@ export const geometry = {
   'border-width': '1px',
   'focus-width': '2px',
   'focus-offset': '3px',
+  /** Text fields ring on every focus, so their ring is a thin, muted line. */
+  'field-focus-width': '1px',
   'radius-status': '6px',
   'grid-row-height': '26px',
   'tree-row-height': '24px',

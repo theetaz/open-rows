@@ -18,8 +18,10 @@ it('all interactive component selectors have a visible focus ring from tokens', 
   ])
     expect(controls).toContain(selector);
   expect(field).toContain('.frame:focus-within');
-  for (const css of [controls, field])
-    expect(css).toContain(
-      'outline: var(--or-focus-width) solid var(--or-focus)',
-    );
+  expect(controls).toContain(
+    'outline: var(--or-focus-width) solid var(--or-focus)',
+  );
+  expect(field).toContain(
+    'outline: var(--or-field-focus-width) solid var(--or-field-focus)',
+  );
 });
