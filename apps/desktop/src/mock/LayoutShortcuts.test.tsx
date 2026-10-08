@@ -55,9 +55,9 @@ it('handles the exact shortcut modifiers and ignores composing or shifted input'
     { ctrlKey: true },
   ])
     expect(shortcut({ ...event, ...override })).toBeUndefined();
-  for (const number of [1, 2, 3, 4])
+  for (const number of [1, 2, 3, 4, 5, 6, 7, 8, 9])
     expect(shortcut({ ...event, key: String(number) })).toBe(number - 1);
-  expect(shortcut({ ...event, key: '5' })).toBeUndefined();
+  expect(shortcut({ ...event, key: '0' })).toBeUndefined();
 });
 it('dispatches panel, tab and saved-connection shortcuts', async () => {
   mount();

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { Icon, IconButton } from '@openrows/ui';
 import type { ProfileDto } from '@openrows/ipc';
-import { workspaceGroups } from './workspaceGroups';
+import { railOrder, railShortcut, workspaceGroups } from './workspaceGroups';
 import { WorkspaceDisclosure } from './WorkspaceDisclosure';
 import { DatabaseTiles } from './DatabaseTiles';
 import { WorkspaceConnection } from './WorkspaceConnection';
@@ -51,7 +51,7 @@ export function ConnectionRail(
           <Icon name="plus" />
         </IconButton>
       </div>
-      <WorkspaceGroups {...props} />
+      <WorkspaceGroups {...props} compact={compact} />
       <div className={styles.space} />
       <footer className={styles.railFooter}>
         <button type="button" className={styles.footerRow}>
@@ -87,7 +87,10 @@ export function ConnectionRail(
 }
 
 type RailProps = Parameters<typeof ConnectionRail>[0];
-function WorkspaceGroups(props: RailProps): React.JSX.Element {
+function WorkspaceGroups(
+  props: RailProps & { compact: boolean },
+): React.JSX.Element {
+  const order = railOrder(props.profiles).map((profile) => profile.id);
   return (
     <div className={styles.workspaces}>
       {workspaceGroups(props.profiles).map((group) => (
@@ -97,6 +100,7 @@ function WorkspaceGroups(props: RailProps): React.JSX.Element {
           label={group.label}
           environment={group.environment}
           count={group.profiles.length}
+          forceOpen={props.compact}
         >
           {group.profiles.map((profile) => {
             const status = props.statusOf(profile.id);
@@ -113,6 +117,7 @@ function WorkspaceGroups(props: RailProps): React.JSX.Element {
                 key={profile.id}
                 actions={props.actionsFor?.(profile)}
                 profile={profile}
+                shortcut={railShortcut(order.indexOf(profile.id))}
                 status={status}
                 selected={selected}
                 hasDatabases={opened.length > 0}

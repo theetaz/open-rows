@@ -88,7 +88,7 @@ The approved direction refines the skeleton above:
 
 | Region | v2 decision |
 | --- | --- |
-| **Workspace sidebar** (far left, 184 px; compact 54 px) | Named server rows use 28 px engine-tinted monograms and status dots, normal-font connection names and secondary status text. Environment/folder headings show counts and collapse independently; each connection has a separate disclosure next to its selection control. Its opened databases are indented horizontal rows with database icons, avoiding repeated headings. Solid blue selection identifies the active database; green, amber and coral distinguish environments. Compact mode keeps the monograms, database icons, tooltips and accessible names. Both width mode and collapse state persist locally. Tab and ↑/↓ navigate; ⌘1–4 switch. New connection, API and settings controls remain available. |
+| **Workspace sidebar** (far left, 220 px, full height under the traffic lights; compact 60 px) | Named server rows use 20 px engine-tinted monograms with a presence dot on the tile's bottom-right corner (grey, amber connecting, green connected, red failed), normal-font connection names and visually hidden status text (failures show it). Environment/folder headings show counts and collapse independently; each connection has a separate disclosure next to its selection control. Its opened databases are indented horizontal rows with database icons. Solid blue selection identifies the active database. Compact mode works like Slack: the toolbar spans the window, the rail sits below it with one 36 px tile per connection (the selected one ringed), short separators between groups and `+` below the tiles; databases are reached from ⌘K and the toolbar. Right-click opens the connection menu at the pointer; the hover ⋯ opens it under the button. Tooltips show the name, environment, address, status and ⌘ shortcut. Both width mode and collapse state persist locally. Tab and ↑/↓ navigate; ⌘1–9 switch, in rail order. New connection, API and settings controls remain available. |
 | **Sidebar header** | Truncating workspace name, environment badge and a mock actions menu (Connection settings…, Duplicate, Disconnect). Below, a database icon/name/chevron opens a glass menu of opened databases: active check, hover/focus close (the last one too), wrapping ↑/↓, Home/End, Enter, Esc/Tab dismissal and opener focus return; the menu takes the selector's width and never leaves the sidebar, long names truncate with a full-name tooltip. Open database… (⌘K) opens the Open database panel. Database and workspace changes preserve per-database tabs. |
 | **Sidebar** (floating rounded panel) | Header above segmented **Items / Queries / History**, search and object tree; schema picker and "create object" at the bottom. |
 | **Toolbar** | One unified, full-width titlebar row that never wraps: traffic lights → sidebar toggle → back/forward → safe mode → context bar (flexes, truncates) → actions → inspector toggle pinned at the far right above the inspector. Contents: back/forward (per-tab navigation history), **Safe mode** toggle (always on for prod), **context bar** like TablePlus: `ENV | PostgreSQL 14.17 : connection : database : schema.object` (route and live latency later). |
@@ -166,8 +166,8 @@ These interactions use mock/data only; no catalog, query or command contacts a s
 
 The rail now lists saved PostgreSQL connections (monogram tiles, environment
 dot from tokens; custom tags use their stored colour via `--env-color`), with
-`+` opening the **New connection** sheet. ⌘1–4 select the
-first four saved connections. Selecting a tile opens a session; the sidebar
+`+` opening the **New connection** sheet. ⌘1–9 select the
+first nine connections in rail order. Selecting a tile opens a session; the sidebar
 header shows the real name, environment badge, a live status
 (Not connected / Connecting… / Connected · PostgreSQL x.y / Connection failed
 plus the message) and a **Connection menu**: Connect/Disconnect, Connection
@@ -302,6 +302,8 @@ These rules are enforced by `packages/ui/src/tokens/controls.test.ts`. Follow th
 - Switches are macOS-sized: 26 × 15 px track and 13 px knob (`--or-switch-*`).
 - Concentric geometry: window 26 px → panels and sheets 12 px → controls 7 / 6 px. Capsules (`--or-radius-capsule`) are only for pills, badges and switch tracks, not for push buttons or fields.
 - Arrow cursor everywhere: never use `cursor: pointer` on buttons, rows or tabs. Text inputs keep the I-beam, and disabled controls dim instead of changing the cursor.
+- Scroll bars are quiet, like macOS overlay scroll bars: a faint thumb until the scrolling area is hovered, clearer then and strongest under the pointer (`app/global.css`).
+- Menus are solid, ringed `control-active` surfaces with 24 px rows, accent-filled highlight and destructive items last, after a separator.
 - Sheets (`Sheet` + `SheetActions`) have a compact, centred 13 px semibold title and no close button. Push buttons are right-aligned: Cancel, then the default action in blue. Return runs the default action, Escape cancels, and focus starts in the first text field. Destructive confirmations use the native macOS alert (`confirmDestructive`), with Cancel as the safe choice.
 - `control-sm`, `control-md` and `control-compact` are aliases of the regular and compact heights, kept for older styles.
 

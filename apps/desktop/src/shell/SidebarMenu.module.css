@@ -10,15 +10,21 @@
   overflow-y: auto;
   padding: var(--or-space-4);
   border: 0;
-  font-size: var(--or-text-12);
+  border-radius: var(--or-radius-card);
+  /* Menus float above the window: an elevated, ringed surface like NSMenu. */
+  background: var(--or-control-active);
+  box-shadow:
+    0 0 0 var(--or-border-width) var(--or-control-stroke),
+    var(--or-panel-shadow);
+  font-size: var(--or-text-13);
 }
 .menu button {
   display: flex;
   align-items: center;
   gap: var(--or-space-6);
   width: 100%;
-  padding: var(--or-space-6) var(--or-space-8);
-  min-height: var(--or-control-sm);
+  padding: var(--or-space-2) var(--or-space-10);
+  min-height: 24px;
   background: transparent;
   border: 0;
   border-radius: var(--or-radius-field);
@@ -28,8 +34,13 @@
   cursor: default;
 }
 .menu button:hover:not(:disabled),
-.menu button[aria-checked='true'] {
-  background: var(--or-control-fill);
+.menu button:focus-visible {
+  background: var(--or-accent);
+  color: var(--or-on-accent);
+}
+.menu button:hover:not(:disabled) kbd,
+.menu button:focus-visible kbd {
+  color: inherit;
 }
 .menu button:disabled {
   color: var(--or-secondary);
@@ -40,7 +51,7 @@
   border-top: 1px solid var(--or-separator);
   margin: var(--or-space-4);
 }
-.menu button[data-danger='true'] {
+.menu button[data-danger='true']:not(:hover, :focus-visible) {
   color: var(--or-danger-fg);
 }
 .menu kbd {
@@ -49,6 +60,5 @@
   font: inherit;
 }
 .menu button:focus-visible {
-  outline: var(--or-focus-width) solid var(--or-focus);
-  outline-offset: -2px;
+  outline: 0;
 }

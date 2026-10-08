@@ -10,6 +10,7 @@ type Position = { left: number; top: number };
 /** Glass tooltip beside a rail tile: name, environment, engine, address and status. */
 export function RailTooltip(props: {
   profile: ProfileDto;
+  shortcut?: string | undefined;
   status: string;
   id: string;
   position: Position;
@@ -23,7 +24,10 @@ export function RailTooltip(props: {
       style={props.position}
     >
       <strong>{profile.name}</strong>
-      <EnvironmentBadge env={profile.env} />
+      <span className={styles.trailing}>
+        <EnvironmentBadge env={profile.env} />
+        {props.shortcut && <kbd>{props.shortcut}</kbd>}
+      </span>
       <small>
         PostgreSQL · {profile.host}:{String(profile.port)}
       </small>

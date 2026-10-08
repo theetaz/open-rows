@@ -9,6 +9,8 @@ export function WorkspaceDisclosure(props: {
   label: string;
   environment?: string;
   count: number;
+  /** The compact rail hides headings, so every group stays open. */
+  forceOpen?: boolean;
   children: React.ReactNode;
 }): React.JSX.Element {
   const [collapsed, toggle] = useWorkspaceCollapse(props.id);
@@ -28,7 +30,7 @@ export function WorkspaceDisclosure(props: {
         <span>{props.label}</span>
         <small className={styles.groupCount}>{props.count}</small>
       </button>
-      {!collapsed && props.children}
+      {(!collapsed || props.forceOpen) && props.children}
     </section>
   );
 }

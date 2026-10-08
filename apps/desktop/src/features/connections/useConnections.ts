@@ -9,6 +9,7 @@ import type { ProfileDto } from '@openrows/ipc';
 import { useProfiles } from './useProfiles';
 import { useSessions } from './useSessions';
 import { useDatabases } from './useDatabases';
+import { railOrder } from './workspaceGroups';
 import type { Databases } from './useDatabases';
 import type { SessionStatus } from './sessions';
 
@@ -110,7 +111,7 @@ export function useConnections(): Connections {
     statusOf: sessions.statusOf,
     select,
     selectIndex: (index) => {
-      const profile = profiles[index];
+      const profile = railOrder(profiles)[index];
       if (profile) select(profile.id);
     },
     connect: () => {

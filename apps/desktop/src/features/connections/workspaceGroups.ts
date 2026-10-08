@@ -40,3 +40,13 @@ export function workspaceGroups(profiles: readonly ProfileDto[]): {
   }
   return [...groups.values()];
 }
+
+/** Profiles in the order the rail shows them; ⌘1–⌘9 follow this order. */
+export function railOrder(profiles: readonly ProfileDto[]): ProfileDto[] {
+  return workspaceGroups(profiles).flatMap((group) => group.profiles);
+}
+
+/** ⌘ shortcut of the profile at a rail position, for the first nine. */
+export function railShortcut(index: number): string | undefined {
+  return index < 9 ? `⌘${String(index + 1)}` : undefined;
+}
