@@ -7,8 +7,9 @@ use tauri::State;
 
 use super::Connections;
 use super::error::IpcError;
-use super::pg::{self, ServerDto};
+use super::pg::ServerDto;
 use super::profiles::profile_id;
+use super::route;
 
 /// A reachable saved connection.
 #[derive(Clone, Debug, Serialize, Type)]
@@ -21,7 +22,8 @@ pub(crate) struct ConnectionOpened {
     database: Option<String>,
 }
 
-/// Check that a saved connection is reachable and report its server. The
+/// Check that a saved connection is reachable (opening its SSH tunnel first,
+/// with prompts) and report its server. The
 /// check runs on the home database's metadata session, which also lists the
 /// server's databases; user sessions open per database with `session_open`.
 #[tauri::command]
@@ -31,14 +33,13 @@ pub(crate) async fn connection_open(
     profile_id: String,
 ) -> Result<ConnectionOpened, IpcError> {
     let profile = state.profiles.get(self::profile_id(&profile_id)?)?;
-    let password = state.profiles.password(&profile)?;
-    let target = pg::target(&profile.params, profile.tls.mode, password.as_ref())?;
+    let target = route::profile_target(&state, &profile_id).await?;
     let home = target.config.database.clone();
     let server = state
         .metadata
         .read(
             (&profile_id, &home),
-            || Ok(target),
+            || async { Ok(target) },
             |session| {
                 let server = ServerDto::from(session.server_info());
                 Box::pin(async move { Ok(server) })
@@ -51,7 +52,8 @@ pub(crate) async fn connection_open(
     })
 }
 
-/// Close every database session and metadata session of a saved connection.
+/// Close every database session and metadata session of a saved connection,
+/// and stop sharing its SSH tunnel.
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn connection_close(
@@ -64,5 +66,7 @@ pub(crate) async fn connection_close(
         let _ = state.sessions.close(session).await;
     }
     state.metadata.close(&profile_id).await;
+    // The tunnel closes once nothing uses it any more.
+    state.tunnels.forget(&profile_id);
     Ok(())
 }

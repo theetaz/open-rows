@@ -3,12 +3,19 @@
 //!
 //! Secrets only travel webview → core ([`PasswordInput`]); nothing here sends
 //! a password back.
-use openrows_store::profile::{ConnectionProfile, EnvKind, EnvTag, ParsedUrl, PgParams, Safety};
+use openrows_secrets::SecretString;
+use openrows_store::profile::{
+    ConnectionProfile, EnvKind, EnvTag, ParsedUrl, PasswordChange, PgParams, Safety, SecretChanges,
+    parse_postgres_url,
+};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
 pub(crate) use super::enums::{EnvKindDto, TlsModeDto};
 use super::error::IpcError;
+use super::route_dto::{
+    SshDto, SshInput, TlsFilesDto, TlsFilesInput, apply_route, ssh_dto, tls_files_dto,
+};
 
 /// Environment tag as shown in the rail, header and toolbar.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Type)]
@@ -50,6 +57,8 @@ pub(crate) struct ProfileDto {
     database: Option<String>,
     user: Option<String>,
     tls_mode: TlsModeDto,
+    tls_files: TlsFilesDto,
+    ssh: Option<SshDto>,
     has_password: bool,
     safety: SafetyDto,
 }
@@ -70,6 +79,8 @@ impl From<&ConnectionProfile> for ProfileDto {
             database: profile.params.database.clone(),
             user: profile.params.user.clone(),
             tls_mode: profile.tls.mode.into(),
+            tls_files: tls_files_dto(profile),
+            ssh: ssh_dto(profile),
             has_password: profile.secrets.password.is_some(),
             safety: SafetyDto {
                 read_only: profile.safety.read_only,
@@ -95,8 +106,8 @@ pub(crate) struct EnvInput {
     color: Option<String>,
 }
 
-/// What to do with the password on save or test; the only secret path.
-#[derive(Clone, Debug, Deserialize, Type)]
+/// What to do with the password on save or test; `Debug` redacts secrets.
+#[derive(Clone, Deserialize, Type)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub(crate) enum PasswordInput {
     /// Use the stored password (none for a new profile).
@@ -107,6 +118,17 @@ pub(crate) enum PasswordInput {
     Set { value: String },
     /// The password inside a pasted `postgres://` URL.
     FromUrl { url: String },
+}
+
+impl std::fmt::Debug for PasswordInput {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(match self {
+            Self::Keep => "Keep",
+            Self::Clear => "Clear",
+            Self::Set { .. } => "Set([redacted])",
+            Self::FromUrl { .. } => "FromUrl([redacted])",
+        })
+    }
 }
 
 /// Connection form values sent on save and test.
@@ -121,6 +143,12 @@ pub(crate) struct ProfileInput {
     pub(crate) database: Option<String>,
     pub(crate) user: Option<String>,
     pub(crate) tls_mode: TlsModeDto,
+    /// CA and client certificate files (absent: none).
+    #[serde(default)]
+    pub(crate) tls_files: TlsFilesInput,
+    /// The SSH tunnel; absent or null for a direct connection.
+    #[serde(default)]
+    pub(crate) ssh: Option<SshInput>,
     pub(crate) safety: SafetyDto,
     pub(crate) password: PasswordInput,
 }
@@ -152,8 +180,23 @@ impl ProfileInput {
         profile.params.database = params.database;
         profile.params.user = params.user;
         profile.tls.mode = self.tls_mode.into();
+        apply_route(&self.tls_files, self.ssh.as_ref(), profile);
         profile.safety = self.safety.into();
         Ok(())
+    }
+
+    /// The keychain edits this form asks for.
+    ///
+    /// # Errors
+    /// `Url` when the password comes from an invalid pasted URL.
+    pub(crate) fn secret_changes(&self) -> Result<SecretChanges, IpcError> {
+        let ssh = self.ssh.as_ref();
+        Ok(SecretChanges {
+            password: password_change(&self.password)?,
+            ssh_password: ssh.map_or(PasswordChange::Keep, |ssh| ssh.password.change()),
+            ssh_passphrase: ssh.map_or(PasswordChange::Keep, |ssh| ssh.passphrase.change()),
+            tls_key_passphrase: self.tls_files.key_passphrase.change(),
+        })
     }
 }
 
@@ -182,6 +225,18 @@ impl From<ParsedUrl> for UrlDraft {
     }
 }
 
+/// The database password change `input` asks for.
+pub(crate) fn password_change(input: &PasswordInput) -> Result<PasswordChange, IpcError> {
+    Ok(match input {
+        PasswordInput::Keep => PasswordChange::Keep,
+        PasswordInput::Clear => PasswordChange::Clear,
+        PasswordInput::Set { value } => PasswordChange::Set(SecretString::from(value.as_str())),
+        PasswordInput::FromUrl { url } => parse_postgres_url(url)?
+            .password
+            .map_or(PasswordChange::Keep, PasswordChange::Set),
+    })
+}
+
 fn env_tag(input: &EnvInput) -> Result<EnvTag, IpcError> {
     if input.kind != EnvKindDto::Custom {
         return Ok(EnvTag::new(input.kind.into()));
@@ -207,83 +262,4 @@ fn non_blank(text: Option<&str>) -> Option<String> {
 }
 
 #[cfg(test)]
-pub(crate) mod tests {
-    use super::*;
-    use openrows_store::profile::parse_postgres_url;
-
-    pub(crate) fn input(env: EnvKindDto) -> ProfileInput {
-        ProfileInput {
-            name: " Local PG ".to_owned(),
-            group: Some("  ".to_owned()),
-            env: EnvInput {
-                kind: env,
-                label: None,
-                color: None,
-            },
-            host: " localhost ".to_owned(),
-            port: 5432,
-            database: Some(String::new()),
-            user: Some("app".to_owned()),
-            tls_mode: TlsModeDto::Prefer,
-            safety: SafetyDto {
-                read_only: false,
-                confirm_writes: true,
-            },
-            password: PasswordInput::Keep,
-        }
-    }
-
-    #[test]
-    fn apply_trims_fields_and_drops_blank_options() -> Result<(), IpcError> {
-        let mut profile =
-            ConnectionProfile::new_postgres("x", PgParams::default(), EnvTag::new(EnvKind::Dev));
-        input(EnvKindDto::Staging).apply(&mut profile)?;
-        assert_eq!(profile.name, "Local PG");
-        assert_eq!(profile.group, None);
-        assert_eq!(profile.params.host, "localhost");
-        assert_eq!(profile.params.database, None);
-        assert_eq!(profile.params.user.as_deref(), Some("app"));
-        assert_eq!(profile.env_tag.kind, EnvKind::Staging);
-        assert!(profile.safety.confirm_writes);
-        Ok(())
-    }
-
-    #[test]
-    fn custom_environment_needs_a_label_and_a_hex_colour() {
-        let mut env = EnvInput {
-            kind: EnvKindDto::Custom,
-            label: None,
-            color: None,
-        };
-        assert!(env_tag(&env).is_err());
-        env.label = Some("qa".to_owned());
-        assert_eq!(env_tag(&env).map(|tag| tag.color.len()), Ok(7));
-        env.color = Some("red".to_owned());
-        assert!(env_tag(&env).is_err());
-        env.color = Some("#0a0B0c".to_owned());
-        assert_eq!(env_tag(&env).map(|tag| tag.color), Ok("#0a0B0c".to_owned()));
-    }
-
-    #[test]
-    fn url_draft_reports_but_never_contains_the_password() -> Result<(), Box<dyn std::error::Error>>
-    {
-        let parsed = parse_postgres_url("postgres://app:s3cret-synthetic@db.test:6543/orders")?;
-        let json = serde_json::to_string(&UrlDraft::from(parsed))?;
-        assert!(!json.contains("s3cret-synthetic"));
-        assert!(json.contains("\"passwordProvided\":true"));
-        assert!(json.contains("\"port\":6543"));
-        Ok(())
-    }
-
-    #[test]
-    fn profile_dto_has_no_secret_fields() -> Result<(), serde_json::Error> {
-        let profile =
-            ConnectionProfile::new_postgres("p", PgParams::default(), EnvTag::new(EnvKind::Prod));
-        let json = serde_json::to_value(ProfileDto::from(&profile))?;
-        assert_eq!(json["hasPassword"], false);
-        assert_eq!(json["safety"]["confirmWrites"], true);
-        assert_eq!(json["env"]["kind"], "prod");
-        assert!(json.get("password").is_none());
-        Ok(())
-    }
-}
+pub(crate) mod tests;

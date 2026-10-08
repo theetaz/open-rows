@@ -1,14 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
+import { isTauri } from '@tauri-apps/api/core';
 import { commands, events } from './generated/bindings';
 import type {
   ConnectionOpened,
   IpcError,
   IpcErrorKind,
+  PickFileKind,
   ProfileDto,
   ProfileInput,
   ProfileList,
   SessionOpened,
   SessionStateChanged,
+  SshPromptAnswer,
+  SshPromptChanged,
   TestReport,
   UrlDraft,
 } from './generated/bindings';
@@ -86,7 +90,11 @@ export function parsePostgresUrl(url: string): Promise<UrlDraft> {
   return unwrap(commands.profileParseUrl(url));
 }
 
-/** Connect once with the form values and report the server version. */
+/**
+ * Connect once with the form values, step by step (SSH, tunnel, TLS,
+ * authentication). Resolves with the steps and either the server or the
+ * failing step's typed error; rejects only for invalid input.
+ */
 export function testConnection(
   profileId: string | null,
   input: ProfileInput,
@@ -122,6 +130,32 @@ export function onSessionState(
   listener: (event: SessionStateChanged) => void,
 ): Promise<() => void> {
   return events.sessionStateChanged.listen((event) => {
+    listener(event.payload);
+  });
+}
+
+/** Pick a key or certificate file natively; `null` when cancelled or outside the shell. */
+export async function pickConnectionFile(
+  kind: PickFileKind,
+): Promise<string | null> {
+  if (!isTauri()) return null;
+  return unwrap(commands.connectionPickFile(kind));
+}
+
+/** Answer an SSH host-key or keyboard-interactive prompt (answers go to the core only). */
+export async function answerSshPrompt(
+  id: string,
+  answer: SshPromptAnswer,
+): Promise<void> {
+  await unwrap(commands.sshPromptAnswer(id, answer));
+}
+
+/** Subscribe to SSH prompts opening and closing; resolves to the unsubscribe function. */
+export function onSshPrompt(
+  listener: (event: SshPromptChanged) => void,
+): Promise<() => void> {
+  if (!isTauri()) return Promise.resolve(() => {});
+  return events.sshPromptChanged.listen((event) => {
     listener(event.payload);
   });
 }

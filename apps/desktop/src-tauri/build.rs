@@ -17,6 +17,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "profile_delete",
             "profile_parse_url",
             "connection_test",
+            "connection_pick_file",
+            "ssh_prompt_answer",
             "session_open",
             "session_close",
             "catalog_databases",
