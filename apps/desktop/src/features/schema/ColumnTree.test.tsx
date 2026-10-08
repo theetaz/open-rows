@@ -94,6 +94,20 @@ it('shows an inline error row when columns fail and retries on re-expand', async
   expect(tableStructure).toHaveBeenCalledTimes(2);
 });
 
+it('moves focus to the table row when its chevron collapses a focused column', async () => {
+  const user = mount();
+  const orders = await ordersRow();
+  orders.focus();
+  await user.keyboard('{ArrowRight}');
+  const id = await within(orders).findByRole('treeitem', {
+    name: 'id integer, primary key',
+  });
+  id.focus();
+  await user.click(chevron(orders));
+  expect(orders).toHaveAttribute('aria-expanded', 'false');
+  expect(orders).toHaveFocus();
+});
+
 it('moves through tables and columns and expands or collapses with arrow keys', async () => {
   const user = mount();
   const orders = await ordersRow();

@@ -7,7 +7,7 @@ import { formatRows } from './format';
 import { SqlViewer } from './SqlViewer';
 import styles from './Structure.module.css';
 
-/** Where the popover sits: above and centred on its footer button. */
+/** Where the popover sits: above and centred on its footer button, sized to its content. */
 function placement(anchor: DOMRect): React.CSSProperties {
   const width = Math.min(820, innerWidth - 32);
   const left = Math.max(
@@ -21,7 +21,7 @@ function placement(anchor: DOMRect): React.CSSProperties {
     left,
     width,
     bottom: innerHeight - anchor.top + 8,
-    height: Math.max(160, Math.min(560, anchor.top - 56)),
+    maxHeight: Math.max(160, Math.min(innerHeight * 0.7, anchor.top - 56)),
   };
 }
 

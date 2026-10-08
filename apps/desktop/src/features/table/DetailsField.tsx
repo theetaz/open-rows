@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useCallback, useRef, useState } from 'react';
+import { booleanText } from '@openrows/grid';
 import { Icon, IconButton, TextArea } from '@openrows/ui';
 import { editableText, stagedDisplay, textValue } from './cellValue';
 import type { CellValue } from './cellValue';
 import { fieldActions } from './fieldActions';
 import { FieldMenu } from './FieldMenu';
+import { isBooleanType } from './inline/cellKind';
 import type { TableColumnDto } from '@openrows/ipc';
 import type { RowEditor, RowField } from './row';
 import styles from './RowDetails.module.css';
@@ -12,16 +14,33 @@ import styles from './RowDetails.module.css';
 /** Typing over the value `base` showed; `staged` once handed to the staging API. */
 type Draft = { base: string; text: string; staged: boolean };
 
+/** Booleans read TRUE/FALSE as in the grid; the stored text itself is never changed. */
+function isBoolean(
+  field: RowField,
+  column: TableColumnDto | undefined,
+): boolean {
+  return (
+    isBooleanType(field.type ?? '') ||
+    (column !== undefined && isBooleanType(column.dataType))
+  );
+}
+
 /** What the value box shows: editable text, and a muted marker when empty. */
-function shownOf(field: RowField): { text: string; marker: string } {
+function shownOf(
+  field: RowField,
+  isBool: boolean,
+): { text: string; marker: string } {
+  const show = (text: string): string => (isBool ? booleanText(text) : text);
   if (field.value) {
-    const text = editableText(field.value);
     const display = stagedDisplay(field.value);
-    return { text, marker: display.placeholder ? display.text : '' };
+    return {
+      text: show(editableText(field.value)),
+      marker: display.placeholder ? display.text : '',
+    };
   }
   if (field.state === 'null') return { text: '', marker: 'NULL' };
   if (field.state === 'empty') return { text: '', marker: 'EMPTY' };
-  return { text: field.text, marker: '' };
+  return { text: show(field.text), marker: '' };
 }
 
 /** Whether the field can take values: an editable table, a writable column, a live row. */
@@ -55,7 +74,7 @@ export function DetailsField({
   editor: RowEditor | undefined;
 }): React.JSX.Element {
   const { column, locked, editable } = access(field, editor);
-  const shown = shownOf(field);
+  const shown = shownOf(field, isBoolean(field, column));
   const base = `${field.state}\u0000${shown.marker}\u0000${shown.text}`;
   const [draft, setDraft] = useState<Draft | null>(null);
   // A newly staged or reloaded value replaces any typing that produced it.

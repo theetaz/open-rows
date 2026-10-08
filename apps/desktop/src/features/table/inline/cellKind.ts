@@ -15,6 +15,11 @@ export type ColumnEdit = {
 };
 
 const BOOLEAN = /^bool(ean)?$/i;
+
+/** Whether a database type name is boolean (`bool`, `boolean`). */
+export function isBooleanType(dataType: string): boolean {
+  return BOOLEAN.test(dataType);
+}
 /** Values above this length open the multi-line popover for text and JSON. */
 const LONG_TEXT = 120;
 

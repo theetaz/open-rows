@@ -261,3 +261,21 @@ it('marks staged and deleted fields and hides editing without an editor', () => 
     screen.queryByRole('button', { name: /Value options/ }),
   ).not.toBeInTheDocument();
 });
+
+it('shows booleans as TRUE and FALSE but stages the exact stored text', async () => {
+  const { user, editor: rowEditor } = show({
+    fields: [text('flag', 't', 'bool'), text('off', 'f', 'bool')],
+    editor: editor({
+      columns: [...columns, column('flag', 'boolean'), column('off', 'bool')],
+    }),
+  });
+  expect(box('flag')).toHaveValue('TRUE');
+  expect(box('off')).toHaveValue('FALSE');
+  await user.clear(box('flag'));
+  await user.type(box('flag'), 'f');
+  await user.tab();
+  expect(rowEditor?.stage).toHaveBeenLastCalledWith('flag', {
+    kind: 'text',
+    value: 'f',
+  });
+});

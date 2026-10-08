@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { useRef } from 'react';
 import type {
   KeyboardEvent,
   MouseEvent,
@@ -65,6 +66,16 @@ const own = (event: SyntheticEvent<HTMLElement>): boolean =>
   event.target instanceof Element &&
   event.target.closest('[role="treeitem"]') === event.currentTarget;
 
+/** Moves focus to `row` when focus sits in its group, which a collapse unmounts. */
+function keepFocusOn(row: HTMLElement | null): void {
+  if (
+    row &&
+    row.contains(document.activeElement) &&
+    row !== document.activeElement
+  )
+    row.focus();
+}
+
 function rowKeys(event: KeyboardEvent, props: TreeNodeProps): void {
   const { expanded, onExpandedChange, onOpen } = props;
   if (event.key === 'Enter' && onOpen && !event.nativeEvent.isComposing) {
@@ -87,8 +98,10 @@ function rowKeys(event: KeyboardEvent, props: TreeNodeProps): void {
  */
 export function TreeNode(props: TreeNodeProps): React.JSX.Element {
   const { expanded, onExpandedChange } = props;
+  const self = useRef<HTMLDivElement>(null);
   return (
     <div
+      ref={self}
       role="treeitem"
       aria-label={props.label}
       aria-level={props.level}
@@ -120,6 +133,7 @@ export function TreeNode(props: TreeNodeProps): React.JSX.Element {
           onClick={(event) => {
             if (expanded === undefined || !onExpandedChange) return;
             stop(event);
+            if (expanded) keepFocusOn(self.current);
             onExpandedChange(!expanded);
           }}
           onDoubleClick={expanded === undefined ? undefined : stop}
