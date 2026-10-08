@@ -8,7 +8,7 @@ import { mountGrid } from '@openrows/grid/canvas';
 import type { GridHandle, GridProps } from '@openrows/grid';
 import type { TableColumnDto } from '@openrows/ipc';
 import { TableGrid } from '../TableGrid';
-import { emptyEdits } from '../editHistory';
+import { emptyHistory } from '../editHistory';
 import type { StagedEdit } from '../editHistory';
 import type { InlineRequest, RowEditing } from '../useRowEditing';
 
@@ -86,7 +86,7 @@ function editing(overrides: Partial<RowEditing> = {}): RowEditing {
         column('doc', 'jsonb'),
       ],
     },
-    history: emptyEdits,
+    history: emptyHistory,
     inline: null,
     clearInline: vi.fn(),
     draftFor: vi.fn(() => pending),
@@ -315,7 +315,7 @@ it('+ Row selects the staged insert after the page and edits its first editable 
   const request: InlineRequest = { insert: 'new-row' };
   const editor = editing({
     inline: request,
-    history: { ...emptyEdits, current: [insert] },
+    history: { ...emptyHistory, current: [insert] },
     draftFor: vi.fn(() => Promise.resolve(insert)),
   });
   const user = userEvent.setup();

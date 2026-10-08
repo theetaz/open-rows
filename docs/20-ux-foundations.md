@@ -437,6 +437,18 @@ Right-clicking a cell opens value edit/copy/filter, nullable NULL and text EMPTY
 
 These interactions follow the installed TablePlus public UI and its [documented row actions](https://docs.tableplus.com/gui-tools/working-with-table/row), while retaining explicit staging and SQL review in OpenRows. Full inline-cell editing, bulk replacement and the remaining D-09 recovery/filtering work above are still separate delivery-plan items.
 
+### Structure, Index, Triggers and DDL (2026-10-08)
+
+Modelled on the TablePlus table view:
+
+- **Footer:** accent segmented Data | Structure | Index, then a `+` button for the mode (+ Row, + Column, + Index). Structure and Index modes replace Filters, Columns and paging with a centred count, **Triggers** and **DDL**.
+- **Structure:** a header strip (`Name` field that stages a table rename, `Primary` key chips, `Search for column…`) above an editable column grid with the Data grid's metrics: 26 px rows, stripes, sticky header and 13 px monospace. Columns: #, column_name, data_type, is_nullable, check, column_default, foreign_key, comment. NULL and EMPTY are muted. data_type, is_nullable and column_default show a small up/down glyph that opens a picker (common PostgreSQL types or another type; YES/NO; no default, SQL expression, text literal or a preset). foreign_key shows `table(column)` with an arrow that opens the referenced table. Arrow keys move the focused cell, Enter/F2 or a double-click edits inline, Tab commits and moves right, Escape cancels, Alt+↓ opens a picker, Delete stages the column's deletion and Shift+F10 opens the row menu (Delete/Restore column, Copy name, Open referenced table). The striped empty area continues below the last column; its first row adds a column.
+- **Index:** the same grid for indexes (name, algorithm, unique, primary, columns, condition, include, comment). + Index opens a small sheet (name, key columns in click order, algorithm, unique). The row menu stages Delete index; constraint-backed indexes explain why they cannot be dropped.
+- **Staging:** every change is staged and highlighted (changed cells tinted, new rows green, deleted rows struck through) in the shared pending-changes bar with Undo, Redo, Discard and Review & commit. The review sheet shows the exact DDL and warnings; destructive changes on production or confirm-writes connections also ask for the table name. Commit is one transaction.
+- **Triggers:** a sheet listing each trigger's timing, events, level, function and state above its read-only, highlighted definition.
+- **DDL:** a rounded, shadowed popover above the DDL button with the rebuilt definition in the read-only SQL editor (highlighting and line numbers), Copy and `Estimated rows N`. Escape or a click outside closes it.
+- **Inspector:** in Structure and Index modes the Details inspector shows total_size, data_size and index_size (e.g. `81 KB`, `1 MB`), estimated rows and an editable comment that stages `COMMENT ON TABLE`.
+
 ### Appearance preferences
 
 Open Appearance from the workspace gear or ⌘, / Ctrl+,. It opens a modal over the mounted workspace: sessions, SQL text, pending edits and grid selection/scroll remain in place. The UI follows the independent scheme/palette pattern described in [T3 Code appearance preferences](https://github.com/pingdotgg/t3code/blob/main/docs/user/appearance.md); the OpenRows implementation, palettes and database previews are original.

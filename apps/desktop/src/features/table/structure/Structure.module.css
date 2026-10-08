@@ -1,0 +1,348 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Structure and Index grids: same metrics as the canvas Data grid. */
+.pane {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-8);
+  padding: var(--or-space-6) var(--or-space-8);
+  border-bottom: var(--or-border-width) solid var(--or-separator);
+  background: var(--or-panel-solid);
+  font-size: var(--or-text-12);
+  color: var(--or-secondary);
+}
+.header > label {
+  flex-shrink: 0;
+}
+.name {
+  flex: 0 1 220px;
+  min-width: 120px;
+}
+.name input,
+.search input {
+  font-family: var(--or-font-mono);
+  font-size: var(--or-text-mono, var(--or-text-13));
+}
+.primary {
+  flex: 1 1 200px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-4);
+  block-size: var(--or-control-height-compact);
+  padding: 0 var(--or-space-4);
+  overflow: hidden;
+  border-radius: var(--or-radius-control-compact);
+  background: var(--or-control-fill);
+}
+.chip {
+  padding: 0 var(--or-space-6);
+  border-radius: var(--or-radius-status);
+  background: var(--or-accent);
+  color: var(--or-on-accent);
+  font-family: var(--or-font-mono);
+  font-size: var(--or-text-12);
+  line-height: 18px;
+  white-space: nowrap;
+}
+.search {
+  flex: 0 1 220px;
+  min-width: 120px;
+}
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--or-window);
+  outline: none;
+}
+.grid {
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+  width: max-content;
+  min-width: 100%;
+  font-family: var(--or-font-mono);
+  font-size: var(--or-text-mono, var(--or-text-13));
+  color: var(--or-text);
+}
+.grid th,
+.grid td {
+  height: var(--or-grid-row-height);
+  padding: 0 var(--or-space-8);
+  box-sizing: border-box;
+  border-right: var(--or-border-width) solid var(--or-separator);
+  border-bottom: var(--or-border-width) solid var(--or-separator);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: start;
+}
+.grid th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--or-panel-solid);
+  color: var(--or-secondary);
+  font-weight: var(--or-weight-regular);
+}
+.grid tbody tr:nth-child(even) td {
+  background: var(--or-row-stripe);
+}
+.grid td[data-number] {
+  text-align: end;
+  color: var(--or-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.grid td[data-muted='true'] {
+  color: var(--or-tertiary);
+}
+.grid td[data-changed='true'] {
+  background: var(--or-cell-edited);
+}
+.grid tr[data-state='dropped'] td {
+  background: var(--or-row-deleted);
+  text-decoration: line-through;
+}
+.grid tr[data-state='added'] td {
+  background: var(--or-row-inserted);
+}
+.grid td[data-active='true'] {
+  box-shadow: inset 0 0 0 var(--or-focus-width) var(--or-focus);
+}
+.scroll:not(:focus-within) .grid td[data-active='true'] {
+  box-shadow: inset 0 0 0 var(--or-border-width) var(--or-separator);
+}
+.grid tr[data-filler] td {
+  color: var(--or-tertiary);
+}
+.cell {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-4);
+  min-width: 0;
+}
+.cell > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.stepper {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 16px;
+  block-size: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--or-radius-control-compact);
+  background: transparent;
+  color: var(--or-secondary);
+  cursor: default;
+}
+.stepper:hover {
+  background: var(--or-control-hover);
+}
+.stepper svg {
+  width: 11px;
+  height: 11px;
+}
+.input {
+  inline-size: 100%;
+  block-size: calc(var(--or-grid-row-height) - 4px);
+  margin: 0 calc(-1 * var(--or-space-4));
+  padding: 0 var(--or-space-4);
+  box-sizing: border-box;
+  border: var(--or-border-width) solid var(--or-focus);
+  border-radius: var(--or-radius-control-compact);
+  background: var(--or-window);
+  color: var(--or-text);
+  font: inherit;
+  outline: none;
+}
+/* Empty rows below the last column, striped like the grid. */
+.filler {
+  flex: 1;
+  min-height: var(--or-grid-row-height);
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0 var(--or-grid-row-height),
+    var(--or-row-stripe) var(--or-grid-row-height)
+      calc(2 * var(--or-grid-row-height))
+  );
+}
+.filler[data-odd='true'] {
+  background-position: 0 var(--or-grid-row-height);
+}
+.note {
+  margin: 0;
+  padding: var(--or-space-16);
+  color: var(--or-secondary);
+}
+.error {
+  margin: 0;
+  padding: var(--or-space-12) var(--or-space-16);
+  color: var(--or-danger-fg);
+  user-select: text;
+}
+.warnings {
+  margin: 0;
+  padding-inline-start: var(--or-space-16);
+  color: var(--or-warning-fg);
+  font-size: var(--or-text-12);
+}
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-10);
+}
+.columnsPick {
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-2);
+  max-height: 200px;
+  overflow: auto;
+  margin: 0;
+  padding: var(--or-space-6) var(--or-space-8);
+  border: var(--or-border-width) solid var(--or-separator);
+  border-radius: var(--or-radius-field);
+  font-family: var(--or-font-mono);
+  font-size: var(--or-text-mono, var(--or-text-13));
+}
+.columnsPick legend,
+.formNote {
+  font-family: var(--or-font-ui);
+  font-size: var(--or-text-12);
+  color: var(--or-secondary);
+}
+.columnsPick label,
+.checkRow {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-6);
+}
+.columnsPick input,
+.checkRow input {
+  margin: 0;
+  accent-color: var(--or-accent);
+}
+.triggers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-12);
+  max-height: 60vh;
+  overflow: auto;
+}
+.trigger h3 {
+  margin: 0 0 var(--or-space-4);
+  font-family: var(--or-font-mono);
+  font-size: var(--or-text-mono, var(--or-text-13));
+  font-weight: var(--or-weight-medium);
+}
+.trigger p {
+  margin: 0 0 var(--or-space-6);
+  font-size: var(--or-text-12);
+  color: var(--or-secondary);
+}
+.code {
+  max-height: 100%;
+  overflow: auto;
+  border-radius: var(--or-radius-control);
+  background: var(--or-window);
+}
+.code :global(.cm-editor) {
+  max-height: inherit;
+}
+.code pre {
+  margin: 0;
+  padding: var(--or-space-8);
+  font-family: var(--or-font-mono);
+  font-size: var(--or-text-mono, var(--or-text-13));
+  white-space: pre;
+  user-select: text;
+}
+.code[data-loaded='true'] pre {
+  display: none;
+}
+/* DDL popover above its footer button, like TablePlus. */
+.popover {
+  position: fixed;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  border: var(--or-border-width) solid var(--or-separator);
+  border-radius: var(--or-radius-panel);
+  background: var(--or-window);
+  box-shadow: var(--or-panel-shadow);
+  overflow: hidden;
+}
+.popover .code {
+  flex: 1;
+  min-height: 0;
+  border-radius: 0;
+}
+.popoverFooter {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-8);
+  padding: var(--or-space-6) var(--or-space-8);
+  border-top: var(--or-border-width) solid var(--or-separator);
+  background: var(--or-panel-solid);
+  font-size: var(--or-text-12);
+  color: var(--or-secondary);
+}
+.popoverFooter > span {
+  flex: 1;
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+/* Inspector table info. */
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-6);
+  margin: 0;
+}
+.info dt {
+  font-family: var(--or-font-ui);
+  font-size: var(--or-text-12);
+  color: var(--or-secondary);
+}
+.info dd {
+  margin: var(--or-space-2) 0 0;
+  padding: var(--or-space-4) var(--or-space-8);
+  border-radius: var(--or-radius-control);
+  background: var(--or-control-fill);
+  font-family: var(--or-font-mono);
+  font-size: var(--or-text-mono, var(--or-text-13));
+  font-variant-numeric: tabular-nums;
+  user-select: text;
+}
+.info textarea {
+  inline-size: 100%;
+  min-block-size: 60px;
+  box-sizing: border-box;
+  padding: var(--or-space-4) var(--or-space-8);
+  border: var(--or-border-width) solid var(--or-control-stroke);
+  border-radius: var(--or-radius-control);
+  background: var(--or-control-fill);
+  color: var(--or-text);
+  font-family: var(--or-font-mono);
+  font-size: var(--or-text-mono, var(--or-text-13));
+  resize: vertical;
+}
+.info textarea::placeholder {
+  color: var(--or-tertiary);
+}

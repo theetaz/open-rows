@@ -26,7 +26,7 @@ type Args = {
 };
 
 /** Run `action` whenever `trigger` changes to a non-null value. */
-function useTrigger(trigger: string | null, action: () => void): void {
+export function useTrigger(trigger: string | null, action: () => void): void {
   const latest = useRef(action);
   useEffect(() => {
     latest.current = action;

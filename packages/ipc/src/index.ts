@@ -69,6 +69,8 @@ export {
   tableEditInfo,
   tableEditRow,
   tableEdit,
+  tableDetail,
+  tableAlter,
 } from './tables';
 export type {
   CellValueDto,
@@ -87,6 +89,20 @@ export type {
   TableIndexDto,
   TableQueryDto,
   TableStructureDto,
+  AlterReply,
+  AlterRequest,
+  DefaultDto,
+  ForeignKeyDto,
+  GeneratedDto,
+  IndexDetailDto,
+  IndexMethodDto,
+  RelationKindDto,
+  SchemaChangeDto,
+  StructureColumnDto,
+  TableDetailDto,
+  TableInfoDto,
+  TriggerDto,
+  TriggerTimingDto,
 } from './generated/bindings';
 export type {
   ColumnDto,

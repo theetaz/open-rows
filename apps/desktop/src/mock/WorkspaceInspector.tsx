@@ -3,8 +3,8 @@ import { lazy, Suspense } from 'react';
 import { GlassPanel, SegmentedControl } from '@openrows/ui';
 import { CellDetails, HistoryPanel } from '../features/query';
 import type { SelectedCell } from '../features/query';
-import { RowDetails } from '../features/table';
-import type { SelectedRow } from '../features/table';
+import { RowDetails, TableInfoPanel } from '../features/table';
+import type { SelectedRow, SelectedTable } from '../features/table';
 const Assistant = lazy(() =>
   import('./Assistant').then((module) => ({ default: module.Assistant })),
 );
@@ -19,6 +19,8 @@ const segments = ['Details', 'History', 'Assistant'].map((label) => ({
 export function WorkspaceInspector(props: {
   cell: SelectedCell | null;
   row: SelectedRow | null;
+  /** A table tab in Structure/Index mode shows its table info instead. */
+  table?: SelectedTable | null;
   connectionId: string | undefined;
   panel: string;
   onPanel: (panel: string) => void;
@@ -41,6 +43,8 @@ export function WorkspaceInspector(props: {
           connectionId={props.connectionId}
           onOpen={props.onQuery}
         />
+      ) : props.table ? (
+        <TableInfoPanel table={props.table} />
       ) : props.row ? (
         <RowDetails row={props.row} />
       ) : (

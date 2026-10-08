@@ -51,7 +51,9 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
             tables::edit_commands::table_edit_info,
             tables::edit_commands::table_edit_row,
             tables::edit_commands::table_edit,
-            tables::file_value::table_edit_file
+            tables::file_value::table_edit_file,
+            tables::schema_commands::table_detail,
+            tables::schema_commands::table_alter
         ])
         .events(tauri_specta::collect_events![sessions::SessionStateChanged])
         .constant(

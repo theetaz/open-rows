@@ -11,6 +11,7 @@ use crate::simple::TextRow;
 use openrows_driver_api::DriverError;
 use openrows_driver_api::catalog::{DatabaseSummary, ObjectKind, ObjectSummary, SchemaSummary};
 
+mod detail;
 mod edit;
 mod table;
 pub use edit::RowEditInfo;
@@ -97,7 +98,7 @@ fn objects_sql(schema: &str, kinds: &[ObjectKind]) -> Result<String, DriverError
 /// libpq `PQescapeLiteral` rules: double quotes, and use `E''` with doubled
 /// backslashes when the text has any, so the result is safe whatever
 /// `standard_conforming_strings` says.
-fn literal(text: &str) -> Result<String, DriverError> {
+pub(crate) fn literal(text: &str) -> Result<String, DriverError> {
     if text.contains('\0') {
         return Err(DriverError::Unsupported(
             "names containing NUL characters".to_owned(),
@@ -109,6 +110,15 @@ fn literal(text: &str) -> Result<String, DriverError> {
     } else {
         format!("'{quoted}'")
     })
+}
+
+/// A double-quoted identifier (embedded quotes doubled); empty names and NUL
+/// characters are refused.
+pub(crate) fn identifier(name: &str) -> Result<String, DriverError> {
+    if name.is_empty() || name.contains('\0') {
+        return Err(DriverError::Unsupported("Invalid identifier".into()));
+    }
+    Ok(format!("\"{}\"", name.replace('"', "\"\"")))
 }
 
 fn object(row: &TextRow) -> Result<ObjectSummary, DriverError> {

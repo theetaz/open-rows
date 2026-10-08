@@ -53,7 +53,11 @@ impl PgSession {
     }
 }
 
-fn relation_sql(template: &str, schema: &str, name: &str) -> Result<String, DriverError> {
+pub(super) fn relation_sql(
+    template: &str,
+    schema: &str,
+    name: &str,
+) -> Result<String, DriverError> {
     Ok(template
         .replace("{schema}", &literal(schema)?)
         .replace("{name}", &literal(name)?))

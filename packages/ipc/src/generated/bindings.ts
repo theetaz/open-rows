@@ -94,6 +94,16 @@ export const commands = {
 	 *  as a field value; `null` when the panel is cancelled. Nothing is staged here.
 	 */
 	tableEditFile: (encoding: FileEncodingDto) => typedError<string | null, IpcError>(__TAURI_INVOKE("table_edit_file", { encoding })),
+	/**
+	 *  Columns, constraints, indexes, triggers, sizes, comment and the rebuilt
+	 *  definition of a relation, read on the metadata session.
+	 */
+	tableDetail: (target: TableTarget) => typedError<TableDetailDto, IpcError>(__TAURI_INVOKE("table_detail", { target })),
+	/**
+	 *  Without a matching `confirmToken`, return the generated DDL to review;
+	 *  with it (and the typed table name when asked), run it in one transaction.
+	 */
+	tableAlter: (request: AlterRequest) => typedError<AlterReply, IpcError>(__TAURI_INVOKE("table_alter", { request })),
 };
 
 /** Events */
@@ -105,6 +115,24 @@ export const events = {
 export const DEFAULT_CUSTOM_ENV_COLOR = "#7c3aed" as const;
 
 /* Types */
+/**  The generated DDL to review, or the committed result. */
+export type AlterReply = { kind: "prepared"; token: string; statements: string[]; warnings: string[]; destructive: boolean; 
+/**
+ *  Name to type before committing (destructive changes on a
+ *  production or confirm-writes connection).
+ */
+confirmName: string | null } | { kind: "committed" };
+
+/**  Preview (no token) or commit (the preview's token) of a change set. */
+export type AlterRequest = {
+	sessionId: string,
+	target: TableTarget,
+	changes: SchemaChangeDto[],
+	confirmToken: string | null,
+	/**  The typed table name, when the preview asked for it. */
+	confirmName: string | null,
+};
+
 export type AppInfo = {
 	name: string,
 	version: string,
@@ -154,6 +182,9 @@ export type DatabaseDto = {
 	system: boolean,
 	comment: string | null,
 };
+
+/**  A column default: none, a quoted text literal or a raw SQL expression. */
+export type DefaultDto = { kind: "none" } | { kind: "literal"; value: string } | { kind: "expression"; sql: string };
 
 export type EditInfoDto = {
 	key: string[],
@@ -244,6 +275,16 @@ export type FilterDto = {
 /**  Filter-row comparisons (FR-GRID-11 subset). */
 export type FilterOperatorDto = "equal" | "notEqual" | "less" | "greater" | "lessOrEqual" | "greaterOrEqual" | "contains" | "notContains" | "startsWith" | "endsWith" | "in" | "isNull" | "isNotNull" | "between" | "notIn" | "notBetween" | "like" | "notLike" | "regex" | "notRegex" | "isEmpty" | "isNotEmpty";
 
+/**  A single-column foreign key: `→ table(column)`. */
+export type ForeignKeyDto = {
+	schema: string,
+	table: string,
+	column: string,
+};
+
+/**  How a column's value is produced. */
+export type GeneratedDto = "no" | "identityAlways" | "identityByDefault" | "stored";
+
 /**  Per-rAF interval diagnostics. Timings may overlap; worker CPU is informational. */
 export type GridFrame = {
 	index: number,
@@ -296,6 +337,24 @@ export type HistoryItemDto = {
 
 /**  Outcome of a recorded statement. */
 export type HistoryStatusDto = "ok" | "error" | "cancelled";
+
+/**  One row of the Index grid. */
+export type IndexDetailDto = {
+	name: string,
+	method: string,
+	unique: boolean,
+	primary: boolean,
+	/**  Backs a constraint, so it cannot be dropped as an index. */
+	constraint: boolean,
+	columns: string,
+	include: string[],
+	predicate: string | null,
+	comment: string | null,
+	definition: string,
+};
+
+/**  Index access methods offered by `+ Index`. */
+export type IndexMethodDto = "btree" | "hash" | "gist" | "gin" | "brin" | "spgist";
 
 /**  Typed command failure, safe to render to the user. */
 export type IpcError = {
@@ -443,6 +502,9 @@ export type QueryEventDto = { type: "statementStarted"; statement: number } | { 
 /**  Final row count; `truncated` when the row cap or memory budget stopped it. */
 { type: "resultEnd"; statement: number; resultId: string; rows: number; truncated: boolean } | { type: "rowsAffected"; statement: number; count: number } | { type: "notice"; statement: number; level: NoticeLevelDto; message: string } | { type: "statementDone"; statement: number; elapsedMs: number } | { type: "failed"; statement: number; error: IpcError } | { type: "cancelled"; statement: number } | { type: "finished"; outcome: RunOutcomeDto; elapsedMs: number };
 
+/**  Kind of the browsed relation. */
+export type RelationKindDto = "table" | "partitionedTable" | "view" | "materializedView" | "foreignTable";
+
 export type ResultError = { kind: "unknownResult"; message: string } | { kind: "outOfRange" } | { kind: "encoding"; message: string } | { kind: "unavailable"; message: string };
 
 export type RowEditDto = {
@@ -469,6 +531,9 @@ export type SafetyDto = {
 	readOnly: boolean,
 	confirmWrites: boolean,
 };
+
+/**  One staged structure change; columns are named by their current name. */
+export type SchemaChangeDto = { kind: "renameTable"; name: string } | { kind: "tableComment"; comment: string | null } | { kind: "renameColumn"; column: string; name: string } | { kind: "columnType"; column: string; dataType: string } | { kind: "columnNullable"; column: string; nullable: boolean } | { kind: "columnDefault"; column: string; default: DefaultDto } | { kind: "columnComment"; column: string; comment: string | null } | { kind: "addColumn"; name: string; dataType: string; nullable: boolean; default: DefaultDto; comment: string | null } | { kind: "dropColumn"; column: string } | { kind: "createIndex"; name: string | null; columns: string[]; unique: boolean; method: IndexMethodDto } | { kind: "dropIndex"; name: string };
 
 /**  A schema of the browsed database. */
 export type SchemaDto = {
@@ -551,6 +616,20 @@ export type StatementDto = {
 /**  What a statement does, for the confirmation dialog. */
 export type StatementKindDto = "read" | "write" | "ddl" | "txControl" | "unknown";
 
+/**  One row of the Structure grid. */
+export type StructureColumnDto = {
+	name: string,
+	dataType: string,
+	nullable: boolean,
+	/**  Default or generation expression as SQL text. */
+	default: string | null,
+	generated: GeneratedDto,
+	comment: string | null,
+	/**  Single-column check expressions, joined with ` AND `. */
+	check: string | null,
+	foreignKey: ForeignKeyDto | null,
+};
+
 /**  A column on the Structure tab. */
 export type TableColumnDto = {
 	name: string,
@@ -564,6 +643,22 @@ export type TableColumnDto = {
 	enumLabels: string[] | null,
 };
 
+/**
+ *  Everything the Structure, Index, Triggers and DDL views and the inspector
+ *  table info show.
+ */
+export type TableDetailDto = {
+	columns: StructureColumnDto[],
+	primaryKey: string[],
+	indexes: IndexDetailDto[],
+	triggers: TriggerDto[],
+	info: TableInfoDto,
+	/**  Reconstructed definition (`-- Table Definition`, `CREATE TABLE …`). */
+	ddl: string,
+	/**  A table on a writable connection: structure changes can be staged. */
+	editable: boolean,
+};
+
 /**  An index on the Indexes tab. */
 export type TableIndexDto = {
 	name: string,
@@ -572,6 +667,16 @@ export type TableIndexDto = {
 	primary: boolean,
 	method: string,
 	predicate: string | null,
+};
+
+/**  Sizes in bytes, the planner estimate and the comment. */
+export type TableInfoDto = {
+	kind: RelationKindDto,
+	rowEstimate: number | null,
+	totalBytes: number | null,
+	dataBytes: number | null,
+	indexBytes: number | null,
+	comment: string | null,
 };
 
 /**  What a table page shows: projection (empty = every column), filters, sort. */
@@ -614,6 +719,21 @@ export type TileTiming = {
 
 /**  libpq `sslmode` values (docs/12 §4.1). */
 export type TlsModeDto = "disable" | "allow" | "prefer" | "require" | "verify-ca" | "verify-full";
+
+/**  One trigger in the Triggers sheet. */
+export type TriggerDto = {
+	name: string,
+	timing: TriggerTimingDto,
+	/**  `INSERT`, `UPDATE`, `DELETE`, `TRUNCATE`. */
+	events: string[],
+	rowLevel: boolean,
+	function: string,
+	enabled: boolean,
+	definition: string,
+};
+
+/**  When a trigger fires. */
+export type TriggerTimingDto = "before" | "after" | "insteadOf";
 
 /**  Form fields filled from a pasted URL; only says whether it had a password. */
 export type UrlDraft = {

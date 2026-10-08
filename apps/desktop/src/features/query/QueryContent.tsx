@@ -7,7 +7,7 @@ import { sessionOf } from '../connections';
 import type { Connections } from '../connections';
 import type { ProfileDto } from '@openrows/ipc';
 import { useTableViews } from '../table';
-import type { ShowRow, TableViews } from '../table';
+import type { SelectedTable, ShowRow, TableViews } from '../table';
 import type { QueryTabs } from './useQueryTabs';
 import { useQueryRuns } from './useQueryRuns';
 import type { QueryRuns } from './useQueryRuns';
@@ -32,6 +32,12 @@ type Props = {
   onCell: (cell: SelectedCell) => void;
   /** A table view's selected row, for the inspector's Details. */
   onRow: ShowRow;
+  /** Table info for the inspector (Structure/Index modes); `null` clears it. */
+  onTableInfo?: ((table: SelectedTable | null) => void) | undefined;
+  /** Open a table of this database (e.g. a foreign key's target). */
+  onOpenTable?:
+    | ((table: { database: string; schema: string; name: string }) => void)
+    | undefined;
 };
 
 /**
@@ -133,6 +139,13 @@ function TabBody(
         views={props.tables}
         onRow={props.onRow}
         onConnect={props.connections.connect}
+        onTableInfo={props.onTableInfo}
+        onOpenTable={(schema, name) => {
+          props.onOpenTable?.({ database: tab.database, schema, name });
+        }}
+        onRenamed={(name) => {
+          props.tabs.renameTable?.(tab.id, name);
+        }}
       />
     );
   return (

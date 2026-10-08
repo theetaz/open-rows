@@ -113,3 +113,24 @@ export function editTab(state: TabsState, id: string, sql: string): TabsState {
     tabs: state.tabs.map((tab) => (tab.id === id ? { ...tab, sql } : tab)),
   };
 }
+
+/** Follow a committed `ALTER TABLE … RENAME TO`: the table tab's name and title. */
+export function renameTableTab(
+  state: TabsState,
+  id: string,
+  name: string,
+): TabsState {
+  return {
+    ...state,
+    tabs: state.tabs.map((tab) =>
+      tab.id === id && tab.table
+        ? {
+            ...tab,
+            title: name,
+            objectPath: [tab.table.schema, name],
+            table: { ...tab.table, name },
+          }
+        : tab,
+    ),
+  };
+}

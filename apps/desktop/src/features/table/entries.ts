@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { TableStructureDto } from '@openrows/ipc';
+import type { TableDetailDto, TableStructureDto } from '@openrows/ipc';
 import { idleRun, runReducer } from '../query/run';
 import type { RunAction, RunState } from '../query/run';
-import { emptyEdits } from './editHistory';
-import type { EditHistory } from './editHistory';
+import { emptyHistory } from './editHistory';
+import type { EditHistory, History } from './editHistory';
+import type { StagedSchema } from './structure/schemaChanges';
 import { initialView } from './model';
 import type { TableView } from './model';
 
@@ -11,6 +12,12 @@ import type { TableView } from './model';
 export type StructureState =
   | { status: 'idle' | 'loading' }
   | { status: 'ready'; data: TableStructureDto }
+  | { status: 'error'; message: string };
+
+/** The Structure/Index/Triggers/DDL detail read: loading, loaded or failed. */
+export type DetailState =
+  | { status: 'idle' | 'loading' }
+  | { status: 'ready'; data: TableDetailDto }
   | { status: 'error'; message: string };
 
 /** An exact count for the filters identified by `key`. */
@@ -31,6 +38,9 @@ export type TableEntry = {
   structure: StructureState;
   count: CountState;
   edits: EditHistory;
+  detail: DetailState;
+  /** Staged structure changes (Structure and Index modes). */
+  schema: History<StagedSchema>;
 };
 
 export const emptyEntry: TableEntry = {
@@ -40,7 +50,9 @@ export const emptyEntry: TableEntry = {
   sql: null,
   structure: { status: 'idle' },
   count: { status: 'idle' },
-  edits: emptyEdits,
+  edits: emptyHistory,
+  detail: { status: 'idle' },
+  schema: emptyHistory,
 };
 
 export type EntryAction =
@@ -50,7 +62,12 @@ export type EntryAction =
   | { type: 'sql'; sql: string }
   | { type: 'structure'; structure: StructureState }
   | { type: 'count'; count: CountState }
-  | { type: 'edits'; change: (edits: EditHistory) => EditHistory };
+  | { type: 'edits'; change: (edits: EditHistory) => EditHistory }
+  | { type: 'detail'; detail: DetailState }
+  | {
+      type: 'schema';
+      change: (schema: History<StagedSchema>) => History<StagedSchema>;
+    };
 
 function entryReducer(entry: TableEntry, action: EntryAction): TableEntry {
   switch (action.type) {
@@ -64,6 +81,7 @@ function entryReducer(entry: TableEntry, action: EntryAction): TableEntry {
             view,
             count: { status: 'idle' },
             structure: { status: 'idle' },
+            detail: { status: 'idle' },
           }
         : { ...entry, view };
     }
@@ -77,6 +95,10 @@ function entryReducer(entry: TableEntry, action: EntryAction): TableEntry {
       return { ...entry, structure: action.structure };
     case 'count':
       return { ...entry, count: action.count };
+    case 'detail':
+      return { ...entry, detail: action.detail };
+    case 'schema':
+      return { ...entry, schema: action.change(entry.schema) };
   }
 }
 

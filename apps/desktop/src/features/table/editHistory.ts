@@ -8,15 +8,18 @@ export type StagedEdit = RowEditDto & {
   /** Focus the field used to open the editor, without sending it to the server. */
   focusField?: string;
 };
-export type EditHistory = {
+/** Staged items with undo/redo snapshots (rows here, structure changes too). */
+export type History<T> = {
   pending: boolean;
   /** Lost COMMIT acknowledgement: reload before doing anything else. */
   uncertain?: boolean;
-  current: readonly StagedEdit[];
-  past: readonly (readonly StagedEdit[])[];
-  future: readonly (readonly StagedEdit[])[];
+  current: readonly T[];
+  past: readonly (readonly T[])[];
+  future: readonly (readonly T[])[];
 };
-export const emptyEdits: EditHistory = {
+export type EditHistory = History<StagedEdit>;
+/** Nothing staged; assignable to any `History<T>`. */
+export const emptyHistory: History<never> = {
   pending: false,
   current: [],
   past: [],
@@ -56,10 +59,10 @@ export function stage(history: EditHistory, edit: StagedEdit): EditHistory {
   };
 }
 /** Undo/redo affects staged values only, never database contents. */
-export function travel(
-  history: EditHistory,
+export function travel<T>(
+  history: History<T>,
   direction: 'undo' | 'redo',
-): EditHistory {
+): History<T> {
   if (history.pending || history.uncertain) return history;
   if (direction === 'undo') {
     const current = history.past.at(-1);

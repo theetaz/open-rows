@@ -6,7 +6,7 @@ import type { ResultMeta } from '../query/run';
 import type { TableTargetRef } from './model';
 import type { TableViews } from './useTableViews';
 import type { StagedEdit, EditHistory } from './editHistory';
-import { emptyEdits, stage, travel } from './editHistory';
+import { emptyHistory, stage, travel } from './editHistory';
 import { editDraft } from './editingIo';
 import type { EditIo } from './useEditIo';
 import { useEditIo } from './useEditIo';
@@ -88,7 +88,7 @@ export function useRowEditing(args: Args): RowEditing {
       setInline({ insert: edit.id });
     },
     discard: () => {
-      args.views.setEdits(args.tabId, () => emptyEdits);
+      args.views.setEdits(args.tabId, () => emptyHistory);
       if (history.uncertain) args.views.setView(args.tabId, refreshView);
       setReview(null);
     },
@@ -241,7 +241,7 @@ function commitChanges({
         if (io.alive.current) setReview(reply);
         return;
       }
-      args.views.setEdits(args.tabId, () => emptyEdits);
+      args.views.setEdits(args.tabId, () => emptyHistory);
       args.views.setView(args.tabId, (view) => ({
         ...view,
         revision: view.revision + 1,

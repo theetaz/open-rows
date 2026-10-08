@@ -12,7 +12,7 @@ import styles from './Table.module.css';
 const modes: readonly { value: ViewMode; label: string }[] = [
   { value: 'data', label: 'Data' },
   { value: 'structure', label: 'Structure' },
-  { value: 'indexes', label: 'Indexes' },
+  { value: 'indexes', label: 'Index' },
 ];
 
 /** `1–300 of ~1,811 rows`, or what the page is doing. */
@@ -54,20 +54,35 @@ function CountControl({
   );
 }
 
-/** TablePlus-style footer: views, + Row, page range, Filters, Columns, paging. */
+/** The footer's `+` button: + Row, + Column or + Index. */
+export type FooterAdd = {
+  label: 'Row' | 'Column' | 'Index';
+  /** Absent when nothing can be added. */
+  run?: (() => void) | undefined;
+  title: string;
+};
+
+/** Structure and Index mode extras: Triggers, DDL and a centred status. */
+export type FooterStructure = {
+  status: string;
+  onTriggers: () => void;
+  onDdl: (anchor: DOMRect) => void;
+  ddlOpen: boolean;
+};
+
+/** TablePlus-style footer: views, +, page range or status, then mode tools. */
 export function TableFooter({
   state,
   ready,
-  onInsert,
-  insertTitle,
+  add,
+  structure,
 }: {
   state: TableTabState;
   /** A session is available for paging and counting. */
   ready: boolean;
-  /** Stage a new row; absent when the table cannot be edited. */
-  onInsert?: (() => void) | undefined;
-  /** Why rows cannot be added, or how editing works. */
-  insertTitle: string;
+  add: FooterAdd;
+  /** Present in Structure and Index modes. */
+  structure?: FooterStructure | undefined;
 }): React.JSX.Element {
   const { view, actions } = state;
   return (
@@ -82,14 +97,63 @@ export function TableFooter({
       />
       <Button
         size="sm"
-        aria-label="Add row"
-        disabled={!onInsert}
-        title={insertTitle}
-        onClick={onInsert}
+        aria-label={`Add ${add.label.toLowerCase()}`}
+        disabled={!add.run}
+        title={add.title}
+        onClick={add.run}
       >
         <Icon name="plus" />
-        <span className={styles.label}>Row</span>
+        <span className={styles.label}>{add.label}</span>
       </Button>
+      {structure ? (
+        <StructureTools structure={structure} />
+      ) : (
+        <DataTools state={state} ready={ready} />
+      )}
+    </footer>
+  );
+}
+
+function StructureTools({
+  structure,
+}: {
+  structure: FooterStructure;
+}): React.JSX.Element {
+  return (
+    <>
+      <span className={styles.status}>
+        <span className={styles.range} role="status">
+          {structure.status}
+        </span>
+      </span>
+      <Button size="sm" onClick={structure.onTriggers}>
+        Triggers
+      </Button>
+      <Button
+        size="sm"
+        data-ddl-button
+        aria-pressed={structure.ddlOpen}
+        aria-haspopup="dialog"
+        onClick={(event) => {
+          structure.onDdl(event.currentTarget.getBoundingClientRect());
+        }}
+      >
+        DDL
+      </Button>
+    </>
+  );
+}
+
+function DataTools({
+  state,
+  ready,
+}: {
+  state: TableTabState;
+  ready: boolean;
+}): React.JSX.Element {
+  const { view, actions } = state;
+  return (
+    <>
       <span className={styles.status}>
         <span
           className={styles.range}
@@ -122,7 +186,7 @@ export function TableFooter({
         <span className={styles.label}>Columns</span>
       </Button>
       <Paging state={state} ready={ready} />
-    </footer>
+    </>
   );
 }
 

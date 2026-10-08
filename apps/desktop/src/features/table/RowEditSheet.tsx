@@ -8,6 +8,7 @@ import { editableText, fromOriginal, NULL_VALUE, textValue } from './cellValue';
 import type { CellValue } from './cellValue';
 import type { RowEditing } from './useRowEditing';
 import { duplicateRow } from './quickEdits';
+import { ReviewSheet } from './ReviewSheet';
 import styles from './Table.module.css';
 
 /** Review precise text values; NULL and DEFAULT are explicit, different choices. */
@@ -161,36 +162,23 @@ export function RowEditSheet({
 }): React.JSX.Element | null {
   if (editing.review)
     return (
-      <Sheet title="Review table changes" onClose={editing.close}>
-        <p>
-          {editing.history.current.length} staged row changes. Conflicts and
-          statement errors roll back the transaction. If the connection is lost
-          during commit, reload before retrying.
-        </p>
-        <pre className={styles.preview}>
-          {editing.review.statements
-            .map(
-              (statement) =>
-                `${statement.sql}\n${statement.params.map((value, index) => `-- $${String(index + 1)} = ${value === null ? 'NULL' : JSON.stringify(value)}`).join('\n')}`,
-            )
-            .join('\n\n')}
-        </pre>
-        {editing.error && <p role="alert">{editing.error}</p>}
-        <SheetActions>
-          <Button disabled={editing.busy} onClick={editing.close}>
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            disabled={editing.busy || editing.history.uncertain}
-            onClick={() => {
-              editing.commit(editing.review?.token);
-            }}
-          >
-            {editing.busy ? 'Committing…' : 'Commit changes'}
-          </Button>
-        </SheetActions>
-      </Sheet>
+      <ReviewSheet
+        title="Review table changes"
+        summary={`${String(editing.history.current.length)} staged row changes. Conflicts and statement errors roll back the transaction. If the connection is lost during commit, reload before retrying.`}
+        sql={editing.review.statements
+          .map(
+            (statement) =>
+              `${statement.sql}\n${statement.params.map((value, index) => `-- $${String(index + 1)} = ${value === null ? 'NULL' : JSON.stringify(value)}`).join('\n')}`,
+          )
+          .join('\n\n')}
+        error={editing.error}
+        busy={editing.busy}
+        blocked={Boolean(editing.history.uncertain)}
+        onCancel={editing.close}
+        onCommit={() => {
+          editing.commit(editing.review?.token);
+        }}
+      />
     );
   return editing.draft && editing.info ? (
     <EditForm

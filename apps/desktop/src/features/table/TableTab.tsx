@@ -2,17 +2,21 @@
 import { useRef } from 'react';
 import { Button } from '@openrows/ui';
 import type { TableObject } from '../query/tabs';
-import { canEdit, EditToolbar, editingNote } from './EditToolbar';
+import { canEdit, EditToolbar, editingNote, rowEditBar } from './EditToolbar';
 import { RowEditSheet } from './RowEditSheet';
 import { useRowEditing } from './useRowEditing';
 import { useTableContext } from './TableContextMenu';
 import { ColumnsPanel } from './ColumnsPanel';
 import { FilterBar } from './FilterBar';
-import { StructureView } from './StructureView';
+import { StructurePane } from './structure/StructurePane';
+import { useStructure } from './structure/useStructure';
+import type { Structure } from './structure/useStructure';
+import type { SelectedTable } from './structure/TableInfoPanel';
 import { TableData } from './TableData';
 import { TableFooter } from './TableFooter';
 import type { ShowRow } from './row';
 import { useSelectedRow } from './useSelectedRow';
+import type { FooterAdd, FooterStructure } from './TableFooter';
 import { useTableKeys } from './useTableKeys';
 import { useTableTab } from './useTableTab';
 import type { TableViews } from './useTableViews';
@@ -29,6 +33,12 @@ type TableTabProps = {
   views: TableViews;
   onRow: ShowRow;
   onConnect: () => void;
+  /** Table info for the inspector in Structure/Index mode; `null` hides it. */
+  onTableInfo?: ((table: SelectedTable | null) => void) | undefined;
+  /** Open another table (a foreign key's target) in a tab. */
+  onOpenTable?: ((schema: string, table: string) => void) | undefined;
+  /** The table was renamed by a committed structure change. */
+  onRenamed?: ((name: string) => void) | undefined;
 };
 
 /** A TablePlus-style table view: filters, paged canvas grid, structure, footer. */
@@ -38,6 +48,7 @@ export function TableTab(props: TableTabProps): React.JSX.Element {
   const state = useTableTab(props);
   const { view, actions, columns } = state;
   useTableKeys(root, actions);
+  const structure = useStructure({ ...props, mode: view.mode });
   const editing = useRowEditing({
     ...props,
     target: state.query.target,
@@ -81,7 +92,7 @@ export function TableTab(props: TableTabProps): React.JSX.Element {
           />
         )
       ) : (
-        <StructureView structure={state.entry.structure} show={view.mode} />
+        <StructurePane structure={structure} table={table.name} />
       )}
       {view.columnsOpen && (
         <ColumnsPanel
@@ -94,27 +105,73 @@ export function TableTab(props: TableTabProps): React.JSX.Element {
       <EditingFooter
         state={state}
         editing={editing}
+        structure={structure}
         ready={sessionId !== null}
       />
     </section>
   );
 }
 
+/** The footer's `+` button and Structure/Index tools for the current mode. */
+function footerProps(
+  state: ReturnType<typeof useTableTab>,
+  editing: ReturnType<typeof useRowEditing>,
+  structure: Structure,
+  ready: boolean,
+): { add: FooterAdd; structure?: FooterStructure } {
+  const { mode } = state.view;
+  if (mode === 'data')
+    return {
+      add: {
+        label: 'Row',
+        run: canEdit(editing, ready) ? editing.insert : undefined,
+        title: editingNote(editing),
+      },
+    };
+  const { schema } = structure;
+  const enabled = schema.enabled;
+  const note = schema.detail?.editable === false ? 'Read-only' : '';
+  const indexes = mode === 'indexes';
+  return {
+    add: {
+      label: indexes ? 'Index' : 'Column',
+      run: enabled
+        ? indexes
+          ? structure.openIndexSheet
+          : structure.addColumn
+        : undefined,
+      title: note || (indexes ? 'Add an index' : 'Add a column'),
+    },
+    structure: {
+      status: indexes
+        ? `${String(structure.indexes.length)} indexes`
+        : `${String(structure.rows.length)} columns`,
+      onTriggers: () => {
+        structure.setSheet('triggers');
+      },
+      onDdl: structure.toggleDdl,
+      ddlOpen: structure.ddl !== null,
+    },
+  };
+}
+
 /** Staged rows, the pending-changes bar, edit errors and the table footer. */
 function EditingFooter({
   state,
   editing,
+  structure,
   ready,
 }: {
   state: ReturnType<typeof useTableTab>;
   editing: ReturnType<typeof useRowEditing>;
+  structure: Structure;
   ready: boolean;
 }): React.JSX.Element {
   const data = state.view.mode === 'data';
   return (
     <>
-      {data && <EditToolbar editing={editing} ready={ready} />}
-      {editing.error && !editing.review && (
+      {data && <EditToolbar model={rowEditBar(editing, ready)} />}
+      {data && editing.error && !editing.review && (
         <p role="alert" className={styles.banner}>
           {editing.error}
         </p>
@@ -123,8 +180,7 @@ function EditingFooter({
       <TableFooter
         state={state}
         ready={ready}
-        onInsert={data && canEdit(editing, ready) ? editing.insert : undefined}
-        insertTitle={editingNote(editing)}
+        {...footerProps(state, editing, structure, ready)}
       />
     </>
   );

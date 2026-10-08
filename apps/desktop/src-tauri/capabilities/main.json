@@ -42,6 +42,8 @@
     "allow-table-edit-info",
     "allow-table-edit-row",
     "allow-table-edit",
-    "allow-table-edit-file"
+    "allow-table-edit-file",
+    "allow-table-detail",
+    "allow-table-alter"
   ]
 }

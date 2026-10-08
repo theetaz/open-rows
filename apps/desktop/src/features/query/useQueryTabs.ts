@@ -5,6 +5,7 @@ import {
   editTab,
   emptyTabs,
   openTab,
+  renameTableTab,
   scopeKey,
   selectTab,
   tabsOf,
@@ -25,6 +26,8 @@ export type QueryTabs = {
   installCloseGuard?: (guard: (id: string) => boolean) => () => void;
   select: (id: string) => void;
   edit: (id: string, sql: string) => void;
+  /** Point a table tab at its table's new name after a committed rename. */
+  renameTable?: (id: string, name: string) => void;
 };
 
 /** Query tabs of every connection and database; descriptors only, never result rows. */
@@ -59,5 +62,8 @@ export function useQueryTabs(): QueryTabs {
       setState((current) => selectTab(current, id));
     },
     edit,
+    renameTable: (id, name) => {
+      setState((current) => renameTableTab(current, id, name));
+    },
   };
 }

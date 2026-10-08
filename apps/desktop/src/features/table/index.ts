@@ -4,3 +4,5 @@ export { RowDetails } from './RowDetails';
 export { useTableViews } from './useTableViews';
 export type { TableViews } from './useTableViews';
 export type { SelectedRow, ShowRow } from './row';
+export { TableInfoPanel } from './structure/TableInfoPanel';
+export type { SelectedTable } from './structure/TableInfoPanel';

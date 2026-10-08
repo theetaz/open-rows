@@ -6,7 +6,7 @@ import { mountGrid } from '@openrows/grid/canvas';
 import type { GridProps } from '@openrows/grid';
 import { TableGrid } from './TableGrid';
 import type { StagedEdit } from './editHistory';
-import { emptyEdits } from './editHistory';
+import { emptyHistory } from './editHistory';
 import type { RowEditing } from './useRowEditing';
 
 vi.mock('@openrows/grid/canvas', () => ({
@@ -16,7 +16,7 @@ vi.mock('@openrows/grid/canvas', () => ({
 function editing(current: readonly StagedEdit[] = []): RowEditing {
   return {
     info: null,
-    history: { ...emptyEdits, current },
+    history: { ...emptyHistory, current },
     inline: null,
   } as unknown as RowEditing;
 }

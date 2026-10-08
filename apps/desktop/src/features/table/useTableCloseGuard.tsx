@@ -19,8 +19,9 @@ export function useTableCloseGuard({
   useEffect(
     () =>
       tabs.installCloseGuard?.((id) => {
-        const edits = tables.entryOf(id).edits;
-        if (edits.current.length || edits.pending) {
+        const { edits, schema } = tables.entryOf(id);
+        const staged = edits.current.length + schema.current.length;
+        if (staged || edits.pending || schema.pending) {
           setClosing(id);
           return false;
         }
@@ -41,8 +42,9 @@ export function useTableCloseGuard({
     };
   }, [tables]);
   if (!closing) return null;
-  const pending = tables.entryOf(closing).edits.pending;
-  const uncertain = tables.entryOf(closing).edits.uncertain;
+  const { edits, schema } = tables.entryOf(closing);
+  const pending = edits.pending || schema.pending;
+  const uncertain = edits.uncertain || schema.uncertain;
   return (
     <Sheet
       title={pending ? 'Commit in progress' : 'Discard staged changes?'}

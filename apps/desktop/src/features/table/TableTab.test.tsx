@@ -353,15 +353,15 @@ it('counts exactly on demand and shows structure and indexes', async () => {
     expect(shown()).toHaveTextContent('1–300 of 1,811 rows');
   });
   await user.click(screen.getByRole('radio', { name: 'Structure' }));
-  expect(screen.getByRole('table', { name: 'Columns' })).toHaveTextContent(
-    'Display name',
-  );
-  await user.click(screen.getByRole('radio', { name: 'Indexes' }));
-  expect(screen.getByRole('table', { name: 'Indexes' })).toHaveTextContent(
+  expect(
+    await screen.findByRole('grid', { name: 'Columns' }),
+  ).toHaveTextContent('Display name');
+  await user.click(screen.getByRole('radio', { name: 'Index' }));
+  expect(screen.getByRole('grid', { name: 'Indexes' })).toHaveTextContent(
     'orders_pkey',
   );
-  await user.click(screen.getByRole('button', { name: 'Columns' }));
   await user.click(screen.getByRole('radio', { name: 'Data' }));
+  await user.click(screen.getByRole('button', { name: 'Columns' }));
   await user.click(screen.getByRole('checkbox', { name: 'name' }));
   expect(lastRequest().query.columns).toEqual(['id']);
 });

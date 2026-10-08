@@ -8,11 +8,14 @@
 //! commands, cancels out of band and forwards notices. Values with no exact
 //! Arrow form fall back to tagged text. Lists databases, schemas and objects
 //! for the schema tree (`PgSession::list_*`, `search_index`) and a table's
-//! columns and indexes (`table_columns`, `table_indexes`). Binds positional
+//! columns and indexes (`table_columns`, `table_indexes`), the table detail
+//! behind the Structure, Index, Triggers and DDL views (`table_detail`) and
+//! generates table DDL ([`ddl`]). Binds positional
 //! text-format parameters (`Session::execute_bound`). No TLS yet (D-11).
 #![forbid(unsafe_code)]
 mod cancel;
 mod connect;
+pub mod ddl;
 mod decode;
 mod edits;
 pub mod fixture;

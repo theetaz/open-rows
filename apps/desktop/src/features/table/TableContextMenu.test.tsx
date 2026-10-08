@@ -8,7 +8,7 @@ import type { GridContextTarget } from '@openrows/grid';
 import { useTableContext } from './TableContextMenu';
 import type { RowEditing } from './useRowEditing';
 import { initialView } from './model';
-import { emptyEdits } from './editHistory';
+import { emptyHistory } from './editHistory';
 import { readRow } from './row';
 vi.mock('./row', () => ({ readRow: vi.fn() }));
 beforeEach(() => {
@@ -59,7 +59,7 @@ function editing(readOnly = false): RowEditing {
         },
       ],
     },
-    history: emptyEdits,
+    history: emptyHistory,
     busy: false,
     open: vi.fn(),
     edit: vi.fn(),

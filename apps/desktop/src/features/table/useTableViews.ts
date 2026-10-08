@@ -5,6 +5,7 @@ import {
   cancelQuery,
   releaseResults,
   tableCount,
+  tableDetail,
   tablePage,
   tableStructure,
 } from '@openrows/ipc';
@@ -12,7 +13,8 @@ import type { PageRequest, TableQueryDto } from '@openrows/ipc';
 import { isActive } from '../query/run';
 import { emptyEntry, entriesReducer } from './entries';
 import type { EntryAction, TableEntry } from './entries';
-import type { EditHistory } from './editHistory';
+import type { EditHistory, History } from './editHistory';
+import type { StagedSchema } from './structure/schemaChanges';
 import type { TableTargetRef, TableView } from './model';
 
 /** State and IPC actions of every open table tab. */
@@ -24,6 +26,12 @@ export type TableViews = {
     change: (edits: EditHistory) => EditHistory,
   ) => void;
   setView: (tabId: string, change: (view: TableView) => TableView) => void;
+  setSchema: (
+    tabId: string,
+    change: (schema: History<StagedSchema>) => History<StagedSchema>,
+  ) => void;
+  /** Read the Structure/Index/Triggers/DDL detail of the tab's table. */
+  loadDetail: (tabId: string, target: TableTargetRef) => void;
   /** Run one page; `key` identifies it so a remount does not reload. */
   loadPage: (tabId: string, key: string, request: PageRequest) => void;
   cancelPage: (tabId: string) => void;
@@ -114,6 +122,21 @@ function readStructure(
   );
 }
 
+function readDetail(send: Send, tabId: string, target: TableTargetRef): void {
+  send(tabId, { type: 'detail', detail: { status: 'loading' } });
+  tableDetail(target).then(
+    (data) => {
+      send(tabId, { type: 'detail', detail: { status: 'ready', data } });
+    },
+    (error: unknown) => {
+      send(tabId, {
+        type: 'detail',
+        detail: { status: 'error', message: failure(error).message },
+      });
+    },
+  );
+}
+
 let tickets = 0;
 
 function startCount(
@@ -157,7 +180,11 @@ export function useTableViews(): TableViews {
     hasChanges: () =>
       Object.values(entries).some(
         (entry) =>
-          entry && (entry.edits.current.length > 0 || entry.edits.pending),
+          entry &&
+          (entry.edits.current.length > 0 ||
+            entry.edits.pending ||
+            entry.schema.current.length > 0 ||
+            entry.schema.pending),
       ),
     entryOf: (tabId) => entries[tabId] ?? emptyEntry,
     setEdits: (tabId, change) => {
@@ -165,6 +192,12 @@ export function useTableViews(): TableViews {
     },
     setView: (tabId, change) => {
       send(tabId, { type: 'view', change });
+    },
+    setSchema: (tabId, change) => {
+      send(tabId, { type: 'schema', change });
+    },
+    loadDetail: (tabId, target) => {
+      readDetail(send, tabId, target);
     },
     loadPage: (tabId, key, request) => {
       const previous = entries[tabId]?.run;

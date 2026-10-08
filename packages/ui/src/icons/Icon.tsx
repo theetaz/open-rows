@@ -18,6 +18,8 @@ const paths = {
     'M5 6c0-1.7 3.1-3 7-3s7 1.3 7 3-3.1 3-7 3-7-1.3-7-3ZM5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3',
   chevronLeft: 'M14.5 6l-6 6 6 6',
   chevronRight: 'M9.5 6l6 6-6 6',
+  arrowRight: 'M5 12h14M13 6l6 6-6 6',
+  copy: 'M9 9h10v11H9ZM15 9V5H5v11h4',
   lock: 'M6 11h12v9H6ZM8.5 11V8a3.5 3.5 0 0 1 7 0v3',
   unlock: 'M6 11h12v9H6ZM8.5 11V8a3.5 3.5 0 0 1 6.9-.8',
   terminal: 'M4 5h16v14H4ZM8 10l2.5 2L8 14M12.5 15h3.5',

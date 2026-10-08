@@ -15,23 +15,57 @@ export function canEdit(editing: RowEditing, ready: boolean): boolean {
   );
 }
 
+/** What the pending-changes bar shows and does (row or structure edits). */
+export type EditBarModel = {
+  count: number;
+  note: string;
+  canUndo: boolean;
+  canRedo: boolean;
+  uncertain: boolean;
+  busy: boolean;
+  /** Commit is possible (editable, session open, outcome known). */
+  enabled: boolean;
+  undo: () => void;
+  redo: () => void;
+  discard: () => void;
+  commit: () => void;
+  /** The expandable list of staged items. */
+  list: (id: string) => React.ReactNode;
+};
+
+/** The bar model of staged row edits. */
+export function rowEditBar(editing: RowEditing, ready: boolean): EditBarModel {
+  const { history } = editing;
+  return {
+    count: history.current.length,
+    note: editingNote(editing),
+    canUndo: history.past.length > 0,
+    canRedo: history.future.length > 0,
+    uncertain: Boolean(history.uncertain),
+    busy: editing.busy,
+    enabled: canEdit(editing, ready),
+    undo: editing.undo,
+    redo: editing.redo,
+    discard: editing.discard,
+    commit: () => {
+      editing.commit();
+    },
+    list: (id) => <StagedRows editing={editing} id={id} />,
+  };
+}
+
 /** Pending-changes bar, shown only while edits are staged or uncertain. */
 export function EditToolbar({
-  editing,
-  ready,
+  model,
 }: {
-  editing: RowEditing;
-  ready: boolean;
+  model: EditBarModel;
 }): React.JSX.Element | null {
-  const { history } = editing;
   const [listOpen, setListOpen] = useState(false);
   const listId = useId();
-  if (!history.uncertain && !history.current.length && !history.future.length)
-    return null;
-  const enabled = canEdit(editing, ready);
+  if (!model.uncertain && !model.count && !model.canRedo) return null;
   return (
     <>
-      {listOpen && <StagedRows editing={editing} id={listId} />}
+      {listOpen && model.list(listId)}
       <div className={styles.editToolbar} aria-label="Table editing">
         <Button
           size="sm"
@@ -39,45 +73,43 @@ export function EditToolbar({
           className={styles.editNote}
           aria-expanded={listOpen}
           aria-controls={listOpen ? listId : undefined}
-          disabled={!history.current.length}
+          disabled={!model.count}
           onClick={() => {
             setListOpen(!listOpen);
           }}
         >
           <Icon name={listOpen ? 'chevronDown' : 'chevronRight'} />
-          {editingNote(editing)}
+          {model.note}
         </Button>
         <span className={styles.spacer} />
         <Button
           size="sm"
           variant="ghost"
-          disabled={!history.past.length || editing.busy}
-          onClick={editing.undo}
+          disabled={!model.canUndo || model.busy}
+          onClick={model.undo}
         >
           Undo
         </Button>
         <Button
           size="sm"
           variant="ghost"
-          disabled={!history.future.length || editing.busy}
-          onClick={editing.redo}
+          disabled={!model.canRedo || model.busy}
+          onClick={model.redo}
         >
           Redo
         </Button>
         <Button
           size="sm"
-          disabled={!history.current.length || editing.busy}
-          onClick={editing.discard}
+          disabled={!model.count || model.busy}
+          onClick={model.discard}
         >
-          {history.uncertain ? 'Reload & discard' : 'Discard'}
+          {model.uncertain ? 'Reload & discard' : 'Discard'}
         </Button>
         <Button
           size="sm"
           variant="primary"
-          disabled={!enabled || !history.current.length || editing.busy}
-          onClick={() => {
-            editing.commit();
-          }}
+          disabled={!model.enabled || !model.count || model.busy}
+          onClick={model.commit}
         >
           Review &amp; commit
         </Button>

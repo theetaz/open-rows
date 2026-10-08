@@ -49,6 +49,10 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
         database={scope?.database ?? ''}
         onCell={controller.onCell}
         onRow={controller.onRow}
+        onTableInfo={controller.onTable}
+        onOpenTable={(table) => {
+          controller.openObject({ ...table, kind: 'table', arguments: null });
+        }}
       />
       <SplitPanel
         label="Inspector"
@@ -62,6 +66,7 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
           <WorkspaceInspector
             cell={controller.cell}
             row={controller.row}
+            table={controller.table}
             connectionId={connections.active?.id}
             panel={controller.panel}
             onPanel={controller.setPanel}

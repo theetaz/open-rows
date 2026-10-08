@@ -13,7 +13,10 @@ use openrows_sql::select::TableRef;
 use std::collections::BTreeMap;
 use tauri::State;
 
-async fn session(state: &Connections, target: &TableTarget) -> Result<PgSession, IpcError> {
+pub(crate) async fn session(
+    state: &Connections,
+    target: &TableTarget,
+) -> Result<PgSession, IpcError> {
     let destination = catalog::profile_target(state, &target.profile_id)?
         .with_database(&target.database)
         .with_application_suffix("table edits");
@@ -26,7 +29,7 @@ fn writable(state: &Connections, target: &TableTarget) -> Result<(), IpcError> {
     let profile = state.profiles.get(profile_id(&target.profile_id)?)?;
     ensure_writable(profile.safety.read_only)
 }
-fn ensure_writable(read_only: bool) -> Result<(), IpcError> {
+pub(crate) fn ensure_writable(read_only: bool) -> Result<(), IpcError> {
     if read_only {
         return Err(IpcError::invalid(
             "This connection is read-only: table edits are disabled",
