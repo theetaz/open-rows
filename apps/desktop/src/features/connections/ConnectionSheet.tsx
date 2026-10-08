@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
-import { Button, StatusDot } from '@openrows/ui';
+import { Button } from '@openrows/ui';
 import { Sheet, SheetActions } from '@openrows/ui/sheet';
 import type { ProfileDto } from '@openrows/ipc';
 import { ConnectionFields } from './ConnectionFields';
 import { EnvironmentFields } from './EnvironmentFields';
-import { serverLabel } from './sessions';
+import { SshFields } from './SshFields';
+import { TestResult } from './TestResult';
+import { TlsFields } from './TlsFields';
 import { UrlField } from './UrlField';
 import { useConnectionForm } from './useConnectionForm';
-import type { TestState } from './useConnectionForm';
 import styles from './ConnectionSheet.module.css';
 
 type Props = {
@@ -18,7 +19,7 @@ type Props = {
   onDuplicate: (profile: ProfileDto) => void;
 };
 
-/** New/edit PostgreSQL connection: URL ↔ fields, environment, safety, test and save. */
+/** New/edit PostgreSQL connection: URL ↔ fields, SSH, TLS, environment, safety, test and save. */
 export function ConnectionSheet(props: Props): React.JSX.Element {
   const { profile } = props;
   const form = useConnectionForm(profile, props.onSaved);
@@ -38,6 +39,8 @@ export function ConnectionSheet(props: Props): React.JSX.Element {
         <UrlField url={form.url} />
         <hr className={styles.separator} />
         <ConnectionFields form={form} />
+        <SshFields form={form} />
+        <TlsFields form={form} />
         <EnvironmentFields form={form} />
         <TestResult state={form.test} />
         {form.saveError && (
@@ -85,33 +88,4 @@ function ProfileActions(
       </Button>
     </>
   );
-}
-
-function TestResult({ state }: { state: TestState }): React.JSX.Element {
-  switch (state.status) {
-    case 'idle':
-      return <div role="status" className={styles.test} />;
-    case 'testing':
-      return (
-        <div role="status" className={styles.test}>
-          <StatusDot tone="info" label="Testing connection…" />
-        </div>
-      );
-    case 'ok':
-      return (
-        <div role="status" className={styles.test}>
-          <StatusDot
-            tone="success"
-            label={`Connected · ${serverLabel(state.report.server)} · ${String(state.report.elapsedMs)} ms`}
-          />
-        </div>
-      );
-    case 'error':
-      return (
-        <div role="alert" className={styles.test}>
-          <StatusDot tone="danger" label="Connection failed" />
-          <p className={styles.error}>{state.message}</p>
-        </div>
-      );
-  }
 }

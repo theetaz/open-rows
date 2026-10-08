@@ -100,3 +100,81 @@
   font-size: var(--or-text-12);
   overflow-wrap: anywhere;
 }
+.section {
+  display: grid;
+  gap: var(--or-space-8);
+  padding-block: var(--or-space-4) var(--or-space-2);
+}
+.form .warning {
+  display: flex;
+  align-items: baseline;
+  gap: var(--or-space-6);
+  margin-inline-start: calc(var(--label-column) + var(--or-space-8));
+  color: var(--or-secondary);
+  font-size: var(--or-text-11);
+}
+.steps {
+  display: grid;
+  gap: var(--or-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.step {
+  display: grid;
+  gap: var(--or-space-2);
+}
+.stepLine {
+  display: flex;
+  align-items: baseline;
+  gap: var(--or-space-8);
+}
+.stepTime {
+  margin-inline-start: auto;
+  color: var(--or-secondary);
+  font-size: var(--or-text-11);
+  font-variant-numeric: tabular-nums;
+}
+.stepDetail {
+  padding-inline-start: var(--or-space-16);
+  color: var(--or-secondary);
+  font-size: var(--or-text-11);
+  overflow-wrap: anywhere;
+}
+.step .error {
+  padding-inline-start: var(--or-space-16);
+}
+.visuallyHidden {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.fingerprint {
+  display: grid;
+  gap: var(--or-space-2);
+  padding: var(--or-space-8);
+  border-radius: var(--or-radius-field);
+  background: var(--or-control-fill);
+}
+.fingerprint span {
+  color: var(--or-secondary);
+  font-size: var(--or-text-11);
+}
+.fingerprint code {
+  font-family: var(--or-font-mono);
+  font-size: var(--or-text-12);
+  overflow-wrap: anywhere;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.warning > :first-child {
+  flex: none;
+  white-space: nowrap;
+}
+.note {
+  color: var(--or-secondary);
+  font-size: var(--or-text-11);
+}

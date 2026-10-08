@@ -9,7 +9,11 @@ const WorkspacePalettes = lazy(() =>
 );
 import { useWorkspaceController } from './useWorkspaceController';
 import { contextSegments } from './contextBar';
-import { ConnectionSheets, useConnections } from '../features/connections';
+import {
+  ConnectionSheets,
+  SshPrompts,
+  useConnections,
+} from '../features/connections';
 import styles from './Workspace.module.css';
 /** Real connections, catalog, query tabs and results. */
 export function Workspace({
@@ -69,6 +73,7 @@ export function Workspace({
       </span>
       <WorkspaceOverlay controller={controller} />
       <ConnectionSheets connections={connections} />
+      <SshPrompts />
     </div>
   );
 }
