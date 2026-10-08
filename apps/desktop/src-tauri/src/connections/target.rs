@@ -70,13 +70,12 @@ pub(crate) struct DriverSecrets {
 /// Driver target for `profile`; the route (SSH) is added by [`Target::through`].
 ///
 /// # Errors
-/// `Unsupported` for engines without a driver; `Invalid` when a server
-/// profile has no user or a file profile no file.
+/// `Invalid` when a server profile has no user or a file profile no file.
 pub(crate) fn target(
     profile: &ConnectionProfile,
     secrets: &DriverSecrets,
 ) -> Result<Target, IpcError> {
-    let driver = drivers::driver(profile.driver)?;
+    let driver = drivers::driver(profile.driver);
     let params = &profile.params;
     let (endpoint, user) = if profile.driver.is_file() {
         let file = profile

@@ -69,7 +69,6 @@ fn list(service: &ProfileService) -> Result<ProfileList, IpcError> {
 fn create(service: &ProfileService, input: &ProfileInput) -> Result<ProfileDto, IpcError> {
     let mut profile = input.new_profile();
     input.apply(&mut profile)?;
-    super::drivers::driver(profile.driver)?;
     let changes = input.secret_changes()?;
     Ok(ProfileDto::from(&service.create_with(profile, &changes)?))
 }

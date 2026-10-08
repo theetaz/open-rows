@@ -74,7 +74,7 @@ pub(crate) async fn table_alter(
         ));
     }
     let guarded = profile.safety.confirm_writes || profile.env_tag.kind == EnvKind::Prod;
-    let driver = driver(profile.driver)?;
+    let driver = driver(profile.driver);
     let mut session = session(&state, &request.target).await?;
     let result = prepare_alter(session.as_mut(), driver, &request, guarded).await;
     let closed = session
