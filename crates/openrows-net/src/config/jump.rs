@@ -14,6 +14,16 @@ pub struct JumpSpec {
     pub port: Option<u16>,
 }
 
+impl JumpSpec {
+    /// Parse a comma-separated `ProxyJump` list, e.g. `ops@jump:2222,bastion`.
+    ///
+    /// # Errors
+    /// A message naming the malformed destination.
+    pub fn parse_list(value: &str) -> Result<Vec<Self>, String> {
+        parse_jump_list(value)
+    }
+}
+
 /// Parse a comma-separated `ProxyJump` value.
 pub(crate) fn parse_jump_list(value: &str) -> Result<Vec<JumpSpec>, String> {
     value.split(',').map(parse_jump).collect()

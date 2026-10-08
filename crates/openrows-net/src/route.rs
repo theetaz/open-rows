@@ -22,6 +22,12 @@ pub enum RouteError {
         /// Hop limit.
         max: usize,
     },
+    /// The route has no SSH server.
+    #[error("the SSH host is empty")]
+    MissingHost,
+    /// A jump host is not `[user@]host[:port]`.
+    #[error("jump host: {0}")]
+    InvalidJump(String),
 }
 
 /// Ordered hops for `alias`: jump hosts first, the destination last.
@@ -29,9 +35,19 @@ pub enum RouteError {
 /// # Errors
 /// [`RouteError::TooManyHops`] for chains longer than eight hops or loops.
 pub fn resolve_route(config: &SshConfig, alias: &str) -> Result<Vec<HostSettings>, RouteError> {
-    let hops = expand(config, config.resolve(alias), 0, alias)?;
+    expand_target(config, config.resolve(alias))
+}
+
+/// Ordered hops for already-resolved `target` settings, whose `proxy_jump`
+/// may have been overridden by the profile.
+pub(crate) fn expand_target(
+    config: &SshConfig,
+    target: HostSettings,
+) -> Result<Vec<HostSettings>, RouteError> {
+    let alias = target.alias.clone();
+    let hops = expand(config, target, 0, &alias)?;
     if hops.len() > MAX_HOPS {
-        return Err(too_many(alias));
+        return Err(too_many(&alias));
     }
     Ok(hops)
 }

@@ -1,3 +1,12 @@
+[graph]
+# Only the desktop targets OpenRows ships (docs/16). Without this, wasm-only
+# dependencies (e.g. webpki-root-certs under rustls-platform-verifier, CDLA
+# data licence) would be checked although no shipped binary contains them.
+targets = [
+    "aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu",
+    "aarch64-unknown-linux-gnu", "x86_64-pc-windows-msvc", "aarch64-pc-windows-msvc",
+]
+
 [advisories]
 # Vulnerabilities are errors by default; do not ignore any advisories.
 yanked = "deny"

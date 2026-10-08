@@ -107,29 +107,49 @@ impl SshTunnel {
     /// # Errors
     /// [`SshError`] naming the failing stage, host-key problem or auth failure.
     pub async fn connect(hops: &[SshHop], options: &TunnelOptions) -> Result<Self, SshError> {
-        let (first, rest) = hops.split_first().ok_or(SshError::EmptyRoute)?;
+        Self::connect_traced(hops, options).await.0
+    }
+
+    /// As [`SshTunnel::connect`], also returning the timings of the hops that
+    /// came up, so diagnostics can show how far a failed attempt got (the
+    /// failing hop is `hops[timings.len()]`).
+    pub async fn connect_traced(
+        hops: &[SshHop],
+        options: &TunnelOptions,
+    ) -> (Result<Self, SshError>, Vec<HopTiming>) {
         let mut tunnel = Self {
             sessions: Vec::with_capacity(hops.len()),
             timings: Vec::with_capacity(hops.len()),
             timeouts: options.timeouts,
         };
+        match tunnel.add_hops(hops, options).await {
+            Ok(()) => {
+                let timings = tunnel.timings.clone();
+                (Ok(tunnel), timings)
+            }
+            Err(error) => (Err(error), std::mem::take(&mut tunnel.timings)),
+        }
+    }
+
+    async fn add_hops(&mut self, hops: &[SshHop], options: &TunnelOptions) -> Result<(), SshError> {
+        let (first, rest) = hops.split_first().ok_or(SshError::EmptyRoute)?;
         let started = Instant::now();
         let tcp = dial(first, &options.timeouts).await?;
         let transport = Transport {
             stream: tcp,
             connect: started.elapsed(),
         };
-        tunnel.add_hop(transport, first, options).await?;
+        self.add_hop(transport, first, options).await?;
         for hop in rest {
             let started = Instant::now();
-            let TunnelStream(stream) = tunnel.open_stream(&hop.host, hop.port).await?;
+            let TunnelStream(stream) = self.open_stream(&hop.host, hop.port).await?;
             let transport = Transport {
                 stream,
                 connect: started.elapsed(),
             };
-            tunnel.add_hop(transport, hop, options).await?;
+            self.add_hop(transport, hop, options).await?;
         }
-        Ok(tunnel)
+        Ok(())
     }
 
     /// Open a forwarded stream to `host:port` as seen from the last hop.
@@ -156,6 +176,12 @@ impl SshTunnel {
         )
         .await?;
         Ok(TunnelStream(channel.into_stream()))
+    }
+
+    /// True once any hop's session has ended; open a new tunnel then.
+    #[must_use]
+    pub fn is_closed(&self) -> bool {
+        self.sessions.iter().any(Handle::is_closed)
     }
 
     /// Per-hop timings, first hop first.
