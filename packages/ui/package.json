@@ -9,7 +9,8 @@
     "./tokens.css": "./src/tokens/tokens.css",
     "./tokens": "./src/tokens/index.ts",
     "./palette": "./src/components/Palette.tsx",
-    "./sheet": "./src/components/Sheet.tsx"
+    "./sheet": "./src/components/Sheet.tsx",
+    "./format": "./src/format/booleanText.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { DisplayCell, GridColumn, GridTheme } from './model';
+import { booleanText } from '@openrows/ui/format';
 
 /** Horizontal text inset and the width reserved for a stepper glyph. */
 const CELL_PADDING = 8;
@@ -9,13 +10,6 @@ export const STEPPER_WIDTH = 16;
 export function textWidth(column: GridColumn | undefined): number {
   if (!column) return 0;
   return column.width - CELL_PADDING * 2 - (column.kind ? STEPPER_WIDTH : 0);
-}
-
-/** TablePlus shows booleans as TRUE/FALSE; constants keep painting allocation-free. */
-export function booleanText(text: string): string {
-  if (text === 'true' || text === 't') return 'TRUE';
-  if (text === 'false' || text === 'f') return 'FALSE';
-  return text;
 }
 
 /** Muted markers: NULL, EMPTY and DEFAULT, distinct from real values. */
