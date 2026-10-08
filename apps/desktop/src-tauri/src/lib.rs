@@ -12,6 +12,8 @@ mod spike;
 mod startup;
 mod startup_report;
 mod tables;
+mod titlebar;
+mod window_frame;
 
 fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
     use connections::{catalog, connection, profiles, sessions};
@@ -48,7 +50,10 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
             tables::commands::table_count,
             tables::edit_commands::table_edit_info,
             tables::edit_commands::table_edit_row,
-            tables::edit_commands::table_edit
+            tables::edit_commands::table_edit,
+            tables::file_value::table_edit_file,
+            tables::schema_commands::table_detail,
+            tables::schema_commands::table_alter
         ])
         .events(tauri_specta::collect_events![sessions::SessionStateChanged])
         .constant(
@@ -79,6 +84,7 @@ pub fn run() -> Result<(), tauri::Error> {
     startup_report::record(startup_report::Phase::BuilderStart);
     let builder = spike::configure(tauri::Builder::default())?
         .plugin(tauri_plugin_dialog::init())
+        .plugin(window_frame::plugin())
         .manage(queries::Queries::default());
     let specta = command_builder();
     let controls = specta.invoke_handler();

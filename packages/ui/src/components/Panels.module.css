@@ -12,9 +12,10 @@
 .toolbar {
   display: inline-flex;
   align-items: center;
-  gap: var(--or-space-4);
+  gap: 0;
   padding: var(--or-space-2);
   box-shadow: none;
-  border-color: transparent;
+  background: var(--or-control-fill);
+  border-color: var(--or-separator);
   border-radius: var(--or-radius-capsule);
 }

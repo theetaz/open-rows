@@ -1,26 +1,26 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useRef } from 'react';
 import { Button } from '@openrows/ui';
-import type { ResultMeta } from '../query/run';
 import type { TableObject } from '../query/tabs';
-import { StagedRows } from './StagedRows';
-import { EditToolbar } from './EditToolbar';
+import { canEdit, EditToolbar, editingNote, rowEditBar } from './EditToolbar';
 import { RowEditSheet } from './RowEditSheet';
 import { useRowEditing } from './useRowEditing';
 import { useTableContext } from './TableContextMenu';
 import { ColumnsPanel } from './ColumnsPanel';
 import { FilterBar } from './FilterBar';
-import { StructureView } from './StructureView';
+import { StructurePane } from './structure/StructurePane';
+import { useStructure } from './structure/useStructure';
+import type { Structure } from './structure/useStructure';
+import type { SelectedTable } from './structure/TableInfoPanel';
 import { TableData } from './TableData';
 import { TableFooter } from './TableFooter';
-import { readRow } from './row';
-import type { SelectedRow } from './row';
+import type { ShowRow } from './row';
+import { useSelectedRow } from './useSelectedRow';
+import type { FooterAdd, FooterStructure } from './TableFooter';
 import { useTableKeys } from './useTableKeys';
 import { useTableTab } from './useTableTab';
 import type { TableViews } from './useTableViews';
 import styles from './Table.module.css';
-
-const noKeys: readonly string[] = [];
 
 type TableTabProps = {
   tabId: string;
@@ -31,32 +31,36 @@ type TableTabProps = {
   /** Why rows cannot load even though the connection is open. */
   notice: string | null;
   views: TableViews;
-  onRow: (row: SelectedRow) => void;
+  onRow: ShowRow;
   onConnect: () => void;
+  /** Table info for the inspector in Structure/Index mode; `null` hides it. */
+  onTableInfo?: ((table: SelectedTable | null) => void) | undefined;
+  /** Open another table (a foreign key's target) in a tab. */
+  onOpenTable?: ((schema: string, table: string) => void) | undefined;
+  /** The table was renamed by a committed structure change. */
+  onRenamed?: ((name: string) => void) | undefined;
 };
 
 /** A TablePlus-style table view: filters, paged canvas grid, structure, footer. */
 export function TableTab(props: TableTabProps): React.JSX.Element {
   const { table, sessionId } = props;
   const root = useRef<HTMLElement>(null);
-  const rowSequence = useRef(0);
   const state = useTableTab(props);
   const { view, actions, columns } = state;
   useTableKeys(root, actions);
+  const structure = useStructure({ ...props, mode: view.mode });
   const editing = useRowEditing({
     ...props,
     target: state.query.target,
     offset: view.offset,
   });
-  const showRow = (result: ResultMeta, row: number): void => {
-    rowHandler({
-      table,
-      view,
-      editing,
-      onRow: props.onRow,
-      sequence: rowSequence,
-    })(result, row);
-  };
+  const showRow = useSelectedRow({
+    table: table.name,
+    offset: view.offset,
+    editing,
+    ready: sessionId !== null,
+    onRow: props.onRow,
+  });
   const context = useTableContext({
     editing,
     changeView: (update) => {
@@ -83,14 +87,12 @@ export function TableTab(props: TableTabProps): React.JSX.Element {
           <TableData
             state={state}
             onRow={showRow}
-            onEdit={editing.open}
+            editing={editing}
             onContextMenu={context.show}
-            changes={editing.history.current}
-            editKeys={editing.info?.key ?? noKeys}
           />
         )
       ) : (
-        <StructureView structure={state.entry.structure} show={view.mode} />
+        <StructurePane structure={structure} table={table.name} />
       )}
       {view.columnsOpen && (
         <ColumnsPanel
@@ -99,19 +101,88 @@ export function TableTab(props: TableTabProps): React.JSX.Element {
           actions={actions}
         />
       )}
-      <StagedRows editing={editing} />
-      {view.mode === 'data' && (
-        <EditToolbar editing={editing} ready={sessionId !== null} />
-      )}
-      {editing.error && !editing.review && (
+      {context.menu}
+      <EditingFooter
+        state={state}
+        editing={editing}
+        structure={structure}
+        ready={sessionId !== null}
+      />
+    </section>
+  );
+}
+
+/** The footer's `+` button and Structure/Index tools for the current mode. */
+function footerProps(
+  state: ReturnType<typeof useTableTab>,
+  editing: ReturnType<typeof useRowEditing>,
+  structure: Structure,
+  ready: boolean,
+): { add: FooterAdd; structure?: FooterStructure } {
+  const { mode } = state.view;
+  if (mode === 'data')
+    return {
+      add: {
+        label: 'Row',
+        run: canEdit(editing, ready) ? editing.insert : undefined,
+        title: editingNote(editing),
+      },
+    };
+  const { schema } = structure;
+  const enabled = schema.enabled;
+  const note = schema.detail?.editable === false ? 'Read-only' : '';
+  const indexes = mode === 'indexes';
+  return {
+    add: {
+      label: indexes ? 'Index' : 'Column',
+      run: enabled
+        ? indexes
+          ? structure.openIndexSheet
+          : structure.addColumn
+        : undefined,
+      title: note || (indexes ? 'Add an index' : 'Add a column'),
+    },
+    structure: {
+      status: indexes
+        ? `${String(structure.indexes.length)} indexes`
+        : `${String(structure.rows.length)} columns`,
+      onTriggers: () => {
+        structure.setSheet('triggers');
+      },
+      onDdl: structure.toggleDdl,
+      ddlOpen: structure.ddl !== null,
+    },
+  };
+}
+
+/** Staged rows, the pending-changes bar, edit errors and the table footer. */
+function EditingFooter({
+  state,
+  editing,
+  structure,
+  ready,
+}: {
+  state: ReturnType<typeof useTableTab>;
+  editing: ReturnType<typeof useRowEditing>;
+  structure: Structure;
+  ready: boolean;
+}): React.JSX.Element {
+  const data = state.view.mode === 'data';
+  return (
+    <>
+      {data && <EditToolbar model={rowEditBar(editing, ready)} />}
+      {data && editing.error && !editing.review && (
         <p role="alert" className={styles.banner}>
           {editing.error}
         </p>
       )}
       <RowEditSheet editing={editing} />
-      {context.menu}
-      <TableFooter state={state} ready={sessionId !== null} />
-    </section>
+      <TableFooter
+        state={state}
+        ready={ready}
+        {...footerProps(state, editing, structure, ready)}
+      />
+    </>
   );
 }
 
@@ -132,50 +203,4 @@ function Banner(props: TableTabProps): React.JSX.Element | null {
       </Button>
     </p>
   );
-}
-
-function rowHandler({
-  table,
-  view,
-  editing,
-  onRow,
-  sequence,
-}: {
-  table: TableObject;
-  view: import('./model').TableView;
-  editing: import('./useRowEditing').RowEditing;
-  onRow: TableTabProps['onRow'];
-  sequence: React.RefObject<number>;
-}) {
-  return (result: ResultMeta, row: number): void => {
-    const ticket = ++sequence.current;
-    readRow(result, row).then(
-      (fields) => {
-        if (ticket !== sequence.current) return;
-        onRow({
-          table: table.name,
-          number: view.offset + row + 1,
-          fields,
-          ...(editing.info && !editing.info.readOnly && editing.info.key.length
-            ? {
-                onEdit: (name: string) => {
-                  const column = result.columns.findIndex(
-                    (item) => item.name === name,
-                  );
-                  if (column >= 0) editing.open(result, { row, column });
-                },
-              }
-            : {}),
-        });
-      },
-      (error: unknown) => {
-        onRow({
-          table: table.name,
-          number: view.offset + row + 1,
-          fields: [],
-          error: error instanceof Error ? error.message : String(error),
-        });
-      },
-    );
-  };
 }

@@ -18,8 +18,13 @@
 .inner {
   inline-size: var(--panel-width);
   block-size: 100%;
-  padding-inline: var(--or-space-4);
   overflow: hidden;
+}
+.panel[data-edge='right'] .inner {
+  border-inline-end: var(--or-border-width) solid var(--or-separator);
+}
+.panel[data-edge='left'] .inner {
+  border-inline-start: var(--or-border-width) solid var(--or-separator);
 }
 .panel[data-resizing='true'] {
   transition: none;
@@ -41,21 +46,19 @@
 .handle {
   position: absolute;
   inset-block: 0;
-  inline-size: 8px;
+  inline-size: 7px;
   cursor: col-resize;
   touch-action: none;
   z-index: 6;
   border-radius: var(--or-radius-capsule);
 }
 .handle[data-edge='left'] {
-  inset-inline-start: 0;
+  inset-inline-start: -3px;
 }
 .handle[data-edge='right'] {
-  inset-inline-end: 0;
+  inset-inline-end: -3px;
 }
-.handle:hover,
 .handle:focus-visible {
-  background: var(--or-control-fill);
   outline: var(--or-focus-width) solid var(--or-focus);
   outline-offset: -2px;
 }

@@ -94,24 +94,26 @@ it('switches sidebar segments, lazily expands real sections and opens objects on
     expect(section).toHaveAttribute('aria-expanded', 'true');
   }
   expect(
-    await sidebar.findByRole('button', { name: 'calc_tax(total numeric)' }),
+    await sidebar.findByRole('treeitem', { name: 'calc_tax(total numeric)' }),
   ).toBeVisible();
   await user.type(
     screen.getByRole('textbox', { name: 'Search items' }),
     'customers',
   );
-  expect(sidebar.queryByRole('button', { name: /order_items/ })).toBeNull();
-  const customers = sidebar.getByRole('button', { name: 'customers ~412K' });
-  expect(customers).toHaveAttribute('title', 'orders.public.customers · Table');
+  expect(sidebar.queryByRole('treeitem', { name: /order_items/ })).toBeNull();
+  const customers = sidebar.getByRole('treeitem', { name: 'customers ~412K' });
+  expect(
+    within(customers).getByTitle('orders.public.customers · Table'),
+  ).toBeVisible();
   await user.clear(screen.getByRole('textbox', { name: 'Search items' }));
   await user.click(sidebar.getByRole('radio', { name: 'Queries' }));
   expect(sidebar.getByRole('button', { name: /Top customers/ })).toBeVisible();
   await user.click(sidebar.getByRole('radio', { name: 'History' }));
   expect(sidebar.getByRole('button', { name: /Yesterday/ })).toBeVisible();
   await user.click(sidebar.getByRole('radio', { name: 'Items' }));
-  const orders = sidebar.getByRole('button', { name: 'orders ~2.4M' });
+  const orders = sidebar.getByRole('treeitem', { name: 'orders ~2.4M' });
   await user.click(orders);
-  expect(orders).toHaveAttribute('aria-pressed', 'true');
+  expect(orders).toHaveAttribute('aria-selected', 'true');
   expect(screen.queryByRole('tab', { name: /^orders/ })).toBeNull();
   await user.dblClick(orders);
   expect(
@@ -159,7 +161,7 @@ it('opens objects of another database in its own tab set on its own session', as
     'orders_archive',
   );
   await user.dblClick(
-    await screen.findByRole('button', { name: 'orders_2024 ~820K' }),
+    await screen.findByRole('treeitem', { name: 'orders_2024 ~820K' }),
   );
   expect(screen.queryByRole('tab', { name: /SQL Query 1/ })).toBeNull();
   expect(screen.getByRole('tab', { name: /orders_2024/ })).toHaveAttribute(
@@ -183,7 +185,7 @@ it('opens objects of another database in its own tab set on its own session', as
   expect(screen.queryByText(/browse-only/)).toBeNull();
   await user.click(screen.getByRole('button', { name: /^Sequences/ }));
   await user.dblClick(
-    await screen.findByRole('button', { name: 'orders_2024_id_seq' }),
+    await screen.findByRole('treeitem', { name: 'orders_2024_id_seq' }),
   );
   expect(
     await screen.findByRole('textbox', { name: 'SQL editor' }),
@@ -208,7 +210,7 @@ it('opens objects of another database in its own tab set on its own session', as
 it('opens, switches and closes query tabs per connection', async () => {
   const user = mount();
   expect(
-    screen.getByText('Choose a connection in the rail to open a query tab.'),
+    screen.getByText('Choose a connection in the sidebar to open a query tab.'),
   ).toBeVisible();
   await user.click(
     await screen.findByRole('button', { name: 'Switch to orders-local' }),

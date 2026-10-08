@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { lazy, Suspense } from 'react';
 import { WorkspaceToolbar } from './WorkspaceToolbar';
-import { WorkspaceBody } from './WorkspaceBody';
+import { WorkspaceBody, WorkspaceRail } from './WorkspaceBody';
 const WorkspacePalettes = lazy(() =>
   import('./WorkspacePalettes').then((module) => ({
     default: module.WorkspacePalettes,
@@ -33,42 +33,37 @@ export function Workspace({
   const status = profile ? connections.statusOf(profile.id) : undefined;
   return (
     <div className={styles.workspace}>
-      <WorkspaceToolbar
-        context={contextSegments({
-          profile,
-          status,
-          database: catalog.database,
-          schema: catalog.schema,
-          objectPath: tab?.objectPath,
-        })}
-        health={status?.state ?? 'disconnected'}
-        onDatabase={() => {
-          setMode('database');
-        }}
-        onPalette={() => {
-          setMode('commands');
-        }}
-        onRefresh={controller.refresh}
-        safe={safe}
-        prod={prod}
-        onSafe={controller.toggleSafe}
-        sidebar={sidebar}
-        inspector={inspector.open}
-        onSidebar={controller.toggleSidebar}
-        onInspector={inspector.toggle}
-        onQuery={() => {
-          controller.addQuery();
-        }}
-      />
-      <WorkspaceBody
-        connections={connections}
-        controller={controller}
-        onGallery={onGallery}
-        onAppearance={onAppearance}
-        onSwitcher={() => {
-          setMode('database');
-        }}
-      />
+      <WorkspaceRail connections={connections} onAppearance={onAppearance} />
+      <div className={styles.main}>
+        <WorkspaceToolbar
+          context={contextSegments({
+            profile,
+            status,
+            database: catalog.database,
+            schema: catalog.schema,
+            objectPath: tab?.objectPath,
+          })}
+          health={status?.state ?? 'disconnected'}
+          onDatabase={() => {
+            setMode('database');
+          }}
+          onPalette={() => {
+            setMode('commands');
+          }}
+          onRefresh={controller.refresh}
+          safe={safe}
+          prod={prod}
+          onSafe={controller.toggleSafe}
+          sidebar={sidebar}
+          inspector={inspector.open}
+          onSidebar={controller.toggleSidebar}
+          onInspector={inspector.toggle}
+          onQuery={() => {
+            controller.addQuery();
+          }}
+        />
+        <WorkspaceBody connections={connections} controller={controller} />
+      </div>
       <span className={styles.announcement} role="status">
         {refreshes ? `Catalog refreshed (${String(refreshes)})` : ''}
       </span>

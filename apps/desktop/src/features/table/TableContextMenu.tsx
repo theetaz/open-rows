@@ -40,7 +40,9 @@ function TableContextMenu(props: Props): React.JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const { selection } = props;
   useEffect(() => {
-    if (selection.kind === 'column') return;
+    // Staged inserts have no server row to read yet.
+    if (selection.kind === 'column' || selection.row >= selection.result.rows)
+      return;
     let alive = true;
     readRow(selection.result, selection.row).then(
       (row) => {

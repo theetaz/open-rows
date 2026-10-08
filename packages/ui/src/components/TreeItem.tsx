@@ -1,6 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ReactNode } from 'react';
+import { Icon } from '../icons/Icon';
+import type { IconName } from '../icons/Icon';
 import styles from './Navigation.module.css';
+
+/** Catalog glyphs drawn as line icons; other glyphs render as text. */
+const glyphIcons: Record<string, IconName> = {
+  '▦': 'table',
+  '▤': 'eye',
+  '▥': 'eye',
+  ƒ: 'function',
+  '≡': 'list',
+};
 
 /**
  * Object selection row with a name and optional estimated row count. With
@@ -43,7 +54,7 @@ export function TreeItem({
       }}
     >
       <span aria-hidden="true" data-glyph={glyph}>
-        {glyph}
+        {glyphIcons[glyph] ? <Icon name={glyphIcons[glyph]} /> : glyph}
       </span>
       <span>{children ?? label}</span>
       <small>{count}</small>

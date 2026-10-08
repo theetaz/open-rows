@@ -3,17 +3,13 @@ import { useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
   GlassPanel,
+  Icon,
   SegmentedControl,
   TextField,
   TreeItem,
   HighlightText,
 } from '@openrows/ui';
-import {
-  DatabaseSelector,
-  ObjectTree,
-  SchemaPicker,
-  substringIndices,
-} from '../features/schema';
+import { ObjectTree, SchemaPicker, substringIndices } from '../features/schema';
 import type { Catalog, ObjectRef } from '../features/schema';
 import { savedQueries, history } from './data/connections';
 import { sidebarSegments } from './data/content';
@@ -21,7 +17,6 @@ import styles from './Sidebar.module.css';
 type Props = {
   catalog: Catalog;
   header: ReactNode;
-  onSwitcher: () => void;
   onOpen: (object: ObjectRef) => void;
   onQuery: () => void;
 };
@@ -57,24 +52,17 @@ export function WorkspaceSidebar(props: Props): React.JSX.Element {
       className={styles.container}
     >
       <GlassPanel className={styles.sidebar}>
-        <header className={styles.header}>
-          {props.header}
-          <DatabaseSelector
-            database={catalog.database}
-            connected={!catalog.offline}
-            opened={catalog.opened}
-            onDatabase={catalog.openDatabase}
-            onCloseDatabase={catalog.closeDatabase}
-            onSwitcher={props.onSwitcher}
-          />
-        </header>
         <SegmentedControl
           aria-label="Sidebar mode"
           options={sidebarSegments}
           value={segment}
           onValueChange={setSegment}
+          className={styles.modes}
         />
+        {props.header}
         <TextField
+          className={styles.search}
+          leadingIcon={<Icon name="search" />}
           aria-label="Search items"
           placeholder="Search tables, views…"
           value={search}
@@ -97,7 +85,7 @@ export function WorkspaceSidebar(props: Props): React.JSX.Element {
             />
           )}
         </div>
-        <SchemaPicker catalog={catalog} />
+        {catalog.database && <SchemaPicker catalog={catalog} />}
       </GlassPanel>
     </div>
   );

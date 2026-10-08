@@ -2,18 +2,21 @@
 //! Review and commit table edits on a dedicated, short-lived `PostgreSQL` connection.
 use super::commands::owned_session;
 use super::dto::TableTarget;
-use super::edit_dto::{EditInfoDto, EditKindDto, EditReply, EditRequest, EditStatementDto};
+use super::edit_dto::{EditInfoDto, EditReply, EditRequest, EditStatementDto};
 use crate::connections::{Connections, IpcError};
 use crate::connections::{catalog, pg, profiles::profile_id};
 use openrows_core::safety::{SafetyPlan, SafetyPolicy};
 use openrows_driver_api::Session;
 use openrows_driver_postgres::{BoundEdit, PgSession};
-use openrows_sql::edit::{Edit, EditKind, EditTable, edit_sql};
+use openrows_sql::edit::{Edit, EditTable, edit_sql};
 use openrows_sql::select::TableRef;
 use std::collections::BTreeMap;
 use tauri::State;
 
-async fn session(state: &Connections, target: &TableTarget) -> Result<PgSession, IpcError> {
+pub(crate) async fn session(
+    state: &Connections,
+    target: &TableTarget,
+) -> Result<PgSession, IpcError> {
     let destination = catalog::profile_target(state, &target.profile_id)?
         .with_database(&target.database)
         .with_application_suffix("table edits");
@@ -26,7 +29,7 @@ fn writable(state: &Connections, target: &TableTarget) -> Result<(), IpcError> {
     let profile = state.profiles.get(profile_id(&target.profile_id)?)?;
     ensure_writable(profile.safety.read_only)
 }
-fn ensure_writable(read_only: bool) -> Result<(), IpcError> {
+pub(crate) fn ensure_writable(read_only: bool) -> Result<(), IpcError> {
     if read_only {
         return Err(IpcError::invalid(
             "This connection is read-only: table edits are disabled",
@@ -158,20 +161,8 @@ async fn prepare_commit(
         .changes
         .iter()
         .map(|change| {
-            let kind = match change.kind {
-                EditKindDto::Update => EditKind::Update,
-                EditKindDto::Insert => EditKind::Insert,
-                EditKindDto::Delete => EditKind::Delete,
-            };
-            edit_sql(
-                &table,
-                &Edit {
-                    kind,
-                    original: change.original.clone(),
-                    values: change.values.clone(),
-                },
-            )
-            .map_err(|error| IpcError::invalid(error.to_string()))
+            edit_sql(&table, &Edit::from(change))
+                .map_err(|error| IpcError::invalid(error.to_string()))
         })
         .collect::<Result<Vec<_>, _>>()?;
     let token = preview_token(request, &edits)?;
@@ -222,7 +213,7 @@ fn preview_token(
 }
 #[cfg(test)]
 mod tests {
-    use super::super::edit_dto::RowEditDto;
+    use super::super::edit_dto::{CellValueDto, EditKindDto, RowEditDto};
     use super::*;
     #[test]
     fn read_only_refuses_table_writes() {
@@ -234,7 +225,12 @@ mod tests {
         let change = RowEditDto {
             kind: EditKindDto::Update,
             original: BTreeMap::from([("id".into(), Some("1".into()))]),
-            values: BTreeMap::from([("name".into(), Some("first".into()))]),
+            values: BTreeMap::from([(
+                "name".into(),
+                CellValueDto::Text {
+                    value: "first".into(),
+                },
+            )]),
         };
         let mut request = EditRequest {
             session_id: "session-a".into(),
@@ -252,10 +248,18 @@ mod tests {
             params: vec![Some("first".into()), Some("1".into())],
         }];
         let first = preview_token(&request, &sql)?;
+        request.changes[0].values.insert(
+            "name".into(),
+            CellValueDto::Text {
+                value: "second".into(),
+            },
+        );
+        let second = preview_token(&request, &sql)?;
+        assert_ne!(first, second);
         request.changes[0]
             .values
-            .insert("name".into(), Some("second".into()));
-        assert_ne!(first, preview_token(&request, &sql)?);
+            .insert("name".into(), CellValueDto::Default);
+        assert_ne!(second, preview_token(&request, &sql)?);
         request.session_id = "session-b".into();
         assert_ne!(first, preview_token(&request, &sql)?);
         Ok(())

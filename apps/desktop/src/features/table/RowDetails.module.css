@@ -1,0 +1,71 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Inspector row fields, after TablePlus: name and muted type above a value box. */
+.details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-8);
+  min-height: 0;
+}
+.caption {
+  color: var(--or-secondary);
+  font-size: var(--or-text-11-5);
+}
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-8);
+  min-height: 0;
+  overflow: auto;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-2);
+}
+.label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--or-space-8);
+  min-width: 0;
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+}
+.label span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.label small {
+  flex-shrink: 0;
+  max-width: 50%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--or-text-11-5);
+}
+.value {
+  --or-text-area-max: 12lh;
+  font-family: var(--or-font-mono);
+  font-size: var(--or-text-mono);
+}
+/* The grid's staged-cell marker, so a staged field reads the same in both places. */
+.field[data-state='changed'] .value {
+  background: var(--or-cell-edited);
+}
+.field[data-state='deleted'] .value {
+  background: var(--or-row-deleted);
+}
+.chevron {
+  color: var(--or-secondary);
+}
+.note {
+  margin: 0;
+  padding: var(--or-space-16);
+  color: var(--or-secondary);
+}
+/* NULL, EMPTY and DEFAULT read as quiet markers, like the grid. */
+.field textarea::placeholder {
+  color: var(--or-placeholder);
+}

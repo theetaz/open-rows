@@ -88,7 +88,7 @@ The approved direction refines the skeleton above:
 
 | Region | v2 decision |
 | --- | --- |
-| **Workspace sidebar** (far left, 184 px; compact 54 px) | Named server rows use 28 px engine-tinted monograms and status dots, normal-font connection names and secondary status text. Environment/folder headings show counts and collapse independently; each connection has a separate disclosure next to its selection control. Its opened databases are indented horizontal rows with database icons, avoiding repeated headings. Solid blue selection identifies the active database; green, amber and coral distinguish environments. Compact mode keeps the monograms, database icons, tooltips and accessible names. Both width mode and collapse state persist locally. Tab and ↑/↓ navigate; ⌘1–4 switch. New connection, API and settings controls remain available. |
+| **Workspace sidebar** (far left, 220 px, full height under the traffic lights; compact 60 px) | Named server rows use 20 px engine-tinted monograms with a presence dot on the tile's bottom-right corner (grey, amber connecting, green connected, red failed), normal-font connection names and visually hidden status text (failures show it). Environment/folder headings show counts and collapse independently; each connection has a separate disclosure next to its selection control. Its opened databases are indented horizontal rows with database icons. Solid blue selection identifies the active database. Compact mode works like Slack: the toolbar spans the window, the rail sits below it with one 36 px tile per connection (the selected one ringed), short separators between groups and `+` below the tiles; databases are reached from ⌘K and the toolbar. Right-click opens the connection menu at the pointer; the hover ⋯ opens it under the button. Tooltips show the name, environment, address, status and ⌘ shortcut. Both width mode and collapse state persist locally. Tab and ↑/↓ navigate; ⌘1–9 switch, in rail order. New connection, API and settings controls remain available. |
 | **Sidebar header** | Truncating workspace name, environment badge and a mock actions menu (Connection settings…, Duplicate, Disconnect). Below, a database icon/name/chevron opens a glass menu of opened databases: active check, hover/focus close (the last one too), wrapping ↑/↓, Home/End, Enter, Esc/Tab dismissal and opener focus return; the menu takes the selector's width and never leaves the sidebar, long names truncate with a full-name tooltip. Open database… (⌘K) opens the Open database panel. Database and workspace changes preserve per-database tabs. |
 | **Sidebar** (floating rounded panel) | Header above segmented **Items / Queries / History**, search and object tree; schema picker and "create object" at the bottom. |
 | **Toolbar** | One unified, full-width titlebar row that never wraps: traffic lights → sidebar toggle → back/forward → safe mode → context bar (flexes, truncates) → actions → inspector toggle pinned at the far right above the inspector. Contents: back/forward (per-tab navigation history), **Safe mode** toggle (always on for prod), **context bar** like TablePlus: `ENV | PostgreSQL 14.17 : connection : database : schema.object` (route and live latency later). |
@@ -166,8 +166,8 @@ These interactions use mock/data only; no catalog, query or command contacts a s
 
 The rail now lists saved PostgreSQL connections (monogram tiles, environment
 dot from tokens; custom tags use their stored colour via `--env-color`), with
-`+` opening the **New connection** sheet. ⌘1–4 select the
-first four saved connections. Selecting a tile opens a session; the sidebar
+`+` opening the **New connection** sheet. ⌘1–9 select the
+first nine connections in rail order. Selecting a tile opens a session; the sidebar
 header shows the real name, environment badge, a live status
 (Not connected / Connecting… / Connected · PostgreSQL x.y / Connection failed
 plus the message) and a **Connection menu**: Connect/Disconnect, Connection
@@ -218,6 +218,22 @@ objects**, **Connecting…**, **Connect to browse objects**). Once connected:
 - **Selection and opening**: click selects; double-click or Enter opens the
   object in a (still placeholder) tab with the real path, so the tab title is
   `database.schema.name`.
+- **Columns** (TablePlus style): every table, view and materialized view row
+  has a disclosure chevron, collapsed by default. Expanding (chevron click or
+  →) lists the relation's columns indented below it: monospace name, data
+  type right-aligned and muted, and a yellow (`warning-fg`) key icon before
+  primary-key columns. Expanding never opens the object; column rows can be
+  selected and double-click/Enter opens their table. Columns are read lazily
+  with `table_structure` on first expand and cached per connection, database,
+  schema and table until the catalog is refreshed; the group shows
+  **Loading columns…** or an inline error line (expanding again retries).
+  Expansion is remembered per connection and database while the app runs.
+- **Keyboard and density**: each section is an ARIA `tree` with one Tab stop
+  (roving `tabindex`); rows are `treeitem`s with `aria-level`,
+  `aria-selected` and `aria-expanded`, columns sit in a nested `group`.
+  ↑/↓/Home/End move (selection follows focus), → expands or enters the
+  columns, ← collapses or returns to the table. Object tree rows are 20 px
+  high (TablePlus density); the tree is not virtualised.
 - **Search** filters loaded names live, underlines matches, forces sections
   open (which loads them), hides empty sections, shows **No matches**, clears
   with Esc; ⌘F focuses it when focus is in the sidebar.
@@ -302,6 +318,9 @@ These rules are enforced by `packages/ui/src/tokens/controls.test.ts`. Follow th
 - Switches are macOS-sized: 26 × 15 px track and 13 px knob (`--or-switch-*`).
 - Concentric geometry: window 26 px → panels and sheets 12 px → controls 7 / 6 px. Capsules (`--or-radius-capsule`) are only for pills, badges and switch tracks, not for push buttons or fields.
 - Arrow cursor everywhere: never use `cursor: pointer` on buttons, rows or tabs. Text inputs keep the I-beam, and disabled controls dim instead of changing the cursor.
+- Scroll bars are quiet, like macOS overlay scroll bars: a faint thumb until the scrolling area is hovered, clearer then and strongest under the pointer (`app/global.css`).
+- NULL, EMPTY and DEFAULT markers (grid, structure grid, inspector) use the `placeholder` token: quieter than tertiary text, held to a 3:1 contrast minimum in every theme instead of 4.5:1, like TablePlus's dim markers.
+- Menus are solid, ringed `control-active` surfaces with 24 px rows, accent-filled highlight and destructive items last, after a separator.
 - Sheets (`Sheet` + `SheetActions`) have a compact, centred 13 px semibold title and no close button. Push buttons are right-aligned: Cancel, then the default action in blue. Return runs the default action, Escape cancels, and focus starts in the first text field. Destructive confirmations use the native macOS alert (`confirmDestructive`), with Cancel as the safe choice.
 - `control-sm`, `control-md` and `control-compact` are aliases of the regular and compact heights, kept for older styles.
 
@@ -325,8 +344,8 @@ These rules are enforced by `packages/ui/src/tokens/controls.test.ts`. Follow th
 
 ## 5. Visual language guidance (inputs to the design phase)
 
-- **Typography:** system UI font for chrome (SF Pro on macOS); system monospace at 13 px for table identifiers, table display, SQL editors and inspector values. Appearance settings provide independent local font choices and 11–18 px sizes for interface and monospace content. Bundled open-licence fonts remain future work.
-- **Colour:** navy surfaces in dark mode and cool light surfaces, blue selection, brighter semantic colours for success/warning/danger; environment tag palette (local=emerald, dev=green, staging=amber, prod=coral, custom) chosen to remain distinguishable for common colour-vision deficiencies and paired with text labels.
+- **Typography:** system UI font for chrome (SF Pro on macOS); system monospace (SF Mono) at 12 px, like TablePlus, for table identifiers, table display, SQL editors and inspector values. Appearance settings provide independent local font choices and 11–18 px sizes for interface and monospace content. Bundled open-licence fonts remain future work.
+- **Colour:** neutral graphite surfaces (no hue tint) in dark mode and neutral light surfaces, blue `#2563EB` selection, brighter semantic colours for success/warning/danger; environment tag palette (local=emerald, dev=green, staging=amber, prod=coral, custom) chosen to remain distinguishable for common colour-vision deficiencies and paired with text labels.
 - **Iconography:** single consistent line icon set; database "logos" rendered as neutral, original glyphs or official marks only where their trademark guidelines permit use in tooling (checked per vendor).
 - **Motion:** functional opacity/transform only; approved panel timing 360 ms and disclosure 220 ms with `cubic-bezier(0.32, 0.72, 0, 1)`. Palette scale/fade uses 160 ms; other small feedback stays ≤ 150 ms. Animations and transitions are disabled under reduced motion.
 - **Density modes:** compact / default / comfortable.
@@ -342,13 +361,18 @@ text in an 18 px box with 6 px corners. Floating panels use 12 px corners.
 
 | Surface token | Dark | Light |
 | --- | --- | --- |
-| Grid/content (`window`) | `#1B2432` | `#F8FAFD` |
-| Sidebar/inspector fallback (`panel-solid`) | `#1F2A3A` | `#F0F4FA` |
-| Sidebar/inspector glass (`panel`) | `rgba(31,42,58,0.95)` | `rgba(240,244,250,0.95)` |
-| Window/rail (`page`) | `#151D2A` | `#E8EDF5` |
+| Grid/content (`window`) | `#0C0C0E` | `#FFFFFF` |
+| Sidebar/inspector fallback (`panel-solid`) | `#141416` | `#F4F4F5` |
+| Sidebar/inspector glass (`panel`) | `rgba(20,20,22,0.95)` | `rgba(244,244,245,0.95)` |
+| Window/rail (`page`) | `#141416` | `#F4F4F5` |
 
-Rail and workspace panels have no outline strokes. Surface tone separates the
-window/rail, sidebar/inspector and content; the dark sidebar has a slightly lighter navy tone than the content. Panel radii and glass/transparency fallbacks remain. Inactive
+Panes are edge-to-edge like TablePlus: the toolbar, workspace list, sidebar,
+content and inspector meet at 1 px separators with no gaps or rounded panel
+corners. Chrome (toolbar, workspace list, sidebar, inspector) shares one surface;
+the content and grid sit on the darker (dark mode) or white (light mode) `window`
+surface. Document tabs are equal-width with centred titles; the active tab is a
+raised control. Workspace selection is neutral (`control-active`), while object
+tree and grid selection stay solid blue. Glass/transparency fallbacks remain. Inactive
 rail tiles use 90% opacity, included in the contrast report. Keyboard focus uses a visible focus ring on workspace controls.
 
 Rows are flat and edge-to-edge with a blue zebra tint. Edited cells use an amber tint (18% light, 12% dark) and an accessible edited-cell label; inserted rows show a gutter plus;
@@ -364,7 +388,7 @@ height plus 24 px in both bottom padding and keyboard scroll padding, keeping
 the final row clear when scrolled to the bottom.
 
 Search fields use a quiet fill and transparent border, with a focus ring on focus.
-Default separators are 5.5% black in light and 12% blue-grey in dark; control fills are 3.5% black and 4.5% blue-grey respectively. Secondary text is `#B4C4D9` in dark and `#505050` in light. `just contrast-report` covers glass,
+Default separators are 8% black in light and 8% white in dark; control fills are 4% black and 5% white respectively. Secondary text is `#BABAC2` in dark and `#52525B` in light. `just contrast-report` covers glass,
 nested controls, row states, edited cells and semantic badges; text requires 4.5:1
 and focus indicators 3:1. Increased contrast uses stronger neutral separators
 and opaque fills; reduced transparency and reduced motion retain their fallbacks.
@@ -395,7 +419,7 @@ The installed TablePlus UI was inspected through its public interface: coloured 
 
 - Environment/folder groups and individual database lists collapse independently. Visibility preferences are stored locally; hiding a list never closes its sessions. Open databases remain under their owning connection, including inactive connections with identically named databases.
 - Data pages default to stronger alternating row backgrounds and a pinned number gutter. Footer controls toggle both independently per tab. Numbers continue across pages and indicate positions in the current filtered/sorted view. The footer distinguishes a planner estimate (`~`) from an exact count; Count requests the latter. Narrow footers wrap so totals remain readable.
-- Table identifiers/data use 13 px system monospace. Controls, connection labels, selectors and query tabs use the normal system font. Inspector labels are 12 px, types 11.5 px, and values 13 px monospace. Long values collapse to a preview and expand on demand; field edit controls appear on hover/focus.
+- Table identifiers/data use 12 px system monospace. Text uses the platform's native rendering (`-webkit-font-smoothing: auto`) so its weight matches AppKit apps such as TablePlus; `antialiased` drew it visibly thinner. Controls, connection labels, selectors and query tabs use the normal system font. Inspector labels are 12 px, types 11.5 px, and values 12 px monospace. Long values collapse to a preview and expand on demand; field edit controls appear on hover/focus.
 - Click the number gutter to select a row; Shift-click a column header (or Ctrl+Space) to select its column. Arrows move the focus rectangle, Shift extends a range, and Enter or a cell double-click opens the row value editor. Regular header clicks retain server-side sorting.
 - Supported PostgreSQL tables offer staged update, insert, duplicate and delete, explicit NULL versus DEFAULT, generated-column protection, undo/redo, per-row review, discard and SQL/bind preview. Stages survive tab switches; both mouse and keyboard tab closing require an explicit discard. Closing is blocked during a commit. No write occurs before the reviewed commit.
 - A supported, non-null unique key is required, preferring the primary key. Keys currently support boolean, integer, UUID and text types; views, partial/expression/nullable/lossy keys are read-only. Hidden key columns must be shown to edit. The inspector/editor fetches exact PostgreSQL text snapshots instead of deriving writes from formatted grid values.
@@ -413,6 +437,18 @@ Native editing requires registration in both the application command manifest an
 Right-clicking a cell opens value edit/copy/filter, nullable NULL and text EMPTY actions, plus row edit/copy/add/duplicate/delete. Right-clicking the number gutter offers row actions; a header offers name copy, ascending/descending sort and hide. Right-click does not trigger header sorting. Shift+F10 opens the focused cell menu; arrows navigate, Escape dismisses and restores grid focus. Menus fit inside the window. Mutations use the same exact snapshots and staged review/commit path as the row editor. Opening a cell editor focuses that field (or its NULL checkbox), and a reloaded page refreshes the inspector selection. Unsupported/read-only tables and hidden unique keys disable mutation actions.
 
 These interactions follow the installed TablePlus public UI and its [documented row actions](https://docs.tableplus.com/gui-tools/working-with-table/row), while retaining explicit staging and SQL review in OpenRows. Full inline-cell editing, bulk replacement and the remaining D-09 recovery/filtering work above are still separate delivery-plan items.
+
+### Structure, Index, Triggers and DDL (2026-10-08)
+
+Modelled on the TablePlus table view:
+
+- **Footer:** accent segmented Data | Structure | Index, then a `+` button for the mode (+ Row, + Column, + Index). Structure and Index modes replace Filters, Columns and paging with a centred count, **Triggers** and **DDL**.
+- **Structure:** a header strip (`Name` field that stages a table rename, `Primary` key chips, `Search for column…`) above an editable column grid with the Data grid's metrics: 26 px rows, stripes, sticky header and 13 px monospace. Columns: #, column_name, data_type, is_nullable, check, column_default, foreign_key, comment. NULL and EMPTY are muted. data_type, is_nullable and column_default show a small up/down glyph that opens a picker (common PostgreSQL types or another type; YES/NO; no default, SQL expression, text literal or a preset). foreign_key shows `table(column)` with an arrow that opens the referenced table. Arrow keys move the focused cell, Enter/F2 or a double-click edits inline, Tab commits and moves right, Escape cancels, Alt+↓ opens a picker, Delete stages the column's deletion and Shift+F10 opens the row menu (Delete/Restore column, Copy name, Open referenced table). The striped empty area continues below the last column; its first row adds a column.
+- **Index:** the same grid for indexes (name, algorithm, unique, primary, columns, condition, include, comment). + Index opens a small sheet (name, key columns in click order, algorithm, unique). The row menu stages Delete index; constraint-backed indexes explain why they cannot be dropped.
+- **Staging:** every change is staged and highlighted (changed cells tinted, new rows green, deleted rows struck through) in the shared pending-changes bar with Undo, Redo, Discard and Review & commit. The review sheet shows the exact DDL and warnings; destructive changes on production or confirm-writes connections also ask for the table name. Commit is one transaction.
+- **Triggers:** a sheet listing each trigger's timing, events, level, function and state above its read-only, highlighted definition.
+- **DDL:** a rounded, shadowed popover above the DDL button with the rebuilt definition in the read-only SQL editor (highlighting and line numbers), Copy and `Estimated rows N`. Escape or a click outside closes it.
+- **Inspector:** in Structure and Index modes the Details inspector shows total_size, data_size and index_size (e.g. `81 KB`, `1 MB`), estimated rows and an editable comment that stages `COMMENT ON TABLE`.
 
 ### Appearance preferences
 

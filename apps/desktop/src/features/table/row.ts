@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { DisplayCell } from '@openrows/grid';
+import type { TableColumnDto } from '@openrows/ipc';
 import { displayWindow } from '../../results/displayWindow';
 import type { ResultMeta } from '../query/run';
+import type { CellValue } from './cellValue';
 
 /** One field of the selected row, as the inspector lists it. */
 export type RowField = {
@@ -9,7 +11,24 @@ export type RowField = {
   /** Database type name, e.g. `int4`. */
   type: string | null;
   text: string;
+  /** `changed` while staged; `deleted` when the row is staged for deletion. */
   state: DisplayCell['state'];
+  /** Exact value (staged, or the loaded original); absent while only display text is known. */
+  value?: CellValue;
+};
+
+/** Inspector editing of the selected row; every change only stages. */
+export type RowEditor = {
+  columns: readonly TableColumnDto[];
+  /** Generated columns, which never accept values. */
+  protected: readonly string[];
+  /** The exact original snapshot is loaded, so fields can be edited. */
+  ready: boolean;
+  /** Load the exact original values (display text may be rounded or summarised). */
+  load: () => void;
+  stage: (name: string, value: CellValue) => void;
+  /** Pick a file natively and stage its contents. */
+  addFile: (name: string) => void;
 };
 
 /** The selected table row: one row's display values for the Details panel. */
@@ -18,9 +37,13 @@ export type SelectedRow = {
   /** Row number within the table view, 1-based across pages. */
   number: number;
   fields: readonly RowField[];
-  onEdit?: (field: string) => void;
+  /** Present when the table is editable (writable connection, stable key). */
+  editor?: RowEditor;
   error?: string;
 };
+
+/** Publish the selected row; `reveal` brings the Details panel forward (default). */
+export type ShowRow = (row: SelectedRow, reveal?: boolean) => void;
 
 /** Read one row of a page from the result store for the Details panel. */
 export async function readRow(

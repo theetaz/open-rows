@@ -60,7 +60,7 @@ it('shows saved connections as tiles with connection-status dots, status tooltip
   expect(selected).toHaveTextContent('orders-staging');
   fireEvent.mouseEnter(other);
   expect(screen.getByRole('tooltip')).toHaveTextContent(
-    'analytics-prodprodPostgreSQL · db.example.test:5432Connected · PostgreSQL 16.4',
+    'analytics-prodprod⌘2PostgreSQL · db.example.test:5432Connected · PostgreSQL 16.4',
   );
   fireEvent.mouseLeave(other);
   expect(screen.queryByRole('tooltip')).toBeNull();
@@ -75,9 +75,7 @@ it('supports Tab and wrapping arrows with focus tooltips', async () => {
   render(<ConnectionRail {...props} />);
   const tiles = screen.getAllByRole('button', { name: /^Switch to/ });
   await user.tab();
-  expect(
-    screen.getByRole('button', { name: 'Collapse workspace sidebar' }),
-  ).toHaveFocus();
+  expect(screen.getByRole('button', { name: 'New connection' })).toHaveFocus();
   await user.tab();
   expect(
     screen.getByRole('button', { name: 'Collapse Staging' }),
@@ -90,6 +88,37 @@ it('supports Tab and wrapping arrows with focus tooltips', async () => {
   expect(screen.getByRole('tooltip')).toHaveTextContent('qa box');
   await user.keyboard('{ArrowDown}{Enter}');
   expect(props.onSelect).toHaveBeenCalledWith('id-orders-staging');
+});
+
+it('opens the connection menu at the pointer on right-click', async () => {
+  const user = userEvent.setup();
+  const run = vi.fn();
+  render(
+    <ConnectionRail {...props} actionsFor={() => [['Disconnect', run]]} />,
+  );
+  const row = screen.getByRole('button', { name: 'Switch to analytics-prod' });
+  fireEvent.contextMenu(row, { clientX: 120, clientY: 300 });
+  const menu = screen.getByRole('menu', { name: 'analytics-prod actions' });
+  expect(menu.parentElement?.style.top).toBe('300px');
+  expect(screen.queryByRole('tooltip')).toBeNull();
+  await user.click(within(menu).getByRole('menuitem', { name: 'Disconnect' }));
+  expect(run).toHaveBeenCalledOnce();
+  expect(screen.queryByRole('menu')).toBeNull();
+});
+
+it('keeps folded groups visible as tiles in the compact sidebar', async () => {
+  const user = userEvent.setup();
+  render(<ConnectionRail {...props} />);
+  await user.click(screen.getByRole('button', { name: 'Collapse Staging' }));
+  expect(screen.getAllByRole('button', { name: /^Switch to/ })).toHaveLength(2);
+  await user.click(
+    screen.getByRole('button', { name: 'Collapse workspace sidebar' }),
+  );
+  expect(screen.getAllByRole('button', { name: /^Switch to/ })).toHaveLength(3);
+  await user.click(
+    screen.getByRole('button', { name: 'Expand workspace sidebar' }),
+  );
+  await user.click(screen.getByRole('button', { name: 'Expand Staging' }));
 });
 
 it('folds the entire sidebar while keeping database controls and remembering the choice', async () => {

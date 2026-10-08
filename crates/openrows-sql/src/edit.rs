@@ -5,6 +5,18 @@ use std::collections::BTreeMap;
 
 /// Exact `PostgreSQL` text values, never display-formatted or rounded values.
 pub type Values = BTreeMap<String, Option<String>>;
+/// Staged field values by column name.
+pub type Changes = BTreeMap<String, CellValue>;
+/// One staged field value: NULL, the column default, or exact `PostgreSQL` text input.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CellValue {
+    /// SQL NULL, bound as a NULL parameter.
+    Null,
+    /// The column default: the `DEFAULT` keyword, never a bound text value.
+    Default,
+    /// Exact text input, bound as a parameter.
+    Text(String),
+}
 /// The operation to stage.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum EditKind {
@@ -22,8 +34,8 @@ pub struct Edit {
     pub kind: EditKind,
     /// Complete original text snapshot.
     pub original: Values,
-    /// New field values; None means SQL NULL.
-    pub values: Values,
+    /// New field values.
+    pub values: Changes,
 }
 /// Catalog constraints needed before SQL can be generated.
 pub struct EditTable {
@@ -39,6 +51,9 @@ pub struct EditTable {
 
 /// Reject unknown/protected columns and incomplete snapshots before constructing SQL.
 ///
+/// `DEFAULT` values become the `DEFAULT` keyword in an `UPDATE` and are omitted from an
+/// `INSERT` column list (all omitted: `DEFAULT VALUES`); they never become parameters.
+///
 /// # Errors
 /// Invalid identifiers, NUL data, unknown columns or a missing stable row identity.
 pub fn edit_sql(table: &EditTable, edit: &Edit) -> Result<BoundSql, SelectError> {
@@ -52,31 +67,13 @@ pub fn edit_sql(table: &EditTable, edit: &Edit) -> Result<BoundSql, SelectError>
         quote_ident(&table.table.name)?
     );
     let mut params = Vec::new();
-    let pairs = edit
-        .values
-        .iter()
-        .map(|(name, value)| Ok((quote_ident(name)?, bind(&mut params, value.as_ref())?)))
-        .collect::<Result<Vec<_>, SelectError>>()?;
     let sql = match edit.kind {
-        EditKind::Insert if pairs.is_empty() => format!("INSERT INTO {relation} DEFAULT VALUES"),
-        EditKind::Insert => format!(
-            "INSERT INTO {relation} ({}) VALUES ({})",
-            pairs
-                .iter()
-                .map(|p| p.0.as_str())
-                .collect::<Vec<_>>()
-                .join(", "),
-            pairs
-                .iter()
-                .map(|p| p.1.as_str())
-                .collect::<Vec<_>>()
-                .join(", ")
-        ),
+        EditKind::Insert => insert_sql(&relation, &assignments(edit, &mut params)?),
         EditKind::Update => format!(
             "UPDATE {relation} SET {} WHERE {}",
-            pairs
+            assignments(edit, &mut params)?
                 .iter()
-                .map(|p| format!("{} = {}", p.0, p.1))
+                .map(|(name, value)| format!("{name} = {value}"))
                 .collect::<Vec<_>>()
                 .join(", "),
             guard(edit, &mut params)?
@@ -84,6 +81,38 @@ pub fn edit_sql(table: &EditTable, edit: &Edit) -> Result<BoundSql, SelectError>
         EditKind::Delete => format!("DELETE FROM {relation} WHERE {}", guard(edit, &mut params)?),
     };
     Ok(BoundSql { sql, params })
+}
+/// Quoted column and SQL value expression pairs; inserts leave DEFAULT columns out.
+fn assignments(
+    edit: &Edit,
+    params: &mut Vec<Option<String>>,
+) -> Result<Vec<(String, String)>, SelectError> {
+    edit.values
+        .iter()
+        .filter(|(_, value)| edit.kind != EditKind::Insert || **value != CellValue::Default)
+        .map(|(name, value)| {
+            let expression = match value {
+                CellValue::Default => "DEFAULT".to_owned(),
+                CellValue::Null => bind(params, None)?,
+                CellValue::Text(text) => bind(params, Some(text))?,
+            };
+            Ok((quote_ident(name)?, expression))
+        })
+        .collect()
+}
+fn insert_sql(relation: &str, pairs: &[(String, String)]) -> String {
+    if pairs.is_empty() {
+        return format!("INSERT INTO {relation} DEFAULT VALUES");
+    }
+    let (names, values): (Vec<&str>, Vec<&str>) = pairs
+        .iter()
+        .map(|(name, value)| (name.as_str(), value.as_str()))
+        .unzip();
+    format!(
+        "INSERT INTO {relation} ({}) VALUES ({})",
+        names.join(", "),
+        values.join(", ")
+    )
 }
 fn validate(table: &EditTable, edit: &Edit) -> Result<(), SelectError> {
     for name in edit.values.keys().chain(edit.original.keys()) {

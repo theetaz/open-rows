@@ -1,4 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/* TablePlus-dense rows for the object tree only. */
+.tree {
+  --or-tree-row-height: 20px;
+}
 .note {
   margin: 0;
   padding: var(--or-space-4) var(--or-space-8);

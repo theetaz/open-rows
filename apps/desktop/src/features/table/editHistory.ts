@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { RowEditDto } from '@openrows/ipc';
+import { unchanged } from './cellValue';
 /** Only staged rows live in React; the page remains in Arrow tiles. */
 export type StagedEdit = RowEditDto & {
   id: string;
@@ -7,15 +8,18 @@ export type StagedEdit = RowEditDto & {
   /** Focus the field used to open the editor, without sending it to the server. */
   focusField?: string;
 };
-export type EditHistory = {
+/** Staged items with undo/redo snapshots (rows here, structure changes too). */
+export type History<T> = {
   pending: boolean;
   /** Lost COMMIT acknowledgement: reload before doing anything else. */
   uncertain?: boolean;
-  current: readonly StagedEdit[];
-  past: readonly (readonly StagedEdit[])[];
-  future: readonly (readonly StagedEdit[])[];
+  current: readonly T[];
+  past: readonly (readonly T[])[];
+  future: readonly (readonly T[])[];
 };
-export const emptyEdits: EditHistory = {
+export type EditHistory = History<StagedEdit>;
+/** Nothing staged; assignable to any `History<T>`. */
+export const emptyHistory: History<never> = {
   pending: false,
   current: [],
   past: [],
@@ -39,7 +43,7 @@ export function stage(history: EditHistory, edit: StagedEdit): EditHistory {
   if (combined.kind === 'update')
     combined.values = Object.fromEntries(
       Object.entries(combined.values).filter(
-        ([name, value]) => value !== combined.original[name],
+        ([name, value]) => !unchanged(value, combined.original[name]),
       ),
     );
   const keep =
@@ -55,10 +59,10 @@ export function stage(history: EditHistory, edit: StagedEdit): EditHistory {
   };
 }
 /** Undo/redo affects staged values only, never database contents. */
-export function travel(
-  history: EditHistory,
+export function travel<T>(
+  history: History<T>,
   direction: 'undo' | 'redo',
-): EditHistory {
+): History<T> {
   if (history.pending || history.uncertain) return history;
   if (direction === 'undo') {
     const current = history.past.at(-1);

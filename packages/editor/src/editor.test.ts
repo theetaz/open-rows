@@ -111,3 +111,17 @@ it('runs application keys before the default Mod-Enter binding', () => {
   expect(event.defaultPrevented).toBe(true);
   expect(editor.view.state.doc.toString()).toBe('SELECT 1;');
 });
+
+it('read-only viewers keep their text and are not editable', () => {
+  const parent = document.createElement('div');
+  document.body.append(parent);
+  editor = mountSqlEditor(parent, {
+    doc: 'CREATE TABLE t ();',
+    label: 'DDL',
+    readOnly: true,
+  });
+  const { view } = editor;
+  expect(view.state.readOnly).toBe(true);
+  expect(view.contentDOM.getAttribute('contenteditable')).toBe('false');
+  expect(view.state.doc.toString()).toBe('CREATE TABLE t ();');
+});

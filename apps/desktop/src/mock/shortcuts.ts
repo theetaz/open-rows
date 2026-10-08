@@ -7,10 +7,8 @@ type Shortcut =
   | 'database'
   | 'quick'
   | 'commands'
-  | 0
-  | 1
-  | 2
-  | 3;
+  /** Index of a workspace connection, from ⌘1 to ⌘9. */
+  | number;
 type KeyInput = Pick<
   KeyboardEvent,
   'key' | 'metaKey' | 'ctrlKey' | 'altKey' | 'shiftKey' | 'code' | 'isComposing'
@@ -20,10 +18,9 @@ const commands: Readonly<Record<string, Shortcut | undefined>> = {
   p: 'quick',
   t: 'new-tab',
   w: 'close-tab',
-  '1': 0,
-  '2': 1,
-  '3': 2,
-  '4': 3,
+  ...Object.fromEntries(
+    Array.from({ length: 9 }, (_, index) => [String(index + 1), index]),
+  ),
 };
 /** Exact macOS modifiers; physical keys handle Option's altered character values. */
 export function shortcut(event: KeyInput): Shortcut | undefined {

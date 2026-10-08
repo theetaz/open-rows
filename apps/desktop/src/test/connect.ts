@@ -6,6 +6,6 @@ export async function connectTo(name = 'orders-local'): Promise<void> {
   fireEvent.click(
     await screen.findByRole('button', { name: `Switch to ${name}` }),
   );
-  await screen.findByRole('button', { name: 'Opened databases (orders)' });
+  await screen.findByRole('button', { name: 'Database orders' });
   await screen.findByRole('button', { name: /^Tables/ });
 }

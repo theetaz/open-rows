@@ -32,12 +32,22 @@ it('reports a failed native reveal handshake', async () => {
   );
 });
 
-it('defaults to workspace, opens the gallery from the rail and returns by Back/Escape', async () => {
+async function openGallery(
+  user: ReturnType<
+    (typeof import('@testing-library/user-event'))['default']['setup']
+  >,
+): Promise<void> {
+  await user.click(screen.getByRole('button', { name: 'Command palette' }));
+  await user.click(
+    await screen.findByRole('option', { name: /Open component gallery/ }),
+  );
+}
+it('defaults to workspace, opens the gallery from the command palette and returns by Back/Escape', async () => {
   const { default: userEvent } = await import('@testing-library/user-event');
   const user = userEvent.setup();
   render(<App />);
   expect(screen.getByText(/open a query tab/)).toBeVisible();
-  await user.click(screen.getByRole('button', { name: 'Component gallery' }));
+  await openGallery(user);
   expect(
     await screen.findByRole('heading', { name: 'Made for the desktop.' }),
   ).toBeVisible();
@@ -46,7 +56,7 @@ it('defaults to workspace, opens the gallery from the rail and returns by Back/E
   await user.click(screen.getByRole('button', { name: 'Back to workspace' }));
   expect(screen.queryByRole('tab', { name: /SQL Query 1/ })).toBeNull();
   expect(screen.getByText(/open a query tab/)).toBeVisible();
-  await user.click(screen.getByRole('button', { name: 'Component gallery' }));
+  await openGallery(user);
   await user.keyboard('{Escape}');
   expect(screen.getByText(/open a query tab/)).toBeVisible();
 });

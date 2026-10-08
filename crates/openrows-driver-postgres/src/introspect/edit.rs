@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Exact text snapshots and catalog keys for safe table editing.
-use super::{literal, required};
+use super::{identifier, literal, required};
 use crate::PgSession;
 use openrows_driver_api::DriverError;
 
@@ -89,10 +89,4 @@ impl PgSession {
             .zip(values)
             .collect())
     }
-}
-fn identifier(name: &str) -> Result<String, DriverError> {
-    if name.is_empty() || name.contains('\0') {
-        return Err(DriverError::Unsupported("Invalid identifier".into()));
-    }
-    Ok(format!("\"{}\"", name.replace('"', "\"\"")))
 }

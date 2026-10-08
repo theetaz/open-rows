@@ -11,14 +11,14 @@ export const builtInThemes: readonly ThemeDefinition[] = [
   {
     id: 'openrows',
     name: 'OpenRows',
-    light: { canvas: '#E8EDF5', accent: '#0B6BD6' },
-    dark: { canvas: '#151D2A', accent: '#136FDB' },
+    light: { canvas: '#F4F4F5', accent: '#2563EB' },
+    dark: { canvas: '#141416', accent: '#2563EB' },
   },
   {
     id: 'graphite',
     name: 'Graphite',
-    light: { canvas: '#EFEFF1', accent: '#5254B8' },
-    dark: { canvas: '#1B1B20', accent: '#6359CF' },
+    light: { canvas: '#ECECEC', accent: '#0A60D0' },
+    dark: { canvas: '#1E1E20', accent: '#0A60D0' },
   },
   {
     id: 'ocean',

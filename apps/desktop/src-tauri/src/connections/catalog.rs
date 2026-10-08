@@ -3,6 +3,7 @@
 //! index, read on the connection's per-database metadata sessions (closed by
 //! `session_close` and `connection_close`).
 use openrows_driver_api::catalog::{ColumnSummary, ObjectKind, TableStructure};
+use openrows_driver_api::schema::TableDetail;
 use tauri::State;
 
 use super::Connections;
@@ -128,6 +129,23 @@ pub(crate) async fn read_columns(
             (profile_id, database),
             || profile_target(state, profile_id),
             move |session| Box::pin(async move { session.table_columns(&schema, &name).await }),
+        )
+        .await
+}
+
+/// A relation's columns, constraints, indexes, triggers, sizes and comment on
+/// `database`'s metadata session (Structure, Index, Triggers and DDL views).
+pub(crate) async fn read_detail(
+    state: &Connections,
+    (profile_id, database): (&str, &str),
+    (schema, name): (String, String),
+) -> Result<TableDetail, IpcError> {
+    state
+        .metadata
+        .read(
+            (profile_id, database),
+            || profile_target(state, profile_id),
+            move |session| Box::pin(async move { session.table_detail(&schema, &name).await }),
         )
         .await
 }

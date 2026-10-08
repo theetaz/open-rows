@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-import { Button, Icon, IconButton, ToolbarGroup } from '@openrows/ui';
+import { Icon, IconButton, ToolbarGroup } from '@openrows/ui';
+import type { IconName } from '@openrows/ui';
 import type { ContextSegments } from './contextBar';
 import styles from './Workspace.module.css';
 
@@ -19,7 +20,7 @@ type Props = {
   onInspector: () => void;
   onQuery: () => void;
 };
-/** Full-width overlay titlebar; context yields space before any fixed control. */
+/** Overlay titlebar right of the workspace sidebar; the context bar flexes. */
 export function WorkspaceToolbar(props: Props): React.JSX.Element {
   return (
     <header
@@ -28,53 +29,83 @@ export function WorkspaceToolbar(props: Props): React.JSX.Element {
       aria-label="Window toolbar"
     >
       <ToolbarGroup aria-label="Sidebar controls">
-        <IconButton
-          aria-label="Toggle sidebar (⌃⌘S)"
-          aria-pressed={props.sidebar}
-          variant="ghost"
-          size="sm"
+        <ToolButton
+          label="Toggle sidebar (⌃⌘S)"
+          icon="sidebar"
+          pressed={props.sidebar}
           onClick={props.onSidebar}
-        >
-          <Icon name="sidebar" />
-        </IconButton>
+        />
       </ToolbarGroup>
       <ToolbarGroup aria-label="Navigation">
-        <IconButton aria-label="Back" variant="ghost" size="sm">
-          ‹
-        </IconButton>
-        <IconButton aria-label="Forward" variant="ghost" size="sm">
-          ›
-        </IconButton>
+        <ToolButton label="Back" icon="chevronLeft" />
+        <ToolButton label="Forward" icon="chevronRight" />
       </ToolbarGroup>
-      <Button
-        size="sm"
-        className={styles.safe}
-        aria-label="Safe mode"
-        aria-pressed={props.safe}
-        aria-disabled={props.prod}
-        onClick={props.onSafe}
-      >
-        <span aria-hidden="true">♢</span>{' '}
-        {props.safe ? 'Safe mode' : 'Safe mode off'}
-      </Button>
+      <ToolbarGroup aria-label="Connection tools">
+        <IconButton
+          aria-label="Safe mode"
+          title={props.safe ? 'Safe mode on' : 'Safe mode off'}
+          className={styles.safe}
+          aria-pressed={props.safe}
+          aria-disabled={props.prod}
+          variant="ghost"
+          size="sm"
+          onClick={props.onSafe}
+        >
+          <Icon name={props.safe ? 'lock' : 'unlock'} />
+        </IconButton>
+        <ToolButton
+          label="Open database (⌘K)"
+          icon="database"
+          onClick={props.onDatabase}
+        />
+        <ToolButton
+          label="New SQL query"
+          icon="terminal"
+          onClick={props.onQuery}
+        />
+      </ToolbarGroup>
       <Context
         context={props.context}
         health={props.health}
         onDatabase={props.onDatabase}
       />
-      <WorkspaceActions {...props} />
+      <ToolbarGroup aria-label="Workspace actions">
+        <ToolButton label="Refresh" icon="refresh" onClick={props.onRefresh} />
+        <ToolButton
+          label="Command palette"
+          icon="command"
+          onClick={props.onPalette}
+        />
+      </ToolbarGroup>
       <ToolbarGroup aria-label="Inspector controls">
-        <IconButton
-          aria-label="Toggle inspector (⌥⌘I)"
-          aria-pressed={props.inspector}
-          variant="ghost"
-          size="sm"
+        <ToolButton
+          label="Toggle inspector (⌥⌘I)"
+          icon="inspector"
+          pressed={props.inspector}
           onClick={props.onInspector}
-        >
-          <Icon name="inspector" />
-        </IconButton>
+        />
       </ToolbarGroup>
     </header>
+  );
+}
+/** Icon-only toolbar action; the label doubles as its tooltip. */
+function ToolButton(props: {
+  label: string;
+  icon: IconName;
+  pressed?: boolean;
+  onClick?: () => void;
+}): React.JSX.Element {
+  return (
+    <IconButton
+      aria-label={props.label}
+      title={props.label}
+      aria-pressed={props.pressed}
+      variant="ghost"
+      size="sm"
+      onClick={props.onClick}
+    >
+      <Icon name={props.icon} />
+    </IconButton>
   );
 }
 /** `ENV | PostgreSQL 14.17 : connection : database : schema.object`. */
@@ -123,36 +154,5 @@ function Context({
         {object && <span>{` : ${object}`}</span>}
       </span>
     </div>
-  );
-}
-
-function WorkspaceActions(props: Props): React.JSX.Element {
-  return (
-    <ToolbarGroup aria-label="Workspace actions">
-      <IconButton
-        aria-label="Refresh"
-        onClick={props.onRefresh}
-        variant="ghost"
-        size="sm"
-      >
-        <Icon name="refresh" />
-      </IconButton>
-      <Button
-        aria-label="New SQL query"
-        variant="ghost"
-        size="sm"
-        onClick={props.onQuery}
-      >
-        SQL
-      </Button>
-      <IconButton
-        aria-label="Command palette"
-        onClick={props.onPalette}
-        variant="ghost"
-        size="sm"
-      >
-        ⌘
-      </IconButton>
-    </ToolbarGroup>
   );
 }

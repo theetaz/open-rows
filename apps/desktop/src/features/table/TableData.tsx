@@ -5,7 +5,7 @@ import type { GridContextTarget } from '@openrows/grid';
 import { isActive } from '../query/run';
 import type { ResultMeta } from '../query/run';
 import type { TableTabState } from './useTableTab';
-import type { StagedEdit } from './editHistory';
+import type { RowEditing } from './useRowEditing';
 import styles from './Table.module.css';
 const TableGrid = lazy(() =>
   import('./TableGrid').then((module) => ({ default: module.TableGrid })),
@@ -13,9 +13,7 @@ const TableGrid = lazy(() =>
 
 type Props = {
   state: TableTabState;
-  changes: readonly StagedEdit[];
-  editKeys: readonly string[];
-  onEdit: (result: ResultMeta, cell: { row: number; column: number }) => void;
+  editing: RowEditing;
   onRow: (result: ResultMeta, row: number) => void;
   onContextMenu: (result: ResultMeta, target: GridContextTarget) => void;
 };
@@ -24,9 +22,7 @@ type Props = {
 export function TableData({
   state,
   onRow,
-  onEdit,
-  changes,
-  editKeys,
+  editing,
   onContextMenu,
 }: Props): React.JSX.Element {
   const { entry, result, view, actions } = state;
@@ -63,11 +59,7 @@ export function TableData({
         key={result.id}
         result={result}
         sort={view.sort}
-        changes={changes}
-        editKeys={editKeys}
-        onEdit={(cell) => {
-          onEdit(result, cell);
-        }}
+        editing={editing}
         onContextMenu={(target) => {
           onContextMenu(result, target);
         }}

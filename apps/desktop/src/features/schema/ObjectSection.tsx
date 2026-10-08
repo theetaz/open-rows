@@ -1,21 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useState } from 'react';
-import {
-  Button,
-  DisclosureSection,
-  HighlightText,
-  TreeItem,
-} from '@openrows/ui';
+import { Button, DisclosureSection, Tree } from '@openrows/ui';
 import type { ObjectDto } from '@openrows/ipc';
-import {
-  formatEstimate,
-  kindInfo,
-  objectLabel,
-  objectRef,
-  sameObject,
-  substringIndices,
-} from './catalog';
+import { nodeKey, objectLabel } from './catalog';
 import type { ObjectGroup, ObjectRef } from './catalog';
+import { ObjectRow } from './ObjectRow';
 import type { Catalog } from './useCatalog';
 import styles from './ObjectTree.module.css';
 
@@ -23,8 +12,8 @@ type Props = {
   catalog: Catalog;
   group: ObjectGroup;
   search: string;
-  selected: ObjectRef | null;
-  onSelect: (object: ObjectRef) => void;
+  selected: string | null;
+  onSelect: (key: string) => void;
   onOpen: (object: ObjectRef) => void;
 };
 
@@ -51,6 +40,7 @@ export function ObjectSection(props: Props): React.JSX.Element {
   }, [expanded, resource.status, loadObjects, group]);
   const items =
     resource.status === 'ready' ? matching(resource.data, search) : [];
+  const stop = tabStop(items, props.selected, catalog);
   return (
     <div hidden={!!search && resource.status === 'ready' && !items.length}>
       <DisclosureSection
@@ -76,38 +66,37 @@ export function ObjectSection(props: Props): React.JSX.Element {
         {resource.status === 'ready' && !resource.data.length && (
           <p className={styles.note}>No {group.label.toLowerCase()}</p>
         )}
-        {items.map((object) => (
-          <ObjectRow {...props} key={key(object)} object={object} />
-        ))}
+        {items.length > 0 && (
+          <Tree label={group.label}>
+            {items.map((object) => (
+              <ObjectRow
+                {...props}
+                key={nodeKey(object)}
+                object={object}
+                tabStop={stop}
+              />
+            ))}
+          </Tree>
+        )}
       </DisclosureSection>
     </div>
   );
 }
 
-const key = (object: ObjectDto): string =>
-  `${object.kind}:${objectLabel(object)}`;
-
-function ObjectRow(props: Props & { object: ObjectDto }): React.JSX.Element {
-  const { catalog, object, search } = props;
-  const label = objectLabel(object);
-  const ref = objectRef(catalog.database, object);
-  const count = formatEstimate(object.rowEstimate);
-  const kind = kindInfo(object.kind);
-  return (
-    <TreeItem
-      label={label}
-      {...(count ? { count } : {})}
-      glyph={kind.glyph}
-      title={`${catalog.database}.${object.schema}.${label} · ${kind.label}${object.comment ? ` · ${object.comment}` : ''}`}
-      selected={!!props.selected && sameObject(props.selected, ref)}
-      onSelect={() => {
-        props.onSelect(ref);
-      }}
-      onOpen={() => {
-        props.onOpen(ref);
-      }}
-    >
-      <HighlightText text={label} indices={substringIndices(label, search)} />
-    </TreeItem>
-  );
+/**
+ * The section tree's Tab stop: the selected row (or its collapsed parent),
+ * else the first object.
+ */
+function tabStop(
+  items: readonly ObjectDto[],
+  selected: string | null,
+  catalog: Catalog,
+): string | undefined {
+  for (const object of items) {
+    const id = nodeKey(object);
+    if (selected === id) return id;
+    if (selected?.startsWith(`${id}\n`))
+      return catalog.expanded(object) ? selected : id;
+  }
+  return items[0] && nodeKey(items[0]);
 }

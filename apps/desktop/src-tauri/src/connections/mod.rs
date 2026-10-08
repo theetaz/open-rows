@@ -2,8 +2,9 @@
 //! Connection profiles and sessions exposed to the webview (D-05).
 //!
 //! Startup opens the local store and profiles in the app-data dir (docs/15
-//! §1), the OS keychain and a [`SessionManager`] that streams result batches
-//! into the shared [`ResultStore`]; commands live in [`profiles`] and
+//! §1), the OS keychain (behind a per-run read cache) and a
+//! [`SessionManager`] that streams result batches into the shared
+//! [`ResultStore`]; commands live in [`profiles`] and
 //! [`sessions`]; [`catalog`] serves the schema tree from per-database
 //! metadata sessions. Each opened database of a connection has its own user
 //! session, recorded in [`owners`].
@@ -23,7 +24,7 @@ use std::sync::Arc;
 
 use openrows_core::SessionManager;
 use openrows_results::ResultStore;
-use openrows_secrets::KeychainSecretStore;
+use openrows_secrets::{CachingSecretStore, KeychainSecretStore};
 use openrows_store::LocalStore;
 use openrows_store::profile::{ProfileFiles, ProfileService};
 use tauri::Manager;
@@ -53,7 +54,9 @@ pub(crate) fn install(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Er
     app.manage(LocalStore::open(&data.join("openrows.sqlite"))?);
     let profiles = ProfileService::new(
         ProfileFiles::new(&data.join("connections")),
-        Arc::new(KeychainSecretStore::new()),
+        // Read each keychain item once per run: every read by a binary the
+        // item's ACL does not trust is a macOS password prompt.
+        Arc::new(CachingSecretStore::new(KeychainSecretStore::new())),
     );
     let results = Arc::clone(app.state::<Arc<ResultStore>>().inner());
     let sessions = SessionManager::new(results);

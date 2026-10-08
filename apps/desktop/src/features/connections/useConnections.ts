@@ -9,6 +9,7 @@ import type { ProfileDto } from '@openrows/ipc';
 import { useProfiles } from './useProfiles';
 import { useSessions } from './useSessions';
 import { useDatabases } from './useDatabases';
+import { railOrder } from './workspaceGroups';
 import type { Databases } from './useDatabases';
 import type { SessionStatus } from './sessions';
 
@@ -28,6 +29,8 @@ export type Connections = Databases & {
   selectIndex: (index: number) => void;
   connect: () => void;
   disconnect: () => void;
+  /** Disconnect any saved profile, active or not. */
+  disconnectProfile: (profileId: string) => void;
   sheet: SheetState;
   setSheet: (sheet: SheetState) => void;
   saved: (profile: ProfileDto) => void;
@@ -108,7 +111,7 @@ export function useConnections(): Connections {
     statusOf: sessions.statusOf,
     select,
     selectIndex: (index) => {
-      const profile = profiles[index];
+      const profile = railOrder(profiles)[index];
       if (profile) select(profile.id);
     },
     connect: () => {
@@ -116,6 +119,9 @@ export function useConnections(): Connections {
     },
     disconnect: () => {
       if (active) void sessions.disconnect(active.id);
+    },
+    disconnectProfile: (profileId) => {
+      void sessions.disconnect(profileId);
     },
     sheet,
     setSheet,

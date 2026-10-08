@@ -37,7 +37,7 @@ export const defaultAppearance: Appearance = {
   uiFont: 'system',
   monoFont: 'system',
   uiSize: 13,
-  monoSize: 13,
+  monoSize: 12,
   customThemes: [],
 };
 export const appearanceKey = 'openrows.appearance.v1';
@@ -82,7 +82,7 @@ export function parseAppearance(value: unknown): Appearance {
         ? v.monoFont
         : 'system',
     uiSize: bounded(v.uiSize, 11, 18, 13),
-    monoSize: bounded(v.monoSize, 11, 18, 13),
+    monoSize: bounded(v.monoSize, 11, 18, defaultAppearance.monoSize),
     customThemes,
   };
 }

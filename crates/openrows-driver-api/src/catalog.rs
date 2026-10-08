@@ -106,6 +106,10 @@ pub struct ColumnSummary {
     pub default: Option<String>,
     /// Comment, when set.
     pub comment: Option<String>,
+    /// Part of the primary key.
+    pub primary_key: bool,
+    /// Labels in sort order when the column's type (or its domain's base type) is an enum.
+    pub enum_labels: Option<Vec<String>>,
 }
 
 /// One index of a table or materialized view.

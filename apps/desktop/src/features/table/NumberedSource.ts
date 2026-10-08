@@ -1,15 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { CellRange, DisplayCell, GridDataSource } from '@openrows/grid';
 
+/** Staged inserts after the page's rows have no number yet. */
+const newRow: DisplayCell = { text: '+', state: 'inserted' };
+
 /** A pinned, page-aware row gutter; result column indices are never sent to IPC shifted. */
 export class NumberedSource implements GridDataSource {
-  readonly columns;
+  readonly columns: GridDataSource['columns'];
   private readonly numbers: readonly DisplayCell[];
+  private readonly page: number;
   constructor(
     private readonly source: GridDataSource,
     offset: number,
+    /** Rows on the page; later rows are staged inserts. */
+    page = source.rows,
   ) {
-    this.numbers = Array.from({ length: source.rows }, (_, row) => ({
+    this.page = page;
+    this.numbers = Array.from({ length: page }, (_, row) => ({
       text: String(offset + row + 1),
       state: 'normal' as const,
     }));
@@ -19,6 +26,7 @@ export class NumberedSource implements GridDataSource {
         title: '#',
         width: Math.max(48, String(offset + source.rows).length * 8 + 16),
         pinned: true,
+        align: 'end',
       },
       ...source.columns,
     ];
@@ -30,7 +38,8 @@ export class NumberedSource implements GridDataSource {
     return this.source.metrics;
   }
   cell(row: number, column: number): DisplayCell | undefined {
-    return column === 0 ? this.numbers[row] : this.source.cell(row, column - 1);
+    if (column !== 0) return this.source.cell(row, column - 1);
+    return row < this.page ? this.numbers[row] : newRow;
   }
   async window(range: CellRange, direction: number): Promise<void> {
     await this.source.window(

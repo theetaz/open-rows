@@ -3,15 +3,26 @@ import { render, waitFor } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
 import { mountGrid } from '@openrows/grid/canvas';
+import type { GridProps } from '@openrows/grid';
 import { TableGrid } from './TableGrid';
+import type { StagedEdit } from './editHistory';
+import { emptyHistory } from './editHistory';
+import type { RowEditing } from './useRowEditing';
 
 vi.mock('@openrows/grid/canvas', () => ({
   mountGrid: vi.fn(() => ({ destroy: vi.fn() })),
 }));
 
-it('refreshes inspector selection when a committed page replaces the previous result', async () => {
-  const onRow = vi.fn();
-  const props = {
+function editing(current: readonly StagedEdit[] = []): RowEditing {
+  return {
+    info: null,
+    history: { ...emptyHistory, current },
+    inline: null,
+  } as unknown as RowEditing;
+}
+
+function gridProps(onRow = vi.fn()) {
+  return {
     result: {
       id: 'before-commit',
       rows: 3,
@@ -21,8 +32,7 @@ it('refreshes inspector selection when a committed page replaces the previous re
       columns: [{ name: 'id', sourceType: 'int4' }],
     },
     sort: null,
-    changes: [],
-    editKeys: ['id'],
+    editing: editing(),
     offset: 0,
     rowNumbers: true,
     striped: true,
@@ -30,6 +40,11 @@ it('refreshes inspector selection when a committed page replaces the previous re
     onRow,
     onContextMenu: vi.fn(),
   };
+}
+
+it('refreshes inspector selection when a committed page replaces the previous result', async () => {
+  const onRow = vi.fn();
+  const props = gridProps(onRow);
   const view = render(
     <ThemeProvider>
       <TableGrid {...props} />
@@ -60,4 +75,42 @@ it('refreshes inspector selection when a committed page replaces the previous re
     expect(mountGrid).toHaveBeenCalledTimes(3);
   });
   expect(onRow).toHaveBeenCalledOnce();
+});
+
+it('keeps the selected row when edits are staged, undone and discarded', async () => {
+  const onRow = vi.fn();
+  const props = {
+    ...gridProps(onRow),
+    result: { ...gridProps().result, rows: 40 },
+  };
+  const edit = {
+    id: '19',
+    number: 19,
+    kind: 'update' as const,
+    original: { id: '19' },
+    values: { id: { kind: 'text' as const, value: '190' } },
+  };
+  const view = render(
+    <ThemeProvider>
+      <TableGrid {...props} />
+    </ThemeProvider>,
+  );
+  await waitFor(() => {
+    expect(mountGrid).toHaveBeenCalledOnce();
+  });
+  const grid = vi.mocked(mountGrid).mock.calls[0]?.[1] as GridProps;
+  const repaint = vi.fn();
+  grid.source.subscribe(repaint);
+  grid.onSelection({ row: 18, column: 1, ranges: [] });
+  onRow.mockClear();
+  for (const changes of [[edit], [], [edit], []])
+    view.rerender(
+      <ThemeProvider>
+        <TableGrid {...props} editing={editing(changes)} />
+      </ThemeProvider>,
+    );
+  expect(repaint).toHaveBeenCalledTimes(4);
+  expect(mountGrid).toHaveBeenCalledOnce();
+  expect(grid.selection).toMatchObject({ row: 18, column: 1 });
+  expect(onRow).not.toHaveBeenCalled();
 });

@@ -1,30 +1,33 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/* Full-height workspace sidebar (traffic lights sit in its top drag region). */
 .rail {
   display: flex;
   flex-direction: column;
-  flex: 0 0 184px;
+  width: var(--or-rail-width);
   min-height: 0;
-  padding: var(--or-space-8) var(--or-space-6);
-  gap: var(--or-space-8);
+  padding: 0 var(--or-space-8) var(--or-space-8);
   background: var(--or-page);
-  border-inline-end: 1px solid var(--or-separator);
+  border-inline-end: var(--or-border-width) solid var(--or-separator);
+}
+.railTop {
+  flex: 0 0 var(--or-toolbar-height);
 }
 .railHeading {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  min-height: var(--or-control-height-compact);
+  padding-inline: var(--or-space-6) 0;
+  margin-block-end: var(--or-space-2);
   color: var(--or-secondary);
   font-size: var(--or-text-12);
-  font-weight: var(--or-weight-semibold);
-  padding-inline-start: var(--or-space-6);
+  font-weight: var(--or-weight-medium);
 }
-.rail > button {
-  display: flex;
-  gap: var(--or-space-8);
-  width: 100%;
-  border: 0;
-  background: var(--or-control-fill);
-  color: var(--or-info-fg);
+.railHeading button {
+  color: var(--or-secondary);
+}
+.railHeading button:hover {
+  color: var(--or-text);
 }
 .space {
   flex: 1;
@@ -35,7 +38,7 @@
 }
 .group {
   --workspace-colour: var(--or-info-fg);
-  margin-block: var(--or-space-8);
+  margin-block: var(--or-space-6) var(--or-space-4);
 }
 .group[data-environment='local'] {
   --workspace-colour: var(--or-success-fg);
@@ -46,20 +49,36 @@
 .group[data-environment='staging'] {
   --workspace-colour: var(--or-warning-fg);
 }
+
+/* Environment heading: chevron, coloured dot, label and count. */
 .disclosure {
   display: flex;
   align-items: center;
-  gap: var(--or-space-6);
+  gap: var(--or-space-4);
   width: 100%;
-  padding: var(--or-space-6);
-  margin-bottom: var(--or-space-4);
+  min-height: 22px;
+  padding: 0 var(--or-space-6) 0 var(--or-space-2);
   border: 0;
+  border-radius: var(--or-radius-control-compact);
   background: transparent;
-  color: var(--workspace-colour);
+  color: var(--or-secondary);
   font: inherit;
   font-size: var(--or-text-11-5);
-  font-weight: var(--or-weight-semibold);
+  font-weight: var(--or-weight-medium);
   text-align: start;
+}
+.disclosure > span:first-child {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 14px;
+  font-size: var(--or-text-11);
+}
+.disclosure > span:first-child svg {
+  inline-size: 11px;
+  block-size: 11px;
+}
+.disclosure:hover {
+  color: var(--or-text);
 }
 .disclosure > span:nth-child(2) {
   min-width: 0;
@@ -67,31 +86,58 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.disclosure > span:nth-child(2)::before {
+  content: '';
+  display: inline-block;
+  inline-size: 6px;
+  block-size: 6px;
+  margin-inline-end: var(--or-space-6);
+  vertical-align: 1px;
+  border-radius: var(--or-radius-capsule);
+  background: var(--workspace-colour);
+}
 .groupCount {
   margin-inline-start: auto;
   color: var(--or-secondary);
-  font-size: var(--or-text-11-5);
+  font-size: var(--or-text-11);
+  font-variant-numeric: tabular-nums;
 }
+
+/* Server row: [disclosure] [monogram name ● ] [⋯]. */
 .server {
-  margin-block: var(--or-space-4);
+  margin-block: 1px;
 }
 .serverRow {
+  position: relative;
   display: flex;
   align-items: center;
-  border-radius: var(--or-radius-field);
-  border: 1px solid transparent;
+  min-height: 30px;
+  border-radius: var(--or-radius-control);
+  /* Presence dots are ringed in the colour behind the tile. */
+  --tile-ring: var(--or-page);
+}
+.serverRow:hover {
+  background: var(--or-control-fill);
+  --tile-ring: color-mix(in srgb, var(--or-page) 95%, var(--or-text));
 }
 .serverRow[data-selected='true'] {
-  background: var(--or-info-bg);
-  border-color: var(--or-control-stroke);
+  background: var(--or-control-active);
+  box-shadow: 0 0 0 var(--or-border-width) var(--or-control-stroke);
+  --tile-ring: var(--or-control-active);
 }
 .serverDisclosure {
-  padding: 0;
+  display: inline-grid;
+  place-items: center;
   flex: 0 0 18px;
+  align-self: stretch;
+  padding: 0;
   border: 0;
   background: transparent;
   color: var(--or-secondary);
-  font: inherit;
+}
+.serverDisclosure svg {
+  inline-size: 12px;
+  block-size: 12px;
 }
 .serverDisclosure:disabled {
   visibility: hidden;
@@ -100,61 +146,37 @@
   display: flex;
   align-items: center;
   gap: var(--or-space-8);
-  padding: var(--or-space-6) var(--or-space-4);
   min-width: 0;
   flex: 1;
+  padding: var(--or-space-4) var(--or-space-6) var(--or-space-4) 0;
   border: 0;
-  border-radius: var(--or-radius-field);
+  border-radius: var(--or-radius-control);
   background: transparent;
   color: var(--or-text);
   font: inherit;
   cursor: default;
   text-align: start;
 }
-.connection:hover {
-  background: var(--or-control-fill);
-}
 .tile {
+  position: relative;
   display: grid;
   place-items: center;
-  position: relative;
-  flex: 0 0 28px;
-  height: 28px;
-  border-radius: var(--or-radius-field);
+  flex: 0 0 20px;
+  height: 20px;
+  border-radius: 5px;
   background: var(--or-connection-pg);
   color: var(--or-on-accent);
-  font-size: var(--or-text-11-5);
+  font-size: var(--or-text-10);
   font-weight: var(--or-weight-semibold);
+  letter-spacing: -0.02em;
 }
 .server[data-environment='prod'] .tile {
   background: var(--or-connection-prod);
 }
-.tile i {
-  position: absolute;
-  right: -2px;
-  bottom: -2px;
-  width: var(--or-dot-size);
-  height: var(--or-dot-size);
-  border: 2px solid var(--or-page);
-  border-radius: var(--or-radius-capsule);
-  background: var(--or-tertiary);
-}
-.tile i[data-status='none'] {
-  display: none;
-}
-.tile i[data-status='connected'] {
-  background: var(--or-success-fg);
-}
-.tile i[data-status='connecting'] {
-  background: var(--or-warning-fg);
-}
-.tile i[data-status='failed'] {
-  background: var(--or-danger-fg);
-}
 .serverName {
+  flex: 1;
   min-width: 0;
   display: grid;
-  gap: var(--or-space-2);
 }
 .serverName strong,
 .serverName small {
@@ -164,40 +186,103 @@
 }
 .serverName strong {
   font-size: var(--or-text-13);
-  font-weight: var(--or-weight-medium);
+  font-weight: var(--or-weight-regular);
 }
+/* Status text is for assistive tech; failures also show it visually. */
 .serverName small {
-  font-size: var(--or-text-11-5);
-  color: var(--or-secondary);
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
 }
+.connection[data-session='failed'] .serverName small {
+  position: static;
+  width: auto;
+  height: auto;
+  clip-path: none;
+  color: var(--or-danger-fg);
+  font-size: var(--or-text-11);
+}
+/* Presence dot on the tile's bottom-right corner, like a chat avatar. */
+.status {
+  position: absolute;
+  inset-inline-end: -3px;
+  inset-block-end: -3px;
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--tile-ring);
+  border-radius: var(--or-radius-capsule);
+  background: var(--or-tertiary);
+}
+.status[data-status='none'] {
+  visibility: hidden;
+}
+.status[data-status='connected'] {
+  background: var(--or-success-fg);
+}
+.status[data-status='connecting'] {
+  background: var(--or-warning-fg);
+}
+.status[data-status='failed'] {
+  background: var(--or-danger-fg);
+}
+.rowMenu {
+  position: absolute;
+  inset-inline-end: var(--or-space-4);
+  display: inline-grid;
+  place-items: center;
+  inline-size: 22px;
+  block-size: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--or-radius-control-compact);
+  background: var(--or-control-active);
+  color: var(--or-secondary);
+  opacity: 0;
+}
+.rowMenu svg {
+  inline-size: 16px;
+  block-size: 16px;
+}
+.serverRow:hover .rowMenu,
+.rowMenu:focus-visible,
+.rowMenu[aria-expanded='true'] {
+  opacity: 1;
+}
+.rowMenu:hover {
+  color: var(--or-text);
+}
+
+/* Opened databases, indented under the server name. */
 .databases {
   display: grid;
-  gap: var(--or-space-2);
-  margin: var(--or-space-4) 0 var(--or-space-8) 18px;
-  padding-inline-start: var(--or-space-6);
-  border-inline-start: 1px solid var(--or-control-stroke);
+  gap: 1px;
+  margin: 1px 0 var(--or-space-4) 18px;
 }
 .database {
   display: flex;
   align-items: center;
-  gap: var(--or-space-6);
+  gap: var(--or-space-8);
   min-width: 0;
   width: 100%;
-  padding: var(--or-space-6);
+  min-height: 26px;
+  padding: 0 var(--or-space-6) 0 var(--or-space-2);
   border: 0;
-  border-radius: var(--or-radius-field);
+  border-radius: var(--or-radius-control-compact);
   background: transparent;
   color: var(--or-secondary);
   font: inherit;
-  font-size: var(--or-text-12);
+  font-size: var(--or-text-12-5);
   text-align: start;
   cursor: default;
 }
 .database svg {
   color: var(--or-info-fg);
   flex-shrink: 0;
-  width: var(--or-icon-size);
-  height: var(--or-icon-size);
+  width: 14px;
+  height: 14px;
+  margin-inline-start: 3px;
 }
 .database span {
   overflow: hidden;
@@ -221,44 +306,154 @@
 .database[data-state='failed'] svg {
   color: var(--or-danger-fg);
 }
+
+/* Bottom: API client, settings and the width toggle. */
+.railFooter {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-block-start: var(--or-space-6);
+  border-block-start: var(--or-border-width) solid var(--or-separator);
+}
+.footerRow {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-8);
+  min-height: 28px;
+  padding-inline: var(--or-space-8);
+  border: 0;
+  border-radius: var(--or-radius-control);
+  background: transparent;
+  color: var(--or-secondary);
+  font: inherit;
+  font-size: var(--or-text-13);
+  text-align: start;
+}
+.footerRow:hover {
+  background: var(--or-control-fill);
+  color: var(--or-text);
+}
+.footerRow svg {
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+}
+.collapse {
+  align-self: flex-end;
+  color: var(--or-secondary);
+}
 .rail button:focus-visible {
   outline: var(--or-focus-width) solid var(--or-focus);
   outline-offset: -2px;
 }
+
+/*
+ * Compact, like Slack: the rail sits under the full-width toolbar and shows
+ * one large tile per connection, the selected one ringed. Groups are split
+ * by short separators; databases are reached from ⌘K and the toolbar.
+ */
 .rail[data-compact='true'] {
-  flex-basis: 54px;
-  padding-inline: var(--or-space-4);
+  width: var(--or-rail-compact-width);
+  padding: var(--or-space-10) 0 var(--or-space-8);
 }
+.rail[data-compact='true'] .railTop,
 .rail[data-compact='true'] .railHeading > span,
+.rail[data-compact='true'] .disclosure,
 .rail[data-compact='true'] .serverName,
-.rail[data-compact='true'] .groupCount,
 .rail[data-compact='true'] .serverDisclosure,
 .rail[data-compact='true'] .controlLabel,
-.rail[data-compact='true'] .database span {
+.rail[data-compact='true'] .rowMenu,
+.rail[data-compact='true'] .databases {
   display: none;
 }
-.rail[data-compact='true'] .railHeading {
-  padding: 0;
-  justify-content: center;
+.rail[data-compact='true'] .workspaces {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-block: 4px;
 }
-.rail[data-compact='true'] .disclosure {
-  padding: var(--or-space-4) 0;
-  gap: 0;
-  justify-content: center;
-  font-size: var(--or-text-11-5);
+.rail[data-compact='true'] .group {
+  margin: 0;
 }
-.rail[data-compact='true'] .disclosure > span:nth-child(2) {
-  max-width: 28px;
+.rail[data-compact='true'] .group + .group::before {
+  content: '';
+  display: block;
+  inline-size: 20px;
+  block-size: var(--or-border-width);
+  margin: var(--or-space-2) auto var(--or-space-10);
+  background: var(--or-separator);
+}
+.rail[data-compact='true'] .server {
+  margin: 0 0 var(--or-space-10);
+}
+.rail[data-compact='true'] .serverRow,
+.rail[data-compact='true'] .serverRow:hover,
+.rail[data-compact='true'] .serverRow[data-selected='true'] {
+  justify-content: center;
+  min-height: 0;
+  background: transparent;
+  box-shadow: none;
+  --tile-ring: var(--or-page);
 }
 .rail[data-compact='true'] .connection {
-  justify-content: center;
-  padding-inline: 0;
-}
-.rail[data-compact='true'] .databases {
-  margin-inline: 0;
+  flex: 0 0 auto;
   padding: 0;
-  border: 0;
+  border-radius: var(--or-radius-card);
 }
-.rail[data-compact='true'] .database {
+.rail[data-compact='true'] .tile {
+  flex-basis: 36px;
+  inline-size: 36px;
+  block-size: 36px;
+  border-radius: var(--or-radius-card);
+  font-size: var(--or-text-13);
+  transition: box-shadow var(--or-motion-popover) var(--or-motion-easing);
+}
+.rail[data-compact='true'] .connection:hover .tile {
+  box-shadow:
+    0 0 0 2px var(--or-page),
+    0 0 0 4px color-mix(in srgb, var(--or-text) 25%, transparent);
+}
+.rail[data-compact='true'] .connection[aria-pressed='true'] .tile {
+  box-shadow:
+    0 0 0 2px var(--or-page),
+    0 0 0 4px var(--or-text);
+}
+.rail[data-compact='true'] .status {
+  inset-inline-end: -4px;
+  inset-block-end: -4px;
+  width: 13px;
+  height: 13px;
+  border-width: 3px;
+}
+.rail[data-compact='true'] .railHeading {
+  order: 1;
   justify-content: center;
+  padding: 0;
+  margin: 0;
+}
+.rail[data-compact='true'] .railHeading button,
+.rail[data-compact='true'] .footerRow {
+  justify-content: center;
+  inline-size: 36px;
+  block-size: 36px;
+  min-height: 0;
+  padding: 0;
+  border-radius: var(--or-radius-card);
+}
+.rail[data-compact='true'] .railHeading button {
+  background: var(--or-control-fill);
+}
+.rail[data-compact='true'] .railHeading button:hover {
+  background: var(--or-control-hover);
+}
+.rail[data-compact='true'] .space {
+  order: 2;
+}
+.rail[data-compact='true'] .railFooter {
+  order: 3;
+  align-items: center;
+  margin-inline: var(--or-space-10);
+}
+.rail[data-compact='true'] .collapse {
+  align-self: center;
 }

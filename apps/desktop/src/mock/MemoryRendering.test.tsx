@@ -44,7 +44,7 @@ it('closed inspector, palettes, menus and tooltips leave no content DOM', async 
   });
   await connectTo();
   await user.click(
-    screen.getByRole('button', { name: 'Opened databases (orders)' }),
+    screen.getByRole('button', { name: 'orders-local actions' }),
   );
   await user.keyboard('{Escape}');
   expect(document.querySelector('[role="menu"]')).toBeNull();

@@ -102,7 +102,7 @@ The painter allocates no JS arrays/objects/strings per cell or per frame. Tile
 requests, conversion, and measurement run outside that hot loop. Headers repaint
 on horizontal/data changes; pinned cells on vertical/data changes; selection
 changes repaint the selection layer. NULL, changed cells and deleted rows use
-the shared tokens. Editing and copy remain future work.
+the shared tokens. Inline editing is described in §6.1.
 Since D-07 the query tab mounts this grid over real `result_window` tiles (see [06 §9](06-ipc-and-result-pipeline.md#9-implementation-notes-d-07-query-execution-and-results)); the cell text conversion handles the PostgreSQL Arrow types and marks only the `spike` result with sample edit states.
 
 ## 4. Selection model
@@ -136,6 +136,13 @@ stateDiagram-v2
 - Paste a TSV block → stages a multi-cell edit with preview.
 
 All staging goes through the core's change-set API ([10-schema-and-data-editing.md](10-schema-and-data-editing.md)).
+
+### 6.1 Implementation notes (inline editing and type-aware cells)
+
+- **Cells.** `DisplayCell.marker` (`null` | `empty` | `default`) marks staged NULL, empty string and an unset insert column (`DEFAULT`); markers and unchanged `null`/`empty` cells paint muted (`tertiary`). `GridColumn.kind` (`boolean` | `enum`) paints booleans as centred `TRUE`/`FALSE` and draws a ⌃⌄ stepper at the right edge of both kinds; text is truncated with `…` to the width left of the stepper. Booleans come from the result type (`bool`); enums from `TableColumnDto.enumLabels` once edit info arrives (`EditedSource.describe` + `GridHandle.refresh()`, no remount). Staged cells keep the `cell-edited` fill plus a 1px `destructive` border with corner dots; staged inserts paint `row-inserted` after the page's rows with a `+` gutter.
+- **Selection.** Like TablePlus, a selected row fills edge to edge with `accent` and `on-accent` text (pinned gutter included); whole-column selections (header click, ⌘Space) fill only their cells. The focused cell keeps a subtle inner ring. Painted on the selection layer for visible rows only, so the body is not repainted on selection changes.
+- **Editing.** Enter, F2, double-click or a printable key (which seeds the value) calls `onEdit(cell, text?)`; Space, typing or a click on the stepper opens the value menu on boolean/enum columns. The app (`features/table/inline/`) places a DOM `<input>` exactly over `GridHandle.cellRect(row, column)` in the grid font, kept aligned through `onScroll`. Enter stages, Escape cancels (never stages), Tab/⇧Tab and ↑/↓ stage and move (`GridHandle.select`), ⌘⌫ stages NULL, blur stages. Values with newlines, JSON/text over 120 characters or wider than the cell open a 480 × 320 popover (monospace, wrapping; ⌘↩ saves; Pretty/Minify for JSON; Copy). Booleans offer TRUE/FALSE/NULL and enums their labels (+ NULL when nullable) in a `PointMenu`. The input shows the exact server value (`table_edit_row`), never the painted text, so an unchanged Enter stages nothing.
+- **Accessibility.** The shadow grid owns a polite `role=status` region (`GridHandle.announce`): "Editing *column*", "*column* staged", "Edit cancelled", or why a cell is read-only. Focus returns to the grid after every commit or cancel.
 
 ## 7. Copy formats
 

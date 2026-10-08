@@ -3,6 +3,7 @@ import { autocompletion, completionKeymap } from '@codemirror/autocomplete';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { bracketMatching } from '@codemirror/language';
 import { PostgreSQL, sql } from '@codemirror/lang-sql';
+import { EditorState } from '@codemirror/state';
 import type { Extension } from '@codemirror/state';
 import {
   EditorView,
@@ -32,6 +33,8 @@ export interface SqlEditorOptions {
    * over the default keymaps; `run` returns true when it handled the key.
    */
   keys?: readonly EditorKey[];
+  /** A read-only viewer (DDL, trigger definitions): no edits, still selectable. */
+  readOnly?: boolean;
 }
 
 /** One application shortcut inside the editor. */
@@ -74,5 +77,8 @@ export function sqlEditorExtensions(options: SqlEditorOptions): Extension {
     EditorView.contentAttributes.of({ 'aria-label': options.label }),
     keymap.of([...completionKeymap, ...defaultKeymap, ...historyKeymap]),
     docChangeListener(options.onDocChange),
+    options.readOnly
+      ? [EditorState.readOnly.of(true), EditorView.editable.of(false)]
+      : [],
   ];
 }

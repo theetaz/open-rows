@@ -3,7 +3,7 @@
 use super::{TestResult, config};
 use openrows_driver_api::{ResultSink, Session, SinkFlow};
 use openrows_driver_postgres::{BoundEdit, PgSession};
-use openrows_sql::edit::{Edit, EditKind, EditTable, Values, edit_sql};
+use openrows_sql::edit::{CellValue, Changes, Edit, EditKind, EditTable, Values, edit_sql};
 use openrows_sql::select::TableRef;
 struct Discard;
 impl ResultSink for Discard {
@@ -15,6 +15,9 @@ impl ResultSink for Discard {
 async fn execute(session: &mut PgSession, sql: &str) -> TestResult {
     session.execute(sql, &mut Discard).await?;
     Ok(())
+}
+fn text(value: &str) -> CellValue {
+    CellValue::Text(value.into())
 }
 fn table() -> EditTable {
     EditTable {
@@ -59,7 +62,7 @@ async fn assert_deferred_failure_rollback(session: &mut PgSession, before: &Valu
         .commit_edits(&[bound(&Edit {
             kind: EditKind::Update,
             original: before.clone(),
-            values: Values::from([("name".into(), Some("two".into()))]),
+            values: Changes::from([("name".into(), text("two"))]),
         })?])
         .await;
     assert!(result.is_err());
@@ -83,7 +86,7 @@ async fn transactional_edits_preserve_precision_and_roll_back_conflicts() -> Tes
         .commit_edits(&[bound(&Edit {
             kind: EditKind::Update,
             original: original.clone(),
-            values: Values::from([("name".into(), Some(attack.into()))]),
+            values: Changes::from([("name".into(), text(attack))]),
         })?])
         .await?;
     assert_eq!(
@@ -102,12 +105,12 @@ async fn transactional_edits_preserve_precision_and_roll_back_conflicts() -> Tes
             bound(&Edit {
                 kind: EditKind::Update,
                 original: before.clone(),
-                values: Values::from([("name".into(), Some("must roll back".into()))]),
+                values: Changes::from([("name".into(), text("must roll back"))]),
             })?,
             bound(&Edit {
                 kind: EditKind::Delete,
                 original: stale,
-                values: Values::new(),
+                values: Changes::new(),
             })?,
         ])
         .await;
@@ -118,15 +121,12 @@ async fn transactional_edits_preserve_precision_and_roll_back_conflicts() -> Tes
             bound(&Edit {
                 kind: EditKind::Insert,
                 original: Values::new(),
-                values: Values::from([
-                    ("id".into(), Some("3".into())),
-                    ("name".into(), Some("new".into())),
-                ]),
+                values: Changes::from([("id".into(), text("3")), ("name".into(), text("new"))]),
             })?,
             bound(&Edit {
                 kind: EditKind::Update,
                 original: before.clone(),
-                values: Values::from([("name".into(), None)]),
+                values: Changes::from([("name".into(), CellValue::Null)]),
             })?,
         ])
         .await;
@@ -137,7 +137,7 @@ async fn transactional_edits_preserve_precision_and_roll_back_conflicts() -> Tes
         .commit_edits(&[bound(&Edit {
             kind: EditKind::Delete,
             original: before,
-            values: Values::new(),
+            values: Changes::new(),
         })?])
         .await?;
     assert!(snapshot(&mut session, "1").await.is_err());
@@ -176,5 +176,76 @@ async fn edit_identity_refuses_views_nullable_partial_expression_and_lossy_keys(
         );
     }
     execute(&mut session, "DROP SCHEMA d09_keys CASCADE").await?;
+    Ok(())
+}
+#[tokio::test]
+#[ignore = "requires the disposable PostgreSQL test container"]
+async fn default_null_empty_and_bytea_values_reach_the_server_exactly() -> TestResult {
+    let mut session = PgSession::connect(&config()?).await?;
+    for sql in [
+        "CREATE SCHEMA d09_values",
+        "CREATE TABLE d09_values.rows (id int PRIMARY KEY DEFAULT 41, note text DEFAULT 'fallback', body bytea, memo text)",
+        "INSERT INTO d09_values.rows VALUES (1, 'old', NULL, 'memo')",
+    ] {
+        execute(&mut session, sql).await?;
+    }
+    let table = EditTable {
+        table: TableRef {
+            schema: "d09_values".into(),
+            name: "rows".into(),
+        },
+        columns: ["id", "note", "body", "memo"].map(str::to_owned).to_vec(),
+        key: vec!["id".into()],
+        protected: Vec::new(),
+    };
+    let original: Values = session
+        .edit_snapshot(("d09_values", "rows"), &[("id".into(), "1".into())])
+        .await?
+        .into_iter()
+        .collect();
+    let edits = [
+        Edit {
+            kind: EditKind::Update,
+            original,
+            values: Changes::from([
+                ("note".into(), CellValue::Default),
+                ("body".into(), text("\\x00ff0a")),
+                ("memo".into(), text("")),
+            ]),
+        },
+        Edit {
+            kind: EditKind::Insert,
+            original: Values::new(),
+            values: Changes::from([
+                ("id".into(), CellValue::Default),
+                ("note".into(), text("DEFAULT")),
+                ("memo".into(), CellValue::Null),
+            ]),
+        },
+    ]
+    .iter()
+    .map(|edit| {
+        let sql = edit_sql(&table, edit)?;
+        Ok(BoundEdit {
+            sql: sql.sql,
+            params: sql.params,
+        })
+    })
+    .collect::<TestResult<Vec<_>>>()?;
+    session.commit_edits(&edits).await?;
+    for (id, expected) in [
+        (
+            "1",
+            [Some("1"), Some("fallback"), Some("\\x00ff0a"), Some("")],
+        ),
+        ("41", [Some("41"), Some("DEFAULT"), None, None]),
+    ] {
+        let row = session
+            .edit_snapshot(("d09_values", "rows"), &[("id".into(), id.into())])
+            .await?;
+        let values: Vec<Option<&str>> = row.iter().map(|(_, value)| value.as_deref()).collect();
+        assert_eq!(values, expected, "row {id}");
+    }
+    execute(&mut session, "DROP SCHEMA d09_values CASCADE").await?;
     Ok(())
 }

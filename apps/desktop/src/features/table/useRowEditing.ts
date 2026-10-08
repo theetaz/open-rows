@@ -6,12 +6,17 @@ import type { ResultMeta } from '../query/run';
 import type { TableTargetRef } from './model';
 import type { TableViews } from './useTableViews';
 import type { StagedEdit, EditHistory } from './editHistory';
-import { emptyEdits, stage, travel } from './editHistory';
+import { emptyHistory, stage, travel } from './editHistory';
 import { editDraft } from './editingIo';
 import type { EditIo } from './useEditIo';
 import { useEditIo } from './useEditIo';
 import { quickEdit } from './quickEdits';
 import type { QuickEditAction } from './quickEdits';
+import { pickFile, prepareRow, stageField } from './fieldEditing';
+import type { FieldContext } from './fieldEditing';
+import type { CellValue } from './cellValue';
+import type { FileEncodingDto } from '@openrows/ipc';
+import { cellDraft, fieldEdit, newInsert } from './cellEdits';
 
 type Args = {
   tabId: string;
@@ -28,6 +33,7 @@ export function useRowEditing(args: Args): RowEditing {
     EditReply,
     { kind: 'prepared' }
   > | null>(null);
+  const [inline, setInline] = useState<InlineRequest | null>(null);
   const history = args.views.entryOf(args.tabId).edits;
   const change = (edit: StagedEdit): void => {
     args.views.setEdits(args.tabId, (current) => stage(current, edit));
@@ -40,12 +46,20 @@ export function useRowEditing(args: Args): RowEditing {
   ): void => {
     openDraft({ args, io, history, result, cell, setDraft });
   };
+  const field: FieldContext = { ...args, io, history, change };
   const commit = (token?: string): void => {
     if (!args.sessionId || history.pending || history.uncertain || io.busy)
       return;
     commitChanges({ args, history, io, token, setReview, setDraft });
   };
   return {
+    ...cellEditing({ args, io, history, change }),
+    inline,
+    edit: setInline,
+    fail: io.fail,
+    clearInline: () => {
+      setInline(null);
+    },
     editStaged: (edit) => {
       setDraft(edit.kind === 'delete' ? { ...edit, kind: 'update' } : edit);
     },
@@ -60,6 +74,7 @@ export function useRowEditing(args: Args): RowEditing {
       quickEdit({ ...args, io, history, result, cell, action, stage: change });
     },
     change,
+    ...inspectorEditing(field),
     commit,
     close: () => {
       if (!io.busy) {
@@ -68,10 +83,12 @@ export function useRowEditing(args: Args): RowEditing {
       }
     },
     insert: () => {
-      setDraft(newDraft());
+      const edit = newInsert();
+      args.views.setEdits(args.tabId, (current) => stage(current, edit));
+      setInline({ insert: edit.id });
     },
     discard: () => {
-      args.views.setEdits(args.tabId, () => emptyEdits);
+      args.views.setEdits(args.tabId, () => emptyHistory);
       if (history.uncertain) args.views.setView(args.tabId, refreshView);
       setReview(null);
     },
@@ -80,6 +97,22 @@ export function useRowEditing(args: Args): RowEditing {
     },
     redo: () => {
       args.views.setEdits(args.tabId, (current) => travel(current, 'redo'));
+    },
+  };
+}
+/** Details inspector field editing on the shared change set. */
+function inspectorEditing(
+  field: FieldContext,
+): Pick<RowEditing, 'prepare' | 'stageField' | 'pickFile'> {
+  return {
+    prepare: (result, row, ready) => {
+      prepareRow(field, { result, row }, ready);
+    },
+    stageField: (edit, name, value) => {
+      stageField(field, edit, { name, value });
+    },
+    pickFile: (encoding, use) => {
+      pickFile(field, encoding, use);
     },
   };
 }
@@ -121,7 +154,24 @@ function openDraft({
     if (io.alive.current) setDraft(focusField ? { ...next, focusField } : next);
   });
 }
+/** Ask the grid to edit a cell in place, or the first editable cell of a new row. */
+export type InlineRequest =
+  { row: number; column: number } | { insert: string };
 export type RowEditing = {
+  /** Pending in-place edit request for the grid. */
+  inline: InlineRequest | null;
+  edit: (request: InlineRequest) => void;
+  clearInline: () => void;
+  /** Show a failure, e.g. blocked clipboard access. */
+  fail: (failure: unknown) => void;
+  /** The exact row a cell edit merges into; failures are also shown as `error`. */
+  draftFor: (result: ResultMeta, row: number) => Promise<StagedEdit>;
+  /** Stage one field of `draft`, after any earlier inline commits. */
+  stageCell: (
+    draft: Promise<StagedEdit>,
+    name: string,
+    value: CellValue,
+  ) => void;
   info: EditInfoDto | null;
   error: string | null;
   busy: boolean;
@@ -135,6 +185,16 @@ export type RowEditing = {
     action: QuickEditAction,
   ) => void;
   change: (edit: StagedEdit) => void;
+  /** Exact snapshot (or staged change) of a page row, for inspector editing. */
+  prepare: (
+    result: ResultMeta,
+    row: number,
+    ready: (draft: StagedEdit) => void,
+  ) => void;
+  /** Stage one validated field of a prepared row. */
+  stageField: (draft: StagedEdit, name: string, value: CellValue) => void;
+  /** Pick and read a file natively; `use` receives its text. */
+  pickFile: (encoding: FileEncodingDto, use: (text: string) => void) => void;
   commit: (token?: string) => void;
   close: () => void;
   insert: () => void;
@@ -181,7 +241,7 @@ function commitChanges({
         if (io.alive.current) setReview(reply);
         return;
       }
-      args.views.setEdits(args.tabId, () => emptyEdits);
+      args.views.setEdits(args.tabId, () => emptyHistory);
       args.views.setView(args.tabId, (view) => ({
         ...view,
         revision: view.revision + 1,
@@ -206,13 +266,39 @@ function commitChanges({
   });
 }
 
-function newDraft(): StagedEdit {
+/** Inline value staging: drafts are read once per editor and commits apply in order. */
+function cellEditing({
+  args,
+  io,
+  history,
+  change,
+}: {
+  args: Args;
+  io: EditIo;
+  history: EditHistory;
+  change: (edit: StagedEdit) => void;
+}): Pick<RowEditing, 'draftFor' | 'stageCell'> {
   return {
-    id: crypto.randomUUID(),
-    number: 0,
-    kind: 'insert',
-    original: {},
-    values: {},
+    draftFor: (result, row) => {
+      const draft = io.info
+        ? cellDraft({
+            info: io.info,
+            result,
+            row,
+            offset: args.offset,
+            target: args.target,
+            history,
+          })
+        : Promise.reject(new Error('Table editing is not ready yet.'));
+      draft.catch(io.fail);
+      return draft;
+    },
+    stageCell: (draft, name, value) => {
+      void io.queue(async () => {
+        const row = await draft;
+        if (io.alive.current) change(fieldEdit(row, name, value));
+      });
+    },
   };
 }
 

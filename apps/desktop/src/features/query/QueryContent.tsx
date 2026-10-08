@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 import { lazy, Suspense } from 'react';
 import { useTableCloseGuard } from '../table/useTableCloseGuard';
-import { Button, Tabs } from '@openrows/ui';
+import { Button, Icon, Tabs } from '@openrows/ui';
+import type { IconName } from '@openrows/ui';
 import { sessionOf } from '../connections';
 import type { Connections } from '../connections';
 import type { ProfileDto } from '@openrows/ipc';
 import { useTableViews } from '../table';
-import type { SelectedRow, TableViews } from '../table';
+import type { SelectedTable, ShowRow, TableViews } from '../table';
 import type { QueryTabs } from './useQueryTabs';
 import { useQueryRuns } from './useQueryRuns';
 import type { QueryRuns } from './useQueryRuns';
@@ -30,7 +31,13 @@ type Props = {
   database: string;
   onCell: (cell: SelectedCell) => void;
   /** A table view's selected row, for the inspector's Details. */
-  onRow: (row: SelectedRow) => void;
+  onRow: ShowRow;
+  /** Table info for the inspector (Structure/Index modes); `null` clears it. */
+  onTableInfo?: ((table: SelectedTable | null) => void) | undefined;
+  /** Open a table of this database (e.g. a foreign key's target). */
+  onOpenTable?:
+    | ((table: { database: string; schema: string; name: string }) => void)
+    | undefined;
 };
 
 /**
@@ -45,17 +52,25 @@ export function QueryContent(props: Props): React.JSX.Element {
   if (!connection)
     return (
       <main className={styles.content}>
-        <p className={styles.empty}>
-          Choose a connection in the rail to open a query tab.
-        </p>
+        <EmptyState
+          icon="database"
+          title="No connection selected"
+          detail="Choose a connection in the sidebar to open a query tab."
+          action="New connection…"
+          onAction={() => {
+            props.connections.setSheet({ kind: 'new' });
+          }}
+        />
       </main>
     );
   if (!props.database)
     return (
       <main className={styles.content}>
-        <p className={styles.empty}>
-          Open a database with ⌘K to start a query tab.
-        </p>
+        <EmptyState
+          icon="database"
+          title="No database open"
+          detail="Open a database with ⌘K to start a query tab."
+        />
       </main>
     );
   const { tabs } = props;
@@ -124,6 +139,13 @@ function TabBody(
         views={props.tables}
         onRow={props.onRow}
         onConnect={props.connections.connect}
+        onTableInfo={props.onTableInfo}
+        onOpenTable={(schema, name) => {
+          props.onOpenTable?.({ database: tab.database, schema, name });
+        }}
+        onRenamed={(name) => {
+          props.tabs.renameTable?.(tab.id, name);
+        }}
       />
     );
   return (
@@ -146,9 +168,36 @@ function NoTabs(props: {
   onOpen: () => void;
 }): React.JSX.Element {
   return (
+    <EmptyState
+      icon="terminal"
+      title={`No query tabs on ${props.database}.`}
+      detail="Open a table from the sidebar, or start a new query."
+      action="New query tab (⌘T)"
+      onAction={props.onOpen}
+    />
+  );
+}
+
+/** Centred icon, title, hint and optional action for an empty content area. */
+function EmptyState(props: {
+  icon: IconName;
+  title: string;
+  detail: string;
+  action?: string;
+  onAction?: () => void;
+}): React.JSX.Element {
+  return (
     <div className={styles.empty}>
-      <p>No query tabs on {props.database}.</p>
-      <Button onClick={props.onOpen}>New query tab (⌘T)</Button>
+      <span className={styles.emptyIcon} aria-hidden="true">
+        <Icon name={props.icon} />
+      </span>
+      <p className={styles.emptyTitle}>{props.title}</p>
+      <p>{props.detail}</p>
+      {props.action && (
+        <Button size="sm" onClick={props.onAction}>
+          {props.action}
+        </Button>
+      )}
     </div>
   );
 }

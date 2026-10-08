@@ -11,7 +11,13 @@ import {
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
-import { tableCount, tablePage, tableSql } from '@openrows/ipc';
+import {
+  tableCount,
+  tableEditInfo,
+  tableEditRow,
+  tablePage,
+  tableSql,
+} from '@openrows/ipc';
 import type { PageRequest, QueryEventDto } from '@openrows/ipc';
 import type { Connections } from '../connections';
 import { profile } from '../../test/ipcStub';
@@ -189,10 +195,12 @@ it('opens a table tab and pages through rows with buttons and ⌘[ ⌘]', async 
   await waitFor(() => {
     expect(lastRequest().offset).toBe(300);
   });
-  expect(screen.getByRole('button', { name: '+ Row' })).toBeDisabled();
-  expect(
-    screen.getByText('Read-only: no supported non-null unique key'),
-  ).toBeInTheDocument();
+  const insert = screen.getByRole('button', { name: 'Add row' });
+  expect(insert).toBeDisabled();
+  expect(insert).toHaveAttribute(
+    'title',
+    'Read-only: no supported non-null unique key',
+  );
 });
 
 it('sorts server-side from header clicks: ascending, descending, none', async () => {
@@ -262,15 +270,75 @@ it('shows the selected row in the details panel with field search', async () => 
   page(300);
   await user.click(screen.getByRole('button', { name: 'Select row 7' }));
   const list = await screen.findByLabelText('Row fields');
-  expect(within(list).getByText('7')).toBeVisible();
+  expect(within(list).getByLabelText('Value of id')).toHaveValue('7');
   expect(list).toHaveTextContent('name');
   expect(screen.getByText('users · row 7')).toBeVisible();
   await user.type(screen.getByLabelText('Search for field'), 'nam');
   expect(list).not.toHaveTextContent('id');
-  expect(within(list).getByText('EMPTY')).toHaveAttribute(
-    'data-state',
-    'empty',
+  const empty = within(list).getByLabelText('Value of name');
+  expect(empty).toHaveValue('');
+  expect(empty).toHaveAttribute('placeholder', 'EMPTY');
+  expect(empty).toHaveAttribute('readonly');
+});
+
+it('edits inspector fields in place: staged values show and the row stays selected', async () => {
+  const facts = { comment: null, primaryKey: false, enumLabels: null };
+  vi.mocked(tableEditInfo).mockResolvedValueOnce({
+    key: ['id'],
+    protected: [],
+    readOnly: false,
+    columns: [
+      {
+        ...facts,
+        name: 'id',
+        dataType: 'integer',
+        nullable: false,
+        default: null,
+      },
+      {
+        ...facts,
+        name: 'name',
+        dataType: 'text',
+        nullable: true,
+        default: "'anon'::text",
+      },
+    ],
+  });
+  const user = await mount();
+  page(300);
+  await user.click(screen.getByRole('button', { name: 'Select row 7' }));
+  const name = await screen.findByLabelText('Value of name');
+  await waitFor(() => {
+    expect(
+      screen.getByRole('button', { name: 'Value options for name' }),
+    ).toBeVisible();
+  });
+  expect(name).toHaveAttribute('readonly');
+  await user.click(name);
+  await waitFor(() => {
+    expect(name).not.toHaveAttribute('readonly');
+  });
+  expect(tableEditRow).toHaveBeenCalledWith(expect.anything(), { id: '7' });
+  await user.type(name, 'Ada{Enter}');
+  await waitFor(() => {
+    expect(name.closest('[data-state]')).toHaveAttribute(
+      'data-state',
+      'changed',
+    );
+  });
+  expect(name).toHaveValue('Ada');
+  expect(screen.getByText('users · row 7')).toBeVisible();
+  await user.click(
+    screen.getByRole('button', { name: 'Value options for name' }),
   );
+  await user.click(screen.getByRole('menuitem', { name: 'DEFAULT' }));
+  await waitFor(() => {
+    expect(screen.getByLabelText('Value of name')).toHaveAttribute(
+      'placeholder',
+      'DEFAULT',
+    );
+  });
+  expect(screen.getByLabelText('Value of name')).toHaveValue('');
 });
 
 it('counts exactly on demand and shows structure and indexes', async () => {
@@ -285,15 +353,15 @@ it('counts exactly on demand and shows structure and indexes', async () => {
     expect(shown()).toHaveTextContent('1–300 of 1,811 rows');
   });
   await user.click(screen.getByRole('radio', { name: 'Structure' }));
-  expect(screen.getByRole('table', { name: 'Columns' })).toHaveTextContent(
-    'Display name',
-  );
-  await user.click(screen.getByRole('radio', { name: 'Indexes' }));
-  expect(screen.getByRole('table', { name: 'Indexes' })).toHaveTextContent(
+  expect(
+    await screen.findByRole('grid', { name: 'Columns' }),
+  ).toHaveTextContent('Display name');
+  await user.click(screen.getByRole('radio', { name: 'Index' }));
+  expect(screen.getByRole('grid', { name: 'Indexes' })).toHaveTextContent(
     'orders_pkey',
   );
-  await user.click(screen.getByRole('button', { name: 'Columns' }));
   await user.click(screen.getByRole('radio', { name: 'Data' }));
+  await user.click(screen.getByRole('button', { name: 'Columns' }));
   await user.click(screen.getByRole('checkbox', { name: 'name' }));
   expect(lastRequest().query.columns).toEqual(['id']);
 });

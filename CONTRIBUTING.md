@@ -20,11 +20,14 @@ just setup
 just check
 just --list
 just dev          # native OpenRows window with frontend hot reload
+just dev-cert     # macOS, once: stable dev signing so keychain "Always Allow" sticks
 just build-app    # unsigned release .app in the configured Cargo target
 just bench-startup # ten release launches and budget gates (macOS GUI only)
 just bench-memory  # all-process idle physical-footprint budget (macOS GUI only)
 just bench-test    # synthetic budgets/reports/cleanup tests (no GUI)
 ```
+
+On macOS, debug builds are ad-hoc signed, so the keychain forgets "Always Allow" for saved connection passwords after every rebuild and asks for your login password again. Once per machine, run `just dev-cert`: it creates a self-signed "OpenRows Dev" code-signing identity in your login keychain and test-signs with it (macOS may ask once to let `codesign` use the key: enter your login password and choose Always Allow). From then on `just dev` signs `target/debug/openrows-app` with that identity before launching it; choose Always Allow on the next keychain prompt and rebuilds keep it. Without the identity `just dev` prints a one-line hint and runs unchanged; tests, CI and other platforms are unaffected. `OPENROWS_DEV_IDENTITY` selects another identity (for example an "Apple Development" certificate); remove the identity in Keychain Access to undo ([docs/12 §8](docs/12-security.md#8-implementation-notes-d-03-secrets-and-profiles)).
 
 Run these commands from the repository root. `just setup` verifies the required tools and the pinned toolchain, checks Node.js and the pinned pnpm version, installs workspace dependencies, prints installation hints for missing tools, and sets `core.hooksPath` to `scripts/git-hooks`. The current `commit-msg` hook checks commit messages against the rules below.
 

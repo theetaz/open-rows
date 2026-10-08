@@ -2,6 +2,7 @@
 import { vi } from 'vitest';
 import type { ProfileDto, ServerDto, TableStructureDto } from '@openrows/ipc';
 import { catalogStub } from './catalogStub';
+import { structureStub } from './structureStub';
 
 /** A saved profile with synthetic, non-secret values. */
 export function profile(
@@ -50,6 +51,8 @@ const sampleStructure: TableStructureDto = {
       nullable: false,
       default: null,
       comment: null,
+      primaryKey: true,
+      enumLabels: null,
     },
     {
       name: 'name',
@@ -57,6 +60,8 @@ const sampleStructure: TableStructureDto = {
       nullable: true,
       default: "'anon'::text",
       comment: 'Display name',
+      primaryKey: false,
+      enumLabels: null,
     },
   ],
   indexes: [
@@ -106,6 +111,7 @@ export function ipcStub(
     duplicateProfile: vi.fn(),
     deleteProfile: vi.fn(() => Promise.resolve()),
     confirmDestructive: vi.fn(() => Promise.resolve(null)),
+    pickFileValue: vi.fn(() => Promise.resolve(null)),
     CommandError: class CommandError extends Error {},
     executeQuery: vi.fn(),
     cancelQuery: vi.fn(() => Promise.resolve()),
@@ -124,6 +130,7 @@ export function ipcStub(
       Promise.resolve({ kind: 'prepared', token: 'review', statements: [] }),
     ),
     tableStructure: vi.fn(() => Promise.resolve(sampleStructure)),
+    ...structureStub(),
     tablePage: vi.fn(() => new Promise(() => {})),
     tableCount: vi.fn(() => new Promise(() => {})),
     tableSql: vi.fn(() => Promise.resolve({ sql: 'SELECT 1', params: [] })),

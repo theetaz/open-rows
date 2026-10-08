@@ -134,6 +134,10 @@ pub(crate) struct TableColumnDto {
     nullable: bool,
     default: Option<String>,
     comment: Option<String>,
+    /// Part of the primary key.
+    primary_key: bool,
+    /// Allowed labels, only for enum-typed columns (inline editing menu).
+    enum_labels: Option<Vec<String>>,
 }
 
 /// An index on the Indexes tab.
@@ -165,6 +169,8 @@ impl From<ColumnSummary> for TableColumnDto {
             nullable: column.nullable,
             default: column.default,
             comment: column.comment,
+            primary_key: column.primary_key,
+            enum_labels: column.enum_labels,
         }
     }
 }

@@ -8,9 +8,11 @@
   gap: var(--or-space-6);
   padding: var(--or-space-8) var(--or-space-10);
   border-radius: var(--or-radius-card);
-  background: var(--or-panel);
+  background: var(--or-control-active);
   backdrop-filter: var(--or-glass-panel);
-  box-shadow: var(--or-panel-shadow);
+  box-shadow:
+    0 0 0 var(--or-border-width) var(--or-control-stroke),
+    var(--or-panel-shadow);
   color: var(--or-text);
   pointer-events: none;
   font-size: var(--or-text-12);
@@ -21,5 +23,16 @@
 .tooltip small {
   grid-column: 1 / -1;
   color: var(--or-secondary);
+  font-size: var(--or-text-11);
+}
+.trailing {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--or-space-6);
+}
+.tooltip kbd {
+  color: var(--or-secondary);
+  font: inherit;
   font-size: var(--or-text-11);
 }

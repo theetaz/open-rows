@@ -190,6 +190,7 @@ mod tests {
     use super::*;
     use openrows_core::CoreError;
     use openrows_driver_api::DriverError;
+    use openrows_secrets::{SecretError, SecretKey, SecretStore, SecretString};
 
     #[test]
     fn failed_events_carry_the_message() -> Result<(), serde_json::Error> {
@@ -203,6 +204,44 @@ mod tests {
         let json = serde_json::to_value(event)?;
         assert_eq!(json["state"], "failed");
         assert_eq!(json["message"], "authentication failed: bad password");
+        Ok(())
+    }
+
+    /// Fails every call, so any secret store access fails the test.
+    struct Untouchable;
+
+    impl SecretStore for Untouchable {
+        fn set(&self, _: &SecretKey, _: &SecretString) -> Result<(), SecretError> {
+            Err(SecretError::Poisoned)
+        }
+
+        fn get(&self, _: &SecretKey) -> Result<Option<SecretString>, SecretError> {
+            Err(SecretError::Poisoned)
+        }
+
+        fn delete(&self, _: &SecretKey) -> Result<(), SecretError> {
+            Err(SecretError::Poisoned)
+        }
+    }
+
+    #[test]
+    fn testing_without_a_stored_password_never_reads_the_keychain()
+    -> Result<(), Box<dyn std::error::Error>> {
+        use super::super::dto::{EnvKindDto, PasswordInput, tests::input};
+        let dir = tempfile::tempdir()?;
+        let files = openrows_store::profile::ProfileFiles::new(dir.path());
+        let service = ProfileService::new(files, std::sync::Arc::new(Untouchable));
+        let saved = super::super::profiles::tests::create_passwordless(&service)?;
+        let mut form = input(EnvKindDto::Local);
+        let kept = test_target(&service, Some(&saved), &form)?;
+        assert!(kept.config.password.is_none());
+        form.password = PasswordInput::Set {
+            value: "typed-synthetic".to_owned(),
+        };
+        for id in [None, Some(saved.as_str())] {
+            let typed = test_target(&service, id, &form)?;
+            assert_eq!(typed.config.password.as_deref(), Some("typed-synthetic"));
+        }
         Ok(())
     }
 }

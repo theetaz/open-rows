@@ -8,6 +8,8 @@ import type { QueryTabs, TabScope } from '../features/query';
 import { openTableView } from '../features/table';
 import { useDetails } from './useDetails';
 import type { Details } from './useDetails';
+import { useTableInfo } from './useTableInfo';
+import type { TableInfoState } from './useTableInfo';
 import { queryCommands } from './queryCommands';
 import { useCompact, useInspectorOpen } from './layout';
 import { useWorkspaceKeys } from './useWorkspaceKeys';
@@ -57,6 +59,7 @@ export function useWorkspaceController(
   useDatabasePrompt(connections, setMode);
   const [refreshes, setRefreshes] = useState(0);
   const details = useDetails(setPanel, activeTabId(tabs, scope));
+  const tableInfo = useTableInfo(activeTabId(tabs, scope));
   const commands = queryCommands(tabs, scope, scopeOf);
   const { addQuery, closeTab } = commands;
   /** Relations open as table views (D-08); routines and sequences as query tabs. */
@@ -109,6 +112,7 @@ export function useWorkspaceController(
     setMode,
     refreshes,
     ...details,
+    ...tableInfo,
     toggleSidebar: () => {
       setSidebar((open) => !open);
     },
@@ -120,30 +124,31 @@ export function useWorkspaceController(
   };
 }
 
-type WorkspaceController = Details & {
-  catalog: Catalog;
-  tabs: QueryTabs;
-  /** Tab scope of the browsed connection and database. */
-  scope: TabScope | undefined;
-  compact: boolean;
-  inspector: ReturnType<typeof useInspectorOpen>;
-  sidebar: boolean;
-  safe: boolean;
-  prod: boolean;
-  panel: string;
-  setPanel: (panel: string) => void;
-  mode: PaletteMode | null;
-  setMode: (mode: PaletteMode | null) => void;
-  refreshes: number;
-  toggleSidebar: () => void;
-  /** Open a query tab on the active connection, optionally with SQL. */
-  addQuery: (sql?: string) => void;
-  /** Open (or refocus) the table view or query tab of a tree or ⌘P object. */
-  openObject: (object: ObjectRef) => void;
-  toggleSafe: () => void;
-  refresh: () => void;
-  command: (id: string) => void;
-};
+type WorkspaceController = Details &
+  TableInfoState & {
+    catalog: Catalog;
+    tabs: QueryTabs;
+    /** Tab scope of the browsed connection and database. */
+    scope: TabScope | undefined;
+    compact: boolean;
+    inspector: ReturnType<typeof useInspectorOpen>;
+    sidebar: boolean;
+    safe: boolean;
+    prod: boolean;
+    panel: string;
+    setPanel: (panel: string) => void;
+    mode: PaletteMode | null;
+    setMode: (mode: PaletteMode | null) => void;
+    refreshes: number;
+    toggleSidebar: () => void;
+    /** Open a query tab on the active connection, optionally with SQL. */
+    addQuery: (sql?: string) => void;
+    /** Open (or refocus) the table view or query tab of a tree or ⌘P object. */
+    openObject: (object: ObjectRef) => void;
+    toggleSafe: () => void;
+    refresh: () => void;
+    command: (id: string) => void;
+  };
 function shellCommand(input: {
   catalog: Catalog;
   inspector: ReturnType<typeof useInspectorOpen>;

@@ -16,6 +16,8 @@ type Props<Value extends string> = {
   className?: string | undefined;
   /** Regular (28 px) or compact (24 px) for toolbars and footers (docs/20 §3.3). */
   size?: 'regular' | 'compact';
+  /** `accent` fills the selected segment with the accent colour (view switchers). */
+  tone?: 'neutral' | 'accent';
 };
 function nextIndex(
   key: string,
@@ -42,6 +44,7 @@ export function SegmentedControl<Value extends string>(
       className={[styles.segmented, props.className].filter(Boolean).join(' ')}
       role="radiogroup"
       data-size={props.size ?? 'regular'}
+      data-tone={props.tone ?? 'neutral'}
       aria-label={props['aria-label']}
       aria-disabled={props.disabled}
     >

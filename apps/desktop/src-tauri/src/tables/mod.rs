@@ -6,9 +6,15 @@
 //! relation's catalog columns (read on the metadata session), then run them
 //! on the target database's session with bind parameters. Pages stream into the
 //! shared result store like query results; both are cancelled through
-//! `query_cancel`. `table_structure` serves the Structure and Indexes tabs.
+//! `query_cancel`. `table_structure` serves the Data tab's columns and
+//! estimate; `table_detail` serves the Structure, Index, Triggers and DDL
+//! views and `table_alter` reviews and commits structure changes.
 pub(crate) mod commands;
 mod dto;
 
 pub(crate) mod edit_commands;
 mod edit_dto;
+pub(crate) mod file_value;
+pub(crate) mod schema_commands;
+mod schema_dto;
+mod schema_map;

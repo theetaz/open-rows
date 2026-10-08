@@ -6,5 +6,6 @@
 mod catalog;
 mod connect;
 mod streaming;
+mod structure;
 mod support;
 mod types;

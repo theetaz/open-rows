@@ -163,7 +163,7 @@ pub(crate) fn profile_parse_url(url: String) -> Result<UrlDraft, IpcError> {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use std::sync::Arc;
 
     use openrows_secrets::MemorySecretStore;
@@ -252,6 +252,14 @@ mod tests {
             missing.is_err_and(|error| error.kind == super::super::error::IpcErrorKind::NotFound)
         );
         Ok(())
+    }
+
+    /// Save the test form without a password; returns the new profile id.
+    pub(crate) fn create_passwordless(
+        service: &ProfileService,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        let created = create(service, &input(EnvKindDto::Local))?;
+        created_id(&serde_json::to_string(&created)?)
     }
 
     fn created_id(json: &str) -> Result<String, Box<dyn std::error::Error>> {

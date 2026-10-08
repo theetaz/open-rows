@@ -4,8 +4,11 @@ import { Button, TextField } from '@openrows/ui';
 import { Sheet, SheetActions } from '@openrows/ui/sheet';
 import type { EditInfoDto } from '@openrows/ipc';
 import type { StagedEdit } from './editHistory';
+import { editableText, fromOriginal, NULL_VALUE, textValue } from './cellValue';
+import type { CellValue } from './cellValue';
 import type { RowEditing } from './useRowEditing';
 import { duplicateRow } from './quickEdits';
+import { ReviewSheet } from './ReviewSheet';
 import styles from './Table.module.css';
 
 /** Review precise text values; NULL and DEFAULT are explicit, different choices. */
@@ -16,7 +19,7 @@ function EditForm(props: {
 }): React.JSX.Element {
   const { draft, info, editing } = props;
   const [values, setValues] = useState(draft.values);
-  const set = (name: string, value: string | null): void => {
+  const set = (name: string, value: CellValue): void => {
     setValues((current) => ({ ...current, [name]: value }));
   };
   const inserting = draft.kind === 'insert';
@@ -83,7 +86,7 @@ function EditFields({
   draft: StagedEdit;
   info: EditInfoDto;
   values: Values;
-  set: (name: string, value: string | null) => void;
+  set: (name: string, value: CellValue) => void;
   setValues: React.Dispatch<React.SetStateAction<Values>>;
 }): React.JSX.Element {
   const inserting = draft.kind === 'insert';
@@ -92,9 +95,7 @@ function EditFields({
       {info.columns.map((column) => {
         const protectedField = info.protected.includes(column.name);
         const active = Object.hasOwn(values, column.name);
-        const value = active
-          ? values[column.name]
-          : draft.original[column.name];
+        const value = shownValue(draft, values, column.name);
         return (
           <div key={column.name} className={styles.editField}>
             <label>
@@ -109,7 +110,7 @@ function EditFields({
                   disabled={protectedField}
                   checked={active}
                   onChange={(event) => {
-                    if (event.target.checked) set(column.name, '');
+                    if (event.target.checked) set(column.name, textValue(''));
                     else
                       setValues((current) =>
                         Object.fromEntries(
@@ -127,15 +128,15 @@ function EditFields({
             <TextField
               aria-label={`Edit ${column.name}`}
               data-initial-focus={draft.focusField === column.name}
-              value={value ?? ''}
-              placeholder={
-                value === null ? 'NULL' : inserting && !active ? 'DEFAULT' : ''
-              }
+              value={value ? editableText(value) : ''}
+              placeholder={placeholder(value)}
               disabled={
-                protectedField || (inserting && !active) || value === null
+                protectedField ||
+                (inserting && !active) ||
+                value?.kind === 'null'
               }
               onChange={(event) => {
-                set(column.name, event.target.value);
+                set(column.name, textValue(event.target.value));
               }}
             />
             {column.nullable && !protectedField && (!inserting || active) && (
@@ -161,36 +162,23 @@ export function RowEditSheet({
 }): React.JSX.Element | null {
   if (editing.review)
     return (
-      <Sheet title="Review table changes" onClose={editing.close}>
-        <p>
-          {editing.history.current.length} staged row changes. Conflicts and
-          statement errors roll back the transaction. If the connection is lost
-          during commit, reload before retrying.
-        </p>
-        <pre className={styles.preview}>
-          {editing.review.statements
-            .map(
-              (statement) =>
-                `${statement.sql}\n${statement.params.map((value, index) => `-- $${String(index + 1)} = ${value === null ? 'NULL' : JSON.stringify(value)}`).join('\n')}`,
-            )
-            .join('\n\n')}
-        </pre>
-        {editing.error && <p role="alert">{editing.error}</p>}
-        <SheetActions>
-          <Button disabled={editing.busy} onClick={editing.close}>
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            disabled={editing.busy || editing.history.uncertain}
-            onClick={() => {
-              editing.commit(editing.review?.token);
-            }}
-          >
-            {editing.busy ? 'Committing…' : 'Commit changes'}
-          </Button>
-        </SheetActions>
-      </Sheet>
+      <ReviewSheet
+        title="Review table changes"
+        summary={`${String(editing.history.current.length)} staged row changes. Conflicts and statement errors roll back the transaction. If the connection is lost during commit, reload before retrying.`}
+        sql={editing.review.statements
+          .map(
+            (statement) =>
+              `${statement.sql}\n${statement.params.map((value, index) => `-- $${String(index + 1)} = ${value === null ? 'NULL' : JSON.stringify(value)}`).join('\n')}`,
+          )
+          .join('\n\n')}
+        error={editing.error}
+        busy={editing.busy}
+        blocked={Boolean(editing.history.uncertain)}
+        onCancel={editing.close}
+        onCommit={() => {
+          editing.commit(editing.review?.token);
+        }}
+      />
     );
   return editing.draft && editing.info ? (
     <EditForm
@@ -209,8 +197,8 @@ function NullValue({
   focus,
 }: {
   name: string;
-  value: string | null | undefined;
-  set: (name: string, value: string | null) => void;
+  value: CellValue | undefined;
+  set: (name: string, value: CellValue) => void;
   focus: boolean;
 }): React.JSX.Element {
   return (
@@ -218,13 +206,31 @@ function NullValue({
       <input
         type="checkbox"
         aria-label={`NULL ${name}`}
-        data-initial-focus={focus && value === null}
-        checked={value === null}
+        data-initial-focus={focus && value?.kind === 'null'}
+        checked={value?.kind === 'null'}
         onChange={(event) => {
-          set(name, event.target.checked ? null : '');
+          set(name, event.target.checked ? NULL_VALUE : textValue(''));
         }}
       />
       NULL
     </label>
   );
+}
+
+/** Markers for values without editable text; inactive insert fields use DEFAULT. */
+function placeholder(value: CellValue | undefined): string {
+  if (value?.kind === 'null') return 'NULL';
+  return !value || value.kind === 'default' ? 'DEFAULT' : '';
+}
+
+/** The staged value, else the original (none for an insert's DEFAULT fields). */
+function shownValue(
+  draft: StagedEdit,
+  values: StagedEdit['values'],
+  name: string,
+): CellValue | undefined {
+  if (Object.hasOwn(values, name)) return values[name];
+  return draft.kind === 'insert'
+    ? undefined
+    : fromOriginal(draft.original[name] ?? null);
 }

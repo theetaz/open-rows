@@ -9,6 +9,7 @@ import { displayWindow } from '../../results/displayWindow';
 import type { ResultMeta } from './run';
 import type { SelectedCell } from './cell';
 import styles from './Query.module.css';
+import { columnAlign } from '../../results/align';
 
 function columnsOf(columns: readonly ColumnDto[]): GridColumn[] {
   return columns.map((column, index) => ({
@@ -16,6 +17,7 @@ function columnsOf(columns: readonly ColumnDto[]): GridColumn[] {
     title: column.name,
     width: Math.min(320, Math.max(88, column.name.length * 8 + 40)),
     pinned: false,
+    align: columnAlign(column.sourceType),
   }));
 }
 

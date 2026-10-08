@@ -34,3 +34,29 @@ pre {
   user-select: text;
   cursor: text;
 }
+/*
+ * Quiet scrollbars, like macOS overlay ones: faint until the scrolling area
+ * is hovered, then clear, and strongest under the pointer.
+ */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+  background: transparent;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: var(--or-radius-capsule);
+  background-clip: padding-box;
+  background-color: color-mix(in srgb, var(--or-text) 8%, transparent);
+}
+:hover::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--or-text) 28%, transparent);
+}
+::-webkit-scrollbar-thumb:hover,
+::-webkit-scrollbar-thumb:active {
+  background-color: color-mix(in srgb, var(--or-text) 45%, transparent);
+}

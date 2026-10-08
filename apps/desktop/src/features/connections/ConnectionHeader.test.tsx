@@ -15,6 +15,7 @@ import { profile, sampleProfiles } from '../../test/ipcStub';
 import { ConnectionHeader } from './ConnectionHeader';
 import { ConnectionRail } from './ConnectionRail';
 import { ConnectionSheets } from './ConnectionSheets';
+import { connectionActions } from './connectionActions';
 import { useConnections } from './useConnections';
 
 vi.mock('@openrows/ipc', async () =>
@@ -33,7 +34,7 @@ function Harness(): React.JSX.Element {
         onNew={() => {
           connections.setSheet({ kind: 'new' });
         }}
-        onGallery={vi.fn()}
+        actionsFor={(item) => connectionActions(item, connections)}
       />
       <ConnectionHeader connections={connections} />
       <ConnectionSheets connections={connections} />
@@ -41,17 +42,21 @@ function Harness(): React.JSX.Element {
   );
 }
 
-async function menu(user: ReturnType<typeof userEvent.setup>, name: string) {
-  await user.click(screen.getByRole('button', { name: 'Connection menu' }));
+async function menu(
+  user: ReturnType<typeof userEvent.setup>,
+  name: string,
+  connection = 'orders-local',
+) {
+  await user.click(
+    await screen.findByRole('button', { name: `${connection} actions` }),
+  );
   await user.click(screen.getByRole('menuitem', { name }));
 }
 
-it('connects on selection, shows failures and disconnects from the menu', async () => {
+it('connects on selection, shows failures and disconnects from the row menu', async () => {
   const user = userEvent.setup();
   render(<Harness />);
-  expect(
-    await screen.findByText('Choose a connection in the rail.'),
-  ).toBeVisible();
+  expect(await screen.findAllByText('Not connected')).not.toHaveLength(0);
   vi.mocked(openConnection).mockRejectedValueOnce(
     new Error('network error: localhost:5432: connection refused'),
   );
@@ -62,12 +67,15 @@ it('connects on selection, shows failures and disconnects from the menu', async 
     'connection refused',
   );
   await menu(user, 'Connect');
-  expect(await screen.findByRole('status')).toHaveTextContent(
-    'Connected · PostgreSQL 17.2',
-  );
+  expect(
+    await screen.findByText('Connected · PostgreSQL 17.2'),
+  ).toBeInTheDocument();
+  expect(screen.queryByRole('alert')).toBeNull();
   await menu(user, 'Disconnect');
   expect(closeConnection).toHaveBeenCalledWith('id-orders-local');
-  expect(await screen.findByRole('status')).toHaveTextContent('Not connected');
+  await waitFor(() => {
+    expect(screen.queryByText('Connected · PostgreSQL 17.2')).toBeNull();
+  });
 });
 
 it('duplicates and deletes only after confirmation', async () => {
@@ -82,11 +90,14 @@ it('duplicates and deletes only after confirmation', async () => {
     profiles: [...sampleProfiles, copy],
     unreadable: [],
   });
-  await menu(user, 'Duplicate');
+  await menu(user, 'Duplicate', 'analytics-prod');
   expect(duplicateProfile).toHaveBeenCalledWith('id-analytics-prod');
-  expect(await screen.findByTitle('analytics-prod copy')).toBeVisible();
+  const copyName = 'analytics-prod copy';
+  expect(
+    await screen.findByRole('button', { name: `Switch to ${copyName}` }),
+  ).toBeVisible();
   vi.mocked(confirmDestructive).mockResolvedValueOnce(false);
-  await menu(user, 'Delete…');
+  await menu(user, 'Delete…', copyName);
   expect(confirmDestructive).toHaveBeenLastCalledWith(
     expect.objectContaining({
       title: 'Delete “analytics-prod copy”?',
@@ -94,7 +105,7 @@ it('duplicates and deletes only after confirmation', async () => {
     }),
   );
   expect(deleteProfile).not.toHaveBeenCalled();
-  await menu(user, 'Delete…');
+  await menu(user, 'Delete…', copyName);
   const dialog = await screen.findByRole('dialog', {
     name: 'Delete “analytics-prod copy”?',
   });
@@ -106,13 +117,15 @@ it('duplicates and deletes only after confirmation', async () => {
     profiles: [...sampleProfiles],
     unreadable: [],
   });
-  await menu(user, 'Delete…');
+  await menu(user, 'Delete…', copyName);
   await waitFor(() => {
     expect(deleteProfile).toHaveBeenCalledWith('id-analytics-prod copy');
   });
-  expect(
-    await screen.findByText('Choose a connection in the rail.'),
-  ).toBeVisible();
+  await waitFor(() => {
+    expect(
+      screen.queryByRole('button', { name: `Switch to ${copyName}` }),
+    ).toBeNull();
+  });
 });
 
 it('opens the new connection sheet from the rail', async () => {

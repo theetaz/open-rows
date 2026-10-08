@@ -68,3 +68,15 @@ export function tableEdit(
 ): Promise<EditReply> {
   return unwrap(commands.tableEdit(request));
 }
+/** Columns, constraints, indexes, triggers, sizes and the rebuilt DDL of a relation. */
+export function tableDetail(
+  target: TableTarget,
+): Promise<import('./generated/bindings').TableDetailDto> {
+  return unwrap(commands.tableDetail(target));
+}
+/** Review generated DDL for a typed change set, then commit it with the review token. */
+export function tableAlter(
+  request: import('./generated/bindings').AlterRequest,
+): Promise<import('./generated/bindings').AlterReply> {
+  return unwrap(commands.tableAlter(request));
+}

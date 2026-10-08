@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-//! Atomic row edits on an isolated connection: no user query can interleave.
+//! Atomic row edits and structure changes on an isolated connection: no user
+//! query can interleave.
 use crate::PgSession;
 use arrow_array::RecordBatch;
 use arrow_schema::SchemaRef;
@@ -27,6 +28,28 @@ impl PgSession {
     pub async fn commit_edits(&mut self, edits: &[BoundEdit]) -> Result<(), DriverError> {
         self.execute("BEGIN", &mut Discard).await?;
         let result = self.apply_edits(edits).await;
+        self.finish(result).await
+    }
+
+    /// Run structure-change statements (DDL) in one transaction: any failure
+    /// rolls every statement back. Each runs through the extended protocol,
+    /// which refuses more than one statement per text.
+    /// # Errors
+    /// Server/transport errors, or 08007 for an uncertain COMMIT.
+    pub async fn commit_ddl(&mut self, statements: &[String]) -> Result<(), DriverError> {
+        self.execute("BEGIN", &mut Discard).await?;
+        let mut result = Ok(());
+        for sql in statements {
+            result = self.execute_bound(sql, &[], &mut Discard).await.map(|_| ());
+            if result.is_err() {
+                break;
+            }
+        }
+        self.finish(result).await
+    }
+
+    /// Roll back after a failure, else commit; a lost COMMIT reply is uncertain.
+    async fn finish(&mut self, result: Result<(), DriverError>) -> Result<(), DriverError> {
         if let Err(error) = result {
             self.execute("ROLLBACK", &mut Discard).await?;
             return Err(error);

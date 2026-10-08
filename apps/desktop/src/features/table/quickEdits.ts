@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { EditInfoDto } from '@openrows/ipc';
 import type { ResultMeta } from '../query/run';
-import { editDraft } from './editingIo';
+import { cellDraft } from './cellEdits';
 import type { EditHistory, StagedEdit } from './editHistory';
 import type { TableTargetRef } from './model';
 import type { EditIo } from './useEditIo';
+import { fromOriginal } from './cellValue';
+import type { CellValue } from './cellValue';
 
-export type QuickEditAction = 'delete' | 'duplicate' | 'null' | 'empty';
+export type QuickEditAction = 'delete' | 'duplicate';
 /** Context actions share the exact-snapshot staging path; no database write occurs. */
 export function quickEdit(args: {
   io: EditIo;
@@ -18,7 +20,7 @@ export function quickEdit(args: {
   action: QuickEditAction;
   stage: (edit: StagedEdit) => void;
 }): void {
-  const { io, history, result, cell, action } = args;
+  const { io, history, cell, action } = args;
   const info = io.info;
   if (
     !info ||
@@ -29,28 +31,11 @@ export function quickEdit(args: {
   )
     return;
   void io.run(async () => {
-    const draft = await editDraft({ ...args, info, row: cell.row });
+    const draft = await cellDraft({ ...args, info, row: cell.row });
     if (!io.alive.current) return;
     if (action === 'delete')
       args.stage({ ...draft, kind: 'delete', values: {} });
-    else if (action === 'duplicate') args.stage(duplicateRow(draft, info));
-    else {
-      const name = result.columns[cell.column]?.name;
-      const column = info.columns.find((item) => item.name === name);
-      if (
-        !column ||
-        info.protected.includes(column.name) ||
-        (action === 'null' && !column.nullable)
-      )
-        throw new Error('This field does not support that value.');
-      args.stage({
-        ...draft,
-        values: {
-          ...draft.values,
-          [column.name]: action === 'null' ? null : '',
-        },
-      });
-    }
+    else args.stage(duplicateRow(draft, info));
   });
 }
 
@@ -62,9 +47,23 @@ export function duplicateRow(draft: StagedEdit, info: EditInfoDto): StagedEdit {
     kind: 'insert',
     original: {},
     values: Object.fromEntries(
-      Object.entries({ ...draft.original, ...draft.values }).filter(
+      Object.entries({
+        ...originalValues(draft.original),
+        ...draft.values,
+      }).filter(
         ([name]) => !info.key.includes(name) && !info.protected.includes(name),
       ),
     ),
   };
+}
+
+function originalValues(
+  original: StagedEdit['original'],
+): Record<string, CellValue> {
+  return Object.fromEntries(
+    Object.entries(original).map(([name, value]) => [
+      name,
+      fromOriginal(value),
+    ]),
+  );
 }
