@@ -57,8 +57,10 @@ it('defaults to workspace, opens the gallery from the command palette and return
   expect(screen.queryByRole('tab', { name: /SQL Query 1/ })).toBeNull();
   expect(screen.getByText(/open a query tab/)).toBeVisible();
   await openGallery(user);
+  // The gallery loads lazily; Escape before it mounts would be lost on slow runners.
+  await screen.findByRole('heading', { name: 'Made for the desktop.' });
   await user.keyboard('{Escape}');
-  expect(screen.getByText(/open a query tab/)).toBeVisible();
+  expect(await screen.findByText(/open a query tab/)).toBeVisible();
 });
 it('opens appearance by gear or shortcut, preserves the workspace and returns focus', async () => {
   const { default: userEvent } = await import('@testing-library/user-event');
