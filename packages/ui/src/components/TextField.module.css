@@ -51,8 +51,8 @@
 }
 /* Native text fields ring on any focus; the ring wraps icon and accessories. */
 .frame:focus-within {
-  outline: var(--or-focus-width) solid var(--or-focus);
-  outline-offset: var(--or-border-width);
+  outline: var(--or-field-focus-width) solid var(--or-field-focus);
+  outline-offset: 0;
 }
 .frame input:focus-visible,
 .frame select:focus-visible {

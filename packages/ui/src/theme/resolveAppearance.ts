@@ -73,6 +73,7 @@ function tintedPalette(
     focus: lightMode
       ? mix(half.accent, '#000000', 0.15)
       : mix(half.accent, '#FFFFFF', 0.7),
+    'field-focus': alpha(half.accent, 0.5),
     'danger-fg': lightMode
       ? base['danger-fg']
       : mix(base['danger-fg'], '#FFFFFF', 0.14),

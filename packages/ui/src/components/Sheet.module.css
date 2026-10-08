@@ -8,11 +8,11 @@
 }
 .sheet {
   position: fixed;
-  inset-block-start: calc(var(--or-toolbar-height) + var(--or-space-8));
-  margin-block-start: 0;
+  inset: 0;
+  margin: auto;
   box-sizing: border-box;
   inline-size: min(var(--or-sheet-width), calc(100vw - var(--or-space-32)));
-  max-block-size: calc(100vh - var(--or-toolbar-height) - var(--or-space-32));
+  max-block-size: calc(100vh - var(--or-space-32));
   padding: 0;
   color: var(--or-text);
   font-size: var(--or-text-13);
@@ -40,6 +40,13 @@
   font-size: var(--or-text-13);
   font-weight: var(--or-weight-semibold);
   text-align: center;
+}
+/* The title row is the drag handle; it spans the sheet's top padding. */
+.body .title {
+  margin: calc(-1 * var(--or-space-12)) calc(-1 * var(--or-space-20)) 0;
+  padding: var(--or-space-12) var(--or-space-20) 0;
+  user-select: none;
+  touch-action: none;
 }
 .body p {
   margin: 0;

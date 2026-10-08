@@ -2,12 +2,14 @@
 import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import styles from './Sheet.module.css';
+import { useSheetDrag } from './sheetDrag';
 import { openSheet, sheetKey } from './sheetFocus';
 
 /**
- * macOS-style sheet: compact centred title, 12 px panel corners, focus
- * containment, Escape cancels, Return runs the default (primary) action and
- * focus returns to the opener. There is no close button, as in AppKit.
+ * macOS-style sheet: opens centred in the window and moves by dragging its
+ * title row; compact centred title, 12 px panel corners, focus containment,
+ * Escape cancels, Return runs the default (primary) action and focus returns
+ * to the opener. There is no close button, as in AppKit.
  */
 export function Sheet({
   title,
@@ -22,6 +24,7 @@ export function Sheet({
   size?: 'form' | 'alert' | 'appearance';
 }): React.JSX.Element {
   const ref = useRef<HTMLDialogElement>(null);
+  const startDrag = useSheetDrag(ref);
   useEffect(() => {
     const dialog = ref.current;
     if (dialog) return openSheet(dialog);
@@ -48,7 +51,9 @@ export function Sheet({
         }}
       >
         <div className={styles.body}>
-          <h2>{title}</h2>
+          <h2 className={styles.title} onPointerDown={startDrag}>
+            {title}
+          </h2>
           {children}
         </div>
       </dialog>
