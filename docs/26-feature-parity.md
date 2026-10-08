@@ -19,15 +19,15 @@ The inventory covers the macOS benchmark unless qualified. TablePlus's [new over
 | C05 | Connection colours | Distinguish server contexts. | Covered FR-CONN-06 | M1 | Colour plus environment text. | [S07] |
 | C06 | Environment tags | Label deployment environments. | Covered FR-CONN-06 | M1 | Production defaults to confirmation. | [S07] |
 | C07 | URL import | Populate a profile from a URI. | Covered FR-CONN-02 | M1 | Preview parsed fields, hide secrets. | [S07] |
-| C08 | Connection test | Check connectivity before saving. | Covered FR-CONN-08 | M1 | Diagnose each route stage. | [S08] |
-| C09 | SSH password | Tunnel using password authentication. | Covered FR-CONN-04 | M1 | MFA and host-key verification. | [S07] |
-| C10 | SSH private key | Authenticate with an imported key. | Covered FR-CONN-04 | M1 | Agent support; passphrase in keychain. | [S07] |
-| C11 | SSH host configuration | Use local SSH configuration. | Covered FR-CONN-04 | M1 | Explicit route and alias diagnostics. | [S07] |
-| C12 | Bastion / jump routing | SSH hop enables private-server access; public pages do not establish multi-hop parity. | Covered FR-CONN-04, FR-NET-01 | M1 | Visible multi-hop chain, per-hop errors. | [S07] (single-hop evidence only) |
-| C13 | TLS modes | Select driver-specific verification policy. | Covered FR-CONN-05 | M1 | Verify identity by default. | [S06] |
-| C14 | Client SSL key | Select authentication key material. | Covered FR-CONN-05 | M1 | Never export key contents. | [S06] |
-| C15 | Client certificate | Supply a TLS client certificate. | Covered FR-CONN-05 | M1 | Certificate details and expiry diagnostics. | [S06] |
-| C16 | Custom CA | Trust a chosen certificate authority. | Covered FR-CONN-05, FR-NET-06 | M1; cloud CAs M2 | Explain trust failures. | [S06] |
+| C08 | Connection test | Check connectivity before saving. | Covered FR-CONN-08; implemented for PostgreSQL (D-11: timed DNS, TCP/tunnel, SSH, TLS, auth, version steps with hints) | M1 | Diagnose each route stage. | [S08] |
+| C09 | SSH password | Tunnel using password authentication. | Covered FR-CONN-04; implemented (D-10: password in keychain, keyboard-interactive MFA prompt, first-use host-key prompt) | M1 | MFA and host-key verification. | [S07] |
+| C10 | SSH private key | Authenticate with an imported key. | Covered FR-CONN-04; implemented (D-10: key file + keychain passphrase, ssh-agent) | M1 | Agent support; passphrase in keychain. | [S07] |
+| C11 | SSH host configuration | Use local SSH configuration. | Covered FR-CONN-04; implemented (D-10: `~/.ssh/config` alias as SSH host; `Match` not supported) | M1 | Explicit route and alias diagnostics. | [S07] |
+| C12 | Bastion / jump routing | SSH hop enables private-server access; public pages do not establish multi-hop parity. | Covered FR-CONN-04, FR-NET-01; implemented (D-10: jump-host list or alias `ProxyJump`, per-hop test steps) | M1 | Visible multi-hop chain, per-hop errors. | [S07] (single-hop evidence only) |
+| C13 | TLS modes | Select driver-specific verification policy. | Covered FR-CONN-05; implemented for PostgreSQL (D-11: disable … verify-full, unverified remote flagged in the sheet) | M1 | Verify identity by default. | [S06] |
+| C14 | Client SSL key | Select authentication key material. | Covered FR-CONN-05; implemented for PostgreSQL (D-11: key file, passphrase in keychain) | M1 | Never export key contents. | [S06] |
+| C15 | Client certificate | Supply a TLS client certificate. | Covered FR-CONN-05; implemented for PostgreSQL (D-11; expiry diagnostics pending) | M1 | Certificate details and expiry diagnostics. | [S06] |
+| C16 | Custom CA | Trust a chosen certificate authority. | Covered FR-CONN-05, FR-NET-06; implemented for PostgreSQL (D-11; cloud CA bundles pending) | M1; cloud CAs M2 | Explain trust failures. | [S06] |
 | C17 | Credential storage | Keep passwords in keychain. | Covered FR-CONN-03 | M1 | OS-native storage across desktop platforms. | [S07] |
 | C18 | Credential prompts | Choose ephemeral password entry. | New FR-CONN-13 | M2 | Separate storage policy from auth method. | [S06] |
 | C19 | Credential command | Obtain short-lived credentials externally. | New FR-CONN-13 | M2 | Trust gate, timeout and scrubbed output. | [S06] |

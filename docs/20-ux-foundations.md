@@ -184,6 +184,21 @@ Confirm writes on), **Test** (server version and latency, or the typed error),
 Cancel/Save, and Delete…/Duplicate when editing. Validation messages appear
 after the first Test or Save.
 
+D-10/D-11 add two collapsed disclosure sections below the credentials, each
+summarising its state in the header (**SSH · ops@bastion**, **TLS · Verify
+full**). **SSH**: a small "Connect over SSH" switch, SSH host (or
+`~/.ssh/config` alias) and port, user, Auth (Password, Private key, SSH agent,
+Keyboard-interactive), key file with **Choose…** (native open panel, starts in
+`~/.ssh`), passphrase/password as masked keychain fields with reveal, and jump
+hosts. **TLS**: mode, CA file, client certificate and key with **Choose…**, and
+the key passphrase. A section opens by itself when one of its fields is
+invalid. A remote host whose certificate is not verified shows a persistent
+warning badge under the TLS header even when it is collapsed. **Test** shows
+the steps (SSH connect/login per hop, tunnel or DNS and TCP, TLS with protocol,
+cipher and certificate, authentication, server version) with timings; the
+failing step shows the error and a hint. First-use SSH host keys and
+keyboard-interactive (MFA) questions appear as sheets above whatever is open.
+
 Everything below the header is still the M0-T4b sample catalog, tabs and rows,
 marked with a **Sample data** badge next to the database selector. D-06
 replaces the sample database selector, object tree and schema picker; D-07
