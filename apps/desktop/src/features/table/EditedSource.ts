@@ -4,14 +4,25 @@ import type { StagedEdit } from './editHistory';
 /** Build staged highlights on tile arrival, outside the canvas paint loop. */
 export class EditedSource implements GridDataSource {
   private readonly overrides = new Map<number, DisplayCell>();
+  private readonly listeners = new Set<() => void>();
   constructor(
     private readonly source: GridDataSource,
-    private readonly changes: readonly StagedEdit[],
-    private readonly identity: {
+    private changes: readonly StagedEdit[],
+    private identity: {
       keys: readonly string[];
       names: readonly string[];
     },
   ) {}
+  /** Swap the staged overlay in place so the grid keeps its selection and scroll. */
+  stage(changes: readonly StagedEdit[], keys: readonly string[]): void {
+    if (changes === this.changes && keys === this.identity.keys) return;
+    this.changes = changes;
+    this.identity = { ...this.identity, keys };
+    this.prepare();
+    this.listeners.forEach((listener) => {
+      listener();
+    });
+  }
   get rows(): number {
     return this.source.rows;
   }
@@ -32,10 +43,15 @@ export class EditedSource implements GridDataSource {
     this.prepare();
   }
   subscribe(listener: () => void): () => void {
-    return this.source.subscribe(() => {
+    this.listeners.add(listener);
+    const unsubscribe = this.source.subscribe(() => {
       this.prepare();
       listener();
     });
+    return () => {
+      this.listeners.delete(listener);
+      unsubscribe();
+    };
   }
   private prepare(): void {
     this.overrides.clear();

@@ -5,7 +5,11 @@ import type { GridProps, SelectionModel } from './model';
 export function shadowGrid(
   host: HTMLElement,
   props: GridProps,
-): { update: (selection: SelectionModel) => void; destroy: () => void } {
+): {
+  update: (selection: SelectionModel) => void;
+  focus: () => void;
+  destroy: () => void;
+} {
   const grid = document.createElement('div'),
     row = document.createElement('div'),
     cell = document.createElement('div');
@@ -20,7 +24,29 @@ export function shadowGrid(
     cell.setAttribute('aria-colindex', String(selection.column + 1));
     cell.textContent = `${props.source.columns[selection.column]?.title ?? ''}: ${props.source.cell(selection.row, selection.column)?.text ?? 'Loading'}`;
   };
-  grid.onkeydown = (event): void => {
+  grid.onkeydown = keyHandler(host, props, update);
+  const unsubscribe = props.source.subscribe(() => {
+    update(props.selection);
+  });
+  update(props.selection);
+  return {
+    update,
+    focus: () => {
+      grid.focus({ preventScroll: true });
+    },
+    destroy: () => {
+      unsubscribe();
+      grid.remove();
+    },
+  };
+}
+/** Keyboard focus, range, edit and context-menu commands on the logical cell. */
+function keyHandler(
+  host: HTMLElement,
+  props: GridProps,
+  update: (selection: SelectionModel) => void,
+): (event: KeyboardEvent) => void {
+  return (event): void => {
     if (
       event.key === 'ContextMenu' ||
       (event.key === 'F10' && event.shiftKey)
@@ -43,43 +69,34 @@ export function shadowGrid(
       });
       return;
     }
-    if (event.key === ' ' && props.source.rows > 0) {
-      event.preventDefault();
-      const { row, column } = props.selection;
-      const ranges =
-        event.ctrlKey || event.metaKey
-          ? [{ r0: 0, r1: props.source.rows - 1, c0: column, c1: column }]
-          : [
-              {
-                r0: row,
-                r1: row,
-                c0: props.rowHeaderColumn === 0 ? 1 : 0,
-                c1: props.source.columns.length - 1,
-              },
-            ];
-      props.selection = { row, column, ranges };
-      update(props.selection);
-      props.onSelection(props.selection);
-      return;
-    }
-    const selection = moveFocus(props.selection, event, props);
+    const selection =
+      event.key === ' '
+        ? selectLine(props, event)
+        : moveFocus(props.selection, event, props);
     if (!selection) return;
     event.preventDefault();
     props.selection = selection;
     update(selection);
     props.onSelection(selection);
   };
-  const unsubscribe = props.source.subscribe(() => {
-    update(props.selection);
-  });
-  update(props.selection);
-  return {
-    update,
-    destroy: () => {
-      unsubscribe();
-      grid.remove();
-    },
-  };
+}
+/** Space selects the focused row; Ctrl/Cmd+Space selects the focused column. */
+function selectLine(
+  props: GridProps,
+  event: KeyboardEvent,
+): SelectionModel | undefined {
+  if (props.source.rows === 0) return undefined;
+  const { row, column } = props.selection;
+  const range =
+    event.ctrlKey || event.metaKey
+      ? { r0: 0, r1: props.source.rows - 1, c0: column, c1: column }
+      : {
+          r0: row,
+          r1: row,
+          c0: props.rowHeaderColumn === 0 ? 1 : 0,
+          c1: props.source.columns.length - 1,
+        };
+  return { row, column, ranges: [range] };
 }
 let sequence = 0;
 function moveFocus(

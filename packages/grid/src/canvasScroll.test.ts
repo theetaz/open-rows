@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { afterEach, expect, it, vi } from 'vitest';
+import userEvent from '@testing-library/user-event';
 import { mountGrid } from './canvas';
 import { props } from './testFixture';
 function mockCanvas(): void {
@@ -135,4 +136,24 @@ it('updates colors and fonts in place without losing selection, scroll or canvas
     `${String((input.source.rows + 1) * 29)}px`,
   );
   handle.destroy();
+});
+it('moves the selection with arrow keys straight after clicking a cell', async () => {
+  mockCanvas();
+  const user = userEvent.setup();
+  const input = props();
+  const host = document.createElement('div');
+  document.body.append(host);
+  const handle = mountGrid(host, input);
+  const scroll = host.firstElementChild as HTMLElement;
+  await user.pointer({
+    keys: '[MouseLeft]',
+    target: scroll,
+    coords: { clientX: 300, clientY: 39 },
+  });
+  expect(input.selection).toMatchObject({ row: 0, column: 2 });
+  expect(document.activeElement).toBe(host.querySelector('[role="grid"]'));
+  await user.keyboard('{ArrowDown}{ArrowRight}');
+  expect(input.selection).toMatchObject({ row: 1, column: 3 });
+  handle.destroy();
+  host.remove();
 });

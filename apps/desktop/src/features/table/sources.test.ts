@@ -67,3 +67,30 @@ it('matches staged edits by stable keys after sorting and prepares highlights be
   expect(edited.cell(0, 1)).toEqual({ text: 'old', state: 'normal' });
   expect(edited.cell(100, 1)).toEqual({ text: 'updated', state: 'changed' });
 });
+it('swaps the staged overlay in place and notifies the grid to repaint', async () => {
+  const base = source(),
+    keys = ['id'];
+  const edited = new EditedSource(base.source, [], {
+    keys,
+    names: ['id', 'name'],
+  });
+  const repaint = vi.fn();
+  edited.subscribe(repaint);
+  await edited.window({ ...request, c1: 1 }, 0);
+  repaint.mockClear();
+  const changes = [
+    {
+      id: 'key',
+      number: 19,
+      kind: 'update' as const,
+      original: { id: '19', name: 'old' },
+      values: { name: 'staged' },
+    },
+  ];
+  edited.stage(changes, keys);
+  expect(edited.cell(18, 1)).toEqual({ text: 'staged', state: 'changed' });
+  edited.stage(changes, keys);
+  edited.stage([], keys);
+  expect(edited.cell(18, 1)).toEqual({ text: 'old', state: 'normal' });
+  expect(repaint).toHaveBeenCalledTimes(2);
+});

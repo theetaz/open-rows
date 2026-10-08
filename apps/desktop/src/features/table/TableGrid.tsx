@@ -1,12 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useRef, useState } from 'react';
 import { TileSource } from '@openrows/grid';
-import type {
-  GridColumn,
-  GridProps,
-  GridContextTarget,
-  GridDataSource,
-} from '@openrows/grid';
+import type { GridColumn, GridProps, GridContextTarget } from '@openrows/grid';
 import type { ColumnDto, SortDto } from '@openrows/ipc';
 import { mountCanvas } from '../../results/mountCanvas';
 import { useGridAppearance } from '../../results/useGridAppearance';
@@ -57,67 +52,79 @@ type Props = {
 };
 
 /** Canvas grid over one page's result tiles; rows never enter React state. */
-export function TableGrid({
+export function TableGrid(props: Props): React.JSX.Element {
+  const host = useRef<HTMLDivElement>(null);
+  const latest = useRef(props);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    latest.current = props;
+  });
+  useTableCanvas({ host, latest, setError, ...props });
+  return <GridFrame host={host} error={error} />;
+}
+
+type CanvasArgs = Pick<
+  Props,
+  | 'result'
+  | 'sort'
+  | 'offset'
+  | 'rowNumbers'
+  | 'striped'
+  | 'changes'
+  | 'editKeys'
+> & {
+  host: React.RefObject<HTMLDivElement | null>;
+  latest: React.RefObject<Props>;
+  setError: (error: string) => void;
+};
+
+/** Mount the canvas once per page and view layout, not per staged change. */
+function useTableCanvas({
+  host,
+  latest,
+  setError,
   result,
   sort,
-  onHeader,
-  onRow,
   offset,
   rowNumbers,
   striped,
-  onEdit,
   changes,
   editKeys,
-  onContextMenu,
-}: Props): React.JSX.Element {
-  const host = useRef<HTMLDivElement>(null);
-  const handlers = useRef({ onHeader, onRow, onEdit, onContextMenu });
+}: CanvasArgs): void {
   const { theme, handle } = useGridAppearance();
-  const [error, setError] = useState<string | null>(null);
+  const edited = useRef<EditedSource | undefined>(undefined);
+  // Staging, undo, redo and discard repaint in place: remounting would reset focus to row 0.
   useEffect(() => {
-    handlers.current = { onHeader, onRow, onEdit, onContextMenu };
-  });
+    edited.current?.stage(changes, editKeys);
+  }, [changes, editKeys]);
   useEffect(() => {
     const element = host.current;
     if (!element) return;
-    const props: GridProps = {
-      source: tableSource({
-        result,
-        sort,
-        changes,
-        editKeys,
-        rowNumbers,
-        offset,
-      }),
+    const overlay = editedSource({ ...latest.current, result, sort });
+    edited.current = overlay;
+    const props = gridProps({
+      source: rowNumbers ? new NumberedSource(overlay, offset) : overlay,
+      latest,
+      rowNumbers,
       striped,
-      onEdit: (cell) => {
-        handlers.current.onEdit?.(dataCell(cell, rowNumbers));
-      },
-      onContextMenu: (target) => {
-        handlers.current.onContextMenu(dataCell(target, rowNumbers));
-      },
       theme: theme.current,
-      selection: { row: 0, column: rowNumbers ? 1 : 0, ranges: [] },
-      onSelection: (selection) => {
-        props.selection = selection;
-        handlers.current.onRow(selection.row);
-      },
-      onHeader: (column) => {
-        handlers.current.onHeader(column - (rowNumbers ? 1 : 0));
-      },
-      onError: (failure) => {
-        setError(failure instanceof Error ? failure.message : String(failure));
-      },
-    };
-    if (rowNumbers) props.rowHeaderColumn = 0;
-    return mountCanvas(element, props, {
+      setError,
+    });
+    const unmount = mountCanvas(element, props, {
       theme,
       handle,
       onMounted: () => {
-        initialRow(result.rows, handlers.current.onRow);
+        initialRow(result.rows, latest.current.onRow);
       },
     });
+    return () => {
+      edited.current = undefined;
+      unmount();
+    };
   }, [
+    host,
+    latest,
+    setError,
     result,
     sort,
     theme,
@@ -125,10 +132,39 @@ export function TableGrid({
     offset,
     rowNumbers,
     striped,
-    changes,
-    editKeys,
   ]);
-  return <GridFrame host={host} error={error} />;
+}
+
+/** Grid callbacks read the latest handlers so the canvas outlives re-renders. */
+function gridProps({
+  latest,
+  rowNumbers,
+  setError,
+  ...rest
+}: Pick<GridProps, 'source' | 'striped' | 'theme'> &
+  Pick<CanvasArgs, 'latest' | 'rowNumbers' | 'setError'>): GridProps {
+  const props: GridProps = {
+    ...rest,
+    onEdit: (cell) => {
+      latest.current.onEdit?.(dataCell(cell, rowNumbers));
+    },
+    onContextMenu: (target) => {
+      latest.current.onContextMenu(dataCell(target, rowNumbers));
+    },
+    selection: { row: 0, column: rowNumbers ? 1 : 0, ranges: [] },
+    onSelection: (selection) => {
+      props.selection = selection;
+      latest.current.onRow(selection.row);
+    },
+    onHeader: (column) => {
+      latest.current.onHeader(column - (rowNumbers ? 1 : 0));
+    },
+    onError: (failure) => {
+      setError(failure instanceof Error ? failure.message : String(failure));
+    },
+  };
+  if (rowNumbers) props.rowHeaderColumn = 0;
+  return props;
 }
 
 function dataCell<T extends { column: number }>(
@@ -138,28 +174,22 @@ function dataCell<T extends { column: number }>(
   return { ...cell, column: cell.column - (rowNumbers ? 1 : 0) };
 }
 
-function tableSource({
+function editedSource({
   result,
   sort,
   changes,
   editKeys,
-  rowNumbers,
-  offset,
-}: Pick<
-  Props,
-  'result' | 'sort' | 'changes' | 'editKeys' | 'rowNumbers' | 'offset'
->): GridDataSource {
+}: Pick<Props, 'result' | 'sort' | 'changes' | 'editKeys'>): EditedSource {
   const source = new TileSource(
     result.id,
     result.rows,
     columnsOf(result.columns, sort),
     displayWindow,
   );
-  const edited = new EditedSource(source, changes, {
+  return new EditedSource(source, changes, {
     keys: editKeys,
     names: result.columns.map((column) => column.name),
   });
-  return rowNumbers ? new NumberedSource(edited, offset) : edited;
 }
 
 function columnWidth(type: string | null): number {

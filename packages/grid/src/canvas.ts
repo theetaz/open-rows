@@ -20,9 +20,11 @@ export function mountGrid(host: HTMLElement, props: GridProps): GridHandle {
   const controller = new CanvasController(scroll, painter, props);
   const accessibility = shadowGrid(host, props);
   scroll.tabIndex = -1;
+  // A click would otherwise leave focus on the scroller, which ignores arrow keys.
+  scroll.onfocus = accessibility.focus;
   host.addEventListener('keydown', controller.invalidate);
-  pointerFocus({ host, scroll, painter, props, controller, accessibility });
-  contextFocus({ host, scroll, painter, props, controller, accessibility });
+  pointerFocus({ scroll, painter, props, controller, accessibility });
+  contextFocus({ scroll, painter, props, controller, accessibility });
   return {
     metrics: painter.metrics,
     viewport: painter.view,
@@ -46,7 +48,6 @@ export function mountGrid(host: HTMLElement, props: GridProps): GridHandle {
 }
 
 interface PointerContext {
-  host: HTMLElement;
   scroll: HTMLElement;
   painter: CanvasPainter;
   props: GridProps;
@@ -54,7 +55,6 @@ interface PointerContext {
   accessibility: ReturnType<typeof shadowGrid>;
 }
 function pointerFocus({
-  host,
   scroll,
   painter,
   props,
@@ -105,11 +105,10 @@ function pointerFocus({
     props.onSelection(props.selection);
     accessibility.update(props.selection);
     controller.invalidate();
-    host.querySelector<HTMLElement>('[role="grid"]')?.focus();
+    accessibility.focus();
   };
 }
 function contextFocus({
-  host,
   scroll,
   painter,
   props,
@@ -142,7 +141,7 @@ function contextFocus({
     props.onSelection(props.selection);
     accessibility.update(props.selection);
     controller.invalidate();
-    host.querySelector<HTMLElement>('[role="grid"]')?.focus();
+    accessibility.focus();
     props.onContextMenu?.({
       ...focus,
       column: rowHeader ? focus.column + 1 : focus.column,
