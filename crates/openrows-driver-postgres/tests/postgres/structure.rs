@@ -90,9 +90,10 @@ async fn change_sets_commit_atomically_and_roll_back_on_error() -> TestResult {
             column: "Note".into(),
             default: DefaultValue::Literal("it's".into()),
         },
+        // `price` feeds the generated `total`, which PostgreSQL forbids retyping.
         SchemaChange::ColumnType {
-            column: "price".into(),
-            data_type: "numeric(12, 2)".into(),
+            column: "customer_id".into(),
+            data_type: "bigint".into(),
         },
         SchemaChange::AddColumn(NewColumn {
             name: "at".into(),
@@ -128,6 +129,12 @@ async fn change_sets_commit_atomically_and_roll_back_on_error() -> TestResult {
         .ok_or("memo")?;
     assert_eq!(memo.default.as_deref(), Some("'it''s'::text"));
     assert!(after.columns.iter().any(|c| c.name == "at" && !c.nullable));
+    assert!(
+        after
+            .columns
+            .iter()
+            .any(|c| c.name == "customer_id" && c.data_type == "bigint")
+    );
     assert!(after.indexes.iter().any(|i| i.name == "orders_at_idx"));
     assert!(
         after
