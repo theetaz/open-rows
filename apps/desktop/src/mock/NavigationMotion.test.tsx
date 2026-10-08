@@ -74,5 +74,5 @@ it('native window buttons use the screenshot-verified inset for the 48 px toolba
   expect(window?.titleBarStyle).toBe('Overlay');
   expect(window?.decorations).toBe(true);
   expect(geometry['toolbar-height']).toBe('48px');
-  expect(geometry['traffic-light-clearance']).toBe('78px');
+  expect(geometry['traffic-light-clearance']).toBe('86px');
 });

@@ -35,6 +35,12 @@ export default defineConfig({
     strictPort: true,
     host: '127.0.0.1',
   },
+  // The dep scanner does not follow `?worker` imports, so worker-only deps
+  // (apache-arrow) were found on first connect and forced a full reload.
+  optimizeDeps: {
+    entries: ['index.html', 'src/**/*.worker.ts'],
+    include: ['apache-arrow'],
+  },
   clearScreen: false,
   build: { target: 'safari15', manifest: true },
   worker: { format: 'iife' },

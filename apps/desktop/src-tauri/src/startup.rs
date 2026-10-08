@@ -12,6 +12,9 @@ pub(crate) fn install(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Er
     let window = app
         .get_webview_window("main")
         .ok_or(StartupError::MissingWindow)?;
+    crate::window_frame::place(&window)?;
+    crate::window_frame::save_when_settled(&window);
+    crate::titlebar::follow(&window);
     #[cfg(target_os = "macos")]
     crate::material::install(&window)?;
     let handle = app.handle().clone();
@@ -33,5 +36,6 @@ pub(crate) fn install(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Er
 fn reveal(window: &tauri::WebviewWindow) -> tauri::Result<()> {
     #[cfg(target_os = "macos")]
     crate::material::synchronize(window)?;
+    crate::titlebar::synchronize(window)?;
     window.show()
 }

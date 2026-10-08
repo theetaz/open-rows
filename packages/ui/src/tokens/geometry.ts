@@ -55,7 +55,7 @@ export const geometry = {
   'icon-size': '0.9375rem',
   'dot-size': '0.5rem',
   'toolbar-height': '48px',
-  'traffic-light-clearance': '78px',
+  'traffic-light-clearance': '86px',
   'sidebar-width': '12rem',
   'gallery-width': '64rem',
   'swatch-size': '3rem',

@@ -12,6 +12,8 @@ mod spike;
 mod startup;
 mod startup_report;
 mod tables;
+mod titlebar;
+mod window_frame;
 
 fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
     use connections::{catalog, connection, profiles, sessions};
@@ -79,6 +81,7 @@ pub fn run() -> Result<(), tauri::Error> {
     startup_report::record(startup_report::Phase::BuilderStart);
     let builder = spike::configure(tauri::Builder::default())?
         .plugin(tauri_plugin_dialog::init())
+        .plugin(window_frame::plugin())
         .manage(queries::Queries::default());
     let specta = command_builder();
     let controls = specta.invoke_handler();

@@ -40,11 +40,15 @@ Rules:
 The overlay window explicitly enables decorations and sets `trafficLightPosition`
 to `{ "x": 16, "y": 26 }` in logical pixels. The toolbar is 48 CSS px tall,
 with centre line y = 24; all controls and context children use flex centring.
-The native close button starts at x = 16; with the standard 14 px button frame
-and 20 px native button pitch, the cluster ends at x = 70. The first toolbar
-group starts at x = 78, leaving the same 8 px gap used between toolbar groups.
-The outer 8 px workspace inset is subtracted from the 78 px clearance token.
-These pixel geometry tokens stay fixed when text scales.
+The native close button starts at x = 16. Button size and pitch differ between
+macOS releases: before macOS 26 the cluster ends at x ≈ 70, on macOS 26 at
+x ≈ 78. So the app measures the real zoom button at first paint
+(`src-tauri/src/titlebar.rs`, safe objc2 calls) and sets
+`--or-traffic-light-clearance` to its right edge plus 8 px, the same gap used
+between toolbar groups. Full screen hides the lights, so the inset falls back
+to the 10 px toolbar padding there. The 86 px token is only the fallback
+(macOS 26 geometry) outside the native shell. These pixel geometry tokens stay
+fixed when text scales.
 
 Tauri's y value is a titlebar inset, not a button-centre coordinate, so the
 value was set empirically: with y = 26 the button centres sit on the toolbar
@@ -55,6 +59,22 @@ See [Tauri window configuration](https://v2.tauri.app/reference/config/#trafficl
 and [Tao native inset implementation](https://github.com/tauri-apps/tao/blob/tao-v0.34.5/src/platform_impl/macos/view.rs#L1078).
 This establishes the intended alignment; the maintainer must verify the actual
 native frame by screenshot on their macOS version. No synthetic buttons are drawn.
+
+### Main window size and position
+
+`tauri.conf.json` keeps 1280 × 800 as a fallback and 900 × 600 as the minimum.
+Before the hidden main window is first revealed, `window_frame.rs` either
+restores the saved frame or, on first launch, sizes the window to 85 % of the
+current monitor's work area (capped at 1680 × 1050, never below the minimum)
+and centres it. Size, position and maximized state are saved by the official
+`tauri-plugin-window-state` 500 ms after the visible window stops moving or
+resizing (so a killed `just dev` keeps them) and again on quit, to
+`.window-state.json` in the app config
+directory (`~/Library/Application Support/com.prabhavalabs.openrows/` on
+macOS); delete that file to get the first-launch size again. A saved frame that
+no longer overlaps a connected monitor by at least a quarter of its width and
+height is ignored and the first-launch sizing is used instead. Full-screen and
+visibility are not restored.
 
 ### Implemented M0-T4b native material
 
