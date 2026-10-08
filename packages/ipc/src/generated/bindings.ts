@@ -89,6 +89,11 @@ export const commands = {
 	tableEditRow: (target: TableTarget, keys: { [key in string]: string }) => typedError<{ [key in string]: string | null }, IpcError>(__TAURI_INVOKE("table_edit_row", { target, keys })),
 	/**  Prepare exact SQL/binds, then commit only when that preview's token is supplied. */
 	tableEdit: (request: EditRequest) => typedError<EditReply, IpcError>(__TAURI_INVOKE("table_edit", { request })),
+	/**
+	 *  Pick a file in a native open panel attached to the window and return its contents
+	 *  as a field value; `null` when the panel is cancelled. Nothing is staged here.
+	 */
+	tableEditFile: (encoding: FileEncodingDto) => typedError<string | null, IpcError>(__TAURI_INVOKE("table_edit_file", { encoding })),
 };
 
 /** Events */
@@ -107,6 +112,9 @@ export type AppInfo = {
 };
 
 export type BuildProfile = "debug" | "release";
+
+/**  A staged field value. `default` is the column DEFAULT, never the text `'DEFAULT'`. */
+export type CellValueDto = { kind: "null" } | { kind: "default" } | { kind: "text"; value: string };
 
 /**  A result column as the grid header shows it. */
 export type ColumnDto = {
@@ -217,6 +225,13 @@ export type ExecuteRequest = {
 	/**  Token from a `confirmationRequired` reply the user accepted. */
 	confirmToken: string | null,
 };
+
+/**  How the picked file becomes `PostgreSQL` text input. */
+export type FileEncodingDto = 
+/**  UTF-8 text for text, varchar, json and xml columns. */
+"text" | 
+/**  `\x` hex input for bytea columns. */
+"hex";
 
 /**  One enabled filter row; `second` is BETWEEN's upper bound. */
 export type FilterDto = {
@@ -432,8 +447,9 @@ export type ResultError = { kind: "unknownResult"; message: string } | { kind: "
 
 export type RowEditDto = {
 	kind: EditKindDto,
+	/**  Exact original text; `null` is SQL NULL. */
 	original: { [key in string]: string | null },
-	values: { [key in string]: string | null },
+	values: { [key in string]: CellValueDto },
 };
 
 /**  Which statements of the editor text to run. */

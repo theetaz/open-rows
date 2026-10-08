@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { ButtonHTMLAttributes } from 'react';
+import type { ButtonHTMLAttributes, Ref } from 'react';
 import styles from './Controls.module.css';
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+  /** Anchor for a menu or popover opened by this button. */
+  ref?: Ref<HTMLButtonElement>;
   variant?: 'primary' | 'secondary' | 'ghost' | 'destructive';
   size?: 'sm' | 'md';
 };

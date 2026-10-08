@@ -12,6 +12,10 @@ import type { EditIo } from './useEditIo';
 import { useEditIo } from './useEditIo';
 import { quickEdit } from './quickEdits';
 import type { QuickEditAction } from './quickEdits';
+import { pickFile, prepareRow, stageField } from './fieldEditing';
+import type { FieldContext } from './fieldEditing';
+import type { CellValue } from './cellValue';
+import type { FileEncodingDto } from '@openrows/ipc';
 
 type Args = {
   tabId: string;
@@ -40,6 +44,7 @@ export function useRowEditing(args: Args): RowEditing {
   ): void => {
     openDraft({ args, io, history, result, cell, setDraft });
   };
+  const field: FieldContext = { ...args, io, history, change };
   const commit = (token?: string): void => {
     if (!args.sessionId || history.pending || history.uncertain || io.busy)
       return;
@@ -60,6 +65,15 @@ export function useRowEditing(args: Args): RowEditing {
       quickEdit({ ...args, io, history, result, cell, action, stage: change });
     },
     change,
+    prepare: (result, row, ready) => {
+      prepareRow(field, { result, row }, ready);
+    },
+    stageField: (edit, name, value) => {
+      stageField(field, edit, { name, value });
+    },
+    pickFile: (encoding, use) => {
+      pickFile(field, encoding, use);
+    },
     commit,
     close: () => {
       if (!io.busy) {
@@ -135,6 +149,16 @@ export type RowEditing = {
     action: QuickEditAction,
   ) => void;
   change: (edit: StagedEdit) => void;
+  /** Exact snapshot (or staged change) of a page row, for inspector editing. */
+  prepare: (
+    result: ResultMeta,
+    row: number,
+    ready: (draft: StagedEdit) => void,
+  ) => void;
+  /** Stage one validated field of a prepared row. */
+  stageField: (draft: StagedEdit, name: string, value: CellValue) => void;
+  /** Pick and read a file natively; `use` receives its text. */
+  pickFile: (encoding: FileEncodingDto, use: (text: string) => void) => void;
   commit: (token?: string) => void;
   close: () => void;
   insert: () => void;

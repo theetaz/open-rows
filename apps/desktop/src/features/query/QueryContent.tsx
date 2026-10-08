@@ -7,7 +7,7 @@ import { sessionOf } from '../connections';
 import type { Connections } from '../connections';
 import type { ProfileDto } from '@openrows/ipc';
 import { useTableViews } from '../table';
-import type { SelectedRow, TableViews } from '../table';
+import type { ShowRow, TableViews } from '../table';
 import type { QueryTabs } from './useQueryTabs';
 import { useQueryRuns } from './useQueryRuns';
 import type { QueryRuns } from './useQueryRuns';
@@ -31,7 +31,7 @@ type Props = {
   database: string;
   onCell: (cell: SelectedCell) => void;
   /** A table view's selected row, for the inspector's Details. */
-  onRow: (row: SelectedRow) => void;
+  onRow: ShowRow;
 };
 
 /**

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { RowEditDto } from '@openrows/ipc';
+import { unchanged } from './cellValue';
 /** Only staged rows live in React; the page remains in Arrow tiles. */
 export type StagedEdit = RowEditDto & {
   id: string;
@@ -39,7 +40,7 @@ export function stage(history: EditHistory, edit: StagedEdit): EditHistory {
   if (combined.kind === 'update')
     combined.values = Object.fromEntries(
       Object.entries(combined.values).filter(
-        ([name, value]) => value !== combined.original[name],
+        ([name, value]) => !unchanged(value, combined.original[name]),
       ),
     );
   const keep =

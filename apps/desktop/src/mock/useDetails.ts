@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useState } from 'react';
 import type { SelectedCell } from '../features/query';
-import type { SelectedRow } from '../features/table';
+import type { SelectedRow, ShowRow } from '../features/table';
 
 /** What the inspector's Details shows: a query cell or a table view row. */
 export type Details = {
   cell: SelectedCell | null;
   row: SelectedRow | null;
   onCell: (cell: SelectedCell) => void;
-  onRow: (row: SelectedRow) => void;
+  onRow: ShowRow;
 };
 
 /** The latest selection wins and brings the Details panel forward. */
@@ -32,10 +32,10 @@ export function useDetails(
       setRow(null);
       setPanel('Details');
     },
-    onRow: (selected) => {
+    onRow: (selected, reveal = true) => {
       setRow({ scope, value: selected });
       setCell(null);
-      setPanel('Details');
+      if (reveal) setPanel('Details');
     },
   };
 }

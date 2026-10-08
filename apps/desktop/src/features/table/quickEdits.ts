@@ -5,6 +5,9 @@ import { editDraft } from './editingIo';
 import type { EditHistory, StagedEdit } from './editHistory';
 import type { TableTargetRef } from './model';
 import type { EditIo } from './useEditIo';
+import { fromOriginal, NULL_VALUE, textValue } from './cellValue';
+import type { CellValue } from './cellValue';
+import { fieldValueError } from './fieldActions';
 
 export type QuickEditAction = 'delete' | 'duplicate' | 'null' | 'empty';
 /** Context actions share the exact-snapshot staging path; no database write occurs. */
@@ -35,21 +38,15 @@ export function quickEdit(args: {
       args.stage({ ...draft, kind: 'delete', values: {} });
     else if (action === 'duplicate') args.stage(duplicateRow(draft, info));
     else {
-      const name = result.columns[cell.column]?.name;
-      const column = info.columns.find((item) => item.name === name);
-      if (
-        !column ||
-        info.protected.includes(column.name) ||
-        (action === 'null' && !column.nullable)
-      )
-        throw new Error('This field does not support that value.');
-      args.stage({
-        ...draft,
-        values: {
-          ...draft.values,
-          [column.name]: action === 'null' ? null : '',
-        },
-      });
+      const name = result.columns[cell.column]?.name ?? '';
+      const value = action === 'null' ? NULL_VALUE : textValue('');
+      const error = fieldValueError(
+        info.columns.find((item) => item.name === name),
+        info.protected.includes(name),
+        value,
+      );
+      if (error) throw new Error(error);
+      args.stage({ ...draft, values: { ...draft.values, [name]: value } });
     }
   });
 }
@@ -62,9 +59,23 @@ export function duplicateRow(draft: StagedEdit, info: EditInfoDto): StagedEdit {
     kind: 'insert',
     original: {},
     values: Object.fromEntries(
-      Object.entries({ ...draft.original, ...draft.values }).filter(
+      Object.entries({
+        ...originalValues(draft.original),
+        ...draft.values,
+      }).filter(
         ([name]) => !info.key.includes(name) && !info.protected.includes(name),
       ),
     ),
   };
+}
+
+function originalValues(
+  original: StagedEdit['original'],
+): Record<string, CellValue> {
+  return Object.fromEntries(
+    Object.entries(original).map(([name, value]) => [
+      name,
+      fromOriginal(value),
+    ]),
+  );
 }

@@ -1,6 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { CellRange, DisplayCell, GridDataSource } from '@openrows/grid';
 import type { StagedEdit } from './editHistory';
+import { stagedDisplay } from './cellValue';
+import type { CellValue } from './cellValue';
+
+/** Display state of a staged value: NULL, DEFAULT and EMPTY paint as muted markers. */
+export function stagedCell(value: CellValue): DisplayCell {
+  const shown = stagedDisplay(value);
+  return shown.placeholder
+    ? { text: shown.text, state: 'changed', placeholder: true }
+    : { text: shown.text, state: 'changed' };
+}
 /** Build staged highlights on tile arrival, outside the canvas paint loop. */
 export class EditedSource implements GridDataSource {
   private readonly overrides = new Map<number, DisplayCell>();
@@ -74,13 +84,15 @@ export class EditedSource implements GridDataSource {
       if (!edit) continue;
       this.columns.forEach((_column, index) => {
         const name = this.identity.names[index] ?? '';
-        const changed = Object.hasOwn(edit.values, name);
+        const staged = Object.hasOwn(edit.values, name)
+          ? edit.values[name]
+          : undefined;
         const cell = this.source.cell(row, index);
-        if (changed)
-          this.overrides.set(row * this.columns.length + index, {
-            text: edit.values[name] ?? 'NULL',
-            state: 'changed',
-          });
+        if (staged)
+          this.overrides.set(
+            row * this.columns.length + index,
+            stagedCell(staged),
+          );
         else if (edit.kind === 'delete' && cell)
           this.overrides.set(row * this.columns.length + index, {
             ...cell,

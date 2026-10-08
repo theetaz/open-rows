@@ -155,6 +155,13 @@ Comparisons use null-safe equality per dialect (`IS NOT DISTINCT FROM`, `<=>`, `
 
 For databases without multi-statement transactions (some NoSQL), apply is per-row with a clear "partial apply" report and the remaining ops kept staged.
 
+### 4.3.1 Implementation notes (PostgreSQL staged values and the Details inspector)
+
+- **Staged values are typed end to end.** `RowEditDto.values` maps columns to `CellValueDto` — `{ kind: 'null' }`, `{ kind: 'default' }` or `{ kind: 'text', value }` — and `openrows_sql::edit::CellValue` mirrors it. NULL binds a NULL parameter, text binds its exact string (so `'DEFAULT'`, `'NULL'` and `''` are ordinary data), and DEFAULT becomes the `DEFAULT` keyword: `UPDATE … SET "col" = DEFAULT`, while an `INSERT` leaves DEFAULT columns out (all of them: `DEFAULT VALUES`). DEFAULT is never a bound value. Originals stay `Option<String>` exact `::text` snapshots for the optimistic guard.
+- **Inspector editing.** The Details tab lists each field as name, muted type and a monospace value box with a chevron. When the table is editable (writable connection, stable key, not uncertain), focusing a field loads the row's exact snapshot (`table_edit_row`); the page's display text can be rounded or summarised (bytea shows `N bytes`) and is never edited. Typing then blur or Enter (⌘Enter once the value spans lines) stages text; Escape reverts the typing. Staged fields use the grid's staged-cell colour, and the inspector shows staged values (NULL/DEFAULT/EMPTY as muted markers) while the row stays selected.
+- **Value menu.** NULL (nullable columns), DEFAULT (nullable or with a default, including identity), EMPTY (scalar text types), PRETTY/MINIFY (valid json/jsonb; whitespace-only reformatting that keeps number digits and string escapes exactly) and *Add a file…*. Generated columns and rows staged for deletion are read-only. The same NULL/DEFAULT rules are re-checked when staging.
+- **Add a file….** `table_edit_file(encoding)` shows the native open panel from Rust (attached to the window) and reads the file there, so the webview has no file-system permission and never supplies a path. Files over 16 MiB are refused with a typed error; `text` encoding (text, varchar, json, xml) requires UTF-8 without NUL; `hex` encoding (bytea) returns `\x…` input. Picking only stages.
+
 ### 4.4 Document and key-value editing
 
 - **MongoDB:** edit a document as JSON (relaxed EJSON) with schema-free validation; apply as `replaceOne({_id, ...versionGuard})` or targeted `$set`/`$unset` diffs computed from original vs edited (default, smaller and safer). Inline cell edits in the flattened view become `$set` on the dotted path.

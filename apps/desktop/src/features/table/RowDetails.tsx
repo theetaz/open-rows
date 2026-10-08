@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useState } from 'react';
-import { Button, TextField } from '@openrows/ui';
+import { TextField } from '@openrows/ui';
+import { DetailsField } from './DetailsField';
 import { matchingFields } from './row';
 import type { SelectedRow } from './row';
-import styles from './Table.module.css';
+import styles from './RowDetails.module.css';
 
-/** Compact selected-row fields with search, expandable values and eligible edit actions. */
+/** Selected-row fields with search; values edit in place when the table is editable. */
 export function RowDetails({ row }: { row: SelectedRow }): React.JSX.Element {
   const [search, setSearch] = useState('');
   const fields = matchingFields(row.fields, search);
@@ -20,42 +21,17 @@ export function RowDetails({ row }: { row: SelectedRow }): React.JSX.Element {
           setSearch(event.target.value);
         }}
       />
-      <small>
+      <small className={styles.caption}>
         {row.table} · row {row.number.toLocaleString('en-US')}
       </small>
       {row.error && <p role="alert">{row.error}</p>}
-      <dl aria-label="Row fields">
+      <div role="list" aria-label="Row fields" className={styles.fields}>
         {fields.map((field) => (
-          <div key={field.name}>
-            <dt>
-              <span>{field.name}</span>
-              {row.onEdit && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  aria-label={`Edit field ${field.name}`}
-                  onClick={() => {
-                    row.onEdit?.(field.name);
-                  }}
-                >
-                  Edit
-                </Button>
-              )}
-              <small title={field.type ?? undefined}>{field.type}</small>
-            </dt>
-            <dd data-state={field.state}>
-              {field.text.length > 100 || field.text.includes('\n') ? (
-                <details>
-                  <summary>{field.text.slice(0, 100)}</summary>
-                  <pre>{field.text}</pre>
-                </details>
-              ) : (
-                field.text
-              )}
-            </dd>
+          <div role="listitem" key={field.name}>
+            <DetailsField field={field} editor={row.editor} />
           </div>
         ))}
-      </dl>
+      </div>
       {!fields.length && <p className={styles.note}>No matching fields</p>}
     </div>
   );

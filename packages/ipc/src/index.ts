@@ -44,7 +44,7 @@ export {
   updateProfile,
 } from './connections';
 /** Native alerts for destructive confirmations (scoped dialog plugin). */
-export { confirmDestructive } from './dialog';
+export { confirmDestructive, pickFileValue } from './dialog';
 export type { DestructivePrompt } from './dialog';
 /** Schema tree catalog reads on per-database metadata sessions (D-06). */
 export {
@@ -71,8 +71,10 @@ export {
   tableEdit,
 } from './tables';
 export type {
+  CellValueDto,
   EditInfoDto,
   EditRequest,
+  FileEncodingDto,
   EditReply,
   RowEditDto,
   CombinatorDto,

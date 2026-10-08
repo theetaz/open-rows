@@ -3,10 +3,12 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import {
   CommandError,
+  pickFileValue,
   tableEdit,
   tableEditInfo,
   tableEditRow,
 } from '@openrows/ipc';
+import type { StagedEdit } from './editHistory';
 import { useTableViews } from './useTableViews';
 import { useRowEditing } from './useRowEditing';
 vi.mock('@openrows/ipc', async () => {
@@ -104,7 +106,11 @@ it('stages exact snapshots, reviews first, keeps changes after conflicts, and re
   expect(hook.result.current.draft?.focusField).toBe('name');
   act(() => {
     const draft = hook.result.current.draft;
-    if (draft) hook.result.current.change({ ...draft, values: { name: null } });
+    if (draft)
+      hook.result.current.change({
+        ...draft,
+        values: { name: { kind: 'null' } },
+      });
   });
   vi.mocked(tableEdit).mockResolvedValueOnce({
     kind: 'prepared',
@@ -182,7 +188,7 @@ it('retains uncertain commits and prevents retry until reload/discard', async ()
       number: 0,
       kind: 'insert',
       original: {},
-      values: { name: 'new' },
+      values: { name: { kind: 'text', value: 'new' } },
     });
   });
   vi.mocked(tableEdit).mockRejectedValueOnce(
@@ -218,7 +224,10 @@ it('quick context actions use exact snapshots and only stage values, duplicates 
     hook.result.current.quick(result, { row: 0, column: 1 }, 'empty');
   });
   await waitFor(() => {
-    expect(hook.result.current.history.current[0]?.values.name).toBe('');
+    expect(hook.result.current.history.current[0]?.values.name).toEqual({
+      kind: 'text',
+      value: '',
+    });
   });
   expect(hook.result.current.history.current[0]?.original.name).toBe(
     'exact original',
@@ -227,7 +236,9 @@ it('quick context actions use exact snapshots and only stage values, duplicates 
     hook.result.current.quick(result, { row: 0, column: 1 }, 'null');
   });
   await waitFor(() => {
-    expect(hook.result.current.history.current[0]?.values.name).toBeNull();
+    expect(hook.result.current.history.current[0]?.values.name).toEqual({
+      kind: 'null',
+    });
   });
   act(() => {
     hook.result.current.quick(result, { row: 0, column: 1 }, 'duplicate');
@@ -238,7 +249,7 @@ it('quick context actions use exact snapshots and only stage values, duplicates 
   const duplicate = hook.result.current.history.current.find(
     (edit) => edit.kind === 'insert',
   );
-  expect(duplicate?.values).toEqual({ name: null });
+  expect(duplicate?.values).toEqual({ name: { kind: 'null' } });
   act(() => {
     hook.result.current.quick(result, { row: 0, column: 1 }, 'delete');
   });
@@ -251,4 +262,64 @@ it('quick context actions use exact snapshots and only stage values, duplicates 
   });
   expect(tableEdit).not.toHaveBeenCalled();
   expect(tableEditRow).toHaveBeenCalledWith(target, { id: '7' });
+});
+it('stages inspector fields from an exact snapshot and sends DEFAULT as a tagged value', async () => {
+  const hook = mount();
+  await waitFor(() => {
+    expect(hook.result.current.info?.key).toEqual(['id']);
+  });
+  let draft: StagedEdit | null = null;
+  act(() => {
+    hook.result.current.prepare(result, 0, (ready) => {
+      draft = ready;
+    });
+  });
+  await waitFor(() => {
+    expect(draft).not.toBeNull();
+  });
+  const prepared = draft as unknown as StagedEdit;
+  expect(prepared.original).toEqual({ id: '7', name: 'exact original' });
+  expect(hook.result.current.history.current).toEqual([]);
+  act(() => {
+    hook.result.current.stageField(prepared, 'id', { kind: 'null' });
+  });
+  await waitFor(() => {
+    expect(hook.result.current.error).toBe('id does not accept NULL.');
+  });
+  expect(hook.result.current.history.current).toEqual([]);
+  act(() => {
+    hook.result.current.stageField(prepared, 'name', { kind: 'default' });
+  });
+  expect(hook.result.current.history.current[0]?.values).toEqual({
+    name: { kind: 'default' },
+  });
+  vi.mocked(pickFileValue).mockResolvedValueOnce('\\x00ff');
+  let picked: string | null = null;
+  act(() => {
+    hook.result.current.pickFile('hex', (text) => {
+      picked = text;
+    });
+  });
+  await waitFor(() => {
+    expect(picked).toBe('\\x00ff');
+  });
+  expect(pickFileValue).toHaveBeenCalledWith('hex');
+  vi.mocked(tableEdit).mockResolvedValueOnce({
+    kind: 'prepared',
+    token: 'reviewed',
+    statements: [],
+  });
+  act(() => {
+    hook.result.current.commit();
+  });
+  await waitFor(() => {
+    expect(tableEdit).toHaveBeenCalledOnce();
+  });
+  expect(vi.mocked(tableEdit).mock.calls[0]?.[0].changes).toEqual([
+    {
+      kind: 'update',
+      original: { id: '7', name: 'exact original' },
+      values: { name: { kind: 'default' } },
+    },
+  ]);
 });

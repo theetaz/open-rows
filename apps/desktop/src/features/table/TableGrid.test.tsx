@@ -78,7 +78,7 @@ it('keeps the selected row when edits are staged, undone and discarded', async (
     number: 19,
     kind: 'update' as const,
     original: { id: '19' },
-    values: { id: '190' },
+    values: { id: { kind: 'text' as const, value: '190' } },
   };
   const view = render(
     <ThemeProvider>

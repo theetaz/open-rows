@@ -58,7 +58,7 @@ it('matches staged edits by stable keys after sorting and prepares highlights be
         number: 1,
         kind: 'update',
         original: { id: '101', name: 'old' },
-        values: { name: 'updated' },
+        values: { name: { kind: 'text', value: 'updated' } },
       },
     ],
     { keys: ['id'], names: ['id', 'name'] },
@@ -84,7 +84,7 @@ it('swaps the staged overlay in place and notifies the grid to repaint', async (
       number: 19,
       kind: 'update' as const,
       original: { id: '19', name: 'old' },
-      values: { name: 'staged' },
+      values: { name: { kind: 'text' as const, value: 'staged' } },
     },
   ];
   edited.stage(changes, keys);

@@ -29,6 +29,8 @@ export interface SelectionModel {
 export interface DisplayCell {
   text: string;
   state: 'normal' | 'null' | 'empty' | 'changed' | 'deleted';
+  /** `text` is a marker such as a staged NULL or DEFAULT: paint it muted. */
+  placeholder?: boolean;
 }
 /** Mutable counters are sampled outside painting. */
 export interface SourceMetrics {

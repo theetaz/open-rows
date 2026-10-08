@@ -3,6 +3,7 @@ export { Button, IconButton } from './components/Button';
 export { GlassPanel, ToolbarGroup } from './components/Panels';
 export { SegmentedControl } from './components/SegmentedControl';
 export { TextField } from './components/TextField';
+export { TextArea } from './components/TextArea';
 export type { ControlSize } from './components/TextField';
 export { SelectField } from './components/SelectField';
 export { SecureField } from './components/SecureField';

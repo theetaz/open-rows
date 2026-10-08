@@ -36,6 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "table_edit_info",
             "table_edit_row",
             "table_edit",
+            "table_edit_file",
         ]),
     ))?;
     Ok(())

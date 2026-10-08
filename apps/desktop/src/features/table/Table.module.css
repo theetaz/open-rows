@@ -216,67 +216,6 @@
   flex-shrink: 0;
   color: var(--or-secondary);
 }
-.details {
-  display: flex;
-  flex-direction: column;
-  gap: var(--or-space-8);
-  min-height: 0;
-}
-.details small {
-  color: var(--or-secondary);
-  font-family: var(--or-font-ui);
-  font-size: var(--or-text-11-5);
-}
-.details dl {
-  display: flex;
-  flex-direction: column;
-  gap: var(--or-space-6);
-  margin: 0;
-  overflow: auto;
-}
-.details dt {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--or-space-8);
-  font-family: var(--or-font-ui);
-  font-size: var(--or-text-12);
-  color: var(--or-secondary);
-}
-.details dd {
-  margin: var(--or-space-2) 0 0;
-  padding: var(--or-space-4) var(--or-space-8);
-  border-radius: var(--or-radius-control);
-  background: var(--or-control-fill);
-  font-family: var(--or-font-mono);
-  font-size: var(--or-text-mono, var(--or-text-13));
-  white-space: pre-wrap;
-  word-break: break-word;
-  user-select: text;
-  -webkit-user-select: text;
-}
-.details dd[data-state='null'],
-.details dd[data-state='empty'] {
-  color: var(--or-tertiary);
-}
-
-.details dt small {
-  max-width: 50%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.details dd summary {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  cursor: default;
-}
-.details dd pre {
-  margin: var(--or-space-4) 0 0;
-  font: inherit;
-  white-space: pre-wrap;
-}
 
 .editToolbar {
   display: flex;
@@ -344,12 +283,4 @@
   justify-content: space-between;
   align-items: center;
   gap: var(--or-space-8);
-}
-
-.details dt button {
-  opacity: 0;
-}
-.details dl > div:hover dt button,
-.details dl > div:focus-within dt button {
-  opacity: 1;
 }

@@ -12,3 +12,4 @@ mod dto;
 
 pub(crate) mod edit_commands;
 mod edit_dto;
+pub(crate) mod file_value;

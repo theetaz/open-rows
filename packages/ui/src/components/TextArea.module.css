@@ -1,0 +1,52 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* The compact text-field frame (docs/20 §3.3), growing with multi-line content. */
+.frame {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  box-sizing: border-box;
+  min-block-size: var(--or-control-height-compact);
+  min-inline-size: 0;
+  background: var(--or-control-fill);
+  border: var(--or-border-width) solid var(--or-control-stroke);
+  border-radius: var(--or-radius-control-compact);
+}
+.frame textarea {
+  flex: 1;
+  box-sizing: border-box;
+  min-inline-size: 0;
+  max-block-size: var(--or-text-area-max, 10lh);
+  margin: 0;
+  padding: var(--or-space-4) var(--or-control-padding-compact);
+  border: none;
+  border-radius: inherit;
+  background: transparent;
+  color: var(--or-text);
+  font: inherit;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  overflow-y: auto;
+  resize: none;
+  cursor: text;
+}
+.frame textarea:read-only {
+  cursor: default;
+}
+.frame textarea::placeholder {
+  color: var(--or-secondary);
+  opacity: 1;
+}
+.frame:focus-within {
+  outline: var(--or-focus-width) solid var(--or-focus);
+  outline-offset: var(--or-border-width);
+}
+.frame textarea:focus-visible {
+  outline: none;
+}
+.trailing {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  padding: var(--or-space-2);
+}

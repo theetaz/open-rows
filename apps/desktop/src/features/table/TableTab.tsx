@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useRef } from 'react';
 import { Button } from '@openrows/ui';
-import type { ResultMeta } from '../query/run';
 import type { TableObject } from '../query/tabs';
 import { canEdit, EditToolbar, editingNote } from './EditToolbar';
 import { RowEditSheet } from './RowEditSheet';
@@ -12,8 +11,8 @@ import { FilterBar } from './FilterBar';
 import { StructureView } from './StructureView';
 import { TableData } from './TableData';
 import { TableFooter } from './TableFooter';
-import { readRow } from './row';
-import type { SelectedRow } from './row';
+import type { ShowRow } from './row';
+import { useSelectedRow } from './useSelectedRow';
 import { useTableKeys } from './useTableKeys';
 import { useTableTab } from './useTableTab';
 import type { TableViews } from './useTableViews';
@@ -30,7 +29,7 @@ type TableTabProps = {
   /** Why rows cannot load even though the connection is open. */
   notice: string | null;
   views: TableViews;
-  onRow: (row: SelectedRow) => void;
+  onRow: ShowRow;
   onConnect: () => void;
 };
 
@@ -38,7 +37,6 @@ type TableTabProps = {
 export function TableTab(props: TableTabProps): React.JSX.Element {
   const { table, sessionId } = props;
   const root = useRef<HTMLElement>(null);
-  const rowSequence = useRef(0);
   const state = useTableTab(props);
   const { view, actions, columns } = state;
   useTableKeys(root, actions);
@@ -47,15 +45,13 @@ export function TableTab(props: TableTabProps): React.JSX.Element {
     target: state.query.target,
     offset: view.offset,
   });
-  const showRow = (result: ResultMeta, row: number): void => {
-    rowHandler({
-      table,
-      view,
-      editing,
-      onRow: props.onRow,
-      sequence: rowSequence,
-    })(result, row);
-  };
+  const showRow = useSelectedRow({
+    table: table.name,
+    offset: view.offset,
+    editing,
+    ready: sessionId !== null,
+    onRow: props.onRow,
+  });
   const context = useTableContext({
     editing,
     changeView: (update) => {
@@ -155,50 +151,4 @@ function Banner(props: TableTabProps): React.JSX.Element | null {
       </Button>
     </p>
   );
-}
-
-function rowHandler({
-  table,
-  view,
-  editing,
-  onRow,
-  sequence,
-}: {
-  table: TableObject;
-  view: import('./model').TableView;
-  editing: import('./useRowEditing').RowEditing;
-  onRow: TableTabProps['onRow'];
-  sequence: React.RefObject<number>;
-}) {
-  return (result: ResultMeta, row: number): void => {
-    const ticket = ++sequence.current;
-    readRow(result, row).then(
-      (fields) => {
-        if (ticket !== sequence.current) return;
-        onRow({
-          table: table.name,
-          number: view.offset + row + 1,
-          fields,
-          ...(editing.info && !editing.info.readOnly && editing.info.key.length
-            ? {
-                onEdit: (name: string) => {
-                  const column = result.columns.findIndex(
-                    (item) => item.name === name,
-                  );
-                  if (column >= 0) editing.open(result, { row, column });
-                },
-              }
-            : {}),
-        });
-      },
-      (error: unknown) => {
-        onRow({
-          table: table.name,
-          number: view.offset + row + 1,
-          fields: [],
-          error: error instanceof Error ? error.message : String(error),
-        });
-      },
-    );
-  };
 }

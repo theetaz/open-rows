@@ -196,7 +196,7 @@ export class CanvasPainter {
     } else {
       this.cellBackground(context, cell.state);
       context.fillStyle =
-        cell.state === 'null' || cell.state === 'empty'
+        cell.state === 'null' || cell.state === 'empty' || cell.placeholder
           ? theme.colours.tertiary
           : theme.colours.text;
       const end = source.columns[col]?.align === 'end';
