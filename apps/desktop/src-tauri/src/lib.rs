@@ -16,7 +16,7 @@ mod titlebar;
 mod window_frame;
 
 fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
-    use connections::{catalog, connection, profiles, sessions};
+    use connections::{catalog, connection, diagnostics, files, profiles, prompts, sessions};
     tauri_specta::Builder::new()
         .commands(tauri_specta::collect_commands![
             commands::app_info,
@@ -31,7 +31,9 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
             profiles::profile_duplicate,
             profiles::profile_delete,
             profiles::profile_parse_url,
-            sessions::connection_test,
+            diagnostics::connection_test,
+            files::connection_pick_file,
+            prompts::ssh_prompt_answer,
             connection::connection_open,
             connection::connection_close,
             sessions::session_open,
@@ -59,7 +61,10 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
             tables::schema_commands::table_detail,
             tables::schema_commands::table_alter
         ])
-        .events(tauri_specta::collect_events![sessions::SessionStateChanged])
+        .events(tauri_specta::collect_events![
+            sessions::SessionStateChanged,
+            prompts::SshPromptChanged
+        ])
         .constant(
             "DEFAULT_CUSTOM_ENV_COLOR",
             openrows_store::profile::EnvTag::new(openrows_store::profile::EnvKind::Custom).color,

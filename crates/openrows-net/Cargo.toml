@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "SSH tunnel prototype for OpenRows network routes"
+description = "OpenRows network routes: SSH tunnels and TLS for database connections"
 
 [lints]
 workspace = true
@@ -13,16 +13,24 @@ workspace = true
 [dependencies]
 data-encoding = "2.11"
 hmac = "0.13"
+# Decrypts passphrase-protected PKCS#8 client keys; already in the tree via russh.
+pkcs8 = { version = "0.11", features = ["encryption", "pem", "std"] }
 ring = "0.17"
 # The `rsa` feature is off: the `rsa` crate carries RUSTSEC-2023-0071. RSA user
 # keys are signed with ring instead (see src/auth/rsa.rs).
 russh = { version = "0.64", default-features = false, features = ["ring"] }
+# TLS with the ring provider already used by russh (docs/12 §4.1, docs/24 §4).
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+rustls-platform-verifier = "0.7"
 sha1 = "0.11"
 thiserror.workspace = true
 tokio = { version = "1.53", features = ["net", "rt", "time"] }
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
+x509-cert = { version = "0.3", default-features = false, features = ["std"] }
 zeroize = "1.8"
 
 [dev-dependencies]
 proptest = "1.11"
+rcgen = "0.14"
 tempfile = "3.27"
 tokio = { version = "1.53", features = ["io-util", "macros", "rt-multi-thread", "test-util"] }

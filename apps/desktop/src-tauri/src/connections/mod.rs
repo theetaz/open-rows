@@ -7,18 +7,27 @@
 //! [`ResultStore`]; commands live in [`profiles`] and
 //! [`sessions`]; [`catalog`] serves the schema tree from per-database
 //! metadata sessions. Each opened database of a connection has its own user
-//! session, recorded in [`owners`].
+//! session, recorded in [`owners`]. [`route`] resolves every connect: keychain
+//! secrets, TLS files and the profile's shared SSH tunnel ([`tunnels`]), with
+//! host-key and keyboard-interactive [`prompts`] in the webview;
+//! [`diagnostics`] runs Test connection step by step.
 pub(crate) mod catalog;
 mod catalog_dto;
 pub(crate) mod connection;
+pub(crate) mod diagnostics;
 mod dto;
 mod enums;
 mod error;
+pub(crate) mod files;
 mod metadata;
 mod owners;
 pub(crate) mod pg;
 pub(crate) mod profiles;
+pub(crate) mod prompts;
+pub(crate) mod route;
+mod route_dto;
 pub(crate) mod sessions;
+mod tunnels;
 
 use std::sync::Arc;
 
@@ -32,7 +41,9 @@ use tauri_specta::Event;
 use tokio::sync::broadcast::error::RecvError;
 
 pub(crate) use error::{IpcError, IpcErrorKind};
+use prompts::{PromptBroker, TauriSink};
 use sessions::SessionStateChanged;
+use tunnels::{SshEnvironment, TunnelOpener, Tunnels};
 
 /// Managed state behind every connection and query command.
 pub(crate) struct Connections {
@@ -41,6 +52,12 @@ pub(crate) struct Connections {
     metadata: metadata::MetadataSessions,
     /// Which saved connection and database each open session belongs to.
     pub(crate) owners: owners::Owners,
+    /// Shared SSH tunnels per saved connection.
+    pub(crate) tunnels: Tunnels,
+    /// Plans and opens SSH tunnels with prompts in the webview.
+    pub(crate) opener: TunnelOpener,
+    /// Open host-key and keyboard-interactive prompts.
+    pub(crate) prompts: Arc<PromptBroker>,
 }
 
 /// Open the stores, manage [`Connections`] and forward session events.
@@ -61,13 +78,34 @@ pub(crate) fn install(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Er
     let results = Arc::clone(app.state::<Arc<ResultStore>>().inner());
     let sessions = SessionManager::new(results);
     forward_session_events(app.handle().clone(), &sessions);
+    let prompts = Arc::new(PromptBroker::new(Box::new(TauriSink(app.handle().clone()))));
+    let environment = SshEnvironment {
+        home: app.path().home_dir()?,
+        // App-managed known_hosts next to the profiles; written 0600.
+        learned_hosts: data.join("known_hosts"),
+        local_user: local_user(),
+    };
     app.manage(Connections {
         profiles,
         sessions,
         metadata: metadata::MetadataSessions::default(),
         owners: owners::Owners::default(),
+        tunnels: Tunnels::default(),
+        opener: TunnelOpener {
+            environment,
+            prompts: Arc::clone(&prompts),
+        },
+        prompts,
     });
     Ok(())
+}
+
+/// The macOS login name, the SSH user when nothing else names one.
+fn local_user() -> String {
+    ["USER", "LOGNAME"]
+        .iter()
+        .find_map(|name| std::env::var(name).ok().filter(|user| !user.is_empty()))
+        .unwrap_or_default()
 }
 
 fn forward_session_events(app: tauri::AppHandle, sessions: &SessionManager) {

@@ -18,8 +18,9 @@ use std::{
 };
 
 pub use jump::JumpSpec;
+pub(crate) use load::expand_tilde;
 pub use load::{ConfigSource, FileSystem};
-use load::{Loader, Node, expand_tilde};
+use load::{Loader, Node};
 use parse::{Directive, ProxyJumpValue};
 pub(crate) use pattern::pattern_list_matches;
 

@@ -30,6 +30,13 @@ it('maps a profile to a draft and back without inventing a password', () => {
     database: null,
     user: 'app',
     tlsMode: 'prefer',
+    tlsFiles: {
+      caFile: null,
+      clientCert: null,
+      clientKey: null,
+      keyPassphrase: { kind: 'keep' },
+    },
+    ssh: null,
     safety: { readOnly: false, confirmWrites: false },
     password: { kind: 'keep' },
   });

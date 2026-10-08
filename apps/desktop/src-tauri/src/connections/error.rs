@@ -24,6 +24,14 @@ pub(crate) enum IpcErrorKind {
     Url,
     /// The server could not be reached or the connection dropped.
     Network,
+    /// TLS files, certificate verification or the TLS handshake failed.
+    Tls,
+    /// The SSH tunnel could not be opened (connect, authentication, channel).
+    Ssh,
+    /// The SSH server's host key changed or was revoked: a hard stop.
+    HostKey,
+    /// The user cancelled a host-key or keyboard-interactive prompt.
+    Cancelled,
     /// The server rejected the credentials.
     Auth,
     /// The server or driver broke the wire protocol.
@@ -88,6 +96,7 @@ impl From<CoreError> for IpcError {
     fn from(error: CoreError) -> Self {
         let kind = match error.kind {
             ErrorKind::Network => IpcErrorKind::Network,
+            ErrorKind::Tls => IpcErrorKind::Tls,
             ErrorKind::Auth => IpcErrorKind::Auth,
             ErrorKind::Protocol | ErrorKind::Decode => IpcErrorKind::Protocol,
             ErrorKind::Server => IpcErrorKind::Server,
@@ -115,6 +124,10 @@ fn field_label(field: &str) -> &str {
         "name" => "Name",
         "params.host" => "Host",
         "params.port" => "Port",
+        "ssh.host" => "SSH host",
+        "ssh.port" => "SSH port",
+        "ssh.keyFile" => "SSH key file",
+        "ssh.jumpHosts" => "Jump hosts",
         "id" => "Connection id",
         other => other,
     }

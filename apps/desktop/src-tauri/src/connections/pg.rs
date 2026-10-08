@@ -1,16 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
 //! The only call site of the `PostgreSQL` driver's connect API (adapt here when
 //! the driver changes).
-use std::time::{Duration, Instant};
 
 use openrows_driver_api::DriverError;
-use openrows_driver_postgres::{ConnectOptions, Flavour, PgConfig, PgSession, ServerInfo, SslMode};
+use std::sync::Arc;
+
+use openrows_driver_postgres::{
+    ConnectOptions, Flavour, PgConfig, PgSession, ServerInfo, SslMode, TlsFiles,
+};
+use openrows_net::{Dialer, SecretString as NetSecret};
 use openrows_secrets::SecretString;
-use openrows_store::profile::{PgParams, TlsMode};
+use openrows_store::profile::{PgParams, TlsMode, TlsSettings};
 use serde::Serialize;
 use specta::Type;
 
-use super::error::{IpcError, IpcErrorKind};
+use super::error::IpcError;
 
 /// `application_name` when the profile does not set one.
 const APPLICATION_NAME: &str = "OpenRows";
@@ -35,6 +39,12 @@ impl Target {
         target
     }
 
+    /// Connect through `route` (an SSH tunnel) instead of direct TCP.
+    pub(crate) fn through(mut self, route: Arc<dyn Dialer>) -> Self {
+        self.options.via = Some(route);
+        self
+    }
+
     /// The same target under another `application_name`.
     pub(crate) fn with_application_suffix(mut self, suffix: &str) -> Self {
         self.options.application_name = format!("{} {suffix}", self.options.application_name);
@@ -42,23 +52,23 @@ impl Target {
     }
 }
 
-/// Driver settings for `params`.
+/// Secrets the driver needs, read from the keychain on the connect path only.
+#[derive(Default)]
+pub(crate) struct DriverSecrets {
+    pub(crate) password: Option<SecretString>,
+    pub(crate) tls_key_passphrase: Option<SecretString>,
+}
+
+/// Driver settings for `params` and `tls`; the route (SSH) is added by
+/// [`Target::through`].
 ///
 /// # Errors
-/// `Unsupported` for modes that demand TLS (the driver is plain TCP for now),
 /// `Invalid` when no user is set.
 pub(crate) fn target(
     params: &PgParams,
-    tls: TlsMode,
-    password: Option<&SecretString>,
+    tls: &TlsSettings,
+    secrets: &DriverSecrets,
 ) -> Result<Target, IpcError> {
-    let ssl_mode = ssl_mode(tls);
-    if ssl_mode.requires_tls() {
-        return Err(IpcError::new(
-            IpcErrorKind::Unsupported,
-            "TLS is not supported yet; choose TLS mode Prefer or Disable to connect without TLS",
-        ));
-    }
     let user = params
         .user
         .clone()
@@ -71,19 +81,32 @@ pub(crate) fn target(
             .clone()
             .unwrap_or_else(|| HOME_DATABASE.to_owned()),
         user,
-        password: password.map(|secret| secret.expose().to_owned()),
+        password: secrets
+            .password
+            .as_ref()
+            .map(|secret| secret.expose().to_owned()),
     };
     let options = ConnectOptions {
         application_name: params
             .application_name
             .clone()
             .unwrap_or_else(|| APPLICATION_NAME.to_owned()),
-        ssl_mode,
+        ssl_mode: ssl_mode(tls.mode),
+        tls: tls_files(tls, secrets.tls_key_passphrase.as_ref()),
         // Profiles have no startup commands yet (FR-CONN-10 lands with session settings).
         startup_commands: Vec::new(),
         ..ConnectOptions::default()
     };
     Ok(Target { config, options })
+}
+
+fn tls_files(tls: &TlsSettings, passphrase: Option<&SecretString>) -> TlsFiles {
+    TlsFiles {
+        ca_file: tls.ca_file.clone(),
+        client_cert: tls.client_cert.clone(),
+        client_key: tls.client_key.clone(),
+        key_passphrase: passphrase.map(|secret| NetSecret::from(secret.expose())),
+    }
 }
 
 /// The store's TLS mode is libpq `sslmode`, 1:1.
@@ -112,6 +135,17 @@ pub(crate) struct ServerDto {
     pub(crate) database: String,
 }
 
+impl ServerDto {
+    /// `PostgreSQL 17.2`, with the flavour when there is one.
+    pub(crate) fn version_label(&self) -> String {
+        let product = format!("{} {}", self.product, self.server_version);
+        match &self.flavour {
+            Some(flavour) => format!("{product} · {flavour}"),
+            None => product,
+        }
+    }
+}
+
 impl From<&ServerInfo> for ServerDto {
     fn from(info: &ServerInfo) -> Self {
         let flavour = match info.flavour {
@@ -133,7 +167,6 @@ impl From<&ServerInfo> for ServerDto {
 pub(crate) struct Connected {
     pub(crate) session: PgSession,
     pub(crate) server: ServerDto,
-    pub(crate) elapsed: Duration,
 }
 
 /// Connect, authenticate and read the server info; the driver applies the
@@ -142,14 +175,12 @@ pub(crate) struct Connected {
 /// # Errors
 /// The driver failure, with host:port added to network errors.
 pub(crate) async fn connect(target: &Target) -> Result<Connected, DriverError> {
-    let started = Instant::now();
     let session = PgSession::connect_with(&target.config, &target.options)
         .await
         .map_err(|error| with_target(error, &target.config))?;
     Ok(Connected {
         server: ServerDto::from(session.server_info()),
         session,
-        elapsed: started.elapsed(),
     })
 }
 
@@ -165,81 +196,4 @@ fn with_target(error: DriverError, config: &PgConfig) -> DriverError {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use openrows_driver_postgres::TlsStatus;
-
-    fn params(user: Option<&str>, database: Option<&str>) -> PgParams {
-        PgParams {
-            user: user.map(str::to_owned),
-            database: database.map(str::to_owned),
-            ..PgParams::default()
-        }
-    }
-
-    #[test]
-    fn database_defaults_to_the_maintenance_database() -> Result<(), IpcError> {
-        let secret = SecretString::from("synthetic");
-        let target = target(&params(Some("app"), None), TlsMode::Prefer, Some(&secret))?;
-        let config = &target.config;
-        assert_eq!(
-            (config.user.as_str(), config.database.as_str()),
-            ("app", "postgres")
-        );
-        assert_eq!(config.password.as_deref(), Some("synthetic"));
-        assert_eq!(target.options.application_name, "OpenRows");
-        assert_eq!(target.options.ssl_mode, SslMode::Prefer);
-        Ok(())
-    }
-
-    #[test]
-    fn tls_only_modes_and_missing_users_are_rejected() {
-        let tls = target(&params(Some("app"), None), TlsMode::VerifyFull, None);
-        assert!(tls.is_err_and(|error| error.kind == IpcErrorKind::Unsupported));
-        let user = target(&params(None, Some("db")), TlsMode::Disable, None);
-        assert!(user.is_err_and(|error| error.message == "User is required"));
-    }
-
-    #[test]
-    fn metadata_targets_switch_database_and_name_themselves() -> Result<(), IpcError> {
-        let profile = PgParams {
-            application_name: Some("billing".to_owned()),
-            ..params(Some("app"), Some("main"))
-        };
-        let base = target(&profile, TlsMode::Disable, None)?;
-        let metadata = base
-            .with_database("reports")
-            .with_application_suffix("metadata");
-        assert_eq!(metadata.config.database, "reports");
-        assert_eq!(metadata.options.application_name, "billing metadata");
-        assert_eq!(metadata.options.ssl_mode, SslMode::Disable);
-        Ok(())
-    }
-
-    #[test]
-    fn server_info_names_product_version_and_flavour() {
-        let info = ServerInfo {
-            server_version: "17.2".to_owned(),
-            version: "PostgreSQL 17.2".to_owned(),
-            database: "orders".to_owned(),
-            user: "app".to_owned(),
-            flavour: Flavour::Neon,
-            tls: TlsStatus::Disabled,
-        };
-        let server = ServerDto::from(&info);
-        assert_eq!(server.product, "PostgreSQL");
-        assert_eq!(server.flavour.as_deref(), Some("Neon"));
-        assert_eq!(server.database, "orders");
-    }
-
-    #[test]
-    fn network_errors_name_the_target() -> Result<(), IpcError> {
-        let target = target(&params(Some("app"), None), TlsMode::Disable, None)?;
-        let error = with_target(
-            DriverError::Network(std::io::ErrorKind::ConnectionRefused.into()),
-            &target.config,
-        );
-        assert!(error.to_string().contains("localhost:5432"));
-        Ok(())
-    }
-}
+mod tests;

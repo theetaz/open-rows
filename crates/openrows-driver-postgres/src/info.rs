@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Server identity after connect, for the connection test and status bar.
-use crate::options::SslMode;
 use crate::simple::{self, TextRow};
 use crate::startup::PgConfig;
 use crate::wire::Wire;
 use openrows_driver_api::DriverError;
+use openrows_net::tls::TlsDetails;
 
 /// One round trip; the extension probe makes flavour detection free.
 const INFO_SQL: &str = "SELECT current_database(), current_user, version(), \
@@ -37,14 +37,18 @@ impl Flavour {
     }
 }
 
-/// Whether the connection is encrypted. TLS arrives with D-11, so for now it never is.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+/// Whether and how the connection is encrypted.
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TlsStatus {
-    /// `sslmode=disable` or `allow`: plaintext as requested.
+    /// `sslmode=disable`, or `allow` and the server accepted plaintext.
     Disabled,
-    /// `sslmode=prefer`: TLS was preferred but the driver cannot do TLS yet,
-    /// so the connection is plaintext. Show this to the user.
+    /// A Unix-domain socket: TLS does not apply.
+    LocalSocket,
+    /// `sslmode=prefer` and the server does not offer TLS: plaintext. Show
+    /// this to the user.
     PlaintextFallback,
+    /// Encrypted; the details name protocol, cipher and certificate.
+    Encrypted(TlsDetails),
 }
 
 /// What the server reported about itself right after connecting.
@@ -69,21 +73,6 @@ impl ServerInfo {
     #[must_use]
     pub fn product(&self) -> &'static str {
         self.flavour.product()
-    }
-}
-
-/// Map the requested mode onto what this driver can do before any I/O.
-pub(crate) fn tls_status(mode: SslMode) -> Result<TlsStatus, DriverError> {
-    match mode {
-        SslMode::Disable | SslMode::Allow => Ok(TlsStatus::Disabled),
-        SslMode::Prefer => Ok(TlsStatus::PlaintextFallback),
-        SslMode::Require | SslMode::VerifyCa | SslMode::VerifyFull => {
-            Err(DriverError::Unsupported(format!(
-                "sslmode={} needs TLS, which arrives with D-11; use sslmode=disable or \
-                 prefer for now",
-                mode.as_str()
-            )))
-        }
     }
 }
 
@@ -153,22 +142,5 @@ mod tests {
         assert_eq!(detect(pg, "neonx", "h"), Flavour::Postgres);
         assert_eq!(Flavour::CockroachDb.product(), "CockroachDB");
         assert_eq!(Flavour::Neon.product(), "PostgreSQL");
-    }
-
-    #[test]
-    fn tls_modes_map_to_plaintext_or_a_typed_error() {
-        assert_eq!(tls_status(SslMode::Disable).ok(), Some(TlsStatus::Disabled));
-        assert_eq!(tls_status(SslMode::Allow).ok(), Some(TlsStatus::Disabled));
-        assert_eq!(
-            tls_status(SslMode::Prefer).ok(),
-            Some(TlsStatus::PlaintextFallback)
-        );
-        for mode in [SslMode::Require, SslMode::VerifyCa, SslMode::VerifyFull] {
-            let Err(DriverError::Unsupported(message)) = tls_status(mode) else {
-                unreachable!("{mode:?} needs TLS")
-            };
-            assert!(message.contains(mode.as_str()) && message.contains("D-11"));
-            assert!(mode.requires_tls());
-        }
     }
 }

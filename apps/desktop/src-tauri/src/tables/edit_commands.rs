@@ -4,7 +4,7 @@ use super::commands::owned_session;
 use super::dto::TableTarget;
 use super::edit_dto::{EditInfoDto, EditReply, EditRequest, EditStatementDto};
 use crate::connections::{Connections, IpcError};
-use crate::connections::{catalog, pg, profiles::profile_id};
+use crate::connections::{pg, profiles::profile_id, route};
 use openrows_core::safety::{SafetyPlan, SafetyPolicy};
 use openrows_driver_api::Session;
 use openrows_driver_postgres::{BoundEdit, PgSession};
@@ -17,7 +17,8 @@ pub(crate) async fn session(
     state: &Connections,
     target: &TableTarget,
 ) -> Result<PgSession, IpcError> {
-    let destination = catalog::profile_target(state, &target.profile_id)?
+    let destination = route::profile_target(state, &target.profile_id)
+        .await?
         .with_database(&target.database)
         .with_application_suffix("table edits");
     pg::connect(&destination)

@@ -25,22 +25,26 @@ pub(crate) struct MetadataSessions {
 impl MetadataSessions {
     /// Run `read` on the metadata session for `profile` and `database`,
     /// connecting to `target()` (switched to `database`) first when there is
-    /// none, so the keychain is read only on connect. Calls for the same key
+    /// none, so the keychain is read (and an SSH tunnel opened) only on connect. Calls for the same key
     /// run one at a time; a broken connection is dropped so the next call
     /// reconnects.
     ///
     /// # Errors
     /// The target, connect or `read` failure.
-    pub(crate) async fn read<T>(
+    pub(crate) async fn read<T, F>(
         &self,
         (profile, database): (&str, &str),
-        target: impl FnOnce() -> Result<Target, IpcError>,
+        target: impl FnOnce() -> F,
         read: impl for<'s> FnOnce(&'s mut PgSession) -> BoxFuture<'s, Result<T, DriverError>>,
-    ) -> Result<T, IpcError> {
+    ) -> Result<T, IpcError>
+    where
+        F: Future<Output = Result<Target, IpcError>>,
+    {
         let slot = self.slot((profile.to_owned(), database.to_owned()));
         let mut guard = slot.lock().await;
         if guard.is_none() {
-            let target = target()?
+            let target = target()
+                .await?
                 .with_database(database)
                 .with_application_suffix("metadata");
             let connected = pg::connect(&target)

@@ -1,5 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 import { DEFAULT_CUSTOM_ENV_COLOR } from '@openrows/ipc';
+import {
+  emptySsh,
+  emptyTls,
+  sshFromProfile,
+  sshInput,
+  tlsFromProfile,
+  tlsInput,
+  validateRoute,
+} from './routeForm';
+import type { RouteErrors, SshDraft, TlsDraft } from './routeForm';
 import type {
   EnvKindDto,
   PasswordInput,
@@ -31,11 +41,16 @@ export type Draft = {
   hasStoredPassword: boolean;
   /** The name was derived from the URL, so later URL edits may replace it. */
   nameFromUrl: boolean;
+  /** Over SSH (D-10). */
+  ssh: SshDraft;
+  /** TLS certificate files (D-11); the mode is `tlsMode`. */
+  tls: TlsDraft;
 };
 
 export type DraftErrors = Partial<
   Record<'name' | 'host' | 'port' | 'user' | 'envLabel', string>
->;
+> &
+  RouteErrors;
 
 /** TextField `error` props for an optional message (exact optional property types). */
 export function fieldError(message: string | null | undefined): {
@@ -62,6 +77,8 @@ export function emptyDraft(): Draft {
     passwordMode: 'keep',
     hasStoredPassword: false,
     nameFromUrl: false,
+    ssh: emptySsh(),
+    tls: emptyTls(),
   };
 }
 
@@ -84,6 +101,8 @@ export function draftFromProfile(profile: ProfileDto): Draft {
     readOnly: profile.safety.readOnly,
     confirmWrites: profile.safety.confirmWrites,
     hasStoredPassword: profile.hasPassword,
+    ssh: sshFromProfile(profile),
+    tls: tlsFromProfile(profile),
   };
 }
 
@@ -135,7 +154,7 @@ export function validate(draft: Draft): DraftErrors {
   if (!draft.user.trim()) errors.user = 'User is required';
   if (draft.envKind === 'custom' && !draft.envLabel.trim())
     errors.envLabel = 'Label is required';
-  return errors;
+  return { ...errors, ...validateRoute(draft.ssh, draft.tls, draft.tlsMode) };
 }
 
 function password(draft: Draft): PasswordInput {
@@ -167,6 +186,8 @@ export function toInput(draft: Draft): ProfileInput {
     database: optional(draft.database),
     user: optional(draft.user),
     tlsMode: draft.tlsMode,
+    tlsFiles: tlsInput(draft.tls),
+    ssh: sshInput(draft.ssh),
     safety: { readOnly: draft.readOnly, confirmWrites: draft.confirmWrites },
     password: password(draft),
   };

@@ -5,6 +5,7 @@
 
 mod auth;
 mod host_keys_and_jumps;
+mod route;
 mod support;
 
 use openrows_net::{AuthMethod, SshHop};

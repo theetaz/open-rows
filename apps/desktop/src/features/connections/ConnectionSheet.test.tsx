@@ -146,7 +146,12 @@ it('turns on confirm writes for prod and requires a custom label', async () => {
 it('tests an existing profile with its stored password and shows version or error', async () => {
   const existing = profile('orders', { hasPassword: true });
   vi.mocked(testConnection)
-    .mockResolvedValueOnce({ server: server('17.2'), elapsedMs: 12 })
+    .mockResolvedValueOnce({
+      steps: [],
+      server: server('17.2'),
+      error: null,
+      elapsedMs: 12,
+    })
     .mockRejectedValueOnce(new Error('authentication failed: bad password'));
   const { user } = mount(existing);
   expect(screen.getByPlaceholderText('Saved in Keychain')).toHaveValue('');

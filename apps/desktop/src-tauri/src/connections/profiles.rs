@@ -10,17 +10,35 @@ use std::str::FromStr;
 
 use openrows_secrets::SecretString;
 use openrows_store::profile::{
-    ConnectionProfile, EnvKind, EnvTag, PasswordChange, ProfileId, ProfileService,
+    ConnectionProfile, EnvKind, EnvTag, PasswordChange, ProfileId, ProfileService, SecretSlot,
     parse_postgres_url,
 };
 use tauri::State;
 
 use super::Connections;
-use super::dto::{PasswordInput, ProfileDto, ProfileInput, ProfileList, UrlDraft};
+use super::dto::{PasswordInput, ProfileDto, ProfileInput, ProfileList, UrlDraft, password_change};
 use super::error::IpcError;
 
 pub(crate) fn profile_id(id: &str) -> Result<ProfileId, IpcError> {
     ProfileId::from_str(id).map_err(IpcError::from)
+}
+
+/// The secret in `slot` that `change` asks for; `stored` is the profile
+/// being edited. Keeping reads the keychain only when a secret is stored.
+pub(crate) fn resolve_secret(
+    service: &ProfileService,
+    stored: Option<&ConnectionProfile>,
+    slot: SecretSlot,
+    change: PasswordChange,
+) -> Result<Option<SecretString>, IpcError> {
+    match change {
+        PasswordChange::Keep => match stored {
+            Some(profile) => Ok(service.secret(profile, slot)?),
+            None => Ok(None),
+        },
+        PasswordChange::Clear => Ok(None),
+        PasswordChange::Set(value) => Ok(Some(value)),
+    }
 }
 
 /// The password `input` asks for; `stored` is the profile being edited.
@@ -29,26 +47,16 @@ pub(crate) fn resolve_password(
     stored: Option<&ConnectionProfile>,
     input: &PasswordInput,
 ) -> Result<Option<SecretString>, IpcError> {
-    match input {
-        PasswordInput::Keep => match stored {
-            Some(profile) => Ok(service.password(profile)?),
-            None => Ok(None),
-        },
-        PasswordInput::Clear => Ok(None),
-        PasswordInput::Set { value } => Ok(Some(SecretString::from(value.as_str()))),
-        PasswordInput::FromUrl { url } => Ok(parse_postgres_url(url)?.password),
+    if let PasswordInput::FromUrl { url } = input {
+        // A URL without a password means no password, not the stored one.
+        return Ok(parse_postgres_url(url)?.password);
     }
-}
-
-fn password_change(input: &PasswordInput) -> Result<PasswordChange, IpcError> {
-    Ok(match input {
-        PasswordInput::Keep => PasswordChange::Keep,
-        PasswordInput::Clear => PasswordChange::Clear,
-        PasswordInput::Set { value } => PasswordChange::Set(SecretString::from(value.as_str())),
-        PasswordInput::FromUrl { url } => parse_postgres_url(url)?
-            .password
-            .map_or(PasswordChange::Keep, PasswordChange::Set),
-    })
+    resolve_secret(
+        service,
+        stored,
+        SecretSlot::Password,
+        password_change(input)?,
+    )
 }
 
 fn list(service: &ProfileService) -> Result<ProfileList, IpcError> {
@@ -63,10 +71,8 @@ fn create(service: &ProfileService, input: &ProfileInput) -> Result<ProfileDto, 
     let mut profile =
         ConnectionProfile::new_postgres(&input.name, input.params(), EnvTag::new(EnvKind::Local));
     input.apply(&mut profile)?;
-    let password = resolve_password(service, None, &input.password)?;
-    Ok(ProfileDto::from(
-        &service.create(profile, password.as_ref())?,
-    ))
+    let changes = input.secret_changes()?;
+    Ok(ProfileDto::from(&service.create_with(profile, &changes)?))
 }
 
 fn update(
@@ -76,8 +82,8 @@ fn update(
 ) -> Result<ProfileDto, IpcError> {
     let mut profile = service.get(profile_id(id)?)?;
     input.apply(&mut profile)?;
-    let change = password_change(&input.password)?;
-    Ok(ProfileDto::from(&service.update(profile, change)?))
+    let changes = input.secret_changes()?;
+    Ok(ProfileDto::from(&service.update_with(profile, &changes)?))
 }
 
 fn search(service: &ProfileService, query: &str) -> Result<Vec<ProfileDto>, IpcError> {
@@ -115,7 +121,7 @@ pub(crate) fn profile_get(
     Ok(ProfileDto::from(&state.profiles.get(profile_id(&id)?)?))
 }
 
-/// Save a new connection; its password goes to the keychain.
+/// Save a new connection; its password and passphrases go to the keychain.
 #[tauri::command(async)]
 #[specta::specta]
 pub(crate) fn profile_create(
@@ -125,7 +131,7 @@ pub(crate) fn profile_create(
     create(&state.profiles, &input)
 }
 
-/// Replace a saved connection's fields and apply the password change.
+/// Replace a saved connection's fields and apply the secret changes.
 #[tauri::command(async)]
 #[specta::specta]
 pub(crate) fn profile_update(
@@ -133,10 +139,13 @@ pub(crate) fn profile_update(
     id: String,
     input: ProfileInput,
 ) -> Result<ProfileDto, IpcError> {
-    update(&state.profiles, &id, &input)
+    let updated = update(&state.profiles, &id, &input)?;
+    // New sessions use the edited route; open ones keep their tunnel.
+    state.tunnels.forget(&id);
+    Ok(updated)
 }
 
-/// Copy a connection (and its password) as "<name> copy".
+/// Copy a connection (and its secrets) as "<name> copy".
 #[tauri::command(async)]
 #[specta::specta]
 pub(crate) fn profile_duplicate(
@@ -148,11 +157,13 @@ pub(crate) fn profile_duplicate(
     ))
 }
 
-/// Delete a connection and its stored password.
+/// Delete a connection and its stored secrets.
 #[tauri::command(async)]
 #[specta::specta]
 pub(crate) fn profile_delete(state: State<'_, Connections>, id: String) -> Result<(), IpcError> {
-    Ok(state.profiles.delete(profile_id(&id)?)?)
+    state.profiles.delete(profile_id(&id)?)?;
+    state.tunnels.forget(&id);
+    Ok(())
 }
 
 /// Form fields from a pasted `postgres://` URL, without the password itself.

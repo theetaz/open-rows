@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useState } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 import { createProfile, testConnection, updateProfile } from '@openrows/ipc';
 import type { EnvKindDto, ProfileDto, TestReport } from '@openrows/ipc';
 import {
@@ -12,13 +13,16 @@ import {
   withPatch,
 } from './form';
 import type { Draft, DraftErrors } from './form';
+import type { SshDraft, TlsDraft } from './routeForm';
 import { useUrlField } from './useUrlField';
 import type { UrlField } from './useUrlField';
 
 export type TestState =
   | { status: 'idle' }
   | { status: 'testing' }
-  | { status: 'ok'; report: TestReport }
+  /** The test ran: every step, and the server or the failing step's error. */
+  | { status: 'done'; report: TestReport }
+  /** The test could not start (invalid input). */
   | { status: 'error'; message: string };
 
 export type ConnectionForm = {
@@ -30,6 +34,10 @@ export type ConnectionForm = {
   /** The connection URL, kept in sync with the fields both ways. */
   url: UrlField;
   update: (patch: Partial<Draft>) => void;
+  /** Edit the SSH section (not part of the URL). */
+  updateSsh: (patch: Partial<SshDraft>) => void;
+  /** Edit the TLS certificate files (not part of the URL). */
+  updateTls: (patch: Partial<TlsDraft>) => void;
   setEnvironment: (kind: EnvKindDto) => void;
   setPassword: (value: string) => void;
   runTest: () => Promise<void>;
@@ -73,9 +81,38 @@ export function useConnectionForm(
     saving: saving.busy,
     saveError: saving.error,
     url,
+    ...editors(setDraft, url),
+    runTest: test.run,
+    save: saving.run,
+  };
+}
+
+type Editors = Pick<
+  ConnectionForm,
+  'update' | 'updateSsh' | 'updateTls' | 'setEnvironment' | 'setPassword'
+>;
+
+/** Draft edits; fields that appear in the URL show the fields' URL again. */
+function editors(
+  setDraft: Dispatch<SetStateAction<Draft>>,
+  url: UrlField,
+): Editors {
+  return {
     update: (patch) => {
       setDraft((current) => withPatch(current, patch));
       if (Object.keys(patch).some((key) => URL_FIELDS.has(key))) url.release();
+    },
+    updateSsh: (patch) => {
+      setDraft((current) => ({
+        ...current,
+        ssh: { ...current.ssh, ...patch },
+      }));
+    },
+    updateTls: (patch) => {
+      setDraft((current) => ({
+        ...current,
+        tls: { ...current.tls, ...patch },
+      }));
     },
     setEnvironment: (kind) => {
       setDraft((current) => withEnvironment(current, kind));
@@ -84,8 +121,6 @@ export function useConnectionForm(
       setDraft((current) => withPassword(current, value));
       url.release();
     },
-    runTest: test.run,
-    save: saving.run,
   };
 }
 
@@ -100,7 +135,7 @@ function useTest(
     setState({ status: 'testing' });
     try {
       const report = await testConnection(profileId, toInput(draft));
-      setState({ status: 'ok', report });
+      setState({ status: 'done', report });
     } catch (error) {
       setState({ status: 'error', message: message(error) });
     }

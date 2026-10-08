@@ -16,25 +16,33 @@ export const commands = {
 	profilesSearch: (query: string) => typedError<ProfileDto[], IpcError>(__TAURI_INVOKE("profiles_search", { query })),
 	/**  One saved connection. */
 	profileGet: (id: string) => typedError<ProfileDto, IpcError>(__TAURI_INVOKE("profile_get", { id })),
-	/**  Save a new connection; its password goes to the keychain. */
+	/**  Save a new connection; its password and passphrases go to the keychain. */
 	profileCreate: (input: ProfileInput) => typedError<ProfileDto, IpcError>(__TAURI_INVOKE("profile_create", { input })),
-	/**  Replace a saved connection's fields and apply the password change. */
+	/**  Replace a saved connection's fields and apply the secret changes. */
 	profileUpdate: (id: string, input: ProfileInput) => typedError<ProfileDto, IpcError>(__TAURI_INVOKE("profile_update", { id, input })),
-	/**  Copy a connection (and its password) as "<name> copy". */
+	/**  Copy a connection (and its secrets) as "<name> copy". */
 	profileDuplicate: (id: string) => typedError<ProfileDto, IpcError>(__TAURI_INVOKE("profile_duplicate", { id })),
-	/**  Delete a connection and its stored password. */
+	/**  Delete a connection and its stored secrets. */
 	profileDelete: (id: string) => typedError<null, IpcError>(__TAURI_INVOKE("profile_delete", { id })),
 	/**  Form fields from a pasted `postgres://` URL, without the password itself. */
 	profileParseUrl: (url: string) => typedError<UrlDraft, IpcError>(__TAURI_INVOKE("profile_parse_url", { url })),
-	/**  Connect with the form values, report the server and disconnect. */
+	/**  Connect with the form values step by step, report, and disconnect. */
 	connectionTest: (profileId: string | null, input: ProfileInput) => typedError<TestReport, IpcError>(__TAURI_INVOKE("connection_test", { profileId, input })),
+	/**  Pick a key or certificate file; `null` when the panel is cancelled. */
+	connectionPickFile: (kind: PickFileKind) => typedError<string | null, IpcError>(__TAURI_INVOKE("connection_pick_file", { kind })),
+	/**  Answer an open SSH prompt (host-key trust or challenge answers). */
+	sshPromptAnswer: (id: string, answer: SshPromptAnswer) => typedError<null, IpcError>(__TAURI_INVOKE("ssh_prompt_answer", { id, answer })),
 	/**
-	 *  Check that a saved connection is reachable and report its server. The
+	 *  Check that a saved connection is reachable (opening its SSH tunnel first,
+	 *  with prompts) and report its server. The
 	 *  check runs on the home database's metadata session, which also lists the
 	 *  server's databases; user sessions open per database with `session_open`.
 	 */
 	connectionOpen: (profileId: string) => typedError<ConnectionOpened, IpcError>(__TAURI_INVOKE("connection_open", { profileId })),
-	/**  Close every database session and metadata session of a saved connection. */
+	/**
+	 *  Close every database session and metadata session of a saved connection,
+	 *  and stop sharing its SSH tunnel.
+	 */
 	connectionClose: (profileId: string) => typedError<null, IpcError>(__TAURI_INVOKE("connection_close", { profileId })),
 	/**
 	 *  Open a user session on `database` (the profile's database when `None`);
@@ -122,6 +130,7 @@ export const commands = {
 /** Events */
 export const events = {
 	sessionStateChanged: makeEvent<SessionStateChanged>("session-state-changed"),
+	sshPromptChanged: makeEvent<SshPromptChanged>("ssh-prompt-changed"),
 };
 
 /* Constants */
@@ -156,6 +165,13 @@ export type BuildProfile = "debug" | "release";
 
 /**  A staged field value. `default` is the column DEFAULT, never the text `'DEFAULT'`. */
 export type CellValueDto = { kind: "null" } | { kind: "default" } | { kind: "text"; value: string };
+
+/**  One line of a keyboard-interactive challenge. */
+export type ChallengePromptDto = {
+	text: string,
+	/**  The answer may be shown while typing (otherwise it is masked). */
+	echo: boolean,
+};
 
 /**  A result column as the grid header shows it. */
 export type ColumnDto = {
@@ -397,6 +413,14 @@ export type IpcErrorKind =
 "url" | 
 /**  The server could not be reached or the connection dropped. */
 "network" | 
+/**  TLS files, certificate verification or the TLS handshake failed. */
+"tls" | 
+/**  The SSH tunnel could not be opened (connect, authentication, channel). */
+"ssh" | 
+/**  The SSH server's host key changed or was revoked: a hard stop. */
+"hostKey" | 
+/**  The user cancelled a host-key or keyboard-interactive prompt. */
+"cancelled" | 
 /**  The server rejected the credentials. */
 "auth" | 
 /**  The server or driver broke the wire protocol. */
@@ -459,7 +483,7 @@ export type PageTimer = {
 	crossOriginIsolated: boolean,
 };
 
-/**  What to do with the password on save or test; the only secret path. */
+/**  What to do with the password on save or test; `Debug` redacts secrets. */
 export type PasswordInput = 
 /**  Use the stored password (none for a new profile). */
 { kind: "keep" } | 
@@ -469,6 +493,17 @@ export type PasswordInput =
 { kind: "set"; value: string } | 
 /**  The password inside a pasted `postgres://` URL. */
 { kind: "fromUrl"; url: string };
+
+/**  Which file the connection form asks for. */
+export type PickFileKind = 
+/**  SSH private key (opens in `~/.ssh`). */
+"sshKey" | 
+/**  TLS CA certificate bundle. */
+"caCertificate" | 
+/**  TLS client certificate. */
+"clientCertificate" | 
+/**  TLS client key. */
+"clientKey";
 
 /**
  *  A saved connection without secrets; `hasPassword` says whether the
@@ -484,6 +519,8 @@ export type ProfileDto = {
 	database: string | null,
 	user: string | null,
 	tlsMode: TlsModeDto,
+	tlsFiles: TlsFilesDto,
+	ssh: SshDto | null,
 	hasPassword: boolean,
 	safety: SafetyDto,
 };
@@ -498,6 +535,10 @@ export type ProfileInput = {
 	database: string | null,
 	user: string | null,
 	tlsMode: TlsModeDto,
+	/**  CA and client certificate files (absent: none). */
+	tlsFiles?: TlsFilesInput,
+	/**  The SSH tunnel; absent or null for a direct connection. */
+	ssh?: SshInput | null,
 	safety: SafetyDto,
 	password: PasswordInput,
 };
@@ -568,6 +609,18 @@ export type SchemaDto = {
 	comment: string | null,
 };
 
+/**
+ *  What to do with an SSH or TLS secret on save or test. `Debug` redacts
+ *  the value.
+ */
+export type SecretInput = 
+/**  Use the stored secret (none for a new profile). */
+{ kind: "keep" } | 
+/**  No secret. */
+{ kind: "clear" } | 
+/**  A typed secret. */
+{ kind: "set"; value: string };
+
 /**  What the UI shows about the server after connecting. */
 export type ServerDto = {
 	/**  `PostgreSQL` or `CockroachDB`. */
@@ -629,6 +682,58 @@ export type SqlPreviewDto = {
 	params: (string | null)[],
 };
 
+/**  SSH authentication method. */
+export type SshAuthDto = { method: "password" } | { method: "privateKey"; keyFile: string } | { method: "agent" } | { method: "keyboardInteractive" };
+
+/**  A saved SSH tunnel; says whether its password or passphrase is stored. */
+export type SshDto = {
+	host: string,
+	port: number | null,
+	user: string | null,
+	auth: SshAuthDto,
+	jumpHosts: string[],
+	hasPassword: boolean,
+	hasPassphrase: boolean,
+};
+
+/**  SSH tunnel fields from the form. */
+export type SshInput = {
+	host: string,
+	port: number | null,
+	user: string | null,
+	auth: SshAuthDto,
+	/**  `[user@]host[:port]` entries, first hop first. */
+	jumpHosts: string[],
+	password: SecretInput,
+	passphrase: SecretInput,
+};
+
+/**  The user's answer. `Debug` redacts challenge answers (passwords, codes). */
+export type SshPromptAnswer = 
+/**  Trust the host key and remember it in the app's `known_hosts`. */
+{ kind: "trust" } | 
+/**  Answers to a challenge, one per prompt, in order. */
+{ kind: "answers"; values: string[] } | 
+/**  Dismissed: reject the key or cancel authentication. */
+{ kind: "cancel" };
+
+/**  Opens (`prompt` set) or closes (`prompt` null) a prompt sheet. */
+export type SshPromptChanged = {
+	id: string,
+	prompt: SshPromptDto | null,
+};
+
+/**  What the user is asked. */
+export type SshPromptDto = 
+/**  An SSH server key seen for the first time. */
+{ kind: "hostKey"; host: string; port: number; algorithm: string; 
+/**  `SHA256:…` */
+fingerprint: string; 
+/**  Algorithms already trusted for this host (a reason for caution). */
+otherAlgorithms: string[] } | 
+/**  Keyboard-interactive questions (password, verification code, …). */
+{ kind: "challenge"; host: string; user: string; name: string; instructions: string; prompts: ChallengePromptDto[] };
+
 /**  One journaled staged row, exactly as the webview keeps it (docs/10 §4.5). */
 export type StagedRowDto = {
 	/**  Stable identity: the key values of an existing row, or a random id for an insert. */
@@ -651,6 +756,11 @@ export type StatementDto = {
 
 /**  What a statement does, for the confirmation dialog. */
 export type StatementKindDto = "read" | "write" | "ddl" | "txControl" | "unknown";
+
+/**  How a step went. */
+export type StepStatus = "ok" | 
+/**  Succeeded, but insecure or degraded (e.g. TLS without verification). */
+"warning" | "failed";
 
 /**  One row of the Structure grid. */
 export type StructureColumnDto = {
@@ -739,11 +849,46 @@ export type TableTarget = {
 	table: string,
 };
 
-/**  A successful connection test. */
+/**
+ *  The outcome of Test connection: every step that ran, the server on
+ *  success, the typed error of the failing step otherwise.
+ */
 export type TestReport = {
-	server: ServerDto,
+	steps: TestStepDto[],
+	server: ServerDto | null,
+	error: IpcError | null,
 	elapsedMs: number,
 };
+
+/**  One line of the Test connection report. */
+export type TestStepDto = {
+	kind: TestStepKind,
+	label: string,
+	status: StepStatus,
+	detail: string | null,
+	/**  What to change when the step failed. */
+	hint: string | null,
+	elapsedMs: number | null,
+};
+
+/**  What a step checks. */
+export type TestStepKind = 
+/**  Resolve and reach an SSH server (or the next jump host). */
+"sshConnect" | 
+/**  SSH handshake, host key and authentication. */
+"sshAuth" | 
+/**  Open the tunnel stream to the database. */
+"tunnel" | 
+/**  Resolve the database host name (direct connections). */
+"dns" | 
+/**  TCP connect (or Unix socket) to the database. */
+"connect" | 
+/**  TLS negotiation and handshake. */
+"tls" | 
+/**  Database authentication. */
+"authenticate" | 
+/**  Server product and version. */
+"version";
 
 export type TileTiming = {
 	rowStart: number,
@@ -751,6 +896,27 @@ export type TileTiming = {
 	decodeMs: number | null,
 	workerDecodeMs: number | null,
 	totalMs: number | null,
+};
+
+/**  Saved TLS certificate files and whether verification is skipped. */
+export type TlsFilesDto = {
+	caFile: string | null,
+	clientCert: string | null,
+	clientKey: string | null,
+	hasKeyPassphrase: boolean,
+	/**
+	 *  The server certificate of a remote host is not authenticated: show
+	 *  the skip-verification warning.
+	 */
+	unverifiedRemote: boolean,
+};
+
+/**  TLS certificate files from the form. */
+export type TlsFilesInput = {
+	caFile: string | null,
+	clientCert: string | null,
+	clientKey: string | null,
+	keyPassphrase: SecretInput,
 };
 
 /**  libpq `sslmode` values (docs/12 §4.1). */

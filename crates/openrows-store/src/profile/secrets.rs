@@ -1,0 +1,131 @@
+// SPDX-License-Identifier: Apache-2.0
+//! The secrets a profile may reference, one keychain item each
+//! (`conn/<profileId>/<item>`, docs/12 §3), and the edits applied on save.
+
+use openrows_secrets::SecretKey;
+
+use super::{ConnectionProfile, PasswordChange, SecretRef, SecretRefs, SshAuthMethod};
+
+/// A secret of a profile.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum SecretSlot {
+    /// Database password.
+    Password,
+    /// SSH password (password authentication).
+    SshPassword,
+    /// Passphrase of the SSH private key file.
+    SshPassphrase,
+    /// Passphrase of the TLS client key.
+    TlsKeyPassphrase,
+}
+
+impl SecretSlot {
+    /// Every slot.
+    pub const ALL: [Self; 4] = [
+        Self::Password,
+        Self::SshPassword,
+        Self::SshPassphrase,
+        Self::TlsKeyPassphrase,
+    ];
+
+    /// Last segment of the keychain account.
+    #[must_use]
+    pub fn item(self) -> &'static str {
+        match self {
+            Self::Password => "password",
+            Self::SshPassword => "ssh-password",
+            Self::SshPassphrase => "ssh-passphrase",
+            Self::TlsKeyPassphrase => "tls-key-passphrase",
+        }
+    }
+}
+
+impl SecretRefs {
+    /// Where `slot` is stored, if anywhere.
+    #[must_use]
+    pub fn get(&self, slot: SecretSlot) -> Option<SecretRef> {
+        match slot {
+            SecretSlot::Password => self.password,
+            SecretSlot::SshPassword => self.ssh_password,
+            SecretSlot::SshPassphrase => self.ssh_passphrase,
+            SecretSlot::TlsKeyPassphrase => self.tls_key_passphrase,
+        }
+    }
+
+    /// Record where `slot` is stored.
+    pub fn set(&mut self, slot: SecretSlot, value: Option<SecretRef>) {
+        let field = match slot {
+            SecretSlot::Password => &mut self.password,
+            SecretSlot::SshPassword => &mut self.ssh_password,
+            SecretSlot::SshPassphrase => &mut self.ssh_passphrase,
+            SecretSlot::TlsKeyPassphrase => &mut self.tls_key_passphrase,
+        };
+        *field = value;
+    }
+}
+
+/// What a save does to each secret; [`PasswordChange::Keep`] by default.
+#[derive(Debug, Clone, Default)]
+pub struct SecretChanges {
+    /// Database password.
+    pub password: PasswordChange,
+    /// SSH password.
+    pub ssh_password: PasswordChange,
+    /// SSH key passphrase.
+    pub ssh_passphrase: PasswordChange,
+    /// TLS client key passphrase.
+    pub tls_key_passphrase: PasswordChange,
+}
+
+impl SecretChanges {
+    /// Only a database password change.
+    #[must_use]
+    pub fn password(change: PasswordChange) -> Self {
+        Self {
+            password: change,
+            ..Self::default()
+        }
+    }
+
+    /// The change for `slot`.
+    #[must_use]
+    pub fn get(&self, slot: SecretSlot) -> &PasswordChange {
+        match slot {
+            SecretSlot::Password => &self.password,
+            SecretSlot::SshPassword => &self.ssh_password,
+            SecretSlot::SshPassphrase => &self.ssh_passphrase,
+            SecretSlot::TlsKeyPassphrase => &self.tls_key_passphrase,
+        }
+    }
+
+    /// The change for `slot`, to edit.
+    pub fn get_mut(&mut self, slot: SecretSlot) -> &mut PasswordChange {
+        match slot {
+            SecretSlot::Password => &mut self.password,
+            SecretSlot::SshPassword => &mut self.ssh_password,
+            SecretSlot::SshPassphrase => &mut self.ssh_passphrase,
+            SecretSlot::TlsKeyPassphrase => &mut self.tls_key_passphrase,
+        }
+    }
+}
+
+impl ConnectionProfile {
+    /// Keychain key of `slot` for this profile.
+    #[must_use]
+    pub fn secret_key(&self, slot: SecretSlot) -> SecretKey {
+        SecretKey::for_profile(&self.id.to_string(), slot.item())
+    }
+
+    /// Whether the profile's settings use `slot`; unused secrets are removed
+    /// on save (turning SSH off forgets its password).
+    #[must_use]
+    pub fn uses_secret(&self, slot: SecretSlot) -> bool {
+        let auth = self.ssh.as_ref().map(|ssh| &ssh.auth);
+        match slot {
+            SecretSlot::Password => true,
+            SecretSlot::SshPassword => matches!(auth, Some(SshAuthMethod::Password)),
+            SecretSlot::SshPassphrase => matches!(auth, Some(SshAuthMethod::PrivateKey { .. })),
+            SecretSlot::TlsKeyPassphrase => self.tls.client_key.is_some(),
+        }
+    }
+}

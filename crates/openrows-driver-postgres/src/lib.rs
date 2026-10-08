@@ -11,7 +11,9 @@
 //! columns and indexes (`table_columns`, `table_indexes`), the table detail
 //! behind the Structure, Index, Triggers and DDL views (`table_detail`) and
 //! generates table DDL ([`ddl`]). Binds positional
-//! text-format parameters (`Session::execute_bound`). No TLS yet (D-11).
+//! text-format parameters (`Session::execute_bound`). Negotiates TLS with
+//! libpq `sslmode` semantics through `openrows-net` (D-11) and connects through
+//! a route such as an SSH tunnel (`ConnectOptions::via`, D-10).
 #![forbid(unsafe_code)]
 mod cancel;
 mod connect;
@@ -26,6 +28,8 @@ mod session;
 mod simple;
 mod startup;
 mod stream;
+mod tls;
+mod trace;
 mod types;
 mod wire;
 
@@ -33,7 +37,8 @@ pub use decode::ResultDecoder;
 pub use edits::BoundEdit;
 pub use info::{Flavour, ServerInfo, TlsStatus};
 pub use introspect::RowEditInfo;
-pub use options::{ConnectOptions, ConnectTimeouts, SslMode};
+pub use options::{ConnectOptions, ConnectTimeouts, SslMode, TlsFiles};
 pub use session::PgSession;
 pub use startup::PgConfig;
+pub use trace::{ConnectStage, ConnectTrace};
 pub use types::ColumnDesc;

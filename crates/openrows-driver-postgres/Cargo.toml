@@ -16,6 +16,7 @@ arrow-schema = "60"
 bytes = "1.12"
 fallible-iterator = "0.2"
 openrows-driver-api = { path = "../openrows-driver-api" }
+openrows-net = { path = "../openrows-net" }
 postgres-protocol = "0.6.12"
 thiserror.workspace = true
 tokio = { version = "1.53", features = ["net", "io-util", "time"] }

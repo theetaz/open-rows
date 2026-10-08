@@ -19,6 +19,7 @@ arrow-schema = "60"
 openrows-core = { path = "../../../crates/openrows-core" }
 openrows-driver-api = { path = "../../../crates/openrows-driver-api" }
 openrows-driver-postgres = { path = "../../../crates/openrows-driver-postgres" }
+openrows-net = { path = "../../../crates/openrows-net" }
 openrows-results = { path = "../../../crates/openrows-results" }
 openrows-secrets = { path = "../../../crates/openrows-secrets" }
 openrows-sql = { path = "../../../crates/openrows-sql" }
@@ -37,6 +38,7 @@ tauri-plugin-window-state = "2"
 
 [dev-dependencies]
 tempfile = "3.27"
+tokio = { version = "1.53", features = ["macros", "rt", "sync", "time"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = { version = "0.6", default-features = false, features = ["std"] }

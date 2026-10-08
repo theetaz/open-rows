@@ -8,4 +8,5 @@ mod connect;
 mod streaming;
 mod structure;
 mod support;
+mod tls;
 mod types;
