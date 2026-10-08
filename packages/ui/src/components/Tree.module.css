@@ -1,0 +1,99 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.tree {
+  display: flex;
+  flex-direction: column;
+}
+.node {
+  outline: none;
+}
+.row,
+.note {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-4);
+  min-block-size: var(--or-tree-row-height);
+  padding-inline: var(--or-space-4) var(--or-space-8);
+  border-radius: var(--or-radius-control-compact);
+  font-family: var(--or-font-mono);
+  font-size: var(--or-text-mono, var(--or-text-13));
+  user-select: none;
+  cursor: default;
+}
+.row[data-level='2'],
+.note[data-level='2'] {
+  padding-inline-start: calc(var(--or-space-4) + var(--or-space-16));
+}
+.row[data-level='3'],
+.note[data-level='3'] {
+  padding-inline-start: calc(var(--or-space-4) + var(--or-space-32));
+}
+.row {
+  color: var(--or-text);
+}
+.row:hover {
+  box-shadow: inset 0 0 0 1px var(--or-separator);
+}
+.node:focus-visible > .row {
+  outline: var(--or-focus-width) solid var(--or-focus);
+  outline-offset: -2px;
+}
+.node[aria-selected='true'] > .row {
+  background: var(--or-accent);
+  color: var(--or-on-accent);
+}
+.chevron {
+  flex: 0 0 var(--or-space-12);
+  color: var(--or-secondary);
+  font-family: var(--or-font-ui);
+  text-align: center;
+  transition: transform var(--or-motion-disclosure) var(--or-motion-easing);
+}
+.chevron[data-open='true'] {
+  transform: rotate(90deg);
+}
+.icon {
+  display: inline-flex;
+  flex: 0 0 var(--or-icon-size);
+  justify-content: center;
+  font-family: var(--or-font-ui);
+}
+.icon svg {
+  width: var(--or-text-12);
+  height: var(--or-text-12);
+}
+.icon[data-tone='info'] {
+  color: var(--or-info-fg);
+}
+.icon[data-tone='warning'] {
+  color: var(--or-warning-fg);
+}
+.node[aria-selected='true'] > .row .chevron,
+.node[aria-selected='true'] > .row .icon,
+.node[aria-selected='true'] > .row small {
+  color: inherit;
+}
+.name {
+  flex: 1;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.row small {
+  flex-shrink: 0;
+  max-inline-size: 50%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--or-secondary);
+  font-size: inherit;
+  font-variant-numeric: tabular-nums;
+}
+.note {
+  color: var(--or-secondary);
+  font-family: var(--or-font-ui);
+  font-size: var(--or-text-12);
+}
+.note[data-tone='danger'] {
+  color: var(--or-danger-fg);
+}

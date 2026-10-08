@@ -134,6 +134,8 @@ pub(crate) struct TableColumnDto {
     nullable: bool,
     default: Option<String>,
     comment: Option<String>,
+    /// Part of the primary key.
+    primary_key: bool,
 }
 
 /// An index on the Indexes tab.
@@ -165,6 +167,7 @@ impl From<ColumnSummary> for TableColumnDto {
             nullable: column.nullable,
             default: column.default,
             comment: column.comment,
+            primary_key: column.primary_key,
         }
     }
 }

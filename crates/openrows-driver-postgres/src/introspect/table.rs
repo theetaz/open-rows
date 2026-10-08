@@ -66,6 +66,7 @@ fn column(row: &TextRow) -> Result<ColumnSummary, DriverError> {
         nullable: flag(row, 2)?,
         default: optional(row, 3),
         comment: optional(row, 4),
+        primary_key: flag(row, 5)?,
     })
 }
 
@@ -117,13 +118,15 @@ mod tests {
             Some("f"),
             Some("GENERATED ALWAYS AS IDENTITY"),
             None,
+            Some("t"),
         ]))?;
         assert_eq!(
             (id.name.as_str(), id.nullable, id.default.as_deref()),
             ("id", false, Some("GENERATED ALWAYS AS IDENTITY"))
         );
+        assert!(id.primary_key);
         assert!(matches!(
-            column(&row(&[Some("x"), None, Some("t"), None, None])),
+            column(&row(&[Some("x"), None, Some("t"), None, None, Some("f")])),
             Err(DriverError::Protocol(_))
         ));
         Ok(())

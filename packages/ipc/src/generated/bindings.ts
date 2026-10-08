@@ -542,6 +542,8 @@ export type TableColumnDto = {
 	nullable: boolean,
 	default: string | null,
 	comment: string | null,
+	/**  Part of the primary key. */
+	primaryKey: boolean,
 };
 
 /**  An index on the Indexes tab. */

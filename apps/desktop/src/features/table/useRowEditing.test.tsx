@@ -53,6 +53,7 @@ const columns = [
     nullable: false,
     default: null,
     comment: null,
+    primaryKey: true,
   },
   {
     name: 'name',
@@ -60,6 +61,7 @@ const columns = [
     nullable: true,
     default: null,
     comment: null,
+    primaryKey: false,
   },
 ];
 beforeEach(() => {

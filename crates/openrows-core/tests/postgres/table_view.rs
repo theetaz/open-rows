@@ -152,6 +152,8 @@ async fn table_view_reads_structure_pages_filters_and_counts() -> TestResult {
     let structure = metadata.table_structure("d08", "Users").await?;
     let names: Vec<&str> = structure.columns.iter().map(|c| c.name.as_str()).collect();
     assert_eq!(names, ["id", "name", "note"]);
+    let keys: Vec<bool> = structure.columns.iter().map(|c| c.primary_key).collect();
+    assert_eq!(keys, [true, false, false]);
     let name = structure.columns.get(1).ok_or("no name column")?;
     assert!(!name.nullable && name.data_type == "text");
     assert_eq!(name.default.as_deref(), Some("'anon'::text"));

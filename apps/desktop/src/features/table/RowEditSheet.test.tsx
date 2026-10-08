@@ -28,6 +28,7 @@ it.each(['precise value', null])(
             nullable: false,
             default: null,
             comment: null,
+            primaryKey: true,
           },
           {
             name: 'note',
@@ -35,6 +36,7 @@ it.each(['precise value', null])(
             nullable: true,
             default: null,
             comment: null,
+            primaryKey: false,
           },
         ],
       },

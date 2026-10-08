@@ -9,7 +9,8 @@ import styles from './ObjectTree.module.css';
 
 /**
  * Objects of the selected schema grouped by kind. Sections load lazily;
- * search filters loaded names and forces matching sections open.
+ * search filters loaded names and forces matching sections open. Relations
+ * expand to their columns.
  */
 export function ObjectTree(props: {
   catalog: Catalog;
@@ -17,7 +18,7 @@ export function ObjectTree(props: {
   onOpen: (object: ObjectRef) => void;
 }): React.JSX.Element {
   const { catalog, search } = props;
-  const [selected, setSelected] = useState<ObjectRef | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
   const { offline, schemas } = catalog;
   if (offline) return <p className={styles.note}>{offline}</p>;
   if (!catalog.database)
@@ -43,7 +44,7 @@ export function ObjectTree(props: {
     );
   if (!catalog.schema) return <p className={styles.note}>No schemas</p>;
   return (
-    <>
+    <div className={styles.tree}>
       {search && noMatches(catalog, search) && <p role="status">No matches</p>}
       {objectGroups.map((group) => (
         <ObjectSection
@@ -56,7 +57,7 @@ export function ObjectTree(props: {
           onOpen={props.onOpen}
         />
       ))}
-    </>
+    </div>
   );
 }
 

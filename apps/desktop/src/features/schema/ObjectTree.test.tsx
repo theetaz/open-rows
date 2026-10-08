@@ -47,7 +47,7 @@ it('loads tables at once and other sections only when expanded', async () => {
     ['table', 'foreignTable'],
   );
   expect(
-    await sidebar().findByRole('button', { name: 'orders ~2.4M' }),
+    await sidebar().findByRole('treeitem', { name: 'orders ~2.4M' }),
   ).toBeVisible();
   expect(listObjects).toHaveBeenCalledOnce();
   const views = sidebar().getByRole('button', { name: /^Views/ });
@@ -60,7 +60,7 @@ it('loads tables at once and other sections only when expanded', async () => {
     ['view'],
   );
   expect(
-    await sidebar().findByRole('button', { name: 'order_summary' }),
+    await sidebar().findByRole('treeitem', { name: 'order_summary' }),
   ).toBeVisible();
   expect(views).toHaveTextContent('Views2');
   await user.selectOptions(
@@ -68,19 +68,21 @@ it('loads tables at once and other sections only when expanded', async () => {
     'archive',
   );
   expect(
-    await sidebar().findByRole('button', { name: 'session_notes ~16' }),
+    await sidebar().findByRole('treeitem', { name: 'session_notes ~16' }),
   ).toBeVisible();
 });
 
 it('search filters loaded names, highlights matches, shows No matches and clears with Esc', async () => {
   const user = mount();
   await connectTo();
-  await sidebar().findByRole('button', { name: 'orders ~2.4M' });
+  await sidebar().findByRole('treeitem', { name: 'orders ~2.4M' });
   const input = screen.getByRole('textbox', { name: 'Search items' });
   fireEvent.change(input, { target: { value: 'summary' } });
-  const match = await sidebar().findByRole('button', { name: 'order_summary' });
+  const match = await sidebar().findByRole('treeitem', {
+    name: 'order_summary',
+  });
   expect(match.querySelectorAll('mark')).toHaveLength(7);
-  expect(sidebar().queryByRole('button', { name: /order_items/ })).toBeNull();
+  expect(sidebar().queryByRole('treeitem', { name: /order_items/ })).toBeNull();
   expect(sidebar().getByRole('button', { name: /^Views/ })).toHaveAttribute(
     'aria-expanded',
     'true',
@@ -109,13 +111,13 @@ it('shows a section error with Retry, and ⌘R in the sidebar re-reads the catal
   expect(alert).toHaveTextContent('permission denied for schema public');
   await user.click(within(alert).getByRole('button', { name: 'Retry' }));
   expect(
-    await sidebar().findByRole('button', { name: 'orders ~2.4M' }),
+    await sidebar().findByRole('treeitem', { name: 'orders ~2.4M' }),
   ).toBeVisible();
   const calls = vi.mocked(listSchemas).mock.calls.length;
   sidebar()
     .getByRole('button', { name: /^Tables/ })
     .focus();
   await user.keyboard('{Meta>}r{/Meta}');
-  await sidebar().findByRole('button', { name: 'orders ~2.4M' });
+  await sidebar().findByRole('treeitem', { name: 'orders ~2.4M' });
   expect(vi.mocked(listSchemas).mock.calls.length).toBe(calls + 1);
 });

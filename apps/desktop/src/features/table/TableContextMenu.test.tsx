@@ -37,6 +37,7 @@ function editing(readOnly = false): RowEditing {
           nullable: false,
           default: null,
           comment: null,
+          primaryKey: true,
         },
         {
           name: 'note',
@@ -44,6 +45,7 @@ function editing(readOnly = false): RowEditing {
           nullable: true,
           default: null,
           comment: null,
+          primaryKey: false,
         },
       ],
     },

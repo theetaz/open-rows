@@ -39,6 +39,26 @@ export function kindInfo(kind: ObjectKindDto): {
   return kinds[kind];
 }
 
+/** Relations whose tree rows expand to list their columns. */
+export function hasColumns(kind: ObjectKindDto): boolean {
+  return (
+    kind === 'table' ||
+    kind === 'foreignTable' ||
+    kind === 'view' ||
+    kind === 'materializedView'
+  );
+}
+
+/** Tree selection key of a listed object (unique within a database). */
+export function nodeKey(object: ObjectDto): string {
+  return `${object.schema}\n${object.kind}\n${objectLabel(object)}`;
+}
+
+/** Tree selection key of one column row under its object's key. */
+export function columnKey(objectKey: string, column: string): string {
+  return `${objectKey}\n${column}`;
+}
+
 /** A real object path handed to tabs: `[database, schema, name]` plus kind. */
 export type ObjectRef = {
   database: string;

@@ -106,6 +106,8 @@ pub struct ColumnSummary {
     pub default: Option<String>,
     /// Comment, when set.
     pub comment: Option<String>,
+    /// Part of the primary key.
+    pub primary_key: bool,
 }
 
 /// One index of a table or materialized view.

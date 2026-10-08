@@ -218,6 +218,22 @@ objects**, **Connecting…**, **Connect to browse objects**). Once connected:
 - **Selection and opening**: click selects; double-click or Enter opens the
   object in a (still placeholder) tab with the real path, so the tab title is
   `database.schema.name`.
+- **Columns** (TablePlus style): every table, view and materialized view row
+  has a disclosure chevron, collapsed by default. Expanding (chevron click or
+  →) lists the relation's columns indented below it: monospace name, data
+  type right-aligned and muted, and a yellow (`warning-fg`) key icon before
+  primary-key columns. Expanding never opens the object; column rows can be
+  selected and double-click/Enter opens their table. Columns are read lazily
+  with `table_structure` on first expand and cached per connection, database,
+  schema and table until the catalog is refreshed; the group shows
+  **Loading columns…** or an inline error line (expanding again retries).
+  Expansion is remembered per connection and database while the app runs.
+- **Keyboard and density**: each section is an ARIA `tree` with one Tab stop
+  (roving `tabindex`); rows are `treeitem`s with `aria-level`,
+  `aria-selected` and `aria-expanded`, columns sit in a nested `group`.
+  ↑/↓/Home/End move (selection follows focus), → expands or enters the
+  columns, ← collapses or returns to the table. Object tree rows are 20 px
+  high (TablePlus density); the tree is not virtualised.
 - **Search** filters loaded names live, underlines matches, forces sections
   open (which loads them), hides empty sections, shows **No matches**, clears
   with Esc; ⌘F focuses it when focus is in the sidebar.

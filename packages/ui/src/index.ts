@@ -15,6 +15,7 @@ export type { ThemeMode } from './theme/storage';
 export { Tabs } from './components/Tabs';
 export { DisclosureSection } from './components/DisclosureSection';
 export { TreeItem } from './components/TreeItem';
+export { Tree, TreeNode, TreeNote } from './components/Tree';
 export { SplitPanel } from './components/split/SplitPanel';
 export { HighlightText } from './components/HighlightText';
 export { fuzzyMatch } from './search/fuzzy';

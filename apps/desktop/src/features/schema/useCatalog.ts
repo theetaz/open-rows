@@ -10,34 +10,37 @@ import type { DatabaseDto, ObjectDto, SchemaDto } from '@openrows/ipc';
 import type { Connections } from '../connections';
 import { defaultSchema } from './catalog';
 import type { ObjectGroup } from './catalog';
+import { useColumns } from './useColumns';
+import type { ColumnTree } from './useColumns';
 import { useNavigation } from './useNavigation';
 import type { NavigationState } from './useNavigation';
 import { useResources } from './useResources';
 import type { Resource, Resources } from './useResources';
 
 /** The active connection's real catalog, read lazily on metadata sessions. */
-export type Catalog = Omit<NavigationState, 'chosenSchema'> & {
-  /** Why there is nothing to browse, or `null` when connected. */
-  offline: string | null;
-  /** Active database; empty when the connection has none open. */
-  database: string;
-  /** Names of the connection's opened databases. */
-  opened: readonly string[];
-  /** Open (if needed) and activate a database of the connection. */
-  openDatabase: (name: string) => void;
-  /** Close an opened database and its sessions. */
-  closeDatabase: (name: string) => void;
-  databases: Resource<DatabaseDto[]>;
-  schemas: Resource<SchemaDto[]>;
-  /** Selected schema; empty until schemas are known. */
-  schema: string;
-  objects: (group: ObjectGroup) => Resource<ObjectDto[]>;
-  loadObjects: (group: ObjectGroup) => void;
-  search: Resource<ObjectDto[]>;
-  loadSearch: () => void;
-  /** Forget everything read from the active database and read it again. */
-  refresh: () => void;
-};
+export type Catalog = Omit<NavigationState, 'chosenSchema'> &
+  ColumnTree & {
+    /** Why there is nothing to browse, or `null` when connected. */
+    offline: string | null;
+    /** Active database; empty when the connection has none open. */
+    database: string;
+    /** Names of the connection's opened databases. */
+    opened: readonly string[];
+    /** Open (if needed) and activate a database of the connection. */
+    openDatabase: (name: string) => void;
+    /** Close an opened database and its sessions. */
+    closeDatabase: (name: string) => void;
+    databases: Resource<DatabaseDto[]>;
+    schemas: Resource<SchemaDto[]>;
+    /** Selected schema; empty until schemas are known. */
+    schema: string;
+    objects: (group: ObjectGroup) => Resource<ObjectDto[]>;
+    loadObjects: (group: ObjectGroup) => void;
+    search: Resource<ObjectDto[]>;
+    loadSearch: () => void;
+    /** Forget everything read from the active database and read it again. */
+    refresh: () => void;
+  };
 
 const offlineReason = (connections: Connections): string | null => {
   const profile = connections.active;
@@ -65,6 +68,15 @@ ${String(connected?.generation ?? '')}
     home: connected?.server.database ?? '',
     database,
   });
+  const columnTree = useColumns(
+    resources,
+    `${prefix}${database}
+`,
+    {
+      profileId,
+      database,
+    },
+  );
   const schema = pickSchema(
     reads.schemas,
     chosenSchema,
@@ -83,6 +95,7 @@ ${group.id}`;
     closeDatabase: connections.closeDatabase,
     offline: offlineReason(connections),
     ...reads,
+    ...columnTree,
     schema,
     objects: (group) => resources.get(objectsKey(group)),
     loadObjects: (group) => {
