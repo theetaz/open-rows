@@ -101,6 +101,27 @@ it('search filters loaded names, highlights matches, shows No matches and clears
   expect(input).toHaveFocus();
 });
 
+it('carries ArrowDown and ArrowUp from the last or first row of one section into the next', async () => {
+  const user = mount();
+  await connectTo();
+  const orders = await sidebar().findByRole('treeitem', {
+    name: 'orders ~2.4M',
+  });
+  orders.focus();
+  await user.keyboard('{ArrowDown}');
+  const views = sidebar().getByRole('button', { name: /^Views/ });
+  expect(views).toHaveFocus();
+  await user.click(views);
+  const first = await sidebar().findByRole('treeitem', {
+    name: 'active_customers',
+  });
+  orders.focus();
+  await user.keyboard('{ArrowDown}');
+  expect(first).toHaveFocus();
+  await user.keyboard('{ArrowUp}');
+  expect(orders).toHaveFocus();
+});
+
 it('shows a section error with Retry, and ⌘R in the sidebar re-reads the catalog', async () => {
   vi.mocked(listObjects).mockRejectedValueOnce(
     new Error('permission denied for schema public'),

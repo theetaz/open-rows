@@ -288,7 +288,7 @@
   overflow: hidden;
 }
 .popover .code {
-  flex: 1;
+  flex: 0 1 auto;
   min-height: 0;
   border-radius: 0;
 }
@@ -330,19 +330,15 @@
   font-variant-numeric: tabular-nums;
   user-select: text;
 }
-.info textarea {
-  inline-size: 100%;
-  min-block-size: 60px;
-  box-sizing: border-box;
-  padding: var(--or-space-4) var(--or-space-8);
-  border: var(--or-border-width) solid var(--or-control-stroke);
-  border-radius: var(--or-radius-control);
-  background: var(--or-control-fill);
-  color: var(--or-text);
+/* The comment is an inspector value box, like RowDetails' .value; the frame draws the box. */
+.info .comment {
+  padding: 0;
+  background: none;
+}
+.value {
   font-family: var(--or-font-mono);
   font-size: var(--or-text-mono, var(--or-text-13));
-  resize: vertical;
 }
-.info textarea::placeholder {
-  color: var(--or-tertiary);
+.value textarea::placeholder {
+  color: var(--or-placeholder);
 }

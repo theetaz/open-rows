@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useState } from 'react';
 import type { TableInfoDto } from '@openrows/ipc';
+import { TextArea } from '@openrows/ui';
 import { formatBytes, formatRows } from './format';
 import styles from './Structure.module.css';
 
@@ -31,10 +32,8 @@ export function TableInfoPanel({
       <dd>{formatBytes(info.indexBytes)}</dd>
       <dt>estimated_rows</dt>
       <dd>{formatRows(info.rowEstimate)}</dd>
-      <dt>
-        <label htmlFor="table-info-comment">comment</label>
-      </dt>
-      <dd>
+      <dt>comment</dt>
+      <dd className={styles.comment}>
         <CommentField
           key={`${table.name}:${table.comment ?? ''}`}
           table={table}
@@ -47,11 +46,13 @@ export function TableInfoPanel({
 function CommentField({ table }: { table: SelectedTable }): React.JSX.Element {
   const [draft, setDraft] = useState(table.comment ?? '');
   return (
-    <textarea
-      id="table-info-comment"
+    <TextArea
+      aria-label="comment"
+      className={styles.value}
       value={draft}
       placeholder="NULL"
       readOnly={!table.onComment}
+      spellCheck={false}
       onChange={(event) => {
         setDraft(event.target.value);
       }}

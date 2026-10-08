@@ -4,6 +4,7 @@ import { Button } from '@openrows/ui';
 import { objectGroups } from './catalog';
 import type { ObjectRef } from './catalog';
 import { matching, ObjectSection } from './ObjectSection';
+import { moveAcrossSections } from './sectionKeys';
 import type { Catalog } from './useCatalog';
 import styles from './ObjectTree.module.css';
 
@@ -44,7 +45,7 @@ export function ObjectTree(props: {
     );
   if (!catalog.schema) return <p className={styles.note}>No schemas</p>;
   return (
-    <div className={styles.tree}>
+    <div className={styles.tree} onKeyDown={moveAcrossSections}>
       {search && noMatches(catalog, search) && <p role="status">No matches</p>}
       {objectGroups.map((group) => (
         <ObjectSection
