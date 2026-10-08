@@ -9,6 +9,8 @@ export interface GridColumn {
   pinned: boolean;
   /** `end` right-aligns values, e.g. numbers; headers stay start-aligned. */
   align?: 'start' | 'end';
+  /** Booleans paint centred TRUE/FALSE; both kinds show an up/down stepper. */
+  kind?: 'boolean' | 'enum';
 }
 /** Inclusive logical ranges; never materialize the selected rows. */
 export interface CellRange {
@@ -28,9 +30,9 @@ export interface SelectionModel {
 /** Converted once on tile arrival, outside the painter; `empty` is an empty string shown as `EMPTY`. */
 export interface DisplayCell {
   text: string;
-  state: 'normal' | 'null' | 'empty' | 'changed' | 'deleted';
-  /** `text` is a marker such as a staged NULL or DEFAULT: paint it muted. */
-  placeholder?: boolean;
+  state: 'normal' | 'null' | 'empty' | 'changed' | 'deleted' | 'inserted';
+  /** A staged NULL, empty string or DEFAULT, painted muted like `null`/`empty`. */
+  marker?: 'null' | 'empty' | 'default';
 }
 /** Mutable counters are sampled outside painting. */
 export interface SourceMetrics {
@@ -79,8 +81,18 @@ export interface GridProps {
   /** Optional pinned row-label column, excluded from data selection. */
   rowHeaderColumn?: number;
   striped?: boolean;
-  onEdit?(cell: { row: number; column: number }): void;
+  /** Enter, double-click, a stepper click, or a typed printable `text` that seeds the editor. */
+  onEdit?(cell: { row: number; column: number }, text?: string): void;
   onContextMenu?(target: GridContextTarget): void;
+  /** Native scroll, e.g. to keep an editor overlay aligned with its cell. */
+  onScroll?(): void;
+}
+/** Host-relative CSS-pixel rectangle of one cell. */
+export interface CellRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 /** Paint counters reset at each benchmark frame; placeholder draws flag blank frames. */
 export interface PaintMetrics {
@@ -102,6 +114,16 @@ export interface GridHandle {
   scrollTo(x: number, y: number): void;
   /** Canvas can update paint settings without discarding loaded tiles. */
   setTheme?(theme: GridTheme): void;
+  /** Re-read column kinds and alignment, then repaint. */
+  refresh?(): void;
+  /** Where a cell is drawn now, relative to the host. */
+  cellRect?(row: number, column: number): CellRect | undefined;
+  /** Focus and reveal one cell, as if the user had clicked it. */
+  select?(row: number, column: number): void;
+  /** Return keyboard focus to the grid. */
+  focus?(): void;
+  /** Politely announce a state change, e.g. entering edit mode. */
+  announce?(message: string): void;
   destroy(): void;
 }
 /** A renderer is only imported on demand after the native window is shown. */

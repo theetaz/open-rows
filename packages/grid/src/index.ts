@@ -7,6 +7,7 @@ export type {
   GridColumn,
   GridContextTarget,
   CellRange,
+  CellRect,
   SelectionModel,
   DisplayCell,
   GridTheme,

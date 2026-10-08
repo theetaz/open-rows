@@ -5,10 +5,21 @@ import { ThemeProvider } from '@openrows/ui';
 import { mountGrid } from '@openrows/grid/canvas';
 import type { GridProps } from '@openrows/grid';
 import { TableGrid } from './TableGrid';
+import type { StagedEdit } from './editHistory';
+import { emptyEdits } from './editHistory';
+import type { RowEditing } from './useRowEditing';
 
 vi.mock('@openrows/grid/canvas', () => ({
   mountGrid: vi.fn(() => ({ destroy: vi.fn() })),
 }));
+
+function editing(current: readonly StagedEdit[] = []): RowEditing {
+  return {
+    info: null,
+    history: { ...emptyEdits, current },
+    inline: null,
+  } as unknown as RowEditing;
+}
 
 function gridProps(onRow = vi.fn()) {
   return {
@@ -21,8 +32,7 @@ function gridProps(onRow = vi.fn()) {
       columns: [{ name: 'id', sourceType: 'int4' }],
     },
     sort: null,
-    changes: [],
-    editKeys: ['id'],
+    editing: editing(),
     offset: 0,
     rowNumbers: true,
     striped: true,
@@ -96,7 +106,7 @@ it('keeps the selected row when edits are staged, undone and discarded', async (
   for (const changes of [[edit], [], [edit], []])
     view.rerender(
       <ThemeProvider>
-        <TableGrid {...props} changes={changes} />
+        <TableGrid {...props} editing={editing(changes)} />
       </ThemeProvider>,
     );
   expect(repaint).toHaveBeenCalledTimes(4);

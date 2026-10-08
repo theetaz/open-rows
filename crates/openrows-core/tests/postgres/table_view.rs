@@ -208,3 +208,31 @@ async fn table_view_reads_structure_pages_filters_and_counts() -> TestResult {
     manager.close(session).await?;
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "needs PostgreSQL; run with `just test-pg`"]
+async fn table_columns_list_enum_labels_in_sort_order() -> TestResult {
+    let mut session = PgSession::connect(&config()?).await?;
+    for statement in [
+        "DROP SCHEMA IF EXISTS d08e CASCADE",
+        "CREATE SCHEMA d08e",
+        "CREATE TYPE d08e.mood AS ENUM ('sad', 'a:b,c', 'é!')",
+        "ALTER TYPE d08e.mood ADD VALUE 'first' BEFORE 'sad'",
+        "CREATE DOMAIN d08e.feeling AS d08e.mood",
+        "CREATE TABLE d08e.t (id int PRIMARY KEY, mood d08e.mood, feeling d08e.feeling, done boolean)",
+    ] {
+        session.execute(statement, &mut Discard).await?;
+    }
+    let labels: Vec<Option<Vec<String>>> = session
+        .table_columns("d08e", "t")
+        .await?
+        .into_iter()
+        .map(|column| column.enum_labels)
+        .collect();
+    let mood = Some(["first", "sad", "a:b,c", "é!"].map(str::to_owned).to_vec());
+    assert_eq!(labels, [None, mood.clone(), mood, None]);
+    session
+        .execute("DROP SCHEMA d08e CASCADE", &mut Discard)
+        .await?;
+    Ok(())
+}

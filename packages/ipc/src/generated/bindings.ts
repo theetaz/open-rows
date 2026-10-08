@@ -560,6 +560,8 @@ export type TableColumnDto = {
 	comment: string | null,
 	/**  Part of the primary key. */
 	primaryKey: boolean,
+	/**  Allowed labels, only for enum-typed columns (inline editing menu). */
+	enumLabels: string[] | null,
 };
 
 /**  An index on the Indexes tab. */

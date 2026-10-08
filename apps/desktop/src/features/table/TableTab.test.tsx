@@ -282,7 +282,7 @@ it('shows the selected row in the details panel with field search', async () => 
 });
 
 it('edits inspector fields in place: staged values show and the row stays selected', async () => {
-  const facts = { comment: null, primaryKey: false };
+  const facts = { comment: null, primaryKey: false, enumLabels: null };
   vi.mocked(tableEditInfo).mockResolvedValueOnce({
     key: ['id'],
     protected: [],

@@ -67,7 +67,35 @@ fn column(row: &TextRow) -> Result<ColumnSummary, DriverError> {
         default: optional(row, 3),
         comment: optional(row, 4),
         primary_key: flag(row, 5)?,
+        enum_labels: optional(row, 6)
+            .map(|text| enum_labels(&text))
+            .transpose()?,
     })
+}
+
+/// Decode `3:sad5:happy`: character-length prefixes keep any label text unambiguous.
+fn enum_labels(text: &str) -> Result<Vec<String>, DriverError> {
+    let mut labels = Vec::new();
+    let mut rest = text;
+    while !rest.is_empty() {
+        let (count, tail) = rest
+            .split_once(':')
+            .ok_or_else(|| super::malformed("enum label length is missing"))?;
+        let count: usize = count
+            .parse()
+            .map_err(|_| super::malformed("enum label length is not a number"))?;
+        let end = tail
+            .char_indices()
+            .nth(count)
+            .map_or(tail.len(), |(index, _)| index);
+        let (label, next) = tail.split_at(end);
+        if label.chars().count() != count {
+            return Err(super::malformed("enum label is truncated"));
+        }
+        labels.push(label.to_owned());
+        rest = next;
+    }
+    Ok(labels)
 }
 
 fn index(row: &TextRow) -> Result<IndexSummary, DriverError> {
@@ -125,10 +153,32 @@ mod tests {
             ("id", false, Some("GENERATED ALWAYS AS IDENTITY"))
         );
         assert!(id.primary_key);
+        assert!(id.enum_labels.is_none());
         assert!(matches!(
             column(&row(&[Some("x"), None, Some("t"), None, None, Some("f")])),
             Err(DriverError::Protocol(_))
         ));
+        Ok(())
+    }
+
+    #[test]
+    fn enum_labels_keep_separators_and_unicode() -> Result<(), DriverError> {
+        let mood = column(&row(&[
+            Some("mood"),
+            Some("mood"),
+            Some("t"),
+            None,
+            None,
+            Some("f"),
+            Some("3:sad5:a:b,c2:é!"),
+        ]))?;
+        assert_eq!(
+            mood.enum_labels,
+            Some(vec!["sad".to_owned(), "a:b,c".to_owned(), "é!".to_owned()])
+        );
+        assert!(enum_labels("9:short").is_err());
+        assert!(enum_labels("x:y").is_err());
+        assert!(enum_labels("plain").is_err());
         Ok(())
     }
 

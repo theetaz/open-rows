@@ -5,6 +5,11 @@ import type { RowField } from './row';
 import { filterRow, toFilters } from './model';
 import type { TableView } from './model';
 import type { RowEditing } from './useRowEditing';
+import { stagedInserts } from './EditedSource';
+import { DEFAULT_VALUE, NULL_VALUE, textValue } from './cellValue';
+import type { CellValue } from './cellValue';
+import { fieldActions } from './fieldActions';
+import type { TableColumnDto } from '@openrows/ipc';
 export type MenuSelection = GridContextTarget & { result: ResultMeta };
 export type ContextMenuProps = {
   selection: MenuSelection;
@@ -110,7 +115,11 @@ function rowActions(
       label: 'Edit row…',
       disabled: !writable,
       run: run(() => {
-        editing.open(result, selection);
+        const insert = stagedInserts(editing.history.current)[
+          selection.row - result.rows
+        ];
+        if (insert) editing.editStaged(insert);
+        else editing.open(result, selection);
       }),
     },
     {
@@ -143,15 +152,21 @@ function cellActions(
   field: RowField | undefined,
   copy: (text: string) => void,
 ): Action[] {
-  const { result } = selection;
   const editColumn = editing.info?.columns.find((item) => item.name === name);
   const cellWritable = writable && !editing.info?.protected.includes(name);
+  const set = (value: CellValue): void => {
+    editing.stageCell(
+      editing.draftFor(selection.result, selection.row),
+      name,
+      value,
+    );
+  };
   return [
     {
       label: 'Edit value…',
       disabled: !cellWritable,
       run: run(() => {
-        editing.open(result, selection);
+        editing.edit({ row: selection.row, column: selection.column });
       }),
     },
     {
@@ -162,26 +177,41 @@ function cellActions(
       },
     },
     {
+      label: 'Paste value',
+      disabled: !cellWritable,
+      run: run(() => {
+        navigator.clipboard.readText().then((text) => {
+          set(textValue(text));
+        }, editing.fail);
+      }),
+    },
+    {
       label: 'Filter by value',
       disabled: !field,
       run: run(() => {
         if (field) changeView((view) => filterValue(view, field));
       }),
     },
-    {
-      label: 'Set NULL',
-      disabled: !cellWritable || !editColumn?.nullable,
+    ...markerActions(editColumn, cellWritable).map(([label, value, ok]) => ({
+      label,
+      disabled: !ok,
       run: run(() => {
-        editing.quick(result, selection, 'null');
+        set(value);
       }),
-    },
-    {
-      label: 'Set empty string',
-      disabled: !cellWritable || !/char|text/i.test(editColumn?.dataType ?? ''),
-      run: run(() => {
-        editing.quick(result, selection, 'empty');
-      }),
-    },
+    })),
+  ];
+}
+
+/** Set NULL / DEFAULT / EMPTY with the inspector menu's enablement rules. */
+function markerActions(
+  column: TableColumnDto | undefined,
+  writable: boolean,
+): readonly (readonly [string, CellValue, boolean])[] {
+  const allowed = fieldActions(column, !writable, null);
+  return [
+    ['Set NULL', NULL_VALUE, allowed.null],
+    ['Set DEFAULT', DEFAULT_VALUE, allowed.default],
+    ['Set EMPTY', textValue(''), allowed.empty],
   ];
 }
 

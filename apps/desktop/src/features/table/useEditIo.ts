@@ -12,6 +12,7 @@ export function useEditIo(target: TableTargetRef): EditIo {
   const [busy, setBusy] = useState(false);
   const alive = useRef(true);
   const locked = useRef(false);
+  const tail = useRef<Promise<void>>(Promise.resolve());
   const { profileId, database, schema, table } = target;
   const stableTarget = useMemo(
     () => ({ profileId, database, schema, table }),
@@ -47,7 +48,19 @@ export function useEditIo(target: TableTargetRef): EditIo {
       if (alive.current) setBusy(false);
     }
   };
-  return { info, error, busy, alive, run };
+  /** Unlike `run`, never drops an action: inline commits stage in order. */
+  const queue = (action: () => Promise<void>): Promise<void> => {
+    const next = tail.current.then(action).catch((failure: unknown) => {
+      if (alive.current) setError(message(failure));
+    });
+    tail.current = next;
+    return next;
+  };
+  /** Show a failure that happened outside `run` or `queue`. */
+  const fail = (failure: unknown): void => {
+    if (alive.current) setError(message(failure));
+  };
+  return { info, error, busy, alive, run, queue, fail };
 }
 
 export type EditIo = {
@@ -56,4 +69,6 @@ export type EditIo = {
   busy: boolean;
   alive: React.RefObject<boolean>;
   run: (action: () => Promise<void>) => Promise<void>;
+  queue: (action: () => Promise<void>) => Promise<void>;
+  fail: (failure: unknown) => void;
 };

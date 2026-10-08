@@ -22,6 +22,7 @@ const column = (facts: Partial<TableColumnDto>): TableColumnDto => ({
   default: null,
   comment: null,
   primaryKey: false,
+  enumLabels: null,
   ...facts,
 });
 
@@ -42,14 +43,14 @@ describe('staged values', () => {
       text: 'DEFAULT',
       placeholder: true,
     });
-    expect(stagedCell(DEFAULT_VALUE)).toEqual({
+    expect(stagedCell(DEFAULT_VALUE, 'changed')).toEqual({
       text: 'DEFAULT',
       state: 'changed',
-      placeholder: true,
+      marker: 'default',
     });
-    expect(stagedCell(NULL_VALUE).placeholder).toBe(true);
-    expect(stagedCell(textValue('')).text).toBe('EMPTY');
-    expect(stagedCell(textValue('DEFAULT'))).toEqual({
+    expect(stagedCell(NULL_VALUE, 'changed').marker).toBe('null');
+    expect(stagedCell(textValue(''), 'changed').text).toBe('EMPTY');
+    expect(stagedCell(textValue('DEFAULT'), 'changed')).toEqual({
       text: 'DEFAULT',
       state: 'changed',
     });

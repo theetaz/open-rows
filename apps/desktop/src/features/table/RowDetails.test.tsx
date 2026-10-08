@@ -18,6 +18,7 @@ const column = (
   default: null,
   comment: null,
   primaryKey: false,
+  enumLabels: null,
   ...facts,
 });
 const columns = [

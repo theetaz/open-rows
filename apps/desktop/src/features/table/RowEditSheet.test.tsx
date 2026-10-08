@@ -29,6 +29,7 @@ it.each(['precise value', null])(
             default: null,
             comment: null,
             primaryKey: true,
+            enumLabels: null,
           },
           {
             name: 'note',
@@ -37,6 +38,7 @@ it.each(['precise value', null])(
             default: null,
             comment: null,
             primaryKey: false,
+            enumLabels: null,
           },
         ],
       },

@@ -5,6 +5,8 @@ import type { Viewport } from './layout';
 import type { CellRange, GridProps, PaintMetrics } from './model';
 import { TextCache } from './text';
 import { paintMetrics } from './metrics';
+import { CellPainter, textWidth } from './cellPaint';
+import { SelectionPainter } from './selectionPaint';
 
 /** Four canvas layers use persistent contexts and reusable ranges. */
 export class CanvasPainter {
@@ -18,12 +20,16 @@ export class CanvasPainter {
   private previousX = -1;
   private previousY = -1;
   private selectionModel: GridProps['selection'] | undefined;
-  private dpr = window.devicePixelRatio || 1;
+  private readonly cells: CellPainter;
+  private readonly selected = new SelectionPainter(this);
+  dpr = window.devicePixelRatio || 1;
   constructor(
     host: HTMLElement,
-    private readonly props: GridProps,
+    readonly props: GridProps,
   ) {
     this.layout = new GridLayout(props.source.columns, props.theme.rowHeight);
+    this.cells = new CellPainter(props.theme.colours);
+    this.cells.dpr = this.dpr;
     this.contexts = ['body', 'pinned', 'header', 'selection'].map((layer) => {
       const canvas = document.createElement('canvas');
       canvas.dataset.layer = layer;
@@ -43,12 +49,18 @@ export class CanvasPainter {
       previous.fontFamily !== theme.fontFamily ||
       previous.rowHeight !== theme.rowHeight;
     this.props.theme = theme;
+    this.cells.setColours(theme.colours);
     if (metricsChanged) {
       this.layout = new GridLayout(this.props.source.columns, theme.rowHeight);
       this.text = new TextCache();
       for (const context of this.contexts)
         context.font = `${String(theme.fontSize)}px ${theme.fontFamily}`;
     }
+    this.prepare();
+  }
+  /** Column kinds changed: re-measure truncated text against the new widths. */
+  refresh(): void {
+    this.text = new TextCache();
     this.prepare();
   }
   /** Resize only on host geometry changes, avoiding per-frame backing allocations. */
@@ -62,6 +74,7 @@ export class CanvasPainter {
       return;
     const started = performance.now();
     this.dpr = dpr;
+    this.cells.dpr = dpr;
     this.dirty = true;
     this.view.width = width;
     this.view.height = height;
@@ -99,7 +112,7 @@ export class CanvasPainter {
             this.text.prepare(
               context,
               cell,
-              (this.props.source.columns[col]?.width ?? 0) - 16,
+              textWidth(this.props.source.columns[col]),
             );
         }
       }
@@ -127,7 +140,8 @@ export class CanvasPainter {
     }
     if (this.dirty || moved || this.selectionModel !== this.props.selection) {
       this.clear(3);
-      this.selection();
+      const context = this.contexts[3];
+      if (context) this.selected.paint(context);
     }
     this.previousX = this.view.x;
     this.previousY = this.view.y;
@@ -148,14 +162,7 @@ export class CanvasPainter {
     const left = pinned ? 0 : this.layout.pinnedWidth,
       right = pinned ? this.layout.pinnedWidth : this.view.width;
     context.save();
-    context.beginPath();
-    context.rect(
-      left,
-      this.props.theme.rowHeight,
-      right - left,
-      this.view.height,
-    );
-    context.clip();
+    this.clipRegion(context, pinned);
     context.fillStyle = this.props.theme.colours.window;
     context.fillRect(left, 0, right - left, this.view.height);
     const first = pinned ? 0 : this.range.c0,
@@ -166,66 +173,83 @@ export class CanvasPainter {
     }
     context.restore();
   }
-  private cell(
+  /** Clip to the pinned prefix or the scrolled body, below the header row. */
+  clipRegion(context: CanvasRenderingContext2D, pinned: boolean): void {
+    const left = pinned ? 0 : this.layout.pinnedWidth,
+      right = pinned ? this.layout.pinnedWidth : this.view.width;
+    context.beginPath();
+    context.rect(
+      left,
+      this.props.theme.rowHeight,
+      right - left,
+      this.view.height,
+    );
+    context.clip();
+  }
+  /** Paint one cell; selected cells use the accent fill instead of row states. */
+  cell(
     context: CanvasRenderingContext2D,
     row: number,
     col: number,
     pinned: boolean,
+    selected = false,
   ): void {
     const { theme, source } = this.props,
-      height = theme.rowHeight;
-    const x = snap(
+      box = this.cells.box;
+    box.x = snap(
       (this.layout.offsets[col] ?? 0) - (pinned ? 0 : this.view.x),
       this.dpr,
     );
-    const y = snap((row + 1) * height - this.view.y, this.dpr),
-      width = source.columns[col]?.width ?? 0;
+    box.y = snap((row + 1) * theme.rowHeight - this.view.y, this.dpr);
+    box.width = source.columns[col]?.width ?? 0;
+    box.height = theme.rowHeight;
     const cell = source.cell(row, col);
     context.save();
     context.beginPath();
-    context.rect(x, y, width, height);
+    context.rect(box.x, box.y, box.width, box.height);
     context.clip();
-    if (this.props.striped !== false && row % 2 === 1) {
-      context.fillStyle = theme.colours['row-stripe'];
-      context.fillRect(x, y, width, height);
-    }
+    this.fill(context, row, selected);
     if (!cell) {
       this.metrics.placeholders++;
       context.fillStyle = theme.colours['control-fill'];
-      context.fillRect(x + 8, y + 9, width - 16, 8);
+      context.fillRect(box.x + 8, box.y + 9, box.width - 16, 8);
     } else {
-      this.cellBackground(context, cell.state);
-      context.fillStyle =
-        cell.state === 'null' || cell.state === 'empty' || cell.placeholder
-          ? theme.colours.tertiary
-          : theme.colours.text;
-      const end = source.columns[col]?.align === 'end';
-      context.textAlign = end ? 'right' : 'left';
-      context.fillText(
+      if (!selected) this.cells.background(context, cell);
+      this.cells.selected = selected;
+      this.cells.content(
+        context,
+        cell,
+        source.columns[col],
         this.text.get(cell),
-        end ? x + width - 8 : x + 8,
-        y + height / 2,
       );
-      if (cell.state === 'deleted') {
-        context.fillStyle = theme.colours.destructive;
-        context.fillRect(x + 8, y + height / 2, width - 16, 1 / this.dpr);
-      }
     }
     context.fillStyle = theme.colours.separator;
-    context.fillRect(x + width - 1 / this.dpr, y, 1 / this.dpr, height);
-    context.fillRect(x, y + height - 1 / this.dpr, width, 1 / this.dpr);
+    context.fillRect(
+      box.x + box.width - 1 / this.dpr,
+      box.y,
+      1 / this.dpr,
+      box.height,
+    );
+    context.fillRect(
+      box.x,
+      box.y + box.height - 1 / this.dpr,
+      box.width,
+      1 / this.dpr,
+    );
     context.restore();
   }
-  private cellBackground(
+  private fill(
     context: CanvasRenderingContext2D,
-    state: string,
+    row: number,
+    selected: boolean,
   ): void {
-    if (state !== 'changed' && state !== 'deleted') return;
-    context.fillStyle =
-      this.props.theme.colours[
-        state === 'changed' ? 'cell-edited' : 'row-deleted'
-      ];
-    context.fill();
+    const { colours } = this.props.theme,
+      box = this.cells.box;
+    if (selected) context.fillStyle = colours.accent;
+    else if (this.props.striped !== false && row % 2 === 1)
+      context.fillStyle = colours['row-stripe'];
+    else return;
+    context.fillRect(box.x, box.y, box.width, box.height);
   }
   private header(): void {
     const context = this.contexts[2];
@@ -257,45 +281,6 @@ export class CanvasPainter {
       column.title,
       snap(x + 8, this.dpr),
       this.props.theme.rowHeight / 2,
-    );
-    context.restore();
-  }
-  private selection(): void {
-    const context = this.contexts[3];
-    if (!context) return;
-    context.strokeStyle = this.props.theme.colours.focus;
-    context.lineWidth = 1 / this.dpr;
-    for (const range of this.props.selection.ranges) {
-      this.selectionPart(context, range, true);
-      this.selectionPart(context, range, false);
-    }
-  }
-  private selectionPart(
-    context: CanvasRenderingContext2D,
-    range: CellRange,
-    pinned: boolean,
-  ): void {
-    const first = pinned ? range.c0 : Math.max(range.c0, this.layout.pinned);
-    const last = pinned ? Math.min(range.c1, this.layout.pinned - 1) : range.c1;
-    if (first > last) return;
-    const x = (this.layout.offsets[first] ?? 0) - (pinned ? 0 : this.view.x);
-    const y = (range.r0 + 1) * this.props.theme.rowHeight - this.view.y;
-    context.save();
-    context.beginPath();
-    context.rect(
-      pinned ? 0 : this.layout.pinnedWidth,
-      this.props.theme.rowHeight,
-      pinned
-        ? this.layout.pinnedWidth
-        : this.view.width - this.layout.pinnedWidth,
-      this.view.height,
-    );
-    context.clip();
-    context.strokeRect(
-      snap(x, this.dpr),
-      snap(y, this.dpr),
-      (this.layout.offsets[last + 1] ?? 0) - (this.layout.offsets[first] ?? 0),
-      (range.r1 - range.r0 + 1) * this.props.theme.rowHeight,
     );
     context.restore();
   }

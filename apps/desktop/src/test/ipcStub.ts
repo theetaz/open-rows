@@ -51,6 +51,7 @@ const sampleStructure: TableStructureDto = {
       default: null,
       comment: null,
       primaryKey: true,
+      enumLabels: null,
     },
     {
       name: 'name',
@@ -59,6 +60,7 @@ const sampleStructure: TableStructureDto = {
       default: "'anon'::text",
       comment: 'Display name',
       primaryKey: false,
+      enumLabels: null,
     },
   ],
   indexes: [

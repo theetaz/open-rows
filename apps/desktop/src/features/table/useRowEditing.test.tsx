@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { NULL_VALUE, textValue } from './cellValue';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import {
@@ -56,6 +57,7 @@ const columns = [
     default: null,
     comment: null,
     primaryKey: true,
+    enumLabels: null,
   },
   {
     name: 'name',
@@ -64,6 +66,7 @@ const columns = [
     default: null,
     comment: null,
     primaryKey: false,
+    enumLabels: null,
   },
 ];
 beforeEach(() => {
@@ -215,13 +218,14 @@ it('retains uncertain commits and prevents retry until reload/discard', async ()
   expect(hook.result.current.history.uncertain).toBeUndefined();
   expect(hook.result.current.history.current).toHaveLength(0);
 });
-it('quick context actions use exact snapshots and only stage values, duplicates or deletions', async () => {
+it('cell values and quick row actions use exact snapshots and only stage values, duplicates or deletions', async () => {
   const hook = mount();
   await waitFor(() => {
     expect(hook.result.current.info?.key).toEqual(['id']);
   });
   act(() => {
-    hook.result.current.quick(result, { row: 0, column: 1 }, 'empty');
+    const editing = hook.result.current;
+    editing.stageCell(editing.draftFor(result, 0), 'name', textValue(''));
   });
   await waitFor(() => {
     expect(hook.result.current.history.current[0]?.values.name).toEqual({
@@ -233,7 +237,8 @@ it('quick context actions use exact snapshots and only stage values, duplicates 
     'exact original',
   );
   act(() => {
-    hook.result.current.quick(result, { row: 0, column: 1 }, 'null');
+    const editing = hook.result.current;
+    editing.stageCell(editing.draftFor(result, 0), 'name', NULL_VALUE);
   });
   await waitFor(() => {
     expect(hook.result.current.history.current[0]?.values.name).toEqual({

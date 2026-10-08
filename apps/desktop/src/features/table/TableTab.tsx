@@ -18,8 +18,6 @@ import { useTableTab } from './useTableTab';
 import type { TableViews } from './useTableViews';
 import styles from './Table.module.css';
 
-const noKeys: readonly string[] = [];
-
 type TableTabProps = {
   tabId: string;
   table: TableObject;
@@ -78,10 +76,8 @@ export function TableTab(props: TableTabProps): React.JSX.Element {
           <TableData
             state={state}
             onRow={showRow}
-            onEdit={editing.open}
+            editing={editing}
             onContextMenu={context.show}
-            changes={editing.history.current}
-            editKeys={editing.info?.key ?? noKeys}
           />
         )
       ) : (

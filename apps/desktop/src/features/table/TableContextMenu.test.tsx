@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { NULL_VALUE, textValue } from './cellValue';
 import { useState } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -24,6 +25,13 @@ const result = {
     { name: 'note', sourceType: 'text' },
   ],
 };
+const draft = Promise.resolve({
+  id: '{"id":"7"}',
+  number: 1,
+  kind: 'update' as const,
+  original: { id: '7', note: 'n' },
+  values: {},
+});
 function editing(readOnly = false): RowEditing {
   return {
     info: {
@@ -38,6 +46,7 @@ function editing(readOnly = false): RowEditing {
           default: null,
           comment: null,
           primaryKey: true,
+          enumLabels: null,
         },
         {
           name: 'note',
@@ -46,14 +55,19 @@ function editing(readOnly = false): RowEditing {
           default: null,
           comment: null,
           primaryKey: false,
+          enumLabels: null,
         },
       ],
     },
     history: emptyEdits,
     busy: false,
     open: vi.fn(),
+    edit: vi.fn(),
     quick: vi.fn(),
     insert: vi.fn(),
+    draftFor: vi.fn(() => draft),
+    stageCell: vi.fn(),
+    fail: vi.fn(),
   } as unknown as RowEditing;
 }
 function Harness({
@@ -83,7 +97,7 @@ function Harness({
     </>
   );
 }
-it('opens value editing, stages context actions and restores focus on Escape', async () => {
+it('opens inline value editing, stages NULL, EMPTY and pasted values, and restores focus on Escape', async () => {
   const user = userEvent.setup();
   const editor = editing();
   render(<Harness editor={editor} />);
@@ -95,17 +109,30 @@ it('opens value editing, stages context actions and restores focus on Escape', a
   expect(opener).toHaveFocus();
   await user.click(opener);
   await user.click(screen.getByRole('menuitem', { name: 'Edit value…' }));
-  expect(editor.open).toHaveBeenCalledWith(
-    result,
-    expect.objectContaining({ row: 0, column: 1 }),
-  );
+  expect(editor.edit).toHaveBeenCalledWith({ row: 0, column: 1 });
+  expect(editor.open).not.toHaveBeenCalled();
   await user.click(opener);
   await user.click(screen.getByRole('menuitem', { name: 'Set NULL' }));
-  expect(editor.quick).toHaveBeenCalledWith(
-    result,
-    expect.objectContaining({ row: 0, column: 1 }),
-    'null',
+  expect(editor.draftFor).toHaveBeenCalledWith(result, 0);
+  expect(editor.stageCell).toHaveBeenLastCalledWith(draft, 'note', NULL_VALUE);
+  await user.click(opener);
+  await user.click(screen.getByRole('menuitem', { name: 'Set EMPTY' }));
+  expect(editor.stageCell).toHaveBeenLastCalledWith(
+    draft,
+    'note',
+    textValue(''),
   );
+  vi.spyOn(navigator.clipboard, 'readText').mockResolvedValue('pasted');
+  await user.click(opener);
+  await user.click(screen.getByRole('menuitem', { name: 'Paste value' }));
+  await waitFor(() => {
+    expect(editor.stageCell).toHaveBeenLastCalledWith(
+      draft,
+      'note',
+      textValue('pasted'),
+    );
+  });
+  expect(editor.quick).not.toHaveBeenCalled();
 });
 it.each(['null', 'empty'] as const)(
   'filters %s without treating NULL as an empty string',
@@ -146,7 +173,8 @@ it('keeps copy available while blocking every data mutation on a read-only conne
     'Edit value…',
     'Edit row…',
     'Set NULL',
-    'Set empty string',
+    'Set EMPTY',
+    'Paste value',
     'Add row',
     'Duplicate row',
     'Delete row',

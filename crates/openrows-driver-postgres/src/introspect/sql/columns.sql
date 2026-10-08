@@ -2,7 +2,8 @@
 -- Columns of one table-like relation in ordinal order. `{schema}` and
 -- `{name}` are replaced with quoted literals.
 -- Columns: name, formatted type, nullable, default or identity, comment,
--- primary-key member.
+-- primary-key member, enum labels (each prefixed with its character length,
+-- e.g. `3:sad5:happy`).
 SELECT a.attname,
        pg_catalog.format_type(a.atttypid, a.atttypmod),
        NOT a.attnotnull,
@@ -16,9 +17,16 @@ SELECT a.attname,
                FROM pg_catalog.pg_index AS x
                WHERE x.indrelid = c.oid
                  AND x.indisprimary
-                 AND a.attnum = ANY (x.indkey))
+                 AND a.attnum = ANY (x.indkey)),
+       (SELECT pg_catalog.string_agg(
+                   pg_catalog.length(e.enumlabel::text)::text || ':' || e.enumlabel::text,
+                   '' ORDER BY e.enumsortorder)
+        FROM pg_catalog.pg_enum AS e
+        WHERE e.enumtypid = CASE WHEN t.typtype = 'd' THEN t.typbasetype
+                                 ELSE a.atttypid END)
 FROM pg_catalog.pg_attribute AS a
 JOIN pg_catalog.pg_class AS c ON c.oid = a.attrelid
+JOIN pg_catalog.pg_type AS t ON t.oid = a.atttypid
 JOIN pg_catalog.pg_namespace AS n ON n.oid = c.relnamespace
 LEFT JOIN pg_catalog.pg_attrdef AS d ON d.adrelid = a.attrelid AND d.adnum = a.attnum
 WHERE n.nspname = {schema}
