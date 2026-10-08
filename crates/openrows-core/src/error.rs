@@ -8,6 +8,8 @@ use openrows_types::SessionId;
 pub enum ErrorKind {
     /// Transport failure; the connection is gone.
     Network,
+    /// TLS setup, certificate verification or handshake failed.
+    Tls,
     /// Credentials rejected or authentication method unsupported.
     Auth,
     /// The server or driver broke the wire protocol.
@@ -62,6 +64,7 @@ impl From<&DriverError> for CoreError {
     fn from(error: &DriverError) -> Self {
         let kind = match error {
             DriverError::Network(_) => ErrorKind::Network,
+            DriverError::Tls(_) => ErrorKind::Tls,
             DriverError::Auth(_) => ErrorKind::Auth,
             DriverError::Protocol(_) => ErrorKind::Protocol,
             DriverError::Server { code, message } => {

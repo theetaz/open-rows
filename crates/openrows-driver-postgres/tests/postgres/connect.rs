@@ -27,7 +27,11 @@ async fn connect_reports_server_info_and_runs_startup_commands() -> TestResult {
         (info.flavour, info.product()),
         (Flavour::Postgres, "PostgreSQL")
     );
-    assert_eq!(info.tls, TlsStatus::PlaintextFallback);
+    assert!(
+        matches!(info.tls, TlsStatus::Encrypted(_)),
+        "{:?}",
+        info.tls
+    );
     let sql = "SELECT NULL AS v UNION ALL SELECT current_setting('application_name')
         UNION ALL SELECT current_setting('search_path')
         UNION ALL SELECT current_setting('lock_timeout')";
@@ -50,7 +54,7 @@ async fn disable_mode_and_empty_database_connect_in_plaintext() -> TestResult {
     let session = PgSession::connect_with(&config, &options).await?;
     let info = session.server_info();
     assert_eq!(
-        (info.tls, info.database.as_str()),
+        (info.tls.clone(), info.database.as_str()),
         (TlsStatus::Disabled, "postgres")
     );
     Ok(())
@@ -64,10 +68,7 @@ async fn connect_failures_are_typed() -> TestResult {
         ..ConnectOptions::default()
     };
     let error = PgSession::connect_with(&config()?, &tls).await.err();
-    assert!(
-        matches!(error, Some(DriverError::Unsupported(_))),
-        "{error:?}"
-    );
+    assert!(matches!(error, Some(DriverError::Tls(_))), "{error:?}");
 
     let failing = ConnectOptions {
         startup_commands: vec!["SELECT 1".to_owned(), "SELEC 2".to_owned()],

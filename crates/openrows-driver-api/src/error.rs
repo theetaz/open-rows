@@ -7,6 +7,10 @@ pub enum DriverError {
     /// Socket or transport failure; the session is no longer usable.
     #[error("network error: {0}")]
     Network(#[from] std::io::Error),
+    /// TLS could not be set up: certificate files, verification or handshake.
+    /// The message says what to change; the session is not usable.
+    #[error("TLS error: {0}")]
+    Tls(String),
     /// The server rejected the credentials or required an unsupported method.
     #[error("authentication failed: {0}")]
     Auth(String),

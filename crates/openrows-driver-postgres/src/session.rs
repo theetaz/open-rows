@@ -8,6 +8,7 @@ use crate::options::ConnectOptions;
 use crate::simple;
 use crate::startup::PgConfig;
 use crate::stream;
+use crate::trace::ConnectTrace;
 use crate::types::{self, ColumnDesc};
 use crate::wire::{Wire, server_error, unexpected};
 use fallible_iterator::FallibleIterator;
@@ -29,8 +30,9 @@ pub struct PgSession {
 }
 
 impl PgSession {
-    /// Connect with default [`ConnectOptions`]: `sslmode=prefer` (plaintext
-    /// until D-11), docs/14 §4 timeouts, no startup commands.
+    /// Connect with default [`ConnectOptions`]: `sslmode=prefer` (TLS without
+    /// certificate checks when the server offers it), docs/14 §4 timeouts, no
+    /// startup commands.
     ///
     /// # Errors
     /// As [`PgSession::connect_with`].
@@ -38,25 +40,40 @@ impl PgSession {
         Self::connect_with(config, &ConnectOptions::default()).await
     }
 
-    /// Connect, authenticate, read [`ServerInfo`] and run the startup commands.
+    /// Connect, negotiate TLS, authenticate, read [`ServerInfo`] and run the
+    /// startup commands.
     ///
     /// # Errors
-    /// `Unsupported` for TLS-only `sslmode`s; `Network` for transport failures
-    /// and stage timeouts (`io::ErrorKind::TimedOut`, message names the stage);
-    /// `Auth`; `Server` when the server refuses the session or a startup
-    /// command fails (message prefixed `startup command <n>:`); `Protocol`.
+    /// `Tls` for certificate files, verification and handshake failures or a
+    /// server without TLS under a TLS-only `sslmode`; `Network` for transport
+    /// failures and stage timeouts (`io::ErrorKind::TimedOut`, message names
+    /// the stage); `Auth`; `Server` when the server refuses the session or a
+    /// startup command fails (message prefixed `startup command <n>:`);
+    /// `Protocol`.
     pub async fn connect_with(
         config: &PgConfig,
         options: &ConnectOptions,
     ) -> Result<Self, DriverError> {
-        let established = establish(config, options).await?;
-        Ok(Self {
-            wire: established.wire,
-            type_names: HashMap::new(),
-            policy: BatchPolicy::default(),
-            cancel: established.cancel.map(Arc::new),
-            info: established.info,
-        })
+        Self::connect_traced(config, options).await.0
+    }
+
+    /// As [`PgSession::connect_with`], also reporting which stages ran, how
+    /// long each took, which one failed and the TLS outcome (Test connection).
+    pub async fn connect_traced(
+        config: &PgConfig,
+        options: &ConnectOptions,
+    ) -> (Result<Self, DriverError>, ConnectTrace) {
+        let mut trace = ConnectTrace::default();
+        let session = establish(config, options, &mut trace)
+            .await
+            .map(|established| Self {
+                wire: established.wire,
+                type_names: HashMap::new(),
+                policy: BatchPolicy::default(),
+                cancel: established.cancel.map(Arc::new),
+                info: established.info,
+            });
+        (session, trace)
     }
 
     /// Product, version, current database and user, flavour and TLS state.

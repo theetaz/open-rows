@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-//! Buffered message I/O over a plain TCP or Unix stream (TLS arrives with D-11).
+//! Buffered message I/O over a TCP, Unix, TLS or routed stream.
 use bytes::BytesMut;
 use openrows_driver_api::{DriverError, NoticeLevel};
 use postgres_protocol::message::backend::{
@@ -10,7 +10,7 @@ use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 /// Socket read granularity; one read usually carries many `DataRow`s.
 const READ_CHUNK: usize = 64 * 1024;
 
-/// Byte stream under the protocol; boxed so TCP, Unix and (later) TLS share one type.
+/// Byte stream under the protocol; boxed so TCP, Unix, TLS and routed streams share one type.
 pub(crate) trait Io: AsyncRead + AsyncWrite + Unpin + Send {}
 
 impl<T: AsyncRead + AsyncWrite + Unpin + Send> Io for T {}
