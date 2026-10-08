@@ -23,6 +23,8 @@ pub(crate) struct Queued {
     pub(crate) sql: String,
     /// Positional text parameters (`$1`, …); empty for editor SQL.
     pub(crate) params: Vec<Option<String>>,
+    /// Rows kept per result set; `None` leaves only the result store's caps.
+    pub(crate) max_rows: Option<usize>,
     pub(crate) token: CancellationToken,
     pub(crate) events: UnboundedSender<QueryEvent>,
 }

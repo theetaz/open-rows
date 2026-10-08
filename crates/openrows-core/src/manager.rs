@@ -143,7 +143,21 @@ impl SessionManager {
         session: SessionId,
         sql: impl Into<String>,
     ) -> Result<QueryHandle, CoreError> {
-        self.execute_bound(session, sql, Vec::new())
+        self.submit(session, sql.into(), Vec::new(), None)
+    }
+
+    /// Queue `sql` keeping at most `max_rows` rows per result set; the result
+    /// ends `truncated` when more rows existed.
+    ///
+    /// # Errors
+    /// As [`SessionManager::execute`].
+    pub fn execute_capped(
+        &self,
+        session: SessionId,
+        sql: impl Into<String>,
+        max_rows: Option<usize>,
+    ) -> Result<QueryHandle, CoreError> {
+        self.submit(session, sql.into(), Vec::new(), max_rows)
     }
 
     /// Queue `sql` with positional text parameters (`$1`, …; `None` is NULL).
@@ -156,6 +170,16 @@ impl SessionManager {
         sql: impl Into<String>,
         params: Vec<Option<String>>,
     ) -> Result<QueryHandle, CoreError> {
+        self.submit(session, sql.into(), params, None)
+    }
+
+    fn submit(
+        &self,
+        session: SessionId,
+        sql: String,
+        params: Vec<Option<String>>,
+        max_rows: Option<usize>,
+    ) -> Result<QueryHandle, CoreError> {
         let (sender, events) = mpsc::unbounded_channel();
         let (commands, token) = self
             .with_entry(session, |entry| {
@@ -165,8 +189,9 @@ impl SessionManager {
         let id = QueryId::new();
         let queued = Queued {
             query: id,
-            sql: sql.into(),
+            sql,
             params,
+            max_rows,
             token: token.clone(),
             events: sender,
         };

@@ -111,6 +111,17 @@ async function openTab(
   return user;
 }
 
+/** Run All from the Run button's dropdown. */
+async function runAll(user: ReturnType<typeof userEvent.setup>): Promise<void> {
+  await user.click(screen.getByRole('button', { name: 'Run options' }));
+  await user.click(
+    within(screen.getByRole('menu', { name: 'Run options' })).getByRole(
+      'menuitem',
+      { name: /Run All/ },
+    ),
+  );
+}
+
 const status = (): HTMLElement =>
   screen.getByRole('status', { name: 'Query status' });
 
@@ -138,6 +149,7 @@ it('runs the statement at the cursor and shows its rows and status', async () =>
       mode: 'current',
       cursor: 13,
       confirmToken: null,
+      maxRows: null,
     },
     expect.any(Function),
   );
@@ -202,22 +214,25 @@ it('runs only the selected text when text is selected', async () => {
   });
 });
 
-it('cancels a running query', async () => {
+it('turns Run into Cancel while a query runs', async () => {
   const user = await openTab('SELECT pg_sleep(30)');
-  const cancel = screen.getByRole('button', { name: 'Cancel query' });
-  expect(cancel).toBeDisabled();
+  expect(screen.queryByRole('button', { name: 'Cancel query' })).toBeNull();
   await user.click(
     screen.getByRole('button', { name: 'Run current statement' }),
   );
   send({ type: 'statementStarted', statement: 0 });
   expect(
-    screen.getByRole('button', { name: 'Run current statement' }),
-  ).toBeDisabled();
-  await user.click(cancel);
+    screen.queryByRole('button', { name: 'Run current statement' }),
+  ).toBeNull();
+  expect(screen.getByRole('button', { name: 'Run options' })).toBeDisabled();
+  await user.click(screen.getByRole('button', { name: 'Cancel query' }));
   expect(cancelQuery).toHaveBeenCalledWith('q1');
   send({ type: 'cancelled', statement: 0 }, finished('cancelled'));
   expect(status()).toHaveTextContent('Cancelled · 12 ms');
-  expect(cancel).toBeDisabled();
+  expect(screen.queryByRole('button', { name: 'Cancel query' })).toBeNull();
+  expect(
+    screen.getByRole('button', { name: 'Run current statement' }),
+  ).toBeEnabled();
 });
 
 it('shows server errors with their SQLSTATE', async () => {
@@ -260,7 +275,7 @@ it('asks for confirmation and resends with the token only after consent', async 
     ],
   });
   const user = await openTab('SELECT 1; DROP TABLE orders;');
-  await user.click(screen.getByRole('button', { name: 'Run all statements' }));
+  await runAll(user);
   const dialog = await screen.findByRole('dialog', {
     name: 'Run statements that change data?',
   });
@@ -275,7 +290,7 @@ it('asks for confirmation and resends with the token only after consent', async 
   expect(screen.queryByRole('dialog')).toBeNull();
   expect(executeQuery).toHaveBeenCalledOnce();
 
-  await user.click(screen.getByRole('button', { name: 'Run all statements' }));
+  await runAll(user);
   reply({ kind: 'started', queryId: 'q2', statements: [] });
   const again = await screen.findByRole('dialog', {
     name: 'Run statements that change data?',

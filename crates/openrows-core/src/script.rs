@@ -93,18 +93,27 @@ impl ScriptCanceller {
     }
 }
 
-/// Execute `statements` in order on `session`, forwarding every event to `emit`.
+/// Statements of one editor run and the row cap of each result set.
+#[derive(Clone, Copy, Debug)]
+pub struct Script<'a> {
+    /// Statement texts, run in order.
+    pub statements: &'a [String],
+    /// Rows kept per result set; `None` leaves only the result store's caps.
+    pub max_rows: Option<usize>,
+}
+
+/// Execute the script's statements in order on `session`, forwarding every event to `emit`.
 ///
 /// A statement starts only after the previous one completed. The first
 /// `Failed` or `Cancelled` statement ends the run.
 pub async fn run_script(
     manager: &SessionManager,
     session: SessionId,
-    statements: &[String],
+    script: Script<'_>,
     cancel: &ScriptCanceller,
     mut emit: impl FnMut(ScriptEvent),
 ) -> ScriptOutcome {
-    for (index, sql) in statements.iter().enumerate() {
+    for (index, sql) in script.statements.iter().enumerate() {
         let mut send = |event| {
             emit(ScriptEvent {
                 statement: index,
@@ -115,7 +124,8 @@ pub async fn run_script(
             send(QueryEvent::Cancelled);
             return ScriptOutcome::Cancelled;
         }
-        let outcome = follow(manager.execute(session, sql.as_str()), cancel, &mut send).await;
+        let submitted = manager.execute_capped(session, sql.as_str(), script.max_rows);
+        let outcome = follow(submitted, cancel, &mut send).await;
         if outcome != ScriptOutcome::Completed {
             return outcome;
         }

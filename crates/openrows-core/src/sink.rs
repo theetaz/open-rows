@@ -63,6 +63,8 @@ pub(crate) struct QuerySink {
     open: Option<OpenResult>,
     results: usize,
     progress: Throttle,
+    /// Rows kept per result set before the stream stops as truncated.
+    max_rows: u64,
 }
 
 impl QuerySink {
@@ -73,7 +75,14 @@ impl QuerySink {
             open: None,
             results: 0,
             progress: Throttle::new(PROGRESS_INTERVAL),
+            max_rows: u64::MAX,
         }
+    }
+
+    /// Keep at most `max_rows` rows per result set (`None`: no per-run cap).
+    pub(crate) fn with_max_rows(mut self, max_rows: Option<usize>) -> Self {
+        self.max_rows = max_rows.map_or(u64::MAX, |rows| rows as u64);
+        self
     }
 
     fn emit(&self, event: QueryEvent) {
@@ -124,9 +133,11 @@ impl ResultSink for QuerySink {
         let Some(open) = self.open.as_mut() else {
             return SinkFlow::Stop;
         };
+        let (batch, capped) = cap(batch, self.max_rows.saturating_sub(open.rows));
         open.rows += batch.num_rows() as u64;
         open.bytes += batch.get_array_memory_size() as u64;
-        let flow = self.store.push(open.id, batch);
+        let stored = self.store.push(open.id, batch);
+        let flow = if capped { SinkFlow::Stop } else { stored };
         open.truncated |= flow == SinkFlow::Stop;
         let progress = QueryEvent::Progress {
             result: open.id,
@@ -144,6 +155,16 @@ impl ResultSink for QuerySink {
             level,
             message: message.to_owned(),
         });
+    }
+}
+
+/// The part of `batch` that fits in `room` rows, and whether rows were cut.
+fn cap(batch: RecordBatch, room: u64) -> (RecordBatch, bool) {
+    let room = usize::try_from(room).unwrap_or(usize::MAX);
+    if batch.num_rows() > room {
+        (batch.slice(0, room), true)
+    } else {
+        (batch, false)
     }
 }
 
@@ -170,6 +191,40 @@ mod tests {
             .filter(|ms| throttle.ready(start + Duration::from_millis(*ms)))
             .count();
         assert_eq!(allowed, 10);
+    }
+
+    /// Push two 2-row batches through a sink capped at `max_rows`; returns the
+    /// flows and the `ResultEnd` rows and truncation.
+    fn capped_run(max_rows: usize) -> Result<(Vec<SinkFlow>, u64, bool), arrow_schema::ArrowError> {
+        let store = Arc::new(openrows_results::ResultStore::default());
+        let (events, mut received) = tokio::sync::mpsc::unbounded_channel();
+        let mut sink = QuerySink::new(events, store).with_max_rows(Some(max_rows));
+        let batch = openrows_results::synthetic::batch(2, 2, 42)?;
+        sink.begin_result(batch.schema());
+        let flows = vec![sink.push_batch(batch.clone()), sink.push_batch(batch)];
+        sink.end_result();
+        let mut end = (0, false);
+        while let Ok(event) = received.try_recv() {
+            if let QueryEvent::ResultEnd {
+                rows, truncated, ..
+            } = event
+            {
+                end = (rows, truncated);
+            }
+        }
+        Ok((flows, end.0, end.1))
+    }
+
+    #[test]
+    fn a_run_row_cap_cuts_the_result_and_marks_it_truncated() -> Result<(), arrow_schema::ArrowError>
+    {
+        let (flows, rows, truncated) = capped_run(3)?;
+        assert_eq!(flows, [SinkFlow::Continue, SinkFlow::Stop]);
+        assert_eq!((rows, truncated), (3, true));
+        let (flows, rows, truncated) = capped_run(4)?;
+        assert_eq!(flows, [SinkFlow::Continue, SinkFlow::Continue]);
+        assert_eq!((rows, truncated), (4, false));
+        Ok(())
     }
 
     #[test]

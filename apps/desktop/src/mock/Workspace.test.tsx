@@ -198,7 +198,7 @@ it('opens objects of another database in its own tab set on its own session', as
     statements: [],
   });
   await user.click(
-    await screen.findByRole('button', { name: 'Run all statements' }),
+    await screen.findByRole('button', { name: 'Run current statement' }),
   );
   expect(executeQuery).toHaveBeenLastCalledWith(
     expect.objectContaining({

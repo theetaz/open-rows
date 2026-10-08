@@ -30,6 +30,10 @@ pub(crate) struct ExecuteRequest {
     pub(crate) cursor: Option<u32>,
     /// Token from a `confirmationRequired` reply the user accepted.
     pub(crate) confirm_token: Option<String>,
+    /// Rows kept per result set (the editor's row limit); `None` keeps the
+    /// result store's default cap.
+    #[serde(default)]
+    pub(crate) max_rows: Option<u32>,
 }
 
 impl ExecuteRequest {
@@ -44,6 +48,11 @@ impl ExecuteRequest {
             }
         };
         script::statements(&self.sql, scope, dialect)
+    }
+
+    /// Rows kept per result set of this run.
+    pub(crate) fn row_cap(&self) -> Option<usize> {
+        self.max_rows.and_then(|rows| usize::try_from(rows).ok())
     }
 }
 
@@ -200,7 +209,23 @@ mod tests {
             mode,
             cursor,
             confirm_token: None,
+            max_rows: None,
         }
+    }
+
+    #[test]
+    fn the_row_limit_is_optional_on_the_wire() -> Result<(), serde_json::Error> {
+        let limited: ExecuteRequest = serde_json::from_value(serde_json::json!({
+            "sessionId": "s", "sql": "SELECT 1", "mode": "all",
+            "cursor": null, "confirmToken": null, "maxRows": 500
+        }))?;
+        assert_eq!(limited.row_cap(), Some(500));
+        let open: ExecuteRequest = serde_json::from_value(serde_json::json!({
+            "sessionId": "s", "sql": "SELECT 1", "mode": "all",
+            "cursor": null, "confirmToken": null
+        }))?;
+        assert_eq!(open.row_cap(), None);
+        Ok(())
     }
 
     #[test]

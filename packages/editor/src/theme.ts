@@ -46,7 +46,7 @@ const editorTheme = EditorView.theme({
     backgroundColor: 'var(--or-page)',
     borderRight: 'var(--or-border-width) solid var(--or-separator)',
   },
-  '.cm-activeLine, .cm-activeLineGutter': {
+  '.cm-activeLine, .cm-activeLineGutter, .cm-currentQuery': {
     backgroundColor: 'var(--or-row-stripe)',
   },
 });

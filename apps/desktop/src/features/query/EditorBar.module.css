@@ -1,0 +1,59 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.bar {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-6);
+  padding: var(--or-space-4) var(--or-space-8);
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow-x: auto;
+  border-bottom: var(--or-border-width) solid var(--or-separator);
+  background: var(--or-window);
+}
+.bar > button,
+.split {
+  flex-shrink: 0;
+}
+.bar svg {
+  inline-size: var(--or-icon-size);
+  block-size: var(--or-icon-size);
+}
+.icon[data-size] {
+  padding: 0;
+  inline-size: var(--or-control-height-compact);
+}
+.cursor {
+  font-family: var(--or-font-mono);
+  font-size: var(--or-text-11);
+  color: var(--or-secondary);
+}
+.notice {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--or-text-11-5);
+  color: var(--or-secondary);
+}
+.split {
+  display: inline-flex;
+  gap: var(--or-border-width);
+}
+.split > button:first-child[data-size] {
+  gap: var(--or-space-6);
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+}
+.split > .chevron[data-size] {
+  padding: 0 var(--or-space-4);
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+}
+.split > .chevron svg {
+  inline-size: 12px;
+  block-size: 12px;
+}
+.limit[data-size] svg {
+  inline-size: 12px;
+  block-size: 12px;
+}

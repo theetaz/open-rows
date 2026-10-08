@@ -1,0 +1,26 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.submenu {
+  position: absolute;
+  width: 200px;
+}
+.check {
+  flex: none;
+  width: 12px;
+  text-align: center;
+}
+.chevron {
+  display: inline-flex;
+  margin-inline-start: auto;
+  color: var(--or-secondary);
+}
+.chevron svg {
+  width: 12px;
+  height: 12px;
+}
+.parent[aria-expanded='true']:not(:hover, :focus-visible) {
+  background: var(--or-control-fill);
+}
+.parent:hover .chevron,
+.parent:focus-visible .chevron {
+  color: inherit;
+}
