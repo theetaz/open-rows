@@ -7,7 +7,7 @@ use openrows_secrets::SecretKey;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{EnvKind, EnvTag, ProfileError, Safety};
+use super::{EnvKind, EnvTag, ProfileError, Safety, SshSettings, TlsSettings};
 
 /// Newest profile file format version (`"openrows": 1`).
 pub const PROFILE_FORMAT: u32 = 1;
@@ -84,8 +84,7 @@ impl TlsMode {
     /// `verify-full` for remote hosts, `prefer` for loopback and sockets.
     #[must_use]
     pub fn default_for_host(host: &str) -> Self {
-        let local = matches!(host, "localhost" | "127.0.0.1" | "::1") || host.starts_with('/');
-        if local {
+        if super::network::is_local_host(host) {
             Self::Prefer
         } else {
             Self::VerifyFull
@@ -105,13 +104,6 @@ impl TlsMode {
             _ => return None,
         })
     }
-}
-
-/// TLS settings; certificates and the skip-verify toggle come with M1 TLS.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct TlsSettings {
-    /// Negotiation and verification mode.
-    pub mode: TlsMode,
 }
 
 /// `PostgreSQL` connection parameters (everything except secrets).
@@ -159,10 +151,20 @@ pub enum SecretRef {
 
 /// Secret references of a profile.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SecretRefs {
     /// Database password, if one is stored.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub password: Option<SecretRef>,
+    /// SSH password.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ssh_password: Option<SecretRef>,
+    /// SSH private key passphrase.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ssh_passphrase: Option<SecretRef>,
+    /// TLS client key passphrase.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tls_key_passphrase: Option<SecretRef>,
 }
 
 /// A personal connection profile (`connections/<id>.json`).
@@ -189,6 +191,9 @@ pub struct ConnectionProfile {
     pub secrets: SecretRefs,
     /// TLS settings.
     pub tls: TlsSettings,
+    /// SSH tunnel in front of the database; absent for direct connections.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ssh: Option<SshSettings>,
     /// Write-safety switches.
     pub safety: Safety,
 }
@@ -206,9 +211,8 @@ impl ConnectionProfile {
             group: None,
             safety: Safety::default_for(env_tag.kind),
             env_tag,
-            tls: TlsSettings {
-                mode: TlsMode::default_for_host(&params.host),
-            },
+            tls: TlsSettings::new(TlsMode::default_for_host(&params.host)),
+            ssh: None,
             params,
             secrets: SecretRefs::default(),
         }
@@ -243,6 +247,6 @@ impl ConnectionProfile {
         if self.params.port == 0 {
             return invalid("params.port", "must be 1-65535");
         }
-        Ok(())
+        self.ssh.as_ref().map_or(Ok(()), SshSettings::validate)
     }
 }
