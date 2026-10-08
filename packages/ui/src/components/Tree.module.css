@@ -89,6 +89,12 @@
   font-size: inherit;
   font-variant-numeric: tabular-nums;
 }
+/* Column rows: the type yields width first so names stay readable. */
+.node[aria-level='2'] > .row small {
+  flex: 0 100 auto;
+  min-inline-size: 3ch;
+  max-inline-size: none;
+}
 .note {
   color: var(--or-secondary);
   font-family: var(--or-font-ui);

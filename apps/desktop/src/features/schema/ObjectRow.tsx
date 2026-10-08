@@ -15,6 +15,7 @@ import {
 import type { ObjectRef } from './catalog';
 import type { Catalog } from './useCatalog';
 import type { Resource } from './useResources';
+import { shortType } from './shortType';
 
 /** Shared by every row of one section tree. */
 type RowContext = {
@@ -147,7 +148,7 @@ function ColumnRows(props: {
             onOpen={props.onOpen}
             icon={column.primaryKey ? <Icon name="key" /> : undefined}
             iconTone="warning"
-            detail={column.dataType}
+            detail={shortType(column.dataType)}
             title={columnTitle(column)}
             name={column.name}
           />
