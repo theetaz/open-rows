@@ -54,11 +54,11 @@ it('paints NULL and EMPTY as distinct muted markers, and real text normally', ()
   const value = paint({ text: 'NULL', state: 'normal' }, text);
   expect(nullCell.texts[0]).toMatchObject({
     text: 'NULL',
-    colour: colours.tertiary,
+    colour: colours.placeholder,
   });
   expect(emptyCell.texts[0]).toMatchObject({
     text: 'EMPTY',
-    colour: colours.tertiary,
+    colour: colours.placeholder,
   });
   expect(value.texts[0]?.colour).toBe(colours.text);
 });
@@ -71,7 +71,7 @@ it('mutes staged NULL, EMPTY and DEFAULT markers and outlines staged cells', () 
     { text: 'DEFAULT', state: 'changed', marker: 'default' },
     text,
   );
-  expect(staged.texts[0]?.colour).toBe(colours.tertiary);
+  expect(staged.texts[0]?.colour).toBe(colours.placeholder);
   expect(staged.rects).toContain(colours['cell-edited']);
   expect(
     staged.rects.filter((fill) => fill === colours.destructive),

@@ -131,7 +131,7 @@
   user-select: text;
 }
 .structure td[data-null='true'] {
-  color: var(--or-tertiary);
+  color: var(--or-placeholder);
 }
 .columns {
   position: absolute;

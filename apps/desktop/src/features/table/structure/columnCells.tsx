@@ -4,6 +4,7 @@ import { Icon } from '@openrows/ui';
 import type { ColumnRow } from './effective';
 import type { CellView } from './StructureGrid';
 import styles from './Structure.module.css';
+import { shortType } from '../../schema/shortType';
 
 /** An inline editor in progress: the cell, its text and the default mode. */
 export type InlineEdit = {
@@ -130,7 +131,7 @@ export function columnCell(
       return { content: row.name, changed: changed('name') };
     case 2:
       return {
-        content: withStepper(row.dataType, step('dataType')),
+        content: withStepper(shortType(row.dataType), step('dataType')),
         changed: changed('dataType'),
       };
     case 3:

@@ -65,3 +65,7 @@
   padding: var(--or-space-16);
   color: var(--or-secondary);
 }
+/* NULL, EMPTY and DEFAULT read as quiet markers, like the grid. */
+.field textarea::placeholder {
+  color: var(--or-placeholder);
+}

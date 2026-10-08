@@ -85,6 +85,7 @@ export function paletteRows(theme: string, palette: typeof light): Row[] {
       'text',
       'secondary',
       'tertiary',
+      'placeholder',
       'focus',
       'danger-fg',
     ] as const) {
@@ -92,7 +93,8 @@ export function paletteRows(theme: string, palette: typeof light): Row[] {
         theme,
         pair: `${foreground}/${name}`,
         ratio: ratio(palette[foreground], background),
-        minimum: foreground === 'focus' ? 3 : 4.5,
+        minimum:
+          foreground === 'focus' || foreground === 'placeholder' ? 3 : 4.5,
       });
     }
     rows.push(...badgeRows({ theme, palette, name, background }));

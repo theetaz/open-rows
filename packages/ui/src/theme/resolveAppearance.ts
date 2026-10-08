@@ -68,6 +68,8 @@ function tintedPalette(
     'control-active': lightMode ? '#FFFFFF' : mix(half.canvas, '#FFFFFF', 0.1),
     accent: half.accent,
     'on-accent': '#FFFFFF',
+    // Tinted canvases are lighter or darker; keep NULL/EMPTY markers at 3:1.
+    placeholder: mix(base.placeholder, lightMode ? '#000000' : '#FFFFFF', 0.12),
     focus: lightMode
       ? mix(half.accent, '#000000', 0.15)
       : mix(half.accent, '#FFFFFF', 0.7),

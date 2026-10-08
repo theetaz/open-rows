@@ -61,7 +61,7 @@ export class CellPainter {
     context.fillStyle = this.selected
       ? this.colours['on-accent']
       : muted
-        ? this.colours.tertiary
+        ? this.colours.placeholder
         : this.colours.text;
     this.text(context, column, muted ? text : this.display(column, text));
     if (column?.kind) this.stepper(context, x + width - STEPPER_WIDTH / 2 - 2);

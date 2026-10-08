@@ -103,7 +103,7 @@
   font-variant-numeric: tabular-nums;
 }
 .grid td[data-muted='true'] {
-  color: var(--or-tertiary);
+  color: var(--or-placeholder);
 }
 .grid td[data-changed='true'] {
   background: var(--or-cell-edited);
@@ -122,7 +122,7 @@
   box-shadow: inset 0 0 0 var(--or-border-width) var(--or-separator);
 }
 .grid tr[data-filler] td {
-  color: var(--or-tertiary);
+  color: var(--or-placeholder);
 }
 .cell {
   display: flex;

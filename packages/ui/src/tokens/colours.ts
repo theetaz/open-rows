@@ -12,6 +12,8 @@ export const light = {
   text: '#18181B',
   secondary: '#52525B',
   tertiary: '#52525B',
+  /** NULL / EMPTY / DEFAULT markers and filler text: quiet, 3:1 minimum. */
+  placeholder: '#78787F',
   separator: 'rgba(0,0,0,0.08)',
   'control-fill': 'rgba(0,0,0,0.04)',
   'control-hover': 'rgba(0,0,0,0.075)',
@@ -66,6 +68,8 @@ export const dark: typeof light = {
   text: '#EDEDEF',
   secondary: '#BABAC2',
   tertiary: '#B6B6BE',
+  /** NULL / EMPTY / DEFAULT markers and filler text: quiet, 3:1 minimum. */
+  placeholder: '#85858D',
   separator: 'rgba(255,255,255,0.08)',
   'control-fill': 'rgba(255,255,255,0.05)',
   'control-hover': 'rgba(255,255,255,0.09)',

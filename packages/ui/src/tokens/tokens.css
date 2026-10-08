@@ -91,6 +91,7 @@
   --or-text: #18181B;
   --or-secondary: #52525B;
   --or-tertiary: #52525B;
+  --or-placeholder: #78787F;
   --or-separator: rgba(0,0,0,0.08);
   --or-control-fill: rgba(0,0,0,0.04);
   --or-control-hover: rgba(0,0,0,0.075);
@@ -145,6 +146,7 @@
   --or-text: #EDEDEF;
   --or-secondary: #BABAC2;
   --or-tertiary: #B6B6BE;
+  --or-placeholder: #85858D;
   --or-separator: rgba(255,255,255,0.08);
   --or-control-fill: rgba(255,255,255,0.05);
   --or-control-hover: rgba(255,255,255,0.09);
@@ -200,6 +202,7 @@
   --or-text: #EDEDEF;
   --or-secondary: #BABAC2;
   --or-tertiary: #B6B6BE;
+  --or-placeholder: #85858D;
   --or-separator: rgba(255,255,255,0.08);
   --or-control-fill: rgba(255,255,255,0.05);
   --or-control-hover: rgba(255,255,255,0.09);

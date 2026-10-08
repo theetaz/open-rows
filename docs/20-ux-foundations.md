@@ -319,6 +319,7 @@ These rules are enforced by `packages/ui/src/tokens/controls.test.ts`. Follow th
 - Concentric geometry: window 26 px → panels and sheets 12 px → controls 7 / 6 px. Capsules (`--or-radius-capsule`) are only for pills, badges and switch tracks, not for push buttons or fields.
 - Arrow cursor everywhere: never use `cursor: pointer` on buttons, rows or tabs. Text inputs keep the I-beam, and disabled controls dim instead of changing the cursor.
 - Scroll bars are quiet, like macOS overlay scroll bars: a faint thumb until the scrolling area is hovered, clearer then and strongest under the pointer (`app/global.css`).
+- NULL, EMPTY and DEFAULT markers (grid, structure grid, inspector) use the `placeholder` token: quieter than tertiary text, held to a 3:1 contrast minimum in every theme instead of 4.5:1, like TablePlus's dim markers.
 - Menus are solid, ringed `control-active` surfaces with 24 px rows, accent-filled highlight and destructive items last, after a separator.
 - Sheets (`Sheet` + `SheetActions`) have a compact, centred 13 px semibold title and no close button. Push buttons are right-aligned: Cancel, then the default action in blue. Return runs the default action, Escape cancels, and focus starts in the first text field. Destructive confirmations use the native macOS alert (`confirmDestructive`), with Cancel as the safe choice.
 - `control-sm`, `control-md` and `control-compact` are aliases of the regular and compact heights, kept for older styles.
