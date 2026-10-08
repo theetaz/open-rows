@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
+import {
+  acceptCompletion,
+  currentCompletions,
+  startCompletion,
+} from '@codemirror/autocomplete';
 import { syntaxTreeAvailable } from '@codemirror/language';
-import { afterEach, expect, it } from 'vitest';
-import { mountSqlEditor, parseFully } from './index';
+import { afterEach, expect, it, vi } from 'vitest';
+import { defaultPreferences, mountSqlEditor, parseFully } from './index';
 import type { SqlEditor } from './index';
 import { vimMode, vimModeOf } from './vim';
 
@@ -124,4 +129,57 @@ it('read-only viewers keep their text and are not editable', () => {
   expect(view.state.readOnly).toBe(true);
   expect(view.contentDOM.getAttribute('contenteditable')).toBe('false');
   expect(view.state.doc.toString()).toBe('CREATE TABLE t ();');
+});
+
+it('shows completions with kind icons and muted details', async () => {
+  const parent = document.createElement('div');
+  document.body.append(parent);
+  editor = mountSqlEditor(parent, {
+    doc: 'SELECT * FROM us',
+    label: 'SQL',
+    catalog: {
+      schemas: () => Promise.resolve([{ name: 'public', system: false }]),
+      objects: () =>
+        Promise.resolve([{ schema: 'public', name: 'users', kind: 'table' }]),
+      objectsIn: () => Promise.resolve([]),
+      columns: () => Promise.resolve([]),
+    },
+  });
+  const { view } = editor;
+  view.dispatch({ selection: { anchor: view.state.doc.length } });
+  startCompletion(view);
+  await vi.waitFor(() => {
+    expect(currentCompletions(view.state).length).toBeGreaterThan(0);
+  });
+  const row = await vi.waitFor(() => {
+    const found = document.querySelector('.cm-tooltip-autocomplete li');
+    if (!found) throw new Error('no completion row yet');
+    return found;
+  });
+  expect(row.querySelector('svg.cm-sqlIcon-table')).not.toBeNull();
+  expect(row.querySelector('.cm-completionLabel')?.textContent).toBe('users');
+  expect(row.querySelector('.cm-completionDetail')?.textContent).toBe('public');
+  // Accepting is ignored during CodeMirror's short interaction delay.
+  await vi.waitFor(() => {
+    expect(acceptCompletion(view)).toBe(true);
+  });
+  expect(view.state.doc.toString()).toBe('SELECT * FROM users');
+});
+
+it('switches preferences and key modes without losing the text', () => {
+  const { view, setPreferences, setKeyMode } = mount('SELECT 1;\nSELECT 2;');
+  setPreferences({
+    ...defaultPreferences,
+    wrap: true,
+    highlightQuery: true,
+    fontSize: 16,
+  });
+  expect(view.contentDOM.classList.contains('cm-lineWrapping')).toBe(true);
+  expect(view.dom.querySelectorAll('.cm-currentQuery')).toHaveLength(1);
+  expect(view.dom.querySelector('.cm-activeLine')).toBeNull();
+  setKeyMode(vimMode());
+  expect(vimModeOf(view)).toBe('normal');
+  setKeyMode(null);
+  expect(vimModeOf(view)).toBeNull();
+  expect(view.state.doc.toString()).toBe('SELECT 1;\nSELECT 2;');
 });

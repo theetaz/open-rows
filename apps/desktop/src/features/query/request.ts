@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ExecuteRequest } from '@openrows/ipc';
+import type { FormatKind, FormatOptions } from '@openrows/editor';
 
 /** Read access to the editor that owns a tab's SQL. */
 export type EditorHandle = {
@@ -8,19 +9,25 @@ export type EditorHandle = {
   cursor: () => number;
   selection: () => string;
   focus: () => void;
+  /** Beautify or uglify the selection, current statement or document. */
+  format: (kind: FormatKind, options: FormatOptions) => Promise<void>;
 };
 
 /** Run current (⌘↵, or the selection when text is selected) or all (⇧⌘↵). */
 export type RunScope = 'current' | 'all';
 
-/** The `query_execute` request for a run; `null` when there is nothing to run. */
+/**
+ * The `query_execute` request for a run; `null` when there is nothing to run.
+ * `maxRows` caps each result set (the bottom bar's limit; `null` is none).
+ */
 export function runRequest(
   editor: EditorHandle,
   scope: RunScope,
   sessionId: string,
+  maxRows: number | null,
 ): ExecuteRequest | null {
   const selection = editor.selection();
-  const base = { sessionId, cursor: null, confirmToken: null };
+  const base = { sessionId, cursor: null, confirmToken: null, maxRows };
   if (scope === 'current' && selection.trim())
     return { ...base, sql: selection, mode: 'selection' };
   const sql = editor.text();
@@ -43,4 +50,19 @@ export function runScopeOf(event: {
     return null;
   if (!event.metaKey && !event.ctrlKey) return null;
   return event.shiftKey ? 'all' : 'current';
+}
+
+/** ⌘I beautifies and ⇧⌘I uglifies anywhere in a query tab. */
+export function formatKindOf(event: {
+  key: string;
+  metaKey: boolean;
+  ctrlKey: boolean;
+  altKey: boolean;
+  shiftKey: boolean;
+  defaultPrevented: boolean;
+}): FormatKind | null {
+  if (event.defaultPrevented || event.altKey) return null;
+  if (event.key.toLowerCase() !== 'i' || (!event.metaKey && !event.ctrlKey))
+    return null;
+  return event.shiftKey ? 'uglify' : 'beautify';
 }

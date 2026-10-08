@@ -11,7 +11,7 @@ mod table_view;
 use arrow_array::{RecordBatch, StringArray};
 use arrow_ipc::reader::StreamReader;
 use arrow_schema::SchemaRef;
-use openrows_core::script::{self, Scope, ScriptCanceller, ScriptEvent, ScriptOutcome};
+use openrows_core::script::{self, Scope, Script, ScriptCanceller, ScriptEvent, ScriptOutcome};
 use openrows_core::{BatchSink, QueryEvent, QueryHandle, SessionManager, SessionState};
 use openrows_driver_api::{NoticeLevel, Session, SinkFlow};
 use openrows_driver_postgres::{PgConfig, PgSession};
@@ -147,6 +147,14 @@ async fn query_events_notices_and_cancel_on_postgres() -> TestResult {
 }
 
 /// The `ResultEnd` result id of the first result with `rows` rows.
+/// An uncapped script of `statements`.
+fn script(statements: &[String]) -> Script<'_> {
+    Script {
+        statements,
+        max_rows: None,
+    }
+}
+
 fn result_with(seen: &[ScriptEvent], rows: u64) -> TestResult<ResultId> {
     seen.iter()
         .find_map(|event| match &event.event {
@@ -186,7 +194,7 @@ async fn script_streams_into_the_result_store_and_serves_windows() -> TestResult
     assert_eq!(statements.len(), 3);
     let mut seen = Vec::new();
     let cancel = ScriptCanceller::default();
-    let outcome = script::run_script(&manager, session, &statements, &cancel, |event| {
+    let outcome = script::run_script(&manager, session, script(&statements), &cancel, |event| {
         seen.push(event);
     })
     .await;
@@ -220,7 +228,7 @@ async fn single_label(
     let mut seen = Vec::new();
     let statements = script::statements(sql, Scope::All, openrows_sql::Dialect::Postgres);
     let cancel = ScriptCanceller::default();
-    let outcome = script::run_script(manager, session, &statements, &cancel, |event| {
+    let outcome = script::run_script(manager, session, script(&statements), &cancel, |event| {
         seen.push(event);
     })
     .await;

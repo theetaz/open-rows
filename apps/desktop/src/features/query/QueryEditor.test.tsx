@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import { render, screen, waitFor } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
+import { createCursorStore } from './cursor';
+import { defaultEditorSettings } from './editorSettings';
 import { QueryEditor } from './QueryEditor';
 import type { EditorHandle } from './request';
 
@@ -14,8 +16,12 @@ it('mounts CodeMirror lazily, exposes text and cursor, and runs on ⌘↵ / ⇧�
       doc={'SELECT 1;\nSELECT 2;'}
       label="SQL editor"
       dialect="postgres"
+      settings={defaultEditorSettings}
+      catalog={null}
+      cursor={createCursorStore()}
       onChange={onChange}
       onRun={onRun}
+      onFormat={vi.fn()}
       onReady={(editor) => {
         ready.handle = editor;
       }}

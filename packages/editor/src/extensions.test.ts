@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 import { CompletionContext } from '@codemirror/autocomplete';
-import type {
-  CompletionResult,
-  CompletionSource,
-} from '@codemirror/autocomplete';
 import { syntaxTree } from '@codemirror/language';
 import { EditorState } from '@codemirror/state';
 import { highlightTree, tags } from '@lezer/highlight';
 import type { Tag } from '@lezer/highlight';
 import { expect, it } from 'vitest';
+import { sqlCompletionSource } from './completion/source';
 import { sqlEditorExtensions } from './extensions';
+import { keyModeSlot } from './preferences';
 import { sqlHighlightStyle } from './theme';
 
 function stateOf(doc: string): EditorState {
@@ -46,19 +44,12 @@ it('highlights PostgreSQL dollar quoting, casts and comments', () => {
 it('offers PostgreSQL keyword completion while typing', async () => {
   const state = stateOf('SELECT * FROM t WHERE name IL');
   const position = state.doc.length;
-  const sources = state.languageDataAt<CompletionSource>(
-    'autocomplete',
-    position,
-  );
-  const results = await Promise.all(
-    sources.map(async (source) =>
-      source(new CompletionContext(state, position, true)),
-    ),
-  );
-  const labels = results
-    .filter((result): result is CompletionResult => result !== null)
-    .flatMap((result) => result.options.map((option) => option.label));
-  expect(labels.map((label) => label.toLowerCase())).toContain('ilike');
+  const result = await sqlCompletionSource(
+    'postgres',
+    null,
+  )(new CompletionContext(state, position, false));
+  const labels = result?.options.map((option) => option.label) ?? [];
+  expect(labels).toContain('ILIKE');
 });
 
 it('places a key mode ahead of the default extensions', () => {
@@ -68,5 +59,9 @@ it('places a key mode ahead of the default extensions', () => {
     label: 'SQL',
     keyMode: marker,
   });
-  expect(Array.isArray(extensions) && extensions[0]).toBe(marker);
+  const state = EditorState.create({ extensions });
+  expect(keyModeSlot.get(state)).toBe(marker);
+  expect(Array.isArray(extensions) && extensions[0]).toEqual(
+    keyModeSlot.of(marker),
+  );
 });

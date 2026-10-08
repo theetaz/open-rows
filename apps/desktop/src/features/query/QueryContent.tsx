@@ -6,6 +6,8 @@ import type { IconName } from '@openrows/ui';
 import { sessionOf } from '../connections';
 import type { Connections } from '../connections';
 import type { ProfileDto } from '@openrows/ipc';
+import type { CompletionCatalog } from '@openrows/editor';
+import { completionCatalog } from './completionCatalog';
 import { useTableViews } from '../table';
 import type { SelectedTable, ShowRow, TableViews } from '../table';
 import type { QueryTabs } from './useQueryTabs';
@@ -34,6 +36,8 @@ type Props = {
   onRow: ShowRow;
   /** Table info for the inspector (Structure/Index modes); `null` clears it. */
   onTableInfo?: ((table: SelectedTable | null) => void) | undefined;
+  /** Bumped by schema refresh; drops cached completion data. */
+  catalogRevision?: number | undefined;
   /** Open a table of this database (e.g. a foreign key's target). */
   onOpenTable?:
     | ((table: { database: string; schema: string; name: string }) => void)
@@ -155,6 +159,7 @@ function TabBody(
       connection={props.connection}
       sessionId={sessionId}
       notice={reason}
+      catalog={completionFor(props, sessionId)}
       runs={props.runs}
       onSql={props.tabs.edit}
       onCell={props.onCell}
@@ -200,6 +205,19 @@ function EmptyState(props: {
       )}
     </div>
   );
+}
+
+/** The tab database's completion catalog; none without a session. */
+function completionFor(
+  props: Props & { tab: Tab; connection: ProfileDto; status: SessionStatus },
+  sessionId: string | null,
+): CompletionCatalog | null {
+  if (!sessionId || props.status.state !== 'connected') return null;
+  return completionCatalog({
+    profileId: props.connection.id,
+    database: props.tab.database,
+    revision: `${String(props.status.generation)}:${String(props.catalogRevision ?? 0)}`,
+  });
 }
 
 /** Why a tab cannot run although its connection is up. */

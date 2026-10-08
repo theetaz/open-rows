@@ -44,34 +44,39 @@ it('keeps tab sets and active tabs per connection and database', () => {
   expect(closeTab(state, 'missing')).toBe(state);
 });
 
-it('builds run requests for current, selection and all', () => {
+it('builds run requests for current, selection and all, with the row limit', () => {
   const editor = (text: string, cursor: number, selection = '') => ({
     text: () => text,
     cursor: () => cursor,
     selection: () => selection,
     focus: () => undefined,
+    format: () => Promise.resolve(),
   });
-  expect(runRequest(editor('SELECT 1', 3), 'current', 's')).toEqual({
+  expect(runRequest(editor('SELECT 1', 3), 'current', 's', null)).toEqual({
     sessionId: 's',
     sql: 'SELECT 1',
     mode: 'current',
     cursor: 3,
     confirmToken: null,
+    maxRows: null,
   });
   expect(
-    runRequest(editor('SELECT 1; SELECT 2', 3, 'SELECT 2'), 'current', 's'),
+    runRequest(
+      editor('SELECT 1; SELECT 2', 3, 'SELECT 2'),
+      'current',
+      's',
+      500,
+    ),
   ).toMatchObject({
     sql: 'SELECT 2',
     mode: 'selection',
     cursor: null,
+    maxRows: 500,
   });
-  expect(runRequest(editor('SELECT 1', 3, 'SELECT'), 'all', 's')).toMatchObject(
-    {
-      sql: 'SELECT 1',
-      mode: 'all',
-    },
-  );
-  expect(runRequest(editor('  \n', 0), 'all', 's')).toBeNull();
+  expect(
+    runRequest(editor('SELECT 1', 3, 'SELECT'), 'all', 's', 1_000),
+  ).toMatchObject({ sql: 'SELECT 1', mode: 'all', maxRows: 1_000 });
+  expect(runRequest(editor('  \n', 0), 'all', 's', null)).toBeNull();
 });
 
 it('maps ⌘↵ and ⇧⌘↵ but not handled or modified keys', () => {

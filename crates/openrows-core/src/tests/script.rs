@@ -2,7 +2,7 @@
 //! Statement selection and sequential multi-statement runs.
 use super::{FakeCancel, TestResult, manager, open};
 use crate::script::{
-    Scope, ScriptCanceller, ScriptEvent, ScriptOutcome, run_bound, run_script, statements,
+    Scope, Script, ScriptCanceller, ScriptEvent, ScriptOutcome, run_bound, run_script, statements,
 };
 use crate::{QueryEvent, SessionManager};
 use openrows_sql::Dialect;
@@ -22,7 +22,12 @@ async fn run(
     cancel: &ScriptCanceller,
 ) -> (ScriptOutcome, Vec<ScriptEvent>) {
     let mut seen = Vec::new();
-    let outcome = run_script(manager, session, &owned(items), cancel, |event| {
+    let statements = owned(items);
+    let script = Script {
+        statements: &statements,
+        max_rows: None,
+    };
+    let outcome = run_script(manager, session, script, cancel, |event| {
         seen.push(event);
     })
     .await;

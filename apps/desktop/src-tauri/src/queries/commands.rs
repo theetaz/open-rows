@@ -9,7 +9,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use openrows_core::safety::{Gate, SafetyPlan, SafetyPolicy};
-use openrows_core::script::{ScriptCanceller, run_script};
+use openrows_core::script::{Script, ScriptCanceller, run_script};
 use openrows_results::ResultStore;
 use openrows_store::LocalStore;
 use openrows_store::profile::{ConnectionProfile, ProfileId};
@@ -32,6 +32,8 @@ struct Run {
     /// The database the session runs on, recorded in history.
     database: String,
     statements: Vec<String>,
+    /// Rows kept per result set (the editor's row limit).
+    max_rows: Option<usize>,
     cancel: ScriptCanceller,
     events: Channel<QueryEventDto>,
 }
@@ -72,6 +74,7 @@ pub(crate) async fn query_execute(
         profile,
         database: owner.database,
         statements: plan.statements.iter().map(|s| s.sql.clone()).collect(),
+        max_rows: request.row_cap(),
         cancel: ScriptCanceller::default(),
         events: on_event,
     };
@@ -127,7 +130,10 @@ async fn execute(app: AppHandle, run: Run) {
     let outcome = run_script(
         &connections.sessions,
         run.session,
-        &run.statements,
+        Script {
+            statements: &run.statements,
+            max_rows: run.max_rows,
+        },
         &run.cancel,
         |event| {
             if let Some(record) = history.observe(&event) {

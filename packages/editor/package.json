@@ -20,6 +20,8 @@
     "@codemirror/state": "^6.7.6",
     "@codemirror/view": "^6.43.13",
     "@lezer/highlight": "^1.2.5",
-    "@replit/codemirror-vim": "^6.4.0"
+    "@openrows/ui": "workspace:*",
+    "@replit/codemirror-vim": "^6.4.0",
+    "sql-formatter": "^15.9.0"
   }
 }

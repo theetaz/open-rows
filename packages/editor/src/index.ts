@@ -1,17 +1,43 @@
 // SPDX-License-Identifier: Apache-2.0
 import { forceParsing } from '@codemirror/language';
 import { EditorState } from '@codemirror/state';
+import type { Extension } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { sqlEditorExtensions } from './extensions';
 import type { EditorDialect, EditorKey, SqlEditorOptions } from './extensions';
+import { formatInView } from './format';
+import type { FormatKind, FormatOptions } from './format';
+import {
+  keyModeSlot,
+  preferenceExtensions,
+  preferenceSlot,
+} from './preferences';
+import type { EditorPreferences } from './preferences';
 
 export type { EditorDialect, EditorKey, SqlEditorOptions };
+export type { EditorPreferences, FormatKind, FormatOptions };
+export type {
+  CatalogColumn,
+  CatalogObject,
+  CatalogSchema,
+  CompletionCatalog,
+} from './completion/catalog';
 export type { EditorView } from '@codemirror/view';
+export { defaultPreferences } from './preferences';
 
 /** A mounted SQL editor; callers own its lifetime. */
 export interface SqlEditor {
   /** The underlying CodeMirror view, for commands and instrumentation. */
   readonly view: EditorView;
+  /** Apply new runtime preferences without losing text, history or cursor. */
+  readonly setPreferences: (preferences: EditorPreferences) => void;
+  /** Install a key mode (Vim) or go back to the default keys with `null`. */
+  readonly setKeyMode: (keyMode: Extension | null) => void;
+  /**
+   * Beautify or uglify the selection, else the current statement, else the
+   * whole document, as one undoable change.
+   */
+  readonly format: (kind: FormatKind, options: FormatOptions) => Promise<void>;
   /** Detach DOM listeners and remove the editor from its parent. */
   destroy(): void;
 }
@@ -30,6 +56,15 @@ export function mountSqlEditor(
   });
   return {
     view,
+    setPreferences: (preferences) => {
+      view.dispatch({
+        effects: preferenceSlot.reconfigure(preferenceExtensions(preferences)),
+      });
+    },
+    setKeyMode: (keyMode) => {
+      view.dispatch({ effects: keyModeSlot.reconfigure(keyMode ?? []) });
+    },
+    format: (kind, formatOptions) => formatInView(view, kind, formatOptions),
     destroy: () => {
       view.destroy();
     },

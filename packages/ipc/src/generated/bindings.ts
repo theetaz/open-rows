@@ -293,6 +293,11 @@ export type ExecuteRequest = {
 	cursor: number | null,
 	/**  Token from a `confirmationRequired` reply the user accepted. */
 	confirmToken: string | null,
+	/**
+	 *  Rows kept per result set (the editor's row limit); `None` keeps the
+	 *  result store's default cap.
+	 */
+	maxRows?: number | null,
 };
 
 /**  The database file of a file engine, in the form and in saved profiles. */

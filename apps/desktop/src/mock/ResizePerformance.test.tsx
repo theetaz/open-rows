@@ -96,11 +96,15 @@ it('query toolbar and status never wrap; assistant SQL wraps inside the inspecto
     'apps/desktop/src/features/query/Query.module.css',
     'utf8',
   );
+  const bar = readFileSync(
+    'apps/desktop/src/features/query/EditorBar.module.css',
+    'utf8',
+  );
   const inspector = readFileSync(
     'apps/desktop/src/mock/Inspector.module.css',
     'utf8',
   );
-  expect(query).toMatch(/\.toolbar\s*\{[^}]*white-space: nowrap/);
+  expect(bar).toMatch(/\.bar\s*\{[^}]*white-space: nowrap/);
   expect(query).toMatch(/\.status\s*\{[^}]*text-overflow: ellipsis/);
   expect(inspector).toMatch(
     /\.sqlCard pre\s*\{[^}]*white-space: pre-wrap;[^}]*overflow-wrap: anywhere;[^}]*overflow: visible/,
