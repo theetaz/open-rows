@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { expect, it, vi } from 'vitest';
-import { CellPainter, booleanText, isMuted, textWidth } from './cellPaint';
+import { CellPainter, isMuted, textWidth } from './cellPaint';
+import { booleanText } from '@openrows/ui/format';
 import { gridTheme } from './theme';
 import type { DisplayCell, GridColumn } from './model';
 

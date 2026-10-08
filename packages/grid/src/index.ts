@@ -18,4 +18,3 @@ export { gridTheme } from './theme';
 export { GridLayout } from './layout';
 
 export { paintMetrics } from './metrics';
-export { booleanText } from './cellPaint';

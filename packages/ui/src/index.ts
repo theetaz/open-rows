@@ -20,6 +20,7 @@ export { Tree, TreeNode, TreeNote } from './components/Tree';
 export { SplitPanel } from './components/split/SplitPanel';
 export { HighlightText } from './components/HighlightText';
 export { fuzzyMatch } from './search/fuzzy';
+export { booleanText } from './format/booleanText';
 export { useReducedMotion } from './components/useReducedMotion';
 export type { PaletteItem } from './components/Palette';
 

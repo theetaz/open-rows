@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useCallback, useRef, useState } from 'react';
-import { booleanText } from '@openrows/grid';
-import { Icon, IconButton, TextArea } from '@openrows/ui';
+import { booleanText, Icon, IconButton, TextArea } from '@openrows/ui';
 import { editableText, stagedDisplay, textValue } from './cellValue';
 import type { CellValue } from './cellValue';
 import { fieldActions } from './fieldActions';
