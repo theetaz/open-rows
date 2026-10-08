@@ -13,6 +13,10 @@ pub(crate) struct EditInfoDto {
     pub(crate) protected: Vec<String>,
     pub(crate) columns: Vec<TableColumnDto>,
     pub(crate) read_only: bool,
+    /// The profile asks before writes (always on for `prod`).
+    pub(crate) confirm_writes: bool,
+    /// The profile is tagged `prod`: the review names the environment.
+    pub(crate) production: bool,
 }
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -62,6 +66,27 @@ impl From<&RowEditDto> for Edit {
                 .collect(),
         }
     }
+}
+/// One journaled staged row, exactly as the webview keeps it (docs/10 §4.5).
+#[derive(Clone, Debug, Deserialize, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct StagedRowDto {
+    /// Stable identity: the key values of an existing row, or a random id for an insert.
+    pub(crate) id: String,
+    /// Row number shown when it was staged (0 for inserts).
+    pub(crate) number: u32,
+    pub(crate) kind: EditKindDto,
+    pub(crate) original: BTreeMap<String, Option<String>>,
+    pub(crate) values: BTreeMap<String, CellValueDto>,
+}
+/// A table's journaled change set: the key it was staged against and its rows.
+#[derive(Clone, Debug, Deserialize, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct SavedEditsDto {
+    pub(crate) key: Vec<String>,
+    pub(crate) changes: Vec<StagedRowDto>,
+    /// When the journal was last written, Unix epoch milliseconds.
+    pub(crate) saved_at_ms: f64,
 }
 #[derive(Clone, Debug, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]

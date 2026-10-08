@@ -21,6 +21,8 @@ it.each(['precise value', null])(
         key: ['id'],
         protected: [],
         readOnly: false,
+        confirmWrites: false,
+        production: false,
         columns: [
           {
             name: 'id',

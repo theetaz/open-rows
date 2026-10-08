@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 import { lazy, Suspense } from 'react';
 import { Button } from '@openrows/ui';
-import type { GridContextTarget } from '@openrows/grid';
 import { isActive } from '../query/run';
 import type { ResultMeta } from '../query/run';
 import type { TableTabState } from './useTableTab';
 import type { RowEditing } from './useRowEditing';
+import type { ContextTarget } from './contextMenuActions';
 import styles from './Table.module.css';
 const TableGrid = lazy(() =>
   import('./TableGrid').then((module) => ({ default: module.TableGrid })),
@@ -15,7 +15,7 @@ type Props = {
   state: TableTabState;
   editing: RowEditing;
   onRow: (result: ResultMeta, row: number) => void;
-  onContextMenu: (result: ResultMeta, target: GridContextTarget) => void;
+  onContextMenu: (result: ResultMeta, target: ContextTarget) => void;
 };
 
 /** The page's grid, or why there is none yet (loading, error, no rows). */

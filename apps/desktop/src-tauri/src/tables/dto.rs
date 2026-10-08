@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 
 /// The browsed relation on a saved connection's database.
-#[derive(Clone, Debug, Deserialize, Type)]
+#[derive(Clone, Debug, Deserialize, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct TableTarget {
     pub(crate) profile_id: String,

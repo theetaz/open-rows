@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useRef, useState } from 'react';
 import type {
+  CellRange,
   CellRect,
   GridDataSource,
   GridHandle,
   GridTheme,
+  SelectionModel,
 } from '@openrows/grid';
 import type { ResultMeta } from '../../query/run';
 import type { StagedEdit } from '../editHistory';
@@ -13,6 +15,7 @@ import { editableText, fromOriginal } from '../cellValue';
 import type { RowEditing } from '../useRowEditing';
 import { cellText, columnEdit, isLong } from './cellKind';
 import type { ColumnEdit } from './cellKind';
+import { dataRanges, inRanges, selectedCells } from '../bulk/cells';
 
 /** One-line input over the cell, multi-line popover, or a value menu. */
 export type EditorMode = 'input' | 'popover' | 'menu';
@@ -47,6 +50,8 @@ type Args = {
   theme: React.RefObject<GridTheme>;
   /** Page and staged-insert cells in result (data) coordinates. */
   source: React.RefObject<GridDataSource | undefined>;
+  /** The grid's current selection, in grid coordinates. */
+  selection: React.RefObject<SelectionModel>;
   editing: RowEditing;
   result: ResultMeta;
   rowNumbers: boolean;
@@ -92,9 +97,18 @@ export function useInlineEditor(args: Args): InlineEditor {
     commit: (value, move) => {
       if (!open || active.current !== open.draft) return;
       const changed = open.mode === 'menu' || open.dirty || value === null;
-      if (changed)
+      const many = changed ? selectionAround(args, open) : null;
+      if (many) args.editing.bulk.set(args.result, many, fromOriginal(value));
+      else if (changed)
         args.editing.stageCell(open.draft, open.edit.name, fromOriginal(value));
-      close(changed ? `${open.edit.name} staged` : 'Unchanged', move);
+      close(
+        many
+          ? `${open.edit.name} staged for the selection`
+          : changed
+            ? `${open.edit.name} staged`
+            : 'Unchanged',
+        move,
+      );
     },
     cancel: () => {
       if (open && active.current === open.draft) close('Edit cancelled');
@@ -112,6 +126,17 @@ export function useInlineEditor(args: Args): InlineEditor {
       );
     },
   };
+}
+
+/** The multi-cell selection the edited cell belongs to, if any: the value fills all of it. */
+function selectionAround(
+  args: Args,
+  cell: { row: number; column: number },
+): readonly CellRange[] | null {
+  const ranges = dataRanges(args.selection.current.ranges, args.rowNumbers);
+  return selectedCells(ranges, 2).length > 1 && inRanges(ranges, cell)
+    ? ranges
+    : null;
 }
 
 /** Validate the target and build the editor; announces why a cell cannot be edited. */

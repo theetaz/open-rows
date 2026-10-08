@@ -50,22 +50,40 @@ export async function readRow(
   result: ResultMeta,
   row: number,
 ): Promise<RowField[]> {
+  const rows = await readRows(result, [row]);
+  return rows.get(row) ?? [];
+}
+
+/** Read several page rows in one window (their span), keyed by row index. */
+export async function readRows(
+  result: ResultMeta,
+  rows: readonly number[],
+): Promise<Map<number, RowField[]>> {
+  const fields = new Map<number, RowField[]>();
+  if (!rows.length) return fields;
+  const first = Math.min(...rows);
+  const columns = result.columns.length;
   const tile = await displayWindow({
     resultId: result.id,
-    rowStart: row,
-    rowCount: 1,
+    rowStart: first,
+    rowCount: Math.max(...rows) - first + 1,
     colStart: 0,
-    colCount: result.columns.length,
+    colCount: columns,
   });
-  return result.columns.map((column, index) => {
-    const cell = tile.cells[index];
-    return {
-      name: column.name,
-      type: column.sourceType,
-      text: cell?.text ?? '',
-      state: cell?.state ?? 'normal',
-    };
-  });
+  for (const row of rows)
+    fields.set(
+      row,
+      result.columns.map((column, index) => {
+        const cell = tile.cells[(row - first) * columns + index];
+        return {
+          name: column.name,
+          type: column.sourceType,
+          text: cell?.text ?? '',
+          state: cell?.state ?? 'normal',
+        };
+      }),
+    );
+  return fields;
 }
 
 /** Fields whose name contains `search` (case-insensitive). */

@@ -75,6 +75,8 @@ beforeEach(() => {
     protected: [],
     columns,
     readOnly: false,
+    confirmWrites: false,
+    production: false,
   });
   vi.mocked(tableEditRow).mockResolvedValue({
     id: '7',
@@ -152,6 +154,8 @@ it('does not expose row editing on read-only connections or when key columns are
     protected: [],
     columns,
     readOnly: true,
+    confirmWrites: false,
+    production: false,
   });
   const hook = mount();
   await waitFor(() => {

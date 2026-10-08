@@ -68,10 +68,16 @@ export {
   tableStructure,
   tableEditInfo,
   tableEditRow,
+  tableEditRows,
   tableEdit,
   tableDetail,
   tableAlter,
+  saveTableEdits,
+  savedTableEdits,
+  clearTableEdits,
 } from './tables';
+/** Native window closing, guarded by the webview (staged edits, running commits). */
+export { onWindowClose, closeWindow } from './window';
 export type {
   CellValueDto,
   EditInfoDto,
@@ -79,6 +85,8 @@ export type {
   FileEncodingDto,
   EditReply,
   RowEditDto,
+  SavedEditsDto,
+  StagedRowDto,
   CombinatorDto,
   CountReply,
   FilterDto,

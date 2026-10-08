@@ -17,9 +17,17 @@ import type { EditHistory, History } from './editHistory';
 import type { StagedSchema } from './structure/schemaChanges';
 import type { TableTargetRef, TableView } from './model';
 
+/** Staged and in-flight work across every table tab, for the quit guard. */
+export type ChangeSummary = {
+  pending: boolean;
+  uncertain: boolean;
+  staged: number;
+};
+
 /** State and IPC actions of every open table tab. */
 export type TableViews = {
   hasChanges: () => boolean;
+  summary: () => ChangeSummary;
   entryOf: (tabId: string) => TableEntry;
   setEdits: (
     tabId: string,
@@ -176,16 +184,24 @@ export function useTableViews(): TableViews {
   const send: Send = (tabId, action) => {
     dispatch({ tabId, action });
   };
+  const summary = (): ChangeSummary => {
+    const result = { pending: false, uncertain: false, staged: 0 };
+    for (const entry of Object.values(entries)) {
+      if (!entry) continue;
+      result.pending ||= entry.edits.pending || entry.schema.pending;
+      result.uncertain ||= Boolean(
+        entry.edits.uncertain || entry.schema.uncertain,
+      );
+      result.staged += entry.edits.current.length + entry.schema.current.length;
+    }
+    return result;
+  };
   return {
-    hasChanges: () =>
-      Object.values(entries).some(
-        (entry) =>
-          entry &&
-          (entry.edits.current.length > 0 ||
-            entry.edits.pending ||
-            entry.schema.current.length > 0 ||
-            entry.schema.pending),
-      ),
+    hasChanges: () => {
+      const { pending, staged } = summary();
+      return pending || staged > 0;
+    },
+    summary,
     entryOf: (tabId) => entries[tabId] ?? emptyEntry,
     setEdits: (tabId, change) => {
       send(tabId, { type: 'edits', change });

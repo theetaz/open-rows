@@ -1,13 +1,14 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main",
-  "description": "Main window: first-render and session-state events, window dragging, native ask alerts for destructive confirmations, metadata, connection profiles, sessions and catalog reads, query execution and history, table browsing and editing (files are picked and read natively), result tiles and opt-in IPC spike.",
+  "description": "Main window: first-render and session-state events, window dragging, native ask alerts for destructive confirmations, metadata, connection profiles, sessions and catalog reads, query execution and history, table browsing and editing (files are picked and read natively), the local journal of staged edits, closing the window after the quit guard, result tiles and opt-in IPC spike.",
   "windows": ["main"],
   "permissions": [
     "core:event:allow-emit-to",
     "core:event:allow-listen",
     "core:event:allow-unlisten",
     "core:window:allow-start-dragging",
+    "core:window:allow-destroy",
     "dialog:allow-ask",
     "allow-app-info",
     "allow-result-window",
@@ -41,7 +42,11 @@
     "allow-table-count",
     "allow-table-edit-info",
     "allow-table-edit-row",
+    "allow-table-edit-rows",
     "allow-table-edit",
+    "allow-table-edits-save",
+    "allow-table-edits-saved",
+    "allow-table-edits-clear",
     "allow-table-edit-file",
     "allow-table-detail",
     "allow-table-alter"

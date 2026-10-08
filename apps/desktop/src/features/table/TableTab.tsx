@@ -20,6 +20,8 @@ import type { FooterAdd, FooterStructure } from './TableFooter';
 import { useTableKeys } from './useTableKeys';
 import { useTableTab } from './useTableTab';
 import type { TableViews } from './useTableViews';
+import { RecoveryBanner } from './recovery/RecoveryBanner';
+import { useEditRecovery } from './recovery/useEditRecovery';
 import styles from './Table.module.css';
 
 type TableTabProps = {
@@ -54,6 +56,12 @@ export function TableTab(props: TableTabProps): React.JSX.Element {
     target: state.query.target,
     offset: view.offset,
   });
+  const recovery = useEditRecovery({
+    tabId: props.tabId,
+    target: state.query.target,
+    views: props.views,
+    editing,
+  });
   const showRow = useSelectedRow({
     table: table.name,
     offset: view.offset,
@@ -74,6 +82,7 @@ export function TableTab(props: TableTabProps): React.JSX.Element {
       aria-label={`${table.name} table`}
     >
       <Banner {...props} />
+      {view.mode === 'data' && <RecoveryBanner recovery={recovery} />}
       {view.mode === 'data' && view.filtersOpen && (
         <FilterBar
           view={view}

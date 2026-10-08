@@ -9,6 +9,7 @@ import type {
   PageReply,
   PageRequest,
   QueryEventDto,
+  SavedEditsDto,
   SqlPreviewDto,
   TableQueryDto,
   TableStructureDto,
@@ -61,6 +62,33 @@ export function tableEditRow(
   keys: Record<string, string>,
 ): Promise<Record<string, string | null>> {
   return unwrap(commands.tableEditRow(target, keys));
+}
+/** Exact original values of several rows, read on one connection in request order. */
+export function tableEditRows(
+  target: TableTarget,
+  keys: readonly Record<string, string>[],
+): Promise<Record<string, string | null>[]> {
+  return unwrap(commands.tableEditRows(target, [...keys]));
+}
+/**
+ * Journal a table's staged edits locally so a crash never loses them
+ * (NFR-REL-01); an empty change set clears the journal.
+ */
+export function saveTableEdits(
+  target: TableTarget,
+  edits: SavedEditsDto,
+): Promise<null> {
+  return unwrap(commands.tableEditsSave(target, edits));
+}
+/** The journaled edits of a table from an earlier run, if any. */
+export function savedTableEdits(
+  target: TableTarget,
+): Promise<SavedEditsDto | null> {
+  return unwrap(commands.tableEditsSaved(target));
+}
+/** Forget a table's journaled edits after a commit or an explicit discard. */
+export function clearTableEdits(target: TableTarget): Promise<null> {
+  return unwrap(commands.tableEditsClear(target));
 }
 /** Review bound SQL, then commit only the reviewed payload atomically. */
 export function tableEdit(

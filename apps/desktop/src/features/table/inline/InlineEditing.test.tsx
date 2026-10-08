@@ -75,6 +75,8 @@ function editing(overrides: Partial<RowEditing> = {}): RowEditing {
       key: ['id'],
       protected: ['id'],
       readOnly: false,
+      confirmWrites: false,
+      production: false,
       columns: [
         column('id', 'integer', { nullable: false, primaryKey: true }),
         column('name', 'text'),
@@ -91,6 +93,7 @@ function editing(overrides: Partial<RowEditing> = {}): RowEditing {
     clearInline: vi.fn(),
     draftFor: vi.fn(() => pending),
     stageCell: vi.fn(),
+    bulk: { set: vi.fn(), paste: vi.fn() },
     ...overrides,
   } as unknown as RowEditing;
 }
@@ -336,4 +339,32 @@ it('+ Row selects the staged insert after the page and edits its first editable 
     'name',
     textValue('Ada'),
   );
+});
+
+it('typing into a multi-cell selection stages the value in every selected cell, and ⌘V pastes into it', async () => {
+  const editor = editing(),
+    user = userEvent.setup();
+  const grid = await mount(editor);
+  const ranges = [{ r0: 0, r1: 0, c0: 1, c1: 4 }];
+  act(() => {
+    grid.onSelection({ row: 0, column: 1, ranges });
+  });
+  act(() => {
+    grid.onEdit?.({ row: 0, column: 1 }, 'z');
+  });
+  await user.keyboard('ed{Enter}');
+  expect(editor.bulk.set).toHaveBeenCalledExactlyOnceWith(
+    result,
+    ranges,
+    textValue('zed'),
+  );
+  expect(editor.stageCell).not.toHaveBeenCalled();
+  const host = vi.mocked(mountGrid).mock.calls[0]?.[0];
+  const paste = new Event('paste', { bubbles: true, cancelable: true });
+  Object.defineProperty(paste, 'clipboardData', {
+    value: { getData: () => '1\t2' },
+  });
+  host?.dispatchEvent(paste);
+  expect(paste.defaultPrevented).toBe(true);
+  expect(editor.bulk.paste).toHaveBeenCalledWith(result, ranges, '1\t2');
 });
