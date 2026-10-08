@@ -3,6 +3,7 @@
 use super::{TestResult, config};
 use openrows_driver_api::{ResultSink, Session, SinkFlow};
 use openrows_driver_postgres::{BoundEdit, PgSession};
+use openrows_sql::Dialect;
 use openrows_sql::edit::{CellValue, Changes, Edit, EditKind, EditTable, Values, edit_sql};
 use openrows_sql::select::TableRef;
 struct Discard;
@@ -33,7 +34,7 @@ fn table() -> EditTable {
     }
 }
 fn bound(edit: &Edit) -> TestResult<BoundEdit> {
-    let sql = edit_sql(&table(), edit)?;
+    let sql = edit_sql(Dialect::Postgres, &table(), edit)?;
     Ok(BoundEdit {
         sql: sql.sql,
         params: sql.params,
@@ -225,7 +226,7 @@ async fn default_null_empty_and_bytea_values_reach_the_server_exactly() -> TestR
     ]
     .iter()
     .map(|edit| {
-        let sql = edit_sql(&table, edit)?;
+        let sql = edit_sql(Dialect::Postgres, &table, edit)?;
         Ok(BoundEdit {
             sql: sql.sql,
             params: sql.params,

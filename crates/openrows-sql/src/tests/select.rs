@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Table-browsing SQL: quoting, every operator, NULL handling, pagination and
 //! injection attempts as values and as identifiers.
+use crate::Dialect;
 use crate::select::{
-    BoundSql, Combinator, Filter, FilterOp, SelectError, Sort, SortDirection, TableQuery, TableRef,
-    count_sql, page_sql, quote_ident,
+    BoundSql, Combinator, Filter, FilterOp, Page, SelectError, Sort, SortDirection, TableQuery,
+    TableRef, count_sql, page_sql,
 };
 
 fn known() -> Vec<String> {
@@ -39,7 +40,15 @@ fn with(filters: Vec<Filter>) -> TableQuery {
 }
 
 fn page(query: &TableQuery) -> Result<BoundSql, SelectError> {
-    page_sql(query, &known(), 300, 0)
+    page_sql(
+        Dialect::Postgres,
+        query,
+        &known(),
+        Page {
+            limit: 300,
+            offset: 0,
+        },
+    )
 }
 
 fn some(values: &[&str]) -> Vec<Option<String>> {
@@ -51,16 +60,36 @@ fn some(values: &[&str]) -> Vec<Option<String>> {
 
 #[test]
 fn identifiers_are_double_quoted_with_quotes_doubled() {
-    assert_eq!(quote_ident("users"), Ok("\"users\"".to_owned()));
-    assert_eq!(quote_ident("Mixed Case"), Ok("\"Mixed Case\"".to_owned()));
-    assert_eq!(quote_ident("a\"b"), Ok("\"a\"\"b\"".to_owned()));
-    assert_eq!(quote_ident(""), Ok("\"\"".to_owned()));
-    assert_eq!(quote_ident("x\0"), Err(SelectError::NulCharacter));
+    assert_eq!(
+        Dialect::Postgres.quote_ident("users"),
+        Ok("\"users\"".to_owned())
+    );
+    assert_eq!(
+        Dialect::Postgres.quote_ident("Mixed Case"),
+        Ok("\"Mixed Case\"".to_owned())
+    );
+    assert_eq!(
+        Dialect::Postgres.quote_ident("a\"b"),
+        Ok("\"a\"\"b\"".to_owned())
+    );
+    assert_eq!(Dialect::Postgres.quote_ident(""), Ok("\"\"".to_owned()));
+    assert_eq!(
+        Dialect::Postgres.quote_ident("x\0"),
+        Err(SelectError::NulCharacter)
+    );
 }
 
 #[test]
 fn plain_page_selects_everything_with_limit_and_offset() {
-    let bound = page_sql(&query(), &known(), 300, 600);
+    let bound = page_sql(
+        Dialect::Postgres,
+        &query(),
+        &known(),
+        Page {
+            limit: 300,
+            offset: 600,
+        },
+    );
     assert_eq!(
         bound,
         Ok(BoundSql {
@@ -234,7 +263,18 @@ fn unknown_columns_are_refused_everywhere() {
         direction: SortDirection::Ascending,
     });
     assert!(matches!(page(&sorted), Err(SelectError::UnknownColumn(_))));
-    assert_eq!(page_sql(&query(), &[], 300, 0), Err(SelectError::NoColumns));
+    assert_eq!(
+        page_sql(
+            Dialect::Postgres,
+            &query(),
+            &[],
+            Page {
+                limit: 300,
+                offset: 0
+            }
+        ),
+        Err(SelectError::NoColumns)
+    );
 }
 
 #[test]
@@ -244,7 +284,15 @@ fn sort_orders_by_a_quoted_column() -> Result<(), SelectError> {
         column: "Mixed Case".to_owned(),
         direction: SortDirection::Descending,
     });
-    let bound = page_sql(&sorted, &known(), 50, 100)?;
+    let bound = page_sql(
+        Dialect::Postgres,
+        &sorted,
+        &known(),
+        Page {
+            limit: 50,
+            offset: 100,
+        },
+    )?;
     assert!(
         bound
             .sql
@@ -266,7 +314,7 @@ fn counts_share_filters_but_ignore_sort_and_projection() -> Result<(), SelectErr
         column: "id".to_owned(),
         direction: SortDirection::Ascending,
     });
-    let bound = count_sql(&query, &known())?;
+    let bound = count_sql(Dialect::Postgres, &query, &known())?;
     assert_eq!(
         bound.sql,
         "SELECT count(*) FROM \"public\".\"users\" WHERE (\"id\" < $1)"
@@ -278,7 +326,7 @@ fn counts_share_filters_but_ignore_sort_and_projection() -> Result<(), SelectErr
 #[test]
 fn generated_pages_classify_as_reads() -> Result<(), SelectError> {
     let bound = page(&with(vec![filter("name", FilterOp::Contains, "x")]))?;
-    let class = crate::classify(&bound.sql, crate::Dialect::Postgres);
+    let class = crate::classify(&bound.sql, Dialect::Postgres);
     assert_eq!(class.kind, crate::StatementKind::Read);
     assert!(!class.dangerous);
     Ok(())

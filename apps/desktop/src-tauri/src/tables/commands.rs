@@ -7,7 +7,7 @@ use std::time::Instant;
 use openrows_core::script::{ScriptCanceller, ScriptOutcome, run_bound};
 use openrows_core::{CoreError, QueryEvent};
 use openrows_results::ResultStore;
-use openrows_sql::select::{BoundSql, count_sql, page_sql};
+use openrows_sql::select::{BoundSql, Page, count_sql, page_sql};
 use openrows_sql::{Dialect, StatementKind, classify};
 use openrows_types::{QueryId, SessionId};
 use tauri::ipc::Channel;
@@ -178,8 +178,16 @@ async fn generate(
     let known: Vec<String> = columns.into_iter().map(|column| column.name).collect();
     let model = query.to_query();
     let bound = match page {
-        Some((limit, offset)) => page_sql(&model, &known, limit, offset.into()),
-        None => count_sql(&model, &known),
+        Some((limit, offset)) => page_sql(
+            Dialect::Postgres,
+            &model,
+            &known,
+            Page {
+                limit,
+                offset: offset.into(),
+            },
+        ),
+        None => count_sql(Dialect::Postgres, &model, &known),
     }
     .map_err(|error| IpcError::invalid(error.to_string()))?;
     ensure_read(&bound)?;

@@ -10,7 +10,7 @@ use crate::lexer::{Lexer, Token, TokenKind};
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 #[non_exhaustive]
 pub enum PlaceholderKind {
-    /// `$1`, `$2`, … (`PostgreSQL` native).
+    /// `$1`, `$2`, … (`PostgreSQL` native) or `SQLite` `?1`.
     Positional,
     /// `:name`.
     Named,
@@ -28,23 +28,20 @@ pub struct Placeholder {
     pub range: Range<usize>,
 }
 
-/// Find `$n`, `:name` and `?` placeholders outside strings, quoted
-/// identifiers, dollar quotes and comments, in source order.
+/// Find `$n`, `:name` and `?` placeholders (and `SQLite` `?NNN` and
+/// `$name`) outside strings, quoted identifiers, dollar quotes and comments,
+/// in source order.
 ///
 /// Not placeholders: `::type` casts, `:=`, array slices `a[lo:hi]`, psql
 /// variables `:'v'`/`:"v"`, and the `jsonb` operators `?|`, `?&`.
 #[must_use]
 pub fn placeholders(source: &str, dialect: Dialect) -> Vec<Placeholder> {
-    match dialect {
-        Dialect::Postgres => {
-            let tokens: Vec<Token> = Lexer::new(source).collect();
-            Scanner {
-                source,
-                tokens: &tokens,
-            }
-            .scan()
-        }
+    let tokens: Vec<Token> = Lexer::new(source, dialect).collect();
+    Scanner {
+        source,
+        tokens: &tokens,
     }
+    .scan()
 }
 
 struct Scanner<'a> {
@@ -60,7 +57,9 @@ impl Scanner<'_> {
             match token.kind {
                 TokenKind::OpenBracket => bracket_depth += 1,
                 TokenKind::CloseBracket => bracket_depth = bracket_depth.saturating_sub(1),
-                TokenKind::Param => found.push(placeholder(PlaceholderKind::Positional, *token)),
+                TokenKind::Param => {
+                    found.push(placeholder(param_kind(token.text(self.source)), *token));
+                }
                 TokenKind::Punct => found.extend(self.punct(index, bracket_depth)),
                 _ => {}
             }
@@ -102,6 +101,18 @@ impl Scanner<'_> {
             .flatten()
             .filter_map(|neighbour| self.tokens.get(neighbour))
             .any(|neighbour| matches(neighbour.text(self.source)))
+    }
+}
+
+/// `$1` and `SQLite` `?1` are positional; `SQLite` `$name` is named.
+fn param_kind(text: &str) -> PlaceholderKind {
+    let numbered = text
+        .get(1..)
+        .is_some_and(|rest| rest.bytes().all(|byte| byte.is_ascii_digit()));
+    if numbered {
+        PlaceholderKind::Positional
+    } else {
+        PlaceholderKind::Named
     }
 }
 

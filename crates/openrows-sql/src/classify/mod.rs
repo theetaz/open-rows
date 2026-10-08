@@ -7,8 +7,11 @@
 //! write.
 
 mod heads;
+mod mysql;
+mod mysql_set;
 mod scan;
 mod session;
+mod sqlite;
 
 use crate::Dialect;
 use crate::lexer::{self, Token, TokenKind};
@@ -44,7 +47,8 @@ pub struct Classification {
     /// What the statement does.
     pub kind: StatementKind,
     /// Requires explicit confirmation: `DELETE`/`UPDATE` without `WHERE`
-    /// (including inside CTEs), `DROP`, `TRUNCATE` and `ALTER … DROP`.
+    /// (including inside CTEs), `DROP`, `TRUNCATE`, `ALTER … DROP` and, for
+    /// `MySQL`, `SHUTDOWN`.
     pub dangerous: bool,
 }
 
@@ -74,15 +78,13 @@ impl Classification {
 ///
 /// Leading comments, whitespace and parentheses are skipped. Empty input is
 /// `Unknown`. Text containing a `;` the splitter kept inside the statement
-/// (for example after an unbalanced `(`) is never classified as `Read`.
+/// (for example after an unbalanced `(`) is never classified as `Read`. The
+/// body of a `MySQL` `/*! … */` executable comment is classified as code,
+/// because the server runs it.
 #[must_use]
 pub fn classify(statement: &str, dialect: Dialect) -> Classification {
-    match dialect {
-        Dialect::Postgres => {
-            let tokens = lexer::significant(statement);
-            Sql::new(statement, &tokens).classify()
-        }
-    }
+    let tokens = lexer::significant(statement, dialect);
+    Sql::new(statement, &tokens, dialect).classify()
 }
 
 /// A slice of significant tokens with the source they index into.
@@ -90,19 +92,27 @@ pub fn classify(statement: &str, dialect: Dialect) -> Classification {
 struct Sql<'a> {
     source: &'a str,
     tokens: &'a [Token],
+    dialect: Dialect,
 }
 
 impl<'a> Sql<'a> {
-    fn new(source: &'a str, tokens: &'a [Token]) -> Self {
-        Self { source, tokens }
+    fn new(source: &'a str, tokens: &'a [Token], dialect: Dialect) -> Self {
+        Self {
+            source,
+            tokens,
+            dialect,
+        }
     }
 
     fn classify(self) -> Classification {
         let body = self.from(self.leading_parens());
-        let mut result = if body.is_word(0, "EXPLAIN") {
-            heads::explain(body)
-        } else {
-            body.inspect(heads::dispatch(body))
+        let mut result = match (self.dialect, body.is_word(0, "EXPLAIN")) {
+            (Dialect::Postgres, true) => heads::explain(body),
+            (Dialect::MySql, true) => mysql::explain(body),
+            (Dialect::Sqlite, true) => Classification::new(StatementKind::Read),
+            (Dialect::Postgres, false) => body.inspect(heads::dispatch(body)),
+            (Dialect::MySql, false) => body.inspect(mysql::dispatch(body)),
+            (Dialect::Sqlite, false) => body.inspect(sqlite::dispatch(body)),
         };
         if body.has_kind(TokenKind::Semicolon) {
             result.dangerous |= scan::has_unbounded_dml(body);
@@ -133,7 +143,11 @@ impl<'a> Sql<'a> {
     }
 
     fn from(self, index: usize) -> Self {
-        Self::new(self.source, self.tokens.get(index..).unwrap_or_default())
+        Self::new(
+            self.source,
+            self.tokens.get(index..).unwrap_or_default(),
+            self.dialect,
+        )
     }
 
     fn kind(self, index: usize) -> Option<TokenKind> {

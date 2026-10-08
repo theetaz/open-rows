@@ -8,6 +8,7 @@ use crate::connections::{pg, profiles::profile_id, route};
 use openrows_core::safety::{SafetyPlan, SafetyPolicy};
 use openrows_driver_api::Session;
 use openrows_driver_postgres::{BoundEdit, PgSession};
+use openrows_sql::Dialect;
 use openrows_sql::edit::{Edit, EditTable, edit_sql};
 use openrows_sql::select::TableRef;
 use openrows_store::profile::EnvKind;
@@ -126,7 +127,7 @@ async fn prepare_commit(
         .changes
         .iter()
         .map(|change| {
-            edit_sql(&table, &Edit::from(change))
+            edit_sql(Dialect::Postgres, &table, &Edit::from(change))
                 .map_err(|error| IpcError::invalid(error.to_string()))
         })
         .collect::<Result<Vec<_>, _>>()?;
@@ -277,7 +278,7 @@ mod tests {
         ]
         .into_iter()
         .map(|kind| {
-            edit_sql(&users(), &Edit::from(&staged(kind)))
+            edit_sql(Dialect::Postgres, &users(), &Edit::from(&staged(kind)))
                 .map(|bound| bound.sql)
                 .map_err(|error| IpcError::invalid(error.to_string()))
         })
@@ -314,9 +315,16 @@ mod tests {
     fn a_delete_without_a_key_is_refused_before_any_sql_exists() {
         let mut table = users();
         table.key.clear();
-        assert!(edit_sql(&table, &Edit::from(&staged(EditKindDto::Delete))).is_err());
+        assert!(
+            edit_sql(
+                Dialect::Postgres,
+                &table,
+                &Edit::from(&staged(EditKindDto::Delete))
+            )
+            .is_err()
+        );
         let mut change = staged(EditKindDto::Delete);
         change.original.remove("id");
-        assert!(edit_sql(&users(), &Edit::from(&change)).is_err());
+        assert!(edit_sql(Dialect::Postgres, &users(), &Edit::from(&change)).is_err());
     }
 }
