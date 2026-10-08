@@ -224,4 +224,5 @@ fn with_endpoint(error: DriverError, request: &ConnectRequest) -> DriverError {
 }
 
 #[cfg(test)]
+#[path = "target_tests.rs"]
 mod tests;
