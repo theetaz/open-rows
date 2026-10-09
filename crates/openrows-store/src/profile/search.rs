@@ -7,7 +7,7 @@ use super::ConnectionProfile;
 
 /// Case-insensitive match of every whitespace-separated term against the
 /// profile's name, group, engine, host or file, database, user or
-/// environment label.
+/// environment tag (its kind, e.g. `prod`, and a custom label).
 #[must_use]
 pub fn matches(profile: &ConnectionProfile, query: &str) -> bool {
     let file = profile
@@ -22,6 +22,7 @@ pub fn matches(profile: &ConnectionProfile, query: &str) -> bool {
         (!profile.driver.is_file()).then_some(profile.params.host.as_str()),
         profile.params.database.as_deref(),
         profile.params.user.as_deref(),
+        Some(profile.env_tag.kind.name()),
         profile.env_tag.label.as_deref(),
     ]
     .into_iter()

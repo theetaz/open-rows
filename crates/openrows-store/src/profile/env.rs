@@ -19,6 +19,20 @@ pub enum EnvKind {
     Custom,
 }
 
+impl EnvKind {
+    /// Lower-case name, as stored in profile files.
+    #[must_use]
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Local => "local",
+            Self::Dev => "dev",
+            Self::Staging => "staging",
+            Self::Prod => "prod",
+            Self::Custom => "custom",
+        }
+    }
+}
+
 /// Environment tag with the colour shown in window chrome, tabs and status bar.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EnvTag {

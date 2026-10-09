@@ -10,6 +10,8 @@ import { useProfiles } from './useProfiles';
 import { useSessions } from './useSessions';
 import { useDatabases } from './useDatabases';
 import { useSessionRestore } from './useSessionRestore';
+import { usePasswordPrompt } from './usePasswordPrompt';
+import type { PasswordRequest } from './usePasswordPrompt';
 import { railOrder } from './workspaceGroups';
 import type { Databases } from './useDatabases';
 import type { SessionStatus } from './sessions';
@@ -39,6 +41,8 @@ export type Connections = Databases & {
   remove: (profile: ProfileDto) => Promise<void>;
   /** Native alert first; the in-app alert sheet outside the native shell. */
   confirmRemove: (profile: ProfileDto) => void;
+  /** The open password sheet of an "ask every time" connect. */
+  passwordRequest: PasswordRequest | null;
 };
 
 /** The macOS alert text for deleting a connection. */
@@ -75,7 +79,8 @@ function askToRemove(
 /** Saved connections, the active one, its session and the open sheet. */
 export function useConnections(): Connections {
   const { profiles, problem, reload, loaded } = useProfiles();
-  const sessions = useSessions();
+  const prompt = usePasswordPrompt(profiles);
+  const sessions = useSessions(prompt.ask);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [sheet, setSheet] = useState<SheetState>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -146,5 +151,6 @@ export function useConnections(): Connections {
     confirmRemove: (profile) => {
       askToRemove(profile, remove, setSheet);
     },
+    passwordRequest: prompt.request,
   };
 }

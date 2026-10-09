@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Webview mirrors of store enums (the store crate stays free of specta).
-use openrows_store::profile::{CloudCa, EnvKind, TlsMode};
+use openrows_store::profile::{CloudCa, EnvKind, PasswordStorage, TlsMode};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
@@ -35,6 +35,35 @@ impl From<EnvKindDto> for EnvKind {
             EnvKindDto::Staging => Self::Staging,
             EnvKindDto::Prod => Self::Prod,
             EnvKindDto::Custom => Self::Custom,
+        }
+    }
+}
+
+/// Keychain or ask on every connect (docs/12 §3).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) enum PasswordStorageDto {
+    /// Saved in the macOS Keychain.
+    #[default]
+    Keychain,
+    /// Never saved: asked on connect and held only while connected.
+    Ask,
+}
+
+impl From<PasswordStorage> for PasswordStorageDto {
+    fn from(storage: PasswordStorage) -> Self {
+        match storage {
+            PasswordStorage::Keychain => Self::Keychain,
+            PasswordStorage::Ask => Self::Ask,
+        }
+    }
+}
+
+impl From<PasswordStorageDto> for PasswordStorage {
+    fn from(storage: PasswordStorageDto) -> Self {
+        match storage {
+            PasswordStorageDto::Keychain => Self::Keychain,
+            PasswordStorageDto::Ask => Self::Ask,
         }
     }
 }

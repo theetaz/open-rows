@@ -470,3 +470,15 @@
 .rail[data-compact='true'] .collapse {
   align-self: center;
 }
+.search {
+  margin: 0 var(--or-space-2) var(--or-space-6);
+}
+.noMatches {
+  margin: var(--or-space-6);
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+}
+.rail[data-compact='true'] .search,
+.rail[data-compact='true'] .noMatches {
+  display: none;
+}

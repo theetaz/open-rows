@@ -1,8 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
+import { SecureField, SelectField } from '@openrows/ui';
+import type { PasswordStorageDto } from '@openrows/ipc';
 import { SecretField } from './SecretField';
 import type { ConnectionForm } from './useConnectionForm';
+import styles from './ConnectionSheet.module.css';
 
-/** The database password: a [`SecretField`] over the draft's password fields. */
+const storageChoices: readonly { value: PasswordStorageDto; label: string }[] =
+  [
+    { value: 'keychain', label: 'In Keychain' },
+    { value: 'ask', label: 'Never: ask every time' },
+  ];
+
+/**
+ * The database password and where it lives (TablePlus): a [`SecretField`]
+ * saved in the Keychain, or asked for on every connect and never saved.
+ */
 export function PasswordField({
   form,
 }: {
@@ -10,19 +22,59 @@ export function PasswordField({
 }): React.JSX.Element {
   const { draft } = form;
   return (
-    <SecretField
-      label="Password"
-      noun="password"
-      secret={{
-        value: draft.password,
-        mode: draft.passwordMode,
-        stored: draft.hasStoredPassword,
-      }}
-      onChange={(secret) => {
-        if (secret.mode === 'clear')
-          form.update({ passwordMode: 'clear', password: '' });
-        else form.setPassword(secret.value);
-      }}
-    />
+    <>
+      {draft.passwordStorage === 'ask' ? (
+        <AskedPassword form={form} />
+      ) : (
+        <SecretField
+          label="Password"
+          noun="password"
+          secret={{
+            value: draft.password,
+            mode: draft.passwordMode,
+            stored: draft.hasStoredPassword,
+          }}
+          reveal={form.reveal('password')}
+          onChange={(secret) => {
+            if (secret.mode === 'clear')
+              form.update({ passwordMode: 'clear', password: '' });
+            else form.setPassword(secret.value);
+          }}
+        />
+      )}
+      <SelectField
+        className={styles.row}
+        label="Store"
+        aria-label="Password storage"
+        value={draft.passwordStorage}
+        options={storageChoices}
+        onValueChange={(passwordStorage) => {
+          form.update({ passwordStorage });
+        }}
+      />
+    </>
+  );
+}
+
+/** "Ask every time": a password typed here is only used by Test. */
+function AskedPassword({ form }: { form: ConnectionForm }): React.JSX.Element {
+  const { draft } = form;
+  return (
+    <div className={styles.stack}>
+      <SecureField
+        className={styles.row}
+        label="Password"
+        placeholder="Asked when connecting"
+        value={draft.password}
+        onChange={(event) => {
+          form.setPassword(event.target.value);
+        }}
+      />
+      <small className={styles.hint}>
+        {draft.hasStoredPassword
+          ? 'The saved password is removed from the Keychain on Save. You are asked for it each time you connect.'
+          : 'Never saved. You are asked for it each time you connect; a password typed here is only used by Test.'}
+      </small>
+    </div>
   );
 }

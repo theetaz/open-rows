@@ -31,5 +31,5 @@ pub use network::{CloudCa, Insecurity, SshAuthMethod, SshSettings, TlsSettings, 
 pub use params::{Driver, FileParams, ServerParams};
 pub use proxy::{ProxyKind, ProxySettings};
 pub use search::{groups, matches};
-pub use secrets::{SecretChanges, SecretSlot};
+pub use secrets::{PasswordStorage, SecretChanges, SecretSlot};
 pub use service::{PasswordChange, ProfileService};

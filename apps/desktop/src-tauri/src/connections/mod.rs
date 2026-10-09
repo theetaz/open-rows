@@ -14,7 +14,10 @@
 //! host-key and keyboard-interactive [`prompts`] in the webview;
 //! [`diagnostics`] runs Test connection step by step; [`attach`] attaches
 //! and detaches `SQLite` database files. Server sessions are [`resilient`]:
-//! they probe and reconnect, also after wake.
+//! they probe and reconnect, also after wake. "Ask every time" passwords live
+//! in [`asked`] while connected; [`reveal`] is the one command that returns a
+//! saved secret, on the user's explicit request.
+mod asked;
 pub(crate) mod attach;
 pub(crate) mod catalog;
 pub(crate) mod catalog_cache;
@@ -34,6 +37,7 @@ pub(crate) mod profiles;
 pub(crate) mod prompts;
 mod proxy_dto;
 mod resilient;
+pub(crate) mod reveal;
 pub(crate) mod route;
 mod route_dto;
 pub(crate) mod sessions;
@@ -74,6 +78,8 @@ pub(crate) struct Connections {
     pub(crate) opener: TunnelOpener,
     /// Open host-key and keyboard-interactive prompts.
     pub(crate) prompts: Arc<PromptBroker>,
+    /// Passwords typed on connect for "ask every time" profiles.
+    pub(crate) asked: asked::AskedPasswords,
 }
 
 /// Open the stores, manage [`Connections`] and forward session events.
@@ -117,6 +123,7 @@ pub(crate) fn install(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Er
             prompts: Arc::clone(&prompts),
         },
         prompts,
+        asked: asked::AskedPasswords::default(),
     });
     Ok(())
 }

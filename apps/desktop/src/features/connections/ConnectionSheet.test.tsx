@@ -158,7 +158,9 @@ it('tests an existing profile with its stored password and shows version or erro
     })
     .mockRejectedValueOnce(new Error('authentication failed: bad password'));
   const { user } = mount(existing);
-  expect(screen.getByPlaceholderText('Saved in Keychain')).toHaveValue('');
+  const saved = screen.getByLabelText('Password');
+  expect(saved).toHaveAttribute('type', 'password');
+  expect(saved).toHaveAttribute('title', 'Saved in Keychain');
   expect(screen.getByRole('textbox', { name: 'URL' })).toHaveValue(
     'postgres://app:••••@localhost:5432/orders',
   );

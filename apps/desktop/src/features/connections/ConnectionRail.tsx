@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { useState } from 'react';
 import { Icon, IconButton } from '@openrows/ui';
 import type { ProfileDto } from '@openrows/ipc';
 import { railOrder, railShortcut, workspaceGroups } from './workspaceGroups';
@@ -6,6 +7,8 @@ import { WorkspaceDisclosure } from './WorkspaceDisclosure';
 import { DatabaseTiles } from './DatabaseTiles';
 import { WorkspaceConnection } from './WorkspaceConnection';
 import { useWorkspaceCollapse } from './useWorkspaceCollapse';
+import { useConnectionSearch } from './useConnectionSearch';
+import { RailSearch } from './RailSearch';
 import type { ConnectionAction } from './connectionActions';
 import type { OpenedDatabase, SessionStatus } from './sessions';
 import styles from './Rail.module.css';
@@ -36,6 +39,12 @@ export function ConnectionRail(
   },
 ): React.JSX.Element {
   const [compact, toggle] = useWorkspaceCollapse('rail');
+  const [query, setQuery] = useState('');
+  // The compact rail has no search field, so it never hides connections.
+  const matches = useConnectionSearch(compact ? '' : query);
+  const visible = matches
+    ? props.profiles.filter((profile) => matches.has(profile.id))
+    : props.profiles;
   return (
     <nav className={styles.rail} aria-label="Workspaces" data-compact={compact}>
       <div className={styles.railTop} data-tauri-drag-region />
@@ -51,56 +60,97 @@ export function ConnectionRail(
           <Icon name="plus" />
         </IconButton>
       </div>
-      <WorkspaceGroups {...props} compact={compact} />
+      <RailSearch
+        query={query}
+        onQuery={setQuery}
+        onSubmit={() => {
+          const first = railOrder(visible)[0];
+          if (first) props.onSelect(first.id);
+        }}
+      />
+      {matches && visible.length === 0 ? (
+        <p className={styles.noMatches} role="status">
+          No matching connections
+        </p>
+      ) : (
+        <WorkspaceGroups
+          {...props}
+          visible={visible}
+          searching={matches !== null}
+          compact={compact}
+        />
+      )}
       <div className={styles.space} />
-      <footer className={styles.railFooter}>
-        <button type="button" className={styles.footerRow}>
-          <Icon name="code" />
-          <span className={styles.controlLabel}>API client</span>
-        </button>
-        {props.onSettings && (
-          <button
-            type="button"
-            className={styles.footerRow}
-            aria-label="Settings"
-            onClick={props.onSettings}
-          >
-            <Icon name="settings" />
-            <span className={styles.controlLabel}>Settings</span>
-          </button>
-        )}
-        <IconButton
-          aria-label={
-            compact ? 'Expand workspace sidebar' : 'Collapse workspace sidebar'
-          }
-          title={compact ? 'Expand sidebar' : 'Collapse sidebar'}
-          variant="ghost"
-          size="sm"
-          className={styles.collapse}
-          onClick={toggle}
-        >
-          <Icon name={compact ? 'chevronRight' : 'chevronLeft'} />
-        </IconButton>
-      </footer>
+      <RailFooter
+        compact={compact}
+        onToggle={toggle}
+        onSettings={props.onSettings}
+      />
     </nav>
   );
 }
 
+/** API client, Settings and the collapse toggle. */
+function RailFooter(props: {
+  compact: boolean;
+  onToggle: () => void;
+  onSettings?: (() => void) | undefined;
+}): React.JSX.Element {
+  return (
+    <footer className={styles.railFooter}>
+      <button type="button" className={styles.footerRow}>
+        <Icon name="code" />
+        <span className={styles.controlLabel}>API client</span>
+      </button>
+      {props.onSettings && (
+        <button
+          type="button"
+          className={styles.footerRow}
+          aria-label="Settings"
+          onClick={props.onSettings}
+        >
+          <Icon name="settings" />
+          <span className={styles.controlLabel}>Settings</span>
+        </button>
+      )}
+      <IconButton
+        aria-label={
+          props.compact
+            ? 'Expand workspace sidebar'
+            : 'Collapse workspace sidebar'
+        }
+        title={props.compact ? 'Expand sidebar' : 'Collapse sidebar'}
+        variant="ghost"
+        size="sm"
+        className={styles.collapse}
+        onClick={props.onToggle}
+      >
+        <Icon name={props.compact ? 'chevronRight' : 'chevronLeft'} />
+      </IconButton>
+    </footer>
+  );
+}
+
 type RailProps = Parameters<typeof ConnectionRail>[0];
+/** Groups of the visible (matching) connections; shortcuts follow the full list. */
 function WorkspaceGroups(
-  props: RailProps & { compact: boolean },
+  props: RailProps & {
+    visible: readonly ProfileDto[];
+    searching: boolean;
+    compact: boolean;
+  },
 ): React.JSX.Element {
   const order = railOrder(props.profiles).map((profile) => profile.id);
   return (
     <div className={styles.workspaces}>
-      {workspaceGroups(props.profiles).map((group) => (
+      {workspaceGroups(props.visible).map((group) => (
         <WorkspaceDisclosure
           key={group.id}
           id={group.id}
           label={group.label}
           environment={group.environment}
           count={group.profiles.length}
-          forceOpen={props.compact}
+          forceOpen={props.compact || props.searching}
         >
           {group.profiles.map((profile) => {
             const status = props.statusOf(profile.id);

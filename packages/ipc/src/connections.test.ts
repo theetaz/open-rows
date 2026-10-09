@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 import { expect, it, vi } from 'vitest';
 import { listObjects } from './catalog';
-import { CommandError, deleteProfile, listProfiles } from './connections';
+import {
+  CommandError,
+  deleteProfile,
+  listProfiles,
+  openConnection,
+  revealSecret,
+} from './connections';
 
 const mockInvoke = vi.hoisted(() => vi.fn());
 vi.mock('@tauri-apps/api/core', () => ({ invoke: mockInvoke }));
@@ -45,5 +51,28 @@ it('reads catalog objects with the profile, database, schema, kinds and freshnes
     profileId: 'p',
     database: 'orders',
     request: { schema: 'public', kinds: ['table'], fresh: false },
+  });
+});
+
+it('reveals one saved secret on demand and returns only its value', async () => {
+  mockInvoke.mockResolvedValue({ value: 'pw-synthetic' });
+  expect(await revealSecret('p', 'sshPassphrase')).toBe('pw-synthetic');
+  expect(mockInvoke).toHaveBeenCalledWith('profile_reveal_secret', {
+    id: 'p',
+    field: 'sshPassphrase',
+  });
+});
+
+it('sends an asked password only when one was typed', async () => {
+  mockInvoke.mockResolvedValue({ server: null, database: null, insecure: [] });
+  await openConnection('p');
+  expect(mockInvoke).toHaveBeenLastCalledWith('connection_open', {
+    profileId: 'p',
+    password: null,
+  });
+  await openConnection('p', 'pw-synthetic');
+  expect(mockInvoke).toHaveBeenLastCalledWith('connection_open', {
+    profileId: 'p',
+    password: 'pw-synthetic',
   });
 });

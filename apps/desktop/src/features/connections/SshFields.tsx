@@ -142,6 +142,7 @@ function SshCredentials({
           label="SSH password"
           noun="SSH password"
           secret={ssh.password}
+          reveal={form.reveal('sshPassword')}
           onChange={(password) => {
             updateSsh({ password });
           }}
@@ -164,6 +165,7 @@ function SshCredentials({
             label="Passphrase"
             noun="key passphrase"
             secret={ssh.passphrase}
+            reveal={form.reveal('sshPassphrase')}
             onChange={(passphrase) => {
               updateSsh({ passphrase });
             }}

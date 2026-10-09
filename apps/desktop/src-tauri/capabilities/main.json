@@ -23,6 +23,7 @@
     "allow-profile-duplicate",
     "allow-profile-delete",
     "allow-profile-parse-url",
+    "allow-profile-reveal-secret",
     "allow-connection-test",
     "allow-connection-pick-file",
     "allow-connection-attach-database",

@@ -10,6 +10,8 @@ import type {
   ProfileDto,
   ProfileInput,
   ProfileList,
+  RevealedSecret,
+  SecretFieldDto,
   SessionOpened,
   SessionStateChanged,
   SshPromptAnswer,
@@ -103,9 +105,31 @@ export function testConnection(
   return unwrap(commands.connectionTest(profileId, input));
 }
 
-/** Reach a saved connection's server; databases open with `openSession`. */
-export function openConnection(profileId: string): Promise<ConnectionOpened> {
-  return unwrap(commands.connectionOpen(profileId));
+/**
+ * Reach a saved connection's server; databases open with `openSession`.
+ * `password` is the one typed for an "ask every time" connection: the core
+ * holds it in memory until the connection closes and never saves it.
+ */
+export function openConnection(
+  profileId: string,
+  password?: string,
+): Promise<ConnectionOpened> {
+  return unwrap(commands.connectionOpen(profileId, password ?? null));
+}
+
+/**
+ * Read one saved password or passphrase from the Keychain because the user
+ * clicked Reveal. Keep the value in component state only, never in a DTO,
+ * a store or a log.
+ */
+export async function revealSecret(
+  profileId: string,
+  field: SecretFieldDto,
+): Promise<string> {
+  const revealed: RevealedSecret = await unwrap(
+    commands.profileRevealSecret(profileId, field),
+  );
+  return revealed.value;
 }
 
 /** Close every database session and metadata session of a connection. */

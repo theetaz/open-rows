@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 
 pub(crate) use super::engine_dto::{EngineDto, FileDto};
-pub(crate) use super::enums::{EnvKindDto, TlsModeDto};
+pub(crate) use super::enums::{EnvKindDto, PasswordStorageDto, TlsModeDto};
 use super::error::IpcError;
 use super::insecure::{InsecureReasonDto, profile_insecurity};
 use super::proxy_dto::{ProxyDto, ProxyInput, proxy_dto};
@@ -67,6 +67,8 @@ pub(crate) struct ProfileDto {
     ssh: Option<SshDto>,
     proxy: Option<ProxyDto>,
     has_password: bool,
+    /// Keychain, or asked on every connect (then `hasPassword` is false).
+    password_storage: PasswordStorageDto,
     safety: SafetyDto,
     /// Why the connection list flags this connection as insecure.
     insecure: Vec<InsecureReasonDto>,
@@ -96,6 +98,7 @@ impl From<&ConnectionProfile> for ProfileDto {
             ssh: ssh_dto(profile),
             proxy: proxy_dto(profile),
             has_password: profile.secrets.password.is_some(),
+            password_storage: profile.password_storage.into(),
             insecure: profile_insecurity(profile),
             safety: SafetyDto {
                 read_only: profile.safety.read_only,
@@ -178,6 +181,9 @@ pub(crate) struct ProfileInput {
     /// Absent in forms written before the history switch: history is recorded.
     #[serde(default = "record_history_on")]
     pub(crate) record_history: bool,
+    /// Absent in forms written before the choice: the keychain.
+    #[serde(default)]
+    pub(crate) password_storage: PasswordStorageDto,
     pub(crate) password: PasswordInput,
 }
 
@@ -244,6 +250,7 @@ impl ProfileInput {
         }
         profile.safety = self.safety.into();
         profile.record_history = self.record_history;
+        profile.password_storage = self.password_storage.into();
         Ok(())
     }
 

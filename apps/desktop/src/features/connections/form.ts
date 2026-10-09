@@ -23,6 +23,7 @@ import type {
   EnvKindDto,
   FileDto,
   PasswordInput,
+  PasswordStorageDto,
   ProfileDto,
   ProfileInput,
   TlsModeDto,
@@ -55,6 +56,8 @@ export type Draft = {
   password: string;
   passwordMode: PasswordMode;
   hasStoredPassword: boolean;
+  /** Keychain, or asked on every connect (never saved). */
+  passwordStorage: PasswordStorageDto;
   /** The name was derived from the URL, so later URL edits may replace it. */
   nameFromUrl: boolean;
   /** Over SSH (D-10). */
@@ -106,6 +109,7 @@ export function emptyDraft(engine: EngineDto = 'postgres'): Draft {
     password: '',
     passwordMode: 'keep',
     hasStoredPassword: false,
+    passwordStorage: 'keychain',
     nameFromUrl: false,
     ssh: emptySsh(),
     proxy: emptyProxy(),
@@ -138,6 +142,7 @@ export function draftFromProfile(profile: ProfileDto): Draft {
     confirmWrites: profile.safety.confirmWrites,
     recordHistory: profile.recordHistory,
     hasStoredPassword: profile.hasPassword,
+    passwordStorage: profile.passwordStorage,
     ssh: sshFromProfile(profile),
     proxy: proxyFromProfile(profile),
     tls: tlsFromProfile(profile),
@@ -295,6 +300,7 @@ export function toInput(draft: Draft): ProfileInput {
     proxy: file ? null : proxyInput(draft.proxy),
     safety: { readOnly: draft.readOnly, confirmWrites: draft.confirmWrites },
     recordHistory: draft.recordHistory,
+    passwordStorage: draft.passwordStorage,
     password: file ? { kind: 'clear' } : password(draft),
   };
 }

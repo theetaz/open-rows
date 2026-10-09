@@ -108,6 +108,7 @@ function ProxyServer({ form }: { form: ConnectionForm }): React.JSX.Element {
           label="Proxy password"
           noun="proxy password"
           secret={proxy.password}
+          reveal={form.reveal('proxyPassword')}
           onChange={(password) => {
             updateProxy({ password });
           }}

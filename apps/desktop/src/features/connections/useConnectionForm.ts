@@ -1,11 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
-import { createProfile, testConnection, updateProfile } from '@openrows/ipc';
+import {
+  createProfile,
+  revealSecret,
+  testConnection,
+  updateProfile,
+} from '@openrows/ipc';
 import type {
   EngineDto,
   EnvKindDto,
   ProfileDto,
+  SecretFieldDto,
   TestReport,
 } from '@openrows/ipc';
 import {
@@ -50,6 +56,8 @@ export type ConnectionForm = {
   setPassword: (value: string) => void;
   runTest: () => Promise<void>;
   save: () => Promise<void>;
+  /** Reads a saved secret for an explicit reveal; absent for a new connection. */
+  reveal: (field: SecretFieldDto) => (() => Promise<string>) | undefined;
 };
 
 /** Fields that appear in the connection URL. */
@@ -95,6 +103,8 @@ export function useConnectionForm(
     ...editors(setDraft, url),
     runTest: test.run,
     save: saving.run,
+    reveal: (field) =>
+      profile ? () => revealSecret(profile.id, field) : undefined,
   };
 }
 
