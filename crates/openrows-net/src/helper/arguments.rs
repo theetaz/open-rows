@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-//! Exact documented CLI vectors; no arbitrary commands or shell expansion.
+//! Exact CLI vectors; placeholders are substituted within individual arguments.
 use super::{CloudFlavor, HelperError, HelperHop};
 
 impl HelperHop {
@@ -8,11 +8,26 @@ impl HelperHop {
     /// # Errors
     /// Invalid route values or a zero local port.
     pub fn arguments(&self, local_port: u16) -> Result<Vec<String>, HelperError> {
+        self.arguments_for(local_port, "localhost", 5432)
+    }
+
+    /// Build literal arguments using the original database destination.
+    /// # Errors
+    /// Invalid route values or a zero local port.
+    pub fn arguments_for(
+        &self,
+        local_port: u16,
+        remote_host: &str,
+        remote_port: u16,
+    ) -> Result<Vec<String>, HelperError> {
         self.validate()?;
         if local_port == 0 {
             return Err(HelperError::Invalid("Local port must be nonzero".into()));
         }
         Ok(match self {
+            Self::Custom { args, .. } => {
+                super::custom::substitute(args, local_port, remote_host, remote_port)
+            }
             Self::Ssm { .. } => self.ssm_arguments(local_port),
             Self::Kubectl {
                 context,

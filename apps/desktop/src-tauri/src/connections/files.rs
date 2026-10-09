@@ -15,6 +15,8 @@ use super::error::{IpcError, IpcErrorKind};
 #[derive(Clone, Copy, Debug, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub(crate) enum PickFileKind {
+    /// A custom helper executable.
+    Program,
     /// SSH private key (opens in `~/.ssh`).
     SshKey,
     /// TLS CA certificate bundle.
@@ -32,6 +34,7 @@ pub(crate) enum PickFileKind {
 impl PickFileKind {
     fn title(self) -> &'static str {
         match self {
+            Self::Program => "Choose helper program",
             Self::SshKey => "Choose SSH private key",
             Self::CaCertificate => "Choose CA certificate",
             Self::ClientCertificate => "Choose client certificate",

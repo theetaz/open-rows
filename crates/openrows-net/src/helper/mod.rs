@@ -2,6 +2,7 @@
 //! Cloud and zero-trust helper hops with structured CLI arguments and shared lifetimes.
 mod arguments;
 mod config;
+mod custom;
 mod dialer;
 mod error;
 mod manager;

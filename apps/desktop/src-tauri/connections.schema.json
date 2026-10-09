@@ -307,10 +307,133 @@
         },
         "limits": {
           "$ref": "#/$defs/limits"
+        },
+        "helper": {
+          "$ref": "#/$defs/helper"
         }
       },
       "required": ["name", "driver", "envTag", "params", "tls", "safety"],
       "additionalProperties": false
+    },
+    "helper": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": ["ssm", "kubectl", "cloud", "cloudflared", "custom"]
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1
+        },
+        "context": {
+          "type": "string",
+          "minLength": 1
+        },
+        "namespace": {
+          "type": "string",
+          "minLength": 1
+        },
+        "resource": {
+          "type": "string",
+          "minLength": 1
+        },
+        "instance": {
+          "type": "string",
+          "minLength": 1
+        },
+        "hostname": {
+          "type": "string",
+          "minLength": 1
+        },
+        "program": {
+          "type": "string",
+          "minLength": 1
+        },
+        "remoteHost": {
+          "type": ["string", "null"]
+        },
+        "profile": {
+          "type": ["string", "null"]
+        },
+        "region": {
+          "type": ["string", "null"]
+        },
+        "kubeconfig": {
+          "type": ["string", "null"]
+        },
+        "credentialsFile": {
+          "type": ["string", "null"]
+        },
+        "remotePort": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "flavor": {
+          "enum": ["cloudsql", "alloydb"]
+        },
+        "iamAuth": {
+          "type": "boolean"
+        },
+        "privateIp": {
+          "type": "boolean"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "readyTimeoutSeconds": {
+          "type": ["integer", "null"],
+          "minimum": 1,
+          "maximum": 300
+        }
+      },
+      "required": ["kind"],
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "ssm"
+            }
+          },
+          "required": ["target", "remotePort"]
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "kubectl"
+            }
+          },
+          "required": ["context", "namespace", "resource", "remotePort"]
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "cloud"
+            }
+          },
+          "required": ["instance", "flavor", "iamAuth", "privateIp"]
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "cloudflared"
+            }
+          },
+          "required": ["hostname"]
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "custom"
+            }
+          },
+          "required": ["program", "args"]
+        }
+      ]
     }
   }
 }

@@ -237,6 +237,15 @@ Imports reject future versions with a typed error and report malformed JSON with
 
 Public sources: [libpq pgpass](https://www.postgresql.org/docs/current/libpq-pgpass.html), [libpq service files](https://www.postgresql.org/docs/current/libpq-pgservice.html), and [MySQL option files](https://dev.mysql.com/doc/refman/8.4/en/option-files.html). Defaults are `~/.pgpass` (or `PGPASSFILE`), `~/.pg_service.conf` (or `PGSERVICEFILE`, plus `PGSYSCONFDIR/pg_service.conf` when set), and `~/.my.cnf`. Any wildcard pgpass address field is skipped with a note because it cannot uniquely identify a connection. Service sections map the documented connection/TLS fields, application name and connect timeout. MySQL imports `[client]`, `[mysql]` and `[client<suffix>]`, including quoted values, escapes, sockets and TLS paths. Unknown keys/groups and `!include`/`!includedir` produce notes; includes are never followed. Missing files say “not found”. Passwords from public files stay in the core and reach the keychain only through an unchecked-by-default per-row checkbox. Proprietary/encrypted formats remain excluded (G01).
 
+### M2-24b helper exchange extension
+
+The v1 JSON Schema now includes `helper` for SSM, Kubernetes, Cloud SQL/AlloyDB,
+Cloudflare Access and Custom routes. Custom stores `program`, template `args`
+and optional `readyTimeoutSeconds`; placeholders remain unexpanded in exports.
+These are configuration, so they must not contain secrets. Local command trust
+is never exported. Import validates the helper, allocates a fresh profile id and
+requires a new hop-purpose approval before execution, including Replace imports.
+This additive v1 extension needs no profile-format migration.
 
 ## 10. Sidebar local state (M2-23)
 

@@ -35,3 +35,28 @@ it('requires structured fields and rejects option-like values', () => {
       .helper,
   ).toBeDefined();
 });
+
+it('validates custom templates and preserves literal shell characters', () => {
+  const helper = {
+    kind: 'custom' as const,
+    program: '/tools/hop',
+    args: ['a;b $(x) {local_port}', '{remote_host}:{remote_port}'],
+    readyTimeoutSeconds: null,
+  };
+  expect(helperError(helper, false)).toBeUndefined();
+  expect(helperError({ ...helper, program: 'relative' }, false)).toContain(
+    'absolute',
+  );
+  expect(helperError({ ...helper, args: ['no port'] }, false)).toContain(
+    'where to listen',
+  );
+  expect(
+    helperError({ ...helper, args: ['{unknown}{local_port}'] }, false),
+  ).toContain('Use only');
+  expect(helperError({ ...helper, readyTimeoutSeconds: 301 }, false)).toContain(
+    '1–300',
+  );
+  expect(
+    toInput(draftFromProfile(profile('custom', { helper }))).helper,
+  ).toEqual(helper);
+});

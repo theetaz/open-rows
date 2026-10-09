@@ -47,6 +47,34 @@ pub(crate) async fn acquire(
         .helper
         .as_ref()
         .ok_or_else(|| IpcError::invalid("No cloud route configured"))?;
+    hop.validate().map_err(|error| ipc_error(&error))?;
+    if let Some(command) = openrows_store::profile::hop_command(profile) {
+        use openrows_store::profile::CommandPurpose;
+        if !state
+            .command_trust
+            .is_trusted_for(profile.id, CommandPurpose::Hop, &command)?
+        {
+            super::credentials::confirm_purpose(&state.app, &command, CommandPurpose::Hop).await?;
+            state
+                .command_trust
+                .trust_for(profile.id, CommandPurpose::Hop, &command)?;
+        }
+        return openrows_store::profile::acquire_trusted_hop(
+            &state.helpers,
+            profile,
+            &state.command_trust,
+        )
+        .await
+        .map_err(IpcError::from);
+    }
+    acquire_structured(state, profile, hop).await
+}
+
+async fn acquire_structured(
+    state: &Connections,
+    profile: &ConnectionProfile,
+    hop: &openrows_net::helper::HelperHop,
+) -> Result<Arc<Helper>, IpcError> {
     let path = std::env::var_os("PATH");
     let mut dirs = openrows_dump::search_dirs(path.as_deref());
     if let Some(home) = std::env::var_os("HOME") {

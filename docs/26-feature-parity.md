@@ -47,7 +47,7 @@ These FR-NET-03 rows document OpenRows scope; no TablePlus adoption/parity claim
 | NET02 | kubectl port-forward | Implemented (M2-24): context, namespace, resource, remote port and kubeconfig; FR-NET-03 | M2 |
 | NET03 | Cloud SQL / AlloyDB auth proxy | Implemented (M2-24): instance, IAM auth, private/public IP, credential file path and encrypted-upstream TLS hint; FR-NET-03 | M2 |
 | NET04 | cloudflared Access TCP | Implemented (M2-24): hostname and loopback forwarding; tokens remain in the tool configuration; FR-NET-03 | M2 |
-| NET05 | Custom command hop | Known gap: follow-up after M2-21 command trust store; no arbitrary executable template in a connection profile; FR-NET-03 | M2 follow-up |
+| NET05 | Custom command hop | Implemented (M2-24b): absolute program, literal per-argument placeholders, local hop-purpose trust, timeout and shared lifecycle; untrusted exchange imports; FR-NET-03 | M2 |
 
 ### Workspace and database navigation
 
