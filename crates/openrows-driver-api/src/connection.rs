@@ -9,6 +9,7 @@ use openrows_sql::select::BoundSql;
 
 use crate::catalog::TableStructure;
 use crate::catalog::{ColumnSummary, DatabaseSummary, ObjectKind, ObjectSummary, SchemaSummary};
+use crate::diagram::{SchemaDiagram, read_per_table};
 use crate::schema::TableDetail;
 use crate::trace::TlsStatus;
 use crate::{BoxFuture, DriverError, Session};
@@ -132,6 +133,20 @@ pub trait Catalog: Send {
     /// Server or transport failures.
     fn schema_fingerprint(&mut self) -> BoxFuture<'_, Result<Option<String>, DriverError>> {
         Box::pin(async { Ok(None) })
+    }
+
+    /// Tables (at most `max_tables`, by name), their columns and the foreign
+    /// keys between them, for the ER diagram. Defaults to per-table reads;
+    /// server engines override it with bulk catalog queries.
+    ///
+    /// # Errors
+    /// Server or transport failures.
+    fn schema_diagram<'a>(
+        &'a mut self,
+        schema: &'a str,
+        max_tables: usize,
+    ) -> BoxFuture<'a, Result<SchemaDiagram, DriverError>> {
+        Box::pin(read_per_table(self, schema, max_tables))
     }
 }
 

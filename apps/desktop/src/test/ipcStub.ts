@@ -94,6 +94,49 @@ const sampleStructure: TableStructureDto = {
   rowEstimate: 1811,
 };
 
+/** The ER diagram: `orders` referencing `customers`; export is cancelled. */
+function diagramStub(): Record<string, unknown> {
+  const columns = sampleStructure.columns.map((column) => ({
+    name: column.name,
+    dataType: column.dataType,
+    nullable: column.nullable,
+    primaryKey: column.primaryKey,
+  }));
+  return {
+    schemaDiagram: vi.fn(() =>
+      Promise.resolve({
+        tables: [
+          { name: 'customers', columns },
+          {
+            name: 'orders',
+            columns: [
+              ...columns,
+              {
+                name: 'customer_id',
+                dataType: 'integer',
+                nullable: false,
+                primaryKey: false,
+              },
+            ],
+          },
+        ],
+        foreignKeys: [
+          {
+            name: 'orders_customer_id_fkey',
+            table: 'orders',
+            columns: ['customer_id'],
+            targetTable: 'customers',
+            targetColumns: ['id'],
+          },
+        ],
+        truncated: false,
+        limit: 400,
+      }),
+    ),
+    saveDiagram: vi.fn(() => Promise.resolve(null)),
+  };
+}
+
 /** Saved queries and `.sql` files: one saved query, no native panels. */
 function savedQueryStub(): Record<string, unknown> {
   return {
@@ -219,6 +262,7 @@ export function ipcStub(
       }),
     ),
     ...catalogStub(),
+    ...diagramStub(),
     closeSession: vi.fn(() => Promise.resolve()),
     parseConnectionUrl: vi.fn(),
     testConnection: vi.fn(),

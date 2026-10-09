@@ -123,6 +123,7 @@ const VIEW: &[Entry] = &[
     S,
     C("commands", "Command Palette…"),
     C("quick", "Quick Open…"),
+    C("show-er-diagram", "Show ER Diagram"),
     S,
     N(Native::Fullscreen),
 ];
@@ -345,6 +346,7 @@ mod tests {
             "toggle-columns",
             "export-results",
             "help-search",
+            "show-er-diagram",
         ] {
             assert!(ids.contains(&id), "missing {id}");
         }

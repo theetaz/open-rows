@@ -31,6 +31,8 @@ type Props = {
   onSavedQuery: (query: SavedQueryDto) => void;
   /** Sessions for exporting a table from its context menu. */
   sessionFor: SessionLookup;
+  /** Show the ER diagram of an object's schema, centred on it. */
+  onDiagram: (object: ObjectRef) => void;
 };
 const exact = (event: React.KeyboardEvent, key: string): boolean =>
   event.metaKey &&
@@ -109,6 +111,7 @@ export function WorkspaceSidebar(props: Props): React.JSX.Element {
         onClose={closeMenu}
         sessionFor={props.sessionFor}
         onOpen={props.onOpen}
+        onDiagram={props.onDiagram}
       />
     </div>
   );

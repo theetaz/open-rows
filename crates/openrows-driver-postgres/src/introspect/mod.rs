@@ -12,6 +12,7 @@ use openrows_driver_api::DriverError;
 use openrows_driver_api::catalog::{DatabaseSummary, ObjectKind, ObjectSummary, SchemaSummary};
 
 mod detail;
+mod diagram;
 mod edit;
 mod table;
 pub use edit::RowEditInfo;

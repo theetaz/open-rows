@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { lazy, Suspense } from 'react';
-import { SplitPanel } from '@openrows/ui';
+import { Icon, IconButton, SplitPanel } from '@openrows/ui';
 import type { useWorkspaceController } from './useWorkspaceController';
 import { inspectorRange, sidebarRange } from './layout';
 import {
@@ -38,12 +38,11 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
       >
         <WorkspaceSidebar
           header={<ConnectionHeader connections={connections} />}
-          schemaTools={
-            <AttachDatabaseTools connections={connections} catalog={catalog} />
-          }
+          schemaTools={<SchemaTools {...props} />}
           catalog={catalog}
           connections={connections}
           onOpen={controller.openObject}
+          onDiagram={controller.showDiagram}
           onOpenSql={(sql) => {
             controller.addQuery(sql);
           }}
@@ -90,6 +89,28 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
         </Suspense>
       </SplitPanel>
     </div>
+  );
+}
+
+/** Tools beside the schema picker: the ER diagram and engine extras. */
+function SchemaTools({ connections, controller }: Props): React.JSX.Element {
+  const { catalog } = controller;
+  return (
+    <>
+      <IconButton
+        aria-label="Show ER diagram"
+        title="Show ER Diagram"
+        size="sm"
+        variant="ghost"
+        disabled={!catalog.schema}
+        onClick={() => {
+          controller.showDiagram();
+        }}
+      >
+        <Icon name="diagram" />
+      </IconButton>
+      <AttachDatabaseTools connections={connections} catalog={catalog} />
+    </>
   );
 }
 

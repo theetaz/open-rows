@@ -66,6 +66,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "table_detail",
             "table_alter",
             "export_start",
+            "schema_diagram",
+            "diagram_save",
             "settings_read",
             "settings_write",
             "menu_sync",

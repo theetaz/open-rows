@@ -4,6 +4,7 @@
 //! on the connection's per-database metadata sessions (closed by
 //! `session_close` and `connection_close`) when missing or `fresh`.
 use openrows_driver_api::catalog::{ColumnSummary, ObjectKind, TableStructure};
+use openrows_driver_api::diagram::SchemaDiagram;
 use openrows_driver_api::schema::TableDetail;
 use openrows_driver_api::{BoxFuture, Catalog, DriverError, catalog};
 use openrows_schema::{DatabaseKey, Listing, NameIndex, SchemaCache, Scope, SearchQuery};
@@ -206,6 +207,20 @@ pub(crate) async fn read_detail(
 ) -> Result<TableDetail, IpcError> {
     read_catalog(state, (profile_id, database), move |catalog| {
         Box::pin(async move { catalog.table_detail(&schema, &name).await })
+    })
+    .await
+}
+
+/// Tables, columns and foreign keys of `schema` (at most `max_tables`) on
+/// `database`'s metadata session, for the ER diagram.
+pub(crate) async fn read_diagram(
+    state: &Connections,
+    (profile_id, database): (&str, &str),
+    schema: String,
+    max_tables: usize,
+) -> Result<SchemaDiagram, IpcError> {
+    read_catalog(state, (profile_id, database), move |catalog| {
+        Box::pin(async move { catalog.schema_diagram(&schema, max_tables).await })
     })
     .await
 }

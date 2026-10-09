@@ -75,7 +75,7 @@ fn is_sql(path: &Path) -> bool {
 }
 
 /// Show a panel attached to `window` and wait for the chosen path.
-async fn choose(
+pub(crate) async fn choose(
     panel: FileDialogBuilder<tauri::Wry>,
     save: bool,
 ) -> Result<Option<PathBuf>, IpcError> {
@@ -100,19 +100,23 @@ async fn choose(
         .transpose()
 }
 
-/// Replace the file's contents atomically (temporary sibling, then rename),
-/// following a symlink to the real file.
 fn write_sql(path: &Path, sql: &str) -> Result<(), IpcError> {
     if !path.is_absolute() || !is_sql(path) {
         return Err(IpcError::invalid(
             "Only absolute .sql file paths can be saved",
         ));
     }
+    write_atomic(path, sql.as_bytes())
+}
+
+/// Replace the file's contents atomically (temporary sibling, then rename),
+/// following a symlink to the real file.
+pub(crate) fn write_atomic(path: &Path, contents: &[u8]) -> Result<(), IpcError> {
     let target = fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
     let mut temporary = target.clone().into_os_string();
     temporary.push(".openrows-save");
     let temporary = PathBuf::from(temporary);
-    fs::write(&temporary, sql).map_err(|error| io(&temporary, &error))?;
+    fs::write(&temporary, contents).map_err(|error| io(&temporary, &error))?;
     fs::rename(&temporary, &target).map_err(|error| {
         let _ = fs::remove_file(&temporary);
         io(&target, &error)
@@ -132,6 +136,12 @@ fn read_sql(path: &Path) -> Result<String, IpcError> {
 
 /// A file name for the save panel from a tab title, e.g. `SQL Query 1.sql`.
 fn suggested_name(title: &str) -> String {
+    let stem = file_stem(title.trim().strip_suffix(".sql").unwrap_or(title), "query");
+    format!("{stem}.sql")
+}
+
+/// `title` without path separators for a save panel, or `fallback` when blank.
+pub(crate) fn file_stem(title: &str, fallback: &str) -> String {
     let clean: String = title
         .trim()
         .chars()
@@ -143,8 +153,11 @@ fn suggested_name(title: &str) -> String {
             }
         })
         .collect();
-    let stem = clean.strip_suffix(".sql").unwrap_or(&clean);
-    format!("{}.sql", if stem.is_empty() { "query" } else { stem })
+    if clean.is_empty() {
+        fallback.to_owned()
+    } else {
+        clean
+    }
 }
 
 /// Ask where to save `sql` and write it; `null` when the panel is cancelled.

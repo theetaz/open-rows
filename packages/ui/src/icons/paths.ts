@@ -36,6 +36,9 @@ export const iconPaths = {
   list: 'M9 7h11M9 12h11M9 17h11M4.5 7h.01M4.5 12h.01M4.5 17h.01',
   column: 'M4 5h16v14H4ZM9.5 5v14M14.5 5v14M9.5 9.5h5M9.5 14h5',
   schema: 'M3.5 6.5h6l2 2h9v10h-17Z',
+  diagram: 'M3 4h7v6H3ZM14 14h7v6h-7ZM6.5 10v7h7.5',
+  minus: 'M5 12h14',
+  fit: 'M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5',
 } as const;
 
 /** Names of the original line icons. */

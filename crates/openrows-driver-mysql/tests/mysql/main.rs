@@ -2,6 +2,7 @@
 //! Integration tests against a real `MySQL` or `MariaDB` server; run with
 //! `just test-mysql` (ignored in the default run).
 mod catalog;
+mod diagram;
 mod edits;
 mod session;
 mod structure;

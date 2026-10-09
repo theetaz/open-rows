@@ -209,6 +209,13 @@ export const commands = {
 	 *  cancels; the partial file is deleted.
 	 */
 	exportStart: (request: ExportRequest, onEvent: Channel<ExportEventDto>) => typedError<ExportReply, IpcError>(__TAURI_INVOKE("export_start", { request, onEvent })),
+	/**  Tables, columns and foreign keys of a schema, read on the metadata session. */
+	schemaDiagram: (target: DiagramTarget) => typedError<SchemaDiagramDto, IpcError>(__TAURI_INVOKE("schema_diagram", { target })),
+	/**
+	 *  Ask where to save an exported diagram and write it; returns the written
+	 *  path, or `null` when the panel is cancelled.
+	 */
+	diagramSave: (name: string, file: DiagramFileDto) => typedError<string | null, IpcError>(__TAURI_INVOKE("diagram_save", { name, file })),
 	/**  The text of `settings.json`, or `null` before the first save. */
 	settingsRead: () => typedError<string | null, IpcError>(__TAURI_INVOKE("settings_read")),
 	/**  Replace `settings.json` with `text` (a JSON object with `"openrows": 1`). */
@@ -438,6 +445,39 @@ export type DatabaseDto = {
 
 /**  A column default: none, a quoted text literal or a raw SQL expression. */
 export type DefaultDto = { kind: "none" } | { kind: "literal"; value: string } | { kind: "expression"; sql: string };
+
+/**  One column of a diagram table. */
+export type DiagramColumnDto = {
+	name: string,
+	dataType: string,
+	nullable: boolean,
+	primaryKey: boolean,
+};
+
+/**  An exported diagram: SVG text or PNG bytes. */
+export type DiagramFileDto = { format: "svg"; text: string } | { format: "png"; bytes: number[] };
+
+/**  A foreign key between two tables of the diagram. */
+export type DiagramForeignKeyDto = {
+	name: string,
+	table: string,
+	columns: string[],
+	targetTable: string,
+	targetColumns: string[],
+};
+
+/**  One table with its columns in ordinal order. */
+export type DiagramTableDto = {
+	name: string,
+	columns: DiagramColumnDto[],
+};
+
+/**  The schema a diagram is read for. */
+export type DiagramTarget = {
+	profileId: string,
+	database: string,
+	schema: string,
+};
 
 export type EditInfoDto = {
 	key: string[],
@@ -1103,6 +1143,17 @@ export type SavedQueryDto = {
 
 /**  One staged structure change; columns are named by their current name. */
 export type SchemaChangeDto = { kind: "renameTable"; name: string } | { kind: "tableComment"; comment: string | null } | { kind: "renameColumn"; column: string; name: string } | { kind: "columnType"; column: string; dataType: string } | { kind: "columnNullable"; column: string; nullable: boolean } | { kind: "columnDefault"; column: string; default: DefaultDto } | { kind: "columnComment"; column: string; comment: string | null } | { kind: "addColumn"; name: string; dataType: string; nullable: boolean; default: DefaultDto; comment: string | null } | { kind: "dropColumn"; column: string } | { kind: "createIndex"; name: string | null; columns: string[]; unique: boolean; method: IndexMethodDto } | { kind: "dropIndex"; name: string };
+
+/**
+ *  Tables and foreign keys of a schema; `truncated` when it has more than
+ *  `limit` tables and only the first `limit` (by name) are shown.
+ */
+export type SchemaDiagramDto = {
+	tables: DiagramTableDto[],
+	foreignKeys: DiagramForeignKeyDto[],
+	truncated: boolean,
+	limit: number,
+};
 
 /**  A schema of the browsed database. */
 export type SchemaDto = {

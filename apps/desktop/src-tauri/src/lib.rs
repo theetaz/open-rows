@@ -2,6 +2,7 @@
 //! `OpenRows` native shell and its generated IPC contract.
 mod commands;
 mod connections;
+mod diagram;
 mod editor_report;
 mod exports;
 mod grid_report;
@@ -88,6 +89,8 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
         tables::schema_commands::table_detail,
         tables::schema_commands::table_alter,
         exports::commands::export_start,
+        diagram::commands::schema_diagram,
+        diagram::commands::diagram_save,
         settings::settings_read,
         settings::settings_write,
         menu::menu_sync,
