@@ -3,6 +3,7 @@
 mod commands;
 mod connections;
 mod editor_report;
+mod exports;
 mod grid_report;
 #[cfg(target_os = "macos")]
 mod material;
@@ -69,7 +70,8 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
             tables::recovery_commands::table_edits_clear,
             tables::file_value::table_edit_file,
             tables::schema_commands::table_detail,
-            tables::schema_commands::table_alter
+            tables::schema_commands::table_alter,
+            exports::commands::export_start
         ])
         .events(tauri_specta::collect_events![
             sessions::SessionStateChanged,

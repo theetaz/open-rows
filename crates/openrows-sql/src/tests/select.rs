@@ -4,7 +4,7 @@
 use crate::Dialect;
 use crate::select::{
     BoundSql, Combinator, Filter, FilterOp, Page, SelectError, Sort, SortDirection, TableQuery,
-    TableRef, count_sql, page_sql,
+    TableRef, all_rows_sql, count_sql, page_sql,
 };
 
 fn known() -> Vec<String> {
@@ -372,5 +372,27 @@ fn expanded_operators_keep_patterns_and_lists_in_parameters() -> Result<(), Sele
         assert!(bound.sql.contains(operator));
         assert!(bound.params.is_empty());
     }
+    Ok(())
+}
+
+#[test]
+fn whole_table_exports_select_every_row_unpaged() -> Result<(), SelectError> {
+    let table = TableRef {
+        schema: "sh\"op".to_owned(),
+        name: "or`ders".to_owned(),
+    };
+    let names = known();
+    assert_eq!(
+        all_rows_sql(Dialect::Postgres, &table, &names)?.sql,
+        "SELECT * FROM \"sh\"\"op\".\"or`ders\""
+    );
+    assert_eq!(
+        all_rows_sql(Dialect::MySql, &table, &names)?.sql,
+        "SELECT * FROM `sh\"op`.`or``ders`"
+    );
+    assert_eq!(
+        all_rows_sql(Dialect::Sqlite, &table, &[]),
+        Err(SelectError::NoColumns)
+    );
     Ok(())
 }

@@ -3,7 +3,12 @@ import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
-import { cancelQuery, executeQuery, releaseResults } from '@openrows/ipc';
+import {
+  cancelQuery,
+  executeQuery,
+  releaseResults,
+  startExport,
+} from '@openrows/ipc';
 import type { ExecuteReply, QueryEventDto, StatementDto } from '@openrows/ipc';
 import type { Connections } from '../connections';
 import { profile } from '../../test/ipcStub';
@@ -350,4 +355,23 @@ it('frees results when a tab closes or re-runs', async () => {
   expect(
     screen.getByRole('button', { name: 'New query tab (⌘T)' }),
   ).toBeVisible();
+});
+
+it('exports the shown result from the result store', async () => {
+  const user = await openTab('SELECT 1');
+  await user.click(
+    screen.getByRole('button', { name: 'Run current statement' }),
+  );
+  expect(screen.queryByRole('button', { name: 'Export…' })).toBeNull();
+  send(...result(0, 'r1', 3), finished('completed'));
+  await user.click(screen.getByRole('button', { name: 'Export…' }));
+  const sheet = await screen.findByRole('dialog', { name: 'Export Result' });
+  await user.click(within(sheet).getByRole('button', { name: 'Export…' }));
+  expect(startExport).toHaveBeenCalledWith(
+    expect.objectContaining({
+      source: { kind: 'result', sessionId: 'session-1', resultId: 'r1' },
+      fileName: 'result',
+    }),
+    expect.any(Function),
+  );
 });

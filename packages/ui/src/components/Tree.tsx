@@ -55,6 +55,8 @@ type TreeNodeProps = {
   name?: ReactNode;
   /** Child rows, rendered in a group while expanded. */
   children?: ReactNode;
+  /** Secondary click on this row (not on a nested row), e.g. a context menu. */
+  onContextMenu?: ((event: MouseEvent<HTMLDivElement>) => void) | undefined;
 };
 
 const stop = (event: MouseEvent): void => {
@@ -120,6 +122,9 @@ export function TreeNode(props: TreeNodeProps): React.JSX.Element {
       }}
       onDoubleClick={(event) => {
         if (own(event)) props.onOpen?.();
+      }}
+      onContextMenu={(event) => {
+        if (own(event)) props.onContextMenu?.(event);
       }}
     >
       <div className={styles.row} data-level={props.level} title={props.title}>

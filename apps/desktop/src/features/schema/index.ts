@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 export { QuickOpen } from './CatalogPalettes';
 export { ObjectTree } from './ObjectTree';
+export type { MenuPoint } from './ObjectRow';
 export { OpenDatabasePanel } from './OpenDatabasePanel';
 export { SchemaPicker } from './SchemaPicker';
 export { substringIndices } from './catalog';

@@ -213,6 +213,25 @@ pub fn count_sql(
     select(dialect, query, known, "count(*)")
 }
 
+/// `SELECT * FROM table`: every row of a relation, unpaged (whole-table export).
+///
+/// # Errors
+/// As [`page_sql`]; `known` must list the table's columns (an existing table).
+pub fn all_rows_sql(
+    dialect: Dialect,
+    table: &TableRef,
+    known: &[String],
+) -> Result<BoundSql, SelectError> {
+    let query = TableQuery {
+        table: table.clone(),
+        columns: Vec::new(),
+        filters: Vec::new(),
+        combinator: Combinator::And,
+        sort: None,
+    };
+    select(dialect, &query, known, "*")
+}
+
 fn projection(
     dialect: Dialect,
     query: &TableQuery,

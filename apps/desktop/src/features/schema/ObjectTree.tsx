@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Button } from '@openrows/ui';
 import { objectGroups } from './catalog';
 import type { ObjectRef } from './catalog';
+import type { MenuPoint } from './ObjectRow';
 import { matching, ObjectSection } from './ObjectSection';
 import { moveAcrossSections } from './sectionKeys';
 import type { Catalog } from './useCatalog';
@@ -17,6 +18,8 @@ export function ObjectTree(props: {
   catalog: Catalog;
   search: string;
   onOpen: (object: ObjectRef) => void;
+  /** Context menu of a relation row (tables, views, materialized views). */
+  onMenu?: ((object: ObjectRef, point: MenuPoint) => void) | undefined;
 }): React.JSX.Element {
   const { catalog, search } = props;
   const [selected, setSelected] = useState<string | null>(null);
@@ -56,6 +59,7 @@ export function ObjectTree(props: {
           selected={selected}
           onSelect={setSelected}
           onOpen={props.onOpen}
+          onMenu={props.onMenu}
         />
       ))}
     </div>

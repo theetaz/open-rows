@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 use tokio::sync::mpsc::UnboundedSender;
 
 /// Minimum spacing of `Progress` events per query (≤ 10 Hz, docs/06 §4).
-const PROGRESS_INTERVAL: Duration = Duration::from_millis(100);
+pub(crate) const PROGRESS_INTERVAL: Duration = Duration::from_millis(100);
 
 /// Where result batches go; the production result store implements this (D-07).
 ///

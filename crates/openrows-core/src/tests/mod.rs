@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Session actor tests against the scripted [`fake::Fake`] driver.
 mod cancel;
+mod export;
 mod fake;
 mod isolation;
 mod lifecycle;

@@ -198,6 +198,17 @@ impl ResultStore {
             .map(|result| (result.rows, result.truncated))
     }
 
+    /// The schema and batches stored so far (shared, not copied), e.g. for
+    /// export; `None` when the id is unknown. See [`ResultStore::rows`] for
+    /// whether a limit cut the result short.
+    #[must_use]
+    pub fn batches(&self, id: &str) -> Option<(SchemaRef, Vec<RecordBatch>)> {
+        self.read()
+            .results
+            .get(id)
+            .map(|result| (result.schema.clone(), result.batches.clone()))
+    }
+
     /// The first row's first value as an integer, e.g. a `count(*)`; `None`
     /// when the result is unknown, empty, NULL there or not a 64-bit integer.
     #[must_use]

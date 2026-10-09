@@ -23,3 +23,5 @@ pub(crate) mod schema_commands;
 mod schema_dto;
 mod schema_map;
 pub(crate) mod snapshot_commands;
+
+pub(crate) use dto::TableTarget;

@@ -3353,6 +3353,7 @@ dependencies = [
  "openrows-driver-mysql",
  "openrows-driver-postgres",
  "openrows-driver-sqlite",
+ "openrows-export",
  "openrows-net",
  "openrows-results",
  "openrows-secrets",
@@ -3382,10 +3383,15 @@ dependencies = [
  "arrow-ipc",
  "arrow-schema",
  "openrows-driver-api",
+ "openrows-driver-mysql",
  "openrows-driver-postgres",
+ "openrows-driver-sqlite",
+ "openrows-export",
+ "openrows-net",
  "openrows-results",
  "openrows-sql",
  "openrows-types",
+ "tempfile",
  "thiserror 2.0.21",
  "tokio",
  "tokio-util",
@@ -3445,6 +3451,18 @@ dependencies = [
  "rusqlite",
  "tempfile",
  "tokio",
+]
+
+[[package]]
+name = "openrows-export"
+version = "0.1.0"
+dependencies = [
+ "arrow-array",
+ "arrow-schema",
+ "openrows-driver-api",
+ "openrows-sql",
+ "tempfile",
+ "thiserror 2.0.21",
 ]
 
 [[package]]

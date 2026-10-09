@@ -74,7 +74,7 @@ impl ScriptCanceller {
         }
     }
 
-    fn is_cancelled(&self) -> bool {
+    pub(crate) fn is_cancelled(&self) -> bool {
         self.0.cancelled.load(Ordering::SeqCst)
     }
 
@@ -165,7 +165,7 @@ pub async fn run_bound(
 }
 
 /// Track a submitted statement for cancellation and forward its events.
-async fn follow(
+pub(crate) async fn follow(
     submitted: Result<crate::QueryHandle, CoreError>,
     cancel: &ScriptCanceller,
     send: &mut impl FnMut(QueryEvent),

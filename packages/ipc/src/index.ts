@@ -89,6 +89,16 @@ export {
   savedTableEdits,
   clearTableEdits,
 } from './tables';
+/** Streamed export of results and tables to CSV, JSON and SQL files (M1-25). */
+export { startExport } from './exports';
+export type {
+  CsvDelimiterDto,
+  ExportEventDto,
+  ExportFormatDto,
+  ExportReply,
+  ExportRequest,
+  ExportSourceDto,
+} from './generated/bindings';
 /** Native window closing, guarded by the webview (staged edits, running commits). */
 export { onWindowClose, closeWindow } from './window';
 export type {

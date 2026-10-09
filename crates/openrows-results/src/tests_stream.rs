@@ -60,6 +60,11 @@ fn appended_batches_are_readable_while_streaming() -> TestResult {
     };
     assert_eq!(values(store.window("r", window)?)?, vec![2, 3, 4]);
     assert_eq!(store.rows("r"), Some((7, false)));
+    let (stored_schema, batches) = store.batches("r").ok_or("missing result")?;
+    assert_eq!(stored_schema, schema());
+    let rows: Vec<usize> = batches.iter().map(RecordBatch::num_rows).collect();
+    assert_eq!(rows, [3, 4]);
+    assert!(store.batches("unknown").is_none());
     Ok(())
 }
 

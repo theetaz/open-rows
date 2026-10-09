@@ -5,7 +5,7 @@ import type { ProfileDto } from '@openrows/ipc';
 import type { CompletionCatalog, FormatKind } from '@openrows/editor';
 import { QueryEditor } from './QueryEditor';
 import { EditorBar } from './EditorBar';
-import { ResultPane } from './ResultPane';
+import { ResultArea } from './ResultArea';
 import { ConfirmRun } from './ConfirmRun';
 import { ParamsSheet } from './ParamsSheet';
 import { NameSheet } from './NameSheet';
@@ -178,7 +178,7 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
         }}
         onFormat={format}
       />
-      <TabResults run={run} settings={settings} onCell={props.onCell} />
+      <TabResults {...props} run={run} settings={settings} />
       <TabSheets
         {...props}
         naming={naming}
@@ -193,17 +193,19 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
 }
 
 /** Results of the latest run and its one-line status. */
-function TabResults(props: {
-  run: RunState;
-  settings: EditorSettings;
-  onCell: (cell: SelectedCell) => void;
-}): React.JSX.Element {
+function TabResults(
+  props: Pick<QueryTabProps, 'sessionId' | 'onCell'> & {
+    run: RunState;
+    settings: EditorSettings;
+  },
+): React.JSX.Element {
   return (
     <>
-      <ResultPane
+      <ResultArea
         run={props.run}
         view={props.settings.resultView}
         runDefault={props.settings.runDefault}
+        sessionId={props.sessionId}
         onCell={props.onCell}
       />
       <footer className={styles.status} role="status" aria-label="Query status">
