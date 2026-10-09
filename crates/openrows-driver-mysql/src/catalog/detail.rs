@@ -55,6 +55,7 @@ pub(crate) async fn table_detail(
     let indexes = session.index_rows(schema, table).await?;
     let mut constraints = key_constraints(&indexes);
     constraints.extend(foreign_keys(session, schema, table).await?);
+    constraints.extend(super::routine::checks(session, schema, table).await?);
     Ok(TableDetail {
         columns: columns.iter().map(column_detail).collect(),
         constraints,
@@ -88,6 +89,7 @@ async fn show_create(
 
 fn column_detail(row: &ColumnRow) -> ColumnDetail {
     let generated = row.generated();
+    let numbered = row.extra.to_ascii_lowercase().contains("auto_increment");
     ColumnDetail {
         name: row.name.clone(),
         data_type: row.column_type.clone(),
@@ -97,10 +99,10 @@ fn column_detail(row: &ColumnRow) -> ColumnDetail {
         } else {
             row.default.clone()
         },
-        generated: if generated {
-            Generated::Stored
-        } else {
-            Generated::No
+        generated: match (generated, numbered) {
+            (true, _) => Generated::Stored,
+            (false, true) => Generated::AutoIncrement,
+            (false, false) => Generated::No,
         },
         comment: row.comment.clone(),
     }

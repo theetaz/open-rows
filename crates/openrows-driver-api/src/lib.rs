@@ -24,6 +24,7 @@ pub mod driver;
 mod error;
 pub mod file;
 pub mod metadata;
+pub mod objects;
 pub mod schema;
 mod session;
 mod sink;

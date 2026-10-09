@@ -3,8 +3,9 @@
 //! name index, served by the schema cache ([`super::catalog_cache`]) and read
 //! on the connection's per-database metadata sessions (closed by
 //! `session_close` and `connection_close`) when missing or `fresh`.
-use openrows_driver_api::catalog::{ColumnSummary, ObjectKind, TableStructure};
+use openrows_driver_api::catalog::{ColumnSummary, ObjectKind, ObjectSummary, TableStructure};
 use openrows_driver_api::diagram::SchemaDiagram;
+use openrows_driver_api::objects::RoutineKind;
 use openrows_driver_api::schema::TableDetail;
 use openrows_driver_api::{BoxFuture, Catalog, DriverError, catalog};
 use openrows_schema::{DatabaseKey, Listing, NameIndex, SchemaCache, Scope, SearchQuery};
@@ -221,6 +222,37 @@ pub(crate) async fn read_diagram(
 ) -> Result<SchemaDiagram, IpcError> {
     read_catalog(state, (profile_id, database), move |catalog| {
         Box::pin(async move { catalog.schema_diagram(&schema, max_tables).await })
+    })
+    .await
+}
+
+/// Objects of `kinds` in `schema` on `database`'s metadata session, read
+/// afresh (lifecycle changes check what they drop).
+pub(crate) async fn read_objects(
+    state: &Connections,
+    (profile_id, database): (&str, &str),
+    schema: String,
+    kinds: Vec<ObjectKind>,
+) -> Result<Vec<ObjectSummary>, IpcError> {
+    read_catalog(state, (profile_id, database), move |catalog| {
+        Box::pin(async move { catalog.list_objects(&schema, &kinds).await })
+    })
+    .await
+}
+
+/// A routine's definition on `database`'s metadata session.
+pub(crate) async fn read_routine(
+    state: &Connections,
+    (profile_id, database): (&str, &str),
+    (schema, name): (String, String),
+    (kind, arguments): (RoutineKind, Option<String>),
+) -> Result<Option<String>, IpcError> {
+    read_catalog(state, (profile_id, database), move |catalog| {
+        Box::pin(async move {
+            catalog
+                .routine_definition((&schema, &name), kind, arguments.as_deref())
+                .await
+        })
     })
     .await
 }

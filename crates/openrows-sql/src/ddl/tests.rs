@@ -180,3 +180,38 @@ fn mysql_columns_keep_charset_auto_increment_and_on_update() -> Result<(), &'sta
     assert_eq!(fresh.render(), "`n` int NOT NULL DEFAULT 0");
     Ok(())
 }
+
+#[test]
+fn collations_auto_increment_and_references_are_replaced() -> Result<(), &'static str> {
+    let mut column = ColumnDefinition::parse(
+        "`name` varchar(40) CHARACTER SET latin1 COLLATE latin1_bin NOT NULL",
+        Dialect::MySql,
+    )
+    .ok_or("parse")?;
+    column.set_collation(Some("utf8mb4"), Some("utf8mb4_bin"));
+    assert_eq!(
+        column.render(),
+        "`name` varchar(40) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL"
+    );
+    column.set_collation(None, None);
+    assert_eq!(column.render(), "`name` varchar(40) NOT NULL");
+    let mut id =
+        ColumnDefinition::parse("`id` int NOT NULL DEFAULT '0' COMMENT 'k'", Dialect::MySql)
+            .ok_or("parse")?;
+    id.set_auto_increment(true);
+    assert_eq!(
+        id.render(),
+        "`id` int NOT NULL DEFAULT '0' AUTO_INCREMENT COMMENT 'k'"
+    );
+    id.set_auto_increment(false);
+    assert_eq!(id.render(), "`id` int NOT NULL DEFAULT '0' COMMENT 'k'");
+    let mut fk = ColumnDefinition::parse(
+        "owner INTEGER NOT NULL REFERENCES owners(id) ON DELETE CASCADE",
+        Dialect::Sqlite,
+    )
+    .ok_or("parse")?;
+    assert!(fk.remove_references());
+    assert_eq!(fk.render(), "owner INTEGER NOT NULL");
+    assert!(!fk.remove_references());
+    Ok(())
+}

@@ -277,8 +277,8 @@ database, when set, opens right away.
 - **Open database panel (⌘K)**, a sheet like TablePlus: title *Open database*,
   focused search field, database list with icons (system databases only with
   **Show system databases**, already opened ones marked *Open*), ↑/↓ select,
-  Return or double-click opens, Esc or **Cancel** dismisses, **New…** is
-  disabled with the tooltip "Creating databases is coming soon" (FR-SCHEMA-12).
+  Return or double-click opens, Esc or **Cancel** dismisses, **New…** opens
+  the New database sheet where the engine can create databases (FR-SCHEMA-12).
   It opens by itself after connecting a connection without a database; until a
   database is open the sidebar says *No database selected, press ⌘K to select
   a database*. ⌘⇧P's command is now *Open database…*.

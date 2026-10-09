@@ -127,6 +127,83 @@ impl ColumnDefinition {
         }
     }
 
+    /// Replace the character set (kept in the type text, as `MySQL` prints
+    /// it) and the collation; `None` leaves each to the table's default.
+    pub fn set_collation(&mut self, charset: Option<&str>, collation: Option<&str>) {
+        let words: Vec<&str> = self.data_type.split_whitespace().collect();
+        let mut kept: Vec<&str> = Vec::with_capacity(words.len());
+        let mut skip = 0;
+        for (index, word) in words.iter().enumerate() {
+            if skip > 0 {
+                skip -= 1;
+                continue;
+            }
+            let upper = word.to_ascii_uppercase();
+            let next = words.get(index + 1).map(|w| w.to_ascii_uppercase());
+            if upper == "CHARSET" {
+                skip = 1;
+            } else if upper == "CHARACTER" && next.as_deref() == Some("SET") {
+                skip = 2;
+            } else {
+                kept.push(word);
+            }
+        }
+        self.data_type = kept.join(" ");
+        if let Some(charset) = charset {
+            self.data_type = format!("{} CHARACTER SET {charset}", self.data_type);
+        }
+        self.remove(&[Clause::Collate]);
+        if let Some(collation) = collation {
+            self.clauses
+                .insert(0, (Clause::Collate, format!("COLLATE {collation}")));
+        }
+    }
+
+    /// Add `AUTO_INCREMENT` after the nullability and default clauses, or
+    /// remove it.
+    pub fn set_auto_increment(&mut self, on: bool) {
+        self.clauses.retain(|(clause, text)| {
+            !(*clause == Clause::Other && text.eq_ignore_ascii_case("AUTO_INCREMENT"))
+        });
+        if on {
+            let at = self.after(&[
+                Clause::Collate,
+                Clause::Generated,
+                Clause::NotNull,
+                Clause::Null,
+                Clause::Default,
+            ]);
+            self.clauses
+                .insert(at, (Clause::Other, "AUTO_INCREMENT".to_owned()));
+        }
+    }
+
+    /// Remove a column-level `REFERENCES …` foreign key with its actions
+    /// (`ON DELETE …`, `MATCH …`, `DEFERRABLE …`); true when one was.
+    pub fn remove_references(&mut self) -> bool {
+        let before = self.clauses.len();
+        let mut removing = false;
+        self.clauses.retain(|(clause, text)| {
+            let upper = text.to_ascii_uppercase();
+            let starts = *clause == Clause::Other
+                && (upper.starts_with("REFERENCES ")
+                    || (upper.starts_with("CONSTRAINT ") && upper.contains(" REFERENCES ")));
+            let action = *clause == Clause::Other
+                && [
+                    "ON DELETE",
+                    "ON UPDATE",
+                    "MATCH ",
+                    "DEFERRABLE",
+                    "INITIALLY ",
+                ]
+                .iter()
+                .any(|prefix| upper.starts_with(prefix));
+            removing = starts || (removing && action);
+            !removing
+        });
+        self.clauses.len() < before
+    }
+
     /// The definition as one line.
     #[must_use]
     pub fn render(&self) -> String {

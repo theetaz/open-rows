@@ -2,6 +2,7 @@
 //! `table_detail` (Structure, Index, Triggers, DDL and inspector table info)
 //! and `table_alter`: review, then commit, a typed structure change set as
 //! DDL generated in Rust, in one transaction on a short-lived connection.
+use super::alter_checks::{PRODUCTION, null_warnings};
 use super::commands::owned_session;
 use super::dto::TableTarget;
 use super::edit_commands::{ensure_writable, session};
@@ -16,6 +17,7 @@ use openrows_core::safety::{SafetyPlan, SafetyPolicy};
 use openrows_driver_api::schema::SchemaChange;
 use openrows_driver_api::structure::{AlterPlan, AlterTable};
 use openrows_driver_api::{Connection, Driver, catalog, editor};
+use openrows_sql::ddl::view_body;
 use openrows_sql::{Dialect, StatementKind, classify, split};
 use openrows_store::profile::EnvKind;
 use tauri::{AppHandle, State};
@@ -46,14 +48,30 @@ pub(crate) async fn table_detail(
     let ddl = driver
         .table_ddl((&target.schema, &target.table), &detail)
         .map_err(|error| IpcError::invalid(error.to_string()))?;
+    let view_query = detail
+        .info
+        .as_ref()
+        .and_then(|info| info.view_definition.as_deref())
+        .map(|definition| view_body(definition, driver.dialect()));
     // Engines without a structure editor show their structure read-only.
     let editable = !read_only && driver.supports_alter();
-    detail_dto(detail, ddl, !editable).ok_or_else(|| {
+    let mut dto = detail_dto(detail, ddl, !editable).ok_or_else(|| {
         IpcError::new(
             IpcErrorKind::NotFound,
             format!("{}.{} was not found", target.schema, target.table),
         )
-    })
+    })?;
+    dto.view_query = view_query;
+    Ok(dto)
+}
+
+/// The connection's write safety for a review.
+#[derive(Clone, Copy)]
+struct Safety {
+    /// Destructive changes need the typed table name.
+    guarded: bool,
+    /// A production connection: the review says so.
+    production: bool,
 }
 
 /// Without a matching `confirmToken`, return the generated DDL to review;
@@ -75,10 +93,14 @@ pub(crate) async fn table_alter(
             "Stage between 1 and 500 structure changes",
         ));
     }
-    let guarded = profile.safety.confirm_writes || profile.env_tag.kind == EnvKind::Prod;
+    let production = profile.env_tag.kind == EnvKind::Prod;
+    let safety = Safety {
+        guarded: profile.safety.confirm_writes || production,
+        production,
+    };
     let driver = driver(profile.driver);
     let mut session = session(&state, &request.target).await?;
-    let result = prepare_alter(session.as_mut(), driver, &request, guarded).await;
+    let result = prepare_alter(session.as_mut(), driver, &request, safety).await;
     if matches!(result, Ok(AlterReply::Committed)) {
         let target = (
             request.target.profile_id.as_str(),
@@ -102,7 +124,7 @@ async fn prepare_alter(
     session: &mut dyn Connection,
     driver: &dyn Driver,
     request: &AlterRequest,
-    guarded: bool,
+    safety: Safety,
 ) -> Result<AlterReply, IpcError> {
     let target = &request.target;
     let detail = catalog(session)
@@ -124,8 +146,14 @@ async fn prepare_alter(
     let dialect = driver.dialect();
     ensure_single_ddl(&plan.statements, dialect)?;
     let token = review_token(request, &plan.statements, dialect)?;
-    let confirm_name = (guarded && plan.destructive).then(|| target.table.clone());
+    let confirm_name = (safety.guarded && plan.destructive).then(|| target.table.clone());
     if request.confirm_token.as_deref() != Some(token.as_str()) {
+        let mut plan = plan;
+        plan.warnings
+            .extend(null_warnings(session, dialect, target, &changes).await);
+        if safety.production {
+            plan.warnings.push(PRODUCTION.to_owned());
+        }
         return Ok(prepared(token, plan, confirm_name));
     }
     if let Some(name) = confirm_name

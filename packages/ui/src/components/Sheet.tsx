@@ -20,8 +20,8 @@ export function Sheet({
   title: string;
   onClose: () => void;
   children: ReactNode;
-  /** `alert` is the narrow confirmation width. */
-  size?: 'form' | 'alert' | 'appearance';
+  /** `alert` is the narrow confirmation width; `editor` fits a SQL editor. */
+  size?: 'form' | 'alert' | 'appearance' | 'editor';
 }): React.JSX.Element {
   const ref = useRef<HTMLDialogElement>(null);
   const startDrag = useSheetDrag(ref);

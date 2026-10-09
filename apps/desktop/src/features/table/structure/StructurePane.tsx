@@ -2,23 +2,28 @@
 import { Button } from '@openrows/ui';
 import { EditToolbar } from '../EditToolbar';
 import type { EditBarModel } from '../EditToolbar';
+import { CheckSheet } from './CheckSheet';
 import { ColumnEditor } from './ColumnEditor';
+import { ColumnSheet } from './ColumnSheet';
+import { ConstraintsSheet } from './ConstraintsSheet';
+import { ForeignKeySheet } from './ForeignKeySheet';
 import { DdlPopover } from './DdlPopover';
 import { IndexEditor } from './IndexEditor';
 import { IndexSheet } from './IndexSheet';
 import { ItemMenu } from './ItemMenu';
 import { PartitionList } from './PartitionList';
 import { SchemaReview } from './SchemaReview';
+import { StagedPreview } from './StagedPreview';
 import { describe } from './schemaChanges';
 import { StructureHeader } from './StructureHeader';
 import { TriggersSheet } from './TriggersSheet';
-import type { SchemaEditing } from './useSchemaEditing';
 import type { Structure } from './useStructure';
 import tableStyles from '../Table.module.css';
 import styles from './Structure.module.css';
 
 /** The pending-changes bar model of staged structure changes. */
-function schemaEditBar(schema: SchemaEditing): EditBarModel {
+function schemaEditBar(structure: Structure): EditBarModel {
+  const { schema } = structure;
   const { history } = schema;
   const count = history.current.length;
   return {
@@ -57,6 +62,7 @@ function schemaEditBar(schema: SchemaEditing): EditBarModel {
             </Button>
           </div>
         ))}
+        <StagedPreview structure={structure} />
       </div>
     ),
   };
@@ -99,7 +105,7 @@ export function StructurePane({
           {schema.error}
         </p>
       )}
-      <EditToolbar model={schemaEditBar(schema)} />
+      <EditToolbar model={schemaEditBar(structure)} />
       <Overlays structure={structure} table={table} />
     </div>
   );
@@ -126,19 +132,12 @@ function Overlays({
           }}
         />
       )}
-      {structure.sheet === 'index' && (
-        <IndexSheet
-          columns={structure.rows
-            .filter((row) => !row.dropped)
-            .map((row) => row.name)}
-          onStage={schema.stage}
-          onClose={close}
-        />
-      )}
+      <FormSheets structure={structure} onClose={close} />
       {structure.sheet === 'triggers' && schema.detail && (
         <TriggersSheet
           table={table}
           triggers={schema.detail.triggers}
+          onTrigger={structure.onTrigger}
           onClose={close}
         />
       )}
@@ -152,4 +151,35 @@ function Overlays({
       <SchemaReview key={schema.review?.token} schema={schema} />
     </>
   );
+}
+
+/** The structure forms: column, index, constraints, foreign key and check. */
+function FormSheets({
+  structure,
+  onClose,
+}: {
+  structure: Structure;
+  onClose: () => void;
+}): React.JSX.Element | null {
+  switch (structure.sheet) {
+    case 'column':
+      return (
+        <ColumnSheet
+          key={structure.columnRow?.id ?? 'new'}
+          structure={structure}
+          row={structure.columnRow}
+          onClose={onClose}
+        />
+      );
+    case 'index':
+      return <IndexSheet structure={structure} onClose={onClose} />;
+    case 'constraints':
+      return <ConstraintsSheet structure={structure} onClose={onClose} />;
+    case 'foreignKey':
+      return <ForeignKeySheet structure={structure} onClose={onClose} />;
+    case 'check':
+      return <CheckSheet structure={structure} onClose={onClose} />;
+    default:
+      return null;
+  }
 }

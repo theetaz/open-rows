@@ -3,6 +3,7 @@ import type {
   DefaultDto,
   ForeignKeyDto,
   GeneratedDto,
+  IdentityDto,
   SchemaChangeDto,
   StructureColumnDto,
   TableDetailDto,
@@ -71,8 +72,26 @@ function applyChange(row: ColumnRow, change: ColumnChange): ColumnRow {
       };
     case 'columnComment':
       return { ...row, comment: change.comment, changed: mark('comment') };
+    case 'columnIdentity':
+      return { ...row, generated: generatedOf(change.identity) };
+    case 'columnCollation':
+      return row;
     case 'dropColumn':
       return { ...row, dropped: true };
+  }
+}
+
+/** The generation kind a staged numbering choice shows as. */
+function generatedOf(identity: IdentityDto): GeneratedDto {
+  switch (identity) {
+    case 'always':
+      return 'identityAlways';
+    case 'byDefault':
+      return 'identityByDefault';
+    case 'autoIncrement':
+      return 'autoIncrement';
+    case 'none':
+      return 'no';
   }
 }
 
@@ -102,7 +121,7 @@ function addedRow(id: string, change: AddColumn): ColumnRow {
     dataType: change.dataType,
     nullable: change.nullable,
     default: defaultText(change.default),
-    generated: 'no',
+    generated: generatedOf(change.identity ?? 'none'),
     comment: change.comment,
     check: null,
     foreignKey: null,

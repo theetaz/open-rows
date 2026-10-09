@@ -25,6 +25,7 @@ type Context = {
   setEdit: (edit: InlineEdit | null) => void;
   setSearch: (search: string) => void;
   onOpenTable?: ((schema: string, table: string) => void) | undefined;
+  openColumnSheet: (row: ColumnRow | null) => void;
 };
 
 const copy = (text: string): void => {
@@ -62,7 +63,12 @@ export function structureActions(context: Context): StructureActions {
     rowMenu: (row, at) => ({
       ...at,
       label: `Column ${row.name}`,
-      items: rowItems(row, { schema, dropRow, openTable }),
+      items: rowItems(row, {
+        schema,
+        dropRow,
+        openTable,
+        edit: context.openColumnSheet,
+      }),
     }),
     indexMenu: (row, at) => ({
       ...at,
@@ -78,9 +84,18 @@ function rowItems(
     schema: SchemaEditing;
     dropRow: (row: ColumnRow) => void;
     openTable: (row: ColumnRow) => void;
+    edit: (row: ColumnRow | null) => void;
   },
 ): MenuItem[] {
   const items: MenuItem[] = [];
+  if (!row.dropped)
+    items.push({
+      label: 'Edit column…',
+      disabled: !act.schema.enabled,
+      run: () => {
+        act.edit(row);
+      },
+    });
   if (row.dropped && row.column !== null) {
     const column = row.column;
     items.push({
@@ -99,12 +114,21 @@ function rowItems(
         act.dropRow(row);
       },
     });
-  items.push({
-    label: 'Copy name',
-    run: () => {
-      copy(row.name);
+  items.push(
+    {
+      label: 'Add column…',
+      disabled: !act.schema.enabled,
+      run: () => {
+        act.edit(null);
+      },
     },
-  });
+    {
+      label: 'Copy name',
+      run: () => {
+        copy(row.name);
+      },
+    },
+  );
   if (row.foreignKey)
     items.push({
       label: `Open ${row.foreignKey.table}`,

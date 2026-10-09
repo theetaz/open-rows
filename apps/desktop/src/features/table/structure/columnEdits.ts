@@ -23,40 +23,6 @@ export const columnFields = [
   'comment',
 ] as const;
 
-/** Common PostgreSQL types offered by the data_type picker. */
-export const commonTypes: readonly string[] = [
-  'text',
-  'varchar',
-  'varchar(255)',
-  'char(1)',
-  'integer',
-  'bigint',
-  'smallint',
-  'numeric',
-  'numeric(10,2)',
-  'double precision',
-  'boolean',
-  'date',
-  'timestamp',
-  'timestamptz',
-  'interval',
-  'uuid',
-  'json',
-  'jsonb',
-  'bytea',
-  'text[]',
-];
-
-/** Default presets offered by the column_default picker (SQL expressions). */
-export const defaultPresets: readonly string[] = [
-  'now()',
-  'CURRENT_TIMESTAMP',
-  'gen_random_uuid()',
-  'true',
-  'false',
-  '0',
-];
-
 function addedPatch(add: AddColumn, edit: FieldEdit): AddColumn | null {
   switch (edit.field) {
     case 'name':

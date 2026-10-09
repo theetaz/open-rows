@@ -2,7 +2,10 @@
 //! A staged change set grouped per column and validated against the
 //! catalog, shared by every engine's DDL generator.
 use super::AlterTable;
-use crate::schema::{DefaultValue, NewColumn, NewIndex, RelationKind, SchemaChange, TableDetail};
+use crate::schema::{
+    DefaultValue, Identity, NewCheck, NewColumn, NewForeignKey, NewIndex, RelationKind,
+    SchemaChange, TableDetail,
+};
 use std::collections::{BTreeMap, BTreeSet};
 
 /// Why a change set cannot be turned into DDL.
@@ -47,6 +50,18 @@ pub enum AlterError {
     /// The server's own table definition could not be read.
     #[error("the definition of {0:?} could not be read; reload the structure")]
     UnreadableDefinition(String),
+    /// The constraint is not in the catalog.
+    #[error("the table has no constraint named {0:?}; reload the structure")]
+    UnknownConstraint(String),
+    /// A foreign key without columns, or with fewer referenced columns.
+    #[error("foreign key {0:?} needs as many referenced columns as columns")]
+    InvalidForeignKey(String),
+    /// An empty or invalid check or predicate expression.
+    #[error("the expression {0:?} is empty or invalid")]
+    InvalidExpression(String),
+    /// A new table without columns.
+    #[error("a table needs at least one column")]
+    NoColumns,
 }
 
 /// Which indexes `DROP INDEX` may remove.
@@ -62,6 +77,15 @@ pub enum IndexDrops {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Comment<'a>(pub Option<&'a str>);
 
+/// A column's new character set and collation; `None` is the default.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct Collation<'a> {
+    /// Character set (`MySQL`).
+    pub charset: Option<&'a str>,
+    /// Collation name.
+    pub collation: Option<&'a str>,
+}
+
 /// Every change staged for one existing column.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct ColumnEdits<'a> {
@@ -75,6 +99,10 @@ pub struct ColumnEdits<'a> {
     pub default: Option<&'a DefaultValue>,
     /// New comment.
     pub comment: Option<Comment<'a>>,
+    /// New identity or auto-increment numbering.
+    pub identity: Option<Identity>,
+    /// New character set and collation.
+    pub collation: Option<Collation<'a>>,
 }
 
 impl<'a> ColumnEdits<'a> {
@@ -102,6 +130,12 @@ pub struct StagedChanges<'a> {
     pub rename: Option<&'a str>,
     /// New table comment.
     pub comment: Option<Comment<'a>>,
+    /// Foreign keys to add (final column names).
+    pub foreign_keys: Vec<&'a NewForeignKey>,
+    /// Check constraints to add.
+    pub checks: Vec<&'a NewCheck>,
+    /// Constraints to drop (names).
+    pub constraint_drops: Vec<&'a str>,
 }
 
 impl<'a> StagedChanges<'a> {
@@ -169,6 +203,30 @@ impl<'a> StagedChanges<'a> {
                 Ok(())
             }
             SchemaChange::DropIndex(name) => push_unique(&mut self.index_drops, name),
+            SchemaChange::ColumnIdentity { column, identity } => {
+                once(&mut self.edits(column).identity, *identity, column)
+            }
+            SchemaChange::ColumnCollation {
+                column,
+                charset,
+                collation,
+            } => once(
+                &mut self.edits(column).collation,
+                Collation {
+                    charset: charset.as_deref(),
+                    collation: collation.as_deref(),
+                },
+                column,
+            ),
+            SchemaChange::AddForeignKey(key) => {
+                self.foreign_keys.push(key);
+                Ok(())
+            }
+            SchemaChange::AddCheck(check) => {
+                self.checks.push(check);
+                Ok(())
+            }
+            SchemaChange::DropConstraint(name) => push_unique(&mut self.constraint_drops, name),
         }
     }
 
@@ -192,17 +250,15 @@ impl<'a> StagedChanges<'a> {
         }
         let finals = self.final_names(&current)?;
         for index in &self.index_adds {
-            if index.columns.is_empty() {
-                return Err(AlterError::NoIndexColumns);
-            }
-            if let Some(name) = index
-                .columns
-                .iter()
-                .find(|name| !finals.contains(name.as_str()))
-            {
-                return Err(AlterError::UnknownColumn(name.clone()));
-            }
+            keys::index(index, &finals)?;
         }
+        for key in &self.foreign_keys {
+            keys::foreign_key(key, &finals)?;
+        }
+        for check in &self.checks {
+            keys::expression(&check.expression)?;
+        }
+        keys::constraint_drops(&self.constraint_drops, detail)?;
         self.validate_index_drops(detail, rule)
     }
 
@@ -251,6 +307,8 @@ impl<'a> StagedChanges<'a> {
         Ok(finals)
     }
 }
+
+pub(crate) mod keys;
 
 /// Store `value` in an empty `slot`; a second value for it is a conflict.
 fn once<T>(slot: &mut Option<T>, value: T, what: &str) -> Result<(), AlterError> {

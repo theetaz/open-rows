@@ -5,6 +5,25 @@ import { catalogStub } from './catalogStub';
 import { importStub } from './importStub';
 import { structureStub } from './structureStub';
 
+/** Every structure and object editor PostgreSQL offers (no character sets). */
+export const postgresObjects: ProfileDto['objects'] = {
+  tables: true,
+  views: true,
+  materializedViews: true,
+  triggers: true,
+  routines: true,
+  databases: true,
+  renameDatabases: true,
+  schemas: true,
+  foreignKeys: true,
+  checks: true,
+  comments: true,
+  collations: true,
+  charsets: false,
+  identity: true,
+  partialIndexes: true,
+};
+
 /** A saved profile with synthetic, non-secret values. */
 export function profile(
   name: string,
@@ -40,6 +59,7 @@ export function profile(
     limits: { statementTimeoutSeconds: null, idleTimeoutMinutes: 0 },
     startupCommands: '',
     processList: true,
+    objects: postgresObjects,
     ...overrides,
   };
 }

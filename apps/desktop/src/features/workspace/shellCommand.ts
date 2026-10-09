@@ -8,6 +8,8 @@ import {
 } from '../commands';
 import type { Connections } from '../connections';
 import { openLogs } from '../diagnostics';
+import { isObjectCommand } from '../objects';
+import type { ObjectCommand } from '../objects';
 import type { Catalog } from '../schema';
 import { setGridDensity } from '../settings';
 import { setJobsOpen } from '../jobs';
@@ -37,6 +39,8 @@ type ShellInput = {
   onRunFile: () => void;
   /** Export tables of the selected schema. */
   onExportTables: () => void;
+  /** Open an object editor (new table, drop view, …). */
+  onObjectCommand: (id: ObjectCommand) => void;
   /** Open a `.sql` file into a new tab when no query tab is active. */
   openFile: () => void;
   refresh: () => void;
@@ -169,6 +173,10 @@ export function shellCommand(input: ShellInput): (id: string) => void {
     }
     if (isTableCommand(id) && id !== 'refresh') {
       runTableCommand(id);
+      return;
+    }
+    if (isObjectCommand(id)) {
+      input.onObjectCommand(id);
       return;
     }
     (viewActions(input)[id] ?? workActions(input)[id])?.();

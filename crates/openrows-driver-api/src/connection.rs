@@ -12,6 +12,7 @@ use crate::bulk::BulkLoader;
 use crate::catalog::TableStructure;
 use crate::catalog::{ColumnSummary, DatabaseSummary, ObjectKind, ObjectSummary, SchemaSummary};
 use crate::diagram::{SchemaDiagram, read_per_table};
+use crate::objects::RoutineKind;
 use crate::schema::TableDetail;
 use crate::trace::TlsStatus;
 use crate::{BoxFuture, DriverError, Session};
@@ -160,6 +161,22 @@ pub trait Catalog: Send {
         max_tables: usize,
     ) -> BoxFuture<'a, Result<SchemaDiagram, DriverError>> {
         Box::pin(read_per_table(self, schema, max_tables))
+    }
+
+    /// The `CREATE` statement of a function or procedure (with `arguments`,
+    /// its identity arguments, picking one overload), as the server prints
+    /// it; `None` when it does not exist.
+    ///
+    /// # Errors
+    /// `Unsupported` when the engine has no stored routines; server or
+    /// transport failures.
+    fn routine_definition<'a>(
+        &'a mut self,
+        _routine: (&'a str, &'a str),
+        _kind: RoutineKind,
+        _arguments: Option<&'a str>,
+    ) -> BoxFuture<'a, Result<Option<String>, DriverError>> {
+        Box::pin(async { Err(DriverError::Unsupported("stored routines".to_owned())) })
     }
 }
 

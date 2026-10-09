@@ -9,6 +9,8 @@ import type { SavedQueryDto } from '@openrows/ipc';
 import type { Connections } from '../connections';
 import { ObjectActions } from './ObjectActions';
 import type { ObjectMenu, SessionLookup } from './ObjectActions';
+import { CreateMenu } from './CreateMenu';
+import type { ObjectEditing } from './useObjectEditing';
 import styles from './Sidebar.module.css';
 
 /** The sidebar's views: catalog objects, saved queries and history. */
@@ -35,6 +37,8 @@ type Props = {
   onDiagram: (object: ObjectRef) => void;
   /** Import a file into a table. */
   onImport: (object: ObjectRef) => void;
+  /** Object editors opened from the context and create menus. */
+  objects: Pick<ObjectEditing, 'features' | 'open'>;
 };
 const exact = (event: React.KeyboardEvent, key: string): boolean =>
   event.metaKey &&
@@ -49,8 +53,12 @@ export function WorkspaceSidebar(props: Props): React.JSX.Element {
   const [segment, setSegment] = useState('Items');
   const [search, setSearch] = useState('');
   const [menu, setMenu] = useState<ObjectMenu | null>(null);
+  const [create, setCreate] = useState<MenuPoint | null>(null);
   const closeMenu = useCallback(() => {
     setMenu(null);
+  }, []);
+  const closeCreate = useCallback(() => {
+    setCreate(null);
   }, []);
   const ref = useRef<HTMLDivElement>(null);
   return (
@@ -84,13 +92,7 @@ export function WorkspaceSidebar(props: Props): React.JSX.Element {
           className={styles.search}
           leadingIcon={<Icon name="search" />}
           aria-label="Search items"
-          placeholder={
-            segment === 'History'
-              ? 'Search history…'
-              : segment === 'Queries'
-                ? 'Search queries…'
-                : 'Search tables, views…'
-          }
+          placeholder={searchPlaceholder(segment)}
           value={search}
           onChange={(event) => {
             setSearch(event.target.value);
@@ -105,18 +107,62 @@ export function WorkspaceSidebar(props: Props): React.JSX.Element {
           }}
         />
         {catalog.database && (
-          <SchemaPicker catalog={catalog}>{props.schemaTools}</SchemaPicker>
+          <SchemaPicker
+            catalog={catalog}
+            onCreate={props.objects.features ? setCreate : undefined}
+          >
+            {props.schemaTools}
+          </SchemaPicker>
         )}
       </GlassPanel>
-      <ObjectActions
+      <SidebarMenus
+        {...props}
         menu={menu}
-        onClose={closeMenu}
+        create={create}
+        onCloseMenu={closeMenu}
+        onCloseCreate={closeCreate}
+      />
+    </div>
+  );
+}
+
+const searchPlaceholder = (segment: string): string => {
+  if (segment === 'History') return 'Search history…';
+  return segment === 'Queries' ? 'Search queries…' : 'Search tables, views…';
+};
+
+/** An object's context menu and the `+` create menu, when open. */
+function SidebarMenus(
+  props: Props & {
+    menu: ObjectMenu | null;
+    create: MenuPoint | null;
+    onCloseMenu: () => void;
+    onCloseCreate: () => void;
+  },
+): React.JSX.Element {
+  const { catalog, objects, create } = props;
+  return (
+    <>
+      <ObjectActions
+        menu={props.menu}
+        onClose={props.onCloseMenu}
         sessionFor={props.sessionFor}
         onOpen={props.onOpen}
         onDiagram={props.onDiagram}
         onImport={props.onImport}
+        features={objects.features}
+        onEditor={objects.open}
       />
-    </div>
+      {create && objects.features && (
+        <CreateMenu
+          point={create}
+          place={{ database: catalog.database, schema: catalog.schema }}
+          features={objects.features}
+          onChoose={objects.open}
+          onClose={props.onCloseCreate}
+        />
+      )}
+    </>
   );
 }
 

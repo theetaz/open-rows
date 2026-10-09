@@ -4,6 +4,7 @@ use openrows_driver_api::schema::{
     ColumnDetail, ConstraintDetail, ConstraintKind, IndexDetail, RelationKind, TableDetail,
     TableInfo, TriggerDetail, TriggerTiming,
 };
+use openrows_sql::ddl::TableDefinition;
 
 const CREATE: &str = "CREATE TABLE orders (
     id INTEGER PRIMARY KEY,
@@ -82,6 +83,7 @@ fn renames_plain_drops_and_adds_use_alter_table() -> Result<(), AlterError> {
             nullable: false,
             default: DefaultValue::Literal("1".into()),
             comment: None,
+            ..NewColumn::default()
         }),
         SchemaChange::RenameColumn {
             column: "total".into(),
@@ -92,6 +94,7 @@ fn renames_plain_drops_and_adds_use_alter_table() -> Result<(), AlterError> {
             columns: vec!["amount".into()],
             unique: true,
             method: IndexMethod::Btree,
+            ..NewIndex::default()
         }),
         SchemaChange::DropIndex("orders_customer".into()),
         SchemaChange::RenameTable("purchases".into()),
@@ -160,6 +163,7 @@ fn expression_defaults_and_not_null_adds_rebuild_too() -> Result<(), AlterError>
         nullable: true,
         default: DefaultValue::Expression("datetime('now')".into()),
         comment: None,
+        ..NewColumn::default()
     })])?;
     assert!(
         plan.statements[0]
@@ -181,6 +185,78 @@ fn comments_and_other_index_methods_are_unsupported() {
         columns: vec!["note".into()],
         unique: false,
         method: IndexMethod::Gin,
+        ..NewIndex::default()
     })]);
     assert!(matches!(gin, Err(AlterError::Unsupported(_))));
+}
+
+#[test]
+fn constraints_and_collations_rebuild_the_table() -> Result<(), AlterError> {
+    use openrows_driver_api::schema::{ForeignTarget, NewCheck, NewForeignKey};
+    let mut detail = detail();
+    detail.constraints.push(ConstraintDetail {
+        name: "fk_orders_0".into(),
+        kind: ConstraintKind::Foreign,
+        definition: String::new(),
+        columns: vec!["customer".into()],
+        references: None,
+    });
+    let rebuilt = alter_sql(
+        &AlterTable {
+            schema: "main",
+            table: "orders",
+            detail: &detail,
+        },
+        &[
+            SchemaChange::DropConstraint("fk_orders_0".into()),
+            SchemaChange::ColumnCollation {
+                column: "note".into(),
+                charset: None,
+                collation: Some("NOCASE".into()),
+            },
+            SchemaChange::AddForeignKey(NewForeignKey {
+                name: Some("by_note".into()),
+                columns: vec!["note".into()],
+                target: ForeignTarget {
+                    schema: String::new(),
+                    table: "notes".into(),
+                    columns: vec!["text".into()],
+                },
+                ..NewForeignKey::default()
+            }),
+            SchemaChange::AddCheck(NewCheck {
+                name: None,
+                expression: "total >= 0".into(),
+            }),
+        ],
+    )?;
+    assert_eq!(
+        rebuilt.statements[0],
+        "CREATE TABLE \"main\".\"openrows_rebuild_orders\" (\n    \
+         id INTEGER PRIMARY KEY,\n    customer INTEGER,\n    \
+         note TEXT COLLATE NOCASE DEFAULT 'n/a',\n    total REAL NOT NULL,\n    \
+         CONSTRAINT \"by_note\" FOREIGN KEY (\"note\") REFERENCES \"notes\" (\"text\"),\n    \
+         CHECK (total >= 0)\n)"
+    );
+    let charset = plan(&[SchemaChange::ColumnCollation {
+        column: "note".into(),
+        charset: Some("utf8".into()),
+        collation: None,
+    }]);
+    assert!(matches!(charset, Err(AlterError::Unsupported(_))));
+    Ok(())
+}
+
+#[test]
+fn checks_are_listed_and_dropped_by_position_or_name() -> Result<(), &'static str> {
+    let definition = TableDefinition::parse(
+        "CREATE TABLE t (a INT, CHECK (a > 0), CONSTRAINT small CHECK (a < 9))",
+        DIALECT,
+    )
+    .ok_or("parse")?;
+    let checks = table_checks("t", &definition);
+    let names: Vec<&str> = checks.iter().map(|check| check.name.as_str()).collect();
+    assert_eq!(names, ["ck_t_1", "small"]);
+    assert_eq!(checks[1].text, "CONSTRAINT small CHECK (a < 9)");
+    Ok(())
 }

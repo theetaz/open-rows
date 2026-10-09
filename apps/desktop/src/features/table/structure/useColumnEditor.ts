@@ -1,15 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { KeyboardEvent, RefObject } from 'react';
+import type { EngineDto } from '@openrows/ipc';
 import { typedDefault } from './effective';
 import type { ColumnRow } from './effective';
-import {
-  applyField,
-  columnFields,
-  commonTypes,
-  defaultPresets,
-  editable,
-  editText,
-} from './columnEdits';
+import { applyField, columnFields, editable, editText } from './columnEdits';
+import { defaultPresets, typeSpecs } from './forms/dialect';
 import type { FieldEdit } from './columnEdits';
 import type { InlineEdit } from './columnCells';
 import type { Cursor } from './StructureGrid';
@@ -66,6 +61,7 @@ export function useColumnEditor(
     const row = at(index);
     if (!row) return;
     const items = pickerItems(name, row, {
+      engine: structure.engine,
       apply: (edit) => {
         applyField(schema, row, edit);
       },
@@ -147,6 +143,7 @@ function pickerItems(
   name: Picker,
   row: ColumnRow,
   act: {
+    engine: EngineDto;
     apply: (edit: FieldEdit) => void;
     edit: (col: number, literal: boolean) => () => void;
   },
@@ -161,7 +158,7 @@ function pickerItems(
     }));
   if (name === 'dataType')
     return [
-      ...commonTypes.map((type) => ({
+      ...typeSpecs(act.engine).map(({ name: type }) => ({
         label: type,
         checked: row.dataType === type,
         run: () => {
@@ -180,7 +177,7 @@ function pickerItems(
     },
     { label: 'SQL expression…', run: act.edit(5, false) },
     { label: 'Text literal…', run: act.edit(5, true) },
-    ...defaultPresets.map((sql) => ({
+    ...defaultPresets(act.engine).map((sql) => ({
       label: sql,
       checked: row.default === sql,
       run: () => {

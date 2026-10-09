@@ -51,6 +51,7 @@ fn changes(index: &str) -> Vec<SchemaChange> {
             nullable: true,
             default: DefaultValue::Literal("1".into()),
             comment: None,
+            ..NewColumn::default()
         }),
         SchemaChange::CreateIndex(NewIndex {
             name: Some(index.to_owned()),
@@ -58,6 +59,7 @@ fn changes(index: &str) -> Vec<SchemaChange> {
             columns: vec!["qty".into()],
             unique: false,
             method: IndexMethod::Btree,
+            ..NewIndex::default()
         }),
     ]
 }

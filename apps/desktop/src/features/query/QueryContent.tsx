@@ -49,6 +49,16 @@ type Props = {
   onOpenTable?:
     | ((table: { database: string; schema: string; name: string }) => void)
     | undefined;
+  /** Open a trigger editor of a table: new (`name: null`), edit or drop. */
+  onTrigger?:
+    | ((
+        table: { database: string; schema: string; name: string },
+        name: string | null,
+        drop: boolean,
+      ) => void)
+    | undefined;
+  /** Bumped after an object editor changed the schema; table tabs re-read. */
+  structureRevision?: number | undefined;
 };
 
 /**
@@ -162,6 +172,7 @@ function TabBody(
         table={tab.table}
         profileId={props.connection.id}
         engine={props.connection.engine}
+        features={props.connection.objects}
         sessionId={sessionId}
         notice={reason}
         views={props.tables}
@@ -174,6 +185,10 @@ function TabBody(
         onRenamed={(name) => {
           props.tabs.renameTable?.(tab.id, name);
         }}
+        onTrigger={(name, drop) => {
+          if (tab.table) props.onTrigger?.(tab.table, name, drop);
+        }}
+        structureRevision={props.structureRevision}
         onEdited={() => {
           props.tabs.keep(tab.id);
         }}

@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { Connections } from '../connections';
+import { OBJECT_COMMANDS, objectCommandSupported } from '../objects';
+import type { ObjectCommand } from '../objects';
 import type { TabScope } from '../query';
 
 /**
@@ -39,7 +41,40 @@ export function menuEnabled(input: {
     uglify: query,
     'insert-snippet': query,
     ...connectionEnabled(input, state),
+    ...objectEnabled(input, connected),
   };
+}
+
+/** Commands on the active table tab's relation (the rest need a database). */
+const relationCommands = new Set<ObjectCommand>([
+  'new-trigger',
+  'rename-table',
+  'duplicate-table',
+  'truncate-table',
+  'drop-table',
+  'edit-view',
+  'drop-view',
+]);
+
+/** Object editors follow the engine's support and what is open. */
+function objectEnabled(
+  input: {
+    connections: Connections;
+    tab: { kind: 'query' | 'table' | 'processes' } | undefined;
+    scope: TabScope | undefined;
+  },
+  connected: boolean,
+): Record<string, boolean> {
+  const features = input.connections.active?.objects;
+  const table = input.tab?.kind === 'table';
+  return Object.fromEntries(
+    OBJECT_COMMANDS.map((id) => [
+      id,
+      connected &&
+        Boolean(features && objectCommandSupported(id, features)) &&
+        (relationCommands.has(id) ? table : Boolean(input.scope)),
+    ]),
+  );
 }
 
 /** Connection items follow the active connection's state and capabilities. */

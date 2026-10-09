@@ -61,11 +61,43 @@ pub enum Feature {
     /// `Connection::bulk_loader` offers the [`crate::BulkLoader`] facet: the
     /// engine's fast append path for imports (e.g. `COPY FROM STDIN`).
     BulkLoad,
+    /// `Driver::object_sql` creates, renames, duplicates, truncates and
+    /// drops tables (FR-SCHEMA-10).
+    TableLifecycle,
+    /// `Driver::object_sql` creates, replaces and drops views.
+    ViewEditing,
+    /// Materialized views can be created, replaced and dropped.
+    MaterializedViews,
+    /// `Driver::object_sql` saves and drops triggers from their definition.
+    TriggerEditing,
+    /// `Driver::object_sql` saves and drops functions and procedures, and
+    /// `Catalog::routine_definition` reads their definition.
+    RoutineEditing,
+    /// Databases can be created (with encoding and collation) and dropped.
+    DatabaseLifecycle,
+    /// Databases can be renamed.
+    DatabaseRename,
+    /// Schemas can be created, renamed and dropped.
+    SchemaLifecycle,
+    /// Structure changes add and drop foreign keys.
+    ForeignKeyEditing,
+    /// Structure changes add and drop check constraints.
+    CheckEditing,
+    /// Tables and columns carry comments.
+    Comments,
+    /// Columns have a collation that structure changes can set.
+    ColumnCollation,
+    /// Columns have a character set that structure changes can set.
+    ColumnCharset,
+    /// Structure changes add and remove identity or auto-increment numbering.
+    IdentityColumns,
+    /// Indexes can have a `WHERE` predicate.
+    PartialIndexes,
 }
 
 impl Feature {
     /// Every feature, in documentation order.
-    pub const ALL: [Self; 14] = [
+    pub const ALL: [Self; 29] = [
         Self::Cancel,
         Self::BindParameters,
         Self::MultipleDatabases,
@@ -80,6 +112,21 @@ impl Feature {
         Self::SchemaFingerprint,
         Self::ProcessList,
         Self::BulkLoad,
+        Self::TableLifecycle,
+        Self::ViewEditing,
+        Self::MaterializedViews,
+        Self::TriggerEditing,
+        Self::RoutineEditing,
+        Self::DatabaseLifecycle,
+        Self::DatabaseRename,
+        Self::SchemaLifecycle,
+        Self::ForeignKeyEditing,
+        Self::CheckEditing,
+        Self::Comments,
+        Self::ColumnCollation,
+        Self::ColumnCharset,
+        Self::IdentityColumns,
+        Self::PartialIndexes,
     ];
 }
 
@@ -129,6 +176,6 @@ mod tests {
             ..FILE
         };
         assert!(!no_catalog.lists(ObjectKind::Table));
-        assert_eq!(Feature::ALL.len(), 14);
+        assert_eq!(Feature::ALL.len(), 29);
     }
 }

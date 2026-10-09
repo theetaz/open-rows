@@ -15,9 +15,12 @@ use openrows_sql::Dialect;
 
 mod alter;
 mod create;
+mod keys;
+mod objects;
 
 pub use alter::{AlterError, AlterPlan, AlterTable, alter_sql};
 pub use create::create_table_sql;
+pub use objects::object_sql;
 
 use crate::introspect::{identifier, literal};
 

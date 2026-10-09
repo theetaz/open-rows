@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! The table rebuild for changes `ALTER TABLE` cannot make in `SQLite`.
-use super::{DIALECT, Plan, data_type, default_sql, new_column, quote, relation};
+use super::constraints;
+use super::{DIALECT, Plan, collation_name, data_type, default_sql, new_column, quote, relation};
 use openrows_driver_api::schema::DefaultValue;
 use openrows_driver_api::schema::{Generated, NewColumn, TableDetail};
 use openrows_driver_api::structure::{AlterError, ColumnEdits, StagedChanges};
@@ -18,10 +19,16 @@ pub(super) fn needed(detail: &TableDetail, staged: &StagedChanges<'_>) -> bool {
     staged.columns.values().any(redefines)
         || staged.drops.iter().any(|name| constrained(detail, name))
         || staged.adds.iter().any(|column| !addable(column))
+        || !staged.foreign_keys.is_empty()
+        || !staged.checks.is_empty()
+        || !staged.constraint_drops.is_empty()
 }
 
 fn redefines(edits: &ColumnEdits<'_>) -> bool {
-    edits.data_type.is_some() || edits.nullable.is_some() || edits.default.is_some()
+    edits.data_type.is_some()
+        || edits.nullable.is_some()
+        || edits.default.is_some()
+        || edits.collation.is_some()
 }
 
 /// `DROP COLUMN` refuses key, unique, indexed, foreign-key and generated columns.
@@ -135,7 +142,48 @@ fn elements(
         elements.insert(after_columns, added);
         after_columns += 1;
     }
+    table_constraints(plan, &mut elements)?;
     Ok(elements)
+}
+
+/// Dropped constraints left out, new foreign keys and checks appended.
+fn table_constraints(
+    plan: &mut Plan<'_>,
+    elements: &mut Vec<TableElement>,
+) -> Result<(), AlterError> {
+    let (target, staged) = (plan.target, plan.staged);
+    for &name in &staged.constraint_drops {
+        let constraint = target
+            .detail
+            .constraints
+            .iter()
+            .find(|constraint| constraint.name == name)
+            .ok_or_else(|| AlterError::UnknownConstraint(name.to_owned()))?;
+        constraints::drop_constraint(target.table, elements, constraint)?;
+        plan.warn(format!(
+            "Dropping constraint {name:?} stops the database from enforcing it."
+        ));
+    }
+    let mut added = Vec::new();
+    for key in &staged.foreign_keys {
+        added.push(constraints::foreign_key(key)?);
+    }
+    for check in &staged.checks {
+        added.push(constraints::check(check)?);
+    }
+    for text in added {
+        let mut element = TableElement {
+            text: format!("\n    {text}"),
+            column: None,
+        };
+        if let Some(last) = elements.last_mut() {
+            let (leading, body, trailing) = last.parts(DIALECT);
+            element.text.push_str(trailing);
+            last.text = format!("{leading}{body}");
+        }
+        elements.push(element);
+    }
+    Ok(())
 }
 
 fn redefine(
@@ -163,6 +211,9 @@ fn redefine(
     }
     if let Some(default) = edits.default {
         definition.set_default(default_sql(name, default)?.as_deref());
+    }
+    if let Some(collation) = edits.collation {
+        definition.set_collation(None, collation_name(collation.collation)?);
     }
     Ok(definition.render())
 }

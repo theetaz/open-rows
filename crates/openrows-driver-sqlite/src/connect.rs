@@ -7,7 +7,8 @@
 use std::path::Path;
 use std::time::Duration;
 
-use openrows_driver_api::schema::SchemaChange;
+use openrows_driver_api::objects::{ObjectChange, ObjectPlan};
+use openrows_driver_api::schema::{SchemaChange, TableDetail};
 use openrows_driver_api::structure::{AlterPlan, AlterTable};
 use openrows_driver_api::{
     Attachment, BoxFuture, ConnectRequest, ConnectStage, ConnectTrace, Connection, Driver,
@@ -61,6 +62,14 @@ impl Driver for SqliteDriver {
         changes: &[SchemaChange],
     ) -> Result<AlterPlan, GenerateError> {
         ddl::alter_sql(target, changes).map_err(|error| GenerateError(error.to_string()))
+    }
+
+    fn object_sql(
+        &self,
+        change: &ObjectChange,
+        source: Option<&TableDetail>,
+    ) -> Result<ObjectPlan, GenerateError> {
+        ddl::objects::object_sql(change, source)
     }
 
     fn connect<'a>(

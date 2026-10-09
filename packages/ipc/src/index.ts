@@ -218,6 +218,30 @@ export type {
   TriggerDto,
   TriggerTimingDto,
 } from './generated/bindings';
+/** Structure previews and object lifecycle editors (M2-07, M2-08). */
+export { objectChange, routineDefinition, tableAlterPreview } from './objects';
+export type {
+  AlterPreviewDto,
+  ConstraintDto,
+  ConstraintKindDto,
+  ContainerChangeDto,
+  DefinitionChangeDto,
+  ForeignTargetDto,
+  IdentityDto,
+  NewCheckDto,
+  NewColumnDto,
+  NewForeignKeyDto,
+  NewIndexDto,
+  NewTableDto,
+  ObjectChangeDto,
+  ObjectFeaturesDto,
+  ObjectNameDto,
+  ObjectReply,
+  ObjectRequest,
+  ReferentialActionDto,
+  RelationChangeDto,
+  RoutineKindDto,
+} from './generated/bindings';
 /** Saved queries and the `.sql` files of query tabs (native panels). */
 export {
   createSavedQuery,

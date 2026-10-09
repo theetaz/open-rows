@@ -2,7 +2,7 @@
 use super::*;
 use openrows_driver_api::schema::{
     ColumnDetail, DefaultValue, IndexDetail, IndexMethod, NewColumn, NewIndex, RelationKind,
-    TableInfo,
+    TableDetail, TableInfo,
 };
 
 fn detail() -> TableDetail {
@@ -138,6 +138,7 @@ fn full_change_set_is_ordered_for_one_transaction() -> Result<(), AlterError> {
             columns: vec!["email".into(), "full_name".into()],
             unique: true,
             method: IndexMethod::Btree,
+            ..NewIndex::default()
         }),
         SchemaChange::AddColumn(NewColumn {
             name: "email".into(),
@@ -145,6 +146,7 @@ fn full_change_set_is_ordered_for_one_transaction() -> Result<(), AlterError> {
             nullable: false,
             default: DefaultValue::Literal(String::new()),
             comment: Some("Login".into()),
+            ..NewColumn::default()
         }),
         SchemaChange::RenameColumn {
             column: column("name"),
@@ -186,6 +188,7 @@ fn added_columns_and_unnamed_indexes() -> Result<(), AlterError> {
             nullable: false,
             default: DefaultValue::None,
             comment: None,
+            ..NewColumn::default()
         }),
         SchemaChange::AddColumn(NewColumn {
             name: "at".into(),
@@ -193,12 +196,14 @@ fn added_columns_and_unnamed_indexes() -> Result<(), AlterError> {
             nullable: true,
             default: DefaultValue::Expression("now()".into()),
             comment: None,
+            ..NewColumn::default()
         }),
         SchemaChange::CreateIndex(NewIndex {
             name: Some(String::new()),
             columns: vec!["tags".into()],
             unique: false,
             method: IndexMethod::Gin,
+            ..NewIndex::default()
         }),
     ])?;
     assert_eq!(
@@ -271,6 +276,7 @@ fn unknown_conflicting_and_clashing_changes_are_rejected() {
         nullable: true,
         default: DefaultValue::None,
         comment: None,
+        ..NewColumn::default()
     })]);
     assert_eq!(added, Err(AlterError::ColumnExists("id".into())));
 }
@@ -297,6 +303,7 @@ fn renames_free_and_take_names_in_order() -> Result<(), AlterError> {
             columns: vec!["name".into()],
             unique: false,
             method: IndexMethod::Btree,
+            ..NewIndex::default()
         }),
     ]);
     assert_eq!(stale, Err(AlterError::UnknownColumn("name".into())));
@@ -319,6 +326,7 @@ fn indexes_must_exist_and_not_back_constraints() {
             columns: Vec::new(),
             unique: false,
             method: IndexMethod::Hash,
+            ..NewIndex::default()
         })]),
         Err(AlterError::NoIndexColumns)
     );
@@ -381,5 +389,107 @@ fn expressions_stay_inside_their_parentheses() -> Result<(), AlterError> {
             r#"ALTER TABLE "public"."users" ALTER COLUMN "name" SET DEFAULT ('a'); DROP TABLE users; --)"#
         ]
     );
+    Ok(())
+}
+
+#[test]
+fn identity_collation_keys_and_checks() -> Result<(), AlterError> {
+    use openrows_driver_api::schema::{
+        ConstraintDetail, ConstraintKind, ForeignTarget, Identity, NewCheck, NewForeignKey,
+        ReferentialAction,
+    };
+    let mut detail = detail();
+    detail.constraints.push(ConstraintDetail {
+        name: "users_name_check".into(),
+        kind: ConstraintKind::Check,
+        definition: "CHECK (name <> '')".into(),
+        columns: vec!["name".into()],
+        references: None,
+    });
+    let plan = alter_sql(
+        &AlterTable {
+            schema: "public",
+            table: "users",
+            detail: &detail,
+        },
+        &[
+            SchemaChange::ColumnIdentity {
+                column: column("id"),
+                identity: Identity::ByDefault,
+            },
+            SchemaChange::ColumnCollation {
+                column: column("name"),
+                charset: None,
+                collation: Some("C".into()),
+            },
+            SchemaChange::ColumnType {
+                column: column("old"),
+                data_type: "varchar(10)".into(),
+            },
+            SchemaChange::DropConstraint("users_name_check".into()),
+            SchemaChange::AddForeignKey(NewForeignKey {
+                name: None,
+                columns: vec!["id".into()],
+                target: ForeignTarget {
+                    schema: "auth".into(),
+                    table: "accounts".into(),
+                    columns: vec!["id".into()],
+                },
+                on_delete: ReferentialAction::SetNull,
+                on_update: ReferentialAction::Cascade,
+            }),
+            SchemaChange::AddCheck(NewCheck {
+                name: Some("named".into()),
+                expression: " id > 0 ".into(),
+            }),
+        ],
+    )?;
+    assert_eq!(
+        plan.statements,
+        [
+            "ALTER TABLE \"public\".\"users\" DROP CONSTRAINT \"users_name_check\"",
+            "ALTER TABLE \"public\".\"users\" ALTER COLUMN \"id\" ADD GENERATED BY DEFAULT AS IDENTITY",
+            "ALTER TABLE \"public\".\"users\" ALTER COLUMN \"name\" TYPE text COLLATE \"C\"",
+            "ALTER TABLE \"public\".\"users\" ALTER COLUMN \"old\" TYPE varchar(10)",
+            "ALTER TABLE \"public\".\"users\" ADD FOREIGN KEY (\"id\") REFERENCES \"auth\".\"accounts\" (\"id\") ON DELETE SET NULL ON UPDATE CASCADE",
+            "ALTER TABLE \"public\".\"users\" ADD CONSTRAINT \"named\" CHECK (id > 0)",
+        ]
+    );
+    assert!(
+        plan.warnings
+            .iter()
+            .any(|w| w.contains("from text to varchar(10)"))
+    );
+    let unknown = sql(&[SchemaChange::DropConstraint("nope".into())]);
+    assert_eq!(unknown, Err(AlterError::UnknownConstraint("nope".into())));
+    let auto = sql(&[SchemaChange::ColumnIdentity {
+        column: column("id"),
+        identity: Identity::AutoIncrement,
+    }]);
+    assert!(matches!(auto, Err(AlterError::Unsupported(_))));
+    Ok(())
+}
+
+#[test]
+fn indexes_sort_descending_and_filter_rows() -> Result<(), AlterError> {
+    let statements = sql(&[SchemaChange::CreateIndex(NewIndex {
+        name: Some("recent".into()),
+        columns: vec!["id".into(), "name".into()],
+        descending: vec!["id".into()],
+        predicate: Some("name IS NOT NULL".into()),
+        ..NewIndex::default()
+    })])?;
+    assert_eq!(
+        statements,
+        [
+            "CREATE INDEX \"recent\" ON \"public\".\"users\" USING btree (\"id\" DESC, \"name\") WHERE (name IS NOT NULL)"
+        ]
+    );
+    let stray = sql(&[SchemaChange::CreateIndex(NewIndex {
+        columns: vec!["id".into()],
+        descending: vec!["name".into()],
+        ..NewIndex::default()
+    })]);
+    assert_eq!(stray, Err(AlterError::UnknownColumn("name".into())));
     Ok(())
 }

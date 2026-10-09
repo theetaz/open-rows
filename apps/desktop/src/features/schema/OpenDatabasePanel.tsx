@@ -11,6 +11,8 @@ type Props = {
   catalog: Catalog;
   onOpen: (name: string) => void;
   onClose: () => void;
+  /** Create a database; absent when the engine cannot. */
+  onNew?: (() => void) | undefined;
 };
 
 /** Loading, error or offline text while the list is not ready. */
@@ -100,6 +102,7 @@ export function OpenDatabasePanel(props: Props): React.JSX.Element {
           canOpen={Boolean(current)}
           onOpen={open}
           onCancel={props.onClose}
+          onNew={props.onNew}
         />
       </div>
     </Sheet>
@@ -158,6 +161,7 @@ function PanelFooter(props: {
   canOpen: boolean;
   onOpen: () => void;
   onCancel: () => void;
+  onNew?: (() => void) | undefined;
 }): React.JSX.Element {
   return (
     <>
@@ -174,7 +178,15 @@ function PanelFooter(props: {
       <footer className={styles.footer}>
         <Button onClick={props.onCancel}>Cancel</Button>
         <span className={styles.spacer} />
-        <Button aria-disabled="true" title="Creating databases is coming soon">
+        <Button
+          disabled={!props.onNew}
+          title={
+            props.onNew
+              ? 'Create a database'
+              : 'This database cannot create databases'
+          }
+          onClick={props.onNew}
+        >
           New…
         </Button>
         <Button

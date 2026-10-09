@@ -21,16 +21,29 @@ function triggerSummary(trigger: TriggerDto): string {
   ].join(' · ');
 }
 
-/** The table's triggers with their definitions (read-only). */
+/** Open the trigger editor: a new trigger (`null`), an edit, or a drop. */
+export type TriggerAction = (name: string | null, drop: boolean) => void;
+
+/**
+ * The table's triggers with their definitions; New, Edit and Drop open the
+ * trigger editors when the engine has them.
+ */
 export function TriggersSheet({
   table,
   triggers,
+  onTrigger,
   onClose,
 }: {
   table: string;
   triggers: readonly TriggerDto[];
+  /** Absent when triggers cannot be edited here. */
+  onTrigger?: TriggerAction | undefined;
   onClose: () => void;
 }): React.JSX.Element {
+  const act = (name: string | null, drop: boolean) => () => {
+    onClose();
+    onTrigger?.(name, drop);
+  };
   return (
     <Sheet title={`Triggers on ${table}`} onClose={onClose}>
       <div className={styles.triggers}>
@@ -45,6 +58,16 @@ export function TriggersSheet({
           >
             <h3>{trigger.name}</h3>
             <p>{triggerSummary(trigger)}</p>
+            {onTrigger && (
+              <p>
+                <Button size="sm" onClick={act(trigger.name, false)}>
+                  Edit…
+                </Button>{' '}
+                <Button size="sm" onClick={act(trigger.name, true)}>
+                  Drop…
+                </Button>
+              </p>
+            )}
             <SqlViewer
               sql={`${trigger.definition};`}
               label={`Definition of ${trigger.name}`}
@@ -52,7 +75,11 @@ export function TriggersSheet({
           </section>
         ))}
       </div>
-      <SheetActions>
+      <SheetActions
+        leading={
+          onTrigger && <Button onClick={act(null, false)}>New trigger…</Button>
+        }
+      >
         <Button variant="primary" onClick={onClose}>
           Done
         </Button>

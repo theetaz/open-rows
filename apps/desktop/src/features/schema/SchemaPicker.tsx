@@ -6,13 +6,17 @@ import styles from './SchemaPicker.module.css';
 
 /**
  * Schema of the active database; system schemas only when toggled on.
- * `children` are extra engine tools (e.g. attach for `SQLite`).
+ * `+` opens the create menu; `children` are extra engine tools (e.g.
+ * attach for `SQLite`).
  */
 export function SchemaPicker({
   catalog,
+  onCreate,
   children,
 }: {
   catalog: Catalog;
+  /** Open the create menu (new table, view, schema, …) at a point. */
+  onCreate?: ((point: { x: number; y: number }) => void) | undefined;
   children?: ReactNode;
 }): React.JSX.Element {
   const { schemas, systemSchemas } = catalog;
@@ -24,7 +28,16 @@ export function SchemaPicker({
       : [];
   return (
     <div className={styles.schema}>
-      <IconButton aria-label="Create object" size="sm">
+      <IconButton
+        aria-label="Create object"
+        aria-haspopup="menu"
+        size="sm"
+        disabled={!onCreate}
+        onClick={(event) => {
+          const box = event.currentTarget.getBoundingClientRect();
+          onCreate?.({ x: box.left, y: box.top });
+        }}
+      >
         +
       </IconButton>
       <select

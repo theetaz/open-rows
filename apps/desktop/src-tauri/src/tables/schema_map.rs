@@ -28,7 +28,10 @@ pub(crate) fn detail_dto(
             info.kind,
             RelationKind::Table | RelationKind::PartitionedTable
         );
+    let constraints = detail.constraints.iter().map(Into::into).collect();
     Some(TableDetailDto {
+        constraints,
+        view_query: None,
         columns: detail
             .columns
             .into_iter()
@@ -84,6 +87,7 @@ fn structure_column(column: ColumnDetail, constraints: &[ConstraintDetail]) -> S
             Generated::IdentityAlways => GeneratedDto::IdentityAlways,
             Generated::IdentityByDefault => GeneratedDto::IdentityByDefault,
             Generated::Stored => GeneratedDto::Stored,
+            Generated::AutoIncrement => GeneratedDto::AutoIncrement,
         },
         comment: column.comment,
     }

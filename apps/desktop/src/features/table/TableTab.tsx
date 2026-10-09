@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useRef } from 'react';
 import { Button } from '@openrows/ui';
-import type { EngineDto } from '@openrows/ipc';
+import type { EngineDto, ObjectFeaturesDto } from '@openrows/ipc';
 import type { TableObject } from '../query/tabs';
 import { canEdit, EditToolbar, editingNote, rowEditBar } from './EditToolbar';
 import { RowEditSheet } from './RowEditSheet';
@@ -13,6 +13,7 @@ import { StructurePane } from './structure/StructurePane';
 import { useStructure } from './structure/useStructure';
 import type { Structure } from './structure/useStructure';
 import type { SelectedTable } from './structure/TableInfoPanel';
+import type { TriggerAction } from './structure/TriggersSheet';
 import { TableData } from './TableData';
 import { TableFooter } from './TableFooter';
 import type { ShowRow } from './row';
@@ -31,8 +32,10 @@ type TableTabProps = {
   tabId: string;
   table: TableObject;
   profileId: string;
-  /** Engine of the connection: quoting for copied SQL. */
+  /** Engine of the connection: quoting for copied SQL, types and forms. */
   engine: EngineDto;
+  /** The structure editors the engine supports. */
+  features: ObjectFeaturesDto;
   /** The session pages run on, or `null` when they cannot run here. */
   sessionId: string | null;
   /** Why rows cannot load even though the connection is open. */
@@ -48,7 +51,28 @@ type TableTabProps = {
   onRenamed?: ((name: string) => void) | undefined;
   /** Something was staged: a preview tab becomes a normal tab. */
   onEdited?: (() => void) | undefined;
+  /** Open the trigger editors of this table (new, edit or drop). */
+  onTrigger?: TriggerAction | undefined;
+  /** Bumped after an object editor changed the schema: re-read the table. */
+  structureRevision?: number | undefined;
 };
+
+/** Read the table again when an object editor changed the schema. */
+function useStructureRevision(
+  revision: number | undefined,
+  reload: () => void,
+): void {
+  const seen = useRef(revision);
+  const latest = useRef(reload);
+  useEffect(() => {
+    latest.current = reload;
+  });
+  useEffect(() => {
+    if (seen.current === revision) return;
+    seen.current = revision;
+    latest.current();
+  }, [revision]);
+}
 
 /** Report the first staged row or schema change. */
 function useEdited(staged: number, onEdited: (() => void) | undefined): void {
@@ -77,6 +101,7 @@ export function TableTab(props: TableTabProps): React.JSX.Element {
     ready: sessionId !== null,
   });
   const structure = useStructure({ ...props, mode: view.mode });
+  useStructureRevision(props.structureRevision, actions.reload);
   useEdited(
     editing.history.current.length + structure.schema.history.current.length,
     props.onEdited,
@@ -186,6 +211,9 @@ function footerProps(
       status: indexes
         ? `${String(structure.indexes.length)} indexes`
         : `${String(structure.rows.length)} columns`,
+      onConstraints: () => {
+        structure.setSheet('constraints');
+      },
       onTriggers: () => {
         structure.setSheet('triggers');
       },
