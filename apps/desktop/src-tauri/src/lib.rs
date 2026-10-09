@@ -8,6 +8,7 @@ mod grid_report;
 #[cfg(target_os = "macos")]
 mod material;
 mod menu;
+mod observability;
 mod queries;
 mod results;
 mod settings;
@@ -76,7 +77,11 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
             exports::commands::export_start,
             settings::settings_read,
             settings::settings_write,
-            menu::menu_sync
+            menu::menu_sync,
+            observability::commands::crash_recovery_status,
+            observability::commands::open_logs_folder,
+            observability::commands::ui_report,
+            tables::recovery_commands::table_edits_journaled
         ])
         .events(tauri_specta::collect_events![
             sessions::SessionStateChanged,
@@ -107,6 +112,7 @@ pub fn export_bindings(path: &std::path::Path) -> Result<(), specta_typescript::
 /// # Errors
 /// Returns a Tauri error if setup or the event loop fails.
 pub fn run() -> Result<(), tauri::Error> {
+    observability::install_panic_hook();
     startup_report::initialize();
     startup_report::record(startup_report::Phase::BuilderStart);
     let builder = spike::configure(tauri::Builder::default())?
@@ -129,13 +135,20 @@ pub fn run() -> Result<(), tauri::Error> {
             }
         })
         .setup(move |app| {
+            observability::install(app)?;
             specta.mount_events(app);
             connections::install(app)?;
             settings::install(app)?;
             menu::install(app)?;
             startup::install(app)
         })
-        .run(tauri::generate_context!())
+        .build(tauri::generate_context!())?
+        .run(|app, event| {
+            if let tauri::RunEvent::Exit = event {
+                observability::exit(app);
+            }
+        });
+    Ok(())
 }
 
 #[cfg(test)]

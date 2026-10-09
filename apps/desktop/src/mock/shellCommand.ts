@@ -2,6 +2,7 @@
 import type { ThemeMode } from '@openrows/ui';
 import { isTabCommand, runTabCommand } from '../features/commands';
 import type { Connections } from '../features/connections';
+import { openLogs } from '../features/diagnostics';
 import type { Catalog } from '../features/schema';
 import type { SettingsSection } from '../features/settings';
 import type { useInspectorOpen } from './layout';
@@ -108,6 +109,10 @@ function workActions(input: ShellInput): Actions {
     },
     connect: connections.connect,
     disconnect: connections.disconnect,
+    'open-logs': () => {
+      // The failure is already in the log, and a menu command has no other place to show it.
+      openLogs().catch(() => undefined);
+    },
   };
 }
 

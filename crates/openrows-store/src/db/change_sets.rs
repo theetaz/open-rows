@@ -34,6 +34,19 @@ const UPSERT: &str = "INSERT INTO change_sets (id, profile_id, target, ops, upda
 const SELECT: &str =
     "SELECT id, profile_id, target, ops, updated_at FROM change_sets WHERE id = ?1";
 
+const SELECT_ALL: &str = "SELECT id, profile_id, target, ops, updated_at FROM change_sets \
+     ORDER BY updated_at DESC";
+
+fn record(row: &rusqlite::Row<'_>) -> rusqlite::Result<ChangeSetRecord> {
+    Ok(ChangeSetRecord {
+        id: row.get(0)?,
+        profile_id: row.get(1)?,
+        target: row.get(2)?,
+        ops: row.get(3)?,
+        updated_at_ms: row.get(4)?,
+    })
+}
+
 impl LocalStore {
     /// Insert or replace the journaled change set of one table.
     ///
@@ -61,17 +74,25 @@ impl LocalStore {
     /// Returns a `Sqlite` error when the read fails.
     pub fn change_set(&self, id: &str) -> Result<Option<ChangeSetRecord>, StoreError> {
         self.lock()?
-            .query_row(SELECT, [id], |row| {
-                Ok(ChangeSetRecord {
-                    id: row.get(0)?,
-                    profile_id: row.get(1)?,
-                    target: row.get(2)?,
-                    ops: row.get(3)?,
-                    updated_at_ms: row.get(4)?,
-                })
-            })
+            .query_row(SELECT, [id], record)
             .optional()
             .map_err(sqlite("read change set"))
+    }
+
+    /// Every journaled change set, newest first.
+    ///
+    /// # Errors
+    /// Returns a `Sqlite` error when the read fails.
+    pub fn change_sets(&self) -> Result<Vec<ChangeSetRecord>, StoreError> {
+        let connection = self.lock()?;
+        let mut statement = connection
+            .prepare(SELECT_ALL)
+            .map_err(sqlite("list change sets"))?;
+        let rows = statement
+            .query_map([], record)
+            .map_err(sqlite("list change sets"))?;
+        rows.collect::<Result<_, _>>()
+            .map_err(sqlite("list change sets"))
     }
 
     /// Forget the journaled change set of one table (after commit or discard).

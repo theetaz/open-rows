@@ -120,6 +120,7 @@ impl SessionManager {
     ///
     /// # Errors
     /// The connect failure, or `Internal` when the driver panicked while connecting.
+    #[tracing::instrument(name = "session.open", skip_all)]
     pub async fn open<F>(&self, connect: F) -> Result<SessionId, CoreError>
     where
         F: Future<Output = Result<Box<dyn Session>, DriverError>> + Send + 'static,
@@ -148,8 +149,12 @@ impl SessionManager {
                 "session task ended while connecting",
             ))
         });
-        if result.is_err() {
-            self.lock().remove(&id);
+        match &result {
+            Ok(()) => tracing::info!(session = %id, "session opened"),
+            Err(error) => {
+                self.lock().remove(&id);
+                tracing::warn!(kind = ?error.kind, "session could not be opened");
+            }
         }
         result.map(|()| id)
     }
@@ -253,6 +258,7 @@ impl SessionManager {
     ///
     /// # Errors
     /// `UnknownSession`, or the driver's failure while terminating the connection.
+    #[tracing::instrument(name = "session.close", skip_all, fields(session = %session))]
     pub async fn close(&self, session: SessionId) -> Result<(), CoreError> {
         let entry = self
             .lock()

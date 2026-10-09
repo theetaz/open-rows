@@ -1,8 +1,30 @@
 // SPDX-License-Identifier: Apache-2.0
 import { isTauri } from '@tauri-apps/api/core';
 import { commands, events } from './generated/bindings';
-import type { MenuCommand, MenuItemState } from './generated/bindings';
+import type {
+  MenuCommand,
+  MenuItemState,
+  UiReport,
+} from './generated/bindings';
 import { unwrap } from './connections';
+
+/** Whether the previous run ended without a clean exit; `false` outside the shell. */
+export async function crashRecoveryStatus(): Promise<boolean> {
+  if (!isTauri()) return false;
+  return commands.crashRecoveryStatus();
+}
+
+/** Show the log folder in the file manager (Help ▸ Open Logs Folder). */
+export async function openLogsFolder(): Promise<void> {
+  if (!isTauri()) return;
+  await unwrap(commands.openLogsFolder());
+}
+
+/** Send one webview error or timing to the core log, where it is scrubbed. */
+export async function reportUiEvent(report: UiReport): Promise<void> {
+  if (!isTauri()) return;
+  await commands.uiReport(report);
+}
 
 /**
  * The text of `settings.json` in the app-data dir; `null` before the first

@@ -174,6 +174,23 @@ export const commands = {
 	 *  Returns the ids whose accelerator the platform rejected.
 	 */
 	menuSync: (states: MenuItemState[]) => __TAURI_INVOKE<string[]>("menu_sync", { states }),
+	/**  Whether this launch follows a run that did not exit cleanly. */
+	crashRecoveryStatus: () => __TAURI_INVOKE<boolean>("crash_recovery_status"),
+	/**
+	 *  Show the log folder in the file manager (Help ▸ Open Logs Folder).
+	 * 
+	 *  # Errors
+	 *  The folder cannot be created, or the file manager cannot be started.
+	 */
+	openLogsFolder: () => typedError<null, IpcError>(__TAURI_INVOKE("open_logs_folder")),
+	/**  Log one webview report under the `ui` target. */
+	uiReport: (report: UiReport) => __TAURI_INVOKE<void>("ui_report", { report }),
+	/**
+	 *  Every table with journaled edits, newest first, for the crash-recovery
+	 *  prompt. Values stay in the journal; a journal entry that cannot be read is
+	 *  logged and skipped, since it cannot be restored either.
+	 */
+	tableEditsJournaled: () => typedError<JournaledEditsDto[], IpcError>(__TAURI_INVOKE("table_edits_journaled")),
 };
 
 /** Events */
@@ -616,6 +633,13 @@ export type IpcErrorKind =
 "unsupported" | 
 /**  A bug or broken invariant. */
 "internal";
+
+/**  A table with journaled edits: where it is and how many staged rows wait. */
+export type JournaledEditsDto = {
+	target: TableTarget,
+	rows: number,
+	savedAtMs: number | null,
+};
 
 /**  Page-clock phases of one keystroke; `keystrokeToPaintMs` excludes only `vsyncWaitMs`. */
 export type KeystrokeSample = {
@@ -1240,6 +1264,20 @@ export type TriggerDto = {
 
 /**  When a trigger fires. */
 export type TriggerTimingDto = "before" | "after" | "insteadOf";
+
+/**
+ *  One webview report. `name` is the error name or the command; `message`
+ *  is free text and is scrubbed and clipped before it is written.
+ */
+export type UiReport = {
+	kind: UiReportKind,
+	name: string,
+	message: string | null,
+	durationMs: number | null,
+};
+
+/**  What the webview reports: an error, a rejected promise, or a timing. */
+export type UiReportKind = "error" | "unhandledRejection" | "longTask" | "slowIpc";
 
 /**  Form fields filled from a pasted URL; only says whether it had a password. */
 export type UrlDraft = {

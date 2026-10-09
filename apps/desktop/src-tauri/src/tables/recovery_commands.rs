@@ -12,6 +12,8 @@ use super::dto::TableTarget;
 use super::edit_dto::SavedEditsDto;
 use crate::connections::{IpcError, IpcErrorKind};
 use openrows_store::{ChangeSetRecord, LocalStore, StoreError};
+use serde::Serialize;
+use specta::Type;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::State;
 
@@ -105,6 +107,45 @@ pub(crate) fn table_edits_saved(
         saved_at_ms: stamp(record.updated_at_ms),
         ..saved
     }))
+}
+
+/// A table with journaled edits: where it is and how many staged rows wait.
+#[derive(Clone, Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct JournaledEditsDto {
+    target: TableTarget,
+    rows: u32,
+    saved_at_ms: f64,
+}
+
+/// Every table with journaled edits, newest first, for the crash-recovery
+/// prompt. Values stay in the journal; a journal entry that cannot be read is
+/// logged and skipped, since it cannot be restored either.
+#[tauri::command]
+#[specta::specta]
+pub(crate) fn table_edits_journaled(
+    local: State<'_, LocalStore>,
+) -> Result<Vec<JournaledEditsDto>, IpcError> {
+    let records = local.change_sets().map_err(|error| storage(&error))?;
+    let mut listed = Vec::with_capacity(records.len());
+    for record in &records {
+        if let Some(entry) = journaled(record) {
+            listed.push(entry);
+        } else {
+            tracing::warn!(target: "journal", "a journaled table cannot be read");
+        }
+    }
+    Ok(listed)
+}
+
+fn journaled(record: &ChangeSetRecord) -> Option<JournaledEditsDto> {
+    let target: TableTarget = serde_json::from_str(&record.target).ok()?;
+    let saved: SavedEditsDto = serde_json::from_str(&record.ops).ok()?;
+    Some(JournaledEditsDto {
+        target,
+        rows: u32::try_from(saved.changes.len()).unwrap_or(u32::MAX),
+        saved_at_ms: stamp(record.updated_at_ms),
+    })
 }
 
 /// Forget a table's journaled edits (commit, discard, or an unreadable journal).

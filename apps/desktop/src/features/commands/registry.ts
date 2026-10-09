@@ -58,6 +58,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   { id: 'assistant', label: 'Show assistant', shortcut: null },
   { id: 'settings', label: 'Settings…', shortcut: 'Cmd+Comma' },
   { id: 'shortcuts', label: 'Keyboard shortcuts…', shortcut: null },
+  { id: 'open-logs', label: 'Open logs folder', shortcut: null },
   { id: 'theme-light', label: 'Appearance: light', shortcut: null },
   { id: 'theme-dark', label: 'Appearance: dark', shortcut: null },
   { id: 'theme-system', label: 'Appearance: system', shortcut: null },

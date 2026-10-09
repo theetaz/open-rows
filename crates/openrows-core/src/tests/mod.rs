@@ -5,6 +5,7 @@ mod export;
 mod fake;
 mod isolation;
 mod lifecycle;
+mod observability;
 mod safety;
 mod script;
 

@@ -3,6 +3,7 @@ import { readSettingsFile, writeSettingsFile } from '@openrows/ipc';
 import { parseAppearance } from '@openrows/ui';
 import { parseEditorSettings } from '../query/editorSettings';
 import { parseOverrides, SHORTCUTS_KEY } from '../commands/bindings';
+import { DIAGNOSTICS_KEY, parseDiagnostics } from './diagnostics';
 import { GENERAL_KEY, parseGeneral } from './general';
 import { onSettingsChanged } from './localSetting';
 
@@ -32,6 +33,7 @@ const SECTIONS: Readonly<Record<string, Section>> = {
     parse: (stored) => parseEditorSettings(JSON.stringify(stored ?? null)),
   },
   shortcuts: { key: SHORTCUTS_KEY, parse: parseOverrides },
+  diagnostics: { key: DIAGNOSTICS_KEY, parse: parseDiagnostics },
 };
 
 const themeOf = (value: unknown): string =>

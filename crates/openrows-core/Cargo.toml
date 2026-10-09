@@ -21,6 +21,7 @@ openrows-types = { path = "../openrows-types" }
 thiserror.workspace = true
 tokio = { version = "1.53", features = ["macros", "rt", "sync", "time"] }
 tokio-util = "0.7.19"
+tracing = "0.1"
 
 [dev-dependencies]
 arrow-ipc = { version = "60", default-features = false }
@@ -30,3 +31,4 @@ openrows-driver-sqlite = { path = "../openrows-driver-sqlite" }
 openrows-net = { path = "../openrows-net" }
 tempfile = "3.27"
 tokio = { version = "1.53", features = ["macros", "rt-multi-thread", "sync", "time"] }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "std"] }

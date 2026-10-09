@@ -97,6 +97,7 @@ pub(crate) fn plan(
 }
 
 /// Connect with the form values step by step, report, and disconnect.
+#[tracing::instrument(name = "connection.test", skip_all)]
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn connection_test(
@@ -113,17 +114,24 @@ pub(crate) async fn connection_test(
         ..Steps::default()
     };
     let outcome = run::run(&state, plan, target, &mut steps).await;
+    let elapsed_ms = u32::try_from(started.elapsed().as_millis()).unwrap_or(u32::MAX);
     let (server, error) = match outcome.result {
         Ok(server) => (Some(server), None),
         Err(error) => (None, Some(error)),
     };
+    match &error {
+        None => tracing::info!(elapsed_ms, "connection test passed"),
+        Some(error) => {
+            tracing::warn!(elapsed_ms, kind = ?error.kind, "connection test failed");
+        }
+    }
     Ok(TestReport {
         steps: steps.list,
         server,
         error,
         certificate: outcome.certificate,
         latency: outcome.latency,
-        elapsed_ms: u32::try_from(started.elapsed().as_millis()).unwrap_or(u32::MAX),
+        elapsed_ms,
     })
 }
 

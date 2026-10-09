@@ -60,6 +60,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "settings_read",
             "settings_write",
             "menu_sync",
+            "crash_recovery_status",
+            "open_logs_folder",
+            "ui_report",
+            "table_edits_journaled",
         ]),
     ))?;
     Ok(())
