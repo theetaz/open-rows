@@ -11,10 +11,12 @@
 
 | Category | Policy |
 | --- | --- |
-| MIT, Apache-2.0, BSD-2/3-Clause, ISC, Zlib, Unicode-3.0, MPL-2.0 (file-level copyleft, unmodified use), OFL-1.1 (fonts), CC0 | **Allowed** |
+| MIT, Apache-2.0, BSD-2/3-Clause, ISC, Zlib, Unicode-3.0, MPL-2.0 (file-level copyleft, unmodified use), OFL-1.1 (fonts), CC0, Python-2.0 | **Allowed** |
 | EPL-2.0, LGPL (dynamic linking only) | **Case-by-case**, requires ADR and maintainer approval (e.g. `elkjs` for ER layout — EPL-2.0; fallback `dagre`, MIT, if not approved) |
 | GPL, AGPL, SSPL, BSL/BUSL, Commons Clause, proprietary | **Not allowed** in shipped binaries |
 | Proprietary database client libraries (e.g. Oracle Instant Client) | **Never bundled**; loaded at runtime only if the user installs them |
+
+Python-2.0 (PSF licence, permissive and OSI-approved) is allowed for `argparse`, a dependency of `sql-formatter` used only by its command-line tool; it is not bundled into the app.
 
 Enforced by `cargo-deny` (`[licenses]` allowlist) and an npm licence check in CI.
 
