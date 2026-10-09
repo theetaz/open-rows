@@ -17,7 +17,7 @@ import styles from './ObjectTree.module.css';
 export function ObjectTree(props: {
   catalog: Catalog;
   search: string;
-  onOpen: (object: ObjectRef) => void;
+  onOpen: (object: ObjectRef, preview?: boolean) => void;
   /** Context menu of a relation row (tables, views, materialized views). */
   onMenu?: ((object: ObjectRef, point: MenuPoint) => void) | undefined;
 }): React.JSX.Element {

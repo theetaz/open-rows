@@ -60,3 +60,21 @@ pre {
 ::-webkit-scrollbar-thumb:active {
   background-color: color-mix(in srgb, var(--or-text) 45%, transparent);
 }
+/* Settings ▸ General: sidebar row density and the in-app reduce-motion switch. */
+:root[data-density='compact'] {
+  --or-tree-row-height: 22px;
+}
+:root[data-density='comfortable'] {
+  --or-tree-row-height: 28px;
+}
+:root[data-motion='reduced'] {
+  --or-motion-panel: 0ms;
+  --or-motion-disclosure: 0ms;
+}
+:root[data-motion='reduced'] *,
+:root[data-motion='reduced'] *::before,
+:root[data-motion='reduced'] *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}

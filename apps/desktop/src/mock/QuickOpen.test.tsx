@@ -6,6 +6,7 @@ import { ThemeProvider } from '@openrows/ui';
 import { searchCatalog } from '@openrows/ipc';
 import { connectTo } from '../test/connect';
 import { Workspace } from './Workspace';
+import { COMMANDS } from '../features/commands';
 
 vi.mock('@openrows/ipc', async () =>
   (await import('../test/ipcStub')).ipcStub(),
@@ -112,7 +113,7 @@ it('⌘P without a connection explains why nothing is listed', async () => {
     ),
   ).toBeVisible();
 });
-it('⌘⇧P lists twelve commands and executes sidebar, inspector, query, refresh and safe mode actions', async () => {
+it('⌘⇧P lists every command and executes sidebar, inspector, query, refresh and safe mode actions', async () => {
   vi.useFakeTimers();
   mount();
   await connect();
@@ -120,7 +121,7 @@ it('⌘⇧P lists twelve commands and executes sidebar, inspector, query, refres
   const palette = within(
     screen.getByRole('dialog', { name: 'Command palette' }),
   );
-  expect(palette.getAllByRole('option')).toHaveLength(12);
+  expect(palette.getAllByRole('option')).toHaveLength(COMMANDS.length);
   expect(
     palette.getByRole('option', { name: /Toggle sidebar.*⌃⌘S/ }),
   ).toBeVisible();

@@ -95,7 +95,7 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
 /** Full-height workspace sidebar: connections and their opened databases. */
 export function WorkspaceRail(props: {
   connections: Connections;
-  onAppearance?: (() => void) | undefined;
+  onSettings?: (() => void) | undefined;
 }): React.JSX.Element {
   const { connections } = props;
   return (
@@ -117,7 +117,7 @@ export function WorkspaceRail(props: {
         connections.setSheet({ kind: 'new' });
       }}
       actionsFor={(profile) => connectionActions(profile, connections)}
-      onAppearance={props.onAppearance}
+      onSettings={props.onSettings}
     />
   );
 }

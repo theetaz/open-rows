@@ -32,7 +32,7 @@ export function ConnectionRail(
     onSelect: (profileId: string) => void;
     onNew: () => void;
     actionsFor?: (profile: ProfileDto) => readonly ConnectionAction[];
-    onAppearance?: (() => void) | undefined;
+    onSettings?: (() => void) | undefined;
   },
 ): React.JSX.Element {
   const [compact, toggle] = useWorkspaceCollapse('rail');
@@ -58,12 +58,12 @@ export function ConnectionRail(
           <Icon name="code" />
           <span className={styles.controlLabel}>API client</span>
         </button>
-        {props.onAppearance && (
+        {props.onSettings && (
           <button
             type="button"
             className={styles.footerRow}
-            aria-label="Appearance settings"
-            onClick={props.onAppearance}
+            aria-label="Settings"
+            onClick={props.onSettings}
           >
             <Icon name="settings" />
             <span className={styles.controlLabel}>Settings</span>

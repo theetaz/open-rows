@@ -22,6 +22,10 @@ function tabs(open: QueryTab[] = []): QueryTabs {
     edit: vi.fn(),
     bindFile: vi.fn(),
     setParams: vi.fn(),
+    move: vi.fn(),
+    pin: vi.fn(),
+    keep: vi.fn(),
+    state: { tabs: open, active: {}, next: 1 },
   };
 }
 
@@ -35,6 +39,7 @@ it('opens relations as table tabs titled with their name', () => {
     const target = tabs();
     expect(openTableView(target, scope, { ...users, kind })).toBe(true);
     expect(target.open).toHaveBeenCalledWith(scope, {
+      preview: false,
       title: 'users',
       objectPath: ['public', 'users'],
       table: { database: 'orders', schema: 'public', name: 'users' },
@@ -54,7 +59,18 @@ it('refocuses an open table tab instead of opening another', () => {
   const target = tabs([open]);
   expect(openTableView(target, scope, users)).toBe(true);
   expect(target.select).toHaveBeenCalledWith('table-3');
+  expect(target.keep).toHaveBeenCalledWith('table-3');
   expect(target.open).not.toHaveBeenCalled();
+});
+
+it('opens a single-clicked table as the preview tab without keeping it', () => {
+  const target = tabs();
+  expect(openTableView(target, scope, users, true)).toBe(true);
+  expect(target.open).toHaveBeenCalledWith(
+    scope,
+    expect.objectContaining({ preview: true, title: 'users' }),
+  );
+  expect(target.keep).not.toHaveBeenCalled();
 });
 
 it('leaves routines and sequences to query tabs', () => {

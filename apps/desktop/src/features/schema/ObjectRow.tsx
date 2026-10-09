@@ -26,7 +26,8 @@ type RowContext = {
   /** Key of the section tree's single Tab stop. */
   tabStop: string | undefined;
   onSelect: (key: string) => void;
-  onOpen: (object: ObjectRef) => void;
+  /** Open an object; `preview` for a single click (the preview tab). */
+  onOpen: (object: ObjectRef, preview?: boolean) => void;
   /** Context menu of a table, view or materialized view at a window point. */
   onMenu?: ((object: ObjectRef, point: MenuPoint) => void) | undefined;
 };
@@ -98,6 +99,9 @@ export function ObjectRow(
         props.onSelect(id);
       }}
       onOpen={open}
+      onPreview={() => {
+        props.onOpen(target, true);
+      }}
       {...disclosure}
       icon={glyph}
       iconTone={glyph === '▦' ? 'info' : undefined}

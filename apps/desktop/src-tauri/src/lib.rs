@@ -7,8 +7,10 @@ mod exports;
 mod grid_report;
 #[cfg(target_os = "macos")]
 mod material;
+mod menu;
 mod queries;
 mod results;
+mod settings;
 mod spike;
 mod startup;
 mod startup_report;
@@ -71,11 +73,15 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
             tables::file_value::table_edit_file,
             tables::schema_commands::table_detail,
             tables::schema_commands::table_alter,
-            exports::commands::export_start
+            exports::commands::export_start,
+            settings::settings_read,
+            settings::settings_write,
+            menu::menu_sync
         ])
         .events(tauri_specta::collect_events![
             sessions::SessionStateChanged,
-            prompts::SshPromptChanged
+            prompts::SshPromptChanged,
+            menu::MenuCommand
         ])
         .constant(
             "DEFAULT_CUSTOM_ENV_COLOR",
@@ -125,6 +131,8 @@ pub fn run() -> Result<(), tauri::Error> {
         .setup(move |app| {
             specta.mount_events(app);
             connections::install(app)?;
+            settings::install(app)?;
+            menu::install(app)?;
             startup::install(app)
         })
         .run(tauri::generate_context!())

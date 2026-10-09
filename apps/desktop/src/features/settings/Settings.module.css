@@ -1,0 +1,61 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.paneHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--or-space-12);
+}
+.hint {
+  font-size: var(--or-text-12);
+  margin-block: 0 var(--or-space-12);
+}
+.shortcuts {
+  background: var(--or-control-fill);
+  border: var(--or-border-width) solid var(--or-separator);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.shortcutRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--or-space-4) var(--or-space-12);
+  min-block-size: 36px;
+  padding: var(--or-space-4) var(--or-space-12);
+  border-block-end: var(--or-border-width) solid var(--or-separator);
+}
+.shortcutRow:last-child {
+  border-block-end: 0;
+}
+.recorder {
+  min-inline-size: 120px;
+  block-size: var(--or-control-height-compact);
+  padding-inline: var(--or-space-8);
+  border: var(--or-border-width) solid var(--or-control-stroke);
+  border-radius: var(--or-radius-control-compact);
+  background: var(--or-control-active);
+  color: var(--or-text);
+  font: var(--or-text-12) var(--or-font-ui);
+  text-align: center;
+  cursor: default;
+}
+.recorder[data-recording='true'] {
+  border-color: var(--or-accent);
+  color: var(--or-secondary);
+}
+.recorder:focus-visible {
+  outline: var(--or-focus-width) solid var(--or-focus);
+  outline-offset: 1px;
+}
+.problem {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-8);
+  margin: 0;
+  font-size: var(--or-text-12);
+  color: var(--or-danger-fg);
+}
+.json textarea {
+  font: var(--or-text-mono) var(--or-font-mono);
+}

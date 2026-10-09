@@ -57,6 +57,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "table_detail",
             "table_alter",
             "export_start",
+            "settings_read",
+            "settings_write",
+            "menu_sync",
         ]),
     ))?;
     Ok(())

@@ -3,6 +3,7 @@ import { useSyncExternalStore } from 'react';
 import type { EditorPreferences, FormatOptions } from '@openrows/editor';
 import type { ParamStyleDto } from '@openrows/ipc';
 import type { RunScope } from './request';
+import { settingsChanged } from '../settings/localSetting';
 
 /** Key handling of the SQL editor. */
 export type KeyBinding = 'default' | 'vim';
@@ -154,6 +155,7 @@ function save(settings: EditorSettings): void {
   listeners.forEach((listener) => {
     listener();
   });
+  settingsChanged();
 }
 
 function subscribe(listener: () => void): () => void {

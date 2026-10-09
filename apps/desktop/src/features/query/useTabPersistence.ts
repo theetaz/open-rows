@@ -22,28 +22,30 @@ function unsavedFiles(state: TabsState): (QueryTab & { file: TabFile })[] {
 }
 
 /**
- * Auto Save: store query tabs on this device (or forget them when off) and
- * write file-bound tabs back to their `.sql` files, debounced. `onFile`
+ * Store open tabs for session restore (query text only with Auto Save) and,
+ * with Auto Save, write file-bound tabs back to their `.sql` files, debounced. `onFile`
  * records each write's outcome on the tab.
  */
 export function useTabPersistence(
   state: TabsState,
   autoSave: boolean,
+  restore: boolean,
   onFile: (id: string, file: TabFile) => void,
 ): void {
-  const latest = useRef({ state, autoSave });
+  const latest = useRef({ state, autoSave, restore });
   useEffect(() => {
-    latest.current = { state, autoSave };
+    latest.current = { state, autoSave, restore };
     const timer = window.setTimeout(() => {
-      writeTabs(state, autoSave);
+      writeTabs(state, { autoSave, restore });
     }, AUTO_SAVE_DELAY_MS);
     return () => {
       window.clearTimeout(timer);
     };
-  }, [state, autoSave]);
+  }, [state, autoSave, restore]);
   useEffect(() => {
     const flush = (): void => {
-      writeTabs(latest.current.state, latest.current.autoSave);
+      const { autoSave: text, restore: keep } = latest.current;
+      writeTabs(latest.current.state, { autoSave: text, restore: keep });
     };
     window.addEventListener('pagehide', flush);
     return () => {

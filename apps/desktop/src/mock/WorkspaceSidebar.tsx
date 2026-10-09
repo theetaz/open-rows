@@ -16,7 +16,8 @@ type Props = {
   header: ReactNode;
   /** The saved connections; the History segment lists their statements. */
   connections: Connections;
-  onOpen: (object: ObjectRef) => void;
+  /** Open an object; `preview` for a single click in the tree. */
+  onOpen: (object: ObjectRef, preview?: boolean) => void;
   /** Open a history statement in a new query tab. */
   onOpenSql: (sql: string) => void;
   /** Open a saved query of the active connection in a new query tab. */

@@ -4,16 +4,14 @@ import type { RefObject } from 'react';
 import type {
   CompletionCatalog,
   EditorDialect,
-  EditorKey,
   EditorPreferences,
   EditorView,
-  FormatKind,
   SqlEditor,
 } from '@openrows/editor';
 import { currentCatalog } from './completionCatalog';
 import type { CursorStore } from './cursor';
 import type { EditorSettings, KeyBinding } from './editorSettings';
-import type { EditorHandle, RunScope } from './request';
+import type { EditorHandle } from './request';
 import styles from './Query.module.css';
 
 /** Editor text reaches the tab descriptor at most every 300 ms and on unmount. */
@@ -32,9 +30,8 @@ type Props = {
   /** Receives the cursor position on every move. */
   cursor: CursorStore;
   onChange: (sql: string) => void;
-  onRun: (scope: RunScope) => void;
-  /** ⌘I beautifies, ⇧⌘I uglifies. */
-  onFormat: (kind: FormatKind) => void;
+  /** App shortcuts (run, format, files); true when the key was handled. */
+  onKey: (event: KeyboardEvent) => boolean;
   /** Called with the editor once mounted, and with `null` when it goes. */
   onReady: (editor: EditorHandle | null) => void;
 };
@@ -93,31 +90,6 @@ function applyKeyBinding(
   });
 }
 
-/** Run (⌘↵, ⇧⌘↵) and format (⌘I, ⇧⌘I) shortcuts inside the editor. */
-function editorKeys(latest: RefObject<Props>): EditorKey[] {
-  const key = (name: string, run: () => void): EditorKey => ({
-    key: name,
-    run: () => {
-      run();
-      return true;
-    },
-  });
-  return [
-    key('Mod-Enter', () => {
-      latest.current.onRun('current');
-    }),
-    key('Shift-Mod-Enter', () => {
-      latest.current.onRun('all');
-    }),
-    key('Mod-i', () => {
-      latest.current.onFormat('beautify');
-    }),
-    key('Shift-Mod-i', () => {
-      latest.current.onFormat('uglify');
-    }),
-  ];
-}
-
 /** Hand a freshly mounted editor to the tab: key mode, handle, cursor, focus. */
 function attach(editor: SqlEditor, latest: RefObject<Props>): void {
   const props = latest.current;
@@ -153,7 +125,7 @@ function mount(
       dialect: props.dialect,
       catalog: currentCatalog(() => latest.current.catalog),
       preferences: preferencesOf(props.settings),
-      keys: editorKeys(latest),
+      onKeyDown: (event) => latest.current.onKey(event),
       onDocChange: () => {
         window.clearTimeout(timer);
         timer = window.setTimeout(save, SAVE_DELAY_MS);

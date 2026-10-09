@@ -39,6 +39,13 @@ export type QueryTab = TabScope & {
   file?: TabFile;
   /** Last query parameter values, by name (`:id`, `$1`, `?1`). */
   params?: Readonly<Record<string, string>>;
+  /** Pinned tabs stay left and survive Close Others / Close Tabs to the Right. */
+  pinned?: boolean;
+  /**
+   * The scope's one preview tab (a single-clicked table): the next preview
+   * replaces it until it is edited or double-clicked.
+   */
+  preview?: boolean;
 };
 
 /** What a new tab starts with; every field is optional. `table` makes a table tab. */
@@ -48,6 +55,8 @@ export type QueryTabInit = {
   objectPath?: readonly string[];
   table?: TableObject;
   file?: TabFile;
+  /** Open as the scope's preview tab, replacing the current one. */
+  preview?: boolean;
 };
 
 /** Every open query tab, the active tab per scope and the title counter. */
@@ -64,7 +73,7 @@ export function scopeKey(scope: TabScope): string {
   return `${scope.connectionId}\n${scope.database}`;
 }
 
-const inScope = (tab: QueryTab, scope: TabScope): boolean =>
+export const inScope = (tab: QueryTab, scope: TabScope): boolean =>
   tab.connectionId === scope.connectionId && tab.database === scope.database;
 
 /** Tabs of one scope, in opening order. */
@@ -72,7 +81,23 @@ export function tabsOf(state: TabsState, scope: TabScope): readonly QueryTab[] {
   return state.tabs.filter((tab) => inScope(tab, scope));
 }
 
-/** Append a tab to `scope` and make it that scope's active tab. */
+/** Place `tab`: in the preview tab's slot when it replaces it, else last. */
+function placed(
+  tabs: readonly QueryTab[],
+  tab: QueryTab,
+  scope: TabScope,
+): QueryTab[] {
+  const index = tab.preview
+    ? tabs.findIndex((item) => item.preview && inScope(item, scope))
+    : -1;
+  if (index < 0) return [...tabs, tab];
+  return tabs.map((item, at) => (at === index ? tab : item));
+}
+
+/**
+ * Add a tab to `scope` and make it that scope's active tab; a preview tab
+ * replaces the scope's current preview tab in place.
+ */
 export function openTab(
   state: TabsState,
   scope: TabScope,
@@ -88,9 +113,10 @@ export function openTab(
     ...(init.objectPath ? { objectPath: init.objectPath } : {}),
     ...(init.table ? { table: init.table } : {}),
     ...(init.file ? { file: init.file } : {}),
+    ...(init.preview ? { preview: true } : {}),
   };
   return {
-    tabs: [...state.tabs, tab],
+    tabs: placed(state.tabs, tab, scope),
     active: { ...state.active, [scopeKey(scope)]: tab.id },
     next: state.next + 1,
   };
@@ -123,7 +149,7 @@ export function selectTab(state: TabsState, id: string): TabsState {
 }
 
 /** Apply `change` to one tab. */
-function updateTab(
+export function updateTab(
   state: TabsState,
   id: string,
   change: (tab: QueryTab) => QueryTab,

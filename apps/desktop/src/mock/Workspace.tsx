@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { WorkspaceToolbar } from './WorkspaceToolbar';
 import { WorkspaceBody, WorkspaceRail } from './WorkspaceBody';
 const WorkspacePalettes = lazy(() =>
@@ -14,64 +14,59 @@ import {
   SshPrompts,
   useConnections,
 } from '../features/connections';
+import type { SettingsSection } from '../features/settings';
+import { TableExport } from './TableExport';
 import styles from './Workspace.module.css';
 /** Real connections, catalog, query tabs and results. */
 export function Workspace({
   onGallery,
-  onAppearance,
+  onSettings = () => undefined,
   enabled = true,
 }: {
   onGallery: () => void;
-  onAppearance?: (() => void) | undefined;
+  onSettings?: (section?: SettingsSection) => void;
   enabled?: boolean;
 }): React.JSX.Element {
   const connections = useConnections();
-  const controller = useWorkspaceController(onGallery, enabled, connections);
-  const { catalog, inspector, sidebar, safe, prod, setMode, refreshes } =
-    controller;
+  const [exporting, setExporting] = useState(false);
+  const controller = useWorkspaceController({
+    onGallery,
+    onSettings,
+    onExportTable: () => {
+      setExporting(true);
+    },
+    enabled,
+    connections,
+  });
   if (!enabled) return <></>;
-  const tab = controller.scope
-    ? controller.tabs.activeFor(controller.scope)
-    : undefined;
-  const profile = connections.active;
-  const status = profile ? connections.statusOf(profile.id) : undefined;
   return (
     <div className={styles.workspace}>
-      <WorkspaceRail connections={connections} onAppearance={onAppearance} />
+      <WorkspaceRail
+        connections={connections}
+        onSettings={() => {
+          onSettings();
+        }}
+      />
       <div className={styles.main}>
-        <WorkspaceToolbar
-          context={contextSegments({
-            profile,
-            status,
-            database: catalog.database,
-            schema: catalog.schema,
-            objectPath: tab?.objectPath,
-          })}
-          health={status?.state ?? 'disconnected'}
-          onDatabase={() => {
-            setMode('database');
-          }}
-          onPalette={() => {
-            setMode('commands');
-          }}
-          onRefresh={controller.refresh}
-          safe={safe}
-          prod={prod}
-          onSafe={controller.toggleSafe}
-          sidebar={sidebar}
-          inspector={inspector.open}
-          onSidebar={controller.toggleSidebar}
-          onInspector={inspector.toggle}
-          onQuery={() => {
-            controller.addQuery();
-          }}
-        />
+        <Toolbar connections={connections} controller={controller} />
         <WorkspaceBody connections={connections} controller={controller} />
       </div>
       <span className={styles.announcement} role="status">
-        {refreshes ? `Catalog refreshed (${String(refreshes)})` : ''}
+        {controller.refreshes
+          ? `Catalog refreshed (${String(controller.refreshes)})`
+          : ''}
       </span>
       <WorkspaceOverlay controller={controller} />
+      {exporting && (
+        <TableExport
+          connections={connections}
+          tabs={controller.tabs}
+          scope={controller.scope}
+          onClose={() => {
+            setExporting(false);
+          }}
+        />
+      )}
       <ConnectionSheets connections={connections} />
       <SshPrompts />
     </div>
@@ -108,5 +103,50 @@ function WorkspaceOverlay({
         }}
       />
     </Suspense>
+  );
+}
+
+/** The titlebar toolbar: context bar, panels, safe mode and actions. */
+function Toolbar({
+  connections,
+  controller,
+}: {
+  connections: ReturnType<typeof useConnections>;
+  controller: ReturnType<typeof useWorkspaceController>;
+}): React.JSX.Element {
+  const { catalog, inspector, sidebar, safe, prod, setMode } = controller;
+  const tab = controller.scope
+    ? controller.tabs.activeFor(controller.scope)
+    : undefined;
+  const profile = connections.active;
+  const status = profile ? connections.statusOf(profile.id) : undefined;
+  return (
+    <WorkspaceToolbar
+      context={contextSegments({
+        profile,
+        status,
+        database: catalog.database,
+        schema: catalog.schema,
+        objectPath: tab?.objectPath,
+      })}
+      health={status?.state ?? 'disconnected'}
+      onDatabase={() => {
+        setMode('database');
+      }}
+      onPalette={() => {
+        setMode('commands');
+      }}
+      onRefresh={controller.refresh}
+      safe={safe}
+      prod={prod}
+      onSafe={controller.toggleSafe}
+      sidebar={sidebar}
+      inspector={inspector.open}
+      onSidebar={controller.toggleSidebar}
+      onInspector={inspector.toggle}
+      onQuery={() => {
+        controller.addQuery();
+      }}
+    />
   );
 }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { useTableCloseGuard } from '../table/useTableCloseGuard';
 import { Button, Icon, Tabs } from '@openrows/ui';
 import type { IconName } from '@openrows/ui';
@@ -15,6 +15,9 @@ import { useQueryRuns } from './useQueryRuns';
 import type { QueryRuns } from './useQueryRuns';
 import type { QueryTab as Tab } from './tabs';
 import type { SelectedCell } from './cell';
+import { ReconnectBar } from './ReconnectBar';
+import { TabMenu } from './TabMenu';
+import type { TabMenuTarget } from './TabMenu';
 import styles from './Query.module.css';
 type SessionStatus = ReturnType<Connections['statusOf']>;
 const QueryTab = lazy(() =>
@@ -88,16 +91,18 @@ export function QueryContent(props: Props): React.JSX.Element {
   return (
     <main className={styles.content}>
       {closeGuard}
-      <Tabs
-        tabs={list.map((item) => ({
-          id: item.id,
-          label: tabLabel(item),
-          kind: item.kind,
-          title: `${connection.name} · ${item.title}`,
-        }))}
+      {list.length > 0 && (
+        <ReconnectBar
+          profile={connection}
+          status={status}
+          onConnect={props.connections.connect}
+        />
+      )}
+      <TabStrip
+        tabs={tabs}
+        list={list}
         active={tab?.id ?? ''}
-        onSelect={tabs.select}
-        onClose={tabs.close}
+        connection={connection.name}
         onAdd={open}
       />
       {tab ? (
@@ -115,6 +120,50 @@ export function QueryContent(props: Props): React.JSX.Element {
         <NoTabs database={props.database} onOpen={open} />
       )}
     </main>
+  );
+}
+
+/** Document tabs with drag reordering, the tab menu and preview tabs. */
+function TabStrip(props: {
+  tabs: QueryTabs;
+  list: readonly Tab[];
+  active: string;
+  connection: string;
+  onAdd: () => void;
+}): React.JSX.Element {
+  const { tabs } = props;
+  const [menu, setMenu] = useState<TabMenuTarget | null>(null);
+  return (
+    <>
+      <Tabs
+        tabs={props.list.map((item) => ({
+          id: item.id,
+          label: tabLabel(item),
+          kind: item.kind,
+          title: `${props.connection} · ${item.title}`,
+          pinned: item.pinned ?? false,
+          preview: item.preview ?? false,
+        }))}
+        active={props.active}
+        onSelect={tabs.select}
+        onClose={tabs.close}
+        onAdd={props.onAdd}
+        onReorder={tabs.move}
+        onKeep={tabs.keep}
+        onMenu={(id, x, y) => {
+          setMenu({ id, x, y });
+        }}
+      />
+      {menu && (
+        <TabMenu
+          tabs={tabs}
+          target={menu}
+          onClose={() => {
+            setMenu(null);
+          }}
+        />
+      )}
+    </>
   );
 }
 
@@ -149,6 +198,9 @@ function TabBody(
         }}
         onRenamed={(name) => {
           props.tabs.renameTable?.(tab.id, name);
+        }}
+        onEdited={() => {
+          props.tabs.keep(tab.id);
         }}
       />
     );

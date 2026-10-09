@@ -74,6 +74,24 @@ it('connects saved profiles from the rail and forces safe mode for prod', async 
   );
   expect(context).toHaveTextContent('archive');
 });
+/** A single click opens a preview tab, which the next single click replaces. */
+async function expectPreview(
+  user: ReturnType<typeof userEvent.setup>,
+  orders: HTMLElement,
+): Promise<void> {
+  const sidebar = within(
+    screen.getByRole('complementary', { name: 'Sidebar' }),
+  );
+  await user.click(orders);
+  expect(orders).toHaveAttribute('aria-selected', 'true');
+  const preview = await screen.findByRole('tab', { name: /^orders/ });
+  expect(preview.parentElement).toHaveAttribute('data-preview', 'true');
+  await user.click(sidebar.getByRole('treeitem', { name: /^customers/ }));
+  expect(screen.queryByRole('tab', { name: /^orders/ })).toBeNull();
+  expect(
+    await screen.findByRole('tab', { name: /^customers/ }),
+  ).toBeInTheDocument();
+}
 it('switches sidebar segments, lazily expands real sections and opens objects on double-click', async () => {
   const user = mount();
   await connectTo();
@@ -118,9 +136,7 @@ it('switches sidebar segments, lazily expands real sections and opens objects on
   ).toBeVisible();
   await user.click(sidebar.getByRole('radio', { name: 'Items' }));
   const orders = sidebar.getByRole('treeitem', { name: 'orders ~2.4M' });
-  await user.click(orders);
-  expect(orders).toHaveAttribute('aria-selected', 'true');
-  expect(screen.queryByRole('tab', { name: /^orders/ })).toBeNull();
+  await expectPreview(user, orders);
   await user.dblClick(orders);
   expect(
     await screen.findByRole('region', { name: 'orders table' }),

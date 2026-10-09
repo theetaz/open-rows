@@ -93,15 +93,11 @@ it('runs application keys before the default Mod-Enter binding', () => {
   editor = mountSqlEditor(parent, {
     doc: 'SELECT 1;',
     label: 'SQL',
-    keys: [
-      {
-        key: 'Mod-Enter',
-        run: () => {
-          runs.push('current');
-          return true;
-        },
-      },
-    ],
+    onKeyDown: (event) => {
+      if (event.key !== 'Enter' || !event.ctrlKey) return false;
+      runs.push('current');
+      return true;
+    },
   });
 
   const event = new KeyboardEvent('keydown', {

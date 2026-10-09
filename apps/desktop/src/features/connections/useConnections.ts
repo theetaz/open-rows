@@ -9,6 +9,7 @@ import type { ProfileDto } from '@openrows/ipc';
 import { useProfiles } from './useProfiles';
 import { useSessions } from './useSessions';
 import { useDatabases } from './useDatabases';
+import { useSessionRestore } from './useSessionRestore';
 import { railOrder } from './workspaceGroups';
 import type { Databases } from './useDatabases';
 import type { SessionStatus } from './sessions';
@@ -73,13 +74,17 @@ function askToRemove(
 
 /** Saved connections, the active one, its session and the open sheet. */
 export function useConnections(): Connections {
-  const { profiles, problem, reload } = useProfiles();
+  const { profiles, problem, reload, loaded } = useProfiles();
   const sessions = useSessions();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [sheet, setSheet] = useState<SheetState>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const active = profiles.find((profile) => profile.id === activeId);
   const databases = useDatabases(sessions, active?.id);
+  useSessionRestore(
+    { profiles, activeId, setActiveId, sessions, databases },
+    loaded,
+  );
   const select = (profileId: string): void => {
     setActiveId(profileId);
     setActionError(null);

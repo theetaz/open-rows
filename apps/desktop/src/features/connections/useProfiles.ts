@@ -9,9 +9,15 @@ type ProfilesState = {
   problem: string | null;
   /** Read the list again after a change. */
   reload: () => void;
+  /** The list was read at least once. */
+  loaded: boolean;
 };
 
-type Loaded = { profiles: readonly ProfileDto[]; problem: string | null };
+type Loaded = {
+  profiles: readonly ProfileDto[];
+  problem: string | null;
+  loaded: boolean;
+};
 
 function loaded(list: ProfileList): Loaded {
   return {
@@ -19,12 +25,17 @@ function loaded(list: ProfileList): Loaded {
     problem: list.unreadable.length
       ? `Some connection files could not be read: ${list.unreadable.join('; ')}`
       : null,
+    loaded: true,
   };
 }
 
 /** Saved connections as stored by the core; reloaded after every change. */
 export function useProfiles(): ProfilesState {
-  const [state, setState] = useState<Loaded>({ profiles: [], problem: null });
+  const [state, setState] = useState<Loaded>({
+    profiles: [],
+    problem: null,
+    loaded: false,
+  });
   const [generation, setGeneration] = useState(0);
   useEffect(() => {
     let active = true;

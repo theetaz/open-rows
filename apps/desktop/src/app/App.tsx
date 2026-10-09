@@ -6,30 +6,53 @@ const Gallery = lazy(() =>
   import('../gallery/Gallery').then((module) => ({ default: module.Gallery })),
 );
 import { Workspace } from '../mock/Workspace';
+import { commandForEvent } from '../features/commands';
+import {
+  applyGeneral,
+  generalSettings,
+  settingsChanged,
+} from '../features/settings';
+import type { SettingsSection } from '../features/settings';
 import styles from './App.module.css';
-const AppearanceSettings = lazy(() =>
-  import('../features/appearance/AppearanceSettings').then((module) => ({
-    default: module.AppearanceSettings,
+const SettingsSheet = lazy(() =>
+  import('../features/settings/SettingsSheet').then((module) => ({
+    default: module.SettingsSheet,
   })),
 );
+
+/** The Settings shortcut (⌘, by default) opens Settings over any view. */
+function useSettingsKey(open: () => void): void {
+  useEffect(() => {
+    const listener = (event: KeyboardEvent): void => {
+      if (event.defaultPrevented || event.isComposing) return;
+      if (commandForEvent(event, ['settings']) !== 'settings') return;
+      event.preventDefault();
+      open();
+    };
+    window.addEventListener('keydown', listener);
+    return () => {
+      window.removeEventListener('keydown', listener);
+    };
+  }, [open]);
+}
+
+/** Density and reduced motion follow Settings ▸ General. */
+function useGeneralSettings(): void {
+  const general = generalSettings.use();
+  useEffect(() => {
+    applyGeneral(general);
+  }, [general]);
+}
 
 /** Workspace is the default; the design gallery remains one click away. */
 export function App(): React.JSX.Element {
   const startupError = useWindowReady();
   const [gallery, setGallery] = useState(false);
-  const [appearance, setAppearance] = useState(false);
-  useEffect(() => {
-    const open = (event: KeyboardEvent): void => {
-      if ((event.metaKey || event.ctrlKey) && event.key === ',') {
-        event.preventDefault();
-        setAppearance(true);
-      }
-    };
-    window.addEventListener('keydown', open);
-    return () => {
-      window.removeEventListener('keydown', open);
-    };
-  }, []);
+  const [settings, setSettings] = useState<SettingsSection | null>(null);
+  useSettingsKey(() => {
+    setSettings((open) => open ?? 'general');
+  });
+  useGeneralSettings();
   useEffect(() => {
     if (!gallery) return;
     const escape = (event: KeyboardEvent): void => {
@@ -41,15 +64,15 @@ export function App(): React.JSX.Element {
     };
   }, [gallery]);
   return (
-    <ThemeProvider>
+    <ThemeProvider onChange={settingsChanged}>
       {startupError ? (
         <p role="alert">Unable to show the native window.</p>
       ) : (
         <div hidden={gallery}>
           <Workspace
             enabled={!gallery}
-            onAppearance={() => {
-              setAppearance(true);
+            onSettings={(section) => {
+              setSettings(section ?? 'general');
             }}
             onGallery={() => {
               setGallery(true);
@@ -57,38 +80,45 @@ export function App(): React.JSX.Element {
           />
         </div>
       )}
-      {appearance && (
+      {settings && (
         <Suspense fallback={null}>
-          <AppearanceSettings
+          <SettingsSheet
+            initial={settings}
             onClose={() => {
-              setAppearance(false);
+              setSettings(null);
             }}
           />
         </Suspense>
       )}
-      {gallery && (
-        <div className={styles.shell}>
-          <header
-            className={styles.toolbar}
-            data-tauri-drag-region
-            aria-label="Gallery toolbar"
-          >
-            <Button
-              size="sm"
-              onClick={() => {
-                setGallery(false);
-              }}
-            >
-              Back to workspace
-            </Button>
-          </header>
-          <main className={styles.content}>
-            <Suspense fallback={null}>
-              <Gallery />
-            </Suspense>
-          </main>
-        </div>
-      )}
+      {gallery && <GalleryView onBack={setGallery} />}
     </ThemeProvider>
+  );
+}
+
+function GalleryView(props: {
+  onBack: (open: boolean) => void;
+}): React.JSX.Element {
+  return (
+    <div className={styles.shell}>
+      <header
+        className={styles.toolbar}
+        data-tauri-drag-region
+        aria-label="Gallery toolbar"
+      >
+        <Button
+          size="sm"
+          onClick={() => {
+            props.onBack(false);
+          }}
+        >
+          Back to workspace
+        </Button>
+      </header>
+      <main className={styles.content}>
+        <Suspense fallback={null}>
+          <Gallery />
+        </Suspense>
+      </main>
+    </div>
   );
 }
