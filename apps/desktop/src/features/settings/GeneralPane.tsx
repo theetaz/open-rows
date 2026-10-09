@@ -12,6 +12,7 @@ import {
 } from './general';
 import type { Density } from './general';
 import styles from '../appearance/Appearance.module.css';
+import { CopySection } from './CopySection';
 
 const DENSITIES: readonly { value: Density; label: string }[] = [
   { value: 'compact', label: 'Compact' },
@@ -107,6 +108,7 @@ export function GeneralPane(): React.JSX.Element {
           </SettingRow>
         </div>
       </section>
+      <CopySection />
     </>
   );
 }

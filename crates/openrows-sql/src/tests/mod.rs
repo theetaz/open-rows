@@ -3,6 +3,7 @@
 
 mod classify;
 mod classify_session;
+mod filter_builder;
 mod generate;
 mod mysql;
 mod mysql_split;

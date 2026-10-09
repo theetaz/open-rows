@@ -77,7 +77,25 @@ function state(mode: 'data' | 'columns' = 'data'): TableTabState {
 function mount(rows: RowEditing, view = state()) {
   const root = { current: null };
   return renderHook(() =>
-    useTableCommandTarget({ root, state: view, editing: rows, ready: true }),
+    useTableCommandTarget({
+      root,
+      state: view,
+      editing: rows,
+      ready: true,
+      tools: {
+        flow: {
+          discard: rows.discard,
+          reload: view.actions.reload,
+          sheet: null,
+        },
+        jumps: {
+          links: { outgoing: [], incoming: [] },
+          columns: new Set(),
+          open: vi.fn(),
+          openCell: vi.fn(),
+        },
+      },
+    }),
   );
 }
 

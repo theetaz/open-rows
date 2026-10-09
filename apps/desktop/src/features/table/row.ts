@@ -4,6 +4,7 @@ import type { ColumnDto, TableColumnDto } from '@openrows/ipc';
 import { displayWindow } from '../../results/displayWindow';
 import type { ResultMeta } from '../query/run';
 import type { CellValue } from './cellValue';
+import type { BulkRows } from './bulk/bulkRow';
 
 /** One field of the selected row, as the inspector lists it. */
 export type RowField = {
@@ -48,6 +49,8 @@ export type SelectedRow = {
   source?: RowSource;
   /** Present when the table is editable (writable connection, stable key). */
   editor?: RowEditor;
+  /** Several selected rows shown together (FR-GRID-14); `fields` is then empty. */
+  bulk?: BulkRows;
   error?: string;
 };
 
@@ -120,10 +123,10 @@ export function shownFields(fields: readonly RowField[]): RowField[] {
 }
 
 /** Fields whose name contains `search` (case-insensitive). */
-export function matchingFields(
-  fields: readonly RowField[],
+export function matchingFields<T extends { name: string }>(
+  fields: readonly T[],
   search: string,
-): readonly RowField[] {
+): readonly T[] {
   const needle = search.trim().toLowerCase();
   if (!needle) return fields;
   return fields.filter((field) => field.name.toLowerCase().includes(needle));

@@ -1,0 +1,75 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Grid parity extras: raw filters, saved filters, row form, aggregates. */
+.rawValue {
+  flex: 1 1 320px;
+  min-width: 200px;
+  font-family: var(--or-font-mono);
+  font-size: var(--or-text-mono, var(--or-text-13));
+}
+.where,
+.invalid {
+  margin: 0;
+  padding: var(--or-space-6) var(--or-space-8);
+  border-radius: var(--or-radius-control);
+  font-family: var(--or-font-mono);
+  font-size: var(--or-text-mono, var(--or-text-13));
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+}
+.where {
+  background: var(--or-control-fill);
+  color: var(--or-secondary);
+}
+.invalid {
+  color: var(--or-danger-fg);
+}
+.saved {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--or-space-6);
+}
+.bulkValue {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--or-space-4);
+}
+.bulkValue > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+.form {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.formBar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-6);
+  padding: var(--or-space-4) var(--or-space-8);
+  border-bottom: var(--or-border-width) solid var(--or-separator);
+  font-size: var(--or-text-12);
+  color: var(--or-secondary);
+}
+.formBody {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--or-space-12) var(--or-space-16);
+  max-width: 720px;
+}
+.spacer {
+  flex: 1;
+}
+.aggregate {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--or-text-11-5);
+  color: var(--or-secondary);
+  user-select: text;
+}

@@ -15,10 +15,14 @@ function headerTitle(name: string, sort: SortDto | null): string {
   return `${name} ${sort.descending ? '▼' : '▲'}`;
 }
 
+const noLinks: ReadonlySet<string> = new Set();
+
+/** Grid columns of a page: titles with sort, layout widths and pins, key arrows. */
 export function columnsOf(
   columns: readonly ColumnDto[],
   sort: SortDto | null,
   layout: ColumnLayout,
+  links: ReadonlySet<string> = noLinks,
 ): GridColumn[] {
   const pins = pinnedCount(
     layout,
@@ -38,6 +42,7 @@ export function columnsOf(
     pinned: index < pins,
     align: columnAlign(column.sourceType),
     ...(column.sourceType === 'bool' ? { kind: 'boolean' as const } : {}),
+    ...(links.has(column.name) ? { link: true } : {}),
   }));
 }
 
@@ -49,31 +54,41 @@ function columnWidth(type: string | null): number {
 
 /**
  * Apply a changed layout (a pin that needs no reorder, a reset, a stored
- * width) to the mounted columns in place; reorders reload the page instead.
+ * width) or newly read key arrows to the mounted columns in place; reorders
+ * reload the page instead.
  */
 export function useLayoutSync({
   result,
   sort,
   layout,
+  links,
   sourceRef,
   handle,
 }: {
   result: ResultMeta;
   sort: SortDto | null;
   layout: ColumnLayout;
+  /** Columns holding a foreign key (they show a jump arrow). */
+  links?: ReadonlySet<string> | undefined;
   sourceRef: React.RefObject<EditedSource | undefined>;
   handle: React.RefObject<GridHandle | undefined>;
 }): void {
   useEffect(() => {
     const columns = sourceRef.current?.columns;
     if (!columns) return;
-    const fresh = columnsOf(storeColumns(result), sort, layout);
+    const fresh = columnsOf(
+      storeColumns(result),
+      sort,
+      layout,
+      links ?? noLinks,
+    );
     columns.forEach((column, index) => {
       const next = fresh[index];
       if (!next) return;
       column.width = next.width;
       column.pinned = next.pinned;
+      column.link = next.link ?? false;
     });
     handle.current?.relayout?.();
-  }, [result, sort, layout, sourceRef, handle]);
+  }, [result, sort, layout, links, sourceRef, handle]);
 }

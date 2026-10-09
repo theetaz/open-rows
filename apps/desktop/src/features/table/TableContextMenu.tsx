@@ -12,6 +12,8 @@ import { readRow, shownFields } from './row';
 import type { RowField } from './row';
 import { BulkValueSheet } from './BulkValueSheet';
 import { contextActions } from './contextMenuActions';
+import { linkLabel } from './links/foreignKeys';
+import type { KeyLink } from './links/foreignKeys';
 import type {
   Action,
   ContextMenuProps as Props,
@@ -120,6 +122,7 @@ function menuEntries(props: Props, actions: readonly Action[]): MenuEntry[] {
     danger: action.danger ?? false,
   }));
   const { grid, selection, editing } = props;
+  entries.push(...keyEntries(props));
   if (!grid) return entries;
   const source = {
     result: selection.result,
@@ -139,4 +142,32 @@ function menuEntries(props: Props, actions: readonly Action[]): MenuEntry[] {
       );
     }),
   ];
+}
+
+/** `Open referenced row ▸` and `Referenced by ▸` for a page row (FR-GRID-07). */
+function keyEntries({ jumps, selection, onClose }: Props): MenuEntry[] {
+  const { result, row, kind } = selection;
+  if (!jumps || kind === 'column' || row >= result.rows) return [];
+  const submenu = (label: string, links: readonly KeyLink[]): MenuEntry[] =>
+    links.length
+      ? [
+          {
+            kind: 'submenu',
+            label,
+            entries: links.map((link) => ({
+              kind: 'item',
+              label: linkLabel(link),
+              run: () => {
+                onClose();
+                jumps.open(result, row, link);
+              },
+            })),
+          },
+        ]
+      : [];
+  const entries = [
+    ...submenu('Open referenced row', jumps.links.outgoing),
+    ...submenu('Referenced by', jumps.links.incoming),
+  ];
+  return entries.length ? [{ kind: 'separator' }, ...entries] : [];
 }

@@ -2,17 +2,12 @@
 import { useCallback, useSyncExternalStore } from 'react';
 import { emptyLayout, togglePin } from './columnLayout';
 import type { ColumnLayout } from './columnLayout';
+import { keyedStore } from './keyedStore';
 
 /** Web-storage key of every grid's column layout (device-local view state). */
 const STORAGE_KEY = 'openrows.columnLayouts.v1';
 /** Layouts kept; the least recently changed are dropped first. */
 const CAPACITY = 200;
-
-type Stored = ColumnLayout & { used: number };
-
-const listeners = new Set<() => void>();
-let cache: { text: string | null; layouts: Record<string, Stored> } | null =
-  null;
 
 const names = (value: unknown): string[] =>
   Array.isArray(value)
@@ -20,7 +15,7 @@ const names = (value: unknown): string[] =>
     : [];
 
 /** Validate one stored layout, dropping anything malformed. */
-function parseLayout(value: unknown): Stored | null {
+function parseLayout(value: unknown): ColumnLayout | null {
   if (typeof value !== 'object' || value === null) return null;
   const record = value as Record<string, unknown>;
   const widths: Record<string, number> = {};
@@ -32,36 +27,14 @@ function parseLayout(value: unknown): Stored | null {
     widths,
     order: names(record.order),
     pinned: names(record.pinned),
-    used: typeof record.used === 'number' ? record.used : 0,
   };
 }
 
-function read(): Record<string, Stored> {
-  let text: string | null = null;
-  try {
-    text = localStorage.getItem(STORAGE_KEY);
-  } catch {
-    text = null;
-  }
-  if (cache?.text === text) return cache.layouts;
-  const layouts: Record<string, Stored> = {};
-  try {
-    const parsed: unknown = text ? JSON.parse(text) : {};
-    if (typeof parsed === 'object' && parsed !== null)
-      for (const [key, value] of Object.entries(parsed)) {
-        const layout = parseLayout(value);
-        if (layout) layouts[key] = layout;
-      }
-  } catch {
-    /* A corrupt entry resets every layout to the defaults. */
-  }
-  cache = { text, layouts };
-  return layouts;
-}
+const layouts = keyedStore(STORAGE_KEY, CAPACITY, parseLayout);
 
 /** The stored layout of a grid, or the empty one. */
 export function readLayout(key: string): ColumnLayout {
-  return read()[key] ?? emptyLayout;
+  return layouts.read(key) ?? emptyLayout;
 }
 
 /** Store a grid's layout; an empty layout forgets it. */
@@ -70,23 +43,7 @@ export function writeLayout(key: string, layout: ColumnLayout): void {
     !layout.order.length &&
     !layout.pinned.length &&
     !Object.keys(layout.widths).length;
-  const layouts = Object.fromEntries(
-    Object.entries(read()).filter(([name]) => name !== key),
-  );
-  if (!empty) layouts[key] = { ...layout, used: Date.now() };
-  const kept = Object.entries(layouts)
-    .sort(([, a], [, b]) => b.used - a.used)
-    .slice(0, CAPACITY);
-  const text = JSON.stringify(Object.fromEntries(kept));
-  try {
-    localStorage.setItem(STORAGE_KEY, text);
-    cache = null;
-  } catch {
-    cache = { text: null, layouts: Object.fromEntries(kept) };
-  }
-  listeners.forEach((listener) => {
-    listener();
-  });
+  layouts.write(key, empty ? undefined : layout);
 }
 
 /** Forget a grid's widths, order and pins (palette: Reset Columns). */
@@ -99,16 +56,11 @@ export function togglePinned(key: string, name: string): void {
   writeLayout(key, togglePin(readLayout(key), name));
 }
 
-function subscribe(listener: () => void): () => void {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-}
-
 /** A grid's live layout and a function to change it. */
 export function useColumnLayout(
   key: string,
 ): [ColumnLayout, (change: (layout: ColumnLayout) => ColumnLayout) => void] {
-  const layout = useSyncExternalStore(subscribe, () => readLayout(key));
+  const layout = useSyncExternalStore(layouts.subscribe, () => readLayout(key));
   const change = useCallback(
     (update: (layout: ColumnLayout) => ColumnLayout) => {
       writeLayout(key, update(readLayout(key)));

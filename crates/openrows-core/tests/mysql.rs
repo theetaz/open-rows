@@ -24,6 +24,8 @@ use std::sync::Arc;
 mod limits;
 #[path = "mysql/resilience.rs"]
 mod resilience;
+#[path = "mysql/table_filters.rs"]
+mod table_filters;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 

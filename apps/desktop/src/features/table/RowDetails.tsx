@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useState } from 'react';
 import { TextField } from '@openrows/ui';
+import { BulkDetails } from './BulkDetails';
 import { DetailsField } from './DetailsField';
 import { matchingFields } from './row';
 import type { SelectedRow } from './row';
@@ -12,19 +13,51 @@ export function RowDetails({ row }: { row: SelectedRow }): React.JSX.Element {
   const fields = matchingFields(row.fields, search);
   return (
     <div className={styles.details}>
-      <TextField
-        aria-label="Search for field"
-        placeholder="Search for field…"
-        type="search"
-        value={search}
-        onChange={(event) => {
-          setSearch(event.target.value);
-        }}
-      />
+      <SearchField search={search} onSearch={setSearch} />
+      {row.bulk ? (
+        <BulkDetails table={row.table} bulk={row.bulk} search={search} />
+      ) : (
+        <SingleRow row={row} fields={fields} />
+      )}
+      {row.error && <p role="alert">{row.error}</p>}
+    </div>
+  );
+}
+
+/** Find a field in a wide row by name. */
+function SearchField({
+  search,
+  onSearch,
+}: {
+  search: string;
+  onSearch: (search: string) => void;
+}): React.JSX.Element {
+  return (
+    <TextField
+      aria-label="Search for field"
+      placeholder="Search for field…"
+      type="search"
+      value={search}
+      onChange={(event) => {
+        onSearch(event.target.value);
+      }}
+    />
+  );
+}
+
+/** One row's fields, editable in place when the table is editable. */
+function SingleRow({
+  row,
+  fields,
+}: {
+  row: SelectedRow;
+  fields: readonly SelectedRow['fields'][number][];
+}): React.JSX.Element {
+  return (
+    <>
       <small className={styles.caption}>
         {row.table} · row {row.number.toLocaleString('en-US')}
       </small>
-      {row.error && <p role="alert">{row.error}</p>}
       <div role="list" aria-label="Row fields" className={styles.fields}>
         {fields.map((field) => (
           <div role="listitem" key={field.name}>
@@ -37,6 +70,6 @@ export function RowDetails({ row }: { row: SelectedRow }): React.JSX.Element {
         ))}
       </div>
       {!fields.length && <p className={styles.note}>No matching fields</p>}
-    </div>
+    </>
   );
 }

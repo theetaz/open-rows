@@ -33,6 +33,8 @@ import type { CopyTarget } from '../../results/copy/copySelection';
 import { moved, withWidth } from '../../results/columnLayout';
 import { columnsOf, useLayoutSync } from './tableColumns';
 import type { ColumnLayout } from '../../results/columnLayout';
+import { useGridPosition } from './gridPosition';
+import type { PositionMemory } from './gridPosition';
 
 const noKeys: readonly string[] = [];
 const noSelection: SelectionModel = { row: 0, column: 0, ranges: [] };
@@ -59,6 +61,12 @@ type Props = {
   onLayout: (update: (layout: ColumnLayout) => ColumnLayout) => void;
   /** Dialect and table of copied SQL; ⌘C copies the selection as TSV. */
   copyTarget: CopyTarget;
+  /** Columns holding a foreign key: their cells show a jump arrow. */
+  links?: ReadonlySet<string> | undefined;
+  /** A key arrow was clicked (data coordinates). */
+  onLink?: ((cell: Cell) => void) | undefined;
+  /** The tab's grid position, kept across reloads. */
+  position?: React.RefObject<PositionMemory> | undefined;
 };
 type Latest = Props & { editor: InlineEditor };
 
@@ -81,6 +89,17 @@ export function TableGrid(props: Props): React.JSX.Element {
   const latest = useRef<Latest>({ ...props, editor });
   useEffect(() => {
     latest.current = { ...props, editor };
+  });
+  const ownPosition = useRef<PositionMemory>({
+    position: null,
+    restore: false,
+  });
+  useGridPosition({
+    memory: props.position ?? ownPosition,
+    handle,
+    selection: selectionRef,
+    mounted,
+    rows: props.result.rows,
   });
   useTableCanvas({
     host,
@@ -231,6 +250,9 @@ function gridProps({
     onScroll: () => {
       latest.current.editor.reposition();
     },
+    onLink: (cell) => {
+      latest.current.onLink?.(dataCell(cell, rowNumbers));
+    },
     onContextMenu: (target) => {
       latest.current.onContextMenu({
         ...dataCell(target, rowNumbers),
@@ -296,14 +318,19 @@ function dataCell<T extends { column: number }>(
 }
 
 function editedSource(
-  { result, editing, layout }: Pick<Props, 'result' | 'editing' | 'layout'>,
+  {
+    result,
+    editing,
+    layout,
+    links,
+  }: Pick<Props, 'result' | 'editing' | 'layout' | 'links'>,
   sort: SortDto | null,
 ): EditedSource {
   const columns = storeColumns(result);
   const source: GridDataSource = new TileSource(
     result.id,
     result.rows,
-    columnsOf(columns, sort, layout),
+    columnsOf(columns, sort, layout, links),
     displayWindow,
   );
   return new EditedSource(source, editing.history.current, {

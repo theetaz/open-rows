@@ -36,6 +36,9 @@ pub(super) fn predicate(
     known: &[String],
     params: &mut Vec<Option<String>>,
 ) -> Result<String, SelectError> {
+    if filter.op == FilterOp::Raw {
+        return super::raw::predicate(dialect, &filter.value);
+    }
     let column = column(dialect, &filter.column, known)?;
     let value = || filter.value.clone();
     let text = match filter.op {

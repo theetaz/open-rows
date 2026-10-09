@@ -6,10 +6,17 @@ import { booleanText } from '@openrows/ui/format';
 const CELL_PADDING = 8;
 export const STEPPER_WIDTH = 16;
 
-/** Width available to a cell's text, excluding padding and any stepper. */
+/** Width of the glyphs at a cell's end: a stepper and a link arrow. */
+export function accessoryWidth(column: GridColumn | undefined): number {
+  return (
+    (column?.kind ? STEPPER_WIDTH : 0) + (column?.link ? STEPPER_WIDTH : 0)
+  );
+}
+
+/** Width available to a cell's text, excluding padding, stepper and arrow. */
 export function textWidth(column: GridColumn | undefined): number {
   if (!column) return 0;
-  return column.width - CELL_PADDING * 2 - (column.kind ? STEPPER_WIDTH : 0);
+  return column.width - CELL_PADDING * 2 - accessoryWidth(column);
 }
 
 /** Muted markers: NULL, EMPTY and DEFAULT, distinct from real values. */
@@ -59,6 +66,11 @@ export class CellPainter {
         : this.colours.text;
     this.text(context, column, muted ? text : this.display(column, text));
     if (column?.kind) this.stepper(context, x + width - STEPPER_WIDTH / 2 - 2);
+    if (column?.link && cell.state !== 'null' && cell.state !== 'empty')
+      this.arrow(
+        context,
+        x + width - (column.kind ? STEPPER_WIDTH : 0) - STEPPER_WIDTH / 2 - 2,
+      );
     if (cell.state === 'deleted') {
       context.fillStyle = this.colours.destructive;
       context.fillRect(
@@ -79,7 +91,7 @@ export class CellPainter {
     text: string,
   ): void {
     const { x, y, width, height } = this.box;
-    const stepper = column?.kind ? STEPPER_WIDTH : 0;
+    const stepper = accessoryWidth(column);
     if (column?.kind === 'boolean') {
       context.textAlign = 'center';
       context.fillText(text, x + (width - stepper) / 2, y + height / 2);
@@ -109,6 +121,22 @@ export class CellPainter {
     context.moveTo(cx - 3, cy + 1.5);
     context.lineTo(cx, cy + 4.5);
     context.lineTo(cx + 3, cy + 1.5);
+    context.stroke();
+  }
+  /** A → in a small circle, like TablePlus' foreign-key jump, centred on `cx`. */
+  private arrow(context: CanvasRenderingContext2D, cx: number): void {
+    const cy = this.box.y + this.box.height / 2;
+    context.strokeStyle = this.selected
+      ? this.colours['on-accent']
+      : this.colours.secondary;
+    context.lineWidth = 1.25;
+    context.beginPath();
+    context.arc(cx, cy, 5.5, 0, Math.PI * 2);
+    context.moveTo(cx - 2.5, cy);
+    context.lineTo(cx + 2.5, cy);
+    context.moveTo(cx, cy - 2.5);
+    context.lineTo(cx + 2.5, cy);
+    context.lineTo(cx, cy + 2.5);
     context.stroke();
   }
   /** TablePlus-style staged cell: a 1px danger border with corner dots. */

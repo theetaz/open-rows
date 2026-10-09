@@ -813,7 +813,9 @@ export type FilterDto = {
 };
 
 /**  Filter-row comparisons (FR-GRID-11 subset). */
-export type FilterOperatorDto = "equal" | "notEqual" | "less" | "greater" | "lessOrEqual" | "greaterOrEqual" | "contains" | "notContains" | "startsWith" | "endsWith" | "in" | "isNull" | "isNotNull" | "between" | "notIn" | "notBetween" | "like" | "notLike" | "regex" | "notRegex" | "isEmpty" | "isNotEmpty";
+export type FilterOperatorDto = "equal" | "notEqual" | "less" | "greater" | "lessOrEqual" | "greaterOrEqual" | "contains" | "notContains" | "startsWith" | "endsWith" | "in" | "isNull" | "isNotNull" | "between" | "notIn" | "notBetween" | "like" | "notLike" | "regex" | "notRegex" | "isEmpty" | "isNotEmpty" | 
+/**  A raw SQL predicate in `value`; `column` is ignored. */
+"raw";
 
 /**  A statement that needs confirmation or is blocked. */
 export type FlaggedStatementDto = {

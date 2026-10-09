@@ -43,6 +43,8 @@ pub(crate) enum FilterOperatorDto {
     NotRegex,
     IsEmpty,
     IsNotEmpty,
+    /// A raw SQL predicate in `value`; `column` is ignored.
+    Raw,
 }
 
 /// One enabled filter row; `second` is BETWEEN's upper bound.
@@ -231,6 +233,7 @@ impl From<FilterOperatorDto> for FilterOp {
             FilterOperatorDto::NotRegex => Self::NotRegex,
             FilterOperatorDto::IsEmpty => Self::IsEmpty,
             FilterOperatorDto::IsNotEmpty => Self::IsNotEmpty,
+            FilterOperatorDto::Raw => Self::Raw,
         }
     }
 }

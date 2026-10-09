@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useEffect, useRef } from 'react';
 import type { TableQueryDto } from '@openrows/ipc';
 import { isActive } from '../query/run';
 import type { ResultMeta } from '../query/run';
@@ -23,6 +22,10 @@ import type { ContextMenuProps } from './contextMenuActions';
 import type { FilterRow, TableView, Total, ViewMode } from './model';
 import type { TableEntry } from './entries';
 import type { TableViews } from './useTableViews';
+import { useTrigger } from './useTrigger';
+import { usePresentation } from './usePresentation';
+import { withSavedFilter } from './presentation';
+import type { SavedFilter } from './presentation';
 
 type Args = {
   tabId: string;
@@ -37,16 +40,7 @@ type Args = {
   engine: EngineDto;
 };
 
-/** Run `action` whenever `trigger` changes to a non-null value. */
-export function useTrigger(trigger: string | null, action: () => void): void {
-  const latest = useRef(action);
-  useEffect(() => {
-    latest.current = action;
-  });
-  useEffect(() => {
-    if (trigger !== null) latest.current();
-  }, [trigger]);
-}
+export { useTrigger } from './useTrigger';
 
 /** What a table tab's controls can do. */
 export type TableActions = {
@@ -67,6 +61,10 @@ export type TableActions = {
   count: () => void;
   /** Load the current page again (Refresh). */
   reload: () => void;
+  /** Load a saved filter into the bar and apply it. */
+  applySaved: (saved: SavedFilter) => void;
+  /** Show the focused row as a vertical form, or the grid again. */
+  toggleForm: () => void;
 };
 
 /** A table tab's derived state and actions. */
@@ -85,6 +83,8 @@ export type TableTabState = {
   layout: TableLayout;
   /** What the grid's context menu changes. */
   menu: Pick<ContextMenuProps, 'grid' | 'changeView'>;
+  /** The table's presentation key (remembered view, saved filters, seeds). */
+  storageKey: string;
 };
 
 /** View state, derived request and actions of one table tab. */
@@ -100,8 +100,15 @@ export function useTableTab({
   const entry = views.entryOf(tabId);
   const columnLayout = useTableLayout(table, profileId, engine);
   const { layout } = columnLayout;
-  const { view, structure } = entry;
+  const { structure } = entry;
   const target = tableTarget(table, profileId);
+  const presentation = usePresentation({
+    tabId,
+    target,
+    views,
+    view: entry.view,
+  });
+  const { view, key: storageKey } = presentation;
   const columns =
     structure.status === 'ready'
       ? structure.data.columns.map((column) => column.name)
@@ -129,7 +136,7 @@ export function useTableTab({
     views.setView(tabId, update);
   };
   return {
-    entry,
+    entry: entry.view === view ? entry : { ...entry, view },
     view,
     columns,
     query,
@@ -143,6 +150,12 @@ export function useTableTab({
       reload: () => {
         change(reloaded);
       },
+      applySaved: (saved) => {
+        change((current) => withSavedFilter(current, saved));
+      },
+      toggleForm: () => {
+        change((current) => ({ ...current, form: !current.form }));
+      },
     },
     cancelPage: () => {
       views.cancelPage(tabId);
@@ -152,6 +165,7 @@ export function useTableTab({
     },
     layout: columnLayout,
     menu: { grid: columnLayout.grid, changeView: change },
+    storageKey,
   };
 }
 
@@ -178,7 +192,7 @@ type Context = {
 function actions(
   { change, columns, entry }: Context,
   count: () => void,
-): Omit<TableActions, 'reload'> {
+): Omit<TableActions, 'reload' | 'applySaved' | 'toggleForm'> {
   const editRows = (
     update: (rows: readonly FilterRow[]) => FilterRow[],
   ): void => {

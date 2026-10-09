@@ -13,6 +13,8 @@ mod resilience;
 mod script_file;
 #[path = "postgres/table_edits.rs"]
 mod table_edits;
+#[path = "postgres/table_filters.rs"]
+mod table_filters;
 #[path = "postgres/table_view.rs"]
 mod table_view;
 

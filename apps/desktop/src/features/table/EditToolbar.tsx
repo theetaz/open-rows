@@ -33,8 +33,12 @@ export type EditBarModel = {
   list: (id: string) => React.ReactNode;
 };
 
-/** The bar model of staged row edits. */
-export function rowEditBar(editing: RowEditing, ready: boolean): EditBarModel {
+/** The bar model of staged row edits; `discard` asks before dropping them. */
+export function rowEditBar(
+  editing: RowEditing,
+  ready: boolean,
+  discard: () => void = editing.discard,
+): EditBarModel {
   const { history } = editing;
   return {
     count: history.current.length,
@@ -46,7 +50,7 @@ export function rowEditBar(editing: RowEditing, ready: boolean): EditBarModel {
     enabled: canEdit(editing, ready),
     undo: editing.undo,
     redo: editing.redo,
-    discard: editing.discard,
+    discard,
     commit: () => {
       editing.commit();
     },

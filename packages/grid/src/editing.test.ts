@@ -74,13 +74,13 @@ it('opens value menus on stepper columns with Space or typing, and announces edi
 });
 
 /** A source whose row count grows like staged inserts. */
-function growing(): GridDataSource & { add: () => void } {
+function growing(link = false): GridDataSource & { add: () => void } {
   const listeners = new Set<() => void>();
   const cell: DisplayCell = { text: 'v', state: 'normal' };
   const source = {
     rows: 3,
     columns: [
-      { id: 'a', title: 'a', width: 100, pinned: false },
+      { id: 'a', title: 'a', width: 100, pinned: false, link },
       { id: 'b', title: 'b', width: 80, pinned: false, kind: 'enum' as const },
     ],
     metrics: props().source.metrics,
@@ -142,5 +142,29 @@ it('opens the value menu when the stepper glyph is clicked', () => {
     new MouseEvent('pointerdown', { button: 0, clientX: 172, clientY: y }),
   );
   expect(input.onEdit).toHaveBeenCalledExactlyOnceWith({ row: 0, column: 1 });
+  handle.destroy();
+});
+
+it('opens the referenced row when a foreign-key arrow is clicked', () => {
+  mockCanvas();
+  const input = {
+      ...props(),
+      source: growing(true),
+      onLink: vi.fn(),
+      onEdit: vi.fn(),
+    },
+    host = document.createElement('div');
+  const handle = mountGrid(host, input);
+  const scroll = host.firstElementChild as HTMLElement;
+  const y = input.theme.rowHeight + 4;
+  scroll.dispatchEvent(
+    new MouseEvent('pointerdown', { button: 0, clientX: 40, clientY: y }),
+  );
+  expect(input.onLink).not.toHaveBeenCalled();
+  scroll.dispatchEvent(
+    new MouseEvent('pointerdown', { button: 0, clientX: 92, clientY: y }),
+  );
+  expect(input.onLink).toHaveBeenCalledExactlyOnceWith({ row: 0, column: 0 });
+  expect(input.onEdit).not.toHaveBeenCalled();
   handle.destroy();
 });

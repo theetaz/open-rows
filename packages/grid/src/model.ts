@@ -11,6 +11,8 @@ export interface GridColumn {
   align?: 'start' | 'end';
   /** Booleans paint centred TRUE/FALSE; both kinds show an up/down stepper. */
   kind?: 'boolean' | 'enum';
+  /** A foreign key: non-NULL values paint a → arrow that calls `onLink`. */
+  link?: boolean;
 }
 /** Inclusive logical ranges; never materialize the selected rows. */
 export interface CellRange {
@@ -84,6 +86,8 @@ export interface GridProps {
   /** Enter, double-click, a stepper click, or a typed printable `text` that seeds the editor. */
   onEdit?(cell: { row: number; column: number }, text?: string): void;
   onContextMenu?(target: GridContextTarget): void;
+  /** The → arrow of a `link` column's cell was clicked (open the referenced row). */
+  onLink?(cell: { row: number; column: number }): void;
   /** Native scroll, e.g. to keep an editor overlay aligned with its cell. */
   onScroll?(): void;
   /**

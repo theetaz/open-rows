@@ -8,6 +8,7 @@ import type { TableTabState } from './useTableTab';
 import { countKey, rangeLabel } from './model';
 import type { ViewMode } from './model';
 import styles from './Table.module.css';
+import extras from './TableExtras.module.css';
 
 const modes: readonly { value: ViewMode; label: string }[] = [
   { value: 'data', label: 'Data' },
@@ -72,11 +73,20 @@ export type FooterStructure = {
 };
 
 /** TablePlus-style footer: views, +, page range or status, then mode tools. */
+/** The data view's selection statistics and its Reload and Form actions. */
+export type FooterData = {
+  /** Count, sum, average… of a multi-cell selection. */
+  aggregate: string | null;
+  reload: () => void;
+  toggleForm: () => void;
+};
+
 export function TableFooter({
   state,
   ready,
   add,
   structure,
+  data,
 }: {
   state: TableTabState;
   /** A session is available for paging and counting. */
@@ -84,6 +94,8 @@ export function TableFooter({
   add: FooterAdd;
   /** Present in Structure and Index modes. */
   structure?: FooterStructure | undefined;
+  /** Present in Data mode. */
+  data?: FooterData | undefined;
 }): React.JSX.Element {
   const { view, actions } = state;
   return (
@@ -109,7 +121,7 @@ export function TableFooter({
       {structure ? (
         <StructureTools structure={structure} />
       ) : (
-        <DataTools state={state} ready={ready} />
+        <DataTools state={state} ready={ready} data={data} />
       )}
     </footer>
   );
@@ -151,24 +163,38 @@ function StructureTools({
 function DataTools({
   state,
   ready,
+  data,
 }: {
   state: TableTabState;
   ready: boolean;
+  data: FooterData | undefined;
 }): React.JSX.Element {
   const { view, actions } = state;
   return (
     <>
       <span className={styles.status}>
-        <span
-          className={styles.range}
-          role="status"
-          aria-label="Rows shown"
-          title={pageText(state)}
-        >
-          {pageText(state)}
-        </span>
+        {data?.aggregate ? (
+          <span
+            className={extras.aggregate}
+            role="status"
+            aria-label="Selection statistics"
+            title={data.aggregate}
+          >
+            {data.aggregate}
+          </span>
+        ) : (
+          <span
+            className={styles.range}
+            role="status"
+            aria-label="Rows shown"
+            title={pageText(state)}
+          >
+            {pageText(state)}
+          </span>
+        )}
         {ready && view.mode === 'data' && <CountControl state={state} />}
       </span>
+      {data && <DataActions state={state} ready={ready} data={data} />}
       <Button
         size="sm"
         aria-label="Filters"
@@ -190,6 +216,43 @@ function DataTools({
         <span className={styles.label}>Columns</span>
       </Button>
       <Paging state={state} ready={ready} />
+    </>
+  );
+}
+
+/** Reload (⌘R) and the row form toggle. */
+function DataActions({
+  state,
+  ready,
+  data,
+}: {
+  state: TableTabState;
+  ready: boolean;
+  data: FooterData;
+}): React.JSX.Element {
+  return (
+    <>
+      <IconButton
+        size="sm"
+        variant="ghost"
+        aria-label="Reload rows (⌘R)"
+        title="Reload rows (⌘R)"
+        disabled={!ready || isActive(state.entry.run)}
+        onClick={data.reload}
+      >
+        <Icon name="refresh" />
+      </IconButton>
+      <Button
+        size="sm"
+        aria-label="Row form"
+        title="Show the focused row as a form (⌥⌘F)"
+        aria-pressed={state.view.form}
+        disabled={!state.result?.done}
+        onClick={data.toggleForm}
+      >
+        <Icon name="list" />
+        <span className={styles.label}>Form</span>
+      </Button>
     </>
   );
 }

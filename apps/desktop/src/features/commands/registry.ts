@@ -49,10 +49,13 @@ export const TABLE_COMMANDS = [
   'copy-as-markdown',
   'copy-as-insert',
   'copy-as-where-in',
+  'copy-with-headers',
   'pin-column',
   'reset-columns',
   'focus-filter',
   'toggle-columns',
+  'toggle-row-form',
+  'open-foreign-key',
   'refresh',
 ] as const;
 export type TableCommand = (typeof TABLE_COMMANDS)[number];
@@ -136,6 +139,11 @@ export const COMMANDS: readonly CommandSpec[] = [
     label: 'Copy selection as WHERE IN',
     shortcut: null,
   },
+  {
+    id: 'copy-with-headers',
+    label: 'Copy selection with column headers',
+    shortcut: 'Alt+Shift+Cmd+C',
+  },
   { id: 'pin-column', label: 'Pin or unpin column', shortcut: null },
   { id: 'reset-columns', label: 'Reset column layout', shortcut: null },
   {
@@ -148,6 +156,16 @@ export const COMMANDS: readonly CommandSpec[] = [
     id: 'toggle-columns',
     label: 'Show or hide columns panel',
     shortcut: 'Alt+Cmd+K',
+  },
+  {
+    id: 'toggle-row-form',
+    label: 'Show row as form or grid',
+    shortcut: 'Alt+Cmd+F',
+  },
+  {
+    id: 'open-foreign-key',
+    label: 'Open referenced row',
+    shortcut: null,
   },
   { id: 'new-connection', label: 'New connection…', shortcut: null },
   { id: 'connect', label: 'Connect', shortcut: null },

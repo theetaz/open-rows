@@ -1,18 +1,38 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { KeyboardEvent } from 'react';
-import type { FilterOperatorDto } from '@openrows/ipc';
+import type { EngineDto, FilterOperatorDto } from '@openrows/ipc';
 import { Button, IconButton, SelectField, TextField } from '@openrows/ui';
 import { arity, operators } from './model';
+import type { OperatorInfo } from './model';
+import { operatorsFor } from './filterOperators';
 import type { FilterRow } from './model';
 import type { TableActions } from './useTableTab';
 import styles from './Table.module.css';
+import extras from './TableExtras.module.css';
 
 type Props = {
   row: FilterRow;
   index: number;
   columns: readonly string[];
+  /** Database type of each column, for the operators it offers. */
+  types: ReadonlyMap<string, string>;
+  engine: EngineDto;
   actions: TableActions;
 };
+
+/** The column picker's entry for a raw SQL predicate (no column). */
+const RAW_COLUMN = '';
+
+/** Choosing a column keeps the operator when the column's type allows it. */
+export function columnPatch(
+  row: FilterRow,
+  column: string,
+  allowed: readonly { value: FilterOperatorDto }[],
+): Partial<FilterRow> {
+  if (column === RAW_COLUMN) return { column, operator: 'raw' };
+  const keep = allowed.some((item) => item.value === row.operator);
+  return { column, operator: keep ? row.operator : 'equal' };
+}
 
 type Part = Props & {
   label: string;
@@ -28,32 +48,65 @@ function applyOnReturn(actions: TableActions) {
   };
 }
 
-/** [column ▾] [operator ▾] */
-function Target({ row, columns, label, edit }: Part): React.JSX.Element {
+/** [column ▾] [operator ▾]; the column list ends with Raw SQL. */
+function Target({
+  row,
+  columns,
+  types,
+  engine,
+  label,
+  edit,
+}: Part): React.JSX.Element {
+  const choices = (column: string): ReturnType<typeof operatorsFor> =>
+    operatorsFor(types.get(column) ?? null, engine);
+  const raw = row.operator === 'raw';
   return (
     <>
       <SelectField
         aria-label={`Column of ${label}`}
         className={styles.picker}
         controlSize="compact"
-        value={row.column}
-        options={columns.map((column) => ({ value: column, label: column }))}
+        value={raw ? RAW_COLUMN : row.column}
+        options={[
+          ...columns.map((column) => ({ value: column, label: column })),
+          { value: RAW_COLUMN, label: 'Raw SQL' },
+        ]}
         onValueChange={(column) => {
-          edit({ column });
+          edit(columnPatch(row, column, choices(column)));
         }}
       />
-      <SelectField<FilterOperatorDto>
-        aria-label={`Operator of ${label}`}
-        className={styles.picker}
-        controlSize="compact"
-        value={row.operator}
-        options={operators}
-        onValueChange={(operator) => {
-          edit({ operator });
-        }}
-      />
+      {!raw && (
+        <SelectField<FilterOperatorDto>
+          aria-label={`Operator of ${label}`}
+          className={styles.picker}
+          controlSize="compact"
+          value={row.operator}
+          options={withCurrent(choices(row.column), row.operator)}
+          onValueChange={(operator) => {
+            edit({ operator });
+          }}
+        />
+      )}
     </>
   );
+}
+
+/** The column's operators, plus a restored one its type no longer offers. */
+function withCurrent(
+  choices: OperatorInfo[],
+  current: FilterOperatorDto,
+): OperatorInfo[] {
+  const known = operators.find((item) => item.value === current);
+  return choices.some((item) => item.value === current) || !known
+    ? choices
+    : [...choices, known];
+}
+
+/** Placeholder of the value field for an operator. */
+function hint(operator: FilterOperatorDto): string {
+  if (operator === 'raw') return "e.g. total > 10 AND status <> 'void'";
+  if (operator === 'in' || operator === 'notIn') return 'a, b, c';
+  return 'Value';
 }
 
 /** [value] and, for BETWEEN, [upper bound]; NULL checks take no value. */
@@ -62,14 +115,12 @@ function Values({ row, actions, label, edit }: Part): React.JSX.Element {
   return (
     <>
       <TextField
-        className={styles.value}
+        className={row.operator === 'raw' ? extras.rawValue : styles.value}
         controlSize="compact"
-        aria-label={`Value of ${label}`}
-        placeholder={
-          row.operator === 'in' || row.operator === 'notIn'
-            ? 'a, b, c'
-            : 'Value'
+        aria-label={
+          row.operator === 'raw' ? `SQL of ${label}` : `Value of ${label}`
         }
+        placeholder={hint(row.operator)}
         disabled={fields === 0}
         value={fields === 0 ? '' : row.value}
         onChange={(event) => {
