@@ -93,6 +93,7 @@ it('arrows and Return open a database on its own session; Esc cancels', async ()
   expect(listSchemas).toHaveBeenLastCalledWith(
     'id-orders-local',
     'orders_archive',
+    false,
   );
   await openPanel();
   fireEvent.keyDown(search(), { key: 'Escape' });

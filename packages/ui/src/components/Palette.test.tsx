@@ -156,3 +156,27 @@ it('has no axe violations for dialog, combobox, listbox and footer semantics', a
   });
   expect(result.violations).toEqual([]);
 });
+it('keeps externally searched items in their given order and reports the query', () => {
+  const query = vi.fn();
+  render(
+    <Palette
+      title="Quick open"
+      items={[
+        { id: 'b', label: 'order_items' },
+        { id: 'a', label: 'orders' },
+      ]}
+      onQueryChange={query}
+      onChoose={vi.fn()}
+      onClose={vi.fn()}
+    />,
+  );
+  const input = screen.getByRole('combobox', { name: 'Quick open' });
+  fireEvent.change(input, { target: { value: 'zzz' } });
+  expect(query).toHaveBeenLastCalledWith('zzz');
+  const options = screen.getAllByRole('option');
+  expect(options.map((option) => option.textContent)).toEqual([
+    'order_items',
+    'orders',
+  ]);
+  expect(options[0]).toHaveAttribute('aria-selected', 'true');
+});

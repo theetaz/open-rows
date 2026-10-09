@@ -19,7 +19,7 @@ use crate::error::driver_error;
 use crate::session::SqliteSession;
 
 /// Most names the quick-open index returns.
-const SEARCH_LIMIT: usize = 5_000;
+const SEARCH_LIMIT: usize = 50_000;
 
 /// rusqlite results as driver errors.
 pub(crate) fn sql<T>(result: rusqlite::Result<T>) -> Result<T, DriverError> {

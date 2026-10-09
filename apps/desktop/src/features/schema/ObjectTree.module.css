@@ -33,3 +33,10 @@
   font-size: var(--or-text-13);
   text-align: center;
 }
+/* Subtle: snapshot rows stay usable while they are read again. */
+.refreshing {
+  margin: 0;
+  padding: var(--or-space-2) var(--or-space-8);
+  color: var(--or-tertiary);
+  font-size: var(--or-text-11);
+}

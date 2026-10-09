@@ -3356,6 +3356,7 @@ dependencies = [
  "openrows-export",
  "openrows-net",
  "openrows-results",
+ "openrows-schema",
  "openrows-secrets",
  "openrows-sql",
  "openrows-store",
@@ -3504,6 +3505,23 @@ dependencies = [
  "criterion",
  "proptest",
  "thiserror 2.0.21",
+]
+
+[[package]]
+name = "openrows-schema"
+version = "0.1.0"
+dependencies = [
+ "openrows-driver-api",
+ "openrows-driver-mysql",
+ "openrows-driver-postgres",
+ "openrows-driver-sqlite",
+ "openrows-net",
+ "openrows-store",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
 ]
 
 [[package]]

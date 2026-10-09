@@ -20,7 +20,9 @@ mod titlebar;
 mod window_frame;
 
 fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
-    use connections::{catalog, connection, diagnostics, files, profiles, prompts, sessions};
+    use connections::{
+        catalog, catalog_cache, connection, diagnostics, files, profiles, prompts, sessions,
+    };
     tauri_specta::Builder::new()
         .commands(tauri_specta::collect_commands![
             commands::app_info,
@@ -46,6 +48,7 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
             catalog::catalog_schemas,
             catalog::catalog_objects,
             catalog::catalog_search,
+            catalog::catalog_invalidate,
             queries::commands::query_execute,
             queries::commands::query_cancel,
             queries::commands::results_release,
@@ -85,6 +88,7 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
         ])
         .events(tauri_specta::collect_events![
             sessions::SessionStateChanged,
+            catalog_cache::CatalogChanged,
             prompts::SshPromptChanged,
             menu::MenuCommand
         ])

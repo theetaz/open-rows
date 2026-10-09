@@ -9,6 +9,7 @@ members = [
     "crates/openrows-driver-postgres",
     "crates/openrows-driver-sqlite",
     "crates/openrows-net",
+    "crates/openrows-schema",
     "crates/openrows-sql",
     "crates/openrows-secrets",
     "crates/openrows-store",

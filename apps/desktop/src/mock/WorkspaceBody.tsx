@@ -64,7 +64,7 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
         onCell={controller.onCell}
         onRow={controller.onRow}
         onTableInfo={controller.onTable}
-        catalogRevision={controller.refreshes}
+        catalogRevision={controller.catalog.revision}
         onOpenTable={(table) => {
           controller.openObject({ ...table, kind: 'table', arguments: null });
         }}

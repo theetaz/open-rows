@@ -39,12 +39,12 @@ it('explains the empty tree before a connection is selected', () => {
 it('loads tables at once and other sections only when expanded', async () => {
   const user = mount();
   await connectTo();
-  expect(listSchemas).toHaveBeenCalledWith('id-orders-local', 'orders');
+  expect(listSchemas).toHaveBeenCalledWith('id-orders-local', 'orders', false);
   expect(listObjects).toHaveBeenCalledWith(
     'id-orders-local',
     'orders',
-    'public',
-    ['table', 'foreignTable'],
+    { schema: 'public', kinds: ['table', 'foreignTable'] },
+    false,
   );
   expect(
     await sidebar().findByRole('treeitem', { name: 'orders ~2.4M' }),
@@ -56,8 +56,8 @@ it('loads tables at once and other sections only when expanded', async () => {
   expect(listObjects).toHaveBeenLastCalledWith(
     'id-orders-local',
     'orders',
-    'public',
-    ['view'],
+    { schema: 'public', kinds: ['view'] },
+    false,
   );
   expect(
     await sidebar().findByRole('treeitem', { name: 'order_summary' }),

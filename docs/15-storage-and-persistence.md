@@ -74,14 +74,13 @@ CREATE TABLE change_sets (
   updated_at  INTEGER NOT NULL
 );
 
-CREATE TABLE schema_snapshots (
-  profile_id  TEXT NOT NULL,
-  scope       TEXT NOT NULL,               -- object path
-  server_ver  TEXT NOT NULL,
-  fingerprint TEXT,
-  payload     BLOB NOT NULL,               -- compressed
-  fetched_at  INTEGER NOT NULL,
-  PRIMARY KEY (profile_id, scope)
+CREATE TABLE schema_snapshots (           -- v5 (M1-16)
+  profile_id    TEXT NOT NULL,
+  database_name TEXT NOT NULL,
+  scope         TEXT NOT NULL,             -- databases | schemas | index | objects:<kinds>:<schema>
+  payload       BLOB NOT NULL,             -- versioned JSON listing (openrows-schema)
+  fetched_at    INTEGER NOT NULL,
+  PRIMARY KEY (profile_id, database_name, scope)
 );
 
 CREATE TABLE workspace_state (
@@ -186,6 +185,7 @@ First slice of M1-02 (local store) and M1-03 (profiles). Nothing here depends on
 | Migrations | Embedded with `include_str!`; the applied version is `PRAGMA user_version` (mirrored to `meta.schema_version`). Pending steps run in one transaction; re-opening is a no-op. Before upgrading a non-empty database it is copied with `VACUUM INTO` to `backups/openrows.sqlite.v<old>` next to the DB (consistent with WAL, unlike a raw file copy). A database newer than the build fails with `StoreError::NewerSchema` and is not touched; the read-only safe mode of §6 is the caller's job. |
 | Schema v3 (M1-22) | `migrations/0003_history_search.sql`: `history_fts`, an external-content FTS5 index over `history.statement`, kept in step by insert, update and delete triggers and rebuilt once so rows recorded before v3 are searchable. `0003_history_search.down.sql` reverses it; the migration test applies, reverts and re-applies it. Search terms are quoted and matched as prefixes, so SQL punctuation cannot break a query. |
 | Schema v4 (M1-21) | `migrations/0004_saved_queries.sql`: `saved_queries (id, profile_id, name, sql, created_at, updated_at)` with a `(profile_id, name)` index and a non-empty `name` check; the sidebar's Queries tab of each connection (docs/09 §2.3). Ids are UUID v7. API: `create_saved_query`, `saved_queries(profile_id)` (by name, case-insensitive), `rename_saved_query`, `delete_saved_query`. Rows are not removed when a profile is deleted yet. Query tab text is restored from webview storage for now (docs/09 §2.2), not from `drafts`. |
+| Schema v5 (M1-16) | `migrations/0005_schema_snapshots.sql`: `schema_snapshots (profile_id, database_name, scope, payload, fetched_at)` keyed by connection, database and scope, with a `fetched_at` index for eviction. One row per cached listing (docs/10 §1.1); the payload is versioned JSON owned by `openrows-schema` (uncompressed: a 50 000-object index is a few MB, and no compression crate is needed yet), and rows this build cannot decode are ignored. Server version and fingerprint columns are left for the fingerprint check. API: `save_schema_snapshot` (upsert), `schema_snapshots(profile_id, database)`, `delete_schema_snapshots(profile_id)` (on `profile_delete`) and `prune_schema_snapshots(before_ms)` (at startup, 60 days). |
 | History API | `record_history(&HistoryRecord) -> id`, `search_history(profile_id \| None, text, limit)` (newest first; text is full-text matched), `delete_history(id)` and `clear_history(profile_id)`. No retention sweep yet (FR-WS-05, M2). |
 | Profiles | Personal profiles are JSON files `connections/<uuid-v7>.json`, as §3 specifies, rather than SQLite rows: they are human-readable, diff-able, easy to export, and match the shared `connections/*.yaml` layer. Groups are a `group` string on each profile; `groups()` lists the distinct names. Writes are atomic (temp file + rename) and `0600` on Unix. `load_all` returns readable profiles plus a list of unreadable files, so one corrupt file never hides the rest. Files with `openrows` > 1 are rejected (`UnsupportedFormat`). |
 | Format | As in §3 with `envTag` as `{ kind, label?, color }`, `params.applicationName` and `params.options` (other libpq parameters). `tls` is `{ mode, caFile?, clientCert?, clientKey? }` (paths, D-11; files written before D-11 hold only `mode`). `ssh` (D-10) is optional: `{ host, port?, user?, auth, jumpHosts? }` where `host` may be a `~/.ssh/config` alias, `auth` is `{ "method": "password" }`, `{ "method": "privateKey", "keyFile": "~/.ssh/id_ed25519" }`, `{ "method": "agent" }` or `{ "method": "keyboardInteractive" }`, and `jumpHosts` are `[user@]host[:port]` strings, first hop first (empty: the alias's `ProxyJump`). `session` is not in the model yet (M1-05). Example: `"ssh": { "host": "bastion", "user": "ops", "auth": { "method": "privateKey", "keyFile": "~/.ssh/id_ed25519" } }`, `"tls": { "mode": "verify-ca", "caFile": "/certs/ca.pem" }`. |

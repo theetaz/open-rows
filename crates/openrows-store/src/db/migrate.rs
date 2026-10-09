@@ -35,10 +35,14 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         version: 4,
         sql: include_str!("../../migrations/0004_saved_queries.sql"),
     },
+    Migration {
+        version: 5,
+        sql: include_str!("../../migrations/0005_schema_snapshots.sql"),
+    },
 ];
 
 /// Newest local store schema version this build understands.
-pub const SCHEMA_VERSION: u32 = 4;
+pub const SCHEMA_VERSION: u32 = 5;
 
 pub(crate) fn user_version(conn: &Connection) -> Result<u32, StoreError> {
     conn.pragma_query_value(None, "user_version", |row| row.get(0))

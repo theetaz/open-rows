@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Connection-level open/close: reaching the server before any database is
 //! opened, and closing every session of a saved connection.
+use openrows_schema::SchemaCache;
 use serde::Serialize;
 use specta::Type;
 use tauri::State;
@@ -30,10 +31,13 @@ pub(crate) struct ConnectionOpened {
 /// with prompts) and report its server. The
 /// check runs on the home database's metadata session, which also lists the
 /// server's databases; user sessions open per database with `session_open`.
+/// Everything cached for the connection turns stale: the tree shows it at
+/// once and reads it again in the background.
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn connection_open(
     state: State<'_, Connections>,
+    cache: State<'_, SchemaCache>,
     profile_id: String,
 ) -> Result<ConnectionOpened, IpcError> {
     let profile = state.profiles.get(self::profile_id(&profile_id)?)?;
@@ -50,6 +54,7 @@ pub(crate) async fn connection_open(
             },
         )
         .await?;
+    cache.invalidate(&profile_id);
     let insecure = connection_insecurity(&profile, state.tunnels.unsaved_host_keys(&profile_id));
     Ok(ConnectionOpened {
         server,

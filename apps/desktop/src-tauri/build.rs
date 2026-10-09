@@ -25,6 +25,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "catalog_schemas",
             "catalog_objects",
             "catalog_search",
+            "catalog_invalidate",
             "connection_open",
             "connection_close",
             "query_execute",

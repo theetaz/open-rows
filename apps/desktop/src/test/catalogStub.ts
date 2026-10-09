@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 import { vi } from 'vitest';
 import type {
+  CatalogReply,
+  CatalogSearchReply,
+  CatalogSearchRequest,
   DatabaseDto,
   ObjectDto,
   ObjectKindDto,
@@ -74,12 +77,46 @@ const strip = (item: ObjectDto & { database: string }): ObjectDto => ({
   comment: item.comment,
 });
 
+/** Fresh schema-cache reply around synthetic data. */
+const fresh = <T>(data: T): Promise<CatalogReply<T>> =>
+  Promise.resolve({ data, stale: false });
+
+/** Substring, or loose in-order letters, like the Rust name index. */
+const matches = (name: string, query: string): boolean => {
+  const text = name.toLowerCase();
+  const needle = query.toLowerCase();
+  if (text.includes(needle)) return true;
+  let from = 0;
+  for (const letter of needle) {
+    from = text.indexOf(letter, from) + 1;
+    if (!from) return false;
+  }
+  return true;
+};
+
+function search(
+  database: string,
+  request: CatalogSearchRequest,
+): Promise<CatalogSearchReply> {
+  const found = objects.filter(
+    (item) =>
+      item.database === database &&
+      (request.schema === null || item.schema === request.schema) &&
+      matches(item.name, request.query),
+  );
+  return Promise.resolve({
+    objects: found.slice(0, request.limit ?? found.length).map(strip),
+    total: found.length,
+    stale: false,
+  });
+}
+
 /** Catalog commands of `@openrows/ipc` over the synthetic catalog. */
 export function catalogStub(): Record<string, unknown> {
   return {
-    listDatabases: vi.fn(() => Promise.resolve(catalogDatabases)),
+    listDatabases: vi.fn(() => fresh(catalogDatabases)),
     listSchemas: vi.fn((_profile: string, database: string) =>
-      Promise.resolve(
+      fresh(
         schemas[database] ?? [{ name: 'public', system: false, comment: null }],
       ),
     ),
@@ -87,24 +124,24 @@ export function catalogStub(): Record<string, unknown> {
       (
         _profile: string,
         database: string,
-        schema: string,
-        kinds: ObjectKindDto[],
+        section: { schema: string; kinds: ObjectKindDto[] },
       ) =>
-        Promise.resolve(
+        fresh(
           objects
             .filter(
               (item) =>
                 item.database === database &&
-                item.schema === schema &&
-                kinds.includes(item.kind),
+                item.schema === section.schema &&
+                section.kinds.includes(item.kind),
             )
             .map(strip),
         ),
     ),
-    searchCatalog: vi.fn((_profile: string, database: string) =>
-      Promise.resolve(
-        objects.filter((item) => item.database === database).map(strip),
-      ),
+    searchCatalog: vi.fn(
+      (_profile: string, database: string, request: CatalogSearchRequest) =>
+        search(database, request),
     ),
+    invalidateCatalog: vi.fn(() => Promise.resolve()),
+    onCatalogChanged: vi.fn(() => Promise.resolve(() => undefined)),
   };
 }

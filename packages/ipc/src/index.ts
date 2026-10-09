@@ -49,13 +49,21 @@ export {
 /** Native alerts for destructive confirmations (scoped dialog plugin). */
 export { confirmDestructive, pickFileValue } from './dialog';
 export type { DestructivePrompt } from './dialog';
-/** Schema tree catalog reads on per-database metadata sessions (D-06). */
+/** Schema tree catalog reads through the schema cache (D-06, M1-16). */
 export {
+  invalidateCatalog,
   listDatabases,
   listObjects,
   listSchemas,
+  onCatalogChanged,
   searchCatalog,
 } from './catalog';
+export type {
+  CatalogChanged,
+  CatalogReply,
+  CatalogSearchReply,
+  CatalogSearchRequest,
+} from './generated/bindings';
 /** Query execution, cancellation, result lifetime and history (D-07, FR-WS-01/02). */
 export {
   cancelQuery,

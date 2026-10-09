@@ -8,7 +8,9 @@
 )]
 use std::str::FromStr;
 
+use openrows_schema::SchemaCache;
 use openrows_secrets::SecretString;
+use openrows_store::LocalStore;
 use openrows_store::profile::{
     ConnectionProfile, PasswordChange, ProfileId, ProfileService, SecretSlot, parse_url,
 };
@@ -16,7 +18,7 @@ use tauri::State;
 
 use super::Connections;
 use super::dto::{PasswordInput, ProfileDto, ProfileInput, ProfileList, UrlDraft, password_change};
-use super::error::IpcError;
+use super::error::{IpcError, IpcErrorKind};
 
 pub(crate) fn profile_id(id: &str) -> Result<ProfileId, IpcError> {
     ProfileId::from_str(id).map_err(IpcError::from)
@@ -155,13 +157,20 @@ pub(crate) fn profile_duplicate(
     ))
 }
 
-/// Delete a connection and its stored secrets.
+/// Delete a connection, its stored secrets and its schema snapshots.
 #[tauri::command(async)]
 #[specta::specta]
-pub(crate) fn profile_delete(state: State<'_, Connections>, id: String) -> Result<(), IpcError> {
+pub(crate) fn profile_delete(
+    state: State<'_, Connections>,
+    cache: State<'_, SchemaCache>,
+    local: State<'_, LocalStore>,
+    id: String,
+) -> Result<(), IpcError> {
     state.profiles.delete(profile_id(&id)?)?;
     state.tunnels.forget(&id);
-    Ok(())
+    cache
+        .forget(&local, &id)
+        .map_err(|error| IpcError::new(IpcErrorKind::Storage, error.to_string()))
 }
 
 /// Form fields from a pasted connection URL, without the password itself.
@@ -251,15 +260,13 @@ pub(crate) mod tests {
         let dir = tempfile::tempdir()?;
         let service = service(&dir);
         let bad = update(&service, "not-a-uuid", &input(EnvKindDto::Local));
-        assert!(bad.is_err_and(|error| error.kind == super::super::error::IpcErrorKind::Invalid));
+        assert!(bad.is_err_and(|error| error.kind == IpcErrorKind::Invalid));
         let missing = update(
             &service,
             &ProfileId::new().to_string(),
             &input(EnvKindDto::Local),
         );
-        assert!(
-            missing.is_err_and(|error| error.kind == super::super::error::IpcErrorKind::NotFound)
-        );
+        assert!(missing.is_err_and(|error| error.kind == IpcErrorKind::NotFound));
         Ok(())
     }
 

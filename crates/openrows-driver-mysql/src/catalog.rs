@@ -22,7 +22,7 @@ use crate::session::MySqlSession;
 const SYSTEM_DATABASES: &[&str] = &["information_schema", "mysql", "performance_schema", "sys"];
 
 /// Most names the quick-open index returns.
-const SEARCH_LIMIT: usize = 5_000;
+const SEARCH_LIMIT: usize = 50_000;
 
 const TABLES_SQL: &str = "SELECT TABLE_NAME, TABLE_TYPE, TABLE_ROWS, TABLE_COMMENT \
     FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? ORDER BY TABLE_NAME";
