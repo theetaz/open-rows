@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# A hung test fails after five minutes instead of stalling a run (and CI)
+# until the job limit; the slowest real tests take well under one.
+[profile.default]
+slow-timeout = { period = "60s", terminate-after = 5 }
