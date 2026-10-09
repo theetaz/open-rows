@@ -16,6 +16,7 @@ const connected = (
   databases: Extract<SessionStatus, { state: 'connected' }>['databases'],
 ): SessionStatus => ({
   state: 'connected',
+  insecure: [],
   server: server('17.2'),
   databases,
   generation: 1,
@@ -37,6 +38,7 @@ it('marks the owning database failed or closed from core events', () => {
   });
   expect(failed.a).toMatchObject({
     state: 'connected',
+    insecure: [],
     databases: [
       { name: 'orders', state: 'open' },
       {

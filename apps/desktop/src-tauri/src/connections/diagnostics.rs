@@ -1,31 +1,34 @@
 // SPDX-License-Identifier: Apache-2.0
-//! Test connection with step-by-step diagnostics (M1-07 for D-10/D-11):
-//! SSH hops, tunnel or direct connect, TLS handshake (protocol, cipher,
-//! certificate subject) and authentication, each timed, the failing step
-//! carrying a typed error. The test uses the form's values and its own
-//! tunnel, closed afterwards.
+//! Test connection with step-by-step diagnostics (M1-07): proxy and SSH
+//! hops, tunnel (to a port or a Unix socket) or direct connect, TLS
+//! handshake with the server certificate's details and expiry, and
+//! authentication, each timed, the failing step carrying a typed error;
+//! on success the latency of a trivial query. The test uses the form's
+//! values and its own tunnel, closed afterwards.
 mod hints;
+mod probe;
+mod run;
 mod steps;
 
 use std::sync::Arc;
 use std::time::Instant;
 
-use openrows_driver_api::Endpoint;
-use openrows_net::{SshTunnel, TunnelDialer};
+use openrows_net::ProxySpec;
 use openrows_store::profile::{ConnectionProfile, ProfileService, SecretChanges, SecretSlot};
 use serde::Serialize;
 use specta::Type;
 use tauri::State;
 
-use steps::TestStepDto;
-use steps::{DatabaseRun, Steps};
+use probe::{CertificateDto, LatencyDto};
+use steps::{Steps, TestStepDto};
 
 use super::Connections;
 use super::dto::ProfileInput;
 use super::error::IpcError;
 use super::profiles::{profile_id, resolve_password, resolve_secret};
-use super::target::{self, DriverSecrets, ServerDto, Target};
-use super::tunnels::{SshSecrets, route_spec};
+use super::proxy_dto::proxy_spec;
+use super::target::{self, DriverSecrets, ServerDto};
+use super::tunnels::SshSecrets;
 
 /// The outcome of Test connection: every step that ran, the server on
 /// success, the typed error of the failing step otherwise.
@@ -35,6 +38,10 @@ pub(crate) struct TestReport {
     steps: Vec<TestStepDto>,
     server: Option<ServerDto>,
     error: Option<IpcError>,
+    /// The server certificate, when TLS was negotiated.
+    certificate: Option<CertificateDto>,
+    /// Round trips of `SELECT 1` after connecting.
+    latency: Option<LatencyDto>,
     elapsed_ms: u32,
 }
 
@@ -43,6 +50,7 @@ pub(crate) struct TestPlan {
     pub(crate) profile: ConnectionProfile,
     pub(crate) driver: DriverSecrets,
     pub(crate) ssh: SshSecrets,
+    pub(crate) proxy: Option<Arc<ProxySpec>>,
 }
 
 /// Build the draft profile and resolve its secrets; the keychain is read
@@ -70,6 +78,7 @@ pub(crate) fn plan(
             .transpose()
             .map(Option::flatten)
     };
+    let proxy_password = secret(SecretSlot::ProxyPassword)?;
     Ok(TestPlan {
         driver: DriverSecrets {
             password: resolve_password(service, stored.as_ref(), &input.password)?,
@@ -79,6 +88,10 @@ pub(crate) fn plan(
             password: secret(SecretSlot::SshPassword)?,
             passphrase: secret(SecretSlot::SshPassphrase)?,
         },
+        proxy: profile
+            .proxy
+            .as_ref()
+            .map(|settings| proxy_spec(settings, proxy_password.as_ref())),
         profile,
     })
 }
@@ -96,97 +109,22 @@ pub(crate) async fn connection_test(
     let started = Instant::now();
     let mut steps = Steps {
         engine: plan.profile.driver,
+        proxy: plan.proxy.as_ref().map(|proxy| proxy.describe()),
         ..Steps::default()
     };
-    let outcome = run(&state, plan, target, &mut steps).await;
-    let (server, error) = match outcome {
+    let outcome = run::run(&state, plan, target, &mut steps).await;
+    let (server, error) = match outcome.result {
         Ok(server) => (Some(server), None),
         Err(error) => (None, Some(error)),
     };
     Ok(TestReport {
-        steps: steps.steps,
+        steps: steps.list,
         server,
         error,
+        certificate: outcome.certificate,
+        latency: outcome.latency,
         elapsed_ms: u32::try_from(started.elapsed().as_millis()).unwrap_or(u32::MAX),
     })
-}
-
-async fn run(
-    state: &Connections,
-    plan: TestPlan,
-    mut target: Target,
-    steps: &mut Steps,
-) -> Result<ServerDto, IpcError> {
-    let profile = plan.profile;
-    let tunnel = match &profile.ssh {
-        Some(ssh) => {
-            let spec = route_spec(ssh, plan.ssh)?;
-            let attempt = state.opener.open(state.opener.plan(&spec).await?).await;
-            if let Some(error) = steps.ssh(&attempt) {
-                return Err(error);
-            }
-            let tunnel = Arc::new(
-                attempt
-                    .result
-                    .map_err(|error| super::tunnels::ssh_error(&error))?,
-            );
-            let dialer = TunnelDialer::new(
-                Arc::clone(&tunnel),
-                &profile.params.host,
-                profile.params.port,
-            );
-            target = target.through(Arc::new(dialer));
-            Some(tunnel)
-        }
-        None => None,
-    };
-    let result = database(&target, tunnel.is_some(), steps).await;
-    // The target's dialer shares the tunnel; release it so the tunnel can close.
-    drop(target);
-    if let Some(tunnel) = tunnel.and_then(|tunnel| Arc::try_unwrap(tunnel).ok()) {
-        // The test is over; a failed goodbye on a throwaway tunnel changes nothing.
-        let _ = SshTunnel::close(tunnel).await;
-    }
-    result
-}
-
-async fn database(
-    target: &Target,
-    tunnelled: bool,
-    steps: &mut Steps,
-) -> Result<ServerDto, IpcError> {
-    let (result, trace) = target::connect_traced(target).await;
-    let server = result
-        .as_ref()
-        .ok()
-        .map(|connection| ServerDto::from(connection.server()));
-    let request = &target.request;
-    let (host, port, file) = match &request.endpoint {
-        Endpoint::Server { host, port } => (host.clone(), *port, false),
-        Endpoint::File { path, .. } => (path.display().to_string(), 0, true),
-    };
-    let run = DatabaseRun {
-        trace: &trace,
-        host: &host,
-        port,
-        user: &request.user,
-        tunnelled,
-        file,
-        server: server.as_ref(),
-    };
-    steps.database(&run, result.as_ref().err());
-    match (result, server) {
-        (Ok(connection), Some(server)) => {
-            // The test already succeeded; a failed goodbye changes nothing.
-            let _ = connection.close().await;
-            Ok(server)
-        }
-        (Err(error), _) => Err(IpcError::from(&error)),
-        (Ok(_), None) => Err(IpcError::new(
-            super::error::IpcErrorKind::Internal,
-            "The connection reported no server",
-        )),
-    }
 }
 
 #[cfg(test)]

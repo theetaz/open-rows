@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //! SSH tunnels for saved connections (D-10): one shared tunnel per profile
 //! for its metadata and user sessions (docs/24 §3), opened on first use with
-//! prompts in the webview, and the typed errors they produce.
+//! prompts in the webview, re-established when it dropped (M1-06), and the
+//! typed errors they produce.
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, PoisonError};
@@ -9,8 +10,8 @@ use std::sync::{Arc, Mutex, PoisonError};
 use openrows_net::config::{JumpSpec, SshConfig};
 use openrows_net::known_hosts::KnownHosts;
 use openrows_net::{
-    HopTiming, PlanContext, SecretString, SshAuth, SshError, SshHop, SshRouteSpec, SshTunnel,
-    Timeouts, TunnelOptions, plan_route,
+    HopTiming, PlanContext, ProxySpec, SecretString, SharedTunnel, SshAuth, SshError, SshHop,
+    SshRouteSpec, SshTunnel, Timeouts, TunnelOptions, plan_route,
 };
 use openrows_secrets::SecretString as StoredSecret;
 use openrows_store::profile::{SshAuthMethod, SshSettings};
@@ -94,6 +95,17 @@ pub(crate) struct TunnelAttempt {
     pub(crate) result: Result<SshTunnel, SshError>,
 }
 
+impl TunnelAttempt {
+    /// The connected tunnel as a [`SharedTunnel`] that reconnects with `options`.
+    ///
+    /// # Errors
+    /// The typed [`ssh_error`] of a failed attempt.
+    pub(crate) fn shared(self, options: TunnelOptions) -> Result<SharedTunnel, IpcError> {
+        let tunnel = self.result.map_err(|error| ssh_error(&error))?;
+        Ok(SharedTunnel::with_tunnel(tunnel, self.hops, options))
+    }
+}
+
 impl TunnelOpener {
     /// Resolve `~/.ssh/config` and plan the hops for `spec`.
     ///
@@ -116,16 +128,22 @@ impl TunnelOpener {
             .map_err(|error| IpcError::new(IpcErrorKind::Ssh, error.to_string()))
     }
 
-    /// Connect every hop of `hops`, recording how far it got.
-    pub(crate) async fn open(&self, hops: Vec<SshHop>) -> TunnelAttempt {
-        let options = TunnelOptions {
+    /// Prompts in the webview, the user's `known_hosts` and `proxy` (if any)
+    /// in front of the first hop.
+    pub(crate) fn options(&self, proxy: Option<Arc<ProxySpec>>) -> TunnelOptions {
+        TunnelOptions {
             known_hosts: Arc::new(self.environment.known_hosts()),
             host_key_policy: Arc::new(UiHostKeyPolicy(Arc::clone(&self.prompts))),
             prompter: Arc::new(UiPrompter(Arc::clone(&self.prompts))),
             timeouts: Timeouts::default(),
-        };
+            proxy,
+        }
+    }
+
+    /// Connect every hop of `hops`, recording how far it got (Test connection).
+    pub(crate) async fn open(&self, hops: Vec<SshHop>, options: &TunnelOptions) -> TunnelAttempt {
         // Boxed: the handshake state machine is large and every connect awaits it.
-        let (result, completed) = Box::pin(SshTunnel::connect_traced(&hops, &options)).await;
+        let (result, completed) = Box::pin(SshTunnel::connect_traced(&hops, options)).await;
         TunnelAttempt {
             hops,
             completed,
@@ -133,20 +151,21 @@ impl TunnelOpener {
         }
     }
 
-    /// Plan and open in one go, for connections (not the test).
+    /// Plan a profile's shared tunnel; it connects on first use.
     ///
     /// # Errors
-    /// The planning error or the typed [`ssh_error`].
-    pub(crate) async fn connect(&self, spec: &SshRouteSpec) -> Result<SshTunnel, IpcError> {
+    /// The planning error.
+    pub(crate) async fn shared(
+        &self,
+        spec: &SshRouteSpec,
+        proxy: Option<Arc<ProxySpec>>,
+    ) -> Result<SharedTunnel, IpcError> {
         let hops = self.plan(spec).await?;
-        self.open(hops)
-            .await
-            .result
-            .map_err(|error| ssh_error(&error))
+        Ok(SharedTunnel::new(hops, self.options(proxy)))
     }
 }
 
-type Slot = Arc<AsyncMutex<Option<Arc<SshTunnel>>>>;
+type Slot = Arc<AsyncMutex<Option<Arc<SharedTunnel>>>>;
 
 /// One shared tunnel per saved connection.
 #[derive(Default)]
@@ -155,40 +174,71 @@ pub(crate) struct Tunnels {
 }
 
 impl Tunnels {
-    /// The open tunnel of `profile`, or a new one from `open`. Concurrent
+    /// The connected tunnel of `profile`: the shared one (reconnected when
+    /// its transport dropped), or a new one planned by `plan`. Concurrent
     /// callers wait for the same attempt, so prompts appear once.
     ///
     /// # Errors
-    /// The error of `open`.
+    /// The planning error, or the typed SSH error of the connection; a
+    /// dropped tunnel that cannot be re-established says so.
     pub(crate) async fn get_or_open<F>(
         &self,
         profile: &str,
-        open: F,
-    ) -> Result<Arc<SshTunnel>, IpcError>
+        plan: F,
+    ) -> Result<Arc<SharedTunnel>, IpcError>
     where
-        F: Future<Output = Result<SshTunnel, IpcError>>,
+        F: Future<Output = Result<SharedTunnel, IpcError>>,
     {
         let slot = {
-            let mut slots = self.slots.lock().unwrap_or_else(PoisonError::into_inner);
+            let mut slots = self.lock();
             Arc::clone(slots.entry(profile.to_owned()).or_default())
         };
         let mut guard = slot.lock().await;
-        if let Some(tunnel) = guard.as_ref().filter(|tunnel| !tunnel.is_closed()) {
-            return Ok(Arc::clone(tunnel));
+        if let Some(shared) = guard.as_ref() {
+            shared
+                .tunnel()
+                .await
+                .map_err(|error| reopen_error(&error))?;
+            return Ok(Arc::clone(shared));
         }
-        let tunnel = Arc::new(open.await?);
-        *guard = Some(Arc::clone(&tunnel));
-        Ok(tunnel)
+        let shared = Arc::new(plan.await?);
+        shared.tunnel().await.map_err(|error| ssh_error(&error))?;
+        *guard = Some(Arc::clone(&shared));
+        Ok(shared)
+    }
+
+    /// True when `profile`'s live tunnel accepted an unknown host key
+    /// without saving it.
+    pub(crate) fn unsaved_host_keys(&self, profile: &str) -> bool {
+        let slot = self.lock().get(profile).cloned();
+        let shared = slot.and_then(|slot| slot.try_lock().ok().and_then(|guard| guard.clone()));
+        shared
+            .and_then(|shared| shared.current())
+            .is_some_and(|tunnel| !tunnel.unremembered_host_keys().is_empty())
     }
 
     /// Stop sharing `profile`'s tunnel (after disconnect or an edit); it closes
     /// once the last session using it is gone.
     pub(crate) fn forget(&self, profile: &str) {
-        self.slots
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .remove(profile);
+        self.lock().remove(profile);
     }
+
+    fn lock(&self) -> std::sync::MutexGuard<'_, HashMap<String, Slot>> {
+        self.slots.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+}
+
+/// A shared tunnel dropped and reconnecting failed: keep the typed kind
+/// (host key, cancelled) and say what happened.
+fn reopen_error(error: &SshError) -> IpcError {
+    let typed = ssh_error(error);
+    IpcError::new(
+        typed.kind,
+        format!(
+            "The SSH tunnel was closed and could not be re-established. {}",
+            typed.message
+        ),
+    )
 }
 
 /// Typed, user-readable SSH failures. A changed or revoked host key is a

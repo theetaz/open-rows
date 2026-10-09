@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 import { Badge, DisclosureSection, SelectField } from '@openrows/ui';
-import type { TlsModeDto } from '@openrows/ipc';
+import type { CloudCaDto, TlsModeDto } from '@openrows/ipc';
 import { FileField } from './FileField';
 import { SecretField } from './SecretField';
-import { tlsWarning } from './routeForm';
+import { tlsCa, tlsWarning } from './routeForm';
 import type { ConnectionForm } from './useConnectionForm';
 import styles from './ConnectionSheet.module.css';
 
@@ -16,11 +16,20 @@ const modes: readonly { value: TlsModeDto; label: string }[] = [
   { value: 'verify-full', label: 'Verify full' },
 ];
 
+type CloudChoice = CloudCaDto | 'none';
+
+const cloudChoices: readonly { value: CloudChoice; label: string }[] = [
+  { value: 'none', label: 'None' },
+  { value: 'awsRds', label: 'AWS RDS / Aurora' },
+  { value: 'azure', label: 'Azure Database' },
+];
+
 const modeLabel = (mode: TlsModeDto): string =>
   modes.find((option) => option.value === mode)?.label ?? mode;
 
 /**
- * "TLS" disclosure: mode, CA certificate and client certificate. A remote
+ * "TLS" disclosure: mode, a bundled cloud provider CA or a CA file, and
+ * the client certificate. A remote
  * connection whose certificate is not verified stays flagged next to the
  * section even when it is collapsed (docs/12 §4.1).
  */
@@ -31,7 +40,7 @@ export function TlsFields({
 }): React.JSX.Element {
   const { draft, errors, update, updateTls } = form;
   const { tls } = draft;
-  const warning = tlsWarning(draft.host, draft.tlsMode, tls.caFile);
+  const warning = tlsWarning(draft.host, draft.tlsMode, tlsCa(tls));
   return (
     <>
       <DisclosureSection
@@ -49,16 +58,7 @@ export function TlsFields({
               update({ tlsMode });
             }}
           />
-          <FileField
-            label="CA file"
-            kind="caCertificate"
-            value={tls.caFile}
-            placeholder="System trust store"
-            error={errors.tlsCaFile}
-            onChange={(caFile) => {
-              updateTls({ caFile });
-            }}
-          />
+          <CaFields form={form} />
           <FileField
             label="Client cert"
             kind="clientCertificate"
@@ -93,6 +93,38 @@ export function TlsFields({
           <Badge tone="warning">{warning.badge}</Badge>
           <span>{warning.detail}</span>
         </p>
+      )}
+    </>
+  );
+}
+
+/** Trust anchor: a bundled cloud provider CA, or a CA file (else the system store). */
+function CaFields({ form }: { form: ConnectionForm }): React.JSX.Element {
+  const { errors, updateTls } = form;
+  const { tls } = form.draft;
+  return (
+    <>
+      <SelectField
+        className={styles.row}
+        label="Cloud CA"
+        aria-label="Cloud provider CA"
+        value={tls.cloudCa ?? 'none'}
+        options={cloudChoices}
+        onValueChange={(choice) => {
+          updateTls({ cloudCa: choice === 'none' ? null : choice });
+        }}
+      />
+      {!tls.cloudCa && (
+        <FileField
+          label="CA file"
+          kind="caCertificate"
+          value={tls.caFile}
+          placeholder="System trust store"
+          error={errors.tlsCaFile}
+          onChange={(caFile) => {
+            updateTls({ caFile });
+          }}
+        />
       )}
     </>
   );

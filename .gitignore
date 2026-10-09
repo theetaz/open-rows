@@ -22,6 +22,8 @@ apps/desktop/src-tauri/target/
 .env.*
 !.env.example
 *.pem
+# Public cloud provider CA certificates bundled with the app (docs/24 §12).
+!crates/openrows-net/certs/*.pem
 *.key
 *.p12
 

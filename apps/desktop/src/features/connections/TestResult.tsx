@@ -2,6 +2,7 @@
 import { StatusDot } from '@openrows/ui';
 import type { StepStatus, TestReport, TestStepDto } from '@openrows/ipc';
 import { serverLabel } from './sessions';
+import { CertificateDetails, LatencyBadge } from './TestDetails';
 import type { TestState } from './useConnectionForm';
 import styles from './ConnectionSheet.module.css';
 
@@ -17,7 +18,10 @@ const statusText: Record<StepStatus, string> = {
   failed: 'failed',
 };
 
-/** Test connection outcome: a summary line and the step-by-step diagnostics. */
+/**
+ * Test connection outcome: a summary line with the latency, the
+ * step-by-step diagnostics and the server certificate.
+ */
 export function TestResult({ state }: { state: TestState }): React.JSX.Element {
   switch (state.status) {
     case 'idle':
@@ -45,10 +49,13 @@ function Report({ report }: { report: TestReport }): React.JSX.Element {
   return (
     <div role={report.server ? 'status' : 'alert'} className={styles.test}>
       {report.server ? (
-        <StatusDot
-          tone="success"
-          label={`Connected · ${serverLabel(report.server)} · ${elapsed}`}
-        />
+        <span className={styles.stepLine}>
+          <StatusDot
+            tone="success"
+            label={`Connected · ${serverLabel(report.server)} · ${elapsed}`}
+          />
+          <LatencyBadge latency={report.latency} />
+        </span>
       ) : (
         <StatusDot tone="danger" label={`Connection failed · ${elapsed}`} />
       )}
@@ -57,6 +64,9 @@ function Report({ report }: { report: TestReport }): React.JSX.Element {
           <Step key={`${step.kind}-${String(index)}`} step={step} />
         ))}
       </ol>
+      {report.certificate && (
+        <CertificateDetails certificate={report.certificate} />
+      )}
       {report.error &&
         report.steps.every((step) => step.status !== 'failed') && (
           <p className={styles.error}>{report.error.message}</p>

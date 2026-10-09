@@ -2,6 +2,8 @@
 export { ConnectionHeader } from './ConnectionHeader';
 export { ConnectionRail } from './ConnectionRail';
 export { connectionActions } from './connectionActions';
+export { InsecureBadge } from './InsecureBadge';
+export { insecureReasons } from './insecure';
 export { ConnectionSheets } from './ConnectionSheets';
 export { sessionOf, statusLabel } from './sessions';
 export { needsConsent } from './sessionState';

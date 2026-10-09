@@ -152,6 +152,8 @@ it('tests an existing profile with its stored password and shows version or erro
       steps: [],
       server: server('17.2'),
       error: null,
+      certificate: null,
+      latency: null,
       elapsedMs: 12,
     })
     .mockRejectedValueOnce(new Error('authentication failed: bad password'));

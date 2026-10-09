@@ -15,6 +15,12 @@ pub(crate) fn hint(step: TestStepKind, error: &IpcError, engine: Engine) -> Opti
     if matches!(error.kind, IpcErrorKind::Cancelled | IpcErrorKind::HostKey) {
         return None;
     }
+    if error.message.contains(" proxy ") {
+        return Some(
+            "Check the proxy type, host, port, user and password in the Proxy section, and \
+             that the proxy allows connections to this host and port.",
+        );
+    }
     match step {
         TestStepKind::SshConnect => Some(
             "Check the SSH host and port, and that the SSH server is running and reachable \
@@ -33,7 +39,7 @@ pub(crate) fn hint(step: TestStepKind, error: &IpcError, engine: Engine) -> Opti
              connection over SSH.",
         ),
         TestStepKind::Connect => Some(connect_hint(error, engine)),
-        TestStepKind::Tls | TestStepKind::Version => None,
+        TestStepKind::Tls | TestStepKind::Version | TestStepKind::Latency => None,
         TestStepKind::Authenticate if engine == Engine::Postgres => postgres_login_hint(error),
         TestStepKind::Authenticate => mysql_login_hint(error),
     }

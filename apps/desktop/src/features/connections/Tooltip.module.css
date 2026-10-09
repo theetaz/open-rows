@@ -25,6 +25,9 @@
   color: var(--or-secondary);
   font-size: var(--or-text-11);
 }
+.tooltip .insecure {
+  color: var(--or-warning-fg);
+}
 .trailing {
   display: flex;
   align-items: center;

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { ProfileDto } from '@openrows/ipc';
-import { statusLabel } from '../features/connections';
+import type { InsecureReasonDto, ProfileDto } from '@openrows/ipc';
+import { insecureReasons, statusLabel } from '../features/connections';
 import type { SessionStatus } from '../features/connections';
 
 /** Segments of the toolbar context bar, TablePlus style. */
@@ -14,6 +14,8 @@ export type ContextSegments = {
   database: string;
   /** `schema.object` of the active object tab, else the selected schema. */
   object: string;
+  /** Why the active connection is not secure; empty when it is. */
+  insecure: InsecureReasonDto[];
 };
 
 /**
@@ -35,6 +37,7 @@ export function contextSegments(input: {
       name: 'No connection',
       database: '',
       object: '',
+      insecure: [],
     };
   const env = (profile.env.label ?? profile.env.kind).toUpperCase();
   const engine =
@@ -44,5 +47,12 @@ export function contextSegments(input: {
   const object = input.database
     ? (input.objectPath?.join('.') ?? input.schema)
     : '';
-  return { env, engine, name: profile.name, database: input.database, object };
+  return {
+    env,
+    engine,
+    name: profile.name,
+    database: input.database,
+    object,
+    insecure: insecureReasons(profile, status),
+  };
 }

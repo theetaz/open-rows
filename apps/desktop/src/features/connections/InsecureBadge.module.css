@@ -1,0 +1,26 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Insecure-connection flag in the rail and the window toolbar. */
+.mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--or-warning-fg);
+}
+.mark svg,
+.badge svg {
+  inline-size: 12px;
+  block-size: 12px;
+}
+.badge {
+  padding-block: var(--or-space-2);
+  font-size: var(--or-text-11);
+  white-space: nowrap;
+}
+.hidden {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

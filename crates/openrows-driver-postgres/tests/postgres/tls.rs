@@ -10,8 +10,9 @@ use openrows_driver_api::DriverError;
 use openrows_driver_postgres::{
     ConnectOptions, ConnectStage, ConnectTrace, PgConfig, PgSession, SslMode, TlsFiles, TlsStatus,
 };
+use openrows_net::testing::{TestProxy, TestProxyConfig};
 use openrows_net::tls::{TlsDetails, Verification};
-use openrows_net::{BoxFuture, BoxStream, Dialer};
+use openrows_net::{BoxFuture, BoxStream, Dialer, ProxyDialer, ProxyKind};
 
 fn tls_file(name: &str) -> TestResult<PathBuf> {
     let dir = std::env::var("OPENROWS_TEST_PG_TLS_DIR")
@@ -231,5 +232,39 @@ async fn routed_streams_verify_tls_against_the_configured_host() -> TestResult {
         encrypted(&session?)?.subject.as_deref(),
         Some("CN=localhost")
     );
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "needs PostgreSQL: run `just test-pg`"]
+async fn proxies_carry_verified_tls_sessions_and_resolve_names_remotely() -> TestResult {
+    let server = localhost()?;
+    for kind in [ProxyKind::Socks5, ProxyKind::HttpConnect] {
+        let proxy = TestProxy::start(TestProxyConfig {
+            kind,
+            credentials: Some(("ops".to_owned(), "proxy-pw-synthetic".to_owned())),
+        })
+        .await?;
+        let dialer = ProxyDialer::new(Arc::new(proxy.spec()), "localhost", server.port);
+        let options = ConnectOptions {
+            via: Some(Arc::new(dialer)),
+            ..with_ca(SslMode::VerifyFull, "ca.crt")?
+        };
+        let (session, trace) = connect(&server, &options).await;
+        let details = encrypted(&session?)?;
+        assert_eq!(details.subject.as_deref(), Some("CN=localhost"));
+        assert_eq!(details.alt_names, ["localhost"]);
+        assert!(
+            trace
+                .completed
+                .iter()
+                .any(|(stage, _)| *stage == ConnectStage::Tls)
+        );
+        assert_eq!(
+            proxy.destinations(),
+            [format!("localhost:{}", server.port)],
+            "{kind}: the proxy resolves the host name"
+        );
+    }
     Ok(())
 }

@@ -76,6 +76,7 @@ const connections = {
   active: connection,
   statusOf: () => ({
     state: 'connected',
+    insecure: [],
     databases: [{ name: 'orders', state: 'open', sessionId: 'session-1' }],
   }),
   connect: vi.fn(),

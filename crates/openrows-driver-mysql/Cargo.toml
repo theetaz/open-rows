@@ -30,5 +30,7 @@ tokio = { version = "1.53", features = ["net", "io-util", "time"] }
 ignored = ["flate2"]
 
 [dev-dependencies]
+# Proxied-route tests use the in-process test proxy.
+openrows-net = { path = "../openrows-net", features = ["test-proxy"] }
 openrows-sql = { path = "../openrows-sql" }
 tokio = { version = "1.53", features = ["net", "io-util", "time", "rt", "macros"] }

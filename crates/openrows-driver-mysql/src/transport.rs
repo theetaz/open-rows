@@ -44,9 +44,14 @@ impl Target {
         })
     }
 
-    /// TLS applies to TCP and routed streams, not to local sockets.
+    /// TLS applies to TCP and routed streams, not to local sockets nor to
+    /// sockets reached through an SSH tunnel.
     pub(crate) fn tcp_like(&self) -> bool {
-        !matches!(self, Self::Unix(_))
+        match self {
+            Self::Tcp { .. } => true,
+            Self::Unix(_) => false,
+            Self::Via(dialer) => !dialer.is_socket(),
+        }
     }
 
     /// Open a stream, recording DNS and connect as separate stages for TCP.

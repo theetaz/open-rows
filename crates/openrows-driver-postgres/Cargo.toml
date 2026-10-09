@@ -23,6 +23,8 @@ thiserror.workspace = true
 tokio = { version = "1.53", features = ["net", "io-util", "time"] }
 
 [dev-dependencies]
+# Proxied-route tests use the in-process test proxy.
+openrows-net = { path = "../openrows-net", features = ["test-proxy"] }
 criterion = { version = "0.8", default-features = false }
 dhat = "0.3.3"
 tokio = { version = "1.53", features = ["net", "io-util", "time", "rt", "macros"] }

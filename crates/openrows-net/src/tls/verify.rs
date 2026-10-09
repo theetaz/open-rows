@@ -28,7 +28,11 @@ pub(crate) fn server_verifier(
     provider: &Arc<CryptoProvider>,
 ) -> Result<Arc<dyn ServerCertVerifier>, TlsError> {
     let algorithms = provider.signature_verification_algorithms;
-    let roots = params.ca_file.as_deref().map(files::ca_roots).transpose()?;
+    let roots = match (&params.ca_file, params.cloud_ca) {
+        (Some(path), _) => Some(files::ca_roots(path)?),
+        (None, Some(cloud)) => Some(files::bundled_roots(cloud)?),
+        (None, None) => None,
+    };
     match (params.verification, roots) {
         (Verification::None, _) => Ok(Arc::new(Unverified { algorithms })),
         (Verification::Chain, Some(roots)) => Ok(Arc::new(ChainOnly {

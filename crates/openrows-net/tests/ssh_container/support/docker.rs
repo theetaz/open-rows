@@ -12,7 +12,7 @@ use std::{
 };
 
 /// Local tag for the fixture image built from `tests/fixtures/sshd`.
-const IMAGE: &str = "openrows-test-sshd:m0-s4";
+const IMAGE: &str = "openrows-test-sshd:m1-06";
 /// When set, missing Docker fails the run instead of skipping (`just test-ssh`).
 const REQUIRE_ENV: &str = "OPENROWS_REQUIRE_DOCKER";
 const READY_TIMEOUT: Duration = Duration::from_secs(30);
@@ -148,6 +148,19 @@ impl Container {
             .next()
             .and_then(|port| port.parse().ok())
             .expect("published port")
+    }
+
+    /// Run `command` inside the container (e.g. to cut SSH sessions).
+    pub fn exec(&self, command: &[&str]) -> bool {
+        let mut args = vec!["exec", self.name.as_str()];
+        args.extend(command);
+        docker(&args).status.success()
+    }
+
+    /// Stop the container abruptly; the name stays reserved until drop.
+    pub fn kill(&self) {
+        let output = docker(&["kill", &self.name]);
+        assert!(output.status.success(), "docker kill failed");
     }
 
     /// Poll the log for sshd's listening line (bounded; not a fixed sleep).

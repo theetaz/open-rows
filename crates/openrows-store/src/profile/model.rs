@@ -8,8 +8,8 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::{
-    Driver, EnvKind, EnvTag, FileParams, ProfileError, Safety, ServerParams, SshSettings,
-    TlsSettings,
+    Driver, EnvKind, EnvTag, FileParams, ProfileError, ProxySettings, Safety, ServerParams,
+    SshSettings, TlsSettings,
 };
 
 /// Newest profile file format version (`"openrows": 1`).
@@ -121,6 +121,9 @@ pub struct SecretRefs {
     /// TLS client key passphrase.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tls_key_passphrase: Option<SecretRef>,
+    /// Proxy password.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub proxy_password: Option<SecretRef>,
 }
 
 /// A personal connection profile (`connections/<id>.json`).
@@ -154,6 +157,9 @@ pub struct ConnectionProfile {
     /// SSH tunnel in front of the database; absent for direct connections.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ssh: Option<SshSettings>,
+    /// SOCKS5 or HTTP proxy, the first hop (before SSH when both are set).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub proxy: Option<ProxySettings>,
     /// Write-safety switches.
     pub safety: Safety,
     /// Keep executed statements in the local history (FR-WS-02); on by default.
@@ -193,6 +199,7 @@ impl ConnectionProfile {
             env_tag,
             tls: TlsSettings::new(TlsMode::default_for_host(&params.host)),
             ssh: None,
+            proxy: None,
             params,
             file: None,
             secrets: SecretRefs::default(),
@@ -248,7 +255,27 @@ impl ConnectionProfile {
         if self.params.port == 0 {
             return invalid("params.port", "must be 1-65535");
         }
-        self.ssh.as_ref().map_or(Ok(()), SshSettings::validate)
+        self.ssh.as_ref().map_or(Ok(()), SshSettings::validate)?;
+        self.validate_route()
+    }
+
+    /// Proxy fields, a proxy never targeting a local socket directly, and
+    /// one CA source at most.
+    fn validate_route(&self) -> Result<(), ProfileError> {
+        let invalid = |field, reason| Err(ProfileError::Invalid { field, reason });
+        if let Some(proxy) = &self.proxy {
+            proxy.validate()?;
+            if self.ssh.is_none() && self.params.host.starts_with('/') {
+                return invalid("proxy", "cannot reach a local Unix socket; use SSH");
+            }
+        }
+        if self.tls.ca_file.is_some() && self.tls.cloud_ca.is_some() {
+            return invalid(
+                "tls.caFile",
+                "choose a CA file or a cloud provider CA, not both",
+            );
+        }
+        Ok(())
     }
 
     fn validate_file(&self) -> Result<(), ProfileError> {
@@ -264,6 +291,9 @@ impl ConnectionProfile {
         }
         if self.ssh.is_some() {
             return invalid("ssh", "local files cannot use an SSH tunnel");
+        }
+        if self.proxy.is_some() {
+            return invalid("proxy", "local files cannot use a proxy");
         }
         Ok(())
     }

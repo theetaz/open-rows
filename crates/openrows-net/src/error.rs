@@ -3,7 +3,7 @@
 
 use std::{io, path::PathBuf, time::Duration};
 
-use crate::{Stage, known_hosts::KnownHostsLine};
+use crate::{ProxyError, Stage, known_hosts::KnownHostsLine};
 
 /// Every way opening or using an SSH tunnel can fail.
 ///
@@ -128,6 +128,17 @@ pub enum SshError {
         /// Server or protocol reason.
         reason: String,
     },
+    /// The server refused or failed a forwarded Unix-socket channel.
+    #[error("could not open the Unix socket {path} on the SSH server: {reason}")]
+    SocketOpen {
+        /// Socket path on the last hop.
+        path: String,
+        /// Server or protocol reason.
+        reason: String,
+    },
+    /// The proxy in front of the first hop failed.
+    #[error(transparent)]
+    Proxy(#[from] ProxyError),
     /// A blocking helper task (file read, key decryption) panicked or was cancelled.
     #[error("a background task stopped unexpectedly")]
     BackgroundTask,

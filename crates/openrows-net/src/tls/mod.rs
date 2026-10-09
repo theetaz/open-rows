@@ -8,6 +8,7 @@
 //! negotiation (`SSLRequest`, capability flags) stays in the drivers; they
 //! hand a connected byte stream to [`TlsClient::handshake`].
 
+mod cloud;
 mod details;
 mod error;
 mod files;
@@ -19,6 +20,7 @@ use rustls::{ClientConfig, pki_types::ServerName};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_rustls::{TlsConnector, client::TlsStream};
 
+pub use cloud::CloudCa;
 pub use details::TlsDetails;
 pub use error::{HandshakeFailure, TlsError, failure_in};
 
@@ -52,6 +54,9 @@ pub struct TlsParams {
     pub verification: Verification,
     /// PEM CA bundle; replaces the system trust store when set.
     pub ca_file: Option<PathBuf>,
+    /// A bundled cloud provider CA set; replaces the system trust store
+    /// when set and there is no CA file.
+    pub cloud_ca: Option<CloudCa>,
     /// PEM client certificate (chain) for certificate authentication.
     pub client_cert: Option<PathBuf>,
     /// PEM client private key: PKCS#8 (optionally encrypted), PKCS#1 or SEC1.
@@ -67,6 +72,7 @@ impl TlsParams {
         Self {
             verification,
             ca_file: None,
+            cloud_ca: None,
             client_cert: None,
             client_key: None,
             key_passphrase: None,

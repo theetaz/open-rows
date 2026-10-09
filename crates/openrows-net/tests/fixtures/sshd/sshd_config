@@ -9,6 +9,7 @@ PasswordAuthentication yes
 KbdInteractiveAuthentication yes
 AuthorizedKeysFile .ssh/authorized_keys
 AllowTcpForwarding yes
+AllowStreamLocalForwarding yes
 AllowAgentForwarding no
 X11Forwarding no
 PrintMotd no

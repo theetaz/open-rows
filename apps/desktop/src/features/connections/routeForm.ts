@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type {
+  CloudCaDto,
   ProfileDto,
   SecretInput,
   SshAuthDto,
@@ -37,6 +38,8 @@ export type SshDraft = {
 /** TLS certificate files and the client key passphrase. */
 export type TlsDraft = {
   caFile: string;
+  /** A bundled cloud provider CA instead of a CA file. */
+  cloudCa: CloudCaDto | null;
   clientCert: string;
   clientKey: string;
   passphrase: SecretDraft;
@@ -54,7 +57,7 @@ export type RouteErrors = Partial<
   >
 >;
 
-function emptySecret(stored = false): SecretDraft {
+export function emptySecret(stored = false): SecretDraft {
   return { value: '', mode: 'keep', stored };
 }
 
@@ -75,6 +78,7 @@ export function emptySsh(): SshDraft {
 export function emptyTls(): TlsDraft {
   return {
     caFile: '',
+    cloudCa: null,
     clientCert: '',
     clientKey: '',
     passphrase: emptySecret(),
@@ -101,6 +105,7 @@ export function tlsFromProfile(profile: ProfileDto): TlsDraft {
   const files = profile.tlsFiles;
   return {
     caFile: files.caFile ?? '',
+    cloudCa: files.cloudCa,
     clientCert: files.clientCert ?? '',
     clientKey: files.clientKey ?? '',
     passphrase: emptySecret(files.hasKeyPassphrase),
@@ -112,7 +117,7 @@ export function withSecret(secret: SecretDraft, value: string): SecretDraft {
   return { ...secret, value, mode: value ? 'set' : 'keep' };
 }
 
-function secretInput(secret: SecretDraft): SecretInput {
+export function secretInput(secret: SecretDraft): SecretInput {
   switch (secret.mode) {
     case 'set':
       return { kind: 'set', value: secret.value };
@@ -155,7 +160,8 @@ export function sshInput(ssh: SshDraft): SshInput | null {
 
 export function tlsInput(tls: TlsDraft): TlsFilesInput {
   return {
-    caFile: optional(tls.caFile),
+    caFile: tls.cloudCa ? null : optional(tls.caFile),
+    cloudCa: tls.cloudCa,
     clientCert: optional(tls.clientCert),
     clientKey: optional(tls.clientKey),
     keyPassphrase: secretInput(tls.passphrase),
@@ -164,7 +170,7 @@ export function tlsInput(tls: TlsDraft): TlsFilesInput {
 
 const JUMP = /^(?:[^@\s,]+@)?(?:\[[^\]\s]+\]|[^\s:@,[\]]+)(?::\d{1,5})?$/;
 
-function validPort(text: string): boolean {
+export function validPort(text: string): boolean {
   const port = Number(text);
   return Number.isInteger(port) && port >= 1 && port <= 65535;
 }
@@ -184,11 +190,16 @@ function sshErrors(ssh: SshDraft): RouteErrors {
 
 function tlsErrors(tls: TlsDraft, mode: TlsModeDto): RouteErrors {
   const errors: RouteErrors = {};
-  if (mode === 'verify-ca' && !tls.caFile.trim())
+  if (mode === 'verify-ca' && !tlsCa(tls))
     errors.tlsCaFile = 'Verify CA needs a CA certificate';
   if (Boolean(tls.clientCert.trim()) !== Boolean(tls.clientKey.trim()))
     errors.tlsClientKey = 'Choose both a client certificate and its key';
   return errors;
+}
+
+/** The configured trust anchor (CA file or cloud CA), or `''` for the system store. */
+export function tlsCa(tls: TlsDraft): string {
+  return tls.cloudCa ?? tls.caFile.trim();
 }
 
 export function validateRoute(

@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Connect, TLS, typed results, parameters, warnings, cancel and errors.
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use arrow_array::{Array, Int64Array, StringArray};
 use arrow_schema::DataType;
 use openrows_driver_api::{
-    ConnectStage, ConnectTrace, Connection, DriverError, NoticeLevel, Session, SslMode, TlsStatus,
+    ConnectStage, ConnectTrace, Connection, DriverError, Endpoint, NoticeLevel, Session, SslMode,
+    TlsStatus,
 };
 use openrows_driver_mysql::connect;
-use openrows_net::SecretString;
+use openrows_net::testing::{TestProxy, TestProxyConfig};
+use openrows_net::{ProxyDialer, ProxyKind, SecretString};
 
 use super::support::{Collect, DATABASE, TestResult, code, mariadb, request, run, session};
 
@@ -200,5 +203,40 @@ async fn cancel_kills_the_running_query_and_the_session_stays_usable() -> TestRe
     let mut after = Collect::default();
     session.execute("SELECT 1", &mut after).await?;
     assert_eq!(after.rows(), 1);
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "needs MySQL or MariaDB; run with `just test-mysql`"]
+async fn proxies_carry_tls_sessions() -> TestResult {
+    let proxies = [
+        (ProxyKind::Socks5, None),
+        (
+            ProxyKind::HttpConnect,
+            Some(("ops".to_owned(), "proxy-pw-synthetic".to_owned())),
+        ),
+    ];
+    for (kind, credentials) in proxies {
+        let proxy = TestProxy::start(TestProxyConfig { kind, credentials }).await?;
+        let mut routed = request(SslMode::Require)?;
+        let Endpoint::Server { host, port } = &routed.endpoint else {
+            return Err("the test request names a server".into());
+        };
+        let destination = format!("{host}:{port}");
+        routed.via = Some(Arc::new(ProxyDialer::new(
+            Arc::new(proxy.spec()),
+            host,
+            *port,
+        )));
+        let mut trace = ConnectTrace::default();
+        let session = connect(&routed, &mut trace).await?;
+        assert!(
+            matches!(trace.tls, Some(TlsStatus::Encrypted(_))),
+            "{kind}: {:?}",
+            trace.tls
+        );
+        assert_eq!(proxy.destinations(), [destination]);
+        Box::new(session).close().await?;
+    }
     Ok(())
 }

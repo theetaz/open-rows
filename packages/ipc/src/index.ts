@@ -168,8 +168,15 @@ export type {
 } from './generated/bindings';
 export { DEFAULT_CUSTOM_ENV_COLOR } from './generated/bindings';
 export type {
+  CertificateDto,
+  CloudCaDto,
   ConnectionOpened,
   DatabaseDto,
+  InsecureReasonDto,
+  LatencyDto,
+  ProxyDto,
+  ProxyInput,
+  ProxyKindDto,
   EngineDto,
   FileDto,
   EnvDto,

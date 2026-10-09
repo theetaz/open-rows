@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { ServerDto, SessionStateChanged } from '@openrows/ipc';
+import type {
+  InsecureReasonDto,
+  ServerDto,
+  SessionStateChanged,
+} from '@openrows/ipc';
 
 /**
  * One opened database of a connection. PostgreSQL cannot switch databases on
@@ -18,6 +22,8 @@ export type SessionStatus =
       state: 'connected';
       /** Server info read on the home database (`server.database`). */
       server: ServerDto;
+      /** Why this live connection is insecure (TLS, a host key not saved). */
+      insecure: readonly InsecureReasonDto[];
       /** Opened databases in opening order. */
       databases: readonly OpenedDatabase[];
       /** Changes on every connect, so caches of an earlier connect are not reused. */

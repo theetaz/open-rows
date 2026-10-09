@@ -79,6 +79,9 @@ impl tauri_specta::Event for SshPromptChanged {
 pub(crate) enum SshPromptAnswer {
     /// Trust the host key and remember it in the app's `known_hosts`.
     Trust,
+    /// Connect this time without saving the key; the connection is flagged
+    /// as insecure while the tunnel lives.
+    TrustOnce,
     /// Answers to a challenge, one per prompt, in order.
     Answers { values: Vec<String> },
     /// Dismissed: reject the key or cancel authentication.
@@ -89,6 +92,7 @@ impl std::fmt::Debug for SshPromptAnswer {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Trust => formatter.write_str("Trust"),
+            Self::TrustOnce => formatter.write_str("TrustOnce"),
             Self::Answers { values } => write!(formatter, "Answers([{} redacted])", values.len()),
             Self::Cancel => formatter.write_str("Cancel"),
         }
@@ -182,7 +186,8 @@ impl Drop for Closer<'_> {
     }
 }
 
-/// Host-key first use through the prompt sheet: Trust remembers the key.
+/// Host-key first use through the prompt sheet: Trust remembers the key,
+/// Connect once does not.
 pub(crate) struct UiHostKeyPolicy(pub(crate) Arc<PromptBroker>);
 
 impl HostKeyPolicy for UiHostKeyPolicy {
@@ -197,6 +202,7 @@ impl HostKeyPolicy for UiHostKeyPolicy {
             };
             match self.0.ask(prompt).await {
                 SshPromptAnswer::Trust => FirstUseDecision::AcceptAndRemember,
+                SshPromptAnswer::TrustOnce => FirstUseDecision::AcceptOnce,
                 SshPromptAnswer::Answers { .. } | SshPromptAnswer::Cancel => {
                     FirstUseDecision::Reject
                 }
@@ -234,6 +240,7 @@ impl KeyboardInteractivePrompter for UiPrompter {
                 }
                 SshPromptAnswer::Answers { .. }
                 | SshPromptAnswer::Trust
+                | SshPromptAnswer::TrustOnce
                 | SshPromptAnswer::Cancel => Err(PromptCancelled),
             }
         })

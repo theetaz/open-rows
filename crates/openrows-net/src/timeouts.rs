@@ -25,6 +25,8 @@ pub enum Stage {
     Handshake,
     /// `direct-tcpip` channel open through an established hop.
     ChannelOpen,
+    /// SOCKS5 or HTTP `CONNECT` negotiation with a proxy.
+    Proxy,
 }
 
 impl fmt::Display for Stage {
@@ -34,6 +36,7 @@ impl fmt::Display for Stage {
             Self::TcpConnect => "TCP connect",
             Self::Handshake => "SSH handshake and authentication",
             Self::ChannelOpen => "tunnel channel open",
+            Self::Proxy => "proxy handshake",
         })
     }
 }
