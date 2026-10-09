@@ -8,6 +8,7 @@
 //!   `REQUIRED`, `VERIFY_CA`, `VERIFY_IDENTITY`) as well as libpq `sslmode`.
 //! - `sqlite:` names an absolute file path (`sqlite:/data/app.db` or
 //!   `sqlite:///data/app.db`); `?mode=ro` opens it read-only.
+//!   `sqlite::memory:` (also `sqlite://:memory:`) is an in-memory database.
 //!
 //! Components are percent-decoded (`+` stays a plus, as in libpq).
 //! Passwords, from userinfo or `?password=`, come back as a [`SecretString`]
@@ -64,6 +65,9 @@ impl ParsedUrl {
 /// password or the raw URL.
 pub fn parse_url(input: &str) -> Result<ParsedUrl, UrlError> {
     let input = input.trim();
+    if is_sqlite_memory(input) {
+        return Ok(sqlite_url(FileParams::memory()));
+    }
     reject_multiple_hosts(input)?;
     let url = Url::parse(input)?;
     let driver = match url.scheme() {
@@ -103,17 +107,29 @@ fn parse_sqlite(url: &Url) -> Result<ParsedUrl, UrlError> {
     let read_only = pairs
         .iter()
         .any(|(key, value)| key == "mode" && value == "ro");
-    Ok(ParsedUrl {
+    Ok(sqlite_url(FileParams {
+        path,
+        read_only,
+        ..FileParams::default()
+    }))
+}
+
+/// `sqlite::memory:` (or `sqlite://:memory:`), scheme case-insensitive.
+fn is_sqlite_memory(input: &str) -> bool {
+    input
+        .split_once(':')
+        .filter(|(scheme, _)| scheme.eq_ignore_ascii_case("sqlite"))
+        .is_some_and(|(_, rest)| rest.strip_prefix("//").unwrap_or(rest) == ":memory:")
+}
+
+fn sqlite_url(file: FileParams) -> ParsedUrl {
+    ParsedUrl {
         driver: Driver::Sqlite,
         params: ServerParams::default(),
-        file: Some(FileParams {
-            path,
-            read_only,
-            create: false,
-        }),
+        file: Some(file),
         tls_mode: TlsMode::Disable,
         password: None,
-    })
+    }
 }
 
 struct Draft {

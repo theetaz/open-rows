@@ -60,8 +60,9 @@ fn connect_hint(error: &IpcError, engine: Engine) -> &'static str {
              (bind-address, port), and that no firewall blocks it."
         }
         Engine::Sqlite => {
-            "Check that the file exists and that OpenRows may read it (macOS Files and \
-             Folders privacy settings), or choose New File to create one."
+            "Check that the file and every attached database file exist and that OpenRows \
+             may read them (macOS Files and Folders privacy settings), or choose New File \
+             to create one."
         }
     }
 }

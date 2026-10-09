@@ -95,8 +95,13 @@ beforeEach(() => {
   });
 });
 
+const idAndName = [
+  { name: 'id', sourceType: 'int4' },
+  { name: 'name', sourceType: 'text' },
+];
+
 /** Stream a finished page of `rows` rows. */
-function page(rows: number): void {
+function page(rows: number, columns = idAndName): void {
   const resultId = `r${String(pages)}`;
   act(() => {
     for (const event of [
@@ -105,10 +110,7 @@ function page(rows: number): void {
         type: 'resultBegin',
         statement: 0,
         resultId,
-        columns: [
-          { name: 'id', sourceType: 'int4' },
-          { name: 'name', sourceType: 'text' },
-        ],
+        columns,
       },
       { type: 'resultEnd', statement: 0, resultId, rows, truncated: false },
       { type: 'finished', outcome: 'completed', elapsedMs: 3 },
@@ -287,6 +289,7 @@ it('edits inspector fields in place: staged values show and the row stays select
   vi.mocked(tableEditInfo).mockResolvedValueOnce({
     key: ['id'],
     protected: [],
+    rowId: null,
     readOnly: false,
     confirmWrites: false,
     production: false,
@@ -367,4 +370,31 @@ it('counts exactly on demand and shows structure and indexes', async () => {
   await user.click(screen.getByRole('button', { name: 'Columns' }));
   await user.click(screen.getByRole('checkbox', { name: 'name' }));
   expect(lastRequest().query.columns).toEqual(['id']);
+});
+
+it('selects a keyless table rowid for edits without showing it', async () => {
+  vi.mocked(tableEditInfo).mockResolvedValueOnce({
+    key: ['rowid'],
+    protected: ['rowid'],
+    rowId: 'rowid',
+    readOnly: false,
+    confirmWrites: false,
+    production: false,
+    columns: [],
+  });
+  const user = userEvent.setup();
+  render(
+    <ThemeProvider>
+      <Harness />
+    </ThemeProvider>,
+  );
+  await user.click(screen.getByRole('button', { name: 'Open users' }));
+  await waitFor(() => {
+    expect(lastRequest().query.rowId).toBe('rowid');
+  });
+  page(300, [...idAndName, { name: 'rowid', sourceType: 'INTEGER' }]);
+  await screen.findByRole('button', { name: 'Sort name' });
+  expect(screen.queryByRole('button', { name: 'Sort rowid' })).toBeNull();
+  await user.click(screen.getByRole('button', { name: 'Columns' }));
+  expect(screen.queryByRole('checkbox', { name: 'rowid' })).toBeNull();
 });

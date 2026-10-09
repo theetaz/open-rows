@@ -10,7 +10,10 @@ import type { RowEditing } from './useRowEditing';
 import { initialView } from './model';
 import { emptyHistory } from './editHistory';
 import { readRow } from './row';
-vi.mock('./row', () => ({ readRow: vi.fn() }));
+vi.mock('./row', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./row')>()),
+  readRow: vi.fn(),
+}));
 beforeEach(() => {
   vi.mocked(readRow).mockResolvedValue([]);
 });
@@ -37,6 +40,7 @@ function editing(readOnly = false): RowEditing {
     info: {
       key: ['id'],
       protected: ['id'],
+      rowId: null,
       readOnly,
       columns: [
         {

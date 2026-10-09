@@ -33,17 +33,21 @@ pub(crate) async fn session(
         .map_err(|error| IpcError::from(&error))
 }
 
-/// The table's key, generated columns and catalog column names.
+/// The table's key, generated columns and catalog column names, then the
+/// hidden rowid of a keyless table: guarded like a column, never written
+/// (`info.protected` lists it).
 pub(crate) async fn edit_shape(
     connection: &mut dyn Connection,
     (schema, table): (&str, &str),
 ) -> Result<(RowEditInfo, Vec<String>), DriverError> {
     let info = editor(connection)?.row_edit_info(schema, table).await?;
     let columns = catalog(connection)?.table_columns(schema, table).await?;
-    Ok((
-        info,
-        columns.into_iter().map(|column| column.name).collect(),
-    ))
+    let names = columns
+        .into_iter()
+        .map(|column| column.name)
+        .chain(info.row_id.clone())
+        .collect();
+    Ok((info, names))
 }
 fn writable(state: &Connections, target: &TableTarget) -> Result<(), IpcError> {
     let profile = state.profiles.get(profile_id(&target.profile_id)?)?;
@@ -81,6 +85,7 @@ pub(crate) async fn table_edit_info(
         Ok::<_, DriverError>(EditInfoDto {
             key: info.key,
             protected: info.protected,
+            row_id: info.row_id,
             columns: columns.into_iter().map(Into::into).collect(),
             read_only: safety.0,
             confirm_writes: safety.1,
@@ -377,6 +382,37 @@ mod tests {
         );
         assert_eq!(blocked.gate(), Gate::Block);
         assert!(ensure_writable(true).is_err());
+        Ok(())
+    }
+    /// A keyless `SQLite` table's rowid guards every UPDATE/DELETE like a
+    /// column, the statements stay bounded, and it can never be written.
+    #[test]
+    fn rowid_edits_are_bounded_and_never_write_the_rowid() -> Result<(), IpcError> {
+        let mut table = users();
+        table.columns = vec!["name".into(), "rowid".into()];
+        table.key = vec!["rowid".into()];
+        table.protected = vec!["rowid".into()];
+        let mut change = staged(EditKindDto::Delete);
+        change.original.remove("id");
+        change.original.insert("rowid".into(), Some("7".into()));
+        let delete = edit_sql(Dialect::Sqlite, &table, &Edit::from(&change))
+            .map_err(|error| IpcError::invalid(error.to_string()))?;
+        assert!(
+            delete
+                .sql
+                .ends_with("CAST(\"rowid\" AS TEXT) COLLATE BINARY IS ?2")
+        );
+        let policy = SafetyPolicy {
+            read_only: false,
+            confirm_writes: false,
+            dialect: Dialect::Sqlite,
+        };
+        let plan = SafetyPlan::check(policy, vec![delete.sql]);
+        assert!(plan.statements.iter().all(|item| !item.class.dangerous));
+        change.kind = EditKindDto::Update;
+        change.values =
+            BTreeMap::from([("rowid".into(), CellValueDto::Text { value: "8".into() })]);
+        assert!(edit_sql(Dialect::Sqlite, &table, &Edit::from(&change)).is_err());
         Ok(())
     }
     /// A commit needs the preview token, so the review sheet is shown on every commit.

@@ -20,6 +20,7 @@ it.each(['precise value', null])(
       info: {
         key: ['id'],
         protected: [],
+        rowId: null,
         readOnly: false,
         confirmWrites: false,
         production: false,

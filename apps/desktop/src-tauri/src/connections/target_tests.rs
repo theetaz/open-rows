@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 use super::*;
-use openrows_store::profile::{EnvKind, EnvTag, ServerParams};
+use openrows_store::profile::{AttachedFile, EnvKind, EnvTag, ServerParams};
 
 fn profile(user: Option<&str>, database: Option<&str>, mode: TlsMode) -> ConnectionProfile {
     let params = ServerParams {
@@ -92,23 +92,49 @@ fn network_errors_name_the_endpoint() -> Result<(), IpcError> {
 
 #[test]
 fn file_profiles_open_their_file_without_a_user() -> Result<(), IpcError> {
-    let file = openrows_store::profile::FileParams {
+    let file = FileParams {
         path: "/data/app.db".into(),
         read_only: true,
-        create: false,
+        ..FileParams::default()
     };
     let profile = ConnectionProfile::new_file("local", file, EnvTag::new(EnvKind::Local));
     let target = target(&profile, &DriverSecrets::default())?;
     assert_eq!(
         target.request.endpoint,
         Endpoint::File {
-            path: "/data/app.db".into(),
-            read_only: true,
-            create: false
+            source: FileSource::Disk {
+                path: "/data/app.db".into(),
+                read_only: true,
+                create: false
+            },
+            attached: Vec::new(),
         }
     );
     assert_eq!(target.database(), "main");
     assert_eq!(target.driver.product(), "SQLite");
     assert_eq!(target.request.describe_endpoint(), "/data/app.db");
+    Ok(())
+}
+
+#[test]
+fn memory_profiles_share_one_named_database_with_their_attachments() -> Result<(), IpcError> {
+    let mut file = FileParams::memory();
+    file.attach(AttachedFile {
+        alias: "logs".to_owned(),
+        path: "/data/logs.db".into(),
+    })?;
+    let profile = ConnectionProfile::new_file("scratch", file, EnvTag::new(EnvKind::Local));
+    let target = target(&profile, &DriverSecrets::default())?;
+    let expected = Endpoint::File {
+        source: FileSource::Memory {
+            name: format!("openrows-{}", profile.id),
+        },
+        attached: vec![Attachment {
+            alias: "logs".to_owned(),
+            path: "/data/logs.db".into(),
+        }],
+    };
+    assert_eq!(target.request.endpoint, expected);
+    assert_eq!(target.request.describe_endpoint(), ":memory:");
     Ok(())
 }

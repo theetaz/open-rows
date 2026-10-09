@@ -19,6 +19,7 @@ import { useSelectedRow } from './useSelectedRow';
 import type { FooterAdd, FooterStructure } from './TableFooter';
 import { useTableKeys } from './useTableKeys';
 import { useTableTab } from './useTableTab';
+import { tableTarget } from './model';
 import type { TableViews } from './useTableViews';
 import { RecoveryBanner } from './recovery/RecoveryBanner';
 import { useEditRecovery } from './recovery/useEditRecovery';
@@ -57,15 +58,15 @@ function useEdited(staged: number, onEdited: (() => void) | undefined): void {
 export function TableTab(props: TableTabProps): React.JSX.Element {
   const { table, sessionId } = props;
   const root = useRef<HTMLElement>(null);
-  const state = useTableTab(props);
+  const editing = useRowEditing({
+    ...props,
+    target: tableTarget(table, props.profileId),
+    offset: props.views.entryOf(props.tabId).view.offset,
+  });
+  const state = useTableTab({ ...props, rowId: editing.info?.rowId ?? null });
   const { view, actions, columns } = state;
   useTableKeys(root, actions);
   const structure = useStructure({ ...props, mode: view.mode });
-  const editing = useRowEditing({
-    ...props,
-    target: state.query.target,
-    offset: view.offset,
-  });
   useEdited(
     editing.history.current.length + structure.schema.history.current.length,
     props.onEdited,

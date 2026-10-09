@@ -15,3 +15,7 @@ pub const DECIMAL_EXTENSION: &str = "openrows.decimal";
 /// because some value had no exact Arrow representation (e.g. `infinity`);
 /// [`SOURCE_TYPE`] still names the original type (docs/04 §5, docs/05 §11).
 pub const TEXT_FALLBACK: &str = "openrows.text_fallback";
+/// Fixed number of fractional-second digits the source prints for a temporal
+/// field (`MySQL` `DATETIME(3)` is `"3"`); displays pad the fraction to it so
+/// the shown text equals the server's own text form.
+pub const FRACTION_DIGITS: &str = "openrows.fraction_digits";

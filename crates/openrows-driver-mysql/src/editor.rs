@@ -45,6 +45,7 @@ impl MySqlSession {
                 .filter(|column| column.generated())
                 .map(|column| column.name.clone())
                 .collect(),
+            row_id: None,
         })
     }
 

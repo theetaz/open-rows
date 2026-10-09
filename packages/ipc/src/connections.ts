@@ -2,6 +2,7 @@
 import { isTauri } from '@tauri-apps/api/core';
 import { commands, events } from './generated/bindings';
 import type {
+  AttachReply,
   ConnectionOpened,
   IpcError,
   IpcErrorKind,
@@ -140,6 +141,27 @@ export async function pickConnectionFile(
 ): Promise<string | null> {
   if (!isTauri()) return null;
   return unwrap(commands.connectionPickFile(kind));
+}
+
+/**
+ * Attach an existing `SQLite` file as schema `alias` to a saved connection
+ * and its open sessions; resolves with the saved profile and a warning per
+ * open session that could not follow (it does once reopened).
+ */
+export function attachDatabase(
+  profileId: string,
+  path: string,
+  alias: string,
+): Promise<AttachReply> {
+  return unwrap(commands.connectionAttachDatabase(profileId, path, alias));
+}
+
+/** Detach schema `alias` from a saved `SQLite` connection and its open sessions. */
+export function detachDatabase(
+  profileId: string,
+  alias: string,
+): Promise<AttachReply> {
+  return unwrap(commands.connectionDetachDatabase(profileId, alias));
 }
 
 /** Answer an SSH host-key or keyboard-interactive prompt (answers go to the core only). */

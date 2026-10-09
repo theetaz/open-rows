@@ -6,8 +6,8 @@
 use std::path::PathBuf;
 
 use openrows_store::profile::{
-    ConnectionProfile, Driver, EnvKind, EnvTag, FileParams, ProfileError, ProfileFiles, SecretSlot,
-    ServerParams, SshAuthMethod, SshSettings, TlsMode,
+    AttachedFile, ConnectionProfile, Driver, EnvKind, EnvTag, FileParams, ProfileError,
+    ProfileFiles, SecretSlot, ServerParams, SshAuthMethod, SshSettings, TlsMode,
 };
 
 /// A profile exactly as D-11 wrote it (format 1, `PostgreSQL` only).
@@ -75,7 +75,7 @@ fn sqlite(path: &str) -> ConnectionProfile {
         FileParams {
             path: PathBuf::from(path),
             read_only: true,
-            create: false,
+            ..FileParams::default()
         },
         EnvTag::new(EnvKind::Local),
     )
@@ -110,4 +110,36 @@ fn sqlite_profiles_name_an_absolute_file_without_route_or_password() {
     let mut missing = sqlite("/data/app.db");
     missing.file = None;
     assert!(invalid(&missing));
+}
+
+#[test]
+fn in_memory_profiles_need_no_path_and_keep_valid_attachments() {
+    let mut profile =
+        ConnectionProfile::new_file("Scratch", FileParams::memory(), EnvTag::new(EnvKind::Local));
+    assert!(profile.validate().is_ok());
+    let file = profile.file.as_mut().unwrap();
+    file.attach(AttachedFile {
+        alias: "logs".to_owned(),
+        path: PathBuf::from("/data/logs.db"),
+    })
+    .unwrap();
+    let json = serde_json::to_value(&profile).unwrap();
+    assert_eq!(json["file"]["memory"], true);
+    assert_eq!(json["file"]["attached"][0]["alias"], "logs");
+    assert!(json["file"].get("readOnly").is_none());
+    let back: ConnectionProfile = serde_json::from_value(json).unwrap();
+    assert_eq!(back, profile);
+    let older: FileParams = serde_json::from_str(r#"{"path":"/data/app.db"}"#).unwrap();
+    assert!(!older.memory && older.attached.is_empty());
+    profile.file.as_mut().unwrap().attached.push(AttachedFile {
+        alias: "main".to_owned(),
+        path: PathBuf::from("/data/other.db"),
+    });
+    assert!(matches!(
+        profile.validate(),
+        Err(ProfileError::Invalid {
+            field: "file.attached.alias",
+            ..
+        })
+    ));
 }

@@ -8,6 +8,7 @@ mod mysql;
 mod mysql_split;
 mod placeholders;
 mod properties;
+mod row_id;
 mod select;
 mod split;
 mod sqlite;

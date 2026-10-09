@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 use super::*;
 use arrow_array::{Array, BinaryArray, Int64Array, StringArray, UInt64Array};
+use openrows_driver_api::DriverError;
+
+mod typed;
 
 fn column(name: &str, column_type: ColumnType) -> Column {
     Column::new(column_type)
@@ -38,7 +41,7 @@ fn column_types_map_to_arrow_with_source_types() {
             DataType::UInt64,
             DataType::Utf8,
             DataType::Utf8,
-            DataType::Utf8,
+            DataType::Timestamp(TimeUnit::Microsecond, None),
             DataType::Binary,
             DataType::Utf8,
             DataType::Utf8,

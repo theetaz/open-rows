@@ -2,17 +2,18 @@
 //! The only call site of every driver's connect API: a profile becomes a
 //! driver [`ConnectRequest`] for the engine's [`Driver`] (adapt here when
 //! the contract changes).
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use openrows_driver_api::{
-    ConnectRequest, ConnectTimeouts, ConnectTrace, Connection, Driver, DriverError, Endpoint,
-    ServerSummary, SslMode, TlsFiles,
+    Attachment, ConnectRequest, ConnectTimeouts, ConnectTrace, Connection, Driver, DriverError,
+    Endpoint, FileSource, ServerSummary, SslMode, TlsFiles,
 };
 use openrows_net::tls::CloudCa as NetCloudCa;
 use openrows_net::{Dialer, SecretString as NetSecret};
 use openrows_secrets::SecretString;
-use openrows_store::profile::{CloudCa, ConnectionProfile, TlsMode, TlsSettings};
+use openrows_store::profile::{
+    CloudCa, ConnectionProfile, FileParams, ProfileId, TlsMode, TlsSettings,
+};
 use serde::Serialize;
 use specta::Type;
 
@@ -83,12 +84,7 @@ pub(crate) fn target(
             .file
             .as_ref()
             .ok_or_else(|| IpcError::invalid("Choose a database file"))?;
-        let endpoint = Endpoint::File {
-            path: PathBuf::from(&file.path),
-            read_only: file.read_only,
-            create: file.create,
-        };
-        (endpoint, String::new())
+        (file_endpoint(profile.id, file), String::new())
     } else {
         let user = params
             .user
@@ -121,6 +117,32 @@ pub(crate) fn target(
         timeouts: ConnectTimeouts::default(),
     };
     Ok(Target { driver, request })
+}
+
+/// The file or in-memory database of a file profile with its attachments.
+/// Every connection of one profile names the same in-memory database, so
+/// user, metadata and edit sessions share it while any of them is open.
+fn file_endpoint(profile: ProfileId, file: &FileParams) -> Endpoint {
+    let source = if file.memory {
+        FileSource::Memory {
+            name: format!("openrows-{profile}"),
+        }
+    } else {
+        FileSource::Disk {
+            path: file.path.clone(),
+            read_only: file.read_only,
+            create: file.create,
+        }
+    };
+    let attached = file
+        .attached
+        .iter()
+        .map(|attached| Attachment {
+            alias: attached.alias.clone(),
+            path: attached.path.clone(),
+        })
+        .collect();
+    Endpoint::File { source, attached }
 }
 
 fn tls_files(tls: &TlsSettings, passphrase: Option<&SecretString>) -> TlsFiles {

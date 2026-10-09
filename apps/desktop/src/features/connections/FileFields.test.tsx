@@ -54,11 +54,42 @@ it('a SQLite connection names a file instead of a server and route', async () =>
   expect(createProfile).toHaveBeenCalledWith(
     expect.objectContaining({
       engine: 'sqlite',
-      file: { path: '/data/new.sqlite', readOnly: true, create: true },
+      file: {
+        path: '/data/new.sqlite',
+        memory: false,
+        readOnly: true,
+        create: true,
+      },
       ssh: null,
     }),
   );
   expect(onSaved).toHaveBeenCalled();
+});
+
+it('the in-memory switch hides the file controls and syncs the URL', async () => {
+  vi.mocked(createProfile).mockResolvedValue(profile('scratch'));
+  const { user } = mount('sqlite');
+  const url = screen.getByRole('textbox', { name: 'URL' });
+  await user.click(screen.getByRole('switch', { name: 'In-memory' }));
+  expect(screen.queryByRole('textbox', { name: 'Database file' })).toBeNull();
+  expect(screen.queryByRole('switch', { name: 'Open read-only' })).toBeNull();
+  expect(
+    screen.queryByRole('button', { name: 'New database file' }),
+  ).toBeNull();
+  expect(url).toHaveValue('sqlite::memory:');
+  await user.click(screen.getByRole('switch', { name: 'In-memory' }));
+  expect(
+    screen.getByRole('textbox', { name: 'Database file' }),
+  ).toBeInTheDocument();
+  expect(url).toHaveValue('sqlite:');
+  await user.click(screen.getByRole('switch', { name: 'In-memory' }));
+  await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Scratch');
+  await user.click(screen.getByRole('button', { name: 'Save' }));
+  expect(createProfile).toHaveBeenCalledWith(
+    expect.objectContaining({
+      file: { path: '', memory: true, readOnly: false, create: false },
+    }),
+  );
 });
 
 it('a MySQL connection starts on port 3306 with a mysql:// URL', () => {

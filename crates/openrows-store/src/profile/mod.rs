@@ -8,6 +8,7 @@
 //! SSH tunnel are engine-agnostic sub-structs (D-10, D-11); their passwords
 //! and passphrases are keychain items too ([`SecretSlot`]).
 
+mod attached;
 mod conn_url;
 mod env;
 mod error;
@@ -20,6 +21,7 @@ mod search;
 mod secrets;
 mod service;
 
+pub use attached::AttachedFile;
 pub use conn_url::{ParsedUrl, parse_url};
 pub use env::{EnvKind, EnvTag, Safety};
 pub use error::{ProfileError, UrlError};

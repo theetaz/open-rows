@@ -122,7 +122,7 @@ async fn database(routed: &Routed, steps: &mut Steps) -> Outcome {
     let request = &routed.target.request;
     let (host, port, file) = match &request.endpoint {
         Endpoint::Server { host, port } => (host.clone(), *port, false),
-        Endpoint::File { path, .. } => (path.display().to_string(), 0, true),
+        Endpoint::File { source, .. } => (source.describe(), 0, true),
     };
     let run = DatabaseRun {
         trace: &trace,

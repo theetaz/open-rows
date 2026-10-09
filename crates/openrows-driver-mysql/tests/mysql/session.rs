@@ -3,8 +3,10 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use arrow_array::{Array, Int64Array, StringArray};
-use arrow_schema::DataType;
+use arrow_array::cast::AsArray;
+use arrow_array::types::{Decimal128Type, TimestampMicrosecondType};
+use arrow_array::{Array, Int64Array};
+use arrow_schema::{DataType, TimeUnit};
 use openrows_driver_api::{
     ConnectStage, ConnectTrace, Connection, DriverError, Endpoint, NoticeLevel, Session, SslMode,
     TlsStatus,
@@ -104,26 +106,22 @@ async fn results_stream_typed_in_both_protocols() -> TestResult {
             [
                 DataType::Int64,
                 DataType::Utf8,
-                DataType::Utf8,
-                DataType::Utf8,
+                DataType::Decimal128(10, 2),
+                DataType::Timestamp(TimeUnit::Microsecond, None),
                 DataType::Utf8,
                 DataType::Binary
             ]
         );
         let batch = &sink.batches[0];
-        let text = |column: usize| {
-            batch
-                .column(column)
-                .as_any()
-                .downcast_ref::<StringArray>()
-                .map(|a| a.value(0).to_owned())
-        };
-        assert_eq!(text(2).as_deref(), Some("12.50"), "params {params:?}");
-        assert_eq!(
-            text(3).as_deref(),
-            Some("2024-05-06 07:08:09.123"),
-            "params {params:?}"
-        );
+        let price = batch.column(2).as_primitive::<Decimal128Type>().value(0);
+        assert_eq!(price, 1_250, "params {params:?}");
+        let at = batch
+            .column(3)
+            .as_primitive::<TimestampMicrosecondType>()
+            .value(0);
+        assert_eq!(at, 1_714_979_289_123_000, "params {params:?}");
+        let doc = batch.column(4).as_string::<i32>().value(0);
+        assert!(doc.contains("\"a\""), "{doc}");
         assert!(batch.column(1).is_null(1));
     }
     let mut big = Collect::default();

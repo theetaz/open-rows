@@ -11,6 +11,10 @@ use std::collections::BTreeMap;
 pub(crate) struct EditInfoDto {
     pub(crate) key: Vec<String>,
     pub(crate) protected: Vec<String>,
+    /// The hidden rowid of a keyless `SQLite` table: when set, `key` is
+    /// `[rowId]`, the page must select it (`TableQueryDto::row_id`) and the
+    /// grid, inspector and copies never show it.
+    pub(crate) row_id: Option<String>,
     pub(crate) columns: Vec<TableColumnDto>,
     pub(crate) read_only: bool,
     /// The profile asks before writes (always on for `prod`).

@@ -1,13 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
+import type { ReactNode } from 'react';
 import { Icon, IconButton } from '@openrows/ui';
 import type { Catalog } from './useCatalog';
 import styles from './SchemaPicker.module.css';
 
-/** Schema of the active database; system schemas only when toggled on. */
+/**
+ * Schema of the active database; system schemas only when toggled on.
+ * `children` are extra engine tools (e.g. attach for `SQLite`).
+ */
 export function SchemaPicker({
   catalog,
+  children,
 }: {
   catalog: Catalog;
+  children?: ReactNode;
 }): React.JSX.Element {
   const { schemas, systemSchemas } = catalog;
   const names =
@@ -44,6 +50,7 @@ export function SchemaPicker({
       >
         <Icon name="settings" />
       </IconButton>
+      {children}
     </div>
   );
 }

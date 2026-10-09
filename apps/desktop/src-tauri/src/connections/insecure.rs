@@ -87,8 +87,10 @@ mod tests {
             "f",
             FileParams {
                 path: "/tmp/db.sqlite".into(),
+                memory: false,
                 read_only: false,
                 create: false,
+                attached: Vec::new(),
             },
             EnvTag::new(EnvKind::Local),
         );

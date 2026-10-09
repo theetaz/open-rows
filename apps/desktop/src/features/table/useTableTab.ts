@@ -10,8 +10,10 @@ import {
   nextSort,
   pageKey,
   tableQuery,
+  tableTarget,
   toFilters,
 } from './model';
+import { hideRowId } from './row';
 import type { FilterRow, TableView, Total, ViewMode } from './model';
 import type { TableEntry } from './entries';
 import type { TableViews } from './useTableViews';
@@ -23,6 +25,8 @@ type Args = {
   /** The session pages run on, or `null` when they cannot run. */
   sessionId: string | null;
   views: TableViews;
+  /** A keyless table's rowid: selected for edits, never shown. */
+  rowId: string | null;
 };
 
 /** Run `action` whenever `trigger` changes to a non-null value. */
@@ -76,20 +80,16 @@ export function useTableTab({
   profileId,
   sessionId,
   views,
+  rowId,
 }: Args): TableTabState {
   const entry = views.entryOf(tabId);
   const { view, structure } = entry;
-  const target = {
-    profileId,
-    database: table.database,
-    schema: table.schema,
-    table: table.name,
-  };
+  const target = tableTarget(table, profileId);
   const columns =
     structure.status === 'ready'
       ? structure.data.columns.map((column) => column.name)
       : [];
-  const query = tableQuery(target, view, columns);
+  const query = tableQuery(target, view, columns, rowId);
   const key = sessionId ? pageKey(query, view, sessionId) : null;
   useTrigger(structure.status === 'idle' ? 'load' : null, () => {
     views.loadStructure(tabId, target);
@@ -111,7 +111,7 @@ export function useTableTab({
     view,
     columns,
     query,
-    result: entry.run.results.at(-1),
+    result: hideRowId(entry.run.results.at(-1), rowId),
     total: total(entry, query),
     actions: actions({ change, columns, entry }, () => {
       if (sessionId) views.count(tabId, countKey(query), { sessionId, query });

@@ -245,3 +245,19 @@ fn sqlite_urls_name_an_absolute_file() {
     assert!(password.is_none());
     assert!(profile.validate().is_ok());
 }
+
+#[test]
+fn sqlite_memory_urls_open_an_in_memory_database() {
+    for url in ["sqlite::memory:", " SQLite://:memory: "] {
+        let parsed = parse_url(url).unwrap();
+        assert_eq!(parsed.driver, Driver::Sqlite, "{url}");
+        let file = parsed.file.clone().unwrap();
+        assert!(file.memory && file.path.as_os_str().is_empty(), "{url}");
+        let (profile, _) = parsed.into_profile("Scratch", EnvTag::new(EnvKind::Local));
+        assert!(profile.validate().is_ok(), "{url}");
+    }
+    assert!(matches!(
+        parse_url("sqlite::memory"),
+        Err(UrlError::InvalidFilePath)
+    ));
+}

@@ -29,6 +29,8 @@ export { resultWindow } from './binary';
 export {
   CommandError,
   answerSshPrompt,
+  attachDatabase,
+  detachDatabase,
   closeConnection,
   closeSession,
   createProfile,
@@ -181,6 +183,8 @@ export type {
 } from './generated/bindings';
 export { DEFAULT_CUSTOM_ENV_COLOR } from './generated/bindings';
 export type {
+  AttachedFileDto,
+  AttachReply,
   CertificateDto,
   CloudCaDto,
   ConnectionOpened,

@@ -41,6 +41,7 @@ function describeType(type: unknown): string {
     DataType.isDecimal(type) ||
     DataType.isBinary(type) ||
     DataType.isDate(type) ||
+    DataType.isTime(type) ||
     DataType.isFixedSizeBinary(type)
   )
     return type.toString();

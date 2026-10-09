@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { DisplayCell } from '@openrows/grid';
-import type { TableColumnDto } from '@openrows/ipc';
+import type { ColumnDto, TableColumnDto } from '@openrows/ipc';
 import { displayWindow } from '../../results/displayWindow';
 import type { ResultMeta } from '../query/run';
 import type { CellValue } from './cellValue';
@@ -17,6 +17,8 @@ export type RowField = {
   state: DisplayCell['state'];
   /** Exact value (staged, or the loaded original); absent while only display text is known. */
   value?: CellValue;
+  /** Row identity only (a keyless table's rowid): never displayed or copied. */
+  hidden?: true;
 };
 
 /** Inspector editing of the selected row; every change only stages. */
@@ -61,7 +63,10 @@ export async function readRow(
   return rows.get(row) ?? [];
 }
 
-/** Read several page rows in one window (their span), keyed by row index. */
+/**
+ * Read several page rows in one window (their span), keyed by row index.
+ * Hidden identity columns follow the shown ones, flagged `hidden`.
+ */
 export async function readRows(
   result: ResultMeta,
   rows: readonly number[],
@@ -69,7 +74,8 @@ export async function readRows(
   const fields = new Map<number, RowField[]>();
   if (!rows.length) return fields;
   const first = Math.min(...rows);
-  const columns = result.columns.length;
+  const all = storeColumns(result);
+  const columns = all.length;
   const tile = await displayWindow({
     resultId: result.id,
     rowStart: first,
@@ -80,18 +86,37 @@ export async function readRows(
   for (const row of rows)
     fields.set(
       row,
-      result.columns.map((column, index) => {
+      all.map((column, index) => {
         const cell = tile.cells[(row - first) * columns + index];
-        return {
+        const field: RowField = {
           name: column.name,
           index,
           type: column.sourceType,
           text: cell?.text ?? '',
           state: cell?.state ?? 'normal',
         };
+        if (index >= result.columns.length) field.hidden = true;
+        return field;
       }),
     );
   return fields;
+}
+
+/** Every column the store holds: the shown ones, then hidden identity columns. */
+export function storeColumns(result: ResultMeta): readonly ColumnDto[] {
+  return result.hidden?.length
+    ? [...result.columns, ...result.hidden]
+    : result.columns;
+}
+
+/** The page holds column `name`, shown or as a hidden identity column. */
+export function holdsColumn(result: ResultMeta, name: string): boolean {
+  return storeColumns(result).some((column) => column.name === name);
+}
+
+/** The fields a person sees: hidden identity columns left out. */
+export function shownFields(fields: readonly RowField[]): RowField[] {
+  return fields.filter((field) => !field.hidden);
 }
 
 /** Fields whose name contains `search` (case-insensitive). */
@@ -102,4 +127,27 @@ export function matchingFields(
   const needle = search.trim().toLowerCase();
   if (!needle) return fields;
   return fields.filter((field) => field.name.toLowerCase().includes(needle));
+}
+
+const splitResults = new WeakMap<ResultMeta, ResultMeta>();
+
+/**
+ * The page as views show it: a trailing `rowId` column (a keyless table's
+ * rowid, selected last) moves to `hidden`, so shown column indexes equal the
+ * store's. The same result always yields the same object.
+ */
+export function hideRowId(
+  result: ResultMeta | undefined,
+  rowId: string | null,
+): ResultMeta | undefined {
+  if (!result || !rowId || result.columns.at(-1)?.name !== rowId) return result;
+  const known = splitResults.get(result);
+  if (known) return known;
+  const split = {
+    ...result,
+    columns: result.columns.slice(0, -1),
+    hidden: result.columns.slice(-1),
+  };
+  splitResults.set(result, split);
+  return split;
 }

@@ -125,6 +125,10 @@ pub struct TableQuery {
     pub combinator: Combinator,
     /// Optional sort.
     pub sort: Option<Sort>,
+    /// A keyless `SQLite` table's rowid alias (`rowid`, `_rowid_` or `oid`),
+    /// selected as the last column under its own name so staged edits can
+    /// identify rows; `count_sql` ignores it.
+    pub row_id: Option<String>,
 }
 
 /// One page of a table browse.
@@ -228,24 +232,45 @@ pub fn all_rows_sql(
         filters: Vec::new(),
         combinator: Combinator::And,
         sort: None,
+        row_id: None,
     };
     select(dialect, &query, known, "*")
 }
+/// `SQLite`'s names for the rowid.
+const ROW_ID_ALIASES: [&str; 3] = ["rowid", "_rowid_", "oid"];
 
 fn projection(
     dialect: Dialect,
     query: &TableQuery,
     known: &[String],
 ) -> Result<String, SelectError> {
-    if query.columns.is_empty() {
-        return Ok("*".to_owned());
+    let mut projection = if query.columns.is_empty() {
+        "*".to_owned()
+    } else {
+        query
+            .columns
+            .iter()
+            .map(|name| predicate::column(dialect, name, known))
+            .collect::<Result<Vec<_>, _>>()?
+            .join(", ")
+    };
+    if let Some(name) = &query.row_id {
+        let quoted = row_id(dialect, name, known)?;
+        let _ = write!(projection, ", {quoted} AS {quoted}");
     }
-    let columns = query
-        .columns
-        .iter()
-        .map(|name| predicate::column(dialect, name, known))
-        .collect::<Result<Vec<_>, _>>()?;
-    Ok(columns.join(", "))
+    Ok(projection)
+}
+
+/// The quoted rowid alias: `SQLite` only, never a real column's name.
+fn row_id(dialect: Dialect, name: &str, known: &[String]) -> Result<String, SelectError> {
+    if dialect != Dialect::Sqlite {
+        return Err(SelectError::Unsupported("only SQLite tables have a rowid"));
+    }
+    let shadowed = known.iter().any(|column| column.eq_ignore_ascii_case(name));
+    if shadowed || !ROW_ID_ALIASES.contains(&name) {
+        return Err(SelectError::UnknownColumn(name.to_owned()));
+    }
+    dialect.quote_ident(name)
 }
 
 fn select(

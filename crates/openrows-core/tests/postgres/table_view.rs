@@ -54,6 +54,7 @@ fn users(filters: Vec<Filter>, sort: Option<Sort>) -> TableQuery {
         filters,
         combinator: Combinator::And,
         sort,
+        row_id: None,
     }
 }
 

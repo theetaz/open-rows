@@ -74,6 +74,7 @@ function editing(overrides: Partial<RowEditing> = {}): RowEditing {
     info: {
       key: ['id'],
       protected: ['id'],
+      rowId: null,
       readOnly: false,
       confirmWrites: false,
       production: false,
