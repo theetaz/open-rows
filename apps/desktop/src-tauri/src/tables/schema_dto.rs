@@ -2,6 +2,7 @@
 //! The structure-editing IPC contract: table detail for the Structure, Index,
 //! Triggers and DDL views, and the typed change set `table_alter` turns into
 //! DDL in Rust (the webview never sends SQL).
+use super::constraint_dto::{ConstraintDto, IdentityDto, NewCheckDto, NewForeignKeyDto};
 use super::dto::TableTarget;
 use openrows_driver_api::schema::{DefaultValue, IndexMethod, NewColumn, NewIndex, SchemaChange};
 use serde::{Deserialize, Serialize};
@@ -15,6 +16,7 @@ pub(crate) enum GeneratedDto {
     IdentityAlways,
     IdentityByDefault,
     Stored,
+    AutoIncrement,
 }
 
 /// A single-column foreign key: `→ table(column)`.
@@ -130,6 +132,10 @@ pub(crate) struct TableDetailDto {
     /// Partitions of a partitioned table, by name.
     pub(crate) partitions: Vec<PartitionDto>,
     pub(crate) info: TableInfoDto,
+    /// Every constraint: primary key, unique, check, foreign key, exclusion.
+    pub(crate) constraints: Vec<ConstraintDto>,
+    /// The query of a view or materialized view.
+    pub(crate) view_query: Option<String>,
     /// Reconstructed definition (`-- Table Definition`, `CREATE TABLE …`).
     pub(crate) ddl: String,
     /// A table on a writable connection: structure changes can be staged.
@@ -195,6 +201,12 @@ pub(crate) enum SchemaChangeDto {
         nullable: bool,
         default: DefaultDto,
         comment: Option<String>,
+        #[serde(default)]
+        identity: IdentityDto,
+        #[serde(default)]
+        collation: Option<String>,
+        #[serde(default)]
+        charset: Option<String>,
     },
     DropColumn {
         column: String,
@@ -204,8 +216,32 @@ pub(crate) enum SchemaChangeDto {
         columns: Vec<String>,
         unique: bool,
         method: IndexMethodDto,
+        /// Key columns sorted descending.
+        #[serde(default)]
+        descending: Vec<String>,
+        /// Partial-index predicate.
+        #[serde(default)]
+        predicate: Option<String>,
     },
     DropIndex {
+        name: String,
+    },
+    ColumnIdentity {
+        column: String,
+        identity: IdentityDto,
+    },
+    ColumnCollation {
+        column: String,
+        charset: Option<String>,
+        collation: Option<String>,
+    },
+    AddForeignKey {
+        key: NewForeignKeyDto,
+    },
+    AddCheck {
+        check: NewCheckDto,
+    },
+    DropConstraint {
         name: String,
     },
 }
@@ -287,12 +323,18 @@ impl From<&SchemaChangeDto> for SchemaChange {
                 nullable,
                 default,
                 comment,
+                identity,
+                collation,
+                charset,
             } => Self::AddColumn(NewColumn {
                 name,
                 data_type,
                 nullable,
                 default: (&default).into(),
                 comment,
+                identity: identity.into(),
+                collation,
+                charset,
             }),
             SchemaChangeDto::DropColumn { column } => Self::DropColumn(column),
             SchemaChangeDto::CreateIndex {
@@ -300,13 +342,33 @@ impl From<&SchemaChangeDto> for SchemaChange {
                 columns,
                 unique,
                 method,
+                descending,
+                predicate,
             } => Self::CreateIndex(NewIndex {
                 name,
                 columns,
                 unique,
                 method: method.into(),
+                descending,
+                predicate,
             }),
             SchemaChangeDto::DropIndex { name } => Self::DropIndex(name),
+            SchemaChangeDto::ColumnIdentity { column, identity } => Self::ColumnIdentity {
+                column,
+                identity: identity.into(),
+            },
+            SchemaChangeDto::ColumnCollation {
+                column,
+                charset,
+                collation,
+            } => Self::ColumnCollation {
+                column,
+                charset,
+                collation,
+            },
+            SchemaChangeDto::AddForeignKey { key } => Self::AddForeignKey(key.into()),
+            SchemaChangeDto::AddCheck { check } => Self::AddCheck(check.into()),
+            SchemaChangeDto::DropConstraint { name } => Self::DropConstraint(name),
         }
     }
 }

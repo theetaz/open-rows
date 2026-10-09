@@ -4,6 +4,7 @@ use openrows_driver_api::catalog::{
     ColumnSummary, DatabaseSummary, ObjectKind, ObjectSummary, SchemaSummary, TableStructure,
 };
 use openrows_driver_api::diagram::SchemaDiagram;
+use openrows_driver_api::objects::{ObjectChange, ObjectPlan, RoutineKind};
 use openrows_driver_api::schema::{SchemaChange, TableDetail};
 use openrows_driver_api::structure::{AlterPlan, AlterTable};
 use openrows_driver_api::{
@@ -13,7 +14,7 @@ use openrows_driver_api::{
 use openrows_sql::Dialect;
 use openrows_sql::select::BoundSql;
 
-use crate::ddl::{alter_sql, create_table_sql};
+use crate::ddl::{alter_sql, create_table_sql, object_sql};
 use crate::{BoundEdit, ConnectOptions, PgConfig, PgSession};
 
 /// Maintenance database every `PostgreSQL` server creates; a profile without
@@ -105,6 +106,14 @@ impl Driver for PgDriver {
     ) -> Result<AlterPlan, GenerateError> {
         alter_sql(target, changes).map_err(|error| GenerateError(error.to_string()))
     }
+
+    fn object_sql(
+        &self,
+        change: &ObjectChange,
+        source: Option<&TableDetail>,
+    ) -> Result<ObjectPlan, GenerateError> {
+        object_sql(change, source)
+    }
 }
 
 impl Connection for PgSession {
@@ -184,6 +193,17 @@ impl Catalog for PgSession {
         max_tables: usize,
     ) -> BoxFuture<'a, Result<SchemaDiagram, DriverError>> {
         Box::pin(PgSession::schema_diagram(self, schema, max_tables))
+    }
+
+    fn routine_definition<'a>(
+        &'a mut self,
+        routine: (&'a str, &'a str),
+        kind: RoutineKind,
+        arguments: Option<&'a str>,
+    ) -> BoxFuture<'a, Result<Option<String>, DriverError>> {
+        Box::pin(PgSession::routine_definition(
+            self, routine, kind, arguments,
+        ))
     }
 }
 

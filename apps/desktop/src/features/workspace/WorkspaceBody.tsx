@@ -14,6 +14,7 @@ import { QueryContent } from '../query';
 import type { TabScope } from '../query';
 import { AttachDatabaseTools } from '../schema';
 import { WorkspaceSidebar } from './WorkspaceSidebar';
+import type { ObjectEditorRequest } from '../objects';
 const WorkspaceInspector = lazy(() =>
   import('./WorkspaceInspector').then((module) => ({
     default: module.WorkspaceInspector,
@@ -24,6 +25,21 @@ type Props = {
   connections: Connections;
   controller: ReturnType<typeof useWorkspaceController>;
 };
+/** The trigger editor of a table: new (`name: null`), edit or drop. */
+function triggerEditor(
+  table: { database: string; schema: string; name: string },
+  name: string | null,
+  drop: boolean,
+): ObjectEditorRequest {
+  const at = { database: table.database, schema: table.schema };
+  return drop && name
+    ? {
+        kind: 'drop',
+        target: { object: 'trigger', ...at, table: table.name, name },
+      }
+    : { kind: 'trigger', ...at, table: table.name, name };
+}
+
 /** Object browser, query tabs and the inspector. */
 export function WorkspaceBody(props: Props): React.JSX.Element {
   const { connections, controller } = props;
@@ -45,6 +61,7 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
           onOpen={controller.openObject}
           onDiagram={controller.showDiagram}
           onImport={controller.importData}
+          objects={controller.objects}
           onOpenSql={(sql) => {
             controller.addQuery(sql);
           }}
@@ -73,6 +90,10 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
         onOpenTable={(table) => {
           controller.openObject({ ...table, kind: 'table', arguments: null });
         }}
+        onTrigger={(table, name, drop) => {
+          controller.objects.open(triggerEditor(table, name, drop));
+        }}
+        structureRevision={controller.objects.revision}
       />
       <SplitPanel
         label="Inspector"

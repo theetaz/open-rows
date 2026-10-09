@@ -65,6 +65,7 @@ export type FooterAdd = {
 /** Structure and Index mode extras: Triggers, DDL and a centred status. */
 export type FooterStructure = {
   status: string;
+  onConstraints: () => void;
   onTriggers: () => void;
   onDdl: (anchor: DOMRect) => void;
   ddlOpen: boolean;
@@ -126,6 +127,9 @@ function StructureTools({
           {structure.status}
         </span>
       </span>
+      <Button size="sm" onClick={structure.onConstraints}>
+        Constraints
+      </Button>
       <Button size="sm" onClick={structure.onTriggers}>
         Triggers
       </Button>

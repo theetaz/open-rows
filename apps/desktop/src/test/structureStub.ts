@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 import { vi } from 'vitest';
-import type { AlterReply, TableDetailDto } from '@openrows/ipc';
+import type {
+  AlterPreviewDto,
+  AlterReply,
+  ObjectReply,
+  TableDetailDto,
+} from '@openrows/ipc';
 
 /** A synthetic `orders` table: `id` (primary key), `name`, `customer_id` (FK). */
 export const sampleDetail: TableDetailDto = {
@@ -86,14 +91,75 @@ export const sampleDetail: TableDetailDto = {
     indexBytes: 66560,
     comment: 'Customer orders',
   },
+  constraints: [
+    {
+      name: 'orders_pkey',
+      kind: 'primary',
+      definition: 'PRIMARY KEY (id)',
+      columns: ['id'],
+      references: null,
+    },
+    {
+      name: 'orders_customer_id_fkey',
+      kind: 'foreign',
+      definition:
+        'FOREIGN KEY (customer_id) REFERENCES public.customers(id) ON DELETE CASCADE',
+      columns: ['customer_id'],
+      references: { schema: 'public', table: 'customers', columns: ['id'] },
+    },
+    {
+      name: 'orders_name_check',
+      kind: 'check',
+      definition: 'CHECK ((length(name) > 0))',
+      columns: ['name'],
+      references: null,
+    },
+  ],
+  viewQuery: null,
   ddl: '-- Table Definition\nCREATE TABLE "public"."orders" (\n    "id" integer GENERATED ALWAYS AS IDENTITY\n);\n',
   editable: true,
 };
 
-/** Structure IPC for jsdom tests: detail reads and a prepare-only alter. */
+/** A preview of staged changes: one statement per change, no warnings. */
+function preview(
+  _target: unknown,
+  changes: readonly unknown[],
+): Promise<AlterPreviewDto> {
+  return Promise.resolve({
+    statements: changes.map((change) => `-- ${JSON.stringify(change)}`),
+    warnings: [],
+    destructive: false,
+  });
+}
+
+/** Structure IPC for jsdom tests: detail reads, previews and prepare-only changes. */
 export function structureStub(): Record<string, unknown> {
   return {
     tableDetail: vi.fn(() => Promise.resolve(sampleDetail)),
+    tableAlterPreview: vi.fn(preview),
+    objectChange: vi.fn(
+      (request: { confirmToken: string | null }): Promise<ObjectReply> =>
+        Promise.resolve(
+          request.confirmToken
+            ? { kind: 'committed' }
+            : {
+                kind: 'prepared',
+                token: 'object-review',
+                statements: ['DROP TABLE "public"."orders"'],
+                warnings: [
+                  'The table and every row in it are deleted permanently.',
+                ],
+                destructive: true,
+                confirmName: null,
+                transactional: true,
+              },
+        ),
+    ),
+    routineDefinition: vi.fn(() =>
+      Promise.resolve(
+        'CREATE OR REPLACE FUNCTION public.touch()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$ BEGIN RETURN NEW; END $function$\n',
+      ),
+    ),
     tableAlter: vi.fn((): Promise<AlterReply> =>
       Promise.resolve({
         kind: 'prepared',

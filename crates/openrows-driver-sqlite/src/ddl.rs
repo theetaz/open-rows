@@ -7,14 +7,21 @@
 //! definition, copy the rows, drop the old table, rename the new one and
 //! recreate its indexes and triggers. The editor runs every statement in one
 //! transaction with foreign keys off and checks them before committing.
+mod constraints;
+pub(crate) mod objects;
 mod rebuild;
 
-use openrows_driver_api::schema::{DefaultValue, IndexMethod, NewColumn, NewIndex, SchemaChange};
+pub(crate) use constraints::table_checks;
+
+use openrows_driver_api::schema::{
+    DefaultValue, Identity, IndexMethod, NewColumn, NewIndex, SchemaChange,
+};
 use openrows_driver_api::structure::{
     AlterError, AlterPlan, AlterTable, IndexDrops, StagedChanges,
 };
 use openrows_sql::Dialect;
 use openrows_sql::ddl::{ColumnDefinition, string_literal, valid_type};
+use std::fmt::Write as _;
 
 const DIALECT: Dialect = Dialect::Sqlite;
 
@@ -27,14 +34,7 @@ pub(crate) fn alter_sql(
     changes: &[SchemaChange],
 ) -> Result<AlterPlan, AlterError> {
     let staged = StagedChanges::stage(target, changes, IndexDrops::NotConstraints)?;
-    let commented = staged.comment.is_some()
-        || staged.columns.values().any(|edits| edits.comment.is_some())
-        || staged.adds.iter().any(|column| column.comment.is_some());
-    if commented {
-        return Err(AlterError::Unsupported(
-            "SQLite tables and columns have no comments".to_owned(),
-        ));
-    }
+    unsupported(&staged)?;
     let mut plan = Plan {
         target,
         staged: &staged,
@@ -52,6 +52,54 @@ pub(crate) fn alter_sql(
         return Err(AlterError::Empty);
     }
     Ok(plan.out)
+}
+
+/// Comments, identity numbering and character sets, which `SQLite` lacks.
+fn unsupported(staged: &StagedChanges<'_>) -> Result<(), AlterError> {
+    let commented = staged.comment.is_some()
+        || staged.columns.values().any(|edits| edits.comment.is_some())
+        || staged.adds.iter().any(|column| column.comment.is_some());
+    if commented {
+        return Err(AlterError::Unsupported(
+            "SQLite tables and columns have no comments".to_owned(),
+        ));
+    }
+    let numbered = staged
+        .columns
+        .values()
+        .any(|edits| edits.identity.is_some())
+        || staged
+            .adds
+            .iter()
+            .any(|column| column.identity != Identity::None);
+    if numbered {
+        return Err(AlterError::Unsupported(NUMBERING.to_owned()));
+    }
+    let charset = staged
+        .columns
+        .values()
+        .any(|edits| edits.collation.is_some_and(|c| c.charset.is_some()))
+        || staged.adds.iter().any(|column| column.charset.is_some());
+    if charset {
+        return Err(AlterError::Unsupported(
+            "SQLite columns have no character set".to_owned(),
+        ));
+    }
+    Ok(())
+}
+
+/// Why identity numbering is refused.
+const NUMBERING: &str = "SQLite numbers the rows of an INTEGER PRIMARY KEY column by itself";
+
+/// A collation name: letters, digits and `_` (`BINARY`, `NOCASE`, `RTRIM`).
+fn collation_name(name: Option<&str>) -> Result<Option<&str>, AlterError> {
+    match name.map(str::trim).filter(|name| !name.is_empty()) {
+        Some(name) if name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_') => {
+            Ok(Some(name))
+        }
+        Some(name) => Err(AlterError::InvalidType(name.to_owned())),
+        None => Ok(None),
+    }
 }
 
 fn quote(name: &str) -> Result<String, AlterError> {
@@ -94,10 +142,11 @@ fn default_sql(column: &str, default: &DefaultValue) -> Result<Option<String>, A
     }
 }
 
-/// `name type [NOT NULL] [DEFAULT …]` of a column to add.
+/// `name type [COLLATE …] [NOT NULL] [DEFAULT …]` of a column to add.
 fn new_column(column: &NewColumn) -> Result<String, AlterError> {
     let mut definition =
         ColumnDefinition::new(&quote(&column.name)?, &data_type(&column.data_type)?);
+    definition.set_collation(None, collation_name(column.collation.as_deref())?);
     definition.set_nullable(column.nullable);
     definition.set_default(default_sql(&column.name, &column.default)?.as_deref());
     Ok(definition.render())
@@ -167,6 +216,9 @@ impl Plan<'_> {
                     relation(self.target.schema, name)?
                 ));
             }
+            self.warn(format!(
+                "Dropping index {name:?} can slow down queries that use it."
+            ));
             self.out.destructive = true;
         }
         for index in &self.staged.index_adds {
@@ -190,14 +242,25 @@ impl Plan<'_> {
         let columns = index
             .columns
             .iter()
-            .map(|column| quote(column))
+            .map(|column| {
+                let order = if index.descending.contains(column) {
+                    " DESC"
+                } else {
+                    ""
+                };
+                quote(column).map(|quoted| format!("{quoted}{order}"))
+            })
             .collect::<Result<Vec<_>, _>>()?
             .join(", ");
-        Ok(format!(
+        let mut sql = format!(
             "CREATE {unique}INDEX {} ON {} ({columns})",
             relation(self.target.schema, &name)?,
             quote(self.target.table)?
-        ))
+        );
+        if let Some(predicate) = index.predicate.as_deref().map(str::trim) {
+            let _ = write!(sql, " WHERE ({predicate})");
+        }
+        Ok(sql)
     }
 
     fn rename_table(&mut self) -> Result<(), AlterError> {

@@ -42,6 +42,7 @@ fn changes() -> Vec<SchemaChange> {
             nullable: true,
             default: DefaultValue::None,
             comment: Some("label".into()),
+            ..NewColumn::default()
         }),
         SchemaChange::DropIndex("by_qty".into()),
         SchemaChange::CreateIndex(NewIndex {
@@ -49,6 +50,7 @@ fn changes() -> Vec<SchemaChange> {
             columns: vec!["memo".into(), "tag".into()],
             unique: false,
             method: IndexMethod::Btree,
+            ..NewIndex::default()
         }),
         SchemaChange::TableComment(Some("orders".into())),
     ]

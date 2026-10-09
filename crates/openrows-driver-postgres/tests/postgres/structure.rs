@@ -101,12 +101,14 @@ async fn change_sets_commit_atomically_and_roll_back_on_error() -> TestResult {
             nullable: false,
             default: DefaultValue::Expression("now()".into()),
             comment: Some("Created".into()),
+            ..NewColumn::default()
         }),
         SchemaChange::CreateIndex(NewIndex {
             name: Some("orders_at_idx".into()),
             columns: vec!["at".into(), "memo".into()],
             unique: false,
             method: IndexMethod::Btree,
+            ..NewIndex::default()
         }),
         SchemaChange::DropIndex("orders_note_idx".into()),
         SchemaChange::TableComment(None),

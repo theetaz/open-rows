@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 use super::*;
 use openrows_driver_api::schema::{
-    ColumnDetail, IndexDetail, RelationKind, TableDetail, TableInfo,
+    ColumnDetail, IndexDetail, IndexMethod, NewIndex, RelationKind, TableDetail, TableInfo,
 };
 
 const SHOW_CREATE: &str = "CREATE TABLE `orders` (
@@ -95,6 +95,7 @@ fn types_columns_indexes_comment_and_rename_form_one_statement() -> Result<(), A
             nullable: false,
             default: DefaultValue::Literal("1".into()),
             comment: Some("it's".into()),
+            ..NewColumn::default()
         }),
         SchemaChange::DropIndex("note_key".into()),
         SchemaChange::CreateIndex(NewIndex {
@@ -102,6 +103,7 @@ fn types_columns_indexes_comment_and_rename_form_one_statement() -> Result<(), A
             columns: vec!["qty".into(), "note".into()],
             unique: true,
             method: IndexMethod::Hash,
+            ..NewIndex::default()
         }),
         SchemaChange::TableComment(Some("orders".into())),
         SchemaChange::RenameTable("purchases".into()),
@@ -128,6 +130,7 @@ fn invalid_changes_are_refused() {
         columns: vec!["note".into()],
         unique: false,
         method: IndexMethod::Gin,
+        ..NewIndex::default()
     })]);
     assert!(matches!(gin, Err(AlterError::Unsupported(_))));
     let primary = plan(&[SchemaChange::DropIndex("PRIMARY".into())]);
@@ -156,4 +159,102 @@ fn invalid_changes_are_refused() {
         }],
     );
     assert!(matches!(result, Err(AlterError::UnreadableDefinition(_))));
+}
+
+#[test]
+fn numbering_collations_and_constraints() -> Result<(), AlterError> {
+    use openrows_driver_api::schema::{
+        ConstraintDetail, ConstraintKind, ForeignTarget, Identity, NewCheck, NewForeignKey,
+        ReferentialAction,
+    };
+    let mut detail = detail();
+    let constraint = |name: &str, kind| ConstraintDetail {
+        name: name.into(),
+        kind,
+        definition: String::new(),
+        columns: Vec::new(),
+        references: None,
+    };
+    detail.constraints = vec![
+        constraint("orders_fk", ConstraintKind::Foreign),
+        constraint("orders_chk", ConstraintKind::Check),
+    ];
+    detail.columns[1].data_type = "varchar(40)".into();
+    let altered = alter_sql(
+        &AlterTable {
+            schema: "shop",
+            table: "orders",
+            detail: &detail,
+        },
+        &[
+            SchemaChange::ColumnIdentity {
+                column: "id".into(),
+                identity: Identity::None,
+            },
+            SchemaChange::ColumnCollation {
+                column: "note".into(),
+                charset: Some("latin1".into()),
+                collation: None,
+            },
+            SchemaChange::ColumnType {
+                column: "note".into(),
+                data_type: "varchar(10)".into(),
+            },
+            SchemaChange::DropConstraint("orders_fk".into()),
+            SchemaChange::DropConstraint("orders_chk".into()),
+            SchemaChange::AddForeignKey(NewForeignKey {
+                name: Some("orders_owner".into()),
+                columns: vec!["id".into()],
+                target: ForeignTarget {
+                    schema: "crm".into(),
+                    table: "owners".into(),
+                    columns: vec!["id".into()],
+                },
+                on_delete: ReferentialAction::Cascade,
+                on_update: ReferentialAction::NoAction,
+            }),
+            SchemaChange::AddCheck(NewCheck {
+                name: None,
+                expression: "id > 0".into(),
+            }),
+        ],
+    )?;
+    assert_eq!(
+        altered.statements,
+        ["ALTER TABLE `shop`.`orders`\n  \
+          DROP FOREIGN KEY `orders_fk`,\n  \
+          DROP CONSTRAINT `orders_chk`,\n  \
+          MODIFY COLUMN `id` bigint unsigned NOT NULL,\n  \
+          MODIFY COLUMN `note` varchar(10) CHARACTER SET latin1 DEFAULT 'n/a' COMMENT 'free text',\n  \
+          ADD CONSTRAINT `orders_owner` FOREIGN KEY (`id`) REFERENCES `crm`.`owners` (`id`) ON DELETE CASCADE,\n  \
+          ADD CHECK (id > 0)"]
+    );
+    assert!(
+        altered
+            .warnings
+            .iter()
+            .any(|w| w.contains("ALGORITHM=COPY"))
+    );
+    assert!(
+        altered
+            .warnings
+            .iter()
+            .any(|w| w.contains("from varchar(40) to varchar(10)"))
+    );
+    Ok(())
+}
+
+#[test]
+fn identity_columns_and_partial_indexes_are_refused() {
+    let identity = plan(&[SchemaChange::ColumnIdentity {
+        column: "id".into(),
+        identity: Identity::Always,
+    }]);
+    assert!(matches!(identity, Err(AlterError::Unsupported(_))));
+    let partial = plan(&[SchemaChange::CreateIndex(NewIndex {
+        columns: vec!["note".into()],
+        predicate: Some("note IS NOT NULL".into()),
+        ..NewIndex::default()
+    })]);
+    assert!(matches!(partial, Err(AlterError::Unsupported(_))));
 }

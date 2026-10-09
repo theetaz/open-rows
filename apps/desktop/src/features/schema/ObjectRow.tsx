@@ -28,7 +28,7 @@ type RowContext = {
   onSelect: (key: string) => void;
   /** Open an object; `preview` for a single click (the preview tab). */
   onOpen: (object: ObjectRef, preview?: boolean) => void;
-  /** Context menu of a table, view or materialized view at a window point. */
+  /** Context menu of an object at a window point. */
   onMenu?: ((object: ObjectRef, point: MenuPoint) => void) | undefined;
 };
 
@@ -80,14 +80,13 @@ export function ObjectRow(
     props.onOpen(target);
   };
   const { onMenu } = props;
-  const menu =
-    onMenu && hasColumns(object.kind)
-      ? (event: React.MouseEvent): void => {
-          event.preventDefault();
-          props.onSelect(id);
-          onMenu(target, { x: event.clientX, y: event.clientY });
-        }
-      : undefined;
+  const menu = onMenu
+    ? (event: React.MouseEvent): void => {
+        event.preventDefault();
+        props.onSelect(id);
+        onMenu(target, { x: event.clientX, y: event.clientY });
+      }
+    : undefined;
   return (
     <TreeNode
       onContextMenu={menu}

@@ -14,6 +14,7 @@ use openrows_driver_api::catalog::{DatabaseSummary, ObjectKind, ObjectSummary, S
 mod detail;
 mod diagram;
 mod edit;
+mod routine;
 mod table;
 pub use edit::RowEditInfo;
 

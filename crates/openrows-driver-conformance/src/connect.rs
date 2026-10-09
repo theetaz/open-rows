@@ -2,6 +2,7 @@
 //! [`crate::Group::Connect`]: connect, ping, failure kinds and capability
 //! coherence.
 
+use openrows_driver_api::objects::{ObjectChange, ObjectName};
 use openrows_driver_api::{
     Capabilities, ConnectStage, ConnectTrace, Connection, DriverError, Endpoint, Feature,
     FileSource, Location,
@@ -62,6 +63,7 @@ async fn coherence(
         (Feature::BulkLoad, connection.bulk_loader().is_some()),
         (Feature::Cancel, connection.cancel_handle().is_some()),
         (Feature::StructureChanges, target.driver.supports_alter()),
+        (Feature::TableLifecycle, lifecycle_offered(target)),
         (Feature::SchemaFingerprint, fingerprint),
     ];
     for (feature, offered) in claims {
@@ -81,6 +83,18 @@ async fn coherence(
         capabilities.object_kinds.is_empty() != capabilities.supports(Feature::Catalog),
         || "a catalog must list object kinds, and only a catalog".to_owned(),
     )
+}
+
+/// `object_sql` generates a table drop (the default refuses every change).
+fn lifecycle_offered(target: &Target) -> bool {
+    let drop = ObjectChange::DropTable {
+        table: ObjectName {
+            schema: target.schema.clone(),
+            name: "orc_probe".to_owned(),
+        },
+        cascade: false,
+    };
+    target.driver.object_sql(&drop, None).is_ok()
 }
 
 /// Startup commands run on connect, in order, and the first failing one

@@ -81,6 +81,57 @@ pub(crate) struct ProfileDto {
     startup_commands: String,
     /// The driver lists server processes and cancels or kills them (FR-ADMIN-01).
     process_list: bool,
+    /// Which structure and object editors the engine supports (FR-SCHEMA-05, 10–12).
+    objects: ObjectFeaturesDto,
+}
+
+/// The structure and object-lifecycle editors a profile's engine supports.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "one flag per driver capability, mirrored for the webview"
+)]
+pub(crate) struct ObjectFeaturesDto {
+    tables: bool,
+    views: bool,
+    materialized_views: bool,
+    triggers: bool,
+    routines: bool,
+    databases: bool,
+    rename_databases: bool,
+    schemas: bool,
+    foreign_keys: bool,
+    checks: bool,
+    comments: bool,
+    collations: bool,
+    charsets: bool,
+    identity: bool,
+    partial_indexes: bool,
+}
+
+impl ObjectFeaturesDto {
+    fn of(capabilities: openrows_driver_api::Capabilities) -> Self {
+        use openrows_driver_api::Feature;
+        let has = |feature| capabilities.supports(feature);
+        Self {
+            tables: has(Feature::TableLifecycle),
+            views: has(Feature::ViewEditing),
+            materialized_views: has(Feature::MaterializedViews),
+            triggers: has(Feature::TriggerEditing),
+            routines: has(Feature::RoutineEditing),
+            databases: has(Feature::DatabaseLifecycle),
+            rename_databases: has(Feature::DatabaseRename),
+            schemas: has(Feature::SchemaLifecycle),
+            foreign_keys: has(Feature::ForeignKeyEditing),
+            checks: has(Feature::CheckEditing),
+            comments: has(Feature::Comments),
+            collations: has(Feature::ColumnCollation),
+            charsets: has(Feature::ColumnCharset),
+            identity: has(Feature::IdentityColumns),
+            partial_indexes: has(Feature::PartialIndexes),
+        }
+    }
 }
 
 impl From<&ConnectionProfile> for ProfileDto {
@@ -117,6 +168,7 @@ impl From<&ConnectionProfile> for ProfileDto {
             process_list: super::drivers::driver(profile.driver)
                 .capabilities()
                 .supports(openrows_driver_api::Feature::ProcessList),
+            objects: ObjectFeaturesDto::of(super::drivers::driver(profile.driver).capabilities()),
         }
     }
 }

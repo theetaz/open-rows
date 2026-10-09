@@ -18,6 +18,7 @@ import type { ImportTarget } from './TableImport';
 import { JobSheets, useJobActions } from './JobActions';
 import type { JobActions } from './JobActions';
 import { ErDiagram } from '../erd';
+import { ObjectEditors } from '../objects';
 import styles from './Workspace.module.css';
 /** Real connections, catalog, query tabs and results. */
 export function Workspace({
@@ -86,6 +87,7 @@ export function Workspace({
           setDiagram(null);
         }}
       />
+      <WorkspaceEditors connections={connections} controller={controller} />
       <ConnectionSheets connections={connections} />
       <SshPrompts />
     </div>
@@ -152,6 +154,28 @@ function TransferSheets(props: {
   );
 }
 
+/** The open object editor (new table, edit view, drop schema, …). */
+function WorkspaceEditors({
+  connections,
+  controller,
+}: {
+  connections: ReturnType<typeof useConnections>;
+  controller: ReturnType<typeof useWorkspaceController>;
+}): React.JSX.Element | null {
+  const { objects, catalog } = controller;
+  if (!objects.editor || !connections.active) return null;
+  return (
+    <ObjectEditors
+      request={objects.editor}
+      profile={connections.active}
+      opened={catalog.opened}
+      onCloseDatabase={catalog.closeDatabase}
+      onClose={objects.close}
+      onDone={objects.done}
+    />
+  );
+}
+
 function WorkspaceOverlay({
   controller,
 }: {
@@ -181,6 +205,18 @@ function WorkspaceOverlay({
           setMode(null);
           command(id);
         }}
+        onNewDatabase={
+          controller.objects.features?.databases
+            ? () => {
+                setMode(null);
+                controller.objects.open({
+                  kind: 'database',
+                  database: catalog.database,
+                  name: null,
+                });
+              }
+            : undefined
+        }
       />
     </Suspense>
   );

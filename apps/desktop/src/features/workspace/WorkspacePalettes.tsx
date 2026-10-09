@@ -14,6 +14,8 @@ export function WorkspacePalettes(props: {
   onClose: () => void;
   /** Commands the active connection cannot run (e.g. no process list). */
   hidden?: readonly string[];
+  /** Create a database from the Open database panel, where supported. */
+  onNewDatabase?: (() => void) | undefined;
 }): React.JSX.Element {
   if (props.mode === 'database')
     return (
@@ -21,6 +23,7 @@ export function WorkspacePalettes(props: {
         catalog={props.catalog}
         onOpen={props.onDatabase}
         onClose={props.onClose}
+        onNew={props.onNewDatabase}
       />
     );
   if (props.mode === 'commands') return <CommandPalette {...props} />;

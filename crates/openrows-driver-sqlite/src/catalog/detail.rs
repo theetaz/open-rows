@@ -8,6 +8,7 @@ use openrows_driver_api::schema::{
     RelationKind, TableDetail, TableInfo, TriggerDetail, TriggerEvent, TriggerTiming,
 };
 use openrows_sql::Dialect;
+use openrows_sql::ddl::TableDefinition;
 use rusqlite::{Connection, OptionalExtension, params};
 
 use super::{ColumnRow, column_rows, invalid, sql};
@@ -41,6 +42,7 @@ pub(crate) fn table_detail(
     let mut constraints = primary_key(&rows).into_iter().collect::<Vec<_>>();
     constraints.extend(unique_constraints(&indexes));
     constraints.extend(foreign_keys(connection, schema, table)?);
+    constraints.extend(checks(table, create.as_deref()));
     let definition = definition(create.as_deref(), &indexes, &triggers);
     let view = kind == "view";
     Ok(TableDetail {
@@ -60,6 +62,24 @@ pub(crate) fn table_detail(
             ..TableInfo::default()
         }),
     })
+}
+
+/// Table-level checks of the stored definition (`SQLite` has no pragma).
+fn checks(table: &str, create: Option<&str>) -> Vec<ConstraintDetail> {
+    let Some(definition) = create.and_then(|sql| TableDefinition::parse(sql, Dialect::Sqlite))
+    else {
+        return Vec::new();
+    };
+    crate::ddl::table_checks(table, &definition)
+        .into_iter()
+        .map(|check| ConstraintDetail {
+            name: check.name,
+            kind: ConstraintKind::Check,
+            definition: check.text,
+            columns: Vec::new(),
+            references: None,
+        })
+        .collect()
 }
 
 fn column_detail(row: &ColumnRow) -> ColumnDetail {

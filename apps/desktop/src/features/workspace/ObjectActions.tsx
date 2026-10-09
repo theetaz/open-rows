@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useState } from 'react';
+import type { ObjectFeaturesDto } from '@openrows/ipc';
 import { PointMenu } from '../../shell/PointMenu';
 import { ExportSheet, tableExport } from '../export';
+import { EntryItems, objectEntries } from '../objects';
+import type { ObjectEditorRequest } from '../objects';
 import type { MenuPoint, ObjectRef } from '../schema';
 
 /** The open session of a database of the active connection, if any. */
@@ -11,9 +14,55 @@ export type SessionLookup = (
 
 export type ObjectMenu = { object: ObjectRef; point: MenuPoint };
 
+/** Relations that export and show in the ER diagram. */
+const relations = new Set<ObjectRef['kind']>([
+  'table',
+  'foreignTable',
+  'view',
+  'materializedView',
+]);
+
+/** Export…, Import… (tables) and Show ER Diagram of a relation. */
+function RelationItems(props: {
+  exportable: boolean;
+  onExport: () => void;
+  /** `null` when the relation cannot be imported into. */
+  onImport: (() => void) | null;
+  onDiagram: () => void;
+}): React.JSX.Element {
+  return (
+    <>
+      <button
+        type="button"
+        role="menuitem"
+        disabled={!props.exportable}
+        title={props.exportable ? undefined : 'Open the database to export'}
+        onClick={props.onExport}
+      >
+        Export…
+      </button>
+      {props.onImport && (
+        <button
+          type="button"
+          role="menuitem"
+          disabled={!props.exportable}
+          title={props.exportable ? undefined : 'Open the database to import'}
+          onClick={props.onImport}
+        >
+          Import…
+        </button>
+      )}
+      <button type="button" role="menuitem" onClick={props.onDiagram}>
+        Show ER Diagram
+      </button>
+    </>
+  );
+}
+
 /**
- * Context menu of a relation in the schema tree (Open, Export…, Import…,
- * Show ER Diagram) and the export sheet it opens.
+ * Context menu of an object in the schema tree (Open, the object's
+ * lifecycle editors, Export…, Import… for tables, Show ER Diagram) and the
+ * export sheet it opens.
  */
 export function ObjectActions(props: {
   menu: ObjectMenu | null;
@@ -22,11 +71,19 @@ export function ObjectActions(props: {
   onOpen: (object: ObjectRef) => void;
   onDiagram: (object: ObjectRef) => void;
   onImport: (object: ObjectRef) => void;
+  /** The engine's object editors; `null` hides them. */
+  features: ObjectFeaturesDto | null;
+  onEditor: (request: ObjectEditorRequest) => void;
 }): React.JSX.Element | null {
   const [exporting, setExporting] = useState<ObjectRef | null>(null);
   const { menu } = props;
   const session = menu ? props.sessionFor(menu.object.database) : null;
   const target = exporting ? props.sessionFor(exporting.database) : null;
+  const relation = menu ? relations.has(menu.object.kind) : false;
+  const choose = (run: () => void) => () => {
+    props.onClose();
+    run();
+  };
   return (
     <>
       {menu && (
@@ -38,49 +95,39 @@ export function ObjectActions(props: {
           <button
             type="button"
             role="menuitem"
-            onClick={() => {
-              props.onClose();
+            onClick={choose(() => {
               props.onOpen(menu.object);
-            }}
+            })}
           >
             Open
           </button>
-          <button
-            type="button"
-            role="menuitem"
-            disabled={!session}
-            title={session ? undefined : 'Open the database to export'}
-            onClick={() => {
-              props.onClose();
-              setExporting(menu.object);
-            }}
-          >
-            Export…
-          </button>
-          {menu.object.kind === 'table' && (
-            <button
-              type="button"
-              role="menuitem"
-              disabled={!session}
-              title={session ? undefined : 'Open the database to import'}
-              onClick={() => {
+          {props.features && (
+            <EntryItems
+              entries={objectEntries(menu.object, props.features)}
+              onChoose={(request) => {
                 props.onClose();
-                props.onImport(menu.object);
+                props.onEditor(request);
               }}
-            >
-              Import…
-            </button>
+            />
           )}
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              props.onClose();
-              props.onDiagram(menu.object);
-            }}
-          >
-            Show ER Diagram
-          </button>
+          {relation && (
+            <RelationItems
+              exportable={Boolean(session)}
+              onExport={choose(() => {
+                setExporting(menu.object);
+              })}
+              onImport={
+                menu.object.kind === 'table'
+                  ? choose(() => {
+                      props.onImport(menu.object);
+                    })
+                  : null
+              }
+              onDiagram={choose(() => {
+                props.onDiagram(menu.object);
+              })}
+            />
+          )}
         </PointMenu>
       )}
       {exporting && target && (

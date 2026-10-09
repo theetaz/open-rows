@@ -5,6 +5,7 @@
 //! schema, itself. Names reach the server as bound parameters.
 pub(crate) mod detail;
 mod diagram;
+mod routine;
 mod rows;
 
 use rows::enum_labels;
@@ -15,6 +16,7 @@ use openrows_driver_api::catalog::{
     TableStructure,
 };
 use openrows_driver_api::diagram::SchemaDiagram;
+use openrows_driver_api::objects::RoutineKind;
 use openrows_driver_api::schema::TableDetail;
 use openrows_driver_api::{BoxFuture, Catalog, DriverError};
 
@@ -276,5 +278,14 @@ impl Catalog for MySqlSession {
         max_tables: usize,
     ) -> BoxFuture<'a, Result<SchemaDiagram, DriverError>> {
         Box::pin(diagram::schema_diagram(self, schema, max_tables))
+    }
+
+    fn routine_definition<'a>(
+        &'a mut self,
+        routine: (&'a str, &'a str),
+        kind: RoutineKind,
+        _arguments: Option<&'a str>,
+    ) -> BoxFuture<'a, Result<Option<String>, DriverError>> {
+        Box::pin(routine::routine_definition(self, routine, kind))
     }
 }

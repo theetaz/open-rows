@@ -11,13 +11,19 @@
 //! views and `table_alter` reviews and commits structure changes.
 //! `table_edit_info`, `table_edit_row(s)` and `table_edit` stage and commit
 //! row edits; `table_edits_save/saved/clear` journal staged edits locally so
-//! they survive a crash (docs/10 §4.5, NFR-REL-01).
+//! they survive a crash (docs/10 §4.5, NFR-REL-01). `table_alter_preview`
+//! shows the DDL of staged changes live; `object_change` reviews and runs
+//! object lifecycle changes and `routine_definition` reads routines.
+pub(crate) mod alter_checks;
 pub(crate) mod commands;
+mod constraint_dto;
 mod dto;
 
 pub(crate) mod edit_commands;
 mod edit_dto;
 pub(crate) mod file_value;
+pub(crate) mod object_commands;
+mod object_dto;
 pub(crate) mod recovery_commands;
 pub(crate) mod schema_commands;
 mod schema_dto;

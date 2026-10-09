@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! The `MySQL` and `MariaDB` [`Driver`]s.
-use openrows_driver_api::schema::SchemaChange;
+use openrows_driver_api::objects::{ObjectChange, ObjectPlan};
+use openrows_driver_api::schema::{SchemaChange, TableDetail};
 use openrows_driver_api::structure::{AlterPlan, AlterTable};
 use openrows_driver_api::{
     BoxFuture, ConnectRequest, ConnectStage, ConnectTrace, Connection, Driver, DriverError,
@@ -73,6 +74,14 @@ impl Driver for MySqlDriver {
         changes: &[SchemaChange],
     ) -> Result<AlterPlan, GenerateError> {
         ddl::alter_sql(target, changes).map_err(|error| GenerateError(error.to_string()))
+    }
+
+    fn object_sql(
+        &self,
+        change: &ObjectChange,
+        source: Option<&TableDetail>,
+    ) -> Result<ObjectPlan, GenerateError> {
+        ddl::objects::object_sql(change, source)
     }
 }
 

@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Table detail for the Structure, Index, Triggers and DDL views, and the
 //! typed structure changes a driver turns into DDL (docs/10 §3).
+mod constraint;
+
+pub use constraint::{Identity, NewCheck, NewForeignKey, ReferentialAction};
 
 /// How a column's value is produced by the server.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -14,6 +17,8 @@ pub enum Generated {
     IdentityByDefault,
     /// `GENERATED ALWAYS AS (expression) STORED`; the expression is the default.
     Stored,
+    /// `MySQL` `AUTO_INCREMENT`.
+    AutoIncrement,
 }
 
 /// One column with everything the Structure grid and the DDL need.
@@ -215,9 +220,10 @@ pub struct TableDetail {
 }
 
 /// A column default: dropped, a quoted text literal or a raw SQL expression.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub enum DefaultValue {
     /// No default (`DROP DEFAULT`).
+    #[default]
     None,
     /// A string literal the server casts to the column type.
     Literal(String),
@@ -226,9 +232,10 @@ pub enum DefaultValue {
 }
 
 /// Index access methods that may be created from the UI.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum IndexMethod {
     /// B-tree.
+    #[default]
     Btree,
     /// Hash.
     Hash,
@@ -243,7 +250,7 @@ pub enum IndexMethod {
 }
 
 /// A column to add.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct NewColumn {
     /// Column name.
     pub name: String,
@@ -255,10 +262,16 @@ pub struct NewColumn {
     pub default: DefaultValue,
     /// Comment.
     pub comment: Option<String>,
+    /// Identity or auto-increment numbering.
+    pub identity: Identity,
+    /// Collation name, e.g. `C` or `utf8mb4_bin`.
+    pub collation: Option<String>,
+    /// Character set (`MySQL`), e.g. `utf8mb4`.
+    pub charset: Option<String>,
 }
 
 /// An index to create.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct NewIndex {
     /// Index name; the server picks one when `None`.
     pub name: Option<String>,
@@ -268,6 +281,10 @@ pub struct NewIndex {
     pub unique: bool,
     /// Access method.
     pub method: IndexMethod,
+    /// Key columns sorted descending (the others ascend).
+    pub descending: Vec<String>,
+    /// Partial-index predicate (`WHERE …`) as SQL.
+    pub predicate: Option<String>,
 }
 
 /// One staged structure change; columns are named by their current name.
@@ -320,4 +337,26 @@ pub enum SchemaChange {
     CreateIndex(NewIndex),
     /// `DROP INDEX` (name).
     DropIndex(String),
+    /// Identity or auto-increment numbering of an existing column.
+    ColumnIdentity {
+        /// Current name.
+        column: String,
+        /// New numbering; [`Identity::None`] removes it.
+        identity: Identity,
+    },
+    /// Character set and collation of an existing column; `None` is the default.
+    ColumnCollation {
+        /// Current name.
+        column: String,
+        /// Character set (`MySQL`).
+        charset: Option<String>,
+        /// Collation name.
+        collation: Option<String>,
+    },
+    /// `ADD CONSTRAINT … FOREIGN KEY`.
+    AddForeignKey(NewForeignKey),
+    /// `ADD CONSTRAINT … CHECK`.
+    AddCheck(NewCheck),
+    /// `DROP CONSTRAINT` (name).
+    DropConstraint(String),
 }

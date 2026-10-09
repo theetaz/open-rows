@@ -167,12 +167,14 @@ async fn plain_changes_use_alter_table_and_new_indexes() -> TestResult {
                 nullable: false,
                 default: DefaultValue::Literal("1".into()),
                 comment: None,
+                ..NewColumn::default()
             }),
             SchemaChange::CreateIndex(openrows_driver_api::schema::NewIndex {
                 name: Some("orders_qty".into()),
                 columns: vec!["qty".into()],
                 unique: false,
                 method: openrows_driver_api::schema::IndexMethod::Btree,
+                ..openrows_driver_api::schema::NewIndex::default()
             }),
             SchemaChange::RenameTable("purchases".into()),
         ],

@@ -3,10 +3,18 @@
 //! 8 applies it atomically). Changed columns are rewritten from the
 //! server's own `SHOW CREATE TABLE` definition, so character set,
 //! collation, `AUTO_INCREMENT`, `ON UPDATE` and generation clauses survive a
-//! `MODIFY`; a pure rename is `RENAME COLUMN`.
-use openrows_driver_api::schema::{DefaultValue, IndexMethod, NewColumn, NewIndex, SchemaChange};
+//! `MODIFY`; a pure rename is `RENAME COLUMN`. [`objects`] generates the
+//! object lifecycle changes.
+mod keys;
+pub(crate) mod objects;
+
+use keys::{auto_increment, charset_name, column_definition};
+use openrows_driver_api::schema::{
+    ColumnDetail, ConstraintKind, DefaultValue, Identity, NewColumn, SchemaChange,
+};
 use openrows_driver_api::structure::{
     AlterError, AlterPlan, AlterTable, ColumnEdits, Comment, IndexDrops, StagedChanges,
+    narrowing_warning,
 };
 use openrows_sql::Dialect;
 use openrows_sql::ddl::{ColumnDefinition, TableDefinition, string_literal, valid_type};
@@ -34,8 +42,10 @@ pub(crate) fn alter_sql(
         specs: Vec::new(),
         out: AlterPlan::default(),
     };
+    plan.constraint_drops(target, &staged)?;
     plan.columns(target, &staged)?;
     plan.indexes(&staged)?;
+    plan.constraints(target.schema, &staged)?;
     plan.table_options(&staged)?;
     if plan.specs.is_empty() {
         return Err(AlterError::Empty);
@@ -104,6 +114,34 @@ impl Plan<'_> {
         self.out.warnings.push(warning);
     }
 
+    /// `DROP FOREIGN KEY`, `DROP CHECK`-style `DROP CONSTRAINT`, `DROP
+    /// INDEX` of a unique key, `DROP PRIMARY KEY`.
+    fn constraint_drops(
+        &mut self,
+        target: &AlterTable<'_>,
+        staged: &StagedChanges<'_>,
+    ) -> Result<(), AlterError> {
+        for &name in &staged.constraint_drops {
+            let kind = target
+                .detail
+                .constraints
+                .iter()
+                .find(|constraint| constraint.name == name)
+                .map(|constraint| constraint.kind);
+            let spec = match kind {
+                Some(ConstraintKind::Foreign) => format!("DROP FOREIGN KEY {}", quote(name)?),
+                Some(ConstraintKind::Primary) => "DROP PRIMARY KEY".to_owned(),
+                Some(ConstraintKind::Unique) => format!("DROP INDEX {}", quote(name)?),
+                _ => format!("DROP CONSTRAINT {}", quote(name)?),
+            };
+            self.specs.push(spec);
+            self.warn(format!(
+                "Dropping constraint {name:?} stops the database from enforcing it."
+            ));
+        }
+        Ok(())
+    }
+
     fn columns(
         &mut self,
         target: &AlterTable<'_>,
@@ -118,7 +156,7 @@ impl Plan<'_> {
         }
         for column in &target.detail.columns {
             if let Some(edits) = staged.columns.get(column.name.as_str()) {
-                self.column(&column.name, edits)?;
+                self.column(column, edits)?;
             }
         }
         for column in &staged.adds {
@@ -127,12 +165,15 @@ impl Plan<'_> {
         Ok(())
     }
 
-    fn column(&mut self, name: &str, edits: &ColumnEdits<'_>) -> Result<(), AlterError> {
+    fn column(&mut self, column: &ColumnDetail, edits: &ColumnEdits<'_>) -> Result<(), AlterError> {
+        let name = column.name.as_str();
         let rename = edits.renamed(name);
         let redefined = edits.data_type.is_some()
             || edits.nullable.is_some()
             || edits.default.is_some()
-            || edits.comment.is_some();
+            || edits.comment.is_some()
+            || edits.identity.is_some()
+            || edits.collation.is_some();
         if !redefined {
             if let Some(rename) = rename {
                 self.specs.push(format!(
@@ -144,7 +185,7 @@ impl Plan<'_> {
             return Ok(());
         }
         let mut definition = self.current_definition(name)?;
-        self.redefine(name, edits, &mut definition)?;
+        self.redefine(column, edits, &mut definition)?;
         let spec = match rename {
             Some(rename) => {
                 definition.set_name(&quote(rename)?);
@@ -167,16 +208,30 @@ impl Plan<'_> {
 
     fn redefine(
         &mut self,
-        name: &str,
+        column: &ColumnDetail,
         edits: &ColumnEdits<'_>,
         definition: &mut ColumnDefinition,
     ) -> Result<(), AlterError> {
+        let name = column.name.as_str();
         if let Some(text) = edits.data_type {
-            definition.set_type(&data_type(text)?);
+            let new_type = data_type(text)?;
+            definition.set_type(&new_type);
             self.warn(format!(
-                "Changing the type of {name:?} copies the table and fails or truncates values that cannot be converted."
+                "Changing the type of {name:?} rebuilds the table (ALGORITHM=COPY), blocking writes, and fails or truncates values that cannot be converted."
             ));
             self.out.destructive = true;
+            if let Some(warning) = narrowing_warning(name, &column.data_type, &new_type) {
+                self.warn(warning);
+            }
+        }
+        if let Some(collation) = edits.collation {
+            definition.set_collation(
+                charset_name(collation.charset)?,
+                charset_name(collation.collation)?,
+            );
+            self.warn(format!(
+                "Changing the character set or collation of {name:?} rebuilds the table (ALGORITHM=COPY)."
+            ));
         }
         if let Some(nullable) = edits.nullable {
             definition.set_nullable(nullable);
@@ -189,6 +244,14 @@ impl Plan<'_> {
         if let Some(default) = edits.default {
             definition.set_default(default_sql(name, default)?.as_deref());
         }
+        if let Some(identity) = edits.identity {
+            definition.set_auto_increment(auto_increment(identity)?);
+            if identity == Identity::AutoIncrement {
+                self.warn(format!(
+                    "AUTO_INCREMENT on {name:?} needs the column to be indexed, usually as the primary key."
+                ));
+            }
+        }
         if let Some(Comment(comment)) = edits.comment {
             let literal = comment.map(literal).transpose()?;
             definition.set_comment(literal.as_deref());
@@ -197,32 +260,50 @@ impl Plan<'_> {
     }
 
     fn add_column(&mut self, column: &NewColumn) -> Result<(), AlterError> {
-        let mut definition =
-            ColumnDefinition::new(&quote(&column.name)?, &data_type(&column.data_type)?);
-        definition.set_nullable(column.nullable);
-        let default = default_sql(&column.name, &column.default)?;
-        if default.is_none() && !column.nullable {
+        if column.default == DefaultValue::None
+            && !column.nullable
+            && column.identity == Identity::None
+        {
             self.warn(format!(
                 "Column {:?} is NOT NULL without a default; existing rows get the type's zero value.",
                 column.name
             ));
         }
-        definition.set_default(default.as_deref());
-        let comment = column.comment.as_deref().map(literal).transpose()?;
-        definition.set_comment(comment.as_deref());
         self.specs
-            .push(format!("ADD COLUMN {}", definition.render()));
+            .push(format!("ADD COLUMN {}", column_definition(column)?));
         Ok(())
     }
 
     fn indexes(&mut self, staged: &StagedChanges<'_>) -> Result<(), AlterError> {
         for &name in &staged.index_drops {
             self.specs.push(format!("DROP INDEX {}", quote(name)?));
+            self.warn(format!(
+                "Dropping index {name:?} can slow down queries that use it."
+            ));
             self.out.destructive = true;
         }
         for index in &staged.index_adds {
-            let spec = add_index(index)?;
-            self.specs.push(spec);
+            let spec = keys::index_spec(index)?;
+            self.specs.push(format!("ADD {spec}"));
+        }
+        Ok(())
+    }
+
+    fn constraints(&mut self, schema: &str, staged: &StagedChanges<'_>) -> Result<(), AlterError> {
+        for key in &staged.foreign_keys {
+            self.specs
+                .push(format!("ADD {}", keys::foreign_key(key, schema)?));
+            self.warn(format!(
+                "Adding a foreign key to {} copies the table and fails if existing rows have no match.",
+                key.target.table
+            ));
+        }
+        for check in &staged.checks {
+            self.specs.push(format!("ADD {}", keys::check(check)?));
+            self.warn(
+                "Adding a check fails if existing rows violate it (MySQL 8.0.16 or later enforces checks)."
+                    .to_owned(),
+            );
         }
         Ok(())
     }
@@ -240,32 +321,6 @@ impl Plan<'_> {
         }
         Ok(())
     }
-}
-
-fn add_index(index: &NewIndex) -> Result<String, AlterError> {
-    let method = match index.method {
-        IndexMethod::Btree => "BTREE",
-        IndexMethod::Hash => "HASH",
-        other => {
-            return Err(AlterError::Unsupported(format!(
-                "MySQL has no {other:?} indexes; use B-tree or hash"
-            )));
-        }
-    };
-    let unique = if index.unique { "UNIQUE " } else { "" };
-    let name = match index.name.as_deref().filter(|name| !name.is_empty()) {
-        Some(name) => format!("{} ", quote(name)?),
-        None => String::new(),
-    };
-    let columns = index
-        .columns
-        .iter()
-        .map(|column| quote(column))
-        .collect::<Result<Vec<_>, _>>()?
-        .join(", ");
-    Ok(format!(
-        "ADD {unique}INDEX {name}({columns}) USING {method}"
-    ))
 }
 
 #[cfg(test)]

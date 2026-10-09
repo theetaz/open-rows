@@ -20,6 +20,11 @@ import { useWorkspaceKeys } from './useWorkspaceKeys';
 import { useDatabasePrompt } from './useDatabasePrompt';
 import { shellCommand } from './shellCommand';
 import { menuEnabled } from './menuState';
+import { useObjectEditing } from './useObjectEditing';
+import type { ObjectEditing } from './useObjectEditing';
+import { OBJECT_COMMANDS, objectCommandSupported } from '../objects';
+import type { ObjectEditorRequest } from '../objects';
+import type { ObjectFeaturesDto } from '@openrows/ipc';
 import type { PaletteMode } from './WorkspacePalettes';
 import { importOpener } from './TableImport';
 import type { ImportTarget } from './TableImport';
@@ -133,31 +138,114 @@ type Input = {
   connections: Connections;
 };
 
-/** The toolbar's safe-mode switch; production connections are always safe. */
-function useSafeMode(prod: boolean): [boolean, () => void] {
-  const [safe, setSafe] = useState(false);
-  return [
-    safe || prod,
-    () => {
-      if (!prod) setSafe(!safe);
+/** Whether the sidebar shows, and its toggle. */
+function useSidebar(): {
+  sidebar: boolean;
+  setSidebar: (open: boolean) => void;
+  toggleSidebar: () => void;
+} {
+  const [sidebar, setSidebar] = useState(true);
+  return {
+    sidebar,
+    setSidebar,
+    toggleSidebar: () => {
+      setSidebar((open) => !open);
     },
-  ];
+  };
 }
 
-/** Relations open as table views (D-08); routines and sequences as query tabs. */
-function objectOpener(input: {
+/** The toolbar's safe-mode switch; production connections are always safe. */
+function useSafeMode(connections: Connections): {
+  prod: boolean;
+  safe: boolean;
+  toggleSafe: () => void;
+} {
+  const [safe, setSafe] = useState(false);
+  const prod = connections.active?.env.kind === 'prod';
+  return {
+    prod,
+    safe: safe || prod,
+    toggleSafe: () => {
+      if (!prod) setSafe(!safe);
+    },
+  };
+}
+
+/** The definition editor a routine opens in, when the engine has one. */
+function routineEditor(
+  object: ObjectRef,
+  features: ObjectFeaturesDto | undefined,
+): ObjectEditorRequest | null {
+  if (!features?.routines) return null;
+  if (object.kind !== 'function' && object.kind !== 'procedure') return null;
+  return {
+    kind: 'routine',
+    database: object.database,
+    schema: object.schema,
+    routine: object.kind,
+    name: object.name,
+    arguments: object.arguments,
+  };
+}
+
+/**
+ * Relations open as table views (D-08), routines in their definition
+ * editor where the engine has one, sequences as query tabs.
+ */
+function objectOpener(deps: {
   catalog: Catalog;
+  connections: Connections;
   tabs: QueryTabs;
   scopeOf: (database: string) => TabScope | undefined;
-  commands: ReturnType<typeof queryCommands>;
+  openQuery: (object: ObjectRef) => void;
+  openEditor: (request: ObjectEditorRequest) => void;
 }): (object: ObjectRef, preview?: boolean) => void {
-  const { catalog, tabs, scopeOf, commands } = input;
   return (object, preview = false) => {
-    catalog.setSchema(object.schema);
-    const target = scopeOf(object.database);
-    if (!target || !openTableView(tabs, target, object, preview))
-      commands.openObject(object);
+    deps.catalog.setSchema(object.schema);
+    const routine = routineEditor(object, deps.connections.active?.objects);
+    if (routine) {
+      deps.openEditor(routine);
+      return;
+    }
+    const target = deps.scopeOf(object.database);
+    if (!target || !openTableView(deps.tabs, target, object, preview))
+      deps.openQuery(object);
   };
+}
+
+/** Object editors, and opening tree objects (routines open in their editor). */
+function useObjectOpening(deps: {
+  connections: Connections;
+  catalog: Catalog;
+  tabs: QueryTabs;
+  scope: TabScope | undefined;
+  scopeOf: (database: string) => TabScope | undefined;
+  openQuery: (object: ObjectRef) => void;
+}): {
+  objects: ObjectEditing;
+  openObject: (object: ObjectRef, preview?: boolean) => void;
+} {
+  const openObject = objectOpener({
+    ...deps,
+    openEditor: (request) => {
+      objects.open(request);
+    },
+  });
+  const objects = useObjectEditing({ ...deps, openObject });
+  return { objects, openObject };
+}
+
+/** Palette commands the active connection's engine cannot run. */
+function hiddenCommands(connections: Connections): string[] {
+  const profile = connections.active;
+  const hidden: string[] = profile?.processList ? [] : ['processes'];
+  if (!profile) return hidden;
+  return [
+    ...hidden,
+    ...OBJECT_COMMANDS.filter(
+      (id) => !objectCommandSupported(id, profile.objects),
+    ),
+  ];
 }
 
 /**
@@ -192,7 +280,7 @@ export function useWorkspaceController(input: Input): WorkspaceController {
   const { scope, scopeOf } = scopes(connections);
   const compact = useCompact();
   const inspector = useInspectorOpen(compact);
-  const [sidebar, setSidebar] = useState(true);
+  const { sidebar, setSidebar, toggleSidebar } = useSidebar();
   const [mode, setMode] = useState<PaletteMode | null>(null);
   useDatabasePrompt(connections, setMode);
   const [refreshes, refresh] = useRefresh(catalog);
@@ -201,12 +289,15 @@ export function useWorkspaceController(input: Input): WorkspaceController {
   const tableInfo = useTableInfo(active?.id);
   const commands = queryCommands(tabs, scope, scopeOf);
   const openProcesses = processesOpener(connections, tabs, scope);
-  const openObject = objectOpener({ catalog, tabs, scopeOf, commands });
-  const prod = connections.active?.env.kind === 'prod';
-  const [safe, toggleSafe] = useSafeMode(prod);
-  const toggleSidebar = (): void => {
-    setSidebar((open) => !open);
-  };
+  const { objects, openObject } = useObjectOpening({
+    connections,
+    catalog,
+    tabs,
+    scope,
+    scopeOf,
+    openQuery: commands.openObject,
+  });
+  const { prod, safe, toggleSafe } = useSafeMode(connections);
   const showDiagram = diagramOpener(catalog, input.onShowDiagram);
   const tableTab = active?.kind === 'table' ? active.table : undefined;
   const importData = importOpener(catalog, tableTab, input.onImport);
@@ -222,13 +313,12 @@ export function useWorkspaceController(input: Input): WorkspaceController {
     refresh,
     toggleSafe,
     setTheme,
-    onShowDiagram: () => {
-      showDiagram();
-    },
+    // Both called without arguments: the selected schema, the active scope.
+    onShowDiagram: showDiagram,
     onImport: importData,
-    // Called without arguments: the active scope.
     openProcesses,
     ...fileCommands({ jobs: input.jobs, catalog }, tabs, scope),
+    onObjectCommand: objects.command,
   });
   useCommandRoutes(command, input.enabled && !mode, {
     connections,
@@ -256,7 +346,8 @@ export function useWorkspaceController(input: Input): WorkspaceController {
     showDiagram,
     importData,
     openProcesses,
-    hiddenCommands: connections.active?.processList ? [] : ['processes'],
+    hiddenCommands: hiddenCommands(connections),
+    objects,
     toggleSafe,
     refresh,
     command,
@@ -293,6 +384,8 @@ type WorkspaceController = Details &
     openProcesses: (scope?: TabScope) => void;
     /** Palette commands the active connection cannot run. */
     hiddenCommands: readonly string[];
+    /** The open object editor and its commands (M2-08). */
+    objects: ObjectEditing;
     toggleSafe: () => void;
     refresh: () => void;
     command: (id: string) => void;

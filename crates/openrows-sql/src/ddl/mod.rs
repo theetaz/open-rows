@@ -5,9 +5,11 @@
 //! column definitions ([`ColumnDefinition`]), and schema-qualifying the
 //! name of a stored `CREATE INDEX` / `CREATE TRIGGER` statement.
 mod column;
+mod created;
 mod table;
 
 pub use column::ColumnDefinition;
+pub use created::{created_kind, view_body};
 pub use table::{TableDefinition, TableElement};
 
 use crate::Dialect;

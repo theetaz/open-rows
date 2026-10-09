@@ -147,10 +147,37 @@ const CONNECTION: &[Entry] = &[
     C("database", "Switch Database…"),
     C("refresh", "Refresh"),
     S,
+    Entry::Submenu("New", NEW_OBJECT),
+    Entry::Submenu("Table", TABLE_OBJECT),
+    Entry::Submenu("View", VIEW_OBJECT),
+    Entry::Submenu("Schema", SCHEMA_OBJECT),
+    Entry::Submenu("Database", DATABASE_OBJECT),
+    S,
     C("processes", "Show Processes"),
     S,
     C("safe", "Safe Mode"),
 ];
+const NEW_OBJECT: &[Entry] = &[
+    C("new-table", "Table…"),
+    C("new-view", "View…"),
+    C("new-materialized-view", "Materialized View…"),
+    C("new-function", "Function…"),
+    C("new-procedure", "Procedure…"),
+    C("new-trigger", "Trigger on Table…"),
+    S,
+    C("new-schema", "Schema…"),
+    C("new-database", "Database…"),
+];
+const TABLE_OBJECT: &[Entry] = &[
+    C("rename-table", "Rename…"),
+    C("duplicate-table", "Duplicate…"),
+    S,
+    C("truncate-table", "Truncate…"),
+    C("drop-table", "Drop…"),
+];
+const VIEW_OBJECT: &[Entry] = &[C("edit-view", "Edit…"), C("drop-view", "Drop…")];
+const SCHEMA_OBJECT: &[Entry] = &[C("rename-schema", "Rename…"), C("drop-schema", "Drop…")];
+const DATABASE_OBJECT: &[Entry] = &[C("rename-database", "Rename…"), C("drop-database", "Drop…")];
 const WINDOW: &[Entry] = &[N(Native::Minimize), N(Native::Zoom)];
 const HELP: &[Entry] = &[
     C("help-search", "Search Commands…"),
@@ -358,6 +385,10 @@ mod tests {
             "run-sql-file",
             "export-tables",
             "show-jobs",
+            "new-table",
+            "drop-table",
+            "new-database",
+            "drop-schema",
         ] {
             assert!(ids.contains(&id), "missing {id}");
         }

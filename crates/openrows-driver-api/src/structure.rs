@@ -24,6 +24,8 @@ pub struct AlterPlan {
     pub destructive: bool,
 }
 
-mod staged;
+mod narrowing;
+pub(crate) mod staged;
 
-pub use staged::{AlterError, ColumnEdits, Comment, IndexDrops, StagedChanges};
+pub use narrowing::{narrowing_warning, narrows};
+pub use staged::{AlterError, Collation, ColumnEdits, Comment, IndexDrops, StagedChanges};

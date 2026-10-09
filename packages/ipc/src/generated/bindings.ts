@@ -211,6 +211,21 @@ export const commands = {
 	 */
 	tableAlter: (request: AlterRequest) => typedError<AlterReply, IpcError>(__TAURI_INVOKE("table_alter", { request })),
 	/**
+	 *  The DDL a staged change set would run, read against the catalog on the
+	 *  metadata session; nothing runs and no review token is issued.
+	 */
+	tableAlterPreview: (target: TableTarget, changes: SchemaChangeDto[]) => typedError<AlterPreviewDto, IpcError>(__TAURI_INVOKE("table_alter_preview", { target, changes })),
+	/**
+	 *  Without a matching `confirmToken`, return the statements to review;
+	 *  with it (and the typed name when asked), run them.
+	 */
+	objectChange: (request: ObjectRequest) => typedError<ObjectReply, IpcError>(__TAURI_INVOKE("object_change", { request })),
+	/**
+	 *  The `CREATE` statement of a function or procedure, read on the
+	 *  database's metadata session; `None` when it is gone.
+	 */
+	routineDefinition: (target: RoutineTarget) => typedError<string | null, IpcError>(__TAURI_INVOKE("routine_definition", { target })),
+	/**
 	 *  Validate the source and options, ask for the destination, then stream
 	 *  the rows to it without sending them to the webview.
 	 * 
@@ -296,6 +311,13 @@ export const events = {
 export const DEFAULT_CUSTOM_ENV_COLOR = "#7c3aed" as const;
 
 /* Types */
+/**  Generated DDL for a change set, without committing anything. */
+export type AlterPreviewDto = {
+	statements: string[],
+	warnings: string[],
+	destructive: boolean,
+};
+
 /**  The generated DDL to review, or the committed result. */
 export type AlterReply = { kind: "prepared"; token: string; statements: string[]; warnings: string[]; destructive: boolean; 
 /**
@@ -465,6 +487,21 @@ export type ConnectionOpened = {
 	insecure: InsecureReasonDto[],
 };
 
+/**  One existing constraint of the table. */
+export type ConstraintDto = {
+	name: string,
+	kind: ConstraintKindDto,
+	definition: string,
+	columns: string[],
+	references: ForeignTargetDto | null,
+};
+
+/**  Kind of an existing constraint. */
+export type ConstraintKindDto = "primary" | "unique" | "check" | "foreign" | "exclusion";
+
+/**  A database or schema change. */
+export type ContainerChangeDto = { kind: "createDatabase"; name: string; encoding: string | null; collation: string | null } | { kind: "renameDatabase"; name: string; to: string } | { kind: "dropDatabase"; name: string } | { kind: "createSchema"; name: string } | { kind: "renameSchema"; name: string; to: string } | { kind: "dropSchema"; name: string; cascade: boolean };
+
 /**  How an exact count ended. */
 export type CountReply = { kind: "counted"; rows: number | null } | { kind: "cancelled" };
 
@@ -491,6 +528,9 @@ export type DatabaseDto = {
 
 /**  A column default: none, a quoted text literal or a raw SQL expression. */
 export type DefaultDto = { kind: "none" } | { kind: "literal"; value: string } | { kind: "expression"; sql: string };
+
+/**  A trigger (`target` is its table) or routine change. */
+export type DefinitionChangeDto = { kind: "saveTrigger"; target: ObjectNameDto; replaces: string | null; definition: string } | { kind: "dropTrigger"; target: ObjectNameDto; name: string } | { kind: "saveRoutine"; target: ObjectNameDto; routine: RoutineKindDto; replaces: string | null; definition: string } | { kind: "dropRoutine"; target: ObjectNameDto; routine: RoutineKindDto; arguments: string | null };
 
 /**  Options shared by CSV and TSV. */
 export type DelimitedDto = {
@@ -749,8 +789,15 @@ export type ForeignKeyDto = {
 	column: string,
 };
 
+/**  The referenced table and columns; an empty schema is the table's own. */
+export type ForeignTargetDto = {
+	schema: string,
+	table: string,
+	columns: string[],
+};
+
 /**  How a column's value is produced. */
-export type GeneratedDto = "no" | "identityAlways" | "identityByDefault" | "stored";
+export type GeneratedDto = "no" | "identityAlways" | "identityByDefault" | "stored" | "autoIncrement";
 
 /**  Per-rAF interval diagnostics. Timings may overlap; worker CPU is informational. */
 export type GridFrame = {
@@ -816,6 +863,9 @@ export type HistorySearchRequest = {
 
 /**  Outcome of a recorded statement. */
 export type HistoryStatusDto = "ok" | "error" | "cancelled";
+
+/**  How a column numbers new rows. */
+export type IdentityDto = "none" | "always" | "byDefault" | "autoIncrement";
 
 /**  A preview cell the target column would reject. */
 export type ImportCellDto = {
@@ -1092,8 +1142,61 @@ export type MenuItemState = {
 	accelerator: string | null,
 };
 
+/**  A check constraint to add. */
+export type NewCheckDto = {
+	name: string | null,
+	expression: string,
+};
+
+/**  A column of a new table. */
+export type NewColumnDto = {
+	name: string,
+	dataType: string,
+	nullable: boolean,
+	default: DefaultDto,
+	comment: string | null,
+	identity: IdentityDto,
+	collation: string | null,
+	charset: string | null,
+};
+
+/**  A foreign key to add. */
+export type NewForeignKeyDto = {
+	name: string | null,
+	columns: string[],
+	target: ForeignTargetDto,
+	onDelete: ReferentialActionDto,
+	onUpdate: ReferentialActionDto,
+};
+
+/**  An index of a new table. */
+export type NewIndexDto = {
+	name: string | null,
+	columns: string[],
+	unique: boolean,
+	method: IndexMethodDto,
+	descending: string[],
+	predicate: string | null,
+};
+
+/**  The definition of a new table. */
+export type NewTableDto = {
+	columns: NewColumnDto[],
+	primaryKey: string[],
+	indexes: NewIndexDto[],
+	foreignKeys: NewForeignKeyDto[],
+	checks: NewCheckDto[],
+	comment: string | null,
+};
+
 /**  Server notice severity. */
 export type NoticeLevelDto = "info" | "warning";
+
+/**
+ *  One lifecycle change, tagged by `kind`: a table or view change, or a
+ *  trigger, routine, database or schema change.
+ */
+export type ObjectChangeDto = RelationChangeDto | DefinitionChangeDto | ContainerChangeDto;
 
 /**  One object; its path is `[database, schema, name]`. */
 export type ObjectDto = {
@@ -1107,8 +1210,54 @@ export type ObjectDto = {
 	comment: string | null,
 };
 
+/**  The structure and object-lifecycle editors a profile's engine supports. */
+export type ObjectFeaturesDto = {
+	tables: boolean,
+	views: boolean,
+	materializedViews: boolean,
+	triggers: boolean,
+	routines: boolean,
+	databases: boolean,
+	renameDatabases: boolean,
+	schemas: boolean,
+	foreignKeys: boolean,
+	checks: boolean,
+	comments: boolean,
+	collations: boolean,
+	charsets: boolean,
+	identity: boolean,
+	partialIndexes: boolean,
+};
+
 /**  Object kinds the schema tree lists. */
 export type ObjectKindDto = "table" | "view" | "materializedView" | "foreignTable" | "function" | "procedure" | "sequence";
+
+/**  A schema-qualified object (the database itself is the schema in `MySQL`). */
+export type ObjectNameDto = {
+	schema: string,
+	name: string,
+};
+
+/**  The statements to review, or the committed result. */
+export type ObjectReply = { kind: "prepared"; token: string; statements: string[]; warnings: string[]; destructive: boolean; 
+/**
+ *  Name to type before running (destructive changes on a
+ *  production or confirm-writes connection).
+ */
+confirmName: string | null; 
+/**  The statements run in one transaction (else one by one). */
+transactional: boolean } | { kind: "committed" };
+
+/**  Preview (no token) or run (the preview's token) of one change. */
+export type ObjectRequest = {
+	profileId: string,
+	/**  The open database the object lives in (or the change is made from). */
+	database: string,
+	change: ObjectChangeDto,
+	confirmToken: string | null,
+	/**  The typed object name, when the preview asked for it. */
+	confirmName: string | null,
+};
 
 /**  The first objects of a section and how many it holds in all. */
 export type ObjectsReply = {
@@ -1308,6 +1457,8 @@ export type ProfileDto = {
 	startupCommands: string,
 	/**  The driver lists server processes and cancels or kills them (FR-ADMIN-01). */
 	processList: boolean,
+	/**  Which structure and object editors the engine supports (FR-SCHEMA-05, 10–12). */
+	objects: ObjectFeaturesDto,
 };
 
 /**  Connection form values sent on save and test. */
@@ -1380,6 +1531,12 @@ export type QueryEventDto = { type: "statementStarted"; statement: number } | { 
 /**  Final row count; `truncated` when the row cap or memory budget stopped it. */
 { type: "resultEnd"; statement: number; resultId: string; rows: number; truncated: boolean } | { type: "rowsAffected"; statement: number; count: number } | { type: "notice"; statement: number; level: NoticeLevelDto; message: string } | { type: "statementDone"; statement: number; elapsedMs: number } | { type: "failed"; statement: number; error: IpcError } | { type: "cancelled"; statement: number } | { type: "finished"; outcome: RunOutcomeDto; elapsedMs: number };
 
+/**  `ON DELETE` / `ON UPDATE` action of a foreign key. */
+export type ReferentialActionDto = "noAction" | "restrict" | "cascade" | "setNull" | "setDefault";
+
+/**  A table or view change; `target` is the table or view. */
+export type RelationChangeDto = { kind: "createTable"; target: ObjectNameDto; definition: NewTableDto } | { kind: "renameTable"; target: ObjectNameDto; name: string } | { kind: "duplicateTable"; target: ObjectNameDto; name: string; withData: boolean } | { kind: "truncateTable"; target: ObjectNameDto; cascade: boolean } | { kind: "dropTable"; target: ObjectNameDto; cascade: boolean } | { kind: "saveView"; target: ObjectNameDto; query: string; materialized: boolean; replace: boolean } | { kind: "dropView"; target: ObjectNameDto; materialized: boolean; cascade: boolean };
+
 /**  Kind of the browsed relation. */
 export type RelationKindDto = "table" | "partitionedTable" | "view" | "materializedView" | "foreignTable";
 
@@ -1388,6 +1545,19 @@ export type ResultError = { kind: "unknownResult"; message: string } | { kind: "
 /**  A secret the user asked to see. `Debug` redacts the value. */
 export type RevealedSecret = {
 	value: string,
+};
+
+/**  Function or procedure. */
+export type RoutineKindDto = "function" | "procedure";
+
+/**  Where a routine lives and which overload, for its definition. */
+export type RoutineTarget = {
+	profileId: string,
+	database: string,
+	schema: string,
+	name: string,
+	routine: RoutineKindDto,
+	arguments: string | null,
 };
 
 export type RowEditDto = {
@@ -1497,7 +1667,11 @@ export type SavedQueryDto = {
 };
 
 /**  One staged structure change; columns are named by their current name. */
-export type SchemaChangeDto = { kind: "renameTable"; name: string } | { kind: "tableComment"; comment: string | null } | { kind: "renameColumn"; column: string; name: string } | { kind: "columnType"; column: string; dataType: string } | { kind: "columnNullable"; column: string; nullable: boolean } | { kind: "columnDefault"; column: string; default: DefaultDto } | { kind: "columnComment"; column: string; comment: string | null } | { kind: "addColumn"; name: string; dataType: string; nullable: boolean; default: DefaultDto; comment: string | null } | { kind: "dropColumn"; column: string } | { kind: "createIndex"; name: string | null; columns: string[]; unique: boolean; method: IndexMethodDto } | { kind: "dropIndex"; name: string };
+export type SchemaChangeDto = { kind: "renameTable"; name: string } | { kind: "tableComment"; comment: string | null } | { kind: "renameColumn"; column: string; name: string } | { kind: "columnType"; column: string; dataType: string } | { kind: "columnNullable"; column: string; nullable: boolean } | { kind: "columnDefault"; column: string; default: DefaultDto } | { kind: "columnComment"; column: string; comment: string | null } | { kind: "addColumn"; name: string; dataType: string; nullable: boolean; default: DefaultDto; comment: string | null; identity?: IdentityDto; collation?: string | null; charset?: string | null } | { kind: "dropColumn"; column: string } | { kind: "createIndex"; name: string | null; columns: string[]; unique: boolean; method: IndexMethodDto; 
+/**  Key columns sorted descending. */
+descending?: string[]; 
+/**  Partial-index predicate. */
+predicate?: string | null } | { kind: "dropIndex"; name: string } | { kind: "columnIdentity"; column: string; identity: IdentityDto } | { kind: "columnCollation"; column: string; charset: string | null; collation: string | null } | { kind: "addForeignKey"; key: NewForeignKeyDto } | { kind: "addCheck"; check: NewCheckDto } | { kind: "dropConstraint"; name: string };
 
 /**
  *  Tables and foreign keys of a schema; `truncated` when it has more than
@@ -1744,6 +1918,10 @@ export type TableDetailDto = {
 	/**  Partitions of a partitioned table, by name. */
 	partitions: PartitionDto[],
 	info: TableInfoDto,
+	/**  Every constraint: primary key, unique, check, foreign key, exclusion. */
+	constraints: ConstraintDto[],
+	/**  The query of a view or materialized view. */
+	viewQuery: string | null,
 	/**  Reconstructed definition (`-- Table Definition`, `CREATE TABLE …`). */
 	ddl: string,
 	/**  A table on a writable connection: structure changes can be staged. */

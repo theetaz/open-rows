@@ -4,6 +4,7 @@
 mod catalog;
 mod diagram;
 mod edits;
+mod objects;
 mod session;
 mod structure;
 mod support;

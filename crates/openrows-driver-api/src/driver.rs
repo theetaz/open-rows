@@ -6,6 +6,7 @@ use openrows_sql::Dialect;
 use crate::capabilities::Capabilities;
 use crate::connect::ConnectRequest;
 use crate::connection::Connection;
+use crate::objects::{ObjectChange, ObjectPlan};
 use crate::schema::{SchemaChange, TableDetail};
 use crate::structure::{AlterPlan, AlterTable};
 use crate::trace::ConnectTrace;
@@ -76,6 +77,24 @@ pub trait Driver: Send + Sync {
     ) -> Result<AlterPlan, GenerateError> {
         Err(GenerateError(format!(
             "Structure changes for {} tables are not available yet",
+            self.product()
+        )))
+    }
+
+    /// Ordered DDL for an object lifecycle change (FR-SCHEMA-10, 11, 12).
+    /// `source` is the catalog detail of the table a change starts from
+    /// (`DuplicateTable`), read just before generating.
+    ///
+    /// # Errors
+    /// Invalid names or definitions, and operations the engine cannot do
+    /// (the message says why); by default the engine has no object editor.
+    fn object_sql(
+        &self,
+        _change: &ObjectChange,
+        _source: Option<&TableDetail>,
+    ) -> Result<ObjectPlan, GenerateError> {
+        Err(GenerateError(format!(
+            "Creating and dropping {} objects is not available yet",
             self.product()
         )))
     }

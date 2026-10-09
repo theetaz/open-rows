@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useRef, useState } from 'react';
+import type { EngineDto, ObjectFeaturesDto } from '@openrows/ipc';
 import type { TableObject } from '../../query/tabs';
 import type { DetailState } from '../entries';
-import type { ViewMode } from '../model';
+import type { TableTargetRef, ViewMode } from '../model';
 import { useTrigger } from '../useTableTab';
 import type { TableViews } from '../useTableViews';
 import type { InlineEdit } from './columnCells';
@@ -13,6 +14,7 @@ import { structureActions } from './structureActions';
 import type { StructureActions } from './structureActions';
 import type { Cursor } from './StructureGrid';
 import type { SelectedTable } from './TableInfoPanel';
+import type { TriggerAction } from './TriggersSheet';
 import { useSchemaEditing } from './useSchemaEditing';
 import type { SchemaEditing } from './useSchemaEditing';
 
@@ -23,14 +25,27 @@ type Args = {
   sessionId: string | null;
   views: TableViews;
   mode: ViewMode;
+  engine: EngineDto;
+  features: ObjectFeaturesDto;
+  /** Open the trigger editors of this table. */
+  onTrigger?: TriggerAction | undefined;
   onRenamed?: ((name: string) => void) | undefined;
   onOpenTable?: ((schema: string, table: string) => void) | undefined;
   onTableInfo?: ((table: SelectedTable | null) => void) | undefined;
 };
 
+/** The open structure sheet. */
+export type StructureSheet =
+  'triggers' | 'index' | 'column' | 'constraints' | 'foreignKey' | 'check';
+
 /** Everything the Structure and Index modes, their footer and sheets share. */
 export type Structure = StructureActions & {
   mode: ViewMode;
+  target: TableTargetRef;
+  engine: EngineDto;
+  features: ObjectFeaturesDto;
+  /** Opens the trigger editors, when the engine has them. */
+  onTrigger: TriggerAction | undefined;
   schema: SchemaEditing;
   detail: DetailState;
   rows: ColumnRow[];
@@ -46,10 +61,14 @@ export type Structure = StructureActions & {
   indexGrid: { cursor: Cursor; setCursor: (cursor: Cursor) => void };
   menu: MenuState | null;
   setMenu: (menu: MenuState | null) => void;
-  /** The open sheet: triggers or a new index. */
-  sheet: 'triggers' | 'index' | null;
-  setSheet: (sheet: 'triggers' | 'index' | null) => void;
+  /** The open sheet. */
+  sheet: StructureSheet | null;
+  setSheet: (sheet: StructureSheet | null) => void;
   openIndexSheet: () => void;
+  /** The row the column sheet edits (`null`: a new column). */
+  columnRow: ColumnRow | null;
+  /** Open the column form for a row, or for a new column. */
+  openColumnSheet: (row: ColumnRow | null) => void;
   /** The DDL popover's anchor while it is open. */
   ddl: DOMRect | null;
   toggleDdl: (anchor: DOMRect) => void;
@@ -61,7 +80,7 @@ const origin: Cursor = { row: 0, col: 1 };
 /** State and commands of a table tab's Structure and Index modes. */
 export function useStructure(args: Args): Structure {
   const { tabId, table, views } = args;
-  const target = {
+  const target: TableTargetRef = {
     profileId: args.profileId,
     database: table.database,
     schema: table.schema,
@@ -76,7 +95,8 @@ export function useStructure(args: Args): Structure {
   const [edit, setEdit] = useState<InlineEdit | null>(null);
   const [search, setSearch] = useState('');
   const [menu, setMenu] = useState<MenuState | null>(null);
-  const [sheet, setSheet] = useState<'triggers' | 'index' | null>(null);
+  const [sheet, setSheet] = useState<StructureSheet | null>(null);
+  const [columnId, setColumnId] = useState<string | null>(null);
   const [ddl, setDdl] = useState<DOMRect | null>(null);
   useTrigger(
     args.mode !== 'data' && detail.status === 'idle' ? 'load' : null,
@@ -85,6 +105,11 @@ export function useStructure(args: Args): Structure {
     },
   );
   usePublishInfo(args, schema, args.mode !== 'data');
+  const openColumnSheet = (row: ColumnRow | null): void => {
+    if (!schema.enabled) return;
+    setColumnId(row?.id ?? null);
+    setSheet('column');
+  };
   return {
     ...structureActions({
       schema,
@@ -93,8 +118,13 @@ export function useStructure(args: Args): Structure {
       setEdit,
       setSearch,
       onOpenTable: args.onOpenTable,
+      openColumnSheet,
     }),
     mode: args.mode,
+    target,
+    engine: args.engine,
+    features: args.features,
+    onTrigger: args.features.triggers ? args.onTrigger : undefined,
     schema,
     detail,
     rows,
@@ -110,6 +140,8 @@ export function useStructure(args: Args): Structure {
     openIndexSheet: () => {
       if (schema.enabled) setSheet('index');
     },
+    columnRow: rows.find((row) => row.id === columnId) ?? null,
+    openColumnSheet,
     ddl,
     toggleDdl: (anchor) => {
       setDdl((open) => (open ? null : anchor));

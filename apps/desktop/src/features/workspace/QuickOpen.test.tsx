@@ -57,7 +57,7 @@ async function connect(): Promise<void> {
 afterEach(() => {
   vi.useRealTimers();
 });
-it('⌘P searches the Rust name index per keystroke, opens a query tab per object and refocuses an open one', async () => {
+it('⌘P searches the Rust name index per keystroke, opens a tab per relation, refocuses an open one and edits routines', async () => {
   mount();
   await connectTo();
   vi.useFakeTimers();
@@ -94,10 +94,10 @@ it('⌘P searches the Rust name index per keystroke, opens a query tab per objec
   );
   await key('p');
   await chooseObject('calc_tax');
-  expect(screen.getByRole('tab', { name: /calc_tax/ })).toHaveAttribute(
-    'title',
-    'orders-local · calc_tax(total numeric)',
-  );
+  const editor = screen.getByRole('dialog', { name: 'Edit function calc_tax' });
+  expect(screen.queryByRole('tab', { name: /calc_tax/ })).toBeNull();
+  fireEvent.keyDown(editor, { key: 'Escape' });
+  expect(screen.queryByRole('dialog', { name: /calc_tax/ })).toBeNull();
   expect(screen.getByRole('combobox', { name: 'Schema' })).toHaveValue(
     'public',
   );
@@ -117,7 +117,8 @@ it('⌘P searches the Rust name index per keystroke, opens a query tab per objec
     limit: 100,
     fresh: false,
   });
-  expect(screen.getAllByRole('tab')).toHaveLength(4);
+  // customers, order_summary and session_notes; the routine opened its editor.
+  expect(screen.getAllByRole('tab')).toHaveLength(3);
   fireEvent.click(screen.getByRole('button', { name: 'Close session_notes' }));
   expect(screen.queryByRole('tab', { name: /session_notes/ })).toBeNull();
 });

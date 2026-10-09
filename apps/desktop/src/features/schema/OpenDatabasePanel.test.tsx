@@ -72,8 +72,12 @@ it('⌘K lists databases with search focus, hides system ones until asked and fi
   expect(panel.getByRole('status')).toHaveTextContent('No matching databases');
   expect(panel.getByRole('button', { name: 'Open' })).toBeDisabled();
   const create = panel.getByRole('button', { name: 'New…' });
-  expect(create).toHaveAttribute('aria-disabled', 'true');
-  expect(create).toHaveAttribute('title', 'Creating databases is coming soon');
+  expect(create).toBeEnabled();
+  fireEvent.click(create);
+  expect(screen.queryByRole('dialog', { name: 'Open database' })).toBeNull();
+  expect(
+    screen.getByRole('dialog', { name: 'New database' }),
+  ).toBeInTheDocument();
 });
 
 it('arrows and Return open a database on its own session; Esc cancels', async () => {
