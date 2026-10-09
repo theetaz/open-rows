@@ -286,6 +286,15 @@ impl Session for PgSession {
             .map(|cancel| cancel as Arc<dyn CancelHandle>)
     }
 
+    /// One simple-query round trip instead of Parse/Describe/Execute.
+    fn ping(&mut self) -> BoxFuture<'_, Result<(), DriverError>> {
+        Box::pin(async move { simple::query(&mut self.wire, "SELECT 1").await.map(drop) })
+    }
+
+    fn in_transaction(&self) -> bool {
+        self.wire.in_transaction()
+    }
+
     fn close(self: Box<Self>) -> BoxFuture<'static, Result<(), DriverError>> {
         let mut wire = self.wire;
         frontend::terminate(wire.out());

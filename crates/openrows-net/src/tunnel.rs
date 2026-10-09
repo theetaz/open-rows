@@ -232,6 +232,21 @@ impl SshTunnel {
         self.sessions.iter().any(Handle::is_closed)
     }
 
+    /// Ping every hop (`keepalive@openssh.com`) and wait for the replies:
+    /// `false` when a hop has closed or does not answer within `limit`, as a
+    /// half-open transport after sleep or a network change does not.
+    pub async fn probe(&self, limit: Duration) -> bool {
+        let pings = async {
+            for session in &self.sessions {
+                session.send_ping().await?;
+            }
+            Ok::<_, russh::Error>(())
+        };
+        let answered = matches!(tokio::time::timeout(limit, pings).await, Ok(Ok(())));
+        // A hop that ended drops the ping's reply channel, which also returns.
+        answered && !self.is_closed()
+    }
+
     /// Per-hop timings, first hop first.
     #[must_use]
     pub fn timings(&self) -> &[HopTiming] {

@@ -9,6 +9,10 @@
 //! cancel request without waiting for the statement. A panicking driver only
 //! fails its own session. No Tauri dependency (docs/03 §5).
 //!
+//! Sessions opened with [`SessionManager::open_resilient`] probe their
+//! connection while idle and reconnect transparently when it was lost; a
+//! statement that was running is reported, never retried (M1-08).
+//!
 //! [`openrows_results::ResultStore`] is the production [`BatchSink`].
 //! [`script::run_script`] runs editor text statement by statement after
 //! [`safety::SafetyPlan`] has gated it (read-only, confirm-before-write).
@@ -18,7 +22,9 @@ mod actor;
 mod error;
 mod event;
 pub mod export;
+mod handle;
 mod manager;
+mod resilience;
 mod results;
 pub mod safety;
 pub mod script;
@@ -29,5 +35,7 @@ mod tests;
 
 pub use error::{CoreError, ErrorKind};
 pub use event::{QueryEvent, SessionEvent, SessionState};
-pub use manager::{Canceller, QueryHandle, SessionManager};
+pub use handle::{Canceller, QueryHandle};
+pub use manager::SessionManager;
+pub use resilience::{Reconnect, Resilience, RetryPolicy};
 pub use sink::BatchSink;

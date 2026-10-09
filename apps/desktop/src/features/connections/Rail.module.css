@@ -229,7 +229,8 @@
 .status[data-status='connected'] {
   background: var(--or-success-fg);
 }
-.status[data-status='connecting'] {
+.status[data-status='connecting'],
+.status[data-status='reconnecting'] {
   background: var(--or-warning-fg);
 }
 .status[data-status='failed'] {
@@ -310,6 +311,9 @@
 }
 .database[data-state='opening'] {
   opacity: var(--or-rail-inactive-opacity);
+}
+.database[data-state='reconnecting'] svg {
+  color: var(--or-warning-fg);
 }
 .database[data-state='failed'] svg {
   color: var(--or-danger-fg);

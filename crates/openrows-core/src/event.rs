@@ -6,7 +6,7 @@ use openrows_driver_api::NoticeLevel;
 use openrows_types::{QueryId, ResultId, SessionId};
 use std::time::Duration;
 
-/// Lifecycle subset of docs/04 §3; transactions and reconnect arrive later.
+/// Lifecycle subset of docs/04 §3.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SessionState {
     /// The driver is connecting and authenticating.
@@ -15,6 +15,9 @@ pub enum SessionState {
     Idle,
     /// Running a statement; later commands wait in the queue.
     Busy,
+    /// The connection was lost while idle (or a statement failed with it);
+    /// a new one is being opened. Later commands wait in the queue.
+    Reconnecting,
     /// Closed on request; terminal.
     Closed,
     /// Connection lost, connect failed or the driver panicked; terminal.
@@ -28,7 +31,7 @@ pub struct SessionEvent {
     pub session: SessionId,
     /// The new state.
     pub state: SessionState,
-    /// Why the session failed, for `Failed` transitions.
+    /// Why the session failed (`Failed`) or is reconnecting (`Reconnecting`).
     pub error: Option<CoreError>,
 }
 

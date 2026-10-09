@@ -20,6 +20,9 @@ use std::num::NonZeroUsize;
 use std::path::Path;
 use std::sync::Arc;
 
+#[path = "mysql/resilience.rs"]
+mod resilience;
+
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 const DATABASE: &str = "openrows_test";

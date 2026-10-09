@@ -112,6 +112,8 @@ pub struct Script<'a> {
 /// A statement starts only after the previous one completed. A `Cancelled`
 /// statement ends the run; a `Failed` one ends it when `stop_on_error` is
 /// set, otherwise the run goes on and ends `Failed` after the last statement.
+/// A lost connection always ends the run: the statements after it may
+/// depend on a transaction or setting that is gone.
 ///
 /// The `query.run` span records the statement count and the outcome only:
 /// never the SQL text, its literals or any row (docs/14 §6).
@@ -137,7 +139,11 @@ async fn run_statements(
 ) -> ScriptOutcome {
     let mut result = ScriptOutcome::Completed;
     for (index, statement) in script.statements.iter().enumerate() {
-        let mut send = |event| {
+        let mut lost = false;
+        let mut send = |event: QueryEvent| {
+            if let QueryEvent::Failed { error } = &event {
+                lost = matches!(error.kind, ErrorKind::Network | ErrorKind::SessionClosed);
+            }
             emit(ScriptEvent {
                 statement: index,
                 event,
@@ -150,7 +156,9 @@ async fn run_statements(
         let submitted = manager.execute_statement(session, statement.clone(), script.max_rows);
         match follow(submitted, cancel, &mut send).await {
             ScriptOutcome::Completed => {}
-            ScriptOutcome::Failed if !script.stop_on_error => result = ScriptOutcome::Failed,
+            ScriptOutcome::Failed if !script.stop_on_error && !lost => {
+                result = ScriptOutcome::Failed;
+            }
             outcome => return outcome,
         }
     }

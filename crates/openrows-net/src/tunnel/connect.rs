@@ -27,6 +27,7 @@ use crate::{
     KeyboardInteractivePrompter, SshError, Stage, Timeouts,
     auth::{AuthContext, authenticate},
     blocking::off_runtime,
+    configure_tcp,
     handler::ClientHandler,
     timeouts::{PromptClock, within},
 };
@@ -61,14 +62,12 @@ pub(super) async fn dial(hop: &SshHop, timeouts: &Timeouts) -> Result<TcpStream,
         })
     };
     let stream = within(Stage::TcpConnect, timeouts.tcp_connect, &clock, connect).await?;
-    // Latency matters more than packet count for interactive database traffic.
-    stream
-        .set_nodelay(true)
-        .map_err(|source| SshError::Connect {
-            host: hop.host.clone(),
-            port: hop.port,
-            source,
-        })?;
+    // No Nagle delay for interactive traffic; OS keepalive under the SSH one.
+    configure_tcp(&stream).map_err(|source| SshError::Connect {
+        host: hop.host.clone(),
+        port: hop.port,
+        source,
+    })?;
     Ok(stream)
 }
 

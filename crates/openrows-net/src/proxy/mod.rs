@@ -18,7 +18,7 @@ use tokio::net::{TcpStream, lookup_host};
 pub use dialer::ProxyDialer;
 pub use error::ProxyError;
 
-use crate::{SecretString, Stage, Timeouts};
+use crate::{SecretString, Stage, Timeouts, configure_tcp};
 
 /// Proxy protocol.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -114,9 +114,7 @@ impl ProxySpec {
             Err(self.unreachable(last))
         };
         let stream = limit(Stage::TcpConnect, timeouts.tcp_connect, connect).await?;
-        stream
-            .set_nodelay(true)
-            .map_err(|source| self.unreachable(source))?;
+        configure_tcp(&stream).map_err(|source| self.unreachable(source))?;
         Ok(stream)
     }
 

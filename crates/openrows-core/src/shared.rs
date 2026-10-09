@@ -3,7 +3,7 @@
 use crate::{BatchSink, CoreError, QueryEvent, SessionEvent, SessionState};
 use openrows_types::{QueryId, SessionId};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
-use tokio::sync::{broadcast, mpsc::UnboundedSender, oneshot};
+use tokio::sync::{Notify, broadcast, mpsc::UnboundedSender, oneshot};
 use tokio_util::sync::CancellationToken;
 
 /// Commands accepted by a session actor (docs/04 §3 subset).
@@ -41,6 +41,9 @@ pub(crate) struct Shared {
     pub(crate) id: SessionId,
     /// Parent of every query token; cancelled when the session closes.
     pub(crate) token: CancellationToken,
+    /// Asks an idle resilient session to probe its connection now (wake,
+    /// network change); a notification while busy is kept for later.
+    pub(crate) wake: Notify,
     state: Mutex<SessionState>,
     running: Mutex<Option<UnboundedSender<QueryEvent>>>,
     events: broadcast::Sender<SessionEvent>,
@@ -55,6 +58,7 @@ impl Shared {
         Self {
             id,
             token,
+            wake: Notify::new(),
             state: Mutex::new(SessionState::Connecting),
             running: Mutex::new(None),
             events,

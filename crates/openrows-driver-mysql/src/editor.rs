@@ -100,10 +100,18 @@ impl MySqlSession {
 
     /// Commit `statements` in one transaction; roll back on any failure.
     async fn commit(&mut self, statements: &[BoundSql]) -> Result<(), DriverError> {
-        self.control("START TRANSACTION", &[]).await?;
+        self.control("START TRANSACTION", &[])
+            .await
+            .map_err(DriverError::lost_before_commit)?;
         let applied = self.apply(statements).await;
         if let Err(error) = applied {
-            self.control("ROLLBACK", &[]).await?;
+            // The server rolls back a transaction whose connection ended.
+            if error.is_connection_lost() {
+                return Err(error.lost_before_commit());
+            }
+            self.control("ROLLBACK", &[])
+                .await
+                .map_err(DriverError::lost_before_commit)?;
             return Err(error);
         }
         match self.control("COMMIT", &[]).await {

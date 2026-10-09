@@ -6,6 +6,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, PoisonError};
+use std::time::Duration;
 
 use openrows_net::config::{JumpSpec, SshConfig};
 use openrows_net::known_hosts::KnownHosts;
@@ -215,6 +216,19 @@ impl Tunnels {
         shared
             .and_then(|shared| shared.current())
             .is_some_and(|tunnel| !tunnel.unremembered_host_keys().is_empty())
+    }
+
+    /// Ping every shared tunnel (after wake or a network change); one that
+    /// does not answer within `limit` is dropped, so the next dial reconnects.
+    pub(crate) async fn probe_all(&self, limit: Duration) {
+        let shared: Vec<Arc<SharedTunnel>> = self
+            .lock()
+            .values()
+            .filter_map(|slot| slot.try_lock().ok().and_then(|guard| guard.clone()))
+            .collect();
+        for tunnel in shared {
+            tunnel.probe(limit).await;
+        }
     }
 
     /// Stop sharing `profile`'s tunnel (after disconnect or an edit); it closes

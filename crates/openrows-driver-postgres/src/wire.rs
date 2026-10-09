@@ -19,6 +19,9 @@ pub(crate) struct Wire {
     stream: Box<dyn Io>,
     read: BytesMut,
     write: BytesMut,
+    /// Transaction status of the last `ReadyForQuery` (`I` idle, `T` in a
+    /// transaction, `E` in a failed transaction).
+    status: u8,
 }
 
 impl Wire {
@@ -27,7 +30,14 @@ impl Wire {
             stream,
             read: BytesMut::with_capacity(READ_CHUNK),
             write: BytesMut::with_capacity(1024),
+            status: b'I',
         }
+    }
+
+    /// True when the server reported an open (or failed) transaction at the
+    /// last `ReadyForQuery`.
+    pub(crate) fn in_transaction(&self) -> bool {
+        self.status != b'I'
     }
 
     /// Outgoing buffer for `postgres_protocol::message::frontend` encoders.
@@ -45,6 +55,7 @@ impl Wire {
     pub(crate) async fn next(&mut self) -> Result<Message, DriverError> {
         loop {
             if let Some(message) = Message::parse(&mut self.read)? {
+                self.observe(&message);
                 return Ok(message);
             }
             if self.read.capacity() - self.read.len() < READ_CHUNK / 8 {
@@ -53,6 +64,13 @@ impl Wire {
             if self.stream.read_buf(&mut self.read).await? == 0 {
                 return Err(std::io::Error::from(std::io::ErrorKind::UnexpectedEof).into());
             }
+        }
+    }
+
+    /// Remember the transaction status every `ReadyForQuery` reports.
+    fn observe(&mut self, message: &Message) {
+        if let Message::ReadyForQuery(body) = message {
+            self.status = body.status();
         }
     }
 

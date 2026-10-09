@@ -9,7 +9,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use openrows_driver_api::{ConnectStage, ConnectTimeouts, ConnectTrace, DriverError, Endpoint};
-use openrows_net::{BoxStream, Dialer};
+use openrows_net::{BoxStream, Dialer, configure_tcp};
 use tokio::net::TcpStream;
 
 /// Where the server listens.
@@ -97,7 +97,7 @@ async fn connect_any(addresses: &[SocketAddr]) -> Result<BoxStream, DriverError>
     for address in addresses {
         match TcpStream::connect(address).await {
             Ok(stream) => {
-                stream.set_nodelay(true)?;
+                configure_tcp(&stream)?;
                 return Ok(Box::new(stream));
             }
             Err(error) => last = io::Error::new(error.kind(), format!("{address}: {error}")),

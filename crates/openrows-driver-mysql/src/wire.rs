@@ -59,6 +59,8 @@ pub(crate) struct Outcome {
 pub(crate) struct Wire {
     pub(crate) packets: Packets,
     pub(crate) capabilities: CapabilityFlags,
+    /// `SERVER_STATUS_IN_TRANS` of the last OK or EOF packet.
+    pub(crate) in_transaction: bool,
 }
 
 impl Wire {
@@ -120,6 +122,7 @@ impl Wire {
                     status
                 }
             };
+            self.in_transaction = status.contains(StatusFlags::SERVER_STATUS_IN_TRANS);
             if !status.contains(StatusFlags::SERVER_MORE_RESULTS_EXISTS) {
                 return Ok(outcome);
             }

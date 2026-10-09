@@ -76,10 +76,14 @@ it('loads settings.json into the stores and rewrites it after a change', async (
 });
 
 it('keeps invalid values out of the stores and the file', () => {
-  applySettings({ theme: 'neon', general: { density: 'huge' }, shortcuts: 3 });
+  applySettings({
+    theme: 'neon',
+    general: { density: 'huge', keepaliveSeconds: 7 },
+    shortcuts: 3,
+  });
   expect(collectSettings()).toMatchObject({
     theme: 'system',
-    general: { density: 'regular' },
+    general: { density: 'regular', keepaliveSeconds: 30 },
     shortcuts: {},
   });
 });

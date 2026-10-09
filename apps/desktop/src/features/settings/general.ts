@@ -4,6 +4,14 @@ import { localSetting } from './localSetting';
 /** Row height of the sidebar trees. */
 export type Density = 'compact' | 'regular' | 'comfortable';
 
+/** Seconds between connection keepalive probes; `0` turns them off. */
+type KeepaliveSeconds = 0 | 15 | 30 | 60 | 120;
+
+/** Every interval the settings offer (docs/14 §4: 30 s by default). */
+export const KEEPALIVE_CHOICES: readonly KeepaliveSeconds[] = [
+  15, 30, 60, 120, 0,
+];
+
 /** App-wide preferences outside appearance and the editor. */
 type GeneralSettings = {
   /** Reopen the previous connections, databases and tabs on launch. */
@@ -11,12 +19,18 @@ type GeneralSettings = {
   density: Density;
   /** Turn off animations even when the system allows them. */
   reduceMotion: boolean;
+  /**
+   * How often idle connections are checked so a dead one is noticed and
+   * reopened; read by the core from settings.json.
+   */
+  keepaliveSeconds: KeepaliveSeconds;
 };
 
 const defaultGeneralSettings: GeneralSettings = {
   restoreSession: true,
   density: 'regular',
   reduceMotion: false,
+  keepaliveSeconds: 30,
 };
 
 /** Key in web storage (and `general` in settings.json). */
@@ -37,6 +51,11 @@ export function parseGeneral(stored: unknown): GeneralSettings {
     density: DENSITIES.includes(value.density as Density)
       ? (value.density as Density)
       : defaultGeneralSettings.density,
+    keepaliveSeconds: KEEPALIVE_CHOICES.includes(
+      value.keepaliveSeconds as KeepaliveSeconds,
+    )
+      ? (value.keepaliveSeconds as KeepaliveSeconds)
+      : defaultGeneralSettings.keepaliveSeconds,
   };
 }
 

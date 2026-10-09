@@ -4,6 +4,12 @@
 //!
 //! It records each requested destination exactly as the client sent it, so
 //! tests can prove that host names reach the proxy unresolved (remote DNS).
+//! [`FaultyLink`] is a toxiproxy-style TCP relay that cuts, black-holes or
+//! refuses connections on demand (network loss and server restarts).
+
+mod link;
+
+pub use link::FaultyLink;
 
 use std::{
     io,
