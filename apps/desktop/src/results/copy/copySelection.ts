@@ -7,6 +7,7 @@ import type { CopyFormat } from './formats';
 import { readSelection } from './read';
 import type { CopySource } from './read';
 import { tableName } from './sql';
+import { copySettings, delimitedOptions } from './copySettings';
 
 /** Where copied SQL goes: the connection's dialect and the browsed table, if any. */
 export type CopyTarget = {
@@ -19,19 +20,31 @@ export type CopyTarget = {
 const UNKNOWN_TABLE = { schema: '', name: 'table_name' };
 
 /**
- * Copy the selected cells to the clipboard in `format`. A palette command
- * can call this with the focused grid's selection.
+ * Copy the selected cells to the clipboard in `format`, with the copy
+ * settings' header, NULL and quoting defaults for TSV and CSV; `headers`
+ * overrides the header setting (Copy with Headers). A palette command can
+ * call this with the focused grid's selection.
  */
 export async function copySelection(
   format: CopyFormat,
   source: CopySource,
   target: CopyTarget,
+  headers?: boolean,
 ): Promise<void> {
   const table = await readSelection(source, displayWindow);
-  const text = formatTable(format, table, {
-    engine: target.engine,
-    table: tableName(target.engine, target.table ?? UNKNOWN_TABLE),
-  });
+  const options =
+    format === 'tsv' || format === 'csv'
+      ? delimitedOptions(format, copySettings.get(), headers)
+      : undefined;
+  const text = formatTable(
+    format,
+    table,
+    {
+      engine: target.engine,
+      table: tableName(target.engine, target.table ?? UNKNOWN_TABLE),
+    },
+    options,
+  );
   await navigator.clipboard.writeText(text);
 }
 

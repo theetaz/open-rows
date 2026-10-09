@@ -12,6 +12,7 @@ import type { CopyFormat } from '../../results/copy/formats';
 import { focusFilter } from './useTableKeys';
 import type { RowEditing } from './useRowEditing';
 import type { TableTabState } from './useTableTab';
+import type { DataTools } from './useDataTools';
 
 type Target = {
   root: RefObject<HTMLElement | null>;
@@ -19,6 +20,8 @@ type Target = {
   editing: RowEditing;
   /** An open session: rows can load and stage. */
   ready: boolean;
+  /** Confirming discard/reload and foreign-key jumps. */
+  tools: Pick<DataTools, 'flow' | 'jumps'>;
 };
 
 type Input = Target & {
@@ -44,11 +47,15 @@ function deleteSelected(input: Input): void {
 }
 
 /** Copy the selection (or the focused row) through the shared copy engine. */
-function copySelected(input: Input, format: CopyFormat): void {
+function copySelected(
+  input: Input,
+  format: CopyFormat,
+  headers?: boolean,
+): void {
   const selection = currentSelection(input);
   const grid = input.state.menu.grid;
   if (!selection || !grid) return;
-  copySelection(format, copySource(selection), grid.copyTarget).catch(
+  copySelection(format, copySource(selection), grid.copyTarget, headers).catch(
     (failure: unknown) => {
       input.editing.fail(new Error(copyFailure(failure)));
     },
@@ -67,8 +74,8 @@ function gridActions(
   input: Input,
 ): Pick<Record<TableCommand, () => void>, GridCommand> {
   const data = input.state.view.mode === 'data';
-  const copy = (format: CopyFormat) => () => {
-    if (data) copySelected(input, format);
+  const copy = (format: CopyFormat, headers?: boolean) => () => {
+    if (data) copySelected(input, format, headers);
   };
   return {
     'copy-selection': copy('tsv'),
@@ -77,6 +84,7 @@ function gridActions(
     'copy-as-markdown': copy('markdown'),
     'copy-as-insert': copy('insert'),
     'copy-as-where-in': copy('whereIn'),
+    'copy-with-headers': copy('tsv', true),
     'pin-column': () => {
       if (data) pinFocused(input);
     },
@@ -93,6 +101,7 @@ type GridCommand =
   | 'copy-as-markdown'
   | 'copy-as-insert'
   | 'copy-as-where-in'
+  | 'copy-with-headers'
   | 'pin-column'
   | 'reset-columns';
 
@@ -107,7 +116,7 @@ function tableActions(input: Input): Record<TableCommand, () => void> {
       if (data && staged && canEdit(editing, input.ready)) editing.commit();
     },
     'discard-changes': () => {
-      if (data && staged) editing.discard();
+      if (data && staged) input.tools.flow.discard();
     },
     'insert-row': () => {
       if (data && canEdit(editing, input.ready)) editing.insert();
@@ -120,6 +129,15 @@ function tableActions(input: Input): Record<TableCommand, () => void> {
       focusFilter(input.root.current, actions);
     },
     'toggle-columns': actions.toggleColumns,
+    'toggle-row-form': () => {
+      if (!data) actions.mode('data');
+      actions.toggleForm();
+    },
+    'open-foreign-key': () => {
+      const selection = currentSelection(input);
+      if (data && selection)
+        input.tools.jumps.openCell(selection.result, selection.cell);
+    },
     refresh: actions.reload,
     ...gridActions(input),
   };

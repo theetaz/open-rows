@@ -8,6 +8,7 @@
 //! converts them to the column's type. `LIMIT` and `OFFSET` are integers
 //! formatted by Rust.
 mod predicate;
+mod raw;
 
 use std::fmt::{self, Write as _};
 
@@ -69,6 +70,10 @@ pub enum FilterOp {
     IsEmpty,
     /// Non-empty string (not NULL).
     IsNotEmpty,
+    /// A raw SQL predicate typed by the user (`value`), checked by the
+    /// lexer to be one balanced boolean expression without comments,
+    /// terminators or placeholders; the column is ignored.
+    Raw,
 }
 
 /// One enabled filter row.
@@ -162,6 +167,8 @@ pub enum SelectError {
     NoColumns,
     /// The dialect cannot express this request.
     Unsupported(&'static str),
+    /// A raw SQL predicate is not one self-contained expression.
+    InvalidPredicate(&'static str),
 }
 
 impl fmt::Display for SelectError {
@@ -174,6 +181,7 @@ impl fmt::Display for SelectError {
             }
             Self::NoColumns => f.write_str("the table has no columns to select"),
             Self::Unsupported(what) => f.write_str(what),
+            Self::InvalidPredicate(why) => write!(f, "the raw SQL filter {why}"),
         }
     }
 }

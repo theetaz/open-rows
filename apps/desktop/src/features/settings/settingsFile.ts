@@ -13,6 +13,7 @@ import { GENERAL_KEY, parseGeneral } from './general';
 import { parseResults, RESULTS_KEY } from './results';
 import { parseSnippets, SNIPPETS_KEY } from '../snippets/snippetStore';
 import { EXPORT_KEY, parseExportSettings } from '../export/exportSettings';
+import { COPY_KEY, parseCopySettings } from '../../results/copy/copySettings';
 import { onSettingsChanged, reloadSettings } from './localSetting';
 
 /**
@@ -46,6 +47,7 @@ const SECTIONS: Readonly<Record<string, Section>> = {
   results: { key: RESULTS_KEY, parse: parseResults },
   snippets: { key: SNIPPETS_KEY, parse: parseSnippets },
   export: { key: EXPORT_KEY, parse: parseExportSettings },
+  copy: { key: COPY_KEY, parse: parseCopySettings },
 };
 
 const themeOf = (value: unknown): string =>

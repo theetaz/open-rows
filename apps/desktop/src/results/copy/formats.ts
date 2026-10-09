@@ -2,6 +2,7 @@
 import type { EngineDto } from '@openrows/ipc';
 import { isNumberText, quoteIdent, sqlLiteral } from './sql';
 import type { ValueKind } from './sql';
+import type { DelimitedOptions } from './copySettings';
 
 /** What a grid selection can be copied as (FR-GRID-03). */
 export type CopyFormat =
@@ -23,18 +24,22 @@ type SqlTarget = { engine: EngineDto; table: string };
 export function rowText(
   fields: readonly { text: string; state: string }[],
 ): string {
-  return tsv({
-    columns: [],
-    rows: [
-      fields.map((field) =>
-        field.state === 'null'
-          ? null
-          : field.state === 'empty'
-            ? ''
-            : field.text,
-      ),
-    ],
-  });
+  return delimited(
+    {
+      columns: [],
+      rows: [
+        fields.map((field) =>
+          field.state === 'null'
+            ? null
+            : field.state === 'empty'
+              ? ''
+              : field.text,
+        ),
+      ],
+    },
+    '\t',
+    TSV_DEFAULTS,
+  );
 }
 
 /** Menu labels of the `Copy as` formats, in TablePlus order. */
@@ -46,24 +51,37 @@ export const COPY_AS: readonly { format: CopyFormat; label: string }[] = [
   { format: 'whereIn', label: 'WHERE IN' },
 ];
 
-/** Tab-separated cells, quoted only when a value holds a tab, line break or quote. */
-function tsv(table: CopyTable): string {
-  const field = (value: string | null): string => {
-    const text = value ?? 'NULL';
-    return /[\t\n\r"]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
-  };
-  return table.rows.map((row) => row.map(field).join('\t')).join('\n');
-}
+const TSV_DEFAULTS: DelimitedOptions = {
+  headers: false,
+  nulls: 'text',
+  quote: 'minimal',
+};
+const CSV_DEFAULTS: DelimitedOptions = {
+  headers: true,
+  nulls: 'empty',
+  quote: 'minimal',
+};
 
-/** RFC 4180 CSV with a header record; NULL is an empty field. */
-function csv(table: CopyTable): string {
+/**
+ * Delimited text: a header record when asked, NULL as `NULL` or an empty
+ * field, and values quoted (quotes doubled) when they need it or always.
+ */
+function delimited(
+  table: CopyTable,
+  delimiter: '\t' | ',',
+  options: DelimitedOptions,
+): string {
+  const special = delimiter === '\t' ? /[\t\n\r"]/ : /[",\n\r]/;
   const field = (value: string | null): string => {
-    const text = value ?? '';
-    return /[",\n\r]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+    const text = value ?? (options.nulls === 'text' ? 'NULL' : '');
+    const quote =
+      special.test(text) || (options.quote === 'all' && value !== null);
+    return quote ? `"${text.replaceAll('"', '""')}"` : text;
   };
-  const header = table.columns.map((column) => field(column.name)).join(',');
-  const lines = table.rows.map((row) => row.map(field).join(','));
-  return [header, ...lines].join('\n');
+  const lines = table.rows.map((row) => row.map(field).join(delimiter));
+  if (!options.headers) return lines.join('\n');
+  const header = table.columns.map((column) => field(column.name));
+  return [header.join(delimiter), ...lines].join('\n');
 }
 
 /** A JSON value; numeric text stays exact (no float round trip). */
@@ -157,12 +175,13 @@ export function formatTable(
   format: CopyFormat,
   table: CopyTable,
   target: SqlTarget,
+  options?: DelimitedOptions,
 ): string {
   switch (format) {
     case 'tsv':
-      return tsv(table);
+      return delimited(table, '\t', options ?? TSV_DEFAULTS);
     case 'csv':
-      return csv(table);
+      return delimited(table, ',', options ?? CSV_DEFAULTS);
     case 'json':
       return json(table);
     case 'markdown':

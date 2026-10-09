@@ -15,6 +15,7 @@ import { selectedCells } from './bulk/cells';
 import { rowText } from '../../results/copy/formats';
 import type { TableColumnDto } from '@openrows/ipc';
 import type { CopyTarget } from '../../results/copy/copySelection';
+import type { KeyJumps } from './links/useKeyJumps';
 /** A right-click target plus the grid selection it belongs to, in data coordinates. */
 export type ContextTarget = GridContextTarget & {
   ranges: readonly CellRange[];
@@ -34,6 +35,8 @@ export type ContextMenuProps = {
   changeView: (update: (view: TableView) => TableView) => void;
   /** Ask for one value to stage in every selected cell. */
   onPrompt: (count: number) => void;
+  /** Foreign-key navigation; omitted where the grid has none. */
+  jumps?: KeyJumps | undefined;
   onClose: () => void;
 };
 export type Action = {

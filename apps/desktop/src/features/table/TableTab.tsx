@@ -17,8 +17,9 @@ import type { TriggerAction } from './structure/TriggersSheet';
 import { TableData } from './TableData';
 import { TableFooter } from './TableFooter';
 import type { ShowRow } from './row';
-import { useSelectedRow } from './useSelectedRow';
-import type { FooterAdd, FooterStructure } from './TableFooter';
+import type { FooterAdd, FooterData, FooterStructure } from './TableFooter';
+import { useDataTools } from './useDataTools';
+import type { DataTools } from './useDataTools';
 import { useTableKeys } from './useTableKeys';
 import { useTableCommandTarget } from './useTableCommandTarget';
 import { useTableTab } from './useTableTab';
@@ -82,6 +83,20 @@ function useEdited(staged: number, onEdited: (() => void) | undefined): void {
   }, [edited, onEdited]);
 }
 
+/** Reload on schema changes and report unsaved edits to the tab strip. */
+function useTabSync(
+  props: TableTabProps,
+  reload: () => void,
+  editing: ReturnType<typeof useRowEditing>,
+  structure: ReturnType<typeof useStructure>,
+): void {
+  useStructureRevision(props.structureRevision, reload);
+  useEdited(
+    editing.history.current.length + structure.schema.history.current.length,
+    props.onEdited,
+  );
+}
+
 /** A TablePlus-style table view: filters, paged canvas grid, structure, footer. */
 export function TableTab(props: TableTabProps): React.JSX.Element {
   const { table, sessionId } = props;
@@ -92,34 +107,31 @@ export function TableTab(props: TableTabProps): React.JSX.Element {
     offset: props.views.entryOf(props.tabId).view.offset,
   });
   const state = useTableTab({ ...props, rowId: editing.info?.rowId ?? null });
-  const { view, actions, columns } = state;
-  useTableKeys(root, actions);
-  const onSelection = useTableCommandTarget({
+  const { view, columns } = state;
+  const ready = sessionId !== null;
+  const tools = useDataTools({ ...props, state, editing, ready });
+  const tab = { ...state, actions: tools.actions };
+  useTableKeys(root, tools.actions);
+  const onCommandSelection = useTableCommandTarget({
     root,
-    state,
+    state: tab,
     editing,
-    ready: sessionId !== null,
+    ready,
+    tools,
   });
   const structure = useStructure({ ...props, mode: view.mode });
-  useStructureRevision(props.structureRevision, actions.reload);
-  useEdited(
-    editing.history.current.length + structure.schema.history.current.length,
-    props.onEdited,
-  );
+  useTabSync(props, tools.actions.reload, editing, structure);
   const recovery = useEditRecovery({
     tabId: props.tabId,
     target: state.query.target,
     views: props.views,
     editing,
   });
-  const showRow = useSelectedRow({
-    table: table.name,
-    offset: view.offset,
+  const context = useTableContext({
+    ...state.menu,
     editing,
-    ready: sessionId !== null,
-    onRow: props.onRow,
+    jumps: tools.jumps,
   });
-  const context = useTableContext({ ...state.menu, editing });
   return (
     <section
       ref={root}
@@ -128,51 +140,103 @@ export function TableTab(props: TableTabProps): React.JSX.Element {
     >
       <Banner {...props} />
       {view.mode === 'data' && <RecoveryBanner recovery={recovery} />}
-      {view.mode === 'data' && view.filtersOpen && <Filters state={state} />}
-      {view.mode === 'data' ? (
-        sessionId && (
-          <TableData
-            state={state}
-            onRow={showRow}
-            editing={editing}
-            columns={state.layout}
-            onContextMenu={context.show}
-            onSelection={onSelection}
-          />
-        )
-      ) : (
-        <StructurePane structure={structure} table={table.name} />
+      {view.mode === 'data' && view.filtersOpen && (
+        <Filters state={tab} engine={props.engine} />
       )}
+      <DataArea
+        tab={tab}
+        table={table.name}
+        sessionId={sessionId}
+        editing={editing}
+        tools={tools}
+        structure={structure}
+        onContextMenu={context.show}
+        onSelection={(selection) => {
+          onCommandSelection(selection);
+          tools.onSelection(selection);
+        }}
+      />
       {view.columnsOpen && (
         <ColumnsPanel
           columns={columns}
           hidden={view.hidden}
-          actions={actions}
+          actions={tools.actions}
         />
       )}
       {context.menu}
+      {tools.flow.sheet}
       <EditingFooter
-        state={state}
+        state={tab}
         editing={editing}
         structure={structure}
-        ready={sessionId !== null}
+        ready={ready}
+        tools={tools}
       />
     </section>
+  );
+}
+
+/** The page's grid or row form in Data mode, else the structure views. */
+function DataArea({
+  tab,
+  table,
+  sessionId,
+  editing,
+  tools,
+  structure,
+  onContextMenu,
+  onSelection,
+}: {
+  tab: ReturnType<typeof useTableTab>;
+  table: string;
+  sessionId: string | null;
+  editing: ReturnType<typeof useRowEditing>;
+  tools: DataTools;
+  structure: Structure;
+  onContextMenu: React.ComponentProps<typeof TableData>['onContextMenu'];
+  onSelection: React.ComponentProps<typeof TableData>['onSelection'];
+}): React.JSX.Element | null {
+  if (tab.view.mode !== 'data')
+    return <StructurePane structure={structure} table={table} />;
+  if (!sessionId) return null;
+  return (
+    <TableData
+      state={tab}
+      table={table}
+      ready
+      onRow={tools.onRow}
+      editing={editing}
+      columns={tab.layout}
+      onContextMenu={onContextMenu}
+      onSelection={onSelection}
+      tools={tools}
+    />
   );
 }
 
 /** The filter bar of the data view. */
 function Filters({
   state,
+  engine,
 }: {
   state: ReturnType<typeof useTableTab>;
+  engine: EngineDto;
 }): React.JSX.Element {
+  const { structure } = state.entry;
+  const types = new Map(
+    structure.status === 'ready'
+      ? structure.data.columns.map((column) => [column.name, column.dataType])
+      : [],
+  );
   return (
     <FilterBar
       view={state.view}
       columns={state.columns}
+      types={types}
+      engine={engine}
       query={state.query}
       actions={state.actions}
+      storageKey={state.storageKey}
     />
   );
 }
@@ -183,7 +247,8 @@ function footerProps(
   editing: ReturnType<typeof useRowEditing>,
   structure: Structure,
   ready: boolean,
-): { add: FooterAdd; structure?: FooterStructure } {
+  tools: DataTools,
+): { add: FooterAdd; structure?: FooterStructure; data?: FooterData } {
   const { mode } = state.view;
   if (mode === 'data')
     return {
@@ -191,6 +256,11 @@ function footerProps(
         label: 'Row',
         run: canEdit(editing, ready) ? editing.insert : undefined,
         title: editingNote(editing),
+      },
+      data: {
+        aggregate: tools.aggregate,
+        reload: tools.actions.reload,
+        toggleForm: tools.actions.toggleForm,
       },
     };
   const { schema } = structure;
@@ -229,16 +299,20 @@ function EditingFooter({
   editing,
   structure,
   ready,
+  tools,
 }: {
   state: ReturnType<typeof useTableTab>;
   editing: ReturnType<typeof useRowEditing>;
   structure: Structure;
   ready: boolean;
+  tools: DataTools;
 }): React.JSX.Element {
   const data = state.view.mode === 'data';
   return (
     <>
-      {data && <EditToolbar model={rowEditBar(editing, ready)} />}
+      {data && (
+        <EditToolbar model={rowEditBar(editing, ready, tools.flow.discard)} />
+      )}
       {data && editing.error && !editing.review && (
         <p role="alert" className={styles.banner}>
           {editing.error}
@@ -248,7 +322,7 @@ function EditingFooter({
       <TableFooter
         state={state}
         ready={ready}
-        {...footerProps(state, editing, structure, ready)}
+        {...footerProps(state, editing, structure, ready, tools)}
       />
     </>
   );

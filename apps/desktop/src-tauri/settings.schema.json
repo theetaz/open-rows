@@ -350,10 +350,13 @@
           "copy-as-markdown",
           "copy-as-insert",
           "copy-as-where-in",
+          "copy-with-headers",
           "pin-column",
           "reset-columns",
           "focus-filter",
           "toggle-columns",
+          "toggle-row-form",
+          "open-foreign-key",
           "new-connection",
           "connect",
           "disconnect",
@@ -587,6 +590,27 @@
               "description": "Column compression (pure-Rust codecs only)."
             }
           }
+        }
+      }
+    },
+    "copy": {
+      "type": "object",
+      "description": "Settings ▸ General ▸ Copy: defaults of plain (tab-separated) and CSV copies from grids.",
+      "properties": {
+        "headers": {
+          "enum": ["format", "always", "never"],
+          "default": "format",
+          "description": "Start copies with the column names: CSV only (format), always or never."
+        },
+        "nulls": {
+          "enum": ["format", "text", "empty"],
+          "default": "format",
+          "description": "SQL NULL as NULL in plain copies and empty in CSV (format), always NULL, or always empty."
+        },
+        "quote": {
+          "enum": ["minimal", "all"],
+          "default": "minimal",
+          "description": "Quote only values that need it, or every value."
         }
       }
     }

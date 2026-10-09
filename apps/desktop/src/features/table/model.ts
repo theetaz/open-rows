@@ -42,6 +42,10 @@ export type TableView = {
   rowNumbers: boolean;
   striped: boolean;
   revision: number;
+  /** The remembered presentation (FR-GRID-12) has been applied. */
+  restored: boolean;
+  /** Row form view instead of the grid (FR-GRID-09). */
+  form: boolean;
 };
 
 export const initialView: TableView = {
@@ -59,9 +63,11 @@ export const initialView: TableView = {
   rowNumbers: true,
   striped: true,
   revision: 0,
+  restored: false,
+  form: false,
 };
 
-type OperatorInfo = {
+export type OperatorInfo = {
   value: FilterOperatorDto;
   label: string;
   /** Number of value fields: 0 for NULL checks, 2 for BETWEEN. */
@@ -92,6 +98,7 @@ export const operators: readonly OperatorInfo[] = [
   { value: 'notRegex', label: 'Not regex', arity: 1 },
   { value: 'isEmpty', label: 'IS EMPTY', arity: 0 },
   { value: 'isNotEmpty', label: 'IS NOT EMPTY', arity: 0 },
+  { value: 'raw', label: 'Raw SQL', arity: 1 },
 ];
 
 /** How many value fields an operator takes. */

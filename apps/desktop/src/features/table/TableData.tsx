@@ -8,6 +8,8 @@ import type { RowEditing } from './useRowEditing';
 import type { ContextTarget } from './contextMenuActions';
 import type { GridSelection } from './gridSelection';
 import type { TableLayout } from './useTableLayout';
+import type { DataTools } from './useDataTools';
+import { RowForm } from './RowForm';
 import styles from './Table.module.css';
 const TableGrid = lazy(() =>
   import('./TableGrid').then((module) => ({ default: module.TableGrid })),
@@ -22,18 +24,18 @@ type Props = {
   onContextMenu: (result: ResultMeta, target: ContextTarget) => void;
   /** The grid's selection changed, for table commands. */
   onSelection: (selection: GridSelection) => void;
+  /** Keys, grid position and the form row. */
+  tools: DataTools;
+  /** A session is open: rows stage. */
+  ready: boolean;
+  /** Table name, for the form's caption. */
+  table: string;
 };
 
 /** The page's grid, or why there is none yet (loading, error, no rows). */
-export function TableData({
-  state,
-  onRow,
-  editing,
-  columns,
-  onContextMenu,
-  onSelection,
-}: Props): React.JSX.Element {
-  const { entry, result, view, actions } = state;
+export function TableData(props: Props): React.JSX.Element {
+  const { state, editing, tools } = props;
+  const { entry, result, view } = state;
   const errors = entry.run.messages.filter((item) => item.level === 'error');
   if (errors.length)
     return (
@@ -61,6 +63,34 @@ export function TableData({
         )}
       </div>
     );
+  if (view.form)
+    return (
+      <RowForm
+        table={props.table}
+        result={result}
+        editing={editing}
+        ready={props.ready}
+        offset={view.offset}
+        row={Math.min(tools.formRow, Math.max(0, result.rows - 1))}
+        onRow={tools.setFormRow}
+        onClose={tools.actions.toggleForm}
+      />
+    );
+  return <Grid {...props} result={result} />;
+}
+
+/** The page's canvas grid, mounted lazily once per page. */
+function Grid({
+  state,
+  onRow,
+  editing,
+  columns,
+  onContextMenu,
+  onSelection,
+  tools,
+  result,
+}: Props & { result: ResultMeta }): React.JSX.Element {
+  const { view, actions } = state;
   return (
     <Suspense fallback={null}>
       <TableGrid
@@ -71,6 +101,11 @@ export function TableData({
         layout={columns.layout}
         onLayout={columns.change}
         copyTarget={columns.grid.copyTarget}
+        links={tools.jumps.columns}
+        onLink={(cell) => {
+          tools.jumps.openCell(result, cell);
+        }}
+        position={tools.position}
         onContextMenu={(target) => {
           onContextMenu(result, target);
         }}

@@ -7,7 +7,7 @@ import {
   resizeEdge,
 } from './columns';
 import type { PointerContext } from './pointer';
-import { STEPPER_WIDTH } from './cellPaint';
+import { accessoryWidth } from './cellPaint';
 
 /** Pointer travel that turns a header press into a reorder drag. */
 const DRAG_THRESHOLD = 4;
@@ -146,5 +146,5 @@ export function autoWidth(context: PointerContext, column: number): number {
     const cell = props.source.cell(row, column);
     if (cell) widths.push(measure(cell.text));
   }
-  return fitWidth(widths, info?.kind ? STEPPER_WIDTH : 0);
+  return fitWidth(widths, accessoryWidth(info));
 }

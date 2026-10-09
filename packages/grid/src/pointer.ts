@@ -66,8 +66,10 @@ export function pointerFocus({
     accessibility.update(props.selection);
     controller.invalidate();
     accessibility.focus();
-    if (!event.shiftKey && !event.metaKey && stepperHit(painter, focus, x))
-      props.onEdit?.(focus);
+    if (event.shiftKey || event.metaKey) return;
+    const glyph = glyphHit(painter, focus, x);
+    if (glyph === 'stepper') props.onEdit?.(focus);
+    else if (glyph === 'link') props.onLink?.(focus);
   };
 }
 /** Shift-click (or the row-number header) selects the column; a click sorts. */
@@ -95,18 +97,37 @@ export function hoverEdges(context: PointerContext): void {
       context.scroll.style.cursor = cursor;
   };
 }
-/** A click on a boolean or enum cell's ⌃⌄ glyph opens its value menu. */
-function stepperHit(
+/**
+ * The end-of-cell glyph under a click: a boolean or enum cell's ⌃⌄ stepper
+ * opens its value menu; a foreign key's → arrow (left of any stepper) opens
+ * the referenced row.
+ */
+function glyphHit(
   painter: CanvasPainter,
   cell: { row: number; column: number },
   x: number,
-): boolean {
-  if (!painter.props.source.columns[cell.column]?.kind) return false;
+): 'stepper' | 'link' | undefined {
+  const column = painter.props.source.columns[cell.column];
+  if (!column?.kind && !column?.link) return undefined;
   const pinned = cell.column < painter.layout.pinned;
   const right =
     (painter.layout.offsets[cell.column + 1] ?? 0) -
     (pinned ? 0 : painter.view.x);
-  return x >= right - STEPPER_WIDTH - 4 && x <= right;
+  const stepper = column.kind ? STEPPER_WIDTH : 0;
+  if (stepper && x >= right - STEPPER_WIDTH - 4 && x <= right) return 'stepper';
+  const end = right - stepper;
+  const onArrow = column.link && x >= end - STEPPER_WIDTH - 4 && x <= end;
+  return onArrow && linked(painter, cell) ? 'link' : undefined;
+}
+/** A key cell with a value (NULL and empty keys reference nothing). */
+function linked(
+  painter: CanvasPainter,
+  cell: { row: number; column: number },
+): boolean {
+  const value = painter.props.source.cell(cell.row, cell.column);
+  return (
+    value !== undefined && value.state !== 'null' && value.state !== 'empty'
+  );
 }
 export function contextFocus({
   scroll,

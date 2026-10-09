@@ -10,9 +10,14 @@ import { emptyHistory } from './editHistory';
 import type { RowEditing } from './useRowEditing';
 import { emptyLayout } from '../../results/columnLayout';
 import type { ColumnLayout } from '../../results/columnLayout';
+import type { PositionMemory } from './gridPosition';
 
 vi.mock('@openrows/grid/canvas', () => ({
-  mountGrid: vi.fn(() => ({ destroy: vi.fn() })),
+  mountGrid: vi.fn(() => ({
+    destroy: vi.fn(),
+    viewport: { x: 0, y: 0, width: 0, height: 0 },
+    scrollTo: vi.fn(),
+  })),
 }));
 
 function editing(current: readonly StagedEdit[] = []): RowEditing {
@@ -196,4 +201,54 @@ it('applies stored widths and pins, resizes in place and persists drops', async 
   expect(grid.source.columns[1]?.pinned).toBe(false);
   expect(relayout).toHaveBeenCalledOnce();
   expect(mountGrid).toHaveBeenCalledOnce();
+});
+
+it('returns to the scroll position and focused cell after a reload', async () => {
+  vi.mocked(mountGrid).mockClear();
+  const handle = () => ({
+    destroy: vi.fn(),
+    metrics: {} as never,
+    viewport: { x: 30, y: 240, width: 0, height: 0 },
+    scrollTo: vi.fn(),
+    select: vi.fn(),
+  });
+  const first = handle(),
+    second = handle();
+  vi.mocked(mountGrid)
+    .mockImplementationOnce(() => first)
+    .mockImplementationOnce(() => second);
+  const position = { current: { position: null, restore: false } } as {
+    current: PositionMemory;
+  };
+  const props = { ...gridProps(), position, links: new Set(['id']) };
+  const view = render(
+    <ThemeProvider>
+      <TableGrid {...props} />
+    </ThemeProvider>,
+  );
+  await waitFor(() => {
+    expect(mountGrid).toHaveBeenCalledOnce();
+  });
+  const grid = vi.mocked(mountGrid).mock.calls[0]?.[1] as GridProps;
+  expect(grid.source.columns[1]?.link).toBe(true);
+  grid.onSelection({ row: 2, column: 1, ranges: [] });
+  view.unmount();
+  expect(position.current.position).toEqual({
+    x: 30,
+    y: 240,
+    row: 2,
+    column: 1,
+  });
+  position.current.restore = true;
+  render(
+    <ThemeProvider>
+      <TableGrid {...props} result={{ ...props.result, id: 'reloaded' }} />
+    </ThemeProvider>,
+  );
+  await waitFor(() => {
+    expect(second.select).toHaveBeenCalledWith(2, 1);
+  });
+  expect(second.scrollTo).toHaveBeenCalledWith(30, 240);
+  expect(first.scrollTo).not.toHaveBeenCalled();
+  expect(position.current.restore).toBe(false);
 });

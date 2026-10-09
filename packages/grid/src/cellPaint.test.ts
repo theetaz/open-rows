@@ -25,6 +25,7 @@ function recorder(): {
       rects.push(this.fillStyle);
     },
     beginPath: vi.fn(),
+    arc: vi.fn(),
     moveTo: vi.fn(),
     lineTo: vi.fn(),
     stroke: vi.fn(),
@@ -109,4 +110,16 @@ it('right-aligns numbers and uses on-accent text in selected rows', () => {
   expect(number.texts[0]).toMatchObject({ align: 'right', x: 112 });
   const selected = paint({ text: 'NULL', state: 'null' }, text, true);
   expect(selected.texts[0]?.colour).toBe(colours['on-accent']);
+});
+
+it('paints a foreign-key arrow on linked values but not on NULL', () => {
+  const link: GridColumn = { ...text, link: true };
+  expect(
+    paint({ text: '7', state: 'normal' }, link).stroke,
+  ).toHaveBeenCalledOnce();
+  expect(
+    paint({ text: 'NULL', state: 'null' }, link).stroke,
+  ).not.toHaveBeenCalled();
+  expect(textWidth(link)).toBe(textWidth(text) - 16);
+  expect(textWidth({ ...link, kind: 'enum' })).toBe(textWidth(text) - 32);
 });
