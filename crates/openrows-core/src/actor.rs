@@ -268,21 +268,19 @@ impl Actor {
         )
         .await;
         let in_transaction = self.session.in_transaction();
-        let usable = report(
-            outcome,
-            &mut sink,
-            (started.elapsed(), in_transaction),
-            emit,
-        );
+        let (terminal, usable) = report(outcome, &mut sink, (started.elapsed(), in_transaction));
         self.mail.shared.end_query();
         self.used = Instant::now();
-        usable?;
-        if let Some(link) = self.mail.link.as_mut() {
-            link.touch();
-            link.remember(&queued.sql, in_transaction);
+        if usable.is_ok() {
+            if let Some(link) = self.mail.link.as_mut() {
+                link.touch();
+                link.remember(&queued.sql, in_transaction);
+            }
+            self.mail.shared.set_state(SessionState::Idle, None);
         }
-        self.mail.shared.set_state(SessionState::Idle, None);
-        Ok(())
+        // The session is Idle before the caller hears the statement ended.
+        emit(terminal);
+        usable
     }
 }
 
@@ -362,58 +360,56 @@ fn unacknowledged() -> Broken {
     ))
 }
 
-/// Emit the terminal events; `Err` carries why the session must be discarded.
-/// `context` is the elapsed time and whether a transaction was open.
+/// The terminal event to emit, and `Err` with why the session must be
+/// discarded. `context` is the elapsed time and whether a transaction was open.
 fn report(
     outcome: Outcome,
     sink: &mut QuerySink,
     (elapsed, in_transaction): (Duration, bool),
-    emit: impl Fn(QueryEvent),
-) -> Result<(), Broken> {
+) -> (QueryEvent, Result<(), Broken>) {
     match outcome {
         Outcome::Done(Ok(summary)) => {
             sink.finish(&summary);
-            emit(QueryEvent::Completed { elapsed });
-            Ok(())
+            (QueryEvent::Completed { elapsed }, Ok(()))
         }
         Outcome::Done(Err(error)) if error.is_connection_lost() => {
             sink.end_result();
-            emit(QueryEvent::Failed {
+            let event = QueryEvent::Failed {
                 error: lost_in_flight(&error, in_transaction),
-            });
-            Err(Broken::Lost(CoreError::from(&error)))
+            };
+            (event, Err(Broken::Lost(CoreError::from(&error))))
         }
         Outcome::Done(Err(error)) => {
             sink.end_result();
             let core = CoreError::from(&error);
-            emit(QueryEvent::Failed {
+            let event = QueryEvent::Failed {
                 error: core.clone(),
-            });
+            };
             if keeps_session(&error) {
-                Ok(())
+                (event, Ok(()))
             } else {
-                Err(Broken::Unusable(core))
+                (event, Err(Broken::Unusable(core)))
             }
         }
         Outcome::Cancelled { usable } => {
             sink.end_result();
-            emit(QueryEvent::Cancelled);
-            if usable {
-                Ok(())
-            } else {
-                Err(unacknowledged())
-            }
+            (QueryEvent::Cancelled, acknowledged(usable))
         }
         Outcome::TimedOut { usable, limit } => {
             sink.end_result();
-            emit(QueryEvent::Failed {
+            let event = QueryEvent::Failed {
                 error: CoreError::statement_timeout(limit),
-            });
-            if usable {
-                Ok(())
-            } else {
-                Err(unacknowledged())
-            }
+            };
+            (event, acknowledged(usable))
         }
+    }
+}
+
+/// `Ok` when the server acknowledged the cancel and the session is usable.
+fn acknowledged(usable: bool) -> Result<(), Broken> {
+    if usable {
+        Ok(())
+    } else {
+        Err(unacknowledged())
     }
 }
