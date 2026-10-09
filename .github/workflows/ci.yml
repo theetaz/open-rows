@@ -25,7 +25,9 @@ defaults:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # A cold Rust cache (first run after a lockfile or flag change) needs
+    # longer than a warm one; the cache is only saved by a run that finishes.
+    timeout-minutes: 30
     env:
       # Full debug info for every crate fills the runner's disk; line tables
       # keep panic backtraces readable at a fraction of the size.
