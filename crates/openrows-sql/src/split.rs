@@ -3,6 +3,7 @@
 
 mod blocks;
 mod delimiter;
+mod go;
 mod stream;
 
 use std::ops::Range;
@@ -19,8 +20,9 @@ pub struct Statement {
     /// Bytes from the first non-whitespace token (leading comments included)
     /// to the end of the last non-whitespace token, excluding the terminator.
     pub range: Range<usize>,
-    /// Byte range of the terminator: `;`, or the custom delimiter set by a
-    /// `MySQL` `DELIMITER` command. `None` for a trailing statement without one.
+    /// Byte range of the terminator: `;`, the custom delimiter set by a
+    /// `MySQL` `DELIMITER` command, or a SQL Server `GO` line. `None` for a
+    /// trailing statement without one.
     pub terminator: Option<Range<usize>>,
 }
 
@@ -53,7 +55,11 @@ impl Statement {
 /// and `MySQL` `CREATE PROCEDURE|FUNCTION|TRIGGER|EVENT … BEGIN … END`. For
 /// `MySQL`, a `DELIMITER <text>` line (as in the `mysql` client) replaces the
 /// terminator until the next `DELIMITER` line; the line itself is no
-/// statement. Statements consisting only of whitespace and comments
+/// statement. For SQL Server, a line holding only `GO` (optionally a repeat
+/// count, which is not honoured, and a `--` comment) ends the batch, as in
+/// `sqlcmd`; `;` ends a statement outside `BEGIN … END` and `CASE … END`,
+/// and never inside `CREATE|ALTER PROCEDURE|FUNCTION|TRIGGER|VIEW`, whose
+/// body runs to the end of the batch. Statements consisting only of whitespace and comments
 /// (including empty `;;`) are dropped, and a comment on the same line after a
 /// terminator belongs to no statement. Unterminated strings or comments
 /// extend to the end of the text.
@@ -133,6 +139,19 @@ impl Builder {
         if let Some(resume) = self.delimiter_command(token, source) {
             return Some(resume);
         }
+        if let Some(line) = self.batch_separator(token, source) {
+            // Until its line break arrives, a streamed `GO` may still turn
+            // out to be `GOTO` or `GO SELECT …`: it is no boundary yet.
+            let complete = source
+                .get(line.end..)
+                .is_some_and(|rest| rest.contains('\n'));
+            let previous = self.boundary.take();
+            self.finish(Some(line.clone()));
+            if !complete {
+                self.boundary = previous;
+            }
+            return Some(line.end);
+        }
         if let Some(found) = self.delimiter.found_at(token, source) {
             if found.start > token.start {
                 let before = Token {
@@ -166,6 +185,14 @@ impl Builder {
         self.start = None;
         self.same_line = false;
         Some(line_end)
+    }
+
+    /// A SQL Server `GO` line: the range of `GO` and its count.
+    fn batch_separator(&self, token: Token, source: &str) -> Option<Range<usize>> {
+        if self.dialect != Dialect::SqlServer || !token.is_word(source, "GO") {
+            return None;
+        }
+        go::separator_line(source, token.start, token.end)
     }
 
     fn extend(&mut self, token: Token, source: &str) {

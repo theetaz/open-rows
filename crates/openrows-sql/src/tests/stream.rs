@@ -13,6 +13,10 @@ const MYSQL_SCRIPT: &str = "SELECT 1;\nDELIMITER //\n\
     CREATE PROCEDURE p() BEGIN SELECT 'a;b'; SELECT 2; END//\n\
     SELECT 4//\nDELIMITER ;\nSELECT 5; # done\nSELECT `x;y`";
 
+const TSQL_SCRIPT: &str = "SELECT 1\nGO\nCREATE PROCEDURE dbo.p AS\nBEGIN\n  SELECT 'a;b';\n  \
+    SELECT [x;y];\nEND\nGO 2 -- twice\nSELECT GOTO_x FROM t; SELECT 3\nGO\n\
+    IF 1 = 1 BEGIN SELECT N'ünï;😀'; END; SELECT 4\ngo";
+
 const SQLITE_SCRIPT: &str = "CREATE TABLE t (a);\n\
     CREATE TRIGGER g AFTER INSERT ON t BEGIN\n  UPDATE t SET a = 1; SELECT 1;\nEND;\n\
     INSERT INTO t VALUES ([x;y]);;\n";
@@ -52,6 +56,7 @@ fn any_chunking_yields_the_statements_of_split() {
         (PG_SCRIPT, Dialect::Postgres),
         (MYSQL_SCRIPT, Dialect::MySql),
         (SQLITE_SCRIPT, Dialect::Sqlite),
+        (TSQL_SCRIPT, Dialect::SqlServer),
     ] {
         let whole = split(script, dialect);
         for size in [1, 2, 3, 5, 8, 13, 64, 4096] {
@@ -117,4 +122,20 @@ fn only_the_unfinished_tail_is_kept() {
         "INSERT INTO t VALUES ('')".len() + 1_000_000
     );
     assert_eq!(last[1].text, "SELECT 1");
+}
+
+#[test]
+fn a_go_line_is_final_only_once_its_line_ends() {
+    let texts = |found: Vec<ScriptStatement>| -> Vec<String> {
+        found.into_iter().map(|statement| statement.text).collect()
+    };
+    let mut word = StreamSplitter::new(Dialect::SqlServer);
+    assert!(word.push("SELECT 1\nGO").is_empty());
+    assert!(word.push("TO_x FROM t\n").is_empty());
+    assert_eq!(texts(word.finish()), ["SELECT 1\nGOTO_x FROM t"]);
+    let mut batch = StreamSplitter::new(Dialect::SqlServer);
+    assert!(batch.push("SELECT 1\nGO").is_empty());
+    let mut found = batch.push(" 3\nSELECT 2");
+    found.extend(batch.finish());
+    assert_eq!(texts(found), ["SELECT 1", "SELECT 2"]);
 }

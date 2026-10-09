@@ -105,6 +105,27 @@ export const BUILTIN_SNIPPETS: readonly Snippet[] = [
     scope: 'mysql',
   },
   {
+    id: 'sqlserver-create-table',
+    name: 'Create table (identity key)',
+    prefix: 'ct',
+    body: 'CREATE TABLE ${1:dbo}.${2:name} (\n\tid int IDENTITY(1, 1) PRIMARY KEY,\n\t${3:column} ${4:nvarchar(100)}\n);',
+    scope: 'sqlserver',
+  },
+  {
+    id: 'sqlserver-top',
+    name: 'First rows',
+    prefix: 'top',
+    body: 'SELECT TOP (${1:100}) *\nFROM ${2:table};',
+    scope: 'sqlserver',
+  },
+  {
+    id: 'sqlserver-requests',
+    name: 'Running requests',
+    prefix: 'act',
+    body: 'SELECT r.session_id, r.status, r.wait_type, r.start_time, t.text\nFROM sys.dm_exec_requests AS r\nCROSS APPLY sys.dm_exec_sql_text(r.sql_handle) AS t\nWHERE r.session_id <> @@SPID;',
+    scope: 'sqlserver',
+  },
+  {
     id: 'sqlite-create-table',
     name: 'Create table (rowid key)',
     prefix: 'ct',

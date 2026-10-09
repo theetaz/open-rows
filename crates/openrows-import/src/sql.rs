@@ -37,12 +37,23 @@ pub struct NewColumn {
     pub data_type: String,
 }
 
-/// Most bind parameters one statement may carry.
+/// Most bind parameters one statement may carry (SQL Server: 2 100 per
+/// `sp_executesql` call, two of them the statement and its declarations).
 pub(crate) fn max_params(dialect: Dialect) -> usize {
     match dialect {
         Dialect::Postgres | Dialect::MySql => 65_535,
         Dialect::Sqlite => 32_766,
+        Dialect::SqlServer => 2_098,
         _ => 999,
+    }
+}
+
+/// Most rows one `VALUES` list may hold (SQL Server's row constructor limit).
+fn max_rows(dialect: Dialect) -> usize {
+    if dialect == Dialect::SqlServer {
+        1_000
+    } else {
+        usize::MAX
     }
 }
 
@@ -139,6 +150,7 @@ pub(crate) struct Statements {
     columns: Vec<String>,
     key: Vec<String>,
     conflict: String,
+    policy: ConflictPolicy,
 }
 
 impl Statements {
@@ -167,6 +179,7 @@ impl Statements {
             columns: quoted(columns)?,
             key: quoted(key)?,
             conflict: String::new(),
+            policy,
         };
         statements.conflict = statements.conflict_clause(policy);
         Ok(statements)
@@ -180,7 +193,8 @@ impl Statements {
             .collect();
         let first_key = self.key.first().cloned().unwrap_or_default();
         match (policy, self.dialect) {
-            (ConflictPolicy::Error, _) => String::new(),
+            // SQL Server has no conflict clause: skip and update are a MERGE.
+            (ConflictPolicy::Error, _) | (_, Dialect::SqlServer) => String::new(),
             (ConflictPolicy::Update, Dialect::MySql) if !others.is_empty() => {
                 let sets: Vec<String> = others
                     .iter()
@@ -209,6 +223,7 @@ impl Statements {
         match self.dialect {
             Dialect::MySql => "?".to_owned(),
             Dialect::Sqlite => format!("?{number}"),
+            Dialect::SqlServer => format!("@P{number}"),
             _ => format!("${number}"),
         }
     }
@@ -227,16 +242,23 @@ impl Statements {
 
     /// Rows per `INSERT` within the dialect's parameter limit.
     pub(crate) fn rows_per_insert(&self, cap: usize) -> usize {
-        (max_params(self.dialect) / self.columns.len().max(1)).clamp(1, cap.max(1))
+        (max_params(self.dialect) / self.columns.len().max(1))
+            .min(max_rows(self.dialect))
+            .clamp(1, cap.max(1))
     }
 
     /// `INSERT INTO t (…) VALUES (…), … <conflict clause>` for `rows` rows.
     pub(crate) fn insert(&self, rows: usize) -> String {
+        let tuples = self.tuples(rows, self.columns.len());
+        if self.dialect == Dialect::SqlServer && self.policy != ConflictPolicy::Error {
+            let names = (&self.columns[..], &self.key[..]);
+            return crate::merge::merge(&self.table, names, &tuples, self.policy);
+        }
         format!(
             "INSERT INTO {} ({}) VALUES {}{}",
             self.table,
             self.columns.join(", "),
-            self.tuples(rows, self.columns.len()).join(", "),
+            tuples.join(", "),
             self.conflict
         )
     }
@@ -249,8 +271,9 @@ impl Statements {
                 let values: Vec<String> = (1..=keys).map(|n| self.placeholder(n)).collect();
                 format!("{} IN ({})", self.key.join(""), values.join(", "))
             }
-            // SQLite compares row values only with VALUES lists, which lose the column affinity.
-            (_, Dialect::Sqlite) => (0..keys)
+            // SQLite compares row values only with VALUES lists, which lose
+            // the column affinity; T-SQL has no row-value comparisons.
+            (_, Dialect::Sqlite | Dialect::SqlServer) => (0..keys)
                 .map(|row| {
                     let terms: Vec<String> = self
                         .key
@@ -288,6 +311,7 @@ impl Statements {
     pub(crate) fn begin(&self) -> &'static str {
         match self.dialect {
             Dialect::MySql => "START TRANSACTION",
+            Dialect::SqlServer => "BEGIN TRANSACTION",
             _ => "BEGIN",
         }
     }

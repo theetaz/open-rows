@@ -14,6 +14,9 @@ mod select;
 mod split;
 mod sqlite;
 mod stream;
+mod tsql;
+mod tsql_generate;
+mod tsql_split;
 
 use crate::{Classification, Dialect, StatementKind};
 

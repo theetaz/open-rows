@@ -116,6 +116,7 @@ impl TypeCategory {
                 Self::Decimal => "REAL",
                 _ => "TEXT",
             },
+            Dialect::SqlServer => self.sql_server_type(longest),
             _ => match self {
                 Self::Integer => "bigint",
                 Self::Decimal => "numeric",
@@ -126,6 +127,20 @@ impl TypeCategory {
                 Self::Json => "jsonb",
                 Self::Text => "text",
             },
+        }
+    }
+
+    /// Short text stays keyable (`nvarchar(max)` cannot be a key).
+    fn sql_server_type(self, longest: usize) -> &'static str {
+        match self {
+            Self::Integer => "bigint",
+            Self::Decimal => "float",
+            Self::Boolean => "bit",
+            Self::Date => "date",
+            Self::Timestamp => "datetime2",
+            Self::TimestampTz => "datetimeoffset",
+            Self::Text if longest <= VARCHAR_LIMIT => "nvarchar(255)",
+            Self::Json | Self::Text => "nvarchar(max)",
         }
     }
 
@@ -233,5 +248,9 @@ mod tests {
         assert_eq!(Text.default_type(Dialect::MySql, 300), "TEXT");
         assert_eq!(Boolean.default_type(Dialect::Sqlite, 0), "INTEGER");
         assert_eq!(Json.default_type(Dialect::Sqlite, 0), "TEXT");
+        assert_eq!(Boolean.default_type(Dialect::SqlServer, 0), "bit");
+        assert_eq!(Text.default_type(Dialect::SqlServer, 10), "nvarchar(255)");
+        assert_eq!(Text.default_type(Dialect::SqlServer, 300), "nvarchar(max)");
+        assert_eq!(Boolean.normalise(Dialect::SqlServer, "yes"), "1");
     }
 }

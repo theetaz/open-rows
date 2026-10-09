@@ -50,8 +50,7 @@ pub use split::{ScriptStatement, Statement, StreamSplitter, split, statement_at}
 
 /// SQL dialect whose lexical, classification and generation rules apply.
 ///
-/// Further dialects (SQL Server `GO`, …) are added as new variants with
-/// their own lexer rules.
+/// Further dialects are added as new variants with their own lexer rules.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 #[non_exhaustive]
 pub enum Dialect {
@@ -63,4 +62,8 @@ pub enum Dialect {
     MySql,
     /// `SQLite` 3.
     Sqlite,
+    /// SQL Server and Azure SQL (T-SQL): `[…]` and `"…"` identifiers,
+    /// `N'…'` strings, nested block comments, `@variables`, `#temp` names,
+    /// `@P1` bind placeholders and the `GO` batch separator line.
+    SqlServer,
 }

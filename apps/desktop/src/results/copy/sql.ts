@@ -23,18 +23,20 @@ const mysql = (engine: EngineDto): boolean =>
 
 /** One identifier quoted for the dialect (as `Dialect::quote_ident` in openrows-sql). */
 export function quoteIdent(engine: EngineDto, name: string): string {
+  if (engine === 'sqlserver') return `[${name.replaceAll(']', ']]')}]`;
   return mysql(engine)
     ? `\`${name.replaceAll('`', '``')}\``
     : `"${name.replaceAll('"', '""')}"`;
 }
 
-/** A table name for INSERT: schema-qualified on PostgreSQL, bare elsewhere. */
+/** A table name for INSERT: schema-qualified on PostgreSQL and SQL Server, bare elsewhere. */
 export function tableName(
   engine: EngineDto,
   table: { schema: string; name: string },
 ): string {
   const name = quoteIdent(engine, table.name);
-  return engine === 'postgres' && table.schema
+  const qualified = engine === 'postgres' || engine === 'sqlserver';
+  return qualified && table.schema
     ? `${quoteIdent(engine, table.schema)}.${name}`
     : name;
 }
@@ -52,6 +54,7 @@ const MYSQL_ESCAPES: Readonly<Record<string, string>> = {
 function stringLiteral(engine: EngineDto, text: string): string {
   if (mysql(engine))
     return `'${Array.from(text, (c) => MYSQL_ESCAPES[c] ?? c).join('')}'`;
+  if (engine === 'sqlserver') return `N'${text.replaceAll("'", "''")}'`;
   if (engine === 'postgres' && text.includes('\\'))
     return `E'${text.replaceAll("'", "''").replaceAll('\\', '\\\\')}'`;
   return `'${text.replaceAll("'", "''")}'`;
@@ -66,7 +69,8 @@ export function sqlLiteral(
   if (value === null) return 'NULL';
   if (kind === 'number' && isNumberText(value)) return value;
   if (kind === 'boolean' && (value === 'true' || value === 'false')) {
-    if (engine === 'sqlite') return value === 'true' ? '1' : '0';
+    if (engine === 'sqlite' || engine === 'sqlserver')
+      return value === 'true' ? '1' : '0';
     return value.toUpperCase();
   }
   return stringLiteral(engine, value);

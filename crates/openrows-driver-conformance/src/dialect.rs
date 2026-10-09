@@ -226,11 +226,72 @@ const SQLITE_TYPES: &[TypeCase] = &[
     ),
 ];
 
+const SQL_SERVER_TYPES: &[TypeCase] = &[
+    case("null", "CAST(NULL AS bigint)", Arrow::Int64, None),
+    case(
+        "smallint",
+        "CAST(-32768 AS smallint)",
+        Arrow::Int16,
+        Some("-32768"),
+    ),
+    case(
+        "int",
+        "CAST(2147483647 AS int)",
+        Arrow::Int32,
+        Some("2147483647"),
+    ),
+    case(
+        "bigint",
+        "CAST(-9007199254740993 AS bigint)",
+        Arrow::Int64,
+        Some("-9007199254740993"),
+    ),
+    case("float", "CAST(1.5 AS float)", Arrow::Float64, Some("1.5")),
+    case("bit", "CAST(1 AS bit)", Arrow::Boolean, Some("true")),
+    case(
+        "nvarchar",
+        "N'h\u{e9}llo, \u{4e16}\u{754c} \u{2713} ''q'''",
+        Arrow::Utf8,
+        Some(UNICODE),
+    ),
+    case(
+        "empty text",
+        "CAST(N'' AS nvarchar(10))",
+        Arrow::Utf8,
+        Some(""),
+    ),
+    case(
+        "varbinary",
+        "CAST(0x00FF10 AS varbinary(3))",
+        Arrow::Binary,
+        Some("00ff10"),
+    ),
+    case(
+        "decimal",
+        "CAST(12.50 AS decimal(10, 2))",
+        Arrow::Decimal(10, 2),
+        Some("12.50"),
+    ),
+    case(
+        "date",
+        "CAST('2024-05-06' AS date)",
+        Arrow::Date32,
+        Some("2024-05-06"),
+    ),
+    case(
+        "time",
+        "CAST('13:05:00.25' AS time(2))",
+        Arrow::Time64,
+        Some("13:05:00.25"),
+    ),
+];
+
 /// The literal round-trips of `dialect`.
 pub(crate) fn type_cases(dialect: Dialect) -> &'static [TypeCase] {
     match dialect {
         Dialect::MySql => MYSQL_TYPES,
         Dialect::Sqlite => SQLITE_TYPES,
+        Dialect::SqlServer => SQL_SERVER_TYPES,
         _ => POSTGRES_TYPES,
     }
 }
@@ -263,12 +324,19 @@ pub(crate) fn endless() -> String {
 
 /// Sleeps `seconds` unless interrupted, then fails with the cancel SQLSTATE.
 /// `MySQL`'s `SLEEP()` alone returns 1 when killed instead of failing, so
-/// it sleeps inside a filtered derived table.
+/// it sleeps inside a filtered derived table. SQL Server's `WAITFOR` names
+/// no `sleep(`, so a comment does for the process list.
 pub(crate) fn sleep(dialect: Dialect, seconds: u32) -> String {
     match dialect {
         Dialect::MySql => format!(
             "SELECT COUNT(*) FROM (SELECT 1 AS n UNION ALL SELECT 2) AS orc_sleep \
              WHERE SLEEP({seconds}) = 0"
+        ),
+        Dialect::SqlServer => format!(
+            "/* orc sleep({seconds}) */ WAITFOR DELAY '{:02}:{:02}:{:02}'",
+            seconds / 3_600,
+            seconds / 60 % 60,
+            seconds % 60
         ),
         _ => format!("SELECT pg_sleep({seconds})"),
     }
@@ -284,9 +352,17 @@ pub(crate) struct Codes {
 }
 
 /// `MySQL` reports several classes with generic SQLSTATEs (`42000`, `23000`)
-/// and `ER_QUERY_INTERRUPTED` as `70100`; the others follow `PostgreSQL`.
+/// and `ER_QUERY_INTERRUPTED` as `70100`; SQL Server follows the ODBC
+/// driver's SQLSTATEs (cancel `HY008`); the others follow `PostgreSQL`.
 pub(crate) fn codes(dialect: Dialect) -> Codes {
     match dialect {
+        Dialect::SqlServer => Codes {
+            syntax: "42000",
+            undefined_table: "42S02",
+            unique: "23000",
+            not_null: "23000",
+            cancelled: "HY008",
+        },
         Dialect::MySql => Codes {
             syntax: "42000",
             undefined_table: "42S02",
@@ -302,6 +378,13 @@ pub(crate) fn codes(dialect: Dialect) -> Codes {
             cancelled: "57014",
         },
     }
+}
+
+/// True when the server can cancel another session's statement and keep
+/// that session (`pg_cancel_backend`, `KILL QUERY`); SQL Server can only
+/// end the session.
+pub(crate) fn cancels_other_sessions(dialect: Dialect) -> bool {
+    dialect != Dialect::SqlServer
 }
 
 /// A keyed fixture table every dialect accepts.
@@ -326,5 +409,11 @@ mod tests {
         assert_eq!(endless().matches("CROSS JOIN").count(), 11);
         assert!(sleep(Dialect::MySql, 5).contains("SLEEP(5)"));
         assert_eq!(sleep(Dialect::Postgres, 5), "SELECT pg_sleep(5)");
+        assert_eq!(
+            sleep(Dialect::SqlServer, 61),
+            "/* orc sleep(61) */ WAITFOR DELAY '00:01:01'"
+        );
+        assert!(!cancels_other_sessions(Dialect::SqlServer));
+        assert!(cancels_other_sessions(Dialect::MySql));
     }
 }

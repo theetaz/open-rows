@@ -7,6 +7,7 @@ members = [
     "crates/openrows-import",
     "crates/openrows-driver-api",
     "crates/openrows-driver-conformance",
+    "crates/openrows-driver-mssql",
     "crates/openrows-driver-mysql",
     "crates/openrows-driver-postgres",
     "crates/openrows-driver-sqlite",

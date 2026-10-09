@@ -4,9 +4,9 @@
 
 use std::time::{Duration, Instant};
 
-use openrows_driver_api::{Connection, ProcessId, ProcessSignal, admin};
+use openrows_driver_api::{Connection, DriverError, ProcessId, ProcessSignal, admin};
 
-use crate::dialect::{codes, sleep};
+use crate::dialect::{cancels_other_sessions, codes, sleep};
 use crate::sink::{Collect, ping, sqlstate};
 use crate::{Failure, Target, ensure};
 
@@ -24,7 +24,11 @@ pub(crate) async fn run(target: &Target) -> Result<(), Failure> {
     let mut sleeper = target.connect().await?;
     lists_itself(lister.as_mut()).await?;
     let sleeper_id = admin(sleeper.as_mut())?.own_process().await?;
-    cancel_sleeper(target, lister.as_mut(), sleeper.as_mut(), sleeper_id).await?;
+    if cancels_other_sessions(target.driver.dialect()) {
+        cancel_sleeper(target, lister.as_mut(), sleeper.as_mut(), sleeper_id).await?;
+    } else {
+        cannot_cancel(lister.as_mut(), sleeper_id).await?;
+    }
     terminate(lister.as_mut(), sleeper.as_mut(), sleeper_id).await?;
     lister.close().await?;
     // The sleeper's server process is gone; closing only drops the socket.
@@ -74,6 +78,16 @@ async fn cancel_sleeper(
         format!("cancel SQLSTATE {code}, expected {expected}")
     })?;
     ping(sleeper).await
+}
+
+/// An engine without statement cancel for other sessions says so.
+async fn cannot_cancel(lister: &mut dyn Connection, id: ProcessId) -> Result<(), Failure> {
+    let refused = admin(lister)?
+        .signal_process(id, ProcessSignal::CancelQuery)
+        .await;
+    ensure(matches!(refused, Err(DriverError::Unsupported(_))), || {
+        format!("cancelling another session's statement: {refused:?}")
+    })
 }
 
 /// Poll the list until `id` runs a sleep, then cancel its statement.

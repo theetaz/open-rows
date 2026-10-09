@@ -75,3 +75,28 @@ it('composes MySQL, MariaDB and SQLite URLs with their own schemes', () => {
     'sqlite::memory:',
   );
 });
+
+it('composes SQL Server URLs with encrypt options', () => {
+  const server = { ...emptyDraft('sqlserver'), user: 'sa', database: 'shop' };
+  expect(composeUrl(server)).toBe('sqlserver://sa@localhost:1433/shop');
+  expect(composeUrl({ ...server, host: 'db.test', tlsMode: 'require' })).toBe(
+    'sqlserver://sa@db.test:1433/shop?encrypt=true&trustServerCertificate=true',
+  );
+  expect(composeUrl({ ...server, host: 'db.test', tlsMode: 'allow' })).toBe(
+    'sqlserver://sa@db.test:1433/shop?encrypt=false',
+  );
+  expect(composeUrl({ ...server, tlsMode: 'disable' })).toBe(
+    'sqlserver://sa@localhost:1433/shop?sslmode=disable',
+  );
+});
+
+it('masks a JDBC password property', () => {
+  const split = splitUrl(
+    'jdbc:sqlserver://db.test:1433;databaseName=shop;password=x;encrypt=true',
+  );
+  expect(split.password).toEqual({ kind: 'typed', value: 'x' });
+  expect(split.masked).toContain(`password=${PASSWORD_MASK};`);
+  expect(split.stripped).toBe(
+    'jdbc:sqlserver://db.test:1433;databaseName=shop;encrypt=true',
+  );
+});

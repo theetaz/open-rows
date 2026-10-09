@@ -11,6 +11,8 @@
 use crate::lexer::{Lexer, Token, TokenKind};
 use crate::{Dialect, StatementKind, classify};
 
+mod top;
+
 /// Top-level words after which appending `LIMIT n` would be redundant,
 /// invalid, or change what the statement does.
 const BOUNDED: &[&str] = &[
@@ -25,7 +27,8 @@ const BOUNDED: &[&str] = &[
 ];
 
 /// `statement` with `LIMIT rows` appended when it is an unbounded `SELECT`
-/// in a dialect that spells the clause `LIMIT n`; `None` when it runs as written.
+/// (SQL Server: `TOP (rows)` after its `SELECT`, see [`top`]); `None` when
+/// it runs as written.
 ///
 /// ```
 /// use openrows_sql::{Dialect, limit_select};
@@ -37,6 +40,9 @@ const BOUNDED: &[&str] = &[
 /// ```
 #[must_use]
 pub fn limit_select(statement: &str, dialect: Dialect, rows: u64) -> Option<String> {
+    if dialect == Dialect::SqlServer {
+        return top::limit(statement, rows);
+    }
     if !matches!(
         dialect,
         Dialect::Postgres | Dialect::MySql | Dialect::Sqlite
@@ -67,7 +73,7 @@ fn is_query(statement: &str, dialect: Dialect, tokens: &[Token]) -> bool {
 
 /// A top-level word of [`BOUNDED`], or a trailing `;` the splitter left
 /// (only one statement may be limited at a time).
-fn is_bounded(statement: &str, tokens: &[Token]) -> bool {
+pub(crate) fn is_bounded(statement: &str, tokens: &[Token]) -> bool {
     let mut depth = 0_usize;
     for token in tokens {
         match token.kind {

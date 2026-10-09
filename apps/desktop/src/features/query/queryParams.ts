@@ -6,12 +6,14 @@ import type { QueryParams } from './editorSettings';
 /**
  * Placeholder styles offered per engine: `$1` is PostgreSQL's own syntax,
  * `?` MySQL's; a bare `?` is a `jsonb` operator in PostgreSQL, so it is not
- * offered there. SQLite understands all of them.
+ * offered there. SQLite understands all of them; SQL Server's own `@name`
+ * are variables, so `:name` and `?` stand for parameters there.
  */
 const OFFERED: Record<EditorDialect, readonly ParamStyleDto[]> = {
   postgres: ['named', 'numbered'],
   mysql: ['named', 'anonymous'],
   mariadb: ['named', 'anonymous'],
+  sqlserver: ['named', 'anonymous'],
   sqlite: ['named', 'numbered', 'anonymous'],
 };
 
@@ -19,6 +21,7 @@ const LABELS: Record<EditorDialect, Record<ParamStyleDto, string>> = {
   postgres: { named: ':name', numbered: '$1', anonymous: '?' },
   mysql: { named: ':name', numbered: '$1', anonymous: '?' },
   mariadb: { named: ':name', numbered: '$1', anonymous: '?' },
+  sqlserver: { named: ':name', numbered: '$1', anonymous: '?' },
   sqlite: { named: ':name', numbered: '?1', anonymous: '?' },
 };
 

@@ -148,7 +148,7 @@ fn insert_sql(dialect: Dialect, relation: &str, pairs: &[(String, String)]) -> S
     if pairs.is_empty() {
         return match dialect {
             Dialect::MySql => format!("INSERT INTO {relation} () VALUES ()"),
-            Dialect::Postgres | Dialect::Sqlite => {
+            Dialect::Postgres | Dialect::Sqlite | Dialect::SqlServer => {
                 format!("INSERT INTO {relation} DEFAULT VALUES")
             }
         };

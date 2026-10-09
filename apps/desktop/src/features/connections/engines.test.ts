@@ -10,18 +10,21 @@ import {
 } from './engines';
 import { moveSelection } from './useEnginePicker';
 
-it('lists every TablePlus connection type, four of them implemented', () => {
+it('lists every TablePlus connection type, five of them implemented', () => {
   expect(ENGINE_CHOICES).toHaveLength(21);
   const implemented = ENGINE_CHOICES.filter((choice) => choice.engine);
   expect(implemented.map((choice) => choice.engine)).toEqual([
     'postgres',
     'mysql',
     'mariadb',
+    'sqlserver',
     'sqlite',
   ]);
   expect(new Set(ENGINE_CHOICES.map((choice) => choice.id)).size).toBe(21);
   expect(engineName('mariadb')).toBe('MariaDB');
   expect(defaultPort('sqlite')).toBeNull();
+  expect(defaultPort('sqlserver')).toBe(1433);
+  expect(engineName('sqlserver')).toBe('SQL Server');
 });
 
 it('searches by name, id or monogram', () => {

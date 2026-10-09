@@ -12,6 +12,7 @@ mod mysql_set;
 mod scan;
 mod session;
 mod sqlite;
+mod tsql;
 
 use crate::Dialect;
 use crate::lexer::{self, Token, TokenKind};
@@ -48,7 +49,7 @@ pub struct Classification {
     pub kind: StatementKind,
     /// Requires explicit confirmation: `DELETE`/`UPDATE` without `WHERE`
     /// (including inside CTEs), `DROP`, `TRUNCATE`, `ALTER … DROP` and, for
-    /// `MySQL`, `SHUTDOWN`.
+    /// `MySQL` and SQL Server, `SHUTDOWN` (SQL Server also `RESTORE`).
     pub dangerous: bool,
 }
 
@@ -110,6 +111,7 @@ impl<'a> Sql<'a> {
             (Dialect::Postgres, true) => heads::explain(body),
             (Dialect::MySql, true) => mysql::explain(body),
             (Dialect::Sqlite, true) => Classification::new(StatementKind::Read),
+            (Dialect::SqlServer, _) => body.inspect(tsql::dispatch(body)),
             (Dialect::Postgres, false) => body.inspect(heads::dispatch(body)),
             (Dialect::MySql, false) => body.inspect(mysql::dispatch(body)),
             (Dialect::Sqlite, false) => body.inspect(sqlite::dispatch(body)),

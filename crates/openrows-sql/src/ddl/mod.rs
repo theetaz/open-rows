@@ -19,7 +19,8 @@ use crate::lexer::{Lexer, TokenKind};
 const MAX_TYPE: usize = 200;
 
 /// `text` as a string literal, or `None` when it holds a NUL character.
-/// `MySQL` escapes backslashes too (its default `sql_mode` reads them).
+/// `MySQL` escapes backslashes too (its default `sql_mode` reads them);
+/// SQL Server literals are Unicode (`N'…'`).
 #[must_use]
 pub fn string_literal(dialect: Dialect, text: &str) -> Option<String> {
     if text.contains('\0') {
@@ -29,12 +30,14 @@ pub fn string_literal(dialect: Dialect, text: &str) -> Option<String> {
     Some(match dialect {
         Dialect::MySql => format!("'{}'", doubled.replace('\\', "\\\\")),
         Dialect::Postgres | Dialect::Sqlite => format!("'{doubled}'"),
+        Dialect::SqlServer => format!("N'{doubled}'"),
     })
 }
 
 /// Type syntax: words (`double precision`, `int unsigned`), quoted or
 /// schema-qualified names, integer modifiers (`numeric(10, 2)`) and array
-/// suffixes (`text[]`); for `MySQL` also string lists (`enum('a', 'b')`).
+/// suffixes (`text[]`); for `MySQL` also string lists (`enum('a', 'b')`),
+/// for SQL Server `max` lengths (`nvarchar(max)`).
 /// Nothing else: no operators, comments or `;`.
 #[must_use]
 pub fn valid_type(dialect: Dialect, text: &str) -> bool {
@@ -68,6 +71,9 @@ impl TypeScan {
             TokenKind::Word if outside => {
                 self.words += 1;
                 true
+            }
+            TokenKind::Word => {
+                self.depth > 0 && dialect == Dialect::SqlServer && text.eq_ignore_ascii_case("max")
             }
             TokenKind::QuotedIdent if outside => {
                 self.words += 1;
@@ -106,7 +112,8 @@ fn quoted_ident(dialect: Dialect, text: &str) -> bool {
     let closed = |open: char, close: char| {
         text.len() >= 2 && text.starts_with(open) && text.ends_with(close)
     };
-    closed('"', '"') || closed('`', '`') || (dialect == Dialect::Sqlite && closed('[', ']'))
+    let brackets = matches!(dialect, Dialect::Sqlite | Dialect::SqlServer);
+    closed('"', '"') || closed('`', '`') || (brackets && closed('[', ']'))
 }
 
 /// A stored `CREATE [UNIQUE] INDEX` or `CREATE TRIGGER` statement with its
@@ -143,11 +150,7 @@ pub(crate) fn unquote(text: &str) -> String {
     };
     inner('"', '"')
         .or_else(|| inner('`', '`'))
-        .or_else(|| {
-            text.strip_prefix('[')
-                .and_then(|rest| rest.strip_suffix(']'))
-                .map(str::to_owned)
-        })
+        .or_else(|| inner('[', ']'))
         .unwrap_or_else(|| text.to_owned())
 }
 

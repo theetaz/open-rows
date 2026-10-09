@@ -224,6 +224,8 @@ it('quotes names the dialect would fold or reject', () => {
   expect(quoteName('users', 'postgres')).toBe('users');
   expect(quoteName('Users', 'postgres')).toBe('"Users"');
   expect(quoteName('Users', 'mysql')).toBe('Users');
+  expect(quoteName('order items', 'sqlserver')).toBe('[order items]');
+  expect(quoteName('a]b', 'sqlserver')).toBe('[a]]b]');
   expect(quoteName('order items', 'mysql')).toBe('`order items`');
   expect(quoteName('a"b', 'sqlite')).toBe('"a""b"');
 });

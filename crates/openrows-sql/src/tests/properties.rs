@@ -76,7 +76,7 @@ proptest! {
 
     #[test]
     fn every_dialect_is_total_and_in_bounds(source in mysqlish(), cursor in any::<usize>()) {
-        for dialect in [Dialect::MySql, Dialect::Sqlite] {
+        for dialect in [Dialect::MySql, Dialect::Sqlite, Dialect::SqlServer] {
             let mut end = 0;
             for token in Lexer::new(&source, dialect) {
                 prop_assert_eq!(token.start, end);
@@ -97,10 +97,11 @@ proptest! {
     }
 }
 
-/// Text dense in `MySQL`/`SQLite` quoting, comments and `DELIMITER` lines.
+/// Text dense in `MySQL`/`SQLite`/SQL Server quoting, comments,
+/// `DELIMITER` and `GO` lines.
 fn mysqlish() -> impl Strategy<Value = String> {
     proptest::string::string_regex(
-        "([-;'\"`#/*()\\\\\\[\\] \nab1é$?]|DELIMITER //\n|DELIMITER ;\n|//|/\\*!50000 |\\*/|BEGIN|END|CASE|CREATE TRIGGER|NOT ATOMIC){0,40}",
+        "([-;'\"`#/*()\\\\\\[\\] \nab1é$?@N]|DELIMITER //\n|DELIMITER ;\n|//|/\\*!50000 |\\*/|BEGIN|END|CASE|CREATE TRIGGER|NOT ATOMIC|\nGO\n|GO 2|]]|BEGIN TRAN|CREATE PROC|END CONVERSATION){0,40}",
     )
     .unwrap()
 }

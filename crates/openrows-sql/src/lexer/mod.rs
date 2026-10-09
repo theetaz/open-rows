@@ -160,6 +160,22 @@ impl<'a> Lexer<'a> {
         self.source.len()
     }
 
+    /// End of a run closed by `close`, where a doubled `close` stands for
+    /// itself (SQL Server `[a]]b]`).
+    fn quoted_close(&self, close: u8) -> usize {
+        let mut index = self.pos + 1;
+        while let Some(byte) = self.byte(index) {
+            if byte != close {
+                index += 1;
+            } else if self.byte(index + 1) == Some(close) {
+                index += 2;
+            } else {
+                return index + 1;
+            }
+        }
+        self.source.len()
+    }
+
     /// End of a run closed by `close` with no escapes (`SQLite` `[ident]`).
     fn until_end(&self, close: u8) -> usize {
         let end = self.scan_while(self.pos + 1, |byte| byte != close);

@@ -20,6 +20,7 @@ mod feed;
 mod infer;
 mod load;
 mod mapping;
+mod merge;
 mod options;
 mod read;
 mod runner;

@@ -15,6 +15,8 @@ const EXAMPLES: Record<EngineDto, string> = {
   postgres: 'postgres://user:password@host:5432/database',
   mysql: 'mysql://user:password@host:3306/database',
   mariadb: 'mariadb://user:password@host:3306/database',
+  sqlserver:
+    'sqlserver://user:password@host:1433/database?encrypt=true&trustServerCertificate=false',
   sqlite: 'sqlite:/path/to/database.sqlite',
 };
 

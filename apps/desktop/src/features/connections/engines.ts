@@ -18,7 +18,7 @@ export const ENGINE_CHOICES: readonly EngineChoice[] = [
   { id: 'redshift', name: 'Amazon Redshift', monogram: 'Rs', engine: null },
   { id: 'mysql', name: 'MySQL', monogram: 'My', engine: 'mysql' },
   { id: 'mariadb', name: 'MariaDB', monogram: 'Ma', engine: 'mariadb' },
-  { id: 'sqlserver', name: 'SQL Server', monogram: 'Ss', engine: null },
+  { id: 'sqlserver', name: 'SQL Server', monogram: 'Ss', engine: 'sqlserver' },
   { id: 'cassandra', name: 'Cassandra', monogram: 'Cs', engine: null },
   { id: 'clickhouse', name: 'ClickHouse', monogram: 'Ch', engine: null },
   { id: 'bigquery', name: 'BigQuery', monogram: 'Bq', engine: null },
@@ -52,6 +52,8 @@ export function defaultPort(engine: EngineDto): number | null {
     case 'mysql':
     case 'mariadb':
       return 3306;
+    case 'sqlserver':
+      return 1433;
     case 'sqlite':
       return null;
   }

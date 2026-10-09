@@ -68,7 +68,8 @@ pub enum ProfileError {
 pub enum UrlError {
     /// The scheme names no supported engine.
     #[error(
-        "unsupported URL scheme {scheme:?}; expected postgres://, mysql://, mariadb:// or sqlite:"
+        "unsupported URL scheme {scheme:?}; expected postgres://, mysql://, mariadb://, \
+         sqlserver://, jdbc:sqlserver:// or sqlite:"
     )]
     UnsupportedScheme {
         /// Scheme found (lower-cased).
@@ -97,6 +98,15 @@ pub enum UrlError {
     InvalidSslMode {
         /// The rejected mode.
         value: String,
+    },
+    /// A SQL Server named instance (`host\\instance`) without a port: the
+    /// port lookup through the SQL Server Browser is not supported.
+    #[error(
+        "named instance {instance:?} needs a port (SQL Server Browser lookup is not supported)"
+    )]
+    NamedInstance {
+        /// The instance name.
+        instance: String,
     },
     /// A `sqlite:` URL must name an absolute local file path.
     #[error(
