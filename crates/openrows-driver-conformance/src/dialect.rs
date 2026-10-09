@@ -1,0 +1,276 @@
+// SPDX-License-Identifier: Apache-2.0
+//! Per-dialect SQL and the expected answers: the only engine-specific part
+//! of the suite. Adding a dialect means adding its rows here.
+
+use arrow_schema::DataType;
+use openrows_sql::Dialect;
+
+/// The Arrow type a value must decode to.
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum Arrow {
+    Int16,
+    Int32,
+    Int64,
+    Float64,
+    Boolean,
+    Utf8,
+    Binary,
+    Decimal(u8, i8),
+    Date32,
+}
+
+impl Arrow {
+    pub(crate) fn matches(self, data_type: &DataType) -> bool {
+        match (self, data_type) {
+            (Self::Decimal(precision, scale), DataType::Decimal128(p, s)) => {
+                (precision, scale) == (*p, *s)
+            }
+            (Self::Int16, DataType::Int16)
+            | (Self::Int32, DataType::Int32)
+            | (Self::Int64, DataType::Int64)
+            | (Self::Float64, DataType::Float64)
+            | (Self::Boolean, DataType::Boolean)
+            | (Self::Utf8, DataType::Utf8)
+            | (Self::Binary, DataType::Binary)
+            | (Self::Date32, DataType::Date32) => true,
+            _ => false,
+        }
+    }
+}
+
+/// One literal round-trip: `SELECT <expression>` decodes to `arrow` holding
+/// `text` (`None` is NULL), with the `ARROW:extension:name` when set.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct TypeCase {
+    pub(crate) name: &'static str,
+    pub(crate) expression: &'static str,
+    pub(crate) arrow: Arrow,
+    pub(crate) text: Option<&'static str>,
+    pub(crate) extension: Option<&'static str>,
+}
+
+const fn case(
+    name: &'static str,
+    expression: &'static str,
+    arrow: Arrow,
+    text: Option<&'static str>,
+) -> TypeCase {
+    TypeCase {
+        name,
+        expression,
+        arrow,
+        text,
+        extension: None,
+    }
+}
+
+/// Unicode text exercising multi-byte characters and quotes.
+pub(crate) const UNICODE: &str = "h\u{e9}llo, \u{4e16}\u{754c} \u{2713} 'q'";
+
+const POSTGRES_TYPES: &[TypeCase] = &[
+    case("null", "CAST(NULL AS bigint)", Arrow::Int64, None),
+    case(
+        "int2",
+        "CAST(-32768 AS smallint)",
+        Arrow::Int16,
+        Some("-32768"),
+    ),
+    case(
+        "int4",
+        "CAST(2147483647 AS integer)",
+        Arrow::Int32,
+        Some("2147483647"),
+    ),
+    case(
+        "int8",
+        "CAST(-9007199254740993 AS bigint)",
+        Arrow::Int64,
+        Some("-9007199254740993"),
+    ),
+    case(
+        "float8",
+        "CAST(1.5 AS double precision)",
+        Arrow::Float64,
+        Some("1.5"),
+    ),
+    case("bool", "true", Arrow::Boolean, Some("true")),
+    case(
+        "text",
+        "CAST('h\u{e9}llo, \u{4e16}\u{754c} \u{2713} ''q''' AS text)",
+        Arrow::Utf8,
+        Some(UNICODE),
+    ),
+    case("empty text", "CAST('' AS text)", Arrow::Utf8, Some("")),
+    case(
+        "bytea",
+        "CAST('\\x00ff10' AS bytea)",
+        Arrow::Binary,
+        Some("00ff10"),
+    ),
+    case(
+        "numeric",
+        "CAST(12.50 AS numeric(10, 2))",
+        Arrow::Decimal(10, 2),
+        Some("12.50"),
+    ),
+    case(
+        "date",
+        "DATE '2024-05-06'",
+        Arrow::Date32,
+        Some("2024-05-06"),
+    ),
+];
+
+const MYSQL_TYPES: &[TypeCase] = &[
+    case("null", "CAST(NULL AS SIGNED)", Arrow::Int64, None),
+    case(
+        "bigint",
+        "CAST(-9007199254740993 AS SIGNED)",
+        Arrow::Int64,
+        Some("-9007199254740993"),
+    ),
+    case("double", "1.5e0", Arrow::Float64, Some("1.5")),
+    case("boolean", "TRUE", Arrow::Int64, Some("1")),
+    case(
+        "text",
+        "CAST('h\u{e9}llo, \u{4e16}\u{754c} \u{2713} ''q''' AS CHAR)",
+        Arrow::Utf8,
+        Some(UNICODE),
+    ),
+    case("empty text", "CAST('' AS CHAR)", Arrow::Utf8, Some("")),
+    case("binary", "X'00FF10'", Arrow::Binary, Some("00ff10")),
+    case(
+        "decimal",
+        "CAST(12.50 AS DECIMAL(10, 2))",
+        Arrow::Decimal(10, 2),
+        Some("12.50"),
+    ),
+    TypeCase {
+        extension: Some(openrows_driver_api::metadata::DECIMAL_EXTENSION),
+        ..case(
+            "wide decimal",
+            "CAST(12.50 AS DECIMAL(65, 2))",
+            Arrow::Utf8,
+            Some("12.50"),
+        )
+    },
+    case(
+        "date",
+        "DATE '2024-05-06'",
+        Arrow::Date32,
+        Some("2024-05-06"),
+    ),
+];
+
+const SQLITE_TYPES: &[TypeCase] = &[
+    case(
+        "integer",
+        "-9007199254740993",
+        Arrow::Int64,
+        Some("-9007199254740993"),
+    ),
+    case("real", "1.5", Arrow::Float64, Some("1.5")),
+    case("boolean", "TRUE", Arrow::Int64, Some("1")),
+    case(
+        "text",
+        "'h\u{e9}llo, \u{4e16}\u{754c} \u{2713} ''q'''",
+        Arrow::Utf8,
+        Some(UNICODE),
+    ),
+    case("empty text", "''", Arrow::Utf8, Some("")),
+    case("blob", "X'00FF10'", Arrow::Binary, Some("00ff10")),
+    case(
+        "date",
+        "DATE('2024-05-06')",
+        Arrow::Utf8,
+        Some("2024-05-06"),
+    ),
+];
+
+/// The literal round-trips of `dialect`.
+pub(crate) fn type_cases(dialect: Dialect) -> &'static [TypeCase] {
+    match dialect {
+        Dialect::MySql => MYSQL_TYPES,
+        Dialect::Sqlite => SQLITE_TYPES,
+        _ => POSTGRES_TYPES,
+    }
+}
+
+/// Digits 0–9 as a derived table every dialect accepts.
+const DIGITS: &str = "(SELECT 0 AS d UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL \
+    SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL \
+    SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9)";
+
+/// Rows `1..=10_000` in one column `n`, ordered.
+pub(crate) fn series() -> String {
+    format!(
+        "SELECT a.d + 10 * b.d + 100 * c.d + 1000 * e.d + 1 AS n \
+         FROM {DIGITS} a CROSS JOIN {DIGITS} b CROSS JOIN {DIGITS} c CROSS JOIN {DIGITS} e \
+         ORDER BY n"
+    )
+}
+
+/// Rows in [`series`].
+pub(crate) const SERIES_ROWS: usize = 10_000;
+
+/// Counts 10^12 rows: runs for hours unless cancelled, on every engine.
+pub(crate) fn endless() -> String {
+    let joins = (0..12)
+        .map(|i| format!("{DIGITS} t{i}"))
+        .collect::<Vec<_>>()
+        .join(" CROSS JOIN ");
+    format!("SELECT count(*) FROM {joins}")
+}
+
+/// Expected SQLSTATEs of common failures.
+pub(crate) struct Codes {
+    pub(crate) syntax: &'static str,
+    pub(crate) undefined_table: &'static str,
+    pub(crate) unique: &'static str,
+    pub(crate) not_null: &'static str,
+    pub(crate) cancelled: &'static str,
+}
+
+/// `MySQL` reports several classes with generic SQLSTATEs (`42000`, `23000`)
+/// and `ER_QUERY_INTERRUPTED` as `70100`; the others follow `PostgreSQL`.
+pub(crate) fn codes(dialect: Dialect) -> Codes {
+    match dialect {
+        Dialect::MySql => Codes {
+            syntax: "42000",
+            undefined_table: "42S02",
+            unique: "23000",
+            not_null: "23000",
+            cancelled: "70100",
+        },
+        _ => Codes {
+            syntax: "42601",
+            undefined_table: "42P01",
+            unique: "23505",
+            not_null: "23502",
+            cancelled: "57014",
+        },
+    }
+}
+
+/// A keyed fixture table every dialect accepts.
+pub(crate) fn create_table(relation: &str) -> String {
+    format!(
+        "CREATE TABLE {relation} (id INTEGER PRIMARY KEY, \
+         name VARCHAR(40) NOT NULL UNIQUE, note TEXT)"
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn decimal_expectations_check_precision_and_scale() {
+        assert!(Arrow::Decimal(10, 2).matches(&DataType::Decimal128(10, 2)));
+        assert!(!Arrow::Decimal(10, 2).matches(&DataType::Decimal128(10, 3)));
+        assert!(!Arrow::Int64.matches(&DataType::Int32));
+        assert_eq!(codes(Dialect::Sqlite).cancelled, "57014");
+        assert!(type_cases(Dialect::Postgres).len() > type_cases(Dialect::Sqlite).len());
+        assert_eq!(endless().matches("CROSS JOIN").count(), 11);
+    }
+}

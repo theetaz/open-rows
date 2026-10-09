@@ -3,6 +3,7 @@
 //! its SQL dialect and home database and opening [`Connection`]s.
 use openrows_sql::Dialect;
 
+use crate::capabilities::Capabilities;
 use crate::connect::ConnectRequest;
 use crate::connection::Connection;
 use crate::schema::{SchemaChange, TableDetail};
@@ -26,6 +27,9 @@ pub trait Driver: Send + Sync {
 
     /// Database opened when the profile names none (e.g. `postgres`).
     fn home_database(&self) -> &'static str;
+
+    /// What the driver supports, known before connecting (docs/05 §2.1).
+    fn capabilities(&self) -> Capabilities;
 
     /// Open a connection, recording each stage in `trace`; the driver applies
     /// its own per-stage timeouts.

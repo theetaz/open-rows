@@ -3426,6 +3426,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "openrows-driver-conformance"
+version = "0.1.0"
+dependencies = [
+ "arrow-array",
+ "arrow-schema",
+ "openrows-driver-api",
+ "openrows-driver-mysql",
+ "openrows-driver-postgres",
+ "openrows-driver-sqlite",
+ "openrows-net",
+ "openrows-sql",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+]
+
+[[package]]
 name = "openrows-driver-mysql"
 version = "0.1.0"
 dependencies = [
@@ -3523,6 +3540,7 @@ dependencies = [
 name = "openrows-schema"
 version = "0.1.0"
 dependencies = [
+ "criterion",
  "openrows-driver-api",
  "openrows-driver-mysql",
  "openrows-driver-postgres",
@@ -3550,6 +3568,7 @@ dependencies = [
 name = "openrows-sql"
 version = "0.1.0"
 dependencies = [
+ "criterion",
  "proptest",
 ]
 

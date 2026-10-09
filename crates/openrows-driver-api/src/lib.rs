@@ -8,9 +8,11 @@
 //! [`schema`] the table detail and typed structure changes. [`Driver`] opens
 //! a [`Connection`] from a [`ConnectRequest`] (D-12), recording a
 //! [`ConnectTrace`] for Test connection; connections offer [`Catalog`] and
-//! [`Editor`] facets. Capabilities, explain and admin facets remain M1-10;
-//! see docs/05 §2.
+//! [`Editor`] facets. Every driver declares its [`Capabilities`] (M1-10),
+//! which the UI and the conformance suite read; explain and admin facets
+//! come later (docs/05 §2).
 mod batch;
+pub mod capabilities;
 pub mod catalog;
 pub mod connect;
 pub mod connection;
@@ -25,6 +27,7 @@ pub mod structure;
 pub mod trace;
 
 pub use batch::BatchPolicy;
+pub use capabilities::{Capabilities, Feature, Location};
 pub use connect::{ConnectRequest, ConnectTimeouts, Endpoint, SslMode, TlsFiles};
 pub use connection::{
     Catalog, Connection, Editor, RowEditInfo, RowSnapshot, ServerSummary, catalog, editor,

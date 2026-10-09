@@ -69,6 +69,10 @@ impl Driver for PgDriver {
         HOME_DATABASE
     }
 
+    fn capabilities(&self) -> openrows_driver_api::Capabilities {
+        crate::capabilities::CAPABILITIES
+    }
+
     fn connect<'a>(
         &'a self,
         request: &'a ConnectRequest,

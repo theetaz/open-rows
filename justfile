@@ -135,6 +135,15 @@ bench-pg-decode:
     {{sccache_guard}} cargo bench -p openrows-driver-postgres --bench decode_pg --locked
     python3 -B scripts/bench-pg-decode.py
 
+# Benchmark SQL statement splitting (10 KB and 1 MB scripts per dialect), reported in bytes/s.
+bench-sql-split:
+    {{sccache_guard}} cargo bench -p openrows-sql --bench sql_split --locked
+
+# Benchmark the schema cache at 50 000 objects, then gate first level <= 300 ms and search <= 50 ms.
+bench-schema:
+    {{sccache_guard}} cargo bench -p openrows-schema --bench schema_catalog --locked
+    python3 -B scripts/bench-schema.py
+
 # Run PostgreSQL integration tests in a throwaway container; skips when Docker is unavailable.
 test-pg version="17":
     {{sccache_guard}} bash scripts/test-pg.sh "{{version}}"
@@ -142,6 +151,10 @@ test-pg version="17":
 # Run MySQL/MariaDB integration tests in throwaway containers (default mysql:8.4 and mariadb:11.4); skips when Docker is unavailable.
 test-mysql *images:
     {{sccache_guard}} bash scripts/test-mysql.sh {{images}}
+
+# Run each cargo-fuzz target in fuzz/ briefly; skips when nightly or cargo-fuzz is missing.
+fuzz-smoke seconds="20":
+    {{sccache_guard}} bash scripts/fuzz-smoke.sh "{{seconds}}"
 
 # Measure the accepted canvas grid with fresh scenarios per repeat; maintainer-only GUI run.
 bench-grid repeats="3":

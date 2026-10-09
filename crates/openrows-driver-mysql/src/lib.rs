@@ -14,6 +14,7 @@
 //! edits commit in one transaction with byte-exact row guards.
 #![forbid(unsafe_code)]
 mod auth;
+mod capabilities;
 mod catalog;
 mod decode;
 mod driver;

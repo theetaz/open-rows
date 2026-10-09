@@ -2,13 +2,19 @@
 # SPDX-License-Identifier: Apache-2.0
 # Run the ignored MySQL/MariaDB driver integration tests against throwaway
 # containers, one image after another (default: mysql:8.4 then mariadb:11.4).
-# Skips (exit 0) when Docker is unavailable; always removes the containers.
+# Skips (exit 0) when Docker is unavailable (fails with OPENROWS_REQUIRE_DOCKER=1);
+# always removes the containers.
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 if [ "$#" -eq 0 ]; then
     set -- mysql:8.4 mariadb:11.4
 fi
 if ! command -v docker >/dev/null 2>&1 || ! docker info >/dev/null 2>&1; then
+    # CI sets OPENROWS_REQUIRE_DOCKER=1 so a missing daemon fails the job.
+    if [ "${OPENROWS_REQUIRE_DOCKER:-0}" = 1 ]; then
+        echo "FAIL: Docker is required (OPENROWS_REQUIRE_DOCKER=1) but not available" >&2
+        exit 1
+    fi
     echo "SKIP: Docker is not available; MySQL/MariaDB integration tests not run"
     exit 0
 fi
@@ -53,7 +59,8 @@ for image in "$@"; do
     echo "$image on 127.0.0.1:${port}"
     OPENROWS_TEST_MYSQL_PORT="$port" OPENROWS_TEST_MYSQL_PASSWORD="$password" \
         OPENROWS_TEST_MYSQL_ENGINE="$engine" \
-        cargo nextest run -p openrows-driver-mysql -p openrows-core -p openrows-schema --locked --test mysql \
+        cargo nextest run -p openrows-driver-mysql -p openrows-core -p openrows-schema \
+        -p openrows-driver-conformance --locked --test mysql \
         --run-ignored only --no-capture
     docker rm --force --volumes "$name" >/dev/null 2>&1 || true
 done

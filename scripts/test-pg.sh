@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
-# Run the ignored PostgreSQL integration tests (driver and session actor) against
-# a throwaway container with TLS enabled.
-# Skips (exit 0) when Docker is unavailable; always removes the container and
-# the generated certificates.
+# Run the ignored PostgreSQL integration tests (driver, session actor, schema
+# cache and the driver conformance suite) against a throwaway container with
+# TLS enabled. Skips (exit 0) when Docker is unavailable (fails with
+# OPENROWS_REQUIRE_DOCKER=1); always removes the container and the generated
+# certificates.
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 version="${1:-17}"
@@ -12,6 +13,11 @@ if ! [[ "$version" =~ ^[0-9]+$ ]]; then
     exit 2
 fi
 if ! command -v docker >/dev/null 2>&1 || ! docker info >/dev/null 2>&1; then
+    # CI sets OPENROWS_REQUIRE_DOCKER=1 so a missing daemon fails the job.
+    if [ "${OPENROWS_REQUIRE_DOCKER:-0}" = 1 ]; then
+        echo "FAIL: Docker is required (OPENROWS_REQUIRE_DOCKER=1) but not available" >&2
+        exit 1
+    fi
     echo "SKIP: Docker is not available; PostgreSQL integration tests not run"
     exit 0
 fi
@@ -52,5 +58,6 @@ port="$(docker port "$name" 5432/tcp | head -n 1 | sed 's/.*://')"
 echo "PostgreSQL ${version} ($(docker exec "$name" postgres --version)) on 127.0.0.1:${port}, TLS on"
 OPENROWS_TEST_PG_PORT="$port" OPENROWS_TEST_PG_PASSWORD="$password" \
     OPENROWS_TEST_PG_TLS_DIR="$tls_dir" \
-    cargo nextest run -p openrows-driver-postgres -p openrows-core -p openrows-schema --locked --test postgres \
+    cargo nextest run -p openrows-driver-postgres -p openrows-core -p openrows-schema \
+    -p openrows-driver-conformance --locked --test postgres \
     --run-ignored only --no-capture

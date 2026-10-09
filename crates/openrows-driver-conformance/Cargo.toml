@@ -1,0 +1,26 @@
+[package]
+name = "openrows-driver-conformance"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Capability-driven conformance suite every OpenRows driver must pass (docs/05 §8)"
+
+[lints]
+workspace = true
+
+[dependencies]
+arrow-array = "60"
+arrow-schema = "60"
+openrows-driver-api = { path = "../openrows-driver-api" }
+openrows-net = { path = "../openrows-net" }
+openrows-sql = { path = "../openrows-sql" }
+thiserror.workspace = true
+tokio = { version = "1.53", features = ["rt", "time", "macros"] }
+
+[dev-dependencies]
+openrows-driver-mysql = { path = "../openrows-driver-mysql" }
+openrows-driver-postgres = { path = "../openrows-driver-postgres" }
+openrows-driver-sqlite = { path = "../openrows-driver-sqlite" }
+tempfile = "3.27"

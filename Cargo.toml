@@ -5,6 +5,7 @@ members = [
     "crates/openrows-results",
     "crates/openrows-export",
     "crates/openrows-driver-api",
+    "crates/openrows-driver-conformance",
     "crates/openrows-driver-mysql",
     "crates/openrows-driver-postgres",
     "crates/openrows-driver-sqlite",
@@ -15,6 +16,8 @@ members = [
     "crates/openrows-store",
     "apps/desktop/src-tauri",
 ]
+# fuzz/ is its own cargo-fuzz workspace (nightly only); run it with `just fuzz-smoke`.
+exclude = ["fuzz"]
 resolver = "3"
 
 [workspace.package]

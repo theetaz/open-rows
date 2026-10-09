@@ -1,0 +1,41 @@
+# cargo-fuzz targets (M1-05, M1-15). A separate workspace, excluded from the
+# main one: libFuzzer needs nightly and `cargo fuzz`, so stable builds,
+# `just deny` and `just machete` never see it. Run with `just fuzz-smoke`.
+[package]
+name = "openrows-fuzz"
+version = "0.0.0"
+edition = "2024"
+license = "Apache-2.0"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+openrows-sql = { path = "../crates/openrows-sql" }
+openrows-store = { path = "../crates/openrows-store" }
+
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "conn_url"
+path = "fuzz_targets/conn_url.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "sql_split"
+path = "fuzz_targets/sql_split.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "param_binder"
+path = "fuzz_targets/param_binder.rs"
+test = false
+doc = false
+bench = false
