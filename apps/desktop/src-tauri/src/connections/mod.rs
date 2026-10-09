@@ -77,7 +77,7 @@ pub(crate) struct Connections {
 }
 
 /// Open the stores, manage [`Connections`] and forward session events.
-/// Requires the managed `Arc<ResultStore>` (see `spike::configure`).
+/// Requires the managed `Arc<ResultStore>` (see `result_store::install`).
 ///
 /// # Errors
 /// The app-data dir cannot be resolved or created, or the database fails to open.

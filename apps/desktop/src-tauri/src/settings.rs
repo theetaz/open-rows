@@ -2,8 +2,9 @@
 //! `settings.json` in the app-data dir (docs/15 §4): the user's preferences as
 //! human-readable JSON. The webview owns the schema and validates every field;
 //! this side only checks the envelope (an object with `"openrows": 1`) and
-//! writes the file atomically, pretty-printed. The one setting the core
-//! itself reads is the session keepalive interval (`general.keepaliveSeconds`).
+//! writes the file atomically, pretty-printed. The core itself reads the
+//! session keepalive interval (`general.keepaliveSeconds`) and the result
+//! store's memory budget (`results.memoryBudgetMb`).
 #![expect(
     clippy::needless_pass_by_value,
     reason = "Tauri deserialises command arguments into owned values"
@@ -28,19 +29,22 @@ const DEFAULT_KEEPALIVE_SECONDS: u64 = 30;
 /// Where `settings.json` lives.
 pub(crate) struct SettingsFile(PathBuf);
 
-/// Manage the settings path next to the profiles and local store, and apply
-/// the saved keepalive interval.
+/// Manage the settings path next to the profiles and local store.
 ///
 /// # Errors
 /// The app-data dir cannot be resolved.
 pub(crate) fn install(app: &mut tauri::App) -> Result<(), tauri::Error> {
     let path = app.path().app_data_dir()?.join("settings.json");
-    // An unreadable file keeps the defaults; the webview reports why.
-    if let Ok(Some(text)) = read(&path) {
-        apply(&app.state::<Connections>(), &text);
-    }
     app.manage(SettingsFile(path));
     Ok(())
+}
+
+/// Apply the saved keepalive interval; runs once [`Connections`] is managed.
+/// An unreadable file keeps the defaults; the webview reports why.
+pub(crate) fn apply_saved(app: &tauri::App) {
+    if let Some(text) = text(app) {
+        apply(&app.state::<Connections>(), &text);
+    }
 }
 
 /// Apply the settings the core reads: the session keepalive interval.
@@ -58,6 +62,13 @@ fn keepalive(settings: &Value) -> Option<Duration> {
         .and_then(Value::as_u64)
         .unwrap_or(DEFAULT_KEEPALIVE_SECONDS);
     (seconds > 0).then(|| Duration::from_secs(seconds.clamp(5, 600)))
+}
+
+/// The validated text of `settings.json` for readers in the core, e.g. the
+/// result store's memory budget; `None` before the first save or when the
+/// file cannot be used (the defaults apply then).
+pub(crate) fn text(app: &tauri::App) -> Option<String> {
+    read(&app.state::<SettingsFile>().0).ok().flatten()
 }
 
 fn storage(path: &Path, error: &impl std::fmt::Display) -> IpcError {

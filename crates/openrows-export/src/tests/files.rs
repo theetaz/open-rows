@@ -5,6 +5,7 @@ use crate::{CsvOptions, Delimiter, ExportError, Exporter, Format, Message, drain
 use arrow_array::types::Int32Type;
 use arrow_array::{Array, ArrayRef, ListArray, RecordBatch};
 use arrow_schema::{Field, Schema};
+use std::convert::Infallible;
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::mpsc::sync_channel;
@@ -57,13 +58,34 @@ fn a_cancelled_export_leaves_nothing_and_keeps_the_old_file() -> TestResult {
     let seen = std::cell::Cell::new(0);
     let result = write_all(
         Exporter::create(&path, &CSV)?,
-        (batch.schema(), &batches),
+        (batch.schema(), batches.map(Ok::<_, Infallible>)),
         || seen.get() >= 2,
         |rows| seen.set(rows),
     );
     assert!(matches!(result, Err(ExportError::Aborted)));
     assert_eq!(entries(directory.path())?, ["keep.csv"]);
     assert_eq!(std::fs::read_to_string(&path)?, "old");
+    Ok(())
+}
+
+#[test]
+fn a_batch_that_cannot_be_read_fails_the_export_and_leaves_nothing() -> TestResult {
+    let directory = tempfile::tempdir()?;
+    let path = directory.path().join("read.csv");
+    let batch = texts(&[Some("a")])?;
+    let batches = [
+        Ok(batch.clone()),
+        Err(std::io::Error::other("spill file gone")),
+        Ok(batch.clone()),
+    ];
+    let result = write_all(
+        Exporter::create(&path, &CSV)?,
+        (batch.schema(), batches),
+        || false,
+        |_| {},
+    );
+    assert!(matches!(result, Err(ExportError::Read(_))), "{result:?}");
+    assert!(entries(directory.path())?.is_empty());
     Ok(())
 }
 

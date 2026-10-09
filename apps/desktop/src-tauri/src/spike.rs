@@ -5,7 +5,6 @@ use specta::Type;
 use std::{
     io::Write,
     path::{Path, PathBuf},
-    sync::Arc,
 };
 
 #[derive(Debug, Serialize, Type, thiserror::Error)]
@@ -93,24 +92,22 @@ fn append_progress(path: &Path, stage: &str, detail: &str) -> Result<(), SpikeEr
     writeln!(file, "{line}").map_err(|error| SpikeError::Failed(error.to_string()))
 }
 
-pub(crate) fn configure(
-    builder: tauri::Builder<tauri::Wry>,
-) -> tauri::Result<tauri::Builder<tauri::Wry>> {
-    let store = ResultStore::default();
-    if mode().is_some_and(SpikeMode::needs_rows) {
-        spike_progress("native-configuring", "generating synthetic rows")
-            .map_err(|error| tauri::Error::Anyhow(error.into()))?;
-        let source = synthetic::batch(
-            synthetic::SPIKE_ROWS,
-            synthetic::SPIKE_COLS,
-            synthetic::SPIKE_SEED,
-        )
-        .map_err(|error| tauri::Error::Anyhow(error.into()))?;
-        store
-            .insert("spike".to_owned(), vec![source])
-            .map_err(|error| tauri::Error::Anyhow(error.into()))?;
+/// Fill `store` with the synthetic spike rows when a tile-based spike runs.
+pub(crate) fn seed(store: &ResultStore) -> tauri::Result<()> {
+    if !mode().is_some_and(SpikeMode::needs_rows) {
+        return Ok(());
     }
-    Ok(builder.manage(Arc::new(store)))
+    spike_progress("native-configuring", "generating synthetic rows")
+        .map_err(|error| tauri::Error::Anyhow(error.into()))?;
+    let source = synthetic::batch(
+        synthetic::SPIKE_ROWS,
+        synthetic::SPIKE_COLS,
+        synthetic::SPIKE_SEED,
+    )
+    .map_err(|error| tauri::Error::Anyhow(error.into()))?;
+    store
+        .insert("spike".to_owned(), vec![source])
+        .map_err(|error| tauri::Error::Anyhow(error.into()))
 }
 
 #[derive(Serialize, Deserialize, Type)]

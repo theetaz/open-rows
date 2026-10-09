@@ -31,6 +31,9 @@ pub enum ExportError {
     /// A batch arrived before the schema or does not match it.
     #[error("a batch does not match the exported columns")]
     SchemaMismatch,
+    /// A stored batch could not be read (released result, unreadable spill file).
+    #[error("the stored result could not be read: {0}")]
+    Read(#[source] Box<dyn std::error::Error + Send + Sync>),
     /// The stream ended without finishing (cancelled or failed upstream).
     #[error("the export stopped before it finished")]
     Aborted,

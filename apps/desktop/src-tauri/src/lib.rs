@@ -10,6 +10,7 @@ mod material;
 mod menu;
 mod observability;
 mod queries;
+mod result_store;
 mod results;
 mod settings;
 mod spike;
@@ -121,7 +122,7 @@ pub fn run() -> Result<(), tauri::Error> {
     observability::install_panic_hook();
     startup_report::initialize();
     startup_report::record(startup_report::Phase::BuilderStart);
-    let builder = spike::configure(tauri::Builder::default())?
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(window_frame::plugin())
         .manage(queries::Queries::default());
@@ -143,14 +144,17 @@ pub fn run() -> Result<(), tauri::Error> {
         .setup(move |app| {
             observability::install(app)?;
             specta.mount_events(app);
-            connections::install(app)?;
             settings::install(app)?;
+            result_store::install(app)?;
+            connections::install(app)?;
+            settings::apply_saved(app);
             menu::install(app)?;
             startup::install(app)
         })
         .build(tauri::generate_context!())?
         .run(|app, event| {
             if let tauri::RunEvent::Exit = event {
+                result_store::exit(app);
                 observability::exit(app);
             }
         });

@@ -5,6 +5,7 @@ import { parseEditorSettings } from '../query/editorSettings';
 import { parseOverrides, SHORTCUTS_KEY } from '../commands/bindings';
 import { DIAGNOSTICS_KEY, parseDiagnostics } from './diagnostics';
 import { GENERAL_KEY, parseGeneral } from './general';
+import { parseResults, RESULTS_KEY } from './results';
 import { onSettingsChanged } from './localSetting';
 
 /**
@@ -34,6 +35,7 @@ const SECTIONS: Readonly<Record<string, Section>> = {
   },
   shortcuts: { key: SHORTCUTS_KEY, parse: parseOverrides },
   diagnostics: { key: DIAGNOSTICS_KEY, parse: parseDiagnostics },
+  results: { key: RESULTS_KEY, parse: parseResults },
 };
 
 const themeOf = (value: unknown): string =>

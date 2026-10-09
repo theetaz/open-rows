@@ -42,6 +42,7 @@ it('migrates existing device settings into a new settings.json', async () => {
     editor: { wrap: true, rowLimit: null },
     shortcuts: { save: 'Cmd+J' },
     general: { restoreSession: true, density: 'regular' },
+    results: { memoryBudgetMb: 512 },
   });
   expect(vi.mocked(writeSettingsFile).mock.lastCall?.[0]).toContain(
     '\n  "theme": "dark",\n',
@@ -86,4 +87,17 @@ it('keeps invalid values out of the stores and the file', () => {
     general: { density: 'regular', keepaliveSeconds: 30 },
     shortcuts: {},
   });
+});
+
+it('keeps a valid result memory budget and replaces an invalid one', () => {
+  applySettings({ results: { memoryBudgetMb: 2048 } });
+  expect(collectSettings()).toMatchObject({
+    results: { memoryBudgetMb: 2048 },
+  });
+  for (const memoryBudgetMb of [0, 63, 65_537, 1.5, '1024']) {
+    applySettings({ results: { memoryBudgetMb } });
+    expect(collectSettings()).toMatchObject({
+      results: { memoryBudgetMb: 512 },
+    });
+  }
 });

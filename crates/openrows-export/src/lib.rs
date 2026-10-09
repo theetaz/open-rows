@@ -10,7 +10,7 @@
 //!
 //! Everything here is synchronous and free of async runtimes: callers run
 //! [`drain`] or [`write_all`] on a blocking thread and feed it batches from
-//! a driver stream or from a complete in-memory result.
+//! a driver stream or lazily from a complete stored result.
 #![forbid(unsafe_code)]
 mod cell;
 mod csv;

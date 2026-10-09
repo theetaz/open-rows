@@ -116,12 +116,17 @@ async fn stream_statement(
     }
 }
 
-/// Write a complete stored result (`schema` and its batches) into the job's file.
+/// Write a complete stored result (`schema` and a lazy, fallible reader of
+/// its batches, such as [`openrows_results::StoredBatches`]) into the job's file.
 #[tracing::instrument(name = "export", skip_all, fields(source = "result"))]
-pub async fn export_batches(
-    (schema, batches): (SchemaRef, Vec<RecordBatch>),
+pub async fn export_batches<I, E>(
+    (schema, batches): (SchemaRef, I),
     job: ExportJob,
-) -> ExportOutcome {
+) -> ExportOutcome
+where
+    I: IntoIterator<Item = Result<RecordBatch, E>> + Send + 'static,
+    E: std::error::Error + Send + Sync + 'static,
+{
     let outcome = write_batches((schema, batches), job).await;
     log_outcome(&outcome);
     outcome
@@ -144,10 +149,11 @@ fn log_outcome(outcome: &ExportOutcome) {
     }
 }
 
-async fn write_batches(
-    (schema, batches): (SchemaRef, Vec<RecordBatch>),
-    job: ExportJob,
-) -> ExportOutcome {
+async fn write_batches<I, E>((schema, batches): (SchemaRef, I), job: ExportJob) -> ExportOutcome
+where
+    I: IntoIterator<Item = Result<RecordBatch, E>> + Send + 'static,
+    E: std::error::Error + Send + Sync + 'static,
+{
     let ExportJob {
         exporter,
         cancel,
@@ -158,7 +164,7 @@ async fn write_batches(
     let written = tokio::task::spawn_blocking(move || {
         write_all(
             exporter,
-            (schema, &batches),
+            (schema, batches),
             || stop.is_cancelled(),
             progress,
         )
