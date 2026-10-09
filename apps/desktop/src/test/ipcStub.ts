@@ -2,6 +2,7 @@
 import { vi } from 'vitest';
 import type { ProfileDto, ServerDto, TableStructureDto } from '@openrows/ipc';
 import { catalogStub } from './catalogStub';
+import { dumpStub } from './dumpStub';
 import { importStub } from './importStub';
 import { structureStub } from './structureStub';
 
@@ -344,6 +345,7 @@ export function ipcStub(
     pickRunFile: vi.fn(() => Promise.resolve(null)),
     checkRunFile: vi.fn(() => new Promise(() => {})),
     startRunFile: vi.fn(() => new Promise(() => {})),
+    ...dumpStub(),
     listProcesses: vi.fn(() => Promise.resolve([])),
     signalProcess: vi.fn(() => Promise.resolve()),
   };

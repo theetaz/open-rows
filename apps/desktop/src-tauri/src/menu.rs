@@ -81,6 +81,9 @@ const FILE: &[Entry] = &[
     C("export-results", "Export Results…"),
     C("import-data", "Import…"),
     S,
+    C("backup-database", "Back Up Database…"),
+    C("restore-database", "Restore Database…"),
+    S,
     C("close-tab", "Close Tab"),
 ];
 const EDIT: &[Entry] = &[
@@ -410,6 +413,8 @@ mod tests {
             "focus-pane",
             "close-split",
             "run-no-limit",
+            "backup-database",
+            "restore-database",
         ] {
             assert!(ids.contains(&id), "missing {id}");
         }

@@ -3,6 +3,7 @@
 mod commands;
 mod connections;
 mod diagram;
+mod dump;
 mod editor_report;
 mod exports;
 mod grid_report;
@@ -124,6 +125,16 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
         run_file::commands::run_file_start,
         diagram::commands::schema_diagram,
         diagram::commands::diagram_save,
+        dump::commands::dump_tools,
+        dump::commands::dump_context,
+        dump::commands::dump_backup_preview,
+        dump::commands::dump_backup_pick,
+        dump::commands::dump_backup_start,
+        dump::commands::dump_cancel,
+        dump::restore::dump_restore_pick,
+        dump::restore::dump_restore_contents,
+        dump::restore::dump_restore_check,
+        dump::restore::dump_restore_start,
         settings::settings_read,
         settings::settings_write,
         menu::menu_sync,
@@ -182,7 +193,8 @@ pub fn run() -> Result<(), tauri::Error> {
         .manage(imports::Imports::default())
         .manage(exports::pins::ResultPins::default())
         .manage(exports::outputs::ExportOutputs::default())
-        .manage(run_file::RunFiles::default());
+        .manage(run_file::RunFiles::default())
+        .manage(dump::DumpJobs::default());
     let specta = command_builder();
     let controls = specta.invoke_handler();
     let binary: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool =

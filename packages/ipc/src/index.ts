@@ -136,6 +136,41 @@ export type {
   RunFileGateDto,
   RunFileOutcomeDto,
 } from './generated/bindings';
+/** Backup and restore with the installed client tools (M2-14). */
+export {
+  cancelDump,
+  checkRestore,
+  dumpContext,
+  dumpTools,
+  pickBackupFile,
+  pickRestoreFile,
+  previewBackup,
+  restoreContents,
+  startBackup,
+  startRestore,
+} from './dump';
+export type {
+  ArchiveEntryDto,
+  BackupContentDto,
+  BackupFormatDto,
+  BackupOptionsDto,
+  BackupRequest,
+  DumpContextDto,
+  DumpEngineDto,
+  DumpEventDto,
+  DumpFileKindDto,
+  DumpOutcomeDto,
+  DumpPreviewDto,
+  DumpScopeRequest,
+  DumpToolDto,
+  DumpToolKindDto,
+  PickedDumpDto,
+  RestoreCheckDto,
+  RestoreCleanDto,
+  RestoreOptionsDto,
+  RestoreRequest,
+  RestoreTargetDto,
+} from './generated/bindings';
 /** Import of CSV, TSV, JSON and NDJSON files into tables (M2-11). */
 export {
   cancelImport,

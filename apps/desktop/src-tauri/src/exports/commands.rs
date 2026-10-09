@@ -140,7 +140,7 @@ fn picked_path(
 }
 
 /// A safe file name: no path separators, never empty.
-pub(super) fn file_stem(name: &str) -> String {
+pub(crate) fn file_stem(name: &str) -> String {
     let cleaned: String = name
         .chars()
         .map(|c| {

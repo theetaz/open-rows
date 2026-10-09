@@ -1,0 +1,24 @@
+[package]
+name = "openrows-dump"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Backup and restore through the installed pg_dump, pg_restore, psql, mysqldump and mysql tools for OpenRows"
+
+[lints]
+workspace = true
+
+[dependencies]
+# SQLite backups: `VACUUM INTO` and the online backup API (same bundled build the store uses).
+rusqlite = { version = "0.40", features = ["bundled", "backup"] }
+# 0600 password and option files, deleted when the job ends.
+tempfile = "3.27"
+thiserror.workspace = true
+# Password file contents are wiped from memory after writing.
+zeroize = "1.8"
+
+[target.'cfg(unix)'.dependencies]
+# Signal the tool's whole process group on cancel.
+rustix = { version = "1.1", default-features = false, features = ["process", "std"] }

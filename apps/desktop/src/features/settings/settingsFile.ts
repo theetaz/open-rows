@@ -15,6 +15,7 @@ import { parseSnippets, SNIPPETS_KEY } from '../snippets/snippetStore';
 import { EXPORT_KEY, parseExportSettings } from '../export/exportSettings';
 import { COPY_KEY, parseCopySettings } from '../../results/copy/copySettings';
 import { onSettingsChanged, reloadSettings } from './localSetting';
+import { parseTools, TOOLS_KEY } from './toolSettings';
 
 /**
  * `settings.json` (docs/15 §4) mirrors these web-storage keys, which stay
@@ -48,6 +49,7 @@ const SECTIONS: Readonly<Record<string, Section>> = {
   snippets: { key: SNIPPETS_KEY, parse: parseSnippets },
   export: { key: EXPORT_KEY, parse: parseExportSettings },
   copy: { key: COPY_KEY, parse: parseCopySettings },
+  tools: { key: TOOLS_KEY, parse: parseTools },
 };
 
 const themeOf = (value: unknown): string =>

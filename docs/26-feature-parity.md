@@ -203,8 +203,8 @@ The inventory covers the macOS benchmark unless qualified. TablePlus's [new over
 | I12 | Multi-object export | Export several tables/views. | New FR-IO-05 | M2 | Stream each object; no UI materialisation. | [S47] |
 | I13 | Current-page export | Export the displayed page. | New FR-IO-05 | M2 | Distinguish page from whole dataset. | [S08] |
 | I14 | SQL file execution | Run SQL loaded from disk. | Covered FR-IO-03 | M2 | Stop-on-error, progress and cancellation. | [S49] |
-| I15 | Database backup | Write a database dump. | Covered FR-IO-04 | M2 | Detect installed tool version and compatibility. | [S50] |
-| I16 | Database restore | Restore from a dump. | Covered FR-IO-04 | M2 | Target confirmation and typed tool errors. | [S50] |
+| I15 | Database backup | Write a database dump. | Covered FR-IO-04; built in M2-14 (docs/05 §15) | M2 | Detect installed tool version and compatibility. | [S50] |
+| I16 | Database restore | Restore from a dump. | Covered FR-IO-04; built in M2-14 (docs/05 §15) | M2 | Target confirmation and typed tool errors. | [S50] |
 | I17 | Background transfers | Continue working during file jobs. | New FR-IO-05 | M2 | Backpressure, visible progress and cancel. | [S47] |
 
 ### Administration, metrics and plugins

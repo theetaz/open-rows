@@ -119,6 +119,14 @@ pub(crate) fn text(app: &tauri::App) -> Option<String> {
     read(&app.state::<SettingsFile>().path).ok().flatten()
 }
 
+/// The current `settings.json` as JSON for readers in the core at run time
+/// (e.g. the tool paths of backups); `None` before the first save or when
+/// the file cannot be used.
+pub(crate) fn current(file: &SettingsFile) -> Option<Value> {
+    let text = read(&file.path).ok().flatten()?;
+    serde_json::from_str(&text).ok()
+}
+
 fn storage(path: &Path, error: &impl std::fmt::Display) -> IpcError {
     IpcError::new(
         IpcErrorKind::Storage,

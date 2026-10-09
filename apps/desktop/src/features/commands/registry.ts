@@ -102,6 +102,8 @@ export const COMMANDS: readonly CommandSpec[] = [
   { id: 'export-table', label: 'Export table…', shortcut: null },
   { id: 'import-data', label: 'Import data from file…', shortcut: null },
   { id: 'export-tables', label: 'Export tables of schema…', shortcut: null },
+  { id: 'backup-database', label: 'Back up database…', shortcut: null },
+  { id: 'restore-database', label: 'Restore database…', shortcut: null },
   { id: 'show-er-diagram', label: 'Show ER diagram', shortcut: null },
   { id: 'show-jobs', label: 'Show background jobs', shortcut: null },
   {

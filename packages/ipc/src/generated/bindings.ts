@@ -303,6 +303,55 @@ export const commands = {
 	 *  path, or `null` when the panel is cancelled.
 	 */
 	diagramSave: (name: string, file: DiagramFileDto) => typedError<string | null, IpcError>(__TAURI_INVOKE("diagram_save", { name, file })),
+	/**
+	 *  Every tool as Settings ▸ Tools shows it: the copy found or set there,
+	 *  its version and the other installed copies.
+	 */
+	dumpTools: () => typedError<DumpToolDto[], IpcError>(__TAURI_INVOKE("dump_tools")),
+	/**
+	 *  What the backup and restore sheets of a session's database need: the
+	 *  engine, the safety switches and the tools with compatibility warnings.
+	 */
+	dumpContext: (request: DumpScopeRequest) => typedError<DumpContextDto, IpcError>(__TAURI_INVOKE("dump_context", { request })),
+	/**
+	 *  The exact command a backup would run, with the password file shown as
+	 *  `<password file>`; nothing runs and no secret is read.
+	 */
+	dumpBackupPreview: (request: BackupRequest) => typedError<DumpPreviewDto, IpcError>(__TAURI_INVOKE("dump_backup_preview", { request })),
+	/**
+	 *  The native save panel for a backup of the session's database; `None`
+	 *  when cancelled. Only paths picked here can be written.
+	 */
+	dumpBackupPick: (request: BackupPickRequest) => typedError<string | null, IpcError>(__TAURI_INVOKE("dump_backup_pick", { request })),
+	/**
+	 *  Back up the session's database to the picked file or folder in the
+	 *  background; events follow on `on_event`.
+	 */
+	dumpBackupStart: (request: BackupRequest, onEvent: Channel<DumpEventDto>) => typedError<DumpStarted, IpcError>(__TAURI_INVOKE("dump_backup_start", { request, onEvent })),
+	/**  Stop a running backup or restore; it reports `cancelled` when it ended. */
+	dumpCancel: (jobId: string) => typedError<null, IpcError>(__TAURI_INVOKE("dump_cancel", { jobId })),
+	/**
+	 *  The native open panel for a backup file (or a `pg_dump` folder); `None`
+	 *  when cancelled. Only paths picked here can be restored.
+	 */
+	dumpRestorePick: (folder: boolean) => typedError<{
+	path: string,
+	name: string,
+	kind: DumpFileKindDto,
+	bytes: number | null,
+} | null, IpcError>(__TAURI_INVOKE("dump_restore_pick", { folder })),
+	/**  The table of contents of a picked `pg_dump` archive (`pg_restore --list`). */
+	dumpRestoreContents: (request: RestoreContentsRequest) => typedError<ArchiveEntryDto[], IpcError>(__TAURI_INVOKE("dump_restore_contents", { request })),
+	/**
+	 *  Check a restore without running it: the exact commands, warnings, and
+	 *  how it must be confirmed (or why it is refused).
+	 */
+	dumpRestoreCheck: (request: RestoreRequest) => typedError<RestoreCheckDto, IpcError>(__TAURI_INVOKE("dump_restore_check", { request })),
+	/**
+	 *  Restore a picked backup in the background after the user confirmed
+	 *  the check; events follow on `on_event`.
+	 */
+	dumpRestoreStart: (request: RestoreRequest, onEvent: Channel<DumpEventDto>) => typedError<DumpStarted, IpcError>(__TAURI_INVOKE("dump_restore_start", { request, onEvent })),
 	/**  The text of `settings.json`, or `null` before the first save. */
 	settingsRead: () => typedError<string | null, IpcError>(__TAURI_INVOKE("settings_read")),
 	/**  Replace `settings.json` with `text` (a JSON object with `"openrows": 1`). */
@@ -375,6 +424,13 @@ export type AppInfo = {
 	buildProfile: BuildProfile,
 };
 
+/**  One entry of an archive's table of contents. */
+export type ArchiveEntryDto = {
+	id: number,
+	label: string,
+	data: boolean,
+};
+
 /**  The saved connection after an attach or detach, and what live sessions said. */
 export type AttachReply = {
 	/**  The connection as saved. */
@@ -389,6 +445,44 @@ export type AttachedFileDto = {
 	alias: string,
 	/**  Absolute path. */
 	path: string,
+};
+
+/**  What a backup holds. */
+export type BackupContentDto = "all" | "schemaOnly" | "dataOnly";
+
+/**  `pg_dump` output format. */
+export type BackupFormatDto = "plain" | "custom" | "directory" | "tar";
+
+/**  Backup options; those the engine lacks are ignored. */
+export type BackupOptionsDto = {
+	format: BackupFormatDto,
+	content: BackupContentDto,
+	schemas: string[],
+	tables: DumpTableDto[],
+	noOwner: boolean,
+	noPrivileges: boolean,
+	/**  0–9; `None` for the tool's default. */
+	compression: number | null,
+	singleTransaction: boolean,
+	routines: boolean,
+	triggers: boolean,
+	events: boolean,
+};
+
+/**  Choose where a backup of the session's database goes. */
+export type BackupPickRequest = {
+	sessionId: string,
+	format: BackupFormatDto,
+};
+
+/**
+ *  A backup: the options and the file or folder chosen with
+ *  `dump_backup_pick` (absent while only previewing).
+ */
+export type BackupRequest = {
+	scope: DumpScopeRequest,
+	options: BackupOptionsDto,
+	output: string | null,
 };
 
 export type BadRowsDto = "abort" | "skip";
@@ -607,6 +701,95 @@ export type DiagramTarget = {
 	database: string,
 	schema: string,
 };
+
+/**  What the backup and restore sheets need to know. */
+export type DumpContextDto = {
+	engine: DumpEngineDto,
+	connection: string,
+	database: string,
+	/**  Restores are refused. */
+	readOnly: boolean,
+	/**  Tagged production: restores need the database name typed. */
+	production: boolean,
+	/**  The tools of the engine (none for `SQLite`). */
+	tools: DumpToolDto[],
+};
+
+/**
+ *  How a database is backed up: the `PostgreSQL` or `MySQL` tools, or a
+ *  native `SQLite` copy.
+ */
+export type DumpEngineDto = "postgres" | "mysql" | "sqlite";
+
+/**  Events of a running backup or restore; `finished` ends them. */
+export type DumpEventDto = 
+/**  A step (create database, then restore) starts with this command. */
+{ type: "step"; index: number; command: string } | 
+/**  New stderr lines of the tool. */
+{ type: "log"; lines: string[] } | 
+/**  Objects done (of `total` when known) and bytes written or read. */
+{ type: "progress"; objects: number | null; total: number | null; bytes: number | null; totalBytes: number | null } | { type: "finished"; outcome: DumpOutcomeDto; 
+/**  The tool's exit code when it failed. */
+exitCode: number | null; message: string | null; 
+/**  The backup's file or folder. */
+output: string | null; elapsedMs: number | null };
+
+/**  What a picked backup is. */
+export type DumpFileKindDto = "plainSql" | "pgCustom" | "pgTar" | "pgDirectory" | "sqlite";
+
+/**  How a backup or restore ended. */
+export type DumpOutcomeDto = "completed" | "failed" | "cancelled";
+
+/**  The exact commands that will run (passwords redacted), and warnings. */
+export type DumpPreviewDto = {
+	commands: string[],
+	warnings: string[],
+};
+
+/**
+ *  The session a backup or restore starts from, and its server as the
+ *  connection reported it.
+ */
+export type DumpScopeRequest = {
+	sessionId: string,
+	/**  `PostgreSQL`, `MySQL`, `MariaDB`, … as the connection reported it. */
+	serverProduct: string | null,
+	/**  E.g. `17.2`. */
+	serverVersion: string | null,
+};
+
+/**  A started backup or restore; `dump_cancel(jobId)` cancels it. */
+export type DumpStarted = {
+	jobId: string,
+};
+
+/**  A table chosen for a backup. */
+export type DumpTableDto = {
+	schema: string,
+	name: string,
+};
+
+/**  The copy of a tool a backup or restore uses, and why it may not work. */
+export type DumpToolDto = {
+	tool: DumpToolKindDto,
+	/**  Its name, e.g. `pg_dump`. */
+	name: string,
+	/**  The chosen copy; `None` when none was found. */
+	path: string | null,
+	/**  What it reported, e.g. `PostgreSQL 17.4`. */
+	version: string | null,
+	/**  Chosen in Settings ▸ Tools rather than found automatically. */
+	fromSettings: boolean,
+	/**  Why it may not work with the server. */
+	warning: string | null,
+	/**  Why no copy can be used. */
+	error: string | null,
+	/**  Other installed copies, e.g. `/usr/local/bin/pg_dump (PostgreSQL 14.17)`. */
+	others: string[],
+};
+
+/**  A client tool. */
+export type DumpToolKindDto = "pgDump" | "pgRestore" | "psql" | "mysqldump" | "mysql";
 
 export type EditInfoDto = {
 	key: string[],
@@ -1414,6 +1597,14 @@ export type PickFileKind =
 /**  Where to create a new `SQLite` database file (save panel). */
 "newSqliteDatabase";
 
+/**  A backup chosen in the open panel. */
+export type PickedDumpDto = {
+	path: string,
+	name: string,
+	kind: DumpFileKindDto,
+	bytes: number | null,
+};
+
 /**  A `.sql` file chosen in the open panel. */
 export type PickedScriptDto = {
 	path: string,
@@ -1606,6 +1797,59 @@ export type RelationChangeDto = { kind: "createTable"; target: ObjectNameDto; de
 
 /**  Kind of the browsed relation. */
 export type RelationKindDto = "table" | "partitionedTable" | "view" | "materializedView" | "foreignTable";
+
+/**  Whether a restore may start and how to confirm it. */
+export type RestoreCheckDto = {
+	commands: string[],
+	warnings: string[],
+	/**  Refused on this connection (read-only), with the reason. */
+	blocked: string | null,
+	/**  The database the restore writes to. */
+	database: string,
+	/**  The user must type `database` to confirm. */
+	typed: boolean,
+	/**  Pass back to `dump_restore_start`. */
+	confirmToken: string | null,
+};
+
+/**  `pg_restore` drop behaviour. */
+export type RestoreCleanDto = "keep" | "drop" | "dropIfExists";
+
+/**  List the contents of a picked `pg_dump` archive. */
+export type RestoreContentsRequest = {
+	scope: DumpScopeRequest,
+	path: string,
+};
+
+/**  Restore options; archive options are ignored for SQL scripts. */
+export type RestoreOptionsDto = {
+	clean: RestoreCleanDto,
+	noOwner: boolean,
+	noPrivileges: boolean,
+	jobs: number,
+	stopOnError: boolean,
+	/**  Archive entries to restore; `None` for all. */
+	selected: number[] | null,
+};
+
+/**  A restore of a picked backup. */
+export type RestoreRequest = {
+	scope: DumpScopeRequest,
+	path: string,
+	target: RestoreTargetDto,
+	options: RestoreOptionsDto,
+	/**  From `dump_restore_check`, once the user confirmed. */
+	confirmToken: string | null,
+	/**  The database name, typed when the check asked for it. */
+	typedName: string | null,
+};
+
+/**  Where a restore writes. */
+export type RestoreTargetDto = 
+/**  The session's database. */
+{ kind: "existing" } | 
+/**  A new database, created first. */
+{ kind: "create"; name: string };
 
 export type ResultError = { kind: "unknownResult"; message: string } | { kind: "outOfRange" } | { kind: "notBytes" } | { kind: "encoding"; message: string } | { kind: "unavailable"; message: string };
 

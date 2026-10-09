@@ -105,6 +105,16 @@
     "allow-ui-report",
     "allow-table-edits-journaled",
     "allow-schema-diagram",
-    "allow-diagram-save"
+    "allow-diagram-save",
+    "allow-dump-tools",
+    "allow-dump-context",
+    "allow-dump-backup-preview",
+    "allow-dump-backup-pick",
+    "allow-dump-backup-start",
+    "allow-dump-cancel",
+    "allow-dump-restore-pick",
+    "allow-dump-restore-contents",
+    "allow-dump-restore-check",
+    "allow-dump-restore-start"
   ]
 }

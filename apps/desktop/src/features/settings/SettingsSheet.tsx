@@ -10,6 +10,7 @@ import { GeneralPane } from './GeneralPane';
 import { JsonPane } from './JsonPane';
 import { SearchResults } from './SearchResults';
 import { ShortcutsPane } from './ShortcutsPane';
+import { ToolsPane } from './ToolsPane';
 import { SnippetsPane } from '../snippets';
 import { SettingsQuery } from './settingsSearch';
 import styles from '../appearance/Appearance.module.css';
@@ -22,6 +23,7 @@ export type SettingsSection =
   | 'execution'
   | 'snippets'
   | 'shortcuts'
+  | 'tools'
   | 'diagnostics'
   | 'json';
 
@@ -32,6 +34,7 @@ const SECTIONS: readonly { value: SettingsSection; label: string }[] = [
   { value: 'execution', label: 'Execution' },
   { value: 'snippets', label: 'Snippets' },
   { value: 'shortcuts', label: 'Shortcuts' },
+  { value: 'tools', label: 'Tools' },
   { value: 'diagnostics', label: 'Diagnostics' },
   { value: 'json', label: 'JSON' },
 ];
@@ -42,6 +45,7 @@ function Pane({ section }: { section: SettingsSection }): React.JSX.Element {
   if (section === 'execution') return <ExecutionPane />;
   if (section === 'snippets') return <SnippetsPane />;
   if (section === 'shortcuts') return <ShortcutsPane />;
+  if (section === 'tools') return <ToolsPane />;
   if (section === 'diagnostics') return <DiagnosticsPane />;
   if (section === 'json') return <JsonPane />;
   return <GeneralPane />;

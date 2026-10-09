@@ -22,6 +22,7 @@ openrows-driver-mssql = { path = "../../../crates/openrows-driver-mssql" }
 openrows-driver-mysql = { path = "../../../crates/openrows-driver-mysql" }
 openrows-driver-postgres = { path = "../../../crates/openrows-driver-postgres" }
 openrows-driver-sqlite = { path = "../../../crates/openrows-driver-sqlite" }
+openrows-dump = { path = "../../../crates/openrows-dump" }
 openrows-export = { path = "../../../crates/openrows-export" }
 openrows-import = { path = "../../../crates/openrows-import" }
 openrows-net = { path = "../../../crates/openrows-net" }
@@ -40,7 +41,7 @@ tauri-specta = { version = "=2.0.0-rc.25", features = ["typescript"] }
 thiserror.workspace = true
 serde_json.workspace = true
 serde_yaml_ng = "0.10"
-tokio = { version = "1.53", features = ["sync", "time"] }
+tokio = { version = "1.53", features = ["io-util", "net", "sync", "time"] }
 tauri-plugin-window-state = "2"
 tracing = "0.1.44"
 tracing-appender = "0.2.5"
@@ -49,7 +50,7 @@ tracing-subscriber = { version = "0.3.23", default-features = false, features = 
 
 [dev-dependencies]
 tempfile = "3.27"
-tokio = { version = "1.53", features = ["macros", "rt", "sync", "time"] }
+tokio = { version = "1.53", features = ["macros", "rt", "rt-multi-thread", "sync", "time"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = { version = "0.6", default-features = false, features = ["std"] }

@@ -337,6 +337,8 @@
           "export-table",
           "import-data",
           "export-tables",
+          "backup-database",
+          "restore-database",
           "show-er-diagram",
           "show-jobs",
           "export-results",
@@ -611,6 +613,42 @@
           "enum": ["minimal", "all"],
           "default": "minimal",
           "description": "Quote only values that need it, or every value."
+        }
+      }
+    },
+    "tools": {
+      "type": "object",
+      "description": "Settings ▸ Tools: the client tools used by Back Up and Restore Database.",
+      "properties": {
+        "pgDump": {
+          "type": "string",
+          "maxLength": 1024,
+          "default": "",
+          "description": "Path of pg_dump; empty finds the installed copy that best matches the server."
+        },
+        "pgRestore": {
+          "type": "string",
+          "maxLength": 1024,
+          "default": "",
+          "description": "Path of pg_restore; empty finds the installed copy that best matches the server."
+        },
+        "psql": {
+          "type": "string",
+          "maxLength": 1024,
+          "default": "",
+          "description": "Path of psql; empty finds the installed copy that best matches the server."
+        },
+        "mysqldump": {
+          "type": "string",
+          "maxLength": 1024,
+          "default": "",
+          "description": "Path of mysqldump or mariadb-dump; empty finds the installed copy that best matches the server."
+        },
+        "mysql": {
+          "type": "string",
+          "maxLength": 1024,
+          "default": "",
+          "description": "Path of mysql or mariadb; empty finds the installed copy that best matches the server."
         }
       }
     }
