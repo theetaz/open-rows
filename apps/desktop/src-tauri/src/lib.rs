@@ -25,7 +25,8 @@ mod workspace;
 
 fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
     use connections::{
-        attach, catalog, connection, diagnostics, files, profiles, prompts, reveal, sessions,
+        attach, catalog, connection, diagnostics, files, processes, profiles, prompts, reveal,
+        sessions,
     };
     let builder = tauri_specta::Builder::new().commands(tauri_specta::collect_commands![
         commands::app_info,
@@ -56,6 +57,8 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
         catalog::catalog_search,
         catalog::catalog_invalidate,
         catalog::catalog_check,
+        processes::processes_list,
+        processes::process_signal,
         queries::commands::query_execute,
         queries::commands::query_cancel,
         queries::commands::results_release,

@@ -11,7 +11,7 @@ import styles from './Navigation.module.css';
 type Tab = {
   id: string;
   label: string;
-  kind?: 'table' | 'query';
+  kind?: 'table' | 'query' | 'processes';
   title?: string;
   /** Pinned: kept left, no close button, not closed by middle-click. */
   pinned?: boolean;
@@ -19,6 +19,12 @@ type Tab = {
   preview?: boolean;
   /** The editable title when `label` adds decorations (e.g. an unsaved dot). */
   name?: string;
+};
+/** The glyph before a tab's title, by kind. */
+const KIND_GLYPHS: Readonly<Record<NonNullable<Tab['kind']>, string>> = {
+  query: '›_',
+  table: '▦',
+  processes: '≡',
 };
 type Props = {
   tabs: readonly Tab[];
@@ -173,7 +179,7 @@ function TabButton({
         navigate(event, tab.id, owner);
       }}
     >
-      <span aria-hidden="true">{tab.kind === 'query' ? '›_' : '▦'}</span>
+      <span aria-hidden="true">{KIND_GLYPHS[tab.kind ?? 'table']}</span>
       <span>{tab.label}</span>
     </button>
   );

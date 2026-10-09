@@ -30,6 +30,9 @@ type Props = {
   onKey: (event: KeyboardEvent<HTMLElement>, cursor: Cursor) => boolean;
   onEdit: (cursor: Cursor) => void;
   onMenu: (row: number, at: { x: number; y: number }) => void;
+  /** Sortable headers: the sorted column, and a click on a header. */
+  sort?: { col: number; descending: boolean } | undefined;
+  onSort?: ((col: number) => void) | undefined;
   /** Click on the empty row after the last one (e.g. a new column). */
   onFiller?: (() => void) | undefined;
   fillerLabel?: string;
@@ -103,15 +106,7 @@ export function StructureGrid({ ref, ...props }: Props): React.JSX.Element {
             <col key={column.key} style={{ width: column.width }} />
           ))}
         </colgroup>
-        <thead role="rowgroup">
-          <tr role="row">
-            {props.columns.map((column) => (
-              <th key={column.key} role="columnheader" scope="col">
-                {column.title}
-              </th>
-            ))}
-          </tr>
-        </thead>
+        <Head {...props} />
         <Body {...props} cellId={cellId} />
       </table>
       <div
@@ -119,6 +114,47 @@ export function StructureGrid({ ref, ...props }: Props): React.JSX.Element {
         data-odd={(props.rows + (props.onFiller ? 1 : 0)) % 2 === 1}
       />
     </div>
+  );
+}
+
+function Head(props: Omit<Props, 'ref'>): React.JSX.Element {
+  const { onSort, sort } = props;
+  return (
+    <thead role="rowgroup">
+      <tr role="row">
+        {props.columns.map((column, col) => {
+          const sorted = sort?.col === col;
+          const order = sort?.descending ? 'descending' : 'ascending';
+          return (
+            <th
+              key={column.key}
+              role="columnheader"
+              scope="col"
+              aria-sort={onSort ? (sorted ? order : 'none') : undefined}
+            >
+              {onSort ? (
+                <button
+                  type="button"
+                  className={styles.sort}
+                  onClick={() => {
+                    onSort(col);
+                  }}
+                >
+                  {column.title}
+                  {sorted && (
+                    <span aria-hidden="true">
+                      {sort.descending ? ' ▾' : ' ▴'}
+                    </span>
+                  )}
+                </button>
+              ) : (
+                column.title
+              )}
+            </th>
+          );
+        })}
+      </tr>
+    </thead>
   );
 }
 

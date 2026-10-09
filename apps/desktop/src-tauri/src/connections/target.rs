@@ -22,7 +22,7 @@ use super::drivers;
 use super::error::IpcError;
 
 /// Name reported to servers when the profile does not set one.
-const APPLICATION_NAME: &str = "OpenRows";
+pub(crate) const APPLICATION_NAME: &str = "OpenRows";
 
 /// Where and how to connect: the engine's driver and its request.
 #[derive(Clone)]

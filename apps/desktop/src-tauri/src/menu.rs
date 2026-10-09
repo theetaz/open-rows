@@ -143,6 +143,8 @@ const CONNECTION: &[Entry] = &[
     C("database", "Switch Database…"),
     C("refresh", "Refresh"),
     S,
+    C("processes", "Show Processes"),
+    S,
     C("safe", "Safe Mode"),
 ];
 const WINDOW: &[Entry] = &[N(Native::Minimize), N(Native::Zoom)];
@@ -336,6 +338,7 @@ mod tests {
             "disconnect",
             "database",
             "refresh",
+            "processes",
             "open-logs",
             "commit-changes",
             "discard-changes",

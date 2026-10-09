@@ -38,6 +38,7 @@ export function profile(
     recordHistory: true,
     limits: { statementTimeoutSeconds: null, idleTimeoutMinutes: 0 },
     startupCommands: '',
+    processList: true,
     ...overrides,
   };
 }
@@ -299,5 +300,7 @@ export function ipcStub(
     tableCount: vi.fn(() => new Promise(() => {})),
     tableSql: vi.fn(() => Promise.resolve({ sql: 'SELECT 1', params: [] })),
     startExport: vi.fn(() => Promise.resolve({ status: 'dismissed' })),
+    listProcesses: vi.fn(() => Promise.resolve([])),
+    signalProcess: vi.fn(() => Promise.resolve()),
   };
 }

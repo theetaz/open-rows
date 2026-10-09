@@ -55,11 +55,14 @@ pub enum Feature {
     /// `Catalog::schema_fingerprint` returns a digest that DDL changes, so
     /// the app notices schema changes made outside it (M1-16).
     SchemaFingerprint,
+    /// `Connection::admin` offers the [`crate::Admin`] facet: the server's
+    /// process list, cancelling a process's statement and terminating it.
+    ProcessList,
 }
 
 impl Feature {
     /// Every feature, in documentation order.
-    pub const ALL: [Self; 12] = [
+    pub const ALL: [Self; 13] = [
         Self::Cancel,
         Self::BindParameters,
         Self::MultipleDatabases,
@@ -72,6 +75,7 @@ impl Feature {
         Self::Routes,
         Self::StartupCommands,
         Self::SchemaFingerprint,
+        Self::ProcessList,
     ];
 }
 
@@ -121,6 +125,6 @@ mod tests {
             ..FILE
         };
         assert!(!no_catalog.lists(ObjectKind::Table));
-        assert_eq!(Feature::ALL.len(), 12);
+        assert_eq!(Feature::ALL.len(), 13);
     }
 }

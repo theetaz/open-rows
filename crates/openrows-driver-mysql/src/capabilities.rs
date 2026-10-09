@@ -18,6 +18,7 @@ pub(crate) const CAPABILITIES: Capabilities = Capabilities {
         Feature::Routes,
         Feature::StartupCommands,
         Feature::SchemaFingerprint,
+        Feature::ProcessList,
     ],
     // `SEQUENCE` objects exist in `MariaDB` only.
     object_kinds: &[

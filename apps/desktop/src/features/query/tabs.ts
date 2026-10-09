@@ -31,12 +31,13 @@ export type TabFile = {
 };
 
 /**
- * A query or table tab; a query tab's editor text lives here so it survives
- * tab switches. Table tabs (D-08) carry the browsed relation instead.
+ * A query, table or processes tab; a query tab's editor text lives here so it
+ * survives tab switches. Table tabs (D-08) carry the browsed relation instead;
+ * the scope's one processes tab (FR-ADMIN-01) lists the server's sessions.
  */
 export type QueryTab = TabScope & {
   id: string;
-  kind: 'query' | 'table';
+  kind: 'query' | 'table' | 'processes';
   title: string;
   sql: string;
   /** Schema object the tab was opened for, e.g. `['public', 'orders']`. */
@@ -54,7 +55,10 @@ export type QueryTab = TabScope & {
   preview?: boolean;
 };
 
-/** What a new tab starts with; every field is optional. `table` makes a table tab. */
+/**
+ * What a new tab starts with; every field is optional. `table` makes a table
+ * tab, `processes` the scope's processes tab.
+ */
 export type QueryTabInit = {
   sql?: string;
   title?: string;
@@ -63,6 +67,7 @@ export type QueryTabInit = {
   file?: TabFile;
   /** Open as the scope's preview tab, replacing the current one. */
   preview?: boolean;
+  processes?: true;
 };
 
 /** Every open query tab, the active tab per scope and the title counter. */
@@ -87,6 +92,11 @@ export function tabsOf(state: TabsState, scope: TabScope): readonly QueryTab[] {
   return state.tabs.filter((tab) => inScope(tab, scope));
 }
 
+function kindOf(init: QueryTabInit): QueryTab['kind'] {
+  if (init.table) return 'table';
+  return init.processes ? 'processes' : 'query';
+}
+
 /** Place `tab`: in the preview tab's slot when it replaces it, else last. */
 function placed(
   tabs: readonly QueryTab[],
@@ -109,9 +119,14 @@ export function openTab(
   scope: TabScope,
   init: QueryTabInit = {},
 ): TabsState {
+  const kind = kindOf(init);
+  if (kind === 'processes') {
+    const existing = tabsOf(state, scope).find((tab) => tab.kind === kind);
+    if (existing) return selectTab(state, existing.id);
+  }
   const tab: QueryTab = {
-    id: `${init.table ? 'table' : 'query'}-${String(state.next)}`,
-    kind: init.table ? 'table' : 'query',
+    id: `${kind}-${String(state.next)}`,
+    kind,
     title: init.title ?? `SQL Query ${String(state.next)}`,
     connectionId: scope.connectionId,
     database: scope.database,

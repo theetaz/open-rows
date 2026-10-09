@@ -12,6 +12,8 @@ export function WorkspacePalettes(props: {
   onObject: (object: ObjectRef) => void;
   onCommand: (id: string) => void;
   onClose: () => void;
+  /** Commands the active connection cannot run (e.g. no process list). */
+  hidden?: readonly string[];
 }): React.JSX.Element {
   if (props.mode === 'database')
     return (
@@ -35,9 +37,12 @@ export function WorkspacePalettes(props: {
 function CommandPalette(props: {
   onCommand: (id: string) => void;
   onClose: () => void;
+  hidden?: readonly string[] | undefined;
 }): React.JSX.Element {
   const bindings = useBindings();
-  const items = COMMANDS.map(({ id, label }) => ({
+  const hidden = new Set(props.hidden);
+  const shown = COMMANDS.filter(({ id }) => !hidden.has(id));
+  const items = shown.map(({ id, label }) => ({
     id,
     label,
     shortcut: shortcutText(bindings, id),

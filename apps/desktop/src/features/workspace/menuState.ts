@@ -9,7 +9,7 @@ import type { TabScope } from '../query';
  */
 export function menuEnabled(input: {
   connections: Connections;
-  tab: { kind: 'query' | 'table' } | undefined;
+  tab: { kind: 'query' | 'table' | 'processes' } | undefined;
   scope: TabScope | undefined;
   prod: boolean;
 }): Record<string, boolean> {
@@ -19,6 +19,7 @@ export function menuEnabled(input: {
     : 'disconnected';
   const connected = state === 'connected';
   const query = input.tab?.kind === 'query';
+  const processes = input.tab?.kind === 'processes';
   return {
     ...tableEnabled(input.tab?.kind === 'table', connected),
     'new-tab': Boolean(input.scope),
@@ -27,16 +28,29 @@ export function menuEnabled(input: {
     save: query,
     'save-as': query,
     'export-table': input.tab?.kind === 'table' && connected,
-    'export-results': Boolean(input.tab) && connected,
+    'export-results': Boolean(input.tab) && !processes && connected,
     'run-current': query && connected,
     'run-all': query && connected,
     cancel: query && connected,
     beautify: query,
     uglify: query,
     'insert-snippet': query,
+    ...connectionEnabled(input, state),
+  };
+}
+
+/** Connection items follow the active connection's state and capabilities. */
+function connectionEnabled(
+  input: { connections: Connections; prod: boolean },
+  state: string,
+): Record<string, boolean> {
+  const profile = input.connections.active;
+  const connected = state === 'connected';
+  return {
     connect: Boolean(profile) && !connected && state !== 'connecting',
     disconnect: connected || state === 'connecting',
     database: connected,
+    processes: connected && Boolean(profile?.processList),
     refresh: connected,
     quick: connected,
     'show-er-diagram': connected,

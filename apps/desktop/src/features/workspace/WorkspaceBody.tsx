@@ -11,6 +11,7 @@ import {
 } from '../connections';
 import type { Connections } from '../connections';
 import { QueryContent } from '../query';
+import type { TabScope } from '../query';
 import { AttachDatabaseTools } from '../schema';
 import { WorkspaceSidebar } from './WorkspaceSidebar';
 const WorkspaceInspector = lazy(() =>
@@ -118,6 +119,8 @@ function SchemaTools({ connections, controller }: Props): React.JSX.Element {
 export function WorkspaceRail(props: {
   connections: Connections;
   onSettings?: (() => void) | undefined;
+  /** Open the process list of a connection's database. */
+  onProcesses?: ((scope: TabScope) => void) | undefined;
 }): React.JSX.Element {
   const { connections } = props;
   return (
@@ -135,6 +138,11 @@ export function WorkspaceRail(props: {
         connections.chooseDatabase(id, name);
       }}
       onCloseProfileDatabase={connections.closeProfileDatabase}
+      onProcesses={(id, name) => {
+        connections.select(id);
+        connections.chooseDatabase(id, name);
+        props.onProcesses?.({ connectionId: id, database: name });
+      }}
       onNew={() => {
         connections.setSheet({ kind: 'new' });
       }}

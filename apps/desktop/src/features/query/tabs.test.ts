@@ -10,6 +10,7 @@ import {
   tabsOf,
 } from './tabs';
 import { runRequest } from './request';
+import { restoreTabs, serializeTabs } from './tabStorage';
 
 it('keeps tab sets and active tabs per connection and database', () => {
   const a = { connectionId: 'a', database: '' };
@@ -80,4 +81,24 @@ it('builds run requests for current, selection and all, with the row limit', () 
     runRequest(editor('SELECT 1', 3, 'SELECT'), 'all', 's', 1_000),
   ).toMatchObject({ sql: 'SELECT 1', mode: 'all', maxRows: 1_000 });
   expect(runRequest(editor('  \n', 0), 'all', 's', null)).toBeNull();
+});
+
+it('opens one processes tab per scope, refocusing it, and never stores it', () => {
+  const orders = { connectionId: 'a', database: 'orders' };
+  const reports = { connectionId: 'a', database: 'reports' };
+  let state = openTab(emptyTabs, orders, {
+    processes: true,
+    title: 'Processes',
+  });
+  state = openTab(state, orders);
+  state = openTab(state, orders, { processes: true, title: 'Processes' });
+  state = openTab(state, reports, { processes: true, title: 'Processes' });
+  expect(tabsOf(state, orders).map((tab) => [tab.id, tab.kind])).toEqual([
+    ['processes-1', 'processes'],
+    ['query-2', 'query'],
+  ]);
+  expect(state.active[scopeKey(orders)]).toBe('processes-1');
+  expect(tabsOf(state, reports)).toHaveLength(1);
+  const stored = restoreTabs(serializeTabs(state));
+  expect(stored.tabs.map((tab) => tab.id)).toEqual(['query-2']);
 });

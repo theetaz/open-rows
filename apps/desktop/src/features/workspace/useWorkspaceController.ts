@@ -68,6 +68,21 @@ function useRefresh(catalog: Catalog): [number, () => void] {
   ];
 }
 
+/** Opens (or refocuses) a scope's processes tab (FR-ADMIN-01); the active scope by default. */
+function processesOpener(
+  connections: Connections,
+  tabs: QueryTabs,
+  scope: TabScope | undefined,
+): (target?: TabScope) => void {
+  return (target = scope) => {
+    const profile = connections.profiles.find(
+      (item) => item.id === target?.connectionId,
+    );
+    if (target && profile?.processList)
+      tabs.open(target, { processes: true, title: 'Processes' });
+  };
+}
+
 /** Shortcuts and the native menu bar, both routed to `command`. */
 function useCommandRoutes(
   command: (id: string) => void,
@@ -111,6 +126,17 @@ type Input = {
   connections: Connections;
 };
 
+/** The toolbar's safe-mode switch; production connections are always safe. */
+function useSafeMode(prod: boolean): [boolean, () => void] {
+  const [safe, setSafe] = useState(false);
+  return [
+    safe || prod,
+    () => {
+      if (!prod) setSafe(!safe);
+    },
+  ];
+}
+
 /** Shell state and command wiring, isolated from rendering. */
 export function useWorkspaceController(input: Input): WorkspaceController {
   const { connections } = input;
@@ -121,7 +147,6 @@ export function useWorkspaceController(input: Input): WorkspaceController {
   const compact = useCompact();
   const inspector = useInspectorOpen(compact);
   const [sidebar, setSidebar] = useState(true);
-  const [safe, setSafe] = useState(false);
   const [mode, setMode] = useState<PaletteMode | null>(null);
   useDatabasePrompt(connections, setMode);
   const [refreshes, refresh] = useRefresh(catalog);
@@ -129,6 +154,7 @@ export function useWorkspaceController(input: Input): WorkspaceController {
   const details = useDetails(active?.id);
   const tableInfo = useTableInfo(active?.id);
   const commands = queryCommands(tabs, scope, scopeOf);
+  const openProcesses = processesOpener(connections, tabs, scope);
   /** Relations open as table views (D-08); routines and sequences as query tabs. */
   const openObject = (object: ObjectRef, preview = false): void => {
     catalog.setSchema(object.schema);
@@ -137,9 +163,7 @@ export function useWorkspaceController(input: Input): WorkspaceController {
       commands.openObject(object);
   };
   const prod = connections.active?.env.kind === 'prod';
-  const toggleSafe = (): void => {
-    if (!prod) setSafe(!safe);
-  };
+  const [safe, toggleSafe] = useSafeMode(prod);
   const toggleSidebar = (): void => {
     setSidebar((open) => !open);
   };
@@ -162,6 +186,8 @@ export function useWorkspaceController(input: Input): WorkspaceController {
     onShowDiagram: () => {
       showDiagram();
     },
+    // Called without arguments: the active scope.
+    openProcesses,
   });
   useCommandRoutes(command, input.enabled && !mode, {
     connections,
@@ -176,7 +202,7 @@ export function useWorkspaceController(input: Input): WorkspaceController {
     compact,
     inspector,
     sidebar,
-    safe: safe || prod,
+    safe,
     prod,
     mode,
     setMode,
@@ -187,6 +213,8 @@ export function useWorkspaceController(input: Input): WorkspaceController {
     addQuery: commands.addQuery,
     openObject,
     showDiagram,
+    openProcesses,
+    hiddenCommands: connections.active?.processList ? [] : ['processes'],
     toggleSafe,
     refresh,
     command,
@@ -217,6 +245,10 @@ type WorkspaceController = Details &
     openObject: (object: ObjectRef, preview?: boolean) => void;
     /** ER diagram of an object's schema (centred on it), else of the selected schema. */
     showDiagram: (object?: ObjectRef) => void;
+    /** Open (or refocus) a scope's process list; the active scope by default. */
+    openProcesses: (scope?: TabScope) => void;
+    /** Palette commands the active connection cannot run. */
+    hiddenCommands: readonly string[];
     toggleSafe: () => void;
     refresh: () => void;
     command: (id: string) => void;
