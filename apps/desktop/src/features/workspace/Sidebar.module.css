@@ -42,3 +42,13 @@
 .container {
   height: 100%;
 }
+.sectionTitle {
+  margin: var(--or-space-8) 0 0;
+  padding-inline: var(--or-space-4);
+  min-block-size: var(--or-tree-row-height);
+  display: flex;
+  align-items: center;
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+  font-weight: 600;
+}

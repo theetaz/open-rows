@@ -17,6 +17,11 @@ import type { QueryTab as Tab } from './tabs';
 import type { SelectedCell } from './cell';
 import { ReconnectBar } from './ReconnectBar';
 import { TabStrip } from './TabStrip';
+import { SplitPanes } from './SplitPanes';
+import { useSplit } from './useSplit';
+import type { Split } from './useSplit';
+import { usePaneCommands } from '../commands';
+import type { PaneCommand } from '../commands';
 import styles from './Query.module.css';
 type SessionStatus = ReturnType<Connections['statusOf']>;
 const QueryTab = lazy(() =>
@@ -70,20 +75,8 @@ export function QueryContent(props: Props): React.JSX.Element {
   const tables = useTableViews();
   const closeGuard = useTableCloseGuard({ tables, runs, tabs: props.tabs });
   const connection = props.connections.active;
-  if (!connection)
-    return (
-      <main className={styles.content}>
-        <EmptyState
-          icon="database"
-          title="No connection selected"
-          detail="Choose a connection in the sidebar to open a query tab."
-          action="New connection…"
-          onAction={() => {
-            props.connections.setSheet({ kind: 'new' });
-          }}
-        />
-      </main>
-    );
+  const split = useSplitPanes(props.tabs, connection, props.database);
+  if (!connection) return <NoConnection connections={props.connections} />;
   if (!props.database)
     return (
       <main className={styles.content}>
@@ -95,12 +88,12 @@ export function QueryContent(props: Props): React.JSX.Element {
       </main>
     );
   const { tabs } = props;
-  const scope = { connectionId: connection.id, database: props.database };
-  const list = tabs.tabsFor(scope);
-  const tab = tabs.activeFor(scope);
+  const shown = { connectionId: connection.id, database: props.database };
+  const list = tabs.tabsFor(shown);
+  const tab = tabs.activeFor(shown);
   const status = props.connections.statusOf(connection.id);
   const open = (): void => {
-    tabs.open(scope);
+    tabs.open(shown);
   };
   return (
     <main className={styles.content}>
@@ -117,7 +110,7 @@ export function QueryContent(props: Props): React.JSX.Element {
         />
       )}
       <TabStrip
-        tabs={tabs}
+        tabs={split.stripTabs}
         list={list}
         active={tab?.id ?? ''}
         connection={connection.name}
@@ -125,13 +118,19 @@ export function QueryContent(props: Props): React.JSX.Element {
       />
       {tab ? (
         <Suspense fallback={<p className={styles.empty}>Loading…</p>}>
-          <TabBody
-            {...props}
-            tab={tab}
-            connection={connection}
-            status={status}
-            runs={runs}
-            tables={tables}
+          <SplitPanes
+            split={split}
+            active={tab}
+            render={(paneTab) => (
+              <TabBody
+                {...props}
+                tab={paneTab}
+                connection={connection}
+                status={status}
+                runs={runs}
+                tables={tables}
+              />
+            )}
           />
         </Suspense>
       ) : (
@@ -207,6 +206,47 @@ function TabBody(
       onCell={props.onCell}
       onConnect={props.connections.connect}
     />
+  );
+}
+
+/** The scope's split panes, the target of the split pane commands. */
+function useSplitPanes(
+  tabs: QueryTabs,
+  connection: ProfileDto | undefined,
+  database: string,
+): Split {
+  const scope =
+    connection && database
+      ? { connectionId: connection.id, database }
+      : undefined;
+  const split = useSplit(tabs, scope);
+  usePaneCommands((id) => {
+    paneCommand(split, id);
+  });
+  return split;
+}
+
+/** Split, turn, focus or close the editor panes. */
+function paneCommand(split: Split, id: PaneCommand): void {
+  if (id === 'split-right' || id === 'split-down')
+    split.split(id === 'split-right' ? 'right' : 'down');
+  else if (id === 'focus-pane') split.focusOther();
+  else split.close();
+}
+
+function NoConnection(props: { connections: Connections }): React.JSX.Element {
+  return (
+    <main className={styles.content}>
+      <EmptyState
+        icon="database"
+        title="No connection selected"
+        detail="Choose a connection in the sidebar to open a query tab."
+        action="New connection…"
+        onAction={() => {
+          props.connections.setSheet({ kind: 'new' });
+        }}
+      />
+    </main>
   );
 }
 

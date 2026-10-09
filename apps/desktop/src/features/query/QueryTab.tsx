@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import type { ProfileDto } from '@openrows/ipc';
 import type { CompletionCatalog, FormatKind } from '@openrows/editor';
 import { QueryEditor } from './QueryEditor';
@@ -62,6 +62,7 @@ function runMenuOf(input: {
     ready: input.ready,
     runDefault: input.settings.runDefault,
     onRun: input.actions.run,
+    onRunUnlimited: input.actions.runUnlimited,
     onDefault: (scope) => {
       input.update({ runDefault: scope });
     },
@@ -75,33 +76,44 @@ function runMenuOf(input: {
   };
 }
 
+/** A sheet's open state with stable open and close callbacks. */
+function useFlag(): [boolean, () => void, () => void] {
+  const [on, setOn] = useState(false);
+  const open = useCallback(() => {
+    setOn(true);
+  }, []);
+  const close = useCallback(() => {
+    setOn(false);
+  }, []);
+  return [on, open, close];
+}
+
 /** Editor, bottom bar, results and status for one query tab. */
 export function QueryTab(props: QueryTabProps): React.JSX.Element {
   const { tab, runs } = props;
   const editor = useRef<EditorHandle | null>(null);
   const [cursor] = useState(createCursorStore);
   const [settings, updateSettings] = useEditorSettings();
-  const [naming, setNaming] = useState(false);
-  const [picking, setPicking] = useState(false);
+  const [naming, startNaming, stopNaming] = useFlag();
+  const [picking, startPicking, stopPicking] = useFlag();
   const dialect = props.connection.engine;
   const [formatFailure, format] = useFormat(editor, settings, dialect);
   const files = useTabFiles(tab, editor, props.tabs);
   const run = runs.runOf(tab.id);
   const actions = useRunActions(editor, settings, props);
-  const [act, onExportable] = useTabAction({
+  const [act, onExportable, claim] = useTabAction({
     actions,
     format,
     files,
     runs,
     tabId: tab.id,
-    onSnippet: () => {
-      setPicking(true);
-    },
+    onSnippet: startPicking,
   });
   return (
     <section
       className={styles.query}
       aria-label={tab.title}
+      onFocus={claim}
       onKeyDown={(event) => {
         tabKey(event, act);
       }}
@@ -123,9 +135,7 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
         file={files.act}
         format={format}
         notice={props.notice ?? formatFailure ?? files.failure}
-        onName={() => {
-          setNaming(true);
-        }}
+        onName={startNaming}
       />
       <TabParams
         {...props}
@@ -143,15 +153,11 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
       <TabSheets
         {...props}
         naming={naming}
-        onNamed={() => {
-          setNaming(false);
-        }}
+        onNamed={stopNaming}
         text={() => editor.current?.text() ?? tab.sql}
         picking={picking}
         editorRef={editor}
-        onPicked={() => {
-          setPicking(false);
-        }}
+        onPicked={stopPicking}
       />
     </section>
   );

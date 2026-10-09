@@ -13,6 +13,7 @@ import { editingRange } from '../statement';
 import type { CompletionCatalog } from './catalog';
 import { analyzeStatement } from './context';
 import { gatherCandidates } from './gather';
+import { completionKinds, offered } from './kinds';
 import { tokenize } from './lexer';
 import { rankCandidates } from './rank';
 import type { Candidate } from './rank';
@@ -71,7 +72,9 @@ export function sqlCompletionSource(
       upperKeywords: state.facet(upperKeywords),
     });
     if (context.aborted) return null;
-    const ranked = rankCandidates(candidates, typed, analysis.scope.kind);
+    const kinds = state.facet(completionKinds);
+    const wanted = candidates.filter((candidate) => offered(candidate, kinds));
+    const ranked = rankCandidates(wanted, typed, analysis.scope.kind);
     return { from, options: ranked.map(toCompletion), filter: false };
   };
 }

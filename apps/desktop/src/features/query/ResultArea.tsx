@@ -7,6 +7,7 @@ import type { ResultMeta, RunState } from './run';
 import type { SelectedCell } from './cell';
 import type { ResultView } from './editorSettings';
 import type { RunScope } from './request';
+import { executionSettings } from './executionSettings';
 
 /** The result pane and the export sheet of its shown result. */
 export function ResultArea(props: {
@@ -33,12 +34,14 @@ export function ResultArea(props: {
     },
     [],
   );
+  const { showNotices } = executionSettings.use();
   return (
     <>
       <ResultPane
         run={run}
         view={props.view}
         runDefault={props.runDefault}
+        showNotices={showNotices}
         engine={props.engine}
         onCell={props.onCell}
         onExport={sessionId ? exportResult : undefined}

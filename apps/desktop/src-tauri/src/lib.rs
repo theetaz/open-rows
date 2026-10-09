@@ -12,6 +12,7 @@ mod jobs;
 mod material;
 mod menu;
 mod observability;
+mod projects;
 mod queries;
 mod result_store;
 mod results;
@@ -82,6 +83,16 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
         queries::files::sql_file_open,
         queries::file_watch::sql_file_stat,
         queries::file_watch::sql_file_read,
+        projects::commands::project_choose,
+        projects::commands::project_load,
+        projects::commands::project_set_default_connection,
+        projects::commands::project_create_folder,
+        projects::commands::project_create_query,
+        projects::commands::project_rename,
+        projects::commands::project_move,
+        projects::commands::project_duplicate,
+        projects::commands::project_delete,
+        projects::commands::project_reveal,
         workspace::workspace_state_read,
         workspace::workspace_state_write,
         tables::commands::table_structure,

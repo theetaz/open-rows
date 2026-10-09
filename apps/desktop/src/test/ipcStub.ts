@@ -184,6 +184,22 @@ function savedQueryStub(): Record<string, unknown> {
   };
 }
 
+/** Projects: no native folder panel; every file action succeeds. */
+function projectStub(): Record<string, unknown> {
+  return {
+    chooseProject: vi.fn(() => Promise.resolve(null)),
+    loadProject: vi.fn(() => Promise.reject(new Error('no project'))),
+    setProjectConnection: vi.fn(),
+    createProjectFolder: vi.fn(() => Promise.resolve('queries/new')),
+    createProjectQuery: vi.fn(() => Promise.resolve('queries/new.sql')),
+    renameProjectItem: vi.fn(() => Promise.resolve('queries/renamed.sql')),
+    moveProjectItem: vi.fn(() => Promise.resolve('queries/moved.sql')),
+    duplicateProjectItem: vi.fn(() => Promise.resolve('queries/copy.sql')),
+    deleteProjectItem: vi.fn(() => Promise.resolve()),
+    revealProjectItem: vi.fn(() => Promise.resolve()),
+  };
+}
+
 /** Key of a part of the stubbed local-store workspace state in web storage, cleared before each test. */
 export const stubStateKey = (part: string): string => `test.workspace.${part}`;
 
@@ -307,6 +323,7 @@ export function ipcStub(
     resultCellInfo: vi.fn(),
     resultCellValue: vi.fn(),
     ...savedQueryStub(),
+    ...projectStub(),
     ...tableEditStub(),
     ...appStub(),
     ...workspaceStub(),

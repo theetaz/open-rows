@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ThemeMode } from '@openrows/ui';
 import {
+  isPaneCommand,
   isTabCommand,
   isTableCommand,
+  runPaneCommand,
   runTabCommand,
   runTableCommand,
 } from '../commands';
@@ -10,6 +12,7 @@ import type { Connections } from '../connections';
 import { openLogs } from '../diagnostics';
 import { isObjectCommand } from '../objects';
 import type { ObjectCommand } from '../objects';
+import { closeProject, openProjectDialog } from '../projects';
 import type { Catalog } from '../schema';
 import { setGridDensity } from '../settings';
 import { setJobsOpen } from '../jobs';
@@ -143,6 +146,8 @@ function workActions(input: ShellInput): Actions {
     },
     'show-er-diagram': input.onShowDiagram,
     processes: input.openProcesses,
+    'open-project': openProjectDialog,
+    'close-project': closeProject,
     'new-connection': () => {
       connections.setSheet({ kind: 'new' });
     },
@@ -169,6 +174,10 @@ export function shellCommand(input: ShellInput): (id: string) => void {
   return (id: string): void => {
     if (isTabCommand(id)) {
       if (!runTabCommand(id)) tabFallback(input, id);
+      return;
+    }
+    if (isPaneCommand(id)) {
+      runPaneCommand(id);
       return;
     }
     if (isTableCommand(id) && id !== 'refresh') {

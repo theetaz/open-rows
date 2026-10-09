@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import {
+  createProjectQuery,
   createSavedQuery,
   deleteSavedQuery,
   listSavedQueries,
   renameSavedQuery,
 } from '@openrows/ipc';
-import type { SavedQueryDto } from '@openrows/ipc';
+import type { ProjectDto, SavedQueryDto } from '@openrows/ipc';
 
 /** Bumped by every change, so open lists reload. */
 let revision = 0;
@@ -85,5 +86,33 @@ export async function renameQuery(id: string, name: string): Promise<void> {
 /** Delete a saved query from the sidebar. */
 export async function deleteQuery(id: string): Promise<void> {
   await deleteSavedQuery(id);
+  changed();
+}
+
+/** A query name as a file name: no path separators or leading dots. */
+function fileNameOf(name: string): string {
+  const clean = name
+    .replace(/[/\\:]/g, '-')
+    .replace(/^\.+/, '')
+    .trim();
+  return clean || 'query';
+}
+
+/**
+ * Move a local (store-backed) query into the project's first query folder
+ * as a `.sql` file; the local copy is deleted once the file is written.
+ */
+export async function moveToProject(
+  query: SavedQueryDto,
+  project: ProjectDto,
+): Promise<void> {
+  const folder = project.queryFolders[0] ?? '.';
+  await createProjectQuery(
+    project.root,
+    folder,
+    fileNameOf(query.name),
+    query.sql,
+  );
+  await deleteSavedQuery(query.id);
   changed();
 }

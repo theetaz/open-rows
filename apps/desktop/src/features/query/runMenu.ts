@@ -9,6 +9,8 @@ export type RunMenu = {
   /** What the Run button and ⌘↵ run. */
   runDefault: RunScope;
   onRun: (scope: RunScope) => void;
+  /** Run as ⌘↵ does, once without the automatic `LIMIT`. */
+  onRunUnlimited: () => void;
   onDefault: (scope: RunScope) => void;
   onSaveAs: () => void;
   onOpenFile: () => void;
@@ -52,6 +54,10 @@ export function runEntries(menu: RunMenu): MenuEntry[] {
         },
       ),
     ),
+    item('Run Without Limit', menu.onRunUnlimited, {
+      shortcut: '⌥⌘↵',
+      disabled: !menu.ready,
+    }),
     {
       kind: 'submenu',
       label: 'Default',

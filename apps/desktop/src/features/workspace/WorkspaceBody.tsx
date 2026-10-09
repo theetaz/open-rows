@@ -10,8 +10,9 @@ import {
   sessionOf,
 } from '../connections';
 import type { Connections } from '../connections';
-import { QueryContent } from '../query';
-import type { TabScope } from '../query';
+import { QueryContent, openQueryFile, rebindFiles } from '../query';
+import { reportProjectError } from '../projects';
+import type { QueryTabs, TabScope } from '../query';
 import { AttachDatabaseTools } from '../schema';
 import { WorkspaceSidebar } from './WorkspaceSidebar';
 import type { ObjectEditorRequest } from '../objects';
@@ -38,6 +39,28 @@ function triggerEditor(
         target: { object: 'trigger', ...at, table: table.name, name },
       }
     : { kind: 'trigger', ...at, table: table.name, name };
+}
+
+/** Project queries open in the active scope; bound tabs follow moved files. */
+function projectOpeners(
+  tabs: QueryTabs,
+  scope: TabScope | undefined,
+): {
+  onProjectQuery: (path: string) => void;
+  onProjectMoved: (from: string, to: string) => void;
+} {
+  return {
+    onProjectQuery: (path) => {
+      if (!scope) {
+        reportProjectError('Open a database to open project queries.');
+        return;
+      }
+      openQueryFile(tabs, scope, path).catch(reportProjectError);
+    },
+    onProjectMoved: (from, to) => {
+      rebindFiles(tabs, from, to);
+    },
+  };
 }
 
 /** Object browser, query tabs and the inspector. */
@@ -68,6 +91,8 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
           onSavedQuery={(query) => {
             if (scope) tabs.open(scope, { title: query.name, sql: query.sql });
           }}
+          {...projectOpeners(tabs, scope)}
+          onConnection={connections.select}
           sessionFor={(database) => {
             const profile = connections.active;
             const sessionId = profile

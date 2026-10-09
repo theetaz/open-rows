@@ -7,6 +7,7 @@ import type {
   CompletionSource,
 } from '@codemirror/autocomplete';
 import type { EditorView } from '@codemirror/view';
+import { completionKinds } from './completion/kinds';
 
 /**
  * A SQL snippet: typing `prefix` offers it in completion; `body` is a
@@ -46,6 +47,7 @@ function toCompletion(item: SqlSnippet): Completion {
  */
 export function snippetSource(source: SnippetSource): CompletionSource {
   return (context: CompletionContext): CompletionResult | null => {
+    if (!context.state.facet(completionKinds).snippets) return null;
     const word = context.matchBefore(PREFIX);
     if (!word || word.from === word.to) return null;
     const typed = word.text.toLowerCase();

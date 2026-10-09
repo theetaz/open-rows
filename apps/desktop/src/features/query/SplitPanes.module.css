@@ -1,0 +1,50 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.panes {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+.panes[data-orientation='down'] {
+  flex-direction: column;
+}
+.pane {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+}
+.pane[data-pane='pinned'] {
+  flex: 0 0 var(--split-ratio);
+}
+.paneBar {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-6);
+  padding: var(--or-space-2) var(--or-space-6) var(--or-space-2)
+    var(--or-space-12);
+  border-block-end: var(--or-border-width) solid var(--or-separator);
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+}
+.paneBar span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.divider {
+  flex: 0 0 var(--or-space-4);
+  background: var(--or-separator);
+  cursor: col-resize;
+  touch-action: none;
+}
+.panes[data-orientation='down'] > .divider {
+  cursor: row-resize;
+}
+.divider:focus-visible {
+  outline: var(--or-focus-width) solid var(--or-focus);
+  outline-offset: -1px;
+}

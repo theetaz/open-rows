@@ -19,29 +19,66 @@ type Props = {
   onCancel: () => void;
 };
 
-/** Explicit consent before writes on confirm-writes connections or dangerous statements. */
+/** The lead paragraph: what may change, or how many statements run. */
+function Lead(props: {
+  connection: string;
+  flagged: number;
+  total: number;
+}): React.JSX.Element {
+  const others = props.total - props.flagged;
+  if (!props.flagged)
+    return (
+      <p>
+        On <strong>{props.connection}</strong>, this run has{' '}
+        {String(props.total)} statements:
+      </p>
+    );
+  return (
+    <p>
+      On <strong>{props.connection}</strong>, these statements may modify the
+      database
+      {others > 0
+        ? ` (${String(others)} other statement${others === 1 ? '' : 's'} also run)`
+        : ''}
+      :
+    </p>
+  );
+}
+
+/**
+ * Explicit consent before writes on confirm-writes connections or dangerous
+ * statements, and before multi-statement runs when Settings ▸ Execution asks.
+ */
 export function ConfirmRun(props: Props): React.JSX.Element {
-  const flagged = props.statements.filter(
+  const writes = props.statements.filter(
     (statement) => statement.verdict === 'confirm',
   );
-  const others = props.statements.length - flagged.length;
+  const flagged = writes.length ? writes : props.statements;
   const dangerous = flagged.some((statement) => statement.dangerous);
+  const title = writes.length
+    ? 'Run statements that change data?'
+    : `Run ${String(props.statements.length)} statements?`;
   return (
-    <Sheet title="Run statements that change data?" onClose={props.onCancel}>
+    <Sheet title={title} onClose={props.onCancel}>
       <div className={styles.confirm}>
-        <p>
-          On <strong>{props.connection}</strong>, these statements may modify
-          the database
-          {others > 0
-            ? ` (${String(others)} other statement${others === 1 ? '' : 's'} also run)`
-            : ''}
-          :
-        </p>
+        <Lead
+          connection={props.connection}
+          flagged={writes.length}
+          total={props.statements.length}
+        />
         <ol aria-label="Statements to confirm">
           {flagged.map((statement) => (
             <li key={statement.index}>
               <span className={styles.confirmTags}>
-                <Badge tone={statement.dangerous ? 'danger' : 'warning'}>
+                <Badge
+                  tone={
+                    statement.dangerous
+                      ? 'danger'
+                      : statement.verdict === 'confirm'
+                        ? 'warning'
+                        : 'neutral'
+                  }
+                >
                   {statement.dangerous ? 'Dangerous' : kinds[statement.kind]}
                 </Badge>
                 <small>Statement {statement.index + 1}</small>

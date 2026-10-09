@@ -5,17 +5,12 @@ import { bracketMatching } from '@codemirror/language';
 import { sql } from '@codemirror/lang-sql';
 import { EditorState, Prec } from '@codemirror/state';
 import type { Extension } from '@codemirror/state';
-import {
-  EditorView,
-  drawSelection,
-  highlightActiveLineGutter,
-  keymap,
-  lineNumbers,
-} from '@codemirror/view';
+import { EditorView, drawSelection, keymap } from '@codemirror/view';
 import type { CompletionCatalog } from './completion/catalog';
 import { completionIcon } from './completion/icons';
 import { sqlCompletionSource } from './completion/source';
 import { completionTheme } from './completion/theme';
+import { multipleCarets } from './multiCursor';
 import { sqlDialect } from './dialects';
 import type { EditorDialect } from './dialects';
 import {
@@ -111,10 +106,9 @@ export function sqlEditorExtensions(options: SqlEditorOptions): Extension {
   return [
     keyModeSlot.of(options.keyMode ?? []),
     appKeys(options.onKeyDown),
-    lineNumbers(),
-    highlightActiveLineGutter(),
     history(),
     drawSelection(),
+    multipleCarets(),
     bracketMatching(),
     completion(options),
     preferenceSlot.of(

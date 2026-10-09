@@ -161,6 +161,39 @@ export const commands = {
 	sqlFileStat: (path: string) => typedError<number | null, IpcError>(__TAURI_INVOKE("sql_file_stat", { path })),
 	/**  Read a tab's `.sql` file again (Reload after an outside change). */
 	sqlFileRead: (path: string) => typedError<OpenedSqlFileDto, IpcError>(__TAURI_INVOKE("sql_file_read", { path })),
+	/**
+	 *  Ask for a folder and open it as a project, creating
+	 *  `.openrows/project.yaml` when it has none; `null` when cancelled.
+	 */
+	projectChoose: () => typedError<{
+	/**  Absolute, canonical project folder. */
+	root: string,
+	name: string,
+	/**  Saved connection id project queries open on, when set. */
+	defaultConnection: string | null,
+	queryFolders: string[],
+	entries: ProjectEntryDto[],
+	/**  The tree was cut at its size limit. */
+	truncated: boolean,
+} | null, IpcError>(__TAURI_INVOKE("project_choose")),
+	/**  Read a project (a recent one, or again after a change). */
+	projectLoad: (root: string) => typedError<ProjectDto, IpcError>(__TAURI_INVOKE("project_load", { root })),
+	/**  Set or clear the project's default connection. */
+	projectSetDefaultConnection: (root: string, profileId: string | null) => typedError<ProjectDto, IpcError>(__TAURI_INVOKE("project_set_default_connection", { root, profileId })),
+	/**  New folder `name` inside `parent`; returns its path. */
+	projectCreateFolder: (root: string, parent: string, name: string) => typedError<string, IpcError>(__TAURI_INVOKE("project_create_folder", { root, parent, name })),
+	/**  New query file in `folder` holding `sql`; returns its path. */
+	projectCreateQuery: (root: string, folder: string, name: string, sql: string) => typedError<string, IpcError>(__TAURI_INVOKE("project_create_query", { root, folder, name, sql })),
+	/**  Rename a folder or query; returns its new path. */
+	projectRename: (root: string, path: string, name: string) => typedError<string, IpcError>(__TAURI_INVOKE("project_rename", { root, path, name })),
+	/**  Move a folder or query into `folder`; returns its new path. */
+	projectMove: (root: string, path: string, folder: string) => typedError<string, IpcError>(__TAURI_INVOKE("project_move", { root, path, folder })),
+	/**  Copy a folder or query beside itself; returns the copy's path. */
+	projectDuplicate: (root: string, path: string) => typedError<string, IpcError>(__TAURI_INVOKE("project_duplicate", { root, path })),
+	/**  Delete a query, or a folder and everything in it. */
+	projectDelete: (root: string, path: string) => typedError<null, IpcError>(__TAURI_INVOKE("project_delete", { root, path })),
+	/**  Show a folder or query in the file manager (Finder selects it). */
+	projectReveal: (root: string, path: string) => typedError<null, IpcError>(__TAURI_INVOKE("project_reveal", { root, path })),
 	/**  The saved state of `part`; `null` when nothing is saved. */
 	workspaceStateRead: (part: WorkspacePartDto) => typedError<string | null, IpcError>(__TAURI_INVOKE("workspace_state_read", { part })),
 	/**  Save the state of `part`; `null` forgets it (session restore off). */
@@ -668,6 +701,13 @@ export type ExecuteRequest = {
 	returnOnError?: boolean,
 	/**  Parameter placeholders to bind; `None` runs the text as written. */
 	params?: ParamsDto | null,
+	/**
+	 *  Append `LIMIT n` to every `SELECT` without a limit; `None` runs the
+	 *  statements as written (Settings ▸ Execution, or Run Without Limit).
+	 */
+	autoLimit?: number | null,
+	/**  Ask before running more than one statement, even when each is safe. */
+	confirmMultiple?: boolean,
 };
 
 /**  Export progress; exactly one of `finished`, `failed` or `cancelled` ends it. */
@@ -1499,6 +1539,31 @@ export type ProfileList = {
 	/**  One message per unreadable profile file. */
 	unreadable: string[],
 };
+
+/**  An open project: its manifest and its query tree. */
+export type ProjectDto = {
+	/**  Absolute, canonical project folder. */
+	root: string,
+	name: string,
+	/**  Saved connection id project queries open on, when set. */
+	defaultConnection: string | null,
+	queryFolders: string[],
+	entries: ProjectEntryDto[],
+	/**  The tree was cut at its size limit. */
+	truncated: boolean,
+};
+
+/**
+ *  One folder or `.sql` file; `path` is relative to the project root and
+ *  `/`-separated. A query folder is listed first, then its contents.
+ */
+export type ProjectEntryDto = {
+	path: string,
+	kind: ProjectEntryKind,
+};
+
+/**  What a tree entry is. */
+export type ProjectEntryKind = "folder" | "query";
 
 /**  A saved proxy; says whether its password is stored. */
 export type ProxyDto = {

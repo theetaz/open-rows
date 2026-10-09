@@ -37,16 +37,27 @@ type Props = {
   onReady: (editor: EditorHandle | null) => void;
 };
 
+/** The editor's share of the settings (display and completion). */
 function preferencesOf(settings: EditorSettings): EditorPreferences {
-  const { fontSize, invisibles, wrap, highlightQuery } = settings;
-  const { autocomplete, upperKeywords } = settings;
+  const { fontSize, fontFamily, lineNumbers, folding } = settings;
+  const { invisibles, wrap, highlightQuery } = settings;
+  const { autocomplete, completionDelay, upperKeywords } = settings;
+  const { completeSchemas, completeTables, completeColumns } = settings;
   return {
     fontSize,
+    fontFamily,
+    lineNumbers,
+    folding,
     invisibles,
     wrap,
     highlightQuery,
     autocomplete,
+    completionDelay,
     upperKeywords,
+    completeSchemas,
+    completeTables,
+    completeColumns,
+    completeSnippets: settings.completeSnippets,
   };
 }
 

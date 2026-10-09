@@ -23,6 +23,7 @@ function tabAction(input: {
     'run-all': () => {
       input.actions.runKey('all');
     },
+    'run-no-limit': input.actions.runUnlimited,
     cancel: input.cancel,
     beautify: () => {
       input.format('beautify');
@@ -74,6 +75,7 @@ export function useTabAction(input: {
 }): [
   act: (id: TabCommand) => void,
   onExportable: (exportShown: (() => void) | null) => void,
+  claim: () => void,
 ] {
   const [exportShown, setExportShown] = useState<(() => void) | null>(null);
   const act = tabAction({
@@ -88,9 +90,9 @@ export function useTabAction(input: {
       input.runs.cancel(input.tabId);
     },
   });
-  useTabCommands(act);
+  const claim = useTabCommands(act);
   const onExportable = useCallback((next: (() => void) | null) => {
     setExportShown(() => next);
   }, []);
-  return [act, onExportable];
+  return [act, onExportable, claim];
 }

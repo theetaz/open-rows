@@ -5,6 +5,7 @@ import { Sheet } from '@openrows/ui/sheet';
 import { AppearancePane } from '../appearance/AppearancePane';
 import { DiagnosticsPane } from './DiagnosticsPane';
 import { EditorPane } from './EditorPane';
+import { ExecutionPane } from './ExecutionPane';
 import { GeneralPane } from './GeneralPane';
 import { JsonPane } from './JsonPane';
 import { SearchResults } from './SearchResults';
@@ -18,6 +19,7 @@ export type SettingsSection =
   | 'general'
   | 'appearance'
   | 'editor'
+  | 'execution'
   | 'snippets'
   | 'shortcuts'
   | 'diagnostics'
@@ -27,6 +29,7 @@ const SECTIONS: readonly { value: SettingsSection; label: string }[] = [
   { value: 'general', label: 'General' },
   { value: 'appearance', label: 'Appearance' },
   { value: 'editor', label: 'Editor' },
+  { value: 'execution', label: 'Execution' },
   { value: 'snippets', label: 'Snippets' },
   { value: 'shortcuts', label: 'Shortcuts' },
   { value: 'diagnostics', label: 'Diagnostics' },
@@ -36,6 +39,7 @@ const SECTIONS: readonly { value: SettingsSection; label: string }[] = [
 function Pane({ section }: { section: SettingsSection }): React.JSX.Element {
   if (section === 'appearance') return <AppearancePane />;
   if (section === 'editor') return <EditorPane />;
+  if (section === 'execution') return <ExecutionPane />;
   if (section === 'snippets') return <SnippetsPane />;
   if (section === 'shortcuts') return <ShortcutsPane />;
   if (section === 'diagnostics') return <DiagnosticsPane />;

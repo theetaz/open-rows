@@ -4,6 +4,7 @@ import type { EditorDialect } from '@openrows/editor';
 import { findParams } from '@openrows/editor/params';
 import type { ParamStyleDto } from '@openrows/ipc';
 import type { EditorSettings } from './editorSettings';
+import { executionSettings } from './executionSettings';
 import { paramDtos } from './paramValues';
 import { effectiveParams, runParams } from './queryParams';
 import { runRequest } from './request';
@@ -26,6 +27,8 @@ type Tab = {
 export type RunActions = {
   /** Run exactly this scope (Run's dropdown). */
   run: (scope: RunScope) => void;
+  /** Run as ⌘↵ does, once without the automatic `LIMIT` (Run Without Limit). */
+  runUnlimited: () => void;
   /**
    * ⌘↵ (`current`) runs the selection, else the default scope; ⇧⌘↵ (`all`)
    * runs the other scope.
@@ -56,6 +59,11 @@ function anonymousShift(
   return findParams(before, dialect, 'anonymous').length;
 }
 
+/** The editor, or the editor with its selection ignored (Run Selection off). */
+function withSelection(handle: EditorHandle, selection: boolean): EditorHandle {
+  return selection ? handle : { ...handle, selection: () => '' };
+}
+
 /** Run commands of a query tab with its row limit, error policy and parameters. */
 export function useRunActions(
   editor: { current: EditorHandle | null },
@@ -63,15 +71,17 @@ export function useRunActions(
   input: Tab,
 ): RunActions {
   const { tab, runs } = input;
+  const execution = executionSettings.use();
   const dialect = input.connection.engine;
   const style = effectiveParams(settings.queryParams, dialect);
   const shift = useRef(0);
   const params = (): ReturnType<typeof runParams> =>
     runParams(style, paramDtos(tab.params ?? {}, shift.current));
-  const run = (scope: RunScope): void => {
-    const handle = editor.current;
+  const run = (scope: RunScope, limited = true): void => {
+    const current = editor.current;
     const { sessionId } = input;
-    if (!handle || !sessionId || isActive(runs.runOf(tab.id))) return;
+    if (!current || !sessionId || isActive(runs.runOf(tab.id))) return;
+    const handle = withSelection(current, execution.runSelection);
     const request = runRequest(handle, scope, sessionId, settings.rowLimit);
     if (!request) return;
     input.tabs.edit(tab.id, handle.text());
@@ -80,15 +90,24 @@ export function useRunActions(
       ...request,
       returnOnError: settings.returnOnError,
       params: params(),
+      autoLimit: limited ? execution.autoLimit : null,
+      confirmMultiple: execution.confirmMultiple,
     });
   };
+  const keyScope = (key: RunScope): RunScope => {
+    const selected =
+      execution.runSelection && Boolean(editor.current?.selection().trim());
+    if (key === 'current') return selected ? 'current' : settings.runDefault;
+    return other(settings.runDefault);
+  };
   const runKey = (key: RunScope): void => {
-    const selected = Boolean(editor.current?.selection().trim());
-    if (key === 'current') run(selected ? 'current' : settings.runDefault);
-    else run(other(settings.runDefault));
+    run(keyScope(key));
   };
   return {
     run,
+    runUnlimited: () => {
+      run(keyScope('current'), false);
+    },
     runKey,
     provide: () => {
       const pending = runs.runOf(tab.id).parameters;

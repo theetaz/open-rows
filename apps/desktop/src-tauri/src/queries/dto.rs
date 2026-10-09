@@ -3,7 +3,7 @@
 use super::params::ParamsDto;
 use openrows_core::safety::{SafetyPlan, Verdict};
 use openrows_core::script::{self, Scope};
-use openrows_sql::{Dialect, StatementKind};
+use openrows_sql::{Dialect, StatementKind, limit_select};
 use openrows_store::{HistoryEntry, HistoryStatus};
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -41,6 +41,13 @@ pub(crate) struct ExecuteRequest {
     /// Parameter placeholders to bind; `None` runs the text as written.
     #[serde(default)]
     pub(crate) params: Option<ParamsDto>,
+    /// Append `LIMIT n` to every `SELECT` without a limit; `None` runs the
+    /// statements as written (Settings ▸ Execution, or Run Without Limit).
+    #[serde(default)]
+    pub(crate) auto_limit: Option<u32>,
+    /// Ask before running more than one statement, even when each is safe.
+    #[serde(default)]
+    pub(crate) confirm_multiple: bool,
 }
 
 const fn stop_on_error() -> bool {
@@ -49,7 +56,8 @@ const fn stop_on_error() -> bool {
 
 impl ExecuteRequest {
     /// Statement texts the request selects, in execution order, split with
-    /// the session engine's `dialect`.
+    /// the session engine's `dialect`; unbounded `SELECT`s carry the
+    /// request's automatic `LIMIT`.
     pub(crate) fn statements(&self, dialect: Dialect) -> Vec<String> {
         let scope = match self.mode {
             RunMode::All | RunMode::Selection => Scope::All,
@@ -58,7 +66,14 @@ impl ExecuteRequest {
                 Scope::AtCursor(byte_offset(&self.sql, cursor))
             }
         };
-        script::statements(&self.sql, scope, dialect)
+        let statements = script::statements(&self.sql, scope, dialect);
+        let Some(rows) = self.auto_limit.filter(|rows| *rows > 0) else {
+            return statements;
+        };
+        statements
+            .into_iter()
+            .map(|sql| limit_select(&sql, dialect, u64::from(rows)).unwrap_or(sql))
+            .collect()
     }
 
     /// Rows kept per result set of this run.
@@ -241,7 +256,29 @@ mod tests {
             max_rows: None,
             return_on_error: true,
             params: None,
+            auto_limit: None,
+            confirm_multiple: false,
         }
+    }
+
+    #[test]
+    fn the_automatic_limit_applies_to_unbounded_selects_only() {
+        let mut run = request(
+            "SELECT * FROM t; SELECT 1 LIMIT 2; DELETE FROM t",
+            RunMode::All,
+            None,
+        );
+        run.auto_limit = Some(100);
+        assert_eq!(
+            run.statements(Dialect::MySql),
+            vec![
+                "SELECT * FROM t LIMIT 100",
+                "SELECT 1 LIMIT 2",
+                "DELETE FROM t"
+            ]
+        );
+        run.auto_limit = Some(0);
+        assert_eq!(run.statements(Dialect::Sqlite)[0], "SELECT * FROM t");
     }
 
     #[test]

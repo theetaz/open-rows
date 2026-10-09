@@ -6,6 +6,7 @@ import {
 } from '@openrows/ipc';
 import { parseAppearance } from '@openrows/ui';
 import { parseEditorSettings } from '../query/editorSettings';
+import { EXECUTION_KEY, parseExecution } from '../query/executionSettings';
 import { parseOverrides, SHORTCUTS_KEY } from '../commands/bindings';
 import { DIAGNOSTICS_KEY, parseDiagnostics } from './diagnostics';
 import { GENERAL_KEY, parseGeneral } from './general';
@@ -39,6 +40,7 @@ const SECTIONS: Readonly<Record<string, Section>> = {
     key: EDITOR_KEY,
     parse: (stored) => parseEditorSettings(JSON.stringify(stored ?? null)),
   },
+  execution: { key: EXECUTION_KEY, parse: parseExecution },
   shortcuts: { key: SHORTCUTS_KEY, parse: parseOverrides },
   diagnostics: { key: DIAGNOSTICS_KEY, parse: parseDiagnostics },
   results: { key: RESULTS_KEY, parse: parseResults },
