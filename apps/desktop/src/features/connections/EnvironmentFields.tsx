@@ -72,6 +72,14 @@ export function EnvironmentFields({
           update({ confirmWrites });
         }}
       />
+      <SwitchRow
+        label="Record query history"
+        detail="Keep executed statements in History. Off records nothing."
+        checked={draft.recordHistory}
+        onChange={(recordHistory) => {
+          update({ recordHistory });
+        }}
+      />
     </>
   );
 }

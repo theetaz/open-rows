@@ -32,6 +32,7 @@ const columns = [
   column('computed', 'integer'),
 ];
 const text = (name: string, value: string, type = 'text'): RowField => ({
+  index: 0,
   name,
   type,
   text: value,
@@ -42,6 +43,7 @@ const fields: RowField[] = [
   text('id', '7', 'int4'),
   text('name', 'Ada'),
   {
+    index: 2,
     name: 'note',
     type: 'text',
     text: 'NULL',
@@ -149,7 +151,9 @@ it('needs ⌘Enter to stage once the value spans several lines', async () => {
 it('stays read-only until the exact snapshot loads, loading it on focus', async () => {
   const load = vi.fn();
   const { user } = show({
-    fields: [{ name: 'id', type: 'int4', text: '7', state: 'normal' }],
+    fields: [
+      { index: 0, name: 'id', type: 'int4', text: '7', state: 'normal' },
+    ],
     editor: editor({ ready: false, load }),
   });
   expect(box('id')).toHaveAttribute('readonly');
@@ -238,6 +242,7 @@ it('marks staged and deleted fields and hides editing without an editor', () => 
         number: 1,
         fields: [
           {
+            index: 2,
             name: 'note',
             type: 'text',
             text: 'DEFAULT',

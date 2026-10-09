@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Executed-statement history (docs/15 §2, docs/12 repudiation row).
 
-use rusqlite::{Row, params};
+use rusqlite::{Connection, Row, ToSql, params};
 
 use super::{
     LocalStore,
@@ -108,9 +108,18 @@ impl HistorySource {
     }
 }
 
-const SELECT_RECENT: &str = "SELECT id, profile_id, database, started_at, duration_ms, \
-     status, rows, statement, error_message, source FROM history WHERE profile_id = ?1 \
-     ORDER BY started_at DESC, id DESC LIMIT ?2";
+/// Newest first; `?1` filters by profile when not NULL.
+const LIST: &str = "SELECT h.id, h.profile_id, h.database, h.started_at, h.duration_ms, \
+     h.status, h.rows, h.statement, h.error_message, h.source FROM history h \
+     WHERE ?1 IS NULL OR h.profile_id = ?1 \
+     ORDER BY h.started_at DESC, h.id DESC LIMIT ?2";
+
+/// Newest first statements matching the FTS5 expression in `?1`.
+const SEARCH: &str = "SELECT h.id, h.profile_id, h.database, h.started_at, h.duration_ms, \
+     h.status, h.rows, h.statement, h.error_message, h.source \
+     FROM history_fts JOIN history h ON h.id = history_fts.rowid \
+     WHERE history_fts MATCH ?1 AND (?2 IS NULL OR h.profile_id = ?2) \
+     ORDER BY h.started_at DESC, h.id DESC LIMIT ?3";
 
 const INSERT: &str = "INSERT INTO history (profile_id, database, started_at, duration_ms, \
      status, rows, statement, error_message, source) \
@@ -139,6 +148,31 @@ fn into_entry((id, mut record, status, source): RawRow) -> Result<HistoryEntry, 
     Ok(HistoryEntry { id, record })
 }
 
+/// An FTS5 expression for free text: every whitespace-separated term must
+/// match as a prefix. Terms are quoted, so punctuation such as the dot in
+/// `public.orders` or a stray quote is never read as FTS syntax. `None` when
+/// the text holds no term, which means "no search".
+pub(crate) fn fts_query(text: &str) -> Option<String> {
+    let terms: Vec<String> = text
+        .split_whitespace()
+        .map(|term| format!("\"{}\"*", term.replace('"', "\"\"")))
+        .collect();
+    (!terms.is_empty()).then(|| terms.join(" "))
+}
+
+fn collect(
+    conn: &Connection,
+    sql: &str,
+    params: &[&dyn ToSql],
+) -> Result<Vec<HistoryEntry>, StoreError> {
+    let mut statement = conn.prepare(sql).map_err(sqlite("read history"))?;
+    let rows = statement
+        .query_map(params, read_row)
+        .map_err(sqlite("read history"))?;
+    rows.map(|row| into_entry(row.map_err(sqlite("read history"))?))
+        .collect()
+}
+
 impl LocalStore {
     /// Append a statement to history and return its row id.
     ///
@@ -164,23 +198,59 @@ impl LocalStore {
         Ok(conn.last_insert_rowid())
     }
 
-    /// The newest `limit` history entries for `profile_id`, newest first.
+    /// Up to `limit` entries newest first, of one profile or of every profile
+    /// (`None`). Non-blank `text` keeps only statements that contain all of its
+    /// words as prefixes (full-text search, FR-WS-01).
     ///
     /// # Errors
     /// Returns `Sqlite` or `Corrupt` errors when rows cannot be read.
-    pub fn recent_history(
+    pub fn search_history(
         &self,
-        profile_id: &str,
+        profile_id: Option<&str>,
+        text: &str,
         limit: u32,
     ) -> Result<Vec<HistoryEntry>, StoreError> {
         let conn = self.lock()?;
-        let mut statement = conn
-            .prepare(SELECT_RECENT)
-            .map_err(sqlite("read history"))?;
-        let rows = statement
-            .query_map(params![profile_id, limit], read_row)
-            .map_err(sqlite("read history"))?;
-        rows.map(|row| into_entry(row.map_err(sqlite("read history"))?))
-            .collect()
+        match fts_query(text) {
+            None => collect(&conn, LIST, params![profile_id, limit]),
+            Some(expression) => collect(&conn, SEARCH, params![expression, profile_id, limit]),
+        }
+    }
+
+    /// Delete one entry; `false` when no entry has that id.
+    ///
+    /// # Errors
+    /// Returns a `Sqlite` error when the delete fails.
+    pub fn delete_history(&self, id: i64) -> Result<bool, StoreError> {
+        let removed = self
+            .lock()?
+            .execute("DELETE FROM history WHERE id = ?1", [id])
+            .map_err(sqlite("delete history"))?;
+        Ok(removed > 0)
+    }
+
+    /// Delete every entry of `profile_id`; returns how many were removed.
+    ///
+    /// # Errors
+    /// Returns a `Sqlite` error when the delete fails.
+    pub fn clear_history(&self, profile_id: &str) -> Result<usize, StoreError> {
+        self.lock()?
+            .execute("DELETE FROM history WHERE profile_id = ?1", [profile_id])
+            .map_err(sqlite("clear history"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::fts_query;
+
+    #[test]
+    fn terms_are_quoted_prefixes_that_must_all_match() {
+        assert_eq!(fts_query("   "), None);
+        assert_eq!(
+            fts_query("select public.orders").as_deref(),
+            Some("\"select\"* \"public.orders\"*")
+        );
+        assert_eq!(fts_query("a\"b").as_deref(), Some("\"a\"\"b\"*"));
     }
 }

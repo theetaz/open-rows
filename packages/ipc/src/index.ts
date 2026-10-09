@@ -56,13 +56,23 @@ export {
   listSchemas,
   searchCatalog,
 } from './catalog';
-/** Query execution, cancellation, result lifetime and history (D-07). */
+/** Query execution, cancellation, result lifetime and history (D-07, FR-WS-01/02). */
 export {
   cancelQuery,
+  clearHistory,
+  deleteHistory,
   executeQuery,
-  recentHistory,
   releaseResults,
+  searchHistory,
 } from './queries';
+/** Exact values of single result cells for the value inspector (M1-20). */
+export { resultCellInfo, resultCellValue } from './cells';
+export type {
+  CellInfoDto,
+  CellKindDto,
+  CellRequest,
+  HistorySearchRequest,
+} from './generated/bindings';
 /** Table views: structure, parameterised pages, exact counts, SQL preview (D-08). */
 export {
   tableCount,

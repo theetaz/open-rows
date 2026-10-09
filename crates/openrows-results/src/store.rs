@@ -3,7 +3,7 @@ use crate::limits::{Append, Limits};
 use crate::slice::{project_slice, ranges};
 use arrow_array::cast::AsArray;
 use arrow_array::types::Int64Type;
-use arrow_array::{Array, RecordBatch};
+use arrow_array::{Array, ArrayRef, RecordBatch};
 use arrow_ipc::writer::StreamWriter;
 use arrow_schema::{ArrowError, SchemaRef};
 use std::collections::HashMap;
@@ -35,6 +35,9 @@ pub enum WindowError {
     /// Insertion requires at least one batch, all with identical schemas.
     #[error("result requires batches with a shared schema")]
     InvalidBatches,
+    /// The cell holds numbers, dates or another type with no byte value.
+    #[error("cell does not hold text or binary data")]
+    NotBytes,
     /// Arrow rejected the schema or stream encoding.
     #[error(transparent)]
     Arrow(#[from] ArrowError),
@@ -260,6 +263,32 @@ impl ResultStore {
             indices,
             slices,
         })
+    }
+
+    /// The column array holding one cell, and the cell's index inside that
+    /// array's batch. Shares the buffers; the lock is released on return.
+    pub(crate) fn cell_column(
+        &self,
+        id: &str,
+        row: usize,
+        column: usize,
+    ) -> Result<(ArrayRef, usize), WindowError> {
+        let inner = self.read();
+        let result = inner
+            .results
+            .get(id)
+            .ok_or_else(|| WindowError::UnknownResult(id.to_owned()))?;
+        if row >= result.rows || column >= result.schema.fields().len() {
+            return Err(WindowError::OutOfRange);
+        }
+        let mut index = row;
+        for batch in &result.batches {
+            if index < batch.num_rows() {
+                return Ok((Arc::clone(batch.column(column)), index));
+            }
+            index -= batch.num_rows();
+        }
+        Err(WindowError::OutOfRange)
     }
 
     fn read(&self) -> RwLockReadGuard<'_, Inner> {

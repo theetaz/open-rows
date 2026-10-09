@@ -11,14 +11,20 @@ import {
 } from '@openrows/ui';
 import { ObjectTree, SchemaPicker, substringIndices } from '../features/schema';
 import type { Catalog, ObjectRef } from '../features/schema';
-import { savedQueries, history } from './data/connections';
+import { HistoryList } from '../features/query';
+import type { Connections } from '../features/connections';
+import { savedQueries } from './data/connections';
 import { sidebarSegments } from './data/content';
 import styles from './Sidebar.module.css';
 type Props = {
   catalog: Catalog;
   header: ReactNode;
+  /** The saved connections; the History segment lists their statements. */
+  connections: Connections;
   onOpen: (object: ObjectRef) => void;
   onQuery: () => void;
+  /** Open a history statement in a new query tab. */
+  onOpenSql: (sql: string) => void;
 };
 const exact = (event: React.KeyboardEvent, key: string): boolean =>
   event.metaKey &&
@@ -64,24 +70,35 @@ export function WorkspaceSidebar(props: Props): React.JSX.Element {
           className={styles.search}
           leadingIcon={<Icon name="search" />}
           aria-label="Search items"
-          placeholder="Search tables, views…"
+          placeholder={
+            segment === 'History' ? 'Search history…' : 'Search tables, views…'
+          }
           value={search}
           onChange={(event) => {
             setSearch(event.target.value);
           }}
         />
         <div className={styles.objects}>
-          {segment === 'Items' ? (
+          {segment === 'Items' && (
             <ObjectTree
               catalog={catalog}
               search={search}
               onOpen={props.onOpen}
             />
-          ) : (
+          )}
+          {segment === 'Queries' && (
             <SampleList
-              names={segment === 'Queries' ? savedQueries : history}
+              names={savedQueries}
               search={search}
               onQuery={props.onQuery}
+            />
+          )}
+          {segment === 'History' && (
+            <HistoryList
+              active={props.connections.active}
+              connections={props.connections.profiles}
+              text={search}
+              onOpen={props.onOpenSql}
             />
           )}
         </div>

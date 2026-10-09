@@ -31,6 +31,7 @@ export function profile(
     ssh: null,
     hasPassword: false,
     safety: { readOnly: false, confirmWrites: false },
+    recordHistory: true,
     ...overrides,
   };
 }
@@ -129,7 +130,11 @@ export function ipcStub(
     executeQuery: vi.fn(),
     cancelQuery: vi.fn(() => Promise.resolve()),
     releaseResults: vi.fn(() => Promise.resolve()),
-    recentHistory: vi.fn(() => Promise.resolve([])),
+    searchHistory: vi.fn(() => Promise.resolve([])),
+    deleteHistory: vi.fn(() => Promise.resolve(true)),
+    clearHistory: vi.fn(() => Promise.resolve(null)),
+    resultCellInfo: vi.fn(),
+    resultCellValue: vi.fn(),
     tableEditInfo: vi.fn(() =>
       Promise.resolve({
         key: [],

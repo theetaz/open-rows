@@ -6,12 +6,15 @@ use super::dto::TableTarget;
 use super::edit_dto::{EditInfoDto, EditReply, EditRequest, EditStatementDto};
 use crate::connections::{Connections, IpcError};
 use crate::connections::{profiles::profile_id, route, target};
+use crate::queries::history::{CommitRecord, now_ms, record_commit};
 use openrows_core::safety::{SafetyPlan, SafetyPolicy};
 use openrows_driver_api::{Connection, DriverError, RowEditInfo, catalog, editor};
 use openrows_sql::Dialect;
 use openrows_sql::edit::{Edit, EditTable, edit_sql};
-use openrows_sql::select::TableRef;
+use openrows_sql::select::{BoundSql, TableRef};
+use openrows_store::LocalStore;
 use openrows_store::profile::EnvKind;
+use std::time::Instant;
 use tauri::State;
 
 /// A dedicated connection to the target's database; closing it rolls back
@@ -98,6 +101,7 @@ pub(crate) async fn table_edit_info(
 #[specta::specta]
 pub(crate) async fn table_edit(
     state: State<'_, Connections>,
+    local: State<'_, LocalStore>,
     request: EditRequest,
 ) -> Result<EditReply, IpcError> {
     owned_session(&state, &request.session_id, &request.target)?;
@@ -109,8 +113,13 @@ pub(crate) async fn table_edit(
     }
     let dialect =
         crate::connections::drivers::profile_driver(&state, &request.target.profile_id)?.dialect();
+    let record = state
+        .profiles
+        .get(profile_id(&request.target.profile_id)?)?
+        .record_history;
     let mut session = session(&state, &request.target).await?;
-    let result = prepare_commit(session.as_mut(), &request, dialect).await;
+    let history = record.then_some(&*local);
+    let result = prepare_commit(session.as_mut(), &request, dialect, history).await;
     // Closing rolls back transactions still open; a lost COMMIT reply remains uncertain.
     let closed = session
         .close()
@@ -123,10 +132,13 @@ pub(crate) async fn table_edit(
     closed?;
     result
 }
+/// Plan the edits and commit them once the preview token is confirmed; a
+/// committed or failed batch is written to `history` when it is given.
 async fn prepare_commit(
     session: &mut dyn Connection,
     request: &EditRequest,
     dialect: Dialect,
+    history: Option<&LocalStore>,
 ) -> Result<EditReply, IpcError> {
     let target = &request.target;
     let (info, columns) = edit_shape(session, (&target.schema, &target.table))
@@ -162,17 +174,47 @@ async fn prepare_commit(
                 .collect(),
         });
     }
-    editor(session)
+    let started = (now_ms(), Instant::now());
+    let outcome = editor(session)
         .map_err(|error| IpcError::from(&error))?
         .commit_edits(&edits)
-        .await
-        .map_err(|error| IpcError::from(&error))?;
+        .await;
+    if let Some(local) = history {
+        record_batch(local, request, &edits, started, &outcome);
+    }
+    outcome.map_err(|error| IpcError::from(&error))?;
     Ok(EditReply::Committed)
+}
+
+/// One history entry per statement of the batch, with the batch's outcome.
+fn record_batch(
+    local: &LocalStore,
+    request: &EditRequest,
+    edits: &[BoundSql],
+    (started_at_ms, started): (i64, Instant),
+    outcome: &Result<(), DriverError>,
+) {
+    let statements: Vec<String> = edits.iter().map(|edit| edit.sql.clone()).collect();
+    let failure = outcome
+        .as_ref()
+        .err()
+        .map(|error| IpcError::from(error).message);
+    record_commit(
+        local,
+        &CommitRecord {
+            profile_id: &request.target.profile_id,
+            database: &request.target.database,
+            started_at_ms,
+            duration: started.elapsed(),
+            statements: &statements,
+            error: failure.as_deref(),
+        },
+    );
 }
 
 fn preview_token(
     request: &EditRequest,
-    edits: &[openrows_sql::select::BoundSql],
+    edits: &[BoundSql],
     dialect: Dialect,
 ) -> Result<String, IpcError> {
     let plan = SafetyPlan::check(
@@ -225,7 +267,7 @@ mod tests {
             changes: vec![change],
             confirm_token: None,
         };
-        let sql = vec![openrows_sql::select::BoundSql {
+        let sql = vec![BoundSql {
             sql: "UPDATE t SET name = $1 WHERE id = $2".into(),
             params: vec![Some("first".into()), Some("1".into())],
         }];

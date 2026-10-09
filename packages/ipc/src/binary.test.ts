@@ -30,8 +30,6 @@ it.each([{}, 'bytes', [256], [-1], [1.5], [NaN], ['1'], [null]])(
   'rejects malformed bytes %j',
   async (bytes) => {
     mockInvoke.mockResolvedValue(bytes);
-    await expect(resultWindow(request)).rejects.toThrow(
-      'Expected Arrow IPC bytes',
-    );
+    await expect(resultWindow(request)).rejects.toThrow('Expected raw bytes');
   },
 );

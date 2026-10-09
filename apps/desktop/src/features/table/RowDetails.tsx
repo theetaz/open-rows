@@ -28,7 +28,11 @@ export function RowDetails({ row }: { row: SelectedRow }): React.JSX.Element {
       <div role="list" aria-label="Row fields" className={styles.fields}>
         {fields.map((field) => (
           <div role="listitem" key={field.name}>
-            <DetailsField field={field} editor={row.editor} />
+            <DetailsField
+              field={field}
+              editor={row.editor}
+              source={row.source}
+            />
           </div>
         ))}
       </div>

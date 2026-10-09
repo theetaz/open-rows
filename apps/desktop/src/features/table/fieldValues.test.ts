@@ -133,9 +133,9 @@ describe('field actions', () => {
 
 describe('inspector overlay', () => {
   const fields: RowField[] = [
-    { name: 'id', type: 'int4', text: '7', state: 'normal' },
-    { name: 'name', type: 'text', text: 'EMPTY', state: 'empty' },
-    { name: 'note', type: 'text', text: 'shown', state: 'normal' },
+    { index: 0, name: 'id', type: 'int4', text: '7', state: 'normal' },
+    { index: 1, name: 'name', type: 'text', text: 'EMPTY', state: 'empty' },
+    { index: 2, name: 'note', type: 'text', text: 'shown', state: 'normal' },
   ];
   const edit: StagedEdit = {
     id: '{"id":"7"}',

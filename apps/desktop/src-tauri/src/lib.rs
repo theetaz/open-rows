@@ -45,7 +45,10 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
             queries::commands::query_execute,
             queries::commands::query_cancel,
             queries::commands::results_release,
-            queries::commands::history_recent,
+            queries::commands::history_search,
+            queries::commands::history_delete,
+            queries::commands::history_clear,
+            results::result_cell_info,
             tables::commands::table_structure,
             tables::commands::table_sql,
             tables::commands::table_page,
@@ -98,10 +101,13 @@ pub fn run() -> Result<(), tauri::Error> {
     let specta = command_builder();
     let controls = specta.invoke_handler();
     let binary: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool =
-        tauri::generate_handler![results::result_window];
+        tauri::generate_handler![results::result_window, results::result_cell_value];
     startup_report::instrument(builder)
         .invoke_handler(move |invoke| {
-            if invoke.message.command() == "result_window" {
+            if matches!(
+                invoke.message.command(),
+                "result_window" | "result_cell_value"
+            ) {
                 binary(invoke)
             } else {
                 controls(invoke)

@@ -79,8 +79,17 @@ export const commands = {
 	queryCancel: (queryId: string) => __TAURI_INVOKE<void>("query_cancel", { queryId }),
 	/**  Drop results whose tab closed or was re-run. */
 	resultsRelease: (resultIds: string[]) => __TAURI_INVOKE<void>("results_release", { resultIds }),
-	/**  The newest statements run on a saved connection, newest first. */
-	historyRecent: (profileId: string, limit: number) => typedError<HistoryItemDto[], IpcError>(__TAURI_INVOKE("history_recent", { profileId, limit })),
+	/**
+	 *  Entries of the local history, newest first: one connection or all of them,
+	 *  narrowed to statements matching the free text.
+	 */
+	historySearch: (request: HistorySearchRequest) => typedError<HistoryItemDto[], IpcError>(__TAURI_INVOKE("history_search", { request })),
+	/**  Delete one history entry; `false` when it was already gone. */
+	historyDelete: (id: number | null) => typedError<boolean, IpcError>(__TAURI_INVOKE("history_delete", { id })),
+	/**  Delete every history entry of one saved connection. */
+	historyClear: (profileId: string) => typedError<null, IpcError>(__TAURI_INVOKE("history_clear", { profileId })),
+	/**  Kind and byte length of one cell (value inspector); nothing is copied. */
+	resultCellInfo: (request: CellRequest) => typedError<CellInfoDto, ResultError>(__TAURI_INVOKE("result_cell_info", { request })),
 	/**  Columns, indexes and row estimate of a relation, read on the metadata session. */
 	tableStructure: (target: TableTarget) => typedError<TableStructureDto, IpcError>(__TAURI_INVOKE("table_structure", { target })),
 	/**  The page `SELECT` and its bind parameters, without running it (SQL preview). */
@@ -163,6 +172,23 @@ export type AppInfo = {
 };
 
 export type BuildProfile = "debug" | "release";
+
+/**  Kind and exact byte length of a cell; the value itself is read separately. */
+export type CellInfoDto = {
+	kind: CellKindDto,
+	/**  Bytes of the exact value (UTF-8 for text); zero unless text or binary. */
+	byteLen: number | null,
+};
+
+/**  What a cell holds, for the value inspector. */
+export type CellKindDto = "null" | "text" | "binary" | "other";
+
+/**  One cell of a stored result, by its row and column index. */
+export type CellRequest = {
+	resultId: string,
+	row: number,
+	column: number,
+};
 
 /**  A staged field value. `default` is the column DEFAULT, never the text `'DEFAULT'`. */
 export type CellValueDto = { kind: "null" } | { kind: "default" } | { kind: "text"; value: string };
@@ -380,12 +406,24 @@ export type GridRun = {
 /**  One executed statement from the local history. */
 export type HistoryItemDto = {
 	id: number | null,
+	profileId: string,
+	database: string | null,
 	statement: string,
 	startedAtMs: number | null,
 	durationMs: number | null,
 	status: HistoryStatusDto,
 	rows: number | null,
 	errorMessage: string | null,
+};
+
+/**  Search of the local history: one connection or all, and free text. */
+export type HistorySearchRequest = {
+	/**  The saved connection to search; `null` searches every connection. */
+	profileId: string | null,
+	/**  Words that must each start a word of the statement; blank lists everything. */
+	text: string,
+	/**  Entries wanted, newest first (capped by the command). */
+	limit: number,
 };
 
 /**  Outcome of a recorded statement. */
@@ -550,6 +588,8 @@ export type ProfileDto = {
 	ssh: SshDto | null,
 	hasPassword: boolean,
 	safety: SafetyDto,
+	/**  Executed statements are kept in the local history (FR-WS-02). */
+	recordHistory: boolean,
 };
 
 /**  Connection form values sent on save and test. */
@@ -571,6 +611,8 @@ export type ProfileInput = {
 	/**  The SSH tunnel; absent or null for a direct connection. */
 	ssh?: SshInput | null,
 	safety: SafetyDto,
+	/**  Absent in forms written before the history switch: history is recorded. */
+	recordHistory?: boolean,
 	password: PasswordInput,
 };
 
@@ -594,7 +636,7 @@ export type QueryEventDto = { type: "statementStarted"; statement: number } | { 
 /**  Kind of the browsed relation. */
 export type RelationKindDto = "table" | "partitionedTable" | "view" | "materializedView" | "foreignTable";
 
-export type ResultError = { kind: "unknownResult"; message: string } | { kind: "outOfRange" } | { kind: "encoding"; message: string } | { kind: "unavailable"; message: string };
+export type ResultError = { kind: "unknownResult"; message: string } | { kind: "outOfRange" } | { kind: "notBytes" } | { kind: "encoding"; message: string } | { kind: "unavailable"; message: string };
 
 export type RowEditDto = {
 	kind: EditKindDto,

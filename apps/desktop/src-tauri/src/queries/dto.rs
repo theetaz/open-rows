@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-//! Request and reply types of `query_execute` and `history_recent`.
+//! Request and reply types of `query_execute` and the `history_*` commands.
 use openrows_core::safety::{SafetyPlan, Verdict};
 use openrows_core::script::{self, Scope};
 use openrows_sql::{Dialect, StatementKind};
@@ -162,11 +162,25 @@ pub(crate) enum HistoryStatusDto {
     Cancelled,
 }
 
+/// Search of the local history: one connection or all, and free text.
+#[derive(Clone, Debug, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct HistorySearchRequest {
+    /// The saved connection to search; `null` searches every connection.
+    pub(crate) profile_id: Option<String>,
+    /// Words that must each start a word of the statement; blank lists everything.
+    pub(crate) text: String,
+    /// Entries wanted, newest first (capped by the command).
+    pub(crate) limit: u32,
+}
+
 /// One executed statement from the local history.
 #[derive(Clone, Debug, PartialEq, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct HistoryItemDto {
     id: f64,
+    profile_id: String,
+    database: Option<String>,
     statement: String,
     started_at_ms: f64,
     duration_ms: Option<f64>,
@@ -184,6 +198,8 @@ impl From<HistoryEntry> for HistoryItemDto {
         let record = entry.record;
         Self {
             id: entry.id as f64,
+            profile_id: record.profile_id,
+            database: record.database,
             statement: record.statement,
             started_at_ms: record.started_at_ms as f64,
             duration_ms: record.duration_ms.map(|ms| ms as f64),

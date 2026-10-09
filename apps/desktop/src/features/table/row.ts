@@ -8,6 +8,8 @@ import type { CellValue } from './cellValue';
 /** One field of the selected row, as the inspector lists it. */
 export type RowField = {
   name: string;
+  /** Column index within the result set (addresses the exact value). */
+  index: number;
   /** Database type name, e.g. `int4`. */
   type: string | null;
   text: string;
@@ -31,12 +33,17 @@ export type RowEditor = {
   addFile: (name: string) => void;
 };
 
+/** Where a row's exact values live: its result set and row index in that result. */
+export type RowSource = { resultId: string; row: number };
+
 /** The selected table row: one row's display values for the Details panel. */
 export type SelectedRow = {
   table: string;
   /** Row number within the table view, 1-based across pages. */
   number: number;
   fields: readonly RowField[];
+  /** The stored result the row was read from; enables the full-value inspector. */
+  source?: RowSource;
   /** Present when the table is editable (writable connection, stable key). */
   editor?: RowEditor;
   error?: string;
@@ -77,6 +84,7 @@ export async function readRows(
         const cell = tile.cells[(row - first) * columns + index];
         return {
           name: column.name,
+          index,
           type: column.sourceType,
           text: cell?.text ?? '',
           state: cell?.state ?? 'normal',
