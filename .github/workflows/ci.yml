@@ -14,9 +14,11 @@ on:
 permissions:
   contents: read
 
+# A running check on main always finishes (and saves the Rust cache);
+# pushes that land meanwhile queue, and only the newest queued run is kept.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 defaults:
   run:
