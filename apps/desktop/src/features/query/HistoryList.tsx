@@ -1,14 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useState } from 'react';
-import { Button, Icon, IconButton, SegmentedControl } from '@openrows/ui';
-import type { HistoryItemDto } from '@openrows/ipc';
+import { lazy, Suspense, useState } from 'react';
+import { Button, SegmentedControl } from '@openrows/ui';
+import { HistoryRow } from './HistoryRow';
+import type { HistoryActions } from './HistoryRow';
+import { insertHistorySql } from './historyInsert';
+import type { EngineDto, HistoryItemDto } from '@openrows/ipc';
 import { useHistory } from './useHistory';
 import type { HistoryState } from './useHistory';
-import { groupByDay, summaryOf } from './historyView';
+import { groupByDay } from './historyView';
 import styles from './HistoryList.module.css';
 
 /** A saved connection as the History list names it. */
-type HistoryConnection = { id: string; name: string };
+type HistoryConnection = { id: string; name: string; engine?: EngineDto };
+const HistorySaveReview = lazy(() =>
+  import('./HistorySaveReview').then((module) => ({
+    default: module.HistorySaveReview,
+  })),
+);
 
 type Scope = 'connection' | 'all';
 
@@ -32,6 +40,8 @@ type Props = {
 export function HistoryList(props: Props): React.JSX.Element {
   const { active, connections, text, onOpen } = props;
   const [scope, setScope] = useState<Scope>('connection');
+  const [saving, setSaving] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const scoped = scope === 'connection';
   const state = useHistory({
     profileId: scoped ? (active?.id ?? null) : null,
@@ -47,19 +57,44 @@ export function HistoryList(props: Props): React.JSX.Element {
       <HistoryToolbar
         scope={scope}
         onScope={setScope}
-        clearable={scoped && active !== undefined && state.items.length > 0}
+        clearable={state.items.length > 0}
         connection={active}
         onClear={state.clear}
       />
-      {state.problem && <p role="alert">{state.problem}</p>}
+      {(state.problem ?? actionError) && (
+        <p role="alert">{state.problem ?? actionError}</p>
+      )}
       <HistoryDays
         items={state.items}
         text={text}
         connections={connections}
         showConnections={!scoped}
         onOpen={onOpen}
+        onInsert={(sql) => {
+          setActionError(
+            insertHistorySql(sql)
+              ? null
+              : 'Open a query editor before inserting history.',
+          );
+        }}
+        onSave={(sql) => {
+          if (active) setSaving(sql);
+          else setActionError('Select a connection before saving history.');
+        }}
         state={state}
       />
+      {saving !== null && active && (
+        <Suspense fallback={null}>
+          <HistorySaveReview
+            sql={saving}
+            profileId={active.id}
+            engine={active.engine ?? 'postgres'}
+            onClose={() => {
+              setSaving(null);
+            }}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }
@@ -70,7 +105,7 @@ function HistoryToolbar(props: {
   onScope: (scope: Scope) => void;
   clearable: boolean;
   connection: HistoryConnection | undefined;
-  onClear: (profileId: string) => Promise<void>;
+  onClear: (profileId: string | null) => Promise<void>;
 }): React.JSX.Element {
   const [confirming, setConfirming] = useState(false);
   const { connection } = props;
@@ -98,16 +133,22 @@ function HistoryToolbar(props: {
           </Button>
         )}
       </div>
-      {confirming && connection && (
+      {confirming && (
         <div role="group" aria-label="Clear history" className={styles.confirm}>
-          <p>Delete every statement of {connection.name} from History?</p>
+          <p>
+            Delete every statement of{' '}
+            {props.scope === 'all' ? 'all connections' : connection?.name} from
+            History?
+          </p>
           <div className={styles.confirmActions}>
             <Button
               size="sm"
               variant="destructive"
               onClick={() => {
                 setConfirming(false);
-                void props.onClear(connection.id);
+                void props.onClear(
+                  props.scope === 'all' ? null : (connection?.id ?? null),
+                );
               }}
             >
               Clear history
@@ -128,15 +169,17 @@ function HistoryToolbar(props: {
 }
 
 /** The entries grouped by day, or the reason there are none. */
-function HistoryDays(props: {
-  items: readonly HistoryItemDto[];
-  text: string;
-  connections: readonly HistoryConnection[];
-  /** Name the connection of each entry (only when spanning every connection). */
-  showConnections: boolean;
-  onOpen: (sql: string) => void;
-  state: HistoryState;
-}): React.JSX.Element {
+function HistoryDays(
+  props: HistoryActions & {
+    items: readonly HistoryItemDto[];
+    text: string;
+    connections: readonly HistoryConnection[];
+    /** Name the connection of each entry (only when spanning every connection). */
+    showConnections: boolean;
+    onOpen: (sql: string) => void;
+    state: HistoryState;
+  },
+): React.JSX.Element {
   const groups = groupByDay(props.items, new Date());
   const names = new Map(props.connections.map((item) => [item.id, item.name]));
   if (groups.length === 0)
@@ -159,6 +202,8 @@ function HistoryDays(props: {
                   props.showConnections ? names.get(item.profileId) : undefined
                 }
                 onOpen={props.onOpen}
+                onInsert={props.onInsert}
+                onSave={props.onSave}
                 onDelete={props.state.remove}
               />
             ))}
@@ -167,65 +212,4 @@ function HistoryDays(props: {
       ))}
     </ol>
   );
-}
-
-/** One statement: a button that opens it, and copy and delete actions. */
-function HistoryRow(props: {
-  item: HistoryItemDto;
-  /** Connection name, shown when the list spans every connection. */
-  connection: string | undefined;
-  onOpen: (sql: string) => void;
-  onDelete: (id: number) => Promise<void>;
-}): React.JSX.Element {
-  const { item } = props;
-  const { id } = item;
-  const label = snippet(item.statement);
-  const meta = [props.connection, item.database, ...summaryOf(item)];
-  return (
-    <li className={styles.row} data-status={item.status}>
-      <button
-        type="button"
-        className={styles.open}
-        title={item.errorMessage ?? item.statement}
-        onClick={() => {
-          props.onOpen(item.statement);
-        }}
-      >
-        <code>{label}</code>
-        <small>{meta.filter(Boolean).join(' · ')}</small>
-      </button>
-      <span className={styles.actions}>
-        <IconButton
-          size="sm"
-          variant="ghost"
-          aria-label={`Copy ${label}`}
-          onClick={() => {
-            void navigator.clipboard
-              .writeText(item.statement)
-              .catch(() => undefined);
-          }}
-        >
-          <Icon name="copy" />
-        </IconButton>
-        {id !== null && (
-          <IconButton
-            size="sm"
-            variant="ghost"
-            aria-label={`Delete ${label}`}
-            onClick={() => {
-              void props.onDelete(id);
-            }}
-          >
-            <Icon name="close" />
-          </IconButton>
-        )}
-      </span>
-    </li>
-  );
-}
-
-/** The statement on one line, cut for labels. */
-function snippet(statement: string): string {
-  const flat = statement.replace(/\s+/g, ' ').trim();
-  return flat.length > 60 ? `${flat.slice(0, 59)}…` : flat;
 }

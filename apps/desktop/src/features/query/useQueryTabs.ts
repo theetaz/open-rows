@@ -21,7 +21,7 @@ import type {
   TabsState,
 } from './tabs';
 import { keepTab, moveTab, pinTab, renameTab } from './tabOps';
-import { loadTabs } from './tabStorage';
+import { useSavedTabs } from './useSavedTabs';
 import { useEditorSettings } from './editorSettings';
 import { generalSettings } from '../settings/general';
 import { useTabPersistence } from './useTabPersistence';
@@ -56,6 +56,8 @@ export type QueryTabs = {
   rename: (id: string, title: string) => void;
   /** The whole tab set, for tab menus and session restore. */
   state: TabsState;
+  /** Persist the per-scope split layouts with tab descriptors. */
+  setSplits?: (splits: NonNullable<TabsState['splits']>) => void;
 };
 
 /**
@@ -136,31 +138,9 @@ export function useQueryTabs(): QueryTabs {
     rename: (id, title) => {
       setState((current) => renameTab(current, id, title));
     },
+    setSplits: (splits) => {
+      setState((current) => ({ ...current, splits }));
+    },
     state,
   };
-}
-
-/**
- * Load the saved tabs once; they replace the tab set unless the user opened
- * a tab first. Resolves `true` once loading finished (or failed).
- */
-function useSavedTabs(
-  setState: (change: (current: TabsState) => TabsState) => void,
-): boolean {
-  const [loaded, setLoaded] = useState(false);
-  useEffect(() => {
-    let active = true;
-    const done = (saved: TabsState): void => {
-      if (!active) return;
-      setState((current) => (current === emptyTabs ? saved : current));
-      setLoaded(true);
-    };
-    loadTabs().then(done, () => {
-      done(emptyTabs);
-    });
-    return () => {
-      active = false;
-    };
-  }, [setState]);
-  return loaded;
 }

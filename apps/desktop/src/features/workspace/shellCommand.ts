@@ -87,6 +87,12 @@ function viewActions(input: ShellInput): Actions {
   return {
     sidebar: input.toggleSidebar,
     inspector: input.inspector.toggle,
+    'reopen-session': () => {
+      window.dispatchEvent(new Event('openrows:reopen-session'));
+    },
+    'switch-connection': () => {
+      setMode('connection');
+    },
     database: () => {
       setMode('database');
     },

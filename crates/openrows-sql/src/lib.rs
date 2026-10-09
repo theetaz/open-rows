@@ -35,6 +35,7 @@ pub mod edit;
 mod lexer;
 mod limit;
 mod placeholders;
+mod redact;
 pub mod select;
 mod split;
 
@@ -46,6 +47,7 @@ pub use classify::{Classification, StatementKind, classify};
 pub use context::{ContextSetting, session_context};
 pub use limit::limit_select;
 pub use placeholders::{Placeholder, PlaceholderKind, placeholders};
+pub use redact::{REDACTED_PREFIX, has_redacted_literals, literal_ranges, redact_literals};
 pub use split::{ScriptStatement, Statement, StreamSplitter, split, statement_at};
 
 /// SQL dialect whose lexical, classification and generation rules apply.

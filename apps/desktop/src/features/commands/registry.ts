@@ -64,6 +64,8 @@ export type TableCommand = (typeof TABLE_COMMANDS)[number];
 
 /** Every command, in palette order. */
 export const COMMANDS: readonly CommandSpec[] = [
+  { id: 'switch-connection', label: 'Switch Connection…', shortcut: null },
+  { id: 'reopen-session', label: 'Reopen Previous Session', shortcut: null },
   { id: 'sidebar', label: 'Toggle sidebar', shortcut: 'Ctrl+Cmd+S' },
   { id: 'inspector', label: 'Toggle inspector', shortcut: 'Alt+Cmd+I' },
   { id: 'new-tab', label: 'New query tab', shortcut: 'Cmd+T' },

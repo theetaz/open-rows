@@ -11,6 +11,7 @@ export type SavedConnection = {
 
 /** The open connections and the active one, for session restore. */
 export type SavedSession = {
+  version?: 1;
   active: string | null;
   connections: readonly SavedConnection[];
 };
@@ -36,7 +37,8 @@ export function parseSession(text: string | null): SavedSession {
     return emptySession;
   }
   if (typeof stored !== 'object' || stored === null) return emptySession;
-  const { active, connections } = stored as Record<string, unknown>;
+  const { active, connections, version } = stored as Record<string, unknown>;
+  if (version !== undefined && version !== 1) return emptySession;
   return {
     active: isString(active) ? active : null,
     connections: Array.isArray(connections)
@@ -45,10 +47,7 @@ export function parseSession(text: string | null): SavedSession {
   };
 }
 
-/**
- * Connections that must not connect without the user: production ones and
- * those that confirm before writing.
- */
+/** Whether reconnect UI should explicitly explain the profile's write confirmation. */
 export function needsConsent(profile: ProfileDto): boolean {
   return profile.env.kind === 'prod' || profile.safety.confirmWrites;
 }
@@ -75,12 +74,17 @@ export function sessionOf(input: {
       return [
         {
           id: profile.id,
-          databases: openedNames(status),
+          databases: [
+            ...new Set([
+              ...(input.waiting.get(profile.id)?.databases ?? []),
+              ...openedNames(status),
+            ]),
+          ],
           database: input.databaseOf(profile.id),
         },
       ];
     const waiting = input.waiting.get(profile.id);
     return waiting ? [waiting] : [];
   });
-  return { active: input.active, connections };
+  return { version: 1, active: input.active, connections };
 }

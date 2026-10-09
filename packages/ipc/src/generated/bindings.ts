@@ -165,7 +165,9 @@ export const commands = {
 	/**  Delete one history entry; `false` when it was already gone. */
 	historyDelete: (id: number | null) => typedError<boolean, IpcError>(__TAURI_INVOKE("history_delete", { id })),
 	/**  Delete every history entry of one saved connection. */
-	historyClear: (profileId: string) => typedError<null, IpcError>(__TAURI_INVOKE("history_clear", { profileId })),
+	historyClear: (profileId: string | null) => typedError<null, IpcError>(__TAURI_INVOKE("history_clear", { profileId })),
+	/**  Inspect literals locally without opening a session or executing SQL. */
+	historyLiterals: (sql: string, engine: EngineDto) => __TAURI_INVOKE<LiteralRangeDto[]>("history_literals", { sql, engine }),
 	/**  Kind and byte length of one cell (value inspector); nothing is copied. */
 	resultCellInfo: (request: CellRequest) => typedError<CellInfoDto, ResultError>(__TAURI_INVOKE("result_cell_info", { request })),
 	/**  Saved queries of a connection, by name. */
@@ -1553,6 +1555,12 @@ export type LimitsDto = {
 /**  Record separator of delimited text. */
 export type LineEndingDto = "crlf" | "lf";
 
+/**  UTF-16 positions of one SQL literal for the webview's review highlights. */
+export type LiteralRangeDto = {
+	from: number,
+	to: number,
+};
+
 /**  A menu command chosen by the user; `id` is the registry command id. */
 export type MenuCommand = {
 	id: string,
@@ -1975,6 +1983,7 @@ export type ProfileDto = {
 	insecure: InsecureReasonDto[],
 	/**  Executed statements are kept in the local history (FR-WS-02). */
 	recordHistory: boolean,
+	redactHistory: boolean,
 	/**  Statement and idle timeouts (M1-01). */
 	limits: LimitsDto,
 	/**  SQL run after every connect (FR-CONN-10); empty for none. */
@@ -2010,6 +2019,8 @@ export type ProfileInput = {
 	safety: SafetyDto,
 	/**  Absent in forms written before the history switch: history is recorded. */
 	recordHistory?: boolean,
+	/**  Remove literals from locally recorded history. */
+	redactHistory?: boolean,
 	/**  SQL run after every connect; absent in older forms: none. */
 	startupCommands?: string,
 	/**  Absent in forms written before the choice: the keychain. */

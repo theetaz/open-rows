@@ -310,6 +310,10 @@
         },
         "helper": {
           "$ref": "#/$defs/helper"
+        },
+        "redactHistory": {
+          "type": "boolean",
+          "default": false
         }
       },
       "required": ["name", "driver", "envTag", "params", "tls", "safety"],

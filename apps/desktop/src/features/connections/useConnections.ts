@@ -26,12 +26,14 @@ export type SheetState =
   | null;
 
 export type Connections = Databases & {
+  /** Database descriptors visible before a connection is activated. */
+  restoredDatabases?: (id: string) => readonly string[];
   profiles: readonly ProfileDto[];
   reload: () => void;
   problem: string | null;
   active: ProfileDto | undefined;
   statusOf: (profileId: string) => SessionStatus;
-  select: (profileId: string) => void;
+  select: (profileId: string, database?: string) => void;
   selectIndex: (index: number) => void;
   connect: () => void;
   disconnect: () => void;
@@ -89,16 +91,19 @@ export function useConnections(): Connections {
   const [actionError, setActionError] = useState<string | null>(null);
   const active = profiles.find((profile) => profile.id === activeId);
   const databases = useDatabases(sessions, active?.id);
-  useSessionRestore(
+  const restored = useSessionRestore(
     { profiles, activeId, setActiveId, sessions, databases },
     loaded,
   );
-  const select = (profileId: string): void => {
+  const select = (profileId: string, database?: string): void => {
     setActiveId(profileId);
     setActionError(null);
     const state = sessions.statusOf(profileId).state;
+    if (database) databases.prefer(profileId, database);
     if (state === 'disconnected' || state === 'failed')
-      void sessions.connect(profileId);
+      connectWanted(sessions, databases, profileId, database);
+    else if (database && state === 'connected')
+      databases.chooseDatabase(profileId, database);
   };
   const run = async (action: () => Promise<void>): Promise<void> => {
     try {
@@ -118,6 +123,8 @@ export function useConnections(): Connections {
     });
   return {
     ...databases,
+    restoredDatabases: restored.databasesOf,
+    ...restoredDatabaseActions(restored, { databases, sessions, active }),
     profiles,
     reload,
     problem: actionError ?? problem,
@@ -129,13 +136,7 @@ export function useConnections(): Connections {
       if (profile) select(profile.id);
     },
     connect: () => {
-      if (active) void sessions.connect(active.id);
-    },
-    disconnect: () => {
-      if (active) void sessions.disconnect(active.id);
-    },
-    disconnectProfile: (profileId) => {
-      void sessions.disconnect(profileId);
+      if (active) connectWanted(sessions, databases, active.id);
     },
     sheet,
     setSheet,
@@ -157,4 +158,51 @@ export function useConnections(): Connections {
     },
     passwordRequest: prompt.request,
   };
+}
+
+/** Closing a database also removes its disconnected descriptor. */
+function restoredDatabaseActions(
+  restored: ReturnType<typeof useSessionRestore>,
+  input: {
+    databases: Databases;
+    sessions: ReturnType<typeof useSessions>;
+    active: ProfileDto | undefined;
+  },
+): Pick<
+  Connections,
+  'closeDatabase' | 'closeProfileDatabase' | 'disconnect' | 'disconnectProfile'
+> {
+  const { databases, sessions, active } = input;
+  const disconnectProfile = (id: string): void => {
+    restored.rememberConnection(id);
+    void sessions.disconnect(id);
+  };
+  return {
+    disconnectProfile,
+    disconnect: () => {
+      if (active) disconnectProfile(active.id);
+    },
+    closeProfileDatabase: (id, name) => {
+      restored.forgetDatabase(id, name);
+      databases.closeProfileDatabase(id, name);
+    },
+    closeDatabase: (name) => {
+      if (active) restored.forgetDatabase(active.id, name);
+      databases.closeDatabase(name);
+    },
+  };
+}
+
+/** An explicit connection selection opens only its remembered active database. */
+function connectWanted(
+  sessions: ReturnType<typeof useSessions>,
+  databases: Databases,
+  id: string,
+  database?: string,
+): void {
+  const wanted = database ?? databases.databaseOf(id);
+  void sessions.connect(id).then((home) => {
+    if (home && wanted && wanted !== home)
+      void sessions.openDatabase(id, wanted);
+  });
 }

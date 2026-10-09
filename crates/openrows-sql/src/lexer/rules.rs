@@ -48,6 +48,7 @@ impl Lexer<'_> {
                 self.quoted_end(self.pos, b'"', false),
             ),
             b if is_ident_start(b) => self.plain_word(),
+            b'.' if next.is_some_and(|b| b.is_ascii_digit()) => self.number(),
             b if b.is_ascii_digit() => self.number(),
             _ => self.token(single_byte_kind(byte), self.pos + 1),
         }

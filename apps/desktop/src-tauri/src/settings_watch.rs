@@ -93,7 +93,11 @@ pub(crate) fn watch(app: &AppHandle) {
                 continue;
             };
             if let Change::Edited(text) = change {
-                settings::apply(&app.state::<Connections>(), &text);
+                settings::apply(
+                    &app.state::<Connections>(),
+                    &app.state::<openrows_store::LocalStore>(),
+                    &text,
+                );
             }
             // Emitting only fails while the webview is gone.
             let _ = SettingsChanged {}.emit(&app);

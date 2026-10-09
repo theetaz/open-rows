@@ -80,6 +80,14 @@ export function EnvironmentFields({
           update({ recordHistory });
         }}
       />
+      <SwitchRow
+        label="Redact literals in history"
+        detail="Production and read-only connections always redact strings and numbers."
+        checked={draft.redactHistory}
+        onChange={(redactHistory) => {
+          update({ redactHistory });
+        }}
+      />
     </>
   );
 }

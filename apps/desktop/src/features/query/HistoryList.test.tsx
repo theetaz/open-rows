@@ -1,11 +1,29 @@
 // SPDX-License-Identifier: Apache-2.0
-import { render, screen, waitFor, within } from '@testing-library/react';
+import {
+  act,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
-import { clearHistory, deleteHistory, searchHistory } from '@openrows/ipc';
+import {
+  clearHistory,
+  createSavedQuery,
+  createProjectQuery,
+  loadProject,
+  deleteHistory,
+  historyLiterals,
+  searchHistory,
+} from '@openrows/ipc';
 import type { HistoryItemDto } from '@openrows/ipc';
 import { HistoryList } from './HistoryList';
+import { useHistoryInsert } from './historyInsert';
+import type { EditorHandle } from './request';
+import { closeProject, showProject } from '../projects/projectStore';
 
 type HistoryConnection = { id: string; name: string };
 
@@ -81,6 +99,30 @@ beforeEach(() => {
     configurable: true,
     value: { writeText },
   });
+});
+afterEach(() => {
+  closeProject();
+});
+
+it('inserts from the history action into the focused editor cursor', async () => {
+  const replace = vi.fn();
+  const editor = {
+    current: {
+      text: () => 'before after',
+      cursor: () => 7,
+      replace,
+      focus: vi.fn(),
+    } as unknown as EditorHandle,
+  };
+  const focus = renderHook(() => useHistoryInsert('query-1', editor));
+  act(() => {
+    focus.result.current();
+  });
+  const { user } = renderList();
+  await user.click(
+    await screen.findByRole('button', { name: 'Insert SELECT 1 at cursor' }),
+  );
+  expect(replace).toHaveBeenCalledWith('before SELECT 1after');
 });
 
 it('lists the active connection by day and opens a statement in a tab', async () => {
@@ -167,4 +209,90 @@ it('reports a failed search instead of an empty list', async () => {
   vi.mocked(searchHistory).mockRejectedValueOnce(new Error('disk is full'));
   renderList();
   expect(await screen.findByRole('alert')).toHaveTextContent('disk is full');
+});
+
+it('reviews and highlights literals before saving a history statement locally', async () => {
+  vi.mocked(historyLiterals).mockResolvedValue([{ from: 7, to: 8 }]);
+  vi.mocked(createSavedQuery).mockClear();
+  const { user } = renderList();
+  await user.click(
+    await screen.findByRole('button', { name: 'Save SELECT 1 as query' }),
+  );
+  const review = await screen.findByRole('dialog', {
+    name: 'Review history query',
+  });
+  const preview = within(review).getByLabelText('Literal review');
+  await waitFor(() => {
+    expect(preview.querySelector('mark')).toHaveTextContent('1');
+  });
+  expect(createSavedQuery).not.toHaveBeenCalled();
+  await user.click(
+    within(review).getByRole('button', { name: 'Save reviewed query' }),
+  );
+  await waitFor(() => {
+    expect(createSavedQuery).toHaveBeenCalledWith(
+      'p1',
+      'History query',
+      'SELECT 1',
+    );
+  });
+});
+
+it('clears all history only after an explicit confirmation', async () => {
+  const { user } = renderList();
+  await screen.findByRole('list', { name: 'Query history' });
+  await user.click(screen.getByRole('radio', { name: 'All' }));
+  await user.click(screen.getByRole('button', { name: 'Clear' }));
+  expect(clearHistory).not.toHaveBeenCalled();
+  const confirm = screen.getByRole('group', { name: 'Clear history' });
+  expect(confirm).toHaveTextContent('all connections');
+  await user.click(
+    within(confirm).getByRole('button', { name: 'Clear history' }),
+  );
+  await waitFor(() => {
+    expect(clearHistory).toHaveBeenCalledWith(null);
+  });
+});
+
+it('saves only the reviewed SQL into the active project', async () => {
+  const project = {
+    root: '/project',
+    name: 'Test project',
+    defaultConnection: null,
+    queryFolders: ['queries'],
+    entries: [],
+    truncated: false,
+  };
+  vi.mocked(loadProject).mockResolvedValue(project);
+  vi.mocked(createProjectQuery).mockClear();
+  vi.mocked(historyLiterals).mockResolvedValue([{ from: 7, to: 8 }]);
+  act(() => {
+    showProject(project);
+  });
+  const { user } = renderList();
+  await user.click(
+    await screen.findByRole('button', { name: 'Save SELECT 1 as query' }),
+  );
+  const dialog = await screen.findByRole('dialog', {
+    name: 'Review history query',
+  });
+  const sql = within(dialog).getByRole('textbox', { name: 'SQL to save' });
+  await user.clear(sql);
+  await user.type(sql, 'SELECT 2');
+  const save = within(dialog).getByRole('button', {
+    name: 'Save reviewed query',
+  });
+  await waitFor(() => {
+    expect(save).toBeEnabled();
+  });
+  expect(createProjectQuery).not.toHaveBeenCalled();
+  await user.click(save);
+  await waitFor(() => {
+    expect(createProjectQuery).toHaveBeenCalledWith(
+      '/project',
+      'queries',
+      'History query',
+      'SELECT 2',
+    );
+  });
 });

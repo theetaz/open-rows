@@ -1,12 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
+import { ConnectionSwitcher } from './ConnectionSwitcher';
+import type { Connections } from '../connections';
 import { Palette } from '@openrows/ui/palette';
 import { OpenDatabasePanel, QuickOpen } from '../schema';
 import type { Catalog, ObjectRef } from '../schema';
 import { COMMANDS, shortcutText, useBindings } from '../commands';
-export type PaletteMode = 'database' | 'quick' | 'commands';
+export type PaletteMode = 'database' | 'quick' | 'commands' | 'connection';
 /** Open database panel (⌘K), quick open (⌘P) and the command palette (⌘⇧P). */
 export function WorkspacePalettes(props: {
   mode: PaletteMode;
+  connections: Connections;
+  onSavedQuery: (sql: string, title: string) => void;
+  onProjectQuery: (path: string) => void;
   catalog: Catalog;
   onDatabase: (name: string) => void;
   onObject: (object: ObjectRef) => void;
@@ -17,6 +22,13 @@ export function WorkspacePalettes(props: {
   /** Create a database from the Open database panel, where supported. */
   onNewDatabase?: (() => void) | undefined;
 }): React.JSX.Element {
+  if (props.mode === 'connection')
+    return (
+      <ConnectionSwitcher
+        connections={props.connections}
+        onClose={props.onClose}
+      />
+    );
   if (props.mode === 'database')
     return (
       <OpenDatabasePanel
@@ -31,6 +43,8 @@ export function WorkspacePalettes(props: {
     <QuickOpen
       catalog={props.catalog}
       onChoose={props.onObject}
+      onSavedQuery={props.onSavedQuery}
+      onProjectQuery={props.onProjectQuery}
       onClose={props.onClose}
     />
   );

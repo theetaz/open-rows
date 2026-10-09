@@ -18,6 +18,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
+use openrows_store::{HistoryRetention, LocalStore};
 use serde_json::{Map, Value};
 use tauri::{Manager, State};
 
@@ -88,18 +89,36 @@ fn write_schema(settings: &Path) -> Result<(), IpcError> {
 /// An unreadable file keeps the defaults; the webview reports why.
 pub(crate) fn apply_saved(app: &tauri::App) {
     if let Some(text) = text(app) {
-        apply(&app.state::<Connections>(), &text);
+        apply(
+            &app.state::<Connections>(),
+            &app.state::<LocalStore>(),
+            &text,
+        );
+    } else {
+        apply_retention(&app.state::<LocalStore>(), &Value::Null);
     }
 }
 
 /// Apply the settings the core reads at run time: the session keepalive
 /// interval and the default statement timeout (also after an edit made
 /// outside the app).
-pub(crate) fn apply(connections: &Connections, text: &str) {
+pub(crate) fn apply(connections: &Connections, local: &LocalStore, text: &str) {
     if let Ok(value) = serde_json::from_str::<Value>(text) {
         connections.sessions.set_keepalive(keepalive(&value));
         connections.limits.apply(&value);
         connections.helper_settings.apply(&value);
+        apply_retention(local, &value);
+    }
+}
+
+/// Apply count and age settings before new history writes.
+fn apply_retention(local: &LocalStore, value: &Value) {
+    let policy = value
+        .get("history")
+        .and_then(|value| serde_json::from_value::<HistoryRetention>(value.clone()).ok())
+        .unwrap_or_default();
+    if let Err(error) = local.set_history_retention(policy, crate::queries::history::now_ms()) {
+        tracing::warn!(%error, "history retention not applied");
     }
 }
 
@@ -215,11 +234,12 @@ pub(crate) fn settings_read(file: State<'_, SettingsFile>) -> Result<Option<Stri
 pub(crate) fn settings_write(
     file: State<'_, SettingsFile>,
     connections: State<'_, Connections>,
+    local: State<'_, LocalStore>,
     text: String,
 ) -> Result<(), IpcError> {
     let mut known = file.known();
     *known = Some(write(&file.path, &text)?);
-    apply(&connections, &text);
+    apply(&connections, &local, &text);
     Ok(())
 }
 

@@ -53,18 +53,18 @@ These FR-NET-03 rows document OpenRows scope; no TablePlus adoption/parity claim
 
 | Key | Feature | What it does | OpenRows status / FR | Target | OpenRows improvement | Source |
 | --- | --- | --- | --- | --- | --- | --- |
-| W01 | Concurrent databases | Keep several database contexts open. | New FR-WS-04 | M2 | Context visible in every pane. | [S10] |
-| W02 | Database switcher (⌘K) | Choose another database. | New FR-WS-04; FR-APP-01 | M2 | Named palette action; see shortcut decision below. | [S11] |
-| W03 | Connection switcher | Choose another server. | New FR-WS-04 | M2 | Environment and safety preview. | [S10] |
-| W04 | Open anything (⌘P) | Jump to objects or queries. | Covered FR-SCHEMA-02; new FR-WS-04 | M1 objects; M2 queries | Cached search ≤ 50 ms. | [S12] |
-| W05 | Workspaces per window | Separate contexts inside one window. | New FR-WS-04 | M2 | Independent tabs and result lifetimes. | [S10] |
+| W01 | Concurrent databases | Keep several database contexts open. | New FR-WS-04 | M2 done (M2-20) | Context visible in every pane. | [S10] |
+| W02 | Database switcher (⌘K) | Choose another database. | New FR-WS-04; FR-APP-01 | M2 done (M2-20) | Named palette action; see shortcut decision below. | [S11] |
+| W03 | Connection switcher | Choose another server. | New FR-WS-04 | M2 done (M2-20) | Environment and safety preview. | [S10] |
+| W04 | Open anything (⌘P) | Jump to objects or queries. | Covered FR-SCHEMA-02; new FR-WS-04 | M2 done (M2-20) | Cached search ≤ 50 ms. | [S12] |
+| W05 | Workspaces per window | Separate contexts inside one window. | New FR-WS-04 | M2 done (M2-20) | Independent tabs and result lifetimes. | [S10] |
 | W06 | Multiple windows | Open an independent working window. | Covered FR-APP-03 | M2 | Platform-native window behaviour. | [S10] |
 | W07 | Move workspace/tab | Detach work into another window. | Covered FR-APP-03; new FR-APP-10 | M2 | Preserve context and pending changes. | [S10] |
 | W08 | Preview object tab | Reuse an unmodified tab. | New FR-APP-10 | M2 | Dirty text cannot be replaced. | [S10] |
 | W09 | Pin object tab | Keep an object open. | New FR-APP-10 | M2 | Persistent pin plus accessible state. | [S10] |
 | W10 | Rename tabs | Give editors meaningful labels. | New FR-APP-10 | M2 | Labels survive layout restore. | [S10] |
 | W11 | Close other/right tabs | Close groups of tabs. | New FR-APP-10 | M2 | One impact-aware dirty-state review. | [S10] |
-| W12 | Restore session | Reopen previous workspace descriptors. | Covered FR-EDIT-01; new FR-WS-04 | M1 text; M2 layout | Lazy data loading; no silent SQL execution. | [S13] |
+| W12 | Restore session | Reopen previous workspace descriptors. | Covered FR-EDIT-01; new FR-WS-04 | M2 done (M2-20) | Lazy data loading; no silent SQL execution. | [S13] |
 | W13 | Create database | Choose name, encoding and collation. | New FR-SCHEMA-12 | M2 | Capability-aware statement preview. | [S11] |
 | W14 | Rename database | Rename when supported. | New FR-SCHEMA-12 | M2 | Explain unsupported engine operations. | [S11] |
 | W15 | Drop database | Remove a database. | New FR-SCHEMA-12 | M2 | Explicit target and impact confirmation. | [S11] |
@@ -86,9 +86,9 @@ These FR-NET-03 rows document OpenRows scope; no TablePlus adoption/parity claim
 | B11 | Favourite file actions | Rename, delete or reveal a query. | New FR-EDIT-14 | M2 | File-manager integration and dirty checks. | [S15] |
 | B12 | Favourite autosave | Control writes to saved query files. | New FR-EDIT-14 | M2 | Separate from mandatory crash recovery. | [S15] |
 | B13 | Query history | Record executed statements. | Covered FR-WS-01 | M1 | Duration/status/row count and search. | [S16] |
-| B14 | History reuse | Insert, copy or open a past statement. | New FR-WS-05 | M2 | Reapply current connection safety. | [S16] |
-| B15 | History deletion | Delete entries or clear the list. | New FR-WS-05 | M2 | Retention and sensitive-literal policy. | [S16] |
-| B16 | History to favourite | Save past SQL for reuse. | New FR-WS-05; FR-EDIT-08 | M2 | Review before persisting sensitive literals. | [S16] |
+| B14 | History reuse | Insert, copy or open a past statement. | New FR-WS-05 | M2 done (M2-20) | Reapply current connection safety. | [S16] |
+| B15 | History deletion | Delete entries or clear the list. | New FR-WS-05 | M2 done (M2-20) | Retention and sensitive-literal policy. | [S16] |
+| B16 | History to favourite | Save past SQL for reuse. | New FR-WS-05; FR-EDIT-08 | M2 done (M2-20) | Review before persisting sensitive literals. | [S16] |
 | B17 | Database value search | Locate matching data across tables. | Gap G03 | Post-1.0 | Explicit scope, load budget and cancellation. | [S17] |
 
 ### Grid, filters and cell inspection
@@ -512,3 +512,7 @@ All URLs below were accessed **2026-10-06**. Public text only: no binaries, priv
 [S57]: https://tableplus.com/docs/preferences/mcp
 [S58]: https://docs.tableplus.com/preferences/fonts-and-colors
 [S59]: https://docs.tableplus.com/preferences/general/table-data
+
+### Implemented (M2-20): W01–W05, W12 and B14–B16
+
+Existing independent connection/database contexts and ⌘K database switching are retained. Connection switching previews environment, safety and routing; ⌘P adds cached local/project queries to objects (50 ms p95 gate at 10k + 1k). Per-pane context labels include connection/database, including both split panes. Versioned descriptor restoration and Reopen Previous Session are disconnected and never execute SQL; inspector/table identities and split layouts restore lazily without results or credentials. History reuse routes through current connection safety, adds cursor insertion and an editable literal review before project/local saving, confirmed scoped/all clearing, count/age/forever retention and production/read-only/explicit lexer redaction. See docs/09, docs/12, docs/15 §11 and docs/20. W06–W07 remain independent window work; W08–W11 reuse prior tab operations and are not expanded by this task.

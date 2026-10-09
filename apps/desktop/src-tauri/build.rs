@@ -52,6 +52,7 @@ const COMMANDS: &[&str] = &[
     "history_search",
     "history_delete",
     "history_clear",
+    "history_literals",
     "result_cell_info",
     "result_cell_value",
     "saved_queries_list",

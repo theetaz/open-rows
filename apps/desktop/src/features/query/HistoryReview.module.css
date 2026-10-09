@@ -1,0 +1,25 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.preview,
+.sql {
+  box-sizing: border-box;
+  width: 100%;
+  max-height: 240px;
+  overflow: auto;
+  padding: var(--or-space-8);
+  border: var(--or-border-width) solid var(--or-separator);
+  border-radius: var(--or-radius-field);
+  background: var(--or-control-fill);
+  color: var(--or-text);
+  font-family: var(--or-font-mono);
+  font-size: var(--or-text-12);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.sql {
+  min-height: 120px;
+}
+.preview mark {
+  background: var(--or-control-active);
+  color: var(--or-text);
+  text-decoration: underline;
+}

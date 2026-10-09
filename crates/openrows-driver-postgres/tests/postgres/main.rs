@@ -8,6 +8,7 @@ mod connect;
 mod diagram;
 mod dump;
 mod helpers;
+mod history;
 mod inspection;
 mod objects;
 mod streaming;

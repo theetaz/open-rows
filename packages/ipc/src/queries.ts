@@ -5,6 +5,8 @@ import type {
   ExecuteReply,
   ExecuteRequest,
   HistoryItemDto,
+  EngineDto,
+  LiteralRangeDto,
   HistorySearchRequest,
   QueryEventDto,
 } from './generated/bindings';
@@ -61,6 +63,14 @@ export function deleteHistory(id: number): Promise<boolean> {
 }
 
 /** Delete every history entry of one saved connection. */
-export function clearHistory(profileId: string): Promise<null> {
+export function clearHistory(profileId: string | null): Promise<null> {
   return unwrap(commands.historyClear(profileId));
+}
+
+/** SQL literal positions for review; no session is opened. */
+export function historyLiterals(
+  sql: string,
+  engine: EngineDto,
+): Promise<LiteralRangeDto[]> {
+  return commands.historyLiterals(sql, engine);
 }

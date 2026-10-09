@@ -10,12 +10,13 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
 import {
   onMenuCommand,
+  executeQuery,
   openConnection,
   openSession,
   syncMenu,
 } from '@openrows/ipc';
 import { connectTo } from '../../test/connect';
-import { stubStateKey } from '../../test/ipcStub';
+import { server, stubStateKey } from '../../test/ipcStub';
 import { Workspace } from './Workspace';
 
 vi.mock('@openrows/ipc', async () =>
@@ -53,7 +54,7 @@ const storedTabs = {
   next: 2,
 };
 
-it('restores the last session without auto-connecting production', async () => {
+it('restores every context without connect or execute IPC calls', async () => {
   localStorage.setItem(
     'openrows.session',
     JSON.stringify({
@@ -70,11 +71,11 @@ it('restores the last session without auto-connecting production', async () => {
   );
   localStorage.setItem('openrows.queryTabs', JSON.stringify(storedTabs));
   mount();
-  await waitFor(() => {
-    expect(openSession).toHaveBeenCalledWith('id-orders-local', 'sales');
-  });
-  expect(openConnection).toHaveBeenCalledWith('id-orders-local');
-  expect(openConnection).not.toHaveBeenCalledWith('id-analytics-prod');
+  await screen.findByRole('tab', { name: /invoices/ });
+  expect(openSession).not.toHaveBeenCalled();
+  expect(openConnection).not.toHaveBeenCalled();
+  expect(executeQuery).not.toHaveBeenCalled();
+  expect(screen.getByRole('button', { name: 'Database sales' })).toBeVisible();
   expect(await screen.findByRole('tab', { name: /invoices/ })).toBeVisible();
   const bar = screen.getByText(/analytics-prod is not connected/);
   expect(bar).toHaveTextContent('asks before writes');
@@ -100,9 +101,9 @@ it('starts empty when session restore is off', async () => {
   localStorage.setItem(
     'openrows.session',
     JSON.stringify({
-      active: 'id-orders-local',
+      active: 'id-analytics-prod',
       connections: [
-        { id: 'id-orders-local', databases: ['orders'], database: 'orders' },
+        { id: 'id-analytics-prod', databases: ['orders'], database: 'orders' },
       ],
     }),
   );
@@ -111,6 +112,56 @@ it('starts empty when session restore is off', async () => {
   await screen.findByRole('button', { name: 'Switch to orders-local' });
   expect(openConnection).not.toHaveBeenCalled();
   expect(screen.queryByRole('tab', { name: /invoices/ })).toBeNull();
+  fireEvent.keyDown(window, { key: 'p', metaKey: true, shiftKey: true });
+  const input = await screen.findByRole('combobox');
+  fireEvent.change(input, { target: { value: 'Reopen Previous Session' } });
+  fireEvent.keyDown(input, { key: 'Enter' });
+  // The command restores the launch snapshot even when automatic restore is off.
+  await screen.findByRole('tab', { name: /invoices/ });
+  expect(openConnection).not.toHaveBeenCalled();
+  expect(openSession).not.toHaveBeenCalled();
+  expect(executeQuery).not.toHaveBeenCalled();
+});
+
+it('activates a disconnected database only after the explicit connection finishes', async () => {
+  localStorage.setItem(
+    'openrows.session',
+    JSON.stringify({
+      version: 1,
+      active: 'id-orders-local',
+      connections: [
+        {
+          id: 'id-orders-local',
+          databases: ['orders', 'sales'],
+          database: 'sales',
+        },
+      ],
+    }),
+  );
+  let finish:
+    | ((response: Awaited<ReturnType<typeof openConnection>>) => void)
+    | undefined;
+  vi.mocked(openConnection).mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  mount();
+  const tile = await screen.findByRole('button', { name: 'Database sales' });
+  expect(openConnection).not.toHaveBeenCalled();
+  fireEvent.click(tile);
+  await waitFor(() => {
+    expect(openConnection).toHaveBeenCalledTimes(1);
+  });
+  expect(openSession).not.toHaveBeenCalled();
+  act(() => {
+    finish?.({ server: server('17.2'), database: 'orders', insecure: [] });
+  });
+  await waitFor(() => {
+    expect(openSession).toHaveBeenCalledWith('id-orders-local', 'sales');
+  });
+  expect(executeQuery).not.toHaveBeenCalled();
 });
 
 it('pins, closes others and to the right from the tab menu, and reorders by drag', async () => {

@@ -66,6 +66,7 @@ pub(crate) async fn query_execute(
     request: ExecuteRequest,
     on_event: Channel<QueryEventDto>,
 ) -> Result<ExecuteReply, IpcError> {
+    super::history_privacy::validate_reuse(&request.sql)?;
     let session = SessionId::from_str(&request.session_id)
         .map_err(|_| IpcError::invalid("Invalid session id"))?;
     let owner = connections
@@ -175,7 +176,14 @@ async fn execute(app: AppHandle, run: Run) {
         |event| {
             if let Some(record) = history.observe(&event) {
                 // History is best effort: a failed write must not fail the query.
-                let _ = local.record_history(&record);
+                super::history_privacy::record(
+                    &local,
+                    record,
+                    (
+                        super::history_privacy::redacts(&run.profile),
+                        policy(&run.profile).dialect,
+                    ),
+                );
             }
             // A closed channel means the tab is gone; the run still finishes.
             let _ = run.events.send(translate(event, &store));
@@ -247,8 +255,11 @@ pub(crate) fn history_delete(local: State<'_, LocalStore>, id: f64) -> Result<bo
 #[specta::specta]
 pub(crate) fn history_clear(
     local: State<'_, LocalStore>,
-    profile_id: String,
+    profile_id: Option<String>,
 ) -> Result<(), IpcError> {
+    let Some(profile_id) = profile_id else {
+        return local.clear_all_history().map(drop).map_err(storage_error);
+    };
     let id = ProfileId::from_str(&profile_id)?;
     local
         .clear_history(&id.to_string())

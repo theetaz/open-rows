@@ -78,7 +78,7 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
         edge="right"
       >
         <WorkspaceSidebar
-          header={<ConnectionHeader connections={connections} />}
+          header={<SidebarHeader {...props} />}
           schemaTools={<SchemaTools {...props} />}
           catalog={catalog}
           connections={connections}
@@ -134,6 +134,7 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
       >
         <Suspense fallback={null}>
           <WorkspaceInspector
+            context={`${connections.active?.name ?? 'No connection'} · ${scope?.database ?? 'No database'}`}
             cell={controller.cell}
             row={controller.row}
             table={controller.table}
@@ -141,6 +142,16 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
         </Suspense>
       </SplitPanel>
     </div>
+  );
+}
+
+/** The sidebar names the connection and its disconnected or active database. */
+function SidebarHeader({ connections, controller }: Props): React.JSX.Element {
+  return (
+    <ConnectionHeader
+      connections={connections}
+      database={controller.scope?.database}
+    />
   );
 }
 
@@ -183,22 +194,20 @@ export function WorkspaceRail(props: {
       statusOf={connections.statusOf}
       onSelect={connections.select}
       databases={connections.databases}
+      restoredDatabases={connections.restoredDatabases}
       database={connections.database}
       onDatabase={connections.openDatabase}
       onCloseDatabase={connections.closeDatabase}
       onProfileDatabase={(id, name) => {
-        connections.select(id);
-        connections.chooseDatabase(id, name);
+        connections.select(id, name);
       }}
       onCloseProfileDatabase={connections.closeProfileDatabase}
       onProcesses={(id, name) => {
-        connections.select(id);
-        connections.chooseDatabase(id, name);
+        connections.select(id, name);
         props.onProcesses?.({ connectionId: id, database: name });
       }}
       onRunFile={(id, name) => {
-        connections.select(id);
-        connections.chooseDatabase(id, name);
+        connections.select(id, name);
         props.onRunFile?.(name, id);
       }}
       onNew={() => {

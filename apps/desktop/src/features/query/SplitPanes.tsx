@@ -14,6 +14,7 @@ type Props = {
   /** The scope's active tab, shown in the second (or only) pane. */
   active: QueryTab;
   render: (tab: QueryTab) => ReactNode;
+  connection?: string;
 };
 
 /** Arrow keys move the divider; Home and End jump to the limits. */
@@ -68,6 +69,7 @@ export function SplitPanes({
   split,
   active,
   render,
+  connection,
 }: Props): React.JSX.Element {
   const container = useRef<HTMLDivElement>(null);
   const { layout } = split;
@@ -92,18 +94,11 @@ export function SplitPanes({
             split.focused('pinned');
           }}
         >
-          <div className={styles.paneBar}>
-            <span>{layout.pinned.title}</span>
-            <IconButton
-              aria-label="Close split pane"
-              title="Close Split"
-              size="sm"
-              variant="ghost"
-              onClick={split.close}
-            >
-              <Icon name="close" />
-            </IconButton>
-          </div>
+          <PinnedBar
+            tab={layout.pinned}
+            connection={connection}
+            onClose={split.close}
+          />
           {render(layout.pinned)}
         </section>
       )}
@@ -137,8 +132,39 @@ export function SplitPanes({
           split.focused('active');
         }}
       >
+        <div className={styles.paneBar}>
+          <span>
+            {connection ?? active.connectionId} · {active.database} ·{' '}
+            {active.title}
+          </span>
+        </div>
         {render(active)}
       </section>
+    </div>
+  );
+}
+
+/** Context and close action of the first pane. */
+function PinnedBar(props: {
+  tab: QueryTab;
+  connection: string | undefined;
+  onClose: () => void;
+}): React.JSX.Element {
+  const { tab } = props;
+  return (
+    <div className={styles.paneBar}>
+      <span>
+        {props.connection ?? tab.connectionId} · {tab.database} · {tab.title}
+      </span>
+      <IconButton
+        aria-label="Close split pane"
+        title="Close Split"
+        size="sm"
+        variant="ghost"
+        onClick={props.onClose}
+      >
+        <Icon name="close" />
+      </IconButton>
     </div>
   );
 }

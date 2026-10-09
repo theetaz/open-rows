@@ -10,36 +10,11 @@ export type ParamValue = { kind: ParamKind; value: string };
 /** A tab's parameter values by name (`:id`, `$1`, `?1`). */
 export type ParamValues = Readonly<Record<string, ParamValue>>;
 
-const KINDS: readonly ParamKind[] = ['text', 'number', 'null'];
-
 const NUMBER = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/;
 
 /** Whether a value can be sent: a number must look like one. */
 export function isValidParam(param: ParamValue): boolean {
   return param.kind !== 'number' || NUMBER.test(param.value.trim());
-}
-
-function paramOf(stored: unknown): ParamValue | null {
-  if (typeof stored === 'string') return { kind: 'text', value: stored };
-  if (typeof stored !== 'object' || stored === null) return null;
-  const { kind, value } = stored as Record<string, unknown>;
-  if (!KINDS.includes(kind as ParamKind) || typeof value !== 'string')
-    return null;
-  return { kind: kind as ParamKind, value };
-}
-
-/**
- * Stored parameter values, dropping invalid entries; plain strings (saved
- * before typed values existed) are text values.
- */
-export function parseParamValues(stored: unknown): ParamValues | undefined {
-  if (typeof stored !== 'object' || stored === null || Array.isArray(stored))
-    return undefined;
-  const entries = Object.entries(stored).flatMap(([name, item]) => {
-    const param = paramOf(item);
-    return param ? [[name, param] as const] : [];
-  });
-  return Object.fromEntries(entries);
 }
 
 function sentValue(param: ParamValue): string | null {

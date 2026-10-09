@@ -4,6 +4,7 @@
 mod change_sets;
 mod error;
 mod history;
+mod history_retention;
 mod migrate;
 mod saved_queries;
 mod schema_snapshots;
@@ -20,6 +21,7 @@ pub use change_sets::ChangeSetRecord;
 pub use error::StoreError;
 use error::sqlite;
 pub use history::{HistoryEntry, HistoryRecord, HistorySource, HistoryStatus};
+pub use history_retention::HistoryRetention;
 pub use migrate::SCHEMA_VERSION;
 pub use saved_queries::{NewSavedQuery, SavedQueryRecord};
 pub use schema_snapshots::SchemaSnapshotRecord;
@@ -32,6 +34,7 @@ pub use workspace_state::WorkspaceKey;
 #[derive(Debug)]
 pub struct LocalStore {
     conn: Mutex<Connection>,
+    history_retention: Mutex<HistoryRetention>,
 }
 
 impl LocalStore {
@@ -48,6 +51,10 @@ impl LocalStore {
         migrate::migrate(&mut conn, migrate::MIGRATIONS, &backup_dir(path))?;
         Ok(Self {
             conn: Mutex::new(conn),
+            history_retention: Mutex::new(HistoryRetention {
+                keep_forever: true,
+                ..HistoryRetention::default()
+            }),
         })
     }
 

@@ -51,6 +51,7 @@ it('migrates existing device settings into a new settings.json', async () => {
     shortcuts: { save: 'Cmd+J' },
     general: { restoreSession: true, density: 'regular' },
     results: { memoryBudgetMb: 512 },
+    history: { maxEntries: 100000, maxAgeDays: 90, keepForever: false },
   });
   expect(vi.mocked(writeSettingsFile).mock.lastCall?.[0]).toContain(
     '\n  "theme": "dark",\n',

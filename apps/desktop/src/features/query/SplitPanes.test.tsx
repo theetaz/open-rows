@@ -72,6 +72,12 @@ it('splits right and down, keeps the first tab, resizes and closes', async () =>
   expect(
     within(second).getByRole('textbox', { name: 'SQL editor' }),
   ).toHaveValue('');
+  expect(
+    within(first).getByText('orders-local · orders · SQL Query 1'),
+  ).toBeVisible();
+  expect(
+    within(second).getByText('orders-local · orders · SQL Query 2'),
+  ).toBeVisible();
   const divider = screen.getByRole('separator', { name: 'Resize split panes' });
   expect(divider).toHaveAttribute('aria-orientation', 'vertical');
   fireEvent.keyDown(divider, { key: 'ArrowRight' });

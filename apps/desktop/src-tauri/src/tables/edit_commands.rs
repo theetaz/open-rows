@@ -119,12 +119,11 @@ pub(crate) async fn table_edit(
     }
     let dialect =
         crate::connections::drivers::profile_driver(&state, &request.target.profile_id)?.dialect();
-    let record = state
+    let profile = state
         .profiles
-        .get(profile_id(&request.target.profile_id)?)?
-        .record_history;
+        .get(profile_id(&request.target.profile_id)?)?;
     let mut session = session(&state, &request.target).await?;
-    let history = record.then_some(&*local);
+    let history = profile.record_history.then_some((&*local, &profile));
     let result = prepare_commit(session.as_mut(), &request, dialect, history).await;
     log_commit(&result);
     // Closing rolls back transactions still open; a lost COMMIT reply remains uncertain.
@@ -154,7 +153,7 @@ async fn prepare_commit(
     session: &mut dyn Connection,
     request: &EditRequest,
     dialect: Dialect,
-    history: Option<&LocalStore>,
+    history: Option<(&LocalStore, &openrows_store::profile::ConnectionProfile)>,
 ) -> Result<EditReply, IpcError> {
     let target = &request.target;
     let (info, columns) = edit_shape(session, (&target.schema, &target.table))
@@ -196,7 +195,7 @@ async fn prepare_commit(
         .commit_edits(&edits)
         .await;
     if let Some(local) = history {
-        record_batch(local, request, &edits, started, &outcome);
+        record_batch(local, request, &edits, (started, &outcome));
     }
     outcome.map_err(|error| IpcError::from(&error))?;
     Ok(EditReply::Committed)
@@ -204,11 +203,10 @@ async fn prepare_commit(
 
 /// One history entry per statement of the batch, with the batch's outcome.
 fn record_batch(
-    local: &LocalStore,
+    (local, profile): (&LocalStore, &openrows_store::profile::ConnectionProfile),
     request: &EditRequest,
     edits: &[BoundSql],
-    (started_at_ms, started): (i64, Instant),
-    outcome: &Result<(), DriverError>,
+    ((started_at_ms, started), outcome): ((i64, Instant), &Result<(), DriverError>),
 ) {
     let statements: Vec<String> = edits.iter().map(|edit| edit.sql.clone()).collect();
     let failure = outcome
@@ -224,6 +222,10 @@ fn record_batch(
             duration: started.elapsed(),
             statements: &statements,
             error: failure.as_deref(),
+            privacy: (
+                crate::queries::history_privacy::redacts(profile),
+                crate::queries::commands::policy(profile).dialect,
+            ),
         },
     );
 }

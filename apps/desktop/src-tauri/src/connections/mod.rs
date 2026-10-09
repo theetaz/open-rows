@@ -31,6 +31,7 @@ pub(crate) mod diagnostics;
 pub(crate) mod drivers;
 mod dto;
 mod engine_dto;
+pub(crate) use engine_dto::EngineDto;
 mod enums;
 mod error;
 pub(crate) mod exchange;

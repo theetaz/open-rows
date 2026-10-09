@@ -6,7 +6,7 @@ import {
   loadWorkspaceState,
   saveWorkspaceState,
 } from '../settings/workspaceState';
-import { needsConsent, parseSession, sessionOf } from './sessionState';
+import { parseSession, sessionOf } from './sessionState';
 import type { SavedConnection, SavedSession } from './sessionState';
 import type { Databases } from './useDatabases';
 import type { Sessions } from './useSessions';
@@ -33,26 +33,21 @@ function writeSession(session: SavedSession | null): void {
   saveWorkspaceState('session', session ? JSON.stringify(session) : null);
 }
 
-/** Reconnect one saved connection and reopen its databases. */
-async function reopen(saved: SavedConnection, input: Input): Promise<void> {
-  const home = await input.sessions.connect(saved.id);
-  for (const name of saved.databases)
-    if (name !== home) await input.sessions.openDatabase(saved.id, name);
-}
-
 /** Restore the saved session once profiles are known; resolves who still waits. */
-async function restore(input: Input): Promise<Map<string, SavedConnection>> {
+function restore(
+  input: Input,
+  saved: SavedSession | null,
+  explicit = false,
+): Map<string, SavedConnection> {
   const waiting = new Map<string, SavedConnection>();
-  const saved = await readSession();
-  if (!saved || !generalSettings.get().restoreSession) return waiting;
+  if (!saved || (!explicit && !generalSettings.get().restoreSession))
+    return waiting;
   for (const connection of saved.connections) {
     const profile = input.profiles.find((item) => item.id === connection.id);
     if (!profile) continue;
     waiting.set(profile.id, connection);
     if (connection.database)
       input.databases.prefer(profile.id, connection.database);
-    // Production and confirm-before-write connections wait for the user.
-    if (!needsConsent(profile)) void reopen(connection, input);
   }
   const active = saved.active;
   if (active && input.profiles.some((item) => item.id === active))
@@ -64,22 +59,43 @@ async function restore(input: Input): Promise<Map<string, SavedConnection>> {
  * Session restore (M1-26): on launch reopen the previous connections, their
  * databases and the active connection; while running, remember them.
  */
-export function useSessionRestore(input: Input, loaded: boolean): void {
+export function useSessionRestore(
+  input: Input,
+  loaded: boolean,
+): {
+  databasesOf: (id: string) => readonly string[];
+  forgetDatabase: (id: string, name: string) => void;
+  rememberConnection: (id: string) => void;
+} {
   const [waiting, setWaiting] = useState<Map<string, SavedConnection> | null>(
     null,
   );
   const latest = useRef(input);
   const started = useRef(false);
+  const previous = useRef<SavedSession | null>(null);
   useEffect(() => {
     latest.current = input;
   });
   useEffect(() => {
     if (!loaded || started.current) return;
     started.current = true;
-    void restore(latest.current).then(setWaiting);
+    void readSession()
+      .then((saved) => {
+        previous.current = saved;
+        return restore(latest.current, saved);
+      })
+      .then(setWaiting);
   }, [loaded]);
-  useForgetConnected(waiting, setWaiting, input.sessions);
-  const { restoreSession } = generalSettings.use();
+  useEffect(() => {
+    const reopen = (): void => {
+      setWaiting(restore(latest.current, previous.current, true));
+    };
+    window.addEventListener('openrows:reopen-session', reopen);
+    return () => {
+      window.removeEventListener('openrows:reopen-session', reopen);
+    };
+  }, []);
+
   const session =
     waiting &&
     JSON.stringify(
@@ -93,25 +109,60 @@ export function useSessionRestore(input: Input, loaded: boolean): void {
     );
   useEffect(() => {
     if (session === null) return;
-    writeSession(restoreSession ? (JSON.parse(session) as SavedSession) : null);
-  }, [session, restoreSession]);
+    const saved = JSON.parse(session) as SavedSession;
+    writeSession(saved);
+  }, [session]);
+  return {
+    databasesOf: (id) => waiting?.get(id)?.databases ?? [],
+    ...descriptorActions(input, setWaiting),
+  };
 }
 
-/** Restored connections stop waiting once connected (a later disconnect forgets them). */
-function useForgetConnected(
-  waiting: Map<string, SavedConnection> | null,
-  setWaiting: (next: Map<string, SavedConnection>) => void,
-  sessions: Sessions,
-): void {
-  const connected = waiting
-    ? [...waiting.keys()].filter(
-        (id) => sessions.statusOf(id).state === 'connected',
-      )
-    : [];
-  const key = connected.join('\n');
-  useEffect(() => {
-    if (!waiting || !key) return;
-    const done = new Set(key.split('\n'));
-    setWaiting(new Map([...waiting].filter(([id]) => !done.has(id))));
-  }, [key, waiting, setWaiting]);
+/** Retain explicitly disconnected contexts and remove explicitly closed databases. */
+function descriptorActions(
+  input: Input,
+  setWaiting: React.Dispatch<
+    React.SetStateAction<Map<string, SavedConnection> | null>
+  >,
+): {
+  rememberConnection: (id: string) => void;
+  forgetDatabase: (id: string, name: string) => void;
+} {
+  return {
+    rememberConnection: (id) => {
+      const status = input.sessions.statusOf(id);
+      if (status.state !== 'connected') return;
+      setWaiting((current) =>
+        new Map(current).set(id, {
+          id,
+          database: input.databases.databaseOf(id),
+          databases: [
+            ...new Set([
+              ...(current?.get(id)?.databases ?? []),
+              ...status.databases.map((database) => database.name),
+            ]),
+          ],
+        }),
+      );
+    },
+    forgetDatabase: (id, name) => {
+      setWaiting((current) => {
+        const next = new Map(current);
+        const previous = next.get(id);
+        if (previous)
+          next.set(id, {
+            ...previous,
+            databases: previous.databases.filter(
+              (database) => database !== name,
+            ),
+            database:
+              previous.database === name
+                ? (previous.databases.find((database) => database !== name) ??
+                  '')
+                : previous.database,
+          });
+        return next;
+      });
+    },
+  };
 }
