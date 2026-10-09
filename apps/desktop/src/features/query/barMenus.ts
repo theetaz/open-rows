@@ -30,7 +30,8 @@ const toggle = (
     | 'autocomplete'
     | 'upperKeywords'
     | 'autoSave'
-    | 'returnOnError',
+    | 'returnOnError'
+    | 'denseOperators',
 ): MenuEntry => ({
   kind: 'item',
   label,
@@ -139,7 +140,7 @@ export function limitEntries(
   return choices(settings, update, 'rowLimit', limits);
 }
 
-/** Beautify's dropdown: uglify and the layout options. */
+/** Beautify's dropdown: uglify and the layout options of both. */
 export function beautifyEntries(
   settings: EditorSettings,
   update: Update,
@@ -195,5 +196,15 @@ export function beautifyEntries(
         ['Tabular Right', 'tabularRight'],
       ]),
     },
+    {
+      kind: 'submenu',
+      label: 'Lines Between Queries',
+      entries: choices(settings, update, 'linesBetweenQueries', [
+        ['1', 1],
+        ['2', 2],
+        ['3', 3],
+      ]),
+    },
+    toggle(settings, update, 'Dense Operators', 'denseOperators'),
   ];
 }

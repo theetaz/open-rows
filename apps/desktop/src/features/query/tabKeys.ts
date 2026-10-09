@@ -14,6 +14,7 @@ function tabAction(input: {
   format: (kind: FormatKind) => void;
   file: (action: FileAction) => void;
   exportResults: () => void;
+  insertSnippet: () => void;
 }): (id: TabCommand) => void {
   const commands: Record<TabCommand, () => void> = {
     'run-current': () => {
@@ -29,6 +30,7 @@ function tabAction(input: {
     uglify: () => {
       input.format('uglify');
     },
+    'insert-snippet': input.insertSnippet,
     save: () => {
       input.file('save');
     },
@@ -67,6 +69,8 @@ export function useTabAction(input: {
   files: { act: (action: FileAction) => void };
   runs: Pick<QueryRuns, 'cancel'>;
   tabId: string;
+  /** Insert Snippet…: open the snippet picker. */
+  onSnippet: () => void;
 }): [
   act: (id: TabCommand) => void,
   onExportable: (exportShown: (() => void) | null) => void,
@@ -76,6 +80,7 @@ export function useTabAction(input: {
     actions: input.actions,
     format: input.format,
     file: input.files.act,
+    insertSnippet: input.onSnippet,
     exportResults: () => {
       exportShown?.();
     },

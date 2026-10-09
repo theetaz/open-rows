@@ -116,7 +116,7 @@ export function EditorBar(props: Props): React.JSX.Element {
       </MenuButton>
       <SplitButton
         label="Beautify"
-        title="Beautify the selection or current statement (⌘I)"
+        title="Beautify the selection or the whole query (⌘I)"
         onClick={() => {
           props.onFormat('beautify');
         }}

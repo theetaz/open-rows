@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { EditorView } from '@codemirror/view';
 import type { EditorDialect } from './dialects';
-import { currentStatement } from './statement';
 import type { TextRange } from './statement';
 
 /** How Beautify lays SQL out. */
@@ -12,6 +11,10 @@ export type FormatOptions = {
   keywordCase: 'preserve' | 'upper' | 'lower';
   /** Standard indentation, or keywords in a column aligned left or right (sql-formatter `indentStyle`). */
   indentStyle: 'standard' | 'tabularLeft' | 'tabularRight';
+  /** Empty lines between statements. */
+  linesBetweenQueries: 1 | 2 | 3;
+  /** Operators without surrounding spaces (`a=1`), as sql-formatter's `denseOperators`. */
+  denseOperators: boolean;
 };
 
 /** Beautify (pretty-print) or Uglify (one line). */
@@ -51,17 +54,15 @@ export async function beautifySql(
   return beautify(sql, options);
 }
 
-/** The selection, else the current statement, else the whole document. */
+/** The selection, else the whole document. */
 function formatTarget(view: EditorView): TextRange {
-  const { state } = view;
-  const { from, to, head } = state.selection.main;
-  if (from !== to) return { from, to };
-  return currentStatement(state, head) ?? { from: 0, to: state.doc.length };
+  const { from, to } = view.state.selection.main;
+  return from !== to ? { from, to } : { from: 0, to: view.state.doc.length };
 }
 
 /**
- * Beautify or uglify the selection, current statement or document as one
- * undoable change. Nothing changes when the text moved on meanwhile.
+ * Beautify or uglify the selection, else the whole document, as one undoable
+ * change. Nothing changes when the text moved on meanwhile.
  *
  * @throws When the formatter cannot parse the SQL.
  */

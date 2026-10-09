@@ -25,6 +25,8 @@ import {
   preferenceSlot,
 } from './preferences';
 import type { EditorPreferences } from './preferences';
+import { snippetSource } from './snippets';
+import type { SnippetSource } from './snippets';
 import { editorAppearance } from './theme';
 
 export type { EditorDialect };
@@ -56,6 +58,8 @@ export interface SqlEditorOptions {
   dialect?: EditorDialect;
   /** Schema objects and columns for completion; keywords only when absent. */
   catalog?: CompletionCatalog;
+  /** Snippets offered when their prefix is typed; none when absent. */
+  snippets?: SnippetSource;
   /** Runtime preferences; `defaultPreferences` when absent. */
   preferences?: EditorPreferences;
 }
@@ -82,15 +86,16 @@ function listeners(options: SqlEditorOptions): Extension {
   });
 }
 
-/** Context-aware completion with kind icons, styled by `completionTheme`. */
+/** Context-aware completion and snippets with kind icons, styled by `completionTheme`. */
 function completion(options: SqlEditorOptions): Extension {
   const source = sqlCompletionSource(
     options.dialect ?? 'postgres',
     options.catalog ?? null,
   );
+  const snippets = options.snippets ? [snippetSource(options.snippets)] : [];
   return [
     autocompletion({
-      override: [source],
+      override: [source, ...snippets],
       icons: false,
       addToOptions: [completionIcon],
     }),

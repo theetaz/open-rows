@@ -185,6 +185,7 @@ export type {
   HistoryItemDto,
   ParamStyleDto,
   ParamsDto,
+  ParamValueDto,
   QueryEventDto,
   RunMode,
   SavedQueryDto,

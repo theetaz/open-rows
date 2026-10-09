@@ -5,6 +5,7 @@ import { createSavedQuery, saveSqlFile, saveSqlFileAs } from '@openrows/ipc';
 import type { ExecuteRequest } from '@openrows/ipc';
 import { choose, chooseIn, fakeRuns, renderTab } from './testQueryTab';
 import { idleRun } from './run';
+import { runTabCommand } from '../commands';
 
 vi.mock('@openrows/ipc', async () =>
   (await import('../../test/ipcStub')).ipcStub(),
@@ -50,40 +51,86 @@ it('sends the error policy and the parameter style with a run', async () => {
     'query-1',
     expect.objectContaining({
       returnOnError: false,
-      params: { style: 'named', values: null },
+      params: { style: 'named', values: [] },
     }),
   );
 });
 
-it('asks for parameter values, prefilled with the last ones, and binds them', async () => {
+it('lists the parameters in a bar with typed values kept on the tab', async () => {
+  localStorage.setItem(
+    'openrows.editor',
+    JSON.stringify({ queryParams: 'named' }),
+  );
+  const runs = fakeRuns();
+  const { user, tabs } = renderTab(runs, {
+    tab: {
+      sql: 'select :id, :name',
+      params: { ':name': { kind: 'null', value: 'x' } },
+    },
+  });
+  const bar = screen.getByRole('region', { name: 'Query parameters' });
+  expect(
+    within(bar).getByRole('textbox', { name: ':name value' }),
+  ).toBeDisabled();
+  await user.type(within(bar).getByRole('textbox', { name: ':id value' }), '8');
+  expect(tabs.setParams).toHaveBeenLastCalledWith('query-1', {
+    ':name': { kind: 'null', value: 'x' },
+    ':id': { kind: 'text', value: '8' },
+  });
+  await user.selectOptions(
+    within(bar).getByRole('combobox', { name: ':id type' }),
+    'number',
+  );
+  expect(tabs.setParams).toHaveBeenLastCalledWith('query-1', {
+    ':name': { kind: 'null', value: 'x' },
+    ':id': { kind: 'number', value: '' },
+  });
+  await user.click(within(bar).getByRole('button', { name: /^Parameters/ }));
+  expect(within(bar).queryByRole('textbox')).toBeNull();
+});
+
+it('resends a run waiting for values with the bar values, NULL included', async () => {
   localStorage.setItem(
     'openrows.editor',
     JSON.stringify({ queryParams: 'named' }),
   );
   const request: ExecuteRequest = {
     sessionId: 'session-1',
-    sql: 'select :id',
+    sql: 'select :id, :name',
     mode: 'current',
     cursor: 0,
     confirmToken: null,
-    params: { style: 'named', values: null },
+    params: { style: 'named', values: [] },
   };
   const runs = fakeRuns();
   runs.runOf = () => ({
     ...idleRun,
     status: 'parameters',
-    parameters: { request, names: [':id'] },
+    parameters: { request, names: [':id', ':name'] },
   });
-  const { user, tabs } = renderTab(runs, { tab: { params: { ':id': '7' } } });
-  const field = screen.getByRole('textbox', { name: ':id' });
-  expect(field).toHaveValue('7');
-  await user.clear(field);
-  await user.type(field, '8');
-  await user.click(screen.getByRole('button', { name: 'Run' }));
-  expect(tabs.setParams).toHaveBeenCalledWith('query-1', { ':id': '8' });
+  const { user } = renderTab(runs, {
+    tab: {
+      sql: 'select :id, :name',
+      params: {
+        ':id': { kind: 'number', value: ' 8 ' },
+        ':name': { kind: 'null', value: '' },
+      },
+    },
+  });
+  const bar = screen.getByRole('region', { name: 'Query parameters' });
+  expect(within(bar).getByRole('status')).toHaveTextContent(
+    /Enter the parameter values/,
+  );
+  await user.click(within(bar).getByRole('button', { name: 'Run' }));
   expect(runs.execute).toHaveBeenCalledWith('query-1', {
     ...request,
-    params: { style: 'named', values: [{ name: ':id', value: '8' }] },
+    params: {
+      style: 'named',
+      values: [
+        { name: ':id', value: '8' },
+        { name: ':name', value: null },
+      ],
+    },
   });
 });
 
@@ -160,4 +207,17 @@ it('shows one tab per result or only the last result', async () => {
   expect(screen.queryByRole('tablist', { name: 'Result sets' })).toBeNull();
   // The last result has no rows yet; one with rows would show its grid.
   expect(screen.getByText(/Receiving rows… 0 so far/)).toBeVisible();
+});
+
+it('inserts a chosen snippet from Insert Snippet…', async () => {
+  const { user } = renderTab();
+  expect(runTabCommand('insert-snippet')).toBe(true);
+  const palette = await screen.findByRole('combobox', {
+    name: 'Insert snippet',
+  });
+  await user.type(palette, 'Count rows');
+  await user.keyboard('{Enter}');
+  await vi.waitFor(() => {
+    expect(editorText()).toContain('SELECT count(*) FROM ${1:table};');
+  });
 });

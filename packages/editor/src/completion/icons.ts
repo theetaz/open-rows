@@ -11,6 +11,7 @@ const ICONS: Record<CompletionKind, IconName> = {
   function: 'function',
   column: 'column',
   schema: 'schema',
+  snippet: 'code',
 };
 
 const SVG = 'http://www.w3.org/2000/svg';

@@ -192,6 +192,16 @@
           "default": "standard",
           "description": "Beautify layout."
         },
+        "linesBetweenQueries": {
+          "enum": [1, 2, 3],
+          "default": 1,
+          "description": "Beautify: empty lines between statements."
+        },
+        "denseOperators": {
+          "type": "boolean",
+          "description": "Beautify: write operators without surrounding spaces (a=1).",
+          "default": false
+        },
         "autoSave": {
           "type": "boolean",
           "description": "Keep query tab text and bound files saved as you type.",
@@ -200,7 +210,7 @@
         "queryParams": {
           "enum": ["off", "named", "numbered", "anonymous"],
           "default": "off",
-          "description": "Query parameter style prompted for before running."
+          "description": "Placeholder style listed in the parameters bar and bound when running."
         },
         "resultView": {
           "enum": ["tabs", "last"],
@@ -237,6 +247,7 @@
           "cancel",
           "beautify",
           "uglify",
+          "insert-snippet",
           "open-file",
           "save",
           "save-as",
@@ -315,9 +326,62 @@
           "description": "Arrow memory kept in RAM across results before spilling to disk, in MiB; applies at the next launch."
         }
       }
+    },
+    "snippets": {
+      "type": "object",
+      "description": "Settings ▸ Snippets: SQL snippets offered by completion and Insert Snippet….",
+      "properties": {
+        "items": {
+          "type": "array",
+          "maxItems": 500,
+          "description": "User snippets.",
+          "items": {
+            "$ref": "#/definitions/snippet"
+          }
+        },
+        "disabledBuiltins": {
+          "type": "array",
+          "description": "Ids of built-in snippets that are turned off.",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      }
     }
   },
   "definitions": {
+    "snippet": {
+      "type": "object",
+      "required": ["name", "prefix", "body"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Stable id; made by the app when missing."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "prefix": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_$]{1,32}$",
+          "description": "Typed trigger that offers the snippet in completion."
+        },
+        "body": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 10000,
+          "description": "SQL with tab stops such as ${1:name}."
+        },
+        "scope": {
+          "enum": ["all", "postgres", "mysql", "sqlite"],
+          "default": "all",
+          "description": "Engines the snippet is offered for; MariaDB uses mysql."
+        }
+      }
+    },
     "half": {
       "type": "object",
       "required": ["canvas", "accent"],

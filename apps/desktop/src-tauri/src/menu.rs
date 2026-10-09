@@ -132,6 +132,8 @@ const QUERY: &[Entry] = &[
     C("cancel", "Cancel Query"),
     S,
     C("beautify", "Beautify SQL"),
+    C("uglify", "Uglify SQL"),
+    C("insert-snippet", "Insert Snippet…"),
 ];
 const CONNECTION: &[Entry] = &[
     C("connect", "Connect"),
@@ -327,6 +329,8 @@ mod tests {
             "run-all",
             "cancel",
             "beautify",
+            "uglify",
+            "insert-snippet",
             "connect",
             "disconnect",
             "database",

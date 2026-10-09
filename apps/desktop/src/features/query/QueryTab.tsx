@@ -7,11 +7,13 @@ import { EditorBar } from './EditorBar';
 import { FileChangedBar } from './FileChangedBar';
 import { ResultArea } from './ResultArea';
 import { ConfirmRun } from './ConfirmRun';
-import { ParamsSheet } from './ParamsSheet';
+import { TabParams } from './TabParams';
+import { TabSnippets } from './TabSnippets';
 import { NameSheet } from './NameSheet';
 import { createCursorStore } from './cursor';
 import type { CursorStore } from './cursor';
 import { useEditorSettings } from './editorSettings';
+import { useFormat } from './useFormat';
 import type { EditorSettings } from './editorSettings';
 import { isActive } from './run';
 import type { RunState } from './run';
@@ -27,6 +29,7 @@ import type { TabFileActions } from './useTabFiles';
 import type { QueryTab as Tab } from './tabs';
 import type { QueryRuns } from './useQueryRuns';
 import type { QueryTabs } from './useQueryTabs';
+import type { TabCommand } from '../commands';
 import type { SelectedCell } from './cell';
 import styles from './Query.module.css';
 
@@ -45,31 +48,6 @@ type QueryTabProps = {
   onCell: (cell: SelectedCell) => void;
   onConnect: () => void;
 };
-
-const message = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error);
-
-/** Beautify/uglify through the editor; a formatter error becomes a notice. */
-function useFormat(
-  editor: { current: EditorHandle | null },
-  settings: EditorSettings,
-  dialect: ProfileDto['engine'],
-): [string | null, (kind: FormatKind) => void] {
-  const [failure, setFailure] = useState<string | null>(null);
-  const format = (kind: FormatKind): void => {
-    const { indentWidth, indentWith, keywordCase, indentStyle } = settings;
-    const options = { dialect, indentWidth, indentWith, keywordCase };
-    editor.current?.format(kind, { ...options, indentStyle }).then(
-      () => {
-        setFailure(null);
-      },
-      (error: unknown) => {
-        setFailure(`Could not format: ${message(error)}`);
-      },
-    );
-  };
-  return [failure, format];
-}
 
 /** Run's dropdown wired to the tab's run, settings and file actions. */
 function runMenuOf(input: {
@@ -104,6 +82,7 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
   const [cursor] = useState(createCursorStore);
   const [settings, updateSettings] = useEditorSettings();
   const [naming, setNaming] = useState(false);
+  const [picking, setPicking] = useState(false);
   const dialect = props.connection.engine;
   const [formatFailure, format] = useFormat(editor, settings, dialect);
   const files = useTabFiles(tab, editor, props.tabs);
@@ -115,6 +94,9 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
     files,
     runs,
     tabId: tab.id,
+    onSnippet: () => {
+      setPicking(true);
+    },
   });
   return (
     <section
@@ -124,21 +106,12 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
         tabKey(event, act);
       }}
     >
-      <FileChangedBar tab={tab} editor={editor} tabs={props.tabs} />
-      <QueryEditor
-        doc={tab.sql}
-        label="SQL editor"
-        dialect={dialect}
+      <TabEditor
+        {...props}
         settings={settings}
-        catalog={props.catalog}
         cursor={cursor}
-        onChange={(sql) => {
-          props.tabs.edit(tab.id, sql);
-        }}
-        onKey={(event) => tabKey(event, act)}
-        onReady={(handle) => {
-          editor.current = handle;
-        }}
+        editorRef={editor}
+        act={act}
       />
       <TabBar
         {...props}
@@ -154,6 +127,13 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
           setNaming(true);
         }}
       />
+      <TabParams
+        {...props}
+        dialect={dialect}
+        settings={settings}
+        run={run}
+        onRun={actions.provide}
+      />
       <TabResults
         {...props}
         run={run}
@@ -166,10 +146,49 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
         onNamed={() => {
           setNaming(false);
         }}
-        onProvide={actions.provide}
         text={() => editor.current?.text() ?? tab.sql}
+        picking={picking}
+        editorRef={editor}
+        onPicked={() => {
+          setPicking(false);
+        }}
       />
     </section>
+  );
+}
+
+/**
+ * The tab's SQL editor, its text reaching the tab descriptor as typed, under
+ * the notice of a bound file changed on disk.
+ */
+function TabEditor(
+  props: Pick<QueryTabProps, 'tab' | 'connection' | 'catalog' | 'tabs'> & {
+    settings: EditorSettings;
+    cursor: CursorStore;
+    editorRef: { current: EditorHandle | null };
+    act: (id: TabCommand) => void;
+  },
+): React.JSX.Element {
+  const { tab, editorRef, act } = props;
+  return (
+    <>
+      <FileChangedBar tab={tab} editor={editorRef} tabs={props.tabs} />
+      <QueryEditor
+        doc={tab.sql}
+        label="SQL editor"
+        dialect={props.connection.engine}
+        settings={props.settings}
+        catalog={props.catalog}
+        cursor={props.cursor}
+        onChange={(sql) => {
+          props.tabs.edit(tab.id, sql);
+        }}
+        onKey={(event) => tabKey(event, act)}
+        onReady={(handle) => {
+          editorRef.current = handle;
+        }}
+      />
+    </>
   );
 }
 
@@ -248,16 +267,26 @@ function TabResults(
   );
 }
 
-/** Confirmation, parameter values and the Add to Queries name, when asked for. */
+/** Confirmation, the Add to Queries name and Insert Snippet…, when asked for. */
 function TabSheets(
   props: QueryTabProps & {
     naming: boolean;
     onNamed: () => void;
-    onProvide: (values: Readonly<Record<string, string>>) => void;
     text: () => string;
+    picking: boolean;
+    editorRef: { current: EditorHandle | null };
+    onPicked: () => void;
   },
 ): React.JSX.Element | null {
   const { tab, runs } = props;
+  if (props.picking)
+    return (
+      <TabSnippets
+        dialect={props.connection.engine}
+        editorRef={props.editorRef}
+        onClose={props.onPicked}
+      />
+    );
   const run = runs.runOf(tab.id);
   const dismiss = (): void => {
     runs.dismiss(tab.id);
@@ -273,15 +302,6 @@ function TabSheets(
           addSavedQuery(props.connection.id, name, props.text())
         }
         onClose={props.onNamed}
-      />
-    );
-  if (run.status === 'parameters' && run.parameters)
-    return (
-      <ParamsSheet
-        names={run.parameters.names}
-        last={tab.params ?? {}}
-        onRun={props.onProvide}
-        onCancel={dismiss}
       />
     );
   if (run.status === 'confirm')

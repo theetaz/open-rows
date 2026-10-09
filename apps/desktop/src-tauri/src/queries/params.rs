@@ -29,12 +29,12 @@ impl From<ParamStyleDto> for ParamStyle {
     }
 }
 
-/// A value the user entered for one parameter name.
+/// A value the user entered for one parameter name; `null` binds SQL NULL.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ParamValueDto {
     pub(crate) name: String,
-    pub(crate) value: String,
+    pub(crate) value: Option<String>,
 }
 
 /// Parameters of a run; `values` is `null` until the user entered them.
@@ -99,7 +99,7 @@ fn names(slots: &[Vec<ParamSlot>]) -> Vec<String> {
 mod tests {
     use super::*;
 
-    fn params(values: Option<&[(&str, &str)]>) -> ParamsDto {
+    fn params(values: Option<&[(&str, Option<&str>)]>) -> ParamsDto {
         ParamsDto {
             style: ParamStyleDto::Named,
             values: values.map(|pairs| {
@@ -107,7 +107,7 @@ mod tests {
                     .iter()
                     .map(|(name, value)| ParamValueDto {
                         name: (*name).to_owned(),
-                        value: (*value).to_owned(),
+                        value: value.map(str::to_owned),
                     })
                     .collect()
             }),
@@ -134,14 +134,14 @@ mod tests {
         let sql = statements(&["SELECT :a, :b", "SELECT :a"]);
         let ask = Binding::Ask(vec![":a".to_owned(), ":b".to_owned()]);
         assert_eq!(bind(&sql, Dialect::Postgres, Some(&params(None))), ask);
-        let partial = params(Some(&[(":a", "1")]));
+        let partial = params(Some(&[(":a", Some("1"))]));
         assert_eq!(bind(&sql, Dialect::Postgres, Some(&partial)), ask);
     }
 
     #[test]
     fn values_are_bound_never_spliced() {
         let sql = statements(&["SELECT :a", "SELECT :a, :b"]);
-        let values = params(Some(&[(":a", "1'; DROP TABLE t; --"), (":b", "2")]));
+        let values = params(Some(&[(":a", Some("1'; DROP TABLE t; --")), (":b", None)]));
         let bound = match bind(&sql, Dialect::Postgres, Some(&values)) {
             Binding::Ready(bound) => bound,
             Binding::Ask(_) => Vec::new(),
@@ -150,10 +150,7 @@ mod tests {
         assert_eq!(bound[1].sql, "SELECT $1, $2");
         assert_eq!(
             bound[1].params,
-            vec![
-                Some("1'; DROP TABLE t; --".to_owned()),
-                Some("2".to_owned())
-            ]
+            vec![Some("1'; DROP TABLE t; --".to_owned()), None]
         );
         assert!(!bound[0].sql.contains("DROP"));
     }

@@ -78,4 +78,5 @@ export const completionTheme = EditorView.theme({
   '& .cm-sqlIcon-function': { color: 'var(--or-warning-fg)' },
   '& .cm-sqlIcon-column': { color: 'var(--or-accent)' },
   '& .cm-sqlIcon-schema': { color: 'var(--or-danger-fg)' },
+  '& .cm-sqlIcon-snippet': { color: 'var(--or-secondary)' },
 });

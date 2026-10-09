@@ -889,10 +889,10 @@ export type ParamStyleDto =
 /**  `?`, asked for as `?1`, `?2`, … across the run. */
 "anonymous";
 
-/**  A value the user entered for one parameter name. */
+/**  A value the user entered for one parameter name; `null` binds SQL NULL. */
 export type ParamValueDto = {
 	name: string,
-	value: string,
+	value: string | null,
 };
 
 /**  Parameters of a run; `values` is `null` until the user entered them. */

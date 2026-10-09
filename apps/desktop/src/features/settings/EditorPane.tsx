@@ -15,9 +15,12 @@ type Flag =
   | 'highlightQuery'
   | 'autocomplete'
   | 'upperKeywords'
-  | 'autoSave';
+  | 'autoSave'
+  | 'denseOperators';
 
-const FLAGS: readonly { key: Flag; title: string; description: string }[] = [
+type FlagSpec = { key: Flag; title: string; description: string };
+
+const FLAGS: readonly FlagSpec[] = [
   { key: 'wrap', title: 'Wrap lines', description: 'Soft-wrap long lines.' },
   {
     key: 'invisibles',
@@ -48,7 +51,15 @@ const FLAGS: readonly { key: Flag; title: string; description: string }[] = [
 ];
 
 type Choice = {
-  key: 'fontSize' | 'keyBinding' | 'rowLimit' | 'keywordCase';
+  key:
+    | 'fontSize'
+    | 'keyBinding'
+    | 'rowLimit'
+    | 'keywordCase'
+    | 'indentWidth'
+    | 'indentWith'
+    | 'indentStyle'
+    | 'linesBetweenQueries';
   title: string;
   description: string;
   options: readonly { value: string; label: string }[];
@@ -88,55 +99,113 @@ const CHOICES: readonly Choice[] = [
       })),
     ],
   },
+];
+
+/** Beautify (⌘I) and Uglify (⇧⌘I) layout. */
+const FORMAT_CHOICES: readonly Choice[] = [
   {
     key: 'keywordCase',
-    title: 'Beautify keywords',
-    description: 'Keyword case of Beautify (⌘I).',
+    title: 'Keyword case',
+    description: 'Case of SQL keywords when beautifying.',
     options: [
       { value: '"upper"', label: 'UPPER' },
       { value: '"lower"', label: 'lower' },
       { value: '"preserve"', label: 'As typed' },
     ],
   },
+  {
+    key: 'indentWidth',
+    title: 'Indent width',
+    description: 'Spaces per indent level.',
+    options: [
+      { value: '2', label: '2 spaces' },
+      { value: '4', label: '4 spaces' },
+    ],
+  },
+  {
+    key: 'indentWith',
+    title: 'Indent with',
+    description: 'Indent with spaces or tabs.',
+    options: [
+      { value: '"spaces"', label: 'Spaces' },
+      { value: '"tabs"', label: 'Tabs' },
+    ],
+  },
+  {
+    key: 'indentStyle',
+    title: 'Indent type',
+    description: 'Standard indents, or keywords aligned in a column.',
+    options: [
+      { value: '"standard"', label: 'Standard' },
+      { value: '"tabularLeft"', label: 'Tabular left' },
+      { value: '"tabularRight"', label: 'Tabular right' },
+    ],
+  },
+  {
+    key: 'linesBetweenQueries',
+    title: 'Lines between queries',
+    description: 'Empty lines between statements.',
+    options: [
+      { value: '1', label: '1' },
+      { value: '2', label: '2' },
+      { value: '3', label: '3' },
+    ],
+  },
 ];
 
 /** Settings ▸ Editor: the SQL editor options of the bottom-bar menus. */
 export function EditorPane(): React.JSX.Element {
-  const [settings, update] = useEditorSettings();
+  const [settings] = useEditorSettings();
   return (
     <section aria-label="Editor">
       <h3>SQL editor</h3>
       <div className={styles.settingsGroup}>
         {CHOICES.map((choice) => (
-          <SettingRow
-            key={choice.key}
-            title={choice.title}
-            description={choice.description}
-          >
-            <SelectField
-              aria-label={choice.title}
-              value={JSON.stringify(settings[choice.key])}
-              options={choice.options}
-              onValueChange={(value) => {
-                update(
-                  Object.fromEntries([
-                    [choice.key, JSON.parse(value) as unknown],
-                  ]),
-                );
-              }}
-            />
-          </SettingRow>
+          <ChoiceRow key={choice.key} choice={choice} settings={settings} />
         ))}
         {FLAGS.map((flag) => (
           <FlagRow key={flag.key} flag={flag} settings={settings} />
         ))}
       </div>
+      <h3>Formatter</h3>
+      <div className={styles.settingsGroup}>
+        {FORMAT_CHOICES.map((choice) => (
+          <ChoiceRow key={choice.key} choice={choice} settings={settings} />
+        ))}
+        <FlagRow flag={DENSE} settings={settings} />
+      </div>
     </section>
   );
 }
 
+const DENSE: FlagSpec = {
+  key: 'denseOperators',
+  title: 'Dense operators',
+  description: 'Write operators without surrounding spaces (a=1).',
+};
+
+function ChoiceRow(props: {
+  choice: Choice;
+  settings: EditorSettings;
+}): React.JSX.Element {
+  const [, update] = useEditorSettings();
+  const { key, title, description, options } = props.choice;
+  return (
+    <SettingRow title={title} description={description}>
+      <SelectField
+        aria-label={title}
+        value={JSON.stringify(props.settings[key])}
+        options={options}
+        onValueChange={(value) => {
+          update(Object.fromEntries([[key, JSON.parse(value) as unknown]]));
+        }}
+      />
+    </SettingRow>
+  );
+}
+
 function FlagRow(props: {
-  flag: (typeof FLAGS)[number];
+  flag: FlagSpec;
   settings: EditorSettings;
 }): React.JSX.Element {
   const [, update] = useEditorSettings();

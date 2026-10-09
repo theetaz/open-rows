@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useSyncExternalStore } from 'react';
-import type { EditorPreferences, FormatOptions } from '@openrows/editor';
+import type {
+  EditorDialect,
+  EditorPreferences,
+  FormatOptions,
+} from '@openrows/editor';
 import type { ParamStyleDto } from '@openrows/ipc';
 import type { RunScope } from './request';
 import { onSettingsReload, settingsChanged } from '../settings/localSetting';
@@ -47,12 +51,32 @@ export const defaultEditorSettings: EditorSettings = {
   indentWith: 'spaces',
   keywordCase: 'upper',
   indentStyle: 'standard',
+  linesBetweenQueries: 1,
+  denseOperators: false,
   autoSave: true,
   queryParams: 'off',
   resultView: 'tabs',
   returnOnError: true,
   runDefault: 'current',
 };
+
+/** Beautify's layout from the settings, for an engine's dialect. */
+export function formatOptionsOf(
+  settings: EditorSettings,
+  dialect: EditorDialect,
+): FormatOptions {
+  const { indentWidth, indentWith, keywordCase, indentStyle } = settings;
+  const { linesBetweenQueries, denseOperators } = settings;
+  return {
+    dialect,
+    indentWidth,
+    indentWith,
+    keywordCase,
+    indentStyle,
+    linesBetweenQueries,
+    denseOperators,
+  };
+}
 
 /** Editor font sizes offered besides the appearance default. */
 export const FONT_SIZES = [11, 12, 13, 14, 15, 16, 18, 20, 24] as const;
@@ -96,6 +120,8 @@ const FIELDS: { [K in keyof EditorSettings]: Field<K> } = {
     'tabularLeft',
     'tabularRight',
   ),
+  linesBetweenQueries: oneOf<1 | 2 | 3>(1, 2, 3),
+  denseOperators: isBoolean,
   autoSave: isBoolean,
   queryParams: oneOf<QueryParams>('off', 'named', 'numbered', 'anonymous'),
   resultView: oneOf<ResultView>('tabs', 'last'),

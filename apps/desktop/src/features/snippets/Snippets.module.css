@@ -1,0 +1,22 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.form {
+  display: grid;
+  gap: var(--or-space-12);
+}
+.bodyLabel {
+  display: grid;
+  gap: var(--or-space-6);
+  font-size: var(--or-text-12);
+  font-weight: var(--or-weight-medium);
+}
+.body textarea {
+  min-block-size: 120px;
+  font-family: var(--or-font-mono);
+  font-size: var(--or-text-mono, var(--or-text-13));
+  white-space: pre;
+}
+.help {
+  margin: 0;
+  font-size: var(--or-text-11-5);
+  color: var(--or-secondary);
+}

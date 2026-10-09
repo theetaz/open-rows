@@ -38,6 +38,15 @@ export function TextareaEditor(props: {
         element.value = text;
         changed.current(text);
       },
+      insertSnippet: (body) => {
+        const at = element.selectionStart;
+        element.setRangeText(body, at, element.selectionEnd, 'end');
+        element.dispatchEvent(new Event('input', { bubbles: true }));
+      },
+      runStart: () =>
+        element.selectionStart === element.selectionEnd
+          ? 0
+          : element.selectionStart,
     });
     return () => {
       onReady(null);
