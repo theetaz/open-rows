@@ -4,6 +4,13 @@ import type { HelperHop } from '@openrows/ipc';
 /** A new structured route; cloud proxies encrypt their upstream connection. */
 export function newHelper(kind: HelperHop['kind']): HelperHop {
   switch (kind) {
+    case 'custom':
+      return {
+        kind,
+        program: '',
+        args: ['{local_port}'],
+        readyTimeoutSeconds: null,
+      };
     case 'ssm':
       return {
         kind,
@@ -43,6 +50,7 @@ export function helperError(
 ): string | undefined {
   if (!helper) return undefined;
   if (chained) return 'Cloud routes cannot combine with SSH or a proxy.';
+  if (helper.kind === 'custom') return customError(helper);
   const values = Object.values(helper);
   if (
     values.some(
@@ -56,7 +64,9 @@ export function helperError(
   return requiredError(helper);
 }
 
-function requiredError(helper: HelperHop): string | undefined {
+function requiredError(
+  helper: Exclude<HelperHop, { kind: 'custom' }>,
+): string | undefined {
   switch (helper.kind) {
     case 'ssm':
       return helper.target.trim() && validPort(helper.remotePort)
@@ -79,6 +89,34 @@ function requiredError(helper: HelperHop): string | undefined {
         : 'Enter an Access hostname without a URL scheme, path or credentials.';
   }
 }
+function customError(
+  helper: Extract<HelperHop, { kind: 'custom' }>,
+): string | undefined {
+  if (
+    !/^(\/|[A-Za-z]:[\\/])/.test(helper.program) ||
+    helper.program.includes('\0')
+  )
+    return 'Program must be an absolute path without NUL.';
+  if (!helper.args.some((arg) => arg.includes('{local_port}')))
+    return 'Include {local_port} in an argument to tell the helper where to listen.';
+  if (
+    helper.args.some(
+      (arg) =>
+        arg.includes('\0') ||
+        /\{(?!local_port\}|remote_host\}|remote_port\})/.test(arg),
+    )
+  )
+    return 'Use only {local_port}, {remote_host} and {remote_port}; arguments cannot contain NUL.';
+  const timeout = helper.readyTimeoutSeconds;
+  if (
+    timeout !== null &&
+    timeout !== undefined &&
+    (!Number.isInteger(timeout) || timeout < 1 || timeout > 300)
+  )
+    return 'Readiness timeout must be 1–300 seconds.';
+  return undefined;
+}
+
 function validPort(port: number): boolean {
   return Number.isInteger(port) && port > 0 && port <= 65535;
 }
@@ -86,6 +124,8 @@ function validPort(port: number): boolean {
 /** The required tool key in Settings ▸ Tools. */
 export function helperTool(helper: HelperHop): string {
   switch (helper.kind) {
+    case 'custom':
+      return '';
     case 'ssm':
       return 'aws';
     case 'kubectl':

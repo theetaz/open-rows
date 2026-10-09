@@ -1187,6 +1187,14 @@ export type GridRun = {
 
 /**  One structured helper hop, before database TLS. */
 export type HelperHop =
+/**  A locally trusted executable with literal argument templates. */
+{ kind: "custom";
+/**  Absolute executable path. */
+program: string;
+/**  Literal templates with local and database destination placeholders. */
+args: string[];
+/**  Readiness deadline; absent uses 30 seconds. */
+readyTimeoutSeconds?: number | null } |
 /**  AWS Session Manager port forwarding. */
 { kind: "ssm";
 /**  Managed node or ECS target. */
@@ -1794,6 +1802,8 @@ export type PasswordStorageDto =
 
 /**  Which file the connection form asks for. */
 export type PickFileKind =
+/**  A custom helper executable. */
+"program" |
 /**  SSH private key (opens in `~/.ssh`). */
 "sshKey" |
 /**  TLS CA certificate bundle. */

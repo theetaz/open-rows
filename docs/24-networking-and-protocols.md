@@ -140,7 +140,7 @@ stateDiagram-v2
 ## 9. Security notes
 
 - Local listeners only on loopback, ephemeral ports, single expected client where possible; prefer in-process streams (no listener at all).
-- Helper commands are executed without a shell (argument vectors, no interpolation of untrusted strings); custom command templates show the final command before first use.
+- Helper commands are executed without a shell (argument vectors, no interpolation of untrusted strings); custom command templates show the program and literal template arguments in a purpose-specific Trust and run confirmation before first use; Test connection reports the substituted vector.
 - Proxy and SSH credentials live in the keychain like all secrets.
 
 ## 10. Testing
@@ -185,7 +185,7 @@ D-10 and D-11 promote the spike into the connect path of the desktop app for Pos
 | Diagnostics | Test connection reports steps: SSH connect and login per hop, tunnel (or DNS and TCP when direct), TLS handshake (protocol, cipher, certificate subject, verification level; a warning when the certificate of a remote host is not verified or TLS is off), authentication and server version, each timed. The failing step carries the typed error and a hint on what to change. |
 | Tests | Unit tests for planning, TLS verification levels and certificate files, diagnostics step mapping and hints, prompt flow and secret handling; `just test-ssh` adds `route::profile_route_dials_streams_through_one_shared_tunnel`; `just test-pg` runs PostgreSQL with TLS on (generated CA, server and client certificates) for every mode, client-certificate login, wrong CA, host-name mismatch and a routed stream. |
 
-Still pending after D-10/D-11 was completed in M1-06/M1-07 (§13). Cloud and zero-trust hops and the status popover are now implemented in §15 (M2-24); custom commands remain a follow-up. Remaining: the spike follow-ups above (RSA host keys, certificates, encrypted PEM keys, passphrase prompts through the prompter).
+Still pending after D-10/D-11 was completed in M1-06/M1-07 (§13). Cloud and zero-trust hops and the status popover are now implemented in §15 (M2-24), including custom commands (§15). Remaining: the spike follow-ups above (RSA host keys, certificates, encrypted PEM keys, passphrase prompts through the prompter).
 
 ## 13. Implementation notes (M1-06 and M1-07 completion)
 
@@ -245,4 +245,30 @@ The vectors follow the public [AWS Session Manager documentation](https://docs.a
 | UI | Connection sheet Route ▸ Cloud / zero-trust exposes typed fields and missing-tool advice. The toolbar health button opens a connection status popover containing the configured route, e.g. `Route: kubectl port-forward svc/db → TLS → PostgreSQL`. |
 | Verification | Golden argument and validation tests; fake-tool sharing, tree cleanup, cancellation, readiness timeout, shutdown, restart and scrubbed failures; profile save/load; UI settings/form/route tests. `just test-pg` routes real PostgreSQL through all four kinds (both Google flavours) and verifies the original TLS hostname; `just test-mysql` routes MySQL/MariaDB through fake kubectl. CI needs no real cloud tools/accounts. The fake binary is gated behind `test-helper`, never normal app builds. |
 
-Known gap: custom command hops remain a follow-up to M2-21's command trust store. No native AWS/Kubernetes/GCP APIs, cloud credential storage or helper-plus-SSH/proxy chaining are implemented. Real cloud-provider authentication is left to the installed tools; fake integration tests establish routing and lifecycle behavior, not successful access to an external cloud account.
+No native AWS/Kubernetes/GCP APIs, cloud credential storage or helper-plus-SSH/proxy chaining are implemented. Real cloud-provider authentication is left to the installed tools; fake integration tests establish routing and lifecycle behavior, not successful access to an external cloud account.
+
+### Implemented (M2-24b): custom command hop
+
+Custom routes store an absolute `program`, an ordered `args` vector and optional
+`readyTimeoutSeconds` (default 30; 1–300). At least one argument must contain
+`{local_port}` to tell the helper where to listen. `{remote_host}` and
+`{remote_port}` use the profile database destination. Substitution is a single
+pass per argument, with no shell, splitting or recursive expansion; unknown or
+unclosed placeholders and NUL are rejected. The helper must bind IPv4 loopback.
+The form provides a program picker, add/remove/up/down argument rows, placeholder
+help and timeout. The original supervisor, sharing, single restart, scrubbed
+stderr, diagnostics and status popover apply unchanged; a changed database
+destination also acquires a new helper. Custom failures explain that the command
+exited or never listened on `{local_port}`.
+
+Trust reuses M2-21 `CommandTrust` with a separate hop purpose and a SHA-256 of the
+program and template arguments (docs/12 §11). Imported profiles always start
+untrusted. No custom version probe runs; diagnostics label its version as not
+probed. Exchange v1 includes all helper kinds, with custom templates exported as
+configuration and fresh imported ids (docs/15 §9). Literal-spawn, validation,
+purpose-isolation, edit-invalidation and round-trip tests cover these boundaries;
+`just test-pg` explicitly trusts a fake custom helper and runs `SELECT 1` through
+it with original-host TLS verification.
+
+OpenRows uses `rustix` for process-group termination and has no direct `nix`
+dependency; transitive `nix` through `russh-cryptovec` → `russh` is accepted.

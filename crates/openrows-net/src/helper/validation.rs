@@ -7,6 +7,14 @@ impl HelperHop {
     /// # Errors
     /// A user-readable field validation failure.
     pub fn validate(&self) -> Result<(), HelperError> {
+        if let Self::Custom {
+            program,
+            args,
+            ready_timeout_seconds,
+        } = self
+        {
+            return super::custom::validate(program, args, *ready_timeout_seconds);
+        }
         self.validate_destination()?;
         let (required, port) = self.required_fields();
         if port == 0 || required.iter().any(|value| value.trim().is_empty()) {
@@ -29,6 +37,7 @@ impl HelperHop {
     }
     fn required_fields(&self) -> (Vec<&str>, u16) {
         match self {
+            Self::Custom { program, .. } => (vec![program], 1),
             Self::Ssm {
                 target,
                 remote_port,
@@ -72,7 +81,8 @@ impl HelperHop {
                     "Enter an Access hostname without a URL scheme, path or credentials",
                 ))
             }
-            Self::Ssm { .. }
+            Self::Custom { .. }
+            | Self::Ssm { .. }
             | Self::Kubectl { .. }
             | Self::Cloud { .. }
             | Self::Cloudflared { .. } => Ok(()),

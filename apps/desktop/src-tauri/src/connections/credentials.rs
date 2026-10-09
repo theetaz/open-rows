@@ -12,8 +12,8 @@ use super::{
 };
 use openrows_secrets::SecretString;
 use openrows_store::profile::{
-    CommandCancellation, CommandTrust, ConnectionProfile, CredentialCommand, CredentialError,
-    PasswordStorage, ProfileId, run_credential,
+    CommandCancellation, CommandPurpose, CommandTrust, ConnectionProfile, CredentialCommand,
+    CredentialError, PasswordStorage, ProfileId, run_credential,
 };
 use std::{
     collections::HashMap,
@@ -53,6 +53,7 @@ impl CredentialRuns {
 impl From<CredentialError> for IpcError {
     fn from(error: CredentialError) -> Self {
         let kind = match error {
+            CredentialError::Helper(error) => return super::helpers::ipc_error(&error),
             CredentialError::Timeout => IpcErrorKind::Timeout,
             CredentialError::Cancelled => IpcErrorKind::Cancelled,
             CredentialError::Profile(error) => return error.into(),
@@ -68,7 +69,20 @@ pub(crate) async fn confirm(
     app: &tauri::AppHandle,
     command: &CredentialCommand,
 ) -> Result<(), IpcError> {
+    confirm_purpose(app, command, CommandPurpose::Credential).await
+}
+
+/// Show the exact template and its distinct execution purpose before approval.
+pub(crate) async fn confirm_purpose(
+    app: &tauri::AppHandle,
+    command: &CredentialCommand,
+    purpose: CommandPurpose,
+) -> Result<(), IpcError> {
     command.validate()?;
+    let title = match purpose {
+        CommandPurpose::Credential => "Trust credential command?",
+        CommandPurpose::Hop => "Trust custom hop command?",
+    };
     let args =
         serde_json::to_string(&command.args).map_err(|_| IpcError::invalid("Invalid arguments"))?;
     let program = serde_json::to_string(&command.program)
@@ -79,7 +93,7 @@ pub(crate) async fn confirm(
     let (sender, receiver) = tokio::sync::oneshot::channel();
     app.dialog()
         .message(text)
-        .title("Trust credential command?")
+        .title(title)
         .buttons(MessageDialogButtons::OkCancelCustom(
             "Trust and run".into(),
             "Cancel".into(),
@@ -92,7 +106,7 @@ pub(crate) async fn confirm(
     } else {
         Err(IpcError::new(
             IpcErrorKind::Cancelled,
-            "Credential command was not trusted",
+            "Command was not trusted",
         ))
     }
 }

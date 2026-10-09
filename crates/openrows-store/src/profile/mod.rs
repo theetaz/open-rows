@@ -17,6 +17,7 @@ mod env;
 mod error;
 pub mod exchange;
 mod files;
+mod hop_command;
 mod limits;
 mod model;
 mod network;
@@ -45,4 +46,5 @@ pub use service::{PasswordChange, ProfileService};
 
 pub use credential::{CommandCancellation, CredentialCommand, CredentialError};
 pub use credential_run::run_credential;
-pub use credential_trust::CommandTrust;
+pub use credential_trust::{CommandPurpose, CommandTrust};
+pub use hop_command::{acquire_trusted_hop, hop_command, trusted_hop_spec};

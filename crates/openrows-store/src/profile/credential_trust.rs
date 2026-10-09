@@ -9,6 +9,24 @@ use std::{
     sync::Mutex,
 };
 
+/// Execution boundary approved by the user; credentials never authorize hops.
+#[derive(Clone, Copy, Debug)]
+pub enum CommandPurpose {
+    /// A short-lived password provider.
+    Credential,
+    /// A database forwarding process.
+    Hop,
+}
+impl CommandPurpose {
+    fn key(self, id: ProfileId) -> String {
+        match self {
+            // Preserve existing credential approvals; old keys cannot authorize hops.
+            Self::Credential => id.to_string(),
+            Self::Hop => format!("hop:{id}"),
+        }
+    }
+}
+
 /// A private trust file outside the exportable connections directory.
 pub struct CommandTrust {
     path: PathBuf,
@@ -31,19 +49,41 @@ impl CommandTrust {
         id: ProfileId,
         command: &CredentialCommand,
     ) -> Result<bool, ProfileError> {
-        Ok(self.load()?.get(&id.to_string()) == Some(&digest(command)?))
+        self.is_trusted_for(id, CommandPurpose::Credential, command)
+    }
+    /// Check the exact template invocation within its execution purpose.
+    /// # Errors
+    /// The local trust file cannot be read.
+    pub fn is_trusted_for(
+        &self,
+        id: ProfileId,
+        purpose: CommandPurpose,
+        command: &CredentialCommand,
+    ) -> Result<bool, ProfileError> {
+        Ok(self.load()?.get(&purpose.key(id)) == Some(&digest(command)?))
     }
     /// Persist trust only after an explicit confirmation of the exact invocation.
     /// # Errors
     /// The configuration directory or file cannot be written.
     pub fn trust(&self, id: ProfileId, command: &CredentialCommand) -> Result<(), ProfileError> {
+        self.trust_for(id, CommandPurpose::Credential, command)
+    }
+    /// Approve this literal template for one purpose after explicit confirmation.
+    /// # Errors
+    /// Invalid invocation or local trust file write failure.
+    pub fn trust_for(
+        &self,
+        id: ProfileId,
+        purpose: CommandPurpose,
+        command: &CredentialCommand,
+    ) -> Result<(), ProfileError> {
         command.validate()?;
         let _guard = self.write.lock().map_err(|_| ProfileError::Invalid {
             field: "trust",
             reason: "store unavailable",
         })?;
         let mut entries = self.load()?;
-        entries.insert(id.to_string(), digest(command)?);
+        entries.insert(purpose.key(id), digest(command)?);
         if let Some(parent) = self.path.parent() {
             fs::create_dir_all(parent).map_err(|source| self.io(source))?;
         }
@@ -66,7 +106,18 @@ impl CommandTrust {
         id: ProfileId,
         command: &CredentialCommand,
     ) -> Result<(), CredentialError> {
-        if self.is_trusted(id, command)? {
+        self.require_for(id, CommandPurpose::Credential, command)
+    }
+    /// Refuse execution without an exact approval for this purpose.
+    /// # Errors
+    /// Untrusted or unreadable configuration.
+    pub fn require_for(
+        &self,
+        id: ProfileId,
+        purpose: CommandPurpose,
+        command: &CredentialCommand,
+    ) -> Result<(), CredentialError> {
+        if self.is_trusted_for(id, purpose, command)? {
             Ok(())
         } else {
             Err(CredentialError::Untrusted)

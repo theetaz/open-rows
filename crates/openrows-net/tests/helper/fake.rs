@@ -37,11 +37,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if std::env::var_os("OPENROWS_FAKE_NOT_READY").is_some() {
         std::future::pending::<()>().await;
     }
+    if let Some([_, path]) = args.windows(2).find(|pair| pair[0] == "--record-args") {
+        std::fs::write(path, serde_json::to_vec(&args)?)?;
+    }
     let address = address(&args)?;
     let listener = TcpListener::bind(address).await?;
     loop {
         let (stream, _) = listener.accept().await?;
-        let target = std::env::var("OPENROWS_FAKE_TARGET").ok();
+        let target = args
+            .windows(2)
+            .find(|pair| pair[0] == "--tcp-target")
+            .map(|pair| pair[1].clone())
+            .or_else(|| std::env::var("OPENROWS_FAKE_TARGET").ok());
         tokio::spawn(async move {
             let _ = forward(stream, target).await;
         });

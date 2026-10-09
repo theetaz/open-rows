@@ -8,12 +8,14 @@ import {
 } from '@openrows/ui';
 import { dumpTools } from '@openrows/ipc';
 import type { HelperHop } from '@openrows/ipc';
+import { CustomHopFields } from './CustomHopFields';
 import { helperTool, newHelper } from './helperForm';
 import type { ConnectionForm } from './useConnectionForm';
 import styles from './ConnectionSheet.module.css';
 
 type Choice = 'off' | HelperHop['kind'];
 const choices: readonly { value: Choice; label: string }[] = [
+  { value: 'custom', label: 'Cloud / zero-trust · Custom command' },
   { value: 'off', label: 'Direct / SSH / proxy' },
   { value: 'ssm', label: 'Cloud / zero-trust · AWS SSM' },
   { value: 'kubectl', label: 'Cloud / zero-trust · Kubernetes' },
@@ -21,7 +23,7 @@ const choices: readonly { value: Choice; label: string }[] = [
   { value: 'cloudflared', label: 'Cloud / zero-trust · Cloudflare Access' },
 ];
 
-/** Structured cloud route settings; no arbitrary executable or token input. */
+/** Cloud route settings, including locally trusted command templates. */
 export function HelperFields({
   form,
 }: {
@@ -110,6 +112,8 @@ function HopFields({
   const set = (helper: HelperHop): void => {
     form.update({ helper });
   };
+  if (helper.kind === 'custom')
+    return <CustomHopFields helper={helper} set={set} />;
   const fields = textFields(helper, set);
   return (
     <>
@@ -134,6 +138,8 @@ function textFields(
   set: (helper: HelperHop) => void,
 ): TextBinding[] {
   switch (helper.kind) {
+    case 'custom':
+      return [];
     case 'ssm':
       return ssmFields(helper, set);
     case 'kubectl':

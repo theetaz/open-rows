@@ -71,6 +71,9 @@ pub enum CredentialError {
     /// Nonzero exit or missing first-line password; diagnostics are scrubbed.
     #[error("Credential command failed: {0}")]
     Failed(String),
+    /// A trusted hop failed to launch or listen; diagnostics are scrubbed.
+    #[error(transparent)]
+    Helper(openrows_net::helper::HelperError),
     /// Invalid configuration or a trust-store write failed.
     #[error(transparent)]
     Profile(#[from] ProfileError),

@@ -140,6 +140,7 @@ impl Helpers {
         if let Some(helper) = pool.entries.get(profile).and_then(Weak::upgrade)
             && helper.spec.hop == spec.hop
             && helper.spec.path == spec.path
+            && helper.spec.destination == spec.destination
         {
             tokio::select! {
                 result = helper.ready() => result?,

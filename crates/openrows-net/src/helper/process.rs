@@ -24,6 +24,8 @@ pub struct HelperSpec {
     pub version: String,
     /// TCP readiness deadline (30 seconds by default).
     pub timeout: Duration,
+    /// Original database destination for custom placeholders.
+    pub destination: (String, u16),
     /// Extra environment for isolated test injection (no credentials).
     pub environment: Vec<(String, String)>,
 }
@@ -31,13 +33,34 @@ impl HelperSpec {
     /// Resolved tool with the default readiness deadline.
     #[must_use]
     pub fn new(hop: HelperHop, path: PathBuf, version: String) -> Self {
+        let timeout = match &hop {
+            HelperHop::Custom {
+                ready_timeout_seconds,
+                ..
+            } => u64::from(ready_timeout_seconds.unwrap_or(30)),
+            HelperHop::Ssm { .. }
+            | HelperHop::Kubectl { .. }
+            | HelperHop::Cloud { .. }
+            | HelperHop::Cloudflared { .. } => 30,
+        };
         Self {
             hop,
             path,
             version,
-            timeout: Duration::from_secs(30),
+            timeout: Duration::from_secs(timeout),
+            destination: ("localhost".into(), 5432),
             environment: Vec::new(),
         }
+    }
+    /// Use the profile database host and port for template substitution.
+    #[must_use]
+    pub fn with_destination(mut self, host: String, port: u16) -> Self {
+        self.destination = (host, port);
+        self
+    }
+    fn arguments(&self, port: u16) -> Result<Vec<String>, HelperError> {
+        self.hop
+            .arguments_for(port, &self.destination.0, self.destination.1)
     }
     pub(super) fn failure(&self, reason: impl Into<String>, stderr: &Stderr) -> HelperError {
         HelperError::Network {
@@ -53,7 +76,7 @@ impl HelperSpec {
     /// Invalid hop fields.
     pub fn command_line(&self, port: u16) -> Result<String, HelperError> {
         let mut args = vec![self.path.display().to_string()];
-        args.extend(self.hop.arguments(port)?);
+        args.extend(self.arguments(port)?);
         Ok(args
             .iter()
             .map(|value| format!("{value:?}"))
@@ -75,7 +98,7 @@ impl Process {
     ) -> Result<Self, HelperError> {
         let mut command = Command::new(&spec.path);
         command
-            .args(spec.hop.arguments(port)?)
+            .args(spec.arguments(port)?)
             .envs(spec.environment.iter().cloned());
         command
             .stdin(Stdio::null())
@@ -157,11 +180,11 @@ impl Drop for Process {
 pub(super) fn kill_tree(pid: u32) {
     #[cfg(unix)]
     {
-        if let Ok(pid) = i32::try_from(pid) {
-            let _ = nix::sys::signal::killpg(
-                nix::unistd::Pid::from_raw(pid),
-                nix::sys::signal::Signal::SIGKILL,
-            );
+        if let Some(group) = i32::try_from(pid)
+            .ok()
+            .and_then(rustix::process::Pid::from_raw)
+        {
+            let _ = rustix::process::kill_process_group(group, rustix::process::Signal::KILL);
         }
     }
     #[cfg(windows)]

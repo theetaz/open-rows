@@ -22,6 +22,16 @@ pub enum CloudFlavor {
     rename_all_fields = "camelCase"
 )]
 pub enum HelperHop {
+    /// A locally trusted executable with literal argument templates.
+    Custom {
+        /// Absolute executable path.
+        program: String,
+        /// Literal templates with local and database destination placeholders.
+        args: Vec<String>,
+        /// Readiness deadline; absent uses 30 seconds.
+        #[serde(default)]
+        ready_timeout_seconds: Option<u16>,
+    },
     /// AWS Session Manager port forwarding.
     Ssm {
         /// Managed node or ECS target.
@@ -73,6 +83,7 @@ impl HelperHop {
     #[must_use]
     pub fn tool(&self) -> &'static str {
         match self {
+            Self::Custom { .. } => "custom command",
             Self::Ssm { .. } => "aws",
             Self::Kubectl { .. } => "kubectl",
             Self::Cloud {
@@ -91,6 +102,7 @@ impl HelperHop {
     #[must_use]
     pub fn describe(&self) -> String {
         match self {
+            Self::Custom { program, .. } => format!("Custom command {program}"),
             Self::Ssm { target, .. } => format!("AWS SSM {target}"),
             Self::Kubectl { resource, .. } => format!("kubectl port-forward {resource}"),
             Self::Cloud { instance, .. } => format!("{} {instance}", self.tool()),
@@ -102,6 +114,9 @@ impl HelperHop {
     #[must_use]
     pub fn hint(&self) -> &'static str {
         match self {
+            Self::Custom { .. } => {
+                "The command exited or never listened on {local_port}; check the program and argument templates."
+            }
             Self::Ssm { .. } => {
                 "Check the Session Manager plugin in Settings ▸ Tools, region and target; run aws sso login for your profile."
             }

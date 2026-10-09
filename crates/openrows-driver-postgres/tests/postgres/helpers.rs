@@ -6,8 +6,18 @@ use openrows_driver_postgres::{ConnectOptions, PgConfig, PgSession, SslMode, Tls
 use openrows_net::helper::{CloudFlavor, HelperDialer, HelperHop, HelperSpec, Helpers};
 use std::{path::PathBuf, sync::Arc};
 
-fn hops() -> [HelperHop; 5] {
+fn hops(fake: &std::path::Path) -> [HelperHop; 6] {
     [
+        HelperHop::Custom {
+            program: fake.to_string_lossy().into_owned(),
+            args: vec![
+                "--port".into(),
+                "{local_port}".into(),
+                "--tcp-target".into(),
+                "{remote_host}:{remote_port}".into(),
+            ],
+            ready_timeout_seconds: None,
+        },
         HelperHop::Ssm {
             target: "i-test".into(),
             remote_host: Some("db.internal".into()),
@@ -50,8 +60,8 @@ async fn all_cloud_hops_select_one_with_original_tls_hostname() -> TestResult {
     };
     let fake = PathBuf::from(std::env::var("OPENROWS_FAKE_HELPER")?);
     let pool = Helpers::default();
-    for hop in hops() {
-        let mut spec = HelperSpec::new(hop, fake.clone(), "fake 1.0.0".into());
+    for hop in hops(&fake) {
+        let mut spec = helper_spec(hop, &fake, &config)?;
         spec.environment.push((
             "OPENROWS_FAKE_TARGET".into(),
             format!("127.0.0.1:{}", config.port),
@@ -85,4 +95,36 @@ async fn all_cloud_hops_select_one_with_original_tls_hostname() -> TestResult {
     }
     pool.shutdown().await;
     Ok(())
+}
+
+fn helper_spec(
+    hop: HelperHop,
+    fake: &std::path::Path,
+    config: &PgConfig,
+) -> Result<HelperSpec, Box<dyn std::error::Error>> {
+    use openrows_store::profile::{
+        CommandPurpose, CommandTrust, ConnectionProfile, EnvKind, EnvTag, ServerParams,
+        hop_command, trusted_hop_spec,
+    };
+    if !matches!(hop, HelperHop::Custom { .. }) {
+        return Ok(HelperSpec::new(hop, fake.into(), "fake 1.0.0".into()));
+    }
+    let mut profile = ConnectionProfile::new_postgres(
+        "custom",
+        ServerParams {
+            host: config.host.clone(),
+            port: config.port,
+            ..ServerParams::default()
+        },
+        EnvTag::new(EnvKind::Local),
+    );
+    profile.helper = Some(hop);
+    let path = PathBuf::from(std::env::var("OPENROWS_TEST_PG_TLS_DIR")?).join("hop-trust.json");
+    let trust = CommandTrust::new(&path);
+    trust.trust_for(
+        profile.id,
+        CommandPurpose::Hop,
+        &hop_command(&profile).ok_or("missing command")?,
+    )?;
+    trusted_hop_spec(&profile, &trust)?.ok_or_else(|| "missing custom spec".into())
 }

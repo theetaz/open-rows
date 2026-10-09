@@ -1,14 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Deterministic fake helper lifecycle and process tree tests; no cloud accounts.
 #![cfg(unix)]
-use nix::{
-    sys::signal::{Signal, kill},
-    unistd::Pid,
-};
 use openrows_net::{
     Dialer,
     helper::{Helper, HelperDialer, HelperError, HelperHop, HelperSpec, Helpers},
 };
+use rustix::process::{Pid, Signal, kill_process, test_kill_process};
 use std::{path::PathBuf, sync::Arc, time::Duration};
 use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 type Result = std::result::Result<(), Box<dyn std::error::Error>>;
@@ -26,7 +23,10 @@ fn spec() -> HelperSpec {
     )
 }
 fn alive(pid: u32) -> bool {
-    i32::try_from(pid).is_ok_and(|pid| kill(Pid::from_raw(pid), None).is_ok())
+    i32::try_from(pid)
+        .ok()
+        .and_then(Pid::from_raw)
+        .is_some_and(|pid| test_kill_process(pid).is_ok())
 }
 async fn until(check: impl Fn() -> bool) -> Result {
     tokio::time::timeout(Duration::from_secs(5), async {
@@ -39,7 +39,10 @@ async fn until(check: impl Fn() -> bool) -> Result {
     Ok(())
 }
 fn crash(helper: &Helper) -> Result {
-    kill(Pid::from_raw(i32::try_from(helper.pid())?), Signal::SIGKILL)?;
+    kill_process(
+        Pid::from_raw(i32::try_from(helper.pid())?).ok_or("invalid PID")?,
+        Signal::KILL,
+    )?;
     Ok(())
 }
 
