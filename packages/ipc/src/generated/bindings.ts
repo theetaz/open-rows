@@ -126,14 +126,26 @@ export const commands = {
 	sqlFileSaveAs: (title: string, sql: string) => typedError<{
 	path: string,
 	name: string,
+	modifiedMs: number | null,
 } | null, IpcError>(__TAURI_INVOKE("sql_file_save_as", { title, sql })),
-	/**  Write a tab's SQL to the `.sql` file it is bound to. */
-	sqlFileSave: (path: string, sql: string) => typedError<null, IpcError>(__TAURI_INVOKE("sql_file_save", { path, sql })),
+	/**
+	 *  Write a tab's SQL to the `.sql` file it is bound to; returns the file's
+	 *  new modification time.
+	 */
+	sqlFileSave: (path: string, sql: string) => typedError<number | null, IpcError>(__TAURI_INVOKE("sql_file_save", { path, sql })),
 	/**  Pick a `.sql` file and read it; `null` when the panel is cancelled. */
 	sqlFileOpen: () => typedError<{
 	file: SqlFileDto,
 	sql: string,
 } | null, IpcError>(__TAURI_INVOKE("sql_file_open")),
+	/**  The modification time of a tab's `.sql` file; `null` when it is gone. */
+	sqlFileStat: (path: string) => typedError<number | null, IpcError>(__TAURI_INVOKE("sql_file_stat", { path })),
+	/**  Read a tab's `.sql` file again (Reload after an outside change). */
+	sqlFileRead: (path: string) => typedError<OpenedSqlFileDto, IpcError>(__TAURI_INVOKE("sql_file_read", { path })),
+	/**  The saved state of `part`; `null` when nothing is saved. */
+	workspaceStateRead: (part: WorkspacePartDto) => typedError<string | null, IpcError>(__TAURI_INVOKE("workspace_state_read", { part })),
+	/**  Save the state of `part`; `null` forgets it (session restore off). */
+	workspaceStateWrite: (part: WorkspacePartDto, state: string | null) => typedError<null, IpcError>(__TAURI_INVOKE("workspace_state_write", { part, state })),
 	/**  Columns, indexes and row estimate of a relation, read on the metadata session. */
 	tableStructure: (target: TableTarget) => typedError<TableStructureDto, IpcError>(__TAURI_INVOKE("table_structure", { target })),
 	/**  The page `SELECT` and its bind parameters, without running it (SQL preview). */
@@ -733,6 +745,8 @@ export type IpcErrorKind =
 "protocol" | 
 /**  The server reported an error (SQLSTATE in `code`). */
 "server" | 
+/**  The statement ran past the connection's statement timeout. */
+"timeout" | 
 /**  The requested option is not supported yet. */
 "unsupported" | 
 /**  A bug or broken invariant. */
@@ -765,6 +779,20 @@ export type LatencyDto = {
 	minMs: number | null,
 	maxMs: number | null,
 	samples: number,
+};
+
+/**  Statement and idle timeouts of a connection. */
+export type LimitsDto = {
+	/**
+	 *  Seconds a statement may run; `0` is no limit, `null` follows the
+	 *  app-wide default (Settings ▸ General).
+	 */
+	statementTimeoutSeconds: number | null,
+	/**
+	 *  Minutes without a query before the connection's sessions close
+	 *  (reopened on next use); `0` never closes them.
+	 */
+	idleTimeoutMinutes: number,
 };
 
 /**  A menu command chosen by the user; `id` is the registry command id. */
@@ -913,6 +941,8 @@ export type ProfileDto = {
 	insecure: InsecureReasonDto[],
 	/**  Executed statements are kept in the local history (FR-WS-02). */
 	recordHistory: boolean,
+	/**  Statement and idle timeouts (M1-01). */
+	limits: LimitsDto,
 };
 
 /**  Connection form values sent on save and test. */
@@ -941,6 +971,8 @@ export type ProfileInput = {
 	/**  Absent in forms written before the choice: the keychain. */
 	passwordStorage?: PasswordStorageDto,
 	password: PasswordInput,
+	/**  Absent in forms written before the limits: the defaults. */
+	limits?: LimitsDto,
 };
 
 /**  Saved profiles plus files that could not be read. */
@@ -1089,7 +1121,9 @@ export type SessionStateChanged = {
  *  Session lifecycle states the UI shows (docs/04 §3 subset); `reconnecting`
  *  means the connection was lost and a new one is being opened (M1-08).
  */
-export type SessionStateDto = "connecting" | "idle" | "busy" | "reconnecting" | "closed" | "failed";
+export type SessionStateDto = "connecting" | "idle" | "busy" | "reconnecting" | 
+/**  Closed after the connection's idle timeout; the next query reopens it. */
+"suspended" | "closed" | "failed";
 
 /**  `settings.json` changed outside the app; the webview reads it again. */
 export type SettingsChanged = Record<string, never>;
@@ -1120,10 +1154,15 @@ export type SpikeReport_Serialize = {
 	editor?: EditorRun[] | null,
 };
 
-/**  A `.sql` file a tab is bound to; `name` is its file name. */
+/**
+ *  A `.sql` file a tab is bound to; `name` is its file name and
+ *  `modifiedMs` its modification time when it was read or written, so a
+ *  later change by another program can be noticed.
+ */
 export type SqlFileDto = {
 	path: string,
 	name: string,
+	modifiedMs: number | null,
 };
 
 /**  Generated SQL and its bind parameters, for the SQL preview. */
@@ -1443,6 +1482,13 @@ export type WindowRequest = {
 	colStart: number,
 	colCount: number,
 };
+
+/**  Which part of the window's state. */
+export type WorkspacePartDto = 
+/**  Open query and table tabs (with query text under Auto Save). */
+"queryTabs" | 
+/**  Open connections, their databases and the active one. */
+"session";
 
 /* Tauri Specta runtime */
 async function typedError<T, E>(result: Promise<T>): Promise<{ status: "ok"; data: T } | { status: "error"; error: E }> {

@@ -27,6 +27,7 @@ pub(crate) fn input(env: EnvKindDto) -> ProfileInput {
         record_history: false,
         password_storage: PasswordStorageDto::Keychain,
         password: PasswordInput::Keep,
+        limits: LimitsDto::default(),
     }
 }
 

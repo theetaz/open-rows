@@ -17,6 +17,8 @@ import {
   proxyInput,
 } from './proxyForm';
 import type { ProxyDraft, ProxyErrors } from './proxyForm';
+import { emptyLimits, limitsFromProfile, limitsInput } from './limitsForm';
+import type { LimitsDraft } from './limitsForm';
 import { defaultPort, engineName, isFileEngine } from './engines';
 import type {
   EngineDto,
@@ -74,6 +76,8 @@ export type Draft = {
   fileReadOnly: boolean;
   /** Create the file when it does not exist ("New File…"). */
   fileCreate: boolean;
+  /** Statement and idle timeouts (M1-01). */
+  limits: LimitsDraft;
 };
 
 export type DraftErrors = Partial<
@@ -118,6 +122,7 @@ export function emptyDraft(engine: EngineDto = 'postgres'): Draft {
     fileMemory: false,
     fileReadOnly: false,
     fileCreate: false,
+    limits: emptyLimits(),
   };
 }
 
@@ -150,6 +155,7 @@ export function draftFromProfile(profile: ProfileDto): Draft {
     fileMemory: profile.file?.memory ?? false,
     fileReadOnly: profile.file?.readOnly ?? false,
     fileCreate: profile.file?.create ?? false,
+    limits: limitsFromProfile(profile),
   };
 }
 
@@ -302,5 +308,6 @@ export function toInput(draft: Draft): ProfileInput {
     recordHistory: draft.recordHistory,
     passwordStorage: draft.passwordStorage,
     password: file ? { kind: 'clear' } : password(draft),
+    limits: limitsInput(draft.limits),
   };
 }

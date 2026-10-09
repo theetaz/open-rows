@@ -166,10 +166,15 @@ export {
   deleteSavedQuery,
   listSavedQueries,
   openSqlFile,
+  readSqlFile,
   renameSavedQuery,
   saveSqlFile,
   saveSqlFileAs,
+  sqlFileModified,
 } from './savedQueries';
+/** Session and workspace state of the window in the local store (M1-21, M1-26). */
+export { readWorkspaceState, writeWorkspaceState } from './workspace';
+export type { WorkspacePartDto } from './generated/bindings';
 export type {
   ColumnDto,
   ExecuteReply,
@@ -193,6 +198,7 @@ export type {
   DatabaseDto,
   InsecureReasonDto,
   LatencyDto,
+  LimitsDto,
   ProxyDto,
   ProxyInput,
   ProxyKindDto,

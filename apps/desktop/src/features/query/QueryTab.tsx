@@ -4,6 +4,7 @@ import type { ProfileDto } from '@openrows/ipc';
 import type { CompletionCatalog, FormatKind } from '@openrows/editor';
 import { QueryEditor } from './QueryEditor';
 import { EditorBar } from './EditorBar';
+import { FileChangedBar } from './FileChangedBar';
 import { ResultArea } from './ResultArea';
 import { ConfirmRun } from './ConfirmRun';
 import { ParamsSheet } from './ParamsSheet';
@@ -123,6 +124,7 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
         tabKey(event, act);
       }}
     >
+      <FileChangedBar tab={tab} editor={editor} tabs={props.tabs} />
       <QueryEditor
         doc={tab.sql}
         label="SQL editor"

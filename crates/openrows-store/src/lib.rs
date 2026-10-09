@@ -4,7 +4,8 @@
 //! - [`LocalStore`]: the `SQLite` app database (WAL, numbered embedded
 //!   migrations, backup before migrating) holding `meta`, query history and
 //!   the journal of staged table edits (`change_sets`), saved queries and
-//!   schema-cache snapshots (`schema_snapshots`).
+//!   schema-cache snapshots (`schema_snapshots`) and per-window session and
+//!   workspace state (`workspace_state`: query tabs, open connections).
 //! - [`profile`]: `PostgreSQL` connection profiles stored as secret-free JSON
 //!   files (`connections/<id>.json`, docs/15 §3), the `postgres://` URL
 //!   parser and [`profile::ProfileService`], which keeps passwords in a
@@ -18,4 +19,5 @@ pub mod profile;
 pub use db::{
     ChangeSetRecord, HistoryEntry, HistoryRecord, HistorySource, HistoryStatus, LocalStore,
     NewSavedQuery, SCHEMA_VERSION, SavedQueryRecord, SchemaSnapshotRecord, StoreError,
+    WorkspaceKey,
 };

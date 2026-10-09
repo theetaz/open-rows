@@ -20,6 +20,7 @@ mod startup_report;
 mod tables;
 mod titlebar;
 mod window_frame;
+mod workspace;
 
 fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
     use connections::{
@@ -67,6 +68,10 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
         queries::files::sql_file_save_as,
         queries::files::sql_file_save,
         queries::files::sql_file_open,
+        queries::file_watch::sql_file_stat,
+        queries::file_watch::sql_file_read,
+        workspace::workspace_state_read,
+        workspace::workspace_state_write,
         tables::commands::table_structure,
         tables::commands::table_sql,
         tables::commands::table_page,

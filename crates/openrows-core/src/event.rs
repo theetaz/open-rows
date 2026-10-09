@@ -18,6 +18,9 @@ pub enum SessionState {
     /// The connection was lost while idle (or a statement failed with it);
     /// a new one is being opened. Later commands wait in the queue.
     Reconnecting,
+    /// The connection was closed after the profile's idle timeout; the next
+    /// statement opens a new one (and replays the session settings).
+    Suspended,
     /// Closed on request; terminal.
     Closed,
     /// Connection lost, connect failed or the driver panicked; terminal.

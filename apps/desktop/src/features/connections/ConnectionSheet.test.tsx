@@ -187,3 +187,30 @@ it('tests an existing profile with its stored password and shows version or erro
   );
   expect(await screen.findByText('disk full')).toBeVisible();
 });
+
+it('saves the statement and idle timeouts from the Advanced section', async () => {
+  const saved = profile('orders');
+  vi.mocked(updateProfile).mockResolvedValue(saved);
+  const { user } = mount(saved);
+  await user.click(screen.getByRole('button', { name: /Advanced · Defaults/ }));
+  await user.selectOptions(
+    screen.getByRole('combobox', { name: 'Statement timeout' }),
+    '60',
+  );
+  await user.selectOptions(
+    screen.getByRole('combobox', { name: 'Idle timeout' }),
+    '15',
+  );
+  expect(
+    screen.getByRole('button', {
+      name: /Advanced · Timeout 1 min · Idle 15 min/,
+    }),
+  ).toBeVisible();
+  await user.click(screen.getByRole('button', { name: 'Save' }));
+  expect(updateProfile).toHaveBeenCalledWith(
+    'id-orders',
+    expect.objectContaining({
+      limits: { statementTimeoutSeconds: 60, idleTimeoutMinutes: 15 },
+    }),
+  );
+});

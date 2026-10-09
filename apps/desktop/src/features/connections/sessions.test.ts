@@ -163,3 +163,33 @@ it('keeps a database that failed to open from colouring the dot red', () => {
   ]);
   expect(statusTone(status)).toBe('connected');
 });
+
+it('shows databases closed for being idle and keeps their session for the next query (M1-01)', () => {
+  const suspended = (sessionId: string) =>
+    ({ sessionId, state: 'suspended', message: null }) as const;
+  const one = applySessionEvent(statuses, suspended('s-orders'));
+  const partly = one.a ?? { state: 'disconnected' };
+  expect(partly).toMatchObject({
+    databases: [{ name: 'orders', state: 'idle', sessionId: 's-orders' }, {}],
+  });
+  expect(sessionOf(partly, 'orders')).toBe('s-orders');
+  expect(statusTone(partly)).toBe('connected');
+  const both = applySessionEvent(one, suspended('s-reports'));
+  const idle = both.a ?? { state: 'disconnected' };
+  expect(statusTone(idle)).toBe('idle');
+  expect(statusLabel(idle)).toBe('Idle · reconnects on next query');
+  const reconnecting = applySessionEvent(both, {
+    sessionId: 's-orders',
+    state: 'connecting',
+    message: null,
+  });
+  expect(reconnecting).toBe(both);
+  const back = applySessionEvent(both, {
+    sessionId: 's-orders',
+    state: 'idle',
+    message: null,
+  });
+  expect(back.a).toMatchObject({
+    databases: [{ name: 'orders', state: 'open' }, { state: 'idle' }],
+  });
+});

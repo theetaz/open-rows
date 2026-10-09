@@ -19,6 +19,7 @@
 //! [`export`] streams a statement's rows, or a stored result, to a file.
 #![forbid(unsafe_code)]
 mod actor;
+mod dormant;
 mod error;
 mod event;
 pub mod export;

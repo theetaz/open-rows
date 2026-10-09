@@ -5,6 +5,8 @@
 //! them with `--run-ignored only` and removes it (skipping when Docker is absent).
 #[path = "postgres/export.rs"]
 mod export;
+#[path = "postgres/limits.rs"]
+mod limits;
 #[path = "postgres/resilience.rs"]
 mod resilience;
 #[path = "postgres/table_edits.rs"]

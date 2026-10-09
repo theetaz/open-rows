@@ -3,6 +3,7 @@
 use crate::{BatchSink, CoreError, QueryEvent, SessionEvent, SessionState};
 use openrows_types::{QueryId, SessionId};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use std::time::Duration;
 use tokio::sync::{Notify, broadcast, mpsc::UnboundedSender, oneshot};
 use tokio_util::sync::CancellationToken;
 
@@ -10,6 +11,12 @@ use tokio_util::sync::CancellationToken;
 pub(crate) enum Command {
     /// Run one statement; progress is reported on the query's event channel.
     Execute(Queued),
+    /// Close the connection until the next statement when the session has
+    /// been unused for at least `idle` and holds no open transaction.
+    Suspend {
+        /// How long the session must have been unused.
+        idle: Duration,
+    },
     /// Close the connection and stop the actor.
     Close {
         /// Close result; dropped when the actor is already gone.
@@ -27,6 +34,8 @@ pub(crate) struct Queued {
     pub(crate) max_rows: Option<usize>,
     /// Where this statement's batches go instead of the manager's store (export).
     pub(crate) sink: Option<Arc<dyn BatchSink>>,
+    /// Cancel the statement after this long and report a timeout.
+    pub(crate) timeout: Option<Duration>,
     pub(crate) token: CancellationToken,
     pub(crate) events: UnboundedSender<QueryEvent>,
 }
@@ -45,6 +54,8 @@ pub(crate) struct Shared {
     /// network change); a notification while busy is kept for later.
     pub(crate) wake: Notify,
     state: Mutex<SessionState>,
+    /// Statement timeout of statements submitted from now on.
+    statement_timeout: Mutex<Option<Duration>>,
     running: Mutex<Option<UnboundedSender<QueryEvent>>>,
     events: broadcast::Sender<SessionEvent>,
 }
@@ -60,6 +71,7 @@ impl Shared {
             token,
             wake: Notify::new(),
             state: Mutex::new(SessionState::Connecting),
+            statement_timeout: Mutex::new(None),
             running: Mutex::new(None),
             events,
         }
@@ -67,6 +79,14 @@ impl Shared {
 
     pub(crate) fn state(&self) -> SessionState {
         *lock(&self.state)
+    }
+
+    pub(crate) fn statement_timeout(&self) -> Option<Duration> {
+        *lock(&self.statement_timeout)
+    }
+
+    pub(crate) fn set_statement_timeout(&self, timeout: Option<Duration>) {
+        *lock(&self.statement_timeout) = timeout;
     }
 
     /// Record and broadcast a transition; terminal states are never left.

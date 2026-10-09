@@ -2,6 +2,7 @@
 //! Engine error model: a cloneable subset of docs/04 §7 that front-ends can render.
 use openrows_driver_api::DriverError;
 use openrows_types::SessionId;
+use std::time::Duration;
 
 /// Broad failure category; front-ends choose wording and recovery from it.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -26,6 +27,9 @@ pub enum ErrorKind {
     SessionClosed,
     /// The session's command queue is full; retry after earlier work finishes.
     QueueFull,
+    /// The statement ran past its statement timeout and was cancelled (by
+    /// the session or by the server); distinct from a user cancel.
+    Timeout,
     /// A bug: a panicking driver or a broken invariant.
     Internal,
 }
@@ -58,6 +62,46 @@ impl CoreError {
     pub(crate) fn session_closed(id: SessionId) -> Self {
         Self::new(ErrorKind::SessionClosed, format!("session {id} is closed"))
     }
+
+    /// The statement ran longer than `limit` and was cancelled.
+    pub(crate) fn statement_timeout(limit: Duration) -> Self {
+        Self::new(
+            ErrorKind::Timeout,
+            format!(
+                "The statement was cancelled because it ran longer than the {} statement \
+                 timeout of this connection.",
+                seconds_label(limit)
+            ),
+        )
+    }
+}
+
+/// `30 s`, `1.5 s` or `500 ms`.
+fn seconds_label(limit: Duration) -> String {
+    if limit < Duration::from_secs(1) {
+        return format!("{} ms", limit.as_millis());
+    }
+    let seconds = limit.as_secs_f64();
+    if seconds.fract() == 0.0 {
+        format!("{} s", limit.as_secs())
+    } else {
+        format!("{seconds:.1} s")
+    }
+}
+
+/// The server cancelled the statement at its own statement timeout:
+/// `PostgreSQL` `statement_timeout` (57014 with that reason), `MySQL`
+/// `max_execution_time` (`ER_QUERY_TIMEOUT`) or `MariaDB`
+/// `max_statement_time` (`ER_STATEMENT_TIMEOUT`). The `MySQL` driver reports
+/// SQLSTATEs, which both share with other errors, so the message decides.
+fn is_server_timeout(code: &str, message: &str) -> bool {
+    match code {
+        "57014" => message.contains("statement timeout"),
+        _ => {
+            message.contains("maximum statement execution time exceeded")
+                || message.contains("max_statement_time exceeded")
+        }
+    }
 }
 
 impl From<&DriverError> for CoreError {
@@ -68,8 +112,13 @@ impl From<&DriverError> for CoreError {
             DriverError::Auth(_) => ErrorKind::Auth,
             DriverError::Protocol(_) => ErrorKind::Protocol,
             DriverError::Server { code, message } => {
+                let kind = if is_server_timeout(code, message) {
+                    ErrorKind::Timeout
+                } else {
+                    ErrorKind::Server
+                };
                 return Self {
-                    kind: ErrorKind::Server,
+                    kind,
                     message: message.clone(),
                     db_code: Some(code.clone()),
                 };
@@ -104,6 +153,34 @@ mod tests {
         assert_eq!(core.db_code.as_deref(), Some("42P01"));
         assert_eq!(core.message, "relation \"nope\" does not exist");
         assert!(keeps_session(&error));
+    }
+
+    #[test]
+    fn server_side_statement_timeouts_are_timeouts_not_cancels() {
+        let server = |code: &str, message: &str| {
+            CoreError::from(&DriverError::Server {
+                code: code.to_owned(),
+                message: message.to_owned(),
+            })
+        };
+        let pg = server("57014", "canceling statement due to statement timeout");
+        assert_eq!(pg.kind, ErrorKind::Timeout);
+        assert_eq!(pg.db_code.as_deref(), Some("57014"));
+        let user = server("57014", "canceling statement due to user request");
+        assert_eq!(user.kind, ErrorKind::Server);
+        assert_eq!(
+            server("3024", "maximum statement execution time exceeded").kind,
+            ErrorKind::Timeout
+        );
+        assert_eq!(
+            server("1969", "max_statement_time exceeded").kind,
+            ErrorKind::Timeout
+        );
+        let ours = CoreError::statement_timeout(Duration::from_secs(30));
+        assert_eq!(ours.kind, ErrorKind::Timeout);
+        assert!(ours.message.contains("30 s statement timeout"));
+        assert_eq!(seconds_label(Duration::from_millis(1500)), "1.5 s");
+        assert_eq!(seconds_label(Duration::from_millis(50)), "50 ms");
     }
 
     #[test]

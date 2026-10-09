@@ -13,7 +13,7 @@ use super::Connections;
 use super::error::{IpcError, IpcErrorKind};
 use super::owners::Owner;
 use super::target::ServerDto;
-use super::{drivers, resilient, route};
+use super::{drivers, limits, resilient, route};
 
 /// An open session on one database.
 #[derive(Clone, Debug, Serialize, Type)]
@@ -32,6 +32,8 @@ pub(crate) enum SessionStateDto {
     Idle,
     Busy,
     Reconnecting,
+    /// Closed after the connection's idle timeout; the next query reopens it.
+    Suspended,
     Closed,
     Failed,
 }
@@ -57,6 +59,7 @@ impl From<SessionEvent> for SessionStateChanged {
             SessionState::Idle => SessionStateDto::Idle,
             SessionState::Busy => SessionStateDto::Busy,
             SessionState::Reconnecting => SessionStateDto::Reconnecting,
+            SessionState::Suspended => SessionStateDto::Suspended,
             SessionState::Closed => SessionStateDto::Closed,
             SessionState::Failed => SessionStateDto::Failed,
         };
@@ -88,6 +91,7 @@ pub(crate) async fn session_open(
         target = target.with_database(database);
     }
     let (server, received) = oneshot::channel();
+    let timeout = state.limits.statement_timeout(&profile);
     let session = if profile.driver.is_file() {
         // A local file cannot lose its connection: nothing to probe.
         state
@@ -96,9 +100,11 @@ pub(crate) async fn session_open(
             .await?
     } else {
         let dialect = drivers::driver(profile.driver).dialect();
-        let recipe = resilient::recipe(target, dialect, server);
+        let mut recipe = resilient::recipe(target, dialect, server);
+        recipe.setup = limits::setup_sql(profile.driver, timeout);
         state.sessions.open_resilient(recipe).await?
     };
+    state.sessions.set_statement_timeout(session, timeout)?;
     let server = received.await.map_err(|_| {
         IpcError::new(
             IpcErrorKind::Internal,

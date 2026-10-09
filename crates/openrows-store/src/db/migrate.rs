@@ -39,10 +39,14 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         version: 5,
         sql: include_str!("../../migrations/0005_schema_snapshots.sql"),
     },
+    Migration {
+        version: 6,
+        sql: include_str!("../../migrations/0006_workspace_state.sql"),
+    },
 ];
 
 /// Newest local store schema version this build understands.
-pub const SCHEMA_VERSION: u32 = 5;
+pub const SCHEMA_VERSION: u32 = 6;
 
 pub(crate) fn user_version(conn: &Connection) -> Result<u32, StoreError> {
     conn.pragma_query_value(None, "user_version", |row| row.get(0))
@@ -122,8 +126,68 @@ mod tests {
 
     use super::{MIGRATIONS, SCHEMA_VERSION, migrate, user_version};
 
-    /// Reverses the v3 up step; the runner itself only applies up steps.
-    const DOWN_V3: &str = include_str!("../../migrations/0003_history_search.down.sql");
+    /// The down step of every migration, in version order; the runner itself
+    /// only applies up steps.
+    const DOWN: &[&str] = &[
+        include_str!("../../migrations/0001_init.down.sql"),
+        include_str!("../../migrations/0002_change_sets.down.sql"),
+        include_str!("../../migrations/0003_history_search.down.sql"),
+        include_str!("../../migrations/0004_saved_queries.down.sql"),
+        include_str!("../../migrations/0005_schema_snapshots.down.sql"),
+        include_str!("../../migrations/0006_workspace_state.down.sql"),
+    ];
+    const DOWN_V3: &str = DOWN[2];
+
+    /// Every schema object, as `type name sql`, sorted.
+    fn schema(conn: &Connection) -> Vec<String> {
+        let mut statement = conn
+            .prepare(
+                "SELECT type || ' ' || name || ' ' || coalesce(sql, '') FROM sqlite_master \
+                 WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name",
+            )
+            .unwrap();
+        statement
+            .query_map([], |row| row.get(0))
+            .unwrap()
+            .collect::<Result<_, _>>()
+            .unwrap()
+    }
+
+    /// Run the down steps from the current version to 0, newest first.
+    fn revert_all(conn: &Connection) {
+        for (index, down) in DOWN.iter().enumerate().rev() {
+            conn.execute_batch(down).unwrap();
+            conn.pragma_update(None, "user_version", u32::try_from(index).unwrap())
+                .unwrap();
+        }
+    }
+
+    #[test]
+    fn every_migration_has_a_down_step() {
+        assert_eq!(DOWN.len(), MIGRATIONS.len());
+    }
+
+    #[test]
+    fn migrations_go_up_down_and_up_again() {
+        let dir = tempfile::tempdir().unwrap();
+        let backups = dir.path().join("backups");
+        let mut conn = Connection::open(dir.path().join("openrows.sqlite")).unwrap();
+        migrate(&mut conn, MIGRATIONS, &backups).unwrap();
+        let first = schema(&conn);
+        assert!(
+            first
+                .iter()
+                .any(|item| item.starts_with("table workspace_state"))
+        );
+
+        revert_all(&conn);
+        assert_eq!(user_version(&conn).unwrap(), 0);
+        assert!(schema(&conn).is_empty(), "down steps leave objects behind");
+
+        migrate(&mut conn, MIGRATIONS, &backups).unwrap();
+        assert_eq!(user_version(&conn).unwrap(), SCHEMA_VERSION);
+        assert_eq!(schema(&conn), first);
+    }
 
     fn history_objects(conn: &Connection) -> i64 {
         conn.query_row(

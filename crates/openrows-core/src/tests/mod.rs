@@ -6,6 +6,7 @@ mod fake;
 mod flaky;
 mod isolation;
 mod lifecycle;
+mod limits;
 mod observability;
 mod resilience;
 mod safety;

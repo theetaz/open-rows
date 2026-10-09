@@ -46,6 +46,11 @@
           "enum": [0, 15, 30, 60, 120],
           "default": 30,
           "description": "Seconds between checks of idle connections; 0 turns them off."
+        },
+        "statementTimeoutSeconds": {
+          "enum": [0, 30, 60, 300, 900, 3600],
+          "default": 0,
+          "description": "Seconds a statement may run before it is cancelled, for connections that do not set their own limit; 0 means no limit."
         }
       }
     },

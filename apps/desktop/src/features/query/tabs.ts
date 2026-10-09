@@ -22,6 +22,10 @@ export type TabFile = {
   name: string;
   saved: string;
   error?: string;
+  /** The file's modification time when it was last read or written. */
+  modifiedMs?: number;
+  /** Text another program saved to the file; Reload or Keep resolves it. */
+  external?: string;
 };
 
 /**

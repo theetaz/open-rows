@@ -132,12 +132,17 @@ it('switches General and Editor settings', async () => {
   );
   await user.click(screen.getByRole('switch', { name: 'Reduce motion' }));
   await user.click(screen.getByRole('radio', { name: '1 min' }));
+  await user.selectOptions(
+    screen.getByRole('combobox', { name: 'Default statement timeout' }),
+    '300',
+  );
   expect(JSON.parse(localStorage.getItem('openrows.general') ?? '{}')).toEqual({
     restoreSession: false,
     density: 'compact',
     gridDensity: 'comfortable',
     reduceMotion: true,
     keepaliveSeconds: 60,
+    statementTimeoutSeconds: 300,
   });
   await user.click(screen.getByRole('radio', { name: 'Editor' }));
   await user.click(screen.getByRole('switch', { name: 'Wrap lines' }));

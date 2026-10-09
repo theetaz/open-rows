@@ -14,6 +14,8 @@ export type OpenedDatabase =
   | { name: string; state: 'open'; sessionId: string }
   /** The connection was lost; the core is opening a new one (queries wait). */
   | { name: string; state: 'reconnecting'; sessionId: string; message: string }
+  /** Closed after the idle timeout; the next query reconnects it. */
+  | { name: string; state: 'idle'; sessionId: string }
   /** `lost`: it was open and the connection could not be restored. */
   | { name: string; state: 'failed'; message: string; lost?: true };
 
@@ -40,29 +42,39 @@ export const disconnected: SessionStatus = { state: 'disconnected' };
 
 /** Colour state of a rail tile's status dot. */
 type StatusTone =
-  'connected' | 'connecting' | 'reconnecting' | 'failed' | 'none';
+  'connected' | 'connecting' | 'reconnecting' | 'failed' | 'idle' | 'none';
+
+type Health = 'up' | 'reconnecting' | 'lost' | 'idle';
 
 /** How the live sessions of a connected profile are doing. */
-function health(status: SessionStatus): 'up' | 'reconnecting' | 'lost' {
+function health(status: SessionStatus): Health {
   if (status.state !== 'connected') return 'up';
   const { databases } = status;
   if (databases.some((item) => item.state === 'reconnecting'))
     return 'reconnecting';
-  return databases.some((item) => item.state === 'failed' && item.lost)
-    ? 'lost'
-    : 'up';
+  if (databases.some((item) => item.state === 'failed' && item.lost))
+    return 'lost';
+  const idle =
+    databases.length > 0 && databases.every((item) => item.state === 'idle');
+  return idle ? 'idle' : 'up';
 }
+
+const HEALTH_TONES: Record<Health, StatusTone> = {
+  up: 'connected',
+  reconnecting: 'reconnecting',
+  lost: 'failed',
+  idle: 'idle',
+};
 
 /**
  * Rail dot: green connected, amber connecting or reconnecting, red failed or
- * a database whose connection was lost, none otherwise.
+ * a database whose connection was lost, grey when every opened database was
+ * closed for being idle, none otherwise.
  */
 export function statusTone(status: SessionStatus): StatusTone {
   if (status.state === 'disconnected') return 'none';
   if (status.state !== 'connected') return status.state;
-  const now = health(status);
-  if (now === 'up') return 'connected';
-  return now === 'lost' ? 'failed' : 'reconnecting';
+  return HEALTH_TONES[health(status)];
 }
 
 /** Replace the opened databases of a connected profile. */
@@ -118,11 +130,9 @@ function ownerOf(
   return undefined;
 }
 
-/** The session of an open or reconnecting database. */
-function liveSession(database: OpenedDatabase): string | null {
-  return database.state === 'open' || database.state === 'reconnecting'
-    ? database.sessionId
-    : null;
+/** The session of an open, reconnecting or idle-closed database. */
+export function liveSession(database: OpenedDatabase): string | null {
+  return 'sessionId' in database ? database.sessionId : null;
 }
 
 /** The database after a core session event; `null` removes it. */
@@ -139,6 +149,8 @@ function afterEvent(
       return null;
     case 'reconnecting':
       return { name, state: 'reconnecting', sessionId, message };
+    case 'suspended':
+      return { name, state: 'idle', sessionId };
     case 'idle':
     case 'busy':
       return { name, state: 'open', sessionId };
@@ -202,6 +214,7 @@ function connectedLabel(
   const now = health(status);
   if (now === 'reconnecting') return 'Reconnecting…';
   if (now === 'lost') return 'Connection lost';
+  if (now === 'idle') return 'Idle · reconnects on next query';
   return status.server.serverVersion
     ? `Connected · ${serverLabel(status.server)}`
     : 'Connected';

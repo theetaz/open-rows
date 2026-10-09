@@ -93,10 +93,12 @@ pub(crate) fn apply_saved(app: &tauri::App) {
 }
 
 /// Apply the settings the core reads at run time: the session keepalive
-/// interval (also after an edit made outside the app).
+/// interval and the default statement timeout (also after an edit made
+/// outside the app).
 pub(crate) fn apply(connections: &Connections, text: &str) {
     if let Ok(value) = serde_json::from_str::<Value>(text) {
         connections.sessions.set_keepalive(keepalive(&value));
+        connections.limits.apply(&value);
     }
 }
 

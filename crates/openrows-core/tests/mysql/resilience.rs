@@ -18,12 +18,12 @@ use std::sync::{Arc, Mutex, PoisonError};
 use std::time::{Duration, Instant};
 use tokio::sync::broadcast::Receiver;
 
-const KEEPALIVE: Duration = Duration::from_millis(500);
-const PROBE_TIMEOUT: Duration = Duration::from_millis(500);
+pub(super) const KEEPALIVE: Duration = Duration::from_millis(500);
+pub(super) const PROBE_TIMEOUT: Duration = Duration::from_millis(500);
 
 /// Keeps the text values of every result's first column.
 #[derive(Default)]
-struct Texts(Mutex<Vec<String>>);
+pub(super) struct Texts(Mutex<Vec<String>>);
 
 impl Texts {
     fn last(&self) -> Option<String> {
@@ -64,7 +64,7 @@ impl ResultSink for Column {
     }
 }
 
-fn reconnect() -> TestResult<Reconnect> {
+pub(super) fn reconnect() -> TestResult<Reconnect> {
     let request = Arc::new(request()?);
     Ok(Arc::new(move || {
         let request = Arc::clone(&request);
@@ -89,11 +89,12 @@ async fn resilient(manager: &SessionManager) -> TestResult<SessionId> {
             attempts: 10,
             ..RetryPolicy::default()
         },
+        setup: Vec::new(),
     };
     Ok(manager.open_resilient(resilience).await?)
 }
 
-async fn reaches(
+pub(super) async fn reaches(
     changes: &mut Receiver<SessionEvent>,
     session: SessionId,
     state: SessionState,
@@ -110,7 +111,7 @@ async fn reaches(
 }
 
 /// The last event of `sql` on `session`.
-async fn outcome(
+pub(super) async fn outcome(
     manager: &SessionManager,
     session: SessionId,
     sql: &str,
@@ -124,7 +125,7 @@ async fn outcome(
 }
 
 /// The single text value `sql` returns on `session`.
-async fn text(
+pub(super) async fn text(
     manager: &SessionManager,
     texts: &Texts,
     session: SessionId,
@@ -134,7 +135,7 @@ async fn text(
     Ok(texts.last().ok_or("no value")?)
 }
 
-async fn connection_id(
+pub(super) async fn connection_id(
     manager: &SessionManager,
     texts: &Texts,
     session: SessionId,

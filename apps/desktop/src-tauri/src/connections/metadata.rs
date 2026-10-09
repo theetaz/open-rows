@@ -102,6 +102,36 @@ impl MetadataSessions {
         }
     }
 
+    /// Saved connections that have metadata sessions.
+    pub(crate) fn profiles(&self) -> Vec<String> {
+        let map = self.slots.lock().unwrap_or_else(PoisonError::into_inner);
+        let mut profiles: Vec<String> = map.keys().map(|key| key.0.clone()).collect();
+        profiles.sort_unstable();
+        profiles.dedup();
+        profiles
+    }
+
+    /// Close the metadata connections of `profile` unused for `idle` (the
+    /// idle timeout); busy ones are left, the next read reconnects.
+    pub(crate) async fn close_idle(&self, profile: &str, idle: Duration) {
+        let slots: Vec<Slot> = {
+            let map = self.slots.lock().unwrap_or_else(PoisonError::into_inner);
+            map.iter()
+                .filter(|(key, _)| key.0 == profile)
+                .map(|(_, slot)| slot.clone())
+                .collect()
+        };
+        for slot in slots {
+            let Ok(mut guard) = slot.try_lock() else {
+                continue;
+            };
+            if let Some(held) = guard.take_if(|held| held.used.elapsed() >= idle) {
+                // Closing is a courtesy goodbye; the socket is dropped either way.
+                let _ = held.connection.close().await;
+            }
+        }
+    }
+
     /// Disconnect every metadata session of `profile`.
     pub(crate) async fn close(&self, profile: &str) {
         self.close_where(|key| key.0 == profile).await;

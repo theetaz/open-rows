@@ -146,7 +146,7 @@ Max sessions per profile defaults to 4 (configurable) to respect server `max_con
 ### 3.2 Keepalive and idle handling
 
 - Idle sessions ping at `keepalive_interval` (default 30 s; driver-specific cheap ping: `SELECT 1`, `PING`, `COM_PING`, `hello`).
-- Idle sessions closed after `idle_timeout` (default 15 min) except the metadata session; transparently reopened on next use.
+- Idle sessions closed after the profile's `idle_timeout` (minutes; 0, the default, never closes them) together with the connection's idle metadata connections; transparently reopened on next use. A session with an open transaction or staged table edits is never closed. See §11.
 - TCP keepalive and SSH keepalive also enabled to detect half-open connections through NAT.
 
 ## 4. Query execution pipeline
@@ -275,7 +275,7 @@ pub struct OdbError {
 
 ## 10. Implementation notes (M1-01 session manager slice)
 
-`crates/openrows-core` implements the session actor runtime from §3, §6 and §7. It does not depend on Tauri. Transactions, reconnect, keepalive, timeouts and the result store are not implemented yet.
+`crates/openrows-core` implements the session actor runtime from §3, §6 and §7. It does not depend on Tauri. Reconnect and keepalive followed in M1-08 (docs/14 §10) and statement and idle timeouts in §11; transactions are not implemented yet.
 
 | Piece | As built |
 | --- | --- |
@@ -291,3 +291,13 @@ pub struct OdbError {
 Driver API changes for this slice: `Session::cancel_handle()` (default `None`), the `CancelHandle` trait, and `ResultSink::notice()` with `NoticeLevel` (default no-op). The PostgreSQL driver records `BackendKeyData` and forwards `NoticeResponse` during execution.
 
 Tests: `cargo nextest run -p openrows-core` uses a scripted fake session. It covers ordered events, progress coalescing, truncation, rows affected, notices, server and transport errors, Busy state, cancel within 200 ms, cancel of queued queries, cancel without driver support, close, a full queue, connect failure, and driver panics while running or connecting. `just test-pg` also runs `crates/openrows-core/tests/postgres.rs` against a real server: a 100 000-row stream, a `RAISE WARNING` notice, cancelling `pg_sleep(30)`, and reusing the session afterwards.
+
+## 11. Implementation notes (M1-01 statement and idle timeouts)
+
+| Piece | As built |
+| --- | --- |
+| Statement timeout | `SessionManager::set_statement_timeout(session, Option<Duration>)` applies to statements submitted from then on (exports through `execute_into` are never limited). The actor races the statement against the timeout like a user cancel: the driver's `CancelHandle` is fired out of band and the statement gets 2 s to acknowledge. It ends `Failed` with `ErrorKind::Timeout` ("cancelled because it ran longer than the 30 s statement timeout"), never `Cancelled`; a cancel the server never acknowledged discards the connection as before. Server-side timeouts are reported as `Timeout` too: PostgreSQL 57014 with "statement timeout", MySQL `ER_QUERY_TIMEOUT` and MariaDB `ER_STATEMENT_TIMEOUT` (recognised by message, since the MySQL driver reports SQLSTATEs; `db_code` kept). |
+| Server-side limit | `Resilience::setup` statements run on every new connection, first and after each reconnect, before the replayed search path or database. The app sets `SET statement_timeout = <ms>` (PostgreSQL), `SET SESSION max_execution_time = <ms>` (MySQL, `SELECT` only) or `SET SESSION max_statement_time = <s>` (MariaDB). A server that rejects the statement keeps the connection; the client-side limit still applies. |
+| Profile and default | `limits.statementTimeoutSeconds` in the profile JSON (absent: follow `general.statementTimeoutSeconds` in settings.json, off by default; `0`: no limit) and `limits.idleTimeoutMinutes` (absent or `0`: never). Edit Connection ▸ Advanced and Settings ▸ General ▸ Statement timeout. |
+| Idle suspend | `SessionManager::suspend_idle(session, idle)` queues `Suspend`; a resilient session that ran nothing for `idle` and holds no transaction closes its connection and turns `Suspended`. The next statement reconnects through its `Link` (setup, replay, backoff; `Connecting` then `Idle`) and runs. The app sweeps every 30 s, skips databases with journaled staged edits (`change_sets`) and closes idle metadata connections of the profile too. The rail shows a grey dot and "Idle · reconnects on next query" when every opened database is suspended. |
+| Tests | `openrows-core` `tests::limits` (timeout through the cancel path, user cancel stays a cancel, suspend and wake with setup and search path replayed, transaction keeps the connection, non-resilient sessions never suspend); `just test-pg` and `just test-mysql` (MySQL 8.4, MariaDB 11.4): client-side timeout of a long statement, server-side timeout reported as a timeout and set again after a killed connection reconnects. |

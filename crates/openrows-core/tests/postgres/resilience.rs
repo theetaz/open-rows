@@ -32,10 +32,10 @@ impl ResultSink for Rows {
     }
 }
 
-const KEEPALIVE: Duration = Duration::from_millis(500);
-const PROBE_TIMEOUT: Duration = Duration::from_millis(500);
+pub(super) const KEEPALIVE: Duration = Duration::from_millis(500);
+pub(super) const PROBE_TIMEOUT: Duration = Duration::from_millis(500);
 
-fn reconnect(config: PgConfig) -> Reconnect {
+pub(super) fn reconnect(config: PgConfig) -> Reconnect {
     let config = Arc::new(config);
     Arc::new(move || {
         let config = Arc::clone(&config);
@@ -58,12 +58,13 @@ async fn resilient(manager: &SessionManager, config: PgConfig) -> TestResult<Ses
             attempts: 10,
             ..RetryPolicy::default()
         },
+        setup: Vec::new(),
     };
     Ok(manager.open_resilient(resilience).await?)
 }
 
 /// The next transition of `session` to `state`, within 20 s.
-async fn reaches(
+pub(super) async fn reaches(
     changes: &mut Receiver<SessionEvent>,
     session: SessionId,
     state: SessionState,
@@ -79,7 +80,7 @@ async fn reaches(
     tokio::time::timeout(Duration::from_secs(20), wait).await?
 }
 
-async fn backend_pid(
+pub(super) async fn backend_pid(
     manager: &SessionManager,
     store: &ResultStore,
     session: SessionId,
@@ -92,7 +93,7 @@ async fn backend_pid(
 }
 
 /// Terminate backend `pid` from a separate, plain session.
-async fn terminate(manager: &SessionManager, pid: &str) -> TestResult {
+pub(super) async fn terminate(manager: &SessionManager, pid: &str) -> TestResult {
     let killer = open(manager).await?;
     let mut kill = manager.execute(killer, format!("SELECT pg_terminate_backend({pid})"))?;
     events(&mut kill).await?;

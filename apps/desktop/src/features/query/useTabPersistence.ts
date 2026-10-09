@@ -13,39 +13,48 @@ const AUTO_SAVE_DELAY_MS = 500;
 const message = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
-/** File-bound query tabs whose text differs from the file. */
+/**
+ * File-bound query tabs whose text differs from the file; a file changed by
+ * another program waits for Reload or Keep instead of being overwritten.
+ */
 function unsavedFiles(state: TabsState): (QueryTab & { file: TabFile })[] {
   return state.tabs.filter(
     (tab): tab is QueryTab & { file: TabFile } =>
-      tab.file !== undefined && tab.sql !== tab.file.saved,
+      tab.file !== undefined &&
+      tab.file.external === undefined &&
+      tab.sql !== tab.file.saved,
   );
 }
 
+/** When tabs are stored; nothing is written before the saved tabs loaded. */
+type Persistence = { autoSave: boolean; restore: boolean; loaded: boolean };
+
 /**
- * Store open tabs for session restore (query text only with Auto Save) and,
- * with Auto Save, write file-bound tabs back to their `.sql` files, debounced. `onFile`
- * records each write's outcome on the tab.
+ * Store open tabs for session restore in the local store (query text only
+ * with Auto Save) and, with Auto Save, write file-bound tabs back to their
+ * `.sql` files, debounced. `onFile` records each write's outcome on the tab.
  */
 export function useTabPersistence(
   state: TabsState,
-  autoSave: boolean,
-  restore: boolean,
+  { autoSave, restore, loaded }: Persistence,
   onFile: (id: string, file: TabFile) => void,
 ): void {
-  const latest = useRef({ state, autoSave, restore });
+  const latest = useRef({ state, autoSave, restore, loaded });
   useEffect(() => {
-    latest.current = { state, autoSave, restore };
+    latest.current = { state, autoSave, restore, loaded };
+    if (!loaded) return;
     const timer = window.setTimeout(() => {
       writeTabs(state, { autoSave, restore });
     }, AUTO_SAVE_DELAY_MS);
     return () => {
       window.clearTimeout(timer);
     };
-  }, [state, autoSave, restore]);
+  }, [state, autoSave, restore, loaded]);
   useEffect(() => {
     const flush = (): void => {
-      const { autoSave: text, restore: keep } = latest.current;
-      writeTabs(latest.current.state, { autoSave: text, restore: keep });
+      const now = latest.current;
+      if (now.loaded)
+        writeTabs(now.state, { autoSave: now.autoSave, restore: now.restore });
     };
     window.addEventListener('pagehide', flush);
     return () => {
@@ -63,8 +72,12 @@ export function useTabPersistence(
         const file = { path: tab.file.path, name: tab.file.name };
         saveSqlFile(file.path, tab.sql)
           .then(
-            () => {
-              onFile(tab.id, { ...file, saved: tab.sql });
+            (modifiedMs) => {
+              onFile(tab.id, {
+                ...file,
+                saved: tab.sql,
+                ...(modifiedMs === null ? {} : { modifiedMs }),
+              });
             },
             (error: unknown) => {
               onFile(tab.id, { ...tab.file, error: message(error) });

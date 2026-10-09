@@ -11,6 +11,10 @@ export function TextareaEditor(props: {
   onReady: (editor: EditorHandle | null) => void;
 }): React.JSX.Element {
   const area = useRef<HTMLTextAreaElement>(null);
+  const changed = useRef(props.onChange);
+  useEffect(() => {
+    changed.current = props.onChange;
+  });
   const { onReady } = props;
   useEffect(() => {
     const element = area.current;
@@ -29,6 +33,10 @@ export function TextareaEditor(props: {
         const layout = `${String(indentWidth)} ${indentWith} ${keywordCase} ${options.indentStyle}`;
         element.value = `-- ${kind} ${dialect} ${layout}\n${element.value}`;
         return Promise.resolve();
+      },
+      replace: (text) => {
+        element.value = text;
+        changed.current(text);
       },
     });
     return () => {

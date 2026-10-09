@@ -7,8 +7,9 @@ use crate::sink::QuerySink;
 use crate::{BatchSink, CoreError, QueryEvent, SessionState};
 use openrows_driver_api::{BoxFuture, CancelHandle, DriverError, ExecSummary, ResultSink, Session};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tokio::sync::{mpsc, oneshot};
+use tokio::time::Instant;
 
 /// How long a server-side cancel may take before the connection is discarded.
 const CANCEL_GRACE: Duration = Duration::from_secs(2);
@@ -21,7 +22,30 @@ type CloseReply = oneshot::Sender<Result<(), CoreError>>;
 /// How one statement ended, before it is reported.
 enum Outcome {
     Done(Result<ExecSummary, DriverError>),
-    Cancelled { usable: bool },
+    Cancelled {
+        usable: bool,
+    },
+    /// Cancelled because it ran past `limit` (the statement timeout).
+    TimedOut {
+        usable: bool,
+        limit: Duration,
+    },
+}
+
+/// Why a running statement was stopped.
+enum Stop {
+    Cancelled,
+    TimedOut(Duration),
+}
+
+/// Why the actor stopped serving statements on its connection.
+pub(crate) enum Exit {
+    /// `Close`: reply once the connection is closed.
+    Close(CloseReply),
+    /// Every sender is gone, or the session was closed while reconnecting.
+    Gone,
+    /// Idle long enough: close the connection until the next statement.
+    Suspend,
 }
 
 /// Whether the actor keeps serving after a step.
@@ -46,10 +70,15 @@ pub(crate) struct Mailbox {
     pub(crate) link: Option<Link>,
 }
 
-struct Actor {
-    mail: Mailbox,
+pub(crate) struct Actor {
+    pub(crate) mail: Mailbox,
     session: Box<dyn Session>,
     cancel: Option<Arc<dyn CancelHandle>>,
+    /// When the last statement ended (or the connection opened).
+    used: Instant,
+    /// A statement to run before reading the queue (the one that woke a
+    /// suspended session).
+    pending: Option<Queued>,
 }
 
 /// Connect, report readiness, then serve commands until closed or broken.
@@ -70,67 +99,85 @@ pub(crate) async fn run(
     };
     mail.shared.set_state(SessionState::Idle, None);
     let _ = ready.send(Ok(()));
-    let cancel = session.cancel_handle();
-    Actor {
-        mail,
-        session,
-        cancel,
-    }
-    .serve()
-    .await;
+    Actor::new(mail, session, None).serve().await;
 }
 
 impl Actor {
-    async fn serve(mut self) {
-        match self.serve_queries().await {
-            Err(error) => {
-                self.mail.shared.fail(error.clone());
-                self.fail_waiting(&error);
-            }
-            // `close` may have stopped waiting; the state says Closed.
-            Ok(Some(reply)) => drop(reply.send(self.close().await)),
-            // Every sender is gone (the manager was dropped), or the session
-            // was closed while reconnecting.
-            Ok(None) => drop(self.close().await),
+    /// An actor on a fresh connection, first running `pending` if given.
+    pub(crate) fn new(mail: Mailbox, session: Box<dyn Session>, pending: Option<Queued>) -> Self {
+        Self {
+            mail,
+            cancel: session.cancel_handle(),
+            session,
+            used: Instant::now(),
+            pending,
         }
     }
 
-    /// Run statements until `Close` (its reply), no senders (`None`) or a broken connection.
-    async fn serve_queries(&mut self) -> Result<Option<CloseReply>, CoreError> {
+    async fn serve(mut self) {
         loop {
-            let next = tokio::select! {
-                biased;
-                command = self.mail.commands.recv() => Next::Command(command),
-                () = probe_due(self.mail.link.as_mut(), &self.mail.shared) => Next::Probe,
+            match self.serve_queries().await {
+                Err(error) => {
+                    self.mail.shared.fail(error.clone());
+                    fail_waiting(&mut self.mail, &error);
+                    return;
+                }
+                // `close` may have stopped waiting; the state says Closed.
+                Ok(Exit::Close(reply)) => return drop(reply.send(self.close().await)),
+                Ok(Exit::Gone) => return drop(self.close().await),
+                Ok(Exit::Suspend) => match crate::dormant::sleep(self).await {
+                    Some(actor) => self = actor,
+                    None => return,
+                },
+            }
+        }
+    }
+
+    /// Run statements until `Close`, no senders, an idle suspend or a broken connection.
+    async fn serve_queries(&mut self) -> Result<Exit, CoreError> {
+        loop {
+            let next = if let Some(queued) = self.pending.take() {
+                Next::Command(Some(Command::Execute(queued)))
+            } else {
+                tokio::select! {
+                    biased;
+                    command = self.mail.commands.recv() => Next::Command(command),
+                    () = probe_due(self.mail.link.as_mut(), &self.mail.shared) => Next::Probe,
+                }
             };
             let flow = match next {
                 Next::Probe => self.check().await?,
                 Next::Command(Some(Command::Execute(queued))) => self.run(queued).await?,
-                Next::Command(Some(Command::Close { reply })) => return Ok(Some(reply)),
-                Next::Command(None) => return Ok(None),
+                Next::Command(Some(Command::Suspend { idle })) if self.may_suspend(idle) => {
+                    return Ok(Exit::Suspend);
+                }
+                Next::Command(Some(Command::Suspend { .. })) => Flow::Continue,
+                Next::Command(Some(Command::Close { reply })) => return Ok(Exit::Close(reply)),
+                Next::Command(None) => return Ok(Exit::Gone),
             };
             if let Flow::Closed = flow {
-                return Ok(None);
+                return Ok(Exit::Gone);
             }
         }
+    }
+
+    /// Only a resilient session can reopen its connection; a transaction
+    /// would be lost with it.
+    fn may_suspend(&self, idle: Duration) -> bool {
+        self.mail.link.is_some() && !self.session.in_transaction() && self.used.elapsed() >= idle
+    }
+
+    /// Close the connection, keeping the mailbox for the suspended session.
+    pub(crate) async fn disconnect(self) -> Mailbox {
+        // A goodbye is best effort: the connection is dropped either way.
+        let _ = self.session.close().await;
+        self.mail
     }
 
     async fn close(self) -> Result<(), CoreError> {
         let result = self.session.close().await;
         self.mail.shared.set_state(SessionState::Closed, None);
         result.map_err(|error| CoreError::from(&error))
-    }
-
-    /// Statements still queued when the session failed never ran: say so.
-    fn fail_waiting(&mut self, error: &CoreError) {
-        self.mail.commands.close();
-        while let Ok(command) = self.mail.commands.try_recv() {
-            if let Command::Execute(queued) = command {
-                let _ = queued.events.send(QueryEvent::Failed {
-                    error: error.clone(),
-                });
-            }
-        }
     }
 
     /// Probe a connection that idled long enough to have died unnoticed,
@@ -228,6 +275,7 @@ impl Actor {
             emit,
         );
         self.mail.shared.end_query();
+        self.used = Instant::now();
         usable?;
         if let Some(link) = self.mail.link.as_mut() {
             link.touch();
@@ -235,6 +283,18 @@ impl Actor {
         }
         self.mail.shared.set_state(SessionState::Idle, None);
         Ok(())
+    }
+}
+
+/// Statements still queued when the session failed never ran: say so.
+pub(crate) fn fail_waiting(mail: &mut Mailbox, error: &CoreError) {
+    mail.commands.close();
+    while let Ok(command) = mail.commands.try_recv() {
+        if let Command::Execute(queued) = command {
+            let _ = queued.events.send(QueryEvent::Failed {
+                error: error.clone(),
+            });
+        }
     }
 }
 
@@ -262,23 +322,44 @@ async fn run_statement(
     sink: &mut dyn ResultSink,
 ) -> Outcome {
     let mut exec = session.execute_bound(&queued.sql, &queued.params, sink);
-    tokio::select! {
+    let stop = tokio::select! {
         biased;
         result = &mut exec => return Outcome::Done(result),
-        () = queued.token.cancelled() => {}
-    }
-    let Some(cancel) = cancel else {
-        return Outcome::Cancelled { usable: false };
+        () = queued.token.cancelled() => Stop::Cancelled,
+        () = expire(queued.timeout) => Stop::TimedOut(queued.timeout.unwrap_or_default()),
     };
-    // Detached on purpose: the request must not wait for, or block, the actor.
-    drop(tokio::spawn(cancel.cancel()));
-    match tokio::time::timeout(CANCEL_GRACE, exec).await {
-        Ok(Ok(summary)) => Outcome::Done(Ok(summary)),
-        Ok(Err(error)) => Outcome::Cancelled {
-            usable: keeps_session(&error),
-        },
-        Err(_) => Outcome::Cancelled { usable: false },
+    let usable = match cancel {
+        None => false,
+        Some(cancel) => {
+            // Detached on purpose: the request must not wait for, or block, the actor.
+            drop(tokio::spawn(cancel.cancel()));
+            match tokio::time::timeout(CANCEL_GRACE, exec).await {
+                Ok(Ok(summary)) => return Outcome::Done(Ok(summary)),
+                Ok(Err(error)) => keeps_session(&error),
+                Err(_) => false,
+            }
+        }
+    };
+    match stop {
+        Stop::Cancelled => Outcome::Cancelled { usable },
+        Stop::TimedOut(limit) => Outcome::TimedOut { usable, limit },
     }
+}
+
+/// Resolves once `timeout` passed; never without one.
+async fn expire(timeout: Option<Duration>) {
+    match timeout {
+        Some(timeout) => tokio::time::sleep(timeout).await,
+        None => std::future::pending().await,
+    }
+}
+
+/// The session must be discarded: a cancel the server never acknowledged.
+fn unacknowledged() -> Broken {
+    Broken::Unusable(CoreError::new(
+        ErrorKind::SessionClosed,
+        "connection discarded after cancel without server acknowledgement",
+    ))
 }
 
 /// Emit the terminal events; `Err` carries why the session must be discarded.
@@ -320,10 +401,18 @@ fn report(
             if usable {
                 Ok(())
             } else {
-                Err(Broken::Unusable(CoreError::new(
-                    ErrorKind::SessionClosed,
-                    "connection discarded after cancel without server acknowledgement",
-                )))
+                Err(unacknowledged())
+            }
+        }
+        Outcome::TimedOut { usable, limit } => {
+            sink.end_result();
+            emit(QueryEvent::Failed {
+                error: CoreError::statement_timeout(limit),
+            });
+            if usable {
+                Ok(())
+            } else {
+                Err(unacknowledged())
             }
         }
     }

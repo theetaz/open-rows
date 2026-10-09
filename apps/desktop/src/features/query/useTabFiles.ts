@@ -11,6 +11,18 @@ export type TabFileActions = Pick<QueryTabs, 'open' | 'bindFile' | 'edit'>;
 const message = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
+/** A file binding with its text and, when known, its modification time. */
+export function tabFile(
+  file: { path: string; name: string },
+  saved: string,
+  modifiedMs: number | null | undefined,
+): TabFile {
+  const { path, name } = file;
+  return modifiedMs == null
+    ? { path, name, saved }
+    : { path, name, saved, modifiedMs };
+}
+
 /**
  * Save (⌘S), Save SQL As… (⇧⌘S) and Open SQL File… (⌘O) for one query tab.
  * Saving binds the tab to the file; `failure` is the last error, including
@@ -25,13 +37,17 @@ export function useTabFiles(
   const fail = (error: unknown): void => {
     setFailure(`Could not save: ${message(error)}`);
   };
-  const bind = (file: Omit<TabFile, 'saved'>, saved: string): void => {
+  const bind = (
+    file: { path: string; name: string },
+    saved: string,
+    modifiedMs: number | null | undefined,
+  ): void => {
     setFailure(null);
-    tabs.bindFile(tab.id, { path: file.path, name: file.name, saved });
+    tabs.bindFile(tab.id, tabFile(file, saved, modifiedMs));
   };
   const saveAs = (sql: string): void => {
     saveSqlFileAs(tab.title, sql).then((file) => {
-      if (file) bind(file, sql);
+      if (file) bind(file, sql, file.modifiedMs);
     }, fail);
   };
   const save = (sql: string): void => {
@@ -40,8 +56,8 @@ export function useTabFiles(
       saveAs(sql);
       return;
     }
-    saveSqlFile(file.path, sql).then(() => {
-      bind(file, sql);
+    saveSqlFile(file.path, sql).then((modifiedMs) => {
+      bind(file, sql, modifiedMs);
     }, fail);
   };
   const open = (): void => {
@@ -56,7 +72,7 @@ export function useTabFiles(
         tabs.open(scope, {
           title: file.name,
           sql,
-          file: { ...file, saved: sql },
+          file: tabFile(file, sql, file.modifiedMs),
         });
       },
       (error: unknown) => {
