@@ -172,6 +172,9 @@ pub struct ConnectionProfile {
     /// SOCKS5 or HTTP proxy, the first hop (before SSH when both are set).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub proxy: Option<ProxySettings>,
+    /// Structured cloud helper; mutually exclusive with SSH and proxies.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub helper: Option<super::HelperHop>,
     /// Write-safety switches.
     pub safety: Safety,
     /// Keep executed statements in the local history (FR-WS-02); on by default.
@@ -227,6 +230,7 @@ impl ConnectionProfile {
             tls: TlsSettings::new(TlsMode::default_for_host(&params.host)),
             ssh: None,
             proxy: None,
+            helper: None,
             params,
             file: None,
             secrets: SecretRefs::default(),
@@ -305,6 +309,18 @@ impl ConnectionProfile {
     /// one CA source at most.
     fn validate_route(&self) -> Result<(), ProfileError> {
         let invalid = |field, reason| Err(ProfileError::Invalid { field, reason });
+        if let Some(helper) = &self.helper {
+            helper.validate().map_err(|_| ProfileError::Invalid {
+                field: "helper",
+                reason: "invalid cloud route fields",
+            })?;
+            if self.ssh.is_some() || self.proxy.is_some() || self.params.host.starts_with('/') {
+                return invalid(
+                    "helper",
+                    "cannot combine with SSH, a proxy or a Unix socket",
+                );
+            }
+        }
         if let Some(proxy) = &self.proxy {
             proxy.validate()?;
             if self.ssh.is_none() && self.params.host.starts_with('/') {
@@ -330,6 +346,9 @@ impl ConnectionProfile {
         }
         if !file.memory && !file.path.is_absolute() {
             return invalid("file.path", "must be an absolute path");
+        }
+        if self.helper.is_some() {
+            return invalid("helper", "local files cannot use a cloud route");
         }
         if self.ssh.is_some() {
             return invalid("ssh", "local files cannot use an SSH tunnel");

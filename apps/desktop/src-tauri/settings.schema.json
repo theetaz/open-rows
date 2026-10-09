@@ -622,7 +622,7 @@
     },
     "tools": {
       "type": "object",
-      "description": "Settings ▸ Tools: the client tools used by Back Up and Restore Database.",
+      "description": "Settings ▸ Tools: database client and cloud route helpers.",
       "properties": {
         "pgDump": {
           "type": "string",
@@ -653,6 +653,42 @@
           "maxLength": 1024,
           "default": "",
           "description": "Path of mysql or mariadb; empty finds the installed copy that best matches the server."
+        },
+        "aws": {
+          "type": "string",
+          "default": "",
+          "maxLength": 1024,
+          "description": "Path of aws; empty discovers an installed copy."
+        },
+        "sessionManagerPlugin": {
+          "type": "string",
+          "default": "",
+          "maxLength": 1024,
+          "description": "Path of session-manager-plugin; empty discovers an installed copy."
+        },
+        "kubectl": {
+          "type": "string",
+          "default": "",
+          "maxLength": 1024,
+          "description": "Path of kubectl; empty discovers an installed copy."
+        },
+        "cloudSqlProxy": {
+          "type": "string",
+          "default": "",
+          "maxLength": 1024,
+          "description": "Path of cloud-sql-proxy; empty discovers an installed copy."
+        },
+        "alloydbAuthProxy": {
+          "type": "string",
+          "default": "",
+          "maxLength": 1024,
+          "description": "Path of alloydb-auth-proxy; empty discovers an installed copy."
+        },
+        "cloudflared": {
+          "type": "string",
+          "default": "",
+          "maxLength": 1024,
+          "description": "Path of cloudflared; empty discovers an installed copy."
         }
       }
     }

@@ -20,6 +20,12 @@ export const TOOL_KINDS: readonly DumpToolKindDto[] = [
   'psql',
   'mysqldump',
   'mysql',
+  'aws',
+  'sessionManagerPlugin',
+  'kubectl',
+  'cloudSqlProxy',
+  'alloydbAuthProxy',
+  'cloudflared',
 ];
 
 const defaults: ToolSettings = {
@@ -28,6 +34,12 @@ const defaults: ToolSettings = {
   psql: '',
   mysqldump: '',
   mysql: '',
+  aws: '',
+  sessionManagerPlugin: '',
+  kubectl: '',
+  cloudSqlProxy: '',
+  alloydbAuthProxy: '',
+  cloudflared: '',
 };
 
 /** Validated tool paths; anything else falls back to automatic. */

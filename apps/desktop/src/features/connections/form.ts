@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { commandFields, commandErrors, commandDraft } from './credentialForm';
+import type { HelperHop } from '@openrows/ipc';
+import { helperError } from './helperForm';
 import { DEFAULT_CUSTOM_ENV_COLOR } from '@openrows/ipc';
 import {
   emptySsh,
@@ -71,6 +73,8 @@ export type Draft = {
   nameFromUrl: boolean;
   /** Over SSH (D-10). */
   ssh: SshDraft;
+  /** Structured cloud route, independent of connection URLs. */
+  helper: HelperHop | null;
   /** Through a SOCKS5 or HTTP proxy (M1-06). */
   proxy: ProxyDraft;
   /** TLS certificate files (D-11); the mode is `tlsMode`. */
@@ -97,7 +101,8 @@ export type DraftErrors = Partial<
     | 'filePath'
     | 'commandProgram'
     | 'commandArgs'
-    | 'commandTimeout',
+    | 'commandTimeout'
+    | 'helper',
     string
   >
 > &
@@ -139,6 +144,7 @@ export function emptyDraft(engine: EngineDto = 'postgres'): Draft {
     tags: '',
     nameFromUrl: false,
     ssh: emptySsh(),
+    helper: null,
     proxy: emptyProxy(),
     tls: emptyTls(),
     filePath: '',
@@ -175,6 +181,7 @@ export function draftFromProfile(profile: ProfileDto): Draft {
     ...commandDraft(profile),
     tags: profile.tags.join(', '),
     ssh: sshFromProfile(profile),
+    helper: profile.helper ?? null,
     proxy: proxyFromProfile(profile),
     tls: tlsFromProfile(profile),
     filePath: profile.file?.path ?? '',
@@ -277,6 +284,11 @@ export function validate(draft: Draft): DraftErrors {
   if (!draft.user.trim()) errors.user = 'User is required';
   if (draft.envKind === 'custom' && !draft.envLabel.trim())
     errors.envLabel = 'Label is required';
+  const cloudError = helperError(
+    draft.helper,
+    draft.ssh.enabled || draft.proxy.enabled || draft.host.startsWith('/'),
+  );
+  if (cloudError) errors.helper = cloudError;
   return {
     ...errors,
     ...commandErrors(draft),
@@ -330,6 +342,7 @@ export function toInput(draft: Draft): ProfileInput {
     tlsMode: draft.tlsMode,
     tlsFiles: tlsInput(draft.tls),
     ssh: file ? null : sshInput(draft.ssh),
+    helper: file ? null : draft.helper,
     proxy: file ? null : proxyInput(draft.proxy),
     safety: { readOnly: draft.readOnly, confirmWrites: draft.confirmWrites },
     recordHistory: draft.recordHistory,

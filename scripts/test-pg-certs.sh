@@ -16,7 +16,7 @@ ca() {
 }
 leaf() {
     ec_key "$1.key"
-    quiet openssl req -new -key "$1.key" -subj "/CN=$2" -out "$1.csr"
+    quiet openssl req -sha256 -new -key "$1.key" -subj "/CN=$2" -out "$1.csr"
     printf '%s\n' "$3" >"$1.ext"
     quiet openssl x509 -sha256 -req -in "$1.csr" -CA ca.crt -CAkey ca.key -CAcreateserial -days 2 \
         -extfile "$1.ext" -out "$1.crt"

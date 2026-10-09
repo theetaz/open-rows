@@ -128,6 +128,10 @@ pub(crate) async fn profile_target(state: &Connections, id: &str) -> Result<Targ
         }
     };
     let target = target::target(&profile, &secrets)?;
+    if profile.helper.is_some() {
+        let helper = super::helpers::acquire(state, &profile).await?;
+        return Ok(target.through(Arc::new(openrows_net::helper::HelperDialer::new(helper))));
+    }
     let proxy = profile_proxy(&state.profiles, &profile)?;
     let Some(ssh) = &profile.ssh else {
         return Ok(match proxy {

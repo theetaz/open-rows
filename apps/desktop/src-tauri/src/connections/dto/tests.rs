@@ -20,6 +20,7 @@ pub(crate) fn input(env: EnvKindDto) -> ProfileInput {
         tls_files: TlsFilesInput::default(),
         ssh: None,
         proxy: None,
+        helper: None,
         safety: SafetyDto {
             read_only: false,
             confirm_writes: true,

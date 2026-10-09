@@ -99,6 +99,7 @@ pub(crate) fn apply(connections: &Connections, text: &str) {
     if let Ok(value) = serde_json::from_str::<Value>(text) {
         connections.sessions.set_keepalive(keepalive(&value));
         connections.limits.apply(&value);
+        connections.helper_settings.apply(&value);
     }
 }
 

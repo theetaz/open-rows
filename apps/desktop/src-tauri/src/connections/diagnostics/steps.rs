@@ -23,6 +23,8 @@ use labels::describe;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub(crate) enum TestStepKind {
+    /// Launch and health-check a cloud helper.
+    Helper,
     /// Resolve and reach an SSH server (or the next jump host).
     SshConnect,
     /// SSH handshake, host key and authentication.
@@ -76,6 +78,33 @@ pub(crate) struct Steps {
 }
 
 impl Steps {
+    /// Command line, version and last scrubbed stderr of a cloud helper.
+    pub(crate) fn helper(
+        &mut self,
+        hop: &openrows_net::helper::HelperHop,
+        result: &Result<std::sync::Arc<openrows_net::helper::Helper>, IpcError>,
+        elapsed: Duration,
+    ) {
+        let step = self.timed(
+            TestStepKind::Helper,
+            format!("Start {}", hop.tool()),
+            elapsed,
+        );
+        step.hint = Some(hop.hint().into());
+        match result {
+            Ok(helper) => {
+                step.detail = Some(
+                    helper
+                        .diagnostics()
+                        .unwrap_or_else(|error| error.to_string()),
+                );
+            }
+            Err(error) => {
+                step.status = StepStatus::Failed;
+                step.detail = Some(error.message.clone());
+            }
+        }
+    }
     fn push(&mut self, kind: TestStepKind, label: String, status: StepStatus) -> &mut TestStepDto {
         // The label and detail name hosts and users; the log keeps only the step.
         tracing::debug!(step = ?kind, status = ?status, "connection test step");

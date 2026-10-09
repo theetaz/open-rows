@@ -7,6 +7,7 @@ mod catalog;
 mod connect;
 mod diagram;
 mod dump;
+mod helpers;
 mod inspection;
 mod objects;
 mod streaming;

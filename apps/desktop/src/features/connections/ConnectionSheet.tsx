@@ -7,6 +7,7 @@ import { ENGINE_CHOICES, engineName, isFileEngine } from './engines';
 import { EngineTile } from './EngineTile';
 import { EnvironmentFields } from './EnvironmentFields';
 import { FileFields } from './FileFields';
+import { HelperFields } from './HelperFields';
 import { ProxyFields } from './ProxyFields';
 import { SessionLimitsFields } from './SessionLimitsFields';
 import { SshFields } from './SshFields';
@@ -65,6 +66,7 @@ export function ConnectionSheet(props: Props): React.JSX.Element {
         ) : (
           <>
             <ConnectionFields form={form} />
+            <HelperFields form={form} />
             <ProxyFields form={form} />
             <SshFields form={form} />
             <TlsFields form={form} />

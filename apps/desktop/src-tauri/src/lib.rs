@@ -246,6 +246,7 @@ pub fn run() -> Result<(), tauri::Error> {
         .build(tauri::generate_context!())?
         .run(|app, event| {
             if let tauri::RunEvent::Exit = event {
+                connections::helpers::exit(app);
                 result_store::exit(app);
                 observability::exit(app);
             }

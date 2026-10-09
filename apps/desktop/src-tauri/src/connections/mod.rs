@@ -35,6 +35,7 @@ mod enums;
 mod error;
 pub(crate) mod exchange;
 pub(crate) mod files;
+pub(crate) mod helpers;
 mod insecure;
 pub(crate) mod inspection;
 mod inspection_dto;
@@ -89,6 +90,9 @@ pub(crate) struct Connections {
     pub(crate) owners: owners::Owners,
     /// Shared SSH tunnels per saved connection.
     pub(crate) tunnels: Tunnels,
+    /// Shared cloud helpers retained only by live sessions.
+    pub(crate) helpers: openrows_net::helper::Helpers,
+    pub(crate) helper_settings: helpers::HelperSettings,
     /// Plans and opens SSH tunnels with prompts in the webview.
     pub(crate) opener: TunnelOpener,
     /// Open host-key and keyboard-interactive prompts.
@@ -141,6 +145,8 @@ pub(crate) fn install(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Er
         metadata: metadata::MetadataSessions::default(),
         owners: owners::Owners::default(),
         tunnels: Tunnels::default(),
+        helpers: openrows_net::helper::Helpers::default(),
+        helper_settings: helpers::HelperSettings::default(),
         opener: TunnelOpener {
             environment,
             prompts: Arc::clone(&prompts),

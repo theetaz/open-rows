@@ -68,6 +68,7 @@ pub(crate) struct ProfileDto {
     tls_files: TlsFilesDto,
     ssh: Option<SshDto>,
     proxy: Option<ProxyDto>,
+    helper: Option<openrows_net::helper::HelperHop>,
     has_password: bool,
     /// Keychain, or asked on every connect (then `hasPassword` is false).
     password_storage: PasswordStorageDto,
@@ -158,6 +159,7 @@ impl From<&ConnectionProfile> for ProfileDto {
             tls_files: tls_files_dto(profile),
             ssh: ssh_dto(profile),
             proxy: proxy_dto(profile),
+            helper: profile.helper.clone(),
             has_password: profile.secrets.password.is_some(),
             password_storage: profile.password_storage.into(),
             credential_command: profile
@@ -249,6 +251,9 @@ pub(crate) struct ProfileInput {
     /// The proxy; absent or null without one.
     #[serde(default)]
     pub(crate) proxy: Option<ProxyInput>,
+    /// Structured cloud helper; absent in older forms.
+    #[serde(default)]
+    pub(crate) helper: Option<openrows_net::helper::HelperHop>,
     pub(crate) safety: SafetyDto,
     /// Absent in forms written before the history switch: history is recorded.
     #[serde(default = "record_history_on")]
@@ -318,6 +323,12 @@ impl ProfileInput {
             self.proxy.as_ref(),
             profile,
         );
+        if let Some(helper) = &self.helper {
+            helper
+                .validate()
+                .map_err(|error| super::helpers::ipc_error(&error))?;
+        }
+        profile.helper.clone_from(&self.helper);
         let attached = profile
             .file
             .take()
@@ -328,6 +339,7 @@ impl ProfileInput {
             profile.params = ServerParams::default();
             profile.ssh = None;
             profile.proxy = None;
+            profile.helper = None;
             profile.tls.mode = TlsMode::Disable;
         }
         profile.safety = self.safety.into();

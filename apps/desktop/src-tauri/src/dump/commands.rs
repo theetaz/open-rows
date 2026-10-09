@@ -41,7 +41,9 @@ pub(super) async fn resolved(
 #[specta::specta]
 pub(crate) async fn dump_tools(app: AppHandle) -> Result<Vec<DumpToolDto>, IpcError> {
     let tools = resolved(&app, &ToolKind::ALL, None).await?;
-    Ok(tools.into_iter().map(|tool| tool.dto).collect())
+    let mut tools: Vec<_> = tools.into_iter().map(|tool| tool.dto).collect();
+    tools.extend(super::cloud_tools::list(&app).await);
+    Ok(tools)
 }
 
 /// What the backup and restore sheets of a session's database need: the

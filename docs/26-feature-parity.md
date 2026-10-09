@@ -37,6 +37,18 @@ The inventory covers the macOS benchmark unless qualified. TablePlus's [new over
 | C23 | Password-bearing export | Include credentials in protected export. | Gap G02 | Excluded from 1.0 | Provision credentials independently in keychain. | [S06] |
 | C24 | Keep-alive | Maintain idle connectivity. | New FR-APP-12; FR-NET-04 | M1 baseline; controls M2 | Sleep/wake probes avoid blind retries. | [S09] |
 
+### Cloud and zero-trust routes (OpenRows extension, M2-24)
+
+These FR-NET-03 rows document OpenRows scope; no TablePlus adoption/parity claim is inferred from the provider CLI documentation. Implementation details and public CLI references are in [docs/24 §15](24-networking-and-protocols.md#15-implementation-notes-m2-24-cloud-and-zero-trust-hops).
+
+| Key | Feature | Status / FR | Target |
+| --- | --- | --- | --- |
+| NET01 | AWS SSM managed-node / remote-host forwarding | Implemented (M2-24): structured fields, Session Manager plugin discovery and managed process lifecycle; FR-NET-03 | M2 |
+| NET02 | kubectl port-forward | Implemented (M2-24): context, namespace, resource, remote port and kubeconfig; FR-NET-03 | M2 |
+| NET03 | Cloud SQL / AlloyDB auth proxy | Implemented (M2-24): instance, IAM auth, private/public IP, credential file path and encrypted-upstream TLS hint; FR-NET-03 | M2 |
+| NET04 | cloudflared Access TCP | Implemented (M2-24): hostname and loopback forwarding; tokens remain in the tool configuration; FR-NET-03 | M2 |
+| NET05 | Custom command hop | Known gap: follow-up after M2-21 command trust store; no arbitrary executable template in a connection profile; FR-NET-03 | M2 follow-up |
+
 ### Workspace and database navigation
 
 | Key | Feature | What it does | OpenRows status / FR | Target | OpenRows improvement | Source |

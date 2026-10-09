@@ -52,6 +52,7 @@ export function profile(
     },
     ssh: null,
     proxy: null,
+    helper: null,
     hasPassword: false,
     passwordStorage: 'keychain',
     credentialCommand: null,

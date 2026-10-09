@@ -57,6 +57,12 @@ it('keeps only string paths of known tools', () => {
     psql: '',
     mysqldump: '',
     mysql: '',
+    aws: '',
+    sessionManagerPlugin: '',
+    kubectl: '',
+    cloudSqlProxy: '',
+    alloydbAuthProxy: '',
+    cloudflared: '',
   });
   expect(parseTools(null).pgDump).toBe('');
   expect(parseTools({ mysql: 'x'.repeat(1025) }).mysql).toBe('');
