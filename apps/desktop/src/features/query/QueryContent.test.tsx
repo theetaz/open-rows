@@ -150,6 +150,8 @@ it('runs the statement at the cursor and shows its rows and status', async () =>
       cursor: 13,
       confirmToken: null,
       maxRows: null,
+      returnOnError: true,
+      params: null,
     },
     expect.any(Function),
   );
@@ -224,7 +226,11 @@ it('turns Run into Cancel while a query runs', async () => {
   expect(
     screen.queryByRole('button', { name: 'Run current statement' }),
   ).toBeNull();
-  expect(screen.getByRole('button', { name: 'Run options' })).toBeDisabled();
+  await user.click(screen.getByRole('button', { name: 'Run options' }));
+  const options = screen.getByRole('menu', { name: 'Run options' });
+  for (const name of [/Run All/, /Run Current/])
+    expect(within(options).getByRole('menuitem', { name })).toBeDisabled();
+  await user.keyboard('{Escape}');
   await user.click(screen.getByRole('button', { name: 'Cancel query' }));
   expect(cancelQuery).toHaveBeenCalledWith('q1');
   send({ type: 'cancelled', statement: 0 }, finished('cancelled'));

@@ -5,6 +5,7 @@ use crate::error::ErrorKind;
 use crate::shared::{Command, Queued, Shared};
 use crate::{BatchSink, CoreError, QueryEvent, SessionEvent, SessionState};
 use openrows_driver_api::{DriverError, Session};
+use openrows_sql::select::BoundSql;
 use openrows_types::{QueryId, SessionId};
 use std::any::Any;
 use std::collections::HashMap;
@@ -146,20 +147,6 @@ impl SessionManager {
         self.submit(session, sql.into(), Vec::new(), None)
     }
 
-    /// Queue `sql` keeping at most `max_rows` rows per result set; the result
-    /// ends `truncated` when more rows existed.
-    ///
-    /// # Errors
-    /// As [`SessionManager::execute`].
-    pub fn execute_capped(
-        &self,
-        session: SessionId,
-        sql: impl Into<String>,
-        max_rows: Option<usize>,
-    ) -> Result<QueryHandle, CoreError> {
-        self.submit(session, sql.into(), Vec::new(), max_rows)
-    }
-
     /// Queue `sql` with positional text parameters (`$1`, …; `None` is NULL).
     ///
     /// # Errors
@@ -171,6 +158,21 @@ impl SessionManager {
         params: Vec<Option<String>>,
     ) -> Result<QueryHandle, CoreError> {
         self.submit(session, sql.into(), params, None)
+    }
+
+    /// Queue a bound statement keeping at most `max_rows` rows per result
+    /// set (the result ends `truncated` when more rows existed); an empty
+    /// parameter list runs the text as written.
+    ///
+    /// # Errors
+    /// As [`SessionManager::execute`].
+    pub fn execute_statement(
+        &self,
+        session: SessionId,
+        statement: BoundSql,
+        max_rows: Option<usize>,
+    ) -> Result<QueryHandle, CoreError> {
+        self.submit(session, statement.sql, statement.params, max_rows)
     }
 
     fn submit(

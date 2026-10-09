@@ -5,6 +5,7 @@ mod change_sets;
 mod error;
 mod history;
 mod migrate;
+mod saved_queries;
 
 use std::{
     path::{Path, PathBuf},
@@ -18,6 +19,7 @@ pub use error::StoreError;
 use error::sqlite;
 pub use history::{HistoryEntry, HistoryRecord, HistorySource, HistoryStatus};
 pub use migrate::SCHEMA_VERSION;
+pub use saved_queries::{NewSavedQuery, SavedQueryRecord};
 
 /// The app database (`openrows.sqlite`, docs/15 §2).
 ///

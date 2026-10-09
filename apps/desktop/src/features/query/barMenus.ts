@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { FormatKind } from '@openrows/editor';
+import type { EditorDialect, FormatKind } from '@openrows/editor';
 import type { MenuEntry } from '../../shell/CascadeMenu';
 import { FONT_SIZES, ROW_LIMITS } from './editorSettings';
 import type { EditorSettings } from './editorSettings';
-import type { RunScope } from './request';
+import { paramChoices } from './queryParams';
 
 type Update = (change: Partial<EditorSettings>) => void;
 
@@ -24,7 +24,13 @@ const toggle = (
   update: Update,
   label: string,
   key:
-    'invisibles' | 'wrap' | 'highlightQuery' | 'autocomplete' | 'upperKeywords',
+    | 'invisibles'
+    | 'wrap'
+    | 'highlightQuery'
+    | 'autocomplete'
+    | 'upperKeywords'
+    | 'autoSave'
+    | 'returnOnError',
 ): MenuEntry => ({
   kind: 'item',
   label,
@@ -48,10 +54,39 @@ function choices<K extends keyof EditorSettings>(
   );
 }
 
-/** The sliders menu: font size, invisibles, wrapping, highlight, completion, keys. */
+/** Auto save, parameters, result view and error handling of runs. */
+function runSettings(
+  settings: EditorSettings,
+  update: Update,
+  dialect: EditorDialect,
+): MenuEntry[] {
+  return [
+    toggle(settings, update, 'Auto Save SQL Query Tab', 'autoSave'),
+    {
+      kind: 'submenu',
+      label: 'Query Params',
+      entries: choices(settings, update, 'queryParams', paramChoices(dialect)),
+    },
+    {
+      kind: 'submenu',
+      label: 'Result View Mode',
+      entries: choices(settings, update, 'resultView', [
+        ['One Tab per Result', 'tabs'],
+        ['Last Result Only', 'last'],
+      ]),
+    },
+    toggle(settings, update, 'Return on Error', 'returnOnError'),
+  ];
+}
+
+/**
+ * The sliders menu: font size, invisibles, wrapping, highlight, completion,
+ * keys, then auto save and run options.
+ */
 export function settingsEntries(
   settings: EditorSettings,
   update: Update,
+  dialect: EditorDialect,
 ): MenuEntry[] {
   const sizes = FONT_SIZES.map((size) => [String(size), size] as const);
   return [
@@ -83,6 +118,8 @@ export function settingsEntries(
         ['Vim', 'vim'],
       ]),
     },
+    { kind: 'separator' },
+    ...runSettings(settings, update, dialect),
   ];
 }
 
@@ -149,27 +186,14 @@ export function beautifyEntries(
         ['Preserve', 'preserve'],
       ]),
     },
-  ];
-}
-
-/** Run's dropdown. */
-export function runEntries(onRun: (scope: RunScope) => void): MenuEntry[] {
-  return [
     {
-      kind: 'item',
-      label: 'Run All',
-      shortcut: '⇧⌘↵',
-      run: () => {
-        onRun('all');
-      },
-    },
-    {
-      kind: 'item',
-      label: 'Run Current',
-      shortcut: '⌘↵',
-      run: () => {
-        onRun('current');
-      },
+      kind: 'submenu',
+      label: 'Indent Type',
+      entries: choices(settings, update, 'indentStyle', [
+        ['Standard', 'standard'],
+        ['Tabular Left', 'tabularLeft'],
+        ['Tabular Right', 'tabularRight'],
+      ]),
     },
   ];
 }

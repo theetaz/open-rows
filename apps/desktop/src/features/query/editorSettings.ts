@@ -1,9 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import type { EditorPreferences, FormatOptions } from '@openrows/editor';
+import type { ParamStyleDto } from '@openrows/ipc';
+import type { RunScope } from './request';
 
 /** Key handling of the SQL editor. */
 export type KeyBinding = 'default' | 'vim';
+
+/** Placeholders treated as query parameters; `off` runs SQL as written. */
+export type QueryParams = 'off' | ParamStyleDto;
+
+/** Multi-statement runs: one result tab per statement, or only the last result. */
+export type ResultView = 'tabs' | 'last';
 
 /**
  * SQL editor settings from the bottom-bar menus, shared by every query tab
@@ -14,6 +22,14 @@ export type EditorSettings = EditorPreferences &
     keyBinding: KeyBinding;
     /** Rows kept per result set when running; `null` is no limit. */
     rowLimit: number | null;
+    /** Keep query tab text (and bound files) saved as you type. */
+    autoSave: boolean;
+    queryParams: QueryParams;
+    resultView: ResultView;
+    /** Stop a multi-statement run at the first error. */
+    returnOnError: boolean;
+    /** What the Run button and ⌘↵ run (a selection always runs itself). */
+    runDefault: RunScope;
   };
 
 /** Settings before the user changed anything. */
@@ -29,6 +45,12 @@ export const defaultEditorSettings: EditorSettings = {
   indentWidth: 2,
   indentWith: 'spaces',
   keywordCase: 'upper',
+  indentStyle: 'standard',
+  autoSave: true,
+  queryParams: 'off',
+  resultView: 'tabs',
+  returnOnError: true,
+  runDefault: 'current',
 };
 
 /** Editor font sizes offered besides the appearance default. */
@@ -68,6 +90,16 @@ const FIELDS: { [K in keyof EditorSettings]: Field<K> } = {
     'upper',
     'lower',
   ),
+  indentStyle: oneOf<FormatOptions['indentStyle']>(
+    'standard',
+    'tabularLeft',
+    'tabularRight',
+  ),
+  autoSave: isBoolean,
+  queryParams: oneOf<QueryParams>('off', 'named', 'numbered', 'anonymous'),
+  resultView: oneOf<ResultView>('tabs', 'last'),
+  returnOnError: isBoolean,
+  runDefault: oneOf<RunScope>('current', 'all'),
 };
 
 /** Parse persisted settings, keeping defaults for anything missing or invalid. */
@@ -90,34 +122,55 @@ export function parseEditorSettings(text: string | null): EditorSettings {
   };
 }
 
-function read(): EditorSettings {
+const listeners = new Set<() => void>();
+/** The last parsed text and its settings, so snapshots stay referentially stable. */
+let cached: { text: string | null; settings: EditorSettings } = {
+  text: null,
+  settings: defaultEditorSettings,
+};
+/** Settings of this session when storage is unavailable. */
+let unstored: EditorSettings | null = null;
+
+function snapshot(): EditorSettings {
+  if (unstored) return unstored;
+  let text: string | null;
   try {
-    return parseEditorSettings(localStorage.getItem(STORAGE_KEY));
+    text = localStorage.getItem(STORAGE_KEY);
   } catch {
     return defaultEditorSettings;
   }
+  if (text !== cached.text)
+    cached = { text, settings: parseEditorSettings(text) };
+  return cached.settings;
 }
 
 function save(settings: EditorSettings): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    unstored = null;
   } catch {
-    /* Settings still apply for this session without storage. */
+    unstored = settings;
   }
+  listeners.forEach((listener) => {
+    listener();
+  });
 }
 
-/** Persisted editor settings and an updater merging a partial change. */
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+/** Merge a partial change into the persisted settings. */
+function updateEditorSettings(change: Partial<EditorSettings>): void {
+  save({ ...snapshot(), ...change });
+}
+
+/** Persisted editor settings, shared live by every caller, and an updater. */
 export function useEditorSettings(): [
   EditorSettings,
   (change: Partial<EditorSettings>) => void,
 ] {
-  const [settings, setSettings] = useState(read);
-  const update = (change: Partial<EditorSettings>): void => {
-    setSettings((current) => {
-      const next = { ...current, ...change };
-      save(next);
-      return next;
-    });
-  };
-  return [settings, update];
+  const settings = useSyncExternalStore(subscribe, snapshot);
+  return [settings, updateEditorSettings];
 }

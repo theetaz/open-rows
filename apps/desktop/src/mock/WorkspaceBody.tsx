@@ -39,11 +39,11 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
           catalog={catalog}
           connections={connections}
           onOpen={controller.openObject}
-          onQuery={() => {
-            controller.addQuery();
-          }}
           onOpenSql={(sql) => {
             controller.addQuery(sql);
+          }}
+          onSavedQuery={(query) => {
+            if (scope) tabs.open(scope, { title: query.name, sql: query.sql });
           }}
         />
       </SplitPanel>

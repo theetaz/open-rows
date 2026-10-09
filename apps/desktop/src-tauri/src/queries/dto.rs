@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Request and reply types of `query_execute` and the `history_*` commands.
+use super::params::ParamsDto;
 use openrows_core::safety::{SafetyPlan, Verdict};
 use openrows_core::script::{self, Scope};
 use openrows_sql::{Dialect, StatementKind};
@@ -34,6 +35,16 @@ pub(crate) struct ExecuteRequest {
     /// result store's default cap.
     #[serde(default)]
     pub(crate) max_rows: Option<u32>,
+    /// Stop at the first failed statement ("Return on Error", the default).
+    #[serde(default = "stop_on_error")]
+    pub(crate) return_on_error: bool,
+    /// Parameter placeholders to bind; `None` runs the text as written.
+    #[serde(default)]
+    pub(crate) params: Option<ParamsDto>,
+}
+
+const fn stop_on_error() -> bool {
+    true
 }
 
 impl ExecuteRequest {
@@ -151,6 +162,8 @@ pub(crate) enum ExecuteReply {
         message: String,
         statements: Vec<StatementDto>,
     },
+    /// Nothing ran: resend with a value for each parameter name.
+    ParametersRequired { names: Vec<String> },
 }
 
 /// Outcome of a recorded statement.
@@ -226,6 +239,8 @@ mod tests {
             cursor,
             confirm_token: None,
             max_rows: None,
+            return_on_error: true,
+            params: None,
         }
     }
 
@@ -241,6 +256,7 @@ mod tests {
             "cursor": null, "confirmToken": null
         }))?;
         assert_eq!(open.row_cap(), None);
+        assert!(open.return_on_error && open.params.is_none());
         Ok(())
     }
 

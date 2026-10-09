@@ -91,7 +91,7 @@ export function QueryContent(props: Props): React.JSX.Element {
       <Tabs
         tabs={list.map((item) => ({
           id: item.id,
-          label: item.title,
+          label: tabLabel(item),
           kind: item.kind,
           title: `${connection.name} · ${item.title}`,
         }))}
@@ -161,7 +161,7 @@ function TabBody(
       notice={reason}
       catalog={completionFor(props, sessionId)}
       runs={props.runs}
-      onSql={props.tabs.edit}
+      tabs={props.tabs}
       onCell={props.onCell}
       onConnect={props.connections.connect}
     />
@@ -227,4 +227,9 @@ function notice(status: SessionStatus, database: string): string | null {
   if (!opened) return `${database} is closed; open it again with ⌘K`;
   if (opened.state === 'opening') return `Opening ${database}…`;
   return opened.state === 'failed' ? opened.message : null;
+}
+
+/** The tab title; a file-bound tab with unsaved changes gets a dot. */
+function tabLabel(tab: Tab): string {
+  return tab.file && tab.file.saved !== tab.sql ? `${tab.title} •` : tab.title;
 }

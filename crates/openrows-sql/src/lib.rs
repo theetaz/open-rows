@@ -25,6 +25,7 @@
 //! ```
 #![forbid(unsafe_code)]
 
+mod bind;
 mod classify;
 mod dialect;
 pub mod edit;
@@ -36,6 +37,7 @@ mod split;
 #[cfg(test)]
 mod tests;
 
+pub use bind::{MissingParam, ParamBinder, ParamSlot, ParamStyle};
 pub use classify::{Classification, StatementKind, classify};
 pub use placeholders::{Placeholder, PlaceholderKind, placeholders};
 pub use split::{Statement, split, statement_at};

@@ -24,5 +24,6 @@ export function beautify(sql: string, options: FormatOptions): string {
     tabWidth: options.indentWidth,
     useTabs: options.indentWith === 'tabs',
     keywordCase: options.keywordCase,
+    indentStyle: options.indentStyle,
   });
 }

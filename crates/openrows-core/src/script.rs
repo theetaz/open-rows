@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Multi-statement runs: pick statements from editor text, then execute them
-//! one at a time on a session, stopping at the first error (docs/04 §4.5).
+//! one at a time on a session, by default stopping at the first error
+//! (docs/04 §4.5).
 use crate::error::ErrorKind;
 use crate::{Canceller, CoreError, QueryEvent, SessionManager};
 use openrows_sql::select::BoundSql;
@@ -48,7 +49,7 @@ pub struct ScriptEvent {
 pub enum ScriptOutcome {
     /// Every statement completed.
     Completed,
-    /// A statement failed; later statements did not run.
+    /// A statement failed; with `stop_on_error` later statements did not run.
     Failed,
     /// The user cancelled; later statements did not run.
     Cancelled,
@@ -93,19 +94,24 @@ impl ScriptCanceller {
     }
 }
 
-/// Statements of one editor run and the row cap of each result set.
+/// Statements of one editor run, the row cap of each result set and the
+/// error policy.
 #[derive(Clone, Copy, Debug)]
 pub struct Script<'a> {
-    /// Statement texts, run in order.
-    pub statements: &'a [String],
+    /// Statements with their bound parameters, run in order.
+    pub statements: &'a [BoundSql],
     /// Rows kept per result set; `None` leaves only the result store's caps.
     pub max_rows: Option<usize>,
+    /// End the run at the first failed statement ("Return on Error"); when
+    /// `false` the remaining statements still run and each error is reported.
+    pub stop_on_error: bool,
 }
 
 /// Execute the script's statements in order on `session`, forwarding every event to `emit`.
 ///
-/// A statement starts only after the previous one completed. The first
-/// `Failed` or `Cancelled` statement ends the run.
+/// A statement starts only after the previous one completed. A `Cancelled`
+/// statement ends the run; a `Failed` one ends it when `stop_on_error` is
+/// set, otherwise the run goes on and ends `Failed` after the last statement.
 pub async fn run_script(
     manager: &SessionManager,
     session: SessionId,
@@ -113,7 +119,8 @@ pub async fn run_script(
     cancel: &ScriptCanceller,
     mut emit: impl FnMut(ScriptEvent),
 ) -> ScriptOutcome {
-    for (index, sql) in script.statements.iter().enumerate() {
+    let mut result = ScriptOutcome::Completed;
+    for (index, statement) in script.statements.iter().enumerate() {
         let mut send = |event| {
             emit(ScriptEvent {
                 statement: index,
@@ -124,13 +131,14 @@ pub async fn run_script(
             send(QueryEvent::Cancelled);
             return ScriptOutcome::Cancelled;
         }
-        let submitted = manager.execute_capped(session, sql.as_str(), script.max_rows);
-        let outcome = follow(submitted, cancel, &mut send).await;
-        if outcome != ScriptOutcome::Completed {
-            return outcome;
+        let submitted = manager.execute_statement(session, statement.clone(), script.max_rows);
+        match follow(submitted, cancel, &mut send).await {
+            ScriptOutcome::Completed => {}
+            ScriptOutcome::Failed if !script.stop_on_error => result = ScriptOutcome::Failed,
+            outcome => return outcome,
         }
     }
-    ScriptOutcome::Completed
+    result
 }
 
 /// Execute one generated statement with bind parameters (table browsing,

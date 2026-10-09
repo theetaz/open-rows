@@ -66,3 +66,22 @@ export function formatKindOf(event: {
     return null;
   return event.shiftKey ? 'uglify' : 'beautify';
 }
+
+/** Tab file commands: ⌘S save, ⇧⌘S save as, ⌘O open. */
+export type FileAction = 'save' | 'saveAs' | 'open';
+
+/** ⌘S, ⇧⌘S and ⌘O anywhere in a query tab. */
+export function fileActionOf(event: {
+  key: string;
+  metaKey: boolean;
+  ctrlKey: boolean;
+  altKey: boolean;
+  shiftKey: boolean;
+  defaultPrevented: boolean;
+}): FileAction | null {
+  if (event.defaultPrevented || event.altKey || event.ctrlKey) return null;
+  if (!event.metaKey) return null;
+  const key = event.key.toLowerCase();
+  if (key === 's') return event.shiftKey ? 'saveAs' : 'save';
+  return key === 'o' && !event.shiftKey ? 'open' : null;
+}

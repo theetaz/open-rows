@@ -107,7 +107,9 @@ it('switches sidebar segments, lazily expands real sections and opens objects on
   ).toBeVisible();
   await user.clear(screen.getByRole('textbox', { name: 'Search items' }));
   await user.click(sidebar.getByRole('radio', { name: 'Queries' }));
-  expect(sidebar.getByRole('button', { name: /Top customers/ })).toBeVisible();
+  expect(
+    await sidebar.findByRole('button', { name: /Top customers/ }),
+  ).toBeVisible();
   await user.click(sidebar.getByRole('radio', { name: 'History' }));
   expect(
     await sidebar.findByText(

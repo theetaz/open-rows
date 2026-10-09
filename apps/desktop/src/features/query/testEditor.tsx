@@ -26,7 +26,8 @@ export function TextareaEditor(props: {
       // Formatting itself is tested in @openrows/editor; this records the request.
       format: (kind, options) => {
         const { dialect, indentWidth, indentWith, keywordCase } = options;
-        element.value = `-- ${kind} ${dialect} ${String(indentWidth)} ${indentWith} ${keywordCase}\n${element.value}`;
+        const layout = `${String(indentWidth)} ${indentWith} ${keywordCase} ${options.indentStyle}`;
+        element.value = `-- ${kind} ${dialect} ${layout}\n${element.value}`;
         return Promise.resolve();
       },
     });

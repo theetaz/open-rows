@@ -11,6 +11,7 @@ use std::time::Instant;
 use openrows_core::safety::{Gate, SafetyPlan, SafetyPolicy};
 use openrows_core::script::{Script, ScriptCanceller, run_script};
 use openrows_results::ResultStore;
+use openrows_sql::select::BoundSql;
 use openrows_store::LocalStore;
 use openrows_store::profile::{ConnectionProfile, ProfileId};
 use openrows_types::{QueryId, SessionId};
@@ -23,6 +24,7 @@ use super::dto::{
 };
 use super::events::{QueryEventDto, finished, translate};
 use super::history::HistoryLog;
+use super::params::{self, Binding};
 use crate::connections::drivers::driver;
 use crate::connections::{Connections, IpcError, IpcErrorKind};
 
@@ -33,16 +35,21 @@ struct Run {
     profile: ConnectionProfile,
     /// The database the session runs on, recorded in history.
     database: String,
+    /// Statement texts as written, recorded in history.
     statements: Vec<String>,
+    /// The statements with their bound parameters, as executed.
+    bound: Vec<BoundSql>,
     /// Rows kept per result set (the editor's row limit).
     max_rows: Option<usize>,
+    stop_on_error: bool,
     cancel: ScriptCanceller,
     events: Channel<QueryEventDto>,
 }
 
-/// Split, gate and start SQL on an open session.
+/// Split, bind, gate and start SQL on an open session.
 ///
-/// Read-only connections refuse writes (`blocked`); confirm-writes and
+/// Placeholders without values ask for them (`parametersRequired`);
+/// read-only connections refuse writes (`blocked`); confirm-writes and
 /// dangerous statements need a matching `confirmToken` (`confirmationRequired`).
 /// Otherwise the run starts and events stream over `on_event`.
 #[tauri::command]
@@ -66,6 +73,10 @@ pub(crate) async fn query_execute(
     if statements.is_empty() {
         return Err(IpcError::invalid("There is no SQL statement to run"));
     }
+    let bound = match params::bind(&statements, policy.dialect, request.params.as_ref()) {
+        Binding::Ready(bound) => bound,
+        Binding::Ask(names) => return Ok(ExecuteReply::ParametersRequired { names }),
+    };
     let plan = SafetyPlan::check(policy, statements);
     if let Some(reply) = refusal(&plan, &request) {
         return Ok(reply);
@@ -76,7 +87,9 @@ pub(crate) async fn query_execute(
         profile,
         database: owner.database,
         statements: plan.statements.iter().map(|s| s.sql.clone()).collect(),
+        bound,
         max_rows: request.row_cap(),
+        stop_on_error: request.return_on_error,
         cancel: ScriptCanceller::default(),
         events: on_event,
     };
@@ -134,8 +147,9 @@ async fn execute(app: AppHandle, run: Run) {
         &connections.sessions,
         run.session,
         Script {
-            statements: &run.statements,
+            statements: &run.bound,
             max_rows: run.max_rows,
+            stop_on_error: run.stop_on_error,
         },
         &run.cancel,
         |event| {

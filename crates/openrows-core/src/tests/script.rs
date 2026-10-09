@@ -21,11 +21,28 @@ async fn run(
     items: &[&str],
     cancel: &ScriptCanceller,
 ) -> (ScriptOutcome, Vec<ScriptEvent>) {
+    run_with(manager, session, items, cancel, true).await
+}
+
+async fn run_with(
+    manager: &SessionManager,
+    session: SessionId,
+    items: &[&str],
+    cancel: &ScriptCanceller,
+    stop_on_error: bool,
+) -> (ScriptOutcome, Vec<ScriptEvent>) {
     let mut seen = Vec::new();
-    let statements = owned(items);
+    let statements: Vec<BoundSql> = items
+        .iter()
+        .map(|item| BoundSql {
+            sql: (*item).to_owned(),
+            params: Vec::new(),
+        })
+        .collect();
     let script = Script {
         statements: &statements,
         max_rows: None,
+        stop_on_error,
     };
     let outcome = run_script(manager, session, script, cancel, |event| {
         seen.push(event);
@@ -116,6 +133,33 @@ async fn the_first_error_stops_the_run() -> TestResult {
         })
     ));
     assert_eq!(store.batches(), 1);
+    Ok(())
+}
+
+#[tokio::test]
+async fn without_return_on_error_every_statement_runs_and_each_error_is_reported() -> TestResult {
+    let (manager, store) = manager();
+    let session = open(&manager, None).await?;
+    let cancel = ScriptCanceller::default();
+    let (outcome, seen) = run_with(
+        &manager,
+        session,
+        &["fail", "rows 1 1", "fail", "update"],
+        &cancel,
+        false,
+    )
+    .await;
+    assert_eq!(outcome, ScriptOutcome::Failed);
+    assert_eq!(statements_seen(&seen), vec![0, 1, 2, 3]);
+    let failed: Vec<usize> = seen
+        .iter()
+        .filter(|event| matches!(event.event, QueryEvent::Failed { .. }))
+        .map(|event| event.statement)
+        .collect();
+    assert_eq!(failed, vec![0, 2]);
+    assert_eq!(store.batches(), 1);
+    let (clean, _) = run_with(&manager, session, &["rows 1 1"], &cancel, false).await;
+    assert_eq!(clean, ScriptOutcome::Completed);
     Ok(())
 }
 

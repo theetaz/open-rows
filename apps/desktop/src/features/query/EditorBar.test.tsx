@@ -1,11 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-import { render, screen, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { screen, within } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
-import { profile } from '../../test/ipcStub';
-import { QueryTab } from './QueryTab';
-import { idleRun } from './run';
-import type { QueryRuns } from './useQueryRuns';
+import { choose, fakeRuns, renderTab } from './testQueryTab';
 
 vi.mock('@openrows/ipc', async () =>
   (await import('../../test/ipcStub')).ipcStub(),
@@ -14,62 +10,9 @@ vi.mock('./QueryEditor', async () => ({
   QueryEditor: (await import('./testEditor')).TextareaEditor,
 }));
 
-function fakeRuns(): QueryRuns {
-  return {
-    runOf: () => idleRun,
-    execute: vi.fn(() => Promise.resolve()),
-    confirm: vi.fn(),
-    dismiss: vi.fn(),
-    cancel: vi.fn(),
-    release: vi.fn(),
-  };
-}
-
-function renderTab(runs: QueryRuns = fakeRuns()): {
-  user: ReturnType<typeof userEvent.setup>;
-  unmount: () => void;
-} {
-  const user = userEvent.setup();
-  const { unmount } = render(
-    <QueryTab
-      tab={{
-        id: 'query-1',
-        kind: 'query',
-        title: 'SQL Query 1',
-        sql: 'select 1',
-        connectionId: 'id-local',
-        database: 'orders',
-      }}
-      connection={profile('local')}
-      sessionId="session-1"
-      notice={null}
-      catalog={null}
-      runs={runs}
-      onSql={vi.fn()}
-      onCell={vi.fn()}
-      onConnect={vi.fn()}
-    />,
-  );
-  return { user, unmount };
-}
-
 const editorText = (): string =>
   screen.getByRole<HTMLTextAreaElement>('textbox', { name: 'SQL editor' })
     .value;
-
-async function choose(
-  user: ReturnType<typeof userEvent.setup>,
-  button: string,
-  item: RegExp,
-): Promise<void> {
-  await user.click(screen.getByRole('button', { name: button }));
-  const menu = screen.getByRole('menu', { name: button });
-  const row = Array.from(
-    menu.querySelectorAll<HTMLElement>('[role^="menuitem"]'),
-  ).find((element) => item.test(element.textContent));
-  if (!row) throw new Error(`no ${String(item)} in ${button}`);
-  await user.click(row);
-}
 
 it('applies the row limit to runs and remembers it', async () => {
   const runs = fakeRuns();
@@ -98,15 +41,17 @@ it('applies the row limit to runs and remembers it', async () => {
 it('beautifies and uglifies with the chosen layout options', async () => {
   const { user } = renderTab();
   await choose(user, 'Format options', /Uglify/);
-  expect(editorText()).toMatch(/^-- uglify postgres 2 spaces upper\n/);
+  expect(editorText()).toMatch(/^-- uglify postgres 2 spaces upper standard\n/);
   await user.click(screen.getByRole('button', { name: 'Format options' }));
   await user.click(screen.getByRole('menuitem', { name: /Indent Width/ }));
   await user.click(screen.getByRole('menuitemradio', { name: /4 spaces/ }));
   await user.click(screen.getByRole('button', { name: 'Beautify' }));
-  expect(editorText()).toMatch(/^-- beautify postgres 4 spaces upper\n/);
+  expect(editorText()).toMatch(
+    /^-- beautify postgres 4 spaces upper standard\n/,
+  );
   await user.click(screen.getByRole('textbox', { name: 'SQL editor' }));
   await user.keyboard('{Meta>}{Shift>}i{/Shift}{/Meta}');
-  expect(editorText()).toMatch(/^-- uglify postgres 4 spaces upper\n/);
+  expect(editorText()).toMatch(/^-- uglify postgres 4 spaces upper standard\n/);
 });
 
 it('opens settings submenus by keyboard and toggles checked options', async () => {

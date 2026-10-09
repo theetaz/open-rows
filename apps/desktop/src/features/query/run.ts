@@ -32,6 +32,7 @@ export type RunStatus =
   | 'failed'
   | 'cancelled'
   | 'confirm'
+  | 'parameters'
   | 'blocked';
 
 /** One tab's latest run: status, result metadata, messages; never row data. */
@@ -46,6 +47,8 @@ export type RunState = {
   elapsedMs: number | null;
   /** The request to resend with `token` once the user confirms. */
   pending: { request: ExecuteRequest; token: string } | null;
+  /** The request to resend once the user entered these parameter values. */
+  parameters: { request: ExecuteRequest; names: readonly string[] } | null;
 };
 
 export const idleRun: RunState = {
@@ -58,6 +61,7 @@ export const idleRun: RunState = {
   done: 0,
   elapsedMs: null,
   pending: null,
+  parameters: null,
 };
 
 export type RunAction =
@@ -90,7 +94,7 @@ export function runReducer(state: RunState, action: RunAction): RunState {
     case 'event':
       return applyEvent(state, action.event);
     case 'dismiss':
-      return { ...state, status: 'idle', pending: null };
+      return { ...state, status: 'idle', pending: null, parameters: null };
   }
 }
 
@@ -107,12 +111,11 @@ function applyReply(
   reply: ExecuteReply,
   request: ExecuteRequest,
 ): RunState {
-  const { statements } = reply;
   switch (reply.kind) {
     case 'started':
       return {
         ...state,
-        statements,
+        statements: reply.statements,
         queryId: reply.queryId,
         status: state.status === 'starting' ? 'running' : state.status,
       };
@@ -120,15 +123,21 @@ function applyReply(
       return {
         ...idleRun,
         status: 'confirm',
-        statements,
+        statements: reply.statements,
         pending: { request, token: reply.token },
       };
     case 'blocked':
       return {
         ...idleRun,
         status: 'blocked',
-        statements,
+        statements: reply.statements,
         messages: [error(0, reply.message, null)],
+      };
+    case 'parametersRequired':
+      return {
+        ...idleRun,
+        status: 'parameters',
+        parameters: { request, names: reply.names },
       };
   }
 }

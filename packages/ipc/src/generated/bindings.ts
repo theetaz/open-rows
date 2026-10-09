@@ -68,9 +68,10 @@ export const commands = {
 	 */
 	catalogSearch: (profileId: string, database: string) => typedError<ObjectDto[], IpcError>(__TAURI_INVOKE("catalog_search", { profileId, database })),
 	/**
-	 *  Split, gate and start SQL on an open session.
+	 *  Split, bind, gate and start SQL on an open session.
 	 * 
-	 *  Read-only connections refuse writes (`blocked`); confirm-writes and
+	 *  Placeholders without values ask for them (`parametersRequired`);
+	 *  read-only connections refuse writes (`blocked`); confirm-writes and
 	 *  dangerous statements need a matching `confirmToken` (`confirmationRequired`).
 	 *  Otherwise the run starts and events stream over `on_event`.
 	 */
@@ -90,6 +91,26 @@ export const commands = {
 	historyClear: (profileId: string) => typedError<null, IpcError>(__TAURI_INVOKE("history_clear", { profileId })),
 	/**  Kind and byte length of one cell (value inspector); nothing is copied. */
 	resultCellInfo: (request: CellRequest) => typedError<CellInfoDto, ResultError>(__TAURI_INVOKE("result_cell_info", { request })),
+	/**  Saved queries of a connection, by name. */
+	savedQueriesList: (profileId: string) => typedError<SavedQueryDto[], IpcError>(__TAURI_INVOKE("saved_queries_list", { profileId })),
+	/**  Save SQL under a name on a connection. */
+	savedQueryCreate: (profileId: string, name: string, sql: string) => typedError<SavedQueryDto, IpcError>(__TAURI_INVOKE("saved_query_create", { profileId, name, sql })),
+	/**  Rename a saved query. */
+	savedQueryRename: (id: string, name: string) => typedError<null, IpcError>(__TAURI_INVOKE("saved_query_rename", { id, name })),
+	/**  Delete a saved query. */
+	savedQueryDelete: (id: string) => typedError<null, IpcError>(__TAURI_INVOKE("saved_query_delete", { id })),
+	/**  Ask where to save `sql` and write it; `null` when the panel is cancelled. */
+	sqlFileSaveAs: (title: string, sql: string) => typedError<{
+	path: string,
+	name: string,
+} | null, IpcError>(__TAURI_INVOKE("sql_file_save_as", { title, sql })),
+	/**  Write a tab's SQL to the `.sql` file it is bound to. */
+	sqlFileSave: (path: string, sql: string) => typedError<null, IpcError>(__TAURI_INVOKE("sql_file_save", { path, sql })),
+	/**  Pick a `.sql` file and read it; `null` when the panel is cancelled. */
+	sqlFileOpen: () => typedError<{
+	file: SqlFileDto,
+	sql: string,
+} | null, IpcError>(__TAURI_INVOKE("sql_file_open")),
 	/**  Columns, indexes and row estimate of a relation, read on the metadata session. */
 	tableStructure: (target: TableTarget) => typedError<TableStructureDto, IpcError>(__TAURI_INVOKE("table_structure", { target })),
 	/**  The page `SELECT` and its bind parameters, without running it (SQL preview). */
@@ -308,7 +329,9 @@ export type ExecuteReply =
 /**  Nothing ran: show the statements and resend with `confirmToken`. */
 { kind: "confirmationRequired"; token: string; statements: StatementDto[] } | 
 /**  Nothing ran: the connection is read-only. */
-{ kind: "blocked"; message: string; statements: StatementDto[] };
+{ kind: "blocked"; message: string; statements: StatementDto[] } | 
+/**  Nothing ran: resend with a value for each parameter name. */
+{ kind: "parametersRequired"; names: string[] };
 
 /**  Run SQL on an open session. */
 export type ExecuteRequest = {
@@ -324,6 +347,10 @@ export type ExecuteRequest = {
 	 *  result store's default cap.
 	 */
 	maxRows?: number | null,
+	/**  Stop at the first failed statement ("Return on Error", the default). */
+	returnOnError?: boolean,
+	/**  Parameter placeholders to bind; `None` runs the text as written. */
+	params?: ParamsDto | null,
 };
 
 /**  The database file of a file engine, in the form and in saved profiles. */
@@ -522,6 +549,12 @@ export type ObjectDto = {
 /**  Object kinds the schema tree lists. */
 export type ObjectKindDto = "table" | "view" | "materializedView" | "foreignTable" | "function" | "procedure" | "sequence";
 
+/**  An opened `.sql` file and its text. */
+export type OpenedSqlFileDto = {
+	file: SqlFileDto,
+	sql: string,
+};
+
 /**  A started page: cancel with `query_cancel(queryId)`; events follow. */
 export type PageReply = {
 	queryId: string,
@@ -539,6 +572,27 @@ export type PageRequest = {
 export type PageTimer = {
 	resolutionMs: number | null,
 	crossOriginIsolated: boolean,
+};
+
+/**  Which placeholders the editor treats as parameters. */
+export type ParamStyleDto = 
+/**  `:name`. */
+"named" | 
+/**  `$1` (`PostgreSQL`), `?1` (`SQLite`). */
+"numbered" | 
+/**  `?`, asked for as `?1`, `?2`, … across the run. */
+"anonymous";
+
+/**  A value the user entered for one parameter name. */
+export type ParamValueDto = {
+	name: string,
+	value: string,
+};
+
+/**  Parameters of a run; `values` is `null` until the user entered them. */
+export type ParamsDto = {
+	style: ParamStyleDto,
+	values: ParamValueDto[] | null,
 };
 
 /**  What to do with the password on save or test; `Debug` redacts secrets. */
@@ -671,6 +725,15 @@ export type SavedEditsDto = {
 	savedAtMs: number | null,
 };
 
+/**  A saved query; timestamps are Unix epoch milliseconds. */
+export type SavedQueryDto = {
+	id: string,
+	name: string,
+	sql: string,
+	createdAtMs: number | null,
+	updatedAtMs: number | null,
+};
+
 /**  One staged structure change; columns are named by their current name. */
 export type SchemaChangeDto = { kind: "renameTable"; name: string } | { kind: "tableComment"; comment: string | null } | { kind: "renameColumn"; column: string; name: string } | { kind: "columnType"; column: string; dataType: string } | { kind: "columnNullable"; column: string; nullable: boolean } | { kind: "columnDefault"; column: string; default: DefaultDto } | { kind: "columnComment"; column: string; comment: string | null } | { kind: "addColumn"; name: string; dataType: string; nullable: boolean; default: DefaultDto; comment: string | null } | { kind: "dropColumn"; column: string } | { kind: "createIndex"; name: string | null; columns: string[]; unique: boolean; method: IndexMethodDto } | { kind: "dropIndex"; name: string };
 
@@ -747,6 +810,12 @@ export type SpikeReport_Serialize = {
 	error: string | null,
 	grid?: GridRun[] | null,
 	editor?: EditorRun[] | null,
+};
+
+/**  A `.sql` file a tab is bound to; `name` is its file name. */
+export type SqlFileDto = {
+	path: string,
+	name: string,
 };
 
 /**  Generated SQL and its bind parameters, for the SQL preview. */

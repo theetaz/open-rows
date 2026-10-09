@@ -7,15 +7,25 @@ import { QueryEditor } from './QueryEditor';
 import { EditorBar } from './EditorBar';
 import { ResultPane } from './ResultPane';
 import { ConfirmRun } from './ConfirmRun';
+import { ParamsSheet } from './ParamsSheet';
+import { NameSheet } from './NameSheet';
 import { createCursorStore } from './cursor';
 import { useEditorSettings } from './editorSettings';
 import type { EditorSettings } from './editorSettings';
 import { isActive } from './run';
-import { formatKindOf, runRequest, runScopeOf } from './request';
-import type { EditorHandle, RunScope } from './request';
+import type { RunState } from './run';
+import { fileActionOf, formatKindOf, runScopeOf } from './request';
+import type { EditorHandle, FileAction, RunScope } from './request';
+import { useRunActions } from './useRunActions';
+import type { RunActions } from './useRunActions';
+import type { RunMenu } from './runMenu';
 import { statusText } from './status';
+import { addSavedQuery } from './savedQueries';
+import { useTabFiles } from './useTabFiles';
+import type { TabFileActions } from './useTabFiles';
 import type { QueryTab as Tab } from './tabs';
 import type { QueryRuns } from './useQueryRuns';
+import type { QueryTabs } from './useQueryTabs';
 import type { SelectedCell } from './cell';
 import styles from './Query.module.css';
 
@@ -29,7 +39,8 @@ type QueryTabProps = {
   /** Schema data for completion; `null` while disconnected. */
   catalog: CompletionCatalog | null;
   runs: QueryRuns;
-  onSql: (tabId: string, sql: string) => void;
+  /** Tab-set actions: text, files and parameter values. */
+  tabs: TabFileActions & Pick<QueryTabs, 'setParams'>;
   onCell: (cell: SelectedCell) => void;
   onConnect: () => void;
 };
@@ -45,9 +56,9 @@ function useFormat(
 ): [string | null, (kind: FormatKind) => void] {
   const [failure, setFailure] = useState<string | null>(null);
   const format = (kind: FormatKind): void => {
-    const { indentWidth, indentWith, keywordCase } = settings;
+    const { indentWidth, indentWith, keywordCase, indentStyle } = settings;
     const options = { dialect, indentWidth, indentWith, keywordCase };
-    editor.current?.format(kind, options).then(
+    editor.current?.format(kind, { ...options, indentStyle }).then(
       () => {
         setFailure(null);
       },
@@ -59,18 +70,47 @@ function useFormat(
   return [failure, format];
 }
 
-/** Run (⌘↵, ⇧⌘↵) and format (⌘I, ⇧⌘I) shortcuts anywhere in the tab. */
+/** Run (⌘↵, ⇧⌘↵), format (⌘I, ⇧⌘I) and file (⌘S, ⇧⌘S, ⌘O) shortcuts anywhere in the tab. */
 function shortcut(
   event: KeyboardEvent<HTMLElement>,
-  start: (scope: RunScope) => void,
+  start: (key: RunScope) => void,
   format: (kind: FormatKind) => void,
+  file: (action: FileAction) => void,
 ): void {
   const scope = runScopeOf(event);
   const kind = formatKindOf(event);
+  const action = fileActionOf(event);
   if (scope) start(scope);
   else if (kind) format(kind);
+  else if (action) file(action);
   else return;
   event.preventDefault();
+}
+
+/** Run's dropdown wired to the tab's run, settings and file actions. */
+function runMenuOf(input: {
+  ready: boolean;
+  settings: EditorSettings;
+  update: (change: Partial<EditorSettings>) => void;
+  actions: RunActions;
+  file: (action: FileAction) => void;
+  onName: () => void;
+}): RunMenu {
+  return {
+    ready: input.ready,
+    runDefault: input.settings.runDefault,
+    onRun: input.actions.run,
+    onDefault: (scope) => {
+      input.update({ runDefault: scope });
+    },
+    onSaveAs: () => {
+      input.file('saveAs');
+    },
+    onOpenFile: () => {
+      input.file('open');
+    },
+    onAddToQueries: input.onName,
+  };
 }
 
 /** Editor, bottom bar, results and status for one query tab. */
@@ -79,24 +119,19 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
   const editor = useRef<EditorHandle | null>(null);
   const [cursor] = useState(createCursorStore);
   const [settings, updateSettings] = useEditorSettings();
+  const [naming, setNaming] = useState(false);
   const dialect = props.connection.engine;
   const [formatFailure, format] = useFormat(editor, settings, dialect);
+  const files = useTabFiles(tab, editor, props.tabs);
   const run = runs.runOf(tab.id);
-  const start = (scope: RunScope): void => {
-    const handle = editor.current;
-    if (!handle || !sessionId || isActive(run)) return;
-    const request = runRequest(handle, scope, sessionId, settings.rowLimit);
-    if (!request) return;
-    props.onSql(tab.id, handle.text());
-    void runs.execute(tab.id, request);
-  };
+  const actions = useRunActions(editor, settings, props);
   const active = isActive(run);
   return (
     <section
       className={styles.query}
       aria-label={tab.title}
       onKeyDown={(event) => {
-        shortcut(event, start, format);
+        shortcut(event, actions.runKey, format, files.act);
       }}
     >
       <QueryEditor
@@ -107,9 +142,9 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
         catalog={props.catalog}
         cursor={cursor}
         onChange={(sql) => {
-          props.onSql(tab.id, sql);
+          props.tabs.edit(tab.id, sql);
         }}
-        onRun={start}
+        onRun={actions.runKey}
         onFormat={format}
         onReady={(handle) => {
           editor.current = handle;
@@ -118,35 +153,112 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
       <EditorBar
         settings={settings}
         onSettings={updateSettings}
+        dialect={dialect}
         cursor={cursor}
         running={active}
-        ready={sessionId !== null && !active}
         cancellable={run.queryId !== null}
-        notice={props.notice ?? formatFailure}
+        notice={props.notice ?? formatFailure ?? files.failure}
         offline={sessionId === null}
         onConnect={props.onConnect}
-        onRun={start}
+        run={runMenuOf({
+          ready: sessionId !== null && !active,
+          settings,
+          update: updateSettings,
+          actions,
+          file: files.act,
+          onName: () => {
+            setNaming(true);
+          },
+        })}
+        onRunDefault={() => {
+          actions.runKey('current');
+        }}
         onCancel={() => {
           runs.cancel(tab.id);
         }}
         onFormat={format}
       />
-      <ResultPane run={run} onCell={props.onCell} />
-      <footer className={styles.status} role="status" aria-label="Query status">
-        {statusText(run)}
-      </footer>
-      {run.status === 'confirm' && (
-        <ConfirmRun
-          connection={props.connection.name}
-          statements={run.statements}
-          onConfirm={() => {
-            runs.confirm(tab.id);
-          }}
-          onCancel={() => {
-            runs.dismiss(tab.id);
-          }}
-        />
-      )}
+      <TabResults run={run} settings={settings} onCell={props.onCell} />
+      <TabSheets
+        {...props}
+        naming={naming}
+        onNamed={() => {
+          setNaming(false);
+        }}
+        onProvide={actions.provide}
+        text={() => editor.current?.text() ?? tab.sql}
+      />
     </section>
   );
+}
+
+/** Results of the latest run and its one-line status. */
+function TabResults(props: {
+  run: RunState;
+  settings: EditorSettings;
+  onCell: (cell: SelectedCell) => void;
+}): React.JSX.Element {
+  return (
+    <>
+      <ResultPane
+        run={props.run}
+        view={props.settings.resultView}
+        runDefault={props.settings.runDefault}
+        onCell={props.onCell}
+      />
+      <footer className={styles.status} role="status" aria-label="Query status">
+        {statusText(props.run)}
+      </footer>
+    </>
+  );
+}
+
+/** Confirmation, parameter values and the Add to Queries name, when asked for. */
+function TabSheets(
+  props: QueryTabProps & {
+    naming: boolean;
+    onNamed: () => void;
+    onProvide: (values: Readonly<Record<string, string>>) => void;
+    text: () => string;
+  },
+): React.JSX.Element | null {
+  const { tab, runs } = props;
+  const run = runs.runOf(tab.id);
+  const dismiss = (): void => {
+    runs.dismiss(tab.id);
+  };
+  if (props.naming)
+    return (
+      <NameSheet
+        title="Add to Queries"
+        label="Query name"
+        initial={tab.title}
+        action="Add"
+        onSubmit={(name) =>
+          addSavedQuery(props.connection.id, name, props.text())
+        }
+        onClose={props.onNamed}
+      />
+    );
+  if (run.status === 'parameters' && run.parameters)
+    return (
+      <ParamsSheet
+        names={run.parameters.names}
+        last={tab.params ?? {}}
+        onRun={props.onProvide}
+        onCancel={dismiss}
+      />
+    );
+  if (run.status === 'confirm')
+    return (
+      <ConfirmRun
+        connection={props.connection.name}
+        statements={run.statements}
+        onConfirm={() => {
+          runs.confirm(tab.id);
+        }}
+        onCancel={dismiss}
+      />
+    );
+  return null;
 }
