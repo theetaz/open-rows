@@ -122,22 +122,32 @@ fn scope(connections: &Connections, request: &DumpScopeRequest) -> Result<Scope,
         .owner(session)
         .ok_or_else(|| IpcError::new(IpcErrorKind::NotFound, "The session is not open"))?;
     let profile = connections.profiles.get(owner.profile)?;
-    let engine = match profile.driver {
+    let engine = engine(profile.driver)?;
+    Ok(Scope {
+        database: owner.database,
+        server: request.server(engine),
+        engine,
+        profile,
+    })
+}
+
+fn engine(driver: Driver) -> Result<DumpEngineDto, IpcError> {
+    Ok(match driver {
         Driver::Postgres => DumpEngineDto::Postgres,
         Driver::Mysql | Driver::Mariadb => DumpEngineDto::Mysql,
         Driver::Sqlite => DumpEngineDto::Sqlite,
+        Driver::Clickhouse => {
+            return Err(IpcError::new(
+                IpcErrorKind::Unsupported,
+                "Backup and restore are not available for ClickHouse yet",
+            ));
+        }
         Driver::Sqlserver => {
             return Err(IpcError::new(
                 IpcErrorKind::Unsupported,
                 "Backup and restore are not available for SQL Server yet",
             ));
         }
-    };
-    Ok(Scope {
-        database: owner.database,
-        server: request.server(engine),
-        engine,
-        profile,
     })
 }
 
@@ -167,4 +177,15 @@ fn dump_error(error: &openrows_dump::DumpError) -> IpcError {
         _ => IpcErrorKind::Invalid,
     };
     IpcError::new(kind, crate::exports::capitalised(&error.to_string()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn clickhouse_backup_and_restore_are_typed_unsupported() {
+        let error = engine(Driver::Clickhouse).expect_err("no ClickHouse dump tool");
+        assert_eq!(error.kind, IpcErrorKind::Unsupported);
+    }
 }

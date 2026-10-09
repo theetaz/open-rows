@@ -28,7 +28,7 @@ pub fn string_literal(dialect: Dialect, text: &str) -> Option<String> {
     }
     let doubled = text.replace('\'', "''");
     Some(match dialect {
-        Dialect::MySql => format!("'{}'", doubled.replace('\\', "\\\\")),
+        Dialect::MySql | Dialect::ClickHouse => format!("'{}'", doubled.replace('\\', "\\\\")),
         Dialect::Postgres | Dialect::Sqlite => format!("'{doubled}'"),
         Dialect::SqlServer => format!("N'{doubled}'"),
     })

@@ -286,12 +286,43 @@ const SQL_SERVER_TYPES: &[TypeCase] = &[
     ),
 ];
 
+const CLICKHOUSE_TYPES: &[TypeCase] = &[
+    case("null", "CAST(NULL AS Nullable(Int64))", Arrow::Int64, None),
+    case(
+        "int8",
+        "toInt64(-9007199254740993)",
+        Arrow::Int64,
+        Some("-9007199254740993"),
+    ),
+    case("float", "toFloat64(1.5)", Arrow::Float64, Some("1.5")),
+    case(
+        "text",
+        "CAST('héllo, 世界 ✓ ''q''' AS String)",
+        Arrow::Utf8,
+        Some(UNICODE),
+    ),
+    case("empty", "CAST('' AS String)", Arrow::Utf8, Some("")),
+    case(
+        "decimal",
+        "CAST('12.50' AS Decimal(10, 2))",
+        Arrow::Decimal(10, 2),
+        Some("12.50"),
+    ),
+    case(
+        "date",
+        "toDate32('2024-05-06')",
+        Arrow::Date32,
+        Some("2024-05-06"),
+    ),
+];
+
 /// The literal round-trips of `dialect`.
 pub(crate) fn type_cases(dialect: Dialect) -> &'static [TypeCase] {
     match dialect {
         Dialect::MySql => MYSQL_TYPES,
         Dialect::Sqlite => SQLITE_TYPES,
         Dialect::SqlServer => SQL_SERVER_TYPES,
+        Dialect::ClickHouse => CLICKHOUSE_TYPES,
         _ => POSTGRES_TYPES,
     }
 }
@@ -338,6 +369,7 @@ pub(crate) fn sleep(dialect: Dialect, seconds: u32) -> String {
             seconds / 60 % 60,
             seconds % 60
         ),
+        Dialect::ClickHouse => format!("SELECT sleep({})", seconds.min(3)),
         _ => format!("SELECT pg_sleep({seconds})"),
     }
 }
@@ -356,6 +388,13 @@ pub(crate) struct Codes {
 /// driver's SQLSTATEs (cancel `HY008`); the others follow `PostgreSQL`.
 pub(crate) fn codes(dialect: Dialect) -> Codes {
     match dialect {
+        Dialect::ClickHouse => Codes {
+            syntax: "42601",
+            undefined_table: "42P01",
+            unique: "HY000",
+            not_null: "23502",
+            cancelled: "57014",
+        },
         Dialect::SqlServer => Codes {
             syntax: "42000",
             undefined_table: "42S02",

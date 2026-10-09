@@ -45,3 +45,13 @@ it('treats T-SQL variables, temp tables and bracketed names as no parameters', (
   expect(paramNames(sql, 'sqlserver', 'named')).toEqual([':id']);
   expect(paramNames(sql, 'sqlserver', 'anonymous')).toEqual(['?1']);
 });
+
+it('ClickHouse typed parameters skip quoted and commented look-alikes', () => {
+  expect(
+    paramNames(
+      "SELECT {n:UInt64}, {v:Nullable(String)}, '{x:Int32}', `a\\`{hidden:String}` -- {c:String}",
+      'clickhouse',
+      'named',
+    ),
+  ).toEqual(['{n:UInt64}', '{v:Nullable(String)}']);
+});

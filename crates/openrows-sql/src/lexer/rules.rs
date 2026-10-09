@@ -22,6 +22,7 @@ impl Lexer<'_> {
             Dialect::MySql => self.mysql(byte),
             Dialect::Sqlite => self.sqlite(byte),
             Dialect::SqlServer => self.sqlserver(byte),
+            Dialect::ClickHouse => self.clickhouse(byte),
         };
         special.unwrap_or_else(|| self.common(byte))
     }
@@ -39,7 +40,7 @@ impl Lexer<'_> {
                 self.token(TokenKind::BlockComment, self.block_comment_end(nested))
             }
             b'\'' => {
-                let escapes = self.dialect == Dialect::MySql;
+                let escapes = matches!(self.dialect, Dialect::MySql | Dialect::ClickHouse);
                 self.token(TokenKind::String, self.quoted_end(self.pos, b'\'', escapes))
             }
             b'"' => self.token(
@@ -49,6 +50,18 @@ impl Lexer<'_> {
             b if is_ident_start(b) => self.plain_word(),
             b if b.is_ascii_digit() => self.number(),
             _ => self.token(single_byte_kind(byte), self.pos + 1),
+        }
+    }
+
+    fn clickhouse(&self, byte: u8) -> Option<Token> {
+        match byte {
+            b'`' | b'"' => Some(self.token(
+                TokenKind::QuotedIdent,
+                self.quoted_end(self.pos, byte, true),
+            )),
+            b'#' => Some(self.token(TokenKind::LineComment, self.line_comment_end())),
+            b'{' => Some(self.token(TokenKind::Param, self.until_end(b'}'))),
+            _ => None,
         }
     }
 

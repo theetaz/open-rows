@@ -23,17 +23,20 @@ pub enum Driver {
     Mariadb,
     /// SQL Server and Azure SQL.
     Sqlserver,
+    /// `ClickHouse` over HTTP(S).
+    Clickhouse,
     /// A local `SQLite` 3 file.
     Sqlite,
 }
 
 impl Driver {
     /// Every engine, in picker order.
-    pub const ALL: [Self; 5] = [
+    pub const ALL: [Self; 6] = [
         Self::Postgres,
         Self::Mysql,
         Self::Mariadb,
         Self::Sqlserver,
+        Self::Clickhouse,
         Self::Sqlite,
     ];
 
@@ -45,6 +48,7 @@ impl Driver {
             Self::Mysql => "MySQL",
             Self::Mariadb => "MariaDB",
             Self::Sqlserver => "SQL Server",
+            Self::Clickhouse => "ClickHouse",
             Self::Sqlite => "SQLite",
         }
     }
@@ -56,6 +60,7 @@ impl Driver {
             Self::Postgres => Some(5432),
             Self::Mysql | Self::Mariadb => Some(3306),
             Self::Sqlserver => Some(1433),
+            Self::Clickhouse => Some(8123),
             Self::Sqlite => None,
         }
     }

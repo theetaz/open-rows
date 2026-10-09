@@ -26,5 +26,7 @@ export function isSystemObject(
       return schema === 'sys' || schema === 'information_schema';
     case 'sqlite':
       return object.name.toLowerCase().startsWith('sqlite_');
+    case 'clickhouse':
+      return schema === 'system' || schema === 'information_schema';
   }
 }

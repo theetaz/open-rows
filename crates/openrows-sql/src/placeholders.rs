@@ -106,6 +106,9 @@ impl Scanner<'_> {
 
 /// `$1` and `SQLite` `?1` are positional; `SQLite` `$name` is named.
 fn param_kind(text: &str) -> PlaceholderKind {
+    if text.starts_with('{') {
+        return PlaceholderKind::Named;
+    }
     let numbered = text
         .get(1..)
         .is_some_and(|rest| rest.bytes().all(|byte| byte.is_ascii_digit()));

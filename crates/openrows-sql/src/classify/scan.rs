@@ -162,6 +162,6 @@ fn is_side_effect_call(sql: Sql<'_>, index: usize) -> bool {
         Dialect::MySql => MYSQL_SIDE_EFFECTS.contains(&name.as_str()),
         Dialect::Sqlite => SQLITE_SIDE_EFFECTS.contains(&name.as_str()),
         // T-SQL functions cannot change data; sequences are `NEXT VALUE FOR`.
-        Dialect::SqlServer => false,
+        Dialect::SqlServer | Dialect::ClickHouse => false,
     }
 }

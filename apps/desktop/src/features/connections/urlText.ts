@@ -110,6 +110,10 @@ const SQL_SERVER_TLS: Partial<Record<TlsModeDto, string>> = {
 };
 
 function tlsQuery(draft: Draft): string {
+  if (draft.engine === 'clickhouse')
+    return ['disable', 'verify-full'].includes(draft.tlsMode)
+      ? ''
+      : `?sslmode=${draft.tlsMode}`;
   if (draft.tlsMode === defaultTls(draft.host)) return '';
   const sqlServer =
     draft.engine === 'sqlserver' ? SQL_SERVER_TLS[draft.tlsMode] : undefined;
@@ -137,6 +141,10 @@ export function composeUrl(draft: Draft): string {
   const database = draft.database.trim()
     ? `/${encodeURIComponent(draft.database.trim())}`
     : '';
-  const scheme = urlScheme(draft.engine);
+  const scheme =
+    draft.engine === 'clickhouse' &&
+    ['require', 'verify-ca', 'verify-full'].includes(draft.tlsMode)
+      ? 'clickhouse+https'
+      : urlScheme(draft.engine);
   return `${scheme}://${auth}${host.trim()}${port}${database}${tlsQuery(draft)}`;
 }

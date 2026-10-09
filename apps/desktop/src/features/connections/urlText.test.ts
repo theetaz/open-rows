@@ -100,3 +100,21 @@ it('masks a JDBC password property', () => {
     'jdbc:sqlserver://db.test:1433;databaseName=shop;encrypt=true',
   );
 });
+
+it('composes masked ClickHouse HTTP and HTTPS URLs', () => {
+  const draft = {
+    ...emptyDraft('clickhouse'),
+    user: 'default',
+    database: 'db',
+    password: 'test-only',
+  };
+  expect(composeUrl(draft)).toBe(
+    `clickhouse://default:${PASSWORD_MASK}@localhost:8123/db`,
+  );
+  expect(composeUrl({ ...draft, tlsMode: 'verify-full', port: '8443' })).toBe(
+    `clickhouse+https://default:${PASSWORD_MASK}@localhost:8443/db`,
+  );
+  expect(composeUrl({ ...draft, tlsMode: 'require', port: '9443' })).toContain(
+    ':9443/db?sslmode=require',
+  );
+});

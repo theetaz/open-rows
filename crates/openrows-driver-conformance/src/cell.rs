@@ -7,7 +7,8 @@ use std::fmt::Write as _;
 use arrow_array::cast::AsArray;
 use arrow_array::types::{
     Date32Type, Decimal128Type, Float32Type, Float64Type, Int8Type, Int16Type, Int32Type,
-    Int64Type, IntervalMonthDayNanoType, Time64MicrosecondType, UInt64Type,
+    Int64Type, IntervalMonthDayNanoType, Time64MicrosecondType, UInt8Type, UInt16Type, UInt32Type,
+    UInt64Type,
 };
 use arrow_array::{Array, ArrowPrimitiveType, PrimitiveArray};
 use arrow_schema::DataType;
@@ -48,6 +49,9 @@ pub(crate) fn text(array: &dyn Array, row: usize) -> Result<Option<String>, Fail
         DataType::Int16 => primitive::<Int16Type>(array, row),
         DataType::Int32 => primitive::<Int32Type>(array, row),
         DataType::Int64 => primitive::<Int64Type>(array, row),
+        DataType::UInt8 => primitive::<UInt8Type>(array, row),
+        DataType::UInt16 => primitive::<UInt16Type>(array, row),
+        DataType::UInt32 => primitive::<UInt32Type>(array, row),
         DataType::UInt64 => primitive::<UInt64Type>(array, row),
         DataType::Float32 => primitive::<Float32Type>(array, row),
         DataType::Float64 => primitive::<Float64Type>(array, row),

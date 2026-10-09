@@ -21,7 +21,8 @@ const TSQL_NAMES: [Kind, RegExp] = [
  * look-alikes inside them are never parameters.
  */
 function rules(dialect: EditorDialect): readonly [Kind, RegExp][] {
-  const mysql = dialect === 'mysql' || dialect === 'mariadb';
+  const mysql =
+    dialect === 'mysql' || dialect === 'mariadb' || dialect === 'clickhouse';
   const sqlite = dialect === 'sqlite';
   const tsql = dialect === 'sqlserver';
   return [
@@ -33,7 +34,15 @@ function rules(dialect: EditorDialect): readonly [Kind, RegExp][] {
         ? /'(?:[^'\\]|\\[\s\S]|'')*'?|"(?:[^"\\]|\\[\s\S]|"")*"?/y
         : /[Ee]'(?:[^'\\]|\\[\s\S]|'')*'?|'(?:[^']|'')*'?|"(?:[^"]|"")*"?/y,
     ],
-    ['other', /`(?:[^`]|``)*`?/y],
+    [
+      'other',
+      dialect === 'clickhouse'
+        ? /`(?:[^`\\]|\\[\s\S]|``)*`?/y
+        : /`(?:[^`]|``)*`?/y,
+    ],
+    ...(dialect === 'clickhouse'
+      ? ([['named', /\{[A-Za-z_]\w*:[^}]+\}/y]] as [Kind, RegExp][])
+      : []),
     ...(tsql ? [TSQL_NAMES] : []),
     ['other', /\$([A-Za-z_]\w*)?\$[\s\S]*?(?:\$\1\$|$)/y],
     ['other', /[A-Za-z_\u0080-￿][\w$\u0080-￿]*/y],

@@ -61,6 +61,9 @@ fn connect_hint(error: &IpcError, engine: Engine) -> &'static str {
             "Check that the server is running and listens on this host and port \
              (bind-address, port), and that no firewall blocks it."
         }
+        Engine::Clickhouse => {
+            "Check the ClickHouse HTTP port (8123) or HTTPS port (8443), and the selected TLS mode."
+        }
         Engine::Sqlserver => {
             "Check that SQL Server is running, has TCP/IP enabled and listens on this host \
              and port (named instances need their port), and that no firewall blocks it."

@@ -18,6 +18,7 @@ const EXAMPLES: Record<EngineDto, string> = {
   sqlserver:
     'sqlserver://user:password@host:1433/database?encrypt=true&trustServerCertificate=false',
   sqlite: 'sqlite:/path/to/database.sqlite',
+  clickhouse: 'clickhouse://user:password@host:8123/database',
 };
 
 export function UrlField({

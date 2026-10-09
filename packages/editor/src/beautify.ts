@@ -5,6 +5,7 @@ import {
   mysql,
   postgresql,
   sqlite,
+  clickhouse,
   transactsql,
 } from 'sql-formatter';
 import type { DialectOptions, ParamTypes } from 'sql-formatter';
@@ -17,6 +18,7 @@ const DIALECTS: Record<EditorDialect, DialectOptions> = {
   mariadb,
   sqlserver: transactsql,
   sqlite,
+  clickhouse,
 };
 
 /**
@@ -29,6 +31,7 @@ const PARAMS: Record<EditorDialect, ParamTypes> = {
   postgres: { numbered: ['$'], named: [':'] },
   mysql: { positional: true, named: [':'] },
   mariadb: { positional: true, named: [':'] },
+  clickhouse: { named: [':'] },
   sqlserver: { positional: true, named: [':'] },
   sqlite: { positional: true, numbered: ['?', '$'], named: [':', '@', '$'] },
 };

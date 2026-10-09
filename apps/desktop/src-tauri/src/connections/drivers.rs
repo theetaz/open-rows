@@ -2,6 +2,7 @@
 //! The driver registry: the only place that names driver crates. Every
 //! command resolves a profile's engine here (docs/05 §2).
 use openrows_driver_api::Driver;
+use openrows_driver_clickhouse::ClickHouseDriver;
 use openrows_driver_mssql::SqlServerDriver;
 use openrows_driver_mysql::{Flavour, MySqlDriver};
 use openrows_driver_postgres::PgDriver;
@@ -14,6 +15,7 @@ static POSTGRES: PgDriver = PgDriver;
 static MYSQL: MySqlDriver = MySqlDriver(Flavour::MySql);
 static MARIADB: MySqlDriver = MySqlDriver(Flavour::MariaDb);
 static SQLITE: SqliteDriver = SqliteDriver;
+static CLICKHOUSE: ClickHouseDriver = ClickHouseDriver;
 static SQL_SERVER: SqlServerDriver = SqlServerDriver;
 
 /// The driver serving `engine`; every engine a profile can name has one.
@@ -23,6 +25,7 @@ pub(crate) fn driver(engine: Engine) -> &'static dyn Driver {
         Engine::Mysql => &MYSQL,
         Engine::Mariadb => &MARIADB,
         Engine::Sqlserver => &SQL_SERVER,
+        Engine::Clickhouse => &CLICKHOUSE,
         Engine::Sqlite => &SQLITE,
     }
 }

@@ -11,6 +11,7 @@ it.each<[EngineDto, string[]]>([
   ['mysql', ['mysql', 'sys', 'performance_schema', 'information_schema']],
   ['mariadb', ['mysql', 'sys', 'performance_schema', 'information_schema']],
   ['sqlserver', ['sys', 'INFORMATION_SCHEMA']],
+  ['clickhouse', ['system', 'INFORMATION_SCHEMA', 'information_schema']],
 ])(
   '%s classifies system schemas without hiding a user schema',
   (engine, schemas) => {

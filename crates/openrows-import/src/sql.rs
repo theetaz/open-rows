@@ -44,6 +44,7 @@ pub(crate) fn max_params(dialect: Dialect) -> usize {
         Dialect::Postgres | Dialect::MySql => 65_535,
         Dialect::Sqlite => 32_766,
         Dialect::SqlServer => 2_098,
+        Dialect::ClickHouse => 0,
         _ => 999,
     }
 }
@@ -162,6 +163,11 @@ impl Statements {
         (columns, key): (&[String], &[String]),
         policy: ConflictPolicy,
     ) -> Result<Self, ImportError> {
+        if dialect == Dialect::ClickHouse {
+            return Err(ImportError::Invalid(
+                "ClickHouse transactional imports are not available".to_owned(),
+            ));
+        }
         if policy != ConflictPolicy::Error && key.is_empty() {
             return Err(ImportError::Invalid(
                 "Choose the key columns that identify existing rows".to_owned(),
@@ -194,7 +200,9 @@ impl Statements {
         let first_key = self.key.first().cloned().unwrap_or_default();
         match (policy, self.dialect) {
             // SQL Server has no conflict clause: skip and update are a MERGE.
-            (ConflictPolicy::Error, _) | (_, Dialect::SqlServer) => String::new(),
+            (ConflictPolicy::Error, _) | (_, Dialect::SqlServer | Dialect::ClickHouse) => {
+                String::new()
+            }
             (ConflictPolicy::Update, Dialect::MySql) if !others.is_empty() => {
                 let sets: Vec<String> = others
                     .iter()
@@ -224,6 +232,7 @@ impl Statements {
             Dialect::MySql => "?".to_owned(),
             Dialect::Sqlite => format!("?{number}"),
             Dialect::SqlServer => format!("@P{number}"),
+            Dialect::ClickHouse => format!("{{p{number}:Nullable(String)}}"),
             _ => format!("${number}"),
         }
     }

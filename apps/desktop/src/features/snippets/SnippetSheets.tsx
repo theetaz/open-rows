@@ -14,6 +14,7 @@ export const SCOPE_OPTIONS: readonly { value: SnippetScope; label: string }[] =
     { value: 'mysql', label: 'MySQL and MariaDB' },
     { value: 'sqlserver', label: 'SQL Server' },
     { value: 'sqlite', label: 'SQLite' },
+    { value: 'clickhouse', label: 'ClickHouse' },
   ];
 
 /** Add or edit one user snippet; nothing changes until Save. */

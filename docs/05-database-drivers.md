@@ -82,6 +82,7 @@ The UI reads capabilities to decide which toolbar buttons, tree nodes and editor
 | PostgreSQL | Server | all ten | all seven |
 | MySQL/MariaDB | Server | all but `Schemas`, `StructureChanges`, `TransactionalDdl` | table, view, function, procedure, sequence (MariaDB) |
 | SQLite | File | `Cancel`, `BindParameters`, `Schemas`, `Catalog`, `RowEdits`, `TransactionalDdl` | table, view |
+| ClickHouse | Server | `Cancel`, `BindParameters`, `MultipleDatabases`, `Catalog`, `Tls`, `Routes`, `ProcessList`, `StartupCommands` | table, view, materialized view, SQL user-defined function |
 
 ## 3. Support tiers
 
@@ -104,7 +105,7 @@ The UI reads capabilities to decide which toolbar buttons, tree nodes and editor
 | SQLite 3 | in-process | `rusqlite` (bundled SQLite, `column_decltype` feature; `column_metadata` when result editing needs it) | MIT | 1 | Runs on a dedicated thread; `sqlite3_interrupt` for cancel; WAL-friendly read sessions; open read-only option. |
 | libSQL / Turso | in-process + remote (Hrana over HTTP/WebSocket) | `libsql` | MIT | 2 | Remote embedded replicas optional. |
 | SQL Server 2017+ / Azure SQL | TDS 7.4 | own client on `openrows-net` streams (M2-02, see §14; `tiberius` was the plan) | — | 2 | `rustls` TLS inside `PRELOGIN`; SQL logins (Windows/Entra ID later); cancel via the TDS attention signal on the same connection; `GO` batch separator handled by the splitter. |
-| ClickHouse | HTTP interface (and native later) | own client on `hyper` using `FORMAT ArrowStream` | — | 2 | Server streams Arrow directly → near-zero decode cost. Cancel via `KILL QUERY WHERE query_id = …` using client-generated `query_id`. |
+| ClickHouse 25.3 LTS | HTTP interface (and native later) | own client on `hyper` using `FORMAT ArrowStream` | — | 2 | Implemented in M2-03 (§17): native incremental ArrowStream, HTTP(S) over routes, bound parameters, catalog and query cancellation; read-only grids (no transactional mutations). |
 | DuckDB | in-process | `duckdb` crate (C++ library) | MIT | 2 | Native Arrow output. FFI → eligible for out-of-process driver host. |
 | MongoDB 5.0+ | OP_MSG | official `mongodb` crate | Apache-2.0 | 2 | Shell-like query parser in `openrows-sql/mql`; documents → JSON column + flattened tabular view; `killOp` for cancel. |
 | Redis 6+ / Valkey / KeyDB / Dragonfly | RESP2/RESP3 | `redis` crate | BSD-3 | 2 | `SCAN`-based key browser (never `KEYS *`); type-aware editors; cluster and sentinel support. |
@@ -374,3 +375,52 @@ The Catalog facet adds object_detail, list_extensions, list_roles and role_grant
 - **SQL Server:** sys.types includes user aliases, CLR and table types; sys.table_types/sys.columns supply table fields; sys.sql_modules/sys.parameters supply definitions and arguments; sys.sequences supplies metadata and last_used_value without NEXT VALUE FOR. Server principals and database principals are distinguished by scope, with sys.*_role_members memberships and sys.server_permissions/sys.database_permissions grants (including DENY and grant options). No password/hash fields are selected. Type metadata contributes to the fingerprint.
 
 The Metadata conformance group now creates, lists and indexes capability-gated materialized views, routines, sequences and types, inspects every created kind and checks optional roles/extensions against claims. Engine integration fixtures verify details, overloads, ordered enum labels, memberships and explicit grants on PostgreSQL/SQL Server. PostgreSQL checks last_value is unchanged across inspection. MySQL/MariaDB fixtures cover listings, view/routine details, account attributes, direct role memberships, all four privilege scopes and grant options; MySQL also asserts dynamic privileges. Restricted logins verify membership visibility handling. MariaDB reads sequence details twice before comparing NEXTVAL to an unread control sequence. Grants and direct memberships are explicit entries, not computed effective permissions.
+
+## 17. M2-03 ClickHouse (Tier 2)
+
+`openrows-driver-clickhouse` implements the [HTTP interface](https://clickhouse.com/docs/interfaces/http) with existing `hyper` 1.x dependencies over `openrows-net` streams. The tested server is the pinned LTS image `clickhouse/clickhouse-server:25.3.9.72`; native TCP and other server versions remain unverified.
+
+| Topic | Behaviour |
+| --- | --- |
+| Connect | HTTP 8123 / HTTPS 8443; `clickhouse://` selects plaintext, `clickhouse+https://` selects verified TLS. The form changes either default port when TLS is toggled and keeps custom ports. TLS uses the shared rustls verifier, CA files and client certificates against the database host, including through SSH/proxy routes. HTTP `allow`/`prefer` do not upgrade: they use plaintext; the picker offers disable/require/verify-ca/verify-full. Empty database/user defaults to `default`. |
+| Authentication | `X-ClickHouse-User`, sensitive `X-ClickHouse-Key` and `X-ClickHouse-Database` headers; credentials never enter the request URI or diagnostic output. Server messages scrub the supplied password and its URL-encoded form. Each exchange owns its connection task, which is aborted on drop. |
+| Sessions | A UUID `session_id` preserves settings and temporary objects between exchanges. One HTTP statement per call; multi-statement scripts are split by the shared toolkit. Identity reads `version()`, `currentDatabase()`, `currentUser()`; startup commands run in order and a failure names its index. No transaction support is claimed. |
+| Parameters | The editor's named `:value` becomes `{p1:Nullable(String)}`; native `{name:Type}` retains its declared type when renamed to `p1`. Values travel separately as escaped `param_p1` HTTP parameters, including `\N` for NULL and escaped control characters/backslashes. Query-id predicates use the same binding path. |
+| Results | SELECT/WITH first runs `DESCRIBE TABLE (query)` with the same bindings to obtain exact `openrows.source_type` metadata. Native ArrowStream uses signed dictionary indexes, UTF-8 strings and no compression. UUID (including nested UUID) is projected by the server to canonical String because the 25.3 Arrow exporter cannot encode UUID; other columns keep native Arrow buffers. Ordinary SELECTs retain their original projection/order, so duplicate expressions are not rewritten. SHOW/DESCRIBE/EXPLAIN use the native default output, with no DESCRIBE metadata pass. |
+| Streaming | `wait_end_of_query=0`; server blocks request 200 rows / 4 MiB. A blocking Arrow `StreamReader` consumes a two-slot channel of at most 64 KiB chunks; a two-slot batch channel feeds the sink. There is no full-body collection on the data path. Batches are sliced without per-cell rebuilding; the first slice is at most 200 rows. Stop drops the response, cancels read queries on client close and unblocks the decoder. A following request retries only error 373 (the HTTP session is still releasing its lock), under the TCP deadline; this server refusal guarantees that request has not executed. Other errors are never replayed. The diagnostic tail is capped at 64 KiB. Individual large cells/server blocks may exceed the typical 4 MiB driver budget. |
+| Commands | Non-reading statements consume a bounded control body and read `written_rows` from `X-ClickHouse-Summary`; the command tag reports the server's write count, including writes into materialized views. DDL and mutations typed in the editor still pass read-only/confirmation classification. |
+| Cancellation | A second routed request sends `KILL QUERY WHERE query_id = {p1:String} SYNC`, without the busy session id, under a 10-second timeout. It then signals the local stream to drop. Cancellation maps to `57014`; the same session remains usable. |
+| Catalog | Bound SQL resources over `system.databases`, `system.tables`, `system.columns`, `system.data_skipping_indices`, `system.functions`; tables, views, materialized views and SQL UDFs, ordered columns/defaults/comments, primary-key membership, index expressions/types, `total_rows`, `total_bytes`, stored CREATE SQL. Databases are the schema namespace. View/materialized-view/function inspection reads their stored definitions. |
+| Process list | `system.processes`, client/user/database/query/elapsed time; transient numeric UI tokens map to exact server query UUIDs. Cancel query uses bound KILL; Terminate is typed Unsupported since there is no persistent server process per HTTP session. Tokens from previous listings are discarded. |
+| Editing decision | No `RowEdits`, `StructureChanges`, `TransactionalDdl`, `BulkLoad` or lifecycle-editing claims: asynchronous ALTER mutations cannot satisfy the shared atomic snapshot/rollback contract. The existing capability-driven UI disables grid edits; the editor can execute confirmed SQL. Transactional imports are refused during planning; backup/restore and the app explain-plan command are typed Unsupported. Raw `EXPLAIN` SQL can still return Arrow text results. |
+
+Native 25.3 result representations (source metadata keeps the ClickHouse type):
+
+| ClickHouse type | Arrow representation |
+| --- | --- |
+| Nullable(T), LowCardinality(String) | nullable T, Dictionary(Int32, Utf8) |
+| Decimal(P,S) | native Decimal128 / Decimal256 with precision and scale |
+| Date / Date32 | UInt16 days / Date32 |
+| DateTime64(p, zone) | native Timestamp with server-selected resolution and zone |
+| UUID / IPv4 / IPv6 | canonical Utf8 / UInt32 / FixedSizeBinary(16) |
+| Enum8 / Enum16 | Int8 / Int16; source metadata retains labels |
+| Array / Map / Tuple | native List / Map / Struct, nested values preserved |
+
+**Errors.** The header `X-ClickHouse-Exception-Code` takes priority, then `Code: N. DB::Exception` in the body. Late streaming exceptions are mapped from the bounded tail. Numbers remain in the message. The [25.3 error catalog](https://github.com/ClickHouse/ClickHouse/blob/v25.3.9.72-lts/src/Common/ErrorCodes.cpp) defines the numbers; SQLSTATE-like mappings follow existing drivers:
+
+| ClickHouse code | Shared kind/code |
+| --- | --- |
+| 192, 193, 194, 195, 516 | Auth |
+| 62 | Server `42601` syntax |
+| 60, 81 | Server `42P01` unknown table/database |
+| 16, 47 | Server `42703` unknown column |
+| 70 | Server `22018` type conversion |
+| 373 | Server `55P03` session locked |
+| 164 / 497 | Server `25006` read-only / `42501` privilege |
+| 236, 285, 394, 499 | Server `57014` cancelled |
+| 349 | Server `23502` non-nullable insertion |
+| other | Server `HY000` |
+
+**Tests and benchmark.** `just test-clickhouse` generates a localhost certificate, starts one loopback-only container with a non-default synthetic password (2 CPUs / 2 GiB), tests HTTP, verified HTTPS and SOCKS routing, exact scalar/nested types and source metadata, injection-safe typed values/NULL, settings, catalog inspection, late errors, 1 M-row incremental streaming, early Stop and cancellation of a 10¹²-row count within 10 s. It runs Connect/Types/Streaming/Cancel/Errors/Metadata/Processes conformance; Edits/Structure/Lifecycle are explicitly unclaimed. The script always removes its container and certificate directory. With `OPENROWS_BENCH=1`, `scripts/bench-clickhouse.py` runs a discarding 1 M-row sink and reports rows/s, payload bytes/s, first-batch decode latency, largest batch and process peak RSS; see docs/13.
+
+**Known gaps.** Native TCP, HTTP pooling/compression, Arrow progress/notices, Pause/Resume, dictionaries as separate objects, schema fingerprint, SQL UDF signatures, roles/extensions, transactions/atomic mutation editing, transactional imports, dump/restore and parsed explain plans. SELECTs with an explicit output FORMAT are not supported in the grid path; omit FORMAT. UUID projections require distinct column names. Metadata/control responses are bounded (catalog 4 MiB, other controls 1 MiB); very large catalogs return a typed error. Test routes cover SOCKS + TLS; SSH and HTTP CONNECT use the shared Dialer but have no ClickHouse-specific container test. Reference mac-low and release-profile performance remain to be measured.

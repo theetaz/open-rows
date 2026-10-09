@@ -66,4 +66,6 @@ pub enum Dialect {
     /// `N'…'` strings, nested block comments, `@variables`, `#temp` names,
     /// `@P1` bind placeholders and the `GO` batch separator line.
     SqlServer,
+    /// `ClickHouse` HTTP SQL, with typed `{name:Type}` query parameters.
+    ClickHouse,
 }

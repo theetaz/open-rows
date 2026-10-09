@@ -49,3 +49,14 @@ it('round-trips snippets through JSON with fresh ids', () => {
   expect(() => importSnippets('[]')).toThrow(/No valid snippets/);
   expect(() => importSnippets('{')).toThrow(SyntaxError);
 });
+
+it('preserves ClickHouse snippets and offers them only for that engine', () => {
+  const snippet = { ...mine, scope: 'clickhouse' as const };
+  const settings = parseSnippets({ items: [snippet] });
+  expect(settings.items).toEqual([snippet]);
+  expect(snippetsFor(settings, 'clickhouse')).toContainEqual(snippet);
+  expect(snippetsFor(settings, 'postgres')).not.toContainEqual(snippet);
+  expect(importSnippets(exportSnippets([snippet]))[0]?.scope).toBe(
+    'clickhouse',
+  );
+});

@@ -142,6 +142,13 @@ fn push_float(dialect: Dialect, value: f64, cell: &Cell<'_>, out: &mut String) {
         Dialect::Sqlite if value.is_infinite() => {
             out.push_str(if negative { "-9e999" } else { "9e999" });
         }
+        Dialect::ClickHouse => out.push_str(if value.is_nan() {
+            "toFloat64('nan')"
+        } else if negative {
+            "toFloat64('-inf')"
+        } else {
+            "toFloat64('inf')"
+        }),
         _ => out.push_str("NULL"),
     }
 }
@@ -151,6 +158,10 @@ fn push_binary(dialect: Dialect, bytes: &[u8], out: &mut String) {
         out.push_str("decode('");
         push_hex(bytes, out);
         out.push_str("', 'hex')");
+    } else if dialect == Dialect::ClickHouse {
+        out.push_str("unhex('");
+        push_hex(bytes, out);
+        out.push_str("')");
     } else if dialect == Dialect::SqlServer {
         out.push_str("0x");
         push_hex(bytes, out);
@@ -164,7 +175,8 @@ fn push_binary(dialect: Dialect, bytes: &[u8], out: &mut String) {
 /// Append `text` as a string literal of `dialect`.
 pub(crate) fn push_string(dialect: Dialect, text: &str, out: &mut String) {
     match dialect {
-        Dialect::MySql => push_mysql_string(text, out),
+        Dialect::MySql => push_mysql_string(text, out, false),
+        Dialect::ClickHouse => push_mysql_string(text, out, true),
         Dialect::Postgres if text.contains('\\') => {
             out.push_str("E'");
             for c in text.chars() {
@@ -191,7 +203,7 @@ pub(crate) fn push_string(dialect: Dialect, text: &str, out: &mut String) {
 }
 
 /// `MySQL` string literal for the default `sql_mode` (backslash escapes on).
-fn push_mysql_string(text: &str, out: &mut String) {
+fn push_mysql_string(text: &str, out: &mut String, clickhouse: bool) {
     out.push('\'');
     for c in text.chars() {
         match c {
@@ -200,7 +212,7 @@ fn push_mysql_string(text: &str, out: &mut String) {
             '\0' => out.push_str("\\0"),
             '\n' => out.push_str("\\n"),
             '\r' => out.push_str("\\r"),
-            '\u{1a}' => out.push_str("\\Z"),
+            '\u{1a}' => out.push_str(if clickhouse { "\\x1a" } else { "\\Z" }),
             c => out.push(c),
         }
     }

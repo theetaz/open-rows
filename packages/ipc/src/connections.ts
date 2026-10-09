@@ -88,7 +88,7 @@ export async function deleteProfile(id: string): Promise<void> {
   await unwrap(commands.profileDelete(id));
 }
 
-/** Form fields from a `postgres://`, `mysql://`, `mariadb://`, `sqlserver://` (or JDBC) or `sqlite:` URL; reports only whether it had a password. */
+/** Form fields from a database URL, including ClickHouse HTTP(S); reports only whether it had a password. */
 export function parseConnectionUrl(url: string): Promise<UrlDraft> {
   return unwrap(commands.profileParseUrl(url));
 }

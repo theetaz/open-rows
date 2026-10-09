@@ -5,12 +5,12 @@ import {
   MySQL,
   PostgreSQL,
   SQLite,
+  SQLDialect,
 } from '@codemirror/lang-sql';
-import type { SQLDialect } from '@codemirror/lang-sql';
 
 /** SQL dialects the editor highlights, one per connection engine. */
 export type EditorDialect =
-  'postgres' | 'mysql' | 'mariadb' | 'sqlserver' | 'sqlite';
+  'postgres' | 'mysql' | 'mariadb' | 'sqlserver' | 'sqlite' | 'clickhouse';
 
 const DIALECTS: Record<EditorDialect, SQLDialect> = {
   postgres: PostgreSQL,
@@ -18,6 +18,13 @@ const DIALECTS: Record<EditorDialect, SQLDialect> = {
   mariadb: MariaSQL,
   sqlserver: MSSQL,
   sqlite: SQLite,
+  clickhouse: SQLDialect.define({
+    ...MySQL.spec,
+    doubleQuotedStrings: false,
+    keywords: `${MySQL.spec.keywords ?? ''} PREWHERE FINAL SAMPLE ARRAY JOIN SETTINGS FORMAT TTL OPTIMIZE SYSTEM KILL DICTIONARY MATERIALIZED ENGINE`,
+    types:
+      'Int8 Int16 Int32 Int64 UInt8 UInt16 UInt32 UInt64 Float32 Float64 String FixedString Nullable LowCardinality Decimal Date Date32 DateTime DateTime64 UUID IPv4 IPv6 Enum8 Enum16 Array Map Tuple',
+  }),
 };
 
 /** The CodeMirror dialect of an engine. */

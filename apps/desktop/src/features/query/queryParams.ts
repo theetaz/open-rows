@@ -13,6 +13,7 @@ const OFFERED: Record<EditorDialect, readonly ParamStyleDto[]> = {
   postgres: ['named', 'numbered'],
   mysql: ['named', 'anonymous'],
   mariadb: ['named', 'anonymous'],
+  clickhouse: ['named'],
   sqlserver: ['named', 'anonymous'],
   sqlite: ['named', 'numbered', 'anonymous'],
 };
@@ -21,6 +22,7 @@ const LABELS: Record<EditorDialect, Record<ParamStyleDto, string>> = {
   postgres: { named: ':name', numbered: '$1', anonymous: '?' },
   mysql: { named: ':name', numbered: '$1', anonymous: '?' },
   mariadb: { named: ':name', numbered: '$1', anonymous: '?' },
+  clickhouse: { named: ':name', numbered: '$1', anonymous: '?' },
   sqlserver: { named: ':name', numbered: '$1', anonymous: '?' },
   sqlite: { named: ':name', numbered: '?1', anonymous: '?' },
 };

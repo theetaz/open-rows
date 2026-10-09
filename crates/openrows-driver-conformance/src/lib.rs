@@ -27,6 +27,7 @@
 //! and dropped at the end, so test processes may share a server.
 
 mod cell;
+mod clickhouse;
 mod connect;
 mod dialect;
 mod edits;
@@ -165,11 +166,20 @@ impl Group {
             Self::Types => types::run(target).await?,
             Self::Streaming => streaming::run(target).await?,
             Self::Cancel => streaming::cancel(target).await?,
+            Self::Errors if target.driver.dialect() == openrows_sql::Dialect::ClickHouse => {
+                clickhouse::errors(target).await?;
+            }
             Self::Errors => errors::run(target).await?,
+            Self::Metadata if target.driver.dialect() == openrows_sql::Dialect::ClickHouse => {
+                clickhouse::metadata(target).await?;
+            }
             Self::Metadata => metadata::run(target).await?,
             Self::Edits => edits::run(target).await?,
             Self::Structure => structure::run(target).await?,
             Self::Lifecycle => lifecycle::run(target).await?,
+            Self::Processes if target.driver.dialect() == openrows_sql::Dialect::ClickHouse => {
+                clickhouse::processes(target).await?;
+            }
             Self::Processes => processes::run(target).await?,
         }
         Ok(Verdict::Passed)

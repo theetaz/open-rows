@@ -40,6 +40,8 @@ export function quoteName(name: string, dialect: EditorDialect): string {
   const plain =
     dialect === 'postgres' ? /^[a-z_][a-z0-9_$]*$/ : /^[A-Za-z_][\w$]*$/;
   if (plain.test(name)) return name;
+  if (dialect === 'clickhouse')
+    return `\`${name.replaceAll('\\', '\\\\').replaceAll('`', '\\`')}\``;
   if (dialect === 'sqlserver') return `[${name.replaceAll(']', ']]')}]`;
   const quote = dialect === 'mysql' || dialect === 'mariadb' ? '`' : '"';
   return quote + name.replaceAll(quote, quote + quote) + quote;
