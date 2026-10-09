@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { GlassPanel, Icon, SegmentedControl, TextField } from '@openrows/ui';
 import { ObjectTree, SchemaPicker } from '../features/schema';
-import type { Catalog, ObjectRef } from '../features/schema';
+import type { Catalog, MenuPoint, ObjectRef } from '../features/schema';
 import { HistoryList, SavedQueryList } from '../features/query';
 import type { SavedQueryDto } from '@openrows/ipc';
 import type { Connections } from '../features/connections';
 import { sidebarSegments } from './data/content';
+import { ObjectActions } from './ObjectActions';
+import type { ObjectMenu, SessionLookup } from './ObjectActions';
 import styles from './Sidebar.module.css';
 type Props = {
   catalog: Catalog;
@@ -19,6 +21,8 @@ type Props = {
   onOpenSql: (sql: string) => void;
   /** Open a saved query of the active connection in a new query tab. */
   onSavedQuery: (query: SavedQueryDto) => void;
+  /** Sessions for exporting a table from its context menu. */
+  sessionFor: SessionLookup;
 };
 const exact = (event: React.KeyboardEvent, key: string): boolean =>
   event.metaKey &&
@@ -32,6 +36,10 @@ export function WorkspaceSidebar(props: Props): React.JSX.Element {
   const { catalog } = props;
   const [segment, setSegment] = useState('Items');
   const [search, setSearch] = useState('');
+  const [menu, setMenu] = useState<ObjectMenu | null>(null);
+  const closeMenu = useCallback(() => {
+    setMenu(null);
+  }, []);
   const ref = useRef<HTMLDivElement>(null);
   return (
     <div
@@ -76,32 +84,59 @@ export function WorkspaceSidebar(props: Props): React.JSX.Element {
             setSearch(event.target.value);
           }}
         />
-        <div className={styles.objects}>
-          {segment === 'Items' && (
-            <ObjectTree
-              catalog={catalog}
-              search={search}
-              onOpen={props.onOpen}
-            />
-          )}
-          {segment === 'Queries' && (
-            <SavedQueryList
-              profileId={props.connections.active?.id}
-              search={search}
-              onOpen={props.onSavedQuery}
-            />
-          )}
-          {segment === 'History' && (
-            <HistoryList
-              active={props.connections.active}
-              connections={props.connections.profiles}
-              text={search}
-              onOpen={props.onOpenSql}
-            />
-          )}
-        </div>
+        <SidebarItems
+          {...props}
+          segment={segment}
+          search={search}
+          onMenu={(object, point) => {
+            setMenu({ object, point });
+          }}
+        />
         {catalog.database && <SchemaPicker catalog={catalog} />}
       </GlassPanel>
+      <ObjectActions
+        menu={menu}
+        onClose={closeMenu}
+        sessionFor={props.sessionFor}
+        onOpen={props.onOpen}
+      />
+    </div>
+  );
+}
+
+/** The chosen sidebar segment: object tree, saved queries or history. */
+function SidebarItems(
+  props: Props & {
+    segment: string;
+    search: string;
+    onMenu: (object: ObjectRef, point: MenuPoint) => void;
+  },
+): React.JSX.Element {
+  return (
+    <div className={styles.objects}>
+      {props.segment === 'Items' && (
+        <ObjectTree
+          catalog={props.catalog}
+          search={props.search}
+          onOpen={props.onOpen}
+          onMenu={props.onMenu}
+        />
+      )}
+      {props.segment === 'Queries' && (
+        <SavedQueryList
+          profileId={props.connections.active?.id}
+          search={props.search}
+          onOpen={props.onSavedQuery}
+        />
+      )}
+      {props.segment === 'History' && (
+        <HistoryList
+          active={props.connections.active}
+          connections={props.connections.profiles}
+          text={props.search}
+          onOpen={props.onOpenSql}
+        />
+      )}
     </div>
   );
 }

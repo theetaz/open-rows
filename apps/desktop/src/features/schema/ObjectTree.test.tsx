@@ -4,7 +4,7 @@ import type { BoundFunctions, queries } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
-import { listObjects, listSchemas } from '@openrows/ipc';
+import { listObjects, listSchemas, startExport } from '@openrows/ipc';
 import { connectTo } from '../../test/connect';
 import { Workspace } from '../../mock/Workspace';
 
@@ -141,4 +141,34 @@ it('shows a section error with Retry, and ⌘R in the sidebar re-reads the catal
   await user.keyboard('{Meta>}r{/Meta}');
   await sidebar().findByRole('treeitem', { name: 'orders ~2.4M' });
   expect(vi.mocked(listSchemas).mock.calls.length).toBe(calls + 1);
+});
+
+it('exports a table from its context menu on the database session', async () => {
+  const user = mount();
+  await connectTo();
+  const orders = await sidebar().findByRole('treeitem', {
+    name: 'orders ~2.4M',
+  });
+  fireEvent.contextMenu(orders, { clientX: 40, clientY: 80 });
+  const menu = await screen.findByRole('menu', { name: 'orders actions' });
+  await user.click(within(menu).getByRole('menuitem', { name: 'Export…' }));
+  const sheet = await screen.findByRole('dialog', { name: 'Export orders' });
+  await user.click(within(sheet).getByRole('button', { name: 'Export…' }));
+  expect(startExport).toHaveBeenCalledWith(
+    {
+      source: {
+        kind: 'table',
+        sessionId: 'session-id-orders-local-orders',
+        target: {
+          profileId: 'id-orders-local',
+          database: 'orders',
+          schema: 'public',
+          table: 'orders',
+        },
+      },
+      format: { kind: 'csv', delimiter: 'comma', header: true },
+      fileName: 'orders',
+    },
+    expect.any(Function),
+  );
 });

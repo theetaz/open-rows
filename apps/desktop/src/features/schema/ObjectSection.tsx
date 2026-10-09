@@ -5,6 +5,7 @@ import type { ObjectDto } from '@openrows/ipc';
 import { nodeKey, objectLabel } from './catalog';
 import type { ObjectGroup, ObjectRef } from './catalog';
 import { ObjectRow } from './ObjectRow';
+import type { MenuPoint } from './ObjectRow';
 import type { Catalog } from './useCatalog';
 import styles from './ObjectTree.module.css';
 
@@ -15,6 +16,7 @@ type Props = {
   selected: string | null;
   onSelect: (key: string) => void;
   onOpen: (object: ObjectRef) => void;
+  onMenu?: ((object: ObjectRef, point: MenuPoint) => void) | undefined;
 };
 
 /** Objects matching the sidebar search (case-insensitive substring). */

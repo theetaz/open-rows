@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //! State shared between a session actor, its supervisor and the manager.
-use crate::{CoreError, QueryEvent, SessionEvent, SessionState};
+use crate::{BatchSink, CoreError, QueryEvent, SessionEvent, SessionState};
 use openrows_types::{QueryId, SessionId};
-use std::sync::{Mutex, MutexGuard, PoisonError};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use tokio::sync::{broadcast, mpsc::UnboundedSender, oneshot};
 use tokio_util::sync::CancellationToken;
 
@@ -25,6 +25,8 @@ pub(crate) struct Queued {
     pub(crate) params: Vec<Option<String>>,
     /// Rows kept per result set; `None` leaves only the result store's caps.
     pub(crate) max_rows: Option<usize>,
+    /// Where this statement's batches go instead of the manager's store (export).
+    pub(crate) sink: Option<Arc<dyn BatchSink>>,
     pub(crate) token: CancellationToken,
     pub(crate) events: UnboundedSender<QueryEvent>,
 }

@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main",
-  "description": "Main window: first-render and session-state events, window dragging, native ask alerts for destructive confirmations, metadata, connection profiles (key and certificate files are picked natively), SSH host-key and keyboard-interactive prompts, sessions and catalog reads, query execution and history, saved queries, .sql files of query tabs (saved and opened through native panels), table browsing and editing (files are picked and read natively), the local journal of staged edits, closing the window after the quit guard, result tiles and opt-in IPC spike.",
+  "description": "Main window: first-render and session-state events, window dragging, native ask alerts for destructive confirmations, metadata, connection profiles (key and certificate files are picked natively), SSH host-key and keyboard-interactive prompts, sessions and catalog reads, query execution and history, saved queries, .sql files of query tabs (saved and opened through native panels), table browsing and editing (files are picked and read natively), the local journal of staged edits, export of results and tables (the file is chosen natively), closing the window after the quit guard, result tiles and opt-in IPC spike.",
   "windows": ["main"],
   "permissions": [
     "core:event:allow-emit-to",
@@ -62,6 +62,7 @@
     "allow-table-edits-clear",
     "allow-table-edit-file",
     "allow-table-detail",
-    "allow-table-alter"
+    "allow-table-alter",
+    "allow-export-start"
   ]
 }

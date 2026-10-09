@@ -197,7 +197,7 @@ async fn generate(
 }
 
 /// Defence in depth: table browsing only ever runs plain reads.
-fn ensure_read(bound: &BoundSql, dialect: Dialect) -> Result<(), IpcError> {
+pub(crate) fn ensure_read(bound: &BoundSql, dialect: Dialect) -> Result<(), IpcError> {
     let class = classify(&bound.sql, dialect);
     if class.kind == StatementKind::Read && !class.dangerous {
         Ok(())

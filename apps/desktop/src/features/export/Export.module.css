@@ -1,0 +1,61 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-10);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-inline-size: 0;
+}
+.checkRow {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-6);
+}
+.checkRow input,
+.scope input {
+  margin: 0;
+  accent-color: var(--or-accent);
+}
+.scope {
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-4);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.scope legend {
+  padding: 0;
+  margin-block-end: var(--or-space-4);
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+}
+.scope label {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-6);
+}
+.note {
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+}
+.error {
+  color: var(--or-danger-fg);
+}
+.status {
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-8);
+}
+.status progress {
+  inline-size: 100%;
+  block-size: 4px;
+  accent-color: var(--or-accent);
+}
+.path {
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+  overflow-wrap: anywhere;
+}

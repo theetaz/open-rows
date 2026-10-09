@@ -156,6 +156,15 @@ export const commands = {
 	 *  with it (and the typed table name when asked), run it in one transaction.
 	 */
 	tableAlter: (request: AlterRequest) => typedError<AlterReply, IpcError>(__TAURI_INVOKE("table_alter", { request })),
+	/**
+	 *  Validate the source and options, ask for the destination, then stream
+	 *  the rows to it without sending them to the webview.
+	 * 
+	 *  Export only reads, so read-only and confirm-writes connections allow it;
+	 *  a re-run statement must classify as a plain read. `query_cancel(exportId)`
+	 *  cancels; the partial file is deleted.
+	 */
+	exportStart: (request: ExportRequest, onEvent: Channel<ExportEventDto>) => typedError<ExportReply, IpcError>(__TAURI_INVOKE("export_start", { request, onEvent })),
 };
 
 /** Events */
@@ -252,6 +261,9 @@ export type CountRequest = {
 	query: TableQueryDto,
 	ticket: string,
 };
+
+/**  CSV field separator. */
+export type CsvDelimiterDto = "comma" | "semicolon" | "tab" | "pipe";
 
 /**  A database on the server. */
 export type DatabaseDto = {
@@ -352,6 +364,47 @@ export type ExecuteRequest = {
 	/**  Parameter placeholders to bind; `None` runs the text as written. */
 	params?: ParamsDto | null,
 };
+
+/**  Export progress; exactly one of `finished`, `failed` or `cancelled` ends it. */
+export type ExportEventDto = 
+/**  Rows written so far; at most 10 per second. */
+{ type: "progress"; rows: number | null } | 
+/**  The file is complete at `path`. */
+{ type: "finished"; rows: number | null; path: string } | { type: "failed"; error: IpcError } | { type: "cancelled" };
+
+/**  Output format and its options. */
+export type ExportFormatDto = 
+/**  RFC 4180 CSV. */
+{ kind: "csv"; delimiter: CsvDelimiterDto; header: boolean } | 
+/**  An array of row objects, or one object per line (NDJSON). */
+{ kind: "json"; lines: boolean } | 
+/**  `INSERT` statements for `table`, `rowsPerStatement` rows each. */
+{ kind: "sql"; table: string; rowsPerStatement: number };
+
+/**  `started` once the file was chosen; `dismissed` when the panel was cancelled. */
+export type ExportReply = 
+/**  Events follow on the channel; `query_cancel(exportId)` stops it. */
+{ status: "started"; exportId: string; fileName: string } | { status: "dismissed" };
+
+/**  Start an export; the native save panel picks the file. */
+export type ExportRequest = {
+	source: ExportSourceDto,
+	format: ExportFormatDto,
+	/**  Suggested file name without extension, e.g. the table name. */
+	fileName: string,
+};
+
+/**  Which rows to export. */
+export type ExportSourceDto = 
+/**  A result held in memory (the rows a query tab received). */
+{ kind: "result"; sessionId: string; resultId: string } | 
+/**
+ *  Run one read-only statement again and stream all of its rows (a
+ *  result the row limit cut short).
+ */
+{ kind: "query"; sessionId: string; sql: string } | 
+/**  Every row of a table or view. */
+{ kind: "table"; sessionId: string; target: TableTarget };
 
 /**  The database file of a file engine, in the form and in saved profiles. */
 export type FileDto = {

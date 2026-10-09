@@ -27,7 +27,12 @@ type RowContext = {
   tabStop: string | undefined;
   onSelect: (key: string) => void;
   onOpen: (object: ObjectRef) => void;
+  /** Context menu of a table, view or materialized view at a window point. */
+  onMenu?: ((object: ObjectRef, point: MenuPoint) => void) | undefined;
 };
+
+/** Window coordinates of a context-menu click. */
+export type MenuPoint = { x: number; y: number };
 
 type Disclosure =
   | { expanded: boolean; onExpandedChange: (open: boolean) => void }
@@ -73,8 +78,18 @@ export function ObjectRow(
   const open = (): void => {
     props.onOpen(target);
   };
+  const { onMenu } = props;
+  const menu =
+    onMenu && hasColumns(object.kind)
+      ? (event: React.MouseEvent): void => {
+          event.preventDefault();
+          props.onSelect(id);
+          onMenu(target, { x: event.clientX, y: event.clientY });
+        }
+      : undefined;
   return (
     <TreeNode
+      onContextMenu={menu}
       label={count ? `${label} ${count}` : label}
       level={1}
       selected={props.selected === id}

@@ -106,8 +106,11 @@ impl Actor {
             query: queued.query,
         });
         let started = Instant::now();
-        let mut sink = QuerySink::new(queued.events.clone(), self.mail.store.clone())
-            .with_max_rows(queued.max_rows);
+        let store = queued
+            .sink
+            .clone()
+            .unwrap_or_else(|| self.mail.store.clone());
+        let mut sink = QuerySink::new(queued.events.clone(), store).with_max_rows(queued.max_rows);
         let outcome = run_statement(
             self.session.as_mut(),
             self.cancel.as_ref(),

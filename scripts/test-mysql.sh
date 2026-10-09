@@ -53,7 +53,7 @@ for image in "$@"; do
     echo "$image on 127.0.0.1:${port}"
     OPENROWS_TEST_MYSQL_PORT="$port" OPENROWS_TEST_MYSQL_PASSWORD="$password" \
         OPENROWS_TEST_MYSQL_ENGINE="$engine" \
-        cargo nextest run -p openrows-driver-mysql --locked --test mysql \
+        cargo nextest run -p openrows-driver-mysql -p openrows-core --locked --test mysql \
         --run-ignored only --no-capture
     docker rm --force --volumes "$name" >/dev/null 2>&1 || true
 done

@@ -186,5 +186,6 @@ export function ipcStub(
     tablePage: vi.fn(() => new Promise(() => {})),
     tableCount: vi.fn(() => new Promise(() => {})),
     tableSql: vi.fn(() => Promise.resolve({ sql: 'SELECT 1', params: [] })),
+    startExport: vi.fn(() => Promise.resolve({ status: 'dismissed' })),
   };
 }

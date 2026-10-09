@@ -70,12 +70,24 @@
   flex: 1;
   min-height: 0;
 }
+.resultBar {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-6);
+  padding-inline-end: var(--or-space-6);
+  flex-shrink: 0;
+}
 .resultTabs {
   display: flex;
   gap: var(--or-space-2);
   padding: var(--or-space-4) var(--or-space-6);
   overflow-x: auto;
   flex-shrink: 0;
+  min-inline-size: 0;
+}
+.exportButton {
+  margin-inline-start: auto;
+  margin-block: var(--or-space-2);
 }
 .resultTabs button {
   padding: var(--or-space-2) var(--or-space-8);

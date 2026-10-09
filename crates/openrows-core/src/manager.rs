@@ -25,6 +25,25 @@ struct Entry {
     commands: mpsc::Sender<Command>,
 }
 
+/// One statement to queue and where its rows go.
+struct Submission {
+    sql: String,
+    params: Vec<Option<String>>,
+    max_rows: Option<usize>,
+    sink: Option<Arc<dyn BatchSink>>,
+}
+
+impl Submission {
+    fn new(sql: String, params: Vec<Option<String>>) -> Self {
+        Self {
+            sql,
+            params,
+            max_rows: None,
+            sink: None,
+        }
+    }
+}
+
 /// Cancels one query from any thread without waiting for the session actor.
 #[derive(Clone, Debug)]
 pub struct Canceller(CancellationToken);
@@ -144,7 +163,7 @@ impl SessionManager {
         session: SessionId,
         sql: impl Into<String>,
     ) -> Result<QueryHandle, CoreError> {
-        self.submit(session, sql.into(), Vec::new(), None)
+        self.submit(session, Submission::new(sql.into(), Vec::new()))
     }
 
     /// Queue `sql` with positional text parameters (`$1`, …; `None` is NULL).
@@ -157,7 +176,7 @@ impl SessionManager {
         sql: impl Into<String>,
         params: Vec<Option<String>>,
     ) -> Result<QueryHandle, CoreError> {
-        self.submit(session, sql.into(), params, None)
+        self.submit(session, Submission::new(sql.into(), params))
     }
 
     /// Queue a bound statement keeping at most `max_rows` rows per result
@@ -172,16 +191,32 @@ impl SessionManager {
         statement: BoundSql,
         max_rows: Option<usize>,
     ) -> Result<QueryHandle, CoreError> {
-        self.submit(session, statement.sql, statement.params, max_rows)
+        let submission = Submission {
+            max_rows,
+            ..Submission::new(statement.sql, statement.params)
+        };
+        self.submit(session, submission)
     }
 
-    fn submit(
+    /// Queue a bound statement whose batches go to `sink` instead of the
+    /// manager's store (export streams rows straight to a file).
+    ///
+    /// # Errors
+    /// As [`SessionManager::execute`].
+    pub fn execute_into(
         &self,
         session: SessionId,
-        sql: String,
-        params: Vec<Option<String>>,
-        max_rows: Option<usize>,
+        statement: BoundSql,
+        sink: Arc<dyn BatchSink>,
     ) -> Result<QueryHandle, CoreError> {
+        let submission = Submission {
+            sink: Some(sink),
+            ..Submission::new(statement.sql, statement.params)
+        };
+        self.submit(session, submission)
+    }
+
+    fn submit(&self, session: SessionId, submission: Submission) -> Result<QueryHandle, CoreError> {
         let (sender, events) = mpsc::unbounded_channel();
         let (commands, token) = self
             .with_entry(session, |entry| {
@@ -191,9 +226,10 @@ impl SessionManager {
         let id = QueryId::new();
         let queued = Queued {
             query: id,
-            sql,
-            params,
-            max_rows,
+            sql: submission.sql,
+            params: submission.params,
+            max_rows: submission.max_rows,
+            sink: submission.sink,
             token: token.clone(),
             events: sender,
         };

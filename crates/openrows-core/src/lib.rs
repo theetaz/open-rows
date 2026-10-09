@@ -12,10 +12,12 @@
 //! [`openrows_results::ResultStore`] is the production [`BatchSink`].
 //! [`script::run_script`] runs editor text statement by statement after
 //! [`safety::SafetyPlan`] has gated it (read-only, confirm-before-write).
+//! [`export`] streams a statement's rows, or a stored result, to a file.
 #![forbid(unsafe_code)]
 mod actor;
 mod error;
 mod event;
+pub mod export;
 mod manager;
 mod results;
 pub mod safety;

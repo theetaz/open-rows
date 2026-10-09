@@ -7,6 +7,7 @@ import {
   ConnectionHeader,
   ConnectionRail,
   connectionActions,
+  sessionOf,
 } from '../features/connections';
 import type { Connections } from '../features/connections';
 import { QueryContent } from '../features/query';
@@ -44,6 +45,15 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
           }}
           onSavedQuery={(query) => {
             if (scope) tabs.open(scope, { title: query.name, sql: query.sql });
+          }}
+          sessionFor={(database) => {
+            const profile = connections.active;
+            const sessionId = profile
+              ? sessionOf(connections.statusOf(profile.id), database)
+              : null;
+            return profile && sessionId
+              ? { profileId: profile.id, sessionId }
+              : null;
           }}
         />
       </SplitPanel>
