@@ -26,6 +26,8 @@ type ShellInput = {
   closeTab: () => void;
   /** Export the active table tab's table. */
   onExportTable: () => void;
+  /** Show the ER diagram of the selected schema. */
+  onShowDiagram: () => void;
   /** Open a `.sql` file into a new tab when no query tab is active. */
   openFile: () => void;
   refresh: () => void;
@@ -120,6 +122,7 @@ function workActions(input: ShellInput): Actions {
     },
     safe: input.toggleSafe,
     'export-table': input.onExportTable,
+    'show-er-diagram': input.onShowDiagram,
     'new-connection': () => {
       connections.setSheet({ kind: 'new' });
     },

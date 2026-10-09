@@ -16,6 +16,7 @@ pub mod capabilities;
 pub mod catalog;
 pub mod connect;
 pub mod connection;
+pub mod diagram;
 pub mod driver;
 mod error;
 pub mod file;

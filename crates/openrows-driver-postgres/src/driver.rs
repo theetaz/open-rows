@@ -3,6 +3,7 @@
 use openrows_driver_api::catalog::{
     ColumnSummary, DatabaseSummary, ObjectKind, ObjectSummary, SchemaSummary, TableStructure,
 };
+use openrows_driver_api::diagram::SchemaDiagram;
 use openrows_driver_api::schema::{SchemaChange, TableDetail};
 use openrows_driver_api::structure::{AlterPlan, AlterTable};
 use openrows_driver_api::{
@@ -167,6 +168,14 @@ impl Catalog for PgSession {
 
     fn schema_fingerprint(&mut self) -> BoxFuture<'_, Result<Option<String>, DriverError>> {
         Box::pin(PgSession::schema_fingerprint(self))
+    }
+
+    fn schema_diagram<'a>(
+        &'a mut self,
+        schema: &'a str,
+        max_tables: usize,
+    ) -> BoxFuture<'a, Result<SchemaDiagram, DriverError>> {
+        Box::pin(PgSession::schema_diagram(self, schema, max_tables))
     }
 }
 

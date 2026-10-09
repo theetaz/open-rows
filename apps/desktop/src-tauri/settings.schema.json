@@ -252,6 +252,7 @@
           "save",
           "save-as",
           "export-table",
+          "show-er-diagram",
           "export-results",
           "commit-changes",
           "discard-changes",

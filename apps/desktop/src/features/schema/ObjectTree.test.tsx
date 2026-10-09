@@ -4,7 +4,12 @@ import type { BoundFunctions, queries } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
-import { listObjects, listSchemas, startExport } from '@openrows/ipc';
+import {
+  listObjects,
+  listSchemas,
+  schemaDiagram,
+  startExport,
+} from '@openrows/ipc';
 import { connectTo } from '../../test/connect';
 import { Workspace } from '../workspace/Workspace';
 
@@ -209,4 +214,31 @@ it('lists large sections 5,000 objects at a time', async () => {
   );
   expect(await sidebar().findByText('second')).toBeVisible();
   vi.mocked(listObjects).mockReset();
+});
+
+it("shows the ER diagram of a table's schema and opens a table from it", async () => {
+  const user = mount();
+  await connectTo();
+  const orders = await sidebar().findByRole('treeitem', {
+    name: 'orders ~2.4M',
+  });
+  fireEvent.contextMenu(orders, { clientX: 40, clientY: 80 });
+  const menu = await screen.findByRole('menu', { name: 'orders actions' });
+  await user.click(
+    within(menu).getByRole('menuitem', { name: 'Show ER Diagram' }),
+  );
+  const sheet = await screen.findByRole('dialog', {
+    name: 'ER Diagram — public',
+  });
+  expect(schemaDiagram).toHaveBeenCalledWith({
+    profileId: 'id-orders-local',
+    database: 'orders',
+    schema: 'public',
+  });
+  const customers = await within(sheet).findByRole('button', {
+    name: 'Open table customers',
+  });
+  await user.click(customers);
+  expect(sheet).not.toBeInTheDocument();
+  expect(await screen.findByRole('tab', { name: /customers/ })).toBeVisible();
 });

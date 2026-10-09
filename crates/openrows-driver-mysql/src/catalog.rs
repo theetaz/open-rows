@@ -4,6 +4,7 @@
 //! A `MySQL` database is a schema: each opened database lists exactly one
 //! schema, itself. Names reach the server as bound parameters.
 pub(crate) mod detail;
+mod diagram;
 mod rows;
 
 use rows::enum_labels;
@@ -13,6 +14,7 @@ use openrows_driver_api::catalog::{
     ColumnSummary, DatabaseSummary, IndexSummary, ObjectKind, ObjectSummary, SchemaSummary,
     TableStructure,
 };
+use openrows_driver_api::diagram::SchemaDiagram;
 use openrows_driver_api::schema::TableDetail;
 use openrows_driver_api::{BoxFuture, Catalog, DriverError};
 
@@ -266,5 +268,13 @@ impl Catalog for MySqlSession {
             let rows = self.text_query(FINGERPRINT_SQL, &[]).await?;
             Ok(rows.first().and_then(|row| optional(row, 0)))
         })
+    }
+
+    fn schema_diagram<'a>(
+        &'a mut self,
+        schema: &'a str,
+        max_tables: usize,
+    ) -> BoxFuture<'a, Result<SchemaDiagram, DriverError>> {
+        Box::pin(diagram::schema_diagram(self, schema, max_tables))
     }
 }

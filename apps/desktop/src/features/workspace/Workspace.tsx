@@ -8,10 +8,12 @@ const WorkspacePalettes = lazy(() =>
   })),
 );
 import { useWorkspaceController } from './useWorkspaceController';
+import type { DiagramRequest } from './useWorkspaceController';
 import { contextSegments } from './contextBar';
 import { ConnectionSheets, SshPrompts, useConnections } from '../connections';
 import type { SettingsSection } from '../settings';
 import { TableExport } from './TableExport';
+import { ErDiagram } from '../erd';
 import styles from './Workspace.module.css';
 /** Real connections, catalog, query tabs and results. */
 export function Workspace({
@@ -25,12 +27,14 @@ export function Workspace({
 }): React.JSX.Element {
   const connections = useConnections();
   const [exporting, setExporting] = useState(false);
+  const [diagram, setDiagram] = useState<DiagramRequest | null>(null);
   const controller = useWorkspaceController({
     onGallery,
     onSettings,
     onExportTable: () => {
       setExporting(true);
     },
+    onShowDiagram: setDiagram,
     enabled,
     connections,
   });
@@ -60,6 +64,25 @@ export function Workspace({
           scope={controller.scope}
           onClose={() => {
             setExporting(false);
+          }}
+        />
+      )}
+      {diagram && connections.active && (
+        <ErDiagram
+          key={`${diagram.database}\n${diagram.schema}`}
+          {...diagram}
+          profileId={connections.active.id}
+          onOpen={(name) => {
+            controller.openObject({
+              database: diagram.database,
+              schema: diagram.schema,
+              name,
+              kind: 'table',
+              arguments: null,
+            });
+          }}
+          onClose={() => {
+            setDiagram(null);
           }}
         />
       )}

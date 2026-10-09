@@ -42,6 +42,7 @@ const denyList = [
     '@codemirror',
     '@lezer',
     '@replit/codemirror-vim',
+    '@dagrejs',
     ...(process.env.BUNDLE_DENY_MODULES ?? '')
       .split(',')
       .map((name) => name.trim())

@@ -82,10 +82,31 @@ function useCommandRoutes(
   useMenuBridge(command, menuEnabled(state));
 }
 
+/** The schema an ER diagram shows, and the table to centre on. */
+export type DiagramRequest = {
+  database: string;
+  schema: string;
+  focus?: string;
+};
+
+/** The diagram of a tree object's schema, else of the selected schema. */
+function diagramOpener(
+  catalog: Catalog,
+  show: (request: DiagramRequest) => void,
+): (object?: ObjectRef) => void {
+  return (object) => {
+    const database = object?.database ?? catalog.database;
+    const schema = object?.schema ?? catalog.schema;
+    if (!database || !schema) return;
+    show({ database, schema, ...(object ? { focus: object.name } : {}) });
+  };
+}
+
 type Input = {
   onGallery: () => void;
   onSettings: (section?: SettingsSection) => void;
   onExportTable: () => void;
+  onShowDiagram: (request: DiagramRequest) => void;
   enabled: boolean;
   connections: Connections;
 };
@@ -122,6 +143,7 @@ export function useWorkspaceController(input: Input): WorkspaceController {
   const toggleSidebar = (): void => {
     setSidebar((open) => !open);
   };
+  const showDiagram = diagramOpener(catalog, input.onShowDiagram);
   const command = shellCommand({
     ...input,
     catalog,
@@ -137,6 +159,9 @@ export function useWorkspaceController(input: Input): WorkspaceController {
     refresh,
     toggleSafe,
     setTheme,
+    onShowDiagram: () => {
+      showDiagram();
+    },
   });
   useCommandRoutes(command, input.enabled && !mode, {
     connections,
@@ -161,6 +186,7 @@ export function useWorkspaceController(input: Input): WorkspaceController {
     toggleSidebar,
     addQuery: commands.addQuery,
     openObject,
+    showDiagram,
     toggleSafe,
     refresh,
     command,
@@ -189,6 +215,8 @@ type WorkspaceController = Details &
      * `preview` (a single click in the tree) reuses the preview tab.
      */
     openObject: (object: ObjectRef, preview?: boolean) => void;
+    /** ER diagram of an object's schema (centred on it), else of the selected schema. */
+    showDiagram: (object?: ObjectRef) => void;
     toggleSafe: () => void;
     refresh: () => void;
     command: (id: string) => void;

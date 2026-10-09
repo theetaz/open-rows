@@ -12,14 +12,15 @@ export type SessionLookup = (
 export type ObjectMenu = { object: ObjectRef; point: MenuPoint };
 
 /**
- * Context menu of a relation in the schema tree (Open, Export…) and the
- * export sheet it opens.
+ * Context menu of a relation in the schema tree (Open, Export…, Show ER
+ * Diagram) and the export sheet it opens.
  */
 export function ObjectActions(props: {
   menu: ObjectMenu | null;
   onClose: () => void;
   sessionFor: SessionLookup;
   onOpen: (object: ObjectRef) => void;
+  onDiagram: (object: ObjectRef) => void;
 }): React.JSX.Element | null {
   const [exporting, setExporting] = useState<ObjectRef | null>(null);
   const { menu } = props;
@@ -54,6 +55,16 @@ export function ObjectActions(props: {
             }}
           >
             Export…
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              props.onClose();
+              props.onDiagram(menu.object);
+            }}
+          >
+            Show ER Diagram
           </button>
         </PointMenu>
       )}

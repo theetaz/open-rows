@@ -39,6 +39,7 @@ export function menuEnabled(input: {
     database: connected,
     refresh: connected,
     quick: connected,
+    'show-er-diagram': connected,
     safe: Boolean(profile) && !input.prod,
   };
 }

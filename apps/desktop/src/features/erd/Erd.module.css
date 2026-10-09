@@ -1,0 +1,67 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* The sheet's height minus its title row and padding. */
+.view {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: var(--or-space-8);
+  block-size: calc(100vh - var(--or-toolbar-height) - 6rem);
+  min-block-size: 0;
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-6);
+}
+.search {
+  inline-size: 14rem;
+}
+.count,
+.zoom {
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+  font-variant-numeric: var(--or-font-numeric);
+}
+.zoom {
+  min-inline-size: 3em;
+  text-align: center;
+}
+.spacer {
+  flex: 1;
+}
+.canvas {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  background: var(--or-page);
+  border: var(--or-border-width) solid var(--or-separator);
+  border-radius: var(--or-radius-card);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.canvas:active {
+  cursor: grabbing;
+}
+.canvas :global(.erd-table) {
+  cursor: pointer;
+}
+.status {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--or-space-12);
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+}
+.status span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.note {
+  color: var(--or-secondary);
+  text-align: center;
+  padding-block: var(--or-space-32);
+}
+.error {
+  color: var(--or-danger-fg);
+}

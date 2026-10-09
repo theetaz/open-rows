@@ -114,6 +114,16 @@ export type {
   ExportRequest,
   ExportSourceDto,
 } from './generated/bindings';
+/** The read-only ER diagram of a schema and its SVG/PNG export (M2-10). */
+export { saveDiagram, schemaDiagram } from './diagram';
+export type {
+  DiagramColumnDto,
+  DiagramFileDto,
+  DiagramForeignKeyDto,
+  DiagramTableDto,
+  DiagramTarget,
+  SchemaDiagramDto,
+} from './generated/bindings';
 /** settings.json and the native menu bar (M1-26, M1-27). */
 export {
   onMenuCommand,
