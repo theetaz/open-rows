@@ -15,6 +15,10 @@ import { parseSnippets, SNIPPETS_KEY } from '../snippets/snippetStore';
 import { EXPORT_KEY, parseExportSettings } from '../export/exportSettings';
 import { COPY_KEY, parseCopySettings } from '../../results/copy/copySettings';
 import { onSettingsChanged, reloadSettings } from './localSetting';
+import {
+  SIDEBAR_KEY,
+  parseSidebarPreferences,
+} from '../schema/sidebarPreferences';
 import { parseTools, TOOLS_KEY } from './toolSettings';
 
 /**
@@ -36,6 +40,7 @@ type Section = {
 
 /** File sections and their stores; every value is validated on the way in and out. */
 const SECTIONS: Readonly<Record<string, Section>> = {
+  sidebar: { key: SIDEBAR_KEY, parse: parseSidebarPreferences },
   general: { key: GENERAL_KEY, parse: parseGeneral },
   appearance: { key: APPEARANCE_KEY, parse: parseAppearance },
   editor: {

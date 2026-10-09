@@ -49,6 +49,7 @@ export function openTableView(
       title: object.name,
       objectPath: [object.schema, object.name],
       table: {
+        ...(object.kind === 'table' ? {} : { kind: object.kind }),
         database: object.database,
         schema: object.schema,
         name: object.name,

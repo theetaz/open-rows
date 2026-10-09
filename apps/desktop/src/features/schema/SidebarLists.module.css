@@ -1,0 +1,23 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.filters {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--or-separator);
+  font-size: 11px;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+.chips button[aria-pressed='true'] {
+  color: var(--or-accent);
+  background: var(--or-control-hover);
+}
+.filters select {
+  width: 100%;
+  color: var(--or-text);
+  background: var(--or-panel-solid);
+}
+.missing {
+  opacity: 0.6;
+}

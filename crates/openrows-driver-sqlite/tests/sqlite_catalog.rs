@@ -161,3 +161,27 @@ async fn view_inspection_is_read_only_and_optional_catalogs_are_typed_unsupporte
     ));
     Ok(())
 }
+
+#[tokio::test]
+async fn system_objects_remain_available_to_the_toggle_but_not_quick_open() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let mut session = database(
+        &dir,
+        "CREATE TABLE ids (id INTEGER PRIMARY KEY AUTOINCREMENT)",
+    )
+    .await?;
+    let objects = session.list_objects("main", &[ObjectKind::Table]).await?;
+    assert!(
+        objects
+            .iter()
+            .any(|object| object.name == "sqlite_sequence")
+    );
+    let indexed = session.search_index().await?;
+    assert!(
+        indexed
+            .iter()
+            .all(|object| !object.name.starts_with("sqlite_"))
+    );
+    assert!(indexed.iter().any(|object| object.name == "ids"));
+    Ok(())
+}

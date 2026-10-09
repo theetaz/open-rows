@@ -4,7 +4,7 @@
 -- Columns: relkind, estimate, total bytes, data bytes, index bytes, comment,
 -- view definition, partition key.
 SELECT c.relkind::text,
-       CASE WHEN c.relkind IN ('r', 'm', 'f') AND c.reltuples >= 0
+       CASE WHEN c.relkind IN ('r', 't', 'm', 'f') AND c.reltuples >= 0
             THEN c.reltuples::bigint END,
        pg_catalog.pg_total_relation_size(c.oid),
        pg_catalog.pg_relation_size(c.oid),
@@ -16,4 +16,4 @@ FROM pg_catalog.pg_class AS c
 JOIN pg_catalog.pg_namespace AS n ON n.oid = c.relnamespace
 WHERE n.nspname = {schema}
   AND c.relname = {name}
-  AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
+  AND c.relkind IN ('r', 't', 'p', 'v', 'm', 'f')

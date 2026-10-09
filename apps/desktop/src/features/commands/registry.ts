@@ -69,6 +69,11 @@ export const COMMANDS: readonly CommandSpec[] = [
   { id: 'new-tab', label: 'New query tab', shortcut: 'Cmd+T' },
   { id: 'close-tab', label: 'Close current tab', shortcut: 'Cmd+W' },
   { id: 'database', label: 'Open database…', shortcut: 'Cmd+K' },
+  {
+    id: 'toggle-favourite',
+    label: 'Toggle object favourite',
+    shortcut: 'Alt+Cmd+D',
+  },
   { id: 'quick', label: 'Quick open…', shortcut: 'Cmd+P' },
   { id: 'commands', label: 'Command palette', shortcut: 'Shift+Cmd+P' },
   { id: 'refresh', label: 'Refresh', shortcut: 'Cmd+R' },

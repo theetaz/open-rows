@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useState } from 'react';
 import type { ObjectFeaturesDto } from '@openrows/ipc';
+import { FavouriteButton } from '../schema/FavouriteButton';
 import { PointMenu } from '../../shell/PointMenu';
 import { ExportSheet, tableExport } from '../export';
 import { EntryItems, objectEntries } from '../objects';
@@ -101,6 +102,7 @@ export function ObjectActions(props: {
           >
             Open
           </button>
+          <MenuFavourite menu={menu} session={session} />
           {props.features && (
             <EntryItems
               entries={objectEntries(menu.object, props.features)}
@@ -140,4 +142,16 @@ export function ObjectActions(props: {
       )}
     </>
   );
+}
+
+function MenuFavourite(props: {
+  menu: ObjectMenu;
+  session: ReturnType<SessionLookup>;
+}): React.JSX.Element | null {
+  return props.session ? (
+    <FavouriteButton
+      menu
+      object={{ ...props.menu.object, profileId: props.session.profileId }}
+    />
+  ) : null;
 }

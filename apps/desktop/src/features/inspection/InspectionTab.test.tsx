@@ -196,3 +196,36 @@ it('keeps grants visible when direct memberships are not visible to the login', 
   );
   expect(screen.queryByRole('alert')).toBeNull();
 });
+
+it('stars the exact inspector overload without making an extra metadata read', async () => {
+  const { readSidebarObjects } = await import('../schema/sidebarStore');
+  const user = userEvent.setup();
+  const object = {
+    schema: 'app',
+    name: 'tax',
+    kind: 'function' as const,
+    arguments: 'numeric',
+  };
+  vi.mocked(inspectObject).mockResolvedValue({
+    attributes: [],
+    sections: [],
+    definition: null,
+  });
+  render(
+    <ThemeProvider>
+      <InspectionTab
+        profileId="p"
+        database="db"
+        connected
+        target={{ kind: 'object', object }}
+        onOpenSql={vi.fn()}
+      />
+    </ThemeProvider>,
+  );
+  await screen.findByText('Read-only');
+  await user.click(screen.getByRole('button', { name: 'Add favourite' }));
+  expect(readSidebarObjects('p', 'db').favourites).toEqual([
+    { ...object, profileId: 'p', database: 'db' },
+  ]);
+  expect(inspectObject).toHaveBeenCalledOnce();
+});

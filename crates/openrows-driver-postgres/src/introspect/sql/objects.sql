@@ -8,6 +8,7 @@ FROM (
            c.relname,
            CASE c.relkind
                WHEN 'r' THEN 'table'
+               WHEN 't' THEN 'table'
                WHEN 'p' THEN 'table'
                WHEN 'v' THEN 'view'
                WHEN 'm' THEN 'materialized_view'
@@ -15,13 +16,13 @@ FROM (
                ELSE 'sequence'
            END,
            NULL::text,
-           CASE WHEN c.relkind IN ('r', 'm') AND c.reltuples >= 0
+           CASE WHEN c.relkind IN ('r', 't', 'm') AND c.reltuples >= 0
                 THEN c.reltuples::bigint END,
            pg_catalog.obj_description(c.oid, 'pg_class')
     FROM pg_catalog.pg_class AS c
     JOIN pg_catalog.pg_namespace AS n ON n.oid = c.relnamespace
     WHERE n.nspname = $1
-      AND c.relkind IN ('r', 'p', 'v', 'm', 'f', 'S')
+      AND c.relkind IN ('r', 't', 'p', 'v', 'm', 'f', 'S')
       AND NOT c.relispartition
     UNION ALL
     SELECT n.nspname,

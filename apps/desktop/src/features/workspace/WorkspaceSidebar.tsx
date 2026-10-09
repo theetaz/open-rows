@@ -2,6 +2,10 @@
 import { useCallback, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { GlassPanel, Icon, SegmentedControl, TextField } from '@openrows/ui';
+import {
+  useSidebarPreferences,
+  writeSidebarPreferences,
+} from '../schema/sidebarPreferences';
 import { ObjectTree, SchemaPicker } from '../schema';
 import type { Catalog, MenuPoint, ObjectRef } from '../schema';
 import { HistoryList } from '../query';
@@ -52,7 +56,7 @@ const exact = (event: React.KeyboardEvent, key: string): boolean =>
 export function WorkspaceSidebar(props: Props): React.JSX.Element {
   const { catalog } = props;
   const [segment, setSegment] = useState('Items');
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useSidebarSearch(catalog.profileId, segment);
   const [menu, setMenu] = useState<ObjectMenu | null>(null);
   const [create, setCreate] = useState<MenuPoint | null>(null);
   const closeMenu = useCallback(() => {
@@ -203,4 +207,20 @@ function SidebarItems(
       )}
     </div>
   );
+}
+
+function useSidebarSearch(
+  profileId: string,
+  segment: string,
+): [string, (text: string) => void] {
+  const [otherSearch, setOtherSearch] = useState('');
+  const preferences = useSidebarPreferences(profileId);
+  return [
+    segment === 'Items' ? preferences.text : otherSearch,
+    (text) => {
+      if (segment === 'Items' && profileId)
+        writeSidebarPreferences(profileId, { text });
+      else setOtherSearch(text);
+    },
+  ];
 }

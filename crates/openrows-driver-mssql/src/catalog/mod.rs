@@ -45,7 +45,7 @@ const ROUTINE_SQL: &str = "SELECT m.definition FROM sys.sql_modules AS m \
 /// The tree kind of a `sys.objects` type.
 fn object_kind(code: &str) -> Option<ObjectKind> {
     match code.trim() {
-        "U" => Some(ObjectKind::Table),
+        "U" | "S" => Some(ObjectKind::Table),
         "V" => Some(ObjectKind::View),
         "P" | "PC" => Some(ObjectKind::Procedure),
         "FN" | "IF" | "TF" | "FS" | "FT" => Some(ObjectKind::Function),
@@ -105,7 +105,23 @@ impl SqlServerSession {
         };
         let sql = OBJECTS_SQL
             .replace("{top}", &top)
-            .replace("{schema}", filter);
+            .replace("{schema}", filter)
+            .replace(
+                "{system}",
+                if schema.is_some() {
+                    ""
+                } else {
+                    "AND o.is_ms_shipped = 0"
+                },
+            )
+            .replace(
+                "{types}",
+                if schema.is_some() {
+                    "(t.is_user_defined = 1 OR s.name = N'sys')"
+                } else {
+                    "t.is_user_defined = 1"
+                },
+            );
         let rows = self.text_query(&sql, &params).await?;
         Ok(rows
             .iter()

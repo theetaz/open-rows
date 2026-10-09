@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
+import { toggleActiveFavourite } from '../schema/activeFavourite';
+import type { QueryTab } from '../query/tabs';
 import type { ThemeMode } from '@openrows/ui';
 import {
   isPaneCommand,
@@ -52,6 +54,7 @@ export type ShellInput = {
   openFile: () => void;
   refresh: () => void;
   toggleSafe: () => void;
+  activeTab?: QueryTab | undefined;
   onGallery: () => void;
   onSettings: (section?: SettingsSection) => void;
   setTheme: (mode: ThemeMode) => void;
@@ -141,6 +144,9 @@ function workActions(input: ShellInput): Actions {
       runTableCommand('refresh');
     },
     safe: input.toggleSafe,
+    'toggle-favourite': () => {
+      toggleActiveFavourite(input.activeTab);
+    },
     'export-table': input.onExportTable,
     'import-data': input.onImport,
     'export-tables': input.onExportTables,

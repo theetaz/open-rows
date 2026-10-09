@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { recordRecent } from '../schema/sidebarStore';
 import type { ObjectIdentityDto } from '@openrows/ipc';
 import type { QueryTabs, TabScope } from '../query';
 
@@ -15,6 +16,12 @@ export function openInspection(
   target: InspectionTarget,
   preview = false,
 ): void {
+  if (target.kind === 'object')
+    recordRecent({
+      ...target.object,
+      profileId: scope.connectionId,
+      database: scope.database,
+    });
   const identity = JSON.stringify(target);
   const existing = tabs
     .tabsFor(scope)

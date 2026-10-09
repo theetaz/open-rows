@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Button, DisclosureSection, Tree } from '@openrows/ui';
 import type { ObjectDto } from '@openrows/ipc';
+import { isSystemObject } from './systemObjects';
 import { nodeKey, objectLabel } from './catalog';
 import type { ObjectGroup, ObjectRef } from './catalog';
 import { ObjectRow } from './ObjectRow';
@@ -98,12 +99,22 @@ export function ObjectSection(props: Props): React.JSX.Element {
       : indexed
         ? resource.data
         : matching(resource.data, search);
-  const stop = tabStop(items, props.selected, catalog);
+  const visible = items.filter(
+    (object) =>
+      object.schema === catalog.schema &&
+      (catalog.systemSchemas || !isSystemObject(catalog.engine, object)),
+  );
+  const stop = tabStop(visible, props.selected, catalog);
   return (
-    <div hidden={!!search && resource.status === 'ready' && !items.length}>
+    <div hidden={!!search && resource.status === 'ready' && !visible.length}>
       <DisclosureSection
         label={group.label}
-        {...sectionCount(resource, pages.total, indexed || !!search, items)}
+        {...sectionCount(
+          resource,
+          pages.total,
+          countIsFiltered({ indexed, search, visible, items }),
+          visible,
+        )}
         defaultOpen={open}
         forceOpen={!!search}
         onOpenChange={setOpen}
@@ -124,9 +135,9 @@ export function ObjectSection(props: Props): React.JSX.Element {
         {resource.status === 'ready' && !resource.data.length && (
           <p className={styles.note}>No {group.label.toLowerCase()}</p>
         )}
-        {items.length > 0 && (
+        {visible.length > 0 && (
           <Tree label={group.label}>
-            {items.map((object) => (
+            {visible.map((object) => (
               <ObjectRow
                 {...props}
                 key={nodeKey(object)}
@@ -186,4 +197,17 @@ function tabStop(
       return catalog.expanded(object) ? selected : id;
   }
   return items[0] && nodeKey(items[0]);
+}
+
+function countIsFiltered(options: {
+  indexed: boolean;
+  search: string;
+  visible: readonly ObjectDto[];
+  items: readonly ObjectDto[];
+}): boolean {
+  return (
+    options.indexed ||
+    !!options.search ||
+    options.visible.length !== options.items.length
+  );
 }
