@@ -4,6 +4,7 @@ members = [
     "crates/openrows-core",
     "crates/openrows-results",
     "crates/openrows-export",
+    "crates/openrows-import",
     "crates/openrows-driver-api",
     "crates/openrows-driver-conformance",
     "crates/openrows-driver-mysql",

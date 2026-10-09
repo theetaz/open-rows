@@ -23,7 +23,7 @@ use std::{collections::HashMap, fmt::Write, iter, sync::Arc};
 
 /// One `PostgreSQL` connection, owned by a single session actor (ADR-0007).
 pub struct PgSession {
-    wire: Wire,
+    pub(crate) wire: Wire,
     type_names: HashMap<u32, String>,
     policy: BatchPolicy,
     cancel: Option<Arc<PgCancel>>,

@@ -21,6 +21,8 @@ import { useDatabasePrompt } from './useDatabasePrompt';
 import { shellCommand } from './shellCommand';
 import { menuEnabled } from './menuState';
 import type { PaletteMode } from './WorkspacePalettes';
+import { importOpener } from './TableImport';
+import type { ImportTarget } from './TableImport';
 /**
  * Tab scopes of the active connection: the active database's scope (the
  * database last chosen, else the profile's, until one is open, so restored
@@ -121,6 +123,8 @@ type Input = {
   onGallery: () => void;
   onSettings: (section?: SettingsSection) => void;
   onExportTable: () => void;
+  /** Open the import sheet for a database, schema and maybe a table. */
+  onImport: (target: ImportTarget) => void;
   onShowDiagram: (request: DiagramRequest) => void;
   enabled: boolean;
   connections: Connections;
@@ -135,6 +139,22 @@ function useSafeMode(prod: boolean): [boolean, () => void] {
       if (!prod) setSafe(!safe);
     },
   ];
+}
+
+/** Relations open as table views (D-08); routines and sequences as query tabs. */
+function objectOpener(input: {
+  catalog: Catalog;
+  tabs: QueryTabs;
+  scopeOf: (database: string) => TabScope | undefined;
+  commands: ReturnType<typeof queryCommands>;
+}): (object: ObjectRef, preview?: boolean) => void {
+  const { catalog, tabs, scopeOf, commands } = input;
+  return (object, preview = false) => {
+    catalog.setSchema(object.schema);
+    const target = scopeOf(object.database);
+    if (!target || !openTableView(tabs, target, object, preview))
+      commands.openObject(object);
+  };
 }
 
 /** Shell state and command wiring, isolated from rendering. */
@@ -155,19 +175,15 @@ export function useWorkspaceController(input: Input): WorkspaceController {
   const tableInfo = useTableInfo(active?.id);
   const commands = queryCommands(tabs, scope, scopeOf);
   const openProcesses = processesOpener(connections, tabs, scope);
-  /** Relations open as table views (D-08); routines and sequences as query tabs. */
-  const openObject = (object: ObjectRef, preview = false): void => {
-    catalog.setSchema(object.schema);
-    const target = scopeOf(object.database);
-    if (!target || !openTableView(tabs, target, object, preview))
-      commands.openObject(object);
-  };
+  const openObject = objectOpener({ catalog, tabs, scopeOf, commands });
   const prod = connections.active?.env.kind === 'prod';
   const [safe, toggleSafe] = useSafeMode(prod);
   const toggleSidebar = (): void => {
     setSidebar((open) => !open);
   };
   const showDiagram = diagramOpener(catalog, input.onShowDiagram);
+  const tableTab = active?.kind === 'table' ? active.table : undefined;
+  const importData = importOpener(catalog, tableTab, input.onImport);
   const command = shellCommand({
     ...input,
     catalog,
@@ -186,6 +202,7 @@ export function useWorkspaceController(input: Input): WorkspaceController {
     onShowDiagram: () => {
       showDiagram();
     },
+    onImport: importData,
     // Called without arguments: the active scope.
     openProcesses,
   });
@@ -213,6 +230,7 @@ export function useWorkspaceController(input: Input): WorkspaceController {
     addQuery: commands.addQuery,
     openObject,
     showDiagram,
+    importData,
     openProcesses,
     hiddenCommands: connections.active?.processList ? [] : ['processes'],
     toggleSafe,
@@ -245,6 +263,8 @@ type WorkspaceController = Details &
     openObject: (object: ObjectRef, preview?: boolean) => void;
     /** ER diagram of an object's schema (centred on it), else of the selected schema. */
     showDiagram: (object?: ObjectRef) => void;
+    /** Import into a tree object's table, the active table tab's or a new table. */
+    importData: (object?: ObjectRef) => void;
     /** Open (or refocus) a scope's process list; the active scope by default. */
     openProcesses: (scope?: TabScope) => void;
     /** Palette commands the active connection cannot run. */

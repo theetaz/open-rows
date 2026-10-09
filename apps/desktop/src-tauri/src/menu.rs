@@ -75,6 +75,7 @@ const FILE: &[Entry] = &[
     S,
     C("export-table", "Export Table…"),
     C("export-results", "Export Results…"),
+    C("import-data", "Import…"),
     S,
     C("close-tab", "Close Tab"),
 ];
@@ -348,6 +349,7 @@ mod tests {
             "focus-filter",
             "toggle-columns",
             "export-results",
+            "import-data",
             "help-search",
             "show-er-diagram",
         ] {

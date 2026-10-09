@@ -216,6 +216,17 @@ export const commands = {
 	 *  cancels; the partial file is deleted.
 	 */
 	exportStart: (request: ExportRequest, onEvent: Channel<ExportEventDto>) => typedError<ExportReply, IpcError>(__TAURI_INVOKE("export_start", { request, onEvent })),
+	/**  Show the native open panel; the chosen path stays in the core. */
+	importPickFile: () => typedError<ImportFileReply, IpcError>(__TAURI_INVOKE("import_pick_file")),
+	/**  Detect (or apply) parse options and preview the file's columns and rows. */
+	importPreview: (request: ImportPreviewRequest) => typedError<ImportPreviewDto, IpcError>(__TAURI_INVOKE("import_preview", { request })),
+	/**
+	 *  Check the request, connect and start the dry run or import in the
+	 *  background; events follow on `on_event`.
+	 */
+	importStart: (request: ImportRequest, onEvent: Channel<ImportEventDto>) => typedError<ImportReply, IpcError>(__TAURI_INVOKE("import_start", { request, onEvent })),
+	/**  Cancel a running dry run or import; uncommitted work is rolled back. */
+	importCancel: (importId: string) => __TAURI_INVOKE<void>("import_cancel", { importId }),
 	/**  Tables, columns and foreign keys of a schema, read on the metadata session. */
 	schemaDiagram: (target: DiagramTarget) => typedError<SchemaDiagramDto, IpcError>(__TAURI_INVOKE("schema_diagram", { target })),
 	/**
@@ -303,6 +314,8 @@ export type AttachedFileDto = {
 	/**  Absolute path. */
 	path: string,
 };
+
+export type BadRowsDto = "abort" | "skip";
 
 export type BuildProfile = "debug" | "release";
 
@@ -414,6 +427,8 @@ export type ColumnDto = {
 
 /**  Whether every filter or any filter must match. */
 export type CombinatorDto = "and" | "or";
+
+export type ConflictDto = "error" | "skip" | "update";
 
 /**  A reachable saved connection. */
 export type ConnectionOpened = {
@@ -735,6 +750,150 @@ export type HistorySearchRequest = {
 
 /**  Outcome of a recorded statement. */
 export type HistoryStatusDto = "ok" | "error" | "cancelled";
+
+/**  A preview cell the target column would reject. */
+export type ImportCellDto = {
+	row: number,
+	column: number,
+};
+
+/**  One source column of the preview. */
+export type ImportColumnDto = {
+	name: string,
+	category: TypeCategoryDto,
+	nullable: boolean,
+	/**  The type a new table gets for it in the connection's dialect. */
+	suggestedType: string,
+};
+
+/**  A new table: a type per mapped column and its primary key. */
+export type ImportCreateDto = {
+	/**  Types in `columns` order, in the connection's dialect. */
+	types: string[],
+	primaryKey: string[],
+};
+
+/**  Progress, then exactly one of `finished`, `failed` or `cancelled`. */
+export type ImportEventDto = 
+/**  At most 10 per second. */
+{ type: "progress"; rows: number | null; inserted: number | null; failed: number | null; 
+/**  Share of the file read, 0–1. */
+fraction: number | null; rowsPerSecond: number | null } | { type: "finished"; summary: ImportSummaryDto } | 
+/**  Uncommitted work was rolled back; `summary.inserted` rows stayed. */
+{ type: "failed"; error: IpcError; summary: ImportSummaryDto } | { type: "cancelled"; summary: ImportSummaryDto };
+
+/**  `picked` with a handle for the chosen file; `dismissed` when cancelled. */
+export type ImportFileReply = { status: "picked"; 
+/**  Names the file in later calls; the path stays in the core. */
+fileId: string; fileName: string; sizeBytes: number | null } | { status: "dismissed" };
+
+/**  Layout of the file. */
+export type ImportFormatDto = 
+/**  Delimited text (CSV, TSV, …). */
+"delimited" | 
+/**  One JSON array of objects. */
+"jsonArray" | 
+/**  One JSON object per line. */
+"jsonLines";
+
+/**  One target column and its source. */
+export type ImportMappingDto = {
+	target: string,
+	source: ImportSourceDto,
+};
+
+export type ImportModeDto = "check" | "import";
+
+/**  Parse options; `import_preview` returns the detected ones. */
+export type ImportOptionsDto = {
+	format: ImportFormatDto,
+	/**  One ASCII character; `\t` for tab. */
+	delimiter: string,
+	/**  One ASCII character, or `null` to read quotes as text. */
+	quote: string | null,
+	/**  The first delimited record names the columns. */
+	header: boolean,
+	/**  WHATWG label, e.g. `utf-8` or `windows-1252`. */
+	encoding: string,
+	/**  Empty fields are NULL. */
+	emptyAsNull: boolean,
+};
+
+/**  The file's columns with inferred types and its first rows. */
+export type ImportPreviewDto = {
+	options: ImportOptionsDto,
+	columns: ImportColumnDto[],
+	rows: ((string | null)[])[],
+	/**  Line of each preview row. */
+	lines: (number | null)[],
+	invalid: ImportCellDto[],
+	/**  Malformed rows within the sample. */
+	errors: RowErrorDto[],
+	/**  Rows read for type inference. */
+	sampled: number,
+};
+
+/**  Preview a picked file with given (or detected) options. */
+export type ImportPreviewRequest = {
+	fileId: string,
+	/**  The target connection, for type suggestions in its dialect. */
+	profileId: string,
+	/**  `null` detects the options. */
+	options: ImportOptionsDto | null,
+	/**
+	 *  Target column type per source column (`null`: not checked), for
+	 *  highlighting values the target would reject.
+	 */
+	types: (string | null)[],
+};
+
+/**  The job started; events follow; `import_cancel(importId)` stops it. */
+export type ImportReply = {
+	importId: string,
+};
+
+/**  Start a dry run or an import of a picked file into a table. */
+export type ImportRequest = {
+	/**  An open session of the target database (proves it is connected). */
+	sessionId: string,
+	/**  The table (existing, or the new table's name). */
+	target: TableTarget,
+	fileId: string,
+	options: ImportOptionsDto,
+	columns: ImportMappingDto[],
+	/**  Set to create the table first. */
+	create: ImportCreateDto | null,
+	/**  Columns identifying existing rows (conflicts and the dry run). */
+	key: string[],
+	conflict: ConflictDto,
+	truncate: boolean,
+	transaction: TransactionDto,
+	badRows: BadRowsDto,
+	mode: ImportModeDto,
+	/**  Rows per batch (1–100 000). */
+	batchSize: number,
+};
+
+/**  Where a target column's values come from. */
+export type ImportSourceDto = 
+/**  The source column at `index`. */
+{ kind: "column"; index: number } | 
+/**  The same value in every row; `null` is NULL. */
+{ kind: "constant"; value: string | null };
+
+/**  Counts of a dry run or import. */
+export type ImportSummaryDto = {
+	/**  Rows read, good and bad. */
+	rows: number | null,
+	/**  Rows written and kept (inserted or updated). */
+	inserted: number | null,
+	skipped: number | null,
+	failed: number | null,
+	/**  Dry run: rows whose key exists; `null` when it cannot be told. */
+	conflicts: number | null,
+	/**  The first 100 row errors. */
+	errors: RowErrorDto[],
+};
 
 /**  One row of the Index grid. */
 export type IndexDetailDto = {
@@ -1159,6 +1318,14 @@ export type RowEditDto = {
 	values: { [key in string]: CellValueDto },
 };
 
+/**  A row that could not be imported. */
+export type RowErrorDto = {
+	/**  Line (record number for JSON arrays). */
+	line: number | null,
+	column: string | null,
+	message: string,
+};
+
 /**  Which statements of the editor text to run. */
 export type RunMode = 
 /**  Every statement in `sql`, in order. */
@@ -1573,6 +1740,8 @@ export type TlsFilesInput = {
 /**  libpq `sslmode` values (docs/12 §4.1). */
 export type TlsModeDto = "disable" | "allow" | "prefer" | "require" | "verify-ca" | "verify-full";
 
+export type TransactionDto = "single" | "batches";
+
 /**  One trigger in the Triggers sheet. */
 export type TriggerDto = {
 	name: string,
@@ -1587,6 +1756,9 @@ export type TriggerDto = {
 
 /**  When a trigger fires. */
 export type TriggerTimingDto = "before" | "after" | "insteadOf";
+
+/**  The kind of values a column holds. */
+export type TypeCategoryDto = "integer" | "decimal" | "boolean" | "date" | "timestamp" | "timestampTz" | "json" | "text";
 
 /**
  *  One webview report. `name` is the error name or the command; `message`

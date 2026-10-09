@@ -26,6 +26,8 @@ type ShellInput = {
   closeTab: () => void;
   /** Export the active table tab's table. */
   onExportTable: () => void;
+  /** Import a file into the active table or schema. */
+  onImport: () => void;
   /** Show the ER diagram of the selected schema. */
   onShowDiagram: () => void;
   /** Open the active database's process list. */
@@ -124,6 +126,7 @@ function workActions(input: ShellInput): Actions {
     },
     safe: input.toggleSafe,
     'export-table': input.onExportTable,
+    'import-data': input.onImport,
     'show-er-diagram': input.onShowDiagram,
     processes: input.openProcesses,
     'new-connection': () => {

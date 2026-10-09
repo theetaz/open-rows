@@ -10,9 +10,11 @@
 //! [`ConnectTrace`] for Test connection; connections offer [`Catalog`] and
 //! [`Editor`] facets. Every driver declares its [`Capabilities`] (M1-10),
 //! which the UI and the conformance suite read. The [`Admin`] facet lists
-//! and signals server processes; explain comes later (docs/05 §2).
+//! and signals server processes; the [`BulkLoader`] facet appends imported
+//! rows on the engine's fastest path; explain comes later (docs/05 §2).
 pub mod admin;
 mod batch;
+pub mod bulk;
 pub mod capabilities;
 pub mod catalog;
 pub mod connect;
@@ -31,6 +33,7 @@ pub mod trace;
 
 pub use admin::{Admin, ProcessId, ProcessInfo, ProcessSignal};
 pub use batch::BatchPolicy;
+pub use bulk::{BulkLoader, BulkTarget, TextRow};
 pub use capabilities::{Capabilities, Feature, Location};
 pub use connect::{ConnectRequest, ConnectTimeouts, Endpoint, SslMode, TlsFiles};
 pub use connection::{

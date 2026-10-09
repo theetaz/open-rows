@@ -44,6 +44,7 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
           connections={connections}
           onOpen={controller.openObject}
           onDiagram={controller.showDiagram}
+          onImport={controller.importData}
           onOpenSql={(sql) => {
             controller.addQuery(sql);
           }}

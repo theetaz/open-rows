@@ -12,8 +12,8 @@ export type SessionLookup = (
 export type ObjectMenu = { object: ObjectRef; point: MenuPoint };
 
 /**
- * Context menu of a relation in the schema tree (Open, Export…, Show ER
- * Diagram) and the export sheet it opens.
+ * Context menu of a relation in the schema tree (Open, Export…, Import…,
+ * Show ER Diagram) and the export sheet it opens.
  */
 export function ObjectActions(props: {
   menu: ObjectMenu | null;
@@ -21,6 +21,7 @@ export function ObjectActions(props: {
   sessionFor: SessionLookup;
   onOpen: (object: ObjectRef) => void;
   onDiagram: (object: ObjectRef) => void;
+  onImport: (object: ObjectRef) => void;
 }): React.JSX.Element | null {
   const [exporting, setExporting] = useState<ObjectRef | null>(null);
   const { menu } = props;
@@ -56,6 +57,20 @@ export function ObjectActions(props: {
           >
             Export…
           </button>
+          {menu.object.kind === 'table' && (
+            <button
+              type="button"
+              role="menuitem"
+              disabled={!session}
+              title={session ? undefined : 'Open the database to import'}
+              onClick={() => {
+                props.onClose();
+                props.onImport(menu.object);
+              }}
+            >
+              Import…
+            </button>
+          )}
           <button
             type="button"
             role="menuitem"

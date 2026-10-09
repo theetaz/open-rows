@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
 # Run the ignored PostgreSQL integration tests (driver, session actor, schema
-# cache and the driver conformance suite) against a throwaway container with
+# cache, the driver conformance suite and imports) against a throwaway container with
 # TLS enabled. Skips (exit 0) when Docker is unavailable (fails with
 # OPENROWS_REQUIRE_DOCKER=1); always removes the container and the generated
 # certificates.
@@ -59,5 +59,5 @@ echo "PostgreSQL ${version} ($(docker exec "$name" postgres --version)) on 127.0
 OPENROWS_TEST_PG_PORT="$port" OPENROWS_TEST_PG_PASSWORD="$password" OPENROWS_TEST_PG_CONTAINER="$name" \
     OPENROWS_TEST_PG_TLS_DIR="$tls_dir" \
     cargo nextest run -p openrows-driver-postgres -p openrows-core -p openrows-schema \
-    -p openrows-driver-conformance --locked --test postgres \
+    -p openrows-driver-conformance -p openrows-import --locked --test postgres \
     --run-ignored only --no-capture

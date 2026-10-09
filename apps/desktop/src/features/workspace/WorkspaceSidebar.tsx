@@ -33,6 +33,8 @@ type Props = {
   sessionFor: SessionLookup;
   /** Show the ER diagram of an object's schema, centred on it. */
   onDiagram: (object: ObjectRef) => void;
+  /** Import a file into a table. */
+  onImport: (object: ObjectRef) => void;
 };
 const exact = (event: React.KeyboardEvent, key: string): boolean =>
   event.metaKey &&
@@ -112,6 +114,7 @@ export function WorkspaceSidebar(props: Props): React.JSX.Element {
         sessionFor={props.sessionFor}
         onOpen={props.onOpen}
         onDiagram={props.onDiagram}
+        onImport={props.onImport}
       />
     </div>
   );

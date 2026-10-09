@@ -59,6 +59,7 @@ async fn coherence(
         (Feature::Catalog, connection.catalog().is_some()),
         (Feature::RowEdits, connection.editor().is_some()),
         (Feature::ProcessList, connection.admin().is_some()),
+        (Feature::BulkLoad, connection.bulk_loader().is_some()),
         (Feature::Cancel, connection.cancel_handle().is_some()),
         (Feature::StructureChanges, target.driver.supports_alter()),
         (Feature::SchemaFingerprint, fingerprint),
