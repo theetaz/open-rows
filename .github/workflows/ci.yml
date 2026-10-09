@@ -79,3 +79,30 @@ jobs:
         run: cargo nextest run --workspace --locked -E 'not binary(ssh_container)'
       - name: Binding freshness
         run: cargo nextest run -p openrows-app --locked bindings_are_fresh
+
+  containers:
+    # PostgreSQL 17, MySQL 8.4 and MariaDB 11.4 in throwaway containers: the
+    # driver integration tests and the driver conformance suite (M1-30). Its
+    # own runner, so the disk-heavy app build above is not shared; only the
+    # driver, core and schema crates are compiled here.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CARGO_PROFILE_DEV_DEBUG: line-tables-only
+      CARGO_PROFILE_TEST_DEBUG: line-tables-only
+      # A missing Docker daemon fails the job instead of skipping the suites.
+      OPENROWS_REQUIRE_DOCKER: '1'
+    steps:
+      - name: Free runner disk
+        run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/boost
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: taiki-e/install-action@183e4297cca2404691e9380e1307288dced5c82a # v2.87.25
+        with:
+          tool: cargo-nextest@0.9.146
+      - name: PostgreSQL suites
+        run: bash scripts/test-pg.sh 17
+      - name: MySQL and MariaDB suites
+        run: bash scripts/test-mysql.sh

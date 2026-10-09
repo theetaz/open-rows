@@ -15,12 +15,17 @@ serde_json.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+criterion = { version = "0.8", default-features = false }
 openrows-driver-mysql = { path = "../openrows-driver-mysql" }
 openrows-driver-postgres = { path = "../openrows-driver-postgres" }
 openrows-driver-sqlite = { path = "../openrows-driver-sqlite" }
 openrows-net = { path = "../openrows-net" }
 tempfile = "3.27"
 tokio = { version = "1.53", features = ["macros", "rt"] }
+
+[[bench]]
+name = "schema_catalog"
+harness = false
 
 [lints]
 workspace = true

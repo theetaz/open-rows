@@ -13,6 +13,7 @@
 //! through the pragma functions; the [`editor`] snapshots rows as exact text
 //! and commits staged edits in one `BEGIN IMMEDIATE` transaction.
 #![forbid(unsafe_code)]
+mod capabilities;
 mod catalog;
 mod connect;
 mod decode;

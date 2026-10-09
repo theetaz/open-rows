@@ -30,7 +30,8 @@ open-rows/
 ├── crates/openrows-types/      # shared value model, ids and errors
 ├── crates/openrows-core/       # session manager: actor per session, cancel, query events (M1-01)
 ├── crates/openrows-results/    # Arrow result store and window encoder (M0 S1)
-├── crates/openrows-driver-api/ # draft session/result-sink contract (M0 S3)
+├── crates/openrows-driver-api/ # driver contract: sessions, facets, capabilities (M1-10)
+├── crates/openrows-driver-conformance/ # capability-driven suite every driver passes (docs/05 §8)
 ├── crates/openrows-driver-postgres/ # prototype PG wire → Arrow decoder, benches, container tests
 ├── crates/openrows-net/        # SSH tunnel prototype (M0-S4); tests/ssh_container + fixtures/sshd
 ├── crates/openrows-sql/        # pure SQL toolkit: lexer, splitter, classifier, placeholders (D-02)
@@ -41,9 +42,10 @@ open-rows/
 ├── packages/ui/                # tokens, generator, CSS modules, theme and icons
 ├── packages/grid/              # @openrows/grid: canvas grid adapter and painter (S2)
 ├── packages/editor/            # @openrows/editor: CodeMirror 6 SQL editor; ./vim entry (S5)
+├── fuzz/                       # cargo-fuzz targets (own workspace, nightly only; `just fuzz-smoke`)
 ├── scripts/                    # tool/hygiene checks, git hooks and benchmark harnesses
 ├── docs/
-└── .github/workflows/ci.yml     # one Ubuntu Rust + frontend job
+└── .github/workflows/ci.yml     # Ubuntu Rust + frontend job, container suites job
 ```
 
 ## 2. Tooling
@@ -64,7 +66,7 @@ open-rows/
 | `sccache` (optional) | Compiler cache; set `RUSTC_WRAPPER=sccache`; sandbox behaviour in §2.2 |
 | `scripts/git-hooks` | Git hooks enabled by `just setup`; currently `commit-msg` |
 
-See [CONTRIBUTING.md §1](../CONTRIBUTING.md#1-first-time-setup) for installation and optional shared `CARGO_TARGET_DIR` setup. On macOS, Xcode Command Line Tools are required. Linux builds need the [Tauri system prerequisites](https://tauri.app/start/prerequisites/). Docker is optional: `just test-pg [version]` runs the PostgreSQL integration tests in a throwaway `postgres:<version>-alpine` container bound to 127.0.0.1 with TLS on (a throwaway CA, server and client certificates from `scripts/test-pg-certs.sh`, which needs `openssl`), removes the container and certificates on exit, and skips with exit 0 when Docker is unavailable. `just test-mysql [images…]` does the same for the MySQL/MariaDB driver (default `mysql:8.4` then `mariadb:11.4`, bound to 127.0.0.1, TLS from the images' auto-generated certificates); SQLite driver tests use temporary files and run in the normal `just test`. Docker (Docker Desktop on macOS) also runs the OpenSSH container matrix of `openrows-net`; those tests skip when Docker is unavailable, and `just test-ssh` fails instead of skipping. `ssh-keygen`, `ssh-agent` and `ssh-add` (OpenSSH client tools) generate test keys at test time. CI tooling is described in §4.
+See [CONTRIBUTING.md §1](../CONTRIBUTING.md#1-first-time-setup) for installation and optional shared `CARGO_TARGET_DIR` setup. On macOS, Xcode Command Line Tools are required. Linux builds need the [Tauri system prerequisites](https://tauri.app/start/prerequisites/). Docker is optional: `just test-pg [version]` runs the PostgreSQL integration tests in a throwaway `postgres:<version>-alpine` container bound to 127.0.0.1 with TLS on (a throwaway CA, server and client certificates from `scripts/test-pg-certs.sh`, which needs `openssl`), removes the container and certificates on exit, and skips with exit 0 when Docker is unavailable (exit 1 with `OPENROWS_REQUIRE_DOCKER=1`, as CI sets). `just test-mysql [images…]` does the same for the MySQL/MariaDB driver (default `mysql:8.4` then `mariadb:11.4`, bound to 127.0.0.1, TLS from the images' auto-generated certificates); SQLite driver tests use temporary files and run in the normal `just test`. Both scripts also run the driver conformance suite (`openrows-driver-conformance`) against their containers; its SQLite run is part of `just test`. Fuzzing needs a nightly toolchain and `cargo install cargo-fuzz`; `fuzz/` is excluded from the stable workspace, so `just check` never builds it. Docker (Docker Desktop on macOS) also runs the OpenSSH container matrix of `openrows-net`; those tests skip when Docker is unavailable, and `just test-ssh` fails instead of skipping. `ssh-keygen`, `ssh-agent` and `ssh-add` (OpenSSH client tools) generate test keys at test time. CI tooling is described in §4.
 
 ### 2.1 Common commands
 
@@ -95,6 +97,9 @@ just bench-editor   # S5 editor keystroke-to-paint, 5 000-line SQL, macOS GUI re
 just bench-test     # synthetic benchmark tests, no GUI
 just script-test    # sccache guard tests with a stub sccache (§2.2)
 just bench-pg-decode # Criterion decode_pg_* + gates (>= 1 M cells/s/core, first batch <= 5 ms)
+just bench-sql-split # Criterion sql_split_* (10 KB and 1 MB scripts per dialect), bytes/s
+just bench-schema   # Criterion schema_* at 50 000 objects + gates (first level <= 300 ms, search <= 50 ms)
+just fuzz-smoke 20  # each cargo-fuzz target for 20 s (skips without nightly and cargo-fuzz)
 just test-pg 17     # PostgreSQL integration tests in a throwaway container (skips without Docker)
 just test-mysql     # MySQL 8.4 and MariaDB 11.4 integration tests in throwaway containers (skips without Docker)
 just test-mysql mariadb:10.11 # any mysql:<tag> / mariadb:<tag> images, one after another
@@ -196,12 +201,12 @@ The full rules, with examples, live in [CONTRIBUTING.md](../CONTRIBUTING.md). Su
 
 ### 4.1 Current: minimal pipeline (private repository)
 
-While the project is solo and private, CI uses free GitHub Actions minutes sparingly. **Local `just check` is the gate for every branch and PR**; CI is a final integration check on `main` only. [.github/workflows/ci.yml](../.github/workflows/ci.yml) runs one Ubuntu job (15-minute timeout; a newer push to `main` cancels an older run) on:
+While the project is solo and private, CI uses free GitHub Actions minutes sparingly. **Local `just check` is the gate for every branch and PR**; CI is a final integration check on `main` only. [.github/workflows/ci.yml](../.github/workflows/ci.yml) runs two Ubuntu jobs (a newer push to `main` cancels an older run) on:
 
 - every push to `main`, i.e. each squash-merged PR;
 - manual dispatch (`gh workflow run CI --ref <branch>`), for the rare case where a branch needs a Linux check before merge.
 
-Pull requests and pushes to feature branches do **not** trigger CI. Steps:
+Pull requests and pushes to feature branches do **not** trigger CI. The `check` job (15-minute timeout) runs these steps:
 
 | Step | What it checks |
 | --- | --- |
@@ -213,7 +218,9 @@ Pull requests and pushes to feature branches do **not** trigger CI. Steps:
 | Binding freshness | Rust `bindings_are_fresh` test (same registry as the app) |
 | Format | `cargo fmt --all --check` |
 | Lint | `cargo clippy --workspace --all-targets --locked -- -D warnings` |
-| Tests | `cargo nextest run --workspace --locked -E 'not binary(ssh_container)'`; container-backed driver tests are `#[ignore]`d there (reported as skipped) and run locally with `just test-pg` and `just test-mysql`; the `openrows-net` SSH container matrix is filtered out in CI and runs locally in `just check` / `just test-ssh` |
+| Tests | `cargo nextest run --workspace --locked -E 'not binary(ssh_container)'`; container-backed driver tests are `#[ignore]`d there (reported as skipped) and run in the `containers` job; the `openrows-net` SSH container matrix is filtered out in CI and runs locally in `just check` / `just test-ssh` |
+
+The `containers` job (20-minute timeout, its own runner and Rust cache) builds only the driver, core, schema and conformance crates and runs `scripts/test-pg.sh 17` and `scripts/test-mysql.sh` (MySQL 8.4, MariaDB 11.4) with `OPENROWS_REQUIRE_DOCKER=1`, so a missing Docker daemon fails instead of skipping. Coverage, benchmark comparison and nightly fuzzing are not in CI yet (M1-30).
 
 Every gate, including those CI skips (cargo-deny, cargo-machete, hygiene, UI and benchmark checks), runs locally with `just check` and is mandatory before pushing a branch or opening a PR; the acceptance report carries the evidence. Actions are pinned to full commit SHAs, the workflow has read-only permissions, and checkout does not persist credentials. A red run on `main` is fixed immediately with a follow-up PR. PR-triggered CI and branch protection return with the full pipeline (§4.2) once the project has outside contributors.
 
@@ -226,7 +233,7 @@ Restored when the repository is made public (the full version is preserved in th
 - `hygiene` job: hygiene script, ShellCheck, actionlint.
 - `ci-ok` aggregate job as the single required status check, plus branch protection on `main` (PRs only, `ci-ok` required, linear history, no force pushes).
 - Dependabot for GitHub Actions and Cargo with `ci(deps)` / `build(deps)` prefixes.
-- Later: frontend browser E2E, Tier 1 driver integration with containers, benchmarks against `main`, nightly matrix/fuzzing/E2E, and signed release workflows.
+- Later: frontend browser E2E, more Tier 1 server versions in the container job, benchmarks against `main`, nightly matrix/fuzzing/E2E, and signed release workflows.
 
 ## 5. Branching and versioning
 

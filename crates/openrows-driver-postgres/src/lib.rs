@@ -16,6 +16,7 @@
 //! a route such as an SSH tunnel (`ConnectOptions::via`, D-10).
 #![forbid(unsafe_code)]
 mod cancel;
+mod capabilities;
 mod connect;
 pub mod ddl;
 mod decode;

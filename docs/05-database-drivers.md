@@ -48,7 +48,7 @@ pub trait ResultSink: Send {
 
 Drivers build Arrow `RecordBatch`es directly with typed builders (no intermediate `Vec<Value>`), targeting ~64 k cells or 4 MB per batch, whichever comes first, and always flushing the first batch early (after ≤ 200 rows) so the UI can paint quickly.
 
-The M0-S3 draft in `crates/openrows-driver-api` implements only the streaming core of this contract: `Session` (`execute`, `close`; `Send`, not `Sync`, owned by one actor per ADR-0007), a minimal `ResultSink` (`begin_result`, `push_batch` → `Continue | Stop`), `ExecSummary`, a typed `DriverError` and `BatchPolicy`. `BatchPolicy` caps the first batch at min(200 rows, 64 Ki cells). Later batches hold ⌊65 536 / columns⌋ rows, or flush once 4 MiB of wire bytes has been decoded. Capabilities, cancel, notices, introspection and editing facets remain M1-10 work. See [§11](#11-m0-s3-postgresql-streaming-spike).
+The M0-S3 draft in `crates/openrows-driver-api` implements only the streaming core of this contract: `Session` (`execute`, `close`; `Send`, not `Sync`, owned by one actor per ADR-0007), a minimal `ResultSink` (`begin_result`, `push_batch` → `Continue | Stop`), `ExecSummary`, a typed `DriverError` and `BatchPolicy`. `BatchPolicy` caps the first batch at min(200 rows, 64 Ki cells). Later batches hold ⌊65 536 / columns⌋ rows, or flush once 4 MiB of wire bytes has been decoded. Cancel, notices, introspection and editing facets followed in M1-01 and D-06–D-12, capabilities in M1-10 (§2.1). See [§11](#11-m0-s3-postgresql-streaming-spike).
 
 ### 2.1 Capabilities
 
@@ -72,6 +72,14 @@ pub struct Capabilities {
 ```
 
 The UI reads capabilities to decide which toolbar buttons, tree nodes and editors appear.
+
+**Implemented (M1-10).** `openrows-driver-api` ships the subset the current drivers need, as `Driver::capabilities() -> Capabilities`: a `Location` (`Server` or `File`), the claimed `Feature`s and the `ObjectKind`s the catalog lists. Features: `Cancel`, `BindParameters`, `MultipleDatabases`, `Schemas`, `Catalog`, `RowEdits`, `StructureChanges`, `TransactionalDdl`, `Tls`, `Routes`. A list of features instead of booleans keeps the struct `Copy` and lets a new feature be added without touching every driver. The paradigm, query language, explain and admin entries arrive with the first driver that needs them (Tier 2). Each driver declares its set in its own `capabilities.rs`:
+
+| Driver | Location | Features | Object kinds |
+| --- | --- | --- | --- |
+| PostgreSQL | Server | all ten | all seven |
+| MySQL/MariaDB | Server | all but `Schemas`, `StructureChanges`, `TransactionalDdl` | table, view, function, procedure, sequence (MariaDB) |
+| SQLite | File | `Cancel`, `BindParameters`, `Schemas`, `Catalog`, `RowEdits`, `TransactionalDdl` | table, view |
 
 ## 3. Support tiers
 
@@ -181,6 +189,8 @@ A shared test crate (`openrows-driver-conformance`) parameterised by driver. Eve
 | Introspection | Golden snapshots of a fixture schema per server version. |
 | Editing | Insert/update/delete with composite keys, NULL in keys rejected, conflict detection, rollback on partial failure. |
 | Errors | Syntax error position mapping, constraint violation codes. |
+
+**Implemented (M1-10).** `crates/openrows-driver-conformance` holds seven groups, each documented in the crate with the feature that gates it: Connect (stages recorded, `SELECT 1`, wrong password → `Auth` at the authentication stage, missing file → open error, and facets, cancel handle and `supports_alter` agree with the claimed capabilities), Types (NULL, integer extremes, float, boolean, unicode and empty text, binary, decimal, date per dialect, each with its Arrow type and `openrows.source_type`; bound text and NULL with `BindParameters`), Streaming (10 000 rows in order as one result, first batch ≤ 200 rows, early `Stop`), Cancel (`Cancel`: a 10¹²-row count cancelled within 10 s with the dialect's SQLSTATE, session usable), Errors (syntax, undefined table, unique, NOT NULL SQLSTATEs), Metadata (`Catalog`: databases, schemas, objects with kinds and order, search index, columns, structure and detail) and Edits (`RowEdits`: key discovery, exact snapshots, generated insert/update/delete committed atomically, a stale guard rolling back the whole set with `40001`; with `TransactionalDdl`, a failing DDL set leaves nothing). Expected per-dialect SQL and answers live in one module (`dialect.rs`). The SQLite run is part of `just test`; `just test-pg` and `just test-mysql` run it on PostgreSQL 17, MySQL 8.4 and MariaDB 11.4, as does the CI `containers` job. Not covered yet: TLS and SSH paths, 1 M-row memory bounds, pause/resume, transactions typed by the user, golden introspection snapshots, error positions.
 
 ## 9. Out-of-process driver host
 
@@ -307,6 +317,6 @@ The driver publishes a result's schema with its first batch (at most 200 rows), 
 
 **SQLite (`openrows-driver-sqlite`).** `rusqlite` 0.40 with the bundled SQLite (the version the local store already uses). A file opens read-only, read-write, or with create (only when the profile asked for a new file); a missing or non-database file fails the Open step (`58030`). Extension loading stays off; a 5 s busy timeout waits for other writers. Each connection lives on its own thread; statements stream back through a bounded channel. Column types follow the declared affinity and the values of each batch (only integers `Int64`, reals `Float64`, text `Utf8`, blobs `Binary`); mixed columns keep every value as exact tagged text (`openrows.text_fallback`), and a type change after the first batch starts a new result. Cancel is `sqlite3_interrupt` (`57014`). Result codes map to SQLSTATE-style codes (`23505` unique/primary key, `23503` foreign key, `23502` not null, `23514` check, `25006` read-only, `42601` syntax, `42P01`, `42703`). The catalog lists `main` as the database and the attached databases as schemas (`temp` hidden), tables and views, `PRAGMA table_xinfo`/`index_list`/`foreign_key_list` details, triggers, and the stored `CREATE` statements as the DDL. Edits use the primary key (else a unique `NOT NULL` index), `CAST(col AS TEXT)` snapshots, `CAST(col AS TEXT) COLLATE BINARY IS ?n` guards and one `BEGIN IMMEDIATE` transaction. `SQLite` has no `DEFAULT` in `UPDATE` and no built-in `REGEXP`; both are refused with a message.
 
-**Gaps.** Structure changes (`alter_sql`) are PostgreSQL-only; MySQL and SQLite show their structure read-only. MySQL temporal and decimal values are text, not typed Arrow. No conformance suite yet (§8), no MySQL 9.x/TiDB runs, no SQLite in-memory databases, rowid editing or `ATTACH` UI, and the SSH route for MySQL is covered by the shared route code rather than a MySQL container test.
+**Gaps.** Structure changes (`alter_sql`) are PostgreSQL-only; MySQL and SQLite show their structure read-only. MySQL temporal and decimal values are text, not typed Arrow. No MySQL 9.x/TiDB runs, no SQLite in-memory databases, rowid editing or `ATTACH` UI, and the SSH route for MySQL is covered by the shared route code rather than a MySQL container test.
 
 **Tests.** `openrows-sql`: lexing, splitting (`DELIMITER`, routine and trigger bodies), classification and generated SQL for both dialects, plus a property test. `openrows-driver-sqlite`: temp-file tests for streaming, binding, cancel, read-only, catalog and edits (normal `just test`). `openrows-driver-mysql`: unit tests for framing, rows, decoding (temporal and decimal parsing and printing, precision from the column length, fallback in and after the first batch) and errors; `just test-mysql` runs connect/TLS, typed results in both protocols (temporal, decimal, `YEAR`, zero dates, `TIME` outside a day, `DECIMAL(65, 30)`), a zero date after the first batch, procedures and warnings, cancel, errors, catalog and edit tests (including rows keyed by `DATETIME(3)` and `DECIMAL`) against `mysql:8.4` and `mariadb:11.4`.
