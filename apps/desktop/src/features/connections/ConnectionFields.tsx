@@ -5,7 +5,8 @@ import { PasswordField } from './PasswordField';
 import type { ConnectionForm } from './useConnectionForm';
 import styles from './ConnectionSheet.module.css';
 
-type TextKey = 'name' | 'group' | 'host' | 'port' | 'user' | 'database';
+type TextKey =
+  'name' | 'group' | 'host' | 'port' | 'user' | 'database' | 'tags';
 
 /** Props of a text field bound to one draft value. */
 function binder(form: ConnectionForm) {
@@ -33,6 +34,7 @@ export function NameFields({
         {...fieldError(form.errors.name)}
       />
       <TextField label="Group" placeholder="Optional" {...text('group')} />
+      <TextField label="Tags" placeholder="Comma-separated" {...text('tags')} />
     </>
   );
 }

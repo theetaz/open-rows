@@ -221,6 +221,9 @@ impl ProfileService {
         profile: &ConnectionProfile,
         slot: SecretSlot,
     ) -> Result<Option<SecretString>, ProfileError> {
+        if !profile.uses_secret(slot) {
+            return Ok(None);
+        }
         match profile.secrets.get(slot) {
             Some(SecretRef::Keychain) => Ok(self.secrets.get(&profile.secret_key(slot))?),
             None => Ok(None),

@@ -9,3 +9,6 @@ mod session;
 mod structure;
 mod support;
 mod temporal;
+
+#[path = "connection_import.rs"]
+mod connection_import;

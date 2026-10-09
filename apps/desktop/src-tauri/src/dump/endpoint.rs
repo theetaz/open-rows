@@ -84,8 +84,11 @@ pub(super) fn preview(profile: &ConnectionProfile) -> Result<ConnectionSpec, Ipc
     let target = target::target(profile, &DriverSecrets::default())?;
     let routed = profile.ssh.is_some() || profile.proxy.is_some();
     let mut spec = spec_of(&target.request, routed.then_some(PREVIEW_PORT))?;
-    let has_password =
-        profile.secrets.password.is_some() || profile.password_storage == PasswordStorage::Ask;
+    let has_password = profile.secrets.password.is_some()
+        || matches!(
+            profile.password_storage,
+            PasswordStorage::Ask | PasswordStorage::Command
+        );
     if has_password {
         spec.password_file = Some(PathBuf::from(PREVIEW_PASSWORD_FILE));
     }

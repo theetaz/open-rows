@@ -11,6 +11,7 @@ use openrows_store::profile::{
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
+use super::credential_dto::CredentialCommandDto;
 pub(crate) use super::engine_dto::{EngineDto, FileDto};
 pub(crate) use super::enums::{EnvKindDto, PasswordStorageDto, TlsModeDto};
 use super::error::IpcError;
@@ -70,6 +71,8 @@ pub(crate) struct ProfileDto {
     has_password: bool,
     /// Keychain, or asked on every connect (then `hasPassword` is false).
     password_storage: PasswordStorageDto,
+    credential_command: Option<CredentialCommandDto>,
+    tags: Vec<String>,
     safety: SafetyDto,
     /// Why the connection list flags this connection as insecure.
     insecure: Vec<InsecureReasonDto>,
@@ -157,6 +160,11 @@ impl From<&ConnectionProfile> for ProfileDto {
             proxy: proxy_dto(profile),
             has_password: profile.secrets.password.is_some(),
             password_storage: profile.password_storage.into(),
+            credential_command: profile
+                .credential_command
+                .as_ref()
+                .map(CredentialCommandDto::from),
+            tags: profile.tags.clone(),
             insecure: profile_insecurity(profile),
             safety: SafetyDto {
                 read_only: profile.safety.read_only,
@@ -251,6 +259,10 @@ pub(crate) struct ProfileInput {
     /// Absent in forms written before the choice: the keychain.
     #[serde(default)]
     pub(crate) password_storage: PasswordStorageDto,
+    #[serde(default)]
+    pub(crate) credential_command: Option<CredentialCommandDto>,
+    #[serde(default)]
+    pub(crate) tags: Vec<String>,
     pub(crate) password: PasswordInput,
     /// Absent in forms written before the limits: the defaults.
     #[serde(default)]
@@ -324,6 +336,8 @@ impl ProfileInput {
             .trim()
             .clone_into(&mut profile.startup_commands);
         profile.password_storage = self.password_storage.into();
+        profile.credential_command = self.credential_command.as_ref().map(Into::into);
+        profile.tags.clone_from(&self.tags);
         profile.limits = self.limits.into();
         Ok(())
     }

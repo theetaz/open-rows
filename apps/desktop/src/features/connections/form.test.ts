@@ -46,6 +46,8 @@ it('maps a profile to a draft and back without inventing a password', () => {
     recordHistory: true,
     startupCommands: '',
     passwordStorage: 'keychain',
+    credentialCommand: null,
+    tags: [],
     password: { kind: 'keep' },
     limits: { statementTimeoutSeconds: null, idleTimeoutMinutes: 0 },
   });

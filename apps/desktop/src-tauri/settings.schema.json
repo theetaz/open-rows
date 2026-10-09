@@ -361,6 +361,8 @@
           "toggle-columns",
           "toggle-row-form",
           "open-foreign-key",
+          "export-connections",
+          "import-connections",
           "new-connection",
           "connect",
           "disconnect",

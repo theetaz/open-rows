@@ -18,6 +18,10 @@ pub enum PasswordStorage {
     /// Never saved: asked on every connect and held in memory only while
     /// the connection is open.
     Ask,
+    /// Peer, trust, socket or external authentication; never prompt.
+    None,
+    /// A locally trusted program supplies an ephemeral password.
+    Command,
 }
 
 /// A secret of a profile.

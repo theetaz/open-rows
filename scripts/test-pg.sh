@@ -34,7 +34,7 @@ bash scripts/test-pg-certs.sh "$tls_dir"
 # The server key must belong to the postgres user with mode 0600, so it is
 # copied out of the read-only mount before the image's entrypoint starts.
 ssl_dir=/etc/openrows-ssl
-docker run --detach --rm --name "$name" --publish 127.0.0.1::5432 \
+docker run --detach --name "$name" --publish 127.0.0.1::5432 \
     --env POSTGRES_PASSWORD="$password" \
     --volume "$tls_dir:/certs:ro" \
     --volume "$tls_dir/init-tls.sh:/docker-entrypoint-initdb.d/init-tls.sh:ro" \
@@ -51,9 +51,11 @@ for _ in $(seq 1 120); do
     if docker exec "$name" pg_isready --host 127.0.0.1 --quiet 2>/dev/null; then
         break
     fi
-    sleep 0.5
 done
-docker exec "$name" pg_isready --host 127.0.0.1 --quiet
+if ! docker exec "$name" pg_isready --host 127.0.0.1 --quiet; then
+    docker logs "$name" >&2
+    exit 1
+fi
 port="$(docker port "$name" 5432/tcp | head -n 1 | sed 's/.*://')"
 echo "PostgreSQL ${version} ($(docker exec "$name" postgres --version)) on 127.0.0.1:${port}, TLS on"
 OPENROWS_TEST_PG_PORT="$port" OPENROWS_TEST_PG_PASSWORD="$password" OPENROWS_TEST_PG_CONTAINER="$name" \

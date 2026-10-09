@@ -39,6 +39,7 @@ export type TestState =
 
 export type ConnectionForm = {
   draft: Draft;
+  profileId: string | null;
   errors: DraftErrors;
   test: TestState;
   saving: boolean;
@@ -95,6 +96,7 @@ export function useConnectionForm(
   const saving = useSave(profile, draft, checked, onSaved);
   return {
     draft,
+    profileId: profile?.id ?? null,
     errors: submitted ? validate(draft) : {},
     test: test.state,
     saving: saving.busy,

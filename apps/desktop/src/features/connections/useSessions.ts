@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useRef, useState } from 'react';
 import {
+  CommandError,
   closeConnection,
+  cancelCredential,
   closeSession,
   onSessionState,
   openConnection,
@@ -84,11 +86,18 @@ export function useSessions(askPassword: AskPassword = keychain): Sessions {
         await openIn(setStatuses, profileId, opened.database);
       return opened.database;
     } catch (error) {
-      set(profileId, { state: 'failed', message: message(error) });
+      set(
+        profileId,
+        error instanceof CommandError && error.kind === 'cancelled'
+          ? disconnected
+          : { state: 'failed', message: message(error) },
+      );
       return null;
     }
   };
   const disconnect = async (profileId: string): Promise<void> => {
+    if (statuses[profileId]?.state === 'connecting')
+      await cancelCredential(profileId);
     if (statuses[profileId]?.state !== 'connected') {
       set(profileId, disconnected);
       return;

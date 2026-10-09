@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import type { EngineDto } from '@openrows/ipc';
 import { ConnectionSheet } from './ConnectionSheet';
 import { DeleteConnectionSheet } from './DeleteConnectionSheet';
 import { EnginePicker } from './EnginePicker';
 import { PasswordPromptSheet } from './PasswordPromptSheet';
 import type { Connections } from './useConnections';
+
+const ConnectionTransferSheet = lazy(() => import('./ConnectionTransferSheet'));
 
 /**
  * The connection sheet currently requested by the rail, header or keyboard;
@@ -28,6 +30,18 @@ export function ConnectionSheets({
   const close = (): void => {
     setSheet(null);
   };
+  if (sheet.kind === 'import' || sheet.kind === 'export')
+    return (
+      <Suspense fallback={null}>
+        <ConnectionTransferSheet
+          mode={sheet.kind}
+          profiles={connections.profiles}
+          ids={sheet.kind === 'export' ? sheet.ids : undefined}
+          onClose={close}
+          onImported={connections.reload}
+        />
+      </Suspense>
+    );
   if (sheet.kind === 'delete')
     return (
       <DeleteConnectionSheet

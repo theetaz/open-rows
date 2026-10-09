@@ -68,6 +68,7 @@ fn list(service: &ProfileService) -> Result<ProfileList, IpcError> {
     })
 }
 
+#[cfg(test)]
 fn create(service: &ProfileService, input: &ProfileInput) -> Result<ProfileDto, IpcError> {
     let mut profile = input.new_profile();
     input.apply(&mut profile)?;
@@ -75,6 +76,7 @@ fn create(service: &ProfileService, input: &ProfileInput) -> Result<ProfileDto, 
     Ok(ProfileDto::from(&service.create_with(profile, &changes)?))
 }
 
+#[cfg(test)]
 fn update(
     service: &ProfileService,
     id: &str,
@@ -122,27 +124,55 @@ pub(crate) fn profile_get(
 }
 
 /// Save a new connection; its password and passphrases go to the keychain.
-#[tauri::command(async)]
+#[tauri::command]
 #[specta::specta]
-pub(crate) fn profile_create(
+pub(crate) async fn profile_create(
+    app: tauri::AppHandle,
     state: State<'_, Connections>,
     input: ProfileInput,
 ) -> Result<ProfileDto, IpcError> {
-    create(&state.profiles, &input)
+    let mut profile = input.new_profile();
+    input.apply(&mut profile)?;
+    let trust = super::credentials::confirm_edit(&app, &profile, None).await?;
+    let saved = state
+        .profiles
+        .create_with(profile, &input.secret_changes()?)?;
+    if trust {
+        trust_saved(&state, &saved)?;
+    }
+    Ok(ProfileDto::from(&saved))
 }
 
 /// Replace a saved connection's fields and apply the secret changes.
-#[tauri::command(async)]
+#[tauri::command]
 #[specta::specta]
-pub(crate) fn profile_update(
+pub(crate) async fn profile_update(
+    app: tauri::AppHandle,
     state: State<'_, Connections>,
     id: String,
     input: ProfileInput,
 ) -> Result<ProfileDto, IpcError> {
-    let updated = update(&state.profiles, &id, &input)?;
+    let before = state.profiles.get(profile_id(&id)?)?;
+    let mut profile = before.clone();
+    input.apply(&mut profile)?;
+    let trust = super::credentials::confirm_edit(&app, &profile, Some(&before)).await?;
+    let saved = state
+        .profiles
+        .update_with(profile, &input.secret_changes()?)?;
+    if trust {
+        trust_saved(&state, &saved)?;
+    }
+    let updated = ProfileDto::from(&saved);
     // New sessions use the edited route; open ones keep their tunnel.
     state.tunnels.forget(&id);
     Ok(updated)
+}
+
+fn trust_saved(state: &Connections, saved: &ConnectionProfile) -> Result<(), IpcError> {
+    if let Some(command) = &saved.credential_command {
+        state.command_trust.trust(saved.id, command)?;
+    }
+    Ok(())
 }
 
 /// Copy a connection (and its secrets) as "<name> copy".

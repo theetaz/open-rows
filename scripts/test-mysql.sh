@@ -52,7 +52,6 @@ for image in "$@"; do
         if ping_server "$name"; then
             break
         fi
-        sleep 1
     done
     ping_server "$name"
     port="$(docker port "$name" 3306/tcp | head -n 1 | sed 's/.*://')"

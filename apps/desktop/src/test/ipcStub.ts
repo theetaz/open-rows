@@ -54,6 +54,8 @@ export function profile(
     proxy: null,
     hasPassword: false,
     passwordStorage: 'keychain',
+    credentialCommand: null,
+    tags: [],
     safety: { readOnly: false, confirmWrites: false },
     insecure: [],
     recordHistory: true,
@@ -280,6 +282,7 @@ export function ipcStub(
   return {
     DEFAULT_CUSTOM_ENV_COLOR: '#7c3aed',
     getAppInfo: vi.fn(() => new Promise(() => {})),
+    ...connectionTransferStub(),
     listProfiles: vi.fn(() =>
       Promise.resolve({ profiles: [...profiles], unreadable: [] }),
     ),
@@ -349,5 +352,16 @@ export function ipcStub(
     ...dumpStub(),
     listProcesses: vi.fn(() => Promise.resolve([])),
     signalProcess: vi.fn(() => Promise.resolve()),
+  };
+}
+
+function connectionTransferStub(): Record<string, unknown> {
+  return {
+    cancelCredential: vi.fn().mockResolvedValue(undefined),
+    testCredential: vi.fn().mockResolvedValue(undefined),
+    exportConnections: vi.fn().mockResolvedValue(null),
+    previewConnections: vi.fn().mockResolvedValue(null),
+    importConnections: vi.fn().mockResolvedValue([]),
+    cancelConnectionImport: vi.fn().mockResolvedValue(undefined),
   };
 }

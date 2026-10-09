@@ -10,8 +10,12 @@
 
 mod attached;
 mod conn_url;
+mod credential;
+mod credential_run;
+mod credential_trust;
 mod env;
 mod error;
+pub mod exchange;
 mod files;
 mod limits;
 mod model;
@@ -22,6 +26,7 @@ mod search;
 mod secrets;
 mod service;
 mod sqlserver_url;
+pub mod tool_import;
 
 pub use attached::AttachedFile;
 pub use conn_url::{ParsedUrl, parse_url};
@@ -36,3 +41,7 @@ pub use proxy::{ProxyKind, ProxySettings};
 pub use search::{groups, matches};
 pub use secrets::{PasswordStorage, SecretChanges, SecretSlot};
 pub use service::{PasswordChange, ProfileService};
+
+pub use credential::{CommandCancellation, CredentialCommand, CredentialError};
+pub use credential_run::run_credential;
+pub use credential_trust::CommandTrust;

@@ -426,3 +426,22 @@ function spikeFailure(error: SpikeError): Error {
       return new Error('OPENROWS_SPIKE_REPORT is required');
   }
 }
+
+/** Non-secret connection portability with preview-first imports. */
+export {
+  exportConnections,
+  previewConnections,
+  importConnections,
+  cancelConnectionImport,
+} from './connectionExchange';
+export type {
+  ConnectionConflictDto,
+  ImportSource,
+  ImportPreview,
+  ImportRow,
+  ImportDecisionDto,
+  ImportChoiceDto,
+  CredentialCommandDto,
+} from './generated/bindings';
+/** Explicitly trusted credential commands. */
+export { testCredential, cancelCredential } from './credentials';
