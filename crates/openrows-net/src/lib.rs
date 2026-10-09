@@ -31,6 +31,7 @@ mod blocking;
 pub mod config;
 mod error;
 mod handler;
+pub mod helper;
 pub mod known_hosts;
 mod monitor;
 mod plan;

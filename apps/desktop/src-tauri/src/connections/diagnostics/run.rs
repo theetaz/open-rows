@@ -75,6 +75,18 @@ async fn route(
         proxy,
         ..
     } = plan;
+    if let Some(hop) = &profile.helper {
+        let started = std::time::Instant::now();
+        let result = super::super::helpers::acquire(state, &profile).await;
+        steps.helper(hop, &result, started.elapsed());
+        let helper = result?;
+        return Ok(Routed {
+            target: target.through(Arc::new(openrows_net::helper::HelperDialer::new(helper))),
+            tunnel: None,
+            socket: None,
+            proxy: Some(hop.describe()),
+        });
+    }
     let Some(ssh) = &profile.ssh else {
         let described = proxy.as_ref().map(|proxy| proxy.describe());
         let target = match proxy {

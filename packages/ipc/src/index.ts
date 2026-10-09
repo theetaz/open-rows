@@ -360,6 +360,7 @@ export type {
   ObjectKindDto,
   PasswordInput,
   PasswordStorageDto,
+  HelperHop,
   ProfileDto,
   ProfileInput,
   ProfileList,

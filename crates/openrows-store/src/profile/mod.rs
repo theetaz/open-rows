@@ -36,6 +36,7 @@ pub use files::{LoadedProfiles, ProfileFiles};
 pub use limits::SessionLimits;
 pub use model::{ConnectionProfile, PROFILE_FORMAT, ProfileId, SecretRef, SecretRefs, TlsMode};
 pub use network::{CloudCa, Insecurity, SshAuthMethod, SshSettings, TlsSettings, is_local_host};
+pub use openrows_net::helper::{CloudFlavor, HelperHop};
 pub use params::{Driver, FileParams, ServerParams};
 pub use proxy::{ProxyKind, ProxySettings};
 pub use search::{groups, matches};

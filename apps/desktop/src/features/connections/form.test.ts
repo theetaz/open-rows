@@ -42,6 +42,7 @@ it('maps a profile to a draft and back without inventing a password', () => {
     },
     ssh: null,
     proxy: null,
+    helper: null,
     safety: { readOnly: false, confirmWrites: false },
     recordHistory: true,
     startupCommands: '',

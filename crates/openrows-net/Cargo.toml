@@ -25,20 +25,34 @@ rustls-platform-verifier = "0.7"
 sha1 = "0.11"
 # TCP keepalive options tokio does not expose; already in the tree via tokio.
 socket2 = "0.6"
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+specta = { version = "=2.0.0-rc.25", optional = true, features = ["derive"] }
 thiserror.workspace = true
-tokio = { version = "1.53", features = ["io-util", "net", "rt", "sync", "time"] }
+tokio = { version = "1.53", features = ["io-util", "net", "process", "rt", "sync", "time"] }
 tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
 x509-cert = { version = "0.3", default-features = false, features = ["std"] }
 zeroize = "1.8"
 
+[target.'cfg(unix)'.dependencies]
+nix = { version = "0.31", features = ["signal", "process"] }
+
 [features]
+helper-types = ["dep:specta"]
 # In-process SOCKS5 / HTTP CONNECT proxy for other crates' integration tests.
 test-proxy = []
+# Enables the fake helper binary only for verification, never app builds.
+test-helper = []
 
 [dev-dependencies]
 # Integration tests use the in-process test proxy.
-openrows-net = { path = ".", features = ["test-proxy"] }
+openrows-net = { path = ".", features = ["test-proxy", "test-helper"] }
 proptest = "1.11"
 rcgen = "0.14"
 tempfile = "3.27"
 tokio = { version = "1.53", features = ["io-util", "macros", "rt-multi-thread", "test-util"] }
+
+[[bin]]
+name = "fake-cloud-hop"
+path = "tests/helper/fake.rs"
+required-features = ["test-helper"]

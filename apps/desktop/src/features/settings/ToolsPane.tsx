@@ -8,12 +8,21 @@ import { settingsText } from './settingsFile';
 import { setToolPath, TOOL_KINDS, toolSettings } from './toolSettings';
 import styles from '../appearance/Appearance.module.css';
 
+// A hook name keeps React Compiler from memoizing the store's hook call.
+const useToolPaths = toolSettings.use;
+
 const NAMES: Readonly<Record<DumpToolKindDto, string>> = {
   pgDump: 'pg_dump',
   pgRestore: 'pg_restore',
   psql: 'psql',
   mysqldump: 'mysqldump',
   mysql: 'mysql',
+  aws: 'aws',
+  sessionManagerPlugin: 'session-manager-plugin',
+  kubectl: 'kubectl',
+  cloudSqlProxy: 'cloud-sql-proxy',
+  alloydbAuthProxy: 'alloydb-auth-proxy',
+  cloudflared: 'cloudflared',
 };
 
 type Detected =
@@ -88,11 +97,11 @@ function ToolRow(props: {
 
 /**
  * Settings ▸ Tools: the `pg_dump`, `pg_restore`, `psql`, `mysqldump` and
- * `mysql` copies Back Up and Restore Database use, with their versions.
+ * `mysql` copies plus cloud route helpers, with detected versions.
  * A path set here wins over the installed copy that matches the server.
  */
 export function ToolsPane(): React.JSX.Element {
-  const paths = toolSettings.use();
+  const paths = useToolPaths();
   const [revision, setRevision] = useState(0);
   const detected = useDetected(revision);
   const recheck = (): void => {

@@ -21,6 +21,12 @@ pub(crate) enum DumpEngineDto {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub(crate) enum DumpToolKindDto {
+    Aws,
+    SessionManagerPlugin,
+    Kubectl,
+    CloudSqlProxy,
+    AlloydbAuthProxy,
+    Cloudflared,
     PgDump,
     PgRestore,
     Psql,

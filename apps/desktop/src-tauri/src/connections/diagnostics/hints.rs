@@ -22,6 +22,7 @@ pub(crate) fn hint(step: TestStepKind, error: &IpcError, engine: Engine) -> Opti
         );
     }
     match step {
+        TestStepKind::Helper => Some("Check Settings ▸ Tools and the cloud route authentication."),
         TestStepKind::SshConnect => Some(
             "Check the SSH host and port, and that the SSH server is running and reachable \
              from this Mac (VPN, firewall).",

@@ -636,6 +636,13 @@ export type CloudCaDto =
 /**  Azure Database for `PostgreSQL` and `MySQL`. */
 "azure";
 
+/**  Cloud proxy product. */
+export type CloudFlavor =
+/**  Cloud SQL Auth Proxy v2. */
+"cloudsql" |
+/**  `AlloyDB` Auth Proxy. */
+"alloydb";
+
 /**  A result column as the grid header shows it. */
 export type ColumnDto = {
 	name: string,
@@ -854,7 +861,7 @@ export type DumpToolDto = {
 };
 
 /**  A client tool. */
-export type DumpToolKindDto = "pgDump" | "pgRestore" | "psql" | "mysqldump" | "mysql";
+export type DumpToolKindDto = "aws" | "sessionManagerPlugin" | "kubectl" | "cloudSqlProxy" | "alloydbAuthProxy" | "cloudflared" | "pgDump" | "pgRestore" | "psql" | "mysqldump" | "mysql";
 
 export type EditInfoDto = {
 	key: string[],
@@ -1177,6 +1184,49 @@ export type GridRun = {
 	paintMethod: string,
 	maxScrollErrorPx: number | null,
 };
+
+/**  One structured helper hop, before database TLS. */
+export type HelperHop =
+/**  AWS Session Manager port forwarding. */
+{ kind: "ssm";
+/**  Managed node or ECS target. */
+target: string;
+/**  Remote host; absent forwards a port on the managed node. */
+remoteHost: string | null;
+/**  Remote database port. */
+remotePort: number;
+/**  AWS named credential profile. */
+profile: string | null;
+/**  AWS region. */
+region: string | null } |
+/**  Kubernetes port forwarding. */
+{ kind: "kubectl";
+/**  Kubeconfig context. */
+context: string;
+/**  Kubernetes namespace. */
+namespace: string;
+/**  pod/name, svc/name or deployment/name. */
+resource: string;
+/**  Remote port. */
+remotePort: number;
+/**  Optional kubeconfig file. */
+kubeconfig: string | null } |
+/**  Google managed database auth proxy. */
+{ kind: "cloud";
+/**  Connection name or `AlloyDB` instance URI. */
+instance: string;
+/**  Proxy product. */
+flavor: CloudFlavor;
+/**  Automatic IAM database authentication. */
+iamAuth: boolean;
+/**  Use private networking (`AlloyDB` uses private IP by default). */
+privateIp: boolean;
+/**  Credential file path; credentials are never stored here. */
+credentialsFile: string | null } |
+/**  Cloudflare Access TCP forwarding; authentication stays in its own config. */
+{ kind: "cloudflared";
+/**  Access application hostname. */
+hostname: string };
 
 /**  One executed statement from the local history. */
 export type HistoryItemDto = {
@@ -1904,6 +1954,7 @@ export type ProfileDto = {
 	tlsFiles: TlsFilesDto,
 	ssh: SshDto | null,
 	proxy: ProxyDto | null,
+	helper: HelperHop | null,
 	hasPassword: boolean,
 	/**  Keychain, or asked on every connect (then `hasPassword` is false). */
 	passwordStorage: PasswordStorageDto,
@@ -1944,6 +1995,8 @@ export type ProfileInput = {
 	ssh?: SshInput | null,
 	/**  The proxy; absent or null without one. */
 	proxy?: ProxyInput | null,
+	/**  Structured cloud helper; absent in older forms. */
+	helper?: HelperHop | null,
 	safety: SafetyDto,
 	/**  Absent in forms written before the history switch: history is recorded. */
 	recordHistory?: boolean,
@@ -2562,6 +2615,8 @@ export type TestStepDto = {
 
 /**  What a step checks. */
 export type TestStepKind =
+/**  Launch and health-check a cloud helper. */
+"helper" |
 /**  Resolve and reach an SSH server (or the next jump host). */
 "sshConnect" |
 /**  SSH handshake, host key and authentication. */

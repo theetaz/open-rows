@@ -20,7 +20,12 @@ pub(crate) enum InsecureReasonDto {
 
 /// Reasons that follow from the saved settings alone.
 pub(crate) fn profile_insecurity(profile: &ConnectionProfile) -> Vec<InsecureReasonDto> {
-    if profile.driver.is_file() {
+    if profile.driver.is_file()
+        || (matches!(
+            profile.helper,
+            Some(openrows_net::helper::HelperHop::Cloud { .. })
+        ) && profile.tls.mode == openrows_store::profile::TlsMode::Disable)
+    {
         return Vec::new();
     }
     let reason = profile

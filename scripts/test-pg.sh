@@ -21,6 +21,8 @@ if ! command -v docker >/dev/null 2>&1 || ! docker info >/dev/null 2>&1; then
     echo "SKIP: Docker is not available; PostgreSQL integration tests not run"
     exit 0
 fi
+cargo build -p openrows-net --bin fake-cloud-hop --features test-helper --locked
+export OPENROWS_FAKE_HELPER="${CARGO_TARGET_DIR:-target}/debug/fake-cloud-hop"
 # Synthetic credential for a container bound to 127.0.0.1 and removed on exit.
 password="openrows-test-only"
 name="openrows-pg-test-$$"
@@ -49,6 +51,10 @@ docker run --detach --name "$name" --publish 127.0.0.1::5432 \
 # means the final server is up.
 deadline=$((SECONDS + 60))
 while (( SECONDS < deadline )); do
+    if [ "$(docker inspect --format '{{.State.Running}}' "$name")" != true ]; then
+        docker logs "$name" >&2
+        exit 1
+    fi
     if docker exec "$name" pg_isready --host 127.0.0.1 --quiet 2>/dev/null; then
         break
     fi

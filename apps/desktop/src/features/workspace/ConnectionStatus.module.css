@@ -1,0 +1,31 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.health {
+  border: 0;
+  background: transparent;
+  color: var(--or-secondary);
+  padding: var(--or-space-4);
+  cursor: pointer;
+}
+.health[data-state='connected'] {
+  color: var(--or-success-fg);
+}
+.health[data-state='connecting'],
+.health[data-state='reconnecting'] {
+  color: var(--or-warning-fg);
+}
+.health[data-state='failed'],
+.health[data-state='offline'] {
+  color: var(--or-danger-fg);
+}
+.panel {
+  margin: 0;
+  width: 320px;
+  max-width: calc(100vw - 16px);
+  padding: var(--or-space-8);
+  border: 1px solid var(--or-separator);
+  border-radius: var(--or-radius-control);
+  background: var(--or-panel);
+  color: var(--or-text);
+  font-size: var(--or-text-11-5);
+  overflow-wrap: anywhere;
+}

@@ -4,6 +4,7 @@
 mod catalog;
 mod diagram;
 mod edits;
+mod helpers;
 mod inspection;
 mod inspection_visibility;
 mod objects;

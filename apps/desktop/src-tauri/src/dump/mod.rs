@@ -13,6 +13,7 @@
 //! proxy. Restores pass the gate of `openrows_dump::admit` (read-only
 //! connections never restore; production and destructive restores need
 //! the database name typed). `dump_cancel` signals the tool's process group.
+mod cloud_tools;
 pub(crate) mod commands;
 mod dto;
 mod endpoint;

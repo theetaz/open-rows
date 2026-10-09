@@ -2,6 +2,7 @@
 import { Icon, IconButton, ToolbarGroup } from '@openrows/ui';
 import type { IconName } from '@openrows/ui';
 import type { ContextSegments } from './contextBar';
+import { ConnectionStatus } from './ConnectionStatus';
 import { InsecureBadge } from '../connections';
 import { JobsButton } from '../jobs';
 import styles from './Workspace.module.css';
@@ -126,9 +127,7 @@ function Context({
       aria-label="Connection context"
       title={title}
     >
-      <span aria-hidden="true" className={styles.health} data-state={health}>
-        ●
-      </span>
+      <ConnectionStatus health={health} route={context.route} />
       {env && (
         <span className={styles.env}>
           {env}
