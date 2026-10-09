@@ -5,12 +5,11 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use arrow_array::RecordBatch;
 use arrow_schema::SchemaRef;
 use openrows_core::export::{ExportJob, Progress, export_batches, export_statement};
 use openrows_core::script::ScriptCanceller;
 use openrows_export::Exporter;
-use openrows_results::ResultStore;
+use openrows_results::{ResultStore, StoredBatches};
 use openrows_sql::select::{BoundSql, TableRef, all_rows_sql};
 use openrows_sql::{Dialect, StatementKind, classify, placeholders, split};
 use openrows_types::{QueryId, SessionId};
@@ -32,8 +31,8 @@ const MAX_FILE_STEM: usize = 120;
 
 /// Where the rows of an export come from once resolved.
 enum Rows {
-    /// A result already in memory.
-    Stored(SchemaRef, Vec<RecordBatch>),
+    /// A result in the store, read lazily (spilled batches decode on demand).
+    Stored(SchemaRef, StoredBatches),
     /// A statement streamed from the server on this session.
     Statement(SessionId, BoundSql),
 }
@@ -122,7 +121,7 @@ async fn resolve(
             .ok_or_else(|| {
                 IpcError::new(
                     IpcErrorKind::NotFound,
-                    "This result is no longer in memory; run the query again",
+                    "This result is no longer available; run the query again",
                 )
             }),
         ExportSourceDto::Query { sql, .. } => {

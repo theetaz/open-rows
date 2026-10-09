@@ -14,6 +14,7 @@ use arrow_array::{
 use arrow_schema::{DataType, Field, Schema, SchemaRef, TimeUnit};
 use openrows_driver_api::metadata::{EXTENSION_NAME, JSON_EXTENSION, UUID_EXTENSION};
 use std::collections::HashMap;
+use std::convert::Infallible;
 use std::sync::Arc;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
@@ -83,7 +84,7 @@ fn export(format: &Format, schema: SchemaRef, batches: &[RecordBatch]) -> TestRe
     let path = directory.path().join("out.txt");
     let rows = crate::write_all(
         Exporter::create(&path, format)?,
-        (schema, batches),
+        (schema, batches.iter().cloned().map(Ok::<_, Infallible>)),
         || false,
         |_| {},
     )?;

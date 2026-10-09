@@ -11,12 +11,13 @@ workspace = true
 [dependencies]
 arrow-array = "60"
 arrow-schema = "60"
-arrow-ipc = { version = "60", default-features = false }
+arrow-ipc = { version = "60", default-features = false, features = ["lz4"] }
 thiserror.workspace = true
 
 [dev-dependencies]
 criterion = { version = "0.8", default-features = false }
 proptest = "1.11"
+tempfile = "3.27"
 
 [[bench]]
 name = "result_window_encode"

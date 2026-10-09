@@ -43,23 +43,30 @@ pub fn drain(
     Err(ExportError::Aborted)
 }
 
-/// Write a complete in-memory result, checking `stopped` before each batch.
+/// Write a complete stored result, read lazily batch by batch (spilled
+/// batches are decoded as they are reached), checking `stopped` before each.
 ///
 /// # Errors
-/// [`ExportError::Aborted`] once `stopped` returns true, or the first
-/// encode or I/O failure; the temporary file is deleted either way.
-pub fn write_all(
+/// [`ExportError::Aborted`] once `stopped` returns true, [`ExportError::Read`]
+/// when a batch cannot be read, or the first encode or I/O failure; the
+/// temporary file is deleted either way.
+pub fn write_all<I, E>(
     mut exporter: Exporter,
-    (schema, batches): (SchemaRef, &[RecordBatch]),
+    (schema, batches): (SchemaRef, I),
     stopped: impl Fn() -> bool,
     mut progress: impl FnMut(u64),
-) -> Result<u64, ExportError> {
+) -> Result<u64, ExportError>
+where
+    I: IntoIterator<Item = Result<RecordBatch, E>>,
+    E: std::error::Error + Send + Sync + 'static,
+{
     exporter.begin(schema)?;
     for batch in batches {
         if stopped() {
             return Err(ExportError::Aborted);
         }
-        exporter.write(batch)?;
+        let batch = batch.map_err(|error| ExportError::Read(Box::new(error)))?;
+        exporter.write(&batch)?;
         progress(exporter.rows());
     }
     if stopped() {

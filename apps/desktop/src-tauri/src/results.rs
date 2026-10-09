@@ -86,6 +86,7 @@ impl From<WindowError> for ResultError {
             WindowError::UnknownResult(id) => Self::UnknownResult(id),
             WindowError::OutOfRange => Self::OutOfRange,
             WindowError::NotBytes => Self::NotBytes,
+            WindowError::Spill(error) => Self::Unavailable(error.to_string()),
             other => Self::Encoding(other.to_string()),
         }
     }

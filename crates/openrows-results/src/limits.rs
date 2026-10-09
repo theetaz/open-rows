@@ -2,16 +2,19 @@
 //! Memory accounting limits for streamed results (docs/06 §3).
 
 /// Default per-result row cap; the query stops with `truncated` when reached.
-pub const DEFAULT_MAX_ROWS: usize = 1_000_000;
-/// Default Arrow memory budget across all results (no spill to disk yet).
-pub const DEFAULT_MAX_BYTES: usize = 1 << 30;
+pub const DEFAULT_MAX_ROWS: usize = 10_000_000;
+/// Default Arrow memory budget across all results (512 MiB); beyond it
+/// batches spill to disk (docs/06 §3).
+pub const DEFAULT_MAX_BYTES: usize = 512 << 20;
 
 /// Caps that stop a streamed result early.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Limits {
     /// Rows kept per result.
     pub max_rows: usize,
-    /// Arrow memory (`get_array_memory_size`) kept across all results.
+    /// Arrow memory (`get_array_memory_size`) kept in RAM across all results.
+    /// A store with a spill directory writes the least recently used batches
+    /// to disk beyond it; a store without one stops the stream instead.
     pub max_bytes: usize,
 }
 

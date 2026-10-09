@@ -205,7 +205,9 @@ pub(crate) fn terminal(outcome: ExportOutcome, path: String) -> ExportEventDto {
 /// A file failure as a user-facing error.
 pub(crate) fn write_error(error: &ExportError) -> IpcError {
     let kind = match error {
-        ExportError::Io(_) | ExportError::InvalidPath => IpcErrorKind::Storage,
+        ExportError::Io(_) | ExportError::InvalidPath | ExportError::Read(_) => {
+            IpcErrorKind::Storage
+        }
         ExportError::UnsupportedType { .. } => IpcErrorKind::Unsupported,
         ExportError::Aborted => IpcErrorKind::Cancelled,
         ExportError::InvalidName(_)

@@ -4,6 +4,7 @@ use super::{FakeCancel, TestResult, manager, open};
 use crate::export::{ExportFailure, ExportJob, ExportOutcome, export_batches, export_statement};
 use crate::script::ScriptCanceller;
 use openrows_export::{CsvOptions, Delimiter, ExportError, Exporter, Format, InsertOptions};
+use openrows_results::{Append, Limits, ResultStore, SpillDir};
 use openrows_sql::Dialect;
 use openrows_sql::select::BoundSql;
 use std::num::NonZeroUsize;
@@ -169,8 +170,10 @@ async fn stored_batches_export_or_cancel() -> TestResult {
     let path = directory.path().join("stored.json");
     let format = Format::Json(openrows_export::JsonLayout::Lines);
     let cancel = ScriptCanceller::default();
-    let stored = (batch.schema(), vec![batch.clone(), batch.clone()]);
-    let outcome = export_batches(stored.clone(), job(&path, &format, &cancel)?).await;
+    let store = ResultStore::default();
+    store.insert("r".to_owned(), vec![batch.clone(), batch])?;
+    let stored = store.batches("r").ok_or("missing result")?;
+    let outcome = export_batches(stored, job(&path, &format, &cancel)?).await;
     assert!(
         matches!(outcome, ExportOutcome::Written { rows: 10 }),
         "{outcome:?}"
@@ -178,8 +181,44 @@ async fn stored_batches_export_or_cancel() -> TestResult {
     assert_eq!(std::fs::read_to_string(&path)?.lines().count(), 10);
     let other = directory.path().join("cancelled.json");
     cancel.cancel();
+    let stored = store.batches("r").ok_or("missing result")?;
     let outcome = export_batches(stored, job(&other, &format, &cancel)?).await;
     assert!(matches!(outcome, ExportOutcome::Cancelled));
     assert_eq!(files(directory.path())?, 1);
+    Ok(())
+}
+
+#[tokio::test]
+async fn spilled_results_export_every_row_in_order() -> TestResult {
+    let spill = tempfile::tempdir()?;
+    let batch = openrows_results::synthetic::batch(1_000, 4, 7)?;
+    let limits = Limits {
+        max_rows: usize::MAX,
+        max_bytes: batch.get_array_memory_size(),
+    };
+    let store = ResultStore::with_spill(limits, SpillDir::create(spill.path())?)?;
+    store.begin("r", batch.schema());
+    for start in (0..1_000).step_by(100) {
+        assert_eq!(store.append("r", batch.slice(start, 100)), Append::Continue);
+    }
+    store.settle();
+    assert!(store.memory() <= limits.max_bytes);
+    let directory = tempfile::tempdir()?;
+    let path = directory.path().join("spilled.csv");
+    let cancel = ScriptCanceller::default();
+    let stored = store.batches("r").ok_or("missing result")?;
+    let outcome = export_batches(stored, job(&path, &CSV, &cancel)?).await;
+    assert!(
+        matches!(outcome, ExportOutcome::Written { rows: 1_000 }),
+        "{outcome:?}"
+    );
+    let expected = directory.path().join("memory.csv");
+    let in_memory = (
+        batch.schema(),
+        vec![Ok::<_, std::convert::Infallible>(batch)],
+    );
+    let outcome = export_batches(in_memory, job(&expected, &CSV, &cancel)?).await;
+    assert!(matches!(outcome, ExportOutcome::Written { rows: 1_000 }));
+    assert_eq!(std::fs::read(&path)?, std::fs::read(&expected)?);
     Ok(())
 }
