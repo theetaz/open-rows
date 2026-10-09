@@ -3576,6 +3576,7 @@ dependencies = [
  "objc2-foundation",
  "openrows-core",
  "openrows-driver-api",
+ "openrows-driver-clickhouse",
  "openrows-driver-mssql",
  "openrows-driver-mysql",
  "openrows-driver-postgres",
@@ -3648,12 +3649,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "openrows-driver-clickhouse"
+version = "0.1.0"
+dependencies = [
+ "arrow-array",
+ "arrow-ipc",
+ "arrow-schema",
+ "bytes",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
+ "openrows-driver-api",
+ "openrows-net",
+ "openrows-sql",
+ "serde_json",
+ "tokio",
+ "url",
+ "uuid",
+]
+
+[[package]]
 name = "openrows-driver-conformance"
 version = "0.1.0"
 dependencies = [
  "arrow-array",
  "arrow-schema",
  "openrows-driver-api",
+ "openrows-driver-clickhouse",
  "openrows-driver-mssql",
  "openrows-driver-mysql",
  "openrows-driver-postgres",

@@ -84,6 +84,7 @@ pub fn parse_url(input: &str) -> Result<ParsedUrl, UrlError> {
         "mysql" => Driver::Mysql,
         "mariadb" => Driver::Mariadb,
         "sqlserver" | "mssql" => Driver::Sqlserver,
+        "clickhouse" | "clickhouse+https" => Driver::Clickhouse,
         "sqlite" => return parse_sqlite(&url),
         scheme => {
             return Err(UrlError::UnsupportedScheme {
@@ -94,10 +95,17 @@ pub fn parse_url(input: &str) -> Result<ParsedUrl, UrlError> {
     let mut draft = Draft {
         driver,
         params: base_params(&url, driver)?,
-        tls_mode: None,
+        tls_mode: match url.scheme() {
+            "clickhouse" => Some(TlsMode::Disable),
+            "clickhouse+https" => Some(TlsMode::VerifyFull),
+            _ => None,
+        },
         sql_server: SqlServerTls::default(),
         password: decode_optional(url.password(), "password")?.map(SecretString::new),
     };
+    if url.scheme() == "clickhouse+https" && url.port().is_none() {
+        draft.params.port = 8443;
+    }
     for (key, value) in query_pairs(url.query().unwrap_or_default())? {
         draft.apply(&key, value)?;
     }
@@ -295,4 +303,25 @@ fn parse_ssl_mode(value: String) -> Result<TlsMode, UrlError> {
         _ => TlsMode::parse(&value.to_ascii_lowercase()),
     };
     mode.ok_or(UrlError::InvalidSslMode { value })
+}
+
+#[cfg(test)]
+mod clickhouse_tests {
+    use super::*;
+    #[test]
+    fn clickhouse_urls_select_http_or_https_without_exposing_passwords() -> Result<(), UrlError> {
+        let plain = parse_url("clickhouse://default:pw@localhost/db")?;
+        assert_eq!(plain.driver, Driver::Clickhouse);
+        assert_eq!(plain.params.port, 8123);
+        assert_eq!(plain.tls_mode, TlsMode::Disable);
+        assert_eq!(plain.params.database.as_deref(), Some("db"));
+        assert!(plain.password.is_some());
+        let secure = parse_url("clickhouse+https://default@host/db")?;
+        assert_eq!(secure.params.port, 8443);
+        assert_eq!(secure.tls_mode, TlsMode::VerifyFull);
+        let custom = parse_url("clickhouse+https://host:9440/db?sslmode=require")?;
+        assert_eq!(custom.params.port, 9440);
+        assert_eq!(custom.tls_mode, TlsMode::Require);
+        Ok(())
+    }
 }

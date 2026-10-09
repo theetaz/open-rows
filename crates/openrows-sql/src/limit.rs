@@ -45,7 +45,7 @@ pub fn limit_select(statement: &str, dialect: Dialect, rows: u64) -> Option<Stri
     }
     if !matches!(
         dialect,
-        Dialect::Postgres | Dialect::MySql | Dialect::Sqlite
+        Dialect::Postgres | Dialect::MySql | Dialect::Sqlite | Dialect::ClickHouse
     ) {
         return None;
     }
@@ -55,9 +55,30 @@ pub fn limit_select(statement: &str, dialect: Dialect, rows: u64) -> Option<Stri
     if !is_query(statement, dialect, &tokens) || is_bounded(statement, &tokens) {
         return None;
     }
-    let end = tokens.last()?.end;
+    let end = if dialect == Dialect::ClickHouse {
+        clickhouse_end(statement, &tokens)?
+    } else {
+        tokens.last()?.end
+    };
     let (head, tail) = statement.split_at(end);
     Some(format!("{head} LIMIT {rows}{tail}"))
+}
+
+fn clickhouse_end(statement: &str, tokens: &[Token]) -> Option<usize> {
+    let mut depth = 0_usize;
+    for token in tokens {
+        match token.kind {
+            TokenKind::OpenParen => depth += 1,
+            TokenKind::CloseParen => depth = depth.saturating_sub(1),
+            TokenKind::Word if depth == 0 => {
+                if token.is_word(statement, "settings") || token.is_word(statement, "format") {
+                    return Some(statement.get(..token.start)?.trim_end().len());
+                }
+            }
+            _ => {}
+        }
+    }
+    tokens.last().map(|token| token.end)
 }
 
 /// A `SELECT`, or a `WITH` whose main statement only reads.

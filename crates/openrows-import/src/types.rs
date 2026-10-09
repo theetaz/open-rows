@@ -117,6 +117,14 @@ impl TypeCategory {
                 _ => "TEXT",
             },
             Dialect::SqlServer => self.sql_server_type(longest),
+            Dialect::ClickHouse => match self {
+                Self::Integer => "Int64",
+                Self::Decimal => "Decimal(38, 10)",
+                Self::Boolean => "Bool",
+                Self::Date => "Date32",
+                Self::Timestamp | Self::TimestampTz => "DateTime64(6, 'UTC')",
+                Self::Json | Self::Text => "String",
+            },
             _ => match self {
                 Self::Integer => "bigint",
                 Self::Decimal => "numeric",

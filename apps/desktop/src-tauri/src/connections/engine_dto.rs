@@ -16,6 +16,7 @@ pub(crate) enum EngineDto {
     Mysql,
     Mariadb,
     Sqlserver,
+    Clickhouse,
     Sqlite,
 }
 
@@ -26,6 +27,7 @@ impl From<Driver> for EngineDto {
             Driver::Mysql => Self::Mysql,
             Driver::Mariadb => Self::Mariadb,
             Driver::Sqlserver => Self::Sqlserver,
+            Driver::Clickhouse => Self::Clickhouse,
             Driver::Sqlite => Self::Sqlite,
         }
     }
@@ -38,6 +40,7 @@ impl From<EngineDto> for Driver {
             EngineDto::Mysql => Self::Mysql,
             EngineDto::Mariadb => Self::Mariadb,
             EngineDto::Sqlserver => Self::Sqlserver,
+            EngineDto::Clickhouse => Self::Clickhouse,
             EngineDto::Sqlite => Self::Sqlite,
         }
     }

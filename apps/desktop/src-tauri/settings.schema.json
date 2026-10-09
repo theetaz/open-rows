@@ -759,7 +759,14 @@
           "description": "SQL with tab stops such as ${1:name}."
         },
         "scope": {
-          "enum": ["all", "postgres", "mysql", "sqlite"],
+          "enum": [
+            "all",
+            "postgres",
+            "mysql",
+            "sqlserver",
+            "sqlite",
+            "clickhouse"
+          ],
           "default": "all",
           "description": "Engines the snippet is offered for; MariaDB uses mysql."
         }

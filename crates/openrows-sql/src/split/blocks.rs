@@ -144,7 +144,7 @@ impl Blocks {
             Dialect::Postgres => {
                 (self.after_begin && is("ATOMIC")) || (self.depth > 0 && is("CASE"))
             }
-            Dialect::Sqlite | Dialect::MySql | Dialect::SqlServer => {
+            Dialect::Sqlite | Dialect::MySql | Dialect::SqlServer | Dialect::ClickHouse => {
                 (self.routine && is("BEGIN")) || (self.depth > 0 && is("CASE"))
             }
         }

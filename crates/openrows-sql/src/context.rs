@@ -11,7 +11,7 @@ use crate::lexer::{self, TokenKind};
 pub enum ContextSetting {
     /// `PostgreSQL` `SET [SESSION] search_path …` or `SET SCHEMA …`.
     SearchPath,
-    /// `MySQL` and SQL Server `USE db`.
+    /// `MySQL`, SQL Server and `ClickHouse` `USE db`.
     Database,
 }
 
@@ -41,7 +41,7 @@ pub fn session_context(statement: &str, dialect: Dialect) -> Option<ContextSetti
             };
             matches!(name.as_str(), "SEARCH_PATH" | "SCHEMA").then_some(ContextSetting::SearchPath)
         }
-        (Dialect::MySql | Dialect::SqlServer, "USE") => {
+        (Dialect::MySql | Dialect::SqlServer | Dialect::ClickHouse, "USE") => {
             (tokens.len() == 2).then_some(ContextSetting::Database)
         }
         _ => None,

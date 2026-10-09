@@ -132,3 +132,36 @@ pub fn verdict(policy: SafetyPolicy, class: Classification) -> Verdict {
         Verdict::Allow
     }
 }
+
+#[cfg(test)]
+mod clickhouse_tests {
+    use super::*;
+    #[test]
+    fn read_only_connections_block_clickhouse_mutations() {
+        let policy = SafetyPolicy {
+            read_only: true,
+            dialect: Dialect::ClickHouse,
+            ..SafetyPolicy::default()
+        };
+        for sql in [
+            "INSERT INTO t VALUES (1)",
+            "ALTER TABLE t UPDATE x=1 WHERE id=2",
+            "ALTER TABLE t DELETE WHERE id=1",
+            "OPTIMIZE TABLE t FINAL",
+            "SYSTEM RELOAD DICTIONARY d",
+            "KILL QUERY WHERE query_id='x'",
+            "DROP TABLE t",
+            "TRUNCATE TABLE t",
+        ] {
+            assert_eq!(
+                SafetyPlan::check(policy, vec![sql.to_owned()]).gate(),
+                Gate::Block,
+                "{sql}"
+            );
+        }
+        assert_eq!(
+            SafetyPlan::check(policy, vec!["SELECT 1".to_owned()]).gate(),
+            Gate::Run
+        );
+    }
+}

@@ -156,6 +156,10 @@ test-mysql *images:
 test-mssql image="mcr.microsoft.com/mssql/server:2022-latest":
     {{sccache_guard}} bash scripts/test-mssql.sh "{{image}}"
 
+# Run the ClickHouse LTS HTTP/TLS integration and conformance suites.
+test-clickhouse image="clickhouse/clickhouse-server:25.3.9.72":
+    {{sccache_guard}} bash scripts/test-clickhouse.sh "{{image}}"
+
 # Run each cargo-fuzz target in fuzz/ briefly; skips when nightly or cargo-fuzz is missing.
 fuzz-smoke seconds="20":
     {{sccache_guard}} bash scripts/fuzz-smoke.sh "{{seconds}}"

@@ -99,6 +99,7 @@ const BUILT_INS: Record<EditorDialect, string> = {
     least last_insert_id found_rows database version format truncate mod
     power sqrt regexp_replace convert`,
   mariadb: '',
+  clickhouse: `${AGGREGATES} ${WINDOWS} toInt64 toUInt64 toString toDate toDateTime64 now64 today numbers uniq uniqExact groupArray arrayJoin arrayMap dictGet argMax argMin`,
   sqlserver: `${AGGREGATES} ${WINDOWS} getdate getutcdate sysdatetime
     sysutcdatetime sysdatetimeoffset dateadd datediff datediff_big datename
     datepart datefromparts datetime2fromparts eomonth isdate year month day

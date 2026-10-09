@@ -272,3 +272,7 @@ it with original-host TLS verification.
 
 OpenRows uses `rustix` for process-group termination and has no direct `nix`
 dependency; transitive `nix` through `russh-cryptovec` → `russh` is accepted.
+
+## 16. Implemented (M2-03): ClickHouse HTTP(S) routes
+
+`openrows-driver-clickhouse` performs hyper HTTP/1.1 handshakes on the existing route `Dialer`; HTTPS wraps that stream with the shared rustls client before the HTTP handshake. Cancellation opens a second stream through the same route without the busy HTTP `session_id`. Each exchange closes on completion/drop; pooling and HTTP compression remain pending. The ClickHouse container suite covers direct HTTP, hostname-verified HTTPS with a generated CA and HTTPS over SOCKS5. SSH and HTTP CONNECT reuse the shared Dialer contract, without an engine-specific container test.

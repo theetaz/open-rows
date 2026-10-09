@@ -7,6 +7,7 @@ import { encryptLabel } from './sqlServerTls';
 import { SecretField } from './SecretField';
 import { tlsCa, tlsWarning } from './routeForm';
 import type { ConnectionForm } from './useConnectionForm';
+import type { Draft } from './form';
 import styles from './ConnectionSheet.module.css';
 
 const modes: readonly { value: TlsModeDto; label: string }[] = [
@@ -62,9 +63,15 @@ export function TlsFields({
               label="Mode"
               aria-label="TLS mode"
               value={draft.tlsMode}
-              options={modes}
+              options={
+                draft.engine === 'clickhouse'
+                  ? modes.filter(
+                      ({ value }) => !['allow', 'prefer'].includes(value),
+                    )
+                  : modes
+              }
               onValueChange={(tlsMode) => {
-                update({ tlsMode });
+                update(tlsUpdate(draft, tlsMode));
               }}
             />
           )}
@@ -139,4 +146,15 @@ function CaFields({ form }: { form: ConnectionForm }): React.JSX.Element {
       )}
     </>
   );
+}
+
+function tlsUpdate(draft: Draft, tlsMode: TlsModeDto): Partial<Draft> {
+  const https = ['require', 'verify-ca', 'verify-full'].includes(tlsMode);
+  const defaultHttp = ['8123', '8443'].includes(draft.port);
+  return {
+    tlsMode,
+    ...(draft.engine === 'clickhouse' && defaultHttp
+      ? { port: https ? '8443' : '8123' }
+      : {}),
+  };
 }

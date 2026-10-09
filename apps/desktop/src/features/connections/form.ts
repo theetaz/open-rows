@@ -129,7 +129,7 @@ export function emptyDraft(engine: EngineDto = 'postgres'): Draft {
     port: String(defaultPort(engine) ?? ''),
     database: '',
     user: '',
-    tlsMode: 'prefer',
+    tlsMode: engine === 'clickhouse' ? 'disable' : 'prefer',
     readOnly: false,
     confirmWrites: false,
     recordHistory: true,

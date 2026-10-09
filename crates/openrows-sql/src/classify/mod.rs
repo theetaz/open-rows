@@ -6,6 +6,7 @@
 //! harmless it answers [`StatementKind::Unknown`], which callers treat as a
 //! write.
 
+mod clickhouse;
 mod heads;
 mod mysql;
 mod mysql_set;
@@ -111,6 +112,7 @@ impl<'a> Sql<'a> {
             (Dialect::Postgres, true) => heads::explain(body),
             (Dialect::MySql, true) => mysql::explain(body),
             (Dialect::Sqlite, true) => Classification::new(StatementKind::Read),
+            (Dialect::ClickHouse, _) => body.inspect(clickhouse::dispatch(body)),
             (Dialect::SqlServer, _) => body.inspect(tsql::dispatch(body)),
             (Dialect::Postgres, false) => body.inspect(heads::dispatch(body)),
             (Dialect::MySql, false) => body.inspect(mysql::dispatch(body)),

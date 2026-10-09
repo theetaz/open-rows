@@ -92,6 +92,16 @@ impl ParamBinder {
             .collect()
     }
 
+    fn placeholder(&self, index: usize, name: &str) -> String {
+        if self.dialect == Dialect::ClickHouse
+            && name.starts_with('{')
+            && let Some((_, kind)) = name.split_once(':')
+        {
+            return format!("{{p{index}:{kind}");
+        }
+        self.dialect.placeholder(index)
+    }
+
     /// `sql` with every slot replaced by the dialect's bind placeholder and
     /// the values in placeholder order. `value` returns `None` for a name
     /// without a value and `Some(None)` for SQL NULL.
@@ -110,7 +120,7 @@ impl ParamBinder {
         for (index, slot) in slots.iter().enumerate() {
             let value = value(&slot.name).ok_or_else(|| MissingParam(slot.name.clone()))?;
             text.push_str(sql.get(copied..slot.range.start).unwrap_or_default());
-            text.push_str(&self.dialect.placeholder(index + 1));
+            text.push_str(&self.placeholder(index + 1, &slot.name));
             params.push(value);
             copied = slot.range.end;
         }

@@ -10,6 +10,7 @@ members = [
     "crates/openrows-driver-api",
     "crates/openrows-driver-conformance",
     "crates/openrows-driver-mssql",
+    "crates/openrows-driver-clickhouse",
     "crates/openrows-driver-mysql",
     "crates/openrows-driver-postgres",
     "crates/openrows-driver-sqlite",

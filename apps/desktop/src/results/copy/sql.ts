@@ -24,6 +24,8 @@ const mysql = (engine: EngineDto): boolean =>
 /** One identifier quoted for the dialect (as `Dialect::quote_ident` in openrows-sql). */
 export function quoteIdent(engine: EngineDto, name: string): string {
   if (engine === 'sqlserver') return `[${name.replaceAll(']', ']]')}]`;
+  if (engine === 'clickhouse')
+    return `\`${name.replaceAll('\\', '\\\\').replaceAll('`', '\\`')}\``;
   return mysql(engine)
     ? `\`${name.replaceAll('`', '``')}\``
     : `"${name.replaceAll('"', '""')}"`;
@@ -35,7 +37,8 @@ export function tableName(
   table: { schema: string; name: string },
 ): string {
   const name = quoteIdent(engine, table.name);
-  const qualified = engine === 'postgres' || engine === 'sqlserver';
+  const qualified =
+    engine === 'postgres' || engine === 'sqlserver' || engine === 'clickhouse';
   return qualified && table.schema
     ? `${quoteIdent(engine, table.schema)}.${name}`
     : name;
@@ -52,6 +55,8 @@ const MYSQL_ESCAPES: Readonly<Record<string, string>> = {
 
 /** A string literal; the rules match openrows-export's `push_string`. */
 function stringLiteral(engine: EngineDto, text: string): string {
+  if (engine === 'clickhouse')
+    return `'${Array.from(text, (c) => (c === '\u001a' ? '\\x1a' : (MYSQL_ESCAPES[c] ?? c))).join('')}'`;
   if (mysql(engine))
     return `'${Array.from(text, (c) => MYSQL_ESCAPES[c] ?? c).join('')}'`;
   if (engine === 'sqlserver') return `N'${text.replaceAll("'", "''")}'`;

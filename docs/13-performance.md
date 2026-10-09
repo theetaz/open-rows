@@ -485,3 +485,11 @@ before sending the first (26 ms observed).
 - `KEYS *`, `SELECT COUNT(*)` on large tables without user intent (use estimates: `pg_class.reltuples`, `information_schema.TABLES.TABLE_ROWS`, flagged as estimates).
 - Synchronous file or keychain I/O on the main thread.
 - Unbounded channels or buffers anywhere in the data path.
+
+### M2-03 ClickHouse native Arrow ingest
+
+`OPENROWS_BENCH=1 just test-clickhouse` runs `scripts/bench-clickhouse.py` after the integration and conformance suites (opt-in: its latency budget is only meaningful on an idle machine), against `clickhouse/clickhouse-server:25.3.9.72` restricted to 2 CPUs / 2 GiB. It builds the debug integration binary once, then runs a discarding sink over `SELECT number, toInt64(number) AS n FROM numbers(1000000)` under `/usr/bin/time` (Darwin bytes / Linux KiB, validated by unit tests). Compilation is excluded from peak RSS. Throughput includes DESCRIBE, the HTTP exchanges, server work, Arrow decoding and sink delivery; reported payload bytes are the 16 MB primitive values, excluding IPC framing.
+
+Local Mac measurement (debug build, shared machine, 2026-10-10): 2,390,674 rows/s, 38,250,791 payload bytes/s, 0.418 s execution, first batch 200 rows, first-data-to-first-batch 0.644 ms (budget 5 ms), largest Arrow batch 6,592 bytes, peak whole-process RSS 14,680,064 bytes (conservative gate 40 MB). The process baseline, libraries and Tokio runtime are included in RSS; this is not a direct driver-buffer allocation measurement. Native data is consumed through two 64 KiB chunk slots, two batch slots and a bounded 64 KiB error tail. Large individual cells may exceed the typical 4 MiB buffer target.
+
+The reader worker is started before the HTTP body pump so thread creation is outside the first-data-to-first-batch interval; an earlier cold-worker measurement was 8.741 ms. A separate slow million-row integration test proves the first batch arrives before the response completes. No main baseline exists for this new driver; release-profile and reference mac-low numbers remain unmeasured. These debug numbers do not certify the app's physical-footprint or first-paint budgets.

@@ -20,6 +20,7 @@ impl Dialect {
         Ok(match self {
             Self::Postgres | Self::Sqlite => format!("\"{}\"", name.replace('"', "\"\"")),
             Self::MySql => format!("`{}`", name.replace('`', "``")),
+            Self::ClickHouse => format!("`{}`", name.replace('\\', "\\\\").replace('`', "\\`")),
             Self::SqlServer => format!("[{}]", name.replace(']', "]]")),
         })
     }
@@ -50,6 +51,7 @@ impl Dialect {
             Self::MySql => format!("CAST({expression} AS CHAR)"),
             Self::Sqlite => format!("CAST({expression} AS TEXT)"),
             Self::SqlServer => format!("CONVERT(NVARCHAR(MAX), {expression})"),
+            Self::ClickHouse => format!("CAST({expression} AS Nullable(String))"),
         }
     }
 
@@ -60,6 +62,7 @@ impl Dialect {
             Self::MySql => "?".to_owned(),
             Self::Sqlite => format!("?{number}"),
             Self::SqlServer => format!("@P{number}"),
+            Self::ClickHouse => format!("{{p{number}:Nullable(String)}}"),
         }
     }
 
@@ -74,6 +77,9 @@ impl Dialect {
                 format!("CAST({column} AS CHAR) COLLATE utf8mb4_bin <=> {placeholder}")
             }
             Self::Sqlite => format!("CAST({column} AS TEXT) COLLATE BINARY IS {placeholder}"),
+            Self::ClickHouse => {
+                format!("isNotDistinctFrom({}, {placeholder})", self.text_of(column))
+            }
             // `=` on text ignores trailing spaces even in a binary collation;
             // the UTF-16 bytes compare exactly (the text never holds NUL).
             Self::SqlServer => format!(
@@ -90,7 +96,7 @@ impl Dialect {
         let not = if negate { "NOT " } else { "" };
         let text = self.text_of(column);
         match self {
-            Self::Postgres => format!("{text} {not}ILIKE {placeholder}"),
+            Self::Postgres | Self::ClickHouse => format!("{text} {not}ILIKE {placeholder}"),
             // `CAST(… AS CHAR)` uses the connection's case-insensitive collation.
             Self::MySql => format!("{text} {not}LIKE {placeholder}"),
             // No default escape; `SQLite` matches ASCII case-insensitively,
@@ -116,6 +122,8 @@ impl Dialect {
         match (self, negate) {
             (Self::Postgres, false) => Ok(format!("{text} ~ {placeholder}")),
             (Self::Postgres, true) => Ok(format!("{text} !~ {placeholder}")),
+            (Self::ClickHouse, false) => Ok(format!("match({text}, {placeholder})")),
+            (Self::ClickHouse, true) => Ok(format!("NOT match({text}, {placeholder})")),
             (Self::MySql, false) => Ok(format!("{text} REGEXP {placeholder}")),
             (Self::MySql, true) => Ok(format!("{text} NOT REGEXP {placeholder}")),
             (Self::Sqlite, _) => Err(SelectError::Unsupported(

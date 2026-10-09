@@ -907,7 +907,7 @@ export type EditorRun = {
 };
 
 /**  Database engine of a profile. */
-export type EngineDto = "postgres" | "mysql" | "mariadb" | "sqlserver" | "sqlite";
+export type EngineDto = "postgres" | "mysql" | "mariadb" | "sqlserver" | "clickhouse" | "sqlite";
 
 /**  Environment tag as shown in the rail, header and toolbar. */
 export type EnvDto = {

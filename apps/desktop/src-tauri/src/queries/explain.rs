@@ -26,6 +26,10 @@ fn engine(driver: Driver) -> Result<Engine, IpcError> {
         Driver::Mysql => Ok(Engine::MySql),
         Driver::Mariadb => Ok(Engine::MariaDb),
         Driver::Sqlite => Ok(Engine::Sqlite),
+        Driver::Clickhouse => Err(IpcError::new(
+            IpcErrorKind::Unsupported,
+            "Explain plans are not available for ClickHouse yet",
+        )),
         Driver::Sqlserver => Err(IpcError::new(
             IpcErrorKind::Unsupported,
             "Explain is not available for SQL Server yet",
@@ -146,6 +150,12 @@ mod tests {
             analyze: true,
             confirm_token: None,
         }
+    }
+
+    #[test]
+    fn clickhouse_explain_is_typed_unsupported() {
+        let error = engine(Driver::Clickhouse).expect_err("no parsed ClickHouse explain");
+        assert_eq!(error.kind, IpcErrorKind::Unsupported);
     }
 
     const POLICY: SafetyPolicy = SafetyPolicy {

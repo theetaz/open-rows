@@ -70,7 +70,7 @@ pub(crate) fn setup_sql(driver: Driver, timeout: Option<Duration>) -> Vec<String
         )],
         // SQL Server has no server-side statement timeout; the session's
         // timer cancels with the attention signal instead.
-        Driver::Sqlserver | Driver::Sqlite => Vec::new(),
+        Driver::Sqlserver | Driver::Clickhouse | Driver::Sqlite => Vec::new(),
     }
 }
 
