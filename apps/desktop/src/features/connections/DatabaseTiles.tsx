@@ -13,6 +13,8 @@ type Props = {
   onClose: (name: string) => void;
   /** Open the database's process list; absent when the engine has none. */
   onProcesses?: ((name: string) => void) | undefined;
+  /** Run a `.sql` file on the database. */
+  onRunFile?: ((name: string) => void) | undefined;
   onKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>) => void;
 };
 
@@ -79,6 +81,18 @@ function DatabaseTile(
           opener={opener}
           onClose={close}
         >
+          {props.onRunFile && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                close();
+                props.onRunFile?.(name);
+              }}
+            >
+              Run SQL file…
+            </button>
+          )}
           {props.onProcesses && (
             <button
               type="button"

@@ -67,6 +67,7 @@ async fn checksum(manager: &SessionManager, session: SessionId, table: &str) -> 
     let csv = Format::Csv(CsvOptions {
         delimiter: Delimiter::Comma,
         header: false,
+        ..CsvOptions::default()
     });
     export(manager, session, (plain(&sql), &csv), &path).await?;
     Ok(std::fs::read_to_string(path)?)
@@ -136,6 +137,7 @@ async fn a_large_csv_export_matches_the_server_checksum() -> TestResult {
     let csv = Format::Csv(CsvOptions {
         delimiter: Delimiter::Semicolon,
         header: true,
+        ..CsvOptions::default()
     });
     let sql = "SELECT g AS id, 'v;' || g AS label FROM generate_series(1, 300000) g";
     assert_eq!(

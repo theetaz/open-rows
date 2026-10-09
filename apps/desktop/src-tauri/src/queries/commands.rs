@@ -29,6 +29,7 @@ use super::params::{self, Binding};
 use crate::connections::catalog_cache::after_statements;
 use crate::connections::drivers::driver;
 use crate::connections::{Connections, IpcError, IpcErrorKind};
+use crate::exports::pins::ResultPins;
 
 /// Everything a started run needs after the command returned.
 struct Run {
@@ -108,7 +109,7 @@ pub(crate) async fn query_execute(
 }
 
 /// The profile's safety switches, judged in its engine's dialect.
-fn policy(profile: &ConnectionProfile) -> SafetyPolicy {
+pub(crate) fn policy(profile: &ConnectionProfile) -> SafetyPolicy {
     SafetyPolicy {
         read_only: profile.safety.read_only,
         confirm_writes: profile.safety.confirm_writes,
@@ -155,6 +156,7 @@ async fn execute(app: AppHandle, run: Run) {
             statements: &run.bound,
             max_rows: run.max_rows,
             stop_on_error: run.stop_on_error,
+            sink: None,
         },
         &run.cancel,
         |event| {
@@ -185,12 +187,19 @@ pub(crate) fn query_cancel(queries: State<'_, Queries>, query_id: String) {
     queries.cancel(&query_id);
 }
 
-/// Drop results whose tab closed or was re-run.
+/// Drop results whose tab closed or was re-run; one a running export still
+/// reads is dropped when that export ends.
 #[tauri::command]
 #[specta::specta]
-pub(crate) fn results_release(store: State<'_, Arc<ResultStore>>, result_ids: Vec<String>) {
+pub(crate) fn results_release(
+    store: State<'_, Arc<ResultStore>>,
+    pins: State<'_, ResultPins>,
+    result_ids: Vec<String>,
+) {
     for id in &result_ids {
-        store.remove(id);
+        if pins.release(id) {
+            store.remove(id);
+        }
     }
 }
 

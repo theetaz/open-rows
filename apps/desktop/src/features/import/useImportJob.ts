@@ -3,6 +3,7 @@ import { useCallback, useReducer } from 'react';
 import { cancelImport, startImport } from '@openrows/ipc';
 import type { ImportRequest } from '@openrows/ipc';
 import { idleJob, importReducer } from './job';
+import { mirrorImport } from './importJobMirror';
 import type { ImportJob } from './job';
 
 type ImportJobControls = {
@@ -23,14 +24,18 @@ export function useImportJob(): ImportJobControls {
   const [job, dispatch] = useReducer(importReducer, idleJob);
   const start = useCallback((request: ImportRequest): void => {
     dispatch({ type: 'start', mode: request.mode });
+    const mirror = mirrorImport(request);
     startImport(request, (event) => {
       dispatch({ type: 'event', event });
+      mirror?.event(event);
     }).then(
       (reply) => {
         dispatch({ type: 'started', importId: reply.importId });
+        mirror?.started(reply.importId);
       },
       (error: unknown) => {
         dispatch({ type: 'rejected', message: messageOf(error) });
+        mirror?.rejected(messageOf(error));
       },
     );
   }, []);

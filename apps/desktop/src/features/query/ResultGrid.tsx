@@ -29,6 +29,8 @@ type Props = {
   /** Engine of the connection: quoting for copied SQL. */
   engine: EngineDto;
   onCell: (cell: SelectedCell) => void;
+  /** Export… of the selected rows (stored positions); omitted while unavailable. */
+  onExportRows?: ((rows: number[]) => void) | undefined;
 };
 
 /** A right-click: the grid target, its selection and the result column. */
@@ -48,6 +50,7 @@ export function ResultGrid({
   result,
   engine,
   onCell,
+  onExportRows,
 }: Props): React.JSX.Element {
   const host = useRef<HTMLDivElement>(null);
   const sourceRef = useRef<ResultViewSource | undefined>(undefined);
@@ -99,6 +102,15 @@ export function ResultGrid({
               copy.selection(format, menu.ranges);
             },
             copyText: copy.text,
+            exportRows: onExportRows
+              ? () => {
+                  const shown = sourceRef.current;
+                  if (shown)
+                    onExportRows(
+                      selectedRows(menu.ranges, (row) => shown.rowOf(row)),
+                    );
+                }
+              : undefined,
             changeLayout,
             fitWidth: (column) => handle.current?.fitWidth?.(column),
             reset: () => {
@@ -112,6 +124,20 @@ export function ResultGrid({
       )}
     </div>
   );
+}
+
+/** Stored positions of the rows a selection covers, ascending. */
+function selectedRows(
+  ranges: SelectionModel['ranges'],
+  rowOf: (row: number) => number | undefined,
+): number[] {
+  const rows = new Set<number>();
+  for (const range of ranges)
+    for (let row = range.r0; row <= range.r1; row += 1) {
+      const stored = rowOf(row);
+      if (stored !== undefined) rows.add(stored);
+    }
+  return [...rows].sort((a, b) => a - b);
 }
 
 /** Copy the selection (also on ⌘C) or plain text, reporting failures. */
@@ -204,6 +230,7 @@ function ResultTools({
 type MenuActions = {
   copy: (format: CopyFormat) => void;
   copyText: (text: string) => void;
+  exportRows: (() => void) | undefined;
   changeLayout: ResultLatest['changeLayout'];
   fitWidth: (column: number) => number | undefined;
   reset: () => void;
@@ -232,6 +259,7 @@ function MenuFor(props: {
       pinned={props.pinned.includes(key)}
       copy={actions.copy}
       copyText={actions.copyText}
+      exportRows={actions.exportRows}
       sortBy={view.sortBy}
       togglePin={() => {
         actions.changeLayout((layout) => togglePin(layout, key));

@@ -114,6 +114,7 @@ async fn checksum(manager: &SessionManager, session: SessionId, table: &str) -> 
     let csv = Format::Csv(CsvOptions {
         delimiter: Delimiter::Comma,
         header: false,
+        ..CsvOptions::default()
     });
     export(manager, session, (statement, &csv), &path).await?;
     Ok(std::fs::read_to_string(path)?)

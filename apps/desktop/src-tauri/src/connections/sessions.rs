@@ -83,11 +83,35 @@ pub(crate) async fn session_open(
     profile_id: String,
     database: Option<String>,
 ) -> Result<SessionOpened, IpcError> {
+    let (session, server) = open_session(&state, &profile_id, database.as_deref()).await?;
+    let owner = Owner {
+        profile: super::profiles::profile_id(&profile_id)?,
+        database: server.database.clone(),
+    };
+    state.owners.bind(session, owner);
+    Ok(SessionOpened {
+        session_id: session.to_string(),
+        server,
+    })
+}
+
+/// Open a session on `database` of a saved connection without binding it to
+/// the webview: background jobs (exports, file runs) run on their own
+/// session so they neither queue behind nor block the user's statements,
+/// and close it when they end.
+///
+/// # Errors
+/// The profile is unknown or the connection fails.
+pub(crate) async fn open_session(
+    state: &Connections,
+    profile_id: &str,
+    database: Option<&str>,
+) -> Result<(SessionId, ServerDto), IpcError> {
     let profile = state
         .profiles
-        .get(super::profiles::profile_id(&profile_id)?)?;
-    let mut target = route::profile_target(&state, &profile_id).await?;
-    if let Some(database) = &database {
+        .get(super::profiles::profile_id(profile_id)?)?;
+    let mut target = route::profile_target(state, profile_id).await?;
+    if let Some(database) = database {
         target = target.with_database(database);
     }
     let (server, received) = oneshot::channel();
@@ -111,15 +135,7 @@ pub(crate) async fn session_open(
             "The session opened without server info",
         )
     })?;
-    let owner = Owner {
-        profile: profile.id,
-        database: server.database.clone(),
-    };
-    state.owners.bind(session, owner);
-    Ok(SessionOpened {
-        session_id: session.to_string(),
-        server,
-    })
+    Ok((session, server))
 }
 
 /// Cancel the session's work and disconnect; the database's metadata session

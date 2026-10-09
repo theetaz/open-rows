@@ -20,8 +20,11 @@ type Props = {
   /** Engine of the connection: quoting for copied SQL. */
   engine: EngineDto;
   onCell: (cell: SelectedCell) => void;
-  /** Export… for the shown result; omitted while it cannot be exported. */
-  onExport?: ((result: ResultMeta) => void) | undefined;
+  /**
+   * Export… for the shown result, or for some of its rows (stored
+   * positions); omitted while it cannot be exported.
+   */
+  onExport?: ((result: ResultMeta, rows?: number[]) => void) | undefined;
   /** Receives Export… of the shown result while it can be exported (Export results command). */
   onExportable?: ((exportShown: (() => void) | null) => void) | undefined;
 };
@@ -123,6 +126,13 @@ export function ResultPane({
             result={current}
             engine={engine}
             onCell={onCell}
+            onExportRows={
+              exportable
+                ? (rows) => {
+                    onExport?.(exportable, rows);
+                  }
+                : undefined
+            }
           />
         </Suspense>
       ) : (

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //! JSON rows: one object per row keyed by column name, either inside one
-//! array or one per line (NDJSON).
+//! array (compact or indented) or one per line (NDJSON).
 //!
 //! Integers, decimals and finite floats are numbers; JSON columns are
 //! embedded as documents; everything else is a string in its canonical text
@@ -48,21 +48,28 @@ impl JsonEncoder {
 
     /// One row object, with its array separator or line end.
     fn object(&mut self, columns: &[Column<'_>], row: usize, out: &mut String) {
+        let pretty = self.layout == JsonLayout::Pretty;
         let separator = match (self.layout, self.rows) {
-            (JsonLayout::Array, 0) => "\n",
-            (JsonLayout::Array, _) => ",\n",
             (JsonLayout::Lines, _) => "",
+            (_, 0) => "\n",
+            _ => ",\n",
         };
         out.push_str(separator);
-        out.push('{');
+        out.push_str(if pretty { "  {" } else { "{" });
         for (index, column) in columns.iter().enumerate() {
             if index > 0 {
                 out.push(',');
             }
+            if pretty {
+                out.push_str("\n    ");
+            }
             out.push_str(self.keys.get(index).map_or("", String::as_str));
+            if pretty {
+                out.push(' ');
+            }
             self.value(&column.cell(row), out);
         }
-        out.push('}');
+        out.push_str(if pretty { "\n  }" } else { "}" });
         if self.layout == JsonLayout::Lines {
             out.push('\n');
         }
@@ -104,7 +111,7 @@ impl Encode for JsonEncoder {
                 key
             })
             .collect();
-        if self.layout == JsonLayout::Array {
+        if self.layout != JsonLayout::Lines {
             out.push('[');
         }
         Ok(())
@@ -117,7 +124,7 @@ impl Encode for JsonEncoder {
     }
 
     fn finish(&mut self, out: &mut String) {
-        if self.layout == JsonLayout::Array {
+        if self.layout != JsonLayout::Lines {
             out.push_str(if self.rows == 0 { "]\n" } else { "\n]\n" });
         }
     }

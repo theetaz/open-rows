@@ -66,6 +66,7 @@ const FILE: &[Entry] = &[
     C("new-tab", "New Query Tab"),
     S,
     C("open-file", "Open SQL File…"),
+    C("run-sql-file", "Run SQL File…"),
     S,
     C("save", "Save"),
     C("save-as", "Save As…"),
@@ -74,6 +75,7 @@ const FILE: &[Entry] = &[
     C("discard-changes", "Discard Changes"),
     S,
     C("export-table", "Export Table…"),
+    C("export-tables", "Export Tables…"),
     C("export-results", "Export Results…"),
     C("import-data", "Import…"),
     S,
@@ -125,6 +127,7 @@ const VIEW: &[Entry] = &[
     C("commands", "Command Palette…"),
     C("quick", "Quick Open…"),
     C("show-er-diagram", "Show ER Diagram"),
+    C("show-jobs", "Show Background Jobs"),
     S,
     N(Native::Fullscreen),
 ];
@@ -352,6 +355,9 @@ mod tests {
             "import-data",
             "help-search",
             "show-er-diagram",
+            "run-sql-file",
+            "export-tables",
+            "show-jobs",
         ] {
             assert!(ids.contains(&id), "missing {id}");
         }

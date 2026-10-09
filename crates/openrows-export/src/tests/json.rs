@@ -75,3 +75,14 @@ fn non_finite_floats_become_strings_and_finite_ones_round_trip() -> TestResult {
     );
     Ok(())
 }
+
+#[test]
+fn pretty_json_indents_objects_by_two_spaces() -> TestResult {
+    let batch = texts(&[Some("a"), None])?;
+    let text = export_one(&Format::Json(JsonLayout::Pretty), &batch)?;
+    assert_eq!(
+        text,
+        "[\n  {\n    \"v\": \"a\"\n  },\n  {\n    \"v\": null\n  }\n]\n"
+    );
+    Ok(())
+}

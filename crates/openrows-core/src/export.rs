@@ -71,15 +71,44 @@ pub async fn export_statement(
     statement: BoundSql,
     job: ExportJob,
 ) -> ExportOutcome {
-    let outcome = stream_statement(manager, session, statement, job).await;
+    let parts = vec![ExportPart {
+        table: None,
+        statement,
+    }];
+    let outcome = stream_statements(manager, session, parts, job).await;
     log_outcome(&outcome);
     outcome
 }
 
-async fn stream_statement(
+/// One statement of a multi-table export.
+#[derive(Clone, Debug)]
+pub struct ExportPart {
+    /// Starts a new table (an Excel sheet) with this name; `None` continues
+    /// the file's single result.
+    pub table: Option<String>,
+    /// The rows of the table.
+    pub statement: BoundSql,
+}
+
+/// Run `parts` one after another on `session` and stream every table into
+/// the job's one file (an Excel workbook with a sheet per table). Rows
+/// written are counted across all tables; the first failure ends the export.
+#[tracing::instrument(name = "export", skip_all, fields(source = "tables", tables = parts.len()))]
+pub async fn export_parts(
     manager: &SessionManager,
     session: SessionId,
-    statement: BoundSql,
+    parts: Vec<ExportPart>,
+    job: ExportJob,
+) -> ExportOutcome {
+    let outcome = stream_statements(manager, session, parts, job).await;
+    log_outcome(&outcome);
+    outcome
+}
+
+async fn stream_statements(
+    manager: &SessionManager,
+    session: SessionId,
+    parts: Vec<ExportPart>,
     job: ExportJob,
 ) -> ExportOutcome {
     let ExportJob {
@@ -92,17 +121,29 @@ async fn stream_statement(
     let writer = tokio::task::spawn_blocking(move || drain(exporter, receiver, progress));
     let sink = Arc::new(ExportSink::new(sender));
     let mut failure = None;
-    let outcome = if cancel.is_cancelled() {
-        ScriptOutcome::Cancelled
-    } else {
-        let submitted = manager.execute_into(session, statement, sink.clone());
-        follow(submitted, &cancel, &mut |event| {
+    let mut outcome = ScriptOutcome::Completed;
+    for part in parts {
+        if cancel.is_cancelled() {
+            outcome = ScriptOutcome::Cancelled;
+            break;
+        }
+        // A refused table means the writer stopped; its error ends the export.
+        if let Some(table) = part.table
+            && !sink.send(Message::Table(table))
+        {
+            break;
+        }
+        let submitted = manager.execute_into(session, part.statement, sink.clone());
+        outcome = follow(submitted, &cancel, &mut |event| {
             if let QueryEvent::Failed { error } = event {
                 failure = Some(error);
             }
         })
-        .await
-    };
+        .await;
+        if outcome != ScriptOutcome::Completed {
+            break;
+        }
+    }
     sink.close(outcome == ScriptOutcome::Completed);
     let written = writer.await.unwrap_or(Err(ExportError::Aborted));
     match outcome {

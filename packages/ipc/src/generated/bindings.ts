@@ -117,7 +117,10 @@ export const commands = {
 	queryExecute: (request: ExecuteRequest, onEvent: Channel<QueryEventDto>) => typedError<ExecuteReply, IpcError>(__TAURI_INVOKE("query_execute", { request, onEvent })),
 	/**  Cancel a running query and every statement after it; unknown ids are ignored. */
 	queryCancel: (queryId: string) => __TAURI_INVOKE<void>("query_cancel", { queryId }),
-	/**  Drop results whose tab closed or was re-run. */
+	/**
+	 *  Drop results whose tab closed or was re-run; one a running export still
+	 *  reads is dropped when that export ends.
+	 */
 	resultsRelease: (resultIds: string[]) => __TAURI_INVOKE<void>("results_release", { resultIds }),
 	/**
 	 *  Entries of the local history, newest first: one connection or all of them,
@@ -212,8 +215,9 @@ export const commands = {
 	 *  the rows to it without sending them to the webview.
 	 * 
 	 *  Export only reads, so read-only and confirm-writes connections allow it;
-	 *  a re-run statement must classify as a plain read. `query_cancel(exportId)`
-	 *  cancels; the partial file is deleted.
+	 *  a re-run statement must classify as a plain read. Statements run on a
+	 *  session of the export's own. `query_cancel(exportId)` cancels; partial
+	 *  files are deleted.
 	 */
 	exportStart: (request: ExportRequest, onEvent: Channel<ExportEventDto>) => typedError<ExportReply, IpcError>(__TAURI_INVOKE("export_start", { request, onEvent })),
 	/**  Show the native open panel; the chosen path stays in the core. */
@@ -227,6 +231,23 @@ export const commands = {
 	importStart: (request: ImportRequest, onEvent: Channel<ImportEventDto>) => typedError<ImportReply, IpcError>(__TAURI_INVOKE("import_start", { request, onEvent })),
 	/**  Cancel a running dry run or import; uncommitted work is rolled back. */
 	importCancel: (importId: string) => __TAURI_INVOKE<void>("import_cancel", { importId }),
+	/**  Show an export's file or folder selected in Finder. */
+	exportReveal: (path: string) => typedError<null, IpcError>(__TAURI_INVOKE("export_reveal", { path })),
+	/**  Open an export's file (or folder) with its default application. */
+	exportOpen: (path: string) => typedError<null, IpcError>(__TAURI_INVOKE("export_open", { path })),
+	/**  Choose a `.sql` file in the native open panel; `None` when cancelled. */
+	runFilePick: () => typedError<{
+	path: string,
+	name: string,
+	bytes: number | null,
+} | null, IpcError>(__TAURI_INVOKE("run_file_pick")),
+	/**
+	 *  Read the whole file once and judge every statement under the
+	 *  connection's safety switches; nothing runs.
+	 */
+	runFileCheck: (request: RunFileCheckRequest) => typedError<RunFileCheckDto, IpcError>(__TAURI_INVOKE("run_file_check", { request })),
+	/**  Run a checked file on a session of its own, in the background. */
+	runFileStart: (request: RunFileStartRequest, onEvent: Channel<RunFileEventDto>) => typedError<RunFileStarted, IpcError>(__TAURI_INVOKE("run_file_start", { request, onEvent })),
 	/**  Tables, columns and foreign keys of a schema, read on the metadata session. */
 	schemaDiagram: (target: DiagramTarget) => typedError<SchemaDiagramDto, IpcError>(__TAURI_INVOKE("schema_diagram", { target })),
 	/**
@@ -457,6 +478,9 @@ export type CountRequest = {
 /**  CSV field separator. */
 export type CsvDelimiterDto = "comma" | "semicolon" | "tab" | "pipe";
 
+/**  Quote character of delimited text. */
+export type CsvQuoteDto = "double" | "single";
+
 /**  A database on the server. */
 export type DatabaseDto = {
 	name: string,
@@ -467,6 +491,16 @@ export type DatabaseDto = {
 
 /**  A column default: none, a quoted text literal or a raw SQL expression. */
 export type DefaultDto = { kind: "none" } | { kind: "literal"; value: string } | { kind: "expression"; sql: string };
+
+/**  Options shared by CSV and TSV. */
+export type DelimitedDto = {
+	quote: CsvQuoteDto,
+	header: boolean,
+	/**  Text written for NULL; empty writes an empty field. */
+	nullText: string,
+	lineEnding: LineEndingDto,
+	encoding: TextEncodingDto,
+};
 
 /**  One column of a diagram table. */
 export type DiagramColumnDto = {
@@ -598,26 +632,44 @@ export type ExecuteRequest = {
 
 /**  Export progress; exactly one of `finished`, `failed` or `cancelled` ends it. */
 export type ExportEventDto = 
-/**  Rows written so far; at most 10 per second. */
-{ type: "progress"; rows: number | null } | 
-/**  The file is complete at `path`. */
+/**
+ *  Rows written so far; at most 10 per second. `detail` names the
+ *  table being written when there are several.
+ */
+{ type: "progress"; rows: number | null; detail: string | null } | 
+/**  The file (or folder of files) is complete at `path`. */
 { type: "finished"; rows: number | null; path: string } | { type: "failed"; error: IpcError } | { type: "cancelled" };
 
 /**  Output format and its options. */
 export type ExportFormatDto = 
-/**  RFC 4180 CSV. */
-{ kind: "csv"; delimiter: CsvDelimiterDto; header: boolean } | 
-/**  An array of row objects, or one object per line (NDJSON). */
-{ kind: "json"; lines: boolean } | 
+/**  Comma- (or otherwise) separated values. */
+{ kind: "csv"; delimiter: CsvDelimiterDto; options: DelimitedDto } | 
+/**  Tab-separated values. */
+{ kind: "tsv"; options: DelimitedDto } | 
+/**  An array of row objects, compact or indented. */
+{ kind: "json"; pretty: boolean } | 
+/**  One row object per line. */
+{ kind: "ndjson" } | 
 /**  `INSERT` statements for `table`, `rowsPerStatement` rows each. */
-{ kind: "sql"; table: string; rowsPerStatement: number };
+{ kind: "sql"; table: string; rowsPerStatement: number } | 
+/**  A GitHub-flavoured Markdown table. */
+{ kind: "markdown" } | 
+/**  An Excel workbook with typed cells. */
+{ kind: "xlsx"; header: boolean } | 
+/**  An Apache Parquet file. */
+{ kind: "parquet"; compression: ParquetCompressionDto };
 
-/**  `started` once the file was chosen; `dismissed` when the panel was cancelled. */
+/**  `started` once the destination was chosen; `dismissed` when the panel was cancelled. */
 export type ExportReply = 
 /**  Events follow on the channel; `query_cancel(exportId)` stops it. */
-{ status: "started"; exportId: string; fileName: string } | { status: "dismissed" };
+{ status: "started"; exportId: string; 
+/**  Name of the file, or of the folder for one file per table. */
+fileName: string } | { status: "dismissed" };
 
-/**  Start an export; the native save panel picks the file. */
+/**
+ *  Start an export; the native save panel (or a folder panel for one file
+ *  per table) picks the destination.
+ */
 export type ExportRequest = {
 	source: ExportSourceDto,
 	format: ExportFormatDto,
@@ -629,13 +681,20 @@ export type ExportRequest = {
 export type ExportSourceDto = 
 /**  A result held in memory (the rows a query tab received). */
 { kind: "result"; sessionId: string; resultId: string } | 
+/**  Some rows of a stored result, by their 0-based position in it. */
+{ kind: "rows"; sessionId: string; resultId: string; rows: number[] } | 
 /**
  *  Run one read-only statement again and stream all of its rows (a
  *  result the row limit cut short).
  */
 { kind: "query"; sessionId: string; sql: string } | 
 /**  Every row of a table or view. */
-{ kind: "table"; sessionId: string; target: TableTarget };
+{ kind: "table"; sessionId: string; target: TableTarget } | 
+/**
+ *  Every row of several tables of one schema: one file per table in a
+ *  folder, or (Excel) one workbook with a sheet per table.
+ */
+{ kind: "tables"; sessionId: string; target: SchemaTarget; tables: string[]; workbook: boolean };
 
 /**  The database file of a file engine, in the form and in saved profiles. */
 export type FileDto = {
@@ -675,6 +734,13 @@ export type FilterDto = {
 
 /**  Filter-row comparisons (FR-GRID-11 subset). */
 export type FilterOperatorDto = "equal" | "notEqual" | "less" | "greater" | "lessOrEqual" | "greaterOrEqual" | "contains" | "notContains" | "startsWith" | "endsWith" | "in" | "isNull" | "isNotNull" | "between" | "notIn" | "notBetween" | "like" | "notLike" | "regex" | "notRegex" | "isEmpty" | "isNotEmpty";
+
+/**  A statement that needs confirmation or is blocked. */
+export type FlaggedStatementDto = {
+	line: number | null,
+	preview: string,
+	blocked: boolean,
+};
 
 /**  A single-column foreign key: `→ table(column)`. */
 export type ForeignKeyDto = {
@@ -1010,6 +1076,9 @@ export type LimitsDto = {
 	idleTimeoutMinutes: number,
 };
 
+/**  Record separator of delimited text. */
+export type LineEndingDto = "crlf" | "lf";
+
 /**  A menu command chosen by the user; `id` is the registry command id. */
 export type MenuCommand = {
 	id: string,
@@ -1107,6 +1176,9 @@ export type ParamsDto = {
 	values: ParamValueDto[] | null,
 };
 
+/**  Parquet compression codec. */
+export type ParquetCompressionDto = "snappy" | "none";
+
 /**  One partition of a partitioned table. */
 export type PartitionDto = {
 	schema: string,
@@ -1150,6 +1222,13 @@ export type PickFileKind =
 "sqliteDatabase" | 
 /**  Where to create a new `SQLite` database file (save panel). */
 "newSqliteDatabase";
+
+/**  A `.sql` file chosen in the open panel. */
+export type PickedScriptDto = {
+	path: string,
+	name: string,
+	bytes: number | null,
+};
 
 /**  One server process as the Processes view lists it. */
 export type ProcessDto = {
@@ -1326,6 +1405,62 @@ export type RowErrorDto = {
 	message: string,
 };
 
+/**  What the file holds and whether it may run. */
+export type RunFileCheckDto = {
+	bytes: number | null,
+	statements: number | null,
+	gate: RunFileGateDto,
+	/**  Statements that need confirmation, and those refused. */
+	confirm: number | null,
+	blocked: number | null,
+	/**  The first flagged statements, blocked ones first. */
+	samples: FlaggedStatementDto[],
+	/**  Pass back to `run_file_start` once the user confirmed. */
+	confirmToken: string | null,
+	/**  The engine can run the whole file in one transaction. */
+	transactions: boolean,
+};
+
+/**  Check `path` (a picked file) for running on the session's database. */
+export type RunFileCheckRequest = {
+	sessionId: string,
+	path: string,
+};
+
+/**  File run events; `finished` ends them. */
+export type RunFileEventDto = 
+/**  Counts so far, at most 10 per second; `current` is the running statement. */
+{ type: "progress"; statements: number | null; bytes: number | null; errors: number | null; current: string } | 
+/**  A statement failed (the first 1,000 errors are reported). */
+{ type: "error"; statement: number | null; line: number | null; preview: string; message: string } | { type: "finished"; outcome: RunFileOutcomeDto; statements: number | null; errors: number | null; rowsAffected: number | null; rolledBack: boolean; 
+/**  Why the run stopped early, when not a statement error. */
+message: string | null; elapsedMs: number | null };
+
+/**
+ *  Whether the file may run: `run`, after confirming (`confirm`), or never
+ *  on this connection (`block`).
+ */
+export type RunFileGateDto = "run" | "confirm" | "block";
+
+/**  How a file run ended. */
+export type RunFileOutcomeDto = "completed" | "failed" | "cancelled";
+
+/**  Run a checked file on a session of its own. */
+export type RunFileStartRequest = {
+	sessionId: string,
+	path: string,
+	/**  End at the first error; otherwise run on and collect the errors. */
+	stopOnError: boolean,
+	/**  Run in one transaction, rolled back on error or cancel. */
+	transaction: boolean,
+	confirmToken: string | null,
+};
+
+/**  The run started; events follow and `query_cancel(runId)` cancels it. */
+export type RunFileStarted = {
+	runId: string,
+};
+
 /**  Which statements of the editor text to run. */
 export type RunMode = 
 /**  Every statement in `sql`, in order. */
@@ -1381,6 +1516,13 @@ export type SchemaDto = {
 	/**  `pg_catalog` or `information_schema`, hidden unless "Show system schemas". */
 	system: boolean,
 	comment: string | null,
+};
+
+/**  A schema of a saved connection's database. */
+export type SchemaTarget = {
+	profileId: string,
+	database: string,
+	schema: string,
 };
 
 /**  Which saved secret of a connection to reveal. */
@@ -1703,6 +1845,9 @@ export type TestStepKind =
 "version" | 
 /**  Round trip of a trivial query. */
 "latency";
+
+/**  Encoding of delimited text. */
+export type TextEncodingDto = "utf8" | "utf8Bom" | "utf16Le" | "latin1";
 
 export type TileTiming = {
 	rowStart: number,

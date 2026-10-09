@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
-import { cancelQuery, startExport } from '@openrows/ipc';
+import { cancelQuery, revealExport, startExport } from '@openrows/ipc';
 import type { ExportEventDto } from '@openrows/ipc';
+import { JobsButton } from '../jobs';
 import { ExportSheet } from './ExportSheet';
+import { exportSettings } from './exportSettings';
 import { resultExport, tableExport } from './sources';
 
 vi.mock('@openrows/ipc', async () =>
@@ -14,15 +16,19 @@ vi.mock('@openrows/ipc', async () =>
 
 let emit: (event: ExportEventDto) => void = () => undefined;
 
-beforeEach(() => {
+function started(fileName: string): void {
   vi.mocked(startExport).mockImplementation((_request, onEvent) => {
     emit = onEvent;
     return Promise.resolve({
       status: 'started',
       exportId: 'export-1',
-      fileName: 'users.sql',
+      fileName,
     });
   });
+}
+
+beforeEach(() => {
+  started('users.sql');
 });
 
 const users = tableExport({
@@ -36,16 +42,17 @@ const users = tableExport({
 function renderSheet(props = users, onClose = vi.fn()): typeof onClose {
   render(
     <ThemeProvider>
+      <JobsButton />
       <ExportSheet {...props} onClose={onClose} />
     </ThemeProvider>,
   );
   return onClose;
 }
 
-it('exports a table as SQL INSERTs with progress and a row-count notice', async () => {
+it('starts a table export as a background job that reports progress and its file', async () => {
   const user = userEvent.setup();
   const onClose = renderSheet();
-  await user.click(screen.getByRole('radio', { name: 'SQL' }));
+  await user.selectOptions(screen.getByLabelText('Format'), 'SQL INSERT');
   expect(screen.getByLabelText('Table name')).toHaveValue('users');
   const rows = screen.getByLabelText('Rows per INSERT');
   await user.clear(rows);
@@ -56,77 +63,95 @@ it('exports a table as SQL INSERTs with progress and a row-count notice', async 
   await user.click(screen.getByRole('button', { name: 'Export…' }));
   expect(startExport).toHaveBeenCalledWith(
     {
-      source: users.source,
+      source: users.scopes[0]?.source,
       format: { kind: 'sql', table: 'users', rowsPerStatement: 250 },
       fileName: 'users',
     },
     expect.any(Function),
   );
+  expect(onClose).toHaveBeenCalled();
+  const job = await screen.findByRole('listitem', { name: 'Export users.sql' });
   act(() => {
-    emit({ type: 'progress', rows: 4000 });
+    emit({ type: 'progress', rows: 4000, detail: null });
   });
-  expect(await screen.findByText('4,000 rows written')).toBeInTheDocument();
-  expect(screen.getByText('Exporting to users.sql…')).toBeInTheDocument();
+  expect(within(job).getByText('4,000 rows written')).toBeInTheDocument();
   act(() => {
     emit({ type: 'finished', rows: 10_000, path: '/tmp/users.sql' });
   });
-  expect(
-    screen.getByText('Exported 10,000 rows to users.sql.'),
-  ).toBeInTheDocument();
-  await user.click(screen.getByRole('button', { name: 'Done' }));
-  expect(onClose).toHaveBeenCalled();
+  expect(within(job).getByText('10,000 rows exported')).toBeInTheDocument();
+  await user.click(within(job).getByRole('button', { name: 'Show in Finder' }));
+  expect(revealExport).toHaveBeenCalledWith('/tmp/users.sql');
 });
 
-it('cancels a running export and says nothing was written', async () => {
+it('cancels a running export from the jobs popover', async () => {
+  started('users.csv');
   const user = userEvent.setup();
   renderSheet();
+  await user.selectOptions(screen.getByLabelText('Format'), 'CSV');
   await user.click(screen.getByRole('button', { name: 'Export…' }));
-  expect(startExport).toHaveBeenLastCalledWith(
-    expect.objectContaining({
-      format: { kind: 'csv', delimiter: 'comma', header: true },
-    }),
-    expect.any(Function),
-  );
-  await user.click(
-    await screen.findByRole('button', { name: 'Cancel export' }),
-  );
+  const job = await screen.findByRole('listitem', { name: 'Export users.csv' });
+  await user.click(within(job).getByRole('button', { name: 'Cancel' }));
   expect(cancelQuery).toHaveBeenCalledWith('export-1');
   act(() => {
     emit({ type: 'cancelled' });
   });
   expect(
-    screen.getByText('Export cancelled. No file was written.'),
+    within(job).getByText('Cancelled. No file was written.'),
   ).toBeInTheDocument();
 });
 
-it('returns to the options when the save panel is dismissed or the export fails', async () => {
+it('stays open when the save panel is dismissed and shows why an export could not start', async () => {
   const user = userEvent.setup();
   vi.mocked(startExport).mockResolvedValueOnce({ status: 'dismissed' });
-  renderSheet();
-  await user.click(screen.getByRole('radio', { name: 'JSON' }));
+  const onClose = renderSheet();
+  await user.selectOptions(screen.getByLabelText('Format'), 'JSON');
   await user.selectOptions(
     screen.getByLabelText('Layout'),
-    'One object per line (NDJSON)',
+    'Pretty (indented)',
   );
   await user.click(screen.getByRole('button', { name: 'Export…' }));
   expect(startExport).toHaveBeenLastCalledWith(
-    expect.objectContaining({ format: { kind: 'json', lines: true } }),
+    expect.objectContaining({ format: { kind: 'json', pretty: true } }),
     expect.any(Function),
   );
   expect(await screen.findByRole('button', { name: 'Export…' })).toBeEnabled();
+  expect(onClose).not.toHaveBeenCalled();
+  vi.mocked(startExport).mockRejectedValueOnce(new Error('The disk is full'));
   await user.click(screen.getByRole('button', { name: 'Export…' }));
-  act(() => {
-    emit({
-      type: 'failed',
-      error: { kind: 'storage', message: 'The disk is full', code: null },
-    });
-  });
   expect(await screen.findByRole('alert')).toHaveTextContent(
     'The disk is full',
   );
 });
 
-it('offers every row of a result the row limit cut short', async () => {
+it('remembers the last format and its options for the next export', async () => {
+  const user = userEvent.setup();
+  renderSheet();
+  await user.selectOptions(screen.getByLabelText('Format'), 'TSV');
+  await user.selectOptions(
+    screen.getByLabelText('Line endings'),
+    'LF (macOS, Linux)',
+  );
+  await user.type(screen.getByLabelText('NULL as'), 'NULL');
+  await user.click(screen.getByRole('button', { name: 'Export…' }));
+  expect(startExport).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      format: {
+        kind: 'tsv',
+        options: expect.objectContaining({
+          lineEnding: 'lf',
+          nullText: 'NULL',
+        }) as unknown,
+      },
+    }),
+    expect.any(Function),
+  );
+  expect(exportSettings.get()).toMatchObject({
+    format: 'tsv',
+    tsv: { lineEnding: 'lf', nullText: 'NULL' },
+  });
+});
+
+it('offers the selected rows and every row of a result the row limit cut short', async () => {
   const user = userEvent.setup();
   renderSheet(
     resultExport({
@@ -139,11 +164,15 @@ it('offers every row of a result the row limit cut short', async () => {
         dangerous: false,
         verdict: 'allow',
       },
+      selected: [7, 3],
     }),
   );
   expect(
-    screen.getByRole('radio', { name: 'The 1,000 rows received (row limit)' }),
+    screen.getByRole('radio', { name: 'The 2 rows selected' }),
   ).toBeChecked();
+  expect(
+    screen.getByRole('radio', { name: 'The 1,000 rows received (row limit)' }),
+  ).not.toBeChecked();
   await user.click(
     screen.getByRole('radio', { name: 'Every row: run the statement again' }),
   );

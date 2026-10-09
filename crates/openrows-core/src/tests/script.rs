@@ -43,6 +43,7 @@ async fn run_with(
         statements: &statements,
         max_rows: None,
         stop_on_error,
+        sink: None,
     };
     let outcome = run_script(manager, session, script, cancel, |event| {
         seen.push(event);

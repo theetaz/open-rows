@@ -249,11 +249,14 @@
           "uglify",
           "insert-snippet",
           "open-file",
+          "run-sql-file",
           "save",
           "save-as",
           "export-table",
           "import-data",
+          "export-tables",
           "show-er-diagram",
+          "show-jobs",
           "export-results",
           "commit-changes",
           "discard-changes",
@@ -349,6 +352,141 @@
             "type": "string"
           },
           "default": []
+        }
+      }
+    },
+    "export": {
+      "type": "object",
+      "description": "Export sheet: the last-used format and the options of every format.",
+      "properties": {
+        "format": {
+          "enum": [
+            "csv",
+            "tsv",
+            "json",
+            "ndjson",
+            "sql",
+            "markdown",
+            "xlsx",
+            "parquet"
+          ],
+          "default": "csv",
+          "description": "Format chosen last."
+        },
+        "csv": {
+          "type": "object",
+          "description": "CSV options.",
+          "properties": {
+            "delimiter": {
+              "enum": ["comma", "semicolon", "tab", "pipe"],
+              "default": "comma",
+              "description": "Field separator."
+            },
+            "quote": {
+              "enum": ["double", "single"],
+              "default": "double",
+              "description": "Quote character; it is doubled inside quoted fields."
+            },
+            "header": {
+              "type": "boolean",
+              "default": true,
+              "description": "Write the column names as the first row."
+            },
+            "nullText": {
+              "type": "string",
+              "maxLength": 32,
+              "default": "",
+              "description": "Text written for NULL; empty writes an empty field and quotes empty strings."
+            },
+            "lineEnding": {
+              "enum": ["crlf", "lf"],
+              "default": "crlf",
+              "description": "Record separator."
+            },
+            "encoding": {
+              "enum": ["utf8", "utf8Bom", "utf16Le", "latin1"],
+              "default": "utf8",
+              "description": "File encoding; utf8Bom lets Excel detect UTF-8."
+            }
+          }
+        },
+        "tsv": {
+          "type": "object",
+          "description": "TSV options.",
+          "properties": {
+            "quote": {
+              "enum": ["double", "single"],
+              "default": "double",
+              "description": "Quote character; it is doubled inside quoted fields."
+            },
+            "header": {
+              "type": "boolean",
+              "default": true,
+              "description": "Write the column names as the first row."
+            },
+            "nullText": {
+              "type": "string",
+              "maxLength": 32,
+              "default": "",
+              "description": "Text written for NULL; empty writes an empty field and quotes empty strings."
+            },
+            "lineEnding": {
+              "enum": ["crlf", "lf"],
+              "default": "crlf",
+              "description": "Record separator."
+            },
+            "encoding": {
+              "enum": ["utf8", "utf8Bom", "utf16Le", "latin1"],
+              "default": "utf8",
+              "description": "File encoding; utf8Bom lets Excel detect UTF-8."
+            }
+          }
+        },
+        "json": {
+          "type": "object",
+          "description": "JSON options.",
+          "properties": {
+            "pretty": {
+              "type": "boolean",
+              "default": false,
+              "description": "Indent objects by two spaces instead of one compact object per line."
+            }
+          }
+        },
+        "sql": {
+          "type": "object",
+          "description": "SQL INSERT options.",
+          "properties": {
+            "rowsPerStatement": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000,
+              "default": 100,
+              "description": "Rows per INSERT statement."
+            }
+          }
+        },
+        "xlsx": {
+          "type": "object",
+          "description": "Excel options.",
+          "properties": {
+            "header": {
+              "type": "boolean",
+              "default": true,
+              "description": "Write the column names as a bold first row of every sheet."
+            }
+          }
+        },
+        "parquet": {
+          "type": "object",
+          "description": "Parquet options.",
+          "properties": {
+            "compression": {
+              "enum": ["snappy", "none"],
+              "default": "snappy",
+              "description": "Column compression (pure-Rust codecs only)."
+            }
+          }
         }
       }
     }

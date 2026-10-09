@@ -1,95 +1,163 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { CsvDelimiterDto, ExportFormatDto } from '@openrows/ipc';
-
-export type ExportFormatKind = 'csv' | 'json' | 'sql';
+import type {
+  CsvDelimiterDto,
+  CsvQuoteDto,
+  ExportFormatDto,
+  LineEndingDto,
+  ParquetCompressionDto,
+  TextEncodingDto,
+} from '@openrows/ipc';
+import { MAX_ROWS_PER_STATEMENT } from './exportSettings';
+import type { ExportFormatKind, ExportSettings } from './exportSettings';
 
 /** The export sheet's choices; text fields stay text until validated. */
-export type ExportOptions = {
-  format: ExportFormatKind;
-  delimiter: CsvDelimiterDto;
-  header: boolean;
-  /** JSON: one object per line (NDJSON) instead of one array. */
-  lines: boolean;
+export type ExportOptions = ExportSettings & {
   /** SQL: the table the INSERT statements target. */
   table: string;
   /** SQL: rows per INSERT statement, as typed. */
-  rowsPerStatement: string;
+  rowsText: string;
 };
 
-/** Most rows one INSERT may carry (the core clamps to the same limit). */
-const MAX_ROWS_PER_STATEMENT = 10_000;
+type Choice<Value extends string> = { value: Value; label: string };
 
-export const formatChoices: readonly {
-  value: ExportFormatKind;
-  label: string;
-}[] = [
+export const formatChoices: readonly Choice<ExportFormatKind>[] = [
   { value: 'csv', label: 'CSV' },
+  { value: 'tsv', label: 'TSV' },
   { value: 'json', label: 'JSON' },
-  { value: 'sql', label: 'SQL' },
+  { value: 'ndjson', label: 'NDJSON' },
+  { value: 'sql', label: 'SQL INSERT' },
+  { value: 'markdown', label: 'Markdown' },
+  { value: 'xlsx', label: 'Excel (.xlsx)' },
+  { value: 'parquet', label: 'Parquet' },
 ];
 
-export const delimiterChoices: readonly {
-  value: CsvDelimiterDto;
-  label: string;
-}[] = [
+export const delimiterChoices: readonly Choice<CsvDelimiterDto>[] = [
   { value: 'comma', label: 'Comma ( , )' },
   { value: 'semicolon', label: 'Semicolon ( ; )' },
   { value: 'tab', label: 'Tab' },
   { value: 'pipe', label: 'Pipe ( | )' },
 ];
 
-export const layoutChoices: readonly {
-  value: 'array' | 'lines';
-  label: string;
-}[] = [
-  { value: 'array', label: 'Array of objects' },
-  { value: 'lines', label: 'One object per line (NDJSON)' },
+export const quoteChoices: readonly Choice<CsvQuoteDto>[] = [
+  { value: 'double', label: 'Double ( " )' },
+  { value: 'single', label: "Single ( ' )" },
 ];
 
-/** CSV with a header row; SQL INSERTs into `table`, 100 rows each. */
-export function defaultOptions(table: string): ExportOptions {
+export const lineEndingChoices: readonly Choice<LineEndingDto>[] = [
+  { value: 'crlf', label: 'CRLF (Windows, RFC 4180)' },
+  { value: 'lf', label: 'LF (macOS, Linux)' },
+];
+
+export const encodingChoices: readonly Choice<TextEncodingDto>[] = [
+  { value: 'utf8', label: 'UTF-8' },
+  { value: 'utf8Bom', label: 'UTF-8 with BOM (Excel)' },
+  { value: 'utf16Le', label: 'UTF-16 LE' },
+  { value: 'latin1', label: 'Latin-1 (ISO 8859-1)' },
+];
+
+export const layoutChoices: readonly Choice<'compact' | 'pretty'>[] = [
+  { value: 'compact', label: 'Compact (one object per line)' },
+  { value: 'pretty', label: 'Pretty (indented)' },
+];
+
+export const compressionChoices: readonly Choice<ParquetCompressionDto>[] = [
+  { value: 'snappy', label: 'Snappy' },
+  { value: 'none', label: 'None' },
+];
+
+/** The remembered options with the SQL target `table`. */
+export function sheetOptions(
+  settings: ExportSettings,
+  table: string,
+): ExportOptions {
   return {
-    format: 'csv',
-    delimiter: 'comma',
-    header: true,
-    lines: false,
+    ...settings,
     table,
-    rowsPerStatement: '100',
+    rowsText: String(settings.sql.rowsPerStatement),
   };
+}
+
+/** What to remember of the sheet's options. */
+export function rememberedOptions(options: ExportOptions): ExportSettings {
+  const settings: ExportSettings = {
+    format: options.format,
+    csv: options.csv,
+    tsv: options.tsv,
+    json: options.json,
+    sql: options.sql,
+    xlsx: options.xlsx,
+    parquet: options.parquet,
+  };
+  return rowsError(options.rowsText)
+    ? settings
+    : { ...settings, sql: { rowsPerStatement: Number(options.rowsText) } };
+}
+
+/** Why typed rows per INSERT are invalid, or `null`. */
+function rowsError(text: string): string | null {
+  const rows = Number(text);
+  return /^\d+$/.test(text.trim()) &&
+    rows >= 1 &&
+    rows <= MAX_ROWS_PER_STATEMENT
+    ? null
+    : `Rows per INSERT must be a whole number from 1 to ${MAX_ROWS_PER_STATEMENT.toLocaleString()}.`;
 }
 
 /** Why the SQL options cannot be used, or `null` when they can. */
 export function sqlError(options: ExportOptions): string | null {
   if (options.format !== 'sql') return null;
   if (!options.table.trim()) return 'Enter the table name to insert into.';
-  const rows = Number(options.rowsPerStatement);
-  if (
-    !/^\d+$/.test(options.rowsPerStatement.trim()) ||
-    rows < 1 ||
-    rows > MAX_ROWS_PER_STATEMENT
-  )
-    return `Rows per INSERT must be a whole number from 1 to ${MAX_ROWS_PER_STATEMENT.toLocaleString()}.`;
-  return null;
+  return rowsError(options.rowsText);
+}
+
+/** Why the NULL text cannot be used with these options, or `null`. */
+export function nullTextError(options: ExportOptions): string | null {
+  const text =
+    options.format === 'csv'
+      ? options.csv
+      : options.format === 'tsv'
+        ? options.tsv
+        : null;
+  if (!text) return null;
+  const delimiter =
+    options.format === 'tsv'
+      ? '\t'
+      : { comma: ',', semicolon: ';', tab: '\t', pipe: '|' }[
+          options.csv.delimiter
+        ];
+  const quote = text.quote === 'double' ? '"' : "'";
+  return [delimiter, quote, '\r', '\n'].some((part) =>
+    text.nullText.includes(part),
+  ) || text.nullText.length > 32
+    ? 'The NULL text cannot contain the delimiter, the quote or a line break.'
+    : null;
 }
 
 /** The IPC format, or `null` while the options are invalid. */
 export function formatDto(options: ExportOptions): ExportFormatDto | null {
+  if (sqlError(options) || nullTextError(options)) return null;
+  const { csv, tsv } = options;
   switch (options.format) {
-    case 'csv':
-      return {
-        kind: 'csv',
-        delimiter: options.delimiter,
-        header: options.header,
-      };
+    case 'csv': {
+      const { delimiter, ...rest } = csv;
+      return { kind: 'csv', delimiter, options: rest };
+    }
+    case 'tsv':
+      return { kind: 'tsv', options: tsv };
     case 'json':
-      return { kind: 'json', lines: options.lines };
+      return { kind: 'json', pretty: options.json.pretty };
     case 'sql':
-      return sqlError(options)
-        ? null
-        : {
-            kind: 'sql',
-            table: options.table.trim(),
-            rowsPerStatement: Number(options.rowsPerStatement),
-          };
+      return {
+        kind: 'sql',
+        table: options.table.trim(),
+        rowsPerStatement: Number(options.rowsText),
+      };
+    case 'xlsx':
+      return { kind: 'xlsx', header: options.xlsx.header };
+    case 'parquet':
+      return { kind: 'parquet', compression: options.parquet.compression };
+    case 'ndjson':
+    case 'markdown':
+      return { kind: options.format };
   }
 }

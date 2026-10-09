@@ -130,6 +130,7 @@ async fn a_lost_connection_ends_a_script_even_without_stop_on_error() -> TestRes
         statements: &statements,
         max_rows: None,
         stop_on_error: false,
+        sink: None,
     };
     let outcome = run_script(&manager, session, script, &ScriptCanceller::default(), drop).await;
     assert_eq!(outcome, ScriptOutcome::Failed);

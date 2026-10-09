@@ -7,7 +7,7 @@ use std::ops::Range;
 use crate::lexer::{Token, TokenKind};
 
 /// The active terminator; `None` is the default `;`.
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub(super) struct Delimiter(Option<String>);
 
 impl Delimiter {

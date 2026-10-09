@@ -2,15 +2,19 @@
 //! One export: an encoder writing batches into a temporary file.
 use crate::cell::Column;
 use crate::csv::CsvEncoder;
+use crate::encoding::{encode, preamble};
 use crate::file::ExportFile;
 use crate::json::JsonEncoder;
+use crate::markdown::MarkdownEncoder;
+use crate::parquet::ParquetWriter;
 use crate::sql::InsertEncoder;
-use crate::{ExportError, Format};
+use crate::xlsx::ExcelWriter;
+use crate::{ExportError, Format, TextEncoding};
 use arrow_array::{RecordBatch, new_empty_array};
 use arrow_schema::{Schema, SchemaRef};
 use std::path::Path;
 
-/// A format encoder; called once per batch, never per row.
+/// A text format encoder; called once per batch, never per row.
 pub(crate) trait Encode: Send {
     /// Validate the columns and write any preamble (CSV header, `[`).
     fn begin(&mut self, schema: &Schema, out: &mut String) -> Result<(), ExportError>;
@@ -20,14 +24,51 @@ pub(crate) trait Encode: Send {
     fn finish(&mut self, out: &mut String);
 }
 
-/// Encodes one result into a file; see the crate docs for the file lifecycle.
+/// A binary format writer with its own handle on the temporary file.
+pub(crate) trait WriteBatches: Send {
+    /// A result with these columns starts.
+    fn begin(&mut self, schema: &SchemaRef) -> Result<(), ExportError>;
+    /// The driver continued the result with new column types.
+    fn resume(&mut self, schema: &SchemaRef) -> Result<(), ExportError>;
+    /// The next result is another table named `name`.
+    fn table(&mut self, name: &str) -> Result<(), ExportError>;
+    /// Write one batch, also given as typed columns.
+    fn write(&mut self, columns: &[Column<'_>], batch: &RecordBatch) -> Result<(), ExportError>;
+    /// Write everything still buffered to the file.
+    fn finish(&mut self) -> Result<(), ExportError>;
+}
+
+/// Text formats encode into a reused buffer that is transcoded and written.
+struct TextOutput {
+    encoder: Box<dyn Encode>,
+    encoding: TextEncoding,
+    buffer: String,
+    bytes: Vec<u8>,
+}
+
+impl Output {
+    fn text(encoder: Box<dyn Encode>, encoding: TextEncoding) -> Self {
+        Self::Text(TextOutput {
+            encoder,
+            encoding,
+            buffer: String::new(),
+            bytes: Vec::new(),
+        })
+    }
+}
+
+enum Output {
+    Text(TextOutput),
+    Batches(Box<dyn WriteBatches>),
+}
+
+/// Encodes one result (or, for Excel, several tables) into a file; see the
+/// crate docs for the file lifecycle.
 pub struct Exporter {
     file: ExportFile,
-    encoder: Box<dyn Encode>,
+    output: Output,
     schema: Option<SchemaRef>,
     rows: u64,
-    /// Encoded text of the current batch, reused across batches.
-    buffer: String,
 }
 
 impl Exporter {
@@ -36,17 +77,52 @@ impl Exporter {
     /// # Errors
     /// [`ExportError::InvalidPath`] or the I/O error creating the file.
     pub fn create(path: &Path, format: &Format) -> Result<Self, ExportError> {
-        let encoder: Box<dyn Encode> = match format {
-            Format::Csv(options) => Box::new(CsvEncoder::new(*options)),
-            Format::Json(layout) => Box::new(JsonEncoder::new(*layout)),
-            Format::Insert(options) => Box::new(InsertEncoder::new(options.clone())),
+        let mut file = ExportFile::create(path)?;
+        let output = match format {
+            Format::Csv(options) => {
+                Output::text(Box::new(CsvEncoder::new(options.clone())), options.encoding)
+            }
+            Format::Json(layout) => {
+                Output::text(Box::new(JsonEncoder::new(*layout)), TextEncoding::Utf8)
+            }
+            Format::Insert(options) => Output::text(
+                Box::new(InsertEncoder::new(options.clone())),
+                TextEncoding::Utf8,
+            ),
+            Format::Markdown => {
+                Output::text(Box::new(MarkdownEncoder::default()), TextEncoding::Utf8)
+            }
+            Format::Excel(options) => {
+                Output::Batches(Box::new(ExcelWriter::new(file.handle()?, options.clone())))
+            }
+            Format::Parquet(compression) => {
+                Output::Batches(Box::new(ParquetWriter::new(file.handle()?, *compression)))
+            }
         };
+        if let Output::Text(text) = &output {
+            file.write(preamble(text.encoding))?;
+        }
         Ok(Self {
-            file: ExportFile::create(path)?,
-            encoder,
+            file,
+            output,
             schema: None,
             rows: 0,
-            buffer: String::new(),
+        })
+    }
+
+    #[cfg(test)]
+    pub(crate) fn excel_with_sheet_rows(
+        path: &Path,
+        options: crate::ExcelOptions,
+        rows: u32,
+    ) -> Result<Self, ExportError> {
+        let mut file = ExportFile::create(path)?;
+        let writer = ExcelWriter::new(file.handle()?, options).with_sheet_rows(rows);
+        Ok(Self {
+            file,
+            output: Output::Batches(Box::new(writer)),
+            schema: None,
+            rows: 0,
         })
     }
 
@@ -76,19 +152,39 @@ impl Exporter {
             if names(current) != names(&schema) {
                 return Err(ExportError::SchemaMismatch);
             }
+            if let Output::Batches(writer) = &mut self.output {
+                writer.resume(&schema)?;
+            }
             self.schema = Some(schema);
             return Ok(());
         }
-        self.encoder.begin(&schema, &mut self.buffer)?;
+        match &mut self.output {
+            Output::Text(text) => text.encoder.begin(&schema, &mut text.buffer)?,
+            Output::Batches(writer) => writer.begin(&schema)?,
+        }
         self.schema = Some(schema);
         self.flush()
+    }
+
+    /// Start the next table of a multi-table file (an Excel sheet per
+    /// table); [`Exporter::begin`] follows with its columns.
+    ///
+    /// # Errors
+    /// [`ExportError::OneTablePerFile`] for formats that hold one result.
+    pub fn start_table(&mut self, name: &str) -> Result<(), ExportError> {
+        match &mut self.output {
+            Output::Batches(writer) => writer.table(name)?,
+            Output::Text(_) => return Err(ExportError::OneTablePerFile),
+        }
+        self.schema = None;
+        Ok(())
     }
 
     /// Encode and write one batch.
     ///
     /// # Errors
     /// [`ExportError::SchemaMismatch`] before `begin` or for a different
-    /// column count; I/O errors.
+    /// column count; encoding and I/O errors.
     pub fn write(&mut self, batch: &RecordBatch) -> Result<(), ExportError> {
         let schema = self.schema.as_ref().ok_or(ExportError::SchemaMismatch)?;
         if batch.num_columns() != schema.fields().len() {
@@ -100,8 +196,12 @@ impl Exporter {
             .zip(batch.columns())
             .map(|(field, array)| Column::new(field, array.as_ref()))
             .collect::<Result<Vec<_>, _>>()?;
-        self.encoder
-            .rows(&columns, batch.num_rows(), &mut self.buffer);
+        match &mut self.output {
+            Output::Text(text) => text
+                .encoder
+                .rows(&columns, batch.num_rows(), &mut text.buffer),
+            Output::Batches(writer) => writer.write(&columns, batch)?,
+        }
         self.rows += batch.num_rows() as u64;
         self.flush()
     }
@@ -115,18 +215,25 @@ impl Exporter {
         if self.schema.is_none() {
             return Err(ExportError::NoResult);
         }
-        self.encoder.finish(&mut self.buffer);
+        match &mut self.output {
+            Output::Text(text) => text.encoder.finish(&mut text.buffer),
+            Output::Batches(writer) => writer.finish()?,
+        }
         self.flush()?;
         self.file.commit()?;
         Ok(self.rows)
     }
 
     fn flush(&mut self) -> Result<(), ExportError> {
-        if self.buffer.is_empty() {
+        let Output::Text(text) = &mut self.output else {
+            return Ok(());
+        };
+        if text.buffer.is_empty() {
             return Ok(());
         }
-        let written = self.file.write(self.buffer.as_bytes());
-        self.buffer.clear();
+        let bytes = encode(&text.buffer, text.encoding, &mut text.bytes)?;
+        let written = self.file.write(bytes);
+        text.buffer.clear();
         written
     }
 }

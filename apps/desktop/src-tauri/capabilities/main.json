@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main",
-  "description": "Main window: first-render and session-state events, window dragging, native ask alerts for destructive confirmations, metadata, connection profiles (key and certificate files are picked natively), SSH host-key and keyboard-interactive prompts, sessions and catalog reads, the server process list with cancel and kill, query execution and history, saved queries, .sql files of query tabs (saved and opened through native panels), table browsing and editing (files are picked and read natively), the local journal of staged edits, export of results and tables (the file is chosen natively), the ER diagram of a schema and its SVG/PNG export (the file is chosen natively), settings.json, native menu state and shortcuts, closing the window after the quit guard, result tiles, opt-in IPC spike, the crash-recovery status and the logs folder, and webview error reports for the log.",
+  "description": "Main window: first-render and session-state events, window dragging, native ask alerts for destructive confirmations, metadata, connection profiles (key and certificate files are picked natively), SSH host-key and keyboard-interactive prompts, sessions and catalog reads, the server process list with cancel and kill, query execution and history, saved queries, .sql files of query tabs (saved and opened through native panels), table browsing and editing (files are picked and read natively), the local journal of staged edits, export of results, selected rows, tables and schemas as background jobs (the file or folder is chosen natively; only finished export outputs can be opened or revealed), running .sql files picked in the native open panel, the ER diagram of a schema and its SVG/PNG export (the file is chosen natively), settings.json, native menu state and shortcuts, closing the window after the quit guard, result tiles, opt-in IPC spike, the crash-recovery status and the logs folder, and webview error reports for the log.",
   "windows": ["main"],
   "permissions": [
     "core:event:allow-emit-to",
@@ -79,6 +79,11 @@
     "allow-import-preview",
     "allow-import-start",
     "allow-import-cancel",
+    "allow-export-reveal",
+    "allow-export-open",
+    "allow-run-file-pick",
+    "allow-run-file-check",
+    "allow-run-file-start",
     "allow-settings-read",
     "allow-settings-write",
     "allow-menu-sync",

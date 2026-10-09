@@ -10,6 +10,7 @@ import type { Connections } from '../connections';
 import { openLogs } from '../diagnostics';
 import type { Catalog } from '../schema';
 import { setGridDensity } from '../settings';
+import { setJobsOpen } from '../jobs';
 import type { SettingsSection } from '../settings';
 import type { useInspectorOpen } from './layout';
 import type { PaletteMode } from './WorkspacePalettes';
@@ -32,6 +33,10 @@ type ShellInput = {
   onShowDiagram: () => void;
   /** Open the active database's process list. */
   openProcesses: () => void;
+  /** Run a `.sql` file on the active database. */
+  onRunFile: () => void;
+  /** Export tables of the selected schema. */
+  onExportTables: () => void;
   /** Open a `.sql` file into a new tab when no query tab is active. */
   openFile: () => void;
   refresh: () => void;
@@ -127,6 +132,11 @@ function workActions(input: ShellInput): Actions {
     safe: input.toggleSafe,
     'export-table': input.onExportTable,
     'import-data': input.onImport,
+    'export-tables': input.onExportTables,
+    'run-sql-file': input.onRunFile,
+    'show-jobs': () => {
+      setJobsOpen(true);
+    },
     'show-er-diagram': input.onShowDiagram,
     processes: input.openProcesses,
     'new-connection': () => {

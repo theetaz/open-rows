@@ -3,6 +3,7 @@
 
 mod blocks;
 mod delimiter;
+mod stream;
 
 use std::ops::Range;
 
@@ -10,6 +11,7 @@ use crate::Dialect;
 use crate::lexer::{Lexer, Token, TokenKind};
 use blocks::Blocks;
 use delimiter::Delimiter;
+pub use stream::{ScriptStatement, StreamSplitter};
 
 /// One statement found by [`split`], located by byte offsets in the original text.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -57,7 +59,25 @@ impl Statement {
 /// extend to the end of the text.
 #[must_use]
 pub fn split(source: &str, dialect: Dialect) -> Vec<Statement> {
-    let mut builder = Builder::new(dialect);
+    split_resumed(source, dialect, Resume::default()).0
+}
+
+/// Splitter state at a statement boundary, which text after it resumes from.
+#[derive(Clone, Debug, Default)]
+struct Resume {
+    delimiter: Delimiter,
+    /// Just after a terminator: a comment on the same line belongs to no statement.
+    same_line: bool,
+}
+
+/// [`split`] starting in `state`; also returns the last boundary (the byte
+/// offset just after a terminator) with the state there.
+fn split_resumed(
+    source: &str,
+    dialect: Dialect,
+    state: Resume,
+) -> (Vec<Statement>, Option<(usize, Resume)>) {
+    let mut builder = Builder::new(dialect, state);
     let mut lexer = Lexer::new(source, dialect);
     while let Some(token) = lexer.next() {
         if let Some(resume) = builder.push(token, source) {
@@ -65,7 +85,7 @@ pub fn split(source: &str, dialect: Dialect) -> Vec<Statement> {
         }
     }
     builder.finish(None);
-    builder.statements
+    (builder.statements, builder.boundary)
 }
 
 struct Builder {
@@ -79,10 +99,12 @@ struct Builder {
     /// Still on the line of the previous terminator: comments here belong to no statement.
     same_line: bool,
     statements: Vec<Statement>,
+    /// The last terminator's end and the state after it.
+    boundary: Option<(usize, Resume)>,
 }
 
 impl Builder {
-    fn new(dialect: Dialect) -> Self {
+    fn new(dialect: Dialect, state: Resume) -> Self {
         Self {
             dialect,
             start: None,
@@ -90,9 +112,10 @@ impl Builder {
             has_code: false,
             paren_depth: 0,
             blocks: Blocks::new(dialect),
-            delimiter: Delimiter::default(),
-            same_line: false,
+            delimiter: state.delimiter,
+            same_line: state.same_line,
             statements: Vec::new(),
+            boundary: None,
         }
     }
 
@@ -163,6 +186,13 @@ impl Builder {
 
     fn finish(&mut self, terminator: Option<Range<usize>>) {
         let ended = terminator.is_some();
+        if let Some(terminator) = &terminator {
+            let state = Resume {
+                delimiter: self.delimiter.clone(),
+                same_line: true,
+            };
+            self.boundary = Some((terminator.end, state));
+        }
         if let (Some(start), true) = (self.start, self.has_code) {
             self.statements.push(Statement {
                 range: start..self.end,

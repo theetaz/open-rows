@@ -171,7 +171,17 @@ it('exports a table from its context menu on the database session', async () => 
           table: 'orders',
         },
       },
-      format: { kind: 'csv', delimiter: 'comma', header: true },
+      format: {
+        kind: 'csv',
+        delimiter: 'comma',
+        options: {
+          quote: 'double',
+          header: true,
+          nullText: '',
+          lineEnding: 'crlf',
+          encoding: 'utf8',
+        },
+      },
       fileName: 'orders',
     },
     expect.any(Function),
