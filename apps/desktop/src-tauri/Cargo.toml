@@ -18,6 +18,7 @@ arrow-array = "60"
 arrow-schema = "60"
 openrows-core = { path = "../../../crates/openrows-core" }
 openrows-driver-api = { path = "../../../crates/openrows-driver-api" }
+openrows-driver-mssql = { path = "../../../crates/openrows-driver-mssql" }
 openrows-driver-mysql = { path = "../../../crates/openrows-driver-mysql" }
 openrows-driver-postgres = { path = "../../../crates/openrows-driver-postgres" }
 openrows-driver-sqlite = { path = "../../../crates/openrows-driver-sqlite" }

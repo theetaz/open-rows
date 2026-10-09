@@ -21,13 +21,21 @@ pub enum Driver {
     Mysql,
     /// `MariaDB`.
     Mariadb,
+    /// SQL Server and Azure SQL.
+    Sqlserver,
     /// A local `SQLite` 3 file.
     Sqlite,
 }
 
 impl Driver {
     /// Every engine, in picker order.
-    pub const ALL: [Self; 4] = [Self::Postgres, Self::Mysql, Self::Mariadb, Self::Sqlite];
+    pub const ALL: [Self; 5] = [
+        Self::Postgres,
+        Self::Mysql,
+        Self::Mariadb,
+        Self::Sqlserver,
+        Self::Sqlite,
+    ];
 
     /// Display name, e.g. `MariaDB`.
     #[must_use]
@@ -36,6 +44,7 @@ impl Driver {
             Self::Postgres => "PostgreSQL",
             Self::Mysql => "MySQL",
             Self::Mariadb => "MariaDB",
+            Self::Sqlserver => "SQL Server",
             Self::Sqlite => "SQLite",
         }
     }
@@ -46,6 +55,7 @@ impl Driver {
         match self {
             Self::Postgres => Some(5432),
             Self::Mysql | Self::Mariadb => Some(3306),
+            Self::Sqlserver => Some(1433),
             Self::Sqlite => None,
         }
     }
@@ -57,7 +67,7 @@ impl Driver {
     }
 }
 
-/// Host-based connection parameters (`PostgreSQL`, `MySQL`, `MariaDB`).
+/// Host-based connection parameters (`PostgreSQL`, `MySQL`, `MariaDB`, SQL Server).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ServerParams {

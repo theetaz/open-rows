@@ -3455,6 +3455,7 @@ dependencies = [
  "objc2-foundation",
  "openrows-core",
  "openrows-driver-api",
+ "openrows-driver-mssql",
  "openrows-driver-mysql",
  "openrows-driver-postgres",
  "openrows-driver-sqlite",
@@ -3529,6 +3530,7 @@ dependencies = [
  "arrow-array",
  "arrow-schema",
  "openrows-driver-api",
+ "openrows-driver-mssql",
  "openrows-driver-mysql",
  "openrows-driver-postgres",
  "openrows-driver-sqlite",
@@ -3536,6 +3538,19 @@ dependencies = [
  "openrows-sql",
  "tempfile",
  "thiserror 2.0.21",
+ "tokio",
+]
+
+[[package]]
+name = "openrows-driver-mssql"
+version = "0.1.0"
+dependencies = [
+ "arrow-array",
+ "arrow-schema",
+ "encoding_rs",
+ "openrows-driver-api",
+ "openrows-net",
+ "openrows-sql",
  "tokio",
 ]
 
@@ -3609,6 +3624,7 @@ dependencies = [
  "csv",
  "encoding_rs",
  "openrows-driver-api",
+ "openrows-driver-mssql",
  "openrows-driver-mysql",
  "openrows-driver-postgres",
  "openrows-driver-sqlite",

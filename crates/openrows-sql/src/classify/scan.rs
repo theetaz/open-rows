@@ -2,7 +2,7 @@
 //! Whole-statement scans that escalate `Read` statements hiding writes and
 //! find unbounded `DELETE`/`UPDATE` anywhere in a statement.
 
-use super::Sql;
+use super::{Sql, tsql};
 use crate::Dialect;
 use crate::lexer::TokenKind;
 
@@ -73,18 +73,30 @@ pub(super) fn has_write_marker(sql: Sql<'_>) -> bool {
 }
 
 /// Whether any `DELETE` or `UPDATE` that starts a (sub)statement lacks a
-/// `WHERE` at its own nesting level.
+/// `WHERE` at its own nesting level. A SQL Server batch needs no `;`
+/// between statements, so there any data-statement `DELETE`/`UPDATE`
+/// counts and its `WHERE` must come before the next statement.
 pub(super) fn has_unbounded_dml(sql: Sql<'_>) -> bool {
     (0..sql.tokens.len()).any(|index| {
-        is_head(sql, index)
-            && is_any_word(sql, index, &["DELETE", "UPDATE"])
-            && !has_where(sql, index + 1)
+        let dml = if sql.dialect == Dialect::SqlServer {
+            tsql::dml_head(sql, index, "DELETE") || tsql::dml_head(sql, index, "UPDATE")
+        } else {
+            is_head(sql, index) && is_any_word(sql, index, &["DELETE", "UPDATE"])
+        };
+        dml && !has_where(sql, index + 1)
     })
 }
 
+/// Words that start the next statement of a SQL Server batch; a `WHERE`
+/// after one of them belongs to that statement.
+const TSQL_STATEMENT_HEADS: &[&str] = &[
+    "SELECT", "INSERT", "MERGE", "EXEC", "EXECUTE", "DECLARE", "IF", "WHILE", "PRINT", "BEGIN",
+    "TRUNCATE", "DROP", "CREATE", "ALTER",
+];
+
 /// `REPLACE [INTO] t …` (`MySQL`, `SQLite`), not the `replace(…)` function.
 fn is_replace(sql: Sql<'_>, index: usize) -> bool {
-    sql.dialect != Dialect::Postgres
+    matches!(sql.dialect, Dialect::MySql | Dialect::Sqlite)
         && sql.is_word(index, "REPLACE")
         && sql.kind(index + 1) != Some(TokenKind::OpenParen)
 }
@@ -117,10 +129,19 @@ fn has_where(sql: Sql<'_>, from: usize) -> bool {
             TokenKind::CloseParen | TokenKind::Semicolon if depth == 0 => return false,
             TokenKind::CloseParen => depth -= 1,
             TokenKind::Word if depth == 0 && sql.is_word(index, "WHERE") => return true,
+            TokenKind::Word if depth == 0 && next_tsql_statement(sql, index) => return false,
             _ => {}
         }
     }
     false
+}
+
+/// A SQL Server statement head at `index`, ending the previous statement.
+fn next_tsql_statement(sql: Sql<'_>, index: usize) -> bool {
+    sql.dialect == Dialect::SqlServer
+        && (is_any_word(sql, index, TSQL_STATEMENT_HEADS)
+            || tsql::dml_head(sql, index, "DELETE")
+            || tsql::dml_head(sql, index, "UPDATE"))
 }
 
 fn is_side_effect_call(sql: Sql<'_>, index: usize) -> bool {
@@ -140,5 +161,7 @@ fn is_side_effect_call(sql: Sql<'_>, index: usize) -> bool {
         }
         Dialect::MySql => MYSQL_SIDE_EFFECTS.contains(&name.as_str()),
         Dialect::Sqlite => SQLITE_SIDE_EFFECTS.contains(&name.as_str()),
+        // T-SQL functions cannot change data; sequences are `NEXT VALUE FOR`.
+        Dialect::SqlServer => false,
     }
 }

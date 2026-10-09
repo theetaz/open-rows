@@ -122,7 +122,7 @@ fn pattern(
     filter: &Filter,
     params: &mut Vec<Option<String>>,
 ) -> Result<String, SelectError> {
-    let escaped = escape_like(&filter.value);
+    let escaped = escape_like(dialect, &filter.value);
     let (value, negate) = match filter.op {
         FilterOp::StartsWith => (format!("{escaped}%"), false),
         FilterOp::EndsWith => (format!("%{escaped}"), false),
@@ -133,11 +133,12 @@ fn pattern(
     Ok(dialect.like(column, &placeholder, negate))
 }
 
-/// Escape `LIKE` wildcards with `\`.
-fn escape_like(value: &str) -> String {
+/// Escape `LIKE` wildcards with `\` (SQL Server's `[` set too).
+fn escape_like(dialect: Dialect, value: &str) -> String {
     let mut escaped = String::with_capacity(value.len());
     for character in value.chars() {
-        if matches!(character, '\\' | '%' | '_') {
+        let bracket = character == '[' && dialect == Dialect::SqlServer;
+        if bracket || matches!(character, '\\' | '%' | '_') {
             escaped.push('\\');
         }
         escaped.push(character);

@@ -106,6 +106,17 @@ describe('SQL quoting', () => {
     );
     expect(tableName('mysql', { schema: 'shop', name: 't' })).toBe('`t`');
     expect(tableName('sqlite', { schema: 'main', name: 't' })).toBe('"t"');
+    expect(quoteIdent('sqlserver', 'a]b')).toBe('[a]]b]');
+    expect(tableName('sqlserver', { schema: 'dbo', name: 't' })).toBe(
+      '[dbo].[t]',
+    );
+  });
+  it('writes SQL Server literals as Unicode text and bits', () => {
+    expect(sqlLiteral('sqlserver', "o'k \u4e16", 'text')).toBe(
+      "N'o''k \u4e16'",
+    );
+    expect(sqlLiteral('sqlserver', 'true', 'boolean')).toBe('1');
+    expect(sqlLiteral('sqlserver', '42', 'number')).toBe('42');
   });
   it('writes literals like the Rust exporter', () => {
     expect(sqlLiteral('postgres', "a\\b'c", 'text')).toBe("E'a\\\\b''c'");

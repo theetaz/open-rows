@@ -40,6 +40,14 @@ pub fn created_kind(statement: &str, dialect: Dialect) -> Option<String> {
         .take_while(|token| token.kind != TokenKind::OpenParen)
         .filter(|token| token.kind == TokenKind::Word)
         .map(|token| token.text(statement).to_ascii_uppercase())
+        // T-SQL spells `PROCEDURE` `PROC` too.
+        .map(|word| {
+            if word == "PROC" {
+                "PROCEDURE".to_owned()
+            } else {
+                word
+            }
+        })
         .find(|word| KINDS.contains(&word.as_str()))
 }
 
@@ -126,6 +134,16 @@ mod tests {
             (
                 "CREATE TEMP TRIGGER t AFTER DELETE ON x BEGIN SELECT 1; END",
                 Dialect::Sqlite,
+                "TRIGGER",
+            ),
+            (
+                "CREATE OR ALTER PROC dbo.p @n int AS SELECT @n",
+                Dialect::SqlServer,
+                "PROCEDURE",
+            ),
+            (
+                "CREATE TRIGGER dbo.t ON dbo.x AFTER INSERT AS SET NOCOUNT ON",
+                Dialect::SqlServer,
                 "TRIGGER",
             ),
         ];

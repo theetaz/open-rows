@@ -41,6 +41,7 @@ pub(crate) fn hint(step: TestStepKind, error: &IpcError, engine: Engine) -> Opti
         TestStepKind::Connect => Some(connect_hint(error, engine)),
         TestStepKind::Tls | TestStepKind::Version | TestStepKind::Latency => None,
         TestStepKind::Authenticate if engine == Engine::Postgres => postgres_login_hint(error),
+        TestStepKind::Authenticate if engine == Engine::Sqlserver => sql_server_login_hint(error),
         TestStepKind::Authenticate => mysql_login_hint(error),
     }
 }
@@ -59,6 +60,10 @@ fn connect_hint(error: &IpcError, engine: Engine) -> &'static str {
             "Check that the server is running and listens on this host and port \
              (bind-address, port), and that no firewall blocks it."
         }
+        Engine::Sqlserver => {
+            "Check that SQL Server is running, has TCP/IP enabled and listens on this host \
+             and port (named instances need their port), and that no firewall blocks it."
+        }
         Engine::Sqlite => {
             "Check that the file and every attached database file exist and that OpenRows \
              may read them (macOS Files and Folders privacy settings), or choose New File \
@@ -76,6 +81,21 @@ fn mysql_login_hint(error: &IpcError) -> Option<&'static str> {
         IpcErrorKind::Server if error.message.contains("Unknown database") => {
             Some("The database does not exist: check the Database field.")
         }
+        IpcErrorKind::Server => Some("The server refused the session; its message says why."),
+        _ => None,
+    }
+}
+
+fn sql_server_login_hint(error: &IpcError) -> Option<&'static str> {
+    match error.kind {
+        IpcErrorKind::Auth if error.message.contains("error 4060") => Some(
+            "The database does not exist or this login may not open it: check the Database \
+             field.",
+        ),
+        IpcErrorKind::Auth => Some(
+            "Check the user and password. The server must allow SQL Server authentication \
+             (mixed mode); Windows and Microsoft Entra ID logins are not supported yet.",
+        ),
         IpcErrorKind::Server => Some("The server refused the session; its message says why."),
         _ => None,
     }
@@ -108,6 +128,20 @@ mod tests {
 
     fn error(kind: IpcErrorKind, message: &str) -> IpcError {
         IpcError::new(kind, message)
+    }
+
+    #[test]
+    fn sql_server_logins_get_their_own_hints() {
+        let denied = error(
+            IpcErrorKind::Auth,
+            "Login failed for user 'sa'. (SQL Server error 18456)",
+        );
+        let advice =
+            hint(TestStepKind::Authenticate, &denied, Engine::Sqlserver).unwrap_or_default();
+        assert!(advice.contains("mixed mode"));
+        let refused = error(IpcErrorKind::Network, "127.0.0.1:1433: Connection refused");
+        let connect = hint(TestStepKind::Connect, &refused, Engine::Sqlserver).unwrap_or_default();
+        assert!(connect.contains("TCP/IP"));
     }
 
     #[test]

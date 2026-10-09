@@ -2,6 +2,8 @@
 import { Badge, DisclosureSection, SelectField } from '@openrows/ui';
 import type { CloudCaDto, TlsModeDto } from '@openrows/ipc';
 import { FileField } from './FileField';
+import { SqlServerTlsFields } from './SqlServerTlsFields';
+import { encryptLabel } from './sqlServerTls';
 import { SecretField } from './SecretField';
 import { tlsCa, tlsWarning } from './routeForm';
 import type { ConnectionForm } from './useConnectionForm';
@@ -41,23 +43,31 @@ export function TlsFields({
   const { draft, errors, update, updateTls } = form;
   const { tls } = draft;
   const warning = tlsWarning(draft.host, draft.tlsMode, tlsCa(tls));
+  const sqlServer = draft.engine === 'sqlserver';
+  const title = sqlServer
+    ? `Encrypt · ${encryptLabel(draft.tlsMode)}`
+    : `TLS · ${modeLabel(draft.tlsMode)}`;
   return (
     <>
       <DisclosureSection
-        label={`TLS · ${modeLabel(draft.tlsMode)}`}
+        label={title}
         forceOpen={Boolean(errors.tlsCaFile ?? errors.tlsClientKey)}
       >
         <div className={styles.section}>
-          <SelectField
-            className={styles.row}
-            label="Mode"
-            aria-label="TLS mode"
-            value={draft.tlsMode}
-            options={modes}
-            onValueChange={(tlsMode) => {
-              update({ tlsMode });
-            }}
-          />
+          {sqlServer ? (
+            <SqlServerTlsFields form={form} />
+          ) : (
+            <SelectField
+              className={styles.row}
+              label="Mode"
+              aria-label="TLS mode"
+              value={draft.tlsMode}
+              options={modes}
+              onValueChange={(tlsMode) => {
+                update({ tlsMode });
+              }}
+            />
+          )}
           <CaFields form={form} />
           <FileField
             label="Client cert"

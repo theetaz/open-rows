@@ -64,6 +64,14 @@ pub async fn values_round_trip(connection: &mut dyn Connection, engine: &Engine)
         ),
         ("WHERE id = 3 AND joined IS NULL AND score = -2", 1),
     ] {
+        // T-SQL has no boolean columns to test bare: compare the `bit`.
+        let condition = if engine.dialect == Dialect::SqlServer {
+            condition
+                .replace("NOT active", "active = 0")
+                .replace("AND active AND", "AND active = 1 AND")
+        } else {
+            condition.to_owned()
+        };
         let sql = format!("SELECT 1 FROM imp_values {condition}");
         assert_eq!(count(connection, &sql).await?, expected, "{sql}");
     }

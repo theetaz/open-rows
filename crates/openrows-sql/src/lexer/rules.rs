@@ -8,6 +8,9 @@
 //!   whose body is lexed as code (the server runs it).
 //! - `SQLite`: `"…"`, `` `…` `` and `[…]` identifiers, `?NNN` and `$name`
 //!   parameters, no backslash escapes.
+//! - SQL Server (T-SQL): nested `/* */`, `[…]` identifiers with `]]`
+//!   escapes, `N'…'` strings, and `@variable`, `@@function`, `#temp` and
+//!   `$action` names lexed as words (they are not bind parameters).
 
 use super::{Lexer, Token, TokenKind, is_ident_continue, is_ident_start, single_byte_kind};
 use crate::Dialect;
@@ -18,6 +21,7 @@ impl Lexer<'_> {
             Dialect::Postgres => self.postgres(byte),
             Dialect::MySql => self.mysql(byte),
             Dialect::Sqlite => self.sqlite(byte),
+            Dialect::SqlServer => self.sqlserver(byte),
         };
         special.unwrap_or_else(|| self.common(byte))
     }
@@ -31,7 +35,7 @@ impl Lexer<'_> {
                 self.token(TokenKind::LineComment, self.line_comment_end())
             }
             b'/' if next == Some(b'*') => {
-                let nested = self.dialect == Dialect::Postgres;
+                let nested = matches!(self.dialect, Dialect::Postgres | Dialect::SqlServer);
                 self.token(TokenKind::BlockComment, self.block_comment_end(nested))
             }
             b'\'' => {
@@ -119,6 +123,27 @@ impl Lexer<'_> {
             b'$' if next.is_some_and(is_ident_start) => {
                 let end = self.scan_while(self.pos + 1, is_ident_continue);
                 self.token(TokenKind::Param, end)
+            }
+            _ => return None,
+        };
+        Some(token)
+    }
+
+    fn sqlserver(&self, byte: u8) -> Option<Token> {
+        let next = self.byte(self.pos + 1);
+        let token = match byte {
+            b'[' => self.token(TokenKind::QuotedIdent, self.quoted_close(b']')),
+            b'N' | b'n' if next == Some(b'\'') => {
+                let end = self.quoted_end(self.pos + 1, b'\'', false);
+                self.token(TokenKind::String, end)
+            }
+            b'@' | b'#' | b'$' => {
+                let sigils = self.scan_while(self.pos, |b| b == byte);
+                let end = self.scan_while(sigils, is_ident_continue);
+                if end == sigils {
+                    return None;
+                }
+                self.token(TokenKind::Word, end)
             }
             _ => return None,
         };

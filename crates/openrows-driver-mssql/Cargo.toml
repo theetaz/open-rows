@@ -1,0 +1,26 @@
+[package]
+name = "openrows-driver-mssql"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "SQL Server and Azure SQL driver for OpenRows: TDS 7.4 over openrows-net routes, decoded into Arrow"
+
+[lints]
+workspace = true
+
+[dependencies]
+arrow-array = "60"
+arrow-schema = "60"
+# Code pages of `char`/`varchar`/`text` data in non-UTF-8 collations.
+encoding_rs = "0.8"
+openrows-driver-api = { path = "../openrows-driver-api" }
+openrows-net = { path = "../openrows-net" }
+openrows-sql = { path = "../openrows-sql" }
+tokio = { version = "1.53", features = ["net", "io-util", "sync", "time"] }
+
+[dev-dependencies]
+# Proxied-route tests use the in-process test proxy.
+openrows-net = { path = "../openrows-net", features = ["test-proxy"] }
+tokio = { version = "1.53", features = ["net", "io-util", "sync", "time", "rt", "macros"] }

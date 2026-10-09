@@ -112,8 +112,8 @@ pub(crate) fn push_literal(
     match cell {
         Cell::Null => out.push_str("NULL"),
         Cell::Bool(value) => out.push_str(match (dialect, value) {
-            (Dialect::Sqlite, true) => "1",
-            (Dialect::Sqlite, false) => "0",
+            (Dialect::Sqlite | Dialect::SqlServer, true) => "1",
+            (Dialect::Sqlite | Dialect::SqlServer, false) => "0",
             (_, true) => "TRUE",
             (_, false) => "FALSE",
         }),
@@ -151,6 +151,9 @@ fn push_binary(dialect: Dialect, bytes: &[u8], out: &mut String) {
         out.push_str("decode('");
         push_hex(bytes, out);
         out.push_str("', 'hex')");
+    } else if dialect == Dialect::SqlServer {
+        out.push_str("0x");
+        push_hex(bytes, out);
     } else {
         out.push_str("X'");
         push_hex(bytes, out);
@@ -171,6 +174,12 @@ pub(crate) fn push_string(dialect: Dialect, text: &str, out: &mut String) {
                     c => out.push(c),
                 }
             }
+            out.push('\'');
+        }
+        // Unicode literals, so text outside the database code page survives.
+        Dialect::SqlServer => {
+            out.push_str("N'");
+            out.push_str(&text.replace('\'', "''"));
             out.push('\'');
         }
         _ => {

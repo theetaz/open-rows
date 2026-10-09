@@ -2,7 +2,8 @@
 //! Server certificate verifiers for the three [`Verification`] levels.
 //!
 //! Every verifier checks handshake signatures with the provider's algorithms,
-//! so even `None` proves the server holds the key of the certificate it sent.
+//! so even `None` proves the server holds the key of the certificate it sent
+//! (for X.509 v1 certificates through [`super::legacy`]).
 
 use std::sync::Arc;
 
@@ -20,7 +21,7 @@ use rustls::{
     server::ParsedCertificate,
 };
 
-use super::{TlsError, TlsParams, Verification, files};
+use super::{TlsError, TlsParams, Verification, files, legacy};
 
 /// The verifier for `params`: libpq semantics, a CA file replaces system trust.
 pub(crate) fn server_verifier(
@@ -76,7 +77,9 @@ impl ServerCertVerifier for Unverified {
         cert: &CertificateDer<'_>,
         dss: &DigitallySignedStruct,
     ) -> Result<HandshakeSignatureValid, Error> {
-        verify_tls12_signature(message, cert, dss, &self.algorithms)
+        verify_tls12_signature(message, cert, dss, &self.algorithms).or_else(|error| {
+            legacy::verify_v1(message, cert, dss, &self.algorithms).unwrap_or(Err(error))
+        })
     }
 
     fn verify_tls13_signature(
@@ -85,7 +88,9 @@ impl ServerCertVerifier for Unverified {
         cert: &CertificateDer<'_>,
         dss: &DigitallySignedStruct,
     ) -> Result<HandshakeSignatureValid, Error> {
-        verify_tls13_signature(message, cert, dss, &self.algorithms)
+        verify_tls13_signature(message, cert, dss, &self.algorithms).or_else(|error| {
+            legacy::verify_v1(message, cert, dss, &self.algorithms).unwrap_or(Err(error))
+        })
     }
 
     fn supported_verify_schemes(&self) -> Vec<SignatureScheme> {

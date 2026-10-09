@@ -36,9 +36,9 @@ function userinfoSpan(text: string): Span | undefined {
   return { start: from + colon + 1, end: from + at, cut: 1 };
 }
 
-/** A `password=` query parameter span. */
+/** A `password=` query parameter (or JDBC `;password=`) span. */
 function querySpan(text: string): Span | undefined {
-  const match = /[?&]password=([^&#]*)/.exec(text);
+  const match = /[?&;]password=([^&#;]*)/i.exec(text);
   if (!match) return undefined;
   const end = match.index + match[0].length;
   const start = end - (match[1] ?? '').length;
@@ -49,6 +49,7 @@ function querySpan(text: string): Span | undefined {
 function strip(text: string, span: Span): string {
   const head = text.slice(0, span.start - span.cut);
   const tail = text.slice(span.end);
+  if (head.endsWith(';')) return head.slice(0, -1) + tail;
   if (!/[?&]$/.test(head)) return head + tail;
   return tail.startsWith('&') ? head + tail.slice(1) : head.slice(0, -1) + tail;
 }
@@ -101,8 +102,18 @@ const MYSQL_SSL: Partial<Record<TlsModeDto, string>> = {
   'verify-full': 'VERIFY_IDENTITY',
 };
 
+/** SQL Server's `encrypt` and `trustServerCertificate` for a TLS mode. */
+const SQL_SERVER_TLS: Partial<Record<TlsModeDto, string>> = {
+  allow: 'encrypt=false',
+  require: 'encrypt=true&trustServerCertificate=true',
+  'verify-full': 'encrypt=true&trustServerCertificate=false',
+};
+
 function tlsQuery(draft: Draft): string {
   if (draft.tlsMode === defaultTls(draft.host)) return '';
+  const sqlServer =
+    draft.engine === 'sqlserver' ? SQL_SERVER_TLS[draft.tlsMode] : undefined;
+  if (sqlServer) return `?${sqlServer}`;
   const mysql = draft.engine === 'mysql' || draft.engine === 'mariadb';
   const name = mysql ? MYSQL_SSL[draft.tlsMode] : undefined;
   return name ? `?ssl-mode=${name}` : `?sslmode=${draft.tlsMode}`;

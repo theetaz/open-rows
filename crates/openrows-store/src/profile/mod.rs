@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-//! Connection profiles for `PostgreSQL`, `MySQL`, `MariaDB` and `SQLite`
+//! Connection profiles for `PostgreSQL`, `MySQL`, `MariaDB`, SQL Server and `SQLite`
 //! (FR-CONN-01/02/03/06/07).
 //!
 //! Profiles are personal, secret-free JSON files under `connections/`
@@ -21,6 +21,7 @@ mod proxy;
 mod search;
 mod secrets;
 mod service;
+mod sqlserver_url;
 
 pub use attached::AttachedFile;
 pub use conn_url::{ParsedUrl, parse_url};

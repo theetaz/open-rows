@@ -99,6 +99,17 @@ const BUILT_INS: Record<EditorDialect, string> = {
     least last_insert_id found_rows database version format truncate mod
     power sqrt regexp_replace convert`,
   mariadb: '',
+  sqlserver: `${AGGREGATES} ${WINDOWS} getdate getutcdate sysdatetime
+    sysutcdatetime sysdatetimeoffset dateadd datediff datediff_big datename
+    datepart datefromparts datetime2fromparts eomonth isdate year month day
+    format convert cast try_convert try_cast parse try_parse isnull coalesce
+    nullif iif choose len datalength charindex patindex substring left right
+    ltrim rtrim trim upper lower replace replicate reverse stuff concat
+    concat_ws string_agg string_split quotename newid newsequentialid abs
+    ceiling floor round power sqrt rand sign json_value json_query json_modify
+    isjson openjson object_id object_name schema_name db_name db_id
+    suser_sname user_name scope_identity ident_current row_number rank
+    dense_rank ntile count_big checksum hashbytes error_message error_number`,
   sqlite: `${AGGREGATES} ${WINDOWS} total group_concat string_agg changes char
     concat concat_ws format glob hex ifnull iif instr last_insert_rowid length
     like likelihood ltrim rtrim trim printf quote random randomblob replace

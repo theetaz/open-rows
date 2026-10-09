@@ -188,7 +188,9 @@ impl fmt::Display for SelectError {
 
 impl std::error::Error for SelectError {}
 
-/// `SELECT … LIMIT limit OFFSET offset` for one page.
+/// `SELECT … LIMIT limit OFFSET offset` for one page; SQL Server pages
+/// with `ORDER BY … OFFSET offset ROWS FETCH NEXT limit ROWS ONLY`, ordered
+/// by `(SELECT NULL)` (no particular order) when no sort is set.
 ///
 /// # Errors
 /// See [`SelectError`]; `known` are the table's catalog column names.
@@ -208,9 +210,30 @@ pub fn page_sql(
         let column = predicate::column(dialect, &sort.column, known)?;
         let _ = write!(bound.sql, " ORDER BY {column} {direction}");
     }
+    if dialect == Dialect::SqlServer {
+        sql_server_page(&mut bound.sql, query.sort.is_some(), page);
+        return Ok(bound);
+    }
     // Writing to a `String` cannot fail.
     let _ = write!(bound.sql, " LIMIT {} OFFSET {}", page.limit, page.offset);
     Ok(bound)
+}
+
+/// `OFFSET … FETCH` needs an `ORDER BY` and at least one row; an empty page
+/// is `TOP (0)`.
+fn sql_server_page(sql: &mut String, sorted: bool, page: Page) {
+    if page.limit == 0 {
+        sql.replace_range(.."SELECT ".len(), "SELECT TOP (0) ");
+        return;
+    }
+    if !sorted {
+        sql.push_str(" ORDER BY (SELECT NULL)");
+    }
+    let _ = write!(
+        sql,
+        " OFFSET {} ROWS FETCH NEXT {} ROWS ONLY",
+        page.offset, page.limit
+    );
 }
 
 /// `SELECT count(*)` over the same relation and filters (sort and paging ignored).
@@ -222,7 +245,13 @@ pub fn count_sql(
     query: &TableQuery,
     known: &[String],
 ) -> Result<BoundSql, SelectError> {
-    select(dialect, query, known, "count(*)")
+    // `COUNT(*)` is an `int` in SQL Server and overflows past 2^31 rows.
+    let count = if dialect == Dialect::SqlServer {
+        "COUNT_BIG(*)"
+    } else {
+        "count(*)"
+    };
+    select(dialect, query, known, count)
 }
 
 /// `SELECT * FROM table`: every row of a relation, unpaged (whole-table export).

@@ -12,6 +12,7 @@ mod cloud;
 mod details;
 mod error;
 mod files;
+mod legacy;
 mod verify;
 
 use std::{path::PathBuf, sync::Arc};

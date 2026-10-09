@@ -4,7 +4,8 @@ import { localSetting } from '../settings/localSetting';
 import { BUILTIN_SNIPPETS } from './builtins';
 
 /** Engines a snippet is offered for; MariaDB uses the MySQL snippets. */
-export type SnippetScope = 'all' | 'postgres' | 'mysql' | 'sqlite';
+export type SnippetScope =
+  'all' | 'postgres' | 'mysql' | 'sqlserver' | 'sqlite';
 
 /** A built-in or user snippet. */
 export type Snippet = SqlSnippet & { id: string; scope: SnippetScope };
@@ -18,7 +19,13 @@ type SnippetSettings = {
 /** Key in web storage (and `snippets` in settings.json). */
 export const SNIPPETS_KEY = 'openrows.snippets';
 
-const SCOPES: readonly SnippetScope[] = ['all', 'postgres', 'mysql', 'sqlite'];
+const SCOPES: readonly SnippetScope[] = [
+  'all',
+  'postgres',
+  'mysql',
+  'sqlserver',
+  'sqlite',
+];
 /** What completion can match as a trigger (letters, digits, `_`, `$`). */
 const PREFIX = /^[\w$]{1,32}$/;
 const MAX_NAME = 80;

@@ -15,6 +15,7 @@ pub(crate) enum EngineDto {
     Postgres,
     Mysql,
     Mariadb,
+    Sqlserver,
     Sqlite,
 }
 
@@ -24,6 +25,7 @@ impl From<Driver> for EngineDto {
             Driver::Postgres => Self::Postgres,
             Driver::Mysql => Self::Mysql,
             Driver::Mariadb => Self::Mariadb,
+            Driver::Sqlserver => Self::Sqlserver,
             Driver::Sqlite => Self::Sqlite,
         }
     }
@@ -35,6 +37,7 @@ impl From<EngineDto> for Driver {
             EngineDto::Postgres => Self::Postgres,
             EngineDto::Mysql => Self::Mysql,
             EngineDto::Mariadb => Self::Mariadb,
+            EngineDto::Sqlserver => Self::Sqlserver,
             EngineDto::Sqlite => Self::Sqlite,
         }
     }

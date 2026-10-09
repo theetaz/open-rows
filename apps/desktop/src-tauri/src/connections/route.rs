@@ -80,7 +80,7 @@ pub(crate) fn destination(profile: &ConnectionProfile) -> Destination {
     }
     let path = match profile.driver {
         Driver::Postgres => pg_socket(&params.host, params.port),
-        Driver::Mysql | Driver::Mariadb | Driver::Sqlite => params.host.clone(),
+        Driver::Mysql | Driver::Mariadb | Driver::Sqlserver | Driver::Sqlite => params.host.clone(),
     };
     Destination::Socket(path)
 }

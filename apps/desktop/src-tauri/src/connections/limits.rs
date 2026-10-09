@@ -68,7 +68,9 @@ pub(crate) fn setup_sql(driver: Driver, timeout: Option<Duration>) -> Vec<String
             "SET SESSION max_statement_time = {}",
             timeout.as_secs_f64()
         )],
-        Driver::Sqlite => Vec::new(),
+        // SQL Server has no server-side statement timeout; the session's
+        // timer cancels with the attention signal instead.
+        Driver::Sqlserver | Driver::Sqlite => Vec::new(),
     }
 }
 
@@ -147,6 +149,7 @@ mod tests {
             ["SET SESSION max_statement_time = 1.5"]
         );
         assert!(setup_sql(Driver::Sqlite, limit).is_empty());
+        assert!(setup_sql(Driver::Sqlserver, limit).is_empty());
         assert!(setup_sql(Driver::Postgres, None).is_empty());
     }
 

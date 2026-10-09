@@ -12,6 +12,7 @@ export const SCOPE_OPTIONS: readonly { value: SnippetScope; label: string }[] =
     { value: 'all', label: 'All engines' },
     { value: 'postgres', label: 'PostgreSQL' },
     { value: 'mysql', label: 'MySQL and MariaDB' },
+    { value: 'sqlserver', label: 'SQL Server' },
     { value: 'sqlite', label: 'SQLite' },
   ];
 

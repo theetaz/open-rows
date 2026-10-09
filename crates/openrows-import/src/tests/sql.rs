@@ -161,3 +161,46 @@ fn new_tables_validate_names_types_and_keys() -> Result<(), ImportError> {
     assert!(refused.iter().all(Result::is_err));
     Ok(())
 }
+
+#[test]
+fn sql_server_imports_bind_at_p_and_merge_on_conflicts() -> Result<(), ImportError> {
+    let plain = statements(Dialect::SqlServer, ConflictPolicy::Error, &[])?;
+    assert_eq!(
+        plain.insert(2),
+        "INSERT INTO [public].[users] ([id], [name]) VALUES (@P1, @P2), (@P3, @P4)"
+    );
+    // 2 098 parameters over two columns, but at most 1 000 rows per VALUES list.
+    assert_eq!(plain.rows_per_insert(usize::MAX), 1_000);
+    assert_eq!(plain.begin(), "BEGIN TRANSACTION");
+    assert!(!plain.ddl_commits());
+    let update = statements(Dialect::SqlServer, ConflictPolicy::Update, &["id"])?;
+    let merge = update.insert(1);
+    assert!(merge.starts_with("MERGE INTO [public].[users] AS d USING (VALUES (@P1, @P2))"));
+    assert!(merge.contains("WHEN MATCHED THEN UPDATE SET [name] = s.[name]"));
+    assert!(!merge.contains("ON CONFLICT"));
+    let composite = Statements::new(
+        Dialect::SqlServer,
+        &users(),
+        (&names(&["id", "name"]), &names(&["id", "name"])),
+        ConflictPolicy::Skip,
+    )?;
+    assert_eq!(
+        composite.existing_keys(2),
+        "SELECT 1 FROM [public].[users] WHERE ([id] = @P1 AND [name] = @P2) OR \
+         ([id] = @P3 AND [name] = @P4)"
+    );
+    let created = create_table_sql(
+        Dialect::SqlServer,
+        &users(),
+        &[NewColumn {
+            name: "id".to_owned(),
+            data_type: "nvarchar(max)".to_owned(),
+        }],
+        &[],
+    )?;
+    assert_eq!(
+        created,
+        "CREATE TABLE [public].[users] (\n  [id] nvarchar(max)\n)"
+    );
+    Ok(())
+}

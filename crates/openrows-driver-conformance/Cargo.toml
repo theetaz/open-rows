@@ -20,6 +20,7 @@ thiserror.workspace = true
 tokio = { version = "1.53", features = ["rt", "time", "macros"] }
 
 [dev-dependencies]
+openrows-driver-mssql = { path = "../openrows-driver-mssql" }
 openrows-driver-mysql = { path = "../openrows-driver-mysql" }
 openrows-driver-postgres = { path = "../openrows-driver-postgres" }
 openrows-driver-sqlite = { path = "../openrows-driver-sqlite" }

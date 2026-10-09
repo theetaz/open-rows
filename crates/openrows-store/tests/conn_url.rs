@@ -261,3 +261,59 @@ fn sqlite_memory_urls_open_an_in_memory_database() {
         Err(UrlError::InvalidFilePath)
     ));
 }
+
+#[test]
+fn sql_server_urls_map_encrypt_options_to_tls_modes() {
+    let parsed =
+        parse_url("sqlserver://sa:pw@db.example.com/shop?encrypt=true&trustServerCertificate=true")
+            .unwrap();
+    assert_eq!(parsed.driver, Driver::Sqlserver);
+    assert_eq!(
+        (parsed.params.host.as_str(), parsed.params.port),
+        ("db.example.com", 1433)
+    );
+    assert_eq!(parsed.params.database.as_deref(), Some("shop"));
+    assert_eq!(parsed.tls_mode, TlsMode::Require);
+    assert_eq!(parsed.password.unwrap().expose(), "pw");
+    let mssql = parse_url("mssql://app@10.0.0.5:14330?Encrypt=false").unwrap();
+    assert_eq!(mssql.driver, Driver::Sqlserver);
+    assert_eq!(mssql.params.port, 14330);
+    assert_eq!(mssql.tls_mode, TlsMode::Allow);
+    let verified = parse_url("sqlserver://h?databaseName=d&encrypt=mandatory").unwrap();
+    assert_eq!(verified.params.database.as_deref(), Some("d"));
+    assert_eq!(verified.tls_mode, TlsMode::VerifyFull);
+    let explicit = parse_url("sqlserver://h?encrypt=false&sslmode=require").unwrap();
+    assert_eq!(explicit.tls_mode, TlsMode::Require);
+    assert!(matches!(
+        parse_url("sqlserver://h?encrypt=sometimes"),
+        Err(UrlError::InvalidSslMode { .. })
+    ));
+}
+
+#[test]
+fn jdbc_sql_server_urls_are_parsed() {
+    let parsed = parse_url(
+        "jdbc:sqlserver://db.example.com:1444;databaseName=shop;user=app;\
+         password={p;w};encrypt=true;trustServerCertificate=true;applicationName=Tool",
+    )
+    .unwrap();
+    assert_eq!(parsed.driver, Driver::Sqlserver);
+    assert_eq!(
+        (parsed.params.host.as_str(), parsed.params.port),
+        ("db.example.com", 1444)
+    );
+    assert_eq!(parsed.params.database.as_deref(), Some("shop"));
+    assert_eq!(parsed.params.user.as_deref(), Some("app"));
+    assert_eq!(parsed.params.application_name.as_deref(), Some("Tool"));
+    assert_eq!(parsed.password.unwrap().expose(), "p;w");
+    assert_eq!(parsed.tls_mode, TlsMode::Require);
+    let bare = parse_url("jdbc:sqlserver://;serverName=h;portNumber=1500").unwrap();
+    assert_eq!((bare.params.host.as_str(), bare.params.port), ("h", 1500));
+    assert_eq!(bare.tls_mode, TlsMode::VerifyFull);
+    let named = parse_url("jdbc:sqlserver://h\\SQLEXPRESS:1435").unwrap();
+    assert_eq!(named.params.port, 1435);
+    assert!(matches!(
+        parse_url("jdbc:sqlserver://h\\SQLEXPRESS;databaseName=d"),
+        Err(UrlError::NamedInstance { .. })
+    ));
+}

@@ -5,6 +5,7 @@ import {
   mysql,
   postgresql,
   sqlite,
+  transactsql,
 } from 'sql-formatter';
 import type { DialectOptions, ParamTypes } from 'sql-formatter';
 import type { EditorDialect } from './dialects';
@@ -14,18 +15,21 @@ const DIALECTS: Record<EditorDialect, DialectOptions> = {
   postgres: postgresql,
   mysql,
   mariadb,
+  sqlserver: transactsql,
   sqlite,
 };
 
 /**
  * Placeholders the formatter keeps as single tokens, so `:id`, `$1`, `?` and
  * SQLite's `?1`, `@id`, `$id` survive formatting unchanged. A bare `?` is not
- * one in PostgreSQL, where it is also the `jsonb` key-exists operator.
+ * one in PostgreSQL, where it is also the `jsonb` key-exists operator. In
+ * T-SQL `@name` is a variable, which the formatter already keeps whole.
  */
 const PARAMS: Record<EditorDialect, ParamTypes> = {
   postgres: { numbered: ['$'], named: [':'] },
   mysql: { positional: true, named: [':'] },
   mariadb: { positional: true, named: [':'] },
+  sqlserver: { positional: true, named: [':'] },
   sqlite: { positional: true, numbered: ['?', '$'], named: [':', '@', '$'] },
 };
 

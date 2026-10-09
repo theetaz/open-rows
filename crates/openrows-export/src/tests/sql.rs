@@ -156,6 +156,16 @@ fn numbers_booleans_and_nulls_are_bare() {
     assert_eq!(booleans(Dialect::Postgres), ("TRUE".into(), "FALSE".into()));
     assert_eq!(booleans(Dialect::MySql), ("TRUE".into(), "FALSE".into()));
     assert_eq!(booleans(Dialect::Sqlite), ("1".into(), "0".into()));
+    assert_eq!(booleans(Dialect::SqlServer), ("1".into(), "0".into()));
+}
+
+#[test]
+fn sql_server_literals_are_unicode_and_hex() {
+    let server = Dialect::SqlServer;
+    assert_eq!(literal(server, &Cell::Binary(&[0, 255])), "0x00ff");
+    let mut out = String::new();
+    crate::sql::push_string(server, "it's \u{4e16}", &mut out);
+    assert_eq!(out, "N'it''s \u{4e16}'");
 }
 
 #[test]

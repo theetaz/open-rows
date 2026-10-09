@@ -6,6 +6,11 @@
 //! - `mysql://` and `mariadb://` take the same shape (default port 3306);
 //!   `ssl-mode` accepts the `MySQL` names (`DISABLED`, `PREFERRED`,
 //!   `REQUIRED`, `VERIFY_CA`, `VERIFY_IDENTITY`) as well as libpq `sslmode`.
+//! - `sqlserver://` and `mssql://` take the same shape (default port 1433);
+//!   `encrypt` (`true`/`false`, `mandatory`/`optional`/`strict`) and
+//!   `trustServerCertificate` map onto the TLS modes when `sslmode` is
+//!   absent, and `databaseName` names the database. `jdbc:sqlserver://`
+//!   URLs are parsed too (see `sqlserver_url.rs`).
 //! - `sqlite:` names an absolute file path (`sqlite:/data/app.db` or
 //!   `sqlite:///data/app.db`); `?mode=ro` opens it read-only.
 //!   `sqlite::memory:` (also `sqlite://:memory:`) is an in-memory database.
@@ -21,6 +26,7 @@ use openrows_secrets::SecretString;
 use percent_encoding::percent_decode_str;
 use url::{Host, Url};
 
+use super::sqlserver_url::SqlServerTls;
 use super::{ConnectionProfile, Driver, EnvTag, FileParams, ServerParams, TlsMode, UrlError};
 
 /// A parsed URL: engine, profile parameters and the password, kept apart.
@@ -57,8 +63,8 @@ impl ParsedUrl {
     }
 }
 
-/// Parse a `postgres://`, `postgresql://`, `mysql://`, `mariadb://` or
-/// `sqlite:` URL.
+/// Parse a `postgres://`, `postgresql://`, `mysql://`, `mariadb://`,
+/// `sqlserver://`, `mssql://`, `jdbc:sqlserver://` or `sqlite:` URL.
 ///
 /// # Errors
 /// A [`UrlError`] describing the first problem; it never contains the
@@ -68,12 +74,16 @@ pub fn parse_url(input: &str) -> Result<ParsedUrl, UrlError> {
     if is_sqlite_memory(input) {
         return Ok(sqlite_url(FileParams::memory()));
     }
+    if let Some(rest) = super::sqlserver_url::strip_scheme(input) {
+        return super::sqlserver_url::parse(rest);
+    }
     reject_multiple_hosts(input)?;
     let url = Url::parse(input)?;
     let driver = match url.scheme() {
         "postgres" | "postgresql" => Driver::Postgres,
         "mysql" => Driver::Mysql,
         "mariadb" => Driver::Mariadb,
+        "sqlserver" | "mssql" => Driver::Sqlserver,
         "sqlite" => return parse_sqlite(&url),
         scheme => {
             return Err(UrlError::UnsupportedScheme {
@@ -85,12 +95,13 @@ pub fn parse_url(input: &str) -> Result<ParsedUrl, UrlError> {
         driver,
         params: base_params(&url, driver)?,
         tls_mode: None,
+        sql_server: SqlServerTls::default(),
         password: decode_optional(url.password(), "password")?.map(SecretString::new),
     };
     for (key, value) in query_pairs(url.query().unwrap_or_default())? {
         draft.apply(&key, value)?;
     }
-    Ok(draft.finish())
+    draft.finish()
 }
 
 /// `sqlite:/abs/path` or `sqlite:///abs/path`, optionally `?mode=ro`.
@@ -132,15 +143,32 @@ fn sqlite_url(file: FileParams) -> ParsedUrl {
     }
 }
 
-struct Draft {
-    driver: Driver,
-    params: ServerParams,
-    tls_mode: Option<TlsMode>,
-    password: Option<SecretString>,
+pub(super) struct Draft {
+    pub(super) driver: Driver,
+    pub(super) params: ServerParams,
+    pub(super) tls_mode: Option<TlsMode>,
+    pub(super) sql_server: SqlServerTls,
+    pub(super) password: Option<SecretString>,
 }
 
 impl Draft {
-    fn apply(&mut self, key: &str, value: String) -> Result<(), UrlError> {
+    /// SQL Server option names (case-insensitive); `true` when handled.
+    fn apply_sql_server(&mut self, key: &str, value: &str) -> bool {
+        match key.to_ascii_lowercase().as_str() {
+            "encrypt" => self.sql_server.encrypt = Some(value.to_owned()),
+            "trustservercertificate" => self.sql_server.trust = Some(value.to_owned()),
+            "databasename" | "database" => self.params.database = Some(value.to_owned()),
+            "applicationname" => self.params.application_name = Some(value.to_owned()),
+            "user" | "username" => self.params.user = Some(value.to_owned()),
+            _ => return false,
+        }
+        true
+    }
+
+    pub(super) fn apply(&mut self, key: &str, value: String) -> Result<(), UrlError> {
+        if self.driver == Driver::Sqlserver && self.apply_sql_server(key, &value) {
+            return Ok(());
+        }
         match key {
             "password" => self.password = Some(SecretString::new(value)),
             "sslmode" | "ssl-mode" | "ssl_mode" => {
@@ -158,17 +186,21 @@ impl Draft {
         Ok(())
     }
 
-    fn finish(self) -> ParsedUrl {
-        let tls_mode = self
-            .tls_mode
-            .unwrap_or_else(|| TlsMode::default_for_host(&self.params.host));
-        ParsedUrl {
+    pub(super) fn finish(self) -> Result<ParsedUrl, UrlError> {
+        let tls_mode = match self.tls_mode {
+            Some(mode) => mode,
+            None => self
+                .sql_server
+                .mode()?
+                .unwrap_or_else(|| TlsMode::default_for_host(&self.params.host)),
+        };
+        Ok(ParsedUrl {
             driver: self.driver,
             file: None,
             params: self.params,
             tls_mode,
             password: self.password,
-        }
+        })
     }
 }
 
@@ -236,7 +268,7 @@ fn query_pairs(query: &str) -> Result<Vec<(String, String)>, UrlError> {
         .collect()
 }
 
-fn parse_port(value: String) -> Result<u16, UrlError> {
+pub(super) fn parse_port(value: String) -> Result<u16, UrlError> {
     match value.parse::<u16>() {
         Ok(port) => check_port(port, &value),
         Err(_) => Err(UrlError::InvalidPort { value }),

@@ -9,6 +9,12 @@ export type ParamOccurrence = { from: number; name: string };
 
 type Kind = PlaceholderStyle | 'other';
 
+/** T-SQL `[names]`, and `@variables`/`#temp` names, which are no parameters. */
+const TSQL_NAMES: [Kind, RegExp] = [
+  'other',
+  /\[(?:[^\]]|\]\])*\]?|[@#]+[\w$\u0080-￿]+/y,
+];
+
 /**
  * Sticky patterns tried in order, mirroring `openrows_sql::placeholders`:
  * comments, strings, quoted names and dollar quotes are skipped whole, so
@@ -17,6 +23,7 @@ type Kind = PlaceholderStyle | 'other';
 function rules(dialect: EditorDialect): readonly [Kind, RegExp][] {
   const mysql = dialect === 'mysql' || dialect === 'mariadb';
   const sqlite = dialect === 'sqlite';
+  const tsql = dialect === 'sqlserver';
   return [
     ['other', mysql ? /\s+|--[^\n]*|#[^\n]*/y : /\s+|--[^\n]*/y],
     ['other', /\/\*[\s\S]*?(?:\*\/|$)/y],
@@ -27,6 +34,7 @@ function rules(dialect: EditorDialect): readonly [Kind, RegExp][] {
         : /[Ee]'(?:[^'\\]|\\[\s\S]|'')*'?|'(?:[^']|'')*'?|"(?:[^"]|"")*"?/y,
     ],
     ['other', /`(?:[^`]|``)*`?/y],
+    ...(tsql ? [TSQL_NAMES] : []),
     ['other', /\$([A-Za-z_]\w*)?\$[\s\S]*?(?:\$\1\$|$)/y],
     ['other', /[A-Za-z_\u0080-￿][\w$\u0080-￿]*/y],
     ['numbered', sqlite ? /[$?]\d+/y : /\$\d+/y],

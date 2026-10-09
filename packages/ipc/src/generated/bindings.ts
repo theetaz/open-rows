@@ -652,7 +652,7 @@ export type EditorRun = {
 };
 
 /**  Database engine of a profile. */
-export type EngineDto = "postgres" | "mysql" | "mariadb" | "sqlite";
+export type EngineDto = "postgres" | "mysql" | "mariadb" | "sqlserver" | "sqlite";
 
 /**  Environment tag as shown in the rail, header and toolbar. */
 export type EnvDto = {

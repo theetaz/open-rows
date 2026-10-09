@@ -38,3 +38,10 @@ it('ignores look-alikes in literals, comments, casts and slices', () => {
       expect(paramNames(sql, 'postgres', style), sql).toEqual([]);
   expect(paramNames("SELECT 'it\\'s :x' # :y", 'mysql', 'named')).toEqual([]);
 });
+
+it('treats T-SQL variables, temp tables and bracketed names as no parameters', () => {
+  const sql =
+    'SELECT @a, @@ROWCOUNT, [x:y], [a?] FROM #t WHERE id = :id AND n = ?';
+  expect(paramNames(sql, 'sqlserver', 'named')).toEqual([':id']);
+  expect(paramNames(sql, 'sqlserver', 'anonymous')).toEqual(['?1']);
+});
