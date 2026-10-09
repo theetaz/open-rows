@@ -43,7 +43,7 @@ it('loads tables at once and other sections only when expanded', async () => {
   expect(listObjects).toHaveBeenCalledWith(
     'id-orders-local',
     'orders',
-    { schema: 'public', kinds: ['table', 'foreignTable'] },
+    { schema: 'public', kinds: ['table', 'foreignTable'], limit: 5000 },
     false,
   );
   expect(
@@ -56,7 +56,7 @@ it('loads tables at once and other sections only when expanded', async () => {
   expect(listObjects).toHaveBeenLastCalledWith(
     'id-orders-local',
     'orders',
-    { schema: 'public', kinds: ['view'] },
+    { schema: 'public', kinds: ['view'], limit: 5000 },
     false,
   );
   expect(
@@ -171,4 +171,42 @@ it('exports a table from its context menu on the database session', async () => 
     },
     expect.any(Function),
   );
+});
+
+it('lists large sections 5,000 objects at a time', async () => {
+  const table = (name: string) => ({
+    schema: 'public',
+    name,
+    kind: 'table' as const,
+    arguments: null,
+    rowEstimate: null,
+    comment: null,
+  });
+  vi.mocked(listObjects).mockImplementation((_profile, _database, section) =>
+    Promise.resolve({
+      data:
+        section.limit === 5000
+          ? [table('first')]
+          : [table('first'), table('second')],
+      total: 7500,
+      stale: false,
+    }),
+  );
+  const user = mount();
+  await connectTo();
+  const more = await sidebar().findByRole('button', {
+    name: 'Show 5,000 more of 7,499',
+  });
+  expect(sidebar().getByRole('button', { name: /^Tables/ })).toHaveTextContent(
+    '7500',
+  );
+  await user.click(more);
+  expect(listObjects).toHaveBeenLastCalledWith(
+    'id-orders-local',
+    'orders',
+    { schema: 'public', kinds: ['table', 'foreignTable'], limit: 10000 },
+    false,
+  );
+  expect(await sidebar().findByText('second')).toBeVisible();
+  vi.mocked(listObjects).mockReset();
 });

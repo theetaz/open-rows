@@ -224,7 +224,8 @@ All drivers convert native values into a shared type system that maps 1:1 onto A
 | Interval | `Interval(MonthDayNano)` | | |
 | UUID | `FixedSizeBinary(16)` + extension tag | | |
 | JSON | `Utf8` + `openrows.json` extension | PG `json/jsonb`, MySQL `JSON` | |
-| Array | `List<T>` | PG arrays | |
+| Array | `List<T>` | PG arrays | One-dimensional arrays with lower bound 1; other shapes, and elements without an exact Arrow value, are the server's array text (tagged). |
+| Network address, MAC address, range | `Utf8` + `openrows.inet` / `openrows.macaddr` / `openrows.range` | PG `inet`, `cidr`, `macaddr`, `int4range`, `datemultirange` | The server's text form; the inspector shows address/prefix and range bounds. |
 | Composite / Document | `Utf8` (canonical JSON/EJSON) + extension tag | Mongo documents, PG composite | Also offered as tree in document view. |
 | Geometry | `Binary` (WKB) + `openrows.geo` tag | PostGIS, MySQL spatial | Rendered as WKT in grid; map preview in inspector (P2). |
 | Unknown | `Utf8` (server text representation) + original type name | Exotic extension types | Never fail a query because we don't know a type. |

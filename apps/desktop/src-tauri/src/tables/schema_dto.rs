@@ -82,6 +82,19 @@ pub(crate) struct TriggerDto {
     pub(crate) definition: String,
 }
 
+/// One partition of a partitioned table.
+#[derive(Clone, Debug, PartialEq, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct PartitionDto {
+    pub(crate) schema: String,
+    pub(crate) name: String,
+    /// `FOR VALUES …` as the server prints it.
+    pub(crate) bound: String,
+    /// Itself partitioned.
+    pub(crate) partitioned: bool,
+    pub(crate) row_estimate: Option<f64>,
+}
+
 /// Kind of the browsed relation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -114,6 +127,8 @@ pub(crate) struct TableDetailDto {
     pub(crate) primary_key: Vec<String>,
     pub(crate) indexes: Vec<IndexDetailDto>,
     pub(crate) triggers: Vec<TriggerDto>,
+    /// Partitions of a partitioned table, by name.
+    pub(crate) partitions: Vec<PartitionDto>,
     pub(crate) info: TableInfoDto,
     /// Reconstructed definition (`-- Table Definition`, `CREATE TABLE …`).
     pub(crate) ddl: String,

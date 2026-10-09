@@ -11,6 +11,7 @@ use openrows_driver_api::{
 use openrows_net::tls::CloudCa as NetCloudCa;
 use openrows_net::{Dialer, SecretString as NetSecret};
 use openrows_secrets::SecretString;
+use openrows_sql::{Dialect, split};
 use openrows_store::profile::{
     CloudCa, ConnectionProfile, FileParams, ProfileId, TlsMode, TlsSettings,
 };
@@ -115,8 +116,18 @@ pub(crate) fn target(
         tls: tls_files(&profile.tls, secrets.tls_key_passphrase.as_ref()),
         via: None,
         timeouts: ConnectTimeouts::default(),
+        startup_commands: startup_statements(&profile.startup_commands, driver.dialect()),
     };
     Ok(Target { driver, request })
+}
+
+/// The profile's startup SQL as single statements in order.
+fn startup_statements(sql: &str, dialect: Dialect) -> Vec<String> {
+    split(sql, dialect)
+        .iter()
+        .map(|statement| statement.text(sql).trim().to_owned())
+        .filter(|text| !text.is_empty())
+        .collect()
 }
 
 /// The file or in-memory database of a file profile with its attachments.

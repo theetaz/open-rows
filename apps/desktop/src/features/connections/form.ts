@@ -55,6 +55,8 @@ export type Draft = {
   confirmWrites: boolean;
   /** Keep executed statements in History (FR-WS-02). */
   recordHistory: boolean;
+  /** SQL run after every connect, reconnects included (FR-CONN-10). */
+  startupCommands: string;
   password: string;
   passwordMode: PasswordMode;
   hasStoredPassword: boolean;
@@ -110,6 +112,7 @@ export function emptyDraft(engine: EngineDto = 'postgres'): Draft {
     readOnly: false,
     confirmWrites: false,
     recordHistory: true,
+    startupCommands: '',
     password: '',
     passwordMode: 'keep',
     hasStoredPassword: false,
@@ -146,6 +149,7 @@ export function draftFromProfile(profile: ProfileDto): Draft {
     readOnly: profile.safety.readOnly,
     confirmWrites: profile.safety.confirmWrites,
     recordHistory: profile.recordHistory,
+    startupCommands: profile.startupCommands,
     hasStoredPassword: profile.hasPassword,
     passwordStorage: profile.passwordStorage,
     ssh: sshFromProfile(profile),
@@ -306,6 +310,7 @@ export function toInput(draft: Draft): ProfileInput {
     proxy: file ? null : proxyInput(draft.proxy),
     safety: { readOnly: draft.readOnly, confirmWrites: draft.confirmWrites },
     recordHistory: draft.recordHistory,
+    startupCommands: draft.startupCommands.trim(),
     passwordStorage: draft.passwordStorage,
     password: file ? { kind: 'clear' } : password(draft),
     limits: limitsInput(draft.limits),

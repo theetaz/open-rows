@@ -154,17 +154,33 @@ fn prepared(token: String, plan: AlterPlan, confirm_name: Option<String>) -> Alt
 }
 
 /// Defence in depth: every generated text must be exactly one DDL statement
-/// (a default expression cannot smuggle in a second one).
+/// (a default expression cannot smuggle in a second one). A `SQLite` table
+/// rebuild also copies its rows (`INSERT INTO … SELECT`) and scopes the
+/// legacy rename pragma around its final rename.
 fn ensure_single_ddl(statements: &[String], dialect: Dialect) -> Result<(), IpcError> {
     for sql in statements {
         let single = split(sql, dialect).len() == 1;
-        if !single || classify(sql, dialect).kind != StatementKind::Ddl {
+        if !single || !generated_kind(sql, dialect) {
             return Err(IpcError::invalid(
                 "A default expression must be a single SQL expression",
             ));
         }
     }
     Ok(())
+}
+
+fn generated_kind(sql: &str, dialect: Dialect) -> bool {
+    match classify(sql, dialect).kind {
+        StatementKind::Ddl => true,
+        StatementKind::Write => sql.starts_with("INSERT INTO "),
+        _ => {
+            dialect == Dialect::Sqlite
+                && matches!(
+                    sql,
+                    "PRAGMA legacy_alter_table = ON" | "PRAGMA legacy_alter_table = OFF"
+                )
+        }
+    }
 }
 
 /// Binds a review to the session, the exact change set and its statements.
@@ -225,6 +241,15 @@ mod tests {
         let smuggled = "ALTER TABLE \"t\" ALTER COLUMN \"c\" SET DEFAULT ('a'); DROP TABLE t; --)";
         assert!(ensure_single_ddl(&[smuggled.into()], Dialect::Postgres).is_err());
         assert!(ensure_single_ddl(&["DELETE FROM t".into()], Dialect::Postgres).is_err());
+        let rebuild = [
+            "INSERT INTO \"main\".\"n\" (\"a\") SELECT \"a\" FROM \"main\".\"t\"".to_owned(),
+            "PRAGMA legacy_alter_table = ON".to_owned(),
+        ];
+        assert!(ensure_single_ddl(&rebuild, Dialect::Sqlite).is_ok());
+        let pragma = ["PRAGMA foreign_keys = OFF".to_owned()];
+        assert!(ensure_single_ddl(&pragma, Dialect::Sqlite).is_err());
+        let legacy = ["PRAGMA legacy_alter_table = ON".to_owned()];
+        assert!(ensure_single_ddl(&legacy, Dialect::Postgres).is_err());
     }
 
     #[test]

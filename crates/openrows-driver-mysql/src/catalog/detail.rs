@@ -63,6 +63,7 @@ pub(crate) async fn table_detail(
             .map(|index| index_detail(index, table))
             .collect(),
         triggers: triggers(session, schema, table).await?,
+        partitions: Vec::new(),
         info: Some(info),
     })
 }

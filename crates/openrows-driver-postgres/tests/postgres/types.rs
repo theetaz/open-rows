@@ -7,6 +7,7 @@ use crate::support::{Collect, TestResult, column, connect, metadata, run, single
 use arrow_array::cast::AsArray;
 use arrow_array::types::{
     Date32Type, Decimal128Type, Float32Type, Float64Type, Int16Type, Int32Type, Int64Type,
+    IntervalMonthDayNano, IntervalMonthDayNanoType, Time64MicrosecondType,
     TimestampMicrosecondType,
 };
 use arrow_array::{Array, RecordBatch};
@@ -168,12 +169,25 @@ async fn uuid_numeric_and_unknown_types_keep_exact_values() -> TestResult {
     );
     let exact = "-123456789012345678901234567890123456789.000000000000000000001";
     assert_eq!(strings(&batch, "num")?, [exact, "NaN"]);
+    let iv = column(&batch, "iv")?;
+    let iv = iv.as_primitive::<IntervalMonthDayNanoType>();
+    let micros = ((4 * 60 + 5) * 60 + 6) * 1_000_000 + 789_000;
     assert_eq!(
-        strings(&batch, "iv")?,
-        ["1 year 2 mons 3 days 04:05:06.789", "-00:00:00.000001"]
+        iv.values()[1..],
+        [
+            IntervalMonthDayNano::new(14, 3, micros * 1_000),
+            IntervalMonthDayNano::new(0, 0, -1_000)
+        ]
     );
     assert_eq!(strings(&batch, "ip")?, ["192.168.0.1/24", "::1"]);
-    assert_eq!(strings(&batch, "arr")?, ["{1,NULL,3}", "{}"]);
+    let arr = column(&batch, "arr")?;
+    let arr = arr.as_list::<i32>();
+    let first = arr.value(1);
+    let first: Vec<_> = first.as_primitive::<Int32Type>().iter().collect();
+    assert_eq!(
+        (first, arr.value(2).len()),
+        (vec![Some(1), None, Some(3)], 0)
+    );
     assert_eq!(strings(&batch, "pt")?, ["(1.5,-2)", "(0,0)"]);
     assert_source_types(&batch)
 }
@@ -193,6 +207,75 @@ fn assert_source_types(batch: &RecordBatch) -> TestResult {
     }
     assert_eq!(metadata(batch, "u", EXTENSION)?, "arrow.uuid");
     assert_eq!(metadata(batch, "num", EXTENSION)?, "openrows.decimal");
+    assert_eq!(metadata(batch, "ip", EXTENSION)?, "openrows.inet");
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "needs PostgreSQL: run `just test-pg`"]
+async fn times_networks_and_ranges_decode_natively() -> TestResult {
+    let sql = "SELECT * FROM (VALUES
+        (NULL::time, NULL::timetz, NULL::cidr, NULL::macaddr, NULL::macaddr8,
+         NULL::int4range, NULL::datemultirange),
+        ('13:05:00.25'::time, '13:05:00+05:30'::timetz, '10.1.0.0/16'::cidr,
+         '08:00:2b:01:02:03'::macaddr, '08:00:2b:01:02:03:04:05'::macaddr8,
+         '[1,10)'::int4range, '{[2024-01-01,2024-02-01)}'::datemultirange),
+        ('24:00:00'::time, '00:00:00-01'::timetz, '::/0'::cidr,
+         'ff:ff:ff:ff:ff:ff'::macaddr, '00:00:00:00:00:00:00:00'::macaddr8,
+         'empty'::int4range, '{}'::datemultirange)
+        ) AS t(tm, tz, net, mac, mac8, r, mr)";
+    let batch = single_batch(&mut connect().await?, sql).await?;
+    assert_first_row_null(&batch);
+    // 24:00:00 has no Time64 value, so the column is tagged text.
+    assert_eq!(column(&batch, "tm")?.data_type(), &DataType::Utf8);
+    assert_eq!(metadata(&batch, "tm", FALLBACK)?, "true");
+    assert_eq!(strings(&batch, "tm")?, ["13:05:00.25", "24:00:00"]);
+    assert_eq!(strings(&batch, "tz")?, ["13:05:00+05:30", "00:00:00-01"]);
+    assert_eq!(strings(&batch, "net")?, ["10.1.0.0/16", "::/0"]);
+    assert_eq!(
+        strings(&batch, "mac")?,
+        ["08:00:2b:01:02:03", "ff:ff:ff:ff:ff:ff"]
+    );
+    assert_eq!(
+        strings(&batch, "mac8")?,
+        ["08:00:2b:01:02:03:04:05", "00:00:00:00:00:00:00:00"]
+    );
+    assert_eq!(strings(&batch, "r")?, ["[1,10)", "empty"]);
+    assert_eq!(strings(&batch, "mr")?, ["{[2024-01-01,2024-02-01)}", "{}"]);
+    for (name, extension) in [("mac", "openrows.macaddr"), ("r", "openrows.range")] {
+        assert_eq!(metadata(&batch, name, EXTENSION)?, extension);
+    }
+    let time = single_batch(&mut connect().await?, "SELECT '13:05:00.25'::time AS tm").await?;
+    let time = column(&time, "tm")?;
+    assert_eq!(time.data_type(), &DataType::Time64(TimeUnit::Microsecond));
+    let micros = time.as_primitive::<Time64MicrosecondType>().value(0);
+    assert_eq!(micros, (13 * 3_600 + 5 * 60) * 1_000_000 + 250_000);
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "needs PostgreSQL: run `just test-pg`"]
+async fn arrays_are_lists_until_a_value_needs_array_text() -> TestResult {
+    let sql = "SELECT * FROM (VALUES
+        (NULL::text[], NULL::int4[], NULL::interval[]),
+        (ARRAY['a b', NULL, '']::text[], '{1,2}'::int4[], '{1 day}'::interval[]),
+        (ARRAY['x']::text[], '{{1,2},{3,4}}'::int4[], '{-2 mons}'::interval[])
+        ) AS t(txt, ints, ivs)";
+    let batch = single_batch(&mut connect().await?, sql).await?;
+    assert_first_row_null(&batch);
+    let txt = column(&batch, "txt")?;
+    let txt = txt.as_list::<i32>();
+    let first = txt.value(1);
+    let first: Vec<_> = first.as_string::<i32>().iter().collect();
+    assert_eq!(first, [Some("a b"), None, Some("")]);
+    assert_eq!(metadata(&batch, "txt", SOURCE)?, "text[]");
+    // The two-dimensional value switches the column to PostgreSQL's array text.
+    assert_eq!(metadata(&batch, "ints", FALLBACK)?, "true");
+    assert_eq!(strings(&batch, "ints")?, ["{1,2}", "{{1,2},{3,4}}"]);
+    let ivs = column(&batch, "ivs")?;
+    let ivs = ivs.as_list::<i32>().value(2);
+    let ivs = ivs.as_primitive::<IntervalMonthDayNanoType>();
+    assert_eq!(ivs.value(0), IntervalMonthDayNano::new(-2, 0, 0));
     Ok(())
 }
 

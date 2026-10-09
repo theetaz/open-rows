@@ -29,6 +29,7 @@ pub mod attach;
 mod bind;
 mod classify;
 mod context;
+pub mod ddl;
 mod dialect;
 pub mod edit;
 mod lexer;

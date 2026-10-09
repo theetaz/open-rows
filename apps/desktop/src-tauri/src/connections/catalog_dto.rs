@@ -132,8 +132,21 @@ pub(crate) struct CatalogReply<T> {
 pub(crate) struct ObjectsRequest {
     pub(crate) schema: String,
     pub(crate) kinds: Vec<ObjectKindDto>,
+    /// The first this many objects (the tree pages through 5 000 at a
+    /// time); `None` for all of them.
+    #[serde(default)]
+    pub(crate) limit: Option<u32>,
     /// Re-read from the server instead of serving the cache.
     pub(crate) fresh: bool,
+}
+
+/// The first objects of a section and how many it holds in all.
+#[derive(Clone, Debug, PartialEq, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ObjectsReply {
+    pub(crate) data: Vec<ObjectDto>,
+    pub(crate) total: u32,
+    pub(crate) stale: bool,
 }
 
 /// A name search over a database's cached index (sidebar search, quick

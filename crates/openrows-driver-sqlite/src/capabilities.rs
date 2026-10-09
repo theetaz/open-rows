@@ -4,8 +4,8 @@ use openrows_driver_api::catalog::ObjectKind;
 use openrows_driver_api::{Capabilities, Feature, Location};
 
 /// A local file: interrupt-based cancel, bound parameters, attached
-/// databases as schemas, guarded edits and transactional DDL; no TLS or
-/// routes, and structure changes are not generated yet (docs/05 §13).
+/// databases as schemas, guarded edits, structure changes (rebuilding the
+/// table where `ALTER TABLE` cannot) and transactional DDL; no TLS or routes.
 pub(crate) const CAPABILITIES: Capabilities = Capabilities {
     location: Location::File,
     features: &[
@@ -14,7 +14,10 @@ pub(crate) const CAPABILITIES: Capabilities = Capabilities {
         Feature::Schemas,
         Feature::Catalog,
         Feature::RowEdits,
+        Feature::StructureChanges,
         Feature::TransactionalDdl,
+        Feature::StartupCommands,
+        Feature::SchemaFingerprint,
     ],
     object_kinds: &[ObjectKind::Table, ObjectKind::View],
 };

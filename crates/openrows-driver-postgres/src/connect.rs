@@ -169,19 +169,9 @@ async fn run_startup_commands(wire: &mut Wire, commands: &[String]) -> Result<()
     for (index, sql) in commands.iter().enumerate() {
         simple::query(wire, sql)
             .await
-            .map_err(|error| startup_command_error(index, error))?;
+            .map_err(|error| error.in_startup_command(index))?;
     }
     Ok(())
-}
-
-fn startup_command_error(index: usize, error: DriverError) -> DriverError {
-    match error {
-        DriverError::Server { code, message } => DriverError::Server {
-            code,
-            message: format!("startup command {}: {message}", index + 1),
-        },
-        other => other,
-    }
 }
 
 async fn tcp(

@@ -65,6 +65,18 @@ impl DriverError {
             other => other,
         }
     }
+
+    /// Name the failing startup command (`index` from 0) in a server error.
+    #[must_use]
+    pub fn in_startup_command(self, index: usize) -> Self {
+        match self {
+            Self::Server { code, message } => Self::Server {
+                code,
+                message: format!("startup command {}: {message}", index + 1),
+            },
+            other => other,
+        }
+    }
 }
 
 #[cfg(test)]

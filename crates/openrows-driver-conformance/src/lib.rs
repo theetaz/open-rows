@@ -10,12 +10,13 @@
 //!
 //! | Group | Needs | Contract |
 //! | --- | --- | --- |
-//! | [`Group::Connect`] | — | Connects and records the stages; `SELECT 1` answers; the server summary names the driver's product; facets, the cancel handle and `supports_alter` match the capabilities; a wrong password is `Auth` (servers) and a missing file fails to open (files). |
+//! | [`Group::Connect`] | — | Connects and records the stages; `SELECT 1` answers; the server summary names the driver's product; facets, the cancel handle, `supports_alter` and the schema fingerprint match the capabilities; with `StartupCommands`, startup SQL runs on connect and a failing command fails the connect naming it; a wrong password is `Auth` (servers) and a missing file fails to open (files). |
 //! | [`Group::Types`] | — (bound part: `BindParameters`) | NULL, integers, floats, booleans, unicode and empty text, binary, decimals and dates decode to the documented Arrow type and exact value; every field carries `openrows.source_type`; bound text and NULL round-trip unchanged. |
 //! | [`Group::Streaming`] | — | 10 000 rows stream as one result in order, the first batch holds at most 200 rows, the summary counts every row; a sink that stops after the first batch ends the statement cleanly and the session stays usable. |
 //! | [`Group::Cancel`] | `Cancel` | A long statement cancelled from its handle ends within seconds with the dialect's cancel SQLSTATE; the session stays usable. |
 //! | [`Group::Errors`] | — | Syntax errors, unknown tables, unique and NOT NULL violations are `Server` errors with the dialect's SQLSTATE, and the session stays usable after each. |
 //! | [`Group::Metadata`] | `Catalog` | The fixture database, schema, table and view are listed with the right kinds; the search index finds them; columns come back in order with types, nullability and the primary key. |
+//! | [`Group::Structure`] | `StructureChanges` | A generated change set (type change, column rename, added column with a default, new index) commits through `commit_ddl` and the table reads back as staged with its row intact; an unknown column is refused before any SQL. |
 //! | [`Group::Edits`] | `RowEdits` | The row key is discovered; snapshots are exact text; generated insert/update/delete commit atomically; a stale guard rolls the whole set back with `40001`; with `TransactionalDdl`, a failing DDL set leaves nothing behind. |
 //!
 //! A test crate states how to reach its engine and invokes
@@ -31,6 +32,7 @@ mod errors;
 mod metadata;
 mod sink;
 mod streaming;
+mod structure;
 mod types;
 
 use openrows_driver_api::{ConnectRequest, ConnectTrace, Connection, Driver, DriverError, Feature};
@@ -106,11 +108,13 @@ pub enum Group {
     Metadata,
     /// Row keys, snapshots, guarded DML and transactional DDL.
     Edits,
+    /// Generated structure changes.
+    Structure,
 }
 
 impl Group {
     /// Every group, in run order.
-    pub const ALL: [Self; 7] = [
+    pub const ALL: [Self; 8] = [
         Self::Connect,
         Self::Types,
         Self::Streaming,
@@ -118,6 +122,7 @@ impl Group {
         Self::Errors,
         Self::Metadata,
         Self::Edits,
+        Self::Structure,
     ];
 
     /// The feature a driver must claim for the group to run.
@@ -127,6 +132,7 @@ impl Group {
             Self::Cancel => Some(Feature::Cancel),
             Self::Metadata => Some(Feature::Catalog),
             Self::Edits => Some(Feature::RowEdits),
+            Self::Structure => Some(Feature::StructureChanges),
             Self::Connect | Self::Types | Self::Streaming | Self::Errors => None,
         }
     }
@@ -149,6 +155,7 @@ impl Group {
             Self::Errors => errors::run(target).await?,
             Self::Metadata => metadata::run(target).await?,
             Self::Edits => edits::run(target).await?,
+            Self::Structure => structure::run(target).await?,
         }
         Ok(Verdict::Passed)
     }
@@ -164,6 +171,7 @@ impl Group {
             Self::Errors => "errors",
             Self::Metadata => "metadata",
             Self::Edits => "edits",
+            Self::Structure => "structure",
         }
     }
 }
@@ -211,6 +219,7 @@ macro_rules! conformance_tests {
             error_sqlstates => Errors,
             metadata_listing => Metadata,
             edit_contract => Edits,
+            structure_contract => Structure,
         );
     };
     (@tests $attributes:tt $prepare:path; $($name:ident => $group:ident,)*) => {
@@ -234,7 +243,12 @@ mod tests {
         let gated: Vec<_> = Group::ALL.into_iter().filter_map(Group::requires).collect();
         assert_eq!(
             gated,
-            [Feature::Cancel, Feature::Catalog, Feature::RowEdits]
+            [
+                Feature::Cancel,
+                Feature::Catalog,
+                Feature::RowEdits,
+                Feature::StructureChanges
+            ]
         );
         assert!(fixture_name(Group::Edits, "t").starts_with("orc_edits_"));
         assert!(ensure(false, || "no".to_owned()).is_err());

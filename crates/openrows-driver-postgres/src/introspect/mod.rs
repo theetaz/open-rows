@@ -20,6 +20,7 @@ const DATABASES_SQL: &str = include_str!("sql/databases.sql");
 const SCHEMAS_SQL: &str = include_str!("sql/schemas.sql");
 const OBJECTS_SQL: &str = include_str!("sql/objects.sql");
 const SEARCH_SQL: &str = include_str!("sql/search.sql");
+const FINGERPRINT_SQL: &str = include_str!("sql/fingerprint.sql");
 
 impl PgSession {
     /// Connectable, non-template databases on the server.
@@ -81,6 +82,15 @@ impl PgSession {
     pub async fn search_index(&mut self) -> Result<Vec<ObjectSummary>, DriverError> {
         let rows = self.text_query(SEARCH_SQL).await?;
         rows.iter().map(object).collect()
+    }
+
+    /// A digest of the listed objects that any DDL changes (M1-16).
+    ///
+    /// # Errors
+    /// As [`PgSession::list_databases`].
+    pub async fn schema_fingerprint(&mut self) -> Result<Option<String>, DriverError> {
+        let rows = self.text_query(FINGERPRINT_SQL).await?;
+        Ok(rows.first().and_then(|row| optional(row, 0)))
     }
 }
 

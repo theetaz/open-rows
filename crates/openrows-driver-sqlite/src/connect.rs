@@ -7,14 +7,17 @@
 use std::path::Path;
 use std::time::Duration;
 
+use openrows_driver_api::schema::SchemaChange;
+use openrows_driver_api::structure::{AlterPlan, AlterTable};
 use openrows_driver_api::{
     Attachment, BoxFuture, ConnectRequest, ConnectStage, ConnectTrace, Connection, Driver,
-    DriverError, Endpoint, FileSource, ServerSummary, TlsStatus,
+    DriverError, Endpoint, FileSource, GenerateError, ServerSummary, TlsStatus,
 };
 use openrows_sql::Dialect;
 use openrows_sql::attach::attach_sql;
 use rusqlite::OpenFlags;
 
+use crate::ddl;
 use crate::session::SqliteSession;
 use crate::worker::Worker;
 
@@ -48,6 +51,18 @@ impl Driver for SqliteDriver {
         crate::capabilities::CAPABILITIES
     }
 
+    fn supports_alter(&self) -> bool {
+        true
+    }
+
+    fn alter_sql(
+        &self,
+        target: &AlterTable<'_>,
+        changes: &[SchemaChange],
+    ) -> Result<AlterPlan, GenerateError> {
+        ddl::alter_sql(target, changes).map_err(|error| GenerateError(error.to_string()))
+    }
+
     fn connect<'a>(
         &'a self,
         request: &'a ConnectRequest,
@@ -60,8 +75,10 @@ impl Driver for SqliteDriver {
                 ));
             };
             let open = async { open_source(source, attached) };
-            let session = trace.stage(ConnectStage::Connect, open).await?;
+            let mut session = trace.stage(ConnectStage::Connect, open).await?;
             trace.tls = Some(TlsStatus::LocalSocket);
+            let commands = session.run_startup_commands(request.startup_commands.clone());
+            trace.stage(ConnectStage::StartupCommands, commands).await?;
             Ok(Box::new(session) as Box<dyn Connection>)
         })
     }

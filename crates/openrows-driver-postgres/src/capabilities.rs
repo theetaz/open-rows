@@ -4,7 +4,8 @@ use openrows_driver_api::catalog::ObjectKind;
 use openrows_driver_api::{Capabilities, Feature, Location};
 
 /// Cancel requests, bound parameters, the full catalog, guarded edits,
-/// generated structure changes, transactional DDL, TLS and routes.
+/// generated structure changes, transactional DDL, TLS, routes, startup
+/// commands and a catalog fingerprint: every feature.
 pub(crate) const CAPABILITIES: Capabilities = Capabilities {
     location: Location::Server,
     features: &Feature::ALL,

@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 //! `DataRow` bodies → Arrow `RecordBatch`es, flushed per [`BatchPolicy`].
+mod array;
 mod column;
 mod fallback;
+mod network;
 mod numeric;
 mod scalar;
+mod temporal;
+mod text;
 
 use crate::types::{self, ColumnDesc, ColumnKind};
 use arrow_array::{RecordBatch, RecordBatchOptions};
@@ -14,9 +18,10 @@ use std::{collections::HashMap, sync::Arc};
 
 /// Streaming decoder for one result set.
 ///
-/// A timestamp, date or `numeric(p, s)` value with no exact Arrow form (±infinity,
-/// beyond Arrow's µs range, `NaN`) switches that column to tagged text for the
-/// rest of the result: [`ResultDecoder::schema`] changes and later batches carry
+/// A timestamp, date, time, interval, `numeric(p, s)` or array value with no
+/// exact Arrow form (±infinity, beyond Arrow's µs range, `NaN`, `24:00:00`, a
+/// multidimensional array) switches that column to tagged text for the rest
+/// of the result: [`ResultDecoder::schema`] changes and later batches carry
 /// the new schema. After [`ResultDecoder::decode_row`] fails the decoder is
 /// poisoned: drop it.
 pub struct ResultDecoder {

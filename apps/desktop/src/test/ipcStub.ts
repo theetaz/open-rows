@@ -37,6 +37,7 @@ export function profile(
     insecure: [],
     recordHistory: true,
     limits: { statementTimeoutSeconds: null, idleTimeoutMinutes: 0 },
+    startupCommands: '',
     ...overrides,
   };
 }

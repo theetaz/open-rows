@@ -86,3 +86,82 @@ async fn the_server_statement_timeout_is_set_at_start_and_after_a_reconnect() ->
     manager.close(session).await?;
     Ok(())
 }
+
+/// Connects through the driver contract, so the request's startup commands
+/// run inside every connect, the first and each reconnect.
+fn reconnect_with_startup(startup_commands: Vec<String>) -> TestResult<openrows_core::Reconnect> {
+    use openrows_driver_api::{
+        ConnectRequest, ConnectTimeouts, ConnectTrace, Driver, Endpoint, Session, SslMode, TlsFiles,
+    };
+    let config = config()?;
+    let request = Arc::new(ConnectRequest {
+        endpoint: Endpoint::Server {
+            host: config.host,
+            port: config.port,
+        },
+        database: config.database,
+        user: config.user,
+        password: config
+            .password
+            .as_deref()
+            .map(openrows_net::SecretString::from),
+        application_name: "openrows-test".to_owned(),
+        ssl_mode: SslMode::Prefer,
+        tls: TlsFiles::default(),
+        via: None,
+        timeouts: ConnectTimeouts::default(),
+        startup_commands,
+    });
+    Ok(Arc::new(move || {
+        let request = Arc::clone(&request);
+        Box::pin(async move {
+            let connection = openrows_driver_postgres::PgDriver
+                .connect(&request, &mut ConnectTrace::default())
+                .await?;
+            let session: Box<dyn Session> = connection;
+            Ok(session)
+        })
+    }))
+}
+
+/// Startup commands run first, then the timeout setup (which wins for
+/// `statement_timeout`), on the first connect and again after a reconnect.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "needs PostgreSQL; run with `just test-pg`"]
+async fn startup_commands_run_before_the_timeout_setup_on_every_connect() -> TestResult {
+    let store = Arc::new(ResultStore::default());
+    let manager = SessionManager::new(store.clone());
+    manager.set_keepalive(Some(KEEPALIVE));
+    let mut changes = manager.subscribe();
+    let startup = vec![
+        "SET statement_timeout = 9000".to_owned(),
+        "SET application_name = 'orc_boot'".to_owned(),
+    ];
+    let recipe = Resilience {
+        reconnect: reconnect_with_startup(startup)?,
+        dialect: Some(Dialect::Postgres),
+        policy: RetryPolicy {
+            probe_timeout: PROBE_TIMEOUT,
+            first_delay: Duration::from_millis(100),
+            ..RetryPolicy::default()
+        },
+        setup: vec!["SET statement_timeout = 500".to_owned()],
+    };
+    let session = manager.open_resilient(recipe).await?;
+    let sql = "SELECT 1 AS n, current_setting('statement_timeout') || '/' || \
+               current_setting('application_name') AS label";
+    assert_eq!(
+        single_label(&manager, &store, session, sql).await?,
+        ["500ms/orc_boot"]
+    );
+    let pid = backend_pid(&manager, &store, session).await?;
+    terminate(&manager, &pid).await?;
+    reaches(&mut changes, session, SessionState::Reconnecting).await?;
+    reaches(&mut changes, session, SessionState::Idle).await?;
+    assert_eq!(
+        single_label(&manager, &store, session, sql).await?,
+        ["500ms/orc_boot"]
+    );
+    manager.close(session).await?;
+    Ok(())
+}

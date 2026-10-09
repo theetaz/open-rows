@@ -6,7 +6,8 @@ import { nodeKey, objectLabel } from './catalog';
 import type { ObjectGroup, ObjectRef } from './catalog';
 import { ObjectRow } from './ObjectRow';
 import type { MenuPoint } from './ObjectRow';
-import type { Catalog } from './useCatalog';
+import { OBJECT_PAGE } from './useCatalog';
+import type { Catalog, ObjectPage } from './useCatalog';
 import type { Resource } from './useResources';
 import styles from './ObjectTree.module.css';
 
@@ -43,21 +44,54 @@ function inGroup(
   return { ...found, data };
 }
 
+/** The objects of a loaded page as a list resource. */
+function pageObjects(page: Resource<ObjectPage>): Resource<ObjectDto[]> {
+  return page.status === 'ready' ? { ...page, data: page.data.objects } : page;
+}
+
 /**
- * One kind group; loads its objects the first time it is expanded. While
- * the index answers the search, it lists the index matches instead.
+ * The section's pages: the first `limit` objects, shown from the previous
+ * (smaller) page while "Show more" loads the next one.
+ */
+function usePages(catalog: Catalog, group: ObjectGroup, load: boolean) {
+  const [limit, setLimit] = useState(OBJECT_PAGE);
+  const current = catalog.objects(group, limit);
+  const previous = catalog.objects(group, limit - OBJECT_PAGE);
+  const { loadObjects } = catalog;
+  useEffect(() => {
+    if (load && current.status === 'idle') loadObjects(group, limit);
+  }, [load, current.status, loadObjects, group, limit]);
+  const shown =
+    current.status !== 'ready' && previous.status === 'ready'
+      ? previous
+      : current;
+  const more =
+    shown.status === 'ready' && shown.data.total > shown.data.objects.length
+      ? shown.data.total - shown.data.objects.length
+      : 0;
+  return {
+    listed: pageObjects(shown),
+    total: shown.status === 'ready' ? shown.data.total : undefined,
+    more,
+    showMore: () => {
+      setLimit((count) => count + OBJECT_PAGE);
+    },
+  };
+}
+
+/**
+ * One kind group; loads its objects the first time it is expanded, 5 000
+ * at a time. While the index answers the search, it lists the index
+ * matches instead.
  */
 export function ObjectSection(props: Props): React.JSX.Element {
   const { catalog, group, search, found } = props;
   const [open, setOpen] = useState(group.id === 'tables');
-  const listed = catalog.objects(group);
-  const resource = found ? inGroup(found, group) : listed;
   const expanded = open || !!search;
   const indexed = found !== null;
-  const { loadObjects } = catalog;
-  useEffect(() => {
-    if (expanded && !indexed && listed.status === 'idle') loadObjects(group);
-  }, [expanded, indexed, listed.status, loadObjects, group]);
+  const pages = usePages(catalog, group, expanded && !indexed);
+  const { listed } = pages;
+  const resource = found ? inGroup(found, group) : listed;
   const items =
     resource.status !== 'ready'
       ? []
@@ -69,7 +103,7 @@ export function ObjectSection(props: Props): React.JSX.Element {
     <div hidden={!!search && resource.status === 'ready' && !items.length}>
       <DisclosureSection
         label={group.label}
-        {...(resource.status === 'ready' ? { count: items.length } : {})}
+        {...sectionCount(resource, pages.total, indexed || !!search, items)}
         defaultOpen={open}
         forceOpen={!!search}
         onOpenChange={setOpen}
@@ -102,8 +136,37 @@ export function ObjectSection(props: Props): React.JSX.Element {
             ))}
           </Tree>
         )}
+        {!indexed && <ShowMore more={pages.more} onClick={pages.showMore} />}
       </DisclosureSection>
     </div>
+  );
+}
+
+/** The section's count: all of its objects, or the matches while searching. */
+function sectionCount(
+  resource: Resource<ObjectDto[]>,
+  total: number | undefined,
+  filtered: boolean,
+  items: readonly ObjectDto[],
+): { count?: number } {
+  if (resource.status !== 'ready') return {};
+  return { count: filtered ? items.length : (total ?? items.length) };
+}
+
+/** "Show 5,000 more of 12,345" below a section that holds more objects. */
+function ShowMore({
+  more,
+  onClick,
+}: {
+  more: number;
+  onClick: () => void;
+}): React.JSX.Element | null {
+  if (more <= 0) return null;
+  const next = Math.min(more, OBJECT_PAGE).toLocaleString('en-US');
+  return (
+    <Button size="sm" variant="ghost" onClick={onClick}>
+      Show {next} more of {more.toLocaleString('en-US')}
+    </Button>
   );
 }
 

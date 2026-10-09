@@ -16,6 +16,7 @@
 mod auth;
 mod capabilities;
 mod catalog;
+mod ddl;
 mod decode;
 mod driver;
 mod editor;

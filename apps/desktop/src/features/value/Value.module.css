@@ -92,3 +92,29 @@
   display: flex;
   gap: var(--or-space-4);
 }
+.items {
+  margin: 0;
+  padding-left: var(--or-space-20);
+  max-height: 30vh;
+  overflow: auto;
+  font-family: var(--or-font-mono);
+  font-size: var(--or-text-12);
+}
+.parts {
+  display: grid;
+  gap: var(--or-space-2);
+  margin: 0;
+  font-size: var(--or-text-12);
+}
+.parts div {
+  display: flex;
+  gap: var(--or-space-6);
+}
+.parts dt {
+  min-width: 56px;
+  color: var(--or-secondary);
+}
+.parts dd {
+  margin: 0;
+  font-family: var(--or-font-mono);
+}

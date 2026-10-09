@@ -3461,6 +3461,7 @@ name = "openrows-driver-postgres"
 version = "0.1.0"
 dependencies = [
  "arrow-array",
+ "arrow-buffer",
  "arrow-schema",
  "bytes",
  "criterion",

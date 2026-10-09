@@ -65,6 +65,7 @@ export const sampleDetail: TableDetailDto = {
         'CREATE INDEX orders_name_idx ON public.orders USING btree (lower(name)) WHERE name IS NOT NULL',
     },
   ],
+  partitions: [],
   triggers: [
     {
       name: 'orders_touch',

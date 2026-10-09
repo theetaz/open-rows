@@ -342,3 +342,20 @@
 .value textarea::placeholder {
   color: var(--or-placeholder);
 }
+.partitions {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--or-text-12);
+}
+.partitions th {
+  color: var(--or-secondary);
+  font-weight: normal;
+  text-align: left;
+}
+.partitions th,
+.partitions td {
+  padding: var(--or-space-2) var(--or-space-6);
+}
+.partitions td:nth-child(2) {
+  font-family: var(--or-font-mono);
+}

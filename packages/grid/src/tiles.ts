@@ -9,6 +9,8 @@ export interface ColumnChunk {
   values: ArrayBufferView;
   validity: Uint8Array | undefined;
   offsets: Int32Array | undefined;
+  /** Element values of a `List` chunk; `offsets` index into them. */
+  child?: ColumnChunk | undefined;
 }
 /** A typed column with exact type description and extension metadata. */
 export interface TypedColumn {

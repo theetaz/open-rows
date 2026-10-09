@@ -255,4 +255,25 @@ impl Catalog for SqliteSession {
                 .await?
         })
     }
+
+    fn schema_fingerprint(&mut self) -> BoxFuture<'_, Result<Option<String>, DriverError>> {
+        Box::pin(async move { self.worker.call(fingerprint).await? })
+    }
+}
+
+/// Every attached database's `schema_version`, which each DDL statement bumps.
+fn fingerprint(connection: &mut Connection) -> Result<Option<String>, DriverError> {
+    let mut versions = Vec::new();
+    for schema in schemas(connection)? {
+        let quoted = Dialect::Sqlite
+            .quote_ident(&schema.name)
+            .map_err(|error| invalid(&error))?;
+        let version: i64 = sql(connection.query_row(
+            &format!("PRAGMA {quoted}.schema_version"),
+            [],
+            |row| row.get(0),
+        ))?;
+        versions.push(format!("{}={version}", schema.name));
+    }
+    Ok(Some(versions.join(",")))
 }

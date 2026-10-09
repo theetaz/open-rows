@@ -12,6 +12,7 @@ workspace = true
 
 [dependencies]
 arrow-array = "60"
+arrow-buffer = "60"
 arrow-schema = "60"
 bytes = "1.12"
 fallible-iterator = "0.2"

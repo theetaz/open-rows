@@ -2,7 +2,8 @@
 //! Per-dialect SQL and the expected answers: the only engine-specific part
 //! of the suite. Adding a dialect means adding its rows here.
 
-use arrow_schema::DataType;
+use arrow_schema::{DataType, IntervalUnit, TimeUnit};
+use openrows_driver_api::metadata::{INET_EXTENSION, RANGE_EXTENSION};
 use openrows_sql::Dialect;
 
 /// The Arrow type a value must decode to.
@@ -17,6 +18,10 @@ pub(crate) enum Arrow {
     Binary,
     Decimal(u8, i8),
     Date32,
+    Time64,
+    Interval,
+    /// A list of 32-bit integers.
+    ListInt32,
 }
 
 impl Arrow {
@@ -32,7 +37,10 @@ impl Arrow {
             | (Self::Boolean, DataType::Boolean)
             | (Self::Utf8, DataType::Utf8)
             | (Self::Binary, DataType::Binary)
-            | (Self::Date32, DataType::Date32) => true,
+            | (Self::Date32, DataType::Date32)
+            | (Self::Time64, DataType::Time64(TimeUnit::Microsecond))
+            | (Self::Interval, DataType::Interval(IntervalUnit::MonthDayNano)) => true,
+            (Self::ListInt32, DataType::List(item)) => item.data_type() == &DataType::Int32,
             _ => false,
         }
     }
@@ -119,6 +127,37 @@ const POSTGRES_TYPES: &[TypeCase] = &[
         Arrow::Date32,
         Some("2024-05-06"),
     ),
+    case(
+        "time",
+        "TIME '13:05:00.25'",
+        Arrow::Time64,
+        Some("13:05:00.25"),
+    ),
+    case(
+        "interval",
+        "INTERVAL '1 year 2 mons -3 days 04:05:06.5'",
+        Arrow::Interval,
+        Some("1 year 2 mons -3 days +04:05:06.5"),
+    ),
+    case(
+        "int4 array",
+        "ARRAY[1, NULL, 3]",
+        Arrow::ListInt32,
+        Some("{1,NULL,3}"),
+    ),
+    TypeCase {
+        extension: Some(INET_EXTENSION),
+        ..case(
+            "cidr",
+            "CAST('10.1.0.0/16' AS cidr)",
+            Arrow::Utf8,
+            Some("10.1.0.0/16"),
+        )
+    },
+    TypeCase {
+        extension: Some(RANGE_EXTENSION),
+        ..case("int4range", "int4range(1, 10)", Arrow::Utf8, Some("[1,10)"))
+    },
 ];
 
 const MYSQL_TYPES: &[TypeCase] = &[

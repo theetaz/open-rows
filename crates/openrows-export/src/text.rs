@@ -2,7 +2,8 @@
 //! The canonical text form of a cell, shared by every format.
 //!
 //! Dates are ISO 8601 (`2024-02-29`), timestamps `YYYY-MM-DD HH:MM:SS[.ffffff]`
-//! with `+00:00` for zone-aware values (Arrow stores the UTC instant),
+//! with `+00:00` for zone-aware values (Arrow stores the UTC instant), times
+//! `HH:MM:SS[.ffffff]`, intervals `PostgreSQL`'s `1 year 2 mons 3 days 04:05:06`,
 //! binary is `\x` plus lowercase hex (`PostgreSQL`'s `bytea` output), UUIDs
 //! are hyphenated lowercase, floats are their shortest round-trip text
 //! (exponent form for very small or large magnitudes) and non-finite floats
@@ -12,7 +13,9 @@ use arrow_array::temporal_conversions::{
     date32_to_datetime, date64_to_datetime, timestamp_ms_to_datetime, timestamp_ns_to_datetime,
     timestamp_s_to_datetime, timestamp_us_to_datetime,
 };
+use arrow_array::types::IntervalMonthDayNano;
 use arrow_schema::TimeUnit;
+use openrows_driver_api::text::{IntervalParts, write_clock};
 use std::fmt::{self, Write as _};
 
 const DATE: &str = "%Y-%m-%d";
@@ -32,6 +35,10 @@ pub(crate) enum Temporal {
         /// Zone-aware: the value is a UTC instant.
         utc: bool,
     },
+    /// A time of day in `unit`s since midnight.
+    Time { value: i64, unit: TimeUnit },
+    /// Months, days and nanoseconds.
+    Interval(IntervalMonthDayNano),
 }
 
 impl fmt::Display for Temporal {
@@ -59,8 +66,30 @@ impl fmt::Display for Temporal {
                     None => write!(f, "{value}"),
                 }
             }
+            Self::Time { value, unit } => time(value, unit, f),
+            Self::Interval(value) => IntervalParts {
+                months: value.months,
+                days: value.days,
+                micros: value.nanoseconds / 1_000,
+            }
+            .write(f),
         }
     }
+}
+
+/// Sub-microsecond digits of nanosecond times are dropped, as `PostgreSQL`'s
+/// `time` keeps microseconds.
+fn time(value: i64, unit: TimeUnit, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    let micros = match unit {
+        TimeUnit::Second => value.saturating_mul(1_000_000),
+        TimeUnit::Millisecond => value.saturating_mul(1_000),
+        TimeUnit::Microsecond => value,
+        TimeUnit::Nanosecond => value / 1_000,
+    };
+    if micros < 0 {
+        f.write_char('-')?;
+    }
+    write_clock(micros.unsigned_abs(), f)
 }
 
 /// True for a JSON number (`-?(0|[1-9]\d*)(\.\d+)?([eE][+-]?\d+)?`), which
@@ -101,6 +130,7 @@ pub(crate) fn push_plain(cell: &Cell<'_>, out: &mut String) {
         Cell::F64(value) => push_float(*value, Float::F64(*value), out),
         Cell::Number(text) => out.write_str(text),
         Cell::Text(text) | Cell::Json(text) => out.write_str(text),
+        Cell::Owned(text) => out.write_str(text),
         Cell::Binary(bytes) => {
             out.push_str("\\x");
             push_hex(bytes, out);

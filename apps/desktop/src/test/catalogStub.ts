@@ -7,6 +7,7 @@ import type {
   DatabaseDto,
   ObjectDto,
   ObjectKindDto,
+  ObjectsReply,
   SchemaDto,
 } from '@openrows/ipc';
 
@@ -124,19 +125,28 @@ export function catalogStub(): Record<string, unknown> {
       (
         _profile: string,
         database: string,
-        section: { schema: string; kinds: ObjectKindDto[] },
-      ) =>
-        fresh(
-          objects
-            .filter(
-              (item) =>
-                item.database === database &&
-                item.schema === section.schema &&
-                section.kinds.includes(item.kind),
-            )
-            .map(strip),
-        ),
+        section: {
+          schema: string;
+          kinds: ObjectKindDto[];
+          limit?: number | null;
+        },
+      ): Promise<ObjectsReply> => {
+        const found = objects
+          .filter(
+            (item) =>
+              item.database === database &&
+              item.schema === section.schema &&
+              section.kinds.includes(item.kind),
+          )
+          .map(strip);
+        return Promise.resolve({
+          data: found.slice(0, section.limit ?? found.length),
+          total: found.length,
+          stale: false,
+        });
+      },
     ),
+    checkCatalog: vi.fn(() => Promise.resolve(false)),
     searchCatalog: vi.fn(
       (_profile: string, database: string, request: CatalogSearchRequest) =>
         search(database, request),

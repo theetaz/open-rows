@@ -3,14 +3,16 @@ import { DisclosureSection, SelectField } from '@openrows/ui';
 import { generalSettings } from '../settings/general';
 import { isFileEngine } from './engines';
 import { idleOptions, limitsSummary, statementOptions } from './limitsForm';
+import { StartupCommandsField } from './StartupCommandsField';
 import type { LimitsDraft } from './limitsForm';
 import type { ConnectionForm } from './useConnectionForm';
 import styles from './ConnectionSheet.module.css';
 
 /**
  * "Advanced" disclosure: the statement timeout (cancelled and reported as a
- * timeout) and, for servers, the idle timeout after which the connection
- * closes until the next query. Collapsed until a limit is set.
+ * timeout), for servers the idle timeout after which the connection closes
+ * until the next query, and the startup commands. Collapsed until a limit or
+ * a startup command is set.
  */
 export function SessionLimitsFields({
   form,
@@ -23,10 +25,11 @@ export function SessionLimitsFields({
     form.update({ limits: { ...limits, ...patch } });
   };
   const summary = limitsSummary(limits);
+  const startup = form.draft.startupCommands.trim() !== '';
   return (
     <DisclosureSection
-      label={`Advanced · ${summary}`}
-      defaultOpen={summary !== 'Defaults'}
+      label={`Advanced · ${summary}${startup ? ' · Startup SQL' : ''}`}
+      defaultOpen={summary !== 'Defaults' || startup}
     >
       <div className={styles.section}>
         <SelectField
@@ -64,6 +67,7 @@ export function SessionLimitsFields({
             </small>
           </>
         )}
+        <StartupCommandsField form={form} />
       </div>
     </DisclosureSection>
   );

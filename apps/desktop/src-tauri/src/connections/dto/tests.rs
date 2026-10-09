@@ -25,6 +25,7 @@ pub(crate) fn input(env: EnvKindDto) -> ProfileInput {
             confirm_writes: true,
         },
         record_history: false,
+        startup_commands: "  SET search_path TO app;\n".into(),
         password_storage: PasswordStorageDto::Keychain,
         password: PasswordInput::Keep,
         limits: LimitsDto::default(),
@@ -43,6 +44,7 @@ fn apply_trims_fields_and_drops_blank_options() -> Result<(), IpcError> {
     assert_eq!(profile.params.user.as_deref(), Some("app"));
     assert_eq!(profile.env_tag.kind, EnvKind::Staging);
     assert!(profile.safety.confirm_writes);
+    assert_eq!(profile.startup_commands, "SET search_path TO app;");
     Ok(())
 }
 
@@ -166,5 +168,6 @@ fn forms_without_an_engine_are_postgres() -> Result<(), serde_json::Error> {
         form.record_history,
         "history is recorded unless switched off"
     );
+    assert!(form.startup_commands.is_empty());
     Ok(())
 }

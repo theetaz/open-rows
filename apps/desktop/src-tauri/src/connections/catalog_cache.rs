@@ -14,7 +14,7 @@ use tauri_specta::Event;
 
 use super::Connections;
 use super::catalog::read_catalog;
-use super::catalog_dto::CatalogReply;
+use super::catalog_dto::{CatalogReply, ObjectDto, ObjectsReply};
 use super::error::{IpcError, IpcErrorKind};
 use crate::queries::history::now_ms;
 
@@ -97,6 +97,20 @@ pub(crate) fn reply<'a, S: 'a, D>(
     })
 }
 
+/// The first `limit` objects of a cached section (all without a limit) and
+/// how many it holds.
+pub(crate) fn page(cached: &Cached, limit: Option<u32>) -> Result<ObjectsReply, IpcError> {
+    let objects = cached.listing.objects().ok_or_else(mismatch)?;
+    let shown = limit.map_or(objects.len(), |limit| {
+        usize::try_from(limit).unwrap_or(usize::MAX)
+    });
+    Ok(ObjectsReply {
+        data: objects.iter().take(shown).map(ObjectDto::from).collect(),
+        total: u32::try_from(objects.len()).unwrap_or(u32::MAX),
+        stale: cached.stale,
+    })
+}
+
 /// A scope always caches the listing its command stored.
 pub(crate) fn mismatch() -> IpcError {
     IpcError::new(
@@ -150,6 +164,26 @@ mod tests {
         };
         let token = cache.begin(&key);
         cache.put(&key, &Scope::Schemas, listing, token)
+    }
+
+    #[test]
+    fn object_pages_hold_the_first_objects_and_the_total() -> Result<(), IpcError> {
+        use openrows_driver_api::catalog::{ObjectKind, ObjectSummary};
+        let object = |name: &str| ObjectSummary {
+            schema: "public".into(),
+            name: name.into(),
+            kind: ObjectKind::Table,
+            arguments: None,
+            row_estimate: None,
+            comment: None,
+        };
+        let listing = Listing::Objects(vec![object("a"), object("b"), object("c")]);
+        let section = cached(listing);
+        let first = page(&section, Some(2))?;
+        assert_eq!((first.data.len(), first.total), (2, 3));
+        assert_eq!(page(&section, None)?.data.len(), 3);
+        assert_eq!(page(&section, Some(10))?.data.len(), 3);
+        Ok(())
     }
 
     #[test]

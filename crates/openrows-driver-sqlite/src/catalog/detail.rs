@@ -48,6 +48,7 @@ pub(crate) fn table_detail(
         constraints,
         indexes,
         triggers,
+        partitions: Vec::new(),
         info: Some(TableInfo {
             kind: if view {
                 RelationKind::View

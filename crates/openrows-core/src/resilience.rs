@@ -64,8 +64,10 @@ pub struct Resilience {
     /// Probe and reconnect timing.
     pub policy: RetryPolicy,
     /// Statements run on every new connection, first and after each
-    /// reconnect, before the replayed settings: the server-side statement
-    /// timeout (M1-01). A server that rejects one (e.g. a `MySQL` without
+    /// reconnect, after the profile's startup commands (which the driver runs
+    /// inside `reconnect`) and before the replayed settings: the server-side
+    /// statement timeout (M1-01), so an explicit timeout wins over one set by
+    /// a startup command. A server that rejects one (e.g. a `MySQL` without
     /// `max_execution_time`) keeps the connection; only the client-side
     /// limit applies then.
     pub setup: Vec<String>,

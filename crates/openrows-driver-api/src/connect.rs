@@ -166,6 +166,9 @@ pub struct ConnectRequest {
     pub via: Option<Arc<dyn Dialer>>,
     /// Per-stage timeouts.
     pub timeouts: ConnectTimeouts,
+    /// SQL statements run in order after every connect, reconnects included
+    /// (FR-CONN-10); a failing statement fails the connect.
+    pub startup_commands: Vec<String>,
 }
 
 impl ConnectRequest {
@@ -214,6 +217,7 @@ impl fmt::Debug for ConnectRequest {
             .field("tls", &self.tls)
             .field("via", &self.via.as_ref().map(|via| via.describe()))
             .field("timeouts", &self.timeouts)
+            .field("startup_commands", &self.startup_commands.len())
             .finish()
     }
 }
@@ -255,6 +259,7 @@ mod tests {
             },
             via: None,
             timeouts: ConnectTimeouts::default(),
+            startup_commands: Vec::new(),
         };
         let text = format!("{request:?}");
         assert!(!text.contains("pw-synthetic") && !text.contains("hunter2"));

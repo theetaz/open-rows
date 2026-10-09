@@ -78,8 +78,11 @@ export const commands = {
 	catalogDatabases: (profileId: string, database: string, fresh: boolean) => typedError<CatalogReply<DatabaseDto[]>, IpcError>(__TAURI_INVOKE("catalog_databases", { profileId, database, fresh })),
 	/**  Schemas of `database`, user schemas first. */
 	catalogSchemas: (profileId: string, database: string, fresh: boolean) => typedError<CatalogReply<SchemaDto[]>, IpcError>(__TAURI_INVOKE("catalog_schemas", { profileId, database, fresh })),
-	/**  Objects of some kinds in one schema of `database`, ordered by name. */
-	catalogObjects: (profileId: string, database: string, request: ObjectsRequest) => typedError<CatalogReply<ObjectDto[]>, IpcError>(__TAURI_INVOKE("catalog_objects", { profileId, database, request })),
+	/**
+	 *  Objects of some kinds in one schema of `database`, ordered by name: the
+	 *  first `limit` of them and the total, so large schemas list in pages.
+	 */
+	catalogObjects: (profileId: string, database: string, request: ObjectsRequest) => typedError<ObjectsReply, IpcError>(__TAURI_INVOKE("catalog_objects", { profileId, database, request })),
 	/**
 	 *  Search the bounded name index of `database` (tables, views, sequences,
 	 *  routines of every user schema), reading the index first when needed.
@@ -90,6 +93,12 @@ export const commands = {
 	 *  to the server.
 	 */
 	catalogInvalidate: (profileId: string) => __TAURI_INVOKE<void>("catalog_invalidate", { profileId }),
+	/**
+	 *  On window focus: compare the server's schema fingerprint with the one
+	 *  seen before; when DDL ran outside the app, mark the connection's cache
+	 *  stale and tell the webview (`catalog-changed`), which reads it again.
+	 */
+	catalogCheck: (profileId: string, database: string) => typedError<boolean, IpcError>(__TAURI_INVOKE("catalog_check", { profileId, database })),
 	/**
 	 *  Split, bind, gate and start SQL on an open session.
 	 * 
@@ -826,10 +835,22 @@ export type ObjectDto = {
 /**  Object kinds the schema tree lists. */
 export type ObjectKindDto = "table" | "view" | "materializedView" | "foreignTable" | "function" | "procedure" | "sequence";
 
+/**  The first objects of a section and how many it holds in all. */
+export type ObjectsReply = {
+	data: ObjectDto[],
+	total: number,
+	stale: boolean,
+};
+
 /**  One tree section: objects of `kinds` in `schema`. */
 export type ObjectsRequest = {
 	schema: string,
 	kinds: ObjectKindDto[],
+	/**
+	 *  The first this many objects (the tree pages through 5 000 at a
+	 *  time); `None` for all of them.
+	 */
+	limit?: number | null,
 	/**  Re-read from the server instead of serving the cache. */
 	fresh: boolean,
 };
@@ -878,6 +899,17 @@ export type ParamValueDto = {
 export type ParamsDto = {
 	style: ParamStyleDto,
 	values: ParamValueDto[] | null,
+};
+
+/**  One partition of a partitioned table. */
+export type PartitionDto = {
+	schema: string,
+	name: string,
+	/**  `FOR VALUES …` as the server prints it. */
+	bound: string,
+	/**  Itself partitioned. */
+	partitioned: boolean,
+	rowEstimate: number | null,
 };
 
 /**  What to do with the password on save or test; `Debug` redacts secrets. */
@@ -943,6 +975,8 @@ export type ProfileDto = {
 	recordHistory: boolean,
 	/**  Statement and idle timeouts (M1-01). */
 	limits: LimitsDto,
+	/**  SQL run after every connect (FR-CONN-10); empty for none. */
+	startupCommands: string,
 };
 
 /**  Connection form values sent on save and test. */
@@ -968,6 +1002,8 @@ export type ProfileInput = {
 	safety: SafetyDto,
 	/**  Absent in forms written before the history switch: history is recorded. */
 	recordHistory?: boolean,
+	/**  SQL run after every connect; absent in older forms: none. */
+	startupCommands?: string,
 	/**  Absent in forms written before the choice: the keychain. */
 	passwordStorage?: PasswordStorageDto,
 	password: PasswordInput,
@@ -1292,6 +1328,8 @@ export type TableDetailDto = {
 	primaryKey: string[],
 	indexes: IndexDetailDto[],
 	triggers: TriggerDto[],
+	/**  Partitions of a partitioned table, by name. */
+	partitions: PartitionDto[],
 	info: TableInfoDto,
 	/**  Reconstructed definition (`-- Table Definition`, `CREATE TABLE …`). */
 	ddl: string,

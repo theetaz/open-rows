@@ -4,6 +4,7 @@ import type { WindowRequest } from '@openrows/ipc';
 import type { ColumnChunk, Tile } from './tiles';
 import type { DisplayCell } from './model';
 import { fixedValue } from './format';
+import { listValue } from './listValue';
 /** Ready-to-paint worker reply. Conversion time is worker CPU, not main-thread blocking time. */
 export interface DisplayTile {
   cells: DisplayCell[];
@@ -78,6 +79,7 @@ function displayValue(
   row: number,
   digits: number | undefined,
 ): string {
+  if (type.startsWith('List<')) return listValue(chunk, type, row, itemText);
   if (chunk.offsets) return variableValue(chunk, row, type);
   if (type === 'Bool') {
     const at = chunk.offset + row;
@@ -89,6 +91,24 @@ function displayValue(
     return ((values[at >>> 3] ?? 0) & (1 << (at & 7))) === 0 ? 'false' : 'true';
   }
   return fixedValue(chunk, type, row, digits);
+}
+
+/** One array element as `PostgreSQL` prints it (binary as `\x` hex). */
+function itemText(
+  chunk: ColumnChunk,
+  type: string,
+  row: number,
+): string | null {
+  if (isMissing(chunk, row)) return null;
+  if (type !== 'Binary') return displayValue(chunk, type, row, undefined);
+  const start = chunk.offsets?.[row] ?? 0;
+  const end = chunk.offsets?.[row + 1] ?? start;
+  const bytes = new Uint8Array(
+    chunk.values.buffer,
+    chunk.values.byteOffset + start,
+    end - start,
+  );
+  return `\\x${Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')}`;
 }
 
 function locate(

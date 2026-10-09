@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //! A table's definition rebuilt from the catalog (`PostgreSQL` has no single
 //! built-in for tables): `CREATE TABLE` with columns, defaults, `NOT NULL`
-//! and constraints, then indexes that do not back a constraint, comments and
-//! triggers. Views print their stored query.
+//! and constraints, then partitions, indexes that do not back a constraint,
+//! comments and triggers. Views print their stored query.
 use super::{AlterError, quote, relation, text};
 use openrows_driver_api::schema::{ColumnDetail, Generated, RelationKind, TableDetail, TableInfo};
 use std::fmt::Write as _;
@@ -35,6 +35,7 @@ pub fn create_table_sql(
         sql.push_str(&table_body(&name, info, detail)?);
     }
     let rest = [
+        partitions(&name, detail)?,
         indexes(detail),
         comments(&name, info, &detail.columns)?,
         triggers(detail),
@@ -117,13 +118,36 @@ fn column_line(column: &ColumnDetail) -> Result<String, AlterError> {
     Ok(line)
 }
 
+/// `CREATE TABLE … PARTITION OF parent bound` per partition, as `pg_dump`
+/// prints them (their own columns and indexes come from the parent).
+fn partitions(parent: &str, detail: &TableDetail) -> Result<String, AlterError> {
+    let mut sql = String::new();
+    for partition in &detail.partitions {
+        let _ = writeln!(
+            sql,
+            "CREATE TABLE {} PARTITION OF {parent} {};",
+            relation(&partition.schema, &partition.name)?,
+            partition.bound
+        );
+    }
+    Ok(sql)
+}
+
+/// Indexes that no constraint creates. The server prints a partitioned
+/// table's index `ON ONLY` (as `pg_dump` attaches each partition's index
+/// later); the definition creates it on every partition at once.
 fn indexes(detail: &TableDetail) -> String {
     detail
         .indexes
         .iter()
         .filter(|index| !index.constraint)
         .fold(String::new(), |mut sql, index| {
-            let _ = writeln!(sql, "{};", index.definition);
+            let definition = if detail.partitions.is_empty() {
+                index.definition.clone()
+            } else {
+                index.definition.replacen(" ON ONLY ", " ON ", 1)
+            };
+            let _ = writeln!(sql, "{definition};");
             sql
         })
 }

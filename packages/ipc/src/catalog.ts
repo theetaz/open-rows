@@ -7,7 +7,7 @@ import type {
   CatalogSearchReply,
   CatalogSearchRequest,
   DatabaseDto,
-  ObjectDto,
+  ObjectsReply,
   ObjectsRequest,
   SchemaDto,
 } from './generated/bindings';
@@ -35,13 +35,16 @@ export function listSchemas(
   return unwrap(commands.catalogSchemas(profileId, database, fresh));
 }
 
-/** Objects of the given kinds in one schema, ordered by name. */
+/**
+ * Objects of the given kinds in one schema, ordered by name: the first
+ * `limit` (all without one) and how many there are in all.
+ */
 export function listObjects(
   profileId: string,
   database: string,
   section: Omit<ObjectsRequest, 'fresh'>,
   fresh: boolean,
-): Promise<CatalogReply<ObjectDto[]>> {
+): Promise<ObjectsReply> {
   return unwrap(
     commands.catalogObjects(profileId, database, { ...section, fresh }),
   );
@@ -54,6 +57,17 @@ export function searchCatalog(
   request: CatalogSearchRequest,
 ): Promise<CatalogSearchReply> {
   return unwrap(commands.catalogSearch(profileId, database, request));
+}
+
+/**
+ * Compare the server's schema fingerprint with the last one seen; `true`
+ * (and a `catalog-changed` event) when DDL ran outside the app since.
+ */
+export function checkCatalog(
+  profileId: string,
+  database: string,
+): Promise<boolean> {
+  return unwrap(commands.catalogCheck(profileId, database));
 }
 
 /** Mark everything cached for a connection stale before a manual refresh. */

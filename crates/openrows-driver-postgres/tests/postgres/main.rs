@@ -5,6 +5,7 @@
 //! them with `--run-ignored only` and removes it (skipping when Docker is absent).
 mod catalog;
 mod connect;
+mod dump;
 mod streaming;
 mod structure;
 mod support;
