@@ -40,6 +40,11 @@ export function menuEnabled(input: {
     beautify: query,
     uglify: query,
     'insert-snippet': query,
+    'run-no-limit': query && connected,
+    'split-right': Boolean(input.tab),
+    'split-down': Boolean(input.tab),
+    'focus-pane': Boolean(input.tab),
+    'close-split': Boolean(input.tab),
     ...connectionEnabled(input, state),
     ...objectEnabled(input, connected),
   };

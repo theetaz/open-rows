@@ -226,6 +226,81 @@
           "enum": ["current", "all"],
           "default": "current",
           "description": "What the Run button and ⌘↵ run."
+        },
+        "fontFamily": {
+          "enum": [
+            null,
+            "SF Mono",
+            "Menlo",
+            "Monaco",
+            "JetBrains Mono",
+            "Fira Code",
+            "Source Code Pro",
+            "Courier New"
+          ],
+          "default": null,
+          "description": "Editor font; null uses the appearance's monospace font."
+        },
+        "lineNumbers": {
+          "type": "boolean",
+          "description": "Show line numbers.",
+          "default": true
+        },
+        "folding": {
+          "type": "boolean",
+          "description": "Fold statements, comments and bracketed blocks from the gutter.",
+          "default": true
+        },
+        "completionDelay": {
+          "enum": [0, 100, 250, 500, 1000],
+          "default": 100,
+          "description": "Milliseconds after typing before suggestions open."
+        },
+        "completeSchemas": {
+          "type": "boolean",
+          "description": "Suggest schema names.",
+          "default": true
+        },
+        "completeTables": {
+          "type": "boolean",
+          "description": "Suggest tables and views.",
+          "default": true
+        },
+        "completeColumns": {
+          "type": "boolean",
+          "description": "Suggest columns.",
+          "default": true
+        },
+        "completeSnippets": {
+          "type": "boolean",
+          "description": "Offer snippets by prefix while typing.",
+          "default": true
+        }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "description": "Settings ▸ Execution: how runs start.",
+      "properties": {
+        "runSelection": {
+          "type": "boolean",
+          "description": "⌘↵ with text selected runs exactly the selection.",
+          "default": true
+        },
+        "autoLimit": {
+          "enum": [null, 100, 200, 500, 1000, 5000, 10000],
+          "default": null,
+          "description": "Append LIMIT n to SELECT statements without a limit; null runs them as written."
+        },
+        "confirmMultiple": {
+          "type": "boolean",
+          "description": "Ask before running more than one statement.",
+          "default": false
+        },
+        "showNotices": {
+          "type": "boolean",
+          "description": "List server notices and warnings with the results.",
+          "default": true
         }
       }
     },
@@ -244,6 +319,7 @@
           "refresh",
           "run-current",
           "run-all",
+          "run-no-limit",
           "cancel",
           "beautify",
           "uglify",
@@ -252,6 +328,12 @@
           "run-sql-file",
           "save",
           "save-as",
+          "open-project",
+          "close-project",
+          "split-right",
+          "split-down",
+          "focus-pane",
+          "close-split",
           "export-table",
           "import-data",
           "export-tables",

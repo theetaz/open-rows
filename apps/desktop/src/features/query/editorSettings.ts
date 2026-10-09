@@ -58,6 +58,14 @@ export const defaultEditorSettings: EditorSettings = {
   resultView: 'tabs',
   returnOnError: true,
   runDefault: 'current',
+  fontFamily: null,
+  lineNumbers: true,
+  folding: true,
+  completionDelay: 100,
+  completeSchemas: true,
+  completeTables: true,
+  completeColumns: true,
+  completeSnippets: true,
 };
 
 /** Beautify's layout from the settings, for an engine's dialect. */
@@ -80,6 +88,18 @@ export function formatOptionsOf(
 
 /** Editor font sizes offered besides the appearance default. */
 export const FONT_SIZES = [11, 12, 13, 14, 15, 16, 18, 20, 24] as const;
+/** Editor fonts offered besides the appearance's monospace font. */
+export const FONT_FAMILIES = [
+  'SF Mono',
+  'Menlo',
+  'Monaco',
+  'JetBrains Mono',
+  'Fira Code',
+  'Source Code Pro',
+  'Courier New',
+] as const;
+/** Pauses before completions open while typing, in ms. */
+export const COMPLETION_DELAYS = [0, 100, 250, 500, 1000] as const;
 /** Row limits offered besides "No limit". */
 export const ROW_LIMITS = [
   100, 500, 1_000, 5_000, 10_000, 50_000, 100_000, 500_000,
@@ -127,6 +147,14 @@ const FIELDS: { [K in keyof EditorSettings]: Field<K> } = {
   resultView: oneOf<ResultView>('tabs', 'last'),
   returnOnError: isBoolean,
   runDefault: oneOf<RunScope>('current', 'all'),
+  fontFamily: oneOf<string | null>(null, ...FONT_FAMILIES),
+  lineNumbers: isBoolean,
+  folding: isBoolean,
+  completionDelay: oneOf<number>(...COMPLETION_DELAYS),
+  completeSchemas: isBoolean,
+  completeTables: isBoolean,
+  completeColumns: isBoolean,
+  completeSnippets: isBoolean,
 };
 
 /** Parse persisted settings, keeping defaults for anything missing or invalid. */

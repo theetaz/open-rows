@@ -1,0 +1,57 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.panel {
+  display: flex;
+  flex-direction: column;
+  max-height: 30%;
+  flex-shrink: 0;
+  border-block-end: var(--or-border-width) solid var(--or-separator);
+}
+.bar {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-2);
+  padding: var(--or-space-2) var(--or-space-6);
+  flex-shrink: 0;
+}
+.bar strong {
+  margin-inline-end: var(--or-space-6);
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+  font-weight: 600;
+}
+.bar button {
+  padding: var(--or-space-2) var(--or-space-8);
+  border: 0;
+  border-radius: var(--or-radius-capsule);
+  background: transparent;
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+  white-space: nowrap;
+}
+.bar button[aria-pressed='true'] {
+  background: var(--or-control-active);
+  color: var(--or-text);
+}
+.list {
+  margin: 0;
+  padding: var(--or-space-4) var(--or-space-12) var(--or-space-6);
+  list-style: none;
+  overflow: auto;
+  font-family: var(--or-font-mono);
+  font-size: var(--or-text-mono, var(--or-text-13));
+  -webkit-user-select: text;
+  user-select: text;
+}
+.list li[data-level='error'] {
+  color: var(--or-danger-fg);
+}
+.list li[data-level='warning'] {
+  color: var(--or-warning-fg);
+}
+.list small {
+  margin-inline-end: var(--or-space-6);
+  color: var(--or-tertiary);
+}
+.empty {
+  color: var(--or-secondary);
+}

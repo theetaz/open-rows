@@ -133,8 +133,21 @@ fn refusal(plan: &SafetyPlan, request: &ExecuteRequest) -> Option<ExecuteReply> 
                 statements: statement_dtos(plan),
             })
         }
+        Gate::Run if asks_for_many(plan, request) => Some(ExecuteReply::ConfirmationRequired {
+            token: plan.confirmation_token(scope),
+            statements: statement_dtos(plan),
+        }),
         Gate::Confirm | Gate::Run => None,
     }
+}
+
+/// Settings ▸ Execution ▸ Confirm multiple statements: a run of several
+/// statements waits for the user once, unless this exact run was confirmed.
+fn asks_for_many(plan: &SafetyPlan, request: &ExecuteRequest) -> bool {
+    let scope = request.session_id.as_str();
+    request.confirm_multiple
+        && plan.statements.len() > 1
+        && request.confirm_token.as_deref() != Some(plan.confirmation_token(scope).as_str())
 }
 
 /// Run the statements in order, stream events and record history.
@@ -255,4 +268,42 @@ fn storage_error(error: openrows_store::StoreError) -> IpcError {
 fn row_id(id: f64) -> Option<i64> {
     const EXACT: f64 = 9_007_199_254_740_992.0;
     (id.is_finite() && (1.0..=EXACT).contains(&id) && id.fract() == 0.0).then_some(id as i64)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::queries::dto::RunMode;
+
+    fn run(sql: &str, confirm_multiple: bool, token: Option<String>) -> ExecuteRequest {
+        ExecuteRequest {
+            session_id: "s".to_owned(),
+            sql: sql.to_owned(),
+            mode: RunMode::All,
+            cursor: None,
+            confirm_token: token,
+            max_rows: None,
+            return_on_error: true,
+            params: None,
+            auto_limit: None,
+            confirm_multiple,
+        }
+    }
+
+    #[test]
+    fn several_statements_wait_for_confirmation_once_when_asked() {
+        let policy = SafetyPolicy::default();
+        let many = run("SELECT 1; SELECT 2", true, None);
+        let plan = SafetyPlan::check(policy, many.statements(policy.dialect));
+        let token = match refusal(&plan, &many) {
+            Some(ExecuteReply::ConfirmationRequired { token, .. }) => Some(token),
+            _ => None,
+        };
+        assert!(token.is_some(), "expected a confirmation");
+        assert!(refusal(&plan, &run("SELECT 1; SELECT 2", true, token)).is_none());
+        assert!(refusal(&plan, &run("SELECT 1; SELECT 2", false, None)).is_none());
+        let one = run("SELECT 1", true, None);
+        let single = SafetyPlan::check(policy, one.statements(policy.dialect));
+        assert!(refusal(&single, &one).is_none());
+    }
 }

@@ -67,6 +67,8 @@ const FILE: &[Entry] = &[
     S,
     C("open-file", "Open SQL File…"),
     C("run-sql-file", "Run SQL File…"),
+    C("open-project", "Open Project…"),
+    C("close-project", "Close Project"),
     S,
     C("save", "Save"),
     C("save-as", "Save As…"),
@@ -124,6 +126,11 @@ const VIEW: &[Entry] = &[
     Entry::Submenu("Appearance", APPEARANCE),
     Entry::Submenu("Grid Rows", GRID_ROWS),
     S,
+    C("split-right", "Split Editor Right"),
+    C("split-down", "Split Editor Down"),
+    C("focus-pane", "Focus Other Pane"),
+    C("close-split", "Close Split"),
+    S,
     C("commands", "Command Palette…"),
     C("quick", "Quick Open…"),
     C("show-er-diagram", "Show ER Diagram"),
@@ -134,6 +141,7 @@ const VIEW: &[Entry] = &[
 const QUERY: &[Entry] = &[
     C("run-current", "Run Current"),
     C("run-all", "Run All"),
+    C("run-no-limit", "Run Without Limit"),
     C("cancel", "Cancel Query"),
     S,
     C("beautify", "Beautify SQL"),
@@ -389,6 +397,13 @@ mod tests {
             "drop-table",
             "new-database",
             "drop-schema",
+            "open-project",
+            "close-project",
+            "split-right",
+            "split-down",
+            "focus-pane",
+            "close-split",
+            "run-no-limit",
         ] {
             assert!(ids.contains(&id), "missing {id}");
         }

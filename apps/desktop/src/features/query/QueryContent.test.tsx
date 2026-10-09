@@ -159,6 +159,8 @@ it('runs the statement at the cursor and shows its rows and status', async () =>
       maxRows: null,
       returnOnError: true,
       params: null,
+      autoLimit: null,
+      confirmMultiple: false,
     },
     expect.any(Function),
   );

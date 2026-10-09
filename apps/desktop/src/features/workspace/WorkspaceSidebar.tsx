@@ -4,8 +4,9 @@ import type { ReactNode } from 'react';
 import { GlassPanel, Icon, SegmentedControl, TextField } from '@openrows/ui';
 import { ObjectTree, SchemaPicker } from '../schema';
 import type { Catalog, MenuPoint, ObjectRef } from '../schema';
-import { HistoryList, SavedQueryList } from '../query';
-import type { SavedQueryDto } from '@openrows/ipc';
+import { HistoryList } from '../query';
+import { SidebarQueries } from './SidebarQueries';
+import type { SidebarQueryProps } from './SidebarQueries';
 import type { Connections } from '../connections';
 import { ObjectActions } from './ObjectActions';
 import type { ObjectMenu, SessionLookup } from './ObjectActions';
@@ -18,7 +19,7 @@ const sidebarSegments = ['Items', 'Queries', 'History'].map((label) => ({
   value: label,
   label,
 }));
-type Props = {
+type Props = SidebarQueryProps & {
   catalog: Catalog;
   header: ReactNode;
   /** Engine tools beside the schema picker. */
@@ -29,8 +30,6 @@ type Props = {
   onOpen: (object: ObjectRef, preview?: boolean) => void;
   /** Open a history statement in a new query tab. */
   onOpenSql: (sql: string) => void;
-  /** Open a saved query of the active connection in a new query tab. */
-  onSavedQuery: (query: SavedQueryDto) => void;
   /** Sessions for exporting a table from its context menu. */
   sessionFor: SessionLookup;
   /** Show the ER diagram of an object's schema, centred on it. */
@@ -185,10 +184,10 @@ function SidebarItems(
         />
       )}
       {props.segment === 'Queries' && (
-        <SavedQueryList
-          profileId={props.connections.active?.id}
-          search={props.search}
-          onOpen={props.onSavedQuery}
+        <SidebarQueries
+          {...props}
+          active={props.connections.active}
+          profiles={props.connections.profiles}
         />
       )}
       {props.segment === 'History' && (

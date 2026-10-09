@@ -16,6 +16,7 @@ type CommandSpec = {
 export const TAB_COMMANDS = [
   'run-current',
   'run-all',
+  'run-no-limit',
   'cancel',
   'beautify',
   'uglify',
@@ -26,6 +27,15 @@ export const TAB_COMMANDS = [
   'export-results',
 ] as const;
 export type TabCommand = (typeof TAB_COMMANDS)[number];
+
+/** Commands that split the query area into two editor panes (FR-EDIT-11). */
+export const PANE_COMMANDS = [
+  'split-right',
+  'split-down',
+  'focus-pane',
+  'close-split',
+] as const;
+export type PaneCommand = (typeof PANE_COMMANDS)[number];
 
 /** Commands that act on the active table tab (`refresh` also reloads its rows). */
 export const TABLE_COMMANDS = [
@@ -59,6 +69,11 @@ export const COMMANDS: readonly CommandSpec[] = [
   { id: 'refresh', label: 'Refresh', shortcut: 'Cmd+R' },
   { id: 'run-current', label: 'Run current statement', shortcut: 'Cmd+Enter' },
   { id: 'run-all', label: 'Run all statements', shortcut: 'Shift+Cmd+Enter' },
+  {
+    id: 'run-no-limit',
+    label: 'Run without automatic LIMIT',
+    shortcut: 'Alt+Cmd+Enter',
+  },
   { id: 'cancel', label: 'Cancel query', shortcut: 'Cmd+Period' },
   { id: 'beautify', label: 'Beautify SQL', shortcut: 'Cmd+I' },
   { id: 'uglify', label: 'Uglify SQL', shortcut: 'Shift+Cmd+I' },
@@ -67,6 +82,20 @@ export const COMMANDS: readonly CommandSpec[] = [
   { id: 'run-sql-file', label: 'Run SQL file…', shortcut: null },
   { id: 'save', label: 'Save SQL file', shortcut: 'Cmd+S' },
   { id: 'save-as', label: 'Save SQL file as…', shortcut: 'Shift+Cmd+S' },
+  { id: 'open-project', label: 'Open project…', shortcut: null },
+  { id: 'close-project', label: 'Close project', shortcut: null },
+  { id: 'split-right', label: 'Split editor right', shortcut: 'Cmd+Backslash' },
+  {
+    id: 'split-down',
+    label: 'Split editor down',
+    shortcut: 'Shift+Cmd+Backslash',
+  },
+  {
+    id: 'focus-pane',
+    label: 'Focus other editor pane',
+    shortcut: 'Alt+Cmd+Backslash',
+  },
+  { id: 'close-split', label: 'Close split pane', shortcut: null },
   { id: 'export-table', label: 'Export table…', shortcut: null },
   { id: 'import-data', label: 'Import data from file…', shortcut: null },
   { id: 'export-tables', label: 'Export tables of schema…', shortcut: null },
@@ -196,6 +225,10 @@ export function commandSpec(id: string): CommandSpec | undefined {
 
 export function isTabCommand(id: string): id is TabCommand {
   return (TAB_COMMANDS as readonly string[]).includes(id);
+}
+
+export function isPaneCommand(id: string): id is PaneCommand {
+  return (PANE_COMMANDS as readonly string[]).includes(id);
 }
 
 export function isTableCommand(id: string): id is TableCommand {

@@ -15,6 +15,8 @@ type Props = {
   search: string;
   /** Open the query in a new tab. */
   onOpen: (query: SavedQueryDto) => void;
+  /** Move the query into the open project; absent without a project. */
+  onMoveToProject?: ((query: SavedQueryDto) => Promise<void>) | undefined;
 };
 
 type Dialog =
@@ -36,7 +38,10 @@ function deletePrompt(query: SavedQueryDto): {
   };
 }
 
-/** The sidebar's Queries tab: saved queries of the connection; right-click to rename or delete. */
+/**
+ * The sidebar's local queries: saved queries of the connection in the local
+ * store; right-click to move one into the project, rename or delete.
+ */
 export function SavedQueryList(props: Props): React.JSX.Element {
   const { queries, loading, error } = useSavedQueries(props.profileId);
   const [dialog, setDialog] = useState<Dialog | null>(null);
@@ -104,6 +109,7 @@ export function SavedQueryList(props: Props): React.JSX.Element {
         <QueryDialog
           dialog={dialog}
           onClose={close}
+          onMove={mover(props.onMoveToProject, setFailure)}
           onRename={(query) => {
             setDialog({ kind: 'rename', query });
           }}
@@ -113,6 +119,19 @@ export function SavedQueryList(props: Props): React.JSX.Element {
       )}
     </>
   );
+}
+
+/** Move to Project with its failure shown in the list; none without a project. */
+function mover(
+  move: Props['onMoveToProject'],
+  fail: (message: string) => void,
+): ((query: SavedQueryDto) => void) | undefined {
+  if (!move) return undefined;
+  return (query) => {
+    move(query).catch((reason: unknown) => {
+      fail(message(reason));
+    });
+  };
 }
 
 function ListNote(props: {
@@ -127,7 +146,7 @@ function ListNote(props: {
     <p role="status">
       {props.filtered
         ? 'No matches'
-        : 'No saved queries. Use Run ▸ Add to Queries… in a query tab.'}
+        : 'No local queries. Use Run ▸ Add to Queries… in a query tab.'}
     </p>
   );
 }
@@ -139,8 +158,9 @@ function QueryDialog(props: {
   onRename: (query: SavedQueryDto) => void;
   onDelete: (query: SavedQueryDto) => void;
   onConfirmDelete: (query: SavedQueryDto) => void;
+  onMove?: ((query: SavedQueryDto) => void) | undefined;
 }): React.JSX.Element {
-  const { dialog } = props;
+  const { dialog, onMove } = props;
   const { query } = dialog;
   if (dialog.kind === 'menu')
     return (
@@ -150,6 +170,17 @@ function QueryDialog(props: {
         label={`${query.name} actions`}
         onClose={props.onClose}
         entries={[
+          ...(onMove
+            ? [
+                {
+                  kind: 'item' as const,
+                  label: 'Move to Project',
+                  run: () => {
+                    onMove(query);
+                  },
+                },
+              ]
+            : []),
           {
             kind: 'item',
             label: 'Rename…',

@@ -33,6 +33,7 @@ pub mod ddl;
 mod dialect;
 pub mod edit;
 mod lexer;
+mod limit;
 mod placeholders;
 pub mod select;
 mod split;
@@ -43,6 +44,7 @@ mod tests;
 pub use bind::{MissingParam, ParamBinder, ParamSlot, ParamStyle};
 pub use classify::{Classification, StatementKind, classify};
 pub use context::{ContextSetting, session_context};
+pub use limit::limit_select;
 pub use placeholders::{Placeholder, PlaceholderKind, placeholders};
 pub use split::{ScriptStatement, Statement, StreamSplitter, split, statement_at};
 

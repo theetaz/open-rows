@@ -102,24 +102,6 @@
   background: var(--or-control-active);
   color: var(--or-text);
 }
-.messages {
-  margin: 0;
-  padding: var(--or-space-6) var(--or-space-12);
-  list-style: none;
-  max-height: 30%;
-  overflow: auto;
-  flex-shrink: 0;
-  font-family: var(--or-font-mono);
-  font-size: var(--or-text-mono, var(--or-text-13));
-  -webkit-user-select: text;
-  user-select: text;
-}
-.messages li[data-level='error'] {
-  color: var(--or-danger-fg);
-}
-.messages li[data-level='warning'] {
-  color: var(--or-warning-fg);
-}
 .placeholder {
   padding: var(--or-space-16);
   color: var(--or-secondary);

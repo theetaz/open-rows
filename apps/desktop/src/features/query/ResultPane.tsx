@@ -2,7 +2,9 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Button } from '@openrows/ui';
 import type { EngineDto } from '@openrows/ipc';
-import type { ResultMeta, RunMessage, RunState } from './run';
+import { MessagesPanel } from './MessagesPanel';
+import { resultMessages } from './messages';
+import type { ResultMeta, RunState } from './run';
 import type { ResultView } from './editorSettings';
 import type { RunScope } from './request';
 import type { SelectedCell } from './cell';
@@ -17,6 +19,8 @@ type Props = {
   view: ResultView;
   /** What ⌘↵ runs, for the empty-state hint. */
   runDefault: RunScope;
+  /** List server notices and warnings, not only errors. */
+  showNotices?: boolean | undefined;
   /** Engine of the connection: quoting for copied SQL. */
   engine: EngineDto;
   onCell: (cell: SelectedCell) => void;
@@ -80,6 +84,7 @@ export function ResultPane({
   run,
   view,
   runDefault,
+  showNotices,
   engine,
   onCell,
   onExport,
@@ -116,7 +121,12 @@ export function ResultPane({
           )}
         </div>
       )}
-      <Messages messages={run.messages} />
+      <ResultMessages
+        run={run}
+        results={results}
+        current={current}
+        showNotices={showNotices}
+      />
       {!current ? (
         <p className={styles.placeholder}>{placeholder(run, runDefault)}</p>
       ) : current.done || current.rows > 0 ? (
@@ -144,6 +154,28 @@ export function ResultPane({
   );
 }
 
+/** Messages of the shown result; notices unless turned off. */
+function ResultMessages(props: {
+  run: RunState;
+  results: readonly ResultMeta[];
+  current: ResultMeta | undefined;
+  showNotices: boolean | undefined;
+}): React.JSX.Element {
+  const { run, results, current } = props;
+  return (
+    <MessagesPanel
+      key={current?.id}
+      messages={resultMessages({
+        messages: run.messages,
+        results,
+        current,
+        showNotices: props.showNotices ?? true,
+      })}
+      statements={run.statements.length}
+    />
+  );
+}
+
 function ResultTabs(props: {
   results: readonly ResultMeta[];
   current: ResultMeta | undefined;
@@ -165,23 +197,5 @@ function ResultTabs(props: {
         </button>
       ))}
     </div>
-  );
-}
-
-function Messages({
-  messages,
-}: {
-  messages: readonly RunMessage[];
-}): React.JSX.Element | null {
-  if (!messages.length) return null;
-  return (
-    <ul className={styles.messages} aria-label="Messages">
-      {messages.map((message, index) => (
-        <li key={index} data-level={message.level}>
-          {message.level === 'error' ? 'ERROR' : message.level.toUpperCase()}
-          {message.code ? ` ${message.code}` : ''}: {message.text}
-        </li>
-      ))}
-    </ul>
   );
 }

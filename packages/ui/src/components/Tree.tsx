@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useRef } from 'react';
 import type {
+  HTMLAttributes,
   KeyboardEvent,
   MouseEvent,
   ReactNode,
@@ -59,7 +60,22 @@ type TreeNodeProps = {
   children?: ReactNode;
   /** Secondary click on this row (not on a nested row), e.g. a context menu. */
   onContextMenu?: ((event: MouseEvent<HTMLDivElement>) => void) | undefined;
+  /** Drag-and-drop handlers of this row only (not its nested rows). */
+  drag?: RowDrag | undefined;
+  /** Highlight the row as the target of the current drag. */
+  dropTarget?: boolean | undefined;
 };
+
+/** Drag-and-drop attributes a row accepts, e.g. to move items between folders. */
+type RowDrag = Pick<
+  HTMLAttributes<HTMLDivElement>,
+  | 'draggable'
+  | 'onDragStart'
+  | 'onDragOver'
+  | 'onDragLeave'
+  | 'onDrop'
+  | 'onDragEnd'
+>;
 
 const stop = (event: MouseEvent): void => {
   event.stopPropagation();
@@ -131,7 +147,13 @@ export function TreeNode(props: TreeNodeProps): React.JSX.Element {
         if (own(event)) props.onContextMenu?.(event);
       }}
     >
-      <div className={styles.row} data-level={props.level} title={props.title}>
+      <div
+        className={styles.row}
+        data-level={props.level}
+        data-drop-target={props.dropTarget || undefined}
+        title={props.title}
+        {...props.drag}
+      >
         <span
           className={styles.chevron}
           data-open={expanded}

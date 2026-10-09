@@ -62,6 +62,15 @@ The bar between editor and results holds the settings menu, cursor position, row
 - **Saved queries**: Add to Queries asks for a name and stores it per connection in the local store (`saved_queries`, docs/15). The sidebar's **Queries** tab lists them (search filters by name); a click opens one in a new tab, right-click offers Rename… and Delete….
 - To open a tab from elsewhere (schema tree, history, assistant), call `QueryTabs.open(connectionId, { sql?, title?, objectPath? })` from `useQueryTabs()`; the workspace controller exposes it as `addQuery(sql?)` and `openObject(object)`, which refocuses an open tab for the same object.
 
+### 2.4 Editor parity (M2-18)
+
+- **Split panes** (FR-EDIT-11): View ▸ Split Editor Right (⌘\\) or Down (⇧⌘\\) keeps the active tab in the first pane and opens a new query tab beside it; the second pane follows the active tab. Each pane keeps its own tab, connection scope, editor and results. Choosing a tab in the tab strip fills the focused pane; Focus Other Pane (⌥⌘\\) moves keyboard focus; the divider resizes by pointer or arrow keys (20–80 %); Close Split (or the pane's ×) returns to one pane. Menu, palette and shortcut tab commands act on the focused pane.
+- **Editing** (FR-EDIT-12): ⌥-click (or ⌘-click) adds a caret, ⌥-drag selects a column, ⌘D selects the next occurrence and ⇧⌘L every occurrence; Escape returns to one caret. Statements, block comments and multi-line bracketed blocks fold from the gutter (⌥⌘[ / ⌥⌘]). A minimap is not included: CodeMirror has no built-in one and the add-on is not worth its bundle cost yet.
+- **Display** (Settings ▸ Editor, `editor` in settings.json): line numbers, folding, font size and family, invisibles, wrapping and the current-statement highlight.
+- **Completion** (FR-EDIT-13): auto-trigger on/off (⌃Space always works and highlighting is unaffected), delay, keyword case, and whether schemas, tables/views, columns and snippets are suggested.
+- **Execution** (FR-EDIT-15, Settings ▸ Execution, `execution` in settings.json): what ⌘↵ runs without a selection (`editor.runDefault`), whether a selection runs itself (`runSelection`), an automatic `LIMIT n` for `SELECT`s without one (`autoLimit`; `openrows_sql::limit_select` appends it after the last token for PostgreSQL, MySQL/MariaDB and SQLite and leaves statements with a top-level `LIMIT`, `OFFSET`, `FETCH`, `INTO`, `FOR`, `LOCK` or `PROCEDURE`, non-`SELECT`s and writing CTEs alone; **Run ▸ Run Without Limit**, ⌥⌘↵, skips it once), confirmation before multi-statement runs (`confirmMultiple`, the core replies `confirmationRequired` once per exact run), Return on Error, and whether server notices are listed (`showNotices`).
+- **Messages**: the panel above the results lists errors and server notices of the shown result (with several results, those of its statement plus those of statements without a result), labelled by statement and filtered by level (All, Errors, Warnings, Info).
+
 ## 3. Autocomplete
 
 ```mermaid
@@ -128,6 +137,7 @@ flowchart LR
 
 ## 7. Files and snippets
 
+- Implemented (M2-17): projects of `.sql` files with `.openrows/project.yaml`, their folder tree in the sidebar and the folder and query actions; see [15 §5.1](15-storage-and-persistence.md#51-current-implementation-m2-17).
 - Query tabs can be **scratch** (stored in app data) or **file-backed** (`.sql` in a Project folder). File-backed tabs save with ⌘S and detect external changes (file watcher) with a reload prompt.
 - A tab remembers its connection via a header comment the user can opt into (`-- openrows: connection=analytics-prod`) or via Project metadata, so shared `.sql` files open on the right connection for each teammate's local profile name.
 - Snippets: user-defined templates with tab stops, scoped per dialect, stored in `snippets/*.json` in the Project or user settings.

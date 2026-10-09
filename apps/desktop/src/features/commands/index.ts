@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-export { COMMANDS, isTabCommand, isTableCommand } from './registry';
-export type { TabCommand, TableCommand } from './registry';
+export {
+  COMMANDS,
+  isPaneCommand,
+  isTabCommand,
+  isTableCommand,
+} from './registry';
+export type { PaneCommand, TabCommand, TableCommand } from './registry';
 export {
   commandForEvent,
   conflictOf,
@@ -11,9 +16,11 @@ export {
 } from './bindings';
 export { comboOf, displayCombo } from './keys';
 export {
+  runPaneCommand,
   runTabCommand,
   runTableCommand,
   tabCommandOf,
+  usePaneCommands,
   useTabCommands,
   useTableCommands,
 } from './tabCommands';

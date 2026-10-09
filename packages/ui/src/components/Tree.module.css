@@ -27,8 +27,24 @@
 .note[data-level='3'] {
   padding-inline-start: calc(var(--or-space-4) + var(--or-space-32));
 }
+.row[data-level='4'],
+.note[data-level='4'] {
+  padding-inline-start: calc(var(--or-space-4) + 3 * var(--or-space-16));
+}
+.row[data-level='5'],
+.note[data-level='5'] {
+  padding-inline-start: calc(var(--or-space-4) + 4 * var(--or-space-16));
+}
+.row[data-level='6'],
+.note[data-level='6'] {
+  padding-inline-start: calc(var(--or-space-4) + 5 * var(--or-space-16));
+}
 .row {
   color: var(--or-text);
+}
+.row[data-drop-target='true'] {
+  background: var(--or-control-active);
+  box-shadow: inset 0 0 0 1px var(--or-accent);
 }
 .row:hover {
   box-shadow: inset 0 0 0 1px var(--or-separator);
