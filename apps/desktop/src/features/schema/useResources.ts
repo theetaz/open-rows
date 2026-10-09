@@ -23,6 +23,8 @@ type States = Readonly<Record<string, Resource<unknown> | undefined>>;
 
 export type Resources = {
   get: <T>(key: string) => Resource<T>;
+  /** Already loaded reads in a scope; never initiates catalog queries. */
+  entries: <T>(prefix: string) => [string, Resource<T>][];
   load: <T>(key: string, fetch: Fetch<T>) => void;
   /** Forget every read under `prefix`; it is read again when next shown. */
   invalidate: (prefix: string) => void;
@@ -142,7 +144,14 @@ export function useResources(): Resources {
     },
     [table],
   );
-  return { get, load, invalidate, revalidate };
+  const entries = useCallback(
+    <T>(prefix: string): [string, Resource<T>][] =>
+      Object.keys(states)
+        .filter((key) => key.startsWith(prefix))
+        .map((key) => [key, get<T>(key)]),
+    [states, get],
+  );
+  return { get, load, invalidate, revalidate, entries };
 }
 
 /** A ready resource re-reading in the background. */

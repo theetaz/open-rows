@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useState } from 'react';
+import {
+  useSidebarPreferences,
+  writeSidebarPreferences,
+} from './sidebarPreferences';
 
 /** Per-database schema choice of one connection. */
 type Navigation = {
   schemas: Readonly<Record<string, string | undefined>>;
-  systemSchemas: boolean;
 };
 
 export type NavigationState = {
@@ -14,7 +17,7 @@ export type NavigationState = {
   setSystemSchemas: (show: boolean) => void;
 };
 
-const initial: Navigation = { schemas: {}, systemSchemas: false };
+const initial: Navigation = { schemas: {} };
 
 /**
  * Schema choice per saved connection and database (the opened databases
@@ -28,6 +31,7 @@ export function useNavigation(
   const [navs, setNavs] = useState<
     Readonly<Record<string, Navigation | undefined>>
   >({});
+  const preferences = useSidebarPreferences(profileId ?? '');
   const nav = (profileId && navs[profileId]) || initial;
   const update = (change: (current: Navigation) => Navigation): void => {
     if (!profileId) return;
@@ -38,7 +42,7 @@ export function useNavigation(
   };
   return {
     chosenSchema: nav.schemas[database],
-    systemSchemas: nav.systemSchemas,
+    systemSchemas: preferences.systemObjects,
     setSchema: (schema) => {
       update((current) => ({
         ...current,
@@ -46,7 +50,8 @@ export function useNavigation(
       }));
     },
     setSystemSchemas: (show) => {
-      update((current) => ({ ...current, systemSchemas: show }));
+      if (profileId)
+        writeSidebarPreferences(profileId, { systemObjects: show });
     },
   };
 }

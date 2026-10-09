@@ -43,7 +43,12 @@ it('opens relations as table tabs titled with their name', () => {
       preview: false,
       title: 'users',
       objectPath: ['public', 'users'],
-      table: { database: 'orders', schema: 'public', name: 'users' },
+      table: {
+        database: 'orders',
+        schema: 'public',
+        name: 'users',
+        ...(kind === 'table' ? {} : { kind }),
+      },
     });
   }
 });

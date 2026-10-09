@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import type { ObjectKindDto } from '@openrows/ipc';
 import type { ParamValues } from './paramValues';
 import type { InspectionTarget } from '../inspection/target';
 
@@ -11,6 +12,8 @@ export type TabScope = { connectionId: string; database: string };
 
 /** The relation a table tab browses; `database` is its real name. */
 export type TableObject = {
+  /** Catalog kind for favourite identity; older table tabs default to table. */
+  kind?: ObjectKindDto;
   database: string;
   schema: string;
   name: string;

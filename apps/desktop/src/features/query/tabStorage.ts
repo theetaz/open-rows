@@ -39,7 +39,11 @@ function tableOf(value: unknown): TableObject | undefined {
   const { database, schema, name } = value;
   if (!isString(database) || !isString(schema) || !isString(name))
     return undefined;
-  return { database, schema, name };
+  const kinds = ['foreignTable', 'view', 'materializedView'];
+  const kind = kinds.includes(String(value.kind))
+    ? (value.kind as TableObject['kind'])
+    : undefined;
+  return { database, schema, name, ...(kind ? { kind } : {}) };
 }
 
 /** The kind-specific part of a stored tab; `null` when unusable. */

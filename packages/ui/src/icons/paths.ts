@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 /** Original 24×24 line geometry, stroked with the current colour. */
 export const iconPaths = {
+  star: 'M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9Z',
   search: 'M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13Zm4.6-1.9L21 21',
   plus: 'M12 5v14M5 12h14',
   refresh: 'M20 8a8 8 0 1 0 0 8M20 3v5h-5',

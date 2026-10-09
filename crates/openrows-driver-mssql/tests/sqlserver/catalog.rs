@@ -225,3 +225,30 @@ async fn processes_are_listed_and_terminated() -> TestResult {
     assert_eq!(code(unknown), "42704");
     Ok(())
 }
+
+#[tokio::test]
+#[ignore = "needs SQL Server: run `just test-mssql`"]
+async fn explicit_system_sections_reveal_objects_and_types_without_polluting_search() -> TestResult
+{
+    let mut session = session().await?;
+    let schemas = session.list_schemas().await?;
+    assert!(
+        schemas
+            .iter()
+            .any(|schema| schema.name == "sys" && schema.system)
+    );
+    let objects = session.list_objects("sys", &ObjectKind::ALL).await?;
+    assert!(
+        objects
+            .iter()
+            .any(|object| object.name == "objects" && object.kind == ObjectKind::View)
+    );
+    assert!(
+        objects
+            .iter()
+            .any(|object| object.name == "int" && object.kind == ObjectKind::Type)
+    );
+    let indexed = session.search_index().await?;
+    assert!(indexed.iter().all(|object| object.schema != "sys"));
+    Ok(())
+}

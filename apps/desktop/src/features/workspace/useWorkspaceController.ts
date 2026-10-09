@@ -7,6 +7,7 @@ import { useCatalog } from '../schema';
 import type { Catalog, ObjectRef } from '../schema';
 import { tabFile, useQueryTabs } from '../query';
 import type { QueryTabs, TabScope } from '../query';
+import { recordRecent } from '../schema/sidebarStore';
 import { openTableView } from '../table';
 import { openInspection } from '../inspection/target';
 import { useMenuBridge } from '../commands';
@@ -184,6 +185,7 @@ function objectOpener(deps: {
   return (object, preview = false) => {
     deps.catalog.setSchema(object.schema);
     const target = deps.scopeOf(object.database);
+    if (target) recordRecent({ ...object, profileId: target.connectionId });
     if (target && object.kind !== 'table' && object.kind !== 'foreignTable') {
       const { schema, name, kind, arguments: arguments_ } = object;
       openInspection(
@@ -297,8 +299,7 @@ export function useWorkspaceController(input: Input): WorkspaceController {
   });
   const { prod, safe, toggleSafe } = useSafeMode(connections);
   const showDiagram = diagramOpener(catalog, input.onShowDiagram);
-  const tableTab = active?.kind === 'table' ? active.table : undefined;
-  const importData = importOpener(catalog, tableTab, input.onImport);
+  const importData = importOpener(catalog, active?.table, input.onImport);
   const command = shellCommand({
     ...input,
     catalog,
@@ -317,6 +318,7 @@ export function useWorkspaceController(input: Input): WorkspaceController {
     openProcesses,
     ...fileCommands({ jobs: input.jobs, catalog }, tabs, scope),
     onObjectCommand: objects.command,
+    activeTab: active,
   });
   useCommandRoutes(command, input.enabled && !mode, {
     connections,

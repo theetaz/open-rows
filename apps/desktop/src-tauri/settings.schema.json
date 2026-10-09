@@ -314,6 +314,7 @@
           "new-tab",
           "close-tab",
           "database",
+          "toggle-favourite",
           "quick",
           "commands",
           "refresh",
@@ -689,6 +690,45 @@
           "default": "",
           "maxLength": 1024,
           "description": "Path of cloudflared; empty discovers an installed copy."
+        }
+      }
+    },
+    "sidebar": {
+      "type": "object",
+      "description": "Device-local sidebar filters and section visibility, keyed by profile id.",
+      "default": {},
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "default": ""
+          },
+          "kinds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": []
+          },
+          "schemas": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": []
+          },
+          "hidden": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": []
+          },
+          "systemObjects": {
+            "type": "boolean",
+            "default": false
+          }
         }
       }
     }

@@ -52,7 +52,7 @@ async fn introspector_lists_databases_schemas_and_objects() -> TestResult {
     assert!(
         schemas
             .iter()
-            .all(|schema| !schema.name.starts_with("pg_toast"))
+            .any(|schema| schema.name == "pg_toast" && schema.system)
     );
 
     let objects = session.list_objects("d06", &ObjectKind::ALL).await?;
@@ -91,5 +91,65 @@ async fn introspector_lists_databases_schemas_and_objects() -> TestResult {
 
     let (dropped, _) = run(&mut session, "DROP SCHEMA d06 CASCADE", Collect::default()).await;
     dropped?;
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "needs PostgreSQL: run `just test-pg`"]
+async fn sidebar_system_visibility_keeps_pg_catalog_hidden_until_enabled() -> TestResult {
+    let mut session = connect().await?;
+    let schemas = session.list_schemas().await?;
+    let objects = session
+        .list_objects("pg_catalog", &[ObjectKind::Table])
+        .await?;
+    assert!(objects.iter().any(|object| object.name == "pg_class"));
+    for show_system in [false, true] {
+        let visible: Vec<_> = objects
+            .iter()
+            .filter(|object| {
+                schemas
+                    .iter()
+                    .any(|schema| schema.name == object.schema && (show_system || !schema.system))
+            })
+            .collect();
+        assert_eq!(
+            visible.iter().any(|object| object.name == "pg_class"),
+            show_system
+        );
+    }
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "needs PostgreSQL: run `just test-pg`"]
+async fn toast_tables_are_browsable_when_system_objects_are_enabled() -> TestResult {
+    let mut session = connect().await?;
+    let objects = session
+        .list_objects("pg_toast", &[ObjectKind::Table])
+        .await?;
+    let table = objects
+        .first()
+        .ok_or("PostgreSQL catalogs have TOAST tables")?;
+    assert_eq!(table.kind, ObjectKind::Table);
+    assert!(
+        !session
+            .table_columns("pg_toast", &table.name)
+            .await?
+            .is_empty()
+    );
+    let detail = session.table_detail("pg_toast", &table.name).await?;
+    assert!(
+        detail
+            .info
+            .is_some_and(|info| { info.kind == openrows_driver_api::schema::RelationKind::Table })
+    );
+    assert_eq!(detail.columns.len(), 3);
+    assert!(
+        session
+            .search_index()
+            .await?
+            .iter()
+            .all(|object| object.schema != "pg_toast")
+    );
     Ok(())
 }

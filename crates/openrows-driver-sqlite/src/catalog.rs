@@ -64,7 +64,7 @@ fn objects(
         .map_err(|error| invalid(&error))?;
     let query = format!(
         "SELECT type, name FROM {master} WHERE type IN ('table', 'view') \
-         AND name NOT LIKE 'sqlite\\_%' ESCAPE '\\' ORDER BY name"
+         ORDER BY name"
     );
     let mut statement = sql(connection.prepare(&query))?;
     let rows = sql(statement.query_map([], |row| {
@@ -108,6 +108,7 @@ fn search(connection: &Connection) -> Result<Vec<ObjectSummary>, DriverError> {
             &[ObjectKind::Table, ObjectKind::View],
         )?);
     }
+    found.retain(|object| !object.name.to_ascii_lowercase().starts_with("sqlite_"));
     found.truncate(SEARCH_LIMIT);
     Ok(found)
 }

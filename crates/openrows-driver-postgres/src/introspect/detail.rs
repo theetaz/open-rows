@@ -176,7 +176,7 @@ fn trigger(row: &TextRow) -> Result<TriggerDetail, DriverError> {
 
 fn table_info(row: &TextRow) -> Result<TableInfo, DriverError> {
     let kind = match required(row, 0)?.as_str() {
-        "r" => RelationKind::Table,
+        "r" | "t" => RelationKind::Table,
         "p" => RelationKind::PartitionedTable,
         "v" => RelationKind::View,
         "m" => RelationKind::MaterializedView,

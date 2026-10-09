@@ -1,14 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   invalidateCatalog,
   listDatabases,
   listObjects,
   listSchemas,
 } from '@openrows/ipc';
-import type { DatabaseDto, ObjectDto, SchemaDto } from '@openrows/ipc';
+import type {
+  DatabaseDto,
+  EngineDto,
+  ObjectDto,
+  SchemaDto,
+} from '@openrows/ipc';
 import type { Connections } from '../connections';
 import { defaultSchema, objectGroups } from './catalog';
+import type { ObjectRef } from './catalog';
+import { catalogAvailability } from './objectAvailability';
 import type { ObjectGroup } from './catalog';
 import { useCatalogChanges, useCatalogIndex } from './useCatalogIndex';
 import type { CatalogIndex } from './useCatalogIndex';
@@ -28,6 +35,10 @@ export type Catalog = Omit<NavigationState, 'chosenSchema'> &
   CatalogIndex & {
     /** Why there is nothing to browse, or `null` when connected. */
     offline: string | null;
+    profileId: string;
+    engine: EngineDto;
+    /** Availability from complete normal section reads, null until verified. */
+    available: (object: ObjectRef) => boolean | null;
     inspection: InspectionCatalog;
     /** Active database; empty when the connection has none open. */
     database: string;
@@ -42,8 +53,12 @@ export type Catalog = Omit<NavigationState, 'chosenSchema'> &
     /** Selected schema; empty until schemas are known. */
     schema: string;
     /** The first `limit` objects of a section and its total. */
-    objects: (group: ObjectGroup, limit?: number) => Resource<ObjectPage>;
-    loadObjects: (group: ObjectGroup, limit?: number) => void;
+    objects: (
+      group: ObjectGroup,
+      limit?: number,
+      schema?: string,
+    ) => Resource<ObjectPage>;
+    loadObjects: (group: ObjectGroup, limit?: number, schema?: string) => void;
     /** Something shown came from a snapshot and is being read again. */
     refreshing: boolean;
     /** Changes on every refresh and after DDL; completion re-reads on it. */
@@ -94,17 +109,26 @@ export function useCatalog(connections: Connections): Catalog {
     chosenSchema,
     navigation.systemSchemas,
   );
-  const objectsKey = (group: ObjectGroup, limit: number): string =>
-    `${scoped}objects\n${schema}\n${group.id}\n${String(limit)}`;
+  const objectsKey = (
+    group: ObjectGroup,
+    limit: number,
+    selectedSchema = schema,
+  ): string =>
+    `${scoped}objects\n${selectedSchema}\n${group.id}\n${String(limit)}`;
   const objects = (
     group: ObjectGroup,
     limit = OBJECT_PAGE,
-  ): Resource<ObjectPage> => resources.get(objectsKey(group, limit));
+    selectedSchema = schema,
+  ): Resource<ObjectPage> =>
+    resources.get(objectsKey(group, limit, selectedSchema));
+  const available = useAvailability(resources, scoped, reads.schemas);
   return {
     ...navigation,
+    ...catalogContext(connections),
+    available,
     inspection,
     database,
-    opened: profileId ? connections.databases.map(({ name }) => name) : [],
+    opened: openedDatabases(connections, profileId),
     openDatabase: connections.openDatabase,
     closeDatabase: connections.closeDatabase,
     offline: offlineReason(connections),
@@ -113,10 +137,10 @@ export function useCatalog(connections: Connections): Catalog {
     ...index,
     schema,
     objects,
-    loadObjects: (group, limit = OBJECT_PAGE) => {
-      if (!profileId || !schema) return;
-      const section = { schema, kinds: group.kinds, limit };
-      resources.load(objectsKey(group, limit), (fresh) =>
+    loadObjects: (group, limit = OBJECT_PAGE, selectedSchema = schema) => {
+      if (!profileId || !selectedSchema) return;
+      const section = { schema: selectedSchema, kinds: group.kinds, limit };
+      resources.load(objectsKey(group, limit, selectedSchema), (fresh) =>
         listObjects(profileId, database, section, fresh).then((reply) => ({
           data: { objects: reply.data, total: reply.total },
           stale: reply.stale,
@@ -197,4 +221,41 @@ function useReads(
     );
   }, [load, scoped, profileId, database, schemas.status]);
   return { databases, schemas };
+}
+
+/** Persisted UI scope also exists while disconnected, unlike the live read target. */
+function catalogContext(connections: Connections): {
+  profileId: string;
+  engine: EngineDto;
+} {
+  return {
+    profileId: connections.active?.id ?? '',
+    engine: connections.active?.engine ?? 'postgres',
+  };
+}
+function openedDatabases(
+  connections: Connections,
+  profileId: string | null,
+): string[] {
+  return profileId ? connections.databases.map(({ name }) => name) : [];
+}
+
+function useAvailability(
+  resources: Resources,
+  scoped: string,
+  schemas: Resource<SchemaDto[]>,
+): Catalog['available'] {
+  const { entries } = resources;
+  const prefix = `${scoped}objects\n`;
+  return useMemo(
+    () =>
+      catalogAvailability({
+        schemas,
+        pages: entries<ObjectPage>(prefix).map(([key, value]) => [
+          key.slice(prefix.length),
+          value,
+        ]),
+      }),
+    [entries, prefix, schemas],
+  );
 }

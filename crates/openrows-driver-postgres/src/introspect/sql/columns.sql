@@ -31,7 +31,7 @@ JOIN pg_catalog.pg_namespace AS n ON n.oid = c.relnamespace
 LEFT JOIN pg_catalog.pg_attrdef AS d ON d.adrelid = a.attrelid AND d.adnum = a.attnum
 WHERE n.nspname = {schema}
   AND c.relname = {name}
-  AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
+  AND c.relkind IN ('r', 't', 'p', 'v', 'm', 'f')
   AND a.attnum > 0
   AND NOT a.attisdropped
 ORDER BY a.attnum

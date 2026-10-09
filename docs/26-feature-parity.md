@@ -75,11 +75,11 @@ These FR-NET-03 rows document OpenRows scope; no TablePlus adoption/parity claim
 | --- | --- | --- | --- | --- | --- | --- |
 | B01 | Object sections | Browse tables, views and routines. | Covered FR-SCHEMA-01, FR-SCHEMA-07 | M2 done (M2-09) | Lazy capability-driven sections and read-only inspectors, including safe MariaDB sequence details (docs/10 §7). | [S14] |
 | B02 | Sidebar fuzzy search | Narrow the object list. | Covered FR-SCHEMA-02 | M1 | Worker search over cached metadata. | [S14] |
-| B03 | Recent objects | Revisit recently opened items. | New FR-SCHEMA-09 | M2 | Scoped to connection/database. | [S14] |
-| B04 | System schemas toggle | Hide or reveal internal schemas. | New FR-SCHEMA-09 | M2 | Preserve explicit scope labels. | [S14] |
-| B05 | Section visibility | Hide routine/recent sections. | New FR-SCHEMA-09 | M2 | Search remains keyboard accessible. | [S14] |
-| B06 | Object favourites | Pin objects at the list's top. | New FR-SCHEMA-09 | M2 | Stable object identity across refresh. | [S14] |
-| B07 | Context labels | Display database/connection names. | New FR-SCHEMA-09 | M2 | Environment never conveyed by colour alone. | [S14] |
+| B03 | Recent objects | Revisit recently opened items. | New FR-SCHEMA-09 | M2 done (M2-23) | Scoped persistent recents, 15 shown / 50 stored, dedupe and Clear (docs/10 §8). | [S14] |
+| B04 | System schemas toggle | Hide or reveal internal schemas. | New FR-SCHEMA-09 | M2 done (M2-23) | Default-off per-profile system visibility, including SQLite internal names (docs/10 §8). | [S14] |
+| B05 | Section visibility | Hide routine/recent sections. | New FR-SCHEMA-09 | M2 done (M2-23) | Persistent section menu; search and independent ⌘P remain available (docs/10 §8). | [S14] |
+| B06 | Object favourites | Pin objects at the list's top. | New FR-SCHEMA-09 | M2 done (M2-23) | Persistent overload-aware identities, drag/keyboard order, missing rows with Remove (docs/10 §8). | [S14] |
+| B07 | Context labels | Display database/connection names. | New FR-SCHEMA-09 | M2 done (M2-23 verification) | Environment never conveyed by colour alone. | [S14] |
 | B08 | Query favourites | Save reusable named SQL. | Covered FR-EDIT-08 | M2 | Ordinary `.sql` files. | [S15] |
 | B09 | Favourite folders | Organise saved SQL in folders. | New FR-EDIT-14 | M2 | Merge-friendly folder structure. | [S15] |
 | B10 | Keyword expansion | Insert saved SQL via a keyword. | New FR-EDIT-14 | M2 | Insert without automatic execution. | [S15] |
