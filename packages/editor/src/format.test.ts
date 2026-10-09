@@ -14,6 +14,8 @@ const options: FormatOptions = {
   indentWith: 'spaces',
   keywordCase: 'upper',
   indentStyle: 'standard',
+  linesBetweenQueries: 1,
+  denseOperators: false,
 };
 
 let editor: SqlEditor | undefined;
@@ -70,15 +72,52 @@ it('aligns keywords in a column with the tabular indent types', async () => {
   expect(right).toContain('\n     FROM t');
 });
 
-it('formats the current statement only, as one undoable change', async () => {
+it('formats the whole document without a selection, as one undoable change', async () => {
   const { view, format } = mount('select 1;\nselect a,\n  b from t;');
   view.dispatch({ selection: { anchor: 14 } });
   await format('uglify', options);
-  expect(view.state.doc.toString()).toBe('select 1;\nselect a, b from t;');
+  expect(view.state.doc.toString()).toBe('select 1; select a, b from t;');
   await format('beautify', options);
   expect(view.state.doc.toString()).toBe(
-    'select 1;\nSELECT\n  a,\n  b\nFROM\n  t;',
+    'SELECT\n  1;\n\nSELECT\n  a,\n  b\nFROM\n  t;',
   );
+});
+
+it('separates statements and packs operators as configured', async () => {
+  const pretty = await beautifySql('select 1; select a from t where a = 1', {
+    ...options,
+    linesBetweenQueries: 2,
+    denseOperators: true,
+  });
+  expect(pretty).toBe('SELECT\n  1;\n\n\nSELECT\n  a\nFROM\n  t\nWHERE\n  a=1');
+});
+
+it('keeps parameter placeholders and comments when formatting', async () => {
+  const cases: [FormatOptions['dialect'], string, string[]][] = [
+    [
+      'postgres',
+      'select a from t where id = :id and b = $1 -- why',
+      ['id = :id', 'b = $1', '-- why'],
+    ],
+    [
+      'mysql',
+      'select a from t /* note */ where id = :id and b = ?',
+      ['id = :id', 'b = ?', '/* note */'],
+    ],
+    [
+      'sqlite',
+      'select a from t where a = ?1 and b = @b and c = $c and d = ?',
+      ['a = ?1', 'b = @b', 'c = $c', 'd = ?'],
+    ],
+  ];
+  for (const [dialect, sql, kept] of cases) {
+    const pretty = await beautifySql(sql, { ...options, dialect });
+    for (const text of kept) expect(pretty, dialect).toContain(text);
+    const ugly = uglifySql(pretty);
+    for (const text of kept.filter((item) => !item.startsWith('--')))
+      expect(ugly, dialect).toContain(text);
+  }
+  expect(uglifySql('select :id -- why')).toBe('select :id /* why */');
 });
 
 it('formats the selection when there is one', async () => {

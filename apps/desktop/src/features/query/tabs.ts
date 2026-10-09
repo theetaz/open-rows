@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
+import type { ParamValues } from './paramValues';
+
 /**
  * Where a tab set lives: a saved connection and one of its databases. Tabs
  * run on that database's own session, so they keep their set across
@@ -41,8 +43,8 @@ export type QueryTab = TabScope & {
   objectPath?: readonly string[];
   table?: TableObject;
   file?: TabFile;
-  /** Last query parameter values, by name (`:id`, `$1`, `?1`). */
-  params?: Readonly<Record<string, string>>;
+  /** Query parameter values of the parameters bar, by name (`:id`, `$1`, `?1`). */
+  params?: ParamValues;
   /** Pinned tabs stay left and survive Close Others / Close Tabs to the Right. */
   pinned?: boolean;
   /**
@@ -178,11 +180,11 @@ export function bindFile(
   return updateTab(state, id, (tab) => ({ ...tab, file, title: file.name }));
 }
 
-/** Remember the parameter values a tab last ran with. */
+/** Keep the parameter values of a tab's parameters bar. */
 export function setTabParams(
   state: TabsState,
   id: string,
-  params: Readonly<Record<string, string>>,
+  params: ParamValues,
 ): TabsState {
   return updateTab(state, id, (tab) => ({ ...tab, params }));
 }

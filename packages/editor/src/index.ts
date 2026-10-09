@@ -7,6 +7,8 @@ import { sqlEditorExtensions } from './extensions';
 import type { EditorDialect, SqlEditorOptions } from './extensions';
 import { formatInView } from './format';
 import type { FormatKind, FormatOptions } from './format';
+import { insertSnippet } from './snippets';
+import { currentStatement } from './statement';
 import {
   keyModeSlot,
   preferenceExtensions,
@@ -22,6 +24,7 @@ export type {
   CatalogSchema,
   CompletionCatalog,
 } from './completion/catalog';
+export type { SqlSnippet, SnippetSource } from './snippets';
 export type { EditorView } from '@codemirror/view';
 export { defaultPreferences } from './preferences';
 
@@ -38,8 +41,21 @@ export interface SqlEditor {
    * whole document, as one undoable change.
    */
   readonly format: (kind: FormatKind, options: FormatOptions) => Promise<void>;
+  /** Insert a snippet template over the selection, its first field selected. */
+  readonly insertSnippet: (body: string) => void;
+  /**
+   * Where the text Run Current executes starts: the selection, else the
+   * statement at the cursor, else the document start.
+   */
+  readonly runStart: () => number;
   /** Detach DOM listeners and remove the editor from its parent. */
   destroy(): void;
+}
+
+function runStart(view: EditorView): number {
+  const { from, to, head } = view.state.selection.main;
+  if (from !== to) return from;
+  return currentStatement(view.state, head)?.from ?? 0;
 }
 
 /** Mount a SQL editor into `parent`. Load this module lazily. */
@@ -65,6 +81,10 @@ export function mountSqlEditor(
       view.dispatch({ effects: keyModeSlot.reconfigure(keyMode ?? []) });
     },
     format: (kind, formatOptions) => formatInView(view, kind, formatOptions),
+    insertSnippet: (body) => {
+      insertSnippet(view, body);
+    },
+    runStart: () => runStart(view),
     destroy: () => {
       view.destroy();
     },

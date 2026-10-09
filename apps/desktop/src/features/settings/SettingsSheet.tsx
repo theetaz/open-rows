@@ -9,17 +9,25 @@ import { GeneralPane } from './GeneralPane';
 import { JsonPane } from './JsonPane';
 import { SearchResults } from './SearchResults';
 import { ShortcutsPane } from './ShortcutsPane';
+import { SnippetsPane } from '../snippets';
 import { SettingsQuery } from './settingsSearch';
 import styles from '../appearance/Appearance.module.css';
 import searchStyles from './Settings.module.css';
 
 export type SettingsSection =
-  'general' | 'appearance' | 'editor' | 'shortcuts' | 'diagnostics' | 'json';
+  | 'general'
+  | 'appearance'
+  | 'editor'
+  | 'snippets'
+  | 'shortcuts'
+  | 'diagnostics'
+  | 'json';
 
 const SECTIONS: readonly { value: SettingsSection; label: string }[] = [
   { value: 'general', label: 'General' },
   { value: 'appearance', label: 'Appearance' },
   { value: 'editor', label: 'Editor' },
+  { value: 'snippets', label: 'Snippets' },
   { value: 'shortcuts', label: 'Shortcuts' },
   { value: 'diagnostics', label: 'Diagnostics' },
   { value: 'json', label: 'JSON' },
@@ -28,6 +36,7 @@ const SECTIONS: readonly { value: SettingsSection; label: string }[] = [
 function Pane({ section }: { section: SettingsSection }): React.JSX.Element {
   if (section === 'appearance') return <AppearancePane />;
   if (section === 'editor') return <EditorPane />;
+  if (section === 'snippets') return <SnippetsPane />;
   if (section === 'shortcuts') return <ShortcutsPane />;
   if (section === 'diagnostics') return <DiagnosticsPane />;
   if (section === 'json') return <JsonPane />;

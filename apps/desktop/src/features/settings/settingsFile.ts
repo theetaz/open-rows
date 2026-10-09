@@ -10,6 +10,7 @@ import { parseOverrides, SHORTCUTS_KEY } from '../commands/bindings';
 import { DIAGNOSTICS_KEY, parseDiagnostics } from './diagnostics';
 import { GENERAL_KEY, parseGeneral } from './general';
 import { parseResults, RESULTS_KEY } from './results';
+import { parseSnippets, SNIPPETS_KEY } from '../snippets/snippetStore';
 import { onSettingsChanged, reloadSettings } from './localSetting';
 
 /**
@@ -40,6 +41,7 @@ const SECTIONS: Readonly<Record<string, Section>> = {
   shortcuts: { key: SHORTCUTS_KEY, parse: parseOverrides },
   diagnostics: { key: DIAGNOSTICS_KEY, parse: parseDiagnostics },
   results: { key: RESULTS_KEY, parse: parseResults },
+  snippets: { key: SNIPPETS_KEY, parse: parseSnippets },
 };
 
 const themeOf = (value: unknown): string =>

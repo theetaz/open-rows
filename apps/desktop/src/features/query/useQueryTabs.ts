@@ -12,6 +12,7 @@ import {
   setTabParams,
   tabsOf,
 } from './tabs';
+import type { ParamValues } from './paramValues';
 import type {
   QueryTab,
   QueryTabInit,
@@ -45,7 +46,7 @@ export type QueryTabs = {
   /** Bind a query tab to a `.sql` file, or record a save of it. */
   bindFile: (id: string, file: TabFile) => void;
   /** Remember a query tab's last parameter values. */
-  setParams: (id: string, params: Readonly<Record<string, string>>) => void;
+  setParams: (id: string, params: ParamValues) => void;
   /** Move a tab to a position among its scope's tabs. */
   move: (id: string, index: number) => void;
   pin: (id: string, pinned: boolean) => void;

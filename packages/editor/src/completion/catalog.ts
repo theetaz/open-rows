@@ -2,7 +2,7 @@
 
 /** Kinds of completion rows; each has its own icon. */
 export type CompletionKind =
-  'keyword' | 'table' | 'view' | 'function' | 'column' | 'schema';
+  'keyword' | 'table' | 'view' | 'function' | 'column' | 'schema' | 'snippet';
 
 /** A schema of the edited database. */
 export type CatalogSchema = { name: string; system: boolean };

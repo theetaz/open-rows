@@ -8,6 +8,7 @@ import type {
   EditorView,
   SqlEditor,
 } from '@openrows/editor';
+import { snippetSettings, snippetsFor } from '../snippets/snippetStore';
 import { currentCatalog } from './completionCatalog';
 import type { CursorStore } from './cursor';
 import type { EditorSettings, KeyBinding } from './editorSettings';
@@ -67,6 +68,8 @@ function handleOf(editor: SqlEditor): EditorHandle {
         changes: { from: 0, to: view.state.doc.length, insert: text },
       });
     },
+    insertSnippet: editor.insertSnippet,
+    runStart: editor.runStart,
   };
 }
 
@@ -129,6 +132,8 @@ function mount(
       label: props.label,
       dialect: props.dialect,
       catalog: currentCatalog(() => latest.current.catalog),
+      snippets: () =>
+        snippetsFor(snippetSettings.get(), latest.current.dialect),
       preferences: preferencesOf(props.settings),
       onKeyDown: (event) => latest.current.onKey(event),
       onDocChange: () => {

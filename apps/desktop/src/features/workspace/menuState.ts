@@ -33,6 +33,7 @@ export function menuEnabled(input: {
     cancel: query && connected,
     beautify: query,
     uglify: query,
+    'insert-snippet': query,
     connect: Boolean(profile) && !connected && state !== 'connecting',
     disconnect: connected || state === 'connecting',
     database: connected,

@@ -4,6 +4,7 @@ import {
   loadWorkspaceState,
   saveWorkspaceState,
 } from '../settings/workspaceState';
+import { parseParamValues } from './paramValues';
 import { emptyTabs, scopeKey } from './tabs';
 import type { QueryTab, TabFile, TableObject, TabsState } from './tabs';
 
@@ -32,12 +33,6 @@ function fileOf(value: unknown): TabFile | undefined {
     : { path, name, saved };
 }
 
-function paramsOf(value: unknown): Record<string, string> | undefined {
-  if (!isRecord(value)) return undefined;
-  const entries = Object.entries(value).filter(([, item]) => isString(item));
-  return Object.fromEntries(entries) as Record<string, string>;
-}
-
 function tableOf(value: unknown): TableObject | undefined {
   if (!isRecord(value)) return undefined;
   const { database, schema, name } = value;
@@ -64,7 +59,7 @@ function tabOf(value: unknown): QueryTab | null {
   if (!content || ![id, connectionId, database, title, sql].every(isString))
     return null;
   const file = fileOf(value.file);
-  const params = paramsOf(value.params);
+  const params = parseParamValues(value.params);
   return {
     id: id as string,
     connectionId: connectionId as string,

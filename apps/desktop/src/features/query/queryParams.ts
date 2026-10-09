@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { EditorDialect } from '@openrows/editor';
-import type { ParamsDto, ParamStyleDto } from '@openrows/ipc';
+import type { ParamsDto, ParamStyleDto, ParamValueDto } from '@openrows/ipc';
 import type { QueryParams } from './editorSettings';
 
 /**
@@ -44,16 +44,10 @@ export function effectiveParams(
     : null;
 }
 
-/** `params` of a run: ask for values first (`values: null`) or send them. */
+/** `params` of a run: the style's values, or `null` to run SQL as written. */
 export function runParams(
   style: ParamStyleDto | null,
-  values: Readonly<Record<string, string>> | null,
+  values: ParamValueDto[],
 ): ParamsDto | null {
-  if (!style) return null;
-  return {
-    style,
-    values: values
-      ? Object.entries(values).map(([name, value]) => ({ name, value }))
-      : null,
-  };
+  return style ? { style, values } : null;
 }

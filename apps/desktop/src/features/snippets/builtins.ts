@@ -1,0 +1,135 @@
+// SPDX-License-Identifier: Apache-2.0
+import type { Snippet } from './snippetStore';
+
+/**
+ * Snippets shipped with the app; each can be turned off in Settings ▸
+ * Snippets. `${1:name}` fields are tab stops; repeated numbers are linked.
+ */
+export const BUILTIN_SNIPPETS: readonly Snippet[] = [
+  {
+    id: 'select',
+    name: 'Select rows',
+    prefix: 'sel',
+    body: 'SELECT ${1:*}\nFROM ${2:table}\nWHERE ${3:condition};',
+    scope: 'all',
+  },
+  {
+    id: 'select-join',
+    name: 'Select with join',
+    prefix: 'selj',
+    body: 'SELECT ${1:*}\nFROM ${2:a}\nJOIN ${3:b} ON ${3:b}.${4:id} = ${2:a}.${5:b_id};',
+    scope: 'all',
+  },
+  {
+    id: 'count',
+    name: 'Count rows',
+    prefix: 'cnt',
+    body: 'SELECT count(*) FROM ${1:table};',
+    scope: 'all',
+  },
+  {
+    id: 'insert',
+    name: 'Insert a row',
+    prefix: 'ins',
+    body: 'INSERT INTO ${1:table} (${2:columns})\nVALUES (${3:values});',
+    scope: 'all',
+  },
+  {
+    id: 'update',
+    name: 'Update rows',
+    prefix: 'upd',
+    body: 'UPDATE ${1:table}\nSET ${2:column} = ${3:value}\nWHERE ${4:condition};',
+    scope: 'all',
+  },
+  {
+    id: 'delete',
+    name: 'Delete rows',
+    prefix: 'del',
+    body: 'DELETE FROM ${1:table}\nWHERE ${2:condition};',
+    scope: 'all',
+  },
+  {
+    id: 'pg-create-table',
+    name: 'Create table (identity key)',
+    prefix: 'ct',
+    body: 'CREATE TABLE ${1:name} (\n\tid bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,\n\t${2:column} ${3:text}\n);',
+    scope: 'postgres',
+  },
+  {
+    id: 'pg-upsert',
+    name: 'Upsert (ON CONFLICT)',
+    prefix: 'ups',
+    body: 'INSERT INTO ${1:table} (${2:key}, ${3:column})\nVALUES (${4:key_value}, ${5:value})\nON CONFLICT (${2:key}) DO UPDATE SET ${3:column} = EXCLUDED.${3:column};',
+    scope: 'postgres',
+  },
+  {
+    id: 'pg-explain',
+    name: 'Explain analyze',
+    prefix: 'exp',
+    body: 'EXPLAIN (ANALYZE, BUFFERS) ${1:query};',
+    scope: 'postgres',
+  },
+  {
+    id: 'pg-activity',
+    name: 'Active sessions',
+    prefix: 'act',
+    body: "SELECT pid, usename, state, now() - query_start AS runtime, query\nFROM pg_stat_activity\nWHERE state <> 'idle'\nORDER BY runtime DESC;",
+    scope: 'postgres',
+  },
+  {
+    id: 'mysql-create-table',
+    name: 'Create table (auto increment key)',
+    prefix: 'ct',
+    body: 'CREATE TABLE ${1:name} (\n\tid BIGINT AUTO_INCREMENT PRIMARY KEY,\n\t${2:column} ${3:VARCHAR(255)}\n);',
+    scope: 'mysql',
+  },
+  {
+    id: 'mysql-upsert',
+    name: 'Upsert (ON DUPLICATE KEY)',
+    prefix: 'ups',
+    body: 'INSERT INTO ${1:table} (${2:key}, ${3:column})\nVALUES (${4:key_value}, ${5:value})\nON DUPLICATE KEY UPDATE ${3:column} = VALUES(${3:column});',
+    scope: 'mysql',
+  },
+  {
+    id: 'mysql-explain',
+    name: 'Explain analyze',
+    prefix: 'exp',
+    body: 'EXPLAIN ANALYZE ${1:query};',
+    scope: 'mysql',
+  },
+  {
+    id: 'mysql-processlist',
+    name: 'Running threads',
+    prefix: 'act',
+    body: 'SHOW FULL PROCESSLIST;',
+    scope: 'mysql',
+  },
+  {
+    id: 'sqlite-create-table',
+    name: 'Create table (rowid key)',
+    prefix: 'ct',
+    body: 'CREATE TABLE ${1:name} (\n\tid INTEGER PRIMARY KEY,\n\t${2:column} ${3:TEXT}\n);',
+    scope: 'sqlite',
+  },
+  {
+    id: 'sqlite-upsert',
+    name: 'Upsert (ON CONFLICT)',
+    prefix: 'ups',
+    body: 'INSERT INTO ${1:table} (${2:key}, ${3:column})\nVALUES (${4:key_value}, ${5:value})\nON CONFLICT (${2:key}) DO UPDATE SET ${3:column} = excluded.${3:column};',
+    scope: 'sqlite',
+  },
+  {
+    id: 'sqlite-explain',
+    name: 'Explain query plan',
+    prefix: 'exp',
+    body: 'EXPLAIN QUERY PLAN ${1:query};',
+    scope: 'sqlite',
+  },
+  {
+    id: 'sqlite-tables',
+    name: 'List tables',
+    prefix: 'tbls',
+    body: "SELECT name FROM sqlite_schema WHERE type = 'table' ORDER BY name;",
+    scope: 'sqlite',
+  },
+];

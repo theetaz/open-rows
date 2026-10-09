@@ -93,7 +93,8 @@ impl ParamBinder {
     }
 
     /// `sql` with every slot replaced by the dialect's bind placeholder and
-    /// the values in placeholder order.
+    /// the values in placeholder order. `value` returns `None` for a name
+    /// without a value and `Some(None)` for SQL NULL.
     ///
     /// # Errors
     /// [`MissingParam`] naming the first slot `value` has no value for.
@@ -101,7 +102,7 @@ impl ParamBinder {
         &self,
         sql: &str,
         slots: &[ParamSlot],
-        value: impl Fn(&str) -> Option<String>,
+        value: impl Fn(&str) -> Option<Option<String>>,
     ) -> Result<BoundSql, MissingParam> {
         let mut text = String::with_capacity(sql.len());
         let mut params = Vec::with_capacity(slots.len());
@@ -110,7 +111,7 @@ impl ParamBinder {
             let value = value(&slot.name).ok_or_else(|| MissingParam(slot.name.clone()))?;
             text.push_str(sql.get(copied..slot.range.start).unwrap_or_default());
             text.push_str(&self.dialect.placeholder(index + 1));
-            params.push(Some(value));
+            params.push(value);
             copied = slot.range.end;
         }
         text.push_str(sql.get(copied..).unwrap_or_default());
@@ -133,7 +134,7 @@ mod tests {
         let slots = binder.slots(sql);
         let names: Vec<&str> = slots.iter().map(|slot| slot.name.as_str()).collect();
         assert_eq!(names, [":id", ":name", ":id"]);
-        let bound = binder.bind(sql, &slots, |name| Some(value(name)))?;
+        let bound = binder.bind(sql, &slots, |name| Some(Some(value(name))))?;
         assert_eq!(
             bound.sql,
             "SELECT * FROM t WHERE a = $1 AND b::text = $2 OR c = $3"
@@ -144,7 +145,7 @@ mod tests {
         );
         let mysql = ParamBinder::new(Dialect::MySql, ParamStyle::Named);
         let bound = mysql.bind("x = :a", &mysql.clone().slots("x = :a"), |name| {
-            Some(value(name))
+            Some(Some(value(name)))
         })?;
         assert_eq!(bound.sql, "x = ?");
         Ok(())
@@ -155,7 +156,7 @@ mod tests {
         let sql = "SELECT $2, '$1', $1";
         let mut binder = ParamBinder::new(Dialect::Postgres, ParamStyle::Numbered);
         let slots = binder.slots(sql);
-        let bound = binder.bind(sql, &slots, |name| Some(value(name)))?;
+        let bound = binder.bind(sql, &slots, |name| Some(Some(value(name))))?;
         assert_eq!(bound.sql, "SELECT $1, '$1', $2");
         assert_eq!(
             bound.params,
@@ -175,6 +176,16 @@ mod tests {
         let second: Vec<String> = binder.slots("c = ?").into_iter().map(|s| s.name).collect();
         assert_eq!(first, ["?1"]);
         assert_eq!(second, ["?2"]);
+    }
+
+    #[test]
+    fn null_values_bind_as_sql_null() -> Result<(), MissingParam> {
+        let sql = "SELECT :a";
+        let mut binder = ParamBinder::new(Dialect::Postgres, ParamStyle::Named);
+        let slots = binder.slots(sql);
+        let bound = binder.bind(sql, &slots, |_| Some(None))?;
+        assert_eq!(bound.params, [None]);
+        Ok(())
     }
 
     #[test]

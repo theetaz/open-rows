@@ -6,7 +6,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./vim": "./src/vim.ts"
+    "./vim": "./src/vim.ts",
+    "./params": "./src/params.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

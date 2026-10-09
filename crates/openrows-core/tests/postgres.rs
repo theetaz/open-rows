@@ -248,7 +248,7 @@ async fn editor_parameters_bind_and_errors_can_continue() -> TestResult {
     let mut statements = Vec::new();
     for sql in texts {
         let slots = binder.slots(sql);
-        let value = |name: &str| Some(if name == ":n" { "7" } else { "it's" }.to_owned());
+        let value = |name: &str| Some(Some(if name == ":n" { "7" } else { "it's" }.to_owned()));
         statements.push(binder.bind(sql, &slots, value)?);
     }
     let mut seen = Vec::new();

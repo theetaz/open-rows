@@ -72,10 +72,9 @@ async fn bound(
     let sql = format!("SELECT {} AS v", dialect.text_of(":v"));
     let mut binder = ParamBinder::new(dialect, ParamStyle::Named);
     let slots = binder.slots(&sql);
-    let mut statement = binder
-        .bind(&sql, &slots, |_| Some(String::new()))
+    let statement = binder
+        .bind(&sql, &slots, |_| Some(value.map(str::to_owned)))
         .map_err(|error| Failure::Contract(error.to_string()))?;
-    statement.params = vec![value.map(str::to_owned)];
     let mut sink = Collect::default();
     connection
         .execute_bound(&statement.sql, &statement.params, &mut sink)

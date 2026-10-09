@@ -9,10 +9,14 @@ export type EditorHandle = {
   cursor: () => number;
   selection: () => string;
   focus: () => void;
-  /** Beautify or uglify the selection, current statement or document. */
+  /** Beautify or uglify the selection, else the whole document. */
   format: (kind: FormatKind, options: FormatOptions) => Promise<void>;
   /** Replace the whole text (Reload of a file changed on disk). */
   replace: (text: string) => void;
+  /** Insert a snippet template over the selection. */
+  insertSnippet: (body: string) => void;
+  /** Where the text Run Current executes starts (selection or statement). */
+  runStart: () => number;
 };
 
 /** Run current (⌘↵, or the selection when text is selected) or all (⇧⌘↵). */
