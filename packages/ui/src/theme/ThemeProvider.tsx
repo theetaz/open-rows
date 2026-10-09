@@ -33,8 +33,11 @@ const query = '(prefers-color-scheme: dark)';
 /** Applies one root attribute; CSS performs the system-theme and material changes. */
 export function ThemeProvider({
   children,
+  onChange,
 }: {
   children: ReactNode;
+  /** Called after the user changed the scheme or appearance (persisted copies). */
+  onChange?: (() => void) | undefined;
 }): React.JSX.Element {
   const [appearance, updateAppearance] = useState(readAppearance);
 
@@ -68,6 +71,7 @@ export function ThemeProvider({
   function setMode(next: ThemeMode): void {
     updateMode(next);
     saveTheme(next);
+    onChange?.();
   }
   function setAppearance(patch: Partial<Appearance>): void {
     updateAppearance((previous) => {
@@ -75,6 +79,7 @@ export function ThemeProvider({
       saveAppearance(next);
       return next;
     });
+    onChange?.();
   }
   const resolved = mode === 'system' ? (systemDark ? 'dark' : 'light') : mode;
   const grid = useMemo(

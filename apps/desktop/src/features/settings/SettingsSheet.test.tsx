@@ -3,7 +3,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
 import { ThemeProvider, useTheme } from '@openrows/ui';
-import { AppearanceSettings } from './AppearanceSettings';
+import { SettingsSheet } from './SettingsSheet';
 function State(): React.JSX.Element {
   const { appearance } = useTheme();
   return <output data-testid="state">{JSON.stringify(appearance)}</output>;
@@ -12,7 +12,7 @@ function setup(): ReturnType<typeof userEvent.setup> {
   render(
     <ThemeProvider>
       <State />
-      <AppearanceSettings onClose={vi.fn()} />
+      <SettingsSheet initial="appearance" onClose={vi.fn()} />
     </ThemeProvider>,
   );
   return userEvent.setup();
@@ -88,7 +88,7 @@ it('creates, exports, imports, edits and removes custom themes, rejects invalid 
   });
   expect(screen.getByRole('button', { name: 'Save theme' })).toBeDisabled();
   await user.keyboard('{Escape}');
-  expect(screen.getByRole('dialog', { name: 'Appearance' })).toBeVisible();
+  expect(screen.getByRole('dialog', { name: 'Settings' })).toBeVisible();
   expect(screen.getByRole('button', { name: 'My ocean dark' })).toBeVisible();
 });
 it('restores defaults while keeping custom themes', async () => {
@@ -105,4 +105,56 @@ it('restores defaults while keeping custom themes', async () => {
     screen.getByRole('button', { name: 'OpenRows light' }),
   ).toHaveAttribute('aria-pressed', 'true');
   expect(document.documentElement).toHaveAttribute('data-theme', 'system');
+});
+it('switches General and Editor settings', async () => {
+  const user = userEvent.setup();
+  render(
+    <ThemeProvider>
+      <SettingsSheet onClose={vi.fn()} />
+    </ThemeProvider>,
+  );
+  const restore = screen.getByRole('switch', {
+    name: 'Restore session on launch',
+  });
+  expect(restore).toHaveAttribute('aria-checked', 'true');
+  await user.click(restore);
+  await user.click(screen.getByRole('radio', { name: 'Compact' }));
+  await user.click(screen.getByRole('switch', { name: 'Reduce motion' }));
+  expect(JSON.parse(localStorage.getItem('openrows.general') ?? '{}')).toEqual({
+    restoreSession: false,
+    density: 'compact',
+    reduceMotion: true,
+  });
+  await user.click(screen.getByRole('radio', { name: 'Editor' }));
+  await user.click(screen.getByRole('switch', { name: 'Wrap lines' }));
+  expect(localStorage.getItem('openrows.editor')).toContain('"wrap":true');
+});
+it('records shortcuts, reports conflicts and replaces on request', async () => {
+  const user = userEvent.setup();
+  render(
+    <ThemeProvider>
+      <SettingsSheet initial="shortcuts" onClose={vi.fn()} />
+    </ThemeProvider>,
+  );
+  const save = screen.getByRole('button', {
+    name: 'Shortcut for Save SQL file',
+  });
+  expect(save).toHaveTextContent('⌘S');
+  await user.click(save);
+  expect(save).toHaveTextContent('Type shortcut…');
+  await user.keyboard('{Meta>}j{/Meta}');
+  expect(save).toHaveTextContent('⌘J');
+  await user.click(save);
+  await user.keyboard('{Meta>}q{/Meta}');
+  expect(screen.getByRole('alert')).toHaveTextContent('reserved for Quit');
+  await user.click(save);
+  await user.keyboard('{Meta>}t{/Meta}');
+  expect(screen.getByRole('alert')).toHaveTextContent('“New query tab”');
+  await user.click(screen.getByRole('button', { name: 'Replace' }));
+  expect(save).toHaveTextContent('⌘T');
+  expect(
+    screen.getByRole('button', { name: 'Shortcut for New query tab' }),
+  ).toHaveTextContent('—');
+  await user.click(screen.getByRole('button', { name: 'Restore defaults' }));
+  expect(save).toHaveTextContent('⌘S');
 });

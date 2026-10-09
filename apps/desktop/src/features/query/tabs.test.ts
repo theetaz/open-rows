@@ -9,7 +9,7 @@ import {
   selectTab,
   tabsOf,
 } from './tabs';
-import { runRequest, runScopeOf } from './request';
+import { runRequest } from './request';
 
 it('keeps tab sets and active tabs per connection and database', () => {
   const a = { connectionId: 'a', database: '' };
@@ -77,22 +77,4 @@ it('builds run requests for current, selection and all, with the row limit', () 
     runRequest(editor('SELECT 1', 3, 'SELECT'), 'all', 's', 1_000),
   ).toMatchObject({ sql: 'SELECT 1', mode: 'all', maxRows: 1_000 });
   expect(runRequest(editor('  \n', 0), 'all', 's', null)).toBeNull();
-});
-
-it('maps ⌘↵ and ⇧⌘↵ but not handled or modified keys', () => {
-  const key = {
-    key: 'Enter',
-    metaKey: true,
-    ctrlKey: false,
-    altKey: false,
-    shiftKey: false,
-    defaultPrevented: false,
-  };
-  expect(runScopeOf(key)).toBe('current');
-  expect(runScopeOf({ ...key, shiftKey: true })).toBe('all');
-  expect(runScopeOf({ ...key, metaKey: false, ctrlKey: true })).toBe('current');
-  expect(runScopeOf({ ...key, metaKey: false })).toBeNull();
-  expect(runScopeOf({ ...key, altKey: true })).toBeNull();
-  expect(runScopeOf({ ...key, defaultPrevented: true })).toBeNull();
-  expect(runScopeOf({ ...key, key: 'a' })).toBeNull();
 });

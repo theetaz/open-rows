@@ -13,12 +13,8 @@ type Editor =
   | { kind: 'edit'; theme: ThemeDefinition }
   | { kind: 'import' }
   | { kind: 'export'; theme: ThemeDefinition };
-/** Device-local preferences, applied without unmounting the database workspace. */
-export function AppearanceSettings({
-  onClose,
-}: {
-  onClose: () => void;
-}): React.JSX.Element {
+/** Settings ▸ Appearance: schemes, themes, interface and typography, applied live. */
+export function AppearancePane(): React.JSX.Element {
   const { appearance, setAppearance } = useTheme();
   const [editor, setEditor] = useState<Editor | null>(null);
   const [reset, setReset] = useState(false);
@@ -38,40 +34,37 @@ export function AppearanceSettings({
     setReset(false);
   };
   return (
-    <Sheet title="Appearance" size="appearance" onClose={onClose}>
-      <div className={styles.page}>
-        <AppearanceHeader onClose={onClose} />
-        <section aria-label="Color scheme">
-          <h3>Color scheme</h3>
-          <SchemeCards />
-        </section>
-        <ThemeLibrary
-          onEdit={(theme) => {
-            setEditor({ kind: 'edit', theme });
+    <>
+      <section aria-label="Color scheme">
+        <h3>Color scheme</h3>
+        <SchemeCards />
+      </section>
+      <ThemeLibrary
+        onEdit={(theme) => {
+          setEditor({ kind: 'edit', theme });
+        }}
+        onImport={() => {
+          setEditor({ kind: 'import' });
+        }}
+        onExport={(theme) => {
+          setEditor({ kind: 'export', theme });
+        }}
+      />
+      <InterfaceSettings />
+      <TypographySettings />
+      <footer className={styles.footer}>
+        <p>
+          Saved in settings.json. System accessibility preferences take
+          priority.
+        </p>
+        <Button
+          onClick={() => {
+            setReset(true);
           }}
-          onImport={() => {
-            setEditor({ kind: 'import' });
-          }}
-          onExport={(theme) => {
-            setEditor({ kind: 'export', theme });
-          }}
-        />
-        <InterfaceSettings />
-        <TypographySettings />
-        <footer className={styles.footer}>
-          <p>
-            Saved on this device. System accessibility preferences take
-            priority.
-          </p>
-          <Button
-            onClick={() => {
-              setReset(true);
-            }}
-          >
-            Reset appearance
-          </Button>
-        </footer>
-      </div>
+        >
+          Reset appearance
+        </Button>
+      </footer>
       {editor?.kind === 'edit' && (
         <ThemeEditor
           theme={editor.theme}
@@ -91,7 +84,7 @@ export function AppearanceSettings({
         />
       )}
       {reset && <ResetAppearance onClose={closeReset} />}
-    </Sheet>
+    </>
   );
 }
 
@@ -124,22 +117,5 @@ function ResetAppearance({
         </Button>
       </div>
     </Sheet>
-  );
-}
-
-function AppearanceHeader({
-  onClose,
-}: {
-  onClose: () => void;
-}): React.JSX.Element {
-  return (
-    <header className={styles.header}>
-      <h1>
-        <span>Settings /</span> Appearance
-      </h1>
-      <Button onClick={onClose} data-initial-focus="true">
-        Done
-      </Button>
-    </header>
   );
 }

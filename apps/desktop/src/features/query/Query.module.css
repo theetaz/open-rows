@@ -222,3 +222,15 @@
 .cell pre[data-null='true'] {
   color: var(--or-tertiary);
 }
+/* Tabs of a connection that is not up (session restore, dropped connection). */
+.reconnect {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--or-space-12);
+  padding: var(--or-space-4) var(--or-space-12);
+  border-block-end: var(--or-border-width) solid var(--or-separator);
+  background: var(--or-panel-solid);
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+}

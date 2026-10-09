@@ -3,7 +3,7 @@ import { autocompletion, completionKeymap } from '@codemirror/autocomplete';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { bracketMatching } from '@codemirror/language';
 import { sql } from '@codemirror/lang-sql';
-import { EditorState } from '@codemirror/state';
+import { EditorState, Prec } from '@codemirror/state';
 import type { Extension } from '@codemirror/state';
 import {
   EditorView,
@@ -45,10 +45,11 @@ export interface SqlEditorOptions {
   /** Called after the selection or document changed (cursor position). */
   onSelection?: (view: EditorView) => void;
   /**
-   * Application shortcuts (CodeMirror key names such as `Mod-Enter`) that win
-   * over the default keymaps; `run` returns true when it handled the key.
+   * Application shortcuts, checked before every keymap (so they win over
+   * defaults such as `Mod-Enter`); returns true when it handled the key,
+   * which is then prevented. Read on every press, so rebinding applies live.
    */
-  keys?: readonly EditorKey[];
+  onKeyDown?: (event: KeyboardEvent) => boolean;
   /** A read-only viewer (DDL, trigger definitions): no edits, still selectable. */
   readOnly?: boolean;
   /** Highlighting and keyword completion; `postgres` when absent. */
@@ -59,16 +60,16 @@ export interface SqlEditorOptions {
   preferences?: EditorPreferences;
 }
 
-/** One application shortcut inside the editor. */
-export interface EditorKey {
-  key: string;
-  run: () => boolean;
-}
-
-function appKeys(keys: readonly EditorKey[] | undefined): Extension {
-  if (!keys?.length) return [];
-  return keymap.of(
-    keys.map(({ key, run }) => ({ key, run, preventDefault: true })),
+function appKeys(handle: SqlEditorOptions['onKeyDown']): Extension {
+  if (!handle) return [];
+  return Prec.highest(
+    EditorView.domEventHandlers({
+      keydown: (event) => {
+        if (!handle(event)) return false;
+        event.preventDefault();
+        return true;
+      },
+    }),
   );
 }
 
@@ -104,7 +105,7 @@ function completion(options: SqlEditorOptions): Extension {
 export function sqlEditorExtensions(options: SqlEditorOptions): Extension {
   return [
     keyModeSlot.of(options.keyMode ?? []),
-    appKeys(options.keys),
+    appKeys(options.onKeyDown),
     lineNumbers(),
     highlightActiveLineGutter(),
     history(),

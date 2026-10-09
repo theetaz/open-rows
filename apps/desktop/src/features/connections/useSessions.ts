@@ -17,8 +17,11 @@ import type { SessionStatus, Statuses } from './sessions';
 
 export type Sessions = {
   statusOf: (profileId: string) => SessionStatus;
-  /** Reach the server, then open the profile's database when it has one. */
-  connect: (profileId: string) => Promise<void>;
+  /**
+   * Reach the server, then open the profile's database when it has one;
+   * resolves that database's name (`null` when none or on failure).
+   */
+  connect: (profileId: string) => Promise<string | null>;
   disconnect: (profileId: string) => Promise<void>;
   /** Open a session on `database`; already open databases are kept. */
   openDatabase: (profileId: string, database: string) => Promise<void>;
@@ -49,7 +52,7 @@ export function useSessions(): Sessions {
       );
     if (!known) await openIn(setStatuses, profileId, database);
   };
-  const connect = async (profileId: string): Promise<void> => {
+  const connect = async (profileId: string): Promise<string | null> => {
     set(profileId, { state: 'connecting' });
     try {
       const opened = await openConnection(profileId);
@@ -62,8 +65,10 @@ export function useSessions(): Sessions {
       });
       if (opened.database)
         await openIn(setStatuses, profileId, opened.database);
+      return opened.database;
     } catch (error) {
       set(profileId, { state: 'failed', message: message(error) });
+      return null;
     }
   };
   const disconnect = async (profileId: string): Promise<void> => {

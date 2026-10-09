@@ -12,6 +12,15 @@ export type Databases = {
   closeProfileDatabase: (profileId: string, name: string) => void;
   /** Active database of the active connection; empty when none is open. */
   database: string;
+  /**
+   * The database last chosen on the active connection, even while it is not
+   * open (a restored session before it reconnects); empty when none.
+   */
+  wanted: string;
+  /** The chosen (or first opened) database of any saved connection. */
+  databaseOf: (profileId: string) => string;
+  /** Remember a connection's active database without opening it. */
+  prefer: (profileId: string, name: string) => void;
   /** Open `name` on the active connection (if needed) and make it active. */
   openDatabase: (name: string) => void;
   /** Close `name` and its sessions; a neighbour becomes active. */
@@ -48,6 +57,16 @@ export function useDatabases(
   return {
     databases,
     database,
+    wanted: wanted ?? '',
+    databaseOf: (id) => {
+      const status = sessions.statusOf(id);
+      const opened = status.state === 'connected' ? status.databases : [];
+      const name = chosen[id];
+      return opened.some((item) => item.name === name)
+        ? (name ?? '')
+        : (opened[0]?.name ?? name ?? '');
+    },
+    prefer: choose,
     chooseDatabase: (id, name) => {
       choose(id, name);
       void sessions.openDatabase(id, name);

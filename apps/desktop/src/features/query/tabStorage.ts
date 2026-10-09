@@ -1,13 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
+import { generalSettings } from '../settings/general';
 import { emptyTabs, scopeKey } from './tabs';
-import type { QueryTab, TabFile, TabsState } from './tabs';
+import type { QueryTab, TabFile, TableObject, TabsState } from './tabs';
 
-/** Where query tabs persist on this device while Auto Save is on. */
+/** Where open tabs persist on this device for session restore. */
 export const TABS_KEY = 'openrows.queryTabs';
 
-/** Query tabs (with their text, file and parameters) as stored; table tabs reopen from the sidebar. */
-export function serializeTabs(state: TabsState): string {
-  const tabs = state.tabs.filter((tab) => tab.kind === 'query');
+/**
+ * Open tabs as stored: query tabs with their text, file and parameters (only
+ * with `withText`, i.e. Auto Save), table tabs with their relation.
+ */
+export function serializeTabs(state: TabsState, withText = true): string {
+  const tabs = state.tabs.flatMap((tab) => {
+    if (tab.kind === 'table') return [tab];
+    return withText ? [tab] : [];
+  });
   return JSON.stringify({ tabs, active: state.active, next: state.next });
 }
 
@@ -28,23 +35,44 @@ function paramsOf(value: unknown): Record<string, string> | undefined {
   return Object.fromEntries(entries) as Record<string, string>;
 }
 
-/** A stored query tab, or `null` when anything essential is missing. */
+function tableOf(value: unknown): TableObject | undefined {
+  if (!isRecord(value)) return undefined;
+  const { database, schema, name } = value;
+  if (!isString(database) || !isString(schema) || !isString(name))
+    return undefined;
+  return { database, schema, name };
+}
+
+/** The kind-specific part of a stored tab; `null` when unusable. */
+function contentOf(
+  value: Record<string, unknown>,
+): Pick<QueryTab, 'kind' | 'table' | 'objectPath'> | null {
+  if (value.kind === 'query') return { kind: 'query' };
+  const table = value.kind === 'table' ? tableOf(value.table) : undefined;
+  if (!table) return null;
+  return { kind: 'table', table, objectPath: [table.schema, table.name] };
+}
+
+/** A stored tab, or `null` when anything essential is missing. */
 function tabOf(value: unknown): QueryTab | null {
   if (!isRecord(value)) return null;
   const { id, connectionId, database, title, sql } = value;
-  const fields = [id, connectionId, database, title, sql];
-  if (value.kind !== 'query' || !fields.every(isString)) return null;
+  const content = contentOf(value);
+  if (!content || ![id, connectionId, database, title, sql].every(isString))
+    return null;
   const file = fileOf(value.file);
   const params = paramsOf(value.params);
   return {
     id: id as string,
-    kind: 'query',
     connectionId: connectionId as string,
     database: database as string,
     title: title as string,
     sql: sql as string,
+    ...content,
     ...(file ? { file } : {}),
     ...(params ? { params } : {}),
+    ...(value.pinned === true ? { pinned: true } : {}),
+    ...(value.preview === true ? { preview: true } : {}),
   };
 }
 
@@ -81,8 +109,9 @@ export function restoreTabs(text: string | null): TabsState {
   return { tabs, active: activeOf(tabs, stored.active), next };
 }
 
-/** The stored tabs of this device. */
+/** The stored tabs of this device; none when session restore is off. */
 export function readTabs(): TabsState {
+  if (!generalSettings.get().restoreSession) return emptyTabs;
   try {
     return restoreTabs(localStorage.getItem(TABS_KEY));
   } catch {
@@ -90,10 +119,17 @@ export function readTabs(): TabsState {
   }
 }
 
-/** Store the tabs, or forget them when Auto Save is off. */
-export function writeTabs(state: TabsState, autoSave: boolean): void {
+/**
+ * Store the tabs for the next launch: query text only with Auto Save, and
+ * nothing when session restore is off.
+ */
+export function writeTabs(
+  state: TabsState,
+  options: { autoSave: boolean; restore: boolean },
+): void {
   try {
-    if (autoSave) localStorage.setItem(TABS_KEY, serializeTabs(state));
+    if (options.restore)
+      localStorage.setItem(TABS_KEY, serializeTabs(state, options.autoSave));
     else localStorage.removeItem(TABS_KEY);
   } catch {
     /* Without storage, tabs last for this session only. */

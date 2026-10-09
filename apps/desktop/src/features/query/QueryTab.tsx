@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useRef, useState } from 'react';
-import type { KeyboardEvent } from 'react';
 import type { ProfileDto } from '@openrows/ipc';
 import type { CompletionCatalog, FormatKind } from '@openrows/editor';
 import { QueryEditor } from './QueryEditor';
@@ -14,13 +13,13 @@ import { useEditorSettings } from './editorSettings';
 import type { EditorSettings } from './editorSettings';
 import { isActive } from './run';
 import type { RunState } from './run';
-import { fileActionOf, formatKindOf, runScopeOf } from './request';
-import type { EditorHandle, FileAction, RunScope } from './request';
+import type { EditorHandle, FileAction } from './request';
 import { useRunActions } from './useRunActions';
 import type { RunActions } from './useRunActions';
 import type { RunMenu } from './runMenu';
 import { statusText } from './status';
 import { addSavedQuery } from './savedQueries';
+import { tabKey, useTabAction } from './tabKeys';
 import { useTabFiles } from './useTabFiles';
 import type { TabFileActions } from './useTabFiles';
 import type { QueryTab as Tab } from './tabs';
@@ -70,23 +69,6 @@ function useFormat(
   return [failure, format];
 }
 
-/** Run (⌘↵, ⇧⌘↵), format (⌘I, ⇧⌘I) and file (⌘S, ⇧⌘S, ⌘O) shortcuts anywhere in the tab. */
-function shortcut(
-  event: KeyboardEvent<HTMLElement>,
-  start: (key: RunScope) => void,
-  format: (kind: FormatKind) => void,
-  file: (action: FileAction) => void,
-): void {
-  const scope = runScopeOf(event);
-  const kind = formatKindOf(event);
-  const action = fileActionOf(event);
-  if (scope) start(scope);
-  else if (kind) format(kind);
-  else if (action) file(action);
-  else return;
-  event.preventDefault();
-}
-
 /** Run's dropdown wired to the tab's run, settings and file actions. */
 function runMenuOf(input: {
   ready: boolean;
@@ -126,12 +108,13 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
   const run = runs.runOf(tab.id);
   const actions = useRunActions(editor, settings, props);
   const active = isActive(run);
+  const act = useTabAction({ actions, format, files, runs, tabId: tab.id });
   return (
     <section
       className={styles.query}
       aria-label={tab.title}
       onKeyDown={(event) => {
-        shortcut(event, actions.runKey, format, files.act);
+        tabKey(event, act);
       }}
     >
       <QueryEditor
@@ -144,8 +127,7 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
         onChange={(sql) => {
           props.tabs.edit(tab.id, sql);
         }}
-        onRun={actions.runKey}
-        onFormat={format}
+        onKey={(event) => tabKey(event, act)}
         onReady={(handle) => {
           editor.current = handle;
         }}

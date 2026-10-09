@@ -4,7 +4,7 @@ import { EditorState } from '@codemirror/state';
 import type { Extension } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { sqlEditorExtensions } from './extensions';
-import type { EditorDialect, EditorKey, SqlEditorOptions } from './extensions';
+import type { EditorDialect, SqlEditorOptions } from './extensions';
 import { formatInView } from './format';
 import type { FormatKind, FormatOptions } from './format';
 import {
@@ -14,7 +14,7 @@ import {
 } from './preferences';
 import type { EditorPreferences } from './preferences';
 
-export type { EditorDialect, EditorKey, SqlEditorOptions };
+export type { EditorDialect, SqlEditorOptions };
 export type { EditorPreferences, FormatKind, FormatOptions };
 export type {
   CatalogColumn,

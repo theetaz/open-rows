@@ -165,10 +165,20 @@ export const commands = {
 	 *  cancels; the partial file is deleted.
 	 */
 	exportStart: (request: ExportRequest, onEvent: Channel<ExportEventDto>) => typedError<ExportReply, IpcError>(__TAURI_INVOKE("export_start", { request, onEvent })),
+	/**  The text of `settings.json`, or `null` before the first save. */
+	settingsRead: () => typedError<string | null, IpcError>(__TAURI_INVOKE("settings_read")),
+	/**  Replace `settings.json` with `text` (a JSON object with `"openrows": 1`). */
+	settingsWrite: (text: string) => typedError<null, IpcError>(__TAURI_INVOKE("settings_write", { text })),
+	/**
+	 *  Apply the webview's enabled state and shortcuts to the menu items.
+	 *  Returns the ids whose accelerator the platform rejected.
+	 */
+	menuSync: (states: MenuItemState[]) => __TAURI_INVOKE<string[]>("menu_sync", { states }),
 };
 
 /** Events */
 export const events = {
+	menuCommand: makeEvent<MenuCommand>("menu-command"),
 	sessionStateChanged: makeEvent<SessionStateChanged>("session-state-changed"),
 	sshPromptChanged: makeEvent<SshPromptChanged>("ssh-prompt-changed"),
 };
@@ -582,6 +592,19 @@ export type KeystrokeSample = {
 	frameMs: number | null,
 	wallMs: number | null,
 	keystrokeToPaintMs: number | null,
+};
+
+/**  A menu command chosen by the user; `id` is the registry command id. */
+export type MenuCommand = {
+	id: string,
+};
+
+/**  Enabled state and shortcut of one command item, from the webview. */
+export type MenuItemState = {
+	id: string,
+	enabled: boolean,
+	/**  Tauri accelerator such as `Cmd+Shift+Enter`; `null` for none. */
+	accelerator: string | null,
 };
 
 /**  Server notice severity. */

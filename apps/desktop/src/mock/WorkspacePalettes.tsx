@@ -2,7 +2,7 @@
 import { Palette } from '@openrows/ui/palette';
 import { OpenDatabasePanel, QuickOpen } from '../features/schema';
 import type { Catalog, ObjectRef } from '../features/schema';
-import { paletteCommands } from './data/commands';
+import { COMMANDS, shortcutText, useBindings } from '../features/commands';
 export type PaletteMode = 'database' | 'quick' | 'commands';
 /** Open database panel (⌘K), quick open (⌘P) and the sample command palette (⌘⇧P). */
 export function WorkspacePalettes(props: {
@@ -21,20 +21,33 @@ export function WorkspacePalettes(props: {
         onClose={props.onClose}
       />
     );
-  if (props.mode === 'commands')
-    return (
-      <Palette
-        title="Command palette"
-        items={paletteCommands}
-        onClose={props.onClose}
-        onChoose={props.onCommand}
-      />
-    );
+  if (props.mode === 'commands') return <CommandPalette {...props} />;
   return (
     <QuickOpen
       catalog={props.catalog}
       onChoose={props.onObject}
       onClose={props.onClose}
+    />
+  );
+}
+
+/** Every command with its current shortcut. */
+function CommandPalette(props: {
+  onCommand: (id: string) => void;
+  onClose: () => void;
+}): React.JSX.Element {
+  const bindings = useBindings();
+  const items = COMMANDS.map(({ id, label }) => ({
+    id,
+    label,
+    shortcut: shortcutText(bindings, id),
+  }));
+  return (
+    <Palette
+      title="Command palette"
+      items={items}
+      onClose={props.onClose}
+      onChoose={props.onCommand}
     />
   );
 }

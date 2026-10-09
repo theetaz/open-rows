@@ -111,6 +111,16 @@ function savedQueryStub(): Record<string, unknown> {
   };
 }
 
+/** settings.json and the menu bar: no file yet, no native menu. */
+function appStub(): Record<string, unknown> {
+  return {
+    readSettingsFile: vi.fn(() => Promise.resolve(null)),
+    writeSettingsFile: vi.fn(() => Promise.resolve()),
+    syncMenu: vi.fn(() => Promise.resolve([])),
+    onMenuCommand: vi.fn(() => Promise.resolve(() => undefined)),
+  };
+}
+
 /** `@openrows/ipc` replacement for jsdom tests: no native shell, no keychain. */
 export function ipcStub(
   profiles: readonly ProfileDto[] = sampleProfiles,
@@ -176,6 +186,7 @@ export function ipcStub(
     saveTableEdits: vi.fn(() => Promise.resolve(null)),
     savedTableEdits: vi.fn(() => Promise.resolve(null)),
     clearTableEdits: vi.fn(() => Promise.resolve(null)),
+    ...appStub(),
     onWindowClose: vi.fn(() => Promise.resolve(() => undefined)),
     closeWindow: vi.fn(() => Promise.resolve()),
     tableEdit: vi.fn(() =>

@@ -16,7 +16,7 @@ afterEach(() => {
 
 const scope = { connectionId: 'a', database: 'orders' };
 
-it('stores query tabs with text, file and parameters, never table tabs', () => {
+it('stores query tabs with text, file and parameters, and table tabs', () => {
   let state = openTab(emptyTabs, scope, { sql: 'SELECT 1' });
   state = openTab(state, scope, {
     title: 'users',
@@ -32,9 +32,16 @@ it('stores query tabs with text, file and parameters, never table tabs', () => {
   const restored = restoreTabs(serializeTabs(state));
   expect(restored.tabs.map((tab) => [tab.id, tab.title, tab.sql])).toEqual([
     ['query-1', 'SQL Query 1', 'SELECT 1'],
+    ['table-2', 'users', ''],
     ['query-3', 'q.sql', 'SELECT :id'],
   ]);
-  expect(restored.tabs[1]?.file).toEqual({
+  expect(restored.tabs[1]).toMatchObject({
+    kind: 'table',
+    table: { database: 'orders', schema: 'public', name: 'users' },
+    objectPath: ['public', 'users'],
+  });
+  expect(restoreTabs(serializeTabs(state, false)).tabs).toHaveLength(1);
+  expect(restored.tabs[2]?.file).toEqual({
     path: '/q.sql',
     name: 'q.sql',
     saved: '',
@@ -85,7 +92,7 @@ it('auto saves tabs within a second and restores them on the next launch', () =>
   expect(second.result.current.activeFor(scope)?.sql).toBe('SELECT 42');
 });
 
-it('writes file-bound tabs back to their file and forgets tabs when off', async () => {
+it('writes file-bound tabs back to their file, drops text without Auto Save and forgets tabs without restore', async () => {
   vi.useFakeTimers();
   const { result } = renderHook(() => useQueryTabs());
   act(() => {
@@ -112,5 +119,16 @@ it('writes file-bound tabs back to their file and forgets tabs when off', async 
     vi.advanceTimersByTime(1_000);
   });
   expect(saveSqlFile).toHaveBeenCalledTimes(1);
+  expect(localStorage.getItem(TABS_KEY)).not.toContain('SELECT');
+  localStorage.setItem(
+    'openrows.general',
+    JSON.stringify({ restoreSession: false }),
+  );
+  act(() => {
+    result.current.edit('query-1', 'SELECT 3');
+  });
+  act(() => {
+    vi.advanceTimersByTime(1_000);
+  });
   expect(localStorage.getItem(TABS_KEY)).toBeNull();
 });

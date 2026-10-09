@@ -37,51 +37,5 @@ export function runRequest(
     : { ...base, sql, mode: 'current', cursor: editor.cursor() };
 }
 
-/** Run shortcuts anywhere in a query tab (the editor handles its own first). */
-export function runScopeOf(event: {
-  key: string;
-  metaKey: boolean;
-  ctrlKey: boolean;
-  altKey: boolean;
-  shiftKey: boolean;
-  defaultPrevented: boolean;
-}): RunScope | null {
-  if (event.defaultPrevented || event.key !== 'Enter' || event.altKey)
-    return null;
-  if (!event.metaKey && !event.ctrlKey) return null;
-  return event.shiftKey ? 'all' : 'current';
-}
-
-/** ⌘I beautifies and ⇧⌘I uglifies anywhere in a query tab. */
-export function formatKindOf(event: {
-  key: string;
-  metaKey: boolean;
-  ctrlKey: boolean;
-  altKey: boolean;
-  shiftKey: boolean;
-  defaultPrevented: boolean;
-}): FormatKind | null {
-  if (event.defaultPrevented || event.altKey) return null;
-  if (event.key.toLowerCase() !== 'i' || (!event.metaKey && !event.ctrlKey))
-    return null;
-  return event.shiftKey ? 'uglify' : 'beautify';
-}
-
 /** Tab file commands: ⌘S save, ⇧⌘S save as, ⌘O open. */
 export type FileAction = 'save' | 'saveAs' | 'open';
-
-/** ⌘S, ⇧⌘S and ⌘O anywhere in a query tab. */
-export function fileActionOf(event: {
-  key: string;
-  metaKey: boolean;
-  ctrlKey: boolean;
-  altKey: boolean;
-  shiftKey: boolean;
-  defaultPrevented: boolean;
-}): FileAction | null {
-  if (event.defaultPrevented || event.altKey || event.ctrlKey) return null;
-  if (!event.metaKey) return null;
-  const key = event.key.toLowerCase();
-  if (key === 's') return event.shiftKey ? 'saveAs' : 'save';
-  return key === 'o' && !event.shiftKey ? 'open' : null;
-}

@@ -41,6 +41,8 @@ type TreeNodeProps = {
   onSelect: () => void;
   /** Double-click or Enter. */
   onOpen?: () => void;
+  /** A single click, after selecting (preview tabs). */
+  onPreview?: () => void;
   /** Disclosure state; omit for leaf rows. */
   expanded?: boolean;
   onExpandedChange?: (expanded: boolean) => void;
@@ -118,7 +120,9 @@ export function TreeNode(props: TreeNodeProps): React.JSX.Element {
         if (event.target === event.currentTarget) rowKeys(event, props);
       }}
       onClick={(event) => {
-        if (own(event)) props.onSelect();
+        if (!own(event)) return;
+        props.onSelect();
+        props.onPreview?.();
       }}
       onDoubleClick={(event) => {
         if (own(event)) props.onOpen?.();

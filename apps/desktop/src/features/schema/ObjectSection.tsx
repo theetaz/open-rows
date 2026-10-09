@@ -15,7 +15,7 @@ type Props = {
   search: string;
   selected: string | null;
   onSelect: (key: string) => void;
-  onOpen: (object: ObjectRef) => void;
+  onOpen: (object: ObjectRef, preview?: boolean) => void;
   onMenu?: ((object: ObjectRef, point: MenuPoint) => void) | undefined;
 };
 

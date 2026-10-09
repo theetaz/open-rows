@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   bindFile,
   closeTab,
@@ -18,8 +18,10 @@ import type {
   TabScope,
   TabsState,
 } from './tabs';
+import { keepTab, moveTab, pinTab } from './tabOps';
 import { readTabs } from './tabStorage';
 import { useEditorSettings } from './editorSettings';
+import { generalSettings } from '../settings/general';
 import { useTabPersistence } from './useTabPersistence';
 
 /**
@@ -42,11 +44,19 @@ export type QueryTabs = {
   bindFile: (id: string, file: TabFile) => void;
   /** Remember a query tab's last parameter values. */
   setParams: (id: string, params: Readonly<Record<string, string>>) => void;
+  /** Move a tab to a position among its scope's tabs. */
+  move: (id: string, index: number) => void;
+  pin: (id: string, pinned: boolean) => void;
+  /** Turn a preview tab into a normal tab. */
+  keep: (id: string) => void;
+  /** The whole tab set, for tab menus and session restore. */
+  state: TabsState;
 };
 
 /**
  * Query tabs of every connection and database; descriptors only, never result
- * rows. With Auto Save, query tabs are restored on relaunch.
+ * rows. With session restore on, tabs reopen on relaunch (query text with
+ * Auto Save).
  */
 export function useQueryTabs(): QueryTabs {
   const guard = useRef<((id: string) => boolean) | null>(null);
@@ -58,11 +68,26 @@ export function useQueryTabs(): QueryTabs {
   }, []);
   const [state, setState] = useState<TabsState>(readTabs);
   const [{ autoSave }] = useEditorSettings();
+  const { restoreSession } = generalSettings.use();
   const file = useCallback((id: string, next: TabFile) => {
     setState((current) => bindFile(current, id, next));
   }, []);
-  useTabPersistence(state, autoSave, file);
+  useTabPersistence(state, autoSave, restoreSession, file);
+  const latest = useRef(state);
+  useEffect(() => {
+    latest.current = state;
+  }, [state]);
   const open = useCallback<OpenQueryTab>((scope, init) => {
+    const preview = init?.preview
+      ? tabsOf(latest.current, scope).find((tab) => tab.preview)
+      : undefined;
+    // A preview tab being replaced is closed first, releasing its views.
+    if (preview && guard.current && !guard.current(preview.id)) {
+      setState((current) =>
+        openTab(current, scope, { ...init, preview: false }),
+      );
+      return;
+    }
     setState((current) => openTab(current, scope, init));
   }, []);
   const edit = useCallback((id: string, sql: string) => {
@@ -91,5 +116,15 @@ export function useQueryTabs(): QueryTabs {
     setParams: (id, params) => {
       setState((current) => setTabParams(current, id, params));
     },
+    move: (id, index) => {
+      setState((current) => moveTab(current, id, index));
+    },
+    pin: (id, pinned) => {
+      setState((current) => pinTab(current, id, pinned));
+    },
+    keep: (id) => {
+      setState((current) => keepTab(current, id));
+    },
+    state,
   };
 }

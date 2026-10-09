@@ -1,0 +1,123 @@
+// SPDX-License-Identifier: Apache-2.0
+import type { ThemeMode } from '@openrows/ui';
+import { isTabCommand, runTabCommand } from '../features/commands';
+import type { Connections } from '../features/connections';
+import type { Catalog } from '../features/schema';
+import type { SettingsSection } from '../features/settings';
+import type { useInspectorOpen } from './layout';
+import type { PaletteMode } from './WorkspacePalettes';
+
+/** What the shell's commands act on. */
+type ShellInput = {
+  catalog: Catalog;
+  connections: Connections;
+  inspector: ReturnType<typeof useInspectorOpen>;
+  toggleSidebar: () => void;
+  setSidebar: (value: boolean) => void;
+  setPanel: (panel: string) => void;
+  setMode: (mode: PaletteMode | null) => void;
+  addQuery: () => void;
+  closeTab: () => void;
+  /** Export the active table tab's table. */
+  onExportTable: () => void;
+  /** Open a `.sql` file into a new tab when no query tab is active. */
+  openFile: () => void;
+  refresh: () => void;
+  toggleSafe: () => void;
+  onGallery: () => void;
+  onSettings: (section?: SettingsSection) => void;
+  setTheme: (mode: ThemeMode) => void;
+};
+
+type Actions = Readonly<Record<string, (() => void) | undefined>>;
+
+/** The visible schema after the selected one, wrapping around. */
+function nextSchema(catalog: Catalog): string {
+  const { schemas } = catalog;
+  if (schemas.status !== 'ready') return catalog.schema;
+  const names = schemas.data
+    .filter((schema) => catalog.systemSchemas || !schema.system)
+    .map((schema) => schema.name);
+  return (
+    names[(names.indexOf(catalog.schema) + 1) % names.length] ?? catalog.schema
+  );
+}
+
+function focusSearch(input: ShellInput): void {
+  input.setSidebar(true);
+  requestAnimationFrame(() => {
+    document.querySelector<HTMLInputElement>('[data-sidebar] input')?.focus();
+  });
+}
+
+/** Panels, palettes, appearance and settings. */
+function viewActions(input: ShellInput): Actions {
+  const { setMode } = input;
+  return {
+    sidebar: input.toggleSidebar,
+    inspector: input.inspector.toggle,
+    database: () => {
+      setMode('database');
+    },
+    quick: () => {
+      setMode('quick');
+    },
+    commands: () => {
+      setMode('commands');
+    },
+    search: () => {
+      focusSearch(input);
+    },
+    schema: () => {
+      input.catalog.setSchema(nextSchema(input.catalog));
+    },
+    assistant: () => {
+      input.inspector.show();
+      input.setPanel('Assistant');
+    },
+    gallery: input.onGallery,
+    settings: () => {
+      input.onSettings();
+    },
+    shortcuts: () => {
+      input.onSettings('shortcuts');
+    },
+    'theme-light': () => {
+      input.setTheme('light');
+    },
+    'theme-dark': () => {
+      input.setTheme('dark');
+    },
+    'theme-system': () => {
+      input.setTheme('system');
+    },
+  };
+}
+
+/** Tabs and the active connection. */
+function workActions(input: ShellInput): Actions {
+  const { connections } = input;
+  return {
+    'new-tab': input.addQuery,
+    'close-tab': input.closeTab,
+    refresh: input.refresh,
+    safe: input.toggleSafe,
+    'export-table': input.onExportTable,
+    'new-connection': () => {
+      connections.setSheet({ kind: 'new' });
+    },
+    connect: connections.connect,
+    disconnect: connections.disconnect,
+  };
+}
+
+/** Run a command by id; tab commands go to the active query tab. */
+export function shellCommand(input: ShellInput): (id: string) => void {
+  return (id: string): void => {
+    if (isTabCommand(id)) {
+      if (!runTabCommand(id) && id === 'open-file') input.openFile();
+      return;
+    }
+    (viewActions(input)[id] ?? workActions(input)[id])?.();
+  };
+}

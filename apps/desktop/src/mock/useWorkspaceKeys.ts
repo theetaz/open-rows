@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect } from 'react';
+import { markKeyHandled } from '../features/commands';
 import { shortcut } from './shortcuts';
-/** Dispatch exact mock shortcuts only when the workspace owns keyboard input. */
+/**
+ * Dispatch bound shortcuts when the workspace owns keyboard input and no
+ * focused control (editor, table, sidebar) handled the press first.
+ */
 export function useWorkspaceKeys(actions: {
   enabled: boolean;
   command: (id: string) => void;
@@ -9,10 +13,12 @@ export function useWorkspaceKeys(actions: {
 }): void {
   useEffect(() => {
     const listener = (event: KeyboardEvent): void => {
-      if (!actions.enabled || document.querySelector('dialog[open]')) return;
+      if (!actions.enabled || event.defaultPrevented) return;
+      if (document.querySelector('dialog[open]')) return;
       const command = shortcut(event);
       if (command === undefined) return;
       event.preventDefault();
+      markKeyHandled();
       if (typeof command === 'number') actions.connection(command);
       else actions.command(command);
     };

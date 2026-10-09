@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useState } from 'react';
+import { openSqlFile } from '@openrows/ipc';
+import { useTheme } from '@openrows/ui';
 import type { Connections } from '../features/connections';
 import { useCatalog } from '../features/schema';
 import type { Catalog, ObjectRef } from '../features/schema';
 import { useQueryTabs } from '../features/query';
 import type { QueryTabs, TabScope } from '../features/query';
 import { openTableView } from '../features/table';
+import { useMenuBridge } from '../features/commands';
+import type { SettingsSection } from '../features/settings';
 import { useDetails } from './useDetails';
 import type { Details } from './useDetails';
 import { useTableInfo } from './useTableInfo';
@@ -14,22 +18,14 @@ import { queryCommands } from './queryCommands';
 import { useCompact, useInspectorOpen } from './layout';
 import { useWorkspaceKeys } from './useWorkspaceKeys';
 import { useDatabasePrompt } from './useDatabasePrompt';
+import { shellCommand } from './shellCommand';
+import { menuEnabled } from './menuState';
 import type { PaletteMode } from './WorkspacePalettes';
-/** The visible schema after the selected one, wrapping around. */
-function nextSchema(catalog: Catalog): string {
-  const { schemas } = catalog;
-  if (schemas.status !== 'ready') return catalog.schema;
-  const names = schemas.data
-    .filter((schema) => catalog.systemSchemas || !schema.system)
-    .map((schema) => schema.name);
-  return (
-    names[(names.indexOf(catalog.schema) + 1) % names.length] ?? catalog.schema
-  );
-}
 /**
  * Tab scopes of the active connection: the active database's scope (the
- * profile's database until one is open, so tabs can be prepared before
- * connecting; none without either) and a mapper for any database.
+ * database last chosen, else the profile's, until one is open, so restored
+ * tabs show before reconnecting; none without either) and a mapper for any
+ * database.
  */
 function scopes(connections: Connections): {
   scope: TabScope | undefined;
@@ -38,17 +34,68 @@ function scopes(connections: Connections): {
   const profile = connections.active;
   const scopeOf = (database: string): TabScope | undefined =>
     profile && database ? { connectionId: profile.id, database } : undefined;
-  const database = connections.database || (profile?.database ?? '');
+  const database =
+    connections.database || connections.wanted || (profile?.database ?? '');
   return { scope: scopeOf(database), scopeOf };
 }
-/** Shell state and command wiring, isolated from rendering. */
-export function useWorkspaceController(
-  onGallery: () => void,
+
+/** Open a `.sql` file into a new tab of `scope` (no query tab is active). */
+function openFileInto(tabs: QueryTabs, scope: TabScope | undefined): void {
+  if (!scope) return;
+  openSqlFile().then(
+    (opened) => {
+      if (!opened) return;
+      const { file, sql } = opened;
+      tabs.open(scope, {
+        title: file.name,
+        sql,
+        file: { ...file, saved: sql },
+      });
+    },
+    () => undefined,
+  );
+}
+
+/** Catalog refreshes, counted for the screen-reader announcement. */
+function useRefresh(catalog: Catalog): [number, () => void] {
+  const [refreshes, setRefreshes] = useState(0);
+  return [
+    refreshes,
+    () => {
+      catalog.refresh();
+      setRefreshes((count) => count + 1);
+    },
+  ];
+}
+
+/** Shortcuts and the native menu bar, both routed to `command`. */
+function useCommandRoutes(
+  command: (id: string) => void,
   enabled: boolean,
-  connections: Connections,
-): WorkspaceController {
+  state: Parameters<typeof menuEnabled>[0],
+): void {
+  useWorkspaceKeys({
+    enabled,
+    command,
+    connection: state.connections.selectIndex,
+  });
+  useMenuBridge(command, menuEnabled(state));
+}
+
+type Input = {
+  onGallery: () => void;
+  onSettings: (section?: SettingsSection) => void;
+  onExportTable: () => void;
+  enabled: boolean;
+  connections: Connections;
+};
+
+/** Shell state and command wiring, isolated from rendering. */
+export function useWorkspaceController(input: Input): WorkspaceController {
+  const { connections } = input;
   const catalog = useCatalog(connections);
   const tabs = useQueryTabs();
+  const { setMode: setTheme } = useTheme();
   const { scope, scopeOf } = scopes(connections);
   const compact = useCompact();
   const inspector = useInspectorOpen(compact);
@@ -57,45 +104,47 @@ export function useWorkspaceController(
   const [panel, setPanel] = useState('Details');
   const [mode, setMode] = useState<PaletteMode | null>(null);
   useDatabasePrompt(connections, setMode);
-  const [refreshes, setRefreshes] = useState(0);
-  const details = useDetails(setPanel, activeTabId(tabs, scope));
-  const tableInfo = useTableInfo(activeTabId(tabs, scope));
+  const [refreshes, refresh] = useRefresh(catalog);
+  const active = scope ? tabs.activeFor(scope) : undefined;
+  const details = useDetails(setPanel, active?.id);
+  const tableInfo = useTableInfo(active?.id);
   const commands = queryCommands(tabs, scope, scopeOf);
-  const { addQuery, closeTab } = commands;
   /** Relations open as table views (D-08); routines and sequences as query tabs. */
-  const openObject = (object: ObjectRef): void => {
+  const openObject = (object: ObjectRef, preview = false): void => {
     catalog.setSchema(object.schema);
     const target = scopeOf(object.database);
-    if (!target || !openTableView(tabs, target, object))
+    if (!target || !openTableView(tabs, target, object, preview))
       commands.openObject(object);
   };
   const prod = connections.active?.env.kind === 'prod';
   const toggleSafe = (): void => {
     if (!prod) setSafe(!safe);
   };
-  const refresh = (): void => {
-    catalog.refresh();
-    setRefreshes((count) => count + 1);
+  const toggleSidebar = (): void => {
+    setSidebar((open) => !open);
   };
   const command = shellCommand({
+    ...input,
     catalog,
     inspector,
-    toggleSidebar: () => {
-      setSidebar((open) => !open);
-    },
-    addQuery,
-    closeTab,
-    setMode,
-    refresh,
-    toggleSafe,
-    onGallery,
+    toggleSidebar,
     setSidebar,
     setPanel,
+    setMode,
+    addQuery: commands.addQuery,
+    closeTab: commands.closeTab,
+    openFile: () => {
+      openFileInto(tabs, scope);
+    },
+    refresh,
+    toggleSafe,
+    setTheme,
   });
-  useWorkspaceKeys({
-    enabled: enabled && !mode,
-    command,
-    connection: connections.selectIndex,
+  useCommandRoutes(command, input.enabled && !mode, {
+    connections,
+    tab: active,
+    scope,
+    prod,
   });
   return {
     catalog,
@@ -113,10 +162,8 @@ export function useWorkspaceController(
     refreshes,
     ...details,
     ...tableInfo,
-    toggleSidebar: () => {
-      setSidebar((open) => !open);
-    },
-    addQuery,
+    toggleSidebar,
+    addQuery: commands.addQuery,
     openObject,
     toggleSafe,
     refresh,
@@ -143,67 +190,12 @@ type WorkspaceController = Details &
     toggleSidebar: () => void;
     /** Open a query tab on the active connection, optionally with SQL. */
     addQuery: (sql?: string) => void;
-    /** Open (or refocus) the table view or query tab of a tree or ⌘P object. */
-    openObject: (object: ObjectRef) => void;
+    /**
+     * Open (or refocus) the table view or query tab of a tree or ⌘P object;
+     * `preview` (a single click in the tree) reuses the preview tab.
+     */
+    openObject: (object: ObjectRef, preview?: boolean) => void;
     toggleSafe: () => void;
     refresh: () => void;
     command: (id: string) => void;
   };
-function shellCommand(input: {
-  catalog: Catalog;
-  inspector: ReturnType<typeof useInspectorOpen>;
-  toggleSidebar: () => void;
-  addQuery: () => void;
-  closeTab: () => void;
-  setMode: (mode: PaletteMode | null) => void;
-  refresh: () => void;
-  toggleSafe: () => void;
-  onGallery: () => void;
-  setSidebar: (value: boolean) => void;
-  setPanel: (panel: string) => void;
-}): (id: string) => void {
-  const { catalog, inspector, setMode, setSidebar, setPanel } = input;
-  return (id: string): void => {
-    const actions: Record<string, (() => void) | undefined> = {
-      sidebar: input.toggleSidebar,
-      inspector: inspector.toggle,
-      'new-tab': input.addQuery,
-      'close-tab': input.closeTab,
-      database: () => {
-        setMode('database');
-      },
-      quick: () => {
-        setMode('quick');
-      },
-      commands: () => {
-        setMode('commands');
-      },
-      refresh: input.refresh,
-      safe: input.toggleSafe,
-      gallery: input.onGallery,
-      search: () => {
-        setSidebar(true);
-        requestAnimationFrame(() => {
-          document
-            .querySelector<HTMLInputElement>('[data-sidebar] input')
-            ?.focus();
-        });
-      },
-      schema: () => {
-        catalog.setSchema(nextSchema(catalog));
-      },
-      assistant: () => {
-        inspector.show();
-        setPanel('Assistant');
-      },
-    };
-    actions[id]?.();
-  };
-}
-
-function activeTabId(
-  tabs: QueryTabs,
-  scope: TabScope | undefined,
-): string | undefined {
-  return scope ? tabs.activeFor(scope)?.id : undefined;
-}

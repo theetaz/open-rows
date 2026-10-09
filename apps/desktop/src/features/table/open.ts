@@ -20,13 +20,16 @@ type BrowsableObject = {
 
 /**
  * Open (or refocus) the table tab of `object` in `scope`, one tab per
- * relation, titled with its name. Returns `false` for objects that are not
- * table-like (routines, sequences), which keep opening as query tabs.
+ * relation, titled with its name. A `preview` open (single click) replaces
+ * the scope's preview tab; any other open keeps the tab. Returns `false` for
+ * objects that are not table-like (routines, sequences), which keep opening
+ * as query tabs.
  */
 export function openTableView(
   tabs: QueryTabs,
   scope: TabScope,
   object: BrowsableObject,
+  preview = false,
 ): boolean {
   if (!browsable.has(object.kind)) return false;
   const open = tabs
@@ -37,9 +40,12 @@ export function openTableView(
         table.schema === object.schema &&
         table.name === object.name,
     );
-  if (open) tabs.select(open.id);
-  else
+  if (open) {
+    tabs.select(open.id);
+    if (!preview) tabs.keep(open.id);
+  } else
     tabs.open(scope, {
+      preview,
       title: object.name,
       objectPath: [object.schema, object.name],
       table: {

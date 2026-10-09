@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Button } from '@openrows/ui';
 import type { TableObject } from '../query/tabs';
 import { canEdit, EditToolbar, editingNote, rowEditBar } from './EditToolbar';
@@ -41,7 +41,17 @@ type TableTabProps = {
   onOpenTable?: ((schema: string, table: string) => void) | undefined;
   /** The table was renamed by a committed structure change. */
   onRenamed?: ((name: string) => void) | undefined;
+  /** Something was staged: a preview tab becomes a normal tab. */
+  onEdited?: (() => void) | undefined;
 };
+
+/** Report the first staged row or schema change. */
+function useEdited(staged: number, onEdited: (() => void) | undefined): void {
+  const edited = staged > 0;
+  useEffect(() => {
+    if (edited) onEdited?.();
+  }, [edited, onEdited]);
+}
 
 /** A TablePlus-style table view: filters, paged canvas grid, structure, footer. */
 export function TableTab(props: TableTabProps): React.JSX.Element {
@@ -56,6 +66,10 @@ export function TableTab(props: TableTabProps): React.JSX.Element {
     target: state.query.target,
     offset: view.offset,
   });
+  useEdited(
+    editing.history.current.length + structure.schema.history.current.length,
+    props.onEdited,
+  );
   const recovery = useEditRecovery({
     tabId: props.tabId,
     target: state.query.target,

@@ -99,6 +99,14 @@ export type {
   ExportRequest,
   ExportSourceDto,
 } from './generated/bindings';
+/** settings.json and the native menu bar (M1-26, M1-27). */
+export {
+  onMenuCommand,
+  readSettingsFile,
+  syncMenu,
+  writeSettingsFile,
+} from './app';
+export type { MenuItemState } from './generated/bindings';
 /** Native window closing, guarded by the webview (staged edits, running commits). */
 export { onWindowClose, closeWindow } from './window';
 export type {

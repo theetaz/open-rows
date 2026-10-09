@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { KeyboardEvent } from 'react';
 import { IconButton } from './Button';
+import { Icon } from '../icons/Icon';
+import { startTabDrag } from './tabDrag';
 import styles from './Navigation.module.css';
 
 type Tab = {
@@ -8,6 +10,10 @@ type Tab = {
   label: string;
   kind?: 'table' | 'query';
   title?: string;
+  /** Pinned: kept left, no close button, not closed by middle-click. */
+  pinned?: boolean;
+  /** The preview tab: italic until kept. */
+  preview?: boolean;
 };
 type Props = {
   tabs: readonly Tab[];
@@ -15,6 +21,12 @@ type Props = {
   onSelect: (id: string) => void;
   onClose: (id: string) => void;
   onAdd: () => void;
+  /** Drag (or ⌥← / ⌥→) moved a tab to `index`. */
+  onReorder?: ((id: string, index: number) => void) | undefined;
+  /** Right-click: open the tab menu at the pointer. */
+  onMenu?: ((id: string, x: number, y: number) => void) | undefined;
+  /** Double-click: keep a preview tab. */
+  onKeep?: ((id: string) => void) | undefined;
 };
 /** Shrinking, then scrolling document tabs with roving keyboard focus. */
 export function Tabs(props: Props): React.JSX.Element {
@@ -44,17 +56,32 @@ function DocumentTab({
   owner: Props;
 }): React.JSX.Element {
   const active = tab.id === owner.active;
+  const { onReorder } = owner;
   return (
     <div
       className={styles.document}
       data-active={active}
       data-kind={tab.kind ?? 'table'}
+      data-pinned={tab.pinned ?? false}
+      data-preview={tab.preview ?? false}
+      onPointerDown={
+        onReorder &&
+        ((event) => {
+          startTabDrag(event, tab.id, onReorder);
+        })
+      }
       onAuxClick={(event) => {
-        if (event.button === 1) {
+        if (event.button === 1 && !tab.pinned) {
           event.preventDefault();
           owner.onClose(tab.id);
         }
       }}
+      onContextMenu={(event) => {
+        if (!owner.onMenu) return;
+        event.preventDefault();
+        owner.onMenu(tab.id, event.clientX, event.clientY);
+      }}
+      onDoubleClick={() => owner.onKeep?.(tab.id)}
     >
       <button
         type="button"
@@ -72,17 +99,36 @@ function DocumentTab({
         <span aria-hidden="true">{tab.kind === 'query' ? '›_' : '▦'}</span>
         <span>{tab.label}</span>
       </button>
-      <button
-        type="button"
-        aria-label={`Close ${tab.label}`}
-        onClick={() => {
-          owner.onClose(tab.id);
-        }}
-      >
-        ×
-      </button>
+      {tab.pinned ? (
+        <span className={styles.pin} aria-label="Pinned" role="img">
+          <Icon name="pin" />
+        </span>
+      ) : (
+        <button
+          type="button"
+          aria-label={`Close ${tab.label}`}
+          onClick={() => {
+            owner.onClose(tab.id);
+          }}
+        >
+          ×
+        </button>
+      )}
     </div>
   );
+}
+/** ⌥← / ⌥→ on a focused tab moves it one place. */
+function reorderKey(
+  event: KeyboardEvent<HTMLButtonElement>,
+  index: number,
+  props: Props,
+): boolean {
+  const step = { ArrowLeft: -1, ArrowRight: 1 }[event.key];
+  const tab = props.tabs[index];
+  if (!event.altKey || !step || !tab || !props.onReorder) return false;
+  event.preventDefault();
+  props.onReorder(tab.id, Math.max(0, index + step));
+  return true;
 }
 function navigate(
   event: KeyboardEvent<HTMLButtonElement>,
@@ -90,6 +136,7 @@ function navigate(
   props: Props,
 ): void {
   const index = props.tabs.findIndex((tab) => tab.id === id);
+  if (reorderKey(event, index, props)) return;
   const targets: Record<string, number> = {
     ArrowRight: (index + 1) % props.tabs.length,
     ArrowLeft: (index - 1 + props.tabs.length) % props.tabs.length,

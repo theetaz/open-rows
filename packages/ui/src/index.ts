@@ -26,6 +26,7 @@ export type { PaletteItem } from './components/Palette';
 
 export {
   defaultAppearance,
+  parseAppearance,
   fontFamily,
   uiFonts,
   monoFonts,

@@ -6,8 +6,13 @@ import { defaultEditorSettings } from './editorSettings';
 import { QueryEditor } from './QueryEditor';
 import type { EditorHandle } from './request';
 
-it('mounts CodeMirror lazily, exposes text and cursor, and runs on ⌘↵ / ⇧⌘↵', async () => {
-  const onRun = vi.fn();
+it('mounts CodeMirror lazily, exposes text and cursor, and hands keys to the app first', async () => {
+  const keys: string[] = [];
+  const onKey = vi.fn((event: KeyboardEvent) => {
+    if (event.key !== 'Enter' || !event.metaKey) return false;
+    keys.push(event.shiftKey ? 'all' : 'current');
+    return true;
+  });
   const onChange = vi.fn();
   const ready: { handle: EditorHandle | null } = { handle: null };
   const current = (): EditorHandle | null => ready.handle;
@@ -20,8 +25,7 @@ it('mounts CodeMirror lazily, exposes text and cursor, and runs on ⌘↵ / ⇧�
       catalog={null}
       cursor={createCursorStore()}
       onChange={onChange}
-      onRun={onRun}
-      onFormat={vi.fn()}
+      onKey={onKey}
       onReady={(editor) => {
         ready.handle = editor;
       }}
@@ -37,8 +41,7 @@ it('mounts CodeMirror lazily, exposes text and cursor, and runs on ⌘↵ / ⇧�
     editor.dispatchEvent(
       new KeyboardEvent('keydown', {
         key: 'Enter',
-        metaKey: false,
-        ctrlKey: true,
+        metaKey: true,
         shiftKey,
         bubbles: true,
         cancelable: true,
@@ -47,7 +50,8 @@ it('mounts CodeMirror lazily, exposes text and cursor, and runs on ⌘↵ / ⇧�
   };
   press(false);
   press(true);
-  expect(onRun.mock.calls).toEqual([['current'], ['all']]);
+  expect(keys).toEqual(['current', 'all']);
+  expect(current()?.text()).toBe('SELECT 1;\nSELECT 2;');
   unmount();
   expect(current()).toBeNull();
   expect(onChange).not.toHaveBeenCalled();
