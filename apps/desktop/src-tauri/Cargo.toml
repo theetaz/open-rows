@@ -23,6 +23,7 @@ openrows-driver-mysql = { path = "../../../crates/openrows-driver-mysql" }
 openrows-driver-postgres = { path = "../../../crates/openrows-driver-postgres" }
 openrows-driver-sqlite = { path = "../../../crates/openrows-driver-sqlite" }
 openrows-dump = { path = "../../../crates/openrows-dump" }
+openrows-explain = { path = "../../../crates/openrows-explain" }
 openrows-export = { path = "../../../crates/openrows-export" }
 openrows-import = { path = "../../../crates/openrows-import" }
 openrows-net = { path = "../../../crates/openrows-net" }

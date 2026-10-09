@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-import { lazy, Suspense, useEffect, useState } from 'react';
-import { Button } from '@openrows/ui';
+import { lazy, Suspense, useEffect } from 'react';
+import { Button, Icon } from '@openrows/ui';
 import type { EngineDto } from '@openrows/ipc';
+import type { ExtraResultTab } from '../explain';
 import { MessagesPanel } from './MessagesPanel';
 import { resultMessages } from './messages';
+import { useResultChoice } from './resultChoice';
 import type { ResultMeta, RunState } from './run';
 import type { ResultView } from './editorSettings';
 import type { RunScope } from './request';
@@ -31,6 +33,8 @@ type Props = {
   onExport?: ((result: ResultMeta, rows?: number[]) => void) | undefined;
   /** Receives Export… of the shown result while it can be exported (Export results command). */
   onExportable?: ((exportShown: (() => void) | null) => void) | undefined;
+  /** A tab beside the result sets (the query plan), shown when it arrives. */
+  extra?: ExtraResultTab | null | undefined;
 };
 
 /** Report Export… of `result`, or `null` while there is none. */
@@ -89,38 +93,96 @@ export function ResultPane({
   onCell,
   onExport,
   onExportable,
+  extra,
 }: Props): React.JSX.Element {
-  const [chosen, setChosen] = useState<string | null>(null);
+  const [chosen, setChosen] = useResultChoice(extra?.id ?? null, run.queryId);
   const results = view === 'last' ? run.results.slice(-1) : run.results;
-  const current =
-    results.find((result) => result.id === chosen) ?? results.at(-1);
+  const shown = extra && chosen === extra.id ? extra : null;
+  const current = shown
+    ? undefined
+    : (results.find((result) => result.id === chosen) ?? results.at(-1));
   const exportable = current?.done && onExport ? current : null;
   useExportable(onExportable, exportable, onExport);
   return (
     <section className={styles.results} aria-label="Results">
-      {(results.length > 1 || exportable) && (
-        <div className={styles.resultBar}>
-          {results.length > 1 && (
-            <ResultTabs
-              results={results}
-              current={current}
-              onChoose={setChosen}
-            />
-          )}
-          {exportable && (
-            <Button
-              size="sm"
-              variant="ghost"
-              className={styles.exportButton}
-              onClick={() => {
-                onExport?.(exportable);
-              }}
-            >
-              Export…
-            </Button>
-          )}
-        </div>
+      <ResultBar
+        results={results}
+        current={current}
+        extra={extra ?? null}
+        extraShown={shown !== null}
+        onChoose={setChosen}
+        exportable={exportable}
+        onExport={onExport}
+      />
+      {shown ? (
+        shown.content
+      ) : (
+        <ResultBody
+          run={run}
+          runDefault={runDefault}
+          showNotices={showNotices}
+          engine={engine}
+          onCell={onCell}
+          onExport={onExport}
+          results={results}
+          current={current}
+          exportable={exportable}
+        />
       )}
+    </section>
+  );
+}
+
+/** Result tabs (with the extra tab) and Export…, when there is any. */
+function ResultBar(
+  props: TabsProps & {
+    exportable: ResultMeta | null;
+    onExport: Props['onExport'];
+  },
+): React.JSX.Element | null {
+  const { exportable, extra } = props;
+  const tabs = props.results.length > 1 || extra !== null;
+  if (!tabs && !exportable) return null;
+  return (
+    <div className={styles.resultBar}>
+      {tabs && <ResultTabs {...props} />}
+      {exportable && (
+        <Button
+          size="sm"
+          variant="ghost"
+          className={styles.exportButton}
+          onClick={() => {
+            props.onExport?.(exportable);
+          }}
+        >
+          Export…
+        </Button>
+      )}
+    </div>
+  );
+}
+
+/** Messages and the chosen result's grid (or why there is none). */
+function ResultBody({
+  run,
+  runDefault,
+  showNotices,
+  engine,
+  onCell,
+  onExport,
+  results,
+  current,
+  exportable,
+}: Pick<
+  Props,
+  'run' | 'runDefault' | 'showNotices' | 'engine' | 'onCell' | 'onExport'
+> & {
+  results: readonly ResultMeta[];
+  current: ResultMeta | undefined;
+  exportable: ResultMeta | null;
+}): React.JSX.Element {
+  return (
+    <>
       <ResultMessages
         run={run}
         results={results}
@@ -150,7 +212,59 @@ export function ResultPane({
           Receiving rows… {current.rows.toLocaleString()} so far
         </p>
       )}
-    </section>
+    </>
+  );
+}
+
+type TabsProps = {
+  results: readonly ResultMeta[];
+  current: ResultMeta | undefined;
+  extra: ExtraResultTab | null;
+  extraShown: boolean;
+  onChoose: (id: string | null) => void;
+};
+
+function ResultTabs(props: TabsProps): React.JSX.Element {
+  const { extra } = props;
+  return (
+    <div role="tablist" aria-label="Result sets" className={styles.resultTabs}>
+      {props.results.map((result, index) => (
+        <button
+          key={result.id}
+          type="button"
+          role="tab"
+          aria-selected={result === props.current}
+          onClick={() => {
+            props.onChoose(result.id);
+          }}
+        >
+          {resultLabel(result, index)}
+        </button>
+      ))}
+      {extra && (
+        <span className={styles.extraTab}>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={props.extraShown}
+            onClick={() => {
+              props.onChoose(extra.id);
+            }}
+          >
+            {extra.label}
+          </button>
+          <button
+            type="button"
+            className={styles.extraClose}
+            aria-label={`Close ${extra.label}`}
+            title={`Close ${extra.label}`}
+            onClick={extra.onClose}
+          >
+            <Icon name="close" />
+          </button>
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -173,29 +287,5 @@ function ResultMessages(props: {
       })}
       statements={run.statements.length}
     />
-  );
-}
-
-function ResultTabs(props: {
-  results: readonly ResultMeta[];
-  current: ResultMeta | undefined;
-  onChoose: (id: string) => void;
-}): React.JSX.Element {
-  return (
-    <div role="tablist" aria-label="Result sets" className={styles.resultTabs}>
-      {props.results.map((result, index) => (
-        <button
-          key={result.id}
-          type="button"
-          role="tab"
-          aria-selected={result === props.current}
-          onClick={() => {
-            props.onChoose(result.id);
-          }}
-        >
-          {resultLabel(result, index)}
-        </button>
-      ))}
-    </div>
   );
 }

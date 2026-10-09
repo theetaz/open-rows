@@ -35,6 +35,7 @@ open-rows/
 ├── crates/openrows-driver-postgres/ # prototype PG wire → Arrow decoder, benches, container tests
 ├── crates/openrows-net/        # SSH tunnel prototype (M0-S4); tests/ssh_container + fixtures/sshd
 ├── crates/openrows-sql/        # pure SQL toolkit: lexer, splitter, classifier, placeholders (D-02)
+├── crates/openrows-explain/    # pure EXPLAIN commands, plan parsers and hotspot analysis (M2-06)
 ├── crates/openrows-schema/     # schema cache: listings, snapshots, invalidation, name index (M1-16)
 ├── crates/openrows-secrets/    # SecretStore trait, OS keychain (keyring) and in-memory backends
 ├── crates/openrows-store/      # SQLite local store + migrations/; PostgreSQL connection profiles

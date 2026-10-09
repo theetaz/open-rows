@@ -8,10 +8,13 @@
 //! Tauri channel and each executed statement is written to the local history.
 //! Editor placeholders are bound per [`params`]; [`saved`] keeps saved
 //! queries and [`files`] saves and opens the `.sql` files of query tabs;
-//! [`file_watch`] notices when another program changed one.
+//! [`file_watch`] notices when another program changed one; [`explain`]
+//! explains a statement into an analysed plan (FR-EDIT-07).
 pub(crate) mod commands;
 mod dto;
 pub(crate) mod events;
+pub(crate) mod explain;
+mod explain_dto;
 pub(crate) mod file_watch;
 pub(crate) mod files;
 pub(crate) mod history;

@@ -2,6 +2,7 @@
 //! State shared between a session actor, its supervisor and the manager.
 use crate::{BatchSink, CoreError, QueryEvent, SessionEvent, SessionState};
 use openrows_types::{QueryId, SessionId};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 use tokio::sync::{Notify, broadcast, mpsc::UnboundedSender, oneshot};
@@ -57,6 +58,8 @@ pub(crate) struct Shared {
     /// Statement timeout of statements submitted from now on.
     statement_timeout: Mutex<Option<Duration>>,
     running: Mutex<Option<UnboundedSender<QueryEvent>>>,
+    /// The connection held an open transaction after the last statement.
+    in_transaction: AtomicBool,
     events: broadcast::Sender<SessionEvent>,
 }
 
@@ -73,6 +76,7 @@ impl Shared {
             state: Mutex::new(SessionState::Connecting),
             statement_timeout: Mutex::new(None),
             running: Mutex::new(None),
+            in_transaction: AtomicBool::new(false),
             events,
         }
     }
@@ -87,6 +91,14 @@ impl Shared {
 
     pub(crate) fn set_statement_timeout(&self, timeout: Option<Duration>) {
         *lock(&self.statement_timeout) = timeout;
+    }
+
+    pub(crate) fn in_transaction(&self) -> bool {
+        self.in_transaction.load(Ordering::SeqCst)
+    }
+
+    pub(crate) fn set_in_transaction(&self, open: bool) {
+        self.in_transaction.store(open, Ordering::SeqCst);
     }
 
     /// Record and broadcast a transition; terminal states are never left.

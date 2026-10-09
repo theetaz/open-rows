@@ -1,0 +1,35 @@
+{
+  "query_block": {
+    "select_id": 1,
+    "cost": 29.9083736,
+    "nested_loop": [
+      {
+        "table": {
+          "table_name": "c",
+          "access_type": "ALL",
+          "possible_keys": ["PRIMARY"],
+          "loops": 1,
+          "rows": 2000,
+          "cost": 0.3411288,
+          "filtered": 100,
+          "attached_condition": "c.region = 'eu' and c.`id` MOD 10 = 0"
+        }
+      },
+      {
+        "table": {
+          "table_name": "o",
+          "access_type": "ref",
+          "possible_keys": ["orders_customer"],
+          "key": "orders_customer",
+          "key_length": "5",
+          "used_key_parts": ["customer_id"],
+          "ref": ["s.c.id"],
+          "loops": 2000,
+          "rows": 14,
+          "cost": 29.5672448,
+          "filtered": 100
+        }
+      }
+    ]
+  }
+}

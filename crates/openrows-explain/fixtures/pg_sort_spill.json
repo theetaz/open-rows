@@ -1,0 +1,75 @@
+[
+  {
+    "Plan": {
+      "Node Type": "Sort",
+      "Parallel Aware": false,
+      "Async Capable": false,
+      "Startup Cost": 8821.30,
+      "Total Cost": 8971.30,
+      "Plan Rows": 60000,
+      "Plan Width": 16,
+      "Actual Startup Time": 35.684,
+      "Actual Total Time": 40.554,
+      "Actual Rows": 60000,
+      "Actual Loops": 1,
+      "Sort Key": ["total", "created"],
+      "Sort Method": "external merge",
+      "Sort Space Used": 1816,
+      "Sort Space Type": "Disk",
+      "Shared Hit Blocks": 389,
+      "Shared Read Blocks": 0,
+      "Shared Dirtied Blocks": 0,
+      "Shared Written Blocks": 0,
+      "Local Hit Blocks": 0,
+      "Local Read Blocks": 0,
+      "Local Dirtied Blocks": 0,
+      "Local Written Blocks": 0,
+      "Temp Read Blocks": 668,
+      "Temp Written Blocks": 726,
+      "Plans": [
+        {
+          "Node Type": "Seq Scan",
+          "Parent Relationship": "Outer",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Relation Name": "orders",
+          "Alias": "orders",
+          "Startup Cost": 0.00,
+          "Total Cost": 983.00,
+          "Plan Rows": 60000,
+          "Plan Width": 16,
+          "Actual Startup Time": 0.014,
+          "Actual Total Time": 3.228,
+          "Actual Rows": 60000,
+          "Actual Loops": 1,
+          "Shared Hit Blocks": 383,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        }
+      ]
+    },
+    "Planning": {
+      "Shared Hit Blocks": 103,
+      "Shared Read Blocks": 0,
+      "Shared Dirtied Blocks": 0,
+      "Shared Written Blocks": 0,
+      "Local Hit Blocks": 0,
+      "Local Read Blocks": 0,
+      "Local Dirtied Blocks": 0,
+      "Local Written Blocks": 0,
+      "Temp Read Blocks": 0,
+      "Temp Written Blocks": 0
+    },
+    "Planning Time": 0.642,
+    "Triggers": [
+    ],
+    "Execution Time": 42.110
+  }
+]

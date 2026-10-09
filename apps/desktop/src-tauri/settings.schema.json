@@ -321,6 +321,8 @@
           "run-all",
           "run-no-limit",
           "cancel",
+          "explain",
+          "explain-analyze",
           "beautify",
           "uglify",
           "insert-snippet",

@@ -268,6 +268,7 @@ impl Actor {
         )
         .await;
         let in_transaction = self.session.in_transaction();
+        self.mail.shared.set_in_transaction(in_transaction);
         let (terminal, usable) = report(outcome, &mut sink, (started.elapsed(), in_transaction));
         self.mail.shared.end_query();
         self.used = Instant::now();

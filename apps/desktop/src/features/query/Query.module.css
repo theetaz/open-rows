@@ -102,6 +102,18 @@
   background: var(--or-control-active);
   color: var(--or-text);
 }
+.extraTab {
+  display: inline-flex;
+  align-items: center;
+}
+.resultTabs .extraClose {
+  display: inline-flex;
+  padding: var(--or-space-2);
+}
+.extraClose svg {
+  inline-size: 10px;
+  block-size: 10px;
+}
 .placeholder {
   padding: var(--or-space-16);
   color: var(--or-secondary);

@@ -118,6 +118,15 @@ export const commands = {
 	/**  Cancel a running query and every statement after it; unknown ids are ignored. */
 	queryCancel: (queryId: string) => __TAURI_INVOKE<void>("query_cancel", { queryId }),
 	/**
+	 *  Explain the statement at the cursor, or the selection, on an open session.
+	 * 
+	 *  Plans are always allowed. Explain Analyze of a possible write needs a
+	 *  matching `confirmToken` (`confirmationRequired`), is refused on
+	 *  read-only connections and on `MySQL`/`MariaDB` (`blocked`), and on
+	 *  `PostgreSQL` runs in a transaction that is rolled back.
+	 */
+	queryExplain: (request: ExplainRequest) => typedError<ExplainReply, IpcError>(__TAURI_INVOKE("query_explain", { request })),
+	/**
 	 *  Drop results whose tab closed or was re-run; one a running export still
 	 *  reads is dropped when that export ends.
 	 */
@@ -893,6 +902,38 @@ export type ExecuteRequest = {
 	confirmMultiple?: boolean,
 };
 
+/**  How `query_explain` answered. */
+export type ExplainReply = 
+/**  The plan. */
+{ kind: "explained"; plan: PlanDto } | 
+/**
+ *  Nothing ran: Explain Analyze would run a possible write; resend
+ *  with `confirmToken` once the user accepted.
+ */
+{ kind: "confirmationRequired"; token: string; statement: string } | 
+/**  Nothing ran: read-only connection, or an engine that cannot roll back. */
+{ kind: "blocked"; message: string } | 
+/**  The user cancelled; any changes were rolled back. */
+{ kind: "cancelled" };
+
+/**  Explain one statement of the editor text. */
+export type ExplainRequest = {
+	sessionId: string,
+	/**  Client-chosen id; `query_cancel` with it cancels the explain. */
+	explainId: string,
+	/**  The editor text, or only the selected text when `cursor` is `null`. */
+	sql: string,
+	/**
+	 *  Cursor as a UTF-16 offset: explain the statement there; `null`
+	 *  explains `sql`, which must hold exactly one statement.
+	 */
+	cursor: number | null,
+	/**  Run the statement and measure it (`EXPLAIN ANALYZE`). */
+	analyze: boolean,
+	/**  Token from a `confirmationRequired` reply the user accepted. */
+	confirmToken: string | null,
+};
+
 /**  Export progress; exactly one of `finished`, `failed` or `cancelled` ends it. */
 export type ExportEventDto = 
 /**
@@ -1611,6 +1652,74 @@ export type PickedScriptDto = {
 	name: string,
 	bytes: number | null,
 };
+
+/**  Block counts of a node (`PostgreSQL` `BUFFERS`), including its inputs. */
+export type PlanBuffersDto = {
+	sharedHit: number | null,
+	sharedRead: number | null,
+	sharedDirtied: number | null,
+	sharedWritten: number | null,
+	tempRead: number | null,
+	tempWritten: number | null,
+};
+
+/**  A labelled value of a node or of the plan. */
+export type PlanDetailDto = {
+	label: string,
+	value: string,
+};
+
+/**  An analysed plan and the engine's own output. */
+export type PlanDto = {
+	/**  The explained statement. */
+	statement: string,
+	analyzed: boolean,
+	/**  The statement ran and its changes were rolled back. */
+	rolledBack: boolean,
+	weight: PlanWeightDto,
+	planningMs: number | null,
+	executionMs: number | null,
+	summary: PlanDetailDto[],
+	nodes: PlanNodeDto[],
+	raw: string,
+	rawFormat: PlanRawFormatDto,
+};
+
+/**  Why a node deserves attention. */
+export type PlanHotspotDto = { kind: "expensive"; share: number | null } | { kind: "misestimate"; estimated: number | null; actual: number | null } | { kind: "fullScan"; rows: number | null } | { kind: "spill"; reason: string };
+
+/**  One operator of the flattened plan (pre-order; parents first). */
+export type PlanNodeDto = {
+	id: number,
+	parent: number | null,
+	depth: number,
+	nodeType: string,
+	relation: string | null,
+	index: string | null,
+	estimatedRows: number | null,
+	actualRows: number | null,
+	loops: number | null,
+	startupCost: number | null,
+	totalCost: number | null,
+	actualStartupMs: number | null,
+	actualTotalMs: number | null,
+	inclusiveMs: number | null,
+	exclusiveMs: number | null,
+	inclusiveCost: number | null,
+	exclusiveCost: number | null,
+	/**  Exclusive share of the plan's weight, 0–1. */
+	share: number | null,
+	buffers: PlanBuffersDto | null,
+	conditions: PlanDetailDto[],
+	details: PlanDetailDto[],
+	hotspots: PlanHotspotDto[],
+};
+
+/**  How the raw output is shown. */
+export type PlanRawFormatDto = "json" | "text";
+
+/**  What node shares measure. */
+export type PlanWeightDto = "time" | "cost" | "none";
 
 /**  One server process as the Processes view lists it. */
 export type ProcessDto = {

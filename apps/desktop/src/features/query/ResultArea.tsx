@@ -2,6 +2,7 @@
 import { useCallback, useState } from 'react';
 import type { EngineDto } from '@openrows/ipc';
 import { ExportSheet, resultExport } from '../export';
+import type { ExtraResultTab } from '../explain';
 import { ResultPane } from './ResultPane';
 import type { ResultMeta, RunState } from './run';
 import type { SelectedCell } from './cell';
@@ -21,6 +22,8 @@ export function ResultArea(props: {
   onCell: (cell: SelectedCell) => void;
   /** Receives Export… of the shown result, for the Export results command. */
   onExportable?: ((exportShown: (() => void) | null) => void) | undefined;
+  /** A tab beside the result sets (the query plan). */
+  extra?: ExtraResultTab | null | undefined;
 }): React.JSX.Element {
   const { run, sessionId } = props;
   const [exporting, setExporting] = useState<{
@@ -46,6 +49,7 @@ export function ResultArea(props: {
         onCell={props.onCell}
         onExport={sessionId ? exportResult : undefined}
         onExportable={props.onExportable}
+        extra={props.extra}
       />
       {exporting && sessionId && (
         <ExportSheet

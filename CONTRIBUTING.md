@@ -101,7 +101,7 @@ Use the crate, package or area you touched, without the `openrows-` / `@openrows
 
 | Area | Scopes |
 | --- | --- |
-| Core crates | `core`, `types`, `sql`, `results`, `schema`, `store`, `secrets`, `net`, `platform`, `cli` |
+| Core crates | `core`, `types`, `sql`, `results`, `schema`, `store`, `secrets`, `net`, `platform`, `explain`, `cli` |
 | Drivers | `driver-pg`, `driver-mysql`, `driver-sqlite`, `driver-mssql`, `driver-clickhouse`, `driver-duckdb`, `driver-libsql`, `driver-mongodb`, `driver-redis`, `driver-oracle`, `driver-cassandra`, `driver-dynamodb`, `driver-elastic`, `driver-host` |
 | API client | `http`, `script`, `collections` |
 | AI | `ai`, `mcp` |
