@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { commandFields, commandErrors, commandDraft } from './credentialForm';
 import { DEFAULT_CUSTOM_ENV_COLOR } from '@openrows/ipc';
 import {
   emptySsh,
@@ -62,6 +63,10 @@ export type Draft = {
   hasStoredPassword: boolean;
   /** Keychain, or asked on every connect (never saved). */
   passwordStorage: PasswordStorageDto;
+  commandProgram: string;
+  commandArgs: string;
+  commandTimeout: string;
+  tags: string;
   /** The name was derived from the URL, so later URL edits may replace it. */
   nameFromUrl: boolean;
   /** Over SSH (D-10). */
@@ -83,7 +88,18 @@ export type Draft = {
 };
 
 export type DraftErrors = Partial<
-  Record<'name' | 'host' | 'port' | 'user' | 'envLabel' | 'filePath', string>
+  Record<
+    | 'name'
+    | 'host'
+    | 'port'
+    | 'user'
+    | 'envLabel'
+    | 'filePath'
+    | 'commandProgram'
+    | 'commandArgs'
+    | 'commandTimeout',
+    string
+  >
 > &
   RouteErrors &
   ProxyErrors;
@@ -117,6 +133,10 @@ export function emptyDraft(engine: EngineDto = 'postgres'): Draft {
     passwordMode: 'keep',
     hasStoredPassword: false,
     passwordStorage: 'keychain',
+    commandProgram: '',
+    commandArgs: '[]',
+    commandTimeout: '10',
+    tags: '',
     nameFromUrl: false,
     ssh: emptySsh(),
     proxy: emptyProxy(),
@@ -152,6 +172,8 @@ export function draftFromProfile(profile: ProfileDto): Draft {
     startupCommands: profile.startupCommands,
     hasStoredPassword: profile.hasPassword,
     passwordStorage: profile.passwordStorage,
+    ...commandDraft(profile),
+    tags: profile.tags.join(', '),
     ssh: sshFromProfile(profile),
     proxy: proxyFromProfile(profile),
     tls: tlsFromProfile(profile),
@@ -257,6 +279,7 @@ export function validate(draft: Draft): DraftErrors {
     errors.envLabel = 'Label is required';
   return {
     ...errors,
+    ...commandErrors(draft),
     ...validateRoute(draft.ssh, draft.tls, draft.tlsMode),
     ...proxyErrors(draft.proxy, draft.host, draft.ssh.enabled),
   };
@@ -312,7 +335,17 @@ export function toInput(draft: Draft): ProfileInput {
     recordHistory: draft.recordHistory,
     startupCommands: draft.startupCommands.trim(),
     passwordStorage: draft.passwordStorage,
-    password: file ? { kind: 'clear' } : password(draft),
+    credentialCommand: commandFields(draft),
+    tags: draft.tags
+      .split(',')
+      .map((tag) => tag.trim())
+      .filter(Boolean),
+    password:
+      file ||
+      draft.passwordStorage === 'none' ||
+      draft.passwordStorage === 'command'
+        ? { kind: 'clear' }
+        : password(draft),
     limits: limitsInput(draft.limits),
   };
 }

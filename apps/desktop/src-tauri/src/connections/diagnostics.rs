@@ -81,7 +81,15 @@ pub(crate) fn plan(
     let proxy_password = secret(SecretSlot::ProxyPassword)?;
     Ok(TestPlan {
         driver: DriverSecrets {
-            password: resolve_password(service, stored.as_ref(), &input.password)?,
+            password: if matches!(
+                profile.password_storage,
+                openrows_store::profile::PasswordStorage::None
+                    | openrows_store::profile::PasswordStorage::Command
+            ) {
+                None
+            } else {
+                resolve_password(service, stored.as_ref(), &input.password)?
+            },
             tls_key_passphrase: secret(SecretSlot::TlsKeyPassphrase)?,
         },
         ssh: SshSecrets {
@@ -105,7 +113,14 @@ pub(crate) async fn connection_test(
     profile_id: Option<String>,
     input: ProfileInput,
 ) -> Result<TestReport, IpcError> {
-    let plan = plan(&state.profiles, profile_id.as_deref(), &input)?;
+    let mut plan = plan(&state.profiles, profile_id.as_deref(), &input)?;
+    if plan.profile.password_storage == openrows_store::profile::PasswordStorage::Command {
+        if let Some(id) = &profile_id {
+            plan.profile.id = self::profile_id(id)?;
+        }
+        plan.driver.password =
+            Some(super::credentials::password(&state, &state.app, &plan.profile).await?);
+    }
     let target = target::target(&plan.profile, &plan.driver)?;
     let started = Instant::now();
     let mut steps = Steps {

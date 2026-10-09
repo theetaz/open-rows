@@ -14,6 +14,22 @@ export const commands = {
 	profilesList: () => typedError<ProfileList, IpcError>(__TAURI_INVOKE("profiles_list")),
 	/**  Saved connections matching every whitespace-separated term. */
 	profilesSearch: (query: string) => typedError<ProfileDto[], IpcError>(__TAURI_INVOKE("profiles_search", { query })),
+	/**  Export selected ids, or all when empty, to a native-selected JSON file. */
+	connectionsExport: (ids: string[]) => typedError<string | null, IpcError>(__TAURI_INVOKE("connections_export", { ids })),
+	/**  Parse and validate without writes; passwords remain only in the core preview. */
+	connectionsImportPreview: (source: ImportSource) => typedError<{
+	token: string,
+	rows: ImportRow[],
+	warnings: string[],
+} | null, IpcError>(__TAURI_INVOKE("connections_import_preview", { source })),
+	/**  Apply explicit decisions to the exact preview; stale previews write nothing. */
+	connectionsImportApply: (token: string, decisions: ImportDecisionDto[]) => typedError<ProfileDto[], IpcError>(__TAURI_INVOKE("connections_import_apply", { token, decisions })),
+	/**  Drop an unconfirmed preview and its optional passwords. */
+	connectionsImportCancel: (token: string) => typedError<null, IpcError>(__TAURI_INVOKE("connections_import_cancel", { token })),
+	/**  Test the draft command with trust, returning success without its value. */
+	credentialTest: (profileId: string | null, input: ProfileInput) => typedError<null, IpcError>(__TAURI_INVOKE("credential_test", { profileId, input })),
+	/**  Cancel the profile's current credential command, including pending trust. */
+	credentialCancel: (profileId: string) => typedError<null, IpcError>(__TAURI_INVOKE("credential_cancel", { profileId })),
 	/**  One saved connection. */
 	profileGet: (id: string) => typedError<ProfileDto, IpcError>(__TAURI_INVOKE("profile_get", { id })),
 	/**  Save a new connection; its password and passphrases go to the keychain. */
@@ -108,7 +124,7 @@ export const commands = {
 	processSignal: (request: ProcessSignalRequest) => typedError<null, IpcError>(__TAURI_INVOKE("process_signal", { request })),
 	/**
 	 *  Split, bind, gate and start SQL on an open session.
-	 * 
+	 *
 	 *  Placeholders without values ask for them (`parametersRequired`);
 	 *  read-only connections refuse writes (`blocked`); confirm-writes and
 	 *  dangerous statements need a matching `confirmToken` (`confirmationRequired`).
@@ -119,7 +135,7 @@ export const commands = {
 	queryCancel: (queryId: string) => __TAURI_INVOKE<void>("query_cancel", { queryId }),
 	/**
 	 *  Explain the statement at the cursor, or the selection, on an open session.
-	 * 
+	 *
 	 *  Plans are always allowed. Explain Analyze of a possible write needs a
 	 *  matching `confirmToken` (`confirmationRequired`), is refused on
 	 *  read-only connections and on `MySQL`/`MariaDB` (`blocked`), and on
@@ -270,7 +286,7 @@ export const commands = {
 	/**
 	 *  Validate the source and options, ask for the destination, then stream
 	 *  the rows to it without sending them to the webview.
-	 * 
+	 *
 	 *  Export only reads, so read-only and confirm-writes connections allow it;
 	 *  a re-run statement must classify as a plain read. Statements run on a
 	 *  session of the export's own. `query_cancel(exportId)` cancels; partial
@@ -374,7 +390,7 @@ export const commands = {
 	crashRecoveryStatus: () => __TAURI_INVOKE<boolean>("crash_recovery_status"),
 	/**
 	 *  Show the log folder in the file manager (Help ▸ Open Logs Folder).
-	 * 
+	 *
 	 *  # Errors
 	 *  The folder cannot be created, or the file manager cannot be started.
 	 */
@@ -410,7 +426,7 @@ export type AlterPreviewDto = {
 };
 
 /**  The generated DDL to review, or the committed result. */
-export type AlterReply = { kind: "prepared"; token: string; statements: string[]; warnings: string[]; destructive: boolean; 
+export type AlterReply = { kind: "prepared"; token: string; statements: string[]; warnings: string[]; destructive: boolean;
 /**
  *  Name to type before committing (destructive changes on a
  *  production or confirm-writes connection).
@@ -591,9 +607,9 @@ export type ChallengePromptDto = {
 };
 
 /**  Bundled cloud provider CA sets (docs/24 §4). */
-export type CloudCaDto = 
+export type CloudCaDto =
 /**  Amazon RDS and Aurora. */
-"awsRds" | 
+"awsRds" |
 /**  Azure Database for `PostgreSQL` and `MySQL`. */
 "azure";
 
@@ -608,6 +624,9 @@ export type ColumnDto = {
 export type CombinatorDto = "and" | "or";
 
 export type ConflictDto = "error" | "skip" | "update";
+
+/**  Classification displayed before any profile or keychain write. */
+export type ConnectionConflictDto = "new" | "sameName" | "identical";
 
 /**  A reachable saved connection. */
 export type ConnectionOpened = {
@@ -646,6 +665,13 @@ export type CountRequest = {
 	sessionId: string,
 	query: TableQueryDto,
 	ticket: string,
+};
+
+/**  Exact invocation shown to the user before locally trusting it. */
+export type CredentialCommandDto = {
+	program: string,
+	args: string[],
+	timeoutSeconds: number,
 };
 
 /**  CSV field separator. */
@@ -731,15 +757,15 @@ export type DumpContextDto = {
 export type DumpEngineDto = "postgres" | "mysql" | "sqlite";
 
 /**  Events of a running backup or restore; `finished` ends them. */
-export type DumpEventDto = 
+export type DumpEventDto =
 /**  A step (create database, then restore) starts with this command. */
-{ type: "step"; index: number; command: string } | 
+{ type: "step"; index: number; command: string } |
 /**  New stderr lines of the tool. */
-{ type: "log"; lines: string[] } | 
+{ type: "log"; lines: string[] } |
 /**  Objects done (of `total` when known) and bytes written or read. */
-{ type: "progress"; objects: number | null; total: number | null; bytes: number | null; totalBytes: number | null } | { type: "finished"; outcome: DumpOutcomeDto; 
+{ type: "progress"; objects: number | null; total: number | null; bytes: number | null; totalBytes: number | null } | { type: "finished"; outcome: DumpOutcomeDto;
 /**  The tool's exit code when it failed. */
-exitCode: number | null; message: string | null; 
+exitCode: number | null; message: string | null;
 /**  The backup's file or folder. */
 output: string | null; elapsedMs: number | null };
 
@@ -865,13 +891,13 @@ export type EnvInput = {
 export type EnvKindDto = "local" | "dev" | "staging" | "prod" | "custom";
 
 /**  How `query_execute` answered. */
-export type ExecuteReply = 
+export type ExecuteReply =
 /**  The run started; events follow on the channel. */
-{ kind: "started"; queryId: string; statements: StatementDto[] } | 
+{ kind: "started"; queryId: string; statements: StatementDto[] } |
 /**  Nothing ran: show the statements and resend with `confirmToken`. */
-{ kind: "confirmationRequired"; token: string; statements: StatementDto[] } | 
+{ kind: "confirmationRequired"; token: string; statements: StatementDto[] } |
 /**  Nothing ran: the connection is read-only. */
-{ kind: "blocked"; message: string; statements: StatementDto[] } | 
+{ kind: "blocked"; message: string; statements: StatementDto[] } |
 /**  Nothing ran: resend with a value for each parameter name. */
 { kind: "parametersRequired"; names: string[] };
 
@@ -903,16 +929,16 @@ export type ExecuteRequest = {
 };
 
 /**  How `query_explain` answered. */
-export type ExplainReply = 
+export type ExplainReply =
 /**  The plan. */
-{ kind: "explained"; plan: PlanDto } | 
+{ kind: "explained"; plan: PlanDto } |
 /**
  *  Nothing ran: Explain Analyze would run a possible write; resend
  *  with `confirmToken` once the user accepted.
  */
-{ kind: "confirmationRequired"; token: string; statement: string } | 
+{ kind: "confirmationRequired"; token: string; statement: string } |
 /**  Nothing ran: read-only connection, or an engine that cannot roll back. */
-{ kind: "blocked"; message: string } | 
+{ kind: "blocked"; message: string } |
 /**  The user cancelled; any changes were rolled back. */
 { kind: "cancelled" };
 
@@ -935,38 +961,38 @@ export type ExplainRequest = {
 };
 
 /**  Export progress; exactly one of `finished`, `failed` or `cancelled` ends it. */
-export type ExportEventDto = 
+export type ExportEventDto =
 /**
  *  Rows written so far; at most 10 per second. `detail` names the
  *  table being written when there are several.
  */
-{ type: "progress"; rows: number | null; detail: string | null } | 
+{ type: "progress"; rows: number | null; detail: string | null } |
 /**  The file (or folder of files) is complete at `path`. */
 { type: "finished"; rows: number | null; path: string } | { type: "failed"; error: IpcError } | { type: "cancelled" };
 
 /**  Output format and its options. */
-export type ExportFormatDto = 
+export type ExportFormatDto =
 /**  Comma- (or otherwise) separated values. */
-{ kind: "csv"; delimiter: CsvDelimiterDto; options: DelimitedDto } | 
+{ kind: "csv"; delimiter: CsvDelimiterDto; options: DelimitedDto } |
 /**  Tab-separated values. */
-{ kind: "tsv"; options: DelimitedDto } | 
+{ kind: "tsv"; options: DelimitedDto } |
 /**  An array of row objects, compact or indented. */
-{ kind: "json"; pretty: boolean } | 
+{ kind: "json"; pretty: boolean } |
 /**  One row object per line. */
-{ kind: "ndjson" } | 
+{ kind: "ndjson" } |
 /**  `INSERT` statements for `table`, `rowsPerStatement` rows each. */
-{ kind: "sql"; table: string; rowsPerStatement: number } | 
+{ kind: "sql"; table: string; rowsPerStatement: number } |
 /**  A GitHub-flavoured Markdown table. */
-{ kind: "markdown" } | 
+{ kind: "markdown" } |
 /**  An Excel workbook with typed cells. */
-{ kind: "xlsx"; header: boolean } | 
+{ kind: "xlsx"; header: boolean } |
 /**  An Apache Parquet file. */
 { kind: "parquet"; compression: ParquetCompressionDto };
 
 /**  `started` once the destination was chosen; `dismissed` when the panel was cancelled. */
-export type ExportReply = 
+export type ExportReply =
 /**  Events follow on the channel; `query_cancel(exportId)` stops it. */
-{ status: "started"; exportId: string; 
+{ status: "started"; exportId: string;
 /**  Name of the file, or of the folder for one file per table. */
 fileName: string } | { status: "dismissed" };
 
@@ -982,18 +1008,18 @@ export type ExportRequest = {
 };
 
 /**  Which rows to export. */
-export type ExportSourceDto = 
+export type ExportSourceDto =
 /**  A result held in memory (the rows a query tab received). */
-{ kind: "result"; sessionId: string; resultId: string } | 
+{ kind: "result"; sessionId: string; resultId: string } |
 /**  Some rows of a stored result, by their 0-based position in it. */
-{ kind: "rows"; sessionId: string; resultId: string; rows: number[] } | 
+{ kind: "rows"; sessionId: string; resultId: string; rows: number[] } |
 /**
  *  Run one read-only statement again and stream all of its rows (a
  *  result the row limit cut short).
  */
-{ kind: "query"; sessionId: string; sql: string } | 
+{ kind: "query"; sessionId: string; sql: string } |
 /**  Every row of a table or view. */
-{ kind: "table"; sessionId: string; target: TableTarget } | 
+{ kind: "table"; sessionId: string; target: TableTarget } |
 /**
  *  Every row of several tables of one schema: one file per table in a
  *  folder, or (Excel) one workbook with a sheet per table.
@@ -1022,9 +1048,9 @@ export type FileDto = {
 };
 
 /**  How the picked file becomes `PostgreSQL` text input. */
-export type FileEncodingDto = 
+export type FileEncodingDto =
 /**  UTF-8 text for text, varchar, json and xml columns. */
-"text" | 
+"text" |
 /**  `\x` hex input for bytea columns. */
 "hex";
 
@@ -1037,7 +1063,7 @@ export type FilterDto = {
 };
 
 /**  Filter-row comparisons (FR-GRID-11 subset). */
-export type FilterOperatorDto = "equal" | "notEqual" | "less" | "greater" | "lessOrEqual" | "greaterOrEqual" | "contains" | "notContains" | "startsWith" | "endsWith" | "in" | "isNull" | "isNotNull" | "between" | "notIn" | "notBetween" | "like" | "notLike" | "regex" | "notRegex" | "isEmpty" | "isNotEmpty" | 
+export type FilterOperatorDto = "equal" | "notEqual" | "less" | "greater" | "lessOrEqual" | "greaterOrEqual" | "contains" | "notContains" | "startsWith" | "endsWith" | "in" | "isNull" | "isNotNull" | "between" | "notIn" | "notBetween" | "like" | "notLike" | "regex" | "notRegex" | "isEmpty" | "isNotEmpty" |
 /**  A raw SQL predicate in `value`; `column` is ignored. */
 "raw";
 
@@ -1139,6 +1165,9 @@ export type ImportCellDto = {
 	column: number,
 };
 
+/**  Chosen conflict action. */
+export type ImportChoiceDto = "skip" | "replace" | "keepBoth";
+
 /**  One source column of the preview. */
 export type ImportColumnDto = {
 	name: string,
@@ -1155,26 +1184,32 @@ export type ImportCreateDto = {
 	primaryKey: string[],
 };
 
+/**  User-confirmed action and optional keychain password save. */
+export type ImportDecisionDto = {
+	choice: ImportChoiceDto,
+	savePassword: boolean,
+};
+
 /**  Progress, then exactly one of `finished`, `failed` or `cancelled`. */
-export type ImportEventDto = 
+export type ImportEventDto =
 /**  At most 10 per second. */
-{ type: "progress"; rows: number | null; inserted: number | null; failed: number | null; 
+{ type: "progress"; rows: number | null; inserted: number | null; failed: number | null;
 /**  Share of the file read, 0–1. */
-fraction: number | null; rowsPerSecond: number | null } | { type: "finished"; summary: ImportSummaryDto } | 
+fraction: number | null; rowsPerSecond: number | null } | { type: "finished"; summary: ImportSummaryDto } |
 /**  Uncommitted work was rolled back; `summary.inserted` rows stayed. */
 { type: "failed"; error: IpcError; summary: ImportSummaryDto } | { type: "cancelled"; summary: ImportSummaryDto };
 
 /**  `picked` with a handle for the chosen file; `dismissed` when cancelled. */
-export type ImportFileReply = { status: "picked"; 
+export type ImportFileReply = { status: "picked";
 /**  Names the file in later calls; the path stays in the core. */
 fileId: string; fileName: string; sizeBytes: number | null } | { status: "dismissed" };
 
 /**  Layout of the file. */
-export type ImportFormatDto = 
+export type ImportFormatDto =
 /**  Delimited text (CSV, TSV, …). */
-"delimited" | 
+"delimited" |
 /**  One JSON array of objects. */
-"jsonArray" | 
+"jsonArray" |
 /**  One JSON object per line. */
 "jsonLines";
 
@@ -1199,6 +1234,13 @@ export type ImportOptionsDto = {
 	encoding: string,
 	/**  Empty fields are NULL. */
 	emptyAsNull: boolean,
+};
+
+/**  A single-use core-owned preview token and its safe display data. */
+export type ImportPreview = {
+	token: string,
+	rows: ImportRow[],
+	warnings: string[],
 };
 
 /**  The file's columns with inferred types and its first rows. */
@@ -1256,10 +1298,20 @@ export type ImportRequest = {
 	batchSize: number,
 };
 
+/**  One preview row, never carrying an imported password. */
+export type ImportRow = {
+	profile: ProfileDto,
+	conflict: ConnectionConflictDto,
+	hasPassword: boolean,
+};
+
+/**  Public format selected by the user; open files use the native picker. */
+export type ImportSource = "openFile" | "pgpass" | "pgService" | "myCnf";
+
 /**  Where a target column's values come from. */
-export type ImportSourceDto = 
+export type ImportSourceDto =
 /**  The source column at `index`. */
-{ kind: "column"; index: number } | 
+{ kind: "column"; index: number } |
 /**  The same value in every row; `null` is NULL. */
 { kind: "constant"; value: string | null };
 
@@ -1296,11 +1348,11 @@ export type IndexDetailDto = {
 export type IndexMethodDto = "btree" | "hash" | "gist" | "gin" | "brin" | "spgist";
 
 /**  One reason for the insecure badge. */
-export type InsecureReasonDto = 
+export type InsecureReasonDto =
 /**  TLS is off towards a remote host. */
-"tlsDisabled" | 
+"tlsDisabled" |
 /**  The remote server's certificate is not verified. */
-"tlsUnverified" | 
+"tlsUnverified" |
 /**  An unknown SSH host key was accepted without saving it. */
 "hostKeyNotSaved";
 
@@ -1315,37 +1367,37 @@ export type IpcError = {
 };
 
 /**  Failure category; the UI picks wording and recovery from it. */
-export type IpcErrorKind = 
+export type IpcErrorKind =
 /**  A field or identifier failed validation. */
-"invalid" | 
+"invalid" |
 /**  The profile or session does not exist. */
-"notFound" | 
+"notFound" |
 /**  Profile files could not be read or written. */
-"storage" | 
+"storage" |
 /**  The OS keychain failed. */
-"secret" | 
+"secret" |
 /**  The pasted connection URL is not a valid `postgres://` URL. */
-"url" | 
+"url" |
 /**  The server could not be reached or the connection dropped. */
-"network" | 
+"network" |
 /**  TLS files, certificate verification or the TLS handshake failed. */
-"tls" | 
+"tls" |
 /**  The SSH tunnel could not be opened (connect, authentication, channel). */
-"ssh" | 
+"ssh" |
 /**  The SSH server's host key changed or was revoked: a hard stop. */
-"hostKey" | 
+"hostKey" |
 /**  The user cancelled a host-key or keyboard-interactive prompt. */
-"cancelled" | 
+"cancelled" |
 /**  The server rejected the credentials. */
-"auth" | 
+"auth" |
 /**  The server or driver broke the wire protocol. */
-"protocol" | 
+"protocol" |
 /**  The server reported an error (SQLSTATE in `code`). */
-"server" | 
+"server" |
 /**  The statement ran past the connection's statement timeout. */
-"timeout" | 
+"timeout" |
 /**  The requested option is not supported yet. */
-"unsupported" | 
+"unsupported" |
 /**  A bug or broken invariant. */
 "internal";
 
@@ -1505,12 +1557,12 @@ export type ObjectNameDto = {
 };
 
 /**  The statements to review, or the committed result. */
-export type ObjectReply = { kind: "prepared"; token: string; statements: string[]; warnings: string[]; destructive: boolean; 
+export type ObjectReply = { kind: "prepared"; token: string; statements: string[]; warnings: string[]; destructive: boolean;
 /**
  *  Name to type before running (destructive changes on a
  *  production or confirm-writes connection).
  */
-confirmName: string | null; 
+confirmName: string | null;
 /**  The statements run in one transaction (else one by one). */
 transactional: boolean } | { kind: "committed" };
 
@@ -1571,11 +1623,11 @@ export type PageTimer = {
 };
 
 /**  Which placeholders the editor treats as parameters. */
-export type ParamStyleDto = 
+export type ParamStyleDto =
 /**  `:name`. */
-"named" | 
+"named" |
 /**  `$1` (`PostgreSQL`), `?1` (`SQLite`). */
-"numbered" | 
+"numbered" |
 /**  `?`, asked for as `?1`, `?2`, … across the run. */
 "anonymous";
 
@@ -1606,35 +1658,39 @@ export type PartitionDto = {
 };
 
 /**  What to do with the password on save or test; `Debug` redacts secrets. */
-export type PasswordInput = 
+export type PasswordInput =
 /**  Use the stored password (none for a new profile). */
-{ kind: "keep" } | 
+{ kind: "keep" } |
 /**  No password. */
-{ kind: "clear" } | 
+{ kind: "clear" } |
 /**  A typed password. */
-{ kind: "set"; value: string } | 
+{ kind: "set"; value: string } |
 /**  The password inside a pasted connection URL. */
 { kind: "fromUrl"; url: string };
 
 /**  Keychain or ask on every connect (docs/12 §3). */
-export type PasswordStorageDto = 
+export type PasswordStorageDto =
 /**  Saved in the macOS Keychain. */
-"keychain" | 
+"keychain" |
 /**  Never saved: asked on connect and held only while connected. */
-"ask";
+"ask" |
+/**  Never send or ask for a database password. */
+"none" |
+/**  Run an explicitly trusted program on each attempt. */
+"command";
 
 /**  Which file the connection form asks for. */
-export type PickFileKind = 
+export type PickFileKind =
 /**  SSH private key (opens in `~/.ssh`). */
-"sshKey" | 
+"sshKey" |
 /**  TLS CA certificate bundle. */
-"caCertificate" | 
+"caCertificate" |
 /**  TLS client certificate. */
-"clientCertificate" | 
+"clientCertificate" |
 /**  TLS client key. */
-"clientKey" | 
+"clientKey" |
 /**  An existing `SQLite` database file. */
-"sqliteDatabase" | 
+"sqliteDatabase" |
 /**  Where to create a new `SQLite` database file (save panel). */
 "newSqliteDatabase";
 
@@ -1748,9 +1804,9 @@ export type ProcessDto = {
 };
 
 /**  What to do to a process. */
-export type ProcessSignalDto = 
+export type ProcessSignalDto =
 /**  Abort the running statement; the session stays connected. */
-"cancelQuery" | 
+"cancelQuery" |
 /**  End the session; its open transaction rolls back. */
 "terminate";
 
@@ -1788,6 +1844,8 @@ export type ProfileDto = {
 	hasPassword: boolean,
 	/**  Keychain, or asked on every connect (then `hasPassword` is false). */
 	passwordStorage: PasswordStorageDto,
+	credentialCommand: CredentialCommandDto | null,
+	tags: string[],
 	safety: SafetyDto,
 	/**  Why the connection list flags this connection as insecure. */
 	insecure: InsecureReasonDto[],
@@ -1830,6 +1888,8 @@ export type ProfileInput = {
 	startupCommands?: string,
 	/**  Absent in forms written before the choice: the keychain. */
 	passwordStorage?: PasswordStorageDto,
+	credentialCommand?: CredentialCommandDto | null,
+	tags?: string[],
 	password: PasswordInput,
 	/**  Absent in forms written before the limits: the defaults. */
 	limits?: LimitsDto,
@@ -1892,9 +1952,9 @@ export type ProxyKindDto = "socks5" | "http";
  *  Progress of one run; `statement` indexes the reply's statements.
  *  `finished` is always the last event.
  */
-export type QueryEventDto = { type: "statementStarted"; statement: number } | { type: "resultBegin"; statement: number; resultId: string; columns: ColumnDto[] } | 
+export type QueryEventDto = { type: "statementStarted"; statement: number } | { type: "resultBegin"; statement: number; resultId: string; columns: ColumnDto[] } |
 /**  Rows stored so far; at most 10 per second. */
-{ type: "progress"; statement: number; resultId: string; rows: number } | 
+{ type: "progress"; statement: number; resultId: string; rows: number } |
 /**  Final row count; `truncated` when the row cap or memory budget stopped it. */
 { type: "resultEnd"; statement: number; resultId: string; rows: number; truncated: boolean } | { type: "rowsAffected"; statement: number; count: number } | { type: "notice"; statement: number; level: NoticeLevelDto; message: string } | { type: "statementDone"; statement: number; elapsedMs: number } | { type: "failed"; statement: number; error: IpcError } | { type: "cancelled"; statement: number } | { type: "finished"; outcome: RunOutcomeDto; elapsedMs: number };
 
@@ -1954,9 +2014,9 @@ export type RestoreRequest = {
 };
 
 /**  Where a restore writes. */
-export type RestoreTargetDto = 
+export type RestoreTargetDto =
 /**  The session's database. */
-{ kind: "existing" } | 
+{ kind: "existing" } |
 /**  A new database, created first. */
 { kind: "create"; name: string };
 
@@ -2018,11 +2078,11 @@ export type RunFileCheckRequest = {
 };
 
 /**  File run events; `finished` ends them. */
-export type RunFileEventDto = 
+export type RunFileEventDto =
 /**  Counts so far, at most 10 per second; `current` is the running statement. */
-{ type: "progress"; statements: number | null; bytes: number | null; errors: number | null; current: string } | 
+{ type: "progress"; statements: number | null; bytes: number | null; errors: number | null; current: string } |
 /**  A statement failed (the first 1,000 errors are reported). */
-{ type: "error"; statement: number | null; line: number | null; preview: string; message: string } | { type: "finished"; outcome: RunFileOutcomeDto; statements: number | null; errors: number | null; rowsAffected: number | null; rolledBack: boolean; 
+{ type: "error"; statement: number | null; line: number | null; preview: string; message: string } | { type: "finished"; outcome: RunFileOutcomeDto; statements: number | null; errors: number | null; rowsAffected: number | null; rolledBack: boolean;
 /**  Why the run stopped early, when not a statement error. */
 message: string | null; elapsedMs: number | null };
 
@@ -2052,11 +2112,11 @@ export type RunFileStarted = {
 };
 
 /**  Which statements of the editor text to run. */
-export type RunMode = 
+export type RunMode =
 /**  Every statement in `sql`, in order. */
-"all" | 
+"all" |
 /**  Every statement in `sql`, which holds only the selected text. */
-"selection" | 
+"selection" |
 /**  The statement at `cursor` (or the closest one before it). */
 "current";
 
@@ -2087,9 +2147,9 @@ export type SavedQueryDto = {
 };
 
 /**  One staged structure change; columns are named by their current name. */
-export type SchemaChangeDto = { kind: "renameTable"; name: string } | { kind: "tableComment"; comment: string | null } | { kind: "renameColumn"; column: string; name: string } | { kind: "columnType"; column: string; dataType: string } | { kind: "columnNullable"; column: string; nullable: boolean } | { kind: "columnDefault"; column: string; default: DefaultDto } | { kind: "columnComment"; column: string; comment: string | null } | { kind: "addColumn"; name: string; dataType: string; nullable: boolean; default: DefaultDto; comment: string | null; identity?: IdentityDto; collation?: string | null; charset?: string | null } | { kind: "dropColumn"; column: string } | { kind: "createIndex"; name: string | null; columns: string[]; unique: boolean; method: IndexMethodDto; 
+export type SchemaChangeDto = { kind: "renameTable"; name: string } | { kind: "tableComment"; comment: string | null } | { kind: "renameColumn"; column: string; name: string } | { kind: "columnType"; column: string; dataType: string } | { kind: "columnNullable"; column: string; nullable: boolean } | { kind: "columnDefault"; column: string; default: DefaultDto } | { kind: "columnComment"; column: string; comment: string | null } | { kind: "addColumn"; name: string; dataType: string; nullable: boolean; default: DefaultDto; comment: string | null; identity?: IdentityDto; collation?: string | null; charset?: string | null } | { kind: "dropColumn"; column: string } | { kind: "createIndex"; name: string | null; columns: string[]; unique: boolean; method: IndexMethodDto;
 /**  Key columns sorted descending. */
-descending?: string[]; 
+descending?: string[];
 /**  Partial-index predicate. */
 predicate?: string | null } | { kind: "dropIndex"; name: string } | { kind: "columnIdentity"; column: string; identity: IdentityDto } | { kind: "columnCollation"; column: string; charset: string | null; collation: string | null } | { kind: "addForeignKey"; key: NewForeignKeyDto } | { kind: "addCheck"; check: NewCheckDto } | { kind: "dropConstraint"; name: string };
 
@@ -2126,11 +2186,11 @@ export type SecretFieldDto = "password" | "sshPassword" | "sshPassphrase" | "tls
  *  What to do with an SSH or TLS secret on save or test. `Debug` redacts
  *  the value.
  */
-export type SecretInput = 
+export type SecretInput =
 /**  Use the stored secret (none for a new profile). */
-{ kind: "keep" } | 
+{ kind: "keep" } |
 /**  No secret. */
-{ kind: "clear" } | 
+{ kind: "clear" } |
 /**  A typed secret. */
 { kind: "set"; value: string };
 
@@ -2164,7 +2224,7 @@ export type SessionStateChanged = {
  *  Session lifecycle states the UI shows (docs/04 §3 subset); `reconnecting`
  *  means the connection was lost and a new one is being opened (M1-08).
  */
-export type SessionStateDto = "connecting" | "idle" | "busy" | "reconnecting" | 
+export type SessionStateDto = "connecting" | "idle" | "busy" | "reconnecting" |
 /**  Closed after the connection's idle timeout; the next query reopens it. */
 "suspended" | "closed" | "failed";
 
@@ -2241,16 +2301,16 @@ export type SshInput = {
 };
 
 /**  The user's answer. `Debug` redacts challenge answers (passwords, codes). */
-export type SshPromptAnswer = 
+export type SshPromptAnswer =
 /**  Trust the host key and remember it in the app's `known_hosts`. */
-{ kind: "trust" } | 
+{ kind: "trust" } |
 /**
  *  Connect this time without saving the key; the connection is flagged
  *  as insecure while the tunnel lives.
  */
-{ kind: "trustOnce" } | 
+{ kind: "trustOnce" } |
 /**  Answers to a challenge, one per prompt, in order. */
-{ kind: "answers"; values: string[] } | 
+{ kind: "answers"; values: string[] } |
 /**  Dismissed: reject the key or cancel authentication. */
 { kind: "cancel" };
 
@@ -2261,13 +2321,13 @@ export type SshPromptChanged = {
 };
 
 /**  What the user is asked. */
-export type SshPromptDto = 
+export type SshPromptDto =
 /**  An SSH server key seen for the first time. */
-{ kind: "hostKey"; host: string; port: number; algorithm: string; 
+{ kind: "hostKey"; host: string; port: number; algorithm: string;
 /**  `SHA256:…` */
-fingerprint: string; 
+fingerprint: string;
 /**  Algorithms already trusted for this host (a reason for caution). */
-otherAlgorithms: string[] } | 
+otherAlgorithms: string[] } |
 /**  Keyboard-interactive questions (password, verification code, …). */
 { kind: "challenge"; host: string; user: string; name: string; instructions: string; prompts: ChallengePromptDto[] };
 
@@ -2295,7 +2355,7 @@ export type StatementDto = {
 export type StatementKindDto = "read" | "write" | "ddl" | "txControl" | "unknown";
 
 /**  How a step went. */
-export type StepStatus = "ok" | 
+export type StepStatus = "ok" |
 /**  Succeeded, but insecure or degraded (e.g. TLS without verification). */
 "warning" | "failed";
 
@@ -2424,23 +2484,23 @@ export type TestStepDto = {
 };
 
 /**  What a step checks. */
-export type TestStepKind = 
+export type TestStepKind =
 /**  Resolve and reach an SSH server (or the next jump host). */
-"sshConnect" | 
+"sshConnect" |
 /**  SSH handshake, host key and authentication. */
-"sshAuth" | 
+"sshAuth" |
 /**  Open the tunnel stream to the database. */
-"tunnel" | 
+"tunnel" |
 /**  Resolve the database host name (direct connections). */
-"dns" | 
+"dns" |
 /**  TCP connect (or Unix socket) to the database. */
-"connect" | 
+"connect" |
 /**  TLS negotiation and handshake. */
-"tls" | 
+"tls" |
 /**  Database authentication. */
-"authenticate" | 
+"authenticate" |
 /**  Server product and version. */
-"version" | 
+"version" |
 /**  Round trip of a trivial query. */
 "latency";
 
@@ -2541,9 +2601,9 @@ export type WindowRequest = {
 };
 
 /**  Which part of the window's state. */
-export type WorkspacePartDto = 
+export type WorkspacePartDto =
 /**  Open query and table tabs (with query text under Auto Save). */
-"queryTabs" | 
+"queryTabs" |
 /**  Open connections, their databases and the active one. */
 "session";
 

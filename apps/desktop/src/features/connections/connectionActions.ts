@@ -15,7 +15,7 @@ export function connectionActions(
   return [
     live
       ? [
-          'Disconnect',
+          state === 'connecting' ? 'Cancel connection' : 'Disconnect',
           () => {
             connections.disconnectProfile(profile.id);
           },
@@ -30,6 +30,39 @@ export function connectionActions(
       'Connection settings…',
       () => {
         connections.setSheet({ kind: 'edit', profile });
+      },
+    ],
+    [
+      'Export connection…',
+      () => {
+        connections.setSheet({ kind: 'export', ids: [profile.id] });
+      },
+    ],
+    ...(profile.group
+      ? [
+          [
+            'Export group…',
+            () => {
+              connections.setSheet({
+                kind: 'export',
+                ids: connections.profiles
+                  .filter((item) => item.group === profile.group)
+                  .map((item) => item.id),
+              });
+            },
+          ] as const,
+        ]
+      : []),
+    [
+      'Export all connections…',
+      () => {
+        connections.setSheet({ kind: 'export' });
+      },
+    ],
+    [
+      'Import connections…',
+      () => {
+        connections.setSheet({ kind: 'import' });
       },
     ],
     ['Duplicate', () => void connections.duplicate(profile)],

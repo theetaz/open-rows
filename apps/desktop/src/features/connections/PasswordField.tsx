@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 import { SecureField, SelectField } from '@openrows/ui';
 import type { PasswordStorageDto } from '@openrows/ipc';
+import { CredentialFields } from './CredentialFields';
 import { SecretField } from './SecretField';
 import type { ConnectionForm } from './useConnectionForm';
 import styles from './ConnectionSheet.module.css';
 
 const storageChoices: readonly { value: PasswordStorageDto; label: string }[] =
   [
-    { value: 'keychain', label: 'In Keychain' },
-    { value: 'ask', label: 'Never: ask every time' },
+    { value: 'keychain', label: 'Save in keychain' },
+    { value: 'ask', label: 'Ask every time' },
+    { value: 'none', label: 'No password' },
+    { value: 'command', label: 'Run a command' },
   ];
 
 /**
@@ -23,7 +26,14 @@ export function PasswordField({
   const { draft } = form;
   return (
     <>
-      {draft.passwordStorage === 'ask' ? (
+      {draft.passwordStorage === 'command' ? (
+        <CredentialFields form={form} />
+      ) : draft.passwordStorage === 'none' ? (
+        <small className={styles.hint}>
+          No database password is sent or requested. Use peer, trust, IAM or
+          socket authentication.
+        </small>
+      ) : draft.passwordStorage === 'ask' ? (
         <AskedPassword form={form} />
       ) : (
         <SecretField

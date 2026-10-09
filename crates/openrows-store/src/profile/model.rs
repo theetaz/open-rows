@@ -8,8 +8,8 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::{
-    Driver, EnvKind, EnvTag, FileParams, PasswordStorage, ProfileError, ProxySettings, Safety,
-    ServerParams, SessionLimits, SshSettings, TlsSettings,
+    CredentialCommand, Driver, EnvKind, EnvTag, FileParams, PasswordStorage, ProfileError,
+    ProxySettings, Safety, ServerParams, SessionLimits, SshSettings, TlsSettings,
 };
 
 /// Newest profile file format version (`"openrows": 1`).
@@ -155,6 +155,15 @@ pub struct ConnectionProfile {
     /// Keychain or ask on connect; files only carry the key for `ask`.
     #[serde(default, skip_serializing_if = "stores_password")]
     pub password_storage: PasswordStorage,
+    /// Program and literal arguments; execution trust is machine-local.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub credential_command: Option<CredentialCommand>,
+    /// Imported provenance; never grants command trust.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub imported: bool,
+    /// User-defined connection tags.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tags: Vec<String>,
     /// TLS settings.
     pub tls: TlsSettings,
     /// SSH tunnel in front of the database; absent for direct connections.
@@ -222,6 +231,9 @@ impl ConnectionProfile {
             file: None,
             secrets: SecretRefs::default(),
             password_storage: PasswordStorage::Keychain,
+            credential_command: None,
+            imported: false,
+            tags: Vec::new(),
             record_history: true,
             limits: SessionLimits::default(),
             startup_commands: String::new(),
@@ -266,6 +278,15 @@ impl ConnectionProfile {
         let invalid = |field, reason| Err(ProfileError::Invalid { field, reason });
         if self.name.trim().is_empty() {
             return invalid("name", "must not be empty");
+        }
+        if self.password_storage == PasswordStorage::Command {
+            self.credential_command
+                .as_ref()
+                .ok_or(ProfileError::Invalid {
+                    field: "credentialCommand",
+                    reason: "choose a program",
+                })?
+                .validate()?;
         }
         if self.driver.is_file() {
             return self.validate_file();

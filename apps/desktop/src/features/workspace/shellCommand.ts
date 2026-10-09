@@ -154,6 +154,12 @@ function workActions(input: ShellInput): Actions {
     processes: input.openProcesses,
     'open-project': openProjectDialog,
     'close-project': closeProject,
+    'export-connections': () => {
+      connections.setSheet({ kind: 'export' });
+    },
+    'import-connections': () => {
+      connections.setSheet({ kind: 'import' });
+    },
     'new-connection': () => {
       connections.setSheet({ kind: 'new' });
     },

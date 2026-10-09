@@ -29,7 +29,8 @@ mod window_frame;
 mod workspace;
 
 use connections::{
-    attach, catalog, connection, diagnostics, files, processes, profiles, prompts, reveal, sessions,
+    attach, catalog, connection, credentials, diagnostics, exchange, files, processes, profiles,
+    prompts, reveal, sessions,
 };
 
 #[expect(
@@ -44,6 +45,12 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
         spike::spike_progress,
         profiles::profiles_list,
         profiles::profiles_search,
+        exchange::connections_export,
+        exchange::connections_import_preview,
+        exchange::connections_import_apply,
+        exchange::connections_import_cancel,
+        credentials::credential_test,
+        credentials::credential_cancel,
         profiles::profile_get,
         profiles::profile_create,
         profiles::profile_update,
@@ -176,7 +183,16 @@ pub fn export_bindings(path: &std::path::Path) -> Result<(), specta_typescript::
     command_builder().export(
         specta_typescript::Typescript::default().header("// SPDX-License-Identifier: Apache-2.0"),
         path,
-    )
+    )?;
+    // Specta's documented enum unions include trailing spaces; keep generated diffs clean.
+    let source = std::fs::read_to_string(path)?;
+    let clean = source
+        .lines()
+        .map(str::trim_end)
+        .collect::<Vec<_>>()
+        .join("\n");
+    std::fs::write(path, format!("{clean}\n"))?;
+    Ok(())
 }
 
 /// Run the native application event loop.

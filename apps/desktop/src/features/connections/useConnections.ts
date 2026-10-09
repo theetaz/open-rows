@@ -19,12 +19,15 @@ import type { SessionStatus } from './sessions';
 /** Which modal sheet is open over the workspace. */
 export type SheetState =
   | { kind: 'new' }
+  | { kind: 'import' }
+  | { kind: 'export'; ids?: string[] }
   | { kind: 'edit'; profile: ProfileDto }
   | { kind: 'delete'; profile: ProfileDto }
   | null;
 
 export type Connections = Databases & {
   profiles: readonly ProfileDto[];
+  reload: () => void;
   problem: string | null;
   active: ProfileDto | undefined;
   statusOf: (profileId: string) => SessionStatus;
@@ -116,6 +119,7 @@ export function useConnections(): Connections {
   return {
     ...databases,
     profiles,
+    reload,
     problem: actionError ?? problem,
     active,
     statusOf: sessions.statusOf,

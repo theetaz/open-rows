@@ -1,0 +1,316 @@
+{
+  "type": "object",
+  "properties": {
+    "format": {
+      "const": "openrows.connections"
+    },
+    "version": {
+      "const": 1
+    },
+    "profiles": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/profile"
+      }
+    }
+  },
+  "required": ["format", "version", "profiles"],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRows connections v1",
+  "$defs": {
+    "environment": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["local", "dev", "staging", "prod", "custom"]
+        },
+        "label": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$"
+        }
+      },
+      "required": ["kind", "color"],
+      "additionalProperties": false
+    },
+    "params": {
+      "type": "object",
+      "properties": {
+        "host": {
+          "type": "string",
+          "minLength": 1
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "database": {
+          "type": "string"
+        },
+        "user": {
+          "type": "string"
+        },
+        "applicationName": {
+          "type": "string"
+        },
+        "options": {
+          "type": "object",
+          "properties": {
+            "connect_timeout": {
+              "type": "string"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      },
+      "required": ["host", "port"],
+      "additionalProperties": false
+    },
+    "tls": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "disable",
+            "allow",
+            "prefer",
+            "require",
+            "verify-ca",
+            "verify-full"
+          ]
+        },
+        "caFile": {
+          "type": "string"
+        },
+        "cloudCa": {
+          "type": "string",
+          "enum": ["awsRds", "azure"]
+        },
+        "clientCert": {
+          "type": "string"
+        },
+        "clientKey": {
+          "type": "string"
+        }
+      },
+      "required": ["mode"],
+      "additionalProperties": false
+    },
+    "sshAuth": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "type": "string",
+          "enum": ["password", "privateKey", "agent", "keyboardInteractive"]
+        },
+        "keyFile": {
+          "type": "string"
+        }
+      },
+      "required": ["method"],
+      "additionalProperties": false
+    },
+    "ssh": {
+      "type": "object",
+      "properties": {
+        "host": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "user": {
+          "type": "string"
+        },
+        "auth": {
+          "$ref": "#/$defs/sshAuth"
+        },
+        "jumpHosts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["host", "auth"],
+      "additionalProperties": false
+    },
+    "proxy": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["socks5", "http"]
+        },
+        "host": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "user": {
+          "type": "string"
+        }
+      },
+      "required": ["kind", "host", "port"],
+      "additionalProperties": false
+    },
+    "safety": {
+      "type": "object",
+      "properties": {
+        "readOnly": {
+          "type": "boolean"
+        },
+        "confirmWrites": {
+          "type": "boolean"
+        }
+      },
+      "required": ["readOnly", "confirmWrites"],
+      "additionalProperties": false
+    },
+    "attached": {
+      "type": "object",
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": ["alias", "path"],
+      "additionalProperties": false
+    },
+    "file": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "memory": {
+          "type": "boolean"
+        },
+        "readOnly": {
+          "type": "boolean"
+        },
+        "create": {
+          "type": "boolean"
+        },
+        "attached": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/attached"
+          }
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "limits": {
+      "type": "object",
+      "properties": {
+        "statementTimeoutSeconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "idleTimeoutMinutes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "command": {
+      "type": "object",
+      "properties": {
+        "program": {
+          "type": "string",
+          "minLength": 1
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 120
+        }
+      },
+      "required": ["program"],
+      "additionalProperties": false
+    },
+    "profile": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "driver": {
+          "type": "string",
+          "enum": ["postgres", "mysql", "mariadb", "sqlserver", "sqlite"]
+        },
+        "group": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "envTag": {
+          "$ref": "#/$defs/environment"
+        },
+        "params": {
+          "$ref": "#/$defs/params"
+        },
+        "file": {
+          "$ref": "#/$defs/file"
+        },
+        "passwordStorage": {
+          "type": "string",
+          "enum": ["keychain", "ask", "none", "command"]
+        },
+        "credentialCommand": {
+          "$ref": "#/$defs/command"
+        },
+        "tls": {
+          "$ref": "#/$defs/tls"
+        },
+        "ssh": {
+          "$ref": "#/$defs/ssh"
+        },
+        "proxy": {
+          "$ref": "#/$defs/proxy"
+        },
+        "safety": {
+          "$ref": "#/$defs/safety"
+        },
+        "recordHistory": {
+          "type": "boolean"
+        },
+        "limits": {
+          "$ref": "#/$defs/limits"
+        }
+      },
+      "required": ["name", "driver", "envTag", "params", "tls", "safety"],
+      "additionalProperties": false
+    }
+  }
+}

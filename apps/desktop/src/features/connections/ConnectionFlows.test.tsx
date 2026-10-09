@@ -155,3 +155,22 @@ it('switches a saved connection to ask every time', async () => {
     expect.objectContaining({ passwordStorage: 'ask' }),
   );
 });
+
+it.each(['none', 'command'] as const)(
+  'connects with %s without a password sheet',
+  async (passwordStorage) => {
+    const user = userEvent.setup();
+    vi.mocked(listProfiles).mockResolvedValue({
+      profiles: [profile('policy', { passwordStorage })],
+      unreadable: [],
+    });
+    render(<Harness />);
+    await user.click(
+      await screen.findByRole('button', { name: 'Switch to policy' }),
+    );
+    await waitFor(() => {
+      expect(openConnection).toHaveBeenCalledWith('id-policy');
+    });
+    expect(screen.queryByRole('dialog')).toBeNull();
+  },
+);

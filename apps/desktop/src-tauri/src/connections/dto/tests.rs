@@ -27,6 +27,8 @@ pub(crate) fn input(env: EnvKindDto) -> ProfileInput {
         record_history: false,
         startup_commands: "  SET search_path TO app;\n".into(),
         password_storage: PasswordStorageDto::Keychain,
+        credential_command: None,
+        tags: Vec::new(),
         password: PasswordInput::Keep,
         limits: LimitsDto::default(),
     }

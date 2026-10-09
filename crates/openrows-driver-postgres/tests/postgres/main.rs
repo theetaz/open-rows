@@ -13,3 +13,6 @@ mod structure;
 mod support;
 mod tls;
 mod types;
+
+#[path = "connection_import.rs"]
+mod connection_import;

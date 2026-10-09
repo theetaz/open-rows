@@ -86,3 +86,29 @@ fn search_matches_the_environment_kind() {
     assert_eq!(found.len(), 1);
     assert_eq!(found[0].name, "Billing");
 }
+
+#[test]
+fn none_and_command_never_store_or_read_a_saved_password() -> Result<(), Box<dyn std::error::Error>>
+{
+    let dir = tempfile::tempdir()?;
+    let (service, _) = service(dir.path());
+    for storage in [PasswordStorage::None, PasswordStorage::Command] {
+        let mut profile = profile("policy");
+        profile.password_storage = storage;
+        if storage == PasswordStorage::Command {
+            profile.credential_command = Some(openrows_store::profile::CredentialCommand {
+                program: if cfg!(windows) {
+                    "C:/provider.exe".into()
+                } else {
+                    "/usr/bin/provider".into()
+                },
+                args: vec![],
+                timeout_seconds: 10,
+            });
+        }
+        let saved = service.create(profile, Some(&SecretString::from("pw")))?;
+        assert!(saved.secrets.password.is_none());
+        assert!(service.password(&saved)?.is_none());
+    }
+    Ok(())
+}

@@ -178,7 +178,7 @@ my-team-project/
 
 ## 7. Backup and portability
 
-- "Export everything" produces an archive of profiles (optionally with encrypted secrets), settings, snippets, and scratch queries.
+- "Export everything" produces an archive of profiles (without secrets in 1.0), settings, snippets, and scratch queries.
 - History is excluded by default (sensitive and large) but can be included.
 
 ## 8. Implementation notes (D-03: local store and connection profiles)
@@ -204,3 +204,35 @@ First slice of M1-02 (local store) and M1-03 (profiles). Nothing here depends on
 | Secrets | `secrets` holds only `"keychain"` markers: `password`, `sshPassword`, `sshPassphrase`, `tlsKeyPassphrase`. Values live in `openrows-secrets` under `conn/<id>/password`, `conn/<id>/ssh-password`, `conn/<id>/ssh-passphrase` and `conn/<id>/tls-key-passphrase` (docs/12 §8). Saving removes secrets the settings no longer use (SSH turned off, another auth method, no client key); duplicate copies every secret; delete removes them all. |
 | Settings (M1-26) | `settings.json` in the app-data dir: `{ "openrows": 1, "theme", "general", "appearance", "editor", "execution", "shortcuts", "diagnostics", "results", "snippets", "tools" }` (`tools` holds the Settings ▸ Tools paths of `pgDump`, `pgRestore`, `psql`, `mysqldump` and `mysql`, read by the core when a backup or restore starts, empty for automatic; `results.memoryBudgetMb`, default 512, is the result store budget read by the core at launch, docs/06 §9; `diagnostics` holds `logLevel`, read by the core at launch, and the `crashReports` stub, which defaults to off; `run-marker.json` next to it is the crash marker of docs/14 §2.1), written by the webview through `settings_write` (Rust checks the envelope, pretty-prints and writes atomically; files from a newer format are refused) about 300 ms after a change, with `"$schema": "./settings.schema.json"` first; that JSON Schema (`apps/desktop/src-tauri/settings.schema.json`, hand-written and checked against the stores by a test) is written beside the file at launch so editors validate and complete it. The core checks the file's size and modification time once a second and, on an edit made outside the app (its own writes are recognised), re-applies the keepalive and emits `settings-changed`; the webview then loads the file into the stores and every reader re-renders, while a file that no longer parses is ignored until it is fixed. The result memory budget still applies at the next launch. On launch the file is loaded into the `openrows.*` web-storage keys before the first render; when it does not exist yet, those keys are migrated into it. An unreadable file is left untouched and settings stay device-local for that session. Keybindings live in `shortcuts` (overrides only; `null` removes a default) rather than a separate `keybindings.json`. Session restore state (open connections, their databases and the active one; query and table tabs) lives in the local store's `workspace_state` (schema v6); the former `openrows.session` and `openrows.queryTabs` web-storage keys are imported once and then cleared. |
 
+
+## 9. Implemented (M2-21): open connection exchange
+
+**File ▸ Export Connections…** exports selected profiles, a named group or all profiles. Connection row menus offer the same scopes. **Import Connections…** previews OpenRows JSON, pgpass, libpq services or MySQL option groups. The open format is named `openrows-connections`; its envelope is exactly `"format": "openrows.connections", "version": 1`. The JSON Schema is [connections.schema.json](../apps/desktop/src-tauri/connections.schema.json), draft 2020-12, used to validate both exports and imports.
+
+```json
+{
+  "format": "openrows.connections",
+  "version": 1,
+  "profiles": [
+    {
+      "name": "Local development",
+      "driver": "postgres",
+      "group": "Development",
+      "tags": ["example"],
+      "envTag": { "kind": "local", "color": "#6b7280" },
+      "params": { "host": "localhost", "port": 5432, "database": "app", "user": "app", "options": { "connect_timeout": "10" } },
+      "passwordStorage": "none",
+      "tls": { "mode": "prefer", "caFile": "/certificates/ca.pem" },
+      "safety": { "readOnly": false, "confirmWrites": false }
+    }
+  ]
+}
+```
+
+Each profile preserves its name, driver, group, string tags, environment label/colour, read-only and confirmation switches, server/file settings, TLS paths/cloud CA, SSH authentication method/key path/jump hosts, proxy settings, history policy and session limits. Optional fields use the defaults of the personal profile model. Password storage is `keychain` (default), `ask`, `none` or `command`. A command adds `credentialCommand: { "program": "/absolute/provider", "args": ["literal", "arguments"], "timeoutSeconds": 10 }`; the timeout range is 1–120 seconds. Program and arguments are configuration and must never contain credentials. Only file **paths** are serialized: no certificate/private-key file is opened by the exporter.
+
+Ids, secret references, passwords, passphrases, tokens, command output and machine-local trust are excluded. Opaque startup SQL and arbitrary driver options are deliberately excluded because they may contain secret literals; the only portable extra option in v1 is `connect_timeout`. Private-key contents and secret-bearing exports remain excluded from 1.0 (G02).
+
+Imports reject future versions with a typed error and report malformed JSON with line/column. Unknown fields are ignored recursively with field-path warnings; values are never echoed in errors. Inputs are bounded to 4 MiB. The conflict sheet labels New, Same name exists (Skip / Replace / Keep both with a unique numeric suffix), or Identical (skip). Identical compares portable settings, ignoring ids and keychain state. A core-owned, single-use preview token retains optional third-party passwords only in memory; Cancel/unmount drops it. Changing saved profiles since preview refuses confirmation without writes. Confirmation validates all decisions before writes, gives imported profiles new ids and `imported: true`, and never copies command trust. Replace creates the new profile before deleting the previous profile and its keychain items. File/keychain I/O failure can leave earlier successfully imported rows saved; imports are not a multi-file transaction.
+
+Public sources: [libpq pgpass](https://www.postgresql.org/docs/current/libpq-pgpass.html), [libpq service files](https://www.postgresql.org/docs/current/libpq-pgservice.html), and [MySQL option files](https://dev.mysql.com/doc/refman/8.4/en/option-files.html). Defaults are `~/.pgpass` (or `PGPASSFILE`), `~/.pg_service.conf` (or `PGSERVICEFILE`, plus `PGSYSCONFDIR/pg_service.conf` when set), and `~/.my.cnf`. Any wildcard pgpass address field is skipped with a note because it cannot uniquely identify a connection. Service sections map the documented connection/TLS fields, application name and connect timeout. MySQL imports `[client]`, `[mysql]` and `[client<suffix>]`, including quoted values, escapes, sockets and TLS paths. Unknown keys/groups and `!include`/`!includedir` produce notes; includes are never followed. Missing files say “not found”. Passwords from public files stay in the core and reach the keychain only through an unchecked-by-default per-row checkbox. Proprietary/encrypted formats remain excluded (G01).

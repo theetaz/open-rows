@@ -63,6 +63,8 @@ const APP: &[Entry] = &[
 ];
 const FILE: &[Entry] = &[
     C("new-connection", "New Connection…"),
+    C("export-connections", "Export Connections…"),
+    C("import-connections", "Import Connections…"),
     C("new-tab", "New Query Tab"),
     S,
     C("open-file", "Open SQL File…"),
@@ -420,6 +422,8 @@ mod tests {
             "run-no-limit",
             "backup-database",
             "restore-database",
+            "import-connections",
+            "export-connections",
         ] {
             assert!(ids.contains(&id), "missing {id}");
         }

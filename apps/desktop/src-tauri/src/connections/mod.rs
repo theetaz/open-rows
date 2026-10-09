@@ -25,12 +25,15 @@ pub(crate) mod catalog;
 pub(crate) mod catalog_cache;
 mod catalog_dto;
 pub(crate) mod connection;
+mod credential_dto;
+pub(crate) mod credentials;
 pub(crate) mod diagnostics;
 pub(crate) mod drivers;
 mod dto;
 mod engine_dto;
 mod enums;
 mod error;
+pub(crate) mod exchange;
 pub(crate) mod files;
 mod insecure;
 pub(crate) mod limits;
@@ -74,6 +77,10 @@ const SNAPSHOT_RETENTION_MS: i64 = 60 * 24 * 60 * 60 * 1000;
 /// Managed state behind every connection and query command.
 pub(crate) struct Connections {
     pub(crate) profiles: ProfileService,
+    pub(crate) command_trust: Arc<openrows_store::profile::CommandTrust>,
+    pub(crate) credential_runs: credentials::CredentialRuns,
+    pub(crate) imports: exchange::PendingImports,
+    pub(crate) app: tauri::AppHandle,
     pub(crate) sessions: SessionManager,
     metadata: metadata::MetadataSessions,
     /// Which saved connection and database each open session belongs to.
@@ -122,6 +129,12 @@ pub(crate) fn install(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Er
     };
     app.manage(Connections {
         profiles,
+        app: app.handle().clone(),
+        command_trust: Arc::new(openrows_store::profile::CommandTrust::new(
+            &app.path().app_config_dir()?.join("trusted-commands.json"),
+        )),
+        credential_runs: credentials::CredentialRuns::default(),
+        imports: exchange::PendingImports::default(),
         sessions,
         metadata: metadata::MetadataSessions::default(),
         owners: owners::Owners::default(),

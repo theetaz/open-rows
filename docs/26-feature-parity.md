@@ -29,11 +29,11 @@ The inventory covers the macOS benchmark unless qualified. TablePlus's [new over
 | C15 | Client certificate | Supply a TLS client certificate. | Covered FR-CONN-05; implemented for PostgreSQL (D-11; expiry diagnostics pending) | M1 | Certificate details and expiry diagnostics. | [S06] |
 | C16 | Custom CA | Trust a chosen certificate authority. | Covered FR-CONN-05, FR-NET-06; implemented for PostgreSQL (D-11; cloud CA bundles pending) | M1; cloud CAs M2 | Explain trust failures. | [S06] |
 | C17 | Credential storage | Keep passwords in keychain. | Covered FR-CONN-03 | M1 | OS-native storage across desktop platforms. | [S07] |
-| C18 | Credential prompts | Choose ephemeral password entry. | New FR-CONN-13 | M2 | Separate storage policy from auth method. | [S06] |
-| C19 | Credential command | Obtain short-lived credentials externally. | New FR-CONN-13 | M2 | Trust gate, timeout and scrubbed output. | [S06] |
+| C18 | Credential prompts | Choose ephemeral password entry. | FR-CONN-13 implemented (M2-21: keychain, ask, none and command policies) | M2 | Separate storage policy from auth method. | [S06] |
+| C19 | Credential command | Obtain short-lived credentials externally. | FR-CONN-13 implemented (M2-21: literal argv, local SHA-256 trust, timeout, cancel, scrubbed diagnostics) | M2 | Trust gate, timeout and scrubbed output. | [S06] |
 | C20 | Startup SQL | Initialise the database session. | Covered FR-CONN-10 | M2 | Display bootstrap failures per session. | [S06] |
-| C21 | Connection import | Restore profile files. | Partial FR-CONN-09, new FR-CONN-12; Gap G01 for undocumented encrypted format | M2; G01 excluded | Public specifications only; conflict preview. | [S07] |
-| C22 | Connection export | Transfer profiles or groups. | New FR-CONN-12 | M2 | Versioned open format without secrets. | [S07] |
+| C21 | Connection import | Restore profile files. | FR-CONN-09/12 implemented (M2-21: OpenRows JSON, pgpass, pg_service and my.cnf; conflict preview); Gap G01 for undocumented encrypted format | M2; G01 excluded | Public specifications only; conflict preview. | [S07] |
+| C22 | Connection export | Transfer profiles or groups. | FR-CONN-12 implemented (M2-21: schema-validated v1 JSON, selected/group/all, no secrets) | M2 | Versioned open format without secrets. | [S07] |
 | C23 | Password-bearing export | Include credentials in protected export. | Gap G02 | Excluded from 1.0 | Provision credentials independently in keychain. | [S06] |
 | C24 | Keep-alive | Maintain idle connectivity. | New FR-APP-12; FR-NET-04 | M1 baseline; controls M2 | Sleep/wake probes avoid blind retries. | [S09] |
 

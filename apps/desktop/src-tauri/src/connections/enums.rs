@@ -48,6 +48,10 @@ pub(crate) enum PasswordStorageDto {
     Keychain,
     /// Never saved: asked on connect and held only while connected.
     Ask,
+    /// Never send or ask for a database password.
+    None,
+    /// Run an explicitly trusted program on each attempt.
+    Command,
 }
 
 impl From<PasswordStorage> for PasswordStorageDto {
@@ -55,6 +59,8 @@ impl From<PasswordStorage> for PasswordStorageDto {
         match storage {
             PasswordStorage::Keychain => Self::Keychain,
             PasswordStorage::Ask => Self::Ask,
+            PasswordStorage::None => Self::None,
+            PasswordStorage::Command => Self::Command,
         }
     }
 }
@@ -64,6 +70,8 @@ impl From<PasswordStorageDto> for PasswordStorage {
         match storage {
             PasswordStorageDto::Keychain => Self::Keychain,
             PasswordStorageDto::Ask => Self::Ask,
+            PasswordStorageDto::None => Self::None,
+            PasswordStorageDto::Command => Self::Command,
         }
     }
 }

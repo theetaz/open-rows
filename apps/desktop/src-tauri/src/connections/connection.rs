@@ -92,6 +92,7 @@ pub(crate) async fn connection_close(
     profile_id: String,
 ) -> Result<(), IpcError> {
     let id = self::profile_id(&profile_id)?;
+    state.credential_runs.cancel(id);
     for session in state.owners.unbind_profile(id) {
         // Disconnecting is best effort: a session that already failed is gone.
         let _ = state.sessions.close(session).await;

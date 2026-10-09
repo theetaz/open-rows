@@ -8,17 +8,17 @@ set -euo pipefail
 dir="${1:?usage: test-pg-certs.sh <dir>}"
 cd "$dir"
 quiet() { "$@" >/dev/null 2>&1; }
-ec_key() { quiet openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -out "$1"; }
+ec_key() { quiet openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -pkeyopt ec_param_enc:named_curve -out "$1"; }
 ca() {
     ec_key "$1.key"
-    quiet openssl req -x509 -new -key "$1.key" -subj "/CN=$2" -days 2 -out "$1.crt" \
+    quiet openssl req -sha256 -x509 -new -key "$1.key" -subj "/CN=$2" -days 2 -out "$1.crt" \
         -addext basicConstraints=critical,CA:TRUE -addext keyUsage=critical,keyCertSign,cRLSign
 }
 leaf() {
     ec_key "$1.key"
     quiet openssl req -new -key "$1.key" -subj "/CN=$2" -out "$1.csr"
     printf '%s\n' "$3" >"$1.ext"
-    quiet openssl x509 -req -in "$1.csr" -CA ca.crt -CAkey ca.key -CAcreateserial -days 2 \
+    quiet openssl x509 -sha256 -req -in "$1.csr" -CA ca.crt -CAkey ca.key -CAcreateserial -days 2 \
         -extfile "$1.ext" -out "$1.crt"
     rm -f "$1.csr" "$1.ext"
 }

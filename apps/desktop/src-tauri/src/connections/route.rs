@@ -119,9 +119,14 @@ pub(crate) fn through_proxy(
 pub(crate) async fn profile_target(state: &Connections, id: &str) -> Result<Target, IpcError> {
     let profile = state.profiles.get(profile_id(id)?)?;
     let mut secrets = driver_secrets(&state.profiles, &profile)?;
-    if profile.password_storage == PasswordStorage::Ask {
-        secrets.password = Some(state.asked.password(&profile)?);
-    }
+    secrets.password = match profile.password_storage {
+        PasswordStorage::Keychain => secrets.password,
+        PasswordStorage::Ask => Some(state.asked.password(&profile)?),
+        PasswordStorage::None => None,
+        PasswordStorage::Command => {
+            Some(super::credentials::password(state, &state.app, &profile).await?)
+        }
+    };
     let target = target::target(&profile, &secrets)?;
     let proxy = profile_proxy(&state.profiles, &profile)?;
     let Some(ssh) = &profile.ssh else {
