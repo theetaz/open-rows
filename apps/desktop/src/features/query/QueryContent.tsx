@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense } from 'react';
 import { useTableCloseGuard } from '../table/useTableCloseGuard';
-import { Button, Icon, Tabs } from '@openrows/ui';
+import { Button, Icon } from '@openrows/ui';
 import type { IconName } from '@openrows/ui';
 import { openedDatabase, sessionOf } from '../connections';
 import type { Connections } from '../connections';
@@ -16,8 +16,7 @@ import type { QueryRuns } from './useQueryRuns';
 import type { QueryTab as Tab } from './tabs';
 import type { SelectedCell } from './cell';
 import { ReconnectBar } from './ReconnectBar';
-import { TabMenu } from './TabMenu';
-import type { TabMenuTarget } from './TabMenu';
+import { TabStrip } from './TabStrip';
 import styles from './Query.module.css';
 type SessionStatus = ReturnType<Connections['statusOf']>;
 const QueryTab = lazy(() =>
@@ -124,50 +123,6 @@ export function QueryContent(props: Props): React.JSX.Element {
         <NoTabs database={props.database} onOpen={open} />
       )}
     </main>
-  );
-}
-
-/** Document tabs with drag reordering, the tab menu and preview tabs. */
-function TabStrip(props: {
-  tabs: QueryTabs;
-  list: readonly Tab[];
-  active: string;
-  connection: string;
-  onAdd: () => void;
-}): React.JSX.Element {
-  const { tabs } = props;
-  const [menu, setMenu] = useState<TabMenuTarget | null>(null);
-  return (
-    <>
-      <Tabs
-        tabs={props.list.map((item) => ({
-          id: item.id,
-          label: tabLabel(item),
-          kind: item.kind,
-          title: `${props.connection} · ${item.title}`,
-          pinned: item.pinned ?? false,
-          preview: item.preview ?? false,
-        }))}
-        active={props.active}
-        onSelect={tabs.select}
-        onClose={tabs.close}
-        onAdd={props.onAdd}
-        onReorder={tabs.move}
-        onKeep={tabs.keep}
-        onMenu={(id, x, y) => {
-          setMenu({ id, x, y });
-        }}
-      />
-      {menu && (
-        <TabMenu
-          tabs={tabs}
-          target={menu}
-          onClose={() => {
-            setMenu(null);
-          }}
-        />
-      )}
-    </>
   );
 }
 
@@ -283,9 +238,4 @@ function notice(status: SessionStatus, database: string): string | null {
   if (!opened) return `${database} is closed; open it again with ⌘K`;
   if (opened.state === 'opening') return `Opening ${database}…`;
   return opened.state === 'failed' ? opened.message : null;
-}
-
-/** The tab title; a file-bound tab with unsaved changes gets a dot. */
-function tabLabel(tab: Tab): string {
-  return tab.file && tab.file.saved !== tab.sql ? `${tab.title} •` : tab.title;
 }

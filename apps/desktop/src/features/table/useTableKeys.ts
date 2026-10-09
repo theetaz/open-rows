@@ -6,7 +6,10 @@ import type { TableActions } from './useTableTab';
 const FIRST_VALUE = 'input[aria-label^="Value of filter"]';
 
 /** Focus the first filter value, opening the filter bar first when closed. */
-function focusFilter(root: HTMLElement | null, actions: TableActions): void {
+export function focusFilter(
+  root: HTMLElement | null,
+  actions: TableActions,
+): void {
   const input = root?.querySelector<HTMLInputElement>(FIRST_VALUE);
   if (input) {
     input.focus();

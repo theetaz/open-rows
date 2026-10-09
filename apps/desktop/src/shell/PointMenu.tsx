@@ -33,7 +33,7 @@ export function PointMenu(props: {
     const menu = ref.current;
     const opener = document.activeElement;
     menu
-      ?.querySelector<HTMLElement>('[role="menuitem"]:not(:disabled)')
+      ?.querySelector<HTMLElement>('[role^="menuitem"]:not(:disabled)')
       ?.focus();
     const outside = (event: Event): void => {
       if (event.target instanceof Node && !menu?.contains(event.target))

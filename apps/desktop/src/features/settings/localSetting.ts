@@ -14,6 +14,30 @@ export function settingsChanged(): void {
   changed?.();
 }
 
+/** Stores to refresh after their web-storage keys were replaced from the file. */
+const reloaders = new Set<() => void>();
+/** Counts reloads, so components holding their own copies re-read too. */
+let revision = 0;
+
+/** Re-read on every reload of `settings.json`; returns the unsubscribe. */
+export function onSettingsReload(listener: () => void): () => void {
+  reloaders.add(listener);
+  return () => reloaders.delete(listener);
+}
+
+/** Tell every store that `settings.json` was loaded again (external edit). */
+export function reloadSettings(): void {
+  revision += 1;
+  reloaders.forEach((listener) => {
+    listener();
+  });
+}
+
+/** The reload count, re-rendering after each reload. */
+export function useSettingsRevision(): number {
+  return useSyncExternalStore(onSettingsReload, () => revision);
+}
+
 /** A setting kept in web storage under `key`, shared live by every reader. */
 type LocalSetting<T> = {
   get: () => T;
@@ -59,6 +83,11 @@ export function localSetting<T>(
     listeners.add(listener);
     return () => listeners.delete(listener);
   };
+  onSettingsReload(() => {
+    listeners.forEach((listener) => {
+      listener();
+    });
+  });
   return { get, set, use: () => useSyncExternalStore(subscribe, get) };
 }
 

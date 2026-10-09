@@ -22,8 +22,22 @@ export const TAB_COMMANDS = [
   'save',
   'save-as',
   'open-file',
+  'export-results',
 ] as const;
 export type TabCommand = (typeof TAB_COMMANDS)[number];
+
+/** Commands that act on the active table tab (`refresh` also reloads its rows). */
+export const TABLE_COMMANDS = [
+  'commit-changes',
+  'discard-changes',
+  'insert-row',
+  'delete-row',
+  'copy-selection',
+  'focus-filter',
+  'toggle-columns',
+  'refresh',
+] as const;
+export type TableCommand = (typeof TABLE_COMMANDS)[number];
 
 /** Every command, in palette order. */
 export const COMMANDS: readonly CommandSpec[] = [
@@ -34,7 +48,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   { id: 'database', label: 'Open database…', shortcut: 'Cmd+K' },
   { id: 'quick', label: 'Quick open…', shortcut: 'Cmd+P' },
   { id: 'commands', label: 'Command palette', shortcut: 'Shift+Cmd+P' },
-  { id: 'refresh', label: 'Refresh catalog', shortcut: 'Cmd+R' },
+  { id: 'refresh', label: 'Refresh', shortcut: 'Cmd+R' },
   { id: 'run-current', label: 'Run current statement', shortcut: 'Cmd+Enter' },
   { id: 'run-all', label: 'Run all statements', shortcut: 'Shift+Cmd+Enter' },
   { id: 'cancel', label: 'Cancel query', shortcut: 'Cmd+Period' },
@@ -44,6 +58,35 @@ export const COMMANDS: readonly CommandSpec[] = [
   { id: 'save', label: 'Save SQL file', shortcut: 'Cmd+S' },
   { id: 'save-as', label: 'Save SQL file as…', shortcut: 'Shift+Cmd+S' },
   { id: 'export-table', label: 'Export table…', shortcut: null },
+  {
+    id: 'export-results',
+    label: 'Export results…',
+    shortcut: 'Shift+Cmd+E',
+  },
+  { id: 'commit-changes', label: 'Commit changes…', shortcut: 'Alt+Cmd+S' },
+  { id: 'discard-changes', label: 'Discard changes', shortcut: null },
+  { id: 'insert-row', label: 'Insert row', shortcut: 'Alt+Cmd+N' },
+  {
+    id: 'delete-row',
+    label: 'Delete selected rows',
+    shortcut: 'Alt+Cmd+Backspace',
+  },
+  {
+    id: 'copy-selection',
+    label: 'Copy selected rows or cells',
+    shortcut: 'Alt+Cmd+C',
+  },
+  {
+    id: 'focus-filter',
+    label: 'Filter rows',
+    shortcut: null,
+    hint: '⌘F in a table',
+  },
+  {
+    id: 'toggle-columns',
+    label: 'Show or hide columns panel',
+    shortcut: 'Alt+Cmd+K',
+  },
   { id: 'new-connection', label: 'New connection…', shortcut: null },
   { id: 'connect', label: 'Connect', shortcut: null },
   { id: 'disconnect', label: 'Disconnect', shortcut: null },
@@ -55,9 +98,9 @@ export const COMMANDS: readonly CommandSpec[] = [
     hint: '⌘F in sidebar',
   },
   { id: 'schema', label: 'Next schema', shortcut: null },
-  { id: 'assistant', label: 'Show assistant', shortcut: null },
   { id: 'settings', label: 'Settings…', shortcut: 'Cmd+Comma' },
   { id: 'shortcuts', label: 'Keyboard shortcuts…', shortcut: null },
+  { id: 'help-search', label: 'Search commands…', shortcut: null },
   { id: 'open-logs', label: 'Open logs folder', shortcut: null },
   { id: 'theme-light', label: 'Appearance: light', shortcut: null },
   { id: 'theme-dark', label: 'Appearance: dark', shortcut: null },
@@ -94,4 +137,8 @@ export function commandSpec(id: string): CommandSpec | undefined {
 
 export function isTabCommand(id: string): id is TabCommand {
   return (TAB_COMMANDS as readonly string[]).includes(id);
+}
+
+export function isTableCommand(id: string): id is TableCommand {
+  return (TABLE_COMMANDS as readonly string[]).includes(id);
 }

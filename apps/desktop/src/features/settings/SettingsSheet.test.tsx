@@ -160,3 +160,42 @@ it('records shortcuts, reports conflicts and replaces on request', async () => {
   await user.click(screen.getByRole('button', { name: 'Restore defaults' }));
   expect(save).toHaveTextContent('⌘S');
 });
+it('searches every pane and lists only matching settings', async () => {
+  const user = userEvent.setup();
+  render(
+    <ThemeProvider>
+      <SettingsSheet initial="general" onClose={vi.fn()} />
+    </ThemeProvider>,
+  );
+  const search = screen.getByRole('searchbox', { name: 'Search settings' });
+  await user.type(search, 'font');
+  expect(
+    screen.getByRole('heading', { name: 'Settings / Search' }),
+  ).toBeVisible();
+  expect(
+    screen.getByRole('combobox', { name: 'Interface font' }),
+  ).toBeVisible();
+  expect(
+    screen.getByRole('region', { name: 'Editor settings' }),
+  ).toBeInTheDocument();
+  expect(screen.queryByRole('switch', { name: 'Wrap lines' })).toBeNull();
+  expect(
+    document.querySelector('[aria-label="General settings"]'),
+  ).toHaveAttribute('hidden');
+  await user.clear(search);
+  await user.type(search, 'save sql');
+  expect(
+    screen.getByRole('button', { name: 'Shortcut for Save SQL file' }),
+  ).toBeVisible();
+  expect(
+    screen.queryByRole('button', { name: 'Shortcut for New query tab' }),
+  ).toBeNull();
+  await user.clear(search);
+  await user.type(search, 'zzz');
+  expect(screen.getByRole('status')).toHaveTextContent(
+    'No settings match “zzz”.',
+  );
+  await user.click(screen.getByRole('radio', { name: 'Editor' }));
+  expect(search).toHaveValue('');
+  expect(screen.getByRole('switch', { name: 'Wrap lines' })).toBeVisible();
+});

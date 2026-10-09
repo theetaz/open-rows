@@ -143,3 +143,20 @@ it('falls back from an invalid preference and resolves an initially dark OS', ()
   expect(screen.getByLabelText('Theme')).toHaveTextContent('system/dark');
   expect(document.documentElement).toHaveAttribute('data-theme', 'system');
 });
+it('re-reads stored preferences when the revision changes, without onChange', () => {
+  const onChange = vi.fn();
+  const view = render(
+    <ThemeProvider onChange={onChange} revision={0}>
+      <Consumer />
+    </ThemeProvider>,
+  );
+  expect(screen.getByLabelText('Theme')).toHaveTextContent('system/');
+  localStorage.setItem('openrows.theme', 'dark');
+  view.rerender(
+    <ThemeProvider onChange={onChange} revision={1}>
+      <Consumer />
+    </ThemeProvider>,
+  );
+  expect(screen.getByLabelText('Theme')).toHaveTextContent('dark/dark');
+  expect(onChange).not.toHaveBeenCalled();
+});

@@ -221,6 +221,7 @@ export const events = {
 	catalogChanged: makeEvent<CatalogChanged>("catalog-changed"),
 	menuCommand: makeEvent<MenuCommand>("menu-command"),
 	sessionStateChanged: makeEvent<SessionStateChanged>("session-state-changed"),
+	settingsChanged: makeEvent<SettingsChanged>("settings-changed"),
 	sshPromptChanged: makeEvent<SshPromptChanged>("ssh-prompt-changed"),
 };
 
@@ -1089,6 +1090,9 @@ export type SessionStateChanged = {
  *  means the connection was lost and a new one is being opened (M1-08).
  */
 export type SessionStateDto = "connecting" | "idle" | "busy" | "reconnecting" | "closed" | "failed";
+
+/**  `settings.json` changed outside the app; the webview reads it again. */
+export type SettingsChanged = Record<string, never>;
 
 /**  Server-side sort on one column. */
 export type SortDto = {

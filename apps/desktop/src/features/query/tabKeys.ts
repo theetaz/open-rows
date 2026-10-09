@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { useCallback, useState } from 'react';
 import type { FormatKind } from '@openrows/editor';
 import { tabCommandOf, useTabCommands } from '../commands';
 import type { TabCommand } from '../commands';
@@ -12,6 +13,7 @@ function tabAction(input: {
   cancel: () => void;
   format: (kind: FormatKind) => void;
   file: (action: FileAction) => void;
+  exportResults: () => void;
 }): (id: TabCommand) => void {
   const commands: Record<TabCommand, () => void> = {
     'run-current': () => {
@@ -36,6 +38,7 @@ function tabAction(input: {
     'open-file': () => {
       input.file('open');
     },
+    'export-results': input.exportResults,
   };
   return (id) => {
     commands[id]();
@@ -64,15 +67,25 @@ export function useTabAction(input: {
   files: { act: (action: FileAction) => void };
   runs: Pick<QueryRuns, 'cancel'>;
   tabId: string;
-}): (id: TabCommand) => void {
+}): [
+  act: (id: TabCommand) => void,
+  onExportable: (exportShown: (() => void) | null) => void,
+] {
+  const [exportShown, setExportShown] = useState<(() => void) | null>(null);
   const act = tabAction({
     actions: input.actions,
     format: input.format,
     file: input.files.act,
+    exportResults: () => {
+      exportShown?.();
+    },
     cancel: () => {
       input.runs.cancel(input.tabId);
     },
   });
   useTabCommands(act);
-  return act;
+  const onExportable = useCallback((next: (() => void) | null) => {
+    setExportShown(() => next);
+  }, []);
+  return [act, onExportable];
 }

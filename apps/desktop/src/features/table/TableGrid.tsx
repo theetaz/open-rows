@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { TileSource } from '@openrows/grid';
 import type {
+  CellRange,
   GridColumn,
   GridDataSource,
   GridHandle,
@@ -23,6 +24,7 @@ import type { InlineEditor } from './inline/useInlineEditor';
 import { InlineEditorView } from './inline/InlineEditor';
 import { useGridEditing } from './inline/useGridEditing';
 import { dataRanges } from './bulk/cells';
+import type { Cell } from './bulk/cells';
 import { usePaste } from './bulk/usePaste';
 import type { ContextTarget } from './contextMenuActions';
 import styles from './Table.module.css';
@@ -68,6 +70,8 @@ type Props = {
   striped: boolean;
   /** Right-click target with the selection it belongs to (data coordinates). */
   onContextMenu: (target: ContextTarget) => void;
+  /** The focused cell and ranges changed (data coordinates). */
+  onSelection?: ((cell: Cell, ranges: CellRange[]) => void) | undefined;
 };
 type Latest = Props & { editor: InlineEditor };
 
@@ -224,6 +228,10 @@ function gridProps({
     onSelection: (next) => {
       props.selection = next;
       selectionRef.current = next;
+      latest.current.onSelection?.(
+        dataCell({ row: next.row, column: next.column }, rowNumbers),
+        dataRanges(next.ranges, rowNumbers),
+      );
       if (next.row < latest.current.result.rows) latest.current.onRow(next.row);
     },
     onHeader: (column) => {

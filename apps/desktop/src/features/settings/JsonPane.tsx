@@ -11,8 +11,9 @@ export function JsonPane(): React.JSX.Element {
     <section aria-label="settings.json">
       <h3>settings.json</h3>
       <p className={styles.hint}>
-        Stored in the app data folder (com.prabhavalabs.openrows). Edits made
-        outside the app apply on the next launch.
+        Stored in the app data folder (com.prabhavalabs.openrows) next to
+        settings.schema.json, which editors use to check it. Edits made outside
+        the app apply within a second.
       </p>
       <TextArea
         aria-label="settings.json"

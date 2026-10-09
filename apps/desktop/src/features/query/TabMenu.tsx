@@ -14,8 +14,12 @@ type Item = {
   group?: boolean;
 };
 
-/** Close, Close Others, Close Tabs to the Right, Pin/Unpin and Keep Open. */
-function items(tabs: QueryTabs, id: string): Item[] {
+/** Close, Close Others, Close Tabs to the Right, Rename, Pin/Unpin and Keep Open. */
+function items(
+  tabs: QueryTabs,
+  id: string,
+  rename: (id: string) => void,
+): Item[] {
   const tab = tabs.state.tabs.find((item) => item.id === id);
   const others = otherTabs(tabs.state, id);
   const right = tabsRightOf(tabs.state, id);
@@ -46,11 +50,17 @@ function items(tabs: QueryTabs, id: string): Item[] {
       disabled: !right.length,
     },
     {
+      label: 'Rename Tab…',
+      run: () => {
+        rename(id);
+      },
+      group: true,
+    },
+    {
       label: tab?.pinned ? 'Unpin Tab' : 'Pin Tab',
       run: () => {
         tabs.pin(id, !tab?.pinned);
       },
-      group: true,
     },
     {
       label: 'Keep Open',
@@ -66,12 +76,14 @@ function items(tabs: QueryTabs, id: string): Item[] {
 export function TabMenu(props: {
   tabs: QueryTabs;
   target: TabMenuTarget;
+  /** Start editing the tab's title in place. */
+  onRename: (id: string) => void;
   onClose: () => void;
 }): React.JSX.Element {
   const { target, onClose } = props;
   return (
     <PointMenu x={target.x} y={target.y} label="Tab actions" onClose={onClose}>
-      {items(props.tabs, target.id).map((item) => (
+      {items(props.tabs, target.id, props.onRename).map((item) => (
         <MenuItem key={item.label} item={item} onClose={onClose} />
       ))}
     </PointMenu>

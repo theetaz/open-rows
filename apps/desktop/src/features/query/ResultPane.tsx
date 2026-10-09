@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Button } from '@openrows/ui';
 import type { ResultMeta, RunMessage, RunState } from './run';
 import type { ResultView } from './editorSettings';
@@ -19,7 +19,30 @@ type Props = {
   onCell: (cell: SelectedCell) => void;
   /** Export… for the shown result; omitted while it cannot be exported. */
   onExport?: ((result: ResultMeta) => void) | undefined;
+  /** Receives Export… of the shown result while it can be exported (Export results command). */
+  onExportable?: ((exportShown: (() => void) | null) => void) | undefined;
 };
+
+/** Report Export… of `result`, or `null` while there is none. */
+function useExportable(
+  report: Props['onExportable'],
+  result: ResultMeta | null,
+  onExport: Props['onExport'],
+): void {
+  useEffect(() => {
+    if (!report) return;
+    report(
+      result && onExport
+        ? () => {
+            onExport(result);
+          }
+        : null,
+    );
+    return () => {
+      report(null);
+    };
+  }, [report, result, onExport]);
+}
 
 function resultLabel(result: ResultMeta, index: number): string {
   return `Result ${String(index + 1)} · statement ${String(result.statement + 1)}`;
@@ -53,12 +76,14 @@ export function ResultPane({
   runDefault,
   onCell,
   onExport,
+  onExportable,
 }: Props): React.JSX.Element {
   const [chosen, setChosen] = useState<string | null>(null);
   const results = view === 'last' ? run.results.slice(-1) : run.results;
   const current =
     results.find((result) => result.id === chosen) ?? results.at(-1);
   const exportable = current?.done && onExport ? current : null;
+  useExportable(onExportable, exportable, onExport);
   return (
     <section className={styles.results} aria-label="Results">
       {(results.length > 1 || exportable) && (

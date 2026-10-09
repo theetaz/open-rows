@@ -59,3 +59,28 @@
 .json textarea {
   font: var(--or-text-mono) var(--or-font-mono);
 }
+.search {
+  flex: none;
+  inline-size: 180px;
+}
+.results {
+  display: grid;
+  gap: 32px;
+}
+.results [data-search-pane] {
+  display: grid;
+  gap: 24px;
+}
+.results [hidden] {
+  display: none;
+}
+.paneTitle {
+  margin: 0;
+  font-size: var(--or-text-13);
+  font-weight: var(--or-weight-semibold);
+  color: var(--or-text);
+}
+.noResults {
+  margin: 0;
+  text-align: center;
+}

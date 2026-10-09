@@ -34,12 +34,25 @@ const query = '(prefers-color-scheme: dark)';
 export function ThemeProvider({
   children,
   onChange,
+  revision = 0,
 }: {
   children: ReactNode;
   /** Called after the user changed the scheme or appearance (persisted copies). */
   onChange?: (() => void) | undefined;
+  /**
+   * Bump after the stored scheme and appearance were replaced from outside
+   * (an edited settings file): both are read again, without `onChange`.
+   */
+  revision?: number;
 }): React.JSX.Element {
   const [appearance, updateAppearance] = useState(readAppearance);
+  const [mode, updateMode] = useState<ThemeMode>(readTheme);
+  const [seen, setSeen] = useState(revision);
+  if (seen !== revision) {
+    setSeen(revision);
+    updateAppearance(readAppearance());
+    updateMode(readTheme());
+  }
 
   useLayoutEffect(() => {
     const style = document.createElement('style');
@@ -50,7 +63,6 @@ export function ThemeProvider({
       style.remove();
     };
   }, [appearance]);
-  const [mode, updateMode] = useState<ThemeMode>(readTheme);
   const [systemDark, setSystemDark] = useState(
     () => window.matchMedia(query).matches,
   );

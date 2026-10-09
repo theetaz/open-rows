@@ -122,6 +122,7 @@ function appStub(): Record<string, unknown> {
     writeSettingsFile: vi.fn(() => Promise.resolve()),
     syncMenu: vi.fn(() => Promise.resolve([])),
     onMenuCommand: vi.fn(() => Promise.resolve(() => undefined)),
+    onSettingsFileChanged: vi.fn(() => Promise.resolve(() => undefined)),
     crashRecoveryStatus: vi.fn(() => Promise.resolve(false)),
     openLogsFolder: vi.fn(() => Promise.resolve()),
     reportUiEvent: vi.fn(() => Promise.resolve()),

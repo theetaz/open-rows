@@ -37,7 +37,6 @@ export function useSelectedRow(args: {
 }): (result: ResultMeta, row: number) => void {
   const [picked, setPicked] = useState<Picked | null>(null);
   const sequence = useRef(0);
-  const shown = useRef(0);
   const latest = useRef<Latest>({ editing: args.editing, picked });
   useEffect(() => {
     latest.current = { editing: args.editing, picked };
@@ -66,8 +65,7 @@ export function useSelectedRow(args: {
         info: editing.info,
         ready: Boolean(edit ?? current.draft),
       });
-    args.onRow(row, shown.current !== current.ticket);
-    shown.current = current.ticket;
+    args.onRow(row);
   });
   const changes = args.editing.history.current;
   const info = args.editing.info;

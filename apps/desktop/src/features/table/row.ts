@@ -51,8 +51,8 @@ export type SelectedRow = {
   error?: string;
 };
 
-/** Publish the selected row; `reveal` brings the Details panel forward (default). */
-export type ShowRow = (row: SelectedRow, reveal?: boolean) => void;
+/** Publish the selected row to the inspector's Details. */
+export type ShowRow = (row: SelectedRow) => void;
 
 /** Read one row of a page from the result store for the Details panel. */
 export async function readRow(

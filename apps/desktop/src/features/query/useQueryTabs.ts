@@ -18,7 +18,7 @@ import type {
   TabScope,
   TabsState,
 } from './tabs';
-import { keepTab, moveTab, pinTab } from './tabOps';
+import { keepTab, moveTab, pinTab, renameTab } from './tabOps';
 import { readTabs } from './tabStorage';
 import { useEditorSettings } from './editorSettings';
 import { generalSettings } from '../settings/general';
@@ -49,6 +49,8 @@ export type QueryTabs = {
   pin: (id: string, pinned: boolean) => void;
   /** Turn a preview tab into a normal tab. */
   keep: (id: string) => void;
+  /** Give a tab a new title. */
+  rename: (id: string, title: string) => void;
   /** The whole tab set, for tab menus and session restore. */
   state: TabsState;
 };
@@ -124,6 +126,9 @@ export function useQueryTabs(): QueryTabs {
     },
     keep: (id) => {
       setState((current) => keepTab(current, id));
+    },
+    rename: (id, title) => {
+      setState((current) => renameTab(current, id, title));
     },
     state,
   };

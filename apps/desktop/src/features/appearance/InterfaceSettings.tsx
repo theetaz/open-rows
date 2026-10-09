@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 import { Button, SelectField, useTheme } from '@openrows/ui';
 import type { ReactNode } from 'react';
+import { useSettingMatch } from '../settings/settingsSearch';
 import styles from './Appearance.module.css';
+/** One titled setting; hidden while the Settings search does not match it. */
 export function SettingRow({
   title,
   description,
@@ -10,9 +12,11 @@ export function SettingRow({
   title: string;
   description: string;
   children: ReactNode;
-}): React.JSX.Element {
+}): React.JSX.Element | null {
+  const shown = useSettingMatch(title, description);
+  if (!shown) return null;
   return (
-    <div className={styles.settingRow}>
+    <div className={styles.settingRow} data-setting-row>
       <div>
         <strong>{title}</strong>
         <p>{description}</p>

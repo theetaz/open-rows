@@ -39,7 +39,7 @@ export function ThemeLibrary(props: Props): React.JSX.Element {
           </Button>
         </div>
       </div>
-      <div className={styles.themeGrid}>
+      <div className={styles.themeGrid} data-setting-row>
         {[...builtInThemes, ...appearance.customThemes].map((theme) => (
           <ThemeCard key={theme.id} theme={theme} {...props} />
         ))}

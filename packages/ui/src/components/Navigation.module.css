@@ -100,6 +100,26 @@
   inline-size: 100%;
   block-size: 100%;
 }
+/* In-place tab rename: a compact field filling the tab. */
+.titleField {
+  flex: 1;
+  min-inline-size: 0;
+  block-size: var(--or-control-height-compact);
+  margin-inline: var(--or-space-24);
+  padding-inline: var(--or-space-6);
+  border: var(--or-border-width) solid var(--or-control-stroke);
+  border-radius: var(--or-radius-control-compact);
+  background: var(--or-panel-solid);
+  color: var(--or-text);
+  font: inherit;
+  font-family: var(--or-font-ui);
+  font-size: var(--or-text-13);
+  text-align: center;
+}
+.titleField:focus-visible {
+  outline: var(--or-focus-width) solid var(--or-focus);
+  outline-offset: -1px;
+}
 .document[data-preview='true'] button[role='tab'] span:last-child {
   font-style: italic;
 }

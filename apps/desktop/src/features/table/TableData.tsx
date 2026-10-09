@@ -6,6 +6,7 @@ import type { ResultMeta } from '../query/run';
 import type { TableTabState } from './useTableTab';
 import type { RowEditing } from './useRowEditing';
 import type { ContextTarget } from './contextMenuActions';
+import type { GridSelection } from './copySelection';
 import styles from './Table.module.css';
 const TableGrid = lazy(() =>
   import('./TableGrid').then((module) => ({ default: module.TableGrid })),
@@ -16,6 +17,8 @@ type Props = {
   editing: RowEditing;
   onRow: (result: ResultMeta, row: number) => void;
   onContextMenu: (result: ResultMeta, target: ContextTarget) => void;
+  /** The grid's selection changed, for table commands. */
+  onSelection: (selection: GridSelection) => void;
 };
 
 /** The page's grid, or why there is none yet (loading, error, no rows). */
@@ -24,6 +27,7 @@ export function TableData({
   onRow,
   editing,
   onContextMenu,
+  onSelection,
 }: Props): React.JSX.Element {
   const { entry, result, view, actions } = state;
   const errors = entry.run.messages.filter((item) => item.level === 'error');
@@ -71,6 +75,9 @@ export function TableData({
         }}
         onRow={(row) => {
           onRow(result, row);
+        }}
+        onSelection={(cell, ranges) => {
+          onSelection({ result, cell, ranges });
         }}
       />
     </Suspense>

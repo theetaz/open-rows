@@ -13,6 +13,7 @@ mod queries;
 mod result_store;
 mod results;
 mod settings;
+mod settings_watch;
 mod spike;
 mod startup;
 mod startup_report;
@@ -102,7 +103,8 @@ fn with_events_and_types(
             sessions::SessionStateChanged,
             catalog_cache::CatalogChanged,
             prompts::SshPromptChanged,
-            menu::MenuCommand
+            menu::MenuCommand,
+            settings_watch::SettingsChanged
         ])
         .constant(
             "DEFAULT_CUSTOM_ENV_COLOR",
@@ -157,6 +159,7 @@ pub fn run() -> Result<(), tauri::Error> {
             result_store::install(app)?;
             connections::install(app)?;
             settings::apply_saved(app);
+            settings_watch::watch(app.handle());
             menu::install(app)?;
             startup::install(app)
         })

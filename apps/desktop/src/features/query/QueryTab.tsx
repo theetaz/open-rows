@@ -9,6 +9,7 @@ import { ConfirmRun } from './ConfirmRun';
 import { ParamsSheet } from './ParamsSheet';
 import { NameSheet } from './NameSheet';
 import { createCursorStore } from './cursor';
+import type { CursorStore } from './cursor';
 import { useEditorSettings } from './editorSettings';
 import type { EditorSettings } from './editorSettings';
 import { isActive } from './run';
@@ -97,7 +98,7 @@ function runMenuOf(input: {
 
 /** Editor, bottom bar, results and status for one query tab. */
 export function QueryTab(props: QueryTabProps): React.JSX.Element {
-  const { tab, runs, sessionId } = props;
+  const { tab, runs } = props;
   const editor = useRef<EditorHandle | null>(null);
   const [cursor] = useState(createCursorStore);
   const [settings, updateSettings] = useEditorSettings();
@@ -107,8 +108,13 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
   const files = useTabFiles(tab, editor, props.tabs);
   const run = runs.runOf(tab.id);
   const actions = useRunActions(editor, settings, props);
-  const active = isActive(run);
-  const act = useTabAction({ actions, format, files, runs, tabId: tab.id });
+  const [act, onExportable] = useTabAction({
+    actions,
+    format,
+    files,
+    runs,
+    tabId: tab.id,
+  });
   return (
     <section
       className={styles.query}
@@ -132,35 +138,26 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
           editor.current = handle;
         }}
       />
-      <EditorBar
+      <TabBar
+        {...props}
         settings={settings}
-        onSettings={updateSettings}
-        dialect={dialect}
+        update={updateSettings}
         cursor={cursor}
-        running={active}
-        cancellable={run.queryId !== null}
+        run={run}
+        actions={actions}
+        file={files.act}
+        format={format}
         notice={props.notice ?? formatFailure ?? files.failure}
-        offline={sessionId === null}
-        onConnect={props.onConnect}
-        run={runMenuOf({
-          ready: sessionId !== null && !active,
-          settings,
-          update: updateSettings,
-          actions,
-          file: files.act,
-          onName: () => {
-            setNaming(true);
-          },
-        })}
-        onRunDefault={() => {
-          actions.runKey('current');
+        onName={() => {
+          setNaming(true);
         }}
-        onCancel={() => {
-          runs.cancel(tab.id);
-        }}
-        onFormat={format}
       />
-      <TabResults {...props} run={run} settings={settings} />
+      <TabResults
+        {...props}
+        run={run}
+        settings={settings}
+        onExportable={onExportable}
+      />
       <TabSheets
         {...props}
         naming={naming}
@@ -174,11 +171,61 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
   );
 }
 
+/** The bottom bar: editor settings, Run and its menu, Cancel and formatting. */
+function TabBar(
+  props: Pick<
+    QueryTabProps,
+    'tab' | 'connection' | 'runs' | 'sessionId' | 'onConnect'
+  > & {
+    settings: EditorSettings;
+    update: (change: Partial<EditorSettings>) => void;
+    cursor: CursorStore;
+    run: RunState;
+    actions: RunActions;
+    file: (action: FileAction) => void;
+    format: (kind: FormatKind) => void;
+    notice: string | null;
+    onName: () => void;
+  },
+): React.JSX.Element {
+  const { settings, actions, run } = props;
+  const active = isActive(run);
+  return (
+    <EditorBar
+      settings={settings}
+      onSettings={props.update}
+      dialect={props.connection.engine}
+      cursor={props.cursor}
+      running={active}
+      cancellable={run.queryId !== null}
+      notice={props.notice}
+      offline={props.sessionId === null}
+      onConnect={props.onConnect}
+      run={runMenuOf({
+        ready: props.sessionId !== null && !active,
+        settings,
+        update: props.update,
+        actions,
+        file: props.file,
+        onName: props.onName,
+      })}
+      onRunDefault={() => {
+        actions.runKey('current');
+      }}
+      onCancel={() => {
+        props.runs.cancel(props.tab.id);
+      }}
+      onFormat={props.format}
+    />
+  );
+}
+
 /** Results of the latest run and its one-line status. */
 function TabResults(
   props: Pick<QueryTabProps, 'sessionId' | 'onCell'> & {
     run: RunState;
     settings: EditorSettings;
+    onExportable: (exportShown: (() => void) | null) => void;
   },
 ): React.JSX.Element {
   return (
@@ -189,6 +236,7 @@ function TabResults(
         runDefault={props.settings.runDefault}
         sessionId={props.sessionId}
         onCell={props.onCell}
+        onExportable={props.onExportable}
       />
       <footer className={styles.status} role="status" aria-label="Query status">
         {statusText(props.run)}

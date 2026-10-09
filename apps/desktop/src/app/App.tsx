@@ -5,13 +5,14 @@ import { useWindowReady } from './useWindowReady';
 const Gallery = lazy(() =>
   import('../gallery/Gallery').then((module) => ({ default: module.Gallery })),
 );
-import { Workspace } from '../mock/Workspace';
+import { Workspace } from '../features/workspace';
 import { commandForEvent } from '../features/commands';
 import { useCrashRecovery } from '../features/diagnostics';
 import {
   applyGeneral,
   generalSettings,
   settingsChanged,
+  useSettingsRevision,
 } from '../features/settings';
 import type { SettingsSection } from '../features/settings';
 import styles from './App.module.css';
@@ -60,6 +61,7 @@ export function App(): React.JSX.Element {
     setSettings((open) => open ?? 'general');
   });
   useGeneralSettings();
+  const revision = useSettingsRevision();
   useEffect(() => {
     if (!gallery) return;
     const escape = (event: KeyboardEvent): void => {
@@ -71,7 +73,7 @@ export function App(): React.JSX.Element {
     };
   }, [gallery]);
   return (
-    <ThemeProvider onChange={settingsChanged}>
+    <ThemeProvider onChange={settingsChanged} revision={revision}>
       {startupError ? (
         <p role="alert">Unable to show the native window.</p>
       ) : (
