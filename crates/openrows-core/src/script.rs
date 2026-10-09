@@ -112,7 +112,23 @@ pub struct Script<'a> {
 /// A statement starts only after the previous one completed. A `Cancelled`
 /// statement ends the run; a `Failed` one ends it when `stop_on_error` is
 /// set, otherwise the run goes on and ends `Failed` after the last statement.
+///
+/// The `query.run` span records the statement count and the outcome only:
+/// never the SQL text, its literals or any row (docs/14 §6).
+#[tracing::instrument(name = "query.run", skip_all, fields(statements = script.statements.len()))]
 pub async fn run_script(
+    manager: &SessionManager,
+    session: SessionId,
+    script: Script<'_>,
+    cancel: &ScriptCanceller,
+    emit: impl FnMut(ScriptEvent),
+) -> ScriptOutcome {
+    let outcome = run_statements(manager, session, script, cancel, emit).await;
+    tracing::info!(outcome = ?outcome, "query run finished");
+    outcome
+}
+
+async fn run_statements(
     manager: &SessionManager,
     session: SessionId,
     script: Script<'_>,

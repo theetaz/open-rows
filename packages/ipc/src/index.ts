@@ -88,7 +88,9 @@ export {
   saveTableEdits,
   savedTableEdits,
   clearTableEdits,
+  journaledTableEdits,
 } from './tables';
+export type { JournaledEditsDto } from './generated/bindings';
 /** Streamed export of results and tables to CSV, JSON and SQL files (M1-25). */
 export { startExport } from './exports';
 export type {
@@ -107,6 +109,9 @@ export {
   writeSettingsFile,
 } from './app';
 export type { MenuItemState } from './generated/bindings';
+/** Diagnostics: crash status, the logs folder and webview reports (M1-28). */
+export { crashRecoveryStatus, openLogsFolder, reportUiEvent } from './app';
+export type { UiReport, UiReportKind } from './generated/bindings';
 /** Native window closing, guarded by the webview (staged edits, running commits). */
 export { onWindowClose, closeWindow } from './window';
 export type {

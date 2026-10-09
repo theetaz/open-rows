@@ -97,6 +97,7 @@ pub(crate) async fn table_edit_info(
     result
 }
 /// Prepare exact SQL/binds, then commit only when that preview's token is supplied.
+#[tracing::instrument(name = "table.commit", skip_all, fields(changes = request.changes.len()))]
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn table_edit(
@@ -120,6 +121,7 @@ pub(crate) async fn table_edit(
     let mut session = session(&state, &request.target).await?;
     let history = record.then_some(&*local);
     let result = prepare_commit(session.as_mut(), &request, dialect, history).await;
+    log_commit(&result);
     // Closing rolls back transactions still open; a lost COMMIT reply remains uncertain.
     let closed = session
         .close()
@@ -132,6 +134,15 @@ pub(crate) async fn table_edit(
     closed?;
     result
 }
+/// Log a commit's outcome as its kind only: messages can echo staged values.
+fn log_commit(result: &Result<EditReply, IpcError>) {
+    match result {
+        Ok(EditReply::Committed) => tracing::info!("staged edits committed"),
+        Ok(EditReply::Prepared { .. }) => tracing::debug!("staged edits previewed"),
+        Err(error) => tracing::warn!(kind = ?error.kind, "staged edits not committed"),
+    }
+}
+
 /// Plan the edits and commit them once the preview token is confirmed; a
 /// committed or failed batch is written to `history` when it is given.
 async fn prepare_commit(

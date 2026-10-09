@@ -6,6 +6,7 @@ import type {
   EditReply,
   CountReply,
   CountRequest,
+  JournaledEditsDto,
   PageReply,
   PageRequest,
   QueryEventDto,
@@ -85,6 +86,10 @@ export function savedTableEdits(
   target: TableTarget,
 ): Promise<SavedEditsDto | null> {
   return unwrap(commands.tableEditsSaved(target));
+}
+/** Every table with journaled edits from an earlier run (crash-recovery prompt). */
+export function journaledTableEdits(): Promise<JournaledEditsDto[]> {
+  return unwrap(commands.tableEditsJournaled());
 }
 /** Forget a table's journaled edits after a commit or an explicit discard. */
 export function clearTableEdits(target: TableTarget): Promise<null> {

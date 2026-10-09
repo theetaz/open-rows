@@ -7,6 +7,7 @@ const Gallery = lazy(() =>
 );
 import { Workspace } from '../mock/Workspace';
 import { commandForEvent } from '../features/commands';
+import { useCrashRecovery } from '../features/diagnostics';
 import {
   applyGeneral,
   generalSettings,
@@ -17,6 +18,11 @@ import styles from './App.module.css';
 const SettingsSheet = lazy(() =>
   import('../features/settings/SettingsSheet').then((module) => ({
     default: module.SettingsSheet,
+  })),
+);
+const CrashRecoverySheet = lazy(() =>
+  import('../features/diagnostics/CrashRecoverySheet').then((module) => ({
+    default: module.CrashRecoverySheet,
   })),
 );
 
@@ -49,6 +55,7 @@ export function App(): React.JSX.Element {
   const startupError = useWindowReady();
   const [gallery, setGallery] = useState(false);
   const [settings, setSettings] = useState<SettingsSection | null>(null);
+  const crash = useCrashRecovery();
   useSettingsKey(() => {
     setSettings((open) => open ?? 'general');
   });
@@ -88,6 +95,11 @@ export function App(): React.JSX.Element {
               setSettings(null);
             }}
           />
+        </Suspense>
+      )}
+      {crash.crashed && (
+        <Suspense fallback={null}>
+          <CrashRecoverySheet onClose={crash.dismiss} />
         </Suspense>
       )}
       {gallery && <GalleryView onBack={setGallery} />}

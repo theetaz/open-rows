@@ -34,12 +34,13 @@ flowchart TB
 | Network drop (in transaction) | Session → `Broken` | Clear message: "transaction was rolled back by the server"; staged change set preserved |
 | Script infinite loop | QuickJS interrupt handler at time limit | Request marked failed with "script timeout" |
 | Webview crash / reload | Core unaffected | Webview reloads; UI state restored from core (tabs, drafts, results still in store) |
-| Core panic outside a session | Global panic hook logs, writes crash marker | App restarts on next launch with "restore previous session?"; opt-in crash report |
+| Core panic outside a session | Global panic hook logs (scrubbed), the crash marker of the run stays behind | Next launch shows "OpenRows closed unexpectedly" listing journaled staged edits, with "Open logs folder" (M1-28); the edits come back through the table's own restore offer (D-09); opt-in crash report (stub only) |
 
 ### 2.1 Panic policy
 
 - `panic = "unwind"` in release so session-level panics are catchable at task boundaries.
-- A global panic hook records the panic message (scrubbed), thread, backtrace and correlation id to the log and crash marker.
+- A global panic hook records the panic message (clipped and scrubbed), location, thread and a clipped backtrace to the log, then runs the previous hook. Correlation ids are not implemented yet.
+- Crash marker (`run-marker.json` in the app-data dir): written at startup with the process id and removed at a clean exit. A marker whose process is gone at the next launch means the last run did not exit cleanly. A marker owned by a live instance is left alone.
 - Code in the core must not `unwrap()`/`expect()` on data from external sources; lint (`clippy::unwrap_used` in non-test code, with explicit allowances) enforces this.
 
 ## 3. Persistence of in-progress work
@@ -87,15 +88,22 @@ Hints come from a curated table keyed by error kind + database code.
 
 ## 6. Logging
 
-- `tracing` with structured fields; logs written to the platform log dir (`~/Library/Logs/OpenRows/` on macOS) as JSON lines, rotated daily, 7 days / 50 MB max.
-- Levels: `error`, `warn`, `info` (default), `debug`, `trace`. Changeable at runtime from Settings → Diagnostics.
-- **Redaction layer** before the writer: fields named or tagged as secret are replaced; URLs pass through a redactor that strips userinfo and sensitive query params (`password`, `token`, `key`, `secret`, `sig`, …); query text and parameter values only at `trace`.
-- In-app log viewer (filter by level/component/session) and "Export diagnostics bundle" (logs + app version + OS + redacted settings) for bug reports; the bundle is shown to the user before saving.
-- Webview logs (console errors, unhandled rejections) forwarded to the core log with a `ui` target.
+Implemented in `apps/desktop/src-tauri/src/observability/` (M1-28):
+
+- `tracing` with structured fields, written as JSON lines to the app log folder (`~/Library/Logs/com.prabhavalabs.openrows/` on macOS, Tauri's `app_log_dir`). One file per day (`openrows.YYYY-MM-DD.log`), seven kept. A 50 MB size cap is not enforced yet; `tracing-appender` rotates by day only.
+- Levels: `error`, `warn`, `info` (default), `debug`, `trace`. `OPENROWS_LOG` overrides `diagnostics.logLevel` in `settings.json`; both are read at launch, so a change applies at the next launch (no runtime switch yet). Unknown values fall back to `info`.
+- **Field discipline first.** Call sites log typed kinds (`IpcErrorKind`, `ErrorKind`, `ScriptOutcome`), counts, durations and identifiers. They never log SQL text, its literals (not even at `trace`, which is stricter than the first draft of this section), row values, connection URLs, hosts, user names, or driver and engine error messages (Postgres messages can echo row values).
+- **Scrubbing layer** (`observability/scrub.rs`) before the file writer, on every line: URL userinfo passwords, sensitive query parameters (`password`, `token`, `key`, `secret`, `sig`, …), JSON and `key=value` fields whose names look secret (also inside escaped JSON), and bearer tokens. Scrubbing is a second line of defence, not the primary control.
+- Spans: `session.open` and `session.close` and `query.run` and `export` in `openrows-core`; `table.commit` and `connection.test` (with a debug event per test step) in the app. Outcomes are logged as kinds and counts only.
+- Tests prove the guarantee: a password in a URL, a field or free text never reaches the file (`observability/tests.rs`), and a SQL literal run through the query runner never reaches the log (`openrows-core` `tests/observability.rs`).
+- Webview errors, unhandled rejections and timings reach the log through the typed `ui_report` command under the `ui` target. The webview rate-limits them to 30 per minute.
+- Dev builds only: main-thread tasks of 50 ms or more (`longtask`, or frame gaps where WebKit provides no `longtask` entries) and IPC commands of 100 ms or more are reported the same way.
+- Not built yet: the in-app log viewer, the "Export diagnostics bundle" action, and a runtime log-level switch.
 
 ## 7. Crash and error reporting
 
 - **Off by default.** First-run screen asks; can change in Settings.
+- Current state (M1-28): Settings → Diagnostics has a "Send crash reports" switch that defaults to off and only stores the choice. OpenRows sends no telemetry and no crash reports, and no upload code exists. The first-run screen and the opt-in reporter are not built.
 - When enabled: native crash (minidump via `crashpad`/`sentry-rust`-compatible self-hostable backend) and Rust panic reports. Endpoint is configurable; the project's default endpoint is a self-hosted, open-source crash collector.
 - Payload excludes query text, values, hostnames, usernames, file paths in home dir (rewritten to `~`).
 - User can view exactly what will be sent.

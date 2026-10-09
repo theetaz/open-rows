@@ -116,7 +116,11 @@ const CONNECTION: &[Entry] = &[
     C("safe", "Safe Mode"),
 ];
 const WINDOW: &[Entry] = &[N(Native::Minimize), N(Native::Zoom)];
-const HELP: &[Entry] = &[C("shortcuts", "Keyboard Shortcuts…")];
+const HELP: &[Entry] = &[
+    C("shortcuts", "Keyboard Shortcuts…"),
+    S,
+    C("open-logs", "Open Logs Folder"),
+];
 
 /// The menu bar, left to right.
 const MENUS: &[(&str, &[Entry])] = &[
@@ -298,6 +302,7 @@ mod tests {
             "disconnect",
             "database",
             "refresh",
+            "open-logs",
         ] {
             assert!(ids.contains(&id), "missing {id}");
         }

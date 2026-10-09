@@ -77,6 +77,8 @@ pub(crate) struct Steps {
 
 impl Steps {
     fn push(&mut self, kind: TestStepKind, label: String, status: StepStatus) -> &mut TestStepDto {
+        // The label and detail name hosts and users; the log keeps only the step.
+        tracing::debug!(step = ?kind, status = ?status, "connection test step");
         self.list.push(TestStepDto {
             kind,
             label,

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Button, SegmentedControl } from '@openrows/ui';
 import { Sheet } from '@openrows/ui/sheet';
 import { AppearancePane } from '../appearance/AppearancePane';
+import { DiagnosticsPane } from './DiagnosticsPane';
 import { EditorPane } from './EditorPane';
 import { GeneralPane } from './GeneralPane';
 import { JsonPane } from './JsonPane';
@@ -10,13 +11,14 @@ import { ShortcutsPane } from './ShortcutsPane';
 import styles from '../appearance/Appearance.module.css';
 
 export type SettingsSection =
-  'general' | 'appearance' | 'editor' | 'shortcuts' | 'json';
+  'general' | 'appearance' | 'editor' | 'shortcuts' | 'diagnostics' | 'json';
 
 const SECTIONS: readonly { value: SettingsSection; label: string }[] = [
   { value: 'general', label: 'General' },
   { value: 'appearance', label: 'Appearance' },
   { value: 'editor', label: 'Editor' },
   { value: 'shortcuts', label: 'Shortcuts' },
+  { value: 'diagnostics', label: 'Diagnostics' },
   { value: 'json', label: 'JSON' },
 ];
 
@@ -24,6 +26,7 @@ function Pane({ section }: { section: SettingsSection }): React.JSX.Element {
   if (section === 'appearance') return <AppearancePane />;
   if (section === 'editor') return <EditorPane />;
   if (section === 'shortcuts') return <ShortcutsPane />;
+  if (section === 'diagnostics') return <DiagnosticsPane />;
   if (section === 'json') return <JsonPane />;
   return <GeneralPane />;
 }

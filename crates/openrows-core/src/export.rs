@@ -64,7 +64,19 @@ pub enum ExportFailure {
 }
 
 /// Run `statement` on `session` and stream its rows into the job's file.
+#[tracing::instrument(name = "export", skip_all, fields(source = "query"))]
 pub async fn export_statement(
+    manager: &SessionManager,
+    session: SessionId,
+    statement: BoundSql,
+    job: ExportJob,
+) -> ExportOutcome {
+    let outcome = stream_statement(manager, session, statement, job).await;
+    log_outcome(&outcome);
+    outcome
+}
+
+async fn stream_statement(
     manager: &SessionManager,
     session: SessionId,
     statement: BoundSql,
@@ -105,7 +117,34 @@ pub async fn export_statement(
 }
 
 /// Write a complete stored result (`schema` and its batches) into the job's file.
+#[tracing::instrument(name = "export", skip_all, fields(source = "result"))]
 pub async fn export_batches(
+    (schema, batches): (SchemaRef, Vec<RecordBatch>),
+    job: ExportJob,
+) -> ExportOutcome {
+    let outcome = write_batches((schema, batches), job).await;
+    log_outcome(&outcome);
+    outcome
+}
+
+/// Log how an export ended: its kind and row count, never the failure text,
+/// because driver and encoder messages can echo row values.
+fn log_outcome(outcome: &ExportOutcome) {
+    match outcome {
+        ExportOutcome::Written { rows } => {
+            tracing::info!(outcome = "written", rows, "export finished");
+        }
+        ExportOutcome::Cancelled => tracing::info!(outcome = "cancelled", "export finished"),
+        ExportOutcome::Failed(ExportFailure::Query(error)) => {
+            tracing::warn!(outcome = "failed", stage = "query", kind = ?error.kind, "export finished");
+        }
+        ExportOutcome::Failed(ExportFailure::Write(_)) => {
+            tracing::warn!(outcome = "failed", stage = "write", "export finished");
+        }
+    }
+}
+
+async fn write_batches(
     (schema, batches): (SchemaRef, Vec<RecordBatch>),
     job: ExportJob,
 ) -> ExportOutcome {
