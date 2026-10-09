@@ -74,7 +74,7 @@ impl PgSession {
     }
 
     /// Names of every table, view, sequence and routine outside system
-    /// schemas (at most 20 000), for quick open and autocomplete.
+    /// schemas (at most 50 000, the M1-16 budget), for quick open and autocomplete.
     ///
     /// # Errors
     /// As [`PgSession::list_databases`].

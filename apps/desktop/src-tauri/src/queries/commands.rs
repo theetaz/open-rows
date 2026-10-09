@@ -11,6 +11,7 @@ use std::time::Instant;
 use openrows_core::safety::{Gate, SafetyPlan, SafetyPolicy};
 use openrows_core::script::{Script, ScriptCanceller, run_script};
 use openrows_results::ResultStore;
+use openrows_sql::StatementKind;
 use openrows_sql::select::BoundSql;
 use openrows_store::LocalStore;
 use openrows_store::profile::{ConnectionProfile, ProfileId};
@@ -25,6 +26,7 @@ use super::dto::{
 use super::events::{QueryEventDto, finished, translate};
 use super::history::HistoryLog;
 use super::params::{self, Binding};
+use crate::connections::catalog_cache::after_statements;
 use crate::connections::drivers::driver;
 use crate::connections::{Connections, IpcError, IpcErrorKind};
 
@@ -37,6 +39,8 @@ struct Run {
     database: String,
     /// Statement texts as written, recorded in history.
     statements: Vec<String>,
+    /// What each statement does; DDL invalidates the schema cache.
+    kinds: Vec<StatementKind>,
     /// The statements with their bound parameters, as executed.
     bound: Vec<BoundSql>,
     /// Rows kept per result set (the editor's row limit).
@@ -87,6 +91,7 @@ pub(crate) async fn query_execute(
         profile,
         database: owner.database,
         statements: plan.statements.iter().map(|s| s.sql.clone()).collect(),
+        kinds: plan.statements.iter().map(|s| s.class.kind).collect(),
         bound,
         max_rows: request.row_cap(),
         stop_on_error: request.return_on_error,
@@ -162,6 +167,13 @@ async fn execute(app: AppHandle, run: Run) {
         },
     )
     .await;
+    // Even a failed or cancelled script may have run some of its DDL.
+    let profile_id = run.profile.id.to_string();
+    after_statements(
+        &app,
+        (&profile_id, &run.database),
+        run.kinds.iter().copied(),
+    );
     let _ = run.events.send(finished(outcome, started.elapsed()));
     app.state::<Queries>().forget(&run.query_id);
 }

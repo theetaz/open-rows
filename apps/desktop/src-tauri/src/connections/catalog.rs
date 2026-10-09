@@ -1,19 +1,25 @@
 // SPDX-License-Identifier: Apache-2.0
-//! Schema-tree commands (D-06): databases, schemas, objects and the name
-//! index, read on the connection's per-database metadata sessions (closed by
-//! `session_close` and `connection_close`).
+//! Schema-tree commands (D-06, M1-16): databases, schemas, objects and the
+//! name index, served by the schema cache ([`super::catalog_cache`]) and read
+//! on the connection's per-database metadata sessions (closed by
+//! `session_close` and `connection_close`) when missing or `fresh`.
 use openrows_driver_api::catalog::{ColumnSummary, ObjectKind, TableStructure};
 use openrows_driver_api::schema::TableDetail;
 use openrows_driver_api::{BoxFuture, Catalog, DriverError, catalog};
-use tauri::State;
+use openrows_schema::{Listing, NameIndex, SchemaCache, Scope, SearchQuery};
+use tauri::{AppHandle, State};
 
 use super::Connections;
-use super::catalog_dto::{DatabaseDto, ObjectDto, ObjectKindDto, SchemaDto};
+use super::catalog_cache::{CatalogRead, cached_read, mismatch, reply};
+use super::catalog_dto::{
+    CatalogReply, CatalogSearchReply, CatalogSearchRequest, DatabaseDto, ObjectDto, ObjectsRequest,
+    SchemaDto,
+};
 use super::error::IpcError;
 use super::route::profile_target;
 
 /// Run `read` on the catalog facet of `database`'s metadata session.
-async fn read_catalog<T>(
+pub(super) async fn read_catalog<T>(
     state: &Connections,
     (profile_id, database): (&str, &str),
     read: impl for<'s> FnOnce(&'s mut dyn Catalog) -> BoxFuture<'s, Result<T, DriverError>>,
@@ -35,64 +41,102 @@ async fn read_catalog<T>(
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn catalog_databases(
-    state: State<'_, Connections>,
+    app: AppHandle,
     profile_id: String,
     database: String,
-) -> Result<Vec<DatabaseDto>, IpcError> {
-    let databases = read_catalog(&state, (&profile_id, &database), |catalog| {
-        catalog.list_databases()
+    fresh: bool,
+) -> Result<CatalogReply<Vec<DatabaseDto>>, IpcError> {
+    let read = CatalogRead::new((profile_id, database), Scope::Databases, fresh);
+    let cached = cached_read(&app, read, |catalog| {
+        Box::pin(async move { catalog.list_databases().await.map(Listing::Databases) })
     })
     .await?;
-    Ok(databases.into_iter().map(DatabaseDto::from).collect())
+    reply(&cached, Listing::databases, DatabaseDto::from)
 }
 
 /// Schemas of `database`, user schemas first.
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn catalog_schemas(
-    state: State<'_, Connections>,
+    app: AppHandle,
     profile_id: String,
     database: String,
-) -> Result<Vec<SchemaDto>, IpcError> {
-    let schemas = read_catalog(&state, (&profile_id, &database), |catalog| {
-        catalog.list_schemas()
+    fresh: bool,
+) -> Result<CatalogReply<Vec<SchemaDto>>, IpcError> {
+    let read = CatalogRead::new((profile_id, database), Scope::Schemas, fresh);
+    let cached = cached_read(&app, read, |catalog| {
+        Box::pin(async move { catalog.list_schemas().await.map(Listing::Schemas) })
     })
     .await?;
-    Ok(schemas.into_iter().map(SchemaDto::from).collect())
+    reply(&cached, Listing::schemas, SchemaDto::from)
 }
 
-/// Objects of `kinds` in `database`.`schema`, ordered by name.
+/// Objects of some kinds in one schema of `database`, ordered by name.
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn catalog_objects(
-    state: State<'_, Connections>,
+    app: AppHandle,
     profile_id: String,
     database: String,
-    schema: String,
-    kinds: Vec<ObjectKindDto>,
-) -> Result<Vec<ObjectDto>, IpcError> {
-    let kinds: Vec<ObjectKind> = kinds.into_iter().map(ObjectKind::from).collect();
-    let objects = read_catalog(&state, (&profile_id, &database), move |catalog| {
-        Box::pin(async move { catalog.list_objects(&schema, &kinds).await })
+    request: ObjectsRequest,
+) -> Result<CatalogReply<Vec<ObjectDto>>, IpcError> {
+    let kinds: Vec<ObjectKind> = request.kinds.into_iter().map(ObjectKind::from).collect();
+    let scope = Scope::objects(&request.schema, &kinds);
+    let read = CatalogRead::new((profile_id, database), scope, request.fresh);
+    let schema = request.schema;
+    let cached = cached_read(&app, read, move |catalog| {
+        Box::pin(async move {
+            let objects = catalog.list_objects(&schema, &kinds).await?;
+            Ok(Listing::Objects(objects))
+        })
     })
     .await?;
-    Ok(objects.into_iter().map(ObjectDto::from).collect())
+    reply(&cached, Listing::objects, ObjectDto::from)
 }
 
-/// Bounded name index of `database` (tables, views, sequences, routines)
-/// for quick open.
+/// Search the bounded name index of `database` (tables, views, sequences,
+/// routines of every user schema), reading the index first when needed.
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn catalog_search(
-    state: State<'_, Connections>,
+    app: AppHandle,
     profile_id: String,
     database: String,
-) -> Result<Vec<ObjectDto>, IpcError> {
-    let objects = read_catalog(&state, (&profile_id, &database), |catalog| {
-        catalog.search_index()
+    request: CatalogSearchRequest,
+) -> Result<CatalogSearchReply, IpcError> {
+    let read = CatalogRead::new((profile_id, database), Scope::Index, request.fresh);
+    let cached = cached_read(&app, read, |catalog| {
+        Box::pin(async move {
+            let objects = catalog.search_index().await?;
+            Ok(Listing::Index(NameIndex::new(objects)))
+        })
     })
     .await?;
-    Ok(objects.into_iter().map(ObjectDto::from).collect())
+    let index = cached.listing.index().ok_or_else(mismatch)?;
+    let hits = index.search(&SearchQuery {
+        text: &request.query,
+        schema: request.schema.as_deref(),
+        limit: request.limit.map_or(usize::MAX, |limit| {
+            usize::try_from(limit).unwrap_or(usize::MAX)
+        }),
+    });
+    Ok(CatalogSearchReply {
+        objects: hits.objects.into_iter().map(ObjectDto::from).collect(),
+        total: u32::try_from(hits.total).unwrap_or(u32::MAX),
+        stale: cached.stale,
+    })
+}
+
+/// Mark everything cached for a connection stale (⌘R); the next reads go
+/// to the server.
+#[tauri::command]
+#[specta::specta]
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri deserialises command arguments into owned values"
+)]
+pub(crate) fn catalog_invalidate(cache: State<'_, SchemaCache>, profile_id: String) {
+    cache.invalidate(&profile_id);
 }
 
 /// A relation's columns, indexes and row estimate on `database`'s metadata

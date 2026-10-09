@@ -7,12 +7,14 @@
 //! [`ResultStore`]; commands live in [`profiles`] and
 //! [`sessions`]; [`catalog`] serves the schema tree from per-database
 //! metadata sessions. Each opened database of a connection has its own user
-//! session, recorded in [`owners`]. [`route`] resolves every connect: keychain
+//! session, recorded in [`owners`]; [`catalog_cache`] keeps their listings
+//! (with persisted snapshots) in the managed [`SchemaCache`]. [`route`] resolves every connect: keychain
 //! secrets, TLS files and the profile's shared SSH tunnel ([`tunnels`]) into
 //! a driver [`target`] for the profile's engine ([`drivers`]), with
 //! host-key and keyboard-interactive [`prompts`] in the webview;
 //! [`diagnostics`] runs Test connection step by step.
 pub(crate) mod catalog;
+pub(crate) mod catalog_cache;
 mod catalog_dto;
 pub(crate) mod connection;
 pub(crate) mod diagnostics;
@@ -38,6 +40,7 @@ use std::sync::Arc;
 
 use openrows_core::SessionManager;
 use openrows_results::ResultStore;
+use openrows_schema::SchemaCache;
 use openrows_secrets::{CachingSecretStore, KeychainSecretStore};
 use openrows_store::LocalStore;
 use openrows_store::profile::{ProfileFiles, ProfileService};
@@ -45,10 +48,14 @@ use tauri::Manager;
 use tauri_specta::Event;
 use tokio::sync::broadcast::error::RecvError;
 
+use crate::queries::history::now_ms;
 pub(crate) use error::{IpcError, IpcErrorKind};
 use prompts::{PromptBroker, TauriSink};
 use sessions::SessionStateChanged;
 use tunnels::{SshEnvironment, TunnelOpener, Tunnels};
+
+/// Schema snapshots unused (not refreshed) for 60 days are evicted (docs/15 §2).
+const SNAPSHOT_RETENTION_MS: i64 = 60 * 24 * 60 * 60 * 1000;
 
 /// Managed state behind every connection and query command.
 pub(crate) struct Connections {
@@ -73,7 +80,11 @@ pub(crate) struct Connections {
 pub(crate) fn install(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let data = app.path().app_data_dir()?;
     std::fs::create_dir_all(&data)?;
-    app.manage(LocalStore::open(&data.join("openrows.sqlite"))?);
+    let store = LocalStore::open(&data.join("openrows.sqlite"))?;
+    // Eviction is housekeeping: snapshots that stay only cost disk space.
+    let _ = store.prune_schema_snapshots(now_ms() - SNAPSHOT_RETENTION_MS);
+    app.manage(store);
+    app.manage(SchemaCache::default());
     let profiles = ProfileService::new(
         ProfileFiles::new(&data.join("connections")),
         // Read each keychain item once per run: every read by a binary the

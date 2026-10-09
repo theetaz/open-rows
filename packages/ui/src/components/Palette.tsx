@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useId, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { fuzzyMatch } from '../search/fuzzy';
 import { rankPaletteItems } from '../search/paletteResults';
 import { HighlightText } from './HighlightText';
 import { PalettePopover } from './PalettePopover';
@@ -20,13 +21,32 @@ type Props = {
   footer?: ReactNode;
   onChoose: (id: string) => void;
   onClose: () => void;
+  /**
+   * Search elsewhere (e.g. a prebuilt index off the UI thread): `items` are
+   * then the current query's matches, best first, and are not re-ranked.
+   */
+  onQueryChange?: (query: string) => void;
 };
+/** Matches as given, with label highlights for the query. */
+function rankedItems(
+  items: readonly PaletteItem[],
+  query: string,
+): ReturnType<typeof rankPaletteItems> {
+  return items.map((item) => ({
+    item,
+    indices: fuzzyMatch(item.label, query)?.indices ?? [],
+    score: 0,
+  }));
+}
 /** Shared combobox/listbox palette with virtual focus and deterministic fuzzy ranking. */
 export function Palette(props: Props): React.JSX.Element {
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState('');
   const id = useId();
-  const results = rankPaletteItems(props.items, query);
+  const { onQueryChange } = props;
+  const results = onQueryChange
+    ? rankedItems(props.items, query)
+    : rankPaletteItems(props.items, query);
   const active = results.findIndex(({ item }) => item.id === selected);
   const index = Math.max(0, active);
   const option = results[index];
@@ -52,6 +72,7 @@ export function Palette(props: Props): React.JSX.Element {
             onChange={(event) => {
               setQuery(event.target.value);
               setSelected('');
+              onQueryChange?.(event.target.value);
             }}
             onKeyDown={(event) => {
               if (event.nativeEvent.isComposing) return;

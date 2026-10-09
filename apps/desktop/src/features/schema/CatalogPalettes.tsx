@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useEffect } from 'react';
+import { useState } from 'react';
 import { Palette } from '@openrows/ui/palette';
 import type { PaletteItem } from '@openrows/ui';
 import type { ObjectDto } from '@openrows/ipc';
 import { formatEstimate, kindInfo, objectLabel, objectRef } from './catalog';
 import type { ObjectRef } from './catalog';
 import type { Catalog } from './useCatalog';
+import { useIndexSearch } from './useCatalogIndex';
 import type { Resource } from './useResources';
+
+/** Most quick-open matches listed. */
+const QUICK_OPEN_LIMIT = 100;
 
 /** Loading or failure text for a palette whose items are still unknown. */
 function statusText(resource: Resource<unknown>, noun: string): string | null {
@@ -30,27 +34,37 @@ function entryItem(object: ObjectDto): PaletteItem {
   };
 }
 
-/** ⌘P: fuzzy search over the active database's bulk name index. */
+/**
+ * ⌘P: the active database's prebuilt name index, searched in Rust per
+ * keystroke (prefix and substring over qualified names, best first).
+ */
 export function QuickOpen(props: {
   catalog: Catalog;
   onChoose: (object: ObjectRef) => void;
   onClose: () => void;
 }): React.JSX.Element {
-  const { search, loadSearch, database } = props.catalog;
-  useEffect(() => {
-    loadSearch();
-  }, [loadSearch]);
-  const objects = search.status === 'ready' ? search.data : [];
+  const { catalog } = props;
+  const [query, setQuery] = useState('');
+  const found = useIndexSearch(catalog, {
+    text: query,
+    schema: null,
+    limit: QUICK_OPEN_LIMIT,
+  });
+  const objects = found?.status === 'ready' ? found.data : [];
+  const failed = found?.status === 'error' ? found : null;
   const status =
-    props.catalog.offline ??
-    (database ? statusText(search, 'objects') : 'No database selected');
+    catalog.offline ??
+    (catalog.database
+      ? statusText(failed ?? catalog.index, 'objects')
+      : 'No database selected');
   return (
     <Palette
       title="Quick open"
       onClose={props.onClose}
+      onQueryChange={setQuery}
       onChoose={(id) => {
         const object = objects.find((item) => entryId(item) === id);
-        if (object) props.onChoose(objectRef(database, object));
+        if (object) props.onChoose(objectRef(catalog.database, object));
       }}
       items={objects.map(entryItem)}
       {...(status ? { footer: <span role="status">{status}</span> } : {})}

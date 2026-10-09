@@ -22,7 +22,7 @@ export const commands = {
 	profileUpdate: (id: string, input: ProfileInput) => typedError<ProfileDto, IpcError>(__TAURI_INVOKE("profile_update", { id, input })),
 	/**  Copy a connection (and its secrets) as "<name> copy". */
 	profileDuplicate: (id: string) => typedError<ProfileDto, IpcError>(__TAURI_INVOKE("profile_duplicate", { id })),
-	/**  Delete a connection and its stored secrets. */
+	/**  Delete a connection, its stored secrets and its schema snapshots. */
 	profileDelete: (id: string) => typedError<null, IpcError>(__TAURI_INVOKE("profile_delete", { id })),
 	/**  Form fields from a pasted connection URL, without the password itself. */
 	profileParseUrl: (url: string) => typedError<UrlDraft, IpcError>(__TAURI_INVOKE("profile_parse_url", { url })),
@@ -37,6 +37,8 @@ export const commands = {
 	 *  with prompts) and report its server. The
 	 *  check runs on the home database's metadata session, which also lists the
 	 *  server's databases; user sessions open per database with `session_open`.
+	 *  Everything cached for the connection turns stale: the tree shows it at
+	 *  once and reads it again in the background.
 	 */
 	connectionOpen: (profileId: string) => typedError<ConnectionOpened, IpcError>(__TAURI_INVOKE("connection_open", { profileId })),
 	/**
@@ -57,16 +59,21 @@ export const commands = {
 	 */
 	sessionClose: (sessionId: string) => typedError<null, IpcError>(__TAURI_INVOKE("session_close", { sessionId })),
 	/**  Databases on the server, read through `database`'s metadata session. */
-	catalogDatabases: (profileId: string, database: string) => typedError<DatabaseDto[], IpcError>(__TAURI_INVOKE("catalog_databases", { profileId, database })),
+	catalogDatabases: (profileId: string, database: string, fresh: boolean) => typedError<CatalogReply<DatabaseDto[]>, IpcError>(__TAURI_INVOKE("catalog_databases", { profileId, database, fresh })),
 	/**  Schemas of `database`, user schemas first. */
-	catalogSchemas: (profileId: string, database: string) => typedError<SchemaDto[], IpcError>(__TAURI_INVOKE("catalog_schemas", { profileId, database })),
-	/**  Objects of `kinds` in `database`.`schema`, ordered by name. */
-	catalogObjects: (profileId: string, database: string, schema: string, kinds: ObjectKindDto[]) => typedError<ObjectDto[], IpcError>(__TAURI_INVOKE("catalog_objects", { profileId, database, schema, kinds })),
+	catalogSchemas: (profileId: string, database: string, fresh: boolean) => typedError<CatalogReply<SchemaDto[]>, IpcError>(__TAURI_INVOKE("catalog_schemas", { profileId, database, fresh })),
+	/**  Objects of some kinds in one schema of `database`, ordered by name. */
+	catalogObjects: (profileId: string, database: string, request: ObjectsRequest) => typedError<CatalogReply<ObjectDto[]>, IpcError>(__TAURI_INVOKE("catalog_objects", { profileId, database, request })),
 	/**
-	 *  Bounded name index of `database` (tables, views, sequences, routines)
-	 *  for quick open.
+	 *  Search the bounded name index of `database` (tables, views, sequences,
+	 *  routines of every user schema), reading the index first when needed.
 	 */
-	catalogSearch: (profileId: string, database: string) => typedError<ObjectDto[], IpcError>(__TAURI_INVOKE("catalog_search", { profileId, database })),
+	catalogSearch: (profileId: string, database: string, request: CatalogSearchRequest) => typedError<CatalogSearchReply, IpcError>(__TAURI_INVOKE("catalog_search", { profileId, database, request })),
+	/**
+	 *  Mark everything cached for a connection stale (⌘R); the next reads go
+	 *  to the server.
+	 */
+	catalogInvalidate: (profileId: string) => __TAURI_INVOKE<void>("catalog_invalidate", { profileId }),
 	/**
 	 *  Split, bind, gate and start SQL on an open session.
 	 * 
@@ -195,6 +202,7 @@ export const commands = {
 
 /** Events */
 export const events = {
+	catalogChanged: makeEvent<CatalogChanged>("catalog-changed"),
 	menuCommand: makeEvent<MenuCommand>("menu-command"),
 	sessionStateChanged: makeEvent<SessionStateChanged>("session-state-changed"),
 	sshPromptChanged: makeEvent<SshPromptChanged>("ssh-prompt-changed"),
@@ -229,6 +237,52 @@ export type AppInfo = {
 };
 
 export type BuildProfile = "debug" | "release";
+
+/**
+ *  Tells the webview that DDL ran on a connection: what it shows of that
+ *  connection's catalog is stale and should be read again.
+ */
+export type CatalogChanged = {
+	profileId: string,
+	/**  The database the DDL ran on. */
+	database: string,
+};
+
+/**
+ *  A catalog listing (M1-16): `stale` when it came from a persisted
+ *  snapshot or was invalidated (reconnect, DDL); the webview shows it at
+ *  once and reads it again with `fresh`.
+ */
+export type CatalogReply<T> = {
+	data: T,
+	stale: boolean,
+};
+
+/**  The best matches, best first, and how many objects matched in all. */
+export type CatalogSearchReply = {
+	objects: ObjectDto[],
+	total: number,
+	/**  The index came from a snapshot or was invalidated. */
+	stale: boolean,
+};
+
+/**
+ *  A name search over a database's cached index (sidebar search, quick
+ *  open, SQL completion).
+ */
+export type CatalogSearchRequest = {
+	/**
+	 *  Case-insensitive prefix or substring of `name` or `schema.name`;
+	 *  empty lists everything.
+	 */
+	query: string,
+	/**  Only objects of this schema. */
+	schema: string | null,
+	/**  Most objects returned; `None` for every match. */
+	limit: number | null,
+	/**  Re-read the index from the server first. */
+	fresh: boolean,
+};
 
 /**  Kind and exact byte length of a cell; the value itself is read separately. */
 export type CellInfoDto = {
@@ -693,6 +747,14 @@ export type ObjectDto = {
 
 /**  Object kinds the schema tree lists. */
 export type ObjectKindDto = "table" | "view" | "materializedView" | "foreignTable" | "function" | "procedure" | "sequence";
+
+/**  One tree section: objects of `kinds` in `schema`. */
+export type ObjectsRequest = {
+	schema: string,
+	kinds: ObjectKindDto[],
+	/**  Re-read from the server instead of serving the cache. */
+	fresh: boolean,
+};
 
 /**  An opened `.sql` file and its text. */
 export type OpenedSqlFileDto = {

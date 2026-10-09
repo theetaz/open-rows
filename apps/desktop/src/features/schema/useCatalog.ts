@@ -1,25 +1,28 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
+  invalidateCatalog,
   listDatabases,
   listObjects,
   listSchemas,
-  searchCatalog,
 } from '@openrows/ipc';
 import type { DatabaseDto, ObjectDto, SchemaDto } from '@openrows/ipc';
 import type { Connections } from '../connections';
-import { defaultSchema } from './catalog';
+import { defaultSchema, objectGroups } from './catalog';
 import type { ObjectGroup } from './catalog';
+import { useCatalogChanges, useCatalogIndex } from './useCatalogIndex';
+import type { CatalogIndex } from './useCatalogIndex';
 import { useColumns } from './useColumns';
 import type { ColumnTree } from './useColumns';
 import { useNavigation } from './useNavigation';
 import type { NavigationState } from './useNavigation';
-import { useResources } from './useResources';
+import { isRefreshing, useResources } from './useResources';
 import type { Resource, Resources } from './useResources';
 
-/** The active connection's real catalog, read lazily on metadata sessions. */
+/** The active connection's catalog, served by the schema cache (M1-16). */
 export type Catalog = Omit<NavigationState, 'chosenSchema'> &
-  ColumnTree & {
+  ColumnTree &
+  CatalogIndex & {
     /** Why there is nothing to browse, or `null` when connected. */
     offline: string | null;
     /** Active database; empty when the connection has none open. */
@@ -36,9 +39,11 @@ export type Catalog = Omit<NavigationState, 'chosenSchema'> &
     schema: string;
     objects: (group: ObjectGroup) => Resource<ObjectDto[]>;
     loadObjects: (group: ObjectGroup) => void;
-    search: Resource<ObjectDto[]>;
-    loadSearch: () => void;
-    /** Forget everything read from the active database and read it again. */
+    /** Something shown came from a snapshot and is being read again. */
+    refreshing: boolean;
+    /** Changes on every refresh and after DDL; completion re-reads on it. */
+    revision: number;
+    /** Read everything shown from the active connection again, keeping it on screen. */
     refresh: () => void;
   };
 
@@ -61,32 +66,25 @@ export function useCatalog(connections: Connections): Catalog {
   const profileId = connected ? (connections.active?.id ?? null) : null;
   const database = profileId ? connections.database : '';
   const { chosenSchema, ...navigation } = useNavigation(profileId, database);
-  const prefix = `${profileId ?? ''}
-${String(connected?.generation ?? '')}
-`;
+  const prefix = `${profileId ?? ''}\n${String(connected?.generation ?? '')}\n`;
+  const scoped = `${prefix}${database}\n`;
+  const target = { profileId, database };
   const reads = useReads(resources, prefix, profileId, {
     home: connected?.server.database ?? '',
     database,
   });
-  const columnTree = useColumns(
-    resources,
-    `${prefix}${database}
-`,
-    {
-      profileId,
-      database,
-    },
-  );
+  const columnTree = useColumns(resources, scoped, target);
+  const index = useCatalogIndex(resources, scoped, target);
+  const [revision, refresh] = useRefresh(resources, profileId, prefix);
   const schema = pickSchema(
     reads.schemas,
     chosenSchema,
     navigation.systemSchemas,
   );
   const objectsKey = (group: ObjectGroup): string =>
-    `${prefix}${database}
-objects
-${schema}
-${group.id}`;
+    `${scoped}objects\n${schema}\n${group.id}`;
+  const objects = (group: ObjectGroup): Resource<ObjectDto[]> =>
+    resources.get(objectsKey(group));
   return {
     ...navigation,
     database,
@@ -96,20 +94,49 @@ ${group.id}`;
     offline: offlineReason(connections),
     ...reads,
     ...columnTree,
+    ...index,
     schema,
-    objects: (group) => resources.get(objectsKey(group)),
+    objects,
     loadObjects: (group) => {
       if (!profileId || !schema) return;
-      resources.load(objectsKey(group), () =>
-        listObjects(profileId, database, schema, group.kinds),
+      const section = { schema, kinds: group.kinds };
+      resources.load(objectsKey(group), (fresh) =>
+        listObjects(profileId, database, section, fresh),
       );
     },
-    refresh: () => {
-      resources.invalidate(`${prefix}${database}
-`);
-      resources.invalidate(`${prefix}databases`);
-    },
+    refreshing: [
+      reads.databases,
+      reads.schemas,
+      ...objectGroups.map(objects),
+    ].some(isRefreshing),
+    revision,
+    refresh,
   };
+}
+
+/**
+ * Manual refresh (⌘R) and refresh after DDL: the Rust cache marks the
+ * connection stale, then every loaded read is read again in place.
+ */
+function useRefresh(
+  resources: Resources,
+  profileId: string | null,
+  prefix: string,
+): [number, () => void] {
+  const [revision, setRevision] = useState(0);
+  const { revalidate } = resources;
+  const reread = useCallback(() => {
+    revalidate(prefix);
+    setRevision((count) => count + 1);
+  }, [revalidate, prefix]);
+  useCatalogChanges(profileId, reread);
+  return [
+    revision,
+    () => {
+      if (profileId) invalidateCatalog(profileId).catch(() => undefined);
+      reread();
+    },
+  ];
 }
 
 function pickSchema(
@@ -126,34 +153,29 @@ function pickSchema(
 
 /**
  * The server's databases load through the home database as soon as the
- * connection is up; schemas once a database is active; search on demand.
+ * connection is up; schemas once a database is active.
  */
 function useReads(
   resources: Resources,
   prefix: string,
   profileId: string | null,
   { home, database }: { home: string; database: string },
-): Pick<Catalog, 'databases' | 'schemas' | 'search' | 'loadSearch'> {
+): Pick<Catalog, 'databases' | 'schemas'> {
   const { load } = resources;
-  const scoped = `${prefix}${database}
-`;
+  const scoped = `${prefix}${database}\n`;
   const databases = resources.get<DatabaseDto[]>(`${prefix}databases`);
   const schemas = resources.get<SchemaDto[]>(`${scoped}schemas`);
   useEffect(() => {
     if (!profileId || !home) return;
-    load(`${prefix}databases`, () => listDatabases(profileId, home));
+    load(`${prefix}databases`, (fresh) =>
+      listDatabases(profileId, home, fresh),
+    );
   }, [load, prefix, profileId, home, databases.status]);
   useEffect(() => {
     if (!profileId || !database) return;
-    load(`${scoped}schemas`, () => listSchemas(profileId, database));
+    load(`${scoped}schemas`, (fresh) =>
+      listSchemas(profileId, database, fresh),
+    );
   }, [load, scoped, profileId, database, schemas.status]);
-  return {
-    databases,
-    schemas,
-    search: resources.get<ObjectDto[]>(`${scoped}search`),
-    loadSearch: () => {
-      if (!profileId || !database) return;
-      load(`${scoped}search`, () => searchCatalog(profileId, database));
-    },
-  };
+  return { databases, schemas };
 }

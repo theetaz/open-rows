@@ -8,6 +8,7 @@ use super::edit_commands::{ensure_writable, session};
 use super::schema_dto::{AlterReply, AlterRequest, TableDetailDto};
 use super::schema_map::detail_dto;
 use crate::connections::catalog::read_detail;
+use crate::connections::catalog_cache::after_statements;
 use crate::connections::drivers::{driver, profile_driver};
 use crate::connections::profiles::profile_id;
 use crate::connections::{Connections, IpcError, IpcErrorKind};
@@ -17,7 +18,7 @@ use openrows_driver_api::structure::{AlterPlan, AlterTable};
 use openrows_driver_api::{Connection, Driver, catalog, editor};
 use openrows_sql::{Dialect, StatementKind, classify, split};
 use openrows_store::profile::EnvKind;
-use tauri::State;
+use tauri::{AppHandle, State};
 
 /// Most changes one review may hold.
 const MAX_CHANGES: usize = 500;
@@ -60,6 +61,7 @@ pub(crate) async fn table_detail(
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn table_alter(
+    app: AppHandle,
     state: State<'_, Connections>,
     request: AlterRequest,
 ) -> Result<AlterReply, IpcError> {
@@ -77,6 +79,13 @@ pub(crate) async fn table_alter(
     let driver = driver(profile.driver);
     let mut session = session(&state, &request.target).await?;
     let result = prepare_alter(session.as_mut(), driver, &request, guarded).await;
+    if matches!(result, Ok(AlterReply::Committed)) {
+        let target = (
+            request.target.profile_id.as_str(),
+            request.target.database.as_str(),
+        );
+        after_statements(&app, target, [StatementKind::Ddl]);
+    }
     let closed = session
         .close()
         .await

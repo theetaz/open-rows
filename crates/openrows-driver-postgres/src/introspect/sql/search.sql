@@ -44,4 +44,4 @@ FROM (
       )
 ) AS o (schema, name, kind, arguments, row_estimate, comment)
 ORDER BY o.schema, o.name, o.arguments
-LIMIT 20000
+LIMIT 50000

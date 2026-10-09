@@ -33,6 +33,18 @@ function choose(query: string): void {
     vi.advanceTimersByTime(160);
   });
 }
+/** Type into ⌘P, wait for the index search to answer, then press Return. */
+async function chooseObject(query: string): Promise<void> {
+  const input = within(screen.getByRole('dialog')).getByRole('combobox');
+  fireEvent.change(input, { target: { value: query } });
+  await act(async () => {
+    for (let tick = 0; tick < 5; tick++) await Promise.resolve();
+  });
+  fireEvent.keyDown(input, { key: 'Enter' });
+  act(() => {
+    vi.advanceTimersByTime(160);
+  });
+}
 /** Make orders-local the active connection once profiles have loaded. */
 async function connect(): Promise<void> {
   await act(async () => {
@@ -45,7 +57,7 @@ async function connect(): Promise<void> {
 afterEach(() => {
   vi.useRealTimers();
 });
-it('⌘P searches the real name index, opens a query tab per object and refocuses an open one', async () => {
+it('⌘P searches the Rust name index per keystroke, opens a query tab per object and refocuses an open one', async () => {
   mount();
   await connectTo();
   vi.useFakeTimers();
@@ -56,7 +68,7 @@ it('⌘P searches the real name index, opens a query tab per object and refocuse
       name: /customers.*Table · public · ~412K rows \(estimate\)/,
     }),
   ).toBeVisible();
-  choose('cstm');
+  await chooseObject('cstm');
   expect(screen.getByRole('tab', { name: /customers/ })).toHaveAttribute(
     'aria-selected',
     'true',
@@ -66,22 +78,22 @@ it('⌘P searches the real name index, opens a query tab per object and refocuse
     'orders-local · customers',
   );
   await key('p');
-  choose('order_summary');
+  await chooseObject('order_summary');
   expect(screen.getByRole('tab', { name: /order_summary/ })).toHaveAttribute(
     'aria-selected',
     'true',
   );
   await key('p');
-  choose('session_notes');
+  await chooseObject('session_notes');
   await key('p');
-  choose('cstm');
+  await chooseObject('cstm');
   expect(screen.getAllByRole('tab', { name: /customers/ })).toHaveLength(1);
   expect(screen.getByRole('tab', { name: /customers/ })).toHaveAttribute(
     'aria-selected',
     'true',
   );
   await key('p');
-  choose('calc_tax');
+  await chooseObject('calc_tax');
   expect(screen.getByRole('tab', { name: /calc_tax/ })).toHaveAttribute(
     'title',
     'orders-local · calc_tax(total numeric)',
@@ -90,7 +102,7 @@ it('⌘P searches the real name index, opens a query tab per object and refocuse
     'public',
   );
   await key('p');
-  choose('session_notes');
+  await chooseObject('session_notes');
   expect(screen.getAllByRole('tab', { name: /session_notes/ })).toHaveLength(1);
   expect(screen.getByRole('tab', { name: /session_notes/ })).toHaveAttribute(
     'aria-selected',
@@ -99,7 +111,12 @@ it('⌘P searches the real name index, opens a query tab per object and refocuse
   expect(screen.getByRole('combobox', { name: 'Schema' })).toHaveValue(
     'archive',
   );
-  expect(searchCatalog).toHaveBeenCalledOnce();
+  expect(searchCatalog).toHaveBeenCalledWith('id-orders-local', 'orders', {
+    query: 'cstm',
+    schema: null,
+    limit: 100,
+    fresh: false,
+  });
   expect(screen.getAllByRole('tab')).toHaveLength(4);
   fireEvent.click(screen.getByRole('button', { name: 'Close session_notes' }));
   expect(screen.queryByRole('tab', { name: /session_notes/ })).toBeNull();

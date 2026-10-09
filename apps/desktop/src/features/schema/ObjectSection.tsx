@@ -7,12 +7,15 @@ import type { ObjectGroup, ObjectRef } from './catalog';
 import { ObjectRow } from './ObjectRow';
 import type { MenuPoint } from './ObjectRow';
 import type { Catalog } from './useCatalog';
+import type { Resource } from './useResources';
 import styles from './ObjectTree.module.css';
 
 type Props = {
   catalog: Catalog;
   group: ObjectGroup;
   search: string;
+  /** Index matches of the search in the selected schema, when it has any. */
+  found: Resource<ObjectDto[]> | null;
   selected: string | null;
   onSelect: (key: string) => void;
   onOpen: (object: ObjectRef, preview?: boolean) => void;
@@ -30,18 +33,37 @@ export function matching(
   );
 }
 
-/** One kind group; loads its objects the first time it is expanded. */
+/** The index matches of this section's kinds. */
+function inGroup(
+  found: Resource<ObjectDto[]>,
+  group: ObjectGroup,
+): Resource<ObjectDto[]> {
+  if (found.status !== 'ready') return found;
+  const data = found.data.filter((object) => group.kinds.includes(object.kind));
+  return { ...found, data };
+}
+
+/**
+ * One kind group; loads its objects the first time it is expanded. While
+ * the index answers the search, it lists the index matches instead.
+ */
 export function ObjectSection(props: Props): React.JSX.Element {
-  const { catalog, group, search } = props;
+  const { catalog, group, search, found } = props;
   const [open, setOpen] = useState(group.id === 'tables');
-  const resource = catalog.objects(group);
+  const listed = catalog.objects(group);
+  const resource = found ? inGroup(found, group) : listed;
   const expanded = open || !!search;
+  const indexed = found !== null;
   const { loadObjects } = catalog;
   useEffect(() => {
-    if (expanded && resource.status === 'idle') loadObjects(group);
-  }, [expanded, resource.status, loadObjects, group]);
+    if (expanded && !indexed && listed.status === 'idle') loadObjects(group);
+  }, [expanded, indexed, listed.status, loadObjects, group]);
   const items =
-    resource.status === 'ready' ? matching(resource.data, search) : [];
+    resource.status !== 'ready'
+      ? []
+      : indexed
+        ? resource.data
+        : matching(resource.data, search);
   const stop = tabStop(items, props.selected, catalog);
   return (
     <div hidden={!!search && resource.status === 'ready' && !items.length}>

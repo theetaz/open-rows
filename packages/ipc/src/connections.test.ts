@@ -34,13 +34,16 @@ it('wraps plain Tauri string rejections as internal errors', async () => {
   });
 });
 
-it('reads catalog objects with the profile, database, schema and kinds', async () => {
-  mockInvoke.mockResolvedValue([]);
-  expect(await listObjects('p', 'orders', 'public', ['table'])).toEqual([]);
+it('reads catalog objects with the profile, database, schema, kinds and freshness', async () => {
+  mockInvoke.mockResolvedValue({ data: [], stale: true });
+  const section = { schema: 'public', kinds: ['table' as const] };
+  expect(await listObjects('p', 'orders', section, false)).toEqual({
+    data: [],
+    stale: true,
+  });
   expect(mockInvoke).toHaveBeenCalledWith('catalog_objects', {
     profileId: 'p',
     database: 'orders',
-    schema: 'public',
-    kinds: ['table'],
+    request: { schema: 'public', kinds: ['table'], fresh: false },
   });
 });

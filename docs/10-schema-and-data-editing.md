@@ -14,13 +14,24 @@ flowchart TB
 ```
 
 - **Lazy:** each tree level loaded on expand; nothing pre-walks the whole database except the bounded `search_index` (names only).
-- **Persistent:** snapshots stored in the local store keyed by profile + database + server version so the tree renders instantly on reconnect (marked "refreshing" until validated).
+- **Persistent:** snapshots stored in the local store keyed by profile + database (+ server version, planned) so the tree renders instantly on reconnect (marked "refreshing" until validated).
 - **Invalidation:**
   - DDL statements run from the app invalidate the affected objects (from statement classification) — immediate.
   - Fingerprint check detects external changes cheaply; on change, refetch only the scopes that are expanded or recently used.
   - Manual refresh (⌘R on a node) always works.
 - **Isolation:** introspection uses the dedicated metadata session so it never queues behind a user query.
 - **Large catalogs:** pagination for lists > 5 000 children with "show more" and filter-as-you-type pushed down to the database (`LIKE`/`ILIKE`).
+
+### 1.1 Implementation notes (M1-16: schema cache)
+
+| Area | What exists |
+| --- | --- |
+| Crate | `crates/openrows-schema`, pure and synchronous: `Scope` (`Databases`, `Schemas`, `Objects { schema, kinds }` — one tree section — and `Index`), `Listing`, `SchemaCache` and `NameIndex`. The app runs the reads on the metadata sessions (`connections/catalog_cache.rs`); the cache never does driver I/O. Chosen over keeping the cache in the webview so the tree, ⌘P and SQL completion share one copy, snapshots are written without crossing IPC, and search runs off the UI thread without shipping 50 000 names to a web worker. |
+| Freshness | Listings are keyed by connection profile + database and scope. A live read is *fresh*; a listing loaded from a snapshot, or invalidated since it was read, is *stale*. Every catalog command takes `fresh`: without it the cache answers (stale or not, reading live only on a miss); the reply carries `stale`, and the webview shows stale data at once with a subtle "Refreshing…" note above the tree and immediately re-reads it with `fresh`. A read that overlapped an invalidation is stored stale (per-database epoch), so it is read again. |
+| Snapshots | Every live read is written (off the async runtime, best effort) to `schema_snapshots` in the local store (docs/15 §2, v5) as versioned JSON. The first read of a connection database after launch loads its snapshots; a payload this build cannot decode is ignored. `connection_open` marks the connection stale, so reconnecting renders from memory or snapshot and refreshes in the background. Snapshots go with their connection (`profile_delete`) and after 60 days without a refresh (pruned at startup). There is no server-version key or fingerprint yet: the background refresh is the validation. |
+| Invalidation | `query_execute` keeps each statement's `openrows-sql` class; after the run (also when it failed or was cancelled part-way) any `Ddl` statement marks the connection stale and emits `catalog-changed { profileId, database }`. The structure editor (`table_alter`) does the same after a commit. Row edits only generate DML and never invalidate. The webview re-reads everything it has loaded for that connection (databases, schemas, open sections, the index) in place and bumps the completion revision; unloaded sections are read fresh when expanded. ⌘R calls `catalog_invalidate` and does the same. Invalidation is per connection, not per affected object: statement classification does not name the target schema. |
+| Name index | `catalog_search { query, schema, limit, fresh }` reads (or serves) the driver's `search_index` (tables, views, materialized views, foreign tables, sequences and routines of every user schema; capped at 50 000 on every engine) and searches it in Rust. `NameIndex` keeps lower-cased `name` and `schema.name` keys, so a query is one linear pass: exact name, name prefix, qualified prefix (`public.ord`), name substring, qualified substring, then in-order letters (`cstm` → `customers`), index order within a rank; it returns the best `limit` and the total. ⌘P asks for 100 matches per keystroke (the palette shows them in that order and never chooses a match of an older query); the sidebar search asks for 1 000 in the selected schema and lists them under their sections without loading them (system schemas, which the index skips, still filter their loaded sections); SQL completion reads the whole index once per revision (a stale reply is used once and read again). |
+| Tests | `openrows-schema` unit tests (scope keys, codec round trip, ranking, limits), cache tests with a real local store (relaunch restores stale snapshots, invalidation races, eviction), and one happy path per engine — `SQLite` in `just test`, PostgreSQL in `just test-pg`, MySQL and MariaDB in `just test-mysql` — that lists, snapshots, restores, searches and refreshes after a `DROP TABLE`. Webview tests cover stale-while-refresh resources, the Refreshing note, re-reads after `catalog-changed` and ⌘R, the index-backed sidebar search and ⌘P. |
 
 ## 2. Object model
 
@@ -56,7 +67,7 @@ classDiagram
 
 ### 2.1 Implementation notes (D-06: PostgreSQL schema tree)
 
-D-06 implements the listing slice of §1–§2 for PostgreSQL. There is no `openrows-schema` crate, no persistent snapshot, no fingerprint check and no pagination yet; the webview caches each read until **Refresh**.
+D-06 implements the listing slice of §1–§2 for PostgreSQL. M1-16 (§1.1) added the `openrows-schema` cache with persisted snapshots behind these commands; there is no fingerprint check and no pagination yet.
 
 | Area | What exists |
 | --- | --- |
@@ -64,9 +75,9 @@ D-06 implements the listing slice of §1–§2 for PostgreSQL. There is no `open
 | Introspector | `PgSession::list_databases`, `list_schemas`, `list_objects(schema, kinds)` and `search_index` in `crates/openrows-driver-postgres/src/introspect/`, with the SQL in `introspect/sql/*.sql` (docs/05 §5). Each listing is one simple query. The schema name and kinds are quoted literals (libpq `PQescapeLiteral` rules) until the driver has bind parameters. |
 | What is listed | Databases: `NOT datistemplate AND datallowconn`; `postgres` and the RDS, Azure and Cloud SQL maintenance databases are flagged `system`. Schemas: TOAST and temporary schemas are skipped; `pg_catalog` and `information_schema` are flagged `system`. Objects: tables (ordinary and partitioned), foreign tables, views, materialized views, sequences, functions (including window functions) and procedures. Partitions and extension-owned routines are skipped. Aggregates, triggers, indexes and types come later. |
 | Row estimates | `pg_class.reltuples` for tables and materialized views, `None` when never analysed (`-1`). The UI prefixes them with `~` and calls them estimates. |
-| Name index | `search_index` lists tables, views, sequences and routines in every non-system schema in one query, capped at 20 000 rows. Quick open (⌘P) uses it. |
+| Name index | `search_index` lists tables, views, sequences and routines in every non-system schema in one query, capped at 50 000 rows (M1-16). The schema cache searches it for quick open (⌘P), the sidebar search and SQL completion (§1.1). |
 | Metadata sessions | `connections/metadata.rs` in the app keeps one `PgSession` per (connection, database), opened lazily on the first catalog read with `application_name` `<name> metadata`. Reads for the same key run one at a time and never pass through the user session's actor. PostgreSQL cannot change database on a connection, so each opened database gets its own metadata session. A non-server error drops the session, and the next read reconnects. `session_close` closes a database's metadata session with its last user session and `connection_close` (on disconnect) closes all of a connection's metadata sessions (since UX-B, see docs/06 §8). |
-| Commands | `catalog_databases`, `catalog_schemas`, `catalog_objects(kinds)`, `catalog_search` (all take `profileId` and `database`); `catalog_databases` reads through the connection's home database. DTOs: `DatabaseDto`, `SchemaDto`, `ObjectDto` (`rowEstimate` is a number) and `ObjectKindDto`. Errors use the D-05 `IpcError`. |
+| Commands | `catalog_databases(fresh)`, `catalog_schemas(fresh)`, `catalog_objects({ schema, kinds, fresh })`, `catalog_search({ query, schema, limit, fresh })` (all take `profileId` and `database`) and `catalog_invalidate(profileId)`; `catalog_databases` reads through the connection's home database. Listings reply `CatalogReply<T> { data, stale }`, the search `{ objects, total, stale }` (§1.1). DTOs: `DatabaseDto`, `SchemaDto`, `ObjectDto` (`rowEstimate` is a number) and `ObjectKindDto`. Errors use the D-05 `IpcError`. |
 | Tests | Unit tests cover literal quoting, row mapping and malformed rows, DTO serialisation and target derivation. `just test-pg` creates a schema with a table, view, materialized view, sequence, function and procedure and checks every listing, the row estimate and the name index. |
 
 ### 2.2 Implementation notes (D-08: table structure)

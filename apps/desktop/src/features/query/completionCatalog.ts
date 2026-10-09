@@ -34,41 +34,57 @@ function toObjects(objects: readonly ObjectDto[]): CatalogObject[] {
   });
 }
 
+/** A read and whether it came from a schema-cache snapshot. */
+type Read<T> = { data: T; stale: boolean };
+
 /**
  * Reads of one connection database, each made at most once per revision:
  * failures are kept too, so a missing table is not re-read per keystroke.
+ * Stale replies (from a snapshot, refreshing in the background) are used
+ * once and read again next time.
  */
 function readOnce(profileId: string, database: string): CompletionCatalog {
   const reads = new Map<string, Promise<unknown>>();
-  const once = <T>(key: string, read: () => Promise<T>): Promise<T> => {
+  const once = <T>(key: string, read: () => Promise<Read<T>>): Promise<T> => {
     const cached = reads.get(key) as Promise<T> | undefined;
     if (cached) return cached;
     const started = read();
-    started.catch(() => undefined);
-    reads.set(key, started);
-    return started;
+    const data = started.then((reply) => reply.data);
+    data.catch(() => undefined);
+    started.then(
+      (reply) => {
+        if (reply.stale) reads.delete(key);
+      },
+      () => undefined,
+    );
+    reads.set(key, data);
+    return data;
   };
   return {
     schemas: () =>
-      once('schemas', async () =>
-        (await listSchemas(profileId, database)).map(({ name, system }) => ({
-          name,
-          system,
-        })),
-      ),
+      once('schemas', async () => {
+        const reply = await listSchemas(profileId, database, false);
+        const data = reply.data.map(({ name, system }) => ({ name, system }));
+        return { data, stale: reply.stale };
+      }),
     objects: () =>
-      once('objects', async () =>
-        toObjects(await searchCatalog(profileId, database)),
-      ),
+      once('objects', async () => {
+        const request = { query: '', schema: null, limit: null, fresh: false };
+        const reply = await searchCatalog(profileId, database, request);
+        return { data: toObjects(reply.objects), stale: reply.stale };
+      }),
     objectsIn: (schema) =>
-      once(`objects\n${schema}`, async () =>
-        toObjects(await listObjects(profileId, database, schema, KINDS)),
-      ),
+      once(`objects\n${schema}`, async () => {
+        const section = { schema, kinds: KINDS };
+        const reply = await listObjects(profileId, database, section, false);
+        return { data: toObjects(reply.data), stale: reply.stale };
+      }),
     columns: (schema, table) =>
       once(`columns\n${schema}\n${table}`, async () => {
         const target = { profileId, database, schema, table };
         const { columns } = await tableStructure(target);
-        return columns.map(({ name, dataType }) => ({ name, dataType }));
+        const data = columns.map(({ name, dataType }) => ({ name, dataType }));
+        return { data, stale: false };
       }),
   };
 }

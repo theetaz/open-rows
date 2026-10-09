@@ -24,6 +24,7 @@ openrows-driver-sqlite = { path = "../../../crates/openrows-driver-sqlite" }
 openrows-export = { path = "../../../crates/openrows-export" }
 openrows-net = { path = "../../../crates/openrows-net" }
 openrows-results = { path = "../../../crates/openrows-results" }
+openrows-schema = { path = "../../../crates/openrows-schema" }
 openrows-secrets = { path = "../../../crates/openrows-secrets" }
 openrows-sql = { path = "../../../crates/openrows-sql" }
 openrows-store = { path = "../../../crates/openrows-store" }

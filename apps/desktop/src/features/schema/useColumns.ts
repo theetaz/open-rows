@@ -46,8 +46,12 @@ ${path(object)}
         schema: object.schema,
         table: object.name,
       };
+      // Columns are not in the schema cache (M1-17): every read is live.
       resources.load(key(object), () =>
-        tableStructure(request).then((structure) => structure.columns),
+        tableStructure(request).then((structure) => ({
+          data: structure.columns,
+          stale: false,
+        })),
       );
     },
     expanded: (object) => open.has(owner + path(object)),

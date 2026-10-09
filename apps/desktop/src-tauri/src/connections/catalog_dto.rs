@@ -55,12 +55,12 @@ pub(crate) struct DatabaseDto {
     comment: Option<String>,
 }
 
-impl From<DatabaseSummary> for DatabaseDto {
-    fn from(database: DatabaseSummary) -> Self {
+impl From<&DatabaseSummary> for DatabaseDto {
+    fn from(database: &DatabaseSummary) -> Self {
         Self {
-            name: database.name,
+            name: database.name.clone(),
             system: database.system,
-            comment: database.comment,
+            comment: database.comment.clone(),
         }
     }
 }
@@ -75,12 +75,12 @@ pub(crate) struct SchemaDto {
     comment: Option<String>,
 }
 
-impl From<SchemaSummary> for SchemaDto {
-    fn from(schema: SchemaSummary) -> Self {
+impl From<&SchemaSummary> for SchemaDto {
+    fn from(schema: &SchemaSummary) -> Self {
         Self {
-            name: schema.name,
+            name: schema.name.clone(),
             system: schema.system,
-            comment: schema.comment,
+            comment: schema.comment.clone(),
         }
     }
 }
@@ -99,21 +99,67 @@ pub(crate) struct ObjectDto {
     comment: Option<String>,
 }
 
-impl From<ObjectSummary> for ObjectDto {
+impl From<&ObjectSummary> for ObjectDto {
     #[expect(
         clippy::cast_precision_loss,
         reason = "row estimates are approximate; f64 keeps 53 bits, beyond any real table"
     )]
-    fn from(object: ObjectSummary) -> Self {
+    fn from(object: &ObjectSummary) -> Self {
         Self {
-            schema: object.schema,
-            name: object.name,
+            schema: object.schema.clone(),
+            name: object.name.clone(),
             kind: object.kind.into(),
-            arguments: object.arguments,
+            arguments: object.arguments.clone(),
             row_estimate: object.row_estimate.map(|rows| rows as f64),
-            comment: object.comment,
+            comment: object.comment.clone(),
         }
     }
+}
+
+/// A catalog listing (M1-16): `stale` when it came from a persisted
+/// snapshot or was invalidated (reconnect, DDL); the webview shows it at
+/// once and reads it again with `fresh`.
+#[derive(Clone, Debug, PartialEq, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CatalogReply<T> {
+    pub(crate) data: T,
+    pub(crate) stale: bool,
+}
+
+/// One tree section: objects of `kinds` in `schema`.
+#[derive(Clone, Debug, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ObjectsRequest {
+    pub(crate) schema: String,
+    pub(crate) kinds: Vec<ObjectKindDto>,
+    /// Re-read from the server instead of serving the cache.
+    pub(crate) fresh: bool,
+}
+
+/// A name search over a database's cached index (sidebar search, quick
+/// open, SQL completion).
+#[derive(Clone, Debug, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CatalogSearchRequest {
+    /// Case-insensitive prefix or substring of `name` or `schema.name`;
+    /// empty lists everything.
+    pub(crate) query: String,
+    /// Only objects of this schema.
+    pub(crate) schema: Option<String>,
+    /// Most objects returned; `None` for every match.
+    pub(crate) limit: Option<u32>,
+    /// Re-read the index from the server first.
+    pub(crate) fresh: bool,
+}
+
+/// The best matches, best first, and how many objects matched in all.
+#[derive(Clone, Debug, PartialEq, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CatalogSearchReply {
+    pub(crate) objects: Vec<ObjectDto>,
+    pub(crate) total: u32,
+    /// The index came from a snapshot or was invalidated.
+    pub(crate) stale: bool,
 }
 
 #[cfg(test)]
@@ -132,7 +178,7 @@ mod tests {
 
     #[test]
     fn objects_serialize_with_estimates_and_arguments() -> Result<(), serde_json::Error> {
-        let table = ObjectDto::from(ObjectSummary {
+        let table = ObjectDto::from(&ObjectSummary {
             schema: "public".to_owned(),
             name: "orders".to_owned(),
             kind: ObjectKind::Table,
@@ -150,13 +196,13 @@ mod tests {
 
     #[test]
     fn databases_and_schemas_keep_the_system_flag() -> Result<(), serde_json::Error> {
-        let database = DatabaseDto::from(DatabaseSummary {
+        let database = DatabaseDto::from(&DatabaseSummary {
             name: "postgres".to_owned(),
             system: true,
             comment: None,
         });
         assert_eq!(serde_json::to_value(database)?["system"], true);
-        let schema = SchemaDto::from(SchemaSummary {
+        let schema = SchemaDto::from(&SchemaSummary {
             name: "sales".to_owned(),
             system: false,
             comment: Some("Sales data".to_owned()),

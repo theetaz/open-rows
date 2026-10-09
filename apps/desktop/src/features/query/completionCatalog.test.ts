@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { expect, it, vi } from 'vitest';
 import { listSchemas, searchCatalog, tableStructure } from '@openrows/ipc';
-import type { ObjectDto } from '@openrows/ipc';
+import type { CatalogSearchReply, ObjectDto } from '@openrows/ipc';
 import { completionCatalog, currentCatalog } from './completionCatalog';
 import { cursorText } from './cursor';
 import { defaultEditorSettings, parseEditorSettings } from './editorSettings';
@@ -19,13 +19,21 @@ const object = (name: string, kind: ObjectDto['kind']): ObjectDto => ({
   comment: null,
 });
 
+const indexed = (objects: ObjectDto[], stale = false): CatalogSearchReply => ({
+  objects,
+  total: objects.length,
+  stale,
+});
+
 it('reads each catalog part once per revision and maps object kinds', async () => {
-  vi.mocked(searchCatalog).mockResolvedValue([
-    object('users', 'table'),
-    object('active_users', 'materializedView'),
-    object('touch', 'procedure'),
-    object('users_id_seq', 'sequence'),
-  ]);
+  vi.mocked(searchCatalog).mockResolvedValue(
+    indexed([
+      object('users', 'table'),
+      object('active_users', 'materializedView'),
+      object('touch', 'procedure'),
+      object('users_id_seq', 'sequence'),
+    ]),
+  );
   const target = { profileId: 'p1', database: 'orders', revision: '1:0' };
   const catalog = completionCatalog(target);
   expect(completionCatalog(target)).toBe(catalog);
@@ -39,6 +47,27 @@ it('reads each catalog part once per revision and maps object kinds', async () =
   const refreshed = completionCatalog({ ...target, revision: '1:1' });
   expect(refreshed).not.toBe(catalog);
   await refreshed.objects();
+  expect(searchCatalog).toHaveBeenCalledTimes(2);
+  expect(searchCatalog).toHaveBeenLastCalledWith('p1', 'orders', {
+    query: '',
+    schema: null,
+    limit: null,
+    fresh: false,
+  });
+});
+
+it('uses a snapshot reply once and reads it again on the next completion', async () => {
+  vi.mocked(searchCatalog)
+    .mockResolvedValueOnce(indexed([object('old', 'table')], true))
+    .mockResolvedValueOnce(indexed([object('new', 'table')]));
+  const catalog = completionCatalog({
+    profileId: 'p4',
+    database: 'orders',
+    revision: '1:0',
+  });
+  expect((await catalog.objects()).map(({ name }) => name)).toEqual(['old']);
+  expect((await catalog.objects()).map(({ name }) => name)).toEqual(['new']);
+  await catalog.objects();
   expect(searchCatalog).toHaveBeenCalledTimes(2);
 });
 
@@ -55,9 +84,10 @@ it('keeps failed reads for the revision instead of retrying per keystroke', asyn
 });
 
 it('reads through the current catalog and offers nothing offline', async () => {
-  vi.mocked(listSchemas).mockResolvedValue([
-    { name: 'public', system: false, comment: null },
-  ]);
+  vi.mocked(listSchemas).mockResolvedValue({
+    data: [{ name: 'public', system: false, comment: null }],
+    stale: false,
+  });
   let online = false;
   const catalog = currentCatalog(() =>
     online
