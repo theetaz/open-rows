@@ -317,6 +317,7 @@ export function ipcStub(
     CommandError: class CommandError extends Error {},
     executeQuery: vi.fn(),
     cancelQuery: vi.fn(() => Promise.resolve()),
+    explainQuery: vi.fn(() => new Promise(() => {})),
     releaseResults: vi.fn(() => Promise.resolve()),
     searchHistory: vi.fn(() => Promise.resolve([])),
     deleteHistory: vi.fn(() => Promise.resolve(true)),

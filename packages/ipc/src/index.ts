@@ -85,6 +85,19 @@ export {
   releaseResults,
   searchHistory,
 } from './queries';
+/** Explain and explain-analyze plans with hotspots (M2-06, FR-EDIT-07). */
+export { explainQuery } from './explain';
+export type {
+  ExplainReply,
+  ExplainRequest,
+  PlanBuffersDto,
+  PlanDetailDto,
+  PlanDto,
+  PlanHotspotDto,
+  PlanNodeDto,
+  PlanRawFormatDto,
+  PlanWeightDto,
+} from './generated/bindings';
 /** Exact values of single result cells for the value inspector (M1-20). */
 export { resultCellInfo, resultCellValue } from './cells';
 export type {

@@ -15,6 +15,7 @@ function tabAction(input: {
   file: (action: FileAction) => void;
   exportResults: () => void;
   insertSnippet: () => void;
+  explain: (analyze: boolean) => void;
 }): (id: TabCommand) => void {
   const commands: Record<TabCommand, () => void> = {
     'run-current': () => {
@@ -25,6 +26,12 @@ function tabAction(input: {
     },
     'run-no-limit': input.actions.runUnlimited,
     cancel: input.cancel,
+    explain: () => {
+      input.explain(false);
+    },
+    'explain-analyze': () => {
+      input.explain(true);
+    },
     beautify: () => {
       input.format('beautify');
     },
@@ -72,6 +79,8 @@ export function useTabAction(input: {
   tabId: string;
   /** Insert Snippet…: open the snippet picker. */
   onSnippet: () => void;
+  /** Explain (or Explain Analyze) the statement at the cursor or the selection. */
+  onExplain: (analyze: boolean) => void;
 }): [
   act: (id: TabCommand) => void,
   onExportable: (exportShown: (() => void) | null) => void,
@@ -83,6 +92,7 @@ export function useTabAction(input: {
     format: input.format,
     file: input.files.act,
     insertSnippet: input.onSnippet,
+    explain: input.onExplain,
     exportResults: () => {
       exportShown?.();
     },

@@ -31,6 +31,8 @@ import type { QueryRuns } from './useQueryRuns';
 import type { QueryTabs } from './useQueryTabs';
 import type { TabCommand } from '../commands';
 import type { SelectedCell } from './cell';
+import { ExplainSheet, explainResultTab, useExplain } from '../explain';
+import type { ExplainControls } from '../explain';
 import styles from './Query.module.css';
 
 type QueryTabProps = {
@@ -101,6 +103,7 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
   const files = useTabFiles(tab, editor, props.tabs);
   const run = runs.runOf(tab.id);
   const actions = useRunActions(editor, settings, props);
+  const explain = useExplain(tab.id, props.sessionId, editor);
   const [act, onExportable, claim] = useTabAction({
     actions,
     format,
@@ -108,6 +111,7 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
     runs,
     tabId: tab.id,
     onSnippet: startPicking,
+    onExplain: explain.run,
   });
   return (
     <section
@@ -136,6 +140,7 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
         format={format}
         notice={props.notice ?? formatFailure ?? files.failure}
         onName={startNaming}
+        onExplain={explain.run}
       />
       <TabParams
         {...props}
@@ -149,6 +154,7 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
         run={run}
         settings={settings}
         onExportable={onExportable}
+        explain={explain}
       />
       <TabSheets
         {...props}
@@ -213,6 +219,7 @@ function TabBar(
     format: (kind: FormatKind) => void;
     notice: string | null;
     onName: () => void;
+    onExplain: (analyze: boolean) => void;
   },
 ): React.JSX.Element {
   const { settings, actions, run } = props;
@@ -243,6 +250,7 @@ function TabBar(
         props.runs.cancel(props.tab.id);
       }}
       onFormat={props.format}
+      onExplain={props.onExplain}
     />
   );
 }
@@ -253,6 +261,7 @@ function TabResults(
     run: RunState;
     settings: EditorSettings;
     onExportable: (exportShown: (() => void) | null) => void;
+    explain: ExplainControls;
   },
 ): React.JSX.Element {
   return (
@@ -265,6 +274,11 @@ function TabResults(
         engine={props.connection.engine}
         onCell={props.onCell}
         onExportable={props.onExportable}
+        extra={explainResultTab(props.explain)}
+      />
+      <ExplainSheet
+        explain={props.explain}
+        connection={props.connection.name}
       />
       <footer className={styles.status} role="status" aria-label="Query status">
         {statusText(props.run)}

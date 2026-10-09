@@ -36,13 +36,7 @@ export function menuEnabled(input: {
     'backup-database': connected,
     'restore-database': connected,
     'export-results': Boolean(input.tab) && !processes && connected,
-    'run-current': query && connected,
-    'run-all': query && connected,
-    cancel: query && connected,
-    beautify: query,
-    uglify: query,
-    'insert-snippet': query,
-    'run-no-limit': query && connected,
+    ...queryEnabled(query, connected),
     'split-right': Boolean(input.tab),
     'split-down': Boolean(input.tab),
     'focus-pane': Boolean(input.tab),
@@ -100,6 +94,25 @@ function connectionEnabled(
     quick: connected,
     'show-er-diagram': connected,
     safe: Boolean(profile) && !input.prod,
+  };
+}
+
+/** Query items need a query tab; those that run SQL, a session. */
+function queryEnabled(
+  query: boolean,
+  connected: boolean,
+): Record<string, boolean> {
+  const runs = query && connected;
+  return {
+    'run-current': runs,
+    'run-all': runs,
+    cancel: runs,
+    explain: runs,
+    'explain-analyze': runs,
+    beautify: query,
+    uglify: query,
+    'insert-snippet': query,
+    'run-no-limit': runs,
   };
 }
 

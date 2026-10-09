@@ -20,6 +20,8 @@ use std::num::NonZeroUsize;
 use std::path::Path;
 use std::sync::Arc;
 
+#[path = "mysql/explain.rs"]
+mod explain;
 #[path = "mysql/limits.rs"]
 mod limits;
 #[path = "mysql/resilience.rs"]

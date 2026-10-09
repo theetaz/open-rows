@@ -70,6 +70,7 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
         processes::process_signal,
         queries::commands::query_execute,
         queries::commands::query_cancel,
+        queries::explain::query_explain,
         queries::commands::results_release,
         queries::commands::history_search,
         queries::commands::history_delete,

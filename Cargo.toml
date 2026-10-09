@@ -3,6 +3,7 @@ members = [
     "crates/openrows-types",
     "crates/openrows-core",
     "crates/openrows-results",
+    "crates/openrows-explain",
     "crates/openrows-export",
     "crates/openrows-import",
     "crates/openrows-dump",

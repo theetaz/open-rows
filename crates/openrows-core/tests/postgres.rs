@@ -3,6 +3,8 @@
 //!
 //! Ignored by `just test`; `just test-pg [version]` starts the container, runs
 //! them with `--run-ignored only` and removes it (skipping when Docker is absent).
+#[path = "postgres/explain.rs"]
+mod explain;
 #[path = "postgres/export.rs"]
 mod export;
 #[path = "postgres/limits.rs"]

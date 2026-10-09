@@ -131,6 +131,13 @@ impl SessionManager {
         self.with_entry(session, |entry| entry.shared.state())
     }
 
+    /// Whether the session held an open transaction after its last
+    /// statement, as its driver reports it; `None` for unknown sessions.
+    #[must_use]
+    pub fn in_transaction(&self, session: SessionId) -> Option<bool> {
+        self.with_entry(session, |entry| entry.shared.in_transaction())
+    }
+
     /// Spawn a session actor that first awaits `connect`, then serves commands.
     ///
     /// # Errors

@@ -36,6 +36,8 @@ type Props = {
   onRunDefault: () => void;
   onCancel: () => void;
   onFormat: (kind: FormatKind) => void;
+  /** Explain (`analyze`: Explain Analyze) the statement at the cursor or the selection. */
+  onExplain?: ((analyze: boolean) => void) | undefined;
 };
 
 function CursorText({ store }: { store: CursorStore }): React.JSX.Element {
@@ -76,6 +78,39 @@ function RunButton(props: Props): React.JSX.Element {
       <Kbd variant="inline" aria-hidden="true">
         ⌘↵
       </Kbd>
+    </SplitButton>
+  );
+}
+
+/** Explain, with Explain Analyze in its menu. */
+function ExplainButton(props: {
+  ready: boolean;
+  onExplain: (analyze: boolean) => void;
+}): React.JSX.Element {
+  const entry = (label: string, analyze: boolean, shortcut: string) => ({
+    kind: 'item' as const,
+    label,
+    shortcut,
+    disabled: !props.ready,
+    run: () => {
+      props.onExplain(analyze);
+    },
+  });
+  return (
+    <SplitButton
+      label="Explain"
+      title="Explain the statement at the cursor or the selection (⌥⌘E)"
+      disabled={!props.ready}
+      onClick={() => {
+        props.onExplain(false);
+      }}
+      menuLabel="Explain options"
+      entries={[
+        entry('Explain', false, '⌥⌘E'),
+        entry('Explain Analyze (runs the statement)', true, '⌥⇧⌘E'),
+      ]}
+    >
+      Explain
     </SplitButton>
   );
 }
@@ -125,6 +160,9 @@ export function EditorBar(props: Props): React.JSX.Element {
       >
         Beautify
       </SplitButton>
+      {props.onExplain && (
+        <ExplainButton ready={props.run.ready} onExplain={props.onExplain} />
+      )}
       <RunButton {...props} />
     </div>
   );

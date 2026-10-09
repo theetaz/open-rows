@@ -1,0 +1,8 @@
+-> Limit: 3 row(s)  (cost=1035 rows=3) (actual time=10.9..10.9 rows=3 loops=1)
+    -> Sort: o.created, limit input to 3 row(s) per chunk  (cost=1035 rows=30317) (actual time=10.9..10.9 rows=3 loops=1)
+        -> Filter: (o.total > (select #2))  (cost=1035 rows=30317) (actual time=3.68..9.94 rows=15000 loops=1)
+            -> Table scan on o  (cost=1035 rows=30317) (actual time=0.34..4.18 rows=30000 loops=1)
+            -> Select #2 (subquery in condition; run only once)
+                -> Aggregate: avg(orders.total)  (cost=6088 rows=1) (actual time=3.23..3.23 rows=1 loops=1)
+                    -> Table scan on orders  (cost=3056 rows=30317) (actual time=0.177..1.93 rows=30000 loops=1)
+
