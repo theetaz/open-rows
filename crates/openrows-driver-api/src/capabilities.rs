@@ -49,11 +49,17 @@ pub enum Feature {
     /// Connections can run through a route such as an SSH tunnel or proxy
     /// (`ConnectRequest::via`).
     Routes,
+    /// `ConnectRequest::startup_commands` run after every connect, and a
+    /// failing one fails the connect naming it (FR-CONN-10).
+    StartupCommands,
+    /// `Catalog::schema_fingerprint` returns a digest that DDL changes, so
+    /// the app notices schema changes made outside it (M1-16).
+    SchemaFingerprint,
 }
 
 impl Feature {
     /// Every feature, in documentation order.
-    pub const ALL: [Self; 10] = [
+    pub const ALL: [Self; 12] = [
         Self::Cancel,
         Self::BindParameters,
         Self::MultipleDatabases,
@@ -64,6 +70,8 @@ impl Feature {
         Self::TransactionalDdl,
         Self::Tls,
         Self::Routes,
+        Self::StartupCommands,
+        Self::SchemaFingerprint,
     ];
 }
 
@@ -113,6 +121,6 @@ mod tests {
             ..FILE
         };
         assert!(!no_catalog.lists(ObjectKind::Table));
-        assert_eq!(Feature::ALL.len(), 10);
+        assert_eq!(Feature::ALL.len(), 12);
     }
 }

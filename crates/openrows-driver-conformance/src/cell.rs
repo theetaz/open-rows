@@ -7,10 +7,12 @@ use std::fmt::Write as _;
 use arrow_array::cast::AsArray;
 use arrow_array::types::{
     Date32Type, Decimal128Type, Float32Type, Float64Type, Int8Type, Int16Type, Int32Type,
-    Int64Type, UInt64Type,
+    Int64Type, IntervalMonthDayNanoType, Time64MicrosecondType, UInt64Type,
 };
 use arrow_array::{Array, ArrowPrimitiveType, PrimitiveArray};
 use arrow_schema::DataType;
+use arrow_schema::{IntervalUnit, TimeUnit};
+use openrows_driver_api::text::{IntervalParts, write_array_item, write_clock};
 
 use crate::Failure;
 
@@ -32,7 +34,8 @@ where
 
 /// The cell's value as text: integers and floats in Rust's shortest form,
 /// booleans `true`/`false`, binary as lower-case hex, decimals with their
-/// scale, dates as `YYYY-MM-DD`; `None` for NULL.
+/// scale, dates as `YYYY-MM-DD`, times as `HH:MM:SS[.ffffff]`, intervals and
+/// lists as `PostgreSQL` prints them; `None` for NULL.
 ///
 /// # Errors
 /// [`Failure::Contract`] for an Arrow type no driver should produce.
@@ -58,6 +61,24 @@ pub(crate) fn text(array: &dyn Array, row: usize) -> Result<Option<String>, Fail
             .value_as_date(row)
             .map(|date| date.to_string())
             .unwrap_or_default(),
+        DataType::Time64(TimeUnit::Microsecond) => {
+            let micros = array.as_primitive::<Time64MicrosecondType>().value(row);
+            let mut out = String::new();
+            let _ = write_clock(micros.unsigned_abs(), &mut out);
+            out
+        }
+        DataType::Interval(IntervalUnit::MonthDayNano) => {
+            let value = array.as_primitive::<IntervalMonthDayNanoType>().value(row);
+            let parts = IntervalParts {
+                months: value.months,
+                days: value.days,
+                micros: value.nanoseconds / 1_000,
+            };
+            let mut out = String::new();
+            let _ = parts.write(&mut out);
+            out
+        }
+        DataType::List(_) => list(array, row)?,
         other => {
             return Err(Failure::Contract(format!(
                 "no text form for Arrow type {other}"
@@ -65,6 +86,25 @@ pub(crate) fn text(array: &dyn Array, row: usize) -> Result<Option<String>, Fail
         }
     };
     Ok(Some(value))
+}
+
+/// `{1,NULL,"a b"}`: each item's text quoted like `array_out`.
+fn list(array: &dyn Array, row: usize) -> Result<String, Failure> {
+    let items = array.as_list::<i32>().value(row);
+    let mut out = String::from("{");
+    for index in 0..items.len() {
+        if index > 0 {
+            out.push(',');
+        }
+        match text(items.as_ref(), index)? {
+            Some(item) => {
+                let _ = write_array_item(&item, &mut out);
+            }
+            None => out.push_str("NULL"),
+        }
+    }
+    out.push('}');
+    Ok(out)
 }
 
 #[cfg(test)]
@@ -87,7 +127,19 @@ mod tests {
         let date = Date32Array::from(vec![19_849]);
         assert_eq!(text(&date, 0)?, Some("2024-05-06".to_owned()));
         assert_eq!(text(&arrow_array::NullArray::new(1), 0)?, None);
-        let time = arrow_array::Time64MicrosecondArray::from(vec![1]);
+        let time = arrow_array::Time64MicrosecondArray::from(vec![3_723_500_000]);
+        assert_eq!(text(&time, 0)?, Some("01:02:03.5".to_owned()));
+        let interval = arrow_array::IntervalMonthDayNanoArray::from(vec![
+            arrow_array::types::IntervalMonthDayNano::new(14, 3, 0),
+        ]);
+        assert_eq!(text(&interval, 0)?, Some("1 year 2 mons 3 days".to_owned()));
+        let list =
+            arrow_array::ListArray::from_iter_primitive::<Int32Type, _, _>(vec![Some(vec![
+                Some(1),
+                None,
+            ])]);
+        assert_eq!(text(&list, 0)?, Some("{1,NULL}".to_owned()));
+        let time = arrow_array::Time32SecondArray::from(vec![1]);
         assert!(matches!(text(&time, 0), Err(Failure::Contract(_))));
         Ok(())
     }

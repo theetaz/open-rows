@@ -13,6 +13,7 @@ export function fixedValue(
   digits?: number,
 ): string {
   if (type.startsWith('Decimal')) return decimal(chunk, row, scaleOf(type));
+  if (type.startsWith('Interval')) return interval(chunk, row);
   if (type.startsWith('Timestamp')) return timestamp(chunk, row, type, digits);
   if (type.startsWith('Time')) return timeOfDay(chunk, row, type, digits);
   if (type.startsWith('Date32')) return date(chunk, row);
@@ -150,4 +151,57 @@ function hex(chunk: ColumnChunk, row: number): string {
   ).join('');
   if (chunk.stride !== 16) return `\\x${text}`;
   return `${text.slice(0, 8)}-${text.slice(8, 12)}-${text.slice(12, 16)}-${text.slice(16, 20)}-${text.slice(20)}`;
+}
+
+/** One `Interval<MONTH_DAY_NANO>` value: months, days (int32) and nanoseconds (int64). */
+function interval(chunk: ColumnChunk, row: number): string {
+  const view = new DataView(
+    chunk.values.buffer,
+    chunk.values.byteOffset + row * 16,
+    16,
+  );
+  return intervalText(
+    view.getInt32(0, true),
+    view.getInt32(4, true),
+    view.getBigInt64(8, true) / 1000n,
+  );
+}
+
+/** A non-zero `value unit(s)` part, signed `+` after a negative part. */
+function intervalPart(
+  value: number,
+  unit: string,
+  state: { parts: string[]; negative: boolean },
+): void {
+  if (value === 0) return;
+  const plus = state.negative && value > 0 ? '+' : '';
+  state.parts.push(`${plus}${String(value)} ${unit}${value === 1 ? '' : 's'}`);
+  state.negative = value < 0;
+}
+
+/**
+ * `PostgreSQL`'s `IntervalStyle = postgres` text, e.g.
+ * `1 year 2 mons -3 days +04:05:06.5`, so displayed intervals edit back exactly.
+ */
+export function intervalText(
+  months: number,
+  days: number,
+  micros: bigint,
+): string {
+  const state = { parts: [] as string[], negative: false };
+  intervalPart(Math.trunc(months / 12), 'year', state);
+  intervalPart(months % 12, 'mon', state);
+  intervalPart(days, 'day', state);
+  if (state.parts.length === 0 || micros !== 0n) {
+    const negative = micros < 0n;
+    const sign = negative ? '-' : state.negative ? '+' : '';
+    const magnitude = negative ? -micros : micros;
+    const seconds = magnitude / 1_000_000n;
+    const clock = [seconds / 3600n, (seconds / 60n) % 60n, seconds % 60n]
+      .map((part) => part.toString().padStart(2, '0'))
+      .join(':');
+    const fraction = fractionText(magnitude % 1_000_000n, 1_000_000n);
+    state.parts.push(`${sign}${clock}${fraction}`);
+  }
+  return state.parts.join(' ');
 }

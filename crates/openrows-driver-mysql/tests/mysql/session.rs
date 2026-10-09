@@ -30,7 +30,8 @@ async fn connects_with_stages_server_info_and_tls() -> TestResult {
             ConnectStage::Connect,
             ConnectStage::Tls,
             ConnectStage::Authenticate,
-            ConnectStage::ServerInfo
+            ConnectStage::ServerInfo,
+            ConnectStage::StartupCommands
         ]
     );
     assert!(
@@ -68,6 +69,29 @@ async fn wrong_passwords_and_missing_databases_are_typed() -> TestResult {
     let failed = connect(&missing, &mut ConnectTrace::default()).await;
     assert!(
         matches!(&failed, Err(DriverError::Server { message, .. }) if message.contains("Unknown database")),
+        "{:?}",
+        failed.err()
+    );
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "needs MySQL or MariaDB; run with `just test-mysql`"]
+async fn startup_commands_run_after_login_and_name_a_failure() -> TestResult {
+    let mut with_commands = request(SslMode::Prefer)?;
+    with_commands.startup_commands =
+        vec!["SET @openrows_boot = 41".to_owned(), "SELECT 1".to_owned()];
+    let mut session = connect(&with_commands, &mut ConnectTrace::default()).await?;
+    let mut sink = Collect::default();
+    session
+        .execute("SELECT @openrows_boot + 1 AS n", &mut sink)
+        .await?;
+    assert_eq!(sink.rows(), 1);
+    Box::new(session).close().await?;
+    with_commands.startup_commands = vec!["SET @a = 1".to_owned(), "SELEC 2".to_owned()];
+    let failed = connect(&with_commands, &mut ConnectTrace::default()).await;
+    assert!(
+        matches!(&failed, Err(DriverError::Server { message, .. }) if message.starts_with("startup command 2:")),
         "{:?}",
         failed.err()
     );

@@ -3,8 +3,8 @@
 use openrows_driver_api::catalog::ObjectKind;
 use openrows_driver_api::{Capabilities, Feature, Location};
 
-/// A database is its own only schema, DDL commits implicitly per statement
-/// and structure changes are not generated yet (docs/05 §13).
+/// A database is its own only schema and DDL commits implicitly per
+/// statement; structure changes are one `ALTER TABLE` (docs/05 §13).
 pub(crate) const CAPABILITIES: Capabilities = Capabilities {
     location: Location::Server,
     features: &[
@@ -13,8 +13,11 @@ pub(crate) const CAPABILITIES: Capabilities = Capabilities {
         Feature::MultipleDatabases,
         Feature::Catalog,
         Feature::RowEdits,
+        Feature::StructureChanges,
         Feature::Tls,
         Feature::Routes,
+        Feature::StartupCommands,
+        Feature::SchemaFingerprint,
     ],
     // `SEQUENCE` objects exist in `MariaDB` only.
     object_kinds: &[

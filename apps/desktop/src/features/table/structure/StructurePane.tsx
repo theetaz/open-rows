@@ -7,6 +7,7 @@ import { DdlPopover } from './DdlPopover';
 import { IndexEditor } from './IndexEditor';
 import { IndexSheet } from './IndexSheet';
 import { ItemMenu } from './ItemMenu';
+import { PartitionList } from './PartitionList';
 import { SchemaReview } from './SchemaReview';
 import { describe } from './schemaChanges';
 import { StructureHeader } from './StructureHeader';
@@ -89,6 +90,9 @@ export function StructurePane({
         <IndexEditor structure={structure} />
       ) : (
         <ColumnEditor structure={structure} />
+      )}
+      {structure.mode === 'structure' && !!schema.detail?.partitions.length && (
+        <PartitionList partitions={schema.detail.partitions} />
       )}
       {schema.error && !schema.review && (
         <p role="alert" className={tableStyles.banner}>

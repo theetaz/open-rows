@@ -9,7 +9,8 @@ use crate::simple::TextRow;
 use openrows_driver_api::DriverError;
 use openrows_driver_api::schema::{
     ColumnDetail, ConstraintDetail, ConstraintKind, ForeignTarget, Generated, IndexDetail,
-    RelationKind, TableDetail, TableInfo, TriggerDetail, TriggerEvent, TriggerTiming,
+    PartitionDetail, RelationKind, TableDetail, TableInfo, TriggerDetail, TriggerEvent,
+    TriggerTiming,
 };
 
 const COLUMNS_SQL: &str = include_str!("sql/detail-columns.sql");
@@ -17,6 +18,7 @@ const CONSTRAINTS_SQL: &str = include_str!("sql/constraints.sql");
 const INDEXES_SQL: &str = include_str!("sql/index-detail.sql");
 const TRIGGERS_SQL: &str = include_str!("sql/triggers.sql");
 const INFO_SQL: &str = include_str!("sql/table-info.sql");
+const PARTITIONS_SQL: &str = include_str!("sql/partitions.sql");
 
 impl PgSession {
     /// Columns, constraints, indexes, triggers, sizes and comment of
@@ -38,11 +40,17 @@ impl PgSession {
         let Some(info) = info.first().map(table_info).transpose()? else {
             return Ok(TableDetail::default());
         };
+        let partitions = if info.kind == RelationKind::PartitionedTable {
+            rows(&read(PARTITIONS_SQL).await?, partition)?
+        } else {
+            Vec::new()
+        };
         Ok(TableDetail {
             columns: rows(&read(COLUMNS_SQL).await?, column)?,
             constraints: rows(&read(CONSTRAINTS_SQL).await?, constraint)?,
             indexes: rows(&read(INDEXES_SQL).await?, index)?,
             triggers: rows(&read(TRIGGERS_SQL).await?, trigger)?,
+            partitions,
             info: Some(info),
         })
     }
@@ -96,6 +104,18 @@ fn constraint(row: &TextRow) -> Result<ConstraintDetail, DriverError> {
         definition: required(row, 2)?,
         columns: split_identifiers(&optional(row, 3).unwrap_or_default())?,
         references,
+    })
+}
+
+fn partition(row: &TextRow) -> Result<PartitionDetail, DriverError> {
+    Ok(PartitionDetail {
+        schema: required(row, 0)?,
+        name: required(row, 1)?,
+        bound: required(row, 2)?,
+        partitioned: flag(row, 3)?,
+        row_estimate: optional(row, 4)
+            .map(|text| text.parse().map_err(|_| malformed("partition estimate")))
+            .transpose()?,
     })
 }
 

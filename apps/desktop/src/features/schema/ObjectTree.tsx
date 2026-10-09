@@ -103,7 +103,8 @@ function noMatches(
   return objectGroups.every((group) => {
     const resource = catalog.objects(group);
     return (
-      resource.status === 'ready' && !matching(resource.data, search).length
+      resource.status === 'ready' &&
+      !matching(resource.data.objects, search).length
     );
   });
 }

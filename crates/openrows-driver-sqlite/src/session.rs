@@ -11,6 +11,7 @@ use openrows_driver_api::{
 use rusqlite::InterruptHandle;
 use tokio::sync::mpsc;
 
+use crate::catalog::sql as checked;
 use crate::stream::{self, Event, Job};
 use crate::worker::Worker;
 
@@ -33,6 +34,25 @@ impl SqliteSession {
             summary,
             policy: BatchPolicy::default(),
         }
+    }
+
+    /// Run the profile's startup commands in order, stepping through any
+    /// rows; the first failure names its command.
+    ///
+    /// # Errors
+    /// The failing command's `Server` error.
+    pub(crate) async fn run_startup_commands(
+        &mut self,
+        commands: Vec<String>,
+    ) -> Result<(), DriverError> {
+        self.worker
+            .call(move |connection| {
+                commands.iter().enumerate().try_for_each(|(index, sql)| {
+                    startup_command(connection, sql)
+                        .map_err(|error| error.in_startup_command(index))
+                })
+            })
+            .await?
     }
 
     async fn run(
@@ -130,4 +150,11 @@ impl CancelHandle for Interrupt {
         self.0.interrupt();
         Box::pin(async { Ok(()) })
     }
+}
+
+fn startup_command(connection: &rusqlite::Connection, sql: &str) -> Result<(), DriverError> {
+    let mut statement = checked(connection.prepare(sql))?;
+    let mut rows = statement.raw_query();
+    while checked(rows.next())?.is_some() {}
+    Ok(())
 }

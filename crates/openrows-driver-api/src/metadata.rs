@@ -19,3 +19,9 @@ pub const TEXT_FALLBACK: &str = "openrows.text_fallback";
 /// field (`MySQL` `DATETIME(3)` is `"3"`); displays pad the fraction to it so
 /// the shown text equals the server's own text form.
 pub const FRACTION_DIGITS: &str = "openrows.fraction_digits";
+/// Network address text (`PostgreSQL` `inet`, `cidr`) stored as `Utf8`.
+pub const INET_EXTENSION: &str = "openrows.inet";
+/// MAC address text (`PostgreSQL` `macaddr`, `macaddr8`) stored as `Utf8`.
+pub const MACADDR_EXTENSION: &str = "openrows.macaddr";
+/// Range or multirange text (`[1,10)`, `{[1,3),[5,7)}`) stored as `Utf8`.
+pub const RANGE_EXTENSION: &str = "openrows.range";

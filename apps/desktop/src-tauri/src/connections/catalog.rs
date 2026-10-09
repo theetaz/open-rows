@@ -6,14 +6,15 @@
 use openrows_driver_api::catalog::{ColumnSummary, ObjectKind, TableStructure};
 use openrows_driver_api::schema::TableDetail;
 use openrows_driver_api::{BoxFuture, Catalog, DriverError, catalog};
-use openrows_schema::{Listing, NameIndex, SchemaCache, Scope, SearchQuery};
-use tauri::{AppHandle, State};
+use openrows_schema::{DatabaseKey, Listing, NameIndex, SchemaCache, Scope, SearchQuery};
+use openrows_sql::StatementKind;
+use tauri::{AppHandle, Manager, State};
 
 use super::Connections;
-use super::catalog_cache::{CatalogRead, cached_read, mismatch, reply};
+use super::catalog_cache::{CatalogRead, after_statements, cached_read, mismatch, page, reply};
 use super::catalog_dto::{
-    CatalogReply, CatalogSearchReply, CatalogSearchRequest, DatabaseDto, ObjectDto, ObjectsRequest,
-    SchemaDto,
+    CatalogReply, CatalogSearchReply, CatalogSearchRequest, DatabaseDto, ObjectDto, ObjectsReply,
+    ObjectsRequest, SchemaDto,
 };
 use super::error::IpcError;
 use super::route::profile_target;
@@ -71,7 +72,8 @@ pub(crate) async fn catalog_schemas(
     reply(&cached, Listing::schemas, SchemaDto::from)
 }
 
-/// Objects of some kinds in one schema of `database`, ordered by name.
+/// Objects of some kinds in one schema of `database`, ordered by name: the
+/// first `limit` of them and the total, so large schemas list in pages.
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn catalog_objects(
@@ -79,7 +81,7 @@ pub(crate) async fn catalog_objects(
     profile_id: String,
     database: String,
     request: ObjectsRequest,
-) -> Result<CatalogReply<Vec<ObjectDto>>, IpcError> {
+) -> Result<ObjectsReply, IpcError> {
     let kinds: Vec<ObjectKind> = request.kinds.into_iter().map(ObjectKind::from).collect();
     let scope = Scope::objects(&request.schema, &kinds);
     let read = CatalogRead::new((profile_id, database), scope, request.fresh);
@@ -91,7 +93,37 @@ pub(crate) async fn catalog_objects(
         })
     })
     .await?;
-    reply(&cached, Listing::objects, ObjectDto::from)
+    page(&cached, request.limit)
+}
+
+/// On window focus: compare the server's schema fingerprint with the one
+/// seen before; when DDL ran outside the app, mark the connection's cache
+/// stale and tell the webview (`catalog-changed`), which reads it again.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn catalog_check(
+    app: AppHandle,
+    profile_id: String,
+    database: String,
+) -> Result<bool, IpcError> {
+    let connections = app.state::<Connections>();
+    let target = (profile_id.as_str(), database.as_str());
+    let fingerprint =
+        read_catalog(&connections, target, |catalog| catalog.schema_fingerprint()).await?;
+    let Some(fingerprint) = fingerprint else {
+        return Ok(false);
+    };
+    let key = DatabaseKey {
+        profile_id: profile_id.clone(),
+        database: database.clone(),
+    };
+    let changed = app
+        .state::<SchemaCache>()
+        .observe_fingerprint(&key, fingerprint);
+    if changed {
+        after_statements(&app, target, [StatementKind::Ddl]);
+    }
+    Ok(changed)
 }
 
 /// Search the bounded name index of `database` (tables, views, sequences,

@@ -78,7 +78,7 @@ it('re-reads loaded sections fresh after DDL on the connection, and ⌘R marks t
   expect(listObjects).toHaveBeenLastCalledWith(
     'id-orders-local',
     'orders',
-    { schema: 'public', kinds: ['table', 'foreignTable'] },
+    { schema: 'public', kinds: ['table', 'foreignTable'], limit: 5000 },
     true,
   );
   fireEvent.keyDown(sidebar().getByRole('button', { name: /^Tables/ }), {

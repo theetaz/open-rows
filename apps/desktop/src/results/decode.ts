@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-import { tableFromIPC, DataType } from 'apache-arrow';
-import type { DecodedTile } from './types';
+import { tableFromIPC, DataType, IntervalUnit } from 'apache-arrow';
+import type { Data } from 'apache-arrow';
+import type { ColumnChunk, DecodedTile } from './types';
 
 /** Decode in a worker only; expose typed buffers without lossy JS cell coercion. */
 export function decodeTile(bytes: ArrayBuffer): DecodedTile {
@@ -14,15 +15,7 @@ export function decodeTile(bytes: ArrayBuffer): DecodedTile {
       name: field.name,
       type: describeType(field.type),
       metadata: Object.fromEntries(field.metadata),
-      chunks: vector.data.map((chunk) => ({
-        length: chunk.length,
-        offset: chunk.offset,
-        stride: chunk.stride,
-        nullCount: chunk.nullCount,
-        values: chunk.values as ArrayBufferView,
-        validity: chunk.nullBitmap,
-        offsets: chunk.valueOffsets as Int32Array | undefined,
-      })),
+      chunks: vector.data.map(columnChunk),
     };
   });
   return {
@@ -31,7 +24,29 @@ export function decodeTile(bytes: ArrayBuffer): DecodedTile {
   };
 }
 
+/** Clone-safe buffers of one Arrow chunk; a list carries its element chunk. */
+function columnChunk(chunk: Data): ColumnChunk {
+  const child = chunk.children[0];
+  return {
+    length: chunk.length,
+    offset: chunk.offset,
+    stride: chunk.stride,
+    nullCount: chunk.nullCount,
+    values: (chunk.values as ArrayBufferView | undefined) ?? new Uint8Array(0),
+    validity: chunk.nullBitmap,
+    offsets: chunk.valueOffsets as Int32Array | undefined,
+    child:
+      DataType.isList(chunk.type) && child ? columnChunk(child) : undefined,
+  };
+}
+
 function describeType(type: unknown): string {
+  if (DataType.isList(type)) {
+    describeType(type.children[0]?.type);
+    return type.toString();
+  }
+  if (DataType.isInterval(type) && type.unit === IntervalUnit.MONTH_DAY_NANO)
+    return type.toString();
   if (
     DataType.isInt(type) ||
     DataType.isFloat(type) ||

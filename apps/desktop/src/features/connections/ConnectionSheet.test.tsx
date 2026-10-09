@@ -214,3 +214,19 @@ it('saves the statement and idle timeouts from the Advanced section', async () =
     }),
   );
 });
+
+it('saves startup commands from the Advanced section', async () => {
+  vi.mocked(updateProfile).mockResolvedValue(profile('orders'));
+  const { user } = mount(profile('orders'));
+  await user.click(screen.getByRole('button', { name: /Advanced · Defaults/ }));
+  const commands = screen.getByRole('textbox', { name: 'Startup commands' });
+  await user.type(commands, 'SET search_path TO app;');
+  await user.click(screen.getByRole('button', { name: 'Save' }));
+  expect(
+    screen.getByRole('button', { name: /Advanced · Defaults · Startup SQL/ }),
+  ).toBeVisible();
+  expect(updateProfile).toHaveBeenCalledWith(
+    'id-orders',
+    expect.objectContaining({ startupCommands: 'SET search_path TO app;' }),
+  );
+});

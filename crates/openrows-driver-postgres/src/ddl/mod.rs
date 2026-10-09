@@ -11,6 +11,7 @@
 //! the last clause of their statement; callers additionally verify that every
 //! generated statement is exactly one statement.
 use openrows_driver_api::schema::DefaultValue;
+use openrows_sql::Dialect;
 
 mod alter;
 mod create;
@@ -19,9 +20,6 @@ pub use alter::{AlterError, AlterPlan, AlterTable, alter_sql};
 pub use create::create_table_sql;
 
 use crate::introspect::{identifier, literal};
-
-/// Longest accepted type name.
-const MAX_TYPE: usize = 200;
 
 /// `"schema"."name"`.
 fn relation(schema: &str, name: &str) -> Result<String, AlterError> {
@@ -71,61 +69,7 @@ fn default_sql(column: &str, default: &DefaultValue) -> Result<Option<String>, A
 /// array suffixes (`text[]`). Nothing else: no quotes, operators or `;`.
 #[must_use]
 pub fn valid_type(text: &str) -> bool {
-    if text.is_empty() || text.len() > MAX_TYPE {
-        return false;
-    }
-    let mut chars = text.chars().peekable();
-    let mut words = 0;
-    while let Some(next) = chars.next() {
-        let ok = match next {
-            letter if letter.is_alphabetic() || letter == '_' => {
-                while chars
-                    .next_if(|c| c.is_alphanumeric() || *c == '_' || *c == '$')
-                    .is_some()
-                {}
-                words += 1;
-                true
-            }
-            '"' => {
-                words += 1;
-                quoted(&mut chars)
-            }
-            '(' => enclosed(&mut chars, ')', |c| c.is_ascii_digit() || " ,-".contains(c)),
-            '[' => enclosed(&mut chars, ']', |c| c.is_ascii_digit()),
-            ' ' | '.' => true,
-            _ => false,
-        };
-        if !ok {
-            return false;
-        }
-    }
-    words > 0
-}
-
-type Chars<'a> = std::iter::Peekable<std::str::Chars<'a>>;
-
-/// The rest of a quoted identifier: any text but NUL, `""` escapes a quote.
-fn quoted(chars: &mut Chars<'_>) -> bool {
-    loop {
-        match chars.next() {
-            Some('"') if chars.next_if_eq(&'"').is_none() => return true,
-            Some('\0') | None => return false,
-            Some(_) => {}
-        }
-    }
-}
-
-/// Characters up to `close`, all accepted by `allowed`.
-fn enclosed(chars: &mut Chars<'_>, close: char, allowed: fn(char) -> bool) -> bool {
-    for next in chars.by_ref() {
-        if next == close {
-            return true;
-        }
-        if !allowed(next) {
-            return false;
-        }
-    }
-    false
+    openrows_sql::ddl::valid_type(Dialect::Postgres, text)
 }
 
 #[cfg(test)]
@@ -170,7 +114,7 @@ mod tests {
             "int\0",
             "int,int",
             "1abc'",
-            &"a".repeat(MAX_TYPE + 1),
+            &"a".repeat(201),
         ] {
             assert!(!valid_type(text), "{text:?}");
         }

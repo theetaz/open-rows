@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 //! The `MySQL` and `MariaDB` [`Driver`]s.
+use openrows_driver_api::schema::SchemaChange;
+use openrows_driver_api::structure::{AlterPlan, AlterTable};
 use openrows_driver_api::{
     BoxFuture, ConnectRequest, ConnectStage, ConnectTrace, Connection, Driver, DriverError,
+    GenerateError,
 };
 use openrows_sql::Dialect;
 
+use crate::ddl;
 use crate::handshake::establish;
 use crate::info;
 use crate::session::{KillQuery, MySqlSession};
@@ -58,6 +62,18 @@ impl Driver for MySqlDriver {
             Ok(Box::new(session) as Box<dyn Connection>)
         })
     }
+
+    fn supports_alter(&self) -> bool {
+        true
+    }
+
+    fn alter_sql(
+        &self,
+        target: &AlterTable<'_>,
+        changes: &[SchemaChange],
+    ) -> Result<AlterPlan, GenerateError> {
+        ddl::alter_sql(target, changes).map_err(|error| GenerateError(error.to_string()))
+    }
 }
 
 /// Connect, log in and read the server identity.
@@ -83,5 +99,22 @@ pub async fn connect(
         target,
         connection_id: established.connection_id,
     };
-    Ok(MySqlSession::new(wire, summary, cancel))
+    let mut session = MySqlSession::new(wire, summary, cancel);
+    let commands = run_startup_commands(&mut session, &request.startup_commands);
+    trace.stage(ConnectStage::StartupCommands, commands).await?;
+    Ok(session)
+}
+
+/// The profile's startup commands, in order; the first failure fails the connect.
+async fn run_startup_commands(
+    session: &mut MySqlSession,
+    commands: &[String],
+) -> Result<(), DriverError> {
+    for (index, sql) in commands.iter().enumerate() {
+        session
+            .control(sql, &[])
+            .await
+            .map_err(|error| error.in_startup_command(index))?;
+    }
+    Ok(())
 }

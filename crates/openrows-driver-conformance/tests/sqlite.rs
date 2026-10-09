@@ -26,6 +26,7 @@ fn prepare() -> Result<(Target, TempDir), Failure> {
         tls: TlsFiles::default(),
         via: None,
         timeouts: ConnectTimeouts::default(),
+        startup_commands: Vec::new(),
     };
     let target = Target {
         driver: Box::new(SqliteDriver),

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { expect, it } from 'vitest';
-import { fixedValue } from './format';
+import { fixedValue, intervalText } from './format';
 import type { ColumnChunk } from './tiles';
 
 function chunk(values: ArrayBufferView, stride = 1): ColumnChunk {
@@ -106,4 +106,27 @@ it('formats integers, floats, UUIDs and fixed binaries', () => {
   expect(
     fixedValue(chunk(Uint8Array.of(1, 255), 2), 'FixedSizeBinary[2]', 0),
   ).toBe('\\x01ff');
+});
+
+it('formats intervals like PostgreSQL IntervalStyle postgres', () => {
+  const value = (months: number, days: number, nanos: bigint): string => {
+    const bytes = new DataView(new ArrayBuffer(16));
+    bytes.setInt32(0, months, true);
+    bytes.setInt32(4, days, true);
+    bytes.setBigInt64(8, nanos, true);
+    return fixedValue(
+      chunk(new Uint8Array(bytes.buffer), 16),
+      'Interval<MONTH_DAY_NANO>',
+      0,
+    );
+  };
+  expect(value(14, 3, 14_706_500_000_000n)).toBe(
+    '1 year 2 mons 3 days 04:05:06.5',
+  );
+  expect(value(0, 0, 0n)).toBe('00:00:00');
+  expect(value(0, -1, 3_600_000_000_000n)).toBe('-1 days +01:00:00');
+  expect(value(-14, 3, -1_000_000_000n)).toBe(
+    '-1 years -2 mons +3 days -00:00:01',
+  );
+  expect(intervalText(0, 1, 0n)).toBe('1 day');
 });

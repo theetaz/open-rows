@@ -4,6 +4,7 @@
 //! compare) and atomic commits in one `BEGIN IMMEDIATE` transaction.
 //! Keyless rowid tables are identified by their rowid (`row_id`).
 mod row_id;
+mod schema;
 
 use openrows_driver_api::{BoxFuture, DriverError, Editor, RowEditInfo, RowSnapshot};
 use openrows_sql::Dialect;
@@ -204,16 +205,10 @@ impl Editor for SqliteSession {
         &'a mut self,
         statements: &'a [String],
     ) -> BoxFuture<'a, Result<(), DriverError>> {
-        let statements: Vec<BoundSql> = statements
-            .iter()
-            .map(|sql| BoundSql {
-                sql: sql.clone(),
-                params: Vec::new(),
-            })
-            .collect();
+        let statements = statements.to_vec();
         Box::pin(async move {
             self.worker
-                .call(move |connection| commit(connection, &statements, false))
+                .call(move |connection| schema::commit(connection, &statements))
                 .await?
         })
     }

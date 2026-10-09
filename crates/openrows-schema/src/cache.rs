@@ -42,6 +42,8 @@ struct DatabaseEntry {
     epoch: u64,
     /// Persisted snapshots were merged in.
     loaded: bool,
+    /// The server's schema fingerprint when last checked (M1-16).
+    fingerprint: Option<String>,
 }
 
 /// Listings of every browsed connection database (docs/10 §1).
@@ -91,6 +93,20 @@ impl SchemaCache {
         cached
     }
 
+    /// Record the server's schema fingerprint for `key`; `true` when it
+    /// differs from the one seen before, i.e. DDL ran outside the app since.
+    /// The first fingerprint after an invalidation is only recorded.
+    pub fn observe_fingerprint(&self, key: &DatabaseKey, fingerprint: String) -> bool {
+        let mut entries = self.lock();
+        let entry = entries.entry(key.clone()).or_default();
+        let changed = entry
+            .fingerprint
+            .as_ref()
+            .is_some_and(|seen| *seen != fingerprint);
+        entry.fingerprint = Some(fingerprint);
+        changed
+    }
+
     /// Mark every listing of a connection stale (it reconnected or ran DDL).
     pub fn invalidate(&self, profile_id: &str) {
         let mut entries = self.lock();
@@ -99,6 +115,7 @@ impl SchemaCache {
             .filter(|(key, _)| key.profile_id == profile_id);
         for (_, entry) in connection {
             entry.epoch += 1;
+            entry.fingerprint = None;
             entry
                 .scopes
                 .values_mut()

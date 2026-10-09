@@ -36,6 +36,7 @@
     "allow-catalog-objects",
     "allow-catalog-search",
     "allow-catalog-invalidate",
+    "allow-catalog-check",
     "allow-connection-open",
     "allow-connection-close",
     "allow-query-execute",

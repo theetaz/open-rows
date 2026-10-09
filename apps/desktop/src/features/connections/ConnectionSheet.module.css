@@ -195,3 +195,15 @@
   color: var(--or-secondary);
   font-size: var(--or-text-11);
 }
+.stacked {
+  display: grid;
+  gap: var(--or-space-4);
+  font-size: var(--or-text-12);
+}
+.stacked textarea {
+  font-family: var(--or-font-mono);
+}
+.stacked small {
+  color: var(--or-secondary);
+  font-size: var(--or-text-11);
+}

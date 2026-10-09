@@ -123,6 +123,16 @@ pub trait Catalog: Send {
         schema: &'a str,
         table: &'a str,
     ) -> BoxFuture<'a, Result<TableDetail, DriverError>>;
+
+    /// A cheap digest of the objects the tree lists (names, kinds and their
+    /// catalog row versions); it changes when DDL ran anywhere, including
+    /// outside the app. `None` when the engine cannot tell.
+    ///
+    /// # Errors
+    /// Server or transport failures.
+    fn schema_fingerprint(&mut self) -> BoxFuture<'_, Result<Option<String>, DriverError>> {
+        Box::pin(async { Ok(None) })
+    }
 }
 
 /// Exact-row snapshots and atomic commits on a dedicated connection (docs/05 §7).

@@ -38,22 +38,29 @@ pub(crate) async fn run(target: &Target) -> Result<(), Failure> {
         },
     )?;
     ping(connection.as_mut()).await?;
-    coherence(target, &capabilities, connection.as_mut())?;
+    coherence(target, &capabilities, connection.as_mut()).await?;
     connection.close().await?;
+    startup_commands(target, &capabilities).await?;
     refused(target, &capabilities).await
 }
 
-/// Facets, cancel handle, structure changes and location match the claim.
-fn coherence(
+/// Facets, cancel handle, structure changes, the schema fingerprint and
+/// location match the claim.
+async fn coherence(
     target: &Target,
     capabilities: &Capabilities,
     connection: &mut dyn Connection,
 ) -> Result<(), Failure> {
+    let fingerprint = match connection.catalog() {
+        Some(catalog) => catalog.schema_fingerprint().await?.is_some(),
+        None => false,
+    };
     let claims = [
         (Feature::Catalog, connection.catalog().is_some()),
         (Feature::RowEdits, connection.editor().is_some()),
         (Feature::Cancel, connection.cancel_handle().is_some()),
         (Feature::StructureChanges, target.driver.supports_alter()),
+        (Feature::SchemaFingerprint, fingerprint),
     ];
     for (feature, offered) in claims {
         let claimed = capabilities.supports(feature);
@@ -72,6 +79,45 @@ fn coherence(
         capabilities.object_kinds.is_empty() != capabilities.supports(Feature::Catalog),
         || "a catalog must list object kinds, and only a catalog".to_owned(),
     )
+}
+
+/// Startup commands run on connect, in order, and the first failing one
+/// fails the connect with a `Server` error naming it.
+async fn startup_commands(target: &Target, capabilities: &Capabilities) -> Result<(), Failure> {
+    if !capabilities.supports(Feature::StartupCommands) {
+        return Ok(());
+    }
+    let mut request = target.request.clone();
+    request.startup_commands = vec!["SELECT 1".to_owned()];
+    let mut trace = ConnectTrace::default();
+    let mut connection = target.driver.connect(&request, &mut trace).await?;
+    ensure(
+        trace
+            .completed
+            .iter()
+            .any(|(stage, _)| *stage == ConnectStage::StartupCommands),
+        || format!("no StartupCommands stage recorded: {trace:?}"),
+    )?;
+    ping(connection.as_mut()).await?;
+    connection.close().await?;
+    request.startup_commands = vec!["SELECT 1".to_owned(), "SELEC 2".to_owned()];
+    match target
+        .driver
+        .connect(&request, &mut ConnectTrace::default())
+        .await
+    {
+        Err(DriverError::Server { message, .. }) => {
+            ensure(message.starts_with("startup command 2:"), || {
+                format!("a failing startup command reported {message:?}")
+            })
+        }
+        Err(other) => Err(Failure::Contract(format!(
+            "a failing startup command: unexpected error kind: {other}"
+        ))),
+        Ok(_) => Err(Failure::Contract(
+            "a failing startup command connected".to_owned(),
+        )),
+    }
 }
 
 /// A wrong password is `Auth` at the authentication stage; a missing file

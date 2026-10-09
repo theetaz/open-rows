@@ -77,6 +77,8 @@ pub(crate) struct ProfileDto {
     record_history: bool,
     /// Statement and idle timeouts (M1-01).
     limits: LimitsDto,
+    /// SQL run after every connect (FR-CONN-10); empty for none.
+    startup_commands: String,
 }
 
 impl From<&ConnectionProfile> for ProfileDto {
@@ -109,6 +111,7 @@ impl From<&ConnectionProfile> for ProfileDto {
             },
             record_history: profile.record_history,
             limits: profile.limits.into(),
+            startup_commands: profile.startup_commands.clone(),
         }
     }
 }
@@ -185,6 +188,9 @@ pub(crate) struct ProfileInput {
     /// Absent in forms written before the history switch: history is recorded.
     #[serde(default = "record_history_on")]
     pub(crate) record_history: bool,
+    /// SQL run after every connect; absent in older forms: none.
+    #[serde(default)]
+    pub(crate) startup_commands: String,
     /// Absent in forms written before the choice: the keychain.
     #[serde(default)]
     pub(crate) password_storage: PasswordStorageDto,
@@ -257,6 +263,9 @@ impl ProfileInput {
         }
         profile.safety = self.safety.into();
         profile.record_history = self.record_history;
+        self.startup_commands
+            .trim()
+            .clone_into(&mut profile.startup_commands);
         profile.password_storage = self.password_storage.into();
         profile.limits = self.limits.into();
         Ok(())

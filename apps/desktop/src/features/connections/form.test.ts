@@ -44,6 +44,7 @@ it('maps a profile to a draft and back without inventing a password', () => {
     proxy: null,
     safety: { readOnly: false, confirmWrites: false },
     recordHistory: true,
+    startupCommands: '',
     passwordStorage: 'keychain',
     password: { kind: 'keep' },
     limits: { statementTimeoutSeconds: null, idleTimeoutMinutes: 0 },

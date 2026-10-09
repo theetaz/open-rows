@@ -118,3 +118,17 @@ fn object_scopes_and_the_index_share_one_database_entry() {
             .is_none()
     );
 }
+
+#[test]
+fn a_changed_fingerprint_is_reported_once_and_invalidation_resets_it() {
+    let cache = SchemaCache::default();
+    let orders = key("p");
+    assert!(!cache.observe_fingerprint(&orders, "a".to_owned()));
+    assert!(!cache.observe_fingerprint(&orders, "a".to_owned()));
+    assert!(cache.observe_fingerprint(&orders, "b".to_owned()));
+    assert!(!cache.observe_fingerprint(&orders, "b".to_owned()));
+    // DDL from the app already invalidated: the next fingerprint is the baseline.
+    cache.invalidate("p");
+    assert!(!cache.observe_fingerprint(&orders, "c".to_owned()));
+    assert!(!cache.observe_fingerprint(&key("other"), "z".to_owned()));
+}

@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 use super::*;
-use openrows_driver_api::schema::{ColumnDetail, IndexDetail, TableInfo};
+use openrows_driver_api::schema::{
+    ColumnDetail, DefaultValue, IndexDetail, IndexMethod, NewColumn, NewIndex, RelationKind,
+    TableInfo,
+};
 
 fn detail() -> TableDetail {
     let column = |name: &str, data_type: &str| ColumnDetail {

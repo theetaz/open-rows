@@ -13,6 +13,7 @@ import { ThemeProvider } from '@openrows/ui';
 import { tableAlter, tableDetail } from '@openrows/ipc';
 import type { Connections } from '../../connections';
 import { profile } from '../../../test/ipcStub';
+import { sampleDetail } from '../../../test/structureStub';
 import { QueryContent, useQueryTabs } from '../../query';
 import { openTableView } from '../open';
 import { TableInfoPanel } from './TableInfoPanel';
@@ -287,4 +288,25 @@ it('stages the table comment from the inspector and renames from the Name field'
     { kind: 'tableComment', comment: 'All orders' },
     { kind: 'renameTable', name: 'purchases' },
   ]);
+});
+
+it('lists the partitions of a partitioned table', async () => {
+  vi.mocked(tableDetail).mockResolvedValue({
+    ...sampleDetail,
+    partitions: [
+      {
+        schema: 'public',
+        name: 'orders_2024',
+        bound: "FOR VALUES FROM ('2024-01-01') TO ('2025-01-01')",
+        partitioned: false,
+        rowEstimate: 1200,
+      },
+    ],
+  });
+  await structure();
+  const partitions = await screen.findByRole('table', { name: 'Partitions' });
+  expect(partitions).toHaveTextContent('orders_2024');
+  expect(partitions).toHaveTextContent("FOR VALUES FROM ('2024-01-01')");
+  expect(partitions).toHaveTextContent('1,200');
+  vi.mocked(tableDetail).mockResolvedValue(sampleDetail);
 });

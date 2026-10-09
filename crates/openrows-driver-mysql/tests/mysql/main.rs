@@ -4,5 +4,6 @@
 mod catalog;
 mod edits;
 mod session;
+mod structure;
 mod support;
 mod temporal;

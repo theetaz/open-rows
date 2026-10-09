@@ -23,3 +23,7 @@ pub struct AlterPlan {
     /// Drops a column or index, or changes a column type.
     pub destructive: bool,
 }
+
+mod staged;
+
+pub use staged::{AlterError, ColumnEdits, Comment, IndexDrops, StagedChanges};

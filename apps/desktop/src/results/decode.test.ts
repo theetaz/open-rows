@@ -1,11 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 import { readFileSync } from 'node:fs';
 import {
+  Field,
+  Int32,
+  IntervalMonthDayNano,
+  List,
   Table,
   TimeMicrosecond,
   tableToIPC,
   vectorFromArray,
 } from 'apache-arrow';
+import { convertDisplayTile } from '@openrows/grid/display-tile';
 import { describe, expect, it } from 'vitest';
 import { decodeTile } from './decode';
 import { transferBuffers } from './transfer';
@@ -151,5 +156,41 @@ describe('Rust encoder → worker decoder golden contract', () => {
     expect(() =>
       decodeTile(new Uint8Array([255, 255, 255, 255, 200, 0, 0, 0]).buffer),
     ).toThrow();
+  });
+});
+
+describe('PostgreSQL arrays and intervals', () => {
+  it('decode into PostgreSQL text', () => {
+    const lists = vectorFromArray(
+      [[1, null, 3], null, []],
+      new List(new Field('item', new Int32(), true)),
+    );
+    const intervals = vectorFromArray(
+      [Int32Array.of(14, 3, 0, 0), null, Int32Array.of(0, -1, 0, 0)],
+      new IntervalMonthDayNano(),
+    );
+    const bytes = tableToIPC(new Table({ l: lists, i: intervals }), 'stream');
+    const decoded = decodeTile(new Uint8Array(bytes).buffer);
+    expect(decoded.tile.columns.map((column) => column.type)).toEqual([
+      'List<Int32>',
+      'Interval<MONTH_DAY_NANO>',
+    ]);
+    const display = convertDisplayTile(decoded.tile, {
+      resultId: 'r',
+      rowStart: 0,
+      rowCount: 3,
+      colStart: 0,
+      colCount: 2,
+    });
+    expect(display.cells.map((cell) => cell.text)).toEqual([
+      '{1,NULL,3}',
+      '1 year 2 mons 3 days',
+      'NULL',
+      'NULL',
+      '{}',
+      '-1 days',
+    ]);
+    const transfers = transferBuffers(decoded);
+    expect(transfers.length).toBeGreaterThan(0);
   });
 });

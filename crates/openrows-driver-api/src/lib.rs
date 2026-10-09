@@ -24,6 +24,7 @@ pub mod schema;
 mod session;
 mod sink;
 pub mod structure;
+pub mod text;
 pub mod trace;
 
 pub use batch::BatchPolicy;

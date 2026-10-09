@@ -3,23 +3,25 @@
 //!
 //! A [`Column`] downcasts its array once per batch; [`Column::cell`] then
 //! reads a value without allocating, except for `Decimal128`, whose exact
-//! text is built by Arrow.
+//! text is built by Arrow, and lists, which become `PostgreSQL` array text.
 use crate::ExportError;
+use crate::text::push_plain;
 use crate::text::{Temporal, is_number};
 use arrow_array::cast::AsArray;
 use arrow_array::types::{
     Date32Type, Date64Type, Float32Type, Float64Type, Int8Type, Int16Type, Int32Type, Int64Type,
-    UInt8Type, UInt16Type, UInt32Type, UInt64Type,
+    IntervalMonthDayNanoType, UInt8Type, UInt16Type, UInt32Type, UInt64Type,
 };
 use arrow_array::{
     Array, BinaryArray, BooleanArray, Date32Array, Date64Array, Decimal128Array,
-    FixedSizeBinaryArray, Float32Array, Float64Array, LargeBinaryArray, LargeStringArray,
-    PrimitiveArray, StringArray,
+    FixedSizeBinaryArray, Float32Array, Float64Array, IntervalMonthDayNanoArray, LargeBinaryArray,
+    LargeStringArray, ListArray, PrimitiveArray, StringArray,
 };
 use arrow_schema::{DataType, Field, TimeUnit};
 use openrows_driver_api::metadata::{
     DECIMAL_EXTENSION, EXTENSION_NAME, JSON_EXTENSION, TEXT_FALLBACK, UUID_EXTENSION,
 };
+use openrows_driver_api::text::write_array_item;
 use std::borrow::Cow;
 
 /// One value, ready to render in any format.
@@ -36,6 +38,8 @@ pub(crate) enum Cell<'a> {
     Text(&'a str),
     /// JSON document text from the server.
     Json(&'a str),
+    /// Text built for this cell (`PostgreSQL` array text of a list).
+    Owned(String),
     Binary(&'a [u8]),
     /// 16 UUID bytes.
     Uuid(&'a [u8]),
@@ -65,6 +69,10 @@ enum Typed<'a> {
     Date32(&'a Date32Array),
     Date64(&'a Date64Array),
     Timestamp(&'a [i64], TimeUnit, bool),
+    /// Time of day in `unit`s since midnight.
+    Time(Vec<i64>, TimeUnit),
+    Interval(&'a IntervalMonthDayNanoArray),
+    List(&'a ListArray, Box<Column<'a>>),
 }
 
 /// Integer arrays, widened to `i64`/`u64` per cell.
@@ -126,8 +134,43 @@ impl<'a> Column<'a> {
                     utc: *utc,
                 })
             }),
+            Typed::Time(values, unit) => values.get(row).map_or(Cell::Null, |value| {
+                Cell::Temporal(Temporal::Time {
+                    value: *value,
+                    unit: *unit,
+                })
+            }),
+            Typed::Interval(array) => Cell::Temporal(Temporal::Interval(array.value(row))),
+            Typed::List(array, items) => Cell::Owned(list_text(array, items, row)),
         }
     }
+}
+
+/// `{1,NULL,"a b"}`: items in their canonical text, quoted like `array_out`.
+fn list_text(array: &ListArray, items: &Column<'_>, row: usize) -> String {
+    let offsets = array.value_offsets();
+    let start = offsets.get(row).and_then(|at| usize::try_from(*at).ok());
+    let end = offsets
+        .get(row + 1)
+        .and_then(|at| usize::try_from(*at).ok());
+    let mut text = String::from("{");
+    let mut scratch = String::new();
+    for (index, item) in (start.unwrap_or(0)..end.unwrap_or(0)).enumerate() {
+        if index > 0 {
+            text.push(',');
+        }
+        match items.cell(item) {
+            Cell::Null => text.push_str("NULL"),
+            cell => {
+                scratch.clear();
+                push_plain(&cell, &mut scratch);
+                // Writing to a `String` cannot fail.
+                let _ = write_array_item(&scratch, &mut text);
+            }
+        }
+    }
+    text.push('}');
+    text
 }
 
 impl Ints<'_> {
@@ -191,6 +234,17 @@ fn typed<'a>(field: &Field, array: &'a dyn Array) -> Option<Typed<'a>> {
         DataType::Timestamp(unit, zone) => {
             Typed::Timestamp(timestamp_values(array, *unit)?, *unit, zone.is_some())
         }
+        DataType::Time32(unit) | DataType::Time64(unit) => Typed::Time(time_values(array)?, *unit),
+        DataType::Interval(_) => {
+            Typed::Interval(array.as_primitive_opt::<IntervalMonthDayNanoType>()?)
+        }
+        DataType::List(item) => {
+            let list = array.as_list_opt::<i32>()?;
+            Typed::List(
+                list,
+                Box::new(Column::new(item, list.values().as_ref()).ok()?),
+            )
+        }
         other => Typed::Int(ints(other, array)?),
     })
 }
@@ -205,6 +259,29 @@ fn ints<'a>(data_type: &DataType, array: &'a dyn Array) -> Option<Ints<'a>> {
         DataType::UInt16 => Ints::U16(array.as_primitive_opt()?),
         DataType::UInt32 => Ints::U32(array.as_primitive_opt()?),
         DataType::UInt64 => Ints::U64(array.as_primitive_opt()?),
+        _ => return None,
+    })
+}
+
+/// Times of day of any width and unit, widened to `i64`.
+fn time_values(array: &dyn Array) -> Option<Vec<i64>> {
+    use arrow_array::types::{
+        Time32MillisecondType, Time32SecondType, Time64MicrosecondType, Time64NanosecondType,
+    };
+    let widen = |values: &[i32]| values.iter().map(|value| i64::from(*value)).collect();
+    Some(match array.data_type() {
+        DataType::Time32(TimeUnit::Second) => {
+            widen(array.as_primitive_opt::<Time32SecondType>()?.values())
+        }
+        DataType::Time32(_) => widen(array.as_primitive_opt::<Time32MillisecondType>()?.values()),
+        DataType::Time64(TimeUnit::Microsecond) => array
+            .as_primitive_opt::<Time64MicrosecondType>()?
+            .values()
+            .to_vec(),
+        DataType::Time64(_) => array
+            .as_primitive_opt::<Time64NanosecondType>()?
+            .values()
+            .to_vec(),
         _ => return None,
     })
 }

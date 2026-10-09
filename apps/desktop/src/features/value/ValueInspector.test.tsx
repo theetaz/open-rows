@@ -100,3 +100,11 @@ it('previews a PNG by its magic bytes and offers the hex view', async () => {
   await user.click(screen.getByRole('radio', { name: 'Hex' }));
   expect(screen.getByLabelText('Hex dump')).toHaveTextContent('89 50 4e 47');
 });
+
+it('lists the items of a PostgreSQL array beside its text', async () => {
+  vi.mocked(resultCellInfo).mockResolvedValue({ kind: 'other', byteLen: 0 });
+  mount('text[]', '{a,NULL,"b c"}');
+  const items = await screen.findByRole('list', { name: 'Array items' });
+  expect(items).toHaveTextContent('aNULLb c');
+  expect(screen.getByText('{a,NULL,"b c"}')).toBeVisible();
+});

@@ -1,10 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 //! `PostgreSQL` type OIDs → logical kinds and Arrow fields (docs/04 §5).
-use arrow_schema::{DataType, Field, TimeUnit};
+mod names;
+
+use arrow_schema::{DataType, Field, IntervalUnit, TimeUnit};
 use openrows_driver_api::metadata::{
-    DECIMAL_EXTENSION, EXTENSION_NAME, JSON_EXTENSION, SOURCE_TYPE, TEXT_FALLBACK, UUID_EXTENSION,
+    DECIMAL_EXTENSION, EXTENSION_NAME, INET_EXTENSION, JSON_EXTENSION, MACADDR_EXTENSION,
+    RANGE_EXTENSION, SOURCE_TYPE, TEXT_FALLBACK, UUID_EXTENSION,
 };
 use std::collections::HashMap;
+use std::sync::Arc;
+
+pub(crate) use names::array_element;
+use names::{builtin_name, is_range};
 
 /// One result column as described by the server's `RowDescription`.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -31,6 +38,12 @@ pub(crate) enum ColumnKind {
     Timestamp,
     TimestampTz,
     Date,
+    /// `time`: `Time64(µs)`; `24:00:00` falls back to tagged text.
+    Time,
+    /// `timetz`: the server's text form (Arrow has no zoned time of day).
+    TimeTz,
+    /// `interval`: `Interval(MonthDayNano)`.
+    Interval,
     Uuid,
     /// `numeric(p, s)` with 0 ≤ s ≤ p ≤ 38.
     Decimal {
@@ -41,6 +54,17 @@ pub(crate) enum ColumnKind {
     NumericText,
     Json,
     Jsonb,
+    /// `inet` and `cidr` as text, tagged [`INET_EXTENSION`].
+    Inet,
+    /// `macaddr` and `macaddr8` as text, tagged [`MACADDR_EXTENSION`].
+    MacAddr,
+    /// Built-in range and multirange types, requested in text format.
+    Range,
+    /// A one-dimensional array of a supported element type: `List<element>`.
+    Array {
+        element_oid: u32,
+        type_modifier: i32,
+    },
     /// Requested in text format; stored as the server's text representation.
     Unknown,
 }
@@ -50,7 +74,22 @@ const VARHDRSZ: i32 = 4;
 
 impl ColumnKind {
     pub(crate) fn of(desc: &ColumnDesc) -> Self {
-        match desc.type_oid {
+        match Self::scalar(desc.type_oid, desc.type_modifier) {
+            Self::Unknown => match array_element(desc.type_oid) {
+                Some(element_oid) => Self::Array {
+                    element_oid,
+                    type_modifier: desc.type_modifier,
+                },
+                None if is_range(desc.type_oid) => Self::Range,
+                None => Self::Unknown,
+            },
+            kind => kind,
+        }
+    }
+
+    /// The kind of a non-array type; `Unknown` for anything else.
+    pub(crate) fn scalar(type_oid: u32, type_modifier: i32) -> Self {
+        match type_oid {
             16 => Self::Bool,
             17 => Self::Bytea,
             19 | 25 | 1042 | 1043 => Self::Text,
@@ -58,21 +97,37 @@ impl ColumnKind {
             21 => Self::Int2,
             23 => Self::Int4,
             114 => Self::Json,
+            650 | 869 => Self::Inet,
             700 => Self::Float4,
             701 => Self::Float8,
+            774 | 829 => Self::MacAddr,
             1082 => Self::Date,
+            1083 => Self::Time,
             1114 => Self::Timestamp,
             1184 => Self::TimestampTz,
-            NUMERIC_OID => numeric_kind(desc.type_modifier),
+            1186 => Self::Interval,
+            1266 => Self::TimeTz,
+            NUMERIC_OID => numeric_kind(type_modifier),
             2950 => Self::Uuid,
             3802 => Self::Jsonb,
             _ => Self::Unknown,
         }
     }
 
+    /// The element kind of an array column.
+    pub(crate) fn element(self) -> Option<Self> {
+        match self {
+            Self::Array {
+                element_oid,
+                type_modifier,
+            } => Some(Self::scalar(element_oid, type_modifier)),
+            _ => None,
+        }
+    }
+
     /// Wire result format code: 1 = binary, 0 = text.
     pub(crate) fn format_code(self) -> i16 {
-        i16::from(self != Self::Unknown)
+        i16::from(!matches!(self, Self::Unknown | Self::Range))
     }
 
     pub(crate) fn data_type(self) -> DataType {
@@ -87,11 +142,23 @@ impl ColumnKind {
             Self::Timestamp => DataType::Timestamp(TimeUnit::Microsecond, None),
             Self::TimestampTz => DataType::Timestamp(TimeUnit::Microsecond, Some("UTC".into())),
             Self::Date => DataType::Date32,
+            Self::Time => DataType::Time64(TimeUnit::Microsecond),
+            Self::Interval => DataType::Interval(IntervalUnit::MonthDayNano),
             Self::Uuid => DataType::FixedSizeBinary(16),
             Self::Decimal { precision, scale } => DataType::Decimal128(precision, scale),
-            Self::Text | Self::NumericText | Self::Json | Self::Jsonb | Self::Unknown => {
-                DataType::Utf8
-            }
+            Self::Array {
+                element_oid,
+                type_modifier,
+            } => DataType::List(Arc::new(element_field(element_oid, type_modifier))),
+            Self::Text
+            | Self::TimeTz
+            | Self::NumericText
+            | Self::Json
+            | Self::Jsonb
+            | Self::Inet
+            | Self::MacAddr
+            | Self::Range
+            | Self::Unknown => DataType::Utf8,
         }
     }
 
@@ -100,9 +167,24 @@ impl ColumnKind {
             Self::Uuid => Some(UUID_EXTENSION),
             Self::Json | Self::Jsonb => Some(JSON_EXTENSION),
             Self::NumericText => Some(DECIMAL_EXTENSION),
+            Self::Inet => Some(INET_EXTENSION),
+            Self::MacAddr => Some(MACADDR_EXTENSION),
+            Self::Range => Some(RANGE_EXTENSION),
             _ => None,
         }
     }
+}
+
+/// The `item` field of an array column: the element's Arrow type, source
+/// type name and extension tag.
+fn element_field(element_oid: u32, type_modifier: i32) -> Field {
+    let kind = ColumnKind::scalar(element_oid, type_modifier);
+    let source = builtin_name(element_oid).unwrap_or("unknown");
+    let mut metadata = HashMap::from([(SOURCE_TYPE.to_owned(), source.to_owned())]);
+    if let Some(extension) = kind.extension() {
+        metadata.insert(EXTENSION_NAME.to_owned(), extension.to_owned());
+    }
+    Field::new("item", kind.data_type(), true).with_metadata(metadata)
 }
 
 /// Typmod layout from `PostgreSQL`'s `numeric.c`: ((precision << 16) | scale) + VARHDRSZ.
@@ -121,31 +203,6 @@ fn numeric_kind(type_modifier: i32) -> ColumnKind {
         }
         _ => ColumnKind::NumericText,
     }
-}
-
-/// Built-in type names; other names come from the session's `pg_type` lookup.
-fn builtin_name(oid: u32) -> Option<&'static str> {
-    Some(match oid {
-        16 => "bool",
-        17 => "bytea",
-        19 => "name",
-        20 => "int8",
-        21 => "int2",
-        23 => "int4",
-        25 => "text",
-        114 => "json",
-        700 => "float4",
-        701 => "float8",
-        1042 => "bpchar",
-        1043 => "varchar",
-        1082 => "date",
-        1114 => "timestamp",
-        1184 => "timestamptz",
-        NUMERIC_OID => "numeric",
-        2950 => "uuid",
-        3802 => "jsonb",
-        _ => return None,
-    })
 }
 
 /// True when the session must look up this column's type name.
@@ -176,59 +233,5 @@ pub(crate) fn tagged_text(field: &Field) -> Field {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn desc(type_oid: u32, type_modifier: i32) -> ColumnDesc {
-        ColumnDesc {
-            name: "c".to_owned(),
-            type_oid,
-            type_modifier,
-        }
-    }
-
-    fn typmod(precision: i32, scale: i32) -> i32 {
-        ((precision << 16) | scale) + VARHDRSZ
-    }
-
-    #[test]
-    fn numeric_fits_decimal128_only_with_known_precision_up_to_38() {
-        let kind = |modifier| ColumnKind::of(&desc(NUMERIC_OID, modifier));
-        assert_eq!(kind(-1), ColumnKind::NumericText);
-        assert_eq!(kind(typmod(10, 2)).data_type(), DataType::Decimal128(10, 2));
-        assert_eq!(
-            kind(typmod(38, 38)).data_type(),
-            DataType::Decimal128(38, 38)
-        );
-        assert_eq!(kind(typmod(39, 2)), ColumnKind::NumericText);
-        assert_eq!(kind(typmod(1000, 0)), ColumnKind::NumericText);
-    }
-
-    #[test]
-    fn unknown_types_use_text_format_and_carry_their_name() {
-        let interval = desc(1186, -1);
-        let names = HashMap::from([(1186, "interval".to_owned())]);
-        let kind = ColumnKind::of(&interval);
-        assert_eq!((kind, kind.format_code()), (ColumnKind::Unknown, 0));
-        assert!(!needs_name(&interval, &names));
-        assert!(needs_name(&interval, &HashMap::new()));
-        let field = field(&interval, kind, &names);
-        assert_eq!(field.data_type(), &DataType::Utf8);
-        assert_eq!(field.metadata()[SOURCE_TYPE], "interval");
-    }
-
-    #[test]
-    fn extension_types_are_tagged() {
-        let names = HashMap::new();
-        for (oid, extension) in [(2950, UUID_EXTENSION), (3802, JSON_EXTENSION)] {
-            let column = desc(oid, -1);
-            let field = field(&column, ColumnKind::of(&column), &names);
-            assert_eq!(field.metadata()[EXTENSION_NAME], extension);
-            assert_eq!(ColumnKind::of(&column).format_code(), 1);
-        }
-        let numeric = desc(NUMERIC_OID, -1);
-        let field = field(&numeric, ColumnKind::of(&numeric), &names);
-        assert_eq!(field.metadata()[EXTENSION_NAME], DECIMAL_EXTENSION);
-        assert_eq!(field.metadata()[SOURCE_TYPE], "numeric");
-    }
-}
+#[path = "types/tests.rs"]
+mod tests;

@@ -24,6 +24,15 @@ const SYSTEM_DATABASES: &[&str] = &["information_schema", "mysql", "performance_
 /// Most names the quick-open index returns.
 const SEARCH_LIMIT: usize = 50_000;
 
+/// Order-independent checksums of the schemas, tables and views (with their
+/// creation time, which a rebuilding ALTER changes) and routines.
+const FINGERPRINT_SQL: &str = "SELECT CONCAT_WS(':', \
+    (SELECT COUNT(*) FROM information_schema.SCHEMATA), \
+    (SELECT COALESCE(SUM(CRC32(CONCAT_WS('.', TABLE_SCHEMA, TABLE_NAME, TABLE_TYPE, \
+        CREATE_TIME))), 0) FROM information_schema.TABLES), \
+    (SELECT COALESCE(SUM(CRC32(CONCAT_WS('.', ROUTINE_SCHEMA, ROUTINE_NAME, ROUTINE_TYPE, \
+        LAST_ALTERED))), 0) FROM information_schema.ROUTINES))";
+
 const TABLES_SQL: &str = "SELECT TABLE_NAME, TABLE_TYPE, TABLE_ROWS, TABLE_COMMENT \
     FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? ORDER BY TABLE_NAME";
 const ROUTINES_SQL: &str = "SELECT ROUTINE_NAME, ROUTINE_TYPE, ROUTINE_COMMENT \
@@ -250,5 +259,12 @@ impl Catalog for MySqlSession {
         table: &'a str,
     ) -> BoxFuture<'a, Result<TableDetail, DriverError>> {
         Box::pin(detail::table_detail(self, schema, table))
+    }
+
+    fn schema_fingerprint(&mut self) -> BoxFuture<'_, Result<Option<String>, DriverError>> {
+        Box::pin(async move {
+            let rows = self.text_query(FINGERPRINT_SQL, &[]).await?;
+            Ok(rows.first().and_then(|row| optional(row, 0)))
+        })
     }
 }

@@ -138,3 +138,21 @@ fn memory_profiles_share_one_named_database_with_their_attachments() -> Result<(
     assert_eq!(target.request.describe_endpoint(), ":memory:");
     Ok(())
 }
+
+#[test]
+fn startup_sql_becomes_single_statements_for_every_connect() -> Result<(), IpcError> {
+    let mut source = profile(Some("app"), None, TlsMode::Prefer);
+    source.startup_commands =
+        "SET search_path TO app, public;\n-- note\nSET statement_timeout = '5s';;".to_owned();
+    let target = target(&source, &DriverSecrets::default())?;
+    assert_eq!(
+        target.request.startup_commands,
+        [
+            "SET search_path TO app, public",
+            "-- note\nSET statement_timeout = '5s'"
+        ]
+    );
+    let other = target.with_database("reports");
+    assert_eq!(other.request.startup_commands.len(), 2);
+    Ok(())
+}

@@ -54,6 +54,7 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
         catalog::catalog_objects,
         catalog::catalog_search,
         catalog::catalog_invalidate,
+        catalog::catalog_check,
         queries::commands::query_execute,
         queries::commands::query_cancel,
         queries::commands::results_release,

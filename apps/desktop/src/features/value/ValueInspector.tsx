@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import { Button } from '@openrows/ui';
 import { BinaryValue } from './BinaryValue';
+import { StructuredValue } from './StructuredValue';
+import { valueParts } from './valueParts';
 import { TextValue } from './TextValue';
 import { byteLenOf, useCellValue } from './useCellValue';
 import type { CellAddress, CellValueState } from './useCellValue';
@@ -26,6 +28,7 @@ export function ValueInspector(props: Props): React.JSX.Element {
   const value = useCellValue(props.address);
   const kind = value.info?.kind;
   const bytesKnown = kind === 'text' || kind === 'binary';
+  const parts = kind === 'null' ? null : valueParts(props.type, props.text);
   return (
     <section className={styles.inspector} aria-label={`Value of ${props.name}`}>
       <div className={styles.meta}>
@@ -34,6 +37,7 @@ export function ValueInspector(props: Props): React.JSX.Element {
           <small>{formatBytes(byteLenOf(value.info))}</small>
         )}
       </div>
+      {parts && <StructuredValue parts={parts} />}
       <ValueBody value={value} text={props.text} />
     </section>
   );

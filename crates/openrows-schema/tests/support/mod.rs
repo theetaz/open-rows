@@ -84,8 +84,19 @@ pub async fn happy_path(connection: &mut dyn Connection, place: &Place<'_>) -> T
         Some(place.table)
     );
 
+    let before = catalog(connection)?
+        .schema_fingerprint()
+        .await?
+        .ok_or("the engine has no fingerprint")?;
+    assert!(!relaunched.observe_fingerprint(&key, before.clone()));
+    assert!(!relaunched.observe_fingerprint(&key, before.clone()));
+
     let drop_table = format!("DROP TABLE {}", place.table);
     editor(connection)?.commit_ddl(&[drop_table]).await?;
+    let after = catalog(connection)?.schema_fingerprint().await?;
+    let after = after.ok_or("the engine has no fingerprint")?;
+    assert_ne!(before, after, "DDL changes the fingerprint");
+    assert!(relaunched.observe_fingerprint(&key, after));
     relaunched.invalidate("profile");
     let refreshed = read_live(&relaunched, &store, (&key, &section), connection).await?;
     assert!(!refreshed.stale);

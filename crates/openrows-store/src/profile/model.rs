@@ -175,6 +175,10 @@ pub struct ConnectionProfile {
     /// Statement and idle timeouts (M1-01); absent while at their defaults.
     #[serde(default, skip_serializing_if = "SessionLimits::is_default")]
     pub limits: SessionLimits,
+    /// SQL run after every connect, reconnects included (FR-CONN-10), split
+    /// into statements by the engine's dialect; files only carry it when set.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub startup_commands: String,
 }
 
 /// Profiles written before the switch existed keep recording history.
@@ -220,6 +224,7 @@ impl ConnectionProfile {
             password_storage: PasswordStorage::Keychain,
             record_history: true,
             limits: SessionLimits::default(),
+            startup_commands: String::new(),
         }
     }
 

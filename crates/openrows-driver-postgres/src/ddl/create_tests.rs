@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 use super::*;
 use openrows_driver_api::schema::{
-    ConstraintDetail, ConstraintKind, IndexDetail, TriggerDetail, TriggerEvent, TriggerTiming,
+    ConstraintDetail, ConstraintKind, IndexDetail, PartitionDetail, TriggerDetail, TriggerEvent,
+    TriggerTiming,
 };
 
 fn column(name: &str, data_type: &str, nullable: bool, default: Option<&str>) -> ColumnDetail {
@@ -61,6 +62,7 @@ fn users() -> TableDetail {
                 ..IndexDetail::default()
             },
         ],
+        partitions: Vec::new(),
         triggers: vec![TriggerDetail {
             name: "touch".into(),
             timing: TriggerTiming::Before,
@@ -124,6 +126,24 @@ fn empty_and_partitioned_tables() -> Result<(), AlterError> {
         create_table_sql("s", "t", &detail)?,
         "-- Table Definition\nCREATE TABLE \"s\".\"t\" () PARTITION BY RANGE (day);\n"
     );
+    let with_partitions = TableDetail {
+        partitions: vec![PartitionDetail {
+            schema: "s".into(),
+            name: "t_2024".into(),
+            bound: "FOR VALUES FROM ('2024-01-01') TO ('2025-01-01')".into(),
+            partitioned: false,
+            row_estimate: None,
+        }],
+        indexes: vec![IndexDetail {
+            name: "t_day".into(),
+            definition: "CREATE INDEX t_day ON ONLY s.t USING btree (day)".into(),
+            ..IndexDetail::default()
+        }],
+        ..detail
+    };
+    assert!(create_table_sql("s", "t", &with_partitions)?.ends_with(
+        "\nCREATE TABLE \"s\".\"t_2024\" PARTITION OF \"s\".\"t\" FOR VALUES FROM ('2024-01-01') TO ('2025-01-01');\n\nCREATE INDEX t_day ON s.t USING btree (day);\n"
+    ));
     Ok(())
 }
 

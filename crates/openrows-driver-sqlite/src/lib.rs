@@ -16,6 +16,7 @@
 mod capabilities;
 mod catalog;
 mod connect;
+mod ddl;
 mod decode;
 mod editor;
 mod error;

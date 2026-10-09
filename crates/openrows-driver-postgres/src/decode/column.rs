@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 //! One typed Arrow builder per column; enum dispatch keeps the per-cell path static.
-use super::fallback;
+use super::array::ListValues;
 use super::numeric::{self, Numeric};
 use super::scalar::{self, CellError, array};
+use super::temporal::{self, Interval};
+use super::{fallback, text};
 use crate::types::ColumnKind;
 use arrow_array::ArrayRef;
 use arrow_array::builder::{
     BinaryBuilder, BooleanBuilder, Date32Builder, Decimal128Builder, FixedSizeBinaryBuilder,
-    Float32Builder, Float64Builder, Int16Builder, Int32Builder, Int64Builder, StringBuilder,
+    Float32Builder, Float64Builder, Int16Builder, Int32Builder, Int64Builder,
+    IntervalMonthDayNanoBuilder, StringBuilder, Time64MicrosecondBuilder,
     TimestampMicrosecondBuilder,
 };
 use std::sync::Arc;
@@ -15,7 +18,7 @@ use std::sync::Arc;
 /// Initial byte capacity per variable-width cell before any batch has been seen.
 const DEFAULT_CELL_BYTES: usize = 16;
 
-enum Builder {
+pub(super) enum Builder {
     Int16(Int16Builder),
     Int32(Int32Builder),
     Int64(Int64Builder),
@@ -30,6 +33,11 @@ enum Builder {
     Date(Date32Builder),
     Uuid(FixedSizeBinaryBuilder),
     Decimal(Decimal128Builder, i8),
+    Time(Time64MicrosecondBuilder),
+    Interval(IntervalMonthDayNanoBuilder),
+    /// Binary values stored as their text form (`timetz`, `inet`, `macaddr`).
+    Formatted(StringBuilder, ColumnKind),
+    List(Box<ListValues>),
     /// Tagged-text fallback: every value of the column as `PostgreSQL` text.
     Tagged(StringBuilder, ColumnKind),
 }
@@ -91,7 +99,7 @@ impl ColumnDecoder {
 }
 
 impl Builder {
-    fn new(kind: ColumnKind, rows: usize, bytes: usize) -> Self {
+    pub(super) fn new(kind: ColumnKind, rows: usize, bytes: usize) -> Self {
         match kind {
             ColumnKind::Int2 => Self::Int16(Int16Builder::with_capacity(rows)),
             ColumnKind::Int4 => Self::Int32(Int32Builder::with_capacity(rows)),
@@ -99,9 +107,20 @@ impl Builder {
             ColumnKind::Float4 => Self::Float32(Float32Builder::with_capacity(rows)),
             ColumnKind::Float8 => Self::Float64(Float64Builder::with_capacity(rows)),
             ColumnKind::Bool => Self::Bool(BooleanBuilder::with_capacity(rows)),
-            ColumnKind::Text | ColumnKind::Json | ColumnKind::Unknown => {
+            ColumnKind::Text | ColumnKind::Json | ColumnKind::Range | ColumnKind::Unknown => {
                 Self::Text(StringBuilder::with_capacity(rows, bytes))
             }
+            ColumnKind::TimeTz | ColumnKind::Inet | ColumnKind::MacAddr => {
+                Self::Formatted(StringBuilder::with_capacity(rows, bytes), kind)
+            }
+            ColumnKind::Time => Self::Time(Time64MicrosecondBuilder::with_capacity(rows)),
+            ColumnKind::Interval => {
+                Self::Interval(IntervalMonthDayNanoBuilder::with_capacity(rows))
+            }
+            ColumnKind::Array { .. } => match ListValues::new(kind, rows, bytes) {
+                Some(list) => Self::List(Box::new(list)),
+                None => Self::Text(StringBuilder::with_capacity(rows, bytes)),
+            },
             ColumnKind::Jsonb => Self::Jsonb(StringBuilder::with_capacity(rows, bytes)),
             ColumnKind::NumericText => Self::Numeric(StringBuilder::with_capacity(rows, bytes)),
             ColumnKind::Bytea => Self::Binary(BinaryBuilder::with_capacity(rows, bytes)),
@@ -121,7 +140,7 @@ impl Builder {
     }
 
     #[inline]
-    fn append_value(&mut self, bytes: &[u8]) -> Result<(), CellError> {
+    pub(super) fn append_value(&mut self, bytes: &[u8]) -> Result<(), CellError> {
         match self {
             Self::Int16(b) => b.append_value(i16::from_be_bytes(array(bytes)?)),
             Self::Int32(b) => b.append_value(i32::from_be_bytes(array(bytes)?)),
@@ -139,12 +158,19 @@ impl Builder {
                 .append_value(array::<16>(bytes)?)
                 .map_err(|_| CellError::Truncated)?,
             Self::Decimal(b, scale) => b.append_value(decimal(bytes, *scale)?),
+            Self::Time(b) => b.append_value(temporal::time_micros(bytes)?),
+            Self::Interval(b) => b.append_value(Interval::parse(bytes)?.month_day_nano()?),
+            Self::Formatted(b, kind) => {
+                text::write_wire(*kind, bytes, b)?;
+                b.append_value("");
+            }
+            Self::List(list) => list.append_value(bytes)?,
             Self::Tagged(b, kind) => fallback::append_wire(*kind, bytes, b)?,
         }
         Ok(())
     }
 
-    fn append_null(&mut self) {
+    pub(super) fn append_null(&mut self) {
         match self {
             Self::Int16(b) => b.append_null(),
             Self::Int32(b) => b.append_null(),
@@ -152,9 +178,16 @@ impl Builder {
             Self::Float32(b) => b.append_null(),
             Self::Float64(b) => b.append_null(),
             Self::Bool(b) => b.append_null(),
-            Self::Text(b) | Self::Jsonb(b) | Self::Numeric(b) | Self::Tagged(b, _) => {
+            Self::Text(b)
+            | Self::Jsonb(b)
+            | Self::Numeric(b)
+            | Self::Formatted(b, _)
+            | Self::Tagged(b, _) => {
                 b.append_null();
             }
+            Self::Time(b) => b.append_null(),
+            Self::Interval(b) => b.append_null(),
+            Self::List(list) => list.append_null(),
             Self::Binary(b) => b.append_null(),
             Self::Timestamp(b) => b.append_null(),
             Self::Date(b) => b.append_null(),
@@ -163,18 +196,21 @@ impl Builder {
         }
     }
 
-    fn data_bytes(&self) -> usize {
+    pub(super) fn data_bytes(&self) -> usize {
         match self {
-            Self::Text(b) | Self::Jsonb(b) | Self::Numeric(b) | Self::Tagged(b, _) => {
-                b.values_slice().len()
-            }
+            Self::Text(b)
+            | Self::Jsonb(b)
+            | Self::Numeric(b)
+            | Self::Formatted(b, _)
+            | Self::Tagged(b, _) => b.values_slice().len(),
+            Self::List(list) => list.data_bytes(),
             Self::Binary(b) => b.values_slice().len(),
             _ => 0,
         }
     }
 
     /// Finish the values so far; the builder is left empty.
-    fn finish(&mut self) -> ArrayRef {
+    pub(super) fn finish(&mut self) -> ArrayRef {
         match self {
             Self::Int16(b) => Arc::new(b.finish()),
             Self::Int32(b) => Arc::new(b.finish()),
@@ -182,9 +218,14 @@ impl Builder {
             Self::Float32(b) => Arc::new(b.finish()),
             Self::Float64(b) => Arc::new(b.finish()),
             Self::Bool(b) => Arc::new(b.finish()),
-            Self::Text(b) | Self::Jsonb(b) | Self::Numeric(b) | Self::Tagged(b, _) => {
-                Arc::new(b.finish())
-            }
+            Self::Text(b)
+            | Self::Jsonb(b)
+            | Self::Numeric(b)
+            | Self::Formatted(b, _)
+            | Self::Tagged(b, _) => Arc::new(b.finish()),
+            Self::Time(b) => Arc::new(b.finish()),
+            Self::Interval(b) => Arc::new(b.finish()),
+            Self::List(list) => list.finish(),
             Self::Binary(b) => Arc::new(b.finish()),
             Self::Timestamp(b) => Arc::new(b.finish()),
             Self::Date(b) => Arc::new(b.finish()),

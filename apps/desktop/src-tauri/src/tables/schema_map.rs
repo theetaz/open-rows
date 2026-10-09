@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Catalog table detail → the webview's `TableDetailDto`.
 use super::schema_dto::{
-    ForeignKeyDto, GeneratedDto, IndexDetailDto, RelationKindDto, StructureColumnDto,
+    ForeignKeyDto, GeneratedDto, IndexDetailDto, PartitionDto, RelationKindDto, StructureColumnDto,
     TableDetailDto, TableInfoDto, TriggerDto, TriggerTimingDto,
 };
 use openrows_driver_api::schema::{
-    ColumnDetail, ConstraintDetail, ConstraintKind, Generated, IndexDetail, RelationKind,
-    TableDetail, TableInfo, TriggerDetail, TriggerEvent, TriggerTiming,
+    ColumnDetail, ConstraintDetail, ConstraintKind, Generated, IndexDetail, PartitionDetail,
+    RelationKind, TableDetail, TableInfo, TriggerDetail, TriggerEvent, TriggerTiming,
 };
 
 /// The DTO of an existing relation (`None` when it was not found); `ddl` is
@@ -37,6 +37,7 @@ pub(crate) fn detail_dto(
         primary_key,
         indexes: detail.indexes.into_iter().map(index).collect(),
         triggers: detail.triggers.into_iter().map(trigger).collect(),
+        partitions: detail.partitions.into_iter().map(partition).collect(),
         info: table_info(info),
         ddl,
         editable,
@@ -100,6 +101,20 @@ fn index(index: IndexDetail) -> IndexDetailDto {
         predicate: index.predicate,
         comment: index.comment,
         definition: index.definition,
+    }
+}
+
+#[expect(
+    clippy::cast_precision_loss,
+    reason = "row estimates are display values, exact below 2^53"
+)]
+fn partition(partition: PartitionDetail) -> PartitionDto {
+    PartitionDto {
+        schema: partition.schema,
+        name: partition.name,
+        bound: partition.bound,
+        partitioned: partition.partitioned,
+        row_estimate: partition.row_estimate.map(|rows| rows as f64),
     }
 }
 
@@ -227,5 +242,28 @@ mod tests {
         };
         assert!(detail_dto(table, String::new(), true).is_some_and(|dto| !dto.editable));
         assert!(detail_dto(TableDetail::default(), String::new(), false).is_none());
+    }
+
+    #[test]
+    fn partitions_keep_their_bounds_and_estimates() -> Result<(), &'static str> {
+        let detail = TableDetail {
+            partitions: vec![PartitionDetail {
+                schema: "public".into(),
+                name: "m_2024".into(),
+                bound: "FOR VALUES FROM ('2024-01-01') TO ('2025-01-01')".into(),
+                partitioned: false,
+                row_estimate: Some(42),
+            }],
+            info: Some(TableInfo {
+                kind: RelationKind::PartitionedTable,
+                ..TableInfo::default()
+            }),
+            ..TableDetail::default()
+        };
+        let dto = detail_dto(detail, String::new(), false).ok_or("the relation exists")?;
+        assert_eq!(dto.partitions.len(), 1);
+        assert_eq!(dto.partitions[0].name, "m_2024");
+        assert_eq!(dto.partitions[0].row_estimate, Some(42.0));
+        Ok(())
     }
 }

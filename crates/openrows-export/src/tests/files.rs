@@ -2,8 +2,7 @@
 //! The temporary-file lifecycle and the streamed pipeline.
 use super::{TestResult, is_unsupported, texts};
 use crate::{CsvOptions, Delimiter, ExportError, Exporter, Format, Message, drain, write_all};
-use arrow_array::types::Int32Type;
-use arrow_array::{Array, ArrayRef, ListArray, RecordBatch};
+use arrow_array::{Array, ArrayRef, DurationSecondArray, RecordBatch};
 use arrow_schema::{Field, Schema};
 use std::convert::Infallible;
 use std::path::Path;
@@ -169,15 +168,15 @@ fn a_continued_result_with_the_same_columns_keeps_writing() -> TestResult {
 #[test]
 fn unsupported_types_are_refused_before_any_row_is_written() -> TestResult {
     let directory = tempfile::tempdir()?;
-    let list = ListArray::from_iter_primitive::<Int32Type, _, _>(vec![Some(vec![Some(1)])]);
-    let field = Field::new("l", list.data_type().clone(), true);
-    let column: ArrayRef = Arc::new(list);
+    let durations = DurationSecondArray::from(vec![1]);
+    let field = Field::new("l", durations.data_type().clone(), true);
+    let column: ArrayRef = Arc::new(durations);
     let batch = RecordBatch::try_new(Arc::new(Schema::new(vec![field])), vec![column])?;
     let mut exporter = Exporter::create(&directory.path().join("l.csv"), &CSV)?;
     let error = exporter
         .begin(batch.schema())
         .err()
-        .ok_or("accepted a list")?;
+        .ok_or("accepted a duration")?;
     assert!(is_unsupported(&error), "{error}");
     drop(exporter);
     assert!(entries(directory.path())?.is_empty());

@@ -50,7 +50,7 @@ impl PgDriver {
             tls: request.tls.clone(),
             via: request.via.clone(),
             timeouts: request.timeouts,
-            startup_commands: Vec::new(),
+            startup_commands: request.startup_commands.clone(),
         };
         Ok((config, options))
     }
@@ -163,6 +163,10 @@ impl Catalog for PgSession {
         table: &'a str,
     ) -> BoxFuture<'a, Result<TableDetail, DriverError>> {
         Box::pin(PgSession::table_detail(self, schema, table))
+    }
+
+    fn schema_fingerprint(&mut self) -> BoxFuture<'_, Result<Option<String>, DriverError>> {
+        Box::pin(PgSession::schema_fingerprint(self))
     }
 }
 

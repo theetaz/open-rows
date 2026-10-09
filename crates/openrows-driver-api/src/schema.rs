@@ -182,6 +182,21 @@ pub struct TableInfo {
     pub definition: Option<String>,
 }
 
+/// One partition of a partitioned table.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct PartitionDetail {
+    /// Schema of the partition.
+    pub schema: String,
+    /// Partition (table) name.
+    pub name: String,
+    /// The bound as the server prints it, e.g. `FOR VALUES FROM ('2024-01-01') TO ('2024-02-01')`.
+    pub bound: String,
+    /// The partition is itself partitioned.
+    pub partitioned: bool,
+    /// Planner estimate; `None` when never analysed.
+    pub row_estimate: Option<u64>,
+}
+
 /// Everything the Structure, Index, Triggers and DDL views show.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct TableDetail {
@@ -193,6 +208,8 @@ pub struct TableDetail {
     pub indexes: Vec<IndexDetail>,
     /// User triggers ordered by name.
     pub triggers: Vec<TriggerDetail>,
+    /// Partitions of a partitioned table, ordered by name.
+    pub partitions: Vec<PartitionDetail>,
     /// `None` when the relation does not exist.
     pub info: Option<TableInfo>,
 }

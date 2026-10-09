@@ -54,6 +54,7 @@ export { confirmDestructive, pickFileValue } from './dialog';
 export type { DestructivePrompt } from './dialog';
 /** Schema tree catalog reads through the schema cache (D-06, M1-16). */
 export {
+  checkCatalog,
   invalidateCatalog,
   listDatabases,
   listObjects,
@@ -66,6 +67,7 @@ export type {
   CatalogReply,
   CatalogSearchReply,
   CatalogSearchRequest,
+  ObjectsReply,
 } from './generated/bindings';
 /** Query execution, cancellation, result lifetime and history (D-07, FR-WS-01/02). */
 export {
@@ -152,6 +154,7 @@ export type {
   GeneratedDto,
   IndexDetailDto,
   IndexMethodDto,
+  PartitionDto,
   RelationKindDto,
   SchemaChangeDto,
   StructureColumnDto,

@@ -32,6 +32,7 @@ fn request() -> TestResult<ConnectRequest> {
         tls: TlsFiles::default(),
         via: None,
         timeouts: ConnectTimeouts::default(),
+        startup_commands: Vec::new(),
     })
 }
 

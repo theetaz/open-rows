@@ -56,7 +56,7 @@ done
 docker exec "$name" pg_isready --host 127.0.0.1 --quiet
 port="$(docker port "$name" 5432/tcp | head -n 1 | sed 's/.*://')"
 echo "PostgreSQL ${version} ($(docker exec "$name" postgres --version)) on 127.0.0.1:${port}, TLS on"
-OPENROWS_TEST_PG_PORT="$port" OPENROWS_TEST_PG_PASSWORD="$password" \
+OPENROWS_TEST_PG_PORT="$port" OPENROWS_TEST_PG_PASSWORD="$password" OPENROWS_TEST_PG_CONTAINER="$name" \
     OPENROWS_TEST_PG_TLS_DIR="$tls_dir" \
     cargo nextest run -p openrows-driver-postgres -p openrows-core -p openrows-schema \
     -p openrows-driver-conformance --locked --test postgres \

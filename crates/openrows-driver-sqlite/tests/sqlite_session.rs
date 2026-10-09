@@ -145,14 +145,11 @@ async fn read_only_files_refuse_writes_and_missing_files_are_not_created() -> Te
     Ok(())
 }
 
-#[tokio::test]
-async fn the_driver_opens_files_and_records_its_stages() -> TestResult {
-    let dir = tempfile::tempdir()?;
-    let path = dir.path().join("new.sqlite");
-    let request = ConnectRequest {
+fn file_request(path: &std::path::Path, startup_commands: Vec<String>) -> ConnectRequest {
+    ConnectRequest {
         endpoint: Endpoint::File {
             source: FileSource::Disk {
-                path: path.clone(),
+                path: path.to_path_buf(),
                 read_only: false,
                 create: true,
             },
@@ -166,7 +163,15 @@ async fn the_driver_opens_files_and_records_its_stages() -> TestResult {
         tls: TlsFiles::default(),
         via: None,
         timeouts: ConnectTimeouts::default(),
-    };
+        startup_commands,
+    }
+}
+
+#[tokio::test]
+async fn the_driver_opens_files_and_records_its_stages() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let path = dir.path().join("new.sqlite");
+    let request = file_request(&path, Vec::new());
     let mut trace = ConnectTrace::default();
     let connection = SqliteDriver.connect(&request, &mut trace).await?;
     assert!(path.exists(), "create opens a new file");
@@ -183,5 +188,40 @@ async fn the_driver_opens_files_and_records_its_stages() -> TestResult {
     connection.close().await?;
     assert_eq!(SqliteDriver.dialect(), openrows_sql::Dialect::Sqlite);
     assert_eq!(SqliteDriver.home_database(), "main");
+    Ok(())
+}
+
+#[tokio::test]
+async fn startup_commands_run_on_every_connect_and_name_a_failure() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let path = dir.path().join("boot.sqlite");
+    let commands = vec![
+        "CREATE TEMP TABLE boot (n INTEGER)".to_owned(),
+        "INSERT INTO boot VALUES (41)".to_owned(),
+        "SELECT n FROM boot".to_owned(),
+    ];
+    let mut trace = ConnectTrace::default();
+    let mut connection = SqliteDriver
+        .connect(&file_request(&path, commands), &mut trace)
+        .await?;
+    assert!(
+        trace
+            .completed
+            .iter()
+            .any(|(stage, _)| *stage == ConnectStage::StartupCommands)
+    );
+    let mut sink = Collect::default();
+    connection
+        .execute("SELECT n + 1 FROM boot", &mut sink)
+        .await?;
+    assert_eq!(sink.rows(), 1);
+    connection.close().await?;
+    let failing = file_request(&path, vec!["SELEC 1".to_owned()]);
+    let error = SqliteDriver
+        .connect(&failing, &mut ConnectTrace::default())
+        .await
+        .err()
+        .ok_or("a failing startup command must fail the connect")?;
+    assert!(error.to_string().contains("startup command 1"), "{error}");
     Ok(())
 }

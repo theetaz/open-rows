@@ -7,73 +7,9 @@
 //! and finally the rename; add columns; drop then create indexes (on final
 //! column names); the table comment; the table rename last.
 use super::{data_type, default_sql, quote, relation, text};
-use openrows_driver_api::schema::{
-    DefaultValue, IndexMethod, NewColumn, NewIndex, RelationKind, SchemaChange, TableDetail,
-};
-pub use openrows_driver_api::structure::{AlterPlan, AlterTable};
-use std::collections::{BTreeMap, BTreeSet};
-
-/// Why a change set cannot be turned into DDL.
-#[derive(Clone, Debug, Eq, PartialEq, thiserror::Error)]
-pub enum AlterError {
-    /// Nothing is staged.
-    #[error("there are no structure changes to apply")]
-    Empty,
-    /// Views, materialized views and foreign tables are not altered here.
-    #[error("only tables can be altered here")]
-    NotATable,
-    /// The column is not in the catalog (it may have changed meanwhile).
-    #[error("the table has no column named {0:?}; reload the structure")]
-    UnknownColumn(String),
-    /// The index is not in the catalog.
-    #[error("the table has no index named {0:?}; reload the structure")]
-    UnknownIndex(String),
-    /// Two columns would end up with the same name.
-    #[error("a column named {0:?} already exists")]
-    ColumnExists(String),
-    /// The index backs a primary key, unique or exclusion constraint.
-    #[error("index {0:?} backs a constraint; drop the constraint instead")]
-    ConstraintIndex(String),
-    /// Two changes set the same property, or change a dropped column.
-    #[error("conflicting changes for {0:?}")]
-    Conflict(String),
-    /// Empty names or names with NUL characters.
-    #[error("names cannot be empty or contain NUL characters")]
-    InvalidName,
-    /// The type text is not plain type syntax.
-    #[error("{0:?} is not a valid type name")]
-    InvalidType(String),
-    /// An empty or invalid default expression.
-    #[error("the default of {0:?} is empty or invalid")]
-    InvalidDefault(String),
-    /// `CREATE INDEX` without columns.
-    #[error("an index needs at least one column")]
-    NoIndexColumns,
-}
-
-/// A comment to set (`Some`) or remove (`None`).
-#[derive(Clone, Copy)]
-struct Comment<'a>(Option<&'a str>);
-
-#[derive(Default)]
-struct ColumnEdits<'a> {
-    rename: Option<&'a str>,
-    data_type: Option<&'a str>,
-    nullable: Option<bool>,
-    default: Option<&'a DefaultValue>,
-    comment: Option<Comment<'a>>,
-}
-
-#[derive(Default)]
-struct Staged<'a> {
-    columns: BTreeMap<&'a str, ColumnEdits<'a>>,
-    drops: Vec<&'a str>,
-    adds: Vec<&'a NewColumn>,
-    index_drops: Vec<&'a str>,
-    index_adds: Vec<&'a NewIndex>,
-    rename: Option<&'a str>,
-    comment: Option<Comment<'a>>,
-}
+use openrows_driver_api::schema::{IndexMethod, NewColumn, NewIndex, SchemaChange, TableDetail};
+pub use openrows_driver_api::structure::{AlterError, AlterPlan, AlterTable};
+use openrows_driver_api::structure::{ColumnEdits, Comment, IndexDrops, StagedChanges};
 
 /// Validate `changes` against the catalog and generate ordered DDL.
 ///
@@ -83,21 +19,7 @@ pub fn alter_sql(
     target: &AlterTable<'_>,
     changes: &[SchemaChange],
 ) -> Result<AlterPlan, AlterError> {
-    let kind = target.detail.info.as_ref().map(|info| info.kind);
-    if !matches!(
-        kind,
-        Some(RelationKind::Table | RelationKind::PartitionedTable)
-    ) {
-        return Err(AlterError::NotATable);
-    }
-    if changes.is_empty() {
-        return Err(AlterError::Empty);
-    }
-    let mut staged = Staged::default();
-    for change in changes {
-        staged.add(change)?;
-    }
-    staged.validate(target.detail)?;
+    let staged = StagedChanges::stage(target, changes, IndexDrops::NotConstraints)?;
     let mut plan = Plan {
         relation: relation(target.schema, target.table)?,
         schema: target.schema,
@@ -110,134 +32,6 @@ pub fn alter_sql(
         return Err(AlterError::Empty);
     }
     Ok(plan.out)
-}
-
-/// Store `value` in an empty `slot`; a second value for it is a conflict.
-fn once<T>(slot: &mut Option<T>, value: T, what: &str) -> Result<(), AlterError> {
-    if slot.is_some() {
-        return Err(AlterError::Conflict(what.to_owned()));
-    }
-    *slot = Some(value);
-    Ok(())
-}
-
-impl<'a> Staged<'a> {
-    fn add(&mut self, change: &'a SchemaChange) -> Result<(), AlterError> {
-        match change {
-            SchemaChange::RenameTable(name) => once(&mut self.rename, name.as_str(), "table name"),
-            SchemaChange::TableComment(comment) => once(
-                &mut self.comment,
-                Comment(comment.as_deref()),
-                "table comment",
-            ),
-            SchemaChange::RenameColumn { column, name } => {
-                once(&mut self.edits(column).rename, name.as_str(), column)
-            }
-            SchemaChange::ColumnType { column, data_type } => once(
-                &mut self.edits(column).data_type,
-                data_type.as_str(),
-                column,
-            ),
-            SchemaChange::ColumnNullable { column, nullable } => {
-                once(&mut self.edits(column).nullable, *nullable, column)
-            }
-            SchemaChange::ColumnDefault { column, default } => {
-                once(&mut self.edits(column).default, default, column)
-            }
-            SchemaChange::ColumnComment { column, comment } => once(
-                &mut self.edits(column).comment,
-                Comment(comment.as_deref()),
-                column,
-            ),
-            SchemaChange::AddColumn(column) => {
-                self.adds.push(column);
-                Ok(())
-            }
-            SchemaChange::DropColumn(column) => push_unique(&mut self.drops, column),
-            SchemaChange::CreateIndex(index) => {
-                self.index_adds.push(index);
-                Ok(())
-            }
-            SchemaChange::DropIndex(name) => push_unique(&mut self.index_drops, name),
-        }
-    }
-
-    fn edits(&mut self, column: &'a str) -> &mut ColumnEdits<'a> {
-        self.columns.entry(column).or_default()
-    }
-
-    fn validate(&self, detail: &TableDetail) -> Result<(), AlterError> {
-        let current: BTreeSet<&str> = detail.columns.iter().map(|c| c.name.as_str()).collect();
-        for &name in self.columns.keys().chain(&self.drops) {
-            if !current.contains(name) {
-                return Err(AlterError::UnknownColumn(name.to_owned()));
-            }
-        }
-        if let Some(name) = self
-            .drops
-            .iter()
-            .find(|name| self.columns.contains_key(*name))
-        {
-            return Err(AlterError::Conflict((*name).to_owned()));
-        }
-        let finals = self.final_names(&current)?;
-        for index in &self.index_adds {
-            if index.columns.is_empty() {
-                return Err(AlterError::NoIndexColumns);
-            }
-            if let Some(name) = index
-                .columns
-                .iter()
-                .find(|name| !finals.contains(name.as_str()))
-            {
-                return Err(AlterError::UnknownColumn(name.clone()));
-            }
-        }
-        for &name in &self.index_drops {
-            match detail.indexes.iter().find(|index| index.name == name) {
-                None => return Err(AlterError::UnknownIndex(name.to_owned())),
-                Some(index) if index.constraint => {
-                    return Err(AlterError::ConstraintIndex(name.to_owned()));
-                }
-                Some(_) => {}
-            }
-        }
-        Ok(())
-    }
-
-    /// Column names after the change set; a rename may not take the name of
-    /// another column that still exists while the renames run.
-    fn final_names(&self, current: &BTreeSet<&'a str>) -> Result<BTreeSet<&'a str>, AlterError> {
-        let mut finals: BTreeSet<&str> = current
-            .iter()
-            .filter(|name| !self.drops.contains(name))
-            .copied()
-            .collect();
-        for (&column, edits) in &self.columns {
-            let Some(name) = edits.rename.filter(|name| *name != column) else {
-                continue;
-            };
-            if finals.contains(name) {
-                return Err(AlterError::ColumnExists(name.to_owned()));
-            }
-            finals.remove(column);
-            finals.insert(name);
-        }
-        for column in &self.adds {
-            if !finals.insert(column.name.as_str()) {
-                return Err(AlterError::ColumnExists(column.name.clone()));
-            }
-        }
-        Ok(finals)
-    }
-}
-
-fn push_unique<'a>(list: &mut Vec<&'a str>, name: &'a str) -> Result<(), AlterError> {
-    if list.contains(&name) {
-        return Err(AlterError::Conflict(name.to_owned()));
-    }
-    list.push(name);
-    Ok(())
 }
 
 struct Plan<'a> {
@@ -257,7 +51,11 @@ impl Plan<'_> {
         self.out.warnings.push(warning);
     }
 
-    fn columns(&mut self, detail: &TableDetail, staged: &Staged<'_>) -> Result<(), AlterError> {
+    fn columns(
+        &mut self,
+        detail: &TableDetail,
+        staged: &StagedChanges<'_>,
+    ) -> Result<(), AlterError> {
         for &name in &staged.drops {
             self.alter(&format!("DROP COLUMN {}", quote(name)?));
             self.warn(format!(
@@ -340,7 +138,7 @@ impl Plan<'_> {
         Ok(())
     }
 
-    fn indexes(&mut self, staged: &Staged<'_>) -> Result<(), AlterError> {
+    fn indexes(&mut self, staged: &StagedChanges<'_>) -> Result<(), AlterError> {
         for &name in &staged.index_drops {
             let index = relation(self.schema, name)?;
             self.out.statements.push(format!("DROP INDEX {index}"));
@@ -375,7 +173,7 @@ impl Plan<'_> {
         ))
     }
 
-    fn table(&mut self, staged: &Staged<'_>) -> Result<(), AlterError> {
+    fn table(&mut self, staged: &StagedChanges<'_>) -> Result<(), AlterError> {
         if let Some(Comment(comment)) = staged.comment {
             self.out.statements.push(format!(
                 "COMMENT ON TABLE {} IS {}",

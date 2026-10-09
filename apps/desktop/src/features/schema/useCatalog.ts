@@ -17,6 +17,7 @@ import type { ColumnTree } from './useColumns';
 import { useNavigation } from './useNavigation';
 import type { NavigationState } from './useNavigation';
 import { isRefreshing, useResources } from './useResources';
+import { useSchemaFingerprint } from './useSchemaFingerprint';
 import type { Resource, Resources } from './useResources';
 
 /** The active connection's catalog, served by the schema cache (M1-16). */
@@ -37,8 +38,9 @@ export type Catalog = Omit<NavigationState, 'chosenSchema'> &
     schemas: Resource<SchemaDto[]>;
     /** Selected schema; empty until schemas are known. */
     schema: string;
-    objects: (group: ObjectGroup) => Resource<ObjectDto[]>;
-    loadObjects: (group: ObjectGroup) => void;
+    /** The first `limit` objects of a section and its total. */
+    objects: (group: ObjectGroup, limit?: number) => Resource<ObjectPage>;
+    loadObjects: (group: ObjectGroup, limit?: number) => void;
     /** Something shown came from a snapshot and is being read again. */
     refreshing: boolean;
     /** Changes on every refresh and after DDL; completion re-reads on it. */
@@ -46,6 +48,12 @@ export type Catalog = Omit<NavigationState, 'chosenSchema'> &
     /** Read everything shown from the active connection again, keeping it on screen. */
     refresh: () => void;
   };
+
+/** Objects a tree section shows at first and adds per "Show more". */
+export const OBJECT_PAGE = 5000;
+
+/** The first objects of a section and how many it holds in all. */
+export type ObjectPage = { objects: ObjectDto[]; total: number };
 
 const offlineReason = (connections: Connections): string | null => {
   const profile = connections.active;
@@ -76,15 +84,18 @@ export function useCatalog(connections: Connections): Catalog {
   const columnTree = useColumns(resources, scoped, target);
   const index = useCatalogIndex(resources, scoped, target);
   const [revision, refresh] = useRefresh(resources, profileId, prefix);
+  useSchemaFingerprint(profileId, database);
   const schema = pickSchema(
     reads.schemas,
     chosenSchema,
     navigation.systemSchemas,
   );
-  const objectsKey = (group: ObjectGroup): string =>
-    `${scoped}objects\n${schema}\n${group.id}`;
-  const objects = (group: ObjectGroup): Resource<ObjectDto[]> =>
-    resources.get(objectsKey(group));
+  const objectsKey = (group: ObjectGroup, limit: number): string =>
+    `${scoped}objects\n${schema}\n${group.id}\n${String(limit)}`;
+  const objects = (
+    group: ObjectGroup,
+    limit = OBJECT_PAGE,
+  ): Resource<ObjectPage> => resources.get(objectsKey(group, limit));
   return {
     ...navigation,
     database,
@@ -97,17 +108,20 @@ export function useCatalog(connections: Connections): Catalog {
     ...index,
     schema,
     objects,
-    loadObjects: (group) => {
+    loadObjects: (group, limit = OBJECT_PAGE) => {
       if (!profileId || !schema) return;
-      const section = { schema, kinds: group.kinds };
-      resources.load(objectsKey(group), (fresh) =>
-        listObjects(profileId, database, section, fresh),
+      const section = { schema, kinds: group.kinds, limit };
+      resources.load(objectsKey(group, limit), (fresh) =>
+        listObjects(profileId, database, section, fresh).then((reply) => ({
+          data: { objects: reply.data, total: reply.total },
+          stale: reply.stale,
+        })),
       );
     },
     refreshing: [
       reads.databases,
       reads.schemas,
-      ...objectGroups.map(objects),
+      ...objectGroups.map((group) => objects(group)),
     ].some(isRefreshing),
     revision,
     refresh,
