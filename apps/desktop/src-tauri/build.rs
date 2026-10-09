@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Build the Tauri context and explicitly scope application commands.
-/// Every command the webview may invoke.
+
+/// Every application command the webview may invoke.
 const COMMANDS: &[&str] = &[
     "app_info",
     "result_window",
@@ -71,6 +72,11 @@ const COMMANDS: &[&str] = &[
     "import_preview",
     "import_start",
     "import_cancel",
+    "export_reveal",
+    "export_open",
+    "run_file_pick",
+    "run_file_check",
+    "run_file_start",
     "schema_diagram",
     "diagram_save",
     "settings_read",

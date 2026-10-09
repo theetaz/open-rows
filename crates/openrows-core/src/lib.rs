@@ -16,7 +16,8 @@
 //! [`openrows_results::ResultStore`] is the production [`BatchSink`].
 //! [`script::run_script`] runs editor text statement by statement after
 //! [`safety::SafetyPlan`] has gated it (read-only, confirm-before-write).
-//! [`export`] streams a statement's rows, or a stored result, to a file.
+//! [`export`] streams a statement's rows, or a stored result, to a file;
+//! [`script_file`] runs `.sql` files too large for the editor.
 #![forbid(unsafe_code)]
 mod actor;
 mod dormant;
@@ -29,6 +30,7 @@ mod resilience;
 mod results;
 pub mod safety;
 pub mod script;
+pub mod script_file;
 mod shared;
 mod sink;
 #[cfg(test)]

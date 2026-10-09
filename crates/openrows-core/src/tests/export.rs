@@ -13,10 +13,13 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
-const CSV: Format = Format::Csv(CsvOptions {
-    delimiter: Delimiter::Comma,
-    header: true,
-});
+fn csv() -> Format {
+    Format::Csv(CsvOptions {
+        delimiter: Delimiter::Comma,
+        header: true,
+        ..CsvOptions::default()
+    })
+}
 
 fn statement(sql: &str) -> BoundSql {
     BoundSql {
@@ -47,7 +50,7 @@ async fn a_statement_streams_into_the_file_and_not_the_store() -> TestResult {
     let reported = seen.clone();
     let job = ExportJob {
         progress: Box::new(move |rows| reported.store(rows, Ordering::SeqCst)),
-        ..job(&path, &CSV, &ScriptCanceller::default())?
+        ..job(&path, &csv(), &ScriptCanceller::default())?
     };
     let outcome = export_statement(&manager, session, statement("rows 3 4"), job).await;
     assert!(
@@ -84,7 +87,7 @@ async fn a_failing_statement_reports_the_server_error_and_leaves_no_file() -> Te
         &manager,
         session,
         statement("fail"),
-        job(&path, &CSV, &cancel)?,
+        job(&path, &csv(), &cancel)?,
     )
     .await;
     let ExportOutcome::Failed(ExportFailure::Query(error)) = outcome else {
@@ -112,7 +115,7 @@ async fn cancel_stops_the_statement_and_deletes_the_partial_file() -> TestResult
         &manager,
         session,
         statement("hang"),
-        job(&path, &CSV, &cancel)?,
+        job(&path, &csv(), &cancel)?,
     )
     .await;
     stop.await?;
@@ -125,7 +128,7 @@ async fn cancel_stops_the_statement_and_deletes_the_partial_file() -> TestResult
         &manager,
         session,
         statement("rows 1 1"),
-        job(&path, &CSV, &already)?,
+        job(&path, &csv(), &already)?,
     )
     .await;
     assert!(matches!(outcome, ExportOutcome::Cancelled));
@@ -207,7 +210,7 @@ async fn spilled_results_export_every_row_in_order() -> TestResult {
     let path = directory.path().join("spilled.csv");
     let cancel = ScriptCanceller::default();
     let stored = store.batches("r").ok_or("missing result")?;
-    let outcome = export_batches(stored, job(&path, &CSV, &cancel)?).await;
+    let outcome = export_batches(stored, job(&path, &csv(), &cancel)?).await;
     assert!(
         matches!(outcome, ExportOutcome::Written { rows: 1_000 }),
         "{outcome:?}"
@@ -217,7 +220,7 @@ async fn spilled_results_export_every_row_in_order() -> TestResult {
         batch.schema(),
         vec![Ok::<_, std::convert::Infallible>(batch)],
     );
-    let outcome = export_batches(in_memory, job(&expected, &CSV, &cancel)?).await;
+    let outcome = export_batches(in_memory, job(&expected, &csv(), &cancel)?).await;
     assert!(matches!(outcome, ExportOutcome::Written { rows: 1_000 }));
     assert_eq!(std::fs::read(&path)?, std::fs::read(&expected)?);
     Ok(())

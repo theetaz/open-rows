@@ -23,6 +23,7 @@ import { menuEnabled } from './menuState';
 import type { PaletteMode } from './WorkspacePalettes';
 import { importOpener } from './TableImport';
 import type { ImportTarget } from './TableImport';
+import type { JobActions } from './JobActions';
 /**
  * Tab scopes of the active connection: the active database's scope (the
  * database last chosen, else the profile's, until one is open, so restored
@@ -126,6 +127,8 @@ type Input = {
   /** Open the import sheet for a database, schema and maybe a table. */
   onImport: (target: ImportTarget) => void;
   onShowDiagram: (request: DiagramRequest) => void;
+  /** Run SQL File… and Export Tables… */
+  jobs: JobActions;
   enabled: boolean;
   connections: Connections;
 };
@@ -154,6 +157,29 @@ function objectOpener(input: {
     const target = scopeOf(object.database);
     if (!target || !openTableView(tabs, target, object, preview))
       commands.openObject(object);
+  };
+}
+
+/**
+ * Open SQL File… into a new tab, and Run SQL File… and Export Tables… on
+ * the browsed database and schema.
+ */
+function fileCommands(
+  input: { jobs: JobActions; catalog: Catalog },
+  tabs: QueryTabs,
+  scope: TabScope | undefined,
+): { openFile: () => void; onRunFile: () => void; onExportTables: () => void } {
+  const { jobs, catalog } = input;
+  return {
+    openFile: () => {
+      openFileInto(tabs, scope);
+    },
+    onRunFile: () => {
+      jobs.runFile(catalog.database);
+    },
+    onExportTables: () => {
+      jobs.exportTables(catalog.database, catalog.schema);
+    },
   };
 }
 
@@ -193,9 +219,6 @@ export function useWorkspaceController(input: Input): WorkspaceController {
     setMode,
     addQuery: commands.addQuery,
     closeTab: commands.closeTab,
-    openFile: () => {
-      openFileInto(tabs, scope);
-    },
     refresh,
     toggleSafe,
     setTheme,
@@ -205,6 +228,7 @@ export function useWorkspaceController(input: Input): WorkspaceController {
     onImport: importData,
     // Called without arguments: the active scope.
     openProcesses,
+    ...fileCommands({ jobs: input.jobs, catalog }, tabs, scope),
   });
   useCommandRoutes(command, input.enabled && !mode, {
     connections,

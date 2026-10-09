@@ -59,3 +59,36 @@
   font-size: var(--or-text-12);
   overflow-wrap: anywhere;
 }
+.pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--or-space-10);
+}
+.tables {
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-2);
+  max-block-size: 200px;
+  overflow-y: auto;
+  margin: 0;
+  padding: var(--or-space-6);
+  border: var(--or-border-width) solid var(--or-control-stroke);
+  border-radius: var(--or-radius-field);
+}
+.tables label {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-6);
+}
+.tables input,
+.scope input {
+  margin: 0;
+  accent-color: var(--or-accent);
+}
+.tableTools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+}

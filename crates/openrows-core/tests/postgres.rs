@@ -9,6 +9,8 @@ mod export;
 mod limits;
 #[path = "postgres/resilience.rs"]
 mod resilience;
+#[path = "postgres/script_file.rs"]
+mod script_file;
 #[path = "postgres/table_edits.rs"]
 mod table_edits;
 #[path = "postgres/table_view.rs"]
@@ -171,6 +173,7 @@ fn script(statements: &[BoundSql]) -> Script<'_> {
         statements,
         max_rows: None,
         stop_on_error: true,
+        sink: None,
     }
 }
 

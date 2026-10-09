@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Streamed export of result batches to files (FR-IO-01, docs/06 §8).
 //!
-//! An [`Exporter`] encodes Arrow batches as CSV (RFC 4180), JSON (an array
-//! of objects or NDJSON) or dialect-correct SQL `INSERT` statements and
-//! writes them to a temporary file next to the destination. Only
+//! An [`Exporter`] encodes Arrow batches as CSV (RFC 4180) or TSV, JSON (an
+//! array of objects or NDJSON), dialect-correct SQL `INSERT` statements, a
+//! Markdown table, an Excel workbook with typed cells or an Apache Parquet
+//! file, and writes them to a temporary file next to the destination. Only
 //! [`Exporter::finish`] renames it into place; dropping an unfinished
 //! exporter (error or cancel) deletes the temporary file, so a partial
 //! export never replaces or impersonates the chosen file.
@@ -14,18 +15,25 @@
 #![forbid(unsafe_code)]
 mod cell;
 mod csv;
+mod encoding;
 mod error;
 mod exporter;
 mod file;
 mod format;
 mod json;
+mod markdown;
+mod parquet;
 mod pipeline;
 mod sql;
 #[cfg(test)]
 mod tests;
 mod text;
+mod xlsx;
 
 pub use error::ExportError;
 pub use exporter::Exporter;
-pub use format::{CsvOptions, Delimiter, Format, InsertOptions, JsonLayout};
+pub use format::{
+    CsvOptions, Delimiter, ExcelOptions, Format, InsertOptions, JsonLayout, LineEnding,
+    ParquetCompression, Quote, TextEncoding,
+};
 pub use pipeline::{Message, drain, write_all};

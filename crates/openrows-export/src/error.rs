@@ -34,6 +34,18 @@ pub enum ExportError {
     /// A stored batch could not be read (released result, unreadable spill file).
     #[error("the stored result could not be read: {0}")]
     Read(#[source] Box<dyn std::error::Error + Send + Sync>),
+    /// A character cannot be written in the chosen text encoding.
+    #[error("{0:?} cannot be written in Latin-1; choose UTF-8 or UTF-16")]
+    Unencodable(char),
+    /// The Excel workbook could not be built.
+    #[error("the Excel workbook could not be written: {0}")]
+    Excel(String),
+    /// The Parquet file could not be written.
+    #[error("the Parquet file could not be written: {0}")]
+    Parquet(String),
+    /// A text format holds one result per file.
+    #[error("this format writes one table per file")]
+    OneTablePerFile,
     /// The stream ended without finishing (cancelled or failed upstream).
     #[error("the export stopped before it finished")]
     Aborted,

@@ -3,7 +3,7 @@
 //! one at a time on a session, by default stopping at the first error
 //! (docs/04 §4.5).
 use crate::error::ErrorKind;
-use crate::{Canceller, CoreError, QueryEvent, SessionManager};
+use crate::{BatchSink, Canceller, CoreError, QueryEvent, SessionManager};
 use openrows_sql::select::BoundSql;
 use openrows_sql::{Dialect, split, statement_at};
 use openrows_types::SessionId;
@@ -74,7 +74,9 @@ impl ScriptCanceller {
         }
     }
 
-    pub(crate) fn is_cancelled(&self) -> bool {
+    /// Whether the run was cancelled.
+    #[must_use]
+    pub fn is_cancelled(&self) -> bool {
         self.0.cancelled.load(Ordering::SeqCst)
     }
 
@@ -96,7 +98,7 @@ impl ScriptCanceller {
 
 /// Statements of one editor run, the row cap of each result set and the
 /// error policy.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy)]
 pub struct Script<'a> {
     /// Statements with their bound parameters, run in order.
     pub statements: &'a [BoundSql],
@@ -105,6 +107,20 @@ pub struct Script<'a> {
     /// End the run at the first failed statement ("Return on Error"); when
     /// `false` the remaining statements still run and each error is reported.
     pub stop_on_error: bool,
+    /// Where result rows go instead of the manager's store (a file run
+    /// discards them); `None` keeps them in the store under `max_rows`.
+    pub sink: Option<&'a Arc<dyn BatchSink>>,
+}
+
+impl std::fmt::Debug for Script<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Script")
+            .field("statements", &self.statements.len())
+            .field("max_rows", &self.max_rows)
+            .field("stop_on_error", &self.stop_on_error)
+            .field("sink", &self.sink.is_some())
+            .finish()
+    }
 }
 
 /// Execute the script's statements in order on `session`, forwarding every event to `emit`.
@@ -153,7 +169,10 @@ async fn run_statements(
             send(QueryEvent::Cancelled);
             return ScriptOutcome::Cancelled;
         }
-        let submitted = manager.execute_statement(session, statement.clone(), script.max_rows);
+        let submitted = match script.sink {
+            Some(sink) => manager.execute_into(session, statement.clone(), Arc::clone(sink)),
+            None => manager.execute_statement(session, statement.clone(), script.max_rows),
+        };
         match follow(submitted, cancel, &mut send).await {
             ScriptOutcome::Completed => {}
             ScriptOutcome::Failed if !script.stop_on_error && !lost => {

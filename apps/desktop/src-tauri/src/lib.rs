@@ -7,6 +7,7 @@ mod editor_report;
 mod exports;
 mod grid_report;
 mod imports;
+mod jobs;
 #[cfg(target_os = "macos")]
 mod material;
 mod menu;
@@ -14,6 +15,7 @@ mod observability;
 mod queries;
 mod result_store;
 mod results;
+mod run_file;
 mod settings;
 mod settings_watch;
 mod spike;
@@ -28,6 +30,10 @@ use connections::{
     attach, catalog, connection, diagnostics, files, processes, profiles, prompts, reveal, sessions,
 };
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "the registry is one list of every command, which only grows"
+)]
 fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
     let builder = tauri_specta::Builder::new().commands(tauri_specta::collect_commands![
         commands::app_info,
@@ -97,6 +103,11 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
         imports::commands::import_preview,
         imports::commands::import_start,
         imports::commands::import_cancel,
+        exports::outputs::export_reveal,
+        exports::outputs::export_open,
+        run_file::commands::run_file_pick,
+        run_file::commands::run_file_check,
+        run_file::commands::run_file_start,
         diagram::commands::schema_diagram,
         diagram::commands::diagram_save,
         settings::settings_read,
@@ -154,7 +165,10 @@ pub fn run() -> Result<(), tauri::Error> {
         .plugin(tauri_plugin_dialog::init())
         .plugin(window_frame::plugin())
         .manage(queries::Queries::default())
-        .manage(imports::Imports::default());
+        .manage(imports::Imports::default())
+        .manage(exports::pins::ResultPins::default())
+        .manage(exports::outputs::ExportOutputs::default())
+        .manage(run_file::RunFiles::default());
     let specta = command_builder();
     let controls = specta.invoke_handler();
     let binary: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool =

@@ -15,6 +15,8 @@ import type { SettingsSection } from '../settings';
 import { TableExport } from './TableExport';
 import { TableImport } from './TableImport';
 import type { ImportTarget } from './TableImport';
+import { JobSheets, useJobActions } from './JobActions';
+import type { JobActions } from './JobActions';
 import { ErDiagram } from '../erd';
 import styles from './Workspace.module.css';
 /** Real connections, catalog, query tabs and results. */
@@ -31,6 +33,7 @@ export function Workspace({
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState<ImportTarget | null>(null);
   const [diagram, setDiagram] = useState<DiagramRequest | null>(null);
+  const jobs = useJobActions(connections);
   const controller = useWorkspaceController({
     onGallery,
     onSettings,
@@ -39,6 +42,7 @@ export function Workspace({
     },
     onImport: setImporting,
     onShowDiagram: setDiagram,
+    jobs,
     enabled,
     connections,
   });
@@ -51,6 +55,7 @@ export function Workspace({
           onSettings();
         }}
         onProcesses={controller.openProcesses}
+        onRunFile={jobs.runFile}
       />
       <div className={styles.main}>
         <Toolbar connections={connections} controller={controller} />
@@ -67,47 +72,67 @@ export function Workspace({
         controller={controller}
         exporting={exporting}
         importing={importing}
+        jobs={jobs}
         onClose={() => {
           setExporting(false);
           setImporting(null);
         }}
       />
-      {diagram && connections.active && (
-        <ErDiagram
-          key={`${diagram.database}\n${diagram.schema}`}
-          {...diagram}
-          profileId={connections.active.id}
-          onOpen={(name) => {
-            controller.openObject({
-              database: diagram.database,
-              schema: diagram.schema,
-              name,
-              kind: 'table',
-              arguments: null,
-            });
-          }}
-          onClose={() => {
-            setDiagram(null);
-          }}
-        />
-      )}
+      <DiagramSheet
+        diagram={diagram}
+        profileId={connections.active?.id}
+        controller={controller}
+        onClose={() => {
+          setDiagram(null);
+        }}
+      />
       <ConnectionSheets connections={connections} />
       <SshPrompts />
     </div>
   );
 }
 
-/** File ▸ Export Table… and Import… sheets. */
+/** The ER diagram of a schema, opening tables in the workspace. */
+function DiagramSheet(props: {
+  diagram: DiagramRequest | null;
+  profileId: string | undefined;
+  controller: ReturnType<typeof useWorkspaceController>;
+  onClose: () => void;
+}): React.JSX.Element | null {
+  const { diagram, profileId, controller } = props;
+  if (!diagram || !profileId) return null;
+  return (
+    <ErDiagram
+      key={`${diagram.database}\n${diagram.schema}`}
+      {...diagram}
+      profileId={profileId}
+      onOpen={(name) => {
+        controller.openObject({
+          database: diagram.database,
+          schema: diagram.schema,
+          name,
+          kind: 'table',
+          arguments: null,
+        });
+      }}
+      onClose={props.onClose}
+    />
+  );
+}
+
+/** Export, import and Run SQL File… sheets. */
 function TransferSheets(props: {
   connections: ReturnType<typeof useConnections>;
   controller: ReturnType<typeof useWorkspaceController>;
   exporting: boolean;
   importing: ImportTarget | null;
+  jobs: JobActions;
   onClose: () => void;
 }): React.JSX.Element {
   const { connections, controller } = props;
   return (
     <>
+      <JobSheets actions={props.jobs} />
       {props.exporting && (
         <TableExport
           connections={connections}

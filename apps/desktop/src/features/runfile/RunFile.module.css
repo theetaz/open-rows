@@ -1,0 +1,119 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.summary {
+  margin: 0;
+}
+.note {
+  margin: 0;
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+}
+.error {
+  margin: 0;
+  color: var(--or-danger-fg);
+  overflow-wrap: anywhere;
+}
+.safety {
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-6);
+}
+.safety p {
+  margin: 0;
+}
+.samples,
+.errors ol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-4);
+  margin: 0;
+  padding: var(--or-space-6);
+  list-style: none;
+  border: var(--or-border-width) solid var(--or-control-stroke);
+  border-radius: var(--or-radius-field);
+  font-size: var(--or-text-12);
+}
+.samples li,
+.errors li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: var(--or-space-8);
+  min-width: 0;
+}
+.samples code,
+.errors code,
+.current {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--or-font-mono);
+}
+.line {
+  color: var(--or-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.message {
+  grid-column: 2;
+  color: var(--or-danger-fg);
+  overflow-wrap: anywhere;
+}
+.errors {
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-4);
+}
+.errors h3 {
+  margin: 0;
+  font-size: var(--or-text-12);
+  font-weight: 600;
+}
+.errors ol {
+  max-block-size: 200px;
+  overflow-y: auto;
+}
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-4);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.options legend {
+  padding: 0;
+  margin-block-end: var(--or-space-4);
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+}
+.options label {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-6);
+}
+.options input {
+  margin: 0;
+  accent-color: var(--or-accent);
+}
+.status {
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-8);
+}
+.status progress {
+  inline-size: 100%;
+  block-size: 4px;
+  accent-color: var(--or-accent);
+}
+.counts {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--or-space-8);
+  margin: 0;
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+  font-variant-numeric: tabular-nums;
+}
+.current {
+  display: block;
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+}

@@ -62,6 +62,14 @@ impl ExportFile {
         }
     }
 
+    /// A second handle on the temporary file, for writers that need their
+    /// own (Excel, Parquet); [`ExportFile::commit`] still syncs and renames.
+    pub(crate) fn handle(&mut self) -> Result<File, ExportError> {
+        let writer = self.writer.as_mut().ok_or(ExportError::Aborted)?;
+        writer.flush()?;
+        Ok(writer.get_ref().try_clone()?)
+    }
+
     /// Flush, sync and rename over the destination.
     pub(crate) fn commit(mut self) -> Result<(), ExportError> {
         let writer = self.writer.take().ok_or(ExportError::Aborted)?;

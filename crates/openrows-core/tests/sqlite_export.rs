@@ -74,6 +74,7 @@ async fn digest(manager: &SessionManager, session: SessionId, table: &str) -> Te
     let csv = Format::Csv(CsvOptions {
         delimiter: Delimiter::Comma,
         header: false,
+        ..CsvOptions::default()
     });
     export(manager, session, (&sql, &csv), &path).await?;
     Ok(std::fs::read_to_string(path)?)
@@ -114,6 +115,7 @@ async fn sql_insert_export_round_trips_and_text_formats_match() -> TestResult {
     let options = Format::Csv(CsvOptions {
         delimiter: Delimiter::Comma,
         header: true,
+        ..CsvOptions::default()
     });
     export(
         &manager,

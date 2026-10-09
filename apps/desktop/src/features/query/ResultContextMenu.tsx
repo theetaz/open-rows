@@ -18,6 +18,8 @@ type ResultMenuProps = {
   pinned: boolean;
   copy: (format: CopyFormat) => void;
   copyText: (text: string) => void;
+  /** Export the selected rows; omitted when the result cannot be exported. */
+  exportRows?: (() => void) | undefined;
   sortBy: (order: RowOrder | null) => void;
   togglePin: () => void;
   fit: () => void;
@@ -66,9 +68,13 @@ function resultMenuEntries(props: ResultMenuProps): MenuEntry[] {
     : item('Copy', () => {
         props.copy('tsv');
       });
+  const exportRows = props.exportRows;
   return [
     copy,
     copyAsMenu(props.copy),
+    ...(exportRows && !header
+      ? [item('Export selected rows…', exportRows)]
+      : []),
     { kind: 'separator' },
     ...sortEntries(props),
     ...(header

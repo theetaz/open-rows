@@ -62,6 +62,7 @@ fn query_runs_log_their_outcome_but_never_the_sql_text() -> TestResult {
                 statements: &statements,
                 max_rows: None,
                 stop_on_error: true,
+                sink: None,
             };
             let outcome = run_script(
                 &manager,

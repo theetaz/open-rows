@@ -122,6 +122,8 @@ export function WorkspaceRail(props: {
   onSettings?: (() => void) | undefined;
   /** Open the process list of a connection's database. */
   onProcesses?: ((scope: TabScope) => void) | undefined;
+  /** Run a `.sql` file on a connection's database. */
+  onRunFile?: ((database: string, profileId: string) => void) | undefined;
 }): React.JSX.Element {
   const { connections } = props;
   return (
@@ -143,6 +145,11 @@ export function WorkspaceRail(props: {
         connections.select(id);
         connections.chooseDatabase(id, name);
         props.onProcesses?.({ connectionId: id, database: name });
+      }}
+      onRunFile={(id, name) => {
+        connections.select(id);
+        connections.chooseDatabase(id, name);
+        props.onRunFile?.(name, id);
       }}
       onNew={() => {
         connections.setSheet({ kind: 'new' });

@@ -1,16 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Request, reply and event types of `export_start`.
+use super::format_dto::ExportFormatDto;
 use crate::connections::{IpcError, IpcErrorKind};
 use crate::tables::TableTarget;
 use openrows_core::export::{ExportFailure, ExportOutcome};
-use openrows_export::{CsvOptions, Delimiter, ExportError, Format, InsertOptions, JsonLayout};
-use openrows_sql::Dialect;
+use openrows_export::ExportError;
 use serde::{Deserialize, Serialize};
 use specta::Type;
-use std::num::NonZeroUsize;
 
-/// Most rows one `INSERT … VALUES` may carry.
-const MAX_ROWS_PER_INSERT: u32 = 10_000;
+/// A schema of a saved connection's database.
+#[derive(Clone, Debug, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct SchemaTarget {
+    pub(crate) profile_id: String,
+    pub(crate) database: String,
+    pub(crate) schema: String,
+}
 
 /// Which rows to export.
 #[derive(Clone, Debug, Deserialize, Type)]
@@ -25,6 +30,12 @@ pub(crate) enum ExportSourceDto {
         session_id: String,
         result_id: String,
     },
+    /// Some rows of a stored result, by their 0-based position in it.
+    Rows {
+        session_id: String,
+        result_id: String,
+        rows: Vec<u32>,
+    },
     /// Run one read-only statement again and stream all of its rows (a
     /// result the row limit cut short).
     Query { session_id: String, sql: String },
@@ -33,105 +44,30 @@ pub(crate) enum ExportSourceDto {
         session_id: String,
         target: TableTarget,
     },
+    /// Every row of several tables of one schema: one file per table in a
+    /// folder, or (Excel) one workbook with a sheet per table.
+    Tables {
+        session_id: String,
+        target: SchemaTarget,
+        tables: Vec<String>,
+        workbook: bool,
+    },
 }
 
 impl ExportSourceDto {
     pub(crate) fn session_id(&self) -> &str {
         match self {
             Self::Result { session_id, .. }
+            | Self::Rows { session_id, .. }
             | Self::Query { session_id, .. }
-            | Self::Table { session_id, .. } => session_id,
+            | Self::Table { session_id, .. }
+            | Self::Tables { session_id, .. } => session_id,
         }
     }
 }
 
-/// CSV field separator.
-#[derive(Clone, Copy, Debug, Deserialize, Type)]
-#[serde(rename_all = "camelCase")]
-pub(crate) enum CsvDelimiterDto {
-    Comma,
-    Semicolon,
-    Tab,
-    Pipe,
-}
-
-/// Output format and its options.
-#[derive(Clone, Debug, Deserialize, Type)]
-#[serde(
-    tag = "kind",
-    rename_all = "camelCase",
-    rename_all_fields = "camelCase"
-)]
-pub(crate) enum ExportFormatDto {
-    /// RFC 4180 CSV.
-    Csv {
-        delimiter: CsvDelimiterDto,
-        header: bool,
-    },
-    /// An array of row objects, or one object per line (NDJSON).
-    Json { lines: bool },
-    /// `INSERT` statements for `table`, `rowsPerStatement` rows each.
-    Sql {
-        table: String,
-        rows_per_statement: u32,
-    },
-}
-
-impl ExportFormatDto {
-    /// The core format, with literals and quoting for `dialect`.
-    pub(crate) fn to_format(&self, dialect: Dialect) -> Result<Format, IpcError> {
-        Ok(match self {
-            Self::Csv { delimiter, header } => Format::Csv(CsvOptions {
-                delimiter: match delimiter {
-                    CsvDelimiterDto::Comma => Delimiter::Comma,
-                    CsvDelimiterDto::Semicolon => Delimiter::Semicolon,
-                    CsvDelimiterDto::Tab => Delimiter::Tab,
-                    CsvDelimiterDto::Pipe => Delimiter::Pipe,
-                },
-                header: *header,
-            }),
-            Self::Json { lines } => Format::Json(if *lines {
-                JsonLayout::Lines
-            } else {
-                JsonLayout::Array
-            }),
-            Self::Sql {
-                table,
-                rows_per_statement,
-            } => Format::Insert(insert_options(dialect, table, *rows_per_statement)?),
-        })
-    }
-
-    /// File extension and save-panel filter label.
-    pub(crate) fn extension(&self) -> (&'static str, &'static str) {
-        match self {
-            Self::Csv { .. } => ("csv", "CSV"),
-            Self::Json { lines: false } => ("json", "JSON"),
-            Self::Json { lines: true } => ("ndjson", "NDJSON"),
-            Self::Sql { .. } => ("sql", "SQL"),
-        }
-    }
-}
-
-fn insert_options(dialect: Dialect, table: &str, rows: u32) -> Result<InsertOptions, IpcError> {
-    let table = table.trim();
-    if table.is_empty() || table.contains('\0') {
-        return Err(IpcError::invalid(
-            "Enter the table name the INSERT statements target",
-        ));
-    }
-    let rows = usize::try_from(rows.min(MAX_ROWS_PER_INSERT))
-        .ok()
-        .and_then(NonZeroUsize::new)
-        .ok_or_else(|| IpcError::invalid("Rows per INSERT must be at least 1"))?;
-    Ok(InsertOptions {
-        dialect,
-        table: table.to_owned(),
-        rows_per_statement: rows,
-    })
-}
-
-/// Start an export; the native save panel picks the file.
+/// Start an export; the native save panel (or a folder panel for one file
+/// per table) picks the destination.
 #[derive(Clone, Debug, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ExportRequest {
@@ -141,7 +77,7 @@ pub(crate) struct ExportRequest {
     pub(crate) file_name: String,
 }
 
-/// `started` once the file was chosen; `dismissed` when the panel was cancelled.
+/// `started` once the destination was chosen; `dismissed` when the panel was cancelled.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Type)]
 #[serde(
     tag = "status",
@@ -152,6 +88,7 @@ pub(crate) enum ExportReply {
     /// Events follow on the channel; `query_cancel(exportId)` stops it.
     Started {
         export_id: String,
+        /// Name of the file, or of the folder for one file per table.
         file_name: String,
     },
     Dismissed,
@@ -165,11 +102,13 @@ pub(crate) enum ExportReply {
     rename_all_fields = "camelCase"
 )]
 pub(crate) enum ExportEventDto {
-    /// Rows written so far; at most 10 per second.
+    /// Rows written so far; at most 10 per second. `detail` names the
+    /// table being written when there are several.
     Progress {
         rows: f64,
+        detail: Option<String>,
     },
-    /// The file is complete at `path`.
+    /// The file (or folder of files) is complete at `path`.
     Finished {
         rows: f64,
         path: String,
@@ -213,50 +152,25 @@ pub(crate) fn write_error(error: &ExportError) -> IpcError {
         ExportError::InvalidName(_)
         | ExportError::NoColumns
         | ExportError::NoResult
-        | ExportError::SchemaMismatch => IpcErrorKind::Invalid,
+        | ExportError::SchemaMismatch
+        | ExportError::Unencodable(_)
+        | ExportError::Excel(_)
+        | ExportError::Parquet(_)
+        | ExportError::OneTablePerFile => IpcErrorKind::Invalid,
     };
-    let message = error.to_string();
+    IpcError::new(kind, capitalised(&error.to_string()))
+}
+
+pub(crate) fn capitalised(message: &str) -> String {
     let mut chars = message.chars();
-    let message = chars.next().map_or_else(String::new, |first| {
+    chars.next().map_or_else(String::new, |first| {
         first.to_uppercase().chain(chars).collect()
-    });
-    IpcError::new(kind, message)
+    })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn formats_map_to_core_options_and_validate() -> Result<(), IpcError> {
-        let sql = ExportFormatDto::Sql {
-            table: " users ".to_owned(),
-            rows_per_statement: 50_000,
-        };
-        let Format::Insert(options) = sql.to_format(Dialect::MySql)? else {
-            return Err(IpcError::invalid("not an insert"));
-        };
-        assert_eq!(options.table, "users");
-        assert_eq!(options.rows_per_statement.get(), 10_000);
-        assert_eq!(options.dialect, Dialect::MySql);
-        let empty = ExportFormatDto::Sql {
-            table: "  ".to_owned(),
-            rows_per_statement: 10,
-        };
-        assert!(empty.to_format(Dialect::Postgres).is_err());
-        let zero = ExportFormatDto::Sql {
-            table: "t".to_owned(),
-            rows_per_statement: 0,
-        };
-        assert!(zero.to_format(Dialect::Postgres).is_err());
-        let lines = ExportFormatDto::Json { lines: true };
-        assert_eq!(
-            lines.to_format(Dialect::Sqlite)?,
-            Format::Json(JsonLayout::Lines)
-        );
-        assert_eq!(lines.extension(), ("ndjson", "NDJSON"));
-        Ok(())
-    }
 
     #[test]
     fn events_serialise_with_camel_case_tags() -> Result<(), serde_json::Error> {
@@ -275,11 +189,21 @@ mod tests {
             "The statement returned no rows to export"
         );
         let request: ExportRequest = serde_json::from_value(serde_json::json!({
-            "source": { "kind": "result", "sessionId": "s", "resultId": "r" },
-            "format": { "kind": "csv", "delimiter": "tab", "header": true },
-            "fileName": "result"
+            "source": {
+                "kind": "tables",
+                "sessionId": "s",
+                "target": { "profileId": "p", "database": "d", "schema": "public" },
+                "tables": ["a", "b"],
+                "workbook": true
+            },
+            "format": { "kind": "xlsx", "header": true },
+            "fileName": "public"
         }))?;
         assert_eq!(request.source.session_id(), "s");
+        let rows: ExportSourceDto = serde_json::from_value(serde_json::json!({
+            "kind": "rows", "sessionId": "s", "resultId": "r", "rows": [3, 1]
+        }))?;
+        assert!(matches!(rows, ExportSourceDto::Rows { rows, .. } if rows == [3, 1]));
         Ok(())
     }
 }

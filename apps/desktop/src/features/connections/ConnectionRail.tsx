@@ -23,6 +23,8 @@ type RailDatabases = {
   onCloseProfileDatabase?: (id: string, name: string) => void;
   /** Open a database's process list (engines with one only). */
   onProcesses?: ((id: string, name: string) => void) | undefined;
+  /** Run a `.sql` file on a database. */
+  onRunFile?: ((id: string, name: string) => void) | undefined;
 };
 
 /**
@@ -195,6 +197,13 @@ function WorkspaceGroups(
                     profile.processList && props.onProcesses
                       ? (name) => {
                           props.onProcesses?.(profile.id, name);
+                        }
+                      : undefined
+                  }
+                  onRunFile={
+                    props.onRunFile
+                      ? (name) => {
+                          props.onRunFile?.(profile.id, name);
                         }
                       : undefined
                   }

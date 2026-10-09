@@ -111,15 +111,30 @@ export {
   journaledTableEdits,
 } from './tables';
 export type { JournaledEditsDto } from './generated/bindings';
-/** Streamed export of results and tables to CSV, JSON and SQL files (M1-25). */
-export { startExport } from './exports';
+/** Streamed export of results, rows, tables and schemas as background jobs (M1-25, M2-13). */
+export { openExport, revealExport, startExport } from './exports';
 export type {
   CsvDelimiterDto,
+  CsvQuoteDto,
+  DelimitedDto,
   ExportEventDto,
   ExportFormatDto,
   ExportReply,
   ExportRequest,
   ExportSourceDto,
+  LineEndingDto,
+  ParquetCompressionDto,
+  TextEncodingDto,
+} from './generated/bindings';
+/** Running `.sql` files too large for the editor (M2-12). */
+export { checkRunFile, pickRunFile, startRunFile } from './runFile';
+export type {
+  FlaggedStatementDto,
+  PickedScriptDto,
+  RunFileCheckDto,
+  RunFileEventDto,
+  RunFileGateDto,
+  RunFileOutcomeDto,
 } from './generated/bindings';
 /** Import of CSV, TSV, JSON and NDJSON files into tables (M2-11). */
 export {

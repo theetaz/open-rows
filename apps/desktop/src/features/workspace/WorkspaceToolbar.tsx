@@ -3,6 +3,7 @@ import { Icon, IconButton, ToolbarGroup } from '@openrows/ui';
 import type { IconName } from '@openrows/ui';
 import type { ContextSegments } from './contextBar';
 import { InsecureBadge } from '../connections';
+import { JobsButton } from '../jobs';
 import styles from './Workspace.module.css';
 
 type Props = {
@@ -72,6 +73,7 @@ export function WorkspaceToolbar(props: Props): React.JSX.Element {
       />
       <ToolbarGroup aria-label="Workspace actions">
         <ToolButton label="Refresh" icon="refresh" onClick={props.onRefresh} />
+        <JobsButton />
         <ToolButton
           label="Command palette"
           icon="command"

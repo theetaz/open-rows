@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { EngineDto } from '@openrows/ipc';
 import { ExportSheet, resultExport } from '../export';
 import { ResultPane } from './ResultPane';
@@ -22,7 +22,17 @@ export function ResultArea(props: {
   onExportable?: ((exportShown: (() => void) | null) => void) | undefined;
 }): React.JSX.Element {
   const { run, sessionId } = props;
-  const [exporting, setExporting] = useState<ResultMeta | null>(null);
+  const [exporting, setExporting] = useState<{
+    result: ResultMeta;
+    rows?: number[] | undefined;
+  } | null>(null);
+  // Stable: the pane re-reports Export… whenever this changes.
+  const exportResult = useCallback(
+    (result: ResultMeta, rows?: number[]): void => {
+      setExporting({ result, rows });
+    },
+    [],
+  );
   return (
     <>
       <ResultPane
@@ -31,15 +41,16 @@ export function ResultArea(props: {
         runDefault={props.runDefault}
         engine={props.engine}
         onCell={props.onCell}
-        onExport={sessionId ? setExporting : undefined}
+        onExport={sessionId ? exportResult : undefined}
         onExportable={props.onExportable}
       />
       {exporting && sessionId && (
         <ExportSheet
           {...resultExport({
             sessionId,
-            result: exporting,
-            statement: run.statements[exporting.statement],
+            result: exporting.result,
+            statement: run.statements[exporting.result.statement],
+            selected: exporting.rows,
           })}
           onClose={() => {
             setExporting(null);

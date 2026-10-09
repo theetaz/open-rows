@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Encoder, literal and file-lifecycle tests on hand-built Arrow batches.
 mod csv;
+mod excel;
 mod files;
 mod json;
+mod markdown;
+mod parquet;
 mod sql;
 mod text;
 
@@ -91,6 +94,19 @@ fn export(format: &Format, schema: SchemaRef, batches: &[RecordBatch]) -> TestRe
     let expected: usize = batches.iter().map(RecordBatch::num_rows).sum();
     assert_eq!(rows, expected as u64);
     Ok(std::fs::read_to_string(path)?)
+}
+
+/// Export one batch and read the raw bytes back.
+fn export_bytes(format: &Format, batch: &RecordBatch) -> TestResult<Vec<u8>> {
+    let directory = tempfile::tempdir()?;
+    let path = directory.path().join("out.bin");
+    crate::write_all(
+        Exporter::create(&path, format)?,
+        (batch.schema(), [Ok::<_, Infallible>(batch.clone())]),
+        || false,
+        |_| {},
+    )?;
+    Ok(std::fs::read(path)?)
 }
 
 fn export_one(format: &Format, batch: &RecordBatch) -> TestResult<String> {

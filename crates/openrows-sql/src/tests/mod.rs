@@ -12,6 +12,7 @@ mod row_id;
 mod select;
 mod split;
 mod sqlite;
+mod stream;
 
 use crate::{Classification, Dialect, StatementKind};
 

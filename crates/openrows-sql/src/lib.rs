@@ -44,7 +44,7 @@ pub use bind::{MissingParam, ParamBinder, ParamSlot, ParamStyle};
 pub use classify::{Classification, StatementKind, classify};
 pub use context::{ContextSetting, session_context};
 pub use placeholders::{Placeholder, PlaceholderKind, placeholders};
-pub use split::{Statement, split, statement_at};
+pub use split::{ScriptStatement, Statement, StreamSplitter, split, statement_at};
 
 /// SQL dialect whose lexical, classification and generation rules apply.
 ///

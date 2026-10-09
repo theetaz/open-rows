@@ -9,10 +9,13 @@ use std::path::Path;
 use std::sync::Arc;
 use std::sync::mpsc::sync_channel;
 
-const CSV: Format = Format::Csv(CsvOptions {
-    delimiter: Delimiter::Comma,
-    header: false,
-});
+fn csv() -> Format {
+    Format::Csv(CsvOptions {
+        delimiter: Delimiter::Comma,
+        header: false,
+        ..CsvOptions::default()
+    })
+}
 
 fn entries(directory: &Path) -> TestResult<Vec<String>> {
     let mut names = std::fs::read_dir(directory)?
@@ -28,7 +31,7 @@ fn the_file_appears_only_when_finished_and_replaces_the_old_one() -> TestResult 
     let path = directory.path().join("out.csv");
     std::fs::write(&path, "old")?;
     let batch = texts(&[Some("new")])?;
-    let mut exporter = Exporter::create(&path, &CSV)?;
+    let mut exporter = Exporter::create(&path, &csv())?;
     exporter.begin(batch.schema())?;
     exporter.write(&batch)?;
     let during = entries(directory.path())?;
@@ -56,7 +59,7 @@ fn a_cancelled_export_leaves_nothing_and_keeps_the_old_file() -> TestResult {
     let batches = [batch.clone(), batch.clone()];
     let seen = std::cell::Cell::new(0);
     let result = write_all(
-        Exporter::create(&path, &CSV)?,
+        Exporter::create(&path, &csv())?,
         (batch.schema(), batches.map(Ok::<_, Infallible>)),
         || seen.get() >= 2,
         |rows| seen.set(rows),
@@ -78,7 +81,7 @@ fn a_batch_that_cannot_be_read_fails_the_export_and_leaves_nothing() -> TestResu
         Ok(batch.clone()),
     ];
     let result = write_all(
-        Exporter::create(&path, &CSV)?,
+        Exporter::create(&path, &csv())?,
         (batch.schema(), batches),
         || false,
         |_| {},
@@ -99,7 +102,7 @@ fn drain_commits_on_finish_and_aborts_when_the_producer_disappears() -> TestResu
     sender.send(Message::Batch(batch.clone()))?;
     sender.send(Message::Finish)?;
     let mut progress = Vec::new();
-    let rows = drain(Exporter::create(&path, &CSV)?, receiver, |rows| {
+    let rows = drain(Exporter::create(&path, &csv())?, receiver, |rows| {
         progress.push(rows);
     })?;
     assert_eq!((rows, progress), (4, vec![2, 4]));
@@ -110,7 +113,7 @@ fn drain_commits_on_finish_and_aborts_when_the_producer_disappears() -> TestResu
     sender.send(Message::Begin(batch.schema()))?;
     sender.send(Message::Batch(batch))?;
     drop(sender);
-    let result = drain(Exporter::create(&other, &CSV)?, receiver, |_| {});
+    let result = drain(Exporter::create(&other, &csv())?, receiver, |_| {});
     assert!(matches!(result, Err(ExportError::Aborted)));
     assert_eq!(entries(directory.path())?, ["stream.csv"]);
     Ok(())
@@ -120,9 +123,9 @@ fn drain_commits_on_finish_and_aborts_when_the_producer_disappears() -> TestResu
 fn finishing_without_a_result_or_writing_before_begin_fails_cleanly() -> TestResult {
     let directory = tempfile::tempdir()?;
     let path = directory.path().join("none.csv");
-    let exporter = Exporter::create(&path, &CSV)?;
+    let exporter = Exporter::create(&path, &csv())?;
     assert!(matches!(exporter.finish(), Err(ExportError::NoResult)));
-    let mut exporter = Exporter::create(&path, &CSV)?;
+    let mut exporter = Exporter::create(&path, &csv())?;
     let batch = texts(&[Some("a")])?;
     assert!(matches!(
         exporter.write(&batch),
@@ -145,6 +148,7 @@ fn a_continued_result_with_the_same_columns_keeps_writing() -> TestResult {
         &Format::Csv(CsvOptions {
             delimiter: Delimiter::Comma,
             header: true,
+            ..CsvOptions::default()
         }),
     )?;
     exporter.begin(first.schema())?;
@@ -172,7 +176,7 @@ fn unsupported_types_are_refused_before_any_row_is_written() -> TestResult {
     let field = Field::new("l", durations.data_type().clone(), true);
     let column: ArrayRef = Arc::new(durations);
     let batch = RecordBatch::try_new(Arc::new(Schema::new(vec![field])), vec![column])?;
-    let mut exporter = Exporter::create(&directory.path().join("l.csv"), &CSV)?;
+    let mut exporter = Exporter::create(&directory.path().join("l.csv"), &csv())?;
     let error = exporter
         .begin(batch.schema())
         .err()
@@ -186,13 +190,13 @@ fn unsupported_types_are_refused_before_any_row_is_written() -> TestResult {
 #[test]
 fn a_destination_without_a_file_name_or_directory_is_an_error() -> TestResult {
     assert!(matches!(
-        Exporter::create(Path::new("/"), &CSV),
+        Exporter::create(Path::new("/"), &csv()),
         Err(ExportError::InvalidPath)
     ));
     let directory = tempfile::tempdir()?;
     let missing = directory.path().join("missing").join("out.csv");
     assert!(matches!(
-        Exporter::create(&missing, &CSV),
+        Exporter::create(&missing, &csv()),
         Err(ExportError::Io(_))
     ));
     Ok(())

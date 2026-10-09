@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-//! RFC 4180 CSV: CRLF record ends; fields holding the delimiter, `"`, CR or
-//! LF are quoted with embedded quotes doubled. NULL is an empty field and an
-//! empty string is `""`, so the two stay distinguishable (as in
-//! `PostgreSQL`'s `COPY … CSV`).
+//! Delimited text (RFC 4180 by default): fields holding the delimiter, the
+//! quote, CR or LF are quoted with embedded quotes doubled. NULL is the
+//! NULL text (empty by default); an empty string, or a value equal to the
+//! NULL text, is quoted so the two stay distinguishable (as in
+//! `PostgreSQL`'s `COPY … CSV`). TSV is the same with a tab delimiter.
 use crate::cell::{Cell, Column};
 use crate::exporter::Encode;
 use crate::text::push_plain;
@@ -24,32 +25,15 @@ impl CsvEncoder {
 
     fn field(&mut self, cell: &Cell<'_>, out: &mut String) {
         if *cell == Cell::Null {
+            out.push_str(&self.options.null_text);
             return;
         }
         self.scratch.clear();
         push_plain(cell, &mut self.scratch);
-        push_field(&self.scratch, self.options.delimiter.as_char(), out);
+        let forced = self.scratch == self.options.null_text;
+        push_field(&self.scratch, &self.options, forced, out);
     }
-}
 
-/// Append `value`, quoted when it is empty or holds a special character.
-fn push_field(value: &str, delimiter: char, out: &mut String) {
-    let special = |c: char| c == delimiter || matches!(c, '"' | '\r' | '\n');
-    if !value.is_empty() && !value.contains(special) {
-        out.push_str(value);
-        return;
-    }
-    out.push('"');
-    for part in value.split_inclusive('"') {
-        out.push_str(part);
-        if part.ends_with('"') {
-            out.push('"');
-        }
-    }
-    out.push('"');
-}
-
-impl CsvEncoder {
     fn record(&mut self, columns: &[Column<'_>], row: usize, out: &mut String) {
         let delimiter = self.options.delimiter.as_char();
         for (index, column) in columns.iter().enumerate() {
@@ -58,24 +42,44 @@ impl CsvEncoder {
             }
             self.field(&column.cell(row), out);
         }
-        out.push_str("\r\n");
+        out.push_str(self.options.line_ending.as_str());
     }
 }
 
-fn push_header(schema: &Schema, delimiter: char, out: &mut String) {
+/// Append `value`, quoted when `forced`, empty or holding a special character.
+fn push_field(value: &str, options: &CsvOptions, forced: bool, out: &mut String) {
+    let delimiter = options.delimiter.as_char();
+    let quote = options.quote.as_char();
+    let special = |c: char| c == delimiter || c == quote || matches!(c, '\r' | '\n');
+    if !forced && !value.is_empty() && !value.contains(special) {
+        out.push_str(value);
+        return;
+    }
+    out.push(quote);
+    for part in value.split_inclusive(quote) {
+        out.push_str(part);
+        if part.ends_with(quote) {
+            out.push(quote);
+        }
+    }
+    out.push(quote);
+}
+
+fn push_header(schema: &Schema, options: &CsvOptions, out: &mut String) {
+    let delimiter = options.delimiter.as_char();
     for (index, field) in schema.fields().iter().enumerate() {
         if index > 0 {
             out.push(delimiter);
         }
-        push_field(field.name(), delimiter, out);
+        push_field(field.name(), options, false, out);
     }
-    out.push_str("\r\n");
+    out.push_str(options.line_ending.as_str());
 }
 
 impl Encode for CsvEncoder {
     fn begin(&mut self, schema: &Schema, out: &mut String) -> Result<(), ExportError> {
         if self.options.header {
-            push_header(schema, self.options.delimiter.as_char(), out);
+            push_header(schema, &self.options, out);
         }
         Ok(())
     }

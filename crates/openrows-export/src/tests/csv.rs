@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
-use super::{TestResult, export, export_one, mixed, texts};
-use crate::{CsvOptions, Delimiter, Format};
+use super::{TestResult, export, export_bytes, export_one, mixed, texts};
+use crate::{CsvOptions, Delimiter, Format, LineEnding, Quote, TextEncoding};
 
 fn csv(delimiter: Delimiter, header: bool) -> Format {
-    Format::Csv(CsvOptions { delimiter, header })
+    Format::Csv(CsvOptions {
+        delimiter,
+        header,
+        ..CsvOptions::default()
+    })
 }
 
 #[test]
@@ -72,5 +76,59 @@ fn sliced_batches_read_their_own_rows() -> TestResult {
     let batch = mixed()?;
     let text = export_one(&csv(Delimiter::Comma, false), &batch.slice(1, 1))?;
     assert_eq!(text, ",,,,,,,,,,\r\n");
+    Ok(())
+}
+
+fn with(options: CsvOptions) -> Format {
+    Format::Csv(options)
+}
+
+#[test]
+fn tsv_null_text_quote_and_line_endings_are_configurable() -> TestResult {
+    let batch = texts(&[Some("a\tb"), None, Some("NULL"), Some("it's"), Some("")])?;
+    let tsv = export_one(&with(CsvOptions::tsv()), &batch)?;
+    assert_eq!(tsv, "v\r\n\"a\tb\"\r\n\r\nNULL\r\nit's\r\n\"\"\r\n");
+    let custom = CsvOptions {
+        quote: Quote::Single,
+        null_text: "NULL".to_owned(),
+        line_ending: LineEnding::Lf,
+        header: false,
+        ..CsvOptions::default()
+    };
+    let text = export_one(&with(custom), &batch)?;
+    assert_eq!(text, "a\tb\nNULL\n'NULL'\n'it''s'\n''\n");
+    Ok(())
+}
+
+#[test]
+fn encodings_write_their_byte_order_marks() -> TestResult {
+    let batch = texts(&[Some("é")])?;
+    let encoded = |encoding| -> TestResult<Vec<u8>> {
+        let options = CsvOptions {
+            encoding,
+            line_ending: LineEnding::Lf,
+            ..CsvOptions::default()
+        };
+        export_bytes(&with(options), &batch)
+    };
+    assert_eq!(encoded(TextEncoding::Utf8)?, "v\né\n".as_bytes());
+    assert_eq!(
+        encoded(TextEncoding::Utf8Bom)?,
+        b"\xEF\xBB\xBFv\n\xC3\xA9\n"
+    );
+    assert_eq!(encoded(TextEncoding::Latin1)?, b"v\n\xE9\n");
+    assert_eq!(
+        encoded(TextEncoding::Utf16Le)?,
+        b"\xFF\xFEv\x00\n\x00\xE9\x00\n\x00"
+    );
+    let emoji = texts(&[Some("😀")])?;
+    let options = CsvOptions {
+        encoding: TextEncoding::Latin1,
+        ..CsvOptions::default()
+    };
+    let error = export_bytes(&with(options), &emoji)
+        .err()
+        .ok_or("Latin-1 accepted an emoji")?;
+    assert!(error.to_string().contains("Latin-1"), "{error}");
     Ok(())
 }

@@ -8,6 +8,9 @@ use std::sync::mpsc::Receiver;
 /// One step of a streamed result, sent by the producer (a driver sink).
 #[derive(Debug)]
 pub enum Message {
+    /// The next result is another table of a multi-table file (an Excel
+    /// sheet); its `Begin` follows.
+    Table(String),
     /// The result's columns; precedes every batch.
     Begin(SchemaRef),
     /// The next rows.
@@ -32,6 +35,7 @@ pub fn drain(
 ) -> Result<u64, ExportError> {
     for message in messages {
         match message {
+            Message::Table(name) => exporter.start_table(&name)?,
             Message::Begin(schema) => exporter.begin(schema)?,
             Message::Batch(batch) => {
                 exporter.write(&batch)?;

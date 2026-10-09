@@ -23,3 +23,13 @@ export function startExport(
   channel.onmessage = onEvent;
   return unwrap(commands.exportStart(request, channel));
 }
+
+/** Show a finished export's file or folder selected in Finder. */
+export async function revealExport(path: string): Promise<void> {
+  await unwrap(commands.exportReveal(path));
+}
+
+/** Open a finished export's file (or folder) with its default application. */
+export async function openExport(path: string): Promise<void> {
+  await unwrap(commands.exportOpen(path));
+}

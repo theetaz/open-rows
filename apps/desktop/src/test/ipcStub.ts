@@ -302,6 +302,11 @@ export function ipcStub(
     tableSql: vi.fn(() => Promise.resolve({ sql: 'SELECT 1', params: [] })),
     startExport: vi.fn(() => Promise.resolve({ status: 'dismissed' })),
     ...importStub(),
+    revealExport: vi.fn(() => Promise.resolve()),
+    openExport: vi.fn(() => Promise.resolve()),
+    pickRunFile: vi.fn(() => Promise.resolve(null)),
+    checkRunFile: vi.fn(() => new Promise(() => {})),
+    startRunFile: vi.fn(() => new Promise(() => {})),
     listProcesses: vi.fn(() => Promise.resolve([])),
     signalProcess: vi.fn(() => Promise.resolve()),
   };
