@@ -4,6 +4,7 @@
 //! reached through in-process [`TunnelStream`]s; no local port is opened.
 
 mod connect;
+mod shared;
 mod stream;
 
 use std::{fmt, sync::Arc, time::Duration};
@@ -15,10 +16,12 @@ use tokio::{
 };
 
 use connect::{dial, handshake};
+pub use shared::SharedTunnel;
 pub use stream::TunnelStream;
 
 use crate::{
-    AgentSource, AuthMethod, HostKeyPolicy, KeyboardInteractivePrompter, SshError, Stage, Timeouts,
+    AgentSource, AuthMethod, HostKeyPolicy, KeyboardInteractivePrompter, ProxySpec, SshError,
+    Stage, Timeouts,
     config::HostSettings,
     handler::ClientHandler,
     known_hosts::KnownHosts,
@@ -80,6 +83,8 @@ pub struct TunnelOptions {
     pub prompter: Arc<dyn KeyboardInteractivePrompter>,
     /// Stage budgets.
     pub timeouts: Timeouts,
+    /// SOCKS5 or HTTP proxy that carries the TCP stream to the first hop.
+    pub proxy: Option<Arc<ProxySpec>>,
 }
 
 /// How long each hop took to reach and to authenticate.
@@ -99,6 +104,8 @@ pub struct SshTunnel {
     sessions: Vec<Handle<ClientHandler>>,
     timings: Vec<HopTiming>,
     timeouts: Timeouts,
+    /// Hops whose unknown host key was accepted for this connection only.
+    unremembered_keys: Vec<String>,
 }
 
 impl SshTunnel {
@@ -121,6 +128,7 @@ impl SshTunnel {
             sessions: Vec::with_capacity(hops.len()),
             timings: Vec::with_capacity(hops.len()),
             timeouts: options.timeouts,
+            unremembered_keys: Vec::new(),
         };
         match tunnel.add_hops(hops, options).await {
             Ok(()) => {
@@ -134,7 +142,14 @@ impl SshTunnel {
     async fn add_hops(&mut self, hops: &[SshHop], options: &TunnelOptions) -> Result<(), SshError> {
         let (first, rest) = hops.split_first().ok_or(SshError::EmptyRoute)?;
         let started = Instant::now();
-        let tcp = dial(first, &options.timeouts).await?;
+        let tcp = match &options.proxy {
+            Some(proxy) => {
+                proxy
+                    .connect(&first.host, first.port, &options.timeouts)
+                    .await?
+            }
+            None => dial(first, &options.timeouts).await?,
+        };
         let transport = Transport {
             stream: tcp,
             connect: started.elapsed(),
@@ -178,6 +193,39 @@ impl SshTunnel {
         Ok(TunnelStream(channel.into_stream()))
     }
 
+    /// Open a forwarded stream to the Unix socket `path` on the last hop
+    /// (`direct-streamlocal@openssh.com`).
+    ///
+    /// # Errors
+    /// [`SshError::SocketOpen`] if the server refuses, or a timeout.
+    pub async fn open_socket(&self, path: &str) -> Result<TunnelStream, SshError> {
+        let session = self.sessions.last().ok_or(SshError::EmptyRoute)?;
+        let open = async {
+            session
+                .channel_open_direct_streamlocal(path)
+                .await
+                .map_err(|error| SshError::SocketOpen {
+                    path: path.to_owned(),
+                    reason: error.to_string(),
+                })
+        };
+        let channel = within(
+            Stage::ChannelOpen,
+            self.timeouts.channel_open,
+            &PromptClock::default(),
+            open,
+        )
+        .await?;
+        Ok(TunnelStream(channel.into_stream()))
+    }
+
+    /// Hosts whose unknown key was accepted for this connection only
+    /// (not remembered): the route's server identity is unverified.
+    #[must_use]
+    pub fn unremembered_host_keys(&self) -> &[String] {
+        &self.unremembered_keys
+    }
+
     /// True once any hop's session has ended; open a new tunnel then.
     #[must_use]
     pub fn is_closed(&self) -> bool {
@@ -213,7 +261,10 @@ impl SshTunnel {
         S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
     {
         let started = Instant::now();
-        let session = handshake(transport.stream, hop, options).await?;
+        let (session, remembered) = handshake(transport.stream, hop, options).await?;
+        if !remembered {
+            self.unremembered_keys.push(hop.host.clone());
+        }
         self.timings.push(HopTiming {
             host: hop.host.clone(),
             connect: transport.connect,

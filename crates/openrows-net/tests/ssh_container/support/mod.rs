@@ -114,6 +114,7 @@ impl Workspace {
             host_key_policy: policy,
             prompter,
             timeouts: Timeouts::default(),
+            proxy: None,
         }
     }
 }

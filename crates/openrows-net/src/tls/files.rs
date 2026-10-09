@@ -15,7 +15,7 @@ use rustls::{
 };
 use zeroize::Zeroizing;
 
-use super::{TlsError, TlsParams};
+use super::{CloudCa, TlsError, TlsParams};
 use crate::SecretString;
 
 /// Largest PEM file read (CA bundles of public clouds are well below this).
@@ -42,6 +42,16 @@ pub(crate) fn ca_roots(path: &Path) -> Result<RootCertStore, TlsError> {
     if added == 0 {
         return Err(error("no usable CA certificate".to_owned()));
     }
+    Ok(roots)
+}
+
+/// Trust anchors from a bundled cloud provider CA set.
+pub(crate) fn bundled_roots(cloud: CloudCa) -> Result<RootCertStore, TlsError> {
+    let certificates = CertificateDer::pem_slice_iter(cloud.pem())
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|error| TlsError::Config(format!("{cloud}: {error}")))?;
+    let mut roots = RootCertStore::empty();
+    roots.add_parsable_certificates(certificates);
     Ok(roots)
 }
 

@@ -164,6 +164,8 @@ const failedReport: TestReport = {
   ],
   server: null,
   error: { kind: 'ssh', message: 'SSH: authentication failed', code: null },
+  certificate: null,
+  latency: null,
   elapsedMs: 52,
 };
 
@@ -183,6 +185,8 @@ it('shows Test connection step by step with timings, the failing step and its hi
     steps: [],
     server: server('17.2'),
     error: null,
+    certificate: null,
+    latency: null,
     elapsedMs: 9,
   });
   await user.click(screen.getByRole('button', { name: 'Test' }));

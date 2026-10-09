@@ -159,8 +159,29 @@ async fn verify_full_with_a_ca_file_reports_the_negotiated_session() {
     assert!(details.cipher.starts_with("TLS13_"), "{}", details.cipher);
     assert_eq!(details.subject.as_deref(), Some("CN=db.test"));
     assert_eq!(details.issuer.as_deref(), Some("CN=OpenRows Test CA"));
-    assert!(details.not_after.is_some());
+    assert!(details.not_before.is_some() && details.not_after.is_some());
+    assert_eq!(details.alt_names, ["db.test"]);
+    let days = details.expires_in_days.expect("validity parsed");
+    assert!(days > 30, "rcgen leaves are valid for years: {days}");
     assert_eq!(details.verification, Verification::Full);
+}
+
+#[tokio::test]
+async fn a_cloud_ca_replaces_the_system_store_and_rejects_other_issuers() {
+    let stranger = Pki::new();
+    for cloud in super::CloudCa::ALL {
+        let params = TlsParams {
+            cloud_ca: Some(cloud),
+            ..TlsParams::new(Verification::Chain)
+        };
+        let client = TlsClient::new(&params).expect("bundled roots parse");
+        let result = handshake(&client, server_for(&stranger, "db.test"), "db.test").await;
+        assert_eq!(failure(result), HandshakeFailure::UntrustedCertificate);
+    }
+    let aws = super::files::bundled_roots(super::CloudCa::AwsRds).expect("roots");
+    let azure = super::files::bundled_roots(super::CloudCa::Azure).expect("roots");
+    assert!(aws.len() >= 100, "every RDS region: {}", aws.len());
+    assert_eq!(azure.len(), 3);
 }
 
 #[tokio::test]

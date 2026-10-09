@@ -93,6 +93,20 @@ fn trusting_a_host_key_remembers_it_and_closes_the_sheet() {
 }
 
 #[test]
+fn connecting_once_accepts_the_key_without_remembering_it() {
+    let (broker, events) = new_broker(true);
+    let policy = UiHostKeyPolicy(Arc::clone(&broker));
+    let host = unknown_host();
+    let (decision, _) = tauri::async_runtime::block_on(async {
+        tokio::join!(
+            policy.on_unknown_host(&host),
+            answer_when_open(&broker, &events, SshPromptAnswer::TrustOnce)
+        )
+    });
+    assert_eq!(decision, FirstUseDecision::AcceptOnce);
+}
+
+#[test]
 fn cancelling_or_an_invisible_webview_rejects_the_key() {
     let (broker, events) = new_broker(true);
     let policy = UiHostKeyPolicy(Arc::clone(&broker));

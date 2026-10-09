@@ -18,6 +18,8 @@
 
 Python-2.0 (PSF licence, permissive and OSI-approved) is allowed for `argparse`, a dependency of `sql-formatter` used only by its command-line tool; it is not bundled into the app.
 
+Public CA certificates of cloud database services (`crates/openrows-net/certs/`: the Amazon RDS global bundle; `DigiCert` Global Root G2, `DigiCert` Global Root CA and Microsoft RSA Root CA 2017 for Azure) are public trust-anchor data, not code. The providers publish them for anyone to download and embed in clients so TLS can be verified; they carry no licence terms and are redistributed unchanged. Sources, fingerprints and the refresh process are in [docs/24 §13](24-networking-and-protocols.md#13-implementation-notes-m1-06-and-m1-07-completion).
+
 Enforced by `cargo-deny` (`[licenses]` allowlist) and an npm licence check in CI.
 
 ## 3. Clean-room policy

@@ -9,6 +9,8 @@ import { statusLabel, statusTone } from './sessions';
 import type { SessionStatus } from './sessions';
 import type { ConnectionAction } from './connectionActions';
 import { RailTooltip, useTileTooltip } from './RailTooltip';
+import { InsecureBadge } from './InsecureBadge';
+import { insecureReasons } from './insecure';
 import { useWorkspaceCollapse } from './useWorkspaceCollapse';
 import styles from './Rail.module.css';
 
@@ -93,6 +95,7 @@ export function WorkspaceConnection(props: {
       {tooltip.visible && !menu && (
         <RailTooltip
           profile={profile}
+          insecure={insecureReasons(profile, status)}
           shortcut={props.shortcut}
           status={statusLabel(status)}
           id={tooltip.id}
@@ -139,6 +142,12 @@ function ServerLabel(props: {
       <span className={styles.serverName}>
         <strong>{props.profile.name}</strong>
         <small>{statusLabel(props.status)}</small>
+      </span>
+      <span className={styles.insecure}>
+        <InsecureBadge
+          reasons={insecureReasons(props.profile, props.status)}
+          compact
+        />
       </span>
     </>
   );

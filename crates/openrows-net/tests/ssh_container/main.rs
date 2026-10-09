@@ -5,6 +5,7 @@
 
 mod auth;
 mod host_keys_and_jumps;
+mod reconnect;
 mod route;
 mod support;
 

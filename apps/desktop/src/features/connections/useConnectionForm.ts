@@ -19,6 +19,7 @@ import {
 } from './form';
 import type { Draft, DraftErrors } from './form';
 import type { SshDraft, TlsDraft } from './routeForm';
+import type { ProxyDraft } from './proxyForm';
 import { useUrlField } from './useUrlField';
 import type { UrlField } from './useUrlField';
 
@@ -43,6 +44,8 @@ export type ConnectionForm = {
   updateSsh: (patch: Partial<SshDraft>) => void;
   /** Edit the TLS certificate files (not part of the URL). */
   updateTls: (patch: Partial<TlsDraft>) => void;
+  /** Edit the proxy section (not part of the URL). */
+  updateProxy: (patch: Partial<ProxyDraft>) => void;
   setEnvironment: (kind: EnvKindDto) => void;
   setPassword: (value: string) => void;
   runTest: () => Promise<void>;
@@ -97,7 +100,12 @@ export function useConnectionForm(
 
 type Editors = Pick<
   ConnectionForm,
-  'update' | 'updateSsh' | 'updateTls' | 'setEnvironment' | 'setPassword'
+  | 'update'
+  | 'updateSsh'
+  | 'updateTls'
+  | 'updateProxy'
+  | 'setEnvironment'
+  | 'setPassword'
 >;
 
 /** Draft edits; fields that appear in the URL show the fields' URL again. */
@@ -120,6 +128,12 @@ function editors(
       setDraft((current) => ({
         ...current,
         tls: { ...current.tls, ...patch },
+      }));
+    },
+    updateProxy: (patch) => {
+      setDraft((current) => ({
+        ...current,
+        proxy: { ...current.proxy, ...patch },
       }));
     },
     setEnvironment: (kind) => {

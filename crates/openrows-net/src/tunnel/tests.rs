@@ -36,6 +36,7 @@ fn options(dir: &tempfile::TempDir) -> TunnelOptions {
             handshake: Duration::from_millis(300),
             ..Timeouts::default()
         },
+        proxy: None,
     }
 }
 

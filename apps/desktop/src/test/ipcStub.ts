@@ -23,14 +23,17 @@ export function profile(
     tlsMode: 'prefer',
     tlsFiles: {
       caFile: null,
+      cloudCa: null,
       clientCert: null,
       clientKey: null,
       hasKeyPassphrase: false,
       unverifiedRemote: false,
     },
     ssh: null,
+    proxy: null,
     hasPassword: false,
     safety: { readOnly: false, confirmWrites: false },
+    insecure: [],
     recordHistory: true,
     ...overrides,
   };
@@ -137,6 +140,7 @@ export function ipcStub(
         server: server('17.2', 'postgres'),
         database:
           profiles.find((item) => item.id === profileId)?.database ?? null,
+        insecure: [],
       }),
     ),
     closeConnection: vi.fn(() => Promise.resolve()),

@@ -7,7 +7,7 @@ use std::{fmt, path::PathBuf, sync::Arc, time::Duration};
 
 use openrows_net::{
     Dialer, SecretString,
-    tls::{TlsParams, Verification},
+    tls::{CloudCa, TlsParams, Verification},
 };
 
 /// libpq `sslmode`, with libpq's semantics (docs/12 §4.1). `MySQL` `ssl-mode`
@@ -67,6 +67,8 @@ impl SslMode {
 pub struct TlsFiles {
     /// PEM CA bundle; the only trust anchor when set (libpq `sslrootcert`).
     pub ca_file: Option<PathBuf>,
+    /// A bundled cloud provider CA set, the trust anchors when no CA file is set.
+    pub cloud_ca: Option<CloudCa>,
     /// PEM client certificate (libpq `sslcert`).
     pub client_cert: Option<PathBuf>,
     /// PEM client key (libpq `sslkey`), optionally encrypted PKCS#8.
@@ -76,12 +78,20 @@ pub struct TlsFiles {
 }
 
 impl TlsFiles {
+    /// True when a CA file or a bundled cloud CA is configured: libpq
+    /// `require` then verifies the chain.
+    #[must_use]
+    pub fn has_ca(&self) -> bool {
+        self.ca_file.is_some() || self.cloud_ca.is_some()
+    }
+
     /// TLS parameters for `mode`.
     #[must_use]
     pub fn params(&self, mode: SslMode) -> TlsParams {
         TlsParams {
-            verification: mode.verification(self.ca_file.is_some()),
+            verification: mode.verification(self.has_ca()),
             ca_file: self.ca_file.clone(),
+            cloud_ca: self.cloud_ca,
             client_cert: self.client_cert.clone(),
             client_key: self.client_key.clone(),
             key_passphrase: self.key_passphrase.clone(),

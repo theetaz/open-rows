@@ -7,7 +7,6 @@ use std::time::Duration;
 
 use openrows_driver_api::DriverError;
 use openrows_driver_api::{ConnectStage, ConnectTrace, TlsStatus};
-use openrows_net::tls::{TlsDetails, Verification};
 use openrows_net::{SshError, Stage};
 use openrows_store::profile::{Driver as Engine, is_local_host};
 use serde::Serialize;
@@ -17,6 +16,8 @@ use super::super::error::IpcError;
 use super::super::target::ServerDto;
 use super::super::tunnels::{TunnelAttempt, ssh_error};
 use super::hints::hint;
+use super::probe::expiry_note;
+use labels::describe;
 
 /// What a step checks.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Type)]
@@ -38,6 +39,8 @@ pub(crate) enum TestStepKind {
     Authenticate,
     /// Server product and version.
     Version,
+    /// Round trip of a trivial query.
+    Latency,
 }
 
 /// How a step went.
@@ -66,13 +69,15 @@ pub(crate) struct TestStepDto {
 /// Steps collected so far, for a profile of `engine`.
 #[derive(Default)]
 pub(crate) struct Steps {
-    pub(crate) steps: Vec<TestStepDto>,
+    pub(crate) list: Vec<TestStepDto>,
     pub(crate) engine: Engine,
+    /// `SOCKS5 proxy host:port` in front of the first hop, if any.
+    pub(crate) proxy: Option<String>,
 }
 
 impl Steps {
     fn push(&mut self, kind: TestStepKind, label: String, status: StepStatus) -> &mut TestStepDto {
-        self.steps.push(TestStepDto {
+        self.list.push(TestStepDto {
             kind,
             label,
             status,
@@ -80,8 +85,8 @@ impl Steps {
             hint: None,
             elapsed_ms: None,
         });
-        let last = self.steps.len() - 1;
-        &mut self.steps[last]
+        let last = self.list.len() - 1;
+        &mut self.list[last]
     }
 
     fn timed(&mut self, kind: TestStepKind, label: String, elapsed: Duration) -> &mut TestStepDto {
@@ -104,11 +109,8 @@ impl Steps {
             let Some(hop) = attempt.hops.get(index) else {
                 break;
             };
-            self.timed(
-                TestStepKind::SshConnect,
-                reach(index, &hop.host, hop.port),
-                timing.connect,
-            );
+            let label = self.reach(index, &hop.host, hop.port);
+            self.timed(TestStepKind::SshConnect, label, timing.connect);
             let label = format!("SSH login as {}@{}", hop.user, hop.host);
             self.timed(TestStepKind::SshAuth, label, timing.handshake);
         }
@@ -120,7 +122,8 @@ impl Steps {
             |hop| (hop.host.clone(), hop.port, hop.user.clone()),
         );
         if fails_to_reach(error) {
-            self.failed(TestStepKind::SshConnect, reach(index, &host, port), &typed);
+            let label = self.reach(index, &host, port);
+            self.failed(TestStepKind::SshConnect, label, &typed);
         } else {
             self.failed(
                 TestStepKind::SshAuth,
@@ -181,10 +184,16 @@ impl Steps {
         let step = self.timed(TestStepKind::Tls, "TLS handshake".to_owned(), elapsed);
         match &run.trace.tls {
             Some(TlsStatus::Encrypted(details)) => {
-                step.detail = Some(describe(details));
-                if details.verification.is_skipped() && !is_local_host(run.host) {
+                let expiry = expiry_note(details);
+                let unverified = details.verification.is_skipped() && !is_local_host(run.host);
+                if unverified || expiry.is_some() {
                     step.status = StepStatus::Warning;
                 }
+                let mut detail = describe(details);
+                if let Some(expiry) = expiry {
+                    detail = format!("{expiry} · {detail}");
+                }
+                step.detail = Some(detail);
             }
             Some(TlsStatus::PlaintextFallback) => {
                 step.status = StepStatus::Warning;
@@ -192,6 +201,16 @@ impl Steps {
                     Some("The server does not offer TLS; connected without encryption".to_owned());
             }
             Some(TlsStatus::Disabled | TlsStatus::LocalSocket) | None => {}
+        }
+    }
+
+    /// "Connect to SSH server …" (through the proxy for the first hop) or
+    /// "Reach jump target …".
+    fn reach(&self, index: usize, host: &str, port: u16) -> String {
+        match (index, &self.proxy) {
+            (0, Some(proxy)) => format!("Connect to SSH server {host}:{port} via {proxy}"),
+            (0, None) => format!("Connect to SSH server {host}:{port}"),
+            _ => format!("Reach jump target {host}:{port}"),
         }
     }
 
@@ -219,6 +238,10 @@ pub(crate) struct DatabaseRun<'a> {
     pub(crate) port: u16,
     pub(crate) user: &'a str,
     pub(crate) tunnelled: bool,
+    /// The Unix socket on the SSH server the tunnel reaches, if not a port.
+    pub(crate) socket: Option<&'a str>,
+    /// `SOCKS5 proxy host:port` carrying a direct connection.
+    pub(crate) proxy: Option<&'a str>,
     /// A local database file: `host` is its path and there is no TLS.
     pub(crate) file: bool,
     pub(crate) server: Option<&'a ServerDto>,
@@ -229,11 +252,16 @@ impl DatabaseRun<'_> {
         if self.file {
             return (TestStepKind::Connect, format!("Open {}", self.host));
         }
-        let target = format!("{}:{}", self.host, self.port);
-        if self.tunnelled {
-            (TestStepKind::Tunnel, format!("Open tunnel to {target}"))
-        } else {
-            (TestStepKind::Connect, format!("Connect to {target}"))
+        let target = self
+            .socket
+            .map_or_else(|| format!("{}:{}", self.host, self.port), str::to_owned);
+        match (self.tunnelled, self.proxy) {
+            (true, _) => (TestStepKind::Tunnel, format!("Open tunnel to {target}")),
+            (false, Some(proxy)) => (
+                TestStepKind::Connect,
+                format!("Connect to {target} via {proxy}"),
+            ),
+            (false, None) => (TestStepKind::Connect, format!("Connect to {target}")),
         }
     }
 
@@ -251,14 +279,6 @@ impl DatabaseRun<'_> {
     }
 }
 
-fn reach(index: usize, host: &str, port: u16) -> String {
-    if index == 0 {
-        format!("Connect to SSH server {host}:{port}")
-    } else {
-        format!("Reach jump target {host}:{port}")
-    }
-}
-
 /// Failures before the SSH handshake: DNS, TCP or the channel to the next hop.
 fn fails_to_reach(error: &SshError) -> bool {
     matches!(
@@ -267,29 +287,20 @@ fn fails_to_reach(error: &SshError) -> bool {
             | SshError::Connect { .. }
             | SshError::ChannelOpen { .. }
             | SshError::EmptyRoute
+            | SshError::Proxy(_)
             | SshError::Timeout {
-                stage: Stage::Resolve | Stage::TcpConnect | Stage::ChannelOpen,
+                stage: Stage::Resolve | Stage::TcpConnect | Stage::ChannelOpen | Stage::Proxy,
                 ..
             }
     )
-}
-
-fn describe(details: &TlsDetails) -> String {
-    let check = match details.verification {
-        Verification::Full => "certificate verified",
-        Verification::Chain => "CA verified, host name not checked",
-        Verification::None => "certificate NOT verified",
-    };
-    let mut parts = vec![details.protocol.clone(), details.cipher.clone()];
-    parts.extend(details.subject.clone());
-    parts.push(check.to_owned());
-    parts.retain(|part| !part.is_empty());
-    parts.join(" · ")
 }
 
 fn millis(duration: Duration) -> u32 {
     u32::try_from(duration.as_millis()).unwrap_or(u32::MAX)
 }
 
+mod labels;
+#[cfg(test)]
+mod route_tests;
 #[cfg(test)]
 mod tests;

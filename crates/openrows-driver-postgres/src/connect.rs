@@ -45,9 +45,14 @@ impl Target {
         }
     }
 
-    /// True for transports where TLS applies.
+    /// True for transports where TLS applies: not local sockets, nor
+    /// sockets reached through an SSH tunnel.
     fn tcp_like(&self) -> bool {
-        !matches!(self, Self::Unix(_))
+        match self {
+            Self::Tcp { .. } => true,
+            Self::Unix(_) => false,
+            Self::Via(dialer) => !dialer.is_socket(),
+        }
     }
 
     pub(crate) async fn open(

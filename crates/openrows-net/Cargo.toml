@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "OpenRows network routes: SSH tunnels and TLS for database connections"
+description = "OpenRows network routes: proxies, SSH tunnels and TLS for database connections"
 
 [lints]
 workspace = true
@@ -24,12 +24,18 @@ rustls = { version = "0.23", default-features = false, features = ["ring", "std"
 rustls-platform-verifier = "0.7"
 sha1 = "0.11"
 thiserror.workspace = true
-tokio = { version = "1.53", features = ["net", "rt", "time"] }
+tokio = { version = "1.53", features = ["io-util", "net", "rt", "sync", "time"] }
 tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
 x509-cert = { version = "0.3", default-features = false, features = ["std"] }
 zeroize = "1.8"
 
+[features]
+# In-process SOCKS5 / HTTP CONNECT proxy for other crates' integration tests.
+test-proxy = []
+
 [dev-dependencies]
+# Integration tests use the in-process test proxy.
+openrows-net = { path = ".", features = ["test-proxy"] }
 proptest = "1.11"
 rcgen = "0.14"
 tempfile = "3.27"

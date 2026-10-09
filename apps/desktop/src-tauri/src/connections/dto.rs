@@ -14,6 +14,8 @@ use specta::Type;
 pub(crate) use super::engine_dto::{EngineDto, FileDto};
 pub(crate) use super::enums::{EnvKindDto, TlsModeDto};
 use super::error::IpcError;
+use super::insecure::{InsecureReasonDto, profile_insecurity};
+use super::proxy_dto::{ProxyDto, ProxyInput, proxy_dto};
 use super::route_dto::{
     SshDto, SshInput, TlsFilesDto, TlsFilesInput, apply_route, ssh_dto, tls_files_dto,
 };
@@ -63,8 +65,11 @@ pub(crate) struct ProfileDto {
     tls_mode: TlsModeDto,
     tls_files: TlsFilesDto,
     ssh: Option<SshDto>,
+    proxy: Option<ProxyDto>,
     has_password: bool,
     safety: SafetyDto,
+    /// Why the connection list flags this connection as insecure.
+    insecure: Vec<InsecureReasonDto>,
     /// Executed statements are kept in the local history (FR-WS-02).
     record_history: bool,
 }
@@ -89,7 +94,9 @@ impl From<&ConnectionProfile> for ProfileDto {
             tls_mode: profile.tls.mode.into(),
             tls_files: tls_files_dto(profile),
             ssh: ssh_dto(profile),
+            proxy: proxy_dto(profile),
             has_password: profile.secrets.password.is_some(),
+            insecure: profile_insecurity(profile),
             safety: SafetyDto {
                 read_only: profile.safety.read_only,
                 confirm_writes: profile.safety.confirm_writes,
@@ -164,6 +171,9 @@ pub(crate) struct ProfileInput {
     /// The SSH tunnel; absent or null for a direct connection.
     #[serde(default)]
     pub(crate) ssh: Option<SshInput>,
+    /// The proxy; absent or null without one.
+    #[serde(default)]
+    pub(crate) proxy: Option<ProxyInput>,
     pub(crate) safety: SafetyDto,
     /// Absent in forms written before the history switch: history is recorded.
     #[serde(default = "record_history_on")]
@@ -214,11 +224,17 @@ impl ProfileInput {
         profile.params.database = params.database;
         profile.params.user = params.user;
         profile.tls.mode = self.tls_mode.into();
-        apply_route(&self.tls_files, self.ssh.as_ref(), profile);
+        apply_route(
+            &self.tls_files,
+            self.ssh.as_ref(),
+            self.proxy.as_ref(),
+            profile,
+        );
         profile.file = self.file.as_ref().map(Into::into);
         if profile.driver.is_file() {
             profile.params = ServerParams::default();
             profile.ssh = None;
+            profile.proxy = None;
             profile.tls.mode = TlsMode::Disable;
         }
         profile.safety = self.safety.into();
@@ -237,6 +253,10 @@ impl ProfileInput {
             ssh_password: ssh.map_or(PasswordChange::Keep, |ssh| ssh.password.change()),
             ssh_passphrase: ssh.map_or(PasswordChange::Keep, |ssh| ssh.passphrase.change()),
             tls_key_passphrase: self.tls_files.key_passphrase.change(),
+            proxy_password: self
+                .proxy
+                .as_ref()
+                .map_or(PasswordChange::Keep, |proxy| proxy.password.change()),
         })
     }
 }

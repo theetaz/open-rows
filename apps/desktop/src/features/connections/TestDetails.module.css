@@ -1,0 +1,37 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Test connection extras: the server certificate card. */
+.certificate {
+  display: grid;
+  gap: var(--or-space-4);
+  padding: var(--or-space-8);
+  border-radius: var(--or-radius-field);
+  background: var(--or-control-fill);
+  font-size: var(--or-text-11);
+}
+.certificate h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-6);
+  margin: 0;
+  font-size: var(--or-text-12);
+  font-weight: var(--or-weight-medium);
+}
+.certificate dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--or-space-2) var(--or-space-8);
+  margin: 0;
+}
+.certificate dt {
+  color: var(--or-secondary);
+}
+.certificate dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--or-space-6);
+  margin: 0;
+  overflow-wrap: anywhere;
+  user-select: text;
+  -webkit-user-select: text;
+}

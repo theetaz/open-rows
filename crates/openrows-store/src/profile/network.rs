@@ -18,6 +18,9 @@ pub struct TlsSettings {
     /// PEM CA bundle; the only trust anchor when set (libpq `sslrootcert`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ca_file: Option<PathBuf>,
+    /// A bundled cloud provider CA set instead of a CA file.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cloud_ca: Option<CloudCa>,
     /// PEM client certificate (libpq `sslcert`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub client_cert: Option<PathBuf>,
@@ -33,18 +36,25 @@ impl TlsSettings {
         Self {
             mode,
             ca_file: None,
+            cloud_ca: None,
             client_cert: None,
             client_key: None,
         }
     }
 
+    /// True when a CA file or a bundled cloud CA is the trust anchor.
+    #[must_use]
+    pub fn has_ca(&self) -> bool {
+        self.ca_file.is_some() || self.cloud_ca.is_some()
+    }
+
     /// True when the server certificate is not authenticated: every mode
-    /// below `verify-ca`, except `require` with a CA file (libpq).
+    /// below `verify-ca`, except `require` with a CA (libpq).
     #[must_use]
     pub fn skips_verification(&self) -> bool {
         match self.mode {
             TlsMode::VerifyCa | TlsMode::VerifyFull => false,
-            TlsMode::Require => self.ca_file.is_none(),
+            TlsMode::Require => !self.has_ca(),
             TlsMode::Disable | TlsMode::Allow | TlsMode::Prefer => true,
         }
     }
@@ -58,6 +68,39 @@ impl TlsSettings {
     pub fn unverified_remote(&self, host: &str) -> bool {
         self.skips_verification() && !is_local_host(host)
     }
+
+    /// Why a connection to `host` with these settings is insecure, if it is:
+    /// TLS off or unverified towards a remote host (docs/12 §4.1).
+    #[must_use]
+    pub fn insecurity(&self, host: &str) -> Option<Insecurity> {
+        if is_local_host(host) {
+            return None;
+        }
+        match self.mode {
+            TlsMode::Disable => Some(Insecurity::TlsDisabled),
+            _ if self.skips_verification() => Some(Insecurity::TlsUnverified),
+            _ => None,
+        }
+    }
+}
+
+/// Bundled CA certificates of a managed database service.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum CloudCa {
+    /// Amazon RDS and Aurora (global bundle).
+    AwsRds,
+    /// Azure Database for `PostgreSQL` and `MySQL`.
+    Azure,
+}
+
+/// Why the UI flags a connection as insecure.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Insecurity {
+    /// TLS is off towards a remote host.
+    TlsDisabled,
+    /// The server certificate of a remote host is not verified.
+    TlsUnverified,
 }
 
 /// Loopback names, IP literals and Unix socket directories.

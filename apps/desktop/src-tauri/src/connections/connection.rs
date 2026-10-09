@@ -7,6 +7,7 @@ use tauri::State;
 
 use super::Connections;
 use super::error::IpcError;
+use super::insecure::{InsecureReasonDto, connection_insecurity};
 use super::profiles::profile_id;
 use super::route;
 use super::target::ServerDto;
@@ -21,6 +22,8 @@ pub(crate) struct ConnectionOpened {
     server: ServerDto,
     /// The profile's database to open right away; `None` lets the user choose.
     database: Option<String>,
+    /// Why the connection is insecure (window chrome badge); empty when secure.
+    insecure: Vec<InsecureReasonDto>,
 }
 
 /// Check that a saved connection is reachable (opening its SSH tunnel first,
@@ -47,9 +50,11 @@ pub(crate) async fn connection_open(
             },
         )
         .await?;
+    let insecure = connection_insecurity(&profile, state.tunnels.unsaved_host_keys(&profile_id));
     Ok(ConnectionOpened {
         server,
         database: profile.params.database,
+        insecure,
     })
 }
 

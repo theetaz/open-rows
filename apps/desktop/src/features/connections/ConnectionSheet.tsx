@@ -7,6 +7,7 @@ import { ENGINE_CHOICES, engineName, isFileEngine } from './engines';
 import { EngineTile } from './EngineTile';
 import { EnvironmentFields } from './EnvironmentFields';
 import { FileFields } from './FileFields';
+import { ProxyFields } from './ProxyFields';
 import { SshFields } from './SshFields';
 import { TestResult } from './TestResult';
 import { TlsFields } from './TlsFields';
@@ -27,7 +28,7 @@ type Props = {
 
 /**
  * New/edit connection: URL ↔ fields, then per engine either the server,
- * SSH and TLS sections or the database file; environment, safety, test and
+ * proxy, SSH and TLS sections or the database file; environment, safety, test and
  * save for every engine.
  */
 export function ConnectionSheet(props: Props): React.JSX.Element {
@@ -63,6 +64,7 @@ export function ConnectionSheet(props: Props): React.JSX.Element {
         ) : (
           <>
             <ConnectionFields form={form} />
+            <ProxyFields form={form} />
             <SshFields form={form} />
             <TlsFields form={form} />
           </>

@@ -21,6 +21,7 @@ const profiles = [
 const statuses: Record<string, SessionStatus> = {
   'id-analytics-prod': {
     state: 'connected',
+    insecure: [],
     server: server('16.4'),
     databases: [],
     generation: 1,
@@ -190,6 +191,7 @@ it('collapses environment and connection lists without closing sessions, and sco
       activeId={local.id}
       statusOf={() => ({
         state: 'connected',
+        insecure: [],
         server: server('17'),
         databases: [{ name: 'orders', state: 'open', sessionId: 's' }],
         generation: 1,
@@ -218,4 +220,38 @@ it('collapses environment and connection lists without closing sessions, and sco
     'false',
   );
   localStorage.clear();
+});
+
+it('marks insecure connections in the row and names the reasons in the tooltip', () => {
+  const unverified = profile('reports', {
+    host: 'db.example.test',
+    insecure: ['tlsUnverified'],
+  });
+  const live: SessionStatus = {
+    state: 'connected',
+    insecure: ['hostKeyNotSaved'],
+    server: server('16.4'),
+    databases: [],
+    generation: 1,
+  };
+  render(
+    <ConnectionRail
+      {...props}
+      profiles={[unverified, profile('safe')]}
+      statusOf={(id) =>
+        id === unverified.id ? live : { state: 'disconnected' }
+      }
+    />,
+  );
+  const row = screen.getByRole('button', { name: 'Switch to reports' });
+  expect(row.querySelector('[title]')).toHaveAttribute(
+    'title',
+    'The server certificate is not verified. The SSH host key was accepted once without saving it.',
+  );
+  const safe = screen.getByRole('button', { name: 'Switch to safe' });
+  expect(safe.querySelector('[title]')).toBeNull();
+  fireEvent.mouseEnter(row);
+  expect(screen.getByRole('tooltip')).toHaveTextContent(
+    'Not secure: The server certificate is not verified.',
+  );
 });

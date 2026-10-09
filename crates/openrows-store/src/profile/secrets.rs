@@ -17,15 +17,18 @@ pub enum SecretSlot {
     SshPassphrase,
     /// Passphrase of the TLS client key.
     TlsKeyPassphrase,
+    /// Password of the proxy login.
+    ProxyPassword,
 }
 
 impl SecretSlot {
     /// Every slot.
-    pub const ALL: [Self; 4] = [
+    pub const ALL: [Self; 5] = [
         Self::Password,
         Self::SshPassword,
         Self::SshPassphrase,
         Self::TlsKeyPassphrase,
+        Self::ProxyPassword,
     ];
 
     /// Last segment of the keychain account.
@@ -36,6 +39,7 @@ impl SecretSlot {
             Self::SshPassword => "ssh-password",
             Self::SshPassphrase => "ssh-passphrase",
             Self::TlsKeyPassphrase => "tls-key-passphrase",
+            Self::ProxyPassword => "proxy-password",
         }
     }
 }
@@ -49,6 +53,7 @@ impl SecretRefs {
             SecretSlot::SshPassword => self.ssh_password,
             SecretSlot::SshPassphrase => self.ssh_passphrase,
             SecretSlot::TlsKeyPassphrase => self.tls_key_passphrase,
+            SecretSlot::ProxyPassword => self.proxy_password,
         }
     }
 
@@ -59,6 +64,7 @@ impl SecretRefs {
             SecretSlot::SshPassword => &mut self.ssh_password,
             SecretSlot::SshPassphrase => &mut self.ssh_passphrase,
             SecretSlot::TlsKeyPassphrase => &mut self.tls_key_passphrase,
+            SecretSlot::ProxyPassword => &mut self.proxy_password,
         };
         *field = value;
     }
@@ -75,6 +81,8 @@ pub struct SecretChanges {
     pub ssh_passphrase: PasswordChange,
     /// TLS client key passphrase.
     pub tls_key_passphrase: PasswordChange,
+    /// Proxy password.
+    pub proxy_password: PasswordChange,
 }
 
 impl SecretChanges {
@@ -95,6 +103,7 @@ impl SecretChanges {
             SecretSlot::SshPassword => &self.ssh_password,
             SecretSlot::SshPassphrase => &self.ssh_passphrase,
             SecretSlot::TlsKeyPassphrase => &self.tls_key_passphrase,
+            SecretSlot::ProxyPassword => &self.proxy_password,
         }
     }
 
@@ -105,6 +114,7 @@ impl SecretChanges {
             SecretSlot::SshPassword => &mut self.ssh_password,
             SecretSlot::SshPassphrase => &mut self.ssh_passphrase,
             SecretSlot::TlsKeyPassphrase => &mut self.tls_key_passphrase,
+            SecretSlot::ProxyPassword => &mut self.proxy_password,
         }
     }
 }
@@ -126,6 +136,10 @@ impl ConnectionProfile {
             SecretSlot::SshPassword => matches!(auth, Some(SshAuthMethod::Password)),
             SecretSlot::SshPassphrase => matches!(auth, Some(SshAuthMethod::PrivateKey { .. })),
             SecretSlot::TlsKeyPassphrase => self.tls.client_key.is_some(),
+            SecretSlot::ProxyPassword => self
+                .proxy
+                .as_ref()
+                .is_some_and(|proxy| proxy.user.is_some()),
         }
     }
 }

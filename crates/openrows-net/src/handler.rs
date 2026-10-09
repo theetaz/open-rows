@@ -2,7 +2,10 @@
 //! russh client handler: host-key verification against `known_hosts`, with the
 //! first-use decision delegated to the UI through [`HostKeyPolicy`].
 
-use std::sync::Arc;
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+};
 
 use russh::keys::{PublicKey, PublicKeyOrCertificate};
 
@@ -55,6 +58,8 @@ pub(crate) struct ClientHandler {
     pub(crate) known_hosts: Arc<KnownHosts>,
     pub(crate) policy: Arc<dyn HostKeyPolicy>,
     pub(crate) clock: PromptClock,
+    /// Set when the user accepted an unknown key without remembering it.
+    pub(crate) accepted_once: Arc<AtomicBool>,
 }
 
 impl ClientHandler {
@@ -117,7 +122,10 @@ impl ClientHandler {
                 host: host_port(&self.host, self.port),
                 fingerprint: request.fingerprint,
             }),
-            FirstUseDecision::AcceptOnce => Ok(true),
+            FirstUseDecision::AcceptOnce => {
+                self.accepted_once.store(true, Ordering::Relaxed);
+                Ok(true)
+            }
             FirstUseDecision::AcceptAndRemember => {
                 self.with_store(key, KnownHosts::remember).await?;
                 Ok(true)

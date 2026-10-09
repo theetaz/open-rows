@@ -53,6 +53,24 @@ it('asks to trust an unknown host key, showing its fingerprint', async () => {
   expect(screen.queryByText('SHA256:synthetic-fingerprint')).toBeNull();
 });
 
+it('connects once without saving the host key', async () => {
+  const emit = await mount();
+  emit({
+    id: 'ssh-2',
+    prompt: {
+      kind: 'hostKey',
+      host: 'bastion',
+      port: 22,
+      algorithm: 'ssh-ed25519',
+      fingerprint: 'SHA256:synthetic-fingerprint',
+      otherAlgorithms: [],
+    },
+  });
+  expect(screen.getByText(/marked as not secure/)).toBeVisible();
+  await userEvent.click(screen.getByRole('button', { name: 'Connect once' }));
+  expect(answerSshPrompt).toHaveBeenCalledWith('ssh-2', { kind: 'trustOnce' });
+});
+
 it('cancels on Escape and closes when the core abandons the prompt', async () => {
   const emit = await mount();
   const prompt = {

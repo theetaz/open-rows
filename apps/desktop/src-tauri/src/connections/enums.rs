@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Webview mirrors of store enums (the store crate stays free of specta).
-use openrows_store::profile::{EnvKind, TlsMode};
+use openrows_store::profile::{CloudCa, EnvKind, TlsMode};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
@@ -73,6 +73,34 @@ impl From<TlsModeDto> for TlsMode {
             TlsModeDto::Require => Self::Require,
             TlsModeDto::VerifyCa => Self::VerifyCa,
             TlsModeDto::VerifyFull => Self::VerifyFull,
+        }
+    }
+}
+
+/// Bundled cloud provider CA sets (docs/24 §4).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) enum CloudCaDto {
+    /// Amazon RDS and Aurora.
+    AwsRds,
+    /// Azure Database for `PostgreSQL` and `MySQL`.
+    Azure,
+}
+
+impl From<CloudCa> for CloudCaDto {
+    fn from(cloud: CloudCa) -> Self {
+        match cloud {
+            CloudCa::AwsRds => Self::AwsRds,
+            CloudCa::Azure => Self::Azure,
+        }
+    }
+}
+
+impl From<CloudCaDto> for CloudCa {
+    fn from(cloud: CloudCaDto) -> Self {
+        match cloud {
+            CloudCaDto::AwsRds => Self::AwsRds,
+            CloudCaDto::Azure => Self::Azure,
         }
     }
 }

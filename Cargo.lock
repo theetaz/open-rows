@@ -3471,6 +3471,7 @@ version = "0.1.0"
 dependencies = [
  "data-encoding",
  "hmac",
+ "openrows-net",
  "pkcs8",
  "proptest",
  "rcgen",

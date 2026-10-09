@@ -204,6 +204,14 @@
   color: var(--or-danger-fg);
   font-size: var(--or-text-11);
 }
+/* Not-secure mark after the name (skip-verify TLS, a host key not saved). */
+.insecure {
+  display: flex;
+  flex: none;
+}
+.insecure:empty {
+  display: none;
+}
 /* Presence dot on the tile's bottom-right corner, like a chat avatar. */
 .status {
   position: absolute;
@@ -360,6 +368,7 @@
 .rail[data-compact='true'] .railHeading > span,
 .rail[data-compact='true'] .disclosure,
 .rail[data-compact='true'] .serverName,
+.rail[data-compact='true'] .insecure,
 .rail[data-compact='true'] .serverDisclosure,
 .rail[data-compact='true'] .controlLabel,
 .rail[data-compact='true'] .rowMenu,

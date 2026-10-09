@@ -1,16 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useId, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { ProfileDto } from '@openrows/ipc';
+import type { InsecureReasonDto, ProfileDto } from '@openrows/ipc';
 import { profileLocation } from './engines';
 import { EnvironmentBadge } from './EnvironmentBadge';
+import { insecureDetail } from './insecure';
 import styles from './Tooltip.module.css';
 
 type Position = { left: number; top: number };
 
-/** Glass tooltip beside a rail tile: name, environment, engine, address and status. */
+/** Glass tooltip beside a rail tile: name, environment, engine, address, status and security. */
 export function RailTooltip(props: {
   profile: ProfileDto;
+  /** Why the connection is not secure; empty when it is. */
+  insecure: readonly InsecureReasonDto[];
   shortcut?: string | undefined;
   status: string;
   id: string;
@@ -31,6 +34,11 @@ export function RailTooltip(props: {
       </span>
       <small>{profileLocation(profile)}</small>
       <small>{props.status}</small>
+      {props.insecure.length > 0 && (
+        <small className={styles.insecure}>
+          {`Not secure: ${insecureDetail(props.insecure)}`}
+        </small>
+      )}
     </div>,
     document.body,
   );

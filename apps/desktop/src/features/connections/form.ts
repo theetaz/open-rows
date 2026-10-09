@@ -10,6 +10,13 @@ import {
   validateRoute,
 } from './routeForm';
 import type { RouteErrors, SshDraft, TlsDraft } from './routeForm';
+import {
+  emptyProxy,
+  proxyErrors,
+  proxyFromProfile,
+  proxyInput,
+} from './proxyForm';
+import type { ProxyDraft, ProxyErrors } from './proxyForm';
 import { defaultPort, engineName, isFileEngine } from './engines';
 import type {
   EngineDto,
@@ -51,6 +58,8 @@ export type Draft = {
   nameFromUrl: boolean;
   /** Over SSH (D-10). */
   ssh: SshDraft;
+  /** Through a SOCKS5 or HTTP proxy (M1-06). */
+  proxy: ProxyDraft;
   /** TLS certificate files (D-11); the mode is `tlsMode`. */
   tls: TlsDraft;
   /** The database file of a file engine (`SQLite`). */
@@ -64,7 +73,8 @@ export type Draft = {
 export type DraftErrors = Partial<
   Record<'name' | 'host' | 'port' | 'user' | 'envLabel' | 'filePath', string>
 > &
-  RouteErrors;
+  RouteErrors &
+  ProxyErrors;
 
 /** TextField `error` props for an optional message (exact optional property types). */
 export function fieldError(message: string | null | undefined): {
@@ -95,6 +105,7 @@ export function emptyDraft(engine: EngineDto = 'postgres'): Draft {
     hasStoredPassword: false,
     nameFromUrl: false,
     ssh: emptySsh(),
+    proxy: emptyProxy(),
     tls: emptyTls(),
     filePath: '',
     fileReadOnly: false,
@@ -124,6 +135,7 @@ export function draftFromProfile(profile: ProfileDto): Draft {
     recordHistory: profile.recordHistory,
     hasStoredPassword: profile.hasPassword,
     ssh: sshFromProfile(profile),
+    proxy: proxyFromProfile(profile),
     tls: tlsFromProfile(profile),
     filePath: profile.file?.path ?? '',
     fileReadOnly: profile.file?.readOnly ?? false,
@@ -209,7 +221,11 @@ export function validate(draft: Draft): DraftErrors {
   if (!draft.user.trim()) errors.user = 'User is required';
   if (draft.envKind === 'custom' && !draft.envLabel.trim())
     errors.envLabel = 'Label is required';
-  return { ...errors, ...validateRoute(draft.ssh, draft.tls, draft.tlsMode) };
+  return {
+    ...errors,
+    ...validateRoute(draft.ssh, draft.tls, draft.tlsMode),
+    ...proxyErrors(draft.proxy, draft.host, draft.ssh.enabled),
+  };
 }
 
 function password(draft: Draft): PasswordInput {
@@ -252,6 +268,7 @@ export function toInput(draft: Draft): ProfileInput {
     tlsMode: draft.tlsMode,
     tlsFiles: tlsInput(draft.tls),
     ssh: file ? null : sshInput(draft.ssh),
+    proxy: file ? null : proxyInput(draft.proxy),
     safety: { readOnly: draft.readOnly, confirmWrites: draft.confirmWrites },
     recordHistory: draft.recordHistory,
     password: file ? { kind: 'clear' } : password(draft),

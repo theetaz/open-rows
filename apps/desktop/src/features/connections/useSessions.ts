@@ -60,6 +60,7 @@ export function useSessions(): Sessions {
       set(profileId, {
         state: 'connected',
         server: opened.server,
+        insecure: opened.insecure,
         databases: [],
         generation: generation.current,
       });

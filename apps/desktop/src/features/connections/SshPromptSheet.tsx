@@ -23,7 +23,7 @@ export function SshPrompts(): React.JSX.Element | null {
   );
 }
 
-/** First connection to an SSH server: show the fingerprint, trust or cancel. */
+/** First connection to an SSH server: show the fingerprint; trust, connect once or cancel. */
 function HostKeySheet(props: {
   prompt: HostKey;
   answer: Answer;
@@ -53,7 +53,9 @@ function HostKeySheet(props: {
           </p>
         )}
         <small className={styles.note}>
-          Trusted keys are saved in OpenRows' own known_hosts file.
+          Trusted keys are saved in OpenRows' own known_hosts file. Connect once
+          does not save the key, and the connection is marked as not secure
+          until it closes.
         </small>
       </div>
       <SheetActions>
@@ -63,6 +65,13 @@ function HostKeySheet(props: {
           }}
         >
           Cancel
+        </Button>
+        <Button
+          onClick={() => {
+            answer({ kind: 'trustOnce' });
+          }}
+        >
+          Connect once
         </Button>
         <Button
           variant="primary"

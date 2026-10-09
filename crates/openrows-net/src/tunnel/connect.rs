@@ -2,7 +2,15 @@
 //! Per-hop connection set-up: DNS + TCP for the first hop, then the SSH
 //! handshake and authentication within their stage budgets.
 
-use std::{borrow::Cow, io, net::SocketAddr, sync::Arc};
+use std::{
+    borrow::Cow,
+    io,
+    net::SocketAddr,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
+};
 
 use russh::{
     Preferred,
@@ -71,23 +79,26 @@ fn resolve_error(hop: &SshHop, source: io::Error) -> SshError {
     }
 }
 
-/// SSH handshake + authentication over `stream`, within the handshake budget.
+/// SSH handshake + authentication over `stream`, within the handshake
+/// budget. The flag is false when an unknown host key was accepted once.
 pub(super) async fn handshake<S>(
     stream: S,
     hop: &SshHop,
     options: &TunnelOptions,
-) -> Result<Handle<ClientHandler>, SshError>
+) -> Result<(Handle<ClientHandler>, bool), SshError>
 where
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
     let clock = PromptClock::default();
     let config = Arc::new(client_config(hop, options).await?);
+    let accepted_once = Arc::new(AtomicBool::new(false));
     let handler = ClientHandler {
         host: hop.host.clone(),
         port: hop.port,
         known_hosts: Arc::clone(&options.known_hosts),
         policy: Arc::clone(&options.host_key_policy),
         clock: clock.clone(),
+        accepted_once: Arc::clone(&accepted_once),
     };
     let work = async {
         let mut session = client::connect_stream(config, stream, handler).await?;
@@ -100,7 +111,8 @@ where
         authenticate(&mut session, &hop.auth, &context).await?;
         Ok(session)
     };
-    within(Stage::Handshake, options.timeouts.handshake, &clock, work).await
+    let session = within(Stage::Handshake, options.timeouts.handshake, &clock, work).await?;
+    Ok((session, !accepted_once.load(Ordering::Relaxed)))
 }
 
 async fn client_config(hop: &SshHop, options: &TunnelOptions) -> Result<client::Config, SshError> {

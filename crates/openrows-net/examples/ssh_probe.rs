@@ -121,6 +121,7 @@ fn options(home: &Path) -> TunnelOptions {
         host_key_policy: Arc::new(Terminal),
         prompter: Arc::new(Terminal),
         timeouts: Timeouts::default(),
+        proxy: None,
     }
 }
 

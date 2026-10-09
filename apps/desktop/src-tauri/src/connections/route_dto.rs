@@ -12,6 +12,9 @@ use openrows_store::profile::{
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
+use super::enums::CloudCaDto;
+use super::proxy_dto::{ProxyInput, proxy_settings};
+
 /// What to do with an SSH or TLS secret on save or test. `Debug` redacts
 /// the value.
 #[derive(Clone, Default, Deserialize, Type)]
@@ -91,6 +94,8 @@ pub(crate) struct SshInput {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct TlsFilesDto {
     ca_file: Option<String>,
+    /// A bundled cloud provider CA instead of a CA file.
+    cloud_ca: Option<CloudCaDto>,
     client_cert: Option<String>,
     client_key: Option<String>,
     has_key_passphrase: bool,
@@ -104,6 +109,9 @@ pub(crate) struct TlsFilesDto {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct TlsFilesInput {
     pub(crate) ca_file: Option<String>,
+    /// Absent in forms written before cloud CAs: none.
+    #[serde(default)]
+    pub(crate) cloud_ca: Option<CloudCaDto>,
     pub(crate) client_cert: Option<String>,
     pub(crate) client_key: Option<String>,
     pub(crate) key_passphrase: SecretInput,
@@ -113,6 +121,7 @@ pub(crate) fn tls_files_dto(profile: &ConnectionProfile) -> TlsFilesDto {
     let tls = &profile.tls;
     TlsFilesDto {
         ca_file: tls.ca_file.as_deref().map(display),
+        cloud_ca: tls.cloud_ca.map(Into::into),
         client_cert: tls.client_cert.as_deref().map(display),
         client_key: tls.client_key.as_deref().map(display),
         has_key_passphrase: profile.secrets.tls_key_passphrase.is_some(),
@@ -140,13 +149,16 @@ pub(crate) fn ssh_dto(profile: &ConnectionProfile) -> Option<SshDto> {
     })
 }
 
-/// Copy the form's TLS files and SSH settings onto `profile`.
+/// Copy the form's TLS files, SSH settings and proxy onto `profile`.
 pub(crate) fn apply_route(
     tls: &TlsFilesInput,
     ssh: Option<&SshInput>,
+    proxy: Option<&ProxyInput>,
     profile: &mut ConnectionProfile,
 ) {
+    profile.proxy = proxy.map(proxy_settings);
     profile.tls.ca_file = path(tls.ca_file.as_deref());
+    profile.tls.cloud_ca = tls.cloud_ca.map(Into::into);
     profile.tls.client_cert = path(tls.client_cert.as_deref());
     profile.tls.client_key = path(tls.client_key.as_deref());
     profile.ssh = ssh.map(|input| SshSettings {
@@ -215,7 +227,7 @@ pub(crate) mod tests {
         let key = SshAuthDto::PrivateKey {
             key_file: "~/.ssh/id_ed25519".to_owned(),
         };
-        apply_route(&tls, Some(&ssh_input(key)), &mut profile);
+        apply_route(&tls, Some(&ssh_input(key)), None, &mut profile);
         assert_eq!(profile.tls.ca_file, Some(PathBuf::from("/certs/ca.pem")));
         assert_eq!(profile.tls.client_cert, None);
         let ssh = profile
@@ -224,7 +236,7 @@ pub(crate) mod tests {
             .unwrap_or_else(|| unreachable!("SSH set"));
         assert_eq!((ssh.host.as_str(), ssh.user), ("bastion", None));
         assert_eq!(ssh.jump_hosts, ["ops@jump:22"]);
-        apply_route(&TlsFilesInput::default(), None, &mut profile);
+        apply_route(&TlsFilesInput::default(), None, None, &mut profile);
         assert_eq!(profile.ssh, None);
     }
 
@@ -238,6 +250,7 @@ pub(crate) mod tests {
         apply_route(
             &TlsFilesInput::default(),
             Some(&ssh_input(SshAuthDto::Password)),
+            None,
             &mut profile,
         );
         profile.secrets.ssh_password = Some(SecretRef::Keychain);

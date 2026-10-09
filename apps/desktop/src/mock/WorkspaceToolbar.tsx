@@ -2,6 +2,7 @@
 import { Icon, IconButton, ToolbarGroup } from '@openrows/ui';
 import type { IconName } from '@openrows/ui';
 import type { ContextSegments } from './contextBar';
+import { InsecureBadge } from '../features/connections';
 import styles from './Workspace.module.css';
 
 type Props = {
@@ -134,6 +135,7 @@ function Context({
           </span>
         </span>
       )}
+      <InsecureBadge reasons={context.insecure} />
       <span className={styles.address}>
         <span>
           {engine} : {name}

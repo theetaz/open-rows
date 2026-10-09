@@ -9,9 +9,10 @@ use openrows_driver_api::{
     ConnectRequest, ConnectTimeouts, ConnectTrace, Connection, Driver, DriverError, Endpoint,
     ServerSummary, SslMode, TlsFiles,
 };
+use openrows_net::tls::CloudCa as NetCloudCa;
 use openrows_net::{Dialer, SecretString as NetSecret};
 use openrows_secrets::SecretString;
-use openrows_store::profile::{ConnectionProfile, TlsMode, TlsSettings};
+use openrows_store::profile::{CloudCa, ConnectionProfile, TlsMode, TlsSettings};
 use serde::Serialize;
 use specta::Type;
 
@@ -38,7 +39,7 @@ impl Target {
         }
     }
 
-    /// Connect through `route` (an SSH tunnel) instead of direct TCP.
+    /// Connect through `route` (a proxy or an SSH tunnel) instead of direct TCP.
     pub(crate) fn through(self, route: Arc<dyn Dialer>) -> Self {
         Self {
             driver: self.driver,
@@ -125,6 +126,10 @@ pub(crate) fn target(
 fn tls_files(tls: &TlsSettings, passphrase: Option<&SecretString>) -> TlsFiles {
     TlsFiles {
         ca_file: tls.ca_file.clone(),
+        cloud_ca: tls.cloud_ca.map(|cloud| match cloud {
+            CloudCa::AwsRds => NetCloudCa::AwsRds,
+            CloudCa::Azure => NetCloudCa::Azure,
+        }),
         client_cert: tls.client_cert.clone(),
         client_key: tls.client_key.clone(),
         key_passphrase: passphrase.map(|secret| NetSecret::from(secret.expose())),

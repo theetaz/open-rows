@@ -233,12 +233,38 @@ export type CellRequest = {
 /**  A staged field value. `default` is the column DEFAULT, never the text `'DEFAULT'`. */
 export type CellValueDto = { kind: "null" } | { kind: "default" } | { kind: "text"; value: string };
 
+/**  The server certificate as Test connection shows it. */
+export type CertificateDto = {
+	subject: string | null,
+	issuer: string | null,
+	/**  Validity start, e.g. `2026-01-01T00:00:00Z`. */
+	notBefore: string | null,
+	/**  Validity end, e.g. `2027-01-01T00:00:00Z`. */
+	notAfter: string | null,
+	/**  Whole days until `notAfter`; negative once expired. */
+	daysLeft: number | null,
+	/**  Expired or expiring within 30 days. */
+	expiringSoon: boolean,
+	/**  Subject alternative names (DNS names and IP addresses). */
+	altNames: string[],
+	/**  The certificate was verified (chain, and host name when `hostVerified`). */
+	verified: boolean,
+	hostVerified: boolean,
+};
+
 /**  One line of a keyboard-interactive challenge. */
 export type ChallengePromptDto = {
 	text: string,
 	/**  The answer may be shown while typing (otherwise it is masked). */
 	echo: boolean,
 };
+
+/**  Bundled cloud provider CA sets (docs/24 §4). */
+export type CloudCaDto = 
+/**  Amazon RDS and Aurora. */
+"awsRds" | 
+/**  Azure Database for `PostgreSQL` and `MySQL`. */
+"azure";
 
 /**  A result column as the grid header shows it. */
 export type ColumnDto = {
@@ -260,6 +286,8 @@ export type ConnectionOpened = {
 	server: ServerDto,
 	/**  The profile's database to open right away; `None` lets the user choose. */
 	database: string | null,
+	/**  Why the connection is insecure (window chrome badge); empty when secure. */
+	insecure: InsecureReasonDto[],
 };
 
 /**  How an exact count ended. */
@@ -537,6 +565,15 @@ export type IndexDetailDto = {
 /**  Index access methods offered by `+ Index`. */
 export type IndexMethodDto = "btree" | "hash" | "gist" | "gin" | "brin" | "spgist";
 
+/**  One reason for the insecure badge. */
+export type InsecureReasonDto = 
+/**  TLS is off towards a remote host. */
+"tlsDisabled" | 
+/**  The remote server's certificate is not verified. */
+"tlsUnverified" | 
+/**  An unknown SSH host key was accepted without saving it. */
+"hostKeyNotSaved";
+
 /**  Typed command failure, safe to render to the user. */
 export type IpcError = {
 	/**  Failure category. */
@@ -592,6 +629,14 @@ export type KeystrokeSample = {
 	frameMs: number | null,
 	wallMs: number | null,
 	keystrokeToPaintMs: number | null,
+};
+
+/**  Round trips of a trivial query. */
+export type LatencyDto = {
+	medianMs: number | null,
+	minMs: number | null,
+	maxMs: number | null,
+	samples: number,
 };
 
 /**  A menu command chosen by the user; `id` is the registry command id. */
@@ -716,8 +761,11 @@ export type ProfileDto = {
 	tlsMode: TlsModeDto,
 	tlsFiles: TlsFilesDto,
 	ssh: SshDto | null,
+	proxy: ProxyDto | null,
 	hasPassword: boolean,
 	safety: SafetyDto,
+	/**  Why the connection list flags this connection as insecure. */
+	insecure: InsecureReasonDto[],
 	/**  Executed statements are kept in the local history (FR-WS-02). */
 	recordHistory: boolean,
 };
@@ -740,6 +788,8 @@ export type ProfileInput = {
 	tlsFiles?: TlsFilesInput,
 	/**  The SSH tunnel; absent or null for a direct connection. */
 	ssh?: SshInput | null,
+	/**  The proxy; absent or null without one. */
+	proxy?: ProxyInput | null,
 	safety: SafetyDto,
 	/**  Absent in forms written before the history switch: history is recorded. */
 	recordHistory?: boolean,
@@ -752,6 +802,27 @@ export type ProfileList = {
 	/**  One message per unreadable profile file. */
 	unreadable: string[],
 };
+
+/**  A saved proxy; says whether its password is stored. */
+export type ProxyDto = {
+	kind: ProxyKindDto,
+	host: string,
+	port: number,
+	user: string | null,
+	hasPassword: boolean,
+};
+
+/**  Proxy fields from the form. */
+export type ProxyInput = {
+	kind: ProxyKindDto,
+	host: string,
+	port: number,
+	user: string | null,
+	password: SecretInput,
+};
+
+/**  Proxy protocol. */
+export type ProxyKindDto = "socks5" | "http";
 
 /**
  *  Progress of one run; `statement` indexes the reply's statements.
@@ -930,6 +1001,11 @@ export type SshInput = {
 export type SshPromptAnswer = 
 /**  Trust the host key and remember it in the app's `known_hosts`. */
 { kind: "trust" } | 
+/**
+ *  Connect this time without saving the key; the connection is flagged
+ *  as insecure while the tunnel lives.
+ */
+{ kind: "trustOnce" } | 
 /**  Answers to a challenge, one per prompt, in order. */
 { kind: "answers"; values: string[] } | 
 /**  Dismissed: reject the key or cancel authentication. */
@@ -1075,6 +1151,10 @@ export type TestReport = {
 	steps: TestStepDto[],
 	server: ServerDto | null,
 	error: IpcError | null,
+	/**  The server certificate, when TLS was negotiated. */
+	certificate: CertificateDto | null,
+	/**  Round trips of `SELECT 1` after connecting. */
+	latency: LatencyDto | null,
 	elapsedMs: number,
 };
 
@@ -1106,7 +1186,9 @@ export type TestStepKind =
 /**  Database authentication. */
 "authenticate" | 
 /**  Server product and version. */
-"version";
+"version" | 
+/**  Round trip of a trivial query. */
+"latency";
 
 export type TileTiming = {
 	rowStart: number,
@@ -1119,6 +1201,8 @@ export type TileTiming = {
 /**  Saved TLS certificate files and whether verification is skipped. */
 export type TlsFilesDto = {
 	caFile: string | null,
+	/**  A bundled cloud provider CA instead of a CA file. */
+	cloudCa: CloudCaDto | null,
 	clientCert: string | null,
 	clientKey: string | null,
 	hasKeyPassphrase: boolean,
@@ -1132,6 +1216,8 @@ export type TlsFilesDto = {
 /**  TLS certificate files from the form. */
 export type TlsFilesInput = {
 	caFile: string | null,
+	/**  Absent in forms written before cloud CAs: none. */
+	cloudCa?: CloudCaDto | null,
 	clientCert: string | null,
 	clientKey: string | null,
 	keyPassphrase: SecretInput,

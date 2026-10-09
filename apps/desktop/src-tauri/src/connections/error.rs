@@ -128,6 +128,11 @@ fn field_label(field: &str) -> &str {
         "ssh.port" => "SSH port",
         "ssh.keyFile" => "SSH key file",
         "ssh.jumpHosts" => "Jump hosts",
+        "proxy" => "A proxy",
+        "proxy.host" => "Proxy host",
+        "proxy.port" => "Proxy port",
+        "proxy.user" => "Proxy user",
+        "tls.caFile" => "TLS CA:",
         "id" => "Connection id",
         other => other,
     }
