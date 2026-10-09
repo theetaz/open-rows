@@ -125,13 +125,27 @@ export type {
   TriggerDto,
   TriggerTimingDto,
 } from './generated/bindings';
+/** Saved queries and the `.sql` files of query tabs (native panels). */
+export {
+  createSavedQuery,
+  deleteSavedQuery,
+  listSavedQueries,
+  openSqlFile,
+  renameSavedQuery,
+  saveSqlFile,
+  saveSqlFileAs,
+} from './savedQueries';
 export type {
   ColumnDto,
   ExecuteReply,
   ExecuteRequest,
   HistoryItemDto,
+  ParamStyleDto,
+  ParamsDto,
   QueryEventDto,
   RunMode,
+  SavedQueryDto,
+  SqlFileDto,
   StatementDto,
 } from './generated/bindings';
 export { DEFAULT_CUSTOM_ENV_COLOR } from './generated/bindings';

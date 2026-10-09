@@ -88,6 +88,29 @@ const sampleStructure: TableStructureDto = {
   rowEstimate: 1811,
 };
 
+/** Saved queries and `.sql` files: one saved query, no native panels. */
+function savedQueryStub(): Record<string, unknown> {
+  return {
+    listSavedQueries: vi.fn(() =>
+      Promise.resolve([
+        {
+          id: 'saved-1',
+          name: 'Top customers',
+          sql: 'SELECT * FROM customers ORDER BY total DESC LIMIT 10;',
+          createdAtMs: 0,
+          updatedAtMs: 0,
+        },
+      ]),
+    ),
+    createSavedQuery: vi.fn(() => Promise.resolve()),
+    renameSavedQuery: vi.fn(() => Promise.resolve()),
+    deleteSavedQuery: vi.fn(() => Promise.resolve()),
+    saveSqlFile: vi.fn(() => Promise.resolve()),
+    saveSqlFileAs: vi.fn(() => Promise.resolve(null)),
+    openSqlFile: vi.fn(() => Promise.resolve(null)),
+  };
+}
+
 /** `@openrows/ipc` replacement for jsdom tests: no native shell, no keychain. */
 export function ipcStub(
   profiles: readonly ProfileDto[] = sampleProfiles,
@@ -135,6 +158,7 @@ export function ipcStub(
     clearHistory: vi.fn(() => Promise.resolve(null)),
     resultCellInfo: vi.fn(),
     resultCellValue: vi.fn(),
+    ...savedQueryStub(),
     tableEditInfo: vi.fn(() =>
       Promise.resolve({
         key: [],

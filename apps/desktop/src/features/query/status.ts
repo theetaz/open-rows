@@ -28,6 +28,8 @@ export function statusText(run: RunState): string {
       return 'Ready';
     case 'confirm':
       return 'Waiting for confirmation';
+    case 'parameters':
+      return 'Waiting for parameter values';
     case 'blocked':
       return 'Blocked: read-only connection';
     case 'starting':

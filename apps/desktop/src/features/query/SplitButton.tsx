@@ -58,7 +58,6 @@ export function SplitButton(props: {
   entries: readonly MenuEntry[];
   variant?: Variant;
   disabled?: boolean;
-  menuDisabled?: boolean;
   children: ReactNode;
 }): React.JSX.Element {
   const variant = props.variant ?? 'secondary';
@@ -78,7 +77,6 @@ export function SplitButton(props: {
         label={props.menuLabel}
         entries={props.entries}
         variant={variant}
-        disabled={props.menuDisabled}
         className={styles.chevron}
       >
         <Icon name="chevronDown" />

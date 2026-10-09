@@ -10,6 +10,8 @@ export type FormatOptions = {
   indentWidth: 2 | 4;
   indentWith: 'spaces' | 'tabs';
   keywordCase: 'preserve' | 'upper' | 'lower';
+  /** Standard indentation, or keywords in a column aligned left or right (sql-formatter `indentStyle`). */
+  indentStyle: 'standard' | 'tabularLeft' | 'tabularRight';
 };
 
 /** Beautify (pretty-print) or Uglify (one line). */

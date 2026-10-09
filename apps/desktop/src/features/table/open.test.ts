@@ -20,6 +20,8 @@ function tabs(open: QueryTab[] = []): QueryTabs {
     close: vi.fn(),
     select: vi.fn(),
     edit: vi.fn(),
+    bindFile: vi.fn(),
+    setParams: vi.fn(),
   };
 }
 

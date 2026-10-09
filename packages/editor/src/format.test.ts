@@ -13,6 +13,7 @@ const options: FormatOptions = {
   indentWidth: 2,
   indentWith: 'spaces',
   keywordCase: 'upper',
+  indentStyle: 'standard',
 };
 
 let editor: SqlEditor | undefined;
@@ -51,6 +52,22 @@ it('beautifies with the chosen indent and keyword case', async () => {
     keywordCase: 'lower',
   });
   expect(tabs).toBe('select\n\ta\nfrom\n\tt');
+});
+
+it('aligns keywords in a column with the tabular indent types', async () => {
+  const sql = 'select a, b from t where a = 1';
+  const left = await beautifySql(sql, {
+    ...options,
+    indentStyle: 'tabularLeft',
+  });
+  expect(left.split('\n')[0]).toBe('SELECT    a,');
+  expect(left).toContain('\nFROM      t');
+  const right = await beautifySql(sql, {
+    ...options,
+    indentStyle: 'tabularRight',
+  });
+  expect(right.split('\n')[0]).toBe('   SELECT a,');
+  expect(right).toContain('\n     FROM t');
 });
 
 it('formats the current statement only, as one undoable change', async () => {

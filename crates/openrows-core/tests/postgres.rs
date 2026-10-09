@@ -16,6 +16,8 @@ use openrows_core::{BatchSink, QueryEvent, QueryHandle, SessionManager, SessionS
 use openrows_driver_api::{NoticeLevel, Session, SinkFlow};
 use openrows_driver_postgres::{PgConfig, PgSession};
 use openrows_results::{ResultStore, Window};
+use openrows_sql::select::BoundSql;
+use openrows_sql::{Dialect, ParamBinder, ParamStyle};
 use openrows_types::{ResultId, SessionId};
 use std::io::Cursor;
 use std::sync::Arc;
@@ -146,15 +148,27 @@ async fn query_events_notices_and_cancel_on_postgres() -> TestResult {
     Ok(())
 }
 
-/// The `ResultEnd` result id of the first result with `rows` rows.
-/// An uncapped script of `statements`.
-fn script(statements: &[String]) -> Script<'_> {
+/// Statement texts without parameters.
+fn plain(statements: Vec<String>) -> Vec<BoundSql> {
+    statements
+        .into_iter()
+        .map(|sql| BoundSql {
+            sql,
+            params: Vec::new(),
+        })
+        .collect()
+}
+
+/// An uncapped script of `statements` that stops at the first error.
+fn script(statements: &[BoundSql]) -> Script<'_> {
     Script {
         statements,
         max_rows: None,
+        stop_on_error: true,
     }
 }
 
+/// The `ResultEnd` result id of the first result with `rows` rows.
 fn result_with(seen: &[ScriptEvent], rows: u64) -> TestResult<ResultId> {
     seen.iter()
         .find_map(|event| match &event.event {
@@ -190,7 +204,7 @@ async fn script_streams_into_the_result_store_and_serves_windows() -> TestResult
     let sql = "SELECT n, 'row ' || n AS label FROM generate_series(1, 5000) AS n;\n\
                CREATE TEMP TABLE scratch (id int);\n\
                INSERT INTO scratch SELECT generate_series(1, 3);";
-    let statements = script::statements(sql, Scope::All, openrows_sql::Dialect::Postgres);
+    let statements = plain(script::statements(sql, Scope::All, Dialect::Postgres));
     assert_eq!(statements.len(), 3);
     let mut seen = Vec::new();
     let cancel = ScriptCanceller::default();
@@ -217,6 +231,45 @@ async fn script_streams_into_the_result_store_and_serves_windows() -> TestResult
     Ok(())
 }
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "needs PostgreSQL; run with `just test-pg`"]
+async fn editor_parameters_bind_and_errors_can_continue() -> TestResult {
+    let store = Arc::new(ResultStore::default());
+    let manager = SessionManager::new(store.clone());
+    let session = open(&manager).await?;
+    let texts = ["SELECT 1/0", "SELECT :n::int AS n, :label AS label"];
+    let mut binder = ParamBinder::new(Dialect::Postgres, ParamStyle::Named);
+    let mut statements = Vec::new();
+    for sql in texts {
+        let slots = binder.slots(sql);
+        let value = |name: &str| Some(if name == ":n" { "7" } else { "it's" }.to_owned());
+        statements.push(binder.bind(sql, &slots, value)?);
+    }
+    let mut seen = Vec::new();
+    let run = Script {
+        stop_on_error: false,
+        ..script(&statements)
+    };
+    let cancel = ScriptCanceller::default();
+    let outcome =
+        script::run_script(&manager, session, run, &cancel, |event| seen.push(event)).await;
+    assert_eq!(outcome, ScriptOutcome::Failed);
+    assert!(
+        seen.iter()
+            .any(|event| event.statement == 0 && matches!(event.event, QueryEvent::Failed { .. }))
+    );
+    let result = result_with(&seen, 1)?.to_string();
+    let window = Window {
+        row_start: 0,
+        row_count: 1,
+        col_start: 0,
+        col_count: 2,
+    };
+    assert_eq!(labels(store.window(&result, window)?)?, ["it's"]);
+    manager.close(session).await?;
+    Ok(())
+}
+
 /// Run `sql` as one script on `session` and return the `label` column of its
 /// single-row result.
 async fn single_label(
@@ -226,7 +279,7 @@ async fn single_label(
     sql: &str,
 ) -> TestResult<Vec<String>> {
     let mut seen = Vec::new();
-    let statements = script::statements(sql, Scope::All, openrows_sql::Dialect::Postgres);
+    let statements = plain(script::statements(sql, Scope::All, Dialect::Postgres));
     let cancel = ScriptCanceller::default();
     let outcome = script::run_script(manager, session, script(&statements), &cancel, |event| {
         seen.push(event);

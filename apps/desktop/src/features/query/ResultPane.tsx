@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import { lazy, Suspense, useState } from 'react';
 import type { ResultMeta, RunMessage, RunState } from './run';
+import type { ResultView } from './editorSettings';
+import type { RunScope } from './request';
 import type { SelectedCell } from './cell';
 import styles from './Query.module.css';
 const ResultGrid = lazy(() =>
@@ -9,6 +11,10 @@ const ResultGrid = lazy(() =>
 
 type Props = {
   run: RunState;
+  /** One result tab per statement, or only the last result. */
+  view: ResultView;
+  /** What ⌘↵ runs, for the empty-state hint. */
+  runDefault: RunScope;
   onCell: (cell: SelectedCell) => void;
 };
 
@@ -16,11 +22,14 @@ function resultLabel(result: ResultMeta, index: number): string {
   return `Result ${String(index + 1)} · statement ${String(result.statement + 1)}`;
 }
 
-function placeholder(run: RunState): string {
+function placeholder(run: RunState, runDefault: RunScope): string {
   switch (run.status) {
     case 'idle':
     case 'confirm':
-      return 'Run the statement at the cursor with ⌘↵, or every statement with ⇧⌘↵.';
+    case 'parameters':
+      return runDefault === 'all'
+        ? 'Run every statement with ⌘↵, or the statement at the cursor with ⇧⌘↵.'
+        : 'Run the statement at the cursor with ⌘↵, or every statement with ⇧⌘↵.';
     case 'starting':
     case 'running':
       return 'Running…';
@@ -31,10 +40,18 @@ function placeholder(run: RunState): string {
   }
 }
 
-/** One result tab per result-producing statement; the newest is shown first. */
-export function ResultPane({ run, onCell }: Props): React.JSX.Element {
+/**
+ * One result tab per result-producing statement (the newest is shown first),
+ * or only the last result.
+ */
+export function ResultPane({
+  run,
+  view,
+  runDefault,
+  onCell,
+}: Props): React.JSX.Element {
   const [chosen, setChosen] = useState<string | null>(null);
-  const results = run.results;
+  const results = view === 'last' ? run.results.slice(-1) : run.results;
   const current =
     results.find((result) => result.id === chosen) ?? results.at(-1);
   return (
@@ -62,7 +79,7 @@ export function ResultPane({ run, onCell }: Props): React.JSX.Element {
       )}
       <Messages messages={run.messages} />
       {!current ? (
-        <p className={styles.placeholder}>{placeholder(run)}</p>
+        <p className={styles.placeholder}>{placeholder(run, runDefault)}</p>
       ) : current.done ? (
         <Suspense fallback={null}>
           <ResultGrid key={current.id} result={current} onCell={onCell} />

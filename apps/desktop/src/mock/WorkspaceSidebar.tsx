@@ -1,19 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import {
-  GlassPanel,
-  Icon,
-  SegmentedControl,
-  TextField,
-  TreeItem,
-  HighlightText,
-} from '@openrows/ui';
-import { ObjectTree, SchemaPicker, substringIndices } from '../features/schema';
+import { GlassPanel, Icon, SegmentedControl, TextField } from '@openrows/ui';
+import { ObjectTree, SchemaPicker } from '../features/schema';
 import type { Catalog, ObjectRef } from '../features/schema';
-import { HistoryList } from '../features/query';
+import { HistoryList, SavedQueryList } from '../features/query';
+import type { SavedQueryDto } from '@openrows/ipc';
 import type { Connections } from '../features/connections';
-import { savedQueries } from './data/connections';
 import { sidebarSegments } from './data/content';
 import styles from './Sidebar.module.css';
 type Props = {
@@ -22,9 +15,10 @@ type Props = {
   /** The saved connections; the History segment lists their statements. */
   connections: Connections;
   onOpen: (object: ObjectRef) => void;
-  onQuery: () => void;
   /** Open a history statement in a new query tab. */
   onOpenSql: (sql: string) => void;
+  /** Open a saved query of the active connection in a new query tab. */
+  onSavedQuery: (query: SavedQueryDto) => void;
 };
 const exact = (event: React.KeyboardEvent, key: string): boolean =>
   event.metaKey &&
@@ -33,7 +27,7 @@ const exact = (event: React.KeyboardEvent, key: string): boolean =>
   !event.ctrlKey &&
   !event.shiftKey &&
   !event.nativeEvent.isComposing;
-/** Real object tree of the active database; sample saved queries and history. */
+/** Object tree of the active database, saved queries and history. */
 export function WorkspaceSidebar(props: Props): React.JSX.Element {
   const { catalog } = props;
   const [segment, setSegment] = useState('Items');
@@ -71,7 +65,11 @@ export function WorkspaceSidebar(props: Props): React.JSX.Element {
           leadingIcon={<Icon name="search" />}
           aria-label="Search items"
           placeholder={
-            segment === 'History' ? 'Search history…' : 'Search tables, views…'
+            segment === 'History'
+              ? 'Search history…'
+              : segment === 'Queries'
+                ? 'Search queries…'
+                : 'Search tables, views…'
           }
           value={search}
           onChange={(event) => {
@@ -87,10 +85,10 @@ export function WorkspaceSidebar(props: Props): React.JSX.Element {
             />
           )}
           {segment === 'Queries' && (
-            <SampleList
-              names={savedQueries}
+            <SavedQueryList
+              profileId={props.connections.active?.id}
               search={search}
-              onQuery={props.onQuery}
+              onOpen={props.onSavedQuery}
             />
           )}
           {segment === 'History' && (
@@ -105,33 +103,5 @@ export function WorkspaceSidebar(props: Props): React.JSX.Element {
         {catalog.database && <SchemaPicker catalog={catalog} />}
       </GlassPanel>
     </div>
-  );
-}
-
-function SampleList(props: {
-  names: readonly string[];
-  search: string;
-  onQuery: () => void;
-}): React.JSX.Element {
-  const names = props.names.filter((name) =>
-    name.toLowerCase().includes(props.search.toLowerCase()),
-  );
-  return (
-    <>
-      {names.map((name) => (
-        <TreeItem
-          key={name}
-          label={name}
-          selected={false}
-          onSelect={props.onQuery}
-        >
-          <HighlightText
-            text={name}
-            indices={substringIndices(name, props.search)}
-          />
-        </TreeItem>
-      ))}
-      {!names.length && <p role="status">No matches</p>}
-    </>
   );
 }

@@ -2,8 +2,8 @@
 //! Local store: migrations, WAL, downgrade protection and history.
 
 use openrows_store::{
-    ChangeSetRecord, HistoryRecord, HistorySource, HistoryStatus, LocalStore, SCHEMA_VERSION,
-    StoreError,
+    ChangeSetRecord, HistoryRecord, HistorySource, HistoryStatus, LocalStore, NewSavedQuery,
+    SCHEMA_VERSION, StoreError,
 };
 
 fn record(profile_id: &str, started_at_ms: i64, status: HistoryStatus) -> HistoryRecord {
@@ -26,7 +26,7 @@ fn fresh_database_is_migrated_in_wal_mode() {
     let path = dir.path().join("openrows.sqlite");
     let store = LocalStore::open(&path).unwrap();
     assert_eq!(store.schema_version().unwrap(), SCHEMA_VERSION);
-    assert_eq!(store.meta("schema_version").unwrap().as_deref(), Some("3"));
+    assert_eq!(store.meta("schema_version").unwrap().as_deref(), Some("4"));
     drop(store);
     let conn = rusqlite::Connection::open(&path).unwrap();
     let mode: String = conn
@@ -160,4 +160,44 @@ fn change_sets_are_journaled_per_table_until_cleared() {
     store.clear_change_set(&record.id).unwrap();
     store.clear_change_set(&record.id).unwrap();
     assert!(store.change_set(&record.id).unwrap().is_none());
+}
+
+#[test]
+fn saved_queries_are_listed_per_connection_renamed_and_deleted() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = LocalStore::open(&dir.path().join("openrows.sqlite")).unwrap();
+    let new = |profile_id, name| NewSavedQuery {
+        profile_id,
+        name,
+        sql: "SELECT 1",
+        now_ms: 1_000,
+    };
+    let weekly = store.create_saved_query(new("p1", "weekly")).unwrap();
+    store.create_saved_query(new("p1", "Active users")).unwrap();
+    store.create_saved_query(new("p2", "other")).unwrap();
+    assert!(store.create_saved_query(new("p1", "")).is_err());
+    let names = |profile| -> Vec<String> {
+        let saved = store.saved_queries(profile).unwrap();
+        saved.into_iter().map(|query| query.name).collect()
+    };
+    assert_eq!(names("p1"), ["Active users", "weekly"]);
+    assert!(
+        store
+            .rename_saved_query(&weekly.id, "Weekly revenue", 2_000)
+            .unwrap()
+    );
+    let renamed = store.saved_queries("p1").unwrap();
+    let renamed = renamed.iter().find(|query| query.id == weekly.id).unwrap();
+    assert_eq!(
+        (renamed.name.as_str(), renamed.updated_at_ms),
+        ("Weekly revenue", 2_000)
+    );
+    assert_eq!(
+        (renamed.sql.as_str(), renamed.created_at_ms),
+        ("SELECT 1", 1_000)
+    );
+    assert!(store.delete_saved_query(&weekly.id).unwrap());
+    assert!(!store.delete_saved_query(&weekly.id).unwrap());
+    assert!(!store.rename_saved_query(&weekly.id, "gone", 3_000).unwrap());
+    assert_eq!(names("p1"), ["Active users"]);
 }

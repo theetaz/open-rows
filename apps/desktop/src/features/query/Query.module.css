@@ -170,6 +170,16 @@
   justify-content: flex-end;
   gap: var(--or-space-8);
 }
+.params {
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-8);
+  max-height: 50vh;
+  overflow: auto;
+}
+.params label {
+  font-family: var(--or-font-mono);
+}
 .cell {
   display: flex;
   flex-direction: column;

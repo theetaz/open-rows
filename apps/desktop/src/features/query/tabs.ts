@@ -14,6 +14,17 @@ export type TableObject = {
 };
 
 /**
+ * The `.sql` file a query tab is bound to; `saved` is the text last written
+ * or read, `error` why the last write failed.
+ */
+export type TabFile = {
+  path: string;
+  name: string;
+  saved: string;
+  error?: string;
+};
+
+/**
  * A query or table tab; a query tab's editor text lives here so it survives
  * tab switches. Table tabs (D-08) carry the browsed relation instead.
  */
@@ -25,6 +36,9 @@ export type QueryTab = TabScope & {
   /** Schema object the tab was opened for, e.g. `['public', 'orders']`. */
   objectPath?: readonly string[];
   table?: TableObject;
+  file?: TabFile;
+  /** Last query parameter values, by name (`:id`, `$1`, `?1`). */
+  params?: Readonly<Record<string, string>>;
 };
 
 /** What a new tab starts with; every field is optional. `table` makes a table tab. */
@@ -33,6 +47,7 @@ export type QueryTabInit = {
   title?: string;
   objectPath?: readonly string[];
   table?: TableObject;
+  file?: TabFile;
 };
 
 /** Every open query tab, the active tab per scope and the title counter. */
@@ -72,6 +87,7 @@ export function openTab(
     sql: init.sql ?? '',
     ...(init.objectPath ? { objectPath: init.objectPath } : {}),
     ...(init.table ? { table: init.table } : {}),
+    ...(init.file ? { file: init.file } : {}),
   };
   return {
     tabs: [...state.tabs, tab],
@@ -106,12 +122,39 @@ export function selectTab(state: TabsState, id: string): TabsState {
   return { ...state, active: { ...state.active, [scopeKey(tab)]: id } };
 }
 
-/** Keep the latest editor text of a tab. */
-export function editTab(state: TabsState, id: string, sql: string): TabsState {
+/** Apply `change` to one tab. */
+function updateTab(
+  state: TabsState,
+  id: string,
+  change: (tab: QueryTab) => QueryTab,
+): TabsState {
   return {
     ...state,
-    tabs: state.tabs.map((tab) => (tab.id === id ? { ...tab, sql } : tab)),
+    tabs: state.tabs.map((tab) => (tab.id === id ? change(tab) : tab)),
   };
+}
+
+/** Keep the latest editor text of a tab. */
+export function editTab(state: TabsState, id: string, sql: string): TabsState {
+  return updateTab(state, id, (tab) => ({ ...tab, sql }));
+}
+
+/** Bind a tab to a `.sql` file (or record a save); the title follows the file. */
+export function bindFile(
+  state: TabsState,
+  id: string,
+  file: TabFile,
+): TabsState {
+  return updateTab(state, id, (tab) => ({ ...tab, file, title: file.name }));
+}
+
+/** Remember the parameter values a tab last ran with. */
+export function setTabParams(
+  state: TabsState,
+  id: string,
+  params: Readonly<Record<string, string>>,
+): TabsState {
+  return updateTab(state, id, (tab) => ({ ...tab, params }));
 }
 
 /** Follow a committed `ALTER TABLE … RENAME TO`: the table tab's name and title. */

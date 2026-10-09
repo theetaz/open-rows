@@ -6,10 +6,15 @@
 //! the statements one by one on the session actor. Batches stream into the
 //! shared result store (read through `result_window`); events go back over a
 //! Tauri channel and each executed statement is written to the local history.
+//! Editor placeholders are bound per [`params`]; [`saved`] keeps saved
+//! queries and [`files`] saves and opens the `.sql` files of query tabs.
 pub(crate) mod commands;
 mod dto;
 pub(crate) mod events;
+pub(crate) mod files;
 pub(crate) mod history;
+mod params;
+pub(crate) mod saved;
 
 use std::collections::HashMap;
 use std::sync::{Mutex, MutexGuard, PoisonError};
