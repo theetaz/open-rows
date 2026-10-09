@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import type { GridDensity } from '@openrows/grid';
 import { localSetting } from './localSetting';
 
 /** Row height of the sidebar trees. */
@@ -17,6 +18,8 @@ type GeneralSettings = {
   /** Reopen the previous connections, databases and tabs on launch. */
   restoreSession: boolean;
   density: Density;
+  /** Row height of every data grid (tables and query results). */
+  gridDensity: GridDensity;
   /** Turn off animations even when the system allows them. */
   reduceMotion: boolean;
   /**
@@ -29,6 +32,7 @@ type GeneralSettings = {
 const defaultGeneralSettings: GeneralSettings = {
   restoreSession: true,
   density: 'regular',
+  gridDensity: 'normal',
   reduceMotion: false,
   keepaliveSeconds: 30,
 };
@@ -37,6 +41,11 @@ const defaultGeneralSettings: GeneralSettings = {
 export const GENERAL_KEY = 'openrows.general';
 
 const DENSITIES: readonly Density[] = ['compact', 'regular', 'comfortable'];
+const GRID_DENSITIES: readonly GridDensity[] = [
+  'compact',
+  'normal',
+  'comfortable',
+];
 
 /** Validate stored settings field by field, keeping defaults otherwise. */
 export function parseGeneral(stored: unknown): GeneralSettings {
@@ -51,6 +60,9 @@ export function parseGeneral(stored: unknown): GeneralSettings {
     density: DENSITIES.includes(value.density as Density)
       ? (value.density as Density)
       : defaultGeneralSettings.density,
+    gridDensity: GRID_DENSITIES.includes(value.gridDensity as GridDensity)
+      ? (value.gridDensity as GridDensity)
+      : defaultGeneralSettings.gridDensity,
     keepaliveSeconds: KEEPALIVE_CHOICES.includes(
       value.keepaliveSeconds as KeepaliveSeconds,
     )
@@ -64,6 +76,11 @@ export const generalSettings = localSetting(GENERAL_KEY, parseGeneral);
 /** Merge a change into the general settings. */
 export function updateGeneral(change: Partial<GeneralSettings>): void {
   generalSettings.set({ ...generalSettings.get(), ...change });
+}
+
+/** Change the row height of every grid; open grids repaint in place. */
+export function setGridDensity(gridDensity: GridDensity): void {
+  updateGeneral({ gridDensity });
 }
 
 /** Reflect density and reduced motion on the root element for CSS. */

@@ -1,12 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useCallback, useEffect, useState } from 'react';
-import { PointMenu } from '../../shell/PointMenu';
+import { CascadeMenu } from '../../shell/CascadeMenu';
+import type { MenuEntry } from '../../shell/CascadeMenu';
+import {
+  copyAsMenu,
+  copyFailure,
+  copySelection,
+} from '../../results/copy/copySelection';
 import type { ResultMeta } from '../query/run';
 import { readRow, shownFields } from './row';
 import type { RowField } from './row';
 import { BulkValueSheet } from './BulkValueSheet';
 import { contextActions } from './contextMenuActions';
 import type {
+  Action,
   ContextMenuProps as Props,
   ContextTarget,
   MenuSelection as Selection,
@@ -88,29 +95,48 @@ function TableContextMenu(props: Props): React.JSX.Element {
   }, [selection]);
   const actions = contextActions(props, fields, (text) => {
     navigator.clipboard.writeText(text).then(props.onClose, () => {
-      setError('Clipboard access was blocked.');
+      props.editing.fail(new Error('Clipboard access was blocked.'));
     });
   });
   return (
-    <PointMenu
+    <CascadeMenu
       x={selection.x}
       y={selection.y}
       label="Table actions"
+      entries={menuEntries(props, actions)}
       onClose={props.onClose}
-    >
-      {actions.map((action) => (
-        <button
-          type="button"
-          role="menuitem"
-          key={action.label}
-          disabled={action.disabled}
-          data-danger={action.danger}
-          onClick={action.run}
-        >
-          {action.label}
-        </button>
-      ))}
-      {error && <p role="alert">{error}</p>}
-    </PointMenu>
+      footer={error && <p role="alert">{error}</p>}
+    />
   );
+}
+
+/** The actions as menu rows, then `Copy as ▸` for the selection. */
+function menuEntries(props: Props, actions: readonly Action[]): MenuEntry[] {
+  const entries: MenuEntry[] = actions.map((action) => ({
+    kind: 'item',
+    label: action.label,
+    run: action.run,
+    disabled: action.disabled ?? false,
+    danger: action.danger ?? false,
+  }));
+  const { grid, selection, editing } = props;
+  if (!grid) return entries;
+  const source = {
+    result: selection.result,
+    ranges: selection.ranges.map((range) => ({
+      ...range,
+      r1: Math.min(range.r1, selection.result.rows - 1),
+    })),
+  };
+  return [
+    ...entries,
+    { kind: 'separator' },
+    copyAsMenu((format) => {
+      copySelection(format, source, grid.copyTarget).catch(
+        (failure: unknown) => {
+          editing.fail(new Error(copyFailure(failure)));
+        },
+      );
+    }),
+  ];
 }

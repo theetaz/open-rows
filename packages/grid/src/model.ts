@@ -86,6 +86,13 @@ export interface GridProps {
   onContextMenu?(target: GridContextTarget): void;
   /** Native scroll, e.g. to keep an editor overlay aligned with its cell. */
   onScroll?(): void;
+  /**
+   * A header edge drag (live, then `done`) or a double-click auto-size. The
+   * host stores the width in `source.columns` and calls `relayout`.
+   */
+  onColumnResize?(column: number, width: number, done: boolean): void;
+  /** A header dropped at index `to`; the host reorders and remounts or relayouts. */
+  onColumnMove?(from: number, to: number): void;
 }
 /** Host-relative CSS-pixel rectangle of one cell. */
 export interface CellRect {
@@ -116,6 +123,10 @@ export interface GridHandle {
   setTheme?(theme: GridTheme): void;
   /** Re-read column kinds and alignment, then repaint. */
   refresh?(): void;
+  /** Re-read columns and rows (widths, order, pins, a new row view), keeping scroll, selection and tiles. */
+  relayout?(): void;
+  /** Width that fits a column's title and the loaded values near the viewport. */
+  fitWidth?(column: number): number;
   /** Where a cell is drawn now, relative to the host. */
   cellRect?(row: number, column: number): CellRect | undefined;
   /** Focus and reveal one cell, as if the user had clicked it. */

@@ -6,7 +6,8 @@ import type { ResultMeta } from '../query/run';
 import type { TableTabState } from './useTableTab';
 import type { RowEditing } from './useRowEditing';
 import type { ContextTarget } from './contextMenuActions';
-import type { GridSelection } from './copySelection';
+import type { GridSelection } from './gridSelection';
+import type { TableLayout } from './useTableLayout';
 import styles from './Table.module.css';
 const TableGrid = lazy(() =>
   import('./TableGrid').then((module) => ({ default: module.TableGrid })),
@@ -15,6 +16,8 @@ const TableGrid = lazy(() =>
 type Props = {
   state: TableTabState;
   editing: RowEditing;
+  /** The table's column widths, order and pins. */
+  columns: TableLayout;
   onRow: (result: ResultMeta, row: number) => void;
   onContextMenu: (result: ResultMeta, target: ContextTarget) => void;
   /** The grid's selection changed, for table commands. */
@@ -26,6 +29,7 @@ export function TableData({
   state,
   onRow,
   editing,
+  columns,
   onContextMenu,
   onSelection,
 }: Props): React.JSX.Element {
@@ -64,6 +68,9 @@ export function TableData({
         result={result}
         sort={view.sort}
         editing={editing}
+        layout={columns.layout}
+        onLayout={columns.change}
+        copyTarget={columns.grid.copyTarget}
         onContextMenu={(target) => {
           onContextMenu(result, target);
         }}

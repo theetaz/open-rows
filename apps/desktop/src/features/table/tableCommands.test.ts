@@ -1,38 +1,39 @@
 // SPDX-License-Identifier: Apache-2.0
 import { act, renderHook } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
 import { runTableCommand } from '../commands';
 import type { ResultMeta } from '../query/run';
-import { selectionText } from './copySelection';
-import type { RowField } from './row';
+import type { WindowRequest } from '@openrows/ipc';
+import { emptyLayout } from '../../results/columnLayout';
 import type { RowEditing } from './useRowEditing';
 import { useTableCommandTarget } from './useTableCommandTarget';
 import type { TableTabState } from './useTableTab';
 
-vi.mock('./row', async (original) => ({
-  ...(await original<typeof import('./row')>()),
-  readRows: vi.fn((_: unknown, rows: readonly number[]) =>
-    Promise.resolve(
-      new Map(
-        rows.map((row) => [
-          row,
-          ['id', 'name', 'note'].map((name, index): RowField => ({
-            name,
-            index,
-            type: 'text',
-            text: index === 2 ? 'a\tb' : `${name}${String(row)}`,
-            state: 'normal',
-          })),
-        ]),
-      ),
-    ),
-  ),
+vi.mock('../../results/displayWindow', () => ({
+  displayWindow: vi.fn((request: WindowRequest) => {
+    const cells = [];
+    for (let row = 0; row < request.rowCount; row++)
+      for (let column = 0; column < request.colCount; column++) {
+        const at = request.colStart + column,
+          name = ['id', 'name', 'note'][at] ?? '';
+        cells.push({
+          text: at === 2 ? 'a\tb' : `${name}${String(request.rowStart + row)}`,
+          state: 'normal' as const,
+        });
+      }
+    return Promise.resolve({ cells, columns: request.colCount, convertMs: 0 });
+  }),
 }));
 
 const result = {
   id: 'page-1',
   rows: 3,
-  columns: [{ name: 'id' }, { name: 'name' }, { name: 'note' }],
+  columns: [
+    { name: 'id', sourceType: 'int4' },
+    { name: 'name', sourceType: 'text' },
+    { name: 'note', sourceType: 'text' },
+  ],
 } as unknown as ResultMeta;
 
 function editing(staged: number, writable = true): RowEditing {
@@ -58,6 +59,17 @@ function state(mode: 'data' | 'columns' = 'data'): TableTabState {
       reload: vi.fn(),
       mode: vi.fn(),
       toggleFilters: vi.fn(),
+    },
+    layout: { change: vi.fn() },
+    menu: {
+      grid: {
+        copyTarget: {
+          engine: 'postgres',
+          table: { schema: 'public', name: 'notes' },
+        },
+        pinned: [],
+        togglePin: vi.fn(),
+      },
     },
   } as unknown as TableTabState;
 }
@@ -119,15 +131,48 @@ it('inserts, deletes the selection or focused row, toggles columns and reloads',
   expect(view.actions.reload).toHaveBeenCalledOnce();
 });
 
-it('copies selected cells as TSV, or the focused row', async () => {
-  expect(
-    await selectionText({
+it('copies selected cells as TSV or another format, or the focused row', async () => {
+  // user-event installs the clipboard stub that jsdom lacks.
+  userEvent.setup();
+  const write = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
+  const hook = mount(editing(0));
+  act(() => {
+    hook.result.current({
       result,
       cell: { row: 0, column: 0 },
       ranges: [{ r0: 0, r1: 1, c0: 1, c1: 2 }],
-    }),
-  ).toBe('name0\t"a\tb"\nname1\t"a\tb"');
-  expect(
-    await selectionText({ result, cell: { row: 2, column: 1 }, ranges: [] }),
-  ).toBe('id2\tname2\t"a\tb"');
+    });
+  });
+  runTableCommand('copy-selection');
+  await vi.waitFor(() => {
+    expect(write).toHaveBeenLastCalledWith('name0\t"a\tb"\nname1\t"a\tb"');
+  });
+  runTableCommand('copy-as-insert');
+  await vi.waitFor(() => {
+    expect(write).toHaveBeenLastCalledWith(
+      `INSERT INTO "public"."notes" ("name", "note") VALUES ('name0', 'a\tb');\nINSERT INTO "public"."notes" ("name", "note") VALUES ('name1', 'a\tb');`,
+    );
+  });
+  act(() => {
+    hook.result.current({ result, cell: { row: 2, column: 1 }, ranges: [] });
+  });
+  runTableCommand('copy-selection');
+  await vi.waitFor(() => {
+    expect(write).toHaveBeenLastCalledWith('id2\tname2\t"a\tb"');
+  });
+});
+
+it('pins the focused column and resets the column layout', () => {
+  const view = state();
+  const hook = mount(editing(0), view);
+  act(() => {
+    hook.result.current({ result, cell: { row: 0, column: 1 }, ranges: [] });
+  });
+  runTableCommand('pin-column');
+  expect(view.menu.grid?.togglePin).toHaveBeenCalledWith('name');
+  runTableCommand('reset-columns');
+  const reset = vi.mocked(view.layout.change).mock.calls[0]?.[0];
+  expect(reset?.({ widths: { a: 90 }, order: ['a'], pinned: [] })).toBe(
+    emptyLayout,
+  );
 });

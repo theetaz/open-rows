@@ -1,13 +1,25 @@
 // SPDX-License-Identifier: Apache-2.0
 import { SegmentedControl, Switch } from '@openrows/ui';
 import { SettingRow } from '../appearance/InterfaceSettings';
-import { generalSettings, KEEPALIVE_CHOICES, updateGeneral } from './general';
+import type { GridDensity } from '@openrows/grid';
+import {
+  generalSettings,
+  KEEPALIVE_CHOICES,
+  setGridDensity,
+  updateGeneral,
+} from './general';
 import type { Density } from './general';
 import styles from '../appearance/Appearance.module.css';
 
 const DENSITIES: readonly { value: Density; label: string }[] = [
   { value: 'compact', label: 'Compact' },
   { value: 'regular', label: 'Regular' },
+  { value: 'comfortable', label: 'Comfortable' },
+];
+
+const GRID_DENSITIES: readonly { value: GridDensity; label: string }[] = [
+  { value: 'compact', label: 'Compact' },
+  { value: 'normal', label: 'Normal' },
   { value: 'comfortable', label: 'Comfortable' },
 ];
 
@@ -65,36 +77,55 @@ export function GeneralPane(): React.JSX.Element {
           </SettingRow>
         </div>
       </section>
-      <section aria-label="Layout">
-        <h3>Layout</h3>
-        <div className={styles.settingsGroup}>
-          <SettingRow
-            title="Density"
-            description="Row height of the sidebar's object tree and lists."
-          >
-            <SegmentedControl
-              aria-label="Density"
-              options={DENSITIES}
-              value={general.density}
-              onValueChange={(density) => {
-                updateGeneral({ density });
-              }}
-            />
-          </SettingRow>
-          <SettingRow
-            title="Reduce motion"
-            description="Turn off panel, popover and disclosure animations. The system setting always applies."
-          >
-            <Switch
-              aria-label="Reduce motion"
-              checked={general.reduceMotion}
-              onCheckedChange={(reduceMotion) => {
-                updateGeneral({ reduceMotion });
-              }}
-            />
-          </SettingRow>
-        </div>
-      </section>
+      <LayoutSection />
     </>
+  );
+}
+
+/** Sidebar and grid density, and reduced motion. */
+function LayoutSection(): React.JSX.Element {
+  const general = generalSettings.use();
+  return (
+    <section aria-label="Layout">
+      <h3>Layout</h3>
+      <div className={styles.settingsGroup}>
+        <SettingRow
+          title="Density"
+          description="Row height of the sidebar's object tree and lists."
+        >
+          <SegmentedControl
+            aria-label="Density"
+            options={DENSITIES}
+            value={general.density}
+            onValueChange={(density) => {
+              updateGeneral({ density });
+            }}
+          />
+        </SettingRow>
+        <SettingRow
+          title="Grid rows"
+          description="Row height of table and query result grids."
+        >
+          <SegmentedControl
+            aria-label="Grid rows"
+            options={GRID_DENSITIES}
+            value={general.gridDensity}
+            onValueChange={setGridDensity}
+          />
+        </SettingRow>
+        <SettingRow
+          title="Reduce motion"
+          description="Turn off panel, popover and disclosure animations. The system setting always applies."
+        >
+          <Switch
+            aria-label="Reduce motion"
+            checked={general.reduceMotion}
+            onCheckedChange={(reduceMotion) => {
+              updateGeneral({ reduceMotion });
+            }}
+          />
+        </SettingRow>
+      </div>
+    </section>
   );
 }

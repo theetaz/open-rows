@@ -15,6 +15,8 @@ export type {
 } from './model';
 export { TileSource } from './source';
 export { gridTheme } from './theme';
+export type { GridDensity } from './theme';
 export { GridLayout } from './layout';
 
 export { paintMetrics } from './metrics';
+export { MIN_COLUMN_WIDTH } from './columns';

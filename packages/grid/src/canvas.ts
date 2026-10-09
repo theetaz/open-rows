@@ -2,7 +2,8 @@
 import { CanvasController } from './canvasController';
 import { CanvasPainter } from './painter';
 import { shadowGrid } from './accessibility';
-import { contextFocus, pointerFocus } from './pointer';
+import { contextFocus, hoverEdges, pointerFocus } from './pointer';
+import { autoWidth } from './headerDrag';
 import type { PointerContext } from './pointer';
 import type { CellRect, GridHandle, GridProps } from './model';
 
@@ -17,7 +18,7 @@ export function mountGrid(host: HTMLElement, props: GridProps): GridHandle {
   scroll.append(spacer);
   host.append(scroll, layers);
   const painter = new CanvasPainter(layers, props);
-  spacer.style.width = `${String(painter.layout.width)}px`;
+  spacerWidth(scroll, painter);
   const fit = (): void => {
     spacer.style.height = `${String((props.source.rows + 1) * props.theme.rowHeight)}px`;
   };
@@ -32,13 +33,14 @@ export function mountGrid(host: HTMLElement, props: GridProps): GridHandle {
   host.addEventListener('keydown', controller.invalidate);
   pointerFocus({ scroll, painter, props, controller, accessibility });
   contextFocus({ scroll, painter, props, controller, accessibility });
+  hoverEdges({ scroll, painter, props, controller, accessibility });
   const scrolled = (): void => {
     props.onScroll?.();
   };
   scroll.addEventListener('scroll', scrolled, { passive: true });
   const unsubscribe = rowCountSync(props, () => {
     fit();
-    controller.update();
+    controller.refetch();
   });
   const parts = { scroll, painter, props, controller, accessibility };
   return {
@@ -76,6 +78,13 @@ function gridHandle(
       painter.refresh();
       controller.invalidate();
     },
+    relayout: () => {
+      painter.relayout();
+      spacerWidth(scroll, painter);
+      controller.refetch();
+    },
+    fitWidth: (column) =>
+      autoWidth({ scroll, painter, props, controller, accessibility }, column),
     cellRect: (row, column) => cellRect(painter, scroll, row, column),
     select: (row, column) => {
       props.selection = {
@@ -92,6 +101,13 @@ function gridHandle(
     focus: accessibility.focus,
     announce: accessibility.announce,
   };
+}
+
+/** The scroll spacer spans every column so native scrolling reaches the last one. */
+function spacerWidth(scroll: HTMLElement, painter: CanvasPainter): void {
+  const spacer = scroll.firstElementChild;
+  if (spacer instanceof HTMLElement)
+    spacer.style.width = `${String(painter.layout.width)}px`;
 }
 
 /** Staged inserts change the row count without remounting the grid. */

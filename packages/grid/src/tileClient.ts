@@ -24,6 +24,12 @@ export class TileClient<T = Tile> {
     return this.cache.get(key);
   }
 
+  /** Forget a cached or in-flight tile, e.g. a result's partial last rows. */
+  evict(key: string | number): void {
+    this.cache.delete(key);
+    this.pending.delete(key);
+  }
+
   /** Fetch or reuse exactly the requested result and range. */
   get(request: WindowRequest): Promise<T> {
     const key = this.keyOf(request);
@@ -38,6 +44,8 @@ export class TileClient<T = Tile> {
     const promise = Promise.resolve()
       .then(() => this.load(request))
       .then((tile) => {
+        // An evicted request still resolves its callers but is never cached.
+        if (this.pending.get(key) !== promise) return tile;
         const started = performance.now();
         this.cache.set(key, tile);
         if (this.cache.size > this.capacity) {
@@ -47,7 +55,9 @@ export class TileClient<T = Tile> {
         this.onFill(performance.now() - started);
         return tile;
       })
-      .finally(() => this.pending.delete(key));
+      .finally(() => {
+        if (this.pending.get(key) === promise) this.pending.delete(key);
+      });
     this.pending.set(key, promise);
     return promise;
   }

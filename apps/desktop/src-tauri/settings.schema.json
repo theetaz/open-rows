@@ -32,6 +32,11 @@
           "default": "regular",
           "description": "Row height of the sidebar's object tree and lists."
         },
+        "gridDensity": {
+          "enum": ["compact", "normal", "comfortable"],
+          "default": "normal",
+          "description": "Row height of table and query result grids."
+        },
         "reduceMotion": {
           "type": "boolean",
           "description": "Turn off panel, popover and disclosure animations even when the system allows them.",
@@ -237,6 +242,13 @@
           "insert-row",
           "delete-row",
           "copy-selection",
+          "copy-as-csv",
+          "copy-as-json",
+          "copy-as-markdown",
+          "copy-as-insert",
+          "copy-as-where-in",
+          "pin-column",
+          "reset-columns",
           "focus-filter",
           "toggle-columns",
           "new-connection",
@@ -252,6 +264,9 @@
           "theme-light",
           "theme-dark",
           "theme-system",
+          "grid-compact",
+          "grid-normal",
+          "grid-comfortable",
           "gallery"
         ]
       },

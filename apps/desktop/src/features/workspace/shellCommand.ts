@@ -9,6 +9,7 @@ import {
 import type { Connections } from '../connections';
 import { openLogs } from '../diagnostics';
 import type { Catalog } from '../schema';
+import { setGridDensity } from '../settings';
 import type { SettingsSection } from '../settings';
 import type { useInspectorOpen } from './layout';
 import type { PaletteMode } from './WorkspacePalettes';
@@ -94,6 +95,15 @@ function viewActions(input: ShellInput): Actions {
     },
     'theme-system': () => {
       input.setTheme('system');
+    },
+    'grid-compact': () => {
+      setGridDensity('compact');
+    },
+    'grid-normal': () => {
+      setGridDensity('normal');
+    },
+    'grid-comfortable': () => {
+      setGridDensity('comfortable');
     },
   };
 }

@@ -28,17 +28,17 @@ export class TileSource implements GridDataSource {
   private readonly client: TileClient<DisplayTile>;
   private readonly listeners = new Set<() => void>();
   private readonly columnTiles: number;
-  private readonly pinnedColumns: number;
   private previousColumn = 0;
   private windowKey = -1;
   private filling: Promise<void> = Promise.resolve();
+  private count: number;
   constructor(
     private readonly resultId: string,
-    readonly rows: number,
+    rows: number,
     readonly columns: readonly GridColumn[],
     load: (request: WindowRequest) => Promise<Tile | DisplayTile>,
   ) {
-    this.pinnedColumns = columns.filter((column) => column.pinned).length;
+    this.count = rows;
     this.columnTiles = Math.ceil(columns.length / TILE_COLS);
     this.client = new TileClient(
       async (request) => {
@@ -63,6 +63,24 @@ export class TileSource implements GridDataSource {
         this.metrics.tileApplyMs += performance.now() - started;
       },
     );
+  }
+  /** Rows the result holds so far. */
+  get rows(): number {
+    return this.count;
+  }
+  /**
+   * A streaming result grew: drop the partial last tile row, which was cut
+   * at the old count, and notify the grid of the new row count.
+   */
+  grow(rows: number): void {
+    if (rows <= this.count) return;
+    const tail = Math.floor(this.count / TILE_ROWS);
+    if (this.count % TILE_ROWS)
+      for (let col = 0; col < this.columnTiles; col++)
+        this.client.evict(tail * this.columnTiles + col);
+    this.count = rows;
+    this.windowKey = -1;
+    for (const listener of this.listeners) listener();
   }
   /** Allocation-free cached lookup; placeholders remain undefined until arrival. */
   cell(row: number, column: number): DisplayCell | undefined {
@@ -131,9 +149,11 @@ export class TileSource implements GridDataSource {
   ): void {
     const start = Math.floor(range.c0 / TILE_COLS),
       end = Math.floor(range.c1 / TILE_COLS);
+    // Read per window: a host may pin columns in place (see GridHandle.relayout).
+    const pinned = this.columns.filter((column) => column.pinned).length;
 
     for (let col = 0; col <= end; col++) {
-      if (col >= start || col * TILE_COLS < this.pinnedColumns)
+      if (col >= start || col * TILE_COLS < pinned)
         requests.push(this.request(row, col));
     }
   }

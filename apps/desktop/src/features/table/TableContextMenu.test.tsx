@@ -10,10 +10,13 @@ import type { RowEditing } from './useRowEditing';
 import { initialView } from './model';
 import { emptyHistory } from './editHistory';
 import { readRow } from './row';
+import type { GridMenu } from './contextMenuActions';
+import { displayWindow } from '../../results/displayWindow';
 vi.mock('./row', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./row')>()),
   readRow: vi.fn(),
 }));
+vi.mock('../../results/displayWindow', () => ({ displayWindow: vi.fn() }));
 beforeEach(() => {
   vi.mocked(readRow).mockResolvedValue([]);
 });
@@ -282,4 +285,94 @@ it('disables every selection-wide mutation on a read-only connection', async () 
   expect(
     screen.getByRole('menuitem', { name: 'Sort ascending' }),
   ).toBeEnabled();
+});
+
+function GridHarness({
+  grid,
+  kind,
+}: {
+  grid: GridMenu;
+  kind: GridContextTarget['kind'];
+}): React.JSX.Element {
+  const context = useTableContext({
+    editing: editing(),
+    changeView: vi.fn(),
+    grid,
+  });
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          context.show(result, {
+            row: 0,
+            column: 1,
+            kind,
+            x: 25,
+            y: 25,
+            ranges: [{ r0: 0, r1: 3, c0: 0, c1: 1 }],
+          });
+        }}
+      >
+        Open actions
+      </button>
+      {context.menu}
+    </>
+  );
+}
+const grid = (): GridMenu => ({
+  copyTarget: {
+    engine: 'postgres',
+    table: { schema: 'public', name: 'notes' },
+  },
+  pinned: [],
+  togglePin: vi.fn(),
+});
+it('copies the selection as SQL INSERT for the browsed table, clamped to loaded rows', async () => {
+  vi.mocked(displayWindow).mockImplementation((request) =>
+    Promise.resolve({
+      cells: [
+        { text: '7', state: 'normal' as const },
+        { text: "it's", state: 'normal' as const },
+      ].slice(0, request.colCount * request.rowCount),
+      columns: request.colCount,
+      convertMs: 0,
+    }),
+  );
+  const write = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
+  const user = userEvent.setup();
+  render(<GridHarness grid={grid()} kind="cell" />);
+  await user.click(screen.getByRole('button', { name: 'Open actions' }));
+  await user.click(screen.getByRole('menuitem', { name: 'Copy as' }));
+  for (const name of ['CSV', 'JSON', 'Markdown', 'SQL INSERT', 'WHERE IN'])
+    expect(screen.getByRole('menuitem', { name })).toBeEnabled();
+  await user.click(screen.getByRole('menuitem', { name: 'SQL INSERT' }));
+  await waitFor(() => {
+    expect(write).toHaveBeenCalledWith(
+      `INSERT INTO "public"."notes" ("id", "note") VALUES (7, 'it''s');`,
+    );
+  });
+  expect(vi.mocked(displayWindow)).toHaveBeenCalledWith(
+    expect.objectContaining({
+      rowStart: 0,
+      rowCount: 1,
+      colStart: 0,
+      colCount: 2,
+    }),
+  );
+  expect(screen.queryByRole('menu')).toBeNull();
+});
+it('pins a column from its header menu', async () => {
+  const menu = grid();
+  const user = userEvent.setup();
+  render(<GridHarness grid={menu} kind="column" />);
+  await user.click(screen.getByRole('button', { name: 'Open actions' }));
+  await user.click(screen.getByRole('menuitem', { name: 'Pin column' }));
+  expect(menu.togglePin).toHaveBeenCalledWith('note');
+});
+it('offers Unpin for a pinned column', async () => {
+  const user = userEvent.setup();
+  render(<GridHarness grid={{ ...grid(), pinned: ['note'] }} kind="column" />);
+  await user.click(screen.getByRole('button', { name: 'Open actions' }));
+  expect(screen.getByRole('menuitem', { name: 'Unpin column' })).toBeEnabled();
 });

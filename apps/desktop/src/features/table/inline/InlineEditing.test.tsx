@@ -8,6 +8,7 @@ import { mountGrid } from '@openrows/grid/canvas';
 import type { GridHandle, GridProps } from '@openrows/grid';
 import type { TableColumnDto } from '@openrows/ipc';
 import { TableGrid } from '../TableGrid';
+import { emptyLayout } from '../../../results/columnLayout';
 import { emptyHistory } from '../editHistory';
 import type { StagedEdit } from '../editHistory';
 import type { InlineRequest, RowEditing } from '../useRowEditing';
@@ -113,6 +114,9 @@ async function mount(editor: RowEditing): Promise<GridProps> {
         striped
         onHeader={vi.fn()}
         onRow={vi.fn()}
+        layout={emptyLayout}
+        onLayout={vi.fn()}
+        copyTarget={{ engine: 'postgres', table: null }}
         onContextMenu={vi.fn()}
       />
     </ThemeProvider>,

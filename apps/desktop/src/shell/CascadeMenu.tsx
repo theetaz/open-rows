@@ -24,6 +24,8 @@ export type MenuEntry =
       checked?: boolean;
       radio?: boolean;
       disabled?: boolean;
+      /** Destructive command, tinted like other danger actions. */
+      danger?: boolean;
     }
   | { kind: 'submenu'; label: string; entries: readonly MenuEntry[] }
   | { kind: 'separator' };
@@ -50,6 +52,7 @@ function ItemRow(props: {
       role={role(entry)}
       aria-checked={entry.checked}
       disabled={entry.disabled}
+      data-danger={entry.danger}
       onPointerEnter={props.onHover}
       onClick={() => {
         props.onClose();
@@ -199,6 +202,8 @@ export function CascadeMenu(props: {
   entries: readonly MenuEntry[];
   onClose: () => void;
   above?: boolean;
+  /** Shown below the rows, e.g. why some commands are unavailable. */
+  footer?: React.ReactNode;
 }): React.JSX.Element {
   const [expanded, setExpanded] = useState<Expanded | null>(null);
   const parent = expanded ? props.entries[expanded.index] : undefined;
@@ -233,6 +238,7 @@ export function CascadeMenu(props: {
         },
         onClose: props.onClose,
       })}
+      {props.footer}
     </PointMenu>
   );
 }

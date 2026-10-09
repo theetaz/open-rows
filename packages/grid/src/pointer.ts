@@ -4,6 +4,7 @@ import type { CanvasPainter } from './painter';
 import type { shadowGrid } from './accessibility';
 import type { GridProps } from './model';
 import { STEPPER_WIDTH } from './cellPaint';
+import { autoWidth, edgeUnder, startPress, startResize } from './headerDrag';
 
 export interface PointerContext {
   scroll: HTMLElement;
@@ -19,7 +20,13 @@ export function pointerFocus({
   controller,
   accessibility,
 }: PointerContext): void {
+  const context = { scroll, painter, props, controller, accessibility };
   scroll.ondblclick = (event): void => {
+    const edge = edgeUnder(context, event);
+    if (edge !== undefined) {
+      props.onColumnResize?.(edge, autoWidth(context, edge), true);
+      return;
+    }
     const bounds = scroll.getBoundingClientRect();
     const cell = painter.layout.hit(
       painter.view,
@@ -38,23 +45,18 @@ export function pointerFocus({
     const bounds = scroll.getBoundingClientRect(),
       x = event.clientX - bounds.left,
       y = event.clientY - bounds.top;
+    const edge = edgeUnder(context, event);
+    if (edge !== undefined) {
+      event.preventDefault();
+      startResize(context, event, edge);
+      return;
+    }
     const header = painter.layout.headerHit(painter.view, x, y);
     if (header !== undefined) {
-      if (
-        (event.shiftKey || header === props.rowHeaderColumn) &&
-        props.source.rows > 0
-      ) {
-        props.selection = {
-          row: 0,
-          column: header === props.rowHeaderColumn ? header + 1 : header,
-          ranges: [
-            { r0: 0, r1: props.source.rows - 1, c0: header, c1: header },
-          ],
-        };
-        props.onSelection(props.selection);
-        accessibility.update(props.selection);
-        controller.invalidate();
-      } else if (header !== props.rowHeaderColumn) props.onHeader?.(header);
+      const shift = event.shiftKey;
+      startPress(context, event, header, () => {
+        headerClick(context, header, shift);
+      });
       return;
     }
     const focus = painter.layout.hit(painter.view, x, y);
@@ -66,6 +68,31 @@ export function pointerFocus({
     accessibility.focus();
     if (!event.shiftKey && !event.metaKey && stepperHit(painter, focus, x))
       props.onEdit?.(focus);
+  };
+}
+/** Shift-click (or the row-number header) selects the column; a click sorts. */
+function headerClick(
+  { props, accessibility, controller }: PointerContext,
+  header: number,
+  shift: boolean,
+): void {
+  if ((shift || header === props.rowHeaderColumn) && props.source.rows > 0) {
+    props.selection = {
+      row: 0,
+      column: header === props.rowHeaderColumn ? header + 1 : header,
+      ranges: [{ r0: 0, r1: props.source.rows - 1, c0: header, c1: header }],
+    };
+    props.onSelection(props.selection);
+    accessibility.update(props.selection);
+    controller.invalidate();
+  } else if (header !== props.rowHeaderColumn) props.onHeader?.(header);
+}
+/** Show the resize cursor over header edges. */
+export function hoverEdges(context: PointerContext): void {
+  context.scroll.onpointermove = (event): void => {
+    const cursor = edgeUnder(context, event) === undefined ? '' : 'col-resize';
+    if (context.scroll.style.cursor !== cursor)
+      context.scroll.style.cursor = cursor;
   };
 }
 /** A click on a boolean or enum cell's ⌃⌄ glyph opens its value menu. */

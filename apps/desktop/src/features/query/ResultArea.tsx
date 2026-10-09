@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useState } from 'react';
+import type { EngineDto } from '@openrows/ipc';
 import { ExportSheet, resultExport } from '../export';
 import { ResultPane } from './ResultPane';
 import type { ResultMeta, RunState } from './run';
@@ -14,6 +15,8 @@ export function ResultArea(props: {
   runDefault: RunScope;
   /** The tab's open session; export needs it for the connection's dialect. */
   sessionId: string | null;
+  /** Engine of the connection: quoting for copied SQL. */
+  engine: EngineDto;
   onCell: (cell: SelectedCell) => void;
   /** Receives Export… of the shown result, for the Export results command. */
   onExportable?: ((exportShown: (() => void) | null) => void) | undefined;
@@ -26,6 +29,7 @@ export function ResultArea(props: {
         run={run}
         view={props.view}
         runDefault={props.runDefault}
+        engine={props.engine}
         onCell={props.onCell}
         onExport={sessionId ? setExporting : undefined}
         onExportable={props.onExportable}

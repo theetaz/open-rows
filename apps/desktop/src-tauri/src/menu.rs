@@ -88,10 +88,23 @@ const EDIT: &[Entry] = &[
     N(Native::SelectAll),
     S,
     C("copy-selection", "Copy Rows"),
+    Entry::Submenu("Copy As", COPY_AS),
     C("insert-row", "Insert Row"),
     C("delete-row", "Delete Rows"),
     S,
     C("focus-filter", "Filter Rows"),
+];
+const COPY_AS: &[Entry] = &[
+    C("copy-as-csv", "CSV"),
+    C("copy-as-json", "JSON"),
+    C("copy-as-markdown", "Markdown"),
+    C("copy-as-insert", "SQL INSERT"),
+    C("copy-as-where-in", "WHERE IN"),
+];
+const GRID_ROWS: &[Entry] = &[
+    C("grid-compact", "Compact"),
+    C("grid-normal", "Normal"),
+    C("grid-comfortable", "Comfortable"),
 ];
 const APPEARANCE: &[Entry] = &[
     C("theme-light", "Light"),
@@ -102,8 +115,11 @@ const VIEW: &[Entry] = &[
     C("sidebar", "Toggle Sidebar"),
     C("inspector", "Toggle Inspector"),
     C("toggle-columns", "Toggle Columns Panel"),
+    C("pin-column", "Pin or Unpin Column"),
+    C("reset-columns", "Reset Column Layout"),
     S,
     Entry::Submenu("Appearance", APPEARANCE),
+    Entry::Submenu("Grid Rows", GRID_ROWS),
     S,
     C("commands", "Command Palette…"),
     C("quick", "Quick Open…"),

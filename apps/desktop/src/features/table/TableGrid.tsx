@@ -3,14 +3,13 @@ import { useEffect, useRef, useState } from 'react';
 import { TileSource } from '@openrows/grid';
 import type {
   CellRange,
-  GridColumn,
   GridDataSource,
   GridHandle,
   GridProps,
   GridTheme,
   SelectionModel,
 } from '@openrows/grid';
-import type { ColumnDto, SortDto } from '@openrows/ipc';
+import type { SortDto } from '@openrows/ipc';
 import { mountCanvas } from '../../results/mountCanvas';
 import { useGridAppearance } from '../../results/useGridAppearance';
 import { displayWindow } from '../../results/displayWindow';
@@ -28,33 +27,15 @@ import type { Cell } from './bulk/cells';
 import { usePaste } from './bulk/usePaste';
 import type { ContextTarget } from './contextMenuActions';
 import styles from './Table.module.css';
-import { columnAlign } from '../../results/align';
+import { useCopyEvent } from '../../results/copy/useCopyEvent';
+import { copyFailure, copySelection } from '../../results/copy/copySelection';
+import type { CopyTarget } from '../../results/copy/copySelection';
+import { moved, withWidth } from '../../results/columnLayout';
+import { columnsOf, useLayoutSync } from './tableColumns';
+import type { ColumnLayout } from '../../results/columnLayout';
 
 const noKeys: readonly string[] = [];
 const noSelection: SelectionModel = { row: 0, column: 0, ranges: [] };
-
-/** Header title with the server-side sort direction, e.g. `name ▲`. */
-function headerTitle(name: string, sort: SortDto | null): string {
-  if (sort?.column !== name) return name;
-  return `${name} ${sort.descending ? '▼' : '▲'}`;
-}
-
-function columnsOf(
-  columns: readonly ColumnDto[],
-  sort: SortDto | null,
-): GridColumn[] {
-  return columns.map((column, index) => ({
-    id: String(index),
-    title: headerTitle(column.name, sort),
-    width: Math.min(
-      320,
-      Math.max(columnWidth(column.sourceType), column.name.length * 8 + 56),
-    ),
-    pinned: false,
-    align: columnAlign(column.sourceType),
-    ...(column.sourceType === 'bool' ? { kind: 'boolean' as const } : {}),
-  }));
-}
 
 type Props = {
   result: ResultMeta;
@@ -72,6 +53,12 @@ type Props = {
   onContextMenu: (target: ContextTarget) => void;
   /** The focused cell and ranges changed (data coordinates). */
   onSelection?: ((cell: Cell, ranges: CellRange[]) => void) | undefined;
+  /** Column widths and pins; read when the page mounts. */
+  layout: ColumnLayout;
+  /** A header was resized or dragged to a new place. */
+  onLayout: (update: (layout: ColumnLayout) => ColumnLayout) => void;
+  /** Dialect and table of copied SQL; ⌘C copies the selection as TSV. */
+  copyTarget: CopyTarget;
 };
 type Latest = Props & { editor: InlineEditor };
 
@@ -108,6 +95,22 @@ export function TableGrid(props: Props): React.JSX.Element {
   });
   useGridEditing({ ...props, handle, source: sourceRef, editor, mounted });
   usePaste(host, latest, selectionRef);
+  useLayoutSync({ ...props, sourceRef, handle });
+  useCopyEvent(host, () => {
+    const { result, rowNumbers, copyTarget } = latest.current;
+    copySelection(
+      'tsv',
+      {
+        result,
+        ranges: dataRanges(selectionRef.current.ranges, rowNumbers).map(
+          (range) => ({ ...range, r1: Math.min(range.r1, result.rows - 1) }),
+        ),
+      },
+      copyTarget,
+    ).catch((failure: unknown) => {
+      latest.current.editing.fail(new Error(copyFailure(failure)));
+    });
+  });
   return (
     <GridFrame host={host} error={error}>
       <InlineEditorView editor={editor} />
@@ -167,6 +170,8 @@ function useTableCanvas({
       theme: theme.current,
       setError,
       selectionRef,
+      sourceRef,
+      handle,
     });
     selectionRef.current = props.selection;
     const unmount = mountCanvas(element, props, {
@@ -204,14 +209,22 @@ function gridProps({
   rowNumbers,
   setError,
   selectionRef,
+  sourceRef,
+  handle,
   ...rest
 }: Pick<GridProps, 'source' | 'striped' | 'theme'> &
   Pick<
     CanvasArgs,
-    'latest' | 'rowNumbers' | 'setError' | 'selectionRef'
+    | 'latest'
+    | 'rowNumbers'
+    | 'setError'
+    | 'selectionRef'
+    | 'sourceRef'
+    | 'handle'
   >): GridProps {
   const props: GridProps = {
     ...rest,
+    ...columnHandlers({ latest, rowNumbers, sourceRef, handle }),
     onEdit: (cell, text) => {
       latest.current.editor.start(dataCell(cell, rowNumbers), text);
     },
@@ -245,6 +258,36 @@ function gridProps({
   return props;
 }
 
+/** Live header resizes repaint in place; drops and final widths persist. */
+function columnHandlers({
+  latest,
+  rowNumbers,
+  sourceRef,
+  handle,
+}: Pick<CanvasArgs, 'latest' | 'rowNumbers' | 'sourceRef' | 'handle'>): Pick<
+  GridProps,
+  'onColumnResize' | 'onColumnMove'
+> {
+  const shift = rowNumbers ? 1 : 0;
+  return {
+    onColumnResize: (column, width, done) => {
+      const target = sourceRef.current?.columns[column - shift];
+      const name = latest.current.result.columns[column - shift]?.name;
+      if (!target || name === undefined) return;
+      target.width = width;
+      handle.current?.relayout?.();
+      if (done)
+        latest.current.onLayout((layout) => withWidth(layout, name, width));
+    },
+    onColumnMove: (from, to) => {
+      const names = latest.current.result.columns.map((column) => column.name);
+      latest.current.onLayout((layout) =>
+        moved(layout, names, from - shift, to - shift),
+      );
+    },
+  };
+}
+
 function dataCell<T extends { column: number }>(
   cell: T,
   rowNumbers: boolean,
@@ -253,14 +296,14 @@ function dataCell<T extends { column: number }>(
 }
 
 function editedSource(
-  { result, editing }: Pick<Props, 'result' | 'editing'>,
+  { result, editing, layout }: Pick<Props, 'result' | 'editing' | 'layout'>,
   sort: SortDto | null,
 ): EditedSource {
   const columns = storeColumns(result);
   const source: GridDataSource = new TileSource(
     result.id,
     result.rows,
-    columnsOf(columns, sort),
+    columnsOf(columns, sort, layout),
     displayWindow,
   );
   return new EditedSource(source, editing.history.current, {
@@ -268,12 +311,6 @@ function editedSource(
     names: columns.map((column) => column.name),
     shown: result.columns.length,
   });
-}
-
-function columnWidth(type: string | null): number {
-  if (type && /text|char|json|uuid/.test(type)) return 180;
-  if (type && /date|time|numeric|decimal/.test(type)) return 168;
-  return 96;
 }
 
 function initialRow(rows: number, onRow: (row: number) => void): void {
