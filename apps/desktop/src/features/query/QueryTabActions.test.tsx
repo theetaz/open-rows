@@ -91,6 +91,7 @@ it('binds the tab to the file chosen in Save SQL As, then ⌘S saves to it', asy
   vi.mocked(saveSqlFileAs).mockResolvedValue({
     path: '/work/report.sql',
     name: 'report.sql',
+    modifiedMs: null,
   });
   const first = renderTab();
   await choose(first.user, 'Run options', /Save SQL As/);

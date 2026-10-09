@@ -7,6 +7,7 @@ mod history;
 mod migrate;
 mod saved_queries;
 mod schema_snapshots;
+mod workspace_state;
 
 use std::{
     path::{Path, PathBuf},
@@ -22,6 +23,7 @@ pub use history::{HistoryEntry, HistoryRecord, HistorySource, HistoryStatus};
 pub use migrate::SCHEMA_VERSION;
 pub use saved_queries::{NewSavedQuery, SavedQueryRecord};
 pub use schema_snapshots::SchemaSnapshotRecord;
+pub use workspace_state::WorkspaceKey;
 
 /// The app database (`openrows.sqlite`, docs/15 §2).
 ///

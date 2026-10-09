@@ -76,6 +76,7 @@ impl FlakyServer {
                 max_delay: Duration::from_millis(40),
                 attempts: 3,
             },
+            setup: Vec::new(),
         }
     }
 

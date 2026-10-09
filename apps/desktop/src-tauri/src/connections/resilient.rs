@@ -63,6 +63,7 @@ pub(crate) fn recipe(
         reconnect,
         dialect: Some(dialect),
         policy: RetryPolicy::default(),
+        setup: Vec::new(),
     }
 }
 

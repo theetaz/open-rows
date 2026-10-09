@@ -18,20 +18,34 @@ use crate::connections::{IpcError, IpcErrorKind};
 /// Largest `.sql` file opened into a tab.
 const MAX_FILE_BYTES: u64 = 16 * 1024 * 1024;
 
-/// A `.sql` file a tab is bound to; `name` is its file name.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Type)]
+/// A `.sql` file a tab is bound to; `name` is its file name and
+/// `modifiedMs` its modification time when it was read or written, so a
+/// later change by another program can be noticed.
+#[derive(Clone, Debug, PartialEq, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct SqlFileDto {
     path: String,
     name: String,
+    modified_ms: Option<f64>,
 }
 
 /// An opened `.sql` file and its text.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Type)]
+#[derive(Clone, Debug, PartialEq, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct OpenedSqlFileDto {
     file: SqlFileDto,
     sql: String,
+}
+
+impl OpenedSqlFileDto {
+    /// The file at `path` and its text.
+    pub(crate) fn read(path: &Path) -> Result<Self, IpcError> {
+        let sql = read_sql(path)?;
+        Ok(Self {
+            file: SqlFileDto::of(path),
+            sql,
+        })
+    }
 }
 
 impl SqlFileDto {
@@ -43,6 +57,7 @@ impl SqlFileDto {
         Self {
             path: path.display().to_string(),
             name,
+            modified_ms: super::file_watch::modified_ms(path),
         }
     }
 }
@@ -157,11 +172,14 @@ pub(crate) async fn sql_file_save_as(
     Ok(Some(SqlFileDto::of(&path)))
 }
 
-/// Write a tab's SQL to the `.sql` file it is bound to.
+/// Write a tab's SQL to the `.sql` file it is bound to; returns the file's
+/// new modification time.
 #[tauri::command]
 #[specta::specta]
-pub(crate) fn sql_file_save(path: String, sql: String) -> Result<(), IpcError> {
-    write_sql(Path::new(&path), &sql)
+pub(crate) fn sql_file_save(path: String, sql: String) -> Result<Option<f64>, IpcError> {
+    let path = Path::new(&path);
+    write_sql(path, &sql)?;
+    Ok(super::file_watch::modified_ms(path))
 }
 
 /// Pick a `.sql` file and read it; `null` when the panel is cancelled.
@@ -179,11 +197,7 @@ pub(crate) async fn sql_file_open(
     let Some(path) = choose(panel, false).await? else {
         return Ok(None);
     };
-    let sql = read_sql(&path)?;
-    Ok(Some(OpenedSqlFileDto {
-        file: SqlFileDto::of(&path),
-        sql,
-    }))
+    OpenedSqlFileDto::read(&path).map(Some)
 }
 
 #[cfg(test)]

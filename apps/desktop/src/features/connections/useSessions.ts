@@ -10,6 +10,7 @@ import {
 import {
   applySessionEvent,
   disconnected,
+  liveSession,
   removeDatabase,
   setDatabase,
 } from './sessions';
@@ -106,9 +107,10 @@ export function useSessions(askPassword: AskPassword = keychain): Sessions {
         ? status.databases.find((item) => item.name === database)
         : undefined;
     setStatuses((now) => removeDatabase(now, profileId, database));
-    if (opened?.state !== 'open' && opened?.state !== 'reconnecting') return;
+    const sessionId = opened ? liveSession(opened) : null;
+    if (!sessionId) return;
     try {
-      await closeSession(opened.sessionId);
+      await closeSession(sessionId);
     } catch {
       // The database is already gone from the UI; a failed goodbye changes nothing.
     }

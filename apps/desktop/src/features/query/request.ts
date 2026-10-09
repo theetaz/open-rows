@@ -11,6 +11,8 @@ export type EditorHandle = {
   focus: () => void;
   /** Beautify or uglify the selection, current statement or document. */
   format: (kind: FormatKind, options: FormatOptions) => Promise<void>;
+  /** Replace the whole text (Reload of a file changed on disk). */
+  replace: (text: string) => void;
 };
 
 /** Run current (⌘↵, or the selection when text is selected) or all (⇧⌘↵). */

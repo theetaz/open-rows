@@ -51,6 +51,7 @@ it('builds run requests for current, selection and all, with the row limit', () 
     selection: () => selection,
     focus: () => undefined,
     format: () => Promise.resolve(),
+    replace: () => undefined,
   });
   expect(runRequest(editor('SELECT 1', 3), 'current', 's', null)).toEqual({
     sessionId: 's',

@@ -15,6 +15,7 @@ import {
   syncMenu,
 } from '@openrows/ipc';
 import { connectTo } from '../../test/connect';
+import { stubStateKey } from '../../test/ipcStub';
 import { Workspace } from './Workspace';
 
 vi.mock('@openrows/ipc', async () =>
@@ -83,9 +84,12 @@ it('restores the last session without auto-connecting production', async () => {
   });
   await waitFor(() => {
     expect(
-      JSON.parse(localStorage.getItem('openrows.session') ?? '{}'),
+      JSON.parse(localStorage.getItem(stubStateKey('session')) ?? '{}'),
     ).toMatchObject({ active: 'id-analytics-prod' });
   });
+  // Imported into the local store once; web storage no longer holds it.
+  expect(localStorage.getItem('openrows.session')).toBeNull();
+  expect(localStorage.getItem('openrows.queryTabs')).toBeNull();
 });
 
 it('starts empty when session restore is off', async () => {

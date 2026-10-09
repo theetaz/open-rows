@@ -38,6 +38,8 @@ pub(crate) enum IpcErrorKind {
     Protocol,
     /// The server reported an error (SQLSTATE in `code`).
     Server,
+    /// The statement ran past the connection's statement timeout.
+    Timeout,
     /// The requested option is not supported yet.
     Unsupported,
     /// A bug or broken invariant.
@@ -101,6 +103,7 @@ impl From<CoreError> for IpcError {
             ErrorKind::Protocol | ErrorKind::Decode => IpcErrorKind::Protocol,
             ErrorKind::Server => IpcErrorKind::Server,
             ErrorKind::Unsupported => IpcErrorKind::Unsupported,
+            ErrorKind::Timeout => IpcErrorKind::Timeout,
             ErrorKind::UnknownSession | ErrorKind::SessionClosed => IpcErrorKind::NotFound,
             ErrorKind::QueueFull | ErrorKind::Internal => IpcErrorKind::Internal,
         };

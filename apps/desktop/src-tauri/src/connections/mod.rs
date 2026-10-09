@@ -16,7 +16,8 @@
 //! and detaches `SQLite` database files. Server sessions are [`resilient`]:
 //! they probe and reconnect, also after wake. "Ask every time" passwords live
 //! in [`asked`] while connected; [`reveal`] is the one command that returns a
-//! saved secret, on the user's explicit request.
+//! saved secret, on the user's explicit request. [`limits`] applies statement
+//! timeouts and suspends sessions idle past the profile's idle timeout.
 mod asked;
 pub(crate) mod attach;
 pub(crate) mod catalog;
@@ -31,6 +32,8 @@ mod enums;
 mod error;
 pub(crate) mod files;
 mod insecure;
+pub(crate) mod limits;
+mod limits_dto;
 mod metadata;
 mod owners;
 pub(crate) mod profiles;
@@ -80,6 +83,8 @@ pub(crate) struct Connections {
     pub(crate) prompts: Arc<PromptBroker>,
     /// Passwords typed on connect for "ask every time" profiles.
     pub(crate) asked: asked::AskedPasswords,
+    /// App-wide session limits from settings.json.
+    pub(crate) limits: limits::DefaultLimits,
 }
 
 /// Open the stores, manage [`Connections`] and forward session events.
@@ -124,7 +129,9 @@ pub(crate) fn install(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Er
         },
         prompts,
         asked: asked::AskedPasswords::default(),
+        limits: limits::DefaultLimits::default(),
     });
+    limits::watch_idle(app.handle().clone());
     Ok(())
 }
 

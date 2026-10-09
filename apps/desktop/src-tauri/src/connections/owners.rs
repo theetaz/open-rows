@@ -48,6 +48,14 @@ impl Owners {
             .collect()
     }
 
+    /// Every open session with its owner.
+    pub(crate) fn all(&self) -> Vec<(SessionId, Owner)> {
+        self.lock()
+            .iter()
+            .map(|(session, owner)| (*session, owner.clone()))
+            .collect()
+    }
+
     /// Forget and return every session of `profile`.
     pub(crate) fn unbind_profile(&self, profile: ProfileId) -> Vec<SessionId> {
         let mut map = self.lock();
@@ -111,6 +119,7 @@ mod tests {
         owners.bind(other, owner(second, "orders"));
         let mut expected = sessions.to_vec();
         expected.sort();
+        assert_eq!(owners.all().len(), 3);
         let mut listed = owners.sessions(first);
         listed.sort();
         assert_eq!(listed, expected);

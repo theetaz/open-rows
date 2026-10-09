@@ -19,6 +19,8 @@ function tooltip(database: OpenedDatabase): string {
   if (database.state === 'opening') return `${database.name} — opening…`;
   if (database.state === 'reconnecting')
     return `${database.name} — reconnecting: ${database.message}`;
+  if (database.state === 'idle')
+    return `${database.name} — closed while idle, reconnects on next query`;
   if (database.state === 'failed')
     return `${database.name} — ${database.message}`;
   return database.name;

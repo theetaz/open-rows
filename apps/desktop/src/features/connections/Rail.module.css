@@ -233,6 +233,9 @@
 .status[data-status='reconnecting'] {
   background: var(--or-warning-fg);
 }
+.status[data-status='idle'] {
+  background: var(--or-tertiary);
+}
 .status[data-status='failed'] {
   background: var(--or-danger-fg);
 }

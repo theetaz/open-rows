@@ -3,11 +3,10 @@ import { useEffect, useRef, useState } from 'react';
 import type { ProfileDto } from '@openrows/ipc';
 import { generalSettings } from '../settings/general';
 import {
-  SESSION_KEY,
-  needsConsent,
-  parseSession,
-  sessionOf,
-} from './sessionState';
+  loadWorkspaceState,
+  saveWorkspaceState,
+} from '../settings/workspaceState';
+import { needsConsent, parseSession, sessionOf } from './sessionState';
 import type { SavedConnection, SavedSession } from './sessionState';
 import type { Databases } from './useDatabases';
 import type { Sessions } from './useSessions';
@@ -20,21 +19,18 @@ type Input = {
   databases: Pick<Databases, 'databaseOf' | 'prefer'>;
 };
 
-function readSession(): SavedSession | null {
+/** The last session from the local store (imported once from web storage). */
+async function readSession(): Promise<SavedSession | null> {
   try {
-    return parseSession(localStorage.getItem(SESSION_KEY));
+    return parseSession(await loadWorkspaceState('session'));
   } catch {
     return null;
   }
 }
 
+/** Remember the session in the background; `null` forgets it. */
 function writeSession(session: SavedSession | null): void {
-  try {
-    if (session) localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-    else localStorage.removeItem(SESSION_KEY);
-  } catch {
-    /* Without storage the next launch starts empty. */
-  }
+  saveWorkspaceState('session', session ? JSON.stringify(session) : null);
 }
 
 /** Reconnect one saved connection and reopen its databases. */
@@ -44,10 +40,10 @@ async function reopen(saved: SavedConnection, input: Input): Promise<void> {
     if (name !== home) await input.sessions.openDatabase(saved.id, name);
 }
 
-/** Restore the saved session once profiles are known; returns who still waits. */
-function restore(input: Input): Map<string, SavedConnection> {
+/** Restore the saved session once profiles are known; resolves who still waits. */
+async function restore(input: Input): Promise<Map<string, SavedConnection>> {
   const waiting = new Map<string, SavedConnection>();
-  const saved = readSession();
+  const saved = await readSession();
   if (!saved || !generalSettings.get().restoreSession) return waiting;
   for (const connection of saved.connections) {
     const profile = input.profiles.find((item) => item.id === connection.id);
@@ -73,12 +69,15 @@ export function useSessionRestore(input: Input, loaded: boolean): void {
     null,
   );
   const latest = useRef(input);
+  const started = useRef(false);
   useEffect(() => {
     latest.current = input;
   });
   useEffect(() => {
-    if (loaded && waiting === null) setWaiting(restore(latest.current));
-  }, [loaded, waiting]);
+    if (!loaded || started.current) return;
+    started.current = true;
+    void restore(latest.current).then(setWaiting);
+  }, [loaded]);
   useForgetConnected(waiting, setWaiting, input.sessions);
   const { restoreSession } = generalSettings.use();
   const session =

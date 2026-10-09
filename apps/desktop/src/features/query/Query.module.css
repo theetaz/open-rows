@@ -259,3 +259,7 @@
   color: var(--or-secondary);
   font-size: var(--or-text-12);
 }
+.reconnectActions {
+  display: flex;
+  gap: var(--or-space-6);
+}

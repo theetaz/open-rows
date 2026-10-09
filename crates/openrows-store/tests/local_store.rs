@@ -26,7 +26,7 @@ fn fresh_database_is_migrated_in_wal_mode() {
     let path = dir.path().join("openrows.sqlite");
     let store = LocalStore::open(&path).unwrap();
     assert_eq!(store.schema_version().unwrap(), SCHEMA_VERSION);
-    assert_eq!(store.meta("schema_version").unwrap().as_deref(), Some("5"));
+    assert_eq!(store.meta("schema_version").unwrap().as_deref(), Some("6"));
     drop(store);
     let conn = rusqlite::Connection::open(&path).unwrap();
     let mode: String = conn

@@ -36,6 +36,7 @@ export function profile(
     safety: { readOnly: false, confirmWrites: false },
     insecure: [],
     recordHistory: true,
+    limits: { statementTimeoutSeconds: null, idleTimeoutMinutes: 0 },
     ...overrides,
   };
 }
@@ -109,9 +110,28 @@ function savedQueryStub(): Record<string, unknown> {
     createSavedQuery: vi.fn(() => Promise.resolve()),
     renameSavedQuery: vi.fn(() => Promise.resolve()),
     deleteSavedQuery: vi.fn(() => Promise.resolve()),
-    saveSqlFile: vi.fn(() => Promise.resolve()),
+    saveSqlFile: vi.fn(() => Promise.resolve(null)),
+    sqlFileModified: vi.fn(() => Promise.resolve(null)),
+    readSqlFile: vi.fn(() => Promise.reject(new Error('no file'))),
     saveSqlFileAs: vi.fn(() => Promise.resolve(null)),
     openSqlFile: vi.fn(() => Promise.resolve(null)),
+  };
+}
+
+/** Key of a part of the stubbed local-store workspace state in web storage, cleared before each test. */
+export const stubStateKey = (part: string): string => `test.workspace.${part}`;
+
+/** Workspace state in an in-memory local store (web storage under a test key). */
+function workspaceStub(): Record<string, unknown> {
+  return {
+    readWorkspaceState: vi.fn((part: string) =>
+      Promise.resolve(localStorage.getItem(stubStateKey(part))),
+    ),
+    writeWorkspaceState: vi.fn((part: string, state: string | null) => {
+      if (state === null) localStorage.removeItem(stubStateKey(part));
+      else localStorage.setItem(stubStateKey(part), state);
+      return Promise.resolve();
+    }),
   };
 }
 
@@ -222,6 +242,7 @@ export function ipcStub(
     ...savedQueryStub(),
     ...tableEditStub(),
     ...appStub(),
+    ...workspaceStub(),
     onWindowClose: vi.fn(() => Promise.resolve(() => undefined)),
     closeWindow: vi.fn(() => Promise.resolve()),
     tableEdit: vi.fn(() =>

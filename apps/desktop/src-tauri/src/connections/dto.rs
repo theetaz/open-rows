@@ -15,6 +15,7 @@ pub(crate) use super::engine_dto::{EngineDto, FileDto};
 pub(crate) use super::enums::{EnvKindDto, PasswordStorageDto, TlsModeDto};
 use super::error::IpcError;
 use super::insecure::{InsecureReasonDto, profile_insecurity};
+use super::limits_dto::LimitsDto;
 use super::proxy_dto::{ProxyDto, ProxyInput, proxy_dto};
 use super::route_dto::{
     SshDto, SshInput, TlsFilesDto, TlsFilesInput, apply_route, ssh_dto, tls_files_dto,
@@ -74,6 +75,8 @@ pub(crate) struct ProfileDto {
     insecure: Vec<InsecureReasonDto>,
     /// Executed statements are kept in the local history (FR-WS-02).
     record_history: bool,
+    /// Statement and idle timeouts (M1-01).
+    limits: LimitsDto,
 }
 
 impl From<&ConnectionProfile> for ProfileDto {
@@ -105,6 +108,7 @@ impl From<&ConnectionProfile> for ProfileDto {
                 confirm_writes: profile.safety.confirm_writes,
             },
             record_history: profile.record_history,
+            limits: profile.limits.into(),
         }
     }
 }
@@ -185,6 +189,9 @@ pub(crate) struct ProfileInput {
     #[serde(default)]
     pub(crate) password_storage: PasswordStorageDto,
     pub(crate) password: PasswordInput,
+    /// Absent in forms written before the limits: the defaults.
+    #[serde(default)]
+    pub(crate) limits: LimitsDto,
 }
 
 fn record_history_on() -> bool {
@@ -251,6 +258,7 @@ impl ProfileInput {
         profile.safety = self.safety.into();
         profile.record_history = self.record_history;
         profile.password_storage = self.password_storage.into();
+        profile.limits = self.limits.into();
         Ok(())
     }
 

@@ -5,7 +5,7 @@ import { useTheme } from '@openrows/ui';
 import type { Connections } from '../connections';
 import { useCatalog } from '../schema';
 import type { Catalog, ObjectRef } from '../schema';
-import { useQueryTabs } from '../query';
+import { tabFile, useQueryTabs } from '../query';
 import type { QueryTabs, TabScope } from '../query';
 import { openTableView } from '../table';
 import { useMenuBridge } from '../commands';
@@ -49,7 +49,7 @@ function openFileInto(tabs: QueryTabs, scope: TabScope | undefined): void {
       tabs.open(scope, {
         title: file.name,
         sql,
-        file: { ...file, saved: sql },
+        file: tabFile(file, sql, file.modifiedMs),
       });
     },
     () => undefined,

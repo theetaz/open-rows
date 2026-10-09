@@ -7,10 +7,12 @@
 //! shared result store (read through `result_window`); events go back over a
 //! Tauri channel and each executed statement is written to the local history.
 //! Editor placeholders are bound per [`params`]; [`saved`] keeps saved
-//! queries and [`files`] saves and opens the `.sql` files of query tabs.
+//! queries and [`files`] saves and opens the `.sql` files of query tabs;
+//! [`file_watch`] notices when another program changed one.
 pub(crate) mod commands;
 mod dto;
 pub(crate) mod events;
+pub(crate) mod file_watch;
 pub(crate) mod files;
 pub(crate) mod history;
 mod params;

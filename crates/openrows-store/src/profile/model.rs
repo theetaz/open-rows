@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 use super::{
     Driver, EnvKind, EnvTag, FileParams, PasswordStorage, ProfileError, ProxySettings, Safety,
-    ServerParams, SshSettings, TlsSettings,
+    ServerParams, SessionLimits, SshSettings, TlsSettings,
 };
 
 /// Newest profile file format version (`"openrows": 1`).
@@ -172,6 +172,9 @@ pub struct ConnectionProfile {
         skip_serializing_if = "recording_is_default"
     )]
     pub record_history: bool,
+    /// Statement and idle timeouts (M1-01); absent while at their defaults.
+    #[serde(default, skip_serializing_if = "SessionLimits::is_default")]
+    pub limits: SessionLimits,
 }
 
 /// Profiles written before the switch existed keep recording history.
@@ -216,6 +219,7 @@ impl ConnectionProfile {
             secrets: SecretRefs::default(),
             password_storage: PasswordStorage::Keychain,
             record_history: true,
+            limits: SessionLimits::default(),
         }
     }
 

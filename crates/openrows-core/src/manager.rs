@@ -2,7 +2,7 @@
 //! Opens session actors, routes commands to them and supervises panics.
 use crate::actor::{self, Connect, Mailbox};
 use crate::error::ErrorKind;
-use crate::resilience::{Link, Resilience};
+use crate::resilience::{Link, Resilience, first_connect};
 use crate::shared::{Command, Queued, Shared};
 use crate::{BatchSink, Canceller, CoreError, QueryHandle, SessionEvent, SessionState};
 use openrows_driver_api::{DriverError, Session};
@@ -87,6 +87,38 @@ impl SessionManager {
         }
     }
 
+    /// Cancel statements of `session` submitted from now on after `timeout`
+    /// and report them as [`ErrorKind::Timeout`]; `None` removes the limit.
+    /// Exports ([`SessionManager::execute_into`]) are never limited.
+    ///
+    /// # Errors
+    /// `UnknownSession`.
+    pub fn set_statement_timeout(
+        &self,
+        session: SessionId,
+        timeout: Option<Duration>,
+    ) -> Result<(), CoreError> {
+        self.with_entry(session, |entry| entry.shared.set_statement_timeout(timeout))
+            .ok_or_else(|| CoreError::unknown_session(session))
+    }
+
+    /// Close the connection of a resilient `session` when it ran no statement
+    /// for at least `idle` and holds no open transaction; it turns
+    /// [`SessionState::Suspended`] and the next statement reconnects (with the
+    /// session settings replayed). Busy, non-resilient, recently used or
+    /// in-transaction sessions are left alone.
+    ///
+    /// # Errors
+    /// `UnknownSession`.
+    pub fn suspend_idle(&self, session: SessionId, idle: Duration) -> Result<(), CoreError> {
+        let commands = self
+            .with_entry(session, |entry| entry.commands.clone())
+            .ok_or_else(|| CoreError::unknown_session(session))?;
+        // A full queue means the session is busy, so not idle: nothing to do.
+        let _ = commands.try_send(Command::Suspend { idle });
+        Ok(())
+    }
+
     /// Session state transitions for every session, including panics.
     #[must_use]
     pub fn subscribe(&self) -> broadcast::Receiver<SessionEvent> {
@@ -118,7 +150,7 @@ impl SessionManager {
     /// # Errors
     /// As [`SessionManager::open`].
     pub async fn open_resilient(&self, resilience: Resilience) -> Result<SessionId, CoreError> {
-        let connect = (resilience.reconnect)();
+        let connect = first_connect(&resilience);
         let link = Link::new(resilience, self.keepalive.subscribe());
         self.spawn(connect, Some(link)).await
     }
@@ -222,9 +254,13 @@ impl SessionManager {
 
     fn submit(&self, session: SessionId, submission: Submission) -> Result<QueryHandle, CoreError> {
         let (sender, events) = mpsc::unbounded_channel();
-        let (commands, token) = self
+        let (commands, token, timeout) = self
             .with_entry(session, |entry| {
-                (entry.commands.clone(), entry.shared.token.child_token())
+                let shared = &entry.shared;
+                let timeout = shared
+                    .statement_timeout()
+                    .filter(|_| submission.sink.is_none());
+                (entry.commands.clone(), shared.token.child_token(), timeout)
             })
             .ok_or_else(|| CoreError::unknown_session(session))?;
         let id = QueryId::new();
@@ -234,6 +270,7 @@ impl SessionManager {
             params: submission.params,
             max_rows: submission.max_rows,
             sink: submission.sink,
+            timeout,
             token: token.clone(),
             events: sender,
         };

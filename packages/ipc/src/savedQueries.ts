@@ -47,9 +47,26 @@ export async function saveSqlFileAs(
   return unwrap(commands.sqlFileSaveAs(title, sql));
 }
 
-/** Write a tab's SQL to the `.sql` file it is bound to. */
-export async function saveSqlFile(path: string, sql: string): Promise<void> {
-  await unwrap(commands.sqlFileSave(path, sql));
+/**
+ * Write a tab's SQL to the `.sql` file it is bound to; resolves the file's
+ * new modification time (epoch ms), `null` when the platform has none.
+ */
+export function saveSqlFile(path: string, sql: string): Promise<number | null> {
+  return unwrap(commands.sqlFileSave(path, sql));
+}
+
+/**
+ * Modification time (epoch ms) of a tab's `.sql` file, to notice changes
+ * made by another program; `null` when it is gone or outside the native shell.
+ */
+export async function sqlFileModified(path: string): Promise<number | null> {
+  if (!isTauri()) return null;
+  return unwrap(commands.sqlFileStat(path));
+}
+
+/** Read a tab's `.sql` file again (Reload after an outside change). */
+export function readSqlFile(path: string): Promise<OpenedSqlFileDto> {
+  return unwrap(commands.sqlFileRead(path));
 }
 
 /**

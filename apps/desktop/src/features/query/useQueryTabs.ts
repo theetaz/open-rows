@@ -4,6 +4,7 @@ import {
   bindFile,
   closeTab,
   editTab,
+  emptyTabs,
   openTab,
   renameTableTab,
   scopeKey,
@@ -19,10 +20,11 @@ import type {
   TabsState,
 } from './tabs';
 import { keepTab, moveTab, pinTab, renameTab } from './tabOps';
-import { readTabs } from './tabStorage';
+import { loadTabs } from './tabStorage';
 import { useEditorSettings } from './editorSettings';
 import { generalSettings } from '../settings/general';
 import { useTabPersistence } from './useTabPersistence';
+import { useFileChanges } from './useFileChanges';
 
 /**
  * Open a query tab in a connection and database scope, e.g. from the schema
@@ -68,13 +70,16 @@ export function useQueryTabs(): QueryTabs {
       if (guard.current === next) guard.current = null;
     };
   }, []);
-  const [state, setState] = useState<TabsState>(readTabs);
+  const [state, setState] = useState<TabsState>(emptyTabs);
+  const loaded = useSavedTabs(setState);
   const [{ autoSave }] = useEditorSettings();
   const { restoreSession } = generalSettings.use();
   const file = useCallback((id: string, next: TabFile) => {
     setState((current) => bindFile(current, id, next));
   }, []);
-  useTabPersistence(state, autoSave, restoreSession, file);
+  const persistence = { autoSave, restore: restoreSession, loaded };
+  useTabPersistence(state, persistence, file);
+  useFileChanges(state.tabs, loaded, file);
   const latest = useRef(state);
   useEffect(() => {
     latest.current = state;
@@ -132,4 +137,29 @@ export function useQueryTabs(): QueryTabs {
     },
     state,
   };
+}
+
+/**
+ * Load the saved tabs once; they replace the tab set unless the user opened
+ * a tab first. Resolves `true` once loading finished (or failed).
+ */
+function useSavedTabs(
+  setState: (change: (current: TabsState) => TabsState) => void,
+): boolean {
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    let active = true;
+    const done = (saved: TabsState): void => {
+      if (!active) return;
+      setState((current) => (current === emptyTabs ? saved : current));
+      setLoaded(true);
+    };
+    loadTabs().then(done, () => {
+      done(emptyTabs);
+    });
+    return () => {
+      active = false;
+    };
+  }, [setState]);
+  return loaded;
 }

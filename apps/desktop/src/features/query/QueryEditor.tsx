@@ -62,6 +62,11 @@ function handleOf(editor: SqlEditor): EditorHandle {
       view.focus();
     },
     format: (kind, options) => editor.format(kind, options),
+    replace: (text) => {
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: text },
+      });
+    },
   };
 }
 

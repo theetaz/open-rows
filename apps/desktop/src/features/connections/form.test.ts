@@ -46,6 +46,7 @@ it('maps a profile to a draft and back without inventing a password', () => {
     recordHistory: true,
     passwordStorage: 'keychain',
     password: { kind: 'keep' },
+    limits: { statementTimeoutSeconds: null, idleTimeoutMinutes: 0 },
   });
 });
 

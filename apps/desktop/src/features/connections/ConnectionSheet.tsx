@@ -8,6 +8,7 @@ import { EngineTile } from './EngineTile';
 import { EnvironmentFields } from './EnvironmentFields';
 import { FileFields } from './FileFields';
 import { ProxyFields } from './ProxyFields';
+import { SessionLimitsFields } from './SessionLimitsFields';
 import { SshFields } from './SshFields';
 import { TestResult } from './TestResult';
 import { TlsFields } from './TlsFields';
@@ -69,6 +70,7 @@ export function ConnectionSheet(props: Props): React.JSX.Element {
             <TlsFields form={form} />
           </>
         )}
+        <SessionLimitsFields form={form} />
         <EnvironmentFields form={form} />
         <TestResult state={form.test} />
         {form.saveError && (

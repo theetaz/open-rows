@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 import { generalSettings } from '../settings/general';
+import {
+  loadWorkspaceState,
+  saveWorkspaceState,
+} from '../settings/workspaceState';
 import { emptyTabs, scopeKey } from './tabs';
 import type { QueryTab, TabFile, TableObject, TabsState } from './tabs';
-
-/** Where open tabs persist on this device for session restore. */
-export const TABS_KEY = 'openrows.queryTabs';
 
 /**
  * Open tabs as stored: query tabs with their text, file and parameters (only
@@ -24,9 +25,11 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 function fileOf(value: unknown): TabFile | undefined {
   if (!isRecord(value)) return undefined;
-  const { path, name, saved } = value;
+  const { path, name, saved, modifiedMs } = value;
   if (!isString(path) || !isString(name) || !isString(saved)) return undefined;
-  return { path, name, saved };
+  return typeof modifiedMs === 'number'
+    ? { path, name, saved, modifiedMs }
+    : { path, name, saved };
 }
 
 function paramsOf(value: unknown): Record<string, string> | undefined {
@@ -109,29 +112,26 @@ export function restoreTabs(text: string | null): TabsState {
   return { tabs, active: activeOf(tabs, stored.active), next };
 }
 
-/** The stored tabs of this device; none when session restore is off. */
-export function readTabs(): TabsState {
+/**
+ * The tabs saved in the local store (imported once from web storage); none
+ * when session restore is off.
+ */
+export async function loadTabs(): Promise<TabsState> {
+  const text = await loadWorkspaceState('queryTabs');
   if (!generalSettings.get().restoreSession) return emptyTabs;
-  try {
-    return restoreTabs(localStorage.getItem(TABS_KEY));
-  } catch {
-    return emptyTabs;
-  }
+  return restoreTabs(text);
 }
 
 /**
- * Store the tabs for the next launch: query text only with Auto Save, and
- * nothing when session restore is off.
+ * Store the tabs for the next launch in the background: query text only
+ * with Auto Save, and nothing when session restore is off.
  */
 export function writeTabs(
   state: TabsState,
   options: { autoSave: boolean; restore: boolean },
 ): void {
-  try {
-    if (options.restore)
-      localStorage.setItem(TABS_KEY, serializeTabs(state, options.autoSave));
-    else localStorage.removeItem(TABS_KEY);
-  } catch {
-    /* Without storage, tabs last for this session only. */
-  }
+  saveWorkspaceState(
+    'queryTabs',
+    options.restore ? serializeTabs(state, options.autoSave) : null,
+  );
 }

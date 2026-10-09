@@ -63,6 +63,38 @@ pub struct Resilience {
     pub dialect: Option<Dialect>,
     /// Probe and reconnect timing.
     pub policy: RetryPolicy,
+    /// Statements run on every new connection, first and after each
+    /// reconnect, before the replayed settings: the server-side statement
+    /// timeout (M1-01). A server that rejects one (e.g. a `MySQL` without
+    /// `max_execution_time`) keeps the connection; only the client-side
+    /// limit applies then.
+    pub setup: Vec<String>,
+}
+
+/// Connect with `recipe` for the first time and run its setup statements.
+pub(crate) fn first_connect(recipe: &Resilience) -> crate::actor::Connect {
+    let reconnect = Arc::clone(&recipe.reconnect);
+    let setup = recipe.setup.clone();
+    Box::pin(async move {
+        let mut session = reconnect().await?;
+        apply_setup(session.as_mut(), &setup).await?;
+        Ok(session)
+    })
+}
+
+/// Run setup statements; a statement the server rejects is skipped (the
+/// client-side limit still applies), a lost connection is an error.
+async fn apply_setup(session: &mut dyn Session, setup: &[String]) -> Result<(), DriverError> {
+    for sql in setup {
+        match session.execute(sql, &mut DiscardSink).await {
+            Ok(_) => {}
+            Err(DriverError::Server { code, .. }) => {
+                tracing::warn!(code = %code, "session setup statement rejected by the server");
+            }
+            Err(error) => return Err(error),
+        }
+    }
+    Ok(())
 }
 
 /// How restoring a lost connection ended.
@@ -196,6 +228,16 @@ impl Link {
                 AttemptError::Stop(CoreError::from(&error))
             }
         })?;
+        let limit = self.recipe.policy.probe_timeout;
+        match tokio::time::timeout(limit, apply_setup(session.as_mut(), &self.recipe.setup)).await {
+            Ok(Ok(())) => {}
+            Ok(Err(error)) => return Err(AttemptError::Retry(error)),
+            Err(_) => {
+                return Err(AttemptError::Retry(DriverError::Network(
+                    io::ErrorKind::TimedOut.into(),
+                )));
+            }
+        }
         for (_, sql) in &self.replay {
             self.replay_one(session.as_mut(), sql).await?;
         }

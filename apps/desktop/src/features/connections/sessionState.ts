@@ -15,9 +15,6 @@ export type SavedSession = {
   connections: readonly SavedConnection[];
 };
 
-/** Where the last session is kept on this device. */
-export const SESSION_KEY = 'openrows.session';
-
 const emptySession: SavedSession = { active: null, connections: [] };
 
 const isString = (value: unknown): value is string => typeof value === 'string';

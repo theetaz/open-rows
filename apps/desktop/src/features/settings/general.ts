@@ -13,6 +13,14 @@ export const KEEPALIVE_CHOICES: readonly KeepaliveSeconds[] = [
   15, 30, 60, 120, 0,
 ];
 
+/** Default statement timeout in seconds; `0` is no limit. */
+type StatementTimeoutSeconds = 0 | 30 | 60 | 300 | 900 | 3600;
+
+/** Every default statement timeout the settings offer (off by default). */
+export const STATEMENT_TIMEOUT_CHOICES: readonly StatementTimeoutSeconds[] = [
+  0, 30, 60, 300, 900, 3600,
+];
+
 /** App-wide preferences outside appearance and the editor. */
 type GeneralSettings = {
   /** Reopen the previous connections, databases and tabs on launch. */
@@ -27,6 +35,11 @@ type GeneralSettings = {
    * reopened; read by the core from settings.json.
    */
   keepaliveSeconds: KeepaliveSeconds;
+  /**
+   * Statement timeout of connections that do not set their own; read by
+   * the core from settings.json when a database opens.
+   */
+  statementTimeoutSeconds: StatementTimeoutSeconds;
 };
 
 const defaultGeneralSettings: GeneralSettings = {
@@ -35,6 +48,7 @@ const defaultGeneralSettings: GeneralSettings = {
   gridDensity: 'normal',
   reduceMotion: false,
   keepaliveSeconds: 30,
+  statementTimeoutSeconds: 0,
 };
 
 /** Key in web storage (and `general` in settings.json). */
@@ -68,6 +82,11 @@ export function parseGeneral(stored: unknown): GeneralSettings {
     )
       ? (value.keepaliveSeconds as KeepaliveSeconds)
       : defaultGeneralSettings.keepaliveSeconds,
+    statementTimeoutSeconds: STATEMENT_TIMEOUT_CHOICES.includes(
+      value.statementTimeoutSeconds as StatementTimeoutSeconds,
+    )
+      ? (value.statementTimeoutSeconds as StatementTimeoutSeconds)
+      : defaultGeneralSettings.statementTimeoutSeconds,
   };
 }
 
