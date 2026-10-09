@@ -25,6 +25,7 @@ function tabs(open: QueryTab[] = []): QueryTabs {
     move: vi.fn(),
     pin: vi.fn(),
     keep: vi.fn(),
+    rename: vi.fn(),
     state: { tabs: open, active: {}, next: 1 },
   };
 }

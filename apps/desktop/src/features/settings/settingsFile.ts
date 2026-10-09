@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
-import { readSettingsFile, writeSettingsFile } from '@openrows/ipc';
+import {
+  onSettingsFileChanged,
+  readSettingsFile,
+  writeSettingsFile,
+} from '@openrows/ipc';
 import { parseAppearance } from '@openrows/ui';
 import { parseEditorSettings } from '../query/editorSettings';
 import { parseOverrides, SHORTCUTS_KEY } from '../commands/bindings';
 import { DIAGNOSTICS_KEY, parseDiagnostics } from './diagnostics';
 import { GENERAL_KEY, parseGeneral } from './general';
 import { parseResults, RESULTS_KEY } from './results';
-import { onSettingsChanged } from './localSetting';
+import { onSettingsChanged, reloadSettings } from './localSetting';
 
 /**
  * `settings.json` (docs/15 §4) mirrors these web-storage keys, which stay
@@ -122,4 +126,25 @@ export async function hydrateSettings(): Promise<void> {
   if (text) applySettings(JSON.parse(text) as Record<string, unknown>);
   else await writeSettingsFile(settingsText()).catch(() => undefined);
   onSettingsChanged(writer());
+  await onSettingsFileChanged(() => {
+    void reloadSettingsFile();
+  }).catch(() => undefined);
+}
+
+/**
+ * After an edit outside the app: load the file into the stores and refresh
+ * every reader. A file that no longer parses or was removed is ignored, so
+ * the settings in use stay until it is fixed.
+ */
+export async function reloadSettingsFile(): Promise<void> {
+  let file: unknown;
+  try {
+    const text = await readSettingsFile();
+    file = text ? (JSON.parse(text) as unknown) : null;
+  } catch {
+    return;
+  }
+  if (typeof file !== 'object' || file === null || Array.isArray(file)) return;
+  applySettings(file as Record<string, unknown>);
+  reloadSettings();
 }

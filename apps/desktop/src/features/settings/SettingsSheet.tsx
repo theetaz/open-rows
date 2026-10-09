@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useState } from 'react';
-import { Button, SegmentedControl } from '@openrows/ui';
+import { Button, Icon, SegmentedControl, TextField } from '@openrows/ui';
 import { Sheet } from '@openrows/ui/sheet';
 import { AppearancePane } from '../appearance/AppearancePane';
 import { DiagnosticsPane } from './DiagnosticsPane';
 import { EditorPane } from './EditorPane';
 import { GeneralPane } from './GeneralPane';
 import { JsonPane } from './JsonPane';
+import { SearchResults } from './SearchResults';
 import { ShortcutsPane } from './ShortcutsPane';
+import { SettingsQuery } from './settingsSearch';
 import styles from '../appearance/Appearance.module.css';
+import searchStyles from './Settings.module.css';
 
 export type SettingsSection =
   'general' | 'appearance' | 'editor' | 'shortcuts' | 'diagnostics' | 'json';
@@ -31,13 +34,25 @@ function Pane({ section }: { section: SettingsSection }): React.JSX.Element {
   return <GeneralPane />;
 }
 
-/** Settings (⌘,): every preference, saved to settings.json and applied live. */
+/** Every searchable pane (the read-only JSON view is not one), in order. */
+const SEARCHED = SECTIONS.filter((item) => item.value !== 'json').map(
+  (item) => ({ ...item, pane: <Pane section={item.value} /> }),
+);
+
+/**
+ * Settings (⌘,): every preference, saved to settings.json and applied live.
+ * Typing in the search field lists the matching rows of every pane.
+ */
 export function SettingsSheet(props: {
   initial?: SettingsSection;
   onClose: () => void;
 }): React.JSX.Element {
   const [section, setSection] = useState(props.initial ?? 'general');
-  const title = SECTIONS.find((item) => item.value === section)?.label ?? '';
+  const [query, setQuery] = useState('');
+  const searching = query.trim() !== '';
+  const title = searching
+    ? 'Search'
+    : (SECTIONS.find((item) => item.value === section)?.label ?? '');
   return (
     <Sheet title="Settings" size="appearance" onClose={props.onClose}>
       <div className={styles.page}>
@@ -49,13 +64,33 @@ export function SettingsSheet(props: {
             aria-label="Settings section"
             options={SECTIONS}
             value={section}
-            onValueChange={setSection}
+            onValueChange={(next) => {
+              setQuery('');
+              setSection(next);
+            }}
+          />
+          <TextField
+            className={searchStyles.search}
+            type="search"
+            aria-label="Search settings"
+            placeholder="Search"
+            leadingIcon={<Icon name="search" />}
+            value={query}
+            onChange={(event) => {
+              setQuery(event.target.value);
+            }}
           />
           <Button onClick={props.onClose} data-initial-focus="true">
             Done
           </Button>
         </header>
-        <Pane section={section} />
+        <SettingsQuery value={query}>
+          {searching ? (
+            <SearchResults query={query} panes={SEARCHED} />
+          ) : (
+            <Pane section={section} />
+          )}
+        </SettingsQuery>
       </div>
     </Sheet>
   );

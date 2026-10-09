@@ -70,7 +70,11 @@ const FILE: &[Entry] = &[
     C("save", "Save"),
     C("save-as", "Save As…"),
     S,
+    C("commit-changes", "Commit Changes…"),
+    C("discard-changes", "Discard Changes"),
+    S,
     C("export-table", "Export Table…"),
+    C("export-results", "Export Results…"),
     S,
     C("close-tab", "Close Tab"),
 ];
@@ -82,6 +86,12 @@ const EDIT: &[Entry] = &[
     N(Native::Copy),
     N(Native::Paste),
     N(Native::SelectAll),
+    S,
+    C("copy-selection", "Copy Rows"),
+    C("insert-row", "Insert Row"),
+    C("delete-row", "Delete Rows"),
+    S,
+    C("focus-filter", "Filter Rows"),
 ];
 const APPEARANCE: &[Entry] = &[
     C("theme-light", "Light"),
@@ -91,6 +101,7 @@ const APPEARANCE: &[Entry] = &[
 const VIEW: &[Entry] = &[
     C("sidebar", "Toggle Sidebar"),
     C("inspector", "Toggle Inspector"),
+    C("toggle-columns", "Toggle Columns Panel"),
     S,
     Entry::Submenu("Appearance", APPEARANCE),
     S,
@@ -117,6 +128,8 @@ const CONNECTION: &[Entry] = &[
 ];
 const WINDOW: &[Entry] = &[N(Native::Minimize), N(Native::Zoom)];
 const HELP: &[Entry] = &[
+    C("help-search", "Search Commands…"),
+    S,
     C("shortcuts", "Keyboard Shortcuts…"),
     S,
     C("open-logs", "Open Logs Folder"),
@@ -303,6 +316,15 @@ mod tests {
             "database",
             "refresh",
             "open-logs",
+            "commit-changes",
+            "discard-changes",
+            "insert-row",
+            "delete-row",
+            "copy-selection",
+            "focus-filter",
+            "toggle-columns",
+            "export-results",
+            "help-search",
         ] {
             assert!(ids.contains(&id), "missing {id}");
         }

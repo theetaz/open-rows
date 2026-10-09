@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useState } from 'react';
-import { Button, defaultAppearance, useTheme } from '@openrows/ui';
+import {
+  Button,
+  builtInThemes,
+  defaultAppearance,
+  useTheme,
+} from '@openrows/ui';
 import { Sheet } from '@openrows/ui/sheet';
 import { ThemeLibrary } from './ThemeLibrary';
 import { InterfaceSettings } from './InterfaceSettings';
@@ -8,6 +13,7 @@ import { TypographySettings } from './TypographySettings';
 import { SchemeCards } from './ThemePreview';
 import { ThemeEditor, ThemeTransfer } from './ThemeEditor';
 import type { ThemeDefinition } from '@openrows/ui';
+import { useSearching, useSettingMatch } from '../settings/settingsSearch';
 import styles from './Appearance.module.css';
 type Editor =
   | { kind: 'edit'; theme: ThemeDefinition }
@@ -33,38 +39,42 @@ export function AppearancePane(): React.JSX.Element {
   const closeReset = (): void => {
     setReset(false);
   };
+  const searching = useSearching();
+  const scheme = useSettingMatch('Color scheme', 'system light dark mode');
+  const library = useSettingMatch(
+    'Themes palette light dark mode create add',
+    ...[...builtInThemes, ...appearance.customThemes].map((t) => t.name),
+  );
   return (
     <>
-      <section aria-label="Color scheme">
-        <h3>Color scheme</h3>
-        <SchemeCards />
-      </section>
-      <ThemeLibrary
-        onEdit={(theme) => {
-          setEditor({ kind: 'edit', theme });
-        }}
-        onImport={() => {
-          setEditor({ kind: 'import' });
-        }}
-        onExport={(theme) => {
-          setEditor({ kind: 'export', theme });
-        }}
-      />
+      {scheme && (
+        <section aria-label="Color scheme">
+          <h3>Color scheme</h3>
+          <SchemeCards />
+        </section>
+      )}
+      {library && (
+        <ThemeLibrary
+          onEdit={(theme) => {
+            setEditor({ kind: 'edit', theme });
+          }}
+          onImport={() => {
+            setEditor({ kind: 'import' });
+          }}
+          onExport={(theme) => {
+            setEditor({ kind: 'export', theme });
+          }}
+        />
+      )}
       <InterfaceSettings />
       <TypographySettings />
-      <footer className={styles.footer}>
-        <p>
-          Saved in settings.json. System accessibility preferences take
-          priority.
-        </p>
-        <Button
-          onClick={() => {
+      {!searching && (
+        <AppearanceFooter
+          onReset={() => {
             setReset(true);
           }}
-        >
-          Reset appearance
-        </Button>
-      </footer>
+        />
+      )}
       {editor?.kind === 'edit' && (
         <ThemeEditor
           theme={editor.theme}
@@ -85,6 +95,18 @@ export function AppearancePane(): React.JSX.Element {
       )}
       {reset && <ResetAppearance onClose={closeReset} />}
     </>
+  );
+}
+
+/** Where appearance is saved, and Reset appearance. */
+function AppearanceFooter(props: { onReset: () => void }): React.JSX.Element {
+  return (
+    <footer className={styles.footer}>
+      <p>
+        Saved in settings.json. System accessibility preferences take priority.
+      </p>
+      <Button onClick={props.onReset}>Reset appearance</Button>
+    </footer>
   );
 }
 

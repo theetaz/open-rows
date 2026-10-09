@@ -53,7 +53,7 @@ export function SchemeCards(): React.JSX.Element {
   const night =
     themes.find((t) => t.id === appearance.darkTheme) ?? builtInThemes[0];
   return (
-    <div className={styles.schemeGrid}>
+    <div className={styles.schemeGrid} data-setting-row>
       {(['system', 'light', 'dark'] as const).map((value) => (
         <button
           key={value}

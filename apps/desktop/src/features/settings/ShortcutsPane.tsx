@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { Button } from '@openrows/ui';
 import {
@@ -14,6 +14,7 @@ import {
 } from '../commands';
 import type { Bindings } from '../commands/bindings';
 import type { KeyCombo } from '../commands/keys';
+import { matchesQuery, SettingsQuery } from './settingsSearch';
 import styles from './Settings.module.css';
 
 /** A shortcut that cannot be used yet: why, and whom it would replace. */
@@ -74,7 +75,7 @@ function ShortcutRow(props: {
     }
   };
   return (
-    <div className={styles.shortcutRow}>
+    <div className={styles.shortcutRow} data-setting-row>
       <span>{props.label}</span>
       <button
         type="button"
@@ -125,6 +126,10 @@ function ProblemNote(props: {
 /** Settings ▸ Shortcuts: rebind every command; menus follow immediately. */
 export function ShortcutsPane(): React.JSX.Element {
   const bindings = useBindings();
+  const query = useContext(SettingsQuery);
+  const shown = COMMANDS.filter(({ id, label }) =>
+    matchesQuery(query, [label, shortcutText(bindings, id), 'shortcut']),
+  );
   return (
     <section aria-label="Keyboard shortcuts">
       <header className={styles.paneHeader}>
@@ -138,7 +143,7 @@ export function ShortcutsPane(): React.JSX.Element {
         cancels.
       </p>
       <div className={styles.shortcuts}>
-        {COMMANDS.map(({ id, label }) => (
+        {shown.map(({ id, label }) => (
           <ShortcutRow key={id} id={id} label={label} bindings={bindings} />
         ))}
       </div>

@@ -12,6 +12,7 @@ import type { CellValue } from './cellValue';
 import { fieldActions } from './fieldActions';
 import { selectionActions } from './selectionActions';
 import { selectedCells } from './bulk/cells';
+import { rowText } from './copySelection';
 import type { TableColumnDto } from '@openrows/ipc';
 /** A right-click target plus the grid selection it belongs to, in data coordinates. */
 export type ContextTarget = GridContextTarget & {
@@ -136,12 +137,7 @@ function rowActions(
       label: 'Copy row',
       disabled: !fields,
       run: () => {
-        if (fields)
-          copy(
-            fields
-              .map((item) => tsv(item.state === 'empty' ? '' : item.text))
-              .join('\t'),
-          );
+        if (fields) copy(rowText(fields));
       },
     },
     { label: 'Add row', disabled: !writable, run: run(editing.insert) },
@@ -249,7 +245,4 @@ function filterValue(view: TableView, field: RowField): TableView {
     filtersOpen: true,
     offset: 0,
   };
-}
-function tsv(value: string): string {
-  return /[\t\n\r"]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value;
 }

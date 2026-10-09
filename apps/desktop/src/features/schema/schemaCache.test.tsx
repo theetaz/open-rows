@@ -12,7 +12,7 @@ import {
 } from '@openrows/ipc';
 import type { CatalogChanged, CatalogReply, SchemaDto } from '@openrows/ipc';
 import { connectTo } from '../../test/connect';
-import { Workspace } from '../../mock/Workspace';
+import { Workspace } from '../workspace/Workspace';
 
 vi.mock('@openrows/ipc', async () =>
   (await import('../../test/ipcStub')).ipcStub(),

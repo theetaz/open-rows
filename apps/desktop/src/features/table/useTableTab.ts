@@ -57,6 +57,8 @@ export type TableActions = {
   toggleHidden: (name: string) => void;
   mode: (mode: ViewMode) => void;
   count: () => void;
+  /** Load the current page again (Refresh). */
+  reload: () => void;
 };
 
 /** A table tab's derived state and actions. */
@@ -113,9 +115,15 @@ export function useTableTab({
     query,
     result: hideRowId(entry.run.results.at(-1), rowId),
     total: total(entry, query),
-    actions: actions({ change, columns, entry }, () => {
-      if (sessionId) views.count(tabId, countKey(query), { sessionId, query });
-    }),
+    actions: {
+      ...actions({ change, columns, entry }, () => {
+        if (sessionId)
+          views.count(tabId, countKey(query), { sessionId, query });
+      }),
+      reload: () => {
+        change(reloaded);
+      },
+    },
     cancelPage: () => {
       views.cancelPage(tabId);
     },
@@ -148,7 +156,7 @@ type Context = {
 function actions(
   { change, columns, entry }: Context,
   count: () => void,
-): TableActions {
+): Omit<TableActions, 'reload'> {
   const editRows = (
     update: (rows: readonly FilterRow[]) => FilterRow[],
   ): void => {
@@ -223,6 +231,11 @@ function actions(
     },
     count,
   };
+}
+
+/** The same view, asked to load its page again. */
+function reloaded(view: TableView): TableView {
+  return { ...view, revision: view.revision + 1 };
 }
 
 /** A next page exists when the shown page is full and finished loading. */

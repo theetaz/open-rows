@@ -4,6 +4,7 @@ import { commands, events } from './generated/bindings';
 import type {
   MenuCommand,
   MenuItemState,
+  SettingsChanged,
   UiReport,
 } from './generated/bindings';
 import { unwrap } from './connections';
@@ -33,6 +34,20 @@ export async function reportUiEvent(report: UiReport): Promise<void> {
 export async function readSettingsFile(): Promise<string | null> {
   if (!isTauri()) return null;
   return unwrap(commands.settingsRead());
+}
+
+/**
+ * Call `listener` whenever `settings.json` was changed outside the app; a
+ * no-op outside the native shell. Resolves the unsubscribe function.
+ */
+export async function onSettingsFileChanged(
+  listener: (change: SettingsChanged) => void,
+): Promise<() => void> {
+  if (!isTauri()) return () => undefined;
+  return events.settingsChanged.listen((event) => {
+    const change: SettingsChanged = event.payload;
+    listener(change);
+  });
 }
 
 /** Replace `settings.json` (a JSON object with `"openrows": 1`). */

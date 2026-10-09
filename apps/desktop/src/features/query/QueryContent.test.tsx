@@ -12,6 +12,7 @@ import {
 import type { ExecuteReply, QueryEventDto, StatementDto } from '@openrows/ipc';
 import type { Connections } from '../connections';
 import { profile } from '../../test/ipcStub';
+import { runTabCommand } from '../commands';
 import { QueryContent } from './QueryContent';
 import { useQueryTabs } from './useQueryTabs';
 
@@ -375,4 +376,21 @@ it('exports the shown result from the result store', async () => {
     }),
     expect.any(Function),
   );
+});
+
+it('Export results opens the export sheet of the shown result', async () => {
+  const user = await openTab('SELECT 1');
+  expect(runTabCommand('export-results')).toBe(true);
+  expect(screen.queryByRole('dialog', { name: 'Export Result' })).toBeNull();
+  await user.click(
+    screen.getByRole('button', { name: 'Run current statement' }),
+  );
+  send(...result(0, 'r1', 3), finished('completed'));
+  await screen.findByRole('button', { name: 'Export…' });
+  act(() => {
+    runTabCommand('export-results');
+  });
+  expect(
+    await screen.findByRole('dialog', { name: 'Export Result' }),
+  ).toBeVisible();
 });

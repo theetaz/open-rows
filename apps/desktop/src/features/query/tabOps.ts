@@ -62,6 +62,24 @@ export function keepTab(state: TabsState, id: string): TabsState {
   return updateTab(state, id, (item) => ({ ...item, preview: false }));
 }
 
+/**
+ * Rename a tab (it stops being a preview tab); a blank title changes
+ * nothing. Saving a file-bound tab names it after its file again.
+ */
+export function renameTab(
+  state: TabsState,
+  id: string,
+  title: string,
+): TabsState {
+  const trimmed = title.trim();
+  if (!trimmed) return state;
+  return updateTab(state, id, (tab) => ({
+    ...tab,
+    title: trimmed,
+    preview: false,
+  }));
+}
+
 /** Unpinned tabs Close Others closes: every other tab of the scope. */
 export function otherTabs(state: TabsState, id: string): string[] {
   const tab = state.tabs.find((item) => item.id === id);

@@ -11,7 +11,7 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
 import { closeSession, listSchemas, openSession } from '@openrows/ipc';
 import { connectTo } from '../../test/connect';
-import { Workspace } from '../../mock/Workspace';
+import { Workspace } from '../workspace/Workspace';
 
 vi.mock('@openrows/ipc', async () => {
   const stub = await import('../../test/ipcStub');
@@ -37,7 +37,7 @@ async function mount(): Promise<void> {
 async function openPanel(): Promise<HTMLElement> {
   await act(async () => {
     fireEvent.keyDown(window, { key: 'k', metaKey: true });
-    await import('../../mock/WorkspacePalettes');
+    await import('../workspace/WorkspacePalettes');
   });
   return screen.findByRole('dialog', { name: 'Open database' });
 }

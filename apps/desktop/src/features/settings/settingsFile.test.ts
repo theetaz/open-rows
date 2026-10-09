@@ -1,12 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
+import { readFileSync } from 'node:fs';
 import { expect, it, vi } from 'vitest';
-import { readSettingsFile, writeSettingsFile } from '@openrows/ipc';
+import {
+  onSettingsFileChanged,
+  readSettingsFile,
+  writeSettingsFile,
+} from '@openrows/ipc';
+import { COMMANDS } from '../commands';
 import { parseEditorSettings } from '../query/editorSettings';
 import { generalSettings, updateGeneral } from './general';
+import { onSettingsReload } from './localSetting';
 import {
   applySettings,
   collectSettings,
   hydrateSettings,
+  reloadSettingsFile,
 } from './settingsFile';
 
 vi.mock('@openrows/ipc', async () =>
@@ -100,4 +108,59 @@ it('keeps a valid result memory budget and replaces an invalid one', () => {
       results: { memoryBudgetMb: 512 },
     });
   }
+});
+
+it('reloads an externally edited file into every store', async () => {
+  let changed: ((change: Record<string, never>) => void) | undefined;
+  vi.mocked(onSettingsFileChanged).mockImplementationOnce((listener) => {
+    changed = listener;
+    return Promise.resolve(() => undefined);
+  });
+  vi.mocked(readSettingsFile).mockResolvedValueOnce(null);
+  await hydrateSettings();
+  const seen = vi.fn();
+  const stop = onSettingsReload(seen);
+  vi.mocked(readSettingsFile).mockResolvedValueOnce(
+    JSON.stringify({ openrows: 1, general: { density: 'comfortable' } }),
+  );
+  changed?.({});
+  await vi.waitFor(() => {
+    expect(seen).toHaveBeenCalledOnce();
+  });
+  expect(generalSettings.get().density).toBe('comfortable');
+  vi.mocked(readSettingsFile).mockResolvedValueOnce('{ broken');
+  await reloadSettingsFile();
+  vi.mocked(readSettingsFile).mockResolvedValueOnce('[1]');
+  await reloadSettingsFile();
+  expect(seen).toHaveBeenCalledOnce();
+  stop();
+});
+
+it('describes every section and field of settings.json in its JSON Schema', () => {
+  const schema = JSON.parse(
+    readFileSync('apps/desktop/src-tauri/settings.schema.json', 'utf8'),
+  ) as {
+    properties: Record<
+      string,
+      {
+        properties?: Record<string, unknown>;
+        propertyNames?: { enum: string[] };
+      }
+    >;
+  };
+  const file = collectSettings();
+  expect(Object.keys(schema.properties).sort()).toEqual(
+    ['$schema', ...Object.keys(file)].sort(),
+  );
+  for (const [name, value] of Object.entries(file)) {
+    if (name === 'shortcuts' || typeof value !== 'object' || value === null)
+      continue;
+    expect(
+      Object.keys(schema.properties[name]?.properties ?? {}),
+      name,
+    ).toEqual(Object.keys(value));
+  }
+  expect(schema.properties.shortcuts?.propertyNames?.enum).toEqual(
+    COMMANDS.map(({ id }) => id),
+  );
 });

@@ -15,6 +15,8 @@ export function ResultArea(props: {
   /** The tab's open session; export needs it for the connection's dialect. */
   sessionId: string | null;
   onCell: (cell: SelectedCell) => void;
+  /** Receives Export… of the shown result, for the Export results command. */
+  onExportable?: ((exportShown: (() => void) | null) => void) | undefined;
 }): React.JSX.Element {
   const { run, sessionId } = props;
   const [exporting, setExporting] = useState<ResultMeta | null>(null);
@@ -26,6 +28,7 @@ export function ResultArea(props: {
         runDefault={props.runDefault}
         onCell={props.onCell}
         onExport={sessionId ? setExporting : undefined}
+        onExportable={props.onExportable}
       />
       {exporting && sessionId && (
         <ExportSheet

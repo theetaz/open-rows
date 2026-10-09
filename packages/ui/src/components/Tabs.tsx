@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
+import { useRef } from 'react';
 import type { KeyboardEvent } from 'react';
 import { IconButton } from './Button';
 import { Icon } from '../icons/Icon';
 import { startTabDrag } from './tabDrag';
+import { TabTitleField } from './TabTitleField';
+import { useOverflowing } from './useOverflowing';
 import styles from './Navigation.module.css';
 
 type Tab = {
@@ -14,6 +17,8 @@ type Tab = {
   pinned?: boolean;
   /** The preview tab: italic until kept. */
   preview?: boolean;
+  /** The editable title when `label` adds decorations (e.g. an unsaved dot). */
+  name?: string;
 };
 type Props = {
   tabs: readonly Tab[];
@@ -27,16 +32,46 @@ type Props = {
   onMenu?: ((id: string, x: number, y: number) => void) | undefined;
   /** Double-click: keep a preview tab. */
   onKeep?: ((id: string) => void) | undefined;
+  /** The tab whose title is being edited in place. */
+  renaming?: string | null | undefined;
+  /** Double-click asks to edit a tab's title. */
+  onRenameStart?: ((id: string) => void) | undefined;
+  /** The edited title, or `null` when editing was cancelled. */
+  onRename?: ((id: string, title: string | null) => void) | undefined;
+  /** The overflow button (shown while tabs do not fit) at its bottom-left. */
+  onOverflow?: ((x: number, y: number) => void) | undefined;
 };
 /** Shrinking, then scrolling document tabs with roving keyboard focus. */
 export function Tabs(props: Props): React.JSX.Element {
+  const list = useRef<HTMLDivElement>(null);
+  const overflowing = useOverflowing(list, props.tabs.length);
+  const { onOverflow } = props;
   return (
     <div className={styles.tabStrip}>
-      <div role="tablist" aria-label="Workspace tabs" className={styles.tabs}>
+      <div
+        ref={list}
+        role="tablist"
+        aria-label="Workspace tabs"
+        className={styles.tabs}
+      >
         {props.tabs.map((tab) => (
           <DocumentTab key={tab.id} tab={tab} owner={props} />
         ))}
       </div>
+      {overflowing && onOverflow && (
+        <IconButton
+          aria-label="All tabs"
+          aria-haspopup="menu"
+          variant="ghost"
+          size="sm"
+          onClick={(event) => {
+            const box = event.currentTarget.getBoundingClientRect();
+            onOverflow(box.left, box.bottom);
+          }}
+        >
+          <Icon name="chevronDown" />
+        </IconButton>
+      )}
       <IconButton
         aria-label="New tab"
         variant="ghost"
@@ -56,6 +91,7 @@ function DocumentTab({
   owner: Props;
 }): React.JSX.Element {
   const active = tab.id === owner.active;
+  const renaming = owner.renaming === tab.id;
   const { onReorder } = owner;
   return (
     <div
@@ -65,10 +101,11 @@ function DocumentTab({
       data-pinned={tab.pinned ?? false}
       data-preview={tab.preview ?? false}
       onPointerDown={
-        onReorder &&
-        ((event) => {
-          startTabDrag(event, tab.id, onReorder);
-        })
+        onReorder && !renaming
+          ? (event) => {
+              startTabDrag(event, tab.id, onReorder);
+            }
+          : undefined
       }
       onAuxClick={(event) => {
         if (event.button === 1 && !tab.pinned) {
@@ -81,24 +118,20 @@ function DocumentTab({
         event.preventDefault();
         owner.onMenu(tab.id, event.clientX, event.clientY);
       }}
-      onDoubleClick={() => owner.onKeep?.(tab.id)}
+      onDoubleClick={() => {
+        if (renaming) return;
+        owner.onKeep?.(tab.id);
+        owner.onRenameStart?.(tab.id);
+      }}
     >
-      <button
-        type="button"
-        role="tab"
-        title={tab.title}
-        aria-selected={active}
-        tabIndex={active ? 0 : -1}
-        onClick={() => {
-          owner.onSelect(tab.id);
-        }}
-        onKeyDown={(event) => {
-          navigate(event, tab.id, owner);
-        }}
-      >
-        <span aria-hidden="true">{tab.kind === 'query' ? '›_' : '▦'}</span>
-        <span>{tab.label}</span>
-      </button>
+      {renaming ? (
+        <TabTitleField
+          title={tab.name ?? tab.label}
+          onDone={(title) => owner.onRename?.(tab.id, title)}
+        />
+      ) : (
+        <TabButton tab={tab} active={active} owner={owner} />
+      )}
       {tab.pinned ? (
         <span className={styles.pin} aria-label="Pinned" role="img">
           <Icon name="pin" />
@@ -115,6 +148,34 @@ function DocumentTab({
         </button>
       )}
     </div>
+  );
+}
+function TabButton({
+  tab,
+  active,
+  owner,
+}: {
+  tab: Tab;
+  active: boolean;
+  owner: Props;
+}): React.JSX.Element {
+  return (
+    <button
+      type="button"
+      role="tab"
+      title={tab.title}
+      aria-selected={active}
+      tabIndex={active ? 0 : -1}
+      onClick={() => {
+        owner.onSelect(tab.id);
+      }}
+      onKeyDown={(event) => {
+        navigate(event, tab.id, owner);
+      }}
+    >
+      <span aria-hidden="true">{tab.kind === 'query' ? '›_' : '▦'}</span>
+      <span>{tab.label}</span>
+    </button>
   );
 }
 /** ⌥← / ⌥→ on a focused tab moves it one place. */

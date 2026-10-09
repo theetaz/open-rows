@@ -1,0 +1,337 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OpenRows settings",
+  "description": "settings.json in the OpenRows app data folder. OpenRows validates every field on load and keeps the default for anything missing or invalid; edits made while the app runs apply within a second.",
+  "type": "object",
+  "required": ["openrows"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Reference to this schema, for editors."
+    },
+    "openrows": {
+      "const": 1,
+      "description": "File format version."
+    },
+    "theme": {
+      "enum": ["system", "light", "dark"],
+      "default": "system",
+      "description": "Color scheme: follow the system, or always light or dark."
+    },
+    "general": {
+      "type": "object",
+      "description": "Settings ▸ General.",
+      "properties": {
+        "restoreSession": {
+          "type": "boolean",
+          "description": "Reopen the previous connections, databases and tabs on launch.",
+          "default": true
+        },
+        "density": {
+          "enum": ["compact", "regular", "comfortable"],
+          "default": "regular",
+          "description": "Row height of the sidebar's object tree and lists."
+        },
+        "reduceMotion": {
+          "type": "boolean",
+          "description": "Turn off panel, popover and disclosure animations even when the system allows them.",
+          "default": false
+        },
+        "keepaliveSeconds": {
+          "enum": [0, 15, 30, 60, 120],
+          "default": 30,
+          "description": "Seconds between checks of idle connections; 0 turns them off."
+        }
+      }
+    },
+    "appearance": {
+      "type": "object",
+      "description": "Settings ▸ Appearance.",
+      "properties": {
+        "lightTheme": {
+          "type": "string",
+          "default": "openrows",
+          "description": "Theme in light mode: openrows, graphite, ocean, forest, ember, iris or a custom theme id."
+        },
+        "darkTheme": {
+          "type": "string",
+          "default": "openrows",
+          "description": "Theme in dark mode: openrows, graphite, ocean, forest, ember, iris or a custom theme id."
+        },
+        "contrast": {
+          "type": "integer",
+          "minimum": 80,
+          "maximum": 150,
+          "default": 100,
+          "description": "Contrast in percent."
+        },
+        "opacity": {
+          "type": "integer",
+          "minimum": 50,
+          "maximum": 100,
+          "default": 95,
+          "description": "Glass opacity in percent."
+        },
+        "motion": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 400,
+          "default": 0,
+          "description": "Sidebar open and close animation in milliseconds; 0 is instant."
+        },
+        "changeColors": {
+          "enum": ["red-green", "blue-orange"],
+          "default": "red-green",
+          "description": "Colors that distinguish inserted and deleted rows."
+        },
+        "uiFont": {
+          "enum": ["system", "helvetica", "arial", "verdana"],
+          "default": "system",
+          "description": "Interface font."
+        },
+        "monoFont": {
+          "enum": ["system", "menlo", "consolas", "courier"],
+          "default": "system",
+          "description": "Monospace font of the editor and grid."
+        },
+        "uiSize": {
+          "type": "integer",
+          "minimum": 11,
+          "maximum": 18,
+          "default": 13,
+          "description": "Interface font size in points."
+        },
+        "monoSize": {
+          "type": "integer",
+          "minimum": 11,
+          "maximum": 18,
+          "default": 12,
+          "description": "Monospace font size in points."
+        },
+        "customThemes": {
+          "type": "array",
+          "maxItems": 24,
+          "description": "Imported and edited themes.",
+          "items": {
+            "$ref": "#/definitions/theme"
+          }
+        }
+      }
+    },
+    "editor": {
+      "type": "object",
+      "description": "Settings ▸ Editor.",
+      "properties": {
+        "fontSize": {
+          "enum": [null, 11, 12, 13, 14, 15, 16, 18, 20, 24],
+          "default": null,
+          "description": "Editor font size; null uses the appearance size."
+        },
+        "invisibles": {
+          "type": "boolean",
+          "description": "Show spaces and tabs.",
+          "default": false
+        },
+        "wrap": {
+          "type": "boolean",
+          "description": "Wrap long lines.",
+          "default": false
+        },
+        "highlightQuery": {
+          "type": "boolean",
+          "description": "Highlight the statement at the cursor.",
+          "default": false
+        },
+        "autocomplete": {
+          "type": "boolean",
+          "description": "Suggest keywords and schema names while typing.",
+          "default": true
+        },
+        "upperKeywords": {
+          "type": "boolean",
+          "description": "Complete keywords in upper case.",
+          "default": true
+        },
+        "keyBinding": {
+          "enum": ["default", "vim"],
+          "default": "default",
+          "description": "Editor key bindings."
+        },
+        "rowLimit": {
+          "enum": [null, 100, 500, 1000, 5000, 10000, 50000, 100000, 500000],
+          "default": null,
+          "description": "Rows kept per result set; null is no limit."
+        },
+        "indentWidth": {
+          "enum": [2, 4],
+          "default": 2,
+          "description": "Beautify indent width."
+        },
+        "indentWith": {
+          "enum": ["spaces", "tabs"],
+          "default": "spaces",
+          "description": "Beautify indents with spaces or tabs."
+        },
+        "keywordCase": {
+          "enum": ["preserve", "upper", "lower"],
+          "default": "upper",
+          "description": "Beautify keyword case."
+        },
+        "indentStyle": {
+          "enum": ["standard", "tabularLeft", "tabularRight"],
+          "default": "standard",
+          "description": "Beautify layout."
+        },
+        "autoSave": {
+          "type": "boolean",
+          "description": "Keep query tab text and bound files saved as you type.",
+          "default": true
+        },
+        "queryParams": {
+          "enum": ["off", "named", "numbered", "anonymous"],
+          "default": "off",
+          "description": "Query parameter style prompted for before running."
+        },
+        "resultView": {
+          "enum": ["tabs", "last"],
+          "default": "tabs",
+          "description": "One result tab per statement, or only the last result."
+        },
+        "returnOnError": {
+          "type": "boolean",
+          "description": "Stop a multi-statement run at the first error.",
+          "default": true
+        },
+        "runDefault": {
+          "enum": ["current", "all"],
+          "default": "current",
+          "description": "What the Run button and ⌘↵ run."
+        }
+      }
+    },
+    "shortcuts": {
+      "type": "object",
+      "description": "Rebound shortcuts by command id; null removes a default shortcut.",
+      "propertyNames": {
+        "enum": [
+          "sidebar",
+          "inspector",
+          "new-tab",
+          "close-tab",
+          "database",
+          "quick",
+          "commands",
+          "refresh",
+          "run-current",
+          "run-all",
+          "cancel",
+          "beautify",
+          "uglify",
+          "open-file",
+          "save",
+          "save-as",
+          "export-table",
+          "export-results",
+          "commit-changes",
+          "discard-changes",
+          "insert-row",
+          "delete-row",
+          "copy-selection",
+          "focus-filter",
+          "toggle-columns",
+          "new-connection",
+          "connect",
+          "disconnect",
+          "safe",
+          "search",
+          "schema",
+          "settings",
+          "shortcuts",
+          "help-search",
+          "open-logs",
+          "theme-light",
+          "theme-dark",
+          "theme-system",
+          "gallery"
+        ]
+      },
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string",
+            "pattern": "^((Ctrl|Alt|Shift|Cmd)\\+)*([A-Z0-9]|Enter|Comma|Period|Slash|Backslash|BracketLeft|BracketRight|Semicolon|Quote|Minus|Equal|Backquote|Backspace|Delete|Escape|Tab|Space|ArrowUp|ArrowDown|ArrowLeft|ArrowRight|F([1-9]|1[0-2]))$"
+          }
+        ]
+      }
+    },
+    "diagnostics": {
+      "type": "object",
+      "description": "Settings ▸ Diagnostics.",
+      "properties": {
+        "logLevel": {
+          "enum": ["error", "warn", "info", "debug", "trace"],
+          "default": "info",
+          "description": "What the log file records; applies at the next launch."
+        },
+        "crashReports": {
+          "type": "boolean",
+          "description": "Opt-in crash reports (stored only; OpenRows sends nothing).",
+          "default": false
+        }
+      }
+    },
+    "results": {
+      "type": "object",
+      "description": "Result store; read by the core at launch.",
+      "properties": {
+        "memoryBudgetMb": {
+          "type": "integer",
+          "minimum": 64,
+          "maximum": 65536,
+          "default": 512,
+          "description": "Arrow memory kept in RAM across results before spilling to disk, in MiB; applies at the next launch."
+        }
+      }
+    }
+  },
+  "definitions": {
+    "half": {
+      "type": "object",
+      "required": ["canvas", "accent"],
+      "properties": {
+        "canvas": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "accent": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        }
+      }
+    },
+    "theme": {
+      "type": "object",
+      "required": ["id", "name", "light", "dark"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^custom-[A-Za-z0-9_-]{1,80}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50
+        },
+        "light": {
+          "$ref": "#/definitions/half"
+        },
+        "dark": {
+          "$ref": "#/definitions/half"
+        }
+      }
+    }
+  }
+}

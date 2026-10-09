@@ -2,7 +2,14 @@
 import { expect, it } from 'vitest';
 import { emptyTabs, openTab, tabsOf } from './tabs';
 import type { QueryTabInit, TabsState } from './tabs';
-import { keepTab, moveTab, otherTabs, pinTab, tabsRightOf } from './tabOps';
+import {
+  keepTab,
+  moveTab,
+  otherTabs,
+  pinTab,
+  renameTab,
+  tabsRightOf,
+} from './tabOps';
 
 const scope = { connectionId: 'a', database: 'orders' };
 const other = { connectionId: 'b', database: 'orders' };
@@ -69,4 +76,14 @@ it('replaces the preview tab in place until it is kept', () => {
     'items',
   ]);
   expect(keepTab(state, 'query-1')).toBe(state);
+});
+
+it('renames a tab, keeping a preview tab and ignoring blank titles', () => {
+  const state = openTab(emptyTabs, scope, { ...table('users'), preview: true });
+  const renamed = renameTab(state, 'table-1', '  Active users ');
+  expect(renamed.tabs[0]).toMatchObject({
+    title: 'Active users',
+    preview: false,
+  });
+  expect(renameTab(renamed, 'table-1', '   ')).toBe(renamed);
 });

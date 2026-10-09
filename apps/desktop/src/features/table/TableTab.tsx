@@ -18,6 +18,7 @@ import type { ShowRow } from './row';
 import { useSelectedRow } from './useSelectedRow';
 import type { FooterAdd, FooterStructure } from './TableFooter';
 import { useTableKeys } from './useTableKeys';
+import { useTableCommandTarget } from './useTableCommandTarget';
 import { useTableTab } from './useTableTab';
 import { tableTarget } from './model';
 import type { TableViews } from './useTableViews';
@@ -66,6 +67,12 @@ export function TableTab(props: TableTabProps): React.JSX.Element {
   const state = useTableTab({ ...props, rowId: editing.info?.rowId ?? null });
   const { view, actions, columns } = state;
   useTableKeys(root, actions);
+  const onSelection = useTableCommandTarget({
+    root,
+    state,
+    editing,
+    ready: sessionId !== null,
+  });
   const structure = useStructure({ ...props, mode: view.mode });
   useEdited(
     editing.history.current.length + structure.schema.history.current.length,
@@ -98,14 +105,7 @@ export function TableTab(props: TableTabProps): React.JSX.Element {
     >
       <Banner {...props} />
       {view.mode === 'data' && <RecoveryBanner recovery={recovery} />}
-      {view.mode === 'data' && view.filtersOpen && (
-        <FilterBar
-          view={view}
-          columns={columns}
-          query={state.query}
-          actions={actions}
-        />
-      )}
+      {view.mode === 'data' && view.filtersOpen && <Filters state={state} />}
       {view.mode === 'data' ? (
         sessionId && (
           <TableData
@@ -113,6 +113,7 @@ export function TableTab(props: TableTabProps): React.JSX.Element {
             onRow={showRow}
             editing={editing}
             onContextMenu={context.show}
+            onSelection={onSelection}
           />
         )
       ) : (
@@ -133,6 +134,22 @@ export function TableTab(props: TableTabProps): React.JSX.Element {
         ready={sessionId !== null}
       />
     </section>
+  );
+}
+
+/** The filter bar of the data view. */
+function Filters({
+  state,
+}: {
+  state: ReturnType<typeof useTableTab>;
+}): React.JSX.Element {
+  return (
+    <FilterBar
+      view={state.view}
+      columns={state.columns}
+      query={state.query}
+      actions={state.actions}
+    />
   );
 }
 

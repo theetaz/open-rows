@@ -115,6 +115,7 @@ export type {
 /** settings.json and the native menu bar (M1-26, M1-27). */
 export {
   onMenuCommand,
+  onSettingsFileChanged,
   readSettingsFile,
   syncMenu,
   writeSettingsFile,

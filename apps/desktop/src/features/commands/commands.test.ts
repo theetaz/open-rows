@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { readFileSync } from 'node:fs';
 import { expect, it } from 'vitest';
 import {
   bindingsOf,
@@ -11,7 +12,7 @@ import {
   shortcutText,
 } from './bindings';
 import { comboOf, displayCombo, formatCombo, parseCombo } from './keys';
-import { COMMANDS } from './registry';
+import { COMMANDS, RESERVED, TABLE_COMMANDS } from './registry';
 import { tabCommandOf } from './tabCommands';
 import { menuStates } from './useMenuBridge';
 
@@ -118,4 +119,25 @@ it('gives the menu bar every command with its accelerator and state', () => {
   });
   expect(states.find((item) => item.id === 'save')?.enabled).toBe(false);
   expect(states.find((item) => item.id === 'cancel')?.accelerator).toBeNull();
+});
+
+it('gives every default shortcut to one command, never a reserved one', () => {
+  const shortcuts = COMMANDS.flatMap(({ shortcut }) =>
+    shortcut ? [shortcut] : [],
+  );
+  expect(new Set(shortcuts).size).toBe(shortcuts.length);
+  for (const shortcut of shortcuts) {
+    expect(parseCombo(shortcut), shortcut).not.toBeNull();
+    expect(RESERVED[shortcut], shortcut).toBeUndefined();
+  }
+});
+
+it('lists every menu bar item as a command, including table and edit actions', () => {
+  const menu = readFileSync('apps/desktop/src-tauri/src/menu.rs', 'utf8');
+  const ids = [...menu.matchAll(/\bC\("([\w-]+)"/g)].map((match) => match[1]);
+  const known = new Set(COMMANDS.map(({ id }) => id));
+  for (const id of ids) expect(known.has(id ?? ''), id).toBe(true);
+  for (const id of [...TABLE_COMMANDS, 'export-results', 'help-search'])
+    expect(ids).toContain(id);
+  expect(known.has('assistant')).toBe(false);
 });
