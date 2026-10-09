@@ -1,0 +1,19 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* The Processes tab: the Structure view's header and grid, plus a status line. */
+.count {
+  margin-inline-start: auto;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.cell {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-4);
+  min-width: 0;
+}
+.cell > span:first-child {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

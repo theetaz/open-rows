@@ -17,7 +17,8 @@
 //! they probe and reconnect, also after wake. "Ask every time" passwords live
 //! in [`asked`] while connected; [`reveal`] is the one command that returns a
 //! saved secret, on the user's explicit request. [`limits`] applies statement
-//! timeouts and suspends sessions idle past the profile's idle timeout.
+//! timeouts and suspends sessions idle past the profile's idle timeout;
+//! [`processes`] lists and signals server processes on the metadata sessions.
 mod asked;
 pub(crate) mod attach;
 pub(crate) mod catalog;
@@ -36,6 +37,8 @@ pub(crate) mod limits;
 mod limits_dto;
 mod metadata;
 mod owners;
+pub(crate) mod processes;
+mod processes_dto;
 pub(crate) mod profiles;
 pub(crate) mod prompts;
 mod proxy_dto;

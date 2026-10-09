@@ -49,6 +49,13 @@ export {
   testConnection,
   updateProfile,
 } from './connections';
+/** Server process list with cancel and kill (FR-ADMIN-01). */
+export { listProcesses, signalProcess } from './processes';
+export type {
+  ProcessDto,
+  ProcessSignalDto,
+  ProcessSignalRequest,
+} from './generated/bindings';
 /** Native alerts for destructive confirmations (scoped dialog plugin). */
 export { confirmDestructive, pickFileValue } from './dialog';
 export type { DestructivePrompt } from './dialog';

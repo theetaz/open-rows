@@ -13,6 +13,7 @@
 //! from a side connection. The catalog reads `information_schema`; staged
 //! edits commit in one transaction with byte-exact row guards.
 #![forbid(unsafe_code)]
+mod admin;
 mod auth;
 mod capabilities;
 mod catalog;

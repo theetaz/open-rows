@@ -21,6 +21,8 @@ type RailDatabases = {
   onCloseDatabase?: (name: string) => void;
   onProfileDatabase?: (id: string, name: string) => void;
   onCloseProfileDatabase?: (id: string, name: string) => void;
+  /** Open a database's process list (engines with one only). */
+  onProcesses?: ((id: string, name: string) => void) | undefined;
 };
 
 /**
@@ -189,6 +191,13 @@ function WorkspaceGroups(
                       props.onCloseProfileDatabase(profile.id, name);
                     else props.onCloseDatabase?.(name);
                   }}
+                  onProcesses={
+                    profile.processList && props.onProcesses
+                      ? (name) => {
+                          props.onProcesses?.(profile.id, name);
+                        }
+                      : undefined
+                  }
                   onKeyDown={navigateRail}
                 />
               </WorkspaceConnection>

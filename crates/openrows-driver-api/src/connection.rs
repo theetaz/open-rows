@@ -7,6 +7,7 @@
 //! missing facet surfaces as `Unsupported`.
 use openrows_sql::select::BoundSql;
 
+use crate::admin::Admin;
 use crate::catalog::TableStructure;
 use crate::catalog::{ColumnSummary, DatabaseSummary, ObjectKind, ObjectSummary, SchemaSummary};
 use crate::diagram::{SchemaDiagram, read_per_table};
@@ -60,6 +61,11 @@ pub trait Connection: Session {
 
     /// Row and structure commits; `None` when the engine cannot edit.
     fn editor(&mut self) -> Option<&mut dyn Editor> {
+        None
+    }
+
+    /// Process list and cancel/terminate; `None` when the engine has none.
+    fn admin(&mut self) -> Option<&mut dyn Admin> {
         None
     }
 }
@@ -213,4 +219,15 @@ pub fn editor(connection: &mut dyn Connection) -> Result<&mut dyn Editor, Driver
     connection
         .editor()
         .ok_or_else(|| DriverError::Unsupported(format!("editing {product} data")))
+}
+
+/// The connection's admin facet, or `Unsupported` naming the product.
+///
+/// # Errors
+/// `Unsupported` when the driver has no process list.
+pub fn admin(connection: &mut dyn Connection) -> Result<&mut dyn Admin, DriverError> {
+    let product = connection.server().product.clone();
+    connection
+        .admin()
+        .ok_or_else(|| DriverError::Unsupported(format!("{product} process lists")))
 }

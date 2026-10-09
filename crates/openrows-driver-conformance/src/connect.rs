@@ -58,6 +58,7 @@ async fn coherence(
     let claims = [
         (Feature::Catalog, connection.catalog().is_some()),
         (Feature::RowEdits, connection.editor().is_some()),
+        (Feature::ProcessList, connection.admin().is_some()),
         (Feature::Cancel, connection.cancel_handle().is_some()),
         (Feature::StructureChanges, target.driver.supports_alter()),
         (Feature::SchemaFingerprint, fingerprint),

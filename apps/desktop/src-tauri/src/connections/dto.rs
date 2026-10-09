@@ -79,6 +79,8 @@ pub(crate) struct ProfileDto {
     limits: LimitsDto,
     /// SQL run after every connect (FR-CONN-10); empty for none.
     startup_commands: String,
+    /// The driver lists server processes and cancels or kills them (FR-ADMIN-01).
+    process_list: bool,
 }
 
 impl From<&ConnectionProfile> for ProfileDto {
@@ -112,6 +114,9 @@ impl From<&ConnectionProfile> for ProfileDto {
             record_history: profile.record_history,
             limits: profile.limits.into(),
             startup_commands: profile.startup_commands.clone(),
+            process_list: super::drivers::driver(profile.driver)
+                .capabilities()
+                .supports(openrows_driver_api::Feature::ProcessList),
         }
     }
 }

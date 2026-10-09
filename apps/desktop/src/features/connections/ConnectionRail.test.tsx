@@ -166,6 +166,7 @@ it('lists the active connection opened databases as tiles with switch and close'
     database: 'orders',
     onDatabase: vi.fn(),
     onCloseDatabase: vi.fn(),
+    onProcesses: vi.fn(),
   };
   render(<ConnectionRail {...rail} />);
   const group = screen.getByRole('group', { name: 'Opened databases' });
@@ -188,6 +189,12 @@ it('lists the active connection opened databases as tiles with switch and close'
   await user.click(screen.getByRole('menuitem', { name: 'Close database' }));
   expect(rail.onCloseDatabase).toHaveBeenCalledWith('orders');
   expect(tiles[0]).toHaveFocus();
+  fireEvent.contextMenu(tiles[1] as HTMLElement);
+  await user.click(screen.getByRole('menuitem', { name: 'Show processes' }));
+  expect(rail.onProcesses).toHaveBeenCalledWith(
+    rail.activeId,
+    'a_very_long_reporting_database',
+  );
 });
 
 it('collapses environment and connection lists without closing sessions, and scopes equal database names', async () => {

@@ -18,6 +18,7 @@
 //! | [`Group::Metadata`] | `Catalog` | The fixture database, schema, table and view are listed with the right kinds; the search index finds them; columns come back in order with types, nullability and the primary key. |
 //! | [`Group::Structure`] | `StructureChanges` | A generated change set (type change, column rename, added column with a default, new index) commits through `commit_ddl` and the table reads back as staged with its row intact; an unknown column is refused before any SQL. |
 //! | [`Group::Edits`] | `RowEdits` | The row key is discovered; snapshots are exact text; generated insert/update/delete commit atomically; a stale guard rolls the whole set back with `40001`; with `TransactionalDdl`, a failing DDL set leaves nothing behind. |
+//! | [`Group::Processes`] | `ProcessList` | The listing connection appears exactly once, marked current, with its own process id; a sleeping statement on a second connection is listed with its query text, and cancelling it from the first ends it within seconds with the dialect's cancel SQLSTATE while its session stays usable; terminating the second connection ends it; signalling a process that is gone is a `Server` error `42704`. |
 //!
 //! A test crate states how to reach its engine and invokes
 //! [`conformance_tests!`], which expands to one `#[test]` per group.
@@ -30,6 +31,7 @@ mod dialect;
 mod edits;
 mod errors;
 mod metadata;
+mod processes;
 mod sink;
 mod streaming;
 mod structure;
@@ -110,11 +112,13 @@ pub enum Group {
     Edits,
     /// Generated structure changes.
     Structure,
+    /// Process list, cancel and terminate from another connection.
+    Processes,
 }
 
 impl Group {
     /// Every group, in run order.
-    pub const ALL: [Self; 8] = [
+    pub const ALL: [Self; 9] = [
         Self::Connect,
         Self::Types,
         Self::Streaming,
@@ -123,6 +127,7 @@ impl Group {
         Self::Metadata,
         Self::Edits,
         Self::Structure,
+        Self::Processes,
     ];
 
     /// The feature a driver must claim for the group to run.
@@ -133,6 +138,7 @@ impl Group {
             Self::Metadata => Some(Feature::Catalog),
             Self::Edits => Some(Feature::RowEdits),
             Self::Structure => Some(Feature::StructureChanges),
+            Self::Processes => Some(Feature::ProcessList),
             Self::Connect | Self::Types | Self::Streaming | Self::Errors => None,
         }
     }
@@ -156,6 +162,7 @@ impl Group {
             Self::Metadata => metadata::run(target).await?,
             Self::Edits => edits::run(target).await?,
             Self::Structure => structure::run(target).await?,
+            Self::Processes => processes::run(target).await?,
         }
         Ok(Verdict::Passed)
     }
@@ -172,6 +179,7 @@ impl Group {
             Self::Metadata => "metadata",
             Self::Edits => "edits",
             Self::Structure => "structure",
+            Self::Processes => "processes",
         }
     }
 }
@@ -220,6 +228,7 @@ macro_rules! conformance_tests {
             metadata_listing => Metadata,
             edit_contract => Edits,
             structure_contract => Structure,
+            process_list_contract => Processes,
         );
     };
     (@tests $attributes:tt $prepare:path; $($name:ident => $group:ident,)*) => {
@@ -247,7 +256,8 @@ mod tests {
                 Feature::Cancel,
                 Feature::Catalog,
                 Feature::RowEdits,
-                Feature::StructureChanges
+                Feature::StructureChanges,
+                Feature::ProcessList
             ]
         );
         assert!(fixture_name(Group::Edits, "t").starts_with("orc_edits_"));

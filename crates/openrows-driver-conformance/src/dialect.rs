@@ -261,6 +261,19 @@ pub(crate) fn endless() -> String {
     format!("SELECT count(*) FROM {joins}")
 }
 
+/// Sleeps `seconds` unless interrupted, then fails with the cancel SQLSTATE.
+/// `MySQL`'s `SLEEP()` alone returns 1 when killed instead of failing, so
+/// it sleeps inside a filtered derived table.
+pub(crate) fn sleep(dialect: Dialect, seconds: u32) -> String {
+    match dialect {
+        Dialect::MySql => format!(
+            "SELECT COUNT(*) FROM (SELECT 1 AS n UNION ALL SELECT 2) AS orc_sleep \
+             WHERE SLEEP({seconds}) = 0"
+        ),
+        _ => format!("SELECT pg_sleep({seconds})"),
+    }
+}
+
 /// Expected SQLSTATEs of common failures.
 pub(crate) struct Codes {
     pub(crate) syntax: &'static str,
@@ -311,5 +324,7 @@ mod tests {
         assert_eq!(codes(Dialect::Sqlite).cancelled, "57014");
         assert!(type_cases(Dialect::Postgres).len() > type_cases(Dialect::Sqlite).len());
         assert_eq!(endless().matches("CROSS JOIN").count(), 11);
+        assert!(sleep(Dialect::MySql, 5).contains("SLEEP(5)"));
+        assert_eq!(sleep(Dialect::Postgres, 5), "SELECT pg_sleep(5)");
     }
 }

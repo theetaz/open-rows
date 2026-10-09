@@ -127,6 +127,7 @@ export const COMMANDS: readonly CommandSpec[] = [
     hint: '⌘F in sidebar',
   },
   { id: 'schema', label: 'Next schema', shortcut: null },
+  { id: 'processes', label: 'Show processes', shortcut: null },
   { id: 'settings', label: 'Settings…', shortcut: 'Cmd+Comma' },
   { id: 'shortcuts', label: 'Keyboard shortcuts…', shortcut: null },
   { id: 'help-search', label: 'Search commands…', shortcut: null },

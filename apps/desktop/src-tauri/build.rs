@@ -30,6 +30,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "catalog_search",
             "catalog_invalidate",
             "catalog_check",
+            "processes_list",
+            "process_signal",
             "connection_open",
             "connection_close",
             "query_execute",

@@ -100,6 +100,13 @@ export const commands = {
 	 */
 	catalogCheck: (profileId: string, database: string) => typedError<boolean, IpcError>(__TAURI_INVOKE("catalog_check", { profileId, database })),
 	/**
+	 *  Client sessions on the server of `database`'s connection, the longest
+	 *  running first, read on its metadata connection.
+	 */
+	processesList: (profileId: string, database: string) => typedError<ProcessDto[], IpcError>(__TAURI_INVOKE("processes_list", { profileId, database })),
+	/**  Cancel a process's statement or terminate it; the webview confirms first. */
+	processSignal: (request: ProcessSignalRequest) => typedError<null, IpcError>(__TAURI_INVOKE("process_signal", { request })),
+	/**
 	 *  Split, bind, gate and start SQL on an open session.
 	 * 
 	 *  Placeholders without values ask for them (`parametersRequired`);
@@ -985,6 +992,50 @@ export type PickFileKind =
 /**  Where to create a new `SQLite` database file (save panel). */
 "newSqliteDatabase";
 
+/**  One server process as the Processes view lists it. */
+export type ProcessDto = {
+	/**  Backend pid or connection id (32-bit, like the `MySQL` handshake's). */
+	id: number,
+	user: string | null,
+	database: string | null,
+	/**  Client address and port; `None` for local sockets. */
+	client: string | null,
+	/**  Application name the client reported. */
+	application: string | null,
+	/**  e.g. `active`, `idle in transaction`, `Query`, `Sleep`. */
+	state: string | null,
+	/**  What the process waits for, e.g. `Lock: relation` or `User sleep`. */
+	wait: string | null,
+	/**  When the current or last statement started, as server text. */
+	queryStart: string | null,
+	/**  How long the current state or statement has run. */
+	durationMs: number | null,
+	/**  The current or last statement. */
+	query: string | null,
+	/**  The connection the list runs on (the app's metadata connection). */
+	current: boolean,
+	/**  Reports this app's application name: one of the app's own connections. */
+	app: boolean,
+};
+
+/**  What to do to a process. */
+export type ProcessSignalDto = 
+/**  Abort the running statement; the session stays connected. */
+"cancelQuery" | 
+/**  End the session; its open transaction rolls back. */
+"terminate";
+
+/**  Cancel or terminate one process, after the user confirmed it. */
+export type ProcessSignalRequest = {
+	profileId: string,
+	/**  The database whose metadata connection sends the signal. */
+	database: string,
+	processId: number,
+	signal: ProcessSignalDto,
+	/**  The user confirmed signalling the connection the list runs on. */
+	allowOwn: boolean,
+};
+
 /**
  *  A saved connection without secrets; `hasPassword` says whether the
  *  keychain holds one.
@@ -1017,6 +1068,8 @@ export type ProfileDto = {
 	limits: LimitsDto,
 	/**  SQL run after every connect (FR-CONN-10); empty for none. */
 	startupCommands: string,
+	/**  The driver lists server processes and cancels or kills them (FR-ADMIN-01). */
+	processList: boolean,
 };
 
 /**  Connection form values sent on save and test. */

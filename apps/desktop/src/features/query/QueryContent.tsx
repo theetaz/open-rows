@@ -22,6 +22,11 @@ type SessionStatus = ReturnType<Connections['statusOf']>;
 const QueryTab = lazy(() =>
   import('./QueryTab').then((module) => ({ default: module.QueryTab })),
 );
+const ProcessesTab = lazy(() =>
+  import('../processes').then((module) => ({
+    default: module.ProcessesTab,
+  })),
+);
 const TableTab = lazy(() =>
   import('../table/TableTab').then((module) => ({
     default: module.TableTab,
@@ -126,7 +131,7 @@ export function QueryContent(props: Props): React.JSX.Element {
   );
 }
 
-/** The active tab: a table view or a query editor. */
+/** The active tab: a process list, a table view or a query editor. */
 function TabBody(
   props: Props & {
     tab: Tab;
@@ -139,6 +144,16 @@ function TabBody(
   const { tab, status } = props;
   const sessionId = sessionOf(status, tab.database);
   const reason = notice(status, tab.database);
+  if (tab.kind === 'processes')
+    return (
+      <ProcessesTab
+        key={tab.id}
+        profile={props.connection}
+        database={tab.database}
+        connected={status.state === 'connected'}
+        onRow={props.onRow}
+      />
+    );
   if (tab.kind === 'table' && tab.table)
     return (
       <TableTab

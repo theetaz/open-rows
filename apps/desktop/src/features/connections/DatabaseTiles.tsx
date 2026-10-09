@@ -11,6 +11,8 @@ type Props = {
   active: string;
   onSelect: (name: string) => void;
   onClose: (name: string) => void;
+  /** Open the database's process list; absent when the engine has none. */
+  onProcesses?: ((name: string) => void) | undefined;
   onKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>) => void;
 };
 
@@ -77,6 +79,18 @@ function DatabaseTile(
           opener={opener}
           onClose={close}
         >
+          {props.onProcesses && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                close();
+                props.onProcesses?.(name);
+              }}
+            >
+              Show processes
+            </button>
+          )}
           <button
             type="button"
             role="menuitem"

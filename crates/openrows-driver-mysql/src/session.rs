@@ -176,6 +176,10 @@ impl Connection for MySqlSession {
         &self.summary
     }
 
+    fn admin(&mut self) -> Option<&mut dyn openrows_driver_api::Admin> {
+        Some(self)
+    }
+
     fn catalog(&mut self) -> Option<&mut dyn Catalog> {
         Some(self)
     }

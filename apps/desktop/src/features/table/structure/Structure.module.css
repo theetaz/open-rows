@@ -94,6 +94,18 @@
   color: var(--or-secondary);
   font-weight: var(--or-weight-regular);
 }
+.sort {
+  all: unset;
+  display: block;
+  inline-size: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: default;
+}
+.sort:focus-visible {
+  outline: var(--or-focus-width) solid var(--or-focus);
+  outline-offset: -2px;
+}
 .grid tbody tr:nth-child(even) td {
   background: var(--or-row-stripe);
 }

@@ -46,6 +46,7 @@ export function Workspace({
         onSettings={() => {
           onSettings();
         }}
+        onProcesses={controller.openProcesses}
       />
       <div className={styles.main}>
         <Toolbar connections={connections} controller={controller} />
@@ -105,6 +106,7 @@ function WorkspaceOverlay({
         key={mode}
         mode={mode}
         catalog={catalog}
+        hidden={controller.hiddenCommands}
         onClose={() => {
           setMode(null);
         }}
