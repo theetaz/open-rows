@@ -3,8 +3,22 @@
 //! (`conn/<profileId>/<item>`, docs/12 §3), and the edits applied on save.
 
 use openrows_secrets::SecretKey;
+use serde::{Deserialize, Serialize};
 
 use super::{ConnectionProfile, PasswordChange, SecretRef, SecretRefs, SshAuthMethod};
+
+/// Where the database password lives (docs/12 §3).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PasswordStorage {
+    /// Saved in the OS keychain; the default, also for profile files
+    /// written before the choice existed.
+    #[default]
+    Keychain,
+    /// Never saved: asked on every connect and held in memory only while
+    /// the connection is open.
+    Ask,
+}
 
 /// A secret of a profile.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -126,13 +140,16 @@ impl ConnectionProfile {
         SecretKey::for_profile(&self.id.to_string(), slot.item())
     }
 
-    /// Whether the profile's settings use `slot`; unused secrets are removed
-    /// on save (turning SSH off forgets its password).
+    /// Whether the profile's settings keep `slot` in the secret store;
+    /// unused secrets are removed on save (turning SSH off forgets its
+    /// password, asking for the password forgets the saved one).
     #[must_use]
     pub fn uses_secret(&self, slot: SecretSlot) -> bool {
         let auth = self.ssh.as_ref().map(|ssh| &ssh.auth);
         match slot {
-            SecretSlot::Password => !self.driver.is_file(),
+            SecretSlot::Password => {
+                !self.driver.is_file() && self.password_storage == PasswordStorage::Keychain
+            }
             SecretSlot::SshPassword => matches!(auth, Some(SshAuthMethod::Password)),
             SecretSlot::SshPassphrase => matches!(auth, Some(SshAuthMethod::PrivateKey { .. })),
             SecretSlot::TlsKeyPassphrase => self.tls.client_key.is_some(),

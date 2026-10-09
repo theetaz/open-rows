@@ -4,15 +4,26 @@ import type { EngineDto } from '@openrows/ipc';
 import { ConnectionSheet } from './ConnectionSheet';
 import { DeleteConnectionSheet } from './DeleteConnectionSheet';
 import { EnginePicker } from './EnginePicker';
+import { PasswordPromptSheet } from './PasswordPromptSheet';
 import type { Connections } from './useConnections';
 
-/** The connection sheet currently requested by the rail, header or keyboard. */
+/**
+ * The connection sheet currently requested by the rail, header or keyboard;
+ * a connect waiting for its password comes first.
+ */
 export function ConnectionSheets({
   connections,
 }: {
   connections: Connections;
 }): React.JSX.Element | null {
-  const { sheet, setSheet } = connections;
+  const { sheet, setSheet, passwordRequest } = connections;
+  if (passwordRequest)
+    return (
+      <PasswordPromptSheet
+        key={passwordRequest.profile.id}
+        request={passwordRequest}
+      />
+    );
   if (!sheet) return null;
   const close = (): void => {
     setSheet(null);

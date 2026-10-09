@@ -9,7 +9,9 @@
 use std::sync::Arc;
 
 use openrows_net::{Destination, ProxyDialer, ProxySpec, TunnelDialer};
-use openrows_store::profile::{ConnectionProfile, Driver, ProfileService, SecretSlot};
+use openrows_store::profile::{
+    ConnectionProfile, Driver, PasswordStorage, ProfileService, SecretSlot,
+};
 
 use super::Connections;
 use super::error::IpcError;
@@ -108,14 +110,18 @@ pub(crate) fn through_proxy(
 
 /// Where and how to reach saved connection `id`: its driver target, through
 /// its proxy and/or the profile's shared SSH tunnel (opened on first use,
-/// with prompts; reopened when it dropped).
+/// with prompts; reopened when it dropped). An "ask every time" profile uses
+/// the password typed on connect.
 ///
 /// # Errors
-/// Profile, keychain, SSH (typed: `ssh`, `hostKey`, `cancelled`) or
-/// validation failures.
+/// Profile, keychain, SSH (typed: `ssh`, `hostKey`, `cancelled`), a missing
+/// asked password (`auth`) or validation failures.
 pub(crate) async fn profile_target(state: &Connections, id: &str) -> Result<Target, IpcError> {
     let profile = state.profiles.get(profile_id(id)?)?;
-    let secrets = driver_secrets(&state.profiles, &profile)?;
+    let mut secrets = driver_secrets(&state.profiles, &profile)?;
+    if profile.password_storage == PasswordStorage::Ask {
+        secrets.password = Some(state.asked.password(&profile)?);
+    }
     let target = target::target(&profile, &secrets)?;
     let proxy = profile_proxy(&state.profiles, &profile)?;
     let Some(ssh) = &profile.ssh else {

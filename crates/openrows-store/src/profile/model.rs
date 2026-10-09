@@ -8,8 +8,8 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::{
-    Driver, EnvKind, EnvTag, FileParams, ProfileError, ProxySettings, Safety, ServerParams,
-    SshSettings, TlsSettings,
+    Driver, EnvKind, EnvTag, FileParams, PasswordStorage, ProfileError, ProxySettings, Safety,
+    ServerParams, SshSettings, TlsSettings,
 };
 
 /// Newest profile file format version (`"openrows": 1`).
@@ -152,6 +152,9 @@ pub struct ConnectionProfile {
     /// Secret references (never values).
     #[serde(default)]
     pub secrets: SecretRefs,
+    /// Keychain or ask on connect; files only carry the key for `ask`.
+    #[serde(default, skip_serializing_if = "stores_password")]
+    pub password_storage: PasswordStorage,
     /// TLS settings.
     pub tls: TlsSettings,
     /// SSH tunnel in front of the database; absent for direct connections.
@@ -184,6 +187,14 @@ fn recording_is_default(record_history: &bool) -> bool {
     *record_history
 }
 
+#[expect(
+    clippy::trivially_copy_pass_by_ref,
+    reason = "serde's skip_serializing_if passes the field by reference"
+)]
+fn stores_password(storage: &PasswordStorage) -> bool {
+    *storage == PasswordStorage::Keychain
+}
+
 impl ConnectionProfile {
     /// A new server profile with a fresh id, env-based safety defaults and a
     /// host-based TLS default.
@@ -203,6 +214,7 @@ impl ConnectionProfile {
             params,
             file: None,
             secrets: SecretRefs::default(),
+            password_storage: PasswordStorage::Keychain,
             record_history: true,
         }
     }

@@ -32,6 +32,7 @@ export function profile(
     ssh: null,
     proxy: null,
     hasPassword: false,
+    passwordStorage: 'keychain',
     safety: { readOnly: false, confirmWrites: false },
     insecure: [],
     recordHistory: true,
@@ -128,6 +129,46 @@ function appStub(): Record<string, unknown> {
   };
 }
 
+/** Connection search over name, host and environment, and a revealed secret. */
+function profileSearchStub(
+  profiles: readonly ProfileDto[],
+): Record<string, unknown> {
+  return {
+    searchProfiles: vi.fn((query: string) =>
+      Promise.resolve(
+        profiles.filter((item) =>
+          `${item.name} ${item.host} ${item.env.kind}`.includes(query),
+        ),
+      ),
+    ),
+    revealSecret: vi.fn(() => Promise.resolve('pw-revealed-synthetic')),
+  };
+}
+
+/** Table editing: a writable table keyed by nothing, with no saved edits. */
+function tableEditStub(): Record<string, unknown> {
+  return {
+    tableEditInfo: vi.fn(() =>
+      Promise.resolve({
+        key: [],
+        protected: [],
+        rowId: null,
+        columns: sampleStructure.columns,
+        readOnly: false,
+        confirmWrites: false,
+        production: false,
+      }),
+    ),
+    tableEditRow: vi.fn(() => Promise.resolve({ id: '7', name: '' })),
+    tableEditRows: vi.fn((_target: unknown, keys: Record<string, string>[]) =>
+      Promise.resolve(keys.map((key) => ({ ...key, name: '' }))),
+    ),
+    saveTableEdits: vi.fn(() => Promise.resolve(null)),
+    savedTableEdits: vi.fn(() => Promise.resolve(null)),
+    clearTableEdits: vi.fn(() => Promise.resolve(null)),
+  };
+}
+
 /** `@openrows/ipc` replacement for jsdom tests: no native shell, no keychain. */
 export function ipcStub(
   profiles: readonly ProfileDto[] = sampleProfiles,
@@ -148,6 +189,7 @@ export function ipcStub(
       }),
     ),
     closeConnection: vi.fn(() => Promise.resolve()),
+    ...profileSearchStub(profiles),
     openSession: vi.fn((profileId: string, database: string) =>
       Promise.resolve({
         sessionId: `session-${profileId}-${database}`,
@@ -177,24 +219,7 @@ export function ipcStub(
     resultCellInfo: vi.fn(),
     resultCellValue: vi.fn(),
     ...savedQueryStub(),
-    tableEditInfo: vi.fn(() =>
-      Promise.resolve({
-        key: [],
-        protected: [],
-        rowId: null,
-        columns: sampleStructure.columns,
-        readOnly: false,
-        confirmWrites: false,
-        production: false,
-      }),
-    ),
-    tableEditRow: vi.fn(() => Promise.resolve({ id: '7', name: '' })),
-    tableEditRows: vi.fn((_target: unknown, keys: Record<string, string>[]) =>
-      Promise.resolve(keys.map((key) => ({ ...key, name: '' }))),
-    ),
-    saveTableEdits: vi.fn(() => Promise.resolve(null)),
-    savedTableEdits: vi.fn(() => Promise.resolve(null)),
-    clearTableEdits: vi.fn(() => Promise.resolve(null)),
+    ...tableEditStub(),
     ...appStub(),
     onWindowClose: vi.fn(() => Promise.resolve(() => undefined)),
     closeWindow: vi.fn(() => Promise.resolve()),

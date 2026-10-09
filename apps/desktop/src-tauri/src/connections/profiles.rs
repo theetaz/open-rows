@@ -166,8 +166,10 @@ pub(crate) fn profile_delete(
     local: State<'_, LocalStore>,
     id: String,
 ) -> Result<(), IpcError> {
-    state.profiles.delete(profile_id(&id)?)?;
+    let profile = profile_id(&id)?;
+    state.profiles.delete(profile)?;
     state.tunnels.forget(&id);
+    state.asked.forget(profile);
     cache
         .forget(&local, &id)
         .map_err(|error| IpcError::new(IpcErrorKind::Storage, error.to_string()))

@@ -81,6 +81,7 @@ export function TlsFields({
               label="Passphrase"
               noun="client key passphrase"
               secret={tls.passphrase}
+              reveal={form.reveal('tlsKeyPassphrase')}
               onChange={(passphrase) => {
                 updateTls({ passphrase });
               }}

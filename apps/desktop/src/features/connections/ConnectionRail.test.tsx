@@ -1,9 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
+import { searchProfiles } from '@openrows/ipc';
 import { profile, server } from '../../test/ipcStub';
 import { ConnectionRail } from './ConnectionRail';
+
+vi.mock('@openrows/ipc', async () =>
+  (await import('../../test/ipcStub')).ipcStub(),
+);
 import type { SessionStatus } from './sessions';
 
 const profiles = [
@@ -77,6 +88,10 @@ it('supports Tab and wrapping arrows with focus tooltips', async () => {
   const tiles = screen.getAllByRole('button', { name: /^Switch to/ });
   await user.tab();
   expect(screen.getByRole('button', { name: 'New connection' })).toHaveFocus();
+  await user.tab();
+  expect(
+    screen.getByRole('searchbox', { name: 'Search connections' }),
+  ).toHaveFocus();
   await user.tab();
   expect(
     screen.getByRole('button', { name: 'Collapse Staging' }),
@@ -253,5 +268,42 @@ it('marks insecure connections in the row and names the reasons in the tooltip',
   fireEvent.mouseEnter(row);
   expect(screen.getByRole('tooltip')).toHaveTextContent(
     'Not secure: The server certificate is not verified.',
+  );
+});
+
+it('filters connections by the core search as you type, with keyboard navigation', async () => {
+  const user = userEvent.setup();
+  const onSelect = vi.fn();
+  vi.mocked(searchProfiles).mockImplementation((query) =>
+    Promise.resolve(
+      profiles.filter((item) =>
+        `${item.name} ${item.host} ${item.env.kind}`.includes(query),
+      ),
+    ),
+  );
+  render(<ConnectionRail {...props} onSelect={onSelect} />);
+  const search = screen.getByRole('searchbox', { name: 'Search connections' });
+  await user.type(search, 'prod');
+  expect(searchProfiles).toHaveBeenLastCalledWith('prod');
+  await waitFor(() => {
+    expect(
+      screen
+        .getAllByRole('button', { name: /^Switch to/ })
+        .map((tile) => tile.getAttribute('aria-label')),
+    ).toEqual(['Switch to analytics-prod']);
+  });
+  await user.keyboard('{Enter}');
+  expect(onSelect).toHaveBeenLastCalledWith('id-analytics-prod');
+  await user.keyboard('{ArrowDown}');
+  expect(
+    screen.getByRole('button', { name: 'Switch to analytics-prod' }),
+  ).toHaveFocus();
+  search.focus();
+  await user.keyboard('{Escape}');
+  expect(search).toHaveValue('');
+  expect(screen.getAllByRole('button', { name: /^Switch to/ })).toHaveLength(3);
+  await user.type(search, 'nothing-matches');
+  expect(await screen.findByRole('status')).toHaveTextContent(
+    'No matching connections',
   );
 });

@@ -33,8 +33,16 @@ const message = (error: unknown): string =>
 
 type Update = (change: (current: Statuses) => Statuses) => void;
 
+/**
+ * The password typed for an "ask every time" connection: `undefined` when
+ * the profile keeps it in the Keychain, `null` when the user cancelled.
+ */
+type AskPassword = (profileId: string) => Promise<string | null | undefined>;
+
+const keychain: AskPassword = () => Promise.resolve(undefined);
+
 /** Connections and their per-database sessions, synced with core events. */
-export function useSessions(): Sessions {
+export function useSessions(askPassword: AskPassword = keychain): Sessions {
   const [statuses, setStatuses] = useState<Statuses>({});
   const generation = useRef(0);
   useSessionEvents(setStatuses);
@@ -53,9 +61,16 @@ export function useSessions(): Sessions {
     if (!known) await openIn(setStatuses, profileId, database);
   };
   const connect = async (profileId: string): Promise<string | null> => {
+    const password = await askPassword(profileId);
+    if (password === null) {
+      set(profileId, disconnected);
+      return null;
+    }
     set(profileId, { state: 'connecting' });
     try {
-      const opened = await openConnection(profileId);
+      const opened = await (password === undefined
+        ? openConnection(profileId)
+        : openConnection(profileId, password));
       generation.current += 1;
       set(profileId, {
         state: 'connected',

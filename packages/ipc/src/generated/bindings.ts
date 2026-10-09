@@ -26,6 +26,11 @@ export const commands = {
 	profileDelete: (id: string) => typedError<null, IpcError>(__TAURI_INVOKE("profile_delete", { id })),
 	/**  Form fields from a pasted connection URL, without the password itself. */
 	profileParseUrl: (url: string) => typedError<UrlDraft, IpcError>(__TAURI_INVOKE("profile_parse_url", { url })),
+	/**
+	 *  Read one saved secret of a connection from the keychain because the user
+	 *  clicked Reveal; nothing else ever returns a stored secret.
+	 */
+	profileRevealSecret: (id: string, field: SecretFieldDto) => typedError<RevealedSecret, IpcError>(__TAURI_INVOKE("profile_reveal_secret", { id, field })),
 	/**  Connect with the form values step by step, report, and disconnect. */
 	connectionTest: (profileId: string | null, input: ProfileInput) => typedError<TestReport, IpcError>(__TAURI_INVOKE("connection_test", { profileId, input })),
 	/**  Pick a key, certificate or database file; `null` when the panel is cancelled. */
@@ -46,12 +51,14 @@ export const commands = {
 	 *  check runs on the home database's metadata session, which also lists the
 	 *  server's databases; user sessions open per database with `session_open`.
 	 *  Everything cached for the connection turns stale: the tree shows it at
-	 *  once and reads it again in the background.
+	 *  once and reads it again in the background. `password` is the one typed
+	 *  for an "ask every time" profile: it is held in memory until the
+	 *  connection closes, and dropped at once when connecting fails.
 	 */
-	connectionOpen: (profileId: string) => typedError<ConnectionOpened, IpcError>(__TAURI_INVOKE("connection_open", { profileId })),
+	connectionOpen: (profileId: string, password: string | null) => typedError<ConnectionOpened, IpcError>(__TAURI_INVOKE("connection_open", { profileId, password })),
 	/**
 	 *  Close every database session and metadata session of a saved connection,
-	 *  and stop sharing its SSH tunnel.
+	 *  stop sharing its SSH tunnel and drop a password typed on connect.
 	 */
 	connectionClose: (profileId: string) => typedError<null, IpcError>(__TAURI_INVOKE("connection_close", { profileId })),
 	/**
@@ -855,6 +862,13 @@ export type PasswordInput =
 /**  The password inside a pasted connection URL. */
 { kind: "fromUrl"; url: string };
 
+/**  Keychain or ask on every connect (docs/12 §3). */
+export type PasswordStorageDto = 
+/**  Saved in the macOS Keychain. */
+"keychain" | 
+/**  Never saved: asked on connect and held only while connected. */
+"ask";
+
 /**  Which file the connection form asks for. */
 export type PickFileKind = 
 /**  SSH private key (opens in `~/.ssh`). */
@@ -891,6 +905,8 @@ export type ProfileDto = {
 	ssh: SshDto | null,
 	proxy: ProxyDto | null,
 	hasPassword: boolean,
+	/**  Keychain, or asked on every connect (then `hasPassword` is false). */
+	passwordStorage: PasswordStorageDto,
 	safety: SafetyDto,
 	/**  Why the connection list flags this connection as insecure. */
 	insecure: InsecureReasonDto[],
@@ -921,6 +937,8 @@ export type ProfileInput = {
 	safety: SafetyDto,
 	/**  Absent in forms written before the history switch: history is recorded. */
 	recordHistory?: boolean,
+	/**  Absent in forms written before the choice: the keychain. */
+	passwordStorage?: PasswordStorageDto,
 	password: PasswordInput,
 };
 
@@ -966,6 +984,11 @@ export type QueryEventDto = { type: "statementStarted"; statement: number } | { 
 export type RelationKindDto = "table" | "partitionedTable" | "view" | "materializedView" | "foreignTable";
 
 export type ResultError = { kind: "unknownResult"; message: string } | { kind: "outOfRange" } | { kind: "notBytes" } | { kind: "encoding"; message: string } | { kind: "unavailable"; message: string };
+
+/**  A secret the user asked to see. `Debug` redacts the value. */
+export type RevealedSecret = {
+	value: string,
+};
 
 export type RowEditDto = {
 	kind: EditKindDto,
@@ -1019,6 +1042,9 @@ export type SchemaDto = {
 	system: boolean,
 	comment: string | null,
 };
+
+/**  Which saved secret of a connection to reveal. */
+export type SecretFieldDto = "password" | "sshPassword" | "sshPassphrase" | "tlsKeyPassphrase" | "proxyPassword";
 
 /**
  *  What to do with an SSH or TLS secret on save or test. `Debug` redacts

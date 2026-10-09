@@ -16,6 +16,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "profile_duplicate",
             "profile_delete",
             "profile_parse_url",
+            "profile_reveal_secret",
             "connection_test",
             "connection_pick_file",
             "connection_attach_database",
