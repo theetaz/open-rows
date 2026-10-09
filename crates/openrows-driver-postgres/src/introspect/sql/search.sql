@@ -42,6 +42,16 @@ FROM (
             AND d.objid = p.oid
             AND d.deptype = 'e'
       )
+    UNION ALL
+    SELECT n.nspname, t.typname, 'type', NULL::text, NULL::bigint,
+           pg_catalog.obj_description(t.oid, 'pg_type')
+    FROM pg_catalog.pg_type t
+    JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
+    LEFT JOIN pg_catalog.pg_class c ON c.oid = t.typrelid
+    WHERE n.nspname !~ '^pg_' AND n.nspname <> 'information_schema'
+      AND (t.typtype IN ('e', 'd', 'r') OR (t.typtype = 'c' AND c.relkind = 'c'))
+      AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_depend d
+          WHERE d.classid = 'pg_catalog.pg_type'::regclass AND d.objid = t.oid AND d.deptype = 'e')
 ) AS o (schema, name, kind, arguments, row_estimate, comment)
 ORDER BY o.schema, o.name, o.arguments
 LIMIT 50000

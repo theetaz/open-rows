@@ -14,6 +14,7 @@ pub(crate) const CAPABILITIES: Capabilities = Capabilities {
         Feature::BindParameters,
         Feature::MultipleDatabases,
         Feature::Catalog,
+        Feature::Roles,
         Feature::RowEdits,
         Feature::StructureChanges,
         Feature::Tls,

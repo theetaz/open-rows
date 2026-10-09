@@ -17,8 +17,10 @@ export const objectGroups: readonly ObjectGroup[] = [
     label: 'Materialized views',
     kinds: ['materializedView'],
   },
-  { id: 'functions', label: 'Functions', kinds: ['function', 'procedure'] },
+  { id: 'functions', label: 'Functions', kinds: ['function'] },
+  { id: 'procedures', label: 'Procedures', kinds: ['procedure'] },
   { id: 'sequences', label: 'Sequences', kinds: ['sequence'] },
+  { id: 'types', label: 'Types', kinds: ['type'] },
 ];
 
 const kinds: Record<ObjectKindDto, { label: string; glyph: string }> = {
@@ -29,6 +31,7 @@ const kinds: Record<ObjectKindDto, { label: string; glyph: string }> = {
   function: { label: 'Function', glyph: 'ƒ' },
   procedure: { label: 'Procedure', glyph: 'ƒ' },
   sequence: { label: 'Sequence', glyph: '≡' },
+  type: { label: 'Type', glyph: 'T' },
 };
 
 /** Display name and glyph of an object kind. */
@@ -142,4 +145,16 @@ export function substringIndices(text: string, query: string): number[] {
     index = source.indexOf(needle, index + needle.length);
   }
   return indices;
+}
+
+/** Sections claimed by the driver; unsupported kinds have no disclosure or read. */
+export function supportedGroups(
+  supported: readonly ObjectKindDto[],
+): ObjectGroup[] {
+  return objectGroups
+    .map((group) => ({
+      ...group,
+      kinds: group.kinds.filter((kind) => supported.includes(kind)),
+    }))
+    .filter((group) => group.kinds.length > 0);
 }

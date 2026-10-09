@@ -445,3 +445,22 @@ export type {
 } from './generated/bindings';
 /** Explicitly trusted credential commands. */
 export { testCredential, cancelCredential } from './credentials';
+/** Read-only object and account catalog viewers (M2-09). */
+export {
+  catalogCapabilities,
+  inspectObject,
+  listExtensions,
+  listRoles,
+  roleGrants,
+} from './inspection';
+export type {
+  AttributeDto,
+  CatalogFeaturesDto,
+  DetailSectionDto,
+  ExtensionDto,
+  GrantDto,
+  ObjectDetailDto,
+  ObjectIdentityDto,
+  RoleDto,
+  RoleIdentityDto,
+} from './generated/bindings';

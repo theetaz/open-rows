@@ -33,6 +33,7 @@ mod edits;
 mod errors;
 mod lifecycle;
 mod metadata;
+mod metadata_objects;
 mod processes;
 mod sink;
 mod streaming;

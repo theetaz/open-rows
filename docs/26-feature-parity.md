@@ -61,7 +61,7 @@ The inventory covers the macOS benchmark unless qualified. TablePlus's [new over
 
 | Key | Feature | What it does | OpenRows status / FR | Target | OpenRows improvement | Source |
 | --- | --- | --- | --- | --- | --- | --- |
-| B01 | Object sections | Browse tables, views and routines. | Covered FR-SCHEMA-01, FR-SCHEMA-07 | M1 tables; M2 other kinds | Lazy capability-driven tree. | [S14] |
+| B01 | Object sections | Browse tables, views and routines. | Covered FR-SCHEMA-01, FR-SCHEMA-07 | M2 done (M2-09) | Lazy capability-driven sections and read-only inspectors, including safe MariaDB sequence details (docs/10 §7). | [S14] |
 | B02 | Sidebar fuzzy search | Narrow the object list. | Covered FR-SCHEMA-02 | M1 | Worker search over cached metadata. | [S14] |
 | B03 | Recent objects | Revisit recently opened items. | New FR-SCHEMA-09 | M2 | Scoped to connection/database. | [S14] |
 | B04 | System schemas toggle | Hide or reveal internal schemas. | New FR-SCHEMA-09 | M2 | Preserve explicit scope labels. | [S14] |
@@ -152,7 +152,7 @@ The inventory covers the macOS benchmark unless qualified. TablePlus's [new over
 | T16 | Column defaults | Define default expressions. | Covered FR-SCHEMA-05 | M2 | Distinguish expressions from literals. | [S31] |
 | T17 | Trigger creation | Add trigger definitions. | New FR-SCHEMA-11 | M2 | Dialect validation and DDL review. | [S32] |
 | T18 | Trigger edit/drop | Maintain existing triggers. | New FR-SCHEMA-11 | M2 | Same safety policy as other DDL. | [S32] |
-| T19 | Views and routines | Edit stored object definitions. | Partial FR-SCHEMA-07; new FR-SCHEMA-11 | M2 | Capability-gated definitions. | [S33] |
+| T19 | Views and routines | Edit stored object definitions. | Partial FR-SCHEMA-07; new FR-SCHEMA-11 | M2 viewing done (M2-09) | Read-only inspectors, stored definitions and Open in Editor; lifecycle editing remains separately gated. | [S33] |
 | T20 | Relationship diagram | Visualise table relationships. | Covered FR-SCHEMA-06 | M2 | Original layout and open SVG export. | [S34] |
 | T21 | Diagram structure editing | Modify tables and keys visually. | Partial FR-SCHEMA-06; Gap G21 | M2 read-only; editing post-1.0 | Reuse reviewed change sets when added. | [S34] |
 
@@ -214,7 +214,7 @@ The inventory covers the macOS benchmark unless qualified. TablePlus's [new over
 | A01 | Process list | Inspect server activity. | Covered FR-ADMIN-01 | M2 | Separate admin connection and capability labels. | [S51] |
 | A02 | Cancel/kill session | Stop selected server work. | Covered FR-ADMIN-01 | M2 | Explain cancel versus session termination. | [S51] |
 | A03 | Activity sort/refresh | Reorder and reload process rows. | Covered FR-ADMIN-01, FR-GRID-04 | M2 | Preserve selection and sort. | [S51] |
-| A04 | User/grant viewer | Inspect accounts and permissions. | Covered FR-ADMIN-02 | M2 | Broader capability-based viewer. | [S52] |
+| A04 | User/grant viewer | Inspect accounts and permissions. | Covered FR-ADMIN-02 | M2 done (M2-09) | PG/MySQL/MariaDB/SQL Server attributes, direct memberships and explicit grants; no computed effective permissions (docs/10 §7). | [S52] |
 | A05 | User lifecycle | Create, change or remove users. | Partial FR-ADMIN-02; Gap G06 | Post-1.0 editor | Review privilege changes as SQL. | [S52] |
 | A06 | Privilege editor | Edit global/database/table grants. | Partial FR-ADMIN-02; Gap G06 | Post-1.0 editor | Least-privilege impact summary. | [S52] |
 | A07 | Account resource limits | Set per-account usage limits. | Gap G06 | Post-1.0 | Driver-specific controls, no false portability. | [S52] |

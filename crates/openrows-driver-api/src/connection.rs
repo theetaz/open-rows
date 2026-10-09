@@ -163,6 +163,48 @@ pub trait Catalog: Send {
         Box::pin(read_per_table(self, schema, max_tables))
     }
 
+    /// Installed extensions.
+    ///
+    /// # Errors
+    /// `Unsupported` when extensions do not apply; catalog read failures.
+    fn list_extensions(
+        &mut self,
+    ) -> BoxFuture<'_, Result<Vec<crate::inspection::ExtensionSummary>, DriverError>> {
+        Box::pin(async { Err(DriverError::Unsupported("extensions".to_owned())) })
+    }
+
+    /// Users and roles with public attributes and direct memberships.
+    ///
+    /// # Errors
+    /// `Unsupported` when accounts do not apply; catalog read failures.
+    fn list_roles(
+        &mut self,
+    ) -> BoxFuture<'_, Result<Vec<crate::inspection::RoleSummary>, DriverError>> {
+        Box::pin(async { Err(DriverError::Unsupported("users and roles".to_owned())) })
+    }
+
+    /// Explicit privileges of a scoped account, without changing it.
+    ///
+    /// # Errors
+    /// `Unsupported` when grants do not apply; permission or catalog failures.
+    fn role_grants<'a>(
+        &'a mut self,
+        _role: (&'a str, &'a str),
+    ) -> BoxFuture<'a, Result<Vec<crate::inspection::GrantSummary>, DriverError>> {
+        Box::pin(async { Err(DriverError::Unsupported("role grants".to_owned())) })
+    }
+
+    /// Read-only detail of a schema object; sequences are never advanced.
+    ///
+    /// # Errors
+    /// `Unsupported` for unimplemented kinds; permission or catalog failures.
+    fn object_detail<'a>(
+        &'a mut self,
+        _object: &'a crate::inspection::ObjectIdentity,
+    ) -> BoxFuture<'a, Result<crate::inspection::ObjectDetail, DriverError>> {
+        Box::pin(async { Err(DriverError::Unsupported("object inspection".to_owned())) })
+    }
+
     /// The `CREATE` statement of a function or procedure (with `arguments`,
     /// its identity arguments, picking one overload), as the server prints
     /// it; `None` when it does not exist.

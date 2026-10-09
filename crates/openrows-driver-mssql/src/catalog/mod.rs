@@ -4,6 +4,8 @@
 //! connection's current database.
 pub(crate) mod detail;
 mod diagram;
+mod inspection;
+mod roles;
 pub(crate) mod rows;
 
 use openrows_driver_api::catalog::{
@@ -48,6 +50,7 @@ fn object_kind(code: &str) -> Option<ObjectKind> {
         "P" | "PC" => Some(ObjectKind::Procedure),
         "FN" | "IF" | "TF" | "FS" | "FT" => Some(ObjectKind::Function),
         "SO" => Some(ObjectKind::Sequence),
+        "TY" => Some(ObjectKind::Type),
         _ => None,
     }
 }
@@ -215,6 +218,27 @@ impl Catalog for SqlServerSession {
             let rows = self.text_query(FINGERPRINT_SQL, &[]).await?;
             Ok(rows.first().and_then(|row| optional(row, 0)))
         })
+    }
+
+    fn list_roles(
+        &mut self,
+    ) -> BoxFuture<'_, Result<Vec<openrows_driver_api::inspection::RoleSummary>, DriverError>> {
+        Box::pin(roles::roles(self))
+    }
+
+    fn role_grants<'a>(
+        &'a mut self,
+        role: (&'a str, &'a str),
+    ) -> BoxFuture<'a, Result<Vec<openrows_driver_api::inspection::GrantSummary>, DriverError>>
+    {
+        Box::pin(roles::grants(self, role))
+    }
+
+    fn object_detail<'a>(
+        &'a mut self,
+        object: &'a openrows_driver_api::inspection::ObjectIdentity,
+    ) -> BoxFuture<'a, Result<openrows_driver_api::inspection::ObjectDetail, DriverError>> {
+        Box::pin(inspection::object_detail(self, object))
     }
 
     fn routine_definition<'a>(

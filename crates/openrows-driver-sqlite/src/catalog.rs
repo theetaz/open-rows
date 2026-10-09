@@ -45,7 +45,12 @@ fn kind_name(kind: ObjectKind) -> Option<&'static str> {
     match kind {
         ObjectKind::Table => Some("table"),
         ObjectKind::View => Some("view"),
-        _ => None,
+        ObjectKind::MaterializedView
+        | ObjectKind::ForeignTable
+        | ObjectKind::Function
+        | ObjectKind::Procedure
+        | ObjectKind::Sequence
+        | ObjectKind::Type => None,
     }
 }
 
@@ -253,6 +258,21 @@ impl Catalog for SqliteSession {
             self.worker
                 .call(move |connection| detail::table_detail(connection, &schema, &table))
                 .await?
+        })
+    }
+
+    fn object_detail<'a>(
+        &'a mut self,
+        object: &'a openrows_driver_api::inspection::ObjectIdentity,
+    ) -> BoxFuture<'a, Result<openrows_driver_api::inspection::ObjectDetail, DriverError>> {
+        Box::pin(async move {
+            if object.kind != ObjectKind::View {
+                return Err(DriverError::Unsupported(
+                    "this SQLite object viewer".to_owned(),
+                ));
+            }
+            let detail = self.table_detail(&object.schema, &object.name).await?;
+            openrows_driver_api::inspection::view_detail(detail)
         })
     }
 

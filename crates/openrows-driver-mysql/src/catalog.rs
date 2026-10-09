@@ -2,14 +2,21 @@
 //! The schema tree and table views from `information_schema` (docs/05 §6).
 //!
 //! A `MySQL` database is a schema: each opened database lists exactly one
-//! schema, itself. Names reach the server as bound parameters.
+//! schema, itself. Lookup names are bound; catalog identifiers use SQL helpers.
 pub(crate) mod detail;
 mod diagram;
+mod grant_parser;
+mod grant_tokens;
+mod grants;
+mod inspection;
+mod roles;
 mod routine;
 mod rows;
+mod sequence;
 
 use rows::enum_labels;
 pub(crate) use rows::{ColumnRow, IndexRow};
+use rows::{bind, optional, text};
 
 use openrows_driver_api::catalog::{
     ColumnSummary, DatabaseSummary, IndexSummary, ObjectKind, ObjectSummary, SchemaSummary,
@@ -41,24 +48,6 @@ const TABLES_SQL: &str = "SELECT TABLE_NAME, TABLE_TYPE, TABLE_ROWS, TABLE_COMME
     FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? ORDER BY TABLE_NAME";
 const ROUTINES_SQL: &str = "SELECT ROUTINE_NAME, ROUTINE_TYPE, ROUTINE_COMMENT \
     FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = ? ORDER BY ROUTINE_NAME";
-
-fn text(row: &[Option<String>], index: usize) -> String {
-    row.get(index).cloned().flatten().unwrap_or_default()
-}
-
-fn optional(row: &[Option<String>], index: usize) -> Option<String> {
-    row.get(index)
-        .cloned()
-        .flatten()
-        .filter(|value| !value.is_empty())
-}
-
-fn bind(values: &[&str]) -> Vec<Option<String>> {
-    values
-        .iter()
-        .map(|value| Some((*value).to_owned()))
-        .collect()
-}
 
 impl MySqlSession {
     async fn databases(&mut self) -> Result<Vec<DatabaseSummary>, DriverError> {
@@ -278,6 +267,27 @@ impl Catalog for MySqlSession {
         max_tables: usize,
     ) -> BoxFuture<'a, Result<SchemaDiagram, DriverError>> {
         Box::pin(diagram::schema_diagram(self, schema, max_tables))
+    }
+
+    fn list_roles(
+        &mut self,
+    ) -> BoxFuture<'_, Result<Vec<openrows_driver_api::inspection::RoleSummary>, DriverError>> {
+        Box::pin(roles::roles(self))
+    }
+
+    fn role_grants<'a>(
+        &'a mut self,
+        account: (&'a str, &'a str),
+    ) -> BoxFuture<'a, Result<Vec<openrows_driver_api::inspection::GrantSummary>, DriverError>>
+    {
+        Box::pin(grants::grants(self, account))
+    }
+
+    fn object_detail<'a>(
+        &'a mut self,
+        object: &'a openrows_driver_api::inspection::ObjectIdentity,
+    ) -> BoxFuture<'a, Result<openrows_driver_api::inspection::ObjectDetail, DriverError>> {
+        Box::pin(inspection::object_detail(self, object))
     }
 
     fn routine_definition<'a>(

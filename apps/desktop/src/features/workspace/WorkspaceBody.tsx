@@ -13,6 +13,7 @@ import type { Connections } from '../connections';
 import { QueryContent, openQueryFile, rebindFiles } from '../query';
 import { reportProjectError } from '../projects';
 import type { QueryTabs, TabScope } from '../query';
+import { openInspection } from '../inspection/target';
 import { AttachDatabaseTools } from '../schema';
 import { WorkspaceSidebar } from './WorkspaceSidebar';
 import type { ObjectEditorRequest } from '../objects';
@@ -82,6 +83,9 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
           catalog={catalog}
           connections={connections}
           onOpen={controller.openObject}
+          onInspect={(target) => {
+            if (scope) openInspection(tabs, scope, target);
+          }}
           onDiagram={controller.showDiagram}
           onImport={controller.importData}
           objects={controller.objects}

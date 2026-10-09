@@ -1,0 +1,63 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.viewer {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--or-space-12);
+  color: var(--or-primary);
+  background: var(--or-panel-solid);
+  font-size: var(--or-text-12);
+}
+.header,
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-2);
+}
+.header {
+  justify-content: space-between;
+  color: var(--or-secondary);
+  border-bottom: 1px solid var(--or-separator);
+}
+.attributes {
+  display: grid;
+  gap: var(--or-space-4);
+}
+.attributes > div {
+  display: grid;
+  grid-template-columns: minmax(120px, 200px) 1fr;
+  gap: var(--or-space-2);
+}
+.attributes dt {
+  color: var(--or-secondary);
+}
+.attributes dd {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.section {
+  margin-block: var(--or-space-12);
+}
+.section h2 {
+  margin: 0 0 var(--or-space-2);
+  font-size: inherit;
+  font-weight: 600;
+}
+.section table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.section th,
+.section td {
+  padding: var(--or-space-4) var(--or-space-2);
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--or-separator);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.section th {
+  color: var(--or-secondary);
+  font-weight: 500;
+}

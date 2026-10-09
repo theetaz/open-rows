@@ -10,7 +10,6 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
 import {
-  executeQuery,
   openConnection,
   openSession,
   searchHistory,
@@ -210,24 +209,23 @@ it('opens objects of another database in its own tab set on its own session', as
     await screen.findByRole('treeitem', { name: 'orders_2024_id_seq' }),
   );
   expect(
-    await screen.findByRole('textbox', { name: 'SQL editor' }),
-  ).toHaveTextContent(
-    'SELECT * FROM "public"."orders_2024_id_seq" LIMIT 1000;',
+    await screen.findByRole('region', { name: 'Object inspection' }),
+  ).toBeVisible();
+  expect(await screen.findByText('17')).toBeVisible();
+  const { inspectObject } = await import('@openrows/ipc');
+  expect(inspectObject).toHaveBeenLastCalledWith(
+    'id-orders-local',
+    'orders_archive',
+    {
+      schema: 'public',
+      name: 'orders_2024_id_seq',
+      kind: 'sequence',
+      arguments: null,
+    },
   );
-  vi.mocked(executeQuery).mockResolvedValueOnce({
-    kind: 'blocked',
-    message: 'stop here',
-    statements: [],
-  });
-  await user.click(
-    await screen.findByRole('button', { name: 'Run current statement' }),
-  );
-  expect(executeQuery).toHaveBeenLastCalledWith(
-    expect.objectContaining({
-      sessionId: 'session-id-orders-local-orders_archive',
-    }),
-    expect.any(Function),
-  );
+  expect(
+    screen.queryByRole('button', { name: 'Run current statement' }),
+  ).toBeNull();
 });
 it('opens, switches and closes query tabs per connection', async () => {
   const user = mount();

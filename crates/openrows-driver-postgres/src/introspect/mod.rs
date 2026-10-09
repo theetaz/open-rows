@@ -11,9 +11,12 @@ use crate::simple::TextRow;
 use openrows_driver_api::DriverError;
 use openrows_driver_api::catalog::{DatabaseSummary, ObjectKind, ObjectSummary, SchemaSummary};
 
+mod bound;
 mod detail;
 mod diagram;
 mod edit;
+pub(crate) mod inspection;
+pub(crate) mod roles;
 mod routine;
 mod table;
 pub use edit::RowEditInfo;
@@ -71,8 +74,12 @@ impl PgSession {
         if kinds.is_empty() {
             return Ok(Vec::new());
         }
-        let sql = objects_sql(schema, kinds)?;
-        let rows = self.text_query(&sql).await?;
+        let kinds = kinds
+            .iter()
+            .map(|kind| kind.as_str())
+            .collect::<Vec<_>>()
+            .join(",");
+        let rows = bound::query(self, OBJECTS_SQL, &bound::bind(&[schema, &kinds])).await?;
         rows.iter().map(object).collect()
     }
 
@@ -94,17 +101,6 @@ impl PgSession {
         let rows = self.text_query(FINGERPRINT_SQL).await?;
         Ok(rows.first().and_then(|row| optional(row, 0)))
     }
-}
-
-fn objects_sql(schema: &str, kinds: &[ObjectKind]) -> Result<String, DriverError> {
-    let kinds = kinds
-        .iter()
-        .map(|kind| literal(kind.as_str()))
-        .collect::<Result<Vec<_>, _>>()?
-        .join(", ");
-    Ok(OBJECTS_SQL
-        .replace("{schema}", &literal(schema)?)
-        .replace("{kinds}", &kinds))
 }
 
 /// libpq `PQescapeLiteral` rules: double quotes, and use `E''` with doubled
@@ -183,15 +179,6 @@ mod tests {
         assert_eq!(literal("it's")?, "'it''s'");
         assert_eq!(literal(r"a\b'")?, r"E'a\\b'''");
         assert!(matches!(literal("a\0"), Err(DriverError::Unsupported(_))));
-        Ok(())
-    }
-
-    #[test]
-    fn object_sql_fills_schema_and_kinds() -> Result<(), DriverError> {
-        let sql = objects_sql("sales", &[ObjectKind::Table, ObjectKind::ForeignTable])?;
-        assert!(sql.contains("n.nspname = 'sales'"));
-        assert!(sql.contains("o.kind IN ('table', 'foreign_table')"));
-        assert!(!sql.contains('{'));
         Ok(())
     }
 

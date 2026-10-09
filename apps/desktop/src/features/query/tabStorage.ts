@@ -14,7 +14,7 @@ import type { QueryTab, TabFile, TableObject, TabsState } from './tabs';
  */
 export function serializeTabs(state: TabsState, withText = true): string {
   const tabs = state.tabs.flatMap((tab) => {
-    if (tab.kind === 'processes') return [];
+    if (tab.kind === 'processes' || tab.kind === 'inspection') return [];
     if (tab.kind === 'table') return [tab];
     return withText ? [tab] : [];
   });

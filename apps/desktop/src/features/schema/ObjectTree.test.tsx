@@ -6,6 +6,7 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
 import {
   listObjects,
+  catalogCapabilities,
   listSchemas,
   schemaDiagram,
   startExport,
@@ -19,6 +20,20 @@ vi.mock('@openrows/ipc', async () =>
 
 beforeEach(() => {
   vi.stubGlobal('innerWidth', 1280);
+  vi.mocked(catalogCapabilities).mockResolvedValue({
+    kinds: [
+      'table',
+      'foreignTable',
+      'view',
+      'materializedView',
+      'function',
+      'procedure',
+      'sequence',
+      'type',
+    ],
+    extensions: true,
+    roles: true,
+  });
 });
 
 function mount(): ReturnType<typeof userEvent.setup> {
@@ -269,4 +284,64 @@ it("shows the ER diagram of a table's schema and opens a table from it", async (
   await user.click(customers);
   expect(sheet).not.toBeInTheDocument();
   expect(await screen.findByRole('tab', { name: /customers/ })).toBeVisible();
+});
+
+it('hides unsupported sections and does not read unopened administration nodes', async () => {
+  const { catalogCapabilities, listRoles, listExtensions } =
+    await import('@openrows/ipc');
+  vi.mocked(catalogCapabilities).mockResolvedValue({
+    kinds: ['table', 'view'],
+    extensions: false,
+    roles: false,
+  });
+  mount();
+  await connectTo();
+  await sidebar().findByRole('treeitem', { name: 'orders ~2.4M' });
+  for (const name of [
+    'Functions',
+    'Procedures',
+    'Sequences',
+    'Types',
+    'Extensions',
+    'Users & Roles',
+  ]) {
+    expect(
+      sidebar().queryByRole('button', { name: new RegExp(`^${name}`) }),
+    ).toBeNull();
+  }
+  expect(listRoles).not.toHaveBeenCalled();
+  expect(listExtensions).not.toHaveBeenCalled();
+  expect(listObjects).toHaveBeenCalledOnce();
+});
+
+it('loads users and extensions only when their respective sections open', async () => {
+  const { listRoles, listExtensions } = await import('@openrows/ipc');
+  vi.mocked(listRoles).mockResolvedValue([
+    { name: 'reader', scope: 'cluster', attributes: [], memberships: [] },
+  ]);
+  vi.mocked(listExtensions).mockResolvedValue([
+    {
+      name: 'hstore',
+      version: '1.8',
+      availableVersion: '1.8',
+      schema: 'public',
+      description: null,
+    },
+  ]);
+  const user = mount();
+  await connectTo();
+  await sidebar().findByRole('treeitem', { name: 'orders ~2.4M' });
+  expect(listRoles).not.toHaveBeenCalled();
+  expect(listExtensions).not.toHaveBeenCalled();
+  await user.click(sidebar().getByRole('button', { name: /^Users & Roles/ }));
+  expect(
+    await sidebar().findByRole('treeitem', { name: 'reader @ cluster' }),
+  ).toBeVisible();
+  expect(listRoles).toHaveBeenCalledOnce();
+  expect(listExtensions).not.toHaveBeenCalled();
+  await user.click(sidebar().getByRole('button', { name: /^Extensions/ }));
+  expect(
+    await sidebar().findByRole('treeitem', { name: 'hstore' }),
+  ).toBeVisible();
+  expect(listExtensions).toHaveBeenCalledOnce();
 });

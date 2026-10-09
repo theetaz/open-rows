@@ -195,6 +195,34 @@ impl Catalog for PgSession {
         Box::pin(PgSession::schema_diagram(self, schema, max_tables))
     }
 
+    fn list_extensions(
+        &mut self,
+    ) -> BoxFuture<'_, Result<Vec<openrows_driver_api::inspection::ExtensionSummary>, DriverError>>
+    {
+        Box::pin(crate::introspect::roles::extensions(self))
+    }
+
+    fn list_roles(
+        &mut self,
+    ) -> BoxFuture<'_, Result<Vec<openrows_driver_api::inspection::RoleSummary>, DriverError>> {
+        Box::pin(crate::introspect::roles::roles(self))
+    }
+
+    fn role_grants<'a>(
+        &'a mut self,
+        role: (&'a str, &'a str),
+    ) -> BoxFuture<'a, Result<Vec<openrows_driver_api::inspection::GrantSummary>, DriverError>>
+    {
+        Box::pin(crate::introspect::roles::grants(self, role))
+    }
+
+    fn object_detail<'a>(
+        &'a mut self,
+        object: &'a openrows_driver_api::inspection::ObjectIdentity,
+    ) -> BoxFuture<'a, Result<openrows_driver_api::inspection::ObjectDetail, DriverError>> {
+        Box::pin(crate::introspect::inspection::object_detail(self, object))
+    }
+
     fn routine_definition<'a>(
         &'a mut self,
         routine: (&'a str, &'a str),

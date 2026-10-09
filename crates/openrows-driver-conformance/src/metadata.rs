@@ -33,7 +33,11 @@ pub(crate) async fn run(target: &Target) -> Result<(), Failure> {
         ],
     )
     .await?;
-    let outcome = check(connection.as_mut(), (&target.schema, &table, &view)).await;
+    let outcome = async {
+        check(connection.as_mut(), (&target.schema, &table, &view)).await?;
+        crate::metadata_objects::run(target, connection.as_mut()).await
+    }
+    .await;
     for drop in [
         format!("DROP VIEW {view_relation}"),
         format!("DROP TABLE {relation}"),

@@ -93,11 +93,17 @@ pub enum Feature {
     IdentityColumns,
     /// Indexes can have a `WHERE` predicate.
     PartialIndexes,
+    /// User-defined types can be listed and inspected.
+    Types,
+    /// Installed extensions can be listed and inspected.
+    Extensions,
+    /// Users, roles, memberships and grants can be inspected read-only.
+    Roles,
 }
 
 impl Feature {
     /// Every feature, in documentation order.
-    pub const ALL: [Self; 29] = [
+    pub const ALL: [Self; 32] = [
         Self::Cancel,
         Self::BindParameters,
         Self::MultipleDatabases,
@@ -127,6 +133,9 @@ impl Feature {
         Self::ColumnCharset,
         Self::IdentityColumns,
         Self::PartialIndexes,
+        Self::Types,
+        Self::Extensions,
+        Self::Roles,
     ];
 }
 
@@ -176,6 +185,6 @@ mod tests {
             ..FILE
         };
         assert!(!no_catalog.lists(ObjectKind::Table));
-        assert_eq!(Feature::ALL.len(), 29);
+        assert_eq!(Feature::ALL.len(), 32);
     }
 }
