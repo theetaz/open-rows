@@ -123,6 +123,10 @@ impl Connection for PgSession {
     fn editor(&mut self) -> Option<&mut dyn Editor> {
         Some(self)
     }
+
+    fn bulk_loader(&mut self) -> Option<&mut dyn openrows_driver_api::BulkLoader> {
+        Some(self)
+    }
 }
 
 impl Catalog for PgSession {

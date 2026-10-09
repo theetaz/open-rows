@@ -6,6 +6,7 @@ mod diagram;
 mod editor_report;
 mod exports;
 mod grid_report;
+mod imports;
 #[cfg(target_os = "macos")]
 mod material;
 mod menu;
@@ -23,11 +24,11 @@ mod titlebar;
 mod window_frame;
 mod workspace;
 
+use connections::{
+    attach, catalog, connection, diagnostics, files, processes, profiles, prompts, reveal, sessions,
+};
+
 fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
-    use connections::{
-        attach, catalog, connection, diagnostics, files, processes, profiles, prompts, reveal,
-        sessions,
-    };
     let builder = tauri_specta::Builder::new().commands(tauri_specta::collect_commands![
         commands::app_info,
         spike::spike_finish,
@@ -92,6 +93,10 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
         tables::schema_commands::table_detail,
         tables::schema_commands::table_alter,
         exports::commands::export_start,
+        imports::commands::import_pick_file,
+        imports::commands::import_preview,
+        imports::commands::import_start,
+        imports::commands::import_cancel,
         diagram::commands::schema_diagram,
         diagram::commands::diagram_save,
         settings::settings_read,
@@ -109,7 +114,7 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
 fn with_events_and_types(
     builder: tauri_specta::Builder<tauri::Wry>,
 ) -> tauri_specta::Builder<tauri::Wry> {
-    use connections::{catalog_cache, prompts, sessions};
+    use connections::catalog_cache;
     builder
         .events(tauri_specta::collect_events![
             sessions::SessionStateChanged,
@@ -148,7 +153,8 @@ pub fn run() -> Result<(), tauri::Error> {
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(window_frame::plugin())
-        .manage(queries::Queries::default());
+        .manage(queries::Queries::default())
+        .manage(imports::Imports::default());
     let specta = command_builder();
     let controls = specta.invoke_handler();
     let binary: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool =

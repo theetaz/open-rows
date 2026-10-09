@@ -139,6 +139,10 @@ impl Connection for SqliteSession {
     fn editor(&mut self) -> Option<&mut dyn Editor> {
         Some(self)
     }
+
+    fn bulk_loader(&mut self) -> Option<&mut dyn openrows_driver_api::BulkLoader> {
+        Some(self)
+    }
 }
 
 /// `sqlite3_interrupt`: the running step fails with `SQLITE_INTERRUPT`

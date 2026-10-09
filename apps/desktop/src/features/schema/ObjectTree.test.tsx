@@ -178,6 +178,24 @@ it('exports a table from its context menu on the database session', async () => 
   );
 });
 
+it('imports into a table from its context menu', async () => {
+  const user = mount();
+  await connectTo();
+  const orders = await sidebar().findByRole('treeitem', {
+    name: 'orders ~2.4M',
+  });
+  fireEvent.contextMenu(orders, { clientX: 40, clientY: 80 });
+  const menu = await screen.findByRole('menu', { name: 'orders actions' });
+  await user.click(within(menu).getByRole('menuitem', { name: 'Import…' }));
+  const sheet = await screen.findByRole('dialog', {
+    name: 'Import into orders.public',
+  });
+  await user.click(within(sheet).getByRole('button', { name: 'Choose File…' }));
+  expect(await within(sheet).findByLabelText('Table in public')).toHaveValue(
+    'orders',
+  );
+});
+
 it('lists large sections 5,000 objects at a time', async () => {
   const table = (name: string) => ({
     schema: 'public',

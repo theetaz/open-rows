@@ -11,8 +11,10 @@
 //! is `sqlite3_interrupt`. The [`catalog`] lists the attached databases as
 //! schemas and reads tables, views, columns, keys, indexes and triggers
 //! through the pragma functions; the [`editor`] snapshots rows as exact text
-//! and commits staged edits in one `BEGIN IMMEDIATE` transaction.
+//! and commits staged edits in one `BEGIN IMMEDIATE` transaction. Imports
+//! append rows through one cached prepared `INSERT` ([`bulk`]).
 #![forbid(unsafe_code)]
+mod bulk;
 mod capabilities;
 mod catalog;
 mod connect;

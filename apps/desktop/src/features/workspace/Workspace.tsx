@@ -13,6 +13,8 @@ import { contextSegments } from './contextBar';
 import { ConnectionSheets, SshPrompts, useConnections } from '../connections';
 import type { SettingsSection } from '../settings';
 import { TableExport } from './TableExport';
+import { TableImport } from './TableImport';
+import type { ImportTarget } from './TableImport';
 import { ErDiagram } from '../erd';
 import styles from './Workspace.module.css';
 /** Real connections, catalog, query tabs and results. */
@@ -27,6 +29,7 @@ export function Workspace({
 }): React.JSX.Element {
   const connections = useConnections();
   const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState<ImportTarget | null>(null);
   const [diagram, setDiagram] = useState<DiagramRequest | null>(null);
   const controller = useWorkspaceController({
     onGallery,
@@ -34,6 +37,7 @@ export function Workspace({
     onExportTable: () => {
       setExporting(true);
     },
+    onImport: setImporting,
     onShowDiagram: setDiagram,
     enabled,
     connections,
@@ -58,16 +62,16 @@ export function Workspace({
           : ''}
       </span>
       <WorkspaceOverlay controller={controller} />
-      {exporting && (
-        <TableExport
-          connections={connections}
-          tabs={controller.tabs}
-          scope={controller.scope}
-          onClose={() => {
-            setExporting(false);
-          }}
-        />
-      )}
+      <TransferSheets
+        connections={connections}
+        controller={controller}
+        exporting={exporting}
+        importing={importing}
+        onClose={() => {
+          setExporting(false);
+          setImporting(null);
+        }}
+      />
       {diagram && connections.active && (
         <ErDiagram
           key={`${diagram.database}\n${diagram.schema}`}
@@ -90,6 +94,36 @@ export function Workspace({
       <ConnectionSheets connections={connections} />
       <SshPrompts />
     </div>
+  );
+}
+
+/** File ▸ Export Table… and Import… sheets. */
+function TransferSheets(props: {
+  connections: ReturnType<typeof useConnections>;
+  controller: ReturnType<typeof useWorkspaceController>;
+  exporting: boolean;
+  importing: ImportTarget | null;
+  onClose: () => void;
+}): React.JSX.Element {
+  const { connections, controller } = props;
+  return (
+    <>
+      {props.exporting && (
+        <TableExport
+          connections={connections}
+          tabs={controller.tabs}
+          scope={controller.scope}
+          onClose={props.onClose}
+        />
+      )}
+      {props.importing && (
+        <TableImport
+          connections={connections}
+          target={props.importing}
+          onClose={props.onClose}
+        />
+      )}
+    </>
   );
 }
 

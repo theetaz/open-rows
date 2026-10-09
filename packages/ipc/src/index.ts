@@ -121,6 +121,29 @@ export type {
   ExportRequest,
   ExportSourceDto,
 } from './generated/bindings';
+/** Import of CSV, TSV, JSON and NDJSON files into tables (M2-11). */
+export {
+  cancelImport,
+  pickImportFile,
+  previewImport,
+  startImport,
+} from './imports';
+export type {
+  BadRowsDto,
+  ConflictDto,
+  ImportColumnDto,
+  ImportEventDto,
+  ImportFormatDto,
+  ImportMappingDto,
+  ImportOptionsDto,
+  ImportPreviewDto,
+  ImportPreviewRequest,
+  ImportRequest,
+  ImportSummaryDto,
+  RowErrorDto,
+  TransactionDto,
+  TypeCategoryDto,
+} from './generated/bindings';
 /** The read-only ER diagram of a schema and its SVG/PNG export (M2-10). */
 export { saveDiagram, schemaDiagram } from './diagram';
 export type {

@@ -28,6 +28,7 @@ export function menuEnabled(input: {
     save: query,
     'save-as': query,
     'export-table': input.tab?.kind === 'table' && connected,
+    'import-data': Boolean(input.scope) && connected,
     'export-results': Boolean(input.tab) && !processes && connected,
     'run-current': query && connected,
     'run-all': query && connected,

@@ -5,7 +5,8 @@ use openrows_driver_api::{Capabilities, Feature, Location};
 
 /// A local file: interrupt-based cancel, bound parameters, attached
 /// databases as schemas, guarded edits, structure changes (rebuilding the
-/// table where `ALTER TABLE` cannot) and transactional DDL; no TLS or routes.
+/// table where `ALTER TABLE` cannot), transactional DDL and prepared-insert
+/// bulk loading; no TLS or routes.
 pub(crate) const CAPABILITIES: Capabilities = Capabilities {
     location: Location::File,
     features: &[
@@ -18,6 +19,7 @@ pub(crate) const CAPABILITIES: Capabilities = Capabilities {
         Feature::TransactionalDdl,
         Feature::StartupCommands,
         Feature::SchemaFingerprint,
+        Feature::BulkLoad,
     ],
     object_kinds: &[ObjectKind::Table, ObjectKind::View],
 };

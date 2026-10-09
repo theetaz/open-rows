@@ -58,11 +58,14 @@ pub enum Feature {
     /// `Connection::admin` offers the [`crate::Admin`] facet: the server's
     /// process list, cancelling a process's statement and terminating it.
     ProcessList,
+    /// `Connection::bulk_loader` offers the [`crate::BulkLoader`] facet: the
+    /// engine's fast append path for imports (e.g. `COPY FROM STDIN`).
+    BulkLoad,
 }
 
 impl Feature {
     /// Every feature, in documentation order.
-    pub const ALL: [Self; 13] = [
+    pub const ALL: [Self; 14] = [
         Self::Cancel,
         Self::BindParameters,
         Self::MultipleDatabases,
@@ -76,6 +79,7 @@ impl Feature {
         Self::StartupCommands,
         Self::SchemaFingerprint,
         Self::ProcessList,
+        Self::BulkLoad,
     ];
 }
 
@@ -125,6 +129,6 @@ mod tests {
             ..FILE
         };
         assert!(!no_catalog.lists(ObjectKind::Table));
-        assert_eq!(Feature::ALL.len(), 13);
+        assert_eq!(Feature::ALL.len(), 14);
     }
 }

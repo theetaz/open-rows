@@ -67,6 +67,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   { id: 'save', label: 'Save SQL file', shortcut: 'Cmd+S' },
   { id: 'save-as', label: 'Save SQL file as…', shortcut: 'Shift+Cmd+S' },
   { id: 'export-table', label: 'Export table…', shortcut: null },
+  { id: 'import-data', label: 'Import data from file…', shortcut: null },
   { id: 'show-er-diagram', label: 'Show ER diagram', shortcut: null },
   {
     id: 'export-results',

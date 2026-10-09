@@ -13,12 +13,14 @@
 //! generates table DDL ([`ddl`]). Binds positional
 //! text-format parameters (`Session::execute_bound`). Negotiates TLS with
 //! libpq `sslmode` semantics through `openrows-net` (D-11) and connects through
-//! a route such as an SSH tunnel (`ConnectOptions::via`, D-10).
+//! a route such as an SSH tunnel (`ConnectOptions::via`, D-10). Imports
+//! append rows with `COPY FROM STDIN` (the `BulkLoader` facet).
 #![forbid(unsafe_code)]
 mod admin;
 mod cancel;
 mod capabilities;
 mod connect;
+mod copy;
 pub mod ddl;
 mod decode;
 mod driver;

@@ -2,6 +2,7 @@
 import { vi } from 'vitest';
 import type { ProfileDto, ServerDto, TableStructureDto } from '@openrows/ipc';
 import { catalogStub } from './catalogStub';
+import { importStub } from './importStub';
 import { structureStub } from './structureStub';
 
 /** A saved profile with synthetic, non-secret values. */
@@ -300,6 +301,7 @@ export function ipcStub(
     tableCount: vi.fn(() => new Promise(() => {})),
     tableSql: vi.fn(() => Promise.resolve({ sql: 'SELECT 1', params: [] })),
     startExport: vi.fn(() => Promise.resolve({ status: 'dismissed' })),
+    ...importStub(),
     listProcesses: vi.fn(() => Promise.resolve([])),
     signalProcess: vi.fn(() => Promise.resolve()),
   };

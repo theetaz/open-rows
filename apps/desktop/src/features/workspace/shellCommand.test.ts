@@ -18,6 +18,7 @@ function shell(): {
     addQuery: vi.fn(),
     closeTab: vi.fn(),
     onExportTable: vi.fn(),
+    onImport: vi.fn(),
     openFile: vi.fn(),
     refresh: vi.fn(),
     toggleSafe: vi.fn(),
@@ -53,4 +54,10 @@ it('exports the table without a query tab, and Help search opens the palette', (
   expect(input.onExportTable).toHaveBeenCalledOnce();
   run('help-search');
   expect(input.setMode).toHaveBeenCalledWith('commands');
+});
+
+it('opens the import sheet from File ▸ Import… and the palette', () => {
+  const { run, input } = shell();
+  run('import-data');
+  expect(input.onImport).toHaveBeenCalledOnce();
 });

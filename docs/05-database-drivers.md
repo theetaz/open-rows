@@ -75,6 +75,8 @@ The UI reads capabilities to decide which toolbar buttons, tree nodes and editor
 
 **Implemented (M1-10).** `openrows-driver-api` ships the subset the current drivers need, as `Driver::capabilities() -> Capabilities`: a `Location` (`Server` or `File`), the claimed `Feature`s and the `ObjectKind`s the catalog lists. Features: `Cancel`, `BindParameters`, `MultipleDatabases`, `Schemas`, `Catalog`, `RowEdits`, `StructureChanges`, `TransactionalDdl`, `Tls`, `Routes`. A list of features instead of booleans keeps the struct `Copy` and lets a new feature be added without touching every driver. The paradigm, query language, explain and admin entries arrive with the first driver that needs them (Tier 2). Each driver declares its set in its own `capabilities.rs`:
 
+**Bulk load (M2-11).** `Feature::BulkLoad` means `Connection::bulk_loader` offers the `BulkLoader` facet: append text rows to one table inside the caller's transaction on the engine's fastest path. PostgreSQL streams `COPY … FROM STDIN (FORMAT csv)`; SQLite reuses one cached prepared `INSERT` per row. MySQL/MariaDB claim no fast path and import through multi-row parameterised `INSERT`s (`openrows-import`); `LOAD DATA LOCAL INFILE` is not used because it needs `local_infile` enabled on server and client and lets the server ask the client for files. Imports with a conflict policy (skip or upsert) always use batched `INSERT … ON CONFLICT` / `ON DUPLICATE KEY UPDATE`.
+
 | Driver | Location | Features | Object kinds |
 | --- | --- | --- | --- |
 | PostgreSQL | Server | all ten | all seven |

@@ -8,6 +8,7 @@
 use openrows_sql::select::BoundSql;
 
 use crate::admin::Admin;
+use crate::bulk::BulkLoader;
 use crate::catalog::TableStructure;
 use crate::catalog::{ColumnSummary, DatabaseSummary, ObjectKind, ObjectSummary, SchemaSummary};
 use crate::diagram::{SchemaDiagram, read_per_table};
@@ -66,6 +67,12 @@ pub trait Connection: Session {
 
     /// Process list and cancel/terminate; `None` when the engine has none.
     fn admin(&mut self) -> Option<&mut dyn Admin> {
+        None
+    }
+
+    /// The engine's fast append path for imports; `None` when imports use
+    /// batched parameterised `INSERT`s instead.
+    fn bulk_loader(&mut self) -> Option<&mut dyn BulkLoader> {
         None
     }
 }

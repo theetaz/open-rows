@@ -1,0 +1,35 @@
+[package]
+name = "openrows-import"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Streamed import of CSV, TSV, JSON and NDJSON files into tables for OpenRows"
+
+[lints]
+workspace = true
+
+[dependencies]
+arrow-array = "60"
+arrow-schema = "60"
+# RFC 4180 reader with quoting, embedded newlines and configurable delimiters.
+csv = "1.3"
+# WHATWG text decoders (UTF-16, Windows-1252, …) for files that are not UTF-8.
+encoding_rs = "0.8.35"
+openrows-driver-api = { path = "../openrows-driver-api" }
+openrows-sql = { path = "../openrows-sql" }
+serde = { workspace = true }
+# `raw_value` keeps JSON numbers and nested values exactly as written.
+serde_json = { workspace = true, features = ["raw_value"] }
+thiserror.workspace = true
+tokio = { version = "1.53", features = ["rt", "sync", "macros"] }
+tokio-util = "0.7.19"
+
+[dev-dependencies]
+openrows-driver-mysql = { path = "../openrows-driver-mysql" }
+openrows-driver-postgres = { path = "../openrows-driver-postgres" }
+openrows-driver-sqlite = { path = "../openrows-driver-sqlite" }
+openrows-net = { path = "../openrows-net" }
+tempfile = "3.27"
+tokio = { version = "1.53", features = ["macros", "rt", "rt-multi-thread", "sync", "time"] }
