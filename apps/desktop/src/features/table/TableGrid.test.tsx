@@ -8,6 +8,8 @@ import { TableGrid } from './TableGrid';
 import type { StagedEdit } from './editHistory';
 import { emptyHistory } from './editHistory';
 import type { RowEditing } from './useRowEditing';
+import { emptyLayout } from '../../results/columnLayout';
+import type { ColumnLayout } from '../../results/columnLayout';
 
 vi.mock('@openrows/grid/canvas', () => ({
   mountGrid: vi.fn(() => ({ destroy: vi.fn() })),
@@ -39,6 +41,9 @@ function gridProps(onRow = vi.fn()) {
     onHeader: vi.fn(),
     onRow,
     onContextMenu: vi.fn(),
+    layout: emptyLayout,
+    onLayout: vi.fn(),
+    copyTarget: { engine: 'postgres' as const, table: null },
   };
 }
 
@@ -113,4 +118,82 @@ it('keeps the selected row when edits are staged, undone and discarded', async (
   expect(mountGrid).toHaveBeenCalledOnce();
   expect(grid.selection).toMatchObject({ row: 18, column: 1 });
   expect(onRow).not.toHaveBeenCalled();
+});
+
+it('applies stored widths and pins, resizes in place and persists drops', async () => {
+  vi.mocked(mountGrid).mockClear();
+  const relayout = vi.fn();
+  vi.mocked(mountGrid).mockImplementationOnce(() => ({
+    destroy: vi.fn(),
+    relayout,
+    metrics: {} as never,
+    viewport: { x: 0, y: 0, width: 0, height: 0 },
+    scrollTo: vi.fn(),
+  }));
+  const props = gridProps();
+  const onLayout = vi.fn();
+  const layout: ColumnLayout = {
+    widths: { name: 222 },
+    order: [],
+    pinned: ['id'],
+  };
+  const result = {
+    ...props.result,
+    columns: [
+      { name: 'id', sourceType: 'int4' },
+      { name: 'name', sourceType: 'text' },
+    ],
+  };
+  const view = render(
+    <ThemeProvider>
+      <TableGrid
+        {...props}
+        result={result}
+        layout={layout}
+        onLayout={onLayout}
+      />
+    </ThemeProvider>,
+  );
+  await waitFor(() => {
+    expect(mountGrid).toHaveBeenCalledOnce();
+  });
+  const grid = vi.mocked(mountGrid).mock.calls[0]?.[1] as GridProps;
+  // Row numbers lead, then the pinned `id`, then `name` at its stored width.
+  expect(
+    grid.source.columns.map((column) => [column.width, column.pinned]),
+  ).toEqual([
+    [48, true],
+    [expect.any(Number), true],
+    [222, false],
+  ]);
+  grid.onColumnResize?.(2, 150, false);
+  expect(grid.source.columns[2]?.width).toBe(150);
+  expect(relayout).toHaveBeenCalledOnce();
+  expect(onLayout).not.toHaveBeenCalled();
+  grid.onColumnResize?.(2, 160, true);
+  const widthUpdate = onLayout.mock.calls[0]?.[0] as (
+    l: ColumnLayout,
+  ) => ColumnLayout;
+  expect(widthUpdate(layout).widths).toEqual({ name: 160 });
+  grid.onColumnMove?.(2, 1);
+  const moveUpdate = onLayout.mock.calls[1]?.[0] as (
+    l: ColumnLayout,
+  ) => ColumnLayout;
+  // `name` cannot enter the pinned region; the order stays valid.
+  expect(moveUpdate(layout).order).toEqual(['id', 'name']);
+  // Unpinning the leading column needs no reload: it applies in place.
+  relayout.mockClear();
+  view.rerender(
+    <ThemeProvider>
+      <TableGrid
+        {...props}
+        result={result}
+        layout={{ ...layout, pinned: [] }}
+        onLayout={onLayout}
+      />
+    </ThemeProvider>,
+  );
+  expect(grid.source.columns[1]?.pinned).toBe(false);
+  expect(relayout).toHaveBeenCalledOnce();
+  expect(mountGrid).toHaveBeenCalledOnce();
 });

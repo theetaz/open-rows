@@ -58,6 +58,17 @@ export class CanvasPainter {
     }
     this.prepare();
   }
+  /** Column widths, order or pins changed: rebuild offsets and re-measure. */
+  relayout(): void {
+    this.layout = new GridLayout(
+      this.props.source.columns,
+      this.props.theme.rowHeight,
+    );
+    this.refresh();
+  }
+  /** Text width in the cell font; for auto-size, outside painting. */
+  readonly measure = (text: string): number =>
+    this.contexts[0]?.measureText(text).width ?? 0;
   /** Column kinds changed: re-measure truncated text against the new widths. */
   refresh(): void {
     this.text = new TextCache();

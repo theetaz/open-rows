@@ -4,8 +4,11 @@ import type { RefObject } from 'react';
 import { useTableCommands } from '../commands';
 import type { TableCommand } from '../commands';
 import { canEdit } from './EditToolbar';
-import { selectionText } from './copySelection';
-import type { GridSelection } from './copySelection';
+import { copySource } from './gridSelection';
+import type { GridSelection } from './gridSelection';
+import { emptyLayout } from '../../results/columnLayout';
+import { copyFailure, copySelection } from '../../results/copy/copySelection';
+import type { CopyFormat } from '../../results/copy/formats';
 import { focusFilter } from './useTableKeys';
 import type { RowEditing } from './useRowEditing';
 import type { TableTabState } from './useTableTab';
@@ -40,13 +43,58 @@ function deleteSelected(input: Input): void {
   else input.editing.quick(result, cell, 'delete');
 }
 
-function copySelected(input: Input): void {
+/** Copy the selection (or the focused row) through the shared copy engine. */
+function copySelected(input: Input, format: CopyFormat): void {
   const selection = currentSelection(input);
-  if (!selection) return;
-  selectionText(selection)
-    .then((text) => navigator.clipboard.writeText(text))
-    .catch(input.editing.fail);
+  const grid = input.state.menu.grid;
+  if (!selection || !grid) return;
+  copySelection(format, copySource(selection), grid.copyTarget).catch(
+    (failure: unknown) => {
+      input.editing.fail(new Error(copyFailure(failure)));
+    },
+  );
 }
+
+/** Pin or unpin the focused column. */
+function pinFocused(input: Input): void {
+  const selection = currentSelection(input);
+  const name = selection?.result.columns[selection.cell.column]?.name;
+  if (name !== undefined) input.state.menu.grid?.togglePin(name);
+}
+
+/** Copy, pin and column-layout commands of the grid. */
+function gridActions(
+  input: Input,
+): Pick<Record<TableCommand, () => void>, GridCommand> {
+  const data = input.state.view.mode === 'data';
+  const copy = (format: CopyFormat) => () => {
+    if (data) copySelected(input, format);
+  };
+  return {
+    'copy-selection': copy('tsv'),
+    'copy-as-csv': copy('csv'),
+    'copy-as-json': copy('json'),
+    'copy-as-markdown': copy('markdown'),
+    'copy-as-insert': copy('insert'),
+    'copy-as-where-in': copy('whereIn'),
+    'pin-column': () => {
+      if (data) pinFocused(input);
+    },
+    'reset-columns': () => {
+      input.state.layout.change(() => emptyLayout);
+    },
+  };
+}
+
+type GridCommand =
+  | 'copy-selection'
+  | 'copy-as-csv'
+  | 'copy-as-json'
+  | 'copy-as-markdown'
+  | 'copy-as-insert'
+  | 'copy-as-where-in'
+  | 'pin-column'
+  | 'reset-columns';
 
 /** Every table command against this tab's view, rows and staged edits. */
 function tableActions(input: Input): Record<TableCommand, () => void> {
@@ -67,15 +115,13 @@ function tableActions(input: Input): Record<TableCommand, () => void> {
     'delete-row': () => {
       if (data) deleteSelected(input);
     },
-    'copy-selection': () => {
-      if (data) copySelected(input);
-    },
     'focus-filter': () => {
       if (!data) actions.mode('data');
       focusFilter(input.root.current, actions);
     },
     'toggle-columns': actions.toggleColumns,
     refresh: actions.reload,
+    ...gridActions(input),
   };
 }
 

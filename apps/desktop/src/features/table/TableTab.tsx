@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useRef } from 'react';
 import { Button } from '@openrows/ui';
+import type { EngineDto } from '@openrows/ipc';
 import type { TableObject } from '../query/tabs';
 import { canEdit, EditToolbar, editingNote, rowEditBar } from './EditToolbar';
 import { RowEditSheet } from './RowEditSheet';
@@ -30,6 +31,8 @@ type TableTabProps = {
   tabId: string;
   table: TableObject;
   profileId: string;
+  /** Engine of the connection: quoting for copied SQL. */
+  engine: EngineDto;
   /** The session pages run on, or `null` when they cannot run here. */
   sessionId: string | null;
   /** Why rows cannot load even though the connection is open. */
@@ -91,12 +94,7 @@ export function TableTab(props: TableTabProps): React.JSX.Element {
     ready: sessionId !== null,
     onRow: props.onRow,
   });
-  const context = useTableContext({
-    editing,
-    changeView: (update) => {
-      props.views.setView(props.tabId, update);
-    },
-  });
+  const context = useTableContext({ ...state.menu, editing });
   return (
     <section
       ref={root}
@@ -112,6 +110,7 @@ export function TableTab(props: TableTabProps): React.JSX.Element {
             state={state}
             onRow={showRow}
             editing={editing}
+            columns={state.layout}
             onContextMenu={context.show}
             onSelection={onSelection}
           />

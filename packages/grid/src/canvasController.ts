@@ -60,6 +60,11 @@ export class CanvasController {
     this.invalidate();
     this.painter.metrics.scrollHandlerMs += performance.now() - started;
   };
+  /** The row count changed: request the visible window again, even unmoved. */
+  refetch(): void {
+    this.last.r0 = -1;
+    this.update();
+  }
   /** Stop future callbacks before pending tile fills can settle. */
   destroy(): void {
     this.active = false;

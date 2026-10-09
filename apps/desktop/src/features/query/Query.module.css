@@ -129,6 +129,31 @@
   min-height: 0;
   position: relative;
 }
+.resultView {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.resultTools {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-8);
+  padding: var(--or-space-4) var(--or-space-6);
+  border-bottom: 1px solid var(--or-separator);
+  flex-shrink: 0;
+}
+.resultFilter {
+  inline-size: 220px;
+}
+.resultStatus {
+  min-inline-size: 0;
+  overflow: hidden;
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .gridError {
   position: absolute;
   inset: var(--or-space-8);

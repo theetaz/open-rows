@@ -5,6 +5,7 @@ import { isActive } from '../query/run';
 import type { ResultMeta } from '../query/run';
 import type { TableObject } from '../query/tabs';
 import {
+  arrangedQuery,
   countKey,
   filterRow,
   nextSort,
@@ -14,6 +15,11 @@ import {
   toFilters,
 } from './model';
 import { hideRowId } from './row';
+import { arrange } from '../../results/columnLayout';
+import type { EngineDto } from '@openrows/ipc';
+import { useTableLayout } from './useTableLayout';
+import type { TableLayout } from './useTableLayout';
+import type { ContextMenuProps } from './contextMenuActions';
 import type { FilterRow, TableView, Total, ViewMode } from './model';
 import type { TableEntry } from './entries';
 import type { TableViews } from './useTableViews';
@@ -27,6 +33,8 @@ type Args = {
   views: TableViews;
   /** A keyless table's rowid: selected for edits, never shown. */
   rowId: string | null;
+  /** Engine of the connection: quoting for copied SQL. */
+  engine: EngineDto;
 };
 
 /** Run `action` whenever `trigger` changes to a non-null value. */
@@ -73,6 +81,10 @@ export type TableTabState = {
   actions: TableActions;
   cancelPage: () => void;
   cancelCount: () => void;
+  /** Column widths, order and pins; the page selects in that order. */
+  layout: TableLayout;
+  /** What the grid's context menu changes. */
+  menu: Pick<ContextMenuProps, 'grid' | 'changeView'>;
 };
 
 /** View state, derived request and actions of one table tab. */
@@ -83,15 +95,23 @@ export function useTableTab({
   sessionId,
   views,
   rowId,
+  engine,
 }: Args): TableTabState {
   const entry = views.entryOf(tabId);
+  const columnLayout = useTableLayout(table, profileId, engine);
+  const { layout } = columnLayout;
   const { view, structure } = entry;
   const target = tableTarget(table, profileId);
   const columns =
     structure.status === 'ready'
       ? structure.data.columns.map((column) => column.name)
       : [];
-  const query = tableQuery(target, view, columns, rowId);
+  const query = arrangedQuery(
+    tableQuery(target, view, columns, rowId),
+    columns,
+    arrange(layout, columns),
+    view.hidden,
+  );
   const key = sessionId ? pageKey(query, view, sessionId) : null;
   useTrigger(structure.status === 'idle' ? 'load' : null, () => {
     views.loadStructure(tabId, target);
@@ -130,6 +150,8 @@ export function useTableTab({
     cancelCount: () => {
       views.cancelCount(tabId);
     },
+    layout: columnLayout,
+    menu: { grid: columnLayout.grid, changeView: change },
   };
 }
 

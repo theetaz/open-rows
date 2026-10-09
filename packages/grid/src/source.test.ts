@@ -75,3 +75,28 @@ it('accepts worker-ready cells without converting Arrow on the main thread and d
   expect(source.metrics.tileAllocations).toBe(3);
   expect(source.metrics.cellAllocations).toBe(15_360);
 });
+it('grows a streaming result and refetches only the partial last tile row', async () => {
+  const load = vi.fn(tile),
+    columns = props().source.columns.slice(0, 3),
+    source = new TileSource('spike', 300, columns, load);
+  const window = { r0: 0, r1: 299, c0: 0, c1: 2 };
+  await source.window(window, 0);
+  expect(source.cell(299, 0)).toBeDefined();
+  expect(source.cell(300, 0)).toBeUndefined();
+  const listener = vi.fn();
+  source.subscribe(listener);
+  source.grow(200);
+  expect(listener).not.toHaveBeenCalled();
+  source.grow(600);
+  expect(source.rows).toBe(600);
+  expect(listener).toHaveBeenCalledOnce();
+  // The full first tile row stays cached; the cut one is gone until refetched.
+  expect(source.cell(0, 0)).toBeDefined();
+  expect(source.cell(299, 0)).toBeUndefined();
+  load.mockClear();
+  await source.window({ ...window, r1: 599 }, 0);
+  expect(load.mock.calls.map(([request]) => request.rowStart)).toEqual([
+    256, 512,
+  ]);
+  expect(source.cell(511, 0)).toBeDefined();
+});

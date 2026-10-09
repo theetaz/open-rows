@@ -150,12 +150,13 @@ it('shows one tab per result or only the last result', async () => {
   runs.runOf = () => ({
     ...idleRun,
     status: 'running',
-    results: [result('r1', 0, 3), result('r2', 1, 5)],
+    results: [result('r1', 0, 3), result('r2', 1, 0)],
   });
   const { user } = renderTab(runs);
   const sets = screen.getByRole('tablist', { name: 'Result sets' });
   expect(within(sets).getAllByRole('tab')).toHaveLength(2);
   await chooseIn(user, 'Editor settings', 'Result View Mode', /Last Result/);
   expect(screen.queryByRole('tablist', { name: 'Result sets' })).toBeNull();
-  expect(screen.getByText(/Receiving rows… 5 so far/)).toBeVisible();
+  // The last result has no rows yet; one with rows would show its grid.
+  expect(screen.getByText(/Receiving rows… 0 so far/)).toBeVisible();
 });

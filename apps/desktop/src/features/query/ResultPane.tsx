@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Button } from '@openrows/ui';
+import type { EngineDto } from '@openrows/ipc';
 import type { ResultMeta, RunMessage, RunState } from './run';
 import type { ResultView } from './editorSettings';
 import type { RunScope } from './request';
@@ -16,6 +17,8 @@ type Props = {
   view: ResultView;
   /** What ⌘↵ runs, for the empty-state hint. */
   runDefault: RunScope;
+  /** Engine of the connection: quoting for copied SQL. */
+  engine: EngineDto;
   onCell: (cell: SelectedCell) => void;
   /** Export… for the shown result; omitted while it cannot be exported. */
   onExport?: ((result: ResultMeta) => void) | undefined;
@@ -74,6 +77,7 @@ export function ResultPane({
   run,
   view,
   runDefault,
+  engine,
   onCell,
   onExport,
   onExportable,
@@ -112,9 +116,14 @@ export function ResultPane({
       <Messages messages={run.messages} />
       {!current ? (
         <p className={styles.placeholder}>{placeholder(run, runDefault)}</p>
-      ) : current.done ? (
+      ) : current.done || current.rows > 0 ? (
         <Suspense fallback={null}>
-          <ResultGrid key={current.id} result={current} onCell={onCell} />
+          <ResultGrid
+            key={current.id}
+            result={current}
+            engine={engine}
+            onCell={onCell}
+          />
         </Suspense>
       ) : (
         <p className={styles.placeholder} role="status">

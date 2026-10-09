@@ -222,7 +222,7 @@ function TabBar(
 
 /** Results of the latest run and its one-line status. */
 function TabResults(
-  props: Pick<QueryTabProps, 'sessionId' | 'onCell'> & {
+  props: Pick<QueryTabProps, 'sessionId' | 'onCell' | 'connection'> & {
     run: RunState;
     settings: EditorSettings;
     onExportable: (exportShown: (() => void) | null) => void;
@@ -235,6 +235,7 @@ function TabResults(
         view={props.settings.resultView}
         runDefault={props.settings.runDefault}
         sessionId={props.sessionId}
+        engine={props.connection.engine}
         onCell={props.onCell}
         onExportable={props.onExportable}
       />

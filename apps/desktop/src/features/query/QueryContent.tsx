@@ -146,6 +146,7 @@ function TabBody(
         tabId={tab.id}
         table={tab.table}
         profileId={props.connection.id}
+        engine={props.connection.engine}
         sessionId={sessionId}
         notice={reason}
         views={props.tables}

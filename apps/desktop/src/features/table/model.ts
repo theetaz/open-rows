@@ -176,6 +176,24 @@ export function tableQuery(
   };
 }
 
+/**
+ * Select the shown columns in the user's arranged order (dragged headers,
+ * pinned first) when it differs from the catalog's, so result column
+ * indexes always match what the grid shows.
+ */
+export function arrangedQuery(
+  query: TableQueryDto,
+  catalog: readonly string[],
+  arranged: readonly string[],
+  hidden: readonly string[],
+): TableQueryDto {
+  if (arranged.every((name, index) => name === catalog[index])) return query;
+  return {
+    ...query,
+    columns: arranged.filter((name) => !hidden.includes(name)),
+  };
+}
+
 /** Identity of a page request: a different key means the page must reload. */
 export function pageKey(
   query: TableQueryDto,

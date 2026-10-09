@@ -118,12 +118,24 @@ it('switches General and Editor settings', async () => {
   });
   expect(restore).toHaveAttribute('aria-checked', 'true');
   await user.click(restore);
-  await user.click(screen.getByRole('radio', { name: 'Compact' }));
+  await user.click(
+    within(screen.getByRole('radiogroup', { name: 'Density' })).getByRole(
+      'radio',
+      { name: 'Compact' },
+    ),
+  );
+  await user.click(
+    within(screen.getByRole('radiogroup', { name: 'Grid rows' })).getByRole(
+      'radio',
+      { name: 'Comfortable' },
+    ),
+  );
   await user.click(screen.getByRole('switch', { name: 'Reduce motion' }));
   await user.click(screen.getByRole('radio', { name: '1 min' }));
   expect(JSON.parse(localStorage.getItem('openrows.general') ?? '{}')).toEqual({
     restoreSession: false,
     density: 'compact',
+    gridDensity: 'comfortable',
     reduceMotion: true,
     keepaliveSeconds: 60,
   });

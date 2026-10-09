@@ -12,15 +12,24 @@ import type { CellValue } from './cellValue';
 import { fieldActions } from './fieldActions';
 import { selectionActions } from './selectionActions';
 import { selectedCells } from './bulk/cells';
-import { rowText } from './copySelection';
+import { rowText } from '../../results/copy/formats';
 import type { TableColumnDto } from '@openrows/ipc';
+import type { CopyTarget } from '../../results/copy/copySelection';
 /** A right-click target plus the grid selection it belongs to, in data coordinates. */
 export type ContextTarget = GridContextTarget & {
   ranges: readonly CellRange[];
 };
 export type MenuSelection = ContextTarget & { result: ResultMeta };
+/** Grid-level actions: copy formats and frozen columns. */
+export type GridMenu = {
+  copyTarget: CopyTarget;
+  pinned: readonly string[];
+  togglePin: (name: string) => void;
+};
 export type ContextMenuProps = {
   selection: MenuSelection;
+  /** Copy as and Pin column; omitted where the grid offers neither. */
+  grid?: GridMenu | undefined;
   editing: RowEditing;
   changeView: (update: (view: TableView) => TableView) => void;
   /** Ask for one value to stage in every selected cell. */
@@ -75,10 +84,24 @@ function canEdit(editing: RowEditing, result: ResultMeta): boolean {
     info.key.every((name) => holdsColumn(result, name))
   );
 }
+/** Pin or unpin the column, when the grid supports frozen columns. */
+function pinActions({ grid, name, run }: Context): Action[] {
+  if (!grid) return [];
+  const pinned = grid.pinned.includes(name);
+  return [
+    {
+      label: pinned ? 'Unpin column' : 'Pin column',
+      run: run(() => {
+        grid.togglePin(name);
+      }),
+    },
+  ];
+}
 function columnActions(
-  { selection, name, changeView, run }: Context,
+  context: Context,
   copy: (text: string) => void,
 ): Action[] {
+  const { selection, name, changeView, run } = context;
   const { result } = selection;
   const sort = (descending: boolean): void => {
     changeView((view) => ({
@@ -106,6 +129,7 @@ function columnActions(
         sort(true);
       }),
     },
+    ...pinActions(context),
     {
       label: 'Hide column',
       disabled: result.columns.length <= 1,
