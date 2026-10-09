@@ -89,7 +89,7 @@ fn file_engines_keep_their_file_and_drop_any_route() -> Result<(), IpcError> {
     form.file = Some(FileDto {
         path: " /data/app.db ".to_owned(),
         read_only: true,
-        create: false,
+        ..FileDto::default()
     });
     form.tls_mode = TlsModeDto::VerifyFull;
     form.ssh = Some(super::super::route_dto::tests::ssh_input(
@@ -108,6 +108,43 @@ fn file_engines_keep_their_file_and_drop_any_route() -> Result<(), IpcError> {
         .map_err(|e| IpcError::invalid(e.to_string()))?;
     assert_eq!(dto["engine"], "sqlite");
     assert_eq!(dto["file"]["readOnly"], true);
+    Ok(())
+}
+
+#[test]
+fn saving_the_form_keeps_attachments_and_memory_drops_file_options() -> Result<(), IpcError> {
+    let mut form = input(EnvKindDto::Local);
+    form.engine = EngineDto::Sqlite;
+    form.file = Some(FileDto {
+        path: "/data/app.db".to_owned(),
+        ..FileDto::default()
+    });
+    let mut profile = form.new_profile();
+    form.apply(&mut profile)?;
+    let attached = openrows_store::profile::AttachedFile {
+        alias: "logs".to_owned(),
+        path: "/data/logs.db".into(),
+    };
+    if let Some(file) = profile.file.as_mut() {
+        file.attach(attached.clone())?;
+    }
+    form.file = Some(FileDto {
+        path: "/ignored.db".to_owned(),
+        memory: true,
+        read_only: true,
+        create: true,
+        attached: Vec::new(),
+    });
+    form.apply(&mut profile)?;
+    let file = profile.file.clone().unwrap_or_default();
+    assert!(file.memory && !file.read_only && !file.create);
+    assert!(file.path.as_os_str().is_empty());
+    assert_eq!(file.attached, vec![attached]);
+    assert!(profile.validate().is_ok());
+    let dto = serde_json::to_value(ProfileDto::from(&profile))
+        .map_err(|e| IpcError::invalid(e.to_string()))?;
+    assert_eq!(dto["file"]["memory"], true);
+    assert_eq!(dto["file"]["attached"][0]["alias"], "logs");
     Ok(())
 }
 

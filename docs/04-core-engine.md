@@ -220,7 +220,7 @@ All drivers convert native values into a shared type system that maps 1:1 onto A
 | Decimal | `Decimal128(p,s)` when p ≤ 38, else `Utf8` with decimal tag | PG `numeric`, Oracle `NUMBER` | Never converted to float. Arbitrary precision preserved as text. |
 | Text | `Utf8` / `LargeUtf8` | | Invalid UTF-8 from server becomes Binary with a flag. |
 | Binary | `Binary` / `LargeBinary` | `bytea`, `BLOB` | |
-| Date, Time, Timestamp(tz?) | `Date32`, `Time64(µs)`, `Timestamp(µs, tz)` | | Out-of-range (PG `infinity`, year 0) stored as tagged text. |
+| Date, Time, Timestamp(tz?) | `Date32`, `Time64(µs)`, `Timestamp(µs, tz)` | | Out-of-range (PG `infinity`, MySQL zero dates and `TIME` outside one day, year 0) stored as tagged text. |
 | Interval | `Interval(MonthDayNano)` | | |
 | UUID | `FixedSizeBinary(16)` + extension tag | | |
 | JSON | `Utf8` + `openrows.json` extension | PG `json/jsonb`, MySQL `JSON` | |

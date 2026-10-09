@@ -34,3 +34,36 @@ it('marks NULL and empty strings like TablePlus', () => {
     { text: 'NULL', state: 'null' },
   ]);
 });
+
+it('pads temporal fractions to the fraction-digits metadata', () => {
+  const column = (metadata: Record<string, string>) => ({
+    name: 'at',
+    type: 'Timestamp<MICROSECOND>',
+    metadata,
+    chunks: [
+      {
+        length: 1,
+        offset: 0,
+        stride: 1,
+        nullCount: 0,
+        values: BigInt64Array.of(1_500_000n),
+        validity: undefined,
+        offsets: undefined,
+      },
+    ],
+  });
+  const tile = convertDisplayTile(
+    {
+      rows: 1,
+      columns: [
+        column({ 'openrows.fraction_digits': '3' }),
+        column({ 'openrows.fraction_digits': 'x' }),
+      ],
+    },
+    { resultId: 'r', rowStart: 0, rowCount: 1, colStart: 0, colCount: 2 },
+  );
+  expect(tile.cells.map((cell) => cell.text)).toEqual([
+    '1970-01-01 00:00:01.500',
+    '1970-01-01 00:00:01.5',
+  ]);
+});

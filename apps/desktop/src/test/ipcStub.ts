@@ -181,6 +181,7 @@ export function ipcStub(
       Promise.resolve({
         key: [],
         protected: [],
+        rowId: null,
         columns: sampleStructure.columns,
         readOnly: false,
         confirmWrites: false,

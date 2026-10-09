@@ -236,8 +236,8 @@ impl ConnectionProfile {
         SecretKey::password(&self.id.to_string())
     }
 
-    /// Check required fields: a host and port for servers, a file path and
-    /// no SSH tunnel for file engines.
+    /// Check required fields: a host and port for servers; for file engines
+    /// a file path (unless in-memory), valid attachments and no SSH tunnel.
     ///
     /// # Errors
     /// [`ProfileError::Invalid`] naming the first bad field.
@@ -283,10 +283,10 @@ impl ConnectionProfile {
         let Some(file) = &self.file else {
             return invalid("file.path", "must not be empty");
         };
-        if file.path.as_os_str().is_empty() {
+        if !file.memory && file.path.as_os_str().is_empty() {
             return invalid("file.path", "must not be empty");
         }
-        if !file.path.is_absolute() {
+        if !file.memory && !file.path.is_absolute() {
             return invalid("file.path", "must be an absolute path");
         }
         if self.ssh.is_some() {
@@ -295,6 +295,6 @@ impl ConnectionProfile {
         if self.proxy.is_some() {
             return invalid("proxy", "local files cannot use a proxy");
         }
-        Ok(())
+        file.validate_attached()
     }
 }

@@ -21,6 +21,7 @@ import { defaultPort, engineName, isFileEngine } from './engines';
 import type {
   EngineDto,
   EnvKindDto,
+  FileDto,
   PasswordInput,
   ProfileDto,
   ProfileInput,
@@ -64,6 +65,8 @@ export type Draft = {
   tls: TlsDraft;
   /** The database file of a file engine (`SQLite`). */
   filePath: string;
+  /** An in-memory database instead of a file (no path, read-only or create). */
+  fileMemory: boolean;
   /** Open the file read-only. */
   fileReadOnly: boolean;
   /** Create the file when it does not exist ("New File…"). */
@@ -108,6 +111,7 @@ export function emptyDraft(engine: EngineDto = 'postgres'): Draft {
     proxy: emptyProxy(),
     tls: emptyTls(),
     filePath: '',
+    fileMemory: false,
     fileReadOnly: false,
     fileCreate: false,
   };
@@ -138,6 +142,7 @@ export function draftFromProfile(profile: ProfileDto): Draft {
     proxy: proxyFromProfile(profile),
     tls: tlsFromProfile(profile),
     filePath: profile.file?.path ?? '',
+    fileMemory: profile.file?.memory ?? false,
     fileReadOnly: profile.file?.readOnly ?? false,
     fileCreate: profile.file?.create ?? false,
   };
@@ -164,11 +169,17 @@ function fileStem(path: string): string {
   return base.replace(/\.[^.]+$/, '') || base;
 }
 
+/** A connection name for a parsed `sqlite:` URL. */
+function fileName(file: FileDto): string {
+  return file.memory ? 'In-memory' : fileStem(file.path);
+}
+
 /** Fill connection fields from a parsed URL (its password is handled in the webview). */
 export function withUrl(draft: Draft, parsed: UrlDraft): Draft {
   const derive = !draft.name || draft.nameFromUrl;
   const file = parsed.file;
-  const derived = file ? fileStem(file.path) : parsed.database || parsed.host;
+  const memory = file?.memory ?? false;
+  const derived = file ? fileName(file) : parsed.database || parsed.host;
   return {
     ...draft,
     engine: parsed.engine,
@@ -179,8 +190,9 @@ export function withUrl(draft: Draft, parsed: UrlDraft): Draft {
     database: parsed.database ?? '',
     user: parsed.user ?? '',
     tlsMode: parsed.tlsMode,
-    filePath: file?.path ?? draft.filePath,
-    fileReadOnly: file?.readOnly ?? draft.fileReadOnly,
+    filePath: file && !memory ? file.path : draft.filePath,
+    fileMemory: file ? memory : draft.fileMemory,
+    fileReadOnly: file && !memory ? file.readOnly : draft.fileReadOnly,
     fileCreate: file ? false : draft.fileCreate,
   };
 }
@@ -199,12 +211,19 @@ export function withPassword(draft: Draft, value: string): Draft {
   return { ...draft, password: value, passwordMode: value ? 'set' : 'keep' };
 }
 
+/** Why the file path cannot be used; an in-memory database needs none. */
+function filePathError(draft: Draft): string | undefined {
+  const path = draft.filePath.trim();
+  if (draft.fileMemory) return undefined;
+  if (!path) return 'Choose a database file';
+  return path.startsWith('/') ? undefined : 'Use an absolute path';
+}
+
 function validateFile(draft: Draft): DraftErrors {
   const errors: DraftErrors = {};
-  const path = draft.filePath.trim();
+  const pathError = filePathError(draft);
   if (!draft.name.trim()) errors.name = 'Name is required';
-  if (!path) errors.filePath = 'Choose a database file';
-  else if (!path.startsWith('/')) errors.filePath = 'Use an absolute path';
+  if (pathError) errors.filePath = pathError;
   if (draft.envKind === 'custom' && !draft.envLabel.trim())
     errors.envLabel = 'Label is required';
   return errors;
@@ -241,19 +260,24 @@ function password(draft: Draft): PasswordInput {
 
 const optional = (text: string): string | null => text.trim() || null;
 
+/** The file settings; an in-memory database has no path and no file options. */
+function fileInput(draft: Draft): FileDto {
+  const memory = draft.fileMemory;
+  return {
+    path: memory ? '' : draft.filePath.trim(),
+    memory,
+    readOnly: !memory && draft.fileReadOnly,
+    create: !memory && draft.fileCreate,
+  };
+}
+
 /** The command payload for save and test. */
 export function toInput(draft: Draft): ProfileInput {
   const custom = draft.envKind === 'custom';
   const file = isFileEngine(draft.engine);
   return {
     engine: draft.engine,
-    file: file
-      ? {
-          path: draft.filePath.trim(),
-          readOnly: draft.fileReadOnly,
-          create: draft.fileCreate,
-        }
-      : null,
+    file: file ? fileInput(draft) : null,
     name: draft.name.trim(),
     group: optional(draft.group),
     env: {

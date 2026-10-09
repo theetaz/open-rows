@@ -25,6 +25,8 @@
     "allow-profile-parse-url",
     "allow-connection-test",
     "allow-connection-pick-file",
+    "allow-connection-attach-database",
+    "allow-connection-detach-database",
     "allow-ssh-prompt-answer",
     "allow-session-open",
     "allow-session-close",

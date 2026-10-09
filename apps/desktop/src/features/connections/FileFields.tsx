@@ -9,8 +9,9 @@ import styles from './ConnectionSheet.module.css';
 
 /**
  * A local database file (`SQLite`): typed, chosen in the native open panel,
- * or named in a save panel for a new file that is created on connect. Only
- * the path is stored; the core opens the file.
+ * or named in a save panel for a new file that is created on connect; or an
+ * in-memory database, which hides the file controls. Only the path is
+ * stored; the core opens the file.
  */
 export function FileFields({
   form,
@@ -27,8 +28,20 @@ export function FileFields({
       () => undefined,
     );
   };
+  const memorySwitch = (
+    <SwitchRow
+      label="In-memory"
+      detail="A fresh database shared by this connection's tabs until it closes."
+      checked={draft.fileMemory}
+      onChange={(fileMemory) => {
+        update({ fileMemory });
+      }}
+    />
+  );
+  if (draft.fileMemory) return memorySwitch;
   return (
     <>
+      {memorySwitch}
       <div className={styles.fileRow}>
         <TextField
           className={styles.row}

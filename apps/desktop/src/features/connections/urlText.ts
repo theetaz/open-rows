@@ -108,8 +108,9 @@ function tlsQuery(draft: Draft): string {
   return name ? `?ssl-mode=${name}` : `?sslmode=${draft.tlsMode}`;
 }
 
-/** `sqlite:/path`, `?mode=ro` when the file opens read-only. */
+/** `sqlite:/path`, `?mode=ro` when the file opens read-only; `sqlite::memory:` in memory. */
 function fileUrl(draft: Draft): string {
+  if (draft.fileMemory) return 'sqlite::memory:';
   const path = encodeURI(draft.filePath.trim());
   return `sqlite:${path}${draft.fileReadOnly ? '?mode=ro' : ''}`;
 }

@@ -73,6 +73,7 @@ beforeEach(() => {
   vi.mocked(tableEditInfo).mockResolvedValue({
     key: ['id'],
     protected: [],
+    rowId: null,
     columns,
     readOnly: false,
     confirmWrites: false,
@@ -152,6 +153,7 @@ it('does not expose row editing on read-only connections or when key columns are
   vi.mocked(tableEditInfo).mockResolvedValueOnce({
     key: ['id'],
     protected: [],
+    rowId: null,
     columns,
     readOnly: true,
     confirmWrites: false,

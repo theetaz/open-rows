@@ -30,6 +30,14 @@ export const commands = {
 	connectionTest: (profileId: string | null, input: ProfileInput) => typedError<TestReport, IpcError>(__TAURI_INVOKE("connection_test", { profileId, input })),
 	/**  Pick a key, certificate or database file; `null` when the panel is cancelled. */
 	connectionPickFile: (kind: PickFileKind) => typedError<string | null, IpcError>(__TAURI_INVOKE("connection_pick_file", { kind })),
+	/**
+	 *  Attach the existing database file at `path` as schema `alias` to the
+	 *  saved `SQLite` connection and its open sessions. The file opens read-only
+	 *  when the connection's main file does.
+	 */
+	connectionAttachDatabase: (profileId: string, path: string, alias: string) => typedError<AttachReply, IpcError>(__TAURI_INVOKE("connection_attach_database", { profileId, path, alias })),
+	/**  Detach schema `alias` from the saved `SQLite` connection and its open sessions. */
+	connectionDetachDatabase: (profileId: string, alias: string) => typedError<AttachReply, IpcError>(__TAURI_INVOKE("connection_detach_database", { profileId, alias })),
 	/**  Answer an open SSH prompt (host-key trust or challenge answers). */
 	sshPromptAnswer: (id: string, answer: SshPromptAnswer) => typedError<null, IpcError>(__TAURI_INVOKE("ssh_prompt_answer", { id, answer })),
 	/**
@@ -237,6 +245,22 @@ export type AppInfo = {
 	buildProfile: BuildProfile,
 };
 
+/**  The saved connection after an attach or detach, and what live sessions said. */
+export type AttachReply = {
+	/**  The connection as saved. */
+	profile: ProfileDto,
+	/**  One message per open session that could not follow the change. */
+	warnings: string[],
+};
+
+/**  A database file attached under a schema name. */
+export type AttachedFileDto = {
+	/**  Schema name. */
+	alias: string,
+	/**  Absolute path. */
+	path: string,
+};
+
 export type BuildProfile = "debug" | "release";
 
 /**
@@ -389,6 +413,12 @@ export type DefaultDto = { kind: "none" } | { kind: "literal"; value: string } |
 export type EditInfoDto = {
 	key: string[],
 	protected: string[],
+	/**
+	 *  The hidden rowid of a keyless `SQLite` table: when set, `key` is
+	 *  `[rowId]`, the page must select it (`TableQueryDto::row_id`) and the
+	 *  grid, inspector and copies never show it.
+	 */
+	rowId: string | null,
 	columns: TableColumnDto[],
 	readOnly: boolean,
 	/**  The profile asks before writes (always on for `prod`). */
@@ -518,12 +548,23 @@ export type ExportSourceDto =
 
 /**  The database file of a file engine, in the form and in saved profiles. */
 export type FileDto = {
-	/**  Absolute path. */
+	/**  Absolute path; empty for an in-memory database. */
 	path: string,
+	/**
+	 *  An in-memory database shared by the connection's sessions while the
+	 *  app runs (absent: a file).
+	 */
+	memory?: boolean,
 	/**  Open read-only (the engine refuses writes). */
 	readOnly: boolean,
 	/**  Create the file on connect when it is missing ("New file…"). */
 	create: boolean,
+	/**
+	 *  Attached database files. Read-only for the form: saving keeps the
+	 *  stored list, which only `connection_attach_database` and
+	 *  `connection_detach_database` change.
+	 */
+	attached?: AttachedFileDto[],
 };
 
 /**  How the picked file becomes `PostgreSQL` text input. */
@@ -1216,6 +1257,11 @@ export type TableQueryDto = {
 	filters: FilterDto[],
 	combinator: CombinatorDto,
 	sort: SortDto | null,
+	/**
+	 *  A keyless `SQLite` table's rowid alias (`EditInfoDto::row_id`),
+	 *  selected as the last column for row identity and never shown.
+	 */
+	rowId?: string | null,
 };
 
 /**  Columns, indexes and the planner row estimate of a relation. */

@@ -140,11 +140,28 @@ export type TableTargetRef = {
   table: string;
 };
 
-/** The request model of the view; every column when none is hidden. */
+/** The relation a table tab on `profileId` reads. */
+export function tableTarget(
+  table: { database: string; schema: string; name: string },
+  profileId: string,
+): TableTargetRef {
+  return {
+    profileId,
+    database: table.database,
+    schema: table.schema,
+    table: table.name,
+  };
+}
+
+/**
+ * The request model of the view; every column when none is hidden. `rowId`
+ * (a keyless table's rowid) is selected last, for row identity only.
+ */
 export function tableQuery(
   target: TableTargetRef,
   view: TableView,
   columns: readonly string[],
+  rowId: string | null = null,
 ): TableQueryDto {
   const visible = view.hidden.length
     ? columns.filter((column) => !view.hidden.includes(column))
@@ -155,6 +172,7 @@ export function tableQuery(
     filters: [...view.applied],
     combinator: view.combinator,
     sort: view.sort,
+    ...(rowId ? { rowId } : {}),
   };
 }
 

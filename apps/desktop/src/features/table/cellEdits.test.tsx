@@ -35,6 +35,7 @@ beforeEach(() => {
   vi.mocked(tableEditInfo).mockResolvedValue({
     key: ['id'],
     protected: [],
+    rowId: null,
     readOnly: false,
     confirmWrites: false,
     production: false,

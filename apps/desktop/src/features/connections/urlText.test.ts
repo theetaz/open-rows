@@ -71,4 +71,7 @@ it('composes MySQL, MariaDB and SQLite URLs with their own schemes', () => {
   expect(composeUrl({ ...lite, fileReadOnly: true })).toBe(
     'sqlite:/data/my%20shop.sqlite?mode=ro',
   );
+  expect(composeUrl({ ...lite, fileMemory: true, fileReadOnly: true })).toBe(
+    'sqlite::memory:',
+  );
 });

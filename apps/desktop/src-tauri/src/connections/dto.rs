@@ -208,8 +208,8 @@ impl ProfileInput {
     }
 
     /// Copy the form values onto `profile`, keeping fields the form does not
-    /// edit (application name, extra options). File engines get their file
-    /// and never a route (no SSH, no TLS).
+    /// edit (application name, extra options, attached databases). File
+    /// engines get their file and never a route (no SSH, no TLS).
     ///
     /// # Errors
     /// `Invalid` for a custom environment without a label or with a bad colour.
@@ -230,7 +230,12 @@ impl ProfileInput {
             self.proxy.as_ref(),
             profile,
         );
-        profile.file = self.file.as_ref().map(Into::into);
+        let attached = profile
+            .file
+            .take()
+            .map(|file| file.attached)
+            .unwrap_or_default();
+        profile.file = self.file.as_ref().map(|file| file.to_params(attached));
         if profile.driver.is_file() {
             profile.params = ServerParams::default();
             profile.ssh = None;

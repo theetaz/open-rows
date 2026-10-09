@@ -11,6 +11,9 @@ export interface DisplayTile {
   convertMs: number;
 }
 
+/** Field metadata key of the source's fractional-second precision (docs/04 §5). */
+const FRACTION_DIGITS = 'openrows.fraction_digits';
+
 /** The synthetic benchmark result shows sample edit states so every paint layer is measured. */
 const SPIKE_RESULT = 'spike';
 
@@ -27,13 +30,14 @@ export function convertDisplayTile(
     throw new GridError('tile', 'Tile dimensions do not match window');
   const spike = request.resultId === SPIKE_RESULT;
   const cells: DisplayCell[] = [];
+  const digits = tile.columns.map(fractionDigits);
   for (let row = 0; row < tile.rows; row++) {
     for (const [index, column] of tile.columns.entries()) {
       const part = locate(column.chunks, row);
       const missing = isMissing(part.chunk, part.row);
       const value = missing
         ? ''
-        : displayValue(part.chunk, column.type, part.row);
+        : displayValue(part.chunk, column.type, part.row, digits[index]);
       cells.push({
         text: missing ? 'NULL' : value || 'EMPTY',
         state: spike
@@ -59,8 +63,21 @@ function markerState(missing: boolean, value: string): DisplayCell['state'] {
   return value ? 'normal' : 'empty';
 }
 
+/** The source's fixed fractional-second digits (`openrows.fraction_digits`), if any. */
+function fractionDigits(column: Tile['columns'][number]): number | undefined {
+  const digits = Number(column.metadata[FRACTION_DIGITS] ?? Number.NaN);
+  return Number.isInteger(digits) && digits >= 0 && digits <= 9
+    ? digits
+    : undefined;
+}
+
 const decoder = new TextDecoder();
-function displayValue(chunk: ColumnChunk, type: string, row: number): string {
+function displayValue(
+  chunk: ColumnChunk,
+  type: string,
+  row: number,
+  digits: number | undefined,
+): string {
   if (chunk.offsets) return variableValue(chunk, row, type);
   if (type === 'Bool') {
     const at = chunk.offset + row;
@@ -71,7 +88,7 @@ function displayValue(chunk: ColumnChunk, type: string, row: number): string {
     );
     return ((values[at >>> 3] ?? 0) & (1 << (at & 7))) === 0 ? 'false' : 'true';
   }
-  return fixedValue(chunk, type, row);
+  return fixedValue(chunk, type, row, digits);
 }
 
 function locate(

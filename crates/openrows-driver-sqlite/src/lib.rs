@@ -2,7 +2,9 @@
 //! `SQLite` driver (D-12, dogfood slice of M1-13).
 //!
 //! Opens a local database file (read-only, read-write, or created on
-//! request) with `rusqlite`'s bundled `SQLite`, extension loading off. Each
+//! request) or a process-shared in-memory database with `rusqlite`'s
+//! bundled `SQLite`, extension loading off, then attaches the profile's
+//! other database files. Each
 //! connection lives on its own thread ([`worker`]); statements stream back
 //! into Arrow batches whose column types follow the declared affinity and
 //! the values seen, with tagged text for mixed columns ([`decode`]). Cancel
@@ -20,5 +22,5 @@ mod session;
 mod stream;
 mod worker;
 
-pub use connect::{SqliteDriver, open};
+pub use connect::{SqliteDriver, open, open_source};
 pub use session::SqliteSession;

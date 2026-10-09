@@ -25,6 +25,7 @@
 //! ```
 #![forbid(unsafe_code)]
 
+pub mod attach;
 mod bind;
 mod classify;
 mod context;

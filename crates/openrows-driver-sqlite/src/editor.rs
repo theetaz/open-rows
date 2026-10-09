@@ -2,6 +2,9 @@
 //! Staged edits on a database file (docs/05 §7, docs/10 §4): the row key,
 //! exact text snapshots (`CAST(… AS TEXT)`, the text the commit guards
 //! compare) and atomic commits in one `BEGIN IMMEDIATE` transaction.
+//! Keyless rowid tables are identified by their rowid (`row_id`).
+mod row_id;
+
 use openrows_driver_api::{BoxFuture, DriverError, Editor, RowEditInfo, RowSnapshot};
 use openrows_sql::Dialect;
 use openrows_sql::select::BoundSql;
@@ -26,13 +29,24 @@ fn edit_info(
     if key.is_empty() {
         key = unique_not_null(connection, (schema, table), &rows)?;
     }
+    let mut protected: Vec<String> = rows
+        .iter()
+        .filter(|row| row.hidden >= 2)
+        .map(|row| row.name.clone())
+        .collect();
+    let row_id = if key.is_empty() {
+        row_id::row_id(connection, (schema, table), &rows)?
+    } else {
+        None
+    };
+    if let Some(name) = &row_id {
+        key = vec![name.clone()];
+        protected.push(name.clone());
+    }
     Ok(RowEditInfo {
         key,
-        protected: rows
-            .iter()
-            .filter(|row| row.hidden >= 2)
-            .map(|row| row.name.clone())
-            .collect(),
+        protected,
+        row_id,
     })
 }
 
@@ -57,6 +71,18 @@ fn unique_not_null(
         .unwrap_or_default())
 }
 
+/// The catalog columns, then the rowid when it is the requested key.
+fn snapshot_columns(
+    connection: &Connection,
+    (schema, table): (&str, &str),
+    keys: &[(String, String)],
+) -> Result<Vec<String>, DriverError> {
+    let rows = column_rows(connection, schema, table)?;
+    let row_id = row_id::row_id(connection, (schema, table), &rows)?
+        .filter(|name| keys.iter().any(|(key, _)| key == name));
+    Ok(rows.into_iter().map(|row| row.name).chain(row_id).collect())
+}
+
 fn snapshot(
     connection: &Connection,
     (schema, table): (&str, &str),
@@ -66,10 +92,7 @@ fn snapshot(
         return Err(DriverError::Unsupported("A stable key is required".into()));
     }
     let dialect = Dialect::Sqlite;
-    let names: Vec<String> = column_rows(connection, schema, table)?
-        .into_iter()
-        .map(|row| row.name)
-        .collect();
+    let names = snapshot_columns(connection, (schema, table), keys)?;
     let projection = names
         .iter()
         .map(|name| {

@@ -3,7 +3,7 @@
 //! file (D-12).
 use std::path::PathBuf;
 
-use openrows_store::profile::{Driver, FileParams};
+use openrows_store::profile::{AttachedFile, Driver, FileParams};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
@@ -44,30 +44,70 @@ impl From<EngineDto> for Driver {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct FileDto {
-    /// Absolute path.
+    /// Absolute path; empty for an in-memory database.
     pub(crate) path: String,
+    /// An in-memory database shared by the connection's sessions while the
+    /// app runs (absent: a file).
+    #[serde(default)]
+    pub(crate) memory: bool,
     /// Open read-only (the engine refuses writes).
     pub(crate) read_only: bool,
     /// Create the file on connect when it is missing ("New file…").
     pub(crate) create: bool,
+    /// Attached database files. Read-only for the form: saving keeps the
+    /// stored list, which only `connection_attach_database` and
+    /// `connection_detach_database` change.
+    #[serde(default)]
+    pub(crate) attached: Vec<AttachedFileDto>,
+}
+
+/// A database file attached under a schema name.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct AttachedFileDto {
+    /// Schema name.
+    pub(crate) alias: String,
+    /// Absolute path.
+    pub(crate) path: String,
+}
+
+impl From<&AttachedFile> for AttachedFileDto {
+    fn from(file: &AttachedFile) -> Self {
+        Self {
+            alias: file.alias.clone(),
+            path: file.path.display().to_string(),
+        }
+    }
 }
 
 impl From<&FileParams> for FileDto {
     fn from(file: &FileParams) -> Self {
         Self {
             path: file.path.display().to_string(),
+            memory: file.memory,
             read_only: file.read_only,
             create: file.create,
+            attached: file.attached.iter().map(AttachedFileDto::from).collect(),
         }
     }
 }
 
-impl From<&FileDto> for FileParams {
-    fn from(file: &FileDto) -> Self {
-        Self {
-            path: PathBuf::from(file.path.trim()),
-            read_only: file.read_only,
-            create: file.create,
+impl FileDto {
+    /// The form's file settings with `attached` kept from the saved profile.
+    /// In-memory databases have no path and are never read-only or created.
+    pub(crate) fn to_params(&self, attached: Vec<AttachedFile>) -> FileParams {
+        if self.memory {
+            return FileParams {
+                attached,
+                ..FileParams::memory()
+            };
+        }
+        FileParams {
+            path: PathBuf::from(self.path.trim()),
+            memory: false,
+            read_only: self.read_only,
+            create: self.create,
+            attached,
         }
     }
 }

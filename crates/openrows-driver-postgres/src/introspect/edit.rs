@@ -35,6 +35,7 @@ impl PgSession {
                 .iter()
                 .map(|row| required(row, 0))
                 .collect::<Result<_, _>>()?,
+            row_id: None,
         })
     }
 

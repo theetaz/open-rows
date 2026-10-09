@@ -69,7 +69,12 @@ async fn keys_and_generated_columns_are_discovered() -> TestResult {
         ["code"],
         "a unique NOT NULL index identifies rows"
     );
-    assert!(session.row_edit_info("main", "loose").await?.key.is_empty());
+    let loose = session.row_edit_info("main", "loose").await?;
+    assert_eq!(
+        (loose.key, loose.row_id),
+        (vec!["rowid".to_owned()], Some("rowid".to_owned())),
+        "a keyless rowid table is identified by its rowid"
+    );
     Ok(())
 }
 

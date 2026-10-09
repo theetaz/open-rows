@@ -12,6 +12,8 @@ export type ResultMeta = {
   id: string;
   statement: number;
   columns: readonly ColumnDto[];
+  /** Trailing store columns that views never show (a keyless table's rowid). */
+  hidden?: readonly ColumnDto[];
   rows: number;
   done: boolean;
   truncated: boolean;

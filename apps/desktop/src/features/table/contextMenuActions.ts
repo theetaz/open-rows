@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { CellRange, GridContextTarget } from '@openrows/grid';
 import type { ResultMeta } from '../query/run';
+import { holdsColumn } from './row';
 import type { RowField } from './row';
 import { filterRow, toFilters } from './model';
 import type { TableView } from './model';
@@ -70,9 +71,7 @@ function canEdit(editing: RowEditing, result: ResultMeta): boolean {
     !!info.key.length &&
     !editing.busy &&
     !editing.history.uncertain &&
-    info.key.every((name) =>
-      result.columns.some((column) => column.name === name),
-    )
+    info.key.every((name) => holdsColumn(result, name))
   );
 }
 function columnActions(

@@ -6,6 +6,7 @@ import { stagedInserts } from './EditedSource';
 import type { EditHistory, StagedEdit } from './editHistory';
 import type { TableTargetRef } from './model';
 import type { CellValue } from './cellValue';
+import { holdsColumn } from './row';
 
 /** Rows and staged changes can be edited: writable, keyed, and not mid-commit. */
 export function writableResult(
@@ -19,9 +20,7 @@ export function writableResult(
     !!info.key.length &&
     !history.pending &&
     !history.uncertain &&
-    info.key.every((name) =>
-      result.columns.some((column) => column.name === name),
-    )
+    info.key.every((name) => holdsColumn(result, name))
   );
 }
 

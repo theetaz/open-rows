@@ -27,19 +27,30 @@ export function stagedInserts(
   return changes.filter((change) => change.kind === 'insert');
 }
 
-/** Build staged highlights on tile arrival, outside the canvas paint loop. */
+/**
+ * Build staged highlights on tile arrival, outside the canvas paint loop.
+ * Source columns past `identity.shown` (a keyless table's rowid) are never
+ * shown but always fetched, so staged rows still match by them.
+ */
 export class EditedSource implements GridDataSource {
   private readonly overrides = new Map<number, DisplayCell>();
   private readonly listeners = new Set<() => void>();
   private inserted: readonly (readonly DisplayCell[])[] = [];
+  private readonly shown: GridDataSource['columns'];
   constructor(
     private readonly source: GridDataSource,
     private changes: readonly StagedEdit[],
     private identity: {
       keys: readonly string[];
       names: readonly string[];
+      /** Leading source columns the grid shows; default all. */
+      shown?: number;
     },
   ) {
+    this.shown =
+      identity.shown === undefined
+        ? source.columns
+        : source.columns.slice(0, identity.shown);
     this.prepareInserts();
   }
   /** Swap the staged overlay in place so the grid keeps its selection and scroll. */
@@ -54,7 +65,7 @@ export class EditedSource implements GridDataSource {
   /** Set boolean/enum column kinds; true when any changed and the grid must refresh. */
   describe(kinds: readonly GridColumn['kind'][]): boolean {
     let changed = false;
-    for (const [index, column] of this.source.columns.entries()) {
+    for (const [index, column] of this.shown.entries()) {
       const kind = kinds[index];
       if (column.kind === kind) continue;
       changed = true;
@@ -68,7 +79,7 @@ export class EditedSource implements GridDataSource {
     return this.source.rows + this.inserted.length;
   }
   get columns(): GridDataSource['columns'] {
-    return this.source.columns;
+    return this.shown;
   }
   get metrics(): GridDataSource['metrics'] {
     return this.source.metrics;
@@ -81,12 +92,14 @@ export class EditedSource implements GridDataSource {
       this.source.cell(row, column)
     );
   }
-  /** Staged insert rows are local; only page rows are fetched. */
+  /** Staged insert rows are local; only page rows are fetched, through any hidden columns. */
   async window(range: CellRange, direction: number): Promise<void> {
     const last = Math.min(range.r1, this.source.rows - 1);
+    const hidden = this.source.columns.length > this.shown.length;
+    const c1 = hidden ? this.source.columns.length - 1 : range.c1;
     if (last >= 0)
       await this.source.window(
-        { ...range, r0: Math.min(range.r0, last), r1: last },
+        { ...range, r0: Math.min(range.r0, last), r1: last, c1 },
         direction,
       );
     this.prepare();
@@ -118,8 +131,9 @@ export class EditedSource implements GridDataSource {
     }
   }
   private prepareInserts(): void {
+    const names = this.identity.names.slice(0, this.shown.length);
     this.inserted = stagedInserts(this.changes).map((edit) =>
-      this.identity.names.map((name) =>
+      names.map((name) =>
         stagedCell(
           Object.hasOwn(edit.values, name) ? edit.values[name] : undefined,
           'inserted',

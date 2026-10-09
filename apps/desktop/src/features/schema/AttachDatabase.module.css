@@ -1,0 +1,15 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.path {
+  margin: 0;
+  overflow: hidden;
+  color: var(--or-secondary);
+  font-size: var(--or-text-11);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.notice {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--or-secondary);
+  font-size: var(--or-text-11);
+}

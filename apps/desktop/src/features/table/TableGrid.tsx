@@ -15,6 +15,7 @@ import { useGridAppearance } from '../../results/useGridAppearance';
 import { displayWindow } from '../../results/displayWindow';
 import type { ResultMeta } from '../query/run';
 import { EditedSource } from './EditedSource';
+import { storeColumns } from './row';
 import { NumberedSource } from './NumberedSource';
 import type { RowEditing } from './useRowEditing';
 import { useInlineEditor } from './inline/useInlineEditor';
@@ -247,15 +248,17 @@ function editedSource(
   { result, editing }: Pick<Props, 'result' | 'editing'>,
   sort: SortDto | null,
 ): EditedSource {
+  const columns = storeColumns(result);
   const source: GridDataSource = new TileSource(
     result.id,
     result.rows,
-    columnsOf(result.columns, sort),
+    columnsOf(columns, sort),
     displayWindow,
   );
   return new EditedSource(source, editing.history.current, {
     keys: editing.info?.key ?? noKeys,
-    names: result.columns.map((column) => column.name),
+    names: columns.map((column) => column.name),
+    shown: result.columns.length,
   });
 }
 

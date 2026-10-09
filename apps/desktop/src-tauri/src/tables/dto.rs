@@ -80,6 +80,10 @@ pub(crate) struct TableQueryDto {
     pub(crate) filters: Vec<FilterDto>,
     pub(crate) combinator: CombinatorDto,
     pub(crate) sort: Option<SortDto>,
+    /// A keyless `SQLite` table's rowid alias (`EditInfoDto::row_id`),
+    /// selected as the last column for row identity and never shown.
+    #[serde(default)]
+    pub(crate) row_id: Option<String>,
 }
 
 /// One page of rows on an open session.
@@ -262,6 +266,7 @@ impl TableQueryDto {
                     SortDirection::Ascending
                 },
             }),
+            row_id: self.row_id.clone(),
         }
     }
 }
@@ -286,6 +291,7 @@ mod tests {
         }))?;
         let query = request.query.to_query();
         assert_eq!(query.table.name, "users");
+        assert_eq!(query.row_id, None, "callers without a rowid omit it");
         assert_eq!(query.combinator, Combinator::Or);
         assert_eq!(
             query.filters.first().map(|f| f.op),

@@ -57,6 +57,41 @@ it('formats PostgreSQL temporal values in UTC with full precision', () => {
   );
 });
 
+it('pads fractions to the source precision so MySQL text matches exactly', () => {
+  const micros = BigInt64Array.of(1_714_979_289_500_000n);
+  const type = 'Timestamp<MICROSECOND>';
+  expect(fixedValue(chunk(micros), type, 0, 3)).toBe('2024-05-06 07:08:09.500');
+  expect(fixedValue(chunk(micros), type, 0, 0)).toBe('2024-05-06 07:08:09');
+  expect(fixedValue(chunk(micros), type, 0)).toBe('2024-05-06 07:08:09.5');
+  const old = BigInt64Array.of(-62_135_596_799_999_999n);
+  expect(fixedValue(chunk(old), type, 0, 6)).toBe('0001-01-01 00:00:00.000001');
+});
+
+it('formats times of day with and without a fixed precision', () => {
+  const time = BigInt64Array.of(86_399_999_000n);
+  expect(fixedValue(chunk(time), 'Time64<MICROSECOND>', 0)).toBe(
+    '23:59:59.999',
+  );
+  expect(fixedValue(chunk(time), 'Time64<MICROSECOND>', 0, 6)).toBe(
+    '23:59:59.999000',
+  );
+  expect(
+    fixedValue(
+      chunk(BigInt64Array.of(3_723_000_000n)),
+      'Time64<MICROSECOND>',
+      0,
+    ),
+  ).toBe('01:02:03');
+  expect(fixedValue(chunk(Int32Array.of(45_296)), 'Time32<SECOND>', 0)).toBe(
+    '12:34:56',
+  );
+});
+
+it('formats unsigned 64-bit integers above the signed range', () => {
+  const max = BigUint64Array.of(18_446_744_073_709_551_615n);
+  expect(fixedValue(chunk(max), 'Uint64', 0)).toBe('18446744073709551615');
+});
+
 it('formats integers, floats, UUIDs and fixed binaries', () => {
   expect(
     fixedValue(chunk(BigInt64Array.of(9_007_199_254_740_993n)), 'Int64', 0),

@@ -14,6 +14,8 @@ import styles from './Sidebar.module.css';
 type Props = {
   catalog: Catalog;
   header: ReactNode;
+  /** Engine tools beside the schema picker. */
+  schemaTools?: ReactNode;
   /** The saved connections; the History segment lists their statements. */
   connections: Connections;
   /** Open an object; `preview` for a single click in the tree. */
@@ -93,7 +95,9 @@ export function WorkspaceSidebar(props: Props): React.JSX.Element {
             setMenu({ object, point });
           }}
         />
-        {catalog.database && <SchemaPicker catalog={catalog} />}
+        {catalog.database && (
+          <SchemaPicker catalog={catalog}>{props.schemaTools}</SchemaPicker>
+        )}
       </GlassPanel>
       <ObjectActions
         menu={menu}

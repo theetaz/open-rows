@@ -99,6 +99,8 @@ pub enum UrlError {
         value: String,
     },
     /// A `sqlite:` URL must name an absolute local file path.
-    #[error("a sqlite: URL needs an absolute file path, e.g. sqlite:/data/app.db")]
+    #[error(
+        "a sqlite: URL needs an absolute file path, e.g. sqlite:/data/app.db, or sqlite::memory:"
+    )]
     InvalidFilePath,
 }

@@ -10,6 +10,8 @@ use openrows_net::{
     tls::{CloudCa, TlsParams, Verification},
 };
 
+use crate::file::{Attachment, FileSource};
+
 /// libpq `sslmode`, with libpq's semantics (docs/12 §4.1). `MySQL` `ssl-mode`
 /// maps onto it: `DISABLED`, `PREFERRED`, `REQUIRED`, `VERIFY_CA`, `VERIFY_IDENTITY`.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -134,14 +136,12 @@ pub enum Endpoint {
         /// TCP port.
         port: u16,
     },
-    /// A local database file.
+    /// A local database file or a process-shared in-memory database.
     File {
-        /// Absolute file path.
-        path: PathBuf,
-        /// Open read-only: the engine refuses every write.
-        read_only: bool,
-        /// Create the file when it does not exist.
-        create: bool,
+        /// The main database.
+        source: FileSource,
+        /// Databases attached right after opening, in order.
+        attached: Vec<Attachment>,
     },
 }
 
@@ -196,7 +196,7 @@ impl ConnectRequest {
     pub fn describe_endpoint(&self) -> String {
         match &self.endpoint {
             Endpoint::Server { host, port } => format!("{host}:{port}"),
-            Endpoint::File { path, .. } => path.display().to_string(),
+            Endpoint::File { source, .. } => source.describe(),
         }
     }
 }

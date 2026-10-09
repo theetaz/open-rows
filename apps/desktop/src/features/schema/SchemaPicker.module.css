@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 .schema {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--or-space-6);
 }

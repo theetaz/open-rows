@@ -23,6 +23,7 @@ fn query() -> TableQuery {
         filters: Vec::new(),
         combinator: Combinator::And,
         sort: None,
+        row_id: None,
     }
 }
 

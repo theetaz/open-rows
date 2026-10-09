@@ -21,7 +21,7 @@ mod window_frame;
 
 fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
     use connections::{
-        catalog, catalog_cache, connection, diagnostics, files, profiles, prompts, sessions,
+        attach, catalog, catalog_cache, connection, diagnostics, files, profiles, prompts, sessions,
     };
     tauri_specta::Builder::new()
         .commands(tauri_specta::collect_commands![
@@ -39,6 +39,8 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
             profiles::profile_parse_url,
             diagnostics::connection_test,
             files::connection_pick_file,
+            attach::connection_attach_database,
+            attach::connection_detach_database,
             prompts::ssh_prompt_answer,
             connection::connection_open,
             connection::connection_close,

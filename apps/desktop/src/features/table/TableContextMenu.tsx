@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { PointMenu } from '../../shell/PointMenu';
 import type { ResultMeta } from '../query/run';
-import { readRow } from './row';
+import { readRow, shownFields } from './row';
 import type { RowField } from './row';
 import { BulkValueSheet } from './BulkValueSheet';
 import { contextActions } from './contextMenuActions';
@@ -73,7 +73,7 @@ function TableContextMenu(props: Props): React.JSX.Element {
     let alive = true;
     readRow(selection.result, selection.row).then(
       (row) => {
-        if (alive) setFields(row);
+        if (alive) setFields(shownFields(row));
       },
       (failure: unknown) => {
         if (alive)

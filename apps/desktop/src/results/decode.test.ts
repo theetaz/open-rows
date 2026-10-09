@@ -1,5 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 import { readFileSync } from 'node:fs';
+import {
+  Table,
+  TimeMicrosecond,
+  tableToIPC,
+  vectorFromArray,
+} from 'apache-arrow';
 import { describe, expect, it } from 'vitest';
 import { decodeTile } from './decode';
 import { transferBuffers } from './transfer';
@@ -125,6 +131,20 @@ describe('Rust encoder → worker decoder golden contract', () => {
           );
       }
     });
+  });
+
+  it('accepts time-of-day columns (MySQL TIME)', () => {
+    const times = vectorFromArray(
+      [3_723_000_500n, null],
+      new TimeMicrosecond(),
+    );
+    const bytes = tableToIPC(new Table({ t: times }), 'stream');
+    const decoded = decodeTile(new Uint8Array(bytes).buffer);
+    const [column] = decoded.tile.columns;
+    expect(column?.type).toBe('Time64<MICROSECOND>');
+    const chunk = column?.chunks[0];
+    expect(chunk && value(chunk, 6, 0)).toBe(3_723_000_500n);
+    expect(chunk && value(chunk, 6, 1)).toBeNull();
   });
 
   it('rejects corrupt IPC instead of returning guessed values', () => {

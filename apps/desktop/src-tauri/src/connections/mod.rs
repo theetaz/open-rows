@@ -12,8 +12,10 @@
 //! secrets, TLS files and the profile's shared SSH tunnel ([`tunnels`]) into
 //! a driver [`target`] for the profile's engine ([`drivers`]), with
 //! host-key and keyboard-interactive [`prompts`] in the webview;
-//! [`diagnostics`] runs Test connection step by step. Server sessions are
-//! [`resilient`]: they probe and reconnect, also after wake.
+//! [`diagnostics`] runs Test connection step by step; [`attach`] attaches
+//! and detaches `SQLite` database files. Server sessions are [`resilient`]:
+//! they probe and reconnect, also after wake.
+pub(crate) mod attach;
 pub(crate) mod catalog;
 pub(crate) mod catalog_cache;
 mod catalog_dto;

@@ -122,11 +122,52 @@ it('fills a file connection from a sqlite: URL and validates its path', () => {
   const input = toInput(draft);
   expect(input.file).toEqual({
     path: '/data/shop.sqlite',
+    memory: false,
     readOnly: true,
     create: false,
   });
   expect(input.ssh).toBeNull();
   expect(input.password).toEqual({ kind: 'clear' });
+});
+
+it('an in-memory sqlite: URL needs no path and keeps the typed one', () => {
+  const parsed = {
+    engine: 'sqlite' as const,
+    file: { path: '', memory: true, readOnly: false, create: false },
+    host: 'localhost',
+    port: 5432,
+    database: null,
+    user: null,
+    tlsMode: 'disable' as const,
+    passwordProvided: false,
+  };
+  const typed = { ...emptyDraft('sqlite'), filePath: '/data/shop.sqlite' };
+  const draft = withUrl({ ...typed, fileReadOnly: true }, parsed);
+  expect(draft).toMatchObject({
+    name: 'In-memory',
+    fileMemory: true,
+    filePath: '/data/shop.sqlite',
+  });
+  expect(validate({ ...draft, filePath: '' })).toEqual({});
+  expect(toInput(draft).file).toEqual({
+    path: '',
+    memory: true,
+    readOnly: false,
+    create: false,
+  });
+  const back = withUrl(draft, {
+    ...parsed,
+    file: { path: '/data/b.sqlite', readOnly: false, create: false },
+  });
+  expect(back).toMatchObject({ fileMemory: false, filePath: '/data/b.sqlite' });
+});
+
+it('maps a saved in-memory profile to the in-memory switch', () => {
+  const stored = profile('scratch', {
+    engine: 'sqlite',
+    file: { path: '', memory: true, readOnly: false, create: false },
+  });
+  expect(draftFromProfile(stored).fileMemory).toBe(true);
 });
 
 it('starts new connections with the engine default port', () => {

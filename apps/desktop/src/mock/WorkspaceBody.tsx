@@ -11,6 +11,7 @@ import {
 } from '../features/connections';
 import type { Connections } from '../features/connections';
 import { QueryContent } from '../features/query';
+import { AttachDatabaseTools } from '../features/schema';
 import { WorkspaceSidebar } from './WorkspaceSidebar';
 const WorkspaceInspector = lazy(() =>
   import('./WorkspaceInspector').then((module) => ({
@@ -37,6 +38,9 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
       >
         <WorkspaceSidebar
           header={<ConnectionHeader connections={connections} />}
+          schemaTools={
+            <AttachDatabaseTools connections={connections} catalog={catalog} />
+          }
           catalog={catalog}
           connections={connections}
           onOpen={controller.openObject}

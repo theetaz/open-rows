@@ -37,6 +37,11 @@ pub struct RowEditInfo {
     pub key: Vec<String>,
     /// Generated or always-identity columns, never written.
     pub protected: Vec<String>,
+    /// Hidden pseudo-column identifying the rows of a keyless table (a
+    /// `SQLite` rowid table's `rowid`, `_rowid_` or `oid`). When set, `key`
+    /// is exactly `[row_id]` and `protected` lists it too: browsing selects
+    /// it as a trailing hidden column and edits guard on it but never write it.
+    pub row_id: Option<String>,
 }
 
 /// One row as `(column, exact text)` pairs in column order; `None` is NULL.

@@ -1,17 +1,24 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ColumnChunk } from './tiles';
 
-/** Display text of fixed-width values (Arrow JS type strings, e.g. `Decimal[10e+2]`). */
+/**
+ * Display text of fixed-width values (Arrow JS type strings, e.g. `Decimal[10e+2]`).
+ * `digits` fixes the fractional seconds of temporal values (the source's own
+ * precision, e.g. MySQL `DATETIME(3)`); without it trailing zeros are trimmed.
+ */
 export function fixedValue(
   chunk: ColumnChunk,
   type: string,
   row: number,
+  digits?: number,
 ): string {
   if (type.startsWith('Decimal')) return decimal(chunk, row, scaleOf(type));
-  if (type.startsWith('Timestamp')) return timestamp(chunk, row, type);
+  if (type.startsWith('Timestamp')) return timestamp(chunk, row, type, digits);
+  if (type.startsWith('Time')) return timeOfDay(chunk, row, type, digits);
   if (type.startsWith('Date32')) return date(chunk, row);
   if (type.startsWith('FixedSizeBinary')) return hex(chunk, row);
-  if (type === 'Int64' || type === 'Uint64') return String(bigints(chunk)[row]);
+  if (type === 'Int64') return String(bigints(chunk)[row]);
+  if (type === 'Uint64') return String(unsigned(chunk)[row]);
   const value = (chunk.values as unknown as ArrayLike<number>)[row];
   if (value === undefined) return '';
   // Float32 values widen to float64 noise (0.1 → 0.10000000149…); 7 digits round-trip.
@@ -22,6 +29,14 @@ export function fixedValue(
 
 function bigints(chunk: ColumnChunk): BigInt64Array {
   return new BigInt64Array(
+    chunk.values.buffer,
+    chunk.values.byteOffset,
+    chunk.values.byteLength / 8,
+  );
+}
+
+function unsigned(chunk: ColumnChunk): BigUint64Array {
+  return new BigUint64Array(
     chunk.values.buffer,
     chunk.values.byteOffset,
     chunk.values.byteLength / 8,
@@ -59,10 +74,34 @@ const UNIT_PER_SECOND: Record<string, bigint> = {
   NANOSECOND: 1_000_000_000n,
 };
 
-/** `YYYY-MM-DD HH:MM:SS[.fraction]` in UTC; zoned columns append `+00`. */
-function timestamp(chunk: ColumnChunk, row: number, type: string): string {
+function perSecondOf(type: string): bigint {
   const unit = /<(\w+)/.exec(type)?.[1] ?? 'MICROSECOND';
-  const perSecond = UNIT_PER_SECOND[unit] ?? 1_000_000n;
+  return UNIT_PER_SECOND[unit] ?? 1_000_000n;
+}
+
+/** `.fraction` of a second: `digits` wide when fixed, else trailing zeros trimmed. */
+function fractionText(
+  fraction: bigint,
+  perSecond: bigint,
+  digits?: number,
+): string {
+  const width = String(perSecond).length - 1;
+  const full = fraction.toString().padStart(width, '0');
+  const shown =
+    digits === undefined
+      ? full.replace(/0+$/, '')
+      : full.padEnd(digits, '0').slice(0, digits);
+  return shown ? `.${shown}` : '';
+}
+
+/** `YYYY-MM-DD HH:MM:SS[.fraction]` in UTC; zoned columns append `+00`. */
+function timestamp(
+  chunk: ColumnChunk,
+  row: number,
+  type: string,
+  digits?: number,
+): string {
+  const perSecond = perSecondOf(type);
   const value = bigints(chunk)[row] ?? 0n;
   let seconds = value / perSecond;
   let fraction = value % perSecond;
@@ -71,10 +110,26 @@ function timestamp(chunk: ColumnChunk, row: number, type: string): string {
     fraction += perSecond;
   }
   const iso = new Date(Number(seconds) * 1000).toISOString();
-  const width = String(perSecond).length - 1;
-  const digits = fraction.toString().padStart(width, '0').replace(/0+$/, '');
   const zone = type.includes(',') ? '+00' : '';
-  return `${iso.slice(0, 10)} ${iso.slice(11, 19)}${digits ? `.${digits}` : ''}${zone}`;
+  return `${iso.slice(0, 10)} ${iso.slice(11, 19)}${fractionText(fraction, perSecond, digits)}${zone}`;
+}
+
+/** `HH:MM:SS[.fraction]` of a `Time32`/`Time64` time of day. */
+function timeOfDay(
+  chunk: ColumnChunk,
+  row: number,
+  type: string,
+  digits?: number,
+): string {
+  const perSecond = perSecondOf(type);
+  const value = type.startsWith('Time64')
+    ? (bigints(chunk)[row] ?? 0n)
+    : BigInt((chunk.values as Int32Array)[row] ?? 0);
+  const seconds = Number(value / perSecond);
+  const clock = [seconds / 3600, (seconds / 60) % 60, seconds % 60]
+    .map((part) => String(Math.floor(part)).padStart(2, '0'))
+    .join(':');
+  return `${clock}${fractionText(value % perSecond, perSecond, digits)}`;
 }
 
 /** Days since the Unix epoch as `YYYY-MM-DD`. */

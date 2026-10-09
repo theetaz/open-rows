@@ -16,6 +16,7 @@ pub mod connect;
 pub mod connection;
 pub mod driver;
 mod error;
+pub mod file;
 pub mod metadata;
 pub mod schema;
 mod session;
@@ -30,6 +31,7 @@ pub use connection::{
 };
 pub use driver::{Driver, GenerateError};
 pub use error::DriverError;
+pub use file::{Attachment, FileSource};
 pub use session::{BoxFuture, CancelHandle, Session};
 pub use sink::{DiscardSink, ExecSummary, NoticeLevel, ResultSink, SinkFlow};
 pub use trace::{ConnectStage, ConnectTrace, TlsStatus};

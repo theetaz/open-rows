@@ -7,8 +7,8 @@ use std::time::Duration;
 use arrow_array::{Array, Int64Array, StringArray};
 use arrow_schema::DataType;
 use openrows_driver_api::{
-    ConnectRequest, ConnectStage, ConnectTimeouts, ConnectTrace, Driver, Endpoint, Session,
-    SslMode, TlsFiles,
+    ConnectRequest, ConnectStage, ConnectTimeouts, ConnectTrace, Driver, Endpoint, FileSource,
+    Session, SslMode, TlsFiles,
 };
 use openrows_driver_sqlite::{SqliteDriver, open};
 use support::{Collect, TestResult, code, database, run};
@@ -151,9 +151,12 @@ async fn the_driver_opens_files_and_records_its_stages() -> TestResult {
     let path = dir.path().join("new.sqlite");
     let request = ConnectRequest {
         endpoint: Endpoint::File {
-            path: path.clone(),
-            read_only: false,
-            create: true,
+            source: FileSource::Disk {
+                path: path.clone(),
+                read_only: false,
+                create: true,
+            },
+            attached: Vec::new(),
         },
         database: "main".to_owned(),
         user: String::new(),

@@ -6,7 +6,7 @@ import type { CellValue } from './cellValue';
 import type { StagedEdit } from './editHistory';
 import { canEdit } from './EditToolbar';
 import { fileEncoding } from './fieldActions';
-import { readRow } from './row';
+import { readRow, shownFields } from './row';
 import type { RowEditor, RowField, SelectedRow, ShowRow } from './row';
 import { stagedEditFor, withStaged } from './selectedRow';
 import type { RowEditing } from './useRowEditing';
@@ -53,7 +53,11 @@ export function useSelectedRow(args: {
     const row: SelectedRow = {
       table: args.table,
       number: current.number,
-      fields: withStaged(current.fields, edit, current.draft?.original ?? null),
+      fields: withStaged(
+        shownFields(current.fields),
+        edit,
+        current.draft?.original ?? null,
+      ),
       source: { resultId: current.result.id, row: current.row },
     };
     if (current.error) row.error = current.error;

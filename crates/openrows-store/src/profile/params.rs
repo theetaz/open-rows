@@ -7,6 +7,8 @@ use std::{collections::BTreeMap, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
 
+use super::AttachedFile;
+
 /// Database engine of a profile, stored as `"driver"`. Profiles written
 /// before D-12 always say `"postgres"`, which keeps its meaning.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
@@ -99,12 +101,17 @@ impl Default for ServerParams {
     }
 }
 
-/// A local database file (`SQLite`).
+/// A local database file or an in-memory database (`SQLite`).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FileParams {
-    /// Absolute path of the database file.
+    /// Absolute path of the database file; empty for an in-memory database.
+    #[serde(default)]
     pub path: PathBuf,
+    /// An in-memory database shared by the profile's connections while the
+    /// app runs; `path`, `read_only` and `create` do not apply.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub memory: bool,
     /// Open the file read-only: the engine itself refuses every write.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub read_only: bool,
@@ -112,4 +119,18 @@ pub struct FileParams {
     /// "New file…").
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub create: bool,
+    /// Other database files attached to every connection, in order.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub attached: Vec<AttachedFile>,
+}
+
+impl FileParams {
+    /// An in-memory database with nothing attached.
+    #[must_use]
+    pub fn memory() -> Self {
+        Self {
+            memory: true,
+            ..Self::default()
+        }
+    }
 }

@@ -134,6 +134,8 @@ fn field_label(field: &str) -> &str {
         "proxy.user" => "Proxy user",
         "tls.caFile" => "TLS CA:",
         "id" => "Connection id",
+        "file.attached.alias" => "Schema name",
+        "file.attached.path" => "Attached database file",
         other => other,
     }
 }
