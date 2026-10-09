@@ -118,3 +118,46 @@ async fn structure_and_detail_describe_keys_indexes_and_triggers() -> TestResult
     assert!(session.table_columns("main", "missing").await?.is_empty());
     Ok(())
 }
+
+#[tokio::test]
+async fn view_inspection_is_read_only_and_optional_catalogs_are_typed_unsupported() -> TestResult {
+    use openrows_driver_api::DriverError;
+    use openrows_driver_api::inspection::ObjectIdentity;
+    let dir = tempfile::tempdir()?;
+    let mut session = database(&dir, SCHEMA).await?;
+    let view = ObjectIdentity {
+        schema: "main".to_owned(),
+        name: "big".to_owned(),
+        kind: ObjectKind::View,
+        arguments: None,
+    };
+    let inspected = session.object_detail(&view).await?;
+    assert!(
+        inspected
+            .definition
+            .as_deref()
+            .is_some_and(|sql| sql.starts_with("CREATE VIEW"))
+    );
+    assert_eq!(inspected.sections[0].rows.len(), 4);
+    assert!(matches!(
+        session.list_roles().await,
+        Err(DriverError::Unsupported(_))
+    ));
+    assert!(matches!(
+        session.list_extensions().await,
+        Err(DriverError::Unsupported(_))
+    ));
+    assert!(matches!(
+        session.role_grants(("x", "cluster")).await,
+        Err(DriverError::Unsupported(_))
+    ));
+    let unsupported = ObjectIdentity {
+        kind: ObjectKind::Type,
+        ..view
+    };
+    assert!(matches!(
+        session.object_detail(&unsupported).await,
+        Err(DriverError::Unsupported(_))
+    ));
+    Ok(())
+}

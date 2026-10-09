@@ -40,6 +40,12 @@
     "allow-catalog-databases",
     "allow-catalog-schemas",
     "allow-catalog-objects",
+    "allow-catalog-capabilities",
+    "allow-catalog-object-detail",
+    "allow-catalog-extensions",
+    "allow-catalog-roles",
+    "allow-catalog-role-grants",
+
     "allow-catalog-search",
     "allow-catalog-invalidate",
     "allow-catalog-check",

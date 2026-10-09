@@ -29,8 +29,8 @@ mod window_frame;
 mod workspace;
 
 use connections::{
-    attach, catalog, connection, credentials, diagnostics, exchange, files, processes, profiles,
-    prompts, reveal, sessions,
+    attach, catalog, connection, credentials, diagnostics, exchange, files, inspection, processes,
+    profiles, prompts, reveal, sessions,
 };
 
 #[expect(
@@ -70,6 +70,11 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
         catalog::catalog_databases,
         catalog::catalog_schemas,
         catalog::catalog_objects,
+        inspection::catalog_capabilities,
+        inspection::catalog_object_detail,
+        inspection::catalog_extensions,
+        inspection::catalog_roles,
+        inspection::catalog_role_grants,
         catalog::catalog_search,
         catalog::catalog_invalidate,
         catalog::catalog_check,

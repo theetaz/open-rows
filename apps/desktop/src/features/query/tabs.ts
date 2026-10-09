@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ParamValues } from './paramValues';
+import type { InspectionTarget } from '../inspection/target';
 
 /**
  * Where a tab set lives: a saved connection and one of its databases. Tabs
@@ -37,12 +38,13 @@ export type TabFile = {
  */
 export type QueryTab = TabScope & {
   id: string;
-  kind: 'query' | 'table' | 'processes';
+  kind: 'query' | 'table' | 'processes' | 'inspection';
   title: string;
   sql: string;
   /** Schema object the tab was opened for, e.g. `['public', 'orders']`. */
   objectPath?: readonly string[];
   table?: TableObject;
+  inspection?: InspectionTarget;
   file?: TabFile;
   /** Query parameter values of the parameters bar, by name (`:id`, `$1`, `?1`). */
   params?: ParamValues;
@@ -64,6 +66,7 @@ export type QueryTabInit = {
   title?: string;
   objectPath?: readonly string[];
   table?: TableObject;
+  inspection?: InspectionTarget;
   file?: TabFile;
   /** Open as the scope's preview tab, replacing the current one. */
   preview?: boolean;
@@ -93,6 +96,7 @@ export function tabsOf(state: TabsState, scope: TabScope): readonly QueryTab[] {
 }
 
 function kindOf(init: QueryTabInit): QueryTab['kind'] {
+  if (init.inspection) return 'inspection';
   if (init.table) return 'table';
   return init.processes ? 'processes' : 'query';
 }
@@ -133,6 +137,7 @@ export function openTab(
     sql: init.sql ?? '',
     ...(init.objectPath ? { objectPath: init.objectPath } : {}),
     ...(init.table ? { table: init.table } : {}),
+    ...(init.inspection ? { inspection: init.inspection } : {}),
     ...(init.file ? { file: init.file } : {}),
     ...(init.preview ? { preview: true } : {}),
   };

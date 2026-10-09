@@ -2,7 +2,9 @@
 import { useState } from 'react';
 import { Button } from '@openrows/ui';
 import type { ObjectDto } from '@openrows/ipc';
-import { objectGroups } from './catalog';
+import { objectGroups, supportedGroups } from './catalog';
+import { AdminTree } from './AdminTree';
+import type { InspectionTarget } from '../inspection/target';
 import type { ObjectRef } from './catalog';
 import type { MenuPoint } from './ObjectRow';
 import { matching, ObjectSection } from './ObjectSection';
@@ -25,6 +27,7 @@ const SEARCH_LIMIT = 1_000;
 export function ObjectTree(props: {
   catalog: Catalog;
   search: string;
+  onInspect?: ((target: InspectionTarget) => void) | undefined;
   onOpen: (object: ObjectRef, preview?: boolean) => void;
   /** Context menu of a relation row (tables, views, materialized views). */
   onMenu?: ((object: ObjectRef, point: MenuPoint) => void) | undefined;
@@ -56,6 +59,11 @@ export function ObjectTree(props: {
       </p>
     );
   if (!catalog.schema) return <p className={styles.note}>No schemas</p>;
+  const features = catalog.inspection.capabilities;
+  if (features.status === 'error')
+    return <p role="alert">{features.message}</p>;
+  if (features.status !== 'ready')
+    return <p role="status">Loading catalog capabilities…</p>;
   return (
     <div className={styles.tree} onKeyDown={moveAcrossSections}>
       {catalog.refreshing && (
@@ -66,7 +74,7 @@ export function ObjectTree(props: {
       {search && noMatches(catalog, search, found) && (
         <p role="status">No matches</p>
       )}
-      {objectGroups.map((group) => (
+      {supportedGroups(features.data.kinds).map((group) => (
         <ObjectSection
           key={group.id}
           catalog={catalog}
@@ -79,6 +87,13 @@ export function ObjectTree(props: {
           onMenu={props.onMenu}
         />
       ))}
+      {props.onInspect && (
+        <AdminTree
+          catalog={catalog.inspection}
+          search={search}
+          onOpen={props.onInspect}
+        />
+      )}
     </div>
   );
 }

@@ -15,6 +15,7 @@ pub(crate) enum ObjectKindDto {
     Function,
     Procedure,
     Sequence,
+    Type,
 }
 
 impl From<ObjectKind> for ObjectKindDto {
@@ -27,6 +28,7 @@ impl From<ObjectKind> for ObjectKindDto {
             ObjectKind::Function => Self::Function,
             ObjectKind::Procedure => Self::Procedure,
             ObjectKind::Sequence => Self::Sequence,
+            ObjectKind::Type => Self::Type,
         }
     }
 }
@@ -41,6 +43,7 @@ impl From<ObjectKindDto> for ObjectKind {
             ObjectKindDto::Function => Self::Function,
             ObjectKindDto::Procedure => Self::Procedure,
             ObjectKindDto::Sequence => Self::Sequence,
+            ObjectKindDto::Type => Self::Type,
         }
     }
 }

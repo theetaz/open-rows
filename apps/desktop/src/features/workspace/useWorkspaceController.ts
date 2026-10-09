@@ -8,6 +8,7 @@ import type { Catalog, ObjectRef } from '../schema';
 import { tabFile, useQueryTabs } from '../query';
 import type { QueryTabs, TabScope } from '../query';
 import { openTableView } from '../table';
+import { openInspection } from '../inspection/target';
 import { useMenuBridge } from '../commands';
 import type { SettingsSection } from '../settings';
 import { useDetails } from './useDetails';
@@ -25,7 +26,6 @@ import { useObjectEditing } from './useObjectEditing';
 import type { ObjectEditing } from './useObjectEditing';
 import { OBJECT_COMMANDS, objectCommandSupported } from '../objects';
 import type { ObjectEditorRequest } from '../objects';
-import type { ObjectFeaturesDto } from '@openrows/ipc';
 import type { PaletteMode } from './WorkspacePalettes';
 import { importOpener } from './TableImport';
 import type { ImportTarget } from './TableImport';
@@ -172,27 +172,7 @@ function useSafeMode(connections: Connections): {
   };
 }
 
-/** The definition editor a routine opens in, when the engine has one. */
-function routineEditor(
-  object: ObjectRef,
-  features: ObjectFeaturesDto | undefined,
-): ObjectEditorRequest | null {
-  if (!features?.routines) return null;
-  if (object.kind !== 'function' && object.kind !== 'procedure') return null;
-  return {
-    kind: 'routine',
-    database: object.database,
-    schema: object.schema,
-    routine: object.kind,
-    name: object.name,
-    arguments: object.arguments,
-  };
-}
-
-/**
- * Relations open as table views (D-08), routines in their definition
- * editor where the engine has one, sequences as query tabs.
- */
+/** Tables open their data view; other schema objects open a read-only catalog tab. */
 function objectOpener(deps: {
   catalog: Catalog;
   connections: Connections;
@@ -203,12 +183,20 @@ function objectOpener(deps: {
 }): (object: ObjectRef, preview?: boolean) => void {
   return (object, preview = false) => {
     deps.catalog.setSchema(object.schema);
-    const routine = routineEditor(object, deps.connections.active?.objects);
-    if (routine) {
-      deps.openEditor(routine);
+    const target = deps.scopeOf(object.database);
+    if (target && object.kind !== 'table' && object.kind !== 'foreignTable') {
+      const { schema, name, kind, arguments: arguments_ } = object;
+      openInspection(
+        deps.tabs,
+        target,
+        {
+          kind: 'object',
+          object: { schema, name, kind, arguments: arguments_ },
+        },
+        preview,
+      );
       return;
     }
-    const target = deps.scopeOf(object.database);
     if (!target || !openTableView(deps.tabs, target, object, preview))
       deps.openQuery(object);
   };

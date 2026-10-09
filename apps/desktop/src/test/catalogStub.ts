@@ -7,6 +7,7 @@ import type {
   DatabaseDto,
   ObjectDto,
   ObjectKindDto,
+  ObjectIdentityDto,
   ObjectsReply,
   SchemaDto,
 } from '@openrows/ipc';
@@ -115,6 +116,41 @@ function search(
 /** Catalog commands of `@openrows/ipc` over the synthetic catalog. */
 export function catalogStub(): Record<string, unknown> {
   return {
+    catalogCapabilities: vi.fn(() =>
+      Promise.resolve({
+        kinds: [
+          'table',
+          'foreignTable',
+          'view',
+          'materializedView',
+          'function',
+          'procedure',
+          'sequence',
+          'type',
+        ],
+        extensions: true,
+        roles: true,
+      }),
+    ),
+    listRoles: vi.fn(() => Promise.resolve([])),
+    listExtensions: vi.fn(() => Promise.resolve([])),
+    roleGrants: vi.fn(() => Promise.resolve([])),
+    inspectObject: vi.fn(
+      (_profile: string, _database: string, object: ObjectIdentityDto) =>
+        Promise.resolve(
+          object.kind === 'sequence'
+            ? {
+                attributes: [{ name: 'Start', value: '17' }],
+                sections: [],
+                definition: null,
+              }
+            : {
+                attributes: [],
+                sections: [],
+                definition: `CREATE ${object.kind.toUpperCase()} ${object.schema}.${object.name} AS SELECT 1;`,
+              },
+        ),
+    ),
     listDatabases: vi.fn(() => fresh(catalogDatabases)),
     listSchemas: vi.fn((_profile: string, database: string) =>
       fresh(

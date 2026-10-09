@@ -99,6 +99,16 @@ export const commands = {
 	 *  first `limit` of them and the total, so large schemas list in pages.
 	 */
 	catalogObjects: (profileId: string, database: string, request: ObjectsRequest) => typedError<ObjectsReply, IpcError>(__TAURI_INVOKE("catalog_objects", { profileId, database, request })),
+	/**  Browsable kinds and admin catalogs, adjusted to the connected server. */
+	catalogCapabilities: (profileId: string, database: string) => typedError<CatalogFeaturesDto, IpcError>(__TAURI_INVOKE("catalog_capabilities", { profileId, database })),
+	/**  Inspect a schema object on the database's metadata connection. */
+	catalogObjectDetail: (profileId: string, database: string, object: ObjectIdentityDto) => typedError<ObjectDetailDto, IpcError>(__TAURI_INVOKE("catalog_object_detail", { profileId, database, object })),
+	/**  Installed extensions, without installing or altering anything. */
+	catalogExtensions: (profileId: string, database: string) => typedError<ExtensionDto[], IpcError>(__TAURI_INVOKE("catalog_extensions", { profileId, database })),
+	/**  Public role/user attributes and memberships, never credential data. */
+	catalogRoles: (profileId: string, database: string) => typedError<RoleDto[], IpcError>(__TAURI_INVOKE("catalog_roles", { profileId, database })),
+	/**  Explicit privileges of the selected scoped account, read-only. */
+	catalogRoleGrants: (profileId: string, database: string, role: RoleIdentityDto) => typedError<GrantDto[], IpcError>(__TAURI_INVOKE("catalog_role_grants", { profileId, database, role })),
 	/**
 	 *  Search the bounded name index of `database` (tables, views, sequences,
 	 *  routines of every user schema), reading the index first when needed.
@@ -472,6 +482,12 @@ export type AttachedFileDto = {
 	path: string,
 };
 
+/**  One named public catalog attribute, with NULL preserved. */
+export type AttributeDto = {
+	name: string,
+	value: string | null,
+};
+
 /**  What a backup holds. */
 export type BackupContentDto = "all" | "schemaOnly" | "dataOnly";
 
@@ -522,6 +538,13 @@ export type CatalogChanged = {
 	profileId: string,
 	/**  The database the DDL ran on. */
 	database: string,
+};
+
+/**  Object kinds and admin catalogs the connected engine can browse. */
+export type CatalogFeaturesDto = {
+	kinds: ObjectKindDto[],
+	extensions: boolean,
+	roles: boolean,
 };
 
 /**
@@ -702,6 +725,13 @@ export type DelimitedDto = {
 	nullText: string,
 	lineEnding: LineEndingDto,
 	encoding: TextEncodingDto,
+};
+
+/**  Ordered rows of columns, arguments, labels, fields or constraints. */
+export type DetailSectionDto = {
+	name: string,
+	columns: string[],
+	rows: ((string | null)[])[],
 };
 
 /**  One column of a diagram table. */
@@ -1026,6 +1056,15 @@ export type ExportSourceDto =
  */
 { kind: "tables"; sessionId: string; target: SchemaTarget; tables: string[]; workbook: boolean };
 
+/**  One installed extension, including the available default version. */
+export type ExtensionDto = {
+	name: string,
+	version: string,
+	availableVersion: string | null,
+	schema: string,
+	description: string | null,
+};
+
 /**  The database file of a file engine, in the form and in saved profiles. */
 export type FileDto = {
 	/**  Absolute path; empty for an in-memory database. */
@@ -1090,6 +1129,15 @@ export type ForeignTargetDto = {
 
 /**  How a column's value is produced. */
 export type GeneratedDto = "no" | "identityAlways" | "identityByDefault" | "stored" | "autoIncrement";
+
+/**  One explicit permission, including DENY or the grant option. */
+export type GrantDto = {
+	scope: string,
+	object: string,
+	privilege: string,
+	state: string,
+	grantor: string | null,
+};
 
 /**  Per-rAF interval diagnostics. Timings may overlap; worker CPU is informational. */
 export type GridFrame = {
@@ -1516,6 +1564,13 @@ export type NoticeLevelDto = "info" | "warning";
  */
 export type ObjectChangeDto = RelationChangeDto | DefinitionChangeDto | ContainerChangeDto;
 
+/**  Public metadata and a definition, when readable. */
+export type ObjectDetailDto = {
+	attributes: AttributeDto[],
+	sections: DetailSectionDto[],
+	definition: string | null,
+};
+
 /**  One object; its path is `[database, schema, name]`. */
 export type ObjectDto = {
 	schema: string,
@@ -1547,8 +1602,16 @@ export type ObjectFeaturesDto = {
 	partialIndexes: boolean,
 };
 
+/**  Identity of one object, including the routine overload. */
+export type ObjectIdentityDto = {
+	schema: string,
+	name: string,
+	kind: ObjectKindDto,
+	arguments: string | null,
+};
+
 /**  Object kinds the schema tree lists. */
-export type ObjectKindDto = "table" | "view" | "materializedView" | "foreignTable" | "function" | "procedure" | "sequence";
+export type ObjectKindDto = "table" | "view" | "materializedView" | "foreignTable" | "function" | "procedure" | "sequence" | "type";
 
 /**  A schema-qualified object (the database itself is the schema in `MySQL`). */
 export type ObjectNameDto = {
@@ -2025,6 +2088,20 @@ export type ResultError = { kind: "unknownResult"; message: string } | { kind: "
 /**  A secret the user asked to see. `Debug` redacts the value. */
 export type RevealedSecret = {
 	value: string,
+};
+
+/**  A scoped role or user, with attributes and direct memberships. */
+export type RoleDto = {
+	name: string,
+	scope: string,
+	attributes: AttributeDto[],
+	memberships: string[],
+};
+
+/**  Identity of a role/user: host, server, database or cluster scope. */
+export type RoleIdentityDto = {
+	name: string,
+	scope: string,
 };
 
 /**  Function or procedure. */

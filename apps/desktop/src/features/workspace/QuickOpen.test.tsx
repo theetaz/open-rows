@@ -8,6 +8,11 @@ import { connectTo } from '../../test/connect';
 import { Workspace } from './Workspace';
 import { COMMANDS } from '../commands';
 
+vi.mock('../table/structure/SqlViewer', () => ({
+  SqlViewer: (props: { sql: string; label: string }) => (
+    <pre aria-label={props.label}>{props.sql}</pre>
+  ),
+}));
 vi.mock('@openrows/ipc', async () =>
   (await import('../../test/ipcStub')).ipcStub(),
 );
@@ -57,7 +62,7 @@ async function connect(): Promise<void> {
 afterEach(() => {
   vi.useRealTimers();
 });
-it('⌘P searches the Rust name index per keystroke, opens a tab per relation, refocuses an open one and edits routines', async () => {
+it('⌘P searches the Rust name index per keystroke, opens a tab per relation, refocuses an open one and inspects routines', async () => {
   mount();
   await connectTo();
   vi.useFakeTimers();
@@ -94,10 +99,13 @@ it('⌘P searches the Rust name index per keystroke, opens a tab per relation, r
   );
   await key('p');
   await chooseObject('calc_tax');
-  const editor = screen.getByRole('dialog', { name: 'Edit function calc_tax' });
-  expect(screen.queryByRole('tab', { name: /calc_tax/ })).toBeNull();
-  fireEvent.keyDown(editor, { key: 'Escape' });
-  expect(screen.queryByRole('dialog', { name: /calc_tax/ })).toBeNull();
+  expect(screen.getByRole('tab', { name: /calc_tax/ })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  expect(
+    screen.queryByRole('dialog', { name: 'Edit function calc_tax' }),
+  ).toBeNull();
   expect(screen.getByRole('combobox', { name: 'Schema' })).toHaveValue(
     'public',
   );
@@ -117,8 +125,8 @@ it('⌘P searches the Rust name index per keystroke, opens a tab per relation, r
     limit: 100,
     fresh: false,
   });
-  // customers, order_summary and session_notes; the routine opened its editor.
-  expect(screen.getAllByRole('tab')).toHaveLength(3);
+  // Each relation and the routine have their own tabs.
+  expect(screen.getAllByRole('tab')).toHaveLength(4);
   fireEvent.click(screen.getByRole('button', { name: 'Close session_notes' }));
   expect(screen.queryByRole('tab', { name: /session_notes/ })).toBeNull();
 });

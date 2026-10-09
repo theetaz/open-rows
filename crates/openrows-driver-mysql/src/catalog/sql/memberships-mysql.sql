@@ -1,0 +1,3 @@
+-- SPDX-License-Identifier: Apache-2.0
+SELECT CONCAT(FROM_USER, '@', FROM_HOST) FROM mysql.role_edges
+WHERE TO_USER = ? AND TO_HOST = ? ORDER BY FROM_USER, FROM_HOST

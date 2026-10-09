@@ -48,7 +48,8 @@ for image in "$@"; do
         "$image" >/dev/null
     # The images start a socket-only server for initialisation first, so a
     # TCP ping only succeeds once the real server is up.
-    for _ in $(seq 1 180); do
+    deadline=$((SECONDS + 180))
+    while (( SECONDS < deadline )); do
         if ping_server "$name"; then
             break
         fi

@@ -3,6 +3,7 @@
 //! (ignored in the default run).
 mod catalog;
 mod edits;
+mod inspection;
 mod lifecycle;
 mod session;
 mod structure;

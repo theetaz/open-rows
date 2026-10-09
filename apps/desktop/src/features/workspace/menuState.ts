@@ -11,7 +11,7 @@ import type { TabScope } from '../query';
  */
 export function menuEnabled(input: {
   connections: Connections;
-  tab: { kind: 'query' | 'table' | 'processes' } | undefined;
+  tab: { kind: 'query' | 'table' | 'processes' | 'inspection' } | undefined;
   scope: TabScope | undefined;
   prod: boolean;
 }): Record<string, boolean> {
@@ -21,7 +21,7 @@ export function menuEnabled(input: {
     : 'disconnected';
   const connected = state === 'connected';
   const query = input.tab?.kind === 'query';
-  const processes = input.tab?.kind === 'processes';
+  const exportable = query || input.tab?.kind === 'table';
   return {
     ...tableEnabled(input.tab?.kind === 'table', connected),
     'new-tab': Boolean(input.scope),
@@ -35,7 +35,7 @@ export function menuEnabled(input: {
     'run-sql-file': connected,
     'backup-database': connected,
     'restore-database': connected,
-    'export-results': Boolean(input.tab) && !processes && connected,
+    'export-results': exportable && connected,
     ...queryEnabled(query, connected),
     'split-right': Boolean(input.tab),
     'split-down': Boolean(input.tab),
@@ -61,7 +61,7 @@ const relationCommands = new Set<ObjectCommand>([
 function objectEnabled(
   input: {
     connections: Connections;
-    tab: { kind: 'query' | 'table' | 'processes' } | undefined;
+    tab: { kind: 'query' | 'table' | 'processes' | 'inspection' } | undefined;
     scope: TabScope | undefined;
   },
   connected: boolean,

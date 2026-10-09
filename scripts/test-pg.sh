@@ -47,7 +47,8 @@ docker run --detach --name "$name" --publish 127.0.0.1::5432 \
             -c ssl_ca_file=$ssl_dir/ca.crt" >/dev/null
 # The image's init server listens only on a Unix socket, so TCP readiness
 # means the final server is up.
-for _ in $(seq 1 120); do
+deadline=$((SECONDS + 60))
+while (( SECONDS < deadline )); do
     if docker exec "$name" pg_isready --host 127.0.0.1 --quiet 2>/dev/null; then
         break
     fi

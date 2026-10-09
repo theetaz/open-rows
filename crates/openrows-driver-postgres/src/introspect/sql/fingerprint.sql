@@ -15,4 +15,9 @@ SELECT pg_catalog.md5(pg_catalog.concat_ws('|',
     (SELECT pg_catalog.string_agg(p.oid::text || ':' || p.xmin::text, ',' ORDER BY p.oid)
      FROM pg_catalog.pg_proc AS p
      JOIN pg_catalog.pg_namespace AS n ON n.oid = p.pronamespace
-     WHERE n.nspname NOT LIKE 'pg\_%' AND n.nspname <> 'information_schema')))
+     WHERE n.nspname NOT LIKE 'pg\_%' AND n.nspname <> 'information_schema'),
+    (SELECT pg_catalog.string_agg(t.oid::text || ':' || t.xmin::text, ',' ORDER BY t.oid)
+     FROM pg_catalog.pg_type t JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
+     WHERE n.nspname NOT LIKE 'pg\_%' AND n.nspname <> 'information_schema'),
+    (SELECT pg_catalog.string_agg(e.oid::text || ':' || e.xmin::text, ',' ORDER BY e.oid)
+     FROM pg_catalog.pg_extension e)))

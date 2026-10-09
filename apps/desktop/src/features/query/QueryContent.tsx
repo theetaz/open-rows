@@ -1,19 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
-import { lazy, Suspense } from 'react';
+import { Suspense } from 'react';
+import { TabBody } from './TabBody';
+import type { ProfileDto } from '@openrows/ipc';
 import { useTableCloseGuard } from '../table/useTableCloseGuard';
 import { Button, Icon } from '@openrows/ui';
 import type { IconName } from '@openrows/ui';
-import { openedDatabase, sessionOf } from '../connections';
+import { openedDatabase } from '../connections';
 import type { Connections } from '../connections';
-import type { ProfileDto } from '@openrows/ipc';
-import type { CompletionCatalog } from '@openrows/editor';
-import { completionCatalog } from './completionCatalog';
 import { useTableViews } from '../table';
-import type { SelectedTable, ShowRow, TableViews } from '../table';
+import type { SelectedTable, ShowRow } from '../table';
 import type { QueryTabs } from './useQueryTabs';
 import { useQueryRuns } from './useQueryRuns';
-import type { QueryRuns } from './useQueryRuns';
-import type { QueryTab as Tab } from './tabs';
 import type { SelectedCell } from './cell';
 import { ReconnectBar } from './ReconnectBar';
 import { TabStrip } from './TabStrip';
@@ -23,22 +20,8 @@ import type { Split } from './useSplit';
 import { usePaneCommands } from '../commands';
 import type { PaneCommand } from '../commands';
 import styles from './Query.module.css';
-type SessionStatus = ReturnType<Connections['statusOf']>;
-const QueryTab = lazy(() =>
-  import('./QueryTab').then((module) => ({ default: module.QueryTab })),
-);
-const ProcessesTab = lazy(() =>
-  import('../processes').then((module) => ({
-    default: module.ProcessesTab,
-  })),
-);
-const TableTab = lazy(() =>
-  import('../table/TableTab').then((module) => ({
-    default: module.TableTab,
-  })),
-);
-
-type Props = {
+/** Inputs shared by the workspace and its lazily rendered tab bodies. */
+export type QueryContentProps = {
   connections: Connections;
   tabs: QueryTabs;
   /** Active database of the connection; empty when none is open. */
@@ -70,7 +53,7 @@ type Props = {
  * Query tabs of the active connection and database; editor and grid load
  * with the first tab.
  */
-export function QueryContent(props: Props): React.JSX.Element {
+export function QueryContent(props: QueryContentProps): React.JSX.Element {
   const runs = useQueryRuns();
   const tables = useTableViews();
   const closeGuard = useTableCloseGuard({ tables, runs, tabs: props.tabs });
@@ -137,75 +120,6 @@ export function QueryContent(props: Props): React.JSX.Element {
         <NoTabs database={props.database} onOpen={open} />
       )}
     </main>
-  );
-}
-
-/** The active tab: a process list, a table view or a query editor. */
-function TabBody(
-  props: Props & {
-    tab: Tab;
-    connection: ProfileDto;
-    status: SessionStatus;
-    runs: QueryRuns;
-    tables: TableViews;
-  },
-): React.JSX.Element {
-  const { tab, status } = props;
-  const sessionId = sessionOf(status, tab.database);
-  const reason = notice(status, tab.database);
-  if (tab.kind === 'processes')
-    return (
-      <ProcessesTab
-        key={tab.id}
-        profile={props.connection}
-        database={tab.database}
-        connected={status.state === 'connected'}
-        onRow={props.onRow}
-      />
-    );
-  if (tab.kind === 'table' && tab.table)
-    return (
-      <TableTab
-        key={tab.id}
-        tabId={tab.id}
-        table={tab.table}
-        profileId={props.connection.id}
-        engine={props.connection.engine}
-        features={props.connection.objects}
-        sessionId={sessionId}
-        notice={reason}
-        views={props.tables}
-        onRow={props.onRow}
-        onConnect={props.connections.connect}
-        onTableInfo={props.onTableInfo}
-        onOpenTable={(schema, name) => {
-          props.onOpenTable?.({ database: tab.database, schema, name });
-        }}
-        onRenamed={(name) => {
-          props.tabs.renameTable?.(tab.id, name);
-        }}
-        onTrigger={(name, drop) => {
-          if (tab.table) props.onTrigger?.(tab.table, name, drop);
-        }}
-        structureRevision={props.structureRevision}
-        onEdited={() => {
-          props.tabs.keep(tab.id);
-        }}
-      />
-    );
-  return (
-    <QueryTab
-      key={tab.id}
-      tab={tab}
-      connection={props.connection}
-      sessionId={sessionId}
-      notice={reason}
-      catalog={completionFor(props, sessionId)}
-      runs={props.runs}
-      tabs={props.tabs}
-      onCell={props.onCell}
-      onConnect={props.connections.connect}
-    />
   );
 }
 
@@ -287,26 +201,4 @@ function EmptyState(props: {
       )}
     </div>
   );
-}
-
-/** The tab database's completion catalog; none without a session. */
-function completionFor(
-  props: Props & { tab: Tab; connection: ProfileDto; status: SessionStatus },
-  sessionId: string | null,
-): CompletionCatalog | null {
-  if (!sessionId || props.status.state !== 'connected') return null;
-  return completionCatalog({
-    profileId: props.connection.id,
-    database: props.tab.database,
-    revision: `${String(props.status.generation)}:${String(props.catalogRevision ?? 0)}`,
-  });
-}
-
-/** Why a tab cannot run although its connection is up. */
-function notice(status: SessionStatus, database: string): string | null {
-  if (status.state !== 'connected') return null;
-  const opened = status.databases.find((item) => item.name === database);
-  if (!opened) return `${database} is closed; open it again with ⌘K`;
-  if (opened.state === 'opening') return `Opening ${database}…`;
-  return opened.state === 'failed' ? opened.message : null;
 }

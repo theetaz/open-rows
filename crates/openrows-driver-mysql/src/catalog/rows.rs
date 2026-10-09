@@ -3,7 +3,6 @@
 //! the editor: columns and indexes.
 use openrows_driver_api::DriverError;
 
-use super::{bind, optional, text};
 use crate::session::MySqlSession;
 
 const COLUMNS_SQL: &str = "SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, \
@@ -112,6 +111,27 @@ impl MySqlSession {
         }
         Ok(indexes)
     }
+}
+
+/// Text cell or an empty value for nullable display metadata.
+pub(super) fn text(row: &[Option<String>], index: usize) -> String {
+    row.get(index).cloned().flatten().unwrap_or_default()
+}
+
+/// Non-empty optional metadata cell.
+pub(super) fn optional(row: &[Option<String>], index: usize) -> Option<String> {
+    row.get(index)
+        .cloned()
+        .flatten()
+        .filter(|value| !value.is_empty())
+}
+
+/// Bind catalog names as statement values.
+pub(super) fn bind(values: &[&str]) -> Vec<Option<String>> {
+    values
+        .iter()
+        .map(|value| Some((*value).to_owned()))
+        .collect()
 }
 
 #[cfg(test)]

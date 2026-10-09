@@ -39,11 +39,11 @@ sql() {
         -P "$password" -Q "$1" >/dev/null 2>&1
 }
 # The server needs tens of seconds to start (minutes when emulated).
-for _ in $(seq 1 300); do
+deadline=$((SECONDS + 300))
+while (( SECONDS < deadline )); do
     if sql "SELECT 1"; then
         break
     fi
-    sleep 1
 done
 sql "IF DB_ID('openrows_test') IS NULL CREATE DATABASE openrows_test"
 port="$(docker port "$name" 1433/tcp | head -n 1 | sed 's/.*://')"

@@ -13,6 +13,8 @@ import type { ObjectGroup } from './catalog';
 import { useCatalogChanges, useCatalogIndex } from './useCatalogIndex';
 import type { CatalogIndex } from './useCatalogIndex';
 import { useColumns } from './useColumns';
+import { useInspectionCatalog } from './useInspectionCatalog';
+import type { InspectionCatalog } from './useInspectionCatalog';
 import type { ColumnTree } from './useColumns';
 import { useNavigation } from './useNavigation';
 import type { NavigationState } from './useNavigation';
@@ -26,6 +28,7 @@ export type Catalog = Omit<NavigationState, 'chosenSchema'> &
   CatalogIndex & {
     /** Why there is nothing to browse, or `null` when connected. */
     offline: string | null;
+    inspection: InspectionCatalog;
     /** Active database; empty when the connection has none open. */
     database: string;
     /** Names of the connection's opened databases. */
@@ -82,6 +85,7 @@ export function useCatalog(connections: Connections): Catalog {
     database,
   });
   const columnTree = useColumns(resources, scoped, target);
+  const inspection = useInspectionCatalog(resources, scoped, target);
   const index = useCatalogIndex(resources, scoped, target);
   const [revision, refresh] = useRefresh(resources, profileId, prefix);
   useSchemaFingerprint(profileId, database);
@@ -98,6 +102,7 @@ export function useCatalog(connections: Connections): Catalog {
   ): Resource<ObjectPage> => resources.get(objectsKey(group, limit));
   return {
     ...navigation,
+    inspection,
     database,
     opened: profileId ? connections.databases.map(({ name }) => name) : [],
     openDatabase: connections.openDatabase,

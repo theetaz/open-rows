@@ -18,6 +18,8 @@ pub(crate) const CAPABILITIES: Capabilities = Capabilities {
         Feature::MultipleDatabases,
         Feature::Schemas,
         Feature::Catalog,
+        Feature::Types,
+        Feature::Roles,
         Feature::RowEdits,
         Feature::StructureChanges,
         Feature::TransactionalDdl,
@@ -43,5 +45,6 @@ pub(crate) const CAPABILITIES: Capabilities = Capabilities {
         ObjectKind::Function,
         ObjectKind::Procedure,
         ObjectKind::Sequence,
+        ObjectKind::Type,
     ],
 };

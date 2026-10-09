@@ -8,6 +8,7 @@ import { HistoryList } from '../query';
 import { SidebarQueries } from './SidebarQueries';
 import type { SidebarQueryProps } from './SidebarQueries';
 import type { Connections } from '../connections';
+import type { InspectionTarget } from '../inspection/target';
 import { ObjectActions } from './ObjectActions';
 import type { ObjectMenu, SessionLookup } from './ObjectActions';
 import { CreateMenu } from './CreateMenu';
@@ -21,6 +22,7 @@ const sidebarSegments = ['Items', 'Queries', 'History'].map((label) => ({
 }));
 type Props = SidebarQueryProps & {
   catalog: Catalog;
+  onInspect: (target: InspectionTarget) => void;
   header: ReactNode;
   /** Engine tools beside the schema picker. */
   schemaTools?: ReactNode;
@@ -179,6 +181,7 @@ function SidebarItems(
         <ObjectTree
           catalog={props.catalog}
           search={props.search}
+          onInspect={props.onInspect}
           onOpen={props.onOpen}
           onMenu={props.onMenu}
         />

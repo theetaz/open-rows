@@ -19,11 +19,13 @@ pub enum ObjectKind {
     Procedure,
     /// Sequence.
     Sequence,
+    /// User-defined enum, composite, domain, range, alias or table type.
+    Type,
 }
 
 impl ObjectKind {
     /// Every listable kind, in tree order.
-    pub const ALL: [Self; 7] = [
+    pub const ALL: [Self; 8] = [
         Self::Table,
         Self::ForeignTable,
         Self::View,
@@ -31,6 +33,7 @@ impl ObjectKind {
         Self::Function,
         Self::Procedure,
         Self::Sequence,
+        Self::Type,
     ];
 
     /// Stable lower-case name used by catalog queries, e.g. `materialized_view`.
@@ -44,6 +47,7 @@ impl ObjectKind {
             Self::Function => "function",
             Self::Procedure => "procedure",
             Self::Sequence => "sequence",
+            Self::Type => "type",
         }
     }
 

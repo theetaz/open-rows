@@ -23,6 +23,7 @@ pub mod diagram;
 pub mod driver;
 mod error;
 pub mod file;
+pub mod inspection;
 pub mod metadata;
 pub mod objects;
 pub mod schema;
