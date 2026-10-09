@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { lazy, Suspense } from 'react';
 import { GlassPanel, SegmentedControl } from '@openrows/ui';
-import { CellDetails, HistoryPanel } from '../features/query';
+import { CellDetails } from '../features/query';
 import type { SelectedCell } from '../features/query';
 import { RowDetails, TableInfoPanel } from '../features/table';
 import type { SelectedRow, SelectedTable } from '../features/table';
@@ -10,18 +10,17 @@ const Assistant = lazy(() =>
 );
 import styles from './Inspector.module.css';
 
-const segments = ['Details', 'History', 'Assistant'].map((label) => ({
+const segments = ['Details', 'Assistant'].map((label) => ({
   value: label,
   label,
 }));
 
-/** Row or cell details, query history and the (sample) assistant share the inspector. */
+/** Row or cell details and the (sample) assistant share the inspector. History lives in the sidebar. */
 export function WorkspaceInspector(props: {
   cell: SelectedCell | null;
   row: SelectedRow | null;
   /** A table tab in Structure/Index mode shows its table info instead. */
   table?: SelectedTable | null;
-  connectionId: string | undefined;
   panel: string;
   onPanel: (panel: string) => void;
   onQuery: (sql: string) => void;
@@ -38,11 +37,6 @@ export function WorkspaceInspector(props: {
         <Suspense fallback={null}>
           <Assistant onQuery={props.onQuery} />
         </Suspense>
-      ) : props.panel === 'History' ? (
-        <HistoryPanel
-          connectionId={props.connectionId}
-          onOpen={props.onQuery}
-        />
       ) : props.table ? (
         <TableInfoPanel table={props.table} />
       ) : props.row ? (

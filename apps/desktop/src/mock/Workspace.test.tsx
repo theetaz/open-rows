@@ -13,7 +13,7 @@ import {
   executeQuery,
   openConnection,
   openSession,
-  recentHistory,
+  searchHistory,
   tablePage,
 } from '@openrows/ipc';
 import { connectTo } from '../test/connect';
@@ -109,7 +109,11 @@ it('switches sidebar segments, lazily expands real sections and opens objects on
   await user.click(sidebar.getByRole('radio', { name: 'Queries' }));
   expect(sidebar.getByRole('button', { name: /Top customers/ })).toBeVisible();
   await user.click(sidebar.getByRole('radio', { name: 'History' }));
-  expect(sidebar.getByRole('button', { name: /Yesterday/ })).toBeVisible();
+  expect(
+    await sidebar.findByText(
+      /No statements run yet|Select a connection to see its history\./,
+    ),
+  ).toBeVisible();
   await user.click(sidebar.getByRole('radio', { name: 'Items' }));
   const orders = sidebar.getByRole('treeitem', { name: 'orders ~2.4M' });
   await user.click(orders);
@@ -244,10 +248,12 @@ it('opens, switches and closes query tabs per connection', async () => {
     screen.getByRole('button', { name: 'New query tab (⌘T)' }),
   ).toBeVisible();
 });
-it('shows the focused cell and the connection history in the inspector', async () => {
-  vi.mocked(recentHistory).mockResolvedValue([
+it('lists the connection history in the sidebar and opens a statement in a query tab', async () => {
+  vi.mocked(searchHistory).mockResolvedValue([
     {
       id: 1,
+      profileId: 'id-orders-local',
+      database: 'orders',
       statement: 'SELECT 42',
       startedAtMs: 0,
       durationMs: 3,
@@ -257,19 +263,20 @@ it('shows the focused cell and the connection history in the inspector', async (
     },
   ]);
   const user = mount();
-  expect(
-    await screen.findByText('Select a cell in a result to see its value.'),
-  ).toBeVisible();
   await user.click(
     await screen.findByRole('button', { name: 'Switch to orders-local' }),
   );
-  const inspector = within(
-    screen.getByRole('complementary', { name: 'Inspector' }),
+  const sidebar = within(
+    screen.getByRole('complementary', { name: 'Sidebar' }),
   );
-  await user.click(inspector.getByRole('radio', { name: 'History' }));
+  await user.click(sidebar.getByRole('radio', { name: 'History' }));
   const history = await screen.findByRole('list', { name: 'Query history' });
-  expect(recentHistory).toHaveBeenCalledWith('id-orders-local', 100);
-  await user.click(within(history).getByRole('button', { name: /SELECT 42/ }));
+  expect(searchHistory).toHaveBeenCalledWith({
+    profileId: 'id-orders-local',
+    text: '',
+    limit: 300,
+  });
+  await user.click(within(history).getByRole('button', { name: /^SELECT 42/ }));
   expect(screen.getByRole('tab', { name: /SQL Query 1/ })).toHaveAttribute(
     'aria-selected',
     'true',

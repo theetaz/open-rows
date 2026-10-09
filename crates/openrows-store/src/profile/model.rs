@@ -156,6 +156,26 @@ pub struct ConnectionProfile {
     pub ssh: Option<SshSettings>,
     /// Write-safety switches.
     pub safety: Safety,
+    /// Keep executed statements in the local history (FR-WS-02); on by default.
+    /// Files only carry the key when recording is switched off.
+    #[serde(
+        default = "record_history_default",
+        skip_serializing_if = "recording_is_default"
+    )]
+    pub record_history: bool,
+}
+
+/// Profiles written before the switch existed keep recording history.
+fn record_history_default() -> bool {
+    true
+}
+
+#[expect(
+    clippy::trivially_copy_pass_by_ref,
+    reason = "serde's skip_serializing_if passes the field by reference"
+)]
+fn recording_is_default(record_history: &bool) -> bool {
+    *record_history
 }
 
 impl ConnectionProfile {
@@ -176,6 +196,7 @@ impl ConnectionProfile {
             params,
             file: None,
             secrets: SecretRefs::default(),
+            record_history: true,
         }
     }
 

@@ -153,8 +153,9 @@ it.each(['null', 'empty'] as const)(
   'filters %s without treating NULL as an empty string',
   async (state) => {
     vi.mocked(readRow).mockResolvedValue([
-      { name: 'id', type: 'int4', text: '7', state: 'normal' },
+      { index: 0, name: 'id', type: 'int4', text: '7', state: 'normal' },
       {
+        index: 1,
         name: 'note',
         type: 'text',
         text: state === 'null' ? 'NULL' : 'EMPTY',
@@ -177,8 +178,14 @@ it.each(['null', 'empty'] as const)(
 );
 it('keeps copy available while blocking every data mutation on a read-only connection', async () => {
   vi.mocked(readRow).mockResolvedValue([
-    { name: 'id', type: 'int4', text: '7', state: 'normal' },
-    { name: 'note', type: 'text', text: 'exact text', state: 'normal' },
+    { index: 0, name: 'id', type: 'int4', text: '7', state: 'normal' },
+    {
+      index: 1,
+      name: 'note',
+      type: 'text',
+      text: 'exact text',
+      state: 'normal',
+    },
   ]);
   const user = userEvent.setup();
   const write = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();

@@ -27,10 +27,14 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         version: 2,
         sql: include_str!("../../migrations/0002_change_sets.sql"),
     },
+    Migration {
+        version: 3,
+        sql: include_str!("../../migrations/0003_history_search.sql"),
+    },
 ];
 
 /// Newest local store schema version this build understands.
-pub const SCHEMA_VERSION: u32 = 2;
+pub const SCHEMA_VERSION: u32 = 3;
 
 pub(crate) fn user_version(conn: &Connection) -> Result<u32, StoreError> {
     conn.pragma_query_value(None, "user_version", |row| row.get(0))
@@ -108,12 +112,19 @@ fn backup(conn: &Connection, backup_dir: &Path, version: u32) -> Result<(), Stor
 mod tests {
     use rusqlite::Connection;
 
-    use super::{MIGRATIONS, Migration, SCHEMA_VERSION, migrate, user_version};
+    use super::{MIGRATIONS, SCHEMA_VERSION, migrate, user_version};
 
-    const V3: Migration = Migration {
-        version: 3,
-        sql: "CREATE TABLE drafts (tab_id TEXT PRIMARY KEY);",
-    };
+    /// Reverses the v3 up step; the runner itself only applies up steps.
+    const DOWN_V3: &str = include_str!("../../migrations/0003_history_search.down.sql");
+
+    fn history_objects(conn: &Connection) -> i64 {
+        conn.query_row(
+            "SELECT count(*) FROM sqlite_master WHERE name LIKE 'history_fts%'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap()
+    }
 
     #[test]
     fn schema_version_matches_last_migration() {
@@ -128,14 +139,13 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let backups = dir.path().join("backups");
         let mut conn = Connection::open(dir.path().join("openrows.sqlite")).unwrap();
-        migrate(&mut conn, MIGRATIONS, &backups).unwrap();
+        migrate(&mut conn, &MIGRATIONS[..2], &backups).unwrap();
         conn.execute("INSERT INTO meta VALUES ('marker', 'v1')", [])
             .unwrap();
 
-        let upgraded = [MIGRATIONS[0], MIGRATIONS[1], V3];
-        migrate(&mut conn, &upgraded, &backups).unwrap();
-        migrate(&mut conn, &upgraded, &backups).unwrap();
-        assert_eq!(user_version(&conn).unwrap(), 3);
+        migrate(&mut conn, MIGRATIONS, &backups).unwrap();
+        migrate(&mut conn, MIGRATIONS, &backups).unwrap();
+        assert_eq!(user_version(&conn).unwrap(), SCHEMA_VERSION);
 
         let backup = Connection::open(backups.join("openrows.sqlite.v2")).unwrap();
         assert_eq!(user_version(&backup).unwrap(), 2);
@@ -145,5 +155,33 @@ mod tests {
             })
             .unwrap();
         assert_eq!(marker, "v1");
+    }
+
+    #[test]
+    fn history_search_up_indexes_old_rows_and_down_reverts_cleanly() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut conn = Connection::open(dir.path().join("openrows.sqlite")).unwrap();
+        migrate(&mut conn, &MIGRATIONS[..2], &dir.path().join("backups")).unwrap();
+        conn.execute(
+            "INSERT INTO history (profile_id, started_at, status, statement, source) \
+             VALUES ('p1', 1, 'ok', 'SELECT * FROM orders', 'editor')",
+            [],
+        )
+        .unwrap();
+
+        migrate(&mut conn, MIGRATIONS, &dir.path().join("backups")).unwrap();
+        let indexed: i64 = conn
+            .query_row(
+                "SELECT count(*) FROM history_fts WHERE history_fts MATCH 'orders'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(indexed, 1, "rows recorded before v3 must be searchable");
+
+        conn.execute_batch(DOWN_V3).unwrap();
+        assert_eq!(history_objects(&conn), 0);
+        conn.execute_batch(MIGRATIONS[2].sql).unwrap();
+        assert!(history_objects(&conn) > 0);
     }
 }

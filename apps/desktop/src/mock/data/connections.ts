@@ -4,8 +4,3 @@ export const savedQueries = [
   'Pending orders by currency',
   'Top customers',
 ];
-export const history = [
-  'Today · SELECT * FROM orders · 38 ms',
-  'Today · Weekly revenue · 22 ms',
-  'Yesterday · Customers · 16 ms',
-];

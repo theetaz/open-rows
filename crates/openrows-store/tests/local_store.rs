@@ -26,7 +26,7 @@ fn fresh_database_is_migrated_in_wal_mode() {
     let path = dir.path().join("openrows.sqlite");
     let store = LocalStore::open(&path).unwrap();
     assert_eq!(store.schema_version().unwrap(), SCHEMA_VERSION);
-    assert_eq!(store.meta("schema_version").unwrap().as_deref(), Some("2"));
+    assert_eq!(store.meta("schema_version").unwrap().as_deref(), Some("3"));
     drop(store);
     let conn = rusqlite::Connection::open(&path).unwrap();
     let mode: String = conn
@@ -84,11 +84,53 @@ fn history_round_trips_newest_first_per_profile() {
         .record_history(&record("p2", 3_000, HistoryStatus::Cancelled))
         .unwrap();
 
-    let entries = store.recent_history("p1", 10).unwrap();
+    let entries = store.search_history(Some("p1"), "", 10).unwrap();
     assert_eq!(entries.len(), 2);
     assert_eq!(entries[0].record, failed);
     assert_eq!(entries[1].record.started_at_ms, 1_000);
-    assert_eq!(store.recent_history("p1", 1).unwrap().len(), 1);
+    assert_eq!(store.search_history(Some("p1"), "", 1).unwrap().len(), 1);
+    assert_eq!(store.search_history(None, "", 10).unwrap().len(), 3);
+}
+
+#[test]
+fn history_search_matches_words_in_one_profile_and_deletes_keep_the_index() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = LocalStore::open(&dir.path().join("openrows.sqlite")).unwrap();
+    let mut orders = record("p1", 1_000, HistoryStatus::Ok);
+    orders.statement = "SELECT * FROM public.orders WHERE total > 10".to_owned();
+    let orders_id = store.record_history(&orders).unwrap();
+    let mut users = record("p1", 2_000, HistoryStatus::Ok);
+    users.statement = "SELECT name FROM users".to_owned();
+    store.record_history(&users).unwrap();
+    store
+        .record_history(&HistoryRecord {
+            statement: "SELECT total FROM orders".to_owned(),
+            ..record("p2", 3_000, HistoryStatus::Ok)
+        })
+        .unwrap();
+
+    let found = store.search_history(Some("p1"), "ORDERS  tot", 10).unwrap();
+    assert_eq!(found.len(), 1);
+    assert_eq!(found[0].record.statement, orders.statement);
+    assert_eq!(store.search_history(None, "orders", 10).unwrap().len(), 2);
+    assert!(
+        store
+            .search_history(Some("p1"), "\"unbalanced", 10)
+            .unwrap()
+            .is_empty()
+    );
+
+    assert!(store.delete_history(orders_id).unwrap());
+    assert!(!store.delete_history(orders_id).unwrap());
+    assert!(
+        store
+            .search_history(Some("p1"), "orders", 10)
+            .unwrap()
+            .is_empty()
+    );
+    assert_eq!(store.clear_history("p1").unwrap(), 1);
+    assert!(store.search_history(Some("p1"), "", 10).unwrap().is_empty());
+    assert_eq!(store.search_history(None, "orders", 10).unwrap().len(), 1);
 }
 
 #[test]

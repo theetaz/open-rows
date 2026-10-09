@@ -9,6 +9,7 @@ import {
 import type { ExecuteRequest } from '@openrows/ipc';
 import { idleRun, runReducer } from './run';
 import type { RunAction, RunState } from './run';
+import { announceHistoryChange } from './historyEvents';
 
 type Runs = Readonly<Record<string, RunState | undefined>>;
 
@@ -61,6 +62,8 @@ export function useQueryRuns(): QueryRuns {
     try {
       const reply = await executeQuery(request, (event) => {
         dispatch({ tabId, action: { type: 'event', event } });
+        // The core records history before it sends `finished`, so lists refetch now.
+        if (event.type === 'finished') announceHistoryChange();
       });
       dispatch({ tabId, action: { type: 'reply', reply, request } });
     } catch (error) {

@@ -65,6 +65,8 @@ pub(crate) struct ProfileDto {
     ssh: Option<SshDto>,
     has_password: bool,
     safety: SafetyDto,
+    /// Executed statements are kept in the local history (FR-WS-02).
+    record_history: bool,
 }
 
 impl From<&ConnectionProfile> for ProfileDto {
@@ -92,6 +94,7 @@ impl From<&ConnectionProfile> for ProfileDto {
                 read_only: profile.safety.read_only,
                 confirm_writes: profile.safety.confirm_writes,
             },
+            record_history: profile.record_history,
         }
     }
 }
@@ -162,7 +165,14 @@ pub(crate) struct ProfileInput {
     #[serde(default)]
     pub(crate) ssh: Option<SshInput>,
     pub(crate) safety: SafetyDto,
+    /// Absent in forms written before the history switch: history is recorded.
+    #[serde(default = "record_history_on")]
+    pub(crate) record_history: bool,
     pub(crate) password: PasswordInput,
+}
+
+fn record_history_on() -> bool {
+    true
 }
 
 impl ProfileInput {
@@ -212,6 +222,7 @@ impl ProfileInput {
             profile.tls.mode = TlsMode::Disable;
         }
         profile.safety = self.safety.into();
+        profile.record_history = self.record_history;
         Ok(())
     }
 

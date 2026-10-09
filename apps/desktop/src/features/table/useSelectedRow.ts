@@ -54,6 +54,7 @@ export function useSelectedRow(args: {
       table: args.table,
       number: current.number,
       fields: withStaged(current.fields, edit, current.draft?.original ?? null),
+      source: { resultId: current.result.id, row: current.row },
     };
     if (current.error) row.error = current.error;
     else if (writable && editing.info)

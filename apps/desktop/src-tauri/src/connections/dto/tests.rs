@@ -23,6 +23,7 @@ pub(crate) fn input(env: EnvKindDto) -> ProfileInput {
             read_only: false,
             confirm_writes: true,
         },
+        record_history: false,
         password: PasswordInput::Keep,
     }
 }
@@ -121,5 +122,9 @@ fn forms_without_an_engine_are_postgres() -> Result<(), serde_json::Error> {
     }))?;
     assert_eq!(form.engine, EngineDto::Postgres);
     assert!(form.file.is_none());
+    assert!(
+        form.record_history,
+        "history is recorded unless switched off"
+    );
     Ok(())
 }

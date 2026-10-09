@@ -37,9 +37,13 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
         <WorkspaceSidebar
           header={<ConnectionHeader connections={connections} />}
           catalog={catalog}
+          connections={connections}
           onOpen={controller.openObject}
           onQuery={() => {
             controller.addQuery();
+          }}
+          onOpenSql={(sql) => {
+            controller.addQuery(sql);
           }}
         />
       </SplitPanel>
@@ -68,7 +72,6 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
             cell={controller.cell}
             row={controller.row}
             table={controller.table}
-            connectionId={connections.active?.id}
             panel={controller.panel}
             onPanel={controller.setPanel}
             onQuery={controller.addQuery}

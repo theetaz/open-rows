@@ -52,7 +52,9 @@ export function ResultGrid({ result, onCell }: Props): React.JSX.Element {
         props.selection = selection;
         const column = result.columns[selection.column];
         select.current({
+          result,
           row: selection.row,
+          index: selection.column,
           column: column?.name ?? '',
           type: column?.sourceType ?? null,
           text: source.cell(selection.row, selection.column)?.text ?? null,

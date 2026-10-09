@@ -9,7 +9,7 @@
 pub(crate) mod commands;
 mod dto;
 pub(crate) mod events;
-mod history;
+pub(crate) mod history;
 
 use std::collections::HashMap;
 use std::sync::{Mutex, MutexGuard, PoisonError};

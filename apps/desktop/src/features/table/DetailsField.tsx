@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useCallback, useRef, useState } from 'react';
-import { booleanText, Icon, IconButton, TextArea } from '@openrows/ui';
+import { booleanText, Button, Icon, IconButton, TextArea } from '@openrows/ui';
 import { editableText, stagedDisplay, textValue } from './cellValue';
 import type { CellValue } from './cellValue';
 import { fieldActions } from './fieldActions';
 import { FieldMenu } from './FieldMenu';
 import { isBooleanType } from './inline/cellKind';
+import { ValueInspector } from '../value/ValueInspector';
 import type { TableColumnDto } from '@openrows/ipc';
-import type { RowEditor, RowField } from './row';
+import type { RowEditor, RowField, RowSource } from './row';
 import styles from './RowDetails.module.css';
 
 /** Typing over the value `base` showed; `staged` once handed to the staging API. */
@@ -68,9 +69,12 @@ function access(
 export function DetailsField({
   field,
   editor,
+  source,
 }: {
   field: RowField;
   editor: RowEditor | undefined;
+  /** The stored result the row came from; enables the full-value inspector. */
+  source?: RowSource | undefined;
 }): React.JSX.Element {
   const { column, locked, editable } = access(field, editor);
   const shown = shownOf(field, isBoolean(field, column));
@@ -131,7 +135,44 @@ export function DetailsField({
           )
         }
       />
+      {source && <FieldInspection field={field} source={source} />}
     </div>
+  );
+}
+
+/** The "Full value" toggle of a field and, when open, its exact value. */
+function FieldInspection(props: {
+  field: RowField;
+  source: RowSource;
+}): React.JSX.Element {
+  const { field, source } = props;
+  const [inspecting, setInspecting] = useState(false);
+  return (
+    <>
+      <Button
+        size="sm"
+        variant="ghost"
+        aria-expanded={inspecting}
+        onClick={() => {
+          setInspecting(!inspecting);
+        }}
+      >
+        {inspecting ? 'Hide full value' : 'Full value'}
+      </Button>
+      {inspecting && (
+        <ValueInspector
+          key={`${source.resultId}:${String(source.row)}:${String(field.index)}`}
+          address={{
+            resultId: source.resultId,
+            row: source.row,
+            column: field.index,
+          }}
+          name={field.name}
+          type={field.type}
+          text={field.text}
+        />
+      )}
+    </>
   );
 }
 

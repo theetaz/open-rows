@@ -262,7 +262,7 @@ objects**, **Connecting…**, **Connect to browse objects**). Once connected:
 
 Tab sets are kept per connection and database. Since D-07 they hold real
 query tabs; opening an object opens (or refocuses) its `SELECT … LIMIT 1000`
-tab. Saved queries and the sidebar history segment remain sample data. Catalog reads are
+tab. Saved queries remain sample data; the sidebar History segment lists the local history (M1-22). Catalog reads are
 cached in memory only (no snapshot, no fingerprint); see
 [docs/10 §2.1](10-schema-and-data-editing.md#21-implementation-notes-d-06-postgresql-schema-tree).
 

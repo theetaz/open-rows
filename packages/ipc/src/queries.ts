@@ -5,6 +5,7 @@ import type {
   ExecuteReply,
   ExecuteRequest,
   HistoryItemDto,
+  HistorySearchRequest,
   QueryEventDto,
 } from './generated/bindings';
 import { toCommandError, unwrap } from './connections';
@@ -44,10 +45,22 @@ export async function releaseResults(
   }
 }
 
-/** The newest statements run on a saved connection, newest first. */
-export function recentHistory(
-  profileId: string,
-  limit: number,
+/**
+ * Entries of the local history, newest first. `profileId` null searches every
+ * connection; the free text keeps statements whose words all start a word.
+ */
+export function searchHistory(
+  request: HistorySearchRequest,
 ): Promise<HistoryItemDto[]> {
-  return unwrap(commands.historyRecent(profileId, limit));
+  return unwrap(commands.historySearch(request));
+}
+
+/** Delete one history entry; resolves `false` when it was already gone. */
+export function deleteHistory(id: number): Promise<boolean> {
+  return unwrap(commands.historyDelete(id));
+}
+
+/** Delete every history entry of one saved connection. */
+export function clearHistory(profileId: string): Promise<null> {
+  return unwrap(commands.historyClear(profileId));
 }

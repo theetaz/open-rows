@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-//! `query_execute`, `query_cancel`, `results_release` and `history_recent`.
+//! `query_execute`, `query_cancel`, `results_release` and the `history_*` commands.
 #![expect(
     clippy::needless_pass_by_value,
     reason = "Tauri deserialises command arguments into owned values"
@@ -18,7 +18,9 @@ use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, State};
 
 use super::Queries;
-use super::dto::{ExecuteReply, ExecuteRequest, HistoryItemDto, statement_dtos};
+use super::dto::{
+    ExecuteReply, ExecuteRequest, HistoryItemDto, HistorySearchRequest, statement_dtos,
+};
 use super::events::{QueryEventDto, finished, translate};
 use super::history::HistoryLog;
 use crate::connections::drivers::driver;
@@ -122,6 +124,7 @@ async fn execute(app: AppHandle, run: Run) {
     let store = app.state::<Arc<ResultStore>>();
     let local = app.state::<LocalStore>();
     let mut history = HistoryLog::new(
+        run.profile.record_history,
         run.profile.id.to_string(),
         Some(run.database.clone()),
         run.statements.clone(),
@@ -165,17 +168,56 @@ pub(crate) fn results_release(store: State<'_, Arc<ResultStore>>, result_ids: Ve
     }
 }
 
-/// The newest statements run on a saved connection, newest first.
+/// Entries of the local history, newest first: one connection or all of them,
+/// narrowed to statements matching the free text.
 #[tauri::command]
 #[specta::specta]
-pub(crate) fn history_recent(
+pub(crate) fn history_search(
+    local: State<'_, LocalStore>,
+    request: HistorySearchRequest,
+) -> Result<Vec<HistoryItemDto>, IpcError> {
+    let entries = local
+        .search_history(
+            request.profile_id.as_deref(),
+            &request.text,
+            request.limit.min(500),
+        )
+        .map_err(storage_error)?;
+    Ok(entries.into_iter().map(HistoryItemDto::from).collect())
+}
+
+/// Delete one history entry; `false` when it was already gone.
+#[tauri::command]
+#[specta::specta]
+pub(crate) fn history_delete(local: State<'_, LocalStore>, id: f64) -> Result<bool, IpcError> {
+    let id = row_id(id).ok_or_else(|| IpcError::invalid("Invalid history entry"))?;
+    local.delete_history(id).map_err(storage_error)
+}
+
+/// Delete every history entry of one saved connection.
+#[tauri::command]
+#[specta::specta]
+pub(crate) fn history_clear(
     local: State<'_, LocalStore>,
     profile_id: String,
-    limit: u32,
-) -> Result<Vec<HistoryItemDto>, IpcError> {
+) -> Result<(), IpcError> {
     let id = ProfileId::from_str(&profile_id)?;
-    let entries = local
-        .recent_history(&id.to_string(), limit.min(500))
-        .map_err(|error| IpcError::new(IpcErrorKind::Storage, error.to_string()))?;
-    Ok(entries.into_iter().map(HistoryItemDto::from).collect())
+    local
+        .clear_history(&id.to_string())
+        .map(drop)
+        .map_err(storage_error)
+}
+
+fn storage_error(error: openrows_store::StoreError) -> IpcError {
+    IpcError::new(IpcErrorKind::Storage, error.to_string())
+}
+
+/// History ids cross the IPC boundary as JS numbers, which are exact up to 2^53.
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "checked: the value is a whole number inside the exact JS integer range"
+)]
+fn row_id(id: f64) -> Option<i64> {
+    const EXACT: f64 = 9_007_199_254_740_992.0;
+    (id.is_finite() && (1.0..=EXACT).contains(&id) && id.fract() == 0.0).then_some(id as i64)
 }

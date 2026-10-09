@@ -170,47 +170,6 @@
   justify-content: flex-end;
   gap: var(--or-space-8);
 }
-.history {
-  display: flex;
-  flex-direction: column;
-  gap: var(--or-space-6);
-  min-height: 0;
-  overflow: auto;
-}
-.history ul {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.history li button {
-  display: flex;
-  flex-direction: column;
-  gap: var(--or-space-2);
-  width: 100%;
-  padding: var(--or-space-6);
-  border: 0;
-  border-radius: var(--or-radius-field);
-  background: transparent;
-  color: var(--or-text);
-  text-align: start;
-}
-.history li button:hover {
-  background: var(--or-control-fill);
-}
-.history code {
-  font-family: var(--or-font-mono);
-  font-size: var(--or-text-mono, var(--or-text-13));
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 100%;
-}
-.history small {
-  color: var(--or-secondary);
-}
-.history li[data-status='error'] small {
-  color: var(--or-danger-fg);
-}
 .cell {
   display: flex;
   flex-direction: column;

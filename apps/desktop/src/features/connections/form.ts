@@ -42,6 +42,8 @@ export type Draft = {
   tlsMode: TlsModeDto;
   readOnly: boolean;
   confirmWrites: boolean;
+  /** Keep executed statements in History (FR-WS-02). */
+  recordHistory: boolean;
   password: string;
   passwordMode: PasswordMode;
   hasStoredPassword: boolean;
@@ -87,6 +89,7 @@ export function emptyDraft(engine: EngineDto = 'postgres'): Draft {
     tlsMode: 'prefer',
     readOnly: false,
     confirmWrites: false,
+    recordHistory: true,
     password: '',
     passwordMode: 'keep',
     hasStoredPassword: false,
@@ -118,6 +121,7 @@ export function draftFromProfile(profile: ProfileDto): Draft {
     tlsMode: profile.tlsMode,
     readOnly: profile.safety.readOnly,
     confirmWrites: profile.safety.confirmWrites,
+    recordHistory: profile.recordHistory,
     hasStoredPassword: profile.hasPassword,
     ssh: sshFromProfile(profile),
     tls: tlsFromProfile(profile),
@@ -249,6 +253,7 @@ export function toInput(draft: Draft): ProfileInput {
     tlsFiles: tlsInput(draft.tls),
     ssh: file ? null : sshInput(draft.ssh),
     safety: { readOnly: draft.readOnly, confirmWrites: draft.confirmWrites },
+    recordHistory: draft.recordHistory,
     password: file ? { kind: 'clear' } : password(draft),
   };
 }
