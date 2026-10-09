@@ -21,7 +21,7 @@ import type { useInspectorOpen } from './layout';
 import type { PaletteMode } from './WorkspacePalettes';
 
 /** What the shell's commands act on. */
-type ShellInput = {
+export type ShellInput = {
   catalog: Catalog;
   connections: Connections;
   inspector: ReturnType<typeof useInspectorOpen>;
@@ -42,6 +42,10 @@ type ShellInput = {
   onRunFile: () => void;
   /** Export tables of the selected schema. */
   onExportTables: () => void;
+  /** Back up the active database. */
+  onBackup: () => void;
+  /** Restore a backup into the active database. */
+  onRestore: () => void;
   /** Open an object editor (new table, drop view, …). */
   onObjectCommand: (id: ObjectCommand) => void;
   /** Open a `.sql` file into a new tab when no query tab is active. */
@@ -141,6 +145,8 @@ function workActions(input: ShellInput): Actions {
     'import-data': input.onImport,
     'export-tables': input.onExportTables,
     'run-sql-file': input.onRunFile,
+    'backup-database': input.onBackup,
+    'restore-database': input.onRestore,
     'show-jobs': () => {
       setJobsOpen(true);
     },

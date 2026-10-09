@@ -3459,6 +3459,7 @@ dependencies = [
  "openrows-driver-mysql",
  "openrows-driver-postgres",
  "openrows-driver-sqlite",
+ "openrows-dump",
  "openrows-export",
  "openrows-import",
  "openrows-net",
@@ -3598,6 +3599,17 @@ dependencies = [
  "rusqlite",
  "tempfile",
  "tokio",
+]
+
+[[package]]
+name = "openrows-dump"
+version = "0.1.0"
+dependencies = [
+ "rusqlite",
+ "rustix",
+ "tempfile",
+ "thiserror 2.0.21",
+ "zeroize",
 ]
 
 [[package]]

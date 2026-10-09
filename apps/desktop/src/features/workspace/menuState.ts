@@ -33,6 +33,8 @@ export function menuEnabled(input: {
     'import-data': Boolean(input.scope) && connected,
     'export-tables': connected,
     'run-sql-file': connected,
+    'backup-database': connected,
+    'restore-database': connected,
     'export-results': Boolean(input.tab) && !processes && connected,
     'run-current': query && connected,
     'run-all': query && connected,

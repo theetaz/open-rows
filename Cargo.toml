@@ -5,6 +5,7 @@ members = [
     "crates/openrows-results",
     "crates/openrows-export",
     "crates/openrows-import",
+    "crates/openrows-dump",
     "crates/openrows-driver-api",
     "crates/openrows-driver-conformance",
     "crates/openrows-driver-mssql",

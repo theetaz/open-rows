@@ -19,6 +19,7 @@ import { useCompact, useInspectorOpen } from './layout';
 import { useWorkspaceKeys } from './useWorkspaceKeys';
 import { useDatabasePrompt } from './useDatabasePrompt';
 import { shellCommand } from './shellCommand';
+import type { ShellInput } from './shellCommand';
 import { menuEnabled } from './menuState';
 import { useObjectEditing } from './useObjectEditing';
 import type { ObjectEditing } from './useObjectEditing';
@@ -256,7 +257,10 @@ function fileCommands(
   input: { jobs: JobActions; catalog: Catalog },
   tabs: QueryTabs,
   scope: TabScope | undefined,
-): { openFile: () => void; onRunFile: () => void; onExportTables: () => void } {
+): Pick<
+  ShellInput,
+  'openFile' | 'onRunFile' | 'onExportTables' | 'onBackup' | 'onRestore'
+> {
   const { jobs, catalog } = input;
   return {
     openFile: () => {
@@ -267,6 +271,12 @@ function fileCommands(
     },
     onExportTables: () => {
       jobs.exportTables(catalog.database, catalog.schema);
+    },
+    onBackup: () => {
+      jobs.backup(catalog.database);
+    },
+    onRestore: () => {
+      jobs.restore(catalog.database);
     },
   };
 }
