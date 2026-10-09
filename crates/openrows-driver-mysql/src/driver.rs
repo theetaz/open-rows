@@ -69,6 +69,7 @@ pub async fn connect(
     let mut wire = Wire {
         packets: established.packets,
         capabilities: established.capabilities,
+        in_transaction: false,
     };
     let fetch = info::fetch(&mut wire, &established.version, established.tls);
     let reading = within(request.timeouts.auth, "reading the server version", fetch);

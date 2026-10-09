@@ -26,7 +26,9 @@ impl PgSession {
     /// # Errors
     /// Server/transport errors, 40001 for a row conflict, or 08007 for an uncertain COMMIT.
     pub async fn commit_edits(&mut self, edits: &[BoundEdit]) -> Result<(), DriverError> {
-        self.execute("BEGIN", &mut Discard).await?;
+        self.execute("BEGIN", &mut Discard)
+            .await
+            .map_err(DriverError::lost_before_commit)?;
         let result = self.apply_edits(edits).await;
         self.finish(result).await
     }
@@ -37,7 +39,9 @@ impl PgSession {
     /// # Errors
     /// Server/transport errors, or 08007 for an uncertain COMMIT.
     pub async fn commit_ddl(&mut self, statements: &[String]) -> Result<(), DriverError> {
-        self.execute("BEGIN", &mut Discard).await?;
+        self.execute("BEGIN", &mut Discard)
+            .await
+            .map_err(DriverError::lost_before_commit)?;
         let mut result = Ok(());
         for sql in statements {
             result = self.execute_bound(sql, &[], &mut Discard).await.map(|_| ());
@@ -48,10 +52,16 @@ impl PgSession {
         self.finish(result).await
     }
 
-    /// Roll back after a failure, else commit; a lost COMMIT reply is uncertain.
+    /// Roll back after a failure, else commit; a lost COMMIT reply is
+    /// uncertain, a connection lost before COMMIT rolled everything back.
     async fn finish(&mut self, result: Result<(), DriverError>) -> Result<(), DriverError> {
         if let Err(error) = result {
-            self.execute("ROLLBACK", &mut Discard).await?;
+            if error.is_connection_lost() {
+                return Err(error.lost_before_commit());
+            }
+            self.execute("ROLLBACK", &mut Discard)
+                .await
+                .map_err(DriverError::lost_before_commit)?;
             return Err(error);
         }
         match self.execute("COMMIT", &mut Discard).await {

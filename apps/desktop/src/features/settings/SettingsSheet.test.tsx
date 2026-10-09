@@ -120,10 +120,12 @@ it('switches General and Editor settings', async () => {
   await user.click(restore);
   await user.click(screen.getByRole('radio', { name: 'Compact' }));
   await user.click(screen.getByRole('switch', { name: 'Reduce motion' }));
+  await user.click(screen.getByRole('radio', { name: '1 min' }));
   expect(JSON.parse(localStorage.getItem('openrows.general') ?? '{}')).toEqual({
     restoreSession: false,
     density: 'compact',
     reduceMotion: true,
+    keepaliveSeconds: 60,
   });
   await user.click(screen.getByRole('radio', { name: 'Editor' }));
   await user.click(screen.getByRole('switch', { name: 'Wrap lines' }));

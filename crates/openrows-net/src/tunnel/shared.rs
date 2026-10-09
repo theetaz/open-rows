@@ -5,6 +5,7 @@
 use std::{
     fmt,
     sync::{Arc, Mutex, PoisonError},
+    time::Duration,
 };
 
 use tokio::sync::Mutex as AsyncMutex;
@@ -74,6 +75,21 @@ impl SharedTunnel {
         {
             *current = None;
         }
+    }
+
+    /// Check the current tunnel (after wake or a network change) instead of
+    /// waiting for keepalive timeouts: a tunnel that does not answer within
+    /// `limit` is discarded, so the next dial reconnects. `true` when there
+    /// is no tunnel or it answered.
+    pub async fn probe(&self, limit: Duration) -> bool {
+        let Some(tunnel) = self.current() else {
+            return true;
+        };
+        let alive = tunnel.probe(limit).await;
+        if !alive {
+            self.discard(&tunnel);
+        }
+        alive
     }
 
     /// The current tunnel, open or not, without connecting.

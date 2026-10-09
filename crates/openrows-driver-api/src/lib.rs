@@ -31,5 +31,5 @@ pub use connection::{
 pub use driver::{Driver, GenerateError};
 pub use error::DriverError;
 pub use session::{BoxFuture, CancelHandle, Session};
-pub use sink::{ExecSummary, NoticeLevel, ResultSink, SinkFlow};
+pub use sink::{DiscardSink, ExecSummary, NoticeLevel, ResultSink, SinkFlow};
 pub use trace::{ConnectStage, ConnectTrace, TlsStatus};

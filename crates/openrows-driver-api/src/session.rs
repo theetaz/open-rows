@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-use crate::{DriverError, ExecSummary, ResultSink};
+use crate::{DiscardSink, DriverError, ExecSummary, ResultSink};
 use std::{future::Future, pin::Pin, sync::Arc};
 
 /// Boxed `Send` future, keeping [`Session`] object-safe without extra crates.
@@ -56,6 +56,24 @@ pub trait Session: Send {
     /// Out-of-band cancel handle; `None` when the driver cannot cancel server-side.
     fn cancel_handle(&self) -> Option<Arc<dyn CancelHandle>> {
         None
+    }
+
+    /// Cheapest round trip that proves the connection still answers: the
+    /// keepalive probe of an idle session (docs/14 §2). The default runs
+    /// `SELECT 1`; drivers may use a lighter protocol message.
+    ///
+    /// # Errors
+    /// Transport errors when the connection is gone; a `Server` error (e.g.
+    /// an aborted transaction) still proves it is alive.
+    fn ping(&mut self) -> BoxFuture<'_, Result<(), DriverError>> {
+        Box::pin(async move { self.execute("SELECT 1", &mut DiscardSink).await.map(drop) })
+    }
+
+    /// True while the server holds a transaction open on this connection,
+    /// as of the last completed statement. Losing such a connection loses
+    /// the transaction, so it must never be replaced silently.
+    fn in_transaction(&self) -> bool {
+        false
     }
 
     /// Gracefully terminate the connection.
@@ -135,6 +153,8 @@ mod tests {
         assert_eq!(bound.batches, 1);
         let refused = ready(session.execute_bound("select $1", &[None], &mut sink));
         assert!(matches!(refused, Err(DriverError::Unsupported(_))));
+        ready(session.ping())?;
+        assert!(!session.in_transaction());
         ready(session.close())
     }
 }

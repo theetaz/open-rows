@@ -2,8 +2,9 @@
 //! Opens session actors, routes commands to them and supervises panics.
 use crate::actor::{self, Connect, Mailbox};
 use crate::error::ErrorKind;
+use crate::resilience::{Link, Resilience};
 use crate::shared::{Command, Queued, Shared};
-use crate::{BatchSink, CoreError, QueryEvent, SessionEvent, SessionState};
+use crate::{BatchSink, Canceller, CoreError, QueryHandle, SessionEvent, SessionState};
 use openrows_driver_api::{DriverError, Session};
 use openrows_sql::select::BoundSql;
 use openrows_types::{QueryId, SessionId};
@@ -11,7 +12,8 @@ use std::any::Any;
 use std::collections::HashMap;
 use std::future::Future;
 use std::sync::{Arc, Mutex, PoisonError};
-use tokio::sync::{broadcast, mpsc, oneshot};
+use std::time::Duration;
+use tokio::sync::{broadcast, mpsc, oneshot, watch};
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 
@@ -19,6 +21,8 @@ use tokio_util::sync::CancellationToken;
 const QUEUE_CAPACITY: usize = 32;
 /// Session events buffered per subscriber before the oldest are dropped.
 const EVENT_CAPACITY: usize = 256;
+/// Default keepalive interval (docs/14 §4).
+const DEFAULT_KEEPALIVE: Duration = Duration::from_secs(30);
 
 struct Entry {
     shared: Arc<Shared>,
@@ -44,44 +48,6 @@ impl Submission {
     }
 }
 
-/// Cancels one query from any thread without waiting for the session actor.
-#[derive(Clone, Debug)]
-pub struct Canceller(CancellationToken);
-
-impl Canceller {
-    /// Request cancellation; idempotent. A queued query never starts; a running
-    /// one gets an out-of-band driver cancel and ends with `Cancelled`.
-    pub fn cancel(&self) {
-        self.0.cancel();
-    }
-}
-
-/// A submitted query: its id, ordered events and cancel handle.
-pub struct QueryHandle {
-    id: QueryId,
-    events: mpsc::UnboundedReceiver<QueryEvent>,
-    canceller: Canceller,
-}
-
-impl QueryHandle {
-    /// The query's identifier.
-    #[must_use]
-    pub fn id(&self) -> QueryId {
-        self.id
-    }
-
-    /// A cloneable handle that cancels this query.
-    #[must_use]
-    pub fn canceller(&self) -> Canceller {
-        self.canceller.clone()
-    }
-
-    /// Next event; `None` after the terminal event has been received.
-    pub async fn next_event(&mut self) -> Option<QueryEvent> {
-        self.events.recv().await
-    }
-}
-
 /// Owns every live session; one tokio task (actor) per session (ADR-0007).
 ///
 /// Must be used inside a tokio runtime. Dropping the manager closes all sessions.
@@ -90,6 +56,8 @@ pub struct SessionManager {
     store: Arc<dyn BatchSink>,
     events: broadcast::Sender<SessionEvent>,
     root: CancellationToken,
+    /// Keepalive interval of resilient sessions; `None` turns probing off.
+    keepalive: watch::Sender<Option<Duration>>,
 }
 
 impl SessionManager {
@@ -101,6 +69,21 @@ impl SessionManager {
             store,
             events: broadcast::channel(EVENT_CAPACITY).0,
             root: CancellationToken::new(),
+            keepalive: watch::Sender::new(Some(DEFAULT_KEEPALIVE)),
+        }
+    }
+
+    /// Probe idle resilient sessions every `interval` (default 30 s,
+    /// docs/14 §4); `None` stops periodic probes. Applies to open sessions too.
+    pub fn set_keepalive(&self, interval: Option<Duration>) {
+        self.keepalive.send_replace(interval);
+    }
+
+    /// Ask every resilient session to probe its connection now (after wake
+    /// or a network change); busy sessions probe when their statement ends.
+    pub fn probe_all(&self) {
+        for entry in self.lock().values() {
+            entry.shared.wake.notify_one();
         }
     }
 
@@ -125,6 +108,22 @@ impl SessionManager {
     where
         F: Future<Output = Result<Box<dyn Session>, DriverError>> + Send + 'static,
     {
+        self.spawn(Box::pin(connect), None).await
+    }
+
+    /// As [`SessionManager::open`], connecting with `resilience.reconnect`;
+    /// the session probes its connection while idle and reconnects when it
+    /// was lost (see [`Resilience`]).
+    ///
+    /// # Errors
+    /// As [`SessionManager::open`].
+    pub async fn open_resilient(&self, resilience: Resilience) -> Result<SessionId, CoreError> {
+        let connect = (resilience.reconnect)();
+        let link = Link::new(resilience, self.keepalive.subscribe());
+        self.spawn(connect, Some(link)).await
+    }
+
+    async fn spawn(&self, connect: Connect, link: Option<Link>) -> Result<SessionId, CoreError> {
         let id = SessionId::new();
         let shared = Arc::new(Shared::new(
             id,
@@ -138,8 +137,8 @@ impl SessionManager {
             shared: shared.clone(),
             commands: receiver,
             store: self.store.clone(),
+            link,
         };
-        let connect: Connect = Box::pin(connect);
         let task = tokio::spawn(actor::run(connect, mail, ready));
         tokio::spawn(supervise(task, shared.clone()));
         self.lock().insert(id, Entry { shared, commands });

@@ -3,7 +3,6 @@
 use std::str::FromStr;
 
 use openrows_core::{SessionEvent, SessionState};
-use openrows_driver_api::Session;
 use openrows_types::SessionId;
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -13,8 +12,8 @@ use tokio::sync::oneshot;
 use super::Connections;
 use super::error::{IpcError, IpcErrorKind};
 use super::owners::Owner;
-use super::route;
-use super::target::{self, ServerDto};
+use super::target::ServerDto;
+use super::{drivers, resilient, route};
 
 /// An open session on one database.
 #[derive(Clone, Debug, Serialize, Type)]
@@ -24,13 +23,15 @@ pub(crate) struct SessionOpened {
     server: ServerDto,
 }
 
-/// Session lifecycle states the UI shows (docs/04 §3 subset).
+/// Session lifecycle states the UI shows (docs/04 §3 subset); `reconnecting`
+/// means the connection was lost and a new one is being opened (M1-08).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub(crate) enum SessionStateDto {
     Connecting,
     Idle,
     Busy,
+    Reconnecting,
     Closed,
     Failed,
 }
@@ -41,7 +42,7 @@ pub(crate) enum SessionStateDto {
 pub(crate) struct SessionStateChanged {
     session_id: String,
     state: SessionStateDto,
-    /// Why the session failed, for `failed`.
+    /// Why the session failed (`failed`) or is reconnecting (`reconnecting`).
     message: Option<String>,
 }
 
@@ -55,6 +56,7 @@ impl From<SessionEvent> for SessionStateChanged {
             SessionState::Connecting => SessionStateDto::Connecting,
             SessionState::Idle => SessionStateDto::Idle,
             SessionState::Busy => SessionStateDto::Busy,
+            SessionState::Reconnecting => SessionStateDto::Reconnecting,
             SessionState::Closed => SessionStateDto::Closed,
             SessionState::Failed => SessionStateDto::Failed,
         };
@@ -67,7 +69,8 @@ impl From<SessionEvent> for SessionStateChanged {
 }
 
 /// Open a user session on `database` (the profile's database when `None`);
-/// state changes follow as events. `PostgreSQL` cannot switch databases on a
+/// state changes follow as events. Server sessions probe their connection
+/// and reconnect when it was lost. `PostgreSQL` cannot switch databases on a
 /// connection, so every opened database has its own session (every engine
 /// follows that model; a `SQLite` file has the one database `main`).
 #[tauri::command]
@@ -85,16 +88,17 @@ pub(crate) async fn session_open(
         target = target.with_database(database);
     }
     let (server, received) = oneshot::channel();
-    let session = state
-        .sessions
-        .open(async move {
-            let connected = target::connect(&target).await?;
-            // `open` awaits this future, so the receiver is still alive.
-            let _ = server.send(connected.server);
-            let session: Box<dyn Session> = connected.connection;
-            Ok(session)
-        })
-        .await?;
+    let session = if profile.driver.is_file() {
+        // A local file cannot lose its connection: nothing to probe.
+        state
+            .sessions
+            .open(resilient::connect_once(target, server))
+            .await?
+    } else {
+        let dialect = drivers::driver(profile.driver).dialect();
+        let recipe = resilient::recipe(target, dialect, server);
+        state.sessions.open_resilient(recipe).await?
+    };
     let server = received.await.map_err(|_| {
         IpcError::new(
             IpcErrorKind::Internal,

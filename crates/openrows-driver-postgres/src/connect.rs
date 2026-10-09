@@ -11,7 +11,7 @@ use crate::tls::{self, Negotiation};
 use crate::trace::{ConnectStage, ConnectTrace};
 use crate::wire::{Io, Wire};
 use openrows_driver_api::DriverError;
-use openrows_net::Dialer;
+use openrows_net::{Dialer, configure_tcp};
 use std::future::Future;
 use std::io;
 use std::net::SocketAddr;
@@ -212,7 +212,7 @@ async fn connect_tcp(
     timeouts: &ConnectTimeouts,
 ) -> Result<Box<dyn Io>, DriverError> {
     let stream = within(timeouts.tcp, "TCP connect", connect_any(addresses)).await?;
-    stream.set_nodelay(true)?;
+    configure_tcp(&stream)?;
     Ok(Box::new(stream))
 }
 

@@ -163,6 +163,19 @@ impl Container {
         assert!(output.status.success(), "docker kill failed");
     }
 
+    /// Freeze every process: the TCP link stays up but nothing answers,
+    /// like a server behind a network that silently dropped (`unpause` ends it).
+    pub fn pause(&self) {
+        let output = docker(&["pause", &self.name]);
+        assert!(output.status.success(), "docker pause failed");
+    }
+
+    /// Resume a paused container.
+    pub fn unpause(&self) {
+        let output = docker(&["unpause", &self.name]);
+        assert!(output.status.success(), "docker unpause failed");
+    }
+
     /// Poll the log for sshd's listening line (bounded; not a fixed sleep).
     fn wait_ready(&self) {
         let deadline = Instant::now() + READY_TIMEOUT;

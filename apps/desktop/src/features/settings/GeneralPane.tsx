@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { SegmentedControl, Switch } from '@openrows/ui';
 import { SettingRow } from '../appearance/InterfaceSettings';
-import { generalSettings, updateGeneral } from './general';
+import { generalSettings, KEEPALIVE_CHOICES, updateGeneral } from './general';
 import type { Density } from './general';
 import styles from '../appearance/Appearance.module.css';
 
@@ -11,7 +11,17 @@ const DENSITIES: readonly { value: Density; label: string }[] = [
   { value: 'comfortable', label: 'Comfortable' },
 ];
 
-/** Settings ▸ General: session restore, density and motion. */
+const keepaliveLabel = (seconds: number): string => {
+  if (seconds === 0) return 'Off';
+  return seconds < 60 ? `${String(seconds)} s` : `${String(seconds / 60)} min`;
+};
+
+const KEEPALIVE_OPTIONS = KEEPALIVE_CHOICES.map((seconds) => ({
+  value: String(seconds),
+  label: keepaliveLabel(seconds),
+}));
+
+/** Settings ▸ General: session restore, connection checks, density and motion. */
 export function GeneralPane(): React.JSX.Element {
   const general = generalSettings.use();
   return (
@@ -28,6 +38,28 @@ export function GeneralPane(): React.JSX.Element {
               checked={general.restoreSession}
               onCheckedChange={(restoreSession) => {
                 updateGeneral({ restoreSession });
+              }}
+            />
+          </SettingRow>
+        </div>
+      </section>
+      <section aria-label="Connections">
+        <h3>Connections</h3>
+        <div className={styles.settingsGroup}>
+          <SettingRow
+            title="Connection check"
+            description="How often idle connections are checked. A lost connection is reopened before your next query; a running statement is never re-run."
+          >
+            <SegmentedControl
+              aria-label="Connection check"
+              options={KEEPALIVE_OPTIONS}
+              value={String(general.keepaliveSeconds)}
+              onValueChange={(seconds) => {
+                const keepaliveSeconds = KEEPALIVE_CHOICES.find(
+                  (choice) => String(choice) === seconds,
+                );
+                if (keepaliveSeconds !== undefined)
+                  updateGeneral({ keepaliveSeconds });
               }}
             />
           </SettingRow>

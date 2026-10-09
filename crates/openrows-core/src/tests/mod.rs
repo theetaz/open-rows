@@ -3,9 +3,11 @@
 mod cancel;
 mod export;
 mod fake;
+mod flaky;
 mod isolation;
 mod lifecycle;
 mod observability;
+mod resilience;
 mod safety;
 mod script;
 

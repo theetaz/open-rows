@@ -14,6 +14,11 @@
 //! (docs/12 §4.2). A profile's [`SharedTunnel`] is reopened when its
 //! transport drops; destinations may be TCP or a Unix socket on the server.
 //!
+//! Resilience (M1-08): every TCP socket gets OS keepalive
+//! ([`configure_tcp`]), tunnels answer an on-demand [`SharedTunnel::probe`],
+//! and [`watch_path`] reports sleep/wake and network changes so callers can
+//! probe their sessions at once.
+//!
 //! TLS (D-11): [`tls::TlsClient`] runs a rustls handshake over any stream
 //! with libpq-style verification levels, custom CA files, bundled cloud
 //! provider CAs and client certificates; drivers keep their
@@ -27,10 +32,12 @@ pub mod config;
 mod error;
 mod handler;
 pub mod known_hosts;
+mod monitor;
 mod plan;
 mod proxy;
 mod route;
 mod secret;
+mod tcp;
 #[cfg(any(test, feature = "test-proxy"))]
 pub mod testing;
 mod timeouts;
@@ -46,10 +53,12 @@ pub use auth::{
 };
 pub use error::SshError;
 pub use handler::{FirstUseDecision, HostKeyPolicy, UnknownHost};
+pub use monitor::{PathChange, PathSample, watch_path};
 pub use plan::{PlanContext, SshAuth, SshRouteSpec, plan_route};
 pub use proxy::{ProxyAuth, ProxyDialer, ProxyError, ProxyKind, ProxySpec};
 pub use route::{RouteError, resolve_route};
 pub use secret::SecretString;
+pub use tcp::configure_tcp;
 pub use timeouts::{Stage, Timeouts};
 pub use transport::{BoxStream, Destination, Dialer, NetStream, TunnelDialer};
 pub use tunnel::{HopTiming, SharedTunnel, SshHop, SshTunnel, TunnelOptions, TunnelStream};

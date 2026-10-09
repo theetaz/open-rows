@@ -3,17 +3,31 @@
 //! connection and database, opened lazily, so catalog reads never queue
 //! behind user queries. `PostgreSQL` cannot switch databases on a connection,
 //! so each browsed database gets its own (for every engine, to keep one model).
+//! A connection idle for a while is pinged before use and replaced when it
+//! died; after wake or a network change idle ones are dropped (M1-08).
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, PoisonError};
+use std::time::{Duration, Instant};
 
 use openrows_driver_api::{BoxFuture, Connection, DriverError};
 
 use super::error::{IpcError, IpcErrorKind};
 use super::target::{self, Target};
 
+/// Idle time after which a metadata connection is pinged before use.
+const STALE_AFTER: Duration = Duration::from_secs(10);
+/// How long that ping may take before the connection is replaced.
+const PING_TIMEOUT: Duration = Duration::from_secs(5);
+
 /// Saved connection id and database name.
 type Key = (String, String);
-type Slot = Arc<tokio::sync::Mutex<Option<Box<dyn Connection>>>>;
+type Slot = Arc<tokio::sync::Mutex<Option<Held>>>;
+
+/// An open metadata connection and when it last answered.
+struct Held {
+    connection: Box<dyn Connection>,
+    used: Instant,
+}
 
 /// Metadata sessions by connection and database.
 #[derive(Default)]
@@ -41,6 +55,7 @@ impl MetadataSessions {
     {
         let slot = self.slot((profile.to_owned(), database.to_owned()));
         let mut guard = slot.lock().await;
+        drop_if_dead(&mut guard).await;
         if guard.is_none() {
             let target = target()
                 .await?
@@ -49,19 +64,42 @@ impl MetadataSessions {
             let connected = target::connect(&target)
                 .await
                 .map_err(|error| IpcError::from(&error))?;
-            *guard = Some(connected.connection);
+            *guard = Some(Held {
+                connection: connected.connection,
+                used: Instant::now(),
+            });
         }
-        let Some(session) = guard.as_mut() else {
+        let Some(held) = guard.as_mut() else {
             return Err(IpcError::new(
                 IpcErrorKind::Internal,
                 "The metadata session was not stored",
             ));
         };
-        let result = read(session.as_mut()).await;
+        let result = read(held.connection.as_mut()).await;
+        held.used = Instant::now();
         if result.as_ref().is_err_and(breaks_session) {
             *guard = None;
         }
         result.map_err(|error| IpcError::from(&error))
+    }
+
+    /// Forget every idle metadata connection (after wake or a network
+    /// change they may be half-open); the next read reconnects. Busy ones
+    /// are left to finish.
+    pub(crate) fn reset_idle(&self) {
+        let slots: Vec<Slot> = self
+            .slots
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .values()
+            .cloned()
+            .collect();
+        for slot in slots {
+            if let Ok(mut guard) = slot.try_lock() {
+                // No goodbye: it could wait on a dead link; dropping closes the socket.
+                guard.take();
+            }
+        }
     }
 
     /// Disconnect every metadata session of `profile`.
@@ -82,9 +120,9 @@ impl MetadataSessions {
             keys.iter().filter_map(|key| map.remove(key)).collect()
         };
         for slot in slots {
-            if let Some(session) = slot.lock().await.take() {
+            if let Some(held) = slot.lock().await.take() {
                 // Closing is a courtesy goodbye; the socket is dropped either way.
-                let _ = session.close().await;
+                let _ = held.connection.close().await;
             }
         }
     }
@@ -92,6 +130,22 @@ impl MetadataSessions {
     fn slot(&self, key: Key) -> Slot {
         let mut map = self.slots.lock().unwrap_or_else(PoisonError::into_inner);
         map.entry(key).or_default().clone()
+    }
+}
+
+/// A connection that idled for a while may have died unnoticed: ping it
+/// (a read that never started is safe to run on a fresh one) and drop it
+/// when it does not answer.
+async fn drop_if_dead(slot: &mut Option<Held>) {
+    let Some(held) = slot
+        .as_mut()
+        .filter(|held| held.used.elapsed() >= STALE_AFTER)
+    else {
+        return;
+    };
+    match tokio::time::timeout(PING_TIMEOUT, held.connection.ping()).await {
+        Ok(Ok(()) | Err(DriverError::Server { .. })) => held.used = Instant::now(),
+        Ok(Err(_)) | Err(_) => *slot = None,
     }
 }
 

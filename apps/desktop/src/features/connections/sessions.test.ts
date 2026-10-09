@@ -125,3 +125,41 @@ it('labels every state', () => {
   );
   expect(statusLabel({ state: 'disconnected' })).toBe('Not connected');
 });
+
+it('tracks a lost connection through reconnecting back to open (M1-08)', () => {
+  const event = (state: 'reconnecting' | 'idle' | 'failed') =>
+    ({ sessionId: 's-orders', state, message: 'connection reset' }) as const;
+  const reconnecting = applySessionEvent(statuses, event('reconnecting'));
+  const status = reconnecting.a ?? { state: 'disconnected' };
+  expect(status).toMatchObject({
+    databases: [
+      {
+        name: 'orders',
+        state: 'reconnecting',
+        sessionId: 's-orders',
+        message: 'connection reset',
+      },
+      { name: 'reports', state: 'open' },
+    ],
+  });
+  expect(sessionOf(status, 'orders')).toBe('s-orders');
+  expect(statusTone(status)).toBe('reconnecting');
+  expect(statusLabel(status)).toBe('Reconnecting…');
+  const back = applySessionEvent(reconnecting, event('idle'));
+  expect(back.a).toEqual(statuses.a);
+  const lost = applySessionEvent(reconnecting, event('failed'));
+  const gone = lost.a ?? { state: 'disconnected' };
+  expect(gone).toMatchObject({
+    databases: [{ name: 'orders', state: 'failed', lost: true }, {}],
+  });
+  expect(sessionOf(gone, 'orders')).toBeNull();
+  expect(statusTone(gone)).toBe('failed');
+  expect(statusLabel(gone)).toBe('Connection lost');
+});
+
+it('keeps a database that failed to open from colouring the dot red', () => {
+  const status = connected([
+    { name: 'orders', state: 'failed', message: 'database does not exist' },
+  ]);
+  expect(statusTone(status)).toBe('connected');
+});

@@ -3,7 +3,7 @@ import { lazy, Suspense, useState } from 'react';
 import { useTableCloseGuard } from '../table/useTableCloseGuard';
 import { Button, Icon, Tabs } from '@openrows/ui';
 import type { IconName } from '@openrows/ui';
-import { sessionOf } from '../connections';
+import { openedDatabase, sessionOf } from '../connections';
 import type { Connections } from '../connections';
 import type { ProfileDto } from '@openrows/ipc';
 import type { CompletionCatalog } from '@openrows/editor';
@@ -96,6 +96,10 @@ export function QueryContent(props: Props): React.JSX.Element {
           profile={connection}
           status={status}
           onConnect={props.connections.connect}
+          database={openedDatabase(status, props.database)}
+          onReopen={() => {
+            props.connections.openDatabase(props.database);
+          }}
         />
       )}
       <TabStrip

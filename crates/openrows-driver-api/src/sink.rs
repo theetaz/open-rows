@@ -44,3 +44,16 @@ pub trait ResultSink: Send {
     /// Called for each server notice raised while the statement runs.
     fn notice(&mut self, _level: NoticeLevel, _message: &str) {}
 }
+
+/// Drops every row: for internal statements whose results do not matter
+/// (keepalive probes, replayed session settings).
+#[derive(Clone, Copy, Debug, Default)]
+pub struct DiscardSink;
+
+impl ResultSink for DiscardSink {
+    fn begin_result(&mut self, _schema: SchemaRef) {}
+
+    fn push_batch(&mut self, _batch: RecordBatch) -> SinkFlow {
+        SinkFlow::Stop
+    }
+}

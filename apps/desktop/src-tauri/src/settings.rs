@@ -2,7 +2,8 @@
 //! `settings.json` in the app-data dir (docs/15 §4): the user's preferences as
 //! human-readable JSON. The webview owns the schema and validates every field;
 //! this side only checks the envelope (an object with `"openrows": 1`) and
-//! writes the file atomically, pretty-printed.
+//! writes the file atomically, pretty-printed. The one setting the core
+//! itself reads is the session keepalive interval (`general.keepaliveSeconds`).
 #![expect(
     clippy::needless_pass_by_value,
     reason = "Tauri deserialises command arguments into owned values"
@@ -10,28 +11,53 @@
 use std::fs;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use serde_json::Value;
 use tauri::{Manager, State};
 
-use crate::connections::{IpcError, IpcErrorKind};
+use crate::connections::{Connections, IpcError, IpcErrorKind};
 
 /// File format version this build reads and writes.
 const FORMAT: u64 = 1;
 /// Largest settings file accepted; real files are a few kilobytes.
 const MAX_BYTES: u64 = 1024 * 1024;
+/// Session keepalive interval when the file does not set one (docs/14 §4).
+const DEFAULT_KEEPALIVE_SECONDS: u64 = 30;
 
 /// Where `settings.json` lives.
 pub(crate) struct SettingsFile(PathBuf);
 
-/// Manage the settings path next to the profiles and local store.
+/// Manage the settings path next to the profiles and local store, and apply
+/// the saved keepalive interval.
 ///
 /// # Errors
 /// The app-data dir cannot be resolved.
 pub(crate) fn install(app: &mut tauri::App) -> Result<(), tauri::Error> {
     let path = app.path().app_data_dir()?.join("settings.json");
+    // An unreadable file keeps the defaults; the webview reports why.
+    if let Ok(Some(text)) = read(&path) {
+        apply(&app.state::<Connections>(), &text);
+    }
     app.manage(SettingsFile(path));
     Ok(())
+}
+
+/// Apply the settings the core reads: the session keepalive interval.
+fn apply(connections: &Connections, text: &str) {
+    if let Ok(value) = serde_json::from_str::<Value>(text) {
+        connections.sessions.set_keepalive(keepalive(&value));
+    }
+}
+
+/// `general.keepaliveSeconds`: `0` turns probing off, other values are
+/// clamped to 5 s – 10 min; missing or invalid means 30 s (docs/14 §4).
+fn keepalive(settings: &Value) -> Option<Duration> {
+    let seconds = settings
+        .pointer("/general/keepaliveSeconds")
+        .and_then(Value::as_u64)
+        .unwrap_or(DEFAULT_KEEPALIVE_SECONDS);
+    (seconds > 0).then(|| Duration::from_secs(seconds.clamp(5, 600)))
 }
 
 fn storage(path: &Path, error: &impl std::fmt::Display) -> IpcError {
@@ -99,8 +125,14 @@ pub(crate) fn settings_read(file: State<'_, SettingsFile>) -> Result<Option<Stri
 /// Replace `settings.json` with `text` (a JSON object with `"openrows": 1`).
 #[tauri::command]
 #[specta::specta]
-pub(crate) fn settings_write(file: State<'_, SettingsFile>, text: String) -> Result<(), IpcError> {
-    write(&file.0, &text)
+pub(crate) fn settings_write(
+    file: State<'_, SettingsFile>,
+    connections: State<'_, Connections>,
+    text: String,
+) -> Result<(), IpcError> {
+    write(&file.0, &text)?;
+    apply(&connections, &text);
+    Ok(())
 }
 
 #[cfg(test)]
@@ -122,6 +154,27 @@ mod tests {
         let text = read(&path)?.ok_or("file missing")?;
         assert!(text.contains("\n  \"general\": {\n"));
         assert!(!path.with_extension("json.tmp").exists());
+        Ok(())
+    }
+
+    #[test]
+    fn keepalive_defaults_clamps_and_turns_off() -> Result<(), serde_json::Error> {
+        let interval = |text: &str| serde_json::from_str::<Value>(text).map(|v| keepalive(&v));
+        let seconds = |value: u64| Some(Duration::from_secs(value));
+        assert_eq!(interval(r#"{"openrows":1}"#)?, seconds(30));
+        assert_eq!(
+            interval(r#"{"general":{"keepaliveSeconds":60}}"#)?,
+            seconds(60)
+        );
+        assert_eq!(
+            interval(r#"{"general":{"keepaliveSeconds":1}}"#)?,
+            seconds(5)
+        );
+        assert_eq!(interval(r#"{"general":{"keepaliveSeconds":0}}"#)?, None);
+        assert_eq!(
+            interval(r#"{"general":{"keepaliveSeconds":"x"}}"#)?,
+            seconds(30)
+        );
         Ok(())
     }
 

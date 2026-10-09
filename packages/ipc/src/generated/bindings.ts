@@ -48,7 +48,8 @@ export const commands = {
 	connectionClose: (profileId: string) => typedError<null, IpcError>(__TAURI_INVOKE("connection_close", { profileId })),
 	/**
 	 *  Open a user session on `database` (the profile's database when `None`);
-	 *  state changes follow as events. `PostgreSQL` cannot switch databases on a
+	 *  state changes follow as events. Server sessions probe their connection
+	 *  and reconnect when it was lost. `PostgreSQL` cannot switch databases on a
 	 *  connection, so every opened database has its own session (every engine
 	 *  follows that model; a `SQLite` file has the one database `main`).
 	 */
@@ -1012,12 +1013,15 @@ export type SessionOpened = {
 export type SessionStateChanged = {
 	sessionId: string,
 	state: SessionStateDto,
-	/**  Why the session failed, for `failed`. */
+	/**  Why the session failed (`failed`) or is reconnecting (`reconnecting`). */
 	message: string | null,
 };
 
-/**  Session lifecycle states the UI shows (docs/04 §3 subset). */
-export type SessionStateDto = "connecting" | "idle" | "busy" | "closed" | "failed";
+/**
+ *  Session lifecycle states the UI shows (docs/04 §3 subset); `reconnecting`
+ *  means the connection was lost and a new one is being opened (M1-08).
+ */
+export type SessionStateDto = "connecting" | "idle" | "busy" | "reconnecting" | "closed" | "failed";
 
 /**  Server-side sort on one column. */
 export type SortDto = {

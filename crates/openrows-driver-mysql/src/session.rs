@@ -162,6 +162,10 @@ impl Session for MySqlSession {
         Some(Arc::clone(&self.cancel) as Arc<dyn CancelHandle>)
     }
 
+    fn in_transaction(&self) -> bool {
+        self.wire.in_transaction
+    }
+
     fn close(mut self: Box<Self>) -> BoxFuture<'static, Result<(), DriverError>> {
         Box::pin(async move { self.wire.quit().await })
     }
@@ -200,6 +204,7 @@ impl CancelHandle for KillQuery {
             let mut wire = Wire {
                 packets: established.packets,
                 capabilities: established.capabilities,
+                in_transaction: false,
             };
             let killed = wire.query(&format!("KILL QUERY {id}"), &mut Discard).await;
             // The side connection is done either way.

@@ -27,6 +27,7 @@
 
 mod bind;
 mod classify;
+mod context;
 mod dialect;
 pub mod edit;
 mod lexer;
@@ -39,6 +40,7 @@ mod tests;
 
 pub use bind::{MissingParam, ParamBinder, ParamSlot, ParamStyle};
 pub use classify::{Classification, StatementKind, classify};
+pub use context::{ContextSetting, session_context};
 pub use placeholders::{Placeholder, PlaceholderKind, placeholders};
 pub use split::{Statement, split, statement_at};
 

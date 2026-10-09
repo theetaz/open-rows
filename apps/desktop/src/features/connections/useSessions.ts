@@ -91,7 +91,7 @@ export function useSessions(): Sessions {
         ? status.databases.find((item) => item.name === database)
         : undefined;
     setStatuses((now) => removeDatabase(now, profileId, database));
-    if (opened?.state !== 'open') return;
+    if (opened?.state !== 'open' && opened?.state !== 'reconnecting') return;
     try {
       await closeSession(opened.sessionId);
     } catch {

@@ -12,7 +12,8 @@
 //! secrets, TLS files and the profile's shared SSH tunnel ([`tunnels`]) into
 //! a driver [`target`] for the profile's engine ([`drivers`]), with
 //! host-key and keyboard-interactive [`prompts`] in the webview;
-//! [`diagnostics`] runs Test connection step by step.
+//! [`diagnostics`] runs Test connection step by step. Server sessions are
+//! [`resilient`]: they probe and reconnect, also after wake.
 pub(crate) mod catalog;
 pub(crate) mod catalog_cache;
 mod catalog_dto;
@@ -30,6 +31,7 @@ mod owners;
 pub(crate) mod profiles;
 pub(crate) mod prompts;
 mod proxy_dto;
+mod resilient;
 pub(crate) mod route;
 mod route_dto;
 pub(crate) mod sessions;
@@ -94,6 +96,7 @@ pub(crate) fn install(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Er
     let results = Arc::clone(app.state::<Arc<ResultStore>>().inner());
     let sessions = SessionManager::new(results);
     forward_session_events(app.handle().clone(), &sessions);
+    resilient::watch_network(app.handle().clone());
     let prompts = Arc::new(PromptBroker::new(Box::new(TauriSink(app.handle().clone()))));
     let environment = SshEnvironment {
         home: app.path().home_dir()?,
