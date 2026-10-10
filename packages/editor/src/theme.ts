@@ -7,22 +7,25 @@ import { tags } from '@lezer/highlight';
 /**
  * Token colours come from `@openrows/ui` CSS custom properties so themes switch
  * through the root `data-theme` cascade without rebuilding editor state.
- * Dedicated syntax tokens are later work; these reuse existing semantic roles.
+ * Syntax overrides remain plain colour tokens and never execute theme code.
  */
 export const sqlHighlightStyle = HighlightStyle.define([
-  { tag: tags.keyword, color: 'var(--or-accent)', fontWeight: '600' },
+  { tag: tags.keyword, color: 'var(--or-syntax-keyword)', fontWeight: '600' },
   {
     tag: [tags.typeName, tags.standard(tags.name)],
     color: 'var(--or-info-fg)',
   },
   {
     tag: [tags.string, tags.special(tags.string)],
-    color: 'var(--or-success-fg)',
+    color: 'var(--or-syntax-string)',
   },
-  { tag: [tags.number, tags.bool, tags.null], color: 'var(--or-warning-fg)' },
+  {
+    tag: [tags.number, tags.bool, tags.null],
+    color: 'var(--or-syntax-number)',
+  },
   {
     tag: [tags.lineComment, tags.blockComment],
-    color: 'var(--or-tertiary)',
+    color: 'var(--or-syntax-comment)',
     fontStyle: 'italic',
   },
   {
@@ -37,9 +40,12 @@ const editorTheme = EditorView.theme({
     height: '100%',
     color: 'var(--or-text)',
     backgroundColor: 'var(--or-page)',
-    fontSize: 'var(--or-text-mono, var(--or-text-13))',
+    fontSize: 'var(--or-text-editor, var(--or-text-mono, var(--or-text-13)))',
   },
-  '.cm-scroller': { fontFamily: 'var(--or-font-mono)', lineHeight: '1.5' },
+  '.cm-scroller': {
+    fontFamily: 'var(--or-font-editor, var(--or-font-mono))',
+    lineHeight: 'var(--or-editor-line-height, 1.5)',
+  },
   '.cm-content': { caretColor: 'var(--or-accent)' },
   '.cm-gutters': {
     color: 'var(--or-tertiary)',

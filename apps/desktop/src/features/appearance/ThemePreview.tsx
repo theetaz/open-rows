@@ -15,7 +15,8 @@ export function ThemePreview({
   const style = {
     '--preview-canvas': half.canvas,
     '--preview-accent': half.accent,
-    '--preview-ink': mode === 'dark' ? '#FFFFFF' : '#000000',
+    '--preview-ink':
+      half.tokens?.text ?? (mode === 'dark' ? '#FFFFFF' : '#000000'),
   } as CSSProperties;
   return (
     <div

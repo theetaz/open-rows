@@ -94,6 +94,29 @@ impl LocalStore {
             .map_err(sqlite("write meta"))
     }
 
+    /// Checkpoint every WAL frame before an offline data-directory copy.
+    ///
+    /// # Errors
+    /// Returns a storage error if another writer prevents a complete checkpoint.
+    pub fn checkpoint(&self) -> Result<(), StoreError> {
+        let (busy, _, _): (i64, i64, i64) = self
+            .lock()?
+            .query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |row| {
+                Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+            })
+            .map_err(sqlite("checkpoint before relocation"))?;
+        if busy != 0 {
+            return Err(StoreError::Sqlite {
+                context: "checkpoint before relocation: database is busy",
+                source: rusqlite::Error::SqliteFailure(
+                    rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_BUSY),
+                    None,
+                ),
+            });
+        }
+        Ok(())
+    }
+
     fn lock(&self) -> Result<MutexGuard<'_, Connection>, StoreError> {
         self.conn.lock().map_err(|_| StoreError::Poisoned)
     }

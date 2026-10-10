@@ -143,3 +143,26 @@ Native window vibrancy/appearance synchronisation, the canvas grid and CodeMirro
 
 - All strings via an i18n layer (`@lingui/core` or `i18next`, decided in M1) with ICU message format; English source. Dates/numbers through `Intl`.
 - Right-to-left support is a P2 goal; layout uses logical CSS properties from the start to keep it cheap.
+
+## Implemented (M2-22b): application settings and native documents
+
+The lazy Settings sheet adds Tables and Locations alongside General, Editor,
+Appearance, existing Security and Keymap (rebinding and conflict detection already
+exist). Search filters labels, descriptions and keywords, highlighting literal
+matches. Group/global resets require confirmation. Portable JSON exchange validates
+the complete settings schema before applying preferences; unknown keys and unsafe
+themes fail with a field path. Credentials, profiles, history settings/data, query
+snippets and tool paths are excluded. Failed file writes roll back preferences.
+
+Tab baseline operations and M2-20 disconnected layout restoration are reused.
+Edited previews become ordinary tabs; staged table changes block preview replacement.
+Close other/right tabs performs one review of all affected tabs, including unsaved
+SQL, table changes and active commits; cancellation preserves the whole group.
+Pinned tabs remain excluded. Drag/keyboard ordering and pane/workspace navigation
+use the existing registry. Detaching into OS windows remains M6-05/M5-11.
+
+Validated native SQL handoffs open a new editor without execution. With no selected
+database they use detached Local SQL files tabs, reachable after selecting a
+connection. Native database handoffs open the existing SQLite form with read-only
+selected; saving/connecting is explicit. Theme and font updates generate root CSS
+and canvas theme metrics only when preferences change, never for editor keystrokes.

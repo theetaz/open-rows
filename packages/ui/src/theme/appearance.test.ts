@@ -138,3 +138,55 @@ it('keeps custom palette extremes and alternate change colors readable', () => {
     expect(failures, failures.slice(0, 8).join('\n')).toHaveLength(0);
   }
 });
+
+it('round-trips versioned colour tokens and refuses unknown, unsafe or low-contrast values', () => {
+  const theme = {
+    ...builtInThemes[0],
+    version: 1,
+    id: 'custom-tokens',
+    name: 'Tokens',
+    light: {
+      canvas: '#ffffff',
+      accent: '#000000',
+      tokens: { 'syntax-keyword': '#123456' },
+    },
+  };
+  const restored = importTheme(JSON.stringify(theme));
+  expect(restored.version).toBe(1);
+  expect(restored.light.tokens).toEqual(theme.light.tokens);
+  for (const changes of [
+    { css: 'x' },
+    { version: 2 },
+    {
+      dark: {
+        canvas: '#000000',
+        accent: '#000000',
+        tokens: { 'syntax-keyword': '#010101' },
+      },
+    },
+    { light: { ...theme.light, tokens: { script: 'x' } } },
+    { light: { ...theme.light, tokens: { 'row-inserted': '#888888' } } },
+  ])
+    expect(() =>
+      importTheme(JSON.stringify({ ...theme, ...changes })),
+    ).toThrow();
+});
+
+it('applies separate editor/grid/sidebar fonts and line height through root tokens', () => {
+  const appearance = parseAppearance({
+    editorFont: 'menlo',
+    gridFont: 'courier',
+    sidebarFont: 'verdana',
+    editorSize: 18,
+    gridSize: 14,
+    sidebarSize: 16,
+    editorLineHeight: 1.8,
+  });
+  const css = appearanceCss(appearance);
+  expect(css).toContain('--or-font-editor:Menlo');
+  expect(css).toContain('--or-font-grid:"Courier New"');
+  expect(css).toContain('--or-font-sidebar:Verdana');
+  expect(css).toContain('--or-text-editor:18px');
+  expect(css).toContain('--or-text-grid:14px');
+  expect(css).toContain('--or-editor-line-height:1.8');
+});

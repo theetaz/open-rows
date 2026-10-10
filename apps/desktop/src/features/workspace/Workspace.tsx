@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { lazy, Suspense, useState } from 'react';
+import { NativeDocuments } from '../query/NativeDocuments';
 import { WorkspaceToolbar } from './WorkspaceToolbar';
 import { WorkspaceBody, WorkspaceRail } from './WorkspaceBody';
 const WorkspacePalettes = lazy(() =>
@@ -63,6 +64,11 @@ export function Workspace({
       />
       <div className={styles.main}>
         <Toolbar connections={connections} controller={controller} />
+        {controller.fileNotice && (
+          <p className={styles.fileNotice} role="alert">
+            {controller.fileNotice}
+          </p>
+        )}
         <WorkspaceBody connections={connections} controller={controller} />
       </div>
       <span className={styles.announcement} role="status">
@@ -263,6 +269,7 @@ function Toolbar({
         schema: catalog.schema,
         objectPath: tab?.objectPath,
       })}
+      documents={<NativeDocuments tabs={controller.tabs} />}
       health={status?.state ?? 'disconnected'}
       onDatabase={() => {
         setMode('database');
@@ -279,7 +286,7 @@ function Toolbar({
       onSidebar={controller.toggleSidebar}
       onInspector={inspector.toggle}
       onQuery={() => {
-        controller.addQuery();
+        controller.command('new-tab');
       }}
     />
   );

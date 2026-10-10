@@ -8,6 +8,9 @@ import { EditorPane } from './EditorPane';
 import { ExecutionPane } from './ExecutionPane';
 import { GeneralPane } from './GeneralPane';
 import { JsonPane } from './JsonPane';
+import { SettingsActions } from './SettingsActions';
+import { TablesPane } from './TablesPane';
+import { LocationsPane } from './LocationsPane';
 import { SearchResults } from './SearchResults';
 import { ShortcutsPane } from './ShortcutsPane';
 import { SecurityPane } from '../security/SecurityPane';
@@ -18,6 +21,8 @@ import styles from '../appearance/Appearance.module.css';
 import searchStyles from './Settings.module.css';
 
 export type SettingsSection =
+  | 'tables'
+  | 'locations'
   | 'security'
   | 'general'
   | 'appearance'
@@ -31,18 +36,22 @@ export type SettingsSection =
 
 const SECTIONS: readonly { value: SettingsSection; label: string }[] = [
   { value: 'security', label: 'Security' },
+  { value: 'tables', label: 'Tables' },
+  { value: 'locations', label: 'Locations' },
   { value: 'general', label: 'General' },
   { value: 'appearance', label: 'Appearance' },
   { value: 'editor', label: 'Editor' },
   { value: 'execution', label: 'Execution' },
   { value: 'snippets', label: 'Snippets' },
-  { value: 'shortcuts', label: 'Shortcuts' },
+  { value: 'shortcuts', label: 'Keymap' },
   { value: 'tools', label: 'Tools' },
   { value: 'diagnostics', label: 'Diagnostics' },
   { value: 'json', label: 'JSON' },
 ];
 
 function Pane({ section }: { section: SettingsSection }): React.JSX.Element {
+  if (section === 'tables') return <TablesPane />;
+  if (section === 'locations') return <LocationsPane />;
   if (section === 'security') return <SecurityPane />;
   if (section === 'appearance') return <AppearancePane />;
   if (section === 'editor') return <EditorPane />;
@@ -105,6 +114,7 @@ export function SettingsSheet(props: {
             Done
           </Button>
         </header>
+        <SettingsActions section={section} />
         <SettingsQuery value={query}>
           {searching ? (
             <SearchResults query={query} panes={SEARCHED} />

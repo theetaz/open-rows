@@ -166,3 +166,20 @@
   overflow: hidden;
   clip-path: inset(50%);
 }
+
+/* Native handoff errors stay visible without occupying a workspace grid cell. */
+.fileNotice {
+  position: fixed;
+  inset-block-end: var(--or-space-16);
+  inset-inline-start: var(--or-space-16);
+  max-inline-size: calc(100vw - var(--or-space-32));
+  z-index: 50;
+  margin: 0;
+  padding: var(--or-space-8) var(--or-space-12);
+  border: var(--or-border-width) solid var(--or-separator);
+  border-radius: var(--or-radius-control);
+  background: var(--or-page);
+  color: var(--or-text);
+  box-shadow: var(--or-panel-shadow);
+  font-size: var(--or-text-13);
+}

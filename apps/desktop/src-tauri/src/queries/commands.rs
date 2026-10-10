@@ -104,6 +104,10 @@ pub(crate) async fn query_execute(
         cancel: ScriptCanceller::default(),
         events: on_event,
     };
+    connections
+        .limits
+        .apply_to_session(&connections.sessions, session, &run.profile)
+        .map_err(IpcError::from)?;
     queries.track(&run.query_id, run.cancel.clone());
     let reply = ExecuteReply::Started {
         query_id: run.query_id.clone(),

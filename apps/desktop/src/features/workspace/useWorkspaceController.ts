@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { useNativeFiles } from './useNativeFiles';
 import { useState } from 'react';
 import { openSqlFile } from '@openrows/ipc';
 import { useTheme } from '@openrows/ui';
@@ -302,14 +303,14 @@ export function useWorkspaceController(input: Input): WorkspaceController {
   const tabs = useQueryTabs();
   const { setMode: setTheme } = useTheme();
   const { scope, scopeOf } = scopes(connections);
-  const compact = useCompact();
-  const inspector = useInspectorOpen(compact);
+  const fileNotice = useNativeFiles({ tabs, scope, ...input });
+  const { compact, inspector } = useLayoutControls();
   const { sidebar, setSidebar, toggleSidebar } = useSidebar();
   const [mode, setMode] = useState<PaletteMode | null>(null);
   useDatabasePrompt(connections, setMode);
   const [refreshes, refresh] = useRefresh(catalog);
   const active = scope ? tabs.activeFor(scope) : undefined;
-  const tableInfo = useTableInfo(active?.id);
+  const details = useActiveDetails(active?.id);
   const commands = queryCommands(tabs, scope, scopeOf);
   const openProcesses = processesOpener(connections, tabs, scope);
   const { objects, openObject } = useObjectOpening({
@@ -361,8 +362,8 @@ export function useWorkspaceController(input: Input): WorkspaceController {
     mode,
     setMode,
     refreshes,
-    ...useDetails(active?.id),
-    ...tableInfo,
+    fileNotice,
+    ...details,
     toggleSidebar,
     addQuery: commands.addQuery,
     openObject,
@@ -391,6 +392,7 @@ type WorkspaceController = { jobs: JobActions } & Details &
     mode: PaletteMode | null;
     setMode: (mode: PaletteMode | null) => void;
     refreshes: number;
+    fileNotice: string | null;
     toggleSidebar: () => void;
     /** Open a query tab on the active connection, optionally with SQL. */
     addQuery: (sql?: string) => void;
@@ -413,3 +415,14 @@ type WorkspaceController = { jobs: JobActions } & Details &
     refresh: () => void;
     command: (id: string) => void;
   };
+
+/** Shared compact/inspector layout controls. */
+function useLayoutControls() {
+  const compact = useCompact();
+  return { compact, inspector: useInspectorOpen(compact) };
+}
+
+/** Details and table metadata share the same active-tab lifetime. */
+function useActiveDetails(id: string | undefined) {
+  return { ...useDetails(id), ...useTableInfo(id) };
+}

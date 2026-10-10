@@ -87,3 +87,19 @@ it('renames a tab, keeping a preview tab and ignoring blank titles', () => {
   });
   expect(renameTab(renamed, 'table-1', '   ')).toBe(renamed);
 });
+
+it('editing keeps preview text, while pins and names survive layout restoration', async () => {
+  const { editTab } = await import('./tabs');
+  const { serializeTabs, restoreTabs } = await import('./tabStorage');
+  let state = openTab(emptyTabs, scope, { preview: true, title: 'Draft' });
+  state = editTab(state, 'query-1', 'SELECT 1');
+  state = openTab(state, scope, { preview: true, title: 'Next' });
+  expect(state.tabs).toHaveLength(2);
+  expect(state.tabs[0]?.sql).toBe('SELECT 1');
+  state = pinTab(renameTab(state, 'query-1', 'Named draft'), 'query-1', true);
+  expect(restoreTabs(serializeTabs(state)).tabs[0]).toMatchObject({
+    title: 'Named draft',
+    pinned: true,
+    sql: 'SELECT 1',
+  });
+});

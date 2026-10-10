@@ -46,7 +46,7 @@ pub(crate) fn install_panic_hook() {
 /// The platform directories cannot be resolved.
 pub(crate) fn install(app: &mut tauri::App) -> tauri::Result<()> {
     let log_dir = app.path().app_log_dir()?;
-    let data = app.path().app_data_dir()?;
+    let data = app.state::<crate::locations::Locations>().data.clone();
     let marker = data.join(marker::FILE_NAME);
     // A missing or unreadable settings file only means the default level applies.
     let settings = fs::read_to_string(data.join("settings.json")).ok();

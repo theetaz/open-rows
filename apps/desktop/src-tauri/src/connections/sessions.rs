@@ -125,7 +125,8 @@ pub(crate) async fn open_session(
     } else {
         let dialect = drivers::driver(profile.driver).dialect();
         let mut recipe = resilient::recipe(target, dialect, server);
-        recipe.setup = limits::setup_sql(profile.driver, timeout);
+        // App defaults change per run; do not freeze them into server startup settings.
+        recipe.setup = limits::setup_sql(profile.driver, profile.limits.statement_timeout(0));
         state.sessions.open_resilient(recipe).await?
     };
     state.sessions.set_statement_timeout(session, timeout)?;

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { revealDatabase } from '@openrows/ipc';
 import type { ProfileDto } from '@openrows/ipc';
 import type { Connections } from './useConnections';
 
@@ -26,6 +27,7 @@ export function connectionActions(
             connections.select(profile.id);
           },
         ],
+    ...revealAction(profile),
     [
       'Connection settings…',
       () => {
@@ -73,4 +75,25 @@ export function connectionActions(
       },
     ],
   ];
+}
+
+/** Reveal failures remain visible in the workspace's native file notice. */
+function revealAction(profile: ProfileDto): readonly ConnectionAction[] {
+  return profile.file?.path
+    ? [
+        [
+          'Reveal in Finder / File Manager',
+          () => {
+            revealDatabase(profile.id).catch((error: unknown) => {
+              window.dispatchEvent(
+                new CustomEvent('openrows:file-error', {
+                  detail:
+                    error instanceof Error ? error.message : String(error),
+                }),
+              );
+            });
+          },
+        ] as const,
+      ]
+    : [];
 }

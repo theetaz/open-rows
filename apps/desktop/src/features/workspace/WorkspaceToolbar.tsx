@@ -8,6 +8,7 @@ import { JobsButton } from '../jobs';
 import styles from './Workspace.module.css';
 
 type Props = {
+  documents?: React.ReactNode;
   context: ContextSegments;
   /** Connection state for the context bar's health dot. */
   health: string;
@@ -75,6 +76,7 @@ export function WorkspaceToolbar(props: Props): React.JSX.Element {
       <ToolbarGroup aria-label="Workspace actions">
         <ToolButton label="Refresh" icon="refresh" onClick={props.onRefresh} />
         <JobsButton />
+        {props.documents}
         <ToolButton
           label="Command palette"
           icon="command"

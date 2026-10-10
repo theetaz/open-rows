@@ -50,6 +50,19 @@ export function ConnectionSheets({
         onDelete={(profile) => void connections.remove(profile)}
       />
     );
+  if (sheet.kind === 'new-file')
+    return (
+      <ConnectionSheet
+        engine="sqlite"
+        filePath={sheet.path}
+        onClose={close}
+        onSaved={connections.saved}
+        onDelete={connections.confirmRemove}
+        onDuplicate={(target) => {
+          void connections.duplicate(target);
+        }}
+      />
+    );
   if (sheet.kind === 'new')
     return <NewConnection connections={connections} onClose={close} />;
   return (

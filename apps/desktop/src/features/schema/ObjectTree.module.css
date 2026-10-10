@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* TablePlus-dense rows for the object tree only. */
 .tree {
-  --or-tree-row-height: 20px;
+  font-family: var(--or-font-sidebar);
+  font-size: var(--or-text-sidebar);
 }
 .note {
   margin: 0;

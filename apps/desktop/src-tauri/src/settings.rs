@@ -60,17 +60,18 @@ impl SettingsFile {
 /// Manage the settings path next to the profiles and local store, and write
 /// the schema beside it.
 ///
-/// # Errors
-/// The app-data dir cannot be resolved.
-pub(crate) fn install(app: &mut tauri::App) -> Result<(), tauri::Error> {
-    let path = app.path().app_data_dir()?.join("settings.json");
+pub(crate) fn install(app: &mut tauri::App) {
+    let path = app
+        .state::<crate::locations::Locations>()
+        .data
+        .clone()
+        .join("settings.json");
     if let Err(error) = write_schema(&path) {
         tracing::warn!(error = %error.message, "settings schema not written");
     }
     let file = SettingsFile::new(path);
     *file.known() = read(&file.path).ok().flatten();
     app.manage(file);
-    Ok(())
 }
 
 /// Write the JSON Schema next to `settings` unless it is already current.

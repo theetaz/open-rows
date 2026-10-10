@@ -282,8 +282,8 @@ export function ipcStub(
   profiles: readonly ProfileDto[] = sampleProfiles,
 ): Record<string, unknown> {
   return {
-    DEFAULT_CUSTOM_ENV_COLOR: '#7c3aed',
-    getAppInfo: vi.fn(() => new Promise(() => {})),
+    ...appParityStub(),
+
     ...connectionTransferStub(),
     listProfiles: vi.fn(() =>
       Promise.resolve({ profiles: [...profiles], unreadable: [] }),
@@ -379,5 +379,19 @@ function securityStub(): Record<string, unknown> {
     securityActivity: vi.fn(() => Promise.resolve()),
     lockApp: vi.fn(() => Promise.resolve()),
     unlockApp: vi.fn(() => Promise.resolve()),
+  };
+}
+
+/** Native location and document stubs used without filesystem access. */
+function appParityStub(): Record<string, unknown> {
+  return {
+    DEFAULT_CUSTOM_ENV_COLOR: '#7c3aed',
+    getAppInfo: vi.fn(() => new Promise(() => {})),
+    getDataLocations: vi.fn().mockResolvedValue(null),
+    chooseDataLocation: vi.fn().mockResolvedValue(null),
+    scheduleDataLocation: vi.fn().mockResolvedValue(undefined),
+    takeNativeFiles: vi.fn().mockResolvedValue([]),
+    onNativeFilesReady: vi.fn().mockResolvedValue(() => undefined),
+    revealDatabase: vi.fn().mockResolvedValue(undefined),
   };
 }

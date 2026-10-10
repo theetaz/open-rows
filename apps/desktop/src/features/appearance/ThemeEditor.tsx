@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Button, TextField, importTheme, validTheme } from '@openrows/ui';
 import type { ThemeDefinition } from '@openrows/ui';
 import { Sheet, SheetActions } from '@openrows/ui/sheet';
+import { ThemeTokenEditor } from './ThemeTokenEditor';
 import { ThemePreview } from './ThemePreview';
 import styles from './Appearance.module.css';
 type Props = {
@@ -49,13 +50,15 @@ export function ThemeEditor({
               <code>{draft[mode][key]}</code>
             </label>
           ))}
+          <ThemeTokenEditor draft={draft} mode={mode} onChange={setDraft} />
         </fieldset>
       ))}
       {!valid && (
         <p role="alert">
           Keep the light background bright, the dark background dark and accents
           dark enough for white button labels so text stays readable. Give your
-          theme a name.
+          theme a name. Text and syntax tokens must meet WCAG AA (4.5:1) on its
+          canvas and custom edit-state backgrounds.
         </p>
       )}
       <SheetActions>
@@ -80,7 +83,9 @@ export function ThemeTransfer({
 }: Omit<Props, 'theme'> & {
   theme: ThemeDefinition | undefined;
 }): React.JSX.Element {
-  const [text, setText] = useState(theme ? JSON.stringify(theme, null, 2) : '');
+  const [text, setText] = useState(
+    theme ? JSON.stringify({ ...theme, version: 1 }, null, 2) : '',
+  );
   const [message, setMessage] = useState('');
   const importing = !theme;
   const submit = (): void => {

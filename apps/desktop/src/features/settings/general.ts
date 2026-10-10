@@ -25,6 +25,9 @@ export const STATEMENT_TIMEOUT_CHOICES: readonly StatementTimeoutSeconds[] = [
 type GeneralSettings = {
   /** Reopen the previous connections, databases and tabs on launch. */
   restoreSession: boolean;
+  updateChannel: 'stable' | 'beta';
+  updateNotifications: boolean;
+  newTab: 'query' | 'connection';
   density: Density;
   /** Row height of every data grid (tables and query results). */
   gridDensity: GridDensity;
@@ -37,13 +40,16 @@ type GeneralSettings = {
   keepaliveSeconds: KeepaliveSeconds;
   /**
    * Statement timeout of connections that do not set their own; read by
-   * the core from settings.json when a database opens.
+   * the core from settings.json for each new query run.
    */
   statementTimeoutSeconds: StatementTimeoutSeconds;
 };
 
 const defaultGeneralSettings: GeneralSettings = {
   restoreSession: true,
+  updateChannel: 'stable',
+  updateNotifications: true,
+  newTab: 'query',
   density: 'regular',
   gridDensity: 'normal',
   reduceMotion: false,
@@ -66,10 +72,15 @@ export function parseGeneral(stored: unknown): GeneralSettings {
   if (typeof stored !== 'object' || stored === null)
     return defaultGeneralSettings;
   const value = stored as Record<string, unknown>;
-  const flag = (key: 'restoreSession' | 'reduceMotion'): boolean =>
+  const flag = (
+    key: 'restoreSession' | 'reduceMotion' | 'updateNotifications',
+  ): boolean =>
     typeof value[key] === 'boolean' ? value[key] : defaultGeneralSettings[key];
   return {
     restoreSession: flag('restoreSession'),
+    updateChannel: value.updateChannel === 'beta' ? 'beta' : 'stable',
+    updateNotifications: flag('updateNotifications'),
+    newTab: value.newTab === 'connection' ? 'connection' : 'query',
     reduceMotion: flag('reduceMotion'),
     density: DENSITIES.includes(value.density as Density)
       ? (value.density as Density)

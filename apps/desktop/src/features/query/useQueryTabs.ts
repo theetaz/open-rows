@@ -38,7 +38,14 @@ export type QueryTabs = {
   activeFor: (scope: TabScope) => QueryTab | undefined;
   open: OpenQueryTab;
   close: (id: string, options?: { discard: boolean }) => void;
-  installCloseGuard?: (guard: (id: string) => boolean) => () => void;
+  installCloseGuard?: (
+    guard: (id: string, preview?: boolean) => boolean,
+  ) => () => void;
+  /** Review an entire close operation before removing any tab. */
+  closeMany?: (ids: readonly string[], options?: { discard: boolean }) => void;
+  installBulkCloseGuard?: (
+    guard: (ids: readonly string[]) => boolean,
+  ) => () => void;
   select: (id: string) => void;
   edit: (id: string, sql: string) => void;
   /** Point a table tab at its table's new name after a committed rename. */
@@ -66,13 +73,8 @@ export type QueryTabs = {
  * Auto Save).
  */
 export function useQueryTabs(): QueryTabs {
-  const guard = useRef<((id: string) => boolean) | null>(null);
-  const installCloseGuard = useCallback((next: (id: string) => boolean) => {
-    guard.current = next;
-    return () => {
-      if (guard.current === next) guard.current = null;
-    };
-  }, []);
+  const { guard, bulkGuard, installCloseGuard, installBulkCloseGuard } =
+    useTabGuards();
   const [state, setState] = useState<TabsState>(emptyTabs);
   const loaded = useSavedTabs(setState);
   const [{ autoSave }] = useEditorSettings();
@@ -83,23 +85,7 @@ export function useQueryTabs(): QueryTabs {
   const persistence = { autoSave, restore: restoreSession, loaded };
   useTabPersistence(state, persistence, file);
   useFileChanges(state.tabs, loaded, file);
-  const latest = useRef(state);
-  useEffect(() => {
-    latest.current = state;
-  }, [state]);
-  const open = useCallback<OpenQueryTab>((scope, init) => {
-    const preview = init?.preview
-      ? tabsOf(latest.current, scope).find((tab) => tab.preview)
-      : undefined;
-    // A preview tab being replaced is closed first, releasing its views.
-    if (preview && guard.current && !guard.current(preview.id)) {
-      setState((current) =>
-        openTab(current, scope, { ...init, preview: false }),
-      );
-      return;
-    }
-    setState((current) => openTab(current, scope, init));
-  }, []);
+  const open = useTabOpening(state, setState, guard);
   const edit = useCallback((id: string, sql: string) => {
     setState((current) => editTab(current, id, sql));
   }, []);
@@ -111,6 +97,14 @@ export function useQueryTabs(): QueryTabs {
     },
     open,
     installCloseGuard,
+    installBulkCloseGuard,
+    closeMany: (ids, options) => {
+      if (!options?.discard && bulkGuard.current && !bulkGuard.current(ids))
+        return;
+      setState((current) =>
+        ids.reduce((next, id) => closeTab(next, id), current),
+      );
+    },
     close: (id, options) => {
       if (!options?.discard && guard.current && !guard.current(id)) return;
       setState((current) => closeTab(current, id));
@@ -143,4 +137,60 @@ export function useQueryTabs(): QueryTabs {
     },
     state,
   };
+}
+
+/** Independent guards avoid coupling tab descriptors to data-view state. */
+function useTabGuards() {
+  const guard = useRef<((id: string, preview?: boolean) => boolean) | null>(
+    null,
+  );
+  const installCloseGuard = useCallback(
+    (next: (id: string, preview?: boolean) => boolean) => {
+      guard.current = next;
+      return () => {
+        if (guard.current === next) guard.current = null;
+      };
+    },
+    [],
+  );
+  const bulkGuard = useRef<((ids: readonly string[]) => boolean) | null>(null);
+  const installBulkCloseGuard = useCallback(
+    (next: (ids: readonly string[]) => boolean) => {
+      bulkGuard.current = next;
+      return () => {
+        if (bulkGuard.current === next) bulkGuard.current = null;
+      };
+    },
+    [],
+  );
+  return { guard, bulkGuard, installCloseGuard, installBulkCloseGuard };
+}
+
+/** Preview replacement consults the data guard before dropping any mounted view. */
+function useTabOpening(
+  state: TabsState,
+  setState: React.Dispatch<React.SetStateAction<TabsState>>,
+  guard: React.RefObject<((id: string, preview?: boolean) => boolean) | null>,
+): OpenQueryTab {
+  const latest = useRef(state);
+  useEffect(() => {
+    latest.current = state;
+  }, [state]);
+  const open = useCallback<OpenQueryTab>(
+    (scope, init) => {
+      const preview = init?.preview
+        ? tabsOf(latest.current, scope).find((tab) => tab.preview)
+        : undefined;
+      // A preview tab being replaced is closed first, releasing its views.
+      if (preview && guard.current && !guard.current(preview.id, true)) {
+        setState((current) =>
+          openTab(current, scope, { ...init, preview: false }),
+        );
+        return;
+      }
+      setState((current) => openTab(current, scope, init));
+    },
+    [guard, setState],
+  );
+  return open;
 }

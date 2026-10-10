@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { Suspense } from 'react';
+import { lazy, Suspense } from 'react';
 import { TabBody } from './TabBody';
 import type { ProfileDto } from '@openrows/ipc';
 import { useTableCloseGuard } from '../table/useTableCloseGuard';
@@ -20,12 +20,19 @@ import type { Split } from './useSplit';
 import { usePaneCommands } from '../commands';
 import type { PaneCommand } from '../commands';
 import styles from './Query.module.css';
+const LocalFileTabs = lazy(() =>
+  import('./LocalFileTabs').then((module) => ({
+    default: module.LocalFileTabs,
+  })),
+);
 /** Inputs shared by the workspace and its lazily rendered tab bodies. */
 export type QueryContentProps = {
   connections: Connections;
   tabs: QueryTabs;
   /** Active database of the connection; empty when none is open. */
   database: string;
+  /** Honour the General new-tab preference through the workspace command. */
+  onNewTab?: (() => void) | undefined;
   onCell: (cell: SelectedCell) => void;
   /** A table view's selected row, for the inspector's Details. */
   onRow: ShowRow;
@@ -59,6 +66,8 @@ export function QueryContent(props: QueryContentProps): React.JSX.Element {
   const closeGuard = useTableCloseGuard({ tables, runs, tabs: props.tabs });
   const connection = props.connections.active;
   const split = useSplitPanes(props.tabs, connection, props.database);
+  if ((!connection || !props.database) && hasLocalFiles(props.tabs))
+    return localFileContent(props.tabs, closeGuard);
   if (!connection) return <NoConnection connections={props.connections} />;
   if (!props.database)
     return (
@@ -76,7 +85,8 @@ export function QueryContent(props: QueryContentProps): React.JSX.Element {
   const tab = tabs.activeFor(shown);
   const status = props.connections.statusOf(connection.id);
   const open = (): void => {
-    tabs.open(shown);
+    if (props.onNewTab) props.onNewTab();
+    else tabs.open(shown);
   };
   return (
     <main className={styles.content}>
@@ -201,5 +211,22 @@ function EmptyState(props: {
         </Button>
       )}
     </div>
+  );
+}
+
+function hasLocalFiles(tabs: QueryTabs): boolean {
+  return (
+    tabs.tabsFor({ connectionId: 'local-files', database: 'Files' }).length > 0
+  );
+}
+function localFileContent(
+  tabs: QueryTabs,
+  closeGuard: React.ReactNode,
+): React.JSX.Element {
+  return (
+    <Suspense fallback={null}>
+      {closeGuard}
+      <LocalFileTabs tabs={tabs} />
+    </Suspense>
   );
 }

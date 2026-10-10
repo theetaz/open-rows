@@ -82,9 +82,21 @@ export function useConnectionForm(
   profile: ProfileDto | undefined,
   onSaved: (profile: ProfileDto) => void,
   engine: EngineDto = 'postgres',
+  filePath?: string,
 ): ConnectionForm {
   const [draft, setDraft] = useState(() =>
-    profile ? draftFromProfile(profile) : emptyDraft(engine),
+    profile
+      ? draftFromProfile(profile)
+      : {
+          ...emptyDraft(engine),
+          ...(filePath
+            ? {
+                filePath,
+                name: filePath.split(/[\\/]/).at(-1) ?? 'SQLite',
+                fileReadOnly: true,
+              }
+            : {}),
+        },
   );
   const [submitted, setSubmitted] = useState(false);
   const url = useUrlField(draft, setDraft);

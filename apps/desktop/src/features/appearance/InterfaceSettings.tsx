@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { Button, SelectField, useTheme } from '@openrows/ui';
 import type { ReactNode } from 'react';
+import { HighlightMatch } from '../settings/HighlightMatch';
 import { useSettingMatch } from '../settings/settingsSearch';
 import styles from './Appearance.module.css';
 /** One titled setting; hidden while the Settings search does not match it. */
@@ -18,8 +19,12 @@ export function SettingRow({
   return (
     <div className={styles.settingRow} data-setting-row>
       <div>
-        <strong>{title}</strong>
-        <p>{description}</p>
+        <strong>
+          <HighlightMatch text={title} />
+        </strong>
+        <p>
+          <HighlightMatch text={description} />
+        </p>
       </div>
       <div className={styles.controls}>{children}</div>
     </div>

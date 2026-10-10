@@ -4,7 +4,7 @@
 //! Statement timeout: the profile's value, else the app-wide default
 //! (`general.statementTimeoutSeconds` in settings.json, off by default). The
 //! core cancels a statement past it through the normal cancel path; server
-//! sessions also set the server-side limit at session start and after every
+//! sessions also set explicit profile server-side limits at session start and after every
 //! reconnect (`PostgreSQL` `statement_timeout`, `MySQL` `max_execution_time`
 //! for `SELECT`, `MariaDB` `max_statement_time`).
 //!
@@ -46,6 +46,16 @@ impl DefaultLimits {
         let seconds = u32::try_from(seconds).unwrap_or(0);
         self.statement_timeout_seconds
             .store(seconds, Ordering::Relaxed);
+    }
+
+    /// Apply the current saved default at the IPC/core boundary for a new run.
+    pub(crate) fn apply_to_session(
+        &self,
+        manager: &openrows_core::SessionManager,
+        session: SessionId,
+        profile: &ConnectionProfile,
+    ) -> Result<(), openrows_core::CoreError> {
+        manager.set_statement_timeout(session, self.statement_timeout(profile))
     }
 
     /// The statement timeout for sessions of `profile`.
@@ -180,6 +190,54 @@ mod tests {
         )?);
         profile.limits.statement_timeout_seconds = None;
         assert_eq!(defaults.statement_timeout(&profile), None);
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod run_tests {
+    use super::*;
+    use openrows_core::{QueryEvent, SessionManager};
+    use std::sync::Arc;
+
+    #[tokio::test]
+    async fn a_saved_timeout_applies_to_new_runs_on_an_already_open_core_session()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let dir = tempfile::tempdir()?;
+        let database = dir.path().join("timeout.db");
+        let manager = SessionManager::new(Arc::new(openrows_results::ResultStore::default()));
+        let session = manager
+            .open(async move {
+                openrows_driver_sqlite::open(&database, false, true)
+                    .map(|session| Box::new(session) as Box<dyn openrows_driver_api::Session>)
+            })
+            .await?;
+        let profile = ConnectionProfile::new_file(
+            "Local",
+            openrows_store::profile::FileParams::memory(),
+            openrows_store::profile::EnvTag::new(openrows_store::profile::EnvKind::Local),
+        );
+        let defaults = DefaultLimits::default();
+        defaults.apply(&serde_json::json!({"general": {"statementTimeoutSeconds": 1}}));
+        defaults.apply_to_session(&manager, session, &profile)?;
+        let mut query = manager.execute(
+            session,
+            "WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM n) SELECT sum(x) FROM n",
+        )?;
+        let mut timed_out = false;
+        while let Some(event) = query.next_event().await {
+            timed_out |= matches!(event, QueryEvent::Failed { error } if error.kind == openrows_core::ErrorKind::Timeout);
+        }
+        assert!(timed_out);
+        defaults.apply(&serde_json::json!({"general": {"statementTimeoutSeconds": 0}}));
+        defaults.apply_to_session(&manager, session, &profile)?;
+        let mut next = manager.execute(session, "SELECT 1")?;
+        let mut completed = false;
+        while let Some(event) = next.next_event().await {
+            completed |= matches!(event, QueryEvent::Completed { .. });
+        }
+        assert!(completed);
+        manager.close(session).await?;
         Ok(())
     }
 }

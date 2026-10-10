@@ -110,7 +110,7 @@ pub(crate) struct Connections {
 /// # Errors
 /// The app-data dir cannot be resolved or created, or the database fails to open.
 pub(crate) fn install(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
-    let data = app.path().app_data_dir()?;
+    let data = app.state::<crate::locations::Locations>().data.clone();
     std::fs::create_dir_all(&data)?;
     let store = LocalStore::open(&data.join("openrows.sqlite"))?;
     // Eviction is housekeeping: snapshots that stay only cost disk space.

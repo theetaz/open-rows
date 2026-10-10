@@ -14,6 +14,13 @@ export type Appearance = {
   uiSize: number;
   monoSize: number;
   customThemes: ThemeDefinition[];
+  editorFont: string;
+  gridFont: string;
+  sidebarFont: string;
+  editorSize: number;
+  gridSize: number;
+  sidebarSize: number;
+  editorLineHeight: number;
 };
 export const uiFonts = {
   system: typography['font-ui'],
@@ -39,6 +46,13 @@ export const defaultAppearance: Appearance = {
   uiSize: 13,
   monoSize: 12,
   customThemes: [],
+  editorFont: 'system',
+  gridFont: 'system',
+  sidebarFont: 'system',
+  editorSize: 12,
+  gridSize: 12,
+  sidebarSize: 13,
+  editorLineHeight: 1.5,
 };
 export const appearanceKey = 'openrows.appearance.v1';
 function bounded(
@@ -60,6 +74,7 @@ export function parseAppearance(value: unknown): Appearance {
     : [];
   const ids = new Set([...builtInThemes, ...customThemes].map((t) => t.id));
   return {
+    ...parseFontMetrics(v),
     lightTheme:
       typeof v.lightTheme === 'string' && ids.has(v.lightTheme)
         ? v.lightTheme
@@ -105,4 +120,43 @@ export function saveAppearance(value: Appearance): void {
 export function fontFamily(kind: 'ui' | 'mono', id: string): string {
   const fonts: Record<string, string> = kind === 'ui' ? uiFonts : monoFonts;
   return fonts[id] ?? typography[kind === 'ui' ? 'font-ui' : 'font-mono'];
+}
+
+/** Independent font roles migrate the previous shared UI/monospace metrics. */
+function parseFontMetrics(
+  v: Record<string, unknown>,
+): Pick<
+  Appearance,
+  | 'editorFont'
+  | 'gridFont'
+  | 'sidebarFont'
+  | 'editorSize'
+  | 'gridSize'
+  | 'sidebarSize'
+  | 'editorLineHeight'
+> {
+  const font = (
+    key: string,
+    kind: 'ui' | 'mono',
+    previous: unknown,
+  ): string => {
+    const value = v[key] ?? previous;
+    const fonts = kind === 'ui' ? uiFonts : monoFonts;
+    return typeof value === 'string' && Object.hasOwn(fonts, value)
+      ? value
+      : 'system';
+  };
+  return {
+    editorFont: font('editorFont', 'mono', v.monoFont),
+    gridFont: font('gridFont', 'mono', v.monoFont),
+    sidebarFont: font('sidebarFont', 'ui', v.uiFont),
+    editorSize: bounded(v.editorSize ?? v.monoSize, 11, 24, 12),
+    gridSize: bounded(v.gridSize ?? v.monoSize, 11, 24, 12),
+    sidebarSize: bounded(v.sidebarSize ?? v.uiSize, 11, 24, 13),
+    editorLineHeight:
+      typeof v.editorLineHeight === 'number' &&
+      [1.2, 1.5, 1.8, 2].includes(v.editorLineHeight)
+        ? v.editorLineHeight
+        : 1.5,
+  };
 }

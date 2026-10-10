@@ -70,7 +70,7 @@ fn launcher(path: &Path, reveal: bool) -> Command {
     command
 }
 
-async fn launch(path: PathBuf, reveal: bool) -> Result<(), IpcError> {
+pub(crate) async fn launch(path: PathBuf, reveal: bool) -> Result<(), IpcError> {
     let status = tauri::async_runtime::spawn_blocking(move || launcher(&path, reveal).status())
         .await
         .map_err(|error| IpcError::new(IpcErrorKind::Internal, error.to_string()))?;

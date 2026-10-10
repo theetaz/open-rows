@@ -17,7 +17,7 @@ import { isObjectCommand } from '../objects';
 import type { ObjectCommand } from '../objects';
 import { closeProject, openProjectDialog } from '../projects';
 import type { Catalog } from '../schema';
-import { setGridDensity } from '../settings';
+import { generalSettings, setGridDensity } from '../settings';
 import { setJobsOpen } from '../jobs';
 import type { SettingsSection } from '../settings';
 import type { useInspectorOpen } from './layout';
@@ -151,7 +151,11 @@ function viewActions(input: ShellInput): Actions {
 function workActions(input: ShellInput): Actions {
   const { connections } = input;
   return {
-    'new-tab': input.addQuery,
+    'new-tab': () => {
+      if (generalSettings.get().newTab === 'connection')
+        input.setMode('connection');
+      else input.addQuery();
+    },
     'close-tab': input.closeTab,
     refresh: () => {
       input.refresh();
