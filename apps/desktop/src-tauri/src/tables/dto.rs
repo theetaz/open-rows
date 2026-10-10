@@ -2,7 +2,7 @@
 //! Request and reply types of the table-view commands.
 use openrows_driver_api::catalog::{ColumnSummary, IndexSummary, TableStructure};
 use openrows_sql::select::{
-    Combinator, Filter, FilterOp, Sort, SortDirection, TableQuery, TableRef,
+    Combinator, Filter, FilterGroup, FilterOp, Sort, SortDirection, TableQuery, TableRef,
 };
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -65,6 +65,34 @@ pub(crate) enum CombinatorDto {
     Or,
 }
 
+/// One parenthesised group of enabled filter rows.
+#[derive(Clone, Debug, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct FilterGroupDto {
+    pub(crate) filters: Vec<FilterDto>,
+    pub(crate) combinator: CombinatorDto,
+}
+
+impl From<CombinatorDto> for Combinator {
+    fn from(value: CombinatorDto) -> Self {
+        match value {
+            CombinatorDto::And => Self::And,
+            CombinatorDto::Or => Self::Or,
+        }
+    }
+}
+
+impl From<&FilterDto> for Filter {
+    fn from(filter: &FilterDto) -> Self {
+        Self {
+            column: filter.column.clone(),
+            op: filter.operator.into(),
+            value: filter.value.clone(),
+            second: filter.second.clone(),
+        }
+    }
+}
+
 /// Server-side sort on one column.
 #[derive(Clone, Debug, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -80,6 +108,8 @@ pub(crate) struct TableQueryDto {
     pub(crate) target: TableTarget,
     pub(crate) columns: Vec<String>,
     pub(crate) filters: Vec<FilterDto>,
+    #[serde(default)]
+    pub(crate) groups: Vec<FilterGroupDto>,
     pub(crate) combinator: CombinatorDto,
     pub(crate) sort: Option<SortDto>,
     /// A keyless `SQLite` table's rowid alias (`EditInfoDto::row_id`),
@@ -247,20 +277,16 @@ impl TableQueryDto {
                 name: self.target.table.clone(),
             },
             columns: self.columns.clone(),
-            filters: self
-                .filters
+            filters: self.filters.iter().map(Filter::from).collect(),
+            groups: self
+                .groups
                 .iter()
-                .map(|filter| Filter {
-                    column: filter.column.clone(),
-                    op: filter.operator.into(),
-                    value: filter.value.clone(),
-                    second: filter.second.clone(),
+                .map(|group| FilterGroup {
+                    filters: group.filters.iter().map(Filter::from).collect(),
+                    combinator: group.combinator.into(),
                 })
                 .collect(),
-            combinator: match self.combinator {
-                CombinatorDto::And => Combinator::And,
-                CombinatorDto::Or => Combinator::Or,
-            },
+            combinator: self.combinator.into(),
             sort: self.sort.as_ref().map(|sort| Sort {
                 column: sort.column.clone(),
                 direction: if sort.descending {

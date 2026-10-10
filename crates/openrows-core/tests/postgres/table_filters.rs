@@ -7,7 +7,7 @@ use openrows_core::{QueryEvent, SessionManager};
 use openrows_results::ResultStore;
 use openrows_sql::Dialect;
 use openrows_sql::select::{
-    BoundSql, Combinator, Filter, FilterOp, TableQuery, TableRef, count_sql,
+    BoundSql, Combinator, Filter, FilterGroup, FilterOp, TableQuery, TableRef, count_sql,
 };
 use openrows_types::SessionId;
 use std::sync::Arc;
@@ -41,6 +41,7 @@ fn items(filters: Vec<Filter>, combinator: Combinator) -> TableQuery {
         },
         columns: Vec::new(),
         filters,
+        groups: Vec::new(),
         combinator,
         sort: None,
         row_id: None,
@@ -117,6 +118,47 @@ async fn raw_predicates_and_key_jumps_filter_rows() -> TestResult {
     ];
     assert_eq!(count(on, &items(jump, Combinator::And)).await?, Some(10));
     run(&manager, session, "DROP SCHEMA m219 CASCADE").await?;
+    manager.close(session).await?;
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "needs PostgreSQL; run with `just test-pg`"]
+async fn grouped_and_or_predicates_filter_rows_with_bind_parameters() -> TestResult {
+    let store = Arc::new(ResultStore::default());
+    let manager = SessionManager::new(store.clone());
+    let session = open(&manager).await?;
+    run(&manager, session, "CREATE SCHEMA fu03_groups").await?;
+    run(
+        &manager,
+        session,
+        "CREATE TABLE fu03_groups.items (id int, org int, region text, name text)",
+    )
+    .await?;
+    run(&manager, session, "INSERT INTO fu03_groups.items SELECT g, g % 5, 'eu', 'item ' || g FROM generate_series(1, 100) g").await?;
+    let mut query = items(Vec::new(), Combinator::And);
+    query.table.schema = "fu03_groups".into();
+    query.groups = vec![
+        FilterGroup {
+            filters: vec![
+                filter("id", FilterOp::LessOrEqual, "3"),
+                filter("id", FilterOp::GreaterOrEqual, "98"),
+            ],
+            combinator: Combinator::Or,
+        },
+        FilterGroup {
+            filters: vec![
+                filter("", FilterOp::Raw, "id % 2 = 0"),
+                filter("region", FilterOp::Equal, "eu"),
+            ],
+            combinator: Combinator::And,
+        },
+    ];
+    let on = (&manager, store.as_ref(), session);
+    assert_eq!(count(on, &query).await?, Some(3));
+    query.combinator = Combinator::Or;
+    assert_eq!(count(on, &query).await?, Some(53));
+    run(&manager, session, "DROP SCHEMA fu03_groups CASCADE").await?;
     manager.close(session).await?;
     Ok(())
 }

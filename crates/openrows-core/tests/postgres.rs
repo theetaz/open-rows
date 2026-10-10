@@ -19,6 +19,8 @@ mod script_file;
 mod table_edits;
 #[path = "postgres/table_filters.rs"]
 mod table_filters;
+#[path = "postgres/table_links.rs"]
+mod table_links;
 #[path = "postgres/table_view.rs"]
 mod table_view;
 

@@ -129,6 +129,10 @@ pub fn pg_dump(
         let name = format!("{}.{}", quoted(&table.schema), quoted(&table.name));
         command.arg(format!("--table={name}"));
     }
+    for table in &options.exclude_table_data {
+        let name = format!("{}.{}", quoted(&table.schema), quoted(&table.name));
+        command.arg(format!("--exclude-table-data={name}"));
+    }
     flag(&mut command, options.no_owner, "--no-owner");
     flag(&mut command, options.no_privileges, "--no-privileges");
     if let Some(level) = options.compression {
@@ -163,6 +167,9 @@ pub fn pg_restore(
         .arg("--verbose")
         .arg("--no-password")
         .arg(dbname(spec, tool));
+    for schema in &options.schemas {
+        command.arg(format!("--schema={schema}"));
+    }
     flag(&mut command, options.clean != Clean::Keep, "--clean");
     flag(
         &mut command,

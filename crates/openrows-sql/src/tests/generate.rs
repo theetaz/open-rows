@@ -21,6 +21,7 @@ fn query(filters: Vec<Filter>) -> TableQuery {
         },
         columns: Vec::new(),
         filters,
+        groups: Vec::new(),
         combinator: Combinator::And,
         sort: Some(Sort {
             column: "we`ird".into(),

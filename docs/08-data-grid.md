@@ -213,13 +213,21 @@ M2-19 closes most of the D-08 gaps above (FR-GRID-07, 09..14, FR-DATA-04, 06, 08
 
 | Area | What exists |
 | --- | --- |
-| Filter builder | Filter rows joined by AND or OR, with operators by column type (`filterOperators.ts`): booleans get equality only; numbers and dates add ranges and `between`; text adds contains/starts/ends, LIKE and regex (no regex on SQLite). Values stay bind parameters through `openrows_sql::select`. |
+| Filter builder | Filter rows grouped with independent AND/OR joins (FU-03), with operators by column type (`filterOperators.ts`): booleans get equality only; numbers and dates add ranges and `between`; text adds contains/starts/ends, LIKE and regex (no regex on SQLite). Values stay bind parameters through `openrows_sql::select`. |
 | Raw SQL filter | A **Raw SQL** row (`FilterOp::Raw`) is checked in `openrows_sql::select::raw`: no comments, no `;`, no bind parameters, balanced parentheses and closed strings (`InvalidPredicate` otherwise). The whole SELECT then passes the usual read-only classification. A live preview shows the generated WHERE or the error. |
-| Saved state | Per table (`presentationStore.ts` over `results/keyedStore.ts`): hidden columns, sort, filters and named saved filters are restored across sessions, next to the widths, order and pins already kept. The stored layout format is unchanged. |
+| Saved state | Per table (`presentationStore.ts` over `results/keyedStore.ts`): hidden columns, sort, filters and named saved filters are restored across sessions, next to the widths, order and pins already kept. Version-two filters migrate flat saved state to one group (FU-03); the stored column layout format is unchanged. |
 | Copy options | Settings ▸ General ▸ Copy (`copy` in `settings.json`): headers (`format`/`always`/`never`), NULL as text or empty, and minimal or full quoting. **Copy with Headers** (⌥⇧⌘C) is a command. |
 | Bulk inspector | With several rows selected, each field shows the shared value or "Multiple values". An edit there is staged in every selected row through the normal change set and review. The comparison reads at most 1,000 rows. |
-| Foreign keys | Key cells draw an arrow (grid `link` columns, `onLink`). Clicking it, or **Open Referenced Row** in the row menu, opens the referenced row in a filtered table tab; composite keys work. **Referenced By** lists the tables pointing at the row. Key data comes from the ER-diagram metadata (cached for 60 s). |
+| Foreign keys | Key cells draw an arrow (grid `link` columns, `onLink`). Clicking it, or **Open Referenced Row** in the row menu, opens the referenced row in a filtered table tab; composite keys work. **Referenced By** lists the tables pointing at the row. Outgoing keys use schema-qualified table detail (FU-03); same-schema incoming keys use bounded ER metadata. Both are cached for 60 s, including session identity. |
 | Row form | **Form** in the footer (⌥⌘F) shows the focused row field by field, with previous/next within the page. Edits go through the change set. |
 | Footer statistics | For a cell selection: count, sum, average, minimum and maximum on numbers; count and distinct otherwise. |
 | Discard and reload | With staged edits, Discard and Reload (⌘R) ask for confirmation. Reload returns to the same scroll position and selected cell. |
-| Known gaps | No AND/OR grouping (one join for all rows); foreign keys to another schema are not shown; the form view moves only within the current page. |
+| Known gaps | Incoming Referenced By discovery remains within the current schema; the form view moves only within the current page. |
+
+### Implemented (FU-03): grouped filters and cross-schema references
+
+The builder supports one level of groups: independent AND/OR joins inside each group and an outer AND/OR join. Enabled typed rows share bind numbering across groups; raw rows keep the existing predicate validation. Empty groups do not add a predicate. Quick filters preserve applied groups without applying unrelated draft edits. Version-two presentations and saved filters migrate older flat rows into one group with their original join.
+
+Outgoing foreign keys now come from table-detail constraints, retaining the referenced schema and composite column order. An `a.orders → b.customers` arrow opens `b.customers` with bound equality filters; destination menus show the schema when it differs. Metadata is cached for 60 seconds by profile, database, schema, table, session and engine, with failed reads evicted and catalog changes invalidating the profile. Same-schema incoming links still use bounded ER metadata. Cross-database references are outside this task, including MySQL/MariaDB keys into another database.
+
+SQL unit tests cover PostgreSQL, MySQL, SQLite/libSQL, SQL Server and ClickHouse. PostgreSQL integration tests verify grouped row counts and cross-schema metadata/destination queries; component tests verify the arrow click and schema-qualified table opening.

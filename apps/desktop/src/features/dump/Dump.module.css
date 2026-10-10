@@ -140,3 +140,23 @@
   overflow-wrap: anywhere;
   user-select: text;
 }
+
+.scopeList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-4);
+  max-block-size: 220px;
+  overflow: auto;
+}
+.scopeList label {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-6);
+}
+.scopeList input[type='checkbox'] {
+  margin: 0;
+  accent-color: var(--or-accent);
+}
+.scopeTable {
+  padding-inline-start: 20px;
+}

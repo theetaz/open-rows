@@ -15,9 +15,13 @@ export type JobActions = {
   /** Export Tables… of a schema of the active connection's database. */
   exportTables: (database: string, schema: string) => void;
   /** Back Up Database… of a database of the active connection. */
-  backup: (database: string) => void;
+  backup: (
+    database: string,
+    scope?: DumpTarget['backupScope'],
+    profileId?: string,
+  ) => void;
   /** Restore Database… into a database of the active connection. */
-  restore: (database: string) => void;
+  restore: (database: string, schema?: string, profileId?: string) => void;
   tables: TablesTarget | null;
   closeTables: () => void;
 };
@@ -40,8 +44,9 @@ function target(
 function dumpTarget(
   connections: Connections,
   database: string,
+  profileId?: string,
 ): DumpTarget | null {
-  const found = target(connections, database);
+  const found = target(connections, database, profileId);
   if (!found) return null;
   const status = connections.statusOf(found.profileId);
   const server = status.state === 'connected' ? status.server : null;
@@ -67,14 +72,15 @@ export function useJobActions(connections: Connections): JobActions {
       const found = target(connections, database);
       if (found && schema) setTables({ ...found, database, schema });
     },
-    backup: (database) => {
-      const found = dumpTarget(connections, database);
-      if (found) openBackup(found);
+    backup: (database, backupScope, profileId) => {
+      const found = dumpTarget(connections, database, profileId);
+      if (found) openBackup({ ...found, backupScope });
     },
-    restore: (database) => {
-      const found = dumpTarget(connections, database);
+    restore: (database, restoreSchema, profileId) => {
+      const found = dumpTarget(connections, database, profileId);
       // A failed panel has nothing to show; the menu item stays usable.
-      if (found) pickRestoreFor(found).catch(() => undefined);
+      if (found)
+        pickRestoreFor({ ...found, restoreSchema }).catch(() => undefined);
     },
     tables,
     closeTables: () => {

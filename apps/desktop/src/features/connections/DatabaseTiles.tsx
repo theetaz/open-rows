@@ -6,6 +6,8 @@ import type { OpenedDatabase } from './sessions';
 import styles from './Rail.module.css';
 
 type Props = {
+  onBackup?: ((name: string) => void) | undefined;
+  onRestore?: ((name: string) => void) | undefined;
   databases: readonly OpenedDatabase[];
   /** Active database of the connection. */
   active: string;
@@ -76,49 +78,86 @@ function DatabaseTile(
         <Icon name="database" aria-hidden="true" />
         <span>{name}</span>
       </button>
-      {open && (
-        <SidebarMenu
-          id={id}
-          label={`${name} actions`}
-          opener={opener}
-          onClose={close}
-        >
-          {props.onRunFile && (
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                close();
-                props.onRunFile?.(name);
-              }}
-            >
-              Run SQL file…
-            </button>
-          )}
-          {props.onProcesses && (
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                close();
-                props.onProcesses?.(name);
-              }}
-            >
-              Show processes
-            </button>
-          )}
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              close();
-              props.onClose(name);
-            }}
-          >
-            Close database
-          </button>
-        </SidebarMenu>
-      )}
+      {open && <DatabaseMenu {...props} menu={{ opener, id, close }} />}
     </>
+  );
+}
+
+function DatabaseMenu(
+  props: Props & {
+    database: OpenedDatabase;
+    menu: Pick<ReturnType<typeof useSidebarMenu>, 'opener' | 'id' | 'close'>;
+  },
+): React.JSX.Element {
+  const { opener, id, close } = props.menu;
+  const { name } = props.database;
+  return (
+    <SidebarMenu
+      id={id}
+      label={`${name} actions`}
+      opener={opener}
+      onClose={close}
+    >
+      {props.onBackup && (
+        <button
+          type="button"
+          role="menuitem"
+          disabled={props.database.state !== 'open'}
+          onClick={() => {
+            close();
+            props.onBackup?.(name);
+          }}
+        >
+          Back Up…
+        </button>
+      )}
+      {props.onRestore && (
+        <button
+          type="button"
+          role="menuitem"
+          disabled={props.database.state !== 'open'}
+          onClick={() => {
+            close();
+            props.onRestore?.(name);
+          }}
+        >
+          Restore…
+        </button>
+      )}
+      {props.onRunFile && (
+        <button
+          type="button"
+          role="menuitem"
+          onClick={() => {
+            close();
+            props.onRunFile?.(name);
+          }}
+        >
+          Run SQL file…
+        </button>
+      )}
+      {props.onProcesses && (
+        <button
+          type="button"
+          role="menuitem"
+          onClick={() => {
+            close();
+            props.onProcesses?.(name);
+          }}
+        >
+          Show processes
+        </button>
+      )}
+      <button
+        type="button"
+        role="menuitem"
+        onClick={() => {
+          close();
+          props.onClose(name);
+        }}
+      >
+        Close database
+      </button>
+    </SidebarMenu>
   );
 }

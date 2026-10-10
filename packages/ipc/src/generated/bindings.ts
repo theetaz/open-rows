@@ -502,6 +502,7 @@ export type BackupOptionsDto = {
 	content: BackupContentDto,
 	schemas: string[],
 	tables: DumpTableDto[],
+	excludeTableData?: DumpTableDto[],
 	noOwner: boolean,
 	noPrivileges: boolean,
 	/**  0–9; `None` for the tool's default. */
@@ -1108,6 +1109,12 @@ export type FilterDto = {
 	operator: FilterOperatorDto,
 	value: string,
 	second: string,
+};
+
+/**  One parenthesised group of enabled filter rows. */
+export type FilterGroupDto = {
+	filters: FilterDto[],
+	combinator: CombinatorDto,
 };
 
 /**  Filter-row comparisons (FR-GRID-11 subset). */
@@ -2129,6 +2136,7 @@ export type RestoreContentsRequest = {
 
 /**  Restore options; archive options are ignored for SQL scripts. */
 export type RestoreOptionsDto = {
+	schemas?: string[],
 	clean: RestoreCleanDto,
 	noOwner: boolean,
 	noPrivileges: boolean,
@@ -2584,6 +2592,7 @@ export type TableQueryDto = {
 	target: TableTarget,
 	columns: string[],
 	filters: FilterDto[],
+	groups?: FilterGroupDto[],
 	combinator: CombinatorDto,
 	sort: SortDto | null,
 	/**

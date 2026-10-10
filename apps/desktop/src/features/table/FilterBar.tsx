@@ -3,7 +3,8 @@ import { useState } from 'react';
 import type { CombinatorDto, EngineDto, TableQueryDto } from '@openrows/ipc';
 import { tableSql } from '@openrows/ipc';
 import { Button, SelectField } from '@openrows/ui';
-import { FilterRowEditor } from './FilterRowEditor';
+import { FilterGroups } from './filters/FilterGroups';
+import { appliedGroups } from './filters/groups';
 import { SavedFilters } from './filters/SavedFilters';
 import { WherePreview } from './filters/WherePreview';
 import { withParams } from './filters/whereClause';
@@ -61,22 +62,17 @@ function useSqlPreview(
  */
 export function FilterBar(props: Props): React.JSX.Element {
   const { view, query, actions } = props;
-  const draft = { ...query, filters: toFilters(view.rows) };
+  const draft = {
+    ...query,
+    combinator: view.combinator,
+    filters: view.groups ? [] : toFilters(view.rows),
+    groups: view.groups ? appliedGroups(view) : [],
+  };
   const [preview, togglePreview] = useSqlPreview(draft, view);
-  const raw = draft.filters.some((filter) => filter.operator === 'raw');
+  const raw = view.rows.some((row) => row.enabled && row.operator === 'raw');
   return (
     <div className={styles.filters} role="search" aria-label="Filters">
-      {view.rows.map((row, index) => (
-        <FilterRowEditor
-          key={row.id}
-          row={row}
-          index={index}
-          columns={props.columns}
-          types={props.types}
-          engine={props.engine}
-          actions={actions}
-        />
-      ))}
+      <FilterGroups {...props} />
       {raw && <WherePreview draft={draft} />}
       <div className={styles.filterActions}>
         <Button
@@ -87,6 +83,9 @@ export function FilterBar(props: Props): React.JSX.Element {
         >
           Add filter
         </Button>
+        <Button size="sm" onClick={actions.addGroup}>
+          Add group
+        </Button>
         <Button
           size="sm"
           aria-pressed={preview !== null}
@@ -95,7 +94,7 @@ export function FilterBar(props: Props): React.JSX.Element {
           SQL
         </Button>
         <SelectField<CombinatorDto>
-          aria-label="Combine filters"
+          aria-label="Combine groups"
           controlSize="compact"
           value={view.combinator}
           options={combinators}

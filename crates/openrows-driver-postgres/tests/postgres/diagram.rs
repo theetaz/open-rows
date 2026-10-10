@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //! The ER diagram of a schema: tables, columns and foreign keys in bulk.
 use crate::support::{Collect, TestResult, connect, run};
-use openrows_driver_api::Catalog;
+use arrow_array::cast::AsArray as _;
+use openrows_driver_api::{Catalog, Session as _};
 
 const FIXTURE: [&str; 7] = [
     "DROP SCHEMA IF EXISTS erd CASCADE",
@@ -88,5 +89,76 @@ async fn the_diagram_reads_tables_columns_and_composite_keys() -> TestResult {
             .iter()
             .all(|k| k.target.table == "lines")
     );
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "needs PostgreSQL: run `just test-pg`"]
+async fn table_detail_carries_cross_schema_keys_and_the_jump_selects_the_referenced_row()
+-> TestResult {
+    let mut session = connect().await?;
+    for statement in [
+        "CREATE SCHEMA fu03_a",
+        "CREATE SCHEMA fu03_b",
+        "CREATE TABLE fu03_b.customers (id int PRIMARY KEY, name text)",
+        "CREATE TABLE fu03_a.orders (id int PRIMARY KEY, customer_id int REFERENCES fu03_b.customers(id))",
+        "INSERT INTO fu03_b.customers VALUES (7, 'selected'), (8, 'other')",
+        "INSERT INTO fu03_a.orders VALUES (1, 7)",
+    ] {
+        let (reply, _) = run(&mut session, statement, Collect::default()).await;
+        reply?;
+    }
+    let detail = Catalog::table_detail(&mut session, "fu03_a", "orders").await?;
+    let constraint = detail
+        .constraints
+        .iter()
+        .find(|key| key.references.is_some())
+        .ok_or("missing cross-schema key")?;
+    let target = constraint.references.as_ref().ok_or("missing target")?;
+    assert_eq!(
+        (target.schema.as_str(), target.table.as_str()),
+        ("fu03_b", "customers")
+    );
+    assert_eq!(constraint.columns, ["customer_id"]);
+    assert_eq!(target.columns, ["id"]);
+    let query = openrows_sql::select::TableQuery {
+        table: openrows_sql::select::TableRef {
+            schema: target.schema.clone(),
+            name: target.table.clone(),
+        },
+        columns: Vec::new(),
+        filters: vec![openrows_sql::select::Filter {
+            column: target.columns[0].clone(),
+            op: openrows_sql::select::FilterOp::Equal,
+            value: "7".into(),
+            second: String::new(),
+        }],
+        groups: Vec::new(),
+        combinator: openrows_sql::select::Combinator::And,
+        sort: None,
+        row_id: None,
+    };
+    let sql = openrows_sql::select::page_sql(
+        openrows_sql::Dialect::Postgres,
+        &query,
+        &["id".into(), "name".into()],
+        openrows_sql::select::Page {
+            limit: 10,
+            offset: 0,
+        },
+    )?;
+    assert!(sql.sql.contains("\"fu03_b\".\"customers\""));
+    assert_eq!(sql.params, [Some("7".into())]);
+    let mut sink = Collect::default();
+    let result = session
+        .execute_bound(&sql.sql, &sql.params, &mut sink)
+        .await?;
+    assert_eq!(result.rows, 1);
+    let batch = sink.batches.first().ok_or("missing referenced row")?;
+    assert_eq!(batch.column(1).as_string::<i32>().value(0), "selected");
+    for statement in ["DROP SCHEMA fu03_a CASCADE", "DROP SCHEMA fu03_b CASCADE"] {
+        let (reply, _) = run(&mut session, statement, Collect::default()).await;
+        reply?;
+    }
     Ok(())
 }

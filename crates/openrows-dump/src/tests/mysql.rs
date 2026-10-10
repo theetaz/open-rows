@@ -90,6 +90,7 @@ fn mysqldump_with_every_option() -> Result<(), DumpError> {
             "--no-data",
             "--set-gtid-purged=OFF",
             "--column-statistics=0",
+            "--",
             "shop",
             "orders",
         ]

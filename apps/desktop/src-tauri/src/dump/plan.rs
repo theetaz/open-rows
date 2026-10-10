@@ -85,6 +85,11 @@ fn restore_commands(
     spec: &ConnectionSpec,
     list: Option<&Path>,
 ) -> Result<Vec<ToolCommand>, DumpError> {
+    if !plan.options.schemas.is_empty() && (plan.mysql || plan.kind == DumpKind::PlainSql) {
+        return Err(DumpError::Invalid(
+            "Schema-scoped restores require a PostgreSQL archive".to_owned(),
+        ));
+    }
     let client_name = if plan.mysql { "mysql" } else { "psql" };
     let mut commands = Vec::new();
     if plan.create {
@@ -175,4 +180,44 @@ pub(super) fn shown(command: &ToolCommand) -> String {
         }
     }
     shown.display()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn scoped_plain_scripts_are_refused_before_any_restore_command() {
+        let spec = ConnectionSpec {
+            address: openrows_dump::Address::Tcp {
+                host: "localhost".into(),
+                port: 5432,
+            },
+            user: "test-only".into(),
+            database: "shop".into(),
+            tls: openrows_dump::TlsSpec::default(),
+            application_name: "test-only".into(),
+            password_file: None,
+        };
+        for mysql in [false, true] {
+            let plan = RestorePlan {
+                kind: DumpKind::PlainSql,
+                path: PathBuf::from("shop.sql"),
+                database: "shop".into(),
+                create: false,
+                options: RestoreOptions {
+                    schemas: vec!["public".into()],
+                    ..RestoreOptions::default()
+                },
+                mysql,
+                archive_tool: None,
+                client: None,
+            };
+            assert!(restore_preview(&plan, &spec).is_err_and(|error| {
+                error
+                    .to_string()
+                    .contains("Schema-scoped restores require a PostgreSQL archive")
+            }));
+        }
+    }
 }

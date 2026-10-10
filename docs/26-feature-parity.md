@@ -98,7 +98,7 @@ These FR-NET-03 rows document OpenRows scope; no TablePlus adoption/parity claim
 | G01 | Table pagination | Browse configurable row pages. | Covered FR-GRID-08 | M1 | Avoid compulsory exact counts. | [S18] |
 | G02 | Header sort | Toggle sorting by a column. | Covered FR-GRID-04 | M1 | Distinguish server and local result sorting. | [S19] |
 | G03 | Column selection | Hide/show chosen fields. | Covered FR-GRID-02 | M1 | Pin and reorder as well. | [S20] |
-| G04 | Filter conditions | Apply several predicates. | New FR-GRID-11; FR-GRID-04 | M1 baseline; M2 builder | Typed predicates with AND/OR grouping. | [S20] |
+| G04 | Filter conditions | Apply several predicates. | Implemented FU-03; FR-GRID-11, FR-GRID-04 (docs/08 §11) | M2 | Typed predicates with AND/OR grouping. | [S20] |
 | G05 | Filter operators | Use ranges, lists, NULL and patterns. | New FR-GRID-11 | M2 | Explain dialect and type applicability. | [S20] |
 | G06 | Raw SQL filter | Enter a predicate directly. | New FR-GRID-11 | M2 | Classification and ordinary safety checks. | [S20] |
 | G07 | Any-column filter | Match a value across fields. | New FR-GRID-11 | M2 | Explicit potentially expensive operation. | [S20] |
@@ -106,7 +106,7 @@ These FR-NET-03 rows document OpenRows scope; no TablePlus adoption/parity claim
 | G09 | Header quick filter | Start with a chosen column. | New FR-GRID-11 | M2 | Keyboard equivalent for context menu. | [S20] |
 | G10 | Filter SQL preview | Inspect the generated SELECT. | New FR-GRID-11 | M2 | Copyable dialect-correct query. | [S20] |
 | G11 | Filter reset | Return to unfiltered data. | New FR-GRID-11 | M2 | Show active scope before export. | [S20] |
-| G12 | Remember table state | Restore filters, layout and sort. | New FR-GRID-12 | M2 | Versioned state, separate from secrets. | [S20], [S05] |
+| G12 | Remember table state | Restore filters, layout and sort. | Implemented FU-03: version-two grouped filters and migration; FR-GRID-12 | M2 | Versioned state, separate from secrets. | [S20], [S05] |
 | G13 | Row detail form | Inspect a wide row vertically. | Covered FR-GRID-09 | M2 | Accessible field-by-field navigation. | [S21] |
 | G14 | Inspector field search | Find a field in a wide row. | New FR-GRID-14 | M2 | Preserve active-cell focus. | [S21] |
 | G15 | Bulk field edit | Change selected rows together. | New FR-GRID-14 | M2 | Affected-count and change-set review. | [S21] |
@@ -118,7 +118,7 @@ These FR-NET-03 rows document OpenRows scope; no TablePlus adoption/parity claim
 | G21 | Markdown copy | Copy a readable table. | Covered FR-GRID-03 | M1 | Escape delimiters and multiline values. | [S19] |
 | G22 | HTML copy | Copy a formatted HTML table. | New FR-GRID-13 | M2 | Escape markup; no executable content. | [S19] |
 | G23 | SQL INSERT copy | Produce row insertion statements. | Covered FR-GRID-03 | M1 | Correct dialect literals and quoting. | [S19] |
-| G24 | Foreign-key jump | Open the referenced row. | Covered FR-GRID-07 | M2 | Composite-key support and visible destination. | [S20] |
+| G24 | Foreign-key jump | Open the referenced row. | Implemented FU-03: outgoing cross-schema/composite keys; same-schema incoming only; FR-GRID-07 | M2 | Composite-key support and visible destination. | [S20] |
 | G25 | Background result loading | Browse before fetching finishes. | Covered FR-GRID-01 | M1 | Arrow windows, backpressure and disk spill. | [S23] |
 
 ### Data writes and safety
@@ -216,8 +216,8 @@ These FR-NET-03 rows document OpenRows scope; no TablePlus adoption/parity claim
 | I12 | Multi-object export | Export several tables/views. | New FR-IO-05 | M2 | Stream each object; no UI materialisation. | [S47] |
 | I13 | Current-page export | Export the displayed page. | New FR-IO-05 | M2 | Distinguish page from whole dataset. | [S08] |
 | I14 | SQL file execution | Run SQL loaded from disk. | Covered FR-IO-03 | M2 | Stop-on-error, progress and cancellation. | [S49] |
-| I15 | Database backup | Write a database dump. | Covered FR-IO-04; built in M2-14 (docs/05 §15) | M2 | Detect installed tool version and compatibility. | [S50] |
-| I16 | Database restore | Restore from a dump. | Covered FR-IO-04; built in M2-14 (docs/05 §15) | M2 | Target confirmation and typed tool errors. | [S50] |
+| I15 | Database backup | Write a database dump. | Covered FR-IO-04; built in M2-14 + FU-03 scope picker/tree actions (docs/05 §15) | M2 | Detect installed tool version and compatibility. | [S50] |
+| I16 | Database restore | Restore from a dump. | Covered FR-IO-04; built in M2-14 + FU-03 scope picker/tree actions (docs/05 §15) | M2 | Target confirmation and typed tool errors. | [S50] |
 | I17 | Background transfers | Continue working during file jobs. | New FR-IO-05 | M2 | Backpressure, visible progress and cancel. | [S47] |
 
 ### Administration, metrics and plugins

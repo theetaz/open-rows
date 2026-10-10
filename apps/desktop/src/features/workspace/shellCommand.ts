@@ -48,6 +48,10 @@ export type ShellInput = {
   onBackup: () => void;
   /** Restore a backup into the active database. */
   onRestore: () => void;
+  /** Scoped backup and restore actions on the active schema/table. */
+  onBackupSchema: () => void;
+  onBackupTable: () => void;
+  onRestoreSchema: () => void;
   /** Open an object editor (new table, drop view, …). */
   onObjectCommand: (id: ObjectCommand) => void;
   /** Open a `.sql` file into a new tab when no query tab is active. */
@@ -159,6 +163,9 @@ function workActions(input: ShellInput): Actions {
     'run-sql-file': input.onRunFile,
     'backup-database': input.onBackup,
     'restore-database': input.onRestore,
+    'backup-schema': input.onBackupSchema,
+    'backup-table': input.onBackupTable,
+    'restore-schema': input.onRestoreSchema,
     'show-jobs': () => {
       setJobsOpen(true);
     },

@@ -3,7 +3,8 @@ import type { CellRange, GridContextTarget } from '@openrows/grid';
 import type { ResultMeta } from '../query/run';
 import { holdsColumn } from './row';
 import type { RowField } from './row';
-import { filterRow, toFilters } from './model';
+import { filterRow } from './model';
+import { withQuickFilter } from './filters/groups';
 import type { TableView } from './model';
 import type { RowEditing } from './useRowEditing';
 import { stagedInserts } from './EditedSource';
@@ -264,12 +265,5 @@ function filterValue(view: TableView, field: RowField): TableView {
           : ('equal' as const),
     value: field.state === 'normal' ? field.text : '',
   };
-  return {
-    ...view,
-    rows: [...view.rows, row],
-    applied: [...view.applied, ...toFilters([row])],
-    nextRow: view.nextRow + 1,
-    filtersOpen: true,
-    offset: 0,
-  };
+  return withQuickFilter(view, row);
 }

@@ -32,6 +32,7 @@ export const defaultBackupOptions: BackupOptionsDto = {
   content: 'all',
   schemas: [],
   tables: [],
+  excludeTableData: [],
   noOwner: false,
   noPrivileges: false,
   compression: null,
@@ -42,6 +43,7 @@ export const defaultBackupOptions: BackupOptionsDto = {
 };
 
 export const defaultRestoreOptions: RestoreOptionsDto = {
+  schemas: [],
   clean: 'keep',
   noOwner: false,
   noPrivileges: false,

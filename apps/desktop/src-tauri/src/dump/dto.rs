@@ -151,6 +151,8 @@ pub(crate) struct BackupOptionsDto {
     pub(crate) content: BackupContentDto,
     pub(crate) schemas: Vec<String>,
     pub(crate) tables: Vec<DumpTableDto>,
+    #[serde(default)]
+    pub(crate) exclude_table_data: Vec<DumpTableDto>,
     pub(crate) no_owner: bool,
     pub(crate) no_privileges: bool,
     /// 0–9; `None` for the tool's default.
@@ -173,6 +175,14 @@ impl BackupOptionsDto {
             schemas: self.schemas.clone(),
             tables: self
                 .tables
+                .iter()
+                .map(|table| TableRef {
+                    schema: table.schema.clone(),
+                    name: table.name.clone(),
+                })
+                .collect(),
+            exclude_table_data: self
+                .exclude_table_data
                 .iter()
                 .map(|table| TableRef {
                     schema: table.schema.clone(),
@@ -254,6 +264,8 @@ pub(crate) enum RestoreCleanDto {
 #[derive(Clone, Debug, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct RestoreOptionsDto {
+    #[serde(default)]
+    pub(crate) schemas: Vec<String>,
     pub(crate) clean: RestoreCleanDto,
     pub(crate) no_owner: bool,
     pub(crate) no_privileges: bool,
@@ -266,6 +278,7 @@ pub(crate) struct RestoreOptionsDto {
 impl RestoreOptionsDto {
     pub(crate) fn options(&self) -> RestoreOptions {
         RestoreOptions {
+            schemas: self.schemas.clone(),
             clean: match self.clean {
                 RestoreCleanDto::Keep => Clean::Keep,
                 RestoreCleanDto::Drop => Clean::Drop,

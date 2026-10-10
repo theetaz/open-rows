@@ -19,6 +19,8 @@ import type { TableObject } from '../query/tabs';
 type Args = {
   table: TableObject;
   profileId: string;
+  sessionId: string | null;
+  engine: import('@openrows/ipc').EngineDto;
   state: TableTabState;
   editing: RowEditing;
   /** A session is open: rows load and stage. */
@@ -80,7 +82,8 @@ export function useDataTools(args: Args): DataTools {
   );
   const jumps = useKeyJumps({
     target: tableTarget(args.table, args.profileId),
-    ready,
+    sessionId: ready ? args.sessionId : null,
+    engine: args.engine,
     onOpenTable: args.onOpenTable,
     onError: editing.fail,
   });

@@ -54,7 +54,7 @@ pub enum Content {
 /// A table chosen for a backup.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TableRef {
-    /// Its schema (ignored for `MySQL`, where it is the database).
+    /// Its schema (the open database for `MySQL`).
     pub schema: String,
     /// Its name.
     pub name: String,
@@ -75,6 +75,8 @@ pub struct BackupOptions {
     pub schemas: Vec<String>,
     /// Only these tables; empty for all.
     pub tables: Vec<TableRef>,
+    /// Tables whose definitions are included but data is omitted (`PostgreSQL`).
+    pub exclude_table_data: Vec<TableRef>,
     /// Leave out ownership (`--no-owner`).
     pub no_owner: bool,
     /// Leave out grants (`--no-privileges`).
@@ -98,6 +100,7 @@ impl Default for BackupOptions {
             content: Content::All,
             schemas: Vec::new(),
             tables: Vec::new(),
+            exclude_table_data: Vec::new(),
             no_owner: false,
             no_privileges: false,
             compression: None,
@@ -123,12 +126,19 @@ impl BackupOptions {
                 return Err(DumpError::invalid("Tar archives cannot be compressed"));
             }
         }
-        let names = self
-            .schemas
-            .iter()
-            .chain(self.tables.iter().map(|t| &t.name));
-        if names.into_iter().any(String::is_empty) {
-            return Err(DumpError::invalid("Schema and table names cannot be empty"));
+        let names = self.schemas.iter().chain(
+            self.tables
+                .iter()
+                .chain(&self.exclude_table_data)
+                .flat_map(|table| [&table.schema, &table.name]),
+        );
+        if names
+            .into_iter()
+            .any(|name| name.is_empty() || name.contains('\0'))
+        {
+            return Err(DumpError::invalid(
+                "Schema and table names must be nonempty and contain no NUL",
+            ));
         }
         Ok(())
     }
@@ -149,6 +159,8 @@ pub enum Clean {
 /// Restore options; `pg_restore` options are ignored for SQL scripts.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct RestoreOptions {
+    /// Restore only these `PostgreSQL` schemas; empty restores all.
+    pub schemas: Vec<String>,
     /// Drop objects before recreating them.
     pub clean: Clean,
     /// Do not restore ownership (`--no-owner`).
@@ -169,6 +181,15 @@ impl RestoreOptions {
     /// # Errors
     /// `Invalid` naming the problem.
     pub fn validate(&self, tar: bool) -> Result<(), DumpError> {
+        if self
+            .schemas
+            .iter()
+            .any(|name| name.is_empty() || name.contains('\0'))
+        {
+            return Err(DumpError::invalid(
+                "Restore schemas must be nonempty and contain no NUL",
+            ));
+        }
         if self.jobs > 64 {
             return Err(DumpError::invalid("Use at most 64 parallel jobs"));
         }

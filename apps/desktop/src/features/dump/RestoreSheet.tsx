@@ -231,7 +231,10 @@ export function RestoreSheet(props: {
     scope: scopeOf(target),
     path: file.path,
     target: { kind: 'existing' },
-    options: defaultRestoreOptions,
+    options: {
+      ...defaultRestoreOptions,
+      schemas: target.restoreSchema ? [target.restoreSchema] : [],
+    },
     confirmToken: null,
     typedName: null,
   }));
@@ -254,6 +257,12 @@ export function RestoreSheet(props: {
         {file.bytes ? ` · ${sizeText(file.bytes)}` : ''} into{' '}
         {target.connection} : {target.database}
       </p>
+      {target.restoreSchema && (
+        <p>
+          Restore only schema {target.restoreSchema} (PostgreSQL archive
+          required).
+        </p>
+      )}
       {context.status === 'failed' && (
         <p className={styles.error} role="alert">
           {context.message}

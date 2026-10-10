@@ -75,62 +75,15 @@ export function ObjectActions(props: {
   /** The engine's object editors; `null` hides them. */
   features: ObjectFeaturesDto | null;
   onEditor: (request: ObjectEditorRequest) => void;
+  onBackup?: ((object: ObjectRef) => void) | undefined;
 }): React.JSX.Element | null {
   const [exporting, setExporting] = useState<ObjectRef | null>(null);
   const { menu } = props;
-  const session = menu ? props.sessionFor(menu.object.database) : null;
   const target = exporting ? props.sessionFor(exporting.database) : null;
-  const relation = menu ? relations.has(menu.object.kind) : false;
-  const choose = (run: () => void) => () => {
-    props.onClose();
-    run();
-  };
   return (
     <>
       {menu && (
-        <PointMenu
-          {...menu.point}
-          label={`${menu.object.name} actions`}
-          onClose={props.onClose}
-        >
-          <button
-            type="button"
-            role="menuitem"
-            onClick={choose(() => {
-              props.onOpen(menu.object);
-            })}
-          >
-            Open
-          </button>
-          <MenuFavourite menu={menu} session={session} />
-          {props.features && (
-            <EntryItems
-              entries={objectEntries(menu.object, props.features)}
-              onChoose={(request) => {
-                props.onClose();
-                props.onEditor(request);
-              }}
-            />
-          )}
-          {relation && (
-            <RelationItems
-              exportable={Boolean(session)}
-              onExport={choose(() => {
-                setExporting(menu.object);
-              })}
-              onImport={
-                menu.object.kind === 'table'
-                  ? choose(() => {
-                      props.onImport(menu.object);
-                    })
-                  : null
-              }
-              onDiagram={choose(() => {
-                props.onDiagram(menu.object);
-              })}
-            />
-          )}
-        </PointMenu>
+        <ObjectMenuItems {...props} menu={menu} onExport={setExporting} />
       )}
       {exporting && target && (
         <ExportSheet
@@ -154,4 +107,76 @@ function MenuFavourite(props: {
       object={{ ...props.menu.object, profileId: props.session.profileId }}
     />
   ) : null;
+}
+
+function ObjectMenuItems(
+  props: Omit<Parameters<typeof ObjectActions>[0], 'menu'> & {
+    menu: ObjectMenu;
+    onExport: (object: ObjectRef) => void;
+  },
+): React.JSX.Element {
+  const { menu } = props;
+  const session = props.sessionFor(menu.object.database);
+  const relation = relations.has(menu.object.kind);
+  const choose = (run: () => void) => () => {
+    props.onClose();
+    run();
+  };
+  return (
+    <PointMenu
+      {...menu.point}
+      label={`${menu.object.name} actions`}
+      onClose={props.onClose}
+    >
+      <button
+        type="button"
+        role="menuitem"
+        onClick={choose(() => {
+          props.onOpen(menu.object);
+        })}
+      >
+        Open
+      </button>
+      {menu.object.kind === 'table' && props.onBackup && (
+        <button
+          type="button"
+          role="menuitem"
+          disabled={!session}
+          onClick={choose(() => {
+            props.onBackup?.(menu.object);
+          })}
+        >
+          Back Up Table…
+        </button>
+      )}
+      <MenuFavourite menu={menu} session={session} />
+      {props.features && (
+        <EntryItems
+          entries={objectEntries(menu.object, props.features)}
+          onChoose={(request) => {
+            props.onClose();
+            props.onEditor(request);
+          }}
+        />
+      )}
+      {relation && (
+        <RelationItems
+          exportable={Boolean(session)}
+          onExport={choose(() => {
+            props.onExport(menu.object);
+          })}
+          onImport={
+            menu.object.kind === 'table'
+              ? choose(() => {
+                  props.onImport(menu.object);
+                })
+              : null
+          }
+          onDiagram={choose(() => {
+            props.onDiagram(menu.object);
+          })}
+        />
+      )}
+    </PointMenu>
+  );
 }

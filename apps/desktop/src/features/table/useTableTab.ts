@@ -6,13 +6,12 @@ import type { TableObject } from '../query/tabs';
 import {
   arrangedQuery,
   countKey,
-  filterRow,
   nextSort,
   pageKey,
   tableQuery,
   tableTarget,
-  toFilters,
 } from './model';
+import { filterActions } from './filters/filterActions';
 import { hideRowId } from './row';
 import { arrange } from '../../results/columnLayout';
 import type { EngineDto } from '@openrows/ipc';
@@ -52,7 +51,10 @@ export type TableActions = {
   combine: (combinator: TableView['combinator']) => void;
   editRow: (id: number, patch: Partial<FilterRow>) => void;
   removeRow: (id: number) => void;
-  addRow: (after?: number) => void;
+  addRow: (after?: number, group?: number) => void;
+  addGroup: () => void;
+  combineGroup: (id: number, combinator: TableView['combinator']) => void;
+  removeGroup: (id: number) => void;
   toggleFilters: () => void;
   toggleColumns: () => void;
   display: (setting: 'rowNumbers' | 'striped') => void;
@@ -177,7 +179,9 @@ function total(entry: TableEntry, query: TableQueryDto): Total {
       ? count.rows
       : null;
   const estimate =
-    structure.status === 'ready' && !query.filters.length
+    structure.status === 'ready' &&
+    !query.filters.length &&
+    !query.groups?.length
       ? structure.data.rowEstimate
       : null;
   return { exact, estimate };
@@ -193,20 +197,6 @@ function actions(
   { change, columns, entry }: Context,
   count: () => void,
 ): Omit<TableActions, 'reload' | 'applySaved' | 'toggleForm'> {
-  const editRows = (
-    update: (rows: readonly FilterRow[]) => FilterRow[],
-  ): void => {
-    change((view) => ({ ...view, rows: update(view.rows) }));
-  };
-  const addRow = (after?: number): void => {
-    change((view) => {
-      const row = filterRow(view.nextRow, columns[0] ?? '');
-      const index = view.rows.findIndex((item) => item.id === after);
-      const rows = [...view.rows];
-      rows.splice(index < 0 ? rows.length : index + 1, 0, row);
-      return { ...view, rows, nextRow: view.nextRow + 1, filtersOpen: true };
-    });
-  };
   return {
     sort: (result: ResultMeta, column: number) => {
       const name = result.columns[column]?.name;
@@ -224,30 +214,7 @@ function actions(
         offset: Math.max(0, view.offset + direction * view.limit),
       }));
     },
-    apply: (only?: number) => {
-      change((view) => ({
-        ...view,
-        applied: toFilters(view.rows, only),
-        offset: 0,
-      }));
-    },
-    clear: () => {
-      change((view) => ({ ...view, rows: [], applied: [], offset: 0 }));
-    },
-    combine: (combinator: TableView['combinator']) => {
-      change((view) => ({ ...view, combinator }));
-    },
-    editRow: (id: number, patch: Partial<FilterRow>) => {
-      editRows((rows) => updateFilter(rows, id, patch));
-    },
-    removeRow: (id: number) => {
-      editRows((rows) => rows.filter((row) => row.id !== id));
-    },
-    addRow,
-    toggleFilters: () => {
-      if (!entry.view.filtersOpen && !entry.view.rows.length) addRow();
-      else change((view) => ({ ...view, filtersOpen: !view.filtersOpen }));
-    },
+    ...filterActions(change, columns),
     toggleColumns() {
       change((view) => ({ ...view, columnsOpen: !view.columnsOpen }));
     },
@@ -280,12 +247,4 @@ export function canNext(entry: TableEntry): boolean {
   return (
     !isActive(entry.run) && !!result?.done && result.rows >= entry.view.limit
   );
-}
-
-function updateFilter(
-  rows: readonly FilterRow[],
-  id: number,
-  patch: Partial<FilterRow>,
-): FilterRow[] {
-  return rows.map((row) => (row.id === id ? { ...row, ...patch } : row));
 }

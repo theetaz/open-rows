@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@openrows/ui';
 import { Sheet, SheetActions } from '@openrows/ui/sheet';
 import { pickBackupFile, previewBackup, startBackup } from '@openrows/ipc';
@@ -8,6 +8,9 @@ import type {
   DumpContextDto,
   DumpPreviewDto,
 } from '@openrows/ipc';
+import { ExcludeTableData } from './ExcludeTableData';
+import { BackupScope } from './BackupScope';
+import { initialSelection, scopeOptions, useBackupScope } from './scopeModel';
 import { BackupOptions } from './BackupOptions';
 import { showDump } from './dumpStore';
 import type { DumpTarget } from './dumpStore';
@@ -27,23 +30,31 @@ function usePreview(
   options: BackupOptionsDto,
   ready: boolean,
 ): Preview {
-  const [preview, setPreview] = useState<Preview>({ status: 'loading' });
+  const key = JSON.stringify([target, options]);
+  const [state, setState] = useState<{ key: string; preview: Preview } | null>(
+    null,
+  );
   useEffect(() => {
     if (!ready) return;
     let live = true;
     previewBackup({ scope: scopeOf(target), options, output: null }).then(
       (result) => {
-        if (live) setPreview({ status: 'ready', preview: result });
+        if (live)
+          setState({ key, preview: { status: 'ready', preview: result } });
       },
       (error: unknown) => {
-        if (live) setPreview({ status: 'failed', message: messageOf(error) });
+        if (live)
+          setState({
+            key,
+            preview: { status: 'failed', message: messageOf(error) },
+          });
       },
     );
     return () => {
       live = false;
     };
-  }, [target, options, ready]);
-  return preview;
+  }, [target, options, ready, key]);
+  return ready && state?.key === key ? state.preview : { status: 'loading' };
 }
 
 /** Choose the file, then start the backup as a job and show its log. */
@@ -126,14 +137,19 @@ export function BackupSheet({
 }: {
   target: DumpTarget;
 }): React.JSX.Element {
-  const state = useDumpContext(target);
-  const [options, setOptions] = useState(defaultBackupOptions);
-  const context = state.status === 'ready' ? state.context : null;
-  const preview = usePreview(target, options, context !== null);
+  const {
+    state,
+    context,
+    options,
+    preview,
+    ready,
+    scope,
+    selection,
+    setSelection,
+    settings,
+    setOptions,
+  } = useBackupForm(target);
   const [failure, setFailure] = useState<string | null>(null);
-  const tool = context && backupTool(context);
-  const broken = context?.tools.find((item) => item.tool === tool)?.error;
-  const ready = !!context && !broken && preview.status !== 'failed';
   const close = (): void => {
     showDump(null);
   };
@@ -151,6 +167,16 @@ export function BackupSheet({
         <p className={styles.error} role="alert">
           {state.message}
         </p>
+      )}
+      {context && context.engine !== 'sqlite' && (
+        <ScopeBody
+          scope={scope}
+          selection={selection}
+          onSelection={setSelection}
+          settings={settings}
+          onOptions={setOptions}
+          engine={context.engine}
+        />
       )}
       {context && (
         <Body
@@ -181,4 +207,77 @@ export function BackupSheet({
       </SheetActions>
     </Sheet>
   );
+}
+
+function ScopeBody(props: {
+  scope: ReturnType<typeof useBackupScope>;
+  selection: ReturnType<typeof initialSelection>;
+  onSelection: (selection: ReturnType<typeof initialSelection>) => void;
+  settings: BackupOptionsDto;
+  onOptions: (options: BackupOptionsDto) => void;
+  engine: DumpContextDto['engine'];
+}): React.JSX.Element {
+  const { scope, selection, settings } = props;
+  if (scope.loading) return <p role="status">Loading backup objects…</p>;
+  if (scope.failure) return <p role="alert">{scope.failure}</p>;
+  return (
+    <>
+      <BackupScope
+        catalog={scope.catalog}
+        selection={selection}
+        onChange={props.onSelection}
+      />
+      {props.engine === 'postgres' && (
+        <ExcludeTableData
+          catalog={scope.catalog}
+          selected={settings.excludeTableData ?? []}
+          onChange={(excludeTableData) => {
+            props.onOptions({ ...settings, excludeTableData });
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+function useBackupForm(target: DumpTarget) {
+  const state = useDumpContext(target);
+  const [settings, setOptions] = useState(defaultBackupOptions);
+  const [selection, setSelection] = useState(() => initialSelection(target));
+  const context = state.status === 'ready' ? state.context : null;
+  const scope = useBackupScope(target, context?.engine);
+  const options = useMemo(
+    () => ({ ...settings, ...scopeOptions(selection, scope.catalog) }),
+    [settings, selection, scope.catalog],
+  );
+  const hasScope =
+    selection.all ||
+    selection.schemas.length > 0 ||
+    selection.tables.length > 0;
+  const scopeReady =
+    context?.engine === 'sqlite' || scopeAvailable(scope, hasScope);
+  const preview = usePreview(target, options, context !== null && scopeReady);
+  const tool = context && backupTool(context);
+  const broken = context?.tools.find((item) => item.tool === tool)?.error;
+  const ready =
+    !!context && !broken && scopeReady && preview.status === 'ready';
+  return {
+    state,
+    context,
+    options,
+    preview,
+    ready,
+    scope,
+    selection,
+    setSelection,
+    settings,
+    setOptions,
+  };
+}
+
+function scopeAvailable(
+  scope: ReturnType<typeof useBackupScope>,
+  hasScope: boolean,
+): boolean {
+  return !scope.loading && !scope.failure && hasScope;
 }

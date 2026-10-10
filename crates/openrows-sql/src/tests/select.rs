@@ -21,6 +21,7 @@ fn query() -> TableQuery {
         },
         columns: Vec::new(),
         filters: Vec::new(),
+        groups: Vec::new(),
         combinator: Combinator::And,
         sort: None,
         row_id: None,

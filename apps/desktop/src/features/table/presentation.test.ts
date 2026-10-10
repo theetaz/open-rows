@@ -75,7 +75,7 @@ it('drops malformed stored values field by field', () => {
       combinator: 'xor',
       saved: [{ name: ' ' }, { name: 'Recent', rows: [row], combinator: 'or' }],
     }),
-  ).toEqual({
+  ).toMatchObject({
     hidden: ['a'],
     sort: null,
     rows: [row],
@@ -92,6 +92,9 @@ it('saves, applies and forgets named filters per table', () => {
     result.current.save({ name: 'All', rows: [], combinator: 'and' });
   });
   expect(result.current.saved.map((item) => item.name)).toEqual(['All', 'Ann']);
+  expect(localStorage.getItem('openrows.tablePresentation.v1')).toContain(
+    '"version":2',
+  );
   const ann = result.current.saved[1];
   if (!ann) throw new Error('missing saved filter');
   const view = withSavedFilter({ ...initialView, nextRow: 9 }, ann);
@@ -108,4 +111,50 @@ it('saves, applies and forgets named filters per table', () => {
     result.current.remove('Ann');
   });
   expect(result.current.saved.map((item) => item.name)).toEqual(['All']);
+});
+
+it('migrates version-one saved filters to one group and persists grouped version two state', () => {
+  localStorage.setItem(
+    'openrows.tablePresentation.v1',
+    JSON.stringify({
+      [KEY]: {
+        rows: [row],
+        applied: [
+          { column: 'name', operator: 'contains', value: 'ann', second: '' },
+        ],
+        combinator: 'or',
+        saved: [{ name: 'Old', rows: [row], combinator: 'or' }],
+      },
+    }),
+  );
+  const stored = readPresentation(KEY);
+  expect(stored.version).toBe(2);
+  expect(stored.groups).toEqual([{ id: 1, combinator: 'or' }]);
+  expect(stored.appliedGroups?.[0]?.combinator).toBe('or');
+  const old = stored.saved[0];
+  if (!old) throw new Error('missing saved filter');
+  expect(old.groups).toEqual([{ id: 1, combinator: 'or' }]);
+  const loaded = withSavedFilter(initialView, old);
+  expect(loaded.appliedGroups).toEqual([
+    {
+      combinator: 'or',
+      filters: [
+        { column: 'name', operator: 'contains', value: 'ann', second: '' },
+      ],
+    },
+  ]);
+  const view = {
+    ...loaded,
+    groups: [
+      { id: 1, combinator: 'or' as const },
+      { id: 2, combinator: 'and' as const },
+    ],
+    rows: [row, { ...row, id: 5, group: 2 }],
+  };
+  writePresentation(
+    KEY,
+    presentationOf(view, [{ ...old, groups: view.groups, rows: view.rows }]),
+  );
+  expect(readPresentation(KEY).saved[0]?.groups).toEqual(view.groups);
+  expect(parsePresentation({ version: 3 })).toBeNull();
 });
