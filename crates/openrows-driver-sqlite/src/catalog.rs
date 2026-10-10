@@ -27,8 +27,7 @@ pub(crate) fn sql<T>(result: rusqlite::Result<T>) -> Result<T, DriverError> {
 }
 
 fn schemas(connection: &Connection) -> Result<Vec<SchemaSummary>, DriverError> {
-    let mut statement =
-        sql(connection.prepare("SELECT name FROM pragma_database_list ORDER BY seq"))?;
+    let mut statement = sql(connection.prepare(crate::catalog_sql::SCHEMAS))?;
     let names = sql(statement.query_map([], |row| row.get::<_, String>(0)))?;
     names
         .map(|name| {
@@ -132,10 +131,7 @@ pub(crate) fn column_rows(
     schema: &str,
     table: &str,
 ) -> Result<Vec<ColumnRow>, DriverError> {
-    let mut statement = sql(connection.prepare(
-        "SELECT name, type, \"notnull\", dflt_value, pk, hidden \
-         FROM pragma_table_xinfo(?1, ?2) WHERE hidden <> 1 ORDER BY cid",
-    ))?;
+    let mut statement = sql(connection.prepare(crate::catalog_sql::COLUMNS))?;
     let rows = sql(statement.query_map(params![table, schema], |row| {
         Ok(ColumnRow {
             name: row.get(0)?,

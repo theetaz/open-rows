@@ -44,6 +44,7 @@ pub fn request(ssl_mode: SslMode) -> Result<ConnectRequest, DriverError> {
         tls: TlsFiles::default(),
         via: None,
         timeouts: ConnectTimeouts::default(),
+        driver_options: std::collections::BTreeMap::new(),
         startup_commands: Vec::new(),
     })
 }

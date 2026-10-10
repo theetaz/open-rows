@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { editorDialect } from '../connections/engines';
 import type { EngineDto, FilterOperatorDto } from '@openrows/ipc';
 import { columnAlign } from '../../results/align';
 import { isBooleanType } from './inline/cellKind';
@@ -60,6 +61,7 @@ export function operatorsFor(
   const kinds = allowed(dataType);
   return operators.filter(
     (item) =>
-      kinds.has(item.value) && !(engine === 'sqlite' && REGEX.has(item.value)),
+      kinds.has(item.value) &&
+      !(editorDialect(engine) === 'sqlite' && REGEX.has(item.value)),
   );
 }

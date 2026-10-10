@@ -37,3 +37,18 @@ it('SQLite hides sqlite_% objects rather than all objects in main', () => {
     false,
   );
 });
+
+it.each(['libsql', 'libsql-file'] as const)(
+  '%s hides internal tables while retaining user objects',
+  (engine) => {
+    for (const name of [
+      'sqlite_sequence',
+      '_litestream_seq',
+      'libsql_stats',
+      'LIBSQL_STATS',
+    ])
+      expect(isSystemObject(engine, { schema: 'main', name })).toBe(true);
+    for (const name of ['orders', 'sqliteX', 'libsqlX', '_litestreamX'])
+      expect(isSystemObject(engine, { schema: 'main', name })).toBe(false);
+  },
+);

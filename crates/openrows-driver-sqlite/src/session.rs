@@ -36,6 +36,11 @@ impl SqliteSession {
         }
     }
 
+    pub(crate) fn libsql_flavour(&mut self) {
+        self.summary.product = "libSQL file".into();
+        self.summary.flavour = Some("SQLite-compatible file".into());
+    }
+
     /// Run the profile's startup commands in order, stepping through any
     /// rows; the first failure names its command.
     ///

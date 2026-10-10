@@ -29,6 +29,7 @@
 mod auth;
 mod blocking;
 pub mod config;
+mod direct;
 mod error;
 mod handler;
 pub mod helper;
@@ -52,6 +53,7 @@ pub use auth::{
     AgentSource, AuthMethod, Challenge, ChallengePrompt, KeyboardInteractivePrompter,
     PromptCancelled,
 };
+pub use direct::TcpDialer;
 pub use error::SshError;
 pub use handler::{FirstUseDecision, HostKeyPolicy, UnknownHost};
 pub use monitor::{PathChange, PathSample, watch_path};

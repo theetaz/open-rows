@@ -131,7 +131,12 @@ export function emptyDraft(engine: EngineDto = 'postgres'): Draft {
     port: String(defaultPort(engine) ?? ''),
     database: '',
     user: '',
-    tlsMode: engine === 'clickhouse' ? 'disable' : 'prefer',
+    tlsMode:
+      engine === 'clickhouse'
+        ? 'disable'
+        : engine === 'libsql'
+          ? 'verify-full'
+          : 'prefer',
     readOnly: false,
     confirmWrites: false,
     recordHistory: true,
@@ -285,7 +290,8 @@ export function validate(draft: Draft): DraftErrors {
   if (!draft.host.trim()) errors.host = 'Host is required';
   if (!Number.isInteger(port) || port < 1 || port > 65535)
     errors.port = 'Port must be 1–65535';
-  if (!draft.user.trim()) errors.user = 'User is required';
+  if (draft.engine !== 'libsql' && !draft.user.trim())
+    errors.user = 'User is required';
   if (draft.envKind === 'custom' && !draft.envLabel.trim())
     errors.envLabel = 'Label is required';
   const cloudError = helperError(

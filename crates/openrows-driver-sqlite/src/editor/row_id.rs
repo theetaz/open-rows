@@ -40,7 +40,7 @@ fn rowid_table(connection: &Connection, schema: &str, table: &str) -> Result<boo
     }
     let found: Option<(String, i64)> = sql(connection
         .query_row(
-            "SELECT type, wr FROM pragma_table_list WHERE schema = ?1 AND name = ?2",
+            crate::catalog_sql::ROWID_TABLE,
             params![schema, table],
             |row| Ok((row.get(0)?, row.get(1)?)),
         )

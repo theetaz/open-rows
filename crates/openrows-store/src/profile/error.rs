@@ -69,7 +69,7 @@ pub enum UrlError {
     /// The scheme names no supported engine.
     #[error(
         "unsupported URL scheme {scheme:?}; expected postgres://, mysql://, mariadb://, \
-         sqlserver://, jdbc:sqlserver:// or sqlite:"
+         sqlserver://, jdbc:sqlserver://, clickhouse://, sqlite:, libsql:// or libsql-file:"
     )]
     UnsupportedScheme {
         /// Scheme found (lower-cased).
@@ -113,4 +113,7 @@ pub enum UrlError {
         "a sqlite: URL needs an absolute file path, e.g. sqlite:/data/app.db, or sqlite::memory:"
     )]
     InvalidFilePath,
+    /// libSQL URLs contain only an endpoint; tokens use the secret policy.
+    #[error("libSQL URLs must contain a host only; put the auth token in its secret field")]
+    InvalidLibsqlUrl,
 }

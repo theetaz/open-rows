@@ -62,6 +62,12 @@ export function ConnectionSheet(props: Props): React.JSX.Element {
           <>
             <NameFields form={form} />
             <FileFields form={form} />
+            {engine === 'libsql-file' && (
+              <small className={styles.hint}>
+                SQLite-compatible files only. libSQL vector columns, ALTER
+                COLUMN and random rowids are unavailable locally.
+              </small>
+            )}
           </>
         ) : (
           <>

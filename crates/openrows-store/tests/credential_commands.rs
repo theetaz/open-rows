@@ -140,3 +140,36 @@ fn imported_command_cannot_execute_and_edited_arguments_invalidate_trust() -> Te
     );
     Ok(())
 }
+
+#[test]
+fn libsql_command_token_uses_the_existing_trust_policy() -> TestResult {
+    use openrows_store::profile::{EnvKind, EnvTag, parse_url};
+    let dir = tempfile::tempdir_in(".")?;
+    let program = helper(dir.path())?;
+    let (mut profile, _) =
+        parse_url("libsql://db.test")?.into_profile("remote", EnvTag::new(EnvKind::Local));
+    profile.password_storage = PasswordStorage::Command;
+    profile.credential_command = Some(command(&program, &["stdin"]));
+    profile.validate()?;
+    let invocation = profile.credential_command.as_ref().ok_or("command")?;
+    let trust = CommandTrust::new(&dir.path().join("trust.json"));
+    assert!(matches!(
+        run_credential(
+            &trust,
+            profile.id,
+            invocation,
+            &CommandCancellation::default()
+        ),
+        Err(CredentialError::Untrusted)
+    ));
+    trust.trust(profile.id, invocation)?;
+    let token = run_credential(
+        &trust,
+        profile.id,
+        invocation,
+        &CommandCancellation::default(),
+    )?;
+    assert_eq!(token.expose(), "pw");
+    assert!(!exchange::export(&[profile])?.contains("\"pw\""));
+    Ok(())
+}

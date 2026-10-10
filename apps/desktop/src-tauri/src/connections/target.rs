@@ -13,7 +13,7 @@ use openrows_net::{Dialer, SecretString as NetSecret};
 use openrows_secrets::SecretString;
 use openrows_sql::{Dialect, split};
 use openrows_store::profile::{
-    CloudCa, ConnectionProfile, FileParams, ProfileId, TlsMode, TlsSettings,
+    CloudCa, ConnectionProfile, Driver as Engine, FileParams, ProfileId, TlsMode, TlsSettings,
 };
 use serde::Serialize;
 use specta::Type;
@@ -87,10 +87,14 @@ pub(crate) fn target(
             .ok_or_else(|| IpcError::invalid("Choose a database file"))?;
         (file_endpoint(profile.id, file), String::new())
     } else {
-        let user = params
-            .user
-            .clone()
-            .ok_or_else(|| IpcError::invalid("User is required"))?;
+        let user = if profile.driver == Engine::Libsql {
+            String::new()
+        } else {
+            params
+                .user
+                .clone()
+                .ok_or_else(|| IpcError::invalid("User is required"))?
+        };
         let endpoint = Endpoint::Server {
             host: params.host.clone(),
             port: params.port,
@@ -116,6 +120,7 @@ pub(crate) fn target(
         tls: tls_files(&profile.tls, secrets.tls_key_passphrase.as_ref()),
         via: None,
         timeouts: ConnectTimeouts::default(),
+        driver_options: params.options.clone(),
         startup_commands: startup_statements(&profile.startup_commands, driver.dialect()),
     };
     Ok(Target { driver, request })

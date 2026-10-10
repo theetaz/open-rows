@@ -77,20 +77,31 @@ impl Driver for SqliteDriver {
         request: &'a ConnectRequest,
         trace: &'a mut ConnectTrace,
     ) -> BoxFuture<'a, Result<Box<dyn Connection>, DriverError>> {
-        Box::pin(async move {
-            let Endpoint::File { source, attached } = &request.endpoint else {
-                return Err(DriverError::Unsupported(
-                    "SQLite opens a local file, not a server".to_owned(),
-                ));
-            };
-            let open = async { open_source(source, attached) };
-            let mut session = trace.stage(ConnectStage::Connect, open).await?;
-            trace.tls = Some(TlsStatus::LocalSocket);
-            let commands = session.run_startup_commands(request.startup_commands.clone());
-            trace.stage(ConnectStage::StartupCommands, commands).await?;
-            Ok(Box::new(session) as Box<dyn Connection>)
-        })
+        connect_file(request, trace, false)
     }
+}
+
+pub(crate) fn connect_file<'a>(
+    request: &'a ConnectRequest,
+    trace: &'a mut ConnectTrace,
+    libsql: bool,
+) -> BoxFuture<'a, Result<Box<dyn Connection>, DriverError>> {
+    Box::pin(async move {
+        let Endpoint::File { source, attached } = &request.endpoint else {
+            return Err(DriverError::Unsupported(
+                "SQLite opens a local file, not a server".to_owned(),
+            ));
+        };
+        let open = async { open_source(source, attached) };
+        let mut session = trace.stage(ConnectStage::Connect, open).await?;
+        trace.tls = Some(TlsStatus::LocalSocket);
+        if libsql {
+            session.libsql_flavour();
+        }
+        let commands = session.run_startup_commands(request.startup_commands.clone());
+        trace.stage(ConnectStage::StartupCommands, commands).await?;
+        Ok(Box::new(session) as Box<dyn Connection>)
+    })
 }
 
 /// Open the file at `path` on its own thread, attaching nothing.

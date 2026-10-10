@@ -3577,6 +3577,7 @@ dependencies = [
  "openrows-core",
  "openrows-driver-api",
  "openrows-driver-clickhouse",
+ "openrows-driver-libsql",
  "openrows-driver-mssql",
  "openrows-driver-mysql",
  "openrows-driver-postgres",
@@ -3676,6 +3677,7 @@ dependencies = [
  "arrow-schema",
  "openrows-driver-api",
  "openrows-driver-clickhouse",
+ "openrows-driver-libsql",
  "openrows-driver-mssql",
  "openrows-driver-mysql",
  "openrows-driver-postgres",
@@ -3685,6 +3687,30 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.21",
  "tokio",
+]
+
+[[package]]
+name = "openrows-driver-libsql"
+version = "0.1.0"
+dependencies = [
+ "arrow-array",
+ "arrow-schema",
+ "base64 0.23.1",
+ "bytes",
+ "criterion",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
+ "openrows-driver-api",
+ "openrows-driver-sqlite",
+ "openrows-net",
+ "openrows-sql",
+ "openrows-store",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "url",
 ]
 
 [[package]]

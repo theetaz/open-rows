@@ -164,6 +164,7 @@ fn file_request(path: &std::path::Path, startup_commands: Vec<String>) -> Connec
         via: None,
         timeouts: ConnectTimeouts::default(),
         startup_commands,
+        driver_options: std::collections::BTreeMap::new(),
     }
 }
 

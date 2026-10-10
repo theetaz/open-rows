@@ -135,11 +135,17 @@ fn engine(driver: Driver) -> Result<DumpEngineDto, IpcError> {
     Ok(match driver {
         Driver::Postgres => DumpEngineDto::Postgres,
         Driver::Mysql | Driver::Mariadb => DumpEngineDto::Mysql,
-        Driver::Sqlite => DumpEngineDto::Sqlite,
+        Driver::Sqlite | Driver::LibsqlFile => DumpEngineDto::Sqlite,
         Driver::Clickhouse => {
             return Err(IpcError::new(
                 IpcErrorKind::Unsupported,
                 "Backup and restore are not available for ClickHouse yet",
+            ));
+        }
+        Driver::Libsql => {
+            return Err(IpcError::new(
+                IpcErrorKind::Unsupported,
+                "Backup and restore are not available for remote libSQL",
             ));
         }
         Driver::Sqlserver => {

@@ -169,6 +169,8 @@ pub struct ConnectRequest {
     /// SQL statements run in order after every connect, reconnects included
     /// (FR-CONN-10); a failing statement fails the connect.
     pub startup_commands: Vec<String>,
+    /// Non-secret engine options (e.g. a remote result row cap).
+    pub driver_options: std::collections::BTreeMap<String, String>,
 }
 
 impl ConnectRequest {
@@ -208,6 +210,7 @@ impl fmt::Debug for ConnectRequest {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter
             .debug_struct("ConnectRequest")
+            .field("driver_option_count", &self.driver_options.len())
             .field("endpoint", &self.endpoint)
             .field("database", &self.database)
             .field("user", &self.user)
@@ -259,6 +262,7 @@ mod tests {
             },
             via: None,
             timeouts: ConnectTimeouts::default(),
+            driver_options: std::collections::BTreeMap::new(),
             startup_commands: Vec::new(),
         };
         let text = format!("{request:?}");

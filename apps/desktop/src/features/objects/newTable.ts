@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { editorDialect } from '../connections/engines';
 import type {
   EngineDto,
   NewCheckDto,
@@ -37,7 +38,11 @@ export function emptyTable(
   const id: ColumnDraft = {
     ...emptyColumn('id', engine),
     type:
-      engine === 'sqlite' ? 'INTEGER' : mysql ? 'bigint unsigned' : 'bigint',
+      editorDialect(engine) === 'sqlite'
+        ? 'INTEGER'
+        : mysql
+          ? 'bigint unsigned'
+          : 'bigint',
     nullable: false,
     identity: !features.identity ? 'none' : mysql ? 'autoIncrement' : 'always',
   };

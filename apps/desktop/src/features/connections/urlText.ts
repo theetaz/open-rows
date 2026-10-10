@@ -125,14 +125,19 @@ function tlsQuery(draft: Draft): string {
 
 /** `sqlite:/path`, `?mode=ro` when the file opens read-only; `sqlite::memory:` in memory. */
 function fileUrl(draft: Draft): string {
-  if (draft.fileMemory) return 'sqlite::memory:';
+  if (draft.fileMemory) return `${urlScheme(draft.engine)}::memory:`;
   const path = encodeURI(draft.filePath.trim());
-  return `sqlite:${path}${draft.fileReadOnly ? '?mode=ro' : ''}`;
+  return `${urlScheme(draft.engine)}:${path}${draft.fileReadOnly ? '?mode=ro' : ''}`;
 }
 
 /** The URL for the current fields, with any password shown only as the mask. */
 export function composeUrl(draft: Draft): string {
   if (isFileEngine(draft.engine)) return fileUrl(draft);
+  if (draft.engine === 'libsql') {
+    const scheme = draft.tlsMode === 'disable' ? 'http' : 'libsql';
+    const host = draft.host.includes(':') ? `[${draft.host}]` : draft.host;
+    return `${scheme}://${host.trim()}:${draft.port || (scheme === 'http' ? '80' : '443')}`;
+  }
   const user = encodeURIComponent(draft.user.trim());
   const secret = hasPassword(draft) ? `:${PASSWORD_MASK}` : '';
   const auth = user || secret ? `${user}${secret}@` : '';

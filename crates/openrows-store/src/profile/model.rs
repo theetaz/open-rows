@@ -307,6 +307,9 @@ impl ConnectionProfile {
         if self.driver.is_file() {
             return self.validate_file();
         }
+        if self.driver == Driver::Libsql {
+            super::libsql_url::validate_host(&self.params.host)?;
+        }
         if self.params.host.trim().is_empty() {
             return invalid("params.host", "must not be empty");
         }

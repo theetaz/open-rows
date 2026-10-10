@@ -118,3 +118,18 @@ it('composes masked ClickHouse HTTP and HTTPS URLs', () => {
     ':9443/db?sslmode=require',
   );
 });
+
+it('keeps the libSQL auth token out of remote URLs and uses the local flavour', () => {
+  const remote = {
+    ...emptyDraft('libsql'),
+    host: 'db.test',
+    password: 'test-only',
+  };
+  expect(composeUrl(remote)).toBe('libsql://db.test:443');
+  expect(composeUrl({ ...remote, tlsMode: 'disable', port: '8080' })).toBe(
+    'http://db.test:8080',
+  );
+  expect(
+    composeUrl({ ...emptyDraft('libsql-file'), filePath: '/data/app.db' }),
+  ).toBe('libsql-file:/data/app.db');
+});

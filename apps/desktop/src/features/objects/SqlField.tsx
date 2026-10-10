@@ -1,20 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useRef, useState } from 'react';
-import type { EditorDialect, SqlEditor } from '@openrows/editor';
+import type { SqlEditor } from '@openrows/editor';
 import type { EngineDto } from '@openrows/ipc';
 import styles from '../table/structure/forms/Forms.module.css';
 
-/** The editor dialect of an engine. */
-function editorDialect(engine: EngineDto): EditorDialect {
-  switch (engine) {
-    case 'mysql':
-    case 'mariadb':
-    case 'sqlite':
-      return engine;
-    default:
-      return 'postgres';
-  }
-}
+import { editorDialect } from '../connections/engines';
 
 /**
  * An editable SQL definition in the app's SQL editor (lazily loaded, with

@@ -43,6 +43,9 @@ pub(crate) fn hint(step: TestStepKind, error: &IpcError, engine: Engine) -> Opti
         TestStepKind::Tls | TestStepKind::Version | TestStepKind::Latency => None,
         TestStepKind::Authenticate if engine == Engine::Postgres => postgres_login_hint(error),
         TestStepKind::Authenticate if engine == Engine::Sqlserver => sql_server_login_hint(error),
+        TestStepKind::Authenticate if engine == Engine::Libsql => {
+            Some("Check the auth token, its expiry and permissions for this database.")
+        }
         TestStepKind::Authenticate => mysql_login_hint(error),
     }
 }
@@ -68,7 +71,8 @@ fn connect_hint(error: &IpcError, engine: Engine) -> &'static str {
             "Check that SQL Server is running, has TCP/IP enabled and listens on this host \
              and port (named instances need their port), and that no firewall blocks it."
         }
-        Engine::Sqlite => {
+        Engine::Libsql => "Check the libSQL host, HTTPS port and any firewall or VPN.",
+        Engine::Sqlite | Engine::LibsqlFile => {
             "Check that the file and every attached database file exist and that OpenRows \
              may read them (macOS Files and Folders privacy settings), or choose New File \
              to create one."

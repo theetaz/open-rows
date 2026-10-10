@@ -24,6 +24,11 @@ export function isSystemObject(
       ].includes(schema);
     case 'sqlserver':
       return schema === 'sys' || schema === 'information_schema';
+    case 'libsql':
+    case 'libsql-file':
+      return ['sqlite_', '_litestream_', 'libsql_'].some((prefix) =>
+        object.name.toLowerCase().startsWith(prefix),
+      );
     case 'sqlite':
       return object.name.toLowerCase().startsWith('sqlite_');
     case 'clickhouse':

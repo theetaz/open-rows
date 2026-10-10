@@ -25,10 +25,14 @@ fn engine(driver: Driver) -> Result<Engine, IpcError> {
         Driver::Postgres => Ok(Engine::Postgres),
         Driver::Mysql => Ok(Engine::MySql),
         Driver::Mariadb => Ok(Engine::MariaDb),
-        Driver::Sqlite => Ok(Engine::Sqlite),
+        Driver::Sqlite | Driver::LibsqlFile => Ok(Engine::Sqlite),
         Driver::Clickhouse => Err(IpcError::new(
             IpcErrorKind::Unsupported,
             "Explain plans are not available for ClickHouse yet",
+        )),
+        Driver::Libsql => Err(IpcError::new(
+            IpcErrorKind::Unsupported,
+            "Explain is not available for remote libSQL",
         )),
         Driver::Sqlserver => Err(IpcError::new(
             IpcErrorKind::Unsupported,
@@ -141,6 +145,14 @@ fn failure(error: ExplainError) -> IpcError {
 mod tests {
     use super::*;
     use openrows_sql::Dialect;
+
+    #[test]
+    fn libsql_explain_is_unsupported_remotely_and_sqlite_for_files() {
+        assert!(
+            matches!(engine(Driver::Libsql), Err(error) if error.kind == IpcErrorKind::Unsupported)
+        );
+        assert!(matches!(engine(Driver::LibsqlFile), Ok(Engine::Sqlite)));
+    }
 
     fn request(sql: &str, cursor: Option<u32>) -> ExplainRequest {
         ExplainRequest {

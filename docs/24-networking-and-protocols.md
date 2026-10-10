@@ -276,3 +276,7 @@ dependency; transitive `nix` through `russh-cryptovec` → `russh` is accepted.
 ## 16. Implemented (M2-03): ClickHouse HTTP(S) routes
 
 `openrows-driver-clickhouse` performs hyper HTTP/1.1 handshakes on the existing route `Dialer`; HTTPS wraps that stream with the shared rustls client before the HTTP handshake. Cancellation opens a second stream through the same route without the busy HTTP `session_id`. Each exchange closes on completion/drop; pooling and HTTP compression remain pending. The ClickHouse container suite covers direct HTTP, hostname-verified HTTPS with a generated CA and HTTPS over SOCKS5. SSH and HTTP CONNECT reuse the shared Dialer contract, without an engine-specific container test.
+
+## 17. Implemented (M2-05): libSQL HTTP transport
+
+The Hrana client uses Hyper HTTP/1.1 over `openrows-net::Dialer` streams: `TcpDialer` for direct connections or the profile's shared SSH/proxy/helper route. Remote libSQL accepts cloud and trusted custom TCP helpers; libSQL file rejects all network hops. TLS wraps the stream with `TlsClient` before HTTP, verifies the database host, and reports its certificate details through the existing connect trace. Each pipeline opens one socket; cancellation drops that socket and attempts to close the last known baton. HTTP redirects are not followed; Hrana `base_url` may change only the same-origin path, so bearer tokens and routes never move to another host implicitly. The complete behavior and limits are in [docs/05 §18](05-database-drivers.md#18-implemented-m2-05-libsql--turso-tier-2).

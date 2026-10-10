@@ -84,7 +84,9 @@ pub(crate) fn destination(profile: &ConnectionProfile) -> Destination {
         | Driver::Mariadb
         | Driver::Sqlserver
         | Driver::Clickhouse
-        | Driver::Sqlite => params.host.clone(),
+        | Driver::Sqlite
+        | Driver::Libsql
+        | Driver::LibsqlFile => params.host.clone(),
     };
     Destination::Socket(path)
 }
