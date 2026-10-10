@@ -1,0 +1,36 @@
+[package]
+name = "openrows-host-protocol"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Bounded, versioned control and Arrow transport for isolated OpenRows drivers"
+build = "build.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+arrow-array = "60"
+arrow-buffer = "60"
+arrow-data = "60"
+arrow-ipc = "60"
+arrow-schema = "60"
+openrows-driver-api = { path = "../openrows-driver-api" }
+openrows-net = { path = "../openrows-net" }
+postcard = { version = "1.1", default-features = false, features = ["alloc"] }
+serde = { workspace = true, features = ["derive"] }
+thiserror.workspace = true
+tokio = { version = "1.53", features = ["io-util", "net", "sync"] }
+zeroize = { version = "1.8", features = ["serde"] }
+
+[dev-dependencies]
+flatbuffers = "25"
+criterion = { version = "0.8", default-features = false }
+proptest = "1.11"
+tokio = { version = "1.53", features = ["macros", "rt", "test-util"] }
+
+[[bench]]
+name = "codec"
+harness = false

@@ -4,6 +4,9 @@ use arrow_schema::ArrowError;
 /// Typed driver failures; the engine maps these onto `OdbError` (docs/04 §7).
 #[derive(Debug, thiserror::Error)]
 pub enum DriverError {
+    /// Isolated driver process failed; an explicit connect is required.
+    #[error(transparent)]
+    Host(#[from] crate::HostFailure),
     /// Socket or transport failure; the session is no longer usable.
     #[error("network error: {0}")]
     Network(#[from] std::io::Error),

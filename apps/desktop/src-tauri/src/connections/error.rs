@@ -38,6 +38,8 @@ pub(crate) enum IpcErrorKind {
     Auth,
     /// The server or driver broke the wire protocol.
     Protocol,
+    /// The isolated driver process failed; reconnect explicitly.
+    DriverHost,
     /// The server reported an error (SQLSTATE in `code`).
     Server,
     /// The statement ran past the connection's statement timeout.
@@ -99,6 +101,7 @@ impl From<UrlError> for IpcError {
 impl From<CoreError> for IpcError {
     fn from(error: CoreError) -> Self {
         let kind = match error.kind {
+            ErrorKind::DriverHost => IpcErrorKind::DriverHost,
             ErrorKind::Network => IpcErrorKind::Network,
             ErrorKind::Tls => IpcErrorKind::Tls,
             ErrorKind::Auth => IpcErrorKind::Auth,
@@ -157,6 +160,17 @@ mod tests {
         });
         assert_eq!(error.kind, IpcErrorKind::Invalid);
         assert_eq!(error.message, "Host must not be empty");
+    }
+
+    #[test]
+    fn driver_host_failure_has_distinct_ipc_kind() {
+        let error = IpcError::from(&DriverError::Host(openrows_driver_api::HostFailure::Exited));
+        assert_eq!(error.kind, IpcErrorKind::DriverHost);
+        assert!(error.code.is_none());
+        assert_eq!(
+            serde_json::to_string(&error.kind).unwrap(),
+            "\"driverHost\""
+        );
     }
 
     #[test]

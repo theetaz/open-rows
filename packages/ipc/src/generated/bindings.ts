@@ -1527,6 +1527,8 @@ export type IpcErrorKind =
 "auth" |
 /**  The server or driver broke the wire protocol. */
 "protocol" |
+/**  The isolated driver process failed; reconnect explicitly. */
+"driverHost" |
 /**  The server reported an error (SQLSTATE in `code`). */
 "server" |
 /**  The statement ran past the connection's statement timeout. */
