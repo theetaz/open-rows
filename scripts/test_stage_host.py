@@ -56,14 +56,14 @@ class StageHostTest(unittest.TestCase):
         path.write_text(content)
         path.chmod(0o755)
 
-    def check_staging(self, profile: str, target: str, env_target: str = "") -> None:
+    def check_staging(self, profile: str, target: str, env_target: str = "", shared: bool = False) -> None:
         selected = target or env_target or HOST
         folder = "debug" if profile == "dev" else profile
         suffix = ".exe" if "-windows-" in selected else ""
-        test_helper = self.cache / folder / f"openrows-driver-host{suffix}"
+        test_helper = self.cache / (selected if shared else "") / folder / f"host-test-fixture{suffix}"
         test_helper.parent.mkdir(parents=True, exist_ok=True)
         test_helper.write_bytes(b"test sqlite registry")
-        fixture = test_helper.with_name(f"host-test-fixture{suffix}")
+        fixture = test_helper.with_name(f"host-duckdb-fixture{suffix}")
         fixture.write_bytes(b"test sqlite registry")
         env = {
             **os.environ,
@@ -88,7 +88,7 @@ class StageHostTest(unittest.TestCase):
         self.assertEqual(staged.read_bytes(), b"production registry")
         self.assertEqual(test_helper.read_bytes(), b"test sqlite registry")
         self.assertFalse(staged.samefile(test_helper))
-        fixture = test_helper.with_name(f"host-test-fixture{suffix}")
+        fixture = test_helper.with_name(f"host-duckdb-fixture{suffix}")
         self.assertEqual(fixture.read_bytes(), b"test sqlite registry")
         self.assertFalse(staged.samefile(fixture))
         built = self.cache / target / folder / f"openrows-driver-host{suffix}"
@@ -111,6 +111,9 @@ class StageHostTest(unittest.TestCase):
 
     def test_environment_target_is_used(self) -> None:
         self.check_staging("dev", "", "x86_64-unknown-linux-gnu")
+
+    def test_shared_ci_target_preserves_both_fixtures(self) -> None:
+        self.check_staging("dev", "", "x86_64-unknown-linux-gnu", shared=True)
 
     def test_explicit_windows_target_overrides_environment(self) -> None:
         self.check_staging("dev", "x86_64-pc-windows-msvc", HOST)

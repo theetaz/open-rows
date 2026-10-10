@@ -2,7 +2,7 @@
 //! Shared process entry for the production helper and separately named test fixture.
 
 /// Run the contained host process without exposing native diagnostics.
-pub fn run() {
+pub fn run(host: impl Future<Output = Result<(), openrows_host_protocol::ProtocolError>>) {
     std::panic::set_hook(Box::new(|_| {}));
     #[cfg(unix)]
     {
@@ -18,8 +18,7 @@ pub fn run() {
         .worker_threads(2)
         .enable_all()
         .build();
-    let success =
-        runtime.is_ok_and(|runtime| runtime.block_on(openrows_driver_host::run()).is_ok());
+    let success = runtime.is_ok_and(|runtime| runtime.block_on(host).is_ok());
     // Native workers may be blocked; process exit is the deliberate containment boundary.
     std::process::exit(if success { 0 } else { 70 });
 }

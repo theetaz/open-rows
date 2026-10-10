@@ -16,7 +16,7 @@ impl Drop for Directory {
         let _ = std::fs::remove_dir_all(&self.0);
     }
 }
-pub(crate) async fn run() -> Result<(), ProtocolError> {
+pub(crate) async fn run(connect: crate::registry::Connect) -> Result<(), ProtocolError> {
     let driver = std::env::args()
         .nth(1)
         .and_then(|argument| HostDriverId::parse(&argument))
@@ -35,7 +35,13 @@ pub(crate) async fn run() -> Result<(), ProtocolError> {
         .map_err(|_| ProtocolError::Authentication)??;
     let generation = bootstrap.generation;
     drop(bootstrap);
-    crate::control::run(control, data, generation, driver).await
+    crate::control::run(
+        control,
+        data,
+        generation,
+        crate::registry::Registry { driver, connect },
+    )
+    .await
 }
 async fn handshake(
     bootstrap: &Bootstrap,

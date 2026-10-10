@@ -1238,3 +1238,137 @@ are removed. Detailed cold phases and assessment counts are summarized above.
 - G1: `1041.620, 312.273, 308.781, 316.395, 311.344, 303.237, 313.366, 319.027, 301.964, 335.626`
 - G2: `847.191, 314.611, 305.719, 317.543, 321.413, 350.632, 305.414, 373.079, 301.323, 293.506`
 - G3: `839.125, 328.923, 320.552, 307.184, 313.440, 327.661, 309.266, 337.589, 319.629, 313.338`
+
+### M2-04a round 4 — fresh fixture startup and cold CI builds
+
+The clean-build failure reproduced twice: the first four hosted SQLite
+conformance tests failed after 10.03 s with `driver host stopped responding`.
+The linker-signed (not hardened-runtime) debug fixture was 170,484,208 bytes;
+its reachable shared registry included native DuckDB because dev features
+unified `duckdb` and `test-hooks`. Sampling PID 67224 during the second failure
+showed 713 samples entirely in `_dyld_start`, before Rust/bootstrap execution.
+`log show --info` for `syspolicyd` tied both scans to `host-test-fixture`:
+23:36:09.240–23:36:20.597 (11.357 s) and
+23:36:54.468–23:37:06.361 (11.893 s), including XProtect. Direct execution
+after assessment exited 70 in 0.203 s. This establishes pre-main assessment
+cost, rather than a database lock or protocol deadline failure.
+
+The SQLite/probe entry now supplies an independent registry callback to the
+same bootstrap/control/worker implementation. It has no reachable DuckDB
+registration even when workspace dev features unify. DuckDB tests use a
+separately named `host-duckdb-fixture` and the production registry. The binary
+symbol regression checks `duckdb_open` and `sqlite3_open` in both fixtures;
+this checks linked code, not merely Cargo feature declarations. The initial
+split alone reduced the SQLite fixture to 48,929,584 bytes and assessment to
+3.614 s (23:38:01.765–23:38:05.379); all ten unchanged SQLite conformance
+tests passed in 3.988 s without signing. The earlier manual signing workaround
+is superseded by this fixture separation. No production deadline changed.
+
+CI previously staged under `target/<triple>` but built workspace checks under
+`target/debug`; those are distinct native build caches. The check job now
+exports the native `CARGO_BUILD_TARGET` before restoring its explicit `target`
+cache, so staging and all checks share the same native output. Both use the
+inherited dev/test `libduckdb-sys` override: optimisation 0, native debug
+symbols off. This reduces C++ compiler/link I/O without an optimised C++ cold
+build; release optimisation and symbols remain unchanged. Two build jobs and
+the runner's preinstalled Clang/LLD avoid the prior GNU-link memory spike.
+The cache is keyed by native triple plus the action's compiler/environment
+and manifest hashes; `cache-on-failure: true` permits post-job saving after a
+failed check. Runner loss or forced termination can still prevent uploading.
+The separate containers job is unchanged.
+
+The first Linux attempt proved target unification alone insufficient: staging
+used native output `a19620ccc3b1e6ce`, while Clippy started another bundled
+compile under `0e1c858effee9d48`. Their build-script dependency fingerprints
+differed despite identical `libduckdb-sys` features and profile: Serde added
+`alloc`, JSON added `alloc`/`unbounded_depth`, and the macro/compression/HTTP
+dependency graph changed. That redundant compile was stopped. The helper's
+empty build entry now activates build-only feature-unification dependencies:
+`tauri-build` with codegen, `proc-macro2` with span locations, and the workspace
+Syn feature superset. These are intentional Cargo feature uses, recorded in
+`cargo-machete` metadata because source scanning cannot see them. They use
+existing locked packages (MIT/Apache-2.0), add no package/version, and never
+link into the runtime helper or desktop. Staging and workspace Clippy then
+selected the same build script `a0156fe9e255bb53`; the successful cold and
+cached sequences below verify one native compile through nextest.
+
+The CI-like validation uses `rust:1.94.0-bookworm` on Apple M4's native
+`aarch64-unknown-linux-gnu`, UID 1000, `--cpus 2`, `--memory 8g`, no `--init`,
+and copied source rather than a host bind mount. The existing
+`orows-linux-target` volume contains a user-owned target subdirectory emptied
+before the measured sequence. Toolchains, Linux prerequisites and downloaded
+dependencies are already installed; cold means no Cargo target artifacts.
+Every measured build runs at nice level 10 with two Cargo jobs and two nextest
+threads, dev/test line-table Rust debug info, and preinstalled Clang/LLD.
+
+Wall times, seconds, including command startup/build/test execution:
+
+| Exact check step | Cold target | Cached target |
+| --- | ---: | ---: |
+| `pnpm install --frozen-lockfile` | 0.845 | 0.228 |
+| `pnpm lint` | 28.820 | 24.232 |
+| `pnpm format:check` | 5.021 | 5.041 |
+| `pnpm typecheck` | 10.091 | 8.335 |
+| `pnpm test --maxWorkers=2` | 131.979 | 129.439 |
+| `pnpm knip` | 2.122 | 2.086 |
+| `cargo fmt --all --check` | 0.714 | 1.026 |
+| `bash scripts/stage-host.sh dev` | 385.700 | 0.980 |
+| Six staging isolation tests | 0.201 | 0.174 |
+| Workspace Clippy, all targets, IPC features, warnings denied | 81.483 | 9.132 |
+| Workspace nextest, IPC features, `not binary(ssh_container)` | 194.238 | 56.658 |
+| App `bindings_are_fresh` nextest | 83.470 | 24.237 |
+| **Total** | **924.684 (15m25s)** | **261.568 (4m22s)** |
+
+Both sequences exit 0 at every step: frontend 233 files / 2,711 tests passed;
+workspace nextest 1,347 passed / 196 skipped by the CI selection; binding
+freshness 1 passed / 249 skipped. Staging records exactly one
+`Compiling libduckdb-sys` event in the cold sequence; Clippy, workspace tests
+and binding checks record zero, as does the entire cached sequence. The only
+native output is `libduckdb-sys-0e1c858effee9d48`; its `output` timestamp remains
+`1791671251648373006` ns after staging, through every cold and cached step.
+The cgroup reports zero OOM/kill events. The cached measurement retains target
+artifacts locally; it does not claim a GitHub cache upload/restore was tested.
+
+The check timeout rises from 30 to 40 minutes. Twice the measured cold time
+plus eight minutes for setup/network/cache transfer estimates 38m49s, rounded
+up to 40. This allows ARM64-container versus GitHub x86 runner variance; actual
+GitHub cold wall time and cache upload remain for the lead's dispatch after
+committing. The container and its temporary target subdirectory are removed
+after validation; the pre-existing shared volume is preserved.
+
+Fresh macOS verification uses the existing cache selected by `CARGO_TARGET_DIR`,
+`RUSTC_WRAPPER=sccache`, native `CARGO_BUILD_TARGET=aarch64-apple-darwin`,
+four build jobs/four nextest threads, and nice level 10. Before each pair,
+both fixture executables are deleted and the shared host entry is touched to
+force relinking. No codesign mutation, runner or setup signing hook is used.
+
+| Forced relink | `just lint`, wall s | `just test`, wall s | nextest result |
+| --- | ---: | ---: | --- |
+| First | 190.880 | 215.308 | 1,363 passed / 196 skipped, 44.048 s execution |
+| Second | 19.650 | 104.621 | 1,363 passed / 196 skipped, 43.591 s execution |
+
+Both runs pass all 75 host tests. In the first, the formerly failing SQLite
+`edit_contract`, `cancel_contract`, `error_sqlstates` and `connect_and_ping`
+pass in 1.441, 1.552, 0.103 and 1.634 s respectively. The final linked SQLite
+fixture is 45,505,200 bytes and the separate DuckDB fixture is 147,176,632
+bytes; the native symbol regression passes in both runs. The first lint
+records one native compile and its following test run records none. These
+fresh relinks supersede the prior manual-signing workaround while preserving
+the unchanged conformance assertions and production deadlines.
+
+The final local gate runs once, in order: `just gen-ipc`; `just fmt-check`,
+`just lint`, `just test`, `just deny`, `just machete`, `just hygiene`,
+`just ui-check`, `just bench-ui`; frontend ESLint, format, types, two-worker
+Vitest and Knip; `just ipc-check`. Every command exits 0. Bindings regeneration
+has no diff. Final nextest reports 1,363 passed / 196 skipped (44.334 s),
+frontend Vitest 233 files / 2,711 tests passed, and IPC freshness 1 passed /
+250 skipped. Dependency checks report `advisories ok, bans ok, licenses ok,
+sources ok`; source/dead-code checks pass with the documented build-feature
+dependencies. UI sizes are 302,069 gzip bytes initial JS / 350,000 budget and
+6,294 gzip bytes token/component CSS / 15,000 budget. Supplementary tooling
+checks pass: six sccache, six staging, three bundle-strip and 89 benchmark-tool
+tests, using Python 3.14 rather than the system's incompatible Python 3.9.
+
+The linked-fixture regression, two fresh relinks and these quality gates close
+the round-4 build blockers. They do not remeasure or close the earlier AC8
+release/startup budget gap.

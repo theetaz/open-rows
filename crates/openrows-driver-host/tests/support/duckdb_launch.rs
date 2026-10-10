@@ -6,7 +6,7 @@ use std::path::PathBuf;
 pub fn options(memory: MemoryBudget) -> LaunchOptions {
     LaunchOptions {
         driver: HostDriverId::Duckdb,
-        executable: PathBuf::from(env!("CARGO_BIN_EXE_host-test-fixture")),
+        executable: PathBuf::from(env!("CARGO_BIN_EXE_host-duckdb-fixture")),
         endpoint_root: if cfg!(unix) {
             "/tmp".into()
         } else {

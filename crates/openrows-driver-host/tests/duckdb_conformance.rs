@@ -15,7 +15,7 @@ mod image;
 fn options(memory: MemoryBudget) -> LaunchOptions {
     LaunchOptions {
         driver: openrows_host_client::HostDriverId::Duckdb,
-        executable: std::path::PathBuf::from(env!("CARGO_BIN_EXE_host-test-fixture")),
+        executable: std::path::PathBuf::from(env!("CARGO_BIN_EXE_host-duckdb-fixture")),
         endpoint_root: if cfg!(unix) {
             "/tmp".into()
         } else {

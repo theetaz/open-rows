@@ -81,6 +81,7 @@ Trademarks: database product names are used nominatively ("connects to PostgreSQ
 | `arrow-ipc` 58 (renamed `arrow-ipc-58`) and existing workspace version 60 | Bounded native Arrow 58 → workspace Arrow 60 ABI bridge | Apache-2.0 | Upgrading the entire workspace would be unrelated contract churn; manual per-cell reconstruction loses native nested/type fidelity. Version 58 is a host-only feature dependency; version 60 decodes into the shared representation. |
 | `same-file` 1.0.6 | Parent-only stable cross-platform existing-file identity, including hard links | MIT OR Unlicense (MIT selected) | Path canonicalization alone misses hard links; bespoke platform FFI adds unsafe maintenance. |
 | `arrow-cast` 60 (tests) | Expected-value fidelity formatting through the shared Arrow representation | Apache-2.0 | Formatting SQL strings would not verify values actually received over the host wire. |
+| Existing `tauri-build` 2, `proc-macro2` 1 and `syn` 2 (host build-only) | Unify desktop build-dependency features before compiling bundled C++, so staging and workspace checks reuse one native build | MIT OR Apache-2.0 | Sharing the target directory alone still changes the native build-script fingerprint. An empty build entry resolves these features without running Tauri bundling; no runtime use or new locked package/version. Building all workspace targets first would duplicate broader check work. |
 
 The lockfile adds the binding's Arrow 58/native build transitive graph; cargo-deny checks the complete resolved licence/advisory graph. No new npm dependency.
 

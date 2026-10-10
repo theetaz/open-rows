@@ -13,8 +13,8 @@ if [[ -z "$target" || ! "$profile" =~ ^[a-zA-Z0-9_-]+$ || ! "$target" =~ ^[a-zA-
     printf 'stage-host: invalid profile or target\n' >&2
     exit 2
 fi
-# Even native builds need --target: tests/benches uplift their feature-enabled
-# CARGO_BIN_EXE fixture into the top-level profile directory of the same cache.
+# Keep native and cross-target output identical. CI exports CARGO_BUILD_TARGET
+# job-wide so staging, Clippy and nextest reuse the same bundled native library.
 options=(--locked -p openrows-driver-host --bin openrows-driver-host --no-default-features --features duckdb --profile "$profile" --target "$target")
 output="${CARGO_TARGET_DIR:-target}/$target"
 profile_dir=$profile

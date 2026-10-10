@@ -4,5 +4,5 @@
 mod entry;
 
 fn main() {
-    entry::run();
+    entry::run(openrows_driver_host::run_sqlite_fixture());
 }

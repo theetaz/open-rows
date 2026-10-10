@@ -207,7 +207,7 @@ While the project is solo and private, CI uses free GitHub Actions minutes spari
 - every push to `main`, i.e. each squash-merged PR;
 - manual dispatch (`gh workflow run CI --ref <branch>`), for the rare case where a branch needs a Linux check before merge.
 
-Pull requests and pushes to feature branches do **not** trigger CI. The `check` job (15-minute timeout) runs these steps:
+Pull requests and pushes to feature branches do **not** trigger CI. The `check` job (40-minute timeout, including a cold bundled DuckDB build) runs these steps:
 
 | Step | What it checks |
 | --- | --- |
@@ -215,11 +215,32 @@ Pull requests and pushes to feature branches do **not** trigger CI. The `check` 
 | Linux prerequisites | WebKitGTK 4.1, build-essential, curl, wget, file, libxdo, OpenSSL, Ayatana appindicator, librsvg |
 | Node / pnpm | Node 24, pinned pnpm, pnpm store cache, frozen lockfile install |
 | Frontend lint / format | `pnpm lint`, `pnpm format:check` |
-| Frontend types / tests / dead code | `pnpm typecheck`, `pnpm test`, `pnpm knip` |
+| Frontend types / tests / dead code | `pnpm typecheck`, `pnpm test --maxWorkers=2`, `pnpm knip` |
 | Binding freshness | Rust `bindings_are_fresh` test (same registry as the app) |
 | Format | `cargo fmt --all --check` |
-| Lint | `cargo clippy --workspace --all-targets --locked -- -D warnings` |
-| Tests | `cargo nextest run --workspace --locked -E 'not binary(ssh_container)'`; container-backed driver tests are `#[ignore]`d there (reported as skipped) and run in the `containers` job; the `openrows-net` SSH container matrix is filtered out in CI and runs locally in `just check` / `just test-ssh` |
+| Production helper / staging isolation | `bash scripts/stage-host.sh dev`; six `test_stage_host.py` tests protect separately named SQLite and DuckDB fixtures, including a shared native target |
+| Lint | `cargo clippy --workspace --all-targets --locked --features openrows-app/ipc-bindings -- -D warnings` |
+| Tests | `cargo nextest run --workspace --locked --features openrows-app/ipc-bindings -E 'not binary(ssh_container)'`; container-backed driver tests are `#[ignore]`d there (reported as skipped) and run in the `containers` job; the `openrows-net` SSH container matrix is filtered out in CI and runs locally in `just check` / `just test-ssh` |
+
+The check job sets `CARGO_BUILD_TARGET` to the native Rust triple before restoring
+the Rust cache. Staging, Clippy and nextest therefore share
+`target/<native-triple>/debug`, including the same `libduckdb-sys` build output.
+The helper's build-only feature-unification dependencies resolve the desktop's
+Serde/JSON and macro feature graph up front; sharing a target directory alone
+would still rebuild the native library when those build-script inputs changed.
+Development/test native C++ uses optimisation level 0 without debug symbols;
+release settings are unchanged. Two Cargo build jobs and Ubuntu's preinstalled
+Clang/LLD bound link memory use. The Rust cache explicitly covers `target`, keys
+on the native triple and saves on failure (`cache-on-failure: true`), so a later
+failed check can retain the completed native build. This does not guarantee a
+cache upload after runner loss or forced job termination.
+
+The measured cold-target check sequence took 15m25s in the non-root,
+2-CPU/8-GiB `rust:1.94.0-bookworm` ARM64 container, including frontend checks;
+staging took 6m25s and compiled bundled DuckDB once. The 40-minute timeout
+rounds up an estimate of twice that measured time plus eight minutes for
+runner setup, network and cache transfer (38m49s). GitHub's x86 runner time
+is an estimate, not a remotely measured result; see ADR-0010's round-4 evidence.
 
 The `containers` job (20-minute timeout, its own runner and Rust cache) builds only the driver, core, schema and conformance crates and runs `scripts/test-pg.sh 17` and `scripts/test-mysql.sh` (MySQL 8.4, MariaDB 11.4) with `OPENROWS_REQUIRE_DOCKER=1`, so a missing Docker daemon fails instead of skipping. Coverage, benchmark comparison and nightly fuzzing are not in CI yet (M1-30).
 

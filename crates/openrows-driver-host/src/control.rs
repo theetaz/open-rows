@@ -31,7 +31,7 @@ pub(crate) async fn run(
     control: Stream,
     data: Stream,
     generation: u64,
-    driver: openrows_host_protocol::HostDriverId,
+    registry: crate::registry::Registry,
 ) -> Result<(), ProtocolError> {
     let (queue, outgoing) = ControlQueue::new();
     let (done, mut completed) = tokio::sync::mpsc::channel(32);
@@ -39,7 +39,7 @@ pub(crate) async fn run(
     let (frames, reader) = input(read);
     let written = Arc::new(Notify::new());
     let writer = crate::output::control_writer(write, outgoing, done, written.clone());
-    let (mut runtime, mut stopped) = Runtime::start(data, generation, queue, driver)?;
+    let (mut runtime, mut stopped) = Runtime::start(data, generation, queue, registry)?;
     runtime
         .serve(&mut Events {
             frames,
@@ -63,7 +63,7 @@ impl Runtime {
         data: Stream,
         generation: u64,
         control: ControlQueue,
-        driver: openrows_host_protocol::HostDriverId,
+        registry: crate::registry::Registry,
     ) -> Result<(Self, oneshot::Receiver<Result<(), ProtocolError>>), ProtocolError> {
         let flow = Arc::new(Flow::default());
         let active = Arc::new(Mutex::new(Active::new()));
@@ -76,7 +76,7 @@ impl Runtime {
             data: crate::output::start(data)?,
         };
         let worker = Worker {
-            driver,
+            registry,
             failed_connect: None,
             commands,
             output,

@@ -33,6 +33,16 @@ duckdb = ["dep:duckdb", "dep:arrow-ipc-58"]
 test-sqlite = ["dep:openrows-driver-sqlite"]
 test-hooks = ["test-sqlite"]
 
+# Match desktop checks' host build-dependency features before compiling bundled
+# C++; these are feature-unification dependencies, not host runtime libraries.
+[build-dependencies]
+tauri-build = { version = "2", features = ["codegen"] }
+proc-macro2 = { version = "1", features = ["span-locations"] }
+syn = { version = "2", features = ["full", "extra-traits", "fold", "visit", "visit-mut"] }
+
+[package.metadata.cargo-machete]
+ignored = ["tauri-build", "proc-macro2", "syn"]
+
 [dev-dependencies]
 arrow-cast = "60"
 openrows-driver-conformance = { path = "../openrows-driver-conformance" }
@@ -46,6 +56,11 @@ tempfile = "3.27"
 name = "host-test-fixture"
 path = "tests/support/host.rs"
 required-features = ["test-sqlite"]
+
+[[bin]]
+name = "host-duckdb-fixture"
+path = "tests/support/duckdb_host.rs"
+required-features = ["duckdb"]
 
 [[bin]]
 name = "host-parent-fixture"

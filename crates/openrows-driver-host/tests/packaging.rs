@@ -22,6 +22,22 @@ fn test_fixture_is_separate_from_production_sidecar() -> Result<(), Box<dyn std:
     Ok(())
 }
 
+#[cfg(unix)]
+#[test]
+fn sqlite_fixture_has_no_duckdb_native_code() -> Result<(), Box<dyn std::error::Error>> {
+    for (binary, native) in [
+        (env!("CARGO_BIN_EXE_host-test-fixture"), false),
+        (env!("CARGO_BIN_EXE_host-duckdb-fixture"), true),
+    ] {
+        let symbols = std::process::Command::new("nm").arg(binary).output()?;
+        assert!(symbols.status.success());
+        let symbols = String::from_utf8(symbols.stdout)?;
+        assert_eq!(symbols.contains("duckdb_open"), native, "{binary}");
+        assert_eq!(symbols.contains("sqlite3_open"), !native, "{binary}");
+    }
+    Ok(())
+}
+
 #[tokio::test]
 async fn protocol_version_mismatch_is_typed_and_reaped() -> Result<(), Box<dyn std::error::Error>> {
     let root = if cfg!(unix) {

@@ -37,7 +37,7 @@ impl Active {
     }
 }
 pub(crate) struct Worker {
-    pub(crate) driver: openrows_host_protocol::HostDriverId,
+    pub(crate) registry: crate::registry::Registry,
     pub(crate) commands: openrows_host_protocol::QueueReceiver,
     pub(crate) output: Output,
     pub(crate) flow: Arc<Flow>,
@@ -166,13 +166,14 @@ impl Worker {
         }
         let request = config.to_request()?;
         let mut trace = ConnectTrace::default();
-        let mut opened = match crate::registry::connect(self.driver, &request, &mut trace).await {
-            Ok(opened) => opened,
-            Err(error) => {
-                self.failed_connect = Some(WireTrace::from(&trace));
-                return Err(error);
-            }
-        };
+        let mut opened =
+            match (self.registry.connect)(self.registry.driver, &request, &mut trace).await {
+                Ok(opened) => opened,
+                Err(error) => {
+                    self.failed_connect = Some(WireTrace::from(&trace));
+                    return Err(error);
+                }
+            };
         let facets = Facets {
             catalog: opened.catalog().is_some(),
             editor: opened.editor().is_some(),

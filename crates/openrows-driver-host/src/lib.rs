@@ -18,7 +18,15 @@ mod worker;
 /// # Errors
 /// Bootstrap, authentication, worker or transport failure (payload-free).
 pub async fn run() -> Result<(), openrows_host_protocol::ProtocolError> {
-    bootstrap::run().await
+    bootstrap::run(registry::production).await
+}
+
+/// Run the SQLite/probe fixture without referencing the production native registry.
+/// # Errors
+/// Bootstrap, authentication, worker or transport failure (payload-free).
+#[cfg(feature = "test-sqlite")]
+pub async fn run_sqlite_fixture() -> Result<(), openrows_host_protocol::ProtocolError> {
+    bootstrap::run(registry::sqlite).await
 }
 
 #[cfg(feature = "test-hooks")]
