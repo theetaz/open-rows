@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
@@ -38,13 +38,11 @@ it('stars from the context menu and table header, records opens, and routes the 
   ).toBeVisible();
   expect(vi.mocked(listObjects).mock.calls).toHaveLength(reads);
   await user.dblClick(orders);
-  const header = await screen.findByRole(
-    'button',
-    {
-      name: 'Remove favourite',
-    },
-    { timeout: 5000 },
-  );
+  // The header follows the lazy table import, not just the tab descriptor.
+  await act(async () => {
+    await vi.dynamicImportSettled();
+  });
+  const header = screen.getByRole('button', { name: 'Remove favourite' });
   expect(readSidebarObjects('id-orders-local', 'orders').recent[0]?.name).toBe(
     'orders',
   );
