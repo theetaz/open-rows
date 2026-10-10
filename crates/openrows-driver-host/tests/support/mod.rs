@@ -40,7 +40,7 @@ pub fn prepare_image() -> impl Future<Output = Result<(), HostFailure>> {
 pub fn options(memory: MemoryBudget) -> LaunchOptions {
     LaunchOptions {
         driver: openrows_host_client::HostDriverId::SqliteTest,
-        executable: PathBuf::from(env!("CARGO_BIN_EXE_openrows-driver-host")),
+        executable: PathBuf::from(env!("CARGO_BIN_EXE_host-test-fixture")),
         endpoint_root: root(),
         memory,
         circuit: CircuitBreaker::default(),

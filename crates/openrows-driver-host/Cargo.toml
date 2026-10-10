@@ -38,6 +38,11 @@ openrows-driver-host = { path = ".", features = ["test-hooks"] }
 tempfile = "3.27"
 
 [[bin]]
+name = "host-test-fixture"
+path = "tests/support/host.rs"
+required-features = ["test-sqlite"]
+
+[[bin]]
 name = "host-parent-fixture"
 path = "tests/support/parent.rs"
 required-features = ["test-hooks"]

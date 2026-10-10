@@ -3,6 +3,25 @@
 use openrows_driver_api::DriverError;
 use openrows_host_client::{DriverHostRuntime, HOST_BINARY_NAME, HostDriverId, HostFailure};
 
+#[test]
+fn test_fixture_is_separate_from_production_sidecar() -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = std::path::Path::new(env!("CARGO_BIN_EXE_host-test-fixture"));
+    let production = std::path::Path::new(env!("CARGO_BIN_EXE_openrows-driver-host"));
+    assert_ne!(fixture.file_name(), production.file_name());
+    assert_ne!(fixture.canonicalize()?, production.canonicalize()?);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        let fixture = fixture.metadata()?;
+        let production = production.metadata()?;
+        assert_ne!(
+            (fixture.dev(), fixture.ino()),
+            (production.dev(), production.ino())
+        );
+    }
+    Ok(())
+}
+
 #[tokio::test]
 async fn protocol_version_mismatch_is_typed_and_reaped() -> Result<(), Box<dyn std::error::Error>> {
     let root = if cfg!(unix) {
@@ -51,7 +70,7 @@ async fn probe_has_no_driver_and_refuses_database_open() -> Result<(), Box<dyn s
     let directory = tempfile::Builder::new().prefix(".p-").tempdir_in(root)?;
     let mut session =
         openrows_host_client::HostSupervisor::new(openrows_host_client::LaunchOptions {
-            executable: env!("CARGO_BIN_EXE_openrows-driver-host").into(),
+            executable: env!("CARGO_BIN_EXE_host-test-fixture").into(),
             driver: HostDriverId::Probe,
             endpoint_root: directory.path().to_path_buf(),
             memory: openrows_host_client::MemoryBudget::default(),

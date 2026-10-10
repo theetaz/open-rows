@@ -537,3 +537,58 @@ installed package launch; reference-machine/certificate-backed cold startup
 against 150 ms; universal assembly; M2-04 DuckDB registration and engine-specific
 measurements. M2-01 stays partial in docs/27. No native engine was moved into the
 desktop, no user-visible hosted driver was registered and no key was invented.
+
+## Validation / evidence — 2026-10-10, M2-01c review fixes
+
+The lead's staging → workspace gate exposed a production/test binary collision.
+Native staging built the no-SQLite helper into the same top-level Cargo profile
+path used by host tests, and cached workspace builds did not reliably re-uplift
+the feature-enabled image. Staging now always passes `--target <triple>` and
+builds under `$CARGO_TARGET_DIR/<triple>/<profile>/` (`debug` for `dev`), within
+the same cache and with sccache retained. The first reproduction after that
+change exposed a second overwrite: Tauri copies external binaries beside the
+app in the top-level profile directory, replacing `openrows-driver-host` again.
+
+Tests and benchmarks now use `CARGO_BIN_EXE_host-test-fixture`, a separately
+named binary gated by `test-sqlite`. It shares the production process entry,
+including panic diagnostics, core-dump suppression, runtime and exit behavior;
+only its test feature graph differs. Production staging still builds exactly
+`--bin openrows-driver-host --no-default-features`. Tauri's copied helper,
+dev signing and installed resolution retain the production name and layout.
+Benchmarks obtain the fixture directly from Cargo instead of `OPENROWS_HOST_BIN`.
+
+Five stub-compiler staging tests exercise native dev/release/custom profiles,
+an environment-selected Linux target and an explicit Windows target overriding
+the environment. They verify distinct output paths/files, preservation of the
+test registry and wrapper/jobs, and the production feature flags. Running them
+against the HEAD script fails all three native-path checks as expected; the
+fixed script passes all five. `just script-test` runs these alongside the six
+existing wrapper checks, and Ubuntu CI runs the new guard after staging and
+before workspace Clippy/tests. The normal Rust packaging suite additionally
+checks distinct canonical paths and, on Unix, device/inode identity between the
+fixture and production sidecar; conformance proves the SQLite registry works.
+
+The exact macOS reproduction, with four build jobs/test threads and nice 10,
+now passes:
+
+```sh
+bash scripts/stage-host.sh dev
+cargo nextest run --locked --workspace -E 'binary(conformance) & package(openrows-driver-host)'
+```
+
+```text
+Summary [   0.680s] 10 tests run: 10 passed, 0 skipped
+```
+
+The production two-second deadline and existing release/checkpoint gaps above
+remain unchanged. No dependency or native driver was added by these review fixes.
+
+`nice -n 10 just build-app` rebuilt the app (4m 37s desktop build), containing only the production helper: 3339472 bytes; app logical size 69678051 bytes. Both carry `flags=0x10002(adhoc,runtime)`; deep/strict verification passed. The opt-in release packaged command above passed one test / 30 clean cycles: first 559.332 ms, warm p50/p95/max 3.514/5.494/7.202 ms against 2000 ms, on the same M4/24 GiB/macOS 26.5 host. No cache eviction or main comparison was performed; the 150 ms first-launch target is still missed. No installer was rebuilt this round.
+
+`nice -n 10 just dev` staged from the triple-specific debug path and launched the existing runner. Both adjacent app/helper now verified with `Authority=OpenRows Dev` and strict signature checks, closing the local stable-dev-identity gap. The unchanged frontend dev monitor then raised `TypeError: Attempted to assign to readonly property` at `devMonitor.ts:82` (`internals.invoke`); this separate dev-UI defect was left untouched. The app/Vite/runner processes were stopped after the staging/signing check.
+
+Final gates ran once in the requested order: `just gen-ipc`, then fmt-check → lint → test → deny → machete → hygiene → ui-check → bench-ui, frontend checks, then ipc-check. The staged native helper was deleted before lint to verify automatic restaging. Workspace Clippy finished in 7.69s; workspace nextest exited 0 with 1320 tests / 196 configured skips. All ten host conformance tests and the three packaging checks passed in that workspace run. Advisories/bans/licences/sources and unused-dependency checks passed; tokens were fresh and component colours used tokens. Initial JS was 301306 gzip bytes / 350000; component CSS 6294 / 15000.
+
+Frontend eslint, Prettier, TypeScript and knip exited 0; Vitest passed 230 files / 2701 tests in 93.47s. `just ipc-check` printed `Summary [   0.093s] 1 test run: 1 passed, 249 skipped`. IPC generation changed no contract. Two earlier unchanged concurrent packaging mismatch runs timed out; the isolated repeat and complete repeated packaging suite passed, followed by the green final workspace gate. No deadline or mismatch-test behavior was changed. Remote Ubuntu CI was not triggered; its staging/guard/Clippy/workspace-nextest order was checked locally.
+
+Generated frontend dist and staging-test scratch directories were removed; no verification log or screenshot was retained. Dev processes were stopped, and no owned helper or new container remains. The configured target cache, ignored staged binary and app artifacts are retained for review; HEAD stays 7753ace with uncommitted fixes.
