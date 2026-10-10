@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-//! Isolated `SQLite` test host; native registry and worker never run in the parent.
+//! Isolated native `DuckDB` host (with a test-only `SQLite` registry); native registry and worker never run in the parent.
 mod bootstrap;
 mod control;
+#[cfg(feature = "duckdb")]
+mod duckdb;
 mod facet_output;
 mod facets;
 mod flow;

@@ -46,7 +46,7 @@ function useSettingsKey(open: () => void): void {
 
 /** Density and reduced motion follow Settings ▸ General. */
 function useGeneralSettings(): void {
-  const general = generalSettings.use();
+  const general = generalSettings.useValue();
   useEffect(() => {
     applyGeneral(general);
   }, [general]);

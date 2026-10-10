@@ -22,6 +22,11 @@ allow = [
 # All other licences, including strong copyleft, are denied by default.
 unused-allowed-license = "allow"
 
+# Owner-approved 2026-10-10: build-time CA data only (docs/22), never shipped.
+[[licenses.exceptions]]
+name = "webpki-roots"
+allow = ["CDLA-Permissive-2.0"]
+
 [bans]
 multiple-versions = "warn"
 

@@ -20,10 +20,12 @@ static CLICKHOUSE: ClickHouseDriver = ClickHouseDriver;
 static LIBSQL: LibsqlDriver = LibsqlDriver;
 static LIBSQL_FILE: LibsqlFileDriver = LibsqlFileDriver;
 static SQL_SERVER: SqlServerDriver = SqlServerDriver;
+static DUCKDB: openrows_host_client::DuckdbMetadata = openrows_host_client::DuckdbMetadata;
 
 /// The driver serving `engine`; every engine a profile can name has one.
 pub(crate) fn driver(engine: Engine) -> &'static dyn Driver {
     match engine {
+        Engine::Duckdb => &DUCKDB,
         Engine::Postgres => &POSTGRES,
         Engine::Mysql => &MYSQL,
         Engine::Mariadb => &MARIADB,

@@ -20,8 +20,8 @@ export function menuEnabled(input: {
     ? input.connections.statusOf(profile.id).state
     : 'disconnected';
   const connected = state === 'connected';
+  const full = profile?.engine !== 'duckdb';
   const query = input.tab?.kind === 'query';
-  const exportable = query || input.tab?.kind === 'table';
   return {
     ...tableEnabled(input.tab?.kind === 'table', connected),
     'new-tab': Boolean(input.scope),
@@ -29,17 +29,13 @@ export function menuEnabled(input: {
     'open-file': Boolean(input.scope),
     save: query,
     'save-as': query,
-    'export-table': input.tab?.kind === 'table' && connected,
-    'import-data': Boolean(input.scope) && connected,
-    'export-tables': connected,
-    'run-sql-file': connected,
-    'backup-database': connected,
-    'restore-database': connected,
-    'backup-schema': connected,
-    'restore-schema': connected,
-    'backup-table': connected && input.tab?.kind === 'table',
-    'export-results': exportable && connected,
-    ...queryEnabled(query, connected),
+    ...backgroundEnabled({
+      full,
+      connected,
+      tab: input.tab,
+      scope: input.scope,
+    }),
+    ...queryEnabled(query, connected, full),
     'split-right': Boolean(input.tab),
     'split-down': Boolean(input.tab),
     'focus-pane': Boolean(input.tab),
@@ -91,11 +87,11 @@ function connectionEnabled(
   return {
     connect: Boolean(profile) && !connected && state !== 'connecting',
     disconnect: connected || state === 'connecting',
-    database: connected,
+    database: connected && profile?.engine !== 'duckdb',
     processes: connected && Boolean(profile?.processList),
-    refresh: connected,
-    quick: connected,
-    'show-er-diagram': connected,
+    refresh: connected && profile?.engine !== 'duckdb',
+    quick: connected && profile?.engine !== 'duckdb',
+    'show-er-diagram': connected && profile?.engine !== 'duckdb',
     safe: Boolean(profile) && !input.prod,
   };
 }
@@ -104,14 +100,15 @@ function connectionEnabled(
 function queryEnabled(
   query: boolean,
   connected: boolean,
+  full: boolean,
 ): Record<string, boolean> {
   const runs = query && connected;
   return {
     'run-current': runs,
     'run-all': runs,
     cancel: runs,
-    explain: runs,
-    'explain-analyze': runs,
+    explain: full && runs,
+    'explain-analyze': full && runs,
     beautify: query,
     uglify: query,
     'insert-snippet': query,
@@ -133,5 +130,29 @@ function tableEnabled(
     'copy-selection': rows,
     'focus-filter': table,
     'toggle-columns': table,
+  };
+}
+
+/** Pending DuckDB background sessions stay unavailable while query commands work. */
+function backgroundEnabled(input: {
+  full: boolean;
+  connected: boolean;
+  tab: { kind: string } | undefined;
+  scope: TabScope | undefined;
+}): Record<string, boolean> {
+  const { full, connected } = input;
+  const exportable = input.tab?.kind === 'query' || input.tab?.kind === 'table';
+  const ready = full && connected;
+  return {
+    'export-table': ready && input.tab?.kind === 'table',
+    'import-data': ready && Boolean(input.scope),
+    'export-tables': ready,
+    'run-sql-file': ready,
+    'backup-database': ready,
+    'restore-database': ready,
+    'backup-schema': ready,
+    'restore-schema': ready,
+    'backup-table': ready && input.tab?.kind === 'table',
+    'export-results': ready && exportable,
   };
 }

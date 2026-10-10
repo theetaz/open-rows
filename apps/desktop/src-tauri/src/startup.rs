@@ -25,6 +25,7 @@ pub(crate) fn install(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Er
             return;
         }
         startup_report::record(Phase::WindowShown);
+        crate::driver_host::after_paint(&window);
         if startup_report::enabled() {
             startup_report::watch_stop(handle);
         }

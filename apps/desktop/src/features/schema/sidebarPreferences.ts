@@ -75,5 +75,5 @@ export function writeSidebarPreferences(
 
 /** Live profile preferences restored across reconnects and databases. */
 export function useSidebarPreferences(profileId: string): SidebarPreferences {
-  return preferences.use()[profileId] ?? defaults;
+  return preferences.useValue()[profileId] ?? defaults;
 }

@@ -61,6 +61,15 @@ async fn open(
     profile_id: &str,
 ) -> Result<ConnectionOpened, IpcError> {
     let profile = state.profiles.get(self::profile_id(profile_id)?)?;
+    if profile.driver == openrows_store::profile::Driver::Duckdb {
+        let (_, server) = super::duckdb::shared(state, profile_id, true).await?;
+        cache.invalidate(profile_id);
+        return Ok(ConnectionOpened {
+            database: Some(server.database.clone()),
+            server,
+            insecure: Vec::new(),
+        });
+    }
     let target = route::profile_target(state, profile_id).await?;
     let home = target.database().to_owned();
     let server = state
@@ -93,6 +102,7 @@ pub(crate) async fn connection_close(
 ) -> Result<(), IpcError> {
     let id = self::profile_id(&profile_id)?;
     state.credential_runs.cancel(id);
+    state.duckdb.forget(id).await;
     for session in state.owners.unbind_profile(id) {
         // Disconnecting is best effort: a session that already failed is gone.
         let _ = state.sessions.close(session).await;

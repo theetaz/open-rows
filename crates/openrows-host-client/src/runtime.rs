@@ -2,6 +2,7 @@
 //! Desktop-owned lazy launch policy; native engine registration remains host-only.
 use crate::{
     CircuitBreaker, HostDriverId, HostFailure, HostSupervisor, LaunchOptions, MemoryBudget,
+    PrewarmOutcome, PrewarmReport, prewarm::Prewarm,
 };
 use std::{collections::BTreeMap, path::PathBuf, sync::Mutex};
 
@@ -11,6 +12,7 @@ pub struct DriverHostRuntime {
     endpoint_root: PathBuf,
     memory: MemoryBudget,
     circuits: Mutex<BTreeMap<(String, HostDriverId), CircuitBreaker>>,
+    prewarm: Prewarm,
     #[cfg(debug_assertions)]
     debug_helper: Option<PathBuf>,
 }
@@ -23,6 +25,7 @@ impl DriverHostRuntime {
             endpoint_root,
             memory: MemoryBudget::default(),
             circuits: Mutex::default(),
+            prewarm: Prewarm::default(),
             #[cfg(debug_assertions)]
             debug_helper: None,
         }
@@ -55,13 +58,58 @@ impl DriverHostRuntime {
             .entry((profile.into(), driver))
             .or_default()
             .clone();
-        Ok(HostSupervisor::new(LaunchOptions {
+        let supervisor = HostSupervisor::new(LaunchOptions {
             executable,
             driver,
             endpoint_root: self.endpoint_root.clone(),
             memory: self.memory.clone(),
             circuit,
-        }))
+        });
+        Ok(if driver == HostDriverId::Duckdb {
+            supervisor.with_prewarm(self.prewarm.clone())
+        } else {
+            supervisor
+        })
+    }
+
+    /// Attempt database-free installed Probe once, after the window has painted.
+    /// Errors become diagnostics only; `DuckDB` connects await an in-flight attempt.
+    pub async fn prewarm(&self) -> Option<PrewarmReport> {
+        let attempt = self.prewarm.start()?;
+        let executable = match self.executable().and_then(|executable| {
+            private_root(&self.endpoint_root)?;
+            Ok(executable)
+        }) {
+            Ok(executable) => executable,
+            Err(error) => return Some(attempt.finish(PrewarmOutcome::Skipped(error), None)),
+        };
+        // Share memory admission, but never mutate any profile's crash circuit.
+        let probe = HostSupervisor::new(LaunchOptions {
+            executable,
+            driver: HostDriverId::Probe,
+            endpoint_root: self.endpoint_root.clone(),
+            memory: self.memory.clone(),
+            circuit: CircuitBreaker::default(),
+        });
+        let started = std::time::Instant::now();
+        let (outcome, handshake) = match probe.spawn().await {
+            Ok(host) => {
+                let handshake = Some(started.elapsed());
+                let outcome = match host.close().await {
+                    Ok(()) => PrewarmOutcome::Ready,
+                    Err(error) => PrewarmOutcome::Failed(error),
+                };
+                (outcome, handshake)
+            }
+            Err(error) => (PrewarmOutcome::Failed(error), None),
+        };
+        Some(attempt.finish(outcome, handshake))
+    }
+
+    /// Last prewarm outcome and timing; absent before completion.
+    #[must_use]
+    pub fn prewarm_report(&self) -> Option<PrewarmReport> {
+        self.prewarm.report()
     }
     fn executable(&self) -> Result<PathBuf, HostFailure> {
         #[cfg(debug_assertions)]

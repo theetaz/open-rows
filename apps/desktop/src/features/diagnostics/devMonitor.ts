@@ -79,7 +79,7 @@ function watchFrameGaps(report: Report): () => void {
 /** Wrap Tauri's `invoke` so every command slower than `SLOW_IPC_MS` is logged. */
 export function timeIpc(internals: Internals, report: Report): void {
   const invoke = internals.invoke.bind(internals);
-  internals.invoke = (command, args, options) => {
+  const timed: Invoke = (command, args, options) => {
     const started = performance.now();
     return invoke(command, args, options).finally(() => {
       const durationMs = performance.now() - started;
@@ -87,6 +87,8 @@ export function timeIpc(internals: Internals, report: Report): void {
         report({ kind: 'slowIpc', name: command, message: null, durationMs });
     });
   };
+  // New Tauri runtimes freeze invoke. Keep the other monitors and leave it intact.
+  Reflect.set(internals, 'invoke', timed);
 }
 
 /** Start every development monitor that the running shell supports. */

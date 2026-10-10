@@ -109,12 +109,12 @@ impl<'a> Sql<'a> {
     fn classify(self) -> Classification {
         let body = self.from(self.leading_parens());
         let mut result = match (self.dialect, body.is_word(0, "EXPLAIN")) {
-            (Dialect::Postgres, true) => heads::explain(body),
+            (Dialect::Postgres | Dialect::Duckdb, true) => heads::explain(body),
             (Dialect::MySql, true) => mysql::explain(body),
             (Dialect::Sqlite, true) => Classification::new(StatementKind::Read),
             (Dialect::ClickHouse, _) => body.inspect(clickhouse::dispatch(body)),
             (Dialect::SqlServer, _) => body.inspect(tsql::dispatch(body)),
-            (Dialect::Postgres, false) => body.inspect(heads::dispatch(body)),
+            (Dialect::Postgres | Dialect::Duckdb, false) => body.inspect(heads::dispatch(body)),
             (Dialect::MySql, false) => body.inspect(mysql::dispatch(body)),
             (Dialect::Sqlite, false) => body.inspect(sqlite::dispatch(body)),
         };

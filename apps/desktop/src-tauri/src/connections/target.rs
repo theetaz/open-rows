@@ -27,6 +27,7 @@ pub(crate) const APPLICATION_NAME: &str = "OpenRows";
 /// Where and how to connect: the engine's driver and its request.
 #[derive(Clone)]
 pub(crate) struct Target {
+    pub(crate) hosted: Option<Arc<openrows_host_client::HostedDriver>>,
     pub(crate) driver: &'static dyn Driver,
     pub(crate) request: ConnectRequest,
 }
@@ -36,6 +37,7 @@ impl Target {
     /// engines have one database and ignore it.
     pub(crate) fn with_database(&self, database: &str) -> Self {
         Self {
+            hosted: self.hosted.clone(),
             driver: self.driver,
             request: self.request.with_database(database),
         }
@@ -44,6 +46,7 @@ impl Target {
     /// Connect through `route` (a proxy or an SSH tunnel) instead of direct TCP.
     pub(crate) fn through(self, route: Arc<dyn Dialer>) -> Self {
         Self {
+            hosted: self.hosted,
             driver: self.driver,
             request: self.request.through(route),
         }
@@ -52,6 +55,7 @@ impl Target {
     /// The same target under another application name.
     pub(crate) fn with_application_suffix(self, suffix: &str) -> Self {
         Self {
+            hosted: self.hosted,
             driver: self.driver,
             request: self.request.with_application_suffix(suffix),
         }
@@ -133,7 +137,11 @@ pub(crate) fn target(
         driver_options: params.options.clone(),
         startup_commands,
     };
-    Ok(Target { driver, request })
+    Ok(Target {
+        driver,
+        request,
+        hosted: None,
+    })
 }
 
 /// The profile's startup SQL as single statements in order.
@@ -257,11 +265,22 @@ pub(crate) async fn connect_traced(
     target: &Target,
 ) -> (Result<Box<dyn Connection>, DriverError>, ConnectTrace) {
     let mut trace = ConnectTrace::default();
-    let result = target
-        .driver
-        .connect(&target.request, &mut trace)
-        .await
-        .map_err(|error| with_endpoint(error, &target.request));
+    let result = if let Some(driver) = &target.hosted {
+        driver
+            .open(&target.request, &mut trace)
+            .await
+            .map(|connection| {
+                tracing::info!(
+                    driver = "duckdb",
+                    handshake_ms = connection.handshake_duration().as_secs_f64() * 1000.0,
+                    "driver host connected"
+                );
+                Box::new(connection) as Box<dyn Connection>
+            })
+    } else {
+        target.driver.connect(&target.request, &mut trace).await
+    };
+    let result = result.map_err(|error| with_endpoint(error, &target.request));
     (result, trace)
 }
 

@@ -317,3 +317,21 @@ fn jdbc_sql_server_urls_are_parsed() {
         Err(UrlError::NamedInstance { .. })
     ));
 }
+
+#[test]
+fn duckdb_file_and_memory_urls_keep_the_engine() -> Result<(), Box<dyn std::error::Error>> {
+    let file = parse_url("duckdb:///data/example.duckdb?mode=ro")?;
+    assert_eq!(file.driver, Driver::Duckdb);
+    assert!(file.file.as_ref().is_some_and(|file| file.read_only));
+    let (profile, _) = file.into_profile("test-only", EnvTag::new(EnvKind::Local));
+    assert_eq!(profile.driver, Driver::Duckdb);
+    let memory = parse_url("duckdb::memory:")?;
+    assert_eq!(memory.driver, Driver::Duckdb);
+    assert!(
+        memory
+            .file
+            .as_ref()
+            .is_some_and(|file| file.path.as_os_str().is_empty())
+    );
+    Ok(())
+}

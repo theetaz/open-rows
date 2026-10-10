@@ -95,7 +95,8 @@ class StageHostTest(unittest.TestCase):
         self.assertEqual(built.read_bytes(), staged.read_bytes())
         call = json.loads(self.log.read_text())
         self.assertIn("--no-default-features", call["args"])
-        self.assertNotIn("--features", call["args"])
+        self.assertIn("--features", call["args"])
+        self.assertEqual(call["args"][call["args"].index("--features") + 1], "duckdb")
         self.assertEqual(call["args"][-2:], ["--target", target])
         self.assertEqual((call["wrapper"], call["jobs"]), ("test-wrapper", "4"))
 

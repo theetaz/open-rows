@@ -327,5 +327,11 @@ circuit across explicit connects (three abnormal exits in 60 s) and uses the
 accepted process-wide memory reservation. It resolves the helper afresh on
 every launch and returns `DriverError::Host` for missing or incompatible
 artifacts, preserving the M2-01b terminal/no-replay lifecycle. No production
-driver is registered. DuckDB's shared writable-file/session ownership and
-queued metadata/edit/export rules remain M2-04 work.
+driver is registered. DuckDB's shared writable-file/session ownership is implemented in M2-04a below;
+queued metadata/edit/export remains M2-04b work.
+
+## 14. Implemented (M2-04a): DuckDB session allocation exception
+
+DuckDB profiles share one logical SessionManager actor and one driver host across query tabs. Profile-slot locking serializes concurrent opens. Normal tab opens reuse the actor; a failed actor is replaced only by explicit connection_open, never by an automatic retry. Closing the connection ends its host and permanently loses an in-memory database. File reservations are acquired before spawn and released only after host reap; readers cannot open while a writer is held, and independent all-read-only profiles may have separate hosts.
+
+The usual metadata/background connection allocation is explicitly refused for DuckDB in this slice. Catalog hooks, completion reads, fingerprint polling and background export/edit paths do not silently launch another host. M2-04b will queue catalog work on the owning actor. Session failure remains local: the host lifecycle subscription marks its actor Failed while other in-process/hosted sessions continue.

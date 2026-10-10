@@ -72,6 +72,13 @@ impl ParsedUrl {
 /// password or the raw URL.
 pub fn parse_url(input: &str) -> Result<ParsedUrl, UrlError> {
     let input = input.trim();
+    if input.eq_ignore_ascii_case("duckdb::memory:")
+        || input.eq_ignore_ascii_case("duckdb://:memory:")
+    {
+        let mut parsed = sqlite_url(FileParams::memory());
+        parsed.driver = Driver::Duckdb;
+        return Ok(parsed);
+    }
     if input.eq_ignore_ascii_case("libsql-file::memory:") {
         let mut parsed = sqlite_url(FileParams::memory());
         parsed.driver = Driver::LibsqlFile;
@@ -99,6 +106,11 @@ pub fn parse_url(input: &str) -> Result<ParsedUrl, UrlError> {
         "sqlserver" | "mssql" => Driver::Sqlserver,
         "clickhouse" | "clickhouse+https" => Driver::Clickhouse,
         "sqlite" => return parse_sqlite(&url),
+        "duckdb" => {
+            let mut parsed = parse_sqlite(&url)?;
+            parsed.driver = Driver::Duckdb;
+            return Ok(parsed);
+        }
         "libsql-file" => {
             let mut parsed = parse_sqlite(&url)?;
             parsed.driver = Driver::LibsqlFile;

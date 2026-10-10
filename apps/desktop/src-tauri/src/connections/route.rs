@@ -86,7 +86,8 @@ pub(crate) fn destination(profile: &ConnectionProfile) -> Destination {
         | Driver::Clickhouse
         | Driver::Sqlite
         | Driver::Libsql
-        | Driver::LibsqlFile => params.host.clone(),
+        | Driver::LibsqlFile
+        | Driver::Duckdb => params.host.clone(),
     };
     Destination::Socket(path)
 }
@@ -134,6 +135,7 @@ pub(crate) async fn profile_target(state: &Connections, id: &str) -> Result<Targ
         }
     };
     let target = target::target(&profile, &secrets)?;
+    let target = super::duckdb::hosted(state, &profile, target)?;
     if profile.helper.is_some() {
         let helper = super::helpers::acquire(state, &profile).await?;
         return Ok(target.through(Arc::new(openrows_net::helper::HelperDialer::new(helper))));

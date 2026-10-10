@@ -30,6 +30,7 @@ pub(crate) enum Shutdown {
 pub(crate) type LargeGrant = Arc<Mutex<Option<(FlowKey, LargeReservation)>>>;
 /// One process/connection lifetime; Drop initiates targeted cleanup without blocking.
 pub struct HostSession {
+    pub(crate) handshake: std::time::Duration,
     pub(crate) generation: u64,
     pub(crate) pid: u32,
     pub(crate) directory: PathBuf,
@@ -45,6 +46,11 @@ pub struct HostSession {
     pub(crate) failure: Arc<crate::failure_signal::FailureSignal>,
 }
 impl HostSession {
+    /// Parent-timed spawn through authenticated Ready, excluding prewarm wait.
+    #[must_use]
+    pub fn handshake_duration(&self) -> std::time::Duration {
+        self.handshake
+    }
     /// Identified child PID for diagnostics/tests; no PID-wide kill is used.
     #[must_use]
     pub fn pid(&self) -> u32 {
@@ -162,8 +168,12 @@ impl HostSession {
     /// # Errors
     /// Shutdown grace expired or child failed.
     pub async fn close(mut self) -> Result<(), HostFailure> {
-        self.send(0, &Control::Close)?;
-        let _ = self.shutdown.send(Shutdown::Close).await;
+        // A latched error can arrive before the monitor confirms process reap.
+        if let Err(failure) = self.send(0, &Control::Close) {
+            self.poison(failure);
+        } else {
+            let _ = self.shutdown.send(Shutdown::Close).await;
+        }
         loop {
             let state = *self.state.borrow_and_update();
             match state {
@@ -199,5 +209,56 @@ pub(crate) fn transport_failure(error: openrows_host_protocol::ProtocolError) ->
     match error {
         openrows_host_protocol::ProtocolError::Truncated => HostFailure::Exited,
         error => error.into(),
+    }
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+    use std::future::Future;
+
+    #[tokio::test]
+    async fn close_keeps_a_latched_failure_pending_until_reap_notification() -> std::io::Result<()>
+    {
+        let (session, state) = pending_session()?;
+        session.failure.record(HostFailure::MemoryLimit);
+        let mut closing = Box::pin(session.close());
+        let pending = std::future::poll_fn(|context| {
+            std::task::Poll::Ready(closing.as_mut().poll(context).is_pending())
+        })
+        .await;
+        assert!(pending, "a latched error is not proof of process reap");
+        state.send_replace(HostState::Failed(HostFailure::MemoryLimit));
+        assert_eq!(closing.await, Err(HostFailure::MemoryLimit));
+        Ok(())
+    }
+
+    fn pending_session() -> std::io::Result<(HostSession, watch::Sender<HostState>)> {
+        let (data, _peer) = tokio::net::UnixStream::pair()?;
+        let (outgoing, _writer) = ControlQueue::new();
+        let (_incoming, incoming) = ControlQueue::new();
+        let (shutdown, _requests) = mpsc::channel(1);
+        let (state, observe) = watch::channel(HostState::Ready);
+        let (_heartbeat, heartbeat) = watch::channel(tokio::time::Instant::now());
+        let failure = Arc::new(crate::failure_signal::FailureSignal::new(shutdown.clone()));
+        Ok((
+            HostSession {
+                handshake: std::time::Duration::ZERO,
+                generation: 1,
+                pid: 0,
+                directory: PathBuf::new(),
+                policy: "test-only",
+                outgoing,
+                incoming,
+                data,
+                state: observe,
+                heartbeat,
+                shutdown,
+                memory: MemoryBudget::default(),
+                large: Arc::default(),
+                failure,
+            },
+            state,
+        ))
     }
 }

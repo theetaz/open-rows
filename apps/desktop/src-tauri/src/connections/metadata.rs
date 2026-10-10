@@ -62,6 +62,12 @@ impl MetadataSessions {
                 .await?
                 .with_database(database)
                 .with_application_suffix("metadata");
+            if target.driver.dialect() == openrows_sql::Dialect::Duckdb {
+                return Err(IpcError::new(
+                    IpcErrorKind::Unsupported,
+                    "DuckDB catalog/edit/export metadata is not available yet; no extra connection was opened",
+                ));
+            }
             let connected = target::connect(&target)
                 .await
                 .map_err(|error| IpcError::from(&error))?;

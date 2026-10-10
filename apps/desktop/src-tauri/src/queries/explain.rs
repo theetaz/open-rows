@@ -26,6 +26,10 @@ fn engine(driver: Driver) -> Result<Engine, IpcError> {
         Driver::Mysql => Ok(Engine::MySql),
         Driver::Mariadb => Ok(Engine::MariaDb),
         Driver::Sqlite | Driver::LibsqlFile => Ok(Engine::Sqlite),
+        Driver::Duckdb => Err(IpcError::new(
+            IpcErrorKind::Unsupported,
+            "DuckDB explain visualization is not available yet",
+        )),
         Driver::Clickhouse => Err(IpcError::new(
             IpcErrorKind::Unsupported,
             "Explain plans are not available for ClickHouse yet",

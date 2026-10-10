@@ -37,7 +37,7 @@ export function ResultArea(props: {
     },
     [],
   );
-  const { showNotices } = executionSettings.use();
+  const { showNotices } = executionSettings.useValue();
   return (
     <>
       <ResultPane
@@ -47,7 +47,9 @@ export function ResultArea(props: {
         showNotices={showNotices}
         engine={props.engine}
         onCell={props.onCell}
-        onExport={sessionId ? exportResult : undefined}
+        onExport={
+          sessionId && props.engine !== 'duckdb' ? exportResult : undefined
+        }
         onExportable={props.onExportable}
         extra={props.extra}
       />

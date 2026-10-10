@@ -48,7 +48,7 @@ const STATEMENT_TIMEOUT_OPTIONS = STATEMENT_TIMEOUT_CHOICES.map((seconds) => ({
  * statement timeout, density and motion.
  */
 export function GeneralPane(): React.JSX.Element {
-  const general = generalSettings.use();
+  const general = generalSettings.useValue();
   return (
     <>
       <section aria-label="Session">
@@ -119,7 +119,7 @@ export function GeneralPane(): React.JSX.Element {
 
 /** Connection checks and the default statement timeout. */
 function ConnectionSettings(): React.JSX.Element {
-  const general = generalSettings.use();
+  const general = generalSettings.useValue();
   return (
     <section aria-label="Connections">
       <h3>Connections</h3>

@@ -17,6 +17,9 @@ openrows-host-protocol = { path = "../openrows-host-protocol" }
 tokio = { version = "1.53", features = ["io-util", "io-std", "net", "process", "rt-multi-thread", "sync", "time", "macros"] }
 arrow-array = "60"
 arrow-schema = "60"
+arrow-ipc = "60"
+arrow-ipc-58 = { package = "arrow-ipc", version = "58", optional = true }
+duckdb = { version = "=1.10506.0", default-features = false, features = ["bundled"], optional = true }
 openrows-driver-sqlite = { path = "../openrows-driver-sqlite", optional = true }
 openrows-sql = { path = "../openrows-sql" }
 zeroize = "1.8"
@@ -26,15 +29,17 @@ rustix = { version = "1.1", features = ["process", "stdio", "fs"] }
 
 [features]
 default = []
+duckdb = ["dep:duckdb", "dep:arrow-ipc-58"]
 test-sqlite = ["dep:openrows-driver-sqlite"]
 test-hooks = ["test-sqlite"]
 
 [dev-dependencies]
+arrow-cast = "60"
 openrows-driver-conformance = { path = "../openrows-driver-conformance" }
 openrows-core = { path = "../openrows-core" }
 openrows-types = { path = "../openrows-types" }
 openrows-results = { path = "../openrows-results" }
-openrows-driver-host = { path = ".", features = ["test-hooks"] }
+openrows-driver-host = { path = ".", features = ["test-hooks", "duckdb"] }
 tempfile = "3.27"
 
 [[bin]]

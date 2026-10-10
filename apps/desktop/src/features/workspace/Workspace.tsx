@@ -271,13 +271,17 @@ function Toolbar({
       })}
       documents={<NativeDocuments tabs={controller.tabs} />}
       health={status?.state ?? 'disconnected'}
-      onDatabase={() => {
-        setMode('database');
-      }}
+      onDatabase={
+        profile?.engine === 'duckdb'
+          ? undefined
+          : () => {
+              setMode('database');
+            }
+      }
       onPalette={() => {
         setMode('commands');
       }}
-      onRefresh={controller.refresh}
+      onRefresh={profile?.engine === 'duckdb' ? undefined : controller.refresh}
       safe={safe}
       prod={prod}
       onSafe={controller.toggleSafe}

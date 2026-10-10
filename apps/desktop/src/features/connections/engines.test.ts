@@ -11,7 +11,7 @@ import {
 } from './engines';
 import { moveSelection } from './useEnginePicker';
 
-it('lists every TablePlus connection type, eight of them implemented', () => {
+it('lists every TablePlus connection type, nine of them implemented', () => {
   expect(ENGINE_CHOICES).toHaveLength(22);
   const implemented = ENGINE_CHOICES.filter((choice) => choice.engine);
   expect(implemented.map((choice) => choice.engine)).toEqual([
@@ -23,6 +23,7 @@ it('lists every TablePlus connection type, eight of them implemented', () => {
     'libsql',
     'libsql-file',
     'sqlite',
+    'duckdb',
   ]);
   expect(new Set(ENGINE_CHOICES.map((choice) => choice.id)).size).toBe(22);
   expect(engineName('mariadb')).toBe('MariaDB');

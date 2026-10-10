@@ -178,9 +178,24 @@ pub async fn write_bootstrap(
         .await
         .map_err(|_| ProtocolError::Transport)
 }
+
+/// Closed inherited input before Ready denotes an incompatible helper.
+pub(crate) async fn bootstrap_host(
+    writer: &mut (impl tokio::io::AsyncWrite + Unpin),
+    bootstrap: &Bootstrap,
+) -> Result<(), HostFailure> {
+    write_bootstrap(writer, bootstrap).await.map_err(|error| {
+        // The child-exit and broken-input branches must agree before authentication.
+        match error {
+            ProtocolError::Transport => HostFailure::Incompatible,
+            error => error.into(),
+        }
+    })
+}
 fn postcard_bytes(bootstrap: &Bootstrap) -> Result<Vec<u8>, ProtocolError> {
     openrows_host_protocol::encode_bootstrap(bootstrap)
 }
+
 /// Read stdin once; payload/frame lengths are validated before allocation.
 /// # Errors
 /// Missing token, malformed or oversized bootstrap.
@@ -203,3 +218,6 @@ pub async fn read_bootstrap(
         .map_err(|_| ProtocolError::Truncated)?;
     openrows_host_protocol::decode_bootstrap(&bytes)
 }
+
+#[cfg(test)]
+mod tests;

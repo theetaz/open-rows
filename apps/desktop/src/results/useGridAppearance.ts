@@ -10,7 +10,7 @@ export function useGridAppearance(): {
   handle: React.RefObject<GridHandle | undefined>;
 } {
   const { resolved, gridAppearance } = useTheme();
-  const { gridDensity } = generalSettings.use();
+  const { gridDensity } = generalSettings.useValue();
   const theme = useRef(gridTheme(resolved, gridAppearance, gridDensity));
   const handle = useRef<GridHandle | undefined>(undefined);
   useLayoutEffect(() => {

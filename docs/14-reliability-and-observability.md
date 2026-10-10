@@ -148,3 +148,13 @@ There is no PATH/cwd/env search, download, automatic retry or in-process fallbac
 The shared runtime retains crash circuits by profile/typed driver. Installed
 macOS smoke is opt-in; Developer ID/notarization and Windows/Linux package
 launch remain named release gates in ADR-0010 and docs/27.
+
+## Implemented (M2-04a): DuckDB failure and dev monitor
+
+DuckDB interrupts run on the independent control runtime; a native worker executing SQL does not block Cancel or host heartbeats. Driver errors preserve native text and common SQLSTATEs. Host death marks only the owning actor Failed; explicit reconnect launches a fresh host, and memory contents are permanently lost. The UI reports DriverHost failure and warns about in-memory loss before connect. Existing process containment/reap behavior applies unchanged; file leases are retained until the monitor confirms reap. Close now also waits for that confirmation when a failure is already latched, preserving its original error while preventing an immediate reconnect from racing a retained reservation.
+
+The dev timing monitor uses Reflect.set for Tauri invoke instrumentation. A frozen/read-only invoke is left callable and timing instrumentation degrades gracefully, while error/long-task monitoring stays active. Vitest covers frozen and non-writable invoke properties.
+
+The native dev smoke also exposed React Compiler treating settings-store `.use()` calls as ordinary memoizable calls. The internal store hook is now named `.useValue()` at every call site, preserving hook order across rerenders. The native `just dev` launch was repeated after both fixes.
+
+Owner decision 2026-10-10 adds one database-free installed Probe prewarm after visible paint and idle. Its `Ready`, `Skipped(HostFailure)` or `Failed(HostFailure)` outcome and parent-clock duration/handshake milliseconds are retained by the runtime and written to the diagnostic log. No user-facing error or fallback is emitted, and it cannot trip any profile's crash circuit. An in-flight attempt delays only hosted DuckDB launch asynchronously; existing sessions and startup continue. Successful user DuckDB connects log only the driver id and authenticated handshake duration, without profiles, paths, SQL, credentials or native messages. A failed prewarm is never retried.

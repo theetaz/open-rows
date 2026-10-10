@@ -31,6 +31,8 @@ export function isSystemObject(
       );
     case 'sqlite':
       return object.name.toLowerCase().startsWith('sqlite_');
+    case 'duckdb':
+      return schema === 'information_schema' || schema === 'pg_catalog';
     case 'clickhouse':
       return schema === 'system' || schema === 'information_schema';
   }

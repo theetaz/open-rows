@@ -31,6 +31,7 @@ mod classify;
 mod context;
 pub mod ddl;
 mod dialect;
+pub mod duckdb;
 pub mod edit;
 mod explain;
 mod lexer;
@@ -58,6 +59,8 @@ pub use split::{ScriptStatement, Statement, StreamSplitter, split, statement_at}
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 #[non_exhaustive]
 pub enum Dialect {
+    /// `DuckDB`: `PostgreSQL` quoting, dollar strings and numbered parameters.
+    Duckdb,
     /// `PostgreSQL` (and wire-compatible servers).
     #[default]
     Postgres,

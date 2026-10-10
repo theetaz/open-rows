@@ -9,7 +9,7 @@ import { setToolPath, TOOL_KINDS, toolSettings } from './toolSettings';
 import styles from '../appearance/Appearance.module.css';
 
 // A hook name keeps React Compiler from memoizing the store's hook call.
-const useToolPaths = toolSettings.use;
+const useToolPaths = toolSettings.useValue;
 
 const NAMES: Readonly<Record<DumpToolKindDto, string>> = {
   pgDump: 'pg_dump',

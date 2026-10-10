@@ -47,6 +47,15 @@ pub struct WireCapabilities {
     pub objects: Vec<u16>,
 }
 impl WireCapabilities {
+    /// Production `DuckDB`: cancellation, text binding and startup SQL only.
+    #[must_use]
+    pub fn duckdb() -> Self {
+        Self {
+            location: 1,
+            features: vec![1, 2, 11],
+            objects: vec![],
+        }
+    }
     /// Current `SQLite` test-host contract: cancel, bind, startup; implemented catalog/editor facets.
     #[must_use]
     pub fn sqlite() -> Self {
@@ -103,6 +112,7 @@ impl Hello {
             arrow: 5,
             required: 15,
             capabilities: match driver {
+                crate::HostDriverId::Duckdb => WireCapabilities::duckdb(),
                 crate::HostDriverId::SqliteTest => WireCapabilities::sqlite(),
                 crate::HostDriverId::Probe => WireCapabilities {
                     location: 1,

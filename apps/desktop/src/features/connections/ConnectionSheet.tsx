@@ -68,6 +68,7 @@ export function ConnectionSheet(props: Props): React.JSX.Element {
           <>
             <NameFields form={form} />
             <FileFields form={form} />
+            <DuckdbNotice engine={engine} />
             {engine === 'libsql-file' && (
               <small className={styles.hint}>
                 SQLite-compatible files only. libSQL vector columns, ALTER
@@ -144,5 +145,20 @@ function ProfileActions(
         Duplicate
       </Button>
     </>
+  );
+}
+
+/** Pending DuckDB facets have an explicit reason before opening a connection. */
+function DuckdbNotice({
+  engine,
+}: {
+  engine: EngineDto;
+}): React.JSX.Element | null {
+  if (engine !== 'duckdb') return null;
+  return (
+    <small className={styles.hint}>
+      Queries and cancellation are available. Catalog browsing, editing, export,
+      backup and explain visualization are not available yet.
+    </small>
   );
 }

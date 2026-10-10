@@ -37,6 +37,7 @@ openrows-host-protocol = { path = "../openrows-host-protocol" }
 tokio = { version = "1.53", features = ["io-util", "io-std", "net", "process", "rt-multi-thread", "sync", "time", "macros"] }
 ring = "0.17"
 tempfile = "3.27"
+same-file = "1.0"
 zeroize = "1.8"
 
 [target.'cfg(unix)'.dependencies]

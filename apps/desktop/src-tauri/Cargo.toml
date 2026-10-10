@@ -7,6 +7,14 @@ repository.workspace = true
 rust-version.workspace = true
 default-run = "openrows-app"
 
+[features]
+ipc-bindings = []
+
+[[bin]]
+name = "gen-ipc"
+path = "src/bin/gen-ipc.rs"
+required-features = ["ipc-bindings"]
+
 # LocalAuthentication requires narrowly audited platform FFI in security/auth.rs.
 [lints.rust]
 unsafe_code = "deny"
@@ -74,7 +82,7 @@ tracing-subscriber = { version = "0.3.23", default-features = false, features = 
 
 [dev-dependencies]
 tempfile = "3.27"
-tokio = { version = "1.53", features = ["macros", "rt", "rt-multi-thread", "sync", "time"] }
+tokio = { version = "1.53", features = ["macros", "rt", "rt-multi-thread", "sync", "test-util", "time"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 block2 = "0.6"

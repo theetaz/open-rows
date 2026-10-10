@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Lazy isolated-session launcher and Tauri-free driver adapter.
 mod adapter;
+mod adapter_connect;
 mod adapter_metrics;
 pub use adapter_metrics::HostMetrics;
 mod adapter_cancel;
@@ -14,11 +15,17 @@ mod admission;
 pub use adapter::{HOSTED_SQLITE_CAPABILITIES, HostedConnection, HostedDriver};
 mod binary;
 mod circuit;
+mod duckdb;
+pub use duckdb::{DUCKDB_CAPABILITIES, DuckdbMetadata};
 mod failure_signal;
+mod file_reservations;
+pub use file_reservations::{FileReservation, FileReservations};
 mod handshake;
 mod launch;
 mod monitor;
 mod platform;
+mod prewarm;
+pub use prewarm::{PrewarmOutcome, PrewarmReport};
 mod resolve;
 mod runtime;
 mod session;

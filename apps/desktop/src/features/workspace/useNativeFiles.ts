@@ -22,7 +22,13 @@ export function acceptNativeFile(
 ): string | null {
   if (file.kind === 'rejected') return file.message;
   if (file.kind === 'database') {
-    input.connections.setSheet({ kind: 'new-file', path: file.path });
+    if (file.engine !== 'sqlite' && file.engine !== 'duckdb')
+      return 'Unsupported local database engine';
+    input.connections.setSheet({
+      kind: 'new-file',
+      path: file.path,
+      engine: file.engine,
+    });
     return null;
   }
   const { opened } = file;

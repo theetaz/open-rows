@@ -15,7 +15,7 @@ if [[ -z "$target" || ! "$profile" =~ ^[a-zA-Z0-9_-]+$ || ! "$target" =~ ^[a-zA-
 fi
 # Even native builds need --target: tests/benches uplift their feature-enabled
 # CARGO_BIN_EXE fixture into the top-level profile directory of the same cache.
-options=(--locked -p openrows-driver-host --bin openrows-driver-host --no-default-features --profile "$profile" --target "$target")
+options=(--locked -p openrows-driver-host --bin openrows-driver-host --no-default-features --features duckdb --profile "$profile" --target "$target")
 output="${CARGO_TARGET_DIR:-target}/$target"
 profile_dir=$profile
 [[ "$profile" != dev ]] || profile_dir=debug

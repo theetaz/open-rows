@@ -53,7 +53,7 @@ export function ConnectionSheets({
   if (sheet.kind === 'new-file')
     return (
       <ConnectionSheet
-        engine="sqlite"
+        engine={sheet.engine ?? 'sqlite'}
         filePath={sheet.path}
         onClose={close}
         onSaved={connections.saved}

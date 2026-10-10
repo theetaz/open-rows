@@ -19,6 +19,7 @@ export function FileFields({
   form: ConnectionForm;
 }): React.JSX.Element {
   const { draft, errors, update } = form;
+  const duckdb = draft.engine === 'duckdb';
   const pick = (kind: PickFileKind, create: boolean): void => {
     // A panel that fails to open leaves the typed path; nothing to undo.
     pickConnectionFile(kind).then(
@@ -31,7 +32,11 @@ export function FileFields({
   const memorySwitch = (
     <SwitchRow
       label="In-memory"
-      detail="A fresh database shared by this connection's tabs until it closes."
+      detail={
+        duckdb
+          ? 'Shared by this connection’s tabs. Closing the connection or losing the driver process permanently loses all data.'
+          : "A fresh database shared by this connection's tabs until it closes."
+      }
       checked={draft.fileMemory}
       onChange={(fileMemory) => {
         update({ fileMemory });
@@ -47,7 +52,7 @@ export function FileFields({
           className={styles.row}
           label="Database file"
           value={draft.filePath}
-          placeholder="/path/to/database.sqlite"
+          placeholder={`/path/to/database.${duckdb ? 'duckdb' : 'sqlite'}`}
           spellCheck={false}
           {...fieldError(errors.filePath)}
           onChange={(event) => {
@@ -57,7 +62,7 @@ export function FileFields({
         <Button
           aria-label="Choose database file"
           onClick={() => {
-            pick('sqliteDatabase', false);
+            pick(duckdb ? 'duckdbDatabase' : 'sqliteDatabase', false);
           }}
         >
           Choose…
@@ -65,7 +70,7 @@ export function FileFields({
         <Button
           aria-label="New database file"
           onClick={() => {
-            pick('newSqliteDatabase', true);
+            pick(duckdb ? 'newDuckdbDatabase' : 'newSqliteDatabase', true);
           }}
         >
           New…
@@ -76,7 +81,7 @@ export function FileFields({
       )}
       <SwitchRow
         label="Open read-only"
-        detail="SQLite refuses every write to this file."
+        detail={`${duckdb ? 'DuckDB' : 'SQLite'} refuses every write to this file.`}
         checked={draft.fileReadOnly}
         onChange={(fileReadOnly) => {
           update({ fileReadOnly });

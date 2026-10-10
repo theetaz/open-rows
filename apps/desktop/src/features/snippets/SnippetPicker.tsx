@@ -12,7 +12,7 @@ export function SnippetPicker(props: {
   onInsert: (body: string) => void;
   onClose: () => void;
 }): React.JSX.Element {
-  const snippets = snippetsFor(snippetSettings.use(), props.dialect);
+  const snippets = snippetsFor(snippetSettings.useValue(), props.dialect);
   const items = snippets.map((snippet) => ({
     id: snippet.id,
     label: snippet.name,

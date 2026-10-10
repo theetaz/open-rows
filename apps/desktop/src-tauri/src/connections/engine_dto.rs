@@ -11,6 +11,7 @@ use specta::Type;
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub(crate) enum EngineDto {
+    Duckdb,
     #[default]
     Postgres,
     Mysql,
@@ -26,6 +27,7 @@ pub(crate) enum EngineDto {
 impl From<Driver> for EngineDto {
     fn from(driver: Driver) -> Self {
         match driver {
+            Driver::Duckdb => Self::Duckdb,
             Driver::Postgres => Self::Postgres,
             Driver::Mysql => Self::Mysql,
             Driver::Mariadb => Self::Mariadb,
@@ -41,6 +43,7 @@ impl From<Driver> for EngineDto {
 impl From<EngineDto> for Driver {
     fn from(engine: EngineDto) -> Self {
         match engine {
+            EngineDto::Duckdb => Self::Duckdb,
             EngineDto::Postgres => Self::Postgres,
             EngineDto::Mysql => Self::Mysql,
             EngineDto::Mariadb => Self::Mariadb,

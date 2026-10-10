@@ -73,7 +73,7 @@ and WebKit pages.
 - PostgreSQL binary format for known types (ints, floats, bool, timestamps, uuid, numeric, bytea, arrays); text format only for unknown/extension types.
 - Pre-size builders from the previous batch's sizes; reuse buffers across batches where the API allows.
 - Batch size adaptive: start small for fast first paint (≤ 200 rows), grow to ~64 k cells / 4 MB.
-- ClickHouse and DuckDB return Arrow natively — pass through without re-encoding.
+- ClickHouse passes native Arrow through; DuckDB emits Arrow 58 and uses a bounded IPC bridge to workspace Arrow 60 (docs/05 §20).
 
 ### 3.2 Core
 
@@ -504,4 +504,72 @@ remains 2 s, separate from database connect; there is no retry or deadline
 increase. Fresh-copy/quarantine and warm results, hardware, cache limitations,
 `.app` and installer sizes are recorded in [ADR-0010](adr/0010-driver-host-process.md).
 The installer budget remains ≤ 40 MB, and connected idle footprint ≤ 200 MB;
-DuckDB and reference-machine checkpoint measurements remain M2-04 work.
+DuckDB query/package measurements follow below; reference-machine checkpoint measurements remain pending.
+
+### Implemented (M2-04a): DuckDB native query measurements
+
+Opt-in command: `OPENROWS_BENCH=1 cargo nextest run --workspace --locked -E 'binary(duckdb_streaming)' --no-capture`. On Apple M4 / 24 GiB / macOS 26.5, debug native helper, four build jobs, one benchmark test at a time:
+
+| Measurement | Observed | Budget / boundary |
+| --- | --- | --- |
+| Million-row `range()` stream | 0.419 s | Includes a deliberate 20 ms Pause and periodic `ps` sampling; no full-result collection |
+| First 200-row Arrow conversion | 0.071125 ms | ≤5 ms; excludes engine execution and UI paint |
+| Native interrupt → typed error drained | 1.419 ms | ≤1,000 ms; next `SELECT 1` succeeds |
+| Peak admitted batches / encoded / decoded bytes | 1 / 16,832 / 17,363 | One credit; typical encoded and decoded ceilings 4 MiB each |
+| Native helper RSS baseline / sampled peak / increment | 50,069,504 / 55,083,008 / 5,013,504 bytes | Whole-process RSS, not driver-buffer allocation; existing process ceiling 268,435,456 bytes |
+
+RSS is sampled while the sink is paused at roughly 100,000-row intervals. It includes native engine/runtime/library memory and does not certify whole-app idle physical footprint. An 8 MiB exclusive row is tested separately; a generated value above 64 MiB may hit the native engine/process memory limit before reaching the bounded Arrow bridge and then requires explicit reconnect. No DuckDB baseline exists on main, and reference-machine/end-to-end paint measurements remain unmeasured. Packaged release size and linked-helper handshake evidence is recorded in ADR-0010.
+
+The round-2 prewarm bundle has a 65,283,312-byte helper, 102,047,690-byte app logical size and ordinary UDZO DMG of 31,793,855 bytes against the unchanged ≤40,000,000-byte installer budget. The initial 44,267,783-byte DMG exceeded the budget. Feature-gating the development-only `gen-ipc` executable removed it from the shipping app and met the budget without changing compression format or rebuilding native C++. Strip/LZMA trials and signing/checksum evidence are in ADR-0010.
+
+The round-1 installed-helper first launch failed at the unchanged two-second deadline (`Unresponsive`, 2.025 s). The owner chose database-free prewarm on 2026-10-10: after visible paint, two animation frames and idle, Probe handshakes and closes/reaps once. DuckDB connects await an in-flight prewarm asynchronously; connects before idle proceed normally. There is no retry or deadline increase. Probe shares memory admission but uses a disposable crash circuit. Typed failures are diagnostic-only.
+
+Round-2 packaged command: `python3 -B scripts/bench-duckdb-prewarm.py 5 --executable <absolute-app>/Contents/MacOS/openrows-app`. The final rebuilt app's five fresh `ditto` copies retained test-only helper quarantine: prewarm total 12.621–17.008 ms; first-connect handshake 9.061–10.809 ms. All five Probe/SELECT-1/close cycles succeeded, as did the ten earlier copies (five with distinct ad-hoc helper identifiers). Final first-connect p95 is 10.809 ms, below 75 ms and the unchanged 2 s deadline. The exact samples are in ADR-0010; OS caches were not purged, and ad-hoc signatures do not certify downloaded Developer ID/Gatekeeper behavior. The final standard UDZO DMG used the supported `CI=true` bundler mode after Finder layout stalled; mounted-DMG layout/installation remains a release check.
+
+Whole-app startup remains a separate failed checkpoint: the final ten ordinary launches yielded warm p50 320.867 ms (≤400), but all-runs p95 2,196.104 ms (>800). The first launch spent 1,837.848 ms before Rust `main_entry`; prewarm is scheduled only after `window_shown`. Final fresh-copy window p95 was 2,550.572 ms, also above 800. Earlier p95 misses of 2,667.105 ms ordinary / 3,225.623 and 1,080.965 ms fresh copies are retained in ADR-0010; no startup budget was increased. The final bundle’s idle physical footprint at +5 s, without a connected database, measured 117.57 MB total / 86.61 MB WebView (three-run medians, within 200/140 MB). Earlier stable-bundle medians of 126.09 / 93.11 MB are retained in ADR-0010. Connected whole-app footprint and reference mac-low certification remain unmeasured.
+
+
+#### Round-3 startup attribution
+
+The unchanged `just bench-startup 10` method was repeated on fresh `ditto`
+bundles on the same Apple M4 Mac mini (24 GB, macOS 26.5), under `nice -n 10`.
+Cold means each copy's first launch; OS caches were not purged. Six copies
+each of main-equivalent A (3.34 MB no-DuckDB helper) and delivered B
+(DuckDB + post-reveal prewarm) were measured; prewarm-disabled C had three.
+All cold and warm samples, phases and limits are retained in ADR-0010.
+
+| Variant | Cold n | Cold min / p50 / p95 / max ms | Warm n | Warm min / p50 / p95 / max ms |
+| --- | ---: | --- | ---: | --- |
+| A: main-equivalent helper | 6 | 760.296 / 838.369 / 1,319.297 / 1,319.297 | 54 | 302.762 / 329.988 / 410.177 / 524.858 |
+| B: delivered DuckDB + prewarm | 6 | 974.679 / 1,004.248 / 1,142.271 / 1,142.271 | 54 | 304.629 / 322.977 / 414.053 / 428.338 |
+| C: B without prewarm | 3 | 971.686 / 1,053.998 / 2,665.524 / 2,665.524 | 27 | 313.702 / 346.605 / 399.070 / 441.578 |
+| Final B: stripped packaging | 6 | 741.178 / 814.677 / 2,753.240 / 2,753.240 | 54 | 300.962 / 327.898 / 357.769 / 371.168 |
+| Matched stripped A control | 3 | 637.738 / 650.810 / 861.066 / 861.066 | 27 | 302.809 / 316.708 / 344.604 / 353.509 |
+
+A/B share identical unsigned desktop code. Their XProtect analysis medians
+were 280.007 / 423.408 ms, with non-overlapping observed scan ranges; C was
+415.385 ms. This identifies a bundle-assessment increment before process main,
+independent of prewarm execution. A macOS-release-only symbol-stripping hook
+reduces the final DuckDB scan to 297.733 ms (three recoverable scan spans),
+but a matched stripped no-DuckDB control still scans in 245.230 ms. The final
+cold outlier also spends 1,651.974 ms from WebView creation to window shown,
+including 1,446.091 ms from setup to page-load completion. A similar delay
+occurred with prewarm disabled. Their underlying cause remains unattributed.
+
+**AC8 startup: Not met.** A establishes a pre-existing cold budget miss on this
+Mac; the extra DuckDB assessment cost was reduced, but a remaining control
+difference and unresolved tail prevent declaring no regression. Final B's
+warm p50 meets 400 ms; cold p95 remains above 800 ms. No budget changed or
+slow sample was discarded. Original Mach-O images and available dSYMs are
+cached outside the signed bundle; missing temporary Rust objects mean complete
+native symbolication is not certified.
+
+Final B retains DuckDB and prewarm in the ordinary sibling-helper layout:
+helper 42,106,512 bytes, app logical 72,805,098 bytes, UDZO DMG 27,677,454 bytes
+(12,322,546 below the 40,000,000-byte budget). Deep/strict code signatures and
+DMG checksum passed. The final direct packaged helper test passed 30 cycles:
+first 1,110.587 ms / 2,000 ms deadline; warm p50/p95/max
+10.732 / 13.340 / 16.332 ms. Its raw first handshake exceeds the 150 ms target;
+it bypasses app prewarm. App-driven prewarm evidence remains the earlier
+round-2 measurements. Full gates remained green; detailed evidence and the
+discarded nested-helper trial are in ADR-0010.

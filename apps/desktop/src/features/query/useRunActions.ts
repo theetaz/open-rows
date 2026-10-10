@@ -72,7 +72,7 @@ export function useRunActions(
   input: Tab,
 ): RunActions {
   const { tab, runs } = input;
-  const execution = executionSettings.use();
+  const execution = executionSettings.useValue();
   const dialect = editorDialect(input.connection.engine);
   const style = effectiveParams(settings.queryParams, dialect);
   const shift = useRef(0);

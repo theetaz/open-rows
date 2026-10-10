@@ -4,6 +4,8 @@
 /// Compile-time launch target, independent of profile fields or arbitrary argv.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum HostDriverId {
+    /// Production embedded analytical engine, always isolated.
+    Duckdb,
     /// Handshake/shutdown diagnostics only; exposes no database capabilities.
     Probe,
     /// Optional native fixture; production helpers reject this target.
@@ -14,6 +16,7 @@ impl HostDriverId {
     #[must_use]
     pub const fn argument(self) -> &'static str {
         match self {
+            Self::Duckdb => "duckdb",
             Self::Probe => "probe",
             Self::SqliteTest => "sqlite",
         }
@@ -22,6 +25,7 @@ impl HostDriverId {
     #[must_use]
     pub fn parse(argument: &str) -> Option<Self> {
         match argument {
+            "duckdb" => Some(Self::Duckdb),
             "probe" => Some(Self::Probe),
             "sqlite" => Some(Self::SqliteTest),
             _ => None,

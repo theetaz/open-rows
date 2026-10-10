@@ -118,7 +118,11 @@ fn runtime_preserves_host_failure_and_does_not_open_fallback()
 #[test]
 fn typed_driver_argument_is_the_entire_secret_free_command_surface()
 -> Result<(), Box<dyn std::error::Error>> {
-    for driver in [HostDriverId::Probe, HostDriverId::SqliteTest] {
+    for driver in [
+        HostDriverId::Probe,
+        HostDriverId::SqliteTest,
+        HostDriverId::Duckdb,
+    ] {
         let command = launch_command(&LaunchOptions {
             executable: std::env::current_exe()?,
             driver,
@@ -172,7 +176,11 @@ async fn unrelated_native_binary_exits_as_incompatible() -> Result<(), Box<dyn s
     let result = openrows_host_client::HostSupervisor::new(options)
         .spawn()
         .await;
-    assert!(matches!(result, Err(HostFailure::Incompatible)));
+    assert!(
+        matches!(result, Err(HostFailure::Incompatible)),
+        "unrelated helper outcome: {:?}",
+        result.as_ref().err()
+    );
     assert_eq!(fs::read_dir(directory.path())?.count(), 0);
     Ok(())
 }

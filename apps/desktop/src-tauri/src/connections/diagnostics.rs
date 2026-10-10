@@ -122,6 +122,7 @@ pub(crate) async fn connection_test(
             Some(super::credentials::password(&state, &state.app, &plan.profile).await?);
     }
     let target = target::target(&plan.profile, &plan.driver)?;
+    let target = super::duckdb::hosted(&state, &plan.profile, target)?;
     let started = Instant::now();
     let mut steps = Steps {
         engine: plan.profile.driver,

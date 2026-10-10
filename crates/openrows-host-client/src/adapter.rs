@@ -11,7 +11,7 @@ use openrows_driver_api::{
     schema::{SchemaChange, TableDetail},
     structure::{AlterPlan, AlterTable},
 };
-use openrows_host_protocol::{Control, Facets, OwnedConnect, Reply};
+use openrows_host_protocol::{Control, Facets, Reply};
 use std::sync::Arc;
 
 /// Hosted `SQLite`'s test contract; bulk inputs await a separately reviewed chunk protocol.
@@ -61,14 +61,15 @@ impl HostedDriver {
         request: &ConnectRequest,
         trace: &mut ConnectTrace,
     ) -> Result<HostedConnection, DriverError> {
-        if self.metadata.dialect() != openrows_sql::Dialect::Sqlite {
-            return Err(DriverError::Unsupported(
-                "host registry currently supports test SQLite only".into(),
-            ));
-        }
-        let config = OwnedConnect::try_from(request)?;
+        let (config, mut reservation, duckdb) =
+            crate::adapter_connect::prepare(request, self.metadata.dialect())?;
         let host = self.supervisor.spawn().await.map_err(DriverError::Host)?;
+        if let Some(reservation) = &mut reservation {
+            reservation.bind(&host);
+        }
         let mut connection = HostedConnection::new(host);
+        connection.duckdb = duckdb;
+        connection.reservation = reservation;
         let reply = connection.call(&Control::Connect(config)).await;
         if let Some(failed) = connection.failed_connect.take() {
             *trace = crate::adapter_trace::decode(failed).map_err(|_| connection.protocol())?;
@@ -85,27 +86,7 @@ impl HostedDriver {
         let Reply::Connected(connected) = reply else {
             return Err(connection.protocol());
         };
-        if connected.facets
-            != (Facets {
-                catalog: true,
-                editor: true,
-                admin: false,
-                bulk: false,
-            })
-            || connected.tls != 2
-        {
-            return Err(connection.protocol());
-        }
-        *trace = crate::adapter_trace::decode(connected.trace)?;
-        connection.server = ServerSummary {
-            product: connected.product,
-            version: connected.version,
-            flavour: connected.flavour,
-            database: connected.database,
-            user: connected.user,
-            tls: TlsStatus::LocalSocket,
-        };
-        connection.transaction = connected.in_transaction;
+        connection.connected(connected, trace)?;
         Ok(connection)
     }
 }
@@ -120,7 +101,11 @@ impl Driver for HostedDriver {
         self.metadata.home_database()
     }
     fn capabilities(&self) -> Capabilities {
-        HOSTED_SQLITE_CAPABILITIES
+        if self.metadata.dialect() == openrows_sql::Dialect::Duckdb {
+            crate::DUCKDB_CAPABILITIES
+        } else {
+            HOSTED_SQLITE_CAPABILITIES
+        }
     }
     fn supports_alter(&self) -> bool {
         self.metadata.supports_alter()
@@ -160,6 +145,9 @@ impl Driver for HostedDriver {
 }
 /// One host-owned native connection, exclusively held by its caller/actor.
 pub struct HostedConnection {
+    pub(crate) duckdb: bool,
+    pub(crate) reservation: Option<crate::FileReservation>,
+    pub(crate) facets: Facets,
     pub(crate) host: HostSession,
     pub(crate) cancel: Arc<Cancellation>,
     pub(crate) server: ServerSummary,
@@ -170,6 +158,11 @@ pub struct HostedConnection {
     pub(crate) metrics: Arc<crate::adapter_metrics::Metrics>,
 }
 impl HostedConnection {
+    /// Authenticated host startup on the parent clock, before database connect.
+    #[must_use]
+    pub fn handshake_duration(&self) -> std::time::Duration {
+        self.host.handshake_duration()
+    }
     /// Measured credit and batch high-water marks; no row data is retained.
     #[must_use]
     pub fn metrics(&self) -> crate::HostMetrics {
@@ -182,6 +175,14 @@ impl HostedConnection {
     }
     fn new(host: HostSession) -> Self {
         Self {
+            duckdb: false,
+            reservation: None,
+            facets: Facets {
+                catalog: false,
+                editor: false,
+                admin: false,
+                bulk: false,
+            },
             cancel: Cancellation::new(&host),
             host,
             next: 0,
@@ -209,9 +210,9 @@ impl Connection for HostedConnection {
         &self.server
     }
     fn catalog(&mut self) -> Option<&mut dyn openrows_driver_api::Catalog> {
-        Some(self)
+        self.facets.catalog.then_some(self)
     }
     fn editor(&mut self) -> Option<&mut dyn openrows_driver_api::Editor> {
-        Some(self)
+        self.facets.editor.then_some(self)
     }
 }

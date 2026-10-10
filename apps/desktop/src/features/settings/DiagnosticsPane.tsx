@@ -17,7 +17,7 @@ const LEVELS: readonly { value: LogLevel; label: string }[] = [
 
 /** Settings ▸ Diagnostics: the log level, the logs folder and the crash-report stub. */
 export function DiagnosticsPane(): React.JSX.Element {
-  const diagnostics = diagnosticsSettings.use();
+  const diagnostics = diagnosticsSettings.useValue();
   const [failure, setFailure] = useState<string | null>(null);
   return (
     <>

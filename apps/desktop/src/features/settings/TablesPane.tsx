@@ -7,7 +7,7 @@ import styles from '../appearance/Appearance.module.css';
 
 /** Shared table presentation, retaining explicit per-tab count and striping controls. */
 export function TablesPane(): React.JSX.Element {
-  const general = generalSettings.use();
+  const general = generalSettings.useValue();
   return (
     <>
       <section aria-label="Tables">

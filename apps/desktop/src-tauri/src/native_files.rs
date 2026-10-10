@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Native document handoff is queued until the webview is ready; never runs SQL.
-use crate::connections::{Connections, IpcError, IpcErrorKind};
+use crate::connections::{Connections, EngineDto, IpcError, IpcErrorKind};
 use crate::queries::files::OpenedSqlFileDto;
 use serde::Serialize;
 use specta::Type;
@@ -20,7 +20,7 @@ pub(crate) struct NativeFiles(Mutex<VecDeque<PathBuf>>);
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub(crate) enum NativeFileDto {
     Sql { opened: OpenedSqlFileDto },
-    Database { path: String },
+    Database { path: String, engine: EngineDto },
     Rejected { message: String },
 }
 
@@ -83,32 +83,33 @@ fn sniff(path: &Path) -> Result<NativeFileDto, IpcError> {
         .and_then(|s| s.to_str())
         .unwrap_or_default()
         .to_lowercase();
-    if extension == "duckdb" {
-        return Err(IpcError::new(
-            IpcErrorKind::Unsupported,
-            "DuckDB coming in M2-04",
-        ));
-    }
     if !path.is_absolute() || !path.is_file() {
         return Err(IpcError::invalid("Choose an existing local file"));
     }
     if extension == "sql" {
         return OpenedSqlFileDto::read(path).map(|opened| NativeFileDto::Sql { opened });
     }
-    if !["sqlite", "sqlite3", "db"].contains(&extension.as_str()) {
+    if !["sqlite", "sqlite3", "db", "duckdb"].contains(&extension.as_str()) {
         return Err(IpcError::invalid(
-            "Unexpected file type; use SQLite or UTF-8 .sql",
+            "Unexpected file type; use SQLite, DuckDB or UTF-8 .sql",
         ));
     }
     let mut header = [0; 16];
     File::open(path)
         .and_then(|mut file| file.read_exact(&mut header))
-        .map_err(|_| IpcError::invalid("This file is not a SQLite database"))?;
-    if &header != b"SQLite format 3\0" {
-        return Err(IpcError::invalid("This file is not a SQLite database"));
-    }
+        .map_err(|_| IpcError::invalid("This file has no valid database header"))?;
+    let engine = match extension.as_str() {
+        "duckdb" if &header[8..12] == b"DUCK" => EngineDto::Duckdb,
+        "sqlite" | "sqlite3" | "db" if &header == b"SQLite format 3\0" => EngineDto::Sqlite,
+        _ => {
+            return Err(IpcError::invalid(
+                "Database header does not match its file type",
+            ));
+        }
+    };
     Ok(NativeFileDto::Database {
         path: path.display().to_string(),
+        engine,
     })
 }
 
@@ -150,11 +151,17 @@ mod tests {
         assert!(sniff(&sql).is_err());
         std::fs::write(&db, "binary junk")?;
         assert!(sniff(&db).is_err());
-        assert!(
-            sniff(&root.path().join("data.duckdb"))
-                .err()
-                .is_some_and(|e| e.message.contains("M2-04"))
-        );
+        let duckdb = root.path().join("data.duckdb");
+        std::fs::write(&duckdb, b"12345678DUCK1234")?;
+        assert!(matches!(
+            sniff(&duckdb)?,
+            NativeFileDto::Database {
+                engine: EngineDto::Duckdb,
+                ..
+            }
+        ));
+        std::fs::write(&duckdb, b"SQLite format 3\0")?;
+        assert!(sniff(&duckdb).is_err());
         Ok(())
     }
     #[test]

@@ -42,7 +42,8 @@ export function useSettingsRevision(): number {
 type LocalSetting<T> = {
   get: () => T;
   set: (value: T) => void;
-  use: () => T;
+  /** Hook naming keeps React Compiler from memoizing a subscription call. */
+  useValue: () => T;
 };
 
 /**
@@ -88,7 +89,7 @@ export function localSetting<T>(
       listener();
     });
   });
-  return { get, set, use: () => useSyncExternalStore(subscribe, get) };
+  return { get, set, useValue: () => useSyncExternalStore(subscribe, get) };
 }
 
 function decode(text: string | null): unknown {

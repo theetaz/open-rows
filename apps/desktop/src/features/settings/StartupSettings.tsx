@@ -8,8 +8,8 @@ import styles from '../appearance/Appearance.module.css';
 
 /** Update/startup preferences, with explicit off-by-default reporting consent. */
 export function StartupSettings(): React.JSX.Element {
-  const general = generalSettings.use();
-  const diagnostics = diagnosticsSettings.use();
+  const general = generalSettings.useValue();
+  const diagnostics = diagnosticsSettings.useValue();
   const endpoint = updateFeed(general.updateChannel);
   return (
     <section aria-label="Startup and updates">

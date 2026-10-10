@@ -14,6 +14,8 @@ use super::AttachedFile;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Driver {
+    /// Embedded analytical database, always isolated in the driver host.
+    Duckdb,
     /// `PostgreSQL` and wire-compatible servers.
     #[default]
     Postgres,
@@ -36,7 +38,7 @@ pub enum Driver {
 
 impl Driver {
     /// Every engine, in picker order.
-    pub const ALL: [Self; 8] = [
+    pub const ALL: [Self; 9] = [
         Self::Postgres,
         Self::Mysql,
         Self::Mariadb,
@@ -45,12 +47,14 @@ impl Driver {
         Self::Sqlite,
         Self::Libsql,
         Self::LibsqlFile,
+        Self::Duckdb,
     ];
 
     /// Display name, e.g. `MariaDB`.
     #[must_use]
     pub fn name(self) -> &'static str {
         match self {
+            Self::Duckdb => "DuckDB",
             Self::Postgres => "PostgreSQL",
             Self::Mysql => "MySQL",
             Self::Mariadb => "MariaDB",
@@ -70,7 +74,7 @@ impl Driver {
             Self::Mysql | Self::Mariadb => Some(3306),
             Self::Sqlserver => Some(1433),
             Self::Clickhouse => Some(8123),
-            Self::Sqlite | Self::LibsqlFile => None,
+            Self::Sqlite | Self::LibsqlFile | Self::Duckdb => None,
             Self::Libsql => Some(443),
         }
     }
@@ -78,7 +82,7 @@ impl Driver {
     /// True for engines that open a local file instead of a server.
     #[must_use]
     pub fn is_file(self) -> bool {
-        matches!(self, Self::Sqlite | Self::LibsqlFile)
+        matches!(self, Self::Sqlite | Self::LibsqlFile | Self::Duckdb)
     }
 }
 
