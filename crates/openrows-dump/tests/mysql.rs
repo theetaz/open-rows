@@ -153,10 +153,9 @@ fn round_trip(
         server.sql(&format!("SELECT count(*) FROM {target}.items"))?,
         "3"
     );
-    let skipped = server.sql(&format!(
-        "SELECT count(*) FROM information_schema.tables WHERE table_schema = '{target}' AND table_name = 'skipped'"
-    ))?;
-    assert_eq!(skipped, "0");
+    assert_eq!(server.sql(&format!(
+        "SELECT table_name FROM information_schema.tables WHERE table_schema = '{target}' ORDER BY table_name"
+    ))?, "items");
     Ok(())
 }
 

@@ -213,6 +213,7 @@ fn quotes_in_values_are_escaped() {
 #[test]
 fn restore_lists_and_parallel_jobs() -> Result<(), DumpError> {
     let options = RestoreOptions {
+        schemas: Vec::new(),
         clean: Clean::DropIfExists,
         no_owner: true,
         no_privileges: true,
@@ -273,4 +274,40 @@ fn psql_runs_scripts_from_stdin_and_creates_databases() {
     let list = pg_list(&tool(ToolKind::PgRestore, 17), Path::new("/in/a.dump"));
     assert_eq!(args(&list), ["--list", "/in/a.dump"]);
     assert!(list.env.is_empty());
+}
+
+#[test]
+fn scoped_commands_keep_names_literal_and_passwords_out_of_argv() -> Result<(), DumpError> {
+    let selected = TableRef {
+        schema: "a.b".into(),
+        name: "a*\"quoted".into(),
+    };
+    let options = BackupOptions {
+        tables: vec![selected.clone()],
+        exclude_table_data: vec![selected],
+        ..BackupOptions::default()
+    };
+    let dump = pg_dump(
+        &tool(ToolKind::PgDump, 17),
+        &spec(),
+        &options,
+        Path::new("/out/scoped.dump"),
+    )?;
+    assert!(args(&dump).contains(&"--table=\"a.b\".\"a*\"\"quoted\"".into()));
+    assert!(args(&dump).contains(&"--exclude-table-data=\"a.b\".\"a*\"\"quoted\"".into()));
+    assert!(!args(&dump).iter().any(|arg| arg.contains("password=")));
+    let options = RestoreOptions {
+        schemas: vec!["a.b".into()],
+        ..RestoreOptions::default()
+    };
+    let restore = pg_restore(
+        &tool(ToolKind::PgRestore, 17),
+        &spec(),
+        (Path::new("/out/scoped.dump"), false),
+        &options,
+        None,
+    )?;
+    assert!(args(&restore).contains(&"--schema=a.b".into()));
+    assert!(!args(&restore).iter().any(|arg| arg.contains("password=")));
+    Ok(())
 }

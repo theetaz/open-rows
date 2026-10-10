@@ -106,6 +106,19 @@ pub fn mysqldump(
     output: &Path,
 ) -> Result<ToolCommand, DumpError> {
     options.validate()?;
+    if options
+        .schemas
+        .iter()
+        .any(|schema| schema != &spec.database)
+        || options
+            .tables
+            .iter()
+            .any(|table| table.schema != spec.database)
+    {
+        return Err(DumpError::invalid(
+            "MySQL backups select tables in the open database only",
+        ));
+    }
     let mut command = logged_in(tool, spec, ProgressKind::MysqlDump);
     command
         .arg("--verbose")
@@ -132,7 +145,7 @@ pub fn mysqldump(
             .arg("--set-gtid-purged=OFF")
             .arg("--column-statistics=0");
     }
-    command.arg(&spec.database);
+    command.arg("--").arg(&spec.database);
     for table in &options.tables {
         command.arg(&table.name);
     }

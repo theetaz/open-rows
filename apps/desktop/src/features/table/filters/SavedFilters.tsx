@@ -29,7 +29,12 @@ export function SavedFilters({
         name={naming}
         onName={setNaming}
         onSave={(name) => {
-          save({ name, rows: view.rows, combinator: view.combinator });
+          save({
+            name,
+            rows: view.rows,
+            groups: view.groups,
+            combinator: view.combinator,
+          });
           setChosen(name);
           setNaming(null);
         }}

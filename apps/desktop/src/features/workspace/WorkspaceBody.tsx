@@ -88,6 +88,7 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
           }}
           onDiagram={controller.showDiagram}
           onImport={controller.importData}
+          jobs={controller.jobs}
           objects={controller.objects}
           onOpenSql={(sql) => {
             controller.addQuery(sql);
@@ -185,6 +186,7 @@ export function WorkspaceRail(props: {
   onProcesses?: ((scope: TabScope) => void) | undefined;
   /** Run a `.sql` file on a connection's database. */
   onRunFile?: ((database: string, profileId: string) => void) | undefined;
+  jobs?: import('./JobActions').JobActions;
 }): React.JSX.Element {
   const { connections } = props;
   return (
@@ -205,6 +207,12 @@ export function WorkspaceRail(props: {
       onProcesses={(id, name) => {
         connections.select(id, name);
         props.onProcesses?.({ connectionId: id, database: name });
+      }}
+      onBackup={(id, name) => {
+        props.jobs?.backup(name, undefined, id);
+      }}
+      onRestore={(id, name) => {
+        props.jobs?.restore(name, undefined, id);
       }}
       onRunFile={(id, name) => {
         connections.select(id, name);

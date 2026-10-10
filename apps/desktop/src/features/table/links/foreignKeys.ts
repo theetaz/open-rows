@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { FilterDto, SchemaDiagramDto } from '@openrows/ipc';
+import type {
+  FilterDto,
+  SchemaDiagramDto,
+  TableDetailDto,
+} from '@openrows/ipc';
 
 /**
  * One foreign key seen from the browsed table (FR-GRID-07): `columns` are
@@ -11,6 +15,7 @@ export type KeyLink = {
   /** Constraint name. */
   name: string;
   schema: string;
+  sourceSchema?: string;
   /** The other table. */
   table: string;
   columns: readonly string[];
@@ -110,5 +115,36 @@ export function jumpFilters(
 
 /** Menu label of a key: the other table and its key columns, `orders (customer_id)`. */
 export function linkLabel(link: KeyLink): string {
-  return `${link.table} (${link.targetColumns.join(', ')})`;
+  return `${link.sourceSchema && link.sourceSchema !== link.schema ? `${link.schema}.` : ''}${link.table} (${link.targetColumns.join(', ')})`;
+}
+
+/** Outgoing keys from table detail retain referenced schemas and all composite columns. */
+export function detailLinks(
+  detail: TableDetailDto,
+  fallback: TableLinks,
+  schema: string,
+): TableLinks {
+  const outgoing = detail.constraints.flatMap((constraint): KeyLink[] => {
+    const target = constraint.references;
+    if (constraint.kind !== 'foreign' || !target) return [];
+    const columns =
+      target.columns.length === constraint.columns.length
+        ? target.columns
+        : fallback.outgoing.find((link) => link.name === constraint.name)
+            ?.targetColumns;
+    if (!columns || columns.length !== constraint.columns.length) return [];
+    return [
+      {
+        name: constraint.name,
+        schema: target.schema || schema,
+        ...(target.schema && target.schema !== schema
+          ? { sourceSchema: schema }
+          : {}),
+        table: target.table,
+        columns: constraint.columns,
+        targetColumns: columns,
+      },
+    ];
+  });
+  return { outgoing, incoming: fallback.incoming };
 }

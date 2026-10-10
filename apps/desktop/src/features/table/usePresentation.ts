@@ -50,23 +50,26 @@ export function usePresentation({
     view.rows,
     view.applied,
     view.combinator,
+    view.groups,
+    view.appliedGroups,
   ]);
   const { restored } = view;
   useEffect(() => {
     if (!restored) return;
-    const [hidden, sort, rows, applied, combinator] = JSON.parse(
-      remembered,
-    ) as [
-      TableView['hidden'],
-      TableView['sort'],
-      TableView['rows'],
-      TableView['applied'],
-      TableView['combinator'],
-    ];
+    const [hidden, sort, rows, applied, combinator, groups, appliedGroups] =
+      JSON.parse(remembered) as [
+        TableView['hidden'],
+        TableView['sort'],
+        TableView['rows'],
+        TableView['applied'],
+        TableView['combinator'],
+        TableView['groups'],
+        TableView['appliedGroups'],
+      ];
     writePresentation(
       key,
       presentationOf(
-        { hidden, sort, rows, applied, combinator },
+        { hidden, sort, rows, applied, combinator, groups, appliedGroups },
         readPresentation(key).saved,
       ),
     );

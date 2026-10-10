@@ -59,6 +59,7 @@ export function Workspace({
         }}
         onProcesses={controller.openProcesses}
         onRunFile={jobs.runFile}
+        jobs={jobs}
       />
       <div className={styles.main}>
         <Toolbar connections={connections} controller={controller} />

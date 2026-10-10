@@ -22,6 +22,7 @@ fn query(columns: &[&str], row_id: Option<&str>) -> TableQuery {
         },
         columns: columns.iter().map(|name| (*name).to_owned()).collect(),
         filters: Vec::new(),
+        groups: Vec::new(),
         combinator: Combinator::And,
         sort: None,
         row_id: row_id.map(str::to_owned),

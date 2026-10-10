@@ -2,6 +2,7 @@
 import type {
   CombinatorDto,
   FilterDto,
+  FilterGroupDto,
   FilterOperatorDto,
   SortDto,
   TableQueryDto,
@@ -13,6 +14,8 @@ const PAGE_SIZE = 300;
 /** One row of the filter bar; only enabled rows are applied. */
 export type FilterRow = {
   id: number;
+  /** Group identity; legacy rows belong to group 1. */
+  group?: number;
   enabled: boolean;
   column: string;
   operator: FilterOperatorDto;
@@ -20,6 +23,9 @@ export type FilterRow = {
   /** BETWEEN's upper bound. */
   second: string;
 };
+
+/** The join used by each parenthesised filter group. */
+export type FilterGroup = { id: number; combinator: CombinatorDto };
 
 export type ViewMode = 'data' | 'structure' | 'indexes';
 
@@ -34,6 +40,8 @@ export type TableView = {
   /** Filters in effect for the shown page. */
   applied: readonly FilterDto[];
   combinator: CombinatorDto;
+  groups?: readonly FilterGroup[] | undefined;
+  appliedGroups?: readonly FilterGroupDto[] | undefined;
   /** Hidden column names; the page selects only the visible ones. */
   hidden: readonly string[];
   filtersOpen: boolean;
@@ -176,7 +184,8 @@ export function tableQuery(
   return {
     target,
     columns: visible,
-    filters: [...view.applied],
+    filters: view.appliedGroups ? [] : [...view.applied],
+    ...(view.appliedGroups ? { groups: [...view.appliedGroups] } : {}),
     combinator: view.combinator,
     sort: view.sort,
     ...(rowId ? { rowId } : {}),
@@ -218,7 +227,12 @@ export function pageKey(
 
 /** Identity of the rows a count covers (filters only). */
 export function countKey(query: TableQueryDto): string {
-  return JSON.stringify([query.target, query.filters, query.combinator]);
+  return JSON.stringify([
+    query.target,
+    query.filters,
+    query.groups,
+    query.combinator,
+  ]);
 }
 
 const number = (value: number): string => value.toLocaleString('en-US');

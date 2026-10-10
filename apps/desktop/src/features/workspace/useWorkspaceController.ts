@@ -249,7 +249,14 @@ function fileCommands(
   scope: TabScope | undefined,
 ): Pick<
   ShellInput,
-  'openFile' | 'onRunFile' | 'onExportTables' | 'onBackup' | 'onRestore'
+  | 'openFile'
+  | 'onRunFile'
+  | 'onExportTables'
+  | 'onBackup'
+  | 'onRestore'
+  | 'onBackupSchema'
+  | 'onBackupTable'
+  | 'onRestoreSchema'
 > {
   const { jobs, catalog } = input;
   return {
@@ -268,6 +275,23 @@ function fileCommands(
     onRestore: () => {
       jobs.restore(catalog.database);
     },
+    onBackupSchema: () => {
+      jobs.backup(catalog.database, { schemas: [catalog.schema], tables: [] });
+    },
+    onRestoreSchema: () => {
+      jobs.restore(
+        catalog.database,
+        catalog.engine === 'postgres' ? catalog.schema : undefined,
+      );
+    },
+    onBackupTable: () => {
+      const tab = scope ? tabs.activeFor(scope) : undefined;
+      if (tab?.kind === 'table' && tab.table)
+        jobs.backup(tab.database, {
+          schemas: [],
+          tables: [{ schema: tab.table.schema, name: tab.table.name }],
+        });
+    },
   };
 }
 
@@ -285,7 +309,6 @@ export function useWorkspaceController(input: Input): WorkspaceController {
   useDatabasePrompt(connections, setMode);
   const [refreshes, refresh] = useRefresh(catalog);
   const active = scope ? tabs.activeFor(scope) : undefined;
-  const details = useDetails(active?.id);
   const tableInfo = useTableInfo(active?.id);
   const commands = queryCommands(tabs, scope, scopeOf);
   const openProcesses = processesOpener(connections, tabs, scope);
@@ -312,7 +335,6 @@ export function useWorkspaceController(input: Input): WorkspaceController {
     refresh,
     toggleSafe,
     setTheme,
-    // Both called without arguments: the selected schema, the active scope.
     onShowDiagram: showDiagram,
     onImport: importData,
     openProcesses,
@@ -327,6 +349,7 @@ export function useWorkspaceController(input: Input): WorkspaceController {
     prod,
   });
   return {
+    jobs: input.jobs,
     catalog,
     tabs,
     scope,
@@ -338,7 +361,7 @@ export function useWorkspaceController(input: Input): WorkspaceController {
     mode,
     setMode,
     refreshes,
-    ...details,
+    ...useDetails(active?.id),
     ...tableInfo,
     toggleSidebar,
     addQuery: commands.addQuery,
@@ -354,7 +377,7 @@ export function useWorkspaceController(input: Input): WorkspaceController {
   };
 }
 
-type WorkspaceController = Details &
+type WorkspaceController = { jobs: JobActions } & Details &
   TableInfoState & {
     catalog: Catalog;
     tabs: QueryTabs;

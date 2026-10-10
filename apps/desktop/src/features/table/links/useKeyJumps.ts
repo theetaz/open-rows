@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import type { EngineDto } from '@openrows/ipc';
 import { useMemo } from 'react';
 import { tableLayoutKey } from '../../../results/columnLayoutStore';
 import type { ResultMeta } from '../../query/run';
@@ -23,7 +24,8 @@ export type KeyJumps = {
 
 type Args = {
   target: TableTargetRef;
-  ready: boolean;
+  sessionId: string | null;
+  engine: EngineDto;
   /** Open (or focus) another table's tab in this database. */
   onOpenTable: ((schema: string, table: string) => void) | undefined;
   /** Report why a jump is impossible (a NULL key, an unreadable row). */
@@ -45,7 +47,7 @@ function valuesOf(fields: readonly RowField[]): Map<string, KeyValue> {
  * matching rows, one parameterised equality filter per key column.
  */
 export function useKeyJumps(args: Args): KeyJumps {
-  const links = useTableLinks(args.target, args.ready);
+  const links = useTableLinks(args.target, args.sessionId, args.engine);
   const columns = useMemo(() => linkedColumns(links), [links]);
   const open = (result: ResultMeta, row: number, link: KeyLink): void => {
     readRow(result, row).then(

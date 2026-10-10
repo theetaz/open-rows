@@ -287,3 +287,72 @@ fn local_tools_round_trip_with_verified_tls_through_a_forwarded_address() -> Tes
     assert_eq!(server.count(&target)?, "250");
     Ok(())
 }
+
+#[test]
+#[ignore = "needs PostgreSQL; run with `just test-pg`"]
+fn selected_tables_and_schemas_restore_only_the_selected_objects() -> TestResult {
+    let server = Server::from_env()?;
+    let source = unique("scope_src");
+    server.seeded(&source)?;
+    server.sql(&source, "CREATE TABLE omitted (id int); CREATE SCHEMA selected; CREATE TABLE selected.kept (id int); CREATE SCHEMA skipped; CREATE TABLE skipped.omitted (id int)")?;
+    let password = PrivateFile::pgpass(&server.password)?;
+    let address = Address::Tcp {
+        host: "127.0.0.1".into(),
+        port: 5432,
+    };
+    let dump_tool = container_tool(&server.container, ToolKind::PgDump, "pg_dump")?;
+    let restore_tool = container_tool(&server.container, ToolKind::PgRestore, "pg_restore")?;
+    let selections = [
+        BackupOptions {
+            tables: vec![openrows_dump::TableRef {
+                schema: "public".into(),
+                name: "items".into(),
+            }],
+            ..BackupOptions::default()
+        },
+        BackupOptions {
+            schemas: vec!["selected".into()],
+            ..BackupOptions::default()
+        },
+        BackupOptions::default(),
+    ];
+    for (index, options) in selections.into_iter().enumerate() {
+        let target = unique(&format!("scope_dst_{index}"));
+        server.sql("postgres", &format!("CREATE DATABASE {target}"))?;
+        let archive = format!("/tmp/{target}.dump");
+        let dump = pg_dump(
+            &dump_tool,
+            &spec(address.clone(), &source, &password),
+            &options,
+            Path::new(&archive),
+        )?;
+        succeed(&in_container(&dump, &server.container, &[])?)?;
+        let restore_options = if index == 2 {
+            server.sql(&target, "CREATE SCHEMA selected")?;
+            RestoreOptions {
+                schemas: vec!["selected".into()],
+                ..RestoreOptions::default()
+            }
+        } else {
+            RestoreOptions::default()
+        };
+        let restore = pg_restore(
+            &restore_tool,
+            &spec(address.clone(), &target, &password),
+            (Path::new(&archive), false),
+            &restore_options,
+            None,
+        )?;
+        succeed(&in_container(&restore, &server.container, &[])?)?;
+        let tables = server.sql(&target, "SELECT schemaname || '.' || tablename FROM pg_tables WHERE schemaname NOT IN ('pg_catalog', 'information_schema') ORDER BY 1")?;
+        assert_eq!(
+            tables,
+            if index == 0 {
+                "public.items"
+            } else {
+                "selected.kept"
+            }
+        );
+    }
+    Ok(())
+}

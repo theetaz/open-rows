@@ -15,6 +15,8 @@ import styles from './Rail.module.css';
 
 /** Opened databases of the active connection, shown under its tile. */
 type RailDatabases = {
+  onBackup?: ((id: string, name: string) => void) | undefined;
+  onRestore?: ((id: string, name: string) => void) | undefined;
   databases?: readonly OpenedDatabase[];
   restoredDatabases?: ((id: string) => readonly string[]) | undefined;
   database?: string;
@@ -180,34 +182,11 @@ function WorkspaceGroups(
                   props.onSelect(profile.id);
                 }}
               >
-                <DatabaseTiles
-                  databases={opened}
-                  active={selected ? (props.database ?? '') : ''}
-                  onSelect={(name) => {
-                    if (props.onProfileDatabase)
-                      props.onProfileDatabase(profile.id, name);
-                    else props.onDatabase?.(name);
-                  }}
-                  onClose={(name) => {
-                    if (props.onCloseProfileDatabase)
-                      props.onCloseProfileDatabase(profile.id, name);
-                    else props.onCloseDatabase?.(name);
-                  }}
-                  onProcesses={
-                    profile.processList && props.onProcesses
-                      ? (name) => {
-                          props.onProcesses?.(profile.id, name);
-                        }
-                      : undefined
-                  }
-                  onRunFile={
-                    props.onRunFile
-                      ? (name) => {
-                          props.onRunFile?.(profile.id, name);
-                        }
-                      : undefined
-                  }
-                  onKeyDown={navigateRail}
+                <RailDatabaseTiles
+                  {...props}
+                  profile={profile}
+                  opened={opened}
+                  selected={selected}
                 />
               </WorkspaceConnection>
             );
@@ -245,4 +224,58 @@ function restoredDatabases(
     .filter((name) => !live.some((item) => item.name === name))
     .map((name) => ({ name, state: 'disconnected' }));
   return [...live, ...disconnected];
+}
+
+function RailDatabaseTiles(
+  props: Parameters<typeof WorkspaceGroups>[0] & {
+    profile: ProfileDto;
+    opened: readonly OpenedDatabase[];
+    selected: boolean;
+  },
+): React.JSX.Element {
+  const { profile, opened, selected } = props;
+  return (
+    <DatabaseTiles
+      databases={opened}
+      active={selected ? (props.database ?? '') : ''}
+      onSelect={(name) => {
+        if (props.onProfileDatabase) props.onProfileDatabase(profile.id, name);
+        else props.onDatabase?.(name);
+      }}
+      onClose={(name) => {
+        if (props.onCloseProfileDatabase)
+          props.onCloseProfileDatabase(profile.id, name);
+        else props.onCloseDatabase?.(name);
+      }}
+      onProcesses={
+        profile.processList && props.onProcesses
+          ? (name) => {
+              props.onProcesses?.(profile.id, name);
+            }
+          : undefined
+      }
+      onRunFile={
+        props.onRunFile
+          ? (name) => {
+              props.onRunFile?.(profile.id, name);
+            }
+          : undefined
+      }
+      onBackup={
+        props.onBackup
+          ? (name) => {
+              props.onBackup?.(profile.id, name);
+            }
+          : undefined
+      }
+      onRestore={
+        props.onRestore
+          ? (name) => {
+              props.onRestore?.(profile.id, name);
+            }
+          : undefined
+      }
+      onKeyDown={navigateRail}
+    />
+  );
 }

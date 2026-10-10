@@ -12,9 +12,11 @@ import styles from './SchemaPicker.module.css';
 export function SchemaPicker({
   catalog,
   onCreate,
+  onMenu,
   children,
 }: {
   catalog: Catalog;
+  onMenu?: ((point: { x: number; y: number }) => void) | undefined;
   /** Open the create menu (new table, view, schema, …) at a point. */
   onCreate?: ((point: { x: number; y: number }) => void) | undefined;
   children?: ReactNode;
@@ -42,6 +44,10 @@ export function SchemaPicker({
       </IconButton>
       <select
         aria-label="Schema"
+        onContextMenu={(event) => {
+          event.preventDefault();
+          onMenu?.({ x: event.clientX, y: event.clientY });
+        }}
         value={catalog.schema}
         disabled={!names.length}
         onChange={(event) => {

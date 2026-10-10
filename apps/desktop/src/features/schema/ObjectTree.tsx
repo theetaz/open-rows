@@ -29,6 +29,7 @@ const SEARCH_LIMIT = 1_000;
  */
 export function ObjectTree(props: {
   catalog: Catalog;
+  onSchemaMenu?: ((schema: string, point: MenuPoint) => void) | undefined;
   search: string;
   onInspect?: ((target: InspectionTarget) => void) | undefined;
   onOpen: (object: ObjectRef, preview?: boolean) => void;
@@ -182,7 +183,20 @@ function CatalogSections(
           };
           return (
             <div key={schema}>
-              {schemas.length > 1 && <p className={styles.note}>{schema}</p>}
+              {schemas.length > 1 && (
+                <p
+                  className={styles.note}
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    props.onSchemaMenu?.(schema, {
+                      x: event.clientX,
+                      y: event.clientY,
+                    });
+                  }}
+                >
+                  {schema}
+                </p>
+              )}
               {groups
                 .filter(
                   (group) =>

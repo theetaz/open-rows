@@ -1,64 +1,50 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useState } from 'react';
-import { schemaDiagram } from '@openrows/ipc';
-import type { SchemaDiagramDto } from '@openrows/ipc';
+import { onCatalogChanged } from '@openrows/ipc';
+import type { EngineDto } from '@openrows/ipc';
 import type { TableTargetRef } from '../model';
-import { noLinks, tableLinks } from './foreignKeys';
+import { noLinks } from './foreignKeys';
 import type { TableLinks } from './foreignKeys';
+import { invalidateLinks, readLinks } from './linkMetadata';
 
-/** How long a schema's keys are reused before they are read again. */
-const FRESH_MS = 60_000;
-
-const cache = new Map<
-  string,
-  { at: number; read: Promise<SchemaDiagramDto> }
->();
-
-/** The schema's ER data (tables and keys), shared by every tab of the schema. */
-function keysOf(target: TableTargetRef): Promise<SchemaDiagramDto> {
-  const key = JSON.stringify([
-    target.profileId,
-    target.database,
-    target.schema,
-  ]);
-  const hit = cache.get(key);
-  if (hit && Date.now() - hit.at < FRESH_MS) return hit.read;
-  const read = schemaDiagram({
-    profileId: target.profileId,
-    database: target.database,
-    schema: target.schema,
-  });
-  read.catch(() => {
-    cache.delete(key);
-  });
-  cache.set(key, { at: Date.now(), read });
-  return read;
-}
-
-/**
- * The browsed table's foreign keys from the ER diagram data (FR-GRID-07);
- * none until read, or when the session is closed or the read fails.
- */
+/** Foreign keys keyed by session and qualified table; stale replies cannot follow a switched table. */
 export function useTableLinks(
   target: TableTargetRef,
-  ready: boolean,
+  sessionId: string | null,
+  engine: EngineDto,
 ): TableLinks {
-  const [links, setLinks] = useState<TableLinks>(noLinks);
+  const key = JSON.stringify([target, sessionId, engine]);
+  const [state, setState] = useState<{ key: string; links: TableLinks } | null>(
+    null,
+  );
   const { profileId, database, schema, table } = target;
   useEffect(() => {
-    if (!ready) return;
+    if (!sessionId) return;
     let live = true;
-    keysOf({ profileId, database, schema, table }).then(
-      (diagram) => {
-        if (live) setLinks(tableLinks(diagram, schema, table));
-      },
-      () => {
-        if (live) setLinks(noLinks);
-      },
-    );
+    let revision = 0;
+    const load = (): void => {
+      const current = ++revision;
+      readLinks({ profileId, database, schema, table }, sessionId, engine).then(
+        (links) => {
+          if (live && revision === current) setState({ key, links });
+        },
+        () => {
+          if (live && revision === current) setState({ key, links: noLinks });
+        },
+      );
+    };
+    load();
+    const unsubscribe = onCatalogChanged((event) => {
+      if (event.profileId !== profileId) return;
+      invalidateLinks(profileId);
+      load();
+    });
     return () => {
       live = false;
+      void unsubscribe.then((stop) => {
+        stop();
+      });
     };
-  }, [profileId, database, schema, table, ready]);
-  return links;
+  }, [profileId, database, schema, table, sessionId, engine, key]);
+  return sessionId && state?.key === key ? state.links : noLinks;
 }

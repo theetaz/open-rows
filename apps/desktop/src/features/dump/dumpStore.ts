@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useSyncExternalStore } from 'react';
-import type { DumpEventDto, PickedDumpDto } from '@openrows/ipc';
+import type { DumpEventDto, DumpTableDto, PickedDumpDto } from '@openrows/ipc';
 
 /** The open database a backup or restore acts on. */
 export type DumpTarget = {
@@ -13,6 +13,9 @@ export type DumpTarget = {
   /** The server as the connection reported it, to pick matching tools. */
   serverProduct: string | null;
   serverVersion: string | null;
+  /** Context-menu selection; absent for a whole-database backup. */
+  restoreSchema?: string | undefined;
+  backupScope?: { schemas: string[]; tables: DumpTableDto[] } | undefined;
 };
 
 type Finished = Extract<DumpEventDto, { type: 'finished' }>;

@@ -119,6 +119,7 @@ async fn the_browse_selects_the_integer_rowid_last() -> TestResult {
         table: table.table.clone(),
         columns: Vec::new(),
         filters: Vec::new(),
+        groups: Vec::new(),
         combinator: Combinator::And,
         sort: None,
         row_id: Some("_rowid_".into()),

@@ -19,3 +19,7 @@ harness = false
 
 [lints]
 workspace = true
+
+[[bench]]
+name = "filter_groups"
+harness = false

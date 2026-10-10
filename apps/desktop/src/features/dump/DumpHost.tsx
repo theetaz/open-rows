@@ -14,11 +14,14 @@ const DumpLog = lazy(() =>
 function View(): React.JSX.Element | null {
   const view = useDumpView();
   if (!view) return null;
-  if (view.kind === 'backup') return <BackupSheet target={view.target} />;
+  if (view.kind === 'backup')
+    return (
+      <BackupSheet key={JSON.stringify(view.target)} target={view.target} />
+    );
   if (view.kind === 'restore')
     return (
       <RestoreSheet
-        key={view.file.path}
+        key={JSON.stringify([view.target, view.file.path])}
         target={view.target}
         file={view.file}
       />

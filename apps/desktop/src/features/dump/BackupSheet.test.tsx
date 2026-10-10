@@ -6,6 +6,8 @@ import { ThemeProvider } from '@openrows/ui';
 import {
   cancelDump,
   dumpContext,
+  listSchemas,
+  listObjects,
   pickBackupFile,
   previewBackup,
   startBackup,
@@ -40,7 +42,7 @@ beforeEach(() => {
   });
 });
 
-async function open(): Promise<HTMLElement> {
+async function open(chosen: DumpTarget = target): Promise<HTMLElement> {
   render(
     <ThemeProvider>
       <JobsButton />
@@ -48,7 +50,7 @@ async function open(): Promise<HTMLElement> {
     </ThemeProvider>,
   );
   act(() => {
-    openBackup(target);
+    openBackup(chosen);
   });
   return screen.findByRole('dialog', { name: 'Back Up shop' });
 }
@@ -173,6 +175,153 @@ it('warns when the installed tool is older than the server', async () => {
   expect(
     await within(sheet).findByText('pg_dump 14 cannot back up PostgreSQL 17'),
   ).toBeInTheDocument();
+  act(() => {
+    showDump(null);
+  });
+});
+
+it('preselects a table, searches scope and refreshes the exact preview for schema/table choices', async () => {
+  const user = userEvent.setup();
+  vi.mocked(listSchemas).mockResolvedValueOnce({
+    data: [{ name: 'public', system: false, comment: null }],
+    stale: false,
+  });
+  vi.mocked(listObjects).mockResolvedValueOnce({
+    data: ['items', 'omitted'].map((name) => ({
+      schema: 'public',
+      name,
+      kind: 'table',
+      arguments: null,
+      rowEstimate: null,
+      comment: null,
+    })),
+    total: 2,
+    stale: false,
+  });
+  vi.mocked(previewBackup).mockImplementation((request) =>
+    Promise.resolve({
+      commands: [
+        request.options.schemas.length
+          ? 'pg_dump --schema="public"'
+          : request.options.tables.length
+            ? 'pg_dump --table="public"."items"'
+            : 'pg_dump shop',
+      ],
+      warnings: [],
+    }),
+  );
+  const sheet = await open({
+    ...target,
+    backupScope: { schemas: [], tables: [{ schema: 'public', name: 'items' }] },
+  });
+  expect(
+    await within(sheet).findByText('pg_dump --table="public"."items"'),
+  ).toBeVisible();
+  expect(
+    within(sheet).getByRole('checkbox', { name: 'Table public.items' }),
+  ).toBeChecked();
+  await user.type(
+    within(sheet).getByLabelText('Search backup objects'),
+    'items',
+  );
+  expect(
+    within(sheet).queryByRole('checkbox', { name: 'Table public.omitted' }),
+  ).toBeNull();
+  await user.click(
+    within(sheet).getByRole('checkbox', { name: 'Schema public' }),
+  );
+  expect(
+    await within(sheet).findByText('pg_dump --schema="public"'),
+  ).toBeVisible();
+  expect(previewBackup).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      options: expect.objectContaining({
+        schemas: ['public'],
+        tables: [],
+      }) as unknown,
+    }),
+  );
+  await user.click(within(sheet).getByRole('button', { name: 'Select none' }));
+  expect(
+    within(sheet).getByRole('button', { name: 'Back Up…' }),
+  ).toBeDisabled();
+  await user.click(within(sheet).getByRole('button', { name: 'Select all' }));
+  expect(
+    await within(sheet).findByText('pg_dump --schema="public"'),
+  ).toBeVisible();
+  act(() => {
+    showDump(null);
+  });
+});
+
+it('uses MySQL table selections in preview requests and starts the same scoped backup', async () => {
+  const user = userEvent.setup();
+  vi.mocked(dumpContext).mockResolvedValueOnce(
+    dumpContextOf({
+      engine: 'mysql',
+      tools: [tool({ tool: 'mysqldump', name: 'mysqldump' })],
+    }),
+  );
+  vi.mocked(previewBackup).mockResolvedValue({
+    commands: ['mysqldump shop items'],
+    warnings: [],
+  });
+  vi.mocked(pickBackupFile).mockResolvedValueOnce('/tmp/shop.sql');
+  const sheet = await open({
+    ...target,
+    backupScope: { schemas: [], tables: [{ schema: 'shop', name: 'items' }] },
+  });
+  expect(await within(sheet).findByText('mysqldump shop items')).toBeVisible();
+  await user.click(within(sheet).getByRole('button', { name: 'Back Up…' }));
+  expect(startBackup).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      options: expect.objectContaining({
+        tables: [{ schema: 'shop', name: 'items' }],
+      }) as unknown,
+    }),
+    expect.any(Function),
+  );
+  act(() => {
+    showDump(null);
+  });
+});
+
+it('waits for the selected scope preview and ignores a late older command', async () => {
+  const user = userEvent.setup();
+  const replies: ((value: {
+    commands: string[];
+    warnings: string[];
+  }) => void)[] = [];
+  vi.mocked(previewBackup).mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        replies.push(resolve);
+      }),
+  );
+  const sheet = await open();
+  await within(sheet).findByRole('checkbox', { name: 'Schema public' });
+  expect(replies).toHaveLength(1);
+  await user.click(
+    within(sheet).getByRole('checkbox', { name: 'Whole database' }),
+  );
+  await user.click(
+    within(sheet).getByRole('checkbox', { name: 'Schema public' }),
+  );
+  expect(replies).toHaveLength(2);
+  expect(
+    within(sheet).getByRole('button', { name: 'Back Up…' }),
+  ).toBeDisabled();
+  act(() => {
+    replies[1]?.({ commands: ['pg_dump --schema=public'], warnings: [] });
+  });
+  expect(
+    await within(sheet).findByText('pg_dump --schema=public'),
+  ).toBeVisible();
+  act(() => {
+    replies[0]?.({ commands: ['pg_dump whole database'], warnings: [] });
+  });
+  expect(within(sheet).queryByText('pg_dump whole database')).toBeNull();
+  expect(within(sheet).getByRole('button', { name: 'Back Up…' })).toBeEnabled();
   act(() => {
     showDump(null);
   });

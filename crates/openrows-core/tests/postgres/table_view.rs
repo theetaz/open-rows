@@ -52,6 +52,7 @@ fn users(filters: Vec<Filter>, sort: Option<Sort>) -> TableQuery {
         },
         columns: Vec::new(),
         filters,
+        groups: Vec::new(),
         combinator: Combinator::And,
         sort,
         row_id: None,

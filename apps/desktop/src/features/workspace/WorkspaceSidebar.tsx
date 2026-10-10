@@ -15,6 +15,8 @@ import type { Connections } from '../connections';
 import type { InspectionTarget } from '../inspection/target';
 import { ObjectActions } from './ObjectActions';
 import type { ObjectMenu, SessionLookup } from './ObjectActions';
+import { SchemaDumpMenu } from './SchemaDumpMenu';
+import type { JobActions } from './JobActions';
 import { CreateMenu } from './CreateMenu';
 import type { ObjectEditing } from './useObjectEditing';
 import styles from './Sidebar.module.css';
@@ -26,6 +28,7 @@ const sidebarSegments = ['Items', 'Queries', 'History'].map((label) => ({
 }));
 type Props = SidebarQueryProps & {
   catalog: Catalog;
+  jobs?: JobActions;
   onInspect: (target: InspectionTarget) => void;
   header: ReactNode;
   /** Engine tools beside the schema picker. */
@@ -57,33 +60,18 @@ export function WorkspaceSidebar(props: Props): React.JSX.Element {
   const { catalog } = props;
   const [segment, setSegment] = useState('Items');
   const [search, setSearch] = useSidebarSearch(catalog.profileId, segment);
-  const [menu, setMenu] = useState<ObjectMenu | null>(null);
+  const { menu, setMenu, closeMenu } = useObjectMenuState();
+  const [schemaMenu, setSchemaMenu] = useState<{
+    schema: string;
+    point: MenuPoint;
+  } | null>(null);
   const [create, setCreate] = useState<MenuPoint | null>(null);
-  const closeMenu = useCallback(() => {
-    setMenu(null);
-  }, []);
   const closeCreate = useCallback(() => {
     setCreate(null);
   }, []);
-  const ref = useRef<HTMLDivElement>(null);
+  const keyboard = useSidebarKeyboard(catalog, setSearch);
   return (
-    <div
-      ref={ref}
-      data-sidebar
-      onKeyDown={(event) => {
-        if (event.key === 'Escape') {
-          event.preventDefault();
-          setSearch('');
-        } else if (exact(event, 'f')) {
-          event.preventDefault();
-          ref.current?.querySelector('input')?.focus();
-        } else if (exact(event, 'r')) {
-          event.preventDefault();
-          catalog.refresh();
-        }
-      }}
-      className={styles.container}
-    >
+    <div {...keyboard} className={styles.container}>
       <GlassPanel className={styles.sidebar}>
         <SegmentedControl
           aria-label="Sidebar mode"
@@ -107,6 +95,9 @@ export function WorkspaceSidebar(props: Props): React.JSX.Element {
           {...props}
           segment={segment}
           search={search}
+          onSchemaMenu={(schema, point) => {
+            setSchemaMenu({ schema, point });
+          }}
           onMenu={(object, point) => {
             setMenu({ object, point });
           }}
@@ -114,12 +105,25 @@ export function WorkspaceSidebar(props: Props): React.JSX.Element {
         {catalog.database && (
           <SchemaPicker
             catalog={catalog}
+            onMenu={(point) => {
+              setSchemaMenu({ schema: catalog.schema, point });
+            }}
             onCreate={props.objects.features ? setCreate : undefined}
           >
             {props.schemaTools}
           </SchemaPicker>
         )}
       </GlassPanel>
+      {schemaMenu && props.jobs && (
+        <SchemaDumpMenu
+          {...schemaMenu}
+          catalog={catalog}
+          jobs={props.jobs}
+          onClose={() => {
+            setSchemaMenu(null);
+          }}
+        />
+      )}
       <SidebarMenus
         {...props}
         menu={menu}
@@ -157,6 +161,12 @@ function SidebarMenus(
         onImport={props.onImport}
         features={objects.features}
         onEditor={objects.open}
+        onBackup={(object) => {
+          props.jobs?.backup(object.database, {
+            schemas: [],
+            tables: [{ schema: object.schema, name: object.name }],
+          });
+        }}
       />
       {create && objects.features && (
         <CreateMenu
@@ -177,6 +187,7 @@ function SidebarItems(
     segment: string;
     search: string;
     onMenu: (object: ObjectRef, point: MenuPoint) => void;
+    onSchemaMenu: (schema: string, point: MenuPoint) => void;
   },
 ): React.JSX.Element {
   return (
@@ -188,6 +199,7 @@ function SidebarItems(
           onInspect={props.onInspect}
           onOpen={props.onOpen}
           onMenu={props.onMenu}
+          onSchemaMenu={props.onSchemaMenu}
         />
       )}
       {props.segment === 'Queries' && (
@@ -223,4 +235,34 @@ function useSidebarSearch(
       else setOtherSearch(text);
     },
   ];
+}
+
+function useSidebarKeyboard(
+  catalog: Catalog,
+  setSearch: (text: string) => void,
+) {
+  const ref = useRef<HTMLDivElement>(null);
+  return {
+    ref,
+    onKeyDown: (event: React.KeyboardEvent<HTMLDivElement>): void => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setSearch('');
+      } else if (exact(event, 'f')) {
+        event.preventDefault();
+        ref.current?.querySelector('input')?.focus();
+      } else if (exact(event, 'r')) {
+        event.preventDefault();
+        catalog.refresh();
+      }
+    },
+  };
+}
+
+function useObjectMenuState() {
+  const [menu, setMenu] = useState<ObjectMenu | null>(null);
+  const closeMenu = useCallback(() => {
+    setMenu(null);
+  }, []);
+  return { menu, setMenu, closeMenu };
 }

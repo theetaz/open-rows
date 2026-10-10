@@ -7,6 +7,7 @@
 //! become bind parameters (`$1`, `?` or `?1`) sent as text, so the server
 //! converts them to the column's type. `LIMIT` and `OFFSET` are integers
 //! formatted by Rust.
+mod groups;
 mod predicate;
 mod raw;
 
@@ -99,6 +100,15 @@ pub enum Combinator {
     Or,
 }
 
+/// A parenthesised set of filter rows, combined before the outer join.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FilterGroup {
+    /// Enabled rows of this group.
+    pub filters: Vec<Filter>,
+    /// Join between rows inside this group.
+    pub combinator: Combinator,
+}
+
 /// Sort direction of the ordered column.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SortDirection {
@@ -126,7 +136,9 @@ pub struct TableQuery {
     pub columns: Vec<String>,
     /// Enabled filters.
     pub filters: Vec<Filter>,
-    /// How the filters combine.
+    /// Parenthesised groups, joined with the outer combinator.
+    pub groups: Vec<FilterGroup>,
+    /// How the filters and groups combine.
     pub combinator: Combinator,
     /// Optional sort.
     pub sort: Option<Sort>,
@@ -267,6 +279,7 @@ pub fn all_rows_sql(
         table: table.clone(),
         columns: Vec::new(),
         filters: Vec::new(),
+        groups: Vec::new(),
         combinator: Combinator::And,
         sort: None,
         row_id: None,
@@ -321,11 +334,7 @@ fn select(
     }
     let table = dialect.qualified(&query.table.schema, &query.table.name)?;
     let mut params = Vec::new();
-    let predicates = query
-        .filters
-        .iter()
-        .map(|filter| predicate::predicate(dialect, filter, known, &mut params))
-        .collect::<Result<Vec<_>, _>>()?;
+    let predicates = groups::predicates(dialect, query, known, &mut params)?;
     let mut sql = format!("SELECT {projection} FROM {table}");
     if !predicates.is_empty() {
         let joiner = match query.combinator {

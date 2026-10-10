@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
+import { invalidateLinks } from './links/linkMetadata';
 import { useState } from 'react';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
 import type { CellRange } from '@openrows/grid';
-import { schemaDiagram, tablePage, tableSql } from '@openrows/ipc';
+import { schemaDiagram, tableDetail, tablePage, tableSql } from '@openrows/ipc';
 import type { PageRequest, QueryEventDto } from '@openrows/ipc';
 import type { Connections } from '../connections';
+import { sampleDetail } from '../../test/structureStub';
 import { profile } from '../../test/ipcStub';
 import { QueryContent, useQueryTabs } from '../query';
 import { openTableView } from './open';
@@ -120,6 +122,19 @@ vi.mocked(schemaDiagram).mockResolvedValue({
   limit: 400,
 });
 
+vi.mocked(tableDetail).mockResolvedValue({
+  ...sampleDetail,
+  constraints: [
+    {
+      name: 'users_org',
+      kind: 'foreign',
+      definition: '',
+      columns: ['id'],
+      references: { schema: 'public', table: 'orgs', columns: ['id'] },
+    },
+  ],
+});
+
 const connection = profile('orders-local');
 const connections = {
   active: connection,
@@ -176,10 +191,10 @@ function Harness(): React.JSX.Element {
   const tabs = useQueryTabs();
   const [row, setRow] = useState<SelectedRow | null>(null);
   const scope = { connectionId: connection.id, database: 'orders' };
-  const open = (name: string): void => {
+  const open = (name: string, schema = 'public'): void => {
     openTableView(tabs, scope, {
       database: 'orders',
-      schema: 'public',
+      schema,
       name,
       kind: 'table',
     });
@@ -201,7 +216,7 @@ function Harness(): React.JSX.Element {
         onCell={vi.fn()}
         onRow={setRow}
         onOpenTable={(table) => {
-          open(table.name);
+          open(table.name, table.schema);
         }}
       />
       {row && <RowDetails row={row} />}
@@ -259,7 +274,7 @@ it('builds a raw SQL filter with a live WHERE check, saves it and restores it ne
   document.body.innerHTML = '';
   vi.mocked(tablePage).mockClear();
   await mount();
-  expect(lastRequest().query.filters).toEqual([
+  expect(lastRequest().query.groups?.[0]?.filters).toEqual([
     { column: '', operator: 'raw', value: 'id > 5', second: '' },
   ]);
   const restored = within(screen.getByRole('search', { name: 'Filters' }));
@@ -321,4 +336,31 @@ it('shows the focused row as a form with previous and next', async () => {
   });
   await user.click(form.getByRole('button', { name: 'Show grid' }));
   expect(await screen.findByRole('grid')).toBeVisible();
+});
+
+it('shows and follows a cross-schema foreign key with its qualified row filters', async () => {
+  invalidateLinks(connection.id);
+  vi.mocked(tableDetail).mockResolvedValueOnce({
+    ...sampleDetail,
+    constraints: [
+      {
+        name: 'users_customers',
+        kind: 'foreign',
+        definition: '',
+        columns: ['id'],
+        references: { schema: 'b', table: 'customers', columns: ['id'] },
+      },
+    ],
+  });
+  const user = await mount();
+  page(300);
+  expect(await screen.findByText('Linked: id')).toBeVisible();
+  await user.click(screen.getByRole('button', { name: 'Follow key' }));
+  await screen.findByRole('region', { name: 'customers table' });
+  await waitFor(() => {
+    expect(lastRequest().query).toMatchObject({
+      target: { schema: 'b', table: 'customers' },
+      filters: [{ column: 'id', operator: 'equal', value: '7', second: '' }],
+    });
+  });
 });

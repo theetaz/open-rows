@@ -31,7 +31,7 @@ export function writePresentation(
     !presentation.rows.length &&
     !presentation.applied.length &&
     !presentation.saved.length;
-  store.write(key, empty ? undefined : presentation);
+  store.write(key, empty ? undefined : { ...presentation, version: 2 });
 }
 
 /** A table's saved filters, and functions to add (or replace) and remove one. */
