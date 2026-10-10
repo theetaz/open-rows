@@ -106,7 +106,7 @@ The UI reads capabilities to decide which toolbar buttons, tree nodes and editor
 | libSQL / Turso | SQLite-compatible local files + remote Hrana 3 HTTP | own Hrana-over-HTTP client; shared `rusqlite` locally | Apache-2.0; MIT (rusqlite) | 2 | Implemented M2-05 (§17); WebSocket, embedded replicas and libSQL-only local extensions excluded. |
 | SQL Server 2017+ / Azure SQL | TDS 7.4 | own client on `openrows-net` streams (M2-02, see §14; `tiberius` was the plan) | — | 2 | `rustls` TLS inside `PRELOGIN`; SQL logins (Windows/Entra ID later); cancel via the TDS attention signal on the same connection; `GO` batch separator handled by the splitter. |
 | ClickHouse 25.3 LTS | HTTP interface (and native later) | own client on `hyper` using `FORMAT ArrowStream` | — | 2 | Implemented in M2-03 (§17): native incremental ArrowStream, HTTP(S) over routes, bound parameters, catalog and query cancellation; read-only grids (no transactional mutations). |
-| DuckDB | in-process | `duckdb` crate (C++ library) | MIT | 2 | Native Arrow output. FFI → eligible for out-of-process driver host. |
+| DuckDB | embedded in driver host | `duckdb` crate (C++ library) | MIT | 2 | M2-04 planned; native Arrow output. Mandatory hosted execution and writable-file session restrictions accepted in [ADR-0010](adr/0010-driver-host-process.md); not implemented. |
 | MongoDB 5.0+ | OP_MSG | official `mongodb` crate | Apache-2.0 | 2 | Shell-like query parser in `openrows-sql/mql`; documents → JSON column + flattened tabular view; `killOp` for cancel. |
 | Redis 6+ / Valkey / KeyDB / Dragonfly | RESP2/RESP3 | `redis` crate | BSD-3 | 2 | `SCAN`-based key browser (never `KEYS *`); type-aware editors; cluster and sentinel support. |
 | Oracle 19c+ | OCI | `oracle` crate (ODPI-C, loads **user-installed** Instant Client at runtime) | UPL/Apache | 3 | Not bundled; app detects/locates Instant Client and guides installation. Runs in driver host. |
@@ -199,6 +199,8 @@ A shared test crate (`openrows-driver-conformance`) parameterised by driver. Eve
 
 Drivers built on C/C++ libraries (Oracle via ODPI-C, DuckDB, ADBC drivers) can crash the process on bugs we cannot catch. These drivers can run inside `openrows-driver-host`, a small helper executable:
 
+**Design accepted 2026-10-10 (M2-01), implementation pending:** [ADR-0010 — One driver host process per hosted session](adr/0010-driver-host-process.md) specifies the proposed process boundary, protocol, failure/restart policy, security, sidecar distribution and validation plan. DuckDB is mandatory-hosted; PostgreSQL, MySQL/MariaDB, SQLite and MSSQL keep their current in-process implementations. A writable DuckDB file has one shared hosted session: catalog/edit/export operations queue on it because separate writer/reader processes cannot share the file. All-read-only sessions may have separate hosts; memory databases live only in their owning host. These are accepted M2-04 restrictions, not changes to existing drivers.
+
 ```mermaid
 sequenceDiagram
     participant Core as Core (session actor)
@@ -207,21 +209,21 @@ sequenceDiagram
     participant Lib as Native library
 
     Core->>Proxy: connect(cfg)
-    Proxy->>Host: spawn (if not running), handshake over local socket
+    Proxy->>Host: spawn one host for this session, authenticated handshake
     Proxy->>Host: Connect{cfg}
     Host->>Lib: native connect
     Core->>Proxy: execute(req)
     Proxy->>Host: Execute{req}
     Host->>Lib: run
     Lib-->>Host: rows
-    Host-->>Proxy: Arrow IPC frames
+    Host-->>Proxy: credit-controlled Arrow IPC on data lane
     Proxy-->>Core: RecordBatches into sink
-    Note over Host: On crash: proxy sees EOF,<br/>session → Failed, host respawned on next use
+    Note over Host: On crash: exit/EOF → this session Failed;<br/>fresh host on new explicit connect, no request replay
 ```
 
-- Transport: Unix domain socket (macOS/Linux) / named pipe (Windows); frames are length-prefixed `postcard`-encoded control messages plus raw Arrow IPC payloads.
-- Because the `Driver` trait is already message-shaped (requests in, batches out), `RemoteDriver` implements the same trait; the rest of the engine cannot tell the difference.
-- Default: in-process for pure-Rust drivers; out-of-process for FFI drivers. Users can override per driver.
+- Transport: separate control and data Unix domain sockets (macOS/Linux) / named pipes (Windows); length-prefixed `postcard` control DTOs and uncompressed Arrow IPC data. Cancellation, heartbeats and Pause/Resume remain live while data is paused.
+- `HostedDriver`/`HostedConnection` implement the actual boxed-future `Driver`/`Session` and supported connection facets. New typed host failures and lifecycle notifications are required; the current sink has `Continue`/`Stop` only, so credit admission and spill notifications must implement the Pause/Resume path.
+- Ship `openrows-driver-host` as a signed Tauri sidecar, launched lazily by Rust; pass credentials over authenticated IPC, never argv/environment. No DuckDB in-process override. Future Oracle/ADBC hosting needs its own capability, routing, library and licence review; the process boundary is not a security sandbox.
 
 ## 10. Non-SQL paradigms in a shared UI
 
