@@ -15,6 +15,7 @@ afterEach(() => {
   editor?.destroy();
   editor = undefined;
   document.body.replaceChildren();
+  vi.useRealTimers();
 });
 
 function mount(doc: string, vim = false): SqlEditor {
@@ -128,6 +129,7 @@ it('read-only viewers keep their text and are not editable', () => {
 });
 
 it('shows completions with kind icons and muted details', async () => {
+  vi.useFakeTimers();
   const parent = document.createElement('div');
   document.body.append(parent);
   editor = mountSqlEditor(parent, {
@@ -142,23 +144,21 @@ it('shows completions with kind icons and muted details', async () => {
     },
   });
   const { view } = editor;
+  view.focus();
   view.dispatch({ selection: { anchor: view.state.doc.length } });
   startCompletion(view);
-  await vi.waitFor(() => {
-    expect(currentCompletions(view.state).length).toBeGreaterThan(0);
-  });
-  const row = await vi.waitFor(() => {
-    const found = document.querySelector('.cm-tooltip-autocomplete li');
-    if (!found) throw new Error('no completion row yet');
-    return found;
-  });
+  // CodeMirror debounces explicit completion by 50 ms; resolve the catalog too.
+  await vi.advanceTimersByTimeAsync(50);
+  expect(currentCompletions(view.state).length).toBeGreaterThan(0);
+  const row = document.querySelector('.cm-tooltip-autocomplete li');
+  if (!row) throw new Error('no completion row');
   expect(row.querySelector('svg.cm-sqlIcon-table')).not.toBeNull();
   expect(row.querySelector('.cm-completionLabel')?.textContent).toBe('users');
   expect(row.querySelector('.cm-completionDetail')?.textContent).toBe('public');
-  // Accepting is ignored during CodeMirror's short interaction delay.
-  await vi.waitFor(() => {
-    expect(acceptCompletion(view)).toBe(true);
-  });
+  // Acceptance is ignored for 75 ms after opening, independent of machine load.
+  expect(acceptCompletion(view)).toBe(false);
+  await vi.advanceTimersByTimeAsync(75);
+  expect(acceptCompletion(view)).toBe(true);
   expect(view.state.doc.toString()).toBe('SELECT * FROM users');
 });
 

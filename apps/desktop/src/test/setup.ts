@@ -6,12 +6,26 @@ import { afterEach, beforeEach, vi } from 'vitest';
 // Lazy chunks resolve slowly on 2-vCPU CI runners.
 configure({ asyncUtilTimeout: process.env.CI ? 5_000 : 1_000 });
 
+const createRange = document.createRange.bind(document);
+let restoreRange = (): void => undefined;
+
 beforeEach(() => {
   localStorage.clear();
+  // jsdom has no layout; CodeMirror's scheduled measurements still use these APIs.
+  const rangeSpy = vi.spyOn(document, 'createRange').mockImplementation(() => {
+    const range = createRange();
+    range.getBoundingClientRect = () => new DOMRect();
+    range.getClientRects = () => Object.assign([], { item: () => null });
+    return range;
+  });
+  restoreRange = () => {
+    rangeSpy.mockRestore();
+  };
   vi.stubGlobal(
     'ResizeObserver',
     class {
       observe(): void {}
+      unobserve(): void {}
       disconnect(): void {}
     },
   );
@@ -25,4 +39,7 @@ beforeEach(() => {
   );
 });
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  restoreRange();
+});

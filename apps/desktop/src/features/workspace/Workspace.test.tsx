@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -25,7 +26,15 @@ vi.mock('@openrows/ipc', async () =>
 beforeEach(() => {
   vi.stubGlobal('innerWidth', 1280);
   vi.mocked(tablePage).mockClear();
+  vi.mocked(searchHistory).mockResolvedValue([]);
 });
+
+/** Finish lazy imports and their React commits before inspecting a new tab. */
+async function settleTab(): Promise<void> {
+  await act(async () => {
+    await vi.dynamicImportSettled();
+  });
+}
 function mount(): ReturnType<typeof userEvent.setup> {
   render(
     <ThemeProvider>
@@ -82,6 +91,7 @@ async function expectPreview(
     screen.getByRole('complementary', { name: 'Sidebar' }),
   );
   await user.click(orders);
+  await settleTab();
   expect(orders).toHaveAttribute('aria-selected', 'true');
   const preview = await screen.findByRole('tab', { name: /^orders/ });
   expect(preview.parentElement).toHaveAttribute('data-preview', 'true');
@@ -94,6 +104,7 @@ async function expectPreview(
 it('switches sidebar segments, lazily expands real sections and opens objects on double-click', async () => {
   const user = mount();
   await connectTo();
+  await settleTab();
   const sidebar = within(
     screen.getByRole('complementary', { name: 'Sidebar' }),
   );
@@ -137,6 +148,7 @@ it('switches sidebar segments, lazily expands real sections and opens objects on
   const orders = sidebar.getByRole('treeitem', { name: 'orders ~2.4M' });
   await expectPreview(user, orders);
   await user.dblClick(orders);
+  await settleTab();
   expect(
     await screen.findByRole('region', { name: 'orders table' }),
   ).toBeVisible();
@@ -184,6 +196,7 @@ it('opens objects of another database in its own tab set on its own session', as
   await user.dblClick(
     await screen.findByRole('treeitem', { name: 'orders_2024 ~820K' }),
   );
+  await settleTab();
   expect(screen.queryByRole('tab', { name: /SQL Query 1/ })).toBeNull();
   expect(screen.getByRole('tab', { name: /orders_2024/ })).toHaveAttribute(
     'aria-selected',
@@ -208,6 +221,7 @@ it('opens objects of another database in its own tab set on its own session', as
   await user.dblClick(
     await screen.findByRole('treeitem', { name: 'orders_2024_id_seq' }),
   );
+  await settleTab();
   expect(
     await screen.findByRole('region', { name: 'Object inspection' }),
   ).toBeVisible();
@@ -237,6 +251,7 @@ it('opens, switches and closes query tabs per connection', async () => {
   );
   await user.click(screen.getByRole('button', { name: 'New tab' }));
   await user.click(screen.getByRole('button', { name: 'New SQL query' }));
+  await settleTab();
   expect(screen.getByRole('tab', { name: /SQL Query 2/ })).toHaveAttribute(
     'aria-selected',
     'true',

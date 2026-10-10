@@ -56,7 +56,14 @@ flowchart TB
 
 ### 2.3 Frontend tests
 
-- **Unit/component:** Vitest + Testing Library for components, stores, formatters, keyboard system, autocomplete context analyser. Concurrent DOM environments are capped at four workers to prevent resource contention on shared runners; isolation and the five-second test timeout remain unchanged.
+- **Unit/component:** Vitest + Testing Library for components, stores, formatters, keyboard system, autocomplete context analyser. Concurrent DOM environments are capped at four workers to prevent resource contention on shared runners; isolation and the existing test and assertion timeouts remain unchanged.
+
+  Run from the repository root so `vitest.config.ts` supplies jsdom and
+  `apps/desktop/src/test/setup.ts`. For a single file, use
+  `pnpm exec vitest run apps/desktop/src/features/import/ImportSheet.test.tsx --maxWorkers=2`.
+  For shuffled stability checks, add `--repeats 30 --sequence.shuffle` (Vitest 5).
+  Package-directory invocations select the desktop Vite config and lack the DOM
+  test environment; they are unsupported. See [CONTRIBUTING](../CONTRIBUTING.md#frontend-test-commands).
 - **Grid:** deterministic rendering tests — paint to an offscreen canvas with a synthetic data source and compare against golden images (per theme, DPR 1 and 2) with tolerance; interaction tests for selection/keyboard.
 - **UI integration:** Playwright against the Vite web build with a **mock IPC layer** generated from the same `tauri-specta` types. Fixtures replay recorded core responses (including Arrow tiles). Runs in WebKit and Chromium.
 - **Accessibility:** `axe-core` checks in Playwright for every screen; keyboard-only journey scripts.

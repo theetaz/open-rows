@@ -94,9 +94,12 @@ it('maps by name, highlights rejected values and checks conflicts', async () => 
   const user = userEvent.setup();
   renderSheet();
   await pickFile(user);
-  expect(await screen.findByLabelText('Source of id')).toHaveValue('column:0');
-  expect(screen.getByLabelText('Source of name')).toHaveValue('column:1');
-  expect(screen.getByLabelText('id identifies rows')).toBeChecked();
+  // The controls exist before the defaults effect applies the name mapping.
+  await waitFor(() => {
+    expect(screen.getByLabelText('Source of id')).toHaveValue('column:0');
+    expect(screen.getByLabelText('Source of name')).toHaveValue('column:1');
+    expect(screen.getByLabelText('id identifies rows')).toBeChecked();
+  });
   const preview = screen.getByRole('table', { name: 'File preview' });
   const bad = await within(preview).findByText('x2');
   // The highlight arrives with the preview checked against the mapping.
@@ -147,7 +150,9 @@ it('confirms, imports with progress and reports the summary', async () => {
   const user = userEvent.setup();
   const onClose = renderSheet();
   await pickFile(user);
-  await screen.findByLabelText('Source of id');
+  await waitFor(() => {
+    expect(screen.getByLabelText('Source of id')).toHaveValue('column:0');
+  });
   await user.selectOptions(
     screen.getByLabelText('When a key already exists'),
     'update',
@@ -226,7 +231,9 @@ it('blocks imports on read-only connections but still checks', async () => {
   const user = userEvent.setup();
   renderSheet({ readOnly: true });
   await pickFile(user);
-  await screen.findByLabelText('Source of id');
+  await waitFor(() => {
+    expect(screen.getByLabelText('Source of id')).toHaveValue('column:0');
+  });
   expect(screen.getByRole('button', { name: 'Import…' })).toBeDisabled();
   expect(
     screen.getByText('This connection is read-only: imports are disabled.'),
