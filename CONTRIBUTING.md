@@ -40,6 +40,22 @@ export RUSTC_WRAPPER=sccache  # only if sccache is installed
 
 Cargo respects both variables. `just` recipes check that sccache works in the current process context. They restart a server inherited from a sandboxed run, or build without the wrapper when the server is unreachable ([docs/18 §2.2](docs/18-repository-and-dev-workflow.md#22-sccache-and-sandboxed-runs)). `just clean` removes the configured target output, so use it carefully with a shared cache.
 
+### Frontend test commands
+
+Run Vitest from the repository root, including for a single file:
+
+```bash
+pnpm test --maxWorkers=2
+pnpm exec vitest run apps/desktop/src/features/import/ImportSheet.test.tsx --maxWorkers=2
+pnpm exec vitest run apps/desktop/src/features/import/ImportSheet.test.tsx --maxWorkers=2 --repeats 30 --sequence.shuffle
+```
+
+Vitest 5 names the repetition option `--repeats`. Pass worker options directly to
+`pnpm test`, without a `--` separator. Running `pnpm exec vitest` from
+`apps/desktop` is unsupported: it selects that package's `vite.config.ts`, which
+does not configure jsdom or the root test setup. DOM tests then fail in
+`userEvent.setup()` because `document` is undefined.
+
 ## 2. Branching model
 
 - `main` is always releasable. It is protected: changes land only through pull requests with passing checks.

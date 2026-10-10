@@ -3,6 +3,8 @@
 //!
 //! Ignored by `just test`; `just test-pg [version]` starts the container, runs
 //! them with `--run-ignored only` and removes it (skipping when Docker is absent).
+#[path = "postgres/cancellation.rs"]
+mod cancellation;
 #[path = "postgres/explain.rs"]
 mod explain;
 #[path = "postgres/export.rs"]
@@ -34,7 +36,7 @@ use openrows_types::{ResultId, SessionId};
 use std::io::Cursor;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -132,23 +134,7 @@ async fn query_events_notices_and_cancel_on_postgres() -> TestResult {
         QueryEvent::Notice { level: NoticeLevel::Warning, message } if message == "careful"
     )));
 
-    let mut sleep = manager.execute(session, "SELECT pg_sleep(30)")?;
-    assert!(matches!(
-        sleep.next_event().await,
-        Some(QueryEvent::Started { .. })
-    ));
-    tokio::time::sleep(Duration::from_millis(200)).await;
-    let requested = Instant::now();
-    sleep.canceller().cancel();
-    assert!(matches!(
-        events(&mut sleep).await?.pop(),
-        Some(QueryEvent::Cancelled)
-    ));
-    assert!(
-        requested.elapsed() < Duration::from_secs(2),
-        "{:?}",
-        requested.elapsed()
-    );
+    cancellation::cancel_running_query(&manager, session).await?;
     assert_eq!(manager.state(session), Some(SessionState::Idle));
 
     let mut after = manager.execute(session, "SELECT 1")?;

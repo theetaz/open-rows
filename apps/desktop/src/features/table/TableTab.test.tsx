@@ -164,6 +164,10 @@ async function mount(): Promise<ReturnType<typeof userEvent.setup>> {
     </ThemeProvider>,
   );
   await user.click(screen.getByRole('button', { name: 'Open users' }));
+  // The region follows a real lazy import, not just the tab descriptor update.
+  await act(async () => {
+    await vi.dynamicImportSettled();
+  });
   await screen.findByRole('region', { name: 'users table' });
   await waitFor(() => {
     expect(tablePage).toHaveBeenCalledTimes(1);
@@ -389,6 +393,9 @@ it('selects a keyless table rowid for edits without showing it', async () => {
     </ThemeProvider>,
   );
   await user.click(screen.getByRole('button', { name: 'Open users' }));
+  await act(async () => {
+    await vi.dynamicImportSettled();
+  });
   await waitFor(() => {
     expect(lastRequest().query.rowId).toBe('rowid');
   });

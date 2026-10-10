@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import { createCursorStore } from './cursor';
 import { defaultEditorSettings } from './editorSettings';
@@ -31,6 +31,10 @@ it('mounts CodeMirror lazily, exposes text and cursor, and hands keys to the app
       }}
     />,
   );
+  // Loading CodeMirror is real module I/O, separate from the mounted UI assertion.
+  await act(async () => {
+    await vi.dynamicImportSettled();
+  });
   const editor = await screen.findByRole('textbox', { name: 'SQL editor' });
   await waitFor(() => {
     expect(current()?.text()).toBe('SELECT 1;\nSELECT 2;');
