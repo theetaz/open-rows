@@ -225,3 +225,24 @@ storage or protection from another process running under the same OS account.
 History, profile files and result spill storage keep their existing OS-permission
 protection. macOS prompt appearance and real Touch ID/password cancellation are
 maintainer manual checks. Native authentication FFI is isolated in `security/auth.rs`.
+
+### Implemented (M2-01c): installed helper and signing
+
+Release desktop setup captures only `current_exe`; the resolver appends the
+fixed helper name to its parent directory, without PATH, cwd or environment
+search. Bounded Mach-O/ELF/PE header checks reject scripts/foreign architectures.
+Only debug builds expose `OPENROWS_DEV_HOST` and `with_debug_helper`, requiring
+an explicit absolute path; both override paths are compiled out in release.
+The process environment remains cleared, with the existing locale/platform
+allowlist, and stdin carries the authenticated bootstrap.
+
+The macOS bundle explicitly enables hardened runtime and defaults to local
+ad-hoc signing. The owner supplies `APPLE_SIGNING_IDENTITY` for Developer ID
+and notarization credentials through Tauri's documented environment variables.
+Tauri signs nested helpers before the outer app with the selected identity and
+runtime policy. No helper entitlement is added: DuckDB needs neither JIT nor
+disabled library validation. The future Oracle exception requires separate
+review. `just dev` signs both the copied helper and app with the stable local
+identity when present; no keys/certificates are created by this task. OS launch
+policy and release signature/package verification remain distinct from the
+resolver's format/build checks; Developer ID/notarization is an open gate.

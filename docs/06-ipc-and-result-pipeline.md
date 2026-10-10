@@ -213,3 +213,13 @@ Core query/result events remain parent-owned. Idle host loss is observed by the
 actor lifecycle future; busy loss produces one DriverHost terminal result and
 fails queued callers. Accepted partial batches stay available in the parent.
 Host errors never become a normal reconnect/replay signal.
+
+### Implemented (M2-01c): startup error propagation
+
+Installed helper resolution and native-format/architecture checks precede
+bootstrap and credentials. Missing, non-file or non-executable helpers yield
+HostFailure::Spawn; scripts, foreign architectures, an early exit or a mismatched
+Ready contract yield Incompatible. These map through DriverError::Host to
+IpcErrorKind::DriverHost with the specific bounded startup message. Existing
+post-connect host loss retains the reconnect message and terminal barriers.
+No shell plugin, webview launch capability or new IPC command is added.

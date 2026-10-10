@@ -134,6 +134,19 @@ const COMMANDS: &[&str] = &[
 ];
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let target = std::env::var("TARGET")?;
+    let suffix = if target.contains("-windows-") {
+        ".exe"
+    } else {
+        ""
+    };
+    let helper = format!("binaries/openrows-driver-host-{target}{suffix}");
+    println!("cargo:rerun-if-changed={helper}");
+    if !std::path::Path::new(&helper).is_file() {
+        return Err(
+            "driver host missing: run just stage-host dev (release before bundling)".into(),
+        );
+    }
     tauri_build::try_build(
         tauri_build::Attributes::new()
             .app_manifest(tauri_build::AppManifest::new().commands(COMMANDS)),

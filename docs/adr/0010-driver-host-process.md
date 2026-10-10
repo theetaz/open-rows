@@ -23,7 +23,7 @@ Process isolation costs dynamic linking, another runtime, memory, Arrow serializ
 | Results and flow control | [`sink.rs`](../../crates/openrows-driver-api/src/sink.rs): synchronous `ResultSink::push_batch`, only `SinkFlow::{Continue, Stop}`. [`results.rs`](../../crates/openrows-core/src/results.rs) maps `Append::Full` to `Stop`. [`store.rs`](../../crates/openrows-results/src/store.rs) appends without waiting for disk and [`shared.rs`](../../crates/openrows-results/src/shared.rs) can exceed its budget while spilling. Pause/Resume in [docs/06 §5](../06-ipc-and-result-pipeline.md#5-back-pressure-across-the-boundary) is a design requirement, not an existing sink variant. |
 | Desktop integration | [`connections/drivers.rs`](../../apps/desktop/src-tauri/src/connections/drivers.rs) registers PG, MySQL/MariaDB, SQLite and MSSQL. [`target.rs`](../../apps/desktop/src-tauri/src/connections/target.rs) converts profiles/secrets into driver requests. [`sessions.rs`](../../apps/desktop/src-tauri/src/connections/sessions.rs) opens actors; [`metadata.rs`](../../apps/desktop/src-tauri/src/connections/metadata.rs) owns separate metadata connections. [`error.rs`](../../apps/desktop/src-tauri/src/connections/error.rs) maps core errors to typed `IpcError`. |
 
-There is no host or DuckDB crate in the current workspace, and [`tauri.conf.json`](../../apps/desktop/src-tauri/tauri.conf.json) has no `bundle.externalBin`. All host types, messages, numbers and steps below are proposals; this ADR records no implementation or benchmark result.
+At ADR acceptance there was no host or DuckDB crate in the workspace, and [`tauri.conf.json`](../../apps/desktop/src-tauri/tauri.conf.json) has no `bundle.externalBin`. The original host types, messages, numbers and steps below were proposals; this ADR records no implementation or benchmark result.
 
 ## Decision
 
@@ -148,7 +148,7 @@ The helper runs as the same unprivileged user, never elevated. Without an OS san
 
 Pass secrets only after the authenticated handshake, through the control pipe/socket in zeroizable owned buffers; clear bootstrap tokens and request copies after use. Start with a cleared environment and an explicit non-secret locale/platform allowlist; no inherited credential or loader-injection variables. Launch by resolved absolute bundled path, never PATH or a shell. Drain stdout/stderr into bounded discard sinks; host diagnostics use typed control records with docs/14 field discipline, not arbitrary native output. No payload/credential logging or core dumps in routine operation. DuckDB persistent secrets and automatic extension install/load are disabled for M2-04; any later extension/network policy requires explicit review. Optional OS sandboxing is later work (macOS sandbox profiles, Linux namespaces/seccomp, Windows restricted tokens); it must preserve approved file access and is not an M2-01 promise.
 
-Ship the binary as the Tauri 2 sidecar `openrows-driver-host`, configured by proposed `bundle.externalBin = ["binaries/openrows-driver-host"]` in `apps/desktop/src-tauri/tauri.conf.json`. Build staging supplies `binaries/openrows-driver-host-<target-triple>` (`.exe` on Windows), as required by [Tauri's sidecar convention](https://v2.tauri.app/develop/sidecar/). A Rust launcher resolves the installed helper and uses raw process/transport handles; bundling as a sidecar does not require granting webview shell execution or adding the shell plugin. Development/test callers inject an explicit built-helper path; installed builds do not accept arbitrary helper-path overrides.
+Ship the binary as the Tauri 2 sidecar `openrows-driver-host`, configured by `bundle.externalBin = ["binaries/openrows-driver-host"]` in `apps/desktop/src-tauri/tauri.conf.json`. Build staging supplies `binaries/openrows-driver-host-<target-triple>` (`.exe` on Windows), as required by [Tauri's sidecar convention](https://v2.tauri.app/develop/sidecar/). A Rust launcher resolves the installed helper and uses raw process/transport handles; bundling as a sidecar does not require granting webview shell execution or adding the shell plugin. Development/test callers inject an explicit built-helper path; installed builds do not accept arbitrary helper-path overrides.
 
 | Platform | Packaging and verification |
 | --- | --- |
@@ -395,3 +395,145 @@ and test crates; no third-party package/version was added to the lockfile.
 Temporary verification logs and generated desktop dist were removed. Owned
 helpers are reaped, PostgreSQL TLS directories are gone, and created containers
 are removed. The local Rust build cache and `orows-linux-target` remain.
+
+## Validation / evidence — 2026-10-10, M2-01c
+
+Installed packaging now uses Tauri `bundle.externalBin`, staged from an actual
+`--no-default-features` helper build. No placeholder is shipped. The default
+helper has no database engine: the typed Probe target authenticates, advertises
+empty capabilities and refuses Connect with Unsupported. M2-04 adds the host-only
+DuckDB registration in the typed driver id, exact Hello contract and registry.
+Desktop app state owns lazy installed resolution, the private cache/hosts root,
+256 MiB per-host / 512 MiB aggregate admission and retained per-profile/driver
+three-crashes-in-60-seconds circuits. Resolution never searches PATH/cwd/env;
+the absolute-path debug override and its environment read are compiled out of
+release builds.
+
+Missing, directory and non-executable helpers return Spawn; scripts, foreign
+architectures, unrelated native executables and version mismatch return
+Incompatible. Both retain their specific user messages through DriverError and
+DriverHost IPC errors. Version-mismatch tests authenticate both lanes, reap the
+helper, remove endpoints and refuse the fourth launch without spawning. The
+typed single driver argument is covered by the secret-free command-surface test.
+
+`nice -n 10 just build-app` produced `Contents/MacOS/openrows-driver-host` in
+OpenRows.app, with the production helper staged automatically. Local macOS uses
+Tauri's ad-hoc identity `-`; source inspection of the pinned Tauri CLI 2.12.1
+confirms that the chosen identity signs external binaries before the main app
+and outer bundle. `codesign -dv --verbose=4` recorded the following for both:
+
+```text
+Format=app bundle with Mach-O thin (arm64)  # app; helper: Mach-O thin (arm64)
+CodeDirectory ... flags=0x10002(adhoc,runtime)
+Signature=adhoc
+TeamIdentifier=not set
+Runtime Version=26.5.0
+```
+
+`codesign --verify --deep --strict OpenRows.app` exited 0. No extra entitlements
+were added. Developer ID is supplied through APPLE_SIGNING_IDENTITY; the stable
+dev runner signs both adjacent helper and app when the owner's identity exists.
+Neither certificate-backed signing nor notarization/stapling was run locally.
+
+The packaged smoke used the same GUI-free resolver/runtime as desktop state,
+with the existing absolute CARGO_TARGET_DIR:
+
+```sh
+OPENROWS_PACKAGED_SMOKE=1 \
+OPENROWS_PACKAGED_APP="$CARGO_TARGET_DIR/release/bundle/macos/OpenRows.app" \
+nice -n 10 bash scripts/sccache-guard.sh cargo test --release --locked \
+  -p openrows-host-client --test packaged -- --nocapture
+```
+
+Hardware: Apple M4 (Mac16,10), 24 GiB RAM, macOS 26.5 (25F71), arm64,
+Rust 1.94.0. Each run measures resolution + spawn + both-lane handshake with
+parent Instant, then waits for Closed and verifies endpoint removal. Warm
+statistics are nearest-rank percentiles of 29 subsequent launches; no database
+connect or native engine startup is included. These are local samples, with no
+main baseline, cache eviction, fresh-machine or reference mac-low certification.
+
+| Packaged fixture | First ms | Warm p50 ms | Warm p95 ms | Warm max ms | Deadline ms |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| First helper launch from newly built app | 471.838 | 3.402 | 4.306 | 7.860 | 2000 |
+| Fresh `ditto` app copy; helper quarantine `0081;67000000;test-only;` retained | 378.278 | 3.359 | 5.870 | 10.223 | 2000 |
+| Final source rebuilt app verification | 467.148 | 3.640 | 6.426 | 9.182 | 2000 |
+
+All three runs printed `test result: ok. 1 passed; 0 failed; 0 ignored`; each
+run's 30 samples closed cleanly and removed their endpoints. The second command used
+the copied app path and confirmed quarantine remained after launch. Codesign
+inspection and compilation had already warmed some OS/file caches; this does
+not certify Gatekeeper behavior for a downloaded Developer ID release. Both
+initial first launches exceed the ADR's 150 ms cold-start target, while every sample
+meets the production 2 s deadline. The target miss remains a measured checkpoint
+gap; no deadline increase or retry was added.
+
+Production logical file sizes: app 69,677,875 bytes (66.450 MiB), helper
+3,339,296 bytes. `CI=true nice -n 10 pnpm --filter @openrows/desktop tauri bundle
+--bundles dmg` produced OpenRows_0.1.0_aarch64.dmg at 28,157,425 bytes
+(26.853 MiB), below the docs/13 installer budget of 40,000,000 bytes. The
+uncompressed app exceeds 40 MB; that budget applies to the distributed installer.
+The final rebuild again passed `just build-app` with the staged directory
+removed beforehand (4m 24s app build). Its helper was byte-identical to the
+measured production helper. Direct `tauri bundle` uses the existing staged binary:
+stage release before
+creating release installers, including after debug-profile checks.
+
+Linux copied source into `/work` in `rust:1.94.0-bookworm` (aarch64), with
+`--init --cpus 4`, four Cargo jobs and four test threads, rather than a macOS
+socket-incompatible bind mount. The protocol/client/helper crates passed 81
+tests, zero failures/ignored; the packaged opt-in test returns without launching
+an artifact when disabled. Installed resolver tests passed eight; packaging
+tests passed two; host lifecycle tests passed 34 and conformance passed ten.
+Selected-crate Clippy with all targets and `-D warnings` exited 0 (20.33 s).
+The container's unavailable sccache used the existing guard's wrapper bypass.
+The final test repeat reused the retained shared Linux cache through a local
+target-directory link. No GUI/WebKit was required. An initial new probe-test
+assertion failed because
+it omitted the Accepted control response; the assertion was corrected before
+the complete Linux rerun. Linux containment retained the accepted monitoring-only
+fallback because cgroup v2 was not delegated.
+
+After deleting the staged binary directory separately before each recipe,
+`just gen-ipc`, `just lint`, `just test` and `just ipc-check` staged the helper
+automatically and exited 0. Ubuntu CI now runs `bash scripts/stage-host.sh dev`
+before workspace Clippy/tests. Binding generation made no tracked contract
+change. Real final result lines were:
+
+```text
+just lint:      Finished `dev` profile [unoptimized + debuginfo] target(s) in 10.33s
+just test:      Summary [  26.330s] 1319 tests run: 1319 passed, 196 skipped
+just ipc-check: Summary [   0.101s] 1 test run: 1 passed, 249 skipped
+UI tests:      230 files / 2701 tests passed (107.12 s)
+bench-ui:      initial JS 301297 gzip bytes / 350000; CSS 6306 / 15000
+bench-test:    Ran 89 tests in 0.641s; OK
+script-test:   Ran 6 tests in 0.791s; OK
+```
+
+Rust formatting, workspace Clippy (`-D warnings`), eslint, frontend formatting,
+TypeScript, knip, unused dependencies, advisories/licences/bans/sources, hygiene
+and UI tokens all passed. Workspace Clippy initially caught missing doc-markdown
+backticks in the new desktop module; the comment was fixed before the green run.
+Normal-edge dependency graphs confirm no native SQLite in the production helper
+and no helper/DuckDB/ADBC/ODPI native dependency in desktop. Desktop adds only
+the existing internal Apache-2.0 host-client crate; no third-party dependency
+or version was added.
+
+`cargo check --locked --target x86_64-pc-windows-msvc -p openrows-host-protocol
+-p openrows-host-client -p openrows-driver-host --no-default-features` exited
+101 at ring 0.17.14: `fatal error: 'assert.h' file not found`. Windows PE/`.exe`
+selection and debug-only override gates were reviewed by inspection; Windows
+compilation/runtime acceptance remains unverified.
+
+Verification logs, the fresh quarantined copy and generated frontend dist were
+removed. Created Linux containers were stopped/removed; smoke helpers reached
+Closed and removed their endpoints. Existing shared caches, the ignored staged
+helper and final app/DMG build artifacts remain available for review.
+
+Named release/checkpoint gaps: owner's Developer ID signature and same-team
+verification, notarization/stapling and downloaded-app Gatekeeper validation;
+stable dev-identity signing on a machine with that certificate; Windows MSVC
+compile verification (local ring/assert.h toolchain limitation) and Windows/Linux
+installed package launch; reference-machine/certificate-backed cold startup
+against 150 ms; universal assembly; M2-04 DuckDB registration and engine-specific
+measurements. M2-01 stays partial in docs/27. No native engine was moved into the
+desktop, no user-visible hosted driver was registered and no key was invented.

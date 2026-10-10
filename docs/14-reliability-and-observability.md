@@ -135,3 +135,16 @@ Implemented in `apps/desktop/src-tauri/src/observability/` (M1-28):
 | Never retry | A statement whose connection dies while it runs fails with "Connection lost while the statement was running: it may or may not have been applied, and it was not retried" (plus "the open transaction was rolled back by the server, unless this statement was its COMMIT" inside a transaction); a lost connection also ends the rest of a script, even without Return on Error. A connection lost while the server held a transaction (PostgreSQL `ReadyForQuery` status, MySQL `SERVER_STATUS_IN_TRANS`) is not replaced: the session fails with "the server rolled the transaction back. Reconnect to continue." A table-edit or structure commit whose connection drops before `COMMIT` reports "the connection was lost before COMMIT, so the server rolled the transaction back and nothing was changed"; a lost `COMMIT` acknowledgement stays the uncertain `08007`. Either way the staged change set is kept. |
 | Tests | Paused-time unit tests on a scripted server (`openrows-core` `tests::resilience`: detection within the interval, half-open probe timeout, in-flight write applied once, script stops, lost transaction fails the session, `COMMIT` in flight, search-path replay, give-up after N attempts with queued statements failed, wake probe, probe before a stale statement, close while reconnecting). `just test-pg`: `pg_terminate_backend` of an idle and of a writing backend, a black-holed and a refusing-then-recovering link through `openrows_net::testing::FaultyLink`, and an edit commit cut mid-transaction. `just test-mysql` (MySQL 8.4, MariaDB 11.4): `KILL` of an idle (with `USE` replay) and of a writing connection, and an edit commit killed mid-transaction. `just test-ssh`: a paused SSH server fails the tunnel probe within its timeout and a cut tunnel at once; both reconnect on the next dial. |
 | Not covered | Restarting a real database container in the tests (the throwaway containers publish ephemeral ports that change on restart and are shared by parallel tests; a refusing `FaultyLink` stands in). OS power/network notifications (`NSWorkspace`, `NWPathMonitor`) are not used; the clock-gap and route heuristics need no platform code. A `SET` inside a transaction that later commits is not replayed. |
+
+### Implemented (M2-01c): installed startup failures
+
+A missing/non-file/non-executable helper fails with Spawn and “driver host
+could not start; reconnect explicitly”. A wrong native format/architecture,
+early child exit or version/build contract mismatch fails with Incompatible
+and “driver host is incompatible with this app”. The IPC category is DriverHost;
+startup messages retain the specific reason. Cleanup kills/reaps a started child
+and removes its rendezvous directory before returning handshake failure.
+There is no PATH/cwd/env search, download, automatic retry or in-process fallback.
+The shared runtime retains crash circuits by profile/typed driver. Installed
+macOS smoke is opt-in; Developer ID/notarization and Windows/Linux package
+launch remain named release gates in ADR-0010 and docs/27.

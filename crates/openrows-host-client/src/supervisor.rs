@@ -39,17 +39,20 @@ impl HostSupervisor {
         if let Some(stderr) = child.stderr.take() {
             tasks.push(tokio::spawn(discard(stderr)));
         }
+        let stdin = child.stdin.take();
         let handshake = async {
-            let mut stdin = child.stdin.take().ok_or(HostFailure::Spawn)?;
+            let mut stdin = stdin.ok_or(HostFailure::Spawn)?;
             crate::write_bootstrap(&mut stdin, &rendezvous.bootstrap)
                 .await
                 .map_err(HostFailure::from)?;
             drop(stdin);
-            rendezvous.attach().await
+            rendezvous.attach(self.options.driver).await
         };
-        let attached = tokio::time::timeout(HANDSHAKE_TIMEOUT, handshake)
-            .await
-            .unwrap_or(Err(HostFailure::Unresponsive));
+        let attached = tokio::select! {
+            result = tokio::time::timeout(HANDSHAKE_TIMEOUT, handshake) =>
+                result.unwrap_or(Err(HostFailure::Unresponsive)),
+            _ = child.wait() => Err(HostFailure::Incompatible),
+        };
         match attached {
             Ok((control, data)) => {
                 // Named pipes do not use this directory. Remove it before kill-on-parent-close is armed.

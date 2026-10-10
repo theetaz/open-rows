@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
 # Cargo target runner for `just dev` on macOS: re-sign the debug openrows-app with the stable
-# local identity from `just dev-cert`, then run it. Every other binary runs untouched.
+# local identity from `just dev-cert`, sign its staged helper, then run it.
 #
 # Debug builds are ad-hoc signed, so each rebuild changes the code signature and the keychain
 # forgets "Always Allow". A stable identity keeps the signature's designated requirement, so
@@ -30,7 +30,7 @@ signed_by_identity() {
 }
 
 sign() {
-    local binary=$1 hash
+    local binary=$1 identifier=${2:-$signing_id} hash
     hash=$(identity_hash)
     if [[ -z "$hash" ]]; then
         printf 'dev-sign: no "%s" identity; keychain prompts return after rebuilds (run "just dev-cert" once).\n' \
@@ -38,7 +38,7 @@ sign() {
         return 0
     fi
     signed_by_identity "$binary" && return 0
-    local command=(codesign --force --timestamp=none --identifier "$signing_id" --sign "$hash" "$binary")
+    local command=(codesign --force --timestamp=none --options runtime --identifier "$identifier" --sign "$hash" "$binary")
     if [[ "${OPENROWS_DEV_SIGN_DRY_RUN:-}" == 1 ]]; then
         printf 'dev-sign: dry run:' >&2
         printf ' %q' "${command[@]}" >&2
@@ -56,6 +56,12 @@ if [[ $# -eq 0 ]]; then
     exit 2
 fi
 if [[ "$(uname -s)" == Darwin && "$(basename -- "$1")" == openrows-app ]]; then
+    helper="$(dirname -- "$1")/openrows-driver-host"
+    if [[ ! -f "$helper" ]]; then
+        printf 'dev-sign: missing staged driver host; run "just stage-host dev".\n' >&2
+        exit 1
+    fi
+    sign "$helper" com.prabhavalabs.openrows.driver-host.dev
     sign "$1"
 fi
 exec "$@"

@@ -48,6 +48,7 @@ openrows-dump = { path = "../../../crates/openrows-dump" }
 openrows-explain = { path = "../../../crates/openrows-explain" }
 openrows-export = { path = "../../../crates/openrows-export" }
 openrows-import = { path = "../../../crates/openrows-import" }
+openrows-host-client = { path = "../../../crates/openrows-host-client" }
 openrows-net = { path = "../../../crates/openrows-net", features = ["helper-types"] }
 openrows-results = { path = "../../../crates/openrows-results" }
 openrows-schema = { path = "../../../crates/openrows-schema" }

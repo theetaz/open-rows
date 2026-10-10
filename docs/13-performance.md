@@ -493,3 +493,15 @@ before sending the first (26 ms observed).
 Local Mac measurement (debug build, shared machine, 2026-10-10): 2,390,674 rows/s, 38,250,791 payload bytes/s, 0.418 s execution, first batch 200 rows, first-data-to-first-batch 0.644 ms (budget 5 ms), largest Arrow batch 6,592 bytes, peak whole-process RSS 14,680,064 bytes (conservative gate 40 MB). The process baseline, libraries and Tokio runtime are included in RSS; this is not a direct driver-buffer allocation measurement. Native data is consumed through two 64 KiB chunk slots, two batch slots and a bounded 64 KiB error tail. Large individual cells may exceed the typical 4 MiB buffer target.
 
 The reader worker is started before the HTTP body pump so thread creation is outside the first-data-to-first-batch interval; an earlier cold-worker measurement was 8.741 ms. A separate slow million-row integration test proves the first batch arrives before the response completes. No main baseline exists for this new driver; release-profile and reference mac-low numbers remain unmeasured. These debug numbers do not certify the app's physical-footprint or first-paint budgets.
+
+### Implemented (M2-01c): installed-helper measurements
+
+The opt-in `openrows-host-client` packaged smoke measures one first launch and
+29 subsequent handshake/shutdown cycles from the actual bundle layout using
+parent Instant timers. It builds no native test driver and requires no GUI.
+Normal tests do not run timing assertions. The production handshake deadline
+remains 2 s, separate from database connect; there is no retry or deadline
+increase. Fresh-copy/quarantine and warm results, hardware, cache limitations,
+`.app` and installer sizes are recorded in [ADR-0010](adr/0010-driver-host-process.md).
+The installer budget remains ≤ 40 MB, and connected idle footprint ≤ 200 MB;
+DuckDB and reference-machine checkpoint measurements remain M2-04 work.

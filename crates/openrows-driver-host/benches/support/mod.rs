@@ -9,6 +9,7 @@ pub fn options() -> Result<LaunchOptions, Box<dyn std::error::Error>> {
         .join("../..")
         .canonicalize()?;
     Ok(LaunchOptions {
+        driver: openrows_host_client::HostDriverId::SqliteTest,
         executable,
         endpoint_root,
         memory: MemoryBudget::default(),

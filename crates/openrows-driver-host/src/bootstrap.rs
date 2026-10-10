@@ -5,8 +5,8 @@ use openrows_host_client::{
     transport::{Stream, connect},
 };
 use openrows_host_protocol::{
-    Authentication, Bootstrap, Control, Frame, Hello, Lane, LaneHello, ProtocolError, read_frame,
-    write_frame,
+    Authentication, Bootstrap, Control, Frame, Hello, HostDriverId, Lane, LaneHello, ProtocolError,
+    read_frame, write_frame,
 };
 use std::path::Path;
 
@@ -17,7 +17,11 @@ impl Drop for Directory {
     }
 }
 pub(crate) async fn run() -> Result<(), ProtocolError> {
-    if std::env::args().nth(1).as_deref() != Some("sqlite") {
+    let driver = std::env::args()
+        .nth(1)
+        .and_then(|argument| HostDriverId::parse(&argument))
+        .ok_or(ProtocolError::Incompatible)?;
+    if driver == HostDriverId::SqliteTest && !cfg!(feature = "test-sqlite") {
         return Err(ProtocolError::Incompatible);
     }
     let bootstrap =
@@ -26,14 +30,17 @@ pub(crate) async fn run() -> Result<(), ProtocolError> {
             .map_err(|_| ProtocolError::Authentication)??;
     let _directory = Directory(bootstrap.directory.clone());
     close_stdin()?;
-    let (control, data) = tokio::time::timeout(HANDSHAKE_TIMEOUT, handshake(&bootstrap))
+    let (control, data) = tokio::time::timeout(HANDSHAKE_TIMEOUT, handshake(&bootstrap, driver))
         .await
         .map_err(|_| ProtocolError::Authentication)??;
     let generation = bootstrap.generation;
     drop(bootstrap);
-    crate::control::run(control, data, generation).await
+    crate::control::run(control, data, generation, driver).await
 }
-async fn handshake(bootstrap: &Bootstrap) -> Result<(Stream, Stream), ProtocolError> {
+async fn handshake(
+    bootstrap: &Bootstrap,
+    driver: HostDriverId,
+) -> Result<(Stream, Stream), ProtocolError> {
     let mut control = connect(Path::new(&bootstrap.control))
         .await
         .map_err(|_| ProtocolError::Transport)?;
@@ -55,7 +62,7 @@ async fn handshake(bootstrap: &Bootstrap) -> Result<(Stream, Stream), ProtocolEr
     let Control::Hello(hello) = hello.decode_control()? else {
         return Err(ProtocolError::Authentication);
     };
-    let contract = Hello::sqlite(bootstrap.generation);
+    let contract = Hello::for_driver(driver, bootstrap.generation);
     hello.validate(&contract)?;
     let ready = Frame::control(bootstrap.generation, 0, &Control::Ready(contract))?;
     write_frame(&mut control, &ready, Lane::Control).await?;

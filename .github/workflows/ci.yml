@@ -75,6 +75,8 @@ jobs:
           tool: cargo-nextest@0.9.146
       - name: Check formatting
         run: cargo fmt --all --check
+      - name: Stage production driver host for desktop checks
+        run: bash scripts/stage-host.sh dev
       - name: Clippy
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Tests

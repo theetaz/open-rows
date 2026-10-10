@@ -83,11 +83,16 @@ impl Hello {
     /// Current exact contract for one generation.
     #[must_use]
     pub fn sqlite(generation: u64) -> Self {
+        Self::for_driver(crate::HostDriverId::SqliteTest, generation)
+    }
+    /// Exact contract for the selected launch target; Probe advertises no engine.
+    #[must_use]
+    pub fn for_driver(driver: crate::HostDriverId, generation: u64) -> Self {
         Self {
             version: PROTOCOL,
             schema: SCHEMA.into(),
             build: BUILD.into(),
-            driver: "sqlite".into(),
+            driver: driver.argument().into(),
             generation,
             limits: [
                 u32::try_from(CONTROL_LIMIT).unwrap_or(u32::MAX),
@@ -97,7 +102,14 @@ impl Hello {
             ],
             arrow: 5,
             required: 15,
-            capabilities: WireCapabilities::sqlite(),
+            capabilities: match driver {
+                crate::HostDriverId::SqliteTest => WireCapabilities::sqlite(),
+                crate::HostDriverId::Probe => WireCapabilities {
+                    location: 1,
+                    features: vec![],
+                    objects: vec![],
+                },
+            },
         }
     }
     /// Compare before decoding credentials or opening a database.

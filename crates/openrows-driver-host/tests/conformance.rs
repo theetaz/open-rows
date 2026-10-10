@@ -14,6 +14,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 mod image;
 fn options(memory: MemoryBudget) -> LaunchOptions {
     LaunchOptions {
+        driver: openrows_host_client::HostDriverId::SqliteTest,
         executable: std::path::PathBuf::from(env!("CARGO_BIN_EXE_openrows-driver-host")),
         endpoint_root: if cfg!(unix) {
             "/tmp".into()

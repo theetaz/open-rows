@@ -42,6 +42,11 @@ name = "host-parent-fixture"
 path = "tests/support/parent.rs"
 required-features = ["test-hooks"]
 
+[[bin]]
+name = "host-mismatch-fixture"
+path = "tests/support/mismatch.rs"
+required-features = ["test-hooks"]
+
 [[bench]]
 name = "host_startup"
 harness = false
