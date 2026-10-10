@@ -137,6 +137,7 @@ impl Frame {
         if self.body.len() > CONTROL_LIMIT || self.header.kind.0 == 100 {
             return Err(ProtocolError::Invalid);
         }
+        let _scope = crate::allocation::Scope::begin();
         let (control, rest): (Control, _) =
             postcard::take_from_bytes(&self.body).map_err(|_| ProtocolError::Invalid)?;
         if !rest.is_empty() || control.kind() != self.header.kind {

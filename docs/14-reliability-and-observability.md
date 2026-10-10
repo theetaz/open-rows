@@ -28,7 +28,7 @@ flowchart TB
 | --- | --- | --- |
 | Driver returns error | Query fails, session stays usable | Error shown inline; session continues |
 | Driver panics | Session actor task ends (`JoinError`) | Session marked Failed; "Reconnect" offered; panic logged with correlation id |
-| Hosted driver exit, native crash, memory limit or broken protocol | Only its one session host is terminated/reaped; endpoints removed | Typed `DriverHost`; explicit new connect only, with no statement/startup/COMMIT replay (M2-01a lifecycle; core adapter pending) |
+| Hosted driver exit, native crash, memory limit or broken protocol | Only its one session host is terminated/reaped; endpoints removed | Typed `DriverHost`; explicit new connect only, with no statement/startup/COMMIT replay (M2-01a supervisor; M2-01b actor/metadata integration) |
 | Network drop (idle) | Keepalive detects | Auto-reconnect with backoff (1 s, 2 s, 4 s … max 30 s, 5 attempts); startup commands replayed |
 | Network drop (in query) | Query fails with `Network` error | Not retried; user can rerun |
 | Network drop (in transaction) | Session → `Broken` | Clear message: "transaction was rolled back by the server"; staged change set preserved |
@@ -39,7 +39,7 @@ flowchart TB
 
 **Implemented (M2-01a):** the Tauri-free supervisor publishes `HostState::Failed` after targeted kill/reap and rendezvous cleanup, including when idle. A 256 MiB RSS threshold is sampled every 100 ms independently of data admission; host reservations total at most 512 MiB in one parent. A missing or unreadable RSS sample never becomes `MemoryLimit`; only an observed sample above the threshold triggers a monitored memory-limit failure. Child exit and heartbeat detection remain independent. macOS containment is monitoring-only with force-kill, and can overshoot between samples. Heartbeats arrive every second; three missed intervals plus a 1 s probe identify an unresponsive control runtime. A detected suspend/clock gap resets the health deadline. A responsive control runtime does not impose a query deadline. Explicit Cancel/Stop and Close retain the 2 s drain/shutdown grace. Abrupt EOF, including a partially written transport frame, is `Exited`; malformed payloads are `Protocol`. Three abnormal exits per shared profile/driver circuit in 60 s refuse a fourth spawn; there is no respawn loop.
 
-The `DriverHost` error kind is not `Network` and `DriverError::is_connection_lost()` is false. Missing write/COMMIT acknowledgement remains uncertain; a host failure supplies no rollback guarantee. M2-01.3 must wire the lifecycle observer into queued core callers, partial results and exactly one terminal event. Installed sidecar identity and Windows/Linux release smoke remain M2-01.4/platform work.
+The `DriverHost` error kind is not `Network` and `DriverError::is_connection_lost()` is false. Missing write/COMMIT acknowledgement remains uncertain; a host failure supplies no rollback guarantee. M2-01b wires the lifecycle observer into idle actors and metadata slots; busy loss ends accepted partial results and fails queued callers exactly once. IPC and session events show “The driver process stopped; reconnect to continue”. Hosted sessions never idle-suspend or invoke normal network restore/replay; a fresh explicit connect is required. Installed sidecar identity and Windows/Linux release smoke remain M2-01.4/platform work.
 
 ### 2.1 Panic policy
 

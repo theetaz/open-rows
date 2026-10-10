@@ -74,6 +74,7 @@ impl HostSupervisor {
                 tokio::spawn(
                     Monitor {
                         child,
+                        failure: session.failure.clone(),
                         directory: rendezvous.directory,
                         reservation,
                         large: session.large.clone(),
@@ -116,15 +117,17 @@ fn channels(
     let (outgoing, writer) = ControlQueue::new();
     let (incoming, reader) = ControlQueue::new();
     let (shutdown, requests) = mpsc::channel(64);
+    let failure = std::sync::Arc::new(crate::failure_signal::FailureSignal::new(shutdown.clone()));
     let (state, observe) = watch::channel(HostState::Ready);
     let (heartbeat, beats) = watch::channel(Instant::now());
     let (read, write) = tokio::io::split(control);
     let tasks = vec![
-        tokio::spawn(control_write(write, writer, shutdown.clone())),
+        tokio::spawn(control_write(write, writer, failure.clone())),
         tokio::spawn(control_read(
             read,
             ReaderSignals {
                 incoming,
+                failure: failure.clone(),
                 heartbeat,
                 shutdown: shutdown.clone(),
                 generation,
@@ -133,6 +136,7 @@ fn channels(
     ];
     (
         HostSession {
+            failure,
             generation,
             pid: 0,
             directory: std::path::PathBuf::new(),
@@ -157,17 +161,18 @@ fn channels(
 async fn control_write(
     mut stream: impl AsyncWrite + Unpin,
     mut queue: openrows_host_protocol::QueueReceiver,
-    shutdown: mpsc::Sender<Shutdown>,
+    failure: std::sync::Arc<crate::failure_signal::FailureSignal>,
 ) {
     while let Some(queued) = queue.recv().await {
         if let Err(error) = write_frame(&mut stream, &queued.frame, Lane::Control).await {
-            let _ = shutdown.try_send(Shutdown::Failure(error.into()));
+            failure.fail(error.into());
             break;
         }
     }
 }
 struct ReaderSignals {
     incoming: ControlQueue,
+    failure: std::sync::Arc<crate::failure_signal::FailureSignal>,
     heartbeat: watch::Sender<Instant>,
     shutdown: mpsc::Sender<Shutdown>,
     generation: u64,
@@ -175,6 +180,7 @@ struct ReaderSignals {
 async fn control_read(mut stream: impl AsyncRead + Unpin, signals: ReaderSignals) {
     let ReaderSignals {
         incoming,
+        failure,
         heartbeat,
         shutdown,
         generation,
@@ -194,7 +200,7 @@ async fn control_read(mut stream: impl AsyncRead + Unpin, signals: ReaderSignals
                 Control::Error(openrows_host_protocol::WireError::Protocol) => {
                     return Err(HostFailure::Protocol);
                 }
-                Control::Reply(_) | Control::Error(_) => {
+                Control::Reply(_) | Control::Error(_) | Control::ConnectError { .. } => {
                     shutdown
                         .try_send(Shutdown::Completed(frame.header.request))
                         .map_err(|_| HostFailure::Protocol)?;
@@ -205,8 +211,8 @@ async fn control_read(mut stream: impl AsyncRead + Unpin, signals: ReaderSignals
         }
     }
     .await;
-    if let Err(failure) = outcome {
-        let _ = shutdown.try_send(Shutdown::Failure(failure));
+    if let Err(reason) = outcome {
+        failure.fail(reason);
     }
 }
 async fn cleanup(child: &mut tokio::process::Child, tasks: Vec<tokio::task::JoinHandle<()>>) {

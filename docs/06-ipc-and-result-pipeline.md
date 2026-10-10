@@ -184,7 +184,7 @@ The UI never pushes on the core and the core never pushes rows to the UI; the UI
 | History | Every executed statement is written to the local store's `history` (profile, database, start, duration, rows returned or affected, status, error message; source `editor`, or `edit-commit` with one entry per generated statement of a committed or failed change-set batch, sharing the batch outcome and duration). A statement the session refuses before it starts is recorded as an error; one cancelled before it starts never ran and is skipped. A connection with "record query history" off writes nothing. Table browsing is not recorded (docs/08). Failures to write history never fail the query. |
 | UI | `apps/desktop/src/features/query/`: query tabs per connection and database (`useQueryTabs`, `TabScope { connectionId, database }`, ⌘T/⌘W; since UX-B the database is always explicit and tabs run on that database's session; before connecting, tabs open in the profile's database), opening a tree or ⌘P relation opens (or refocuses) its table view (D-08, below) and other objects a query tab, and switches the schema picker, lazy CodeMirror editor (⌘↵ current or selection, ⇧⌘↵ all), Run / Run all / Cancel, one result tab per result set over `TileSource` + the shared Arrow worker + `@openrows/grid/canvas`, status line and messages, confirmation sheet, inspector Details (focused cell) and History. Result rows never enter React state; a tab's results are released when it closes or re-runs. The grid is mounted once a result has ended, because `TileSource` has a fixed row count. |
 | Table pages (D-08) | `table_page` and `table_count` reuse this pipeline with generated, parameterised SELECTs (`script::run_bound`, `Session::execute_bound`) on the opened database's own session (the owners map must match both the target connection and database); see [docs/08 §10](08-data-grid.md#10-implementation-notes-d-08-postgresql-table-view). |
-| Known gaps | Pinned results, focus-aware eviction (§3 visibility tiers; eviction is plain least-recently-used), Pause/Resume back-pressure (§5), live grid growth while streaming, editor text in the local store (restored from webview storage for now, docs/09 §2.2), statement highlighting/gutter status. Per-database sessions landed with UX-B (§8): every tab runs on its database's own session. |
+| Known gaps | Pinned results, focus-aware eviction (§3 visibility tiers; eviction is plain least-recently-used), Pause/Resume for in-process drivers (§5; hosted admission implemented in M2-01b), live grid growth while streaming, editor text in the local store (restored from webview storage for now, docs/09 §2.2), statement highlighting/gutter status. Per-database sessions landed with UX-B (§8): every tab runs on its database's own session. |
 
 ### Implemented (M2-22a): security admission
 
@@ -195,3 +195,21 @@ runs in Rust on the captured request before any execution, with no client-provid
 authentication token. The desktop IPC dispatcher rejects all data reads and writes
 with `Locked` while the shared app lock is active, including binary result access.
 Only lock status/unlock/activity, app metadata and UI-only necessities remain callable.
+
+### Implemented (M2-01b): hosted admission and terminal barriers
+
+The hosted proxy reads one validated granted Arrow segment directly into the
+existing result sink. No background data reader accumulates batches. Credit is
+returned only after sink push; a prepared next batch waits without a grant when
+store admission pauses. The synchronous push API still returns Continue/Stop.
+New default-ready admission/resume/stopped hooks preserve existing in-process
+behavior. Spill/release notifications use lost-wakeup-safe asynchronous waits;
+resume is allowed at or below ¾ of the configured global store budget. A failed
+spill or removed result stops fetching, drains the authorized data and marks
+truncation; row caps remain Stop. ResultEnd and terminal success wait for exact
+data sequences and Arrow EOS, except explicitly stopped/cancelled streams.
+
+Core query/result events remain parent-owned. Idle host loss is observed by the
+actor lifecycle future; busy loss produces one DriverHost terminal result and
+fails queued callers. Accepted partial batches stay available in the parent.
+Host errors never become a normal reconnect/replay signal.

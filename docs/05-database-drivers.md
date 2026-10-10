@@ -40,7 +40,7 @@ pub trait Connection: Send {
 
 pub trait ResultSink: Send {
     fn begin_result(&mut self, schema: SchemaRef, edit: Option<EditTarget>) -> Result<()>;
-    fn push_batch(&mut self, batch: RecordBatch) -> SinkFlow;      // Continue | Pause | Stop
+    fn push_batch(&mut self, batch: RecordBatch) -> SinkFlow;      // Continue | Stop
     fn end_result(&mut self, summary: ResultSummary) -> Result<()>;
     fn notice(&mut self, n: Notice);
 }
@@ -199,7 +199,7 @@ A shared test crate (`openrows-driver-conformance`) parameterised by driver. Eve
 
 Drivers built on C/C++ libraries (Oracle via ODPI-C, DuckDB, ADBC drivers) can crash the process on bugs we cannot catch. These drivers can run inside `openrows-driver-host`, a small helper executable:
 
-**Design accepted 2026-10-10 (M2-01), adapter and packaging pending:** [ADR-0010 — One driver host process per hosted session](adr/0010-driver-host-process.md) specifies the proposed process boundary, protocol, failure/restart policy, security, sidecar distribution and validation plan. DuckDB is mandatory-hosted; PostgreSQL, MySQL/MariaDB, SQLite and MSSQL keep their current in-process implementations. A writable DuckDB file has one shared hosted session: catalog/edit/export operations queue on it because separate writer/reader processes cannot share the file. All-read-only sessions may have separate hosts; memory databases live only in their owning host. These are accepted M2-04 restrictions, not changes to existing drivers.
+**Design accepted 2026-10-10 (M2-01), packaging pending:** [ADR-0010 — One driver host process per hosted session](adr/0010-driver-host-process.md) specifies the proposed process boundary, protocol, failure/restart policy, security, sidecar distribution and validation plan. DuckDB is mandatory-hosted; PostgreSQL, MySQL/MariaDB, SQLite and MSSQL keep their current in-process implementations. A writable DuckDB file has one shared hosted session: catalog/edit/export operations queue on it because separate writer/reader processes cannot share the file. All-read-only sessions may have separate hosts; memory databases live only in their owning host. These are accepted M2-04 restrictions, not changes to existing drivers.
 
 ```mermaid
 sequenceDiagram
@@ -234,7 +234,51 @@ sequenceDiagram
 
 `openrows-host-client` supplies lazy absolute-path launch, two authenticated local lanes, exact build/schema/capability agreement before Connect, lifecycle subscriptions, 2 s handshake/close/cancel grace, independent heartbeats and 100 ms RSS sampling. Each host reserves 256 MiB from a shared parent-wide 512 MiB pool; exclusive large grants reserve extra space. Three abnormal exits in 60 s refuse another launch for that supervisor's shared profile/driver circuit. macOS uses monitoring and force-kill; Linux attempts delegated cgroup v2 with an explicit monitoring-only fallback; Windows supplies local owner-only named pipes and a Job Object cap. Linux debug tests pass for root and unprivileged callers in Docker with monitoring-only containment. Delegated cgroup caps, installed Linux packages and Windows platform validation remain pending.
 
-This implements ADR-0010 M2-01.1–.2. The core `HostedDriver`/`HostedConnection`, spill admission/terminal coordinator and unchanged conformance path are M2-01.3; bundled resolution/signatures are M2-01.4. Existing app drivers still run in process, and the desktop does not link a host or DuckDB crate. `DriverError::Host`, core `DriverHost` and IPC `driverHost` errors are distinct from network loss and never trigger transparent reconnect/replay. See ADR-0010's dated evidence for tests and measurements.
+This implements ADR-0010 M2-01.1–.2. The core adapter, spill admission/terminal coordinator and unchanged conformance path are implemented in M2-01.3 below; bundled resolution/signatures are M2-01.4. Existing app drivers still run in process, and the desktop does not link a host or DuckDB crate. `DriverError::Host`, core `DriverHost` and IPC `driverHost` errors are distinct from network loss and never trigger transparent reconnect/replay. See ADR-0010's dated evidence for tests and measurements.
+
+### Implemented (M2-01b)
+
+`HostedDriver`/`HostedConnection` in the Tauri-free client implement boxed-future
+connect, streaming/binding, ping, transaction state, cancellation, catalog and
+editor facets. Pure dialect/DDL generation stays in the parent. Dedicated bounded
+postcard facet DTOs preserve native catalog types and bound edit values; native
+calls stay in the host worker. Bulk/admin are unadvertised and unsupported.
+SQLite hosting requires the helper's non-default `test-sqlite` feature (enabled
+by disposable `test-hooks` fixtures). No production desktop driver is routed to
+this adapter; DuckDB registration and installed helper resolution remain M2-04
+and M2-01.4.
+
+Arrow segments decode directly into `ResultSink`, with no cell/JSON conversion.
+Nonblocking sink/store admission withholds credit above the spill budget, resumes
+on spill notifications at the ¾ target, and stops explicitly on release or spill
+failure. In-process append and Continue/Stop behavior is unchanged. The proxy
+validates operation/result/data barriers before success, acquires exclusive
+large-row reservations through the supervisor, and measures grant/size high-water
+marks without retaining rows.
+`resume()` must report Ready before credit is issued; a repeated Pause keeps
+credit withheld. Default paused sinks wait without spinning, while sinks that
+can release pressure override the space-notification future.
+
+The actor owns terminal completion and subscribes to permanent host loss while
+idle. Busy proxy failures end partial results before the actor fails queued
+callers; neither idle probes nor idle suspension reconnect a hosted session.
+Metadata observers invalidate only their matching slot. IPC and session events
+show “The driver process stopped; reconnect to continue”. The unchanged driver
+conformance assertions run against the hosted SQLite target. Dated test and
+benchmark evidence is recorded in ADR-0010.
+The first host failure is latched before asynchronous cleanup; later calls
+cannot dispatch while reap is pending. Lifecycle subscribers receive that same
+reason after reap and endpoint cleanup, including refused exclusive grants.
+
+Catalog replies use acknowledged 64 KiB chunks under one request ID, with a
+16 MiB operation ceiling and 65536 top-level list entries. Nested collections
+remain capped at 4096, with a conservative aggregate 32 MiB collection-allocation
+budget (text bytes are also bounded by the encoded ceiling). Larger requests or
+replies return `Unsupported`. The native Catalog API materializes a vector inside
+the contained host; the worker checks reply limits before serialization and
+never collects an unlimited transport stream in the parent.
+Bulk/admin facets are not advertised. A lost edit/DDL commit acknowledgement
+returns `08007` (unknown outcome), invalidates the host and is never replayed.
 
 ## 10. Non-SQL paradigms in a shared UI
 

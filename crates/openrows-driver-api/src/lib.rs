@@ -47,5 +47,5 @@ pub use error::DriverError;
 pub use file::{Attachment, FileSource};
 pub use host_failure::HostFailure;
 pub use session::{BoxFuture, CancelHandle, Session};
-pub use sink::{DiscardSink, ExecSummary, NoticeLevel, ResultSink, SinkFlow};
+pub use sink::{DiscardSink, ExecSummary, NoticeLevel, ResultSink, SinkAdmission, SinkFlow};
 pub use trace::{ConnectStage, ConnectTrace, TlsStatus};

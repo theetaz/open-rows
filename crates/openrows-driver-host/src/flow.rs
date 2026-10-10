@@ -7,6 +7,8 @@ struct State {
     credit: CreditState,
     request: u64,
     cancelled: bool,
+    facet: u64,
+    acknowledged: u64,
     closing: bool,
 }
 #[derive(Default)]
@@ -20,6 +22,8 @@ impl Flow {
         state.credit = CreditState::default();
         state.request = request;
         state.cancelled = false;
+        state.facet = 0;
+        state.acknowledged = 0;
         Ok(())
     }
     pub(crate) fn offer(&self, grant: Grant) -> Result<(), ProtocolError> {
@@ -98,6 +102,40 @@ impl Flow {
         }
         self.changed.notify_all();
         Ok(())
+    }
+    pub(crate) fn offer_facet(&self, sequence: u64) -> Result<(), ProtocolError> {
+        let mut state = self.state.lock().map_err(|_| ProtocolError::Invalid)?;
+        if sequence != state.facet + 1 || state.facet != state.acknowledged {
+            return Err(ProtocolError::Stale);
+        }
+        state.facet = sequence;
+        Ok(())
+    }
+    pub(crate) fn acknowledge_facet(
+        &self,
+        request: u64,
+        sequence: u64,
+    ) -> Result<(), ProtocolError> {
+        let mut state = self.state.lock().map_err(|_| ProtocolError::Invalid)?;
+        if request < state.request {
+            return Ok(());
+        }
+        if request != state.request || sequence > state.facet || sequence == 0 {
+            return Err(ProtocolError::Stale);
+        }
+        state.acknowledged = state.acknowledged.max(sequence);
+        self.changed.notify_all();
+        Ok(())
+    }
+    pub(crate) fn wait_facet(&self) -> Result<bool, ProtocolError> {
+        let mut state = self.state.lock().map_err(|_| ProtocolError::Invalid)?;
+        while state.facet != state.acknowledged && !state.cancelled && !state.closing {
+            state = self
+                .changed
+                .wait(state)
+                .map_err(|_| ProtocolError::Invalid)?;
+        }
+        Ok(!state.cancelled && !state.closing)
     }
     pub(crate) fn cancel(&self, request: u64) {
         if let Ok(mut state) = self.state.lock()

@@ -137,6 +137,21 @@ impl ResultSink for Sink {
             self.error = Some(error);
         }
     }
+    fn notice(&mut self, level: openrows_driver_api::NoticeLevel, message: &str) {
+        let level = match level {
+            openrows_driver_api::NoticeLevel::Info => 1,
+            openrows_driver_api::NoticeLevel::Warning => 2,
+        };
+        if let Err(error) = self.output.control(
+            self.result,
+            &Control::Notice {
+                level,
+                message: message.into(),
+            },
+        ) {
+            self.error = Some(error);
+        }
+    }
     fn push_batch(&mut self, batch: RecordBatch) -> SinkFlow {
         if self.error.is_some() {
             return SinkFlow::Stop;

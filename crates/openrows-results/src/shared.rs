@@ -10,7 +10,7 @@ use arrow_array::RecordBatch;
 use arrow_schema::SchemaRef;
 use std::collections::HashMap;
 use std::ops::Range;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{
     Arc, Mutex, MutexGuard, PoisonError, RwLock, RwLockReadGuard, RwLockWriteGuard, Weak,
 };
@@ -78,6 +78,8 @@ impl Inner {
 /// State shared by the store handle, the spill thread and export readers.
 pub(crate) struct Shared {
     inner: RwLock<Inner>,
+    pub(crate) changed: tokio::sync::Notify,
+    pub(crate) pressured: AtomicBool,
     pub(crate) limits: Limits,
     /// Logical time for least-recently-used eviction.
     clock: AtomicU64,
@@ -98,6 +100,8 @@ impl Shared {
     pub(crate) fn new(limits: Limits, spill: Option<Spill>) -> Self {
         Self {
             inner: RwLock::default(),
+            changed: tokio::sync::Notify::new(),
+            pressured: AtomicBool::new(false),
             limits,
             clock: AtomicU64::new(0),
             cache: Mutex::default(),
@@ -109,7 +113,7 @@ impl Shared {
         self.clock.fetch_add(1, Ordering::Relaxed)
     }
 
-    fn can_spill(&self) -> bool {
+    pub(crate) fn can_spill(&self) -> bool {
         self.spill.as_ref().is_some_and(Spill::available)
     }
 
@@ -237,6 +241,7 @@ impl Shared {
             inner.swap_in(victim, file);
         }
         drop(inner);
+        self.changed.notify_waiters();
         // `written` drops here, outside the lock: files of results released
         // during the write are deleted then.
     }

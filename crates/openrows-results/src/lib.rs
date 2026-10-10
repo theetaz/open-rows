@@ -7,6 +7,8 @@
 //! while a result is still streaming. A store created with a [`SpillDir`]
 //! keeps at most [`Limits::max_bytes`] of Arrow memory and spills the rest
 //! to LZ4-compressed Arrow IPC files (docs/06 §3).
+mod admission;
+pub use admission::Admission;
 mod cache;
 mod cell;
 mod limits;
@@ -28,3 +30,6 @@ mod tests;
 mod tests_spill;
 #[cfg(test)]
 mod tests_stream;
+
+#[cfg(test)]
+mod tests_admission;

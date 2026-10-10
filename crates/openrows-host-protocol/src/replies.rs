@@ -29,6 +29,8 @@ pub struct WireTrace {
     pub failed: Option<u8>,
     /// Whether TLS was retried.
     pub retried_tls: bool,
+    /// Native file registry recorded local transport; false before it opens.
+    pub local_tls: bool,
 }
 impl From<&ConnectTrace> for WireTrace {
     fn from(trace: &ConnectTrace) -> Self {
@@ -45,6 +47,7 @@ impl From<&ConnectTrace> for WireTrace {
                 .collect(),
             failed: trace.failed.map(stage_id),
             retried_tls: trace.retried_with_tls,
+            local_tls: matches!(trace.tls, Some(openrows_driver_api::TlsStatus::LocalSocket)),
         }
     }
 }
@@ -119,6 +122,20 @@ pub enum Reply {
     Connected(Connected),
     /// Statement finished after the final data barrier.
     Executed(WireSummary),
+    /// Bounded native facet response.
+    Facet {
+        /// Actual response.
+        value: crate::FacetReply,
+        /// Post-operation transaction state.
+        in_transaction: bool,
+    },
+    /// Facet stream ended after its final acknowledged fragment.
+    FacetChunks {
+        /// Final chunk ordinal.
+        sequence: u64,
+        /// Post-operation transaction state.
+        in_transaction: bool,
+    },
     /// Worker round trip succeeded.
     Pong,
 }
@@ -147,6 +164,9 @@ pub enum WireError {
     Tls,
     /// Transport failed.
     Network,
+    /// Declared host failure: 1 Spawn, 2 Incompatible, 3 Exited, 4 `MemoryLimit`,
+    /// 5 Unresponsive, 6 Protocol; unknown IDs are terminal protocol failures.
+    Host(u8),
     /// Host integrity failed.
     Protocol,
 }
@@ -162,9 +182,15 @@ impl From<DriverError> for WireError {
             DriverError::Auth(_) => Self::Auth,
             DriverError::Tls(_) => Self::Tls,
             DriverError::Network(_) => Self::Network,
-            DriverError::Host(_) | DriverError::Protocol(_) | DriverError::Arrow(_) => {
-                Self::Protocol
-            }
+            DriverError::Host(reason) => Self::Host(match reason {
+                openrows_driver_api::HostFailure::Spawn => 1,
+                openrows_driver_api::HostFailure::Incompatible => 2,
+                openrows_driver_api::HostFailure::Exited => 3,
+                openrows_driver_api::HostFailure::MemoryLimit => 4,
+                openrows_driver_api::HostFailure::Unresponsive => 5,
+                openrows_driver_api::HostFailure::Protocol => 6,
+            }),
+            DriverError::Protocol(_) | DriverError::Arrow(_) => Self::Protocol,
         }
     }
 }

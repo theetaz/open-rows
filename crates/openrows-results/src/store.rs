@@ -57,7 +57,7 @@ pub enum WindowError {
 /// reads decode them back transparently through a small cache; without one,
 /// a stream that would exceed the budget stops instead.
 pub struct ResultStore {
-    shared: Arc<Shared>,
+    pub(crate) shared: Arc<Shared>,
 }
 
 impl Default for ResultStore {
@@ -121,6 +121,7 @@ impl ResultStore {
         let result = ResultSet::new(schema, 0, self.shared.tick());
         let replaced = self.shared.write().put(id.to_owned(), result);
         drop(replaced);
+        self.shared.changed.notify_waiters();
     }
 
     /// Append a batch to a streamed result.
@@ -145,6 +146,7 @@ impl ResultStore {
     )]
     pub fn remove(&self, id: &str) -> bool {
         let removed = self.shared.write().take(id);
+        self.shared.changed.notify_waiters();
         removed.is_some_and(|result| {
             self.shared.cache().forget(&result.spill_files());
             true
@@ -159,6 +161,7 @@ impl ResultStore {
             std::mem::take(&mut inner.results)
         };
         drop(results);
+        self.shared.changed.notify_waiters();
         self.shared.cache().clear();
         if let Some(spill) = &self.shared.spill {
             spill.close();

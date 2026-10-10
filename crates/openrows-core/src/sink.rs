@@ -3,7 +3,9 @@
 use crate::event::QueryEvent;
 use arrow_array::RecordBatch;
 use arrow_schema::SchemaRef;
-use openrows_driver_api::{ExecSummary, NoticeLevel, ResultSink, SinkFlow};
+use openrows_driver_api::{
+    BoxFuture, ExecSummary, NoticeLevel, ResultSink, SinkAdmission, SinkFlow,
+};
 use openrows_types::ResultId;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -20,6 +22,19 @@ pub trait BatchSink: Send + Sync {
     fn begin(&self, result: ResultId, schema: SchemaRef);
     /// Append a batch; `SinkFlow::Stop` ends the stream early (row cap, memory).
     fn push(&self, result: ResultId, batch: RecordBatch) -> SinkFlow;
+    /// Admission before a hosted driver grants another batch.
+    fn admission(&self, _result: ResultId) -> SinkAdmission {
+        SinkAdmission::Ready
+    }
+    /// Wait for store space; paused sinks override this to signal available space.
+    fn resume(&self, result: ResultId) -> BoxFuture<'_, SinkAdmission> {
+        match self.admission(result) {
+            SinkAdmission::Pause => Box::pin(std::future::pending()),
+            admission => Box::pin(std::future::ready(admission)),
+        }
+    }
+    /// Admission stopped the result early.
+    fn stopped(&self, _result: ResultId) {}
     /// The result set is complete; no more batches follow.
     fn end(&self, result: ResultId);
 }
@@ -150,6 +165,23 @@ impl ResultSink for QuerySink {
         flow
     }
 
+    fn admission(&self) -> SinkAdmission {
+        self.open
+            .as_ref()
+            .map_or(SinkAdmission::Ready, |open| self.store.admission(open.id))
+    }
+    fn resume(&mut self) -> BoxFuture<'_, SinkAdmission> {
+        match &self.open {
+            Some(open) => self.store.resume(open.id),
+            None => Box::pin(std::future::ready(SinkAdmission::Ready)),
+        }
+    }
+    fn stopped(&mut self) {
+        if let Some(open) = self.open.as_mut() {
+            open.truncated = true;
+            self.store.stopped(open.id);
+        }
+    }
     fn notice(&mut self, level: NoticeLevel, message: &str) {
         self.emit(QueryEvent::Notice {
             level,

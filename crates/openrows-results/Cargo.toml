@@ -13,8 +13,10 @@ arrow-array = "60"
 arrow-schema = "60"
 arrow-ipc = { version = "60", default-features = false, features = ["lz4"] }
 thiserror.workspace = true
+tokio = { version = "1.53", features = ["sync"] }
 
 [dev-dependencies]
+tokio = { version = "1.53", features = ["rt", "time", "macros"] }
 criterion = { version = "0.8", default-features = false }
 proptest = "1.11"
 tempfile = "3.27"

@@ -66,7 +66,7 @@ impl From<SessionEvent> for SessionStateChanged {
         Self {
             session_id: event.session.to_string(),
             state,
-            message: event.error.map(|error| error.message),
+            message: event.error.map(|error| IpcError::from(error).message),
         }
     }
 }

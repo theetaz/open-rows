@@ -125,6 +125,10 @@ impl Session for SqliteSession {
         Some(Arc::new(Interrupt(Arc::clone(&self.interrupt))))
     }
 
+    fn in_transaction(&self) -> bool {
+        self.worker.in_transaction()
+    }
+
     fn close(self: Box<Self>) -> BoxFuture<'static, Result<(), DriverError>> {
         // Dropping the worker ends the thread, which closes the file.
         drop(self);
