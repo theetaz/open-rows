@@ -51,6 +51,8 @@ echo "$image on 127.0.0.1:${port}"
 export OPENROWS_TEST_MSSQL_PORT="$port" OPENROWS_TEST_MSSQL_PASSWORD="$password"
 cargo nextest run -p openrows-driver-mssql -p openrows-import --locked --test sqlserver \
     --run-ignored only --no-capture
+cargo nextest run -p openrows-core --locked --test sqlserver_explain \
+    --run-ignored only --no-capture
 # One group at a time: SQL Server reuses session ids at once, and the
 # process-list group signals a session id after ending it.
 cargo nextest run -p openrows-driver-conformance --locked --test sqlserver \

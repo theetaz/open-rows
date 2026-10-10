@@ -149,7 +149,7 @@ export const commands = {
 	 *  Plans are always allowed. Explain Analyze of a possible write needs a
 	 *  matching `confirmToken` (`confirmationRequired`), is refused on
 	 *  read-only connections and on `MySQL`/`MariaDB` (`blocked`), and on
-	 *  `PostgreSQL` runs in a transaction that is rolled back.
+	 *  `PostgreSQL` and SQL Server run in a transaction that is rolled back.
 	 */
 	queryExplain: (request: ExplainRequest) => typedError<ExplainReply, IpcError>(__TAURI_INVOKE("query_explain", { request })),
 	/**

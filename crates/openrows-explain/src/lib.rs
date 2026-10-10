@@ -25,6 +25,7 @@ mod mysql_json;
 mod mysql_tree;
 mod pg;
 mod sqlite;
+mod sqlserver;
 
 pub use analysis::{
     AnalysedNode, AnalysedPlan, EXPENSIVE_SHARE, EXPENSIVE_TOP, Hotspot, LARGE_TABLE_ROWS,
@@ -39,6 +40,9 @@ pub enum ParseError {
     /// The JSON formats did not hold valid JSON.
     #[error("the plan is not valid JSON: {0}")]
     Json(#[from] serde_json::Error),
+    /// Invalid or over-budget showplan XML.
+    #[error("invalid showplan XML: {0}")]
+    Xml(String),
     /// A required part was absent.
     #[error("the plan output has no {0}")]
     Missing(&'static str),
@@ -54,6 +58,7 @@ pub fn parse(format: Format, rows: &[Vec<Option<String>>]) -> Result<Plan, Parse
         Format::MySqlJson => mysql_json::parse(&raw_text(format, rows)),
         Format::MySqlTree => mysql_tree::parse(&raw_text(format, rows)),
         Format::SqliteRows => sqlite::parse(rows),
+        Format::SqlServerXml => sqlserver::parse(&raw_text(format, rows)),
     }
 }
 

@@ -25,6 +25,7 @@ tokio-util = "0.7.19"
 tracing = "0.1"
 
 [dev-dependencies]
+openrows-driver-mssql = { path = "../openrows-driver-mssql" }
 arrow-ipc = { version = "60", default-features = false }
 openrows-driver-mysql = { path = "../openrows-driver-mysql" }
 openrows-driver-postgres = { path = "../openrows-driver-postgres" }

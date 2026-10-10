@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Opens session actors, routes commands to them and supervises panics.
+mod sequence;
+pub(crate) use sequence::SessionSequence;
+
 use crate::actor::{self, Connect, Mailbox};
 use crate::error::ErrorKind;
 use crate::resilience::{Link, Resilience, first_connect};
@@ -35,6 +38,7 @@ struct Submission {
     params: Vec<Option<String>>,
     max_rows: Option<usize>,
     sink: Option<Arc<dyn BatchSink>>,
+    sequence: Option<QueryId>,
 }
 
 impl Submission {
@@ -44,6 +48,7 @@ impl Submission {
             params,
             max_rows: None,
             sink: None,
+            sequence: None,
         }
     }
 }
@@ -53,6 +58,7 @@ impl Submission {
 /// Must be used inside a tokio runtime. Dropping the manager closes all sessions.
 pub struct SessionManager {
     sessions: Mutex<HashMap<SessionId, Entry>>,
+    sequences: Mutex<HashMap<SessionId, QueryId>>,
     store: Arc<dyn BatchSink>,
     events: broadcast::Sender<SessionEvent>,
     root: CancellationToken,
@@ -66,6 +72,7 @@ impl SessionManager {
     pub fn new(store: Arc<dyn BatchSink>) -> Self {
         Self {
             sessions: Mutex::new(HashMap::new()),
+            sequences: Mutex::new(HashMap::new()),
             store,
             events: broadcast::channel(EVENT_CAPACITY).0,
             root: CancellationToken::new(),
@@ -111,6 +118,13 @@ impl SessionManager {
     /// # Errors
     /// `UnknownSession`.
     pub fn suspend_idle(&self, session: SessionId, idle: Duration) -> Result<(), CoreError> {
+        let sequences = self
+            .sequences
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        if sequences.contains_key(&session) {
+            return Ok(());
+        }
         let commands = self
             .with_entry(session, |entry| entry.commands.clone())
             .ok_or_else(|| CoreError::unknown_session(session))?;
@@ -260,6 +274,16 @@ impl SessionManager {
     }
 
     fn submit(&self, session: SessionId, submission: Submission) -> Result<QueryHandle, CoreError> {
+        let sequences = self
+            .sequences
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        if sequences.get(&session).copied() != submission.sequence {
+            return Err(CoreError::new(
+                ErrorKind::QueueFull,
+                "The session is busy explaining a statement",
+            ));
+        }
         let (sender, events) = mpsc::unbounded_channel();
         let (commands, token, timeout) = self
             .with_entry(session, |entry| {

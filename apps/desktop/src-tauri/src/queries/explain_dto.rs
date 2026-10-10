@@ -159,7 +159,9 @@ impl PlanDto {
             raw: explained.raw,
             raw_format: match explained.format {
                 Format::PostgresJson | Format::MySqlJson => PlanRawFormatDto::Json,
-                Format::MySqlTree | Format::SqliteRows => PlanRawFormatDto::Text,
+                Format::MySqlTree | Format::SqliteRows | Format::SqlServerXml => {
+                    PlanRawFormatDto::Text
+                }
             },
         }
     }

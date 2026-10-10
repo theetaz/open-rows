@@ -13,3 +13,4 @@ workspace = true
 [dependencies]
 serde_json = { workspace = true }
 thiserror.workspace = true
+quick-xml = "0.42"

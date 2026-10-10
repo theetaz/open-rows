@@ -18,6 +18,8 @@ pub enum Engine {
     MySql,
     /// `MariaDB`.
     MariaDb,
+    /// SQL Server and Azure SQL.
+    SqlServer,
     /// `SQLite` 3.
     Sqlite,
 }
@@ -31,6 +33,8 @@ pub enum Format {
     MySqlJson,
     /// `MySQL` `EXPLAIN ANALYZE`: one row of indented `->` tree text.
     MySqlTree,
+    /// SQL Server SHOWPLAN/STATISTICS XML.
+    SqlServerXml,
     /// `SQLite` `EXPLAIN QUERY PLAN`: rows of `id`, `parent`, `notused`, `detail`.
     SqliteRows,
 }

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useState } from 'react';
+import { memo, useCallback, useState } from 'react';
 import { Button, SegmentedControl } from '@openrows/ui';
 import type { PlanDto } from '@openrows/ipc';
+import { PlanFlame } from './PlanFlame';
 import { PlanTree } from './PlanTree';
 import { PlanDetails } from './PlanDetails';
 import { hotspotText, hotspotsOf, nodeLabel, planSummary } from './planModel';
@@ -9,11 +10,12 @@ import styles from './Explain.module.css';
 
 type ExplainViewProps = { plan: PlanDto };
 
-type Tab = 'plan' | 'raw';
+type Tab = 'plan' | 'raw' | 'flame';
 
 const TABS = [
   { value: 'plan', label: 'Plan' },
   { value: 'raw', label: 'Raw' },
+  { value: 'flame', label: 'Flame' },
 ] as const;
 
 /**
@@ -24,6 +26,10 @@ const TABS = [
 export function ExplainView({ plan }: ExplainViewProps): React.JSX.Element {
   const [tab, setTab] = useState<Tab>('plan');
   const [selected, setSelected] = useState(0);
+  const selectInPlan = useCallback((id: number) => {
+    setSelected(id);
+    setTab('plan');
+  }, []);
   const node = plan.nodes[selected] ?? plan.nodes[0];
   return (
     <section className={styles.view} aria-label="Query plan">
@@ -44,9 +50,22 @@ export function ExplainView({ plan }: ExplainViewProps): React.JSX.Element {
         </pre>
       ) : (
         <>
-          <HotspotStrip plan={plan} onSelect={setSelected} />
+          <MemoHotspotStrip plan={plan} onSelect={setSelected} />
           <div className={styles.body}>
-            <PlanTree plan={plan} selected={selected} onSelect={setSelected} />
+            {tab === 'flame' ? (
+              <PlanFlame
+                plan={plan}
+                initialSelected={selected}
+                onInspect={setSelected}
+                onSelect={selectInPlan}
+              />
+            ) : (
+              <PlanTree
+                plan={plan}
+                selected={selected}
+                onSelect={setSelected}
+              />
+            )}
             {node && <PlanDetails plan={plan} node={node} />}
           </div>
         </>
@@ -110,3 +129,5 @@ function HotspotStrip(props: {
     </ul>
   );
 }
+
+const MemoHotspotStrip = memo(HotspotStrip);
