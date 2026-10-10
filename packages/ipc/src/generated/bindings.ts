@@ -397,6 +397,16 @@ export const commands = {
 	 *  the check; events follow on `on_event`.
 	 */
 	dumpRestoreStart: (request: RestoreRequest, onEvent: Channel<DumpEventDto>) => typedError<DumpStarted, IpcError>(__TAURI_INVOKE("dump_restore_start", { request, onEvent })),
+	/**  Drain queued files after startup or a native event; lock guard applies at IPC. */
+	nativeFilesTake: () => typedError<NativeFileDto[], IpcError>(__TAURI_INVOKE("native_files_take")),
+	/**  Reveal only the local database path of an existing saved connection. */
+	databaseReveal: (profileId: string) => typedError<null, IpcError>(__TAURI_INVOKE("database_reveal", { profileId })),
+	/**  Current data directory and history/log locations. */
+	dataLocations: () => typedError<LocationsDto, IpcError>(__TAURI_INVOKE("data_locations")),
+	/**  Choose an empty data folder; validation happens again when scheduled and on restart. */
+	dataLocationChoose: () => typedError<string | null, IpcError>(__TAURI_INVOKE("data_location_choose")),
+	/**  Schedule an explicitly approved copy, including local history, for the next restart. */
+	dataLocationApply: (path: string) => typedError<null, IpcError>(__TAURI_INVOKE("data_location_apply", { path })),
 	/**  The text of `settings.json`, or `null` before the first save. */
 	settingsRead: () => typedError<string | null, IpcError>(__TAURI_INVOKE("settings_read")),
 	/**  Replace `settings.json` with `text` (a JSON object with `"openrows": 1`). */
@@ -1578,6 +1588,15 @@ export type LiteralRangeDto = {
 	to: number,
 };
 
+/**  Display paths and pending move status; contains no credentials. */
+export type LocationsDto = {
+	data: string,
+	history: string,
+	logs: string,
+	pending: string | null,
+	failure: string | null,
+};
+
 /**  A menu command chosen by the user; `id` is the registry command id. */
 export type MenuCommand = {
 	id: string,
@@ -1590,6 +1609,9 @@ export type MenuItemState = {
 	/**  Tauri accelerator such as `Cmd+Shift+Enter`; `null` for none. */
 	accelerator: string | null,
 };
+
+/**  Validated content or an actionable rejection, never executable instructions. */
+export type NativeFileDto = { kind: "sql"; opened: OpenedSqlFileDto } | { kind: "database"; path: string } | { kind: "rejected"; message: string };
 
 /**  A check constraint to add. */
 export type NewCheckDto = {

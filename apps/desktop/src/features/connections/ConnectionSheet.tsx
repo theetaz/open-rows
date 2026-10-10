@@ -20,6 +20,7 @@ import styles from './ConnectionSheet.module.css';
 
 type Props = {
   profile?: ProfileDto | undefined;
+  filePath?: string;
   /** The engine of a new connection (chosen in the picker). */
   engine?: EngineDto | undefined;
   onClose: () => void;
@@ -35,7 +36,12 @@ type Props = {
  */
 export function ConnectionSheet(props: Props): React.JSX.Element {
   const { profile } = props;
-  const form = useConnectionForm(profile, props.onSaved, props.engine);
+  const form = useConnectionForm(
+    profile,
+    props.onSaved,
+    props.engine,
+    props.filePath,
+  );
   const { engine } = form.draft;
   const file = isFileEngine(engine);
   return (

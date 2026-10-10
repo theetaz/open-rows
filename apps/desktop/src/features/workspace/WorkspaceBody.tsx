@@ -110,6 +110,7 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
         />
       </SplitPanel>
       <QueryContent
+        onNewTab={newTabCommand(controller)}
         connections={connections}
         tabs={tabs}
         database={scope?.database ?? ''}
@@ -133,14 +134,7 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
         edge="left"
         overlay={controller.compact}
       >
-        <Suspense fallback={null}>
-          <WorkspaceInspector
-            context={`${connections.active?.name ?? 'No connection'} · ${scope?.database ?? 'No database'}`}
-            cell={controller.cell}
-            row={controller.row}
-            table={controller.table}
-          />
-        </Suspense>
+        <Inspector {...props} />
       </SplitPanel>
     </div>
   );
@@ -224,5 +218,28 @@ export function WorkspaceRail(props: {
       actionsFor={(profile) => connectionActions(profile, connections)}
       onSettings={props.onSettings}
     />
+  );
+}
+
+/** Toolbar and tab strip share the configured new-tab command. */
+function newTabCommand(
+  controller: ReturnType<typeof useWorkspaceController>,
+): () => void {
+  return () => {
+    controller.command('new-tab');
+  };
+}
+
+/** Lazy details share the current connection and database context. */
+function Inspector({ connections, controller }: Props): React.JSX.Element {
+  return (
+    <Suspense fallback={null}>
+      <WorkspaceInspector
+        context={`${connections.active?.name ?? 'No connection'} · ${controller.scope?.database ?? 'No database'}`}
+        cell={controller.cell}
+        row={controller.row}
+        table={controller.table}
+      />
+    </Suspense>
   );
 }

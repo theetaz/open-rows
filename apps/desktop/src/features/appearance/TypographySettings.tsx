@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { SelectField, fontFamily, useTheme } from '@openrows/ui';
+import { FontRoles } from './FontRoles';
 import { SettingRow } from './InterfaceSettings';
 import styles from './Appearance.module.css';
 const sizeOptions = Array.from({ length: 8 }, (_, index) => ({
@@ -11,6 +12,7 @@ export function TypographySettings(): React.JSX.Element {
   return (
     <section aria-label="Typography">
       <h3>Typography</h3>
+      <FontRoles />
       <div className={styles.settingsGroup}>
         <SettingRow
           title="Interface font"
@@ -47,7 +49,7 @@ export function TypographySettings(): React.JSX.Element {
         </div>
         <SettingRow
           title="Monospace font"
-          description="Table names, column names, data, SQL and detail values."
+          description="Detail values and other monospace labels. Editor and grid use their independent settings above."
         >
           <SelectField
             aria-label="Monospace font"

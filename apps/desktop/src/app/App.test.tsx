@@ -83,3 +83,23 @@ it('opens settings by gear or shortcut, preserves the workspace and returns focu
   await user.keyboard('{Escape}');
   expect(screen.queryByRole('dialog', { name: 'Settings' })).toBeNull();
 });
+
+it('applies Settings density and reduced-motion override live at the app root', async () => {
+  const { default: userEvent } = await import('@testing-library/user-event');
+  const { within } = await import('@testing-library/react');
+  const user = userEvent.setup();
+  render(<App />);
+  await user.click(await screen.findByRole('button', { name: 'Settings' }));
+  await screen.findByRole('dialog', { name: 'Settings' });
+  await user.click(
+    within(screen.getByRole('radiogroup', { name: 'Density' })).getByRole(
+      'radio',
+      { name: 'Compact' },
+    ),
+  );
+  expect(document.documentElement).toHaveAttribute('data-density', 'compact');
+  await user.click(screen.getByRole('switch', { name: 'Reduce motion' }));
+  expect(document.documentElement).toHaveAttribute('data-motion', 'reduced');
+  await user.click(screen.getByRole('switch', { name: 'Reduce motion' }));
+  expect(document.documentElement).not.toHaveAttribute('data-motion');
+});

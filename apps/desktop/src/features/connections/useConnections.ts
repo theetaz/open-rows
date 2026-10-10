@@ -19,6 +19,7 @@ import type { SessionStatus } from './sessions';
 /** Which modal sheet is open over the workspace. */
 export type SheetState =
   | { kind: 'new' }
+  | { kind: 'new-file'; path: string }
   | { kind: 'import' }
   | { kind: 'export'; ids?: string[] }
   | { kind: 'edit'; profile: ProfileDto }

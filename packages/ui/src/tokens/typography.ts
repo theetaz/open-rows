@@ -1,9 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
-/** Native system chrome; one monospace scale for database names, columns and values. */
+/** Native system chrome and independently overridable content font roles. */
 export const typography = {
   'font-ui':
     'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   'font-mono': 'ui-monospace, "SF Mono", Menlo, Consolas, monospace',
+  'font-editor': 'ui-monospace, "SF Mono", Menlo, Consolas, monospace',
+  'font-grid': 'ui-monospace, "SF Mono", Menlo, Consolas, monospace',
+  'font-sidebar':
+    'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  'text-editor': '0.75rem',
+  'text-grid': '0.75rem',
+  'text-sidebar': '0.8125rem',
+  'editor-line-height': '1.5',
   'line-height-ui': '1.35',
   'font-smoothing': 'auto',
   'font-numeric': 'tabular-nums',

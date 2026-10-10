@@ -59,11 +59,11 @@ These FR-NET-03 rows document OpenRows scope; no TablePlus adoption/parity claim
 | W04 | Open anything (⌘P) | Jump to objects or queries. | Covered FR-SCHEMA-02; new FR-WS-04 | M2 done (M2-20) | Cached search ≤ 50 ms. | [S12] |
 | W05 | Workspaces per window | Separate contexts inside one window. | New FR-WS-04 | M2 done (M2-20) | Independent tabs and result lifetimes. | [S10] |
 | W06 | Multiple windows | Open an independent working window. | Covered FR-APP-03 | M2 | Platform-native window behaviour. | [S10] |
-| W07 | Move workspace/tab | Detach work into another window. | Covered FR-APP-03; new FR-APP-10 | M2 | Preserve context and pending changes. | [S10] |
-| W08 | Preview object tab | Reuse an unmodified tab. | New FR-APP-10 | M2 | Dirty text cannot be replaced. | [S10] |
-| W09 | Pin object tab | Keep an object open. | New FR-APP-10 | M2 | Persistent pin plus accessible state. | [S10] |
-| W10 | Rename tabs | Give editors meaningful labels. | New FR-APP-10 | M2 | Labels survive layout restore. | [S10] |
-| W11 | Close other/right tabs | Close groups of tabs. | New FR-APP-10 | M2 | One impact-aware dirty-state review. | [S10] |
+| W07 | Move workspace/tab | Detach work into another window. | Deferred FR-APP-03, FR-APP-10 (M6-05/M5-11; no multi-window runtime) | M6 | Preserve context and pending changes. | [S10] |
+| W08 | Preview object tab | Reuse an unmodified tab. | Implemented FR-APP-10 (M1-27, M2-22b dirty protection) | M2 | Dirty text cannot be replaced. | [S10] |
+| W09 | Pin object tab | Keep an object open. | Implemented FR-APP-10 (M1-27 persistence) | M2 | Persistent pin plus accessible state. | [S10] |
+| W10 | Rename tabs | Give editors meaningful labels. | Implemented FR-APP-10 (M1-27, M2-20 restore) | M2 | Labels survive layout restore. | [S10] |
+| W11 | Close other/right tabs | Close groups of tabs. | Implemented FR-APP-10 (M2-22b single impact review) | M2 | One impact-aware dirty-state review. | [S10] |
 | W12 | Restore session | Reopen previous workspace descriptors. | Covered FR-EDIT-01; new FR-WS-04 | M2 done (M2-20) | Lazy data loading; no silent SQL execution. | [S13] |
 | W13 | Create database | Choose name, encoding and collation. | New FR-SCHEMA-12 | M2 | Capability-aware statement preview. | [S11] |
 | W14 | Rename database | Rename when supported. | New FR-SCHEMA-12 | M2 | Explain unsupported engine operations. | [S11] |
@@ -246,32 +246,32 @@ These FR-NET-03 rows document OpenRows scope; no TablePlus adoption/parity claim
 
 | Key | Feature | What it does | OpenRows status / FR | Target | OpenRows improvement | Source |
 | --- | --- | --- | --- | --- | --- | --- |
-| P01 | General pane | Configure startup and update behaviour. | New FR-APP-08, FR-APP-12 | M2 | Searchable settings and validated defaults. | [S05] |
-| P02 | Table pane | Configure table presentation. | New FR-APP-08, FR-GRID-12 | M2 | Explicit estimated/exact count controls. | [S05] |
-| P03 | Editor pane | Configure completion and editing. | New FR-APP-08, FR-EDIT-12, FR-EDIT-13 | M2 | One source for per-editor defaults. | [S05] |
-| P04 | Fonts & Themes pane | Adjust visual appearance. | Covered FR-APP-02; new FR-APP-13 | M1 defaults; M2 customisation | Accessible original token themes. | [S55] |
-| P05 | Security pane | Configure locks and safety defaults. | New FR-APP-08, FR-APP-11 | M2 | Production policy remains visible. | [S05] |
-| P06 | Locations pane | Choose local data directories. | New FR-APP-08 | M2 | Validate moves; never silently sync history. | [S05] |
-| P07 | Keymap pane | Rebind keyboard actions. | Covered FR-APP-01 | M1 | Conflict diagnostics and reset defaults. | [S56] |
+| P01 | General pane | Configure startup and update behaviour. | Implemented FR-APP-08, FR-APP-12 (M2-22b; feeds require M1-31) | M2 | Searchable settings and validated defaults. | [S05] |
+| P02 | Table pane | Configure table presentation. | Implemented FR-APP-08 (M2-22b); FR-GRID-12 reused M2-19 | M2 | Explicit estimated/exact count controls. | [S05] |
+| P03 | Editor pane | Configure completion and editing. | Implemented FR-APP-08 (M2-22b); editor controls reused | M2 | One source for per-editor defaults. | [S05] |
+| P04 | Fonts & Themes pane | Adjust visual appearance. | Implemented FR-APP-02, FR-APP-13 (M2-22b) | M1 defaults; M2 customisation | Accessible original token themes. | [S55] |
+| P05 | Security pane | Configure locks and safety defaults. | Implemented FR-APP-08, FR-APP-11 (M2-22a reused) | M2 | Production policy remains visible. | [S05] |
+| P06 | Locations pane | Choose local data directories. | Implemented FR-APP-08 (M2-22b) | M2 | Validate moves; never silently sync history. | [S05] |
+| P07 | Keymap pane | Rebind keyboard actions. | Implemented FR-APP-01 (existing rebinding reused) | M1 | Conflict diagnostics and reset defaults. | [S56] |
 | P08 | LLM Agent pane | Configure assistant providers. | Covered FR-AI-01; new FR-APP-08 | M4.5 | Policy, provider health and context preview. | [S05] |
 | P09 | MCP pane | Configure external client access. | Covered FR-AI-06; new FR-AI-10 | M4.5 | Scoped read-only access. | [S57] |
 | P10 | Light/dark/system | Follow a chosen or OS appearance. | Covered FR-APP-02 | M1 | High contrast also supported. | [S58] |
-| P11 | Custom theme JSON | Duplicate, import and export themes. | New FR-APP-13 | M2 | Documented open tokens, no theme code. | [S55] |
+| P11 | Custom theme JSON | Duplicate, import and export themes. | Implemented FR-APP-13 (M2-22b) | M2 | Documented open tokens, no theme code. | [S55] |
 | P12 | Git theme repositories | Install/update remote theme collections. | Gap G11 | Post-1.0 | Licence and trust review before install. | [S55] |
-| P13 | Editor font/line height | Adjust editor text metrics. | Covered FR-APP-02; new FR-APP-13 | M2 | Preserve typing performance and scaling. | [S55] |
-| P14 | Grid/sidebar fonts | Adjust table and sidebar density. | Covered FR-APP-02; new FR-APP-13 | M2 | Named density modes and accessible targets. | [S55] |
-| P15 | Syntax/state colours | Customise code and edit-state colours. | New FR-APP-13 | M2 | Contrast validation plus non-colour indicators. | [S55] |
+| P13 | Editor font/line height | Adjust editor text metrics. | Implemented FR-APP-02, FR-APP-13 (M2-22b) | M2 | Preserve typing performance and scaling. | [S55] |
+| P14 | Grid/sidebar fonts | Adjust table and sidebar density. | Implemented FR-APP-02, FR-APP-13 (M2-22b) | M2 | Named density modes and accessible targets. | [S55] |
+| P15 | Syntax/state colours | Customise code and edit-state colours. | Implemented FR-APP-13 (M2-22b) | M2 | Contrast validation plus non-colour indicators. | [S55] |
 | P16 | Row striping/scrollbars | Adjust grid visual aids. | New FR-GRID-12 | M2 | Respect OS scrollbar preferences. | [S59] |
 | P17 | Estimate counts | Avoid expensive exact counts. | New FR-GRID-12 | M2 | Label estimates, exact count only on request. | [S59] |
-| P18 | Query timeouts | Set a maximum execution duration. | New FR-APP-12 | M2 | All long operations cancellable. | [S09] |
-| P19 | Beta update choice | Opt into a prerelease channel. | New FR-APP-12 | M2 | Signed channel manifests and rollback guidance. | [S13] |
-| P20 | Update opt-out | Disable automatic updates/notices. | Covered FR-APP-04; new FR-APP-12 | M1 baseline; M2 controls | Free, explicit user controls. | [S13] |
-| P21 | Crash-report control | Configure crash reporting. | New FR-APP-12 | M2 | Off by default, scrubbed and never paywalled. | [S28] |
+| P18 | Query timeouts | Set a maximum execution duration. | Implemented FR-APP-12 (M2-22b new-run timeout) | M2 | All long operations cancellable. | [S09] |
+| P19 | Beta update choice | Opt into a prerelease channel. | Implemented FR-APP-12 preferences/endpoint selection (M2-22b); signed distribution M1-31 | M2 | Signed channel manifests and rollback guidance. | [S13] |
+| P20 | Update opt-out | Disable automatic updates/notices. | Implemented FR-APP-12 notice preference (M2-22b); updater backend M1-31 | M1 baseline; M2 controls | Free, explicit user controls. | [S13] |
+| P21 | Crash-report control | Configure crash reporting. | Implemented FR-APP-12 preference (M2-22b); no reporting backend | M2 | Off by default, scrubbed and never paywalled. | [S28] |
 | P22 | Navigation shortcuts | Move among tabs, panes and workspaces. | Covered FR-APP-01; new FR-APP-10 | M1 actions; M2 contexts | Rebindable platform defaults. | [S44] |
 | P23 | Menu shortcuts | Trigger file, editor and grid actions. | Covered FR-APP-01; new FR-APP-14 | M1/M2 | Keyboard operability with visible focus. | [S44] |
 | P24 | CLI open | Launch a connection through the shell. | New FR-APP-09 | M5 | OpenRows command with secret-free profiles. | [S07] |
 | P25 | Object/filter deep links | Open a table at a chosen scope. | New FR-APP-09 | M5 | Preview target; never auto-run arbitrary SQL. | [S07] |
-| P26 | File associations | Open local database files. | New FR-APP-14 | M2 macOS; M6 others | Validate content before opening. | [S08] |
+| P26 | File associations | Open local database files. | Implemented FR-APP-14 handoffs/associations (M2-22b); packaged OS verification pending | M2 macOS; M6 others | Validate content before opening. | [S08] |
 | P27 | Native macOS app | Integrate with Mac window/menu conventions. | New FR-APP-14; NFR-PORT-01 | M1 shell; M2 integration | ≤ 800 ms cold-start budget. | [S35] |
 | P28 | Apple Silicon support | Run natively on ARM Macs. | New FR-APP-07; NFR-PORT-01 | M1 | Same conformance on Intel and ARM. | [S35] |
 | P29 | Windows/Linux apps | Offer desktop builds for other OSes. | New FR-APP-07, FR-APP-14; NFR-PORT-01 | M6 | Publish driver capabilities per platform. | [S01] |
@@ -527,5 +527,19 @@ statement classification and connection/database. Unsupported platforms visibly
 fall back to the matching confirmation policy and disable lock/auth controls.
 All data IPC entry points share the Rust lock guard; mounted content and portals
 are hidden in every locked window. Settings groups/locations, tabs/layout, general
-controls, themes and file associations remain separate M2-22 work. Native macOS
+controls, themes and file associations are completed by M2-22b below. Native macOS
 Touch ID/system-password UX remains the maintainer's manual acceptance check.
+
+## Implemented (M2-22b): application parity
+
+W08–W11 and P01–P07/P11/P13–P15/P18–P20/P26 reuse the baseline and add strict
+portable settings, highlighted search, confirmed resets, restart-only copy/rollback
+locations with explicit history consent, one bulk dirty-tab review, independent
+font roles and versioned safe theme tokens, general preferences/new-run timeout,
+and content-validated native handoffs without SQL execution. See docs/07, docs/15,
+docs/16 and docs/20. Existing P16/P17 grid presentation/count controls, keyboard
+navigation, P23 native menu shortcuts and export reveal actions are retained.
+P08/P09 remain M4.5; P12 remains G11. W07 needs multi-window M6-05/M5-11.
+P27 startup/native distribution and P29 Windows/Linux validation retain their
+separate milestones. Null signed-feed configuration requires M1-31 release
+engineering before any actual updates.

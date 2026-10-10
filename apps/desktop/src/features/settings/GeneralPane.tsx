@@ -14,6 +14,7 @@ import type { Density } from './general';
 import styles from '../appearance/Appearance.module.css';
 import { HistorySection } from './HistorySection';
 import { CopySection } from './CopySection';
+import { StartupSettings } from './StartupSettings';
 
 const DENSITIES: readonly { value: Density; label: string }[] = [
   { value: 'compact', label: 'Compact' },
@@ -67,6 +68,7 @@ export function GeneralPane(): React.JSX.Element {
           </SettingRow>
         </div>
       </section>
+      <StartupSettings />
       <ConnectionSettings />
       <HistorySection />
       <section aria-label="Layout">

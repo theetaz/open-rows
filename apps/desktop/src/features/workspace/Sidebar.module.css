@@ -52,3 +52,8 @@
   font-size: var(--or-text-12);
   font-weight: 600;
 }
+
+:where([data-sidebar]) {
+  font-family: var(--or-font-sidebar, var(--or-font-ui));
+  font-size: var(--or-text-sidebar, var(--or-text-13));
+}

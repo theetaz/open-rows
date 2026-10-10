@@ -165,3 +165,28 @@ sequenceDiagram
 3. Artifacts uploaded to a draft GitHub Release; smoke tests run against the produced artifacts on each OS.
 4. Maintainer publishes; `latest.json` updated last so clients never see a half-published release.
 5. Changelog generated from Conventional Commits and curated.
+
+## Implemented (M2-22b): file handoffs and update preferences
+
+Tauri bundle associations register `.sqlite`, `.sqlite3`, `.db`, `.duckdb` and
+`.sql`. macOS `RunEvent::Opened` and non-macOS launch argv enter a bounded native
+queue; the unlocked frontend drains it. SQLite files require the 16-byte SQLite
+magic header. SQL is bounded to 16 MiB, UTF-8 and rejects binary control bytes;
+it opens a new editor without running any statement. Unexpected content displays
+an error. DuckDB displays “DuckDB coming in M2-04”. Projects remain directories
+with `.openrows/project.yaml`; there is no standalone workspace-file association.
+Local database connection menus reveal their saved path using the native launcher;
+existing export jobs retain Show in Finder/File Manager. Registry shortcuts and
+platform native menu accelerators remain the single command route.
+
+`general.updateChannel` defaults to `stable`; `beta` selects a distinct manifest
+endpoint. `general.updateNotifications` defaults to true. Endpoint selection reads
+`plugins.openrowsUpdates.{stable,beta,publicKey}` from `tauri.conf.json`, requiring
+HTTPS without URL credentials and a configured signing public key. All three are
+currently null: the UI states that no feed is configured. This is configuration
+selection, not implemented download/signature verification/installation. M1-31
+release engineering must supply signed channel manifests and the updater backend;
+no unsigned feed or fabricated release service is used. Notification preference
+is stored for that backend. Opt-in crash reporting remains a stored off-by-default
+preference with no reporting service. Windows/Linux bundle execution and actual
+Finder association registration require packaged-platform verification (M6).

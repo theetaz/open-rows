@@ -40,7 +40,15 @@ export function resolvePalette(
       Math.max(0.08, (mode === 'light' ? 0.12 : 0.18) + contrast * 0.35),
     );
   }
-  if (settings.changeColors === 'blue-orange') {
+  palette = changePalette(palette, settings.changeColors, mode);
+  return { ...palette, ...half?.tokens };
+}
+function changePalette(
+  palette: Palette,
+  colors: Appearance['changeColors'],
+  mode: 'light' | 'dark',
+): Palette {
+  if (colors === 'blue-orange') {
     palette['row-inserted'] = alpha(
       mode === 'light' ? '#08719D' : '#64B9FF',
       0.14,
@@ -50,6 +58,7 @@ export function resolvePalette(
       0.14,
     );
   }
+
   return palette;
 }
 function tintedPalette(
@@ -106,13 +115,21 @@ function modeStyles(settings: Appearance, mode: 'light' | 'dark'): string {
 }
 export function appearanceCss(settings: Appearance): string {
   const sizes = Object.entries(typography)
-    .filter(([key]) => key.startsWith('text-') && key !== 'text-mono')
+    .filter(
+      ([key]) =>
+        key.startsWith('text-') &&
+        !['text-mono', 'text-editor', 'text-grid', 'text-sidebar'].includes(
+          key,
+        ),
+    )
     .map(
       ([key, size]) =>
         `--or-${key}:${String((parseFloat(size) * settings.uiSize) / 13)}rem;`,
     )
     .join('');
   return `:root{--or-font-ui:${fontFamily('ui', settings.uiFont)};--or-font-mono:${fontFamily('mono', settings.monoFont)};
+    --or-font-editor:${fontFamily('mono', settings.editorFont)};--or-font-grid:${fontFamily('mono', settings.gridFont)};--or-font-sidebar:${fontFamily('ui', settings.sidebarFont)};
+    --or-text-editor:${String(settings.editorSize)}px;--or-text-grid:${String(settings.gridSize)}px;--or-text-sidebar:${String(settings.sidebarSize)}px;--or-editor-line-height:${String(settings.editorLineHeight)};
     --or-text-mono:${String(settings.monoSize)}px;--or-motion-panel:${String(settings.motion)}ms;${sizes}}
     ${modeStyles(settings, 'light')}${modeStyles(settings, 'dark')}
     :root[data-transparency="reduced"][data-theme]{--or-panel:var(--or-panel-solid);}`;

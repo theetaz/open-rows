@@ -48,6 +48,30 @@
     ],
     "macOS": {
       "minimumSystemVersion": "12.0"
+    },
+    "fileAssociations": [
+      {
+        "ext": ["sqlite", "sqlite3", "db"],
+        "name": "SQLite database",
+        "role": "Viewer"
+      },
+      {
+        "ext": ["duckdb"],
+        "name": "DuckDB database",
+        "role": "Viewer"
+      },
+      {
+        "ext": ["sql"],
+        "name": "SQL document",
+        "role": "Editor"
+      }
+    ]
+  },
+  "plugins": {
+    "openrowsUpdates": {
+      "stable": null,
+      "beta": null,
+      "publicKey": null
     }
   }
 }

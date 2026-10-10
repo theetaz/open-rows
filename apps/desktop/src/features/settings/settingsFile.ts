@@ -14,7 +14,11 @@ import { parseResults, RESULTS_KEY } from './results';
 import { parseSnippets, SNIPPETS_KEY } from '../snippets/snippetStore';
 import { EXPORT_KEY, parseExportSettings } from '../export/exportSettings';
 import { COPY_KEY, parseCopySettings } from '../../results/copy/copySettings';
-import { onSettingsChanged, reloadSettings } from './localSetting';
+import {
+  onSettingsChanged,
+  reloadSettings,
+  settingsChanged,
+} from './localSetting';
 import {
   SIDEBAR_KEY,
   parseSidebarPreferences,
@@ -22,6 +26,7 @@ import {
 import { HISTORY_KEY, parseHistorySettings } from './historySettings';
 import { parseSecurity, SECURITY_KEY } from '../security/securitySettings';
 import { parseTools, TOOLS_KEY } from './toolSettings';
+import { parsePortableSettings } from './settingsValidation';
 
 /**
  * `settings.json` (docs/15 §4) mirrors these web-storage keys, which stay
@@ -166,4 +171,58 @@ export async function reloadSettingsFile(): Promise<void> {
   if (typeof file !== 'object' || file === null || Array.isArray(file)) return;
   applySettings(file as Record<string, unknown>);
   reloadSettings();
+}
+
+/** Non-secret preferences only; query snippets/history and device paths are excluded. */
+export function exportSettings(): string {
+  const settings = Object.fromEntries(
+    Object.entries(collectSettings()).filter(
+      ([key]) => !['history', 'snippets', 'tools'].includes(key),
+    ),
+  );
+  return `${JSON.stringify(settings, null, 2)}\n`;
+}
+
+/** Strictly validate the whole import before changing any local preference. */
+export async function importSettings(text: string): Promise<void> {
+  const settings = parsePortableSettings(text);
+  for (const key of ['history', 'snippets', 'tools']) {
+    if (key in settings)
+      throw new Error(`${key}: excluded from portable settings`);
+  }
+  const previous = collectSettings();
+  applySettings(settings);
+  try {
+    await writeSettingsFile(settingsText());
+  } catch (error) {
+    applySettings(previous);
+    throw error;
+  }
+  reloadSettings();
+}
+
+/** Reset just the requested group, or all preferences, and notify live readers. */
+export function resetSettings(section?: string): void {
+  const groups: Record<string, string[]> = {
+    general: ['general', 'history', 'copy', 'diagnostics'],
+    tables: ['results', 'export', 'copy'],
+    appearance: ['appearance'],
+    editor: ['editor'],
+    execution: ['execution'],
+    security: ['security'],
+    shortcuts: ['shortcuts'],
+    snippets: ['snippets'],
+    tools: ['tools'],
+    diagnostics: ['diagnostics'],
+  };
+  const names = section ? (groups[section] ?? []) : Object.keys(SECTIONS);
+  for (const name of names) {
+    const group = SECTIONS[name];
+    if (group)
+      localStorage.setItem(group.key, JSON.stringify(group.parse(null)));
+  }
+  if (!section || section === 'appearance')
+    localStorage.setItem(THEME_KEY, 'system');
+  reloadSettings();
+  settingsChanged();
 }

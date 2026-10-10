@@ -9,9 +9,11 @@ mod exports;
 mod grid_report;
 mod imports;
 mod jobs;
+mod locations;
 #[cfg(target_os = "macos")]
 mod material;
 mod menu;
+mod native_files;
 mod observability;
 mod projects;
 mod queries;
@@ -155,6 +157,11 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
         dump::restore::dump_restore_contents,
         dump::restore::dump_restore_check,
         dump::restore::dump_restore_start,
+        native_files::native_files_take,
+        native_files::database_reveal,
+        locations::data_locations,
+        locations::data_location_choose,
+        locations::data_location_apply,
         settings::settings_read,
         settings::settings_write,
         menu::menu_sync,
@@ -218,6 +225,7 @@ pub fn run() -> Result<(), tauri::Error> {
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(window_frame::plugin())
+        .manage(native_files::NativeFiles::default())
         .manage(security::Security::default())
         .manage(queries::Queries::default())
         .manage(imports::Imports::default())
@@ -250,11 +258,13 @@ pub fn run() -> Result<(), tauri::Error> {
             }
         })
         .setup(move |app| {
+            locations::install(app)?;
             observability::install(app)?;
             specta.mount_events(app);
-            settings::install(app)?;
+            settings::install(app);
             result_store::install(app)?;
             connections::install(app)?;
+            native_files::install(app);
             settings::apply_saved(app);
             if let Some(value) = settings::current(&app.state::<settings::SettingsFile>()) {
                 app.state::<security::Security>().configure(&value, true);
@@ -266,6 +276,10 @@ pub fn run() -> Result<(), tauri::Error> {
         })
         .build(tauri::generate_context!())?
         .run(|app, event| {
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Opened { urls } = &event {
+                native_files::enqueue(app, urls.iter().filter_map(|url| url.to_file_path().ok()));
+            }
             if let tauri::RunEvent::Exit = event {
                 connections::helpers::exit(app);
                 result_store::exit(app);

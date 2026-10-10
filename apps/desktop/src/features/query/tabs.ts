@@ -195,7 +195,7 @@ export function updateTab(
 
 /** Keep the latest editor text of a tab. */
 export function editTab(state: TabsState, id: string, sql: string): TabsState {
-  return updateTab(state, id, (tab) => ({ ...tab, sql }));
+  return updateTab(state, id, (tab) => ({ ...tab, sql, preview: false }));
 }
 
 /** Bind a tab to a `.sql` file (or record a save); the title follows the file. */

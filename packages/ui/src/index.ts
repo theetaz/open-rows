@@ -34,3 +34,7 @@ export {
 export type { Appearance } from './theme/appearance';
 export { builtInThemes, importTheme, validTheme } from './theme/palettes';
 export type { ThemeDefinition } from './theme/palettes';
+
+/** Safe original custom-theme token editor keys. */
+export { themeTokenKeys } from './theme/themeTokens';
+export type { ThemeToken, ThemeTokens } from './theme/themeTokens';

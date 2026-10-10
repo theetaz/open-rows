@@ -136,7 +136,7 @@ function gridAppearance(
   }
   return {
     colours,
-    fontFamily: fontFamily('mono', settings.monoFont),
-    fontSize: settings.monoSize,
+    fontFamily: fontFamily('mono', settings.gridFont),
+    fontSize: settings.gridSize,
   };
 }

@@ -5,8 +5,15 @@ import { expect, it, vi } from 'vitest';
 import { ThemeProvider, useTheme } from '@openrows/ui';
 import { SettingsSheet } from './SettingsSheet';
 function State(): React.JSX.Element {
-  const { appearance } = useTheme();
-  return <output data-testid="state">{JSON.stringify(appearance)}</output>;
+  const { appearance, gridAppearance } = useTheme();
+  return (
+    <>
+      <output data-testid="state">{JSON.stringify(appearance)}</output>
+      <output data-testid="grid-metrics">
+        {gridAppearance.fontFamily}/{gridAppearance.fontSize}
+      </output>
+    </>
+  );
 }
 function setup(): ReturnType<typeof userEvent.setup> {
   render(
@@ -138,6 +145,9 @@ it('switches General and Editor settings', async () => {
   );
   expect(JSON.parse(localStorage.getItem('openrows.general') ?? '{}')).toEqual({
     restoreSession: false,
+    updateChannel: 'stable',
+    updateNotifications: true,
+    newTab: 'query',
     density: 'compact',
     gridDensity: 'comfortable',
     reduceMotion: true,
@@ -215,4 +225,27 @@ it('searches every pane and lists only matching settings', async () => {
   await user.click(screen.getByRole('radio', { name: 'Editor' }));
   expect(search).toHaveValue('');
   expect(screen.getByRole('switch', { name: 'Wrap lines' })).toBeVisible();
+});
+
+it('applies independent editor, grid and sidebar font tokens with line height', async () => {
+  const user = setup();
+  await user.selectOptions(screen.getByLabelText('editor font'), 'menlo');
+  await user.selectOptions(screen.getByLabelText('editor font size'), '18');
+  await user.selectOptions(screen.getByLabelText('grid font'), 'consolas');
+  await user.selectOptions(screen.getByLabelText('grid font size'), '14');
+  await user.selectOptions(screen.getByLabelText('sidebar font'), 'arial');
+  await user.selectOptions(screen.getByLabelText('sidebar font size'), '16');
+  await user.selectOptions(screen.getByLabelText('Editor line height'), '1.8');
+  const tokens = document.querySelector(
+    '[data-openrows-appearance]',
+  )?.textContent;
+  expect(tokens).toContain('--or-font-editor:Menlo');
+  expect(tokens).toContain('--or-font-grid:Consolas');
+  expect(tokens).toContain('--or-font-sidebar:Arial');
+  expect(tokens).toContain('--or-text-editor:18px');
+  expect(tokens).toContain('--or-text-grid:14px');
+  expect(tokens).toContain('--or-text-sidebar:16px');
+  expect(tokens).toContain('--or-editor-line-height:1.8');
+  expect(screen.getByTestId('grid-metrics')).toHaveTextContent('Consolas');
+  expect(screen.getByTestId('grid-metrics')).toHaveTextContent('/14');
 });

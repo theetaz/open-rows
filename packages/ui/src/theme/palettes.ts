@@ -1,10 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
-export type ThemeHalf = { canvas: string; accent: string };
+import { validTokens } from './themeTokens';
+import type { ThemeTokens } from './themeTokens';
+export type ThemeHalf = {
+  canvas: string;
+  accent: string;
+  tokens?: ThemeTokens;
+};
 export type ThemeDefinition = {
   id: string;
   name: string;
   light: ThemeHalf;
   dark: ThemeHalf;
+  version?: 1;
 };
 /** Original OpenRows palettes; each theme has independent day/night variants. */
 export const builtInThemes: readonly ThemeDefinition[] = [
@@ -48,7 +55,8 @@ export const builtInThemes: readonly ThemeDefinition[] = [
 export function rgb(hex: string): number[] {
   return [1, 3, 5].map((index) => parseInt(hex.slice(index, index + 2), 16));
 }
-function luminance(hex: string): number {
+/** Relative sRGB luminance for token contrast validation. */
+export function luminance(hex: string): number {
   const channels = rgb(hex).map((value) => {
     const s = value / 255;
     return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
@@ -75,6 +83,12 @@ export function mix(a: string, b: string, weight: number): string {
 function validHalf(value: unknown, mode: 'light' | 'dark'): value is ThemeHalf {
   if (!value || typeof value !== 'object') return false;
   const half = value as Record<string, unknown>;
+  if (
+    Object.keys(half).some(
+      (key) => !['canvas', 'accent', 'tokens'].includes(key),
+    )
+  )
+    return false;
   if (typeof half.canvas !== 'string' || typeof half.accent !== 'string')
     return false;
   if (
@@ -82,6 +96,7 @@ function validHalf(value: unknown, mode: 'light' | 'dark'): value is ThemeHalf {
   )
     return false;
   if (luminance(half.accent) > 0.1833) return false;
+  if (!validTokens(half.tokens, half.canvas, mode)) return false;
   const lightness = luminance(half.canvas);
   return mode === 'light' ? lightness >= 0.75 : lightness <= 0.02;
 }
@@ -89,6 +104,13 @@ function validHalf(value: unknown, mode: 'light' | 'dark'): value is ThemeHalf {
 export function validTheme(value: unknown): value is ThemeDefinition {
   if (!value || typeof value !== 'object') return false;
   const t = value as Record<string, unknown>;
+  if (
+    Object.keys(t).some(
+      (key) => !['version', 'id', 'name', 'light', 'dark'].includes(key),
+    )
+  )
+    return false;
+  if (t.version !== undefined && t.version !== 1) return false;
   return (
     typeof t.id === 'string' &&
     /^custom-[\w-]{1,80}$/.test(t.id) &&
@@ -106,5 +128,5 @@ export function importTheme(text: string): ThemeDefinition {
     throw new Error(
       'Use an OpenRows theme with a name, light and dark palettes, and six-digit hex colors. Light backgrounds must be light; dark backgrounds must be dark. Accents need readable white labels.',
     );
-  return { ...value, id: `custom-${crypto.randomUUID()}` };
+  return { ...value, version: 1, id: `custom-${crypto.randomUUID()}` };
 }

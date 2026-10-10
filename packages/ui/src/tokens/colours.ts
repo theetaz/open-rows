@@ -10,6 +10,10 @@ export const light = {
   'row-deleted': 'rgba(164,81,74,0.07)',
   'cell-edited': 'rgba(185,145,80,0.18)',
   text: '#18181B',
+  'syntax-keyword': '#1749A2',
+  'syntax-string': '#18702F',
+  'syntax-number': '#8A4E00',
+  'syntax-comment': '#52525B',
   secondary: '#52525B',
   tertiary: '#52525B',
   /** NULL / EMPTY / DEFAULT markers and filler text: quiet, 3:1 minimum. */
@@ -67,6 +71,10 @@ export const dark: typeof light = {
   'row-deleted': 'rgba(255,113,125,0.14)',
   'cell-edited': 'rgba(255,194,91,0.12)',
   text: '#EDEDEF',
+  'syntax-keyword': '#93C5FD',
+  'syntax-string': '#70E3B1',
+  'syntax-number': '#FFD07D',
+  'syntax-comment': '#BABAC2',
   secondary: '#BABAC2',
   tertiary: '#B6B6BE',
   /** NULL / EMPTY / DEFAULT markers and filler text: quiet, 3:1 minimum. */

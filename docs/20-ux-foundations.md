@@ -489,3 +489,46 @@ File ▸ Export Connections… opens a lazy sheet for selected profiles, a group
 Existing multi-database contexts, independent tabs and split panes remain the workspace model. Switch Connection in the command palette opens a keyboard-accessible saved-connection selector and previews the environment colour/label, read-only or read/write state, write confirmation, production status and route summary before an explicit switch. Other contexts' tabs stay open. ⌘K opens the database switcher; ⌘P opens objects, local queries and project queries together; ⌘⇧P opens commands. Sidebar and inspector context labels include connection and database; both split-pane headers carry that context plus their tab title.
 
 Versioned session descriptors restore tabs, inspectors, splits and disconnected database tiles without connecting or executing SQL. Activate a connection or press Connect to reconnect using its current safety and credential policy. Reopen Previous Session restores the launch snapshot on demand, including when automatic restore is disabled. Restoring never restores result sets. History adds cursor insertion and an editable literal review before saving to project/local queries, confirmed per-connection/all clearing, and Settings ▸ General retention controls (docs/09, docs/12, docs/15 §11). Multiple OS windows and moving work between windows remain outside M2-20.
+
+## Implemented (M2-22b): settings, font roles and theme JSON
+
+General, Tables, Editor, Appearance, Security, Locations and Keymap are searchable
+in the lazy Settings sheet. General exposes stable/beta channel, update notices,
+session restore, new-tab query/connection picker behaviour, timeout, keepalive and
+crash-report consent (off; no upload backend). App-wide timeout changes use the
+core cancellation timer for new runs; server startup limits apply only to explicit
+profile limits so a prior app default cannot cap a later run. Settings groups and all preferences
+reset only after confirmation. Security remains the M2-22a implementation.
+
+Editor/grid/sidebar each have an independent local font family and 11–24 px size;
+editor line height is 1.2/1.5/1.8/2. UI and other monospace labels keep their existing
+controls. Legacy metrics migrate into the separate roles. Grid and sidebar density
+retain compact/default/comfortable choices. Root tokens and canvas metrics update
+on preference changes; typing does not regenerate styles. System reduced motion
+and the explicit Reduce motion override retain non-animated accessible navigation.
+Edit-state glyphs and labels are retained when colours change.
+
+Theme export writes this v1 JSON (maximum 20,000 characters):
+
+```json
+{
+  "version": 1,
+  "id": "custom-example",
+  "name": "Example",
+  "light": { "canvas": "#fafafa", "accent": "#2457a7" },
+  "dark": { "canvas": "#151519", "accent": "#2457a7" }
+}
+```
+
+Only `version`, `id`, `name`, `light`, `dark` are accepted. IDs match
+`custom-[A-Za-z0-9_-]{1,80}`; names are nonblank and at most 50 characters.
+Each half accepts only six-digit hex `canvas`, `accent` and optional `tokens`.
+Token keys are `text`, `secondary`, `syntax-keyword`, `syntax-string`,
+`syntax-number`, `syntax-comment`, `row-inserted`, `row-deleted`, `cell-edited`.
+No CSS, scripts, URLs or arbitrary keys are accepted. Fonts stay in the schema-
+validated portable Appearance preferences, using only the offered local font IDs.
+Legacy local themes without `version` remain v1-compatible; import assigns a fresh
+identity. The library limit is 24. Light canvas luminance must be ≥ 0.75, dark ≤ 0.02;
+accent luminance ≤ 0.1833 keeps white button labels at AA. Custom and default foreground tokens must meet 4.5:1 against the canvas and any custom state fills;
+invalid themes show a warning and cannot save/import. Duplicate, reset, export,
+import and live miniature/syntax preview are available. Remote Git themes remain G11.

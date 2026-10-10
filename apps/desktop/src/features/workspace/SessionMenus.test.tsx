@@ -272,3 +272,22 @@ it('routes native menu commands and syncs shortcuts and enabled state', async ()
   });
   expect(screen.queryByRole('tab', { name: /SQL Query 1/ })).toBeNull();
 });
+
+it('uses the configured connection picker for the toolbar and tab-strip new-tab actions', async () => {
+  localStorage.setItem(
+    'openrows.general',
+    JSON.stringify({ newTab: 'connection' }),
+  );
+  mount();
+  await connectTo();
+  fireEvent.click(screen.getByRole('button', { name: 'New SQL query' }));
+  expect(await screen.findByRole('dialog')).toHaveTextContent(
+    'Switch connection',
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+  fireEvent.click(screen.getByRole('button', { name: 'New tab' }));
+  expect(await screen.findByRole('dialog')).toHaveTextContent(
+    'Switch connection',
+  );
+  expect(screen.queryByRole('tab', { name: /SQL Query 1/ })).toBeNull();
+});

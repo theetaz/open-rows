@@ -157,9 +157,9 @@ it('describes every section and field of settings.json in its JSON Schema', () =
     if (name === 'shortcuts' || typeof value !== 'object' || value === null)
       continue;
     expect(
-      Object.keys(schema.properties[name]?.properties ?? {}),
+      Object.keys(schema.properties[name]?.properties ?? {}).sort(),
       name,
-    ).toEqual(Object.keys(value));
+    ).toEqual(Object.keys(value).sort());
   }
   expect(schema.properties.shortcuts?.propertyNames?.enum).toEqual(
     COMMANDS.map(({ id }) => id),

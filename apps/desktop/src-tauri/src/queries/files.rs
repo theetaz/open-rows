@@ -7,6 +7,7 @@
     reason = "Tauri deserialises command arguments into owned values"
 )]
 use std::fs;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
@@ -124,13 +125,30 @@ pub(crate) fn write_atomic(path: &Path, contents: &[u8]) -> Result<(), IpcError>
 }
 
 fn read_sql(path: &Path) -> Result<String, IpcError> {
-    let size = fs::metadata(path).map_err(|error| io(path, &error))?.len();
+    let file = fs::File::open(path).map_err(|error| io(path, &error))?;
+    let size = file.metadata().map_err(|error| io(path, &error))?.len();
     if size > MAX_FILE_BYTES {
         return Err(IpcError::invalid(
             "SQL files larger than 16 MiB cannot be opened",
         ));
     }
-    let bytes = fs::read(path).map_err(|error| io(path, &error))?;
+    let mut bytes = Vec::new();
+    file.take(MAX_FILE_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|error| io(path, &error))?;
+    if bytes.len() as u64 > MAX_FILE_BYTES {
+        return Err(IpcError::invalid(
+            "SQL files larger than 16 MiB cannot be opened",
+        ));
+    }
+    if bytes
+        .iter()
+        .any(|byte| *byte < 32 && !matches!(*byte, 9 | 10 | 13))
+    {
+        return Err(IpcError::invalid(
+            "The SQL file contains binary control characters",
+        ));
+    }
     String::from_utf8(bytes).map_err(|_| IpcError::invalid("The file is not UTF-8 text"))
 }
 

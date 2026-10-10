@@ -266,3 +266,29 @@ Profiles add optional `redactHistory: true`, omitted when false for byte-compati
 ## 12. Implemented (M2-05): libSQL profile flavours
 
 `driver: "libsql"` stores a remote host/port and TLS settings, with the auth token only in the existing password secret slot (Keychain/Ask/Command). `driver: "libsql-file"` stores the same file settings as SQLite and no database credential. Existing SQLite and server profiles retain their serde values. M2-21 v1 exports/imports preserve both engine identities and exclude token values, secret references, command output and opaque driver options. The remote row/response caps and timeout in `params.options` are machine-local settings; import uses the documented defaults (docs/05 §18).
+
+## Implemented (M2-22b): locations and portable preferences
+
+Settings ▸ Locations shows data, local history (`openrows.sqlite`) and log paths.
+Choosing an existing empty writable folder requires explicit consent to copy local
+history and a restart prompt. Absolute canonical paths reject nesting, `.app`
+bundles and recognised iCloud/Dropbox/OneDrive/Google Drive/CloudStorage components;
+other synchronisation software remains a heuristic limitation with a visible warning.
+
+The fixed platform app-data anchor holds `data-location` and a pending pointer.
+Before stores open on restart, SQLite WAL is checkpointed and the app copies only
+`settings.json`, `settings.schema.json`, `openrows.sqlite`, `connections`,
+`known_hosts` and `backups` through destination staging. Symlinks and unsupported
+file types fail. The pointer changes atomically only after the copy succeeds;
+failure removes created destination files, retains the original and displays the
+rollback reason. Successful moves retain the original too. Logs, caches, keychain
+secrets, credential-command trust and unknown files stay at their original locations.
+Moving back requires another empty folder; cleanup of the previous copy is manual.
+
+Portable settings JSON uses `openrows: 1` and the checked-in settings schema,
+rejecting unknown keys recursively and invalid ranges/enums. Export is preferences
+only: no profiles, credentials, history, query snippets or device tool paths.
+Import validates first and rolls back on a failed settings write. Group/global
+reset affects preferences; it retains profiles, history entries and data locations.
+Appearance group/global reset removes custom themes; the existing Appearance-only
+reset retains the library. Portable exchange is copy/paste JSON, not a sync service.

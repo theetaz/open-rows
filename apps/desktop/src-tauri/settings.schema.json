@@ -27,6 +27,23 @@
           "description": "Reopen the previous connections, databases and tabs on launch.",
           "default": true
         },
+        "updateChannel": {
+          "enum": ["stable", "beta"],
+          "default": "stable"
+        },
+        "updateNotifications": {
+          "type": "boolean",
+          "default": true
+        },
+        "newTab": {
+          "enum": ["query", "connection"],
+          "default": "query"
+        },
+        "reduceMotion": {
+          "type": "boolean",
+          "description": "Turn off panel, popover and disclosure animations even when the system allows them.",
+          "default": false
+        },
         "density": {
           "enum": ["compact", "regular", "comfortable"],
           "default": "regular",
@@ -36,11 +53,6 @@
           "enum": ["compact", "normal", "comfortable"],
           "default": "normal",
           "description": "Row height of table and query result grids."
-        },
-        "reduceMotion": {
-          "type": "boolean",
-          "description": "Turn off panel, popover and disclosure animations even when the system allows them.",
-          "default": false
         },
         "keepaliveSeconds": {
           "enum": [0, 15, 30, 60, 120],
@@ -52,12 +64,47 @@
           "default": 0,
           "description": "Seconds a statement may run before it is cancelled, for connections that do not set their own limit; 0 means no limit."
         }
-      }
+      },
+      "additionalProperties": false
     },
     "appearance": {
       "type": "object",
       "description": "Settings \u25b8 Appearance.",
       "properties": {
+        "editorFont": {
+          "enum": ["system", "menlo", "consolas", "courier"],
+          "default": "system"
+        },
+        "gridFont": {
+          "enum": ["system", "menlo", "consolas", "courier"],
+          "default": "system"
+        },
+        "sidebarFont": {
+          "enum": ["system", "helvetica", "arial", "verdana"],
+          "default": "system"
+        },
+        "editorSize": {
+          "type": "integer",
+          "minimum": 11,
+          "maximum": 24,
+          "default": 12
+        },
+        "gridSize": {
+          "type": "integer",
+          "minimum": 11,
+          "maximum": 24,
+          "default": 12
+        },
+        "sidebarSize": {
+          "type": "integer",
+          "minimum": 11,
+          "maximum": 24,
+          "default": 13
+        },
+        "editorLineHeight": {
+          "enum": [1.2, 1.5, 1.8, 2],
+          "default": 1.5
+        },
         "lightTheme": {
           "type": "string",
           "default": "openrows",
@@ -126,7 +173,8 @@
             "$ref": "#/definitions/theme"
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
     "editor": {
       "type": "object",
@@ -276,7 +324,8 @@
           "description": "Offer snippets by prefix while typing.",
           "default": true
         }
-      }
+      },
+      "additionalProperties": false
     },
     "execution": {
       "type": "object",
@@ -302,7 +351,8 @@
           "description": "List server notices and warnings with the results.",
           "default": true
         }
-      }
+      },
+      "additionalProperties": false
     },
     "shortcuts": {
       "type": "object",
@@ -434,7 +484,8 @@
           "description": "Opt-in crash reports (stored only; OpenRows sends nothing).",
           "default": false
         }
-      }
+      },
+      "additionalProperties": false
     },
     "results": {
       "type": "object",
@@ -447,7 +498,8 @@
           "default": 512,
           "description": "Arrow memory kept in RAM across results before spilling to disk, in MiB; applies at the next launch."
         }
-      }
+      },
+      "additionalProperties": false
     },
     "snippets": {
       "type": "object",
@@ -469,7 +521,8 @@
           },
           "default": []
         }
-      }
+      },
+      "additionalProperties": false
     },
     "export": {
       "type": "object",
@@ -524,7 +577,8 @@
               "default": "utf8",
               "description": "File encoding; utf8Bom lets Excel detect UTF-8."
             }
-          }
+          },
+          "additionalProperties": false
         },
         "tsv": {
           "type": "object",
@@ -556,7 +610,8 @@
               "default": "utf8",
               "description": "File encoding; utf8Bom lets Excel detect UTF-8."
             }
-          }
+          },
+          "additionalProperties": false
         },
         "json": {
           "type": "object",
@@ -567,7 +622,8 @@
               "default": false,
               "description": "Indent objects by two spaces instead of one compact object per line."
             }
-          }
+          },
+          "additionalProperties": false
         },
         "sql": {
           "type": "object",
@@ -580,7 +636,8 @@
               "default": 100,
               "description": "Rows per INSERT statement."
             }
-          }
+          },
+          "additionalProperties": false
         },
         "xlsx": {
           "type": "object",
@@ -591,7 +648,8 @@
               "default": true,
               "description": "Write the column names as a bold first row of every sheet."
             }
-          }
+          },
+          "additionalProperties": false
         },
         "parquet": {
           "type": "object",
@@ -602,9 +660,11 @@
               "default": "snappy",
               "description": "Column compression (pure-Rust codecs only)."
             }
-          }
+          },
+          "additionalProperties": false
         }
-      }
+      },
+      "additionalProperties": false
     },
     "copy": {
       "type": "object",
@@ -625,7 +685,8 @@
           "default": "minimal",
           "description": "Quote only values that need it, or every value."
         }
-      }
+      },
+      "additionalProperties": false
     },
     "tools": {
       "type": "object",
@@ -697,7 +758,8 @@
           "maxLength": 1024,
           "description": "Path of cloudflared; empty discovers an installed copy."
         }
-      }
+      },
+      "additionalProperties": false
     },
     "sidebar": {
       "type": "object",
@@ -735,7 +797,8 @@
             "type": "boolean",
             "default": false
           }
-        }
+        },
+        "additionalProperties": false
       }
     },
     "history": {
@@ -813,7 +876,8 @@
           "default": "all",
           "description": "Engines the snippet is offered for; MariaDB uses mysql."
         }
-      }
+      },
+      "additionalProperties": false
     },
     "half": {
       "type": "object",
@@ -826,8 +890,51 @@
         "accent": {
           "type": "string",
           "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "tokens": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "text": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$"
+            },
+            "secondary": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$"
+            },
+            "syntax-keyword": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$"
+            },
+            "syntax-string": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$"
+            },
+            "syntax-number": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$"
+            },
+            "syntax-comment": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$"
+            },
+            "row-inserted": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$"
+            },
+            "row-deleted": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$"
+            },
+            "cell-edited": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$"
+            }
+          }
         }
-      }
+      },
+      "additionalProperties": false
     },
     "theme": {
       "type": "object",
@@ -847,8 +954,13 @@
         },
         "dark": {
           "$ref": "#/definitions/half"
+        },
+        "version": {
+          "const": 1
         }
-      }
+      },
+      "additionalProperties": false
     }
-  }
+  },
+  "additionalProperties": false
 }

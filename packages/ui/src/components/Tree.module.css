@@ -14,8 +14,8 @@
   min-block-size: var(--or-tree-row-height);
   padding-inline: var(--or-space-4) var(--or-space-8);
   border-radius: var(--or-radius-control-compact);
-  font-family: var(--or-font-mono);
-  font-size: var(--or-text-mono, var(--or-text-13));
+  font-family: var(--or-font-sidebar, var(--or-font-mono));
+  font-size: var(--or-text-sidebar, var(--or-text-mono, var(--or-text-13)));
   user-select: none;
   cursor: default;
 }

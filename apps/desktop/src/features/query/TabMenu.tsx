@@ -24,6 +24,10 @@ function items(
   const others = otherTabs(tabs.state, id);
   const right = tabsRightOf(tabs.state, id);
   const closeAll = (ids: readonly string[]): void => {
+    if (tabs.closeMany) {
+      tabs.closeMany(ids);
+      return;
+    }
     ids.forEach((other) => {
       tabs.close(other);
     });

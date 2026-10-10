@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@openrows/ui';
 import { Sheet, SheetActions } from '@openrows/ui/sheet';
+import { useBulkCloseGuard } from './useBulkCloseGuard';
 import { closeWindow, onWindowClose } from '@openrows/ipc';
 import type { QueryTabs } from '../query/useQueryTabs';
 import type { QueryRuns } from '../query/useQueryRuns';
@@ -24,14 +25,15 @@ export function useTableCloseGuard({
   tables: TableViews;
   runs: QueryRuns;
 }): React.JSX.Element | null {
+  const bulkReview = useBulkCloseGuard({ tabs, tables, runs });
   const [closing, setClosing] = useState<Closing | null>(null);
   useEffect(
     () =>
-      tabs.installCloseGuard?.((id) => {
+      tabs.installCloseGuard?.((id, preview) => {
         const { edits, schema } = tables.entryOf(id);
         const staged = edits.current.length + schema.current.length;
         if (staged || edits.pending || schema.pending) {
-          setClosing({ kind: 'tab', id });
+          if (!preview) setClosing({ kind: 'tab', id });
           return false;
         }
         tables.release(id);
@@ -43,7 +45,7 @@ export function useTableCloseGuard({
   useWindowGuard(tables, () => {
     setClosing({ kind: 'window' });
   });
-  if (!closing) return null;
+  if (!closing) return bulkReview;
   const state =
     closing.kind === 'tab' ? tabState(tables, closing.id) : windowState(tables);
   const confirm = (): void => {
