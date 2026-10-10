@@ -17,14 +17,18 @@
 mod bulk;
 mod capabilities;
 mod catalog;
+pub mod catalog_definition;
+pub mod catalog_sql;
 mod connect;
 mod ddl;
-mod decode;
+pub mod decode;
 mod editor;
 mod error;
+mod libsql_file;
 mod session;
 mod stream;
 mod worker;
 
 pub use connect::{SqliteDriver, open, open_source};
+pub use libsql_file::LibsqlFileDriver;
 pub use session::SqliteSession;

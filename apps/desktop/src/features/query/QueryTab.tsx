@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useCallback, useRef, useState } from 'react';
+import { editorDialect } from '../connections/engines';
 import type { ProfileDto } from '@openrows/ipc';
 import type { CompletionCatalog, FormatKind } from '@openrows/editor';
 import { useHistoryInsert } from './historyInsert';
@@ -99,7 +100,7 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
   const [settings, updateSettings] = useEditorSettings();
   const [naming, startNaming, stopNaming] = useFlag();
   const [picking, startPicking, stopPicking] = useFlag();
-  const dialect = props.connection.engine;
+  const dialect = editorDialect(props.connection.engine);
   const [formatFailure, format] = useFormat(editor, settings, dialect);
   const files = useTabFiles(tab, editor, props.tabs);
   const run = runs.runOf(tab.id);
@@ -195,7 +196,7 @@ function TabEditor(
       <QueryEditor
         doc={tab.sql}
         label="SQL editor"
-        dialect={props.connection.engine}
+        dialect={editorDialect(props.connection.engine)}
         settings={props.settings}
         catalog={props.catalog}
         cursor={props.cursor}
@@ -235,7 +236,7 @@ function TabBar(
     <EditorBar
       settings={settings}
       onSettings={props.update}
-      dialect={props.connection.engine}
+      dialect={editorDialect(props.connection.engine)}
       cursor={props.cursor}
       running={active}
       cancellable={run.queryId !== null}
@@ -309,7 +310,7 @@ function TabSheets(
   if (props.picking)
     return (
       <TabSnippets
-        dialect={props.connection.engine}
+        dialect={editorDialect(props.connection.engine)}
         editorRef={props.editorRef}
         onClose={props.onPicked}
       />

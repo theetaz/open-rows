@@ -111,6 +111,7 @@ fn reconnect_with_startup(startup_commands: Vec<String>) -> TestResult<openrows_
         via: None,
         timeouts: ConnectTimeouts::default(),
         startup_commands,
+        driver_options: std::collections::BTreeMap::new(),
     });
     Ok(Arc::new(move || {
         let request = Arc::clone(&request);

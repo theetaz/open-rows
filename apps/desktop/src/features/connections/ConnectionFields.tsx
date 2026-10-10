@@ -64,13 +64,21 @@ export function ConnectionFields({
           {...fieldError(errors.port)}
         />
       </div>
-      <TextField label="User" {...text('user')} {...fieldError(errors.user)} />
+      {draft.engine !== 'libsql' && (
+        <TextField
+          label="User"
+          {...text('user')}
+          {...fieldError(errors.user)}
+        />
+      )}
       <PasswordField form={form} />
-      <TextField
-        label="Database"
-        placeholder={draft.engine === 'postgres' ? 'postgres' : 'Optional'}
-        {...text('database')}
-      />
+      {draft.engine !== 'libsql' && (
+        <TextField
+          label="Database"
+          placeholder={draft.engine === 'postgres' ? 'postgres' : 'Optional'}
+          {...text('database')}
+        />
+      )}
     </>
   );
 }

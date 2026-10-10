@@ -3,10 +3,11 @@
 //! command resolves a profile's engine here (docs/05 §2).
 use openrows_driver_api::Driver;
 use openrows_driver_clickhouse::ClickHouseDriver;
+use openrows_driver_libsql::LibsqlDriver;
 use openrows_driver_mssql::SqlServerDriver;
 use openrows_driver_mysql::{Flavour, MySqlDriver};
 use openrows_driver_postgres::PgDriver;
-use openrows_driver_sqlite::SqliteDriver;
+use openrows_driver_sqlite::{LibsqlFileDriver, SqliteDriver};
 use openrows_store::profile::Driver as Engine;
 
 use super::error::IpcError;
@@ -16,6 +17,8 @@ static MYSQL: MySqlDriver = MySqlDriver(Flavour::MySql);
 static MARIADB: MySqlDriver = MySqlDriver(Flavour::MariaDb);
 static SQLITE: SqliteDriver = SqliteDriver;
 static CLICKHOUSE: ClickHouseDriver = ClickHouseDriver;
+static LIBSQL: LibsqlDriver = LibsqlDriver;
+static LIBSQL_FILE: LibsqlFileDriver = LibsqlFileDriver;
 static SQL_SERVER: SqlServerDriver = SqlServerDriver;
 
 /// The driver serving `engine`; every engine a profile can name has one.
@@ -27,6 +30,8 @@ pub(crate) fn driver(engine: Engine) -> &'static dyn Driver {
         Engine::Sqlserver => &SQL_SERVER,
         Engine::Clickhouse => &CLICKHOUSE,
         Engine::Sqlite => &SQLITE,
+        Engine::Libsql => &LIBSQL,
+        Engine::LibsqlFile => &LIBSQL_FILE,
     }
 }
 

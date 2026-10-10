@@ -135,4 +135,21 @@ mod tests {
         assert_eq!(ranges.len(), 3);
         assert_eq!((ranges[0].from, ranges[0].to), (7, 11));
     }
+
+    #[test]
+    fn libsql_flavours_review_and_redact_using_sqlite_literals() {
+        let sql = "SELECT 'test-only', X'00ff', 123, :value, \"identifier\"";
+        for engine in [EngineDto::Libsql, EngineDto::LibsqlFile] {
+            let dialect = driver(engine.into()).dialect();
+            assert_eq!(dialect, Dialect::Sqlite);
+            assert_eq!(history_literals(sql.into(), engine).len(), 3);
+            let redacted = redact_literals(sql, dialect);
+            assert!(!redacted.contains("test-only"));
+            assert!(!redacted.contains("00ff"));
+            assert!(!redacted.contains("123"));
+            assert!(redacted.contains(":value"));
+            assert!(redacted.contains("\"identifier\""));
+            assert!(validate_reuse(&redacted).is_err());
+        }
+    }
 }

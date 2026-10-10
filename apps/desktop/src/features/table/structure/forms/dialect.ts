@@ -81,6 +81,8 @@ export function typeSpecs(engine: EngineDto): readonly TypeSpec[] {
     case 'mariadb':
       return mysqlTypes;
     case 'sqlite':
+    case 'libsql':
+    case 'libsql-file':
       return sqliteTypes;
     default:
       return postgresTypes;
@@ -105,6 +107,8 @@ export function indexMethods(
     case 'mariadb':
       return allMethods.slice(0, 2);
     case 'sqlite':
+    case 'libsql':
+    case 'libsql-file':
       return allMethods.slice(0, 1);
     default:
       return allMethods;
@@ -139,6 +143,8 @@ export function collationHints(engine: EngineDto): readonly string[] {
         'latin1_swedish_ci',
       ];
     case 'sqlite':
+    case 'libsql':
+    case 'libsql-file':
       return ['BINARY', 'NOCASE', 'RTRIM'];
     default:
       return ['C', 'POSIX', 'default', 'und-x-icu', 'en-US-x-icu'];
@@ -159,6 +165,8 @@ export function defaultPresets(engine: EngineDto): readonly string[] {
     case 'mariadb':
       return ['CURRENT_TIMESTAMP', 'uuid()', '0', "''"];
     case 'sqlite':
+    case 'libsql':
+    case 'libsql-file':
       return ['CURRENT_TIMESTAMP', "datetime('now')", '0', "''"];
     default:
       return [

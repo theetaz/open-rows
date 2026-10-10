@@ -17,16 +17,23 @@ use rusqlite::types::ValueRef;
 
 /// One owned value.
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum Cell {
+pub enum Cell {
+    /// SQL NULL.
     Null,
+    /// Signed 64-bit integer.
     Integer(i64),
+    /// Double-precision real.
     Real(f64),
+    /// UTF-8 text.
     Text(String),
+    /// Binary bytes.
     Blob(Vec<u8>),
 }
 
 impl Cell {
-    pub(crate) fn from_ref(value: ValueRef<'_>) -> Self {
+    /// Own a `SQLite` storage value.
+    #[must_use]
+    pub fn from_ref(value: ValueRef<'_>) -> Self {
         match value {
             ValueRef::Null => Self::Null,
             ValueRef::Integer(integer) => Self::Integer(integer),
@@ -37,7 +44,8 @@ impl Cell {
     }
 
     /// Approximate decoded size, for the batch byte budget.
-    pub(crate) fn size(&self) -> usize {
+    #[must_use]
+    pub fn size(&self) -> usize {
         match self {
             Self::Null => 1,
             Self::Integer(_) | Self::Real(_) => 8,
@@ -103,9 +111,11 @@ impl Affinity {
 
 /// A result column: name and declared type (`None` for expressions).
 #[derive(Clone, Debug)]
-pub(crate) struct ColumnSpec {
-    pub(crate) name: String,
-    pub(crate) declared: Option<String>,
+pub struct ColumnSpec {
+    /// Result column label.
+    pub name: String,
+    /// Declared type, absent for expressions.
+    pub declared: Option<String>,
 }
 
 /// Which storage classes a column's values use in one batch, as
@@ -158,14 +168,16 @@ fn plan(affinity: Affinity, seen: &Seen) -> Plan {
 }
 
 /// Rows of one batch, column-major on finish.
-pub(crate) struct BatchBuffer {
+pub struct BatchBuffer {
     columns: Arc<[ColumnSpec]>,
     rows: Vec<Vec<Cell>>,
     bytes: usize,
 }
 
 impl BatchBuffer {
-    pub(crate) fn new(columns: Arc<[ColumnSpec]>) -> Self {
+    /// Start a bounded batch for these columns.
+    #[must_use]
+    pub fn new(columns: Arc<[ColumnSpec]>) -> Self {
         Self {
             columns,
             rows: Vec::new(),
@@ -173,21 +185,29 @@ impl BatchBuffer {
         }
     }
 
-    pub(crate) fn push(&mut self, row: Vec<Cell>) {
+    /// Append one row; callers validate its width before appending.
+    pub fn push(&mut self, row: Vec<Cell>) {
         self.bytes += row.iter().map(Cell::size).sum::<usize>();
         self.rows.push(row);
     }
 
-    pub(crate) fn rows(&self) -> usize {
+    /// Buffered row count.
+    #[must_use]
+    pub fn rows(&self) -> usize {
         self.rows.len()
     }
 
-    pub(crate) fn bytes(&self) -> usize {
+    /// Approximate buffered value bytes.
+    #[must_use]
+    pub fn bytes(&self) -> usize {
         self.bytes
     }
 
     /// Build the batch and empty the buffer.
-    pub(crate) fn finish(&mut self) -> Result<RecordBatch, ArrowError> {
+    ///
+    /// # Errors
+    /// Arrow rejects incompatible column lengths.
+    pub fn finish(&mut self) -> Result<RecordBatch, ArrowError> {
         let rows = std::mem::take(&mut self.rows);
         self.bytes = 0;
         let mut fields = Vec::with_capacity(self.columns.len());

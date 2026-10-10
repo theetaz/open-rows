@@ -263,7 +263,16 @@
         },
         "driver": {
           "type": "string",
-          "enum": ["postgres", "mysql", "mariadb", "sqlserver", "sqlite"]
+          "enum": [
+            "postgres",
+            "mysql",
+            "mariadb",
+            "sqlserver",
+            "clickhouse",
+            "sqlite",
+            "libsql",
+            "libsql-file"
+          ]
         },
         "group": {
           "type": "string"

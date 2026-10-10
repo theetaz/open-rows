@@ -43,6 +43,7 @@ pub fn request(ssl_mode: SslMode) -> Result<ConnectRequest, DriverError> {
             auth: std::time::Duration::from_secs(60),
             ..ConnectTimeouts::default()
         },
+        driver_options: std::collections::BTreeMap::new(),
         startup_commands: Vec::new(),
     })
 }

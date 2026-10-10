@@ -152,6 +152,7 @@ async fn a_failing_attachment_fails_the_open_step_naming_alias_and_file() -> Tes
         tls: TlsFiles::default(),
         via: None,
         timeouts: ConnectTimeouts::default(),
+        driver_options: std::collections::BTreeMap::new(),
         startup_commands: Vec::new(),
     };
     assert_eq!(request.describe_endpoint(), ":memory:");

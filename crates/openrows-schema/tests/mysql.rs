@@ -32,6 +32,7 @@ fn request() -> TestResult<ConnectRequest> {
         tls: TlsFiles::default(),
         via: None,
         timeouts: ConnectTimeouts::default(),
+        driver_options: std::collections::BTreeMap::new(),
         startup_commands: Vec::new(),
     })
 }

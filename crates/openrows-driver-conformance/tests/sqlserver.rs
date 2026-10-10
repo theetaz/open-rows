@@ -40,6 +40,7 @@ fn prepare() -> Result<(Target, ()), Failure> {
             auth: Duration::from_secs(60),
             ..ConnectTimeouts::default()
         },
+        driver_options: std::collections::BTreeMap::new(),
         startup_commands: Vec::new(),
     };
     let target = Target {

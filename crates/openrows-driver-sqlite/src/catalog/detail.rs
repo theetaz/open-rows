@@ -2,13 +2,13 @@
 //! Table detail from the pragma functions and `sqlite_master`: columns,
 //! key, unique and foreign-key constraints, indexes, triggers and the
 //! stored `CREATE` statements for the DDL view.
+use crate::catalog_definition::{checks, definition, trigger};
 use openrows_driver_api::DriverError;
 use openrows_driver_api::schema::{
     ColumnDetail, ConstraintDetail, ConstraintKind, ForeignTarget, Generated, IndexDetail,
-    RelationKind, TableDetail, TableInfo, TriggerDetail, TriggerEvent, TriggerTiming,
+    RelationKind, TableDetail, TableInfo, TriggerDetail,
 };
 use openrows_sql::Dialect;
-use openrows_sql::ddl::TableDefinition;
 use rusqlite::{Connection, OptionalExtension, params};
 
 use super::{ColumnRow, column_rows, invalid, sql};
@@ -64,24 +64,6 @@ pub(crate) fn table_detail(
     })
 }
 
-/// Table-level checks of the stored definition (`SQLite` has no pragma).
-fn checks(table: &str, create: Option<&str>) -> Vec<ConstraintDetail> {
-    let Some(definition) = create.and_then(|sql| TableDefinition::parse(sql, Dialect::Sqlite))
-    else {
-        return Vec::new();
-    };
-    crate::ddl::table_checks(table, &definition)
-        .into_iter()
-        .map(|check| ConstraintDetail {
-            name: check.name,
-            kind: ConstraintKind::Check,
-            definition: check.text,
-            columns: Vec::new(),
-            references: None,
-        })
-        .collect()
-}
-
 fn column_detail(row: &ColumnRow) -> ColumnDetail {
     ColumnDetail {
         name: row.name.clone(),
@@ -132,9 +114,7 @@ fn foreign_keys(
     schema: &str,
     table: &str,
 ) -> Result<Vec<ConstraintDetail>, DriverError> {
-    let mut statement = sql(connection.prepare(
-        "SELECT id, \"table\", \"from\", \"to\" FROM pragma_foreign_key_list(?1, ?2) ORDER BY id, seq",
-    ))?;
+    let mut statement = sql(connection.prepare(crate::catalog_sql::FOREIGN_KEYS))?;
     let rows = sql(statement.query_map(params![table, schema], |row| {
         Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
     }))?;
@@ -186,9 +166,7 @@ pub(crate) fn indexes(
     schema: &str,
     table: &str,
 ) -> Result<Vec<IndexDetail>, DriverError> {
-    let mut statement = sql(connection.prepare(
-        "SELECT name, \"unique\", origin, partial FROM pragma_index_list(?1, ?2) ORDER BY name",
-    ))?;
+    let mut statement = sql(connection.prepare(crate::catalog_sql::INDEXES))?;
     let rows = sql(statement.query_map(params![table, schema], |row| {
         Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
     }))?;
@@ -217,9 +195,7 @@ fn index_columns(
     schema: &str,
     index: &str,
 ) -> Result<String, DriverError> {
-    let mut statement = sql(connection.prepare(
-        "SELECT coalesce(name, '<expression>') FROM pragma_index_info(?1, ?2) ORDER BY seqno",
-    ))?;
+    let mut statement = sql(connection.prepare(crate::catalog_sql::INDEX_COLUMNS))?;
     let names = sql(statement.query_map(params![index, schema], |row| row.get::<_, String>(0)))?;
     Ok(names.map(sql).collect::<Result<Vec<_>, _>>()?.join(", "))
 }
@@ -266,54 +242,4 @@ fn triggers(
     }))?;
     rows.map(|row| sql(row).map(|(name, text)| trigger(name, text.unwrap_or_default())))
         .collect()
-}
-
-/// Timing and events read from the trigger's header (`… BEFORE UPDATE OF a ON t …`).
-fn trigger(name: String, definition: String) -> TriggerDetail {
-    let upper = definition.to_ascii_uppercase();
-    let header = upper.split(" ON ").next().unwrap_or_default();
-    let timing = if header.contains(" INSTEAD OF ") {
-        TriggerTiming::InsteadOf
-    } else if header.contains(" BEFORE ") {
-        TriggerTiming::Before
-    } else {
-        TriggerTiming::After
-    };
-    let events = [
-        (" INSERT", TriggerEvent::Insert),
-        (" UPDATE", TriggerEvent::Update),
-        (" DELETE", TriggerEvent::Delete),
-    ]
-    .into_iter()
-    .filter(|(word, _)| header.contains(word))
-    .map(|(_, event)| event)
-    .collect();
-    TriggerDetail {
-        name,
-        timing,
-        events,
-        row_level: true,
-        function: String::new(),
-        enabled: true,
-        definition,
-    }
-}
-
-/// The DDL view: the stored `CREATE` statements, table first.
-fn definition(create: Option<&str>, indexes: &[IndexDetail], triggers: &[TriggerDetail]) -> String {
-    let mut statements: Vec<String> = create.map(str::to_owned).into_iter().collect();
-    statements.extend(
-        indexes
-            .iter()
-            .filter(|index| !index.definition.starts_with("--"))
-            .map(|index| index.definition.clone()),
-    );
-    statements.extend(triggers.iter().map(|trigger| trigger.definition.clone()));
-    statements
-        .iter()
-        .fold(String::new(), |mut text, statement| {
-            text.push_str(statement);
-            text.push_str(";\n");
-            text
-        })
 }

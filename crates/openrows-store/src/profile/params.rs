@@ -27,17 +27,24 @@ pub enum Driver {
     Clickhouse,
     /// A local `SQLite` 3 file.
     Sqlite,
+    /// Remote libSQL/Turso through Hrana 3 HTTP.
+    Libsql,
+    /// SQLite-compatible local libSQL file.
+    #[serde(rename = "libsql-file")]
+    LibsqlFile,
 }
 
 impl Driver {
     /// Every engine, in picker order.
-    pub const ALL: [Self; 6] = [
+    pub const ALL: [Self; 8] = [
         Self::Postgres,
         Self::Mysql,
         Self::Mariadb,
         Self::Sqlserver,
         Self::Clickhouse,
         Self::Sqlite,
+        Self::Libsql,
+        Self::LibsqlFile,
     ];
 
     /// Display name, e.g. `MariaDB`.
@@ -50,6 +57,8 @@ impl Driver {
             Self::Sqlserver => "SQL Server",
             Self::Clickhouse => "ClickHouse",
             Self::Sqlite => "SQLite",
+            Self::Libsql => "libSQL / Turso (remote)",
+            Self::LibsqlFile => "libSQL file",
         }
     }
 
@@ -61,14 +70,15 @@ impl Driver {
             Self::Mysql | Self::Mariadb => Some(3306),
             Self::Sqlserver => Some(1433),
             Self::Clickhouse => Some(8123),
-            Self::Sqlite => None,
+            Self::Sqlite | Self::LibsqlFile => None,
+            Self::Libsql => Some(443),
         }
     }
 
     /// True for engines that open a local file instead of a server.
     #[must_use]
     pub fn is_file(self) -> bool {
-        self == Self::Sqlite
+        matches!(self, Self::Sqlite | Self::LibsqlFile)
     }
 }
 

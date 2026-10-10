@@ -19,6 +19,8 @@ const EXAMPLES: Record<EngineDto, string> = {
     'sqlserver://user:password@host:1433/database?encrypt=true&trustServerCertificate=false',
   sqlite: 'sqlite:/path/to/database.sqlite',
   clickhouse: 'clickhouse://user:password@host:8123/database',
+  libsql: 'libsql://database.turso.io',
+  'libsql-file': 'libsql-file:/path/to/database.db',
 };
 
 export function UrlField({

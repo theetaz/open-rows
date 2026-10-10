@@ -18,6 +18,7 @@ mod error;
 pub mod exchange;
 mod files;
 mod hop_command;
+mod libsql_url;
 mod limits;
 mod model;
 mod network;

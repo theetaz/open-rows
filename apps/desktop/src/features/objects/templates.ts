@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { editorDialect } from '../connections/engines';
 import type { EngineDto, RoutineKindDto } from '@openrows/ipc';
 
 const mysqlLike = (engine: EngineDto): boolean =>
@@ -20,7 +21,7 @@ export function triggerTemplate(
   const on = `${quoted(engine, schema)}.${quoted(engine, table)}`;
   if (mysqlLike(engine))
     return `CREATE TRIGGER ${table}_before_insert\nBEFORE INSERT ON ${on}\nFOR EACH ROW\nBEGIN\n  SET NEW.updated_at = NOW();\nEND`;
-  if (engine === 'sqlite')
+  if (editorDialect(engine) === 'sqlite')
     return `CREATE TRIGGER ${quoted(engine, schema)}.${table}_after_insert\nAFTER INSERT ON ${quoted(engine, table)}\nFOR EACH ROW\nBEGIN\n  SELECT 1;\nEND`;
   const fn = `${quoted(engine, schema)}.${quoted(engine, `${table}_touch`)}`;
   return `CREATE OR REPLACE FUNCTION ${fn}()\nRETURNS trigger\nLANGUAGE plpgsql\nAS $$\nBEGIN\n  NEW.updated_at := now();\n  RETURN NEW;\nEND\n$$;\n\nCREATE TRIGGER ${table}_touch\nBEFORE UPDATE ON ${on}\nFOR EACH ROW\nEXECUTE FUNCTION ${fn}();`;

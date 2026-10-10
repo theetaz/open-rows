@@ -140,3 +140,34 @@ pub(crate) async fn catalog_role_grants(
     .await?;
     Ok(grants.into_iter().map(Into::into).collect())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use openrows_store::profile::Driver;
+
+    #[test]
+    fn libsql_flavours_expose_views_without_unsupported_admin_facets() {
+        for engine in [Driver::Libsql, Driver::LibsqlFile] {
+            let selected = driver(engine);
+            let server = ServerSummary {
+                product: selected.product().into(),
+                version: "test".into(),
+                flavour: None,
+                database: "main".into(),
+                user: String::new(),
+                tls: openrows_driver_api::TlsStatus::Disabled,
+            };
+            let features = supported(selected.capabilities(), &server);
+            assert_eq!(
+                features.kinds,
+                [
+                    super::super::catalog_dto::ObjectKindDto::Table,
+                    super::super::catalog_dto::ObjectKindDto::View
+                ]
+            );
+            assert!(!features.extensions);
+            assert!(!features.roles);
+        }
+    }
+}

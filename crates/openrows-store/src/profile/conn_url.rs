@@ -58,6 +58,7 @@ impl ParsedUrl {
             Some(file) => ConnectionProfile::new_file(name, file, env_tag),
             None => ConnectionProfile::new(name, self.driver, self.params, env_tag),
         };
+        profile.driver = self.driver;
         profile.tls.mode = self.tls_mode;
         (profile, self.password)
     }
@@ -71,11 +72,23 @@ impl ParsedUrl {
 /// password or the raw URL.
 pub fn parse_url(input: &str) -> Result<ParsedUrl, UrlError> {
     let input = input.trim();
+    if input.eq_ignore_ascii_case("libsql-file::memory:") {
+        let mut parsed = sqlite_url(FileParams::memory());
+        parsed.driver = Driver::LibsqlFile;
+        return Ok(parsed);
+    }
     if is_sqlite_memory(input) {
         return Ok(sqlite_url(FileParams::memory()));
     }
     if let Some(rest) = super::sqlserver_url::strip_scheme(input) {
         return super::sqlserver_url::parse(rest);
+    }
+    if input.split_once(':').is_some_and(|(scheme, _)| {
+        ["libsql", "https", "http"]
+            .iter()
+            .any(|value| scheme.eq_ignore_ascii_case(value))
+    }) {
+        return super::libsql_url::parse(input);
     }
     reject_multiple_hosts(input)?;
     let url = Url::parse(input)?;
@@ -86,6 +99,11 @@ pub fn parse_url(input: &str) -> Result<ParsedUrl, UrlError> {
         "sqlserver" | "mssql" => Driver::Sqlserver,
         "clickhouse" | "clickhouse+https" => Driver::Clickhouse,
         "sqlite" => return parse_sqlite(&url),
+        "libsql-file" => {
+            let mut parsed = parse_sqlite(&url)?;
+            parsed.driver = Driver::LibsqlFile;
+            return Ok(parsed);
+        }
         scheme => {
             return Err(UrlError::UnsupportedScheme {
                 scheme: scheme.to_owned(),

@@ -74,7 +74,12 @@ export function sqlLiteral(
   if (value === null) return 'NULL';
   if (kind === 'number' && isNumberText(value)) return value;
   if (kind === 'boolean' && (value === 'true' || value === 'false')) {
-    if (engine === 'sqlite' || engine === 'sqlserver')
+    if (
+      engine === 'sqlite' ||
+      engine === 'libsql' ||
+      engine === 'libsql-file' ||
+      engine === 'sqlserver'
+    )
       return value === 'true' ? '1' : '0';
     return value.toUpperCase();
   }

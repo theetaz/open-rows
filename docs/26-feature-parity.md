@@ -314,7 +314,7 @@ Each row is engine access, not a promise of identical editing/admin capabilities
 | DB05 | SQL Server | Access TDS servers. | New FR-APP-07 | M2 | Capability-aware cancellation and TLS. | [S01] |
 | DB06 | ClickHouse | Access analytical datasets. | Implemented FR-APP-07 (M2-03; docs/05 §17) | M2 | HTTP(S) native Arrow streaming, routed TLS, query parameters, catalogs and cancellation; read-only grids, no transactional imports, dump/restore or parsed explain. Tested 25.3.9.72 LTS. | [S01] |
 | DB07 | DuckDB | Query embedded analytical databases. | New FR-APP-07 | M2 | Isolated native driver host. | [S01] |
-| DB08 | libSQL | Access libSQL/Turso databases. | New FR-APP-07 | M2 | Explicit local/remote capabilities. | [S01] |
+| DB08 | libSQL | Access libSQL/Turso databases. | FR-APP-07 implemented (M2-05): own Hrana 3 HTTP remote client and SQLite-compatible local file flavour; bound values, guarded edits and catalogs | M2 | Explicit local/remote capabilities; bounded/truncated results; remote Explain/dump Unsupported, cross-origin sticky endpoints require reconnect (docs/05 §18). | [S01] |
 | DB09 | MongoDB | Browse document collections. | New FR-APP-07; FR-DATA-07 | M3 | EJSON validation, no arbitrary JS. | [S01] |
 | DB10 | Redis | Access typed key/value data. | New FR-APP-07; FR-DATA-07 | M3 | SCAN, bounded buffers and type editors. | [S01] |
 | DB11 | Cassandra | Access wide-column data. | New FR-APP-07 | M5 | Paging and complete-key edits. | [S01] |

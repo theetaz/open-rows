@@ -37,8 +37,8 @@ export function PasswordField({
         <AskedPassword form={form} />
       ) : (
         <SecretField
-          label="Password"
-          noun="password"
+          label={draft.engine === 'libsql' ? 'Auth token' : 'Password'}
+          noun={draft.engine === 'libsql' ? 'auth token' : 'password'}
           secret={{
             value: draft.password,
             mode: draft.passwordMode,
@@ -55,7 +55,9 @@ export function PasswordField({
       <SelectField
         className={styles.row}
         label="Store"
-        aria-label="Password storage"
+        aria-label={
+          draft.engine === 'libsql' ? 'Auth token storage' : 'Password storage'
+        }
         value={draft.passwordStorage}
         options={storageChoices}
         onValueChange={(passwordStorage) => {
@@ -73,7 +75,7 @@ function AskedPassword({ form }: { form: ConnectionForm }): React.JSX.Element {
     <div className={styles.stack}>
       <SecureField
         className={styles.row}
-        label="Password"
+        label={draft.engine === 'libsql' ? 'Auth token' : 'Password'}
         placeholder="Asked when connecting"
         value={draft.password}
         onChange={(event) => {

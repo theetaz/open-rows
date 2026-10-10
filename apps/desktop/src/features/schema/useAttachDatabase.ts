@@ -6,6 +6,7 @@ import {
   pickConnectionFile,
 } from '@openrows/ipc';
 import type { AttachReply, ProfileDto } from '@openrows/ipc';
+import { isFileEngine } from '../connections/engines';
 import type { Connections } from '../connections';
 import { aliasFor, attachedAliases, attachedSchema } from './attachAlias';
 import type { Catalog } from './useCatalog';
@@ -60,7 +61,10 @@ export function useAttachDatabase(
   const [notice, setNotice] = useState<string | null>(null);
   const profile: ProfileDto | undefined = connections.active;
   const available =
-    profile?.engine === 'sqlite' && !catalog.offline && !!catalog.database;
+    !!profile &&
+    isFileEngine(profile.engine) &&
+    !catalog.offline &&
+    !!catalog.database;
   const confirm = (): void => {
     if (!profile || !pending || pending.busy) return;
     setPending({ ...pending, busy: true, error: null });

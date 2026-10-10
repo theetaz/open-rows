@@ -22,6 +22,8 @@ export function PasswordPromptSheet({
   request: PasswordRequest;
 }): React.JSX.Element {
   const [password, setPassword] = useState('');
+  const credential =
+    request.profile.engine === 'libsql' ? 'auth token' : 'password';
   return (
     <Sheet
       title={`Connect to ${request.profile.name}`}
@@ -36,10 +38,12 @@ export function PasswordPromptSheet({
           request.submit(password);
         }}
       >
-        <p>{`Enter the password for ${address(request)}.`}</p>
+        <p>{`Enter the ${credential} for ${address(request)}.`}</p>
         <SecureField
           className={styles.row}
-          label="Password"
+          label={
+            request.profile.engine === 'libsql' ? 'Auth token' : 'Password'
+          }
           autoFocus
           value={password}
           onChange={(event) => {

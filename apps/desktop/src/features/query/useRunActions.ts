@@ -2,7 +2,8 @@
 import { useRef } from 'react';
 import type { EditorDialect } from '@openrows/editor';
 import { findParams } from '@openrows/editor/params';
-import type { ParamStyleDto } from '@openrows/ipc';
+import { editorDialect } from '../connections/engines';
+import type { EngineDto, ParamStyleDto } from '@openrows/ipc';
 import type { EditorSettings } from './editorSettings';
 import { executionSettings } from './executionSettings';
 import { paramDtos } from './paramValues';
@@ -18,7 +19,7 @@ import type { QueryTabs } from './useQueryTabs';
 type Tab = {
   tab: QueryTab;
   sessionId: string | null;
-  connection: { engine: EditorDialect };
+  connection: { engine: EngineDto };
   runs: QueryRuns;
   /** Keeps the run's text on the tab. */
   tabs: Pick<QueryTabs, 'edit'>;
@@ -72,7 +73,7 @@ export function useRunActions(
 ): RunActions {
   const { tab, runs } = input;
   const execution = executionSettings.use();
-  const dialect = input.connection.engine;
+  const dialect = editorDialect(input.connection.engine);
   const style = effectiveParams(settings.queryParams, dialect);
   const shift = useRef(0);
   const params = (): ReturnType<typeof runParams> =>

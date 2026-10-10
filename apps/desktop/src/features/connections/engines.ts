@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import type { EditorDialect } from '@openrows/editor';
 import type { EngineDto, ProfileDto } from '@openrows/ipc';
 
 /** One tile of the connection-type picker (the TablePlus connection types). */
@@ -29,7 +30,18 @@ export const ENGINE_CHOICES: readonly EngineChoice[] = [
   { id: 'bigquery', name: 'BigQuery', monogram: 'Bq', engine: null },
   { id: 'dynamodb', name: 'DynamoDB', monogram: 'Dy', engine: null },
   { id: 'elasticsearch', name: 'Elasticsearch', monogram: 'Es', engine: null },
-  { id: 'libsql', name: 'libSQL', monogram: 'Ls', engine: null },
+  {
+    id: 'libsql',
+    name: 'libSQL / Turso (remote)',
+    monogram: 'Ls',
+    engine: 'libsql',
+  },
+  {
+    id: 'libsql-file',
+    name: 'libSQL file',
+    monogram: 'Lf',
+    engine: 'libsql-file',
+  },
   { id: 'd1', name: 'Cloudflare D1', monogram: 'D1', engine: null },
   { id: 'mongodb', name: 'MongoDB', monogram: 'Mg', engine: null },
   { id: 'snowflake', name: 'Snowflake', monogram: 'Sf', engine: null },
@@ -61,14 +73,17 @@ export function defaultPort(engine: EngineDto): number | null {
       return 8123;
     case 'sqlserver':
       return 1433;
+    case 'libsql':
+      return 443;
     case 'sqlite':
+    case 'libsql-file':
       return null;
   }
 }
 
 /** Engines that open a local file instead of a server. */
 export function isFileEngine(engine: EngineDto): boolean {
-  return engine === 'sqlite';
+  return engine === 'sqlite' || engine === 'libsql-file';
 }
 
 /** URL scheme that names `engine` (composing URLs). */
@@ -91,4 +106,20 @@ export function profileLocation(profile: ProfileDto): string {
     ? profile.file.path
     : `${profile.host}:${String(profile.port)}`;
   return `${engineName(profile.engine)} · ${place}`;
+}
+
+/** SQL grammar shared by remote and local libSQL connections. */
+export function editorDialect(engine: EngineDto): EditorDialect {
+  switch (engine) {
+    case 'libsql':
+    case 'libsql-file':
+      return 'sqlite';
+    case 'postgres':
+    case 'mysql':
+    case 'mariadb':
+    case 'sqlserver':
+    case 'sqlite':
+    case 'clickhouse':
+      return engine;
+  }
 }
