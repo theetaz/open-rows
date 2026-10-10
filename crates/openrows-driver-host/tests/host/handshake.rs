@@ -39,6 +39,7 @@ impl Fixture {
         let mut command = launch_command(&options)?;
         assert!(!format!("{command:?}").contains("test-only"));
         let native = command.as_std();
+        assert_eq!(native.get_args().collect::<Vec<_>>(), ["sqlite"]);
         assert!(
             native
                 .get_args()

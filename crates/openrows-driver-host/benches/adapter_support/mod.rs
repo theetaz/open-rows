@@ -35,7 +35,8 @@ pub(super) fn request() -> ConnectRequest {
 }
 pub(super) fn supervisor() -> Result<HostSupervisor, Box<dyn std::error::Error>> {
     Ok(HostSupervisor::new(LaunchOptions {
-        executable: PathBuf::from(std::env::var("OPENROWS_HOST_BIN")?).canonicalize()?,
+        driver: openrows_host_client::HostDriverId::SqliteTest,
+        executable: PathBuf::from(env!("CARGO_BIN_EXE_host-test-fixture")).canonicalize()?,
         endpoint_root: if cfg!(unix) {
             "/tmp".into()
         } else {

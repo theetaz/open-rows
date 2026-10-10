@@ -190,3 +190,59 @@ no unsigned feed or fabricated release service is used. Notification preference
 is stored for that backend. Opt-in crash reporting remains a stored off-by-default
 preference with no reporting service. Windows/Linux bundle execution and actual
 Finder association registration require packaged-platform verification (M6).
+
+## 9. Implemented (M2-01c): driver-host packaging
+
+`bundle.externalBin = ["binaries/openrows-driver-host"]` installs the helper in
+`Contents/MacOS/` on macOS and beside the main executable on Windows/Linux.
+`just stage-host [profile] [target-triple]` builds only the production binary
+with no default/test features and copies it to the gitignored target-suffixed
+`apps/desktop/src-tauri/binaries/` directory (`.exe` on Windows). It respects
+CARGO_TARGET_DIR/RUSTC_WRAPPER; the default profile is release. Staging always
+passes `--target <triple>`, including native builds, so its build output is
+`$CARGO_TARGET_DIR/<triple>/<profile>/openrows-driver-host` (`debug` for `dev`,
+`.exe` on Windows). Tauri copies it to the top-level profile directory beside
+the app for dev and installed resolution. Tests/benches therefore launch Cargo's
+separately named `host-test-fixture` via `CARGO_BIN_EXE_host-test-fixture`; neither
+staging nor Tauri's copy overwrites or aliases that feature-enabled helper.
+The fixture shares the production process entry, requires `test-sqlite`, and
+is never staged or bundled. Benchmarks no longer need `OPENROWS_HOST_BIN`.
+No placeholder
+is ever staged or shipped. `just lint`, `test`, `gen-ipc`, `ipc-check` and `dev`
+stage a dev-profile production helper automatically; `build-app` stages release.
+The Tauri before-dev/build hooks also stage for direct CLI use. Raw desktop
+Cargo commands require `just stage-host dev` first, or the matching target
+argument when cross-compiling. Ubuntu CI explicitly stages before Clippy/tests
+and runs the staging-isolation regression tests (`just script-test` locally).
+For direct cross-target Tauri builds set `CARGO_BUILD_TARGET` and stage the
+matching target; universal app/helper assembly remains deferred.
+
+macOS uses explicit hardened runtime and local `signingIdentity: "-"`.
+`APPLE_SIGNING_IDENTITY` overrides that default when the owner's Developer ID
+exists. Inspection of [Tauri 2.12.1 bundling](https://github.com/tauri-apps/tauri/blob/tauri-cli-v2.12.1/crates/tauri-bundler/src/bundle/macos/app.rs)
+confirms sidecars are signed before the outer app; the same selected identity
+and runtime policy apply. No custom entitlements are needed. Use Tauri's
+[notarization credentials](https://v2.tauri.app/distribute/sign/macos/#notarization)
+and verify/staple the final app/DMG; certificates and credentials stay outside
+Git. `just dev` signs the unsuffixed copied helper and app with the stable dev
+identity, with hardened runtime, when available.
+
+Windows releases must Authenticode-sign the helper/native libraries, app and
+MSI/NSIS installer using the owner's configured certificate or signing service.
+Linux must retain helper execute permissions and verify signed package/feed
+artifacts (and distro signing where used). No keys or hosted signing service
+are invented. Developer ID, notarization/stapling, Windows compilation and
+Windows/Linux installed package smoke remain gaps until their prerequisites
+and release runners exist. Local evidence is in ADR-0010.
+
+To verify a built macOS app without opening its UI (use an absolute CARGO_TARGET_DIR):
+
+```sh
+just build-app
+OPENROWS_PACKAGED_SMOKE=1 OPENROWS_PACKAGED_APP="$CARGO_TARGET_DIR/release/bundle/macos/OpenRows.app" \
+  cargo test --release --locked -p openrows-host-client --test packaged -- --nocapture
+```
+
+Other platforms use `OPENROWS_PACKAGED_EXECUTABLE=/absolute/installed/openrows-app`
+(with `.exe` on Windows) instead of `OPENROWS_PACKAGED_APP`. For debug-only
+overrides set `OPENROWS_DEV_HOST=/absolute/helper`; release ignores this variable.

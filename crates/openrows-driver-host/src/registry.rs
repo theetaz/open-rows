@@ -5,9 +5,15 @@ use openrows_driver_api::Driver;
 use openrows_driver_api::{ConnectRequest, ConnectTrace, Connection, DriverError};
 /// Local test registry, extended with a host-only `DuckDB` crate at M2-04.
 pub(crate) async fn connect(
+    driver: openrows_host_protocol::HostDriverId,
     request: &ConnectRequest,
     trace: &mut ConnectTrace,
 ) -> Result<Box<dyn Connection>, DriverError> {
+    if driver == openrows_host_protocol::HostDriverId::Probe {
+        return Err(DriverError::Unsupported(
+            "handshake probe cannot open a database".into(),
+        ));
+    }
     #[cfg(not(feature = "test-sqlite"))]
     {
         let _ = (request, trace);

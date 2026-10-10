@@ -114,7 +114,7 @@ impl From<CoreError> for IpcError {
         };
         Self {
             kind,
-            message: if kind == IpcErrorKind::DriverHost {
+            message: if kind == IpcErrorKind::DriverHost && !is_startup_failure(&error.message) {
                 "The driver process stopped; reconnect to continue".into()
             } else {
                 error.message
@@ -122,6 +122,11 @@ impl From<CoreError> for IpcError {
             code: error.db_code,
         }
     }
+}
+
+fn is_startup_failure(message: &str) -> bool {
+    use openrows_driver_api::HostFailure;
+    message == HostFailure::Spawn.to_string() || message == HostFailure::Incompatible.to_string()
 }
 
 impl From<&DriverError> for IpcError {
@@ -179,6 +184,19 @@ mod tests {
             serde_json::to_string(&error.kind).unwrap(),
             "\"driverHost\""
         );
+    }
+
+    #[test]
+    fn helper_startup_failures_keep_the_specific_user_message() {
+        for reason in [
+            openrows_driver_api::HostFailure::Spawn,
+            openrows_driver_api::HostFailure::Incompatible,
+        ] {
+            let error = IpcError::from(&DriverError::Host(reason));
+            assert_eq!(error.kind, IpcErrorKind::DriverHost);
+            assert_eq!(error.message, reason.to_string());
+            assert!(error.code.is_none());
+        }
     }
 
     #[test]

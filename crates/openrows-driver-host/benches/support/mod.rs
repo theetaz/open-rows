@@ -4,11 +4,12 @@ use openrows_host_client::{CircuitBreaker, HostSupervisor, LaunchOptions, Memory
 use std::{io::Write, path::PathBuf, time::Duration};
 
 pub fn options() -> Result<LaunchOptions, Box<dyn std::error::Error>> {
-    let executable = PathBuf::from(std::env::var("OPENROWS_HOST_BIN")?).canonicalize()?;
+    let executable = PathBuf::from(env!("CARGO_BIN_EXE_host-test-fixture")).canonicalize()?;
     let endpoint_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
         .canonicalize()?;
     Ok(LaunchOptions {
+        driver: openrows_host_client::HostDriverId::SqliteTest,
         executable,
         endpoint_root,
         memory: MemoryBudget::default(),

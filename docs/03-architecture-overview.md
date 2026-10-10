@@ -302,3 +302,18 @@ Each non-obvious choice has an ADR in [adr/](adr/README.md).
 | Errors, reconnection, logs | [14-reliability-and-observability.md](14-reliability-and-observability.md) |
 | Persistence & migrations | [15-storage-and-persistence.md](15-storage-and-persistence.md) |
 | Platform specifics | [16-platform-and-distribution.md](16-platform-and-distribution.md) |
+
+## 9. Implemented (M2-01c): installed host boundary
+
+The desktop manages a lazy `openrows_host_client::DriverHostRuntime` alongside
+the existing sessions. It resolves the unsuffixed helper beside `current_exe`,
+uses private 0700 rendezvous directories under the app cache's `hosts/`, and
+shares 256 MiB per-host / 512 MiB aggregate admission and profile/driver crash
+circuits. No helper starts during app setup. The desktop now depends on the
+Tauri-free client/protocol, with no native hosted engine dependency.
+
+Tauri stages/bundles a real production helper for each target. The closed
+`HostDriverId` is the only argument; the diagnostic Probe has no database
+capabilities. SQLite remains a test feature. M2-04 adds DuckDB's ID, host-only
+registry/contract and parent metadata adapter; there is no hosted driver in the
+picker yet. Installed/signing evidence and platform gaps are in [ADR-0010](adr/0010-driver-host-process.md).

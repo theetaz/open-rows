@@ -75,6 +75,12 @@ jobs:
           tool: cargo-nextest@0.9.146
       - name: Check formatting
         run: cargo fmt --all --check
+      - name: Stage production driver host for desktop checks
+        # Native builds use target/<host-triple>/debug; tests/benches launch a
+        # separate host-test-fixture that neither staging nor Tauri can replace.
+        run: bash scripts/stage-host.sh dev
+      - name: Check driver host staging isolation
+        run: python3 -B -m unittest discover -s scripts -p 'test_stage_host.py'
       - name: Clippy
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Tests

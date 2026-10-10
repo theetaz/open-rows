@@ -7,7 +7,7 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 async fn parent_death_exits_child_and_cleans_endpoints() -> Result<(), Box<dyn std::error::Error>> {
     support::prepare_image().await?;
     let mut parent = tokio::process::Command::new(env!("CARGO_BIN_EXE_host-parent-fixture"))
-        .arg(env!("CARGO_BIN_EXE_openrows-driver-host"))
+        .arg(env!("CARGO_BIN_EXE_host-test-fixture"))
         .arg(support::root())
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())

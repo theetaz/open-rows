@@ -230,11 +230,11 @@ sequenceDiagram
 
 `openrows-host-protocol` implements protocol 1.0: bounded postcard control DTOs, owned zeroizable connect secrets, explicit frame kinds/generations, request/data barriers, credit state and uncompressed Arrow streams preserving dictionary and extension metadata. Normal controls reserve 4 MiB/32 messages; priority controls have a separate 64 KiB/32-message allowance. Data fragments are 64 KiB, normal admission is one 4 MiB batch, and exclusive single rows have a 64 MiB encoded/decoded ceiling. Routed `via` requests return `Unsupported`.
 
-`openrows-driver-host` runs one SQLite connection on a dedicated worker, with independent control and data writers. Its compile-time registry is the insertion point for M2-04. It exposes execute/bind/cancel/startup support; catalog/editor/admin/bulk remain explicit unsupported placeholders and are not advertised. Destructive fixtures require the non-default `test-hooks` feature.
+`openrows-driver-host` runs one test-only SQLite connection on a dedicated worker when built with `test-sqlite`, with independent control and data writers. Its compile-time registry is the insertion point for M2-04. It exposes execute/bind/cancel/startup support; catalog/editor/admin/bulk remain explicit unsupported placeholders and are not advertised. Destructive fixtures require the non-default `test-hooks` feature. The production helper exposes only Probe until M2-04 (§19).
 
 `openrows-host-client` supplies lazy absolute-path launch, two authenticated local lanes, exact build/schema/capability agreement before Connect, lifecycle subscriptions, 2 s handshake/close/cancel grace, independent heartbeats and 100 ms RSS sampling. Each host reserves 256 MiB from a shared parent-wide 512 MiB pool; exclusive large grants reserve extra space. Three abnormal exits in 60 s refuse another launch for that supervisor's shared profile/driver circuit. macOS uses monitoring and force-kill; Linux attempts delegated cgroup v2 with an explicit monitoring-only fallback; Windows supplies local owner-only named pipes and a Job Object cap. Linux debug tests pass for root and unprivileged callers in Docker with monitoring-only containment. Delegated cgroup caps, installed Linux packages and Windows platform validation remain pending.
 
-This implements ADR-0010 M2-01.1–.2. The core adapter, spill admission/terminal coordinator and unchanged conformance path are implemented in M2-01.3 below; bundled resolution/signatures are M2-01.4. Existing app drivers still run in process, and the desktop does not link a host or DuckDB crate. `DriverError::Host`, core `DriverHost` and IPC `driverHost` errors are distinct from network loss and never trigger transparent reconnect/replay. See ADR-0010's dated evidence for tests and measurements.
+This implements ADR-0010 M2-01.1–.2. The core adapter, spill admission/terminal coordinator and unchanged conformance path are implemented in M2-01.3 below; bundled resolution/local signatures are implemented in M2-01.4 (§19), with certificate-backed release signing still pending. Existing app drivers still run in process, and the desktop links the host client without a helper or DuckDB native crate. `DriverError::Host`, core `DriverHost` and IPC `driverHost` errors are distinct from network loss and never trigger transparent reconnect/replay. See ADR-0010's dated evidence for tests and measurements.
 
 ### Implemented (M2-01b)
 
@@ -245,8 +245,8 @@ postcard facet DTOs preserve native catalog types and bound edit values; native
 calls stay in the host worker. Bulk/admin are unadvertised and unsupported.
 SQLite hosting requires the helper's non-default `test-sqlite` feature (enabled
 by disposable `test-hooks` fixtures). No production desktop driver is routed to
-this adapter; DuckDB registration and installed helper resolution remain M2-04
-and M2-01.4.
+this adapter; DuckDB registration remains M2-04. Installed helper resolution is
+implemented in M2-01.4 (§19).
 
 Arrow segments decode directly into `ResultSink`, with no cell/JSON conversion.
 Nonblocking sink/store admission withholds credit above the spill budget, resumes
@@ -506,3 +506,16 @@ Typical decoder buffers are bounded independently of total row count: 128 KiB ch
 **App and inspection.** The picker offers **libSQL / Turso (remote)** (host/URL and credential-policy auth token; no user/database requirement) and **libSQL file** (file/in-memory/read-only/create/attachments). Remote `libsql://host` and `https://host` use verified HTTPS, while explicit `http://host:port` selects cleartext for local self-hosted servers. Credential-bearing URLs, paths, queries and fragments are rejected. The token uses the existing password secret slot and Keychain/Ask/Command policy (docs/12, docs/15). Tables/views, columns, indexes, checks, foreign keys and triggers are inspected through shared SQLite catalog SQL; M2-09 view definitions are available; types, extensions and roles remain unclaimed. Sidebar system-object filtering covers sqlite_, _litestream_ and libsql_ prefixes for both flavours. History literal review/redaction uses the SQLite dialect for both flavours. Remote cloud/custom TCP helpers use the shared route and custom-command trust boundary. Remote Explain and native dump/restore return typed Unsupported; the local flavour reuses SQLite support. Advanced structure mutation facets, administration, schema fingerprinting, WebSocket, embedded replicas/sync, platform token/database management and vector search UI are not claimed.
 
 **Verification.** `just test-libsql` starts pinned `ghcr.io/tursodatabase/libsql-server:v0.24.32` with Ed25519 JWT auth, generated temporary test-only keys and a signed full-access token. It runs remote integration cases (auth failure/redaction, bindings including injection strings, storage types, atomic batch rollback, interactive transactions, catalog/view inspection, truncation/byte bounds, request deadlines and cancel inside/outside a transaction), cloud and trusted custom helper routing with JWT auth, all applicable conformance groups and the local file flavour's SQLite conformance. Capability-gated structure/lifecycle/process groups report skips for remote. Unit golden fixtures verify request/response encoding and token isolation. The opt-in `OPENROWS_BENCH=1 cargo bench -p openrows-driver-libsql --bench decode_hrana` Criterion benchmark measures 200×5 native JSON values through shared Arrow batching against the ≥1 M cells/s and ≤5 ms first-batch targets; it excludes network/server latency.
+
+## 19. Implemented (M2-01c): packaged launch targets
+
+`LaunchOptions::driver` is `HostDriverId`, used in both argv and the exact
+Hello/Ready contract. Probe verifies the installed helper without advertising
+or opening a database; even fixture builds refuse its Connect. SqliteTest is
+accepted only with the optional test SQLite feature. Staging builds only the
+helper binary with `--no-default-features`, excluding fixture drivers/hooks.
+
+M2-04's registration points are `openrows-host-protocol/src/driver.rs` and
+`Hello::for_driver`, the host's `registry.rs`, and the parent adapter's declared
+capabilities/facet validation. Use the managed runtime's profile/driver launcher;
+never add DuckDB's native library to the desktop graph or an in-process fallback.

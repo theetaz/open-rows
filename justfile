@@ -16,11 +16,11 @@ fmt-check:
     cargo fmt --all -- --check
 
 # Enforce workspace Rust and Clippy lints as errors.
-lint:
+lint: (stage-host "dev")
     {{sccache_guard}} cargo clippy --workspace --all-targets --locked -- -D warnings
 
 # Run isolated workspace unit tests with nextest.
-test:
+test: (stage-host "dev")
     {{sccache_guard}} cargo nextest run --workspace --locked
 
 # Run the OpenSSH container matrix with timings; fails (not skips) when Docker is unavailable.
@@ -68,7 +68,7 @@ clean:
 dev_runner := if os() == "macos" { "env CARGO_TARGET_" + uppercase(replace(arch() + "-apple-darwin", "-", "_")) + "_RUNNER=" + quote(justfile_directory() / "scripts/dev-sign-run.sh") } else { "" }
 
 # Launch the native desktop shell with frontend hot reload.
-dev:
+dev: (stage-host "dev")
     {{sccache_guard}} {{dev_runner}} pnpm --filter @openrows/desktop tauri dev
 
 # One-time on macOS: create the self-signed "OpenRows Dev" code-signing identity for `just dev`.
@@ -76,16 +76,20 @@ dev-cert:
     bash scripts/dev-cert.sh
 
 # Build the unsigned release macOS application in the shared Cargo target.
-build-app:
+build-app: stage-host
     {{sccache_guard}} pnpm --filter @openrows/desktop tauri build --bundles app
 
 # Regenerate the TypeScript command contract from Rust.
-gen-ipc:
+gen-ipc: (stage-host "dev")
     {{sccache_guard}} cargo run -p openrows-app --bin gen-ipc --locked
 
 # Compare regenerated IPC bindings without modifying the committed contract.
-ipc-check:
+ipc-check: (stage-host "dev")
     {{sccache_guard}} cargo nextest run -p openrows-app --locked bindings_are_fresh
+
+# Real production binary only, with no SQLite/test features; defaults to release.
+stage-host profile="release" target="":
+    bash scripts/stage-host.sh "{{profile}}" "{{target}}"
 
 # Measure release startup phases; requires build-app and a macOS GUI session.
 bench-startup runs="10":
@@ -102,6 +106,7 @@ bench-test:
 # Test repository shell tooling against stubbed commands.
 script-test:
     python3 -B -m unittest discover -s scripts -p 'test_sccache_*.py'
+    python3 -B -m unittest discover -s scripts -p 'test_stage_host.py'
 
 # Emit CSS custom properties from the UI TypeScript token source.
 gen-tokens:

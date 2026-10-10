@@ -58,14 +58,17 @@ impl Rendezvous {
             data,
         })
     }
-    pub(crate) async fn attach(&mut self) -> Result<(Stream, Stream), HostFailure> {
+    pub(crate) async fn attach(
+        &mut self,
+        driver: crate::HostDriverId,
+    ) -> Result<(Stream, Stream), HostFailure> {
         let mut authentication = Authentication::new(self.bootstrap.clone());
         let mut control =
             authenticate(&mut self.control, &mut authentication, Lane::Control).await?;
         let data = authenticate(&mut self.data, &mut authentication, Lane::Data).await?;
         #[cfg(unix)]
         crate::transport::configure_data(&data).map_err(|_| HostFailure::Spawn)?;
-        let hello = Hello::sqlite(self.bootstrap.generation);
+        let hello = Hello::for_driver(driver, self.bootstrap.generation);
         let frame = Frame::control(hello.generation, 0, &Control::Hello(hello.clone()))
             .map_err(HostFailure::from)?;
         write_frame(&mut control, &frame, Lane::Control)

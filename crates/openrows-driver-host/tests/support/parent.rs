@@ -13,6 +13,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .enable_all()
         .build()?;
     let options = LaunchOptions {
+        driver: openrows_host_client::HostDriverId::SqliteTest,
         executable,
         endpoint_root,
         memory: MemoryBudget::default(),

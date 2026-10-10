@@ -318,3 +318,14 @@ hooks. Hosted credit waits on these hooks, without blocking async actors or
 changing the existing Continue/Stop contract. Store spill completion/release
 notifications resume at the ¾-budget target; failed spill stops and marks the
 partial result truncated. Cancel, Close and host health remain independent.
+
+## 13. Implemented (M2-01c): lazy desktop launch policy
+
+The desktop's managed `DriverHostRuntime` returns a lazy `HostSupervisor` for a
+typed driver ID and profile identity. The runtime retains each profile/driver
+circuit across explicit connects (three abnormal exits in 60 s) and uses the
+accepted process-wide memory reservation. It resolves the helper afresh on
+every launch and returns `DriverError::Host` for missing or incompatible
+artifacts, preserving the M2-01b terminal/no-replay lifecycle. No production
+driver is registered. DuckDB's shared writable-file/session ownership and
+queued metadata/edit/export rules remain M2-04 work.

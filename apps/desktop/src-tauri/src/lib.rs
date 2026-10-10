@@ -3,6 +3,7 @@
 mod commands;
 mod connections;
 mod diagram;
+mod driver_host;
 mod dump;
 mod editor_report;
 mod exports;
@@ -263,6 +264,7 @@ pub fn run() -> Result<(), tauri::Error> {
             specta.mount_events(app);
             settings::install(app);
             result_store::install(app)?;
+            driver_host::install(app)?;
             connections::install(app)?;
             native_files::install(app);
             settings::apply_saved(app);
