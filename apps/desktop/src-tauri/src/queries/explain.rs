@@ -34,10 +34,7 @@ fn engine(driver: Driver) -> Result<Engine, IpcError> {
             IpcErrorKind::Unsupported,
             "Explain is not available for remote libSQL",
         )),
-        Driver::Sqlserver => Err(IpcError::new(
-            IpcErrorKind::Unsupported,
-            "Explain is not available for SQL Server yet",
-        )),
+        Driver::Sqlserver => Ok(Engine::SqlServer),
     }
 }
 
@@ -84,7 +81,7 @@ fn refusal(
 /// Plans are always allowed. Explain Analyze of a possible write needs a
 /// matching `confirmToken` (`confirmationRequired`), is refused on
 /// read-only connections and on `MySQL`/`MariaDB` (`blocked`), and on
-/// `PostgreSQL` runs in a transaction that is rolled back.
+/// `PostgreSQL` and SQL Server run in a transaction that is rolled back.
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn query_explain(
@@ -132,7 +129,9 @@ pub(crate) async fn query_explain(
 fn failure(error: ExplainError) -> IpcError {
     let message = error.to_string();
     match error {
-        ExplainError::Failed(core) | ExplainError::NotRolledBack(core) => IpcError {
+        ExplainError::Failed(core)
+        | ExplainError::NotRolledBack(core)
+        | ExplainError::NotRestored(core) => IpcError {
             message,
             ..IpcError::from(core)
         },
@@ -217,6 +216,35 @@ mod tests {
             (POLICY, statement),
         );
         assert!(matches!(blocked, Some(ExplainReply::Blocked { .. })));
+        Ok(())
+    }
+    #[test]
+    fn sqlserver_uses_confirmation_tokens_and_read_only_refusal() -> Result<(), &'static str> {
+        assert_eq!(engine(Driver::Sqlserver).ok(), Some(Engine::SqlServer));
+        let policy = SafetyPolicy {
+            dialect: Dialect::SqlServer,
+            ..POLICY
+        };
+        let sql = "UPDATE t SET x=1";
+        let admission = explain::admit(policy, Engine::SqlServer, Mode::Analyze, sql);
+        assert_eq!(admission, Admission::Confirm);
+        let mut request = request(sql, None);
+        let Some(ExplainReply::ConfirmationRequired { token, .. }) =
+            refusal(admission.clone(), &request, (policy, sql))
+        else {
+            return Err("expected SQL Server confirmation");
+        };
+        request.confirm_token = Some(token);
+        assert_eq!(refusal(admission, &request, (policy, sql)), None);
+        let readonly = SafetyPolicy {
+            read_only: true,
+            ..policy
+        };
+        let blocked = explain::admit(readonly, Engine::SqlServer, Mode::Analyze, sql);
+        assert!(matches!(
+            refusal(blocked, &request, (readonly, sql)),
+            Some(ExplainReply::Blocked { .. })
+        ));
         Ok(())
     }
 }

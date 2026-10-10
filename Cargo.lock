@@ -3621,6 +3621,7 @@ dependencies = [
  "arrow-ipc",
  "arrow-schema",
  "openrows-driver-api",
+ "openrows-driver-mssql",
  "openrows-driver-mysql",
  "openrows-driver-postgres",
  "openrows-driver-sqlite",
@@ -3789,6 +3790,7 @@ dependencies = [
 name = "openrows-explain"
 version = "0.1.0"
 dependencies = [
+ "quick-xml 0.42.0",
  "serde_json",
  "thiserror 2.0.21",
 ]

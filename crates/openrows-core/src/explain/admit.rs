@@ -28,6 +28,9 @@ pub enum Admission {
 /// Judge explaining `statement` with `mode` on `engine` under `policy`.
 #[must_use]
 pub fn admit(policy: SafetyPolicy, engine: Engine, mode: Mode, statement: &str) -> Admission {
+    if engine == Engine::SqlServer && !openrows_sql::sqlserver_explainable(statement) {
+        return Admission::Refuse("SQL Server Explain supports queries and DML without session or transaction controls; select a single statement.".to_owned());
+    }
     if !engine.executes(mode) {
         return Admission::Run;
     }
@@ -157,5 +160,55 @@ mod tests {
         assert_eq!(token, confirmation_token(policy, "s1", "DELETE FROM t"));
         assert_ne!(token, confirmation_token(policy, "s1", "DELETE FROM u"));
         assert_ne!(token, confirmation_token(policy, "s2", "DELETE FROM t"));
+    }
+    #[test]
+    fn sqlserver_writes_require_confirmation_and_read_only_refuses() {
+        for sql in [
+            "UPDATE t SET x=1",
+            "DELETE FROM t",
+            "INSERT INTO t VALUES(1)",
+            "SELECT NEXT VALUE FOR seq",
+        ] {
+            assert_eq!(
+                admit(
+                    policy(false, Dialect::SqlServer),
+                    Engine::SqlServer,
+                    Mode::Analyze,
+                    sql
+                ),
+                Admission::Confirm
+            );
+            assert!(matches!(
+                admit(
+                    policy(true, Dialect::SqlServer),
+                    Engine::SqlServer,
+                    Mode::Analyze,
+                    sql
+                ),
+                Admission::Block(_)
+            ));
+            assert_eq!(
+                admit(
+                    policy(true, Dialect::SqlServer),
+                    Engine::SqlServer,
+                    Mode::Plan,
+                    sql
+                ),
+                Admission::Run
+            );
+        }
+        for sql in ["SELECT 1 COMMIT", "SET SHOWPLAN_XML OFF", "EXEC p"] {
+            for mode in [Mode::Plan, Mode::Analyze] {
+                assert!(matches!(
+                    admit(
+                        policy(false, Dialect::SqlServer),
+                        Engine::SqlServer,
+                        mode,
+                        sql
+                    ),
+                    Admission::Refuse(_)
+                ));
+            }
+        }
     }
 }

@@ -1,0 +1,50 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.chart {
+  overflow: auto;
+  min-width: 0;
+  padding: var(--or-space-8);
+}
+.legend {
+  margin: 0 0 var(--or-space-8);
+  font-size: var(--or-text-11);
+  color: var(--or-secondary);
+}
+.chart svg {
+  width: 100%;
+  min-width: 40rem;
+}
+.cell {
+  cursor: pointer;
+  outline: none;
+}
+.envelope {
+  fill: var(--or-control-fill);
+  stroke: var(--or-separator);
+  stroke-width: 1;
+}
+.self {
+  fill: var(--or-neutral-bg);
+  pointer-events: none;
+}
+.cell[data-heat='low'] .self {
+  fill: var(--or-info-bg);
+  stroke: var(--or-info-fg);
+}
+.cell[data-heat='medium'] .self {
+  fill: var(--or-warning-bg);
+  stroke: var(--or-warning-fg);
+}
+.cell[data-heat='high'] .self {
+  fill: var(--or-danger-bg);
+  stroke: var(--or-danger-fg);
+}
+.cell:focus-visible .envelope,
+.cell:hover .envelope {
+  stroke: var(--or-focus);
+  stroke-width: var(--or-focus-width);
+}
+.cell text {
+  fill: var(--or-text);
+  font-size: var(--or-text-12);
+  pointer-events: none;
+}

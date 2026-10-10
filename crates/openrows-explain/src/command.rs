@@ -64,7 +64,7 @@ impl Engine {
     #[must_use]
     pub fn analyze_writes(self) -> AnalyzeWrites {
         match self {
-            Self::Postgres => AnalyzeWrites::RollBack,
+            Self::Postgres | Self::SqlServer => AnalyzeWrites::RollBack,
             Self::MySql | Self::MariaDb => AnalyzeWrites::Refuse,
             Self::Sqlite => AnalyzeWrites::NotRun,
         }
@@ -97,6 +97,7 @@ pub fn command(engine: Engine, mode: Mode, statement: &str, wrap: Wrap) -> Comma
             false,
         ),
         (Engine::Postgres, Mode::Analyze) => postgres_analyze(statement, wrap),
+        (Engine::SqlServer, mode) => sqlserver(statement, mode, wrap),
         (Engine::MySql | Engine::MariaDb, Mode::Plan) => plain(
             format!("EXPLAIN FORMAT=JSON {statement}"),
             Format::MySqlJson,
@@ -138,6 +139,37 @@ fn postgres_analyze(statement: &str, wrap: Wrap) -> Command {
         after,
         format: Format::PostgresJson,
         analyzed: true,
+    }
+}
+
+fn sqlserver(statement: &str, mode: Mode, wrap: Wrap) -> Command {
+    let option = if mode == Mode::Plan {
+        "SHOWPLAN_XML"
+    } else {
+        "STATISTICS XML"
+    };
+    let (mut before, mut after) = match wrap {
+        Wrap::None => (Vec::new(), Vec::new()),
+        Wrap::Transaction => (
+            vec!["BEGIN TRAN".to_owned()],
+            vec!["IF @@TRANCOUNT > 0 ROLLBACK TRAN".to_owned()],
+        ),
+        Wrap::Savepoint => (
+            vec![format!("SAVE TRAN {SAVEPOINT}")],
+            vec![format!(
+                "IF XACT_STATE() = 1 ROLLBACK TRAN {SAVEPOINT} ELSE IF XACT_STATE() = -1 THROW 50000, 'Explain transaction cannot roll back to its savepoint; roll back the transaction', 1"
+            )],
+        ),
+    };
+    // SHOWPLAN must be the only statement in its batch; turn it off before rollback.
+    before.push(format!("SET {option} ON"));
+    after.insert(0, format!("SET {option} OFF"));
+    Command {
+        before,
+        explain: statement.to_owned(),
+        after,
+        format: Format::SqlServerXml,
+        analyzed: mode == Mode::Analyze,
     }
 }
 
@@ -236,5 +268,31 @@ mod tests {
         assert_eq!(Engine::Sqlite.analyze_writes(), AnalyzeWrites::NotRun);
         assert!(!Engine::Sqlite.executes(Mode::Analyze));
         assert!(!Engine::Postgres.executes(Mode::Plan));
+    }
+    #[test]
+    fn sqlserver_options_have_their_own_batches_and_reset_before_rollback() {
+        let plan = command(Engine::SqlServer, Mode::Plan, "SELECT 1", Wrap::None);
+        assert_eq!(plan.before, ["SET SHOWPLAN_XML ON"]);
+        assert_eq!(plan.after, ["SET SHOWPLAN_XML OFF"]);
+        assert_eq!(plan.explain, "SELECT 1");
+        let actual = command(
+            Engine::SqlServer,
+            Mode::Analyze,
+            "UPDATE t SET x=1",
+            Wrap::Transaction,
+        );
+        assert_eq!(actual.before, ["BEGIN TRAN", "SET STATISTICS XML ON"]);
+        assert_eq!(
+            actual.after,
+            ["SET STATISTICS XML OFF", "IF @@TRANCOUNT > 0 ROLLBACK TRAN"]
+        );
+        let saved = command(
+            Engine::SqlServer,
+            Mode::Analyze,
+            "SELECT 1",
+            Wrap::Savepoint,
+        );
+        assert_eq!(saved.before[0], "SAVE TRAN openrows_explain");
+        assert!(saved.after[1].contains("ROLLBACK TRAN openrows_explain"));
     }
 }

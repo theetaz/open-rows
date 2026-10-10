@@ -18,7 +18,7 @@ function ExplainConfirm(props: {
           Explain Analyze runs this statement on{' '}
           <strong>{props.connection}</strong> to measure it, inside a
           transaction that is rolled back afterwards. Effects outside the
-          transaction, such as sequence values, are not undone.
+          transaction, such as identity or sequence values, are not undone.
         </p>
         <pre aria-label="Statement to analyse">{props.statement}</pre>
         <footer>

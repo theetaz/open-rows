@@ -186,6 +186,7 @@ These FR-NET-03 rows document OpenRows scope; no TablePlus adoption/parity claim
 | E12 | Stacked results | Display results in one view. | New FR-EDIT-15 | M2 | Lazy sections avoid large DOMs. | [S41] |
 | E13 | Parameter prompts | Enter values for placeholders. | Covered FR-EDIT-06 | M2 | Bind typed values instead of text substitution. | [S42] |
 | E14 | Alternative placeholder formats | Accept additional template syntaxes. | Partial FR-EDIT-06; Gap G05 | M2 standard forms; others post-1.0 | Avoid accidental substitution inside strings. | [S42] |
+| E25 | Explain / Explain Analyze | Inspect estimates, actuals and hotspots. | Implemented FR-EDIT-07 (M2-06, FU-02) | M2 | Lazy tree/Flame/Raw, exclusive measures, accessible navigation; SQL Server showplan alongside PG/MySQL/MariaDB/SQLite; confirmed write rollback and read-only refusal. | [S41] |
 | E15 | Multiple carets | Edit several positions at once. | New FR-EDIT-12 | M2 | Retain ≤ 16 ms typing budget. | [S43] |
 | E16 | Occurrence/block selection | Select repeated or rectangular text. | New FR-EDIT-12 | M2 | Predictable undo grouping. | [S43] |
 | E17 | Comment shortcuts | Toggle line or block comments. | New FR-EDIT-12 | M2 | Dialect-aware tokens. | [S44] |
@@ -311,7 +312,7 @@ Each row is engine access, not a promise of identical editing/admin capabilities
 | DB02 | MySQL | Access MySQL databases. | New FR-APP-07; dogfood slice in D-12 (browse, query, edit; SSH/TLS) | M1 | Streaming and typed values. | [S01] |
 | DB03 | MariaDB | Access MariaDB databases. | New FR-APP-07; dogfood slice in D-12 (own engine entry, detected from the version) | M1 | Detected flavour semantics. | [S01] |
 | DB04 | SQLite | Open local SQLite databases. | New FR-APP-07; dogfood slice in D-12 (local files, read-only open, create new file) | M1 | Interruptible dedicated-thread execution. | [S01] |
-| DB05 | SQL Server | Access TDS servers. | New FR-APP-07 | M2 | Capability-aware cancellation and TLS. | [S01] |
+| DB05 | SQL Server | Access TDS servers. | Implemented FR-APP-07 (M2-02), FR-EDIT-07 (FU-02) | M2 | TDS cancellation/TLS plus estimated/actual showplan, confirmed rolled-back writes and shared tree/Flame/Raw views (docs/05 §14). | [S01] |
 | DB06 | ClickHouse | Access analytical datasets. | Implemented FR-APP-07 (M2-03; docs/05 §17) | M2 | HTTP(S) native Arrow streaming, routed TLS, query parameters, catalogs and cancellation; read-only grids, no transactional imports, dump/restore or parsed explain. Tested 25.3.9.72 LTS. | [S01] |
 | DB07 | DuckDB | Query embedded analytical databases. | New FR-APP-07 | M2 | Isolated native driver host. | [S01] |
 | DB08 | libSQL | Access libSQL/Turso databases. | FR-APP-07 implemented (M2-05): own Hrana 3 HTTP remote client and SQLite-compatible local file flavour; bound values, guarded edits and catalogs | M2 | Explicit local/remote capabilities; bounded/truncated results; remote Explain/dump Unsupported, cross-origin sticky endpoints require reconnect (docs/05 §18). | [S01] |

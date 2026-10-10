@@ -100,3 +100,43 @@ it('reports a plan without hotspots or weights plainly', () => {
     within(details()).queryByText('Share of plan'),
   ).not.toBeInTheDocument();
 });
+
+it('opens Flame lazily with operator details on hover and click-to-select in Plan', async () => {
+  const user = renderView();
+  await user.click(screen.getByRole('radio', { name: 'Flame' }));
+  const chart = screen.getByRole('group', { name: 'Plan icicle' });
+  const scan = within(chart).getByRole('button', { name: /Seq Scan/ });
+  await user.hover(scan);
+  expect(
+    within(details()).getByRole('heading', { level: 3 }),
+  ).toHaveTextContent('Seq Scan');
+  await user.click(scan);
+  expect(screen.getByRole('radio', { name: 'Plan' })).toBeChecked();
+  expect(screen.getByRole('treeitem', { name: /Seq Scan/ })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+});
+
+it('moves Flame focus by arrow keys and Enter selects in the tree', async () => {
+  const user = renderView();
+  await user.click(screen.getByRole('radio', { name: 'Flame' }));
+  const chart = screen.getByRole('group', { name: 'Plan icicle' });
+  const root = within(chart).getByRole('button', { name: 'Sort' });
+  root.focus();
+  await user.keyboard('{ArrowRight}{ArrowRight}');
+  expect(within(chart).getByRole('button', { name: /Seq Scan/ })).toHaveFocus();
+  await user.keyboard('{ArrowDown}');
+  expect(
+    within(chart).getByRole('button', { name: /Index Scan/ }),
+  ).toHaveFocus();
+  await user.keyboard('{ArrowLeft}');
+  expect(
+    within(chart).getByRole('button', { name: 'Nested Loop' }),
+  ).toHaveFocus();
+  await user.keyboard('{Enter}');
+  expect(screen.getByRole('treeitem', { name: /Nested Loop/ })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+});
