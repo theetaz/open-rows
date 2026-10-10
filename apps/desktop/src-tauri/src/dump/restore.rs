@@ -325,12 +325,59 @@ pub(crate) async fn dump_restore_start(
         confirmation,
     )
     .map_err(|error| dump_error(&error))?;
+    crate::security::authenticate_plan(
+        &restore_safety(&prepared.scope.profile),
+        &prepared.database,
+    )
+    .await?;
+    app.state::<crate::security::Security>()
+        .admit("dump_restore_start")?;
     Ok(start(&app, &prepared.scope, prepared.work, on_event))
+}
+
+fn restore_safety(
+    profile: &openrows_store::profile::ConnectionProfile,
+) -> openrows_core::safety::SafetyPlan {
+    openrows_core::safety::SafetyPlan::check(
+        crate::queries::commands::policy(profile),
+        vec!["Restore backup using the reviewed native commands".into()],
+    )
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn native_restore_passes_the_central_policy_as_an_opaque_write() {
+        use openrows_core::safety::Gate;
+        use openrows_store::profile::{ConnectionProfile, EnvKind, EnvTag, Safety, ServerParams};
+        let mut profile = ConnectionProfile::new_postgres(
+            "test",
+            ServerParams::default(),
+            EnvTag::new(EnvKind::Local),
+        );
+        for mode in [
+            Safety::Unrestricted,
+            Safety::ConfirmAll,
+            Safety::ConfirmWrites,
+            Safety::AuthenticateAll,
+            Safety::AuthenticateWrites,
+            Safety::ReadOnly,
+        ] {
+            profile.safety = mode;
+            let plan = restore_safety(&profile);
+            assert_eq!(
+                plan.gate(),
+                match mode {
+                    Safety::Unrestricted => Gate::Run,
+                    Safety::ReadOnly => Gate::Block,
+                    _ => Gate::Confirm,
+                }
+            );
+            assert_eq!(plan.authentication_required, mode.authenticates());
+        }
+    }
 
     #[test]
     fn sqlite_files_are_told_apart_from_dumps() -> Result<(), Box<dyn std::error::Error>> {

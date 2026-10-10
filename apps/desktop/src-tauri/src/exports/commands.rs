@@ -43,6 +43,11 @@ pub(crate) async fn export_start(
     // Validates the options before any panel shows.
     let format = request.format.to_format(scope.dialect(), &name)?;
     let plan = resolve(&app, &scope, &request.source).await?;
+    let profile = app
+        .state::<Connections>()
+        .profiles
+        .get(crate::connections::profiles::profile_id(&scope.profile_id)?)?;
+    crate::security::confirm_batch(&app, &profile, statements(&plan), &scope.database).await?;
     let destination = match &plan {
         Plan::PerTable(_) => match choose_folder(&window).await? {
             Some(folder) => Destination::Folder(folder),
@@ -56,6 +61,8 @@ pub(crate) async fn export_start(
             Destination::File(path, exporter)
         }
     };
+    app.state::<crate::security::Security>()
+        .admit("export_start")?;
     let (Destination::File(path, _) | Destination::Folder(path)) = &destination;
     let file_name = path
         .file_name()
@@ -78,6 +85,20 @@ pub(crate) async fn export_start(
         export_id,
         file_name,
     })
+}
+
+fn statements(plan: &Plan) -> Vec<String> {
+    match plan {
+        Plan::Stored { .. } => Vec::new(),
+        Plan::Statements(parts) => parts
+            .iter()
+            .map(|part| part.statement.sql.clone())
+            .collect(),
+        Plan::PerTable(tables) => tables
+            .iter()
+            .map(|(_, statement)| statement.sql.clone())
+            .collect(),
+    }
 }
 
 /// A sheet per table needs a workbook format; others write a folder.

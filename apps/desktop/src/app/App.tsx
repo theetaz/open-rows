@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Button, ThemeProvider } from '@openrows/ui';
+import { LockBoundary } from '../features/security/LockBoundary';
 import { useWindowReady } from './useWindowReady';
 const Gallery = lazy(() =>
   import('../gallery/Gallery').then((module) => ({ default: module.Gallery })),
@@ -74,37 +75,39 @@ export function App(): React.JSX.Element {
   }, [gallery]);
   return (
     <ThemeProvider onChange={settingsChanged} revision={revision}>
-      {startupError ? (
-        <p role="alert">Unable to show the native window.</p>
-      ) : (
-        <div hidden={gallery}>
-          <Workspace
-            enabled={!gallery}
-            onSettings={(section) => {
-              setSettings(section ?? 'general');
-            }}
-            onGallery={() => {
-              setGallery(true);
-            }}
-          />
-        </div>
-      )}
-      {settings && (
-        <Suspense fallback={null}>
-          <SettingsSheet
-            initial={settings}
-            onClose={() => {
-              setSettings(null);
-            }}
-          />
-        </Suspense>
-      )}
-      {crash.crashed && (
-        <Suspense fallback={null}>
-          <CrashRecoverySheet onClose={crash.dismiss} />
-        </Suspense>
-      )}
-      {gallery && <GalleryView onBack={setGallery} />}
+      <LockBoundary>
+        {startupError ? (
+          <p role="alert">Unable to show the native window.</p>
+        ) : (
+          <div hidden={gallery}>
+            <Workspace
+              enabled={!gallery}
+              onSettings={(section) => {
+                setSettings(section ?? 'general');
+              }}
+              onGallery={() => {
+                setGallery(true);
+              }}
+            />
+          </div>
+        )}
+        {settings && (
+          <Suspense fallback={null}>
+            <SettingsSheet
+              initial={settings}
+              onClose={() => {
+                setSettings(null);
+              }}
+            />
+          </Suspense>
+        )}
+        {crash.crashed && (
+          <Suspense fallback={null}>
+            <CrashRecoverySheet onClose={crash.dismiss} />
+          </Suspense>
+        )}
+        {gallery && <GalleryView onBack={setGallery} />}
+      </LockBoundary>
     </ThemeProvider>
   );
 }

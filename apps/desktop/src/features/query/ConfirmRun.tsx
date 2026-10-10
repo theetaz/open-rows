@@ -50,10 +50,13 @@ function Lead(props: {
  * statements, and before multi-statement runs when Settings ▸ Execution asks.
  */
 export function ConfirmRun(props: Props): React.JSX.Element {
-  const writes = props.statements.filter(
+  const confirmations = props.statements.filter(
     (statement) => statement.verdict === 'confirm',
   );
-  const flagged = writes.length ? writes : props.statements;
+  const flagged = confirmations.length ? confirmations : props.statements;
+  const writes = flagged.filter(
+    (statement) => statement.kind !== 'read' && statement.kind !== 'txControl',
+  );
   const dangerous = flagged.some((statement) => statement.dangerous);
   const title = writes.length
     ? 'Run statements that change data?'

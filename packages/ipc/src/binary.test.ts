@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { expect, it, vi } from 'vitest';
 import { resultWindow } from './binary';
+import { resultCellValue } from './cells';
 
 const mockInvoke = vi.hoisted(() => vi.fn());
 vi.mock('@tauri-apps/api/core', () => ({ invoke: mockInvoke }));
@@ -33,3 +34,18 @@ it.each([{}, 'bytes', [256], [-1], [1.5], [NaN], ['1'], [null]])(
     await expect(resultWindow(request)).rejects.toThrow('Expected raw bytes');
   },
 );
+
+it('keeps Locked errors typed for both binary result commands', async () => {
+  mockInvoke.mockRejectedValue({
+    kind: 'locked',
+    message: 'OpenRows is locked',
+    code: null,
+  });
+  await expect(resultWindow(request)).rejects.toMatchObject({
+    kind: 'locked',
+    name: 'CommandError',
+  });
+  await expect(
+    resultCellValue({ resultId: 'spike', row: 0, column: 0 }),
+  ).rejects.toMatchObject({ kind: 'locked', name: 'CommandError' });
+});

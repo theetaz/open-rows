@@ -335,7 +335,7 @@ function TabSheets(
   if (run.status === 'confirm')
     return (
       <ConfirmRun
-        connection={props.connection.name}
+        connection={`${props.connection.name} / ${props.tab.database}`}
         statements={run.statements}
         onConfirm={() => {
           runs.confirm(tab.id);

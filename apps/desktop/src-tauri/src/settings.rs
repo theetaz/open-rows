@@ -232,6 +232,7 @@ pub(crate) fn settings_read(file: State<'_, SettingsFile>) -> Result<Option<Stri
 #[tauri::command]
 #[specta::specta]
 pub(crate) fn settings_write(
+    app: tauri::AppHandle,
     file: State<'_, SettingsFile>,
     connections: State<'_, Connections>,
     local: State<'_, LocalStore>,
@@ -240,6 +241,10 @@ pub(crate) fn settings_write(
     let mut known = file.known();
     *known = Some(write(&file.path, &text)?);
     apply(&connections, &local, &text);
+    if let Ok(value) = serde_json::from_str(&text) {
+        app.state::<crate::security::Security>()
+            .configure(&value, false);
+    }
     Ok(())
 }
 

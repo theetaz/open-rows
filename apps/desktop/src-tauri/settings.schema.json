@@ -309,6 +309,7 @@
       "description": "Rebound shortcuts by command id; null removes a default shortcut.",
       "propertyNames": {
         "enum": [
+          "lock-app",
           "switch-connection",
           "reopen-session",
           "sidebar",
@@ -756,6 +757,21 @@
         "keepForever": {
           "type": "boolean",
           "default": false
+        }
+      }
+    },
+    "security": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "lockOnStartup": {
+          "type": "boolean",
+          "default": false
+        },
+        "lockAfterInactivityMinutes": {
+          "type": ["integer", "null"],
+          "enum": [null, 1, 5, 15, 30, 60],
+          "default": null
         }
       }
     }

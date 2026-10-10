@@ -5,23 +5,19 @@ use crate::safety::{Gate, SafetyPlan, SafetyPolicy, Verdict, verdict};
 use openrows_sql::{Classification, Dialect, StatementKind, classify};
 
 const OPEN: SafetyPolicy = SafetyPolicy {
-    read_only: false,
-    confirm_writes: false,
+    mode: openrows_types::safety::Safety::Unrestricted,
     dialect: Dialect::Postgres,
 };
 const CONFIRM: SafetyPolicy = SafetyPolicy {
-    read_only: false,
-    confirm_writes: true,
+    mode: openrows_types::safety::Safety::ConfirmWrites,
     dialect: Dialect::Postgres,
 };
 const READ_ONLY: SafetyPolicy = SafetyPolicy {
-    read_only: true,
-    confirm_writes: false,
+    mode: openrows_types::safety::Safety::ReadOnly,
     dialect: Dialect::Postgres,
 };
 const LOCKED: SafetyPolicy = SafetyPolicy {
-    read_only: true,
-    confirm_writes: true,
+    mode: openrows_types::safety::Safety::ReadOnly,
     dialect: Dialect::Postgres,
 };
 
@@ -160,8 +156,8 @@ fn verdict_matrix_over_every_kind() {
             let class = Classification { kind, dangerous };
             let risky = modifies || dangerous;
             let expect = |policy: SafetyPolicy| match () {
-                () if policy.read_only && risky => Verdict::Block,
-                () if dangerous || (policy.confirm_writes && risky) => Verdict::Confirm,
+                () if policy.mode.read_only() && risky => Verdict::Block,
+                () if dangerous || (policy.mode.confirm_writes() && risky) => Verdict::Confirm,
                 () => Verdict::Allow,
             };
             for policy in [OPEN, CONFIRM, READ_ONLY, LOCKED] {

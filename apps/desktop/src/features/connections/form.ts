@@ -29,6 +29,7 @@ import type {
   FileDto,
   PasswordInput,
   PasswordStorageDto,
+  SafetyDto,
   ProfileDto,
   ProfileInput,
   TlsModeDto,
@@ -54,8 +55,7 @@ export type Draft = {
   database: string;
   user: string;
   tlsMode: TlsModeDto;
-  readOnly: boolean;
-  confirmWrites: boolean;
+  safety: SafetyDto;
   /** Keep executed statements in History (FR-WS-02). */
   recordHistory: boolean;
   /** Redact history even outside production/read-only contexts. */
@@ -137,8 +137,7 @@ export function emptyDraft(engine: EngineDto = 'postgres'): Draft {
         : engine === 'libsql'
           ? 'verify-full'
           : 'prefer',
-    readOnly: false,
-    confirmWrites: false,
+    safety: 'unrestricted',
     recordHistory: true,
     redactHistory: false,
     startupCommands: '',
@@ -180,8 +179,7 @@ export function draftFromProfile(profile: ProfileDto): Draft {
     database: profile.database ?? '',
     user: profile.user ?? '',
     tlsMode: profile.tlsMode,
-    readOnly: profile.safety.readOnly,
-    confirmWrites: profile.safety.confirmWrites,
+    safety: profile.safety,
     recordHistory: profile.recordHistory,
     redactHistory: profile.redactHistory,
     startupCommands: profile.startupCommands,
@@ -206,7 +204,10 @@ export function withEnvironment(draft: Draft, kind: EnvKindDto): Draft {
   return {
     ...draft,
     envKind: kind,
-    confirmWrites: kind === 'prod' ? true : draft.confirmWrites,
+    safety:
+      kind === 'prod' && draft.safety === 'unrestricted'
+        ? 'confirmWrites'
+        : draft.safety,
   };
 }
 
@@ -354,7 +355,7 @@ export function toInput(draft: Draft): ProfileInput {
     ssh: file ? null : sshInput(draft.ssh),
     helper: file ? null : draft.helper,
     proxy: file ? null : proxyInput(draft.proxy),
-    safety: { readOnly: draft.readOnly, confirmWrites: draft.confirmWrites },
+    safety: draft.safety,
     recordHistory: draft.recordHistory,
     redactHistory: draft.redactHistory,
     startupCommands: draft.startupCommands.trim(),

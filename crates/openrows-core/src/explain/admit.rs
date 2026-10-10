@@ -32,11 +32,25 @@ pub fn admit(policy: SafetyPolicy, engine: Engine, mode: Mode, statement: &str) 
         return Admission::Refuse("SQL Server Explain supports queries and DML without session or transaction controls; select a single statement.".to_owned());
     }
     if !engine.executes(mode) {
-        return Admission::Run;
+        return if matches!(
+            policy.mode,
+            openrows_types::safety::Safety::ConfirmAll
+                | openrows_types::safety::Safety::AuthenticateAll
+        ) {
+            Admission::Confirm
+        } else {
+            Admission::Run
+        };
     }
     let class = classify(statement, policy.dialect);
     if !class.is_write() && !class.dangerous {
-        return Admission::Run;
+        return if SafetyPlan::check(policy, vec![statement.to_owned()]).gate()
+            == crate::safety::Gate::Confirm
+        {
+            Admission::Confirm
+        } else {
+            Admission::Run
+        };
     }
     if engine.analyze_writes() == AnalyzeWrites::Refuse {
         return Admission::Refuse(
@@ -46,7 +60,11 @@ pub fn admit(policy: SafetyPolicy, engine: Engine, mode: Mode, statement: &str) 
         );
     }
     let strict = SafetyPolicy {
-        confirm_writes: true,
+        mode: if policy.mode.read_only() {
+            openrows_types::safety::Safety::ReadOnly
+        } else {
+            openrows_types::safety::Safety::ConfirmWrites
+        },
         ..policy
     };
     match verdict(strict, class) {
@@ -74,8 +92,11 @@ mod tests {
 
     fn policy(read_only: bool, dialect: Dialect) -> SafetyPolicy {
         SafetyPolicy {
-            read_only,
-            confirm_writes: false,
+            mode: if read_only {
+                openrows_types::safety::Safety::ReadOnly
+            } else {
+                openrows_types::safety::Safety::Unrestricted
+            },
             dialect,
         }
     }
@@ -98,6 +119,27 @@ mod tests {
             admit(sqlite, Engine::Sqlite, Mode::Analyze, "DELETE FROM t"),
             Admission::Run
         );
+    }
+
+    #[test]
+    fn confirm_all_also_reviews_plan_only_requests() {
+        for mode in [
+            openrows_types::safety::Safety::ConfirmAll,
+            openrows_types::safety::Safety::AuthenticateAll,
+        ] {
+            assert_eq!(
+                admit(
+                    SafetyPolicy {
+                        mode,
+                        dialect: Dialect::Postgres
+                    },
+                    PG,
+                    Mode::Plan,
+                    "SELECT 1"
+                ),
+                Admission::Confirm
+            );
+        }
     }
 
     #[test]

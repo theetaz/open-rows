@@ -20,6 +20,7 @@ import {
   parseSidebarPreferences,
 } from '../schema/sidebarPreferences';
 import { HISTORY_KEY, parseHistorySettings } from './historySettings';
+import { parseSecurity, SECURITY_KEY } from '../security/securitySettings';
 import { parseTools, TOOLS_KEY } from './toolSettings';
 
 /**
@@ -41,6 +42,7 @@ type Section = {
 
 /** File sections and their stores; every value is validated on the way in and out. */
 const SECTIONS: Readonly<Record<string, Section>> = {
+  security: { key: SECURITY_KEY, parse: parseSecurity },
   history: { key: HISTORY_KEY, parse: parseHistorySettings },
   sidebar: { key: SIDEBAR_KEY, parse: parseSidebarPreferences },
   general: { key: GENERAL_KEY, parse: parseGeneral },

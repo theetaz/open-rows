@@ -77,6 +77,8 @@ pub(crate) fn connections_import_preview(
     let Some(batch) = load(&app, source)? else {
         return Ok(None);
     };
+    let mut batch = batch;
+    crate::security::fallback_import(&mut batch);
     let existing = state.profiles.list()?.profiles;
     let conflicts = exchange::preview(&batch, &existing)?;
     let rows = batch

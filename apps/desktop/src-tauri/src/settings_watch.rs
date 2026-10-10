@@ -93,6 +93,7 @@ pub(crate) fn watch(app: &AppHandle) {
                 continue;
             };
             if let Change::Edited(text) = change {
+                apply_security(&app, &text);
                 settings::apply(
                     &app.state::<Connections>(),
                     &app.state::<openrows_store::LocalStore>(),
@@ -103,6 +104,13 @@ pub(crate) fn watch(app: &AppHandle) {
             let _ = SettingsChanged {}.emit(&app);
         }
     });
+}
+
+fn apply_security(app: &AppHandle, text: &str) {
+    if let Ok(value) = serde_json::from_str(text) {
+        app.state::<crate::security::Security>()
+            .configure(&value, false);
+    }
 }
 
 #[cfg(test)]

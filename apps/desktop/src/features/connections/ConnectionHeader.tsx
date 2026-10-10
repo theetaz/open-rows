@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { Connections } from './useConnections';
+import { POLICY_LABELS } from '../security/policies';
 import styles from './ConnectionHeader.module.css';
 
 /**
@@ -21,7 +22,8 @@ export function ConnectionHeader({
     <div className={styles.header}>
       {active && (
         <p aria-label="Sidebar context">
-          {active.name} · {database || active.database || 'No database'}
+          {active.name} · {database || active.database || 'No database'} ·{' '}
+          {POLICY_LABELS[active.safety]}
         </p>
       )}
       {failure && (

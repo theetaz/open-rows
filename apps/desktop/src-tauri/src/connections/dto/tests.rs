@@ -21,10 +21,7 @@ pub(crate) fn input(env: EnvKindDto) -> ProfileInput {
         ssh: None,
         proxy: None,
         helper: None,
-        safety: SafetyDto {
-            read_only: false,
-            confirm_writes: true,
-        },
+        safety: SafetyDto::ConfirmWrites,
         record_history: false,
         redact_history: false,
         startup_commands: "  SET search_path TO app;\n".into(),
@@ -47,7 +44,7 @@ fn apply_trims_fields_and_drops_blank_options() -> Result<(), IpcError> {
     assert_eq!(profile.params.database, None);
     assert_eq!(profile.params.user.as_deref(), Some("app"));
     assert_eq!(profile.env_tag.kind, EnvKind::Staging);
-    assert!(profile.safety.confirm_writes);
+    assert!(profile.safety.confirm_writes());
     assert_eq!(profile.startup_commands, "SET search_path TO app;");
     Ok(())
 }
@@ -84,7 +81,7 @@ fn profile_dto_has_no_secret_fields() -> Result<(), serde_json::Error> {
         ConnectionProfile::new_postgres("p", ServerParams::default(), EnvTag::new(EnvKind::Prod));
     let json = serde_json::to_value(ProfileDto::from(&profile))?;
     assert_eq!(json["hasPassword"], false);
-    assert_eq!(json["safety"]["confirmWrites"], true);
+    assert_eq!(json["safety"], "confirmWrites");
     assert_eq!(json["env"]["kind"], "prod");
     assert!(json.get("password").is_none());
     Ok(())

@@ -32,6 +32,16 @@ fn project(value: &mut Value, rule: &Value, root: &Value, path: &str, warnings: 
         .and_then(Value::as_str)
         .and_then(|reference| root.pointer(reference.trim_start_matches('#')))
         .unwrap_or(rule);
+    let rule = rule
+        .get("oneOf")
+        .and_then(Value::as_array)
+        .and_then(|rules| {
+            rules.iter().find(|rule| {
+                (value.is_object() && rule["type"] == "object")
+                    || (value.is_string() && rule["type"] == "string")
+            })
+        })
+        .unwrap_or(rule);
     if let (Some(object), Some(properties)) = (
         value.as_object_mut(),
         rule.get("properties").and_then(Value::as_object),

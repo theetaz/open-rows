@@ -101,6 +101,16 @@ pub(crate) fn target(
         };
         (endpoint, user)
     };
+    let startup_commands = startup_statements(&profile.startup_commands, driver.dialect());
+    let checked = openrows_core::safety::SafetyPlan::check(
+        crate::queries::commands::policy(profile),
+        startup_commands.clone(),
+    );
+    if checked.gate() != openrows_core::safety::Gate::Run || checked.authentication_required {
+        return Err(IpcError::invalid(
+            "Startup SQL requires approval under this safety policy. Run it explicitly in the editor.",
+        ));
+    }
     let request = ConnectRequest {
         endpoint,
         database: params
@@ -121,7 +131,7 @@ pub(crate) fn target(
         via: None,
         timeouts: ConnectTimeouts::default(),
         driver_options: params.options.clone(),
-        startup_commands: startup_statements(&profile.startup_commands, driver.dialect()),
+        startup_commands,
     };
     Ok(Target { driver, request })
 }

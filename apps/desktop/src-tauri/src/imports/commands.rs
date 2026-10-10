@@ -245,7 +245,7 @@ pub(crate) async fn import_start(
         .profiles
         .get(profile_id(&request.target.profile_id)?)?;
     if request.mode == ImportModeDto::Import {
-        ensure_writable(profile.safety.read_only)?;
+        ensure_writable(profile.safety.read_only())?;
     }
     let dialect = driver(profile.driver).dialect();
     let path = file_path(&app.state::<Imports>(), &request.file_id)?;
@@ -265,6 +265,17 @@ pub(crate) async fn import_start(
             return Err(error);
         }
     };
+    let approval = crate::security::confirm_batch(
+        &app,
+        &profile,
+        super::plan::safety_statements(&plan)?,
+        &request.target.database,
+    )
+    .await;
+    if let Err(error) = approval {
+        let _ = connection.close().await;
+        return Err(error);
+    }
     let import_id = QueryId::new().to_string();
     let cancel = CancellationToken::new();
     app.state::<Imports>().track(&import_id, cancel.clone());

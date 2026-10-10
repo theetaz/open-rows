@@ -57,7 +57,7 @@ export function profile(
     passwordStorage: 'keychain',
     credentialCommand: null,
     tags: [],
-    safety: { readOnly: false, confirmWrites: false },
+    safety: 'unrestricted',
     insecure: [],
     recordHistory: true,
     redactHistory: false,
@@ -74,7 +74,7 @@ export const sampleProfiles: readonly ProfileDto[] = [
   profile('orders-local'),
   profile('analytics-prod', {
     env: { kind: 'prod', label: null, color: '#dc2626' },
-    safety: { readOnly: false, confirmWrites: true },
+    safety: 'confirmWrites',
   }),
   profile('events-dev', {
     env: { kind: 'dev', label: null, color: '#16a34a' },
@@ -354,6 +354,7 @@ export function ipcStub(
     startRunFile: vi.fn(() => new Promise(() => {})),
     ...dumpStub(),
     listProcesses: vi.fn(() => Promise.resolve([])),
+    ...securityStub(),
     signalProcess: vi.fn(() => Promise.resolve()),
   };
 }
@@ -366,5 +367,17 @@ function connectionTransferStub(): Record<string, unknown> {
     previewConnections: vi.fn().mockResolvedValue(null),
     importConnections: vi.fn().mockResolvedValue([]),
     cancelConnectionImport: vi.fn().mockResolvedValue(undefined),
+  };
+}
+
+function securityStub(): Record<string, unknown> {
+  return {
+    securityStatus: vi.fn(() =>
+      Promise.resolve({ locked: false, available: true, notice: null }),
+    ),
+    onSecurityChanged: vi.fn(() => Promise.resolve(() => undefined)),
+    securityActivity: vi.fn(() => Promise.resolve()),
+    lockApp: vi.fn(() => Promise.resolve()),
+    unlockApp: vi.fn(() => Promise.resolve()),
   };
 }

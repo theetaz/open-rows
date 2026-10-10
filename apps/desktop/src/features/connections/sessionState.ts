@@ -49,7 +49,10 @@ export function parseSession(text: string | null): SavedSession {
 
 /** Whether reconnect UI should explicitly explain the profile's write confirmation. */
 export function needsConsent(profile: ProfileDto): boolean {
-  return profile.env.kind === 'prod' || profile.safety.confirmWrites;
+  return (
+    profile.env.kind === 'prod' ||
+    (profile.safety !== 'unrestricted' && profile.safety !== 'readOnly')
+  );
 }
 
 /** Open (or opening) databases of a connection, in opening order. */

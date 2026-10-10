@@ -32,13 +32,14 @@ pub mod tool_import;
 
 pub use attached::AttachedFile;
 pub use conn_url::{ParsedUrl, parse_url};
-pub use env::{EnvKind, EnvTag, Safety};
+pub use env::{EnvKind, EnvTag};
 pub use error::{ProfileError, UrlError};
 pub use files::{LoadedProfiles, ProfileFiles};
 pub use limits::SessionLimits;
 pub use model::{ConnectionProfile, PROFILE_FORMAT, ProfileId, SecretRef, SecretRefs, TlsMode};
 pub use network::{CloudCa, Insecurity, SshAuthMethod, SshSettings, TlsSettings, is_local_host};
 pub use openrows_net::helper::{CloudFlavor, HelperHop};
+pub use openrows_types::safety::Safety;
 pub use params::{Driver, FileParams, ServerParams};
 pub use proxy::{ProxyKind, ProxySettings};
 pub use search::{groups, matches};

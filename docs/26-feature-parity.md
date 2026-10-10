@@ -133,14 +133,14 @@ These FR-NET-03 rows document OpenRows scope; no TablePlus adoption/parity claim
 | D06 | Commit changes | Apply staged GUI edits. | Covered FR-DATA-02, FR-DATA-03 | M1 | Transactional rollback where supported. | [S25] |
 | D07 | Discard changes | Remove pending GUI edits. | New FR-DATA-08 | M2 | Confirm impact; distinguish executed SQL. | [S26] |
 | D08 | Review generated SQL | Inspect writes before committing. | Covered FR-DATA-03 | M1 | Same preview path across drivers. | [S27] |
-| D09 | Unrestricted mode | Send queries without prompts. | New FR-APP-11 | M2 | Production cannot inherit this silently. | [S28] |
-| D10 | Confirm every query | Warn on each execution. | New FR-APP-11 | M2 | Classification and target shown. | [S28] |
-| D11 | Confirm writes | Warn only on mutating operations. | Covered FR-CONN-07 | M1 | Read-only mode also available. | [S28] |
-| D12 | Authenticate every query | Require authentication for execution. | New FR-APP-11 | M2 | OS-native authentication when available. | [S28] |
-| D13 | Authenticate writes | Authenticate non-read operations. | New FR-APP-11 | M2 | Parsed classification, not keyword-only rules. | [S28] |
-| D14 | Biometric safe unlock | Use OS authentication for prompts. | New FR-APP-11 | M2 | Explicit fallback on unsupported hardware. | [S28] |
-| D15 | Startup app lock | Require unlock on launch. | New FR-APP-11 | M2 | Lock applies to all windows and switches. | [S28] |
-| D16 | Inactivity app lock | Lock after time in background. | New FR-APP-11 | M2 | Context switches cannot bypass it. | [S28] |
+| D09 | Unrestricted mode | Send queries without prompts. | FR-APP-11 implemented (M2-22a) | M2 implemented (M2-22a) | Production cannot inherit this silently. | [S28] |
+| D10 | Confirm every query | Warn on each execution. | FR-APP-11 implemented (M2-22a) | M2 implemented (M2-22a) | Classification and target shown. | [S28] |
+| D11 | Confirm writes | Warn only on mutating operations. | FR-CONN-07 implemented (M2-22a) | M1; M2-22a explicit policy | Read-only mode also available. | [S28] |
+| D12 | Authenticate every query | Require authentication for execution. | FR-APP-11 implemented (M2-22a) | M2 implemented (M2-22a) | OS-native authentication when available. | [S28] |
+| D13 | Authenticate writes | Authenticate non-read operations. | FR-APP-11 implemented (M2-22a) | M2 implemented (M2-22a) | Parsed classification, not keyword-only rules. | [S28] |
+| D14 | Biometric safe unlock | Use OS authentication for prompts. | FR-APP-11 implemented (M2-22a) | M2 implemented (M2-22a) | Explicit fallback on unsupported hardware. | [S28] |
+| D15 | Startup app lock | Require unlock on launch. | FR-APP-11 implemented (M2-22a) | M2 implemented (M2-22a) | Lock applies to all windows and switches. | [S28] |
+| D16 | Inactivity app lock | Lock after time in background. | FR-APP-11 implemented (M2-22a) | M2 implemented (M2-22a) | Context switches cannot bypass it. | [S28] |
 
 ### Structure and database objects
 
@@ -517,3 +517,15 @@ All URLs below were accessed **2026-10-06**. Public text only: no binaries, priv
 ### Implemented (M2-20): W01–W05, W12 and B14–B16
 
 Existing independent connection/database contexts and ⌘K database switching are retained. Connection switching previews environment, safety and routing; ⌘P adds cached local/project queries to objects (50 ms p95 gate at 10k + 1k). Per-pane context labels include connection/database, including both split panes. Versioned descriptor restoration and Reopen Previous Session are disconnected and never execute SQL; inspector/table identities and split layouts restore lazily without results or credentials. History reuse routes through current connection safety, adds cursor insertion and an editable literal review before project/local saving, confirmed scoped/all clearing, count/age/forever retention and production/read-only/explicit lexer redaction. See docs/09, docs/12, docs/15 §11 and docs/20. W06–W07 remain independent window work; W08–W11 reuse prior tab operations and are not expanded by this task.
+
+### Implemented (M2-22a): D09–D16
+
+Six explicit policies, lossless legacy decoding, production-safe imports/copies,
+parser-based confirmation/authentication, native macOS device-owner authentication,
+and shared startup/inactivity lock enforcement are implemented. ConfirmAll shows
+statement classification and connection/database. Unsupported platforms visibly
+fall back to the matching confirmation policy and disable lock/auth controls.
+All data IPC entry points share the Rust lock guard; mounted content and portals
+are hidden in every locked window. Settings groups/locations, tabs/layout, general
+controls, themes and file associations remain separate M2-22 work. Native macOS
+Touch ID/system-password UX remains the maintainer's manual acceptance check.

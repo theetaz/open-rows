@@ -164,6 +164,23 @@ pub(crate) async fn run_file_start(
     let path = picked(&files, &request.path)?;
     let scope = job_scope(&app.state::<Connections>(), &request.session_id)?;
     let scan = admitted(&files, (&path, &scope), &request)?;
+    let profile = app
+        .state::<Connections>()
+        .profiles
+        .get(crate::connections::profiles::profile_id(&scope.profile_id)?)?;
+    if scope.policy.mode.authenticates()
+        && (scope.policy.mode == openrows_types::safety::Safety::AuthenticateAll
+            || scan.confirm > 0)
+    {
+        crate::security::authorize(
+            &profile,
+            vec!["Run the reviewed SQL file statements".into()],
+            &scope.database,
+        )
+        .await?;
+    }
+    app.state::<crate::security::Security>()
+        .admit("run_file_start")?;
     let run = Run {
         id: QueryId::new().to_string(),
         scope,

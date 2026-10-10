@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { ConnectionSwitcher } from './ConnectionSwitcher';
+import { useSecurity } from '../security/useSecurity';
 import type { Connections } from '../connections';
 import { Palette } from '@openrows/ui/palette';
 import { OpenDatabasePanel, QuickOpen } from '../schema';
@@ -57,8 +58,11 @@ function CommandPalette(props: {
   hidden?: readonly string[] | undefined;
 }): React.JSX.Element {
   const bindings = useBindings();
+  const security = useSecurity();
   const hidden = new Set(props.hidden);
-  const shown = COMMANDS.filter(({ id }) => !hidden.has(id));
+  const shown = COMMANDS.filter(
+    ({ id }) => !hidden.has(id) && (id !== 'lock-app' || security.available),
+  );
   const items = shown.map(({ id, label }) => ({
     id,
     label,

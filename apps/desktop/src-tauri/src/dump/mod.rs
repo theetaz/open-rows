@@ -94,7 +94,7 @@ impl Scope {
             .file
             .as_ref()
             .is_some_and(|file| file.read_only);
-        self.profile.safety.read_only || file
+        self.profile.safety.read_only() || file
     }
 
     fn production(&self) -> bool {

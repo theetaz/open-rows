@@ -20,7 +20,7 @@ use openrows_driver_api::{Connection, Driver, catalog, editor};
 use openrows_sql::ddl::view_body;
 use openrows_sql::{Dialect, StatementKind, classify, split};
 use openrows_store::profile::EnvKind;
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Manager, State};
 
 /// Most changes one review may hold.
 const MAX_CHANGES: usize = 500;
@@ -37,7 +37,7 @@ pub(crate) async fn table_detail(
         .profiles
         .get(profile_id(&target.profile_id)?)?
         .safety
-        .read_only;
+        .read_only();
     let driver = profile_driver(&state, &target.profile_id)?;
     let detail = read_detail(
         &state,
@@ -67,11 +67,13 @@ pub(crate) async fn table_detail(
 
 /// The connection's write safety for a review.
 #[derive(Clone, Copy)]
-struct Safety {
+struct Safety<'a> {
+    app: &'a AppHandle,
     /// Destructive changes need the typed table name.
     guarded: bool,
     /// A production connection: the review says so.
     production: bool,
+    policy: SafetyPolicy,
 }
 
 /// Without a matching `confirmToken`, return the generated DDL to review;
@@ -87,7 +89,7 @@ pub(crate) async fn table_alter(
     let profile = state
         .profiles
         .get(profile_id(&request.target.profile_id)?)?;
-    ensure_writable(profile.safety.read_only)?;
+    ensure_writable(profile.safety.read_only())?;
     if request.changes.is_empty() || request.changes.len() > MAX_CHANGES {
         return Err(IpcError::invalid(
             "Stage between 1 and 500 structure changes",
@@ -95,8 +97,10 @@ pub(crate) async fn table_alter(
     }
     let production = profile.env_tag.kind == EnvKind::Prod;
     let safety = Safety {
-        guarded: profile.safety.confirm_writes || production,
+        app: &app,
+        guarded: profile.safety.confirm_writes() || production,
         production,
+        policy: crate::queries::commands::policy(&profile),
     };
     let driver = driver(profile.driver);
     let mut session = session(&state, &request.target).await?;
@@ -124,7 +128,7 @@ async fn prepare_alter(
     session: &mut dyn Connection,
     driver: &dyn Driver,
     request: &AlterRequest,
-    safety: Safety,
+    safety: Safety<'_>,
 ) -> Result<AlterReply, IpcError> {
     let target = &request.target;
     let detail = catalog(session)
@@ -163,12 +167,22 @@ async fn prepare_alter(
             "Type the table name {name:?} to confirm these destructive changes"
         )));
     }
+    let checked = alteration_safety(safety.policy, &plan);
+    crate::security::authenticate_plan(&checked, &target.table).await?;
+    safety
+        .app
+        .state::<crate::security::Security>()
+        .admit("table_alter")?;
     editor(session)
         .map_err(|error| IpcError::from(&error))?
         .commit_ddl(&plan.statements)
         .await
         .map_err(|error| IpcError::from(&error))?;
     Ok(AlterReply::Committed)
+}
+
+fn alteration_safety(policy: SafetyPolicy, plan: &AlterPlan) -> SafetyPlan {
+    SafetyPlan::check(policy, plan.statements.clone())
 }
 
 fn prepared(token: String, plan: AlterPlan, confirm_name: Option<String>) -> AlterReply {
@@ -219,8 +233,7 @@ fn review_token(
 ) -> Result<String, IpcError> {
     let plan = SafetyPlan::check(
         SafetyPolicy {
-            read_only: false,
-            confirm_writes: true,
+            mode: openrows_types::safety::Safety::ConfirmWrites,
             dialect,
         },
         statements.to_vec(),
@@ -251,6 +264,35 @@ mod tests {
             changes,
             confirm_token: None,
             confirm_name: None,
+        }
+    }
+
+    #[test]
+    fn alteration_apply_uses_the_saved_policy_for_ddl() {
+        use openrows_core::safety::Gate;
+        use openrows_types::safety::Safety;
+        let plan = AlterPlan {
+            statements: vec!["ALTER TABLE t ADD COLUMN n int".into()],
+            warnings: vec![],
+            destructive: false,
+        };
+        for (mode, gate) in [
+            (Safety::Unrestricted, Gate::Run),
+            (Safety::ConfirmAll, Gate::Confirm),
+            (Safety::ConfirmWrites, Gate::Confirm),
+            (Safety::AuthenticateAll, Gate::Confirm),
+            (Safety::AuthenticateWrites, Gate::Confirm),
+            (Safety::ReadOnly, Gate::Block),
+        ] {
+            let checked = alteration_safety(
+                SafetyPolicy {
+                    mode,
+                    dialect: Dialect::Postgres,
+                },
+                &plan,
+            );
+            assert_eq!(checked.gate(), gate);
+            assert_eq!(checked.authentication_required, mode.authenticates());
         }
     }
 

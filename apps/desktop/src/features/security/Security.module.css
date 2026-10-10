@@ -1,0 +1,17 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.lock {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  block-size: 100vh;
+  background: var(--or-panel-solid);
+  color: var(--or-text);
+  gap: var(--or-space-4);
+}
+:global(body[data-openrows-locked] > :not(#root)) {
+  display: none !important;
+}
+
+:global(body[data-openrows-locked] dialog) {
+  display: none !important;
+}
