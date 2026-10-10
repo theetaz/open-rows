@@ -32,18 +32,44 @@ pub(crate) struct EnvDto {
 }
 
 /// Write-safety switches (FR-CONN-07).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct SafetyDto {
-    read_only: bool,
-    confirm_writes: bool,
+pub(crate) enum SafetyDto {
+    Unrestricted,
+    ConfirmAll,
+    ConfirmWrites,
+    AuthenticateAll,
+    AuthenticateWrites,
+    ReadOnly,
+}
+
+impl<'de> Deserialize<'de> for SafetyDto {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        Safety::deserialize(deserializer).map(Into::into)
+    }
 }
 
 impl From<SafetyDto> for Safety {
-    fn from(safety: SafetyDto) -> Self {
-        Self {
-            read_only: safety.read_only,
-            confirm_writes: safety.confirm_writes,
+    fn from(value: SafetyDto) -> Self {
+        match value {
+            SafetyDto::Unrestricted => Self::Unrestricted,
+            SafetyDto::ConfirmAll => Self::ConfirmAll,
+            SafetyDto::ConfirmWrites => Self::ConfirmWrites,
+            SafetyDto::AuthenticateAll => Self::AuthenticateAll,
+            SafetyDto::AuthenticateWrites => Self::AuthenticateWrites,
+            SafetyDto::ReadOnly => Self::ReadOnly,
+        }
+    }
+}
+impl From<Safety> for SafetyDto {
+    fn from(value: Safety) -> Self {
+        match value {
+            Safety::Unrestricted => Self::Unrestricted,
+            Safety::ConfirmAll => Self::ConfirmAll,
+            Safety::ConfirmWrites => Self::ConfirmWrites,
+            Safety::AuthenticateAll => Self::AuthenticateAll,
+            Safety::AuthenticateWrites => Self::AuthenticateWrites,
+            Safety::ReadOnly => Self::ReadOnly,
         }
     }
 }
@@ -173,10 +199,7 @@ impl From<&ConnectionProfile> for ProfileDto {
                 .map(CredentialCommandDto::from),
             tags: profile.tags.clone(),
             insecure: profile_insecurity(profile),
-            safety: SafetyDto {
-                read_only: profile.safety.read_only,
-                confirm_writes: profile.safety.confirm_writes,
-            },
+            safety: profile.safety.into(),
             record_history: profile.record_history,
             redact_history: profile.redact_history,
             limits: profile.limits.into(),

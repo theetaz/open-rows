@@ -145,6 +145,7 @@ impl ProfileService {
             }
         }
         let mut copy = source;
+        copy.set_env_tag(copy.env_tag.clone());
         copy.id = ProfileId::new();
         copy.name = format!("{} copy", copy.name);
         self.create_with(copy, &changes)

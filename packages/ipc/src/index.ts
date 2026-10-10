@@ -471,3 +471,12 @@ export type {
 
 /** Literal spans highlighted before saving history as a query. */
 export type { LiteralRangeDto } from './generated/bindings';
+
+export {
+  securityStatus,
+  lockApp,
+  unlockApp,
+  securityActivity,
+  onSecurityChanged,
+} from './security';
+export type { SecurityStatus } from './generated/bindings';

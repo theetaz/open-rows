@@ -136,10 +136,10 @@ it('validates required fields before saving or testing', async () => {
 
 it('turns on confirm writes for prod and requires a custom label', async () => {
   const { user } = mount();
-  const confirm = screen.getByRole('switch', { name: 'Confirm writes' });
-  expect(confirm).toHaveAttribute('aria-checked', 'false');
+  const confirm = screen.getByRole('combobox', { name: 'Safety policy' });
+  expect(confirm).toHaveValue('unrestricted');
   await user.click(screen.getByRole('radio', { name: 'Prod' }));
-  expect(confirm).toHaveAttribute('aria-checked', 'true');
+  expect(confirm).toHaveValue('confirmWrites');
   await user.click(screen.getByRole('radio', { name: 'Custom' }));
   await user.click(screen.getByRole('button', { name: 'Save' }));
   expect(screen.getByText('Label is required')).toBeVisible();

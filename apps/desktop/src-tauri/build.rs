@@ -4,6 +4,10 @@
 /// Every application command the webview may invoke.
 const COMMANDS: &[&str] = &[
     "app_info",
+    "security_activity",
+    "security_unlock",
+    "security_lock",
+    "security_status",
     "result_window",
     "spike_finish",
     "spike_start",

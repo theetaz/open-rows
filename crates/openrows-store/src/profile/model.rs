@@ -236,7 +236,11 @@ impl ConnectionProfile {
             name: name.to_owned(),
             driver,
             group: None,
-            safety: Safety::default_for(env_tag.kind),
+            safety: if env_tag.kind == EnvKind::Prod {
+                Safety::ConfirmWrites
+            } else {
+                Safety::Unrestricted
+            },
             env_tag,
             tls: TlsSettings::new(TlsMode::default_for_host(&params.host)),
             ssh: None,
@@ -273,8 +277,8 @@ impl ConnectionProfile {
 
     /// Change the environment tag; moving to prod turns on confirm-writes.
     pub fn set_env_tag(&mut self, env_tag: EnvTag) {
-        if env_tag.kind == EnvKind::Prod {
-            self.safety.confirm_writes = true;
+        if env_tag.kind == EnvKind::Prod && self.safety == Safety::Unrestricted {
+            self.safety = Safety::ConfirmWrites;
         }
         self.env_tag = env_tag;
     }

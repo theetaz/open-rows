@@ -1,23 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
-//! Pre-execution safety gate (docs/04 §4, docs/12): read-only connections and
-//! confirm-before-write. Pure and synchronous so every rule is unit-tested.
-//!
-//! Rules, per statement, from its [`Classification`]:
-//! 1. Read-only connection: `Write`, `Ddl`, `Unknown` or dangerous statements
-//!    are **blocked**; the whole run is refused and nothing executes.
-//! 2. Otherwise dangerous statements always need confirmation, and with
-//!    confirm-writes on, every `Write`, `Ddl` or `Unknown` statement does too.
-//! 3. `Read` and `TxControl` statements run without asking.
+//! Parser-based execution policies (FR-APP-11). Authentication is performed
+//! at the desktop boundary against the immutable checked run; it is never
+//! accepted as a webview-supplied token. Dangerous statements always confirm.
 use openrows_sql::{Classification, Dialect, classify};
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 /// The connection's write-safety switches (FR-CONN-07).
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct SafetyPolicy {
-    /// Refuse anything that may modify the database.
-    pub read_only: bool,
-    /// Ask before running anything that may modify the database.
-    pub confirm_writes: bool,
+    /// Explicit execution policy.
+    pub mode: openrows_types::safety::Safety,
     /// The engine's SQL dialect, whose rules classify each statement.
     pub dialect: Dialect,
 }
@@ -58,6 +50,8 @@ pub enum Gate {
 /// Checked statements of one run, in execution order.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SafetyPlan {
+    /// Whether native authentication is required for this exact run.
+    pub authentication_required: bool,
     /// The statements and their verdicts.
     pub statements: Vec<CheckedStatement>,
 }
@@ -66,7 +60,7 @@ impl SafetyPlan {
     /// Classify and judge `statements` under `policy`.
     #[must_use]
     pub fn check(policy: SafetyPolicy, statements: Vec<String>) -> Self {
-        let statements = statements
+        let statements: Vec<CheckedStatement> = statements
             .into_iter()
             .map(|sql| {
                 let class = classify(&sql, policy.dialect);
@@ -77,7 +71,15 @@ impl SafetyPlan {
                 }
             })
             .collect();
-        Self { statements }
+        let authentication_required = policy.mode.authenticates()
+            && statements.iter().any(|s: &CheckedStatement| {
+                policy.mode == openrows_types::safety::Safety::AuthenticateAll
+                    || s.class.kind != openrows_sql::StatementKind::Read
+            });
+        Self {
+            authentication_required,
+            statements,
+        }
     }
 
     /// The strictest verdict across all statements.
@@ -124,9 +126,19 @@ impl SafetyPlan {
 #[must_use]
 pub fn verdict(policy: SafetyPolicy, class: Classification) -> Verdict {
     let modifies = class.is_write() || class.dangerous;
-    if policy.read_only && modifies {
+    if policy.mode.read_only() && modifies {
         Verdict::Block
-    } else if class.dangerous || (policy.confirm_writes && modifies) {
+    } else if class.dangerous
+        || matches!(
+            policy.mode,
+            openrows_types::safety::Safety::ConfirmAll
+                | openrows_types::safety::Safety::AuthenticateAll
+        )
+        || (policy.mode.confirm_writes()
+            && (modifies
+                || (policy.mode.authenticates()
+                    && class.kind != openrows_sql::StatementKind::Read)))
+    {
         Verdict::Confirm
     } else {
         Verdict::Allow
@@ -139,9 +151,8 @@ mod clickhouse_tests {
     #[test]
     fn read_only_connections_block_clickhouse_mutations() {
         let policy = SafetyPolicy {
-            read_only: true,
+            mode: openrows_types::safety::Safety::ReadOnly,
             dialect: Dialect::ClickHouse,
-            ..SafetyPolicy::default()
         };
         for sql in [
             "INSERT INTO t VALUES (1)",
@@ -165,3 +176,6 @@ mod clickhouse_tests {
         );
     }
 }
+
+#[cfg(test)]
+mod policies;

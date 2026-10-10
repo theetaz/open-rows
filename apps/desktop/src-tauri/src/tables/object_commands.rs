@@ -23,7 +23,7 @@ use openrows_driver_api::schema::TableDetail;
 use openrows_driver_api::{Connection, DiscardSink, Driver, DriverError, editor};
 use openrows_sql::{Dialect, StatementKind, classify, split};
 use openrows_store::profile::EnvKind;
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Manager, State};
 
 /// Without a matching `confirmToken`, return the statements to review;
 /// with it (and the typed name when asked), run them.
@@ -35,7 +35,7 @@ pub(crate) async fn object_change(
     request: ObjectRequest,
 ) -> Result<ObjectReply, IpcError> {
     let profile = state.profiles.get(profile_id(&request.profile_id)?)?;
-    if profile.safety.read_only {
+    if profile.safety.read_only() {
         return Err(IpcError::invalid(
             "This connection is read-only: structure changes are disabled",
         ));
@@ -53,7 +53,7 @@ pub(crate) async fn object_change(
     }
     ensure_generated(&plan.statements, driver.dialect())?;
     let token = review_token(&request, &plan.statements, driver.dialect())?;
-    let guarded = profile.safety.confirm_writes || production;
+    let guarded = profile.safety.confirm_writes() || production;
     let confirm_name =
         (guarded && plan.destructive).then(|| request.change.object_name().to_owned());
     if request.confirm_token.as_deref() != Some(token.as_str()) {
@@ -66,6 +66,13 @@ pub(crate) async fn object_change(
             "Type {name:?} to confirm this change"
         )));
     }
+    crate::security::authenticate_plan(
+        &object_safety(crate::queries::commands::policy(&profile), &plan),
+        &format!("{} / {}", profile.name, request.database),
+    )
+    .await?;
+    app.state::<crate::security::Security>()
+        .admit("object_change")?;
     run_plan(&state, &request, driver, &plan).await?;
     after_statements(
         &app,
@@ -90,6 +97,10 @@ pub(crate) async fn routine_definition(
         (target.routine.into(), target.arguments),
     )
     .await
+}
+
+fn object_safety(policy: SafetyPolicy, plan: &ObjectPlan) -> SafetyPlan {
+    SafetyPlan::check(policy, plan.statements.clone())
 }
 
 fn prepared(token: String, plan: ObjectPlan, confirm_name: Option<String>) -> ObjectReply {
@@ -200,8 +211,7 @@ fn review_token(
 ) -> Result<String, IpcError> {
     let plan = SafetyPlan::check(
         SafetyPolicy {
-            read_only: false,
-            confirm_writes: true,
+            mode: openrows_types::safety::Safety::ConfirmWrites,
             dialect,
         },
         statements.to_vec(),
@@ -277,6 +287,38 @@ mod tests {
             },
             cascade: false,
         })
+    }
+
+    #[test]
+    fn tree_drop_and_truncate_apply_the_saved_policy() {
+        use openrows_core::safety::Gate;
+        use openrows_types::safety::Safety;
+        for sql in ["DROP TABLE t", "TRUNCATE TABLE t"] {
+            let plan = ObjectPlan {
+                statements: vec![sql.into()],
+                warnings: vec![],
+                destructive: true,
+                run: PlanRun::Transaction,
+            };
+            for (mode, gate) in [
+                (Safety::Unrestricted, Gate::Confirm),
+                (Safety::ConfirmAll, Gate::Confirm),
+                (Safety::ConfirmWrites, Gate::Confirm),
+                (Safety::AuthenticateAll, Gate::Confirm),
+                (Safety::AuthenticateWrites, Gate::Confirm),
+                (Safety::ReadOnly, Gate::Block),
+            ] {
+                let checked = object_safety(
+                    SafetyPolicy {
+                        mode,
+                        dialect: Dialect::Postgres,
+                    },
+                    &plan,
+                );
+                assert_eq!(checked.gate(), gate);
+                assert_eq!(checked.authentication_required, mode.authenticates());
+            }
+        }
     }
 
     #[test]

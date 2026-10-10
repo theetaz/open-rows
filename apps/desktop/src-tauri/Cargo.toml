@@ -7,8 +7,28 @@ repository.workspace = true
 rust-version.workspace = true
 default-run = "openrows-app"
 
-[lints]
-workspace = true
+# LocalAuthentication requires narrowly audited platform FFI in security/auth.rs.
+[lints.rust]
+unsafe_code = "deny"
+missing_docs = "warn"
+unused_qualifications = "warn"
+rust_2018_idioms = { level = "warn", priority = -1 }
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"
+todo = "warn"
+unimplemented = "warn"
+dbg_macro = "warn"
+print_stdout = "warn"
+print_stderr = "warn"
+too_many_lines = "warn"
+cognitive_complexity = "warn"
+too_many_arguments = "warn"
+excessive_nesting = "warn"
+allow_attributes_without_reason = "warn"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
@@ -56,9 +76,11 @@ tempfile = "3.27"
 tokio = { version = "1.53", features = ["macros", "rt", "rt-multi-thread", "sync", "time"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
+block2 = "0.6"
+objc2-local-authentication = { version = "0.3.2", default-features = false, features = ["std", "LAContext", "LAError", "block2"] }
 objc2 = { version = "0.6", default-features = false, features = ["std"] }
 objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSWorkspace", "NSAccessibility", "NSApplication", "NSResponder", "NSWindow", "NSButton", "NSControl", "NSView"] }
-objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSArray", "NSEnumerator"] }
+objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSArray", "NSEnumerator", "NSString", "NSError"] }
 
 [target.'cfg(unix)'.dependencies]
 rustix = { version = "1.1", default-features = false, features = ["process", "time", "std"] }

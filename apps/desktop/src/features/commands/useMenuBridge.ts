@@ -5,6 +5,7 @@ import type { MenuItemState } from '@openrows/ipc';
 import { useBindings } from './bindings';
 import type { Bindings } from './bindings';
 import { formatCombo } from './keys';
+import { useSecurity } from '../security/useSecurity';
 import { COMMANDS } from './registry';
 
 /**
@@ -68,7 +69,8 @@ export function useMenuBridge(
     let stop: (() => void) | undefined;
     onMenuCommand((id) => {
       if (performance.now() - handledAt < ECHO_MS) return;
-      latest.current(id);
+      if (!document.body.hasAttribute('data-openrows-locked'))
+        latest.current(id);
     }).then(
       (unlisten) => {
         if (live) stop = unlisten;
@@ -82,7 +84,15 @@ export function useMenuBridge(
     };
   }, []);
   const bindings = useBindings();
-  const states = JSON.stringify(menuStates(bindings, enabled));
+  const security = useSecurity();
+  const states = JSON.stringify(
+    menuStates(
+      bindings,
+      security.locked
+        ? Object.fromEntries(COMMANDS.map(({ id }) => [id, false]))
+        : { ...enabled, 'lock-app': security.available },
+    ),
+  );
   useEffect(() => {
     syncMenu(JSON.parse(states) as MenuItemState[]).catch(() => undefined);
   }, [states]);

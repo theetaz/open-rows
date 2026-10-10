@@ -73,24 +73,3 @@ impl EnvTag {
         }
     }
 }
-
-/// Write-safety switches (FR-CONN-07).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Safety {
-    /// Reject every write statement.
-    pub read_only: bool,
-    /// Ask before running any write statement.
-    pub confirm_writes: bool,
-}
-
-impl Safety {
-    /// Defaults for an environment: prod confirms writes, others do not.
-    #[must_use]
-    pub fn default_for(kind: EnvKind) -> Self {
-        Self {
-            read_only: false,
-            confirm_writes: kind == EnvKind::Prod,
-        }
-    }
-}

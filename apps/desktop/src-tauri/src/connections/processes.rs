@@ -94,11 +94,19 @@ fn ensure_signal_allowed(read_only: bool) -> Result<(), IpcError> {
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn process_signal(
+    app: tauri::AppHandle,
     state: State<'_, Connections>,
     request: ProcessSignalRequest,
 ) -> Result<(), IpcError> {
     let profile = admin_profile(&state, &request.profile_id)?;
-    ensure_signal_allowed(profile.safety.read_only)?;
+    ensure_signal_allowed(profile.safety.read_only())?;
+    crate::security::confirm_batch(
+        &app,
+        &profile,
+        vec!["Signal the reviewed server process".into()],
+        &request.database,
+    )
+    .await?;
     let id = ProcessId::from(request.process_id);
     let (signal, allow_own) = (request.signal.into(), request.allow_own);
     let outcome = on_admin(

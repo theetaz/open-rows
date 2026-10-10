@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { lockApp } from '@openrows/ipc';
 import { toggleActiveFavourite } from '../schema/activeFavourite';
 import type { QueryTab } from '../query/tabs';
 import type { ThemeMode } from '@openrows/ui';
@@ -89,6 +90,9 @@ function focusSearch(input: ShellInput): void {
 function viewActions(input: ShellInput): Actions {
   const { setMode } = input;
   return {
+    'lock-app': () => {
+      void lockApp();
+    },
     sidebar: input.toggleSidebar,
     inspector: input.inspector.toggle,
     'reopen-session': () => {
@@ -203,6 +207,7 @@ function tabFallback(input: ShellInput, id: string): void {
  */
 export function shellCommand(input: ShellInput): (id: string) => void {
   return (id: string): void => {
+    if (document.body.hasAttribute('data-openrows-locked')) return;
     if (isTabCommand(id)) {
       if (!runTabCommand(id)) tabFallback(input, id);
       return;

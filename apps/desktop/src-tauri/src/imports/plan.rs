@@ -237,3 +237,75 @@ mod tests {
         Ok(())
     }
 }
+
+/// Parser-classified batch template; values remain bound and the immutable plan controls every batch.
+pub(crate) fn safety_statements(plan: &LoadPlan) -> Result<Vec<String>, IpcError> {
+    let table = plan
+        .dialect
+        .qualified(&plan.table.schema, &plan.table.table)
+        .map_err(|error| IpcError::invalid(error.to_string()))?;
+    if plan.mode == openrows_import::RunMode::Check {
+        return Ok(vec![format!("SELECT COUNT(*) FROM {table}")]);
+    }
+    let columns = plan
+        .columns
+        .iter()
+        .map(|column| plan.dialect.quote_ident(column))
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|error| IpcError::invalid(error.to_string()))?
+        .join(", ");
+    let values = vec!["NULL"; plan.columns.len()].join(", ");
+    let mut statements: Vec<String> = plan.create.iter().cloned().collect();
+    if plan.truncate {
+        statements.push(format!("DELETE FROM {table}"));
+    }
+    statements.push(format!("INSERT INTO {table} ({columns}) VALUES ({values})"));
+    Ok(statements)
+}
+
+#[cfg(test)]
+mod safety_tests {
+    use super::*;
+    use openrows_core::safety::{Gate, SafetyPlan, SafetyPolicy};
+    use openrows_types::safety::Safety;
+    #[test]
+    fn every_import_plan_is_checked_including_create_and_truncate() -> Result<(), IpcError> {
+        let mut plan = LoadPlan {
+            dialect: Dialect::Postgres,
+            table: TableName {
+                schema: "public".into(),
+                table: "items".into(),
+            },
+            columns: vec!["id".into()],
+            key: vec![],
+            conflict: ConflictPolicy::Error,
+            create: Some("CREATE TABLE items (id int)".into()),
+            truncate: true,
+            transaction: openrows_import::TransactionMode::Single,
+            bad_rows: openrows_import::BadRows::Abort,
+            mode: openrows_import::RunMode::Import,
+        };
+        let statements = safety_statements(&plan)?;
+        assert_eq!(statements.len(), 3);
+        let check = |mode, sql| {
+            SafetyPlan::check(
+                SafetyPolicy {
+                    mode,
+                    dialect: plan.dialect,
+                },
+                sql,
+            )
+        };
+        assert_eq!(
+            check(Safety::ReadOnly, statements.clone()).gate(),
+            Gate::Block
+        );
+        assert!(check(Safety::AuthenticateWrites, statements).authentication_required);
+        plan.mode = openrows_import::RunMode::Check;
+        let dry = safety_statements(&plan)?;
+        assert_eq!(dry.len(), 1);
+        assert_eq!(check(Safety::ReadOnly, dry.clone()).gate(), Gate::Run);
+        assert_eq!(check(Safety::ConfirmAll, dry).gate(), Gate::Confirm);
+        Ok(())
+    }
+}

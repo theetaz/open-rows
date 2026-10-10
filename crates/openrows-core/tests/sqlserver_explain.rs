@@ -39,8 +39,11 @@ async fn explain_on(
 
 fn policy(read_only: bool) -> SafetyPolicy {
     SafetyPolicy {
-        read_only,
-        confirm_writes: false,
+        mode: if read_only {
+            openrows_types::safety::Safety::ReadOnly
+        } else {
+            openrows_types::safety::Safety::Unrestricted
+        },
         dialect: Dialect::SqlServer,
     }
 }

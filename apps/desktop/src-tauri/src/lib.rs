@@ -18,6 +18,7 @@ mod queries;
 mod result_store;
 mod results;
 mod run_file;
+mod security;
 mod settings;
 mod settings_watch;
 mod spike;
@@ -32,6 +33,7 @@ use connections::{
     attach, catalog, connection, credentials, diagnostics, exchange, files, inspection, processes,
     profiles, prompts, reveal, sessions,
 };
+use tauri::Manager;
 
 #[expect(
     clippy::too_many_lines,
@@ -40,6 +42,10 @@ use connections::{
 fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
     let builder = tauri_specta::Builder::new().commands(tauri_specta::collect_commands![
         commands::app_info,
+        security::security_status,
+        security::security_lock,
+        security::security_unlock,
+        security::security_activity,
         spike::spike_finish,
         spike::spike_start,
         spike::spike_progress,
@@ -212,6 +218,7 @@ pub fn run() -> Result<(), tauri::Error> {
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(window_frame::plugin())
+        .manage(security::Security::default())
         .manage(queries::Queries::default())
         .manage(imports::Imports::default())
         .manage(exports::pins::ResultPins::default())
@@ -224,6 +231,15 @@ pub fn run() -> Result<(), tauri::Error> {
         tauri::generate_handler![results::result_window, results::result_cell_value];
     startup_report::instrument(builder)
         .invoke_handler(move |invoke| {
+            if let Err(error) = invoke
+                .message
+                .webview()
+                .state::<security::Security>()
+                .admit(invoke.message.command())
+            {
+                invoke.resolver.reject(error);
+                return true;
+            }
             if matches!(
                 invoke.message.command(),
                 "result_window" | "result_cell_value"
@@ -240,6 +256,10 @@ pub fn run() -> Result<(), tauri::Error> {
             result_store::install(app)?;
             connections::install(app)?;
             settings::apply_saved(app);
+            if let Some(value) = settings::current(&app.state::<settings::SettingsFile>()) {
+                app.state::<security::Security>().configure(&value, true);
+            }
+            security::monitor(app.handle());
             settings_watch::watch(app.handle());
             menu::install(app)?;
             startup::install(app)

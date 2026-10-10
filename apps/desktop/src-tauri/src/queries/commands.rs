@@ -87,6 +87,10 @@ pub(crate) async fn query_execute(
     if let Some(reply) = refusal(&plan, &request) {
         return Ok(reply);
     }
+    crate::security::authenticate_plan(&plan, &format!("{} / {}", profile.name, owner.database))
+        .await?;
+    app.state::<crate::security::Security>()
+        .admit("query_execute")?;
     let run = Run {
         query_id: QueryId::new().to_string(),
         session,
@@ -112,8 +116,7 @@ pub(crate) async fn query_execute(
 /// The profile's safety switches, judged in its engine's dialect.
 pub(crate) fn policy(profile: &ConnectionProfile) -> SafetyPolicy {
     SafetyPolicy {
-        read_only: profile.safety.read_only,
-        confirm_writes: profile.safety.confirm_writes,
+        mode: profile.safety,
         dialect: driver(profile.driver).dialect(),
     }
 }
@@ -298,6 +301,25 @@ mod tests {
             params: None,
             auto_limit: None,
             confirm_multiple,
+        }
+    }
+
+    #[test]
+    fn execute_entry_uses_policy_confirmation_before_authentication() {
+        use openrows_types::safety::Safety;
+        for mode in [Safety::ConfirmAll, Safety::AuthenticateAll] {
+            let policy = SafetyPolicy {
+                mode,
+                ..SafetyPolicy::default()
+            };
+            let request = run("SELECT 1", false, None);
+            let plan = SafetyPlan::check(policy, request.statements(policy.dialect));
+            let token = match refusal(&plan, &request) {
+                Some(ExecuteReply::ConfirmationRequired { token, .. }) => Some(token),
+                _ => None,
+            };
+            assert!(token.is_some(), "read was not reviewed");
+            assert!(refusal(&plan, &run("SELECT 1", false, token)).is_none());
         }
     }
 

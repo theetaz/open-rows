@@ -12,6 +12,8 @@ use specta::Type;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub(crate) enum IpcErrorKind {
+    /// The application must be unlocked before accessing data.
+    Locked,
     /// A field or identifier failed validation.
     Invalid,
     /// The profile or session does not exist.

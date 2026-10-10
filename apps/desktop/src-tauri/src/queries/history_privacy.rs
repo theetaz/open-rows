@@ -17,7 +17,7 @@ pub(crate) fn validate_reuse(sql: &str) -> Result<(), IpcError> {
 }
 /// Whether this connection removes literals from persisted history.
 pub(crate) fn redacts(profile: &ConnectionProfile) -> bool {
-    profile.redact_history || profile.env_tag.kind == EnvKind::Prod || profile.safety.read_only
+    profile.redact_history || profile.env_tag.kind == EnvKind::Prod || profile.safety.read_only()
 }
 /// Apply privacy before anything reaches the local database or its FTS index.
 pub(crate) fn record(local: &LocalStore, mut record: HistoryRecord, privacy: (bool, Dialect)) {
@@ -85,9 +85,9 @@ mod tests {
         profile.redact_history = true;
         assert!(redacts(&profile));
         profile.redact_history = false;
-        profile.safety.read_only = true;
+        profile.safety = openrows_types::safety::Safety::ReadOnly;
         assert!(redacts(&profile));
-        profile.safety.read_only = false;
+        profile.safety = openrows_types::safety::Safety::Unrestricted;
         profile.env_tag.kind = EnvKind::Prod;
         assert!(redacts(&profile));
         profile.driver = Driver::Postgres;

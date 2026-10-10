@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { emitTo } from '@tauri-apps/api/event';
 import { App } from './App';
@@ -46,7 +46,9 @@ it('defaults to workspace, opens the gallery from the command palette and return
   const { default: userEvent } = await import('@testing-library/user-event');
   const user = userEvent.setup();
   render(<App />);
-  expect(screen.getByText(/open a query tab/)).toBeVisible();
+  await waitFor(() => {
+    expect(screen.getByText(/open a query tab/)).toBeVisible();
+  });
   await openGallery(user);
   expect(
     await screen.findByRole('heading', { name: 'Made for the desktop.' }),
@@ -66,7 +68,9 @@ it('opens settings by gear or shortcut, preserves the workspace and returns focu
   const { default: userEvent } = await import('@testing-library/user-event');
   const user = userEvent.setup();
   render(<App />);
-  const workspace = screen.getByRole('navigation', { name: 'Workspaces' });
+  const workspace = await screen.findByRole('navigation', {
+    name: 'Workspaces',
+  });
   const opener = screen.getByRole('button', { name: 'Settings' });
   await user.click(opener);
   expect(await screen.findByRole('dialog', { name: 'Settings' })).toBeVisible();

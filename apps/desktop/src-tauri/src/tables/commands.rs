@@ -77,6 +77,18 @@ pub(crate) async fn table_page(
     let session = owned_session(&connections, &request.session_id, &request.query.target)?;
     let limit = request.limit.clamp(1, MAX_PAGE);
     let bound = generate(&connections, &request.query, Some((limit, request.offset))).await?;
+    let profile = connections
+        .profiles
+        .get(crate::connections::profiles::profile_id(
+            &request.query.target.profile_id,
+        )?)?;
+    crate::security::confirm_batch(
+        &app,
+        &profile,
+        vec![bound.sql.clone()],
+        &request.query.target.database,
+    )
+    .await?;
     let run = PageRun {
         query_id: QueryId::new().to_string(),
         session,
@@ -97,6 +109,7 @@ pub(crate) async fn table_page(
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn table_count(
+    app: AppHandle,
     connections: State<'_, Connections>,
     queries: State<'_, Queries>,
     store: State<'_, Arc<ResultStore>>,
@@ -104,6 +117,18 @@ pub(crate) async fn table_count(
 ) -> Result<CountReply, IpcError> {
     let session = owned_session(&connections, &request.session_id, &request.query.target)?;
     let bound = generate(&connections, &request.query, None).await?;
+    let profile = connections
+        .profiles
+        .get(crate::connections::profiles::profile_id(
+            &request.query.target.profile_id,
+        )?)?;
+    crate::security::confirm_batch(
+        &app,
+        &profile,
+        vec![bound.sql.clone()],
+        &request.query.target.database,
+    )
+    .await?;
     let cancel = ScriptCanceller::default();
     queries.track(&request.ticket, cancel.clone());
     let (mut result, mut failure) = (None, None);

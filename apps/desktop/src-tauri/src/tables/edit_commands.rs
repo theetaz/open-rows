@@ -15,6 +15,7 @@ use openrows_sql::select::{BoundSql, TableRef};
 use openrows_store::LocalStore;
 use openrows_store::profile::EnvKind;
 use std::time::Instant;
+use tauri::Manager;
 use tauri::State;
 
 /// A dedicated connection to the target's database; closing it rolls back
@@ -51,7 +52,7 @@ pub(crate) async fn edit_shape(
 }
 fn writable(state: &Connections, target: &TableTarget) -> Result<(), IpcError> {
     let profile = state.profiles.get(profile_id(&target.profile_id)?)?;
-    ensure_writable(profile.safety.read_only)
+    ensure_writable(profile.safety.read_only())
 }
 pub(crate) fn ensure_writable(read_only: bool) -> Result<(), IpcError> {
     if read_only {
@@ -70,8 +71,8 @@ pub(crate) async fn table_edit_info(
 ) -> Result<EditInfoDto, IpcError> {
     let profile = state.profiles.get(profile_id(&target.profile_id)?)?;
     let safety = (
-        profile.safety.read_only,
-        profile.safety.confirm_writes,
+        profile.safety.read_only(),
+        profile.safety.confirm_writes(),
         profile.env_tag.kind == EnvKind::Prod,
     );
     let mut session = session(&state, &target).await?;
@@ -106,6 +107,7 @@ pub(crate) async fn table_edit_info(
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn table_edit(
+    app: tauri::AppHandle,
     state: State<'_, Connections>,
     local: State<'_, LocalStore>,
     request: EditRequest,
@@ -123,8 +125,8 @@ pub(crate) async fn table_edit(
         .profiles
         .get(profile_id(&request.target.profile_id)?)?;
     let mut session = session(&state, &request.target).await?;
-    let history = profile.record_history.then_some((&*local, &profile));
-    let result = prepare_commit(session.as_mut(), &request, dialect, history).await;
+    let history = Some((&*local, &profile));
+    let result = prepare_commit(session.as_mut(), &request, dialect, (history, &app)).await;
     log_commit(&result);
     // Closing rolls back transactions still open; a lost COMMIT reply remains uncertain.
     let closed = session
@@ -153,7 +155,10 @@ async fn prepare_commit(
     session: &mut dyn Connection,
     request: &EditRequest,
     dialect: Dialect,
-    history: Option<(&LocalStore, &openrows_store::profile::ConnectionProfile)>,
+    (history, app): (
+        Option<(&LocalStore, &openrows_store::profile::ConnectionProfile)>,
+        &tauri::AppHandle,
+    ),
 ) -> Result<EditReply, IpcError> {
     let target = &request.target;
     let (info, columns) = edit_shape(session, (&target.schema, &target.table))
@@ -189,12 +194,21 @@ async fn prepare_commit(
                 .collect(),
         });
     }
+    if let Some((_, profile)) = history {
+        crate::security::authenticate_plan(
+            &edit_safety(crate::queries::commands::policy(profile), &edits),
+            &format!("{} / {}", profile.name, request.target.database),
+        )
+        .await?;
+    }
+    app.state::<crate::security::Security>()
+        .admit("table_edit")?;
     let started = (now_ms(), Instant::now());
     let outcome = editor(session)
         .map_err(|error| IpcError::from(&error))?
         .commit_edits(&edits)
         .await;
-    if let Some(local) = history {
+    if let Some(local) = history.filter(|(_, profile)| profile.record_history) {
         record_batch(local, request, &edits, (started, &outcome));
     }
     outcome.map_err(|error| IpcError::from(&error))?;
@@ -230,6 +244,10 @@ fn record_batch(
     );
 }
 
+fn edit_safety(policy: SafetyPolicy, edits: &[BoundSql]) -> SafetyPlan {
+    SafetyPlan::check(policy, edits.iter().map(|edit| edit.sql.clone()).collect())
+}
+
 fn preview_token(
     request: &EditRequest,
     edits: &[BoundSql],
@@ -237,8 +255,7 @@ fn preview_token(
 ) -> Result<String, IpcError> {
     let plan = SafetyPlan::check(
         SafetyPolicy {
-            read_only: false,
-            confirm_writes: true,
+            mode: openrows_types::safety::Safety::ConfirmWrites,
             dialect,
         },
         edits.iter().map(|edit| edit.sql.clone()).collect(),
@@ -257,6 +274,36 @@ mod tests {
     use super::*;
     use openrows_core::safety::Gate;
     use std::collections::BTreeMap;
+    #[test]
+    fn edit_apply_uses_the_saved_policy_for_generated_sql() -> Result<(), IpcError> {
+        use openrows_types::safety::Safety;
+        let edit = edit_sql(
+            Dialect::Postgres,
+            &users(),
+            &Edit::from(&staged(EditKindDto::Update)),
+        )
+        .map_err(|error| IpcError::invalid(error.to_string()))?;
+        for (mode, gate) in [
+            (Safety::Unrestricted, Gate::Run),
+            (Safety::ConfirmAll, Gate::Confirm),
+            (Safety::ConfirmWrites, Gate::Confirm),
+            (Safety::AuthenticateAll, Gate::Confirm),
+            (Safety::AuthenticateWrites, Gate::Confirm),
+            (Safety::ReadOnly, Gate::Block),
+        ] {
+            let checked = edit_safety(
+                SafetyPolicy {
+                    mode,
+                    dialect: Dialect::Postgres,
+                },
+                std::slice::from_ref(&edit),
+            );
+            assert_eq!(checked.gate(), gate);
+            assert_eq!(checked.authentication_required, mode.authenticates());
+        }
+        Ok(())
+    }
+
     #[test]
     fn read_only_refuses_table_writes() {
         assert!(ensure_writable(true).is_err());
@@ -361,8 +408,7 @@ mod tests {
         assert!(sql[1].contains(" WHERE \"id\"::text IS NOT DISTINCT FROM $"));
         let plan = SafetyPlan::check(
             SafetyPolicy {
-                read_only: false,
-                confirm_writes: false,
+                mode: openrows_types::safety::Safety::Unrestricted,
                 dialect: Dialect::Postgres,
             },
             sql.clone(),
@@ -376,8 +422,7 @@ mod tests {
         assert_eq!(plan.gate(), Gate::Run);
         let blocked = SafetyPlan::check(
             SafetyPolicy {
-                read_only: true,
-                confirm_writes: false,
+                mode: openrows_types::safety::Safety::ReadOnly,
                 dialect: Dialect::Postgres,
             },
             sql,
@@ -405,8 +450,7 @@ mod tests {
                 .ends_with("CAST(\"rowid\" AS TEXT) COLLATE BINARY IS ?2")
         );
         let policy = SafetyPolicy {
-            read_only: false,
-            confirm_writes: false,
+            mode: openrows_types::safety::Safety::Unrestricted,
             dialect: Dialect::Sqlite,
         };
         let plan = SafetyPlan::check(policy, vec![delete.sql]);

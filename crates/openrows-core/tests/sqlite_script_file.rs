@@ -19,8 +19,7 @@ use std::sync::Arc;
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 const POLICY: SafetyPolicy = SafetyPolicy {
-    read_only: false,
-    confirm_writes: false,
+    mode: openrows_types::safety::Safety::Unrestricted,
     dialect: Dialect::Sqlite,
 };
 
@@ -255,12 +254,12 @@ fn the_safety_check_blocks_read_only_and_asks_before_writes() -> TestResult {
     assert_eq!(reads.samples.len(), 1);
     assert_eq!(reads.samples[0].line, 2);
     let confirm = SafetyPolicy {
-        confirm_writes: true,
+        mode: openrows_types::safety::Safety::ConfirmWrites,
         ..POLICY
     };
     assert_eq!(scan_file(&path, confirm, || false)?.confirm, 2);
     let read_only = SafetyPolicy {
-        read_only: true,
+        mode: openrows_types::safety::Safety::ReadOnly,
         ..POLICY
     };
     let blocked = scan_file(&path, read_only, || false)?;
@@ -280,7 +279,7 @@ async fn a_read_only_connection_refuses_writes_even_without_a_check() -> TestRes
     let run = FileRun {
         path: &path,
         policy: SafetyPolicy {
-            read_only: true,
+            mode: openrows_types::safety::Safety::ReadOnly,
             ..POLICY
         },
         stop_on_error: false,

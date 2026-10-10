@@ -1,12 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 import { invoke } from '@tauri-apps/api/core';
+import { toCommandError } from './connections';
 import type { WindowRequest } from './generated/bindings';
 
 /** Arrow IPC bytes of one result window (`result_window`, raw response). */
 export async function resultWindow(
   request: WindowRequest,
 ): Promise<ArrayBuffer> {
-  return rawBytes(await invoke<unknown>('result_window', { request }));
+  return rawBytes(
+    await invoke<unknown>('result_window', { request }).catch(
+      (error: unknown) => {
+        throw toCommandError(error);
+      },
+    ),
+  );
 }
 
 /**

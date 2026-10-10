@@ -4,6 +4,7 @@ import { Button, Badge } from '@openrows/ui';
 import { Sheet, SheetActions } from '@openrows/ui/sheet';
 import type { Connections } from '../connections';
 import { routeStatus } from './routeStatus';
+import { POLICY_LABELS } from '../security/policies';
 
 /** Preview the target connection's environment and safety before connecting. */
 export function ConnectionSwitcher(props: {
@@ -39,10 +40,8 @@ export function ConnectionSwitcher(props: {
             {profile.env.label ?? profile.env.kind}
           </Badge>
           <p>
-            {profile.safety.readOnly ? 'Read-only' : 'Read/write'} ·{' '}
-            {profile.safety.confirmWrites
-              ? 'Confirm writes'
-              : 'Writes without confirmation'}
+            {profile.safety === 'readOnly' ? 'Read-only' : 'Read/write'} ·{' '}
+            {POLICY_LABELS[profile.safety]}
           </p>
           {profile.env.kind === 'prod' && <p>Production connection</p>}
           <p>{routeStatus(profile)}</p>

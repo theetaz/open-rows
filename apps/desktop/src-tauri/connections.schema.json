@@ -167,17 +167,32 @@
       "additionalProperties": false
     },
     "safety": {
-      "type": "object",
-      "properties": {
-        "readOnly": {
-          "type": "boolean"
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "readOnly": {
+              "type": "boolean"
+            },
+            "confirmWrites": {
+              "type": "boolean"
+            }
+          },
+          "required": ["readOnly", "confirmWrites"],
+          "additionalProperties": false
         },
-        "confirmWrites": {
-          "type": "boolean"
+        {
+          "type": "string",
+          "enum": [
+            "unrestricted",
+            "confirmAll",
+            "confirmWrites",
+            "authenticateAll",
+            "authenticateWrites",
+            "readOnly"
+          ]
         }
-      },
-      "required": ["readOnly", "confirmWrites"],
-      "additionalProperties": false
+      ]
     },
     "attached": {
       "type": "object",

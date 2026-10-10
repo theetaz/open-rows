@@ -10,6 +10,7 @@ import { GeneralPane } from './GeneralPane';
 import { JsonPane } from './JsonPane';
 import { SearchResults } from './SearchResults';
 import { ShortcutsPane } from './ShortcutsPane';
+import { SecurityPane } from '../security/SecurityPane';
 import { ToolsPane } from './ToolsPane';
 import { SnippetsPane } from '../snippets';
 import { SettingsQuery } from './settingsSearch';
@@ -17,6 +18,7 @@ import styles from '../appearance/Appearance.module.css';
 import searchStyles from './Settings.module.css';
 
 export type SettingsSection =
+  | 'security'
   | 'general'
   | 'appearance'
   | 'editor'
@@ -28,6 +30,7 @@ export type SettingsSection =
   | 'json';
 
 const SECTIONS: readonly { value: SettingsSection; label: string }[] = [
+  { value: 'security', label: 'Security' },
   { value: 'general', label: 'General' },
   { value: 'appearance', label: 'Appearance' },
   { value: 'editor', label: 'Editor' },
@@ -40,6 +43,7 @@ const SECTIONS: readonly { value: SettingsSection; label: string }[] = [
 ];
 
 function Pane({ section }: { section: SettingsSection }): React.JSX.Element {
+  if (section === 'security') return <SecurityPane />;
   if (section === 'appearance') return <AppearancePane />;
   if (section === 'editor') return <EditorPane />;
   if (section === 'execution') return <ExecutionPane />;

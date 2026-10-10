@@ -52,6 +52,7 @@ const APP: &[Entry] = &[
     N(Native::About),
     S,
     C("settings", "Settings…"),
+    C("lock-app", "Lock OpenRows"),
     S,
     N(Native::Services),
     S,
@@ -319,7 +320,19 @@ pub(crate) fn install(app: &mut tauri::App) -> tauri::Result<()> {
     app.manage(items);
     app.on_menu_event(|app, event| {
         let id = event.id().as_ref();
-        if app.state::<MenuItems>().0.contains_key(id) {
+        if id == "lock-app" {
+            let _ = crate::security::security_lock(
+                app.clone(),
+                app.state::<crate::security::Security>(),
+            );
+            return;
+        }
+        if app
+            .state::<crate::security::Security>()
+            .admit("menu_action")
+            .is_ok()
+            && app.state::<MenuItems>().0.contains_key(id)
+        {
             // Emitting only fails while the webview is gone.
             let _ = MenuCommand { id: id.to_owned() }.emit(app);
         }
@@ -331,13 +344,17 @@ pub(crate) fn install(app: &mut tauri::App) -> tauri::Result<()> {
 /// Returns the ids whose accelerator the platform rejected.
 #[tauri::command]
 #[specta::specta]
-pub(crate) fn menu_sync(items: State<'_, MenuItems>, states: Vec<MenuItemState>) -> Vec<String> {
+pub(crate) fn menu_sync(
+    items: State<'_, MenuItems>,
+    security: State<'_, crate::security::Security>,
+    states: Vec<MenuItemState>,
+) -> Vec<String> {
     let mut rejected = Vec::new();
     for state in states {
         let Some(item) = items.0.get(&state.id) else {
             continue;
         };
-        let enabled = item.set_enabled(state.enabled);
+        let enabled = item.set_enabled(state.enabled && security.admit("menu_action").is_ok());
         let accelerator = item.set_accelerator(state.accelerator.as_deref());
         if enabled.is_err() || accelerator.is_err() {
             rejected.push(state.id);
@@ -372,6 +389,7 @@ mod tests {
         unique.dedup();
         assert_eq!(unique.len(), ids.len(), "duplicate menu ids");
         for id in [
+            "lock-app",
             "settings",
             "new-tab",
             "open-file",

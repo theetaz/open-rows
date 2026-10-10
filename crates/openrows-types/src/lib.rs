@@ -3,6 +3,8 @@
 //!
 //! Identifiers use UUID v7 and serialize as canonical hyphenated strings.
 
+pub mod safety;
+
 use std::{fmt, str::FromStr};
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};

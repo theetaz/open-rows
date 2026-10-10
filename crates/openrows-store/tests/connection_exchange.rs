@@ -18,7 +18,7 @@ fn profiles() -> Vec<ConnectionProfile> {
             );
             profile.group = Some("group".into());
             profile.tags = vec!["tag".into()];
-            profile.safety.read_only = true;
+            profile.safety = openrows_types::safety::Safety::ReadOnly;
             profile.redact_history = index == 0;
             profile.tls.ca_file = Some("/certs/ca.pem".into());
             profile.tls.client_key = Some("/certs/key.pem".into());

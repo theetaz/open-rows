@@ -57,7 +57,7 @@ export function TableImport(props: {
         ...props.target,
         profileId: profile.id,
         sessionId,
-        readOnly: profile.safety.readOnly,
+        readOnly: profile.safety === 'readOnly',
       }}
       onClose={props.onClose}
     />

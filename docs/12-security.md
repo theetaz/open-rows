@@ -182,3 +182,46 @@ Insert/Open/Copy retain the visible markers. Execute and Explain refuse any rema
 ## 14. Implemented (M2-05): libSQL auth tokens
 
 The remote libSQL/Turso auth token uses `conn/<id>/password` with the existing Keychain/Ask/Command credential policy. No token is stored in URL/host/options, profile JSON, diagnostics or exported connections. Ask retains it only in memory; Command reads stdout from a locally trusted provider and never exports its output. Hrana sends the token only in a sensitive bearer header, redacts token reflections from SQL errors and uses payload-free protocol/HTTP/TLS diagnostics. Cross-origin `base_url` changes are refused before another authenticated request. Remote credential-bearing URLs are rejected; use the Auth token field. Tests cover storage, exchange, command trust, request Debug/header isolation and failure diagnostics.
+
+## Implemented (M2-22a): connection safety and application locks
+
+FR-APP-11 adds one explicit connection policy: Unrestricted, ConfirmAll,
+ConfirmWrites, AuthenticateAll, AuthenticateWrites or ReadOnly. Legacy boolean
+profiles decode losslessly; their next save writes the enum. Production defaults
+remain ConfirmWrites, and unrestricted production imports and duplicates are
+upgraded with an import warning. Secret-free connection exchange carries the policy.
+
+`SafetyPlan::check` remains parser-based. Editor runs, generated table reads, export re-runs,
+staged edits, structure/object changes (including truncate/drop), imports,
+SQL-file execution and native restores use the shared boundary. Destructive
+operations retain their existing impact/typed-name reviews. Imports classify a
+quoted batch template and generated DDL; native restore/process operations are
+conservatively Unknown because they are opaque operations rather than SQL text.
+SQL files retain their streaming whole-file review. Startup SQL requiring approval
+is refused with an editor instruction, including during reconnect. Driver protocol
+and internal catalog reads retain their existing path; commands exposing that
+data remain covered by the app lock.
+
+The desktop authenticator uses macOS LocalAuthentication `LAContext` with
+`deviceOwnerAuthentication`: Touch ID with system-password fallback. Credentials
+stay in the OS. A fresh context evaluates each immutable execution request;
+there is no reusable webview authentication token. Failed/cancelled prompts run
+nothing. Other platforms report unavailable, disable authentication/lock controls,
+and import Authenticate policies as matching Confirm policies with a visible
+notice. Existing Authenticate profiles also require matching confirmation when
+authentication is unavailable; they never become unrestricted.
+
+`security.lockOnStartup` defaults false; `security.lockAfterInactivityMinutes`
+defaults null (off), with 1/5/15/30/60-minute options. A shared Rust state uses
+monotonic time and input from any focused window; background time counts as
+inactivity. The IPC dispatcher refuses data commands with typed `Locked` errors.
+Every window hides the mounted workspace and portals, clears visible selections,
+disables shortcuts/commands, and shows an opaque lazy lock screen. Running work
+continues and its results remain hidden until OS-authenticated unlock. A lock
+generation prevents a stale authentication from unlocking a newer lock.
+
+Threat boundary: this is a shoulder-surfing and app-interaction lock, not encrypted
+storage or protection from another process running under the same OS account.
+History, profile files and result spill storage keep their existing OS-permission
+protection. macOS prompt appearance and real Touch ID/password cancellation are
+maintainer manual checks. Native authentication FFI is isolated in `security/auth.rs`.

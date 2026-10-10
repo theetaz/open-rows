@@ -106,6 +106,14 @@ pub fn parse(text: &str) -> Result<ImportBatch, ExchangeError> {
             serde_json::from_value(value).map_err(|error| json_error(&error))?;
         profile.secrets = SecretRefs::default();
         profile.imported = true;
+        if profile.env_tag.kind == super::EnvKind::Prod
+            && profile.safety == super::Safety::Unrestricted
+        {
+            profile.safety = super::Safety::ConfirmWrites;
+            batch
+                .warnings
+                .push("Production import upgraded unrestricted policy to ConfirmWrites".into());
+        }
         profile.validate()?;
         batch.entries.push(ImportEntry {
             profile,

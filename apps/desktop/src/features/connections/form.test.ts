@@ -43,7 +43,7 @@ it('maps a profile to a draft and back without inventing a password', () => {
     ssh: null,
     proxy: null,
     helper: null,
-    safety: { readOnly: false, confirmWrites: false },
+    safety: 'unrestricted',
     recordHistory: true,
     redactHistory: false,
     startupCommands: '',
@@ -57,9 +57,9 @@ it('maps a profile to a draft and back without inventing a password', () => {
 
 it('prod turns confirm writes on; leaving prod keeps the choice', () => {
   const prod = withEnvironment(emptyDraft(), 'prod');
-  expect(prod.confirmWrites).toBe(true);
-  expect(withEnvironment(prod, 'dev').confirmWrites).toBe(true);
-  expect(withEnvironment(emptyDraft(), 'staging').confirmWrites).toBe(false);
+  expect(prod.safety).toBe('confirmWrites');
+  expect(withEnvironment(prod, 'dev').safety).toBe('confirmWrites');
+  expect(withEnvironment(emptyDraft(), 'staging').safety).toBe('unrestricted');
 });
 
 it('fills fields from a parsed URL; a typed name sticks, a URL-derived one follows', () => {

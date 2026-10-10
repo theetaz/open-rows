@@ -135,7 +135,7 @@ fn list_search_and_groups() {
     assert_eq!(service.groups().unwrap(), ["Billing"]);
     let found = service.search("BILLING prod").unwrap();
     assert_eq!(found.len(), 1);
-    assert!(found[0].safety.confirm_writes, "prod confirms writes");
+    assert!(found[0].safety.confirm_writes(), "prod confirms writes");
     assert_eq!(service.search("").unwrap().len(), 3);
     assert!(service.search("nomatch").unwrap().is_empty());
 }
@@ -147,9 +147,9 @@ fn prod_defaults_to_confirm_writes_including_on_retag() {
         ServerParams::default(),
         EnvTag::new(EnvKind::Staging),
     );
-    assert!(!profile.safety.confirm_writes);
+    assert!(!profile.safety.confirm_writes());
     profile.set_env_tag(EnvTag::new(EnvKind::Prod));
-    assert!(profile.safety.confirm_writes);
+    assert!(profile.safety.confirm_writes());
     let custom = EnvTag::custom("qa", "#123456");
     assert_eq!(custom.kind, EnvKind::Custom);
 }

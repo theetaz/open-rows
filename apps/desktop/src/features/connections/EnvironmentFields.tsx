@@ -3,6 +3,7 @@ import { SegmentedControl, TextField } from '@openrows/ui';
 import type { EnvKindDto } from '@openrows/ipc';
 import { fieldError } from './form';
 import type { ConnectionForm } from './useConnectionForm';
+import { SafetySelector } from '../security/SafetySelector';
 import { SwitchRow } from './SwitchRow';
 import styles from './ConnectionSheet.module.css';
 
@@ -56,20 +57,10 @@ export function EnvironmentFields({
           </label>
         </div>
       )}
-      <SwitchRow
-        label="Read-only"
-        detail="Reject every write statement."
-        checked={draft.readOnly}
-        onChange={(readOnly) => {
-          update({ readOnly });
-        }}
-      />
-      <SwitchRow
-        label="Confirm writes"
-        detail="Ask before running a write statement. On by default for prod."
-        checked={draft.confirmWrites}
-        onChange={(confirmWrites) => {
-          update({ confirmWrites });
+      <SafetySelector
+        value={draft.safety}
+        onChange={(safety) => {
+          update({ safety });
         }}
       />
       <SwitchRow

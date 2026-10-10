@@ -54,7 +54,7 @@ export function ProcessesTab(props: Props): React.JSX.Element {
   const signals = useProcessSignals({
     profileId: profile.id,
     database,
-    readOnly: profile.safety.readOnly,
+    readOnly: profile.safety === 'readOnly',
     onSignalled: list.reload,
   });
   const [filter, setFilter] = useState('');
@@ -99,7 +99,7 @@ export function ProcessesTab(props: Props): React.JSX.Element {
         onSort={(col) => {
           setSort((current) => nextSort(current, col));
         }}
-        readOnly={profile.safety.readOnly}
+        readOnly={profile.safety === 'readOnly'}
         onSignal={signals.request}
       />
       {signals.pending && (

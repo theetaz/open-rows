@@ -7,6 +7,14 @@ import * as __TAURI_EVENT from "@tauri-apps/api/event";
 /** Commands */
 export const commands = {
 	appInfo: () => __TAURI_INVOKE<AppInfo>("app_info"),
+	/**  Current lock state; this command never counts as activity. */
+	securityStatus: () => __TAURI_INVOKE<SecurityStatus>("security_status"),
+	/**  Lock every window immediately. */
+	securityLock: () => typedError<null, IpcError>(__TAURI_INVOKE("security_lock")),
+	/**  Unlock only after a successful OS authentication for this lock generation. */
+	securityUnlock: () => typedError<null, IpcError>(__TAURI_INVOKE("security_unlock")),
+	/**  Report input from a focused window; polling and background work do not reset inactivity. */
+	securityActivity: () => __TAURI_INVOKE<void>("security_activity"),
 	spikeFinish: (report: SpikeReport_Deserialize) => typedError<null, SpikeError>(__TAURI_INVOKE("spike_finish", { report })),
 	spikeStart: () => typedError<string | null, SpikeError>(__TAURI_INVOKE("spike_start")),
 	spikeProgress: (stage: string, detail: string) => typedError<null, SpikeError>(__TAURI_INVOKE("spike_progress", { stage, detail })),
@@ -146,7 +154,7 @@ export const commands = {
 	/**
 	 *  Explain the statement at the cursor, or the selection, on an open session.
 	 *
-	 *  Plans are always allowed. Explain Analyze of a possible write needs a
+	 *  Plan-only requests follow all-statement policies. Explain Analyze of a possible write needs a
 	 *  matching `confirmToken` (`confirmationRequired`), is refused on
 	 *  read-only connections and on `MySQL`/`MariaDB` (`blocked`), and on
 	 *  `PostgreSQL` and SQL Server run in a transaction that is rolled back.
@@ -1483,6 +1491,8 @@ export type IpcError = {
 
 /**  Failure category; the UI picks wording and recovery from it. */
 export type IpcErrorKind =
+/**  The application must be unlocked before accessing data. */
+"locked" |
 /**  A field or identifier failed validation. */
 "invalid" |
 /**  The profile or session does not exist. */
@@ -2283,10 +2293,7 @@ export type RunMode =
 export type RunOutcomeDto = "completed" | "failed" | "cancelled";
 
 /**  Write-safety switches (FR-CONN-07). */
-export type SafetyDto = {
-	readOnly: boolean,
-	confirmWrites: boolean,
-};
+export type SafetyDto = "unrestricted" | "confirmAll" | "confirmWrites" | "authenticateAll" | "authenticateWrites" | "readOnly";
 
 /**  A table's journaled change set: the key it was staged against and its rows. */
 export type SavedEditsDto = {
@@ -2352,6 +2359,13 @@ export type SecretInput =
 { kind: "clear" } |
 /**  A typed secret. */
 { kind: "set"; value: string };
+
+/**  Native availability and the lock state for all windows. */
+export type SecurityStatus = {
+	locked: boolean,
+	available: boolean,
+	notice: string | null,
+};
 
 /**  What the UI shows about the server after connecting. */
 export type ServerDto = {

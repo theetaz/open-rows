@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //! D-12 engines in profiles: `PostgreSQL` files written before D-12 load and
-//! save unchanged, `MySQL`/`MariaDB` profiles are server profiles, `SQLite`
+//! save with migrated safety, `MySQL`/`MariaDB` profiles are server profiles, `SQLite`
 //! profiles name a file and need no password.
 
 use std::path::PathBuf;
@@ -39,7 +39,7 @@ const D11_PROFILE: &str = r##"{
 }"##;
 
 #[test]
-fn profiles_written_before_d12_load_and_save_unchanged() {
+fn profiles_written_before_d12_load_and_save_with_only_safety_migrated() {
     let profile: ConnectionProfile = serde_json::from_str(D11_PROFILE).unwrap();
     assert_eq!(profile.driver, Driver::Postgres);
     assert!(profile.file.is_none());
@@ -49,7 +49,8 @@ fn profiles_written_before_d12_load_and_save_unchanged() {
     files.save(&profile).unwrap();
     let written = std::fs::read_to_string(files.path_for(profile.id)).unwrap();
     let reread: serde_json::Value = serde_json::from_str(&written).unwrap();
-    let original: serde_json::Value = serde_json::from_str(D11_PROFILE).unwrap();
+    let mut original: serde_json::Value = serde_json::from_str(D11_PROFILE).unwrap();
+    original["safety"] = serde_json::json!("unrestricted");
     assert_eq!(reread, original);
 }
 

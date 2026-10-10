@@ -157,7 +157,7 @@ it('copies the query and disables signals on read-only connections', async () =>
   Object.assign(navigator, { clipboard: { writeText } });
   renderTab(
     profile('orders-local', {
-      safety: { readOnly: true, confirmWrites: false },
+      safety: 'readOnly',
     }),
   );
   const menu = await openMenu('42');

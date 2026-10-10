@@ -186,8 +186,8 @@ fn errors_and_debug_never_contain_the_password() {
 fn into_profile_applies_env_defaults_and_keeps_secret_apart() {
     let parsed = parse_url("postgres://u:pw@prod-db/app?sslmode=verify-ca").unwrap();
     let (profile, password) = parsed.into_profile("App prod", EnvTag::new(EnvKind::Prod));
-    assert!(profile.safety.confirm_writes);
-    assert!(!profile.safety.read_only);
+    assert!(profile.safety.confirm_writes());
+    assert!(!profile.safety.read_only());
     assert_eq!(profile.tls.mode, TlsMode::VerifyCa);
     assert!(profile.secrets.password.is_none());
     assert_eq!(password.unwrap().expose(), "pw");

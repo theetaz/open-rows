@@ -13,8 +13,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 const POLICY: SafetyPolicy = SafetyPolicy {
-    read_only: false,
-    confirm_writes: false,
+    mode: openrows_types::safety::Safety::Unrestricted,
     dialect: Dialect::Postgres,
 };
 

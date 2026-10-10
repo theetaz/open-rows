@@ -11,7 +11,7 @@ use openrows_core::script::{self, Scope, ScriptCanceller};
 use openrows_explain::{Engine, Mode};
 use openrows_store::profile::Driver;
 use openrows_types::SessionId;
-use tauri::State;
+use tauri::{AppHandle, Manager, State};
 
 use super::Queries;
 use super::commands::policy;
@@ -78,13 +78,14 @@ fn refusal(
 
 /// Explain the statement at the cursor, or the selection, on an open session.
 ///
-/// Plans are always allowed. Explain Analyze of a possible write needs a
+/// Plan-only requests follow all-statement policies. Explain Analyze of a possible write needs a
 /// matching `confirmToken` (`confirmationRequired`), is refused on
 /// read-only connections and on `MySQL`/`MariaDB` (`blocked`), and on
 /// `PostgreSQL` and SQL Server run in a transaction that is rolled back.
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn query_explain(
+    app: AppHandle,
     connections: State<'_, Connections>,
     queries: State<'_, Queries>,
     request: ExplainRequest,
@@ -108,6 +109,14 @@ pub(crate) async fn query_explain(
     if let Some(reply) = refusal(admission, &request, (policy, &statement)) {
         return Ok(reply);
     }
+    let checked_sql = if request.analyze {
+        statement.clone()
+    } else {
+        format!("EXPLAIN {statement}")
+    };
+    crate::security::authorize(&profile, vec![checked_sql], &owner.database).await?;
+    app.state::<crate::security::Security>()
+        .admit("query_explain")?;
     let cancel = ScriptCanceller::default();
     queries.track(&request.explain_id, cancel.clone());
     let request_core = Request {
@@ -171,8 +180,7 @@ mod tests {
     }
 
     const POLICY: SafetyPolicy = SafetyPolicy {
-        read_only: false,
-        confirm_writes: false,
+        mode: openrows_types::safety::Safety::Unrestricted,
         dialect: Dialect::Postgres,
     };
 
@@ -237,7 +245,7 @@ mod tests {
         request.confirm_token = Some(token);
         assert_eq!(refusal(admission, &request, (policy, sql)), None);
         let readonly = SafetyPolicy {
-            read_only: true,
+            mode: openrows_types::safety::Safety::ReadOnly,
             ..policy
         };
         let blocked = explain::admit(readonly, Engine::SqlServer, Mode::Analyze, sql);
