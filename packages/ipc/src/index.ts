@@ -84,6 +84,7 @@ export {
   executeQuery,
   releaseResults,
   searchHistory,
+  historyLiterals,
 } from './queries';
 /** Explain and explain-analyze plans with hotspots (M2-06, FR-EDIT-07). */
 export { explainQuery } from './explain';
@@ -465,3 +466,6 @@ export type {
   RoleDto,
   RoleIdentityDto,
 } from './generated/bindings';
+
+/** Literal spans highlighted before saving history as a query. */
+export type { LiteralRangeDto } from './generated/bindings';

@@ -103,6 +103,7 @@ export function QueryContent(props: QueryContentProps): React.JSX.Element {
         <Suspense fallback={<p className={styles.empty}>Loading…</p>}>
           <SplitPanes
             split={split}
+            connection={connection.name}
             active={tab}
             render={(paneTab) => (
               <TabBody

@@ -7,6 +7,8 @@ const WorkspacePalettes = lazy(() =>
     default: module.WorkspacePalettes,
   })),
 );
+import { openQueryFile } from '../query';
+import { reportProjectError } from '../projects';
 import { useWorkspaceController } from './useWorkspaceController';
 import type { DiagramRequest } from './useWorkspaceController';
 import { contextSegments } from './contextBar';
@@ -67,7 +69,7 @@ export function Workspace({
           ? `Catalog refreshed (${String(controller.refreshes)})`
           : ''}
       </span>
-      <WorkspaceOverlay controller={controller} />
+      <WorkspaceOverlay controller={controller} connections={connections} />
       <TransferSheets
         connections={connections}
         controller={controller}
@@ -178,8 +180,10 @@ function WorkspaceEditors({
 
 function WorkspaceOverlay({
   controller,
+  connections,
 }: {
   controller: ReturnType<typeof useWorkspaceController>;
+  connections: ReturnType<typeof useConnections>;
 }): React.JSX.Element | null {
   const { mode, setMode, catalog, command } = controller;
   if (!mode) return null;
@@ -188,6 +192,19 @@ function WorkspaceOverlay({
       <WorkspacePalettes
         key={mode}
         mode={mode}
+        connections={connections}
+        onSavedQuery={(sql, title) => {
+          setMode(null);
+          if (controller.scope)
+            controller.tabs.open(controller.scope, { sql, title });
+        }}
+        onProjectQuery={(path) => {
+          setMode(null);
+          if (controller.scope)
+            openQueryFile(controller.tabs, controller.scope, path).catch(
+              reportProjectError,
+            );
+        }}
         catalog={catalog}
         hidden={controller.hiddenCommands}
         onClose={() => {

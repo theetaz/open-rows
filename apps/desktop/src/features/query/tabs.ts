@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ObjectKindDto } from '@openrows/ipc';
+import type { SplitStates } from './splitState';
 import type { ParamValues } from './paramValues';
 import type { InspectionTarget } from '../inspection/target';
 
@@ -81,6 +82,8 @@ export type TabsState = {
   tabs: readonly QueryTab[];
   active: Readonly<Record<string, string | undefined>>;
   next: number;
+  /** Descriptor-only split layouts; no editor instances or results. */
+  splits?: SplitStates;
 };
 
 export const emptyTabs: TabsState = { tabs: [], active: {}, next: 1 };
@@ -145,6 +148,7 @@ export function openTab(
     ...(init.preview ? { preview: true } : {}),
   };
   return {
+    ...state,
     tabs: placed(state.tabs, tab, scope),
     active: { ...state.active, [scopeKey(scope)]: tab.id },
     next: state.next + 1,

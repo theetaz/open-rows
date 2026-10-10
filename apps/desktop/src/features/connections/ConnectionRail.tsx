@@ -16,6 +16,7 @@ import styles from './Rail.module.css';
 /** Opened databases of the active connection, shown under its tile. */
 type RailDatabases = {
   databases?: readonly OpenedDatabase[];
+  restoredDatabases?: ((id: string) => readonly string[]) | undefined;
   database?: string;
   onDatabase?: (name: string) => void;
   onCloseDatabase?: (name: string) => void;
@@ -159,8 +160,7 @@ function WorkspaceGroups(
           {group.profiles.map((profile) => {
             const status = props.statusOf(profile.id);
             const selected = props.activeId === profile.id;
-            const databases =
-              status.state === 'connected' ? status.databases : [];
+            const databases = restoredDatabases(props, profile.id, status);
             const opened = props.onProfileDatabase
               ? databases
               : selected
@@ -232,4 +232,17 @@ function navigateRail(event: React.KeyboardEvent<HTMLButtonElement>): void {
     buttons.length;
   event.preventDefault();
   buttons[next]?.focus();
+}
+
+/** Live databases and restored disconnected placeholders share the same rail. */
+function restoredDatabases(
+  props: RailProps,
+  id: string,
+  status: SessionStatus,
+): OpenedDatabase[] {
+  const live = status.state === 'connected' ? status.databases : [];
+  const disconnected: OpenedDatabase[] = (props.restoredDatabases?.(id) ?? [])
+    .filter((name) => !live.some((item) => item.name === name))
+    .map((name) => ({ name, state: 'disconnected' }));
+  return [...live, ...disconnected];
 }

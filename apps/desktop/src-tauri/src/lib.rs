@@ -87,6 +87,7 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
         queries::commands::history_search,
         queries::commands::history_delete,
         queries::commands::history_clear,
+        queries::history_privacy::history_literals,
         results::result_cell_info,
         queries::saved::saved_queries_list,
         queries::saved::saved_query_create,

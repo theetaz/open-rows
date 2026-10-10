@@ -23,7 +23,7 @@ export type HistoryState = {
   /** The last failure, shown above the list. */
   problem: string | null;
   remove: (id: number) => Promise<void>;
-  clear: (profileId: string) => Promise<void>;
+  clear: (profileId: string | null) => Promise<void>;
 };
 
 const NOTHING: readonly HistoryItemDto[] = [];

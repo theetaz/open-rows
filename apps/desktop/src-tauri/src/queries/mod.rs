@@ -18,6 +18,7 @@ mod explain_dto;
 pub(crate) mod file_watch;
 pub(crate) mod files;
 pub(crate) mod history;
+pub(crate) mod history_privacy;
 mod params;
 pub(crate) mod saved;
 

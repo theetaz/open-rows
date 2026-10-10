@@ -187,6 +187,11 @@ pub struct Agent {
 impl Agent {
     pub fn start(dir: &Path, keys: &[&Path]) -> Self {
         let socket = dir.join("agent.sock");
+        // A worktree-local TMPDIR can exceed macOS's Unix socket path limit.
+        let socket = std::env::current_dir()
+            .ok()
+            .and_then(|cwd| socket.strip_prefix(cwd).ok().map(Path::to_path_buf))
+            .unwrap_or(socket);
         let child = Command::new("ssh-agent")
             .arg("-D")
             .arg("-a")

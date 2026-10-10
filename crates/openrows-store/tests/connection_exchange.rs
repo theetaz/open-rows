@@ -19,6 +19,7 @@ fn profiles() -> Vec<ConnectionProfile> {
             profile.group = Some("group".into());
             profile.tags = vec!["tag".into()];
             profile.safety.read_only = true;
+            profile.redact_history = index == 0;
             profile.tls.ca_file = Some("/certs/ca.pem".into());
             profile.tls.client_key = Some("/certs/key.pem".into());
             profile.ssh = Some(SshSettings {
@@ -79,6 +80,7 @@ fn three_profiles_validate_schema_without_any_saved_secret_and_round_trip() -> T
         assert!(exchange::equivalent(before, after)?);
         assert_ne!(before.id, after.id);
         assert!(after.imported);
+        assert_eq!(before.redact_history, after.redact_history);
     }
     assert_eq!(
         exchange::preview(&exchange::parse(&text)?, &created)?,

@@ -121,6 +121,8 @@ pub(crate) struct CommitRecord<'a> {
     pub(crate) statements: &'a [String],
     /// The failure message when the batch did not commit.
     pub(crate) error: Option<&'a str>,
+    /// Redaction policy and the driver dialect.
+    pub(crate) privacy: (bool, openrows_sql::Dialect),
 }
 
 /// Append one history entry per statement of a commit batch (source `edit-commit`).
@@ -128,21 +130,25 @@ pub(crate) struct CommitRecord<'a> {
 pub(crate) fn record_commit(local: &LocalStore, commit: &CommitRecord<'_>) {
     let duration_ms = i64::try_from(commit.duration.as_millis()).ok();
     for statement in commit.statements {
-        let _ = local.record_history(&HistoryRecord {
-            profile_id: commit.profile_id.to_owned(),
-            database: Some(commit.database.to_owned()),
-            started_at_ms: commit.started_at_ms,
-            duration_ms,
-            status: if commit.error.is_some() {
-                HistoryStatus::Error
-            } else {
-                HistoryStatus::Ok
+        super::history_privacy::record(
+            local,
+            HistoryRecord {
+                profile_id: commit.profile_id.to_owned(),
+                database: Some(commit.database.to_owned()),
+                started_at_ms: commit.started_at_ms,
+                duration_ms,
+                status: if commit.error.is_some() {
+                    HistoryStatus::Error
+                } else {
+                    HistoryStatus::Ok
+                },
+                rows: None,
+                statement: statement.clone(),
+                error_message: commit.error.map(str::to_owned),
+                source: HistorySource::EditCommit,
             },
-            rows: None,
-            statement: statement.clone(),
-            error_message: commit.error.map(str::to_owned),
-            source: HistorySource::EditCommit,
-        });
+            commit.privacy,
+        );
     }
 }
 
@@ -294,6 +300,7 @@ mod tests {
                 duration: Duration::from_millis(4),
                 statements: &statements,
                 error: Some("deadlock"),
+                privacy: (false, openrows_sql::Dialect::Postgres),
             },
         );
         let entries = local

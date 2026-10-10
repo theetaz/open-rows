@@ -20,7 +20,7 @@
     },
     "general": {
       "type": "object",
-      "description": "Settings ▸ General.",
+      "description": "Settings \u25b8 General.",
       "properties": {
         "restoreSession": {
           "type": "boolean",
@@ -56,7 +56,7 @@
     },
     "appearance": {
       "type": "object",
-      "description": "Settings ▸ Appearance.",
+      "description": "Settings \u25b8 Appearance.",
       "properties": {
         "lightTheme": {
           "type": "string",
@@ -130,7 +130,7 @@
     },
     "editor": {
       "type": "object",
-      "description": "Settings ▸ Editor.",
+      "description": "Settings \u25b8 Editor.",
       "properties": {
         "fontSize": {
           "enum": [null, 11, 12, 13, 14, 15, 16, 18, 20, 24],
@@ -225,7 +225,7 @@
         "runDefault": {
           "enum": ["current", "all"],
           "default": "current",
-          "description": "What the Run button and ⌘↵ run."
+          "description": "What the Run button and \u2318\u21b5 run."
         },
         "fontFamily": {
           "enum": [
@@ -280,11 +280,11 @@
     },
     "execution": {
       "type": "object",
-      "description": "Settings ▸ Execution: how runs start.",
+      "description": "Settings \u25b8 Execution: how runs start.",
       "properties": {
         "runSelection": {
           "type": "boolean",
-          "description": "⌘↵ with text selected runs exactly the selection.",
+          "description": "\u2318\u21b5 with text selected runs exactly the selection.",
           "default": true
         },
         "autoLimit": {
@@ -309,6 +309,8 @@
       "description": "Rebound shortcuts by command id; null removes a default shortcut.",
       "propertyNames": {
         "enum": [
+          "switch-connection",
+          "reopen-session",
           "sidebar",
           "inspector",
           "new-tab",
@@ -416,7 +418,7 @@
     },
     "diagnostics": {
       "type": "object",
-      "description": "Settings ▸ Diagnostics.",
+      "description": "Settings \u25b8 Diagnostics.",
       "properties": {
         "logLevel": {
           "enum": ["error", "warn", "info", "debug", "trace"],
@@ -445,7 +447,7 @@
     },
     "snippets": {
       "type": "object",
-      "description": "Settings ▸ Snippets: SQL snippets offered by completion and Insert Snippet….",
+      "description": "Settings \u25b8 Snippets: SQL snippets offered by completion and Insert Snippet\u2026.",
       "properties": {
         "items": {
           "type": "array",
@@ -602,7 +604,7 @@
     },
     "copy": {
       "type": "object",
-      "description": "Settings ▸ General ▸ Copy: defaults of plain (tab-separated) and CSV copies from grids.",
+      "description": "Settings \u25b8 General \u25b8 Copy: defaults of plain (tab-separated) and CSV copies from grids.",
       "properties": {
         "headers": {
           "enum": ["format", "always", "never"],
@@ -623,7 +625,7 @@
     },
     "tools": {
       "type": "object",
-      "description": "Settings ▸ Tools: database client and cloud route helpers.",
+      "description": "Settings \u25b8 Tools: database client and cloud route helpers.",
       "properties": {
         "pgDump": {
           "type": "string",
@@ -729,6 +731,28 @@
             "type": "boolean",
             "default": false
           }
+        }
+      }
+    },
+    "history": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxEntries": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4294967295,
+          "default": 100000
+        },
+        "maxAgeDays": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4294967295,
+          "default": 90
+        },
+        "keepForever": {
+          "type": "boolean",
+          "default": false
         }
       }
     }

@@ -17,7 +17,7 @@ afterEach(() => {
 
 const scope = { connectionId: 'a', database: 'orders' };
 
-it('stores query tabs with text, file and parameters, and table tabs', () => {
+it('stores query text and file bindings plus table identities', () => {
   let state = openTab(emptyTabs, scope, { sql: 'SELECT 1' });
   state = openTab(state, scope, {
     title: 'users',
@@ -146,7 +146,7 @@ it('offers Reload or Keep when another program changed a bound file', async () =
   vi.mocked(sqlFileModified).mockResolvedValue(null);
 });
 
-it('writes file-bound tabs back to their file, drops text without Auto Save and forgets tabs without restore', async () => {
+it('writes file-bound tabs, omits text without Auto Save and retains explicit-reopen descriptors', async () => {
   vi.useFakeTimers();
   const { result } = await mountTabs();
   act(() => {
@@ -184,5 +184,46 @@ it('writes file-bound tabs back to their file, drops text without Auto Save and 
   act(() => {
     vi.advanceTimersByTime(1_000);
   });
-  expect(stored()).toBeNull();
+  expect(JSON.parse(stored() ?? '{}') as unknown).toMatchObject({ version: 1 });
+});
+
+it('versioned descriptors restore inspectors and splits while excluding parameters, credentials and results', () => {
+  let state = openTab(emptyTabs, scope, { sql: 'SELECT :id' });
+  state = openTab(state, scope, {
+    inspection: { kind: 'extension', name: 'test' },
+    title: 'test',
+  });
+  state = {
+    ...state,
+    splits: {
+      'a\norders': {
+        orientation: 'down',
+        pinned: 'query-1',
+        ratio: 0.65,
+        focus: 'pinned',
+      },
+    },
+  };
+  const poisoned = {
+    ...state,
+    password: 'pw',
+    results: [{ value: 'x' }],
+    tabs: state.tabs.map((tab) => ({
+      ...tab,
+      params: { ':id': { value: 'pw', kind: 'text' as const } },
+      password: 'pw',
+      resultData: ['x'],
+    })),
+  };
+  const text = serializeTabs(poisoned);
+  expect(text).not.toContain('pw');
+  expect(text).not.toContain('results');
+  expect(JSON.parse(text) as unknown).toMatchObject({ version: 1 });
+  const restored = restoreTabs(text);
+  expect(restored.tabs[1]?.inspection).toEqual({
+    kind: 'extension',
+    name: 'test',
+  });
+  expect(restored.splits).toEqual(state.splits);
+  expect(restoreTabs('{"version":2,"tabs":[]}')).toEqual(emptyTabs);
 });

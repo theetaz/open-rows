@@ -1,24 +1,54 @@
 // SPDX-License-Identifier: Apache-2.0
-import { generalSettings } from '../settings/general';
-import {
-  loadWorkspaceState,
-  saveWorkspaceState,
-} from '../settings/workspaceState';
-import { parseParamValues } from './paramValues';
+import { saveWorkspaceState } from '../settings/workspaceState';
+import { inspectionOf } from './inspectionDescriptor';
+import { parseSplits } from './splitState';
 import { emptyTabs, scopeKey } from './tabs';
 import type { QueryTab, TabFile, TableObject, TabsState } from './tabs';
 
 /**
- * Open tabs as stored: query tabs with their text, file and parameters (only
- * with `withText`, i.e. Auto Save), table tabs with their relation.
+ * Open tabs as stored: query tabs with their text and file (only
+ * with `withText`, i.e. Auto Save), table and inspector identities and split layout.
  */
 export function serializeTabs(state: TabsState, withText = true): string {
   const tabs = state.tabs.flatMap((tab) => {
-    if (tab.kind === 'processes' || tab.kind === 'inspection') return [];
-    if (tab.kind === 'table') return [tab];
-    return withText ? [tab] : [];
+    if (tab.kind === 'processes') return [];
+    if (tab.kind === 'query' && !withText) return [];
+    // Allowlist descriptors: parameter values, results and transient file errors never persist.
+    const { id, kind, connectionId, database, title, sql, pinned, preview } =
+      tab;
+    const table = tableOf(tab.table);
+    const inspection = inspectionOf(tab.inspection);
+    const file = tab.file
+      ? {
+          path: tab.file.path,
+          name: tab.file.name,
+          saved: tab.file.saved,
+          modifiedMs: tab.file.modifiedMs,
+        }
+      : undefined;
+    return [
+      {
+        id,
+        kind,
+        connectionId,
+        database,
+        title,
+        sql,
+        pinned,
+        preview,
+        table,
+        inspection,
+        file,
+      },
+    ];
   });
-  return JSON.stringify({ tabs, active: state.active, next: state.next });
+  return JSON.stringify({
+    version: 1,
+    tabs,
+    active: activeOf(tabs, state.active),
+    next: state.next,
+    splits: state.splits ? parseSplits(state.splits, tabs) : undefined,
+  });
 }
 
 const isString = (value: unknown): value is string => typeof value === 'string';
@@ -49,7 +79,10 @@ function tableOf(value: unknown): TableObject | undefined {
 /** The kind-specific part of a stored tab; `null` when unusable. */
 function contentOf(
   value: Record<string, unknown>,
-): Pick<QueryTab, 'kind' | 'table' | 'objectPath'> | null {
+): Pick<QueryTab, 'kind' | 'table' | 'objectPath' | 'inspection'> | null {
+  const inspection =
+    value.kind === 'inspection' ? inspectionOf(value.inspection) : undefined;
+  if (inspection) return { kind: 'inspection', inspection };
   if (value.kind === 'query') return { kind: 'query' };
   const table = value.kind === 'table' ? tableOf(value.table) : undefined;
   if (!table) return null;
@@ -64,7 +97,7 @@ function tabOf(value: unknown): QueryTab | null {
   if (!content || ![id, connectionId, database, title, sql].every(isString))
     return null;
   const file = fileOf(value.file);
-  const params = parseParamValues(value.params);
+
   return {
     id: id as string,
     connectionId: connectionId as string,
@@ -73,7 +106,6 @@ function tabOf(value: unknown): QueryTab | null {
     sql: sql as string,
     ...content,
     ...(file ? { file } : {}),
-    ...(params ? { params } : {}),
     ...(value.pinned === true ? { pinned: true } : {}),
     ...(value.preview === true ? { preview: true } : {}),
   };
@@ -81,7 +113,7 @@ function tabOf(value: unknown): QueryTab | null {
 
 /** Each scope's stored active tab, or its last tab when that one is gone. */
 function activeOf(
-  tabs: readonly QueryTab[],
+  tabs: readonly Pick<QueryTab, 'id' | 'connectionId' | 'database'>[],
   stored: unknown,
 ): TabsState['active'] {
   const active: Record<string, string> = {};
@@ -103,35 +135,32 @@ export function restoreTabs(text: string | null): TabsState {
     return emptyTabs;
   }
   if (!isRecord(stored) || !Array.isArray(stored.tabs)) return emptyTabs;
+  if (stored.version !== undefined && stored.version !== 1) return emptyTabs;
   const tabs = stored.tabs.map(tabOf).filter((tab) => tab !== null);
-  const numbers = tabs.map((tab) => Number(tab.id.split('-').at(-1)) || 0);
+  const numbers = tabs
+    .map((tab) => Number(tab.id.split('-').at(-1)))
+    .filter(Number.isSafeInteger);
   const next = Math.max(
-    typeof stored.next === 'number' ? stored.next : 1,
+    typeof stored.next === 'number' && Number.isSafeInteger(stored.next)
+      ? Math.max(1, stored.next)
+      : 1,
     ...numbers.map((number) => number + 1),
   );
-  return { tabs, active: activeOf(tabs, stored.active), next };
-}
-
-/**
- * The tabs saved in the local store (imported once from web storage); none
- * when session restore is off.
- */
-export async function loadTabs(): Promise<TabsState> {
-  const text = await loadWorkspaceState('queryTabs');
-  if (!generalSettings.get().restoreSession) return emptyTabs;
-  return restoreTabs(text);
+  return {
+    tabs,
+    active: activeOf(tabs, stored.active),
+    next,
+    ...(stored.splits ? { splits: parseSplits(stored.splits, tabs) } : {}),
+  };
 }
 
 /**
  * Store the tabs for the next launch in the background: query text only
- * with Auto Save, and nothing when session restore is off.
+ * with Auto Save. Disabling automatic restore still permits explicit reopening.
  */
 export function writeTabs(
   state: TabsState,
   options: { autoSave: boolean; restore: boolean },
 ): void {
-  saveWorkspaceState(
-    'queryTabs',
-    options.restore ? serializeTabs(state, options.autoSave) : null,
-  );
+  saveWorkspaceState('queryTabs', serializeTabs(state, options.autoSave));
 }

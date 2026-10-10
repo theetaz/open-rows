@@ -60,6 +60,7 @@
     "allow-history-search",
     "allow-history-delete",
     "allow-history-clear",
+    "allow-history-literals",
     "allow-result-cell-info",
     "allow-result-cell-value",
     "allow-saved-queries-list",

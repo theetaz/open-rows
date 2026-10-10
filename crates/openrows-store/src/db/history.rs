@@ -179,23 +179,37 @@ impl LocalStore {
     /// # Errors
     /// Returns a `Sqlite` error when the insert fails.
     pub fn record_history(&self, record: &HistoryRecord) -> Result<i64, StoreError> {
-        let conn = self.lock()?;
-        conn.execute(
-            INSERT,
-            params![
-                record.profile_id,
-                record.database,
-                record.started_at_ms,
-                record.duration_ms,
-                record.status.as_str(),
-                record.rows,
-                record.statement,
-                record.error_message,
-                record.source.as_str(),
-            ],
-        )
-        .map_err(sqlite("record history"))?;
-        Ok(conn.last_insert_rowid())
+        let policy = self
+            .history_retention
+            .lock()
+            .map_err(|_| StoreError::Poisoned)?;
+        let mut conn = self.lock()?;
+        let transaction = conn.transaction().map_err(sqlite("begin history"))?;
+        transaction
+            .execute(
+                INSERT,
+                params![
+                    record.profile_id,
+                    record.database,
+                    record.started_at_ms,
+                    record.duration_ms,
+                    record.status.as_str(),
+                    record.rows,
+                    record.statement,
+                    record.error_message,
+                    record.source.as_str(),
+                ],
+            )
+            .map_err(sqlite("record history"))?;
+        let id = transaction.last_insert_rowid();
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |time| {
+                i64::try_from(time.as_millis()).unwrap_or(i64::MAX)
+            });
+        super::history_retention::prune_profile(&transaction, *policy, now, &record.profile_id)?;
+        transaction.commit().map_err(sqlite("commit history"))?;
+        Ok(id)
     }
 
     /// Up to `limit` entries newest first, of one profile or of every profile

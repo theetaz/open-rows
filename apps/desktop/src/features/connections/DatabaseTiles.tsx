@@ -20,6 +20,8 @@ type Props = {
 
 /** Tooltip: the full name, plus why the database is not usable. */
 function tooltip(database: OpenedDatabase): string {
+  if (database.state === 'disconnected')
+    return `${database.name} — disconnected; activate to connect`;
   if (database.state === 'opening') return `${database.name} — opening…`;
   if (database.state === 'reconnecting')
     return `${database.name} — reconnecting: ${database.message}`;

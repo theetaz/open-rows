@@ -39,6 +39,7 @@ fn engine(driver: Driver) -> Result<Engine, IpcError> {
 
 /// The one statement the request explains.
 fn statement(request: &ExplainRequest, policy: SafetyPolicy) -> Result<String, IpcError> {
+    super::history_privacy::validate_reuse(&request.sql)?;
     let scope = match request.cursor {
         Some(cursor) => Scope::AtCursor(byte_offset(&request.sql, cursor as usize)),
         None => Scope::All,

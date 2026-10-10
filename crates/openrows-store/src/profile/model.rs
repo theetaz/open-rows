@@ -184,6 +184,9 @@ pub struct ConnectionProfile {
         skip_serializing_if = "recording_is_default"
     )]
     pub record_history: bool,
+    /// Remove SQL literals from history independently of write safety.
+    #[serde(default, skip_serializing_if = "redaction_is_default")]
+    pub redact_history: bool,
     /// Statement and idle timeouts (M1-01); absent while at their defaults.
     #[serde(default, skip_serializing_if = "SessionLimits::is_default")]
     pub limits: SessionLimits,
@@ -193,7 +196,15 @@ pub struct ConnectionProfile {
     pub startup_commands: String,
 }
 
-/// Profiles written before the switch existed keep recording history.
+/// Preserve profiles written before explicit history redaction existed.
+#[expect(
+    clippy::trivially_copy_pass_by_ref,
+    reason = "serde's skip_serializing_if passes the field by reference"
+)]
+fn redaction_is_default(value: &bool) -> bool {
+    !*value
+}
+
 fn record_history_default() -> bool {
     true
 }
@@ -239,6 +250,7 @@ impl ConnectionProfile {
             imported: false,
             tags: Vec::new(),
             record_history: true,
+            redact_history: false,
             limits: SessionLimits::default(),
             startup_commands: String::new(),
         }

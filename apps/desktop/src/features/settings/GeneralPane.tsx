@@ -12,6 +12,7 @@ import {
 } from './general';
 import type { Density } from './general';
 import styles from '../appearance/Appearance.module.css';
+import { HistorySection } from './HistorySection';
 import { CopySection } from './CopySection';
 
 const DENSITIES: readonly { value: Density; label: string }[] = [
@@ -54,7 +55,7 @@ export function GeneralPane(): React.JSX.Element {
         <div className={styles.settingsGroup}>
           <SettingRow
             title="Restore session on launch"
-            description="Reopen the previous connections, databases and tabs. Production and confirm-before-write connections wait for you to connect."
+            description="Reopen the previous connections, databases and tabs. All restored connections wait for an explicit connect."
           >
             <Switch
               aria-label="Restore session on launch"
@@ -67,6 +68,7 @@ export function GeneralPane(): React.JSX.Element {
         </div>
       </section>
       <ConnectionSettings />
+      <HistorySection />
       <section aria-label="Layout">
         <h3>Layout</h3>
         <div className={styles.settingsGroup}>

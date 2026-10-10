@@ -197,9 +197,23 @@ impl<'a> Lexer<'a> {
     }
 
     fn number(&self) -> Token {
-        let end = self.scan_while(self.pos, |b| {
-            b.is_ascii_alphanumeric() || b == b'_' || b == b'.'
-        });
+        let mut end = self.scan_while(self.pos, |b| b.is_ascii_digit() || b == b'_' || b == b'.');
+        if self.byte(self.pos) == Some(b'0')
+            && matches!(self.byte(self.pos + 1), Some(b'x' | b'X' | b'b' | b'B'))
+        {
+            end = self.scan_while(self.pos + 2, |b| b.is_ascii_hexdigit() || b == b'_');
+        } else if matches!(self.byte(end), Some(b'e' | b'E')) {
+            let start = end + 1;
+            let digits = if matches!(self.byte(start), Some(b'+' | b'-')) {
+                start + 1
+            } else {
+                start
+            };
+            let exponent = self.scan_while(digits, |b| b.is_ascii_digit() || b == b'_');
+            if exponent > digits {
+                end = exponent;
+            }
+        }
         self.token(TokenKind::Number, end)
     }
 

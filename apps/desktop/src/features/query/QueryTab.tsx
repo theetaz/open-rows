@@ -2,6 +2,7 @@
 import { useCallback, useRef, useState } from 'react';
 import type { ProfileDto } from '@openrows/ipc';
 import type { CompletionCatalog, FormatKind } from '@openrows/editor';
+import { useHistoryInsert } from './historyInsert';
 import { QueryEditor } from './QueryEditor';
 import { EditorBar } from './EditorBar';
 import { FileChangedBar } from './FileChangedBar';
@@ -117,7 +118,7 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
     <section
       className={styles.query}
       aria-label={tab.title}
-      onFocus={claim}
+      onFocus={useHistoryInsert(tab.id, editor, claim)}
       onKeyDown={(event) => {
         tabKey(event, act);
       }}
@@ -184,6 +185,12 @@ function TabEditor(
   const { tab, editorRef, act } = props;
   return (
     <>
+      {tab.sql.toUpperCase().includes('__OPENROWS_REDACTED_') && (
+        <p role="status">
+          History literals were redacted. Fill every placeholder before running
+          SQL.
+        </p>
+      )}
       <FileChangedBar tab={tab} editor={editorRef} tabs={props.tabs} />
       <QueryEditor
         doc={tab.sql}

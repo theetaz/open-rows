@@ -10,6 +10,8 @@ import type {
  * a connection, so each opened database has its own user session.
  */
 export type OpenedDatabase =
+  /** Restored descriptor whose session has not been explicitly opened. */
+  | { name: string; state: 'disconnected' }
   | { name: string; state: 'opening' }
   | { name: string; state: 'open'; sessionId: string }
   /** The connection was lost; the core is opening a new one (queries wait). */

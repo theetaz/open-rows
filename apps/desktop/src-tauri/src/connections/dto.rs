@@ -52,6 +52,10 @@ impl From<SafetyDto> for Safety {
 /// keychain holds one.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "independent profile and driver flags retain the existing IPC contract"
+)]
 pub(crate) struct ProfileDto {
     id: String,
     name: String,
@@ -79,6 +83,7 @@ pub(crate) struct ProfileDto {
     insecure: Vec<InsecureReasonDto>,
     /// Executed statements are kept in the local history (FR-WS-02).
     record_history: bool,
+    redact_history: bool,
     /// Statement and idle timeouts (M1-01).
     limits: LimitsDto,
     /// SQL run after every connect (FR-CONN-10); empty for none.
@@ -173,6 +178,7 @@ impl From<&ConnectionProfile> for ProfileDto {
                 confirm_writes: profile.safety.confirm_writes,
             },
             record_history: profile.record_history,
+            redact_history: profile.redact_history,
             limits: profile.limits.into(),
             startup_commands: profile.startup_commands.clone(),
             process_list: super::drivers::driver(profile.driver)
@@ -258,6 +264,9 @@ pub(crate) struct ProfileInput {
     /// Absent in forms written before the history switch: history is recorded.
     #[serde(default = "record_history_on")]
     pub(crate) record_history: bool,
+    /// Remove literals from locally recorded history.
+    #[serde(default)]
+    pub(crate) redact_history: bool,
     /// SQL run after every connect; absent in older forms: none.
     #[serde(default)]
     pub(crate) startup_commands: String,
@@ -344,6 +353,7 @@ impl ProfileInput {
         }
         profile.safety = self.safety.into();
         profile.record_history = self.record_history;
+        profile.redact_history = self.redact_history;
         self.startup_commands
             .trim()
             .clone_into(&mut profile.startup_commands);

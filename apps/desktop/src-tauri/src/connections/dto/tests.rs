@@ -26,6 +26,7 @@ pub(crate) fn input(env: EnvKindDto) -> ProfileInput {
             confirm_writes: true,
         },
         record_history: false,
+        redact_history: false,
         startup_commands: "  SET search_path TO app;\n".into(),
         password_storage: PasswordStorageDto::Keychain,
         credential_command: None,

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import type { SplitState, SplitStates } from './splitState';
 import { useState } from 'react';
 import { scopeKey } from './tabs';
 import type { QueryTab, TabScope } from './tabs';
@@ -9,16 +10,6 @@ export type Orientation = 'right' | 'down';
 
 /** Which pane has focus: the pinned one or the one following the active tab. */
 type PaneRole = 'pinned' | 'active';
-
-/** A scope's split: the pinned tab beside the active tab. */
-type SplitState = {
-  orientation: Orientation;
-  /** Tab shown in the first pane; the second follows the active tab. */
-  pinned: string;
-  /** Share of the first pane, 0.2 – 0.8. */
-  ratio: number;
-  focus: PaneRole;
-};
 
 /** What the split pane area renders. */
 export type SplitLayout = {
@@ -71,7 +62,13 @@ function layoutOf(
  * Each pane keeps its own tab, connection scope, editor and results.
  */
 export function useSplit(tabs: QueryTabs, scope: TabScope | undefined): Split {
-  const [states, setStates] = useState<Record<string, SplitState>>({});
+  const [fallback, setFallback] = useState<SplitStates>({});
+  const states = tabs.state.splits ?? fallback;
+  const setStates = (change: (current: SplitStates) => SplitStates): void => {
+    const next = change(states);
+    if (tabs.setSplits) tabs.setSplits(next);
+    else setFallback(next);
+  };
   const key = scope ? scopeKey(scope) : '';
   const list = scope ? tabs.tabsFor(scope) : [];
   const active = scope ? tabs.activeFor(scope) : undefined;
