@@ -1,0 +1,51 @@
+[package]
+name = "openrows-host-client"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Isolated OpenRows driver process lifecycle"
+
+# Match workspace lints except unsafe_code: OS lifecycle FFI is narrowly allowed in platform modules.
+[lints.rust]
+unsafe_code = "deny"
+missing_docs = "warn"
+unused_qualifications = "warn"
+rust_2018_idioms = { level = "warn", priority = -1 }
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"
+todo = "warn"
+unimplemented = "warn"
+dbg_macro = "warn"
+too_many_lines = "warn"
+cognitive_complexity = "warn"
+too_many_arguments = "warn"
+excessive_nesting = "warn"
+print_stdout = "warn"
+print_stderr = "warn"
+allow_attributes_without_reason = "warn"
+
+[dependencies]
+openrows-driver-api = { path = "../openrows-driver-api" }
+openrows-host-protocol = { path = "../openrows-host-protocol" }
+tokio = { version = "1.53", features = ["io-util", "io-std", "net", "process", "rt-multi-thread", "sync", "time", "macros"] }
+ring = "0.17"
+tempfile = "3.27"
+zeroize = "1.8"
+
+[target.'cfg(unix)'.dependencies]
+socket2 = "0.6"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Authorization", "Win32_System_Console", "Win32_System_JobObjects", "Win32_System_ProcessStatus", "Win32_System_Threading"] }
+
+[dev-dependencies]
+tokio = { version = "1.53", features = ["test-util"] }

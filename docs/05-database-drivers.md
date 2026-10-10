@@ -199,7 +199,7 @@ A shared test crate (`openrows-driver-conformance`) parameterised by driver. Eve
 
 Drivers built on C/C++ libraries (Oracle via ODPI-C, DuckDB, ADBC drivers) can crash the process on bugs we cannot catch. These drivers can run inside `openrows-driver-host`, a small helper executable:
 
-**Design accepted 2026-10-10 (M2-01), implementation pending:** [ADR-0010 — One driver host process per hosted session](adr/0010-driver-host-process.md) specifies the proposed process boundary, protocol, failure/restart policy, security, sidecar distribution and validation plan. DuckDB is mandatory-hosted; PostgreSQL, MySQL/MariaDB, SQLite and MSSQL keep their current in-process implementations. A writable DuckDB file has one shared hosted session: catalog/edit/export operations queue on it because separate writer/reader processes cannot share the file. All-read-only sessions may have separate hosts; memory databases live only in their owning host. These are accepted M2-04 restrictions, not changes to existing drivers.
+**Design accepted 2026-10-10 (M2-01), adapter and packaging pending:** [ADR-0010 — One driver host process per hosted session](adr/0010-driver-host-process.md) specifies the proposed process boundary, protocol, failure/restart policy, security, sidecar distribution and validation plan. DuckDB is mandatory-hosted; PostgreSQL, MySQL/MariaDB, SQLite and MSSQL keep their current in-process implementations. A writable DuckDB file has one shared hosted session: catalog/edit/export operations queue on it because separate writer/reader processes cannot share the file. All-read-only sessions may have separate hosts; memory databases live only in their owning host. These are accepted M2-04 restrictions, not changes to existing drivers.
 
 ```mermaid
 sequenceDiagram
@@ -224,6 +224,17 @@ sequenceDiagram
 - Transport: separate control and data Unix domain sockets (macOS/Linux) / named pipes (Windows); length-prefixed `postcard` control DTOs and uncompressed Arrow IPC data. Cancellation, heartbeats and Pause/Resume remain live while data is paused.
 - `HostedDriver`/`HostedConnection` implement the actual boxed-future `Driver`/`Session` and supported connection facets. New typed host failures and lifecycle notifications are required; the current sink has `Continue`/`Stop` only, so credit admission and spill notifications must implement the Pause/Resume path.
 - Ship `openrows-driver-host` as a signed Tauri sidecar, launched lazily by Rust; pass credentials over authenticated IPC, never argv/environment. No DuckDB in-process override. Future Oracle/ADBC hosting needs its own capability, routing, library and licence review; the process boundary is not a security sandbox.
+
+
+### Implemented (M2-01a)
+
+`openrows-host-protocol` implements protocol 1.0: bounded postcard control DTOs, owned zeroizable connect secrets, explicit frame kinds/generations, request/data barriers, credit state and uncompressed Arrow streams preserving dictionary and extension metadata. Normal controls reserve 4 MiB/32 messages; priority controls have a separate 64 KiB/32-message allowance. Data fragments are 64 KiB, normal admission is one 4 MiB batch, and exclusive single rows have a 64 MiB encoded/decoded ceiling. Routed `via` requests return `Unsupported`.
+
+`openrows-driver-host` runs one SQLite connection on a dedicated worker, with independent control and data writers. Its compile-time registry is the insertion point for M2-04. It exposes execute/bind/cancel/startup support; catalog/editor/admin/bulk remain explicit unsupported placeholders and are not advertised. Destructive fixtures require the non-default `test-hooks` feature.
+
+`openrows-host-client` supplies lazy absolute-path launch, two authenticated local lanes, exact build/schema/capability agreement before Connect, lifecycle subscriptions, 2 s handshake/close/cancel grace, independent heartbeats and 100 ms RSS sampling. Each host reserves 256 MiB from a shared parent-wide 512 MiB pool; exclusive large grants reserve extra space. Three abnormal exits in 60 s refuse another launch for that supervisor's shared profile/driver circuit. macOS uses monitoring and force-kill; Linux attempts delegated cgroup v2 with an explicit monitoring-only fallback; Windows supplies local owner-only named pipes and a Job Object cap. Linux debug tests pass for root and unprivileged callers in Docker with monitoring-only containment. Delegated cgroup caps, installed Linux packages and Windows platform validation remain pending.
+
+This implements ADR-0010 M2-01.1–.2. The core `HostedDriver`/`HostedConnection`, spill admission/terminal coordinator and unchanged conformance path are M2-01.3; bundled resolution/signatures are M2-01.4. Existing app drivers still run in process, and the desktop does not link a host or DuckDB crate. `DriverError::Host`, core `DriverHost` and IPC `driverHost` errors are distinct from network loss and never trigger transparent reconnect/replay. See ADR-0010's dated evidence for tests and measurements.
 
 ## 10. Non-SQL paradigms in a shared UI
 

@@ -23,6 +23,7 @@ pub mod diagram;
 pub mod driver;
 mod error;
 pub mod file;
+mod host_failure;
 pub mod inspection;
 pub mod metadata;
 pub mod objects;
@@ -44,6 +45,7 @@ pub use connection::{
 pub use driver::{Driver, GenerateError};
 pub use error::DriverError;
 pub use file::{Attachment, FileSource};
+pub use host_failure::HostFailure;
 pub use session::{BoxFuture, CancelHandle, Session};
 pub use sink::{DiscardSink, ExecSummary, NoticeLevel, ResultSink, SinkFlow};
 pub use trace::{ConnectStage, ConnectTrace, TlsStatus};

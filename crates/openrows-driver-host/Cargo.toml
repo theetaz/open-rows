@@ -1,0 +1,46 @@
+[package]
+name = "openrows-driver-host"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Isolated OpenRows driver process lifecycle"
+
+[lints]
+workspace = true
+
+[dependencies]
+openrows-host-client = { path = "../openrows-host-client" }
+openrows-driver-api = { path = "../openrows-driver-api" }
+openrows-host-protocol = { path = "../openrows-host-protocol" }
+tokio = { version = "1.53", features = ["io-util", "io-std", "net", "process", "rt-multi-thread", "sync", "time", "macros"] }
+arrow-array = "60"
+arrow-schema = "60"
+openrows-driver-sqlite = { path = "../openrows-driver-sqlite" }
+zeroize = "1.8"
+
+[target.'cfg(unix)'.dependencies]
+rustix = { version = "1.1", features = ["process", "stdio", "fs"] }
+
+[features]
+default = []
+test-hooks = []
+
+[dev-dependencies]
+openrows-driver-host = { path = ".", features = ["test-hooks"] }
+tempfile = "3.27"
+
+[[bin]]
+name = "host-parent-fixture"
+path = "tests/support/parent.rs"
+required-features = ["test-hooks"]
+
+[[bench]]
+name = "host_startup"
+harness = false
+
+[[bench]]
+name = "host_batch_transport"
+harness = false
+required-features = ["test-hooks"]

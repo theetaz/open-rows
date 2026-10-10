@@ -15,6 +15,8 @@ pub enum ErrorKind {
     Auth,
     /// The server or driver broke the wire protocol.
     Protocol,
+    /// The isolated driver process failed; never automatically replay work.
+    DriverHost,
     /// The database rejected the statement; `db_code` carries the SQLSTATE.
     Server,
     /// A value could not be decoded.
@@ -107,6 +109,7 @@ fn is_server_timeout(code: &str, message: &str) -> bool {
 impl From<&DriverError> for CoreError {
     fn from(error: &DriverError) -> Self {
         let kind = match error {
+            DriverError::Host(_) => ErrorKind::DriverHost,
             DriverError::Network(_) => ErrorKind::Network,
             DriverError::Tls(_) => ErrorKind::Tls,
             DriverError::Auth(_) => ErrorKind::Auth,
@@ -181,6 +184,16 @@ mod tests {
         assert!(ours.message.contains("30 s statement timeout"));
         assert_eq!(seconds_label(Duration::from_millis(1500)), "1.5 s");
         assert_eq!(seconds_label(Duration::from_millis(50)), "50 ms");
+    }
+
+    #[test]
+    fn host_failure_is_terminal_and_never_network_recovery() {
+        let error = DriverError::Host(openrows_driver_api::HostFailure::Exited);
+        let mapped = CoreError::from(&error);
+        assert_eq!(mapped.kind, ErrorKind::DriverHost);
+        assert!(!keeps_session(&error));
+        assert!(!error.is_connection_lost());
+        assert!(mapped.db_code.is_none());
     }
 
     #[test]

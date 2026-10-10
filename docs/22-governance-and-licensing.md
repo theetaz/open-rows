@@ -23,6 +23,18 @@ Public CA certificates of cloud database services (`crates/openrows-net/certs/`:
 
 Enforced by `cargo-deny` (`[licenses]` allowlist) and an npm licence check in CI.
 
+
+### Driver-host dependencies (M2-01a)
+
+| Dependency | Purpose | Licence | Alternatives / scope |
+| --- | --- | --- | --- |
+| `postcard` 1.1.3 (`alloc`, default features off) | Bounded protocol-1.0 control/bootstrap serialization | MIT OR Apache-2.0 | Selected by ADR-0010; bincode offers no advantage for lockstep binaries, protobuf adds schema/codegen maintenance, JSON weakens compact framing. |
+| `cobs` 0.3, `embedded-io` 0.4/0.6 | Postcard's transitive codec/I/O dependencies | MIT OR Apache-2.0 | No direct application API or extra serialization format. |
+
+`socket2` 0.6 is an additional direct reuse (MIT OR Apache-2.0) for safe Unix socket-buffer configuration. Profiling found repeated 8 KiB macOS data-socket stalls; bounded 512 KiB buffers per direction avoid those stalls without shared-memory transport or raw platform FFI. Standard Tokio exposes no socket-buffer setter.
+
+Host crates reuse existing serde, thiserror, Tokio, Arrow, zeroize, ring, tempfile and platform dependencies (`libc`, `rustix`, `windows-sys`, `socket2`). Criterion, proptest and flatbuffers are existing test/benchmark dependencies. The lifecycle crate retains all workspace quality lints with `unsafe_code = deny` instead of the workspace's `forbid`, allowing narrowly documented macOS/Windows platform FFI modules; no native database dependency enters the protocol/client or desktop through this change. The host's SQLite dependency is an existing driver. DuckDB and packaging/signing dependencies remain separate tasks.
+
 ## 3. Clean-room policy
 
 The project is inspired by the database-client category but must be original.
