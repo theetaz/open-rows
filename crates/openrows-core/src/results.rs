@@ -3,7 +3,7 @@
 use crate::BatchSink;
 use arrow_array::RecordBatch;
 use arrow_schema::SchemaRef;
-use openrows_driver_api::SinkFlow;
+use openrows_driver_api::{BoxFuture, SinkAdmission, SinkFlow};
 use openrows_results::{Append, ResultStore};
 use openrows_types::ResultId;
 
@@ -19,8 +19,25 @@ impl BatchSink for ResultStore {
         }
     }
 
+    fn admission(&self, result: ResultId) -> SinkAdmission {
+        admission(self.admission(&result.to_string()))
+    }
+    fn resume(&self, result: ResultId) -> BoxFuture<'_, SinkAdmission> {
+        Box::pin(async move { admission(self.resume(&result.to_string()).await) })
+    }
+    fn stopped(&self, result: ResultId) {
+        self.mark_truncated(&result.to_string());
+    }
     /// Streamed results are readable as they grow, so completion needs no bookkeeping.
     fn end(&self, _result: ResultId) {}
+}
+
+fn admission(value: openrows_results::Admission) -> SinkAdmission {
+    match value {
+        openrows_results::Admission::Ready => SinkAdmission::Ready,
+        openrows_results::Admission::Pause => SinkAdmission::Pause,
+        openrows_results::Admission::Stop => SinkAdmission::Stop,
+    }
 }
 
 #[cfg(test)]

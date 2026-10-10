@@ -3730,11 +3730,16 @@ version = "0.1.0"
 dependencies = [
  "arrow-array",
  "arrow-schema",
+ "openrows-core",
  "openrows-driver-api",
+ "openrows-driver-conformance",
  "openrows-driver-host",
  "openrows-driver-sqlite",
  "openrows-host-client",
  "openrows-host-protocol",
+ "openrows-results",
+ "openrows-sql",
+ "openrows-types",
  "rustix",
  "tempfile",
  "tokio",
@@ -3868,6 +3873,7 @@ dependencies = [
  "libc",
  "openrows-driver-api",
  "openrows-host-protocol",
+ "openrows-sql",
  "ring",
  "socket2",
  "tempfile",
@@ -3959,6 +3965,7 @@ dependencies = [
  "proptest",
  "tempfile",
  "thiserror 2.0.21",
+ "tokio",
 ]
 
 [[package]]

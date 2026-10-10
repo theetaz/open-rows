@@ -74,6 +74,7 @@ impl Runtime {
             data: crate::output::start(data)?,
         };
         let worker = Worker {
+            failed_connect: None,
             commands,
             output,
             flow: flow.clone(),
@@ -166,11 +167,17 @@ impl Runtime {
                     )?;
                 }
             }
+            Control::FacetConsumed { sequence } => {
+                self.flow
+                    .acknowledge_facet(frame.header.request, *sequence)?;
+            }
             Control::Connect(_)
             | Control::Execute { .. }
             | Control::ExecuteBound { .. }
             | Control::Ping
             | Control::Catalog { .. }
+            | Control::CatalogRead(_)
+            | Control::Edit(_)
             | Control::Editor
             | Control::Admin
             | Control::Bulk => {

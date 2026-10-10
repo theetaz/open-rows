@@ -31,6 +31,7 @@ print_stderr = "warn"
 allow_attributes_without_reason = "warn"
 
 [dependencies]
+openrows-sql = { path = "../openrows-sql" }
 openrows-driver-api = { path = "../openrows-driver-api" }
 openrows-host-protocol = { path = "../openrows-host-protocol" }
 tokio = { version = "1.53", features = ["io-util", "io-std", "net", "process", "rt-multi-thread", "sync", "time", "macros"] }

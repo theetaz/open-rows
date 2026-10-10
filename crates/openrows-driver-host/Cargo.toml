@@ -17,7 +17,8 @@ openrows-host-protocol = { path = "../openrows-host-protocol" }
 tokio = { version = "1.53", features = ["io-util", "io-std", "net", "process", "rt-multi-thread", "sync", "time", "macros"] }
 arrow-array = "60"
 arrow-schema = "60"
-openrows-driver-sqlite = { path = "../openrows-driver-sqlite" }
+openrows-driver-sqlite = { path = "../openrows-driver-sqlite", optional = true }
+openrows-sql = { path = "../openrows-sql" }
 zeroize = "1.8"
 
 [target.'cfg(unix)'.dependencies]
@@ -25,9 +26,14 @@ rustix = { version = "1.1", features = ["process", "stdio", "fs"] }
 
 [features]
 default = []
-test-hooks = []
+test-sqlite = ["dep:openrows-driver-sqlite"]
+test-hooks = ["test-sqlite"]
 
 [dev-dependencies]
+openrows-driver-conformance = { path = "../openrows-driver-conformance" }
+openrows-core = { path = "../openrows-core" }
+openrows-types = { path = "../openrows-types" }
+openrows-results = { path = "../openrows-results" }
 openrows-driver-host = { path = ".", features = ["test-hooks"] }
 tempfile = "3.27"
 
@@ -42,5 +48,15 @@ harness = false
 
 [[bench]]
 name = "host_batch_transport"
+harness = false
+required-features = ["test-hooks"]
+
+[[bench]]
+name = "host_stream_throughput"
+harness = false
+required-features = ["test-sqlite"]
+
+[[bench]]
+name = "host_backpressure_memory"
 harness = false
 required-features = ["test-hooks"]

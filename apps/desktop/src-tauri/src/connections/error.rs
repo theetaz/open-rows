@@ -114,7 +114,11 @@ impl From<CoreError> for IpcError {
         };
         Self {
             kind,
-            message: error.message,
+            message: if kind == IpcErrorKind::DriverHost {
+                "The driver process stopped; reconnect to continue".into()
+            } else {
+                error.message
+            },
             code: error.db_code,
         }
     }
@@ -166,6 +170,10 @@ mod tests {
     fn driver_host_failure_has_distinct_ipc_kind() {
         let error = IpcError::from(&DriverError::Host(openrows_driver_api::HostFailure::Exited));
         assert_eq!(error.kind, IpcErrorKind::DriverHost);
+        assert_eq!(
+            error.message,
+            "The driver process stopped; reconnect to continue"
+        );
         assert!(error.code.is_none());
         assert_eq!(
             serde_json::to_string(&error.kind).unwrap(),

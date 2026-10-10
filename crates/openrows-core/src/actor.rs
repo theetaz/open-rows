@@ -29,6 +29,7 @@ enum Outcome {
     TimedOut {
         usable: bool,
         limit: Duration,
+        failure: Option<CoreError>,
     },
 }
 
@@ -59,6 +60,7 @@ enum Flow {
 enum Next {
     Command(Option<Command>),
     Probe,
+    HostLost(DriverError),
 }
 
 /// Everything an actor needs besides its driver session.
@@ -74,6 +76,7 @@ pub(crate) struct Actor {
     pub(crate) mail: Mailbox,
     session: Box<dyn Session>,
     cancel: Option<Arc<dyn CancelHandle>>,
+    failure: Option<BoxFuture<'static, DriverError>>,
     /// When the last statement ended (or the connection opened).
     used: Instant,
     /// A statement to run before reading the queue (the one that woke a
@@ -108,6 +111,7 @@ impl Actor {
         Self {
             mail,
             cancel: session.cancel_handle(),
+            failure: session.host_failure(),
             session,
             used: Instant::now(),
             pending,
@@ -141,11 +145,13 @@ impl Actor {
             } else {
                 tokio::select! {
                     biased;
+                    error = host_failure(&mut self.failure) => Next::HostLost(error),
                     command = self.mail.commands.recv() => Next::Command(command),
                     () = probe_due(self.mail.link.as_mut(), &self.mail.shared) => Next::Probe,
                 }
             };
             let flow = match next {
+                Next::HostLost(error) => return Err(CoreError::from(&error)),
                 Next::Probe => self.check().await?,
                 Next::Command(Some(Command::Execute(queued))) => self.run(queued).await?,
                 Next::Command(Some(Command::Suspend { idle })) if self.may_suspend(idle) => {
@@ -164,7 +170,10 @@ impl Actor {
     /// Only a resilient session can reopen its connection; a transaction
     /// would be lost with it.
     fn may_suspend(&self, idle: Duration) -> bool {
-        self.mail.link.is_some() && !self.session.in_transaction() && self.used.elapsed() >= idle
+        self.failure.is_none()
+            && self.mail.link.is_some()
+            && !self.session.in_transaction()
+            && self.used.elapsed() >= idle
     }
 
     /// Close the connection, keeping the mailbox for the suspended session.
@@ -203,6 +212,12 @@ impl Actor {
 
     /// Ping the idle connection; replace it when it no longer answers.
     async fn check(&mut self) -> Result<Flow, CoreError> {
+        if self.failure.is_some() {
+            return match self.session.ping().await {
+                Ok(()) | Err(DriverError::Server { .. }) => Ok(Flow::Continue),
+                Err(error) => Err(CoreError::from(&error)),
+            };
+        }
         let Some(link) = self.mail.link.as_mut() else {
             return Ok(Flow::Continue);
         };
@@ -217,6 +232,9 @@ impl Actor {
 
     /// Reconnect after a lost connection, unless it held a transaction.
     async fn recover(&mut self, cause: CoreError) -> Result<Flow, CoreError> {
+        if self.failure.is_some() || cause.kind == ErrorKind::DriverHost {
+            return Err(cause);
+        }
         if self.session.in_transaction() {
             return Err(transaction_lost(&cause));
         }
@@ -228,6 +246,7 @@ impl Actor {
         match link.restore(&shared.token).await {
             Recovery::Restored(session) => {
                 self.cancel = session.cancel_handle();
+                self.failure = session.host_failure();
                 // The old connection is dead; dropping it closes its socket.
                 drop(std::mem::replace(&mut self.session, session));
                 if let Some(link) = self.mail.link.as_mut() {
@@ -289,10 +308,16 @@ impl Actor {
 pub(crate) fn fail_waiting(mail: &mut Mailbox, error: &CoreError) {
     mail.commands.close();
     while let Ok(command) = mail.commands.try_recv() {
-        if let Command::Execute(queued) = command {
-            let _ = queued.events.send(QueryEvent::Failed {
-                error: error.clone(),
-            });
+        match command {
+            Command::Execute(queued) => {
+                let _ = queued.events.send(QueryEvent::Failed {
+                    error: error.clone(),
+                });
+            }
+            Command::Close { reply } => {
+                let _ = reply.send(Err(error.clone()));
+            }
+            Command::Suspend { .. } => {}
         }
     }
 }
@@ -313,6 +338,13 @@ async fn probe_due(link: Option<&mut Link>, shared: &Shared) {
     }
 }
 
+async fn host_failure(failure: &mut Option<BoxFuture<'static, DriverError>>) -> DriverError {
+    match failure {
+        Some(failure) => failure.await,
+        None => std::future::pending().await,
+    }
+}
+
 /// Execute, racing the query's cancel token; cancel goes to the server out of band.
 async fn run_statement(
     session: &mut dyn Session,
@@ -327,21 +359,47 @@ async fn run_statement(
         () = queued.token.cancelled() => Stop::Cancelled,
         () = expire(queued.timeout) => Stop::TimedOut(queued.timeout.unwrap_or_default()),
     };
+    let mut failure = None;
+    let mut expired = false;
     let usable = match cancel {
-        None => false,
+        None => {
+            drop(exec);
+            false
+        }
         Some(cancel) => {
             // Detached on purpose: the request must not wait for, or block, the actor.
             drop(tokio::spawn(cancel.cancel()));
             match tokio::time::timeout(CANCEL_GRACE, exec).await {
                 Ok(Ok(summary)) => return Outcome::Done(Ok(summary)),
+                Ok(Err(error @ DriverError::Host(_))) if matches!(stop, Stop::Cancelled) => {
+                    return Outcome::Done(Err(error));
+                }
+                Ok(Err(error @ DriverError::Host(_))) => {
+                    failure = Some(CoreError::from(&error));
+                    false
+                }
                 Ok(Err(error)) => keeps_session(&error),
-                Err(_) => false,
+                Err(_) => {
+                    expired = true;
+                    false
+                }
             }
         }
     };
+    if expired && let Some(host_failure) = session.host_failure() {
+        let error = host_failure.await;
+        if matches!(stop, Stop::Cancelled) {
+            return Outcome::Done(Err(error));
+        }
+        failure = Some(CoreError::from(&error));
+    }
     match stop {
         Stop::Cancelled => Outcome::Cancelled { usable },
-        Stop::TimedOut(limit) => Outcome::TimedOut { usable, limit },
+        Stop::TimedOut(limit) => Outcome::TimedOut {
+            usable,
+            limit,
+            failure,
+        },
     }
 }
 
@@ -396,12 +454,20 @@ fn report(
             sink.end_result();
             (QueryEvent::Cancelled, acknowledged(usable))
         }
-        Outcome::TimedOut { usable, limit } => {
+        Outcome::TimedOut {
+            usable,
+            limit,
+            failure,
+        } => {
             sink.end_result();
             let event = QueryEvent::Failed {
                 error: CoreError::statement_timeout(limit),
             };
-            (event, acknowledged(usable))
+            let status = failure.map_or_else(
+                || acknowledged(usable),
+                |error| Err(Broken::Unusable(error)),
+            );
+            (event, status)
         }
     }
 }

@@ -57,7 +57,7 @@ impl ControlQueue {
     /// # Errors
     /// Count/byte saturation or ended writer.
     pub fn send(&self, frame: Frame) -> Result<(), ProtocolError> {
-        let sender = if (20..=30).contains(&frame.header.kind.0) {
+        let sender = if (20..=31).contains(&frame.header.kind.0) {
             &self.priority
         } else {
             &self.normal

@@ -21,12 +21,13 @@ const PING_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// Saved connection id and database name.
 type Key = (String, String);
-type Slot = Arc<tokio::sync::Mutex<Option<Held>>>;
+pub(super) type Slot = Arc<tokio::sync::Mutex<Option<Held>>>;
 
 /// An open metadata connection and when it last answered.
-struct Held {
+pub(super) struct Held {
     connection: Box<dyn Connection>,
     used: Instant,
+    pub(super) lifecycle: super::metadata_lifecycle::Observer,
 }
 
 /// Metadata sessions by connection and database.
@@ -64,9 +65,14 @@ impl MetadataSessions {
             let connected = target::connect(&target)
                 .await
                 .map_err(|error| IpcError::from(&error))?;
+            let lifecycle = super::metadata_lifecycle::Observer::new(
+                connected.connection.as_ref(),
+                Arc::downgrade(&slot),
+            );
             *guard = Some(Held {
                 connection: connected.connection,
                 used: Instant::now(),
+                lifecycle,
             });
         }
         let Some(held) = guard.as_mut() else {
@@ -223,3 +229,7 @@ mod tests {
         assert!(Arc::ptr_eq(&reports, &kept));
     }
 }
+
+#[cfg(test)]
+#[path = "metadata_host_tests.rs"]
+mod host_tests;

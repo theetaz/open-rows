@@ -15,6 +15,7 @@ use tokio::{
 
 pub(crate) struct Monitor {
     pub(crate) child: Child,
+    pub(crate) failure: std::sync::Arc<crate::failure_signal::FailureSignal>,
     pub(crate) directory: TempDir,
     pub(crate) reservation: HostReservation,
     pub(crate) large: crate::session::LargeGrant,
@@ -29,7 +30,13 @@ pub(crate) struct Monitor {
 }
 impl Monitor {
     pub(crate) async fn run(mut self) {
-        let failure = self.observe().await;
+        let failure = self.observe().await.map(|reason| {
+            self.failure.record(reason);
+            self.failure
+                .current()
+                .unwrap_or(Some(HostFailure::Protocol))
+                .unwrap_or(reason)
+        });
         for task in &self.tasks {
             task.abort();
         }

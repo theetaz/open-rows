@@ -47,13 +47,13 @@ pub struct WireCapabilities {
     pub objects: Vec<u16>,
 }
 impl WireCapabilities {
-    /// Current `SQLite` test-host contract: cancel, bind, startup; facets pending.
+    /// Current `SQLite` test-host contract: cancel, bind, startup; implemented catalog/editor facets.
     #[must_use]
     pub fn sqlite() -> Self {
         Self {
             location: 1,
-            features: vec![1, 2, 11],
-            objects: vec![],
+            features: vec![1, 2, 4, 5, 6, 7, 8, 11, 12, 15, 16, 18, 23, 24, 26, 29],
+            objects: vec![1, 2],
         }
     }
 }

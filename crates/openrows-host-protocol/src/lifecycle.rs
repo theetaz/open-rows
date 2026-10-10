@@ -33,6 +33,17 @@ impl RequestTracker {
         self.active.insert(request, (0, 0));
         Ok(())
     }
+    /// Register schema-only or stopped results before any data is authorized.
+    /// # Errors
+    /// Unknown request or unordered result ordinal.
+    pub fn result_begin(&mut self, request: u64, result: u32) -> Result<(), ProtocolError> {
+        let current = self.active.get_mut(&request).ok_or(ProtocolError::Stale)?;
+        if result != current.0 + 1 {
+            return Err(ProtocolError::Stale);
+        }
+        *current = (result, 0);
+        Ok(())
+    }
     /// Validate result ordinals and fragment ordering without retaining result bytes.
     /// # Errors
     /// Missing request, stale generation or unordered data.

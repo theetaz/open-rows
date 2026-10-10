@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //! ADR-0010 wire contract, independent of Tauri and native database libraries.
+mod allocation;
 mod arrow;
 mod arrow_decode;
 mod arrow_validate;
@@ -7,6 +8,11 @@ mod bounded;
 mod connect;
 mod control;
 mod decoder;
+mod facet_catalog;
+mod facet_codec;
+mod facet_inspection;
+mod facet_schema;
+mod facets;
 mod framing;
 mod handshake;
 mod lifecycle;
@@ -20,6 +26,11 @@ pub use arrow_decode::ArrowDecoder;
 pub use connect::{OwnedConnect, WireEndpoint, WireFile, WireSecret, WireTls};
 pub use control::{CatalogKind, Control, FlowKey, Grant, MessageKind};
 pub use decoder::FrameDecoder;
+pub use facet_catalog::*;
+pub use facet_codec::FACET_LIMIT;
+pub use facet_inspection::*;
+pub use facet_schema::*;
+pub use facets::{CatalogRequest, EditorRequest, FacetReply, WireEdit, WireRowEditInfo};
 pub use framing::{Frame, Header, Lane, read_frame, write_frame};
 pub use handshake::{
     Authentication, Bootstrap, Hello, LaneHello, WireCapabilities, decode_bootstrap,
@@ -48,7 +59,7 @@ pub const LARGE_LIMIT: usize = 64 * 1024 * 1024;
 /// Fixed wire protocol version.
 pub const PROTOCOL: (u16, u16) = (1, 0);
 /// Positional DTO layout fingerprint; revision requires an explicit protocol change.
-pub const SCHEMA: &str = "openrows-host-v1-20261010-2";
+pub const SCHEMA: &str = "openrows-host-v1-20261010-5";
 /// App/helper lockstep source and dependency identity.
 pub const BUILD: &str = env!("OPENROWS_HOST_BUILD");
 

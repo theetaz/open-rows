@@ -96,7 +96,7 @@ pub(crate) fn control_writer(
     tokio::spawn(async move {
         while let Some(frame) = outgoing.recv().await {
             write_frame(&mut write, &frame.frame, Lane::Control).await?;
-            if matches!(frame.frame.header.kind.0, 41 | 42) {
+            if matches!(frame.frame.header.kind.0, 41 | 42 | 48) {
                 done.send(frame.frame.header.request)
                     .await
                     .map_err(|_| ProtocolError::Transport)?;

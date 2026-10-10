@@ -162,7 +162,7 @@ Order: core runtime → local storage and secrets → networking → drivers →
 
 | ID | Task | Requirements | Depends on |
 | --- | --- | --- | --- |
-| M2-01 | Driver host process (out-of-process drivers, crash isolation, IPC protocol); partial — protocol, host and supervisor (M2-01.1–.2); adapter and packaging pending. Design accepted in [ADR-0010](adr/0010-driver-host-process.md) | docs/05, NFR-REL-02 | M1-10 |
+| M2-01 | Driver host process (out-of-process drivers, crash isolation, IPC protocol); partial — protocol, supervisor and adapter (M2-01.1–.3); packaging pending. Design accepted in [ADR-0010](adr/0010-driver-host-process.md) | docs/05, NFR-REL-02 | M1-10 |
 | M2-02 | SQL Server driver (Tier 2) | FR-APP-07 | M1-10 |
 | M2-03 | ClickHouse driver with native Arrow pass-through (Tier 2) | FR-APP-07 | M1-10 | done — HTTP(S) over the shared route Dialer with hyper, incremental native ArrowStream, DESCRIBE source metadata and server-side UUID text projection, typed query parameters, cancellable UUID queries, system catalogs and read-only view/materialized-view/UDF inspection, process-list query cancellation, connection URL/TLS form and SQL/editor dialect; pinned 25.3.9.72 LTS integration and applicable conformance groups plus 1 M-row ingest benchmark. No RowEdits or atomic mutation guarantees; transactional imports are refused and backup/restore and parsed explain are Unsupported. Native TCP, pooling/compression, roles/dictionary objects and reference-hardware release benchmarks remain gaps (docs/05 §17). |
 | M2-04 | DuckDB driver in the driver host (Tier 2) | FR-APP-07 | M2-01 |

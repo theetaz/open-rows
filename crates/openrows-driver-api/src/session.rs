@@ -58,6 +58,11 @@ pub trait Session: Send {
         None
     }
 
+    /// Permanent external host loss, observed while idle without probing/replay.
+    fn host_failure(&self) -> Option<BoxFuture<'static, DriverError>> {
+        None
+    }
+
     /// Cheapest round trip that proves the connection still answers: the
     /// keepalive probe of an idle session (docs/14 §2). The default runs
     /// `SELECT 1`; drivers may use a lighter protocol message.

@@ -42,6 +42,7 @@ pub struct HostSession {
     pub(crate) shutdown: mpsc::Sender<Shutdown>,
     pub(crate) memory: MemoryBudget,
     pub(crate) large: LargeGrant,
+    pub(crate) failure: Arc<crate::failure_signal::FailureSignal>,
 }
 impl HostSession {
     /// Identified child PID for diagnostics/tests; no PID-wide kill is used.
@@ -79,6 +80,10 @@ impl HostSession {
     /// Poisoned host, protocol saturation or memory admission failure.
     pub fn send(&mut self, request: u64, control: &Control) -> Result<(), HostFailure> {
         self.ensure_ready()?;
+        self.send_ready(request, control)
+            .inspect_err(|failure| self.poison(*failure))
+    }
+    fn send_ready(&mut self, request: u64, control: &Control) -> Result<(), HostFailure> {
         match control {
             Control::Grant(grant) | Control::Resume(grant) if grant.exclusive => {
                 self.reserve_large(*grant)?;
@@ -102,14 +107,7 @@ impl HostSession {
             _ => {}
         }
         let frame = Frame::control(self.generation, request, control).map_err(HostFailure::from)?;
-        self.outgoing
-            .send(frame)
-            .inspect_err(|_| {
-                let _ = self
-                    .shutdown
-                    .try_send(Shutdown::Failure(HostFailure::Protocol));
-            })
-            .map_err(HostFailure::from)
+        self.outgoing.send(frame).map_err(HostFailure::from)
     }
     fn reserve_large(&mut self, grant: Grant) -> Result<(), HostFailure> {
         let mut large = self.large.lock().map_err(|_| HostFailure::Protocol)?;
@@ -133,7 +131,10 @@ impl HostSession {
         self.ensure_ready()?;
         tokio::select! { biased;
             changed = self.state.changed() => { let _ = changed; self.ensure_ready()?; Err(HostFailure::Exited) },
-            frame = self.incoming.recv() => frame.map(|queued| queued.frame).ok_or(HostFailure::Exited),
+            frame = self.incoming.recv() => {
+                self.ensure_ready()?;
+                frame.map(|queued| queued.frame).ok_or(HostFailure::Exited)
+            },
         }
     }
     /// Read one fragment only when the adapter/sink has granted admission.
@@ -151,13 +152,11 @@ impl HostSession {
             }
             Ok(frame)
         });
-        result.inspect_err(|error| {
-            let _ = self.shutdown.try_send(Shutdown::Failure(*error));
-        })
+        result.inspect_err(|error| self.poison(*error))
     }
     /// Poison a malformed Arrow/barrier/capability result from the future adapter.
     pub fn poison(&self, failure: HostFailure) {
-        let _ = self.shutdown.try_send(Shutdown::Failure(failure));
+        self.failure.fail(failure);
     }
     /// Ask Close independently of data/worker progress, then await reap.
     /// # Errors
@@ -179,6 +178,9 @@ impl HostSession {
         }
     }
     fn ensure_ready(&self) -> Result<(), HostFailure> {
+        if let Some(failure) = self.failure.current()? {
+            return Err(failure);
+        }
         match *self.state.borrow() {
             HostState::Ready => Ok(()),
             HostState::Closed => Err(HostFailure::Exited),
@@ -188,9 +190,7 @@ impl HostSession {
 }
 impl Drop for HostSession {
     fn drop(&mut self) {
-        let _ = self
-            .shutdown
-            .try_send(Shutdown::Failure(HostFailure::Exited));
+        self.poison(HostFailure::Exited);
     }
 }
 

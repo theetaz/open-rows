@@ -2,6 +2,8 @@
 //! Isolated `SQLite` test host; native registry and worker never run in the parent.
 mod bootstrap;
 mod control;
+mod facet_output;
+mod facets;
 mod flow;
 #[cfg(feature = "test-hooks")]
 mod hooks;

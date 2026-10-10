@@ -269,3 +269,129 @@ The final macOS Rust run passed `1263 tests run: 1263 passed, 196 skipped` in 23
 
 
 `pnpm test --maxWorkers=2` passed `Test Files 227 passed (227)` / `Tests 2685 passed (2685)` in 90.60 s. Knip passed, and `just ipc-check` passed `1 test run: 1 passed, 240 skipped` in 0.153 s. Normal dependency graphs again verify no host/DuckDB dependency in the desktop and no Tauri/native database dependency in protocol/client. Round 2 adds no dependency. Temporary verification logs and the disposable image probe were removed; created containers were removed, while `orows-linux-target`, the existing build cache and prior benchmark CSVs are retained. PID/reap and endpoint-cleanup assertions passed; there are no owned hosts or source-tree rendezvous directories left. Core adapter, packaging, delegated-kernel-cap validation and Windows validation remain the named follow-up scope above.
+
+
+## Validation / evidence — 2026-10-10, M2-01b
+
+`HostedDriver`/`HostedConnection` now implement ADR step M2-01.3 in the Tauri-free
+client. Catalog and guarded edits use dedicated DTOs on the serial native worker;
+large catalog replies use one acknowledged 64 KiB fragment at a time, capped at
+16 MiB and 65536 top-level entries (4096 per nested collection). Synchronous
+decode also limits aggregate collection allocations to a conservative 32 MiB;
+text bytes remain bounded by the encoded ceiling. A 5000-table catalog exceeding
+1 MiB passes. Unsupported bulk/admin facets are not advertised.
+The default helper registry has no native SQLite dependency; test fixtures enable
+`test-sqlite`/`test-hooks`. No desktop production driver uses the adapter.
+
+Nonblocking store admission pauses above budget and resumes at the existing
+¾-budget spill target; failed spill/released results Stop and drain. Arrow arrays
+reach the sink directly. Idle lifecycle observation fails only the owning actor
+or metadata slot. Busy failure ends partial results before completing queued
+callers; hosted sessions never enter network restoration or idle suspension.
+Lost edit/DDL acknowledgement is `08007`, without a rollback or replay claim.
+A disposable file test confirms an acknowledged-lost commit was applied exactly
+once and is visible after a new explicit connect.
+
+The targeted final-source macOS nextest run passed `199 tests run: 199 passed, 33 skipped`
+in 8.544 s. The separate unchanged conformance run passed
+`10 tests run: 10 passed, 0 skipped` in 1.993 s (nine applicable groups; process
+administration is unsupported). Host A loss leaves
+hosted B and native C querying. Busy loss preserves 200 accepted rows, one result
+end and one typed terminal error for each of eight queued callers. Paused adapter
+cancel/drain was 0.184 ms; raw CancelAck was 0.167 ms paused and 0.199 ms with the
+data reader stalled. A non-cooperative worker was reaped after 2001.080 ms.
+`is_connection_lost()` remains false and a resilient hosted session's connect
+recipe runs once, without startup/query replay.
+
+Repeated Pause from a resume future cannot issue credit; the default paused
+future waits without spinning. Failure signaling preserves the first reason
+before EOF/cleanup, even when the supervisor queue is full. Refused exclusive
+credit permanently fails only that owner with `MemoryLimit`; the other host
+continues querying. Native connect failure preserves its completed stages/TLS
+trace and closes normally, without counting a startup refusal as a host crash.
+Client timeout remains Timeout for the active caller while non-cooperative host
+loss fails queued callers and the session with DriverHost.
+
+The final macOS Rust refresh passed `1307 tests run: 1307 passed, 196 skipped`
+in 27.881 s; skips are existing external-database suites. Formatting, workspace
+clippy (`-D warnings`), advisories/licences/bans/sources, unused dependencies and
+hygiene passed. `just gen-ipc` made no bindings change; `just ipc-check` passed
+`1 test run: 1 passed, 248 skipped` in 0.181 s. Frontend eslint, formatting,
+typecheck and knip passed. UI tests passed 230 files / 2701 tests in 96.35 s;
+initial JS was 301302 gzip bytes / 350000, and token/component CSS was 6294 /
+15000. Benchmark-script tests passed 89 tests; shell-tooling tests passed six
+using the installed Homebrew Python. `OPENROWS_REQUIRE_DOCKER=1 just test-pg`
+passed `78 tests run: 78 passed, 0 skipped` in 15.032 s on PostgreSQL 17.11 with
+TLS, including native reconnect, timeout, cancellation and conformance coverage.
+
+Linux final-source validation copied the worktree into `/work` in
+`rust:1.94.0-bookworm` (aarch64), with Docker `--init --cpus 4`, four Cargo jobs
+and four libtest threads. The five host/core/result crates passed 200 tests,
+with 33 existing database tests ignored; desktop `--lib` passed another 248.
+Representative real result lines were:
+
+```text
+host conformance: test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.27s
+host lifecycle:  test result: ok. 34 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 15.84s
+desktop:         test result: ok. 248 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.02s
+```
+
+Linux paused adapter cancel/drain was 0.228 ms; raw CancelAck was 0.199 / 0.235 ms
+(paused / stalled reader), and non-cooperative reap was 2003.738 ms. Both new
+admission regressions, metadata-slot invalidation and the desktop error mapping
+passed. The initial container without `--init` left the parent-death fixture's
+orphan as a PID-1 zombie; using the init reaper passed the unchanged assertion.
+Containment reported the accepted monitoring-only fallback because cgroup v2
+was not delegated. Containers were removed; `orows-linux-target` is retained.
+
+Release benchmarks used Apple M4 (Mac16,10), 24 GiB RAM, macOS 26.5 arm64,
+Rust 1.94.0, Arrow 60, `nice -n 10`, four Cargo jobs and two runtime workers.
+Minimum observed parent `Instant` resolution was 41 ns. Each throughput row is
+one native/hosted pair with identical default BatchPolicy and counting sink,
+1 M rows, native first; these are local samples, not confidence intervals or
+mac-low reference-machine acceptance. SQL fixtures include UTF-8/binary/nulls,
+without dictionaries/extensions (those remain covered by protocol tests).
+
+| Shape | Columns | Native cells/s | Hosted cells/s | Native ms | Hosted ms | Hosted/native (budget ≥ 0.80) |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Short | 1 | 7452261 | 8386242 | 134.187 | 119.243 | 1.125 |
+| Wide | 20 | 41320841 | 41848428 | 484.017 | 477.915 | 1.013 |
+| Mixed | 5 | 17265241 | 19192569 | 289.599 | 260.518 | 1.112 |
+
+These final-source measurements supersede earlier development samples; each
+fixture ran once after the final adapter fixes. The backpressure harness admits
+the first schema before inspecting store pressure; an initial harness run
+stopped before that schema and produced no spill rows, which was corrected
+before recording spill evidence. It sums parent + owned-child RSS at 5 ms
+intervals (32 samples while paused), including native-engine/allocator costs and
+possibly double-counted shared pages.
+This is a conservative sampled process delta, not exact allocation attribution
+or macOS physical footprint. No reader accumulates data during Pause: both result
+lengths below accepted only 200 rows, with stable final/peak paused RSS.
+
+| Fixture | Baseline RSS | Peak/final paused RSS | Delta (normal target ≤ 16 MiB) | Cancel/drain ms |
+| --- | ---: | ---: | ---: | ---: |
+| 100000 rows | 15532032 | 28590080 | 13058048 | 0.087 |
+| 1000000 rows | 16007168 | 30244864 | 14237696 | 0.116 |
+
+Both normal cases had one outstanding grant, 2112 encoded / 2644 decoded bytes
+at first-batch admission. A real 1 MiB spill store peaked at 1066912 Arrow bytes
+(one admitted batch beyond budget); successful spill retained 1000000 rows,
+failed spill stopped/truncated at 131272 rows. Both used one outstanding grant,
+532672 encoded / 533204 decoded bytes. Two default hosts filled the 512 MiB
+reservation and a third was refused with `MemoryLimit`. An exclusive 8 MiB row
+used one grant, 8389056 encoded / 8389517 decoded bytes; sampled aggregate RSS
+was 19955712 baseline, 70778880 peak, 50823168 delta. The larger overlap is
+reported separately from the normal-batch target. Parent-store retained-overhead
+ratio, native DuckDB budgets and reference-machine repeats remain M2 checkpoint
+work; this change does not claim measurements of those deferred metrics.
+
+Default-feature isolation also passed
+`cargo check --locked -p openrows-driver-host --no-default-features` (exit 0,
+3.53 s). Normal dependency graphs contain no native SQLite in the default host
+and no host client/helper or DuckDB in the desktop. New direct dependencies reuse
+the existing Tokio version for result-store notifications and internal SQL/facet
+and test crates; no third-party package/version was added to the lockfile.
+Temporary verification logs and generated desktop dist were removed. Owned
+helpers are reaped, PostgreSQL TLS directories are gone, and created containers
+are removed. The local Rust build cache and `orows-linux-target` remain.

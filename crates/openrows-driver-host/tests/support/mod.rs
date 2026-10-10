@@ -85,7 +85,12 @@ pub async fn receive(
 pub async fn terminal(session: &mut HostSession, request: u64) -> Result<Control, HostFailure> {
     loop {
         let (header, dto) = receive(session).await?;
-        if header.request == request && matches!(dto, Control::Reply(_) | Control::Error(_)) {
+        if header.request == request
+            && matches!(
+                dto,
+                Control::Reply(_) | Control::Error(_) | Control::ConnectError { .. }
+            )
+        {
             return Ok(dto);
         }
     }

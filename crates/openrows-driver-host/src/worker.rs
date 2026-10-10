@@ -42,6 +42,7 @@ pub(crate) struct Worker {
     pub(crate) flow: Arc<Flow>,
     pub(crate) active: Arc<Mutex<Active>>,
     pub(crate) authorized: Arc<AtomicU64>,
+    pub(crate) failed_connect: Option<WireTrace>,
 }
 impl Worker {
     pub(crate) fn run(mut self) -> Result<(), ProtocolError> {
@@ -57,6 +58,11 @@ impl Worker {
             }
             self.output.request = frame.header.request;
             let control = frame.decode_control()?;
+            {
+                let mut active = self.active.lock().map_err(|_| ProtocolError::Invalid)?;
+                self.flow.begin(frame.header.request)?;
+                active.request = frame.header.request;
+            }
             let execution = matches!(
                 control,
                 Control::Execute { .. } | Control::ExecuteBound { .. }
@@ -69,17 +75,27 @@ impl Worker {
                     .pending
                     .remove(&frame.header.request)
                     .unwrap_or(false);
+            self.failed_connect = None;
             let result = if cancelled {
                 Err(cancelled_error())
             } else {
                 runtime.block_on(self.dispatch(control, &mut connection))
             };
+            let terminal = match result {
+                Ok(reply) => Control::Reply(reply),
+                Err(error) => match self.failed_connect.take() {
+                    Some(trace) => Control::ConnectError {
+                        error: error.into(),
+                        trace,
+                    },
+                    None => Control::Error(error.into()),
+                },
+            };
+            self.terminal(terminal)?;
             self.active
                 .lock()
                 .map_err(|_| ProtocolError::Invalid)?
                 .request = 0;
-            let terminal = result.map_or_else(|error| Control::Error(error.into()), Control::Reply);
-            self.output.control(0, &terminal)?;
         }
         if let Some(connection) = connection {
             runtime
@@ -88,46 +104,95 @@ impl Worker {
         }
         Ok(())
     }
+    fn terminal(&self, terminal: Control) -> Result<(), ProtocolError> {
+        let terminal = if let Control::Reply(Reply::Facet {
+            value,
+            in_transaction,
+        }) = terminal
+        {
+            match crate::facet_output::send(&self.output, &self.flow, value, in_transaction) {
+                Ok(reply) => Control::Reply(reply),
+                Err(error) => Control::Error(error.into()),
+            }
+        } else {
+            terminal
+        };
+        match self.output.control(0, &terminal) {
+            Ok(()) => Ok(()),
+            Err(ProtocolError::Limit) => self.output.control(
+                0,
+                &Control::Error(openrows_host_protocol::WireError::Unsupported(
+                    "host reply exceeds supported limit".into(),
+                )),
+            ),
+            Err(error) => Err(error),
+        }
+    }
     async fn dispatch(
         &mut self,
         control: Control,
         connection: &mut Option<Box<dyn Connection>>,
     ) -> Result<Reply, DriverError> {
         match control {
-            Control::Connect(config) => {
-                if connection.is_some() {
-                    return Err(DriverError::Unsupported("one connection per host".into()));
-                }
-                let request = config.to_request()?;
-                let mut trace = ConnectTrace::default();
-                let opened = crate::registry::connect(&request, &mut trace).await?;
-                let summary = opened.server();
-                let reply = Connected {
-                    product: summary.product.clone(),
-                    version: summary.version.clone(),
-                    flavour: summary.flavour.clone(),
-                    database: summary.database.clone(),
-                    user: summary.user.clone(),
-                    tls: 2,
-                    trace: WireTrace::from(&trace),
-                    facets: Facets::default(),
-                    in_transaction: opened.in_transaction(),
-                };
-                self.active.lock().map_err(|_| protocol())?.cancel = opened.cancel_handle();
-                *connection = Some(opened);
-                Ok(Reply::Connected(reply))
-            }
+            Control::Connect(config) => self.connect(config, connection).await,
             Control::Execute { sql } => self.execute(connection, &sql, &[]).await,
             Control::ExecuteBound { sql, params } => self.execute(connection, &sql, &params).await,
             Control::Ping => {
                 connection.as_mut().ok_or_else(protocol)?.ping().await?;
                 Ok(Reply::Pong)
             }
+            Control::CatalogRead(request) => {
+                crate::facets::catalog(connection.as_mut().ok_or_else(protocol)?.as_mut(), request)
+                    .await
+            }
+            Control::Edit(request) => {
+                crate::facets::edit(connection.as_mut().ok_or_else(protocol)?.as_mut(), request)
+                    .await
+            }
             Control::Catalog { .. } | Control::Editor | Control::Admin | Control::Bulk => Err(
-                DriverError::Unsupported("host facet pending M2-01.3".into()),
+                DriverError::Unsupported("host facet is not supported".into()),
             ),
             _ => Err(protocol()),
         }
+    }
+    async fn connect(
+        &mut self,
+        config: openrows_host_protocol::OwnedConnect,
+        connection: &mut Option<Box<dyn Connection>>,
+    ) -> Result<Reply, DriverError> {
+        if connection.is_some() {
+            return Err(DriverError::Unsupported("one connection per host".into()));
+        }
+        let request = config.to_request()?;
+        let mut trace = ConnectTrace::default();
+        let mut opened = match crate::registry::connect(&request, &mut trace).await {
+            Ok(opened) => opened,
+            Err(error) => {
+                self.failed_connect = Some(WireTrace::from(&trace));
+                return Err(error);
+            }
+        };
+        let facets = Facets {
+            catalog: opened.catalog().is_some(),
+            editor: opened.editor().is_some(),
+            admin: false,
+            bulk: false,
+        };
+        let summary = opened.server();
+        let reply = Connected {
+            product: summary.product.clone(),
+            version: summary.version.clone(),
+            flavour: summary.flavour.clone(),
+            database: summary.database.clone(),
+            user: summary.user.clone(),
+            tls: 2,
+            trace: WireTrace::from(&trace),
+            facets,
+            in_transaction: opened.in_transaction(),
+        };
+        self.active.lock().map_err(|_| protocol())?.cancel = opened.cancel_handle();
+        *connection = Some(opened);
+        Ok(Reply::Connected(reply))
     }
     async fn execute(
         &mut self,
@@ -138,9 +203,6 @@ impl Worker {
         let connection = connection.as_mut().ok_or_else(protocol)?;
         {
             let mut active = self.active.lock().map_err(|_| protocol())?;
-            self.flow
-                .begin(self.output.request)
-                .map_err(|_| protocol())?;
             if active.pending.remove(&self.output.request).unwrap_or(false) {
                 return Err(cancelled_error());
             }

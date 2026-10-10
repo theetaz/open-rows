@@ -302,3 +302,19 @@ Tests: `cargo nextest run -p openrows-core` uses a scripted fake session. It cov
 | Profile and default | `limits.statementTimeoutSeconds` in the profile JSON (absent: follow `general.statementTimeoutSeconds` in settings.json, off by default; `0`: no limit) and `limits.idleTimeoutMinutes` (absent or `0`: never). Edit Connection ▸ Advanced and Settings ▸ General ▸ Statement timeout. |
 | Idle suspend | `SessionManager::suspend_idle(session, idle)` queues `Suspend`; a resilient session that ran nothing for `idle` and holds no transaction closes its connection and turns `Suspended`. The next statement reconnects through its `Link` (setup, replay, backoff; `Connecting` then `Idle`) and runs. The app sweeps every 30 s, skips databases with journaled staged edits (`change_sets`) and closes idle metadata connections of the profile too. The rail shows a grey dot and "Idle · reconnects on next query" when every opened database is suspended. |
 | Tests | `openrows-core` `tests::limits` (timeout through the cancel path, user cancel stays a cancel, suspend and wake with setup and search path replayed, transaction keeps the connection, non-resilient sessions never suspend); `just test-pg` and `just test-mysql` (MySQL 8.4, MariaDB 11.4): client-side timeout of a long statement, server-side timeout reported as a timeout and set again after a killed connection reconnects. |
+
+## 12. Implemented (M2-01b): hosted-session lifecycle
+
+`Session::host_failure` is an optional permanent-failure future; in-process
+sessions default to none. The owning actor observes it while idle and receives
+busy loss through the proxy's execution result. One actor completes the running
+query (closing its accepted partial result) and drains queued queries exactly
+once with `DriverHost`, then stops. A lifecycle failure never enters network
+restore/replay. Hosted sessions do not idle-suspend/reopen; explicit new connect
+is required. Other session actors and parent-owned result batches survive.
+
+`ResultSink`/`BatchSink` have default-ready admission and asynchronous resume
+hooks. Hosted credit waits on these hooks, without blocking async actors or
+changing the existing Continue/Stop contract. Store spill completion/release
+notifications resume at the ¾-budget target; failed spill stops and marks the
+partial result truncated. Cancel, Close and host health remain independent.

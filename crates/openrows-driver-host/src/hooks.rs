@@ -35,6 +35,7 @@ pub(crate) fn execute(
             }
             std::process::abort();
         }
+        "OPENROWS_TEST_PROTOCOL_ERROR" => Some(Err(DriverError::Protocol("test-only".into()))),
         "OPENROWS_TEST_PANIC" => panic!("test-only worker panic"),
         "OPENROWS_TEST_ALLOC_FAILURE" => Some(Err(DriverError::Server {
             code: "53200".into(),
@@ -54,6 +55,22 @@ pub(crate) fn execute(
         "OPENROWS_TEST_NO_HEARTBEAT" => {
             HEARTBEAT.store(false, Ordering::SeqCst);
             Some(Ok(Reply::Pong))
+        }
+        "OPENROWS_TEST_HANG_NOTICE" => {
+            if output
+                .control(
+                    0,
+                    &openrows_host_protocol::Control::Notice {
+                        level: 1,
+                        message: "test-only worker started".into(),
+                    },
+                )
+                .is_err()
+            {
+                return Some(Err(invalid()));
+            }
+            std::thread::park();
+            Some(Err(invalid()))
         }
         "OPENROWS_TEST_HANG" => {
             std::thread::park();

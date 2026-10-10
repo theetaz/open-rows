@@ -127,6 +127,13 @@ pub enum Control {
     Reply(Reply),
     /// Exactly one terminal typed failure.
     Error(WireError),
+    /// Connect failed with native stage timing; exactly one terminal error.
+    ConnectError {
+        /// Native connect failure.
+        error: WireError,
+        /// Completed stages and failing stage.
+        trace: crate::WireTrace,
+    },
     /// Result begins; schema follows on the data lane.
     ResultBegin,
     /// Result ended at this last fragment.
@@ -136,6 +143,26 @@ pub enum Control {
     },
     /// Bounded prepared batch waits for admission.
     BatchReady(Grant),
+    /// Native notice, forwarded only to the result sink.
+    Notice {
+        /// 1 informational, 2 warning.
+        level: u8,
+        /// User-visible native notice.
+        message: String,
+    },
+    /// One acknowledged fragment of a bounded facet response.
+    FacetChunk {
+        /// One-based chunk ordinal.
+        sequence: u64,
+        /// At most 64 KiB of the encoded facet.
+        #[serde(deserialize_with = "crate::bounded::chunk")]
+        bytes: Vec<u8>,
+    },
+    /// Parent accepted this facet fragment; permits exactly the next fragment.
+    FacetConsumed {
+        /// Accepted ordinal.
+        sequence: u64,
+    },
     /// Catalog request placeholder with bounded page size.
     Catalog {
         /// Method.
@@ -145,6 +172,10 @@ pub enum Control {
     },
     /// Editor placeholder, never advertised before implementation.
     Editor,
+    /// Typed catalog read.
+    CatalogRead(crate::CatalogRequest),
+    /// Typed editor operation.
+    Edit(crate::EditorRequest),
     /// Admin placeholder.
     Admin,
     /// Bulk placeholder.
@@ -169,6 +200,8 @@ impl Control {
             Self::Ping => 13,
             Self::Catalog { .. } => 14,
             Self::Editor => 15,
+            Self::CatalogRead(_) => 18,
+            Self::Edit(_) => 19,
             Self::Admin => 16,
             Self::Bulk => 17,
             Self::Cancel { .. } => 20,
@@ -188,13 +221,17 @@ impl Control {
             Self::ResultBegin => 43,
             Self::ResultEnd { .. } => 44,
             Self::BatchReady(_) => 45,
+            Self::Notice { .. } => 46,
+            Self::FacetChunk { .. } => 47,
+            Self::FacetConsumed { .. } => 31,
+            Self::ConnectError { .. } => 48,
         })
     }
 
     /// Priority traffic never queues behind normal worker operations.
     #[must_use]
     pub fn priority(&self) -> bool {
-        (20..=30).contains(&self.kind().0)
+        (20..=31).contains(&self.kind().0)
     }
 }
 
@@ -203,7 +240,7 @@ impl MessageKind {
     /// # Errors
     /// Unknown required kind.
     pub fn validate(self) -> Result<(), ProtocolError> {
-        if matches!(self.0, 1..=3 | 10..=17 | 20..=30 | 40..=45 | 100) {
+        if matches!(self.0, 1..=3 | 10..=19 | 20..=31 | 40..=48 | 100) {
             Ok(())
         } else {
             Err(ProtocolError::UnknownKind)

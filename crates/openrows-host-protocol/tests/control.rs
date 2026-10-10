@@ -87,6 +87,7 @@ fn cases() -> Vec<Control> {
                 completed: vec![(2, 10)],
                 failed: None,
                 retried_tls: false,
+                local_tls: true,
             },
             facets: Facets::default(),
             in_transaction: false,
