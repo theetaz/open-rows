@@ -245,6 +245,10 @@ The vectors follow the public [AWS Session Manager documentation](https://docs.a
 | UI | Connection sheet Route ▸ Cloud / zero-trust exposes typed fields and missing-tool advice. The toolbar health button opens a connection status popover containing the configured route, e.g. `Route: kubectl port-forward svc/db → TLS → PostgreSQL`. |
 | Verification | Golden argument and validation tests; fake-tool sharing, tree cleanup, cancellation, readiness timeout, shutdown, restart and scrubbed failures; profile save/load; UI settings/form/route tests. `just test-pg` routes real PostgreSQL through all four kinds (both Google flavours) and verifies the original TLS hostname; `just test-mysql` routes MySQL/MariaDB through fake kubectl. CI needs no real cloud tools/accounts. The fake binary is gated behind `test-helper`, never normal app builds. |
 
+On Linux, the tree-cleanup test temporarily adopts and reaps its exact orphaned
+fixture PID. It still requires both helper and descendant to disappear within
+five seconds, including when container PID 1 does not reap zombies.
+
 No native AWS/Kubernetes/GCP APIs, cloud credential storage or helper-plus-SSH/proxy chaining are implemented. Real cloud-provider authentication is left to the installed tools; fake integration tests establish routing and lifecycle behavior, not successful access to an external cloud account.
 
 ### Implemented (M2-24b): custom command hop

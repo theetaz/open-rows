@@ -6,6 +6,8 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 #[tokio::test]
 async fn parent_death_exits_child_and_cleans_endpoints() -> Result<(), Box<dyn std::error::Error>> {
     support::prepare_image().await?;
+    #[cfg(target_os = "linux")]
+    let _reaper = OrphanReaper::new()?;
     let mut parent = tokio::process::Command::new(env!("CARGO_BIN_EXE_host-parent-fixture"))
         .arg(env!("CARGO_BIN_EXE_host-test-fixture"))
         .arg(support::root())
@@ -24,6 +26,8 @@ async fn parent_death_exits_child_and_cleans_endpoints() -> Result<(), Box<dyn s
     parent.wait().await?;
     let deadline = tokio::time::Instant::now() + Duration::from_secs(4);
     while directory.exists() || process_exists(pid) {
+        #[cfg(target_os = "linux")]
+        reap_orphan(pid)?;
         assert!(
             tokio::time::Instant::now() < deadline,
             "orphan helper {pid}"
@@ -32,6 +36,33 @@ async fn parent_death_exits_child_and_cleans_endpoints() -> Result<(), Box<dyn s
     }
     support::assert_reaped(pid, &directory);
     Ok(())
+}
+
+// A container's PID 1 may not reap: adopt only this fixture's orphan ourselves.
+#[cfg(target_os = "linux")]
+struct OrphanReaper(Option<rustix::process::Pid>);
+#[cfg(target_os = "linux")]
+impl OrphanReaper {
+    fn new() -> rustix::io::Result<Self> {
+        let previous = rustix::process::child_subreaper()?;
+        rustix::process::set_child_subreaper(Some(rustix::process::getpid()))?;
+        Ok(Self(previous))
+    }
+}
+#[cfg(target_os = "linux")]
+impl Drop for OrphanReaper {
+    fn drop(&mut self) {
+        let _ = rustix::process::set_child_subreaper(self.0);
+    }
+}
+#[cfg(target_os = "linux")]
+fn reap_orphan(pid: u32) -> Result<(), Box<dyn std::error::Error>> {
+    let pid = rustix::process::Pid::from_raw(i32::try_from(pid)?).ok_or("invalid child PID")?;
+    // NOHANG never kills the helper; its own parent-loss path must finish first.
+    match rustix::process::waitpid(Some(pid), rustix::process::WaitOptions::NOHANG) {
+        Ok(_) | Err(rustix::io::Errno::CHILD | rustix::io::Errno::INTR) => Ok(()),
+        Err(error) => Err(error.into()),
+    }
 }
 fn process_exists(pid: u32) -> bool {
     #[cfg(unix)]
