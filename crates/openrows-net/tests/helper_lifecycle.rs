@@ -48,6 +48,8 @@ fn crash(helper: &Helper) -> Result {
 
 #[tokio::test]
 async fn two_sessions_share_and_last_release_kills_tree() -> Result {
+    #[cfg(target_os = "linux")]
+    let _reaper = OrphanReaper::new()?;
     let folder = tempfile::tempdir()?;
     let child_file = folder.path().join("child-pid");
     let mut spec = spec();
@@ -70,8 +72,49 @@ async fn two_sessions_share_and_last_release_kills_tree() -> Result {
     stream.read_exact(&mut bytes).await?;
     assert_eq!(&bytes, b"test");
     drop(stream);
-    until(|| !alive(pid) && !alive(child)).await?;
+    tree_reaped(pid, child).await?;
     Ok(())
+}
+
+async fn tree_reaped(pid: u32, child: u32) -> Result {
+    let outcome: Result = tokio::time::timeout(Duration::from_secs(5), async {
+        let mut poll = tokio::time::interval(Duration::from_millis(10));
+        while alive(pid) || alive(child) {
+            #[cfg(target_os = "linux")]
+            reap_orphan(child)?;
+            poll.tick().await;
+        }
+        Ok(())
+    })
+    .await?;
+    outcome
+}
+
+// A container's PID 1 may not reap the grandchild killed with its process group.
+#[cfg(target_os = "linux")]
+struct OrphanReaper(Option<Pid>);
+#[cfg(target_os = "linux")]
+impl OrphanReaper {
+    fn new() -> rustix::io::Result<Self> {
+        let previous = rustix::process::child_subreaper()?;
+        rustix::process::set_child_subreaper(Some(rustix::process::getpid()))?;
+        Ok(Self(previous))
+    }
+}
+#[cfg(target_os = "linux")]
+impl Drop for OrphanReaper {
+    fn drop(&mut self) {
+        let _ = rustix::process::set_child_subreaper(self.0);
+    }
+}
+#[cfg(target_os = "linux")]
+fn reap_orphan(pid: u32) -> Result {
+    let pid = Pid::from_raw(i32::try_from(pid)?).ok_or("invalid child PID")?;
+    // Only collect an exited fixture; group termination belongs to the helper.
+    match rustix::process::waitpid(Some(pid), rustix::process::WaitOptions::NOHANG) {
+        Ok(_) | Err(rustix::io::Errno::CHILD | rustix::io::Errno::INTR) => Ok(()),
+        Err(error) => Err(error.into()),
+    }
 }
 #[tokio::test]
 async fn shutdown_hook_path_kills_even_old_profile_helpers() -> Result {

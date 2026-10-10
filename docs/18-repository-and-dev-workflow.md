@@ -223,6 +223,16 @@ Pull requests and pushes to feature branches do **not** trigger CI. The `check` 
 
 The `containers` job (20-minute timeout, its own runner and Rust cache) builds only the driver, core, schema and conformance crates and runs `scripts/test-pg.sh 17` and `scripts/test-mysql.sh` (MySQL 8.4, MariaDB 11.4) with `OPENROWS_REQUIRE_DOCKER=1`, so a missing Docker daemon fails instead of skipping. Coverage, benchmark comparison and nightly fuzzing are not in CI yet (M1-30).
 
+### Implemented (CI-FIX): portable integration helpers and lazy-tab checks
+
+The PostgreSQL, MySQL/MariaDB and libSQL integration scripts resolve the built
+`fake-cloud-hop` directory to an absolute path before exporting
+`OPENROWS_FAKE_HELPER`. This preserves credential-command validation when
+`CARGO_TARGET_DIR` is unset or relative, as on CI. Sidebar workspace tests wait
+for lazy table imports inside React `act` before asserting header controls;
+opening a tab descriptor alone does not mean its body has mounted. The same
+assertions and shortcuts run on macOS and Linux without platform stubs.
+
 Every gate, including those CI skips (cargo-deny, cargo-machete, hygiene, UI and benchmark checks), runs locally with `just check` and is mandatory before pushing a branch or opening a PR; the acceptance report carries the evidence. Actions are pinned to full commit SHAs, the workflow has read-only permissions, and checkout does not persist credentials. A red run on `main` is fixed immediately with a follow-up PR. PR-triggered CI and branch protection return with the full pipeline (§4.2) once the project has outside contributors.
 
 ### 4.2 Planned: full pipeline (when the repository goes public)

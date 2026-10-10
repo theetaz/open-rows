@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Real disposable-child failures never damage an independently connected host.
 use crate::support;
-use openrows_host_client::{HostFailure, HostSupervisor, MemoryBudget};
+use openrows_host_client::{CLOSE_GRACE, HostFailure, HostSession, HostSupervisor, MemoryBudget};
 use openrows_host_protocol::{Control, Reply, WireError};
+use std::time::{Duration, Instant};
 use support::*;
 
 #[tokio::test]
@@ -84,38 +85,58 @@ async fn missing_heartbeats_probe_then_terminate_and_reap() -> Result<(), HostFa
 #[tokio::test]
 async fn close_and_cancel_kill_a_noncooperative_worker_after_grace() -> Result<(), HostFailure> {
     let _permit = host_test().await?;
+    for close in [false, true] {
+        let session = hanging_host().await?;
+        let started = Instant::now();
+        // Two seconds of bounded scheduler/reap slack, independent of heartbeats.
+        tokio::time::timeout(
+            CLOSE_GRACE + Duration::from_secs(2),
+            terminate_hung(session, close),
+        )
+        .await
+        .map_err(|_| HostFailure::Unresponsive)??;
+        assert!(started.elapsed() >= CLOSE_GRACE);
+    }
+    Ok(())
+}
+
+async fn hanging_host() -> Result<HostSession, HostFailure> {
     let mut session = host(MemoryBudget::default()).await?;
-    let pid = session.pid();
-    let directory = session.directory().to_path_buf();
     session.send(
         2,
         &Control::Execute {
-            sql: "OPENROWS_TEST_HANG".into(),
+            sql: "OPENROWS_TEST_HANG_NOTICE".into(),
         },
     )?;
     assert!(matches!(receive(&mut session).await?.1, Control::Accepted));
-    // A grant-state probe ensures the host worker has begun the test execution.
-    let mut heartbeat = session.heartbeats();
-    heartbeat.changed().await.map_err(|_| HostFailure::Exited)?;
-    session.send(0, &Control::Cancel { target: 2 })?;
-    assert_eq!(failed(&session).await, HostFailure::Unresponsive);
-    assert_reaped(pid, &directory);
-    let mut session = host(MemoryBudget::default()).await?;
+    // Only the worker emits this notice, after checking queued cancellation.
+    let (header, notice) = receive(&mut session).await?;
+    assert_eq!(header.request, 2);
+    assert!(
+        matches!(notice, Control::Notice { message, .. } if message == "test-only worker started")
+    );
+    Ok(session)
+}
+
+async fn terminate_hung(mut session: HostSession, close: bool) -> Result<(), HostFailure> {
     let pid = session.pid();
     let directory = session.directory().to_path_buf();
-    session.send(
-        2,
-        &Control::Execute {
-            sql: "OPENROWS_TEST_HANG".into(),
-        },
-    )?;
-    assert!(matches!(receive(&mut session).await?.1, Control::Accepted));
-    let mut heartbeat = session.heartbeats();
-    heartbeat.changed().await.map_err(|_| HostFailure::Exited)?;
-    assert!(matches!(
-        session.close().await,
-        Err(HostFailure::Unresponsive | HostFailure::Exited)
-    ));
+    if close {
+        assert!(matches!(
+            session.close().await,
+            Err(HostFailure::Unresponsive | HostFailure::Exited)
+        ));
+    } else {
+        session.send(0, &Control::Cancel { target: 2 })?;
+        assert!(matches!(
+            receive(&mut session).await?.1,
+            Control::CancelAck {
+                target: 2,
+                requested: true
+            }
+        ));
+        assert_eq!(failed(&session).await, HostFailure::Unresponsive);
+    }
     assert_reaped(pid, &directory);
     Ok(())
 }

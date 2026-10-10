@@ -270,6 +270,14 @@ The first host failure is latched before asynchronous cleanup; later calls
 cannot dispatch while reap is pending. Lifecycle subscribers receive that same
 reason after reap and endpoint cleanup, including refused exclusive grants.
 
+Cancellation isolation tests wait for a worker-emitted notice before cancelling:
+Accepted and heartbeats indicate control-loop progress, not worker execution.
+For Cancel, the hung-worker test requires Unresponsive and a reaped child within
+the 2 s grace plus 2 s scheduler/cleanup slack. On Linux, the parent-death test
+temporarily adopts its orphaned fixture and reaps that exact PID without killing
+it, so the same exit and endpoint-cleanup assertions work when container PID 1
+is not a reaper.
+
 Catalog replies use acknowledged 64 KiB chunks under one request ID, with a
 16 MiB operation ceiling and 65536 top-level list entries. Nested collections
 remain capped at 4096, with a conservative aggregate 32 MiB collection-allocation

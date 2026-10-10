@@ -6,7 +6,8 @@ cd "$(git rev-parse --show-toplevel)"
 image="${1:-ghcr.io/tursodatabase/libsql-server:v0.24.32}"
 docker info >/dev/null
 cargo build -p openrows-net --bin fake-cloud-hop --features test-helper --locked
-export OPENROWS_FAKE_HELPER="${CARGO_TARGET_DIR:-target}/debug/fake-cloud-hop"
+# Resolve the built directory so credential validation also accepts relative Cargo targets.
+export OPENROWS_FAKE_HELPER="$(cd -- "${CARGO_TARGET_DIR:-target}/debug" && pwd)/fake-cloud-hop"
 openssl_bin="${OPENROWS_OPENSSL:-openssl}"
 if [[ -x /opt/homebrew/opt/openssl@3/bin/openssl ]]; then
     openssl_bin=/opt/homebrew/opt/openssl@3/bin/openssl
