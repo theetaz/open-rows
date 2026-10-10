@@ -207,7 +207,7 @@ While the project is solo and private, CI uses free GitHub Actions minutes spari
 - every push to `main`, i.e. each squash-merged PR;
 - manual dispatch (`gh workflow run CI --ref <branch>`), for the rare case where a branch needs a Linux check before merge.
 
-Pull requests and pushes to feature branches do **not** trigger CI. The `check` job (40-minute timeout, including a cold bundled DuckDB build) runs these steps:
+Pull requests and pushes to feature branches do **not** trigger CI. The `check` job (50-minute timeout, including a cold bundled DuckDB build) runs these steps:
 
 | Step | What it checks |
 | --- | --- |
@@ -237,10 +237,12 @@ cache upload after runner loss or forced job termination.
 
 The measured cold-target check sequence took 15m25s in the non-root,
 2-CPU/8-GiB `rust:1.94.0-bookworm` ARM64 container, including frontend checks;
-staging took 6m25s and compiled bundled DuckDB once. The 40-minute timeout
-rounds up an estimate of twice that measured time plus eight minutes for
-runner setup, network and cache transfer (38m49s). GitHub's x86 runner time
-is an estimate, not a remotely measured result; see ADR-0010's round-4 evidence.
+staging took 6m25s and compiled bundled DuckDB once. The first cold run on a
+GitHub ubuntu-latest runner took about 41 minutes (production staging 16m13s,
+Clippy 3m35s, workspace tests 7m47s), so the job allows 50 minutes. The
+binding-freshness step reuses the workspace test features so it does not
+rebuild the desktop crate. Warm runs restore the native target from the cache,
+which is saved even when a run fails; see ADR-0010's round-4 evidence.
 
 The `containers` job (20-minute timeout, its own runner and Rust cache) builds only the driver, core, schema and conformance crates and runs `scripts/test-pg.sh 17` and `scripts/test-mysql.sh` (MySQL 8.4, MariaDB 11.4) with `OPENROWS_REQUIRE_DOCKER=1`, so a missing Docker daemon fails instead of skipping. Coverage, benchmark comparison and nightly fuzzing are not in CI yet (M1-30).
 
