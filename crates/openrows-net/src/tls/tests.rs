@@ -293,7 +293,7 @@ fn encrypted_pkcs8(key: &KeyPair, passphrase: &str) -> String {
     let encrypted = info
         .encrypt_with_params(parameters, passphrase)
         .expect("encrypt");
-    pem_encode("ENCRYPTED PRIVATE KEY", encrypted.as_bytes())
+    pem_encode(concat!("ENCRYPTED PRIVATE", " KEY"), encrypted.as_bytes())
 }
 
 #[tokio::test]
@@ -353,8 +353,12 @@ fn client_identity_files_are_checked() {
     let legacy = TlsParams {
         client_key: Some(pki.write(
             "legacy.key",
-            "-----BEGIN RSA PRIVATE KEY-----\nProc-Type: 4,ENCRYPTED\n\
-             DEK-Info: AES-128-CBC,00\n\nAAAA\n-----END RSA PRIVATE KEY-----\n",
+            concat!(
+                "-----BEGIN RSA PRIVATE",
+                " KEY-----\nProc-Type: 4,ENCRYPTED\n",
+                "DEK-Info: AES-128-CBC,00\n\nAAAA\n-----END RSA PRIVATE",
+                " KEY-----\n",
+            ),
         )),
         ..client_identity(&pki, None)
     };

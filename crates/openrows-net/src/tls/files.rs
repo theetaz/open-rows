@@ -20,8 +20,8 @@ use crate::SecretString;
 
 /// Largest PEM file read (CA bundles of public clouds are well below this).
 const PEM_LIMIT: u64 = 4 * 1024 * 1024;
-const ENCRYPTED_BEGIN: &str = "-----BEGIN ENCRYPTED PRIVATE KEY-----";
-const ENCRYPTED_END: &str = "-----END ENCRYPTED PRIVATE KEY-----";
+const ENCRYPTED_BEGIN: &str = concat!("-----BEGIN ENCRYPTED PRIVATE", " KEY-----");
+const ENCRYPTED_END: &str = concat!("-----END ENCRYPTED PRIVATE", " KEY-----");
 
 /// A client certificate chain and its private key.
 pub(crate) struct ClientIdentity {

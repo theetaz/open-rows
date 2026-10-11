@@ -159,7 +159,7 @@ The spike in `crates/openrows-net` proves `russh` for the SSH hop. It is a proto
 | Library | `russh` 0.64 with the `ring` backend and **without** its `rsa` feature: the `rsa` crate carries RUSTSEC-2023-0071 (Marvin timing side channel, no fix). RSA *user* keys are signed by ring (constant time, `rsa-sha2-256/512`; SHA-1 `ssh-rsa` refused). RSA *host* keys are not offered during negotiation because verifying them needs the `rsa` crate; ed25519 and ECDSA host keys are. |
 | Stream | `SshTunnel::open_stream(host, port)` returns a `TunnelStream` (`AsyncRead + AsyncWrite`) over a `direct-tcpip` channel; no local listener (docs/12 §4.2). |
 | Hops | `SshTunnel::connect(&[SshHop])`: TCP to the first hop, each later hop over a channel of the previous one. `resolve_route` expands `ProxyJump` like OpenSSH (first jump's own `ProxyJump` applies, later ones are overridden; ≤ 8 hops, loops rejected). `SshHop::from_settings` uses OpenSSH's method order: agent (unless `IdentitiesOnly`), each `IdentityFile`, keyboard-interactive. |
-| Auth | Password, key files (OpenSSH ed25519/ECDSA/RSA incl. passphrase-encrypted; unencrypted PEM: PKCS#1 RSA, SEC1 ECDSA; unencrypted PKCS#8 RSA; other formats get an error suggesting `ssh-keygen -p`), ssh-agent (`SSH_AUTH_SOCK` or explicit socket), keyboard-interactive via the `KeyboardInteractivePrompter` callback. Partial success (key then OTP) continues with the next method. Local method failures (missing agent, locked key) do not stop later methods; if nothing succeeds the first one is returned as a typed error (`PassphraseRequired`, `AgentNotConfigured`, …), otherwise `AuthFailed`. |
+| Auth | Password, key files (OpenSSH ed25519/ECDSA/RSA incl. passphrase-encrypted; unencrypted PEM: PKCS#1 RSA, SEC1 ECDSA; unencrypted PKCS#8 RSA/Ed25519/ECDSA; other formats get an error suggesting `ssh-keygen -p`), ssh-agent (`SSH_AUTH_SOCK` or explicit socket), keyboard-interactive via the `KeyboardInteractivePrompter` callback. Partial success (key then OTP) continues with the next method. Local method failures (missing agent, locked key) do not stop later methods; if nothing succeeds the first one is returned as a typed error (`PassphraseRequired`, `AgentNotConfigured`, …), otherwise `AuthFailed`. |
 | Secrets | `SecretString` (zeroized on drop, redacted `Debug`, no `Display`); key file text and DER are zeroized. Once handed to russh (password, OTP answers) the copies are russh's to manage. |
 | `~/.ssh/config` | Pure parser over a `ConfigSource` (fuzz-friendly, property-tested): `Host` patterns with `*`, `?`, `!`; `HostName` (`%h`, `%%`), `User`, `Port`, `IdentityFile` (accumulates, `~` expanded), `IdentitiesOnly`, `ProxyJump` (`none`, `user@host:port`, `[v6]:port`, `ssh://`), `Include` (relative to `~/.ssh`, globs, OpenSSH activation rules, depth 16). First value wins. `Match` blocks never apply; other keywords are ignored. |
 | Host keys | Pure `known_hosts` checker: plain, wildcard/negated and hashed (`\|1\|salt\|hmac`) hosts, `[host]:port`, `@revoked` (hard stop), `@cert-authority` skipped, malformed lines skipped. Outcome `Trusted` / `Unknown { SHA256 fingerprint, other algorithms }` / `Changed` (hard stop, never reaches the UI) / `Revoked`. Unknown keys go to the `HostKeyPolicy` callback (`Reject`, `AcceptOnce`, `AcceptAndRemember`). The user's `known_hosts` is read-only; accepted keys are appended (0600) to an app-managed file. Known algorithms for a host are preferred during negotiation, as OpenSSH does. |
@@ -169,7 +169,7 @@ The spike in `crates/openrows-net` proves `russh` for the SSH hop. It is a proto
 
 Measured on the container matrix (debug build, Docker Desktop on macOS, loopback): handshake + auth ≈ 40–60 ms per hop (≈ 0.6 s with an encrypted key, dominated by bcrypt-pbkdf in a debug build); the first channel open after authentication ≈ 42 ms on every hop, later opens ≈ 0.3–2 ms; echo round trip ≈ 0.3–2 ms. The OpenSSH client (`ssh -W`) shows the same ≈ 42 ms first-open delay against this server, so it is server-side behaviour, not russh.
 
-Follow-ups for M1-06: session multiplexing and reconnect (§3), RSA host-key verification without the `rsa` crate (or an advisory fix upstream), host and user certificates, `Match`, `%` tokens beyond `%h`, passphrase-encrypted PEM (PKCS#1/PKCS#8) and PKCS#8 ECDSA keys, passphrase prompts through the prompter, Windows agents (Pageant / named pipe), Happy Eyeballs for the first hop.
+Follow-ups for M1-06: session multiplexing and reconnect (§3), RSA host-key verification without the `rsa` crate (or an advisory fix upstream), host and user certificates, `Match`, `%` tokens beyond `%h`, passphrase-encrypted PEM (PKCS#1/PKCS#8) and unsupported-curve PKCS#8 ECDSA keys, passphrase prompts through the prompter, Windows agents (Pageant / named pipe), Happy Eyeballs for the first hop.
 
 ## 12. Implementation notes (D-10 SSH routes, D-11 TLS)
 
@@ -284,3 +284,34 @@ dependency; transitive `nix` through `russh-cryptovec` → `russh` is accepted.
 ## 17. Implemented (M2-05): libSQL HTTP transport
 
 The Hrana client uses Hyper HTTP/1.1 over `openrows-net::Dialer` streams: `TcpDialer` for direct connections or the profile's shared SSH/proxy/helper route. Remote libSQL accepts cloud and trusted custom TCP helpers; libSQL file rejects all network hops. TLS wraps the stream with `TlsClient` before HTTP, verifies the database host, and reports its certificate details through the existing connect trace. Each pipeline opens one socket; cancellation drops that socket and attempts to close the last known baton. HTTP redirects are not followed; Hrana `base_url` may change only the same-origin path, so bearer tokens and routes never move to another host implicitly. The complete behavior and limits are in [docs/05 §18](05-database-drivers.md#18-implemented-m2-05-libsql--turso-tier-2).
+
+## 18. Implemented (X-ECDSA): ECDSA private-key scalar decoding
+
+OpenSSH P-256/P-384/P-521 key files now decode positive private scalars at
+any valid wire length, including omitted leading zero bytes and mpint sign
+padding. The previous `ssh-key` 0.7.0-rc.11 decoder required at least 32
+bytes, rejecting randomly generated valid P-256 scalars. The application
+loader pads to the curve's 32/48/66-byte width and uses the existing RustCrypto
+curve implementations to validate scalar range and derive/check the public
+point in either compressed or uncompressed SEC1 encoding, retaining the file's
+public-point encoding. The upstream decoder remains in use for RSA and Ed25519.
+
+OpenSSH encryption reuses the existing cipher/KDF implementations, with
+checkint, block alignment, authentication tag, inner/outer public key, comment,
+trailing-data and padding checks. Temporary key bytes and padded scalars are
+zeroized. Fixed-width scalar serialization from `ssh-key` is also accepted.
+SEC1 PEM and named/explicit-domain PKCS#8 ECDSA work on all three curves; an optional
+saved passphrase is ignored for unencrypted PEM/PKCS#8. Explicit PKCS#8 domains
+are normalized only after checking the full standard prime, coefficients, base
+point, order and cofactor against public SEC2 constants; bit length alone cannot
+select a curve. Unsupported domains and encrypted PKCS#1 PEM retain conversion
+errors.
+
+Deterministic fixtures built at test time from synthetic hex scalars cover short, full-width and sign-padded
+scalars, encrypted OpenSSH, SEC1 and PKCS#8 key identity and verified signatures,
+plus malformed encodings and cipher variants. The randomized test is opt-in:
+`cargo nextest run -p openrows-net --locked generated_ecdsa_keys_decode --run-ignored ignored-only`
+(200 keys per curve, no containers). A 2,400-key before/after corpus had
+4/2,000 P-256 failures before and 0/2,400 failures after; P-384 and P-521 had
+0/200 failures both times. No encoded key material is checked in; runtime fixture generation and mpint lengths are documented
+in `crates/openrows-net/tests/fixtures/ecdsa/README.md`.
