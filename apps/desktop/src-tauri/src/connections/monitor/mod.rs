@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Thin monitoring IPC and profile lifecycle ownership; no monitor UI.
 mod commands;
+mod history;
+pub(crate) use history::*;
 pub(crate) mod processes;
 mod reader;
 mod registry;
@@ -70,4 +72,9 @@ pub(crate) struct MonitorReply {
     generation: String,
     capabilities: Vec<Descriptor>,
     sources: Vec<SourceStatus>,
+}
+
+/// Canonical history profile identity, shared with collection.
+pub(crate) fn profile_key_for_history(id: &str) -> String {
+    registry::profile_key(id)
 }

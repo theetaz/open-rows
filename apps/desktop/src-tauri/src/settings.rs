@@ -99,6 +99,9 @@ pub(crate) fn apply_saved(app: &tauri::App) {
             &text,
         );
     } else {
+        let _ = app
+            .state::<LocalStore>()
+            .set_monitor_profiles(&[], crate::queries::history::now_ms());
         apply_retention(&app.state::<LocalStore>(), &Value::Null);
     }
 }
@@ -113,6 +116,21 @@ pub(crate) fn apply(connections: &Connections, local: &LocalStore, text: &str) {
         connections.limits.apply(&value);
         connections.helper_settings.apply(&value);
         apply_retention(local, &value);
+        let profiles = value
+            .pointer("/monitoring/enabledProfiles")
+            .and_then(Value::as_array)
+            .map(|values| {
+                values
+                    .iter()
+                    .filter_map(Value::as_str)
+                    .map(crate::connections::monitor::profile_key_for_history)
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        if let Err(error) = local.set_monitor_profiles(&profiles, crate::queries::history::now_ms())
+        {
+            tracing::warn!(%error, "monitor history settings not applied");
+        }
     }
 }
 

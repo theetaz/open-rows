@@ -12,6 +12,8 @@ mod history;
 mod inspection;
 mod monitor;
 mod monitor_bench;
+mod monitor_blocking;
+mod monitor_capture;
 mod monitor_reset;
 mod objects;
 mod streaming;

@@ -11,7 +11,7 @@ import type { QueryTab, TabFile, TableObject, TabsState } from './tabs';
  */
 export function serializeTabs(state: TabsState, withText = true): string {
   const tabs = state.tabs.flatMap((tab) => {
-    if (tab.kind === 'processes') return [];
+    if (tab.kind === 'processes' || tab.kind === 'monitor') return [];
     if (tab.kind === 'query' && !withText) return [];
     // Allowlist descriptors: parameter values, results and transient file errors never persist.
     const { id, kind, connectionId, database, title, sql, pinned, preview } =

@@ -174,6 +174,7 @@ const CONNECTION: &[Entry] = &[
     Entry::Submenu("Database", DATABASE_OBJECT),
     S,
     C("processes", "Show Processes"),
+    C("monitor", "Show Monitor"),
     S,
     C("safe", "Safe Mode"),
 ];
@@ -409,6 +410,7 @@ mod tests {
             "database",
             "refresh",
             "processes",
+            "monitor",
             "open-logs",
             "commit-changes",
             "discard-changes",

@@ -248,11 +248,11 @@ These rows specify the owner's database-monitoring request; they do not claim Ta
 
 | Key | Feature | What it does | OpenRows status / FR | Target | OpenRows improvement | Source |
 | --- | --- | --- | --- | --- | --- | --- |
-| PM01 | Monitor workspace | Overview, live sessions, waits/locks, freshness and pause/interval/window controls per connection. | Planned FR-ADMIN-03 | M2.5 | Explicit privilege, disabled, unsupported and stale states; bounded blocking chains. | ADR-0011, M25-01..04 |
-| PM02 | Slow-query analytics | Rank cumulative deltas and covered terminal events by time, calls, rows, I/O, temp/spill and memory where exposed. | Planned FR-ADMIN-05 | M2.5 | Reset/eviction gaps, window vs source maxima, safe plan visualiser reuse; every measured execution confirms. | ADR-0011, M25-02/04/07a..e |
-| PM03 | Resource/memory view | Engine/server and per-query/thread metrics with documented scope. | Planned FR-ADMIN-03, 05 | M2.5 | Own-session-only embedded and own-request remote-libSQL notices; no invented memory or cluster-wide coverage. | ADR-0011, M25-02/03/07a..e |
+| PM01 | Monitor workspace | Overview, live sessions, waits/locks, freshness and pause/interval/window controls per connection. | Implemented PostgreSQL workspace (M25-03); engine matrix pending | M2.5 | Overview/sessions/blocking, scope/freshness, accessible charts, pause/interval/ranges; explicit capability states. | ADR-0011, M25-01..04 |
+| PM02 | Slow-query analytics | Rank cumulative deltas and covered terminal events by time, calls, rows, I/O, temp/spill and memory where exposed. | Partial PostgreSQL rankings/reviewed plan-only Explain (M25-03); full-window analytics/advice pending | M2.5 | Latest-interval deltas and separately labelled source maxima; redacted SQL requires review. | ADR-0011, M25-02/03/04/07a..e |
+| PM03 | Resource/memory view | Engine/server and per-query/thread metrics with documented scope. | Partial PostgreSQL table/index/I/O/replication views (M25-03); broader resource/memory matrix pending | M2.5 | Null lag remains unknown; no invented OS memory or cluster-wide coverage. | ADR-0011, M25-02/03/07a..e |
 | PM04 | Optimisation advisor | Deterministic rules with metric/plan evidence, confidence and impact/trade-offs. | Planned FR-ADMIN-05 | M2.5 | DDL/rewrite opens in editor only; safety/auth/production review; HypoPG opt-in, AI through M4.5. | ADR-0011, M25-10 |
-| PM05 | Bounded private collection | Dedicated read-only server sessions, adaptive polling, Arrow/rings, local-history opt-in. | Planned FR-ADMIN-04, NFR-PERF-11, NFR-SEC-08 | M2.5 | Core redaction before IPC, memory/series/deadline limits and lock/pause cleanup. | ADR-0011, M25-01/03/07d/07e |
+| PM05 | Bounded private collection | Dedicated read-only server sessions, adaptive polling, Arrow/rings, local-history opt-in. | Implemented PostgreSQL collection/history (M25-01/03); reference budgets and engine matrix pending | M2.5 | Default-off scalar history: 24 h, 50/100 MiB caps, expiry/disable/purge, profile isolation; worker/collector cleanup on close/lock. | ADR-0011, M25-01/03/07d/07e |
 
 ### Settings, appearance, shortcuts and platform integration
 

@@ -3,6 +3,7 @@
 mod analysis;
 mod arrow;
 mod blockers;
+mod gauges;
 mod model;
 mod retention;
 mod runtime;

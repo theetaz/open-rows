@@ -3,12 +3,13 @@
 use super::support::{self, Collect, TestResult};
 use arrow_array::{Array, Float64Array, StringArray};
 use arrow_ipc::reader::StreamReader;
-use openrows_driver_api::{Connection, Session};
+use openrows_driver_api::Session;
 use openrows_driver_postgres::{ConnectOptions, PgSession};
 use openrows_monitor::{LiveStore, MonitorReader, Reading, SampleState, Source};
 use std::{io::Cursor, time::Instant};
 
-async fn sql(session: &mut PgSession, sql: &str) -> TestResult {
+/// Execute fixture statements in order, discarding their result rows.
+pub(super) async fn sql(session: &mut PgSession, sql: &str) -> TestResult {
     for statement in openrows_sql::split(sql, openrows_sql::Dialect::Postgres) {
         session
             .execute(statement.text(sql), &mut Collect::default())
@@ -67,7 +68,7 @@ async fn exercise((database, role): (&str, &str)) -> TestResult {
     sql(&mut monitor, "SET application_name = 'OpenRows monitor'").await?;
     extensions(&mut writer, &mut monitor).await?;
     privileges(&mut writer, database, role).await?;
-    blocking(&mut writer, &mut monitor, database).await?;
+    super::monitor_blocking::verify(&mut writer, &mut monitor, database).await?;
     counters(&mut monitor, database).await?;
     super::monitor_reset::verify(&mut monitor, database).await?;
     resources(&mut monitor).await?;
@@ -122,80 +123,9 @@ async fn privileges(writer: &mut PgSession, database: &str, role: &str) -> TestR
     Ok(())
 }
 
-async fn blocking(writer: &mut PgSession, monitor: &mut PgSession, database: &str) -> TestResult {
-    sql(
-        writer,
-        "BEGIN; UPDATE monitor_fixture SET value = 'test-only' WHERE id = 1",
-    )
-    .await?;
-    let blocker = writer
-        .admin()
-        .ok_or("admin facet")?
-        .own_process()
-        .await?
-        .to_string();
-    let mut waiter = connection(database, None).await?;
-    let waiter_pid = waiter
-        .admin()
-        .ok_or("admin facet")?
-        .own_process()
-        .await?
-        .to_string();
-    let pending = tokio::spawn(async move {
-        sql(
-            &mut waiter,
-            "UPDATE monitor_fixture SET value = 'test-only' WHERE id = 1 /* test-only */",
-        )
-        .await
-        .map_err(|_| "waiter failed")
-    });
-    let mut observed = None;
-    let deadline = Instant::now();
-    while deadline.elapsed().as_secs() < 5 {
-        let sample = monitor.read(Source::Activity, 1_000).await;
-        if sample.rows.iter().any(|row| {
-            row.first().and_then(Option::as_deref) == Some(&waiter_pid)
-                && row
-                    .get(5)
-                    .and_then(Option::as_deref)
-                    .is_some_and(|ids| ids.contains(&blocker))
-        }) {
-            observed = Some(sample);
-            break;
-        }
-    }
-    sql(writer, "ROLLBACK").await?;
-    pending.await??;
-    let sample = observed.ok_or("blocking pair was not observed")?;
-    assert!(
-        sample
-            .rows
-            .iter()
-            .any(|row| row.get(1).and_then(Option::as_deref) == Some("active"))
-    );
-    let mut store = LiveStore::default();
-    store.ingest(Source::Activity, sample, 0, 0.0);
-    let bytes = store.window(Some(Source::Activity), 1_000, false)?;
-    assert!(!String::from_utf8_lossy(&bytes).contains("test-only"));
-    let batch = StreamReader::try_new(Cursor::new(bytes), None)?
-        .next()
-        .ok_or("batch")??;
-    let chains = batch
-        .column_by_name("blocking_chain")
-        .ok_or("chain column")?
-        .as_any()
-        .downcast_ref::<StringArray>()
-        .ok_or("chain type")?;
-    assert!(
-        chains
-            .iter()
-            .flatten()
-            .any(|chain| chain.contains(&blocker) && chain.contains(&waiter_pid))
-    );
-    Ok(())
-}
-
 async fn counters(monitor: &mut PgSession, database: &str) -> TestResult {
+    let began = Instant::now();
+    let wall = super::monitor_capture::wall_ms();
     let first = monitor.read(Source::Database, 1_000).await;
     let before = number(&first, 2)?;
     let mut work = connection(database, None).await?;
@@ -210,8 +140,14 @@ async fn counters(monitor: &mut PgSession, database: &str) -> TestResult {
     }
     assert!(number(&second, 2)? > before);
     let mut store = LiveStore::default();
-    store.ingest(Source::Database, first, 0, 0.0);
-    store.ingest(Source::Database, second, 1_000, 1_000.0);
+    store.ingest(Source::Database, first, 0, wall);
+    store.ingest(
+        Source::Database,
+        second,
+        u64::try_from(began.elapsed().as_millis())?.max(1),
+        super::monitor_capture::wall_ms(),
+    );
+    super::monitor_capture::capture(&store, Source::Database)?;
     let bytes = store.window(None, 1_000, false)?;
     let batch = StreamReader::try_new(Cursor::new(bytes), None)?
         .next()
@@ -248,6 +184,9 @@ async fn resources(monitor: &mut PgSession) -> TestResult {
         let sample = monitor.read(source, 1_000).await;
         assert_eq!(sample.state, SampleState::Ok);
         assert!(!sample.rows.is_empty());
+        let mut store = LiveStore::default();
+        store.ingest(source, sample, 0, super::monitor_capture::wall_ms());
+        super::monitor_capture::capture(&store, source)?;
         assert!(!monitor.in_transaction());
     }
     let replication = monitor.read(Source::Replication, 1_000).await;
@@ -260,7 +199,17 @@ async fn statements(monitor: &mut PgSession, writer: &mut PgSession) -> TestResu
     let sample = monitor.read(Source::Statements, 1_000).await;
     assert_eq!(sample.state, SampleState::Ok);
     assert!(!sample.rows.is_empty());
-    assert!(sample.columns.iter().all(|c| c.name != "query"));
+    assert!(sample.columns.iter().any(|c| c.name == "query"));
+    let mut store = LiveStore::default();
+    store.ingest(
+        Source::Statements,
+        sample,
+        0,
+        super::monitor_capture::wall_ms(),
+    );
+    super::monitor_capture::capture(&store, Source::Statements)?;
+    let bytes = store.window(Some(Source::Statements), 100, false)?;
+    assert!(!String::from_utf8_lossy(&bytes).contains("test-only"));
     sql(writer, "SET pg_stat_statements.track = 'none'").await?;
     // Instrumentation settings are per session: configure the collector fixture itself.
     sql(monitor, "SET pg_stat_statements.track = 'none'").await?;

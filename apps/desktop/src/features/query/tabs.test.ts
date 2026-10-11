@@ -102,3 +102,12 @@ it('opens one processes tab per scope, refocusing it, and never stores it', () =
   const stored = restoreTabs(serializeTabs(state));
   expect(stored.tabs.map((tab) => tab.id)).toEqual(['query-2']);
 });
+
+it('opens one lazy monitor per scope and never restores collection from saved tabs', () => {
+  const scope = { connectionId: 'p', database: 'db' };
+  let state = openTab(emptyTabs, scope, { monitor: true, title: 'Monitor' });
+  state = openTab(state, scope, { monitor: true, title: 'Monitor' });
+  expect(tabsOf(state, scope)).toHaveLength(1);
+  expect(tabsOf(state, scope)[0]?.kind).toBe('monitor');
+  expect(restoreTabs(serializeTabs(state)).tabs).toHaveLength(0);
+});

@@ -4,7 +4,13 @@
 
 use std::time::{Duration, Instant};
 
-use openrows_driver_api::{Connection, DriverError, ProcessId, ProcessSignal, admin};
+use openrows_driver_api::{
+    Admin, Connection, DriverError, ProcessId, ProcessInfo, ProcessSignal, admin,
+};
+use openrows_sql::Dialect;
+
+#[cfg(test)]
+mod tests;
 
 use crate::dialect::{cancels_other_sessions, codes, sleep};
 use crate::sink::{Collect, ping, sqlstate};
@@ -63,11 +69,11 @@ async fn cancel_sleeper(
     let sql = sleep(dialect, SLEEP_SECONDS);
     let started = Instant::now();
     let mut sink = Collect::default();
-    let (slept, cancelled) = tokio::join!(
-        sleeper.execute(&sql, &mut sink),
-        cancel_when_listed(lister, sleeper_id),
-    );
-    cancelled?;
+    // Return listing/cancellation failures immediately instead of waiting for the whole sleep.
+    let (slept, ()) = tokio::try_join!(
+        async { Ok::<_, Failure>(sleeper.execute(&sql, &mut sink).await) },
+        cancel_when_listed(admin(lister)?, dialect, sleeper_id),
+    )?;
     let elapsed = started.elapsed();
     ensure(elapsed < DEADLINE, || {
         format!("cancelled sleep ran {elapsed:?}")
@@ -91,21 +97,19 @@ async fn cannot_cancel(lister: &mut dyn Connection, id: ProcessId) -> Result<(),
 }
 
 /// Poll the list until `id` runs a sleep, then cancel its statement.
-async fn cancel_when_listed(lister: &mut dyn Connection, id: ProcessId) -> Result<(), Failure> {
-    let facet = admin(lister)?;
+async fn cancel_when_listed(
+    facet: &mut dyn Admin,
+    dialect: Dialect,
+    id: ProcessId,
+) -> Result<(), Failure> {
     let deadline = Instant::now() + DEADLINE;
     let mut ticks = tokio::time::interval(POLL);
     while Instant::now() < deadline {
         ticks.tick().await;
         let processes = facet.list_processes().await?;
-        let sleeping = processes.iter().any(|process| {
-            process.id == id
-                && !process.current
-                && process
-                    .query
-                    .as_deref()
-                    .is_some_and(|query| query.to_lowercase().contains("sleep("))
-        });
+        let sleeping = processes
+            .iter()
+            .any(|process| running_sleep(process, dialect, id));
         if sleeping {
             facet.signal_process(id, ProcessSignal::CancelQuery).await?;
             return Ok(());
@@ -114,6 +118,19 @@ async fn cancel_when_listed(lister: &mut dyn Connection, id: ProcessId) -> Resul
     Err(Failure::Contract(format!(
         "process {id} was never listed running its sleep"
     )))
+}
+
+fn running_sleep(process: &ProcessInfo, dialect: Dialect, id: ProcessId) -> bool {
+    // PostgreSQL publishes query text during Parse/Describe; PgSleep proves Execute started.
+    process.id == id
+        && !process.current
+        && process
+            .query
+            .as_deref()
+            .is_some_and(|query| query.to_lowercase().contains("sleep("))
+        && (dialect != Dialect::Postgres
+            || (process.state.as_deref() == Some("active")
+                && process.wait.as_deref() == Some("Timeout: PgSleep")))
 }
 
 /// Terminating the sleeper ends its process and its connection; signalling

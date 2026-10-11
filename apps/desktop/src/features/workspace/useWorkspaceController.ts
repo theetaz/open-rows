@@ -95,6 +95,22 @@ function processesOpener(
   };
 }
 
+function utilityOpeners(
+  connections: Connections,
+  tabs: QueryTabs,
+  scope: TabScope | undefined,
+): {
+  openProcesses: (target?: TabScope) => void;
+  openMonitor: (target?: TabScope) => void;
+} {
+  return {
+    openProcesses: processesOpener(connections, tabs, scope),
+    openMonitor: (target = scope) => {
+      if (target) tabs.open(target, { monitor: true, title: 'Monitor' });
+    },
+  };
+}
+
 /** Shortcuts and the native menu bar, both routed to `command`. */
 function useCommandRoutes(
   command: (id: string) => void,
@@ -313,7 +329,7 @@ export function useWorkspaceController(input: Input): WorkspaceController {
   const active = scope ? tabs.activeFor(scope) : undefined;
   const details = useActiveDetails(active?.id);
   const commands = queryCommands(tabs, scope, scopeOf);
-  const openProcesses = processesOpener(connections, tabs, scope);
+  const monitors = utilityOpeners(connections, tabs, scope);
   const { objects, openObject } = useObjectOpening({
     connections,
     catalog,
@@ -339,7 +355,7 @@ export function useWorkspaceController(input: Input): WorkspaceController {
     setTheme,
     onShowDiagram: showDiagram,
     onImport: importData,
-    openProcesses,
+    ...monitors,
     ...fileCommands({ jobs: input.jobs, catalog }, tabs, scope),
     onObjectCommand: objects.command,
     activeTab: active,
@@ -370,7 +386,7 @@ export function useWorkspaceController(input: Input): WorkspaceController {
     openObject,
     showDiagram,
     importData,
-    openProcesses,
+    ...monitors,
     hiddenCommands: hiddenCommands(connections),
     objects,
     toggleSafe,
@@ -408,6 +424,8 @@ type WorkspaceController = { jobs: JobActions } & Details &
     importData: (object?: ObjectRef) => void;
     /** Open (or refocus) a scope's process list; the active scope by default. */
     openProcesses: (scope?: TabScope) => void;
+    /** Open the scope’s lazy Monitor workspace. */
+    openMonitor: (scope?: TabScope) => void;
     /** Palette commands the active connection cannot run. */
     hiddenCommands: readonly string[];
     /** The open object editor and its commands (M2-08). */

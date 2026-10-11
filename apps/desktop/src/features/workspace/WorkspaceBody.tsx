@@ -178,6 +178,8 @@ export function WorkspaceRail(props: {
   onSettings?: (() => void) | undefined;
   /** Open the process list of a connection's database. */
   onProcesses?: ((scope: TabScope) => void) | undefined;
+  /** Open a database Monitor. */
+  onMonitor?: ((scope: TabScope) => void) | undefined;
   /** Run a `.sql` file on a connection's database. */
   onRunFile?: ((database: string, profileId: string) => void) | undefined;
   jobs?: import('./JobActions').JobActions;
@@ -198,6 +200,10 @@ export function WorkspaceRail(props: {
         connections.select(id, name);
       }}
       onCloseProfileDatabase={connections.closeProfileDatabase}
+      onMonitor={(id, name) => {
+        connections.select(id, name);
+        props.onMonitor?.({ connectionId: id, database: name });
+      }}
       onProcesses={(id, name) => {
         connections.select(id, name);
         props.onProcesses?.({ connectionId: id, database: name });

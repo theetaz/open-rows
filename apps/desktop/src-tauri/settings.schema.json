@@ -426,6 +426,7 @@
           "safe",
           "search",
           "schema",
+          "monitor",
           "processes",
           "new-table",
           "new-view",
@@ -930,6 +931,21 @@
           "minimum": 0,
           "maximum": 65535,
           "default": 0
+        }
+      }
+    },
+    "monitoring": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabledProfiles": {
+          "type": "array",
+          "default": [],
+          "maxItems": 1000,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-fA-F0-9-]{36}$"
+          }
         }
       }
     }

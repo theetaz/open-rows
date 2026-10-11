@@ -27,6 +27,7 @@ import { HISTORY_KEY, parseHistorySettings } from './historySettings';
 import { parseSecurity, SECURITY_KEY } from '../security/securitySettings';
 import { parseTools, TOOLS_KEY } from './toolSettings';
 import { MCP_KEY, parseMcpSettings } from './ai/mcpSettings';
+import { MONITOR_KEY, parseMonitorSettings } from './monitorSettings';
 import { AI_KEY, parseAiSettings } from './ai/aiSettings';
 import { parsePortableSettings } from './settingsValidation';
 
@@ -50,6 +51,7 @@ type Section = {
 /** File sections and their stores; every value is validated on the way in and out. */
 const SECTIONS: Readonly<Record<string, Section>> = {
   mcp: { key: MCP_KEY, parse: parseMcpSettings },
+  monitoring: { key: MONITOR_KEY, parse: parseMonitorSettings },
   ai: { key: AI_KEY, parse: parseAiSettings },
   security: { key: SECURITY_KEY, parse: parseSecurity },
   history: { key: HISTORY_KEY, parse: parseHistorySettings },
@@ -181,7 +183,10 @@ export async function reloadSettingsFile(): Promise<void> {
 export function exportSettings(): string {
   const settings = Object.fromEntries(
     Object.entries(collectSettings()).filter(
-      ([key]) => !['history', 'snippets', 'tools', 'ai', 'mcp'].includes(key),
+      ([key]) =>
+        !['history', 'snippets', 'tools', 'ai', 'mcp', 'monitoring'].includes(
+          key,
+        ),
     ),
   );
   return `${JSON.stringify(settings, null, 2)}\n`;
@@ -190,7 +195,14 @@ export function exportSettings(): string {
 /** Strictly validate the whole import before changing any local preference. */
 export async function importSettings(text: string): Promise<void> {
   const settings = parsePortableSettings(text);
-  for (const key of ['history', 'snippets', 'tools', 'ai', 'mcp']) {
+  for (const key of [
+    'history',
+    'snippets',
+    'tools',
+    'ai',
+    'mcp',
+    'monitoring',
+  ]) {
     if (key in settings)
       throw new Error(`${key}: excluded from portable settings`);
   }
@@ -208,7 +220,7 @@ export async function importSettings(text: string): Promise<void> {
 /** Reset just the requested group, or all preferences, and notify live readers. */
 export function resetSettings(section?: string): void {
   const groups: Record<string, string[]> = {
-    general: ['general', 'history', 'copy', 'diagnostics'],
+    general: ['general', 'history', 'monitoring', 'copy', 'diagnostics'],
     tables: ['results', 'export', 'copy'],
     appearance: ['appearance'],
     editor: ['editor'],

@@ -14,6 +14,11 @@ type SessionStatus = ReturnType<Connections['statusOf']>;
 const QueryTab = lazy(() =>
   import('./QueryTab').then((module) => ({ default: module.QueryTab })),
 );
+const MonitorTab = lazy(() =>
+  import('../monitor/MonitorTab').then((module) => ({
+    default: module.MonitorTab,
+  })),
+);
 const ProcessesTab = lazy(() =>
   import('../processes').then((module) => ({ default: module.ProcessesTab })),
 );
@@ -51,16 +56,8 @@ export function TabBody(
         }
       />
     );
-  if (tab.kind === 'processes')
-    return (
-      <ProcessesTab
-        key={tab.id}
-        profile={props.connection}
-        database={tab.database}
-        connected={status.state === 'connected'}
-        onRow={props.onRow}
-      />
-    );
+  if (tab.kind === 'monitor' || tab.kind === 'processes')
+    return UtilityTab(props);
   if (tab.kind === 'table' && tab.table)
     return (
       <TableTab
@@ -162,4 +159,33 @@ function notice(status: SessionStatus, database: string): string | null {
   if (!opened) return `${database} is closed; open it again with ⌘K`;
   if (opened.state === 'opening') return `Opening ${database}…`;
   return opened.state === 'failed' ? opened.message : null;
+}
+
+function UtilityTab(props: Parameters<typeof TabBody>[0]): React.JSX.Element {
+  const { tab, status } = props;
+  const sessionId = sessionOf(status, tab.database);
+  if (tab.kind === 'monitor')
+    return (
+      <MonitorTab
+        key={tab.id}
+        profile={props.connection}
+        database={tab.database}
+        connected={status.state === 'connected' && !!sessionId}
+        sessionId={sessionId}
+        onOpenSql={(sql) => {
+          props.tabs.open(tab, { sql, title: 'Review monitored SQL' });
+        }}
+      />
+    );
+  if (tab.kind === 'processes')
+    return (
+      <ProcessesTab
+        key={tab.id}
+        profile={props.connection}
+        database={tab.database}
+        connected={status.state === 'connected'}
+        onRow={props.onRow}
+      />
+    );
+  return <></>;
 }

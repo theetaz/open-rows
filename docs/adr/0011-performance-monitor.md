@@ -198,6 +198,45 @@ The owner accepted the architecture on 2026-10-11. M25-09 validates the source/v
 Documentation only: the owner decisions and merged M2.5/M4.5 scope are recorded consistently in requirements, roadmap, parity, delivery tasks and ADR index. Round-1 source pointers and official vendor references below are retained. No implementation, application journey, database fixture or performance result is claimed; M25-09 and M45-09 validation remains pending.
 
 
+## Implemented (M25-03): workspace/history evidence
+
+Final M25-03 quality evidence: workspace Rust `-E 'not binary(ssh_container)'`
+passed 1,455 tests (198 skipped); Vitest passed 2,766 tests across 243 files.
+Formatting, Clippy/ESLint, TypeScript, licence/dependency scans, hygiene, UI
+tokens/colours, bundle budgets and IPC freshness all passed.
+
+
+[docs/28 §10](../28-database-monitoring-and-ai-harness.md#10-implemented-m25-03-monitor-workspace-and-local-history)
+records the PostgreSQL UI, default-off scalar history and development checks.
+The lazy tab transfers bounded Arrow pages to a disposable worker, serialises
+refreshes and rejects stale generations; source changes alone trigger reads.
+SVG charts preserve missing states and provide keyboard-readable table views.
+Existing Processes and plan visualisation supply guarded actions; collected SQL
+opens explicit review before plan-only Explain. No measured execution action
+or automatic setup SQL is added.
+
+LocalStore migration 0007 allowlists scalar names and finite values only.
+Profile/database keys isolate history; configuration atomically purges disabled
+profiles. Startup/read/write expiry enforces 24 hours; bounded keys and a
+conservative 2-KiB row charge enforce 50/100 MiB retained-data limits. Per-profile
+and global purge retain the explicit opt-in choice. At most 300 history buckets
+per metric keep gaps ahead of valid values in the same bucket. Shared SQLite
+free pages may remain after purge; these caps describe retained monitor data,
+not the complete application store file. Connection opt-ins are excluded from
+portable preferences and enabling never opens a collector.
+
+On Apple M4/24 GiB, native arm64 PostgreSQL 17.11 integration passed 79 tests.
+Source read plus guards p95: 9.824 ms; 1,000-row analysis p95: 4.361 ms;
+60-second process CPU: 0.09 s; RSS before/after: 17,856/16,768 KiB; retained live
+sample estimate: 332,773 bytes. Actual redacted Arrow samples displayed a
+blocker/waiter chain and positive throughput in the UI components.
+Eleven ten-minute charts (300 timestamps each) in Chromium measured render
+p95/max 8.3/9.3 ms and frame p95/max 16.7/16.8 ms, with no >50 ms dev-monitor
+reports. The initial production JavaScript is 305,167 gzip bytes against the
+350,000-byte budget. Native WKWebView, mac-low all-process footprint, matched-load server
+impact and the outstanding engine/source matrix remain M25-09 validation.
+
+
 ## Implemented (M25-01/02): evidence
 
 The PostgreSQL backend and typed IPC described in [docs/28 §9](../28-database-monitoring-and-ai-harness.md#9-implemented-m25-0102-monitoring-runtime-and-postgresql-backend)

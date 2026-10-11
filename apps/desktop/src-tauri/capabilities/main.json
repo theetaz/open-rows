@@ -58,6 +58,9 @@
     "allow-monitor-pause",
     "allow-monitor-capabilities",
     "allow-monitor-snapshot",
+    "allow-monitor-history",
+    "allow-monitor-history-configure",
+    "allow-monitor-history-purge",
     "allow-monitor-window",
     "allow-monitor-top-statements",
 
