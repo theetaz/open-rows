@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //! App lifecycle and guarded credential commands for the built-in MCP host.
-mod backend;
+pub(crate) mod backend;
 mod catalog;
 pub(crate) mod proposals;
 use crate::{
@@ -66,6 +66,9 @@ pub(crate) fn configure(app: &AppHandle) {
     });
 }
 pub(crate) fn pause(app: &AppHandle) {
+    if let Some(state) = app.try_state::<crate::assistant::AssistantState>() {
+        state.cancel(None);
+    }
     if let Some(state) = app.try_state::<McpState>() {
         state.host.tokens.cancel_all();
     }

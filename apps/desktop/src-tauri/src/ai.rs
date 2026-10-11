@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
-//! AI metadata verification; no generation/context command is exposed to IPC.
+//! Saved AI metadata, capability cache and keychain-backed native provider construction.
 #![expect(
     clippy::needless_pass_by_value,
     reason = "Tauri owns command arguments"
 )]
+mod generation;
 use crate::{
     connections::{IpcError, IpcErrorKind},
     settings::{self, SettingsFile},
 };
+pub(crate) use generation::provider as generation_provider;
 use openrows_ai::{
     AiControl, AiError, AiSettings, Cancellation, Health, HttpProvider, NetworkOptions, Provider,
     ProviderConfig, RequestOptions, Verification,
@@ -27,6 +29,7 @@ pub(crate) struct AiState {
     secrets: Arc<dyn SecretStore>,
     known: Mutex<AiSettings>,
     runs: Mutex<HashMap<String, Cancellation>>,
+    models: Mutex<HashMap<String, Verification>>,
 }
 impl Default for AiState {
     fn default() -> Self {
@@ -34,6 +37,7 @@ impl Default for AiState {
             control: AiControl::default(),
             secrets: Arc::new(CachingSecretStore::new(KeychainSecretStore::new())),
             runs: Mutex::default(),
+            models: Mutex::default(),
             known: Mutex::default(),
         }
     }
@@ -45,6 +49,10 @@ impl AiState {
         if *known != settings {
             self.control.set_enabled(false);
             known.clone_from(&settings);
+            self.models
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .clear();
         }
         self.control.set_enabled(settings.enabled);
     }
@@ -131,6 +139,7 @@ pub(crate) async fn ai_key_set(app: AppHandle, id: String, key: String) -> Resul
     }
     let state = app.state::<AiState>();
     state.cancel(&id);
+    app.state::<crate::assistant::AssistantState>().cancel(None);
     let secrets = Arc::clone(&state.secrets);
     secret_work(move || secrets.set(&SecretKey::ai_provider(&id), &key)).await
 }
@@ -143,6 +152,7 @@ pub(crate) async fn ai_key_delete(app: AppHandle, id: String) -> Result<(), IpcE
     config(&app, &id)?;
     let state = app.state::<AiState>();
     state.cancel(&id);
+    app.state::<crate::assistant::AssistantState>().cancel(None);
     let secrets = Arc::clone(&state.secrets);
     secret_work(move || secrets.delete(&SecretKey::ai_provider(&id))).await
 }
@@ -215,6 +225,13 @@ pub(crate) async fn ai_verify(app: AppHandle, id: String) -> Result<Verification
         ..RequestOptions::default()
     };
     let result = provider.verify(&options).await;
+    if let Ok(result) = &result {
+        state
+            .models
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .insert(config.id.clone(), result.clone());
+    }
     app.state::<crate::security::Security>()
         .admit("ai_verify")?;
     Ok(result.unwrap_or_else(|reason| Verification {

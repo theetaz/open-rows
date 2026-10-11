@@ -68,6 +68,7 @@ impl Redactor {
         self.field(&output)
     }
     pub(super) fn bundle(&mut self, mut bundle: ContextBundle) -> Result<ContextBundle, Refusal> {
+        self.assistant(&mut bundle)?;
         self.namespaces = bundle
             .schema
             .iter()
@@ -89,6 +90,44 @@ impl Redactor {
         }
         self.samples(&mut bundle)?;
         Ok(bundle)
+    }
+    fn assistant(&mut self, bundle: &mut ContextBundle) -> Result<(), Refusal> {
+        if let Some(assistant) = &mut bundle.assistant {
+            if assistant.question.is_empty()
+                || assistant.question.len() > 4096
+                || assistant.error_code.as_ref().is_some_and(|code| {
+                    code.len() > 5
+                        || code.is_empty()
+                        || !code.bytes().all(|byte| byte.is_ascii_alphanumeric())
+                })
+            {
+                return Err(Refusal::Invalid);
+            }
+            if assistant.history.len() > 3
+                || assistant
+                    .history
+                    .iter()
+                    .any(|turn| turn.question.len() > 4096 || turn.answer.len() > 65536)
+            {
+                return Err(Refusal::Invalid);
+            }
+            for turn in &mut assistant.history {
+                turn.question = self.question(&turn.question);
+                turn.answer = self.sql(&turn.answer);
+            }
+            if let Some(scope) = &mut assistant.scope {
+                scope.connection = self.identifier(&scope.connection);
+                scope.database = self.identifier(&scope.database);
+                scope.dialect = self.identifier(&scope.dialect);
+            }
+            assistant.question = self.question(&assistant.question);
+        }
+        Ok(())
+    }
+    fn question(&mut self, question: &str) -> String {
+        self.field(&redact_identifiers(question, self.dialect, |name| {
+            self.matches(name)
+        }))
     }
     fn samples(&mut self, bundle: &mut ContextBundle) -> Result<(), Refusal> {
         let (mut rows, mut cells) = (self.limits.rows, self.limits.cells);

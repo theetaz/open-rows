@@ -15,12 +15,20 @@ export const commands = {
 	aiVerify: (id: string) => typedError<Verification, IpcError>(__TAURI_INVOKE("ai_verify", { id })),
 	/**  Cancel this provider's current verification request without changing settings. */
 	aiCancel: (id: string) => typedError<null, IpcError>(__TAURI_INVOKE("ai_cancel", { id })),
+	/**  Stream one bounded investigation; SQL events have no execution path. */
+	assistantRun: (request: AssistantRequest_Deserialize, onEvent: Channel<AgentEvent>) => typedError<null, IpcError>(__TAURI_INVOKE("assistant_run", { request, onEvent })),
+	/**  Cancel only this tab's current turn; cancellation remains available while locked. */
+	assistantCancel: (id: string) => typedError<null, IpcError>(__TAURI_INVOKE("assistant_cancel", { id })),
+	/**  Exact offline assistant preview from the same producer used for generation. */
+	assistantPreview: (request: AssistantRequest_Deserialize) => typedError<ContextPreview, IpcError>(__TAURI_INVOKE("assistant_preview", { request })),
+	/**  Explain a proposal only through the same protected plan tool; never ANALYZE. */
+	assistantExplain: (request: AssistantRequest_Deserialize) => typedError<ContextPreview, IpcError>(__TAURI_INVOKE("assistant_explain", { request })),
 	/**  Read the device-local connection policy, default None even for imported profiles. */
 	aiSharingGet: (id: string) => typedError<SharingPolicy, IpcError>(__TAURI_INVOKE("ai_sharing_get", { id })),
 	/**  Persist explicit production consent and validate the allowlist against saved providers. */
 	aiSharingSave: (id: string, policy: SharingPolicy) => typedError<null, IpcError>(__TAURI_INVOKE("ai_sharing_save", { id, policy })),
 	/**  Offline exact preview through the same gate used by provider requests; no audit append. */
-	aiContextPreview: (id: string, provider: string, bundle: ContextBundle) => typedError<ContextPreview, IpcError>(__TAURI_INVOKE("ai_context_preview", { id, provider, bundle })),
+	aiContextPreview: (id: string, provider: string, bundle: ContextBundle_Deserialize) => typedError<ContextPreview, IpcError>(__TAURI_INVOKE("ai_context_preview", { id, provider, bundle })),
 	/**  Scrubbed, newest-first outbound metadata only (at most 1,000 entries). */
 	aiAuditList: () => typedError<AuditEntry[], IpcError>(__TAURI_INVOKE("ai_audit_list")),
 	/**  Explicit local audit purge; policies and provider keys remain separate. */
@@ -493,6 +501,25 @@ export const events = {
 export const DEFAULT_CUSTOM_ENV_COLOR = "#7c3aed" as const;
 
 /* Types */
+/**  Ordered, bounded UI events; plain text is never interpreted as HTML. */
+export type AgentEvent =
+/**  Streaming model text. */
+{ type: "text";
+/**  Incremental plain text. */
+delta: string } |
+/**  Visible call start/completion. */
+{ type: "trace";
+/**  Safe tool metadata. */
+trace: Trace } |
+/**  User-review-only SQL. */
+{ type: "proposal";
+/**  Literal SQL for user review. */
+sql: string } |
+/**  Successful completion and conservative usage. */
+{ type: "done";
+/**  Conservative total token upper bound. */
+tokens: number };
+
 /**  Aggregates retain counts, never raw values or activity identities. */
 export type Aggregate = {
 	/**  SQL normalised again at the outbound boundary. */
@@ -580,6 +607,80 @@ export type ArchiveEntryDto = {
 	id: number,
 	label: string,
 	data: boolean,
+};
+
+/**  User-authored questions, separate from untrusted database evidence. */
+export type AssistantContext = AssistantContext_Serialize | AssistantContext_Deserialize;
+
+/**  User-authored questions, separate from untrusted database evidence. */
+export type AssistantContext_Deserialize = {
+	/**  Bounded user question; previous user questions may supply follow-up context. */
+	question: string,
+	/**  Native-resolved tool scope; never a model-selected connection. */
+	scope?: AssistantScope | null,
+	/**  Previous user/assistant turns, bounded and re-redacted for every request. */
+	history?: AssistantHistory[],
+	/**  SQLSTATE/vendor code only; raw vendor messages never leave the app. */
+	errorCode: string | null,
+};
+
+/**  User-authored questions, separate from untrusted database evidence. */
+export type AssistantContext_Serialize = {
+	/**  Bounded user question; previous user questions may supply follow-up context. */
+	question: string,
+	/**  Native-resolved tool scope; never a model-selected connection. */
+	scope?: AssistantScope | null,
+	/**  Previous user/assistant turns, bounded and re-redacted for every request. */
+	history?: AssistantHistory[],
+	/**  SQLSTATE/vendor code only; raw vendor messages never leave the app. */
+	errorCode: string | null,
+};
+
+/**  A prior displayed turn; it remains untrusted data rather than tool instructions. */
+export type AssistantHistory = {
+	/**  Prior user question. */
+	question: string,
+	/**  Prior answer, with SQL literals and sensitive identifiers removed. */
+	answer: string,
+};
+
+/**  Selected tab context; native code resolves profile, permissions and provider secrets. */
+export type AssistantRequest = AssistantRequest_Serialize | AssistantRequest_Deserialize;
+
+/**  Selected tab context; native code resolves profile, permissions and provider secrets. */
+export type AssistantRequest_Deserialize = {
+	id: string,
+	provider: string,
+	model: string,
+	connection: string,
+	database: string,
+	schema: string,
+	question: AssistantContext_Deserialize,
+	query: string | null,
+	plan: Plan[],
+};
+
+/**  Selected tab context; native code resolves profile, permissions and provider secrets. */
+export type AssistantRequest_Serialize = {
+	id: string,
+	provider: string,
+	model: string,
+	connection: string,
+	database: string,
+	schema: string,
+	question: AssistantContext_Serialize,
+	query: string | null,
+	plan: Plan[],
+};
+
+/**  Native target identifiers are subject to the same sharing redactions. */
+export type AssistantScope = {
+	/**  Saved connection identifier for tool arguments. */
+	connection: string,
+	/**  Selected database identifier for tool arguments. */
+	database: string,
+	/**  Native SQL dialect for proposals. */
+	dialect: string,
 };
 
 /**  The saved connection after an attach or detach, and what live sessions said. */
@@ -736,6 +837,8 @@ export type CatalogSearchRequest = {
 
 /**  Payload categories; never user-provided audit labels. */
 export type Category =
+/**  Explicit user question and fixed database error code. */
+"assistant" |
 /**  Object definitions. */
 "schema" |
 /**  Literal-free statement text. */
@@ -860,7 +963,12 @@ export type ConstraintKindDto = "primary" | "unique" | "check" | "foreign" | "ex
 export type ContainerChangeDto = { kind: "createDatabase"; name: string; encoding: string | null; collation: string | null } | { kind: "renameDatabase"; name: string; to: string } | { kind: "dropDatabase"; name: string } | { kind: "createSchema"; name: string } | { kind: "renameSchema"; name: string; to: string } | { kind: "dropSchema"; name: string; cascade: boolean };
 
 /**  Requested context before authorisation; never accepted by provider requests. */
-export type ContextBundle = {
+export type ContextBundle = ContextBundle_Serialize | ContextBundle_Deserialize;
+
+/**  Requested context before authorisation; never accepted by provider requests. */
+export type ContextBundle_Deserialize = {
+	/**  Explicit user questions and fixed error codes for assistant requests. */
+	assistant?: AssistantContext_Deserialize | null,
 	/**  Selected object definitions. */
 	schema?: SchemaObject[],
 	/**  Statement to normalise, not a prompt or error message. */
@@ -871,6 +979,22 @@ export type ContextBundle = {
 	stats?: Aggregate[],
 	/**  Explicit selected row samples. */
 	samples?: Sample[],
+};
+
+/**  Requested context before authorisation; never accepted by provider requests. */
+export type ContextBundle_Serialize = {
+	/**  Explicit user questions and fixed error codes for assistant requests. */
+	assistant?: AssistantContext_Serialize | null,
+	/**  Selected object definitions. */
+	schema: SchemaObject[],
+	/**  Statement to normalise, not a prompt or error message. */
+	query: string | null,
+	/**  Typed plan nodes without arbitrary vendor properties. */
+	plan: Plan[],
+	/**  Numeric query aggregates only, no users/addresses/parameters. */
+	stats: Aggregate[],
+	/**  Explicit selected row samples. */
+	samples: Sample[],
 };
 
 /**  Exact provider context, display-only: it cannot construct a gated payload. */
@@ -3241,6 +3365,24 @@ export type TokenScope = {
 	connections: string[],
 	/**  Absolute Unix expiry in seconds (maximum 30 days). */
 	expires: number,
+};
+
+/**  A tool trace contains sizes and safe summaries, never raw result data. */
+export type Trace = {
+	/**  Sequential step number. */
+	step: number,
+	/**  Fixed tool name. */
+	tool: string,
+	/**  Argument field names and byte lengths, without values or SQL literals. */
+	arguments: string,
+	/**  Exact gated result size. */
+	bytes: number,
+	/**  Gate redaction/truncation disclosure. */
+	redacted: boolean,
+	/**  Elapsed milliseconds. */
+	durationMs: number,
+	/**  Running/succeeded/refused/cancelled. */
+	status: string,
 };
 
 export type TransactionDto = "single" | "batches";

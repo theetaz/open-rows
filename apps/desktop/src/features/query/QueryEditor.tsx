@@ -80,6 +80,7 @@ function handleOf(editor: SqlEditor): EditorHandle {
       });
     },
     insertSnippet: editor.insertSnippet,
+    insertText: editor.insertText,
     runStart: editor.runStart,
   };
 }

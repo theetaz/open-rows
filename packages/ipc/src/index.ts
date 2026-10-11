@@ -578,3 +578,20 @@ export type {
   CreatedToken,
   SqlProposal,
 } from './generated/bindings';
+
+export {
+  runAssistant,
+  cancelAssistant,
+  previewAssistant,
+  explainAssistant,
+} from './assistant';
+export type {
+  AgentEvent,
+  Trace,
+  AssistantRequest,
+  AssistantContext,
+  AssistantContext_Deserialize,
+  AssistantContext_Serialize,
+  AssistantHistory,
+  AssistantScope,
+} from './generated/bindings';

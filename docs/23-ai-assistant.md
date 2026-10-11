@@ -257,10 +257,10 @@ not attest where the server itself performs inference.
 Streaming SSE/NDJSON is incremental with bounded framing (256 KiB), a 16 MiB
 total response cap, bounded consumer channels, cancellation and a total 30 s
 default deadline covering backpressure. The crate's text-only generation API
-is tested but deliberately has **no app generation command or assistant UI**:
-DB context/policy, tools, structured generation, vision inputs, account/CLI
-bridges, MCP and assistant conversations remain separately scheduled tasks.
-Capability metadata describes the model, not implementation of those later flows.
+was tested without an app generation command at M45-01 delivery. Context policy,
+MCP tools and the query assistant are now implemented in §11–13. Structured
+generation, vision inputs and account/CLI bridges remain separate tasks.
+Capability metadata describes the model; each flow still requires an implementation.
 
 Verification: `cargo nextest run -p openrows-ai` runs loopback mock fixtures per
 adapter, including secret/permission/endpoint/timeout tests. UI fixtures:
@@ -325,7 +325,8 @@ level, refusals, bounds, audit/persistence and real loopback transport equality,
 revocation and rerouting. `cargo test -p openrows-ai --doc` checks the structural
 boundary. Vitest `features/settings/ai/Sharing.test.tsx` covers editing,
 production consent, preview/refusal and audit purge. Full assistant/MCP execution
-and real provider/database attachment journeys remain their scheduled tasks.
+is implemented in §12–13; real provider/database attachment journeys remain
+manual opt-in validation.
 
 ## 12. Implemented (M45-03/08): built-in MCP and execution safety
 
@@ -370,16 +371,39 @@ setting, without resuming cancelled reads.
 
 ### Shared execution rules
 
-`openrows_sql::validate_ai_read` and `openrows_mcp::protected_read` are reusable
-by the future assistant. They accept one SELECT (maximum 16 KiB), conservative
-constant projections or direct columns from one **schema-qualified base table**.
-Aliases, functions (including qualified/quoted names), custom operators, casts, variables, CTEs,
-subqueries, joins/unions, SELECT INTO, locking clauses, executable comments,
-DDL/DML and multiple statements are refused. Views/foreign/materialised views
-are refused by a live catalog check. Column/table provenance therefore survives
-into the sharing gate, so aliases cannot launder per-column redaction rules.
-For example `SELECT id, email FROM public.customers LIMIT 20` is eligible;
-`SELECT count(*) FROM public.customers` requires a human editor review.
+`openrows_sql::validate_ai_read` and `openrows_mcp::protected_read` are shared
+by MCP and the assistant. **Implemented (M45-05):** bounded AST admission permits
+one SELECT (16 KiB / 1,024 significant tokens / 32 parenthesis levels), qualified base tables, joins, derived/scalar/EXISTS/IN
+subqueries, non-recursive read-only CTEs, grouping/aggregates, windows, ORDER/LIMIT
+and UNION. Every referenced base table gets the existing live catalog checks.
+CTEs become visible only after their definition, preventing self/forward alias
+references from hiding an unqualified base relation.
+PostgreSQL unquoted relation/CTE names use native ASCII lowercase folding;
+quoted names keep their exact spelling. Non-ASCII PostgreSQL relation/CTE names
+must be quoted, avoiding dependence on the server's identifier locale/encoding.
+DDL/DML (including inside CTEs), SELECT INTO/OUTFILE, multiple statements, locks,
+executable comments, variables, casts, custom operators and table functions are
+refused. Direct column aliases remain refused to prevent redaction laundering.
+
+Functions use a positive list: count/sum/avg/min/max, abs/round/lower/upper/length,
+coalesce/nullif and standard ranking/offset/value windows. PostgreSQL permits
+unquoted pg_catalog qualification; other function qualification is refused.
+Nonaggregate window functions require OVER, preventing their names from resolving
+as user functions on older engines. MySQL/MariaDB count/sum/min/max require an
+adjacent opening parenthesis: [spaces can select a stored routine instead](https://dev.mysql.com/doc/refman/8.4/en/create-procedure.html).
+Backslashes are refused to avoid server-mode-dependent literal/identifier parsing;
+ordinary doubled-quote string literals remain admitted.
+Unknown user-defined functions are refused on **all** supported engines: a
+read-only transaction alone cannot prevent files, external I/O, delays or locks.
+This also refuses every pg_sleep/SLEEP call, dblink/lo_* functions, sequence
+advancement, advisory locks, set_config, GET_LOCK, LOAD_FILE and load_extension.
+Views/foreign/materialised views remain refused, including nested references.
+
+Direct, unaliased single-table columns keep their table/column provenance. For
+joins, CTEs, subqueries, expressions and unions, ambiguous sample provenance is
+conservatively marked sensitive and **every cell is redacted**. Such reads still
+provide bounded shape/evidence; schema and plan tools supply useful context.
+For example `SELECT count(*) FROM public.customers` is now eligible.
 
 PostgreSQL uses BEGIN READ ONLY, 5 s statement timeout, 1 s lock timeout and a
 fixed pg_catalog-only search path. Tables are held under an AccessShare lock
@@ -387,7 +411,9 @@ while validating and reading, closing metadata/DDL races. PostgreSQL tables with
 partitioning, generated expressions, custom types, arrays or custom collations
 are refused because these can invoke user code implicitly. MySQL uses a read-only transaction and 5 s
 MAX_EXECUTION_TIME; MariaDB uses a read-only transaction and 5 s
-max_statement_time. SQLite and libSQL file use PRAGMA query_only and BEGIN.
+max_statement_time. Both hold table metadata locks and refuse generated columns;
+[MariaDB permits UDFs in virtual generated expressions](https://mariadb.com/docs/server/reference/sql-statements/data-definition/create/generated-columns),
+so read-only mode alone is insufficient. SQLite and libSQL file use PRAGMA query_only and BEGIN.
 Every read uses a fresh connection with user startup SQL removed, then rollback
 and close. Cancellation drops/interrupts the driver connection without replay;
 cancelled shared catalog reads discard their metadata connection too.
@@ -456,3 +482,102 @@ plus an independently injected write proving engine protection. SQLite/libSQL
 file run normally; PG/MySQL/MariaDB are included in the sequential container
 suites. UI fixtures cover once-only tokens, transport settings, revoke/disconnect
 and editor-only proposals. No live third-party agent session is automated here.
+
+## 13. Implemented (M45-05): query assistant with visible tool trace
+
+Open the query tab's **Assistant** button or **Toggle query assistant** command.
+The lazy dock keeps a streaming conversation in memory per tab. Choose a saved
+provider and model (explicit Verify models discovers capabilities), select a
+schema, inspect **Context preview**, then ask or use Explain this query / Fix
+this error / Optimise from plan. Model output and SQL blocks remain plain text.
+Insert replaces the editor selection literally; Open creates an ordinary review
+tab; Explain uses the protected plan-only tool. None of these actions runs SQL.
+Fix includes only the last SQLSTATE/vendor code, never raw vendor error text.
+Optimise attaches current normalized plan-only evidence, never ANALYZE output.
+
+`openrows-ai::agent` is Tauri-free and uses the same `ToolExecutor` as MCP. Its
+static seven-tool catalogue cannot be modified by database content. Only complete
+protocol tool calls are executed; text and injected instructions remain data.
+Every tool step shows argument names/byte sizes, status, result bytes/redaction
+and duration. Native protocol adapters cover OpenAI Responses, Anthropic,
+OpenRouter, compatible/local compatible, Ollama and Gemini. Tool calling requires
+verified `Some(true)` metadata for the selected model; unknown/false capability
+uses one streaming single-shot request with the gated schema. Capability cache
+is session-only and is invalidated when provider settings change.
+
+Within a request, adapters retain bounded native continuation data in assistant
+roles: [OpenAI reasoning items](https://developers.openai.com/api/docs/guides/reasoning),
+[Gemini function-call signatures](https://ai.google.dev/gemini-api/docs/generate-content/thought-signatures)
+and [OpenRouter reasoning details](https://openrouter.ai/docs/guides/best-practices/reasoning-tokens).
+The 32 KiB per-round metadata cap and total token accounting include this data;
+it never enters the visible trace, persistent audit or later user requests.
+
+One request has at most 12 provider/tool steps, 65,536 conservative tokens
+(one token per byte, including retransmitted input), a 60-second total deadline,
+16-slot stream channels and a 4,096-token per-round output cap. Tool calls and
+initial schema preparation have five-second deadlines. Native runs cap at four;
+tab conversation cache caps at 32 tabs, four turns and 65,536 serialized characters
+across older turns, with a 32,768-character current answer and 16,384-character
+proposal budget. Closing/hiding/switching a tab cancels its active work. Connection
+close, app lock, AI-off and policy revocation cancel native work too; reopening
+retains completed tab text, and closing a tab deletes it. Nothing is persisted.
+
+The same context producer supplies preview and outbound generation: selected
+dialect/connection/database, question, up to three prior turns, literal-free query,
+selected schema and up to eight bounded definitions, plus optional typed plan.
+Prior answers are re-redacted on every follow-up. Existing per-field/category/
+byte/row/token bounds still apply; truncation is explicit in preview. Provider
+transport and every tool disclosure append content-free sharing audit entries
+before releasing context (provider/connection/level/bytes/hash/categories).
+Expanded model/usage/evidence/outcome audit metadata and monitoring artifacts
+remain M45-10/12. The audit never stores prompts, rows, proposed SQL or keys.
+
+AI-off, missing provider, None sharing, lock, disconnected database and production
+without opt-in show disabled reasons. Native gating repeats permissions before
+catalog access, key lookup and transport. Provider allowlists/local-only and
+normal ConfirmAll/AuthenticateAll safety modes are enforced by the shared backend.
+Schema collection uses the selected schema's first eight definitions; relevance
+ranking and a table multi-select are deferred. Remote libSQL, SQL Server,
+ClickHouse and hosted DuckDB protected reads/plans retain §12's explicit refusal.
+Live provider/model behavior and native visual interaction require owner smoke;
+the deterministic transport suite covers all seven protocol shapes.
+
+Evidence: `tests/agent.rs` covers round trips, limits, cancellation, fallback,
+malformed calls, prompt injection and follow-up redaction; `agent_transport.rs`
+asserts the assistant golden preview appears exactly in every native request and
+that audits contain no payload. Shared MCP engine fixtures exercise eight allowed
+constructs plus 39 refused attempts and independently inject a write below the
+validator. MySQL/MariaDB add five function-resolution/escape refusals, prove a
+spaced COUNT resolves to a harmless stored routine, and refuse generated tables.
+PostgreSQL adds three quoted/unquoted name-collision refusals and a mixed-case
+CTE fixture, so validation and execution resolve the same relation.
+UI regressions cover streaming, trace, proposal actions, quick actions,
+disabled states and cancel; editor regression preserves `$1`/`${literal}` text.
+
+Final verification passes: 1,484 workspace tests (SSH container binary excluded),
+81 PostgreSQL tests, 47 MySQL tests and 47 MariaDB tests. Earlier runs on this
+macOS host failed subprocess readiness checks; process samples showed delayed
+startup before test code executed. Focused reruns and the final complete suites
+passed without changing test timeouts, execution limits or unrelated helpers.
+
+### Opt-in live smoke
+
+Never run this in CI. Supply the selected real key privately through the normal
+environment (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENROUTER_API_KEY` or
+`GEMINI_API_KEY`); keyless Ollama needs its local service. Set an available model
+explicitly. This smoke sends **synthetic schema/query context**, obtains a bounded
+single-shot response, checks the content-free audit, and performs no database read.
+
+```sh
+OPENROWS_AI_LIVE=1 OPENROWS_AI_PROVIDER=openai OPENROWS_AI_MODEL=<available-model> \
+  cargo nextest run -p openrows-ai --locked --test assistant_live --run-ignored only
+```
+
+For the app smoke, enable Settings → AI, save a provider/key and default model,
+allow that provider under the demo connection's Data sharing policy (SchemaOnly
+for generation; SampleRows for read tools; telemetry consent for plans), connect
+the database and open the dock. Verify models, inspect exact preview, ask for a
+qualified join/aggregate, inspect tool traces if capability is explicitly supported,
+then Insert/Open/Explain and Cancel. Confirm SQL does not execute automatically.
+Turn AI off or lock the app during a request and confirm cancellation. No real
+key or live provider request was used in the deterministic test runs.

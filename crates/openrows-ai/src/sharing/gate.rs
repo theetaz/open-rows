@@ -47,6 +47,15 @@ pub struct GatedPayload {
     generation: u64,
 }
 impl GatedPayload {
+    /// Protect an entire investigation with this payload's saved identity and revisions.
+    /// # Errors
+    /// Refuses policy/global revocation or the operation's typed failure.
+    pub async fn guard<T>(
+        &self,
+        work: impl Future<Output = Result<T, AiError>>,
+    ) -> Result<T, AiError> {
+        self.outbound(&self.provider, work).await
+    }
     /// Display exactly the bytes that the provider transport will use.
     #[must_use]
     pub fn preview(&self) -> ContextPreview {

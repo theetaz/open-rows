@@ -13,9 +13,28 @@ pub(crate) async fn stream(
 ) -> Result<(), AiError> {
     let (path, body) = wire::request(provider.kind, request)?;
     request.context.record().await?;
+    exchange(provider, (path, body), sink, false).await?;
+    Ok(())
+}
+pub(crate) async fn turn(
+    provider: &HttpProvider,
+    request: &crate::agent::TurnRequest<'_>,
+    sink: mpsc::Sender<String>,
+) -> Result<crate::agent::Turn, AiError> {
+    let body = crate::agent_wire::request(provider.kind, request)?;
+    request.context.record().await?;
+    exchange(provider, body, sink, true).await
+}
+async fn exchange(
+    provider: &HttpProvider,
+    (path, body): (String, serde_json::Value),
+    sink: mpsc::Sender<String>,
+    tools: bool,
+) -> Result<crate::agent::Turn, AiError> {
     let mut exchange = provider.http.request(&path, Some(body)).await?;
     http::check_status(&mut exchange).await?;
     let mut decoder = Decoder::new(provider, sink);
+    decoder.calls = tools.then(crate::tool_stream::Calls::default);
     let mut total = 0usize;
     while let Some(frame) = exchange.response.body_mut().frame().await {
         let frame = frame.map_err(|_| AiError::Network)?;
@@ -28,11 +47,12 @@ pub(crate) async fn stream(
                 decoder.push(chunk).await?;
             }
             if decoder.done {
-                return Ok(());
+                return decoder.result();
             }
         }
     }
-    decoder.finish().await
+    decoder.finish().await?;
+    decoder.result()
 }
 struct Decoder<'a> {
     provider: &'a HttpProvider,
@@ -40,6 +60,7 @@ struct Decoder<'a> {
     pending: Vec<u8>,
     event: Vec<u8>,
     done: bool,
+    calls: Option<crate::tool_stream::Calls>,
 }
 impl<'a> Decoder<'a> {
     fn new(provider: &'a HttpProvider, sink: mpsc::Sender<String>) -> Self {
@@ -49,6 +70,7 @@ impl<'a> Decoder<'a> {
             pending: Vec::new(),
             event: Vec::new(),
             done: false,
+            calls: None,
         }
     }
     async fn push(&mut self, bytes: &[u8]) -> Result<(), AiError> {
@@ -105,6 +127,9 @@ impl<'a> Decoder<'a> {
             return Ok(());
         }
         let value = self.provider.http.json(bytes)?;
+        if let Some(calls) = &mut self.calls {
+            calls.frame(self.provider.kind, &value)?;
+        }
         let (deltas, done) = wire::delta(self.provider.kind, &value)?;
         for text in deltas {
             if !text.is_empty() {
@@ -128,5 +153,11 @@ impl<'a> Decoder<'a> {
         } else {
             Err(AiError::InvalidResponse)
         }
+    }
+    fn result(&mut self) -> Result<crate::agent::Turn, AiError> {
+        self.calls.take().map_or_else(
+            || Ok(crate::agent::Turn::default()),
+            crate::tool_stream::Calls::finish,
+        )
     }
 }

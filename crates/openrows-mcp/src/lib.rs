@@ -4,6 +4,7 @@
 mod connections;
 mod error;
 mod execution;
+mod executor;
 mod http;
 mod proxy;
 mod rows;
@@ -15,6 +16,7 @@ mod types;
 
 pub use error::McpError;
 pub use execution::{ReadEngine, protected_read};
+pub use executor::ToolExecutor;
 pub use http::{McpHost, RunningServer};
 pub use proxy::stdio_bridge;
 pub use tokens::TokenStore;

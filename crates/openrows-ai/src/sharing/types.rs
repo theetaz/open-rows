@@ -84,6 +84,8 @@ impl Default for Limits {
 #[cfg_attr(feature = "ipc-types", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub enum Category {
+    /// Explicit user question and fixed database error code.
+    Assistant,
     /// Object definitions.
     Schema,
     /// Literal-free statement text.

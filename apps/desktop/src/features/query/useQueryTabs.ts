@@ -26,6 +26,7 @@ import { useEditorSettings } from './editorSettings';
 import { generalSettings } from '../settings/general';
 import { useTabPersistence } from './useTabPersistence';
 import { useFileChanges } from './useFileChanges';
+import { clearConversation } from '../assistant/conversation';
 
 /**
  * Open a query tab in a connection and database scope, e.g. from the schema
@@ -101,12 +102,14 @@ export function useQueryTabs(): QueryTabs {
     closeMany: (ids, options) => {
       if (!options?.discard && bulkGuard.current && !bulkGuard.current(ids))
         return;
+      for (const id of ids) clearConversation(id);
       setState((current) =>
         ids.reduce((next, id) => closeTab(next, id), current),
       );
     },
     close: (id, options) => {
       if (!options?.discard && guard.current && !guard.current(id)) return;
+      clearConversation(id);
       setState((current) => closeTab(current, id));
     },
     select: (id) => {

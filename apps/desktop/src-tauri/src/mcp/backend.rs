@@ -15,7 +15,7 @@ use openrows_mcp::{McpError, ReadEngine, ToolBackend, ToolContext, ToolInput, pr
 use openrows_store::profile::{ConnectionProfile, Driver, EnvKind};
 use tauri::{AppHandle, Manager};
 
-pub(super) struct Backend(pub(super) AppHandle);
+pub(crate) struct Backend(pub(crate) AppHandle);
 impl Backend {
     fn profile(&self, input: &ToolInput) -> Result<ConnectionProfile, McpError> {
         self.0

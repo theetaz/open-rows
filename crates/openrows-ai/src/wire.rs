@@ -67,9 +67,12 @@ pub(crate) fn delta(kind: ProviderKind, value: &Value) -> Result<(Vec<String>, b
             value.pointer("/delta/text"),
             value["type"] == "message_stop",
         ),
-        ProviderKind::OpenRouter | ProviderKind::Compatible | ProviderKind::LocalCompatible => {
-            (value.pointer("/choices/0/delta/content"), false)
-        }
+        ProviderKind::OpenRouter | ProviderKind::Compatible | ProviderKind::LocalCompatible => (
+            value
+                .pointer("/choices/0/delta/content")
+                .filter(|text| !text.is_null()),
+            false,
+        ),
         ProviderKind::Ollama => (value.pointer("/message/content"), value["done"] == true),
         ProviderKind::Gemini => return gemini_delta(value),
     };

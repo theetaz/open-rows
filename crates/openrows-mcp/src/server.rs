@@ -3,9 +3,7 @@
 use crate::{McpError, ToolBackend, ToolInput, tokens::Grant, tools};
 use openrows_ai::{
     AiControl,
-    sharing::{
-        ContextBundle, GateRequest, GatedPayload, Plan, PlanOperation, Sample, SharingStore,
-    },
+    sharing::{ContextBundle, GatedPayload, SharingStore},
 };
 use rmcp::{
     RoleServer, ServerHandler,
@@ -95,104 +93,39 @@ impl ToolServer {
         if tool == "list_connections" {
             return self.connections().await;
         }
-        let id = input.connection.as_deref().ok_or(McpError::Invalid)?;
-        if !self
-            .grant
-            .info
-            .scope
-            .connections
-            .iter()
-            .any(|connection| connection == id)
-        {
-            return Err(McpError::Auth);
+        let call = openrows_ai::agent::ToolCall {
+            id: "mcp".into(),
+            name: tool.into(),
+            arguments: serde_json::to_value(input).map_err(|_| McpError::Invalid)?,
+        };
+        Ok(self
+            .executor()
+            .execute(&call)
+            .await?
+            .context
+            .preview()
+            .payload)
+    }
+    fn executor(&self) -> crate::ToolExecutor {
+        crate::ToolExecutor {
+            backend: self.backend.clone(),
+            sharing: self.sharing.clone(),
+            control: self.control.clone(),
+            provider: self.grant.info.scope.provider.clone(),
+            connections: self.grant.info.scope.connections.clone(),
+            database: None,
+            external: true,
         }
-        let context = self
-            .backend
-            .context(&self.grant.info.scope.provider, &input)?;
-        let admitted = self.gate(&input, minimum(tool))?;
-        if tool == "propose_sql" {
-            let gated = self.gate(
-                &input,
-                ContextBundle {
-                    query: input.sql.clone(),
-                    ..ContextBundle::default()
-                },
-            )?;
-            return gated
-                .outbound(&context.provider, async {
-                    gated.record().await?;
-                    self.backend
-                        .propose(&input)
-                        .map_err(|_| openrows_ai::AiError::InvalidResponse)?;
-                    Ok(gated.preview().payload)
-                })
-                .await
-                .map_err(|_| McpError::Sharing);
-        }
-        let work = self.backend.read(tool, &input);
-        let bundle = admitted
-            .outbound(&context.provider, async { Ok(work.await) })
-            .await
-            .map_err(|_| McpError::Cancelled)??;
-        let gated = self.gate(&input, bundle)?;
-        gated
-            .outbound(&context.provider, async {
-                gated.record().await?;
-                Ok(gated.preview().payload)
-            })
-            .await
-            .map_err(|_| McpError::Sharing)
     }
     pub(crate) fn gate(
         &self,
         input: &ToolInput,
         bundle: ContextBundle,
     ) -> Result<GatedPayload, McpError> {
-        let id = input.connection.as_deref().ok_or(McpError::Invalid)?;
-        let context = self
-            .backend
-            .context(&self.grant.info.scope.provider, input)?;
-        // A loopback transport does not attest where an external model runs.
-        if self
-            .sharing
-            .policy(id)
-            .map_err(|_| McpError::Sharing)?
-            .local_only
-        {
-            return Err(McpError::Sharing);
-        }
-        self.sharing
-            .gate(GateRequest {
-                connection: id,
-                production: context.production,
-                provider: &context.provider,
-                control: &self.control,
-                dialect: context.dialect,
-                bundle,
-            })
-            .map_err(|_| McpError::Sharing)
+        self.executor().gate(input, bundle)
     }
 }
-fn minimum(tool: &str) -> ContextBundle {
-    let mut bundle = ContextBundle::default();
-    if tool == "run_read_query" {
-        bundle.samples.push(Sample {
-            table: "result".into(),
-            columns: vec!["value".into()],
-            rows: vec![],
-        });
-    }
-    if tool == "explain_query" {
-        bundle.plan.push(Plan {
-            operation: PlanOperation::Other,
-            parent: None,
-            relation: String::new(),
-            predicate: String::new(),
-            estimated_rows: 0,
-        });
-    }
-    bundle
-}
+
 fn protocol_error(error: McpError) -> rmcp::ErrorData {
     rmcp::ErrorData::invalid_request(error.to_string(), None)
 }

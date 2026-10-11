@@ -12,6 +12,8 @@ use openrows_driver_api::{
 };
 use openrows_mcp::{ReadEngine, protected_read};
 use std::path::Path;
+#[path = "constructs.rs"]
+mod constructs;
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 const ATTACKS: &[&str] = &[
     "DELETE FROM ai_fixture",
@@ -30,6 +32,29 @@ const ATTACKS: &[&str] = &[
     "SELECT * FROM main.ai_view",
     "SELECT id FROM main.ai_fixture WHERE id !! 1",
     "SELECT id FROM main.ai_fixture WHERE id ** 1",
+    "SELECT setval('x',1)",
+    "SELECT pg_sleep(0)",
+    "SELECT SLEEP(0)",
+    "SELECT GET_LOCK('x',0)",
+    "SELECT LOAD_FILE('x')",
+    "SELECT dblink('x','x')",
+    "SELECT lo_import('x')",
+    "SELECT pg_advisory_lock(1)",
+    "SELECT set_config('x','x',false)",
+    "SELECT * FROM main.ai_fixture INTO OUTFILE 'x'",
+    "ATTACH DATABASE 'x' AS other",
+    "SELECT 1 UNION SELECT nextval('x')",
+    "WITH x AS (SELECT unknown_func()) SELECT * FROM x",
+    "SELECT count((SELECT unknown_func())) FROM main.ai_fixture",
+    "SELECT row_number() OVER (ORDER BY pg_sleep(0)) FROM main.ai_fixture",
+    "SELECT f.id FROM main.ai_fixture AS f JOIN main.ai_fixture AS g ON unknown_func()=1",
+    "WITH x AS (SELECT * FROM main.ai_view) SELECT * FROM x",
+    "SELECT f.id FROM main.ai_fixture AS f JOIN main.ai_view AS v ON f.id=v.id",
+    "SELECT id FROM main.ai_fixture UNION SELECT id FROM main.ai_view",
+    "WITH ai_view AS (SELECT * FROM ai_view) SELECT * FROM ai_view",
+    "WITH x AS (SELECT * FROM ai_view), ai_view AS (SELECT * FROM main.ai_fixture) SELECT * FROM x",
+    "SELECT row_number()",
+    "SELECT 'a\\b'",
 ];
 pub async fn exercise(
     driver: &dyn Driver,
@@ -43,6 +68,11 @@ pub async fn exercise(
     initialize(admin.as_mut()).await?;
     verify_attacks(driver, request, (engine, schema), admin.as_mut()).await?;
     verify_engine_mode(driver, request, engine, admin.as_mut()).await?;
+    constructs::verify_constructs(driver, request, engine, schema).await?;
+    constructs::verify_generated(driver, request, (engine, schema), admin.as_mut()).await?;
+    constructs::verify_postgres_case(driver, request, (engine, schema), admin.as_mut()).await?;
+    constructs::verify_function_resolution(driver, request, (engine, schema), admin.as_mut())
+        .await?;
     let connection = driver
         .connect(request, &mut ConnectTrace::default())
         .await?;

@@ -15,6 +15,8 @@ export type EditorHandle = {
   replace: (text: string) => void;
   /** Insert a snippet template over the selection. */
   insertSnippet: (body: string) => void;
+  /** Insert a proposal literally; model SQL is never a snippet template. */
+  insertText?: (text: string) => void;
   /** Where the text Run Current executes starts (selection or statement). */
   runStart: () => number;
 };

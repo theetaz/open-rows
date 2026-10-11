@@ -16,6 +16,7 @@ function tabAction(input: {
   exportResults: () => void;
   insertSnippet: () => void;
   explain: (analyze: boolean) => void;
+  assistant: () => void;
 }): (id: TabCommand) => void {
   const commands: Record<TabCommand, () => void> = {
     'run-current': () => {
@@ -39,6 +40,7 @@ function tabAction(input: {
       input.format('uglify');
     },
     'insert-snippet': input.insertSnippet,
+    assistant: input.assistant,
     save: () => {
       input.file('save');
     },
@@ -79,6 +81,7 @@ export function useTabAction(input: {
   tabId: string;
   /** Insert Snippet…: open the snippet picker. */
   onSnippet: () => void;
+  onAssistant?: () => void;
   /** Explain (or Explain Analyze) the statement at the cursor or the selection. */
   onExplain: (analyze: boolean) => void;
 }): [
@@ -92,6 +95,7 @@ export function useTabAction(input: {
     format: input.format,
     file: input.files.act,
     insertSnippet: input.onSnippet,
+    assistant: input.onAssistant ?? (() => undefined),
     explain: input.onExplain,
     exportResults: () => {
       exportShown?.();
