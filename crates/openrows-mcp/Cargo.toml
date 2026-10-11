@@ -1,0 +1,44 @@
+[package]
+name = "openrows-mcp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+ipc-types = ["dep:specta"]
+
+[dependencies]
+openrows-ai = { path = "../openrows-ai" }
+openrows-driver-api = { path = "../openrows-driver-api" }
+openrows-sql = { path = "../openrows-sql" }
+arrow-array = "60"
+arrow-schema = "60"
+openrows-explain = { path = "../openrows-explain" }
+arrow-cast = "60"
+rmcp = { version = "=3.4.0", default-features = false, features = ["server", "client", "transport-io", "transport-streamable-http-server"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { version = "1.53", features = ["macros", "rt", "net", "sync", "time", "io-std", "io-util", "process"] }
+tokio-util = "0.7"
+hyper = { version = "1.10", features = ["server", "client", "http1"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+http-body-util = "0.1"
+bytes = "1"
+tower-service = "0.3"
+sha2 = "0.10"
+rand = "0.10"
+rusqlite = { version = "0.40", features = ["bundled"] }
+specta = { version = "=2.0.0-rc.25", optional = true, features = ["derive"] }
+
+[dev-dependencies]
+tempfile = "3.27"
+openrows-driver-sqlite = { path = "../openrows-driver-sqlite" }
+openrows-net = { path = "../openrows-net" }
+openrows-driver-postgres = { path = "../openrows-driver-postgres" }
+openrows-driver-mysql = { path = "../openrows-driver-mysql" }

@@ -99,3 +99,22 @@ UI editing/consent/preview/purge tests in `features/settings/ai/Sharing.test.tsx
 [23 §11](../23-ai-assistant.md#11-implemented-m45-02-connection-context-sharing)
 records exact caps and local storage. MCP execution, assistant conversations,
 account bridges and end-to-end M45-09 validation remain separately scheduled.
+
+## Evidence: Implemented (M45-03/08)
+
+The Tauri-free `openrows-mcp` crate uses the official Apache-2.0-licensed rmcp 3.4.0
+for stable MCP 2026-07-28 and legacy negotiation. A spawned stdio CLI forwards
+to the running app's explicit loopback port with a scoped bearer; direct HTTP
+is independently disabled by default. Hash-only, expiring provider/connection
+tokens support revoke/disconnect and immediate cancellation. The existing
+sharing gate/redaction/audit is mandatory before releasing database data.
+A shared conservative SELECT validator plus disposable engine read protection
+prevents writes; proposals have only an editor-queue path. Native lock/off/close
+boundaries, protocol/UI tests, persistent state checks for PostgreSQL,
+MySQL/MariaDB, SQLite/libSQL file and injection fixtures are implemented.
+
+[23 §12](../23-ai-assistant.md#12-implemented-m45-0308-built-in-mcp-and-execution-safety)
+records limits and deliberate fail-closed gaps: no remote listener/write scope,
+no external local-only attestation, restricted SELECT syntax and unsupported
+remote libSQL/SQL Server/ClickHouse/DuckDB execution. The in-app assistant,
+CLI-as-provider adapters and MCP client remain their own delivery tasks.

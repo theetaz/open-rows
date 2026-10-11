@@ -69,3 +69,32 @@ async fn metadata_host_loss_invalidates_just_that_slot() {
     assert!(b.lock().await.is_some());
     assert!(Arc::ptr_eq(&a, &sessions.slot(("a".into(), "main".into()))));
 }
+
+#[tokio::test]
+async fn cancelled_metadata_read_discards_only_its_connection() {
+    let sessions = MetadataSessions::default();
+    let a = sessions.slot(("a".into(), "main".into()));
+    let b = sessions.slot(("b".into(), "main".into()));
+    *a.lock().await = Some(held(&a, Arc::new(tokio::sync::Notify::new())));
+    *b.lock().await = Some(held(&b, Arc::new(tokio::sync::Notify::new())));
+    let entered = Arc::new(tokio::sync::Notify::new());
+    let notified = entered.notified();
+    let producer = entered.clone();
+    let mut read = Box::pin(sessions.read(
+        ("a", "main"),
+        || async { Err(IpcError::new(IpcErrorKind::Internal, "not used")) },
+        move |_: &mut dyn Connection| {
+            Box::pin(async move {
+                producer.notify_one();
+                std::future::pending::<Result<(), DriverError>>().await
+            })
+        },
+    ));
+    tokio::select! {
+        () = notified => {},
+        result = &mut read => panic!("read unexpectedly completed: {result:?}"),
+    }
+    drop(read);
+    assert!(a.lock().await.is_none());
+    assert!(b.lock().await.is_some());
+}

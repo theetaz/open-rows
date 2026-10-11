@@ -2,6 +2,7 @@
 members = [
     "crates/openrows-types",
     "crates/openrows-ai",
+    "crates/openrows-mcp",
     "crates/openrows-core",
     "crates/openrows-monitor",
     "crates/openrows-results",

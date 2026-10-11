@@ -17,7 +17,8 @@ impl Cancellation {
     pub fn cancel(&self) {
         self.0.send_replace(true);
     }
-    async fn cancelled(&self) {
+    /// Wait until this operation is cancelled.
+    pub async fn cancelled(&self) {
         let mut state = self.0.subscribe();
         let _ = state.wait_for(|cancelled| *cancelled).await;
     }
@@ -59,7 +60,10 @@ impl AiControl {
             .wait_for(|value| !value.0 || value.1 != generation)
             .await;
     }
-    pub(crate) async fn run<T>(
+    /// Run bounded work while global AI permission remains valid.
+    /// # Errors
+    /// Permission revocation, cancellation, timeout or operation failure.
+    pub async fn run<T>(
         &self,
         options: &RequestOptions,
         work: impl Future<Output = Result<T, AiError>>,

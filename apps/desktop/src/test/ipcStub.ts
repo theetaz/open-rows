@@ -282,6 +282,7 @@ export function ipcStub(
   profiles: readonly ProfileDto[] = sampleProfiles,
 ): Record<string, unknown> {
   return {
+    ...mcpStub(),
     ...appParityStub(),
 
     ...connectionTransferStub(),
@@ -393,5 +394,12 @@ function appParityStub(): Record<string, unknown> {
     takeNativeFiles: vi.fn().mockResolvedValue([]),
     onNativeFilesReady: vi.fn().mockResolvedValue(() => undefined),
     revealDatabase: vi.fn().mockResolvedValue(undefined),
+  };
+}
+
+function mcpStub(): Record<string, unknown> {
+  return {
+    onMcpProposals: vi.fn().mockResolvedValue(() => undefined),
+    takeMcpProposals: vi.fn().mockResolvedValue([]),
   };
 }

@@ -98,6 +98,7 @@ pub(crate) fn security_lock(
     app.state::<crate::connections::Connections>()
         .monitors
         .stop_all();
+    crate::mcp::pause(&app);
     let _ = app.emit("security-changed", true);
     Ok(())
 }
@@ -124,6 +125,10 @@ pub(crate) async fn security_unlock(
         .lock()
         .unwrap_or_else(PoisonError::into_inner)
         .unlock(generation, state.started.elapsed())?;
+    let value =
+        crate::settings::current(&app.state::<crate::settings::SettingsFile>()).unwrap_or_default();
+    app.state::<crate::ai::AiState>().configure(&value);
+    crate::mcp::configure(&app);
     let _ = app.emit("security-changed", false);
     Ok(())
 }
@@ -260,6 +265,7 @@ pub(crate) fn fallback_import(batch: &mut openrows_store::profile::exchange::Imp
 fn announce_lock(app: &tauri::AppHandle, locked: bool) {
     if locked {
         app.state::<crate::ai::AiState>().revoke();
+        crate::mcp::pause(app);
     }
     let _ = app.emit("security-changed", locked);
 }

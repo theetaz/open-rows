@@ -69,5 +69,5 @@ echo "PostgreSQL ${version} ($(docker exec "$name" postgres --version)) on 127.0
 OPENROWS_TEST_PG_PORT="$port" OPENROWS_TEST_PG_PASSWORD="$password" OPENROWS_TEST_PG_CONTAINER="$name" \
     OPENROWS_TEST_PG_TLS_DIR="$tls_dir" \
     cargo nextest run -p openrows-driver-postgres -p openrows-core -p openrows-schema \
-    -p openrows-driver-conformance -p openrows-import -p openrows-dump --locked --test postgres \
+    -p openrows-mcp -p openrows-driver-conformance -p openrows-import -p openrows-dump --locked --test postgres \
     --run-ignored only --no-capture

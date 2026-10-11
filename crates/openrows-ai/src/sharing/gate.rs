@@ -55,7 +55,10 @@ impl GatedPayload {
     pub(crate) fn text(&self) -> &str {
         &self.preview.payload
     }
-    pub(crate) async fn outbound<T>(
+    /// Recheck sharing and permission revisions throughout an outbound operation.
+    /// # Errors
+    /// Revocation or the operation failure.
+    pub async fn outbound<T>(
         &self,
         provider: &ProviderConfig,
         work: impl Future<Output = Result<T, AiError>>,
@@ -74,7 +77,10 @@ impl GatedPayload {
             result = work => result,
         }
     }
-    pub(crate) async fn record(&self) -> Result<(), AiError> {
+    /// Append mandatory metadata before releasing a tool result.
+    /// # Errors
+    /// Audit storage failures refuse the outbound response.
+    pub async fn record(&self) -> Result<(), AiError> {
         let time = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map_err(|_| AiError::InvalidConfig)?

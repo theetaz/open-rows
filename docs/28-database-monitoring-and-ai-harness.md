@@ -289,8 +289,27 @@ Golden/refusal/compile-fail, transport/audit/persistence and UI tests are linked
 in [23 §11](23-ai-assistant.md#11-implemented-m45-02-connection-context-sharing).
 The settings preview accepts selected SQL/definitions offline; later tool and
 assistant producers supply typed plans/statistics/samples through the same API.
-M45-03/05/08/10 still own MCP, conversations, read execution and investigations;
+M45-05/10 still own conversations and monitoring investigations;
 no live database collection, assistant UI or generation command is added here.
+
+### Implemented (M45-03/08)
+
+The built-in MCP host now exposes seven bounded catalog/read/plan/proposal
+tools through stdio and optional loopback HTTP; tokens are provider/connection
+scoped, expiry checked and stored only as hashes. Every disclosure uses the
+M45-02 gate and content-free audit before release. Read tools share a conservative
+SQL validator and disposable engine-protected execution boundary; proposed
+writes only open ordinary editor tabs. Lock, AI-off, token/sharing revocation
+and connection close cancel active work. Catalog cancellation discards the
+metadata connection. Static tool instructions keep hostile database data out
+of the control plane. PostgreSQL, MySQL/MariaDB, SQLite and libSQL file fixtures
+verify unchanged state after smuggling and an injected engine-level write.
+
+[23 §12](23-ai-assistant.md#12-implemented-m45-0308-built-in-mcp-and-execution-safety)
+records exact bounds, conservative SQL/engine restrictions and Claude Code/Codex
+setup. Conversations, full tool-call traces, monitoring collectors/scheduling,
+boards/reports and assistant evidence artifacts remain M45-05/10; this boundary
+is ready for those producers without adding an autonomous loop.
 
 ## 8. Acceptance and verification
 

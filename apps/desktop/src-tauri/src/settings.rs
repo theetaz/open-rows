@@ -108,6 +108,7 @@ pub(crate) fn apply_saved(app: &tauri::App) {
 /// outside the app).
 pub(crate) fn apply(connections: &Connections, local: &LocalStore, text: &str) {
     if let Ok(value) = serde_json::from_str::<Value>(text) {
+        crate::mcp::configure(&connections.app);
         connections.sessions.set_keepalive(keepalive(&value));
         connections.limits.apply(&value);
         connections.helper_settings.apply(&value);
@@ -166,6 +167,7 @@ fn envelope(text: &str) -> Result<Value, IpcError> {
         return Err(IpcError::invalid("settings.json must hold a JSON object"));
     };
     crate::ai::validate_settings(&value)?;
+    crate::mcp::parse(&value)?;
     match object.get("openrows").and_then(Value::as_u64) {
         Some(FORMAT) => Ok(value),
         Some(_) => Err(IpcError::new(

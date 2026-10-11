@@ -105,6 +105,7 @@ pub(crate) async fn connection_close(
 ) -> Result<(), IpcError> {
     let id = self::profile_id(&profile_id)?;
     state.monitors.stop_profile(&profile_id);
+    crate::mcp::pause(&state.app);
     state.credential_runs.cancel(id);
     state.duckdb.forget(id).await;
     for session in state.owners.unbind_profile(id) {

@@ -100,20 +100,28 @@ falls back to the other.
 
 ### 3.1 App as MCP server (`openrows-mcp`)
 
-Exposes a curated tool set over MCP (stdio for spawned CLIs; optional local Streamable HTTP endpoint bound to `127.0.0.1` with a per-session token for external agents such as Claude Desktop or Cursor IDE).
+**Implemented (M45-03/08).** Seven fixed tools use the existing sharing gate,
+metadata paths and SafetyPlan. Stdio clients spawn the Tauri-free `openrows-mcp`
+CLI, which forwards to the authenticated running app. Direct Streamable HTTP
+is separately opt-in. Both settings default off; the listener binds only to
+`127.0.0.1`. See [§12](#12-implemented-m45-0308-built-in-mcp-and-execution-safety)
+for setup, bounds and engine restrictions.
 
 | Tool | Behaviour | Policy gate |
 | --- | --- | --- |
-| `list_connections` | Names, engines, env tags of connections the user exposed to AI | Only connections with AI enabled |
-| `list_objects` / `describe_object` | Schema metadata from the schema cache | `schema` level or above |
-| `sample_rows` | Up to N rows (default 20) with column redaction rules | `samples` level or above |
-| `run_read_query` | Executes a statement classified as read-only, inside a read-only transaction where supported, with row/time limits | `results` level; never on write-classified SQL |
-| `explain_query` | `EXPLAIN` (never `ANALYZE` on writes) | `schema` level |
-| `propose_sql` | Returns SQL to the UI as a proposal card; **does not execute** | Always allowed |
-| `open_tab` | Opens a query tab with given SQL for the user | Always allowed |
-| `api_send_request` | (API client) send a saved request in a chosen environment | Opt-in per collection |
+| `list_connections` | Scoped, currently open connection IDs | SchemaOnly or above; provider allowlist and production consent |
+| `list_schemas` | Schema names from dedicated metadata sessions | SchemaOnly or above |
+| `list_objects` | Names and object kinds, at most 128 | SchemaOnly or above |
+| `describe_object` | Up to 200 column names and types; no comments | SchemaOnly or above |
+| `run_read_query` | Conservative base-table SELECT in a disposable protected session | SampleRows; normal SafetyPlan must permit execution without confirmation/authentication |
+| `explain_query` | Normalised plan only, never ANALYZE | SchemaAndStats and separate telemetry consent |
+| `propose_sql` | Open an ordinary editor tab; never submit SQL for execution | SchemaOnly or above; scoped open connection |
 
-Writes are impossible through MCP by design: there is no write tool. The model can only *propose*; a human runs it through the normal safe-mode path.
+Tool descriptions are static. Database content remains JSON data; it cannot
+supply instructions or register tools. Proposed writes require the user's
+ordinary editor execution path, including ReadOnly, confirmation and OS auth.
+The separate `sample_rows`, `open_tab` and API request tools are not implemented;
+bounded samples and editor proposals cover this task's read/propose contract.
 
 ### 3.2 App as MCP client
 
@@ -318,3 +326,133 @@ revocation and rerouting. `cargo test -p openrows-ai --doc` checks the structura
 boundary. Vitest `features/settings/ai/Sharing.test.tsx` covers editing,
 production consent, preview/refusal and audit purge. Full assistant/MCP execution
 and real provider/database attachment journeys remain their scheduled tasks.
+
+## 12. Implemented (M45-03/08): built-in MCP and execution safety
+
+### Transport and credentials
+
+`crates/openrows-mcp` has no Tauri dependency. The app owns the listener and
+resolves saved profiles, provider identities, sharing policies and current open
+databases. The CLI requires an explicit `--port`; it never discovers app files,
+credentials or databases. Its token comes only from `OPENROWS_MCP_TOKEN`.
+`/bridge` is the authenticated local channel for stdio; `/mcp` is available only
+when direct HTTP is enabled. All browser Origin headers are refused, requests
+are capped at 32 KiB, sockets at 16, concurrent requests per token at four, and
+tool calls at five seconds. Native HTTP clients use JSON responses with no
+persistent MCP sessions. The official Apache-2.0-licensed `rmcp` **3.4.0** implements
+[current stable MCP 2026-07-28](https://modelcontextprotocol.io/specification/2026-07-28)
+and legacy initialize negotiation (tested with 2025-11-25). Using the official
+SDK keeps transport/framing/schema behavior out of a handwritten protocol.
+
+Settings → AI → MCP is lazy. Enable AI and the server, choose a random port
+(default 0) or a fixed free port, then create a token for one saved provider,
+an explicit connection set and expiry. At most 32 tokens and 32 connections
+per token are supported; expiry is at most 30 days (UI: hour/day/week).
+A 256-bit random bearer value is shown once. Only its SHA-256 hash, random ID,
+provider/connection scope and expiry are stored in private `mcp-tokens.sqlite`
+(mode 0600 on Unix), separately from settings/exports. There is no reveal API.
+Use separate tokens for separate agents. Connected clients are logical
+credential identities; disconnect cancels current requests but allows a later
+reconnect. Revoke also deletes the credential. The shared Data sharing audit
+viewer records successful disclosures with provider, connection, categories,
+bytes and payload hash; no token, SQL, rows, comments or vendor error text.
+
+Bearer holders are trusted to use the provider selected when creating the
+token; the server cannot attest an external agent's model location. Consequently
+**Local only policies are refused for external MCP**, even for a loopback client.
+Normal allowlists and explicit production sharing consent remain mandatory.
+ConfirmAll/AuthenticateAll connections refuse every database tool until reviewed
+through the ordinary human path; MCP never prompts for or accepts OS-auth tokens.
+AI-off, app lock, transport stop and app exit cancel admitted work; closing any
+connection cancels current MCP work conservatively. Subsequent calls require a
+currently open saved connection/database. Unlock restores the saved enable
+setting, without resuming cancelled reads.
+
+### Shared execution rules
+
+`openrows_sql::validate_ai_read` and `openrows_mcp::protected_read` are reusable
+by the future assistant. They accept one SELECT (maximum 16 KiB), conservative
+constant projections or direct columns from one **schema-qualified base table**.
+Aliases, functions (including qualified/quoted names), custom operators, casts, variables, CTEs,
+subqueries, joins/unions, SELECT INTO, locking clauses, executable comments,
+DDL/DML and multiple statements are refused. Views/foreign/materialised views
+are refused by a live catalog check. Column/table provenance therefore survives
+into the sharing gate, so aliases cannot launder per-column redaction rules.
+For example `SELECT id, email FROM public.customers LIMIT 20` is eligible;
+`SELECT count(*) FROM public.customers` requires a human editor review.
+
+PostgreSQL uses BEGIN READ ONLY, 5 s statement timeout, 1 s lock timeout and a
+fixed pg_catalog-only search path. Tables are held under an AccessShare lock
+while validating and reading, closing metadata/DDL races. PostgreSQL tables with RLS, inheritance,
+partitioning, generated expressions, custom types, arrays or custom collations
+are refused because these can invoke user code implicitly. MySQL uses a read-only transaction and 5 s
+MAX_EXECUTION_TIME; MariaDB uses a read-only transaction and 5 s
+max_statement_time. SQLite and libSQL file use PRAGMA query_only and BEGIN.
+Every read uses a fresh connection with user startup SQL removed, then rollback
+and close. Cancellation drops/interrupts the driver connection without replay;
+cancelled shared catalog reads discard their metadata connection too.
+Remote libSQL, SQL Server, ClickHouse and hosted DuckDB reads/plans are explicitly
+refused until equivalent execution protection is validated; catalog tools use
+existing capability paths (DuckDB's additional metadata session is unavailable).
+
+Rows are collected as bounded Arrow text: at most 20 rows, 200 cells, 512 bytes
+per cell and 64 KiB before the sharing gate. The gate applies the same redaction
+and final 16 KiB conservative token cap as M45-02. Larger results are sampled;
+this is not a complete result export. Plans are normalised to whitelisted
+operations, relations, parent links and estimates, never raw vendor properties
+or activity identities. Truncated plans are refused. Proposal queues are capped
+at 16; `propose_sql` has no execution method and opens a tab titled SQL proposal
+— review. The user's normal SafetyPlan runs if they choose to execute it.
+
+### Connect an external client
+
+Build the CLI with `cargo build -p openrows-mcp --bin openrows-mcp --locked`
+using the shared Cargo target. Select a fixed port such as **32123**, or replace
+it in the snippets with the current port shown in MCP settings. Supply the
+one-time token in the client's launch environment using a private credential
+entry mechanism; keep it out of shell arguments, history and project files.
+The running OpenRows app must remain unlocked with the scoped database open.
+
+[Claude Code's MCP configuration](https://code.claude.com/docs/en/mcp) accepts
+this stdio server entry; its environment reference avoids a literal credential:
+
+```json
+{
+  "mcpServers": {
+    "openrows": {
+      "type": "stdio",
+      "command": "/absolute/path/to/openrows-mcp",
+      "args": ["--port", "32123"],
+      "env": { "OPENROWS_MCP_TOKEN": "${OPENROWS_MCP_TOKEN}" }
+    }
+  }
+}
+```
+
+[Codex MCP configuration](https://developers.openai.com/codex/mcp/) can forward
+the existing environment variable to the same CLI:
+
+```toml
+[mcp_servers.openrows]
+command = "/absolute/path/to/openrows-mcp"
+args = ["--port", "32123"]
+env_vars = ["OPENROWS_MCP_TOKEN"]
+```
+
+For native Streamable HTTP clients, enable direct HTTP and use
+`http://127.0.0.1:32123/mcp` with `Authorization: Bearer` from their private token
+source. The listener supports no remote bind, OAuth, browser-origin access or
+write scope. Connection IDs come from `list_connections`; database is the open
+database name (`main` for local files). The port may change after restart when
+using port 0. Release installer packaging of the standalone CLI is separate;
+the tested Cargo binary is the current entry point.
+
+Evidence: `crates/openrows-mcp/tests/protocol.rs` covers initialize/list/call
+for HTTP and a spawned stdio CLI, fixed tool schemas, injection/redaction and
+audit. `tests/security.rs` covers scoped/hash-only credentials, defaults/Origin,
+sharing levels and cancellation. `tests/read_safety.rs`, `tests/postgres.rs`
+and `tests/mysql.rs` verify persistent database state after smuggling attempts,
+plus an independently injected write proving engine protection. SQLite/libSQL
+file run normally; PG/MySQL/MariaDB are included in the sequential container
+suites. UI fixtures cover once-only tokens, transport settings, revoke/disconnect
+and editor-only proposals. No live third-party agent session is automated here.
