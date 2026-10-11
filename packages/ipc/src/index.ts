@@ -491,3 +491,22 @@ export {
   revealDatabase,
 } from './appParity';
 export type { LocationsDto, NativeFileDto } from './generated/bindings';
+
+/** API-key/local provider settings and metadata-only verification (M45-01). */
+export {
+  setAiKey,
+  deleteAiKey,
+  verifyAiProvider,
+  cancelAiVerification,
+} from './ai';
+export type {
+  AiSettings,
+  ProviderConfig,
+  ProviderKind,
+  Verification,
+  Health,
+  Capabilities,
+  Model,
+  Usage,
+  AiError,
+} from './generated/bindings';

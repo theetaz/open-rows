@@ -90,6 +90,9 @@ fn write_schema(settings: &Path) -> Result<(), IpcError> {
 /// An unreadable file keeps the defaults; the webview reports why.
 pub(crate) fn apply_saved(app: &tauri::App) {
     if let Some(text) = text(app) {
+        if let Ok(value) = serde_json::from_str(&text) {
+            app.state::<crate::ai::AiState>().configure(&value);
+        }
         apply(
             &app.state::<Connections>(),
             &app.state::<LocalStore>(),
@@ -162,6 +165,7 @@ fn envelope(text: &str) -> Result<Value, IpcError> {
     let Some(object) = value.as_object() else {
         return Err(IpcError::invalid("settings.json must hold a JSON object"));
     };
+    crate::ai::validate_settings(&value)?;
     match object.get("openrows").and_then(Value::as_u64) {
         Some(FORMAT) => Ok(value),
         Some(_) => Err(IpcError::new(
@@ -241,6 +245,9 @@ pub(crate) fn settings_write(
 ) -> Result<(), IpcError> {
     let mut known = file.known();
     *known = Some(write(&file.path, &text)?);
+    if let Ok(value) = serde_json::from_str(&text) {
+        app.state::<crate::ai::AiState>().configure(&value);
+    }
     apply(&connections, &local, &text);
     if let Ok(value) = serde_json::from_str(&text) {
         app.state::<crate::security::Security>()

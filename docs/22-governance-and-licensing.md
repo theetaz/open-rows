@@ -86,3 +86,15 @@ Trademarks: database product names are used nominatively ("connects to PostgreSQ
 The lockfile adds the binding's Arrow 58/native build transitive graph; cargo-deny checks the complete resolved licence/advisory graph. No new npm dependency.
 
 **Owner decision 2026-10-10 — scoped exception approved:** `libduckdb-sys`'s bundled build pulls `webpki-roots` 1.0.9 through its `ureq` build-dependency. These public CA certificates use CDLA-Permissive-2.0 and are build-time-only downloader data, never shipped in the app or helper. `deny.toml` permits this licence only for `webpki-roots` through a [package exception](https://embarkstudios.github.io/cargo-deny/checks/licenses/cfg.html#exceptions); the global allowlist is unchanged. The exception permits the reproducible bundled native build without replacing the maintained binding or pinning stale trust anchors. Runtime-only dependency graph checks verify that this crate cannot enter either shipped binary; a runtime use would require a new owner decision.
+
+### M45-01 provider transport dependencies
+
+No new third-party packages or TLS stack are added to the lockfile. The new
+`openrows-ai` crate directly reuses existing Hyper/Hyper-util/http-body-util
+(MIT), bytes/Tokio (MIT), URL (MIT OR Apache-2.0), serde/serde_json/thiserror
+(MIT OR Apache-2.0), and optional Specta (MIT) for generated IPC metadata types.
+The internal `openrows-net` and `openrows-secrets` crates (Apache-2.0) supply
+routes/full TLS and zeroizing keychain credentials. A vendor SDK or reqwest
+would duplicate protocol/lifecycle or HTTP/TLS machinery; direct raw TCP would
+duplicate the existing parser and TLS security boundary. All selected licences
+are on the §2 allowlist; `cargo deny` checks the resolved workspace.

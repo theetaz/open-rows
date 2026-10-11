@@ -94,6 +94,7 @@ pub(crate) fn security_lock(
         .lock()
         .unwrap_or_else(PoisonError::into_inner)
         .lock();
+    app.state::<crate::ai::AiState>().revoke();
     let _ = app.emit("security-changed", true);
     Ok(())
 }
@@ -170,7 +171,7 @@ pub(crate) fn monitor(app: &tauri::AppHandle) {
             lock.tick(state.started.elapsed());
             if lock.locked != announced {
                 announced = lock.locked;
-                let _ = app.emit("security-changed", lock.locked);
+                announce_lock(&app, lock.locked);
             }
         }
     });
@@ -246,4 +247,11 @@ pub(crate) fn fallback_import(batch: &mut openrows_store::profile::exchange::Imp
             );
         }
     }
+}
+
+fn announce_lock(app: &tauri::AppHandle, locked: bool) {
+    if locked {
+        app.state::<crate::ai::AiState>().revoke();
+    }
+    let _ = app.emit("security-changed", locked);
 }

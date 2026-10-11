@@ -837,6 +837,81 @@
           "default": null
         }
       }
+    },
+    "ai": {
+      "type": "object",
+      "description": "AI provider references only. Network permission is off by default.",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "defaultProvider": {
+          "type": "string",
+          "maxLength": 64,
+          "default": ""
+        },
+        "defaultModel": {
+          "type": "string",
+          "maxLength": 256,
+          "default": ""
+        },
+        "providers": {
+          "type": "array",
+          "maxItems": 32,
+          "default": [],
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "name",
+              "kind",
+              "baseUrl",
+              "allowInsecureRemote",
+              "secretRef"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^[a-zA-Z0-9-]+$"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "kind": {
+                "enum": [
+                  "anthropic",
+                  "openAi",
+                  "openRouter",
+                  "gemini",
+                  "compatible",
+                  "ollama",
+                  "localCompatible"
+                ]
+              },
+              "baseUrl": {
+                "type": "string",
+                "maxLength": 2048
+              },
+              "allowInsecureRemote": {
+                "type": "boolean",
+                "default": false
+              },
+              "secretRef": {
+                "type": "string",
+                "maxLength": 80,
+                "pattern": "^(ai/[a-zA-Z0-9-]+/api-key)?$"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "definitions": {

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //! `OpenRows` native shell and its generated IPC contract.
+mod ai;
 mod commands;
 mod connections;
 mod diagram;
@@ -45,6 +46,10 @@ use tauri::Manager;
 fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
     let builder = tauri_specta::Builder::new().commands(tauri_specta::collect_commands![
         commands::app_info,
+        ai::ai_key_set,
+        ai::ai_key_delete,
+        ai::ai_verify,
+        ai::ai_cancel,
         security::security_status,
         security::security_lock,
         security::security_unlock,
@@ -191,6 +196,7 @@ fn with_events_and_types(
             "DEFAULT_CUSTOM_ENV_COLOR",
             openrows_store::profile::EnvTag::new(openrows_store::profile::EnvKind::Custom).color,
         )
+        .typ::<openrows_ai::AiSettings>()
         .typ::<results::WindowRequest>()
         .typ::<results::ResultError>()
 }
@@ -262,6 +268,7 @@ pub fn run() -> Result<(), tauri::Error> {
             locations::install(app)?;
             observability::install(app)?;
             specta.mount_events(app);
+            app.manage(ai::AiState::default());
             settings::install(app);
             result_store::install(app)?;
             driver_host::install(app)?;

@@ -67,3 +67,17 @@ also disabled until their current eligibility and isolation are verified.
 An empty working directory or a tool allowlist alone does not prove sandboxing.
 No unsupported integration can silently fall back to API billing or another
 provider. Exact adapters are revalidated before release.
+
+## Implementation evidence — M45-01 (2026-10-11)
+
+The API-key/local foundation is implemented in `crates/openrows-ai` and Settings
+→ AI; [docs/23 §10](../23-ai-assistant.md#10-implemented-m45-01-api-key-and-local-provider-settings)
+records transport and secret boundaries. Metadata-only health checks, default-off
+permission, cancellation/timeouts, capabilities with unknown limits, keychain-only
+keys, no redirects and seven adapter mock matrices are covered by
+`cargo nextest run -p openrows-ai`; UI lifecycle and settings-reference tests are
+in `apps/desktop/src/features/settings/ai`. OpenAI follows the official Responses
+recommendation with storage disabled; compatible gateways use Chat Completions.
+No database sharing, model tool execution, CLI bridge or MCP implementation is
+claimed. The ADR's policy, write-safety and full integration validation remains
+M45-02..09, and live provider access remains a manual opt-in smoke.
