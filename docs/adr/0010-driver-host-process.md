@@ -1372,3 +1372,68 @@ tests, using Python 3.14 rather than the system's incompatible Python 3.9.
 The linked-fixture regression, two fresh relinks and these quality gates close
 the round-4 build blockers. They do not remeasure or close the earlier AC8
 release/startup budget gap.
+
+### Round-5 authentication scheduling regression
+
+The parent discarded an authentication socket after 100 ms, even though the
+protocol allowed two seconds through Ready. A compatible helper descheduled
+between connect and Authenticate then received EOF and exited with code 70;
+the supervisor reported Incompatible before Ready. Native ARM64 Linux reproduced
+this with the unchanged SQLite fixture and `strace -f -e
+inject=connect:delay_exit=150000us:when=1`: HEAD failed with Incompatible/exit 70,
+while the fixed supervisor authenticated and closed with exit 0 under the same
+injection. The paused-clock partial-frame regression also fails with the old
+100 ms reader and passes after the fix.
+
+Authentication now retains each frame reader until the existing protocol
+deadline, with at most four pending candidates per lane. Candidates proceed
+independently, so one idle peer cannot serialize the others; invalid tokens and
+frames are still rejected. Returning or cancelling authentication aborts the
+remaining readers. No protocol deadline, reconnect assertion, circuit policy,
+file reservation or launch/replay policy changes.
+
+The concurrent accept loop also requires cancellation-safe transport ownership.
+Windows now retains its pending named-pipe server inside the listener until
+connect completes, rather than dropping it when another candidate wins the
+select. A Windows regression cancels an idle accept, then connects a client
+and verifies a byte crosses the preserved pipe. Native Windows execution was
+not available for this run; Tokio documents the underlying connect operation
+as [cancellation-safe](https://docs.rs/tokio/latest/tokio/net/windows/named_pipe/struct.NamedPipeServer.html#method.connect).
+
+Both Linux environments used non-root UID/GID 1000, four CPUs, 8 GiB, source
+copied inside the container, no `--init`, an explicit native Cargo target and
+clang/LLD. The x86_64 reconnect loop passed 50/50 on HEAD (14.627 s), then 50/50
+with the fix while pinned to CPU 0 with a competing SHA-256 load (22.180 s).
+The corresponding native ARM64 contended loop passed 500/500 (6.681 s).
+
+The workspace command `cargo nextest run --workspace --locked --features
+openrows-app/ipc-bindings -E 'not binary(ssh_container)' --no-fail-fast` passed
+all 1,350 tests on native ARM64, with 196 configured skips (20.534 s).
+Emulated x86_64 completed all 1,350: 1,348 passed and two missing-tool error
+assertions failed (100.833 s). An isolated Rust `Command::spawn` probe returned
+Ok plus exit 127 for a nonexistent executable under emulation, versus
+NotFound/ENOENT on native ARM64, with and without process groups. Both affected
+tests passed natively; their assertions and production error mappings were
+preserved. These emulation artifacts are not claimed as green x86 CI results.
+
+The existing thirty-launch `host_startup` harness was compiled against the
+already-built ARM64 debug libraries to avoid another native DuckDB build.
+With the debug SQLite fixture and a warm image/cache, all-launch p50/p95/max
+were 1.238/1.578/3.173 ms; warm p95 was 1.561 ms (75 ms budget), and the first
+sample was 3.173 ms. These are protocol startup diagnostics, not packaged
+DuckDB cold-start certification or a new main comparison. Native compilation
+occurred once per architecture: production staging took 550 s on emulated
+x86_64 and 203 s on native ARM64; cached fixed x86 staging took 10.75 s.
+
+The final macOS gate passes with four Cargo jobs/four nextest threads under
+nice, and two frontend workers: `just gen-ipc`, `fmt-check`, `lint`, `test`,
+`deny`, `machete`, `hygiene`, `ui-check`, `bench-ui`, frontend ESLint/format/types,
+Vitest/Knip and `just ipc-check` all exit 0. Bindings regeneration has no diff.
+After the Windows ownership adjustment, the affected Rust gates were checked
+again: nextest reports 1,366 passed / 196 skipped (44.165 s), including the
+unchanged failing CI reconnect test and the three new handshake regressions;
+IPC freshness reports 1 passed / 250 skipped. Frontend Vitest reports 233
+files / 2,711 tests passed. Initial JS is 302,019 gzip bytes / 350,000 budget;
+token/component CSS is 6,306 / 15,000. Supplementary tooling checks pass
+89 benchmark-tool, six sccache, six staging and three bundle-strip tests.
+The real GitHub x86_64 rerun remains the maintainer's verification step.

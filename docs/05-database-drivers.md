@@ -238,6 +238,13 @@ This implements ADR-0010 M2-01.1–.2. The core adapter, spill admission/termina
 
 ### Implemented (M2-01b)
 
+Startup compatibility failures retain the typed `Incompatible` result. Structured
+diagnostics identify native-header checks, frame-version disagreement and the
+specific Hello contract field. Early-exit diagnostics include the exit status
+and an allowlisted helper startup stage/error category, when available. Arbitrary
+child stderr, peer strings, bootstrap tokens and database payloads are discarded.
+The hosted SQLite tests enable these logs and label initial versus fresh connects.
+
 `HostedDriver`/`HostedConnection` in the Tauri-free client implement boxed-future
 connect, streaming/binding, ping, transaction state, cancellation, catalog and
 editor facets. Pure dialect/DDL generation stays in the parent. Dedicated bounded

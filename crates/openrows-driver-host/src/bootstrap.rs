@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Bootstrap is read once, zeroized after both lanes authenticate, and never logged.
+use crate::startup::stage;
 use openrows_host_client::{
     HANDSHAKE_TIMEOUT, read_bootstrap,
     transport::{Stream, connect},
@@ -17,22 +18,32 @@ impl Drop for Directory {
     }
 }
 pub(crate) async fn run(connect: crate::registry::Connect) -> Result<(), ProtocolError> {
-    let driver = std::env::args()
-        .nth(1)
-        .and_then(|argument| HostDriverId::parse(&argument))
-        .ok_or(ProtocolError::Incompatible)?;
+    let driver = stage(
+        "driver_argument",
+        std::env::args()
+            .nth(1)
+            .and_then(|argument| HostDriverId::parse(&argument))
+            .ok_or(ProtocolError::Incompatible),
+    )?;
     if driver == HostDriverId::SqliteTest && !cfg!(feature = "test-sqlite") {
-        return Err(ProtocolError::Incompatible);
+        return stage("sqlite_feature", Err(ProtocolError::Incompatible));
     }
-    let bootstrap =
+    let bootstrap = stage(
+        "bootstrap_read",
         tokio::time::timeout(HANDSHAKE_TIMEOUT, read_bootstrap(&mut tokio::io::stdin()))
             .await
-            .map_err(|_| ProtocolError::Authentication)??;
+            .map_err(|_| ProtocolError::Authentication)
+            .and_then(std::convert::identity),
+    )?;
     let _directory = Directory(bootstrap.directory.clone());
-    close_stdin()?;
-    let (control, data) = tokio::time::timeout(HANDSHAKE_TIMEOUT, handshake(&bootstrap, driver))
-        .await
-        .map_err(|_| ProtocolError::Authentication)??;
+    stage("stdin_close", close_stdin())?;
+    let (control, data) = stage(
+        "handshake",
+        tokio::time::timeout(HANDSHAKE_TIMEOUT, handshake(&bootstrap, driver))
+            .await
+            .map_err(|_| ProtocolError::Authentication)
+            .and_then(std::convert::identity),
+    )?;
     let generation = bootstrap.generation;
     drop(bootstrap);
     crate::control::run(
@@ -47,32 +58,62 @@ async fn handshake(
     bootstrap: &Bootstrap,
     driver: HostDriverId,
 ) -> Result<(Stream, Stream), ProtocolError> {
-    let mut control = connect(Path::new(&bootstrap.control))
-        .await
-        .map_err(|_| ProtocolError::Transport)?;
-    let mut data = connect(Path::new(&bootstrap.data))
-        .await
-        .map_err(|_| ProtocolError::Transport)?;
+    let mut control = stage(
+        "control_connect",
+        connect(Path::new(&bootstrap.control))
+            .await
+            .map_err(|_| ProtocolError::Transport),
+    )?;
+    let mut data = stage(
+        "data_connect",
+        connect(Path::new(&bootstrap.data))
+            .await
+            .map_err(|_| ProtocolError::Transport),
+    )?;
     let mut authentication = Authentication::new(bootstrap.clone());
-    authenticate(&mut control, bootstrap, &mut authentication, Lane::Control).await?;
-    authenticate(&mut data, bootstrap, &mut authentication, Lane::Data).await?;
+    stage(
+        "control_authenticate",
+        authenticate(&mut control, bootstrap, &mut authentication, Lane::Control).await,
+    )?;
+    stage(
+        "data_authenticate",
+        authenticate(&mut data, bootstrap, &mut authentication, Lane::Data).await,
+    )?;
     #[cfg(unix)]
-    openrows_host_client::transport::configure_data(&data).map_err(|_| ProtocolError::Transport)?;
-    let hello = read_frame(&mut control, Lane::Control).await?;
+    stage(
+        "data_configure",
+        openrows_host_client::transport::configure_data(&data)
+            .map_err(|_| ProtocolError::Transport),
+    )?;
+    ready(&mut control, bootstrap.generation, driver).await?;
+    Ok((control, data))
+}
+async fn ready(
+    control: &mut Stream,
+    generation: u64,
+    driver: HostDriverId,
+) -> Result<(), ProtocolError> {
+    let hello = stage("hello_read", read_frame(control, Lane::Control).await)?;
     if hello.header.kind.0 != 2
-        || hello.header.generation != bootstrap.generation
+        || hello.header.generation != generation
         || hello.header.request != 0
     {
-        return Err(ProtocolError::Stale);
+        return stage("hello_header", Err(ProtocolError::Stale));
     }
-    let Control::Hello(hello) = hello.decode_control()? else {
-        return Err(ProtocolError::Authentication);
+    let Control::Hello(hello) = stage("hello_decode", hello.decode_control())? else {
+        return stage("hello_kind", Err(ProtocolError::Authentication));
     };
-    let contract = Hello::for_driver(driver, bootstrap.generation);
-    hello.validate(&contract)?;
-    let ready = Frame::control(bootstrap.generation, 0, &Control::Ready(contract))?;
-    write_frame(&mut control, &ready, Lane::Control).await?;
-    Ok((control, data))
+    let contract = Hello::for_driver(driver, generation);
+    crate::startup::contract(&hello, &contract)?;
+    let ready = stage(
+        "ready_encode",
+        Frame::control(generation, 0, &Control::Ready(contract)),
+    )?;
+    stage(
+        "ready_write",
+        write_frame(control, &ready, Lane::Control).await,
+    )?;
+    Ok(())
 }
 async fn authenticate(
     stream: &mut Stream,

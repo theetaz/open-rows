@@ -5,6 +5,7 @@ mod arrow;
 mod arrow_decode;
 mod arrow_validate;
 mod bounded;
+mod compatibility;
 mod connect;
 mod control;
 mod decoder;

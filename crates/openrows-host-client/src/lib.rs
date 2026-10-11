@@ -29,6 +29,7 @@ pub use prewarm::{PrewarmOutcome, PrewarmReport};
 mod resolve;
 mod runtime;
 mod session;
+mod startup;
 mod supervisor;
 pub mod transport;
 

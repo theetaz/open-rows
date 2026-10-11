@@ -12,6 +12,7 @@ mod hooks;
 mod output;
 mod registry;
 mod sink;
+mod startup;
 mod worker;
 
 /// Run the one-connection helper from its bounded inherited bootstrap.

@@ -48,9 +48,7 @@ impl HostSupervisor {
         if let Some(stdout) = child.stdout.take() {
             tasks.push(tokio::spawn(discard(stdout)));
         }
-        if let Some(stderr) = child.stderr.take() {
-            tasks.push(tokio::spawn(discard(stderr)));
-        }
+        let diagnostic = child.stderr.take().map(crate::startup::Diagnostics::start);
         let stdin = child.stdin.take();
         let handshake = async {
             let mut stdin = stdin.ok_or(HostFailure::Spawn)?;
@@ -58,13 +56,20 @@ impl HostSupervisor {
             drop(stdin);
             rendezvous.attach(self.options.driver).await
         };
+        let mut exit = None;
         let attached = tokio::select! {
             result = tokio::time::timeout(HANDSHAKE_TIMEOUT, handshake) =>
                 result.unwrap_or(Err(HostFailure::Unresponsive)),
-            _ = child.wait() => Err(HostFailure::Incompatible),
+            status = child.wait() => {
+                exit = Some(status);
+                Err(HostFailure::Incompatible)
+            },
         };
         match attached {
             Ok(lanes) => {
+                if let Some(task) = diagnostic.and_then(crate::startup::Diagnostics::into_task) {
+                    tasks.push(task);
+                }
                 supervise(
                     &self.options,
                     Pending {
@@ -80,6 +85,7 @@ impl HostSupervisor {
             }
             Err(error) => {
                 cleanup(&mut child, tasks).await;
+                crate::startup::failure(error, self.options.driver, exit, diagnostic).await;
                 self.options.circuit.record_exit();
                 Err(error)
             }

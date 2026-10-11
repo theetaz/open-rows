@@ -129,6 +129,7 @@ impl Hello {
         if self == expected {
             Ok(())
         } else {
+            crate::compatibility::report(self, expected);
             Err(ProtocolError::Incompatible)
         }
     }

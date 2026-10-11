@@ -17,6 +17,7 @@ use tempfile::TempDir;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use zeroize::Zeroizing;
 static GENERATION: AtomicU64 = AtomicU64::new(1);
+const AUTHENTICATION_PEERS: usize = 4;
 
 pub(crate) struct Rendezvous {
     pub(crate) directory: TempDir,
@@ -95,16 +96,9 @@ async fn authenticate(
     authentication: &mut Authentication,
     lane: Lane,
 ) -> Result<Stream, HostFailure> {
+    let mut peers = tokio::task::JoinSet::new();
     loop {
-        let mut peer = listener.accept().await.map_err(|_| HostFailure::Spawn)?;
-        let candidate = tokio::time::timeout(
-            std::time::Duration::from_millis(100),
-            read_frame(&mut peer, lane),
-        )
-        .await;
-        let Ok(Ok(frame)) = candidate else {
-            continue;
-        };
+        let (mut peer, frame) = next_peer(listener, &mut peers, lane).await?;
         if frame.header.kind.0 != 1 {
             continue;
         }
@@ -124,6 +118,35 @@ async fn authenticate(
             .map_err(HostFailure::from)?;
         return Ok(peer);
     }
+}
+type Candidate = Result<(Stream, Frame), ProtocolError>;
+async fn next_peer(
+    listener: &mut Listener,
+    peers: &mut tokio::task::JoinSet<Candidate>,
+    lane: Lane,
+) -> Result<(Stream, Frame), HostFailure> {
+    loop {
+        // Keep partial frames through scheduling gaps; the whole handshake has one deadline.
+        tokio::select! {
+            accepted = listener.accept(), if peers.len() < AUTHENTICATION_PEERS => {
+                let mut peer = accepted.map_err(|_| HostFailure::Spawn)?;
+                peers.spawn(async move {
+                    let frame = read_candidate(&mut peer, lane).await?;
+                    Ok((peer, frame))
+                });
+            }
+            received = peers.join_next(), if !peers.is_empty() => {
+                let Some(Ok(Ok(candidate))) = received else { continue; };
+                return Ok(candidate);
+            }
+        }
+    }
+}
+async fn read_candidate(
+    peer: &mut (impl tokio::io::AsyncRead + Unpin),
+    lane: Lane,
+) -> Result<Frame, ProtocolError> {
+    read_frame(peer, lane).await
 }
 fn random_token() -> Result<String, HostFailure> {
     const HEX: &[u8; 16] = b"0123456789abcdef";
@@ -187,7 +210,13 @@ pub(crate) async fn bootstrap_host(
     write_bootstrap(writer, bootstrap).await.map_err(|error| {
         // The child-exit and broken-input branches must agree before authentication.
         match error {
-            ProtocolError::Transport => HostFailure::Incompatible,
+            ProtocolError::Transport => {
+                tracing::warn!(
+                    check = "bootstrap_input_closed",
+                    "driver host compatibility check failed"
+                );
+                HostFailure::Incompatible
+            }
             error => error.into(),
         }
     })

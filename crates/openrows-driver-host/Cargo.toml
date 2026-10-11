@@ -51,6 +51,7 @@ openrows-types = { path = "../openrows-types" }
 openrows-results = { path = "../openrows-results" }
 openrows-driver-host = { path = ".", features = ["test-hooks", "duckdb"] }
 tempfile = "3.27"
+tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "std"] }
 
 [[bin]]
 name = "host-test-fixture"

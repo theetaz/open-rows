@@ -86,7 +86,7 @@ impl Fixture {
         write_frame(&mut data, &Frame::control(2, 0, &ack)?, Lane::Data).await?;
         Ok((control, data))
     }
-    async fn failed(self) -> Result<(), Box<dyn std::error::Error>> {
+    async fn failed(self, expected: &str) -> Result<(), Box<dyn std::error::Error>> {
         let pid = self.child.id().ok_or("no PID")?;
         let path = self.directory.path().to_path_buf();
         let output = tokio::time::timeout(
@@ -97,7 +97,8 @@ impl Fixture {
         assert!(!output.status.success());
         assert!(!String::from_utf8_lossy(&output.stdout).contains("test-only"));
         assert!(!String::from_utf8_lossy(&output.stderr).contains("test-only"));
-        assert!(output.stdout.is_empty() && output.stderr.is_empty());
+        assert!(output.stdout.is_empty());
+        assert_eq!(output.stderr, expected.as_bytes());
         support::assert_reaped(pid, &path);
         Ok(())
     }
@@ -132,7 +133,7 @@ async fn wrong_and_missing_secret_rejected_without_secret_in_command_or_logs()
         read_frame(&mut control, Lane::Control).await?;
         let ack = auth(&fixture.bootstrap, Lane::Control, token);
         write_frame(&mut control, &Frame::control(2, 0, &ack)?, Lane::Control).await?;
-        fixture.failed().await?;
+        fixture.failed("OPENROWS_HOST_STARTUP:control_authenticate:Authentication\nOPENROWS_HOST_STARTUP:handshake:Authentication\n").await?;
     }
     Ok(())
 }
@@ -150,7 +151,12 @@ async fn replay_and_incompatible_build_rejected_before_credentials()
             Control::Hello(hello)
         };
         write_frame(&mut control, &Frame::control(2, 0, &dto)?, Lane::Control).await?;
-        fixture.failed().await?;
+        let expected = if replay {
+            "OPENROWS_HOST_STARTUP:hello_header:Stale\nOPENROWS_HOST_STARTUP:handshake:Stale\n"
+        } else {
+            "OPENROWS_HOST_STARTUP:hello_build:Incompatible\nOPENROWS_HOST_STARTUP:handshake:Incompatible\n"
+        };
+        fixture.failed(expected).await?;
     }
     Ok(())
 }
