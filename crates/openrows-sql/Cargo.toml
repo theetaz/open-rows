@@ -23,3 +23,7 @@ workspace = true
 [[bench]]
 name = "filter_groups"
 harness = false
+
+[[bench]]
+name = "ai_read"
+harness = false

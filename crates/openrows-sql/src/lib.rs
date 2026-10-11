@@ -25,6 +25,9 @@
 //! ```
 #![forbid(unsafe_code)]
 
+mod ai_read;
+pub use ai_read::{UnsafeAiSql, ai_read_source, validate_ai_read};
+
 pub mod attach;
 mod bind;
 mod classify;

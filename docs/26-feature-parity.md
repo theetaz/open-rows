@@ -266,7 +266,7 @@ These rows specify the owner's database-monitoring request; they do not claim Ta
 | P06 | Locations pane | Choose local data directories. | Implemented FR-APP-08 (M2-22b) | M2 | Validate moves; never silently sync history. | [S05] |
 | P07 | Keymap pane | Rebind keyboard actions. | Implemented FR-APP-01 (existing rebinding reused) | M1 | Conflict diagnostics and reset defaults. | [S56] |
 | P08 | LLM Agent pane | Configure assistant providers. | Covered FR-AI-01; new FR-APP-08 | M4.5 | Policy, provider health and context preview. | [S05] |
-| P09 | MCP pane | Configure external client access. | Covered FR-AI-06; new FR-AI-10 | M4.5 | Scoped read-only access. | [S57] |
+| P09 | MCP pane | Configure external client access. | Covered FR-AI-06; new FR-AI-10 | M4.5 | **Implemented (M45-03/08):** lazy default-off MCP controls, transport status, scoped credentials and client disconnect. | [S57] |
 | P10 | Light/dark/system | Follow a chosen or OS appearance. | Covered FR-APP-02 | M1 | High contrast also supported. | [S58] |
 | P11 | Custom theme JSON | Duplicate, import and export themes. | Implemented FR-APP-13 (M2-22b) | M2 | Documented open tokens, no theme code. | [S55] |
 | P12 | Git theme repositories | Install/update remote theme collections. | Gap G11 | Post-1.0 | Licence and trust review before install. | [S55] |
@@ -304,15 +304,15 @@ These rows specify the owner's database-monitoring request; they do not claim Ta
 | L08 | Model/provider selection | Change the conversation backend. | Covered FR-AI-01, FR-AI-04 | M4.5 | Show model and sharing policy together. | [S04] |
 | L09 | Schema context selection | Attach chosen table definitions. | Covered FR-AI-08 | M4.5 | **Implemented (M45-02):** exact offline selected-context preview and bounded schema-only policy; assistant relevance ranking remains M45-05. | [S04] |
 | L10 | Generate/explain queries | Ask for SQL or explanations. | Covered FR-AI-04 | M4.5 | Dialect-aware proposals, no write execution. | [S04] |
-| L11 | Assistant query execution | Let the assistant obtain query results. | Partial FR-AI-06, FR-AI-09; Gap G16 for writes | M4.5 reads; writes excluded | Bounded read tools; writes open as proposals. | [S04] |
-| L12 | Result sharing | Send executed query results to a model. | Covered FR-AI-08 | M4.5 | **Implemented (M45-02):** default-None/schema/stats/samples policy, built-in and custom redaction, bounds and typed gate; assistant row attachment/read tools remain M45-03/05. | [S04] |
-| L13 | MCP server enable/status | Turn on local client access. | Covered FR-AI-06; new FR-AI-10 | M4.5 | Loopback transport, disabled by default. | [S57] |
-| L14 | MCP client setup | Show supported transport configuration. | Covered FR-AI-06; new FR-AI-10 | M4.5 | Open protocol, secret-free setup guidance. | [S57] |
-| L15 | Scoped tokens | Limit tokens to allowed connections. | New FR-AI-10 | M4.5 | Read-only scopes, no write token. | [S57] |
-| L16 | Token revocation | Disable access credentials. | New FR-AI-10 | M4.5 | Cancel active requests and disconnect clients. | [S57] |
-| L17 | Integration activity | Inspect requests and connected clients. | Covered FR-AI-08; new FR-AI-10 | M4.5 | **Implemented (M45-02):** metadata-only outbound audit, last-1,000 retention, viewer and purge; connected MCP client activity remains M45-03/07. | [S57] |
+| L11 | Assistant query execution | Let the assistant obtain query results. | Partial FR-AI-06, FR-AI-09; Gap G16 for writes | M4.5 reads; writes excluded | **Implemented (M45-03/08):** bounded MCP reads and editor-only proposals; assistant UI remains M45-05. | [S04] |
+| L12 | Result sharing | Send executed query results to a model. | Covered FR-AI-08 | M4.5 | **Implemented (M45-02/03/08):** mandatory sharing/redaction/caps/audit on MCP samples; assistant attachment remains M45-05. | [S04] |
+| L13 | MCP server enable/status | Turn on local client access. | Covered FR-AI-06; new FR-AI-10 | M4.5 | **Implemented (M45-03):** stdio bridge and separately opt-in loopback HTTP, both default off. | [S57] |
+| L14 | MCP client setup | Show supported transport configuration. | Covered FR-AI-06; new FR-AI-10 | M4.5 | **Implemented (M45-03):** secret-free Claude Code/Codex stdio configuration and HTTP guidance in docs/23 §12; MCP client remains M45-07. | [S57] |
+| L15 | Scoped tokens | Limit tokens to allowed connections. | New FR-AI-10 | M4.5 | **Implemented (M45-03):** once-shown hash-only read credentials bound to saved provider, connection set and expiry. | [S57] |
+| L16 | Token revocation | Disable access credentials. | New FR-AI-10 | M4.5 | **Implemented (M45-03/08):** revoke/disconnect cancel current requests; lock/off/close refuse further work. | [S57] |
+| L17 | Integration activity | Inspect requests and connected clients. | Covered FR-AI-08; new FR-AI-10 | M4.5 | **Implemented (M45-02/03):** metadata-only disclosure audit/viewer/purge plus credential client identities and active request counts. | [S57] |
 | L18 | Remote TLS MCP | Serve clients on other machines. | Gap G17 | Excluded from 1.0 | Localhost endpoint limits exposure. | [S57] |
-| L19 | MCP write permissions | Allow external clients to mutate data. | Gap G16 | Excluded | No write tool, including unrestricted connections. | [S57] |
+| L19 | MCP write permissions | Allow external clients to mutate data. | Gap G16 | Excluded | **Implemented (M45-08):** no write tool or write token; proposals open an editor with normal SafetyPlan. | [S57] |
 
 ### Supported database families
 

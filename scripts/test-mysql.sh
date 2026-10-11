@@ -63,7 +63,7 @@ for image in "$@"; do
     OPENROWS_TEST_MYSQL_PORT="$port" OPENROWS_TEST_MYSQL_PASSWORD="$password" \
         OPENROWS_TEST_MYSQL_ENGINE="$engine" OPENROWS_TEST_MYSQL_CONTAINER="$name" \
         cargo nextest run -p openrows-driver-mysql -p openrows-core -p openrows-schema \
-        -p openrows-driver-conformance -p openrows-import -p openrows-dump --locked --test mysql \
+        -p openrows-mcp -p openrows-driver-conformance -p openrows-import -p openrows-dump --locked --test mysql \
         --run-ignored only --no-capture
     docker rm --force --volumes "$name" >/dev/null 2>&1 || true
 done

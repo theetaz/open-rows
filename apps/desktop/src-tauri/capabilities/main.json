@@ -154,6 +154,11 @@
     "allow-ai-sharing-save",
     "allow-ai-context-preview",
     "allow-ai-audit-list",
-    "allow-ai-audit-purge"
+    "allow-ai-audit-purge",
+    "allow-mcp-status",
+    "allow-mcp-token-create",
+    "allow-mcp-token-revoke",
+    "allow-mcp-client-disconnect",
+    "allow-mcp-proposals-take"
   ]
 }

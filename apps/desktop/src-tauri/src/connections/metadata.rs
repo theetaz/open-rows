@@ -81,17 +81,9 @@ impl MetadataSessions {
                 lifecycle,
             });
         }
-        let Some(held) = guard.as_mut() else {
-            return Err(IpcError::new(
-                IpcErrorKind::Internal,
-                "The metadata session was not stored",
-            ));
-        };
-        let result = read(held.connection.as_mut()).await;
-        held.used = Instant::now();
-        if result.as_ref().is_err_and(breaks_session) {
-            *guard = None;
-        }
+        let mut lease = ReadLease::new(&mut guard)?;
+        let result = read(lease.connection()?).await;
+        lease.complete(!result.as_ref().is_err_and(breaks_session));
         result.map_err(|error| IpcError::from(&error))
     }
 
@@ -173,6 +165,54 @@ impl MetadataSessions {
         let mut map = self.slots.lock().unwrap_or_else(PoisonError::into_inner);
         map.entry(key).or_default().clone()
     }
+}
+
+/// A dropped read discards its connection instead of leaving a busy wire in the pool.
+struct ReadLease<'a> {
+    slot: &'a mut Option<Held>,
+    held: Option<Held>,
+    cancel: Option<Arc<dyn openrows_driver_api::CancelHandle>>,
+}
+impl<'a> ReadLease<'a> {
+    fn new(slot: &'a mut Option<Held>) -> Result<Self, IpcError> {
+        let held = slot.take().ok_or_else(missing_session)?;
+        let cancel = held.connection.cancel_handle();
+        Ok(Self {
+            slot,
+            held: Some(held),
+            cancel,
+        })
+    }
+    fn connection(&mut self) -> Result<&mut dyn Connection, IpcError> {
+        match self.held.as_mut() {
+            Some(held) => Ok(held.connection.as_mut()),
+            None => Err(missing_session()),
+        }
+    }
+    fn complete(mut self, keep: bool) {
+        self.cancel = None;
+        if keep {
+            if let Some(held) = self.held.as_mut() {
+                held.used = Instant::now();
+            }
+            *self.slot = self.held.take();
+        }
+    }
+}
+impl Drop for ReadLease<'_> {
+    fn drop(&mut self) {
+        if let Some(cancel) = self.cancel.take() {
+            tauri::async_runtime::spawn(async move {
+                let _ = tokio::time::timeout(Duration::from_secs(1), cancel.cancel()).await;
+            });
+        }
+    }
+}
+fn missing_session() -> IpcError {
+    IpcError::new(
+        IpcErrorKind::Internal,
+        "The metadata session was not stored",
+    )
 }
 
 /// A connection that idled for a while may have died unnoticed: ping it

@@ -557,3 +557,20 @@ export type {
   Source,
   SourceStatus,
 } from './generated/bindings';
+
+export {
+  mcpStatus,
+  createMcpToken,
+  revokeMcpToken,
+  disconnectMcpClient,
+  takeMcpProposals,
+  onMcpProposals,
+} from './mcp';
+export type {
+  McpSettings,
+  ServerStatus,
+  TokenInfo,
+  TokenScope,
+  CreatedToken,
+  SqlProposal,
+} from './generated/bindings';

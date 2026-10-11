@@ -25,6 +25,16 @@ export const commands = {
 	aiAuditList: () => typedError<AuditEntry[], IpcError>(__TAURI_INVOKE("ai_audit_list")),
 	/**  Explicit local audit purge; policies and provider keys remain separate. */
 	aiAuditPurge: () => typedError<null, IpcError>(__TAURI_INVOKE("ai_audit_purge")),
+	/**  Reconcile saved transport settings and return only scrubbed status/metadata. */
+	mcpStatus: () => typedError<ServerStatus, IpcError>(__TAURI_INVOKE("mcp_status")),
+	/**  Return a new read-only credential once after validating all saved identities. */
+	mcpTokenCreate: (scope: TokenScope) => typedError<CreatedToken, IpcError>(__TAURI_INVOKE("mcp_token_create", { scope })),
+	/**  Revoke a credential and cancel its current requests. */
+	mcpTokenRevoke: (id: string) => typedError<null, IpcError>(__TAURI_INVOKE("mcp_token_revoke", { id })),
+	/**  Disconnect a credential's client immediately; a later reconnect needs its valid token. */
+	mcpClientDisconnect: (id: string) => typedError<null, IpcError>(__TAURI_INVOKE("mcp_client_disconnect", { id })),
+	/**  Take pending SQL into editor tabs; this command never submits a statement. */
+	mcpProposalsTake: () => typedError<SqlProposal[], IpcError>(__TAURI_INVOKE("mcp_proposals_take")),
 	/**  Current lock state; this command never counts as activity. */
 	securityStatus: () => __TAURI_INVOKE<SecurityStatus>("security_status"),
 	/**  Lock every window immediately. */
@@ -777,6 +787,14 @@ export type ChallengePromptDto = {
 	echo: boolean,
 };
 
+/**  Connected logical client, identified by its credential rather than untrusted labels. */
+export type ClientInfo = {
+	/**  Credential ID; one client per credential. */
+	id: string,
+	/**  Active requests for this client. */
+	active: number,
+};
+
 /**  Bundled cloud provider CA sets (docs/24 §4). */
 export type CloudCaDto =
 /**  Amazon RDS and Aurora. */
@@ -871,6 +889,14 @@ export type CountRequest = {
 	sessionId: string,
 	query: TableQueryDto,
 	ticket: string,
+};
+
+/**  One-time response from credential creation; no subsequent reveal API exists. */
+export type CreatedToken = {
+	/**  Non-secret metadata. */
+	info: TokenInfo,
+	/**  Random bearer value, shown once and never persisted. */
+	value: string,
 };
 
 /**  Exact invocation shown to the user before locally trusting it. */
@@ -1781,6 +1807,16 @@ export type LocationsDto = {
 	logs: string,
 	pending: string | null,
 	failure: string | null,
+};
+
+/**  Device transport settings; no credential value can be serialized here. */
+export type McpSettings = {
+	/**  Explicit permission to start the local bridge. */
+	enabled?: boolean,
+	/**  Expose direct Streamable HTTP in addition to the stdio bridge. */
+	httpEnabled?: boolean,
+	/**  Loopback port, zero asks the OS for an unused port. */
+	port?: number,
 };
 
 /**  A menu command chosen by the user; `id` is the registry command id. */
@@ -2752,6 +2788,18 @@ export type ServerDto = {
 	database: string,
 };
 
+/**  Running transport state; absent port means the bridge is stopped. */
+export type ServerStatus = {
+	/**  OS-selected or configured loopback port. */
+	port: number | null,
+	/**  Direct HTTP permission, off by default. */
+	httpEnabled: boolean,
+	/**  Non-secret read-only token metadata. */
+	tokens: TokenInfo[],
+	/**  Connected credential identities. */
+	clients: ClientInfo[],
+};
+
 /**  An open session on one database. */
 export type SessionOpened = {
 	sessionId: string,
@@ -2882,6 +2930,13 @@ export type SqlFileDto = {
 export type SqlPreviewDto = {
 	sql: string,
 	params: (string | null)[],
+};
+
+/**  Queued model output for normal user editor review. */
+export type SqlProposal = {
+	connection: string,
+	database: string,
+	sql: string,
 };
 
 /**  SSH authentication method. */
@@ -3155,6 +3210,24 @@ export type TlsFilesInput = {
 
 /**  libpq `sslmode` values (docs/12 §4.1). */
 export type TlsModeDto = "disable" | "allow" | "prefer" | "require" | "verify-ca" | "verify-full";
+
+/**  Credential metadata; never includes its value or hash. */
+export type TokenInfo = {
+	/**  Random non-secret identifier used to revoke the token. */
+	id: string,
+	/**  Read-only scope and expiry. */
+	scope: TokenScope,
+};
+
+/**  Human-selected read-only credential scope, stored separately from settings. */
+export type TokenScope = {
+	/**  Saved provider identity for M45-02 allowlist checks. */
+	provider: string,
+	/**  Explicit saved connection set (at most 32). */
+	connections: string[],
+	/**  Absolute Unix expiry in seconds (maximum 30 days). */
+	expires: number,
+};
 
 export type TransactionDto = "single" | "batches";
 

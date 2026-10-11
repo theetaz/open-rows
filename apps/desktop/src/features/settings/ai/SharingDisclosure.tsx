@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { lazy, Suspense, useState } from 'react';
+import { McpDisclosure } from './McpDisclosure';
 import { Button } from '@openrows/ui';
 const SharingPane = lazy(() => import('./SharingPane'));
 /** Load connection sharing and audit UI only after an explicit settings action. */
@@ -7,6 +8,7 @@ export function SharingDisclosure(): React.JSX.Element {
   const [open, setOpen] = useState(false);
   return (
     <>
+      <McpDisclosure />
       <Button
         type="button"
         aria-expanded={open}

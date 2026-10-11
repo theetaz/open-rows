@@ -15,6 +15,7 @@ mod jobs;
 mod locations;
 #[cfg(target_os = "macos")]
 mod material;
+mod mcp;
 mod menu;
 mod native_files;
 mod observability;
@@ -56,6 +57,11 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
         ai_sharing::ai_context_preview,
         ai_sharing::ai_audit_list,
         ai_sharing::ai_audit_purge,
+        mcp::mcp_status,
+        mcp::mcp_token_create,
+        mcp::mcp_token_revoke,
+        mcp::mcp_client_disconnect,
+        mcp::proposals::mcp_proposals_take,
         security::security_status,
         security::security_lock,
         security::security_unlock,
@@ -210,6 +216,7 @@ fn with_events_and_types(
         )
         .typ::<openrows_ai::AiSettings>()
         .typ::<monitor::MonitorWindow>()
+        .typ::<openrows_mcp::McpSettings>()
         .typ::<results::WindowRequest>()
         .typ::<results::ResultError>()
 }
@@ -297,6 +304,7 @@ pub fn run() -> Result<(), tauri::Error> {
             driver_host::install(app)?;
             connections::install(app)?;
             ai_sharing::install(app)?;
+            mcp::install(app)?;
             native_files::install(app);
             settings::apply_saved(app);
             if let Some(value) = settings::current(&app.state::<settings::SettingsFile>()) {
@@ -323,6 +331,7 @@ fn on_run_event(app: &tauri::AppHandle, event: tauri::RunEvent) {
         native_files::enqueue(app, urls.iter().filter_map(|url| url.to_file_path().ok()));
     }
     if let tauri::RunEvent::Exit = event {
+        mcp::exit(app);
         app.state::<connections::Connections>().monitors.stop_all();
         connections::helpers::exit(app);
         result_store::exit(app);

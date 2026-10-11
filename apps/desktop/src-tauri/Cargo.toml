@@ -43,6 +43,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 openrows-monitor = { path = "../../../crates/openrows-monitor", features = ["ipc"] }
+openrows-mcp = { path = "../../../crates/openrows-mcp", features = ["ipc-types"] }
 arrow-array = "60"
 arrow-schema = "60"
 openrows-ai = { path = "../../../crates/openrows-ai", features = ["ipc-types"] }

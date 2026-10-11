@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { useMcpQueryTabs } from './useMcpProposals';
 import { useNativeFiles } from './useNativeFiles';
 import { useState } from 'react';
 import { openSqlFile } from '@openrows/ipc';
@@ -6,7 +7,7 @@ import { useTheme } from '@openrows/ui';
 import type { Connections } from '../connections';
 import { useCatalog } from '../schema';
 import type { Catalog, ObjectRef } from '../schema';
-import { tabFile, useQueryTabs } from '../query';
+import { tabFile } from '../query';
 import type { QueryTabs, TabScope } from '../query';
 import { recordRecent } from '../schema/sidebarStore';
 import { openTableView } from '../table';
@@ -300,7 +301,7 @@ function fileCommands(
 export function useWorkspaceController(input: Input): WorkspaceController {
   const { connections } = input;
   const catalog = useCatalog(connections);
-  const tabs = useQueryTabs();
+  const tabs = useMcpQueryTabs(input.enabled);
   const { setMode: setTheme } = useTheme();
   const { scope, scopeOf } = scopes(connections);
   const fileNotice = useNativeFiles({ tabs, scope, ...input });

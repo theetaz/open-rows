@@ -22,7 +22,7 @@ use super::error::IpcError;
 use super::route::profile_target;
 
 /// Run `read` on the catalog facet of `database`'s metadata session.
-pub(super) async fn read_catalog<T>(
+pub(crate) async fn read_catalog<T>(
     state: &Connections,
     (profile_id, database): (&str, &str),
     read: impl for<'s> FnOnce(&'s mut dyn Catalog) -> BoxFuture<'s, Result<T, DriverError>>,
