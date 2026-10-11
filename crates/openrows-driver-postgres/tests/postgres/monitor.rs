@@ -3,12 +3,13 @@
 use super::support::{self, Collect, TestResult};
 use arrow_array::{Array, Float64Array, StringArray};
 use arrow_ipc::reader::StreamReader;
-use openrows_driver_api::{Connection, Session};
+use openrows_driver_api::Session;
 use openrows_driver_postgres::{ConnectOptions, PgSession};
 use openrows_monitor::{LiveStore, MonitorReader, Reading, SampleState, Source};
 use std::{io::Cursor, time::Instant};
 
-async fn sql(session: &mut PgSession, sql: &str) -> TestResult {
+/// Execute fixture statements in order, discarding their result rows.
+pub(super) async fn sql(session: &mut PgSession, sql: &str) -> TestResult {
     for statement in openrows_sql::split(sql, openrows_sql::Dialect::Postgres) {
         session
             .execute(statement.text(sql), &mut Collect::default())
@@ -67,7 +68,7 @@ async fn exercise((database, role): (&str, &str)) -> TestResult {
     sql(&mut monitor, "SET application_name = 'OpenRows monitor'").await?;
     extensions(&mut writer, &mut monitor).await?;
     privileges(&mut writer, database, role).await?;
-    blocking(&mut writer, &mut monitor, database).await?;
+    super::monitor_blocking::verify(&mut writer, &mut monitor, database).await?;
     counters(&mut monitor, database).await?;
     super::monitor_reset::verify(&mut monitor, database).await?;
     resources(&mut monitor).await?;
@@ -119,85 +120,6 @@ async fn privileges(writer: &mut PgSession, database: &str, role: &str) -> TestR
         restricted.read(Source::Activity, 1_000).await.state,
         SampleState::PermissionDenied(_)
     ));
-    Ok(())
-}
-
-async fn blocking(writer: &mut PgSession, monitor: &mut PgSession, database: &str) -> TestResult {
-    sql(
-        writer,
-        "BEGIN; UPDATE monitor_fixture SET value = 'test-only' WHERE id = 1",
-    )
-    .await?;
-    let blocker = writer
-        .admin()
-        .ok_or("admin facet")?
-        .own_process()
-        .await?
-        .to_string();
-    let mut waiter = connection(database, None).await?;
-    let waiter_pid = waiter
-        .admin()
-        .ok_or("admin facet")?
-        .own_process()
-        .await?
-        .to_string();
-    let pending = tokio::spawn(async move {
-        sql(
-            &mut waiter,
-            "UPDATE monitor_fixture SET value = 'test-only' WHERE id = 1 /* test-only */",
-        )
-        .await
-        .map_err(|_| "waiter failed")
-    });
-    let mut observed = None;
-    let deadline = Instant::now();
-    while deadline.elapsed().as_secs() < 5 {
-        let sample = monitor.read(Source::Activity, 1_000).await;
-        if sample.rows.iter().any(|row| {
-            row.first().and_then(Option::as_deref) == Some(&waiter_pid)
-                && row
-                    .get(5)
-                    .and_then(Option::as_deref)
-                    .is_some_and(|ids| ids.contains(&blocker))
-        }) {
-            observed = Some(sample);
-            break;
-        }
-    }
-    sql(writer, "ROLLBACK").await?;
-    pending.await??;
-    let sample = observed.ok_or("blocking pair was not observed")?;
-    assert!(
-        sample
-            .rows
-            .iter()
-            .any(|row| row.get(1).and_then(Option::as_deref) == Some("active"))
-    );
-    let mut store = LiveStore::default();
-    store.ingest(
-        Source::Activity,
-        sample,
-        0,
-        super::monitor_capture::wall_ms(),
-    );
-    super::monitor_capture::capture(&store, Source::Activity)?;
-    let bytes = store.window(Some(Source::Activity), 1_000, false)?;
-    assert!(!String::from_utf8_lossy(&bytes).contains("test-only"));
-    let batch = StreamReader::try_new(Cursor::new(bytes), None)?
-        .next()
-        .ok_or("batch")??;
-    let chains = batch
-        .column_by_name("blocking_chain")
-        .ok_or("chain column")?
-        .as_any()
-        .downcast_ref::<StringArray>()
-        .ok_or("chain type")?;
-    assert!(
-        chains
-            .iter()
-            .flatten()
-            .any(|chain| chain.contains(&blocker) && chain.contains(&waiter_pid))
-    );
     Ok(())
 }
 

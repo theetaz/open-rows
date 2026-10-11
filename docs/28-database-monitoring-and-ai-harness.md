@@ -412,6 +412,14 @@ constraint. Initial host cancellation failures passed on that final rerun.
 
 ## 10. Implemented (M25-03): Monitor workspace and local history
 
+PostgreSQL fixture synchronization waits for actual execution: process cancellation
+requires the target's active `Timeout: PgSleep` event, since Parse/Describe can
+already publish its SQL. Listing failures end the joined execution immediately.
+The blocking fixture keeps the lock until a fresh activity sample shows the same
+waiter active, waiting on a lock, and naming the exact blocker PID; activity state
+is transaction-cached while wait events and blocker lookups are live. Regression
+tests cover early SQL visibility and idle state paired with live blockers.
+
 Final M25-03 quality evidence: workspace Rust `-E 'not binary(ssh_container)'`
 passed 1,455 tests (198 skipped); Vitest passed 2,766 tests across 243 files.
 Formatting, Clippy/ESLint, TypeScript, licence/dependency scans, hygiene, UI
