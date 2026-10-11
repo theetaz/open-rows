@@ -295,6 +295,22 @@ never collects an unlimited transport stream in the parent.
 Bulk/admin facets are not advertised. A lost edit/DDL commit acknowledgement
 returns `08007` (unknown outcome), invalidates the host and is never replayed.
 
+### Implemented (X-HOSTFLAKE): contended debug fixtures
+
+The macOS SQLite and DuckDB fixture executables suppress dynamic symbol exports;
+they load no plugins and retain normal debug symbols. This removes unnecessary
+native weak-symbol interposition in dyld before the host runtime starts. The
+production sidecar's linking policy is unchanged. Nextest also places driver-host
+and host-client tests in one `driver-host` group with one test slot. Independent
+test processes previously launched multiple large debug fixtures and image
+preflights concurrently, exhausting the fixed two-second handshake deadline
+before Ready under CPU load on macOS. Serialization alone still failed on freshly
+linked fixtures. Existing within-test multi-host isolation, memory admission and cancellation assertions
+remain unchanged. Both conformance binaries now enable the same bounded startup
+diagnostics as the raw host suite. Production deadlines and launch behavior are
+unchanged; this does not certify cold production startup. Reproduction commands
+and native phase evidence are in [docs/17 §6](17-testing-strategy.md#6-driver-host-tests-under-machine-load-x-hostflake).
+
 ## 10. Non-SQL paradigms in a shared UI
 
 | Paradigm | Primary view | Tabular projection | Editor language |

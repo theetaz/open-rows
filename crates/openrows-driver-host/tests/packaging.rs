@@ -38,6 +38,29 @@ fn sqlite_fixture_has_no_duckdb_native_code() -> Result<(), Box<dyn std::error::
     Ok(())
 }
 
+#[cfg(target_os = "macos")]
+#[test]
+fn standalone_fixtures_have_no_dynamic_exports() -> Result<(), Box<dyn std::error::Error>> {
+    for binary in [
+        env!("CARGO_BIN_EXE_host-test-fixture"),
+        env!("CARGO_BIN_EXE_host-duckdb-fixture"),
+    ] {
+        let exports = std::process::Command::new("/usr/bin/xcrun")
+            .args(["dyld_info", "-exports"])
+            .arg(binary)
+            .output()?;
+        assert!(exports.status.success(), "dyld_info failed for {binary}");
+        let exports = String::from_utf8(exports.stdout)?;
+        assert!(
+            !exports
+                .lines()
+                .any(|line| line.trim_start().starts_with("0x")),
+            "standalone fixture exports symbols for runtime interposition: {binary}"
+        );
+    }
+    Ok(())
+}
+
 #[tokio::test]
 async fn protocol_version_mismatch_is_typed_and_reaped() -> Result<(), Box<dyn std::error::Error>> {
     let root = if cfg!(unix) {

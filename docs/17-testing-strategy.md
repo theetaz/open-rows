@@ -116,3 +116,69 @@ See [13-performance.md](13-performance.md#4-benchmark-suite). Benchmarks run on 
 - Release checklist per OS (install, upgrade from previous version, keychain prompts, notarization check with `spctl`, dark/light, multi-monitor/HiDPI).
 - Exploratory testing sessions focused on each new driver before it moves up a tier.
 - Public beta channel for early feedback.
+
+## 6. Driver-host tests under machine load (X-HOSTFLAKE)
+
+The default nextest profile serializes the `openrows-driver-host` and
+`openrows-host-client` packages through the `driver-host` test group. Other
+packages retain their configured parallelism. This bounds independent debug
+fixture launches across test binaries; existing in-process guards alone cannot
+coordinate nextest's separate processes. Tests intentionally running multiple
+hosts still do so. Do not run these binaries in parallel outside nextest when
+checking their unchanged production deadlines.
+
+Native macOS reproduction on an Apple M4 (10 cores, 24 GiB, external SSD),
+with four SHA-256 CPU workers and four nextest slots at nice level 10, failed
+67 of 360 tests (18.61%) across 18 complete iterations before serialization:
+SQLite 19/180, DuckDB 48/180. The baseline was stopped during iteration 19 once
+reproduction was established, excluding that partial iteration from these rates.
+The baseline command reused prebuilt nextest binaries metadata and ran
+`cargo nextest run --binaries-metadata .host-flake-binaries.json
+-E 'binary(conformance) | binary(duckdb_conformance)' --stress-count 50
+--no-fail-fast --success-output immediate` under those four load workers.
+
+Temporary timings separated closed-stdin image preflight, connect and cancel:
+DuckDB preflight ranged 353.060–12,984.332 ms; successful connect timings ranged
+96.562–1,955.597 ms; successful cancel drains ranged 51.162–258.349 ms. Failures
+logged `startup_failed`, `Unresponsive`, no observed early exit and no helper
+error category before Ready. A native fixture sample captured dyld bind-target
+symbol fixups before the host runtime; the first-exec system log also recorded
+an XProtect assessment of the DuckDB fixture. The debug fixture sizes were
+45,144,752 bytes (SQLite) and 146,988,120 bytes (DuckDB). Warming once per test
+process cannot eliminate concurrent dynamic-linking work on later launches.
+The failure was fixture-launch/dynamic-linking work, rather than a cancellation
+drain failure. Serialization alone still failed 7/60 tests in three complete
+iterations after a fresh link. Temporary phase instrumentation is removed after
+diagnosis.
+
+The DuckDB debug fixture's `dyld_info -exports` listing had 149,722 lines before
+the fix (about 149,700 symbols). The macOS fixture-only
+`-Wl,-no_exported_symbols` link argument removes those exports, retaining local
+debug symbols and the native implementation. These executables load no plugins,
+the use case described in [Apple's linker guidance](https://developer.apple.com/videos/play/wwdc2022/110362/).
+The production helper receives no new linker argument. `dyld_info -fixups`
+output shrank from 128,440 to 65,895 lines; the load-run fixture has zero dynamic
+exports and is 127,879,528 bytes. SQLite likewise has zero exports and is
+38,978,016 bytes. The packaging regression checks both fixture export tables;
+the existing native-symbol test still verifies SQLite/DuckDB separation.
+
+With both changes, the same four-worker load passed all 50 consecutive paired
+suite iterations: `Summary [ 102.468s] 50/50 stress run iterations: 50 passed`
+(1,000 test invocations, zero failures). Each iteration ran the unchanged
+20-test pair; there were no retries. This is fixture reliability evidence,
+not a cold production-startup benchmark or reference-machine certification.
+
+Run the repeatable, write-light load harness from the repository root:
+
+```bash
+export CARGO_TARGET_DIR=/path/to/shared/openrows-target
+export RUSTC_WRAPPER=sccache CARGO_INCREMENTAL=0
+export CARGO_BUILD_JOBS=4 NEXTEST_TEST_THREADS=4
+nice -n 10 python3 scripts/host-test-load.py --runs 50 --cpu-workers 4
+```
+
+The harness builds once before starting CPU contention, then reuses the binaries
+for each entire pair of conformance suites. It waits for each load worker to
+start and terminates/reaps them on completion or failure. Its temporary metadata
+is created in the worktree and removed automatically; no extra Cargo target,
+Docker, emulation, test retry or deadline change is involved.
