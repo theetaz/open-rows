@@ -4,6 +4,8 @@
 
 mod agent;
 mod bigint;
+mod ecdsa;
+mod ecdsa_pkcs8;
 mod interactive;
 mod key;
 mod rsa;
@@ -179,3 +181,9 @@ fn is_local(error: &SshError) -> bool {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod ecdsa_tests;
+
+#[cfg(test)]
+mod ecdsa_fixtures;

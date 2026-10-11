@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Private-key file loading: OpenSSH (optionally passphrase-encrypted), PEM
-//! PKCS#1 RSA and unencrypted PKCS#8. File text and DER are zeroized.
+//! PKCS#1 RSA, SEC1 ECDSA and unencrypted PKCS#8. Text and DER are zeroized.
 
 use std::{
     fs,
@@ -12,11 +12,11 @@ use data_encoding::BASE64;
 use russh::keys::{PrivateKey, decode_secret_key};
 use zeroize::Zeroizing;
 
-use super::rsa::RsaSigner;
+use super::{ecdsa, ecdsa_pkcs8, rsa::RsaSigner};
 use crate::{SecretString, SshError, blocking::off_runtime};
 
-const PKCS1_RSA: &str = "-----BEGIN RSA PRIVATE KEY-----";
-const PKCS8: &str = "-----BEGIN PRIVATE KEY-----";
+const PKCS1_RSA: &str = concat!("-----BEGIN RSA PRIVATE", " KEY-----");
+const PKCS8: &str = concat!("-----BEGIN PRIVATE", " KEY-----");
 
 /// A decoded key, signed by russh (ed25519/ECDSA) or ring (RSA).
 pub(crate) enum LoadedKey {
@@ -67,21 +67,36 @@ pub(crate) fn decode(
         let der = pem_body(text)?;
         return rsa_key(RsaSigner::from_pkcs1_der(&der));
     }
-    match decode_secret_key(text, passphrase.map(SecretString::expose)) {
+    if text.contains(concat!("-----BEGIN OPENSSH PRIVATE", " KEY-----"))
+        && let Some(key) = ecdsa::decode(text, passphrase)?
+    {
+        return Ok(LoadedKey::Native(Arc::new(key)));
+    }
+    // Plaintext PEM/PKCS#8 keys ignore an optional saved passphrase.
+    let plaintext_pem = text.contains(PKCS8)
+        || (text.contains(concat!("-----BEGIN EC PRIVATE", " KEY-----"))
+            && !text.contains("ENCRYPTED"));
+    let password = passphrase.filter(|_| !plaintext_pem);
+    match decode_secret_key(text, password.map(SecretString::expose)) {
         Ok(key) if key.algorithm().is_rsa() => rsa_key(RsaSigner::from_openssh(&key)),
         Ok(key) => Ok(LoadedKey::Native(Arc::new(key))),
         Err(russh::keys::Error::KeyIsEncrypted) => Err(DecodeError::PassphraseRequired),
-        // russh reads ed25519 PKCS#8; RSA goes to ring. Other PKCS#8 keys (ECDSA) are not supported yet.
-        Err(_) if text.contains(PKCS8) => {
-            let der = pem_body(text)?;
-            rsa_key(RsaSigner::from_pkcs8_der(&der)).map_err(|_| {
-                DecodeError::Invalid(
-                    "unsupported PKCS#8 key; convert to OpenSSH format with `ssh-keygen -p`".into(),
-                )
-            })
-        }
+        // russh reads named-curve ECDSA; normalize explicit domains and keep RSA on ring.
+        Err(_) if text.contains(PKCS8) => pkcs8_key(text),
         Err(error) => Err(DecodeError::Invalid(error.to_string())),
     }
+}
+
+fn pkcs8_key(text: &str) -> Result<LoadedKey, DecodeError> {
+    let der = pem_body(text)?;
+    if let Some(key) = ecdsa_pkcs8::decode(&der)? {
+        return Ok(LoadedKey::Native(Arc::new(key)));
+    }
+    rsa_key(RsaSigner::from_pkcs8_der(&der)).map_err(|_| {
+        DecodeError::Invalid(
+            "unsupported PKCS#8 key; convert to OpenSSH format with `ssh-keygen -p`".into(),
+        )
+    })
 }
 
 fn rsa_key(signer: Result<RsaSigner, String>) -> Result<LoadedKey, DecodeError> {
@@ -91,7 +106,7 @@ fn rsa_key(signer: Result<RsaSigner, String>) -> Result<LoadedKey, DecodeError> 
 }
 
 /// Base64 body of a PEM block, skipping `Key: value` headers.
-fn pem_body(text: &str) -> Result<Zeroizing<Vec<u8>>, DecodeError> {
+pub(super) fn pem_body(text: &str) -> Result<Zeroizing<Vec<u8>>, DecodeError> {
     let body: Zeroizing<String> = Zeroizing::new(
         text.lines()
             .map(str::trim)

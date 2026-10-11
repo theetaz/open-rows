@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-//! Key formats generated at test time with `ssh-keygen` (no committed keys).
+//! Key formats generated at test time with `ssh-keygen`.
 use std::{fs, path::Path, process::Command};
 
 use ring::signature::{
@@ -57,6 +57,11 @@ fn decodes_every_supported_format() {
             vec!["-t", "ecdsa", "-m", "PEM", "-N", ""],
             "native",
         ),
+        (
+            "ecdsa-pkcs8",
+            vec!["-t", "ecdsa", "-m", "PKCS8", "-N", ""],
+            "native",
+        ),
     ];
     for (name, args, expected) in cases {
         let text = keygen(dir.path(), name, &args);
@@ -87,10 +92,7 @@ fn encrypted_openssh_keys_need_the_right_passphrase() {
 #[test]
 fn unsupported_inputs_explain_themselves() {
     let dir = tempfile::tempdir().expect("temp dir");
-    let unsupported = [
-        ("rsa-pem-enc", ["-t", "rsa", "-m", "PEM", "-N", PASSPHRASE]),
-        ("ecdsa-pkcs8", ["-t", "ecdsa", "-m", "PKCS8", "-N", ""]),
-    ];
+    let unsupported = [("rsa-pem-enc", ["-t", "rsa", "-m", "PEM", "-N", PASSPHRASE])];
     for (name, args) in unsupported {
         let text = keygen(dir.path(), name, &args);
         let reason = match kind(decode(&text, Some(&PASSPHRASE.into()))) {

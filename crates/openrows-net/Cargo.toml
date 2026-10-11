@@ -15,6 +15,10 @@ data-encoding = "2.11"
 hmac = "0.13"
 # Decrypts passphrase-protected PKCS#8 client keys; already in the tree via russh.
 pkcs8 = { version = "0.11", features = ["encryption", "pem", "std"] }
+# Validate ECDSA scalars and derive their public points; already used by russh.
+p256 = "0.14"
+p384 = "0.14"
+p521 = "0.14"
 ring = "0.17"
 # The `rsa` feature is off: the `rsa` crate carries RUSTSEC-2023-0071. RSA user
 # keys are signed with ring instead (see src/auth/rsa.rs).
