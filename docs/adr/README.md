@@ -12,6 +12,7 @@
 | [0008](0008-quickjs-script-sandbox.md) | QuickJS sandbox for API scripts | Accepted — validation deferred (M4-05) | No spike; design decision validated by M4-05 (sandbox limits, restricted mode) |
 | [0009](0009-native-ai-byok-cli-bridges-mcp.md) | Native AI with BYOK, agent-CLI bridges and MCP | Accepted — validation deferred (M45-09) | No spike; design decision validated by M4.5 tasks M45-01..M45-08 and the M45-09 exit gate |
 | [0010](0010-driver-host-process.md) | One driver host process per hosted session | Accepted — validation pending (M2-01, M2-04) | Owner decisions 2026-10-10; host lifecycle/protocol/conformance and benchmarks pending; native DuckDB validation in M2-04 |
+| [0011](0011-performance-monitor.md) | Database Performance Monitor | Proposed | Owner acceptance pending; recommended P2 / post-1.0 M7-01..08 source, sampling, privacy, advisor, UX and overhead validation; no implementation evidence |
 
 Last reviewed: 2026-10-07 (M0-11). Task IDs refer to [27 — Delivery plan](../27-delivery-plan.md).
 

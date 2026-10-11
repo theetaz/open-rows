@@ -108,7 +108,10 @@ IDs are stable so issues, tests and PRs can reference them (`FR-CONN-03`, `NFR-P
 | --- | --- | --- |
 | FR-ADMIN-01 | Process/session list with kill/cancel. | P1 |
 | FR-ADMIN-02 | Users/roles and grants viewer; editor in P2. | P1 |
-| FR-ADMIN-03 | Server metrics overview (connections, cache hit ratio, replication lag where exposed). | P2 |
+| FR-ADMIN-03 | Performance workspace tab per connection: overview, live sessions (FR-ADMIN-01), waits/locks and bounded blocking chains, engine cache hit ratio and replication lag where exposed; pause/resume, interval/time-window controls and source freshness/coverage. Distinguish unavailable, disabled, permission-restricted and valid zero data with actionable explanations. Embedded engines show own-session scope. Arbitrary query-backed dashboards remain separately scoped. Proposed in [ADR-0011](adr/0011-performance-monitor.md), pending owner acceptance. | P2 |
+| FR-ADMIN-04 | Slow-query analytics for other applications' workload where server sources/permissions allow: top-N by total/mean/max execution time, calls, rows, I/O, temp/spill and memory where exposed; cumulative-counter deltas with reset/eviction/rollover gaps, units and coverage. Detail reuses the existing plan visualiser: plan-only EXPLAIN by default; incomplete/redacted SQL opens editable review, measured execution always needs explicit confirmation and FR-APP-11 safety/authentication gates. Proposed in ADR-0011. | P2 |
+| FR-ADMIN-05 | Resource/memory view: sessions by state, engine/server and per-query/thread memory only where documented, I/O and waits; distinguish gauges, grants, peaks and sampled/cumulative metrics. SQLite/libSQL file/DuckDB expose only own-session/host observations, never other-process activity; remote libSQL exposes own requests only. Unsupported memory is unavailable, never inferred from latency or app memory. Proposed in ADR-0011. | P2 |
+| FR-ADMIN-06 | Deterministic, explainable optimisation advisor with rule/version, metric or plan-node evidence, observation coverage, confidence, expected impact and trade-offs. Suggestions open as DDL/rewrite proposals in an editor, never auto-execute; safety/authentication/app-lock gates and additional production warnings apply. Optional HypoPG requires installed capability and explicit opt-in; AI is a later optional layer. Proposed in ADR-0011. | P2 |
 
 <a id="18-history-and-workspace-fr-ws"></a>
 
@@ -207,6 +210,7 @@ Targets are p95 on the reference hardware unless stated. Each has a benchmark in
 | NFR-PERF-08 | Schema tree for 50 000 objects: first level ≤ 300 ms, search ≤ 50 ms after cache warm. |
 | NFR-PERF-09 | Export streams at ≥ 80 % of the database's own send rate (CSV). |
 | NFR-PERF-10 | Main/UI thread never blocked > 50 ms by app work (long-task monitor in dev builds). |
+| NFR-PERF-11 | Proposed monitoring overhead (ADR-0011; adoption pending owner acceptance): independent read-only server session, ≤ 1 data query per due source/interval, no overlapping samples, bounded deadlines and adaptive back-off. Default 5 s live / ≥ 15 s aggregate / ≥ 60 s expensive reads; source deadline ≤ 1 s and ≤ 20% of interval. Retained data ≤ 16 MiB/monitor and ≤ 32 MiB/app, ≤ 4 active collectors; 10 min / 300 timestamps / 64 scalar series / 200 query identities per monitor. On mac-low: monitor footprint increment ≤ 32 MiB, mean CPU ≤ 1% of one core (one default collector, 60 s), 1,000-row analysis p95 ≤ 10 ms; existing aggregate memory/startup/UI budgets still apply. Reference-workload server throughput/latency overhead target ≤ 1%, with source throttling on budget misses. |
 
 ### 2.2 Reliability (`NFR-REL`)
 
@@ -229,6 +233,7 @@ Targets are p95 on the reference hardware unless stated. Each has a benchmark in
 | NFR-SEC-05 | Release artifacts code-signed, notarized (macOS), update payloads signature-verified. |
 | NFR-SEC-06 | Dependencies scanned for vulnerabilities and licence compatibility on every PR. |
 | NFR-SEC-07 | No telemetry by default. Crash reports opt-in and scrubbed of query text and values. |
+| NFR-SEC-08 | Proposed monitoring privacy (ADR-0011; adoption pending owner acceptance): redact query/plan literals, parameters and comments in core before IPC, memory history or proposal/export; fail closed to fingerprint/metrics when text cannot be safely normalised. Never log raw SQL/plans/server errors or transmit sampled values/credentials through monitoring telemetry/advice. Nothing persisted by default; explicit local aggregate history is capped at 24 h / 50 MiB per connection / 100 MiB per app with expiry and purge. App lock stops collection and hides/clears sensitive samples; missing grants produce actionable restricted states, never silently empty charts. |
 
 ### 2.4 Usability and accessibility (`NFR-UX`)
 

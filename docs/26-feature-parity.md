@@ -231,7 +231,7 @@ These FR-NET-03 rows document OpenRows scope; no TablePlus adoption/parity claim
 | A05 | User lifecycle | Create, change or remove users. | Partial FR-ADMIN-02; Gap G06 | Post-1.0 editor | Review privilege changes as SQL. | [S52] |
 | A06 | Privilege editor | Edit global/database/table grants. | Partial FR-ADMIN-02; Gap G06 | Post-1.0 editor | Least-privilege impact summary. | [S52] |
 | A07 | Account resource limits | Set per-account usage limits. | Gap G06 | Post-1.0 | Driver-specific controls, no false portability. | [S52] |
-| A08 | SQL bar/line charts | Build charts from SQL results. | Gap G07; FR-ADMIN-03 covers server metrics only | Post-1.0 | Bounded read-only workloads and open board files. | [S53] |
+| A08 | SQL bar/line charts | Build charts from SQL results. | Gap G07; proposed FR-ADMIN-03..06 monitor is separate | Post-1.0 | Bounded read-only workloads and open board files. | [S53] |
 | A09 | Dashboard tables | Add a query-backed table widget. | Gap G07 | Post-1.0 | Reuse streamed result pipeline. | [S53] |
 | A10 | Dashboard inputs | Parameterise widgets with input fields. | Gap G07 | Post-1.0 | Typed bindings, no string injection. | [S53] |
 | A11 | Dashboard refresh | Refresh on timer, event or request. | Gap G07 | Post-1.0 | Load limits and visible polling state. | [S53] |
@@ -241,6 +241,18 @@ These FR-NET-03 rows document OpenRows scope; no TablePlus adoption/parity claim
 | A15 | Formatter extension | Add an external SQL formatter. | Partial FR-EDIT-05 built-in; Gap G08 for plugins | M2 built-in; plugins post-1.0 | Formatting available without extensions. | [S54] |
 | A16 | DDL/migration extension | Generate table scripts/framework migrations. | Partial FR-SCHEMA-04 DDL; Gap G09 migrations | M1 DDL; migrations post-1.0 | Original exporters with licence notices. | [S54] |
 | A17 | Cell URL extension | Open cell URLs or email links. | Gap G10 | Post-1.0 | User gesture, scheme validation and confirmation. | [S54] |
+
+#### Performance Monitor (OpenRows extension, proposed)
+
+These rows specify the owner's database-monitoring request; they do not claim TablePlus parity or shipped functionality. All are **proposed — pending ADR-0011 acceptance**; existing A01–A03/M2-15 process-list work is reused, not reclassified.
+
+| Key | Feature | What it does | OpenRows status / FR | Target | OpenRows improvement | Source |
+| --- | --- | --- | --- | --- | --- | --- |
+| PM01 | Performance workspace | Overview, live sessions, waits/locks, freshness and pause/interval/window controls per connection. | Proposed FR-ADMIN-03 | Proposed M7 (P2, post-1.0) | Explicit privilege, disabled, unsupported and stale states; bounded blocking chains. | [ADR-0011](adr/0011-performance-monitor.md), M7-01/06 |
+| PM02 | Slow-query analytics | Rank cumulative deltas and covered terminal events by time, calls, rows, I/O, temp/spill and memory where exposed. | Proposed FR-ADMIN-04 | Proposed M7 | Reset/eviction gaps, window vs source maxima, safe plan visualiser reuse; every measured execution confirms. | ADR-0011, M7-02..06 |
+| PM03 | Resource/memory view | Engine/server and per-query/thread metrics with documented scope. | Proposed FR-ADMIN-05 | Proposed M7 | Own-session-only embedded and own-request remote-libSQL notices; no invented memory or cluster-wide coverage. | ADR-0011, M7-02..06/08 |
+| PM04 | Optimisation advisor | Deterministic rules with metric/plan evidence, confidence and impact/trade-offs. | Proposed FR-ADMIN-06 | Proposed M7 | DDL/rewrite opens in editor only; safety/auth/production review; HypoPG opt-in, AI later. | ADR-0011, M7-07 |
+| PM05 | Bounded private collection | Dedicated read-only server sessions, adaptive polling, Arrow/rings, local-history opt-in. | Proposed NFR-PERF-11, NFR-SEC-08 | Proposed M7 | Core redaction before IPC, memory/series/deadline limits and lock/pause cleanup. | ADR-0011, M7-01/08 |
 
 ### Settings, appearance, shortcuts and platform integration
 
@@ -370,7 +382,7 @@ These requirements are new in this task. They close specification gaps, not impl
 | G04 | E09 | SQL minification is optional; formatting is required. | Post-1.0 |
 | G05 | E14 | Standard named/positional bound parameters are required; extra templating syntaxes and remembered values are optional. | Post-1.0 |
 | G06 | A05–A07 | Keep the existing FR-ADMIN-02 boundary: viewer in 1.0, user/grant/resource-limit editing later. Raw SQL remains available under safety checks. | Post-1.0 |
-| G07 | A08–A12 | User dashboards differ from FR-ADMIN-03 server metrics. Both are deferred; dashboard charts/inputs/refresh/transfer require their own scope. | Post-1.0 |
+| G07 | A08–A12 | Arbitrary query dashboards (charts/inputs/refresh/transfer) remain deferred and require their own scope. The database Performance Monitor (PM01–PM05, FR-ADMIN-03..06) is separately proposed in [ADR-0011](adr/0011-performance-monitor.md); it does not close this dashboard gap. | Post-1.0; monitor proposed M7, pending ADR-0011 acceptance |
 | G08 | A13–A15 | Plugin manager/runtime follows [21](21-extensibility.md); built-in formatting remains M2. | Post-1.0 |
 | G09 | A16 | DDL viewing is required; framework migration exporters are optional extensions. | Post-1.0 |
 | G10 | A17 | Opening arbitrary cell links requires URI trust policy. | Post-1.0 |

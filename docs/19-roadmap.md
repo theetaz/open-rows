@@ -131,8 +131,19 @@ M1 starts with a PostgreSQL **dogfood track** ([docs/27 §3a](27-delivery-plan.m
 - Mock servers and OpenAPI generation for the API client.
 - Mac App Store build.
 - Team features without a server: expand the planned FR-WS-03 git-friendly Projects with signed connection definitions.
-- Benchmark gaps G03–G11/G13–G15 from [26](26-feature-parity.md#gaps-and-scope-decisions): cross-table value search, SQL minification/extra parameter syntaxes, user/grant/resource-limit editors (FR-ADMIN-02), query dashboards distinct from server metrics (FR-ADMIN-03), plugin and migration exporters, safe cell links, Git theme installation, toolbar customisation, ACP providers and subscription auth adapters.
+- Benchmark gaps G03–G11/G13–G15 from [26](26-feature-parity.md#gaps-and-scope-decisions): cross-table value search, SQL minification/extra parameter syntaxes, user/grant/resource-limit editors (FR-ADMIN-02), arbitrary query dashboards (G07, separate from the proposed Performance Monitor below), plugin and migration exporters, safe cell links, Git theme installation, toolbar customisation, ACP providers and subscription auth adapters.
 - Driver candidates G18–G20: ADBC Snowflake/BigQuery, dedicated Cloudflare D1, and independently validated Greenplum/Vertica/SingleStore/other flavours. Existing docs/05 flavours retain their assigned tiers.
 - Editable diagrams (G21) remain post-1.0; FR-SCHEMA-06 requires the 1.0 read-only diagram.
 
 **Intentional boundaries:** G01 undocumented proprietary profile serialization, G02 secret-bearing connection exports, G12 iOS, G16 AI/MCP writes and G17 remote MCP are excluded from 1.0. Mobile or remote access needs a new scope/security decision; write tools remain excluded by ADR-0009. These exclusions do not imply TablePlus lacks the features.
+
+### Proposed M7 — Performance Monitor (post-1.0)
+
+**Proposed — pending ADR-0011 acceptance.** Recommend a P2 milestone after GA, PostgreSQL first; owner decides placement. [ADR-0011](adr/0011-performance-monitor.md) specifies FR-ADMIN-03..06 and proposed NFR-PERF-11/NFR-SEC-08; [docs/27 M7](27-delivery-plan.md#13-proposed-m7--performance-monitor-post-10) gives the task order. Existing milestones and implementation statuses are unchanged.
+
+- Performance workspace tab: overview, reused live sessions, top queries, waits/locks, resource/memory view and deterministic advisor.
+- Dedicated read-only monitoring sessions, adaptive bounded sampling, Arrow IPC, memory-only default and opt-in capped local aggregate history.
+- PostgreSQL, MySQL/MariaDB, SQL Server and ClickHouse sources with explicit version/grant/settings capabilities; SQLite/libSQL file/DuckDB own-session scope and remote-libSQL own-request scope.
+- Evidence-backed proposals and reviewed plan-only EXPLAIN; explicit confirmation for every measured execution, existing safety/authentication/app-lock gates and production warnings.
+
+**Proposed exit:** source/version/privilege and reset/coverage matrix verified, privacy and bounded retention enforced, native accessible journeys reviewed, server/app overhead measured against ADR-0011 and docs/13 budgets. Arbitrary dashboards, NoSQL collectors, OS/fleet profiling and optional AI integration remain separate candidates.
