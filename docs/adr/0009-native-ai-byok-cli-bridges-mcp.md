@@ -41,3 +41,29 @@ Accepted as a design decision; there is no M0 spike and no code yet. [19](../19-
 - **M45-09** (M4.5 exit): golden payloads green, no write path, NL→SQL eval baseline per provider.
 
 If a provider kind cannot meet the data-sharing or write-safety gates, this ADR is revised explicitly for that kind.
+
+## Scope and provider eligibility clarification — 2026-10-11
+
+The [monitoring and AI harness specification](../28-database-monitoring-and-ai-harness.md)
+adds database health/query investigations, validated report/chart/board proposals
+and bounded opt-in in-app scheduled checks. [Accepted ADR-0011](0011-performance-monitor.md) supplies M2.5 source, privacy, budget and advisor contracts; its validation is pending. M2.5 supplies deterministic monitoring
+and analytics first; M45-10..12 add the AI path. This preserves the read/propose-only
+decision and adds a separate telemetry-sharing permission, evidence references,
+usage limits and cancellation on lock or policy revocation. M45-09 validates the
+expanded scope; no implementation evidence is claimed here.
+
+Subscription discovery means explicit installed-tool/account probes, not
+credential scraping or payment-subscription enumeration. Codex's
+[official app-server account APIs](https://learn.chatgpt.com/docs/app-server#authentication-modes)
+support managed login and reported plan state, so they are preferred to copying
+tokens or inferring authentication from a file.
+
+Claude's [current plan help](https://support.claude.com/en/articles/15036540-use-the-claude-agent-sdk-with-your-claude-plan)
+describes subscription usage, while its [SDK product guidance](https://code.claude.com/docs/en/agent-sdk/overview#get-started)
+requires prior approval for third-party products offering claude.ai login/rate
+limits. A Claude subscription bridge is conditional on that eligibility; the
+Anthropic API-key adapter remains the baseline. Other named CLI candidates are
+also disabled until their current eligibility and isolation are verified.
+An empty working directory or a tool allowlist alone does not prove sandboxing.
+No unsupported integration can silently fall back to API billing or another
+provider. Exact adapters are revalidated before release.

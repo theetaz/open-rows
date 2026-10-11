@@ -10,9 +10,9 @@
 | [0006](0006-file-based-api-collections.md) | File-per-request YAML collections for the API client | Accepted — validation deferred (M4-02) | No spike; design decision validated by M4-02 and journey 7 (M4-09) |
 | [0007](0007-session-actor-model.md) | One actor per database session | Accepted — validation pending (M1-01, M1-11) | M0-S3 (#25): `Session` contract (`Send`, not `Sync`, `&mut self`) and session reuse after errors on PG 12/17/18; actor loop, panic isolation and cancel pending |
 | [0008](0008-quickjs-script-sandbox.md) | QuickJS sandbox for API scripts | Accepted — validation deferred (M4-05) | No spike; design decision validated by M4-05 (sandbox limits, restricted mode) |
-| [0009](0009-native-ai-byok-cli-bridges-mcp.md) | Native AI with BYOK, agent-CLI bridges and MCP | Accepted — validation deferred (M45-09) | No spike; design decision validated by M4.5 tasks M45-01..M45-08 and the M45-09 exit gate |
+| [0009](0009-native-ai-byok-cli-bridges-mcp.md) | Native AI with BYOK, eligible account/CLI integrations and MCP | Accepted — validation deferred (M45-09) | No spike; provider eligibility clarification 2026-10-11; M45-01..08 and M45-10..12 validate AI, monitoring/report tools and scheduled-run boundaries before M45-09 |
 | [0010](0010-driver-host-process.md) | One driver host process per hosted session | Accepted — validation pending (M2-01, M2-04) | Owner decisions 2026-10-10; host lifecycle/protocol/conformance and benchmarks pending; native DuckDB validation in M2-04 |
-| [0011](0011-performance-monitor.md) | Database Performance Monitor | Proposed | Owner acceptance pending; recommended P2 / post-1.0 M7-01..08 source, sampling, privacy, advisor, UX and overhead validation; no implementation evidence |
+| [0011](0011-performance-monitor.md) | Database Performance Monitor | Accepted 2026-10-11 (owner) — validation pending (M25-09) | M2.5 monitoring/analytics; accepted polling, history, instrumentation, Explain, HypoPG and budget defaults. Source/privilege/privacy/advisor/UX/overhead validation pending in M25 tasks; optional M4.5 harness under ADR-0009; no implementation evidence |
 
 Last reviewed: 2026-10-07 (M0-11). Task IDs refer to [27 — Delivery plan](../27-delivery-plan.md).
 

@@ -65,6 +65,7 @@ flowchart TB
             store["Local store<br/>openrows-store (SQLite)"]
             secrets["Secrets<br/>openrows-secrets (keychain)"]
             ai["AI + MCP<br/>openrows-ai, openrows-mcp"]
+            monitor["Monitoring + analytics<br/>openrows-monitor (planned)"]
             drivers["Drivers<br/>openrows-driver-*"]
         end
         shell --> sessions
@@ -80,6 +81,11 @@ flowchart TB
         schema --> store
         sessions --> secrets
         shell --> ai
+        shell --> monitor
+        monitor --> sessions
+        monitor --> drivers
+        monitor --> store
+        ai --> monitor
         ai --> schema
         ai --> sessions
         ai --> net
@@ -101,6 +107,14 @@ flowchart TB
     ui <-->|"events / channels"| shell
     sessions <-->|"local socket, framed msgs"| ffi
 ```
+
+M2.5's planned monitoring layer owns bounded collection and evidence/artifact
+models independently of AI. The database harness consumes those same models;
+[28](28-database-monitoring-and-ai-harness.md) defines engine capabilities,
+ownership, history/alerts and the monitoring-first delivery boundary.
+[ADR-0011](adr/0011-performance-monitor.md) owns the accepted M2.5
+source/privilege, sampling/budget, privacy and advisor contracts; implementation
+validation remains pending. The optional AI harness follows at M4.5.
 
 ### 3.1 Responsibilities
 
