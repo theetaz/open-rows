@@ -200,27 +200,20 @@ The full rules, with examples, live in [CONTRIBUTING.md](../CONTRIBUTING.md). Su
 
 ## 4. CI pipeline
 
-### 4.1 Current: minimal pipeline (private repository)
+### 4.1 Current: main-only pipeline
 
-While the project is solo and private, CI uses free GitHub Actions minutes sparingly. **Local `just check` is the gate for every branch and PR**; CI is a final integration check on `main` only. [.github/workflows/ci.yml](../.github/workflows/ci.yml) runs two Ubuntu jobs (a newer push to `main` cancels an older run) on:
+**Local `just check` is the gate for every branch and PR**; CI is a final integration check on `main` only. [.github/workflows/ci.yml](../.github/workflows/ci.yml) runs three Ubuntu jobs in parallel (a push that lands during a run queues; only the newest queued run is kept) on:
 
-- every push to `main`, i.e. each squash-merged PR;
+- every push to `main`, i.e. each squash-merged PR, except documentation-only pushes (`docs/**`, `*.md`, `LICENSE`, `NOTICE`);
 - manual dispatch (`gh workflow run CI --ref <branch>`), for the rare case where a branch needs a Linux check before merge.
 
-Pull requests and pushes to feature branches do **not** trigger CI. The `check` job (50-minute timeout, including a cold bundled DuckDB build) runs these steps:
+Pull requests and pushes to feature branches do **not** trigger CI. Wall-clock time is the slowest of the three jobs:
 
-| Step | What it checks |
+| Job | Steps |
 | --- | --- |
-| Commit messages (push only) | Every non-merge commit pushed to `main` (the squash commit, whose header is the PR title) goes through `scripts/git-hooks/commit-msg` via `scripts/ci/check-commit-messages.sh` |
-| Linux prerequisites | WebKitGTK 4.1, build-essential, curl, wget, file, libxdo, OpenSSL, Ayatana appindicator, librsvg |
-| Node / pnpm | Node 24, pinned pnpm, pnpm store cache, frozen lockfile install |
-| Frontend lint / format | `pnpm lint`, `pnpm format:check` |
-| Frontend types / tests / dead code | `pnpm typecheck`, `pnpm test --maxWorkers=2`, `pnpm knip` |
-| Binding freshness | Rust `bindings_are_fresh` test (same registry as the app) |
-| Format | `cargo fmt --all --check` |
-| Production helper / staging isolation | `bash scripts/stage-host.sh dev`; six `test_stage_host.py` tests protect separately named SQLite and DuckDB fixtures, including a shared native target |
-| Lint | `cargo clippy --workspace --all-targets --locked --features openrows-app/ipc-bindings -- -D warnings` |
-| Tests | `cargo nextest run --workspace --locked --features openrows-app/ipc-bindings -E 'not binary(ssh_container)'`; container-backed driver tests are `#[ignore]`d there (reported as skipped) and run in the `containers` job; the `openrows-net` SSH container matrix is filtered out in CI and runs locally in `just check` / `just test-ssh` |
+| `frontend` (15-minute timeout, Node only) | Commit messages on push (every non-merge commit through `scripts/git-hooks/commit-msg` via `scripts/ci/check-commit-messages.sh`), Node 24 with pinned pnpm and store cache, `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test --maxWorkers=4`, `pnpm knip` |
+| `check` (50-minute timeout for a cold DuckDB build) | Background disk cleanup, Tauri Linux prerequisites (WebKitGTK 4.1, build-essential, libxdo, OpenSSL, Ayatana appindicator, librsvg), `cargo fmt --all --check`, `bash scripts/stage-host.sh dev` plus the `test_stage_host.py` isolation tests, `cargo clippy --workspace --all-targets --locked --features openrows-app/ipc-bindings -- -D warnings`, `cargo nextest run --workspace --locked --features openrows-app/ipc-bindings -E 'not binary(ssh_container)'` (includes `bindings_are_fresh`; container-backed driver tests are `#[ignore]`d and run in `containers`; the SSH container matrix runs locally in `just check` / `just test-ssh`) |
+| `containers` (20-minute timeout) | PostgreSQL, MySQL and MariaDB integration and conformance suites (below) |
 
 The check job sets `CARGO_BUILD_TARGET` to the native Rust triple before restoring
 the Rust cache. Staging, Clippy and nextest therefore share
@@ -229,8 +222,8 @@ The helper's build-only feature-unification dependencies resolve the desktop's
 Serde/JSON and macro feature graph up front; sharing a target directory alone
 would still rebuild the native library when those build-script inputs changed.
 Development/test native C++ uses optimisation level 0 without debug symbols;
-release settings are unchanged. Two Cargo build jobs and Ubuntu's preinstalled
-Clang/LLD bound link memory use. The Rust cache explicitly covers `target`, keys
+release settings are unchanged. Four Cargo build jobs (the runner's vCPU count)
+and Ubuntu's preinstalled Clang/LLD keep link memory bounded. The Rust cache explicitly covers `target`, keys
 on the native triple and saves on failure (`cache-on-failure: true`), so a later
 failed check can retain the completed native build. This does not guarantee a
 cache upload after runner loss or forced job termination.
@@ -239,9 +232,7 @@ The measured cold-target check sequence took 15m25s in the non-root,
 2-CPU/8-GiB `rust:1.94.0-bookworm` ARM64 container, including frontend checks;
 staging took 6m25s and compiled bundled DuckDB once. The first cold run on a
 GitHub ubuntu-latest runner took about 41 minutes (production staging 16m13s,
-Clippy 3m35s, workspace tests 7m47s), so the job allows 50 minutes. The
-binding-freshness step reuses the workspace test features so it does not
-rebuild the desktop crate. Warm runs restore the native target from the cache,
+Clippy 3m35s, workspace tests 7m47s), so the job allows 50 minutes. Warm runs restore the native target from the cache,
 which is saved even when a run fails; see ADR-0010's round-4 evidence.
 
 The `containers` job (20-minute timeout, its own runner and Rust cache) builds only the driver, core, schema and conformance crates and runs `scripts/test-pg.sh 17` and `scripts/test-mysql.sh` (MySQL 8.4, MariaDB 11.4) with `OPENROWS_REQUIRE_DOCKER=1`, so a missing Docker daemon fails instead of skipping. Coverage, benchmark comparison and nightly fuzzing are not in CI yet (M1-30).
