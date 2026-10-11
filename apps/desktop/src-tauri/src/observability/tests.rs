@@ -90,3 +90,18 @@ fn the_daily_file_is_named_for_the_app_and_holds_scrubbed_lines()
     assert!(!text.contains(PASSWORD), "{text}");
     Ok(())
 }
+
+#[test]
+fn ai_keys_headers_and_crash_reports_are_scrubbed() {
+    let secret = openrows_secrets::SecretString::from("test-only");
+    let text = capture(|| {
+        tracing::warn!(api_key = secret.expose(), error = %openrows_ai::AiError::Auth, "AI verification failed");
+        tracing::info!(header = "x-api-key: test-only", "AI header rejected");
+        tracing::info!(header = "x-goog-api-key: test-only", "AI header rejected");
+        tracing::debug!(credential = ?secret, "AI credential type");
+        log_panic("ai.rs:1", "api_key=test-only", "frame 0");
+    });
+    assert!(!text.contains(secret.expose()), "AI key leaked");
+    assert!(text.contains("[redacted]"));
+    assert!(text.contains("Provider authentication failed"));
+}

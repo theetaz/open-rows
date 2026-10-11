@@ -28,6 +28,14 @@ impl SecretKey {
         }
     }
 
+    /// Account for an AI provider's API key; callers validate the identifier.
+    #[must_use]
+    pub fn ai_provider(provider_id: &str) -> Self {
+        Self {
+            account: format!("ai/{provider_id}/api-key"),
+        }
+    }
+
     /// The keychain account string.
     #[must_use]
     pub fn account(&self) -> &str {

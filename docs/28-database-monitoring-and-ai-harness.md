@@ -210,6 +210,26 @@ No integration is labelled Ready until policy, isolation and lifecycle tests
 pass. A bridge that cannot deny filesystem/shell/network capabilities outside
 the approved provider transport and application tools stays disabled.
 
+### Implemented (M45-01)
+
+API-key and local provider settings are implemented by the Tauri-free
+`openrows-ai` crate and lazy Settings → AI pane. The owner explicitly enables
+AI network permission (default off), saves multiple keychain-backed providers,
+sets a default provider/model and verifies only models/auth/key metadata.
+Keys cross only the one-way key-storage command input, never replies/events;
+the stricter no-key-in-any-IPC-payload criterion still needs native credential
+entry. OpenRouter exposes reported key spend/limit/remaining; other missing facts stay
+unknown. Typed model capabilities never imply a paid plan or verified generation
+access. Local endpoint reachability does not attest on-device inference.
+Cancellation, total deadlines, bounded SSE/NDJSON parsing, full existing TLS,
+loopback-by-default local endpoints, warned remote/plaintext opt-in and secret
+scrubbing are tested with loopback mocks; no database context or generation IPC
+is exposed. [23 §10](23-ai-assistant.md#10-implemented-m45-01-api-key-and-local-provider-settings)
+records protocol choices, bounds and manual metadata-only smoke instructions.
+Existing-account/CLI eligibility and isolation remain M45-04; per-connection
+sharing, routing allowlists and context preview remain M45-02, and the harness
+below is still planned. There is no silent alternate-provider/API-billing fallback.
+
 ## 7. Database investigation harness
 
 The harness shares one typed event model across providers: text, tool call,

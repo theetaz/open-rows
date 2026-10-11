@@ -7,6 +7,14 @@ import * as __TAURI_EVENT from "@tauri-apps/api/event";
 /** Commands */
 export const commands = {
 	appInfo: () => __TAURI_INVOKE<AppInfo>("app_info"),
+	/**  Store a replacement key; there is no command to reveal or return it. */
+	aiKeySet: (id: string, key: string) => typedError<null, IpcError>(__TAURI_INVOKE("ai_key_set", { id, key })),
+	/**  Remove the key before removing its reference from settings. */
+	aiKeyDelete: (id: string) => typedError<null, IpcError>(__TAURI_INVOKE("ai_key_delete", { id })),
+	/**  Verify only saved metadata; permission is checked natively and in the provider. */
+	aiVerify: (id: string) => typedError<Verification, IpcError>(__TAURI_INVOKE("ai_verify", { id })),
+	/**  Cancel this provider's current verification request without changing settings. */
+	aiCancel: (id: string) => typedError<null, IpcError>(__TAURI_INVOKE("ai_cancel", { id })),
 	/**  Current lock state; this command never counts as activity. */
 	securityStatus: () => __TAURI_INVOKE<SecurityStatus>("security_status"),
 	/**  Lock every window immediately. */
@@ -448,6 +456,43 @@ export const events = {
 export const DEFAULT_CUSTOM_ENV_COLOR = "#7c3aed" as const;
 
 /* Types */
+/**  Safe provider failure categories shared by transports and the settings UI. */
+export type AiError =
+/**  Credentials were missing or rejected. */
+{ kind: "auth" } |
+/**  The provider requests a delay before retrying; no automatic retry occurs. */
+{ kind: "rateLimit";
+/**  Reported Retry-After delay in seconds, if present. */
+retryAfter: number | null } |
+/**  Billing or credit quota is exhausted. */
+{ kind: "quota" } |
+/**  Transport failed without exposing the underlying message. */
+{ kind: "network" } |
+/**  The selected operation or endpoint is unavailable. */
+{ kind: "unsupported" } |
+/**  The wire response was malformed, oversized or incomplete. */
+{ kind: "invalidResponse" } |
+/**  The endpoint/configuration violates the settings contract. */
+{ kind: "invalidConfig" } |
+/**  Global AI permission is off. */
+{ kind: "disabled" } |
+/**  Explicit cancellation interrupted the operation. */
+{ kind: "cancelled" } |
+/**  The bounded total request deadline elapsed. */
+{ kind: "timeout" };
+
+/**  Device AI preferences; the owner must explicitly enable network operations. */
+export type AiSettings = {
+	/**  Global permission (default off). */
+	enabled?: boolean,
+	/**  Multiple independent saved providers. */
+	providers?: ProviderConfig[],
+	/**  Explicit default provider, empty when unset. */
+	defaultProvider?: string,
+	/**  Explicit default model, empty when unset. */
+	defaultModel?: string,
+};
+
 /**  Generated DDL for a change set, without committing anything. */
 export type AlterPreviewDto = {
 	statements: string[],
@@ -550,6 +595,22 @@ export type BackupRequest = {
 export type BadRowsDto = "abort" | "skip";
 
 export type BuildProfile = "debug" | "release";
+
+/**  Model capabilities reported by discovery; `None` means unknown. */
+export type Capabilities = {
+	/**  Adapter supports incremental text transport. */
+	streaming: boolean | null,
+	/**  Model supports tools. */
+	toolCalling: boolean | null,
+	/**  Model supports JSON/structured output. */
+	structuredOutput: boolean | null,
+	/**  Model accepts images. */
+	vision: boolean | null,
+	/**  Reported input token limit. */
+	contextWindow: number | null,
+	/**  Reported output token limit. */
+	maxOutput: number | null,
+};
 
 /**
  *  Tells the webview that DDL ran on a connection: what it shows of that
@@ -1212,6 +1273,19 @@ export type GridRun = {
 	maxScrollErrorPx: number | null,
 };
 
+/**  Verification state without inferring generation access from a public catalogue. */
+export type Health =
+/**  Saved but not probed in this session. */
+{ state: "configured" } |
+/**  Authenticated metadata endpoint succeeded (local servers: reachable). */
+{ state: "verified" } |
+/**  Probe failed with a scrubbed typed reason. */
+{ state: "failed";
+/**  Safe reason. */
+reason: AiError } |
+/**  Metadata cannot establish health/authentication. */
+{ state: "unknown" };
+
 /**  One structured helper hop, before database TLS. */
 export type HelperHop =
 /**  A locally trusted executable with literal argument templates. */
@@ -1610,6 +1684,16 @@ export type MenuItemState = {
 	enabled: boolean,
 	/**  Tauri accelerator such as `Cmd+Shift+Enter`; `null` for none. */
 	accelerator: string | null,
+};
+
+/**  A model identifier and its discovery metadata. */
+export type Model = {
+	/**  Opaque provider model identifier. */
+	id: string,
+	/**  Provider display name, or identifier when absent. */
+	name: string,
+	/**  Capabilities without guessed model limits. */
+	capabilities: Capabilities,
 };
 
 /**  Validated content or an actionable rejection, never executable instructions. */
@@ -2108,6 +2192,39 @@ export type ProjectEntryDto = {
 
 /**  What a tree entry is. */
 export type ProjectEntryKind = "folder" | "query";
+
+/**  One provider's non-secret configuration. */
+export type ProviderConfig = {
+	/**  Stable bounded identifier used for keychain addressing. */
+	id: string,
+	/**  User label. */
+	name: string,
+	/**  Wire protocol. */
+	kind: ProviderKind,
+	/**  Endpoint root, without credentials, query or fragment. */
+	baseUrl: string,
+	/**  Explicit warning acknowledgement for remote plaintext/local overrides. */
+	allowInsecureRemote: boolean,
+	/**  Canonical keychain reference; empty for keyless local servers. */
+	secretRef: string,
+};
+
+/**  Supported provider wire protocols. */
+export type ProviderKind =
+/**  Anthropic Messages. */
+"anthropic" |
+/**  `OpenAI` Responses (with server-side storage disabled). */
+"openAi" |
+/**  `OpenRouter` Chat Completions plus key metadata. */
+"openRouter" |
+/**  Google Gemini REST. */
+"gemini" |
+/**  A custom Chat Completions endpoint. */
+"compatible" |
+/**  Ollama native chat/tags. */
+"ollama" |
+/**  Loopback Chat Completions (LM Studio, llama.cpp, etc.). */
+"localCompatible";
 
 /**  A saved proxy; says whether its password is stored. */
 export type ProxyDto = {
@@ -2793,8 +2910,28 @@ export type UrlDraft = {
 	passwordProvided: boolean,
 };
 
+/**  Reported key usage/limits, in the provider's currency units (`OpenRouter` USD). */
+export type Usage = {
+	/**  Total reported spend. */
+	used: number | null,
+	/**  Configured spending limit. */
+	limit: number | null,
+	/**  Remaining key allowance. */
+	remaining: number | null,
+};
+
 /**  The safety gate's decision for one statement. */
 export type VerdictDto = "allow" | "confirm" | "block";
+
+/**  Metadata-only probe result safe for IPC; contains no raw HTTP response. */
+export type Verification = {
+	/**  Probe outcome. */
+	health: Health,
+	/**  Discovered models (fallbacks are explicitly Unknown). */
+	models: Model[],
+	/**  Key billing metadata, when exposed by the provider. */
+	usage: Usage | null,
+};
 
 export type WindowRequest = {
 	resultId: string,

@@ -206,3 +206,59 @@ Lock, disconnect or policy revocation cancels active reads and provider work.
 Reports reference measured evidence and retain gaps/limitations; model text is
 an interpretation, not a measured fact. Board/report generation does not execute
 writes or arbitrary HTML/scripts.
+
+## 10. Implemented (M45-01): API-key and local provider settings
+
+`openrows-ai` is Tauri-free and supplies Anthropic Messages, OpenAI Responses,
+OpenRouter and generic Chat Completions, Gemini REST, Ollama native chat, and
+local compatible endpoints (including LM Studio). Settings → AI is lazy-loaded:
+add/edit/remove, explicit default provider/model, metadata-only Verify, typed
+configured/verified/failed/unknown states, reported capabilities and OpenRouter
+key usage/limits. The global **AI features off** switch defaults on (network
+permission defaults off), including after saving a provider. Disabling it or
+locking cancels active provider work. Nothing auto-verifies on mount.
+
+Key entry uses a one-way `ai_key_set` IPC request from the password field;
+keys are never returned in replies or events. Fully eliminating keys from IPC
+request payloads requires native credential entry, which is not implemented.
+The task's literal no-key-in-any-IPC-payload criterion therefore remains unmet.
+
+Keys use the existing OS keychain under `ai/<provider-id>/api-key`; settings
+contain canonical references only. No reveal-key command exists. Portable preference export/import excludes device AI
+credentials/endpoints; resetting preferences disables AI and clears defaults while
+retaining provider references so keychain entries remain removable. Native
+settings validation rejects secret fields. Fixed errors discard URLs, raw
+responses, headers and keychain backend messages. Hyper marks auth headers
+sensitive; credential-echoing JSON frames are refused before metadata reaches
+IPC. Providers reuse Hyper HTTP/1.1 over `openrows-net` dialers and its full
+rustls/system trust verifier, with explicit route/custom-CA support at the crate
+boundary. No redirects, retries or alternate-provider fallback are followed.
+Endpoint URLs reject userinfo/query/fragment. Local adapters require loopback;
+other remote endpoints require HTTPS unless the warning checkbox is acknowledged.
+
+Native OpenAI uses [Responses](https://developers.openai.com/api/docs/guides/migrate-to-responses),
+recommended for new integrations in the official documentation checked
+2026-10-11, with `store: false`. Compatible servers retain Chat Completions.
+Model lists are fetched (Anthropic/Gemini pagination bounded to 20 pages/2,000
+models; each metadata response ≤2 MiB). Explicitly unavailable Anthropic model
+endpoints offer `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5` as
+**unknown/unverified** fallback identifiers; no success is inferred. Unreported
+model limits, capabilities and usage remain unknown. Local reachability does
+not attest where the server itself performs inference.
+
+Streaming SSE/NDJSON is incremental with bounded framing (256 KiB), a 16 MiB
+total response cap, bounded consumer channels, cancellation and a total 30 s
+default deadline covering backpressure. The crate's text-only generation API
+is tested but deliberately has **no app generation command or assistant UI**:
+DB context/policy, tools, structured generation, vision inputs, account/CLI
+bridges, MCP and assistant conversations remain separately scheduled tasks.
+Capability metadata describes the model, not implementation of those later flows.
+
+Verification: `cargo nextest run -p openrows-ai` runs loopback mock fixtures per
+adapter, including secret/permission/endpoint/timeout tests. UI fixtures:
+`pnpm exec vitest run apps/desktop/src/features/settings/ai --maxWorkers=2`.
+Manual live metadata smoke (never generation): set `OPENROWS_AI_LIVE=1`, choose
+`OPENROWS_AI_PROVIDER=anthropic|openai|openrouter|gemini|ollama`, supply the matching
+`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY` or `GEMINI_API_KEY` in the
+process environment, then run `cargo nextest run -p openrows-ai --test live --run-ignored all`.
+No live key or paid generation is required by CI.

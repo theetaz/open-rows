@@ -26,6 +26,7 @@ import {
 import { HISTORY_KEY, parseHistorySettings } from './historySettings';
 import { parseSecurity, SECURITY_KEY } from '../security/securitySettings';
 import { parseTools, TOOLS_KEY } from './toolSettings';
+import { AI_KEY, parseAiSettings } from './ai/aiSettings';
 import { parsePortableSettings } from './settingsValidation';
 
 /**
@@ -47,6 +48,7 @@ type Section = {
 
 /** File sections and their stores; every value is validated on the way in and out. */
 const SECTIONS: Readonly<Record<string, Section>> = {
+  ai: { key: AI_KEY, parse: parseAiSettings },
   security: { key: SECURITY_KEY, parse: parseSecurity },
   history: { key: HISTORY_KEY, parse: parseHistorySettings },
   sidebar: { key: SIDEBAR_KEY, parse: parseSidebarPreferences },
@@ -177,7 +179,7 @@ export async function reloadSettingsFile(): Promise<void> {
 export function exportSettings(): string {
   const settings = Object.fromEntries(
     Object.entries(collectSettings()).filter(
-      ([key]) => !['history', 'snippets', 'tools'].includes(key),
+      ([key]) => !['history', 'snippets', 'tools', 'ai'].includes(key),
     ),
   );
   return `${JSON.stringify(settings, null, 2)}\n`;
@@ -186,7 +188,7 @@ export function exportSettings(): string {
 /** Strictly validate the whole import before changing any local preference. */
 export async function importSettings(text: string): Promise<void> {
   const settings = parsePortableSettings(text);
-  for (const key of ['history', 'snippets', 'tools']) {
+  for (const key of ['history', 'snippets', 'tools', 'ai']) {
     if (key in settings)
       throw new Error(`${key}: excluded from portable settings`);
   }
@@ -210,6 +212,7 @@ export function resetSettings(section?: string): void {
     editor: ['editor'],
     execution: ['execution'],
     security: ['security'],
+    ai: ['ai'],
     shortcuts: ['shortcuts'],
     snippets: ['snippets'],
     tools: ['tools'],
@@ -218,8 +221,20 @@ export function resetSettings(section?: string): void {
   const names = section ? (groups[section] ?? []) : Object.keys(SECTIONS);
   for (const name of names) {
     const group = SECTIONS[name];
-    if (group)
-      localStorage.setItem(group.key, JSON.stringify(group.parse(null)));
+    if (group) {
+      // Reset AI permission/defaults while retaining keychain references;
+      // provider removal owns deleting credentials before removing references.
+      const value =
+        name === 'ai'
+          ? {
+              ...parseAiSettings(stored(AI_KEY)),
+              enabled: false,
+              defaultProvider: '',
+              defaultModel: '',
+            }
+          : group.parse(null);
+      localStorage.setItem(group.key, JSON.stringify(value));
+    }
   }
   if (!section || section === 'appearance')
     localStorage.setItem(THEME_KEY, 'system');

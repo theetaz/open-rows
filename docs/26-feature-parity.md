@@ -295,9 +295,9 @@ These rows specify the owner's database-monitoring request; they do not claim Ta
 | Key | Feature | What it does | OpenRows status / FR | Target | OpenRows improvement | Source |
 | --- | --- | --- | --- | --- | --- | --- |
 | L01 | Assistant panel | Chat beside database content. | Covered FR-AI-04 | M4.5 | Off until configured; visible tool trace. | [S04] |
-| L02 | API-key providers | Choose a hosted model vendor. | Covered FR-AI-01 | M4.5 | Keys in keychain; provider allowlists. | [S04] |
-| L03 | Local models | Connect to Ollama/local servers. | Covered FR-AI-02 | M4.5 | No dummy API-key requirement. | [S04] |
-| L04 | Compatible endpoints | Configure another model API. | Covered FR-AI-01 | M4.5 | Proxy/CA support shared with DB routes. | [S04] |
+| L02 | API-key providers | Choose a hosted model vendor. | Covered FR-AI-01 | M4.5 | **Implemented (M45-01):** saved providers/keychain keys, defaults and metadata verification; allowlists remain M45-02. | [S04] |
+| L03 | Local models | Connect to Ollama/local servers. | Covered FR-AI-02 | M4.5 | **Implemented (M45-01):** keyless Ollama and local compatible servers; loopback default, warned remote opt-in. | [S04] |
+| L04 | Compatible endpoints | Configure another model API. | Covered FR-AI-01 | M4.5 | **Implemented (M45-01):** compatible endpoint settings; HTTP/TLS and crate route/CA options reuse DB networking. | [S04] |
 | L05 | Installed CLI bridge | Use an installed coding CLI as provider. | Covered FR-AI-03 | M4.5 | Versioned adapters and bounded lifecycle. | [S04] |
 | L06 | Custom ACP provider | Attach a protocol-compatible local assistant. | Partial FR-AI-03; Gap G14 | M4.5 named bridges; ACP post-1.0 | Add protocol adapter only after trust tests. | [S04] |
 | L07 | Copilot sign-in | Use a subscription via account login. | Gap G15 | Post-1.0 | User-owned provider adapters, no token extraction. | [S04] |

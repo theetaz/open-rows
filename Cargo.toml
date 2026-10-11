@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "crates/openrows-types",
+    "crates/openrows-ai",
     "crates/openrows-core",
     "crates/openrows-results",
     "crates/openrows-explain",

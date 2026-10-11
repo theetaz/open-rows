@@ -137,6 +137,10 @@
     "allow-database-reveal",
     "allow-data-locations",
     "allow-data-location-choose",
-    "allow-data-location-apply"
+    "allow-data-location-apply",
+    "allow-ai-key-set",
+    "allow-ai-key-delete",
+    "allow-ai-verify",
+    "allow-ai-cancel"
   ]
 }

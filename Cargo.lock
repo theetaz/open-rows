@@ -4024,6 +4024,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6790f58c7ff633d8771f42965289203411a5e5c68388703c06e14f24770b41e"
 
 [[package]]
+name = "openrows-ai"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
+ "openrows-net",
+ "openrows-secrets",
+ "serde",
+ "serde_json",
+ "specta",
+ "thiserror 2.0.21",
+ "tokio",
+ "url",
+]
+
+[[package]]
 name = "openrows-app"
 version = "0.1.0"
 dependencies = [
@@ -4034,6 +4052,7 @@ dependencies = [
  "objc2-app-kit",
  "objc2-foundation",
  "objc2-local-authentication",
+ "openrows-ai",
  "openrows-core",
  "openrows-driver-api",
  "openrows-driver-clickhouse",

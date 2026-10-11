@@ -92,6 +92,7 @@ pub(crate) fn watch(app: &AppHandle) {
             let Some(change) = watcher.check(&app.state::<SettingsFile>()) else {
                 continue;
             };
+            app.state::<crate::ai::AiState>().revoke();
             if let Change::Edited(text) = change {
                 apply_security(&app, &text);
                 settings::apply(
@@ -108,6 +109,7 @@ pub(crate) fn watch(app: &AppHandle) {
 
 fn apply_security(app: &AppHandle, text: &str) {
     if let Ok(value) = serde_json::from_str(text) {
+        app.state::<crate::ai::AiState>().configure(&value);
         app.state::<crate::security::Security>()
             .configure(&value, false);
     }

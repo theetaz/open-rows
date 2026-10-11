@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Button, Icon, SegmentedControl, TextField } from '@openrows/ui';
 import { Sheet } from '@openrows/ui/sheet';
 import { AppearancePane } from '../appearance/AppearancePane';
@@ -20,7 +20,10 @@ import { SettingsQuery } from './settingsSearch';
 import styles from '../appearance/Appearance.module.css';
 import searchStyles from './Settings.module.css';
 
+const AiPane = lazy(() => import('./ai/AiPane'));
+
 export type SettingsSection =
+  | 'ai'
   | 'tables'
   | 'locations'
   | 'security'
@@ -36,6 +39,7 @@ export type SettingsSection =
 
 const SECTIONS: readonly { value: SettingsSection; label: string }[] = [
   { value: 'security', label: 'Security' },
+  { value: 'ai', label: 'AI' },
   { value: 'tables', label: 'Tables' },
   { value: 'locations', label: 'Locations' },
   { value: 'general', label: 'General' },
@@ -50,6 +54,12 @@ const SECTIONS: readonly { value: SettingsSection; label: string }[] = [
 ];
 
 function Pane({ section }: { section: SettingsSection }): React.JSX.Element {
+  if (section === 'ai')
+    return (
+      <Suspense fallback={<p role="status">Loading AI settings…</p>}>
+        <AiPane />
+      </Suspense>
+    );
   if (section === 'tables') return <TablesPane />;
   if (section === 'locations') return <LocationsPane />;
   if (section === 'security') return <SecurityPane />;
