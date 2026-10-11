@@ -2,13 +2,17 @@ name: CI
 
 # Runs only on pushes to `main` (squash-merged PRs) and on manual dispatch.
 # Feature branches and pull requests do not trigger CI: run `just check`
-# locally before pushing. This keeps free GitHub Actions minutes for the
-# integration gate on `main`. The full pipeline returns when the project
-# goes public; see docs/18-repository-and-dev-workflow.md §4.
+# locally before pushing. Documentation-only pushes are skipped. Three jobs
+# run in parallel so the wall-clock time is the slowest job, not the sum.
 
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - 'LICENSE'
+      - 'NOTICE'
   workflow_dispatch:
 
 permissions:
@@ -25,21 +29,12 @@ defaults:
     shell: bash
 
 jobs:
-  check:
+  frontend:
+    # Node-only checks, in parallel with the Rust job: no Rust toolchain,
+    # no system packages, no disk cleanup.
     runs-on: ubuntu-latest
-    # Cold GitHub check measured ~41m with native DuckDB; cached runs are far shorter (docs/18 §4).
-    timeout-minutes: 50
-    env:
-      # Full debug info for every crate fills the runner's disk; line tables
-      # keep panic backtraces readable at a fraction of the size.
-      CARGO_PROFILE_DEV_DEBUG: line-tables-only
-      CARGO_PROFILE_TEST_DEBUG: line-tables-only
-      CARGO_TARGET_DIR: target
-      CARGO_BUILD_JOBS: '2'
-      NEXTEST_TEST_THREADS: '2'
+    timeout-minutes: 15
     steps:
-      - name: Free runner disk
-        run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/boost
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
@@ -50,10 +45,6 @@ jobs:
           BASE_SHA: ${{ github.event.before }}
           HEAD_SHA: ${{ github.sha }}
         run: bash scripts/ci/check-commit-messages.sh "$BASE_SHA" "$HEAD_SHA"
-      - name: Install Tauri Linux prerequisites
-        run: |
-          sudo apt-get update
-          sudo apt-get install --no-install-recommends -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -68,9 +59,34 @@ jobs:
       - name: TypeScript
         run: pnpm typecheck
       - name: Component tests
-        run: pnpm test --maxWorkers=2
+        run: pnpm test --maxWorkers=4
       - name: Frontend dead code
         run: pnpm knip
+
+  check:
+    runs-on: ubuntu-latest
+    # Cold GitHub check measured ~41m with native DuckDB; cached runs are far shorter (docs/18 §4).
+    timeout-minutes: 50
+    env:
+      # Full debug info for every crate fills the runner's disk; line tables
+      # keep panic backtraces readable at a fraction of the size.
+      CARGO_PROFILE_DEV_DEBUG: line-tables-only
+      CARGO_PROFILE_TEST_DEBUG: line-tables-only
+      CARGO_TARGET_DIR: target
+      CARGO_BUILD_JOBS: '4'
+      NEXTEST_TEST_THREADS: '4'
+    steps:
+      - name: Free runner disk
+        # Deleting preinstalled SDKs takes ~90 s; run it in the background
+        # while dependencies install, long before the build needs the space.
+        run: nohup sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/boost >/dev/null 2>&1 &
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Tauri Linux prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
       - name: Select shared native Cargo target and linker
         # Ubuntu's preinstalled LLVM linker avoids concurrent GNU-link memory spikes.
         run: |
@@ -97,10 +113,9 @@ jobs:
         run: cargo clippy --workspace --all-targets --locked --features openrows-app/ipc-bindings -- -D warnings
       - name: Tests
         # Docker-backed SSH container tests run locally in `just check`;
-        # building their fixture image here costs minutes per run.
+        # building their fixture image here costs minutes per run. The
+        # bindings_are_fresh test in openrows-app runs here too.
         run: cargo nextest run --workspace --locked --features openrows-app/ipc-bindings -E 'not binary(ssh_container)'
-      - name: Binding freshness
-        run: cargo nextest run -p openrows-app --locked --features ipc-bindings bindings_are_fresh
 
   containers:
     # PostgreSQL 17, MySQL 8.4 and MariaDB 11.4 in throwaway containers: the
@@ -116,7 +131,7 @@ jobs:
       OPENROWS_REQUIRE_DOCKER: '1'
     steps:
       - name: Free runner disk
-        run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/boost
+        run: nohup sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/boost >/dev/null 2>&1 &
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
