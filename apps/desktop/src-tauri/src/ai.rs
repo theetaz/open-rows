@@ -23,8 +23,9 @@ use tauri::{AppHandle, Manager};
 
 /// App-owned permission and cancellable metadata probes, with existing keychain backend.
 pub(crate) struct AiState {
-    control: AiControl,
+    pub(crate) control: AiControl,
     secrets: Arc<dyn SecretStore>,
+    known: Mutex<AiSettings>,
     runs: Mutex<HashMap<String, Cancellation>>,
 }
 impl Default for AiState {
@@ -33,12 +34,18 @@ impl Default for AiState {
             control: AiControl::default(),
             secrets: Arc::new(CachingSecretStore::new(KeychainSecretStore::new())),
             runs: Mutex::default(),
+            known: Mutex::default(),
         }
     }
 }
 impl AiState {
     pub(crate) fn configure(&self, value: &serde_json::Value) {
         let settings = parse(value).unwrap_or_default();
+        let mut known = self.known.lock().unwrap_or_else(PoisonError::into_inner);
+        if *known != settings {
+            self.control.set_enabled(false);
+            known.clone_from(&settings);
+        }
         self.control.set_enabled(settings.enabled);
     }
     pub(crate) fn revoke(&self) {
@@ -55,7 +62,7 @@ impl AiState {
         }
     }
 }
-fn parse(value: &serde_json::Value) -> Result<AiSettings, AiError> {
+pub(crate) fn parse(value: &serde_json::Value) -> Result<AiSettings, AiError> {
     let settings: AiSettings = value
         .get("ai")
         .map(|value| serde_json::from_value(value.clone()))
@@ -69,7 +76,7 @@ fn parse(value: &serde_json::Value) -> Result<AiSettings, AiError> {
 pub(crate) fn validate_settings(value: &serde_json::Value) -> Result<(), IpcError> {
     parse(value).map(|_| ()).map_err(IpcError::from)
 }
-fn config(app: &AppHandle, id: &str) -> Result<ProviderConfig, IpcError> {
+pub(crate) fn config(app: &AppHandle, id: &str) -> Result<ProviderConfig, IpcError> {
     openrows_ai::validate_id(id)?;
     let value = settings::current(&app.state::<SettingsFile>()).unwrap_or_default();
     parse(&value)?
@@ -85,6 +92,7 @@ impl From<AiError> for IpcError {
             AiError::RateLimit { .. } | AiError::Network => IpcErrorKind::Network,
             AiError::Unsupported | AiError::Disabled => IpcErrorKind::Unsupported,
             AiError::InvalidResponse => IpcErrorKind::Protocol,
+            AiError::Audit => IpcErrorKind::Storage,
             AiError::InvalidConfig => IpcErrorKind::Invalid,
             AiError::Cancelled => IpcErrorKind::Cancelled,
             AiError::Timeout => IpcErrorKind::Timeout,

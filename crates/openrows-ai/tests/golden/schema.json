@@ -1,0 +1,1 @@
+{"schema":[{"name":"public.people","ddl":"CREATE TABLE public.people(id INT, ‹redacted› TEXT, ‹redacted› TEXT DEFAULT __OPENROWS_REDACTED_1__)  "}],"query":"SELECT id FROM public.people WHERE id=__OPENROWS_REDACTED_1__ AND ‹redacted›=__OPENROWS_REDACTED_2__  ","plan":[],"stats":[],"samples":[]}

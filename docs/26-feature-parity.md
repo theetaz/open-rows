@@ -295,22 +295,22 @@ These rows specify the owner's database-monitoring request; they do not claim Ta
 | Key | Feature | What it does | OpenRows status / FR | Target | OpenRows improvement | Source |
 | --- | --- | --- | --- | --- | --- | --- |
 | L01 | Assistant panel | Chat beside database content. | Covered FR-AI-04 | M4.5 | Off until configured; visible tool trace. | [S04] |
-| L02 | API-key providers | Choose a hosted model vendor. | Covered FR-AI-01 | M4.5 | **Implemented (M45-01):** saved providers/keychain keys, defaults and metadata verification; allowlists remain M45-02. | [S04] |
+| L02 | API-key providers | Choose a hosted model vendor. | Covered FR-AI-01 | M4.5 | **Implemented (M45-01):** saved providers/keychain keys, defaults and metadata verification; per-connection allowlists implemented in M45-02. | [S04] |
 | L03 | Local models | Connect to Ollama/local servers. | Covered FR-AI-02 | M4.5 | **Implemented (M45-01):** keyless Ollama and local compatible servers; loopback default, warned remote opt-in. | [S04] |
 | L04 | Compatible endpoints | Configure another model API. | Covered FR-AI-01 | M4.5 | **Implemented (M45-01):** compatible endpoint settings; HTTP/TLS and crate route/CA options reuse DB networking. | [S04] |
 | L05 | Installed CLI bridge | Use an installed coding CLI as provider. | Covered FR-AI-03 | M4.5 | Versioned adapters and bounded lifecycle. | [S04] |
 | L06 | Custom ACP provider | Attach a protocol-compatible local assistant. | Partial FR-AI-03; Gap G14 | M4.5 named bridges; ACP post-1.0 | Add protocol adapter only after trust tests. | [S04] |
 | L07 | Copilot sign-in | Use a subscription via account login. | Gap G15 | Post-1.0 | User-owned provider adapters, no token extraction. | [S04] |
 | L08 | Model/provider selection | Change the conversation backend. | Covered FR-AI-01, FR-AI-04 | M4.5 | Show model and sharing policy together. | [S04] |
-| L09 | Schema context selection | Attach chosen table definitions. | Covered FR-AI-08 | M4.5 | Exact payload preview and relevance ranking. | [S04] |
+| L09 | Schema context selection | Attach chosen table definitions. | Covered FR-AI-08 | M4.5 | **Implemented (M45-02):** exact offline selected-context preview and bounded schema-only policy; assistant relevance ranking remains M45-05. | [S04] |
 | L10 | Generate/explain queries | Ask for SQL or explanations. | Covered FR-AI-04 | M4.5 | Dialect-aware proposals, no write execution. | [S04] |
 | L11 | Assistant query execution | Let the assistant obtain query results. | Partial FR-AI-06, FR-AI-09; Gap G16 for writes | M4.5 reads; writes excluded | Bounded read tools; writes open as proposals. | [S04] |
-| L12 | Result sharing | Send executed query results to a model. | Covered FR-AI-08 | M4.5 | Off/schema/samples/results policy and redaction. | [S04] |
+| L12 | Result sharing | Send executed query results to a model. | Covered FR-AI-08 | M4.5 | **Implemented (M45-02):** default-None/schema/stats/samples policy, built-in and custom redaction, bounds and typed gate; assistant row attachment/read tools remain M45-03/05. | [S04] |
 | L13 | MCP server enable/status | Turn on local client access. | Covered FR-AI-06; new FR-AI-10 | M4.5 | Loopback transport, disabled by default. | [S57] |
 | L14 | MCP client setup | Show supported transport configuration. | Covered FR-AI-06; new FR-AI-10 | M4.5 | Open protocol, secret-free setup guidance. | [S57] |
 | L15 | Scoped tokens | Limit tokens to allowed connections. | New FR-AI-10 | M4.5 | Read-only scopes, no write token. | [S57] |
 | L16 | Token revocation | Disable access credentials. | New FR-AI-10 | M4.5 | Cancel active requests and disconnect clients. | [S57] |
-| L17 | Integration activity | Inspect requests and connected clients. | Covered FR-AI-08; new FR-AI-10 | M4.5 | Scrubbed metadata and retention controls. | [S57] |
+| L17 | Integration activity | Inspect requests and connected clients. | Covered FR-AI-08; new FR-AI-10 | M4.5 | **Implemented (M45-02):** metadata-only outbound audit, last-1,000 retention, viewer and purge; connected MCP client activity remains M45-03/07. | [S57] |
 | L18 | Remote TLS MCP | Serve clients on other machines. | Gap G17 | Excluded from 1.0 | Localhost endpoint limits exposure. | [S57] |
 | L19 | MCP write permissions | Allow external clients to mutate data. | Gap G16 | Excluded | No write tool, including unrestricted connections. | [S57] |
 

@@ -8,12 +8,12 @@ use openrows_net::BoxFuture;
 use openrows_secrets::SecretString;
 use tokio::sync::mpsc;
 
-/// Text-only generation input; this task exposes no database/context IPC command.
+/// Generation input accepts only context constructed by the data-sharing gate.
 pub struct TextRequest {
     /// Explicit discovered or user-entered model identifier.
     pub model: String,
-    /// User text; later context sharing belongs to M45-02.
-    pub text: String,
+    /// Exact authorised context; no raw database text or deserialisation escape.
+    pub context: crate::sharing::GatedPayload,
     /// Output token cap, required by every adapter.
     pub max_output: u32,
 }
@@ -37,6 +37,7 @@ pub struct HttpProvider {
     pub(crate) http: Http,
     pub(crate) kind: ProviderKind,
     control: AiControl,
+    config: ProviderConfig,
 }
 impl HttpProvider {
     /// Build an adapter without connecting; keys are neither serializable nor printable.
@@ -53,6 +54,7 @@ impl HttpProvider {
             http,
             kind: config.kind,
             control,
+            config: config.clone(),
         })
     }
 }
@@ -70,8 +72,12 @@ impl Provider for HttpProvider {
         options: &'a RequestOptions,
     ) -> BoxFuture<'a, Result<(), AiError>> {
         Box::pin(
-            self.control
-                .run(options, crate::streaming::stream(self, request, sink)),
+            self.control.run(
+                options,
+                request
+                    .context
+                    .outbound(&self.config, crate::streaming::stream(self, request, sink)),
+            ),
         )
     }
 }

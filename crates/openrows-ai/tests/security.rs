@@ -19,7 +19,7 @@ async fn ai_off_and_precancelled_make_zero_connections() -> TestResult {
     let (sink, _receiver) = mpsc::channel(1);
     let request = TextRequest {
         model: "model".into(),
-        text: "hello".into(),
+        context: mock.context(ProviderKind::OpenAi)?,
         max_output: 10,
     };
     assert_eq!(
@@ -184,7 +184,7 @@ async fn stream_backpressure_deadline_and_cancellation() -> TestResult {
     };
     let request = TextRequest {
         model: "model".into(),
-        text: "hello".into(),
+        context: mock.context(ProviderKind::OpenAi)?,
         max_output: 10,
     };
     assert_eq!(
@@ -195,6 +195,10 @@ async fn stream_backpressure_deadline_and_cancellation() -> TestResult {
     let provider = mock.provider(ProviderKind::OpenAi, enabled())?;
     let (sink, _receiver) = mpsc::channel(1);
     let options = RequestOptions::default();
+    let request = TextRequest {
+        context: mock.context(ProviderKind::OpenAi)?,
+        ..request
+    };
     let cancel = async {
         mock.requests.recv().await;
         options.cancel.cancel();

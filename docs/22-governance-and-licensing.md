@@ -98,3 +98,14 @@ routes/full TLS and zeroizing keychain credentials. A vendor SDK or reqwest
 would duplicate protocol/lifecycle or HTTP/TLS machinery; direct raw TCP would
 duplicate the existing parser and TLS security boundary. All selected licences
 are on the §2 allowlist; `cargo deny` checks the resolved workspace.
+
+### M45-02 direct dependency reuse
+
+`openrows-ai` adds direct reuse of existing locked `regex` (MIT OR Apache-2.0)
+for bounded user glob/regex rules, `sha2` (MIT OR Apache-2.0) for exact context
+hashes, and `rusqlite` with the existing bundled feature (MIT) for transactional
+local policy/audit storage. Bespoke pattern/hash code risks security bugs;
+JSON append files would require custom atomic retention/recovery logic. The
+internal `openrows-sql` crate (Apache-2.0) reuses history's lexer/redactor.
+Existing `tempfile` (MIT OR Apache-2.0) and `criterion` (MIT OR Apache-2.0) are
+test/opt-in benchmark only. No new external package/version or npm dependency.

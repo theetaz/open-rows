@@ -510,3 +510,26 @@ export type {
   Usage,
   AiError,
 } from './generated/bindings';
+
+/** Connection context sharing, offline preview and metadata-only audit (M45-02). */
+export {
+  getAiSharing,
+  saveAiSharing,
+  previewAiContext,
+  listAiAudit,
+  purgeAiAudit,
+} from './aiSharing';
+export type {
+  SharingPolicy,
+  SharingLevel,
+  RedactionRule,
+  ContextBundle,
+  ContextPreview,
+  SchemaObject,
+  Plan,
+  PlanOperation,
+  Aggregate,
+  Sample,
+  AuditEntry,
+  Category,
+} from './generated/bindings';

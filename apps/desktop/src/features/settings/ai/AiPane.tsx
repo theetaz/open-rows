@@ -8,6 +8,7 @@ import { removeProvider, saveAiSettings } from './aiActions';
 import { ProviderForm } from './ProviderForm';
 import { ProviderRow } from './ProviderRow';
 import styles from './Ai.module.css';
+import { SharingDisclosure } from './SharingDisclosure';
 const useAiSettings = aiSettings.useValue;
 /** Lazy-loaded provider setup; AI network permission starts off until explicitly enabled. */
 export default function AiPane(): React.JSX.Element {
@@ -32,6 +33,7 @@ export default function AiPane(): React.JSX.Element {
   };
   return (
     <section aria-label="AI settings">
+      <SharingDisclosure />
       <h3>AI providers</h3>
       <AiPreferences busy={busy} run={run} />
       <div className={styles.actions}>

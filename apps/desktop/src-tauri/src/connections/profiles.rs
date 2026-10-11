@@ -156,6 +156,7 @@ pub(crate) async fn profile_update(
     let mut profile = before.clone();
     input.apply(&mut profile)?;
     let trust = super::credentials::confirm_edit(&app, &profile, Some(&before)).await?;
+    crate::ai_sharing::reset_on_edit(&app, &before, &profile)?;
     let saved = state
         .profiles
         .update_with(profile, &input.secret_changes()?)?;

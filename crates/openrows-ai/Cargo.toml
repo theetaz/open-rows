@@ -15,6 +15,10 @@ bytes = "1"
 http-body-util = "0.1"
 hyper = { version = "1", features = ["client", "http1"] }
 hyper-util = { version = "0.1", features = ["tokio"] }
+openrows-sql = { path = "../openrows-sql" }
+regex = "1"
+sha2 = "0.10"
+rusqlite = { version = "0.40", features = ["bundled"] }
 openrows-net = { path = "../openrows-net" }
 openrows-secrets = { path = "../openrows-secrets" }
 serde = { workspace = true, features = ["derive"] }
@@ -28,4 +32,10 @@ url = "2"
 ipc-types = ["dep:specta"]
 
 [dev-dependencies]
+criterion = { version = "0.8", default-features = false }
+tempfile = "3.27"
 tokio = { version = "1.53", features = ["macros", "rt-multi-thread", "net", "io-util", "test-util"] }
+
+[[bench]]
+name = "context_gate"
+harness = false

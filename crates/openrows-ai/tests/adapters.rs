@@ -36,7 +36,7 @@ async fn streaming(kind: ProviderKind) -> TestResult {
     let (sink, mut deltas) = mpsc::channel(2);
     let request = TextRequest {
         model: "model".into(),
-        text: "hello".into(),
+        context: mock.context(kind)?,
         max_output: 12,
     };
     mock.provider(kind, enabled())?
@@ -74,7 +74,7 @@ async fn malformed(kind: ProviderKind) -> TestResult {
     let (sink, _receiver) = mpsc::channel(1);
     let request = TextRequest {
         model: "model".into(),
-        text: "hello".into(),
+        context: mock.context(kind)?,
         max_output: 10,
     };
     assert_eq!(

@@ -30,3 +30,26 @@
   overflow: auto;
   padding-left: 16px;
 }
+
+.payload,
+.audit {
+  max-height: 280px;
+  overflow: auto;
+  font-size: var(--or-text-12);
+  background: var(--or-panel);
+  color: var(--or-text);
+}
+.payload {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: 8px;
+}
+.audit table {
+  border-collapse: collapse;
+}
+.audit th,
+.audit td {
+  padding: 4px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--or-separator);
+}

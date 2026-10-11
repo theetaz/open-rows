@@ -6,6 +6,7 @@ import { useVerification } from './useVerification';
 import { ProviderDetails } from './ProviderDetails';
 import styles from './Ai.module.css';
 const REASONS: Record<AiError['kind'], string> = {
+  audit: 'Audit storage failed',
   auth: 'Authentication failed',
   rateLimit: 'Rate limit reached',
   quota: 'Quota exhausted',

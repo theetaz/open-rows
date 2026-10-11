@@ -46,6 +46,19 @@ impl AiControl {
     pub fn enabled(&self) -> bool {
         self.0.borrow().0
     }
+    pub(crate) fn generation(&self) -> u64 {
+        self.0.borrow().1
+    }
+    pub(crate) fn current(&self, generation: u64) -> bool {
+        let state = self.0.borrow();
+        state.0 && state.1 == generation
+    }
+    pub(crate) async fn revoked(&self, generation: u64) {
+        let mut state = self.0.subscribe();
+        let _ = state
+            .wait_for(|value| !value.0 || value.1 != generation)
+            .await;
+    }
     pub(crate) async fn run<T>(
         &self,
         options: &RequestOptions,

@@ -6,6 +6,7 @@ mod error;
 mod http;
 mod models;
 mod provider;
+pub mod sharing;
 mod streaming;
 mod types;
 mod wire;
