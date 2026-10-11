@@ -12,6 +12,7 @@ pub(crate) async fn stream(
     sink: mpsc::Sender<String>,
 ) -> Result<(), AiError> {
     let (path, body) = wire::request(provider.kind, request)?;
+    request.context.record().await?;
     let mut exchange = provider.http.request(&path, Some(body)).await?;
     http::check_status(&mut exchange).await?;
     let mut decoder = Decoder::new(provider, sink);

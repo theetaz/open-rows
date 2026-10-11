@@ -5,6 +5,7 @@ import type { EngineDto, ProfileDto } from '@openrows/ipc';
 import { ConnectionFields } from './ConnectionFields';
 import { ENGINE_CHOICES, engineName, isFileEngine } from './engines';
 import { EngineTile } from './EngineTile';
+import { AiSharingDisclosure } from './AiSharingDisclosure';
 import { EnvironmentFields } from './EnvironmentFields';
 import { FileFields } from './FileFields';
 import { HelperFields } from './HelperFields';
@@ -87,6 +88,7 @@ export function ConnectionSheet(props: Props): React.JSX.Element {
         )}
         <SessionLimitsFields form={form} />
         <EnvironmentFields form={form} />
+        <SavedSharing profile={profile} />
         <TestResult state={form.test} />
         {form.saveError && (
           <p className={styles.error} role="alert">
@@ -161,4 +163,17 @@ function DuckdbNotice({
       backup and explain visualization are not available yet.
     </small>
   );
+}
+
+function SavedSharing({
+  profile,
+}: {
+  profile: ProfileDto | undefined;
+}): React.JSX.Element | null {
+  return profile ? (
+    <AiSharingDisclosure
+      id={profile.id}
+      production={profile.env.kind === 'prod'}
+    />
+  ) : null;
 }

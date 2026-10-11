@@ -141,6 +141,11 @@
     "allow-ai-key-set",
     "allow-ai-key-delete",
     "allow-ai-verify",
-    "allow-ai-cancel"
+    "allow-ai-cancel",
+    "allow-ai-sharing-get",
+    "allow-ai-sharing-save",
+    "allow-ai-context-preview",
+    "allow-ai-audit-list",
+    "allow-ai-audit-purge"
   ]
 }

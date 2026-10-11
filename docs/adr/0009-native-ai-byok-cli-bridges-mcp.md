@@ -13,7 +13,7 @@ Users want AI help (NL→SQL, explain, fix, optimise) inside the client. They al
 - AI is a core 1.0 feature, implemented in `openrows-ai` and `openrows-mcp`.
 - Three provider kinds behind one event model: **API keys** (native + OpenAI-compatible adapters), **local models**, and **agent-CLI bridges** that drive the user's installed CLI headlessly, sandboxed to our MCP tools only.
 - The app is an **MCP server** (read-only DB tools, `propose_sql` instead of write tools) and an **MCP client** (user-configured servers).
-- A per-connection **data-sharing policy** (off / schema / samples / results) with redaction, provider allowlists and audit log; prod defaults to schema-only.
+- A per-connection **data-sharing policy** (None / SchemaOnly / SchemaAndStats / SampleRows) with redaction, provider allowlists and audit log; all connections default to None, and production sharing requires explicit confirmation.
 
 Details: [23-ai-assistant.md](../23-ai-assistant.md).
 
@@ -81,3 +81,21 @@ recommendation with storage disabled; compatible gateways use Chat Completions.
 No database sharing, model tool execution, CLI bridge or MCP implementation is
 claimed. The ADR's policy, write-safety and full integration validation remains
 M45-02..09, and live provider access remains a manual opt-in smoke.
+
+## Implementation evidence — M45-02 (2026-10-11)
+
+`openrows-ai::sharing` now owns the default-deny per-connection policy, bounded
+SQL/identifier/column redaction, typed aggregate/plan/sample bundles, exact
+preview and metadata-only audit. Provider generation requires a private gated
+payload; compile-fail doctests reject raw bundles/deserialisation. Production
+consent and saved-provider allowlists are native checks; local-only requires a
+loopback local protocol, and telemetry is an independent permission. Policy or
+provider changes invalidate old payloads; active work cancels on revocation.
+The safer default of None for **all** connections supersedes the original
+schema-on-production default above, per the M45-02 owner brief.
+
+Golden/refusal/transport/audit tests live in `crates/openrows-ai/tests/sharing*`;
+UI editing/consent/preview/purge tests in `features/settings/ai/Sharing.test.tsx`.
+[23 §11](../23-ai-assistant.md#11-implemented-m45-02-connection-context-sharing)
+records exact caps and local storage. MCP execution, assistant conversations,
+account bridges and end-to-end M45-09 validation remain separately scheduled.

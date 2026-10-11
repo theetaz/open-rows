@@ -67,7 +67,7 @@ flowchart LR
 ### 2.2 Local models
 
 - Ollama, LM Studio and any llama.cpp/vLLM server via the OpenAI-compatible adapter on `localhost`.
-- Marked "on-device": the only provider type allowed by default on prod-tagged connections.
+- Marked "on-device": eligible for an explicit local-only allowlist; production sharing still defaults to None.
 
 ### 2.3 Agent CLI bridges (use existing subscriptions)
 
@@ -125,17 +125,17 @@ Writes are impossible through MCP by design: there is no write tool. The model c
 
 | Level | What the model may receive | Default for |
 | --- | --- | --- |
-| **Off** | Nothing; assistant disabled for this connection | — |
-| **Schema** | Object names, columns, types, keys, indexes, comments, row estimates | `prod` tag |
-| **Samples** | Schema + small redacted samples | `staging` tag |
-| **Results** | Schema + query results the user explicitly attaches or `run_read_query` returns (limited) | `dev`, `local` tags |
+| **None** | Nothing; all database context is refused | Every connection, including production/imports/duplicates |
+| **SchemaOnly** | Object names/types and literal-free DDL/query text; no rows, estimates or statistics | Explicit opt-in |
+| **SchemaAndStats** | Schema plus typed numeric aggregates and normalised plans; also requires separate telemetry permission | Explicit opt-in |
+| **SampleRows** | Above plus bounded per-column-redacted samples | Explicit opt-in |
 
 Additional controls:
 
 - **Column redaction rules**: patterns (`*password*`, `*token*`, `*secret*`, `ssn`, `email`…) and per-column overrides; redacted values replaced with `‹redacted›` before leaving the core.
 - **Provider allowlist per connection** (e.g. prod → local models only).
 - **Context preview**: "What will be sent" drawer shows the exact payload before the first message of a conversation.
-- **Audit log**: every AI request records provider, model, connection, sharing level, tool calls and token counts (not payload content unless the user enables it) in the local store.
+- **Audit log**: every AI request records provider, model, connection, sharing level, tool calls and token counts (never payload content or keys) in the local store.
 
 ## 5. Context building
 
@@ -170,7 +170,7 @@ sequenceDiagram
 - **Assistant panel** (right panel tab next to Details): provider switcher, policy chips, conversation, tool-call trace, proposal cards.
 - **Inline (⌘I)** in the SQL editor: prompt bar above the cursor; result appears as a diff to accept/reject.
 - **Error assist**: "Fix" button on query errors.
-- **Settings → AI**: providers (keys, base URLs, models), CLI bridges (detected, health), MCP servers (client), MCP server mode (on/off, port, token, which connections are exposed), data-sharing defaults per env tag, redaction rules, usage.
+- **Settings → AI**: providers (keys, base URLs, models), CLI bridges (detected, health), MCP servers (client), MCP server mode (on/off, port, token, which connections are exposed), per-connection data sharing, redaction rules, usage.
 - AI features are **off until the user configures a provider**; no nagging.
 
 ## 7. Architecture and crates
@@ -262,3 +262,59 @@ Manual live metadata smoke (never generation): set `OPENROWS_AI_LIVE=1`, choose
 `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY` or `GEMINI_API_KEY` in the
 process environment, then run `cargo nextest run -p openrows-ai --test live --run-ignored all`.
 No live key or paid generation is required by CI.
+
+## 11. Implemented (M45-02): connection context sharing
+
+The Tauri-free `openrows-ai::sharing` gate reads a device-local policy and
+returns either a fixed typed refusal or a non-serializable `GatedPayload`.
+Every `TextRequest` requires that type; its fields are private, it has no public
+constructor/Deserialize implementation, and previews cannot be promoted into
+requests. Compile-fail doctests cover the boundary. Transport checks the exact
+saved provider configuration, live global permission and policy revision;
+revocation cancels active exchanges and invalidates old payloads.
+
+All connections start at **None**. Production sharing requires a fresh visible
+confirmation when saving. Imports/duplicates get new IDs without copied consent;
+changing a connection's target or environment resets its policy. Saved-provider
+allowlists and local-only controls are checked natively. Local-only requires a
+local-model protocol and loopback URL; this does not attest inference location.
+Plan/statistics sharing additionally requires the independent telemetry switch.
+Plan nodes use whitelisted operators, qualified relations, literal-free predicates
+and numeric estimates; statistics carry normalised query text and numeric
+aggregates only, with no raw vendor properties/users/client addresses.
+
+The gate reuses `openrows-sql::redact_literals` (the history boundary) and shared
+identifier lexing, removes comments, hides boolean/NULL literals and ambiguous
+SQLite double quotes or unterminated identifiers, and applies sensitive-name rules and
+up to 32 case-insensitive glob/regex rules. Built-ins cover password, passphrase,
+token, secret, SSN, email, phone, card, API/private key and credentials. Qualified
+column rules also apply to unqualified identifiers of selected objects. Caps:
+20 sample rows, 200 cells, 512 UTF-8 bytes per field, 64 KiB JSON and 16,384
+conservatively estimated tokens (one per byte, including JSON escaping).
+Caller bounds may tighten these caps. Requested input is limited to 1 MiB;
+object/plan/statistics/sample/column counts are also bounded. Truncation removes
+whole items deterministically and is visible in the exact preview.
+
+Settings → AI → **Data sharing**, and Edit connection → **AI data sharing**, are
+lazy-loaded compact editors for levels, allowlists, local-only, telemetry and
+redaction. The offline preview accepts selected definitions/SQL without reading
+or connecting to a database; the reusable component/API accepts typed selected
+plans/statistics/samples from later assistant/tool producers. It renders the exact
+JSON used as provider input, bytes, conservative tokens and retained categories.
+Unsaved policies cannot preview. No assistant/chat or generation IPC is added.
+
+Policies and audit metadata live in `ai-sharing.sqlite` beside the existing
+local store (0600 on Unix), outside portable settings/profile exports. Every
+outbound context attempt must append time, provider/connection IDs, level, exact
+size, SHA-256 and enum categories **before** any network I/O; audit failure
+refuses transport. SQLite writes run off the async network runtime. Audit rows
+are immutable until oldest-entry retention (last 1,000) or explicit confirmed
+purge. No payload text, endpoint, model text or keys can enter this record type.
+The settings viewer refreshes/purges metadata only; previews do not create entries.
+
+Evidence: `cargo nextest run -p openrows-ai` covers golden payloads at each
+level, refusals, bounds, audit/persistence and real loopback transport equality,
+revocation and rerouting. `cargo test -p openrows-ai --doc` checks the structural
+boundary. Vitest `features/settings/ai/Sharing.test.tsx` covers editing,
+production consent, preview/refusal and audit purge. Full assistant/MCP execution
+and real provider/database attachment journeys remain their scheduled tasks.

@@ -7,6 +7,9 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "ipc-types", derive(specta::Type))]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum AiError {
+    /// Required local audit persistence failed; no outbound request is sent.
+    #[error("AI audit store is unavailable")]
+    Audit,
     /// Credentials were missing or rejected.
     #[error("Provider authentication failed")]
     Auth,

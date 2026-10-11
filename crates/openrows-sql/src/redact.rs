@@ -47,6 +47,67 @@ pub fn has_redacted_literals(sql: &str) -> bool {
         .windows(REDACTED_PREFIX.len())
         .any(|window| window.eq_ignore_ascii_case(REDACTED_PREFIX.as_bytes()))
 }
+/// Replace matching identifiers; hide boolean/NULL literals and ambiguous `SQLite` double quotes.
+#[must_use]
+pub fn redact_identifiers(sql: &str, dialect: Dialect, sensitive: impl Fn(&str) -> bool) -> String {
+    let tokens: Vec<_> = Lexer::new(sql, dialect).collect();
+    let mut output = String::with_capacity(sql.len());
+    let mut index = 0;
+    while let Some(token) = tokens.get(index) {
+        if !matches!(token.kind, TokenKind::Word | TokenKind::QuotedIdent) {
+            output.push_str(token.text(sql));
+            index += 1;
+            continue;
+        }
+        let mut end = index + 1;
+        let mut name = identifier_name(token.text(sql)).to_owned();
+        while let Some(next) = qualified_next(&tokens, end, sql) {
+            name.push('.');
+            name.push_str(identifier_name(tokens[next].text(sql)));
+            end = next + 1;
+        }
+        let ambiguous = tokens[index..end]
+            .iter()
+            .any(|part| ambiguous_identifier(part.text(sql), dialect));
+        if sensitive(&name) || name.split('.').any(&sensitive) || ambiguous {
+            output.push_str("‹redacted›");
+        } else {
+            output.push_str(&sql[token.start..tokens[end - 1].end]);
+        }
+        index = end;
+    }
+    output
+}
+fn ambiguous_identifier(text: &str, dialect: Dialect) -> bool {
+    if ["true", "false", "null"]
+        .iter()
+        .any(|literal| text.eq_ignore_ascii_case(literal))
+    {
+        return true;
+    }
+    if dialect == Dialect::Sqlite && text.starts_with('"') {
+        return true;
+    }
+    match text.as_bytes().first() {
+        Some(b'"') => !text.ends_with('"') || text.len() < 2,
+        Some(b'`') => !text.ends_with('`') || text.len() < 2,
+        Some(b'[') => !text.ends_with(']') || text.len() < 2,
+        _ => false,
+    }
+}
+fn identifier_name(text: &str) -> &str {
+    text.trim_matches(['"', '`', '[', ']'])
+}
+fn qualified_next(tokens: &[crate::lexer::Token], from: usize, sql: &str) -> Option<usize> {
+    let dot = (from..tokens.len()).find(|&index| tokens[index].kind != TokenKind::Whitespace)?;
+    if tokens[dot].text(sql) != "." {
+        return None;
+    }
+    let next =
+        (dot + 1..tokens.len()).find(|&index| tokens[index].kind != TokenKind::Whitespace)?;
+    matches!(tokens[next].kind, TokenKind::Word | TokenKind::QuotedIdent).then_some(next)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

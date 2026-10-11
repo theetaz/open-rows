@@ -15,6 +15,16 @@ export const commands = {
 	aiVerify: (id: string) => typedError<Verification, IpcError>(__TAURI_INVOKE("ai_verify", { id })),
 	/**  Cancel this provider's current verification request without changing settings. */
 	aiCancel: (id: string) => typedError<null, IpcError>(__TAURI_INVOKE("ai_cancel", { id })),
+	/**  Read the device-local connection policy, default None even for imported profiles. */
+	aiSharingGet: (id: string) => typedError<SharingPolicy, IpcError>(__TAURI_INVOKE("ai_sharing_get", { id })),
+	/**  Persist explicit production consent and validate the allowlist against saved providers. */
+	aiSharingSave: (id: string, policy: SharingPolicy) => typedError<null, IpcError>(__TAURI_INVOKE("ai_sharing_save", { id, policy })),
+	/**  Offline exact preview through the same gate used by provider requests; no audit append. */
+	aiContextPreview: (id: string, provider: string, bundle: ContextBundle) => typedError<ContextPreview, IpcError>(__TAURI_INVOKE("ai_context_preview", { id, provider, bundle })),
+	/**  Scrubbed, newest-first outbound metadata only (at most 1,000 entries). */
+	aiAuditList: () => typedError<AuditEntry[], IpcError>(__TAURI_INVOKE("ai_audit_list")),
+	/**  Explicit local audit purge; policies and provider keys remain separate. */
+	aiAuditPurge: () => typedError<null, IpcError>(__TAURI_INVOKE("ai_audit_purge")),
 	/**  Current lock state; this command never counts as activity. */
 	securityStatus: () => __TAURI_INVOKE<SecurityStatus>("security_status"),
 	/**  Lock every window immediately. */
@@ -456,8 +466,22 @@ export const events = {
 export const DEFAULT_CUSTOM_ENV_COLOR = "#7c3aed" as const;
 
 /* Types */
+/**  Aggregates retain counts, never raw values or activity identities. */
+export type Aggregate = {
+	/**  SQL normalised again at the outbound boundary. */
+	query: string,
+	/**  Executions. */
+	calls: number,
+	/**  Total elapsed milliseconds. */
+	elapsedMs: number,
+	/**  Total processed rows. */
+	rows: number,
+};
+
 /**  Safe provider failure categories shared by transports and the settings UI. */
 export type AiError =
+/**  Required local audit persistence failed; no outbound request is sent. */
+{ kind: "audit" } |
 /**  Credentials were missing or rejected. */
 { kind: "auth" } |
 /**  The provider requests a delay before retrying; no automatic retry occurs. */
@@ -551,6 +575,24 @@ export type AttachedFileDto = {
 export type AttributeDto = {
 	name: string,
 	value: string | null,
+};
+
+/**  One append-only outbound attempt; no payload, model text, endpoint or key. */
+export type AuditEntry = {
+	/**  Unix milliseconds, supplied by the transport. */
+	time: string,
+	/**  Validated saved provider ID, never its label. */
+	provider: string,
+	/**  Validated connection ID, never its name. */
+	connection: string,
+	/**  Authorised sharing level. */
+	level: SharingLevel,
+	/**  Exact context bytes. */
+	bytes: number,
+	/**  SHA-256 of exact context bytes. */
+	hash: string,
+	/**  Actual retained categories. */
+	categories: Category[],
 };
 
 /**  What a backup holds. */
@@ -665,6 +707,19 @@ export type CatalogSearchRequest = {
 	fresh: boolean,
 };
 
+/**  Payload categories; never user-provided audit labels. */
+export type Category =
+/**  Object definitions. */
+"schema" |
+/**  Literal-free statement text. */
+"query" |
+/**  Normalised plan. */
+"plan" |
+/**  Numeric aggregates. */
+"stats" |
+/**  Redacted bounded rows. */
+"samples";
+
 /**  Kind and exact byte length of a cell; the value itself is read separately. */
 export type CellInfoDto = {
 	kind: CellKindDto,
@@ -768,6 +823,34 @@ export type ConstraintKindDto = "primary" | "unique" | "check" | "foreign" | "ex
 
 /**  A database or schema change. */
 export type ContainerChangeDto = { kind: "createDatabase"; name: string; encoding: string | null; collation: string | null } | { kind: "renameDatabase"; name: string; to: string } | { kind: "dropDatabase"; name: string } | { kind: "createSchema"; name: string } | { kind: "renameSchema"; name: string; to: string } | { kind: "dropSchema"; name: string; cascade: boolean };
+
+/**  Requested context before authorisation; never accepted by provider requests. */
+export type ContextBundle = {
+	/**  Selected object definitions. */
+	schema?: SchemaObject[],
+	/**  Statement to normalise, not a prompt or error message. */
+	query?: string | null,
+	/**  Typed plan nodes without arbitrary vendor properties. */
+	plan?: Plan[],
+	/**  Numeric query aggregates only, no users/addresses/parameters. */
+	stats?: Aggregate[],
+	/**  Explicit selected row samples. */
+	samples?: Sample[],
+};
+
+/**  Exact provider context, display-only: it cannot construct a gated payload. */
+export type ContextPreview = {
+	/**  Exact JSON sent as the provider's input text. */
+	payload: string,
+	/**  Serialized bytes including JSON escaping/envelope. */
+	bytes: number,
+	/**  Conservative token estimate. */
+	tokens: number,
+	/**  Actual retained categories. */
+	categories: Category[],
+	/**  Whether any size bound removed context. */
+	truncated: boolean,
+};
 
 /**  How an exact count ended. */
 export type CountReply = { kind: "counted"; rows: number | null } | { kind: "cancelled" };
@@ -1969,6 +2052,20 @@ export type PickedScriptDto = {
 	bytes: number | null,
 };
 
+/**  Flattened plan node; parent index preserves tree structure. */
+export type Plan = {
+	/**  Operator category. */
+	operation: PlanOperation,
+	/**  Parent node index, null at root. */
+	parent: number | null,
+	/**  Qualified relation identifier. */
+	relation: string,
+	/**  Predicate SQL, normalised by the same lexer as query text. */
+	predicate: string,
+	/**  Numeric planner estimate. */
+	estimatedRows: number,
+};
+
 /**  Block counts of a node (`PostgreSQL` `BUFFERS`), including its inputs. */
 export type PlanBuffersDto = {
 	sharedHit: number | null,
@@ -2030,6 +2127,19 @@ export type PlanNodeDto = {
 	details: PlanDetailDto[],
 	hotspots: PlanHotspotDto[],
 };
+
+/**  Whitelisted plan operators avoid retaining raw vendor output or literals. */
+export type PlanOperation =
+/**  Scan. */
+"scan" |
+/**  Join. */
+"join" |
+/**  Sort. */
+"sort" |
+/**  Aggregate. */
+"aggregate" |
+/**  Other operator without vendor text. */
+"other";
 
 /**  How the raw output is shown. */
 export type PlanRawFormatDto = "json" | "text";
@@ -2257,6 +2367,13 @@ export type QueryEventDto = { type: "statementStarted"; statement: number } | { 
 /**  Final row count; `truncated` when the row cap or memory budget stopped it. */
 { type: "resultEnd"; statement: number; resultId: string; rows: number; truncated: boolean } | { type: "rowsAffected"; statement: number; count: number } | { type: "notice"; statement: number; level: NoticeLevelDto; message: string } | { type: "statementDone"; statement: number; elapsedMs: number } | { type: "failed"; statement: number; error: IpcError } | { type: "cancelled"; statement: number } | { type: "finished"; outcome: RunOutcomeDto; elapsedMs: number };
 
+/**  Additional schema.table.column rule; built-in rules cannot be disabled. */
+export type RedactionRule =
+/**  Case-insensitive glob with * and ? wildcards. */
+{ kind: "glob"; pattern: string } |
+/**  Case-insensitive regular expression. */
+{ kind: "regex"; pattern: string };
+
 /**  `ON DELETE` / `ON UPDATE` action of a foreign key. */
 export type ReferentialActionDto = "noAction" | "restrict" | "cascade" | "setNull" | "setDefault";
 
@@ -2440,6 +2557,16 @@ export type RunOutcomeDto = "completed" | "failed" | "cancelled";
 /**  Write-safety switches (FR-CONN-07). */
 export type SafetyDto = "unrestricted" | "confirmAll" | "confirmWrites" | "authenticateAll" | "authenticateWrites" | "readOnly";
 
+/**  A table's selected samples; values stay strings to avoid nested secret fields. */
+export type Sample = {
+	/**  Qualified table name. */
+	table: string,
+	/**  Column names in row order. */
+	columns: string[],
+	/**  Values in column order; null is SQL NULL. */
+	rows: ((string | null)[])[],
+};
+
 /**  A table's journaled change set: the key it was staged against and its rows. */
 export type SavedEditsDto = {
 	key: string[],
@@ -2481,6 +2608,14 @@ export type SchemaDto = {
 	/**  `pg_catalog` or `information_schema`, hidden unless "Show system schemas". */
 	system: boolean,
 	comment: string | null,
+};
+
+/**  Object identity plus DDL, whose literals and comments are removed. */
+export type SchemaObject = {
+	/**  Qualified object name. */
+	name: string,
+	/**  Definition only; no row estimates or statistics. */
+	ddl: string,
 };
 
 /**  A schema of a saved connection's database. */
@@ -2548,6 +2683,33 @@ export type SessionStateDto = "connecting" | "idle" | "busy" | "reconnecting" |
 
 /**  `settings.json` changed outside the app; the webview reads it again. */
 export type SettingsChanged = Record<string, never>;
+
+/**  Maximum category authorised for a connection; every connection defaults off. */
+export type SharingLevel =
+/**  No database context. */
+"none" |
+/**  Names, types and literal-free DDL only. */
+"schemaOnly" |
+/**  Schema plus aggregate statistics and normalised plans. */
+"schemaAndStats" |
+/**  Also bounded, redacted row samples. */
+"sampleRows";
+
+/**  Device-local policy; production consent never travels with connection exports. */
+export type SharingPolicy = {
+	/**  Maximum authorised sharing. */
+	level?: SharingLevel,
+	/**  Saved provider IDs allowed to receive this context. */
+	providers?: string[],
+	/**  Require a loopback local-model protocol (reachability is not attestation). */
+	localOnly?: boolean,
+	/**  Separate permission for monitoring aggregates and plans. */
+	telemetry?: boolean,
+	/**  Explicit confirmation recorded by the policy save boundary. */
+	productionConfirmed?: boolean,
+	/**  Additional identifier and column redactions. */
+	rules?: RedactionRule[],
+};
 
 /**  Server-side sort on one column. */
 export type SortDto = {

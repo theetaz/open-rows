@@ -227,7 +227,7 @@ scrubbing are tested with loopback mocks; no database context or generation IPC
 is exposed. [23 §10](23-ai-assistant.md#10-implemented-m45-01-api-key-and-local-provider-settings)
 records protocol choices, bounds and manual metadata-only smoke instructions.
 Existing-account/CLI eligibility and isolation remain M45-04; per-connection
-sharing, routing allowlists and context preview remain M45-02, and the harness
+sharing, routing allowlists and context preview are implemented in M45-02 (§7 below), and the harness
 below is still planned. There is no silent alternate-provider/API-billing fallback.
 
 ## 7. Database investigation harness
@@ -253,7 +253,7 @@ Tools extend [23](23-ai-assistant.md)'s read/propose contract:
 
 Health telemetry gets its own per-connection sharing switch; schema-only policy
 does not implicitly permit activity text, users, client addresses or timings.
-Off/schema/samples/results, telemetry permission, redaction and provider
+None/SchemaOnly/SchemaAndStats/SampleRows, telemetry permission, redaction and provider
 allowlists are checked before every outbound payload and tool response.
 Policy changes or app lock revoke active work, not only the next conversation.
 Database comments, rows, imported boards and provider output are untrusted
@@ -266,6 +266,31 @@ Automatic AI analysis requires a pre-authorised sharing policy and remains
 read-only; findings, reports and proposed fixes are reviewed in the app. Audit
 records contain provider/model, scope, tool names, evidence ids, usage and outcome,
 with bounded retention and no keys or raw payloads by default.
+
+### Implemented (M45-02)
+
+The common Tauri-free `openrows-ai::sharing` boundary defaults every connection
+to None, requires explicit production consent, saved-provider allowlisting and
+optional loopback local-only routing. SchemaOnly never includes rows/statistics;
+SchemaAndStats permits typed aggregate/plan context only with separate telemetry
+consent; SampleRows adds bounded redacted samples. Raw activity identities,
+addresses and arbitrary vendor plan properties have no field in this bundle.
+Shared SQL lexing removes literals/comments; identifier and per-column rules,
+row/cell/byte/token caps and exact offline preview apply at every outbound gate.
+Private non-deserializable gated payloads are required by provider requests;
+configuration changes/revocation invalidate them and cancel active transport.
+
+Lazy Settings → AI → Data sharing and per-connection editors expose the controls,
+redaction rules, exact rendered context/sizes and a local metadata audit viewer
+with confirmed purge. Policies/audit use separate private device storage; neither
+is exported with preferences or connections. Audit appends must succeed before
+sending, retain the newest 1,000 entries and never include payloads or keys.
+Golden/refusal/compile-fail, transport/audit/persistence and UI tests are linked
+in [23 §11](23-ai-assistant.md#11-implemented-m45-02-connection-context-sharing).
+The settings preview accepts selected SQL/definitions offline; later tool and
+assistant producers supply typed plans/statistics/samples through the same API.
+M45-03/05/08/10 still own MCP, conversations, read execution and investigations;
+no live database collection, assistant UI or generation command is added here.
 
 ## 8. Acceptance and verification
 

@@ -3,6 +3,7 @@
     dead_code,
     reason = "shared fixture helpers compiled independently by each integration binary"
 )]
+pub mod sharing;
 use openrows_ai::{AiControl, HttpProvider, NetworkOptions, ProviderConfig, ProviderKind};
 use openrows_secrets::SecretString;
 use tokio::{
@@ -35,6 +36,35 @@ impl Mock {
             requests,
             task,
         })
+    }
+    pub fn context(
+        &self,
+        kind: ProviderKind,
+    ) -> Result<openrows_ai::sharing::GatedPayload, Box<dyn std::error::Error>> {
+        use openrows_ai::sharing::{
+            ContextBundle, GateRequest, SharingLevel, SharingPolicy, SharingStore,
+        };
+        let store = SharingStore::memory(1000)?;
+        store.save(
+            "connection",
+            SharingPolicy {
+                level: SharingLevel::SchemaOnly,
+                providers: vec!["fixture".into()],
+                ..SharingPolicy::default()
+            },
+            false,
+        )?;
+        Ok(store.gate(GateRequest {
+            connection: "connection",
+            production: false,
+            provider: &self.config(kind),
+            control: &enabled(),
+            dialect: openrows_sql::Dialect::Postgres,
+            bundle: ContextBundle {
+                query: Some("SELECT 'hello'".into()),
+                ..ContextBundle::default()
+            },
+        })?)
     }
     pub fn provider(
         &self,

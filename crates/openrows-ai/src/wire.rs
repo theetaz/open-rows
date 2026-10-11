@@ -9,24 +9,24 @@ pub(crate) fn request(
 ) -> Result<(String, Value), AiError> {
     if request.model.is_empty()
         || request.model.len() > 256
-        || request.text.len() > 1024 * 1024
+        || request.context.text().len() > 1024 * 1024
         || !(1..=65536).contains(&request.max_output)
     {
         return Err(AiError::InvalidConfig);
     }
-    let chat = json!({"model": request.model, "messages": [{"role": "user", "content": request.text}], "stream": true, "max_tokens": request.max_output});
+    let chat = json!({"model": request.model, "messages": [{"role": "user", "content": request.context.text()}], "stream": true, "max_tokens": request.max_output});
     let result = match kind {
         ProviderKind::Anthropic => ("messages".into(), chat),
         ProviderKind::OpenAi => (
             "responses".into(),
-            json!({"model": request.model, "input": request.text, "stream": true, "store": false, "max_output_tokens": request.max_output}),
+            json!({"model": request.model, "input": request.context.text(), "stream": true, "store": false, "max_output_tokens": request.max_output}),
         ),
         ProviderKind::OpenRouter | ProviderKind::Compatible | ProviderKind::LocalCompatible => {
             ("chat/completions".into(), chat)
         }
         ProviderKind::Ollama => (
             "api/chat".into(),
-            json!({"model": request.model, "messages": [{"role": "user", "content": request.text}], "stream": true, "options": {"num_predict": request.max_output}}),
+            json!({"model": request.model, "messages": [{"role": "user", "content": request.context.text()}], "stream": true, "options": {"num_predict": request.max_output}}),
         ),
         ProviderKind::Gemini => {
             let model = request
@@ -41,7 +41,7 @@ pub(crate) fn request(
             }
             (
                 format!("models/{model}:streamGenerateContent?alt=sse"),
-                json!({"contents": [{"role": "user", "parts": [{"text": request.text}]}], "generationConfig": {"maxOutputTokens": request.max_output}}),
+                json!({"contents": [{"role": "user", "parts": [{"text": request.context.text()}]}], "generationConfig": {"maxOutputTokens": request.max_output}}),
             )
         }
     };

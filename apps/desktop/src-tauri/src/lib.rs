@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! `OpenRows` native shell and its generated IPC contract.
 mod ai;
+mod ai_sharing;
 mod commands;
 mod connections;
 mod diagram;
@@ -50,6 +51,11 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
         ai::ai_key_delete,
         ai::ai_verify,
         ai::ai_cancel,
+        ai_sharing::ai_sharing_get,
+        ai_sharing::ai_sharing_save,
+        ai_sharing::ai_context_preview,
+        ai_sharing::ai_audit_list,
+        ai_sharing::ai_audit_purge,
         security::security_status,
         security::security_lock,
         security::security_unlock,
@@ -273,6 +279,7 @@ pub fn run() -> Result<(), tauri::Error> {
             result_store::install(app)?;
             driver_host::install(app)?;
             connections::install(app)?;
+            ai_sharing::install(app)?;
             native_files::install(app);
             settings::apply_saved(app);
             if let Some(value) = settings::current(&app.state::<settings::SettingsFile>()) {
