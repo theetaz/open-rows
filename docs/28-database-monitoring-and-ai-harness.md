@@ -1,6 +1,6 @@
 # 28 — Database Monitoring, Analytics and the AI Harness
 
-Status: planned, not implemented. Scope expanded on 2026-10-11. Delivery order:
+Status: PostgreSQL monitoring backend implemented (M25-01/02); product UI and the remaining matrix are planned. Scope expanded on 2026-10-11. Delivery order:
 finish the current DuckDB host repair, build monitoring and analytics (M2.5),
 then build the database AI harness (M4.5). This document owns the expanded
 FR-ADMIN-03..08 and FR-AI-11..13 scope; [27](27-delivery-plan.md) owns task status. [ADR-0011](adr/0011-performance-monitor.md) is the accepted architecture decision (owner, 2026-10-11), with implementation validation pending. It owns detailed engine sources/grants, counter semantics, budgets, privacy and advisor rules; this document owns product scope and acceptance.
@@ -329,3 +329,61 @@ slice. Timing/overhead, retained-history footprint and UI/chart performance are
 measured against [13](13-performance.md) at milestone exit, with reference
 hardware and actual numbers. Neither this specification nor the existing
 process-list refresh counts as implementation evidence. M25-09 must meet all accepted ADR-0011/NFR-PERF-11/NFR-SEC-08 budgets and the detailed source/privilege, advisor, Explain, privacy and retention matrix; M45-09 separately validates AI sharing and tool boundaries.
+
+
+## 9. Implemented (M25-01/02): monitoring runtime and PostgreSQL backend
+
+`openrows-monitor` owns the Tauri-free actor, typed capability/sample states,
+monotonic counter baselines, cadence/deadlines, blocking analysis and redacted
+Arrow windows. PostgreSQL owns fixed guarded reads and version/role/extension
+probes. The desktop admits an explicitly started collector only for an already
+connected PostgreSQL profile/database; startup commands are removed from the
+background-session route. TLS, credentials and SSH/helper routing reuse the
+existing connection path. Repeated views share the same reservation/session;
+up to four pending/active collectors count against admission.
+
+Activity defaults to 5 s; database/statements/I/O have a 15 s floor, and
+relations/indexes/replication a 60 s floor. Slow, failed or unchanged sources back
+off to 60 s. Reads run sequentially, with a client deadline plus PostgreSQL
+read-only transaction, local `pg_catalog` search path, statement timeout and
+100 ms lock timeout; no
+transaction spans ticks. A client/protocol failure cancels and discards the
+session rather than reusing an undrained connection. Explicit resume opens and
+re-probes a new generation. Stop/pause, connection close, profile edit/delete,
+network/wake invalidation, app lock and application exit stop and clear samples;
+unlock never resumes collection implicitly. Revoked statistics visibility is
+rechecked inside each data query and clears affected source data.
+
+The live store keeps at most ten minutes, 300 timestamps/series, 64 scalar
+series and 200 statement identities. The implementation uses a stricter 2 MiB
+retained estimate per collector, explicit partial coverage on caps, and bounded
+one-MiB Arrow pages (up to 1,000 rows; top statements default 20/max 100).
+Read-time expiry also removes history after terminal collection failure.
+Events contain only generation/source status, at most once per second. Query
+literals/comments/parameters are removed before retention; utility, quoted
+identifier, multi-statement and truncated text fails closed. Repeated statement
+samples use `pg_stat_statements(false)` and contain no SQL text.
+
+Typed `monitor_start/stop/pause/capabilities/snapshot`, `monitor_window` and
+`monitor_top_statements` commands, `monitor-changed`, generated types and the
+`packages/ipc/src/monitor.ts` helpers form the M25-03 handoff. Existing Processes
+reads the redacted monitor activity when a collector is registered, without a
+second activity query. Sample nulls carry explicit unknown/gap/reset states;
+server and selected-database scopes, units and setup guidance accompany samples
+and capabilities. UUID aliases share one profile admission/generation key.
+Statement rankings currently cover the latest valid interval; cumulative mean
+and max-since-reset stay separately labelled. Full-window rankings belong to
+M25-04. Statement coverage includes collector/guard commands where their query
+identities cannot be excluded safely.
+
+Evidence and limitations are recorded in [ADR-0011](adr/0011-performance-monitor.md#implemented-m25-0102-evidence).
+Native-arm64 PostgreSQL 17 and 14 full suites and the PG12 monitor fixture cover
+active/blocking work, positive counter rates, a real database-statistics reset,
+extension absence/presence and permission loss. PG12's unrelated multirange test prevents a green full PG12
+suite. PG13/15/16/18, managed-provider denial, unloaded extension, live replication,
+spill/vacuum/statement-reset fixtures, the mac-low all-process footprint and
+reference-workload overhead matrix remain unverified. No monitor UI, local
+history, alerts, boards, advisor or AI harness is shipped by this backend slice.
+The final serial Rust run passed 1,389 tests; the full gate remains incomplete
+because the two-container SSH fixture conflicts with this task's one-container
+constraint. Initial host cancellation failures passed on that final rerun.

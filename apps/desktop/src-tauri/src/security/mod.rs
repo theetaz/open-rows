@@ -95,6 +95,9 @@ pub(crate) fn security_lock(
         .unwrap_or_else(PoisonError::into_inner)
         .lock();
     app.state::<crate::ai::AiState>().revoke();
+    app.state::<crate::connections::Connections>()
+        .monitors
+        .stop_all();
     let _ = app.emit("security-changed", true);
     Ok(())
 }
@@ -169,6 +172,11 @@ pub(crate) fn monitor(app: &tauri::AppHandle) {
             let state = app.state::<Security>();
             let mut lock = state.lock.lock().unwrap_or_else(PoisonError::into_inner);
             lock.tick(state.started.elapsed());
+            if lock.locked {
+                app.state::<crate::connections::Connections>()
+                    .monitors
+                    .stop_all();
+            }
             if lock.locked != announced {
                 announced = lock.locked;
                 announce_lock(&app, lock.locked);

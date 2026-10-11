@@ -35,8 +35,8 @@ mod window_frame;
 mod workspace;
 
 use connections::{
-    attach, catalog, connection, credentials, diagnostics, exchange, files, inspection, processes,
-    profiles, prompts, reveal, sessions,
+    attach, catalog, connection, credentials, diagnostics, exchange, files, inspection, monitor,
+    processes, profiles, prompts, reveal, sessions,
 };
 use tauri::Manager;
 
@@ -100,6 +100,11 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
         catalog::catalog_check,
         processes::processes_list,
         processes::process_signal,
+        monitor::monitor_start,
+        monitor::monitor_stop,
+        monitor::monitor_pause,
+        monitor::monitor_capabilities,
+        monitor::monitor_snapshot,
         queries::commands::query_execute,
         queries::commands::query_cancel,
         queries::explain::query_explain,
@@ -196,6 +201,7 @@ fn with_events_and_types(
             catalog_cache::CatalogChanged,
             prompts::SshPromptChanged,
             menu::MenuCommand,
+            monitor::MonitorChanged,
             settings_watch::SettingsChanged
         ])
         .constant(
@@ -203,6 +209,7 @@ fn with_events_and_types(
             openrows_store::profile::EnvTag::new(openrows_store::profile::EnvKind::Custom).color,
         )
         .typ::<openrows_ai::AiSettings>()
+        .typ::<monitor::MonitorWindow>()
         .typ::<results::WindowRequest>()
         .typ::<results::ResultError>()
 }
@@ -248,8 +255,12 @@ pub fn run() -> Result<(), tauri::Error> {
         .manage(dump::DumpJobs::default());
     let specta = command_builder();
     let controls = specta.invoke_handler();
-    let binary: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool =
-        tauri::generate_handler![results::result_window, results::result_cell_value];
+    let binary: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool = tauri::generate_handler![
+        results::result_window,
+        results::result_cell_value,
+        monitor::monitor_window,
+        monitor::monitor_top_statements
+    ];
     startup_report::instrument(builder)
         .invoke_handler(move |invoke| {
             if let Err(error) = invoke
@@ -258,12 +269,18 @@ pub fn run() -> Result<(), tauri::Error> {
                 .state::<security::Security>()
                 .admit(invoke.message.command())
             {
+                invoke
+                    .message
+                    .webview()
+                    .state::<connections::Connections>()
+                    .monitors
+                    .stop_all();
                 invoke.resolver.reject(error);
                 return true;
             }
             if matches!(
                 invoke.message.command(),
-                "result_window" | "result_cell_value"
+                "result_window" | "result_cell_value" | "monitor_window" | "monitor_top_statements"
             ) {
                 binary(invoke)
             } else {
@@ -291,18 +308,26 @@ pub fn run() -> Result<(), tauri::Error> {
             startup::install(app)
         })
         .build(tauri::generate_context!())?
-        .run(|app, event| {
-            #[cfg(target_os = "macos")]
-            if let tauri::RunEvent::Opened { urls } = &event {
-                native_files::enqueue(app, urls.iter().filter_map(|url| url.to_file_path().ok()));
-            }
-            if let tauri::RunEvent::Exit = event {
-                connections::helpers::exit(app);
-                result_store::exit(app);
-                observability::exit(app);
-            }
-        });
+        .run(on_run_event);
     Ok(())
+}
+
+/// Route opened files to the native-file queue and release resources on exit.
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri hands each RunEvent over by value"
+)]
+fn on_run_event(app: &tauri::AppHandle, event: tauri::RunEvent) {
+    #[cfg(target_os = "macos")]
+    if let tauri::RunEvent::Opened { urls } = &event {
+        native_files::enqueue(app, urls.iter().filter_map(|url| url.to_file_path().ok()));
+    }
+    if let tauri::RunEvent::Exit = event {
+        app.state::<connections::Connections>().monitors.stop_all();
+        connections::helpers::exit(app);
+        result_store::exit(app);
+        observability::exit(app);
+    }
 }
 
 #[cfg(test)]

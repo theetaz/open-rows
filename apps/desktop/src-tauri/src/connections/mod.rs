@@ -45,6 +45,7 @@ pub(crate) mod limits;
 mod limits_dto;
 mod metadata;
 mod metadata_lifecycle;
+pub(crate) mod monitor;
 mod owners;
 pub(crate) mod processes;
 mod processes_dto;
@@ -90,6 +91,7 @@ pub(crate) struct Connections {
     pub(crate) app: tauri::AppHandle,
     pub(crate) sessions: SessionManager,
     metadata: metadata::MetadataSessions,
+    pub(crate) monitors: monitor::Monitors,
     /// Which saved connection and database each open session belongs to.
     pub(crate) owners: owners::Owners,
     /// Shared SSH tunnels per saved connection.
@@ -148,6 +150,7 @@ pub(crate) fn install(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Er
         imports: exchange::PendingImports::default(),
         sessions,
         metadata: metadata::MetadataSessions::default(),
+        monitors: monitor::Monitors::default(),
         owners: owners::Owners::default(),
         tunnels: Tunnels::default(),
         helpers: openrows_net::helper::Helpers::default(),

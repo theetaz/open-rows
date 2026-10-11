@@ -12,12 +12,29 @@ pub(crate) type TextRow = Vec<Option<String>>;
 /// Run `sql` (one or more `;`-separated statements) and collect every text row.
 /// Always drains to `ReadyForQuery`, so a server error leaves the connection usable.
 pub(crate) async fn query(wire: &mut Wire, sql: &str) -> Result<Vec<TextRow>, DriverError> {
+    query_limited(wire, sql, usize::MAX).await
+}
+
+pub(crate) async fn query_limited(
+    wire: &mut Wire,
+    sql: &str,
+    limit: usize,
+) -> Result<Vec<TextRow>, DriverError> {
     frontend::query(sql, wire.out())?;
     wire.flush().await?;
     let (mut rows, mut failure) = (Vec::new(), None);
+    let mut bytes = 0;
     loop {
         match wire.next().await? {
-            Message::DataRow(body) => rows.push(text_row(body.buffer())?),
+            Message::DataRow(body) => {
+                bytes += body.buffer().len();
+                if bytes > limit || (limit != usize::MAX && rows.len() >= 1_000) {
+                    return Err(DriverError::Protocol(
+                        "monitor result limit exceeded".into(),
+                    ));
+                }
+                rows.push(text_row(body.buffer())?);
+            }
             Message::ErrorResponse(body) => {
                 failure.get_or_insert(server_error(&body));
             }

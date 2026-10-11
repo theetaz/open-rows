@@ -1,0 +1,27 @@
+[package]
+name = "openrows-monitor"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Bounded, privacy-safe database monitoring runtime"
+
+[lints]
+workspace = true
+
+[features]
+ipc = ["dep:specta"]
+
+[dependencies]
+arrow-array = "60"
+arrow-schema = "60"
+arrow-ipc = "60"
+openrows-sql = { path = "../openrows-sql" }
+serde = { workspace = true, features = ["derive"] }
+thiserror.workspace = true
+specta = { version = "2.0.0-rc.25", features = ["derive"], optional = true }
+tokio = { version = "1.53", features = ["rt", "sync", "time", "macros"] }
+
+[dev-dependencies]
+tokio = { version = "1.53", features = ["test-util"] }

@@ -125,6 +125,15 @@ pub(crate) fn through_proxy(
 /// asked password (`auth`) or validation failures.
 pub(crate) async fn profile_target(state: &Connections, id: &str) -> Result<Target, IpcError> {
     let profile = state.profiles.get(profile_id(id)?)?;
+    profile_target_for(state, id, profile).await
+}
+
+/// Connect an already reviewed profile through the same credentials and routing.
+pub(crate) async fn profile_target_for(
+    state: &Connections,
+    id: &str,
+    profile: ConnectionProfile,
+) -> Result<Target, IpcError> {
     let mut secrets = driver_secrets(&state.profiles, &profile)?;
     secrets.password = match profile.password_storage {
         PasswordStorage::Keychain => secrets.password,

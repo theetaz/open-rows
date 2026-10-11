@@ -28,6 +28,7 @@ mod edits;
 pub mod fixture;
 mod info;
 mod introspect;
+mod monitor;
 mod options;
 mod session;
 mod simple;

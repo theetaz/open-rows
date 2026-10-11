@@ -533,3 +533,27 @@ export type {
   AuditEntry,
   Category,
 } from './generated/bindings';
+
+/** Bounded PostgreSQL monitoring core (M25-01/02); presentation follows in M25-03. */
+export {
+  startMonitor,
+  stopMonitor,
+  pauseMonitor,
+  monitorCapabilities,
+  monitorSnapshot,
+  monitorWindow,
+  topStatements,
+  onMonitorChanged,
+} from './monitor';
+export type {
+  Descriptor,
+  MonitorChanged,
+  MonitorReply,
+  MonitorStart,
+  MonitorTarget,
+  MonitorWindow,
+  SampleState,
+  Scope,
+  Source,
+  SourceStatus,
+} from './generated/bindings';

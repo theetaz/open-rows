@@ -11,20 +11,24 @@ use crate::session::PgSession;
 /// Client backends in [`ProcessInfo::from_text_row`] order, the longest
 /// running first. The duration of an active backend counts from its query
 /// start, of any other from its last state change.
-const PROCESSES_SQL: &str = "\
+pub(crate) const ACTIVITY_AGE: &str = "GREATEST(0, (extract(epoch FROM clock_timestamp() - COALESCE(CASE WHEN state = 'active' THEN query_start ELSE state_change END, backend_start)) * 1000)::bigint)";
+pub(crate) const ACTIVITY_WAIT: &str =
+    "CASE WHEN wait_event IS NULL THEN NULL ELSE wait_event_type || ': ' || wait_event END";
+
+fn processes_sql() -> String {
+    format!(
+        "\
 SELECT pid, usename, datname, \
     CASE WHEN client_addr IS NULL THEN NULL \
         ELSE host(client_addr) || COALESCE(':' || client_port, '') END, \
     application_name, state, \
-    CASE WHEN wait_event IS NULL THEN NULL ELSE wait_event_type || ': ' || wait_event END, \
-    query_start::text, \
-    GREATEST(0, (extract(epoch FROM clock_timestamp() - COALESCE( \
-        CASE WHEN state = 'active' THEN query_start ELSE state_change END, \
-        backend_start)) * 1000)::bigint), \
+    {ACTIVITY_WAIT}, query_start::text, {ACTIVITY_AGE}, \
     query, pid = pg_backend_pid() \
 FROM pg_stat_activity \
 WHERE backend_type = 'client backend' \
-ORDER BY 9 DESC, pid";
+ORDER BY 9 DESC, pid"
+    )
+}
 
 /// The statement signalling `id`, or `None` when no backend can have it
 /// (pids are positive `int4`).
@@ -71,7 +75,7 @@ impl Admin for PgSession {
 
     fn list_processes(&mut self) -> BoxFuture<'_, Result<Vec<ProcessInfo>, DriverError>> {
         Box::pin(async move {
-            let rows = self.text_query(PROCESSES_SQL).await?;
+            let rows = self.text_query(&processes_sql()).await?;
             rows.iter()
                 .map(|row| ProcessInfo::from_text_row(row))
                 .collect()

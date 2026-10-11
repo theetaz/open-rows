@@ -160,6 +160,7 @@ pub(crate) async fn profile_update(
     let saved = state
         .profiles
         .update_with(profile, &input.secret_changes()?)?;
+    state.monitors.stop_profile(&id);
     if trust {
         trust_saved(&state, &saved)?;
     }
@@ -198,6 +199,7 @@ pub(crate) fn profile_delete(
     id: String,
 ) -> Result<(), IpcError> {
     let profile = profile_id(&id)?;
+    state.monitors.stop_profile(&id);
     state.profiles.delete(profile)?;
     state.tunnels.forget(&id);
     state.asked.forget(profile);

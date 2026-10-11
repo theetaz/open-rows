@@ -117,6 +117,9 @@ impl Driver for PgDriver {
 }
 
 impl Connection for PgSession {
+    fn monitor(&mut self) -> Option<&mut dyn openrows_monitor::MonitorReader> {
+        Some(self)
+    }
     fn server(&self) -> &ServerSummary {
         self.summary()
     }

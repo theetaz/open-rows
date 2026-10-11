@@ -224,7 +224,7 @@ These FR-NET-03 rows document OpenRows scope; no TablePlus adoption/parity claim
 
 | Key | Feature | What it does | OpenRows status / FR | Target | OpenRows improvement | Source |
 | --- | --- | --- | --- | --- | --- | --- |
-| A01 | Process list | Inspect server activity. | Covered FR-ADMIN-01 | M2 | Separate admin connection and capability labels. | [S51] |
+| A01 | Process list | Inspect server activity. | Covered FR-ADMIN-01 | M2 | Separate admin connection and capability labels; implemented M25-01/02 shares redacted PG monitor activity while collection is active. | [S51] |
 | A02 | Cancel/kill session | Stop selected server work. | Covered FR-ADMIN-01 | M2 | Explain cancel versus session termination. | [S51] |
 | A03 | Activity sort/refresh | Reorder and reload process rows. | Covered FR-ADMIN-01, FR-GRID-04 | M2 | Preserve selection and sort. | [S51] |
 | A04 | User/grant viewer | Inspect accounts and permissions. | Covered FR-ADMIN-02 | M2 done (M2-09) | PG/MySQL/MariaDB/SQL Server attributes, direct memberships and explicit grants; no computed effective permissions (docs/10 §7). | [S52] |
@@ -234,7 +234,7 @@ These FR-NET-03 rows document OpenRows scope; no TablePlus adoption/parity claim
 | A08 | SQL bar/line charts | Build charts from SQL results. | Planned FR-ADMIN-07; docs/28 | M2.5 | Bounded read-only workloads and open board files. | [S53] |
 | A09 | Dashboard tables | Add a query-backed table widget. | Planned FR-ADMIN-07; docs/28 | M2.5 | Reuse streamed result pipeline. | [S53] |
 | A10 | Dashboard inputs | Parameterise widgets with input fields. | Planned FR-ADMIN-07; docs/28 | M2.5 | Typed bindings, no string injection. | [S53] |
-| A11 | Dashboard refresh | Refresh on timer, event or request. | Planned FR-ADMIN-04, 06, 07; docs/28 | M2.5 | Shared collection, load limits and visible polling state. | [S53] |
+| A11 | Dashboard refresh | Refresh on timer, event or request. | Partial FR-ADMIN-04 (M25-01/02 backend); planned FR-ADMIN-06, 07; docs/28 | M2.5 | Shared collection, load limits and visible polling state. | [S53] |
 | A12 | Dashboard transfer | Import/export metric boards. | Planned FR-ADMIN-07, 08; docs/28 | M2.5 | Secret-free definitions; imports stay paused until reviewed. | [S45] |
 | A13 | Plugin manager | Install additional functionality. | Gap G08 | Post-1.0 | WASM permissions and resource limits. | [S54] |
 | A14 | Script extension API | Write custom plugins. | Gap G08 | Post-1.0 | Capability-limited portable components. | [S54] |
@@ -382,7 +382,7 @@ These requirements are new in this task. They close specification gaps, not impl
 | G04 | E09 | SQL minification is optional; formatting is required. | Post-1.0 |
 | G05 | E14 | Standard named/positional bound parameters are required; extra templating syntaxes and remembered values are optional. | Post-1.0 |
 | G06 | A05–A07 | Keep the existing FR-ADMIN-02 boundary: viewer in 1.0, user/grant/resource-limit editing later. Raw SQL remains available under safety checks. | Post-1.0 |
-| G07 | A08–A12 | Promoted to planned FR-ADMIN-07/08 alongside server monitoring FR-ADMIN-03..06; docs/28 defines charts/inputs/refresh/transfer and read-only/import boundaries. Not implemented yet. | M2.5 |
+| G07 | A08–A12 | Promoted to planned FR-ADMIN-07/08 alongside server monitoring FR-ADMIN-03..06; docs/28 defines charts/inputs/refresh/transfer and read-only/import boundaries. Implemented M25-01/02 PostgreSQL runtime/collector and typed IPC; monitor UI, charts/boards/alerts/reports and the remaining engine/performance matrix are pending. | M2.5 |
 | G08 | A13–A15 | Plugin manager/runtime follows [21](21-extensibility.md); built-in formatting remains M2. | Post-1.0 |
 | G09 | A16 | DDL viewing is required; framework migration exporters are optional extensions. | Post-1.0 |
 | G10 | A17 | Opening arbitrary cell links requires URI trust policy. | Post-1.0 |
