@@ -38,6 +38,7 @@ pub struct HttpProvider {
     pub(crate) kind: ProviderKind,
     control: AiControl,
     config: ProviderConfig,
+    pub(crate) tools: bool,
 }
 impl HttpProvider {
     /// Build an adapter without connecting; keys are neither serializable nor printable.
@@ -55,6 +56,37 @@ impl HttpProvider {
             kind: config.kind,
             control,
             config: config.clone(),
+            tools: false,
+        })
+    }
+}
+impl HttpProvider {
+    /// Use explicitly verified model capability; unknown models stay single-shot.
+    #[must_use]
+    pub fn with_tool_calling(mut self, supported: bool) -> Self {
+        self.tools = supported;
+        self
+    }
+}
+impl crate::agent::AgentProvider for HttpProvider {
+    fn tool_calling(&self) -> bool {
+        self.tools
+    }
+    fn turn<'a>(
+        &'a self,
+        request: crate::agent::TurnRequest<'a>,
+        sink: mpsc::Sender<String>,
+        options: &'a RequestOptions,
+    ) -> BoxFuture<'a, Result<crate::agent::Turn, AiError>> {
+        Box::pin(async move {
+            self.control
+                .run(
+                    options,
+                    request
+                        .context
+                        .outbound(&self.config, crate::streaming::turn(self, &request, sink)),
+                )
+                .await
         })
     }
 }

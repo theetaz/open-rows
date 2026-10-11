@@ -76,18 +76,23 @@ pub struct ServerStatus {
     pub clients: Vec<ClientInfo>,
 }
 /// Typed input after tool-specific validation; unknown properties are refused.
-#[derive(Clone, Debug, Default, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ToolInput {
     /// Scoped saved connection ID.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub connection: Option<String>,
     /// Database already open in the app.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub database: Option<String>,
     /// Schema identifier for object metadata.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub schema: Option<String>,
     /// Object identifier for details.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub object: Option<String>,
     /// Read or proposal SQL (maximum 16 KiB).
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub sql: Option<String>,
 }
 /// Saved connection/provider identity resolved by the app, never asserted by a client.

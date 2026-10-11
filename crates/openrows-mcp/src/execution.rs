@@ -4,7 +4,7 @@ use crate::{McpError, rows::Collector};
 use openrows_ai::sharing::{ContextBundle, Plan, PlanOperation, Sample};
 use openrows_driver_api::{CancelHandle, Connection, DiscardSink};
 use openrows_explain::{Engine, Mode, Wrap, analyse, command, parse};
-use openrows_sql::{Dialect, ai_read_source, validate_ai_read};
+use openrows_sql::{Dialect, ai_read_source, ai_read_sources, validate_ai_read};
 use std::{sync::Arc, time::Duration};
 
 /// All engines have an explicit AI execution decision.
@@ -122,7 +122,9 @@ async fn collect(
             .await
             .map_err(|_| McpError::Database)?;
     }
-    crate::source::validate(connection, source.as_ref(), engine == ReadEngine::Postgres).await?;
+    for relation in ai_read_sources(sql, engine.explain()?.1).map_err(|_| McpError::Unsafe)? {
+        crate::source::validate(connection, Some(&relation), engine).await?;
+    }
     let command = command(explain_engine, Mode::Plan, sql, Wrap::None);
     let mut rows = Collector::new(plan);
     connection
@@ -139,12 +141,17 @@ async fn collect(
         }
         bundle.plan = normalize(command.format, &rows.rows, source.as_ref())?;
     } else {
+        let direct = source.is_some();
         bundle.samples.push(Sample {
             table: source.map_or_else(
                 || "result".into(),
                 |(schema, table)| format!("{schema}.{table}"),
             ),
-            columns: rows.columns,
+            columns: if direct {
+                rows.columns
+            } else {
+                vec!["secret".into(); rows.columns.len()]
+            },
             rows: rows.rows,
         });
     }

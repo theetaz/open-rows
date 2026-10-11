@@ -43,6 +43,8 @@ export interface SqlEditor {
   readonly format: (kind: FormatKind, options: FormatOptions) => Promise<void>;
   /** Insert a snippet template over the selection, its first field selected. */
   readonly insertSnippet: (body: string) => void;
+  /** Insert literal SQL over the selection without interpreting snippet placeholders. */
+  readonly insertText: (text: string) => void;
   /**
    * Where the text Run Current executes starts: the selection, else the
    * statement at the cursor, else the document start.
@@ -83,6 +85,10 @@ export function mountSqlEditor(
     format: (kind, formatOptions) => formatInView(view, kind, formatOptions),
     insertSnippet: (body) => {
       insertSnippet(view, body);
+    },
+    insertText: (text) => {
+      view.dispatch(view.state.replaceSelection(text));
+      view.focus();
     },
     runStart: () => runStart(view),
     destroy: () => {

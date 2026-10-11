@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useCallback, useRef, useState } from 'react';
+import { AssistantDock } from '../assistant/AssistantDock';
+import { toggleAssistant } from '../assistant/conversation';
 import { editorDialect } from '../connections/engines';
 import type { ProfileDto } from '@openrows/ipc';
 import type { CompletionCatalog, FormatKind } from '@openrows/editor';
@@ -48,7 +50,7 @@ type QueryTabProps = {
   catalog: CompletionCatalog | null;
   runs: QueryRuns;
   /** Tab-set actions: text, files and parameter values. */
-  tabs: TabFileActions & Pick<QueryTabs, 'setParams'>;
+  tabs: TabFileActions & Pick<QueryTabs, 'setParams' | 'open'>;
   onCell: (cell: SelectedCell) => void;
   onConnect: () => void;
 };
@@ -98,8 +100,7 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
   const editor = useRef<EditorHandle | null>(null);
   const [cursor] = useState(createCursorStore);
   const [settings, updateSettings] = useEditorSettings();
-  const [naming, startNaming, stopNaming] = useFlag();
-  const [picking, startPicking, stopPicking] = useFlag();
+  const sheets = useQuerySheets(props, editor);
   const dialect = editorDialect(props.connection.engine);
   const [formatFailure, format] = useFormat(editor, settings, dialect);
   const files = useTabFiles(tab, editor, props.tabs);
@@ -112,63 +113,119 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
     files,
     runs,
     tabId: tab.id,
-    onSnippet: startPicking,
+    onSnippet: sheets.startPicking,
+    onAssistant: () => {
+      toggleAssistant(tab.id);
+    },
     onExplain:
       props.connection.engine === 'duckdb' ? () => undefined : explain.run,
   });
   return (
-    <section
-      className={styles.query}
-      aria-label={tab.title}
-      onFocus={useHistoryInsert(tab.id, editor, claim)}
-      onKeyDown={(event) => {
-        tabKey(event, act);
-      }}
-    >
-      <TabEditor
-        {...props}
-        settings={settings}
-        cursor={cursor}
-        editorRef={editor}
-        act={act}
-      />
-      <TabBar
-        {...props}
-        settings={settings}
-        update={updateSettings}
-        cursor={cursor}
-        run={run}
-        actions={actions}
-        file={files.act}
-        format={format}
-        notice={props.notice ?? formatFailure ?? files.failure}
-        onName={startNaming}
-        onExplain={explain.run}
-      />
-      <TabParams
-        {...props}
-        dialect={dialect}
-        settings={settings}
-        run={run}
-        onRun={actions.provide}
-      />
-      <TabResults
-        {...props}
-        run={run}
-        settings={settings}
-        onExportable={onExportable}
-        explain={explain}
-      />
+    <div className={styles.withAssistant}>
+      <section
+        className={styles.query}
+        aria-label={tab.title}
+        onFocus={useHistoryInsert(tab.id, editor, claim)}
+        onKeyDown={(event) => {
+          tabKey(event, act);
+        }}
+      >
+        <TabEditor
+          {...props}
+          settings={settings}
+          cursor={cursor}
+          editorRef={editor}
+          act={act}
+        />
+        <TabBar
+          {...props}
+          settings={settings}
+          update={updateSettings}
+          cursor={cursor}
+          run={run}
+          actions={actions}
+          file={files.act}
+          format={format}
+          notice={props.notice ?? formatFailure ?? files.failure}
+          onName={sheets.startNaming}
+          onExplain={explain.run}
+        />
+        <TabParams
+          {...props}
+          dialect={dialect}
+          settings={settings}
+          run={run}
+          onRun={actions.provide}
+        />
+        <TabResults
+          {...props}
+          run={run}
+          settings={settings}
+          onExportable={onExportable}
+          explain={explain}
+        />
+        {sheets.element}
+      </section>
+      <TabAssistant {...props} editorRef={editor} run={run} explain={explain} />
+    </div>
+  );
+}
+
+function useQuerySheets(
+  props: QueryTabProps,
+  editor: { current: EditorHandle | null },
+) {
+  const [naming, startNaming, stopNaming] = useFlag();
+  const [picking, startPicking, stopPicking] = useFlag();
+  return {
+    startNaming,
+    startPicking,
+    element: (
       <TabSheets
         {...props}
         naming={naming}
         onNamed={stopNaming}
-        text={() => editor.current?.text() ?? tab.sql}
+        text={() => editor.current?.text() ?? props.tab.sql}
         picking={picking}
         editorRef={editor}
         onPicked={stopPicking}
       />
-    </section>
+    ),
+  };
+}
+
+/** Query-tab context for the lazy dock, with editor-only proposal actions. */
+function TabAssistant(
+  props: QueryTabProps & {
+    editorRef: { current: EditorHandle | null };
+    run: RunState;
+    explain: ExplainControls;
+  },
+): React.JSX.Element {
+  const { tab, editorRef, run, explain } = props;
+  return (
+    <AssistantDock
+      tabId={tab.id}
+      profile={props.connection}
+      database={tab.database}
+      connected={props.sessionId !== null}
+      sql={() => editorRef.current?.text() ?? tab.sql}
+      lastError={
+        [...run.messages]
+          .reverse()
+          .find((message) => message.level === 'error') ?? null
+      }
+      plan={explain.state?.status === 'done' ? explain.state.plan : null}
+      onInsert={(sql) => {
+        editorRef.current?.insertText?.(sql);
+      }}
+      onOpen={(sql) => {
+        props.tabs.open(
+          { connectionId: tab.connectionId, database: tab.database },
+          { title: 'SQL proposal — review', sql },
+        );
+      }}
+    />
   );
 }
 

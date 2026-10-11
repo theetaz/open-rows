@@ -5,7 +5,7 @@ use openrows_driver_api::{Connection, catalog::ObjectKind};
 pub(crate) async fn validate(
     connection: &mut dyn Connection,
     source: Option<&(String, String)>,
-    postgres: bool,
+    engine: crate::ReadEngine,
 ) -> Result<(), McpError> {
     let Some((schema, table)) = source else {
         return Ok(());
@@ -21,8 +21,16 @@ pub(crate) async fn validate(
     {
         return Err(McpError::Unsafe);
     }
-    if postgres {
-        postgres_table(connection, (schema, table)).await?;
+    match engine {
+        crate::ReadEngine::Postgres => postgres_table(connection, (schema, table)).await?,
+        crate::ReadEngine::Mysql | crate::ReadEngine::Mariadb => {
+            mysql_table(connection, (schema, table)).await?;
+        }
+        crate::ReadEngine::Sqlite | crate::ReadEngine::LibsqlFile => {}
+        crate::ReadEngine::Libsql
+        | crate::ReadEngine::Sqlserver
+        | crate::ReadEngine::Clickhouse
+        | crate::ReadEngine::Duckdb => return Err(McpError::Unsafe),
     }
     Ok(())
 }
@@ -71,4 +79,54 @@ async fn postgres_table(
         return Err(McpError::Unsafe);
     }
     Ok(())
+}
+
+async fn mysql_table(
+    connection: &mut dyn Connection,
+    (schema, table): (&str, &str),
+) -> Result<(), McpError> {
+    let name = openrows_sql::Dialect::MySql
+        .qualified(schema, table)
+        .map_err(|_| McpError::Unsafe)?;
+    // Acquire a transaction-held metadata lock without evaluating any table values.
+    connection
+        .execute(
+            &format!("SELECT 0 FROM {name} WHERE 1=0"),
+            &mut openrows_driver_api::DiscardSink,
+        )
+        .await
+        .map_err(|_| McpError::Database)?;
+    let schema = mysql_literal(schema);
+    let table = mysql_literal(table);
+    // MariaDB permits UDFs in virtual generated expressions. Refuse all generated
+    // columns, rather than trusting read-only mode to constrain implicit user code.
+    let sql = format!(
+        "SELECT COUNT(*) FROM information_schema.tables t WHERE t.TABLE_SCHEMA={schema} AND t.TABLE_NAME={table} AND t.TABLE_TYPE='BASE TABLE' AND NOT EXISTS (SELECT 1 FROM information_schema.columns c WHERE c.TABLE_SCHEMA={schema} AND c.TABLE_NAME={table} AND (c.EXTRA LIKE '%GENERATED%' OR c.GENERATION_EXPRESSION <> ''))"
+    );
+    let mut result = Collector::new(false);
+    connection
+        .execute(&sql, &mut result)
+        .await
+        .map_err(|_| McpError::Database)?;
+    if result
+        .rows
+        .first()
+        .and_then(|row| row.first())
+        .and_then(Option::as_deref)
+        != Some("1")
+    {
+        return Err(McpError::Unsafe);
+    }
+    Ok(())
+}
+fn mysql_literal(value: &str) -> String {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let mut output = String::with_capacity(value.len() * 2 + 28);
+    output.push_str("CONVERT(0x");
+    for byte in value.bytes() {
+        output.push(char::from(HEX[usize::from(byte >> 4)]));
+        output.push(char::from(HEX[usize::from(byte & 15)]));
+    }
+    output.push_str(" USING utf8mb4)");
+    output
 }

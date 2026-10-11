@@ -2,6 +2,7 @@
 //! `OpenRows` native shell and its generated IPC contract.
 mod ai;
 mod ai_sharing;
+mod assistant;
 mod commands;
 mod connections;
 mod diagram;
@@ -52,6 +53,10 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
         ai::ai_key_delete,
         ai::ai_verify,
         ai::ai_cancel,
+        assistant::assistant_run,
+        assistant::assistant_cancel,
+        assistant::assistant_preview,
+        assistant::assistant_explain,
         ai_sharing::ai_sharing_get,
         ai_sharing::ai_sharing_save,
         ai_sharing::ai_context_preview,
@@ -302,6 +307,7 @@ pub fn run() -> Result<(), tauri::Error> {
             observability::install(app)?;
             specta.mount_events(app);
             app.manage(ai::AiState::default());
+            app.manage(assistant::AssistantState::default());
             settings::install(app);
             result_store::install(app)?;
             driver_host::install(app)?;

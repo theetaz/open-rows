@@ -118,3 +118,20 @@ records limits and deliberate fail-closed gaps: no remote listener/write scope,
 no external local-only attestation, restricted SELECT syntax and unsupported
 remote libSQL/SQL Server/ClickHouse/DuckDB execution. The in-app assistant,
 CLI-as-provider adapters and MCP client remain their own delivery tasks.
+
+## Evidence: Implemented (M45-05)
+
+The native assistant uses the existing provider routing/keychain layer and sharing
+boundary, with a Tauri-free bounded agent loop and the same executor as MCP.
+Seven native protocol mock round trips preserve exact golden context and keep tool
+results in data roles. Explicit tool capability metadata gates the finite loop;
+unknown models use single-shot schema context. The lazy per-tab dock streams text,
+shows tool evidence and returns editor-only SQL proposals. Limits/cancellation,
+injection/refusal, no-write engine fixtures, follow-up redaction and UI actions are
+covered by the suites linked in [23 §13](../23-ai-assistant.md#13-implemented-m45-05-query-assistant-with-visible-tool-trace).
+
+The positive AST subset admits joins, non-modifying CTEs/subqueries, aggregates,
+windows and UNION; all base tables undergo live safety checks. Unknown functions
+remain refused on PostgreSQL, MySQL/MariaDB and SQLite; ambiguous sample provenance
+is fully redacted. No dependency on provider accounts/CLI bridges is introduced.
+Live smoke is opt-in, synthetic and requires the owner's real key; it was not run.

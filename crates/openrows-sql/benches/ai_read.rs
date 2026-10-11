@@ -14,6 +14,10 @@ fn main() {
             "SELECT id,email FROM public.items WHERE id IN (1,2) LIMIT 20",
         ),
         (
+            "safe_investigation",
+            "WITH totals AS (SELECT p.id,count(*) AS n FROM public.people p JOIN public.orders o ON p.id=o.person_id GROUP BY p.id) SELECT id,row_number() OVER (ORDER BY n) FROM totals WHERE n>3 UNION SELECT id,0 FROM public.people ORDER BY id LIMIT 20",
+        ),
+        (
             "refused_side_effect",
             "SELECT pg_catalog.pg_terminate_backend(1)",
         ),

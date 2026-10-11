@@ -289,8 +289,8 @@ Golden/refusal/compile-fail, transport/audit/persistence and UI tests are linked
 in [23 §11](23-ai-assistant.md#11-implemented-m45-02-connection-context-sharing).
 The settings preview accepts selected SQL/definitions offline; later tool and
 assistant producers supply typed plans/statistics/samples through the same API.
-M45-05/10 still own conversations and monitoring investigations;
-no live database collection, assistant UI or generation command is added here.
+M45-05 now owns query conversations (§7 below); M45-10 owns monitoring investigations.
+M45-02 itself adds no live database collection or generation command.
 
 ### Implemented (M45-03/08)
 
@@ -307,9 +307,32 @@ verify unchanged state after smuggling and an injected engine-level write.
 
 [23 §12](23-ai-assistant.md#12-implemented-m45-0308-built-in-mcp-and-execution-safety)
 records exact bounds, conservative SQL/engine restrictions and Claude Code/Codex
-setup. Conversations, full tool-call traces, monitoring collectors/scheduling,
-boards/reports and assistant evidence artifacts remain M45-05/10; this boundary
-is ready for those producers without adding an autonomous loop.
+setup. Query conversations and tool-call traces are implemented below; monitoring
+collectors/scheduling, boards/reports and structured evidence artifacts remain M45-10.
+
+### Implemented (M45-05)
+
+The query-tab assistant reuses MCP's `ToolExecutor` for catalog, protected reads,
+plan-only explain and proposals. `openrows-ai::agent` bounds provider/tool rounds,
+streaming/backpressure, steps, conservative tokens and total time; cancellation
+and live policy revision checks cover transport and tools. Every call has a visible
+start/completion trace with safe argument summary, result size/redaction, duration
+and status. Provider output has editor proposal actions and no write execution path.
+Unknown tool capabilities fall back to one gated schema prompt. Native resolved
+scope, questions, re-redacted prior turns and optional typed plan go through the
+same producer for exact offline preview and generation.
+
+AST admission now permits read-only joins/subqueries/non-recursive CTEs,
+aggregates/windows and UNION for PostgreSQL, MySQL/MariaDB and SQLite/libSQL file.
+Every base relation is live-validated; unknown functions remain refused on every
+engine and ambiguous sample lineage is fully redacted. Existing disposable
+read-only sessions, deadlines and no-startup-SQL behavior remain mandatory.
+[23 §13](23-ai-assistant.md#13-implemented-m45-05-query-assistant-with-visible-tool-trace)
+records bounds, tests, engine decisions and opt-in `OPENROWS_AI_LIVE=1` smoke.
+
+Query conversations/traces are session memory only. Persisted audit remains the
+M45-02 content-free disclosure metadata; richer model/usage/evidence/outcome
+records, monitoring tools, scheduled investigations and artifacts remain M45-10/12.
 
 ## 8. Acceptance and verification
 

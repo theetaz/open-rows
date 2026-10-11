@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Metadata-only verification and cancellable text streaming for BYOK/local AI.
+pub mod agent;
+mod agent_wire;
 mod config;
+mod continuation;
 mod control;
 mod error;
 mod http;
@@ -8,6 +11,7 @@ mod models;
 mod provider;
 pub mod sharing;
 mod streaming;
+mod tool_stream;
 mod types;
 mod wire;
 

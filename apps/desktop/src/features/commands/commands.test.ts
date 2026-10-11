@@ -139,5 +139,6 @@ it('lists every menu bar item as a command, including table and edit actions', (
   for (const id of ids) expect(known.has(id ?? ''), id).toBe(true);
   for (const id of [...TABLE_COMMANDS, 'export-results', 'help-search'])
     expect(ids).toContain(id);
-  expect(known.has('assistant')).toBe(false);
+  expect(known.has('assistant')).toBe(true);
+  expect(ids).not.toContain('assistant');
 });

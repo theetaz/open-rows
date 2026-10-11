@@ -294,18 +294,18 @@ These rows specify the owner's database-monitoring request; they do not claim Ta
 
 | Key | Feature | What it does | OpenRows status / FR | Target | OpenRows improvement | Source |
 | --- | --- | --- | --- | --- | --- | --- |
-| L01 | Assistant panel | Chat beside database content. | Covered FR-AI-04 | M4.5 | Off until configured; visible tool trace. | [S04] |
+| L01 | Assistant panel | Chat beside database content. | Covered FR-AI-04 | M4.5 | **Implemented (M45-05):** lazy per-tab streaming conversation, visible bounded tool trace and explicit cancel; session memory only. | [S04] |
 | L02 | API-key providers | Choose a hosted model vendor. | Covered FR-AI-01 | M4.5 | **Implemented (M45-01):** saved providers/keychain keys, defaults and metadata verification; per-connection allowlists implemented in M45-02. | [S04] |
 | L03 | Local models | Connect to Ollama/local servers. | Covered FR-AI-02 | M4.5 | **Implemented (M45-01):** keyless Ollama and local compatible servers; loopback default, warned remote opt-in. | [S04] |
 | L04 | Compatible endpoints | Configure another model API. | Covered FR-AI-01 | M4.5 | **Implemented (M45-01):** compatible endpoint settings; HTTP/TLS and crate route/CA options reuse DB networking. | [S04] |
 | L05 | Installed CLI bridge | Use an installed coding CLI as provider. | Covered FR-AI-03 | M4.5 | Versioned adapters and bounded lifecycle. | [S04] |
 | L06 | Custom ACP provider | Attach a protocol-compatible local assistant. | Partial FR-AI-03; Gap G14 | M4.5 named bridges; ACP post-1.0 | Add protocol adapter only after trust tests. | [S04] |
 | L07 | Copilot sign-in | Use a subscription via account login. | Gap G15 | Post-1.0 | User-owned provider adapters, no token extraction. | [S04] |
-| L08 | Model/provider selection | Change the conversation backend. | Covered FR-AI-01, FR-AI-04 | M4.5 | Show model and sharing policy together. | [S04] |
-| L09 | Schema context selection | Attach chosen table definitions. | Covered FR-AI-08 | M4.5 | **Implemented (M45-02):** exact offline selected-context preview and bounded schema-only policy; assistant relevance ranking remains M45-05. | [S04] |
-| L10 | Generate/explain queries | Ask for SQL or explanations. | Covered FR-AI-04 | M4.5 | Dialect-aware proposals, no write execution. | [S04] |
-| L11 | Assistant query execution | Let the assistant obtain query results. | Partial FR-AI-06, FR-AI-09; Gap G16 for writes | M4.5 reads; writes excluded | **Implemented (M45-03/08):** bounded MCP reads and editor-only proposals; assistant UI remains M45-05. | [S04] |
-| L12 | Result sharing | Send executed query results to a model. | Covered FR-AI-08 | M4.5 | **Implemented (M45-02/03/08):** mandatory sharing/redaction/caps/audit on MCP samples; assistant attachment remains M45-05. | [S04] |
+| L08 | Model/provider selection | Change the conversation backend. | Covered FR-AI-01, FR-AI-04 | M4.5 | **Implemented (M45-05):** saved provider/model picker, explicit model verification and active sharing policy/preview; unknown tool capability uses single-shot. | [S04] |
+| L09 | Schema context selection | Attach chosen table definitions. | Covered FR-AI-08 | M4.5 | **Implemented (M45-02/05):** exact offline gated context, schema picker and first eight bounded definitions; relevance ranking/table multi-select deferred. | [S04] |
+| L10 | Generate/explain queries | Ask for SQL or explanations. | Covered FR-AI-04 | M4.5 | **Implemented (M45-05):** dialect-aware SQL, explain/fix/plan quick actions and insert/open/plan-only explain proposals, no automatic execution. | [S04] |
+| L11 | Assistant query execution | Let the assistant obtain query results. | Partial FR-AI-06, FR-AI-09; Gap G16 for writes | M4.5 reads; writes excluded | **Implemented (M45-03/05/08):** shared bounded protected reads in a finite assistant loop; AST joins/CTEs/subqueries/aggregates/windows/unions; unsupported engines refuse. | [S04] |
+| L12 | Result sharing | Send executed query results to a model. | Covered FR-AI-08 | M4.5 | **Implemented (M45-02/03/05/08):** gate/redaction/caps/audit on every tool result and generation context; ambiguous sample provenance fully redacted. | [S04] |
 | L13 | MCP server enable/status | Turn on local client access. | Covered FR-AI-06; new FR-AI-10 | M4.5 | **Implemented (M45-03):** stdio bridge and separately opt-in loopback HTTP, both default off. | [S57] |
 | L14 | MCP client setup | Show supported transport configuration. | Covered FR-AI-06; new FR-AI-10 | M4.5 | **Implemented (M45-03):** secret-free Claude Code/Codex stdio configuration and HTTP guidance in docs/23 §12; MCP client remains M45-07. | [S57] |
 | L15 | Scoped tokens | Limit tokens to allowed connections. | New FR-AI-10 | M4.5 | **Implemented (M45-03):** once-shown hash-only read credentials bound to saved provider, connection set and expiry. | [S57] |

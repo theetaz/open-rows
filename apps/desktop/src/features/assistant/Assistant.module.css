@@ -1,0 +1,76 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-8);
+  width: 340px;
+  min-width: 240px;
+  max-width: 45%;
+  overflow: auto;
+  padding: var(--or-space-12);
+  border-left: var(--or-border-width) solid var(--or-separator);
+  background: var(--or-window);
+  color: var(--or-text);
+  font-size: var(--or-text-12-5);
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--or-space-6);
+}
+.panel p {
+  margin: 0;
+}
+.panel form,
+.panel label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-6);
+}
+.panel textarea {
+  resize: vertical;
+  min-height: 64px;
+  padding: var(--or-space-8);
+  background: var(--or-control-fill);
+  color: var(--or-text);
+  border: var(--or-border-width) solid var(--or-separator);
+  border-radius: var(--or-radius-control);
+  font: inherit;
+}
+.panel pre {
+  max-height: 220px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: var(--or-text-12-5);
+}
+.panel :focus-visible {
+  outline: var(--or-focus-width) solid var(--or-focus);
+  outline-offset: var(--or-focus-offset);
+}
+.conversation {
+  flex: 1;
+  min-height: 100px;
+  overflow: auto;
+}
+.conversation article {
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-8);
+  padding-block: var(--or-space-8);
+  border-bottom: var(--or-border-width) solid var(--or-separator);
+}
+.question {
+  font-weight: var(--or-weight-medium);
+}
+.answer {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.proposal {
+  padding: var(--or-space-8);
+  border: var(--or-border-width) solid var(--or-separator);
+  border-radius: var(--or-radius-control);
+}

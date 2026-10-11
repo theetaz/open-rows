@@ -8,6 +8,9 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "ipc-types", derive(specta::Type))]
 #[serde(rename_all = "camelCase", default, deny_unknown_fields)]
 pub struct ContextBundle {
+    /// Explicit user questions and fixed error codes for assistant requests.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub assistant: Option<AssistantContext>,
     /// Selected object definitions.
     pub schema: Vec<SchemaObject>,
     /// Statement to normalise, not a prompt or error message.
@@ -25,6 +28,7 @@ impl ContextBundle {
     }
     pub(super) fn categories(&self) -> Vec<Category> {
         [
+            (self.assistant.is_some(), Category::Assistant),
             (!self.schema.is_empty(), Category::Schema),
             (self.query.is_some(), Category::Query),
             (!self.plan.is_empty(), Category::Plan),
@@ -58,6 +62,46 @@ impl ContextBundle {
         }
         Ok(None)
     }
+}
+
+/// User-authored questions, separate from untrusted database evidence.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "ipc-types", derive(specta::Type))]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct AssistantContext {
+    /// Bounded user question; previous user questions may supply follow-up context.
+    pub question: String,
+    /// Native-resolved tool scope; never a model-selected connection.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scope: Option<AssistantScope>,
+    /// Previous user/assistant turns, bounded and re-redacted for every request.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub history: Vec<AssistantHistory>,
+    /// SQLSTATE/vendor code only; raw vendor messages never leave the app.
+    pub error_code: Option<String>,
+}
+
+/// Native target identifiers are subject to the same sharing redactions.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "ipc-types", derive(specta::Type))]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct AssistantScope {
+    /// Saved connection identifier for tool arguments.
+    pub connection: String,
+    /// Selected database identifier for tool arguments.
+    pub database: String,
+    /// Native SQL dialect for proposals.
+    pub dialect: String,
+}
+/// A prior displayed turn; it remains untrusted data rather than tool instructions.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "ipc-types", derive(specta::Type))]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct AssistantHistory {
+    /// Prior user question.
+    pub question: String,
+    /// Prior answer, with SQL literals and sensitive identifiers removed.
+    pub answer: String,
 }
 
 /// Object identity plus DDL, whose literals and comments are removed.

@@ -1,0 +1,1 @@
+{"assistant":{"question":"Show customers with more than 3 orders","errorCode":null},"schema":[],"query":"SELECT id FROM public.people WHERE id=__OPENROWS_REDACTED_1__","plan":[],"stats":[],"samples":[]}

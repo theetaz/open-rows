@@ -6,7 +6,10 @@ mod redact;
 mod store;
 mod types;
 
-pub use bundle::{Aggregate, ContextBundle, Plan, PlanOperation, Sample, SchemaObject};
+pub use bundle::{
+    Aggregate, AssistantContext, AssistantHistory, AssistantScope, ContextBundle, Plan,
+    PlanOperation, Sample, SchemaObject,
+};
 pub use gate::{GateRequest, GatedPayload};
 pub use store::SharingStore;
 pub use types::{

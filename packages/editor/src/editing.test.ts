@@ -111,3 +111,14 @@ it('leaves out the suggestion kinds the user turned off', async () => {
   expect(typed(stateOf('sel'))).not.toBeNull();
   expect(typed(stateOf('sel', { completeSnippets: false }))).toBeNull();
 });
+
+it('inserts assistant SQL literally over the selection without snippet expansion', () => {
+  const parent = document.createElement('div');
+  document.body.append(parent);
+  editor = mountSqlEditor(parent, { doc: 'replace', label: 'SQL' });
+  editor.view.dispatch({ selection: { anchor: 0, head: 7 } });
+  const sql = "SELECT $1, '${literal}' FROM public.items";
+  editor.insertText(sql);
+  expect(editor.view.state.doc.toString()).toBe(sql);
+  expect(editor.view.state.selection.main.head).toBe(sql.length);
+});
