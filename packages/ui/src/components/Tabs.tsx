@@ -11,7 +11,7 @@ import styles from './Navigation.module.css';
 type Tab = {
   id: string;
   label: string;
-  kind?: 'table' | 'query' | 'processes' | 'inspection';
+  kind?: 'table' | 'query' | 'processes' | 'monitor' | 'inspection';
   title?: string;
   /** Pinned: kept left, no close button, not closed by middle-click. */
   pinned?: boolean;
@@ -25,6 +25,7 @@ const KIND_GLYPHS: Readonly<Record<NonNullable<Tab['kind']>, string>> = {
   query: '›_',
   table: '▦',
   processes: '≡',
+  monitor: '⌁',
   inspection: '▤',
 };
 type Props = {

@@ -174,7 +174,13 @@ async fn blocking(writer: &mut PgSession, monitor: &mut PgSession, database: &st
             .any(|row| row.get(1).and_then(Option::as_deref) == Some("active"))
     );
     let mut store = LiveStore::default();
-    store.ingest(Source::Activity, sample, 0, 0.0);
+    store.ingest(
+        Source::Activity,
+        sample,
+        0,
+        super::monitor_capture::wall_ms(),
+    );
+    super::monitor_capture::capture(&store, Source::Activity)?;
     let bytes = store.window(Some(Source::Activity), 1_000, false)?;
     assert!(!String::from_utf8_lossy(&bytes).contains("test-only"));
     let batch = StreamReader::try_new(Cursor::new(bytes), None)?
@@ -196,6 +202,8 @@ async fn blocking(writer: &mut PgSession, monitor: &mut PgSession, database: &st
 }
 
 async fn counters(monitor: &mut PgSession, database: &str) -> TestResult {
+    let began = Instant::now();
+    let wall = super::monitor_capture::wall_ms();
     let first = monitor.read(Source::Database, 1_000).await;
     let before = number(&first, 2)?;
     let mut work = connection(database, None).await?;
@@ -210,8 +218,14 @@ async fn counters(monitor: &mut PgSession, database: &str) -> TestResult {
     }
     assert!(number(&second, 2)? > before);
     let mut store = LiveStore::default();
-    store.ingest(Source::Database, first, 0, 0.0);
-    store.ingest(Source::Database, second, 1_000, 1_000.0);
+    store.ingest(Source::Database, first, 0, wall);
+    store.ingest(
+        Source::Database,
+        second,
+        u64::try_from(began.elapsed().as_millis())?.max(1),
+        super::monitor_capture::wall_ms(),
+    );
+    super::monitor_capture::capture(&store, Source::Database)?;
     let bytes = store.window(None, 1_000, false)?;
     let batch = StreamReader::try_new(Cursor::new(bytes), None)?
         .next()
@@ -248,6 +262,9 @@ async fn resources(monitor: &mut PgSession) -> TestResult {
         let sample = monitor.read(source, 1_000).await;
         assert_eq!(sample.state, SampleState::Ok);
         assert!(!sample.rows.is_empty());
+        let mut store = LiveStore::default();
+        store.ingest(source, sample, 0, super::monitor_capture::wall_ms());
+        super::monitor_capture::capture(&store, source)?;
         assert!(!monitor.in_transaction());
     }
     let replication = monitor.read(Source::Replication, 1_000).await;
@@ -260,7 +277,17 @@ async fn statements(monitor: &mut PgSession, writer: &mut PgSession) -> TestResu
     let sample = monitor.read(Source::Statements, 1_000).await;
     assert_eq!(sample.state, SampleState::Ok);
     assert!(!sample.rows.is_empty());
-    assert!(sample.columns.iter().all(|c| c.name != "query"));
+    assert!(sample.columns.iter().any(|c| c.name == "query"));
+    let mut store = LiveStore::default();
+    store.ingest(
+        Source::Statements,
+        sample,
+        0,
+        super::monitor_capture::wall_ms(),
+    );
+    super::monitor_capture::capture(&store, Source::Statements)?;
+    let bytes = store.window(Some(Source::Statements), 100, false)?;
+    assert!(!String::from_utf8_lossy(&bytes).contains("test-only"));
     sql(writer, "SET pg_stat_statements.track = 'none'").await?;
     // Instrumentation settings are per session: configure the collector fixture itself.
     sql(monitor, "SET pg_stat_statements.track = 'none'").await?;

@@ -67,12 +67,12 @@ fn statements(config: &Config) -> Option<(String, Vec<Column>)> {
         EPOCH.to_owned()
     };
     let sql = format!(
-        "SELECT dbid::text || ':' || userid::text || ':' || queryid::text, calls, {total}, {mean}, {max}, rows, shared_blks_hit, shared_blks_read, shared_blks_dirtied, shared_blks_written, temp_blks_read, temp_blks_written, {epoch} FROM {schema}.pg_stat_statements(false) WHERE dbid = (SELECT oid FROM pg_database WHERE datname = current_database()) AND queryid IS NOT NULL ORDER BY {total} DESC, queryid LIMIT 200"
+        "SELECT dbid::text || ':' || userid::text || ':' || queryid::text, calls, {total}, {mean}, {max}, rows, shared_blks_hit, shared_blks_read, shared_blks_dirtied, shared_blks_written, temp_blks_read, temp_blks_written, CASE WHEN octet_length(query) < 4096 AND current_setting('standard_conforming_strings') = 'on' THEN query ELSE NULL END, {epoch} FROM {schema}.pg_stat_statements(true) WHERE dbid = (SELECT oid FROM pg_database WHERE datname = current_database()) AND queryid IS NOT NULL ORDER BY {total} DESC, queryid LIMIT 200"
     );
     Some((
         sql,
         columns(
-            "statement_id:text,calls:counter,total_ms:counter,cumulative_mean_ms:ms,max_since_reset_ms:ms,rows:counter,shared_blks_hit:counter,shared_blks_read:counter,shared_blks_dirtied:counter,shared_blks_written:counter,temp_blks_read:counter,temp_blks_written:counter",
+            "statement_id:text,calls:counter,total_ms:counter,cumulative_mean_ms:ms,max_since_reset_ms:ms,rows:counter,shared_blks_hit:counter,shared_blks_read:counter,shared_blks_dirtied:counter,shared_blks_written:counter,temp_blks_read:counter,temp_blks_written:counter,query:query",
         ),
     ))
 }

@@ -12,6 +12,9 @@ import {
   startMonitor,
   stopMonitor,
   topStatements,
+  monitorHistory,
+  configureMonitorHistory,
+  purgeMonitorHistory,
 } from './monitor';
 const target = { profileId: 'p', database: 'db' };
 describe('monitoring IPC', () => {
@@ -53,5 +56,18 @@ describe('monitoring IPC', () => {
     await expect(monitorWindow(request)).rejects.toMatchObject({
       kind: 'locked',
     });
+  });
+  it('uses typed history commands with explicit profile isolation and purge scope', async () => {
+    invoke.mockResolvedValue({ status: 'ok', data: [] });
+    await monitorHistory(target, 24);
+    await configureMonitorHistory(['p']);
+    await purgeMonitorHistory('p');
+    await purgeMonitorHistory(null);
+    expect(invoke.mock.calls).toEqual([
+      ['monitor_history', { target, hours: 24 }],
+      ['monitor_history_configure', { profiles: ['p'] }],
+      ['monitor_history_purge', { profileId: 'p' }],
+      ['monitor_history_purge', { profileId: null }],
+    ]);
   });
 });

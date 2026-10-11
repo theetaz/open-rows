@@ -201,6 +201,7 @@ export const COMMANDS: readonly CommandSpec[] = [
     hint: '⌘F in sidebar',
   },
   { id: 'schema', label: 'Next schema', shortcut: null },
+  { id: 'monitor', label: 'Show Monitor', shortcut: null },
   { id: 'processes', label: 'Show processes', shortcut: null },
   { id: 'new-table', label: 'New table…', shortcut: null },
   { id: 'new-view', label: 'New view…', shortcut: null },

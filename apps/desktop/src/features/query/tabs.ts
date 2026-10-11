@@ -42,7 +42,7 @@ export type TabFile = {
  */
 export type QueryTab = TabScope & {
   id: string;
-  kind: 'query' | 'table' | 'processes' | 'inspection';
+  kind: 'query' | 'table' | 'processes' | 'monitor' | 'inspection';
   title: string;
   sql: string;
   /** Schema object the tab was opened for, e.g. `['public', 'orders']`. */
@@ -75,6 +75,8 @@ export type QueryTabInit = {
   /** Open as the scope's preview tab, replacing the current one. */
   preview?: boolean;
   processes?: true;
+  /** Open the scope’s one Monitor workspace. */
+  monitor?: true;
 };
 
 /** Every open query tab, the active tab per scope and the title counter. */
@@ -102,6 +104,7 @@ export function tabsOf(state: TabsState, scope: TabScope): readonly QueryTab[] {
 }
 
 function kindOf(init: QueryTabInit): QueryTab['kind'] {
+  if (init.monitor) return 'monitor';
   if (init.inspection) return 'inspection';
   if (init.table) return 'table';
   return init.processes ? 'processes' : 'query';
@@ -130,7 +133,7 @@ export function openTab(
   init: QueryTabInit = {},
 ): TabsState {
   const kind = kindOf(init);
-  if (kind === 'processes') {
+  if (kind === 'processes' || kind === 'monitor') {
     const existing = tabsOf(state, scope).find((tab) => tab.kind === kind);
     if (existing) return selectTab(state, existing.id);
   }

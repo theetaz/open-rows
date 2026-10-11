@@ -59,6 +59,7 @@ export function Workspace({
           onSettings();
         }}
         onProcesses={controller.openProcesses}
+        onMonitor={controller.openMonitor}
         onRunFile={jobs.runFile}
         jobs={jobs}
       />

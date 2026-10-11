@@ -6,6 +6,7 @@ mod error;
 mod history;
 mod history_retention;
 mod migrate;
+mod monitor_history;
 mod saved_queries;
 mod schema_snapshots;
 mod workspace_state;
@@ -23,6 +24,7 @@ use error::sqlite;
 pub use history::{HistoryEntry, HistoryRecord, HistorySource, HistoryStatus};
 pub use history_retention::HistoryRetention;
 pub use migrate::SCHEMA_VERSION;
+pub use monitor_history::MonitorAggregate;
 pub use saved_queries::{NewSavedQuery, SavedQueryRecord};
 pub use schema_snapshots::SchemaSnapshotRecord;
 pub use workspace_state::WorkspaceKey;
@@ -49,6 +51,7 @@ impl LocalStore {
         let mut conn = Connection::open(path).map_err(sqlite("open"))?;
         configure(&conn)?;
         migrate::migrate(&mut conn, migrate::MIGRATIONS, &backup_dir(path))?;
+        monitor_history::expire_startup(&conn)?;
         Ok(Self {
             conn: Mutex::new(conn),
             history_retention: Mutex::new(HistoryRetention {

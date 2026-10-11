@@ -26,6 +26,8 @@ type RailDatabases = {
   onCloseProfileDatabase?: (id: string, name: string) => void;
   /** Open a database's process list (engines with one only). */
   onProcesses?: ((id: string, name: string) => void) | undefined;
+  /** Open the database Monitor, including explicit unsupported-engine states. */
+  onMonitor?: ((id: string, name: string) => void) | undefined;
   /** Run a `.sql` file on a database. */
   onRunFile?: ((id: string, name: string) => void) | undefined;
 };
@@ -247,6 +249,13 @@ function RailDatabaseTiles(
           props.onCloseProfileDatabase(profile.id, name);
         else props.onCloseDatabase?.(name);
       }}
+      onMonitor={
+        props.onMonitor
+          ? (name) => {
+              props.onMonitor?.(profile.id, name);
+            }
+          : undefined
+      }
       onProcesses={
         profile.processList && props.onProcesses
           ? (name) => {

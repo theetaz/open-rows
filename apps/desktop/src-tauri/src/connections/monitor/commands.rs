@@ -188,9 +188,16 @@ fn forward(app: &tauri::AppHandle, target: &MonitorTarget, monitor: &Arc<Monitor
     let (app, target, generation) = (app.clone(), target.clone(), generation(monitor));
     let mut target = target;
     target.profile_id = super::registry::profile_key(&target.profile_id);
+    let weak = Arc::downgrade(monitor);
     let mut events = monitor.subscribe();
     tauri::async_runtime::spawn(async move {
         while let Ok(sources) = events.recv().await {
+            let Some(monitor) = weak.upgrade() else {
+                break;
+            };
+            if let Err(error) = super::history::persist(&app, &target, &monitor) {
+                tracing::warn!(kind = ?error.kind, "monitor history write failed");
+            }
             let _ = MonitorChanged {
                 target: target.clone(),
                 generation: generation.clone(),

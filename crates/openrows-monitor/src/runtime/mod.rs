@@ -156,6 +156,37 @@ impl Monitor {
             .store
             .snapshot()
     }
+    /// Latest redacted scalar aggregates; source tables and statement text are excluded.
+    #[must_use]
+    pub fn aggregates(&self) -> Vec<(String, f64, Option<f64>, String)> {
+        let shared = self.shared.lock().unwrap_or_else(PoisonError::into_inner);
+        shared
+            .store
+            .series
+            .iter()
+            .filter_map(|(key, points)| {
+                let point = points.back()?;
+                if !key.starts_with("Database:")
+                    && !key.starts_with("sessions:")
+                    && !key.starts_with("Replication:")
+                {
+                    return None;
+                }
+                let metric = if key.starts_with("Database:") {
+                    format!("Database:{}", key.rsplit(':').next()?)
+                } else {
+                    key.clone()
+                };
+                Some((
+                    metric,
+                    point.wall_ms,
+                    point.value,
+                    crate::arrow::state_name(&point.state).into(),
+                ))
+            })
+            .collect()
+    }
+
     /// Live scalar series or source/top-N table as bounded Arrow bytes.
     /// # Errors
     /// Stopped collector or window encoding/admission failure.

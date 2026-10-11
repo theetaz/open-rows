@@ -11,7 +11,9 @@ import type { TabScope } from '../query';
  */
 export function menuEnabled(input: {
   connections: Connections;
-  tab: { kind: 'query' | 'table' | 'processes' | 'inspection' } | undefined;
+  tab:
+    | { kind: 'query' | 'table' | 'processes' | 'monitor' | 'inspection' }
+    | undefined;
   scope: TabScope | undefined;
   prod: boolean;
 }): Record<string, boolean> {
@@ -60,7 +62,9 @@ const relationCommands = new Set<ObjectCommand>([
 function objectEnabled(
   input: {
     connections: Connections;
-    tab: { kind: 'query' | 'table' | 'processes' | 'inspection' } | undefined;
+    tab:
+      | { kind: 'query' | 'table' | 'processes' | 'monitor' | 'inspection' }
+      | undefined;
     scope: TabScope | undefined;
   },
   connected: boolean,
@@ -88,6 +92,7 @@ function connectionEnabled(
     connect: Boolean(profile) && !connected && state !== 'connecting',
     disconnect: connected || state === 'connecting',
     database: connected && profile?.engine !== 'duckdb',
+    monitor: connected,
     processes: connected && Boolean(profile?.processList),
     refresh: connected && profile?.engine !== 'duckdb',
     quick: connected && profile?.engine !== 'duckdb',

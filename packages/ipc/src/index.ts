@@ -544,9 +544,13 @@ export {
   monitorWindow,
   topStatements,
   onMonitorChanged,
+  monitorHistory,
+  configureMonitorHistory,
+  purgeMonitorHistory,
 } from './monitor';
 export type {
   Descriptor,
+  HistoryPoint,
   MonitorChanged,
   MonitorReply,
   MonitorStart,

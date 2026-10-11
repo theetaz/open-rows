@@ -15,6 +15,8 @@ type Props = {
   onClose: (name: string) => void;
   /** Open the database's process list; absent when the engine has none. */
   onProcesses?: ((name: string) => void) | undefined;
+  /** Monitor the database or show the engine capability state. */
+  onMonitor?: ((name: string) => void) | undefined;
   /** Run a `.sql` file on the database. */
   onRunFile?: ((name: string) => void) | undefined;
   onKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>) => void;
@@ -136,6 +138,7 @@ function DatabaseMenu(
           Run SQL file…
         </button>
       )}
+      <MonitorMenu onMonitor={props.onMonitor} name={name} close={close} />
       {props.onProcesses && (
         <button
           type="button"
@@ -159,5 +162,25 @@ function DatabaseMenu(
         Close database
       </button>
     </SidebarMenu>
+  );
+}
+
+function MonitorMenu(props: {
+  onMonitor: Props['onMonitor'];
+  name: string;
+  close: () => void;
+}): React.JSX.Element | null {
+  if (!props.onMonitor) return null;
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      onClick={() => {
+        props.close();
+        props.onMonitor?.(props.name);
+      }}
+    >
+      Show Monitor
+    </button>
   );
 }

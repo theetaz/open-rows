@@ -37,6 +37,9 @@ impl LiveStore {
         if source == Source::Activity && reading.state == SampleState::Ok {
             scalars.extend(activity(&reading, &self.series));
         }
+        if source == Source::Replication {
+            scalars.extend(crate::gauges::replication(&reading));
+        }
         for (name, value, state) in scalars {
             let unit = scalar_unit(&reading, &name).unwrap_or_else(|| {
                 self.series
@@ -260,7 +263,24 @@ fn activity(
         .filter(|key| key.starts_with("sessions:") || key.starts_with("waits:"))
         .map(|key| (key.clone(), 0.0))
         .collect();
+    for name in [
+        "active",
+        "idle",
+        "idle in transaction",
+        "idle in transaction (aborted)",
+        "waiting",
+    ] {
+        values.insert(format!("sessions:{name}"), 0.0);
+    }
     for row in &reading.rows {
+        if row
+            .get(2)
+            .and_then(Option::as_deref)
+            .is_some_and(|wait| !wait.is_empty())
+            && row.get(1).and_then(Option::as_deref) == Some("active")
+        {
+            *values.entry("sessions:waiting".into()).or_default() += 1.0;
+        }
         if let Some(state) = row.get(1).and_then(Option::as_deref) {
             *values.entry(format!("sessions:{state}")).or_default() += 1.0;
         }

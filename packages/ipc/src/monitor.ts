@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import type { UnlistenFn } from '@tauri-apps/api/event';
 import { commands, events } from './generated/bindings';
 import type {
+  HistoryPoint,
   MonitorChanged,
   MonitorReply,
   Descriptor,
@@ -60,4 +61,24 @@ async function binary(
       throw toCommandError(error);
     }),
   );
+}
+
+/** Read bounded aggregate-only history for a profile/database, up to 24 hours. */
+export function monitorHistory(
+  target: MonitorTarget,
+  hours: number,
+): Promise<HistoryPoint[]> {
+  return unwrap(commands.monitorHistory(target, hours));
+}
+/** Explicitly enable history profiles; disabling purges synchronously. */
+export async function configureMonitorHistory(
+  profiles: string[],
+): Promise<void> {
+  await unwrap(commands.monitorHistoryConfigure(profiles));
+}
+/** Purge one profile or all local history, without changing collection. */
+export async function purgeMonitorHistory(
+  profileId: string | null,
+): Promise<void> {
+  await unwrap(commands.monitorHistoryPurge(profileId));
 }

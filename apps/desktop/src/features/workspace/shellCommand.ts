@@ -41,6 +41,8 @@ export type ShellInput = {
   onShowDiagram: () => void;
   /** Open the active database's process list. */
   openProcesses: () => void;
+  /** Open the active database Monitor. */
+  openMonitor?: () => void;
   /** Run a `.sql` file on the active database. */
   onRunFile: () => void;
   /** Export tables of the selected schema. */
@@ -179,6 +181,9 @@ function workActions(input: ShellInput): Actions {
     },
     'show-er-diagram': input.onShowDiagram,
     processes: input.openProcesses,
+    monitor: () => {
+      input.openMonitor?.();
+    },
     'open-project': openProjectDialog,
     'close-project': closeProject,
     'export-connections': () => {

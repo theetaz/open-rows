@@ -1,6 +1,6 @@
 # 28 — Database Monitoring, Analytics and the AI Harness
 
-Status: PostgreSQL monitoring backend implemented (M25-01/02); product UI and the remaining matrix are planned. Scope expanded on 2026-10-11. Delivery order:
+Status: PostgreSQL monitoring backend, workspace UI and opt-in local history implemented (M25-01/02/03); the remaining engine, analytics and validation matrix is planned. Scope expanded on 2026-10-11. Delivery order:
 finish the current DuckDB host repair, build monitoring and analytics (M2.5),
 then build the database AI harness (M4.5). This document owns the expanded
 FR-ADMIN-03..08 and FR-AI-11..13 scope; [27](27-delivery-plan.md) owns task status. [ADR-0011](adr/0011-performance-monitor.md) is the accepted architecture decision (owner, 2026-10-11), with implementation validation pending. It owns detailed engine sources/grants, counter semantics, budgets, privacy and advisor rules; this document owns product scope and acceptance.
@@ -380,8 +380,10 @@ one-MiB Arrow pages (up to 1,000 rows; top statements default 20/max 100).
 Read-time expiry also removes history after terminal collection failure.
 Events contain only generation/source status, at most once per second. Query
 literals/comments/parameters are removed before retention; utility, quoted
-identifier, multi-statement and truncated text fails closed. Repeated statement
-samples use `pg_stat_statements(false)` and contain no SQL text.
+identifier, multi-statement and truncated text fails closed. M25-03 extends
+statement reads with bounded normalised text from
+`pg_stat_statements(true)`; core removes literals before Arrow/retention and
+unsafe text still fails closed.
 
 Typed `monitor_start/stop/pause/capabilities/snapshot`, `monitor_window` and
 `monitor_top_statements` commands, `monitor-changed`, generated types and the
@@ -406,3 +408,66 @@ history, alerts, boards, advisor or AI harness is shipped by this backend slice.
 The final serial Rust run passed 1,389 tests; the full gate remains incomplete
 because the two-container SSH fixture conflicts with this task's one-container
 constraint. Initial host cancellation failures passed on that final rerun.
+
+
+## 10. Implemented (M25-03): Monitor workspace and local history
+
+Final M25-03 quality evidence: workspace Rust `-E 'not binary(ssh_container)'`
+passed 1,455 tests (198 skipped); Vitest passed 2,766 tests across 243 files.
+Formatting, Clippy/ESLint, TypeScript, licence/dependency scans, hygiene, UI
+tokens/colours, bundle budgets and IPC freshness all passed.
+
+
+A lazy **Monitor** utility tab opens for the connected profile/database from the
+command palette, native menu and connection/database context menus. It offers
+Overview, Sessions, Blocking, Top queries, Tables, Indexes, Replication and I/O.
+The header shows scope, live/paused state, sample age and Off/2/5/10/30/60-second
+controls; core continues enforcing the 15/60-second source floors. Closing,
+disconnecting or locking stops collection and disposes the Arrow worker;
+unlocking requires explicit resume. Unsupported engines show a coming state.
+The existing Processes tab and confirmed cancel/kill actions remain in use.
+
+Eleven scalar tiles use bounded SVG trends with gaps for unknown, missing,
+permission and reset samples. Keyboard-readable data tables are mounted only
+when opened. Source panels expose scope, effective cadence, sample latency,
+last success, partial coverage and copy-only privilege/extension guidance.
+Sortable source grids page 100 rows; the blocking tree bounds depth and visible
+nodes and identifies missing owners/cycles. Statement rankings show covered
+latest-interval deltas and separately labelled cumulative statistics. Copy and
+editor actions use normalised redacted SQL; plan-only Explain first requires
+explicit statement/binding review and reuses the existing safety boundary.
+Full-window rankings and deterministic advice remain M25-04.
+
+Settings → Monitoring and the tab's history controls enable collection storage
+per profile, default off. SQLite migration 0007 stores only allowlisted scalar
+aggregates, scoped by profile/database, with no statement text, activity rows,
+user identities or credentials. Expiry runs on startup/read/write/configuration.
+A conservative 2-KiB charge per bounded row limits retained history to 50 MiB
+per connection and 100 MiB app-wide, evicting oldest samples first. SQLite may
+reuse freed pages; purging does not shrink the shared store file. Disable purges
+atomically; per-profile/all purge and profile deletion remove history. Opt-ins
+are device-local and excluded from portable preferences. History ranges are
+1/6/24 hours, at most 300 buckets per metric, preserving missing states; prior
+window values are compared when retained coverage exists. The store is not
+encrypted and database scope names may be sensitive.
+
+Development-machine evidence (Apple M4, 24 GiB, native arm64 PostgreSQL 17.11):
+`OPENROWS_BENCH=1 just test-pg 17` passed all 79 tests. A workload and blocker pair
+produced three sessions, `Lock: transactionid`, 591.55 transactions/s,
+4,197.18 rows read/s, one table and 53 statement rows in the actual UI components
+using captured, core-redacted Arrow pages. Source read plus guards p95 was
+9.824 ms; 1,000-row analysis p95 was 4.361 ms. Chromium development rendering of
+11 charts × 300 timestamps over a ten-minute window measured 8.3 ms p95,
+9.3 ms maximum, 16.7 ms frame p95, and no >50 ms reports from the existing dev
+monitor. This is component/Chromium evidence; native WKWebView and mac-low
+reference hardware budgets remain for M25-09. The first PG run failed in an
+unrelated custom-hop test and passed on an unmodified rerun.
+
+Vitest covers source and engine capability states, gaps/reset validity,
+interval/pause/resume, close/disconnect/lock and late admission, review-only
+Explain, accessible chart tables, default-off history, settings persistence and
+purge. Rust tests cover profile/database isolation, startup/age expiry,
+retention caps, raw-text rejection and gap-preserving bucket limits. No new
+dependency or chart library was required; SVG avoids a large plotting bundle.
+The lazy production build reports 305,167 gzip bytes of initial JavaScript
+(budget 350,000) and 6,306 gzip bytes of shared UI CSS (budget 15,000).

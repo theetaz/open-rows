@@ -1,0 +1,148 @@
+// SPDX-License-Identifier: Apache-2.0
+import { useEffect, useRef, useState } from 'react';
+import { SegmentedControl } from '@openrows/ui';
+import type { EngineDto, ProfileDto } from '@openrows/ipc';
+import { useSecurity } from '../security/useSecurity';
+import { useMonitor } from './useMonitor';
+import { useMonitorHistory } from './useMonitorHistory';
+import { MonitorHeader } from './MonitorHeader';
+import { MonitorOverview } from './MonitorOverview';
+import { SourcePanel } from './SourcePanel';
+import { HistoryControls } from './HistoryControls';
+import styles from './Monitor.module.css';
+
+const PANELS = [
+  { value: 'overview', label: 'Overview' },
+  { value: 'activity', label: 'Sessions' },
+  { value: 'blocking', label: 'Blocking' },
+  { value: 'statements', label: 'Top queries' },
+  { value: 'tables', label: 'Tables' },
+  { value: 'indexes', label: 'Indexes' },
+  { value: 'replication', label: 'Replication' },
+  { value: 'io', label: 'I/O' },
+] as const;
+type Panel = (typeof PANELS)[number]['value'];
+type Props = {
+  profile: ProfileDto;
+  database: string;
+  connected: boolean;
+  sessionId: string | null;
+  onOpenSql: (sql: string) => void;
+};
+
+/** Lazy per-connection Monitor; lock/disconnect/unmount stop collection and hide data. */
+export function MonitorTab(props: Props): React.JSX.Element {
+  const security = useSecurity();
+  const target = { profileId: props.profile.id, database: props.database };
+  const supported = monitorSupported(props.profile.engine);
+  const monitor = useMonitor(
+    target,
+    supported && props.connected && !security.locked,
+  );
+  const history = useMonitorHistory(target, !security.locked);
+  const [panel, setPanel] = useState<Panel>('overview');
+  const unlocked = useRef(false);
+  const { setPaused } = monitor;
+  useEffect(() => {
+    if (!security.locked) unlocked.current = true;
+    else if (unlocked.current) setPaused(true);
+  }, [security.locked, setPaused]);
+  if (security.locked)
+    return <p role="status">Monitor data hidden while the app is locked.</p>;
+  if (!supported)
+    return (
+      <p role="status">
+        Monitoring for {props.profile.engine} is coming. This engine is not
+        supported by the current collector.
+      </p>
+    );
+  if (!props.connected)
+    return (
+      <p role="status">
+        Disconnected. Connect to start monitoring; collection has stopped.
+      </p>
+    );
+  return (
+    <section
+      className={styles.workspace}
+      aria-label={`Monitor on ${props.database}`}
+    >
+      <MonitorHeader
+        label={`${props.profile.name} · ${props.database} · PostgreSQL`}
+        monitor={monitor}
+        history={history}
+      />
+      <nav className={styles.navigation}>
+        <SegmentedControl
+          aria-label="Monitor panel"
+          options={PANELS}
+          value={panel}
+          onValueChange={setPanel}
+          size="compact"
+        />
+      </nav>
+      <MonitorContent
+        {...props}
+        panel={panel}
+        monitor={monitor}
+        history={history}
+      />
+    </section>
+  );
+}
+
+function MonitorContent(
+  props: Props & {
+    panel: Panel;
+    monitor: ReturnType<typeof useMonitor>;
+    history: ReturnType<typeof useMonitorHistory>;
+  },
+): React.JSX.Element {
+  const { panel, monitor, history } = props;
+  return (
+    <div className={styles.panel}>
+      {monitor.error && (
+        <p role="alert" className={styles.error}>
+          {monitor.error}
+        </p>
+      )}
+      {history.error && <p role="alert">{history.error}</p>}
+      {panel === 'overview' ? (
+        <MonitorOverview
+          data={monitor.data}
+          points={history.hours ? history.points : (monitor.data?.points ?? [])}
+          previous={history.previous}
+          now={monitor.now}
+          duration={history.hours ? history.hours * 3_600_000 : 600_000}
+          end={history.hours ? history.end : monitor.now}
+          history={history.hours > 0}
+        />
+      ) : (
+        <SourcePanel {...props} panel={panel} />
+      )}
+      <details>
+        <summary>Local history settings</summary>
+        <HistoryControls
+          profileId={props.profile.id}
+          onPurged={history.refresh}
+        />
+      </details>
+    </div>
+  );
+}
+
+function monitorSupported(engine: EngineDto): boolean {
+  switch (engine) {
+    case 'postgres':
+      return true;
+    case 'mysql':
+    case 'mariadb':
+    case 'sqlserver':
+    case 'clickhouse':
+    case 'sqlite':
+    case 'libsql':
+    case 'libsql-file':
+    case 'duckdb':
+      return false;
+  }
+}

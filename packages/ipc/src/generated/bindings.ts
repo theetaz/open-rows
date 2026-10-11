@@ -178,6 +178,12 @@ export const commands = {
 	monitorCapabilities: (target: MonitorTarget) => typedError<Descriptor[], IpcError>(__TAURI_INVOKE("monitor_capabilities", { target })),
 	/**  Read only small statuses and freshness; sampled rows stay binary. */
 	monitorSnapshot: (target: MonitorTarget) => typedError<MonitorReply, IpcError>(__TAURI_INVOKE("monitor_snapshot", { target })),
+	/**  Read a selected range from the profile's scalar history; fixed 24-hour retention. */
+	monitorHistory: (target: MonitorTarget, hours: number) => typedError<HistoryPoint[], IpcError>(__TAURI_INVOKE("monitor_history", { target, hours })),
+	/**  Apply explicit per-profile opt-in; disabling purges before this command returns. */
+	monitorHistoryConfigure: (profiles: string[]) => typedError<null, IpcError>(__TAURI_INVOKE("monitor_history_configure", { profiles })),
+	/**  Purge a profile or all local monitor history, leaving the opt-in choice intact. */
+	monitorHistoryPurge: (profileId: string | null) => typedError<null, IpcError>(__TAURI_INVOKE("monitor_history_purge", { profileId })),
 	/**
 	 *  Split, bind, gate and start SQL on an open session.
 	 *
@@ -1484,6 +1490,14 @@ export type HistoryItemDto = {
 	status: HistoryStatusDto,
 	rows: number | null,
 	errorMessage: string | null,
+};
+
+/**  Bounded persisted scalar observation; no database identity, text or server error. */
+export type HistoryPoint = {
+	metric: string,
+	collectedMs: number | null,
+	value: number | null,
+	state: string,
 };
 
 /**  Search of the local history: one connection or all, and free text. */

@@ -20,9 +20,13 @@ import { SettingsQuery } from './settingsSearch';
 import styles from '../appearance/Appearance.module.css';
 import searchStyles from './Settings.module.css';
 
+const MonitorSettingsPane = lazy(
+  () => import('../monitor/MonitorSettingsPane'),
+);
 const AiPane = lazy(() => import('./ai/AiPane'));
 
 export type SettingsSection =
+  | 'monitoring'
   | 'ai'
   | 'tables'
   | 'locations'
@@ -40,6 +44,7 @@ export type SettingsSection =
 const SECTIONS: readonly { value: SettingsSection; label: string }[] = [
   { value: 'security', label: 'Security' },
   { value: 'ai', label: 'AI' },
+  { value: 'monitoring', label: 'Monitoring' },
   { value: 'tables', label: 'Tables' },
   { value: 'locations', label: 'Locations' },
   { value: 'general', label: 'General' },
@@ -54,6 +59,12 @@ const SECTIONS: readonly { value: SettingsSection; label: string }[] = [
 ];
 
 function Pane({ section }: { section: SettingsSection }): React.JSX.Element {
+  if (section === 'monitoring')
+    return (
+      <Suspense fallback={<p>Loading monitoring settings…</p>}>
+        <MonitorSettingsPane />
+      </Suspense>
+    );
   if (section === 'ai')
     return (
       <Suspense fallback={<p role="status">Loading AI settings…</p>}>

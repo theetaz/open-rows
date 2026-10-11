@@ -200,6 +200,9 @@ pub(crate) fn profile_delete(
 ) -> Result<(), IpcError> {
     let profile = profile_id(&id)?;
     state.monitors.stop_profile(&id);
+    local
+        .purge_monitor_history(Some(&profile.to_string()))
+        .map_err(|error| IpcError::new(IpcErrorKind::Storage, error.to_string()))?;
     state.profiles.delete(profile)?;
     state.tunnels.forget(&id);
     state.asked.forget(profile);
