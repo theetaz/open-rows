@@ -23,6 +23,7 @@ use std::{collections::HashMap, fmt::Write, iter, sync::Arc};
 
 /// One `PostgreSQL` connection, owned by a single session actor (ADR-0007).
 pub struct PgSession {
+    pub(crate) monitor_config: Option<crate::monitor::Config>,
     pub(crate) wire: Wire,
     type_names: HashMap<u32, String>,
     policy: BatchPolicy,
@@ -81,6 +82,7 @@ impl PgSession {
     ) -> Result<Self, DriverError> {
         let established = establish(config, options, trace).await?;
         Ok(Self {
+            monitor_config: None,
             wire: established.wire,
             type_names: HashMap::new(),
             policy: BatchPolicy::default(),

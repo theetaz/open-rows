@@ -51,7 +51,8 @@ pub use explain::sqlserver_explainable;
 pub use limit::limit_select;
 pub use placeholders::{Placeholder, PlaceholderKind, placeholders};
 pub use redact::{
-    REDACTED_PREFIX, has_redacted_literals, literal_ranges, redact_identifiers, redact_literals,
+    REDACTED_PREFIX, has_redacted_literals, literal_ranges, normalize_monitor_query,
+    redact_identifiers, redact_literals,
 };
 pub use split::{ScriptStatement, Statement, StreamSplitter, split, statement_at};
 

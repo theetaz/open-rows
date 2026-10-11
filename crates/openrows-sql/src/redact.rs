@@ -108,6 +108,71 @@ fn qualified_next(tokens: &[crate::lexer::Token], from: usize, sql: &str) -> Opt
     matches!(tokens[next].kind, TokenKind::Word | TokenKind::QuotedIdent).then_some(next)
 }
 
+/// Fail-closed monitoring normalisation: utility/truncated syntax has no text.
+#[must_use]
+pub fn normalize_monitor_query(sql: &str) -> Option<String> {
+    if sql.len() >= 4_096 || sql.contains('\0') {
+        return None;
+    }
+    let tokens: Vec<_> = Lexer::new(sql, Dialect::Postgres).collect();
+    let first = tokens.iter().find(|token| !token.kind.is_trivia())?;
+    if !["SELECT", "WITH", "INSERT", "UPDATE", "DELETE"]
+        .iter()
+        .any(|word| first.is_word(sql, word))
+    {
+        return None;
+    }
+    let mut output = String::new();
+    let mut ended = false;
+    for token in tokens {
+        let text = token.text(sql);
+        if (ended && !token.kind.is_trivia()) || !monitor_token_complete(text, token.kind) {
+            return None;
+        }
+        ended |= token.kind == TokenKind::Semicolon;
+        match token.kind {
+            TokenKind::String | TokenKind::DollarString | TokenKind::Number | TokenKind::Param => {
+                output.push('?');
+            }
+            TokenKind::LineComment | TokenKind::BlockComment => output.push(' '),
+            TokenKind::Word
+                if ["true", "false", "null"]
+                    .iter()
+                    .any(|word| text.eq_ignore_ascii_case(word)) =>
+            {
+                output.push('?');
+            }
+            TokenKind::Word
+            | TokenKind::Whitespace
+            | TokenKind::Semicolon
+            | TokenKind::OpenParen
+            | TokenKind::CloseParen
+            | TokenKind::OpenBracket
+            | TokenKind::CloseBracket => output.push_str(text),
+            TokenKind::Punct if text.bytes().all(|byte| b",.:+-*/%=<>!|&^~".contains(&byte)) => {
+                output.push_str(text);
+            }
+            TokenKind::QuotedIdent | TokenKind::Punct => return None,
+        }
+    }
+    Some(output.split_whitespace().collect::<Vec<_>>().join(" "))
+}
+fn monitor_token_complete(text: &str, kind: TokenKind) -> bool {
+    match kind {
+        TokenKind::String => text.ends_with('\'') && text.len() > 1 && !text.ends_with("\\\'"),
+        TokenKind::DollarString => {
+            text.get(1..)
+                .and_then(|body| body.find('$'))
+                .is_some_and(|end| {
+                    let delimiter = &text[..end + 2];
+                    text.len() >= delimiter.len() * 2 && text.ends_with(delimiter)
+                })
+        }
+        TokenKind::BlockComment => text.ends_with("*/"),
+        _ => true,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

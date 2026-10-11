@@ -22,11 +22,11 @@ A connected database also serves other applications. Its operator needs to see c
 ## Decision
 
 1. Add a **Monitor** workspace tab per connection, with explicit database/node and visibility scope. Use engine-owned statistics to observe other applications where permitted. Display unsupported, disabled, restricted and stale sources separately from valid zero measurements.
-2. Keep collection, capabilities, counter semantics, sampling and deterministic advice in Tauri-free `crates/`: a planned `openrows-monitor` orchestration/analysis crate, source implementations in driver crates, actor/session ownership in `openrows-core`. The desktop supplies thin typed commands/events, profile policy and UI only. This ADR adds no implementation or dependency.
+2. Keep collection, capabilities, counter semantics, sampling and deterministic advice in Tauri-free `crates/`: a planned `openrows-monitor` orchestration/analysis crate, source implementations in driver crates, actor/session ownership in `openrows-core`. The desktop supplies thin typed commands/events, profile policy and UI only. The M25-01/02 backend slice is recorded in the implementation evidence below; later product and engine work remains planned.
 3. For server engines, own a dedicated read-only monitoring session per connection workspace; never borrow the user's query/transaction session or the existing metadata session. Share one collector between windows/tabs for the same profile, endpoint and credential scope. Switching databases re-probes database-scoped sources, ends the old generation and never merges unrelated scopes. Additional database collectors count against the global limits and require explicit selection.
 4. Embedded engines use **own-session statistics only**: capture counters/profile results through the owning actor and publish observations without a second SQL session. This exception preserves ADR-0010. Do not queue periodic SQL behind a busy embedded query and call it live sampling; show “Updated after query completion”.
 5. Default to bounded memory and no persistence. Default query display is redacted normalised/digest text. Advisor output is a proposal; no collector, rule or refresh executes user SQL, DDL, ANALYZE, VACUUM, instrumentation changes or statistics resets.
-6. Deliver monitoring and analytics at **M2.5 (P1)** immediately after the M2 DuckDB host repair, PostgreSQL first, then the other engines. [docs/28](../28-database-monitoring-and-ai-harness.md) owns charts, boards, alerts and reports; this ADR owns the source, privilege, budget, privacy and advisor contracts. The optional database AI harness follows at **M4.5**, under ADR-0009 and its separately reviewed sharing/tool boundaries. All delivery rows are planned; no existing task is marked done.
+6. Deliver monitoring and analytics at **M2.5 (P1)** immediately after the M2 DuckDB host repair, PostgreSQL first, then the other engines. [docs/28](../28-database-monitoring-and-ai-harness.md) owns charts, boards, alerts and reports; this ADR owns the source, privilege, budget, privacy and advisor contracts. The optional database AI harness follows at **M4.5**, under ADR-0009 and its separately reviewed sharing/tool boundaries. M25-01/02 are partial backend deliveries; docs/27 records the remaining validation.
 
 ### Data sources and permissions
 
@@ -162,7 +162,7 @@ Raw source text can contain credentials, personal data, comments, utility litera
 
 ## Testing and implementation plan
 
-The architecture is accepted; implementation and validation remain pending. The matrix below supplies detailed source/safety gates for [docs/27 M2.5](../27-delivery-plan.md#5a-m25--database-monitoring-and-analytics), which alone owns task status/dependencies. [docs/28 §8](../28-database-monitoring-and-ai-harness.md#8-acceptance-and-verification) adds product/board/report and M4.5 harness acceptance. These are future implementation tests; no builds, tests, containers or benchmarks run for this documentation task.
+The architecture is accepted; the M25-01/02 backend slice is implemented with validation gaps listed below. The matrix below supplies detailed source/safety gates for [docs/27 M2.5](../27-delivery-plan.md#5a-m25--database-monitoring-and-analytics), which alone owns task status/dependencies. [docs/28 §8](../28-database-monitoring-and-ai-harness.md#8-acceptance-and-verification) adds product/board/report and M4.5 harness acceptance. The matrix remains the full validation contract; the implementation evidence below distinguishes executed tests from pending gates.
 
 | Step | Scope | Done when / evidence required |
 | --- | --- | --- |
@@ -193,9 +193,82 @@ The owner accepted all ADR-0011 recommended defaults, with the docs/28 placement
 
 The owner accepted the architecture on 2026-10-11. M25-09 validates the source/version/privilege matrix, evidence-backed advisor, safe Explain flows, privacy/lock/retention tests, accessible native-app journeys and reference-hardware overhead numbers, together with docs/28's analytics/alert/report gates. M45-09 validates the optional AI harness independently. A second writable DuckDB connection, default persistence, unbounded sampling, raw sampled values crossing IPC/logs or automatic execution invalidates the design. Revisit cadence/source choice after profiling an overhead miss; revise scope explicitly if continuous tracing, host profiling or fleet retention becomes necessary.
 
-## Validation / evidence — 2026-10-11
+## Initial design validation / evidence — 2026-10-11
 
 Documentation only: the owner decisions and merged M2.5/M4.5 scope are recorded consistently in requirements, roadmap, parity, delivery tasks and ADR index. Round-1 source pointers and official vendor references below are retained. No implementation, application journey, database fixture or performance result is claimed; M25-09 and M45-09 validation remains pending.
+
+
+## Implemented (M25-01/02): evidence
+
+The PostgreSQL backend and typed IPC described in [docs/28 §9](../28-database-monitoring-and-ai-harness.md#9-implemented-m25-0102-monitoring-runtime-and-postgresql-backend)
+implement this ADR's collection/privacy boundary. No UI/history/other-engine
+support is implied. Core tests cover null unknown/gap/reset cells, exact integer
+deltas/rollover and zero-denominator handling, adaptive minima, series/time/row
+caps, pagination, redaction goldens, serial reads, cancellation and terminal
+session discard/read-time expiry. Desktop tests cover shared admission and
+close/lock invalidation of pending generations, replacement-safe cancelled-open
+cleanup, UUID aliases, redacted Processes reuse and
+control/binary IPC contracts. Generated Specta bindings include the commands,
+window request and status event; the binary commands return bounded Arrow.
+
+Native-arm64 container evidence: `just test-pg 17` and `just test-pg 14`, each
+79 tests passed. The monitor fixture exercises active work, a blocked writer,
+bounded chain output, positive xact rates over two samples, installed/missing
+statement extension, a restricted login, reviewed grant and subsequent
+revocation, relations/indexes, a real database-statistics reset from a separate
+administrative fixture session, and no-replica/disabled-track states. PG12's
+monitor fixture passed with the legacy statement layout; the full PG12 suite
+fails in the existing `types::times_networks_and_ranges_decode_natively` test
+because `datemultirange` is unavailable. An intermittent PG14 cancellation
+conformance failure passed on rerun without modifying that test.
+
+The opt-in `OPENROWS_BENCH=1 just test-pg 17` reports 60-second collector-process
+CPU/RSS, default-cadence data-query counts, client durations including guards,
+server statement durations and synthetic 1,000-row analysis p95. This is an
+Apple M4 / 24 GiB / macOS 26.5 development-machine run, not the mac-low reference
+or an all-app physical-footprint checkpoint. Final measurements:
+
+| Measurement | Development-machine result | Budget / limitation |
+| --- | --- | --- |
+| Data reads over 60 s | 27: activity 12, database/statements/I/O 4 each, tables/indexes/replication 1 each | Default source floors; discovery excluded; changing-source schedule |
+| Client read plus guards p95 | 30.652 ms | Default deadline 1,000 ms; includes round trips |
+| Covered server statements | 647 calls, 61.090 ms total, 9.097 ms maximum | Includes fixture/guard commands; no matched-load baseline |
+| Collector process CPU | 0.08 s over 60 s, about 0.13% of one core | Component evidence only; ≤1% all-app mac-low budget uncertified |
+| Collector process RSS before / after | 17,184 / 16,000 KiB | RSS snapshot, not all-app physical footprint |
+| Retained live sample estimate | 305,322 bytes | Implementation cap 2 MiB/monitor |
+| 1,000-row analysis p95 | 3.407 ms | ≤10 ms; 100 owned-sample ingestions |
+| 1,000-row retained estimate | 1,363,086 bytes | Implementation cap 2 MiB/monitor |
+
+The benchmark does not compare identical loaded
+server throughput/latency with and without monitoring; the accepted ≤1% server
+impact and ≤32 MiB all-process monitor increment remain uncertified. No budget
+is increased. Current 2 MiB retained/monitor admission is stricter than the
+16 MiB ceiling; four collectors and serialized Arrow encoding bound retained
+and in-flight estimates but do not replace physical-footprint measurement.
+
+Final serial workspace evidence: 1,389 tests passed, 198 skipped (197 ordinary
+ignored integration tests plus the explicitly excluded two-hop SSH test). The
+existing two-hop SSH fixture requires two containers and was not run under
+this task's one-container rule, so the full gate remains incomplete. Initial
+shared-cache fixture-path failures and host cancellation failures passed on
+rerun, including both `conformance::cancel_contract` and
+`duckdb_conformance::cancel_contract` in the final workspace run. No deadlines
+or tests were weakened. Rust incremental compilation was disabled within the
+same shared target after stale fixture paths referenced another worktree;
+`sccache` and the shared build cache remained in use. The focused monitoring
+suite (15), frontend tests (2,713), workspace Clippy and binding freshness passed.
+
+Pending matrix: PG13/15/16/18 live suites, managed-provider denied probes,
+installed-but-unloaded extension, replication lag, temp spill, vacuum and
+statement/I/O statistics-reset fixtures, minimum-cadence/latency/many-digest workload variants,
+mac-low aggregate CPU/footprint and matched reference server load. The PG18 I/O
+adapter uses `read_bytes`/`write_bytes` after a column/layout probe; PG16/17 use
+`reads`/`writes × op_bytes`. Older statement reset continuity remains labelled
+best effort. Per-query CPU/memory and latency percentiles are unavailable.
+Statement rankings cover the latest valid sample interval, with full-window
+aggregation deferred to M25-04. Startup SQL is never replayed by the monitor;
+pause/lock requires explicit restart, and profile edits invalidate collection
+until the user reconnects. All samples are in memory only.
 
 ## Vendor references
 

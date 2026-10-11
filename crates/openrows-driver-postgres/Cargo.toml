@@ -11,6 +11,7 @@ description = "PostgreSQL driver decoding wire-protocol rows straight into Arrow
 workspace = true
 
 [dependencies]
+openrows-monitor = { path = "../openrows-monitor" }
 arrow-array = "60"
 arrow-buffer = "60"
 arrow-schema = "60"
@@ -24,6 +25,7 @@ thiserror.workspace = true
 tokio = { version = "1.53", features = ["net", "io-util", "time"] }
 
 [dev-dependencies]
+arrow-ipc = "60"
 openrows-store = { path = "../openrows-store" }
 # Proxied-route tests use the in-process test proxy.
 openrows-net = { path = "../openrows-net", features = ["test-proxy"] }

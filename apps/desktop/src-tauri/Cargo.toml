@@ -42,6 +42,7 @@ allow_attributes_without_reason = "warn"
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+openrows-monitor = { path = "../../../crates/openrows-monitor", features = ["ipc"] }
 arrow-array = "60"
 arrow-schema = "60"
 openrows-ai = { path = "../../../crates/openrows-ai", features = ["ipc-types"] }

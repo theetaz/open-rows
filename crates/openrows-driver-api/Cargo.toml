@@ -11,6 +11,7 @@ description = "Driver contract for OpenRows: sessions, result streaming, connect
 workspace = true
 
 [dependencies]
+openrows-monitor = { path = "../openrows-monitor" }
 arrow-array = "60"
 arrow-schema = "60"
 openrows-net = { path = "../openrows-net" }

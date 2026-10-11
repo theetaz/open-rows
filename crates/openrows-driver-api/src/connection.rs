@@ -71,6 +71,11 @@ pub trait Connection: Session {
         None
     }
 
+    /// Fixed bounded statistics reads, absent on engines without a collector.
+    fn monitor(&mut self) -> Option<&mut dyn openrows_monitor::MonitorReader> {
+        None
+    }
+
     /// The engine's fast append path for imports; `None` when imports use
     /// batched parameterised `INSERT`s instead.
     fn bulk_loader(&mut self) -> Option<&mut dyn BulkLoader> {

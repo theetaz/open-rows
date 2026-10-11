@@ -27,7 +27,7 @@ export OPENROWS_FAKE_HELPER="$(cd -- "${CARGO_TARGET_DIR:-target}/debug" && pwd)
 # Synthetic credential for a container bound to 127.0.0.1 and removed on exit.
 password="openrows-test-only"
 name="openrows-pg-test-$$"
-tls_dir="$(mktemp -d "${TMPDIR:-/tmp}/openrows-pg-tls.XXXXXX")"
+tls_dir="$(mktemp -d "$PWD/.pg-test-tls.XXXXXX")"
 cleanup() {
     docker rm --force --volumes "$name" >/dev/null 2>&1 || true
     rm -rf "$tls_dir"
@@ -45,7 +45,7 @@ docker run --detach --name "$name" --publish 127.0.0.1::5432 \
         mkdir -p $ssl_dir &&
         install -o postgres -g postgres -m 600 /certs/server.key $ssl_dir/server.key &&
         install -o postgres -g postgres -m 644 /certs/server.crt /certs/ca.crt $ssl_dir/ &&
-        exec docker-entrypoint.sh postgres -c ssl=on \
+        exec docker-entrypoint.sh postgres -c shared_preload_libraries=pg_stat_statements -c ssl=on \
             -c ssl_cert_file=$ssl_dir/server.crt -c ssl_key_file=$ssl_dir/server.key \
             -c ssl_ca_file=$ssl_dir/ca.crt" >/dev/null
 # The image's init server listens only on a Unix socket, so TCP readiness

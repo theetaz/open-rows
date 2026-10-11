@@ -4072,6 +4072,7 @@ dependencies = [
  "openrows-export",
  "openrows-host-client",
  "openrows-import",
+ "openrows-monitor",
  "openrows-net",
  "openrows-results",
  "openrows-schema",
@@ -4131,6 +4132,7 @@ version = "0.1.0"
 dependencies = [
  "arrow-array 60.0.0",
  "arrow-schema 60.0.0",
+ "openrows-monitor",
  "openrows-net",
  "openrows-sql",
  "thiserror 2.0.21",
@@ -4264,12 +4266,14 @@ version = "0.1.0"
 dependencies = [
  "arrow-array 60.0.0",
  "arrow-buffer 60.0.0",
+ "arrow-ipc 60.0.0",
  "arrow-schema 60.0.0",
  "bytes",
  "criterion",
  "dhat",
  "fallible-iterator 0.2.0",
  "openrows-driver-api",
+ "openrows-monitor",
  "openrows-net",
  "openrows-sql",
  "openrows-store",
@@ -4387,6 +4391,20 @@ dependencies = [
  "thiserror 2.0.21",
  "tokio",
  "tokio-util",
+]
+
+[[package]]
+name = "openrows-monitor"
+version = "0.1.0"
+dependencies = [
+ "arrow-array 60.0.0",
+ "arrow-ipc 60.0.0",
+ "arrow-schema 60.0.0",
+ "openrows-sql",
+ "serde",
+ "specta",
+ "thiserror 2.0.21",
+ "tokio",
 ]
 
 [[package]]

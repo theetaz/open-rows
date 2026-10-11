@@ -79,6 +79,7 @@ pub(crate) fn watch_network(app: AppHandle) {
 
 /// Probe tunnels first (so sessions dial a live one), then sessions.
 async fn reprobe(state: &Connections) {
+    state.monitors.stop_all();
     state.tunnels.probe_all(TUNNEL_PROBE).await;
     state.metadata.reset_idle();
     state.sessions.probe_all();

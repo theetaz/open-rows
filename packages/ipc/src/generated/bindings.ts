@@ -158,6 +158,16 @@ export const commands = {
 	processesList: (profileId: string, database: string) => typedError<ProcessDto[], IpcError>(__TAURI_INVOKE("processes_list", { profileId, database })),
 	/**  Cancel a process's statement or terminate it; the webview confirms first. */
 	processSignal: (request: ProcessSignalRequest) => typedError<null, IpcError>(__TAURI_INVOKE("process_signal", { request })),
+	/**  Start/resume one shared collector, requiring an already connected profile. */
+	monitorStart: (request: MonitorStart) => typedError<MonitorReply, IpcError>(__TAURI_INVOKE("monitor_start", { request })),
+	/**  Stop collection, discard samples and release the dedicated session. */
+	monitorStop: (target: MonitorTarget) => typedError<null, IpcError>(__TAURI_INVOKE("monitor_stop", { target })),
+	/**  Pause clears the generation; explicit start re-probes on a fresh session. */
+	monitorPause: (target: MonitorTarget) => typedError<null, IpcError>(__TAURI_INVOKE("monitor_pause", { target })),
+	/**  List source capabilities, scope and reviewed setup guidance. */
+	monitorCapabilities: (target: MonitorTarget) => typedError<Descriptor[], IpcError>(__TAURI_INVOKE("monitor_capabilities", { target })),
+	/**  Read only small statuses and freshness; sampled rows stay binary. */
+	monitorSnapshot: (target: MonitorTarget) => typedError<MonitorReply, IpcError>(__TAURI_INVOKE("monitor_snapshot", { target })),
 	/**
 	 *  Split, bind, gate and start SQL on an open session.
 	 *
@@ -457,6 +467,7 @@ export const commands = {
 export const events = {
 	catalogChanged: makeEvent<CatalogChanged>("catalog-changed"),
 	menuCommand: makeEvent<MenuCommand>("menu-command"),
+	monitorChanged: makeEvent<MonitorChanged>("monitor-changed"),
 	sessionStateChanged: makeEvent<SessionStateChanged>("session-state-changed"),
 	settingsChanged: makeEvent<SettingsChanged>("settings-changed"),
 	sshPromptChanged: makeEvent<SshPromptChanged>("ssh-prompt-changed"),
@@ -897,6 +908,22 @@ export type DelimitedDto = {
 	nullText: string,
 	lineEnding: LineEndingDto,
 	encoding: TextEncodingDto,
+};
+
+/**  Readability, cadence and reviewed enabling guidance. */
+export type Descriptor = {
+	/**  Engine-owned source. */
+	source: Source,
+	/**  Effective read visibility. */
+	state: SampleState,
+	/**  Scope of the observations. */
+	scope: Scope,
+	/**  Minimum poll cadence. */
+	intervalMs: number,
+	/**  Minimum grants or settings, offered for review only. */
+	guidance: string | null,
+	/**  Version/permission requirements and continuity limitations. */
+	coverage: string,
 };
 
 /**  Ordered rows of columns, arguments, labels, fields or constraints. */
@@ -1779,6 +1806,50 @@ export type Model = {
 	capabilities: Capabilities,
 };
 
+/**  Per-generation source status; no sampled rows in events. */
+export type MonitorChanged = {
+	target: MonitorTarget,
+	generation: string,
+	sources: SourceStatus[],
+};
+
+/**  Admission reply and small current snapshot. */
+export type MonitorReply = {
+	generation: string,
+	capabilities: Descriptor[],
+	sources: SourceStatus[],
+};
+
+/**  Explicit start/resume; does not restore collection on startup. */
+export type MonitorStart = {
+	/**  Monitor scope. */
+	target: MonitorTarget,
+	/**  Live cadence; default five seconds. */
+	intervalMs: number | null,
+};
+
+/**  One connection/database scope shared by every subscriber. */
+export type MonitorTarget = {
+	/**  Saved profile identity. */
+	profileId: string,
+	/**  Explicit selected database. */
+	database: string,
+};
+
+/**  Bounded binary source/top-N/live-series window request. */
+export type MonitorWindow = {
+	/**  Selected connection/database. */
+	target: MonitorTarget,
+	/**  None reads scalar series, otherwise a latest source table. */
+	source: Source | null,
+	/**  Rows, up to 1,000; statements up to 100, default 20. */
+	limit: number | null,
+	/**  Stable snapshot offset; pages are capped at 1,000 rows. */
+	rowStart: number | null,
+	/**  Rank statements by interval mean rather than interval total time. */
+	mean: boolean | null,
+};
+
 /**  Validated content or an actionable rejection, never executable instructions. */
 export type NativeFileDto = { kind: "sql"; opened: OpenedSqlFileDto } | { kind: "database"; path: string; engine: EngineDto } | { kind: "rejected"; message: string };
 
@@ -2567,6 +2638,21 @@ export type Sample = {
 	rows: ((string | null)[])[],
 };
 
+/**  Observation validity; absent values never become a numeric zero. */
+export type SampleState =
+/**  A real observation, including a valid zero. */
+{ kind: "ok" } |
+/**  First baseline or a NULL server value. */
+{ kind: "unknown" } |
+/**  Source cannot supply this measurement. */
+{ kind: "unavailable"; reason: string } |
+/**  Access was denied or other-user visibility is restricted. */
+{ kind: "permissionDenied"; reason: string } |
+/**  Missed interval, timeout, pause or lost session. */
+{ kind: "gap" } |
+/**  Changed reset epoch, generation or decreasing counter. */
+{ kind: "counterReset" };
+
 /**  A table's journaled change set: the key it was staged against and its rows. */
 export type SavedEditsDto = {
 	key: string[],
@@ -2624,6 +2710,13 @@ export type SchemaTarget = {
 	database: string,
 	schema: string,
 };
+
+/**  Measurement scope retained alongside every source. */
+export type Scope =
+/**  All visible sessions on this server. */
+"server" |
+/**  The selected database only. */
+"database";
 
 /**  Which saved secret of a connection to reveal. */
 export type SecretFieldDto = "password" | "sshPassword" | "sshPassphrase" | "tlsKeyPassphrase" | "proxyPassword";
@@ -2715,6 +2808,43 @@ export type SharingPolicy = {
 export type SortDto = {
 	column: string,
 	descending: boolean,
+};
+
+/**  Reviewed engine statistics source, never user-supplied SQL. */
+export type Source =
+/**  Server client sessions and bounded blocking edges. */
+"activity" |
+/**  Selected database cumulative counters. */
+"database" |
+/**  Table scans and maintenance estimates. */
+"tables" |
+/**  Index scan and tuple counters. */
+"indexes" |
+/**  Server sender/receiver replication state. */
+"replication" |
+/**  Optional statement counters, without sampled text. */
+"statements" |
+/**  Optional server I/O counters on PG 16+. */
+"io";
+
+/**  Small status event/snapshot; data windows travel as Arrow bytes. */
+export type SourceStatus = {
+	/**  Source being reported. */
+	source: Source,
+	/**  Last observation state. */
+	state: SampleState,
+	/**  Wall-clock collection time in milliseconds. */
+	collectedMs: number | null,
+	/**  Last successful collection time, for freshness. */
+	lastSuccessMs: number | null,
+	/**  Adaptive cadence visible to the user. */
+	intervalMs: number,
+	/**  Last bounded statement duration. */
+	durationMs: number | null,
+	/**  Monotonic generation-local sequence. */
+	sequence: number,
+	/**  Truncation or eviction is visible. */
+	partial: boolean,
 };
 
 export type SpikeError = { kind: "disabled" } | { kind: "missingPath" } | { kind: "failed"; message: string };

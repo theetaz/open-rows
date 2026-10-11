@@ -16,6 +16,8 @@ pub(crate) trait Io: AsyncRead + AsyncWrite + Unpin + Send {}
 impl<T: AsyncRead + AsyncWrite + Unpin + Send> Io for T {}
 
 pub(crate) struct Wire {
+    message_limit: usize,
+    invalidated: bool,
     stream: Box<dyn Io>,
     read: BytesMut,
     write: BytesMut,
@@ -27,6 +29,8 @@ pub(crate) struct Wire {
 impl Wire {
     pub(crate) fn new(stream: Box<dyn Io>) -> Self {
         Self {
+            message_limit: usize::MAX,
+            invalidated: false,
             stream,
             read: BytesMut::with_capacity(READ_CHUNK),
             write: BytesMut::with_capacity(1024),
@@ -46,6 +50,7 @@ impl Wire {
     }
 
     pub(crate) async fn flush(&mut self) -> Result<(), DriverError> {
+        self.usable()?;
         self.stream.write_all(&self.write).await?;
         self.write.clear();
         Ok(())
@@ -53,7 +58,9 @@ impl Wire {
 
     /// Next complete backend message; frames split across reads are buffered.
     pub(crate) async fn next(&mut self) -> Result<Message, DriverError> {
+        self.usable()?;
         loop {
+            self.admit_frame()?;
             if let Some(message) = Message::parse(&mut self.read)? {
                 self.observe(&message);
                 return Ok(message);
@@ -67,6 +74,37 @@ impl Wire {
         }
     }
 
+    /// Bound dedicated monitor frames before allocating their payloads.
+    pub(crate) fn limit_messages(&mut self, bytes: usize) {
+        self.message_limit = bytes;
+    }
+
+    /// Prevent any further wire use after an undrained monitor failure.
+    pub(crate) fn invalidate(&mut self) {
+        self.invalidated = true;
+        self.write.clear();
+    }
+
+    fn usable(&self) -> Result<(), DriverError> {
+        if self.invalidated {
+            Err(DriverError::Protocol("monitor session discarded".into()))
+        } else {
+            Ok(())
+        }
+    }
+
+    fn admit_frame(&self) -> Result<(), DriverError> {
+        if self.read.len() < 5 {
+            return Ok(());
+        }
+        let size =
+            u32::from_be_bytes([self.read[1], self.read[2], self.read[3], self.read[4]]) as usize;
+        if size > self.message_limit {
+            return Err(DriverError::Protocol("monitor frame limit exceeded".into()));
+        }
+        Ok(())
+    }
+
     /// Remember the transaction status every `ReadyForQuery` reports.
     fn observe(&mut self, message: &Message) {
         if let Message::ReadyForQuery(body) = message {
@@ -78,6 +116,19 @@ impl Wire {
         self.flush().await?;
         self.stream.shutdown().await?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[tokio::test]
+    async fn discarded_monitor_protocol_cannot_read_or_write_again() {
+        let (stream, _peer) = tokio::io::duplex(64);
+        let mut wire = Wire::new(Box::new(stream));
+        wire.invalidate();
+        assert!(matches!(wire.flush().await, Err(DriverError::Protocol(_))));
+        assert!(matches!(wire.next().await, Err(DriverError::Protocol(_))));
     }
 }
 

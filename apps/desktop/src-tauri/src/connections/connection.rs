@@ -45,12 +45,15 @@ pub(crate) async fn connection_open(
     password: Option<String>,
 ) -> Result<ConnectionOpened, IpcError> {
     let id = self::profile_id(&profile_id)?;
+    let generation = state.monitors.connection_generation(&profile_id);
     if let Some(password) = password {
         state.asked.remember(id, &SecretString::new(password))?;
     }
     let opened = open(&state, &cache, &profile_id).await;
     if opened.is_err() {
         state.asked.forget(id);
+    } else {
+        state.monitors.connected(&profile_id, generation);
     }
     opened
 }
@@ -101,6 +104,7 @@ pub(crate) async fn connection_close(
     profile_id: String,
 ) -> Result<(), IpcError> {
     let id = self::profile_id(&profile_id)?;
+    state.monitors.stop_profile(&profile_id);
     state.credential_runs.cancel(id);
     state.duckdb.forget(id).await;
     for session in state.owners.unbind_profile(id) {

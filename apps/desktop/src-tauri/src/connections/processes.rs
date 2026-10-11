@@ -69,6 +69,11 @@ pub(crate) async fn processes_list(
         .params
         .application_name
         .unwrap_or_else(|| APPLICATION_NAME.to_owned());
+    if let Some(processes) =
+        super::monitor::processes::shared(&state, (&profile_id, &database), &application)
+    {
+        return processes;
+    }
     let processes = on_admin(&state, (&profile_id, &database), |facet| {
         facet.list_processes()
     })
