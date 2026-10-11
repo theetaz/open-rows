@@ -3,3 +3,12 @@
 # until the job limit; the slowest real tests take well under one.
 [profile.default]
 slow-timeout = { period = "60s", terminate-after = 5 }
+
+# Concurrent debug-image launches on macOS can exhaust the unchanged 2 s
+# handshake deadline in dyld, before the helper reaches its runtime.
+[test-groups.driver-host]
+max-threads = 1
+
+[[profile.default.overrides]]
+filter = 'package(openrows-driver-host) | package(openrows-host-client)'
+test-group = 'driver-host'

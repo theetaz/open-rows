@@ -9,6 +9,8 @@ use openrows_host_client::{
     CircuitBreaker, HostSupervisor, HostedDriver, LaunchOptions, MemoryBudget,
 };
 use std::sync::{Arc, Mutex, MutexGuard};
+#[path = "support/diagnostics.rs"]
+mod diagnostics;
 #[cfg(target_os = "macos")]
 #[path = "support/duckdb_image.rs"]
 mod image;
@@ -34,6 +36,7 @@ use tempfile::TempDir;
 
 fn prepare() -> Result<(Target, Fixture), Failure> {
     static TEST: Mutex<()> = Mutex::new(());
+    diagnostics::init();
     let permit = TEST
         .lock()
         .map_err(|_| Failure::Setup("fixture lock".into()))?;

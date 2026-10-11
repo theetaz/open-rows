@@ -9,6 +9,7 @@ use openrows_host_protocol::{
     WireTls,
 };
 use std::{path::PathBuf, time::Duration};
+mod diagnostics;
 #[cfg(target_os = "macos")]
 mod image;
 
@@ -22,21 +23,10 @@ pub fn root() -> PathBuf {
 /// Serialize the parent budget within libtest while keeping nextest processes independent.
 pub async fn host_test() -> Result<tokio::sync::MutexGuard<'static, ()>, HostFailure> {
     static HOST_TEST: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
-    diagnostics();
+    diagnostics::init();
     let permit = HOST_TEST.lock().await;
     prepare_image().await?;
     Ok(permit)
-}
-fn diagnostics() {
-    static DIAGNOSTICS: std::sync::Once = std::sync::Once::new();
-    DIAGNOSTICS.call_once(|| {
-        let _ = tracing_subscriber::fmt()
-            .with_ansi(false)
-            .without_time()
-            .with_target(false)
-            .with_writer(std::io::stderr)
-            .try_init();
-    });
 }
 /// Prepare macOS debug startup separately from the protocol deadline.
 pub fn prepare_image() -> impl Future<Output = Result<(), HostFailure>> {
