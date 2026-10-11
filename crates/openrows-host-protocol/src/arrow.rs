@@ -61,7 +61,7 @@ impl ArrowEncoder {
         }
         self.writer.write(batch).map_err(|_| ProtocolError::Limit)?;
         let bytes = std::mem::take(&mut self.writer.get_mut().0);
-        let decoded = decoded.max(
+        let decoded = decoded.max(crate::memory::validation_floor(batch)).max(
             bytes
                 .len()
                 .saturating_add(self.schema_memory())

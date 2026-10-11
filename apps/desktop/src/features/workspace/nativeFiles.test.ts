@@ -26,12 +26,13 @@ it('opens SQL into a new editor tab without any execution or connection request'
   expect(connect).not.toHaveBeenCalled();
   expect(setSheet).not.toHaveBeenCalled();
   acceptNativeFile(
-    { kind: 'database', path: '/example.sqlite' },
+    { kind: 'database', path: '/example.sqlite', engine: 'sqlite' },
     { tabs, connections },
   );
   expect(setSheet).toHaveBeenCalledWith({
     kind: 'new-file',
     path: '/example.sqlite',
+    engine: 'sqlite',
   });
   expect(
     acceptNativeFile(
@@ -40,4 +41,20 @@ it('opens SQL into a new editor tab without any execution or connection request'
     ),
   ).toBe('Binary rejected');
   expect(open).toHaveBeenCalledTimes(1);
+});
+
+it('hands DuckDB documents to the DuckDB connection form', () => {
+  const setSheet = vi.fn();
+  acceptNativeFile(
+    { kind: 'database', path: '/example.duckdb', engine: 'duckdb' },
+    {
+      tabs: {} as QueryTabs,
+      connections: { setSheet } as unknown as Connections,
+    },
+  );
+  expect(setSheet).toHaveBeenCalledWith({
+    kind: 'new-file',
+    path: '/example.duckdb',
+    engine: 'duckdb',
+  });
 });

@@ -928,7 +928,7 @@ export type EditorRun = {
 };
 
 /**  Database engine of a profile. */
-export type EngineDto = "postgres" | "mysql" | "mariadb" | "sqlserver" | "clickhouse" | "sqlite" | "libsql" | "libsql-file";
+export type EngineDto = "duckdb" | "postgres" | "mysql" | "mariadb" | "sqlserver" | "clickhouse" | "sqlite" | "libsql" | "libsql-file";
 
 /**  Environment tag as shown in the rail, header and toolbar. */
 export type EnvDto = {
@@ -1613,7 +1613,7 @@ export type MenuItemState = {
 };
 
 /**  Validated content or an actionable rejection, never executable instructions. */
-export type NativeFileDto = { kind: "sql"; opened: OpenedSqlFileDto } | { kind: "database"; path: string } | { kind: "rejected"; message: string };
+export type NativeFileDto = { kind: "sql"; opened: OpenedSqlFileDto } | { kind: "database"; path: string; engine: EngineDto } | { kind: "rejected"; message: string };
 
 /**  A check constraint to add. */
 export type NewCheckDto = {
@@ -1864,7 +1864,11 @@ export type PickFileKind =
 /**  An existing `SQLite` database file. */
 "sqliteDatabase" |
 /**  Where to create a new `SQLite` database file (save panel). */
-"newSqliteDatabase";
+"newSqliteDatabase" |
+/**  An existing `DuckDB` file. */
+"duckdbDatabase" |
+/**  Where to create a `DuckDB` file. */
+"newDuckdbDatabase";
 
 /**  A backup chosen in the open panel. */
 export type PickedDumpDto = {

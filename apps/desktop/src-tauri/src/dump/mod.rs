@@ -136,6 +136,12 @@ fn engine(driver: Driver) -> Result<DumpEngineDto, IpcError> {
         Driver::Postgres => DumpEngineDto::Postgres,
         Driver::Mysql | Driver::Mariadb => DumpEngineDto::Mysql,
         Driver::Sqlite | Driver::LibsqlFile => DumpEngineDto::Sqlite,
+        Driver::Duckdb => {
+            return Err(IpcError::new(
+                IpcErrorKind::Unsupported,
+                "Backup and restore are not available for DuckDB yet",
+            ));
+        }
         Driver::Clickhouse => {
             return Err(IpcError::new(
                 IpcErrorKind::Unsupported,

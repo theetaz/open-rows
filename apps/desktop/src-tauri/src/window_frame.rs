@@ -165,7 +165,7 @@ fn is_on_screen(frame: Frame, screens: &[Frame]) -> bool {
 mod tests {
     use super::{Frame, changes_frame, initial_window_size, is_on_screen, settle};
     use std::sync::Arc;
-    use std::time::{Duration, Instant};
+    use std::time::Duration;
     use tauri::{LogicalSize, PhysicalPosition, PhysicalSize, WindowEvent};
     use tokio::sync::Notify;
 
@@ -229,19 +229,17 @@ mod tests {
         }
     }
 
-    #[test]
-    fn a_burst_of_changes_settles_once_after_the_last_change() {
+    #[tokio::test(start_paused = true)]
+    async fn a_burst_of_changes_settles_once_after_the_last_change() {
         let changes = Arc::new(Notify::new());
         let signal = Arc::clone(&changes);
-        tauri::async_runtime::block_on(async move {
-            let started = Instant::now();
-            let burst = tauri::async_runtime::spawn(notify_three_times(signal));
-            settle(&changes, Duration::from_millis(50)).await;
-            assert!(started.elapsed() >= Duration::from_millis(90));
-            assert!(burst.await.is_ok());
-            let leftover =
-                tokio::time::timeout(Duration::from_millis(30), changes.notified()).await;
-            assert!(leftover.is_err(), "burst produced a second save");
-        });
+        // Virtual time tests debounce semantics independently of scheduler/clock jitter.
+        let started = tokio::time::Instant::now();
+        let burst = tokio::spawn(notify_three_times(signal));
+        settle(&changes, Duration::from_millis(50)).await;
+        assert!(started.elapsed() >= Duration::from_millis(90));
+        assert!(burst.await.is_ok());
+        let leftover = tokio::time::timeout(Duration::from_millis(30), changes.notified()).await;
+        assert!(leftover.is_err(), "burst produced a second save");
     }
 }

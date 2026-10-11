@@ -24,6 +24,7 @@ serde = { workspace = true, features = ["derive"] }
 thiserror.workspace = true
 tokio = { version = "1.53", features = ["io-util", "net", "sync"] }
 zeroize = { version = "1.8", features = ["serde"] }
+tracing = "0.1"
 
 [dev-dependencies]
 flatbuffers = "25"

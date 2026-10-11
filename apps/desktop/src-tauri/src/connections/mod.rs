@@ -30,6 +30,7 @@ pub(crate) mod credentials;
 pub(crate) mod diagnostics;
 pub(crate) mod drivers;
 mod dto;
+mod duckdb;
 mod engine_dto;
 pub(crate) use engine_dto::EngineDto;
 mod enums;
@@ -81,6 +82,7 @@ const SNAPSHOT_RETENTION_MS: i64 = 60 * 24 * 60 * 60 * 1000;
 
 /// Managed state behind every connection and query command.
 pub(crate) struct Connections {
+    duckdb: duckdb::DuckdbSessions,
     pub(crate) profiles: ProfileService,
     pub(crate) command_trust: Arc<openrows_store::profile::CommandTrust>,
     pub(crate) credential_runs: credentials::CredentialRuns,
@@ -136,6 +138,7 @@ pub(crate) fn install(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Er
         local_user: local_user(),
     };
     app.manage(Connections {
+        duckdb: duckdb::DuckdbSessions::default(),
         profiles,
         app: app.handle().clone(),
         command_trust: Arc::new(openrows_store::profile::CommandTrust::new(

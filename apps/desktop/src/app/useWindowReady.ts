@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useState } from 'react';
 import { emitTo } from '@tauri-apps/api/event';
+import { scheduleHostPrewarm } from './hostPrewarm';
 
 /**
  * Notify the native shell once React has committed the first render.
@@ -13,10 +14,20 @@ import { emitTo } from '@tauri-apps/api/event';
 export function useWindowReady(): boolean {
   const [startupError, setStartupError] = useState(false);
   useEffect(() => {
+    let disposed = false;
+    let cancel: (() => void) | undefined;
     performance.mark('openrows:first-paint-ready');
-    void emitTo('main', 'openrows:first-paint-ready').catch(() => {
-      setStartupError(true);
-    });
+    void emitTo('main', 'openrows:first-paint-ready')
+      .then(() => {
+        if (!disposed) cancel = scheduleHostPrewarm();
+      })
+      .catch(() => {
+        setStartupError(true);
+      });
+    return () => {
+      disposed = true;
+      cancel?.();
+    };
   }, []);
 
   return startupError;

@@ -7,6 +7,24 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+it('keeps a frozen or read-only invoke callable without throwing', async () => {
+  for (const frozen of [false, true]) {
+    const invoke = vi.fn(() => Promise.resolve('ok'));
+    const internals = Object.defineProperty({}, 'invoke', {
+      value: invoke,
+      writable: false,
+    }) as { invoke: typeof invoke };
+    if (frozen) Object.freeze(internals);
+    const report = vi.fn();
+    expect(() => {
+      timeIpc(internals, report);
+    }).not.toThrow();
+    expect(internals.invoke).toBe(invoke);
+    await expect(internals.invoke()).resolves.toBe('ok');
+    expect(report).not.toHaveBeenCalled();
+  }
+});
+
 it('logs only the IPC commands that take at least the threshold', async () => {
   let clock = 0;
   vi.spyOn(performance, 'now').mockImplementation(() => clock);

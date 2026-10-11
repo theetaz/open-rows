@@ -16,14 +16,22 @@ use std::{
 };
 
 pub(super) async fn connection() -> Box<dyn Connection> {
+    connection_at("connect").await
+}
+async fn connection_at(attempt: &'static str) -> Box<dyn Connection> {
     let request = support::config().to_request().unwrap();
-    HostedDriver::new(
+    let result = HostedDriver::new(
         HostSupervisor::new(support::options(MemoryBudget::default())),
         Arc::new(openrows_driver_sqlite::SqliteDriver),
     )
     .connect(&request, &mut ConnectTrace::default())
-    .await
-    .unwrap()
+    .await;
+    assert!(
+        result.is_ok(),
+        "SQLite fixture host-test-fixture {attempt} failed: {:?}; see startup compatibility diagnostics above",
+        result.as_ref().err()
+    );
+    result.unwrap()
 }
 #[derive(Default)]
 pub(super) struct Pressure {
@@ -109,7 +117,7 @@ async fn pause_resume_streams_without_early_credit_or_truncation() {
 #[tokio::test]
 async fn facets_fail_typed_after_host_loss_and_fresh_connect_works() {
     let _permit = support::host_test().await.unwrap();
-    let mut connection = connection().await;
+    let mut connection = connection_at("initial").await;
     let error = connection
         .execute("OPENROWS_TEST_ABORT", &mut openrows_driver_api::DiscardSink)
         .await
@@ -129,7 +137,7 @@ async fn facets_fail_typed_after_host_loss_and_fresh_connect_works() {
         Err(DriverError::Host(_))
     ));
     drop(connection);
-    let mut fresh = self::connection().await;
+    let mut fresh = connection_at("fresh-after-abort").await;
     fresh.ping().await.unwrap();
     fresh.close().await.unwrap();
 }

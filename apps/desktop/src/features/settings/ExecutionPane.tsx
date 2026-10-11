@@ -35,7 +35,7 @@ const limitLabel = (limit: ExecutionSettings['autoLimit']): string =>
 
 /** Settings ▸ Execution: what ⌘↵ runs, the automatic LIMIT and confirmations. */
 export function ExecutionPane(): React.JSX.Element {
-  const settings = executionSettings.use();
+  const settings = executionSettings.useValue();
   const [editor, updateEditor] = useEditorSettings();
   return (
     <section aria-label="Execution">

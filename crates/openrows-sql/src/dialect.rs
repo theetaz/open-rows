@@ -18,7 +18,9 @@ impl Dialect {
             return Err(SelectError::NulCharacter);
         }
         Ok(match self {
-            Self::Postgres | Self::Sqlite => format!("\"{}\"", name.replace('"', "\"\"")),
+            Self::Postgres | Self::Duckdb | Self::Sqlite => {
+                format!("\"{}\"", name.replace('"', "\"\""))
+            }
             Self::MySql => format!("`{}`", name.replace('`', "``")),
             Self::ClickHouse => format!("`{}`", name.replace('\\', "\\\\").replace('`', "\\`")),
             Self::SqlServer => format!("[{}]", name.replace(']', "]]")),
@@ -47,7 +49,7 @@ impl Dialect {
     #[must_use]
     pub fn text_of(self, expression: &str) -> String {
         match self {
-            Self::Postgres => format!("{expression}::text"),
+            Self::Postgres | Self::Duckdb => format!("{expression}::text"),
             Self::MySql => format!("CAST({expression} AS CHAR)"),
             Self::Sqlite => format!("CAST({expression} AS TEXT)"),
             Self::SqlServer => format!("CONVERT(NVARCHAR(MAX), {expression})"),
@@ -58,7 +60,7 @@ impl Dialect {
     /// The bind placeholder for the `number`-th parameter (1-based).
     pub(crate) fn placeholder(self, number: usize) -> String {
         match self {
-            Self::Postgres => format!("${number}"),
+            Self::Postgres | Self::Duckdb => format!("${number}"),
             Self::MySql => "?".to_owned(),
             Self::Sqlite => format!("?{number}"),
             Self::SqlServer => format!("@P{number}"),
@@ -70,7 +72,7 @@ impl Dialect {
     /// parameter `placeholder`.
     pub(crate) fn same_text(self, column: &str, placeholder: &str) -> String {
         match self {
-            Self::Postgres => {
+            Self::Postgres | Self::Duckdb => {
                 format!("{column}::text IS NOT DISTINCT FROM {placeholder}::text")
             }
             Self::MySql => {
@@ -96,7 +98,9 @@ impl Dialect {
         let not = if negate { "NOT " } else { "" };
         let text = self.text_of(column);
         match self {
-            Self::Postgres | Self::ClickHouse => format!("{text} {not}ILIKE {placeholder}"),
+            Self::Postgres | Self::Duckdb | Self::ClickHouse => {
+                format!("{text} {not}ILIKE {placeholder}")
+            }
             // `CAST(… AS CHAR)` uses the connection's case-insensitive collation.
             Self::MySql => format!("{text} {not}LIKE {placeholder}"),
             // No default escape; `SQLite` matches ASCII case-insensitively,
@@ -120,8 +124,8 @@ impl Dialect {
     ) -> Result<String, SelectError> {
         let text = self.text_of(column);
         match (self, negate) {
-            (Self::Postgres, false) => Ok(format!("{text} ~ {placeholder}")),
-            (Self::Postgres, true) => Ok(format!("{text} !~ {placeholder}")),
+            (Self::Postgres | Self::Duckdb, false) => Ok(format!("{text} ~ {placeholder}")),
+            (Self::Postgres | Self::Duckdb, true) => Ok(format!("{text} !~ {placeholder}")),
             (Self::ClickHouse, false) => Ok(format!("match({text}, {placeholder})")),
             (Self::ClickHouse, true) => Ok(format!("NOT match({text}, {placeholder})")),
             (Self::MySql, false) => Ok(format!("{text} REGEXP {placeholder}")),

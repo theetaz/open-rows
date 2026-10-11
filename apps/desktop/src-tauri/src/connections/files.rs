@@ -29,6 +29,10 @@ pub(crate) enum PickFileKind {
     SqliteDatabase,
     /// Where to create a new `SQLite` database file (save panel).
     NewSqliteDatabase,
+    /// An existing `DuckDB` file.
+    DuckdbDatabase,
+    /// Where to create a `DuckDB` file.
+    NewDuckdbDatabase,
 }
 
 impl PickFileKind {
@@ -41,6 +45,8 @@ impl PickFileKind {
             Self::ClientKey => "Choose client key",
             Self::SqliteDatabase => "Open SQLite database",
             Self::NewSqliteDatabase => "New SQLite database",
+            Self::DuckdbDatabase => "Open DuckDB database",
+            Self::NewDuckdbDatabase => "New DuckDB database",
         }
     }
 }
@@ -68,6 +74,7 @@ pub(crate) async fn connection_pick_file(
     };
     match kind {
         PickFileKind::NewSqliteDatabase => panel.set_file_name("database.sqlite").save_file(reply),
+        PickFileKind::NewDuckdbDatabase => panel.set_file_name("database.duckdb").save_file(reply),
         _ => panel.pick_file(reply),
     }
     let picked = receiver

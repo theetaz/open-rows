@@ -230,3 +230,31 @@ it('saves startup commands from the Advanced section', async () => {
     expect.objectContaining({ startupCommands: 'SET search_path TO app;' }),
   );
 });
+
+it('saves DuckDB memory profiles and explains irreversible data loss before connecting', async () => {
+  const saved = profile('analytics', {
+    engine: 'duckdb',
+    file: { path: '', memory: true, readOnly: false, create: false },
+  });
+  vi.mocked(updateProfile).mockResolvedValue(saved);
+  const { user } = mount(saved);
+  expect(
+    screen.getByText(/losing the driver process permanently loses all data/),
+  ).toBeVisible();
+  expect(
+    screen.queryByRole('textbox', { name: 'Database file' }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.getByText(
+      /Catalog browsing, editing, export, backup and explain visualization are not available yet/,
+    ),
+  ).toBeVisible();
+  await user.click(screen.getByRole('button', { name: 'Save' }));
+  expect(updateProfile).toHaveBeenCalledWith(
+    saved.id,
+    expect.objectContaining({
+      engine: 'duckdb',
+      file: { path: '', memory: true, readOnly: false, create: false },
+    }),
+  );
+});

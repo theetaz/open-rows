@@ -113,7 +113,8 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
     runs,
     tabId: tab.id,
     onSnippet: startPicking,
-    onExplain: explain.run,
+    onExplain:
+      props.connection.engine === 'duckdb' ? () => undefined : explain.run,
   });
   return (
     <section
@@ -258,7 +259,9 @@ function TabBar(
         props.runs.cancel(props.tab.id);
       }}
       onFormat={props.format}
-      onExplain={props.onExplain}
+      onExplain={
+        props.connection.engine === 'duckdb' ? undefined : props.onExplain
+      }
     />
   );
 }

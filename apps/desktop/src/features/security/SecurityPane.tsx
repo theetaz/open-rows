@@ -3,7 +3,7 @@ import { Switch } from '@openrows/ui';
 import { SettingRow } from '../appearance/InterfaceSettings';
 import { securitySettings } from './securitySettings';
 import { useSecurity } from './useSecurity';
-const usePreferences = securitySettings.use;
+const usePreferences = securitySettings.useValue;
 /** Settings ▸ Security: OS-authenticated startup and inactivity locks. */
 export function SecurityPane(): React.JSX.Element {
   const preferences = usePreferences();

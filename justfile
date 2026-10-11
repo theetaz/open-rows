@@ -17,11 +17,12 @@ fmt-check:
 
 # Enforce workspace Rust and Clippy lints as errors.
 lint: (stage-host "dev")
-    {{sccache_guard}} cargo clippy --workspace --all-targets --locked -- -D warnings
+    {{sccache_guard}} cargo clippy --workspace --all-targets --locked --features openrows-app/ipc-bindings -- -D warnings
+    bash scripts/check-host-graph.sh
 
 # Run isolated workspace unit tests with nextest.
 test: (stage-host "dev")
-    {{sccache_guard}} cargo nextest run --workspace --locked
+    {{sccache_guard}} cargo nextest run --workspace --locked --features openrows-app/ipc-bindings
 
 # Run the OpenSSH container matrix with timings; fails (not skips) when Docker is unavailable.
 test-ssh:
@@ -81,7 +82,7 @@ build-app: stage-host
 
 # Regenerate the TypeScript command contract from Rust.
 gen-ipc: (stage-host "dev")
-    {{sccache_guard}} cargo run -p openrows-app --bin gen-ipc --locked
+    {{sccache_guard}} cargo run -p openrows-app --bin gen-ipc --features ipc-bindings --locked
 
 # Compare regenerated IPC bindings without modifying the committed contract.
 ipc-check: (stage-host "dev")
@@ -107,6 +108,7 @@ bench-test:
 script-test:
     python3 -B -m unittest discover -s scripts -p 'test_sccache_*.py'
     python3 -B -m unittest discover -s scripts -p 'test_stage_host.py'
+    python3 -B -m unittest discover -s scripts -p 'test_strip_macos_bundle.py'
 
 # Emit CSS custom properties from the UI TypeScript token source.
 gen-tokens:

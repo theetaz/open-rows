@@ -44,7 +44,7 @@ pub(crate) fn max_params(dialect: Dialect) -> usize {
         Dialect::Postgres | Dialect::MySql => 65_535,
         Dialect::Sqlite => 32_766,
         Dialect::SqlServer => 2_098,
-        Dialect::ClickHouse => 0,
+        Dialect::ClickHouse | Dialect::Duckdb => 0,
         _ => 999,
     }
 }

@@ -27,14 +27,16 @@ defaults:
 jobs:
   check:
     runs-on: ubuntu-latest
-    # A cold Rust cache (first run after a lockfile or flag change) needs
-    # longer than a warm one; the cache is only saved by a run that finishes.
-    timeout-minutes: 30
+    # Cold GitHub check measured ~41m with native DuckDB; cached runs are far shorter (docs/18 §4).
+    timeout-minutes: 50
     env:
       # Full debug info for every crate fills the runner's disk; line tables
       # keep panic backtraces readable at a fraction of the size.
       CARGO_PROFILE_DEV_DEBUG: line-tables-only
       CARGO_PROFILE_TEST_DEBUG: line-tables-only
+      CARGO_TARGET_DIR: target
+      CARGO_BUILD_JOBS: '2'
+      NEXTEST_TEST_THREADS: '2'
     steps:
       - name: Free runner disk
         run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/boost
@@ -66,29 +68,39 @@ jobs:
       - name: TypeScript
         run: pnpm typecheck
       - name: Component tests
-        run: pnpm test
+        run: pnpm test --maxWorkers=2
       - name: Frontend dead code
         run: pnpm knip
+      - name: Select shared native Cargo target and linker
+        # Ubuntu's preinstalled LLVM linker avoids concurrent GNU-link memory spikes.
+        run: |
+          echo "CARGO_BUILD_TARGET=$(rustc -vV | sed -n 's/^host: //p')" >> "$GITHUB_ENV"
+          linker=$(command -v ld.lld || command -v ld.lld-18)
+          echo "RUSTFLAGS=-C linker=clang -C link-arg=-fuse-ld=$linker" >> "$GITHUB_ENV"
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: '. -> target'
+          key: check-native-${{ env.CARGO_BUILD_TARGET }}
+          cache-on-failure: true
       - uses: taiki-e/install-action@183e4297cca2404691e9380e1307288dced5c82a # v2.87.25
         with:
           tool: cargo-nextest@0.9.146
       - name: Check formatting
         run: cargo fmt --all --check
       - name: Stage production driver host for desktop checks
-        # Native builds use target/<host-triple>/debug; tests/benches launch a
-        # separate host-test-fixture that neither staging nor Tauri can replace.
+        # All steps share target/<host-triple>/debug and the same native profile;
+        # separately named fixtures cannot overwrite the staged production image.
         run: bash scripts/stage-host.sh dev
       - name: Check driver host staging isolation
         run: python3 -B -m unittest discover -s scripts -p 'test_stage_host.py'
       - name: Clippy
-        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+        run: cargo clippy --workspace --all-targets --locked --features openrows-app/ipc-bindings -- -D warnings
       - name: Tests
         # Docker-backed SSH container tests run locally in `just check`;
         # building their fixture image here costs minutes per run.
-        run: cargo nextest run --workspace --locked -E 'not binary(ssh_container)'
+        run: cargo nextest run --workspace --locked --features openrows-app/ipc-bindings -E 'not binary(ssh_container)'
       - name: Binding freshness
-        run: cargo nextest run -p openrows-app --locked bindings_are_fresh
+        run: cargo nextest run -p openrows-app --locked --features ipc-bindings bindings_are_fresh
 
   containers:
     # PostgreSQL 17, MySQL 8.4 and MariaDB 11.4 in throwaway containers: the

@@ -38,7 +38,7 @@ function saved(items: readonly Snippet[], snippet: Snippet): Snippet[] {
  * export as JSON) and the built-in snippets, each of which can be turned off.
  */
 export function SnippetsPane(): React.JSX.Element {
-  const settings = snippetSettings.use();
+  const settings = snippetSettings.useValue();
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const close = (): void => {
     setDialog(null);

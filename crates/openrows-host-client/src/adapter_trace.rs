@@ -39,7 +39,14 @@ pub(crate) fn error(error: WireError) -> DriverError {
         WireError::Network => DriverError::Network(std::io::ErrorKind::BrokenPipe.into()),
         WireError::Host(reason) => DriverError::Host(match reason {
             1 => HostFailure::Spawn,
-            2 => HostFailure::Incompatible,
+            2 => {
+                tracing::warn!(
+                    check = "wire_host_failure",
+                    observed = reason,
+                    "driver host declared an incompatible connection"
+                );
+                HostFailure::Incompatible
+            }
             3 => HostFailure::Exited,
             4 => HostFailure::MemoryLimit,
             5 => HostFailure::Unresponsive,

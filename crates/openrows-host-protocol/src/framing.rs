@@ -60,6 +60,12 @@ impl Header {
                 .map_err(|_| ProtocolError::Invalid)?,
         );
         if version != PROTOCOL.0 {
+            tracing::warn!(
+                check = "frame_protocol_major",
+                observed = version,
+                expected = PROTOCOL.0,
+                "driver host compatibility check failed"
+            );
             return Err(ProtocolError::Incompatible);
         }
         let header = Self {

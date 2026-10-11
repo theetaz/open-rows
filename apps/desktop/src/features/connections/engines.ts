@@ -47,7 +47,7 @@ export const ENGINE_CHOICES: readonly EngineChoice[] = [
   { id: 'snowflake', name: 'Snowflake', monogram: 'Sf', engine: null },
   { id: 'redis', name: 'Redis', monogram: 'Re', engine: null },
   { id: 'sqlite', name: 'SQLite', monogram: 'Sl', engine: 'sqlite' },
-  { id: 'duckdb', name: 'DuckDB', monogram: 'Du', engine: null },
+  { id: 'duckdb', name: 'DuckDB', monogram: 'Du', engine: 'duckdb' },
   { id: 'oracle', name: 'Oracle', monogram: 'Or', engine: null },
   { id: 'cockroachdb', name: 'CockroachDB', monogram: 'Cr', engine: null },
   { id: 'greenplum', name: 'Greenplum', monogram: 'Gp', engine: null },
@@ -77,13 +77,14 @@ export function defaultPort(engine: EngineDto): number | null {
       return 443;
     case 'sqlite':
     case 'libsql-file':
+    case 'duckdb':
       return null;
   }
 }
 
 /** Engines that open a local file instead of a server. */
 export function isFileEngine(engine: EngineDto): boolean {
-  return engine === 'sqlite' || engine === 'libsql-file';
+  return engine === 'sqlite' || engine === 'libsql-file' || engine === 'duckdb';
 }
 
 /** URL scheme that names `engine` (composing URLs). */
@@ -111,6 +112,8 @@ export function profileLocation(profile: ProfileDto): string {
 /** SQL grammar shared by remote and local libSQL connections. */
 export function editorDialect(engine: EngineDto): EditorDialect {
   switch (engine) {
+    case 'duckdb':
+      return 'postgres';
     case 'libsql':
     case 'libsql-file':
       return 'sqlite';

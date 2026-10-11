@@ -12,9 +12,9 @@ type Props = {
   context: ContextSegments;
   /** Connection state for the context bar's health dot. */
   health: string;
-  onDatabase: () => void;
+  onDatabase?: (() => void) | undefined;
   onPalette: () => void;
-  onRefresh: () => void;
+  onRefresh?: (() => void) | undefined;
   safe: boolean;
   prod: boolean;
   onSafe: () => void;
@@ -99,12 +99,17 @@ function ToolButton(props: {
   label: string;
   icon: IconName;
   pressed?: boolean;
-  onClick?: () => void;
+  onClick?: (() => void) | undefined;
 }): React.JSX.Element {
   return (
     <IconButton
       aria-label={props.label}
-      title={props.label}
+      title={
+        props.onClick
+          ? props.label
+          : `${props.label} is not available for this connection.`
+      }
+      disabled={!props.onClick}
       aria-pressed={props.pressed}
       variant="ghost"
       size="sm"
@@ -151,6 +156,12 @@ function Context({
               type="button"
               aria-label={`Open database (${database || 'none'})`}
               onClick={onDatabase}
+              disabled={!onDatabase}
+              title={
+                onDatabase
+                  ? undefined
+                  : 'DuckDB catalog browsing is not available yet.'
+              }
             >
               {database || 'No database'}
             </button>

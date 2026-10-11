@@ -73,3 +73,9 @@ debug = "line-tables-only"
 
 [profile.bench]
 inherits = "release"
+
+# Bundled C++ debug symbols dominate development build/link I/O. Keep its
+# development optimisation off; release retains the normal optimised profile.
+[profile.dev.package.libduckdb-sys]
+debug = false
+opt-level = 0

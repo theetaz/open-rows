@@ -246,3 +246,7 @@ review. `just dev` signs both the copied helper and app with the stable local
 identity when present; no keys/certificates are created by this task. OS launch
 policy and release signature/package verification remain distinct from the
 resolver's format/build checks; Developer ID/notarization is an open gate.
+
+### Implemented (M2-04a): local DuckDB policy
+
+Native DuckDB lives only in the helper. Before any startup/user SQL it disables autoload_known_extensions, autoinstall_known_extensions, allow_persistent_secrets, allow_community_extensions and enable_external_access, then locks configuration. Engine memory/threads are capped. INSTALL/LOAD or attempts to unlock the policy surface native errors; no automatic extension downloads, persistent secrets or external file/network scans are permitted. Database access is the selected file or profile-local memory database. All ATTACH SQL is conservatively rejected before sending, including multi-statement requests, until canonical attached-file reservations exist. Native inter-process file locks are never overridden or stolen. Existing credentials and bootstrap secrets stay on the inherited bounded channel, outside argv/logs.

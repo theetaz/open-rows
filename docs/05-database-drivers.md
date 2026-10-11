@@ -106,7 +106,7 @@ The UI reads capabilities to decide which toolbar buttons, tree nodes and editor
 | libSQL / Turso | SQLite-compatible local files + remote Hrana 3 HTTP | own Hrana-over-HTTP client; shared `rusqlite` locally | Apache-2.0; MIT (rusqlite) | 2 | Implemented M2-05 (§17); WebSocket, embedded replicas and libSQL-only local extensions excluded. |
 | SQL Server 2017+ / Azure SQL | TDS 7.4 | own client on `openrows-net` streams (M2-02, see §14; `tiberius` was the plan) | — | 2 | `rustls` TLS inside `PRELOGIN`; SQL logins (Windows/Entra ID later); cancel via the TDS attention signal on the same connection; `GO` batch separator handled by the splitter. |
 | ClickHouse 25.3 LTS | HTTP interface (and native later) | own client on `hyper` using `FORMAT ArrowStream` | — | 2 | Implemented in M2-03 (§17): native incremental ArrowStream, HTTP(S) over routes, bound parameters, catalog and query cancellation; read-only grids (no transactional mutations). |
-| DuckDB | embedded in driver host | `duckdb` crate (C++ library) | MIT | 2 | M2-04 planned; native Arrow output. Mandatory hosted execution and writable-file session restrictions accepted in [ADR-0010](adr/0010-driver-host-process.md); not implemented. |
+| DuckDB | embedded in driver host | `duckdb` crate (C++ library) | MIT | 2 | Partial — M2-04a hosted file/memory query, native Arrow/binding, interrupt, reservation and app path implemented (§20); catalog/edit/export/full Tier 2 remains M2-04b. |
 | MongoDB 5.0+ | OP_MSG | official `mongodb` crate | Apache-2.0 | 2 | Shell-like query parser in `openrows-sql/mql`; documents → JSON column + flattened tabular view; `killOp` for cancel. |
 | Redis 6+ / Valkey / KeyDB / Dragonfly | RESP2/RESP3 | `redis` crate | BSD-3 | 2 | `SCAN`-based key browser (never `KEYS *`); type-aware editors; cluster and sentinel support. |
 | Oracle 19c+ | OCI | `oracle` crate (ODPI-C, loads **user-installed** Instant Client at runtime) | UPL/Apache | 3 | Not bundled; app detects/locates Instant Client and guides installation. Runs in driver host. |
@@ -199,7 +199,7 @@ A shared test crate (`openrows-driver-conformance`) parameterised by driver. Eve
 
 Drivers built on C/C++ libraries (Oracle via ODPI-C, DuckDB, ADBC drivers) can crash the process on bugs we cannot catch. These drivers can run inside `openrows-driver-host`, a small helper executable:
 
-**Design accepted 2026-10-10 (M2-01), packaging pending:** [ADR-0010 — One driver host process per hosted session](adr/0010-driver-host-process.md) specifies the proposed process boundary, protocol, failure/restart policy, security, sidecar distribution and validation plan. DuckDB is mandatory-hosted; PostgreSQL, MySQL/MariaDB, SQLite and MSSQL keep their current in-process implementations. A writable DuckDB file has one shared hosted session: catalog/edit/export operations queue on it because separate writer/reader processes cannot share the file. All-read-only sessions may have separate hosts; memory databases live only in their owning host. These are accepted M2-04 restrictions, not changes to existing drivers.
+**Design accepted 2026-10-10 (M2-01), partial packaging implemented (§19):** [ADR-0010 — One driver host process per hosted session](adr/0010-driver-host-process.md) specifies the proposed process boundary, protocol, failure/restart policy, security, sidecar distribution and validation plan. DuckDB is mandatory-hosted; PostgreSQL, MySQL/MariaDB, SQLite and MSSQL keep their current in-process implementations. A writable DuckDB file has one shared hosted session: catalog/edit/export operations queue on it because separate writer/reader processes cannot share the file. All-read-only sessions may have separate hosts; memory databases live only in their owning host. M2-04a implements query/file ownership below; queued catalog/edit/export is M2-04b.
 
 ```mermaid
 sequenceDiagram
@@ -238,15 +238,22 @@ This implements ADR-0010 M2-01.1–.2. The core adapter, spill admission/termina
 
 ### Implemented (M2-01b)
 
+Startup compatibility failures retain the typed `Incompatible` result. Structured
+diagnostics identify native-header checks, frame-version disagreement and the
+specific Hello contract field. Early-exit diagnostics include the exit status
+and an allowlisted helper startup stage/error category, when available. Arbitrary
+child stderr, peer strings, bootstrap tokens and database payloads are discarded.
+The hosted SQLite tests enable these logs and label initial versus fresh connects.
+
 `HostedDriver`/`HostedConnection` in the Tauri-free client implement boxed-future
 connect, streaming/binding, ping, transaction state, cancellation, catalog and
 editor facets. Pure dialect/DDL generation stays in the parent. Dedicated bounded
 postcard facet DTOs preserve native catalog types and bound edit values; native
 calls stay in the host worker. Bulk/admin are unadvertised and unsupported.
 SQLite hosting requires the helper's non-default `test-sqlite` feature (enabled
-by disposable `test-hooks` fixtures). No production desktop driver is routed to
-this adapter; DuckDB registration remains M2-04. Installed helper resolution is
-implemented in M2-01.4 (§19).
+by disposable `test-hooks` fixtures). M2-04a routes production DuckDB query
+sessions through this adapter (§20). Installed helper resolution is implemented
+in M2-01.4 (§19).
 
 Arrow segments decode directly into `ResultSink`, with no cell/JSON conversion.
 Nonblocking sink/store admission withholds credit above the spill budget, resumes
@@ -521,9 +528,45 @@ Typical decoder buffers are bounded independently of total row count: 128 KiB ch
 Hello/Ready contract. Probe verifies the installed helper without advertising
 or opening a database; even fixture builds refuse its Connect. SqliteTest is
 accepted only with the optional test SQLite feature. Staging builds only the
-helper binary with `--no-default-features`, excluding fixture drivers/hooks.
+helper binary with `--no-default-features --features duckdb`, excluding fixture drivers/hooks.
 
 M2-04's registration points are `openrows-host-protocol/src/driver.rs` and
 `Hello::for_driver`, the host's `registry.rs`, and the parent adapter's declared
 capabilities/facet validation. Use the managed runtime's profile/driver launcher;
 never add DuckDB's native library to the desktop graph or an in-process fallback.
+
+## 20. Implemented (M2-04a): hosted DuckDB query path
+
+DuckDB 1.5.6 (`duckdb` 1.10506.0, bundled, default features off) is compiled only into the production `openrows-driver-host` feature. The parent carries pure dialect/capability metadata and a hosted proxy. `scripts/check-host-graph.sh` checks normal/build edges: no DuckDB in desktop, no native SQLite in the production helper. SQLite registration remains a test fixture.
+
+The connection tile supports existing/new `.duckdb` files, read-only files and named in-memory profiles. Native document opening validates the DUCK header before opening the DuckDB form. Query tabs share one owning profile session/host. Canonical paths, symlinks and existing file handles detect aliases and hard links; competing writers and readers while a writer exists fail with SQLSTATE `55006`. Separate read-only profiles can have independent hosts. DuckDB's own inter-process lock remains authoritative (`58030` on failed open). Reservations survive proxy Drop until confirmed host reap. All ATTACH statements are refused before transmission until attached-file reservations exist. In-memory contents disappear on close or host loss; the form warns before connect, and host failure requires an explicit reconnect.
+
+Only Cancel, BindParameters and StartupCommands are advertised. Catalog/metadata, background edit/export sessions, managed edits/transactions, backup/restore, process listing and parsed explain remain M2-04b work; facets are absent and app actions are hidden/disabled with an explanatory form/sidebar notice. Plain user SQL, including DDL/DML, follows native semantics; cancellation never replays it. Parameterized execution takes one statement and preserves NULLs. Unbound scripts stream multiple results in order; sink Stop ends the request, so later statements are not run. Startup scripts instead drain every result. DML without RETURNING reports native affected counts. Parser, missing-object, constraint and interrupt errors retain engine text and map to shared SQLSTATEs.
+
+| DuckDB type | Shared representation / fidelity | Expected integration value (Arrow formatter) |
+| --- | --- | --- |
+| Signed/unsigned integers through 64 bits | Native Arrow widths | TINYINT `-128`; UTINYINT `255`; USMALLINT `65535`; UINTEGER `4294967295`; UBIGINT `18446744073709551615` |
+| BOOLEAN | Lossless bool8 converted to Boolean, including nested values | `[true, NULL, false]` |
+| HUGEINT | Exact signed 128-bit decimal text, tagged fallback; no float conversion | `-170141183460469231731687303715884105728` |
+| UHUGEINT | Exact unsigned 128-bit decimal text, tagged fallback; no float conversion | `340282366920938463463374607431768211455` |
+| DECIMAL | Arrow Decimal128 with precision/scale | `12.50` for DECIMAL(10,2) |
+| DATE | Native Arrow temporal units | `2024-05-06` |
+| TIME | Native Arrow temporal units | `13:05:00.250` |
+| TIMESTAMP | Native Arrow temporal units | `2024-05-06T13:05:00` |
+| TIMESTAMPTZ | UTC zone normalized to `+00:00` | `2024-05-06T13:05:00Z` |
+| INTERVAL | MonthDayNano interval | `1 mons 2 days 0.000003000 secs` |
+| UUID | UUID extension with exact 16 bytes | `00112233445566778899aabbccddeeff` |
+| BLOB | Native Binary | `00ff10` |
+| LIST | Native List when representable; nested bool/huge values normalized without losing NULLs | `[1, NULL, 3]` |
+| STRUCT | Explicit Arrow formatter text with source type and text-fallback metadata; nested HUGEINT stays exact | `{a: 1, b: x}`; `{h: 340282366920938463463374607431768211455}` |
+| MAP | Explicit text fallback; NULLs shown as `NULL` | `{a: 1}` |
+| UNION | Explicit text fallback retaining its active tag | `{x=1}` |
+| ENUM | Exact dictionary label cast to explicit text fallback | `happy` |
+
+These values are asserted against batches received over the host wire in `duckdb_native::fidelity_native_and_explicit_text_fallbacks`; unsupported nested LIST forms use the same explicit tagged text fallback.
+
+The native Arrow 58 ABI is bridged through bounded uncompressed Arrow IPC to workspace Arrow 60, then the existing host credit protocol. There is no JSON-per-cell conversion or full-result collection. First batch ≤200 rows, later batches target 64k cells, one admitted batch, typical encoded/decoded ceiling 4 MiB, exclusive single-row ceiling 64 MiB. Native chunk fetch uses the fallible API; engine memory is capped at 128 MiB/two worker threads in addition to the host's 256 MiB monitor and aggregate 512 MiB admission. Extension auto-install/load, community extensions, external access and persistent secrets are disabled before startup SQL; configuration is locked.
+
+Normal integration suites cover unchanged Connect/Types/Streaming/Cancel/Errors conformance, file modes and aliases, external process locks, million-row Pause/Resume, exact type values, limits and host kill/reconnect. Metadata/Edits/Structure/Lifecycle/Processes groups remain capability-gated Unsupported. Performance and package evidence is in docs/13 and ADR-0010.
+
+Owner decision 2026-10-10 adds a once-per-app-run database-free Probe prewarm after visible paint/idle to pay the OS first-exec scan before DuckDB connect. It uses installed resolution, normal memory admission and a separate circuit; skipped/failed attempts appear only in diagnostics, with no retry. DuckDB launch waits asynchronously for an in-flight attempt and then creates its own connection host. Registration remains cheap and database-free during startup. See ADR-0010 for the five fresh-copy measurements and the unchanged two-second deadline.

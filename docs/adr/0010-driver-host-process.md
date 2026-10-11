@@ -32,7 +32,7 @@ At ADR acceptance there was no host or DuckDB crate in the workspace, and [`taur
 3. Add a Tauri-free client adapter (`HostedDriver`, `HostedConnection`), protocol crate and host binary. For hosted drivers, the desktop depends on the client and driver metadata/SQL generation, **never on DuckDB or the hosted driver's native client library**. Only the host links the native DuckDB implementation. Native-library-dependent work, including any synchronous generation requiring the library, stays in the host or is refused; ordinary pure SQL generators stay in the parent.
 4. Use **two separate local transports**: a duplex control connection and a host-to-parent Arrow data connection. Both are Unix domain sockets on macOS/Linux and named pipes on Windows. Choose length-prefixed **postcard control DTOs and uncompressed Arrow IPC streams** for results. A full data pipe must never prevent Cancel, heartbeat or Close traffic.
 5. Keep result storage, spill, window encoding, safety decisions, history and keychain access in the parent. The proxy decodes Arrow batches into the existing sink; the webview still receives only events and requested windows per ADR-0002.
-6. Start lazily on connect and exit on close. After failure, fail that session; a **new explicit connect** automatically creates a fresh host. No automatic resurrection of the old session, transaction or in-flight request.
+6. Database sessions start lazily on connect and exit on close. The owner-approved database-free Probe prewarm below runs once after visible paint and idle; it never becomes a session or opens a database. After failure, fail that session; a **new explicit connect** automatically creates a fresh host. No automatic resurrection of the old session, transaction or in-flight request.
 
 ### DuckDB file ownership and session allocation
 
@@ -201,6 +201,7 @@ The owner accepted every proposed default below without changes. They are bindin
 4. **Flow-control limits — accepted.** One-batch 4 MiB credit window, exclusive 64 MiB large-row ceiling (larger rows fail explicitly), 1 ms per-batch and 150 ms cold-host targets, subject to reference-hardware measurement.
 5. **Budgets kept — accepted.** The ≤ 200 MB connected idle footprint and ≤ 40 MB installer budgets stay; a DuckDB miss blocks release until an explicit budget or design revision. The maintainer owns the signing and reference-machine checkpoint.
 6. **Restricted DuckDB extensions and persistent secrets; host-local, non-durable memory databases — accepted.** Routed Oracle/ADBC support, stronger OS sandboxing and universal macOS artifacts remain separate reviewed work.
+7. **Owner decision 2026-10-10: prewarm.** After the main window is shown, two visible animation frames and an idle callback schedule one database-free installed Probe handshake and close/reap. On engines without `requestIdleCallback`, a deferred event-loop turn after those frames is used. The attempt runs asynchronously, with the unchanged 2 s handshake deadline and no retry. Missing/invalid installed helpers skip with a typed diagnostic; admission/handshake/close failure is also diagnostic-only. Probe shares the 256 MiB host / 512 MiB aggregate memory reservation, with a separate disposable circuit that cannot increment a DuckDB profile's three-exits circuit. DuckDB connects asynchronously await an already-running attempt before spawning their own host, avoiding overlapping first-exec scans and releasing Probe's memory reservation first; connects before idle proceed normally. Startup and packaged five-copy evidence is recorded in the round-2 section below. The package-scoped build-only `webpki-roots` licence exception is approved separately in docs/22.
 
 ## Validation / exit criteria
 
@@ -592,3 +593,847 @@ Final gates ran once in the requested order: `just gen-ipc`, then fmt-check → 
 Frontend eslint, Prettier, TypeScript and knip exited 0; Vitest passed 230 files / 2701 tests in 93.47s. `just ipc-check` printed `Summary [   0.093s] 1 test run: 1 passed, 249 skipped`. IPC generation changed no contract. Two earlier unchanged concurrent packaging mismatch runs timed out; the isolated repeat and complete repeated packaging suite passed, followed by the green final workspace gate. No deadline or mismatch-test behavior was changed. Remote Ubuntu CI was not triggered; its staging/guard/Clippy/workspace-nextest order was checked locally.
 
 Generated frontend dist and staging-test scratch directories were removed; no verification log or screenshot was retained. Dev processes were stopped, and no owned helper or new container remains. The configured target cache, ignored staged binary and app artifacts are retained for review; HEAD stays 7753ace with uncommitted fixes.
+
+## Validation / evidence — 2026-10-10, M2-04a round 1 hosted DuckDB query path
+
+This section retains the original trials and failures. The round-2 section below
+supersedes its open licence, prewarm and final native Linux verification items.
+
+M2-04.1 and the connect/query/cancel portion of M2-04.2 are implemented. Production
+staging enables only the `duckdb` feature: `duckdb`/`libduckdb-sys` 1.10506.0 bundles
+DuckDB 1.5.6. Default binding features and optional JSON/Parquet/ICU extensions are
+off. `scripts/check-host-graph.sh` checks normal/build dependency edges and prints:
+
+```text
+host graph: parent has no DuckDB; production helper has DuckDB and no native SQLite
+```
+
+Native Arrow 58 output crosses a bounded Arrow IPC bridge into workspace Arrow
+60; no per-row JSON transport is introduced. The type-fidelity table and explicit
+text fallbacks are in [docs/05](../05-database-drivers.md). An Arrow decoder
+validation-floor fix preserves its existing defensive allocation bound for
+narrow integer/boolean batches. The parent owns canonical-path and stable
+existing-file identity reservations, including symlinks, relative paths and hard
+links. One profile's query tabs share its logical session/host. Competing writers
+and readers while a writer is active fail with typed `55006`; independent
+all-read-only hosts work. External native lock contention retains DuckDB's text
+with `58030`. Both the parent SQL guard and native session refuse `ATTACH`.
+
+Connection configuration disables extension autoload/autoinstall, community
+extensions, external access and persistent secrets, then locks configuration
+before startup SQL. The process retains the existing 256 MiB containment budget;
+DuckDB uses a 128 MiB engine limit and two worker threads. Metadata, background
+export/edit, managed transactions, explain and catalog operations explicitly
+report Unsupported; UI capabilities prevent hidden extra writable connections.
+M2-04b remains responsible for queued catalog access and full Tier 2 behavior.
+In-memory data loss is disclosed before connect and after host failure. Recovery
+requires explicit reconnect; failed queries are never replayed.
+
+The unchanged hosted conformance macro passes all ten groups. Connect, Types,
+Streaming, Cancel and Errors exercise the query implementation; Metadata, Edits,
+Structure, Lifecycle and Processes take their existing capability-gated
+Unsupported branches. Native integration tests cover file modes, bound values,
+ordered multi-results/early Stop, affected rows, exact values/types, locked
+configuration, million-row Pause/Resume, cancel followed by `SELECT 1`, external
+locks and killed-host isolation. Parent tests cover identity aliases, independent
+readers and shared in-memory/profile ownership. UI tests cover the form, typed
+native-file handoff, one shared session across two query tabs and disabled
+features with reasons.
+
+Opt-in native measurements on Apple M4 / 24 GiB / macOS 26.5, debug helper:
+million-row stream 0.236 s; first 200-row Arrow conversion 42.834 µs; native
+interrupt/drain 0.963 ms. The million-row sink deliberately pauses for 20 ms,
+retains one batch credit and samples RSS. Peak encoded/decoded admitted bytes
+are 16,832/17,363; baseline/peak native RSS are 49,954,816/54,870,016 bytes. These
+samples exclude compile time, include engine/runtime memory and do not certify
+whole-app physical footprint or reference-machine UI paint budgets. A generated
+value above 64 MiB can reach native containment before bridge admission; the
+normal test accepts only the explicit native memory/server error or typed host
+memory-limit failure and verifies the required next query/reconnect path.
+
+Linux verification copied source inside an `--init --cpus 4 --memory 8g`
+`rust:1.94.0-bookworm` ARM64 container; no source bind mount or second target
+directory was used. The host, client and protocol crates passed 109 tests across
+29 harnesses, including the new resolver/reservation/registry/query suites.
+The first four-job run compiled bundled C++ once but simultaneous GNU links were
+killed at the container memory limit (394.662 s). A cached `--jobs 1` link/test
+retry passed in 90.621 s; tests used `--test-threads=1` to respect the shared host
+memory reservation. This is evidence of a multi-minute native-build and linker
+memory cost for Ubuntu CI, not a remote CI run or x86_64 timing. The container
+was stopped and removed after verification.
+
+On this Mac, unsigned debug fixtures sometimes remained in `_dyld_start` before
+bootstrap under nextest. Rebuilding the affected host artifacts and ad-hoc
+hardened-runtime signing of the actual fixture executable made the unchanged
+workspace tests pass. Production deadlines and legacy SQLite conformance
+assertions were preserved. Production bundle signing is checked separately;
+these local debug signing steps are not a fresh-toolchain certification.
+
+The extra dev monitor fix uses fallible `Reflect.set` for the Tauri invoke hook;
+a frozen/read-only property disables timing without throwing. Real dev startup
+also exposed React Compiler treating the setting store's `.use()` calls as
+ordinary functions. Naming the hook `useValue()` at every call site restores
+stable hook order. Frozen-invoke Vitest cases and the existing setting tests
+pass; a fresh `just dev` launch completed without console errors.
+
+Release measurement first used the existing package configuration: bundled
+helper 65,283,312 bytes, app logical size 132,981,635 bytes, standard UDZO DMG
+44,267,783 bytes. The 40,000,000-byte installer budget was exceeded by 4,267,783
+bytes. Rust already used opt-level 3, fat LTO and one codegen unit; the native
+binding already omitted optional JSON/Parquet/ICU features. Bundled C++ was built
+once per debug/release profile; the cold release helper build took 6m 59s and
+the first desktop release build took 7m 45s.
+
+Measured package trials (temporary copies, no native rebuild):
+
+| Trial | Helper bytes | App logical bytes | DMG bytes |
+| --- | ---: | ---: | ---: |
+| Existing release configuration, standard UDZO | 65,283,312 | 132,981,635 | 44,267,783 |
+| Helper `strip -x`, ad-hoc runtime re-sign, UDZO level 9 | 43,474,688 | 111,173,011 | 43,456,114 |
+| Existing DMG converted to ULMO/LZMA, two compression tasks | 65,283,312 | 132,981,635 | 30,361,665 |
+| Exclude the unused packaged `gen-ipc` executable, re-sign app, UDZO level 9 | 65,283,312 | 101,986,314 | 33,578,857 |
+
+The LZMA image checksum verified, but a read-only mount in the task workspace
+failed with `hdiutil: attach failed - Permission denied`; install/minimum-OS
+validation was not claimed. The generator-exclusion trial retained the default
+DMG format and met the size budget. The app's `gen-ipc` target is therefore gated
+by the non-default `ipc-bindings` feature. `just gen-ipc` enables it explicitly;
+workspace Clippy/nextest and Ubuntu CI enable it for coverage. Ordinary Tauri
+release builds omit the generator without deleting cached executables manually.
+The installer budget and signing/notarization requirements remain unchanged.
+
+The final close/reap-fix release reused the native C++ cache: the helper Rust
+rebuild took 1m 23s. `just build-app` followed by the ordinary Tauri `app,dmg`
+bundle produced only `openrows-app` and `openrows-driver-host`: bundled helper
+65,283,312 bytes, app logical size 101,986,314 bytes, standard UDZO DMG
+31,757,004 bytes (8,242,996 bytes below the unchanged 40 MB budget). Deep/strict
+app signature verification passed; the helper has ad-hoc hardened-runtime flags
+`0x10002`. `hdiutil verify` reported the final DMG checksum VALID. Developer ID
+signing, notarization and installation from a mounted DMG were not certified.
+
+The linked production helper was measured through installed resolution and
+the fixed two-second handshake deadline, then Closed/endpoint removal, with no
+native test driver. The opt-in command is `OPENROWS_BENCH=1
+OPENROWS_PACKAGED_APP=<absolute-app> cargo nextest run --workspace --locked
+-E 'binary(duckdb_packaged)' --no-capture`. Each successful run has 30 sequential
+cycles; warm percentiles use the subsequent 29 samples.
+
+| Installed DuckDB helper sample | First ms | Warm p50 ms | Warm p95 ms | Warm max ms |
+| --- | ---: | ---: | ---: | ---: |
+| Existing bundle, after initial failed attempts | 10.774 | 7.910 | 8.964 | 11.719 |
+| Fresh `ditto` copy; helper quarantine `0081;67000000;test-only;` retained | 786.802 | 8.209 | 9.448 | 9.892 |
+| Final close/reap-fix bundle, ordinary repeat after first-launch timeout | 16.408 | 8.459 | 9.067 | 9.719 |
+| Final close/reap-fix bundle, fresh `ditto` copy with the same helper quarantine retained | 579.305 | 9.049 | 10.669 | 12.606 |
+| Final bundle, ordinary repeat retaining every raw sample | 26.476 | 9.501 | 10.857 | 12.697 |
+
+The last ordinary repeat passed all 30 clean cycles in 0.340 s (nextest run
+`b9e7e10d-8f85-4f08-8877-38e9fc8746ac`). The opt-in fixture now emits every raw
+sample before sorting; normal test execution is unchanged. Its launch-order
+milliseconds, rounded to six decimal places, are retained here:
+
+```text
+26.476333, 9.595334, 9.268375, 8.322750, 9.198458, 8.836667,
+8.751375, 8.901500, 8.881083, 9.940542, 8.695625, 9.394458,
+9.678541, 9.923292, 9.581125, 9.251083, 9.627625, 10.024208,
+9.601334, 9.875500, 10.857333, 10.102083, 9.755208, 9.501125,
+9.489750, 9.321791, 10.213875, 9.465959, 12.697041, 9.467125
+```
+
+The new benchmark initially passed the shared `/tmp` root instead of a private
+temporary directory and was corrected before measurement. Two post-bundle
+attempts with the corrected fixture then timed out at two seconds; subsequent
+ordinary and fresh-copy runs passed. The final close/reap-fix bundle's first
+post-bundle attempt also failed (`Unresponsive`, 2.025 s); both final repeats
+passed all 30 cycles. No retry/prewarm was added to production,
+and no timeout was raised in round 1. These misses led to the owner-approved
+round-2 prewarm decision. Both fresh-copy results miss the 150 ms cold-start target;
+successful warm p95 is below 75 ms. Copying/signing and OS caches are uncontrolled,
+so this does not certify OS-cold, downloaded Developer ID/Gatekeeper behavior,
+reference mac-low hardware, or whole-app window startup.
+
+The full gate repeat exposed a failure-close race: `HostSession::close` returned
+a latched memory-limit error before the monitor had reaped the process, leaving
+the file reservation briefly held. Close now waits for the terminal lifecycle
+notification even when sending Close fails, retaining the original error. The
+new native regression failed before the fix with `left: Ready; right:
+Failed(MemoryLimit)` and passed afterward; limit/isolation tests passed five.
+A portable client test separately verifies that the close future remains pending
+until the reap notification. The macOS workspace run passed 1,352 tests,
+196 configured skips, in 49.952 s. After adding raw benchmark output, the final
+repeat passed the same 1,352 tests / 196 configured skips in 38.592 s. No
+assertion, memory cap or deadline was weakened.
+
+After the original native Linux container was removed, a follow-up copied the
+final shared close implementation into another `--init` Rust 1.94.0 Bookworm
+container. Client/protocol tests passed 40 across 14 harnesses, including the
+portable close regression; the host library's default-feature check passed in
+14.02 s. No DuckDB C++ was recompiled. The 109-test native Linux run above
+preceded this close fix; a complete final native rerun requires an owner
+exception to the task's one-build resource limit. It is not claimed as rerun.
+
+Final checked source passed Rust formatting, workspace Clippy (`-D warnings`,
+7.55 s final repeat), graph enforcement, unused-dependency/hygiene checks, six wrapper and
+five staging script tests, and IPC freshness (`1 passed; 250 skipped`, 0.078 s).
+The licence gate remains blocked only by the package-scoped certificate-data
+decision described in [docs/22](../22-governance-and-licensing.md); advisories,
+bans and sources passed. Frontend source passed 232 files / 2,706 tests, eslint,
+Prettier, TypeScript and knip; initial JS is 301,818 gzip bytes / 350,000 and
+component CSS 6,306 / 15,000. These are local results, not remote Ubuntu CI.
+
+## Validation / evidence — 2026-10-10, M2-04a round 2 prewarm
+
+The owner-approved `webpki-roots` CDLA-Permissive-2.0 exception is package-scoped,
+for the CA data used by `libduckdb-sys → ureq` during bundled compilation.
+It is absent from the shipped parent/helper normal-runtime dependency graphs;
+the global licence allowlist is unchanged. See docs/22 for the dated rationale.
+
+Prewarm claims one attempt per app runtime, resolves the installed helper and
+uses its database-free Probe driver. The native window reveal completes before
+the frontend schedules two animation frames and idle. The async task neither
+blocks window startup nor creates a profile/database. Missing/invalid resolution
+is Skipped with a typed diagnostic; admission, handshake and close failures are
+Failed with a typed diagnostic. A cancelled attempt releases waiting connects.
+The fixed 2 s handshake timeout is unchanged; there is no retry or fallback.
+
+An already-running attempt is awaited by DuckDB's supervisor before reserving
+memory/spawning, so connect does not overlap Probe's first-exec scan or reserve
+two hosts for the same action. It then performs its own normal launch, regardless
+of Probe's outcome; no prewarm error becomes a user-visible connection failure.
+Connects before the idle attempt proceed normally. Probe uses the shared 256 MiB
+host / 512 MiB aggregate admission but a disposable circuit, so failure consumes
+none of a profile's three-exits allowance. Other drivers do not await prewarm.
+Diagnostics retain outcome, typed kind, elapsed and handshake times only.
+
+Five unit tests cover once-only admission, responsive single-threaded runtime,
+the actual supervisor's connect barrier, cancellation, silent failed outcomes
+and missing-helper skip. Three installed-fixture tests cover Probe close/reap
+and released memory, full-budget refusal and incompatible-handshake failure
+without consuming profile exits. Five frontend tests cover visible frames/idle,
+fallback/cancellation and a failed idle signal recorded without rejecting the
+window reveal.
+
+The rebuilt release reuses the native C++ cache. `just build-app` took 363.26 s;
+the helper Rust rebuild took 1m 16s, and the app build 4m 38s. Ordinary
+`tauri bundle --bundles app,dmg --target aarch64-apple-darwin` took 9.35 s.
+Initial round-2 sizes: helper 65,283,312 bytes; app logical 102,047,450 bytes; standard UDZO
+DMG 31,793,133 bytes (8,206,867 bytes below the unchanged 40,000,000-byte budget).
+Deep/strict app signature verification and `hdiutil verify` passed; the helper
+retains ad-hoc hardened-runtime flags `0x10002`. Developer ID, notarization and
+mounted-DMG installation remain release checks.
+
+Packaged runs used Apple M4 / 24 GiB / macOS 26.5 / Rust 1.94.0, ARM64 release.
+`python3 -B scripts/bench-duckdb-prewarm.py 5 --executable <absolute-app>/Contents/MacOS/openrows-app` makes five
+fresh `ditto` copies, launches their ordinary main window, waits for the real
+idle-triggered Probe, then uses the production runtime for an in-memory DuckDB
+connect, `SELECT 1`, and close. Every helper retained test-only quarantine
+`0081;67000000;test-only;`; every prewarm was Ready and every query/close passed.
+The first trial initially labelled copies 2–5 as warm app launches; the harness
+was corrected because all copies are fresh. Raw window failures are retained.
+The Probe handshake column includes its supervisor launch call's admission,
+rendezvous setup and supervision; the DuckDB handshake column measures spawn
+through authenticated Ready. Full prewarm includes resolution and close/reap.
+
+| Copy | Window ms | Prewarm total ms | Probe handshake ms | First DuckDB handshake ms | Full connect ms |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1 | 3,225.623 | 16.038458 | 14.970458 | 11.013208 | 21.376333 |
+| 2 | 926.836 | 17.754167 | 16.581750 | 12.075667 | 23.714625 |
+| 3 | 892.818 | 14.749958 | 13.629458 | 10.613375 | 20.038375 |
+| 4 | 878.736 | 13.522667 | 12.683709 | 9.759000 | 19.361333 |
+| 5 | 897.650 | 14.199333 | 13.241584 | 11.261583 | 21.381625 |
+
+A second five-copy series added `--fresh-signature`: each temporary helper
+received a distinct ad-hoc identifier, then its app was resealed and deep/strict
+verified before adding the same retained quarantine. All five passed too.
+
+| Copy | Window ms | Prewarm total ms | Probe handshake ms | First DuckDB handshake ms | Full connect ms |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1 | 1,080.965 | 15.291584 | 14.363250 | 9.835333 | 19.745792 |
+| 2 | 1,020.963 | 14.295042 | 13.412041 | 9.689750 | 19.486292 |
+| 3 | 986.841 | 13.165291 | 12.322375 | 9.304750 | 19.158917 |
+| 4 | 997.915 | 13.710750 | 12.536917 | 9.563000 | 19.727083 |
+| 5 | 981.963 | 14.698834 | 13.868208 | 9.388000 | 19.725834 |
+
+First-connect handshake p95 is 12.075667 / 9.835333 ms for the two series, below
+75 ms and the fixed 2 s deadline. These are fresh-copy results, not OS-cold
+certification: copying/re-signing/verification can warm reads, OS caches were not
+purged, and ad-hoc signatures do not reproduce downloaded Developer ID behavior.
+
+The ordinary ten-launch startup harness reported warm p50 312.742 ms (≤400)
+and all-runs p95 2,667.105 ms (>800). Raw launch-order window times in ms:
+`2667.105, 348.446, 312.742, 303.608, 346.117, 308.510, 302.947, 342.019,
+301.862, 323.695`. The slow first launch spent 2,275.567 ms before Rust
+`main_entry`, then 391.538 ms through window reveal. Both fresh-copy window p95s
+(3,225.623 / 1,080.965 ms) also miss 800 ms. Prewarm only starts after reveal;
+it does not explain the pre-Rust delay. No startup budget is increased or failed
+sample discarded. Cold whole-app startup remains an unresolved checkpoint.
+
+Three +5 s idle samples, with no connected database, yielded physical-footprint
+medians 126.09 MB total / 93.11 MB WebView, below 200/140 MB. Probe had exited
+before sampling; app/WebContent/GPU/Networking medians were
+32.98/63.59/23.38/6.18 MB. Connected whole-app footprint and reference mac-low
+startup/paint certification remain unmeasured.
+
+### Round-2 Linux native and workspace verification
+
+Source was copied inside `rust:1.94.0-bookworm` (ARM64 here), with no source
+bind mount and no `--init`. Docker limited the container to two CPUs and
+8,589,934,592 bytes; Rust builds/tests ran as `runner`, UID/GID 1000. Tool
+installation used root. The existing `orows-linux-target` volume retained a
+user-owned `CARGO_TARGET_DIR=/target/m2-04a`. Two build jobs and a `flock`
+linker wrapper serialized GNU links. Both dev/test Rust debug profiles used
+`line-tables-only`, matching CI. No production or protocol deadline was changed.
+
+The initial complete native subset passed 118/119 and exposed the known orphan
+fixture under a non-reaping PID 1. After PR #104's exact host-parent subreaper
+patch, all 119 passed in 5.793 s (9.80 s including cached build). The first full
+workspace run exposed the corresponding net-helper grandchild fixture; its
+exact PR #104 subreaper patch was also applied. These two files overlap main's
+fixes and must be reconciled on rebase:
+`tests/host/parent.rs` and `openrows-net/tests/helper_lifecycle.rs`. The
+cancel/grace fixture, fake-helper shell paths and SidebarWorkspace fixture were
+not edited in this round.
+
+Workspace execution also exposed a pre-Ready child-exit race: an unrelated
+native executable could close inherited input before the wait notification,
+yielding Exited instead of Incompatible. A deterministic duplex closed-input
+regression failed before the fix with `left: Err(Exited); right:
+Err(Incompatible)`. Bootstrap transport closure before authentication now
+matches the child-exit branch's Incompatible classification; malformed parent
+bootstrap data remains Protocol. Both regressions and the existing
+unrelated-native-executable test passed three.
+
+The window-frame debounce test repeatedly failed its real-wall-clock 90 ms
+assertion on Linux. It now uses Tokio's existing paused-clock test facility,
+keeping the 90 ms and no-second-save assertions and the production debounce
+unchanged. The app enables `test-util` explicitly as a dev feature, already used
+by the workspace's core/net/host tests; no dependency package was added.
+
+The exact requested sequence, with `/usr/bin/time -p` around each phase, was:
+
+```sh
+bash scripts/stage-host.sh dev &&
+cargo clippy --workspace --all-targets --locked -- -D warnings &&
+cargo nextest run --workspace --locked -E 'not binary(ssh_container)' --no-fail-fast
+```
+
+After all fixes, two consecutive complete runs passed 1,346 tests across 109
+binaries, with 196 configured skips and the SSH-container binary excluded.
+They include all 121 host/client/protocol tests, including native DuckDB,
+resolver, reservation, registry, close/reap and prewarm regressions.
+
+| Linux phase | Observed wall time |
+| --- | ---: |
+| Cold production-helper staging, native C++ plus Rust dependencies | 508.63 s |
+| First workspace Clippy/native fingerprint | 640.32 s |
+| First complete workspace test build/run | 313.66 s |
+| Final clock-fixed sequence: stage / Clippy / nextest | 1.27 / 6.63 / 60.64 s |
+| Final clock-fixed complete sequence | 68.55 s |
+| Unchanged cached repeat: stage / Clippy / nextest | 0.99 / 6.91 / 55.09 s |
+| Unchanged cached complete sequence | 63.01 s |
+
+The first workspace check failed on AppleDouble `._*.toml` artifacts introduced
+by macOS tar copying; these copy-only files were removed inside the container
+before rerunning. C++ completed while Cargo waited for that failed job. Thus
+640.32 s is the observed cold native/check attempt, not a successful uninterrupted
+Clippy run; the clean resume passed in 38.16 s. Future macOS source copies must
+disable AppleDouble metadata. Cargo used two distinct native fingerprints for
+production staging and workspace feature unification, each with 280 objects
+and a 2,118,559,026-byte debug archive. Later fixes and cached repeats reused
+both; no further C++ compilation was needed. These multi-minute cold costs
+matter to Ubuntu CI, but are local ARM64 container measurements, not a remote
+x86_64 GitHub Actions result or a clean before/after main comparison.
+
+The container and its copy-only files were removed. The requested existing
+build-cache volume was retained; its temporary linker lock was deleted.
+
+### Round-2 final local quality and native timing
+
+The final macOS workspace gate passed 1,362 tests across 111 binaries, with
+196 configured skips, in 46.796 s. Formatting and workspace Clippy with
+`-D warnings` passed; `just deny` reported `advisories ok, bans ok, licenses ok,
+sources ok`. Cargo machete found no unused dependencies, hygiene passed, and
+IPC freshness passed one test / 250 filtered skips in 0.097 s. Regeneration
+left the generated bindings byte-identical to the checked round-2 contract.
+Graph enforcement confirmed no DuckDB in the parent, no native SQLite in the
+production helper, and no build-only CA data in either runtime graph.
+
+The unchanged legacy hosted-SQLite fixture initially stalled in macOS image
+loading. Signing just its base executable was insufficient: Cargo recopied its
+linker-signed artifact from `deps`. Ad-hoc hardened-runtime signing of both
+the compiled and base test, parent and mismatch fixtures made the complete
+unchanged suite pass. No handshake timeout, assertion or fixture preflight
+was weakened. This is a local debug-signing prerequisite, not a downloaded
+package certification.
+
+Frontend eslint, Prettier, TypeScript and knip passed. Vitest passed 233 files /
+2,711 tests in 114.39 s with Node 24.19.0 and two workers. An earlier complete
+run failed the unrelated BackupSheet asynchronous-preview test; its unchanged
+targeted repeat passed seven tests, followed by the green full repeat. Six
+cache-wrapper and five staging script tests passed with Python 3.14.7; 89
+benchmark-harness tests passed in 0.641 s. Initial JS measured 302,019 gzip
+bytes / 350,000; component CSS 6,306 / 15,000.
+
+The final opt-in `duckdb_streaming` run passed both tests in 7.629 s. One
+million rows streamed in 0.419 s, including deliberate Pause and RSS sampling;
+first 200-row Arrow conversion was 71.125 μs / 5 ms. Native RSS baseline/peak
+was 50,069,504 / 55,083,008 bytes, a 5,013,504-byte increase below the
+268,435,456-byte process cap. Peak credits/encoded/decoded bytes remained
+1 / 16,832 / 17,363. Native interrupt through typed terminal-error drain took
+1.419 ms / 1,000 ms, and the next query succeeded. No DuckDB baseline on main
+or end-to-end UI paint comparison exists.
+
+A final ordinary `just dev` launch staged the helper, built the debug app in
+26.46 s and ran through the stable development signing runner. The app/Vite
+processes were stopped before release rebuilding. The frozen-invoke and hook
+fixes passed the final frontend suite; native console inspection was performed
+in round 1 and was not repeated here.
+
+
+### Final round-2 rebuilt package and fresh-copy repeat
+
+After the bootstrap failure-classification fix, `just build-app` passed in
+373.27 s, reusing bundled C++. The production helper Rust rebuild took 1m 21s.
+Two DMG layout attempts were stopped when Finder AppleScript stalled; their
+scratch images were detached. The CLI `--ci` flag alone did not disable that
+step: setting `CI=true` explicitly did. The supported CI bundler completed
+`app,dmg` in 9.45 s, retaining ordinary UDZO compression while skipping Finder
+background/icon positioning. It is a valid size/checksum artifact; mounted-DMG
+layout and installation remain release checks.
+
+Final helper size is 65,283,312 bytes, app logical size 102,047,690 bytes, and
+DMG size 31,793,855 bytes, 8,206,145 below the 40,000,000-byte budget.
+`codesign --verify --deep --strict` passed; the helper retains ad-hoc
+hardened-runtime flags `0x10002`; `hdiutil verify` reported checksum VALID.
+Developer ID and notarization were not performed.
+
+The final five-copy packaged command again retained helper quarantine on all
+copies. All five Probe attempts were Ready, and all five production DuckDB
+connect/SELECT-1/close cycles succeeded. Across the three round-2 series there
+are 15 successful fresh-copy cycles; only the middle series varied helper
+signature identifiers.
+
+| Copy | Window ms | Prewarm total ms | Probe handshake ms | First DuckDB handshake ms | Full connect ms |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1 | 2,550.572 | 12.620542 | 11.774250 | 10.809041 | 20.186208 |
+| 2 | 887.526 | 17.008292 | 16.072833 | 9.413958 | 19.259541 |
+| 3 | 906.438 | 13.193875 | 12.358125 | 9.370208 | 19.730208 |
+| 4 | 899.640 | 14.059042 | 12.774166 | 9.559125 | 19.022708 |
+| 5 | 872.845 | 12.656583 | 11.811084 | 9.061083 | 18.369333 |
+
+First-connect handshake p95 passed at 10.809041 ms / 75 ms and the unchanged
+2 s deadline. Fresh-copy window p95 failed at 2,550.572 ms / 800 ms, so the
+benchmark command correctly returned nonzero despite its successful connects.
+The first copy spent 633.760 ms before Rust main and 1,540.469 ms between setup
+and page-load completion; both precede the idle prewarm. No failed sample was
+removed or budget changed.
+
+The final ordinary ten-launch startup command also returned nonzero: warm p50
+320.867 ms / 400 ms passed, but all-runs p95 2,196.104 ms / 800 ms failed.
+Its first run spent 1,837.848 ms before Rust main. Raw window times in launch
+order, ms: `2196.104, 316.588, 320.867, 323.085, 331.111, 323.777, 333.727,
+318.021, 311.127, 313.022`. These corroborate the earlier retained startup
+misses; they do not certify OS-cold or reference-machine startup.
+
+The final bundle's three sequential +5 s idle samples passed: median total
+physical footprint 117.57 MB / 200 MB and WebView 86.61 MB / 140 MB. Per-process
+medians were app 31.18, WebContent 63.18, GPU 16.99 and Networking 6.21 MB.
+Probe had exited before sampling, and no database was connected. The earlier
+126.09 / 93.11 MB stable-bundle samples are retained above; neither series
+certifies connected idle footprint or mac-low reference hardware. Temporary
+raw reports and copied apps were removed after their measurements were recorded
+here; the release artifacts and requested build caches remain for review.
+
+
+### Round-3 startup attribution and packaging mitigation (2026-10-10)
+AC8 startup remains **Not met**. The control also misses the cold budget, but
+there is a measurable DuckDB-bundle scan cost; the evidence does not justify
+marking the entire miss as pre-existing or declaring no regression.
+
+Machine: Mac mini, Apple M4, 24 GB, macOS 26.5 (25F71), ARM64 Rust 1.94.
+All variants used the unchanged `just bench-startup 10` harness, invoked under
+`nice -n 10` with `OPENROWS_BENCH_EXECUTABLE` pointing at each new `ditto` copy
+of its rebuilt/repacked app. Every copy passed deep/strict signature verification
+before its ten consecutive launches. Cold means run 1 of a new bundle path;
+OS caches were not purged, the Mac was not rebooted, and quarantine was not
+added for these comparisons. These are fresh-copy first-execution measurements,
+not OS-cold or Developer ID/notarized download certification. Each variant had
+at least three independent copies. Failed and slow samples were retained.
+
+A stages the production helper with no DuckDB feature (3,339,632 bytes);
+B stages the delivered 65,283,312-byte helper. A and B use identical desktop
+code: their unsigned Mach-O SHA-256 is
+`743f23169464a6403a30110930989351a9fe6c41f750dd1a97f02325773fa85a`.
+The desktop UUID shared by A, B, E and F is
+`27AE3B26-5410-35EE-8E13-250DE9F90949`. A is a main-equivalent helper control
+in this worktree, not an independently checked-out main executable. Its
+post-reveal Probe is not a no-op: the small production helper supports the
+same database-free handshake. C temporarily compiled prewarm out; its source
+was restored before final build. Prewarm runs only after window reveal, two
+animation frames and idle. No DuckDB engine is opened before window reveal.
+
+A/B initial copy order was A1, B1, B2, A2, A3, B3, B4, A4, A5, B5, B6, A6.
+C and D trials were interleaved. The final matched follow-up order was
+F1, E4, E5, F2, F3, E6. Builds were serial with four Cargo jobs and the existing
+`target-agent`/sccache cache; no clean or additional target directory was used.
+Median is the conventional median; p95 is nearest rank. Warm statistics pool
+runs 2–10, giving nine warm samples per copy. With three/six cold samples,
+cold p95 equals the maximum. Phase medians are independent and need not sum
+to the median total.
+
+| Variant | Copies / warm n | Cold min / p50 / p95 / max ms | Warm min / p50 / p95 / max ms |
+| --- | ---: | --- | --- |
+| A: Main-equivalent, no DuckDB, original packaging | 6 / 54 | 760.296 / 838.369 / 1319.297 / 1319.297 | 302.762 / 329.988 / 410.177 / 524.858 |
+| B: Delivered DuckDB + prewarm, original packaging | 6 / 54 | 974.679 / 1004.247 / 1142.271 / 1142.271 | 304.629 / 322.977 / 414.053 / 428.338 |
+| C: B with prewarm compiled out | 3 / 27 | 971.686 / 1053.998 / 2665.524 / 2665.524 | 313.702 / 346.605 / 399.070 / 441.578 |
+| D: Symbol-stripping trial | 3 / 27 | 814.089 / 862.909 / 918.550 / 918.550 | 315.004 / 324.701 / 360.759 / 369.629 |
+| E: Final B + macOS symbol-stripping hook | 6 / 54 | 741.178 / 814.677 / 2753.240 / 2753.240 | 300.962 / 327.898 / 357.769 / 371.168 |
+| F: Matched stripped A control | 3 / 27 | 637.738 / 650.810 / 861.066 / 861.066 | 302.809 / 316.708 / 344.604 / 353.509 |
+| G: Nested-helper layout trial (discarded) | 3 / 27 | 839.125 / 847.191 / 1041.620 / 1041.620 | 293.506 / 313.440 / 350.632 / 373.079 |
+
+#### Cold phase breakdown
+
+All intervals are harness timestamps, in milliseconds. The parent main entry
+occurs after macOS first-execution assessment; it is not the helper main.
+
+| Variant | Spawn → main min / p50 / p95 / max | Main → WebView min / p50 / p95 / max | WebView → shown min / p50 / p95 / max |
+| --- | --- | --- | --- |
+| A | 371.000 / 445.932 / 689.360 / 689.360 | 185.990 / 215.932 / 311.139 / 311.139 | 153.126 / 182.926 / 318.798 / 318.798 |
+| B | 609.096 / 641.529 / 787.315 / 787.315 | 186.316 / 197.858 / 214.234 / 214.234 | 155.957 / 164.915 / 178.681 / 178.681 |
+| C | 566.907 / 667.572 / 790.018 / 790.018 | 209.924 / 220.929 / 224.922 / 224.922 | 176.502 / 179.857 / 1654.577 / 1654.577 |
+| E | 391.239 / 477.132 / 655.821 / 655.821 | 171.438 / 199.963 / 445.445 / 445.445 | 145.904 / 153.880 / 1651.974 / 1651.974 |
+| F | 316.815 / 338.138 / 498.871 / 498.871 | 169.756 / 170.776 / 201.293 / 201.293 | 141.896 / 151.167 / 160.902 / 160.902 |
+
+E1's 2,753.240 ms cold run spent 655.821 ms before main, 445.445 ms creating
+the WebView and 1,651.974 ms from WebView creation to window reveal. Within
+that last interval, setup → page-load completion took 1,446.091 ms. C1 had
+a similar 1,569.388 ms setup → page-load delay with prewarm disabled. This
+rules out executing prewarm as the direct cause of those pre-reveal delays;
+it does not establish their underlying cause or rule out indirect bundle
+assessment effects. Both outliers stay in the reported p95.
+
+#### macOS assessment correlation
+
+After each series, `log show --last 2m --style json --info --debug` was filtered
+to `syspolicyd`, `XprotectService` and `XProtectService`. Only counts and
+static message summaries were retained; raw messages, private paths and
+personal data were not written to files. All fresh-copy first launches showed
+syspolicyd assessment and XProtect activity overlapping spawn → main.
+Representative static message formats included “Xprotect is performing a
+direct malware and dylib scan: %@”, `XPAssessment performAnalysisOnFileImpl`,
+`XPAssessment handleExecutableAssessment replyDictionary: %@`, and
+“scan finished, waking up any waiters: %@”. A/B's 108 warm launches had no
+XProtect records or app-related policy messages.
+
+A later bounded log query recovered the wall-clock span between XProtect
+analysis start and reply. E1–E3's span could not be recovered from retained
+system logs; their original correlated process counts remain recorded. E's
+scan statistics below therefore cover E4–E6 only, not all six copies.
+
+| Variant | Scan span n | XProtect analysis min / p50 / p95 / max ms |
+| --- | ---: | --- |
+| A | 6 | 272.264 / 280.007 / 306.107 / 306.107 |
+| B | 6 | 413.026 / 423.408 / 500.044 / 500.044 |
+| C | 3 | 414.742 / 415.385 / 429.539 / 429.539 |
+| D | 3 | 301.560 / 306.781 / 306.782 / 306.782 |
+| E | 3 | 294.508 / 297.733 / 299.002 / 299.002 |
+| F | 3 | 241.914 / 245.230 / 247.803 / 247.803 |
+| G | 3 | 299.043 / 306.537 / 320.116 / 320.116 |
+
+B's scan median exceeds A by 143.402 ms, with non-overlapping observed scan
+ranges (A 272–306 ms; B 413–500 ms). Spawn → main median increases by
+195.598 ms. Disabling prewarm leaves a 415.385 ms scan median. The extra
+first-execution assessment cost is therefore attributable to bundle content,
+not prewarm execution before reveal. Stripping the app and helper reduces
+the scan to approximately 298–307 ms. A matched stripped small-helper control
+still scans in 242–248 ms and has cold median 650.810 ms versus 814.677 ms
+for final B (E). That remaining difference and E1's unresolved WebView tail
+prevent a no-regression claim. The unstripped control's own cold p95
+1,319.297 ms establishes a baseline cold miss on this Mac, but cannot explain
+away every DuckDB-associated increment.
+
+The adopted mitigation is a macOS-release-only Tauri `beforeBundleCommand`:
+archive release symbols and unstripped Mach-O images by UUID in Cargo's
+`bundle-symbols` cache, strip app/helper symbols, then re-sign cached images
+so they remain executable before Tauri's normal bundle signing. Debug/test
+images and Linux/Windows builds are untouched. `dsymutil` warned that some
+Rust temporary object files were no longer available; retained dSYMs may be
+incomplete. Full original Mach-O images are preserved alongside them; complete
+native symbolication is not certified. Three script tests protect platform/debug
+skips, cache resolution, archival ordering and missing-release failure.
+No dependency, timeout, retry, startup-budget or prewarm-scheduling change was
+made. A nested helper app in Frameworks with a MacOS symlink passed signatures
+but did not improve startup/scan timings (G); it was discarded.
+
+#### Final delivered bundle and validation
+
+The staged helper and final app/DMG are B with DuckDB and prewarm, plus the
+adopted stripping hook (E), in the original sibling-helper layout. Release
+helper is 42,106,512 bytes, app logical size 72,805,098 bytes and standard UDZO
+DMG 27,677,454 bytes: 12,322,546 below the unchanged 40,000,000-byte installer
+budget. `codesign --verify --deep --strict` passed, cached app/helper signatures
+verified, and `hdiutil verify` reported checksum VALID. Developer ID,
+notarization and mounted-DMG layout remain release checks.
+
+The unchanged `OPENROWS_BENCH=1 OPENROWS_PACKAGED_APP=<final-app>` packaged
+`duckdb_packaged` test passed one test / 30 connect-query-close cycles.
+First raw helper handshake was 1,110.587 ms, below the unchanged 2,000 ms
+deadline but above the 150 ms cold target; warm n=29 p50/p95/max was
+10.732 / 13.340 / 16.332 ms (warm p95 below 75 ms). This direct helper test
+bypasses the app's existing post-reveal prewarm. Earlier app-driven prewarm
+first-connect evidence remains above and was not re-certified in this round.
+
+The final six E startup invocations passed the warm-p50 gate in every copy;
+three failed the all-runs-p95 gate, and three passed. Cold pooled p95 is
+2,753.240 ms / 800; warm pooled p50 is 327.898 ms / 400. AC8 startup remains
+open, with a pre-existing control miss, an identified and reduced assessment
+regression, and a residual difference/tail requiring further attribution.
+
+Full gate rerun after packaging changes: `just gen-ipc`, `just fmt-check`,
+`just lint`, `just test`, `just deny`, `just machete`, `just hygiene`,
+`just ui-check`, `just bench-ui`, `just bench-test`, `just script-test`,
+`pnpm exec eslint apps packages eslint.config.mjs`, `pnpm format:check`,
+`pnpm typecheck`, `pnpm test --maxWorkers=2`, `pnpm knip`, and `just ipc-check`
+all exited zero. Nextest reported **1,362 passed, 196 configured skips** in
+39.117 s; Vitest **233 files / 2,711 passed** in 96.56 s; benchmark harness
+**89 passed**; script tests **6 cache-wrapper / 5 staging / 3 stripping passed**;
+IPC freshness **1 passed / 250 filtered** in 0.082 s. Initial JS remains
+**302,019 gzip bytes / 350,000**. Generated bindings were unchanged. The final
+archival-image update was followed by another green script-test run.
+Python 3.14 was selected locally for script tests; no global setup was changed.
+Prior round changes remain uncommitted. No new dependencies were introduced.
+
+#### Retained timing samples
+
+Each line lists cold run 1 followed by warm runs 2–10, in launch order, ms.
+These preserve every startup sample after temporary raw reports/copied apps
+are removed. Detailed cold phases and assessment counts are summarized above.
+
+- A1: `1319.297, 390.553, 330.262, 340.400, 410.177, 329.713, 379.164, 360.373, 302.762, 390.994`
+- A2: `820.745, 309.640, 323.194, 320.132, 334.014, 316.685, 307.629, 313.637, 323.866, 315.258`
+- A3: `760.296, 355.461, 521.800, 326.693, 320.687, 329.215, 328.808, 349.427, 316.417, 337.821`
+- A4: `855.992, 315.094, 321.442, 393.590, 341.417, 326.299, 313.100, 313.049, 307.758, 333.226`
+- A5: `793.293, 326.161, 324.580, 325.346, 324.500, 320.299, 392.700, 371.933, 333.812, 524.858`
+- A6: `1012.354, 394.404, 344.369, 337.709, 329.230, 360.974, 352.589, 348.988, 348.279, 357.588`
+- B1: `1142.271, 367.433, 426.308, 321.799, 428.338, 322.592, 364.707, 366.142, 322.883, 414.053`
+- B2: `979.686, 315.700, 312.467, 323.526, 309.861, 321.786, 313.156, 333.578, 315.158, 313.802`
+- B3: `1009.550, 334.207, 344.242, 319.372, 306.115, 304.629, 311.388, 314.404, 311.703, 318.027`
+- B4: `974.679, 315.018, 323.072, 327.305, 324.312, 317.023, 311.674, 311.995, 316.562, 318.198`
+- B5: `998.945, 331.862, 333.070, 379.607, 308.468, 332.800, 335.873, 339.326, 333.708, 330.447`
+- B6: `1091.184, 310.919, 356.003, 316.042, 327.256, 340.972, 317.412, 331.521, 355.845, 334.329`
+- C1: `2665.524, 346.605, 331.348, 338.203, 330.307, 330.391, 313.702, 326.086, 321.442, 325.870`
+- C2: `971.686, 336.478, 347.493, 347.833, 347.481, 336.119, 333.678, 441.578, 369.500, 353.103`
+- C3: `1053.998, 375.308, 399.070, 383.486, 340.602, 352.697, 360.493, 370.943, 376.320, 339.054`
+- D1: `918.550, 346.646, 317.998, 347.410, 328.563, 330.429, 319.342, 326.085, 317.950, 322.249`
+- D2: `862.909, 318.514, 319.053, 324.701, 331.726, 340.532, 334.543, 315.004, 335.594, 324.601`
+- D3: `814.089, 369.629, 319.118, 322.703, 321.472, 325.572, 321.605, 322.288, 360.759, 331.146`
+- E1: `2753.240, 328.712, 326.991, 326.040, 357.769, 344.636, 303.841, 313.896, 323.112, 371.168`
+- E2: `784.800, 315.231, 347.092, 326.643, 340.173, 342.513, 354.735, 330.285, 332.068, 324.646`
+- E3: `765.764, 351.776, 363.051, 346.841, 327.084, 301.802, 323.679, 308.154, 350.637, 351.974`
+- E4: `844.553, 337.953, 332.653, 349.863, 347.041, 329.171, 338.932, 331.088, 321.140, 317.737`
+- E5: `926.158, 352.091, 322.709, 330.352, 316.794, 341.283, 337.060, 352.068, 310.546, 303.736`
+- E6: `741.178, 320.058, 316.692, 319.757, 308.387, 317.482, 321.431, 300.962, 308.631, 311.259`
+- F1: `861.066, 330.420, 353.509, 319.374, 316.909, 316.034, 318.712, 332.394, 319.692, 344.604`
+- F2: `650.810, 319.416, 316.161, 308.718, 304.075, 302.809, 315.393, 305.655, 310.864, 316.708`
+- F3: `637.738, 320.126, 311.430, 338.835, 318.895, 322.118, 303.045, 315.799, 315.843, 315.680`
+- G1: `1041.620, 312.273, 308.781, 316.395, 311.344, 303.237, 313.366, 319.027, 301.964, 335.626`
+- G2: `847.191, 314.611, 305.719, 317.543, 321.413, 350.632, 305.414, 373.079, 301.323, 293.506`
+- G3: `839.125, 328.923, 320.552, 307.184, 313.440, 327.661, 309.266, 337.589, 319.629, 313.338`
+
+### M2-04a round 4 — fresh fixture startup and cold CI builds
+
+The clean-build failure reproduced twice: the first four hosted SQLite
+conformance tests failed after 10.03 s with `driver host stopped responding`.
+The linker-signed (not hardened-runtime) debug fixture was 170,484,208 bytes;
+its reachable shared registry included native DuckDB because dev features
+unified `duckdb` and `test-hooks`. Sampling PID 67224 during the second failure
+showed 713 samples entirely in `_dyld_start`, before Rust/bootstrap execution.
+`log show --info` for `syspolicyd` tied both scans to `host-test-fixture`:
+23:36:09.240–23:36:20.597 (11.357 s) and
+23:36:54.468–23:37:06.361 (11.893 s), including XProtect. Direct execution
+after assessment exited 70 in 0.203 s. This establishes pre-main assessment
+cost, rather than a database lock or protocol deadline failure.
+
+The SQLite/probe entry now supplies an independent registry callback to the
+same bootstrap/control/worker implementation. It has no reachable DuckDB
+registration even when workspace dev features unify. DuckDB tests use a
+separately named `host-duckdb-fixture` and the production registry. The binary
+symbol regression checks `duckdb_open` and `sqlite3_open` in both fixtures;
+this checks linked code, not merely Cargo feature declarations. The initial
+split alone reduced the SQLite fixture to 48,929,584 bytes and assessment to
+3.614 s (23:38:01.765–23:38:05.379); all ten unchanged SQLite conformance
+tests passed in 3.988 s without signing. The earlier manual signing workaround
+is superseded by this fixture separation. No production deadline changed.
+
+CI previously staged under `target/<triple>` but built workspace checks under
+`target/debug`; those are distinct native build caches. The check job now
+exports the native `CARGO_BUILD_TARGET` before restoring its explicit `target`
+cache, so staging and all checks share the same native output. Both use the
+inherited dev/test `libduckdb-sys` override: optimisation 0, native debug
+symbols off. This reduces C++ compiler/link I/O without an optimised C++ cold
+build; release optimisation and symbols remain unchanged. Two build jobs and
+the runner's preinstalled Clang/LLD avoid the prior GNU-link memory spike.
+The cache is keyed by native triple plus the action's compiler/environment
+and manifest hashes; `cache-on-failure: true` permits post-job saving after a
+failed check. Runner loss or forced termination can still prevent uploading.
+The separate containers job is unchanged.
+
+The first Linux attempt proved target unification alone insufficient: staging
+used native output `a19620ccc3b1e6ce`, while Clippy started another bundled
+compile under `0e1c858effee9d48`. Their build-script dependency fingerprints
+differed despite identical `libduckdb-sys` features and profile: Serde added
+`alloc`, JSON added `alloc`/`unbounded_depth`, and the macro/compression/HTTP
+dependency graph changed. That redundant compile was stopped. The helper's
+empty build entry now activates build-only feature-unification dependencies:
+`tauri-build` with codegen, `proc-macro2` with span locations, and the workspace
+Syn feature superset. These are intentional Cargo feature uses, recorded in
+`cargo-machete` metadata because source scanning cannot see them. They use
+existing locked packages (MIT/Apache-2.0), add no package/version, and never
+link into the runtime helper or desktop. Staging and workspace Clippy then
+selected the same build script `a0156fe9e255bb53`; the successful cold and
+cached sequences below verify one native compile through nextest.
+
+The CI-like validation uses `rust:1.94.0-bookworm` on Apple M4's native
+`aarch64-unknown-linux-gnu`, UID 1000, `--cpus 2`, `--memory 8g`, no `--init`,
+and copied source rather than a host bind mount. The existing
+`orows-linux-target` volume contains a user-owned target subdirectory emptied
+before the measured sequence. Toolchains, Linux prerequisites and downloaded
+dependencies are already installed; cold means no Cargo target artifacts.
+Every measured build runs at nice level 10 with two Cargo jobs and two nextest
+threads, dev/test line-table Rust debug info, and preinstalled Clang/LLD.
+
+Wall times, seconds, including command startup/build/test execution:
+
+| Exact check step | Cold target | Cached target |
+| --- | ---: | ---: |
+| `pnpm install --frozen-lockfile` | 0.845 | 0.228 |
+| `pnpm lint` | 28.820 | 24.232 |
+| `pnpm format:check` | 5.021 | 5.041 |
+| `pnpm typecheck` | 10.091 | 8.335 |
+| `pnpm test --maxWorkers=2` | 131.979 | 129.439 |
+| `pnpm knip` | 2.122 | 2.086 |
+| `cargo fmt --all --check` | 0.714 | 1.026 |
+| `bash scripts/stage-host.sh dev` | 385.700 | 0.980 |
+| Six staging isolation tests | 0.201 | 0.174 |
+| Workspace Clippy, all targets, IPC features, warnings denied | 81.483 | 9.132 |
+| Workspace nextest, IPC features, `not binary(ssh_container)` | 194.238 | 56.658 |
+| App `bindings_are_fresh` nextest | 83.470 | 24.237 |
+| **Total** | **924.684 (15m25s)** | **261.568 (4m22s)** |
+
+Both sequences exit 0 at every step: frontend 233 files / 2,711 tests passed;
+workspace nextest 1,347 passed / 196 skipped by the CI selection; binding
+freshness 1 passed / 249 skipped. Staging records exactly one
+`Compiling libduckdb-sys` event in the cold sequence; Clippy, workspace tests
+and binding checks record zero, as does the entire cached sequence. The only
+native output is `libduckdb-sys-0e1c858effee9d48`; its `output` timestamp remains
+`1791671251648373006` ns after staging, through every cold and cached step.
+The cgroup reports zero OOM/kill events. The cached measurement retains target
+artifacts locally; it does not claim a GitHub cache upload/restore was tested.
+
+The check timeout rises from 30 to 40 minutes. Twice the measured cold time
+plus eight minutes for setup/network/cache transfer estimates 38m49s, rounded
+up to 40. This allows ARM64-container versus GitHub x86 runner variance; actual
+GitHub cold wall time and cache upload remain for the lead's dispatch after
+committing. The container and its temporary target subdirectory are removed
+after validation; the pre-existing shared volume is preserved.
+
+Fresh macOS verification uses the existing cache selected by `CARGO_TARGET_DIR`,
+`RUSTC_WRAPPER=sccache`, native `CARGO_BUILD_TARGET=aarch64-apple-darwin`,
+four build jobs/four nextest threads, and nice level 10. Before each pair,
+both fixture executables are deleted and the shared host entry is touched to
+force relinking. No codesign mutation, runner or setup signing hook is used.
+
+| Forced relink | `just lint`, wall s | `just test`, wall s | nextest result |
+| --- | ---: | ---: | --- |
+| First | 190.880 | 215.308 | 1,363 passed / 196 skipped, 44.048 s execution |
+| Second | 19.650 | 104.621 | 1,363 passed / 196 skipped, 43.591 s execution |
+
+Both runs pass all 75 host tests. In the first, the formerly failing SQLite
+`edit_contract`, `cancel_contract`, `error_sqlstates` and `connect_and_ping`
+pass in 1.441, 1.552, 0.103 and 1.634 s respectively. The final linked SQLite
+fixture is 45,505,200 bytes and the separate DuckDB fixture is 147,176,632
+bytes; the native symbol regression passes in both runs. The first lint
+records one native compile and its following test run records none. These
+fresh relinks supersede the prior manual-signing workaround while preserving
+the unchanged conformance assertions and production deadlines.
+
+The final local gate runs once, in order: `just gen-ipc`; `just fmt-check`,
+`just lint`, `just test`, `just deny`, `just machete`, `just hygiene`,
+`just ui-check`, `just bench-ui`; frontend ESLint, format, types, two-worker
+Vitest and Knip; `just ipc-check`. Every command exits 0. Bindings regeneration
+has no diff. Final nextest reports 1,363 passed / 196 skipped (44.334 s),
+frontend Vitest 233 files / 2,711 tests passed, and IPC freshness 1 passed /
+250 skipped. Dependency checks report `advisories ok, bans ok, licenses ok,
+sources ok`; source/dead-code checks pass with the documented build-feature
+dependencies. UI sizes are 302,069 gzip bytes initial JS / 350,000 budget and
+6,294 gzip bytes token/component CSS / 15,000 budget. Supplementary tooling
+checks pass: six sccache, six staging, three bundle-strip and 89 benchmark-tool
+tests, using Python 3.14 rather than the system's incompatible Python 3.9.
+
+The linked-fixture regression, two fresh relinks and these quality gates close
+the round-4 build blockers. They do not remeasure or close the earlier AC8
+release/startup budget gap.
+
+### Round-5 authentication scheduling regression
+
+The parent discarded an authentication socket after 100 ms, even though the
+protocol allowed two seconds through Ready. A compatible helper descheduled
+between connect and Authenticate then received EOF and exited with code 70;
+the supervisor reported Incompatible before Ready. Native ARM64 Linux reproduced
+this with the unchanged SQLite fixture and `strace -f -e
+inject=connect:delay_exit=150000us:when=1`: HEAD failed with Incompatible/exit 70,
+while the fixed supervisor authenticated and closed with exit 0 under the same
+injection. The paused-clock partial-frame regression also fails with the old
+100 ms reader and passes after the fix.
+
+Authentication now retains each frame reader until the existing protocol
+deadline, with at most four pending candidates per lane. Candidates proceed
+independently, so one idle peer cannot serialize the others; invalid tokens and
+frames are still rejected. Returning or cancelling authentication aborts the
+remaining readers. No protocol deadline, reconnect assertion, circuit policy,
+file reservation or launch/replay policy changes.
+
+The concurrent accept loop also requires cancellation-safe transport ownership.
+Windows now retains its pending named-pipe server inside the listener until
+connect completes, rather than dropping it when another candidate wins the
+select. A Windows regression cancels an idle accept, then connects a client
+and verifies a byte crosses the preserved pipe. Native Windows execution was
+not available for this run; Tokio documents the underlying connect operation
+as [cancellation-safe](https://docs.rs/tokio/latest/tokio/net/windows/named_pipe/struct.NamedPipeServer.html#method.connect).
+
+Both Linux environments used non-root UID/GID 1000, four CPUs, 8 GiB, source
+copied inside the container, no `--init`, an explicit native Cargo target and
+clang/LLD. The x86_64 reconnect loop passed 50/50 on HEAD (14.627 s), then 50/50
+with the fix while pinned to CPU 0 with a competing SHA-256 load (22.180 s).
+The corresponding native ARM64 contended loop passed 500/500 (6.681 s).
+
+The workspace command `cargo nextest run --workspace --locked --features
+openrows-app/ipc-bindings -E 'not binary(ssh_container)' --no-fail-fast` passed
+all 1,350 tests on native ARM64, with 196 configured skips (20.534 s).
+Emulated x86_64 completed all 1,350: 1,348 passed and two missing-tool error
+assertions failed (100.833 s). An isolated Rust `Command::spawn` probe returned
+Ok plus exit 127 for a nonexistent executable under emulation, versus
+NotFound/ENOENT on native ARM64, with and without process groups. Both affected
+tests passed natively; their assertions and production error mappings were
+preserved. These emulation artifacts are not claimed as green x86 CI results.
+
+The existing thirty-launch `host_startup` harness was compiled against the
+already-built ARM64 debug libraries to avoid another native DuckDB build.
+With the debug SQLite fixture and a warm image/cache, all-launch p50/p95/max
+were 1.238/1.578/3.173 ms; warm p95 was 1.561 ms (75 ms budget), and the first
+sample was 3.173 ms. These are protocol startup diagnostics, not packaged
+DuckDB cold-start certification or a new main comparison. Native compilation
+occurred once per architecture: production staging took 550 s on emulated
+x86_64 and 203 s on native ARM64; cached fixed x86 staging took 10.75 s.
+
+The final macOS gate passes with four Cargo jobs/four nextest threads under
+nice, and two frontend workers: `just gen-ipc`, `fmt-check`, `lint`, `test`,
+`deny`, `machete`, `hygiene`, `ui-check`, `bench-ui`, frontend ESLint/format/types,
+Vitest/Knip and `just ipc-check` all exit 0. Bindings regeneration has no diff.
+After the Windows ownership adjustment, the affected Rust gates were checked
+again: nextest reports 1,366 passed / 196 skipped (44.165 s), including the
+unchanged failing CI reconnect test and the three new handshake regressions;
+IPC freshness reports 1 passed / 250 skipped. Frontend Vitest reports 233
+files / 2,711 tests passed. Initial JS is 302,019 gzip bytes / 350,000 budget;
+token/component CSS is 6,306 / 15,000. Supplementary tooling checks pass
+89 benchmark-tool, six sccache, six staging and three bundle-strip tests.
+The real GitHub x86_64 rerun remains the maintainer's verification step.

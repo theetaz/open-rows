@@ -83,7 +83,14 @@ pub(crate) async fn session_open(
     profile_id: String,
     database: Option<String>,
 ) -> Result<SessionOpened, IpcError> {
-    let (session, server) = open_session(&state, &profile_id, database.as_deref()).await?;
+    let profile = state
+        .profiles
+        .get(super::profiles::profile_id(&profile_id)?)?;
+    let (session, server) = if profile.driver == openrows_store::profile::Driver::Duckdb {
+        super::duckdb::shared(&state, &profile_id, false).await?
+    } else {
+        open_session(&state, &profile_id, database.as_deref()).await?
+    };
     let owner = Owner {
         profile: super::profiles::profile_id(&profile_id)?,
         database: server.database.clone(),
@@ -110,6 +117,12 @@ pub(crate) async fn open_session(
     let profile = state
         .profiles
         .get(super::profiles::profile_id(profile_id)?)?;
+    if profile.driver == openrows_store::profile::Driver::Duckdb {
+        return Err(IpcError::new(
+            IpcErrorKind::Unsupported,
+            "DuckDB background/export sessions are not supported yet; run SQL in the owning session",
+        ));
+    }
     let mut target = route::profile_target(state, profile_id).await?;
     if let Some(database) = database {
         target = target.with_database(database);
@@ -150,6 +163,7 @@ pub(crate) async fn session_close(
     let id = SessionId::from_str(&session_id)
         .map_err(|_| IpcError::new(IpcErrorKind::Invalid, "Invalid session id"))?;
     let owner = state.owners.unbind(id);
+    state.duckdb.forget_session(id).await;
     let closed = state.sessions.close(id).await;
     if let Some(owner) = owner
         && !state.owners.in_use(owner.profile, &owner.database)

@@ -45,7 +45,11 @@ pub fn limit_select(statement: &str, dialect: Dialect, rows: u64) -> Option<Stri
     }
     if !matches!(
         dialect,
-        Dialect::Postgres | Dialect::MySql | Dialect::Sqlite | Dialect::ClickHouse
+        Dialect::Postgres
+            | Dialect::Duckdb
+            | Dialect::MySql
+            | Dialect::Sqlite
+            | Dialect::ClickHouse
     ) {
         return None;
     }

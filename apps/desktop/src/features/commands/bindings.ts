@@ -43,7 +43,7 @@ export function currentBindings(): Bindings {
 
 /** The current bindings, re-rendering on change. */
 export function useBindings(): Bindings {
-  const overrides = shortcutOverrides.use();
+  const overrides = shortcutOverrides.useValue();
   return useMemo(() => bindingsOf(overrides), [overrides]);
 }
 

@@ -25,7 +25,7 @@ const QUOTES: readonly { value: CopySettings['quote']; label: string }[] = [
 
 /** Settings ▸ General ▸ Copy: plain (TSV) and CSV copy defaults (FR-GRID-13). */
 export function CopySection(): React.JSX.Element {
-  const settings = copySettings.use();
+  const settings = copySettings.useValue();
   return (
     <section aria-label="Copy">
       <h3>Copy</h3>

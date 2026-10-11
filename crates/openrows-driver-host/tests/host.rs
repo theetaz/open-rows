@@ -9,6 +9,8 @@ mod admission;
 mod control;
 #[path = "host/core.rs"]
 mod core;
+#[path = "host/diagnostics.rs"]
+mod diagnostics;
 #[path = "host/facets.rs"]
 mod facets;
 #[path = "host/handshake.rs"]

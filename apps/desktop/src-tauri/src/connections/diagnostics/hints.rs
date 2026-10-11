@@ -72,6 +72,10 @@ fn connect_hint(error: &IpcError, engine: Engine) -> &'static str {
              and port (named instances need their port), and that no firewall blocks it."
         }
         Engine::Libsql => "Check the libSQL host, HTTPS port and any firewall or VPN.",
+        Engine::Duckdb => {
+            "Check access to the DuckDB file, or choose New File to create it. Close other \
+             applications holding a writable lock before opening the file here."
+        }
         Engine::Sqlite | Engine::LibsqlFile => {
             "Check that the file and every attached database file exist and that OpenRows \
              may read them (macOS Files and Folders privacy settings), or choose New File \

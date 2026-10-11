@@ -223,3 +223,9 @@ Ready contract yield Incompatible. These map through DriverError::Host to
 IpcErrorKind::DriverHost with the specific bounded startup message. Existing
 post-connect host loss retains the reconnect message and terminal barriers.
 No shell plugin, webview launch capability or new IPC command is added.
+
+## Implemented (M2-04a): native DuckDB Arrow bridge
+
+DuckDB's Rust binding emits Arrow 58; workspace results use Arrow 60. The host converts one native chunk slice through a capped Arrow IPC buffer, normalizing lossless opaque booleans/128-bit integers and explicit complex text fallbacks (docs/05 §20). It fetches fallibly and honors BatchPolicy and the unchanged one-credit protocol. Sender decoded allowances include the decoder's conservative eight-byte row/node floor, including narrow integers/booleans; decoder validation is unchanged. Oversized multi-row chunks are split; native Arrow rows above 64 MiB fail explicitly before IPC allocation. DuckDB may exhaust the process memory cap while generating a value before Arrow is available; that typed DriverHost/MemoryLimit failure requires explicit reconnect. The desktop receives only workspace Arrow 60 and never links DuckDB.
+
+Typed EngineDto/file-picker variants and native-file handoff identify DuckDB end to end. Unsupported facets are absent, rather than returning fake catalogs or edits. Multiple result barriers and early Stop follow the existing hosted adapter contract.

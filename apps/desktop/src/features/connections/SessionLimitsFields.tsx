@@ -20,7 +20,7 @@ export function SessionLimitsFields({
   form: ConnectionForm;
 }): React.JSX.Element {
   const { limits, engine } = form.draft;
-  const { statementTimeoutSeconds } = generalSettings.use();
+  const { statementTimeoutSeconds } = generalSettings.useValue();
   const update = (patch: Partial<LimitsDraft>): void => {
     form.update({ limits: { ...limits, ...patch } });
   };

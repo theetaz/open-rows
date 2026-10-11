@@ -120,6 +120,9 @@ impl Session for HostedConnection {
         sink: &'a mut dyn ResultSink,
     ) -> BoxFuture<'a, Result<ExecSummary, DriverError>> {
         Box::pin(async move {
+            if self.duckdb {
+                crate::duckdb::admit(sql)?;
+            }
             let request = self.begin(&Control::ExecuteBound {
                 sql: sql.into(),
                 params: params.to_vec(),
@@ -148,7 +151,12 @@ impl Session for HostedConnection {
         self.transaction
     }
     fn close(self: Box<Self>) -> BoxFuture<'static, Result<(), DriverError>> {
-        Box::pin(async move { self.host.close().await.map_err(DriverError::Host) })
+        Box::pin(async move {
+            let reservation = self.reservation;
+            let result = self.host.close().await.map_err(DriverError::Host);
+            drop(reservation);
+            result
+        })
     }
 }
 

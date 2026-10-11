@@ -18,7 +18,7 @@ use crate::Dialect;
 impl Lexer<'_> {
     pub(super) fn next_token(&mut self, byte: u8) -> Token {
         let special = match self.dialect {
-            Dialect::Postgres => self.postgres(byte),
+            Dialect::Postgres | Dialect::Duckdb => self.postgres(byte),
             Dialect::MySql => self.mysql(byte),
             Dialect::Sqlite => self.sqlite(byte),
             Dialect::SqlServer => self.sqlserver(byte),
@@ -36,7 +36,10 @@ impl Lexer<'_> {
                 self.token(TokenKind::LineComment, self.line_comment_end())
             }
             b'/' if next == Some(b'*') => {
-                let nested = matches!(self.dialect, Dialect::Postgres | Dialect::SqlServer);
+                let nested = matches!(
+                    self.dialect,
+                    Dialect::Postgres | Dialect::Duckdb | Dialect::SqlServer
+                );
                 self.token(TokenKind::BlockComment, self.block_comment_end(nested))
             }
             b'\'' => {

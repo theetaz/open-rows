@@ -39,6 +39,15 @@ flowchart TB
 
 **Implemented (M2-01a):** the Tauri-free supervisor publishes `HostState::Failed` after targeted kill/reap and rendezvous cleanup, including when idle. A 256 MiB RSS threshold is sampled every 100 ms independently of data admission; host reservations total at most 512 MiB in one parent. A missing or unreadable RSS sample never becomes `MemoryLimit`; only an observed sample above the threshold triggers a monitored memory-limit failure. Child exit and heartbeat detection remain independent. macOS containment is monitoring-only with force-kill, and can overshoot between samples. Heartbeats arrive every second; three missed intervals plus a 1 s probe identify an unresponsive control runtime. A detected suspend/clock gap resets the health deadline. A responsive control runtime does not impose a query deadline. Explicit Cancel/Stop and Close retain the 2 s drain/shutdown grace. Abrupt EOF, including a partially written transport frame, is `Exited`; malformed payloads are `Protocol`. Three abnormal exits per shared profile/driver circuit in 60 s refuse a fourth spawn; there is no respawn loop.
 
+Bootstrap, lane authentication and Ready share the existing two-second parent
+protocol deadline. Each lane admits at most four pending authentication readers;
+an idle peer does not block another candidate. Partial frames remain owned by
+their reader across scheduling gaps, instead of being discarded after 100 ms.
+Invalid frames and tokens are rejected before Hello or credentials. Accepting
+the child or cancelling startup aborts the other readers; no launch is retried.
+Windows acceptance retains the pending pipe instance when another candidate
+finishes, so cancelling that wait cannot close a newly connecting child's pipe.
+
 The `DriverHost` error kind is not `Network` and `DriverError::is_connection_lost()` is false. Missing write/COMMIT acknowledgement remains uncertain; a host failure supplies no rollback guarantee. M2-01b wires the lifecycle observer into idle actors and metadata slots; busy loss ends accepted partial results and fails queued callers exactly once. IPC and session events show “The driver process stopped; reconnect to continue”. Hosted sessions never idle-suspend or invoke normal network restore/replay; a fresh explicit connect is required. Installed sidecar identity and Windows/Linux release smoke remain M2-01.4/platform work.
 
 ### 2.1 Panic policy
@@ -148,3 +157,13 @@ There is no PATH/cwd/env search, download, automatic retry or in-process fallbac
 The shared runtime retains crash circuits by profile/typed driver. Installed
 macOS smoke is opt-in; Developer ID/notarization and Windows/Linux package
 launch remain named release gates in ADR-0010 and docs/27.
+
+## Implemented (M2-04a): DuckDB failure and dev monitor
+
+DuckDB interrupts run on the independent control runtime; a native worker executing SQL does not block Cancel or host heartbeats. Driver errors preserve native text and common SQLSTATEs. Host death marks only the owning actor Failed; explicit reconnect launches a fresh host, and memory contents are permanently lost. The UI reports DriverHost failure and warns about in-memory loss before connect. Existing process containment/reap behavior applies unchanged; file leases are retained until the monitor confirms reap. Close now also waits for that confirmation when a failure is already latched, preserving its original error while preventing an immediate reconnect from racing a retained reservation.
+
+The dev timing monitor uses Reflect.set for Tauri invoke instrumentation. A frozen/read-only invoke is left callable and timing instrumentation degrades gracefully, while error/long-task monitoring stays active. Vitest covers frozen and non-writable invoke properties.
+
+The native dev smoke also exposed React Compiler treating settings-store `.use()` calls as ordinary memoizable calls. The internal store hook is now named `.useValue()` at every call site, preserving hook order across rerenders. The native `just dev` launch was repeated after both fixes.
+
+Owner decision 2026-10-10 adds one database-free installed Probe prewarm after visible paint and idle. Its `Ready`, `Skipped(HostFailure)` or `Failed(HostFailure)` outcome and parent-clock duration/handshake milliseconds are retained by the runtime and written to the diagnostic log. No user-facing error or fallback is emitted, and it cannot trip any profile's crash circuit. An in-flight attempt delays only hosted DuckDB launch asynchronously; existing sessions and startup continue. Successful user DuckDB connects log only the driver id and authenticated handshake duration, without profiles, paths, SQL, credentials or native messages. A failed prewarm is never retried.

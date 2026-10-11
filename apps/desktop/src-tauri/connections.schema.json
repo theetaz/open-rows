@@ -286,7 +286,8 @@
             "clickhouse",
             "sqlite",
             "libsql",
-            "libsql-file"
+            "libsql-file",
+            "duckdb"
           ]
         },
         "group": {

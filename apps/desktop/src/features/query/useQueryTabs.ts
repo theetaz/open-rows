@@ -78,7 +78,7 @@ export function useQueryTabs(): QueryTabs {
   const [state, setState] = useState<TabsState>(emptyTabs);
   const loaded = useSavedTabs(setState);
   const [{ autoSave }] = useEditorSettings();
-  const { restoreSession } = generalSettings.use();
+  const { restoreSession } = generalSettings.useValue();
   const file = useCallback((id: string, next: TabFile) => {
     setState((current) => bindFile(current, id, next));
   }, []);

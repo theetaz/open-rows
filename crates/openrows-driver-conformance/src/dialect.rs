@@ -317,8 +317,51 @@ const CLICKHOUSE_TYPES: &[TypeCase] = &[
 ];
 
 /// The literal round-trips of `dialect`.
+const DUCKDB_TYPES: &[TypeCase] = &[
+    case("null", "CAST(NULL AS BIGINT)", Arrow::Int64, None),
+    case(
+        "smallint",
+        "CAST(-32768 AS SMALLINT)",
+        Arrow::Int16,
+        Some("-32768"),
+    ),
+    case("integer", "2147483647", Arrow::Int32, Some("2147483647")),
+    case(
+        "bigint",
+        "CAST(-9007199254740993 AS BIGINT)",
+        Arrow::Int64,
+        Some("-9007199254740993"),
+    ),
+    case("double", "CAST(1.5 AS DOUBLE)", Arrow::Float64, Some("1.5")),
+    case("bool", "true", Arrow::Boolean, Some("true")),
+    case("text", "'héllo, 世界 ✓ ''q'''", Arrow::Utf8, Some(UNICODE)),
+    case("empty", "''", Arrow::Utf8, Some("")),
+    case("blob", "from_hex('00FF10')", Arrow::Binary, Some("00ff10")),
+    case(
+        "decimal",
+        "12.50::DECIMAL(10, 2)",
+        Arrow::Decimal(10, 2),
+        Some("12.50"),
+    ),
+    case(
+        "date",
+        "DATE '2024-05-06'",
+        Arrow::Date32,
+        Some("2024-05-06"),
+    ),
+    case(
+        "time",
+        "TIME '13:05:00.25'",
+        Arrow::Time64,
+        Some("13:05:00.25"),
+    ),
+    case("list", "[1, NULL, 3]", Arrow::ListInt32, Some("{1,NULL,3}")),
+];
+
+/// The literal round-trips of `dialect`.
 pub(crate) fn type_cases(dialect: Dialect) -> &'static [TypeCase] {
     match dialect {
+        Dialect::Duckdb => DUCKDB_TYPES,
         Dialect::MySql => MYSQL_TYPES,
         Dialect::Sqlite => SQLITE_TYPES,
         Dialect::SqlServer => SQL_SERVER_TYPES,

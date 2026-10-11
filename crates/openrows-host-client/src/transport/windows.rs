@@ -80,15 +80,19 @@ impl Listener {
         })
     }
     /// Attach one client; replay is rejected by the protocol authenticator.
+    /// Cancelling acceptance preserves the pending pipe instance.
     /// # Errors
     /// Pipe connection failed.
     pub async fn accept(&mut self) -> io::Result<Stream> {
-        let server = match self.server.take() {
-            Some(server) => server,
-            None => create(&self.path, false)?,
-        };
+        if self.server.is_none() {
+            self.server = Some(create(&self.path, false)?);
+        }
+        let server = self.server.as_ref().ok_or(io::ErrorKind::NotConnected)?;
         server.connect().await?;
-        Ok(Stream::Server(server))
+        self.server
+            .take()
+            .map(Stream::Server)
+            .ok_or_else(|| io::ErrorKind::NotConnected.into())
     }
 }
 fn create(path: &Path, first: bool) -> io::Result<NamedPipeServer> {
@@ -130,4 +134,39 @@ fn create(path: &Path, first: bool) -> io::Result<NamedPipeServer> {
 /// Missing or inaccessible pipe.
 pub async fn connect(path: &Path) -> io::Result<Stream> {
     ClientOptions::new().open(path).map(Stream::Client)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    #[tokio::test]
+    async fn cancelling_accept_preserves_the_pipe_for_a_later_client()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let directory = tempfile::Builder::new()
+            .prefix("openrows-accept-")
+            .tempdir()?;
+        let name = directory
+            .path()
+            .file_name()
+            .ok_or(io::ErrorKind::InvalidInput)?;
+        let path = std::path::PathBuf::from(format!(r"\\.\pipe\{}", name.to_string_lossy()));
+        let mut listener = Listener::bind(&path)?;
+        {
+            let pending = listener.accept();
+            tokio::pin!(pending);
+            tokio::select! {
+                biased;
+                result = &mut pending => return Err(format!("accept completed without a client: {}", result.is_ok()).into()),
+                () = tokio::task::yield_now() => {},
+            }
+        }
+        let mut client = connect(&path).await?;
+        let mut server =
+            tokio::time::timeout(crate::HANDSHAKE_TIMEOUT, listener.accept()).await??;
+        client.write_all(b"x").await?;
+        assert_eq!(server.read_u8().await?, b'x');
+        Ok(())
+    }
 }

@@ -15,20 +15,32 @@ use tokio::{
 #[derive(Clone)]
 pub struct HostSupervisor {
     options: LaunchOptions,
+    prewarm: Option<crate::prewarm::Prewarm>,
 }
 impl HostSupervisor {
     /// Preserve explicit helper path and shared budget/profile circuit.
     #[must_use]
     pub fn new(options: LaunchOptions) -> Self {
-        Self { options }
+        Self {
+            options,
+            prewarm: None,
+        }
+    }
+    pub(crate) fn with_prewarm(mut self, prewarm: crate::prewarm::Prewarm) -> Self {
+        self.prewarm = Some(prewarm);
+        self
     }
     /// Start exactly one hosted connection lifetime, without retry or fallback.
     /// # Errors
     /// Spawn, memory, handshake, compatibility or circuit failure.
     pub async fn spawn(&self) -> Result<HostSession, HostFailure> {
+        if let Some(prewarm) = &self.prewarm {
+            prewarm.wait().await;
+        }
         self.options.circuit.check()?;
         let reservation = self.options.memory.host()?;
         let mut rendezvous = Rendezvous::new(&self.options.endpoint_root)?;
+        let started = Instant::now();
         let mut child = launch_command(&self.options)?
             .spawn()
             .map_err(|_| HostFailure::Spawn)?;
@@ -36,74 +48,110 @@ impl HostSupervisor {
         if let Some(stdout) = child.stdout.take() {
             tasks.push(tokio::spawn(discard(stdout)));
         }
-        if let Some(stderr) = child.stderr.take() {
-            tasks.push(tokio::spawn(discard(stderr)));
-        }
+        let diagnostic = child.stderr.take().map(crate::startup::Diagnostics::start);
         let stdin = child.stdin.take();
         let handshake = async {
             let mut stdin = stdin.ok_or(HostFailure::Spawn)?;
-            crate::write_bootstrap(&mut stdin, &rendezvous.bootstrap)
-                .await
-                .map_err(HostFailure::from)?;
+            crate::handshake::bootstrap_host(&mut stdin, &rendezvous.bootstrap).await?;
             drop(stdin);
             rendezvous.attach(self.options.driver).await
         };
+        let mut exit = None;
         let attached = tokio::select! {
             result = tokio::time::timeout(HANDSHAKE_TIMEOUT, handshake) =>
                 result.unwrap_or(Err(HostFailure::Unresponsive)),
-            _ = child.wait() => Err(HostFailure::Incompatible),
+            status = child.wait() => {
+                exit = Some(status);
+                Err(HostFailure::Incompatible)
+            },
         };
         match attached {
-            Ok((control, data)) => {
-                // Named pipes do not use this directory. Remove it before kill-on-parent-close is armed.
-                #[cfg(windows)]
-                if std::fs::remove_dir(rendezvous.directory.path()).is_err() {
-                    cleanup(&mut child, tasks).await;
-                    return Err(HostFailure::Spawn);
+            Ok(lanes) => {
+                if let Some(task) = diagnostic.and_then(crate::startup::Diagnostics::into_task) {
+                    tasks.push(task);
                 }
-                let guard = match platform::Guard::attach(&child) {
-                    Ok(guard) => guard,
-                    Err(error) => {
-                        cleanup(&mut child, tasks).await;
-                        return Err(error);
-                    }
-                };
-                let pid = child.id().ok_or(HostFailure::Exited)?;
-                let policy = guard.policy();
-                let generation = rendezvous.bootstrap.generation;
-                let directory = rendezvous.directory.path().to_path_buf();
-                let (mut session, channels) = channels(control, data, generation, &self.options);
-                tasks.extend(channels.tasks);
-                tokio::spawn(
-                    Monitor {
+                supervise(
+                    &self.options,
+                    Pending {
                         child,
-                        failure: session.failure.clone(),
-                        directory: rendezvous.directory,
+                        rendezvous,
                         reservation,
-                        large: session.large.clone(),
-                        platform: guard,
-                        circuit: self.options.circuit.clone(),
-                        generation,
-                        control: session.outgoing.clone(),
-                        shutdown: channels.shutdown,
-                        heartbeat: channels.heartbeat,
-                        state: channels.state,
                         tasks,
-                    }
-                    .run(),
-                );
-                session.pid = pid;
-                session.directory = directory;
-                session.policy = policy;
-                Ok(session)
+                    },
+                    lanes,
+                    started.elapsed(),
+                )
+                .await
             }
             Err(error) => {
                 cleanup(&mut child, tasks).await;
+                crate::startup::failure(error, self.options.driver, exit, diagnostic).await;
                 self.options.circuit.record_exit();
                 Err(error)
             }
         }
     }
+}
+struct Pending {
+    child: tokio::process::Child,
+    rendezvous: Rendezvous,
+    reservation: crate::HostReservation,
+    tasks: Vec<tokio::task::JoinHandle<()>>,
+}
+async fn supervise(
+    options: &LaunchOptions,
+    pending: Pending,
+    lanes: (crate::transport::Stream, crate::transport::Stream),
+    handshake: std::time::Duration,
+) -> Result<HostSession, HostFailure> {
+    let Pending {
+        mut child,
+        rendezvous,
+        reservation,
+        mut tasks,
+    } = pending;
+    // Remove unused Windows rendezvous before arming kill-on-parent-close.
+    #[cfg(windows)]
+    if std::fs::remove_dir(rendezvous.directory.path()).is_err() {
+        cleanup(&mut child, tasks).await;
+        return Err(HostFailure::Spawn);
+    }
+    let guard = match platform::Guard::attach(&child) {
+        Ok(guard) => guard,
+        Err(error) => {
+            cleanup(&mut child, tasks).await;
+            return Err(error);
+        }
+    };
+    let pid = child.id().ok_or(HostFailure::Exited)?;
+    let policy = guard.policy();
+    let generation = rendezvous.bootstrap.generation;
+    let directory = rendezvous.directory.path().to_path_buf();
+    let (mut session, channels) = channels(lanes.0, lanes.1, generation, options);
+    tasks.extend(channels.tasks);
+    tokio::spawn(
+        Monitor {
+            child,
+            failure: session.failure.clone(),
+            directory: rendezvous.directory,
+            reservation,
+            large: session.large.clone(),
+            platform: guard,
+            circuit: options.circuit.clone(),
+            generation,
+            control: session.outgoing.clone(),
+            shutdown: channels.shutdown,
+            heartbeat: channels.heartbeat,
+            state: channels.state,
+            tasks,
+        }
+        .run(),
+    );
+    session.pid = pid;
+    session.directory = directory;
+    session.policy = policy;
+    session.handshake = handshake;
+    Ok(session)
 }
 struct Channels {
     shutdown: mpsc::Receiver<Shutdown>,
@@ -139,6 +187,7 @@ fn channels(
     ];
     (
         HostSession {
+            handshake: std::time::Duration::ZERO,
             failure,
             generation,
             pid: 0,

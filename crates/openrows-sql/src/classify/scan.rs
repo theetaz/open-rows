@@ -153,7 +153,7 @@ fn is_side_effect_call(sql: Sql<'_>, index: usize) -> bool {
     };
     let name = name.to_ascii_lowercase();
     match sql.dialect {
-        Dialect::Postgres => {
+        Dialect::Postgres | Dialect::Duckdb => {
             SIDE_EFFECT_FUNCTIONS.contains(&name.as_str())
                 || SIDE_EFFECT_PREFIXES
                     .iter()

@@ -3,7 +3,7 @@ import { Switch, TextField } from '@openrows/ui';
 import { historySettings, parseHistorySettings } from './historySettings';
 /** Settings ▸ General ▸ History; saved changes sweep stored history. */
 export function HistorySection(): React.JSX.Element {
-  const settings = historySettings.use();
+  const settings = historySettings.useValue();
   return (
     <section aria-label="History retention">
       <h3>History</h3>
