@@ -231,16 +231,28 @@ These FR-NET-03 rows document OpenRows scope; no TablePlus adoption/parity claim
 | A05 | User lifecycle | Create, change or remove users. | Partial FR-ADMIN-02; Gap G06 | Post-1.0 editor | Review privilege changes as SQL. | [S52] |
 | A06 | Privilege editor | Edit global/database/table grants. | Partial FR-ADMIN-02; Gap G06 | Post-1.0 editor | Least-privilege impact summary. | [S52] |
 | A07 | Account resource limits | Set per-account usage limits. | Gap G06 | Post-1.0 | Driver-specific controls, no false portability. | [S52] |
-| A08 | SQL bar/line charts | Build charts from SQL results. | Gap G07; FR-ADMIN-03 covers server metrics only | Post-1.0 | Bounded read-only workloads and open board files. | [S53] |
-| A09 | Dashboard tables | Add a query-backed table widget. | Gap G07 | Post-1.0 | Reuse streamed result pipeline. | [S53] |
-| A10 | Dashboard inputs | Parameterise widgets with input fields. | Gap G07 | Post-1.0 | Typed bindings, no string injection. | [S53] |
-| A11 | Dashboard refresh | Refresh on timer, event or request. | Gap G07 | Post-1.0 | Load limits and visible polling state. | [S53] |
-| A12 | Dashboard transfer | Import/export metric boards. | Gap G07 | Post-1.0 | Documented, merge-friendly formats. | [S45] |
+| A08 | SQL bar/line charts | Build charts from SQL results. | Planned FR-ADMIN-07; docs/28 | M2.5 | Bounded read-only workloads and open board files. | [S53] |
+| A09 | Dashboard tables | Add a query-backed table widget. | Planned FR-ADMIN-07; docs/28 | M2.5 | Reuse streamed result pipeline. | [S53] |
+| A10 | Dashboard inputs | Parameterise widgets with input fields. | Planned FR-ADMIN-07; docs/28 | M2.5 | Typed bindings, no string injection. | [S53] |
+| A11 | Dashboard refresh | Refresh on timer, event or request. | Planned FR-ADMIN-04, 06, 07; docs/28 | M2.5 | Shared collection, load limits and visible polling state. | [S53] |
+| A12 | Dashboard transfer | Import/export metric boards. | Planned FR-ADMIN-07, 08; docs/28 | M2.5 | Secret-free definitions; imports stay paused until reviewed. | [S45] |
 | A13 | Plugin manager | Install additional functionality. | Gap G08 | Post-1.0 | WASM permissions and resource limits. | [S54] |
 | A14 | Script extension API | Write custom plugins. | Gap G08 | Post-1.0 | Capability-limited portable components. | [S54] |
 | A15 | Formatter extension | Add an external SQL formatter. | Partial FR-EDIT-05 built-in; Gap G08 for plugins | M2 built-in; plugins post-1.0 | Formatting available without extensions. | [S54] |
 | A16 | DDL/migration extension | Generate table scripts/framework migrations. | Partial FR-SCHEMA-04 DDL; Gap G09 migrations | M1 DDL; migrations post-1.0 | Original exporters with licence notices. | [S54] |
 | A17 | Cell URL extension | Open cell URLs or email links. | Gap G10 | Post-1.0 | User gesture, scheme validation and confirmation. | [S54] |
+
+#### Database Monitor (OpenRows extension, planned)
+
+These rows specify the owner's database-monitoring request; they do not claim TablePlus parity or shipped functionality. ADR-0011 was accepted on 2026-10-11; all rows are planned at M2.5 with validation pending. Existing A01–A03/M2-15 process-list work is reused, not reclassified. [docs/28](28-database-monitoring-and-ai-harness.md) owns product scope; [ADR-0011](adr/0011-performance-monitor.md) owns sources/grants, budgets, privacy and advisor safety.
+
+| Key | Feature | What it does | OpenRows status / FR | Target | OpenRows improvement | Source |
+| --- | --- | --- | --- | --- | --- | --- |
+| PM01 | Monitor workspace | Overview, live sessions, waits/locks, freshness and pause/interval/window controls per connection. | Planned FR-ADMIN-03 | M2.5 | Explicit privilege, disabled, unsupported and stale states; bounded blocking chains. | ADR-0011, M25-01..04 |
+| PM02 | Slow-query analytics | Rank cumulative deltas and covered terminal events by time, calls, rows, I/O, temp/spill and memory where exposed. | Planned FR-ADMIN-05 | M2.5 | Reset/eviction gaps, window vs source maxima, safe plan visualiser reuse; every measured execution confirms. | ADR-0011, M25-02/04/07a..e |
+| PM03 | Resource/memory view | Engine/server and per-query/thread metrics with documented scope. | Planned FR-ADMIN-03, 05 | M2.5 | Own-session-only embedded and own-request remote-libSQL notices; no invented memory or cluster-wide coverage. | ADR-0011, M25-02/03/07a..e |
+| PM04 | Optimisation advisor | Deterministic rules with metric/plan evidence, confidence and impact/trade-offs. | Planned FR-ADMIN-05 | M2.5 | DDL/rewrite opens in editor only; safety/auth/production review; HypoPG opt-in, AI through M4.5. | ADR-0011, M25-10 |
+| PM05 | Bounded private collection | Dedicated read-only server sessions, adaptive polling, Arrow/rings, local-history opt-in. | Planned FR-ADMIN-04, NFR-PERF-11, NFR-SEC-08 | M2.5 | Core redaction before IPC, memory/series/deadline limits and lock/pause cleanup. | ADR-0011, M25-01/03/07d/07e |
 
 ### Settings, appearance, shortcuts and platform integration
 
@@ -370,7 +382,7 @@ These requirements are new in this task. They close specification gaps, not impl
 | G04 | E09 | SQL minification is optional; formatting is required. | Post-1.0 |
 | G05 | E14 | Standard named/positional bound parameters are required; extra templating syntaxes and remembered values are optional. | Post-1.0 |
 | G06 | A05–A07 | Keep the existing FR-ADMIN-02 boundary: viewer in 1.0, user/grant/resource-limit editing later. Raw SQL remains available under safety checks. | Post-1.0 |
-| G07 | A08–A12 | User dashboards differ from FR-ADMIN-03 server metrics. Both are deferred; dashboard charts/inputs/refresh/transfer require their own scope. | Post-1.0 |
+| G07 | A08–A12 | Promoted to planned FR-ADMIN-07/08 alongside server monitoring FR-ADMIN-03..06; docs/28 defines charts/inputs/refresh/transfer and read-only/import boundaries. Not implemented yet. | M2.5 |
 | G08 | A13–A15 | Plugin manager/runtime follows [21](21-extensibility.md); built-in formatting remains M2. | Post-1.0 |
 | G09 | A16 | DDL viewing is required; framework migration exporters are optional extensions. | Post-1.0 |
 | G10 | A17 | Opening arbitrary cell links requires URI trust policy. | Post-1.0 |
@@ -378,7 +390,7 @@ These requirements are new in this task. They close specification gaps, not impl
 | G12 | P30 | iOS is outside the defined desktop distribution scope. | Future candidate, no commitment |
 | G13 | P31 | Toolbar rearrangement is optional; all commands stay reachable by palette/menu. | Post-1.0 |
 | G14 | L06 | Named CLI bridges do not imply generic ACP support. | Post-1.0 |
-| G15 | L07 | Subscription account integration needs a provider-specific auth/terms decision. | Post-1.0 |
+| G15 | L07 | Copilot-specific account parity remains deferred. Separately, eligible official account integrations such as Codex are planned in M4.5 with provider-specific eligibility, authentication and isolation (docs/28 §6); this does not claim Copilot support. | Copilot post-1.0; eligible named accounts M4.5 |
 | G16 | L11, L19 | Approval-based AI/MCP writes intentionally differ from the accepted read/propose-only design. | Excluded by ADR-0009 |
 | G17 | L18 | Remote TLS MCP listener intentionally differs from the loopback-only 1.0 design. | Excluded from 1.0 |
 | G18 | DB15–DB16 | Snowflake/BigQuery follow the existing ADBC warehouse bridge plan. | Post-1.0 |

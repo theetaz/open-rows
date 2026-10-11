@@ -108,7 +108,14 @@ IDs are stable so issues, tests and PRs can reference them (`FR-CONN-03`, `NFR-P
 | --- | --- | --- |
 | FR-ADMIN-01 | Process/session list with kill/cancel. | P1 |
 | FR-ADMIN-02 | Users/roles and grants viewer; editor in P2. | P1 |
-| FR-ADMIN-03 | Server metrics overview (connections, cache hit ratio, replication lag where exposed). | P2 |
+| FR-ADMIN-03 | Live database health and performance overview: connections, activity, throughput, errors, cache/storage/replication where exposed; engine/version/permission capabilities, source/scope/freshness labels and explicit unavailable states. | P1 |
+| FR-ADMIN-04 | Bounded, shared metric collection with local opt-in history, retention/deletion, reset-aware counter rates, gaps, range comparison and lifecycle cancellation; monitoring never blocks the user's query or opens another DuckDB writer. | P1 |
+| FR-ADMIN-05 | Slow-query and regression investigation, normalised statement rankings by time/calls/rows/I/O/spill/memory where exposed, reset-aware deltas, observed latency distributions, blocker/waiter graphs, oldest transactions and maintenance/resource evidence. Deterministic advisor proposals include rule/version, metric/plan evidence, coverage, confidence and impact/trade-offs; never auto-execute. Explain is plan-only by default; incomplete SQL opens review, every measured execution confirms with FR-APP-11 safety/authentication and production warnings. HypoPG is off unless installed and explicitly enabled. | P1 |
+| FR-ADMIN-06 | Local health alerts with thresholds, duration, hysteresis, deduplication, recovery and evidence; independent of AI, explicit background opt-in and no automatic external notification. | P1 |
+| FR-ADMIN-07 | Query-backed charts/cards/tables with typed parameters, bounded read-only refresh, accessible data alternatives and versioned secret-free boards; imported boards stay paused until reviewed. | P1 |
+| FR-ADMIN-08 | Evidence-backed health/analytics reports with source/time/scope/limitations, exportable Markdown/HTML/JSON/CSV and SVG/PNG charts; unsupported or missing data is never presented as measured health. | P1 |
+
+Planned P1 scope at M2.5: [28 — Monitoring and AI harness](28-database-monitoring-and-ai-harness.md). Source/privilege, sampling/budget, privacy and advisor contracts: [accepted ADR-0011](adr/0011-performance-monitor.md).
 
 <a id="18-history-and-workspace-fr-ws"></a>
 
@@ -148,7 +155,7 @@ Detailed in [23-ai-assistant.md](23-ai-assistant.md).
 | --- | --- | --- |
 | FR-AI-01 | Configure API-key providers (native + OpenAI-compatible) with keys in the keychain. | P1 |
 | FR-AI-02 | Use local models (Ollama, LM Studio, OpenAI-compatible localhost servers). | P1 |
-| FR-AI-03 | Detect and drive installed agent CLIs (Claude Code, Codex CLI, Cursor CLI, Gemini CLI) headlessly, sandboxed to app MCP tools. | P1 |
+| FR-AI-03 | Discover eligible installed agent tools and use their official account/CLI integrations, with version/authentication/entitlement states and verified isolation to app tools. Subscription reuse is provider-specific; unsupported or unapproved integrations remain visibly unavailable. | P1 |
 | FR-AI-04 | Assistant panel: NL → query, explain, fix error, optimise from plan, with visible tool-call trace. | P1 |
 | FR-AI-05 | Inline ⌘I prompt in the editor producing an accept/reject diff. | P1 |
 | FR-AI-06 | Built-in MCP server exposing read-only DB tools and `propose_sql`; optional localhost HTTP endpoint for external agents. | P1 |
@@ -156,6 +163,9 @@ Detailed in [23-ai-assistant.md](23-ai-assistant.md).
 | FR-AI-08 | Per-connection data-sharing level, redaction rules, provider allowlist, context preview, audit log. | P1 |
 | FR-AI-09 | Model output can never execute writes; write-classified proposals only open in an editor tab. | P1 |
 | FR-AI-10 | MCP settings show server status, transport and exposed connections; create and revoke scoped read-only access tokens, disconnect clients and inspect scrubbed request activity. Revocation cancels active requests; token values never appear in settings JSON. | P1 |
+| FR-AI-11 | Investigate database health, queries, locks and regressions through bounded read-only monitoring/schema/query/plan tools, with a visible trace and evidence references; recommend fixes as SQL proposals. | P1 |
+| FR-AI-12 | Produce validated reports and chart/board proposals from authorised evidence; preview/export through application artifact tools, with no arbitrary scripts, fabricated measurements or automatic execution of imported/model-generated SQL. | P1 |
+| FR-AI-13 | Multiple saved providers with explicit selection, health/capability states and usage; opt-in scheduled read-only investigations with sharing, telemetry permission, token/cost/step/time limits, cancellation and scrubbed audit retention. | P1 |
 
 ### 1.11 Networking (`FR-NET`)
 
@@ -207,6 +217,7 @@ Targets are p95 on the reference hardware unless stated. Each has a benchmark in
 | NFR-PERF-08 | Schema tree for 50 000 objects: first level ≤ 300 ms, search ≤ 50 ms after cache warm. |
 | NFR-PERF-09 | Export streams at ≥ 80 % of the database's own send rate (CSV). |
 | NFR-PERF-10 | Main/UI thread never blocked > 50 ms by app work (long-task monitor in dev builds). |
+| NFR-PERF-11 | Monitoring overhead (accepted ADR-0011; M2.5 validation pending): independent read-only server session, ≤ 1 data query per due source/interval, no overlapping samples, bounded deadlines and adaptive back-off. Default 5 s live / ≥ 15 s aggregate / ≥ 60 s expensive reads; source deadline ≤ 1 s and ≤ 20% of interval. Retained data ≤ 16 MiB/monitor and ≤ 32 MiB/app, ≤ 4 active collectors; 10 min / 300 timestamps / 64 scalar series / 200 query identities per monitor. On mac-low: monitor footprint increment ≤ 32 MiB, mean CPU ≤ 1% of one core (one default collector, 60 s), 1,000-row analysis p95 ≤ 10 ms; existing aggregate memory/startup/UI budgets still apply. Reference-workload server throughput/latency overhead target ≤ 1%, with source throttling on budget misses. |
 
 ### 2.2 Reliability (`NFR-REL`)
 
@@ -229,6 +240,7 @@ Targets are p95 on the reference hardware unless stated. Each has a benchmark in
 | NFR-SEC-05 | Release artifacts code-signed, notarized (macOS), update payloads signature-verified. |
 | NFR-SEC-06 | Dependencies scanned for vulnerabilities and licence compatibility on every PR. |
 | NFR-SEC-07 | No telemetry by default. Crash reports opt-in and scrubbed of query text and values. |
+| NFR-SEC-08 | Monitoring privacy (accepted ADR-0011; M2.5 validation pending): redact query/plan literals, parameters and comments in core before IPC, memory history or proposal/export; fail closed to fingerprint/metrics when text cannot be safely normalised. Never log raw SQL/plans/server errors or transmit sampled values/credentials through monitoring telemetry/advice. Nothing persisted by default; explicit local aggregate history is capped at 24 h / 50 MiB per connection / 100 MiB per app with expiry and purge. App lock stops collection and hides/clears sensitive samples; missing grants produce actionable restricted states, never silently empty charts. |
 
 ### 2.4 Usability and accessibility (`NFR-UX`)
 

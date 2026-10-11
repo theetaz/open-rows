@@ -12,13 +12,22 @@ Every task follows [25 — Engineering Standards](25-engineering-standards.md): 
 - **Benchmarks** refer to [13 — Performance](13-performance.md) §4. Outside feature-first mode, a task that touches a hot path adds or updates a benchmark and reports numbers against budget; in feature-first mode benchmarks run at milestone checkpoints.
 - **Update this file in the same PR** that completes a task (status → `done`, PR link). Add new tasks here when scope is discovered rather than growing an existing task.
 
-Status values: `done`, `todo`, `blocked` (state the blocker), `hw` (needs specific hardware or a manual run), `deferred` (parked until a milestone checkpoint).
+Status values: `done`, `planned` (accepted documentation scope; no implementation evidence), `todo`, `blocked` (state the blocker), `hw` (needs specific hardware or a manual run), `deferred` (parked until a milestone checkpoint).
+
+Planning-only rows use `planned` once the owner accepts the scope; a task brief and its validation gates are still required before implementation. ADR-0011 was accepted on 2026-10-11; its M2.5 implementation validation remains pending.
 
 **Current mode: feature-first.** Work the [dogfood track (§3a)](#3a-dogfood-track-postgresql-first) before anything else. While docs/25 §0 applies, definition-of-done item 4 (benchmarks) and full acceptance reports are replaced by its lighter rules.
 
+**Next product sequence (2026-10-11):** finish the current M2-04a DuckDB host
+repair, deliver M2.5 monitoring/analytics below, then the database portion of
+M4.5 AI. [28](28-database-monitoring-and-ai-harness.md) defines the complete
+scope and acceptance. Start monitoring with PostgreSQL and shared contracts;
+engine breadth follows through tested capabilities. These phases need not wait
+for unrelated NoSQL/API-client work. M2.5 and the newly specified M4.5 harness tasks remain `planned`. Existing implementation statuses are unchanged.
+
 ### 1.1 Task ID scheme
 
-`M<milestone>-<nn>` for feature tasks (for example `M1-09`), `M0-S<n>` for spikes, `X-<nn>` for cross-cutting tasks that are not tied to one milestone.
+`M<milestone>-<nn>` for feature tasks (for example `M1-09`); fractional milestones omit the dot (`M25-<nn>` for M2.5, `M45-<nn>` for M4.5), with letter suffixes for engine slices (for example `M25-07a`); `M0-S<n>` for spikes, `X-<nn>` for cross-cutting tasks that are not tied to one milestone.
 
 ### 1.2 Definition of done (every task)
 
@@ -189,6 +198,29 @@ Order: core runtime → local storage and secrets → networking → drivers →
 | M2-24 | Cloud/zero-trust hops: AWS SSM, kubectl port-forward, Cloud SQL proxy, cloudflared, custom command | FR-NET-03 | M1-06 | done — structured SSM, kubectl, Cloud SQL/AlloyDB, cloudflared and Custom routes with shared loopback supervision, one restart, process-tree cleanup via rustix, scrubbed diagnostics, original TLS hostname and route popover. Custom templates substitute per argument, require purpose-separated local Trust and run approval, import untrusted in exchange v1, and have program/argument/timeout editing. Fake-tool PostgreSQL/MySQL integration and lifecycle tests cover routing and shutdown; real provider authentication remains in installed tools. |
 | M2-25 | Tier 2 conformance in CI and M2 parity exit audit | docs/19 M2 exit | all M2 |
 
+## 5a. M2.5 — Database monitoring and analytics
+
+Accepted product scope; all tasks are planned, not implemented. Start after the current M2-04a DuckDB host repair. [ADR-0011](adr/0011-performance-monitor.md) owns the source/privilege matrix, polling/retention/privacy/advisor rules and accepted server/app budgets; its validation remains pending in M25-09. Task briefs use [28](28-database-monitoring-and-ai-harness.md)'s
+acceptance criteria plus each row's observable gates. The initial PostgreSQL
+slice supplies a working foundation; M25-07a..e expand the collector matrix.
+
+| ID | Task | Requirements / docs | Depends on | Key gates | Status |
+| --- | --- | --- | --- | --- | --- |
+| M25-01 | Tauri-free monitoring contracts/runtime: typed descriptors/sample states, one bounded collector per connection/database, cancellation, gaps/resets and lifecycle ownership | FR-ADMIN-03, 04; docs/28 §3; ADR-0011; NFR-PERF-11, NFR-SEC-08 | M2-04a, M1-01, M1-03 | Shared views do not duplicate reads; no overlap; ADR source deadlines/adaptive/row/series/global caps; core redaction before IPC/history; lock/close/revoke cancels; no extra DuckDB writer | planned |
+| M25-02 | PostgreSQL collector: activity, database counters, blocking/waits, relation/index/maintenance and replication; optional statement statistics | FR-ADMIN-03, 05; docs/28 §4; ADR-0011 source/privilege and validation matrix | M25-01, M1-11 | Controlled active query/blocker/rate/reset fixtures; extension and privilege absence remain explicit; server scope labelled | planned |
+| M25-03 | Monitor workspace, live charts/range comparison, opt-in local history, retention/size cap and deletion | FR-ADMIN-03, 04; docs/28 §2–3 | M25-02, M1-02, M2-15 | Real samples displayed; gaps/unknown never zero; default-off 24 h / 50 MiB per connection / 100 MiB app history; expiry/disable/purge and profile isolation; accessible navigation/data alternatives | planned |
+| M25-04 | Query/lock investigation: normalised rankings, resource/memory evidence, observed percentiles, interval regressions, waits/blocker graph and Explain integration | FR-ADMIN-05; docs/28 §2 | M25-02, M2-06, M2-22 (safety slice M2-22a) | Known slow/blocking fixtures match evidence; no invented percentiles; redacted/incomplete SQL opens review; plan-only default; every measured execution confirms with #99 safety/auth/lock gates and production warning | planned |
+| M25-05 | Deterministic incidents/alerts and explicit in-app background monitoring | FR-ADMIN-06; docs/28 §3 | M25-03 | Threshold/duration/hysteresis/recovery/deduplication tests; unknown cannot clear; disabled or locked monitor does no work | planned |
+| M25-06 | Analytics boards: charts/cards/tables, typed inputs, bounded read-only refresh, validated portable board import/export | FR-ADMIN-07; docs/28 §5 | M25-01, M1-21 | Parameters bind; hostile/imported board never auto-runs; read-only/resource limits enforced; chart/table fixture parity | planned |
+| M25-07a | MySQL/MariaDB collectors with distinct version/instrumentation/permission capabilities | FR-ADMIN-03, 05; docs/28 §4; ADR-0011 source/privilege and validation matrix | M25-01, M1-12 | Each engine's counters/activity/blocking and degraded permissions match integration fixtures | planned |
+| M25-07b | SQL Server collector with DMV/version/platform capability checks | FR-ADMIN-03, 05; docs/28 §4; ADR-0011 source/privilege and validation matrix | M25-01, M2-02 | Requests/waits/resource evidence tested; restricted DMV permissions are visible | planned |
+| M25-07c | ClickHouse collector with query logs/parts/metrics and node/cluster scope | FR-ADMIN-03, 05; docs/28 §4; ADR-0011 source/privilege and validation matrix | M25-01, M2-03 | Real query/storage/counter fixtures; disabled logs/grants remain unavailable; node scope explicit | planned |
+| M25-07d | SQLite/libSQL file and remote capability-aware app/engine diagnostics | FR-ADMIN-03, 05; docs/28 §4; ADR-0011 source/privilege and validation matrix | M25-01, M1-13, M2-05 | Query/file diagnostics tested; remote OS/server metrics not fabricated; no integrity checks per tick | planned |
+| M25-07e | DuckDB diagnostics through the owning shared session/host | FR-ADMIN-03, 05; docs/28 §4; ADR-0011 source/privilege and validation matrix; ADR-0010 | M25-01, M2-04b | Monitoring/query coexist; one writable reservation/host; cancellation and typed host loss; no hidden metadata session | planned |
+| M25-08 | Structured health/analytics reports with evidence and Markdown/HTML/JSON/CSV plus SVG/PNG chart export | FR-ADMIN-08; docs/28 §5 | M25-03, M25-06 | Source/time/scope/gaps preserved; script/markup injection rejected; exports match fixture values | planned |
+| M25-10 | Deterministic optimisation advisor with rule/version, metric/plan evidence, confidence, impact/trade-offs and optional already-installed HypoPG | FR-ADMIN-05, FR-APP-11; NFR-SEC-08; docs/28 §2; ADR-0011 advisor/validation matrix | M25-01, M25-02, M25-04; engine-specific rules on M25-07a..e | Positive/negative/missing/stale-evidence fixtures for every rule; proposals open editor only; production/ReadOnly/auth/lock gates; HypoPG off/absent/denied/isolated cleanup, no install or provider calls | planned |
+| M25-09 | Monitoring exit audit across the published engine matrix and representative load | FR-ADMIN-03..08; NFR-PERF-11, NFR-SEC-08; docs/13, 28 §8; ADR-0011 | all other M2.5 tasks | Lifecycle/permissions/privacy/board safety pass; accepted ADR server/app overhead, footprint/CPU/1,000-row analysis gates and history/UI performance measured on reference hardware; all capability labels accurate | planned |
+
 ## 6. M3 — NoSQL
 
 | ID | Task | Requirements | Depends on |
@@ -219,15 +251,18 @@ Order: core runtime → local storage and secrets → networking → drivers →
 
 | ID | Task | Requirements | Depends on |
 | --- | --- | --- | --- |
-| M45-01 | `openrows-ai` provider layer: API-key providers (Anthropic, OpenAI, Gemini, OpenAI-compatible) with keys in keychain; local models (Ollama, LM Studio) | FR-AI-01, 02; docs/23; ADR-0009 | M1-03 |
+| M45-01 | `openrows-ai` provider layer/settings: multiple API-key providers (Anthropic, OpenAI, OpenRouter, Gemini, compatible endpoints) with keys in keychain; local models; capabilities/health and usage | FR-AI-01, 02, 13; docs/23, 28; ADR-0009 | M1-03 |
 | M45-02 | Data-sharing policy: per-connection level, redaction rules, provider allowlist, context preview, audit log; golden-payload tests | FR-AI-08 | M45-01 |
 | M45-03 | `openrows-mcp` server: read-only DB tools and `propose_sql`; optional localhost endpoint; scoped read-only tokens, revocation, client disconnect, scrubbed activity | FR-AI-06, FR-AI-10 | M45-02 |
-| M45-04 | Agent CLI bridges: detect and drive Claude Code, Codex CLI, Cursor CLI, Gemini CLI headlessly, sandboxed to the app's MCP tools | FR-AI-03 | M45-03 |
-| M45-05 | Assistant panel: NL → query, explain, fix error, optimise from plan, visible tool-call trace | FR-AI-04 | M45-01, M45-03 |
+| M45-04 | Eligible account/CLI adapters: explicit discovery/auth states, Codex official app-server integration; other bridges only after current provider approval/terms and isolation validation | FR-AI-03; docs/28 §6 | M45-03, M45-08 |
+| M45-05 | Assistant panel: NL → query, explain, fix error, optimise from plan, visible tool-call trace | FR-AI-04 | M45-01, M45-03, M45-08 |
 | M45-06 | Inline ⌘I prompt with accept/reject diff in the editor | FR-AI-05 | M45-05 |
 | M45-07 | MCP client for user servers with per-tool enable/disable and first-use confirmation | FR-AI-07 | M45-03 |
-| M45-08 | Write-safety enforcement: model output never executes writes; write proposals only open in an editor tab (tests) | FR-AI-09 | M45-05 |
-| M45-09 | M4.5 exit: golden payloads green, no write path, NL→SQL eval baseline per provider | docs/19 | all M4.5 |
+| M45-08 | Execution safety before enabling assistants: model output never executes writes, bounded read-only tools, write proposals only open in an editor, revocation and injection tests | FR-AI-09; docs/28 §7 | M45-03 |
+| M45-10 | **planned —** Monitoring investigation tools/context: authorised snapshots/history/query statistics/locks/plans, telemetry sharing and grounded health findings | FR-AI-08, 11; docs/28 §7; ADR-0011 | M25-09, M45-02, M45-03, M45-08 |
+| M45-11 | **planned —** Report/chart/board proposals through the shared validated artifact model and evidence tools | FR-AI-12; docs/28 §5, 7 | M25-08, M45-05, M45-10 |
+| M45-12 | **planned —** Opt-in scheduled read-only investigations, provider selection, step/time/token/cost limits, cancellation, usage and scrubbed audit retention | FR-AI-13; docs/28 §7 | M45-01, M45-02, M45-10 |
+| M45-09 | M4.5 exit: golden payloads, no write path, account/CLI isolation, NL→SQL and health/report grounding evaluations, scheduled-run policy/budget tests | docs/19, 28 §8 | all other M4.5 tasks |
 
 ## 9. M5 — Long tail
 

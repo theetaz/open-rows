@@ -6,10 +6,13 @@ Milestones are scope-based, not date-based. Each has exit criteria; a milestone 
 flowchart LR
     M0["M0<br/>Foundations<br/>& spikes"] --> M1["M1<br/>macOS alpha<br/>PG · MySQL · SQLite"]
     M1 --> M2["M2<br/>SQL breadth<br/>MSSQL · ClickHouse ·<br/>DuckDB · libSQL"]
+    M2 --> MON["M2.5<br/>Database monitoring<br/>analytics · reports"]
+    MON --> AI
     M2 --> M3["M3<br/>NoSQL<br/>MongoDB · Redis"]
     M1 --> M4["M4<br/>API client v1<br/>HTTP · GraphQL ·<br/>collections · scripts"]
     M3 --> M5["M5<br/>Long tail<br/>Oracle · Cassandra ·<br/>DynamoDB · Elastic<br/>+ WS · SSE · gRPC · CLI"]
-    M4 --> AI["M4.5<br/>Native AI + MCP<br/>BYOK · CLI bridges"]
+    AI["M4.5<br/>Database AI harness + MCP<br/>BYOK · eligible account/CLI bridges"]
+    M4 -.->|API help after M4| AI
     AI --> M5
     M5 --> M6["M6<br/>Windows & Linux beta"]
     M6 --> GA["1.0 GA"]
@@ -72,6 +75,25 @@ M1 starts with a PostgreSQL **dogfood track** ([docs/27 §3a](27-delivery-plan.m
 
 **Parity exit:** these M2 P1 requirements pass their complete acceptance text, including raw-filter safety, import trust, discard boundaries, dirty-tab protection, lock bypass tests and performance budgets. No new TablePlus-compatible encrypted format is assumed.
 
+## M2.5 — Database monitoring and analytics
+
+After the current DuckDB host repair, deliver the [monitoring scope](28-database-monitoring-and-ai-harness.md)
+before the database AI harness. Start with PostgreSQL and the shared collector,
+then add every implemented engine's supported metrics with explicit capability
+and permission states. M2.5 follows M2 in the roadmap; the owner authorises its first slice immediately after the DuckDB host repair, without waiting for unrelated M2 tasks. [Accepted ADR-0011](adr/0011-performance-monitor.md) owns engine sources/grants, privacy, advisor safety and server/app budgets; implementation validation remains pending.
+
+- Live health, resource/memory, query and lock/wait views; source/scope/freshness labels.
+- Deterministic evidence-backed optimisation proposals, plan-only Explain by default, confirmed measured execution under #99 safety/authentication and production warnings.
+- Bounded shared collection, reset-aware trends, opt-in local history and retention.
+- Deterministic alerts and explicit in-app background monitoring.
+- Read-only query-backed charts/cards/tables, typed parameters and portable boards.
+- Evidence-backed health reports and chart/report export, useful without AI.
+
+**Exit:** FR-ADMIN-03..08 acceptance passes across the published engine matrix;
+collection is bounded and cancels on close/lock/disconnect; imported boards never
+auto-run; unsupported data is visible; DuckDB's single-writer ownership holds.
+Meet ADR-0011/NFR-PERF-11/NFR-SEC-08 source, privacy, advisor and overhead gates; measure history footprint and chart/UI performance at this checkpoint.
+
 ## M3 — NoSQL
 
 - MongoDB: collections browser, MQL editor, document views (tree/JSON/table), document editing, indexes, aggregation pipeline editor with stage previews.
@@ -87,13 +109,16 @@ M1 starts with a PostgreSQL **dogfood track** ([docs/27 §3a](27-delivery-plan.m
 
 ## M4.5 — Native AI and MCP
 
-- `openrows-ai`: API-key providers (Anthropic, OpenAI, Gemini, OpenAI-compatible), local models, CLI bridges (Claude Code, Codex CLI, Cursor CLI, Gemini CLI).
+- `openrows-ai`: API-key providers (Anthropic, OpenAI, OpenRouter, Gemini, compatible endpoints), local models and eligible official account/CLI integrations. Provider eligibility and isolation are verified before enabling subscription reuse.
 - `openrows-mcp`: MCP server with read-only tools + `propose_sql`; MCP client for user servers; optional localhost endpoint.
 - Assistant panel, ⌘I inline edit, fix-error, plan analysis.
 - Data-sharing policy, redaction, context preview, audit log.
+- FR-AI-11..13: evidence-backed health/query investigations, report/chart/board proposals, multiple saved providers, usage limits and opt-in scheduled read-only checks; [28](28-database-monitoring-and-ai-harness.md). Database AI follows M2.5 and need not wait for the API-client milestone; API help follows M4.
 - FR-AI-10: read-only scoped MCP tokens, revocation, client disconnection and scrubbed integration activity; settings surfaces from FR-APP-08. Generic ACP adapters, remote MCP and model write tools are not part of this milestone.
 
-**Exit:** policy golden-payload tests green; no write path from model output; NL→SQL eval set baseline recorded per provider.
+**Exit:** policy golden-payload tests green; no write path from model output;
+NL→SQL and health/report evidence evaluations recorded per provider; provider
+isolation, telemetry sharing, cancellation and scheduled-run budgets pass.
 
 ## M5 — Long tail
 
@@ -114,7 +139,7 @@ M1 starts with a PostgreSQL **dogfood track** ([docs/27 §3a](27-delivery-plan.m
 
 **Exit criteria:**
 - All P0 and P1 requirements met.
-- Every 1.0 row in [26](26-feature-parity.md) has implemented evidence for its FR mapping; all 29 added P1 requirements are included in the release gate. Deferred/excluded gaps remain visibly labelled.
+- Every 1.0 row in [26](26-feature-parity.md) has implemented evidence for its FR mapping; parity additions and the new monitoring/AI P1 requirements are included in the release gate. Deferred/excluded gaps remain visibly labelled.
 - Tier 1 + Tier 2 drivers meet their tier definitions; Tier 3 at least beta.
 - Zero open data-loss or security-high issues.
 - Crash-free sessions ≥ 99.8 % over the last beta cycle (from opt-in reporters).
@@ -126,12 +151,12 @@ M1 starts with a PostgreSQL **dogfood track** ([docs/27 §3a](27-delivery-plan.m
 - **ADBC bridge** for Snowflake, BigQuery, Databricks, Redshift-native features, Trino.
 - **Plugin system** (WASM component model) for community drivers, exporters, themes ([21-extensibility.md](21-extensibility.md)).
 - **Schema diff and migration generation** between connections.
-- AI agent workflows beyond 1.0 (multi-step migrations with review, scheduled checks) — the 1.0 assistant and MCP support are in M4.5 (ADR-0009).
+- AI workflows beyond 1.0 (multi-step migrations with review) — the 1.0 assistant, scoped in-app scheduled health checks and MCP support are in M4.5 (ADR-0009, docs/28).
 - Visual query builder; editable ER diagrams.
 - Mock servers and OpenAPI generation for the API client.
 - Mac App Store build.
 - Team features without a server: expand the planned FR-WS-03 git-friendly Projects with signed connection definitions.
-- Benchmark gaps G03–G11/G13–G15 from [26](26-feature-parity.md#gaps-and-scope-decisions): cross-table value search, SQL minification/extra parameter syntaxes, user/grant/resource-limit editors (FR-ADMIN-02), query dashboards distinct from server metrics (FR-ADMIN-03), plugin and migration exporters, safe cell links, Git theme installation, toolbar customisation, ACP providers and subscription auth adapters.
+- Remaining benchmark gaps G03–G06/G08–G11/G13–G15 from [26](26-feature-parity.md#gaps-and-scope-decisions): cross-table value search, SQL minification/extra parameter syntaxes, user/grant/resource-limit editors (FR-ADMIN-02), plugin and migration exporters, safe cell links, Git theme installation, toolbar customisation, generic ACP and unapproved subscription adapters. G07 boards move to M2.5; eligible official account integrations move to M4.5.
 - Driver candidates G18–G20: ADBC Snowflake/BigQuery, dedicated Cloudflare D1, and independently validated Greenplum/Vertica/SingleStore/other flavours. Existing docs/05 flavours retain their assigned tiers.
 - Editable diagrams (G21) remain post-1.0; FR-SCHEMA-06 requires the 1.0 read-only diagram.
 

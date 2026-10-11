@@ -19,6 +19,9 @@ AI is a first-class, **native** part of the app — not a cloud add-on. Three pr
 | Chat over results | Result tab | Only if the policy allows sending result rows. |
 | API client help | Request tab | Generate requests/tests from OpenAPI, explain responses, write scripts. |
 | Agent mode (multi-step) | Assistant panel | The model calls tools (read schema, run read-only query, explain) in a loop with a visible trace. |
+| Investigate database health | Monitor → Ask assistant | Read permitted health/query/lock history, cite evidence and propose fixes; FR-AI-11. |
+| Generate reports and graphs | Monitor / results / assistant | Validated report and chart/board proposals from evidence, preview and export; FR-AI-12. |
+| Scheduled read-only checks | Monitor settings | Explicit provider/sharing/budget selection; no model call on every metric tick; FR-AI-13. |
 
 ## 2. Provider types
 
@@ -68,22 +71,30 @@ flowchart LR
 
 ### 2.3 Agent CLI bridges (use existing subscriptions)
 
-Many users already pay for an AI coding tool. Instead of asking for a second API key, the app can drive the user's **installed CLI** in its non-interactive mode. The CLI authenticates with the user's own account; we never see or store those credentials.
+Many users already pay for an AI coding tool. Eligible integrations reuse the
+user's installed tool through its official account or non-interactive APIs.
+Authentication stays owned by that tool; the app never copies subscription
+tokens. Eligibility is provider-specific, not implied by installation.
 
 | CLI | Detection | Invocation model |
 | --- | --- | --- |
-| Claude Code | `claude` on PATH, version check | Headless print mode with streaming JSON output; our MCP server passed via its MCP config flag; tool allowlist limited to our `openrows` tools. |
-| Codex CLI | `codex` on PATH | Non-interactive exec mode with JSON event output; MCP server registered for the run. |
-| Cursor CLI | `cursor-agent` on PATH | Print/headless mode with JSON output; MCP config for the run. |
-| Gemini CLI | `gemini` on PATH | Non-interactive prompt mode; MCP server configured for the run. |
+| Claude installed tool | Explicit discovery and version/authentication check | Official headless/SDK integration only after third-party eligibility and isolation are verified; API-key support is the baseline. |
+| Codex CLI | Explicit discovery and version check | Official app-server account/turn/event APIs; managed login, only approved application tools. |
+| Cursor CLI | Explicit discovery of `cursor-agent` | Candidate versioned bridge; disabled until current terms and isolation tests pass. |
+| Gemini CLI | Explicit discovery of `gemini` | Candidate versioned bridge; disabled until current terms and isolation tests pass. |
 
 Exact flags differ per CLI and change across versions, so each bridge is a small adapter (`openrows-ai/bridges/<cli>.rs`) with:
 
-- **Detection & health:** path, version, "logged in?" probe; shown in Settings → AI with a status light.
-- **Sandboxing:** the CLI runs in an empty temporary working directory, with its own file-editing and shell tools **disabled or denied** where the CLI supports it, and only our MCP tools allowed. The CLI therefore cannot read the user's files or run commands — it can only use the database tools we expose, under the same policy as any other provider.
+- **Detection & health:** opt-in executable/version/authentication probes; installation, login, plan/entitlement when reported, and unknown/unsupported are separate states. Never scan browser logins or credential files, infer a paid plan, or send DB context during a health check.
+- **Sandboxing:** deny unapproved shell/filesystem/network and external tools, verify configuration isolation and pass only approved app tools. An empty temporary working directory or allowlist alone is insufficient. A bridge without an enforceable boundary stays disabled.
 - **Streaming:** we parse the CLI's JSON event stream into the same assistant event model (text deltas, tool calls, tool results, final answer) so the UI is identical regardless of provider.
 - **Lifecycle:** one process per conversation turn (or a long-lived session where the CLI supports resume), killed on cancel; timeouts apply.
 - **Compliance:** the bridge only automates the user's own locally installed CLI for the user's own requests; it never extracts tokens, proxies the CLI for other users, or bypasses the vendor's terms. If a vendor disallows headless use, the bridge is disabled for that CLI.
+
+Current provider eligibility evidence and the conditional Claude subscription
+boundary are recorded in [28 §6](28-database-monitoring-and-ai-harness.md#6-ai-provider-setup-and-existing-subscriptions).
+Installed-tool access and API billing are separate choices; one never silently
+falls back to the other.
 
 ## 3. MCP support
 
@@ -179,3 +190,19 @@ Provider HTTP traffic uses `openrows-net` (proxy, custom CA, timeouts) so corpor
 - Policy tests: for every level, assert exactly which fields leave the core (golden payloads); redaction property tests.
 - Safety tests: prompts that attempt writes (`DROP`, `DELETE`) must never execute; `run_read_query` rejects write-classified SQL and runs inside read-only transactions.
 - Evaluation set: NL→SQL tasks over fixture schemas per dialect, scored by result equivalence; tracked per provider/model to guide defaults.
+
+## 9. Monitoring and investigation delivery
+
+The **M4.5 database AI harness** follows M2.5 monitoring/analytics; API help follows M4. [Accepted ADR-0011](adr/0011-performance-monitor.md) owns the monitoring privacy/advisor/source/budget contracts, with implementation validation pending. [M45-10..12](27-delivery-plan.md#8-m45--native-ai-and-mcp) add the separately reviewed harness; M45-09 validates it. [28](28-database-monitoring-and-ai-harness.md) specifies
+health/history/query/lock tools, structured report/chart artifacts and the
+end-to-end acceptance criteria for FR-AI-11..13. Provider settings support
+multiple saved API/local/eligible-account choices with explicit selection,
+capabilities, authentication state and usage. Every switch rechecks policy.
+
+Telemetry sharing is a separate per-connection permission; schema-only does not
+implicitly disclose activity, timings, users or client addresses. Scheduled
+investigations are opt-in, in-app, read-only and bounded by steps/time/tokens/cost.
+Lock, disconnect or policy revocation cancels active reads and provider work.
+Reports reference measured evidence and retain gaps/limitations; model text is
+an interpretation, not a measured fact. Board/report generation does not execute
+writes or arbitrary HTML/scripts.
