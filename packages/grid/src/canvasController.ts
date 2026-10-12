@@ -21,12 +21,8 @@ export class CanvasController {
       const entry = entries[0];
       if (!entry) return;
       painter.resize(entry.contentRect.width, entry.contentRect.height);
-      this.painter.layout.visible(
-        this.painter.range,
-        this.painter.view,
-        props.source.rows,
-      );
-      this.requestWindow(0);
+      // Height changes alter the physical-to-logical mapping for capped spacers.
+      this.update();
       this.prepare();
     });
     this.observer.observe(scroll);
@@ -45,7 +41,7 @@ export class CanvasController {
   /** Track CSS-pixel offsets and request a new tile window only when it changes. */
   readonly update = (): void => {
     const started = performance.now();
-    // Only native event delivery reads offsets. Scripted writes never call this path.
+    // Native scroll and geometry events read offsets; scripted writes wait for delivery.
     const y = logicalOffset(
         this.scroll.scrollTop,
         this.scroll.clientHeight,

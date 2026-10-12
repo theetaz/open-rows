@@ -183,3 +183,36 @@ it('requests the final row when a five-million-row native scrollbar reaches its 
   );
   handle.destroy();
 });
+it('remaps a capped scroll offset when the viewport height changes', () => {
+  mockCanvas();
+  let resized: ResizeObserverCallback | undefined;
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      constructor(callback: ResizeObserverCallback) {
+        resized = callback;
+      }
+      observe(): void {}
+      disconnect(): void {}
+    },
+  );
+  const height = vi
+    .spyOn(HTMLElement.prototype, 'clientHeight', 'get')
+    .mockReturnValue(800);
+  const input = props();
+  Object.defineProperty(input.source, 'rows', { value: 5_000_000 });
+  const host = document.createElement('div');
+  const handle = mountGrid(host, input);
+  const scroll = host.firstElementChild as HTMLElement;
+  scroll.scrollTop = 16_000_000;
+  scroll.dispatchEvent(new Event('scroll'));
+  height.mockReturnValue(400);
+  resized?.(
+    [{ contentRect: { width: 600, height: 400 } } as ResizeObserverEntry],
+    {} as ResizeObserver,
+  );
+  expect(handle.viewport.y).toBeCloseTo(
+    (16_000_000 * (130_000_026 - 400)) / (32_000_000 - 400),
+  );
+  handle.destroy();
+});

@@ -21,3 +21,10 @@ it('has no scroll range when content fits the viewport', () => {
   expect(nativeOffset(0, 800, 26)).toBe(0);
   expect(logicalOffset(0, 800, 26)).toBe(0);
 });
+it('clamps WebKit rubber-band scrolling to the logical row range', () => {
+  const content = 5_000_001 * 26;
+  expect(logicalOffset(-100, 800, content)).toBe(0);
+  expect(logicalOffset(32_000_000, 800, content)).toBe(content - 800);
+  expect(nativeOffset(-100, 800, content)).toBe(0);
+  expect(nativeOffset(content, 800, content)).toBe(32_000_000 - 800);
+});

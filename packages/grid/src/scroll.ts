@@ -22,7 +22,9 @@ export function logicalOffset(
 ): number {
   const physical = Math.max(0, spacerHeight(content) - viewport);
   const logical = Math.max(0, content - viewport);
-  return physical > 0 ? offset * (logical / physical) : 0;
+  return physical > 0
+    ? (Math.min(physical, Math.max(0, offset)) / physical) * logical
+    : 0;
 }
 
 /** Convert reveals and restored logical offsets to native scroll coordinates. */
@@ -33,5 +35,7 @@ export function nativeOffset(
 ): number {
   const physical = Math.max(0, spacerHeight(content) - viewport);
   const logical = Math.max(0, content - viewport);
-  return logical > 0 ? offset * (physical / logical) : 0;
+  return logical > 0
+    ? (Math.min(logical, Math.max(0, offset)) / logical) * physical
+    : 0;
 }
