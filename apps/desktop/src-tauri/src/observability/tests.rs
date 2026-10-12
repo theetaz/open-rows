@@ -105,3 +105,16 @@ fn ai_keys_headers_and_crash_reports_are_scrubbed() {
     assert!(text.contains("[redacted]"));
     assert!(text.contains("Provider authentication failed"));
 }
+
+#[test]
+fn external_protocol_and_http_diagnostics_cannot_log_payloads_or_headers() {
+    let text = capture(|| {
+        tracing::error!(target: "rmcp::transport", payload = "synthetic-mcp-value", "raw response");
+        tracing::warn!(target: "reqwest::connect", headers = "synthetic-header-value", "raw headers");
+        tracing::debug!(target: "hyper::proto", body = "synthetic-body-value", "raw body");
+        tracing::trace!(target: "h2::codec", frame = "synthetic-frame-value", "raw frame");
+        tracing::info!("kept application event");
+    });
+    assert!(!text.contains("synthetic"));
+    assert!(text.contains("kept application event"));
+}

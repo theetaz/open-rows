@@ -28,6 +28,8 @@ export type { EditorDialect };
 
 /** Options shared by every SQL editor surface. */
 export interface SqlEditorOptions {
+  /** User-triggered inline proposal transport, with no SQL execution capability. */
+  onInline?: import('./inline').InlineGenerate;
   /** Initial document text. */
   doc: string;
   /** Accessible name of the editable region. */

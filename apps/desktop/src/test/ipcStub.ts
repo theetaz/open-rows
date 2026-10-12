@@ -399,6 +399,12 @@ function appParityStub(): Record<string, unknown> {
 
 function mcpStub(): Record<string, unknown> {
   return {
+    listMcpServers: vi.fn().mockResolvedValue([]),
+    saveMcpServers: vi.fn().mockResolvedValue(undefined),
+    deleteMcpServer: vi.fn().mockResolvedValue(undefined),
+    setMcpServerSecrets: vi.fn().mockResolvedValue(undefined),
+    discoverMcpTools: vi.fn().mockResolvedValue([]),
+    confirmMcpTool: vi.fn().mockResolvedValue(undefined),
     onMcpProposals: vi.fn().mockResolvedValue(() => undefined),
     investigateStatement: vi.fn().mockResolvedValue({
       statementId: '1',

@@ -116,6 +116,7 @@ impl ToolExecutor {
             None
         };
         Ok(ToolReply {
+            failed: false,
             context: gated,
             proposal,
         })
@@ -142,6 +143,7 @@ impl ToolExecutor {
             .await
             .map_err(|_| McpError::Sharing)?;
         Ok(ToolReply {
+            failed: false,
             context,
             proposal: None,
         })

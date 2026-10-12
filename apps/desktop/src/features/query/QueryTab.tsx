@@ -114,6 +114,9 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
     runs,
     tabId: tab.id,
     onSnippet: sheets.startPicking,
+    onInline: () => {
+      editor.current?.promptInline?.();
+    },
     onAssistant: () => {
       toggleAssistant(tab.id);
     },
@@ -254,6 +257,14 @@ function TabEditor(
       <QueryEditor
         doc={tab.sql}
         label="SQL editor"
+        onInline={(input) =>
+          import('../assistant/inline').then(({ inlineGenerator }) =>
+            inlineGenerator({
+              profile: props.connection,
+              database: tab.database,
+            })(input),
+          )
+        }
         dialect={editorDialect(props.connection.engine)}
         settings={props.settings}
         catalog={props.catalog}

@@ -2,6 +2,7 @@
 import { useEffect, useRef } from 'react';
 import type { RefObject } from 'react';
 import type {
+  InlineGenerate,
   CompletionCatalog,
   EditorDialect,
   EditorPreferences,
@@ -19,6 +20,7 @@ import styles from './Query.module.css';
 const SAVE_DELAY_MS = 300;
 
 type Props = {
+  onInline?: InlineGenerate;
   /** Initial text; later edits stay in the editor until saved through `onChange`. */
   doc: string;
   label: string;
@@ -82,6 +84,7 @@ function handleOf(editor: SqlEditor): EditorHandle {
     insertSnippet: editor.insertSnippet,
     insertText: editor.insertText,
     runStart: editor.runStart,
+    promptInline: editor.promptInline,
   };
 }
 
@@ -140,6 +143,7 @@ function mount(
     if (cancelled || !parent) return;
     const props = latest.current;
     const editor = mountSqlEditor(parent, {
+      ...(props.onInline ? { onInline: inlineFor(latest) } : {}),
       doc: props.doc,
       label: props.label,
       dialect: props.dialect,
@@ -192,4 +196,13 @@ export function QueryEditor(props: Props): React.JSX.Element {
       );
   }, [keyBinding]);
   return <div ref={host} className={styles.editor} />;
+}
+
+function inlineFor(latest: RefObject<Props>): InlineGenerate {
+  return (input) => {
+    const generate = latest.current.onInline;
+    return generate
+      ? generate(input)
+      : Promise.reject(new Error('Inline generation unavailable.'));
+  };
 }

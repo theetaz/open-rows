@@ -135,3 +135,14 @@ windows and UNION; all base tables undergo live safety checks. Unknown functions
 remain refused on PostgreSQL, MySQL/MariaDB and SQLite; ambiguous sample provenance
 is fully redacted. No dependency on provider accounts/CLI bridges is introduced.
 Live smoke is opt-in, synthetic and requires the owner's real key; it was not run.
+
+## Implementation evidence — M45-06/07
+
+Inline SQL generation uses the same native provider/sharing boundary with tools
+disabled. CodeMirror keeps proposals separate until a human accepts one
+undoable literal edit; cancellation and document changes invalidate stale work.
+The user MCP client uses official rmcp transports, keychain-only environment/
+headers, disabled-by-default tools and native first-use consent. External data
+passes conservative sharing/redaction/audit gates; no database execution
+capability, roots or credentials are given to user servers. Details and manual
+smoke boundaries are in [23 §14](../23-ai-assistant.md#14-editor-proposals-and-user-mcp-servers-m45-0607).

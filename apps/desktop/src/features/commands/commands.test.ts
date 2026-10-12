@@ -101,7 +101,8 @@ it('detects conflicts with commands and reserved system shortcuts', () => {
 });
 
 it('maps only unhandled tab shortcuts to tab commands', () => {
-  expect(tabCommandOf(press('i', 'KeyI'))).toBe('beautify');
+  expect(tabCommandOf(press('i', 'KeyI'))).toBe('inline-ai');
+  expect(tabCommandOf(press('b', 'KeyB', { altKey: true }))).toBe('beautify');
   expect(tabCommandOf(press('s', 'KeyS', { shiftKey: true }))).toBe('save-as');
   expect(tabCommandOf(press('t', 'KeyT'))).toBeUndefined();
   expect(

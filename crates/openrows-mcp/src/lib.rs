@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Tauri-free read/propose-only MCP protocol, authenticated local transports and tokens.
 #![forbid(unsafe_code)]
+pub mod client;
 mod connections;
 mod error;
 mod execution;

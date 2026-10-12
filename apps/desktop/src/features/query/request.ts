@@ -17,6 +17,8 @@ export type EditorHandle = {
   insertSnippet: (body: string) => void;
   /** Insert a proposal literally; model SQL is never a snippet template. */
   insertText?: (text: string) => void;
+  /** Open the editor-only AI review from the menu or palette. */
+  promptInline?: () => void;
   /** Where the text Run Current executes starts (selection or statement). */
   runStart: () => number;
 };

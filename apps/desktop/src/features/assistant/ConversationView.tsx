@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { ToolConfirmation } from './ToolConfirmation';
 import { Button } from '@openrows/ui';
 import type { Turn } from './conversation';
 import styles from './Assistant.module.css';
@@ -24,6 +25,13 @@ export function ConversationView(props: {
         <article key={turn.id}>
           <p className={styles.question}>{turn.question}</p>
           <p className={styles.answer}>{turn.text}</p>
+          {turn.confirmations.map((prompt) => (
+            <ToolConfirmation
+              key={prompt.id}
+              prompt={prompt}
+              disabled={turn.outcome !== 'Running'}
+            />
+          ))}
           {turn.traces.map((trace) => (
             <details
               key={trace.step}
@@ -33,6 +41,9 @@ export function ConversationView(props: {
                 {trace.tool} · {trace.status} · {trace.durationMs} ms
               </summary>
               <p>{trace.arguments}</p>
+              {trace.result && (
+                <pre aria-label="MCP tool result">{trace.result}</pre>
+              )}
               <p>
                 {trace.bytes} bytes ·{' '}
                 {trace.redacted ? 'redacted or truncated' : 'policy filtered'}

@@ -17,6 +17,7 @@ mod locations;
 #[cfg(target_os = "macos")]
 mod material;
 mod mcp;
+mod mcp_client;
 mod menu;
 mod native_files;
 mod observability;
@@ -63,6 +64,12 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
         ai_sharing::ai_context_preview,
         ai_sharing::ai_audit_list,
         ai_sharing::ai_audit_purge,
+        mcp_client::mcp_servers_list,
+        mcp_client::mcp_servers_save,
+        mcp_client::mcp_server_secrets,
+        mcp_client::mcp_server_delete,
+        mcp_client::mcp_server_tools,
+        mcp_client::mcp_tool_confirm,
         mcp::mcp_status,
         mcp::mcp_token_create,
         mcp::mcp_token_revoke,
@@ -325,6 +332,11 @@ pub fn run() -> Result<(), tauri::Error> {
             specta.mount_events(app);
             app.manage(ai::AiState::default());
             app.manage(assistant::AssistantState::default());
+            app.manage(mcp_client::State::new(
+                app.state::<locations::Locations>()
+                    .data
+                    .join("mcp-servers.json"),
+            )?);
             settings::install(app);
             result_store::install(app)?;
             driver_host::install(app)?;

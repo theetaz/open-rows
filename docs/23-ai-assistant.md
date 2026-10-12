@@ -581,3 +581,67 @@ qualified join/aggregate, inspect tool traces if capability is explicitly suppor
 then Insert/Open/Explain and Cancel. Confirm SQL does not execute automatically.
 Turn AI off or lock the app during a request and confirm cancellation. No real
 key or live provider request was used in the deterministic test runs.
+
+## 14. Editor proposals and user MCP servers (M45-06/07)
+
+The SQL editor's **⌘I** widget streams a proposal using the same native assistant,
+configured default provider/model, permission and sharing policy. Selection wins
+over the current statement; whitespace after a terminated statement is an empty
+insert point. Inline mode has no tool catalogue and collects no schema from the
+database, so engines without a separate metadata session can generate proposals
+from their selected SQL/dialect too. Accept/reject is an inline CodeMirror review;
+accept inserts literal text in one undoable change. Escape, document edits and
+editor destruction cancel work and discard stale responses. No execution API is
+available to the widget or model.
+
+Settings → AI → MCP → **User MCP servers** adds explicit device-local stdio
+executables or Streamable HTTP endpoints using rmcp 3.4.0. Discovery is an
+explicit action; each tool starts disabled. Enabled tools join the ordinary
+assistant's bounded native catalogue after discovery. Server descriptions are
+not used as application instructions. A first invocation of each enabled tool
+asks the user to approve the exact redacted argument object. Approval is scoped
+to the server configuration and tool schema for the current app session; lock,
+settings/credential changes and disabling a tool discard consent. Unsolicited
+confirmation responses are refused. Credential changes also discard discovered
+schemas; discover tools again to filter them with the current credentials.
+Project-file discovery/import is absent.
+
+Public server metadata lives in private `mcp-servers.json` beside the local store;
+environment variables and HTTP headers have only write/delete keychain APIs at
+`mcp/<id>/credentials`. Never put credentials in command arguments or URLs. URL
+credentials/query strings/fragments are refused. HTTPS uses the existing ring TLS
+provider and platform trust; plaintext is limited to loopback. Redirects, ambient
+HTTP proxies and automatic session recovery are disabled. Stdio uses a direct
+executable, clears the inherited environment except PATH and private configured
+variables, discards stderr and kills/reaps the child on cancellation. No database
+handles, credentials, OpenRows roots, sampling or SQL execution callbacks are
+passed to user servers. User executables remain explicitly trusted local code.
+
+Discovery/tool exchanges have five-second deadlines. Consent waits have a
+30-second deadline inside the assistant's 60-second request limit. Limits are
+16 servers, 64 discovered tools per server across eight pages, 8 KiB schemas,
+16 KiB argument objects and 64 KiB decoded results/SSE events. External arguments
+and results are conservatively classified as samples: **SampleRows** sharing is
+required; **Local only** refuses external tools. Credential values, sensitive
+JSON fields, SQL literals and configured redaction rules are scrubbed before
+confirmation, transport and trace. The shared gate applies its 512-byte field
+limit; truncated arguments are refused and truncated results are disclosed.
+Content-free audit precedes outbound arguments and provider result disclosure.
+External trace argument summaries contain no model-supplied keys or values.
+The trace includes policy-filtered external result JSON. Protocol/HTTP library
+diagnostics are excluded from logs, and all public errors use fixed messages.
+
+Deterministic coverage includes both real rmcp transports against a synthetic
+server, enable/confirmation/configuration/schema gating, cancellation, nested
+credential/policy redaction, log exclusion, CodeMirror accept/reject/undo and
+stale-response prevention. Live provider/server/keychain and native visual smoke
+remain manual owner checks; no real keys are stored or used by these tests.
+
+The client enables rmcp's official reqwest HTTP feature instead of duplicating
+MCP session/SSE framing. Direct dependency reuse is reqwest (MIT OR Apache-2.0),
+rustls (MIT OR Apache-2.0), rustls-platform-verifier (MIT OR Apache-2.0), URL
+(MIT OR Apache-2.0) and regex (MIT OR Apache-2.0); the only new locked package is
+hyper-rustls (MIT OR Apache-2.0). The platform verifier preserves native trust,
+URL parsing rejects credential-bearing endpoints, and bounded regex rules reuse
+sharing-policy semantics. A bespoke Hyper transport would duplicate the official
+client's protocol lifecycle; no npm dependency is added.

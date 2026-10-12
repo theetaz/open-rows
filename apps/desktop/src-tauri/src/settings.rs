@@ -111,6 +111,10 @@ pub(crate) fn apply_saved(app: &tauri::App) {
 /// outside the app).
 pub(crate) fn apply(connections: &Connections, local: &LocalStore, text: &str) {
     if let Ok(value) = serde_json::from_str::<Value>(text) {
+        connections
+            .app
+            .state::<crate::mcp_client::State>()
+            .invalidate();
         crate::mcp::configure(&connections.app);
         connections.sessions.set_keepalive(keepalive(&value));
         connections.limits.apply(&value);

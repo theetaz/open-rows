@@ -20,7 +20,7 @@ arrow-array = "60"
 arrow-schema = "60"
 openrows-explain = { path = "../openrows-explain" }
 arrow-cast = "60"
-rmcp = { version = "=3.4.0", default-features = false, features = ["server", "client", "transport-io", "transport-streamable-http-server"] }
+rmcp = { version = "=3.4.0", default-features = false, features = ["server", "client", "transport-io", "transport-streamable-http-server", "transport-streamable-http-client-reqwest"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 thiserror.workspace = true
@@ -35,6 +35,12 @@ sha2 = "0.10"
 rand = "0.10"
 rusqlite = { version = "0.40", features = ["bundled"] }
 specta = { version = "=2.0.0-rc.25", optional = true, features = ["derive"] }
+
+reqwest = { version = "0.13.2", default-features = false, features = ["rustls-no-provider", "json", "stream"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+rustls-platform-verifier = "0.7"
+url = "2"
+regex = "1"
 
 [dev-dependencies]
 tempfile = "3.27"

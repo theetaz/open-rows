@@ -127,12 +127,18 @@ pub(crate) fn subscriber<M>(writer: M, level: LevelFilter) -> impl Subscriber + 
 where
     M: for<'a> MakeWriter<'a> + Send + Sync + 'static,
 {
+    use tracing_subscriber::layer::SubscriberExt;
     tracing_subscriber::fmt()
         .json()
         .with_ansi(false)
         .with_writer(writer)
         .with_max_level(level)
         .finish()
+        .with(tracing_subscriber::filter::filter_fn(|metadata| {
+            !["rmcp", "reqwest", "hyper", "h2"]
+                .iter()
+                .any(|target| metadata.target().starts_with(target))
+        }))
 }
 
 /// The daily rotating log file in `dir`, keeping [`KEPT_FILES`] files.

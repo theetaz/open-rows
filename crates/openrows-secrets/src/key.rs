@@ -36,6 +36,14 @@ impl SecretKey {
         }
     }
 
+    /// Account for user MCP server environment and HTTP headers.
+    #[must_use]
+    pub fn mcp_server(id: &str) -> Self {
+        Self {
+            account: format!("mcp/{id}/credentials"),
+        }
+    }
+
     /// The keychain account string.
     #[must_use]
     pub fn account(&self) -> &str {

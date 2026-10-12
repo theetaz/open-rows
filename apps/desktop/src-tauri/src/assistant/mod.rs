@@ -29,6 +29,8 @@ pub(crate) struct AssistantRequest {
     question: AssistantContext,
     query: Option<String>,
     plan: Vec<Plan>,
+    #[serde(default)]
+    inline: bool,
 }
 impl AssistantRequest {
     fn validate(&self) -> Result<(), IpcError> {
@@ -121,13 +123,24 @@ pub(crate) async fn assistant_run(
     let work = Box::pin(async {
         let context = context::prepare(&executor, &request).await?;
         let provider = ai::generation_provider(&app, &request.provider, &request.model).await?;
+        let provider = if request.inline {
+            provider.with_tool_calling(false)
+        } else {
+            provider
+        };
+        let router = crate::mcp_client::router::Router::new(
+            app.clone(),
+            executor.clone(),
+            options.cancel.clone(),
+            on_event.clone(),
+        );
         let input = AgentRequest {
             model: request.model.clone(),
             context,
             limits: AgentLimits::default(),
             options: options.clone(),
         };
-        forward(&provider, &executor, &input, on_event).await
+        forward(&provider, &router, &input, on_event).await
     });
     // Covers keychain/schema preparation as well as the agent loop.
     executor

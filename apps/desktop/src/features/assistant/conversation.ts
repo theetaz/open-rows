@@ -16,6 +16,7 @@ export type Turn = {
   text: string;
   proposals: readonly string[];
   traces: readonly TimedTrace[];
+  confirmations: readonly Extract<AgentEvent, { type: 'confirmation' }>[];
   outcome: string;
 };
 const empty: Conversation = { open: false, running: null, turns: [] };
@@ -77,6 +78,7 @@ function finish(id: string, run: string, outcome: string): void {
         ? {
             ...turn,
             outcome,
+            confirmations: [],
             traces: turn.traces.map((trace) =>
               trace.status === 'running'
                 ? {
@@ -109,6 +111,11 @@ function receive(id: string, run: string, event: AgentEvent): void {
     turns: state.turns.map((turn) => {
       if (turn.id !== run) return turn;
       switch (event.type) {
+        case 'confirmation':
+          return {
+            ...turn,
+            confirmations: [...turn.confirmations, event].slice(0, 4),
+          };
         case 'text':
           return { ...turn, text: (turn.text + event.delta).slice(0, 32768) };
         case 'proposal':
@@ -152,6 +159,7 @@ export async function sendQuestion(
     text: '',
     proposals: [],
     traces: [],
+    confirmations: [],
     outcome: 'Running',
   };
   update(id, {

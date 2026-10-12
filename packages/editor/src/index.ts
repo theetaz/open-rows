@@ -9,6 +9,8 @@ import { formatInView } from './format';
 import type { FormatKind, FormatOptions } from './format';
 import { insertSnippet } from './snippets';
 import { currentStatement } from './statement';
+import { installInline } from './inline';
+export type { InlineGenerate } from './inline';
 import {
   keyModeSlot,
   preferenceExtensions,
@@ -45,6 +47,8 @@ export interface SqlEditor {
   readonly insertSnippet: (body: string) => void;
   /** Insert literal SQL over the selection without interpreting snippet placeholders. */
   readonly insertText: (text: string) => void;
+  /** Open an inline proposal prompt from the menu or command palette. */
+  readonly promptInline: () => void;
   /**
    * Where the text Run Current executes starts: the selection, else the
    * statement at the cursor, else the document start.
@@ -72,6 +76,10 @@ export function mountSqlEditor(
       extensions: sqlEditorExtensions(options),
     }),
   });
+  const detachInline =
+    options.onInline && !options.readOnly
+      ? installInline(view, options.onInline, options.onKeyDown)
+      : null;
   return {
     view,
     setPreferences: (preferences) => {
@@ -91,7 +99,11 @@ export function mountSqlEditor(
       view.focus();
     },
     runStart: () => runStart(view),
+    promptInline: () => {
+      detachInline?.open();
+    },
     destroy: () => {
+      detachInline?.destroy();
       view.destroy();
     },
   };

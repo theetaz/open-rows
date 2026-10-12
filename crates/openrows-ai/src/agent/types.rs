@@ -107,6 +107,8 @@ pub trait AgentProvider: Send + Sync {
 pub struct ToolReply {
     /// Exact redacted tool result.
     pub context: GatedPayload,
+    /// Protocol tool failure with a policy-filtered result.
+    pub failed: bool,
     /// SQL proposal for local user review; no execution action exists.
     pub proposal: Option<String>,
 }
@@ -138,7 +140,7 @@ pub enum AgentError {
     #[error("Tool refused by sharing or execution policy")]
     Refused,
 }
-/// A tool trace contains sizes and safe summaries, never raw result data.
+/// A tool trace contains safe summaries and policy-filtered external evidence.
 #[derive(Clone, Debug, Serialize)]
 #[cfg_attr(feature = "ipc-types", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
@@ -155,6 +157,9 @@ pub struct Trace {
     pub redacted: bool,
     /// Elapsed milliseconds.
     pub duration_ms: u32,
+    /// Redacted external tool evidence only; never raw protocol data.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result: Option<String>,
     /// Running/succeeded/refused/cancelled.
     pub status: String,
 }
@@ -177,6 +182,17 @@ pub enum AgentEvent {
     Proposal {
         /// Literal SQL for user review.
         sql: String,
+    },
+    /// Native first-use prompt for an enabled user-server tool.
+    Confirmation {
+        /// Ephemeral pending consent ID.
+        id: String,
+        /// User-configured display name.
+        server: String,
+        /// Discovered enabled tool.
+        tool: String,
+        /// Exact policy-filtered arguments, never credentials.
+        arguments: String,
     },
     /// Successful completion and conservative usage.
     Done {

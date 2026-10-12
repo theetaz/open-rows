@@ -36,6 +36,7 @@ pub(super) async fn perform(
         tool: call.name.clone(),
         arguments: summary(call),
         bytes: 0,
+        result: None,
         redacted: false,
         duration_ms: 0,
         status: "running".into(),
@@ -52,16 +53,19 @@ pub(super) async fn perform(
         Ok(reply) => {
             let preview = reply.context.preview();
             trace.bytes = preview.bytes;
+            if call.name.starts_with("user_") {
+                trace.result = Some(preview.payload.clone());
+            }
             trace.redacted = preview.truncated
                 || preview.payload.contains("‹redacted›")
                 || preview.payload.contains("__OPENROWS_REDACTED_");
-            trace.status = "succeeded".into();
+            trace.status = if reply.failed { "failed" } else { "succeeded" }.into();
             if let Some(sql) = reply.proposal {
                 sink.send(AgentEvent::Proposal { sql })
                     .await
                     .map_err(|_| crate::AiError::Cancelled)?;
             }
-            (preview.payload, false)
+            (preview.payload, reply.failed)
         }
         Err(AgentError::Refused) => {
             trace.status = "refused".into();
@@ -86,6 +90,9 @@ pub(super) async fn perform(
     })
 }
 fn summary(call: &ToolCall) -> String {
+    if call.name.starts_with("user_") {
+        return "External arguments withheld until policy confirmation".into();
+    }
     call.arguments
         .as_object()
         .into_iter()
@@ -102,4 +109,21 @@ fn summary(call: &ToolCall) -> String {
         .chars()
         .take(256)
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn external_trace_summaries_never_echo_argument_keys_or_values() {
+        let call = ToolCall {
+            id: "fixture".into(),
+            name: "user_0_0".into(),
+            arguments: serde_json::json!({"synthetic-credential": "synthetic-value"}),
+        };
+        let text = summary(&call);
+        assert!(!text.is_empty());
+        assert!(!text.contains("synthetic-credential"));
+        assert!(!text.contains("synthetic-value"));
+    }
 }

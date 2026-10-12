@@ -1067,3 +1067,19 @@ The M2.5 exit is **not met**. Lifecycle, permission states, privacy, board
 safety and labels pass on the tested versions, with two label defects fixed in
 this audit. The reference-hardware budgets, the history downsampling rule and
 the wider engine matrix remain open.
+
+### Editor and external-tool boundaries (M45-06/07)
+
+Inline ⌘I generation reuses the native provider/sharing path with tools disabled,
+selected SQL and a native-resolved dialect. Accept/reject changes only the editor;
+normal SafetyPlan still applies when a human subsequently runs it.
+
+Explicit user MCP servers use the official rmcp stdio/Streamable HTTP client.
+Tools default disabled and require native first-use confirmation tied to the
+configuration/schema. Environment and header values stay in the OS keychain,
+without a reveal API or project import. External tool arguments/results require
+SampleRows sharing and are refused under Local only; redaction, content-free
+audit, bounded transport and assistant cancellation apply to both directions.
+Only filtered results appear in the assistant trace. User servers receive no
+OpenRows database connection or execution capability. See [23 §14](23-ai-assistant.md#14-editor-proposals-and-user-mcp-servers-m45-0607)
+for limits, settings and verification scope.

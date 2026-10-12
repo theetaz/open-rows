@@ -16,7 +16,7 @@ export const commands = {
 	/**  Cancel this provider's current verification request without changing settings. */
 	aiCancel: (id: string) => typedError<null, IpcError>(__TAURI_INVOKE("ai_cancel", { id })),
 	/**  Stream one bounded investigation; SQL events have no execution path. */
-	assistantRun: (request: AssistantRequest_Deserialize, onEvent: Channel<AgentEvent>) => typedError<null, IpcError>(__TAURI_INVOKE("assistant_run", { request, onEvent })),
+	assistantRun: (request: AssistantRequest_Deserialize, onEvent: Channel<AgentEvent_Deserialize>) => typedError<null, IpcError>(__TAURI_INVOKE("assistant_run", { request, onEvent })),
 	/**  Cancel only this tab's current turn; cancellation remains available while locked. */
 	assistantCancel: (id: string) => typedError<null, IpcError>(__TAURI_INVOKE("assistant_cancel", { id })),
 	/**  Exact offline assistant preview from the same producer used for generation. */
@@ -33,6 +33,18 @@ export const commands = {
 	aiAuditList: () => typedError<AuditEntry[], IpcError>(__TAURI_INVOKE("ai_audit_list")),
 	/**  Explicit local audit purge; policies and provider keys remain separate. */
 	aiAuditPurge: () => typedError<null, IpcError>(__TAURI_INVOKE("ai_audit_purge")),
+	/**  List non-secret device-local preferences; never start a server on mount. */
+	mcpServersList: () => typedError<ServerConfig[], IpcError>(__TAURI_INVOKE("mcp_servers_list")),
+	/**  Save public preferences and invalidate tool catalogues/consent immediately. */
+	mcpServersSave: (servers: ServerConfig[]) => typedError<null, IpcError>(__TAURI_INVOKE("mcp_servers_save", { servers })),
+	/**  Replace environment/headers in the OS keychain, without settings/logging them. */
+	mcpServerSecrets: (id: string, input: McpSecretInput) => typedError<null, IpcError>(__TAURI_INVOKE("mcp_server_secrets", { id, input })),
+	/**  Remove keychain values before removing the public server reference. */
+	mcpServerDelete: (id: string) => typedError<null, IpcError>(__TAURI_INVOKE("mcp_server_delete", { id })),
+	/**  Explicit connection probe, gated by AI enablement and a five-second deadline. */
+	mcpServerTools: (id: string) => typedError<McpClientTool[], IpcError>(__TAURI_INVOKE("mcp_server_tools", { id })),
+	/**  Resolve only a currently pending native prompt; unsolicited grants are refused. */
+	mcpToolConfirm: (id: string, allow: boolean) => typedError<null, IpcError>(__TAURI_INVOKE("mcp_tool_confirm", { id, allow })),
 	/**  Reconcile saved transport settings and return only scrubbed status/metadata. */
 	mcpStatus: () => typedError<ServerStatus, IpcError>(__TAURI_INVOKE("mcp_status")),
 	/**  Return a new read-only credential once after validating all saved identities. */
@@ -542,23 +554,65 @@ export const DEFAULT_CUSTOM_ENV_COLOR = "#7c3aed" as const;
 
 /* Types */
 /**  Ordered, bounded UI events; plain text is never interpreted as HTML. */
-export type AgentEvent =
+export type AgentEvent = AgentEvent_Serialize | AgentEvent_Deserialize;
+
+/**  Ordered, bounded UI events; plain text is never interpreted as HTML. */
+export type AgentEvent_Deserialize =
 /**  Streaming model text. */
-{ type: "text";
+({ type: "text";
 /**  Incremental plain text. */
-delta: string } |
+delta: string }) & { arguments?: never; id?: never; server?: never; sql?: never; tokens?: never; tool?: never; trace?: never } |
 /**  Visible call start/completion. */
-{ type: "trace";
+({ type: "trace";
 /**  Safe tool metadata. */
-trace: Trace } |
+trace: Trace_Deserialize }) & { arguments?: never; delta?: never; id?: never; server?: never; sql?: never; tokens?: never; tool?: never } |
 /**  User-review-only SQL. */
-{ type: "proposal";
+({ type: "proposal";
 /**  Literal SQL for user review. */
-sql: string } |
+sql: string }) & { arguments?: never; delta?: never; id?: never; server?: never; tokens?: never; tool?: never; trace?: never } |
+/**  Native first-use prompt for an enabled user-server tool. */
+({ type: "confirmation";
+/**  Ephemeral pending consent ID. */
+id: string;
+/**  User-configured display name. */
+server: string;
+/**  Discovered enabled tool. */
+tool: string;
+/**  Exact policy-filtered arguments, never credentials. */
+arguments: string }) & { delta?: never; sql?: never; tokens?: never; trace?: never } |
 /**  Successful completion and conservative usage. */
-{ type: "done";
+({ type: "done";
 /**  Conservative total token upper bound. */
-tokens: number };
+tokens: number }) & { arguments?: never; delta?: never; id?: never; server?: never; sql?: never; tool?: never; trace?: never };
+
+/**  Ordered, bounded UI events; plain text is never interpreted as HTML. */
+export type AgentEvent_Serialize =
+/**  Streaming model text. */
+({ type: "text";
+/**  Incremental plain text. */
+delta: string }) & { arguments?: never; id?: never; server?: never; sql?: never; tokens?: never; tool?: never; trace?: never } |
+/**  Visible call start/completion. */
+({ type: "trace";
+/**  Safe tool metadata. */
+trace: Trace_Serialize }) & { arguments?: never; delta?: never; id?: never; server?: never; sql?: never; tokens?: never; tool?: never } |
+/**  User-review-only SQL. */
+({ type: "proposal";
+/**  Literal SQL for user review. */
+sql: string }) & { arguments?: never; delta?: never; id?: never; server?: never; tokens?: never; tool?: never; trace?: never } |
+/**  Native first-use prompt for an enabled user-server tool. */
+({ type: "confirmation";
+/**  Ephemeral pending consent ID. */
+id: string;
+/**  User-configured display name. */
+server: string;
+/**  Discovered enabled tool. */
+tool: string;
+/**  Exact policy-filtered arguments, never credentials. */
+arguments: string }) & { delta?: never; sql?: never; tokens?: never; trace?: never } |
+/**  Successful completion and conservative usage. */
+({ type: "done";
+/**  Conservative total token upper bound. */
+tokens: number }) & { arguments?: never; delta?: never; id?: never; server?: never; sql?: never; tool?: never; trace?: never };
 
 /**  Aggregates retain counts, never raw values or activity identities. */
 export type Aggregate = {
@@ -722,6 +776,7 @@ export type AssistantRequest_Deserialize = {
 	question: AssistantContext_Deserialize,
 	query: string | null,
 	plan: Plan[],
+	inline?: boolean,
 };
 
 /**  Selected tab context; native code resolves profile, permissions and provider secrets. */
@@ -735,6 +790,7 @@ export type AssistantRequest_Serialize = {
 	question: AssistantContext_Serialize,
 	query: string | null,
 	plan: Plan[],
+	inline: boolean,
 };
 
 /**  Native target identifiers are subject to the same sharing redactions. */
@@ -1420,6 +1476,19 @@ export type EditorRun = {
 	durationMs: number | null,
 	samples: KeystrokeSample[],
 };
+
+/**  User-authorised endpoint; never discovered from project files. */
+export type Endpoint =
+/**  Spawn a direct executable, without a shell or inherited environment. */
+{ kind: "stdio";
+/**  Public executable path/name, never a shell command. */
+command: string;
+/**  Public non-secret arguments. */
+args: string[] } |
+/**  HTTPS, or explicit loopback HTTP, without URL credentials. */
+{ kind: "http";
+/**  Validated non-secret endpoint. */
+url: string };
 
 /**  Database engine of a profile. */
 export type EngineDto = "duckdb" | "postgres" | "mysql" | "mariadb" | "sqlserver" | "clickhouse" | "sqlite" | "libsql" | "libsql-file";
@@ -2213,6 +2282,18 @@ export type Mark =
 "bar" |
 /**  Unconnected points. */
 "scatter";
+
+/**  Public catalogue DTO keeps schema JSON lossless across the JavaScript boundary. */
+export type McpClientTool = {
+	name: string,
+	schema: string,
+};
+
+/**  Secret inputs are write-only; IPC has no reveal command. */
+export type McpSecretInput = {
+	env: { [key in string]: string },
+	headers: { [key in string]: string },
+};
 
 /**  Device transport settings; no credential value can be serialized here. */
 export type McpSettings = {
@@ -3251,6 +3332,18 @@ export type SecurityStatus = {
 	notice: string | null,
 };
 
+/**  Non-secret device-local server preferences. Tools default disabled. */
+export type ServerConfig = {
+	/**  Validated stable identifier. */
+	id: string,
+	/**  Display-only user label. */
+	name: string,
+	/**  Explicit transport. */
+	endpoint: Endpoint,
+	/**  Exact tool names the user enabled. */
+	enabledTools: string[],
+};
+
 /**  What the UI shows about the server after connecting. */
 export type ServerDto = {
 	/**  `PostgreSQL`, `CockroachDB`, `MySQL`, `MariaDB` or `SQLite`. */
@@ -3764,7 +3857,10 @@ export type TokenScope = {
 };
 
 /**  A tool trace contains sizes and safe summaries, never raw result data. */
-export type Trace = {
+export type Trace = Trace_Serialize | Trace_Deserialize;
+
+/**  A tool trace contains sizes and safe summaries, never raw result data. */
+export type Trace_Deserialize = {
 	/**  Sequential step number. */
 	step: number,
 	/**  Fixed tool name. */
@@ -3777,6 +3873,28 @@ export type Trace = {
 	redacted: boolean,
 	/**  Elapsed milliseconds. */
 	durationMs: number,
+	/**  Redacted external tool evidence only; never raw protocol data. */
+	result: string | null,
+	/**  Running/succeeded/refused/cancelled. */
+	status: string,
+};
+
+/**  A tool trace contains sizes and safe summaries, never raw result data. */
+export type Trace_Serialize = {
+	/**  Sequential step number. */
+	step: number,
+	/**  Fixed tool name. */
+	tool: string,
+	/**  Argument field names and byte lengths, without values or SQL literals. */
+	arguments: string,
+	/**  Exact gated result size. */
+	bytes: number,
+	/**  Gate redaction/truncation disclosure. */
+	redacted: boolean,
+	/**  Elapsed milliseconds. */
+	durationMs: number,
+	/**  Redacted external tool evidence only; never raw protocol data. */
+	result?: string | null,
 	/**  Running/succeeded/refused/cancelled. */
 	status: string,
 };

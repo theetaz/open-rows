@@ -166,3 +166,25 @@ flowchart LR
 History offers Insert at the last focused editor's cursor, Copy, Open in a new query tab, Save as query, Delete, and confirmed Clear for this connection or all connections. Reuse opens or edits SQL without executing it and uses the current context's normal read-only, confirmation and parameter checks when Run is chosen. Save opens an editable SQL review with lexer-based string/number/dollar-string highlights, then writes the reviewed text into the active project's first query folder (or project root), otherwise into local queries for the active connection. Saving remains an explicit user action.
 
 Redacted entries show numbered `__OPENROWS_REDACTED_n__` markers. The editor explains that every marker must be filled; both execute and Explain reject remaining markers before opening any session. Parameter values are retained only in the current tab's memory and are excluded from session descriptors.
+
+## Inline SQL proposals (M45-06)
+
+In a connected query tab, press **⌘I** (Ctrl+I on other platforms). Enter a
+prompt over the selection, the statement at the cursor, or an empty insert
+point. The configured default provider/model streams through the native
+assistant and the connection's sharing gate. Inline mode supplies the resolved
+dialect and selected SQL, and makes no database reads or tool calls. It works
+with every engine's editor dialect, including libSQL's SQLite and DuckDB's
+PostgreSQL highlighting mappings.
+
+The old range stays visible with a strike-through beside the streaming proposal.
+**Accept proposal** applies literal SQL as one undoable edit; **Reject proposal**
+leaves the document unchanged. Neither action executes SQL. Escape cancels native
+work. Editing the document, replacing the proposal or closing/switching the tab
+invalidates the original range and cancels pending work; late responses cannot
+be accepted. AI-off, lock and policy revocation retain the native cancellation
+boundary. Enable AI, choose a default provider/model and permit that provider in
+the connection's sharing policy before generating.
+
+The Query menu and command palette also expose **Inline SQL prompt**. Beautify
+SQL moves to ⌥⌘B; Uglify keeps ⇧⌘I.
