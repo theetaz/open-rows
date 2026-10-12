@@ -15,6 +15,10 @@ pub(super) struct Slot {
 pub(crate) struct Monitors {
     slots: Mutex<BTreeMap<Key, Arc<Mutex<Slot>>>>,
     connections: Mutex<(BTreeSet<String>, BTreeMap<String, u64>)>,
+    /// Explicit opt-in: these collectors survive closing their last view.
+    background: Mutex<BTreeSet<Key>>,
+    /// In-memory incidents, evaluated only by a running collector.
+    pub(super) alerts: super::alerts::Alerts,
 }
 impl Monitors {
     pub(super) fn contains(&self, key: &Key) -> bool {
@@ -81,7 +85,46 @@ impl Monitors {
             })
             .ok_or(MonitorError::Stopped)
     }
+    /// Opt in only for a running collector; opting out never stops an open view.
+    pub(super) fn set_background(&self, key: &Key, enabled: bool) -> Result<(), MonitorError> {
+        let slots = self.slots.lock().unwrap_or_else(PoisonError::into_inner);
+        let mut background = self
+            .background
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        if !enabled {
+            background.remove(key);
+            return Ok(());
+        }
+        let running = slots.get(key).is_some_and(|slot| {
+            slot.lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .monitor
+                .is_some()
+        });
+        if !running {
+            return Err(MonitorError::Stopped);
+        }
+        background.insert(key.clone());
+        Ok(())
+    }
+    pub(super) fn background(&self, key: &Key) -> bool {
+        self.background
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .contains(key)
+    }
+    /// The last view closed: keep collecting only with explicit background opt-in.
+    pub(super) fn release(&self, key: &Key) {
+        if !self.background(key) {
+            self.stop(key);
+        }
+    }
     pub(super) fn stop(&self, key: &Key) {
+        self.background
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .remove(key);
         if let Some(slot) = self
             .slots
             .lock()
@@ -118,6 +161,10 @@ impl Monitors {
         self.stop_where(|_| true);
     }
     fn stop_where(&self, matches: impl Fn(&Key) -> bool) {
+        self.background
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .retain(|key| !matches(key));
         let mut slots = self.slots.lock().unwrap_or_else(PoisonError::into_inner);
         let keys: Vec<_> = slots.keys().filter(|key| matches(key)).cloned().collect();
         for key in keys {
@@ -195,6 +242,51 @@ mod tests {
                 .cancel
                 .borrow()
         );
+        Ok(())
+    }
+    fn cancelled(slot: &Arc<Mutex<Slot>>) -> bool {
+        *slot
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .cancel
+            .borrow()
+    }
+    #[test]
+    fn background_is_explicit_and_disabled_or_locked_collectors_stop() -> Result<(), MonitorError> {
+        let registry = Monitors::default();
+        let key = ("p".into(), "db".into());
+        registry.connected("p", 0);
+        let (slot, _) = registry.reserve(&key)?;
+        // No running collector: opt-in is refused and closing the view stops the reservation.
+        assert!(registry.set_background(&key, true).is_err());
+        registry.release(&key);
+        assert!(cancelled(&slot) && !registry.contains(&key));
+        // Opt-in survives closing the view; opt-out leaves the view's collector to its owner.
+        let (slot, _) = registry.reserve(&key)?;
+        slot.lock().unwrap_or_else(PoisonError::into_inner).monitor = None;
+        registry
+            .background
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .insert(key.clone());
+        registry.release(&key);
+        assert!(!cancelled(&slot) && registry.contains(&key));
+        registry.set_background(&key, false)?;
+        registry.release(&key);
+        assert!(cancelled(&slot) && !registry.contains(&key));
+        // Locking (stop_all) and explicit pause stop background collectors and clear the opt-in.
+        for stop in [Monitors::stop_all as fn(&Monitors), |r: &Monitors| {
+            r.stop(&("p".into(), "db".into()));
+        }] {
+            let (slot, _) = registry.reserve(&key)?;
+            registry
+                .background
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .insert(key.clone());
+            stop(&registry);
+            assert!(cancelled(&slot) && !registry.background(&key) && !registry.contains(&key));
+        }
         Ok(())
     }
     #[test]

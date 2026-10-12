@@ -15,6 +15,8 @@ import {
   monitorHistory,
   configureMonitorHistory,
   purgeMonitorHistory,
+  monitorIncidents,
+  setMonitorBackground,
 } from './monitor';
 const target = { profileId: 'p', database: 'db' };
 describe('monitoring IPC', () => {
@@ -68,6 +70,15 @@ describe('monitoring IPC', () => {
       ['monitor_history_configure', { profiles: ['p'] }],
       ['monitor_history_purge', { profileId: 'p' }],
       ['monitor_history_purge', { profileId: null }],
+    ]);
+  });
+  it('reads incidents and sets the explicit background opt-in', async () => {
+    invoke.mockResolvedValue({ status: 'ok', data: null });
+    await monitorIncidents(target);
+    await setMonitorBackground(target, true);
+    expect(invoke.mock.calls).toEqual([
+      ['monitor_incidents', { target }],
+      ['monitor_background', { target, enabled: true }],
     ]);
   });
 });

@@ -1,0 +1,23 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.notices {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  z-index: 20;
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+}
+.notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  color: var(--or-text);
+  background: var(--or-panel-solid);
+  border: 1px solid var(--or-separator);
+  border-radius: 4px;
+}

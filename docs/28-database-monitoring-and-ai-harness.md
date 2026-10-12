@@ -639,3 +639,46 @@ native-arm64 MySQL 8.4 and MariaDB 11.4 (Performance Schema on, plus MariaDB's
 default off) and the opt-in overhead benchmark are recorded in ADR-0011. Wider
 live version/provider and reference-load/all-app performance validation remains
 M25-09.
+
+## 13. Implemented (M25-05): incidents and background monitoring
+
+`openrows_monitor::alerts` is a Tauri-free, model-free rule engine. A rule
+names a live aggregate (for example `sessions:waiting`,
+`Database:cache_hit_ratio` or `Replication:replay_lag_ms`), a direction, a
+firing threshold and a separate recovery threshold. Validation rejects
+non-finite values, a recovery threshold on the unhealthy side (no hysteresis
+band), zero-sample holds, durations or cooldowns above one hour and duplicate
+ids. An incident opens only after the breach holds for both a minimum number of
+consecutive known samples and a minimum wall-clock duration. It resolves only
+after recovery holds in the same way. Values inside the hysteresis band neither
+resolve an open incident nor count toward a new one. After recovery, a cooldown
+must pass before the same rule and scope can reopen. There is at most one open
+incident per rule and scope (server or database), and repeated or out-of-order
+timestamps are ignored. Unknown, gap, reset, unavailable, permission-denied or
+non-finite samples interrupt both streaks. They can never open or resolve an
+incident. An incident records its rule snapshot, scope, onset time, up to eight
+onset values, peak, latest or recovery value and end time. The engine retains 50
+incidents per target and evicts resolved ones first.
+
+Built-in rules cover waiting, idle-in-transaction and active sessions, the
+PostgreSQL cache and InnoDB buffer-pool hit ratios, deadlocks and replica replay
+lag. They are evaluated wherever the engine supplies the metric. Deadlocks fire
+on the first observed deadlock interval. The other rules need three samples and
+30 s to fire or recover, with a 60 s cooldown. Rule editing is not exposed yet.
+
+The desktop evaluates the latest live observations on each collector status
+event. Evaluation runs only for a running collector while the app is unlocked,
+so a stopped, paused or locked monitor does no alert work. Incidents stay in
+memory for the app run (at most 16 targets) and are never persisted or sent
+anywhere. `monitor-incident` events drive an in-app notice, which is cleared and
+hidden while locked. The Monitor's **Incidents** panel lists open and resolved
+incidents with rule, scope, start/end and evidence, plus the active rules.
+
+Background monitoring is an explicit per-connection opt-in (**Background** in
+the Monitor header) for a running collector. With it on, closing the last
+Monitor view keeps that collector and its rules running while OpenRows is open.
+There is no OS service, login item or daemon. Pause, lock, disconnect, profile
+removal, network re-probe and app exit stop the collector and clear the opt-in.
+After unlocking, the user must reopen the Monitor; nothing restarts
+automatically. A cadence change keeps the opt-in across the restarted
+generation.

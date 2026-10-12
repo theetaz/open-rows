@@ -200,6 +200,40 @@ impl Monitor {
             .collect()
     }
 
+    /// Latest scalar observations for deterministic alert rules; empty once stopped.
+    #[must_use]
+    pub fn observations(&self) -> Vec<crate::alerts::Observation> {
+        let shared = self.shared.lock().unwrap_or_else(PoisonError::into_inner);
+        if shared.stopped {
+            return Vec::new();
+        }
+        shared
+            .store
+            .series
+            .iter()
+            .filter_map(|(key, points)| {
+                let point = points.back()?;
+                let (metric, scope) = if key.starts_with("Database:") {
+                    (
+                        format!("Database:{}", key.rsplit(':').next()?),
+                        crate::Scope::Database,
+                    )
+                } else if key.starts_with("sessions:") || key.starts_with("Replication:") {
+                    (key.clone(), crate::Scope::Server)
+                } else {
+                    return None;
+                };
+                Some(crate::alerts::Observation {
+                    metric,
+                    scope,
+                    wall_ms: point.wall_ms,
+                    value: point.value,
+                    state: point.state.clone(),
+                })
+            })
+            .collect()
+    }
+
     /// Live scalar series or source/top-N table as bounded Arrow bytes.
     /// # Errors
     /// Stopped collector or window encoding/admission failure.

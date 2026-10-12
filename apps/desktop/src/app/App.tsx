@@ -2,6 +2,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Button, ThemeProvider } from '@openrows/ui';
 import { LockBoundary } from '../features/security/LockBoundary';
+import { IncidentNotice } from '../features/monitor/IncidentNotice';
 import { useWindowReady } from './useWindowReady';
 const Gallery = lazy(() =>
   import('../gallery/Gallery').then((module) => ({ default: module.Gallery })),
@@ -107,6 +108,7 @@ export function App(): React.JSX.Element {
           </Suspense>
         )}
         {gallery && <GalleryView onBack={setGallery} />}
+        <IncidentNotice />
       </LockBoundary>
     </ThemeProvider>
   );

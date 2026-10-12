@@ -26,6 +26,7 @@ pub(crate) async fn monitor_start(
         .app
         .state::<crate::security::Security>()
         .admit("monitor_start")?;
+    let background = state.monitors.background(&key);
     if let Ok(monitor) = state.monitors.get(&key)
         && !monitor.reusable(interval)
     {
@@ -68,6 +69,10 @@ pub(crate) async fn monitor_start(
     forward(&state.app, &request.target, &monitor);
     slot.monitor = Some(monitor.clone());
     drop(slot);
+    if background {
+        // A cadence change restarts the generation without dropping the opt-in.
+        state.monitors.set_background(&key, true).map_err(error)?;
+    }
     reply(&state, &request.target)
 }
 
@@ -88,18 +93,18 @@ async fn prepare(
     Monitor::spawn(Box::new(reader), descriptors, interval).map_err(error)
 }
 
-/// Stop collection, discard samples and release the dedicated session.
+/// Close a view: stop and discard samples unless background monitoring is opted in.
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn monitor_stop(
     state: State<'_, Connections>,
     target: MonitorTarget,
 ) -> Result<(), IpcError> {
-    state.monitors.stop(&target.key());
+    state.monitors.release(&target.key());
     Ok(())
 }
 
-/// Pause clears the generation; explicit start re-probes on a fresh session.
+/// Pause clears the generation and background opt-in; explicit start re-probes.
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn monitor_pause(
@@ -177,6 +182,7 @@ fn reply(state: &Connections, target: &MonitorTarget) -> Result<MonitorReply, Ip
     let monitor = state.monitors.get(&target.key()).map_err(error)?;
     Ok(MonitorReply {
         generation: generation(&monitor),
+        background: state.monitors.background(&target.key()),
         capabilities: monitor.capabilities(),
         sources: monitor.snapshot(),
     })
@@ -198,6 +204,7 @@ fn forward(app: &tauri::AppHandle, target: &MonitorTarget, monitor: &Arc<Monitor
             if let Err(error) = super::history::persist(&app, &target, &monitor) {
                 tracing::warn!(kind = ?error.kind, "monitor history write failed");
             }
+            super::alerts::evaluate(&app, &target, &monitor);
             let _ = MonitorChanged {
                 target: target.clone(),
                 generation: generation.clone(),
@@ -211,7 +218,7 @@ fn forward(app: &tauri::AppHandle, target: &MonitorTarget, monitor: &Arc<Monitor
     clippy::needless_pass_by_value,
     reason = "map_err consumes typed failures at the IPC boundary"
 )]
-fn error(error: MonitorError) -> IpcError {
+pub(super) fn error(error: MonitorError) -> IpcError {
     let kind = match error {
         MonitorError::Stopped => IpcErrorKind::NotFound,
         MonitorError::Limit => IpcErrorKind::Invalid,

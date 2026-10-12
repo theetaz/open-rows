@@ -188,9 +188,9 @@ export const commands = {
 	monitorHypopg: (request: HypoPgRequest) => typedError<HypoPgReply, IpcError>(__TAURI_INVOKE("monitor_hypopg", { request })),
 	/**  Start/resume one shared collector, requiring an already connected profile. */
 	monitorStart: (request: MonitorStart) => typedError<MonitorReply, IpcError>(__TAURI_INVOKE("monitor_start", { request })),
-	/**  Stop collection, discard samples and release the dedicated session. */
+	/**  Close a view: stop and discard samples unless background monitoring is opted in. */
 	monitorStop: (target: MonitorTarget) => typedError<null, IpcError>(__TAURI_INVOKE("monitor_stop", { target })),
-	/**  Pause clears the generation; explicit start re-probes on a fresh session. */
+	/**  Pause clears the generation and background opt-in; explicit start re-probes. */
 	monitorPause: (target: MonitorTarget) => typedError<null, IpcError>(__TAURI_INVOKE("monitor_pause", { target })),
 	/**  List source capabilities, scope and reviewed setup guidance. */
 	monitorCapabilities: (target: MonitorTarget) => typedError<Descriptor[], IpcError>(__TAURI_INVOKE("monitor_capabilities", { target })),
@@ -202,6 +202,10 @@ export const commands = {
 	monitorHistoryConfigure: (profiles: string[]) => typedError<null, IpcError>(__TAURI_INVOKE("monitor_history_configure", { profiles })),
 	/**  Purge a profile or all local monitor history, leaving the opt-in choice intact. */
 	monitorHistoryPurge: (profileId: string | null) => typedError<null, IpcError>(__TAURI_INVOKE("monitor_history_purge", { profileId })),
+	/**  Read deterministic rules and incidents; no collector is started. */
+	monitorIncidents: (target: MonitorTarget) => typedError<IncidentsReply, IpcError>(__TAURI_INVOKE("monitor_incidents", { target })),
+	/**  Opt a running collector in or out of background monitoring while the app is open. */
+	monitorBackground: (target: MonitorTarget, enabled: boolean) => typedError<null, IpcError>(__TAURI_INVOKE("monitor_background", { target, enabled })),
 	/**
 	 *  Split, bind, gate and start SQL on an open session.
 	 *
@@ -502,6 +506,7 @@ export const events = {
 	catalogChanged: makeEvent<CatalogChanged>("catalog-changed"),
 	menuCommand: makeEvent<MenuCommand>("menu-command"),
 	monitorChanged: makeEvent<MonitorChanged>("monitor-changed"),
+	monitorIncident: makeEvent<MonitorIncident>("monitor-incident"),
 	sessionStateChanged: makeEvent<SessionStateChanged>("session-state-changed"),
 	settingsChanged: makeEvent<SettingsChanged>("settings-changed"),
 	sshPromptChanged: makeEvent<SshPromptChanged>("ssh-prompt-changed"),
@@ -579,6 +584,30 @@ export type AiSettings = {
 	defaultProvider?: string,
 	/**  Explicit default model, empty when unset. */
 	defaultModel?: string,
+};
+
+/**  A threshold rule with hysteresis, duration, recovery and cooldown. */
+export type AlertRule = {
+	/**  Stable identity; deduplication key together with scope. */
+	id: string,
+	/**  Short label. */
+	title: string,
+	/**  Live aggregate name, e.g. `sessions:waiting`. */
+	metric: string,
+	/**  Unhealthy direction. */
+	comparison: Comparison,
+	/**  Firing threshold. */
+	fire: number | null,
+	/**  Separate recovery threshold (hysteresis band between the two). */
+	clear: number | null,
+	/**  How long the breach must hold before an incident opens. */
+	fireAfter: Hold,
+	/**  How long recovery must hold before the incident resolves. */
+	clearAfter: Hold,
+	/**  Minimum quiet time after recovery before the same rule/scope reopens. */
+	cooldownMs: number,
+	/**  Displayed severity. */
+	severity: Severity,
 };
 
 /**  Generated DDL for a change set, without committing anything. */
@@ -938,6 +967,13 @@ export type ColumnDto = {
 /**  Whether every filter or any filter must match. */
 export type CombinatorDto = "and" | "or";
 
+/**  Direction in which a metric becomes unhealthy. */
+export type Comparison =
+/**  Fires at or above `fire`; healthy at or below `clear`. */
+"above" |
+/**  Fires at or below `fire`; healthy at or above `clear`. */
+"below";
+
 export type ConflictDto = "error" | "skip" | "update";
 
 /**  Classification displayed before any profile or keychain write. */
@@ -1284,6 +1320,14 @@ export type EnvInput = {
 
 /**  Environment classification (FR-CONN-06). */
 export type EnvKindDto = "local" | "dev" | "staging" | "prod" | "custom";
+
+/**  A value recorded as incident evidence. */
+export type Evidence = {
+	/**  Collection time. */
+	wallMs: number | null,
+	/**  Observed value. */
+	value: number | null,
+};
 
 /**  How `query_execute` answered. */
 export type ExecuteReply =
@@ -1647,6 +1691,14 @@ export type HistorySearchRequest = {
 /**  Outcome of a recorded statement. */
 export type HistoryStatusDto = "ok" | "error" | "cancelled";
 
+/**  Consecutive known samples and elapsed wall time that must both be met. */
+export type Hold = {
+	/**  At least one consecutive known sample. */
+	samples: number,
+	/**  Milliseconds from the first to the latest sample of the streak. */
+	ms: number,
+};
+
 /**  Estimated plan costs are comparable within this session, not runtime savings. */
 export type HypoPgEstimate = {
 	baselineCost: number | null,
@@ -1842,6 +1894,33 @@ export type ImportSummaryDto = {
 	conflicts: number | null,
 	/**  The first 100 row errors. */
 	errors: RowErrorDto[],
+};
+
+/**  An open or resolved incident with onset/recovery evidence. */
+export type Incident = {
+	/**  Engine-local monotonic identity. */
+	id: number,
+	/**  Rule snapshot at onset, including thresholds. */
+	rule: AlertRule,
+	/**  Deduplication scope. */
+	scope: Scope,
+	/**  Wall time of the first breaching sample of the firing streak. */
+	startedMs: number | null,
+	/**  Wall time of the sample that completed recovery. */
+	endedMs: number | null,
+	/**  The breaching streak that opened the incident (at most eight values). */
+	onset: Evidence[],
+	/**  Worst observed value while open. */
+	peak: Evidence,
+	/**  Latest known value while open, or the recovery value. */
+	last: Evidence,
+};
+
+/**  Rules, retained incidents and the background opt-in for one target. */
+export type IncidentsReply = {
+	rules: AlertRule[],
+	incidents: Incident[],
+	background: boolean,
 };
 
 /**  One row of the Index grid. */
@@ -2061,9 +2140,17 @@ export type MonitorExplain = {
 	confirmToken: string | null,
 };
 
+/**  In-app notification of an opened or resolved incident. */
+export type MonitorIncident = {
+	target: MonitorTarget,
+	transition: Transition,
+};
+
 /**  Admission reply and small current snapshot. */
 export type MonitorReply = {
 	generation: string,
+	/**  Explicit background opt-in survives closing the last view. */
+	background: boolean,
 	capabilities: Descriptor[],
 	sources: SourceStatus[],
 };
@@ -3049,6 +3136,13 @@ export type SessionStateDto = "connecting" | "idle" | "busy" | "reconnecting" |
 /**  `settings.json` changed outside the app; the webview reads it again. */
 export type SettingsChanged = Record<string, never>;
 
+/**  Incident severity shown in the Monitor; no external delivery. */
+export type Severity =
+/**  Degraded but serving. */
+"warning" |
+/**  Needs prompt attention. */
+"critical";
+
 /**  Maximum category authorised for a connection; every connection defaults off. */
 export type SharingLevel =
 /**  No database context. */
@@ -3524,6 +3618,13 @@ export type Trace = {
 };
 
 export type TransactionDto = "single" | "batches";
+
+/**  Lifecycle change for in-app notification. */
+export type Transition =
+/**  Breach held for the required duration. */
+{ kind: "opened"; incident: Incident } |
+/**  Recovery held for the required duration. */
+{ kind: "resolved"; incident: Incident };
 
 /**  One trigger in the Triggers sheet. */
 export type TriggerDto = {

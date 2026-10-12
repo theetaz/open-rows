@@ -124,6 +124,8 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
         monitor::monitor_history,
         monitor::monitor_history_configure,
         monitor::monitor_history_purge,
+        monitor::monitor_incidents,
+        monitor::monitor_background,
         queries::commands::query_execute,
         queries::commands::query_cancel,
         queries::explain::query_explain,
@@ -221,6 +223,7 @@ fn with_events_and_types(
             prompts::SshPromptChanged,
             menu::MenuCommand,
             monitor::MonitorChanged,
+            monitor::MonitorIncident,
             settings_watch::SettingsChanged
         ])
         .constant(

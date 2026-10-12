@@ -1,29 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 import { Button } from '@openrows/ui';
+import type { MonitorTarget } from '@openrows/ipc';
+import { BackgroundToggle } from './BackgroundToggle';
 import type { MonitorControls } from './useMonitor';
 import type { useMonitorHistory } from './useMonitorHistory';
 import styles from './Monitor.module.css';
 /** Scope and explicit cadence/window controls; heavier source floors remain core-owned. */
 export function MonitorHeader(props: {
+  target: MonitorTarget;
   label: string;
   monitor: MonitorControls;
   history: ReturnType<typeof useMonitorHistory>;
 }): React.JSX.Element {
   const { monitor, history } = props;
-  const times =
-    monitor.data?.reply.sources.flatMap((source) =>
-      source.lastSuccessMs === null ? [] : [source.lastSuccessMs],
-    ) ?? [];
-  const last = times.length ? Math.max(...times) : null;
   return (
     <header className={styles.header}>
       <strong>{props.label}</strong>
-      <span role="status">
-        {monitor.paused ? 'Paused — retained samples are stale' : 'Live'} ·{' '}
-        {last === null
-          ? 'Awaiting first sample'
-          : `${String(Math.max(0, Math.floor((monitor.now - last) / 1000)))} s since last sample`}
-      </span>
+      <span role="status">{freshness(monitor)}</span>
       <label>
         Live interval
         <select
@@ -69,6 +62,11 @@ export function MonitorHeader(props: {
       >
         {monitor.paused ? 'Resume monitor' : 'Pause monitor'}
       </Button>
+      <BackgroundToggle
+        target={props.target}
+        enabled={monitor.data?.reply.background ?? false}
+        disabled={monitor.paused || !monitor.data}
+      />
       {history.hours > 0 && (
         <Button size="sm" onClick={history.refresh}>
           Refresh history range
@@ -79,4 +77,19 @@ export function MonitorHeader(props: {
       </span>
     </header>
   );
+}
+
+/** Live/paused state and age of the newest successful sample. */
+function freshness(monitor: MonitorControls): string {
+  const times =
+    monitor.data?.reply.sources.flatMap((source) =>
+      source.lastSuccessMs === null ? [] : [source.lastSuccessMs],
+    ) ?? [];
+  const state = monitor.paused ? 'Paused — retained samples are stale' : 'Live';
+  if (!times.length) return `${state} · Awaiting first sample`;
+  const age = Math.max(
+    0,
+    Math.floor((monitor.now - Math.max(...times)) / 1000),
+  );
+  return `${state} · ${String(age)} s since last sample`;
 }

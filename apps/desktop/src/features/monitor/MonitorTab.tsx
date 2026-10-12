@@ -9,6 +9,7 @@ import { MonitorHeader } from './MonitorHeader';
 import { MonitorOverview } from './MonitorOverview';
 import { SourcePanel } from './SourcePanel';
 import { HistoryControls } from './HistoryControls';
+import { IncidentsPanel } from './IncidentsPanel';
 import styles from './Monitor.module.css';
 const AdvisorPanel = lazy(() =>
   import('./AdvisorPanel').then((module) => ({ default: module.AdvisorPanel })),
@@ -16,6 +17,7 @@ const AdvisorPanel = lazy(() =>
 
 const PANELS = [
   { value: 'overview', label: 'Overview' },
+  { value: 'incidents', label: 'Incidents' },
   { value: 'activity', label: 'Sessions' },
   { value: 'blocking', label: 'Blocking' },
   { value: 'statements', label: 'Top queries' },
@@ -91,6 +93,7 @@ export function MonitorTab(props: Props): React.JSX.Element {
       aria-label={`Monitor on ${props.database}`}
     >
       <MonitorHeader
+        target={target}
         label={`${props.profile.name} · ${props.database} · ${ENGINE_NAMES[props.profile.engine] ?? props.profile.engine}`}
         monitor={monitor}
         history={history}
@@ -148,10 +151,15 @@ function MonitorContent(
             target={{ profileId: props.profile.id, database: props.database }}
             now={monitor.now}
             production={props.profile.env.kind === 'prod'}
-            revision={`${monitor.data?.reply.generation ?? ''}:${monitor.data?.reply.sources.map((s) => `${s.source}:${String(s.sequence)}:${s.state.kind}`).join('|') ?? ''}:${String(Math.floor(monitor.now / 5000))}`}
+            revision={`${liveRevision(monitor)}:${String(Math.floor(monitor.now / 5000))}`}
             onEvidence={props.onEvidence}
           />
         </Suspense>
+      ) : panel === 'incidents' ? (
+        <IncidentsPanel
+          target={{ profileId: props.profile.id, database: props.database }}
+          revision={liveRevision(monitor)}
+        />
       ) : panel === 'overview' ? (
         <MonitorOverview
           engine={props.profile.engine}
@@ -179,6 +187,16 @@ function MonitorContent(
       </details>
     </div>
   );
+}
+
+/** Changes whenever the collector publishes a new source status. */
+function liveRevision(monitor: ReturnType<typeof useMonitor>): string {
+  const reply = monitor.data?.reply;
+  if (!reply) return '';
+  const sources = reply.sources
+    .map((s) => `${s.source}:${String(s.sequence)}:${s.state.kind}`)
+    .join('|');
+  return `${reply.generation}:${sources}`;
 }
 
 function panels(engine: EngineDto): readonly { value: Panel; label: string }[] {

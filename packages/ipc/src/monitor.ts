@@ -16,6 +16,8 @@ import type {
   ExplainReply,
   HypoPgRequest,
   HypoPgReply,
+  IncidentsReply,
+  MonitorIncident,
 } from './generated/bindings';
 import { rawBytes } from './binary';
 import { toCommandError, unwrap } from './connections';
@@ -67,6 +69,28 @@ async function binary(
       throw toCommandError(error);
     }),
   );
+}
+
+/** Read deterministic rules, retained incidents and the background opt-in. */
+export function monitorIncidents(
+  target: MonitorTarget,
+): Promise<IncidentsReply> {
+  return unwrap(commands.monitorIncidents(target));
+}
+/** Keep a running collector alive after its last view closes, while the app is open. */
+export async function setMonitorBackground(
+  target: MonitorTarget,
+  enabled: boolean,
+): Promise<void> {
+  await unwrap(commands.monitorBackground(target, enabled));
+}
+/** In-app notification when an incident opens or resolves. */
+export function onMonitorIncident(
+  handler: (event: MonitorIncident) => void,
+): Promise<UnlistenFn> {
+  return events.monitorIncident.listen((event) => {
+    handler(event.payload);
+  });
 }
 
 /** Read bounded aggregate-only history for a profile/database, up to 24 hours. */

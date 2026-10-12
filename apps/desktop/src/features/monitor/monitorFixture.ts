@@ -20,6 +20,7 @@ export function monitorReply(): MonitorReply {
   ];
   return {
     generation: '1',
+    background: false,
     capabilities: sources.map((source) => ({
       source,
       state: { kind: 'ok' },

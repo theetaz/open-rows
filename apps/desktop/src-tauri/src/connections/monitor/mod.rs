@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Thin monitoring IPC and profile lifecycle ownership; no monitor UI.
 mod advisor;
+mod alerts;
+pub(crate) use alerts::*;
 mod commands;
 mod diagnostic;
 mod diagnostic_gate;
@@ -31,7 +33,7 @@ pub(crate) struct MonitorTarget {
     pub(crate) database: String,
 }
 impl MonitorTarget {
-    fn key(&self) -> registry::Key {
+    pub(super) fn key(&self) -> registry::Key {
         (
             registry::profile_key(&self.profile_id),
             self.database.clone(),
@@ -78,6 +80,8 @@ impl Event for MonitorChanged {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct MonitorReply {
     generation: String,
+    /// Explicit background opt-in survives closing the last view.
+    background: bool,
     capabilities: Vec<Descriptor>,
     sources: Vec<SourceStatus>,
 }

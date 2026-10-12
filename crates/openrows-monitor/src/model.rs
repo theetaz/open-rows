@@ -65,7 +65,7 @@ pub enum SampleState {
 }
 
 /// Measurement scope retained alongside every source.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Deserialize, Serialize)]
 #[cfg_attr(feature = "ipc", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub enum Scope {

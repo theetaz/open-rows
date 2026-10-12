@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Tauri-free, bounded monitoring and redacted Arrow windows (ADR-0011).
 pub mod advisor;
+pub mod alerts;
 mod analysis;
 mod arrow;
 mod blockers;

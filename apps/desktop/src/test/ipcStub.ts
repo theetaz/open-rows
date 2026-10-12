@@ -421,5 +421,10 @@ function mcpStub(): Record<string, unknown> {
       .fn()
       .mockResolvedValue({ kind: 'blocked', message: 'test-only' }),
     takeMcpProposals: vi.fn().mockResolvedValue([]),
+    monitorIncidents: vi
+      .fn()
+      .mockResolvedValue({ rules: [], incidents: [], background: false }),
+    setMonitorBackground: vi.fn().mockResolvedValue(undefined),
+    onMonitorIncident: vi.fn().mockResolvedValue(() => undefined),
   };
 }
