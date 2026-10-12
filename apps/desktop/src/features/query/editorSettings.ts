@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useSyncExternalStore } from 'react';
 import type {
+  AcceptKey,
   EditorDialect,
   EditorPreferences,
   FormatOptions,
@@ -15,8 +16,11 @@ export type KeyBinding = 'default' | 'vim';
 /** Placeholders treated as query parameters; `off` runs SQL as written. */
 export type QueryParams = 'off' | ParamStyleDto;
 
-/** Multi-statement runs: one result tab per statement, or only the last result. */
-export type ResultView = 'tabs' | 'last';
+/**
+ * Multi-statement runs: one result tab per statement, every result stacked
+ * vertically, or only the last result.
+ */
+export type ResultView = 'tabs' | 'stacked' | 'last';
 
 /**
  * SQL editor settings from the bottom-bar menus, shared by every query tab
@@ -66,6 +70,9 @@ export const defaultEditorSettings: EditorSettings = {
   completeTables: true,
   completeColumns: true,
   completeSnippets: true,
+  qualifyNames: false,
+  closeDelimiters: true,
+  acceptKey: 'enter',
 };
 
 /** Beautify's layout from the settings, for an engine's dialect. */
@@ -144,7 +151,7 @@ const FIELDS: { [K in keyof EditorSettings]: Field<K> } = {
   denseOperators: isBoolean,
   autoSave: isBoolean,
   queryParams: oneOf<QueryParams>('off', 'named', 'numbered', 'anonymous'),
-  resultView: oneOf<ResultView>('tabs', 'last'),
+  resultView: oneOf<ResultView>('tabs', 'stacked', 'last'),
   returnOnError: isBoolean,
   runDefault: oneOf<RunScope>('current', 'all'),
   fontFamily: oneOf<string | null>(null, ...FONT_FAMILIES),
@@ -155,6 +162,9 @@ const FIELDS: { [K in keyof EditorSettings]: Field<K> } = {
   completeTables: isBoolean,
   completeColumns: isBoolean,
   completeSnippets: isBoolean,
+  qualifyNames: isBoolean,
+  closeDelimiters: isBoolean,
+  acceptKey: oneOf<AcceptKey>('enter', 'tab', 'both'),
 };
 
 /** Parse persisted settings, keeping defaults for anything missing or invalid. */

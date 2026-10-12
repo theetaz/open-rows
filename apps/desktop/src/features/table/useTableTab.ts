@@ -3,17 +3,10 @@ import type { TableQueryDto } from '@openrows/ipc';
 import { isActive } from '../query/run';
 import type { ResultMeta } from '../query/run';
 import type { TableObject } from '../query/tabs';
-import {
-  arrangedQuery,
-  countKey,
-  nextSort,
-  pageKey,
-  tableQuery,
-  tableTarget,
-} from './model';
+import { countKey, nextSort, pageKey, tableTarget } from './model';
 import { filterActions } from './filters/filterActions';
+import { tableRequest, useExactCount } from './tableRequest';
 import { hideRowId } from './row';
-import { arrange } from '../../results/columnLayout';
 import type { EngineDto } from '@openrows/ipc';
 import { useTableLayout } from './useTableLayout';
 import type { TableLayout } from './useTableLayout';
@@ -24,6 +17,7 @@ import type { TableViews } from './useTableViews';
 import { useTrigger } from './useTrigger';
 import { usePresentation } from './usePresentation';
 import { withSavedFilter } from './presentation';
+import { tableSettings } from '../settings/tableSettings';
 import type { SavedFilter } from './presentation';
 
 type Args = {
@@ -67,6 +61,8 @@ export type TableActions = {
   applySaved: (saved: SavedFilter) => void;
   /** Show the focused row as a vertical form, or the grid again. */
   toggleForm: () => void;
+  /** Search every column for `text` (server-side), from the first page. */
+  search: (text: string) => void;
 };
 
 /** A table tab's derived state and actions. */
@@ -115,12 +111,7 @@ export function useTableTab({
     structure.status === 'ready'
       ? structure.data.columns.map((column) => column.name)
       : [];
-  const query = arrangedQuery(
-    tableQuery(target, view, columns, rowId),
-    columns,
-    arrange(layout, columns),
-    view.hidden,
-  );
+  const query = tableRequest(target, view, columns, { rowId, layout });
   const key = sessionId ? pageKey(query, view, sessionId) : null;
   useTrigger(structure.status === 'idle' ? 'load' : null, () => {
     views.loadStructure(tabId, target);
@@ -134,6 +125,7 @@ export function useTableTab({
         limit: view.limit,
       });
   });
+  useExactCount({ tabId, views, sessionId, query }, structure.status);
   const change = (update: (view: TableView) => TableView): void => {
     views.setView(tabId, update);
   };
@@ -181,7 +173,8 @@ function total(entry: TableEntry, query: TableQueryDto): Total {
   const estimate =
     structure.status === 'ready' &&
     !query.filters.length &&
-    !query.groups?.length
+    !query.groups?.length &&
+    !query.search
       ? structure.data.rowEstimate
       : null;
   return { exact, estimate };
@@ -219,7 +212,10 @@ function actions(
       change((view) => ({ ...view, columnsOpen: !view.columnsOpen }));
     },
     display: (setting) => {
-      change((view) => ({ ...view, [setting]: !view[setting] }));
+      change((view) => ({
+        ...view,
+        [setting]: !(view[setting] ?? tableSettings.get().striped),
+      }));
     },
     toggleHidden: (name: string) => {
       change((view) => ({
@@ -231,6 +227,9 @@ function actions(
     },
     mode: (mode: ViewMode) => {
       change((view) => ({ ...view, mode }));
+    },
+    search: (text: string) => {
+      change((view) => ({ ...view, search: text, offset: 0 }));
     },
     count,
   };

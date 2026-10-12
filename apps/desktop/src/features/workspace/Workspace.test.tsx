@@ -18,11 +18,18 @@ import {
 } from '@openrows/ipc';
 import { connectTo } from '../../test/connect';
 import { Workspace } from './Workspace';
+// Load the real lazy surfaces during collection, outside the test hook deadline.
+import './WorkspacePalettes';
+import './WorkspaceInspector';
+import '../table/TableGrid';
 
 vi.mock('@openrows/ipc', async () =>
   (await import('../../test/ipcStub')).ipcStub(),
 );
-
+// This suite verifies workspace navigation; editor behavior has its own suite.
+vi.mock('../query/QueryEditor', async () => ({
+  QueryEditor: (await import('../query/testEditor')).TextareaEditor,
+}));
 beforeEach(() => {
   vi.stubGlobal('innerWidth', 1280);
   vi.mocked(tablePage).mockClear();
@@ -41,7 +48,7 @@ function mount(): ReturnType<typeof userEvent.setup> {
       <Workspace onGallery={vi.fn()} />
     </ThemeProvider>,
   );
-  return userEvent.setup();
+  return userEvent.setup({ skipHover: true });
 }
 it('connects saved profiles from the rail and forces safe mode for prod', async () => {
   const user = mount();
@@ -101,7 +108,7 @@ async function expectPreview(
     await screen.findByRole('tab', { name: /^customers/ }),
   ).toBeInTheDocument();
 }
-it('switches sidebar segments, lazily expands real sections and opens objects on double-click', async () => {
+it('lazily expands catalog sections and searches their objects', async () => {
   const user = mount();
   await connectTo();
   await settleTab();
@@ -124,16 +131,26 @@ it('switches sidebar segments, lazily expands real sections and opens objects on
   expect(
     await sidebar.findByRole('treeitem', { name: 'calc_tax(total numeric)' }),
   ).toBeVisible();
-  await user.type(
-    screen.getByRole('textbox', { name: 'Search items' }),
-    'customers',
-  );
+  await user.click(screen.getByRole('textbox', { name: 'Search items' }));
+  await user.paste('customers');
+  const customers = await sidebar.findByRole('treeitem', {
+    name: 'customers ~412K',
+  });
   expect(sidebar.queryByRole('treeitem', { name: /order_items/ })).toBeNull();
-  const customers = sidebar.getByRole('treeitem', { name: 'customers ~412K' });
   expect(
     within(customers).getByTitle('orders.public.customers · Table'),
   ).toBeVisible();
   await user.clear(screen.getByRole('textbox', { name: 'Search items' }));
+  expect(
+    await sidebar.findByRole('treeitem', { name: 'orders ~2.4M' }),
+  ).toBeVisible();
+});
+it('switches between items, saved queries and history', async () => {
+  const user = mount();
+  await connectTo();
+  const sidebar = within(
+    screen.getByRole('complementary', { name: 'Sidebar' }),
+  );
   await user.click(sidebar.getByRole('radio', { name: 'Queries' }));
   expect(
     await sidebar.findByRole('button', { name: /Top customers/ }),
@@ -145,7 +162,17 @@ it('switches sidebar segments, lazily expands real sections and opens objects on
     ),
   ).toBeVisible();
   await user.click(sidebar.getByRole('radio', { name: 'Items' }));
-  const orders = sidebar.getByRole('treeitem', { name: 'orders ~2.4M' });
+  expect(
+    await sidebar.findByRole('treeitem', { name: 'orders ~2.4M' }),
+  ).toBeVisible();
+});
+it('replaces previews and pins one table tab on double-click', async () => {
+  const user = mount();
+  await connectTo();
+  const sidebar = within(
+    screen.getByRole('complementary', { name: 'Sidebar' }),
+  );
+  const orders = await sidebar.findByRole('treeitem', { name: 'orders ~2.4M' });
   await expectPreview(user, orders);
   await user.dblClick(orders);
   await settleTab();
@@ -179,11 +206,12 @@ it('switches sidebar segments, lazily expands real sections and opens objects on
   await user.dblClick(orders);
   expect(screen.getAllByRole('tab', { name: /^orders/ })).toHaveLength(1);
 });
-it('opens objects of another database in its own tab set on its own session', async () => {
+async function archiveWorkspace(): Promise<ReturnType<typeof userEvent.setup>> {
   const user = mount();
   await connectTo();
   await user.click(screen.getByRole('button', { name: 'New tab' }));
   fireEvent.keyDown(window, { key: 'k', metaKey: true });
+  await settleTab();
   const input = await screen.findByRole('combobox', {
     name: 'Search for database',
   });
@@ -193,6 +221,11 @@ it('opens objects of another database in its own tab set on its own session', as
     'id-orders-local',
     'orders_archive',
   );
+  await screen.findByRole('treeitem', { name: 'orders_2024 ~820K' });
+  return user;
+}
+it('opens a table from another database in its own tab set and session', async () => {
+  const user = await archiveWorkspace();
   await user.dblClick(
     await screen.findByRole('treeitem', { name: 'orders_2024 ~820K' }),
   );
@@ -217,6 +250,9 @@ it('opens objects of another database in its own tab set on its own session', as
     table: 'orders_2024',
   });
   expect(screen.queryByText(/browse-only/)).toBeNull();
+});
+it('inspects a sequence from another database on that database’s session', async () => {
+  const user = await archiveWorkspace();
   await user.click(screen.getByRole('button', { name: /^Sequences/ }));
   await user.dblClick(
     await screen.findByRole('treeitem', { name: 'orders_2024_id_seq' }),

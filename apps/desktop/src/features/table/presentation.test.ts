@@ -32,6 +32,8 @@ beforeEach(() => {
 it('remembers hidden columns, sort and filters per table across sessions', () => {
   const view = {
     ...initialView,
+    striped: false,
+    search: 'ann',
     hidden: ['secret'],
     sort: { column: 'id', descending: true },
     rows: [row],
@@ -49,6 +51,8 @@ it('remembers hidden columns, sort and filters per table across sessions', () =>
   const stored = readPresentation(KEY);
   const restored = restoredView(initialView, stored);
   expect(restored).toMatchObject({
+    striped: false,
+    search: 'ann',
     hidden: ['secret'],
     sort: { column: 'id', descending: true },
     rows: [row],
@@ -157,4 +161,12 @@ it('migrates version-one saved filters to one group and persists grouped version
   );
   expect(readPresentation(KEY).saved[0]?.groups).toEqual(view.groups);
   expect(parsePresentation({ version: 3 })).toBeNull();
+});
+
+it('stores a striping override even when every other setting is default', () => {
+  writePresentation(
+    KEY,
+    presentationOf({ ...initialView, striped: false }, []),
+  );
+  expect(restoredView(initialView, readPresentation(KEY)).striped).toBe(false);
 });

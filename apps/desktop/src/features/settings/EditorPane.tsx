@@ -4,12 +4,14 @@ import { SettingRow } from '../appearance/InterfaceSettings';
 import { useEditorSettings } from '../query/editorSettings';
 import type { EditorSettings } from '../query/editorSettings';
 import {
+  ACCEPT_CHOICE,
   CHOICES,
   COMPLETION_FLAGS,
   DELAY_CHOICE,
   DENSE,
   FLAGS,
   FORMAT_CHOICES,
+  INDENT_CHOICES,
 } from './editorPaneSpecs';
 import type { Choice, FlagSpec } from './editorPaneSpecs';
 import styles from '../appearance/Appearance.module.css';
@@ -21,7 +23,7 @@ export function EditorPane(): React.JSX.Element {
     <section aria-label="Editor">
       <h3>SQL editor</h3>
       <div className={styles.settingsGroup}>
-        {CHOICES.map((choice) => (
+        {[...CHOICES, ...INDENT_CHOICES].map((choice) => (
           <ChoiceRow key={choice.key} choice={choice} settings={settings} />
         ))}
         {FLAGS.map((flag) => (
@@ -34,6 +36,7 @@ export function EditorPane(): React.JSX.Element {
           <FlagRow key={flag.key} flag={flag} settings={settings} />
         ))}
         <ChoiceRow choice={DELAY_CHOICE} settings={settings} />
+        <ChoiceRow choice={ACCEPT_CHOICE} settings={settings} />
       </div>
       <h3>Formatter</h3>
       <div className={styles.settingsGroup}>

@@ -82,3 +82,19 @@ it('labels the shown range against exact, estimated or unknown totals', () => {
   expect(rangeLabel(0, 0, none)).toBe('No rows');
   expect(rangeLabel(300, 0, none)).toBe('No rows after 300');
 });
+
+it('keeps any-column search independent of projection and grouped filters in count keys', () => {
+  const view = {
+    ...initialView,
+    search: ' ann ',
+    hidden: ['name'],
+    combinator: 'or' as const,
+  };
+  const query = tableQuery(target, view, ['id', 'name']);
+  expect(query).toMatchObject({
+    search: 'ann',
+    columns: ['id'],
+    combinator: 'or',
+  });
+  expect(countKey(query)).not.toBe(countKey({ ...query, search: null }));
+});

@@ -91,6 +91,8 @@ export function filterActions(
         applied: [],
         groups: undefined,
         appliedGroups: undefined,
+        search: '',
+        searchReset: (view.searchReset ?? 0) + 1,
         offset: 0,
       }));
     },

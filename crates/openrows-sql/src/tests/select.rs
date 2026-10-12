@@ -24,6 +24,7 @@ fn query() -> TableQuery {
         groups: Vec::new(),
         combinator: Combinator::And,
         sort: None,
+        search: None,
         row_id: None,
     }
 }

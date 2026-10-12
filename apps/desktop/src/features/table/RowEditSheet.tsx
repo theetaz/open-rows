@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useState } from 'react';
 import { Button, TextField } from '@openrows/ui';
+import { temporalKind } from './inline/temporal';
+import { TemporalPicker } from './inline/TemporalPicker';
 import { Sheet, SheetActions } from '@openrows/ui/sheet';
 import type { EditInfoDto } from '@openrows/ipc';
 import type { StagedEdit } from './editHistory';
@@ -125,19 +127,16 @@ function EditFields({
                 {protectedField ? '(generated)' : '(otherwise DEFAULT)'}
               </label>
             )}
-            <TextField
-              aria-label={`Edit ${column.name}`}
-              data-initial-focus={draft.focusField === column.name}
-              value={value ? editableText(value) : ''}
-              placeholder={placeholder(value)}
+            <ValueField
+              column={column}
+              value={value}
+              focus={draft.focusField === column.name}
               disabled={
                 protectedField ||
                 (inserting && !active) ||
                 value?.kind === 'null'
               }
-              onChange={(event) => {
-                set(column.name, textValue(event.target.value));
-              }}
+              set={set}
             />
             {column.nullable && !protectedField && (!inserting || active) && (
               <NullValue
@@ -151,6 +150,48 @@ function EditFields({
         );
       })}
     </div>
+  );
+}
+
+/** One column's value box, with a date/time picker for temporal types (FR-DATA-06). */
+function ValueField({
+  column,
+  value,
+  focus,
+  disabled,
+  set,
+}: {
+  column: EditInfoDto['columns'][number];
+  value: CellValue | undefined;
+  focus: boolean;
+  disabled: boolean;
+  set: (name: string, value: CellValue) => void;
+}): React.JSX.Element {
+  const text = value ? editableText(value) : '';
+  const kind = disabled ? null : temporalKind(column.dataType);
+  return (
+    <TextField
+      aria-label={`Edit ${column.name}`}
+      data-initial-focus={focus}
+      value={text}
+      placeholder={placeholder(value)}
+      disabled={disabled}
+      onChange={(event) => {
+        set(column.name, textValue(event.target.value));
+      }}
+      trailing={
+        kind && (
+          <TemporalPicker
+            kind={kind}
+            value={text}
+            name={column.name}
+            onPick={(picked) => {
+              if (picked !== null) set(column.name, textValue(picked));
+            }}
+          />
+        )
+      }
+    />
   );
 }
 

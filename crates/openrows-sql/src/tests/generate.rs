@@ -27,6 +27,7 @@ fn query(filters: Vec<Filter>) -> TableQuery {
             column: "we`ird".into(),
             direction: SortDirection::Descending,
         }),
+        search: None,
         row_id: None,
     }
 }

@@ -21,6 +21,8 @@ export type CandidateInput = {
   catalog: CompletionCatalog | null;
   /** Insert keywords in upper case. */
   upperKeywords: boolean;
+  /** Insert catalog objects as `schema.name`. */
+  qualify?: boolean;
 };
 
 /** Catalog reads never fail completion; a failed read offers nothing. */
@@ -35,11 +37,22 @@ export async function safely<T>(
   }
 }
 
+const keywordSets = new Map<EditorDialect, ReadonlySet<string>>();
+
+function isKeyword(name: string, dialect: EditorDialect): boolean {
+  let words = keywordSets.get(dialect);
+  if (!words) {
+    words = new Set(dialectKeywords(dialect));
+    keywordSets.set(dialect, words);
+  }
+  return words.has(name.toLowerCase());
+}
+
 /** Quote a name the dialect would otherwise fold or reject. */
 export function quoteName(name: string, dialect: EditorDialect): string {
   const plain =
     dialect === 'postgres' ? /^[a-z_][a-z0-9_$]*$/ : /^[A-Za-z_][\w$]*$/;
-  if (plain.test(name)) return name;
+  if (plain.test(name) && !isKeyword(name, dialect)) return name;
   if (dialect === 'clickhouse')
     return `\`${name.replaceAll('\\', '\\\\').replaceAll('`', '\\`')}\``;
   if (dialect === 'sqlserver') return `[${name.replaceAll(']', ']]')}]`;
@@ -74,19 +87,30 @@ export function schemaRanker(
   };
 }
 
+/** Catalog objects; `qualify` inserts catalog objects as `schema.name`. */
 export function objectCandidates(
   objects: readonly CatalogObject[],
   rank: (schema: string) => number,
   dialect: EditorDialect,
+  qualify = false,
 ): Candidate[] {
-  return objects.map((object) => ({
-    label: object.name,
-    kind: object.kind,
-    detail: object.schema,
-    schemaRank: rank(object.schema),
-    priority: 0,
-    ...named(object.name, dialect),
-  }));
+  return objects.map((object) => {
+    const schemaRank = rank(object.schema);
+    const insert =
+      qualify && object.schema !== ''
+        ? {
+            apply: `${quoteName(object.schema, dialect)}.${quoteName(object.name, dialect)}`,
+          }
+        : named(object.name, dialect);
+    return {
+      label: object.name,
+      kind: object.kind,
+      detail: object.schema,
+      schemaRank,
+      priority: 0,
+      ...insert,
+    };
+  });
 }
 
 export function builtIns(dialect: EditorDialect): Candidate[] {
@@ -117,7 +141,10 @@ export async function catalogCandidates(
     priority: 0,
     ...named(schema.name, dialect),
   }));
-  return [...objectCandidates(objects, rank, dialect), ...schemaRows];
+  return [
+    ...objectCandidates(objects, rank, dialect, input.qualify),
+    ...schemaRows,
+  ];
 }
 
 /** The schema and name a reference resolves to in the catalog index. */

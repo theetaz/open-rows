@@ -252,3 +252,26 @@ it('returns to the scroll position and focused cell after a reload', async () =>
   expect(first.scrollTo).not.toHaveBeenCalled();
   expect(position.current.restore).toBe(false);
 });
+
+it('changes striping without resetting the table canvas or row selection', async () => {
+  const props = gridProps();
+  const view = render(
+    <ThemeProvider>
+      <TableGrid {...props} />
+    </ThemeProvider>,
+  );
+  await waitFor(() => {
+    expect(mountGrid).toHaveBeenCalledOnce();
+  });
+  const grid = vi.mocked(mountGrid).mock.calls[0]?.[1];
+  expect(grid?.striped).toBe(true);
+  props.onRow.mockClear();
+  view.rerender(
+    <ThemeProvider>
+      <TableGrid {...props} striped={false} />
+    </ThemeProvider>,
+  );
+  expect(grid?.striped).toBe(false);
+  expect(mountGrid).toHaveBeenCalledOnce();
+  expect(props.onRow).not.toHaveBeenCalled();
+});

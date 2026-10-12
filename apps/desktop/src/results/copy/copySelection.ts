@@ -4,10 +4,11 @@ import { displayWindow } from '../displayWindow';
 import type { MenuEntry } from '../../shell/CascadeMenu';
 import { COPY_AS, formatTable } from './formats';
 import type { CopyFormat } from './formats';
-import { readSelection } from './read';
+import type { CopySettings } from './copySettings';
+import { CopyError, readSelection } from './read';
 import type { CopySource } from './read';
 import { tableName } from './sql';
-import { copySettings, delimitedOptions } from './copySettings';
+import { copyConflict, copySettings, delimitedOptions } from './copySettings';
 
 /** Where copied SQL goes: the connection's dialect and the browsed table, if any. */
 export type CopyTarget = {
@@ -21,7 +22,8 @@ const UNKNOWN_TABLE = { schema: '', name: 'table_name' };
 
 /**
  * Copy the selected cells to the clipboard in `format`, with the copy
- * settings' header, NULL and quoting defaults for TSV and CSV; `headers`
+ * settings' header, NULL, quoting, delimiter, newline and decimal defaults
+ * for TSV and CSV (HTML tables also go to the clipboard as HTML); `headers`
  * overrides the header setting (Copy with Headers). A palette command can
  * call this with the focused grid's selection.
  */
@@ -31,12 +33,33 @@ export async function copySelection(
   target: CopyTarget,
   headers?: boolean,
 ): Promise<void> {
+  const settings = copySettings.get();
+  const conflict = copyConflict(settings);
+  if (conflict) throw new CopyError(conflict);
+  const text = selectionText({ format, source, target, settings, headers });
+  await writeClipboard(text, format === 'html');
+}
+
+/** Read asynchronous result windows, then format the selected cells. */
+async function selectionText({
+  format,
+  source,
+  target,
+  settings,
+  headers,
+}: {
+  format: CopyFormat;
+  source: CopySource;
+  target: CopyTarget;
+  settings: CopySettings;
+  headers: boolean | undefined;
+}): Promise<string> {
   const table = await readSelection(source, displayWindow);
   const options =
-    format === 'tsv' || format === 'csv'
-      ? delimitedOptions(format, copySettings.get(), headers)
+    format === 'tsv' || format === 'csv' || format === 'html'
+      ? delimitedOptions(format, settings, headers)
       : undefined;
-  const text = formatTable(
+  return formatTable(
     format,
     table,
     {
@@ -45,7 +68,24 @@ export async function copySelection(
     },
     options,
   );
-  await navigator.clipboard.writeText(text);
+}
+
+/** Start HTML writes during the user gesture; WebKit accepts promised representations. */
+async function writeClipboard(
+  text: Promise<string>,
+  html: boolean,
+): Promise<void> {
+  if (!html || typeof ClipboardItem === 'undefined') {
+    await navigator.clipboard.writeText(await text);
+    return;
+  }
+  const item = new ClipboardItem({
+    'text/html': text.then((value) => new Blob([value], { type: 'text/html' })),
+    'text/plain': text.then(
+      (value) => new Blob([value], { type: 'text/plain' }),
+    ),
+  });
+  await navigator.clipboard.write([item]);
 }
 
 /** The `Copy as ▸` submenu of a grid context menu. */

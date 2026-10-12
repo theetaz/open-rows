@@ -42,6 +42,7 @@ fn query() -> TableQuery {
             },
         ],
         sort: None,
+        search: None,
         row_id: None,
     }
 }

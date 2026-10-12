@@ -38,20 +38,24 @@ function mount(): void {
 }
 async function paletteCommand(name: string): Promise<void> {
   fireEvent.keyDown(window, { key: 'p', metaKey: true, shiftKey: true });
+  await act(async () => {
+    await vi.dynamicImportSettled();
+  });
   const dialog = await screen.findByRole('dialog', { name: 'Command palette' });
   const input = within(dialog).getByRole('combobox');
   fireEvent.change(input, { target: { value: name } });
   fireEvent.keyDown(input, { key: 'Enter' });
+  await act(async () => {
+    await vi.dynamicImportSettled();
+  });
 }
 it('previews environment and safety before switching and keeps each context’s tabs', async () => {
   const user = userEvent.setup();
   mount();
   await connectTo();
   await user.click(screen.getByRole('button', { name: 'New query tab (⌘T)' }));
-  await user.type(
-    await screen.findByRole('textbox', { name: 'SQL editor' }),
-    'SELECT local_text',
-  );
+  await user.click(await screen.findByRole('textbox', { name: 'SQL editor' }));
+  await user.paste('SELECT local_text');
   await paletteCommand('Switch Connection');
   const dialog = await screen.findByRole('dialog', {
     name: 'Switch connection',
@@ -73,10 +77,8 @@ it('previews environment and safety before switching and keeps each context’s 
     expect(openConnection).toHaveBeenCalledWith('id-analytics-prod');
   });
   await user.click(screen.getByRole('button', { name: 'New query tab (⌘T)' }));
-  await user.type(
-    await screen.findByRole('textbox', { name: 'SQL editor' }),
-    'SELECT prod_text',
-  );
+  await user.click(await screen.findByRole('textbox', { name: 'SQL editor' }));
+  await user.paste('SELECT prod_text');
   await user.click(
     screen.getByRole('button', { name: 'Switch to orders-local' }),
   );

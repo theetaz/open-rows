@@ -7,6 +7,7 @@ import { mountGrid } from '@openrows/grid/canvas';
 import type { GridHandle, GridProps } from '@openrows/grid';
 import type { WindowRequest } from '@openrows/ipc';
 import { displayWindow } from '../../results/displayWindow';
+import { updateTableSettings } from '../settings/tableSettings';
 import { ResultGrid } from './ResultGrid';
 import type { ResultMeta } from './run';
 
@@ -179,4 +180,35 @@ it('pins, sizes and resets columns from the header menu, persisting the layout',
     'fruit',
   ]);
   expect(localStorage.getItem('openrows.columnLayouts.v1')).toBe('{}');
+});
+
+it('applies striping settings live without remounting the result canvas', async () => {
+  show(result());
+  const grid = await mounted();
+  expect(grid.striped).toBe(true);
+  act(() => {
+    updateTableSettings({ striped: false });
+  });
+  expect(grid.striped).toBe(false);
+  expect(mountGrid).toHaveBeenCalledOnce();
+});
+
+it('opens a header quick filter and applies it to the matching result column', async () => {
+  show(result());
+  const grid = await mounted();
+  act(() => {
+    grid.onContextMenu?.({ row: 0, column: 1, kind: 'column', x: 5, y: 5 });
+  });
+  const user = userEvent.setup();
+  await user.click(screen.getByRole('menuitem', { name: 'Filter column…' }));
+  const value = screen.getByRole('textbox', { name: 'Value of fruit' });
+  await user.type(value, 'ana{Enter}');
+  await waitFor(() => {
+    expect(grid.source.rows).toBe(1);
+  });
+  expect(grid.source.cell(0, 1)?.text).toBe('banana');
+  await user.click(
+    screen.getByRole('button', { name: 'Clear column filters (1)' }),
+  );
+  expect(grid.source.rows).toBe(3);
 });

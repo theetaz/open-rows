@@ -21,6 +21,8 @@ type ResultMenuProps = {
   /** Export the selected rows; omitted when the result cannot be exported. */
   exportRows?: (() => void) | undefined;
   sortBy: (order: RowOrder | null) => void;
+  /** Open the header quick filter of the column. */
+  filterColumn: () => void;
   togglePin: () => void;
   fit: () => void;
   resetColumns: () => void;
@@ -52,6 +54,7 @@ function sortEntries(props: ResultMenuProps): MenuEntry[] {
 
 function columnEntries(props: ResultMenuProps): MenuEntry[] {
   return [
+    item('Filter column…', props.filterColumn),
     item(props.pinned ? 'Unpin column' : 'Pin column', props.togglePin),
     item('Size column to fit', props.fit),
     item('Reset columns', props.resetColumns),

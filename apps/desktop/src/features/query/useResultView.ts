@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { displayWindow } from '../../results/displayWindow';
 import { columnAlign } from '../../results/align';
 import { LocalRows, localLimit, viewRows } from './localRows';
+import { withColumnFilter } from './columnFilters';
+import type { ColumnFilter } from './columnFilters';
 import type { RowOrder } from './localRows';
 import type { ResultMeta } from './run';
 
@@ -14,6 +16,11 @@ export type ResultView = {
   /** Filter text as typed. */
   needle: string;
   setNeedle: (needle: string) => void;
+  /** Header quick filters, AND-ed with the filter text. */
+  columnFilters: readonly ColumnFilter[];
+  /** Filter a column, replacing its earlier quick filter. */
+  filterColumn: (filter: ColumnFilter) => void;
+  clearColumnFilters: () => void;
   sorted: RowOrder | null;
   /** Sort by a result column, or clear the sort with `null`. */
   sortBy: (order: RowOrder | null) => void;
@@ -97,29 +104,38 @@ function statusOf(
 export function useResultView(result: ResultMeta): ResultView {
   const [needle, setNeedle] = useState('');
   const [sorted, setSorted] = useState<RowOrder | null>(null);
+  const [columns, setColumns] = useState<readonly ColumnFilter[]>([]);
   const query = useSettled(needle).trim();
-  const wanted = query !== '' || sorted !== null;
+  const filtered = query !== '' || columns.length > 0;
+  const wanted = filtered || sorted !== null;
   const { local, failure } = useLocalRows(result, wanted);
   const shown = useMemo(() => {
     if (!local) return null;
     const rows = viewRows(
       local,
-      query,
+      { needle: query, columns },
       sorted,
       (column) =>
         columnAlign(result.columns[column]?.sourceType ?? null) === 'end',
     );
     return rows ? { local, rows } : null;
-  }, [local, query, sorted, result.columns]);
+  }, [local, query, columns, sorted, result.columns]);
   return {
     needle,
     setNeedle,
+    columnFilters: columns,
+    filterColumn: (filter) => {
+      setColumns((current) => withColumnFilter(current, filter));
+    },
+    clearColumnFilters: () => {
+      setColumns([]);
+    },
     sorted,
     sortBy: setSorted,
     toggleSort: (column) => {
       setSorted((current) => nextOrder(current, column));
     },
     shown,
-    status: statusOf(result, wanted, { local, failure, shown }, query !== ''),
+    status: statusOf(result, wanted, { local, failure, shown }, filtered),
   };
 }

@@ -41,6 +41,7 @@ fn items(filters: Vec<Filter>, combinator: Combinator) -> TableQuery {
         groups: Vec::new(),
         combinator,
         sort: None,
+        search: None,
         row_id: None,
     }
 }
@@ -86,7 +87,15 @@ async fn raw_predicates_and_key_jumps_filter_rows() -> TestResult {
         Some(10)
     );
     let either = vec![raw, filter("id", FilterOp::LessOrEqual, "3")];
-    assert_eq!(count(on, &items(either, Combinator::Or)).await?, Some(13));
+    let mut searched = items(either, Combinator::Or);
+    assert_eq!(count(on, &searched).await?, Some(13));
+    searched.columns = vec!["id".into()];
+    searched.search = Some("ITEM 100".into());
+    assert_eq!(count(on, &searched).await?, Some(1));
+    searched.search = Some("ITEM 99".into());
+    assert_eq!(count(on, &searched).await?, Some(0));
+    searched.search = Some("50%_'; DROP TABLE m219_items; --".into());
+    assert_eq!(count(on, &searched).await?, Some(0));
     let regex = filter("name", FilterOp::Regex, "^item 9[0-9]$");
     assert_eq!(
         count(on, &items(vec![regex], Combinator::And)).await?,

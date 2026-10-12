@@ -3,6 +3,8 @@ import type { DisplayCell } from '@openrows/grid';
 import type { WindowRequest } from '@openrows/ipc';
 import type { DisplayTile } from '@openrows/grid/display-tile';
 import type { ResultMeta } from './run';
+import { cellMatches } from './columnFilters';
+import type { ColumnFilter } from './columnFilters';
 
 /**
  * Most cells (rows × columns) a result may have for client-side sort and
@@ -63,19 +65,41 @@ export class LocalRows {
 /** A client-side sort by one result column. */
 export type RowOrder = { column: number; descending: boolean };
 
+/** The any-column search text and the header quick filters of a result. */
+type RowFilter = { needle: string; columns: readonly ColumnFilter[] };
+
+/** Whether any column's display text contains `search` (lower case). */
+function rowContains(local: LocalRows, row: number, search: string): boolean {
+  for (let column = 0; column < local.columns; column++) {
+    const cell = local.cell(row, column);
+    if (cell?.state !== 'null' && cell?.text.toLowerCase().includes(search))
+      return true;
+  }
+  return false;
+}
+
 /** Rows whose display text contains `needle` (case-insensitive) in any column. */
 export function filterRows(local: LocalRows, needle: string): number[] {
-  const search = needle.trim().toLowerCase();
+  return matchingRows(local, { needle, columns: [] });
+}
+
+/** Rows matching the search text (when any) and every column filter. */
+function matchingRows(local: LocalRows, filter: RowFilter): number[] {
+  const search = filter.needle.trim().toLowerCase();
   const rows: number[] = [];
-  for (let row = 0; row < local.rows; row++)
-    for (let column = 0; column < local.columns; column++) {
-      const cell = local.cell(row, column);
-      if (cell?.state !== 'null' && cell?.text.toLowerCase().includes(search)) {
-        rows.push(row);
-        break;
-      }
-    }
+  for (let row = 0; row < local.rows; row++) {
+    if (search && !rowContains(local, row, search)) continue;
+    const passes = filter.columns.every((item) =>
+      cellMatches(local.cell(row, item.column), item),
+    );
+    if (passes) rows.push(row);
+  }
   return rows;
+}
+
+/** Whether a filter narrows the rows at all. */
+function filtering(filter: RowFilter): boolean {
+  return filter.needle.trim() !== '' || filter.columns.length > 0;
 }
 
 /** Sort key of a cell: `null` for NULL, a number for numeric columns. */
@@ -122,13 +146,14 @@ export function sortRows(
  */
 export function viewRows(
   local: LocalRows,
-  needle: string,
+  filter: RowFilter,
   order: RowOrder | null,
   numeric: (column: number) => boolean,
 ): Int32Array | null {
-  if (!needle.trim() && !order) return null;
-  let rows = needle.trim()
-    ? filterRows(local, needle)
+  const narrowed = filtering(filter);
+  if (!narrowed && !order) return null;
+  let rows = narrowed
+    ? matchingRows(local, filter)
     : Array.from({ length: local.rows }, (_, row) => row);
   if (order) rows = sortRows(local, rows, order, numeric(order.column));
   return Int32Array.from(rows);

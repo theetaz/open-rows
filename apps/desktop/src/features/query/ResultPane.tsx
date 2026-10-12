@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { lazy, Suspense, useEffect } from 'react';
+import { useEffect } from 'react';
 import { Button, Icon } from '@openrows/ui';
 import type { EngineDto } from '@openrows/ipc';
 import type { ExtraResultTab } from '../explain';
@@ -10,14 +10,12 @@ import type { ResultMeta, RunState } from './run';
 import type { ResultView } from './editorSettings';
 import type { RunScope } from './request';
 import type { SelectedCell } from './cell';
+import { ResultContent, resultLabel, StackedResults } from './StackedResults';
 import styles from './Query.module.css';
-const ResultGrid = lazy(() =>
-  import('./ResultGrid').then((module) => ({ default: module.ResultGrid })),
-);
 
 type Props = {
   run: RunState;
-  /** One result tab per statement, or only the last result. */
+  /** One result tab per statement, stacked results, or only the last result. */
   view: ResultView;
   /** What ⌘↵ runs, for the empty-state hint. */
   runDefault: RunScope;
@@ -58,10 +56,6 @@ function useExportable(
   }, [report, result, onExport]);
 }
 
-function resultLabel(result: ResultMeta, index: number): string {
-  return `Result ${String(index + 1)} · statement ${String(result.statement + 1)}`;
-}
-
 function placeholder(run: RunState, runDefault: RunScope): string {
   switch (run.status) {
     case 'idle':
@@ -82,7 +76,7 @@ function placeholder(run: RunState, runDefault: RunScope): string {
 
 /**
  * One result tab per result-producing statement (the newest is shown first),
- * or only the last result.
+ * every result stacked, or only the last result.
  */
 export function ResultPane({
   run,
@@ -97,16 +91,20 @@ export function ResultPane({
 }: Props): React.JSX.Element {
   const [chosen, setChosen] = useResultChoice(extra?.id ?? null, run.queryId);
   const results = view === 'last' ? run.results.slice(-1) : run.results;
+  const stacked = view === 'stacked' && results.length > 1;
   const shown = extra && chosen === extra.id ? extra : null;
   const current = shown
     ? undefined
-    : (results.find((result) => result.id === chosen) ?? results.at(-1));
+    : stacked
+      ? results.at(-1)
+      : (results.find((result) => result.id === chosen) ?? results.at(-1));
   const exportable = current?.done && onExport ? current : null;
   useExportable(onExportable, exportable, onExport);
   return (
     <section className={styles.results} aria-label="Results">
       <ResultBar
         results={results}
+        stacked={stacked}
         current={current}
         extra={extra ?? null}
         extraShown={shown !== null}
@@ -126,7 +124,7 @@ export function ResultPane({
           onExport={onExport}
           results={results}
           current={current}
-          exportable={exportable}
+          stacked={stacked}
         />
       )}
     </section>
@@ -141,7 +139,7 @@ function ResultBar(
   },
 ): React.JSX.Element | null {
   const { exportable, extra } = props;
-  const tabs = props.results.length > 1 || extra !== null;
+  const tabs = (!props.stacked && props.results.length > 1) || extra !== null;
   if (!tabs && !exportable) return null;
   return (
     <div className={styles.resultBar}>
@@ -162,55 +160,37 @@ function ResultBar(
   );
 }
 
-/** Messages and the chosen result's grid (or why there is none). */
+/** Messages and the chosen result's grid, every grid stacked, or why there is none. */
 function ResultBody({
   run,
   runDefault,
   showNotices,
-  engine,
-  onCell,
-  onExport,
   results,
   current,
-  exportable,
+  stacked,
+  ...grid
 }: Pick<
   Props,
   'run' | 'runDefault' | 'showNotices' | 'engine' | 'onCell' | 'onExport'
 > & {
   results: readonly ResultMeta[];
   current: ResultMeta | undefined;
-  exportable: ResultMeta | null;
+  stacked: boolean;
 }): React.JSX.Element {
   return (
     <>
       <ResultMessages
         run={run}
         results={results}
-        current={current}
+        current={stacked ? undefined : current}
         showNotices={showNotices}
       />
-      {!current ? (
-        <p className={styles.placeholder}>{placeholder(run, runDefault)}</p>
-      ) : current.done || current.rows > 0 ? (
-        <Suspense fallback={null}>
-          <ResultGrid
-            key={current.id}
-            result={current}
-            engine={engine}
-            onCell={onCell}
-            onExportRows={
-              exportable
-                ? (rows) => {
-                    onExport?.(exportable, rows);
-                  }
-                : undefined
-            }
-          />
-        </Suspense>
+      {stacked ? (
+        <StackedResults {...grid} results={results} />
+      ) : current ? (
+        <ResultContent {...grid} result={current} />
       ) : (
-        <p className={styles.placeholder} role="status">
-          Receiving rows… {current.rows.toLocaleString()} so far
-        </p>
+        <p className={styles.placeholder}>{placeholder(run, runDefault)}</p>
       )}
     </>
   );
@@ -221,6 +201,7 @@ type TabsProps = {
   current: ResultMeta | undefined;
   extra: ExtraResultTab | null;
   extraShown: boolean;
+  stacked: boolean;
   onChoose: (id: string | null) => void;
 };
 
@@ -228,19 +209,32 @@ function ResultTabs(props: TabsProps): React.JSX.Element {
   const { extra } = props;
   return (
     <div role="tablist" aria-label="Result sets" className={styles.resultTabs}>
-      {props.results.map((result, index) => (
+      {props.stacked ? (
         <button
-          key={result.id}
           type="button"
           role="tab"
-          aria-selected={result === props.current}
+          aria-selected={!props.extraShown}
           onClick={() => {
-            props.onChoose(result.id);
+            props.onChoose(null);
           }}
         >
-          {resultLabel(result, index)}
+          Results
         </button>
-      ))}
+      ) : (
+        props.results.map((result, index) => (
+          <button
+            key={result.id}
+            type="button"
+            role="tab"
+            aria-selected={result === props.current}
+            onClick={() => {
+              props.onChoose(result.id);
+            }}
+          >
+            {resultLabel(result, index)}
+          </button>
+        ))
+      )}
       {extra && (
         <span className={styles.extraTab}>
           <button

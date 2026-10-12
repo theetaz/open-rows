@@ -25,6 +25,7 @@ import { useTableKeys } from './useTableKeys';
 import { useTableCommandTarget } from './useTableCommandTarget';
 import { useTableTab } from './useTableTab';
 import { tableTarget } from './model';
+import { columnQuickOperators } from './filters/quickFilters';
 import type { TableViews } from './useTableViews';
 import { RecoveryBanner } from './recovery/RecoveryBanner';
 import { useEditRecovery } from './recovery/useEditRecovery';
@@ -132,6 +133,8 @@ export function TableTab(props: TableTabProps): React.JSX.Element {
     ...state.menu,
     editing,
     jumps: tools.jumps,
+    quickOperators: (column) =>
+      columnQuickOperators(state.entry.structure, column, props.engine),
   });
   return (
     <section

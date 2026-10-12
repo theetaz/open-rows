@@ -6,6 +6,8 @@ import type { CellValue } from './cellValue';
 import { fieldActions } from './fieldActions';
 import { FieldMenu } from './FieldMenu';
 import { isBooleanType } from './inline/cellKind';
+import { temporalKind } from './inline/temporal';
+import { TemporalPicker } from './inline/TemporalPicker';
 import { ValueInspector } from '../value/ValueInspector';
 import type { TableColumnDto } from '@openrows/ipc';
 import type { RowEditor, RowField, RowSource } from './row';
@@ -122,21 +124,63 @@ export function DetailsField({
         trailing={
           editor &&
           column && (
-            <ValueMenu
+            <FieldTools
               field={field}
               editor={editor}
+              column={column}
+              editable={editable}
+              text={text}
               actions={fieldActions(
                 column,
                 locked || !editor.ready,
                 current ? textValue(current.text) : (field.value ?? null),
               )}
               onValue={stage}
+              onPick={(picked) => {
+                if (picked === null) return;
+                stage(textValue(picked));
+                setDraft({ base, text: picked, staged: true });
+              }}
             />
           )
         }
       />
       {source && <FieldInspection field={field} source={source} />}
     </div>
+  );
+}
+
+/** The value box's accessories: a date/time picker (FR-DATA-06) and the value menu. */
+function FieldTools(props: {
+  field: RowField;
+  editor: RowEditor;
+  column: TableColumnDto;
+  editable: boolean;
+  text: string;
+  actions: ReturnType<typeof fieldActions>;
+  onValue: (value: CellValue) => void;
+  /** A picked date/time as typing, or `null` when the picker closed. */
+  onPick: (text: string | null) => void;
+}): React.JSX.Element {
+  const { field, editable } = props;
+  const kind = editable ? temporalKind(props.column.dataType) : null;
+  return (
+    <>
+      {kind && (
+        <TemporalPicker
+          kind={kind}
+          value={props.text}
+          name={field.name}
+          onPick={props.onPick}
+        />
+      )}
+      <ValueMenu
+        field={field}
+        editor={props.editor}
+        actions={props.actions}
+        onValue={props.onValue}
+      />
+    </>
   );
 }
 

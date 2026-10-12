@@ -38,6 +38,8 @@ export type ContextMenuProps = {
   onPrompt: (count: number) => void;
   /** Foreign-key navigation; omitted where the grid has none. */
   jumps?: KeyJumps | undefined;
+  /** Open the header quick filter of a column; omitted where unavailable. */
+  onQuickFilter?: ((column: string) => void) | undefined;
   onClose: () => void;
 };
 export type Action = {
@@ -133,6 +135,16 @@ function columnActions(
         sort(true);
       }),
     },
+    ...(context.onQuickFilter
+      ? [
+          {
+            label: 'Filter column…',
+            run: run(() => {
+              context.onQuickFilter?.(name);
+            }),
+          },
+        ]
+      : []),
     ...pinActions(context),
     {
       label: 'Hide column',

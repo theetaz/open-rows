@@ -32,15 +32,25 @@ it('reports a failed native reveal handshake', async () => {
   );
 });
 
+/** Await lazy modules and their React commits, without relying on wall-clock timing. */
+async function settleView(): Promise<void> {
+  await act(async () => {
+    await vi.dynamicImportSettled();
+  });
+}
 async function openGallery(
   user: ReturnType<
     (typeof import('@testing-library/user-event'))['default']['setup']
   >,
 ): Promise<void> {
   await user.click(screen.getByRole('button', { name: 'Command palette' }));
+  await settleView();
   await user.click(
     await screen.findByRole('option', { name: /Open component gallery/ }),
   );
+  await act(async () => {
+    await import('../gallery/Gallery');
+  });
 }
 it('defaults to workspace, opens the gallery from the command palette and returns by Back/Escape', async () => {
   const { default: userEvent } = await import('@testing-library/user-event');
@@ -73,12 +83,14 @@ it('opens settings by gear or shortcut, preserves the workspace and returns focu
   });
   const opener = screen.getByRole('button', { name: 'Settings' });
   await user.click(opener);
+  await settleView();
   expect(await screen.findByRole('dialog', { name: 'Settings' })).toBeVisible();
   expect(workspace.isConnected).toBe(true);
   await user.click(screen.getByRole('button', { name: 'Done' }));
   expect(workspace).toBeVisible();
   expect(opener).toHaveFocus();
   await user.keyboard('{Meta>},{/Meta}');
+  await settleView();
   expect(await screen.findByRole('dialog', { name: 'Settings' })).toBeVisible();
   await user.keyboard('{Escape}');
   expect(screen.queryByRole('dialog', { name: 'Settings' })).toBeNull();
@@ -90,6 +102,7 @@ it('applies Settings density and reduced-motion override live at the app root', 
   const user = userEvent.setup();
   render(<App />);
   await user.click(await screen.findByRole('button', { name: 'Settings' }));
+  await settleView();
   await screen.findByRole('dialog', { name: 'Settings' });
   await user.click(
     within(screen.getByRole('radiogroup', { name: 'Density' })).getByRole(

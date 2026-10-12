@@ -28,6 +28,7 @@ fn query(filters: Vec<Filter>, sort: Option<Sort>) -> TableQuery {
         groups: Vec::new(),
         combinator: Combinator::And,
         sort,
+        search: None,
         row_id: None,
     }
 }

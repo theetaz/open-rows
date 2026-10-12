@@ -10,9 +10,13 @@ import {
   lineNumbers,
 } from '@codemirror/view';
 import { completionKinds } from './completion/kinds';
-import { upperKeywords } from './completion/source';
+import { qualifyNames, upperKeywords } from './completion/source';
 import { currentQueryHighlight } from './currentQuery';
 import { sqlFolding } from './folding';
+import { closingDelimiters, completionKeys, indentation } from './typing';
+import type { AcceptKey } from './typing';
+
+export type { AcceptKey };
 
 /** Editor behaviour the user switches at runtime (bottom-bar settings menu). */
 export type EditorPreferences = {
@@ -44,6 +48,16 @@ export type EditorPreferences = {
   completeColumns: boolean;
   /** Offer snippets by prefix. */
   completeSnippets: boolean;
+  /** Insert catalog objects as `schema.name`. */
+  qualifyNames: boolean;
+  /** Type the closing bracket or quote with the opening one. */
+  closeDelimiters: boolean;
+  /** Key that accepts the highlighted suggestion. */
+  acceptKey: AcceptKey;
+  /** Spaces per indent level, also the width of a tab. */
+  indentWidth: 2 | 4;
+  /** Indent with spaces or tab characters. */
+  indentWith: 'spaces' | 'tabs';
 };
 
 /** Preferences of a new editor. */
@@ -62,6 +76,11 @@ export const defaultPreferences: EditorPreferences = {
   completeTables: true,
   completeColumns: true,
   completeSnippets: true,
+  qualifyNames: false,
+  closeDelimiters: true,
+  acceptKey: 'enter',
+  indentWidth: 2,
+  indentWith: 'spaces',
 };
 
 /** Holds the preference-driven extensions of each editor state. */
@@ -96,14 +115,17 @@ function gutters(preferences: EditorPreferences): Extension {
   ];
 }
 
-/** Completion trigger, delay, keyword case and suggestion kinds. */
+/** Completion trigger, delay, keys, keyword case, qualification and kinds. */
 function completion(preferences: EditorPreferences): Extension {
   return [
     autocompletion({
       activateOnTyping: preferences.autocomplete,
       activateOnTypingDelay: preferences.completionDelay,
+      defaultKeymap: false,
     }),
+    completionKeys(preferences.acceptKey),
     upperKeywords.of(preferences.upperKeywords),
+    qualifyNames.of(preferences.qualifyNames),
     completionKinds.of({
       schemas: preferences.completeSchemas,
       tables: preferences.completeTables,
@@ -126,5 +148,7 @@ export function preferenceExtensions(
       ? currentQueryHighlight()
       : highlightActiveLine(),
     completion(preferences),
+    closingDelimiters(preferences.closeDelimiters),
+    indentation(preferences.indentWidth, preferences.indentWith === 'tabs'),
   ];
 }

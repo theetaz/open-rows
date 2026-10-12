@@ -27,6 +27,8 @@ export type TablePresentation = {
   version?: 2;
   groups?: readonly FilterGroup[] | undefined;
   appliedGroups?: readonly FilterGroupDto[] | undefined;
+  striped?: boolean | null;
+  search?: string;
   hidden: readonly string[];
   sort: SortDto | null;
   rows: readonly FilterRow[];
@@ -116,6 +118,8 @@ export function parsePresentation(value: unknown): TablePresentation | null {
   if (record.version !== undefined && record.version !== 2) return null;
   return {
     version: 2,
+    striped: typeof record.striped === 'boolean' ? record.striped : null,
+    search: text(record.search) ? record.search : '',
     groups: groupsFrom(record),
     appliedGroups: appliedFrom(record),
     hidden: strings(record.hidden),
@@ -132,6 +136,8 @@ export function presentationOf(
   view: Pick<
     TableView,
     | 'hidden'
+    | 'striped'
+    | 'search'
     | 'sort'
     | 'rows'
     | 'applied'
@@ -146,6 +152,8 @@ export function presentationOf(
     groups: view.groups,
     appliedGroups: view.appliedGroups,
     hidden: view.hidden,
+    striped: view.striped,
+    search: view.search ?? '',
     sort: view.sort,
     rows: view.rows,
     applied: view.applied,
@@ -163,6 +171,8 @@ export function restoredView(
   return {
     ...view,
     hidden: stored.hidden,
+    striped: stored.striped ?? null,
+    search: stored.search ?? '',
     sort: stored.sort,
     rows: stored.rows,
     groups: stored.groups,
@@ -188,6 +198,8 @@ export function withSavedFilter(
     ...view,
     rows,
     combinator: saved.combinator,
+    search: '',
+    searchReset: (view.searchReset ?? 0) + 1,
     groups: saved.groups,
     appliedGroups: saved.groups
       ? appliedGroups({ ...view, rows, groups: saved.groups })

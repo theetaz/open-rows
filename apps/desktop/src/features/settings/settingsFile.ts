@@ -28,6 +28,7 @@ import { parseSecurity, SECURITY_KEY } from '../security/securitySettings';
 import { parseTools, TOOLS_KEY } from './toolSettings';
 import { MCP_KEY, parseMcpSettings } from './ai/mcpSettings';
 import { MONITOR_KEY, parseMonitorSettings } from './monitorSettings';
+import { parseTableSettings, TABLES_KEY } from './tableSettings';
 import { AI_KEY, parseAiSettings } from './ai/aiSettings';
 import { parsePortableSettings } from './settingsValidation';
 
@@ -69,6 +70,7 @@ const SECTIONS: Readonly<Record<string, Section>> = {
   snippets: { key: SNIPPETS_KEY, parse: parseSnippets },
   export: { key: EXPORT_KEY, parse: parseExportSettings },
   copy: { key: COPY_KEY, parse: parseCopySettings },
+  tables: { key: TABLES_KEY, parse: parseTableSettings },
   tools: { key: TOOLS_KEY, parse: parseTools },
 };
 
@@ -221,7 +223,7 @@ export async function importSettings(text: string): Promise<void> {
 export function resetSettings(section?: string): void {
   const groups: Record<string, string[]> = {
     general: ['general', 'history', 'monitoring', 'copy', 'diagnostics'],
-    tables: ['results', 'export', 'copy'],
+    tables: ['tables', 'results', 'export', 'copy'],
     appearance: ['appearance'],
     editor: ['editor'],
     execution: ['execution'],

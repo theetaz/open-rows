@@ -23,7 +23,12 @@ if ! command -v docker >/dev/null 2>&1 || ! docker info >/dev/null 2>&1; then
 fi
 cargo build -p openrows-net --bin fake-cloud-hop --features test-helper --locked
 # Resolve the built directory so credential validation also accepts relative Cargo targets.
-export OPENROWS_FAKE_HELPER="$(cd -- "${CARGO_TARGET_DIR:-target}/debug" && pwd)/fake-cloud-hop"
+helper_dir="${CARGO_TARGET_DIR:-target}"
+if [ -n "${CARGO_BUILD_TARGET:-}" ]; then
+    helper_target="${CARGO_BUILD_TARGET##*/}"
+    helper_dir="$helper_dir/${helper_target%.json}"
+fi
+export OPENROWS_FAKE_HELPER="$(cd -- "$helper_dir/debug" && pwd)/fake-cloud-hop"
 # Synthetic credential for a container bound to 127.0.0.1 and removed on exit.
 password="openrows-test-only"
 name="${OPENROWS_TEST_CONTAINER_PREFIX:-openrows}-pg-test-$$"

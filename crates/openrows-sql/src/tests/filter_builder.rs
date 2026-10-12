@@ -42,6 +42,7 @@ fn query(filters: Vec<Filter>, combinator: Combinator) -> TableQuery {
         groups: Vec::new(),
         combinator,
         sort: None,
+        search: None,
         row_id: None,
     }
 }

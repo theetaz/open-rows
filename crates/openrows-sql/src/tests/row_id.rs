@@ -25,6 +25,7 @@ fn query(columns: &[&str], row_id: Option<&str>) -> TableQuery {
         groups: Vec::new(),
         combinator: Combinator::And,
         sort: None,
+        search: None,
         row_id: row_id.map(str::to_owned),
     }
 }

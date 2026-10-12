@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 import schemaText from '../../../src-tauri/settings.schema.json?raw';
+import {
+  copyConflict,
+  parseCopySettings,
+} from '../../results/copy/copySettings';
 import { validTheme } from '@openrows/ui';
 const schema = JSON.parse(schemaText) as {
   definitions: Record<string, Schema>;
@@ -115,6 +119,10 @@ export function parsePortableSettings(text: string): Record<string, unknown> {
   if (text.length > 1024 * 1024) fail('Settings', 'larger than 1 MiB');
   const value: unknown = JSON.parse(text);
   validate(value, schema, 'Settings');
+  const copy = copyConflict(
+    parseCopySettings((value as { copy?: unknown }).copy),
+  );
+  if (copy) fail('Settings.copy', copy);
   const themes = (value as { appearance?: { customThemes?: unknown[] } })
     .appearance?.customThemes;
   if (themes?.some((theme) => !validTheme(theme)))

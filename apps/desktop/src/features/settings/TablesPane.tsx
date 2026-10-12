@@ -1,13 +1,25 @@
 // SPDX-License-Identifier: Apache-2.0
-import { SelectField } from '@openrows/ui';
+import { SelectField, Switch } from '@openrows/ui';
 import { SettingRow } from '../appearance/InterfaceSettings';
 import { generalSettings, setGridDensity } from './general';
+import { tableSettings, updateTableSettings } from './tableSettings';
+import type { GridScrollbars, RowCountMode } from './tableSettings';
 import { CopySection } from './CopySection';
 import styles from '../appearance/Appearance.module.css';
 
-/** Shared table presentation, retaining explicit per-tab count and striping controls. */
+const SCROLLBARS: readonly { value: GridScrollbars; label: string }[] = [
+  { value: 'quiet', label: 'Show when hovered' },
+  { value: 'always', label: 'Always visible' },
+];
+const COUNTS: readonly { value: RowCountMode; label: string }[] = [
+  { value: 'estimate', label: 'Estimated (~)' },
+  { value: 'exact', label: 'Exact' },
+];
+
+/** Shared table presentation (FR-GRID-12); tabs can still toggle stripes and counts. */
 export function TablesPane(): React.JSX.Element {
   const general = generalSettings.useValue();
+  const tables = tableSettings.useValue();
   return (
     <>
       <section aria-label="Tables">
@@ -29,22 +41,42 @@ export function TablesPane(): React.JSX.Element {
             />
           </SettingRow>
           <SettingRow
-            title="Row striping and row numbers"
-            description="Use the table footer to toggle alternating stripes and the number gutter independently per tab."
+            title="Alternate row backgrounds"
+            description="Stripe table and result rows; a table's display menu can still toggle its own."
           >
-            <span>Table footer controls</span>
+            <Switch
+              aria-label="Alternate row backgrounds"
+              checked={tables.striped}
+              onCheckedChange={(striped) => {
+                updateTableSettings({ striped });
+              }}
+            />
           </SettingRow>
           <SettingRow
-            title="Estimated and exact counts"
-            description="Estimates appear with ~; Count requests an exact count explicitly. Browsing never counts silently."
+            title="Row count"
+            description="Estimated shows the planner's ~count with a Count action. Exact counts when filters change or rows reload; you can cancel."
           >
-            <span>Count in table footer</span>
+            <SelectField
+              aria-label="Row count"
+              value={tables.rowCount}
+              options={COUNTS}
+              onValueChange={(rowCount) => {
+                updateTableSettings({ rowCount });
+              }}
+            />
           </SettingRow>
           <SettingRow
             title="Scrollbars"
-            description="Native scrollbars follow your operating system accessibility preferences."
+            description="Grid scrollbars fade until hovered, or stay visible."
           >
-            <span>System preference</span>
+            <SelectField
+              aria-label="Grid scrollbars"
+              value={tables.scrollbars}
+              options={SCROLLBARS}
+              onValueChange={(scrollbars) => {
+                updateTableSettings({ scrollbars });
+              }}
+            />
           </SettingRow>
         </div>
       </section>

@@ -7,6 +7,8 @@ import { canNext } from './useTableTab';
 import type { TableTabState } from './useTableTab';
 import { countKey, rangeLabel } from './model';
 import type { ViewMode } from './model';
+import { tableSettings } from '../settings/tableSettings';
+import { TableSearch } from './TableSearch';
 import styles from './Table.module.css';
 import extras from './TableExtras.module.css';
 
@@ -195,6 +197,7 @@ function DataTools({
         {ready && view.mode === 'data' && <CountControl state={state} />}
       </span>
       {data && <DataActions state={state} ready={ready} data={data} />}
+      {ready && <TableSearch state={state} />}
       <Button
         size="sm"
         aria-label="Filters"
@@ -302,9 +305,10 @@ function DisplayMenu({
   state: TableTabState;
 }): React.JSX.Element {
   const [at, setAt] = useState<{ x: number; y: number } | null>(null);
+  const defaults = tableSettings.useValue();
   const items = [
     ['rowNumbers', 'Row numbers', view.rowNumbers],
-    ['striped', 'Alternate row backgrounds', view.striped],
+    ['striped', 'Alternate row backgrounds', view.striped ?? defaults.striped],
   ] as const;
   return (
     <>

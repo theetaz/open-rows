@@ -73,3 +73,12 @@
   color: var(--or-secondary);
   user-select: text;
 }
+.search {
+  inline-size: 150px;
+  flex-shrink: 1;
+  min-inline-size: 90px;
+}
+.search input[data-blocked='true'] {
+  text-decoration: line-through;
+  color: var(--or-secondary);
+}

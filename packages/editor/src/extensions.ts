@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { autocompletion, completionKeymap } from '@codemirror/autocomplete';
+import { autocompletion } from '@codemirror/autocomplete';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { bracketMatching } from '@codemirror/language';
 import { sql } from '@codemirror/lang-sql';
@@ -117,7 +117,7 @@ export function sqlEditorExtensions(options: SqlEditorOptions): Extension {
     sql({ dialect: sqlDialect(options.dialect ?? 'postgres') }),
     editorAppearance(),
     EditorView.contentAttributes.of({ 'aria-label': options.label }),
-    keymap.of([...completionKeymap, ...defaultKeymap, ...historyKeymap]),
+    keymap.of([...defaultKeymap, ...historyKeymap]),
     listeners(options),
     options.readOnly
       ? [EditorState.readOnly.of(true), EditorView.editable.of(false)]

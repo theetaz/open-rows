@@ -17,6 +17,10 @@ import {
   useSettingsRevision,
 } from '../features/settings';
 import type { SettingsSection } from '../features/settings';
+import {
+  applyTableSettings,
+  tableSettings,
+} from '../features/settings/tableSettings';
 import styles from './App.module.css';
 const SettingsSheet = lazy(() =>
   import('../features/settings/SettingsSheet').then((module) => ({
@@ -45,12 +49,16 @@ function useSettingsKey(open: () => void): void {
   }, [open]);
 }
 
-/** Density and reduced motion follow Settings ▸ General. */
+/** Density and reduced motion follow Settings ▸ General; grid scrollbars Settings ▸ Tables. */
 function useGeneralSettings(): void {
   const general = generalSettings.useValue();
+  const tables = tableSettings.useValue();
   useEffect(() => {
     applyGeneral(general);
   }, [general]);
+  useEffect(() => {
+    applyTableSettings(tables);
+  }, [tables]);
 }
 
 /** Workspace is the default; the design gallery remains one click away. */

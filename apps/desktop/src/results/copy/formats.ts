@@ -3,10 +3,11 @@ import type { EngineDto } from '@openrows/ipc';
 import { isNumberText, quoteIdent, sqlLiteral } from './sql';
 import type { ValueKind } from './sql';
 import type { DelimitedOptions } from './copySettings';
+import { htmlTable } from './html';
 
 /** What a grid selection can be copied as (FR-GRID-03). */
 export type CopyFormat =
-  'tsv' | 'csv' | 'json' | 'markdown' | 'insert' | 'whereIn';
+  'tsv' | 'csv' | 'json' | 'markdown' | 'html' | 'insert' | 'whereIn';
 
 /** A copied column: its name and how its values become literals. */
 export type CopyColumn = { name: string; kind: ValueKind };
@@ -37,7 +38,6 @@ export function rowText(
         ),
       ],
     },
-    '\t',
     TSV_DEFAULTS,
   );
 }
@@ -47,6 +47,7 @@ export const COPY_AS: readonly { format: CopyFormat; label: string }[] = [
   { format: 'csv', label: 'CSV' },
   { format: 'json', label: 'JSON' },
   { format: 'markdown', label: 'Markdown' },
+  { format: 'html', label: 'HTML table' },
   { format: 'insert', label: 'SQL INSERT' },
   { format: 'whereIn', label: 'WHERE IN' },
 ];
@@ -55,33 +56,57 @@ const TSV_DEFAULTS: DelimitedOptions = {
   headers: false,
   nulls: 'text',
   quote: 'minimal',
+  delimiter: '\t',
+  quoteChar: '"',
+  newline: '\n',
+  decimal: '.',
 };
 const CSV_DEFAULTS: DelimitedOptions = {
+  ...TSV_DEFAULTS,
   headers: true,
   nulls: 'empty',
-  quote: 'minimal',
+  delimiter: ',',
 };
+
+/** A numeric column's value with the chosen decimal separator. */
+function withDecimal(
+  value: string,
+  kind: ValueKind | undefined,
+  decimal: DelimitedOptions['decimal'],
+): string {
+  if (decimal === '.' || kind !== 'number' || !isNumberText(value))
+    return value;
+  return value.replace('.', decimal);
+}
 
 /**
  * Delimited text: a header record when asked, NULL as `NULL` or an empty
- * field, and values quoted (quotes doubled) when they need it or always.
+ * field, numbers with the chosen decimal separator, and values quoted
+ * (quotes doubled) when they need it or always; records end with the
+ * chosen newline.
  */
-function delimited(
-  table: CopyTable,
-  delimiter: '\t' | ',',
-  options: DelimitedOptions,
-): string {
-  const special = delimiter === '\t' ? /[\t\n\r"]/ : /[",\n\r]/;
-  const field = (value: string | null): string => {
-    const text = value ?? (options.nulls === 'text' ? 'NULL' : '');
-    const quote =
-      special.test(text) || (options.quote === 'all' && value !== null);
-    return quote ? `"${text.replaceAll('"', '""')}"` : text;
+function delimited(table: CopyTable, options: DelimitedOptions): string {
+  const { delimiter, quoteChar: q } = options;
+  const field = (value: string | null, kind?: ValueKind): string => {
+    const text =
+      value === null
+        ? options.nulls === 'text'
+          ? 'NULL'
+          : ''
+        : withDecimal(value, kind, options.decimal);
+    const special =
+      text.includes(delimiter) || text.includes(q) || /[\n\r]/.test(text);
+    const quote = special || (options.quote === 'all' && value !== null);
+    return quote ? `${q}${text.replaceAll(q, q + q)}${q}` : text;
   };
-  const lines = table.rows.map((row) => row.map(field).join(delimiter));
-  if (!options.headers) return lines.join('\n');
+  const lines = table.rows.map((row) =>
+    row
+      .map((value, index) => field(value, table.columns[index]?.kind))
+      .join(delimiter),
+  );
+  if (!options.headers) return lines.join(options.newline);
   const header = table.columns.map((column) => field(column.name));
-  return [header.join(delimiter), ...lines].join('\n');
+  return [header.join(delimiter), ...lines].join(options.newline);
 }
 
 /** A JSON value; numeric text stays exact (no float round trip). */
@@ -179,9 +204,11 @@ export function formatTable(
 ): string {
   switch (format) {
     case 'tsv':
-      return delimited(table, '\t', options ?? TSV_DEFAULTS);
+      return delimited(table, options ?? TSV_DEFAULTS);
     case 'csv':
-      return delimited(table, ',', options ?? CSV_DEFAULTS);
+      return delimited(table, options ?? CSV_DEFAULTS);
+    case 'html':
+      return htmlTable(table, options?.nulls ?? 'text');
     case 'json':
       return json(table);
     case 'markdown':

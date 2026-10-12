@@ -58,6 +58,11 @@ function preferencesOf(settings: EditorSettings): EditorPreferences {
     completeTables,
     completeColumns,
     completeSnippets: settings.completeSnippets,
+    qualifyNames: settings.qualifyNames,
+    closeDelimiters: settings.closeDelimiters,
+    acceptKey: settings.acceptKey,
+    indentWidth: settings.indentWidth,
+    indentWith: settings.indentWith,
   };
 }
 

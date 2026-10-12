@@ -3645,6 +3645,8 @@ export type TableQueryDto = {
 	groups?: FilterGroupDto[],
 	combinator: CombinatorDto,
 	sort: SortDto | null,
+	/**  Search every catalog column, independent of projection and filter joins. */
+	search?: string | null,
 	/**
 	 *  A keyless `SQLite` table's rowid alias (`EditInfoDto::row_id`),
 	 *  selected as the last column for row identity and never shown.

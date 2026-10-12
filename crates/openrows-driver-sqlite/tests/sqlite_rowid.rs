@@ -122,6 +122,7 @@ async fn the_browse_selects_the_integer_rowid_last() -> TestResult {
         groups: Vec::new(),
         combinator: Combinator::And,
         sort: None,
+        search: None,
         row_id: Some("_rowid_".into()),
     };
     let page = Page {

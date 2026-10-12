@@ -44,6 +44,12 @@ export function usePresentation({
         : opened(current, readPresentation(key), filters),
     );
   });
+  useRememberedPresentation(key, view);
+  return { key, view: shown };
+}
+
+/** Persist the presentation without saving transient page and editor state. */
+function useRememberedPresentation(key: string, view: TableView): void {
   const remembered = JSON.stringify([
     view.hidden,
     view.sort,
@@ -52,29 +58,51 @@ export function usePresentation({
     view.combinator,
     view.groups,
     view.appliedGroups,
+    view.striped,
+    view.search,
   ]);
   const { restored } = view;
   useEffect(() => {
     if (!restored) return;
-    const [hidden, sort, rows, applied, combinator, groups, appliedGroups] =
-      JSON.parse(remembered) as [
-        TableView['hidden'],
-        TableView['sort'],
-        TableView['rows'],
-        TableView['applied'],
-        TableView['combinator'],
-        TableView['groups'],
-        TableView['appliedGroups'],
-      ];
+    const [
+      hidden,
+      sort,
+      rows,
+      applied,
+      combinator,
+      groups,
+      appliedGroups,
+      striped,
+      search,
+    ] = JSON.parse(remembered) as [
+      TableView['hidden'],
+      TableView['sort'],
+      TableView['rows'],
+      TableView['applied'],
+      TableView['combinator'],
+      TableView['groups'],
+      TableView['appliedGroups'],
+      TableView['striped'],
+      TableView['search'],
+    ];
     writePresentation(
       key,
       presentationOf(
-        { hidden, sort, rows, applied, combinator, groups, appliedGroups },
+        {
+          hidden,
+          sort,
+          rows,
+          applied,
+          combinator,
+          groups,
+          appliedGroups,
+          striped,
+          search,
+        },
         readPresentation(key).saved,
       ),
     );
   }, [key, remembered, restored]);
-  return { key, view: shown };
 }
 
 /** A newly opened tab's view: remembered presentation, then any jump's filters. */

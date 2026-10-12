@@ -44,6 +44,7 @@ fn items(filters: Vec<Filter>, combinator: Combinator) -> TableQuery {
         groups: Vec::new(),
         combinator,
         sort: None,
+        search: None,
         row_id: None,
     }
 }
@@ -158,6 +159,15 @@ async fn grouped_and_or_predicates_filter_rows_with_bind_parameters() -> TestRes
     assert_eq!(count(on, &query).await?, Some(3));
     query.combinator = Combinator::Or;
     assert_eq!(count(on, &query).await?, Some(53));
+    // Hidden name is searched even though only id is projected, and the outer
+    // OR between groups is still AND-ed with the search.
+    query.columns = vec!["id".into()];
+    query.search = Some("ITEM 99".into());
+    assert_eq!(count(on, &query).await?, Some(1));
+    query.search = Some("ITEM 97".into());
+    assert_eq!(count(on, &query).await?, Some(0));
+    query.search = Some("50%_'; DROP TABLE items; --".into());
+    assert_eq!(count(on, &query).await?, Some(0));
     run(&manager, session, "DROP SCHEMA fu03_groups CASCADE").await?;
     manager.close(session).await?;
     Ok(())

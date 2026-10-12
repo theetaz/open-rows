@@ -140,6 +140,8 @@ pub struct TableQuery {
     pub groups: Vec<FilterGroup>,
     /// How the filters and groups combine.
     pub combinator: Combinator,
+    /// Case-insensitive search across every catalog column, AND-ed with filters.
+    pub search: Option<String>,
     /// Optional sort.
     pub sort: Option<Sort>,
     /// A keyless `SQLite` table's rowid alias (`rowid`, `_rowid_` or `oid`),
@@ -281,6 +283,7 @@ pub fn all_rows_sql(
         filters: Vec::new(),
         groups: Vec::new(),
         combinator: Combinator::And,
+        search: None,
         sort: None,
         row_id: None,
     };
@@ -334,15 +337,11 @@ fn select(
     }
     let table = dialect.qualified(&query.table.schema, &query.table.name)?;
     let mut params = Vec::new();
-    let predicates = groups::predicates(dialect, query, known, &mut params)?;
+    let predicates = groups::where_predicate(dialect, query, known, &mut params)?;
     let mut sql = format!("SELECT {projection} FROM {table}");
     if !predicates.is_empty() {
-        let joiner = match query.combinator {
-            Combinator::And => " AND ",
-            Combinator::Or => " OR ",
-        };
         sql.push_str(" WHERE ");
-        sql.push_str(&predicates.join(joiner));
+        sql.push_str(&predicates);
     }
     Ok(BoundSql { sql, params })
 }

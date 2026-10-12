@@ -112,6 +112,9 @@ pub(crate) struct TableQueryDto {
     pub(crate) groups: Vec<FilterGroupDto>,
     pub(crate) combinator: CombinatorDto,
     pub(crate) sort: Option<SortDto>,
+    /// Search every catalog column, independent of projection and filter joins.
+    #[serde(default)]
+    pub(crate) search: Option<String>,
     /// A keyless `SQLite` table's rowid alias (`EditInfoDto::row_id`),
     /// selected as the last column for row identity and never shown.
     #[serde(default)]
@@ -295,6 +298,7 @@ impl TableQueryDto {
                     SortDirection::Ascending
                 },
             }),
+            search: self.search.clone(),
             row_id: self.row_id.clone(),
         }
     }
@@ -315,11 +319,13 @@ mod tests {
                 "columns": ["id"],
                 "filters": [{ "column": "name", "operator": "notContains", "value": "x", "second": "" }],
                 "combinator": "or",
-                "sort": { "column": "id", "descending": true }
+                "sort": { "column": "id", "descending": true },
+                "search": "ann"
             }
         }))?;
         let query = request.query.to_query();
         assert_eq!(query.table.name, "users");
+        assert_eq!(query.search.as_deref(), Some("ann"));
         assert_eq!(query.row_id, None, "callers without a rowid omit it");
         assert_eq!(query.combinator, Combinator::Or);
         assert_eq!(

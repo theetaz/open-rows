@@ -23,6 +23,11 @@ export const upperKeywords = Facet.define<boolean, boolean>({
   combine: (values) => values[values.length - 1] ?? true,
 });
 
+/** Whether catalog objects insert as `schema.name`. */
+export const qualifyNames = Facet.define<boolean, boolean>({
+  combine: (values) => values[values.length - 1] ?? false,
+});
+
 const WORD = /[A-Za-z_\u0080-￿][\w$\u0080-￿]*/;
 const LITERALS = new Set([
   'String',
@@ -70,6 +75,7 @@ export function sqlCompletionSource(
       dialect,
       catalog,
       upperKeywords: state.facet(upperKeywords),
+      qualify: state.facet(qualifyNames),
     });
     if (context.aborted) return null;
     const kinds = state.facet(completionKinds);

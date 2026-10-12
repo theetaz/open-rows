@@ -386,9 +386,11 @@ it.each([
     vi.mocked(ipc.monitorSnapshot).mockResolvedValue(reply);
     render(<MonitorTab {...props} profile={{ ...props.profile, engine }} />);
     await screen.findByRole('article', { name: tile });
-    expect(ipc.startMonitor).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(ipc.startMonitor).toHaveBeenCalled();
+      expect(screen.getByRole('note')).toHaveTextContent(boundary);
+    });
     expect(screen.getByText(new RegExp(`· ${name}$`))).toBeInTheDocument();
-    expect(screen.getByRole('note')).toHaveTextContent(boundary);
     expect(
       screen.getByRole('article', { name: 'Own requests/s' }),
     ).toBeInTheDocument();

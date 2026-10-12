@@ -9,6 +9,7 @@ import type {
   SelectionModel,
 } from '@openrows/grid';
 import { mountCanvas } from '../../results/mountCanvas';
+import { tableSettings } from '../settings/tableSettings';
 import { displayWindow } from '../../results/displayWindow';
 import { moved, withWidth } from '../../results/columnLayout';
 import type { ColumnLayout } from '../../results/columnLayout';
@@ -95,6 +96,7 @@ function gridProps(args: Args, source: ResultViewSource): GridProps {
   const props: GridProps = {
     source,
     theme: args.theme.current,
+    striped: tableSettings.get().striped,
     selection: { row: 0, column: 0, ranges: [] },
     ...columnHandlers(args, source),
     onSelection: (next) => {
@@ -141,6 +143,8 @@ export function useResultCanvas(
 ): void {
   const { host, latest, sourceRef, selection, handle, theme, setError } = args;
   const { id } = result;
+  const { striped } = tableSettings.useValue();
+  const mountedProps = useRef<GridProps | null>(null);
   useEffect(() => {
     const element = host.current;
     if (!element) return;
@@ -152,15 +156,21 @@ export function useResultCanvas(
       { host, latest, sourceRef, selection, handle, theme, setError },
       shown,
     );
+    mountedProps.current = props;
     const unmount = mountCanvas(element, props, { theme, handle });
     return () => {
       sourceRef.current = undefined;
+      mountedProps.current = null;
       unmount();
     };
   }, [id, host, latest, sourceRef, selection, handle, theme, setError]);
   useEffect(() => {
     sourceRef.current?.grow(result.rows);
   }, [sourceRef, result.rows]);
+  useLayoutEffect(() => {
+    if (mountedProps.current) mountedProps.current.striped = striped;
+    handle.current?.refresh?.();
+  }, [striped, handle]);
   const sorted = view.shown ? view.sorted : null;
   useLayoutEffect(() => {
     const current = sourceRef.current;

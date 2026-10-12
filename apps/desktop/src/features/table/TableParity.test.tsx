@@ -234,6 +234,9 @@ async function mount(): Promise<ReturnType<typeof userEvent.setup>> {
     </ThemeProvider>,
   );
   await user.click(screen.getByRole('button', { name: 'Open users' }));
+  await act(async () => {
+    await vi.dynamicImportSettled();
+  });
   await screen.findByRole('region', { name: 'users table' });
   await waitFor(() => {
     expect(tablePage).toHaveBeenCalledTimes(1);

@@ -73,6 +73,7 @@ function runSettings(
       label: 'Result View Mode',
       entries: choices(settings, update, 'resultView', [
         ['One Tab per Result', 'tabs'],
+        ['Stacked Results', 'stacked'],
         ['Last Result Only', 'last'],
       ]),
     },

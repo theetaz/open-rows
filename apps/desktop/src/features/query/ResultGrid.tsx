@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useRef, useState } from 'react';
-import { Icon, TextField } from '@openrows/ui';
-import type { GridContextTarget, SelectionModel } from '@openrows/grid';
+import { Button, Icon, TextField } from '@openrows/ui';
+import type { SelectionModel } from '@openrows/grid';
 import type { EngineDto } from '@openrows/ipc';
 import { useGridAppearance } from '../../results/useGridAppearance';
-import { togglePin, withWidth } from '../../results/columnLayout';
 import {
   resetLayout,
   resultLayoutKey,
@@ -13,11 +12,10 @@ import {
 import { copyFailure, copySelection } from '../../results/copy/copySelection';
 import type { CopyFormat } from '../../results/copy/formats';
 import { useCopyEvent } from '../../results/copy/useCopyEvent';
-import { ResultContextMenu } from './ResultContextMenu';
-import { columnKeys } from './resultColumns';
+import { ResultMenus } from './ResultMenus';
+import type { Menu } from './ResultMenus';
 import type { ResultViewSource } from './ResultViewSource';
 import { useResultCanvas, useResultLatest } from './useResultCanvas';
-import type { ResultLatest } from './useResultCanvas';
 import { useResultView } from './useResultView';
 import type { ResultView } from './useResultView';
 import type { ResultMeta } from './run';
@@ -31,12 +29,6 @@ type Props = {
   onCell: (cell: SelectedCell) => void;
   /** Export… of the selected rows (stored positions); omitted while unavailable. */
   onExportRows?: ((rows: number[]) => void) | undefined;
-};
-
-/** A right-click: the grid target, its selection and the result column. */
-type Menu = GridContextTarget & {
-  ranges: SelectionModel['ranges'];
-  stored: number;
 };
 
 const noSelection: SelectionModel = { row: 0, column: 0, ranges: [] };
@@ -91,37 +83,31 @@ export function ResultGrid({
           </p>
         )}
       </div>
-      {menu && (
-        <MenuFor
-          menu={menu}
-          result={result}
-          view={view}
-          pinned={layout.pinned}
-          actions={{
-            copy: (format) => {
-              copy.selection(format, menu.ranges);
-            },
-            copyText: copy.text,
-            exportRows: onExportRows
-              ? () => {
-                  const shown = sourceRef.current;
-                  if (shown)
-                    onExportRows(
-                      selectedRows(menu.ranges, (row) => shown.rowOf(row)),
-                    );
-                }
-              : undefined,
-            changeLayout,
-            fitWidth: (column) => handle.current?.fitWidth?.(column),
-            reset: () => {
-              resetLayout(layoutKey);
-            },
-            close: () => {
-              setMenu(null);
-            },
-          }}
-        />
-      )}
+      <ResultMenus
+        menu={menu}
+        result={result}
+        view={view}
+        pinned={layout.pinned}
+        actions={{
+          copy: copy.selection,
+          copyText: copy.text,
+          exportRows: onExportRows
+            ? (ranges) => {
+                const shown = sourceRef.current;
+                if (shown)
+                  onExportRows(selectedRows(ranges, (row) => shown.rowOf(row)));
+              }
+            : undefined,
+          changeLayout,
+          fitWidth: (column) => handle.current?.fitWidth?.(column),
+          reset: () => {
+            resetLayout(layoutKey);
+          },
+          close: () => {
+            setMenu(null);
+          },
+        }}
+      />
     </div>
   );
 }
@@ -205,6 +191,7 @@ function ResultTools({
   notice: string | null;
 }): React.JSX.Element {
   const status = notice ?? view.status;
+  const columns = view.columnFilters.length;
   return (
     <div className={styles.resultTools}>
       <TextField
@@ -218,59 +205,16 @@ function ResultTools({
           view.setNeedle(event.target.value);
         }}
       />
+      {columns > 0 && (
+        <Button size="sm" variant="ghost" onClick={view.clearColumnFilters}>
+          Clear column filters ({columns})
+        </Button>
+      )}
       {status && (
         <span role="status" className={styles.resultStatus}>
           {status}
         </span>
       )}
     </div>
-  );
-}
-
-type MenuActions = {
-  copy: (format: CopyFormat) => void;
-  copyText: (text: string) => void;
-  exportRows: (() => void) | undefined;
-  changeLayout: ResultLatest['changeLayout'];
-  fitWidth: (column: number) => number | undefined;
-  reset: () => void;
-  close: () => void;
-};
-
-/** The context menu for one right-click, in result coordinates. */
-function MenuFor(props: {
-  menu: Menu;
-  result: ResultMeta;
-  view: ResultView;
-  pinned: readonly string[];
-  actions: MenuActions;
-}): React.JSX.Element {
-  const { menu, result, view, actions } = props;
-  const column = menu.stored;
-  const key = columnKeys(result.columns)[column] ?? '';
-  return (
-    <ResultContextMenu
-      x={menu.x}
-      y={menu.y}
-      kind={menu.kind}
-      name={result.columns[column]?.name ?? ''}
-      column={column}
-      sorted={view.sorted}
-      pinned={props.pinned.includes(key)}
-      copy={actions.copy}
-      copyText={actions.copyText}
-      exportRows={actions.exportRows}
-      sortBy={view.sortBy}
-      togglePin={() => {
-        actions.changeLayout((layout) => togglePin(layout, key));
-      }}
-      fit={() => {
-        const width = actions.fitWidth(menu.column);
-        if (width !== undefined)
-          actions.changeLayout((layout) => withWidth(layout, key, width));
-      }}
-      resetColumns={actions.reset}
-      onClose={actions.close}
-    />
   );
 }

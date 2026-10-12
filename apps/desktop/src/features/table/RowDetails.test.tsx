@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
+import { textValue } from './cellValue';
 import type { TableColumnDto } from '@openrows/ipc';
 import { ThemeProvider } from '@openrows/ui';
 import { RowDetails } from './RowDetails';
@@ -283,4 +284,30 @@ it('shows booleans as TRUE and FALSE but stages the exact stored text', async ()
     kind: 'text',
     value: 'f',
   });
+});
+
+it('stages a picked timestamp immediately and does not offer pickers on protected fields', () => {
+  const stage = vi.fn();
+  show({
+    fields: [
+      text('when', '2024-05-01 13:45:00Z', 'timestamptz'),
+      text('computed', '2024-05-01', 'date'),
+    ],
+    editor: editor({
+      columns: [column('when', 'timestamptz'), column('computed', 'date')],
+      stage,
+    }),
+  });
+  expect(
+    screen.queryByRole('button', { name: 'Pick date for computed' }),
+  ).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Pick date for when' }));
+  const picker = screen.getByLabelText('Choose datetime for when');
+  fireEvent.change(picker, { target: { value: '2024-06-02T08:30' } });
+  expect(stage).toHaveBeenCalledExactlyOnceWith(
+    'when',
+    textValue('2024-06-02 08:30:00Z'),
+  );
+  fireEvent.blur(picker);
+  expect(stage).toHaveBeenCalledOnce();
 });

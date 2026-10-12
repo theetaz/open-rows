@@ -10,6 +10,7 @@ import type { GridSelection } from './gridSelection';
 import type { TableLayout } from './useTableLayout';
 import type { DataTools } from './useDataTools';
 import { RowForm } from './RowForm';
+import { tableSettings } from '../settings/tableSettings';
 import styles from './Table.module.css';
 const TableGrid = lazy(() =>
   import('./TableGrid').then((module) => ({ default: module.TableGrid })),
@@ -91,6 +92,7 @@ function Grid({
   result,
 }: Props & { result: ResultMeta }): React.JSX.Element {
   const { view, actions } = state;
+  const defaults = tableSettings.useValue();
   return (
     <Suspense fallback={null}>
       <TableGrid
@@ -111,7 +113,7 @@ function Grid({
         }}
         offset={view.offset}
         rowNumbers={view.rowNumbers}
-        striped={view.striped}
+        striped={view.striped ?? defaults.striped}
         onHeader={(column) => {
           actions.sort(result, column);
         }}

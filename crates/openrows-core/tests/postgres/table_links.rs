@@ -55,6 +55,7 @@ async fn cross_schema_foreign_key_retains_destination_and_reads_referenced_row()
         groups: Vec::new(),
         combinator: Combinator::And,
         sort: None,
+        search: None,
         row_id: None,
         filters: vec![Filter {
             column: target.columns[0].clone(),

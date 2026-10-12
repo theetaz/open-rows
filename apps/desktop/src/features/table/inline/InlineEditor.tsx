@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useEffect, useRef } from 'react';
 import { PointMenu } from '../../../shell/PointMenu';
 import { ValuePopover } from './ValuePopover';
-import { editorKey } from './editorKey';
+import { useCellInput } from './useCellInput';
+import type { TemporalKind } from './temporal';
+import { TemporalPicker } from './TemporalPicker';
 import type { InlineEditor, OpenEditor } from './useInlineEditor';
 import styles from './Inline.module.css';
 
@@ -22,40 +23,81 @@ export function InlineEditorView({
 
 type Props = { open: OpenEditor; editor: InlineEditor };
 
-/** A one-line input drawn exactly over the cell, in the grid's font. */
+/**
+ * A one-line input drawn exactly over the cell, in the grid's font; date and
+ * time columns add a calendar button at the cell's end (FR-DATA-06).
+ */
 function CellInput({ open, editor }: Props): React.JSX.Element {
-  const ref = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    const input = ref.current;
-    if (!input) return;
-    input.focus({ preventScroll: true });
-    input.setSelectionRange(input.value.length, input.value.length);
-  }, []);
+  const { inputRef, openerRef, kind, handlers, onOpen, onPick } = useCellInput({
+    open,
+    editor,
+  });
+  const { rect } = open;
   return (
-    <input
-      ref={ref}
-      className={styles.cellInput}
-      aria-label={`Edit ${open.edit.name}`}
-      spellCheck={false}
-      autoComplete="off"
-      readOnly={!open.ready}
+    <>
+      <input
+        ref={inputRef}
+        {...handlers}
+        className={styles.cellInput}
+        aria-label={`Edit ${open.edit.name}`}
+        aria-keyshortcuts={kind ? 'Alt+ArrowDown' : undefined}
+        spellCheck={false}
+        autoComplete="off"
+        readOnly={!open.ready}
+        value={open.value}
+        style={{
+          left: rect.x,
+          top: rect.y,
+          width: rect.width,
+          height: rect.height,
+          font: open.font,
+        }}
+        onChange={(event) => {
+          editor.change(event.target.value);
+        }}
+      />
+      {kind && (
+        <CellPicker
+          open={open}
+          kind={kind}
+          openerRef={openerRef}
+          onOpen={onOpen}
+          onPick={onPick}
+        />
+      )}
+    </>
+  );
+}
+
+/** Calendar overlay and its return to typed entry after picking or cancellation. */
+function CellPicker({
+  open,
+  kind,
+  openerRef,
+  onOpen,
+  onPick,
+}: {
+  open: OpenEditor;
+  kind: TemporalKind;
+  openerRef: React.RefObject<HTMLButtonElement | null>;
+  onOpen: () => void;
+  onPick: (text: string | null) => void;
+}): React.JSX.Element {
+  const { rect } = open;
+  return (
+    <TemporalPicker
+      kind={kind}
+      openerRef={openerRef}
       value={open.value}
+      name={open.edit.name}
+      className={styles.cellPicker}
       style={{
-        left: open.rect.x,
-        top: open.rect.y,
-        width: open.rect.width,
-        height: open.rect.height,
-        font: open.font,
+        left: rect.x + rect.width,
+        top: rect.y,
+        height: rect.height,
       }}
-      onChange={(event) => {
-        editor.change(event.target.value);
-      }}
-      onKeyDown={(event) => {
-        editorKey(event, { open, editor }, false);
-      }}
-      onBlur={(event) => {
-        editor.commit(event.currentTarget.value);
-      }}
+      onOpen={onOpen}
+      onPick={onPick}
     />
   );
 }

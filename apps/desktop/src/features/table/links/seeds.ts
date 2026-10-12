@@ -60,6 +60,8 @@ export function seededView(
     combinator: 'and',
     groups: undefined,
     appliedGroups: undefined,
+    search: '',
+    searchReset: (view.searchReset ?? 0) + 1,
     nextRow: view.nextRow + rows.length,
     filtersOpen: true,
     offset: 0,

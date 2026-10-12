@@ -48,12 +48,17 @@ export type TableView = {
   columnsOpen: boolean;
   nextRow: number;
   rowNumbers: boolean;
-  striped: boolean;
+  /** Alternate row backgrounds; `null` follows Settings ▸ Tables. */
+  striped: boolean | null;
   revision: number;
   /** The remembered presentation (FR-GRID-12) has been applied. */
   restored: boolean;
   /** Row form view instead of the grid (FR-GRID-09). */
   form: boolean;
+  /** Any-column search text, AND-ed with the filters server-side (FR-GRID-11). */
+  search?: string | undefined;
+  /** Invalidates pending search typing when filters are cleared or replaced. */
+  searchReset?: number;
 };
 
 export const initialView: TableView = {
@@ -69,7 +74,7 @@ export const initialView: TableView = {
   columnsOpen: false,
   nextRow: 1,
   rowNumbers: true,
-  striped: true,
+  striped: null,
   revision: 0,
   restored: false,
   form: false,
@@ -188,6 +193,7 @@ export function tableQuery(
     ...(view.appliedGroups ? { groups: [...view.appliedGroups] } : {}),
     combinator: view.combinator,
     sort: view.sort,
+    ...(view.search?.trim() ? { search: view.search.trim() } : {}),
     ...(rowId ? { rowId } : {}),
   };
 }
@@ -232,6 +238,7 @@ export function countKey(query: TableQueryDto): string {
     query.filters,
     query.groups,
     query.combinator,
+    query.search ?? null,
   ]);
 }
 

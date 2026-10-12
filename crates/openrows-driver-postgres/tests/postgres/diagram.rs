@@ -136,6 +136,7 @@ async fn table_detail_carries_cross_schema_keys_and_the_jump_selects_the_referen
         groups: Vec::new(),
         combinator: openrows_sql::select::Combinator::And,
         sort: None,
+        search: None,
         row_id: None,
     };
     let sql = openrows_sql::select::page_sql(

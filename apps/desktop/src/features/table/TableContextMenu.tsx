@@ -11,6 +11,10 @@ import type { ResultMeta } from '../query/run';
 import { readRow, shownFields } from './row';
 import type { RowField } from './row';
 import { BulkValueSheet } from './BulkValueSheet';
+import { QuickFilter } from './filters/QuickFilter';
+import type { QuickOperator } from './filters/QuickFilter';
+import { quickFiltered } from './filters/quickFilters';
+import type { FilterOperatorDto } from '@openrows/ipc';
 import { contextActions } from './contextMenuActions';
 import { linkLabel } from './links/foreignKeys';
 import type { KeyLink } from './links/foreignKeys';
@@ -21,14 +25,55 @@ import type {
   MenuSelection as Selection,
 } from './contextMenuActions';
 
+/** A header quick filter being edited: its column and where the header was clicked. */
+type Quick = { column: string; x: number; y: number };
+
+type ContextArgs = Omit<
+  Props,
+  'selection' | 'onClose' | 'onPrompt' | 'onQuickFilter'
+> & {
+  /** Header quick-filter operators of a column; omitted to offer none. */
+  quickOperators?:
+    | ((column: string) => readonly QuickOperator<FilterOperatorDto>[])
+    | undefined;
+};
+
+/** The header quick filter popover, applying through the view's filters. */
+function QuickFilterFor({
+  quick,
+  args,
+  onClose,
+}: {
+  quick: Quick;
+  args: ContextArgs;
+  onClose: () => void;
+}): React.JSX.Element {
+  return (
+    <QuickFilter
+      name={quick.column}
+      x={quick.x}
+      y={quick.y}
+      operators={args.quickOperators?.(quick.column) ?? []}
+      onApply={(operator, value) => {
+        args.changeView((view) =>
+          quickFiltered(view, quick.column, { operator, value }),
+        );
+      }}
+      onClose={onClose}
+    />
+  );
+}
+
 /** Own the menu above the imperative canvas; opening a menu never changes data. */
-export function useTableContext(
-  props: Omit<Props, 'selection' | 'onClose' | 'onPrompt'>,
-): {
+export function useTableContext(props: ContextArgs): {
   show: (result: ResultMeta, target: ContextTarget) => void;
   menu: React.JSX.Element | null;
 } {
   const [selection, setSelection] = useState<Selection | null>(null);
+  const [quick, setQuick] = useState<Quick | null>(null);
+  const closeQuick = useCallback(() => {
+    setQuick(null);
+  }, []);
   const [prompt, setPrompt] = useState<{
     selection: Selection;
     count: number;
@@ -37,6 +82,11 @@ export function useTableContext(
     setSelection(null);
   }, []);
   const { editing } = props;
+  if (quick)
+    return {
+      show: () => undefined,
+      menu: <QuickFilterFor quick={quick} args={props} onClose={closeQuick} />,
+    };
   if (prompt)
     return {
       show: () => undefined,
@@ -65,6 +115,13 @@ export function useTableContext(
         onPrompt={(count) => {
           setPrompt({ selection, count });
         }}
+        onQuickFilter={
+          props.quickOperators
+            ? (column) => {
+                setQuick({ column, x: selection.x, y: selection.y });
+              }
+            : undefined
+        }
         onClose={close}
       />
     ),

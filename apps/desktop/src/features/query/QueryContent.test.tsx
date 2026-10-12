@@ -65,9 +65,10 @@ function statement(
     ...overrides,
   };
 }
-function send(...events: QueryEventDto[]): void {
-  act(() => {
+async function send(...events: QueryEventDto[]): Promise<void> {
+  await act(async () => {
     for (const event of events) emit(event);
+    await vi.dynamicImportSettled();
   });
 }
 const finished = (
@@ -116,6 +117,9 @@ async function openTab(
     </ThemeProvider>,
   );
   await user.click(screen.getByRole('button', { name: 'New query tab (⌘T)' }));
+  await act(async () => {
+    await vi.dynamicImportSettled();
+  });
   const editor = await screen.findByRole('textbox', { name: 'SQL editor' });
   await user.type(editor, sql);
   return user;
@@ -167,7 +171,10 @@ it('runs the statement at the cursor and shows its rows and status', async () =>
     },
     expect.any(Function),
   );
-  send(...result(0, 'r1', 1), finished('completed'));
+  await send(...result(0, 'r1', 1), finished('completed'));
+  await act(async () => {
+    await vi.dynamicImportSettled();
+  });
   expect(
     await screen.findByRole('grid', { name: 'Grid r1' }),
   ).toHaveTextContent('1 rows');
@@ -191,7 +198,7 @@ it('runs all statements with ⇧⌘↵ and shows one result tab per result', asy
     mode: 'all',
     cursor: null,
   });
-  send(
+  await send(
     ...result(0, 'r1', 5),
     { type: 'statementStarted', statement: 1 },
     { type: 'rowsAffected', statement: 1, count: 3 },
@@ -234,7 +241,7 @@ it('turns Run into Cancel while a query runs', async () => {
   await user.click(
     screen.getByRole('button', { name: 'Run current statement' }),
   );
-  send({ type: 'statementStarted', statement: 0 });
+  await send({ type: 'statementStarted', statement: 0 });
   expect(
     screen.queryByRole('button', { name: 'Run current statement' }),
   ).toBeNull();
@@ -245,7 +252,7 @@ it('turns Run into Cancel while a query runs', async () => {
   await user.keyboard('{Escape}');
   await user.click(screen.getByRole('button', { name: 'Cancel query' }));
   expect(cancelQuery).toHaveBeenCalledWith('q1');
-  send({ type: 'cancelled', statement: 0 }, finished('cancelled'));
+  await send({ type: 'cancelled', statement: 0 }, finished('cancelled'));
   expect(status()).toHaveTextContent('Cancelled · 12 ms');
   expect(screen.queryByRole('button', { name: 'Cancel query' })).toBeNull();
   expect(
@@ -258,7 +265,7 @@ it('shows server errors with their SQLSTATE', async () => {
   await user.click(
     screen.getByRole('button', { name: 'Run current statement' }),
   );
-  send(
+  await send(
     { type: 'statementStarted', statement: 0 },
     {
       type: 'failed',
@@ -351,12 +358,15 @@ it('frees results when a tab closes or re-runs', async () => {
   await user.click(
     screen.getByRole('button', { name: 'Run current statement' }),
   );
-  send(...result(0, 'r1', 1), finished('completed'));
+  await send(...result(0, 'r1', 1), finished('completed'));
+  await act(async () => {
+    await vi.dynamicImportSettled();
+  });
   await user.click(
     screen.getByRole('button', { name: 'Run current statement' }),
   );
   expect(releaseResults).toHaveBeenLastCalledWith(['r1']);
-  send(...result(0, 'r2', 1), finished('completed'));
+  await send(...result(0, 'r2', 1), finished('completed'));
   await user.click(screen.getByRole('button', { name: 'Close SQL Query 1' }));
   expect(releaseResults).toHaveBeenLastCalledWith(['r2']);
   expect(
@@ -370,7 +380,7 @@ it('exports the shown result from the result store', async () => {
     screen.getByRole('button', { name: 'Run current statement' }),
   );
   expect(screen.queryByRole('button', { name: 'Export…' })).toBeNull();
-  send(...result(0, 'r1', 3), finished('completed'));
+  await send(...result(0, 'r1', 3), finished('completed'));
   await user.click(screen.getByRole('button', { name: 'Export…' }));
   const sheet = await screen.findByRole('dialog', { name: 'Export Result' });
   await user.click(within(sheet).getByRole('button', { name: 'Export…' }));
@@ -390,7 +400,7 @@ it('Export results opens the export sheet of the shown result', async () => {
   await user.click(
     screen.getByRole('button', { name: 'Run current statement' }),
   );
-  send(...result(0, 'r1', 3), finished('completed'));
+  await send(...result(0, 'r1', 3), finished('completed'));
   await screen.findByRole('button', { name: 'Export…' });
   act(() => {
     runTabCommand('export-results');

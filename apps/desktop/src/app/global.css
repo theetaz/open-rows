@@ -60,6 +60,15 @@ pre {
 ::-webkit-scrollbar-thumb:active {
   background-color: color-mix(in srgb, var(--or-text) 45%, transparent);
 }
+/* Settings ▸ Tables: grid scrollbars stay visible instead of fading. */
+:root[data-grid-scrollbars='always']
+  [data-grid-scroll]::-webkit-scrollbar-track {
+  background: color-mix(in srgb, var(--or-text) 4%, transparent);
+}
+:root[data-grid-scrollbars='always']
+  [data-grid-scroll]::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--or-text) 30%, transparent);
+}
 /* Settings ▸ General: sidebar row density and the in-app reduce-motion switch. */
 :root[data-density='compact'] {
   --or-tree-row-height: 22px;

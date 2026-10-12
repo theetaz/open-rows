@@ -14,6 +14,8 @@ export function mountGrid(host: HTMLElement, props: GridProps): GridHandle {
     layers = document.createElement('div');
   host.style.position = 'relative';
   scroll.style.cssText = 'position:absolute;inset:0;overflow:auto;';
+  // Hosts style the native scrollbars through this hook (Settings ▸ Tables).
+  scroll.dataset.gridScroll = '';
   layers.style.cssText = 'position:absolute;inset:0;pointer-events:none;';
   scroll.append(spacer);
   host.append(scroll, layers);

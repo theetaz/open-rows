@@ -26,6 +26,8 @@ export function writePresentation(
   presentation: TablePresentation,
 ): void {
   const empty =
+    presentation.striped == null &&
+    !presentation.search &&
     !presentation.hidden.length &&
     !presentation.sort &&
     !presentation.rows.length &&

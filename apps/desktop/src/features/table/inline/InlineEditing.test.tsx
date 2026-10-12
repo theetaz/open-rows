@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 import { fromOriginal, NULL_VALUE, textValue } from '../cellValue';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
@@ -372,4 +378,38 @@ it('typing into a multi-cell selection stages the value in every selected cell, 
   host?.dispatchEvent(paste);
   expect(paste.defaultPrevented).toBe(true);
   expect(editor.bulk.paste).toHaveBeenCalledWith(result, ranges, '1\t2');
+});
+
+it('keeps temporal cells inline and stages a picked timestamp only on confirmation', async () => {
+  const timestamp = '2024-05-01 13:45:10.123+05:30';
+  const editor = editing({
+    draftFor: vi.fn(() =>
+      Promise.resolve({
+        ...draft,
+        original: { ...draft.original, name: timestamp },
+      }),
+    ),
+  });
+  if (editor.info) editor.info.columns[1] = column('name', 'timestamptz');
+  const grid = await mount(editor);
+  act(() => {
+    grid.onEdit?.({ row: 0, column: 1 });
+  });
+  const text = await screen.findByRole('textbox', { name: 'Edit name' });
+  await waitFor(() => {
+    expect(text).toHaveValue(timestamp);
+  });
+  fireEvent.keyDown(text, { key: 'ArrowDown', altKey: true });
+  expect(screen.getByLabelText('Choose datetime for name')).toHaveFocus();
+  expect(editor.stageCell).not.toHaveBeenCalled();
+  const picker = screen.getByLabelText('Choose datetime for name');
+  fireEvent.change(picker, { target: { value: '2024-06-02T08:30:15.250' } });
+  expect(text).toHaveValue('2024-06-02 08:30:15.250+05:30');
+  expect(editor.stageCell).not.toHaveBeenCalled();
+  fireEvent.keyDown(text, { key: 'Enter' });
+  expect(editor.stageCell).toHaveBeenCalledExactlyOnceWith(
+    expect.any(Promise),
+    'name',
+    textValue('2024-06-02 08:30:15.250+05:30'),
+  );
 });

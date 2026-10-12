@@ -168,6 +168,11 @@ function useTableCanvas({
   striped,
   editing,
 }: CanvasArgs): void {
+  const mountedProps = useRef<GridProps | null>(null);
+  useEffect(() => {
+    if (mountedProps.current) mountedProps.current.striped = striped;
+    handle.current?.refresh?.();
+  }, [striped, handle]);
   const changes = editing.history.current,
     editKeys = editing.info?.key ?? noKeys;
   // Staging, undo, redo and discard repaint in place: remounting would reset focus to row 0.
@@ -185,13 +190,14 @@ function useTableCanvas({
         : overlay,
       latest,
       rowNumbers,
-      striped,
+      striped: latest.current.striped,
       theme: theme.current,
       setError,
       selectionRef,
       sourceRef,
       handle,
     });
+    mountedProps.current = props;
     selectionRef.current = props.selection;
     const unmount = mountCanvas(element, props, {
       theme,
@@ -203,6 +209,7 @@ function useTableCanvas({
     });
     return () => {
       sourceRef.current = undefined;
+      mountedProps.current = null;
       unmount();
     };
   }, [
@@ -218,7 +225,6 @@ function useTableCanvas({
     handle,
     offset,
     rowNumbers,
-    striped,
   ]);
 }
 

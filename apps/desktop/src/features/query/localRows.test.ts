@@ -90,15 +90,45 @@ it('sorts numerically or by text, stable, with NULLs last both ways', async () =
   expect(sortRows(local, all, { column: 1, descending: false }, false)).toEqual(
     [2, 4, 0, 3, 1],
   );
-  expect(viewRows(local, '', null, () => false)).toBeNull();
+  expect(
+    viewRows(local, { needle: '', columns: [] }, null, () => false),
+  ).toBeNull();
   expect(
     Array.from(
       viewRows(
         local,
-        'a',
+        { needle: 'a', columns: [] },
         { column: 0, descending: true },
         (column) => column === 0,
       ) ?? [],
     ),
   ).toEqual([2, 0, 4]);
+});
+
+it('narrows rows by header quick filters on top of the search text', async () => {
+  const local = await LocalRows.load(result, load);
+  const view = (filter: Parameters<typeof viewRows>[1]): number[] =>
+    Array.from(viewRows(local, filter, null, () => false) ?? []);
+  const fruit = { column: 1, value: '' };
+  expect(
+    view({
+      needle: '',
+      columns: [{ ...fruit, operator: 'contains', value: 'APP' }],
+    }),
+  ).toEqual([2, 4]);
+  expect(
+    view({ needle: '', columns: [{ ...fruit, operator: 'isNull' }] }),
+  ).toEqual([1]);
+  expect(
+    view({
+      needle: '9',
+      columns: [{ column: 1, operator: 'notEqual', value: 'banana' }],
+    }),
+  ).toEqual([4]);
+  expect(
+    view({
+      needle: '',
+      columns: [{ column: 0, operator: 'equal', value: '9' }],
+    }),
+  ).toEqual([1, 4]);
 });

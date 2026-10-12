@@ -14,10 +14,10 @@ import {
   preferenceExtensions,
   preferenceSlot,
 } from './preferences';
-import type { EditorPreferences } from './preferences';
+import type { AcceptKey, EditorPreferences } from './preferences';
 
 export type { EditorDialect, SqlEditorOptions };
-export type { EditorPreferences, FormatKind, FormatOptions };
+export type { AcceptKey, EditorPreferences, FormatKind, FormatOptions };
 export type {
   CatalogColumn,
   CatalogObject,

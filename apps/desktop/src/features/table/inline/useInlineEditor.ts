@@ -13,6 +13,7 @@ import type { StagedEdit } from '../editHistory';
 import { writableResult } from '../cellEdits';
 import { editableText, fromOriginal } from '../cellValue';
 import type { RowEditing } from '../useRowEditing';
+import { temporalKind } from './temporal';
 import { cellText, columnEdit, isLong } from './cellKind';
 import type { ColumnEdit } from './cellKind';
 import { dataRanges, inRanges, selectedCells } from '../bulk/cells';
@@ -151,7 +152,10 @@ function opening(
   const value =
     seed ?? cellText(args.source.current?.cell(cell.row, cell.column));
   const { fontSize, fontFamily } = args.theme.current;
-  const long = seed === undefined && isLong(value, edit, room(rect, fontSize));
+  const long =
+    !temporalKind(edit.dataType) &&
+    seed === undefined &&
+    isLong(value, edit, room(rect, fontSize));
   return {
     ...cell,
     edit,
@@ -194,6 +198,7 @@ function loaded(state: OpenEditor, row: StagedEdit, args: Args): OpenEditor {
   const value = exact ?? '';
   const long =
     state.mode === 'input' &&
+    !temporalKind(state.edit.dataType) &&
     isLong(value, state.edit, room(state.rect, args.theme.current.fontSize));
   return { ...state, value, ready: true, mode: long ? 'popover' : state.mode };
 }

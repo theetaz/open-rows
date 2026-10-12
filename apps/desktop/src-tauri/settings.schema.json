@@ -223,12 +223,12 @@
         "indentWidth": {
           "enum": [2, 4],
           "default": 2,
-          "description": "Beautify indent width."
+          "description": "Indent width and tab width of the editor and Beautify."
         },
         "indentWith": {
           "enum": ["spaces", "tabs"],
           "default": "spaces",
-          "description": "Beautify indents with spaces or tabs."
+          "description": "The editor and Beautify indent with spaces or tabs."
         },
         "keywordCase": {
           "enum": ["preserve", "upper", "lower"],
@@ -261,9 +261,9 @@
           "description": "Placeholder style listed in the parameters bar and bound when running."
         },
         "resultView": {
-          "enum": ["tabs", "last"],
+          "enum": ["tabs", "stacked", "last"],
           "default": "tabs",
-          "description": "One result tab per statement, or only the last result."
+          "description": "One result tab per statement, every result stacked vertically, or only the last result."
         },
         "returnOnError": {
           "type": "boolean",
@@ -323,6 +323,21 @@
           "type": "boolean",
           "description": "Offer snippets by prefix while typing.",
           "default": true
+        },
+        "qualifyNames": {
+          "type": "boolean",
+          "description": "Insert objects outside the current schema as schema.name.",
+          "default": false
+        },
+        "closeDelimiters": {
+          "type": "boolean",
+          "description": "Type the closing bracket or quote with the opening one.",
+          "default": true
+        },
+        "acceptKey": {
+          "enum": ["enter", "tab", "both"],
+          "default": "enter",
+          "description": "Key that accepts the highlighted suggestion."
         }
       },
       "additionalProperties": false
@@ -670,7 +685,7 @@
     },
     "copy": {
       "type": "object",
-      "description": "Settings \u25b8 General \u25b8 Copy: defaults of plain (tab-separated) and CSV copies from grids.",
+      "description": "Settings \u25b8 Tables \u25b8 Copy: defaults of plain (tab-separated), CSV and HTML copies from grids.",
       "properties": {
         "headers": {
           "enum": ["format", "always", "never"],
@@ -686,6 +701,48 @@
           "enum": ["minimal", "all"],
           "default": "minimal",
           "description": "Quote only values that need it, or every value."
+        },
+        "delimiter": {
+          "enum": ["comma", "semicolon", "tab", "pipe"],
+          "default": "comma",
+          "description": "Separator between CSV fields; plain copies use tabs."
+        },
+        "quoteChar": {
+          "enum": ["double", "single"],
+          "default": "double",
+          "description": "Character that wraps quoted values."
+        },
+        "newline": {
+          "enum": ["lf", "crlf"],
+          "default": "lf",
+          "description": "Line ending after each copied row."
+        },
+        "decimal": {
+          "enum": ["point", "comma"],
+          "default": "point",
+          "description": "Decimal separator in numeric columns; a comma is rejected with the comma CSV delimiter."
+        }
+      },
+      "additionalProperties": false
+    },
+    "tables": {
+      "type": "object",
+      "description": "Settings \u25b8 Tables: presentation defaults of table and result grids.",
+      "properties": {
+        "striped": {
+          "type": "boolean",
+          "default": true,
+          "description": "Alternate row backgrounds unless a table tab toggles its own."
+        },
+        "scrollbars": {
+          "enum": ["quiet", "always"],
+          "default": "quiet",
+          "description": "Grid scrollbars fade until hovered, or stay visible."
+        },
+        "rowCount": {
+          "enum": ["estimate", "exact"],
+          "default": "estimate",
+          "description": "Show the planner estimate with an explicit Count action, or also count exactly after each load."
         }
       },
       "additionalProperties": false

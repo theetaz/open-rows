@@ -77,7 +77,29 @@ export const COMPLETION_FLAGS: readonly FlagSpec[] = [
     title: 'Suggest snippets',
     description: 'Offer snippets when their prefix is typed.',
   },
+  {
+    key: 'qualifyNames',
+    title: 'Schema-qualified names',
+    description: 'Insert catalog objects as schema.name.',
+  },
+  {
+    key: 'closeDelimiters',
+    title: 'Close brackets and quotes',
+    description: 'Type the closing bracket or quote with the opening one.',
+  },
 ];
+
+/** Which key accepts a suggestion (FR-EDIT-13). */
+export const ACCEPT_CHOICE: Choice = {
+  key: 'acceptKey',
+  title: 'Accept suggestion with',
+  description: 'Key that inserts the highlighted suggestion.',
+  options: [
+    { value: '"enter"', label: 'Return' },
+    { value: '"tab"', label: 'Tab' },
+    { value: '"both"', label: 'Return or Tab' },
+  ],
+};
 
 export type Choice = {
   key: keyof EditorSettings;
@@ -146,6 +168,29 @@ export const DELAY_CHOICE: Choice = {
   })),
 };
 
+/** Indentation of the editor's indent keys and new lines, and of Beautify (FR-EDIT-12). */
+export const INDENT_CHOICES: readonly Choice[] = [
+  {
+    key: 'indentWidth',
+    title: 'Indent width',
+    description:
+      'Spaces per indent level and tab width, in the editor and when beautifying.',
+    options: [
+      { value: '2', label: '2 spaces' },
+      { value: '4', label: '4 spaces' },
+    ],
+  },
+  {
+    key: 'indentWith',
+    title: 'Indent with',
+    description: 'What the editor and Beautify indent with.',
+    options: [
+      { value: '"spaces"', label: 'Spaces' },
+      { value: '"tabs"', label: 'Tabs' },
+    ],
+  },
+];
+
 /** Beautify (⌘I) and Uglify (⇧⌘I) layout. */
 export const FORMAT_CHOICES: readonly Choice[] = [
   {
@@ -156,24 +201,6 @@ export const FORMAT_CHOICES: readonly Choice[] = [
       { value: '"upper"', label: 'UPPER' },
       { value: '"lower"', label: 'lower' },
       { value: '"preserve"', label: 'As typed' },
-    ],
-  },
-  {
-    key: 'indentWidth',
-    title: 'Indent width',
-    description: 'Spaces per indent level.',
-    options: [
-      { value: '2', label: '2 spaces' },
-      { value: '4', label: '4 spaces' },
-    ],
-  },
-  {
-    key: 'indentWith',
-    title: 'Indent with',
-    description: 'Indent with spaces or tabs.',
-    options: [
-      { value: '"spaces"', label: 'Spaces' },
-      { value: '"tabs"', label: 'Tabs' },
     ],
   },
   {

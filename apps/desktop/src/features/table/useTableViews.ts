@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useReducer, useRef } from 'react';
+import { useEffect, useMemo, useReducer, useRef } from 'react';
 import {
   CommandError,
   cancelQuery,
   releaseResults,
-  tableCount,
   tableDetail,
   tablePage,
   tableStructure,
@@ -16,6 +15,7 @@ import type { EntryAction, TableEntry } from './entries';
 import type { EditHistory, History } from './editHistory';
 import type { StagedSchema } from './structure/schemaChanges';
 import type { TableTargetRef, TableView } from './model';
+import { countRequests } from './countRequests';
 
 /** Staged and in-flight work across every table tab, for the quit guard. */
 export type ChangeSummary = {
@@ -145,41 +145,30 @@ function readDetail(send: Send, tabId: string, target: TableTargetRef): void {
   );
 }
 
-let tickets = 0;
-
-function startCount(
-  send: Send,
-  [tabId, key, request]: [
-    string,
-    string,
-    { sessionId: string; query: TableQueryDto },
-  ],
-): void {
-  tickets += 1;
-  const ticket = `count-${String(tickets)}`;
-  send(tabId, { type: 'count', count: { status: 'counting', key, ticket } });
-  tableCount({ ...request, ticket }).then(
-    (reply) => {
-      send(tabId, {
-        type: 'count',
-        count:
-          reply.kind === 'counted' && reply.rows !== null
-            ? { status: 'done', key, rows: reply.rows }
-            : { status: 'idle' },
-      });
-    },
-    (error: unknown) => {
-      send(tabId, {
-        type: 'count',
-        count: { status: 'error', key, message: failure(error).message },
-      });
-    },
+/** Count ownership follows the workspace lifetime rather than individual tab mounts. */
+function useCounts(
+  dispatch: React.Dispatch<{ tabId: string; action: EntryAction | null }>,
+): ReturnType<typeof countRequests> {
+  const counts = useMemo(
+    () =>
+      countRequests((tabId, count) => {
+        dispatch({ tabId, action: { type: 'count', count } });
+      }),
+    [dispatch],
   );
+  useEffect(
+    () => () => {
+      counts.clear();
+    },
+    [counts],
+  );
+  return counts;
 }
 
 /** Table tab state lives here (above the tab) so it survives tab switches. */
 export function useTableViews(): TableViews {
   const [entries, dispatch] = useReducer(entriesReducer, {});
+  const counts = useCounts(dispatch);
   const latest = useRef<Record<string, string | undefined>>({});
   const send: Send = (tabId, action) => {
     dispatch({ tabId, action });
@@ -230,14 +219,13 @@ export function useTableViews(): TableViews {
       readStructure(send, tabId, target);
     },
     count: (tabId, key, request) => {
-      startCount(send, [tabId, key, request]);
+      counts.start(tabId, key, request);
     },
     cancelCount: (tabId) => {
-      const state = entries[tabId]?.count;
-      if (state?.status === 'counting')
-        cancelQuery(state.ticket).catch(() => undefined);
+      counts.cancel(tabId);
     },
     release: (tabId) => {
+      counts.release(tabId);
       free(pageIds(entries[tabId]));
       latest.current[tabId] = undefined;
       dispatch({ tabId, action: null });
