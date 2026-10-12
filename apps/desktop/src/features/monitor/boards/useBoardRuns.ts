@@ -11,7 +11,7 @@ import type {
 
 export type WidgetRun =
   | { status: 'running' }
-  | { status: 'done'; reply: BoardRunReply }
+  | { status: 'done'; reply: BoardRunReply; atMs: number }
   | { status: 'error'; message: string };
 
 export type BoardRuns = {
@@ -31,7 +31,7 @@ function message(error: unknown): string {
 
 function runWidget(request: BoardRun): Promise<WidgetRun> {
   return runBoardWidget(request).then(
-    (reply) => ({ status: 'done', reply }),
+    (reply) => ({ status: 'done', reply, atMs: Date.now() }),
     (error: unknown) => ({ status: 'error', message: message(error) }),
   );
 }

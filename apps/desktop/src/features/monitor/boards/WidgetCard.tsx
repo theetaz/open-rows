@@ -14,7 +14,7 @@ const VIEWS = [
 ] as const;
 
 /** The result as an accessible table; the same values the chart draws. */
-export function ResultTable(props: {
+function ResultTable(props: {
   title: string;
   result: BoardResult;
 }): React.JSX.Element {

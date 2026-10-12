@@ -22,6 +22,7 @@ mod native_files;
 mod observability;
 mod projects;
 mod queries;
+mod report_save;
 mod result_store;
 mod results;
 mod run_file;
@@ -192,6 +193,7 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
         run_file::commands::run_file_start,
         diagram::commands::schema_diagram,
         diagram::commands::diagram_save,
+        report_save::report_save,
         dump::commands::dump_tools,
         dump::commands::dump_context,
         dump::commands::dump_backup_preview,

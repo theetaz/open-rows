@@ -1,15 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useMemo, useState } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import { Button, SelectField, TextField } from '@openrows/ui';
 import { confirmDestructive } from '@openrows/ipc';
 import type { Board, BoardDto, MonitorTarget, Widget } from '@openrows/ipc';
+import type { Connection } from '../report/connection';
 import { ParamInputs, ParamsEditor } from './BoardParams';
+import { EmptyBoard, Review, RunNotes } from './BoardNotices';
 import { WidgetCard } from './WidgetCard';
 import { WidgetEditor, newWidget } from './WidgetEditor';
 import { useBoardRuns } from './useBoardRuns';
 import type { BoardRuns } from './useBoardRuns';
 import type { Boards } from './useBoards';
 import styles from './Boards.module.css';
+const BoardReportDialog = lazy(() =>
+  import('../report/ReportEntry').then((module) => ({
+    default: module.BoardReportDialog,
+  })),
+);
 
 const REFRESH = [
   { value: '0', label: 'Manual' },
@@ -21,29 +28,37 @@ const REFRESH = [
 
 type Editing = { kind: 'widget'; widget: Widget } | { kind: 'params' } | null;
 
-/** An imported board: every query shown, nothing runs until approved. */
-function Review(props: {
+/** "Export report…" and its dialog, loaded on first use. */
+function BoardReportButton(props: {
+  connection: Connection;
   board: BoardDto;
-  onApprove: () => void;
+  runs: BoardRuns;
 }): React.JSX.Element {
+  const [reporting, setReporting] = useState(false);
   return (
-    <section className={styles.review} aria-label="Review imported board">
-      <strong>Imported board — paused.</strong>
-      <span>
-        Review every query below. Nothing runs until you approve this board.
-      </span>
-      {props.board.board.widgets.map((widget) => (
-        <div key={widget.id}>
-          <div>{widget.title}</div>
-          <pre className={styles.sql}>{widget.sql}</pre>
-        </div>
-      ))}
-      <div>
-        <Button size="sm" variant="primary" onClick={props.onApprove}>
-          Approve and enable
-        </Button>
-      </div>
-    </section>
+    <>
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={() => {
+          setReporting(true);
+        }}
+      >
+        Export report…
+      </Button>
+      {reporting && (
+        <Suspense fallback={null}>
+          <BoardReportDialog
+            connection={props.connection}
+            board={props.board}
+            runs={props.runs.runs}
+            onClose={() => {
+              setReporting(false);
+            }}
+          />
+        </Suspense>
+      )}
+    </>
   );
 }
 
@@ -53,6 +68,7 @@ function BoardToolbar(props: {
   onSave: (board: Board) => void;
   onEdit: (editing: Editing) => void;
   onDelete: () => void;
+  connection: Connection;
 }): React.JSX.Element {
   const { board, runs } = props;
   const definition = board.board;
@@ -114,6 +130,11 @@ function BoardToolbar(props: {
           Add widget
         </Button>
       )}
+      <BoardReportButton
+        connection={props.connection}
+        board={board}
+        runs={runs}
+      />
       <Button size="sm" variant="ghost" onClick={props.onDelete}>
         Delete board
       </Button>
@@ -197,39 +218,12 @@ async function remove(boards: Boards, board: BoardDto): Promise<void> {
   if (confirmed !== false) await boards.remove(board.id);
 }
 
-function RunNotes(props: {
-  runs: BoardRuns;
-  seconds: number | null;
-}): React.JSX.Element {
-  return (
-    <>
-      {props.runs.note && <p className={styles.note}>{props.runs.note}</p>}
-      {props.runs.live && (
-        <p className={styles.note}>
-          Refreshing every {String(props.seconds)} s while this board is open.
-        </p>
-      )}
-    </>
-  );
-}
-
-/** An empty board offers exactly one action. */
-function EmptyBoard(props: { onAdd: () => void }): React.JSX.Element {
-  return (
-    <div className={styles.empty}>
-      <p>This board has no widgets.</p>
-      <Button size="sm" variant="primary" onClick={props.onAdd}>
-        Add widget
-      </Button>
-    </div>
-  );
-}
-
 /** The selected board: parameters, explicit/interval refresh and widgets. */
 export function BoardView(props: {
   board: BoardDto;
   boards: Boards;
   target: MonitorTarget;
+  connection: Connection;
   active: boolean;
 }): React.JSX.Element {
   const { board, boards } = props;
@@ -258,6 +252,7 @@ export function BoardView(props: {
         onSave={save}
         onEdit={setEditing}
         onDelete={() => void remove(boards, board)}
+        connection={props.connection}
       />
       {!board.reviewed && (
         <Review board={board} onApprove={() => void boards.approve(board.id)} />

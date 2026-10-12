@@ -60,7 +60,7 @@ pub(crate) async fn diagram_save(
 }
 
 /// `path`, with `.extension` appended unless it already ends in it.
-fn with_extension(mut path: PathBuf, extension: &str) -> PathBuf {
+pub(crate) fn with_extension(mut path: PathBuf, extension: &str) -> PathBuf {
     let matches = path
         .extension()
         .is_some_and(|current| current.eq_ignore_ascii_case(extension));

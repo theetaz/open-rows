@@ -5,7 +5,7 @@ import type { BoardResult, ChartMapping } from '@openrows/ipc';
 export type SeriesPoint = { x: number; label: string; y: number | null };
 export type Series = { name: string; points: SeriesPoint[] };
 export type XKind = 'number' | 'time' | 'category';
-export type ChartData =
+type ChartData =
   | { kind: 'chart'; xKind: XKind; series: Series[] }
   | { kind: 'unsuitable'; reason: string };
 

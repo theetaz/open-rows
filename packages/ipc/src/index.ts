@@ -209,8 +209,8 @@ export type {
   TransactionDto,
   TypeCategoryDto,
 } from './generated/bindings';
-/** The read-only ER diagram of a schema and its SVG/PNG export (M2-10). */
-export { saveDiagram, schemaDiagram } from './diagram';
+/** The ER diagram and its SVG/PNG export (M2-10); Monitor report export (M25-08). */
+export { saveDiagram, saveReport, schemaDiagram } from './diagram';
 export type {
   DiagramColumnDto,
   DiagramFileDto,

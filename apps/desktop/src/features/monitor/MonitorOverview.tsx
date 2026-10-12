@@ -2,11 +2,8 @@
 import { useMemo } from 'react';
 import type { MonitorData, Point } from './monitorData';
 import type { EngineDto } from '@openrows/ipc';
-import { MYSQL_METRICS } from './mysqlMetrics';
-import { SQLSERVER_METRICS } from './sqlserverMetrics';
-import { CLICKHOUSE_METRICS } from './clickhouseMetrics';
-import { LIBSQL_METRICS, SQLITE_METRICS } from './embeddedMetrics';
-import { METRICS, metricPoints, metricValue } from './metrics';
+import { metricPoints, metricValue } from './metrics';
+import { metricCadence, overviewMetrics } from './overviewMetrics';
 import type { Metric } from './metrics';
 import { MetricChart } from './MetricChart';
 import { SourceState, stateLabel } from './SourceState';
@@ -66,18 +63,7 @@ export function MonitorOverview(props: {
                   : 'Rows read = returned + fetched; rows written = inserted + updated + deleted. Cache ratio uses interval block hits/reads.'}
       </p>
       <div className={styles.tiles}>
-        {(embedded
-          ? SQLITE_METRICS
-          : remote
-            ? LIBSQL_METRICS
-            : sqlserver
-              ? SQLSERVER_METRICS
-              : clickhouse
-                ? CLICKHOUSE_METRICS
-                : mysql
-                  ? MYSQL_METRICS
-                  : METRICS
-        ).map((metric) => (
+        {overviewMetrics(props.engine).map((metric) => (
           <MetricTile key={metric.title} metric={metric} window={props} />
         ))}
       </div>
@@ -124,24 +110,5 @@ function MetricTile({
       )}
       <MetricChart title={metric.title} points={points} range={range} />
     </article>
-  );
-}
-
-function metricCadence(
-  window: Parameters<typeof MonitorOverview>[0],
-  metric: Metric,
-): number {
-  if (window.history)
-    return Math.floor(Math.min(86_400_000, window.duration * 2) / 300) + 1;
-  if (metric.unit === 'ms' && metric.scope !== 'Database') return 60_000;
-  const sessions =
-    metric.names[0]?.startsWith('sessions:') ||
-    metric.names[0]?.startsWith('waits:');
-  const source = sessions ? 'activity' : 'database';
-  const floor = sessions ? 5000 : 15_000;
-  return Math.max(
-    floor,
-    window.data?.reply.sources.find((item) => item.source === source)
-      ?.intervalMs ?? floor,
   );
 }

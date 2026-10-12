@@ -9,6 +9,8 @@ import type {
 } from './generated/bindings';
 import { unwrap } from './connections';
 
+export type { BoardSave } from './generated/bindings';
+
 /** Boards of a connection, by name; imported boards report `reviewed: false`. */
 export function listBoards(profileId: string): Promise<BoardDto[]> {
   return unwrap(commands.boardsList(profileId));

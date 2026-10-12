@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Button, SelectField, TextArea } from '@openrows/ui';
 import { exportBoard } from '@openrows/ipc';
 import type { Board, MonitorTarget } from '@openrows/ipc';
+import type { Connection } from '../report/connection';
 import { BoardView } from './BoardView';
 import { useBoards } from './useBoards';
 import styles from './Boards.module.css';
@@ -23,6 +24,7 @@ type Mode = 'idle' | 'import' | 'export';
 /** Monitor ▸ Boards: local per-profile analytics boards (docs/28 §5). */
 export function BoardsPanel(props: {
   target: MonitorTarget;
+  connection: Connection;
   active: boolean;
 }): React.JSX.Element {
   const boards = useBoards(props.target.profileId, props.active);
@@ -85,6 +87,7 @@ export function BoardsPanel(props: {
           board={selected}
           boards={boards}
           target={props.target}
+          connection={props.connection}
           active={props.active}
         />
       ) : (

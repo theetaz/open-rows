@@ -18,6 +18,11 @@ vi.mock('@openrows/ipc', () => ({
 }));
 
 const target = { profileId: 'p', database: 'shop' };
+const connection = {
+  name: 'Local',
+  engine: 'postgres' as const,
+  database: 'shop',
+};
 const definition: Board = {
   version: 1,
   name: 'Sales',
@@ -60,7 +65,7 @@ beforeEach(() => {
 it('shows an imported board paused with its queries and never runs it', async () => {
   vi.mocked(ipc.listBoards).mockResolvedValue([dto(false)]);
   vi.mocked(ipc.approveBoard).mockResolvedValue();
-  render(<BoardsPanel target={target} active />);
+  render(<BoardsPanel target={target} connection={connection} active />);
   const review = await screen.findByRole('region', {
     name: 'Review imported board',
   });
@@ -82,7 +87,7 @@ it('shows an imported board paused with its queries and never runs it', async ()
 
 it('runs only on an explicit Run, binding typed values', async () => {
   vi.mocked(ipc.listBoards).mockResolvedValue([dto(true)]);
-  render(<BoardsPanel target={target} active />);
+  render(<BoardsPanel target={target} connection={connection} active />);
   const run = await screen.findByRole('button', { name: 'Run' });
   expect(ipc.runBoardWidget).not.toHaveBeenCalled();
   await userEvent.selectOptions(screen.getByLabelText('region'), 'us');
@@ -102,7 +107,7 @@ it('offers one clear Add widget action on an empty board', async () => {
   vi.mocked(ipc.listBoards).mockResolvedValue([
     dto(true, { ...definition, params: [], widgets: [] }),
   ]);
-  render(<BoardsPanel target={target} active />);
+  render(<BoardsPanel target={target} connection={connection} active />);
   const add = await screen.findAllByRole('button', { name: 'Add widget' });
   expect(add).toHaveLength(1);
   await userEvent.click(add[0] as HTMLElement);

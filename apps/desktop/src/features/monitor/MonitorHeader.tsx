@@ -1,14 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
+import { lazy, Suspense, useState } from 'react';
 import { Button } from '@openrows/ui';
 import type { MonitorTarget } from '@openrows/ipc';
+import type { Connection } from './report/connection';
 import { BackgroundToggle } from './BackgroundToggle';
 import type { MonitorControls } from './useMonitor';
 import type { useMonitorHistory } from './useMonitorHistory';
 import styles from './Monitor.module.css';
+const MonitorReportDialog = lazy(() =>
+  import('./report/ReportEntry').then((module) => ({
+    default: module.MonitorReportDialog,
+  })),
+);
 /** Scope and explicit cadence/window controls; heavier source floors remain core-owned. */
 export function MonitorHeader(props: {
   target: MonitorTarget;
   label: string;
+  connection: Connection;
   monitor: MonitorControls;
   history: ReturnType<typeof useMonitorHistory>;
 }): React.JSX.Element {
@@ -72,10 +80,43 @@ export function MonitorHeader(props: {
           Refresh history range
         </Button>
       )}
+      <ReportButton {...props} />
       <span className={styles.note}>
         Database/statements/I/O ≥15 s; tables/indexes/replication ≥60 s
       </span>
     </header>
+  );
+}
+
+/** "Export report…" and its dialog, loaded on first use. */
+function ReportButton(
+  props: Parameters<typeof MonitorHeader>[0],
+): React.JSX.Element {
+  const [reporting, setReporting] = useState(false);
+  return (
+    <>
+      <Button
+        size="sm"
+        onClick={() => {
+          setReporting(true);
+        }}
+      >
+        Export report…
+      </Button>
+      {reporting && (
+        <Suspense fallback={null}>
+          <MonitorReportDialog
+            target={props.target}
+            connection={props.connection}
+            data={props.monitor.data}
+            history={props.history}
+            onClose={() => {
+              setReporting(false);
+            }}
+          />
+        </Suspense>
+      )}
+    </>
   );
 }
 

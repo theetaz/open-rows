@@ -3,6 +3,7 @@ import { commands } from './generated/bindings';
 import type {
   DiagramFileDto,
   DiagramTarget,
+  ReportFileDto,
   SchemaDiagramDto,
 } from './generated/bindings';
 import { unwrap } from './connections';
@@ -23,4 +24,16 @@ export function saveDiagram(
   file: DiagramFileDto,
 ): Promise<string | null> {
   return unwrap(commands.diagramSave(name, file));
+}
+
+/**
+ * Ask where to save an exported Monitor report or chart (M25-08) in the
+ * native save panel, then write it; resolves the written path, or `null`
+ * when the panel was cancelled.
+ */
+export function saveReport(
+  name: string,
+  file: ReportFileDto,
+): Promise<string | null> {
+  return unwrap(commands.reportSave(name, file));
 }

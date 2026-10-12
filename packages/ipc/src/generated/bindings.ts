@@ -435,6 +435,11 @@ export const commands = {
 	 */
 	diagramSave: (name: string, file: DiagramFileDto) => typedError<string | null, IpcError>(__TAURI_INVOKE("diagram_save", { name, file })),
 	/**
+	 *  Ask where to save an exported report and write it; returns the written
+	 *  path, or `null` when the panel is cancelled.
+	 */
+	reportSave: (name: string, file: ReportFileDto) => typedError<string | null, IpcError>(__TAURI_INVOKE("report_save", { name, file })),
+	/**
 	 *  Every tool as Settings ▸ Tools shows it: the copy found or set there,
 	 *  its version and the other installed copies.
 	 */
@@ -2956,6 +2961,9 @@ export type RelationChangeDto = { kind: "createTable"; target: ObjectNameDto; de
 
 /**  Kind of the browsed relation. */
 export type RelationKindDto = "table" | "partitionedTable" | "view" | "materializedView" | "foreignTable";
+
+/**  An exported report document or chart image. */
+export type ReportFileDto = { format: "markdown"; text: string } | { format: "html"; text: string } | { format: "json"; text: string } | { format: "csv"; text: string } | { format: "svg"; text: string } | { format: "png"; bytes: number[] };
 
 /**  Whether a restore may start and how to confirm it. */
 export type RestoreCheckDto = {

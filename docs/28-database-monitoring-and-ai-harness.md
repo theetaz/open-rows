@@ -905,3 +905,59 @@ collection (row/byte truncation, column kinds); store review state; engine
 protection; and Vitest for chart/table parity, downsampling, no auto-run on
 import or approval, explicit Run with bound values, and the single Add widget
 action on an empty board. No live-database board test is included yet.
+
+## 18. Implemented (M25-08): health and analytics reports
+
+**Export report…** in the Monitor header and on a board's toolbar opens a
+compact sheet with three choices: range, sections and format. The Monitor
+offers the live ten-minute window and, when local history is enabled for the
+profile, 1, 6 or 24 hours of stored history. Its sections are summary and
+source status, metric charts, top queries and incidents. A board report holds
+a summary plus the chosen widgets, taken from their latest runs. The sheet
+reads the data shown when it opens and saves through the native save panel
+(`report_save`, which mirrors `diagram_save`). Nothing runs against the
+database: a widget that was not run is reported as having no result.
+
+All formats render one versioned document (`openrows.monitor-report`,
+version 1). The document records the title, connection name, engine,
+database, range, generation time and sections. Each section is a summary,
+chart, table or stat and carries its own evidence:
+
+- **Source**: the live collector source, stored history aggregates, the
+  incident rules or the board widget's query, with its read-only mode.
+- **Collection range**: the report range for metrics and incidents, the live
+  ranking window for top queries, and the run time for widgets.
+- **Scope**: server, database, node, file, own requests or query result.
+- **Gaps and unknowns**, listed explicitly. These include unknown, reset or
+  denied observations (counted by state), every collection interval with no
+  observation, unavailable sources, partial coverage, truncation limits,
+  failed or missing runs and the session-only incident retention. Unknown
+  values stay `null` in JSON, empty cells with a state in CSV, and `unknown`
+  in Markdown and HTML. They are never zeros.
+
+| Format | Content |
+| --- | --- |
+| Markdown | Metadata, evidence and gaps per section, tables, per-series latest/min/max/mean |
+| HTML | Self-contained page: inline style and inline SVG charts, no scripts, event handlers or external resources; a CSP (`default-src 'none'`) is included |
+| JSON | The versioned document, with every chart observation |
+| CSV | One table section, or one chart as one row per observation (series, time, value, state) |
+| SVG / PNG | One chart at 640 × 260 with fixed colours. Gaps break the line and are marked on the axis; at most 300 buckets per series keep minimum, maximum and gaps. PNG is the SVG drawn on a 2× canvas, as the ER diagram export does |
+
+Numbers are rounded once, to six decimals, when the document is built, so
+JSON, CSV, HTML and Markdown print the same values. Database-provided text
+(query text, names, values) is escaped for each target. HTML and SVG escape
+`& < > " '`. Markdown entity-escapes raw HTML, backslash-escapes inline syntax
+and pipes, and folds line breaks. CSV quotes per RFC 4180 and prefixes text
+starting with `=`, `+`, `-`, `@`, tab or carriage return with `'`, unless it
+is a plain number.
+
+Tests (Vitest, `features/monitor/report`) use hostile fixtures: `<script>`,
+`<img onerror>`, formulas, pipes and newlines. The HTML is parsed and checked
+for script elements, `on*` handlers and `src`/`href` attributes. The tests also
+check gap preservation (unknown points, missing intervals, empty metrics,
+denied sources, missing or truncated widget runs) and that one fixture prints
+the same numbers in all four document formats. Further tests check that the
+standalone SVG parses with gap breaks and escaped labels, that the PNG path
+produces PNG bytes (the canvas is stubbed in jsdom), and that the dialog's
+section, format and item choices reach the save command. The Rust test covers
+the `report_save` file kinds.

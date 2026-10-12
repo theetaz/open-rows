@@ -11,6 +11,7 @@ import { SourcePanel } from './SourcePanel';
 import { HistoryControls } from './HistoryControls';
 import { IncidentsPanel } from './IncidentsPanel';
 import { CLICKHOUSE_HIDDEN, CLICKHOUSE_LABELS } from './clickhouseMetrics';
+import { reportConnection } from './report/connection';
 import styles from './Monitor.module.css';
 const AdvisorPanel = lazy(() =>
   import('./AdvisorPanel').then((module) => ({ default: module.AdvisorPanel })),
@@ -119,6 +120,7 @@ export function MonitorTab(props: Props): React.JSX.Element {
       <MonitorHeader
         target={target}
         label={`${props.profile.name} · ${props.database} · ${ENGINE_NAMES[props.profile.engine] ?? props.profile.engine}`}
+        connection={reportConnection(props.profile, props.database)}
         monitor={monitor}
         history={history}
       />
@@ -173,6 +175,7 @@ function MonitorContent(
         <Suspense fallback={null}>
           <BoardsPanel
             target={{ profileId: props.profile.id, database: props.database }}
+            connection={reportConnection(props.profile, props.database)}
             active={props.connected}
           />
         </Suspense>
