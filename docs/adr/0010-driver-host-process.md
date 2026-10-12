@@ -622,10 +622,13 @@ with `58030`. Both the parent SQL guard and native session refuse `ATTACH`.
 Connection configuration disables extension autoload/autoinstall, community
 extensions, external access and persistent secrets, then locks configuration
 before startup SQL. The process retains the existing 256 MiB containment budget;
-DuckDB uses a 128 MiB engine limit and two worker threads. Metadata, background
-export/edit, managed transactions, explain and catalog operations explicitly
-report Unsupported; UI capabilities prevent hidden extra writable connections.
-M2-04b remains responsible for queued catalog access and full Tier 2 behavior.
+DuckDB uses a 128 MiB engine limit and two worker threads. M2-04b (2026-10-12)
+serves catalog and edit facets on the same hosted connection: the session actor
+queues them with statements, and app catalog, edit and export work borrows the
+shared session, so no metadata, edit or background connection is ever opened.
+Transaction state is tracked in the host (duckdb-rs cannot report autocommit),
+so an open user transaction blocks suspension, replacement and edit commits.
+Explain, import, backup/restore and run-file remain Unsupported for DuckDB.
 In-memory data loss is disclosed before connect and after host failure. Recovery
 requires explicit reconnect; failed queries are never replayed.
 

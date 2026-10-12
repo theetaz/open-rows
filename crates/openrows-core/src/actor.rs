@@ -154,6 +154,7 @@ impl Actor {
                 Next::HostLost(error) => return Err(CoreError::from(&error)),
                 Next::Probe => self.check().await?,
                 Next::Command(Some(Command::Execute(queued))) => self.run(queued).await?,
+                Next::Command(Some(Command::Facet(call))) => self.facet(call).await,
                 Next::Command(Some(Command::Suspend { idle })) if self.may_suspend(idle) => {
                     return Ok(Exit::Suspend);
                 }
@@ -208,6 +209,16 @@ impl Actor {
             Err(Broken::Lost(cause)) => self.recover(cause).await,
             Err(Broken::Unusable(error)) => Err(error),
         }
+    }
+
+    /// Serve one facet call; host loss surfaces through `host_failure` next.
+    async fn facet(&mut self, call: crate::facet::FacetCall) -> Flow {
+        call(self.session.connection()).await;
+        self.mail
+            .shared
+            .set_in_transaction(self.session.in_transaction());
+        self.used = Instant::now();
+        Flow::Continue
     }
 
     /// Ping the idle connection; replace it when it no longer answers.
@@ -317,7 +328,7 @@ pub(crate) fn fail_waiting(mail: &mut Mailbox, error: &CoreError) {
             Command::Close { reply } => {
                 let _ = reply.send(Err(error.clone()));
             }
-            Command::Suspend { .. } => {}
+            Command::Suspend { .. } | Command::Facet(_) => {}
         }
     }
 }

@@ -91,12 +91,12 @@ function connectionEnabled(
   return {
     connect: Boolean(profile) && !connected && state !== 'connecting',
     disconnect: connected || state === 'connecting',
-    database: connected && profile?.engine !== 'duckdb',
+    database: connected,
     monitor: connected,
     processes: connected && Boolean(profile?.processList),
-    refresh: connected && profile?.engine !== 'duckdb',
-    quick: connected && profile?.engine !== 'duckdb',
-    'show-er-diagram': connected && profile?.engine !== 'duckdb',
+    refresh: connected,
+    quick: connected,
+    'show-er-diagram': connected,
     safe: Boolean(profile) && !input.prod,
   };
 }
@@ -138,7 +138,7 @@ function tableEnabled(
   };
 }
 
-/** Pending DuckDB background sessions stay unavailable while query commands work. */
+/** DuckDB exports queue on its one session; its import, file runs and backups are pending. */
 function backgroundEnabled(input: {
   full: boolean;
   connected: boolean;
@@ -149,15 +149,15 @@ function backgroundEnabled(input: {
   const exportable = input.tab?.kind === 'query' || input.tab?.kind === 'table';
   const ready = full && connected;
   return {
-    'export-table': ready && input.tab?.kind === 'table',
+    'export-table': connected && input.tab?.kind === 'table',
     'import-data': ready && Boolean(input.scope),
-    'export-tables': ready,
+    'export-tables': connected,
     'run-sql-file': ready,
     'backup-database': ready,
     'restore-database': ready,
     'backup-schema': ready,
     'restore-schema': ready,
     'backup-table': ready && input.tab?.kind === 'table',
-    'export-results': ready && exportable,
+    'export-results': connected && exportable,
   };
 }

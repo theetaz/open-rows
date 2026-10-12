@@ -29,6 +29,13 @@ impl DuckdbSessions {
             .or_default()
             .clone()
     }
+    /// A `DuckDB` profile connected in this run (catalog and edits borrow it).
+    fn known(&self, profile: ProfileId) -> bool {
+        self.0
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .contains_key(&profile)
+    }
     pub(crate) async fn forget(&self, profile: ProfileId) {
         let slot = self
             .0
@@ -113,6 +120,40 @@ pub(crate) async fn shared(
     *held = Some(opened.clone());
     Ok(opened)
 }
+/// Catalog and edit facets of a connected `DuckDB` profile, queued on its one
+/// session; `None` for every other engine (and before a `DuckDB` connect).
+pub(crate) async fn borrowed(
+    state: &Connections,
+    profile: &str,
+) -> Result<Option<Box<dyn openrows_driver_api::Connection>>, IpcError> {
+    if !state.duckdb.known(super::profiles::profile_id(profile)?) {
+        return Ok(None);
+    }
+    let (session, _) = shared(state, profile, false).await?;
+    let port = state.sessions.facet_port(session)?;
+    let facets = super::duckdb_facets::SharedFacets::new(port)
+        .await
+        .map_err(|error| IpcError::from(&error))?;
+    Ok(Some(Box::new(facets)))
+}
+
+/// The session a background job (export) runs on and whether the job owns
+/// it: `DuckDB` jobs queue on the shared session and never close it.
+pub(crate) async fn job_session(
+    state: &Connections,
+    profile: &str,
+    database: &str,
+) -> Result<(SessionId, bool), IpcError> {
+    if state.duckdb.known(super::profiles::profile_id(profile)?) {
+        return shared(state, profile, false)
+            .await
+            .map(|(session, _)| (session, false));
+    }
+    super::sessions::open_session(state, profile, Some(database))
+        .await
+        .map(|(session, _)| (session, true))
+}
+
 async fn open(state: &Connections, profile_id: &str) -> Result<(SessionId, ServerDto), IpcError> {
     let profile = state
         .profiles

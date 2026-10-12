@@ -18,6 +18,9 @@ pub(crate) enum Command {
         /// How long the session must have been unused.
         idle: Duration,
     },
+    /// Run catalog or edit work on the connection's facets, in queue order
+    /// with statements (one shared hosted `DuckDB` session).
+    Facet(crate::facet::FacetCall),
     /// Close the connection and stop the actor.
     Close {
         /// Close result; dropped when the actor is already gone.

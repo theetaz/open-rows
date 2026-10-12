@@ -91,9 +91,13 @@ fn statements(dialect: Dialect, kind: ObjectKind, name: &str) -> Result<(String,
         (Dialect::MySql, ObjectKind::Procedure) => {
             (format!("CREATE PROCEDURE {name}() SELECT 1"), "PROCEDURE")
         }
-        (Dialect::Postgres | Dialect::SqlServer | Dialect::MySql, ObjectKind::Sequence) => {
-            (format!("CREATE SEQUENCE {name} START WITH 17"), "SEQUENCE")
+        (Dialect::Duckdb, ObjectKind::Function) => {
+            (format!("CREATE MACRO {name}(value) AS value + 1"), "MACRO")
         }
+        (
+            Dialect::Postgres | Dialect::SqlServer | Dialect::MySql | Dialect::Duckdb,
+            ObjectKind::Sequence,
+        ) => (format!("CREATE SEQUENCE {name} START WITH 17"), "SEQUENCE"),
         _ => {
             return Err(Failure::Contract(format!(
                 "Missing Metadata fixture for {dialect:?} {kind:?}"

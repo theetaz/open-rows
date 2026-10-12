@@ -76,8 +76,6 @@ export type ObjectPage = { objects: ObjectDto[]; total: number };
 const offlineReason = (connections: Connections): string | null => {
   const profile = connections.active;
   if (!profile) return 'Choose a connection to browse its objects.';
-  if (profile.engine === 'duckdb')
-    return 'DuckDB catalog browsing is not available yet. Open a query tab to run SQL.';
   const status = connections.statusOf(profile.id);
   if (status.state === 'connected') return null;
   if (status.state === 'connecting') return 'Connecting…';
@@ -91,10 +89,7 @@ export function useCatalog(connections: Connections): Catalog {
     ? connections.statusOf(connections.active.id)
     : undefined;
   const connected = status?.state === 'connected' ? status : undefined;
-  const profileId =
-    connected && connections.active?.engine !== 'duckdb'
-      ? (connections.active?.id ?? null)
-      : null;
+  const profileId = connected ? (connections.active?.id ?? null) : null;
   const database = connected ? connections.database : '';
   const { chosenSchema, ...navigation } = useNavigation(profileId, database);
   const prefix = `${profileId ?? ''}\n${String(connected?.generation ?? '')}\n`;

@@ -24,7 +24,7 @@ use super::outputs::ExportOutputs;
 use super::pins::ResultPins;
 use super::plan::Plan;
 use super::selected::Selected;
-use crate::connections::sessions::open_session;
+use crate::connections::job_session;
 use crate::connections::{Connections, IpcError};
 use crate::jobs::JobScope as Scope;
 use crate::queries::Queries;
@@ -145,13 +145,16 @@ where
     F: Future<Output = ExportOutcome>,
 {
     let connections: &'a Connections = app.state::<Connections>().inner();
-    let session = match open_session(connections, &scope.profile_id, Some(&scope.database)).await {
-        Ok((session, _)) => session,
+    let (session, owned) = match job_session(connections, &scope.profile_id, &scope.database).await
+    {
+        Ok(opened) => opened,
         Err(error) => return Ended::Refused(error),
     };
     let outcome = work(connections, session).await;
-    // Best effort: the session is ours and nothing else uses it.
-    let _ = connections.sessions.close(session).await;
+    if owned {
+        // Best effort: the session is ours and nothing else uses it.
+        let _ = connections.sessions.close(session).await;
+    }
     Ended::Outcome(outcome)
 }
 

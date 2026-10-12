@@ -31,6 +31,8 @@ pub(crate) mod diagnostics;
 pub(crate) mod drivers;
 mod dto;
 mod duckdb;
+pub(crate) use duckdb::{borrowed as duckdb_facets, job_session};
+mod duckdb_facets;
 mod engine_dto;
 pub(crate) use engine_dto::EngineDto;
 mod enums;

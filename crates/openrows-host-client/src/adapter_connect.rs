@@ -56,8 +56,8 @@ impl HostedConnection {
     ) -> Result<(), DriverError> {
         if connected.facets
             != (openrows_host_protocol::Facets {
-                catalog: !self.duckdb,
-                editor: !self.duckdb,
+                catalog: true,
+                editor: true,
                 admin: false,
                 bulk: false,
             })

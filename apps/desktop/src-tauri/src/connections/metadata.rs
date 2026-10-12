@@ -65,7 +65,7 @@ impl MetadataSessions {
             if target.driver.dialect() == openrows_sql::Dialect::Duckdb {
                 return Err(IpcError::new(
                     IpcErrorKind::Unsupported,
-                    "DuckDB catalog/edit/export metadata is not available yet; no extra connection was opened",
+                    "Connect the DuckDB connection first; its catalog is read on that one session and no extra connection is opened",
                 ));
             }
             let connected = target::connect(&target)

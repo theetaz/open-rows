@@ -22,7 +22,8 @@ pub(crate) async fn sleep(actor: Actor) -> Option<Actor> {
                 let _ = queued.events.send(QueryEvent::Cancelled);
             }
             Some(Command::Execute(queued)) => return wake(mail, queued).await,
-            Some(Command::Suspend { .. }) => {}
+            // Facet calls never wake a suspended connection; the caller sees it closed.
+            Some(Command::Suspend { .. } | Command::Facet(_)) => {}
             Some(Command::Close { reply }) => {
                 mail.shared.set_state(SessionState::Closed, None);
                 // `close` may have stopped waiting; the state says Closed.

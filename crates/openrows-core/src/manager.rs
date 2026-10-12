@@ -339,6 +339,17 @@ impl SessionManager {
         closed.await.unwrap_or(Ok(()))
     }
 
+    /// A handle that queues facet calls on `session`'s connection.
+    ///
+    /// # Errors
+    /// `UnknownSession` when the session is not open.
+    pub fn facet_port(&self, session: SessionId) -> Result<crate::FacetPort, CoreError> {
+        self.with_entry(session, |entry| {
+            crate::FacetPort::new(session, entry.commands.clone())
+        })
+        .ok_or_else(|| CoreError::unknown_session(session))
+    }
+
     fn lock(&self) -> std::sync::MutexGuard<'_, HashMap<SessionId, Entry>> {
         self.sessions.lock().unwrap_or_else(PoisonError::into_inner)
     }

@@ -150,7 +150,7 @@ function ProfileActions(
   );
 }
 
-/** Pending DuckDB facets have an explicit reason before opening a connection. */
+/** DuckDB features still pending have an explicit reason before connecting. */
 function DuckdbNotice({
   engine,
 }: {
@@ -159,8 +159,9 @@ function DuckdbNotice({
   if (engine !== 'duckdb') return null;
   return (
     <small className={styles.hint}>
-      Queries and cancellation are available. Catalog browsing, editing, export,
-      backup and explain visualization are not available yet.
+      Browsing, editing, transactions and export share one DuckDB session.
+      Import, backup, running SQL files and explain visualization are not
+      available yet.
     </small>
   );
 }

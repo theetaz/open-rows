@@ -52,6 +52,9 @@ pub(crate) async fn catalog_capabilities(
     database: String,
 ) -> Result<CatalogFeaturesDto, IpcError> {
     let caps = capability(&state, &profile_id, Feature::Catalog)?;
+    if let Some(shared) = super::duckdb_facets(&state, &profile_id).await? {
+        return Ok(supported(caps, shared.server()));
+    }
     state
         .metadata
         .read(

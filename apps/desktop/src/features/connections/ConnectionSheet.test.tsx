@@ -246,7 +246,7 @@ it('saves DuckDB memory profiles and explains irreversible data loss before conn
   ).not.toBeInTheDocument();
   expect(
     screen.getByText(
-      /Catalog browsing, editing, export, backup and explain visualization are not available yet/,
+      /Import, backup, running SQL files and explain visualization are not\s+available yet/,
     ),
   ).toBeVisible();
   await user.click(screen.getByRole('button', { name: 'Save' }));

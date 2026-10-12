@@ -150,6 +150,9 @@ impl Session for HostedConnection {
     fn in_transaction(&self) -> bool {
         self.transaction
     }
+    fn connection(&mut self) -> Option<&mut dyn openrows_driver_api::Connection> {
+        Some(self)
+    }
     fn close(self: Box<Self>) -> BoxFuture<'static, Result<(), DriverError>> {
         Box::pin(async move {
             let reservation = self.reservation;

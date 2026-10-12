@@ -3,7 +3,7 @@ import { expect, it } from 'vitest';
 import { menuEnabled } from './menuState';
 import type { Connections } from '../connections';
 import { profile } from '../../test/ipcStub';
-it('keeps DuckDB query and cancel enabled and gates pending background features', () => {
+it('enables DuckDB browsing and export while gating its pending background features', () => {
   const active = profile('analytics', { engine: 'duckdb' });
   const connections = {
     active,
@@ -15,20 +15,26 @@ it('keeps DuckDB query and cancel enabled and gates pending background features'
     scope: { connectionId: active.id, database: 'main' },
     prod: false,
   });
-  for (const command of ['run-current', 'run-all', 'cancel', 'new-tab'])
+  for (const command of [
+    'run-current',
+    'run-all',
+    'cancel',
+    'new-tab',
+    'export-results',
+    'export-tables',
+    'show-er-diagram',
+    'database',
+    'refresh',
+    'quick',
+  ])
     expect(enabled[command]).toBe(true);
   for (const command of [
     'explain',
     'explain-analyze',
-    'export-results',
-    'export-tables',
     'backup-database',
     'restore-database',
     'import-data',
     'run-sql-file',
-    'show-er-diagram',
-    'database',
-    'refresh',
   ])
     expect(enabled[command]).toBe(false);
 });

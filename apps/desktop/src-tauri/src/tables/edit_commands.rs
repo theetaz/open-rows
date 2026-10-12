@@ -24,6 +24,9 @@ pub(crate) async fn session(
     state: &Connections,
     target: &TableTarget,
 ) -> Result<Box<dyn Connection>, IpcError> {
+    if let Some(shared) = crate::connections::duckdb_facets(state, &target.profile_id).await? {
+        return Ok(shared);
+    }
     let destination = route::profile_target(state, &target.profile_id)
         .await?
         .with_database(&target.database)
@@ -52,7 +55,11 @@ pub(crate) async fn edit_shape(
 }
 fn writable(state: &Connections, target: &TableTarget) -> Result<(), IpcError> {
     let profile = state.profiles.get(profile_id(&target.profile_id)?)?;
-    ensure_writable(profile.safety.read_only())
+    ensure_writable(read_only(&profile))
+}
+/// The profile's safety switch, or a file opened read-only (the engine refuses writes too).
+fn read_only(profile: &openrows_store::profile::ConnectionProfile) -> bool {
+    profile.safety.read_only() || profile.file.as_ref().is_some_and(|file| file.read_only)
 }
 pub(crate) fn ensure_writable(read_only: bool) -> Result<(), IpcError> {
     if read_only {
@@ -71,7 +78,7 @@ pub(crate) async fn table_edit_info(
 ) -> Result<EditInfoDto, IpcError> {
     let profile = state.profiles.get(profile_id(&target.profile_id)?)?;
     let safety = (
-        profile.safety.read_only(),
+        read_only(&profile),
         profile.safety.confirm_writes(),
         profile.env_tag.kind == EnvKind::Prod,
     );

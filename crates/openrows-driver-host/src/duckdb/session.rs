@@ -8,7 +8,9 @@ use openrows_driver_api::{
 use std::sync::Arc;
 
 pub(super) struct DuckdbSession {
-    native: duckdb::Connection,
+    pub(super) native: duckdb::Connection,
+    /// An explicit transaction is open; duckdb-rs cannot report autocommit state.
+    transaction: bool,
     server: ServerSummary,
     cancel: Arc<Interrupt>,
 }
@@ -39,6 +41,7 @@ impl DuckdbSession {
         let cancel = Arc::new(Interrupt(native.interrupt_handle()));
         Ok(Self {
             native,
+            transaction: false,
             cancel,
             server: ServerSummary {
                 product: "DuckDB".into(),
@@ -70,7 +73,14 @@ impl DuckdbSession {
         }
         let mut summary = ExecSummary::default();
         for statement in statements {
-            let (result, stopped) = stream::run(&self.native, statement.text(sql), params, sink)?;
+            let text = statement.text(sql);
+            let ran = stream::run(&self.native, text, params, sink);
+            if openrows_sql::classify(text, openrows_sql::Dialect::Duckdb).kind
+                == openrows_sql::StatementKind::TxControl
+            {
+                self.refresh_transaction()?;
+            }
+            let (result, stopped) = ran?;
             summary.rows += result.rows;
             summary.batches += result.batches;
             summary.command_tag = result.command_tag;
@@ -81,6 +91,19 @@ impl DuckdbSession {
             }
         }
         Ok(summary)
+    }
+    /// Autocommit statements each get a new transaction id; an explicit
+    /// transaction keeps one id across statements.
+    pub(super) fn refresh_transaction(&mut self) -> Result<(), DriverError> {
+        let id = |native: &duckdb::Connection| {
+            native
+                .query_row("SELECT current_transaction_id()::VARCHAR", [], |row| {
+                    row.get::<_, Option<String>>(0)
+                })
+                .map_err(error::map)
+        };
+        self.transaction = id(&self.native)? == id(&self.native)?;
+        Ok(())
     }
 }
 impl Session for DuckdbSession {
@@ -106,7 +129,7 @@ impl Session for DuckdbSession {
         Box::pin(async move { self.native.execute_batch("SELECT 1").map_err(error::map) })
     }
     fn in_transaction(&self) -> bool {
-        !self.native.is_autocommit()
+        self.transaction
     }
     fn close(self: Box<Self>) -> BoxFuture<'static, Result<(), DriverError>> {
         Box::pin(async move {
@@ -118,5 +141,11 @@ impl Session for DuckdbSession {
 impl Connection for DuckdbSession {
     fn server(&self) -> &ServerSummary {
         &self.server
+    }
+    fn catalog(&mut self) -> Option<&mut dyn openrows_driver_api::Catalog> {
+        Some(self)
+    }
+    fn editor(&mut self) -> Option<&mut dyn openrows_driver_api::Editor> {
+        Some(self)
     }
 }

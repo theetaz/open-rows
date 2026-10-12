@@ -26,6 +26,7 @@ mod error;
 mod event;
 pub mod explain;
 pub mod export;
+mod facet;
 mod handle;
 mod manager;
 mod resilience;
@@ -40,6 +41,7 @@ mod tests;
 
 pub use error::{CoreError, ErrorKind};
 pub use event::{QueryEvent, SessionEvent, SessionState};
+pub use facet::FacetPort;
 pub use handle::{Canceller, QueryHandle};
 pub use manager::SessionManager;
 pub use resilience::{Reconnect, Resilience, RetryPolicy};

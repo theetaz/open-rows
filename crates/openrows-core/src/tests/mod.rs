@@ -2,6 +2,7 @@
 //! Session actor tests against the scripted [`fake::Fake`] driver.
 mod cancel;
 mod export;
+mod facet;
 mod fake;
 mod flaky;
 mod isolation;

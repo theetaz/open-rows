@@ -47,13 +47,14 @@ pub struct WireCapabilities {
     pub objects: Vec<u16>,
 }
 impl WireCapabilities {
-    /// Production `DuckDB`: cancellation, text binding and startup SQL only.
+    /// Production `DuckDB`: cancel, bind, schemas, catalog, row edits,
+    /// transactional DDL, startup SQL and fingerprint; tables, views, macros, sequences.
     #[must_use]
     pub fn duckdb() -> Self {
         Self {
             location: 1,
-            features: vec![1, 2, 11],
-            objects: vec![],
+            features: vec![1, 2, 4, 5, 6, 8, 11, 12],
+            objects: vec![1, 2, 5, 7],
         }
     }
     /// Current `SQLite` test-host contract: cancel, bind, startup; implemented catalog/editor facets.

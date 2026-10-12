@@ -8,12 +8,7 @@ import {
 } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
-import {
-  listDatabases,
-  listSchemas,
-  listObjects,
-  openSession,
-} from '@openrows/ipc';
+import { listSchemas, openSession } from '@openrows/ipc';
 import { Workspace } from './Workspace';
 vi.mock('@openrows/ipc', async () => {
   const { ipcStub, profile } = await import('../../test/ipcStub');
@@ -49,7 +44,7 @@ vi.mock('@openrows/ipc', async () => {
     }),
   ]);
 });
-it('keeps query scope while refusing hidden catalog reads and unavailable toolbar actions', async () => {
+it('browses the catalog and shares one session across query tabs', async () => {
   render(
     <ThemeProvider>
       <Workspace onGallery={vi.fn()} />
@@ -58,19 +53,16 @@ it('keeps query scope while refusing hidden catalog reads and unavailable toolba
   fireEvent.click(
     await screen.findByRole('button', { name: 'Switch to local-duckdb' }),
   );
-  await screen.findByText(
-    'DuckDB catalog browsing is not available yet. Open a query tab to run SQL.',
-  );
   await waitFor(() => {
     expect(openSession).toHaveBeenCalledWith('id-local-duckdb', 'main');
   });
-  expect(listDatabases).not.toHaveBeenCalled();
-  expect(listSchemas).not.toHaveBeenCalled();
-  expect(listObjects).not.toHaveBeenCalled();
+  await waitFor(() => {
+    expect(listSchemas).toHaveBeenCalled();
+  });
   expect(
-    screen.getByRole('button', { name: 'Open database (⌘K)' }),
-  ).toBeDisabled();
-  expect(screen.getByRole('button', { name: 'Refresh' })).toBeDisabled();
+    screen.queryByText(/DuckDB catalog browsing is not available/),
+  ).toBeNull();
+  expect(screen.getByRole('button', { name: 'Refresh' })).toBeEnabled();
   expect(screen.getByRole('button', { name: 'New SQL query' })).toBeEnabled();
   expect(screen.queryByRole('button', { name: 'Explain' })).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'New SQL query' }));

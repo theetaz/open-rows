@@ -47,9 +47,7 @@ export function ResultArea(props: {
         showNotices={showNotices}
         engine={props.engine}
         onCell={props.onCell}
-        onExport={
-          sessionId && props.engine !== 'duckdb' ? exportResult : undefined
-        }
+        onExport={sessionId ? exportResult : undefined}
         onExportable={props.onExportable}
         extra={props.extra}
       />

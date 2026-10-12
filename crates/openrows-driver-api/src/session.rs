@@ -81,6 +81,13 @@ pub trait Session: Send {
         false
     }
 
+    /// This session's facets when it is a full [`crate::Connection`]; lets the
+    /// owning actor serve catalog and edit calls on the same connection
+    /// (a hosted `DuckDB` file has no second connection).
+    fn connection(&mut self) -> Option<&mut dyn crate::Connection> {
+        None
+    }
+
     /// Gracefully terminate the connection.
     ///
     /// # Errors
@@ -160,6 +167,7 @@ mod tests {
         assert!(matches!(refused, Err(DriverError::Unsupported(_))));
         ready(session.ping())?;
         assert!(!session.in_transaction());
+        assert!(session.connection().is_none());
         ready(session.close())
     }
 }

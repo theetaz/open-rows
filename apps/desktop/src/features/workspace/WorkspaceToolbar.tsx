@@ -157,11 +157,6 @@ function Context({
               aria-label={`Open database (${database || 'none'})`}
               onClick={onDatabase}
               disabled={!onDatabase}
-              title={
-                onDatabase
-                  ? undefined
-                  : 'DuckDB catalog browsing is not available yet.'
-              }
             >
               {database || 'No database'}
             </button>

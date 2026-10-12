@@ -27,6 +27,13 @@ pub(crate) async fn read_catalog<T>(
     (profile_id, database): (&str, &str),
     read: impl for<'s> FnOnce(&'s mut dyn Catalog) -> BoxFuture<'s, Result<T, DriverError>>,
 ) -> Result<T, IpcError> {
+    if let Some(mut shared) = super::duckdb_facets(state, profile_id).await? {
+        let result = match catalog(shared.as_mut()) {
+            Ok(facet) => read(facet).await,
+            Err(error) => Err(error),
+        };
+        return result.map_err(|error| IpcError::from(&error));
+    }
     state
         .metadata
         .read(

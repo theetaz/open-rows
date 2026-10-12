@@ -139,12 +139,7 @@ function completionFor(
   },
   sessionId: string | null,
 ): CompletionCatalog | null {
-  if (
-    !sessionId ||
-    props.status.state !== 'connected' ||
-    props.connection.engine === 'duckdb'
-  )
-    return null;
+  if (!sessionId || props.status.state !== 'connected') return null;
   return completionCatalog({
     profileId: props.connection.id,
     database: props.tab.database,

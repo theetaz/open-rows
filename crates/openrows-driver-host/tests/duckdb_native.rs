@@ -50,7 +50,7 @@ async fn file_contract() -> Result<(), Box<dyn std::error::Error>> {
         create: true,
     };
     let mut connection = open(source.clone()).await?;
-    assert!(connection.catalog().is_none() && connection.editor().is_none());
+    assert!(connection.catalog().is_some() && connection.editor().is_some());
     connection
         .execute(
             "CREATE TABLE items(id INTEGER, value VARCHAR)",
