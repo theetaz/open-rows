@@ -20,15 +20,19 @@ pub struct LibsqlSession {
     pub(crate) http: Http,
     pub(crate) summary: ServerSummary,
     baton: Option<SecretString>,
-    cancel: Arc<Abort>,
+    pub(crate) cancel: Arc<Abort>,
     limits: ResultLimits,
     transaction: bool,
     usable: bool,
+    /// Own statements against this remote database, for the Monitor.
+    pub(crate) ledger: Arc<openrows_monitor::Ledger>,
 }
 
 impl LibsqlSession {
     pub(crate) fn new(http: Http, summary: ServerSummary, limits: ResultLimits) -> Self {
+        let ledger = crate::monitor::ledger(&http.transport.url);
         Self {
+            ledger,
             http,
             summary,
             baton: None,
@@ -164,6 +168,27 @@ impl LibsqlSession {
             _ => Err(error::protocol()),
         }
     }
+
+    /// One statement natively, or a multi-statement script as one atomic batch.
+    async fn script(
+        &mut self,
+        sql: &str,
+        sink: &mut dyn ResultSink,
+    ) -> Result<ExecSummary, DriverError> {
+        let statements = openrows_sql::split(sql, Dialect::Sqlite);
+        if statements.len() > 1 {
+            let bound: Vec<_> = statements
+                .iter()
+                .map(|statement| BoundSql {
+                    sql: statement.text(sql).into(),
+                    params: Vec::new(),
+                })
+                .collect();
+            self.atomic_batch(&bound, sink).await
+        } else {
+            self.execute_values(sql, Vec::new(), Vec::new(), sink).await
+        }
+    }
 }
 
 impl Session for LibsqlSession {
@@ -173,19 +198,10 @@ impl Session for LibsqlSession {
         sink: &'a mut dyn ResultSink,
     ) -> BoxFuture<'a, Result<ExecSummary, DriverError>> {
         Box::pin(async move {
-            let statements = openrows_sql::split(sql, Dialect::Sqlite);
-            if statements.len() > 1 {
-                let bound: Vec<_> = statements
-                    .iter()
-                    .map(|statement| BoundSql {
-                        sql: statement.text(sql).into(),
-                        params: Vec::new(),
-                    })
-                    .collect();
-                self.atomic_batch(&bound, sink).await
-            } else {
-                self.execute_values(sql, Vec::new(), Vec::new(), sink).await
-            }
+            let started = std::time::Instant::now();
+            let result = self.script(sql, sink).await;
+            crate::monitor::record(&self.ledger, sql, started, &result);
+            result
         })
     }
     fn execute_bound<'a>(
@@ -194,17 +210,16 @@ impl Session for LibsqlSession {
         params: &'a [Option<String>],
         sink: &'a mut dyn ResultSink,
     ) -> BoxFuture<'a, Result<ExecSummary, DriverError>> {
-        Box::pin(
-            self.execute_values(
-                sql,
-                params
-                    .iter()
-                    .map(|value| Value::text(value.as_deref()))
-                    .collect(),
-                Vec::new(),
-                sink,
-            ),
-        )
+        Box::pin(async move {
+            let started = std::time::Instant::now();
+            let values = params
+                .iter()
+                .map(|value| Value::text(value.as_deref()))
+                .collect();
+            let result = self.execute_values(sql, values, Vec::new(), sink).await;
+            crate::monitor::record(&self.ledger, sql, started, &result);
+            result
+        })
     }
     fn cancel_handle(&self) -> Option<Arc<dyn CancelHandle>> {
         Some(self.cancel.clone())
@@ -230,6 +245,9 @@ impl Connection for LibsqlSession {
         Some(self)
     }
     fn editor(&mut self) -> Option<&mut dyn openrows_driver_api::Editor> {
+        Some(self)
+    }
+    fn monitor(&mut self) -> Option<&mut dyn openrows_monitor::MonitorReader> {
         Some(self)
     }
 }

@@ -70,14 +70,13 @@ pub(super) fn ensure_engine(engine: openrows_store::profile::Driver) -> Result<(
         | Driver::Mysql
         | Driver::Mariadb
         | Driver::Sqlserver
-        | Driver::Clickhouse => return Ok(()),
+        | Driver::Clickhouse
+        | Driver::Sqlite
+        | Driver::LibsqlFile
+        | Driver::Libsql => return Ok(()),
         Driver::Duckdb => {
             "DuckDB monitoring requires its owning host/session; no extra connection is opened"
         }
-        Driver::Sqlite | Driver::LibsqlFile => {
-            "Own-session embedded diagnostics are not implemented yet"
-        }
-        Driver::Libsql => "Own OpenRows requests only; server-wide metrics unavailable over Hrana",
     };
     Err(IpcError::new(IpcErrorKind::Unsupported, reason))
 }

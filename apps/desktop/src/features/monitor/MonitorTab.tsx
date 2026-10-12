@@ -41,12 +41,21 @@ const SQLSERVER_LABELS: Partial<Record<Panel, string>> = {
   indexes: 'Index usage',
   io: 'Waits',
 };
+/** Embedded and remote libSQL see only OpenRows' own statements. */
+const EMBEDDED_PANELS: ReadonlySet<Panel> = new Set([
+  'overview',
+  'incidents',
+  'statements',
+]);
 const ENGINE_NAMES: Partial<Record<EngineDto, string>> = {
   postgres: 'PostgreSQL',
   mysql: 'MySQL',
   mariadb: 'MariaDB',
   sqlserver: 'SQL Server',
   clickhouse: 'ClickHouse',
+  sqlite: 'SQLite',
+  'libsql-file': 'libSQL file',
+  libsql: 'libSQL',
 };
 type Props = {
   profile: ProfileDto;
@@ -216,6 +225,13 @@ function panels(engine: EngineDto): readonly { value: Panel; label: string }[] {
         label: CLICKHOUSE_LABELS[panel.value] ?? panel.label,
       }),
     );
+  if (ownSessionsOnly(engine))
+    return PANELS.filter((panel) => EMBEDDED_PANELS.has(panel.value)).map(
+      (panel) =>
+        panel.value === 'statements'
+          ? { value: panel.value, label: 'Own queries' }
+          : panel,
+    );
   const labels =
     engine === 'mysql' || engine === 'mariadb'
       ? MYSQL_LABELS
@@ -235,14 +251,19 @@ function monitorSupported(engine: EngineDto): boolean {
     case 'mysql':
     case 'mariadb':
     case 'sqlserver':
-    case 'clickhouse':
-      return true;
     case 'sqlite':
     case 'libsql':
     case 'libsql-file':
+    case 'clickhouse':
+      return true;
     case 'duckdb':
       return false;
   }
+}
+
+/** Engines whose collector reads only OpenRows' own statements. */
+function ownSessionsOnly(engine: EngineDto | undefined): boolean {
+  return engine === 'sqlite' || engine === 'libsql-file' || engine === 'libsql';
 }
 
 function evidenceTarget(

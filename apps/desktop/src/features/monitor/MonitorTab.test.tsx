@@ -227,7 +227,7 @@ it('ignores events for other generations and scopes', async () => {
   expect(ipc.monitorSnapshot).not.toHaveBeenCalled();
 });
 
-it.each(['sqlite', 'libsql', 'libsql-file', 'duckdb'] as const)(
+it.each(['duckdb'] as const)(
   'shows the explicit coming state for %s without collector admission',
   async (engine) => {
     render(<MonitorTab {...props} profile={{ ...props.profile, engine }} />);
@@ -369,3 +369,52 @@ it('starts ClickHouse monitoring with node tiles, its panels and an unavailable 
     (await screen.findAllByText(/query_log is not configured/)).length,
   ).toBeGreaterThan(0);
 });
+
+it.each([
+  [
+    'sqlite',
+    'SQLite',
+    'Own OpenRows sessions only — other applications are not visible.',
+    'Checkpoint backlog',
+  ],
+  [
+    'libsql-file',
+    'libSQL file',
+    'Own OpenRows sessions only — other applications are not visible.',
+    'WAL size',
+  ],
+  [
+    'libsql',
+    'libSQL',
+    'Own OpenRows requests only — server-wide metrics unavailable over Hrana.',
+    'Round trip',
+  ],
+] as const)(
+  'starts %s own-session monitoring with only measurable panels',
+  async (engine, name, boundary, tile) => {
+    const reply = monitorReply();
+    for (const item of [...reply.capabilities, ...reply.sources])
+      if (item.source === 'activity')
+        item.state = { kind: 'unavailable', reason: boundary };
+    vi.mocked(ipc.startMonitor).mockResolvedValue(reply);
+    vi.mocked(ipc.monitorSnapshot).mockResolvedValue(reply);
+    render(<MonitorTab {...props} profile={{ ...props.profile, engine }} />);
+    await screen.findByRole('article', { name: tile });
+    expect(ipc.startMonitor).toHaveBeenCalled();
+    expect(screen.getByText(new RegExp(`· ${name}$`))).toBeInTheDocument();
+    expect(screen.getByRole('note')).toHaveTextContent(boundary);
+    expect(
+      screen.getByRole('article', { name: 'Own requests/s' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('radio', { name: 'Own queries' }),
+    ).toBeInTheDocument();
+    for (const panel of ['Sessions', 'Blocking', 'Replication', 'I/O'])
+      expect(
+        screen.queryByRole('radio', { name: panel }),
+      ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('article', { name: 'CPU usage (default pool)' }),
+    ).not.toBeInTheDocument();
+  },
+);

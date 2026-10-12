@@ -4,4 +4,5 @@ mod catalog;
 mod execute;
 mod helpers;
 mod lifecycle;
+mod monitor;
 mod support;

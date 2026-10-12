@@ -5,6 +5,7 @@ import type { EngineDto } from '@openrows/ipc';
 import { MYSQL_METRICS } from './mysqlMetrics';
 import { SQLSERVER_METRICS } from './sqlserverMetrics';
 import { CLICKHOUSE_METRICS } from './clickhouseMetrics';
+import { LIBSQL_METRICS, SQLITE_METRICS } from './embeddedMetrics';
 import { METRICS, metricPoints, metricValue } from './metrics';
 import type { Metric } from './metrics';
 import { MetricChart } from './MetricChart';
@@ -25,6 +26,8 @@ export function MonitorOverview(props: {
   const mysql = props.engine === 'mysql' || props.engine === 'mariadb';
   const sqlserver = props.engine === 'sqlserver';
   const clickhouse = props.engine === 'clickhouse';
+  const embedded = props.engine === 'sqlite' || props.engine === 'libsql-file';
+  const remote = props.engine === 'libsql';
   return (
     <>
       {['activity', 'database', 'replication'].map((source) => (
@@ -39,26 +42,41 @@ export function MonitorOverview(props: {
           now={props.now}
         />
       ))}
+      {(embedded || remote) && (
+        <p role="note" className={styles.note}>
+          {embedded
+            ? 'Own OpenRows sessions only — other applications are not visible.'
+            : 'Own OpenRows requests only — server-wide metrics unavailable over Hrana.'}
+        </p>
+      )}
       <p className={styles.note}>
         {props.history
           ? 'Stored aggregate history; each bucket preserves a missing/reset state. Missing collection intervals are gaps. Other panels show live source tables.'
           : 'Live ten-minute window. Database counters need two samples; no baseline or a reset means unknown.'}{' '}
-        {sqlserver
-          ? 'Performance counters cover the whole instance, including collector queries. CPU is the default resource pool share; buffer cache hit ratio and page life expectancy are current values. Missing counters remain unknown.'
-          : clickhouse
-            ? 'Node counters from system events, metrics and asynchronous metrics include collector queries. Events are interval rates; running queries, merges, parts and memory are gauges. Missing or denied counters remain unknown.'
-            : mysql
-              ? 'Server status includes all databases and collector queries. Rows are InnoDB counters; buffer pool hit ratio is 1 − physical reads/read requests. Missing engine counters remain unknown.'
-              : 'Rows read = returned + fetched; rows written = inserted + updated + deleted. Cache ratio uses interval block hits/reads.'}
+        {embedded
+          ? 'Request counters cover statements run from OpenRows editors and grids against this file. File gauges come from cheap PRAGMAs, file sizes and the WAL index; integrity and quick checks never run automatically. Missing WAL values mean the file is not in WAL mode.'
+          : remote
+            ? 'Request counters and round trip are measured by OpenRows. Server CPU, memory, storage and other clients’ queries are unavailable over Hrana and are never estimated.'
+            : sqlserver
+              ? 'Performance counters cover the whole instance, including collector queries. CPU is the default resource pool share; buffer cache hit ratio and page life expectancy are current values. Missing counters remain unknown.'
+              : clickhouse
+                ? 'Node counters from system events, metrics and asynchronous metrics include collector queries. Events are interval rates; running queries, merges, parts and memory are gauges. Missing or denied counters remain unknown.'
+                : mysql
+                  ? 'Server status includes all databases and collector queries. Rows are InnoDB counters; buffer pool hit ratio is 1 − physical reads/read requests. Missing engine counters remain unknown.'
+                  : 'Rows read = returned + fetched; rows written = inserted + updated + deleted. Cache ratio uses interval block hits/reads.'}
       </p>
       <div className={styles.tiles}>
-        {(sqlserver
-          ? SQLSERVER_METRICS
-          : clickhouse
-            ? CLICKHOUSE_METRICS
-            : mysql
-              ? MYSQL_METRICS
-              : METRICS
+        {(embedded
+          ? SQLITE_METRICS
+          : remote
+            ? LIBSQL_METRICS
+            : sqlserver
+              ? SQLSERVER_METRICS
+              : clickhouse
+                ? CLICKHOUSE_METRICS
+                : mysql
+                  ? MYSQL_METRICS
+                  : METRICS
         ).map((metric) => (
           <MetricTile key={metric.title} metric={metric} window={props} />
         ))}

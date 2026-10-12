@@ -792,3 +792,50 @@ over the `default` cluster, and a restricted user. That user has
 REMOTE. A second run with `OPENROWS_TEST_CLICKHOUSE_QUERY_LOG=OFF` removes
 `query_log` and checks the unavailable state. A live multi-node cluster,
 ClickHouse Cloud and reference-load overhead remain M25-09.
+
+## 16. Implemented (M25-07d): SQLite and libSQL own-session diagnostics
+
+SQLite, libSQL files and remote libSQL are admitted to the Monitor. Neither
+engine has a server process list, so every collector sees only what OpenRows
+itself runs, and the Overview states the ADR-0011 boundary in plain text: “Own
+OpenRows sessions only — other applications are not visible.” for files and
+“Own OpenRows requests only — server-wide metrics unavailable over Hrana.” for
+remote libSQL. Sessions, Blocking, Tables, Indexes, Replication and I/O panels
+are hidden for these engines; their sources report an explicit unavailable
+reason, never zero.
+
+- **Own statements** (Own queries panel): a process-wide ledger per file path
+  (canonicalised) or remote origin and path (never credentials) is shared by
+  every OpenRows session on that target. Statements run through the editor or
+  grid (`execute` / `execute_bound`) are recorded after they finish; catalog,
+  editor, connect and monitor probes are not. Identity is an FNV-1a hash of the
+  literal-free monitor normalisation; utility statements group by keyword
+  (`other:PRAGMA`) without text. Each shape keeps calls, client wall time,
+  maximum, rows, errors and, for files, `sqlite3_stmt_status` FULLSCAN_STEP,
+  SORT and VM_STEP. At most 200 shapes are kept; the cheapest is evicted and
+  the reading is marked partial. The ledger ends with its last session, and the
+  next one starts a new counter epoch.
+- **File diagnostics** (SQLite and libSQL file, Database source): the monitor
+  connection waits at most 100 ms for a writer and runs only `PRAGMA
+  page_size`, `page_count`, `freelist_count` and `journal_mode`, reads the file
+  and `-wal` sizes, and reads the documented WAL-index header in `-shm`
+  (`mxFrame`, `nBackfill`) as WAL frames and checkpoint backlog. A torn or
+  uninitialised header, a rollback-journal file or an in-memory database leaves
+  those values unknown. No checkpoint, `integrity_check`, `quick_check` or
+  `dbstat` scan runs on a tick. Own request totals (requests, errors, busy
+  milliseconds and rows) become per-second rates.
+- **Remote libSQL**: a timed `SELECT 1` on the monitor stream (aborted at three
+  quarters of the deadline) plus own request totals. Server CPU, memory,
+  storage, waits, replication and other clients' queries are unavailable over
+  Hrana and are never estimated; a refused token is an explicit denied state.
+  Hrana response timings (`query_duration_ms`) are not read yet.
+
+The Overview shows own-request rates and, for files, file size, pages, free
+pages, WAL size, WAL frames and checkpoint backlog. History keeps only the
+reviewed scalars (`page_size`, `page_count`, `freelist_count`, `file_bytes`,
+`wal_bytes`, `wal_frames`, `checkpoint_backlog`, `requests`, `request_errors`,
+`request_ms`, `rows_returned`, `round_trip_ms`); journal mode and statement text
+never persist. Tests cover the ledger, WAL-index parsing, a tempfile SQLite file
+in WAL and rollback modes, and native-arm64 sqld v0.24.32 for remote libSQL.
+`sqlite3_db_status` cache counters belong to the user's connection rather than
+the monitor's and are not collected yet.

@@ -7,7 +7,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use arrow_array::RecordBatch;
 use arrow_schema::SchemaRef;
 use openrows_driver_api::{BatchPolicy, DriverError, ExecSummary};
-use rusqlite::{Connection, Statement};
+use openrows_monitor::EngineSteps;
+use rusqlite::{Connection, Statement, StatementStatus};
 use tokio::sync::mpsc::Sender;
 
 use crate::decode::{BatchBuffer, Cell, ColumnSpec};
@@ -26,17 +27,40 @@ pub(crate) struct Job {
     pub(crate) sql: String,
     pub(crate) params: Vec<Option<String>>,
     pub(crate) policy: BatchPolicy,
+    /// `sqlite3_stmt_status` counters, filled once the statement is prepared.
+    pub(crate) steps: Option<EngineSteps>,
 }
 
-/// Run `job`, sending results over `events` until done or `stop` is set.
+/// Run `job`, sending results over `events` until done or `stop` is set;
+/// the statement's step counters are left in `job.steps`.
 pub(crate) fn run(
     connection: &Connection,
-    job: &Job,
+    job: &mut Job,
     events: &Sender<Event>,
     stop: &AtomicBool,
 ) -> Result<ExecSummary, DriverError> {
     let mut statement = connection.prepare(&job.sql).map_err(|e| driver_error(&e))?;
-    bind(&mut statement, &job.params)?;
+    let result = execute(&mut statement, job, events, stop);
+    job.steps = Some(steps(&statement));
+    result
+}
+
+fn steps(statement: &Statement<'_>) -> EngineSteps {
+    let count = |status| u64::try_from(statement.get_status(status)).unwrap_or_default();
+    EngineSteps {
+        fullscan_steps: count(StatementStatus::FullscanStep),
+        sorts: count(StatementStatus::Sort),
+        vm_steps: count(StatementStatus::VmStep),
+    }
+}
+
+fn execute(
+    statement: &mut Statement<'_>,
+    job: &Job,
+    events: &Sender<Event>,
+    stop: &AtomicBool,
+) -> Result<ExecSummary, DriverError> {
+    bind(statement, &job.params)?;
     if statement.column_count() == 0 {
         let changes = statement.raw_execute().map_err(|e| driver_error(&e))?;
         return Ok(ExecSummary {
@@ -58,12 +82,7 @@ pub(crate) fn run(
         published: None,
         summary: ExecSummary::default(),
     };
-    step_rows(
-        &mut statement,
-        Arc::clone(&columns),
-        job.policy,
-        &mut publisher,
-    )?;
+    step_rows(statement, Arc::clone(&columns), job.policy, &mut publisher)?;
     let rows = publisher.summary.rows;
     publisher.summary.command_tag = tag(&job.sql, Some(rows));
     Ok(publisher.summary)

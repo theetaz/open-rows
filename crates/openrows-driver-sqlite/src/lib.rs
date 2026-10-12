@@ -12,7 +12,8 @@
 //! schemas and reads tables, views, columns, keys, indexes and triggers
 //! through the pragma functions; the [`editor`] snapshots rows as exact text
 //! and commits staged edits in one `BEGIN IMMEDIATE` transaction. Imports
-//! append rows through one cached prepared `INSERT` ([`bulk`]).
+//! append rows through one cached prepared `INSERT` ([`bulk`]). The
+//! [`monitor`] reads own-session statements and cheap file diagnostics.
 #![forbid(unsafe_code)]
 mod bulk;
 mod capabilities;
@@ -25,6 +26,7 @@ pub mod decode;
 mod editor;
 mod error;
 mod libsql_file;
+mod monitor;
 mod session;
 mod stream;
 mod worker;

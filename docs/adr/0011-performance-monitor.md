@@ -393,6 +393,18 @@ grouping) and filter on the `dbid` plan attribute, because ad hoc text has no
 Its `object_name` is padded `nchar`, so suffix matching trims it first. Query
 Store, Always On health and live SQL Server 2022/Azure fixtures remain M25-09.
 
+## Implemented (M25-07d): SQLite and libSQL evidence
+
+Embedded and remote-libSQL monitoring reads an in-process, own-session ledger
+rather than any engine view: other processes' statements are never claimed.
+File ticks are four PRAGMAs, file metadata and the 100-byte WAL-index header
+(both header copies must match), with a 100 ms busy wait on the monitor
+connection; no checkpoint, integrity or quick check is issued. Remote libSQL
+adds a measured `SELECT 1` round trip; server OS/CPU/memory metrics are
+explicitly unavailable. The pinned `just test-libsql` script requests amd64
+emulation on arm64; the M25-07d remote fixture ran the multi-arch
+`libsql-server:v0.24.32` image natively instead.
+
 ## Vendor references
 
 Official references consulted 2026-10-11; version-specific adapters must recheck their server's documentation at implementation.

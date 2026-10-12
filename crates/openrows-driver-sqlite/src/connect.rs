@@ -149,6 +149,7 @@ pub fn open_source(
         Worker::spawn(connection)?,
         interrupt,
         summary,
+        crate::monitor::Target::of(source),
     ))
 }
 

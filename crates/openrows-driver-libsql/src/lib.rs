@@ -11,6 +11,7 @@ mod editor;
 mod error;
 mod execute;
 mod http;
+mod monitor;
 mod parse;
 mod protocol;
 mod session;

@@ -52,7 +52,8 @@ pub async fn connect(
     };
     let mut session = LibsqlSession::new(http, summary, limits);
     let mut sink = DiscardSink;
-    let auth = session.execute("SELECT 1", &mut sink);
+    // Not a user statement, so it bypasses the Monitor's own-request ledger.
+    let auth = session.execute_values("SELECT 1", Vec::new(), Vec::new(), &mut sink);
     if let Err(error) = trace.stage(ConnectStage::Authenticate, auth).await {
         let _ = Box::new(session).close().await;
         return Err(error);

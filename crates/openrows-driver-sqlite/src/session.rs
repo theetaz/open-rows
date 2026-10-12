@@ -3,6 +3,7 @@
 //! connection thread and stream back; cancel interrupts the running step.
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Instant;
 
 use openrows_driver_api::{
     BatchPolicy, BoxFuture, CancelHandle, Catalog, Connection, DriverError, Editor, ExecSummary,
@@ -24,15 +25,22 @@ pub struct SqliteSession {
     interrupt: Arc<InterruptHandle>,
     summary: ServerSummary,
     policy: BatchPolicy,
+    pub(crate) monitor: crate::monitor::Target,
 }
 
 impl SqliteSession {
-    pub(crate) fn new(worker: Worker, interrupt: InterruptHandle, summary: ServerSummary) -> Self {
+    pub(crate) fn new(
+        worker: Worker,
+        interrupt: InterruptHandle,
+        summary: ServerSummary,
+        monitor: crate::monitor::Target,
+    ) -> Self {
         Self {
             worker,
             interrupt: Arc::new(interrupt),
             summary,
             policy: BatchPolicy::default(),
+            monitor,
         }
     }
 
@@ -66,17 +74,22 @@ impl SqliteSession {
         params: &[Option<String>],
         sink: &mut dyn ResultSink,
     ) -> Result<ExecSummary, DriverError> {
-        let job = Job {
+        let mut job = Job {
             sql: sql.to_owned(),
             params: params.to_vec(),
             policy: self.policy,
+            steps: None,
         };
+        let ledger = Arc::clone(&self.monitor.ledger);
         let (events, mut received) = mpsc::channel(AHEAD);
         let stop = Arc::new(AtomicBool::new(false));
         let worker_stop = Arc::clone(&stop);
-        let done = self
-            .worker
-            .call(move |connection| stream::run(connection, &job, &events, &worker_stop));
+        let done = self.worker.call(move |connection| {
+            let started = Instant::now();
+            let result = stream::run(connection, &mut job, &events, &worker_stop);
+            crate::monitor::record(&ledger, &job, started, &result);
+            result
+        });
         let forward = async {
             while let Some(event) = received.recv().await {
                 deliver(event, sink, &stop);
@@ -150,6 +163,10 @@ impl Connection for SqliteSession {
     }
 
     fn bulk_loader(&mut self) -> Option<&mut dyn openrows_driver_api::BulkLoader> {
+        Some(self)
+    }
+
+    fn monitor(&mut self) -> Option<&mut dyn openrows_monitor::MonitorReader> {
         Some(self)
     }
 }

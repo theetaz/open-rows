@@ -176,3 +176,41 @@ fn sqlserver_counter_history_allows_only_reviewed_scalars() -> Result<(), Box<dy
     assert!(store.record_monitor(("a", "db"), &[raw], 1).is_err());
     Ok(())
 }
+
+#[test]
+fn embedded_and_libsql_history_allows_only_reviewed_scalars()
+-> Result<(), Box<dyn std::error::Error>> {
+    let dir = tempfile::tempdir()?;
+    let store = LocalStore::open(&dir.path().join("test.sqlite"))?;
+    store.set_monitor_profiles(&["a".into()], 1)?;
+    let points: Vec<_> = [
+        "page_size",
+        "page_count",
+        "freelist_count",
+        "file_bytes",
+        "wal_bytes",
+        "wal_frames",
+        "checkpoint_backlog",
+        "requests",
+        "request_errors",
+        "request_ms",
+        "rows_returned",
+        "round_trip_ms",
+    ]
+    .map(|name| MonitorAggregate {
+        metric: format!("Database:{name}"),
+        ..point(1)
+    })
+    .into();
+    store.record_monitor(("a", "db"), &points, 1)?;
+    assert_eq!(
+        store.monitor_history(("a", "db"), (0, 1))?.len(),
+        points.len()
+    );
+    let raw = MonitorAggregate {
+        metric: "Database:journal_mode".into(),
+        ..point(1)
+    };
+    assert!(store.record_monitor(("a", "db"), &[raw], 1).is_err());
+    Ok(())
+}
