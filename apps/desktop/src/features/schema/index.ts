@@ -2,6 +2,7 @@
 export { AttachDatabaseTools } from './AttachDatabaseTools';
 export { QuickOpen } from './CatalogPalettes';
 export { ObjectTree } from './ObjectTree';
+export { SidebarFilters } from './SidebarFilters';
 export type { MenuPoint } from './ObjectRow';
 export { OpenDatabasePanel } from './OpenDatabasePanel';
 export { SchemaPicker } from './SchemaPicker';

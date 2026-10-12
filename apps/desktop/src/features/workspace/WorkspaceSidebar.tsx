@@ -6,7 +6,7 @@ import {
   useSidebarPreferences,
   writeSidebarPreferences,
 } from '../schema/sidebarPreferences';
-import { ObjectTree, SchemaPicker } from '../schema';
+import { ObjectTree, SchemaPicker, SidebarFilters } from '../schema';
 import type { Catalog, MenuPoint, ObjectRef } from '../schema';
 import { HistoryList } from '../query';
 import { SidebarQueries } from './SidebarQueries';
@@ -86,6 +86,7 @@ export function WorkspaceSidebar(props: Props): React.JSX.Element {
           leadingIcon={<Icon name="search" />}
           aria-label="Search items"
           placeholder={searchPlaceholder(segment)}
+          trailing={segment === 'Items' && <SidebarFilters catalog={catalog} />}
           value={search}
           onChange={(event) => {
             setSearch(event.target.value);

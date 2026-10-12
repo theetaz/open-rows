@@ -5,6 +5,7 @@ import { expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
 import type { ObjectDto, ObjectKindDto } from '@openrows/ipc';
 import { ObjectTree } from './ObjectTree';
+import { SidebarFilters } from './SidebarFilters';
 import { QuickOpen } from './CatalogPalettes';
 import { objectRef } from './catalog';
 import type { Catalog } from './useCatalog';
@@ -111,6 +112,7 @@ function mount(catalog: Catalog, search = '') {
   const onOpen = vi.fn();
   const view = render(
     <ThemeProvider>
+      <SidebarFilters catalog={catalog} />
       <ObjectTree catalog={catalog} search={search} onOpen={onOpen} />
     </ThemeProvider>,
   );
@@ -187,24 +189,28 @@ it('combines PostgreSQL kind, multi-schema and text filters without filtering sa
   ];
   toggleFavourite(saved(objects[0] ?? row('orders')));
   const { user } = mount(fixture(objects), 'report');
-  await user.click(screen.getByRole('button', { name: 'Filter Views' }));
-  await user.click(screen.getByText('Filter schemas'));
-  await user.selectOptions(
-    await screen.findByRole('listbox', { name: 'Filter schemas' }),
-    ['public', 'archive'],
-  );
+  const choose = async (submenu: string, item: string): Promise<void> => {
+    await user.click(screen.getByRole('button', { name: 'Filter objects' }));
+    await user.click(screen.getByRole('menuitem', { name: submenu }));
+    await user.click(screen.getByRole('menuitemcheckbox', { name: item }));
+  };
+  await choose('Object kinds', 'Views');
+  await choose('Schemas', 'public');
+  await choose('Schemas', 'archive');
   expect(await screen.findByRole('treeitem', { name: 'report' })).toBeVisible();
   expect(
     await screen.findByRole('treeitem', { name: 'report_old' }),
   ).toBeVisible();
   expect(screen.queryByRole('tree', { name: 'Tables' })).toBeNull();
   expect(screen.getByRole('treeitem', { name: 'public.orders' })).toBeVisible();
+  await user.click(screen.getByRole('button', { name: 'Filter objects' }));
+  await user.click(screen.getByRole('menuitem', { name: 'Object kinds' }));
   expect(
-    screen.getByRole('button', { name: 'Filter Functions' }),
+    screen.getByRole('menuitemcheckbox', { name: 'Functions' }),
   ).toBeVisible();
 });
 
-it('offers only SQLite-supported kind chips and hides sqlite_% objects until enabled', () => {
+it('offers only SQLite-supported kinds and hides sqlite_% objects until enabled', async () => {
   const catalog = {
     ...fixture(
       [row('orders', 'table', 'main'), row('sqlite_sequence', 'table', 'main')],
@@ -215,7 +221,12 @@ it('offers only SQLite-supported kind chips and hides sqlite_% objects until ena
     engine: 'sqlite' as const,
   };
   const view = mount(catalog);
-  expect(screen.queryByRole('button', { name: 'Filter Functions' })).toBeNull();
+  await view.user.click(screen.getByRole('button', { name: 'Filter objects' }));
+  await view.user.click(screen.getByRole('menuitem', { name: 'Object kinds' }));
+  expect(
+    screen.queryByRole('menuitemcheckbox', { name: 'Functions' }),
+  ).toBeNull();
+  await view.user.keyboard('{Escape}');
   expect(
     screen.queryByRole('treeitem', { name: 'sqlite_sequence' }),
   ).toBeNull();
@@ -256,9 +267,9 @@ it('hides PostgreSQL system sections by default and shows pg_catalog when enable
 it('persists section hiding from the header menu and keeps quick open independent', async () => {
   const catalog = fixture([row('orders')]);
   const { user, unmount } = mount(catalog);
-  await user.click(screen.getByRole('button', { name: 'Sidebar sections' }));
+  await user.click(screen.getByRole('button', { name: 'Filter objects' }));
+  await user.click(screen.getByRole('menuitem', { name: 'Sections' }));
   await user.click(screen.getByRole('menuitemcheckbox', { name: 'Tables' }));
-  await user.keyboard('{Escape}');
   expect(screen.queryByRole('tree', { name: 'Tables' })).toBeNull();
   unmount();
   mount(catalog);
