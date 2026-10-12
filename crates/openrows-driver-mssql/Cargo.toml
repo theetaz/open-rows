@@ -16,6 +16,7 @@ arrow-schema = "60"
 # Code pages of `char`/`varchar`/`text` data in non-UTF-8 collations.
 encoding_rs = "0.8"
 openrows-driver-api = { path = "../openrows-driver-api" }
+openrows-monitor = { path = "../openrows-monitor" }
 openrows-net = { path = "../openrows-net" }
 openrows-sql = { path = "../openrows-sql" }
 tokio = { version = "1.53", features = ["net", "io-util", "sync", "time"] }

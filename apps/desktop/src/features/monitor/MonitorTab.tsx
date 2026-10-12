@@ -34,10 +34,17 @@ const MYSQL_LABELS: Partial<Record<Panel, string>> = {
   indexes: 'Index I/O',
   io: 'File I/O',
 };
+/** SQL Server tables/indexes are usage DMVs; the I/O slot carries wait statistics. */
+const SQLSERVER_LABELS: Partial<Record<Panel, string>> = {
+  tables: 'Table usage',
+  indexes: 'Index usage',
+  io: 'Waits',
+};
 const ENGINE_NAMES: Partial<Record<EngineDto, string>> = {
   postgres: 'PostgreSQL',
   mysql: 'MySQL',
   mariadb: 'MariaDB',
+  sqlserver: 'SQL Server',
 };
 type Props = {
   profile: ProfileDto;
@@ -200,10 +207,16 @@ function liveRevision(monitor: ReturnType<typeof useMonitor>): string {
 }
 
 function panels(engine: EngineDto): readonly { value: Panel; label: string }[] {
-  if (engine !== 'mysql' && engine !== 'mariadb') return PANELS;
+  const labels =
+    engine === 'mysql' || engine === 'mariadb'
+      ? MYSQL_LABELS
+      : engine === 'sqlserver'
+        ? SQLSERVER_LABELS
+        : null;
+  if (!labels) return PANELS;
   return PANELS.map((panel) => ({
     value: panel.value,
-    label: MYSQL_LABELS[panel.value] ?? panel.label,
+    label: labels[panel.value] ?? panel.label,
   }));
 }
 
@@ -212,8 +225,8 @@ function monitorSupported(engine: EngineDto): boolean {
     case 'postgres':
     case 'mysql':
     case 'mariadb':
-      return true;
     case 'sqlserver':
+      return true;
     case 'clickhouse':
     case 'sqlite':
     case 'libsql':

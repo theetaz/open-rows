@@ -253,9 +253,12 @@ fn add_ratio(scalars: &mut Vec<Scalar>) {
             .find(|(key, _, _)| key.ends_with(name))
             .and_then(|(_, value, _)| *value)
     };
-    let mysql = scalars
-        .iter()
-        .any(|(key, _, _)| key.ends_with(":buffer_read_requests"));
+    let has = |name: &str| scalars.iter().any(|(key, _, _)| key.ends_with(name));
+    let mysql = has(":buffer_read_requests");
+    // SQL Server reports its buffer cache hit ratio directly.
+    if !mysql && !has(":blks_hit") {
+        return;
+    }
     let cache = if mysql {
         metric(":buffer_reads")
             .zip(metric(":buffer_read_requests"))

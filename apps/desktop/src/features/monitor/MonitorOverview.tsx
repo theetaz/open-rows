@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import type { MonitorData, Point } from './monitorData';
 import type { EngineDto } from '@openrows/ipc';
 import { MYSQL_METRICS } from './mysqlMetrics';
+import { SQLSERVER_METRICS } from './sqlserverMetrics';
 import { METRICS, metricPoints, metricValue } from './metrics';
 import type { Metric } from './metrics';
 import { MetricChart } from './MetricChart';
@@ -21,6 +22,7 @@ export function MonitorOverview(props: {
   history: boolean;
 }): React.JSX.Element {
   const mysql = props.engine === 'mysql' || props.engine === 'mariadb';
+  const sqlserver = props.engine === 'sqlserver';
   return (
     <>
       {['activity', 'database', 'replication'].map((source) => (
@@ -39,14 +41,18 @@ export function MonitorOverview(props: {
         {props.history
           ? 'Stored aggregate history; each bucket preserves a missing/reset state. Missing collection intervals are gaps. Other panels show live source tables.'
           : 'Live ten-minute window. Database counters need two samples; no baseline or a reset means unknown.'}{' '}
-        {mysql
-          ? 'Server status includes all databases and collector queries. Rows are InnoDB counters; buffer pool hit ratio is 1 − physical reads/read requests. Missing engine counters remain unknown.'
-          : 'Rows read = returned + fetched; rows written = inserted + updated + deleted. Cache ratio uses interval block hits/reads.'}
+        {sqlserver
+          ? 'Performance counters cover the whole instance, including collector queries. CPU is the default resource pool share; buffer cache hit ratio and page life expectancy are current values. Missing counters remain unknown.'
+          : mysql
+            ? 'Server status includes all databases and collector queries. Rows are InnoDB counters; buffer pool hit ratio is 1 − physical reads/read requests. Missing engine counters remain unknown.'
+            : 'Rows read = returned + fetched; rows written = inserted + updated + deleted. Cache ratio uses interval block hits/reads.'}
       </p>
       <div className={styles.tiles}>
-        {(mysql ? MYSQL_METRICS : METRICS).map((metric) => (
-          <MetricTile key={metric.title} metric={metric} window={props} />
-        ))}
+        {(sqlserver ? SQLSERVER_METRICS : mysql ? MYSQL_METRICS : METRICS).map(
+          (metric) => (
+            <MetricTile key={metric.title} metric={metric} window={props} />
+          ),
+        )}
       </div>
     </>
   );

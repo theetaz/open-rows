@@ -24,6 +24,7 @@ mod editor;
 mod error;
 mod handshake;
 mod info;
+mod monitor;
 mod reply;
 mod rows;
 mod session;

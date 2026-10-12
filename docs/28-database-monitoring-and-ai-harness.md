@@ -682,3 +682,53 @@ removal, network re-probe and app exit stop the collector and clear the opt-in.
 After unlocking, the user must reopen the Monitor; nothing restarts
 automatically. A cadence change keeps the opt-in across the restarted
 generation.
+
+## 14. Implemented (M25-07b): SQL Server collector
+
+The lazy Monitor admits SQL Server through the existing dedicated-session route,
+without replaying profile startup SQL. Discovery reads the product version and
+engine edition from the session summary and accepts SQL Server 2017+, Azure SQL
+Managed Instance, Azure SQL Edge and Azure SQL Database; Synapse and Fabric stay
+unavailable. One `HAS_PERMS_BY_NAME` probe checks VIEW SERVER STATE (plus VIEW
+SERVER PERFORMANCE STATE on 2022+) or, on Azure SQL Database, the database-scoped
+pair. Without it SQL Server silently lists only the caller's session, so every
+DMV source is reported as permission-denied naming the permission instead of an
+empty or zero result. Each permitted source is then probed once; a missing DMV,
+column or function (errors 195/207/208/4121) is unavailable for that platform.
+
+Every read is one fixed batch: `SET LOCK_TIMEOUT 100`, an epoch declaration and a
+bounded projection. At three quarters of the deadline the attention signal
+cancels the batch and the session stays usable when the server acknowledges in
+time; otherwise the reading is terminal. Rows, cells and bytes are admitted
+before text allocation under the shared monitor caps.
+
+- **Sessions/blocking:** user sessions joined to requests, the current or most
+  recent statement text, transaction age from the transaction DMVs and one
+  blocker per request from `blocking_session_id`; the core builds chains.
+- **Waits** (Waits panel, I/O slot): top 200 non-idle `sys.dm_os_wait_stats`
+  rows (`sys.dm_db_wait_stats` on Azure SQL Database) with tasks, wait and
+  signal-wait counters. The server start time is the epoch; a
+  `DBCC SQLPERF(..., CLEAR)` keeps the epoch and the decrease becomes a counter
+  reset rather than a negative rate.
+- **Resource evidence:** whitelisted `sys.dm_os_performance_counters` pivoted to
+  one server row (batch requests, compilations, re-compilations, user
+  connections, blocked processes, lock waits, deadlocks, page life expectancy,
+  total/target server memory and pending memory grants). Buffer cache hit ratio
+  and default resource pool CPU divide their documented base counter at read
+  time; a missing counter stays unknown.
+- **Top queries:** `sys.dm_exec_query_stats` grouped by `query_hash` for plans
+  whose `dbid` plan attribute is the selected database, top 200 by elapsed time,
+  with calls, elapsed/CPU milliseconds, rows and logical/physical I/O. Plan-cache
+  eviction lowers the sums, which resets those rows' baselines.
+- **Table and index usage:** `sys.dm_db_index_usage_stats` seeks, scans, lookups
+  and updates. Indexes unused since instance start or database open are absent,
+  which is never treated as proof that an index can be dropped.
+
+Replication (Always On availability groups) is explicitly unavailable, and Query
+Store history is not read yet. The UI shows SQL Server counter tiles and labels
+the table, index and I/O panels as Table usage, Index usage and Waits. The
+integration fixture runs against native-arm64 Azure SQL Edge (15.x): blocking
+chain, cleared wait statistics, counters, top queries, usage and a login without
+VIEW SERVER STATE. Per-read server time on that fixture is about 8 ms for
+sessions, 15–18 ms for top queries, 5 ms for usage and 2 ms for waits. Live SQL
+Server 2022, Managed Instance and Azure SQL Database validation remains M25-09.

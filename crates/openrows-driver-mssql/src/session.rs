@@ -25,6 +25,7 @@ pub struct SqlServerSession {
     pub(crate) summary: ServerSummary,
     cancel: Arc<Attention>,
     policy: BatchPolicy,
+    pub(crate) monitor: crate::monitor::State,
 }
 
 impl SqlServerSession {
@@ -36,6 +37,7 @@ impl SqlServerSession {
             summary,
             cancel,
             policy: BatchPolicy::default(),
+            monitor: crate::monitor::State::default(),
         }
     }
 
@@ -172,6 +174,10 @@ impl Connection for SqlServerSession {
     }
 
     fn admin(&mut self) -> Option<&mut dyn openrows_driver_api::Admin> {
+        Some(self)
+    }
+
+    fn monitor(&mut self) -> Option<&mut dyn openrows_monitor::MonitorReader> {
         Some(self)
     }
 }

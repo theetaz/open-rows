@@ -5,6 +5,7 @@ mod catalog;
 mod edits;
 mod inspection;
 mod lifecycle;
+mod monitor;
 mod session;
 mod structure;
 mod support;

@@ -377,6 +377,22 @@ Wider live MySQL 5.7/8.0/9.x and MariaDB 10.6/11.x/provider, enabled replication
 topology, history overwrite, reference workload throughput/latency and mac-low
 all-app CPU/physical footprint remain M25-09 verification.
 
+## Implemented (M25-07b): SQL Server evidence
+
+The collector accepts SQL Server 2017+, Managed Instance, Edge and Azure SQL
+Database (database-scoped DMVs and `sys.dm_db_wait_stats`). Each read is one
+batch with `SET LOCK_TIMEOUT 100`; client cancellation sends the TDS attention
+signal at three quarters of the source deadline, and a missing acknowledgement
+makes the reading terminal. Missing VIEW SERVER STATE (VIEW SERVER PERFORMANCE
+STATE on 2022+, VIEW DATABASE STATE on Azure SQL Database) is a denied state for
+every DMV source, because SQL Server otherwise returns only the caller's session.
+Top queries group `sys.dm_exec_query_stats` by `query_hash` (optional hash
+grouping) and filter on the `dbid` plan attribute, because ad hoc text has no
+`dbid`. Performance counters are prefiltered by name: an unfiltered pivot of
+`sys.dm_os_performance_counters` cost about 320 ms per read on Azure SQL Edge.
+Its `object_name` is padded `nchar`, so suffix matching trims it first. Query
+Store, Always On health and live SQL Server 2022/Azure fixtures remain M25-09.
+
 ## Vendor references
 
 Official references consulted 2026-10-11; version-specific adapters must recheck their server's documentation at implementation.

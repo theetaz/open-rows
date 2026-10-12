@@ -227,14 +227,7 @@ it('ignores events for other generations and scopes', async () => {
   expect(ipc.monitorSnapshot).not.toHaveBeenCalled();
 });
 
-it.each([
-  'sqlite',
-  'sqlserver',
-  'clickhouse',
-  'libsql',
-  'libsql-file',
-  'duckdb',
-] as const)(
+it.each(['sqlite', 'clickhouse', 'libsql', 'libsql-file', 'duckdb'] as const)(
   'shows the explicit coming state for %s without collector admission',
   async (engine) => {
     render(<MonitorTab {...props} profile={{ ...props.profile, engine }} />);
@@ -316,3 +309,33 @@ it.each(['mysql', 'mariadb'] as const)(
     ).toBeGreaterThan(0);
   },
 );
+
+it('starts SQL Server monitoring with counter tiles, wait panel and restricted DMV state', async () => {
+  const reply = monitorReply();
+  const reason =
+    'Requires VIEW SERVER STATE (or VIEW SERVER PERFORMANCE STATE); ask the DBA to review it, no grants are changed';
+  for (const item of [...reply.capabilities, ...reply.sources])
+    if (item.source === 'activity')
+      item.state = { kind: 'permissionDenied', reason };
+  vi.mocked(ipc.startMonitor).mockResolvedValue(reply);
+  vi.mocked(ipc.monitorSnapshot).mockResolvedValue(reply);
+  render(
+    <MonitorTab
+      {...props}
+      profile={{ ...props.profile, engine: 'sqlserver' }}
+    />,
+  );
+  await screen.findByRole('article', { name: 'Batch requests/s' });
+  expect(ipc.startMonitor).toHaveBeenCalled();
+  expect(screen.getByText(/· SQL Server$/)).toBeInTheDocument();
+  for (const name of ['Page life expectancy', 'Buffer cache hit ratio'])
+    expect(screen.getByRole('article', { name })).toBeInTheDocument();
+  for (const name of ['Table usage', 'Index usage', 'Waits'])
+    expect(screen.getByRole('radio', { name })).toBeInTheDocument();
+  expect(
+    (await screen.findAllByText(/VIEW SERVER STATE/)).length,
+  ).toBeGreaterThan(0);
+  expect(
+    screen.queryByRole('article', { name: 'Transactions/s' }),
+  ).not.toBeInTheDocument();
+});

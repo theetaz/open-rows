@@ -4259,6 +4259,7 @@ dependencies = [
  "arrow-schema 60.0.0",
  "encoding_rs",
  "openrows-driver-api",
+ "openrows-monitor",
  "openrows-net",
  "openrows-sql",
  "tokio",
