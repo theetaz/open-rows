@@ -309,7 +309,11 @@ export function ipcStub(
     ...catalogStub(),
     ...diagramStub(),
     closeSession: vi.fn(() => Promise.resolve()),
-    parseConnectionUrl: vi.fn(),
+    parseConnectionUrl: vi.fn(() =>
+      Promise.reject(
+        new Error('URL parsing is not configured in this fixture'),
+      ),
+    ),
     testConnection: vi.fn(),
     pickConnectionFile: vi.fn(() => Promise.resolve(null)),
     onSshPrompt: vi.fn(() => Promise.resolve(() => {})),

@@ -23,13 +23,14 @@ if ! command -v docker >/dev/null 2>&1 || ! docker info >/dev/null 2>&1; then
 fi
 cargo build -p openrows-net --bin fake-cloud-hop --features test-helper --locked
 # Resolve the built directory so credential validation also accepts relative Cargo targets.
-export OPENROWS_FAKE_HELPER="$(cd -- "${CARGO_TARGET_DIR:-target}/debug" && pwd)/fake-cloud-hop"
+export OPENROWS_FAKE_HELPER="$(cd -- "${CARGO_TARGET_DIR:-target}/${CARGO_BUILD_TARGET:+$CARGO_BUILD_TARGET/}debug" && pwd)/fake-cloud-hop"
 # Synthetic credential for a container bound to 127.0.0.1 and removed on exit.
 password="openrows-test-only"
-name="openrows-pg-test-$$"
+name="${OPENROWS_TEST_PG_NAME:-openrows-pg-test-$$}"
 tls_dir="$(mktemp -d "$PWD/.pg-test-tls.XXXXXX")"
+started=0
 cleanup() {
-    docker rm --force --volumes "$name" >/dev/null 2>&1 || true
+    if [[ "$started" == 1 ]]; then docker rm --force --volumes "$name" >/dev/null 2>&1 || true; fi
     rm -rf "$tls_dir"
 }
 trap cleanup EXIT INT TERM
@@ -48,6 +49,7 @@ docker run --detach --name "$name" --publish 127.0.0.1::5432 \
         exec docker-entrypoint.sh postgres -c shared_preload_libraries=pg_stat_statements -c ssl=on \
             -c ssl_cert_file=$ssl_dir/server.crt -c ssl_key_file=$ssl_dir/server.key \
             -c ssl_ca_file=$ssl_dir/ca.crt" >/dev/null
+started=1
 # The image's init server listens only on a Unix socket, so TCP readiness
 # means the final server is up.
 deadline=$((SECONDS + 60))

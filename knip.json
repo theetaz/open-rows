@@ -4,8 +4,8 @@
       "project": ["*.ts"]
     },
     "apps/desktop": {
-      "entry": ["src/**/*.test.{ts,tsx}"],
-      "project": ["src/**/*.{ts,tsx}"]
+      "entry": ["src/**/*.test.{ts,tsx}", "e2e/run.mjs", "e2e/*.test.mjs"],
+      "project": ["src/**/*.{ts,tsx}", "e2e/*.mjs"]
     },
     "packages/ipc": {
       "project": ["src/**/*.ts"]

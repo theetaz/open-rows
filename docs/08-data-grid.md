@@ -33,6 +33,11 @@ flowchart TB
     model --> a11y
 ```
 
+Native vertical spacers are capped at 32 million CSS pixels to stay below
+WebKit's layout limit. Larger results map the native scrollbar range to the
+full logical row range, including its final row. Viewport offsets, hit testing,
+cell overlays and selection reveals use logical coordinates.
+
 ### 2.1 Canvas layers
 
 | Layer | Content | Repaint trigger |

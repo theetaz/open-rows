@@ -3,6 +3,8 @@
 mod ai;
 mod ai_sharing;
 mod assistant;
+#[cfg(all(feature = "test-automation", debug_assertions, unix))]
+mod automation;
 mod commands;
 mod connections;
 mod diagram;
@@ -295,6 +297,13 @@ pub fn run() -> Result<(), tauri::Error> {
     ];
     startup_report::instrument(builder)
         .invoke_handler(move |invoke| {
+            #[cfg(all(feature = "test-automation", debug_assertions, unix))]
+            if matches!(
+                invoke.message.command(),
+                "automation_reply" | "automation_observations"
+            ) {
+                return automation::handler(invoke);
+            }
             if let Err(error) = invoke
                 .message
                 .webview()
@@ -319,31 +328,55 @@ pub fn run() -> Result<(), tauri::Error> {
                 controls(invoke)
             }
         })
-        .setup(move |app| {
-            locations::install(app)?;
-            observability::install(app)?;
-            specta.mount_events(app);
-            app.manage(ai::AiState::default());
-            app.manage(assistant::AssistantState::default());
-            settings::install(app);
-            result_store::install(app)?;
-            driver_host::install(app)?;
-            connections::install(app)?;
-            ai_sharing::install(app)?;
-            mcp::install(app)?;
-            native_files::install(app);
-            settings::apply_saved(app);
-            if let Some(value) = settings::current(&app.state::<settings::SettingsFile>()) {
-                app.state::<security::Security>().configure(&value, true);
-            }
-            security::monitor(app.handle());
-            settings_watch::watch(app.handle());
-            menu::install(app)?;
-            startup::install(app)
-        })
-        .build(tauri::generate_context!())?
+        .setup(move |app| install(app, &specta))
+        .build(application_context())?
         .run(on_run_event);
     Ok(())
+}
+
+fn install(
+    app: &mut tauri::App,
+    specta: &tauri_specta::Builder<tauri::Wry>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    #[cfg(all(feature = "test-automation", debug_assertions, unix))]
+    automation::install(app)?;
+    locations::install(app)?;
+    observability::install(app)?;
+    specta.mount_events(app);
+    app.manage(ai::AiState::default());
+    app.manage(assistant::AssistantState::default());
+    settings::install(app);
+    result_store::install(app)?;
+    driver_host::install(app)?;
+    connections::install(app)?;
+    ai_sharing::install(app)?;
+    mcp::install(app)?;
+    native_files::install(app);
+    settings::apply_saved(app);
+    if let Some(value) = settings::current(&app.state::<settings::SettingsFile>()) {
+        app.state::<security::Security>().configure(&value, true);
+    }
+    security::monitor(app.handle());
+    settings_watch::watch(app.handle());
+    menu::install(app)?;
+    startup::install(app)
+}
+
+/// The test webview has a separate storage directory before it is created.
+fn application_context() -> tauri::Context<tauri::Wry> {
+    #[cfg_attr(
+        not(all(feature = "test-automation", debug_assertions, unix)),
+        expect(unused_mut, reason = "only test builds configure an isolated webview")
+    )]
+    let mut context = tauri::generate_context!();
+    #[cfg(all(feature = "test-automation", debug_assertions, unix))]
+    if let Some(root) = std::env::var_os("OPENROWS_E2E_ROOT") {
+        for window in &mut context.config_mut().app.windows {
+            window.data_directory = Some(std::path::PathBuf::from(&root).join("webview"));
+            window.incognito = true;
+        }
+    }
+    context
 }
 
 /// Route opened files to the native-file queue and release resources on exit.

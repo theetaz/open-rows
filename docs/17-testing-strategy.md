@@ -196,3 +196,50 @@ for each entire pair of conformance suites. It waits for each load worker to
 start and terminates/reaps them on completion or failure. Its temporary metadata
 is created in the worktree and removed automatically; no extra Cargo target,
 Docker, emulation, test retry or deadline change is involved.
+
+## 7. Native E2E runner (M1-29)
+
+`just e2e` builds the bundled frontend and a debug `openrows-app` with the
+`test-automation` feature. macOS drives WKWebView through a private Unix-socket
+bridge; Linux drives the real app through WebdriverIO and `tauri-driver`.
+Install `psql`, Docker and `ssh-keygen` on both platforms; Linux also needs
+`tauri-driver` 2.1.0, `WebKitWebDriver` (`webkit2gtk-driver`) and a display
+(`xvfb-run -a just e2e` in headless environments).
+
+The runner owns a fresh PostgreSQL 17 container on a random loopback port and
+an OpenSSH container named `openrows-e2e-*`. SSH keys are generated at runtime;
+only the fixture's public host key is trusted in the isolated app directory.
+`OPENROWS_E2E_PG_PORT` uses an explicitly supplied disposable PostgreSQL service
+instead (CI uses its job-local service). Never point it at a user database.
+`OPENROWS_E2E_BINARY` selects a prebuilt automation binary. The suite's
+five-minute deadline excludes native compilation; no sleeps or query retries
+are used. Readiness follows socket/file events, server state and webview frames.
+
+Coverage follows §2.4 exactly: SSH connect/schema/filter/edit/insert/delete and
+transactional commit/rollback; per-statement script errors; cancellation of a
+server-confirmed active query; 5M-row UI result scrolling and CSV comparison
+against server `COPY` bytes; backend connection termination in a transaction
+with preserved changes; forced app crash and restored query/changes; and
+production confirmation, changed-token refusal and read-only SQL/table edits.
+The macOS smoke variant uses 10,000 rows for the scroll/export check; the Linux
+release journey always uses 5,000,000. Set `OPENROWS_E2E_FULL_ROWS=1` to run
+the full row count on macOS too. The runner deletes its data, logs,
+exports, runtime keys, owned containers and their anonymous volumes on success
+or failure. Failures stop the suite and are reported as failures.
+
+The bridge requires **both** debug assertions and `test-automation`, plus an
+explicit `OPENROWS_E2E_ROOT` containing `.automation-owned`. It is bound to a
+private socket inside that directory. Data, logs, spill cache, ephemeral webview storage, window state, command trust
+and native export destinations use the isolated root. Normal database commands
+and safety checks remain in use. A bounded native snapshot retains the last 64 result-end records and
+grid-window requests so Linux and macOS can observe real UI activity without replacing Tauri
+internals. The automation commands are outside the published
+Specta contract, with a capability granted only to the debug test window.
+`just e2e-release-check` builds the actual release executable **with** the
+feature and rejects its binary if any bridge command, environment or socket
+marker remains. Release builds cannot enable the bridge through environment
+variables. The Linux `e2e` CI job runs only on a push to `main`.
+
+New test dependency: WebdriverIO (MIT) supplies the standard WebDriver client;
+its automatic Edge/Firefox installers are disabled because this suite uses
+`tauri-driver` and the system WebKit driver. No new Rust dependency is needed.

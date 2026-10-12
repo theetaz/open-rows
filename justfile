@@ -109,6 +109,7 @@ script-test:
     python3 -B -m unittest discover -s scripts -p 'test_sccache_*.py'
     python3 -B -m unittest discover -s scripts -p 'test_stage_host.py'
     python3 -B -m unittest discover -s scripts -p 'test_strip_macos_bundle.py'
+    node --test apps/desktop/e2e/*.test.mjs
 
 # Emit CSS custom properties from the UI TypeScript token source.
 gen-tokens:
@@ -182,3 +183,11 @@ bench-grid repeats="3":
 # Measure CodeMirror keystroke-to-paint on 5000 SQL lines in WKWebView; maintainer-only GUI run.
 bench-editor:
     python3 -B scripts/bench-editor.py
+
+# Real native app with an isolated PostgreSQL/OpenSSH fixture; Linux uses tauri-driver.
+e2e:
+    {{sccache_guard}} node apps/desktop/e2e/run.mjs
+
+# Prove the release app excludes automation even when the feature is requested.
+e2e-release-check:
+    {{sccache_guard}} bash scripts/e2e-release-check.sh

@@ -1,4 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
+import {
+  contentHeight,
+  spacerHeight,
+  logicalOffset,
+  nativeOffset,
+} from './scroll';
 import { CanvasController } from './canvasController';
 import { CanvasPainter } from './painter';
 import { shadowGrid } from './accessibility';
@@ -20,7 +26,7 @@ export function mountGrid(host: HTMLElement, props: GridProps): GridHandle {
   const painter = new CanvasPainter(layers, props);
   spacerWidth(scroll, painter);
   const fit = (): void => {
-    spacer.style.height = `${String((props.source.rows + 1) * props.theme.rowHeight)}px`;
+    spacer.style.height = `${String(spacerHeight(contentHeight(props)))}px`;
   };
   fit();
   const controller = new CanvasController(scroll, painter, props);
@@ -66,7 +72,10 @@ function gridHandle(
     metrics: painter.metrics,
     viewport: painter.view,
     scrollTo: (x, y) => {
-      scroll.scrollTo(x, y);
+      scroll.scrollTo(
+        x,
+        nativeOffset(y, scroll.clientHeight, contentHeight(props)),
+      );
     },
     setTheme: (theme) => {
       painter.setTheme(theme);
@@ -133,7 +142,13 @@ function cellRect(
     height = painter.props.theme.rowHeight;
   return {
     x: (painter.layout.offsets[column] ?? 0) - (pinned ? 0 : scroll.scrollLeft),
-    y: (row + 1) * height - scroll.scrollTop,
+    y:
+      (row + 1) * height -
+      logicalOffset(
+        scroll.scrollTop,
+        scroll.clientHeight,
+        contentHeight(painter.props),
+      ),
     width,
     height,
   };
@@ -146,10 +161,17 @@ function reveal(
   { row, column }: { row: number; column: number },
 ): void {
   const height = painter.props.theme.rowHeight,
-    top = (row + 1) * height;
-  if (top - height < scroll.scrollTop) scroll.scrollTop = top - height;
-  else if (top + height > scroll.scrollTop + scroll.clientHeight)
-    scroll.scrollTop = top + height - scroll.clientHeight;
+    top = (row + 1) * height,
+    content = contentHeight(painter.props),
+    current = logicalOffset(scroll.scrollTop, scroll.clientHeight, content);
+  if (top - height < current)
+    scroll.scrollTop = nativeOffset(top - height, scroll.clientHeight, content);
+  else if (top + height > current + scroll.clientHeight)
+    scroll.scrollTop = nativeOffset(
+      top + height - scroll.clientHeight,
+      scroll.clientHeight,
+      content,
+    );
   const { offsets, pinned, pinnedWidth } = painter.layout;
   if (column < pinned) return;
   const left = (offsets[column] ?? 0) - pinnedWidth,

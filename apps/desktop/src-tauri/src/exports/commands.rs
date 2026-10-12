@@ -116,6 +116,10 @@ async fn choose_file(
     (format, name): (&ExportFormatDto, &str),
 ) -> Result<Option<PathBuf>, IpcError> {
     let (extension, label) = format.extension();
+    #[cfg(all(feature = "test-automation", debug_assertions, unix))]
+    if let Some(root) = crate::automation::root(window.app_handle()) {
+        return Ok(Some(root.join(format!("{name}.{extension}"))));
+    }
     let (sender, receiver) = tokio::sync::oneshot::channel();
     window
         .dialog()

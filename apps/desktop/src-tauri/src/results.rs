@@ -99,6 +99,11 @@ pub(crate) async fn result_window(
     request: WindowRequest,
     store: tauri::State<'_, Arc<ResultStore>>,
 ) -> Result<tauri::ipc::Response, ResultError> {
+    #[cfg(all(feature = "test-automation", debug_assertions, unix))]
+    crate::automation::record_window(serde_json::json!({
+        "resultId": request.result_id, "rowStart": request.row_start, "rowCount": request.row_count,
+        "colStart": request.col_start, "colCount": request.col_count
+    }));
     let store = Arc::clone(store.inner());
     tauri::async_runtime::spawn_blocking(move || {
         let window = Window {

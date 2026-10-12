@@ -4,6 +4,8 @@ packages:
 
 allowBuilds:
   esbuild: true
+  edgedriver: false
+  geckodriver: false
 
 minimumReleaseAgeExclude:
   - '@typescript-eslint/eslint-plugin@8.71.1'

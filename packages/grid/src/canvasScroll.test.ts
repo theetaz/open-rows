@@ -157,3 +157,29 @@ it('moves the selection with arrow keys straight after clicking a cell', async (
   handle.destroy();
   host.remove();
 });
+it('requests the final row when a five-million-row native scrollbar reaches its end', () => {
+  mockCanvas();
+  const input = props();
+  Object.defineProperty(input.source, 'rows', { value: 5_000_000 });
+  vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(800);
+  const request = vi.spyOn(input.source, 'window');
+  const host = document.createElement('div');
+  const handle = mountGrid(host, input);
+  const scroll = host.firstElementChild as HTMLElement;
+  expect((scroll.firstElementChild as HTMLElement).style.height).toBe(
+    '32000000px',
+  );
+  scroll.scrollTop = 32_000_000 - 800;
+  scroll.dispatchEvent(new Event('scroll'));
+  expect(handle.viewport.y).toBe((5_000_000 + 1) * input.theme.rowHeight - 800);
+  expect(request).toHaveBeenLastCalledWith(
+    expect.objectContaining({ r1: 4_999_999 }),
+    1,
+  );
+  handle.select?.(4_999_999, 2);
+  expect(scroll.scrollTop).toBeCloseTo(32_000_000 - 800);
+  expect(handle.cellRect?.(4_999_999, 2)?.y).toBeCloseTo(
+    800 - input.theme.rowHeight,
+  );
+  handle.destroy();
+});

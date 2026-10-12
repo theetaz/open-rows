@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { contentHeight, logicalOffset } from './scroll';
 import type { GridProps } from './model';
 import { CanvasPainter } from './painter';
 /** Coalesce native scroll/data events; only tile-window transitions allocate requests. */
@@ -45,7 +46,11 @@ export class CanvasController {
   readonly update = (): void => {
     const started = performance.now();
     // Only native event delivery reads offsets. Scripted writes never call this path.
-    const y = this.scroll.scrollTop,
+    const y = logicalOffset(
+        this.scroll.scrollTop,
+        this.scroll.clientHeight,
+        contentHeight(this.props),
+      ),
       x = this.scroll.scrollLeft;
     const direction = Math.sign(y - this.previous);
     this.previous = y;

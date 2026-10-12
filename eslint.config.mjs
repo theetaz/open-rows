@@ -9,11 +9,24 @@ export default tseslint.config(
       '**/generated/**',
       '**/dist/**',
       '**/target/**',
+      '**/target-*/**',
       '**/node_modules/**',
       '**/gen/**',
     ],
   },
   eslint.configs.recommended,
+  {
+    files: ['apps/desktop/e2e/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        process: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        fetch: 'readonly',
+        AggregateError: 'readonly',
+      },
+    },
+  },
   ...tseslint.configs.strictTypeChecked.map((config) => ({
     ...config,
     files: ['**/*.ts', '**/*.tsx'],

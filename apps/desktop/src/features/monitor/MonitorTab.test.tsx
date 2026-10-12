@@ -268,7 +268,9 @@ it.each(['mysql', 'mariadb'] as const)(
     vi.mocked(ipc.monitorSnapshot).mockResolvedValue(reply);
     render(<MonitorTab {...props} profile={{ ...props.profile, engine }} />);
     await screen.findByRole('article', { name: 'Queries/s' });
-    expect(ipc.startMonitor).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(ipc.startMonitor).toHaveBeenCalled();
+    });
     expect(
       screen.getByText(engine === 'mysql' ? /· MySQL$/ : /· MariaDB$/),
     ).toBeInTheDocument();
@@ -306,7 +308,9 @@ it('starts SQL Server monitoring with counter tiles, wait panel and restricted D
     />,
   );
   await screen.findByRole('article', { name: 'Batch requests/s' });
-  expect(ipc.startMonitor).toHaveBeenCalled();
+  await waitFor(() => {
+    expect(ipc.startMonitor).toHaveBeenCalled();
+  });
   expect(screen.getByText(/· SQL Server$/)).toBeInTheDocument();
   for (const name of ['Page life expectancy', 'Buffer cache hit ratio'])
     expect(screen.getByRole('article', { name })).toBeInTheDocument();
@@ -335,7 +339,9 @@ it('starts ClickHouse monitoring with node tiles, its panels and an unavailable 
     />,
   );
   await screen.findByRole('article', { name: 'Running queries' });
-  expect(ipc.startMonitor).toHaveBeenCalled();
+  await waitFor(() => {
+    expect(ipc.startMonitor).toHaveBeenCalled();
+  });
   expect(screen.getByText(/· ClickHouse$/)).toBeInTheDocument();
   for (const name of ['Running queries', 'Query log', 'Parts', 'Merges'])
     expect(screen.getByRole('radio', { name })).toBeInTheDocument();
@@ -386,7 +392,9 @@ it.each([
     vi.mocked(ipc.monitorSnapshot).mockResolvedValue(reply);
     render(<MonitorTab {...props} profile={{ ...props.profile, engine }} />);
     await screen.findByRole('article', { name: tile });
-    expect(ipc.startMonitor).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(ipc.startMonitor).toHaveBeenCalled();
+    });
     expect(screen.getByText(new RegExp(`· ${name}$`))).toBeInTheDocument();
     expect(screen.getByRole('note')).toHaveTextContent(boundary);
     expect(

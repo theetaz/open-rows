@@ -193,7 +193,10 @@ async fn execute(app: AppHandle, run: Run) {
                 );
             }
             // A closed channel means the tab is gone; the run still finishes.
-            let _ = run.events.send(translate(event, &store));
+            let event = translate(event, &store);
+            #[cfg(all(feature = "test-automation", debug_assertions, unix))]
+            crate::automation::record_query(&event);
+            let _ = run.events.send(event);
         },
     )
     .await;
