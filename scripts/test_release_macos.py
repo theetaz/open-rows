@@ -70,6 +70,12 @@ class ReleaseTests(unittest.TestCase):
         self.assertTrue(bundle["macOS"]["hardenedRuntime"])
         self.assertEqual(bundle["externalBin"], ["binaries/openrows-driver-host"])
 
+    def test_webview_can_only_download_and_install_backend_checked_updates(self):
+        permissions = json.loads((ROOT / "apps/desktop/src-tauri/capabilities/main.json").read_text())["permissions"]
+        updater_permissions = {permission for permission in permissions if permission.startswith("updater:")}
+        self.assertEqual(updater_permissions, {"updater:allow-download", "updater:allow-install"})
+        self.assertIn("allow-update-check", permissions)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -172,7 +172,8 @@
     "allow-mcp-client-disconnect",
     "allow-mcp-proposals-take",
     "allow-update-check",
-    "updater:default",
+    "updater:allow-download",
+    "updater:allow-install",
     "process:allow-restart"
   ]
 }
