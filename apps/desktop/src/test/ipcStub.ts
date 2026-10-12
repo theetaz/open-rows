@@ -400,6 +400,26 @@ function appParityStub(): Record<string, unknown> {
 function mcpStub(): Record<string, unknown> {
   return {
     onMcpProposals: vi.fn().mockResolvedValue(() => undefined),
+    investigateStatement: vi.fn().mockResolvedValue({
+      statementId: '1',
+      query: 'SELECT ?',
+      intervals: [],
+      calls: null,
+      totalMs: null,
+      meanMs: null,
+      maxSinceResetMs: 5,
+      regressions: [],
+      partial: true,
+    }),
+    monitorAdvice: vi.fn().mockResolvedValue([]),
+    proposeMonitorSql: vi.fn().mockResolvedValue(undefined),
+    validateMonitorIndex: vi.fn().mockResolvedValue({
+      kind: 'estimate',
+      estimate: { baselineCost: 100, hypotheticalCost: 10 },
+    }),
+    explainMonitorQuery: vi
+      .fn()
+      .mockResolvedValue({ kind: 'blocked', message: 'test-only' }),
     takeMcpProposals: vi.fn().mockResolvedValue([]),
   };
 }

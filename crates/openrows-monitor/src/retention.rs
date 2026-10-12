@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Bounded live scalar series and replaceable redacted source tables.
+use crate::retention_support::{activity, reading_bytes, sanitize};
 use crate::{MetricKind, MonitorError, Reading, SampleState, Source, SourceStatus};
 use std::collections::{BTreeMap, VecDeque};
 
@@ -23,17 +24,33 @@ pub struct LiveStore {
     pub(crate) series: BTreeMap<String, VecDeque<Point>>,
     pub(crate) status: BTreeMap<Source, SourceStatus>,
     pub(crate) baselines: BTreeMap<String, Baseline>,
-    table_times: BTreeMap<Source, u64>,
+    pub(crate) table_times: BTreeMap<Source, u64>,
+    pub(crate) table_walls: BTreeMap<Source, f64>,
+    pub(crate) statement_history: crate::statement_history::History,
+    pub(crate) observations: crate::advisor::catalog::Observations,
+    pub(crate) plans: Vec<crate::advisor::PlanEvidence>,
+    clock: (u64, f64),
 }
 
 impl LiveStore {
     /// Admit one bounded read, normalising raw SQL before any retention.
     pub fn ingest(&mut self, source: Source, mut reading: Reading, elapsed: u64, wall: f64) {
         sanitize(&mut reading);
+        self.clock = (elapsed, wall);
+        self.observations.record(source, &reading);
         if source == Source::Activity && !reading.columns.is_empty() {
             crate::blockers::enrich(&mut reading);
         }
         let mut scalars = self.analyze(source, &mut reading, elapsed);
+        if source == Source::Statements {
+            self.statement_history.record(&reading, elapsed, wall);
+            self.plans
+                .retain(|plan| current_statement(&reading, &plan.statement_id));
+
+            if reading.state != SampleState::Ok {
+                self.plans.clear();
+            }
+        }
         if source == Source::Activity && reading.state == SampleState::Ok {
             scalars.extend(activity(&reading, &self.series));
         }
@@ -63,6 +80,7 @@ impl LiveStore {
         }
         self.tables.insert(source, reading);
         self.table_times.insert(source, elapsed);
+        self.table_walls.insert(source, wall);
         self.enforce(elapsed);
     }
 
@@ -76,6 +94,14 @@ impl LiveStore {
     #[must_use]
     pub fn retained_bytes(&self) -> usize {
         self.tables.values().map(reading_bytes).sum::<usize>()
+            + self.statement_history.bytes()
+            + self.observations.bytes()
+            + self
+                .plans
+                .iter()
+                .map(crate::advisor::plan::retained_bytes)
+                .sum::<usize>()
+            + self.table_walls.len() * 128
             + self
                 .series
                 .iter()
@@ -128,10 +154,16 @@ impl LiveStore {
     }
 
     pub(crate) fn enforce(&mut self, now: u64) {
+        let wall = self.clock.1
+            + f64::from(u32::try_from(now.saturating_sub(self.clock.0)).unwrap_or(u32::MAX));
+        self.statement_history.enforce(wall);
+        self.plans
+            .retain(|plan| wall - plan.collected_ms <= crate::advisor::PLAN_MAX_AGE_MS);
         self.table_times.retain(|source, then| {
             let fresh = now.saturating_sub(*then) <= LIVE_MS;
             if !fresh {
                 self.tables.remove(source);
+                self.table_walls.remove(source);
             }
             fresh
         });
@@ -154,6 +186,10 @@ impl LiveStore {
                 .map(|(key, _)| key.clone())
             {
                 self.series.remove(&key);
+            } else if !self.statement_history.intervals.is_empty() {
+                self.statement_history.intervals.clear();
+            } else if !self.plans.is_empty() {
+                self.plans.clear();
             } else if !self.evict_table() {
                 break;
             }
@@ -181,6 +217,7 @@ impl LiveStore {
         };
         self.tables.remove(&source);
         self.table_times.remove(&source);
+        self.table_walls.remove(&source);
         self.baselines
             .retain(|key, _| !key.starts_with(&format!("{source:?}:")));
         true
@@ -208,89 +245,9 @@ fn scalar_unit(reading: &Reading, name: &str) -> Option<String> {
         })
 }
 
-fn sanitize(reading: &mut Reading) {
-    reading.partial |= reading.columns.len() > 128;
-    reading.columns.truncate(128);
-    if reading.rows.len() >= 1_000 {
-        reading.partial = true;
-    }
-    reading.rows.truncate(1_000);
-    for row in &mut reading.rows {
-        row.truncate(reading.columns.len());
-        row.resize(reading.columns.len(), None);
-        for (cell, column) in row.iter_mut().zip(&reading.columns) {
-            if column.kind == MetricKind::Query {
-                *cell = cell
-                    .as_deref()
-                    .and_then(openrows_sql::normalize_monitor_query);
-            } else if cell.as_ref().is_some_and(|text| text.len() > 4_096) {
-                *cell = None;
-                reading.partial = true;
-            }
-        }
-    }
-    if reading_bytes(reading) > 2 * 1_024 * 1_024 {
-        reading.rows.clear();
-        reading.partial = true;
-        reading.state = SampleState::Gap;
-    }
-}
-
-pub(crate) fn reading_bytes(reading: &Reading) -> usize {
-    reading.rows.capacity() * 32
-        + reading.epoch.capacity()
-        + 256
-        + reading
-            .rows
-            .iter()
-            .map(|row| {
-                row.capacity() * 32 + row.iter().flatten().map(String::capacity).sum::<usize>()
-            })
-            .sum::<usize>()
-        + reading
-            .columns
-            .iter()
-            .map(|col| col.name.capacity() + col.unit.capacity() + 128)
-            .sum::<usize>()
-}
-
-fn activity(
-    reading: &Reading,
-    previous: &BTreeMap<String, VecDeque<Point>>,
-) -> Vec<(String, Option<f64>, SampleState)> {
-    let mut values: BTreeMap<String, f64> = previous
-        .keys()
-        .filter(|key| key.starts_with("sessions:") || key.starts_with("waits:"))
-        .map(|key| (key.clone(), 0.0))
-        .collect();
-    for name in [
-        "active",
-        "idle",
-        "idle in transaction",
-        "idle in transaction (aborted)",
-        "waiting",
-    ] {
-        values.insert(format!("sessions:{name}"), 0.0);
-    }
-    for row in &reading.rows {
-        if row
-            .get(2)
-            .and_then(Option::as_deref)
-            .is_some_and(|wait| !wait.is_empty())
-            && row.get(1).and_then(Option::as_deref) == Some("active")
-        {
-            *values.entry("sessions:waiting".into()).or_default() += 1.0;
-        }
-        if let Some(state) = row.get(1).and_then(Option::as_deref) {
-            *values.entry(format!("sessions:{state}")).or_default() += 1.0;
-        }
-        if let Some(wait) = row.get(2).and_then(Option::as_deref) {
-            *values.entry(format!("waits:{wait}")).or_default() += 1.0;
-        }
-    }
-    values
-        .into_iter()
-        .take(16)
-        .map(|(key, value)| (key, Some(value), SampleState::Ok))
-        .collect()
+fn current_statement(reading: &Reading, id: &str) -> bool {
+    reading.rows.iter().any(|row| {
+        row.first().and_then(Option::as_deref) == Some(id)
+            && crate::advisor::catalog::cell(reading, row, "interval_state") == Some("ok")
+    })
 }

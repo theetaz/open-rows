@@ -199,6 +199,6 @@ pub struct WindowOptions {
     pub row_start: u32,
     /// At most 1,000 rows (100 statements).
     pub row_count: u32,
-    /// Statement ranking by latest interval mean instead of total.
+    /// Statement ranking by covered live-window weighted mean instead of total.
     pub mean: bool,
 }

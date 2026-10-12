@@ -50,7 +50,7 @@ mod tests;
 pub use bind::{MissingParam, ParamBinder, ParamSlot, ParamStyle};
 pub use classify::{Classification, StatementKind, classify};
 pub use context::{ContextSetting, session_context};
-pub use explain::sqlserver_explainable;
+pub use explain::{postgres_explainable, sqlserver_explainable};
 pub use limit::limit_select;
 pub use placeholders::{Placeholder, PlaceholderKind, placeholders};
 pub use redact::{

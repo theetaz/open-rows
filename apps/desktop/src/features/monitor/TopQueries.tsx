@@ -1,17 +1,32 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
+import type { MonitorTarget } from '@openrows/ipc';
 import { Button } from '@openrows/ui';
 import type { MonitorTable } from './monitorData';
 import { MonitorGrid } from './MonitorGrid';
-import { QueryReview } from './QueryReview';
+const QueryReview = lazy(() =>
+  import('./QueryReview').then((module) => ({ default: module.QueryReview })),
+);
+const QueryInvestigation = lazy(() =>
+  import('./QueryInvestigation').then((module) => ({
+    default: module.QueryInvestigation,
+  })),
+);
 import styles from './Monitor.module.css';
 type Props = {
   table: MonitorTable;
-  sessionId: string | null;
+  target: MonitorTarget;
+  production: boolean;
+  now: number;
+  revision: string;
+  activity: MonitorTable | undefined;
+  initialStatementId?: string | undefined;
+  onSession: (pid: string) => void;
+  onEvidence: (link: string) => void;
   onOpenSql: (sql: string) => void;
 };
 
-/** Latest covered statement intervals, sortable metrics and explicit redacted-SQL actions. */
+/** Covered live-window rankings, sortable interval metrics and explicit redacted-SQL actions. */
 export function TopQueries(props: Props): React.JSX.Element {
   const [selected, setSelected] = useState<MonitorTable['rows'][number] | null>(
     null,
@@ -21,14 +36,21 @@ export function TopQueries(props: Props): React.JSX.Element {
     props.table.rows.find(
       (candidate) => candidate.statement_id === selected.statement_id,
     );
-  const sql = typeof row?.query === 'string' ? row.query : null;
+  const [planRevision, setPlanRevision] = useState(0);
+  const chosen =
+    row ??
+    props.table.rows.find((r) => r.statement_id === props.initialStatementId);
+  const statementId = String(
+    chosen?.statement_id ?? props.initialStatementId ?? '',
+  );
+  const sql = typeof chosen?.query === 'string' ? chosen.query : null;
   return (
     <>
       <p className={styles.note}>
         Calls, total time, rows and blocks are rates for the latest valid
         interval. Window mean is total/calls. Maximum and cumulative mean are
-        statistics since last reset. Rankings cover the latest interval;
-        unknown/reset intervals remain unknown.
+        statistics since last reset. Rankings use summed covered live-window
+        deltas; unknown/reset intervals remain unknown.
       </p>
       <MonitorGrid
         label="Top queries"
@@ -36,16 +58,33 @@ export function TopQueries(props: Props): React.JSX.Element {
         onRow={setSelected}
       />
       <QueryActions
-        key={sql}
+        key={statementId}
+        {...props}
         sql={sql}
-        sessionId={props.sessionId}
-        onOpenSql={props.onOpenSql}
+        statementId={statementId}
+        onPlan={() => {
+          setPlanRevision((value) => value + 1);
+        }}
       />
+      {statementId && (
+        <Suspense fallback={null}>
+          <QueryInvestigation
+            key={statementId}
+            {...props}
+            statementId={statementId}
+            revision={`${props.revision}:${String(planRevision)}`}
+          />
+        </Suspense>
+      )}
     </>
   );
 }
 function QueryActions(
-  props: Omit<Props, 'table'> & { sql: string | null },
+  props: Omit<Props, 'table'> & {
+    sql: string | null;
+    statementId: string;
+    onPlan: () => void;
+  },
 ): React.JSX.Element {
   const { sql } = props;
   const [review, setReview] = useState<string | null>(null);
@@ -85,7 +124,7 @@ function QueryActions(
         </Button>
         <Button
           size="sm"
-          disabled={!sql || !props.sessionId}
+          disabled={!sql}
           onClick={() => {
             if (sql) setReview(sql);
           }}
@@ -101,13 +140,18 @@ function QueryActions(
       </div>
       {error && <p role="alert">{error}</p>}
       {review && (
-        <QueryReview
-          sql={review}
-          sessionId={props.sessionId}
-          onClose={() => {
-            setReview(null);
-          }}
-        />
+        <Suspense fallback={null}>
+          <QueryReview
+            sql={review}
+            target={props.target}
+            statementId={props.statementId}
+            production={props.production}
+            onPlan={props.onPlan}
+            onClose={() => {
+              setReview(null);
+            }}
+          />
+        </Suspense>
       )}
     </>
   );

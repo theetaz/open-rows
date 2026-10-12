@@ -1,7 +1,31 @@
 // SPDX-License-Identifier: Apache-2.0
-//! SQL Server explain accepts queries/DML, never session or transaction controls.
+//! Explain statement subsets exclude session, transaction and maintenance controls.
 use crate::Dialect;
 use crate::lexer::{TokenKind, significant};
+
+/// Whether one `PostgreSQL` statement starts with a query/DML head, never a utility.
+#[must_use]
+pub fn postgres_explainable(statement: &str) -> bool {
+    let statements = crate::split(statement, Dialect::Postgres);
+    if statements.len() != 1 {
+        return false;
+    }
+    let sql = statements[0].text(statement);
+    let tokens = significant(sql, Dialect::Postgres);
+    let Some(head) = tokens
+        .iter()
+        .find(|token| token.kind != TokenKind::OpenParen)
+    else {
+        return false;
+    };
+    // Safety classification also calls SET, VACUUM and COPY writes; that does
+    // not make them query/DML inputs for an isolated Explain session.
+    [
+        "SELECT", "VALUES", "TABLE", "WITH", "INSERT", "UPDATE", "DELETE", "MERGE",
+    ]
+    .iter()
+    .any(|word| head.is_word(sql, word))
+}
 
 /// Whether a T-SQL query/DML batch can run with explain's options and rollback intact.
 #[must_use]
@@ -68,6 +92,44 @@ pub fn sqlserver_explainable(statement: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn postgres_utilities_are_not_explain_inputs() {
+        for sql in [
+            "SET work_mem = '1MB'",
+            "/* SELECT */ SET search_path = public",
+            "VACUUM t",
+            "ANALYZE t",
+            "SHOW work_mem",
+            "COPY t TO STDOUT",
+            "PREPARE q AS SELECT 1",
+            "DECLARE c CURSOR FOR SELECT 1",
+            "EXPLAIN SELECT 1",
+            "BEGIN",
+            "COMMIT",
+            "SELECT 1; SET work_mem = '1MB'",
+        ] {
+            assert!(!postgres_explainable(sql), "{sql}");
+        }
+    }
+
+    #[test]
+    fn postgres_query_and_dml_heads_use_the_shared_lexer() {
+        for sql in [
+            "-- SET work_mem\nSELECT 'VACUUM'",
+            "/* comment */ (SELECT 1)",
+            "VALUES (1)",
+            "TABLE public.events",
+            "WITH q AS (SELECT 1) SELECT * FROM q",
+            "WITH q AS (DELETE FROM t RETURNING *) SELECT * FROM q",
+            "INSERT INTO t VALUES (1)",
+            "UPDATE t SET \"set\" = 1",
+            "DELETE FROM t WHERE id = 1",
+            "MERGE INTO t USING s ON t.id = s.id WHEN MATCHED THEN DELETE",
+        ] {
+            assert!(postgres_explainable(sql), "{sql}");
+        }
+    }
 
     #[test]
     fn sqlserver_controls_cannot_escape_explain() {

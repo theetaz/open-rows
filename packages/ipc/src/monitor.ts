@@ -10,6 +10,12 @@ import type {
   MonitorStart,
   MonitorTarget,
   MonitorWindow,
+  Investigation,
+  Suggestion,
+  MonitorExplain,
+  ExplainReply,
+  HypoPgRequest,
+  HypoPgReply,
 } from './generated/bindings';
 import { rawBytes } from './binary';
 import { toCommandError, unwrap } from './connections';
@@ -40,7 +46,7 @@ export function monitorSnapshot(target: MonitorTarget): Promise<MonitorReply> {
 export function monitorWindow(request: MonitorWindow): Promise<ArrayBuffer> {
   return binary('monitor_window', request);
 }
-/** Rank covered statement deltas by interval total or interval mean time. */
+/** Rank covered statement deltas by retained live-window total or weighted mean. */
 export function topStatements(request: MonitorWindow): Promise<ArrayBuffer> {
   return binary('monitor_top_statements', request);
 }
@@ -81,4 +87,35 @@ export async function purgeMonitorHistory(
   profileId: string | null,
 ): Promise<void> {
   await unwrap(commands.monitorHistoryPurge(profileId));
+}
+
+/** Investigate reset-aware deltas and regressions from the native live window. */
+export function investigateStatement(
+  target: MonitorTarget,
+  statementId: string,
+): Promise<Investigation> {
+  return unwrap(commands.monitorInvestigate(target, statementId));
+}
+/** Deterministic PostgreSQL advice uses no provider calls. */
+export function monitorAdvice(target: MonitorTarget): Promise<Suggestion[]> {
+  return unwrap(commands.monitorAdvice(target));
+}
+/** Revalidate the current evidence and enqueue editor-only SQL. */
+export async function proposeMonitorSql(
+  target: MonitorTarget,
+  suggestionId: string,
+): Promise<void> {
+  await unwrap(commands.monitorPropose(target, suggestionId));
+}
+/** A bounded disposable diagnostic; every measured execution confirms natively. */
+export function explainMonitorQuery(
+  request: MonitorExplain,
+): Promise<ExplainReply> {
+  return unwrap(commands.monitorExplain(request));
+}
+/** Opt-in, disposable-session estimated plan comparison for a fresh index proposal. */
+export function validateMonitorIndex(
+  request: HypoPgRequest,
+): Promise<HypoPgReply> {
+  return unwrap(commands.monitorHypopg(request));
 }

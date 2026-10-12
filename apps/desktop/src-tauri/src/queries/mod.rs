@@ -14,7 +14,7 @@ pub(crate) mod commands;
 mod dto;
 pub(crate) mod events;
 pub(crate) mod explain;
-mod explain_dto;
+pub(crate) mod explain_dto;
 pub(crate) mod file_watch;
 pub(crate) mod files;
 pub(crate) mod history;

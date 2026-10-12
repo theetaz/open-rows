@@ -69,7 +69,11 @@ fn refusal(
             Some(ExplainReply::Blocked { message })
         }
         Admission::Confirm => {
-            let token = explain::confirmation_token(policy, &request.session_id, statement);
+            let token = explain::confirmation_token(
+                policy,
+                &format!("{}:{}", request.session_id, request.analyze),
+                statement,
+            );
             (request.confirm_token.as_deref() != Some(token.as_str())).then(|| {
                 ExplainReply::ConfirmationRequired {
                     token,
@@ -82,7 +86,7 @@ fn refusal(
 
 /// Explain the statement at the cursor, or the selection, on an open session.
 ///
-/// Plan-only requests follow all-statement policies. Explain Analyze of a possible write needs a
+/// Plan-only requests follow all-statement policies. Every measured execution needs a
 /// matching `confirmToken` (`confirmationRequired`), is refused on
 /// read-only connections and on `MySQL`/`MariaDB` (`blocked`), and on
 /// `PostgreSQL` and SQL Server run in a transaction that is rolled back.

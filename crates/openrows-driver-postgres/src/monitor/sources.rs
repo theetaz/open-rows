@@ -20,15 +20,13 @@ pub(super) fn query(source: Source, config: &Config) -> Option<(String, Vec<Colu
         ),
         Source::Tables => (
             format!(
-                "SELECT relid::text, schemaname, relname, seq_scan, idx_scan, n_live_tup, n_dead_tup, last_autovacuum::text, last_autoanalyze::text, last_vacuum::text, last_analyze::text, vacuum_count, autovacuum_count, analyze_count, autoanalyze_count, pg_relation_size(relid), {DB_EPOCH} FROM pg_stat_user_tables ORDER BY n_dead_tup DESC, relid LIMIT 1000"
+                "SELECT relid::text, schemaname, relname, seq_scan, idx_scan, n_live_tup, n_dead_tup, last_autovacuum::text, last_autoanalyze::text, last_vacuum::text, last_analyze::text, vacuum_count, autovacuum_count, analyze_count, autoanalyze_count, pg_relation_size(relid), (SELECT reltuples FROM pg_class WHERE oid = relid), n_mod_since_analyze, extract(epoch FROM clock_timestamp() - GREATEST(last_analyze, last_autoanalyze)) * 1000, extract(epoch FROM clock_timestamp() - GREATEST(last_vacuum, last_autovacuum)) * 1000, {DB_EPOCH} FROM pg_stat_user_tables ORDER BY n_dead_tup DESC, relid LIMIT 1000"
             ),
-            "relation_id:text,schema:text,table:text,seq_scan:counter,idx_scan:counter,live_tuples:count,dead_tuples:count,last_autovacuum:text,last_autoanalyze:text,last_vacuum:text,last_analyze:text,vacuum_count:counter,autovacuum_count:counter,analyze_count:counter,autoanalyze_count:counter,size_bytes:bytes",
+            "relation_id:text,schema:text,table:text,seq_scan:counter,idx_scan:counter,live_tuples:count,dead_tuples:count,last_autovacuum:text,last_autoanalyze:text,last_vacuum:text,last_analyze:text,vacuum_count:counter,autovacuum_count:counter,analyze_count:counter,autoanalyze_count:counter,size_bytes:bytes,estimated_rows:count,modifications:count,analyze_age_ms:ms,vacuum_age_ms:ms",
         ),
         Source::Indexes => (
-            format!(
-                "SELECT indexrelid::text, schemaname, relname, indexrelname, idx_scan, idx_tup_read, idx_tup_fetch, pg_relation_size(indexrelid), {DB_EPOCH} FROM pg_stat_user_indexes ORDER BY indexrelid LIMIT 1000"
-            ),
-            "index_id:text,schema:text,table:text,index:text,idx_scan:counter,idx_tup_read:counter,idx_tup_fetch:counter,size_bytes:bytes",
+            indexes(),
+            "index_id:text,schema:text,table:text,index:text,idx_scan:counter,idx_tup_read:counter,idx_tup_fetch:counter,size_bytes:bytes,relation_id:text,key_columns:text,definition_key:text,usable:text,protected:text,reset_age_ms:ms",
         ),
         Source::Replication => (
             format!(
@@ -40,6 +38,12 @@ pub(super) fn query(source: Source, config: &Config) -> Option<(String, Vec<Colu
         Source::Io => return Some(io(config)),
     };
     Some((sql, columns(spec)))
+}
+
+fn indexes() -> String {
+    format!(
+        "SELECT s.indexrelid::text, s.schemaname, s.relname, s.indexrelname, s.idx_scan, s.idx_tup_read, s.idx_tup_fetch, pg_relation_size(s.indexrelid), s.relid::text, array_to_json(ARRAY(SELECT a.attname FROM unnest(i.indkey::smallint[]) WITH ORDINALITY k(attnum, pos) JOIN pg_attribute a ON a.attrelid = s.relid AND a.attnum = k.attnum WHERE pos <= i.indnkeyatts ORDER BY pos))::text, md5(i.indkey::text || '|' || i.indcollation::text || '|' || i.indclass::text || '|' || i.indoption::text || '|' || COALESCE(i.indexprs::text, '') || '|' || COALESCE(i.indpred::text, '') || '|' || i.indisunique::text || '|' || c.relam::text || '|' || i.indnkeyatts::text), (i.indisvalid AND i.indisready AND i.indpred IS NULL AND i.indexprs IS NULL AND am.amname = 'btree'), (i.indisunique OR i.indisprimary OR i.indisreplident OR EXISTS(SELECT 1 FROM pg_constraint WHERE conindid = s.indexrelid)), extract(epoch FROM clock_timestamp() - (SELECT stats_reset FROM pg_stat_database WHERE datname = current_database())) * 1000, {DB_EPOCH} FROM pg_stat_user_indexes s JOIN pg_index i ON i.indexrelid = s.indexrelid JOIN pg_class c ON c.oid = s.indexrelid JOIN pg_am am ON am.oid = c.relam ORDER BY s.indexrelid LIMIT 1000"
+    )
 }
 
 fn activity() -> String {

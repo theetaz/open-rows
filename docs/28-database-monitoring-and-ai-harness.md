@@ -467,7 +467,7 @@ nodes and identifies missing owners/cycles. Statement rankings show covered
 latest-interval deltas and separately labelled cumulative statistics. Copy and
 editor actions use normalised redacted SQL; plan-only Explain first requires
 explicit statement/binding review and reuses the existing safety boundary.
-Full-window rankings and deterministic advice remain M25-04.
+Full-window rankings and deterministic advice are implemented in §11; optional HypoPG remains unavailable.
 
 Settings → Monitoring and the tab's history controls enable collection storage
 per profile, default off. SQLite migration 0007 stores only allowlisted scalar
@@ -502,3 +502,95 @@ retention caps, raw-text rejection and gap-preserving bucket limits. No new
 dependency or chart library was required; SVG avoids a large plotting bundle.
 The lazy production build reports 305,167 gzip bytes of initial JavaScript
 (budget 350,000) and 6,306 gzip bytes of shared UI CSS (budget 15,000).
+
+## 11. Implemented (M25-04/10): PostgreSQL investigation and advisor
+
+Top queries rank by summed execution-time deltas or weighted mean over retained
+live intervals. Detail shows normalized SQL, actual interval duration, calls,
+time, returned/affected rows, shared buffer hits/reads and temporary block I/O.
+The source maximum stays labelled “since reset”; PostgreSQL aggregate statement
+statistics do not supply p95/p99, per-query CPU or query memory. They remain
+unavailable. Related sessions match normalized SQL within the selected database;
+that is an approximate cross-source association, not an application call trace.
+Blocking chains include statements, query/transaction ages and wait events with
+a link to the exact session. Graph caps, cycles and unknown owners remain visible.
+
+Live statement history is bounded to ten minutes, 41 observations per identity,
+200 identities and 512 KiB inside the existing 2 MiB live-store cap. Unknown
+baselines, resets, disappeared/reappeared identities, partial snapshots and
+permission loss cannot contribute fabricated deltas. Window mean is summed
+execution time divided by summed calls. Regression version 1 compares adjacent
+complete intervals with at least five calls each: mean must rise by at least
+2× **and** 10 ms. End minus actual duration must match the preceding end within
+1,000 ms (strictly less); gaps cannot trigger a regression. Detail marks limited coverage.
+
+The Tauri-free advisor contains deterministic PostgreSQL rule version 1:
+
+| Rule ID | Required evidence / threshold | Proposal |
+| --- | --- | --- |
+| `pg.selective-scan` | Explicit Seq Scan on ≥100,000 estimated table rows, ≤1% estimated output, simple equality key, complete fresh index absence | Quoted `CREATE INDEX CONCURRENTLY`; medium confidence |
+| `pg.join-key` | Explicit large sequential scan, resolvable equality join key without a usable leading btree index | Concurrent index candidate; low confidence, hash/full scan may be optimal |
+| `pg.estimate-error` | Explicit measured node, positive loops, ≥10× estimated/actual mismatch or exactly one zero | Quoted `ANALYZE`; no claim it fixes skew/correlation |
+| `pg.stale-statistics` | Known analyze age ≥24 h, ≥500 modifications and ≥10% estimated live tuples | Quoted `ANALYZE` |
+| `pg.plan-spill` | Actual measured plan node reports disk spill | Prose about query/index review and session memory concurrency; no `SET` |
+| `pg.statement-spill` | Positive temporary-block read or write delta in a valid interval | Same prose; blocks are not bytes |
+| `pg.unused-index` | Zero cumulative scans, known database reset age ≥7 days, valid ordinary btree; excludes PK/unique/constraint/replica identity | Concurrent drop; low confidence and creation-age, seasonality, replica/reset caveats |
+| `pg.duplicate-index` | Matching parent, ordered keys/includes, predicate, expression, uniqueness, access method, opclasses, collations and ordering signature | Drop only one non-protected equivalent index concurrently |
+| `pg.overlapping-index` | Ordered simple key prefix | Inspect definitions; no drop SQL from a prefix alone |
+| `pg.vacuum` | ≥100,000 estimated dead tuples, ≥20% dead/(live+dead), known vacuum age ≥24 h, ≥3 complete observations in one reset epoch | Ordinary `VACUUM`; low confidence, no measured byte bloat or file-shrink promise |
+| `pg.batching` | ≥1,000 calls/min, mean ≤10 ms in three contiguous complete intervals | Text-only batching/caching investigation; does not prove request-level N+1 |
+| `pg.lock-hotspot` | Same statement/blocked edge in ≥3 complete activity snapshots | Inspect transaction/access order; no cancel SQL or inferred wait duration |
+
+Catalog/activity evidence expires after 120 s and explicit plan evidence after
+ten minutes; future, incomplete, missing or denied sources suppress dependent
+rules. Malformed catalog identities, key arrays or usability flags also make
+absence-based evidence incomplete. Plans resolve relations only against complete
+fresh catalog metadata. Only eight bounded literal-free plan projections are retained. Index
+proposals require a fresh complete index snapshot; a newly observed leading
+index suppresses a prior scan candidate. Cards have stable IDs, rule versions,
+confidence, exact values/node identities, collection time, qualitative impact
+and workload/locking/storage caveats. At most 64 cards are returned in stable
+impact/identity order. There are no provider calls or automatic server changes.
+
+The Monitor advisor and per-query list use the existing proposal queue to open
+SQL with evidence/caveats in an ordinary editor tab. Native admission reevaluates
+the card against current evidence; expired or changed cards cannot enqueue stale
+SQL. Running an editor proposal follows ordinary ReadOnly, confirmation,
+authentication, production and app-lock policies. Dismissal/snooze stores only
+bounded card identities and expiry times, scoped by profile/database; no SQL or
+sample data is persisted for these preferences.
+
+Explain opens a review sheet to supply complete bindings and schema. Plan-only
+is the default. A separate disposable PostgreSQL diagnostic session excludes
+profile startup SQL and user transactions. Native SQL/context/mode/policy-bound
+single-use confirmation is required for every measured run, including SELECT; #99
+ReadOnly, OS authentication, lock admission and the production warning still
+apply. Setup uses only session search path, standard strings and bounded
+statement/lock timeouts; ReadOnly profiles also set a read-only transaction default
+on this disposable session. Other profiles preserve the server's transaction default. One diagnostic per monitor, connection/execution
+deadlines, a two-second owned-transport shutdown deadline, cancellation and monitor-stop signalling bound its lifetime.
+Rollback does not undo sequences or external functions. Raw plan/predicates and
+dynamic detail values are removed before monitoring IPC; the existing visualiser
+still displays numeric plan hotspots. Reviewed SQL must normalize to the
+selected sampled statement, preventing unrelated evidence attribution.
+
+Reviewed diagnostics reject unresolved positional/named/anonymous placeholders.
+The standalone PostgreSQL `?` JSONB operator is conservatively rejected as
+ambiguous with a redacted binding; ordinary editor Explain remains available for
+that expression. Question marks inside strings/comments and `?|`/`?&` operators
+are accepted by the existing SQL lexer.
+
+Optional HypoPG what-if is off until explicit opt-in for a reviewed statement
+and index proposal. Native admission rechecks sampled-statement identity,
+current index evidence, profile policy, authentication and app lock. When the
+extension is already installed, a separate bounded session compares plan-only
+estimated costs before and after `hypopg_create_index`, calls `hypopg_reset`
+and closes. Absence, denied creation and successful cleanup have native
+mock-session tests. This never installs HypoPG, creates a real index or claims
+measured improvement.
+
+Known gaps: persisted per-statement investigation history is not added; the
+existing default-off local history retains scalar series. Cross-engine
+diagnostics and reference-workload/mac-low exit certification remain M25-07/
+M25-09. A server with HypoPG installed was unavailable for a live what-if
+fixture; the isolated path has mock-session coverage.

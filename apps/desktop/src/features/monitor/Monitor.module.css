@@ -98,7 +98,8 @@
 }
 .actions {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 4px;
   align-items: center;
   margin: 8px 0;
 }
@@ -119,4 +120,23 @@
 .guidance {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.advisor {
+  display: grid;
+  gap: 8px;
+}
+.advisor ul {
+  list-style: none;
+  padding: 0;
+}
+.suggestion {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--or-separator);
+}
+.suggestion p {
+  margin: 4px 0;
+}
+.suggestion summary {
+  cursor: pointer;
 }

@@ -45,8 +45,9 @@ export function MonitorSessions(props: {
   profile: ProfileDto;
   database: string;
   paused: boolean;
+  selectedPid?: string | undefined;
 }): React.JSX.Element {
-  const [filter, setFilter] = useState('');
+  const [filter, setFilter] = useState(props.selectedPid ?? '');
   const [sort, setSort] = useState(DEFAULT_SORT);
   const [cursor, setCursor] = useState({ row: 0, col: 0 });
   const signals = useProcessSignals({
@@ -56,7 +57,11 @@ export function MonitorSessions(props: {
     onSignalled: () => undefined,
   });
   const processes = sortProcesses(
-    filterProcesses(monitoredProcesses(props.table), filter),
+    props.selectedPid && filter === props.selectedPid
+      ? monitoredProcesses(props.table).filter(
+          (process) => String(process.id) === props.selectedPid,
+        )
+      : filterProcesses(monitoredProcesses(props.table), filter),
     sort,
   );
   return (

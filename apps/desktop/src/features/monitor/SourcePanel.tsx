@@ -15,6 +15,9 @@ type Props = {
   onOpenSql: (sql: string) => void;
   panel: Source | 'blocking';
   monitor: MonitorControls;
+  selectedIdentity?: string | undefined;
+  onSession?: ((pid: string) => void) | undefined;
+  onEvidence?: (link: string) => void;
 };
 /** One live source with explicit capability/freshness and a bounded data view. */
 export function SourcePanel(props: Props): React.JSX.Element {
@@ -56,20 +59,46 @@ function SourceContent(
         profile={props.profile}
         database={props.database}
         paused={props.monitor.paused}
+        selectedPid={props.selectedIdentity}
       />
     );
-  if (props.panel === 'blocking') return <BlockingTree table={props.table} />;
+  if (props.panel === 'blocking')
+    return <BlockingTree table={props.table} onSession={props.onSession} />;
   if (props.panel === 'statements')
     return (
       <TopQueries
         table={props.table}
-        sessionId={props.sessionId}
+        target={{ profileId: props.profile.id, database: props.database }}
+        production={props.profile.env.kind === 'prod'}
+        now={props.monitor.now}
+        revision={`${props.monitor.data?.reply.generation ?? ''}:${props.monitor.data?.reply.sources.map((s) => `${s.source}:${String(s.sequence)}:${s.state.kind}`).join('|') ?? ''}:${String(Math.floor(props.monitor.now / 5000))}`}
+        activity={props.monitor.data?.tables.activity}
+        initialStatementId={props.selectedIdentity}
+        onSession={props.onSession ?? (() => undefined)}
+        onEvidence={props.onEvidence ?? (() => undefined)}
         onOpenSql={props.onOpenSql}
       />
     );
   return (
     <>
-      <MonitorGrid label={props.panel} table={props.table} />
+      <MonitorGrid
+        label={props.panel}
+        table={
+          props.selectedIdentity
+            ? {
+                ...props.table,
+                rows: props.table.rows.filter(
+                  (row) =>
+                    String(
+                      props.panel === 'indexes'
+                        ? row.index_id
+                        : row.relation_id,
+                    ) === props.selectedIdentity,
+                ),
+              }
+            : props.table
+        }
+      />
       {props.panel === 'replication' && !props.table.rows.length && (
         <p>
           No replication senders or receivers on this server; replication lag is

@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Thin monitoring IPC and profile lifecycle ownership; no monitor UI.
+mod advisor;
 mod commands;
+mod diagnostic;
+mod diagnostic_gate;
+mod diagnostic_session;
+mod hypopg;
+pub(crate) use advisor::*;
+pub(crate) use diagnostic::*;
+pub(crate) use hypopg::*;
 mod history;
 pub(crate) use history::*;
 pub(crate) mod processes;
@@ -51,7 +59,7 @@ pub(crate) struct MonitorWindow {
     limit: Option<u32>,
     /// Stable snapshot offset; pages are capped at 1,000 rows.
     row_start: Option<u32>,
-    /// Rank statements by interval mean rather than interval total time.
+    /// Rank statements by live-window weighted mean rather than total time.
     mean: Option<bool>,
 }
 /// Per-generation source status; no sampled rows in events.

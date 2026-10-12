@@ -8,7 +8,11 @@ function branch(
   pid: string,
   graph: Graph,
   rows: Map<string, Row>,
-  context: { seen: Set<string>; budget: { remaining: number } },
+  context: {
+    seen: Set<string>;
+    budget: { remaining: number };
+    onSession?: ((pid: string) => void) | undefined;
+  },
 ): React.JSX.Element | null {
   if (context.budget.remaining <= 0) return null;
   context.budget.remaining--;
@@ -18,10 +22,23 @@ function branch(
   const next = new Set([...seen, pid]);
   return (
     <li key={pid}>
-      PID {pid}
+      {row && context.onSession ? (
+        <button
+          type="button"
+          aria-label={`Session ${pid}`}
+          onClick={() => {
+            context.onSession?.(pid);
+          }}
+        >
+          PID {pid}
+        </button>
+      ) : (
+        `PID ${pid}`
+      )}
       {row
-        ? ` · ${String(row.state ?? 'Unknown')} · ${String(row.wait ?? 'No wait')} · ${String(row.age_ms ?? 'Unknown')} ms · transaction ${String(row.transaction_ms ?? 'Unknown')} ms`
+        ? ` · ${String(row.state ?? 'Unknown')} · ${String(row.wait ?? 'No wait')} · query age ${String(row.age_ms ?? 'Unknown')} ms · transaction age ${String(row.transaction_ms ?? 'Unknown')} ms`
         : ' · Unknown blocker (outside visibility)'}
+      {row?.query && <pre>{String(row.query)}</pre>}
       {cycle ? (
         ' · Cycle'
       ) : next.size > 16 ? (
@@ -31,7 +48,11 @@ function branch(
           {(graph.get(pid) ?? [])
             .slice(0, Math.max(0, budget.remaining))
             .map((child) =>
-              branch(String(child.pid), graph, rows, { seen: next, budget }),
+              branch(String(child.pid), graph, rows, {
+                seen: next,
+                budget,
+                onSession: context.onSession,
+              }),
             )}
         </ul>
       )}
@@ -41,8 +62,10 @@ function branch(
 /** Blocker → blocked tree, retaining all parents, unknown owners and bounded cycles. */
 export function BlockingTree({
   table,
+  onSession,
 }: {
   table: MonitorTable | undefined;
+  onSession?: ((pid: string) => void) | undefined;
 }): React.JSX.Element {
   const rows = new Map(
     (table?.rows ?? []).map((row) => [String(row.pid), row]),
@@ -64,7 +87,8 @@ export function BlockingTree({
   return (
     <>
       <p className={styles.note}>
-        Blocker → blocked. Unseen owners, cycles and capped chains remain
+        Blocker → blocked. Query and transaction ages are shown; lock-wait
+        duration is unavailable. Unseen owners, cycles and capped chains remain
         explicit.
       </p>
       {graph.size ? (
@@ -72,7 +96,7 @@ export function BlockingTree({
           {roots
             .slice(0, 100)
             .map((pid) =>
-              branch(pid, graph, rows, { seen: new Set(), budget }),
+              branch(pid, graph, rows, { seen: new Set(), budget, onSession }),
             )}
         </ul>
       ) : (

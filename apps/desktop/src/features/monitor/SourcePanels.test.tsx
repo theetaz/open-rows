@@ -8,13 +8,22 @@ import { decodeTable } from './monitorData';
 import { monitorBytes, monitorProfile, monitorReply } from './monitorFixture';
 import { MetricChart, chartPath } from './MetricChart';
 import { TopQueries } from './TopQueries';
-import { explainQuery } from '@openrows/ipc';
+import { explainQuery, explainMonitorQuery } from '@openrows/ipc';
 import { BlockingTree } from './BlockingTree';
 import { MonitorOverview } from './MonitorOverview';
 
 vi.mock('@openrows/ipc', async () =>
   (await import('../../test/ipcStub')).ipcStub(),
 );
+const topProps = {
+  target: { profileId: monitorProfile.id, database: 'orders' },
+  production: false,
+  now: 1000,
+  revision: '1',
+  activity: undefined,
+  onSession: vi.fn(),
+  onEvidence: vi.fn(),
+};
 const sources: Source[] = [
   'activity',
   'database',
@@ -167,26 +176,26 @@ it('copies setup guidance without executing enabling SQL', async () => {
   expect(explainQuery).not.toHaveBeenCalled();
 });
 it('requests a plan only after review and clears it when the monitor closes', async () => {
-  vi.mocked(explainQuery).mockResolvedValue({
+  vi.mocked(explainMonitorQuery).mockResolvedValue({
     kind: 'blocked',
     message: 'test-only',
   });
   const mounted = render(
     <TopQueries
       table={decodeTable(monitorBytes('statements'))}
-      sessionId="s"
+      {...topProps}
       onOpenSql={vi.fn()}
     />,
   );
   await userEvent.click(screen.getByRole('gridcell', { name: 'SELECT ?' }));
   await userEvent.click(screen.getByRole('button', { name: 'Explain' }));
   await userEvent.click(
-    screen.getByRole('switch', { name: 'Statement reviewed' }),
+    await screen.findByRole('switch', { name: 'Statement reviewed' }),
   );
   await userEvent.click(
     screen.getByRole('button', { name: 'Explain plan only' }),
   );
-  expect(explainQuery).toHaveBeenCalledWith(
+  expect(explainMonitorQuery).toHaveBeenCalledWith(
     expect.objectContaining({ analyze: false, sql: 'SELECT ?' }),
   );
   mounted.unmount();
@@ -196,7 +205,7 @@ it('opens normalised SQL for review and never explains before explicit review', 
   render(
     <TopQueries
       table={decodeTable(monitorBytes('statements'))}
-      sessionId="s"
+      {...topProps}
       onOpenSql={onOpenSql}
     />,
   );
@@ -207,7 +216,7 @@ it('opens normalised SQL for review and never explains before explicit review', 
   expect(onOpenSql).toHaveBeenCalledWith(expect.stringContaining('-- Review'));
   await userEvent.click(screen.getByRole('button', { name: 'Explain' }));
   expect(
-    screen.getByRole('button', { name: 'Explain plan only' }),
+    await screen.findByRole('button', { name: 'Explain plan only' }),
   ).toBeDisabled();
   expect(explainQuery).not.toHaveBeenCalled();
 });

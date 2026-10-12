@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { SegmentedControl } from '@openrows/ui';
 import type { EngineDto, ProfileDto } from '@openrows/ipc';
 import { useSecurity } from '../security/useSecurity';
@@ -10,12 +10,16 @@ import { MonitorOverview } from './MonitorOverview';
 import { SourcePanel } from './SourcePanel';
 import { HistoryControls } from './HistoryControls';
 import styles from './Monitor.module.css';
+const AdvisorPanel = lazy(() =>
+  import('./AdvisorPanel').then((module) => ({ default: module.AdvisorPanel })),
+);
 
 const PANELS = [
   { value: 'overview', label: 'Overview' },
   { value: 'activity', label: 'Sessions' },
   { value: 'blocking', label: 'Blocking' },
   { value: 'statements', label: 'Top queries' },
+  { value: 'advisor', label: 'Advisor' },
   { value: 'tables', label: 'Tables' },
   { value: 'indexes', label: 'Indexes' },
   { value: 'replication', label: 'Replication' },
@@ -41,6 +45,14 @@ export function MonitorTab(props: Props): React.JSX.Element {
   );
   const history = useMonitorHistory(target, !security.locked);
   const [panel, setPanel] = useState<Panel>('overview');
+  const [selectedIdentity, setSelectedIdentity] = useState<string>();
+  const evidence = (link: string): void => {
+    const destination = evidenceTarget(link);
+    if (destination) {
+      setPanel(destination.panel);
+      setSelectedIdentity(destination.identity);
+    }
+  };
   const unlocked = useRef(false);
   const { setPaused } = monitor;
   useEffect(() => {
@@ -77,7 +89,10 @@ export function MonitorTab(props: Props): React.JSX.Element {
           aria-label="Monitor panel"
           options={PANELS}
           value={panel}
-          onValueChange={setPanel}
+          onValueChange={(value) => {
+            setPanel(value);
+            setSelectedIdentity(undefined);
+          }}
           size="compact"
         />
       </nav>
@@ -86,6 +101,12 @@ export function MonitorTab(props: Props): React.JSX.Element {
         panel={panel}
         monitor={monitor}
         history={history}
+        selectedIdentity={selectedIdentity}
+        onEvidence={evidence}
+        onSession={(pid) => {
+          setPanel('activity');
+          setSelectedIdentity(pid);
+        }}
       />
     </section>
   );
@@ -96,6 +117,9 @@ function MonitorContent(
     panel: Panel;
     monitor: ReturnType<typeof useMonitor>;
     history: ReturnType<typeof useMonitorHistory>;
+    selectedIdentity?: string | undefined;
+    onEvidence: (link: string) => void;
+    onSession: (pid: string) => void;
   },
 ): React.JSX.Element {
   const { panel, monitor, history } = props;
@@ -107,7 +131,17 @@ function MonitorContent(
         </p>
       )}
       {history.error && <p role="alert">{history.error}</p>}
-      {panel === 'overview' ? (
+      {panel === 'advisor' ? (
+        <Suspense fallback={null}>
+          <AdvisorPanel
+            target={{ profileId: props.profile.id, database: props.database }}
+            now={monitor.now}
+            production={props.profile.env.kind === 'prod'}
+            revision={`${monitor.data?.reply.generation ?? ''}:${monitor.data?.reply.sources.map((s) => `${s.source}:${String(s.sequence)}:${s.state.kind}`).join('|') ?? ''}:${String(Math.floor(monitor.now / 5000))}`}
+            onEvidence={props.onEvidence}
+          />
+        </Suspense>
+      ) : panel === 'overview' ? (
         <MonitorOverview
           data={monitor.data}
           points={history.hours ? history.points : (monitor.data?.points ?? [])}
@@ -118,7 +152,11 @@ function MonitorContent(
           history={history.hours > 0}
         />
       ) : (
-        <SourcePanel {...props} panel={panel} />
+        <SourcePanel
+          key={`${panel}:${props.selectedIdentity ?? ''}`}
+          {...props}
+          panel={panel}
+        />
       )}
       <details>
         <summary>Local history settings</summary>
@@ -145,4 +183,15 @@ function monitorSupported(engine: EngineDto): boolean {
     case 'duckdb':
       return false;
   }
+}
+
+function evidenceTarget(
+  link: string,
+): { panel: Panel; identity: string } | null {
+  const [source, ...identity] = link.split(':');
+  if (source === 'sessions')
+    return { panel: 'activity', identity: identity.join(':') };
+  if (source === 'tables' || source === 'indexes' || source === 'statements')
+    return { panel: source, identity: identity.join(':') };
+  return null;
 }

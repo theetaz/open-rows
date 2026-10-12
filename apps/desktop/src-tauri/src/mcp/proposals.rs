@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Bounded editor proposals contain SQL but have no execution handle.
-use crate::connections::{IpcError, IpcErrorKind};
+use crate::connections::IpcError;
 use openrows_mcp::{McpError, ToolInput};
 use serde::Serialize;
 use specta::Type;
@@ -10,7 +10,7 @@ use std::{
 };
 use tauri::{AppHandle, Emitter, Manager};
 
-/// Queued model output for normal user editor review.
+/// Queued reviewed advice for normal user editor review.
 #[derive(Clone, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct SqlProposal {
@@ -20,7 +20,8 @@ pub(crate) struct SqlProposal {
 }
 #[derive(Default)]
 pub(super) struct Proposals(Mutex<VecDeque<SqlProposal>>);
-pub(super) fn enqueue(app: &AppHandle, input: &ToolInput) -> Result<(), McpError> {
+/// Queue proposal text for editor review without submitting it to a database.
+pub(crate) fn enqueue(app: &AppHandle, input: &ToolInput) -> Result<(), McpError> {
     let proposal = SqlProposal {
         connection: input.connection.clone().ok_or(McpError::Invalid)?,
         database: input.database.clone().ok_or(McpError::Invalid)?,
@@ -45,12 +46,6 @@ pub(super) fn enqueue(app: &AppHandle, input: &ToolInput) -> Result<(), McpError
 pub(crate) fn mcp_proposals_take(app: AppHandle) -> Result<Vec<SqlProposal>, IpcError> {
     app.state::<crate::security::Security>()
         .admit("mcp_proposals_take")?;
-    if !app.state::<crate::ai::AiState>().control.enabled() {
-        return Err(IpcError::new(
-            IpcErrorKind::Unsupported,
-            "AI features are off",
-        ));
-    }
     Ok(app
         .state::<Proposals>()
         .0

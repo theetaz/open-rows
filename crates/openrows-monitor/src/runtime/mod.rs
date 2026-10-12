@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //! One actor owns one read-only session, with immediate stop/clear semantics.
 mod actor;
+mod investigation;
 use crate::{Descriptor, LiveStore, MonitorError, Reading, Source, SourceStatus};
+pub use investigation::DiagnosticGuard;
 use std::{
     future::Future,
     pin::Pin,
@@ -39,6 +41,10 @@ pub struct Monitor {
     task: tokio::task::JoinHandle<()>,
     cancellation: Mutex<Option<ReadFuture<'static, ()>>>,
     events: tokio::sync::broadcast::Sender<Vec<SourceStatus>>,
+    stopped: tokio::sync::watch::Sender<bool>,
+    diagnostic: std::sync::atomic::AtomicBool,
+    consent: Mutex<Option<(String, String)>>,
+    consent_sequence: std::sync::atomic::AtomicU64,
 }
 
 impl Monitor {
@@ -60,6 +66,7 @@ impl Monitor {
         }));
         let (events, _) = tokio::sync::broadcast::channel(4);
         let cancellation = Mutex::new(Some(reader.cancellation()));
+        let (stopped, _) = tokio::sync::watch::channel(false);
         let task = tokio::spawn(actor::run(
             reader,
             descriptors.clone(),
@@ -71,6 +78,10 @@ impl Monitor {
         ));
         Ok(Self {
             live_ms,
+            stopped,
+            diagnostic: std::sync::atomic::AtomicBool::new(false),
+            consent: Mutex::new(None),
+            consent_sequence: std::sync::atomic::AtomicU64::new(0),
             generation: GENERATION.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
             shared,
             descriptors,
@@ -84,6 +95,8 @@ impl Monitor {
     pub fn stop(&self) {
         let mut shared = self.shared.lock().unwrap_or_else(PoisonError::into_inner);
         shared.stopped = true;
+        self.stopped.send_replace(true);
+        *self.consent.lock().unwrap_or_else(PoisonError::into_inner) = None;
         shared.store = LiveStore::default();
         self.task.abort();
         if let Some(cancel) = self

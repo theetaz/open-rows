@@ -4,7 +4,7 @@ import { Sheet } from '@openrows/ui/sheet';
 import type { ExplainControls } from './useExplain';
 import styles from './Explain.module.css';
 
-/** Consent before Explain Analyze runs a statement that may modify data. */
+/** Consent before Explain Analyze executes the reviewed statement. */
 function ExplainConfirm(props: {
   connection: string;
   statement: string;
@@ -12,7 +12,7 @@ function ExplainConfirm(props: {
   onCancel: () => void;
 }): React.JSX.Element {
   return (
-    <Sheet title="Run Explain Analyze on a write?" onClose={props.onCancel}>
+    <Sheet title="Run Explain Analyze?" onClose={props.onCancel}>
       <div className={styles.confirm}>
         <p>
           Explain Analyze runs this statement on{' '}

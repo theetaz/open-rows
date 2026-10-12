@@ -211,3 +211,72 @@ async fn one_actor_never_overlaps_and_stop_cancels_clears_and_rejects_late_reads
     assert!(monitor.window(None, 20, false).is_err());
     Ok(())
 }
+
+#[tokio::test(start_paused = true)]
+async fn diagnostic_reservation_releases_and_stop_signals_and_rejects_late_work()
+-> Result<(), Box<dyn std::error::Error>> {
+    let monitor = Monitor::spawn(
+        Box::new(Hung {
+            reads: Arc::new(AtomicUsize::new(0)),
+            cancelled: Arc::new(AtomicUsize::new(0)),
+            initial: None,
+        }),
+        vec![],
+        5000,
+    )?;
+    let guard = monitor.begin_diagnostic()?;
+    assert!(monitor.begin_diagnostic().is_err());
+    drop(guard);
+    let guard = monitor.begin_diagnostic()?;
+    let mut stopped = monitor.stopped_signal();
+    monitor.stop();
+    stopped.changed().await?;
+    assert!(*stopped.borrow());
+    assert!(monitor.begin_diagnostic().is_err());
+    assert!(
+        monitor
+            .record_plan(openrows_monitor::advisor::PlanEvidence::default())
+            .is_err()
+    );
+    assert!(monitor.investigate("q").is_err());
+    drop(guard);
+    Ok(())
+}
+
+#[tokio::test(start_paused = true)]
+async fn measured_diagnostic_consent_is_single_use_and_binding_and_generation_scoped()
+-> Result<(), Box<dyn std::error::Error>> {
+    let monitor = Monitor::spawn(
+        Box::new(Hung {
+            reads: Arc::new(AtomicUsize::new(0)),
+            cancelled: Arc::new(AtomicUsize::new(0)),
+            initial: None,
+        }),
+        vec![],
+        5000,
+    )?;
+    let token = monitor
+        .confirm_diagnostic("checked-context-sql-policy", None)?
+        .ok_or("challenge")?;
+    assert!(
+        monitor
+            .confirm_diagnostic("checked-context-sql-policy", Some(&token))?
+            .is_none()
+    );
+    let again = monitor
+        .confirm_diagnostic("checked-context-sql-policy", Some(&token))?
+        .ok_or("replay must prompt")?;
+    assert_ne!(again, token);
+    assert!(
+        monitor
+            .confirm_diagnostic("changed-context", Some(&again))?
+            .is_some()
+    );
+    monitor.stop();
+    assert!(
+        monitor
+            .confirm_diagnostic("checked-context-sql-policy", Some(&again))
+            .is_err()
+    );
+    Ok(())
+}

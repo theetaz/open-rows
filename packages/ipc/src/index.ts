@@ -535,19 +535,7 @@ export type {
 } from './generated/bindings';
 
 /** Bounded PostgreSQL monitoring core (M25-01/02); presentation follows in M25-03. */
-export {
-  startMonitor,
-  stopMonitor,
-  pauseMonitor,
-  monitorCapabilities,
-  monitorSnapshot,
-  monitorWindow,
-  topStatements,
-  onMonitorChanged,
-  monitorHistory,
-  configureMonitorHistory,
-  purgeMonitorHistory,
-} from './monitor';
+export * from './monitor';
 export type {
   Descriptor,
   HistoryPoint,
@@ -594,4 +582,14 @@ export type {
   AssistantContext_Serialize,
   AssistantHistory,
   AssistantScope,
+} from './generated/bindings';
+
+export type {
+  Investigation,
+  StatementInterval,
+  Regression,
+  Suggestion,
+  MonitorExplain,
+  HypoPgRequest,
+  HypoPgReply,
 } from './generated/bindings';

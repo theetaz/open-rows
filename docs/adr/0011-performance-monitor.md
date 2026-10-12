@@ -377,3 +377,38 @@ Official references consulted 2026-10-11; version-specific adapters must recheck
 [DU4]: https://duckdb.org/docs/current/connect/concurrency
 [LI1]: https://github.com/tursodatabase/libsql/blob/main/docs/HRANA_3_SPEC.md
 [HP1]: https://hypopg.readthedocs.io/en/rel1_stable/usage.html
+
+## Implemented (M25-04/10): investigation/advisor evidence
+
+The PostgreSQL implementation and exact rule/regression thresholds are documented
+in [docs/28 §11](../28-database-monitoring-and-ai-harness.md#11-implemented-m25-0410-postgresql-investigation-and-advisor).
+Core tests cover every rule with positive, negative, missing and stale evidence,
+weighted interval means, reset/gap/identity churn, bounded retention, conservative
+predicate projection and exact quoted proposal SQL. Native/UI tests cover reviewed
+plan-only requests, measured SELECT confirmation bound to SQL/context/policy,
+ReadOnly refusal, privacy before IPC, proposal queue actions/dismissal/snooze and
+blocker session links.
+
+The current task's final acceptance report records the workspace gate results;
+earlier partial-run counts are not treated as current verification.
+
+The opt-in debug advisor benchmark ran on an Apple M4 Mac16,10, native arm64,
+24 GiB RAM, using 1,000 catalog rows and 100 iterations per case. Distinct-index
+analysis measured 2.787 ms median / 5.036 ms p95; duplicate-index analysis measured
+1.330 ms median / 1.345 ms p95, both within the 10 ms p95 component budget. This
+new path has no main baseline, and these measurements do not certify server
+overhead or all-app CPU/RSS.
+
+`just test-pg 17` ran against one task-owned PostgreSQL 17.11 container: 82
+tests passed (one skipped), including the real selective-scan/index-removal,
+spill, stale-statistics, unused/duplicate-index, blocking and negative
+fixtures. The task container and TLS scratch directory were removed; unrelated
+containers were left untouched.
+
+Optional HypoPG remains off until explicit per-check opt-in and reviewed SQL.
+The isolated session checks an already-installed extension, compares plan-only
+estimated costs, resets hypothetical indexes and closes; absence, denial and
+cleanup have native mock-session tests. No extension installation, server
+setting changes, provider calls or automatic proposal execution are added.
+A live installed-HypoPG fixture was unavailable. Reference-load/app
+footprint/CPU and mac-low certification remain M25-09.

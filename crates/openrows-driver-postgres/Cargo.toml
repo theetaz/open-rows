@@ -25,6 +25,7 @@ thiserror.workspace = true
 tokio = { version = "1.53", features = ["net", "io-util", "time", "sync"] }
 
 [dev-dependencies]
+openrows-explain = { path = "../openrows-explain" }
 arrow-ipc = "60"
 openrows-store = { path = "../openrows-store" }
 # Proxied-route tests use the in-process test proxy.

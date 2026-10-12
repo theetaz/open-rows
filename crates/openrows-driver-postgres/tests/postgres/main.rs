@@ -12,6 +12,8 @@ mod helpers;
 mod history;
 mod inspection;
 mod monitor;
+mod monitor_advisor;
+mod monitor_advisor_age;
 mod monitor_bench;
 mod monitor_blocking;
 mod monitor_capture;

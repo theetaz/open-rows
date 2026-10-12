@@ -176,6 +176,16 @@ export const commands = {
 	processesList: (profileId: string, database: string) => typedError<ProcessDto[], IpcError>(__TAURI_INVOKE("processes_list", { profileId, database })),
 	/**  Cancel a process's statement or terminate it; the webview confirms first. */
 	processSignal: (request: ProcessSignalRequest) => typedError<null, IpcError>(__TAURI_INVOKE("process_signal", { request })),
+	/**  Read a live investigation; source SQL has already passed core redaction. */
+	monitorInvestigate: (target: MonitorTarget, statementId: string) => typedError<Investigation, IpcError>(__TAURI_INVOKE("monitor_investigate", { target, statementId })),
+	/**  Evaluate current native evidence; deterministic advice needs no AI/provider configuration. */
+	monitorAdvice: (target: MonitorTarget) => typedError<Suggestion[], IpcError>(__TAURI_INVOKE("monitor_advice", { target })),
+	/**  Revalidate a suggestion then enqueue exact SQL for editor review; never execute it. */
+	monitorPropose: (target: MonitorTarget, suggestionId: string) => typedError<null, IpcError>(__TAURI_INVOKE("monitor_propose", { target, suggestionId })),
+	/**  Plan-only by default in the UI; every measured execution confirms natively. */
+	monitorExplain: (request: MonitorExplain) => typedError<ExplainReply, IpcError>(__TAURI_INVOKE("monitor_explain", { request })),
+	/**  Validate one fresh index candidate, without installing an extension or executing the proposal. */
+	monitorHypopg: (request: HypoPgRequest) => typedError<HypoPgReply, IpcError>(__TAURI_INVOKE("monitor_hypopg", { request })),
 	/**  Start/resume one shared collector, requiring an already connected profile. */
 	monitorStart: (request: MonitorStart) => typedError<MonitorReply, IpcError>(__TAURI_INVOKE("monitor_start", { request })),
 	/**  Stop collection, discard samples and release the dedicated session. */
@@ -206,7 +216,7 @@ export const commands = {
 	/**
 	 *  Explain the statement at the cursor, or the selection, on an open session.
 	 *
-	 *  Plan-only requests follow all-statement policies. Explain Analyze of a possible write needs a
+	 *  Plan-only requests follow all-statement policies. Every measured execution needs a
 	 *  matching `confirmToken` (`confirmationRequired`), is refused on
 	 *  read-only connections and on `MySQL`/`MariaDB` (`blocked`), and on
 	 *  `PostgreSQL` and SQL Server run in a transaction that is rolled back.
@@ -1318,7 +1328,7 @@ export type ExplainReply =
 /**  The plan. */
 { kind: "explained"; plan: PlanDto } |
 /**
- *  Nothing ran: Explain Analyze would run a possible write; resend
+ *  Nothing ran: measured execution or the safety policy requires consent; resend
  *  with `confirmToken` once the user accepted.
  */
 { kind: "confirmationRequired"; token: string; statement: string } |
@@ -1637,6 +1647,30 @@ export type HistorySearchRequest = {
 /**  Outcome of a recorded statement. */
 export type HistoryStatusDto = "ok" | "error" | "cancelled";
 
+/**  Estimated plan costs are comparable within this session, not runtime savings. */
+export type HypoPgEstimate = {
+	baselineCost: number | null,
+	hypotheticalCost: number | null,
+};
+
+/**  Native safety admission is shared with reviewed plan-only Explain. */
+export type HypoPgReply =
+/**  Current policy requires native confirmation before any diagnostic work. */
+{ kind: "confirmationRequired"; token: string; statement: string } |
+/**  Two estimates from the same disposable session. */
+{ kind: "estimate"; estimate: HypoPgEstimate };
+
+/**  One explicit, connection-scoped hypothetical-index check. */
+export type HypoPgRequest = {
+	target: MonitorTarget,
+	statementId: string,
+	suggestionId: string,
+	sql: string,
+	schema: string,
+	enabled: boolean,
+	confirmToken: string | null,
+};
+
 /**  How a column numbers new rows. */
 export type IdentityDto = "none" | "always" | "byDefault" | "autoIncrement";
 
@@ -1837,6 +1871,28 @@ export type InsecureReasonDto =
 /**  An unknown SSH host key was accepted without saving it. */
 "hostKeyNotSaved";
 
+/**  Bounded detail with explicit source coverage and no fabricated distributions. */
+export type Investigation = {
+	/**  Scoped statement identity. */
+	statementId: string,
+	/**  Safely normalized SQL, or fingerprint-only. */
+	query: string | null,
+	/**  Retained live intervals; absent observations remain gaps. */
+	intervals: StatementInterval[],
+	/**  Window delta calls. */
+	calls: number | null,
+	/**  Window execution time delta. */
+	totalMs: number | null,
+	/**  Summed time / summed calls, never a mean of means. */
+	meanMs: number | null,
+	/**  Source maximum since reset; never subtracted or labelled a window maximum. */
+	maxSinceResetMs: number | null,
+	/**  Adjacent complete-interval regressions. */
+	regressions: Regression[],
+	/**  Truncation, unknown baselines or gaps limit coverage. */
+	partial: boolean,
+};
+
 /**  Typed command failure, safe to render to the user. */
 export type IpcError = {
 	/**  Failure category. */
@@ -1987,6 +2043,24 @@ export type MonitorChanged = {
 	sources: SourceStatus[],
 };
 
+/**  Complete user-reviewed SQL and explicit diagnostic context. */
+export type MonitorExplain = {
+	/**  Profile/database scope. */
+	target: MonitorTarget,
+	/**  Native sampled statement identity. */
+	statementId: string,
+	/**  Cancellation identity. */
+	explainId: string,
+	/**  Complete user-reviewed SQL. */
+	sql: string,
+	/**  Exact reviewed search-path schema. */
+	schema: string,
+	/**  Explicit measured-execution choice. */
+	analyze: boolean,
+	/**  SQL/context/policy-bound native consent. */
+	confirmToken: string | null,
+};
+
 /**  Admission reply and small current snapshot. */
 export type MonitorReply = {
 	generation: string,
@@ -2020,7 +2094,7 @@ export type MonitorWindow = {
 	limit: number | null,
 	/**  Stable snapshot offset; pages are capped at 1,000 rows. */
 	rowStart: number | null,
-	/**  Rank statements by interval mean rather than interval total time. */
+	/**  Rank statements by live-window weighted mean rather than total time. */
 	mean: boolean | null,
 };
 
@@ -2622,6 +2696,18 @@ export type RedactionRule =
 /**  `ON DELETE` / `ON UPDATE` action of a foreign key. */
 export type ReferentialActionDto = "noAction" | "restrict" | "cascade" | "setNull" | "setDefault";
 
+/**  A deterministic comparison between two complete adjacent intervals. */
+export type Regression = {
+	/**  Earlier interval end. */
+	previousMs: number | null,
+	/**  Current interval end. */
+	currentMs: number | null,
+	/**  Earlier mean. */
+	previousMeanMs: number | null,
+	/**  Current mean. */
+	currentMeanMs: number | null,
+};
+
 /**  A table or view change; `target` is the table or view. */
 export type RelationChangeDto = { kind: "createTable"; target: ObjectNameDto; definition: NewTableDto } | { kind: "renameTable"; target: ObjectNameDto; name: string } | { kind: "duplicateTable"; target: ObjectNameDto; name: string; withData: boolean } | { kind: "truncateTable"; target: ObjectNameDto; cascade: boolean } | { kind: "dropTable"; target: ObjectNameDto; cascade: boolean } | { kind: "saveView"; target: ObjectNameDto; query: string; materialized: boolean; replace: boolean } | { kind: "dropView"; target: ObjectNameDto; materialized: boolean; cascade: boolean };
 
@@ -3070,7 +3156,7 @@ export type SqlPreviewDto = {
 	params: (string | null)[],
 };
 
-/**  Queued model output for normal user editor review. */
+/**  Queued reviewed advice for normal user editor review. */
 export type SqlProposal = {
 	connection: string,
 	database: string,
@@ -3154,6 +3240,32 @@ export type StatementDto = {
 	verdict: VerdictDto,
 };
 
+/**  One reset-aware statement interval; deltas never include a reset baseline. */
+export type StatementInterval = {
+	/**  Database/user/query-scoped identity. */
+	statementId: string,
+	/**  Interval end wall time. */
+	collectedMs: number | null,
+	/**  Actual monotonic duration, not configured cadence. */
+	durationMs: number | null,
+	/**  Validity of this interval. */
+	state: SampleState,
+	/**  Call count delta. */
+	calls: number | null,
+	/**  Execution time delta in milliseconds. */
+	totalMs: number | null,
+	/**  Returned/affected row delta; not rows examined. */
+	rows: number | null,
+	/**  Shared buffer hits. */
+	sharedHit: number | null,
+	/**  Shared buffer reads, not physical disk reads. */
+	sharedRead: number | null,
+	/**  Temporary block writes, not byte counts. */
+	tempWritten: number | null,
+	/**  Temporary block reads. */
+	tempRead: number | null,
+};
+
 /**  What a statement does, for the confirmation dialog. */
 export type StatementKindDto = "read" | "write" | "ddl" | "txControl" | "unknown";
 
@@ -3174,6 +3286,32 @@ export type StructureColumnDto = {
 	/**  Single-column check expressions, joined with ` AND `. */
 	check: string | null,
 	foreignKey: ForeignKeyDto | null,
+};
+
+/**  One evaluated rule; SQL is a proposal string and cannot execute in this crate. */
+export type Suggestion = {
+	/**  Stable object/query-scoped identity for local dismissal. */
+	id: string,
+	/**  Stable rule identifier. */
+	ruleId: string,
+	/**  Inspectable rule-set revision. */
+	version: number,
+	/**  Low, medium or high evidence confidence. */
+	confidence: string,
+	/**  Qualitative expected impact, never promised speed-up. */
+	impact: string,
+	/**  Workload/locking/storage caveats. */
+	tradeOffs: string,
+	/**  Exact numeric evidence and threshold explanation. */
+	evidence: string,
+	/**  Source table, statement identity or visualiser node link. */
+	evidenceLink: string,
+	/**  Reviewed proposal, absent for application/memory hints. */
+	sql: string | null,
+	/**  Query scope, absent for connection-wide maintenance. */
+	statementId: string | null,
+	/**  Source collection time. */
+	collectedMs: number | null,
 };
 
 /**  A column on the Structure tab. */

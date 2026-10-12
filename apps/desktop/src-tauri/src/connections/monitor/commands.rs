@@ -143,7 +143,7 @@ pub(crate) async fn monitor_window(
     bytes(&state, &request)
 }
 
-/// Top statements by interval total/mean from covered identities, never raw text.
+/// Top statements by covered live-window total/weighted mean, never raw text.
 #[tauri::command]
 pub(crate) async fn monitor_top_statements(
     state: State<'_, Connections>,

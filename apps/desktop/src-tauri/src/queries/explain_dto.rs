@@ -33,7 +33,7 @@ pub(crate) struct ExplainRequest {
 pub(crate) enum ExplainReply {
     /// The plan.
     Explained { plan: PlanDto },
-    /// Nothing ran: Explain Analyze would run a possible write; resend
+    /// Nothing ran: measured execution or the safety policy requires consent; resend
     /// with `confirmToken` once the user accepted.
     ConfirmationRequired { token: String, statement: String },
     /// Nothing ran: read-only connection, or an engine that cannot roll back.
@@ -141,6 +141,23 @@ pub(crate) struct PlanDto {
 }
 
 impl PlanDto {
+    /// Monitoring diagnostics strip predicates, raw output and text details before IPC.
+    pub(crate) fn monitor(statement: &str, mut explained: Explained) -> Self {
+        explained.raw =
+            "Raw plan withheld for monitoring privacy; metric hotspots remain available.".into();
+        explained.plan.summary.clear();
+        explained.plan.nodes.truncate(256);
+        for node in &mut explained.plan.nodes {
+            node.data.conditions.clear();
+            node.data.details.clear();
+        }
+        Self::new(
+            openrows_sql::normalize_monitor_query(statement)
+                .unwrap_or_else(|| "Statement text withheld".into()),
+            explained,
+        )
+    }
+
     pub(crate) fn new(statement: String, explained: Explained) -> Self {
         let plan = explained.plan;
         Self {
@@ -228,5 +245,32 @@ fn node(node: AnalysedNode) -> PlanNodeDto {
         conditions: details(data.conditions),
         details: details(data.details),
         hotspots: node.hotspots.into_iter().map(hotspot).collect(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn monitor_plan_never_returns_sampled_literals_or_raw_conditions() {
+        let raw = r#"[{"Plan":{"Node Type":"Seq Scan","Relation Name":"events","Plan Rows":1,"Filter":"(key = 'test-only')","Actual Rows":1,"Actual Loops":1}}]"#;
+        let parsed = openrows_explain::analyse(
+            openrows_explain::parse(Format::PostgresJson, &[vec![Some(raw.into())]])
+                .expect("fixture plan"),
+        );
+        let safe = PlanDto::monitor(
+            "SELECT * FROM events WHERE key = 'test-only'",
+            Explained {
+                plan: parsed,
+                raw: raw.into(),
+                format: Format::PostgresJson,
+                rolled_back: true,
+            },
+        );
+        let json = serde_json::to_string(&safe).expect("safe plan");
+        assert!(!json.contains("test-only"));
+        assert!(safe.nodes[0].conditions.is_empty());
+        assert_eq!(safe.nodes[0].actual_rows, Some(1.0));
+        assert!(safe.raw.contains("withheld"));
     }
 }

@@ -3,7 +3,7 @@
 //! switches. Pure, so every rule is unit-tested (docs/25 §0: data safety).
 //!
 //! A plan never runs the statement and is always allowed, even on read-only
-//! connections. `ANALYZE` runs it: reads are allowed; anything that may
+//! connections. `ANALYZE` runs it: every measured read confirms; anything that may
 //! write is blocked on read-only connections, refused on engines that cannot
 //! roll every write back (`MySQL`, `MariaDB`) and otherwise always needs the
 //! user's confirmation, because side effects outside the transaction (such
@@ -17,7 +17,7 @@ use openrows_sql::classify;
 pub enum Admission {
     /// Explain without asking.
     Run,
-    /// `ANALYZE` of a possible write: run only after the user confirmed.
+    /// Measured execution or all-statement policy: run only after explicit consent.
     Confirm,
     /// Never on this connection (read-only).
     Block(String),
@@ -44,13 +44,7 @@ pub fn admit(policy: SafetyPolicy, engine: Engine, mode: Mode, statement: &str) 
     }
     let class = classify(statement, policy.dialect);
     if !class.is_write() && !class.dangerous {
-        return if SafetyPlan::check(policy, vec![statement.to_owned()]).gate()
-            == crate::safety::Gate::Confirm
-        {
-            Admission::Confirm
-        } else {
-            Admission::Run
-        };
+        return Admission::Confirm;
     }
     if engine.analyze_writes() == AnalyzeWrites::Refuse {
         return Admission::Refuse(
@@ -143,18 +137,18 @@ mod tests {
     }
 
     #[test]
-    fn analysing_a_read_runs_without_asking() {
+    fn every_measured_read_requires_explicit_confirmation() {
         for read_only in [false, true] {
             let policy = policy(read_only, Dialect::Postgres);
             assert_eq!(
                 admit(policy, PG, Mode::Analyze, "SELECT * FROM t"),
-                Admission::Run
+                Admission::Confirm
             );
         }
         let mysql = policy(true, Dialect::MySql);
         assert_eq!(
             admit(mysql, Engine::MySql, Mode::Analyze, "SELECT 1"),
-            Admission::Run
+            Admission::Confirm
         );
     }
 

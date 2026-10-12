@@ -28,9 +28,13 @@ fn table(
     options: crate::WindowOptions,
 ) -> Result<RecordBatch, MonitorError> {
     let reading = store.tables.get(&source).ok_or(MonitorError::Stopped)?;
+    let projected = (source == Source::Statements).then(|| store.statement_rankings(reading));
+    let reading = projected.as_ref().unwrap_or(reading);
     let mut rows: Vec<_> = reading.rows.iter().collect();
     if source == Source::Statements {
-        rows.sort_by(|a, b| rank(b, options.mean).total_cmp(&rank(a, options.mean)));
+        rows.sort_by(|a, b| {
+            rank(reading, b, options.mean).total_cmp(&rank(reading, a, options.mean))
+        });
     }
     rows.drain(..(options.row_start as usize).min(rows.len()));
     if source == Source::Statements {
@@ -92,20 +96,18 @@ fn table(
     RecordBatch::try_new(schema, arrays).map_err(|_| MonitorError::Encoding)
 }
 
-fn rank(row: &[Option<String>], mean: bool) -> f64 {
-    let number = |index: usize| {
-        row.get(index)
-            .and_then(Option::as_deref)
-            .and_then(|s| s.parse::<f64>().ok())
-            .unwrap_or(0.0)
-    };
-    let total = number(2);
-    if mean {
-        let calls = number(1);
-        if calls > 0.0 { total / calls } else { 0.0 }
-    } else {
-        total
-    }
+fn rank(reading: &crate::Reading, row: &[Option<String>], mean: bool) -> f64 {
+    crate::advisor::catalog::cell(
+        reading,
+        row,
+        if mean {
+            "live_window_mean_ms"
+        } else {
+            "live_window_total_ms"
+        },
+    )
+    .and_then(|value| value.parse::<f64>().ok())
+    .unwrap_or(0.0)
 }
 
 fn series(store: &LiveStore, options: crate::WindowOptions) -> Result<RecordBatch, MonitorError> {
