@@ -31,6 +31,8 @@ pub(crate) struct ProjectDto {
     /// Saved connection id project queries open on, when set.
     default_connection: Option<String>,
     query_folders: Vec<String>,
+    snippet_folders: Vec<String>,
+    connections_file: Option<String>,
     entries: Vec<ProjectEntryDto>,
     /// The tree was cut at its size limit.
     truncated: bool,
@@ -43,6 +45,8 @@ impl ProjectDto {
             name,
             default_connection,
             query_folders,
+            snippet_folders,
+            connections_file,
             ..
         } = project.manifest.clone();
         Self {
@@ -50,6 +54,8 @@ impl ProjectDto {
             name,
             default_connection,
             query_folders,
+            snippet_folders,
+            connections_file,
             entries: listing.entries,
             truncated: listing.truncated,
         }
@@ -57,7 +63,7 @@ impl ProjectDto {
 }
 
 /// The project at `root` with its manifest.
-fn project(root: &str) -> Result<Project, ProjectError> {
+pub(super) fn project(root: &str) -> Result<Project, ProjectError> {
     let root = ProjectRoot::new(Path::new(root))?;
     let manifest = manifest::load(&root)?;
     Ok(Project { root, manifest })

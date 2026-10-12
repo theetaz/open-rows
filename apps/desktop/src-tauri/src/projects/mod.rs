@@ -11,4 +11,9 @@ mod error;
 mod manifest;
 mod ops;
 mod paths;
+pub(crate) mod sharing;
+pub(crate) mod sql_items;
 mod tree;
+
+#[cfg(test)]
+mod contract_tests;

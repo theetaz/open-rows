@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useEffect, useState } from 'react';
-import type { Point } from './layout';
+import { useEffect, useRef, useState } from 'react';
+import type { Point } from './geometry';
 import { centreOn, fitView, zoomAt } from './viewport';
 import type { Size, View } from './viewport';
 
@@ -19,12 +19,13 @@ function measure(element: Element | null): Size {
 
 /** Trackpad scroll pans; pinch (or ⌘/Ctrl + wheel) zooms at the pointer. */
 function useWheel(
-  element: SVGSVGElement | null,
+  element: SVGSVGElement | HTMLCanvasElement | null,
   setView: (update: (view: View) => View) => void,
 ): void {
   useEffect(() => {
     if (!element) return;
-    const onWheel = (event: WheelEvent): void => {
+    const onWheel = (event: Event): void => {
+      if (!(event instanceof WheelEvent)) return;
       event.preventDefault();
       if (event.ctrlKey || event.metaKey) {
         const rect = element.getBoundingClientRect();
@@ -55,7 +56,7 @@ function useWheel(
 export function usePanZoom(initial: (viewport: Size) => View): {
   view: View;
   /** Ref callback for the canvas `<svg>`. */
-  attach: (element: SVGSVGElement | null) => void;
+  attach: (element: SVGSVGElement | HTMLCanvasElement | null) => void;
   /** The last press panned, so its click must not open a table. */
   panned: boolean;
   onPointerDown: (event: React.PointerEvent) => void;
@@ -63,8 +64,17 @@ export function usePanZoom(initial: (viewport: Size) => View): {
   fit: (content: Size) => void;
   centre: (point: Point) => void;
 } {
-  const [element, setElement] = useState<SVGSVGElement | null>(null);
+  const [element, setElement] = useState<
+    SVGSVGElement | HTMLCanvasElement | null
+  >(null);
   const [moved, setMoved] = useState<View | null>(null);
+  const dragCleanup = useRef<(() => void) | null>(null);
+  useEffect(
+    () => () => {
+      dragCleanup.current?.();
+    },
+    [],
+  );
   const [panned, setPanned] = useState(false);
   const placed = (): View => initial(measure(element));
   const view = moved ?? (element ? placed() : START);
@@ -74,6 +84,7 @@ export function usePanZoom(initial: (viewport: Size) => View): {
   useWheel(element, update);
   const onPointerDown = (event: React.PointerEvent): void => {
     if (event.button !== 0) return;
+    dragCleanup.current?.();
     const start = { x: event.clientX, y: event.clientY };
     const from = view;
     let dragging = false;
@@ -89,7 +100,11 @@ export function usePanZoom(initial: (viewport: Size) => View): {
     const up = (): void => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+      dragCleanup.current = null;
     };
+    dragCleanup.current = up;
+    window.addEventListener('pointercancel', up);
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
   };

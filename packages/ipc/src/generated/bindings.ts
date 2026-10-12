@@ -292,6 +292,12 @@ export const commands = {
 	sqlFileStat: (path: string) => typedError<number | null, IpcError>(__TAURI_INVOKE("sql_file_stat", { path })),
 	/**  Read a tab's `.sql` file again (Reload after an outside change). */
 	sqlFileRead: (path: string) => typedError<OpenedSqlFileDto, IpcError>(__TAURI_INVOKE("sql_file_read", { path })),
+	/**  Export explicitly selected local profiles to the project's portable definitions. */
+	projectShareConnections: (root: string, ids: string[]) => typedError<null, IpcError>(__TAURI_INVOKE("project_share_connections", { root, ids })),
+	/**  Read visible SQL files with per-file and total bounds; never follow escaping links. */
+	projectSqlItems: (root: string) => typedError<ProjectSqlDto[], IpcError>(__TAURI_INVOKE("project_sql_items", { root })),
+	/**  Save a snippet as a new .sql file, preserving existing files and their names. */
+	projectCreateSnippet: (root: string, name: string, sql: string) => typedError<string, IpcError>(__TAURI_INVOKE("project_create_snippet", { root, name, sql })),
 	/**
 	 *  Ask for a folder and open it as a project, creating
 	 *  `.openrows/project.yaml` when it has none; `null` when cancelled.
@@ -303,6 +309,8 @@ export const commands = {
 	/**  Saved connection id project queries open on, when set. */
 	defaultConnection: string | null,
 	queryFolders: string[],
+	snippetFolders: string[],
+	connectionsFile: string | null,
 	entries: ProjectEntryDto[],
 	/**  The tree was cut at its size limit. */
 	truncated: boolean,
@@ -1287,6 +1295,8 @@ export type DiagramTarget = {
 	profileId: string,
 	database: string,
 	schema: string,
+	/**  Exact table names; absent means the whole schema. */
+	tables?: string[] | null,
 };
 
 /**  What the backup and restore sheets need to know. */
@@ -1994,7 +2004,9 @@ export type ImportRow = {
 };
 
 /**  Public format selected by the user; open files use the native picker. */
-export type ImportSource = "openFile" | "pgpass" | "pgService" | "myCnf";
+export type ImportSource = "openFile" | { project: {
+	root: string,
+} } | "pgpass" | "pgService" | "myCnf";
 
 /**  Where a target column's values come from. */
 export type ImportSourceDto =
@@ -2853,6 +2865,8 @@ export type ProjectDto = {
 	/**  Saved connection id project queries open on, when set. */
 	defaultConnection: string | null,
 	queryFolders: string[],
+	snippetFolders: string[],
+	connectionsFile: string | null,
 	entries: ProjectEntryDto[],
 	/**  The tree was cut at its size limit. */
 	truncated: boolean,
@@ -2869,6 +2883,13 @@ export type ProjectEntryDto = {
 
 /**  What a tree entry is. */
 export type ProjectEntryKind = "folder" | "query";
+
+/**  A visible project query or snippet, read for editor completion. */
+export type ProjectSqlDto = {
+	path: string,
+	sql: string,
+	snippet: boolean,
+};
 
 /**  One provider's non-secret configuration. */
 export type ProviderConfig = {

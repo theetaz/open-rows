@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { Ref } from 'react';
 import { DIAGRAM_STYLE } from './diagramStyle';
-import { edgePath } from './layout';
-import type { DiagramLayout } from './layout';
+import { edgePath } from './geometry';
+import type { DiagramLayout } from './geometry';
 import { TableNode } from './TableNode';
 
 /** Referencing columns per table, for the FK marks. */

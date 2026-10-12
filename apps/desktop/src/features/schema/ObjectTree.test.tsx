@@ -12,11 +12,33 @@ import {
   startExport,
 } from '@openrows/ipc';
 import { connectTo } from '../../test/connect';
+import { layoutDiagram } from '../erd/layout';
+import type { SchemaDiagramDto } from '@openrows/ipc';
 import { Workspace } from '../workspace/Workspace';
+
+vi.mock('../export/LazyExportSheet', async () => ({
+  LazyExportSheet: (await import('../export/ExportSheet')).ExportSheet,
+  LazyTablesExportSheet: (await import('../export/TablesExportSheet'))
+    .TablesExportSheet,
+}));
+vi.mock('../import/LazyImportSheet', async () => ({
+  LazyImportSheet: (await import('../import/ImportSheet')).ImportSheet,
+}));
+
+vi.mock('../erd', async () => ({
+  ErDiagram: (await import('../erd/ErDiagram')).ErDiagram,
+}));
 
 vi.mock('@openrows/ipc', async () =>
   (await import('../../test/ipcStub')).ipcStub(),
 );
+
+vi.mock('../erd/layoutWorker', () => ({
+  startLayout: (diagram: SchemaDiagramDto) => ({
+    result: Promise.resolve(layoutDiagram(diagram)),
+    cancel: vi.fn(),
+  }),
+}));
 
 beforeEach(() => {
   vi.stubGlobal('innerWidth', 1280);
@@ -257,6 +279,36 @@ it('lists large sections 5,000 objects at a time', async () => {
   );
   expect(await sidebar().findByText('second')).toBeVisible();
   vi.mocked(listObjects).mockReset();
+});
+
+it('sends schema-tree checked table names to the diagram metadata request', async () => {
+  const user = mount();
+  await connectTo();
+  const orderCheck = await sidebar().findByRole('checkbox', {
+    name: 'Select orders for ER diagram',
+  });
+  const customerCheck = await sidebar().findByRole('checkbox', {
+    name: 'Select customers for ER diagram',
+  });
+  fireEvent.click(orderCheck);
+  fireEvent.click(customerCheck);
+  expect(orderCheck).toBeChecked();
+  expect(customerCheck).toBeChecked();
+  const orders = await sidebar().findByRole('treeitem', {
+    name: 'orders ~2.4M',
+  });
+  fireEvent.contextMenu(orders, { clientX: 40, clientY: 80 });
+  const menu = await screen.findByRole('menu', { name: 'orders actions' });
+  await user.click(
+    within(menu).getByRole('menuitem', { name: 'Show ER Diagram' }),
+  );
+  await screen.findByRole('dialog', { name: 'ER Diagram — public' });
+  expect(schemaDiagram).toHaveBeenCalledWith({
+    profileId: 'id-orders-local',
+    database: 'orders',
+    schema: 'public',
+    tables: ['orders', 'customers'],
+  });
 });
 
 it("shows the ER diagram of a table's schema and opens a table from it", async () => {

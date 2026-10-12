@@ -4,9 +4,11 @@ import type { SchemaDiagramDto } from '@openrows/ipc';
 import { DiagramContent } from './DiagramContent';
 import { DiagramToolbar } from './DiagramToolbar';
 import { exportDiagram } from './exportImage';
+import { exportLayout } from './exportLayout';
+import { DiagramCanvas } from './DiagramCanvas';
 import type { ExportFormat } from './exportImage';
-import { matchingTables } from './layout';
-import type { DiagramLayout, DiagramNode, Point } from './layout';
+import { matchingTables } from './geometry';
+import type { DiagramLayout, DiagramNode, Point } from './geometry';
 import { usePanZoom } from './usePanZoom';
 import { centreOn, fitView } from './viewport';
 import type { Size, View } from './viewport';
@@ -32,15 +34,19 @@ type Notice = { kind: 'saved' | 'error'; text: string } | null;
 function useExport(
   name: string,
   drawing: () => { content: SVGGElement; size: Size } | null,
+  layout: DiagramLayout,
 ) {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
   const run = (format: ExportFormat): void => {
     const target = drawing();
-    if (!target) return;
+
     setBusy(true);
     setNotice(null);
-    exportDiagram(format, name, target)
+    (target
+      ? exportDiagram(format, name, target)
+      : exportLayout(format, name, layout)
+    )
       .then(
         (path) => {
           if (path) setNotice({ kind: 'saved', text: `Saved ${path}` });
@@ -73,8 +79,10 @@ export function DiagramView(props: {
   const { attach, ...pan } = usePanZoom(initialView(layout, props.focus));
   const matches = matchingTables(layout.nodes, query);
   const found = layout.nodes.filter((node) => matches.has(node.table.name));
-  const exporter = useExport(props.schema, () =>
-    content.current ? { content: content.current, size: layout } : null,
+  const exporter = useExport(
+    props.schema,
+    () => (content.current ? { content: content.current, size: layout } : null),
+    layout,
   );
   const reveal = (nodes: DiagramNode[], index: number): void => {
     const node = nodes[index % Math.max(nodes.length, 1)];
@@ -106,28 +114,61 @@ export function DiagramView(props: {
         onExport={exporter.run}
         onDone={props.onDone}
       />
-      <svg
-        ref={attach}
-        className={styles.canvas}
-        role="group"
-        aria-label={`ER diagram of ${props.schema}`}
-        onPointerDown={pan.onPointerDown}
-      >
-        <g
-          transform={`translate(${String(pan.view.x)} ${String(pan.view.y)}) scale(${String(pan.view.scale)})`}
-        >
-          <DiagramContent
-            layout={layout}
-            matches={matches}
-            contentRef={content}
-            onOpen={(table) => {
-              if (!pan.panned) props.onOpen(table);
-            }}
-          />
-        </g>
-      </svg>
+      <Drawing
+        layout={layout}
+        pan={pan}
+        attach={attach}
+        matches={matches}
+        content={content}
+        schema={props.schema}
+        onOpen={props.onOpen}
+      />
       <Status diagram={props.diagram} notice={exporter.notice} />
     </div>
+  );
+}
+
+function Drawing(props: {
+  layout: DiagramLayout;
+  pan: Omit<ReturnType<typeof usePanZoom>, 'attach'>;
+  attach: ReturnType<typeof usePanZoom>['attach'];
+  matches: ReadonlySet<string>;
+  content: React.RefObject<SVGGElement | null>;
+  schema: string;
+  onOpen: (name: string) => void;
+}): React.JSX.Element {
+  const { layout, pan, attach, matches, content } = props;
+  return layout.nodes.length > 300 ? (
+    <DiagramCanvas
+      layout={layout}
+      view={pan.view}
+      matches={matches}
+      attach={attach}
+      onPointerDown={pan.onPointerDown}
+      panned={pan.panned}
+      onOpen={props.onOpen}
+    />
+  ) : (
+    <svg
+      ref={attach}
+      className={styles.canvas}
+      role="group"
+      aria-label={`ER diagram of ${props.schema}`}
+      onPointerDown={pan.onPointerDown}
+    >
+      <g
+        transform={`translate(${String(pan.view.x)} ${String(pan.view.y)}) scale(${String(pan.view.scale)})`}
+      >
+        <DiagramContent
+          layout={layout}
+          matches={matches}
+          contentRef={content}
+          onOpen={(table) => {
+            if (!pan.panned) props.onOpen(table);
+          }}
+        />
+      </g>
+    </svg>
   );
 }
 

@@ -21,13 +21,18 @@ pub(crate) async fn schema_diagram(
     state: State<'_, Connections>,
     target: DiagramTarget,
 ) -> Result<SchemaDiagramDto, IpcError> {
-    let diagram = read_diagram(
-        &state,
-        (&target.profile_id, &target.database),
-        target.schema,
-        MAX_TABLES,
-    )
-    .await?;
+    let diagram = if let Some(tables) = target.tables.clone() {
+        super::selection::validate(&tables)?;
+        super::selection::read(&state, &target, tables).await?
+    } else {
+        read_diagram(
+            &state,
+            (&target.profile_id, &target.database),
+            target.schema,
+            MAX_TABLES,
+        )
+        .await?
+    };
     Ok(SchemaDiagramDto::new(diagram, MAX_TABLES))
 }
 

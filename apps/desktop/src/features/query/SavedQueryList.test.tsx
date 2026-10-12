@@ -5,6 +5,7 @@ import { expect, it, vi } from 'vitest';
 import {
   deleteSavedQuery,
   listSavedQueries,
+  executeQuery,
   renameSavedQuery,
 } from '@openrows/ipc';
 import { SavedQueryList } from './SavedQueryList';
@@ -56,4 +57,15 @@ it('deletes after confirmation in the in-app alert', async () => {
   });
   await user.click(within(alert).getByRole('button', { name: 'Delete' }));
   expect(deleteSavedQuery).toHaveBeenCalledWith('saved-1');
+});
+
+it('copies literal saved SQL from its menu without executing it', async () => {
+  const { user } = renderList();
+  const writeText = vi.spyOn(navigator.clipboard, 'writeText');
+  fireEvent.contextMenu(
+    await screen.findByRole('button', { name: 'Top customers' }),
+  );
+  await user.click(screen.getByRole('menuitem', { name: 'Copy SQL' }));
+  expect(writeText).toHaveBeenCalledWith(expect.stringContaining('SELECT'));
+  expect(executeQuery).not.toHaveBeenCalled();
 });

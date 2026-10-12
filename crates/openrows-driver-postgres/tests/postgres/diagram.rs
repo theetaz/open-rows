@@ -89,6 +89,7 @@ async fn the_diagram_reads_tables_columns_and_composite_keys() -> TestResult {
             .iter()
             .all(|k| k.target.table == "lines")
     );
+    assert_selection(&mut session).await?;
     Ok(())
 }
 
@@ -161,5 +162,32 @@ async fn table_detail_carries_cross_schema_keys_and_the_jump_selects_the_referen
         let (reply, _) = run(&mut session, statement, Collect::default()).await;
         reply?;
     }
+    Ok(())
+}
+
+async fn assert_selection<C: Catalog + ?Sized>(session: &mut C) -> TestResult {
+    let selected = openrows_driver_api::diagram::read_selected(
+        session,
+        "erd",
+        &["orders".into(), "lines".into(), "orders".into()],
+    )
+    .await?;
+    assert_eq!(
+        selected
+            .tables
+            .iter()
+            .map(|table| table.name.as_str())
+            .collect::<Vec<_>>(),
+        ["lines", "orders"]
+    );
+    assert_eq!(selected.foreign_keys.len(), 2);
+    let isolated =
+        openrows_driver_api::diagram::read_selected(session, "erd", &["orders".into()]).await?;
+    assert!(isolated.foreign_keys.is_empty());
+    assert!(
+        openrows_driver_api::diagram::read_selected(session, "erd", &["recent".into()])
+            .await
+            .is_err()
+    );
     Ok(())
 }

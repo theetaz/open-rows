@@ -1,16 +1,29 @@
 // SPDX-License-Identifier: Apache-2.0
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
 import { saveDiagram, schemaDiagram } from '@openrows/ipc';
-import { ErDiagram } from './index';
+import { ErDiagram } from './ErDiagram';
 import { svgToPng } from './rasterize';
+import { layoutDiagram } from './layout';
 import { shop } from './testDiagram';
 
 vi.mock('@openrows/ipc', () => ({
   schemaDiagram: vi.fn(),
   saveDiagram: vi.fn(),
+  listObjects: vi.fn(() =>
+    Promise.resolve({
+      data: shop.tables.map((table) => ({ ...table, kind: 'table' })),
+      total: shop.tables.length,
+    }),
+  ),
+}));
+vi.mock('./layoutWorker', () => ({
+  startLayout: (diagram: typeof shop) => ({
+    result: Promise.resolve(layoutDiagram(diagram)),
+    cancel: vi.fn(),
+  }),
 }));
 vi.mock('./rasterize', async (original) => ({
   ...(await original<typeof import('./rasterize')>()),
@@ -18,25 +31,30 @@ vi.mock('./rasterize', async (original) => ({
 }));
 
 beforeEach(() => {
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
   vi.mocked(schemaDiagram).mockResolvedValue(shop);
   vi.mocked(saveDiagram).mockResolvedValue('/tmp/public.svg');
 });
 
-function renderDiagram(focus?: string) {
+async function renderDiagram(focus?: string) {
   const onOpen = vi.fn();
   const onClose = vi.fn();
-  render(
-    <ThemeProvider>
-      <ErDiagram
-        profileId="p1"
-        database="shop"
-        schema="public"
-        focus={focus}
-        onOpen={onOpen}
-        onClose={onClose}
-      />
-    </ThemeProvider>,
-  );
+  await act(async () => {
+    render(
+      <ThemeProvider>
+        <ErDiagram
+          profileId="p1"
+          database="shop"
+          schema="public"
+          focus={focus}
+          onOpen={onOpen}
+          onClose={onClose}
+        />
+      </ThemeProvider>,
+    );
+    // Flush the mocked metadata read and worker reply inside act.
+    await Promise.resolve();
+  });
   return { onOpen, onClose };
 }
 
@@ -44,7 +62,7 @@ const tables = async (): Promise<HTMLElement[]> =>
   screen.findAllByRole('button', { name: /^Open table / });
 
 it('draws every table with its columns and key marks', async () => {
-  renderDiagram();
+  await renderDiagram();
   expect(await tables()).toHaveLength(5);
   expect(schemaDiagram).toHaveBeenCalledWith({
     profileId: 'p1',
@@ -60,7 +78,7 @@ it('draws every table with its columns and key marks', async () => {
 
 it('highlights matches of the search and opens a clicked table', async () => {
   const user = userEvent.setup();
-  const { onOpen, onClose } = renderDiagram();
+  const { onOpen, onClose } = await renderDiagram();
   await tables();
   await user.type(screen.getByLabelText('Find table'), 'line');
   expect(screen.getByText('1 match')).toBeInTheDocument();
@@ -76,7 +94,7 @@ it('highlights matches of the search and opens a clicked table', async () => {
 
 it('zooms and fits from the toolbar', async () => {
   const user = userEvent.setup();
-  renderDiagram('orders');
+  await renderDiagram('orders');
   await tables();
   expect(screen.getByText('100%')).toBeInTheDocument();
   await user.click(screen.getByRole('button', { name: 'Zoom in' }));
@@ -87,7 +105,7 @@ it('zooms and fits from the toolbar', async () => {
 
 it('exports SVG text and PNG bytes through the native save panel', async () => {
   const user = userEvent.setup();
-  renderDiagram();
+  await renderDiagram();
   await tables();
   await user.click(screen.getByRole('button', { name: 'Export SVG…' }));
   await waitFor(() => {
@@ -115,7 +133,7 @@ it('reports read failures', async () => {
   vi.mocked(schemaDiagram).mockRejectedValueOnce(
     new Error('permission denied'),
   );
-  renderDiagram();
+  await renderDiagram();
   expect(await screen.findByRole('alert')).toHaveTextContent(
     'permission denied',
   );
@@ -127,7 +145,7 @@ it('says when a schema has no tables', async () => {
     tables: [],
     foreignKeys: [],
   });
-  renderDiagram();
+  await renderDiagram();
   expect(await screen.findByText('public has no tables')).toBeInTheDocument();
 });
 
@@ -137,8 +155,57 @@ it('notes a truncated diagram', async () => {
     truncated: true,
     limit: 5,
   });
-  renderDiagram();
+  await renderDiagram();
   expect(
     await screen.findByText(/showing the first 5 tables by name/),
   ).toBeInTheDocument();
+});
+
+it('lets a picker request the exact checked table names', async () => {
+  const user = userEvent.setup();
+  await renderDiagram();
+  await tables();
+  await user.click(screen.getByRole('button', { name: 'Choose tables…' }));
+  await user.click(await screen.findByRole('checkbox', { name: 'orders' }));
+  await user.click(screen.getByRole('button', { name: 'Show selection' }));
+  await waitFor(() => {
+    expect(schemaDiagram).toHaveBeenLastCalledWith({
+      profileId: 'p1',
+      database: 'shop',
+      schema: 'public',
+      tables: ['orders'],
+    });
+  });
+});
+
+it('uses canvas above 300 tables and exports every table', async () => {
+  const user = userEvent.setup();
+  vi.mocked(schemaDiagram).mockResolvedValueOnce({
+    ...shop,
+    foreignKeys: [],
+    tables: Array.from({ length: 301 }, (_, index) => ({
+      name: `table_${String(index)}`,
+      columns: [],
+    })),
+  });
+  await renderDiagram();
+  expect(
+    await screen.findByRole('img', { name: 'ER diagram canvas' }),
+  ).toBeInTheDocument();
+  expect(document.querySelectorAll('.erd-table')).toHaveLength(0);
+  await user.click(screen.getByRole('button', { name: 'Export SVG…' }));
+  await waitFor(() => {
+    expect(saveDiagram).toHaveBeenCalled();
+  });
+  const file = vi.mocked(saveDiagram).mock.calls.at(-1)?.[1];
+  expect(file?.format === 'svg' && file.text).toContain('table_300');
+  expect(document.querySelectorAll('.erd-table')).toHaveLength(0);
+  await user.click(screen.getByRole('button', { name: 'Export PNG…' }));
+  await waitFor(() => {
+    expect(saveDiagram).toHaveBeenLastCalledWith('public', {
+      format: 'png',
+      bytes: [137, 80, 78, 71],
+    });
+  });
+  expect(vi.mocked(svgToPng).mock.calls.at(-1)?.[0]).toContain('table_300');
 });

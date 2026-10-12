@@ -252,6 +252,7 @@ function TabEditor(
       )}
       <FileChangedBar tab={tab} editor={editorRef} tabs={props.tabs} />
       <QueryEditor
+        profileId={props.connection.id}
         doc={tab.sql}
         label="SQL editor"
         dialect={editorDialect(props.connection.engine)}

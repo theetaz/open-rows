@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { Palette } from '@openrows/ui/palette';
 import type { EditorDialect } from '@openrows/editor';
+import { projectSnippet, useProjectSql } from '../projects/projectSql';
 import { snippetSettings, snippetsFor } from './snippetStore';
 
 /**
@@ -12,7 +13,19 @@ export function SnippetPicker(props: {
   onInsert: (body: string) => void;
   onClose: () => void;
 }): React.JSX.Element {
-  const snippets = snippetsFor(snippetSettings.useValue(), props.dialect);
+  const shared = useProjectSql()
+    .filter((item) => item.snippet)
+    .flatMap((item) => {
+      const snippet = projectSnippet(item);
+      const scope = props.dialect === 'mariadb' ? 'mysql' : props.dialect;
+      return snippet && (snippet.scope === 'all' || snippet.scope === scope)
+        ? [snippet]
+        : [];
+    });
+  const snippets = [
+    ...snippetsFor(snippetSettings.useValue(), props.dialect),
+    ...shared,
+  ];
   const items = snippets.map((snippet) => ({
     id: snippet.id,
     label: snippet.name,

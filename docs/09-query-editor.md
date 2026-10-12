@@ -148,8 +148,50 @@ flowchart LR
 - Implemented (M2-17): projects of `.sql` files with `.openrows/project.yaml`, their folder tree in the sidebar and the folder and query actions; see [15 §5.1](15-storage-and-persistence.md#51-current-implementation-m2-17).
 - Query tabs can be **scratch** (stored in app data) or **file-backed** (`.sql` in a Project folder). File-backed tabs save with ⌘S and detect external changes (file watcher) with a reload prompt.
 - A tab remembers its connection via a header comment the user can opt into (`-- openrows: connection=analytics-prod`) or via Project metadata, so shared `.sql` files open on the right connection for each teammate's local profile name.
-- Snippets: user-defined templates with tab stops, scoped per dialect, stored in `snippets/*.json` in the Project or user settings.
-- Implemented (M2-16): snippets live in `settings.json` under `snippets` (`items`: name, prefix, body, scope; `disabledBuiltins`). Typing a prefix offers matching snippets in completion; **Insert Snippet…** (palette and Query menu) picks one by name. Bodies use CodeMirror templates (`${1:name}` tab stops, Tab/Shift-Tab between them). Settings ▸ Snippets adds, edits, deletes, imports and exports (JSON) user snippets and turns built-ins (common CRUD plus per-engine create table, upsert, explain and activity snippets) on or off. Project-folder snippet files remain later work.
+- Snippets: user-defined templates with tab stops, scoped per dialect, stored as `snippets/*.sql` in the Project or in user settings.
+- Implemented (M2-16): snippets live in `settings.json` under `snippets` (`items`: name, prefix, body, scope; `disabledBuiltins`). Typing a prefix offers matching snippets in completion; **Insert Snippet…** (palette and Query menu) picks one by name. Bodies use CodeMirror templates (`${1:name}` tab stops, Tab/Shift-Tab between them). Settings ▸ Snippets adds, edits, deletes, imports and exports (JSON) user snippets and turns built-ins (common CRUD plus per-engine create table, upsert, explain and activity snippets) on or off. Project-folder SQL snippet files are supported by M2-17 (§7.1).
+
+### 7.1 Project SQL sharing (M2-17)
+
+The Queries sidebar shows `.sql` files in the open project's `query_folders`
+and `snippet_folders`. Right-click a query for **Open**, **Insert SQL**, or
+**Copy SQL**, alongside the existing rename, duplicate, delete, move and reveal
+commands. Insert replaces the selection in the last focused editor and never
+runs SQL. Local saved queries have the same Open/Insert/Copy actions.
+
+Typing a saved query's filename stem (or local query name) offers its SQL as a
+completion. Spaces and punctuation become underscores: `top users.sql` expands
+from `top_users`. Folder paths appear in completion detail to distinguish equal
+filenames. Saved queries insert literal SQL, preserving `:parameters`, `$1` and
+`${...}` text; accepting a completion never executes it. The existing snippet
+completion preference also controls these suggestions.
+
+Settings ▸ Snippets ▸ **Save to Project** writes a new file under `snippets/`
+(or the first configured `snippet_folders` entry), using a free filename rather
+than overwriting an existing file. Metadata is a first-line SQL comment:
+
+```sql
+-- openrows-snippet: {"name":"Find rows","prefix":"find","scope":"postgres"}
+SELECT ${1:*} FROM ${2:table};
+```
+
+Plain snippet `.sql` files without that comment use their filename stem as the
+prefix and apply to all engines. Project snippets appear in both completion and
+**Insert Snippet…**; edit or remove their files through the project tree.
+Reload the project after changing files on disk. Completion reads are bounded
+to 500 files, 64 KiB per file and 4 MiB total; exceeding a limit shows an error.
+
+**Share connections…** selects local profiles and writes their non-secret
+`openrows.connections` v1 definitions to `.openrows/connections.json`, referenced
+by `connections_file` in `.openrows/project.yaml`. It replaces that definitions
+file only after an explicit Save. Passwords, keychain references, local ids,
+startup SQL and opaque options are excluded by the existing connection exporter.
+A project may reference another relative `.json` file with `connections_file`; paths
+cannot leave the project through `..`, absolute paths or symlinks.
+**Import project connections…** uses the normal conflict preview and explicit
+confirmation, with fresh local ids and no inherited command trust. Merely
+opening a project never imports or connects its shared definitions.
+API collections remain outside this delivery.
 
 ## 8. Native query languages
 

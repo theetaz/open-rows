@@ -10,6 +10,7 @@ import {
   deleteProjectItem,
   moveProjectItem,
   renameProjectItem,
+  readSqlFile,
   revealProjectItem,
 } from '@openrows/ipc';
 import type { ProjectDto } from '@openrows/ipc';
@@ -25,6 +26,8 @@ const project: ProjectDto = {
   name: 'Analytics',
   defaultConnection: null,
   queryFolders: ['queries'],
+  snippetFolders: [],
+  connectionsFile: null,
   entries: [
     { path: 'queries', kind: 'folder' },
     { path: 'queries/reports', kind: 'folder' },
@@ -180,4 +183,23 @@ it('offers Open Project… and recent projects without a project', async () => {
   );
   await user.click(screen.getByRole('button', { name: 'Open Project…' }));
   expect(chooseProject).toHaveBeenCalled();
+});
+
+it('copies a project query body rather than its path', async () => {
+  const user = userEvent.setup();
+  const writeText = vi.spyOn(navigator.clipboard, 'writeText');
+  vi.mocked(readSqlFile).mockResolvedValueOnce({
+    sql: "SELECT '${1:literal}', :id;",
+    file: {
+      path: '/work/analytics/queries/top.sql',
+      name: 'top.sql',
+      modifiedMs: null,
+    },
+  });
+  renderTree();
+  fireEvent.contextMenu(row('top.sql'));
+  await user.click(screen.getByRole('menuitem', { name: 'Copy SQL' }));
+  await waitFor(() => {
+    expect(writeText).toHaveBeenCalledWith("SELECT '${1:literal}', :id;");
+  });
 });

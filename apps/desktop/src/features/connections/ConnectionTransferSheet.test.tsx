@@ -101,3 +101,30 @@ it('exports a selected group and then selected profiles', async () => {
   await user.click(screen.getByRole('button', { name: 'Export…' }));
   expect(exportConnections).toHaveBeenCalledWith(['id-a', 'id-b']);
 });
+
+it('previews a project definitions file without the native file picker or automatic import', async () => {
+  const user = userEvent.setup();
+  vi.mocked(previewConnections).mockResolvedValue(preview);
+  render(
+    <ThemeProvider>
+      <ConnectionTransferSheet
+        mode="import"
+        profiles={[]}
+        projectRoot="/work/team"
+        onClose={vi.fn()}
+        onImported={vi.fn()}
+      />
+    </ThemeProvider>,
+  );
+  expect(
+    screen.queryByRole('combobox', { name: 'Source' }),
+  ).not.toBeInTheDocument();
+  expect(previewConnections).not.toHaveBeenCalled();
+  await user.click(screen.getByRole('button', { name: 'Preview…' }));
+  await waitFor(() => {
+    expect(previewConnections).toHaveBeenCalledWith({
+      project: { root: '/work/team' },
+    });
+  });
+  expect(importConnections).not.toHaveBeenCalled();
+});

@@ -14,6 +14,14 @@ export function insertHistorySql(sql: string): boolean {
   editor.focus();
   return true;
 }
+/** Insert literal saved SQL over the last focused editor's current selection. */
+export function insertSavedSql(sql: string): boolean {
+  const read = focused ? editors.get(focused) : [...editors.values()].at(-1);
+  const editor = read?.();
+  if (!editor?.insertText) return false;
+  editor.insertText(sql);
+  return true;
+}
 /** Register a visible editor and remember the pane that last received focus. */
 export function useHistoryInsert(
   id: string,

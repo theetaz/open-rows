@@ -2,11 +2,10 @@
 //! `.openrows/project.yaml`: the project's name, its default connection and
 //! the folders (relative to the project root) that hold its `.sql` queries.
 //! Plain YAML so it can be reviewed and merged in git; unknown keys are
-//! ignored so later versions can add sections (API collections, shared
-//! connection definitions) without breaking older readers.
+//! ignored so later versions can add sections (such as API collections)
+//! without breaking older readers.
 use std::fs;
 use std::io::ErrorKind;
-use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
@@ -38,6 +37,12 @@ pub(crate) struct Manifest {
     /// Folders holding `.sql` queries, relative to the project root.
     #[serde(default = "default_folders")]
     pub(crate) query_folders: Vec<String>,
+    /// Snippet SQL folders; older projects opt in when sharing their first snippet.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) snippet_folders: Vec<String>,
+    /// Relative path to an openrows.connections v1 file, never credentials.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) connections_file: Option<String>,
 }
 
 const fn version() -> u32 {
@@ -56,6 +61,8 @@ impl Manifest {
             name: name.to_owned(),
             default_connection: None,
             query_folders: default_folders(),
+            snippet_folders: Vec::new(),
+            connections_file: None,
         }
     }
 }
@@ -75,6 +82,20 @@ pub(crate) fn parse(text: &str) -> Result<Manifest, ProjectError> {
         return Err(ProjectError::Manifest("name must not be empty".to_owned()));
     }
     manifest.query_folders = folders(&manifest.query_folders)?;
+    if !manifest.snippet_folders.is_empty() {
+        manifest.snippet_folders = folders(&manifest.snippet_folders)?;
+    }
+    if let Some(file) = &manifest.connections_file {
+        components(file)?;
+        if !std::path::Path::new(file)
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("json"))
+        {
+            return Err(ProjectError::Manifest(
+                "connections_file must name a .json file".into(),
+            ));
+        }
+    }
     manifest.default_connection = manifest
         .default_connection
         .map(|id| id.trim().to_owned())
@@ -119,13 +140,13 @@ pub(crate) fn render(manifest: &Manifest) -> Result<String, ProjectError> {
     Ok(format!("{HEADER}{yaml}"))
 }
 
-fn manifest_path(root: &Path) -> std::path::PathBuf {
-    root.join(MANIFEST_DIR).join(MANIFEST_FILE)
+fn manifest_path(root: &ProjectRoot) -> Result<std::path::PathBuf, ProjectError> {
+    root.resolve(&format!("{MANIFEST_DIR}/{MANIFEST_FILE}"))
 }
 
 /// Read the manifest of `root`.
 pub(crate) fn load(root: &ProjectRoot) -> Result<Manifest, ProjectError> {
-    let path = manifest_path(root.path());
+    let path = manifest_path(root)?;
     let missing = || ProjectError::NotProject(root.path().display().to_string());
     let meta = match fs::metadata(&path) {
         Ok(meta) => meta,
@@ -141,7 +162,7 @@ pub(crate) fn load(root: &ProjectRoot) -> Result<Manifest, ProjectError> {
 
 /// Write the manifest of `root`.
 pub(crate) fn save(root: &ProjectRoot, manifest: &Manifest) -> Result<(), ProjectError> {
-    let path = manifest_path(root.path());
+    let path = manifest_path(root)?;
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|error| ProjectError::io(parent, &error))?;
     }

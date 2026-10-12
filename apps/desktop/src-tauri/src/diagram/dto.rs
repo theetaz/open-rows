@@ -11,6 +11,9 @@ pub(crate) struct DiagramTarget {
     pub(crate) profile_id: String,
     pub(crate) database: String,
     pub(crate) schema: String,
+    /// Exact table names; absent means the whole schema.
+    #[serde(default)]
+    pub(crate) tables: Option<Vec<String>>,
 }
 
 /// One column of a diagram table.

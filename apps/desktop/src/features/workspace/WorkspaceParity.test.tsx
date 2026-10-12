@@ -104,6 +104,8 @@ it('quick-open combines objects, local saved queries and cached project query pa
       name: 'Project',
       defaultConnection: null,
       queryFolders: ['queries'],
+      snippetFolders: [],
+      connectionsFile: null,
       entries: [
         { kind: 'folder', path: 'queries' },
         { kind: 'query', path: 'queries/recent_orders.sql' },

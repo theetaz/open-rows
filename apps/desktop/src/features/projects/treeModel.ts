@@ -33,7 +33,9 @@ export function projectTree(project: ProjectDto): ProjectNode[] {
   const byPath = new Map<string, ProjectNode>();
   const roots: ProjectNode[] = [];
   for (const entry of project.entries) {
-    const top = project.queryFolders.includes(entry.path);
+    const top = [...project.queryFolders, ...project.snippetFolders].includes(
+      entry.path,
+    );
     const node: ProjectNode = {
       path: entry.path,
       name: top && entry.path === '.' ? project.name : entry.path,

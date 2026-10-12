@@ -260,6 +260,8 @@ it('saves only the reviewed SQL into the active project', async () => {
     name: 'Test project',
     defaultConnection: null,
     queryFolders: ['queries'],
+    snippetFolders: [],
+    connectionsFile: null,
     entries: [],
     truncated: false,
   };

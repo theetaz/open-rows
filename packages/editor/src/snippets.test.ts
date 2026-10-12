@@ -2,7 +2,7 @@
 import { CompletionContext } from '@codemirror/autocomplete';
 import { EditorState } from '@codemirror/state';
 import { afterEach, expect, it } from 'vitest';
-import { mountSqlEditor } from './index';
+import { mountSqlEditor, parseFully } from './index';
 import type { SqlEditor } from './index';
 import { snippetPreview, snippetSource } from './snippets';
 import type { SqlSnippet } from './snippets';
@@ -57,8 +57,21 @@ it('reports where Run Current starts', () => {
     doc: 'SELECT 1;\nSELECT 2;',
     label: 'SQL',
   });
+  expect(parseFully(editor.view, 50)).toBe(true);
   editor.view.dispatch({ selection: { anchor: 14 } });
   expect(editor.runStart()).toBe(10);
   editor.view.dispatch({ selection: { anchor: 2, head: 5 } });
   expect(editor.runStart()).toBe(2);
+});
+
+it('expands saved query keywords as literal SQL without snippet field interpretation', async () => {
+  const body = "SELECT :id, $1, '${1:literal}';";
+  const source = snippetSource(() => [
+    { name: 'reports/top.sql', prefix: 'top', body, literal: true },
+  ]);
+  const result = await source(
+    new CompletionContext(EditorState.create({ doc: 'to' }), 2, false),
+  );
+  expect(result?.options[0]?.apply).toBe(body);
+  expect(result?.options[0]?.detail).toBe('reports/top.sql');
 });

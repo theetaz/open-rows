@@ -29,6 +29,11 @@ function loaded(list: ProfileList): Loaded {
   };
 }
 
+/** Notify connection lists after an explicit project import. */
+export function profilesChanged(): void {
+  window.dispatchEvent(new Event('openrows-profiles-changed'));
+}
+
 /** Saved connections as stored by the core; reloaded after every change. */
 export function useProfiles(): ProfilesState {
   const [state, setState] = useState<Loaded>({
@@ -37,6 +42,15 @@ export function useProfiles(): ProfilesState {
     loaded: false,
   });
   const [generation, setGeneration] = useState(0);
+  useEffect(() => {
+    const refresh = (): void => {
+      setGeneration((count) => count + 1);
+    };
+    window.addEventListener('openrows-profiles-changed', refresh);
+    return () => {
+      window.removeEventListener('openrows-profiles-changed', refresh);
+    };
+  }, []);
   useEffect(() => {
     let active = true;
     listProfiles().then(

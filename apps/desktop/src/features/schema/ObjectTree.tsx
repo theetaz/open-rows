@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { useDiagramSelection } from './diagramSelection';
 import { useState } from 'react';
 import { Button } from '@openrows/ui';
 import type { ObjectDto } from '@openrows/ipc';
@@ -36,6 +37,7 @@ export function ObjectTree(props: {
   onMenu?: ((object: ObjectRef, point: MenuPoint) => void) | undefined;
 }): React.JSX.Element {
   const { catalog, search } = props;
+  useDiagramSelection(catalog);
   const [selected, setSelected] = useState<string | null>(null);
   const found = useIndexSearch(
     catalog,

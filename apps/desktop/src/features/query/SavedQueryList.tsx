@@ -4,6 +4,7 @@ import { Button, HighlightText, TreeItem } from '@openrows/ui';
 import { Sheet, SheetActions } from '@openrows/ui/sheet';
 import { confirmDestructive } from '@openrows/ipc';
 import type { SavedQueryDto } from '@openrows/ipc';
+import { insertSavedSql } from './historyInsert';
 import { CascadeMenu } from '../../shell/CascadeMenu';
 import { substringIndices } from '../schema';
 import { NameSheet } from './NameSheet';
@@ -108,6 +109,8 @@ export function SavedQueryList(props: Props): React.JSX.Element {
       {dialog && (
         <QueryDialog
           dialog={dialog}
+          onOpen={props.onOpen}
+          onError={setFailure}
           onClose={close}
           onMove={mover(props.onMoveToProject, setFailure)}
           onRename={(query) => {
@@ -155,49 +158,17 @@ function ListNote(props: {
 function QueryDialog(props: {
   dialog: Dialog;
   onClose: () => void;
+  onOpen: (query: SavedQueryDto) => void;
+  onError: (error: string) => void;
   onRename: (query: SavedQueryDto) => void;
   onDelete: (query: SavedQueryDto) => void;
   onConfirmDelete: (query: SavedQueryDto) => void;
   onMove?: ((query: SavedQueryDto) => void) | undefined;
 }): React.JSX.Element {
-  const { dialog, onMove } = props;
+  const { dialog } = props;
   const { query } = dialog;
   if (dialog.kind === 'menu')
-    return (
-      <CascadeMenu
-        x={dialog.x}
-        y={dialog.y}
-        label={`${query.name} actions`}
-        onClose={props.onClose}
-        entries={[
-          ...(onMove
-            ? [
-                {
-                  kind: 'item' as const,
-                  label: 'Move to Project',
-                  run: () => {
-                    onMove(query);
-                  },
-                },
-              ]
-            : []),
-          {
-            kind: 'item',
-            label: 'Rename…',
-            run: () => {
-              props.onRename(query);
-            },
-          },
-          {
-            kind: 'item',
-            label: 'Delete…',
-            run: () => {
-              props.onDelete(query);
-            },
-          },
-        ]}
-      />
-    );
+    return <SavedQueryMenu {...props} dialog={dialog} />;
   if (dialog.kind === 'rename')
     return (
       <NameSheet
@@ -225,5 +196,73 @@ function QueryDialog(props: {
         </Button>
       </SheetActions>
     </Sheet>
+  );
+}
+
+function SavedQueryMenu(
+  props: Parameters<typeof QueryDialog>[0] & {
+    dialog: Extract<Dialog, { kind: 'menu' }>;
+  },
+): React.JSX.Element {
+  const { dialog, onMove } = props;
+  const { query } = dialog;
+  return (
+    <CascadeMenu
+      x={dialog.x}
+      y={dialog.y}
+      label={`${query.name} actions`}
+      onClose={props.onClose}
+      entries={[
+        {
+          kind: 'item',
+          label: 'Open',
+          run: () => {
+            props.onOpen(query);
+          },
+        },
+        {
+          kind: 'item',
+          label: 'Insert SQL',
+          run: () => {
+            if (!insertSavedSql(query.sql))
+              props.onError('Open a query editor before inserting SQL');
+          },
+        },
+        {
+          kind: 'item',
+          label: 'Copy SQL',
+          run: () => {
+            navigator.clipboard.writeText(query.sql).catch((error: unknown) => {
+              props.onError(message(error));
+            });
+          },
+        },
+        ...(onMove
+          ? [
+              {
+                kind: 'item' as const,
+                label: 'Move to Project',
+                run: () => {
+                  onMove(query);
+                },
+              },
+            ]
+          : []),
+        {
+          kind: 'item',
+          label: 'Rename…',
+          run: () => {
+            props.onRename(query);
+          },
+        },
+        {
+          kind: 'item',
+          label: 'Delete…',
+          run: () => {
+            props.onDelete(query);
+          },
+        },
+      ]}
+    />
   );
 }

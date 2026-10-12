@@ -21,6 +21,8 @@ const project = (root: string): ProjectDto => ({
   name: root.slice(1),
   defaultConnection: null,
   queryFolders: ['queries'],
+  snippetFolders: [],
+  connectionsFile: null,
   entries: [{ path: 'queries', kind: 'folder' }],
   truncated: false,
 });

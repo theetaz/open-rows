@@ -58,7 +58,10 @@ pub(crate) fn connections_export(
         .map_err(|_| IpcError::new(IpcErrorKind::Storage, "Cannot write connection export"))?;
     Ok(Some(path.display().to_string()))
 }
-fn selected(state: &Connections, ids: &[String]) -> Result<Vec<ConnectionProfile>, IpcError> {
+pub(crate) fn selected(
+    state: &Connections,
+    ids: &[String],
+) -> Result<Vec<ConnectionProfile>, IpcError> {
     if ids.is_empty() {
         return Ok(state.profiles.list()?.profiles);
     }
@@ -104,6 +107,9 @@ pub(crate) fn connections_import_preview(
 }
 fn load(app: &tauri::AppHandle, source: ImportSource) -> Result<Option<ImportBatch>, IpcError> {
     let format = match source {
+        ImportSource::Project { root } => {
+            return crate::projects::sharing::read_connections(&root).map(Some);
+        }
         ImportSource::Pgpass => ToolFormat::Pgpass,
         ImportSource::PgService => ToolFormat::PgService,
         ImportSource::MyCnf => ToolFormat::MyCnf,

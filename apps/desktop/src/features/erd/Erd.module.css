@@ -65,3 +65,9 @@
 .error {
   color: var(--or-danger-fg);
 }
+
+.largeCanvas {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-block-size: 0;
+}

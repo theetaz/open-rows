@@ -17,6 +17,8 @@ export type SqlSnippet = {
   name: string;
   prefix: string;
   body: string;
+  /** Saved queries insert literal SQL, preserving parameter and template text. */
+  literal?: boolean;
 };
 
 /** The snippets in effect, read on every completion so edits apply live. */
@@ -32,6 +34,15 @@ export function snippetPreview(body: string): string {
 }
 
 function toCompletion(item: SqlSnippet): Completion {
+  if (item.literal)
+    return {
+      label: item.prefix,
+      detail: item.name,
+      type: 'snippet',
+      info: item.body,
+      apply: item.body,
+      boost: 1,
+    };
   return snippetCompletion(item.body, {
     label: item.prefix,
     detail: item.name,

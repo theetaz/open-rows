@@ -112,10 +112,10 @@ function DiagramSheet(props: {
   onClose: () => void;
 }): React.JSX.Element | null {
   const { diagram, profileId, controller } = props;
-  if (!diagram || !profileId) return null;
+  if (!diagram || !profileId || diagram.profileId !== profileId) return null;
   return (
     <ErDiagram
-      key={`${diagram.database}\n${diagram.schema}`}
+      key={JSON.stringify([profileId, diagram.database, diagram.schema])}
       {...diagram}
       profileId={profileId}
       onOpen={(name) => {

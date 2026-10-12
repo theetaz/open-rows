@@ -197,6 +197,31 @@ pub async fn read_per_table<C: Catalog + ?Sized>(
     Ok(assemble(schema, columns, keys, max_tables))
 }
 
+/// Read an exact selection without the whole-schema display limit dropping later names.
+/// # Errors
+/// A selected name is not a table in this schema, or a metadata read fails.
+pub async fn read_selected<C: Catalog + ?Sized>(
+    catalog: &mut C,
+    schema: &str,
+    names: &[String],
+) -> Result<SchemaDiagram, DriverError> {
+    let objects = catalog.list_objects(schema, &[ObjectKind::Table]).await?;
+    let available: HashSet<&str> = objects.iter().map(|o| o.name.as_str()).collect();
+    let selected: std::collections::BTreeSet<&str> = names.iter().map(String::as_str).collect();
+    if selected.iter().any(|name| !available.contains(name)) {
+        return Err(DriverError::Unsupported(
+            "Selection contains a missing table".into(),
+        ));
+    }
+    let mut columns = Vec::new();
+    let mut keys = Vec::new();
+    for name in selected {
+        let detail = catalog.table_detail(schema, name).await?;
+        detail_rows(name, &detail, (&mut columns, &mut keys));
+    }
+    Ok(assemble(schema, columns, keys, names.len()))
+}
+
 /// Flatten one table's detail into bulk rows.
 fn detail_rows(
     table: &str,

@@ -222,9 +222,28 @@ The environment tag colour is shown in the window toolbar, every tab of that con
 
 ## 6. ER diagrams
 
-- Built from cached `TableDetail` FKs for a schema or user selection.
-- Layout computed in a worker with an ELK-based layered algorithm (`elkjs`, EPL-2.0 — licence compatibility reviewed in [22-governance-and-licensing.md](22-governance-and-licensing.md); fallback `dagre`, MIT).
+- Built from metadata catalog tables, columns and FKs for a schema or user selection.
+- Layout computed in a Web Worker with the existing dagre layered algorithm (`@dagrejs/dagre`, MIT); rendering does not import the layout engine.
 - Rendered with SVG for ≤ 300 tables, canvas above that. Export to SVG/PNG.
+
+### 6.1 Selected and large ER diagrams (M2-10)
+
+Check table rows in the schema tree, then open **ER Diagram** from the schema
+or a selected table's context menu to diagram that schema's checked set.
+Selections are scoped to the exact profile, database and schema. **Choose
+tables…** in the diagram also lists every table in its schema, independently of
+the 400-table diagram limit; choose a set or return to **Whole schema**. Only
+relationships whose endpoints are both selected appear. A missing selected table
+fails visibly rather than silently dropping it. Selected tables beyond the first
+400 schema names remain selectable (up to 400 names per diagram).
+
+Dagre layout runs in a dedicated Web Worker for every diagram. Closing or
+changing the selection terminates the worker and discards stale replies.
+Up to 300 tables use the existing SVG view; above 300 use a canvas with visible
+table culling, pan, zoom and search. The table selector gives keyboard access to
+opening canvas tables. SVG and PNG exports include every table and relationship,
+including offscreen content; the SVG is materialized only during canvas export.
+The existing PNG size bounds still apply.
 
 ## 7. Implemented (M2-09)
 

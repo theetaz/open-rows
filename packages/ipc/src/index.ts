@@ -305,24 +305,8 @@ export {
   saveSqlFileAs,
   sqlFileModified,
 } from './savedQueries';
-/** Projects: folders of `.sql` queries with `.openrows/project.yaml` (M2-17). */
-export {
-  chooseProject,
-  createProjectFolder,
-  createProjectQuery,
-  deleteProjectItem,
-  duplicateProjectItem,
-  loadProject,
-  moveProjectItem,
-  renameProjectItem,
-  revealProjectItem,
-  setProjectConnection,
-} from './projects';
-export type {
-  ProjectDto,
-  ProjectEntryDto,
-  ProjectEntryKind,
-} from './generated/bindings';
+/** Projects: shared definitions and folders of SQL queries and snippets (M2-17). */
+export * from './projects';
 /** Session and workspace state of the window in the local store (M1-21, M1-26). */
 export { readWorkspaceState, writeWorkspaceState } from './workspace';
 export type { WorkspacePartDto } from './generated/bindings';

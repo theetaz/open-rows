@@ -16,6 +16,7 @@ import {
   useProject,
 } from './projectStore';
 import { baseName } from './treeModel';
+import { ProjectConnections } from './ProjectConnections';
 import { ProjectTree } from './ProjectTree';
 import styles from './ProjectSection.module.css';
 
@@ -180,6 +181,13 @@ export function ProjectSection(props: Props): React.JSX.Element {
         <p role="alert" className={styles.error}>
           {error}
         </p>
+      )}
+      {project && (
+        <ProjectConnections
+          key={project.root}
+          project={project}
+          profiles={props.profiles}
+        />
       )}
       {project ? (
         <ProjectTree

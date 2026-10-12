@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { Point } from './layout';
+import type { Point } from './geometry';
 
 /** Pan offset (screen pixels) and zoom of the diagram content. */
 export type View = { x: number; y: number; scale: number };

@@ -196,6 +196,9 @@ function savedQueryStub(): Record<string, unknown> {
 /** Projects: no native folder panel; every file action succeeds. */
 function projectStub(): Record<string, unknown> {
   return {
+    projectSqlItems: vi.fn(() => Promise.resolve([])),
+    createProjectSnippet: vi.fn(() => Promise.resolve('snippets/example.sql')),
+    shareProjectConnections: vi.fn(() => Promise.resolve()),
     chooseProject: vi.fn(() => Promise.resolve(null)),
     loadProject: vi.fn(() => Promise.reject(new Error('no project'))),
     setProjectConnection: vi.fn(),

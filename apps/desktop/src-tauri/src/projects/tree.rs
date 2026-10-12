@@ -52,7 +52,11 @@ pub(crate) fn list(root: &ProjectRoot, manifest: &Manifest) -> Listing {
         entries: Vec::new(),
         truncated: false,
     };
-    for folder in &manifest.query_folders {
+    for folder in manifest
+        .query_folders
+        .iter()
+        .chain(&manifest.snippet_folders)
+    {
         let Ok(path) = root.resolve(folder) else {
             continue;
         };

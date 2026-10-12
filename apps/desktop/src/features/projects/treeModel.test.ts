@@ -15,6 +15,8 @@ const project: ProjectDto = {
   name: 'Analytics',
   defaultConnection: null,
   queryFolders: ['queries', '.'],
+  snippetFolders: [],
+  connectionsFile: null,
   entries: [
     { path: 'queries', kind: 'folder' },
     { path: 'queries/reports', kind: 'folder' },

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { DiagramColumnDto } from '@openrows/ipc';
-import { HEADER_HEIGHT, MAX_COLUMNS, PADDING_X, ROW_HEIGHT } from './layout';
-import type { DiagramNode } from './layout';
+import { HEADER_HEIGHT, MAX_COLUMNS, PADDING_X, ROW_HEIGHT } from './geometry';
+import type { DiagramNode } from './geometry';
 
 /** Average glyph width of 12 px UI text, for clipping long names. */
 const CHAR_WIDTH = 6.6;

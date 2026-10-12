@@ -8,10 +8,13 @@ import {
   moveProjectItem,
   renameProjectItem,
   revealProjectItem,
+  readSqlFile,
 } from '@openrows/ipc';
 import type { ProjectDto } from '@openrows/ipc';
 import type { MenuEntry } from '../../shell/CascadeMenu';
 import { reloadProject, reportProjectError } from './projectStore';
+import { insertSavedSql } from '../query/historyInsert';
+import { copyProjectSql } from './sqlClipboard';
 import { absolutePath } from './treeModel';
 import type { ProjectNode } from './treeModel';
 
@@ -40,6 +43,8 @@ export type ProjectActions = {
   remove: (path: string) => void;
   reveal: (path: string) => void;
   copyPath: (path: string) => void;
+  insertSql: (path: string) => void;
+  copySql: (path: string) => void;
   /** Ask natively before deleting; `fallback` shows the in-app alert. */
   askDelete: (node: ProjectNode, fallback: () => void) => void;
 };
@@ -109,6 +114,7 @@ export function projectActions(
     reveal: (path: string): void => {
       revealProjectItem(root, path).catch(reportProjectError);
     },
+    ...sqlActions(absolute),
     copyPath: (path: string): void => {
       navigator.clipboard.writeText(absolute(path)).catch(reportProjectError);
     },
@@ -117,6 +123,24 @@ export function projectActions(
         if (answer === null) fallback();
         else if (answer) settle(deleteProjectItem(root, node.path));
       }, fallback);
+    },
+  };
+}
+
+function sqlActions(
+  absolute: (path: string) => string,
+): Pick<ProjectActions, 'insertSql' | 'copySql'> {
+  return {
+    insertSql: (path: string): void => {
+      readSqlFile(absolute(path)).then((file) => {
+        if (!insertSavedSql(file.sql))
+          reportProjectError(
+            new Error('Open a query editor before inserting SQL'),
+          );
+      }, reportProjectError);
+    },
+    copySql: (path: string): void => {
+      copyProjectSql(absolute(path)).catch(reportProjectError);
     },
   };
 }
@@ -148,6 +172,12 @@ export function nodeMenu(input: {
     : [
         item('Open', () => {
           actions.open(node);
+        }),
+        item('Insert SQL', () => {
+          actions.insertSql(node.path);
+        }),
+        item('Copy SQL', () => {
+          actions.copySql(node.path);
         }),
       ];
   const edit: MenuEntry[] = input.top

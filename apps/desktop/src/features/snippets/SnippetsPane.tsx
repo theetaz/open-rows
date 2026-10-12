@@ -1,4 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
+import { createProjectSnippet } from '@openrows/ipc';
+import {
+  useProject,
+  reloadProject,
+  reportProjectError,
+} from '../projects/projectStore';
+import { snippetFile } from '../projects/projectSql';
 import { useState } from 'react';
 import { Button, Switch } from '@openrows/ui';
 import { SettingRow } from '../appearance/InterfaceSettings';
@@ -131,6 +138,7 @@ function UserSnippetRow(props: {
   onDialog: (dialog: Dialog) => void;
 }): React.JSX.Element {
   const { snippet } = props;
+  const { project } = useProject();
   return (
     <SettingRow
       title={`${snippet.prefix} — ${snippet.name}`}
@@ -145,6 +153,21 @@ function UserSnippetRow(props: {
       >
         Edit
       </Button>
+      {project && (
+        <Button
+          size="sm"
+          aria-label={`Save ${snippet.name} to project`}
+          onClick={() => {
+            createProjectSnippet(
+              project.root,
+              snippet.name,
+              snippetFile(snippet),
+            ).then(() => reloadProject(), reportProjectError);
+          }}
+        >
+          Save to Project
+        </Button>
+      )}
       <Button
         size="sm"
         variant="destructive"

@@ -16,7 +16,7 @@ import type {
 } from '@openrows/ipc';
 import { ConnectionImportPreview } from './ConnectionImportPreview';
 import styles from './ConnectionSheet.module.css';
-const sources: { value: ImportSource; label: string }[] = [
+const sources: { value: Extract<ImportSource, string>; label: string }[] = [
   { value: 'openFile', label: 'OpenRows JSON file…' },
   { value: 'pgpass', label: 'pgpass (default / PGPASSFILE)' },
   { value: 'pgService', label: 'pg_service (default / environment)' },
@@ -24,6 +24,7 @@ const sources: { value: ImportSource; label: string }[] = [
 ];
 type Props = {
   mode: 'import' | 'export';
+  projectRoot?: string;
   profiles: readonly ProfileDto[];
   ids?: string[] | undefined;
   onClose: () => void;
@@ -143,7 +144,8 @@ function useImportPreview() {
   return { preview, decisions, loaded, change };
 }
 function ImportSheet(props: Props): React.JSX.Element {
-  const [source, setSource] = useState<ImportSource>('openFile');
+  const [source, setSource] =
+    useState<Extract<ImportSource, string>>('openFile');
   const state = useImportPreview();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -155,7 +157,14 @@ function ImportSheet(props: Props): React.JSX.Element {
         await importConnections(state.preview.token, state.decisions);
         props.onImported();
         props.onClose();
-      } else state.loaded(await previewConnections(source));
+      } else
+        state.loaded(
+          await previewConnections(
+            props.projectRoot
+              ? { project: { root: props.projectRoot } }
+              : source,
+          ),
+        );
     } catch (error) {
       setError(error instanceof Error ? error.message : String(error));
       if (apply) state.loaded(null);
@@ -166,12 +175,14 @@ function ImportSheet(props: Props): React.JSX.Element {
   return (
     <Sheet title="Import connections" onClose={props.onClose}>
       <div className={styles.form}>
-        <SelectField
-          label="Source"
-          options={sources}
-          value={source}
-          onValueChange={setSource}
-        />
+        {!props.projectRoot && (
+          <SelectField
+            label="Source"
+            options={sources}
+            value={source}
+            onValueChange={setSource}
+          />
+        )}
         <p>Preview first. Nothing is saved until Confirm import.</p>
         {state.preview && (
           <ConnectionImportPreview

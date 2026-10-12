@@ -140,7 +140,7 @@ export function ProjectTree(
   const { project } = props;
   const roots = filterTree(projectTree(project), props.search);
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(
-    () => new Set(project.queryFolders),
+    () => new Set([...project.queryFolders, ...project.snippetFolders]),
   );
   const [selected, select] = useState<string | null>(null);
   const [target, setTarget] = useState<string | null>(null);

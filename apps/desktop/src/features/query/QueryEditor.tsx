@@ -7,8 +7,16 @@ import type {
   EditorPreferences,
   EditorView,
   SqlEditor,
+  SqlSnippet,
 } from '@openrows/editor';
 import { snippetSettings, snippetsFor } from '../snippets/snippetStore';
+import {
+  projectQueries,
+  projectSnippet,
+  useProjectSql,
+  queryKeyword,
+} from '../projects/projectSql';
+import { useSavedQueries } from './savedQueries';
 import { currentCatalog } from './completionCatalog';
 import type { CursorStore } from './cursor';
 import type { EditorSettings, KeyBinding } from './editorSettings';
@@ -21,6 +29,7 @@ const SAVE_DELAY_MS = 300;
 type Props = {
   /** Initial text; later edits stay in the editor until saved through `onChange`. */
   doc: string;
+  profileId?: string;
   label: string;
   /** Highlighting dialect of the tab's connection. */
   dialect: EditorDialect;
@@ -36,6 +45,8 @@ type Props = {
   /** Called with the editor once mounted, and with `null` when it goes. */
   onReady: (editor: EditorHandle | null) => void;
 };
+
+type MountedProps = Props & { savedSql: readonly SqlSnippet[] };
 
 /** The editor's share of the settings (display and completion). */
 function preferencesOf(settings: EditorSettings): EditorPreferences {
@@ -116,7 +127,7 @@ function applyKeyBinding(
 }
 
 /** Hand a freshly mounted editor to the tab: key mode, handle, cursor, focus. */
-function attach(editor: SqlEditor, latest: RefObject<Props>): void {
+function attach(editor: SqlEditor, latest: RefObject<MountedProps>): void {
   const props = latest.current;
   const wanted = (): KeyBinding => latest.current.settings.keyBinding;
   if (props.settings.keyBinding !== 'default')
@@ -129,7 +140,7 @@ function attach(editor: SqlEditor, latest: RefObject<Props>): void {
 /** Mount CodeMirror (loaded lazily) and return the cleanup. */
 function mount(
   host: RefObject<HTMLDivElement | null>,
-  latest: RefObject<Props>,
+  latest: RefObject<MountedProps>,
   mounted: RefObject<SqlEditor | null>,
 ): () => void {
   let timer: number | undefined;
@@ -149,8 +160,10 @@ function mount(
       label: props.label,
       dialect: props.dialect,
       catalog: currentCatalog(() => latest.current.catalog),
-      snippets: () =>
-        snippetsFor(snippetSettings.get(), latest.current.dialect),
+      snippets: () => [
+        ...snippetsFor(snippetSettings.get(), latest.current.dialect),
+        ...latest.current.savedSql,
+      ],
       preferences: preferencesOf(props.settings),
       onKeyDown: (event) => latest.current.onKey(event),
       onDocChange: () => {
@@ -177,9 +190,30 @@ function mount(
 export function QueryEditor(props: Props): React.JSX.Element {
   const host = useRef<HTMLDivElement>(null);
   const mounted = useRef<SqlEditor | null>(null);
-  const latest = useRef(props);
+  const files = useProjectSql();
+  const { queries } = useSavedQueries(props.profileId);
+  const dialect = props.dialect === 'mariadb' ? 'mysql' : props.dialect;
+  const shared = files
+    .filter((item) => item.snippet)
+    .flatMap((item) => {
+      const snippet = projectSnippet(item);
+      return snippet && (snippet.scope === 'all' || snippet.scope === dialect)
+        ? [snippet]
+        : [];
+    });
+  const savedSql = [
+    ...shared,
+    ...projectQueries(files),
+    ...queries.map((query) => ({
+      name: query.name,
+      prefix: queryKeyword(query.name),
+      body: query.sql,
+      literal: true,
+    })),
+  ];
+  const latest = useRef({ ...props, savedSql });
   useEffect(() => {
-    latest.current = props;
+    latest.current = { ...props, savedSql };
   });
   useEffect(() => mount(host, latest, mounted), []);
   const { settings } = props;

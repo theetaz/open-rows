@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { DiagramTableCheck } from './diagramSelection';
 import { useEffect } from 'react';
 import { HighlightText, Icon, TreeNode, TreeNote } from '@openrows/ui';
 import type { ObjectDto, TableColumnDto } from '@openrows/ipc';
@@ -107,7 +108,13 @@ export function ObjectRow(
       detail={count}
       title={objectTitle(catalog.database, object)}
       name={
-        <HighlightText text={label} indices={substringIndices(label, search)} />
+        <>
+          <DiagramTableCheck catalog={catalog} object={object} />
+          <HighlightText
+            text={label}
+            indices={substringIndices(label, search)}
+          />
+        </>
       }
     >
       <ColumnRows context={props} parent={id} columns={columns} onOpen={open} />

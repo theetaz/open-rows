@@ -86,7 +86,19 @@ fn portable(profile: &ConnectionProfile) -> Result<Value, ExchangeError> {
 /// # Errors
 /// Syntax location, unsupported version or invalid profile settings.
 pub fn parse(text: &str) -> Result<ImportBatch, ExchangeError> {
-    let mut value: Value = serde_json::from_str(text).map_err(|error| json_error(&error))?;
+    let value = serde_json::from_str(text).map_err(|error| json_error(&error))?;
+    parse_value(value)
+}
+/// Parse shared definitions, refusing fields outside the secret-free v1 schema.
+/// Safety-policy warnings remain available to the normal import preview.
+/// # Errors
+/// Syntax location, unsupported fields or invalid profile settings.
+pub fn parse_strict(text: &str) -> Result<ImportBatch, ExchangeError> {
+    let value = serde_json::from_str(text).map_err(|error| json_error(&error))?;
+    normalize::validate(&value)?;
+    parse_value(value)
+}
+fn parse_value(mut value: Value) -> Result<ImportBatch, ExchangeError> {
     if let Some(version) = value.get("version").and_then(Value::as_u64)
         && version != 1
     {

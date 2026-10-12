@@ -3,6 +3,12 @@ import { isTauri } from '@tauri-apps/api/core';
 import { commands } from './generated/bindings';
 import type { ProjectDto } from './generated/bindings';
 import { unwrap } from './connections';
+export type {
+  ProjectDto,
+  ProjectEntryDto,
+  ProjectEntryKind,
+  ProjectSqlDto,
+} from './generated/bindings';
 
 /**
  * Open Project…: Rust shows the native folder panel and opens the folder as
@@ -86,4 +92,28 @@ export async function revealProjectItem(
   path: string,
 ): Promise<void> {
   await unwrap(commands.projectReveal(root, path));
+}
+
+/** Read the project's bounded saved-query and snippet completion sources. */
+export function projectSqlItems(
+  root: string,
+): Promise<import('./generated/bindings').ProjectSqlDto[]> {
+  return unwrap(commands.projectSqlItems(root));
+}
+
+/** Save a shared snippet as a new project .sql file. */
+export function createProjectSnippet(
+  root: string,
+  name: string,
+  sql: string,
+): Promise<string> {
+  return unwrap(commands.projectCreateSnippet(root, name, sql));
+}
+
+/** Write selected definitions using the secret-free connection exchange schema. */
+export async function shareProjectConnections(
+  root: string,
+  ids: string[],
+): Promise<void> {
+  await unwrap(commands.projectShareConnections(root, ids));
 }

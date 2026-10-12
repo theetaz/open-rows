@@ -5,10 +5,11 @@ use openrows_store::profile::exchange::{Conflict, ImportChoice, ImportDecision};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 /// Public format selected by the user; open files use the native picker.
-#[derive(Clone, Copy, Debug, Deserialize, Type)]
+#[derive(Clone, Debug, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub(crate) enum ImportSource {
     OpenFile,
+    Project { root: String },
     Pgpass,
     PgService,
     MyCnf,

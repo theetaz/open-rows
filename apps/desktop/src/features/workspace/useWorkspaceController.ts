@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { selectedDiagramTables } from '../schema/diagramSelection';
 import { useMcpQueryTabs } from './useMcpProposals';
 import { useNativeFiles } from './useNativeFiles';
 import { useState } from 'react';
@@ -127,9 +128,11 @@ function useCommandRoutes(
 
 /** The schema an ER diagram shows, and the table to centre on. */
 export type DiagramRequest = {
+  profileId: string;
   database: string;
   schema: string;
   focus?: string;
+  tables?: string[];
 };
 
 /** The diagram of a tree object's schema, else of the selected schema. */
@@ -140,8 +143,15 @@ function diagramOpener(
   return (object) => {
     const database = object?.database ?? catalog.database;
     const schema = object?.schema ?? catalog.schema;
-    if (!database || !schema) return;
-    show({ database, schema, ...(object ? { focus: object.name } : {}) });
+    if (!catalog.profileId || !database || !schema) return;
+    const tables = selectedDiagramTables({ ...catalog, database, schema });
+    show({
+      profileId: catalog.profileId,
+      database,
+      schema,
+      ...(object ? { focus: object.name } : {}),
+      ...(tables.length ? { tables: [...tables] } : {}),
+    });
   };
 }
 
