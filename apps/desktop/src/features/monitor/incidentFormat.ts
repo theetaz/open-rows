@@ -2,7 +2,8 @@
 import type { AlertRule, Incident } from '@openrows/ipc';
 
 /** Ratios are fractions in core; show them as percentages. */
-export function formatValue(metric: string, value: number): string {
+export function formatValue(metric: string, value: number | null): string {
+  if (value === null) return 'unknown';
   if (metric.endsWith('_ratio')) return `${(value * 100).toFixed(1)} %`;
   return Number.isInteger(value) ? String(value) : value.toFixed(2);
 }
@@ -34,6 +35,6 @@ export function evidence(incident: Incident): string {
 }
 
 /** Local wall-clock time of an observation. */
-export function clock(ms: number): string {
-  return new Date(ms).toLocaleTimeString();
+export function clock(ms: number | null): string {
+  return ms === null ? '—' : new Date(ms).toLocaleTimeString();
 }
