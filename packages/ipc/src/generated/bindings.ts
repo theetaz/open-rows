@@ -206,6 +206,26 @@ export const commands = {
 	monitorIncidents: (target: MonitorTarget) => typedError<IncidentsReply, IpcError>(__TAURI_INVOKE("monitor_incidents", { target })),
 	/**  Opt a running collector in or out of background monitoring while the app is open. */
 	monitorBackground: (target: MonitorTarget, enabled: boolean) => typedError<null, IpcError>(__TAURI_INVOKE("monitor_background", { target, enabled })),
+	/**  Boards of a connection, by name. */
+	boardsList: (profileId: string) => typedError<BoardDto[], IpcError>(__TAURI_INVOKE("boards_list", { profileId })),
+	/**
+	 *  Create (no `id`) or replace a board; a board created here is reviewed,
+	 *  a replaced one keeps its review state.
+	 */
+	boardSave: (request: BoardSave) => typedError<BoardDto, IpcError>(__TAURI_INVOKE("board_save", { request })),
+	/**  Import a portable board; it stays paused until [`board_approve`]. */
+	boardImport: (profileId: string, text: string) => typedError<BoardDto, IpcError>(__TAURI_INVOKE("board_import", { profileId, text })),
+	/**  Portable JSON of a board: definitions only, never results or secrets. */
+	boardExport: (profileId: string, id: string) => typedError<string, IpcError>(__TAURI_INVOKE("board_export", { profileId, id })),
+	/**  The user reviewed an imported board's queries and allows running them. */
+	boardApprove: (profileId: string, id: string) => typedError<null, IpcError>(__TAURI_INVOKE("board_approve", { profileId, id })),
+	/**  Delete a board. */
+	boardDelete: (profileId: string, id: string) => typedError<null, IpcError>(__TAURI_INVOKE("board_delete", { profileId, id })),
+	/**
+	 *  Run a widget; imported boards refuse until approved, and interval
+	 *  refreshes refuse on engines without enforced read-only execution.
+	 */
+	boardRun: (request: BoardRun) => typedError<BoardRunReply, IpcError>(__TAURI_INVOKE("board_run", { request })),
 	/**
 	 *  Split, bind, gate and start SQL on an open session.
 	 *
@@ -803,6 +823,83 @@ export type BackupRequest = {
 
 export type BadRowsDto = "abort" | "skip";
 
+/**  A named set of widgets sharing typed parameters. */
+export type Board = {
+	/**  Document version; always [`BOARD_VERSION`]. */
+	version: number,
+	/**  Display name. */
+	name: string,
+	/**  Typed inputs referenced as `:name` in widget SQL. */
+	params: BoardParam[],
+	/**  Widgets in display order. */
+	widgets: Widget[],
+	/**  Interval refresh in seconds; `None` refreshes manually only. */
+	refreshSecs: number | null,
+};
+
+/**  A result column. */
+export type BoardColumn = {
+	/**  Column name. */
+	name: string,
+	/**  Value kind. */
+	kind: ColumnKind,
+};
+
+/**  A stored board; `reviewed` is `false` for an imported board until approved. */
+export type BoardDto = {
+	id: string,
+	reviewed: boolean,
+	board: Board,
+	updatedAtMs: number | null,
+};
+
+/**  One typed board input. */
+export type BoardParam = {
+	/**  Identifier used as `:name` in SQL. */
+	name: string,
+	/**  Value type, checked before binding. */
+	kind: ParamKind,
+	/**  Value used when the user entered none. */
+	default: string | null,
+	/**  Allowed values of an `enum` parameter. */
+	options: string[],
+};
+
+/**  A bounded widget result; `None` cells are SQL NULL. */
+export type BoardResult = {
+	/**  Columns of the first result set, at most 64. */
+	columns: BoardColumn[],
+	/**  Rows as display text. */
+	rows: ((string | null)[])[],
+	/**  Set when a limit stopped the stream. */
+	truncated: Truncation | null,
+};
+
+/**  Run one widget of a stored board with the entered parameter values. */
+export type BoardRun = {
+	/**  Profile and database to run on. */
+	target: MonitorTarget,
+	boardId: string,
+	widgetId: string,
+	values: ParamValue[],
+	/**  An interval refresh rather than an explicit user action. */
+	automatic: boolean,
+};
+
+/**  A bounded widget result and how it was kept read-only. */
+export type BoardRunReply = {
+	result: BoardResult,
+	readOnly: ReadOnlyMode,
+	elapsedMs: number | null,
+};
+
+/**  A board to create (no `id`) or replace. */
+export type BoardSave = {
+	profileId: string,
+	id: string | null,
+	board: Board,
+};
+
 export type BuildProfile = "debug" | "release";
 
 /**  Model capabilities reported by discovery; `None` means unknown. */
@@ -935,6 +1032,16 @@ export type ChallengePromptDto = {
 	echo: boolean,
 };
 
+/**  Explicit column mapping of a chart. */
+export type ChartMapping = {
+	/**  Mark type. */
+	mark: Mark,
+	/**  Column on the x axis (time, number or category). */
+	x: string,
+	/**  Numeric series columns. */
+	y: string[],
+};
+
 /**  Connected logical client, identified by its credential rather than untrusted labels. */
 export type ClientInfo = {
 	/**  Credential ID; one client per credential. */
@@ -963,6 +1070,15 @@ export type ColumnDto = {
 	/**  Database type name, e.g. `int4` or `timestamptz`. */
 	sourceType: string | null,
 };
+
+/**  How a column's values can be mapped onto a chart axis. */
+export type ColumnKind =
+/**  Integer, float or decimal. */
+"number" |
+/**  Date, time or timestamp, as ISO 8601 text. */
+"time" |
+/**  Anything else, as display text. */
+"text";
 
 /**  Whether every filter or any filter must match. */
 export type CombinatorDto = "and" | "or";
@@ -2082,6 +2198,17 @@ export type LocationsDto = {
 	failure: string | null,
 };
 
+/**  Chart mark type. */
+export type Mark =
+/**  Connected points. */
+"line" |
+/**  Filled line. */
+"area" |
+/**  Bars per x value. */
+"bar" |
+/**  Unconnected points. */
+"scatter";
+
 /**  Device transport settings; no credential value can be serialized here. */
 export type McpSettings = {
 	/**  Explicit permission to start the local bridge. */
@@ -2365,6 +2492,17 @@ export type PageTimer = {
 	crossOriginIsolated: boolean,
 };
 
+/**  Value type of a board parameter. */
+export type ParamKind =
+/**  Free text, bound as a string. */
+"text" |
+/**  A finite decimal number. */
+"number" |
+/**  A calendar date, `YYYY-MM-DD`. */
+"date" |
+/**  One of the declared options. */
+"enum";
+
 /**  Which placeholders the editor treats as parameters. */
 export type ParamStyleDto =
 /**  `:name`. */
@@ -2373,6 +2511,14 @@ export type ParamStyleDto =
 "numbered" |
 /**  `?`, asked for as `?1`, `?2`, … across the run. */
 "anonymous";
+
+/**  A value the user entered for one parameter; `None` uses the default. */
+export type ParamValue = {
+	/**  Parameter name, without sigil. */
+	name: string,
+	/**  Entered text. */
+	value: string | null,
+};
 
 /**  A value the user entered for one parameter name; `null` binds SQL NULL. */
 export type ParamValueDto = {
@@ -2772,6 +2918,16 @@ export type QueryEventDto = { type: "statementStarted"; statement: number } | { 
 { type: "progress"; statement: number; resultId: string; rows: number } |
 /**  Final row count; `truncated` when the row cap or memory budget stopped it. */
 { type: "resultEnd"; statement: number; resultId: string; rows: number; truncated: boolean } | { type: "rowsAffected"; statement: number; count: number } | { type: "notice"; statement: number; level: NoticeLevelDto; message: string } | { type: "statementDone"; statement: number; elapsedMs: number } | { type: "failed"; statement: number; error: IpcError } | { type: "cancelled"; statement: number } | { type: "finished"; outcome: RunOutcomeDto; elapsedMs: number };
+
+/**  How strongly a widget run is kept read-only. */
+export type ReadOnlyMode =
+/**  The engine refuses writes (read-only transaction or query-only session). */
+"enforced" |
+/**
+ *  Statement classification plus a rolled-back transaction where the
+ *  engine has one; manual runs only, no interval refresh.
+ */
+"classified";
 
 /**  Additional schema.table.column rule; built-in rules cannot be disabled. */
 export type RedactionRule =
@@ -3641,6 +3797,13 @@ export type TriggerDto = {
 /**  When a trigger fires. */
 export type TriggerTimingDto = "before" | "after" | "insteadOf";
 
+/**  Which bound stopped the result early. */
+export type Truncation =
+/**  The row limit. */
+"rows" |
+/**  The byte limit. */
+"bytes";
+
 /**  The kind of values a column holds. */
 export type TypeCategoryDto = "integer" | "decimal" | "boolean" | "date" | "timestamp" | "timestampTz" | "json" | "text";
 
@@ -3691,6 +3854,41 @@ export type Verification = {
 	models: Model[],
 	/**  Key billing metadata, when exposed by the provider. */
 	usage: Usage | null,
+};
+
+/**  A query-backed visual. */
+export type Widget = {
+	/**  Stable identifier within the board. */
+	id: string,
+	/**  Display title. */
+	title: string,
+	/**  How the result is shown. */
+	kind: WidgetKind,
+	/**  One read-only statement; parameters as `:name`. */
+	sql: string,
+	/**  Column mapping of a chart widget. */
+	chart: ChartMapping | null,
+	/**  Row/time/byte bounds; defaults when absent. */
+	limits: WidgetLimits,
+};
+
+/**  Presentation of a widget's result. */
+export type WidgetKind =
+/**  Line, area, bar or scatter chart. */
+"chart" |
+/**  The first value of the first row. */
+"stat" |
+/**  The result rows. */
+"table";
+
+/**  Resource bounds of one widget run. */
+export type WidgetLimits = {
+	/**  Rows kept; more rows stop the stream. */
+	maxRows: number,
+	/**  Deadline of the whole run, in milliseconds. */
+	timeoutMs: number,
+	/**  Cell text kept, in bytes. */
+	maxBytes: number,
 };
 
 export type WindowRequest = {

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! The `SQLite` local store: one writer connection behind a mutex.
 
+mod boards;
 mod change_sets;
 mod error;
 mod history;
@@ -18,6 +19,7 @@ use std::{
 
 use rusqlite::{Connection, OptionalExtension};
 
+pub use boards::{BoardRecord, NewBoard};
 pub use change_sets::ChangeSetRecord;
 pub use error::StoreError;
 use error::sqlite;

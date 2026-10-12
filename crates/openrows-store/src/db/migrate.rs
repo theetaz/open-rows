@@ -47,10 +47,14 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         version: 7,
         sql: include_str!("../../migrations/0007_monitor_history.sql"),
     },
+    Migration {
+        version: 8,
+        sql: include_str!("../../migrations/0008_boards.sql"),
+    },
 ];
 
 /// Newest local store schema version this build understands.
-pub const SCHEMA_VERSION: u32 = 7;
+pub const SCHEMA_VERSION: u32 = 8;
 
 pub(crate) fn user_version(conn: &Connection) -> Result<u32, StoreError> {
     conn.pragma_query_value(None, "user_version", |row| row.get(0))
@@ -140,6 +144,7 @@ mod tests {
         include_str!("../../migrations/0005_schema_snapshots.down.sql"),
         include_str!("../../migrations/0006_workspace_state.down.sql"),
         include_str!("../../migrations/0007_monitor_history.down.sql"),
+        include_str!("../../migrations/0008_boards.down.sql"),
     ];
     const DOWN_V3: &str = DOWN[2];
 

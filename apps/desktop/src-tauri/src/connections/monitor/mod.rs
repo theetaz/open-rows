@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Thin monitoring IPC and profile lifecycle ownership; no monitor UI.
 mod advisor;
+mod boards;
+pub(crate) use boards::*;
 mod alerts;
 pub(crate) use alerts::*;
 mod commands;

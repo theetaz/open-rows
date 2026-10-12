@@ -15,6 +15,11 @@ import styles from './Monitor.module.css';
 const AdvisorPanel = lazy(() =>
   import('./AdvisorPanel').then((module) => ({ default: module.AdvisorPanel })),
 );
+const BoardsPanel = lazy(() =>
+  import('./boards/BoardsPanel').then((module) => ({
+    default: module.BoardsPanel,
+  })),
+);
 
 const PANELS = [
   { value: 'overview', label: 'Overview' },
@@ -27,6 +32,7 @@ const PANELS = [
   { value: 'indexes', label: 'Indexes' },
   { value: 'replication', label: 'Replication' },
   { value: 'io', label: 'I/O' },
+  { value: 'boards', label: 'Boards' },
 ] as const;
 type Panel = (typeof PANELS)[number]['value'];
 /** MySQL/MariaDB table, index and file sources are instrumented I/O summaries. */
@@ -163,7 +169,14 @@ function MonitorContent(
         </p>
       )}
       {history.error && <p role="alert">{history.error}</p>}
-      {panel === 'advisor' ? (
+      {panel === 'boards' ? (
+        <Suspense fallback={null}>
+          <BoardsPanel
+            target={{ profileId: props.profile.id, database: props.database }}
+            active={props.connected}
+          />
+        </Suspense>
+      ) : panel === 'advisor' ? (
         <Suspense fallback={null}>
           <AdvisorPanel
             target={{ profileId: props.profile.id, database: props.database }}

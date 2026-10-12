@@ -5,6 +5,7 @@ pub mod alerts;
 mod analysis;
 mod arrow;
 mod blockers;
+pub mod boards;
 mod gauges;
 mod investigation;
 mod model;

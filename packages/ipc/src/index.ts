@@ -536,6 +536,7 @@ export type {
 
 /** Bounded PostgreSQL monitoring core (M25-01/02); presentation follows in M25-03. */
 export * from './monitor';
+export * from './boards';
 export type {
   AlertRule,
   Descriptor,

@@ -34,6 +34,19 @@ pub(super) async fn open(
     state: &Connections,
     target: &super::MonitorTarget,
 ) -> Result<Reader, IpcError> {
+    let profile = state
+        .profiles
+        .get(profiles::profile_id(&target.profile_id)?)?;
+    ensure_engine(profile.driver)?;
+    Ok(Reader(connect(state, target, "monitor").await?))
+}
+
+/// A fresh connection of a connected profile, without its startup SQL.
+pub(super) async fn connect(
+    state: &Connections,
+    target: &super::MonitorTarget,
+    suffix: &str,
+) -> Result<Box<dyn Connection>, IpcError> {
     let mut profile = state
         .profiles
         .get(profiles::profile_id(&target.profile_id)?)?;
@@ -48,19 +61,18 @@ pub(super) async fn open(
             "Connect to this profile before explicitly starting monitoring",
         ));
     }
-    ensure_engine(profile.driver)?;
     profile.startup_commands.clear();
     let route = route::profile_target_for(state, &target.profile_id, profile)
         .await?
         .with_database(&target.database)
-        .with_application_suffix("monitor");
+        .with_application_suffix(suffix);
     let connection = target::connect(&route).await.map_err(|_| {
         IpcError::new(
             IpcErrorKind::Network,
             "Monitoring session could not connect",
         )
     })?;
-    Ok(Reader(connection.connection))
+    Ok(connection.connection)
 }
 
 pub(super) fn ensure_engine(engine: openrows_store::profile::Driver) -> Result<(), IpcError> {

@@ -839,3 +839,69 @@ never persist. Tests cover the ledger, WAL-index parsing, a tempfile SQLite file
 in WAL and rollback modes, and native-arm64 sqld v0.24.32 for remote libSQL.
 `sqlite3_db_status` cache counters belong to the user's connection rather than
 the monitor's and are not collected yet.
+
+## 17. Implemented (M25-06): analytics boards
+
+The connection's Monitor tab has a **Boards** panel. Boards are stored per
+profile in the local store (migration 0008, table `boards`) as the validated
+board JSON plus a `reviewed` flag. A board has typed parameters, an optional
+refresh interval (30 s, 1, 5 or 15 min) and up to 24 widgets. Each widget is a
+chart (line, area, bar or scatter, with an explicit x column and 1 to 8 numeric
+y columns), a stat card (first cell) or a table. Each widget holds exactly one
+statement. The statement must classify as a read in the profile's dialect,
+which is checked on save, import and every run.
+
+Parameters are `text` (at most 1,000 characters), `number` (finite decimal),
+`date` (`YYYY-MM-DD`) or `enum` (declared options). SQL names them as `:name`.
+The core resolves each placeholder against the declared parameters. It checks
+the entered value or default against the type and rewrites the placeholder into
+the engine's bind placeholder. Values travel only as bound parameters.
+Undeclared names, missing values and mistyped values are refused before a
+connection opens.
+
+A widget runs only on an explicit **Run**. Opening, importing or approving a
+board runs nothing. The native `board_run` command loads the definition from
+the store, so the webview cannot substitute SQL. It refuses an unreviewed board
+and is admitted through the app lock. Each run opens a disposable connection to
+the connected profile without its startup SQL, applies the engine's protection,
+runs the bound statement into a bounded collector, then rolls back and closes.
+
+| Engine | Protection | Interval refresh |
+| --- | --- | --- |
+| PostgreSQL | `BEGIN READ ONLY`, `statement_timeout`, `lock_timeout` | yes |
+| MySQL / MariaDB | `START TRANSACTION READ ONLY` plus `MAX_EXECUTION_TIME` / `max_statement_time` | yes |
+| SQLite, libSQL file | `PRAGMA query_only=ON` in a transaction | yes |
+| SQL Server | classification, `LOCK_TIMEOUT`, rolled-back transaction | manual only |
+| ClickHouse, remote libSQL | classification only | manual only |
+| DuckDB | unsupported (no extra session) | — |
+
+Limits are set per widget: up to 10,000 rows (default 1,000), 1 KiB to 8 MiB of
+cell text (default 1 MiB) and 1 to 60 s (default 15 s). Only the first result
+set and up to 64 columns are kept, and cells are clipped at 4 KiB. A reached
+limit stops the stream and is shown on the widget. The deadline drops the run,
+cancels the statement and closes the connection. Interval refresh starts only
+after an explicit Run. It stops on Stop, when the board is closed, switched or
+edited, on disconnect, and on lock (the Monitor unmounts while locked).
+
+Export shows a preview of the exact versioned JSON. It contains widget SQL,
+which may include sensitive literals, but no results, credentials or connection
+details. Import accepts a pasted or chosen file of at most 256 KiB. Unknown
+versions, unknown fields (for example an embedded approval flag), malformed JSON
+and rule violations are rejected. Statements must still classify as reads. An
+imported board belongs to the current connection, which is its connection
+remapping. It is stored unreviewed and shows every query with **Approve and
+enable** until the user approves it.
+
+Charts are bounded SVG without a chart library. Line and area series are
+downsampled to 300 buckets, keeping each bucket's minimum, maximum and gaps;
+NULL values are gaps. Non-numeric y columns fall back to the table. Every chart
+widget has a Chart/Table toggle that shows the same values, and a unit test
+checks this parity on a fixture.
+
+Tests: core binding (bound never spliced, PostgreSQL/MySQL placeholders,
+typed values, defaults, undeclared names), read-only admission, import
+validation (version, oversize, malformed, unknown fields, limits) and bounded
+collection (row/byte truncation, column kinds); store review state; engine
+protection; and Vitest for chart/table parity, downsampling, no auto-run on
+import or approval, explicit Run with bound values, and the single Add widget
+action on an empty board. No live-database board test is included yet.
