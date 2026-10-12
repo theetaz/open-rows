@@ -39,7 +39,7 @@ fn request() -> support::TestResult<ConnectRequest> {
         ssl_mode: SslMode::Require,
         tls: TlsFiles::default(),
         via: None,
-        // The server may run emulated (amd64 on arm64): allow slow logins.
+        // A freshly started server can be slow to accept logins.
         timeouts: ConnectTimeouts {
             auth: std::time::Duration::from_secs(60),
             ..ConnectTimeouts::default()

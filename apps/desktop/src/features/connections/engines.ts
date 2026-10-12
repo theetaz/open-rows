@@ -82,6 +82,23 @@ export function defaultPort(engine: EngineDto): number | null {
   }
 }
 
+/** Tier 2 drivers in the docs/05 matrix, shown as beta (FR-APP-07). */
+export function isBetaEngine(engine: EngineDto): boolean {
+  switch (engine) {
+    case 'sqlserver':
+    case 'clickhouse':
+    case 'duckdb':
+    case 'libsql':
+    case 'libsql-file':
+      return true;
+    case 'postgres':
+    case 'mysql':
+    case 'mariadb':
+    case 'sqlite':
+      return false;
+  }
+}
+
 /** Engines that open a local file instead of a server. */
 export function isFileEngine(engine: EngineDto): boolean {
   return engine === 'sqlite' || engine === 'libsql-file' || engine === 'duckdb';

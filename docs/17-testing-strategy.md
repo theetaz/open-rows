@@ -50,6 +50,20 @@ flowchart TB
 | Elasticsearch / OpenSearch | ES 8.x, OpenSearch 2.x |
 | CockroachDB, TiDB, YugabyteDB | latest (nightly) |
 
+- **Current CI conformance matrix (M2-25).** CI runs only on `main` (docs/18 §4) on Linux x86_64 runners. Every Tier 1 and Tier 2 driver runs its conformance suite there:
+
+| Driver | Tier | CI job | Server / fixture | Local command |
+| --- | --- | --- | --- | --- |
+| PostgreSQL | 1 | `containers` | `postgres:17-alpine` | `just test-pg` |
+| MySQL, MariaDB | 1 | `containers` | MySQL 8.4, MariaDB 11.4 | `just test-mysql` |
+| SQLite | 1 | `check` (workspace tests) | temporary file | `just test` |
+| SQL Server | 2 | `tier2` (`mssql` leg) | `mcr.microsoft.com/mssql/server:2022-latest` | `just test-mssql` |
+| ClickHouse | 2 | `tier2` (`clickhouse` leg) | `clickhouse/clickhouse-server:25.3.9.72` | `just test-clickhouse` |
+| libSQL/Turso remote | 2 | `tier2` (`libsql` leg) | `ghcr.io/tursodatabase/libsql-server:v0.24.32`, JWT auth | `just test-libsql` |
+| libSQL file | 2 | `check` (workspace tests) | temporary file | `just test` |
+| DuckDB (driver host) | 2 | `check` (workspace tests) | temporary file through the host fixture | `just test` |
+
+  Each `tier2` matrix leg has its own runner and Rust cache and `fail-fast: false`, so one engine's failure does not hide another's. Local scripts never use x86 emulation: on arm64 `just test-mssql` defaults to the native `mcr.microsoft.com/azure-sql-edge` image, and the libSQL and ClickHouse images are multi-arch. SQL Server readiness and the test database come from the `ready::` Rust test, so images without `sqlcmd` work. Azure SQL Edge is a SQL Server 2019-class engine without the CLR. Its conformance run passes, but the exact `float`/`real` edit-guard integration test fails there (`FORMAT` needs the CLR, docs/05 §14). SQL Server 2022 in CI remains the reference result.
 - Fixture schemas per database: all types, composite keys, no-PK tables, views, partitions, unicode names, reserved-word identifiers, huge tables generated server-side (`generate_series`, recursive CTEs).
 - Network fault injection with `toxiproxy`: latency, bandwidth caps, connection resets mid-stream, half-open sockets — verifies reconnection and "never retry writes" rules.
 - SSH tests against an OpenSSH container with key, password, agent and jump-host setups.

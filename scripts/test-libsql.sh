@@ -27,9 +27,8 @@ payload="$(printf '%s' '{"a":"rw"}' | base64url)"
 printf '%s' "$header.$payload" > "$scratch/signing-input"
 "$openssl_bin" pkeyutl -sign -rawin -inkey "$scratch/key.pem" -in "$scratch/signing-input" -out "$scratch/signature"
 token="$header.$payload.$(base64url < "$scratch/signature")"
-platform=()
-case "$(uname -m)" in arm64 | aarch64) platform=(--platform linux/amd64) ;; esac
-docker run --detach --rm --name "$name" --cpus 2 --memory 2g "${platform[@]}" --publish 127.0.0.1::8080 \
+# The pinned image is multi-arch: arm64 hosts run it natively, never emulated.
+docker run --detach --rm --name "$name" --cpus 2 --memory 2g --publish 127.0.0.1::8080 \
     --env SQLD_NODE=primary --env SQLD_AUTH_JWT_KEY="$(cat "$scratch/public.pem")" "$image" >/dev/null
 port="$(docker port "$name" 8080/tcp | head -n 1 | sed 's/.*://')"
 deadline=$((SECONDS + 90))

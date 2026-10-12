@@ -6,6 +6,7 @@ import {
   defaultPort,
   engineName,
   editorDialect,
+  isBetaEngine,
   matchingChoices,
   profileLocation,
 } from './engines';
@@ -37,6 +38,19 @@ it('keeps ClickHouse grammar and maps both libSQL flavours to SQLite', () => {
   expect(editorDialect('clickhouse')).toBe('clickhouse');
   expect(editorDialect('libsql')).toBe('sqlite');
   expect(editorDialect('libsql-file')).toBe('sqlite');
+});
+
+it('marks the Tier 2 drivers as beta', () => {
+  const beta = ENGINE_CHOICES.flatMap((choice) =>
+    choice.engine && isBetaEngine(choice.engine) ? [choice.engine] : [],
+  );
+  expect(beta).toEqual([
+    'sqlserver',
+    'clickhouse',
+    'libsql',
+    'libsql-file',
+    'duckdb',
+  ]);
 });
 
 it('searches by name, id or monogram', () => {

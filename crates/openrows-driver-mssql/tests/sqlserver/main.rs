@@ -6,6 +6,7 @@ mod edits;
 mod inspection;
 mod lifecycle;
 mod monitor;
+mod ready;
 mod session;
 mod structure;
 mod support;

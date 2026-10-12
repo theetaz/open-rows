@@ -46,7 +46,14 @@ async fn connects_with_stages_server_info_and_tls() -> TestResult {
         (server.product.as_str(), server.database.as_str()),
         ("SQL Server", DATABASE)
     );
-    assert!(server.version.starts_with("16."), "{}", server.version);
+    // SQL Server 2022 in CI; Azure SQL Edge (a 2019-class engine) on arm64.
+    assert!(
+        ["16.", "15."]
+            .iter()
+            .any(|major| server.version.starts_with(major)),
+        "{}",
+        server.version
+    );
     assert_eq!(server.user, "sa");
     // The container's certificate is self-signed: full verification fails as TLS.
     let verified = connect(&request(SslMode::VerifyFull)?, &mut ConnectTrace::default()).await;

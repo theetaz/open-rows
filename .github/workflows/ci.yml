@@ -2,7 +2,7 @@ name: CI
 
 # Runs only on pushes to `main` (squash-merged PRs) and on manual dispatch.
 # Feature branches and pull requests do not trigger CI: run `just check`
-# locally before pushing. Documentation-only pushes are skipped. Three jobs
+# locally before pushing. Documentation-only pushes are skipped. All jobs
 # run in parallel so the wall-clock time is the slowest job, not the sum.
 
 on:
@@ -143,3 +143,34 @@ jobs:
         run: bash scripts/test-pg.sh 17
       - name: MySQL and MariaDB suites
         run: bash scripts/test-mysql.sh
+
+  tier2:
+    # Tier 2 server conformance (M2-25): SQL Server 2022, ClickHouse LTS and
+    # authenticated libSQL/Turso sqld, one throwaway container per matrix leg
+    # on its own runner. DuckDB (driver host) and libSQL file conformance need
+    # no server and run in the `check` job's workspace tests.
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [mssql, clickhouse, libsql]
+    env:
+      CARGO_PROFILE_DEV_DEBUG: line-tables-only
+      CARGO_PROFILE_TEST_DEBUG: line-tables-only
+      OPENROWS_REQUIRE_DOCKER: '1'
+    steps:
+      - name: Free runner disk
+        run: nohup sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/boost >/dev/null 2>&1 &
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          key: tier2-${{ matrix.suite }}
+      - uses: taiki-e/install-action@183e4297cca2404691e9380e1307288dced5c82a # v2.87.25
+        with:
+          tool: cargo-nextest@0.9.146
+      - name: ${{ matrix.suite }} suites
+        # x86_64 runners use the default official images of each script.
+        run: bash scripts/test-${{ matrix.suite }}.sh

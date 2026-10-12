@@ -159,8 +159,8 @@ test-pg version="17":
 test-mysql *images:
     {{sccache_guard}} bash scripts/test-mysql.sh {{images}}
 
-# Run SQL Server integration tests and conformance in a throwaway container (default mcr.microsoft.com/mssql/server:2022-latest); skips when Docker is unavailable.
-test-mssql image="mcr.microsoft.com/mssql/server:2022-latest":
+# Run SQL Server integration tests and conformance in a throwaway container (default mssql/server:2022-latest on x86_64, native azure-sql-edge on arm64); skips when Docker is unavailable.
+test-mssql image="":
     {{sccache_guard}} bash scripts/test-mssql.sh "{{image}}"
 
 # Run the ClickHouse LTS HTTP/TLS integration and conformance suites.

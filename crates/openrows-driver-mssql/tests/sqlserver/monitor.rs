@@ -5,21 +5,7 @@ use openrows_driver_api::{Admin, ConnectTrace, Connection, Session, SslMode};
 use openrows_driver_mssql::{SqlServerSession, connect};
 use openrows_monitor::{Counter, MonitorReader, Reading, SampleState, Source, counter_delta};
 
-use crate::support::{self, Collect, TestResult, fixture, run};
-
-/// Containers without client tools start without the test database.
-async fn ensure_database() -> TestResult {
-    let mut request = support::request(SslMode::Require)?;
-    "master".clone_into(&mut request.database);
-    let mut master = connect(&request, &mut ConnectTrace::default()).await?;
-    let create = format!(
-        "IF DB_ID('{0}') IS NULL CREATE DATABASE {0}",
-        support::DATABASE
-    );
-    run(&mut master, &[&create]).await?;
-    Box::new(master).close().await?;
-    Ok(())
-}
+use crate::support::{self, Collect, TestResult, ensure_database, fixture, run};
 
 fn column(reading: &Reading, name: &str) -> Result<usize, String> {
     reading

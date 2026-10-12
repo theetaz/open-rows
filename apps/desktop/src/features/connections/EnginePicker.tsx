@@ -4,6 +4,7 @@ import { Button, Icon, TextField } from '@openrows/ui';
 import { Sheet, SheetActions } from '@openrows/ui/sheet';
 import type { EngineDto } from '@openrows/ipc';
 import { EngineTile } from './EngineTile';
+import { isBetaEngine } from './engines';
 import type { EngineChoice } from './engines';
 import { useEnginePicker } from './useEnginePicker';
 import type { EnginePicker as PickerState } from './useEnginePicker';
@@ -58,7 +59,10 @@ export function EnginePicker(props: {
 
 function statusText(choice: EngineChoice | undefined): string {
   if (!choice) return '';
-  return choice.engine ? '' : `${choice.name} connections are coming soon.`;
+  if (!choice.engine) return `${choice.name} connections are coming soon.`;
+  return isBetaEngine(choice.engine)
+    ? `${choice.name} support is in beta (Tier 2); unsupported features say so.`
+    : '';
 }
 
 function EngineGrid({ picker }: { picker: PickerState }): React.JSX.Element {

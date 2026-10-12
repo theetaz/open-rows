@@ -2,6 +2,8 @@
 //! Connection settings from `scripts/test-mssql.sh` and a collecting sink.
 use arrow_array::RecordBatch;
 use arrow_schema::SchemaRef;
+use std::time::{Duration, Instant};
+
 use openrows_driver_api::{
     ConnectRequest, ConnectTimeouts, ConnectTrace, DriverError, Endpoint, NoticeLevel, ResultSink,
     Session, SinkFlow, SslMode, TlsFiles,
@@ -38,9 +40,9 @@ pub fn request(ssl_mode: SslMode) -> Result<ConnectRequest, DriverError> {
         ssl_mode,
         tls: TlsFiles::default(),
         via: None,
-        // The server runs emulated on some machines: allow slow logins.
+        // A freshly started server can be slow to accept logins.
         timeouts: ConnectTimeouts {
-            auth: std::time::Duration::from_secs(60),
+            auth: Duration::from_secs(60),
             ..ConnectTimeouts::default()
         },
         driver_options: std::collections::BTreeMap::new(),
@@ -52,6 +54,26 @@ pub fn request(ssl_mode: SslMode) -> Result<ConnectRequest, DriverError> {
 /// self-signed).
 pub async fn session() -> Result<SqlServerSession, DriverError> {
     connect(&request(SslMode::Require)?, &mut ConnectTrace::default()).await
+}
+
+/// Waits until the server accepts `sa` logins, then creates the test
+/// database. Images without client tools (Azure SQL Edge) cannot run
+/// `sqlcmd`, so `scripts/test-mssql.sh` runs this first.
+pub async fn ensure_database() -> TestResult {
+    let mut request = request(SslMode::Require)?;
+    "master".clone_into(&mut request.database);
+    let deadline = Instant::now() + Duration::from_secs(240);
+    let mut master = loop {
+        match connect(&request, &mut ConnectTrace::default()).await {
+            Ok(session) => break session,
+            Err(error) if Instant::now() >= deadline => return Err(error.into()),
+            Err(_) => tokio::time::sleep(Duration::from_millis(500)).await,
+        }
+    };
+    let create = format!("IF DB_ID('{DATABASE}') IS NULL CREATE DATABASE {DATABASE}");
+    run(&mut master, &[&create]).await?;
+    Box::new(master).close().await?;
+    Ok(())
 }
 
 /// Collects results, batches and notices.

@@ -24,6 +24,12 @@ it('creates the selected engine and refuses types without a driver', async () =>
     'Oracle connections are coming soon.',
   );
   expect(screen.getByRole('button', { name: 'Create' })).toBeDisabled();
+  await user.click(screen.getByRole('option', { name: /SQL Server/ }));
+  expect(screen.getByRole('status')).toHaveTextContent(
+    'SQL Server support is in beta (Tier 2); unsupported features say so.',
+  );
+  await user.click(screen.getByRole('option', { name: /MySQL/ }));
+  expect(screen.getByRole('status')).toBeEmptyDOMElement();
   await user.dblClick(screen.getByRole('option', { name: /SQLite/ }));
   expect(onCreate).toHaveBeenLastCalledWith('sqlite');
 });
