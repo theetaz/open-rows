@@ -9,12 +9,19 @@ use std::{collections::HashMap, process::Stdio, time::Duration};
 
 pub(super) struct Session {
     pub service: RunningService<RoleClient, ()>,
-    child: Option<tokio::process::Child>,
+    _child: ChildGuard,
 }
 impl Drop for Session {
     fn drop(&mut self) {
         self.service.cancellation_token().cancel();
-        if let Some(mut child) = self.child.take() {
+    }
+}
+// Own cleanup before awaiting initialization, so failed handshakes and cancelled
+// connects kill and reap the process just like established sessions do.
+struct ChildGuard(Option<tokio::process::Child>);
+impl Drop for ChildGuard {
+    fn drop(&mut self) {
+        if let Some(mut child) = self.0.take() {
             tokio::spawn(async move {
                 let _ = child.kill().await;
                 let _ = child.wait().await;
@@ -39,13 +46,14 @@ async fn stdio(
     secrets: &Credentials,
 ) -> Result<Session, ClientError> {
     let mut command = stdio_command(executable, args, secrets);
-    let mut child = command.spawn().map_err(|_| ClientError::Transport)?;
+    let mut guard = ChildGuard(Some(command.spawn().map_err(|_| ClientError::Transport)?));
+    let child = guard.0.as_mut().ok_or(ClientError::Transport)?;
     let stdout = child.stdout.take().ok_or(ClientError::Transport)?;
     let stdin = child.stdin.take().ok_or(ClientError::Transport)?;
     let service = ().serve((stdout, stdin)).await.map_err(|_| ClientError::Transport)?;
     Ok(Session {
         service,
-        child: Some(child),
+        _child: guard,
     })
 }
 async fn http(url: &str, secrets: &Credentials) -> Result<Session, ClientError> {
@@ -77,7 +85,7 @@ async fn http(url: &str, secrets: &Credentials) -> Result<Session, ClientError> 
             .map_err(|_| ClientError::Transport)?;
     Ok(Session {
         service,
-        child: None,
+        _child: ChildGuard(None),
     })
 }
 

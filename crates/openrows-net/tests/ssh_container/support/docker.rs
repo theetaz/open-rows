@@ -60,9 +60,8 @@ pub fn docker_ready() -> bool {
 
 fn unique_name(kind: &str) -> String {
     static COUNTER: AtomicU32 = AtomicU32::new(0);
-    let namespace = std::env::var("OPENROWS_TEST_NAMESPACE").unwrap_or_else(|_| "s4".into());
     format!(
-        "openrows-{namespace}-{kind}-{}-{}",
+        "openrows-s4-{kind}-{}-{}",
         std::process::id(),
         COUNTER.fetch_add(1, Ordering::Relaxed)
     )
