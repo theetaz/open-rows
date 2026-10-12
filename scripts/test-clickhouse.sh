@@ -26,10 +26,25 @@ cat > "$fixture/tls.xml" <<'XML'
   </server></openSSL>
 </clickhouse>
 XML
+# Monitor restricted-user fixtures need system-table grants to be enforced;
+# OPENROWS_TEST_CLICKHOUSE_QUERY_LOG=OFF removes query_log to test that path.
+query_log=""
+if [[ "${OPENROWS_TEST_CLICKHOUSE_QUERY_LOG:-ON}" == OFF ]]; then
+    query_log='<query_log remove="1"/>'
+fi
+cat > "$fixture/monitor.xml" <<XML
+<clickhouse>
+  <access_control_improvements>
+    <select_from_system_db_requires_grant>true</select_from_system_db_requires_grant>
+  </access_control_improvements>
+  $query_log
+</clickhouse>
+XML
 docker run --detach --rm --cpus 2 --memory 2g --name "$name" --publish 127.0.0.1::8123 --publish 127.0.0.1::8443 \
-    --env CLICKHOUSE_PASSWORD=test-only --env CLICKHOUSE_DB=openrows_test \
+    --env CLICKHOUSE_PASSWORD=test-only --env CLICKHOUSE_DB=openrows_test --env CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1 \
     --mount "type=bind,src=$fixture,dst=/test-certs,readonly" \
     --mount "type=bind,src=$fixture/tls.xml,dst=/etc/clickhouse-server/config.d/tls.xml,readonly" \
+    --mount "type=bind,src=$fixture/monitor.xml,dst=/etc/clickhouse-server/config.d/monitor.xml,readonly" \
     "$image" >/dev/null
 export OPENROWS_TEST_CLICKHOUSE_PORT="$(docker port "$name" 8123/tcp | head -n 1 | sed 's/.*://')"
 export OPENROWS_TEST_CLICKHOUSE_TLS_PORT="$(docker port "$name" 8443/tcp | head -n 1 | sed 's/.*://')"

@@ -10,6 +10,7 @@ import { MonitorOverview } from './MonitorOverview';
 import { SourcePanel } from './SourcePanel';
 import { HistoryControls } from './HistoryControls';
 import { IncidentsPanel } from './IncidentsPanel';
+import { CLICKHOUSE_HIDDEN, CLICKHOUSE_LABELS } from './clickhouseMetrics';
 import styles from './Monitor.module.css';
 const AdvisorPanel = lazy(() =>
   import('./AdvisorPanel').then((module) => ({ default: module.AdvisorPanel })),
@@ -45,6 +46,7 @@ const ENGINE_NAMES: Partial<Record<EngineDto, string>> = {
   mysql: 'MySQL',
   mariadb: 'MariaDB',
   sqlserver: 'SQL Server',
+  clickhouse: 'ClickHouse',
 };
 type Props = {
   profile: ProfileDto;
@@ -207,6 +209,13 @@ function liveRevision(monitor: ReturnType<typeof useMonitor>): string {
 }
 
 function panels(engine: EngineDto): readonly { value: Panel; label: string }[] {
+  if (engine === 'clickhouse')
+    return PANELS.filter((panel) => !CLICKHOUSE_HIDDEN.has(panel.value)).map(
+      (panel) => ({
+        value: panel.value,
+        label: CLICKHOUSE_LABELS[panel.value] ?? panel.label,
+      }),
+    );
   const labels =
     engine === 'mysql' || engine === 'mariadb'
       ? MYSQL_LABELS
@@ -226,8 +235,8 @@ function monitorSupported(engine: EngineDto): boolean {
     case 'mysql':
     case 'mariadb':
     case 'sqlserver':
-      return true;
     case 'clickhouse':
+      return true;
     case 'sqlite':
     case 'libsql':
     case 'libsql-file':

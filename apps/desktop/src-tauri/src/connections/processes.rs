@@ -69,8 +69,10 @@ pub(crate) async fn processes_list(
         .params
         .application_name
         .unwrap_or_else(|| APPLICATION_NAME.to_owned());
-    if let Some(processes) =
-        super::monitor::processes::shared(&state, (&profile_id, &database), &application)
+    // ClickHouse query ids are strings mapped to per-listing tokens by its admin facet.
+    if profile.driver != openrows_store::profile::Driver::Clickhouse
+        && let Some(processes) =
+            super::monitor::processes::shared(&state, (&profile_id, &database), &application)
     {
         return processes;
     }

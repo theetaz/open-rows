@@ -7,6 +7,7 @@ mod catalog;
 mod driver;
 mod error;
 mod http;
+mod monitor;
 mod query;
 mod request;
 mod session;

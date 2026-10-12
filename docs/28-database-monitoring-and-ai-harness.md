@@ -732,3 +732,63 @@ chain, cleared wait statistics, counters, top queries, usage and a login without
 VIEW SERVER STATE. Per-read server time on that fixture is about 8 ms for
 sessions, 15–18 ms for top queries, 5 ms for usage and 2 ms for waits. Live SQL
 Server 2022, Managed Instance and Azure SQL Database validation remains M25-09.
+
+## 15. Implemented (M25-07c): ClickHouse collector
+
+The Monitor admits ClickHouse through the existing dedicated-session route. It
+uses the same lazy start and replays no profile startup SQL. Every collector
+statement is a fixed read-only projection. Its trailing `SETTINGS` clause sets
+`max_execution_time`, result and read caps with `throw` overflow, and then
+`readonly = 1`. A read-only profile or a settings constraint that rejects these
+guards makes the source unavailable, so no source ever runs unbounded. A client
+deadline and `KILL QUERY` cancellation also apply. Each response is admitted up
+to 1 MiB and 1,000 rows. Cells of 4 KiB or more become NULL and mark the reading
+partial. The collector excludes its own queries by query-id prefix. It never
+flushes logs, changes settings or grants access.
+
+| Source (panel) | ClickHouse read | Notes |
+| --- | --- | --- |
+| Activity (**Running queries**) | `system.processes` | Elapsed time, memory and peak memory, rows/bytes read and rows written, initial or secondary query, node name. There are no blocking chains or waits. |
+| Database (overview) | `system.events`, `system.metrics`, `system.asynchronous_metrics` | Whitelisted event counters become rates. Running queries/merges, connections, tracked memory, read-only replicas, parts and replica-delay values are gauges. Zero-valued events are listed (`system_events_show_zero_values`). A decrease in `uptime()` resets baselines. A denied table leaves its counters unknown and is named in coverage. |
+| Statements (**Query log**) | `system.query_log` | Only `QueryFinish` and `ExceptionWhileProcessing` events, with no `QueryStart`. Rows are grouped by database, `normalized_query_hash` and initial/secondary query, inside an hourly window pruned by `event_date` and `event_time`. The window start is the counter epoch, so each hour begins with one reset interval. The text is `normalizeQuery` output and still passes core redaction. |
+| Tables (**Parts**) | `system.parts` (active parts) | Parts, partitions, maximum parts per partition, rows, on-disk, compressed and uncompressed bytes per table in the selected database. |
+| I/O (**Merges**) | `system.merges` | In-progress merges and mutations on the node. |
+| Replication | `system.replicas` | Per-table state, queue sizes and `absolute_delay` as `replay_lag_ms`. No replicated tables is "not applicable", never a zero lag. |
+| Indexes | — | Unavailable: ClickHouse has no index usage statistics. |
+
+A missing `system.query_log` is reported as unavailable. This covers both a log
+that is not configured and one that has not flushed yet; ClickHouse checks this
+before grants. A sampled log (`log_queries_probability < 1`) is noted in
+coverage. ClickHouse error 497 (`ACCESS_DENIED`) and authentication failures
+become permission-denied states that name the grant to review. Deadline,
+read/result-cap, memory and cancellation errors are gaps; a cap also marks the
+reading partial.
+
+The scope is explicit. By default every source reads the connected node only,
+and each coverage text starts with `Node scope: the connected node <host>
+only.` The profile option `monitor_cluster=<name>` (for example
+`?monitor_cluster=prod` in the connection URL) requests cluster scope. It
+applies only to running queries, and only when a probe of
+`clusterAllReplicas('<name>', system.one)` succeeds. The name must be a plain
+identifier, the cluster must exist and REMOTE must be granted. Other sources
+remain on the node. If the probe fails, the coverage names the reason and keeps
+node scope.
+
+The overview shows node tiles: running queries, queries/s, failed queries/s,
+selected and inserted rows/s, delayed or rejected inserts/s, running merges,
+maximum parts per partition, tracked memory, connections, read-only replicas
+and replication delay. No cache-hit ratio is invented. The built-in
+active-session and replica replay-lag alert rules apply where those metrics
+exist. The Blocking and Indexes panels are hidden for ClickHouse. The Processes
+view keeps its own listing, because ClickHouse query ids are strings mapped to
+per-listing tokens. Local history accepts the new ClickHouse aggregates.
+
+Fixtures run on native-arm64 `clickhouse/clickhouse-server:25.3.9.72` with
+`select_from_system_db_requires_grant` on (`scripts/test-clickhouse.sh`). They
+cover counters (event advance, listed zero events, gauges), a running query,
+parts/merges, query-log top queries with normalised literals, cluster scope
+over the `default` cluster, and a restricted user. That user has
+`system.processes`/`system.events` only, plus a requested cluster without
+REMOTE. A second run with `OPENROWS_TEST_CLICKHOUSE_QUERY_LOG=OFF` removes
+`query_log` and checks the unavailable state. A live multi-node cluster,
+ClickHouse Cloud and reference-load overhead remain M25-09.

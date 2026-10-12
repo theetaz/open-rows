@@ -4169,6 +4169,7 @@ dependencies = [
  "hyper",
  "hyper-util",
  "openrows-driver-api",
+ "openrows-monitor",
  "openrows-net",
  "openrows-sql",
  "serde_json",

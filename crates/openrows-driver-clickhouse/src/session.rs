@@ -30,6 +30,7 @@ pub struct ClickHouseSession {
     pub(crate) id: String,
     pub(crate) summary: ServerSummary,
     pub(crate) processes: HashMap<u64, String>,
+    pub(crate) monitor_config: Option<crate::monitor::Config>,
     cancel: Arc<Cancellation>,
 }
 impl ClickHouseSession {
@@ -43,6 +44,7 @@ impl ClickHouseSession {
             id,
             summary,
             processes: HashMap::new(),
+            monitor_config: None,
             cancel,
         }
     }
@@ -53,18 +55,39 @@ impl ClickHouseSession {
         params: &[Option<String>],
     ) -> Result<Vec<Vec<serde_json::Value>>, DriverError> {
         let id = format!("{}-{}", self.id, uuid::Uuid::now_v7());
-        self.text_query_id(sql, params, &id).await
+        self.text_query_id(sql, params, (&id, 4_194_304)).await
+    }
+
+    /// A cancellable text query whose body is admitted up to `limit` bytes.
+    pub(crate) async fn bounded_query(
+        &self,
+        sql: &str,
+        params: &[Option<String>],
+        limit: usize,
+    ) -> Result<Vec<Vec<serde_json::Value>>, DriverError> {
+        let id = format!("{}-{}", self.id, uuid::Uuid::now_v7());
+        let (stopped, mut cancel) = watch::channel(false);
+        *self.cancel.active.lock().map_err(poisoned)? = Some(Active {
+            id: id.clone(),
+            stopped,
+        });
+        let outcome = tokio::select! {
+            result = self.text_query_id(sql, params, (&id, limit)) => result,
+            _ = cancel.changed() => Err(error::cancelled()),
+        };
+        *self.cancel.active.lock().map_err(poisoned)? = None;
+        outcome
     }
 
     async fn text_query_id(
         &self,
         sql: &str,
         params: &[Option<String>],
-        id: &str,
+        (id, limit): (&str, usize),
     ) -> Result<Vec<Vec<serde_json::Value>>, DriverError> {
         let sql = format!("{sql} FORMAT JSONCompactEachRow");
         let mut reply = self.client.send(&sql, params, (id, Some(&self.id))).await?;
-        let bytes = read_limited(reply.response.body_mut(), 4_194_304).await?;
+        let bytes = read_limited(reply.response.body_mut(), limit).await?;
         String::from_utf8_lossy(&bytes)
             .lines()
             .filter(|line| !line.is_empty())
@@ -143,7 +166,7 @@ impl ClickHouseSession {
         id: &str,
     ) -> Result<Vec<(String, String)>, DriverError> {
         let describe = format!("DESCRIBE TABLE ({sql})");
-        self.text_query_id(&describe, params, id)
+        self.text_query_id(&describe, params, (id, 4_194_304))
             .await?
             .into_iter()
             .map(|row| {
@@ -206,6 +229,9 @@ impl Connection for ClickHouseSession {
         Some(self)
     }
     fn admin(&mut self) -> Option<&mut dyn openrows_driver_api::Admin> {
+        Some(self)
+    }
+    fn monitor(&mut self) -> Option<&mut dyn openrows_monitor::MonitorReader> {
         Some(self)
     }
 }

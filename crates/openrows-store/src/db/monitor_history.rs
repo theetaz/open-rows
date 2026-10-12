@@ -122,6 +122,31 @@ impl LocalStore {
     }
 }
 
+/// `ClickHouse` node event rates and gauges.
+const CLICKHOUSE: [&str; 21] = [
+    "Database:select_queries",
+    "Database:insert_queries",
+    "Database:failed_queries",
+    "Database:selected_rows",
+    "Database:selected_bytes",
+    "Database:inserted_rows",
+    "Database:inserted_bytes",
+    "Database:merges",
+    "Database:merged_rows",
+    "Database:delayed_inserts",
+    "Database:rejected_inserts",
+    "Database:running_queries",
+    "Database:running_merges",
+    "Database:tcp_connections",
+    "Database:http_connections",
+    "Database:memory_tracked_bytes",
+    "Database:readonly_replicas",
+    "Database:max_parts_per_partition",
+    "Database:total_parts",
+    "Database:total_bytes",
+    "Database:replicas_max_delay_ms",
+];
+
 fn validate(point: &MonitorAggregate, now: i64) -> Result<(), StoreError> {
     let metric = matches!(
         point.metric.as_str(),
@@ -178,7 +203,7 @@ fn validate(point: &MonitorAggregate, now: i64) -> Result<(), StoreError> {
             | "Replication:write_lag_ms"
             | "Replication:flush_lag_ms"
             | "Replication:replay_lag_ms"
-    );
+    ) || CLICKHOUSE.contains(&point.metric.as_str());
     let state = matches!(
         point.state.as_str(),
         "ok" | "unknown" | "gap" | "counterReset" | "permissionDenied" | "unavailable"

@@ -4,6 +4,7 @@ import type { MonitorData, Point } from './monitorData';
 import type { EngineDto } from '@openrows/ipc';
 import { MYSQL_METRICS } from './mysqlMetrics';
 import { SQLSERVER_METRICS } from './sqlserverMetrics';
+import { CLICKHOUSE_METRICS } from './clickhouseMetrics';
 import { METRICS, metricPoints, metricValue } from './metrics';
 import type { Metric } from './metrics';
 import { MetricChart } from './MetricChart';
@@ -23,6 +24,7 @@ export function MonitorOverview(props: {
 }): React.JSX.Element {
   const mysql = props.engine === 'mysql' || props.engine === 'mariadb';
   const sqlserver = props.engine === 'sqlserver';
+  const clickhouse = props.engine === 'clickhouse';
   return (
     <>
       {['activity', 'database', 'replication'].map((source) => (
@@ -43,16 +45,23 @@ export function MonitorOverview(props: {
           : 'Live ten-minute window. Database counters need two samples; no baseline or a reset means unknown.'}{' '}
         {sqlserver
           ? 'Performance counters cover the whole instance, including collector queries. CPU is the default resource pool share; buffer cache hit ratio and page life expectancy are current values. Missing counters remain unknown.'
-          : mysql
-            ? 'Server status includes all databases and collector queries. Rows are InnoDB counters; buffer pool hit ratio is 1 − physical reads/read requests. Missing engine counters remain unknown.'
-            : 'Rows read = returned + fetched; rows written = inserted + updated + deleted. Cache ratio uses interval block hits/reads.'}
+          : clickhouse
+            ? 'Node counters from system events, metrics and asynchronous metrics include collector queries. Events are interval rates; running queries, merges, parts and memory are gauges. Missing or denied counters remain unknown.'
+            : mysql
+              ? 'Server status includes all databases and collector queries. Rows are InnoDB counters; buffer pool hit ratio is 1 − physical reads/read requests. Missing engine counters remain unknown.'
+              : 'Rows read = returned + fetched; rows written = inserted + updated + deleted. Cache ratio uses interval block hits/reads.'}
       </p>
       <div className={styles.tiles}>
-        {(sqlserver ? SQLSERVER_METRICS : mysql ? MYSQL_METRICS : METRICS).map(
-          (metric) => (
-            <MetricTile key={metric.title} metric={metric} window={props} />
-          ),
-        )}
+        {(sqlserver
+          ? SQLSERVER_METRICS
+          : clickhouse
+            ? CLICKHOUSE_METRICS
+            : mysql
+              ? MYSQL_METRICS
+              : METRICS
+        ).map((metric) => (
+          <MetricTile key={metric.title} metric={metric} window={props} />
+        ))}
       </div>
     </>
   );
@@ -106,7 +115,7 @@ function metricCadence(
 ): number {
   if (window.history)
     return Math.floor(Math.min(86_400_000, window.duration * 2) / 300) + 1;
-  if (metric.unit === 'ms' && metric.scope === 'Server') return 60_000;
+  if (metric.unit === 'ms' && metric.scope !== 'Database') return 60_000;
   const sessions =
     metric.names[0]?.startsWith('sessions:') ||
     metric.names[0]?.startsWith('waits:');

@@ -227,7 +227,7 @@ it('ignores events for other generations and scopes', async () => {
   expect(ipc.monitorSnapshot).not.toHaveBeenCalled();
 });
 
-it.each(['sqlite', 'clickhouse', 'libsql', 'libsql-file', 'duckdb'] as const)(
+it.each(['sqlite', 'libsql', 'libsql-file', 'duckdb'] as const)(
   'shows the explicit coming state for %s without collector admission',
   async (engine) => {
     render(<MonitorTab {...props} profile={{ ...props.profile, engine }} />);
@@ -338,4 +338,34 @@ it('starts SQL Server monitoring with counter tiles, wait panel and restricted D
   expect(
     screen.queryByRole('article', { name: 'Transactions/s' }),
   ).not.toBeInTheDocument();
+});
+
+it('starts ClickHouse monitoring with node tiles, its panels and an unavailable query log', async () => {
+  const reply = monitorReply();
+  const reason = 'system.query_log is not configured on this node';
+  for (const item of [...reply.capabilities, ...reply.sources])
+    if (item.source === 'statements')
+      item.state = { kind: 'unavailable', reason };
+  vi.mocked(ipc.startMonitor).mockResolvedValue(reply);
+  vi.mocked(ipc.monitorSnapshot).mockResolvedValue(reply);
+  render(
+    <MonitorTab
+      {...props}
+      profile={{ ...props.profile, engine: 'clickhouse' }}
+    />,
+  );
+  await screen.findByRole('article', { name: 'Running queries' });
+  expect(ipc.startMonitor).toHaveBeenCalled();
+  expect(screen.getByText(/· ClickHouse$/)).toBeInTheDocument();
+  for (const name of ['Running queries', 'Query log', 'Parts', 'Merges'])
+    expect(screen.getByRole('radio', { name })).toBeInTheDocument();
+  for (const name of ['Blocking', 'Indexes', 'Sessions'])
+    expect(screen.queryByRole('radio', { name })).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('article', { name: 'Cache hit ratio' }),
+  ).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('radio', { name: 'Query log' }));
+  expect(
+    (await screen.findAllByText(/query_log is not configured/)).length,
+  ).toBeGreaterThan(0);
 });

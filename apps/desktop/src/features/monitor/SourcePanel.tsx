@@ -38,11 +38,13 @@ export function SourcePanel(props: Props): React.JSX.Element {
       />
       {(source === 'tables' || source === 'indexes') && (
         <p className={styles.note}>
-          {props.profile.engine === 'postgres'
-            ? 'Statistics since last reset. Scan/tuple counters are cumulative; rate columns cover the latest valid interval. Vacuum/analyze times are unknown when the server reports NULL.'
-            : props.profile.engine === 'sqlserver'
-              ? 'Seek/scan/lookup/update counts since instance start or database open; rates cover the latest interval. Indexes unused since then are absent, which never proves an index can be dropped.'
-              : 'Instrumented table/index I/O since reset; rates cover the latest interval. Unused/redundant sys evidence is optional. Zero observed reads never proves an index can be dropped. Vacuum/bloat and per-query memory are unavailable.'}
+          {props.profile.engine === 'clickhouse'
+            ? 'Active parts per table in the selected database. Many parts per partition slow merges and inserts; sizes are current, not rates.'
+            : props.profile.engine === 'postgres'
+              ? 'Statistics since last reset. Scan/tuple counters are cumulative; rate columns cover the latest valid interval. Vacuum/analyze times are unknown when the server reports NULL.'
+              : props.profile.engine === 'sqlserver'
+                ? 'Seek/scan/lookup/update counts since instance start or database open; rates cover the latest interval. Indexes unused since then are absent, which never proves an index can be dropped.'
+                : 'Instrumented table/index I/O since reset; rates cover the latest interval. Unused/redundant sys evidence is optional. Zero observed reads never proves an index can be dropped. Vacuum/bloat and per-query memory are unavailable.'}
         </p>
       )}
       {status?.state.kind === 'ok' && table && (
@@ -54,7 +56,7 @@ export function SourcePanel(props: Props): React.JSX.Element {
 function SourceContent(
   props: Props & { table: MonitorTable },
 ): React.JSX.Element {
-  if (props.panel === 'activity')
+  if (props.panel === 'activity' && props.profile.engine !== 'clickhouse')
     return (
       <MonitorSessions
         table={props.table}
