@@ -23,6 +23,7 @@ pub struct MySqlSession {
     summary: ServerSummary,
     cancel: Arc<KillQuery>,
     policy: BatchPolicy,
+    pub(crate) monitor_config: Option<crate::monitor::Config>,
 }
 
 impl MySqlSession {
@@ -32,6 +33,7 @@ impl MySqlSession {
             summary,
             cancel: Arc::new(cancel),
             policy: BatchPolicy::default(),
+            monitor_config: None,
         }
     }
 
@@ -174,6 +176,10 @@ impl Session for MySqlSession {
 impl Connection for MySqlSession {
     fn server(&self) -> &ServerSummary {
         &self.summary
+    }
+
+    fn monitor(&mut self) -> Option<&mut dyn openrows_monitor::MonitorReader> {
+        Some(self)
     }
 
     fn admin(&mut self) -> Option<&mut dyn openrows_driver_api::Admin> {

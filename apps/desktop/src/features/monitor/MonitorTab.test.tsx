@@ -228,8 +228,6 @@ it('ignores events for other generations and scopes', async () => {
 });
 
 it.each([
-  'mysql',
-  'mariadb',
   'sqlite',
   'sqlserver',
   'clickhouse',
@@ -267,3 +265,54 @@ it('cancels pending admission and rejects late samples after tab close', async (
   expect(ipc.stopMonitor).toHaveBeenCalled();
   expect(ipc.monitorWindow).not.toHaveBeenCalled();
 });
+
+it.each(['mysql', 'mariadb'] as const)(
+  'starts %s monitoring with server labels and explicit disabled/denied states',
+  async (engine) => {
+    const reply = monitorReply();
+    const statement = reply.capabilities.find((d) => d.source === 'statements');
+    if (statement)
+      statement.state = {
+        kind: 'unavailable',
+        reason: 'performance_schema disabled; restart required',
+      };
+    const activity = reply.capabilities.find((d) => d.source === 'activity');
+    if (activity)
+      activity.state = { kind: 'permissionDenied', reason: 'PROCESS required' };
+    const activityStatus = reply.sources.find((d) => d.source === 'activity');
+    if (activityStatus)
+      activityStatus.state = {
+        kind: 'permissionDenied',
+        reason: 'PROCESS required',
+      };
+    const status = reply.sources.find((d) => d.source === 'statements');
+    if (status)
+      status.state = {
+        kind: 'unavailable',
+        reason: 'performance_schema disabled; restart required',
+      };
+    vi.mocked(ipc.startMonitor).mockResolvedValue(reply);
+    vi.mocked(ipc.monitorSnapshot).mockResolvedValue(reply);
+    render(<MonitorTab {...props} profile={{ ...props.profile, engine }} />);
+    await screen.findByRole('article', { name: 'Queries/s' });
+    expect(ipc.startMonitor).toHaveBeenCalled();
+    expect(
+      screen.getByText(engine === 'mysql' ? /· MySQL$/ : /· MariaDB$/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('article', { name: 'InnoDB buffer pool hit ratio' }),
+    ).toBeInTheDocument();
+    for (const name of ['Table I/O', 'Index I/O', 'File I/O'])
+      expect(screen.getByRole('radio', { name })).toBeInTheDocument();
+    expect(
+      (await screen.findAllByText(/PROCESS required/)).length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.queryByRole('article', { name: 'Transactions/s' }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('radio', { name: 'Top queries' }));
+    expect(
+      screen.getAllByText(/performance_schema disabled/).length,
+    ).toBeGreaterThan(0);
+  },
+);

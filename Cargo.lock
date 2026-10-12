@@ -4269,10 +4269,12 @@ name = "openrows-driver-mysql"
 version = "0.1.0"
 dependencies = [
  "arrow-array 60.0.0",
+ "arrow-ipc 60.0.0",
  "arrow-schema 60.0.0",
  "flate2",
  "mysql_common",
  "openrows-driver-api",
+ "openrows-monitor",
  "openrows-net",
  "openrows-sql",
  "openrows-store",

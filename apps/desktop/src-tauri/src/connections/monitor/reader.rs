@@ -66,7 +66,7 @@ pub(super) async fn open(
 pub(super) fn ensure_engine(engine: openrows_store::profile::Driver) -> Result<(), IpcError> {
     use openrows_store::profile::Driver;
     let reason = match engine {
-        Driver::Postgres => return Ok(()),
+        Driver::Postgres | Driver::Mysql | Driver::Mariadb => return Ok(()),
         Driver::Duckdb => {
             "DuckDB monitoring requires its owning host/session; no extra connection is opened"
         }
@@ -74,7 +74,7 @@ pub(super) fn ensure_engine(engine: openrows_store::profile::Driver) -> Result<(
             "Own-session embedded diagnostics are not implemented yet"
         }
         Driver::Libsql => "Own OpenRows requests only; server-wide metrics unavailable over Hrana",
-        Driver::Mysql | Driver::Mariadb | Driver::Sqlserver | Driver::Clickhouse => {
+        Driver::Sqlserver | Driver::Clickhouse => {
             "This engine's monitoring collector is not implemented yet"
         }
     };

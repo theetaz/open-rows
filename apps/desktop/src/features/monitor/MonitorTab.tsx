@@ -26,6 +26,17 @@ const PANELS = [
   { value: 'io', label: 'I/O' },
 ] as const;
 type Panel = (typeof PANELS)[number]['value'];
+/** MySQL/MariaDB table, index and file sources are instrumented I/O summaries. */
+const MYSQL_LABELS: Partial<Record<Panel, string>> = {
+  tables: 'Table I/O',
+  indexes: 'Index I/O',
+  io: 'File I/O',
+};
+const ENGINE_NAMES: Partial<Record<EngineDto, string>> = {
+  postgres: 'PostgreSQL',
+  mysql: 'MySQL',
+  mariadb: 'MariaDB',
+};
 type Props = {
   profile: ProfileDto;
   database: string;
@@ -80,14 +91,14 @@ export function MonitorTab(props: Props): React.JSX.Element {
       aria-label={`Monitor on ${props.database}`}
     >
       <MonitorHeader
-        label={`${props.profile.name} · ${props.database} · PostgreSQL`}
+        label={`${props.profile.name} · ${props.database} · ${ENGINE_NAMES[props.profile.engine] ?? props.profile.engine}`}
         monitor={monitor}
         history={history}
       />
       <nav className={styles.navigation}>
         <SegmentedControl
           aria-label="Monitor panel"
-          options={PANELS}
+          options={panels(props.profile.engine)}
           value={panel}
           onValueChange={(value) => {
             setPanel(value);
@@ -143,6 +154,7 @@ function MonitorContent(
         </Suspense>
       ) : panel === 'overview' ? (
         <MonitorOverview
+          engine={props.profile.engine}
           data={monitor.data}
           points={history.hours ? history.points : (monitor.data?.points ?? [])}
           previous={history.previous}
@@ -169,12 +181,20 @@ function MonitorContent(
   );
 }
 
+function panels(engine: EngineDto): readonly { value: Panel; label: string }[] {
+  if (engine !== 'mysql' && engine !== 'mariadb') return PANELS;
+  return PANELS.map((panel) => ({
+    value: panel.value,
+    label: MYSQL_LABELS[panel.value] ?? panel.label,
+  }));
+}
+
 function monitorSupported(engine: EngineDto): boolean {
   switch (engine) {
     case 'postgres':
-      return true;
     case 'mysql':
     case 'mariadb':
+      return true;
     case 'sqlserver':
     case 'clickhouse':
     case 'sqlite':

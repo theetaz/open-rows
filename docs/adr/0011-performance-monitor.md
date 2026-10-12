@@ -309,6 +309,74 @@ aggregation deferred to M25-04. Startup SQL is never replayed by the monitor;
 pause/lock requires explicit restart, and profile edits invalidate collection
 until the user reconnects. All samples are in memory only.
 
+## Implemented (M25-07a): MySQL/MariaDB evidence
+
+Separate probed adapters implement MySQL 5.7/8.0/8.4/9.x and MariaDB 10.6–11.x
+layouts; live acceptance fixtures ran on native-arm64 MySQL 8.4 and MariaDB 11.4.
+Read-only transactions apply `max_execution_time` on MySQL and
+`max_statement_time` on MariaDB before source reads. Client deadlines supplement
+SELECT limits, including bounded SHOW status commands. Failed guards disable
+reads; partial responses invalidate the dedicated transport. At most fourteen
+discovery reads and one data query/due source reuse the existing runtime floors
+(5/15/60 s), adaptation, memory admission and core redaction. Blocking SQL caps
+InnoDB edges; the core bounds graph depth and flags unknown owners/cycles.
+
+Digest timers divide picoseconds by 1e9 once. Identity includes schema, digest
+and first-seen time; uptime decreases, status flush markers and decreasing
+counters reset rate baselines. Reset/truncation not exposed by the engine remains
+best effort. Disabled Performance Schema/timing/consumers, PROCESS, SELECT and
+replication grants have actionable states. MariaDB SLAVE MONITOR/REPLICA MONITOR
+alias guidance is separate from MySQL REPLICATION CLIENT. Instrumentation setup
+in disposable acceptance fixtures is administrative test code only.
+
+Two engine facts found by the live fixtures shape the collector. Without
+PROCESS, both engines return only the caller's own threads instead of an error,
+so discovery probes `INNODB_TRX` and reports activity as permission-denied
+naming PROCESS. MySQL has no deadlock status variable (MariaDB's
+`Innodb_deadlocks`); when the enabled `INNODB_METRICS.lock_deadlocks` counter is
+readable (PROCESS, Performance Schema on) the MySQL status read selects the
+whitelisted `global_status` rows plus that metric, otherwise `SHOW GLOBAL STATUS`
+is used and deadlocks stay unknown with a coverage note. InnoDB also caches
+`INNODB_TRX`/lock waits and refreshes only after 100 ms without readers; the
+default 5 s cadence is unaffected and the fixture polls at 250 ms. `sys` index
+views are probed on both engines (MariaDB ships `sys` from 10.6).
+
+`just test-mysql` (MySQL 8.4 then MariaDB 11.4, one container at a time,
+`--performance-schema=ON`) passed all 48 tests per image, including
+`monitor::activity_blockers_rates_digest_and_restricted_grants`: an active
+waiter query visible, a `SELECT … FOR UPDATE` blocker/waiter chain, query and
+deadlock rates over two samples, digest top-N with redacted literals, no-replica
+state, and a restricted login whose PROCESS/replication denials name the grant,
+followed by a granted PROCESS and a revoked Performance Schema SELECT.
+`OPENROWS_TEST_MYSQL_PERFORMANCE_SCHEMA=OFF just test-mysql mariadb:11.4` passed
+all 48 tests: statement/table/index/I/O sources report "performance_schema
+disabled … restart" while activity, InnoDB blocking and counters still work.
+The same monitor fixture also passed on MySQL 8.4 started with Performance
+Schema off (blocking is then unavailable on MySQL and skipped). Unit tests cover
+the version matrix, instrument/consumer gating, grant/deadline error mapping,
+bounded rows, replica field filtering and uptime/flush resets.
+
+The opt-in `OPENROWS_BENCH=1 just test-mysql` reports the same measurements as
+the PostgreSQL benchmark. Apple M4 / 24 GiB / macOS 26.5 development machine,
+not mac-low or an all-app footprint checkpoint:
+
+| Measurement | MySQL 8.4 | MariaDB 11.4 | Budget / limitation |
+| --- | --- | --- | --- |
+| Data reads over 60 s | 27: activity 12, database/statements/I/O 4 each, tables/indexes/replication 1 each | 27, same split | Default source floors; four round trips each with guards; discovery excluded |
+| Client read plus guards p95 | 11.335 ms | 10.770 ms | Default deadline 1,000 ms; includes round trips |
+| Collector process CPU over 60 s | 0.18 s, about 0.30% of one core | 0.19 s, about 0.32% of one core | Component evidence only; ≤1% all-app mac-low budget uncertified |
+| Collector process RSS before / after | 20,464 / 20,992 KiB | 20,272 / 20,704 KiB | RSS snapshot, not all-app physical footprint |
+| Retained live sample estimate | 554,166 bytes | 524,245 bytes | Implementation cap 2 MiB/monitor |
+| 1,000-row analysis p95 | 2.464 ms | 3.016 ms | ≤10 ms; 100 owned-sample ingestions |
+
+Server-side digest totals in the benchmark include fixture and guard statements
+and are not a matched-load comparison; the ≤1% server impact and ≤32 MiB
+all-process increment remain uncertified. No budget is increased.
+
+Wider live MySQL 5.7/8.0/9.x and MariaDB 10.6/11.x/provider, enabled replication
+topology, history overwrite, reference workload throughput/latency and mac-low
+all-app CPU/physical footprint remain M25-09 verification.
+
 ## Vendor references
 
 Official references consulted 2026-10-11; version-specific adapters must recheck their server's documentation at implementation.

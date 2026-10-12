@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useMemo } from 'react';
 import type { MonitorData, Point } from './monitorData';
+import type { EngineDto } from '@openrows/ipc';
+import { MYSQL_METRICS } from './mysqlMetrics';
 import { METRICS, metricPoints, metricValue } from './metrics';
 import type { Metric } from './metrics';
 import { MetricChart } from './MetricChart';
@@ -9,6 +11,7 @@ import styles from './Monitor.module.css';
 
 /** Fixed dashboard metrics with source freshness, gap charts and prior-window comparisons. */
 export function MonitorOverview(props: {
+  engine?: EngineDto;
   data: MonitorData | null;
   points: readonly Point[];
   previous: readonly Point[];
@@ -17,6 +20,7 @@ export function MonitorOverview(props: {
   end: number;
   history: boolean;
 }): React.JSX.Element {
+  const mysql = props.engine === 'mysql' || props.engine === 'mariadb';
   return (
     <>
       {['activity', 'database', 'replication'].map((source) => (
@@ -35,11 +39,12 @@ export function MonitorOverview(props: {
         {props.history
           ? 'Stored aggregate history; each bucket preserves a missing/reset state. Missing collection intervals are gaps. Other panels show live source tables.'
           : 'Live ten-minute window. Database counters need two samples; no baseline or a reset means unknown.'}{' '}
-        Rows read = returned + fetched; rows written = inserted + updated +
-        deleted. Cache ratio uses interval block hits/reads.
+        {mysql
+          ? 'Server status includes all databases and collector queries. Rows are InnoDB counters; buffer pool hit ratio is 1 − physical reads/read requests. Missing engine counters remain unknown.'
+          : 'Rows read = returned + fetched; rows written = inserted + updated + deleted. Cache ratio uses interval block hits/reads.'}
       </p>
       <div className={styles.tiles}>
-        {METRICS.map((metric) => (
+        {(mysql ? MYSQL_METRICS : METRICS).map((metric) => (
           <MetricTile key={metric.title} metric={metric} window={props} />
         ))}
       </div>
@@ -60,20 +65,7 @@ function MetricTile({
   );
   const previous = metricPoints(window.previous, metric).at(-1);
   const latest = points.at(-1);
-  const cadence = window.history
-    ? Math.floor(Math.min(86_400_000, window.duration * 2) / 300) + 1
-    : metric.scope === 'Server' && metric.unit === 'ms'
-      ? 60_000
-      : metric.scope === 'Database'
-        ? Math.max(
-            15_000,
-            window.data?.reply.sources.find(
-              (source) => source.source === 'database',
-            )?.intervalMs ?? 15_000,
-          )
-        : (window.data?.reply.sources.find(
-            (source) => source.source === 'activity',
-          )?.intervalMs ?? 5000);
+  const cadence = metricCadence(window, metric);
   const range = useMemo(
     () => ({ start: window.end - window.duration, end: window.end, cadence }),
     [window.end, window.duration, cadence],
@@ -99,5 +91,24 @@ function MetricTile({
       )}
       <MetricChart title={metric.title} points={points} range={range} />
     </article>
+  );
+}
+
+function metricCadence(
+  window: Parameters<typeof MonitorOverview>[0],
+  metric: Metric,
+): number {
+  if (window.history)
+    return Math.floor(Math.min(86_400_000, window.duration * 2) / 300) + 1;
+  if (metric.unit === 'ms' && metric.scope === 'Server') return 60_000;
+  const sessions =
+    metric.names[0]?.startsWith('sessions:') ||
+    metric.names[0]?.startsWith('waits:');
+  const source = sessions ? 'activity' : 'database';
+  const floor = sessions ? 5000 : 15_000;
+  return Math.max(
+    floor,
+    window.data?.reply.sources.find((item) => item.source === source)
+      ?.intervalMs ?? floor,
   );
 }

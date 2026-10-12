@@ -253,9 +253,24 @@ fn add_ratio(scalars: &mut Vec<Scalar>) {
             .find(|(key, _, _)| key.ends_with(name))
             .and_then(|(_, value, _)| *value)
     };
-    let cache = crate::ratio(metric(":blks_hit"), metric(":blks_read"));
+    let mysql = scalars
+        .iter()
+        .any(|(key, _, _)| key.ends_with(":buffer_read_requests"));
+    let cache = if mysql {
+        metric(":buffer_reads")
+            .zip(metric(":buffer_read_requests"))
+            .filter(|(reads, requests)| *requests > 0.0 && reads <= requests)
+            .map(|(reads, requests)| 1.0 - reads / requests)
+    } else {
+        crate::ratio(metric(":blks_hit"), metric(":blks_read"))
+    };
     scalars.push((
-        "Database:cache_hit_ratio".into(),
+        if mysql {
+            "Database:buffer_pool_hit_ratio"
+        } else {
+            "Database:cache_hit_ratio"
+        }
+        .into(),
         cache,
         if cache.is_some() {
             SampleState::Ok

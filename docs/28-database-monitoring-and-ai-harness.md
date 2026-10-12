@@ -594,3 +594,48 @@ existing default-off local history retains scalar series. Cross-engine
 diagnostics and reference-workload/mac-low exit certification remain M25-07/
 M25-09. A server with HypoPG installed was unavailable for a live what-if
 fixture; the isolated path has mock-session coverage.
+
+## 12. Implemented (M25-07a): MySQL and MariaDB collectors
+
+The lazy Monitor admits both engines through the existing dedicated-session
+route, without replaying profile startup SQL. Distinct version layouts select
+MySQL performance-schema process/lock tables or MariaDB Information Schema
+processes and InnoDB lock waits. Queries are fixed read-only projections, with
+server statement deadlines, client cancellation, packet/row/byte caps and
+uptime/decreasing-counter reset detection. No instrumentation, global setting,
+grant or restart is performed by monitoring.
+
+Server-scoped status supplies query rates, connected/running threads, available
+InnoDB row/cache counters, temporary disk tables, slow queries, aborted connects
+and deadlocks. MariaDB reports `Innodb_deadlocks`; MySQL has no such status
+variable, so it reads the enabled `INNODB_METRICS.lock_deadlocks` counter when
+PROCESS and Performance Schema allow it. Missing counters stay unknown. InnoDB hit ratio uses interval
+`1 - buffer_pool_reads / buffer_pool_read_requests`, distinct from PostgreSQL.
+Digest/schema/first-seen identity bounds statement statistics and converts
+picoseconds to milliseconds once; all SQL still passes core redaction. SQL modes
+with ambiguous quote/backslash semantics yield fingerprint/metrics only.
+Table/index I/O and file I/O use instrumented summaries; both engines optionally
+join `sys.schema_unused_indexes` and `sys.schema_redundant_indexes` when the
+views probe successfully (MariaDB ships `sys` from 10.6). Zero reads are never a
+drop recommendation. Replica status retains named state/lag only,
+discarding server addresses/error text; stopped/NULL/no-replica remain distinct.
+
+Descriptors distinguish disabled Performance Schema (DBA startup configuration
+and restart required), disabled timing/consumers and missing SELECT/PROCESS/
+replication grants. Without PROCESS both engines silently list only the
+caller's own threads, so discovery probes `INNODB_TRX` and reports a
+permission-denied activity source naming PROCESS instead of an empty success.
+Non-InnoDB/metadata blocking, per-query CPU/memory and percentiles remain
+unavailable; MySQL blocking needs Performance Schema (`data_lock_waits`), while
+MariaDB reads `INNODB_LOCK_WAITS` without it. InnoDB caches its transaction and
+lock-wait tables and refreshes them only after 100 ms without readers, which the
+default 5 s cadence always satisfies.
+
+The Monitor tab labels MySQL/MariaDB table, index and file sources as Table I/O,
+Index I/O and File I/O, and the overview shows server-scoped tiles (queries/s,
+threads, InnoDB buffer pool hit ratio, InnoDB rows, temporary disk tables, slow
+queries, aborted connects, deadlocks, applier lag). Integration fixtures on
+native-arm64 MySQL 8.4 and MariaDB 11.4 (Performance Schema on, plus MariaDB's
+default off) and the opt-in overhead benchmark are recorded in ADR-0011. Wider
+live version/provider and reference-load/all-app performance validation remains
+M25-09.

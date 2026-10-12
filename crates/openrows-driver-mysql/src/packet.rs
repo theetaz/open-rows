@@ -15,6 +15,8 @@ const MAX_PAYLOAD: usize = 0xFF_FFFF;
 pub(crate) struct Packets {
     stream: BoxStream,
     sequence: u8,
+    limit: usize,
+    invalid: bool,
 }
 
 impl Packets {
@@ -22,6 +24,8 @@ impl Packets {
         Self {
             stream,
             sequence: 0,
+            limit: usize::MAX,
+            invalid: false,
         }
     }
 
@@ -32,12 +36,27 @@ impl Packets {
 
     /// Continue on `stream` (now encrypted) at `sequence`.
     pub(crate) fn resume(stream: BoxStream, sequence: u8) -> Self {
-        Self { stream, sequence }
+        Self {
+            stream,
+            sequence,
+            limit: usize::MAX,
+            invalid: false,
+        }
     }
 
     /// Every command starts a new sequence.
     pub(crate) fn reset(&mut self) {
         self.sequence = 0;
+    }
+
+    /// Bound monitor packets before allocating payload memory.
+    pub(crate) fn limit(&mut self, bytes: usize) {
+        self.limit = bytes;
+    }
+
+    /// Refuse reuse after a partial response or client deadline.
+    pub(crate) fn invalidate(&mut self) {
+        self.invalid = true;
     }
 
     /// Read one logical packet.
@@ -58,6 +77,10 @@ impl Packets {
                 )));
             }
             self.sequence = self.sequence.wrapping_add(1);
+            if payload.len().saturating_add(length) > self.limit {
+                self.invalidate();
+                return Err(DriverError::Protocol("monitor frame limit exceeded".into()));
+            }
             let start = payload.len();
             payload.resize(start + length, 0);
             self.stream.read_exact(&mut payload[start..]).await?;
@@ -72,6 +95,9 @@ impl Packets {
     /// # Errors
     /// `Network` for transport failures.
     pub(crate) async fn write(&mut self, payload: &[u8]) -> Result<(), DriverError> {
+        if self.invalid {
+            return Err(DriverError::Protocol("monitor transport is invalid".into()));
+        }
         let mut framed = Vec::with_capacity(payload.len() + 8);
         let mut offset = 0;
         loop {
@@ -131,6 +157,18 @@ mod tests {
         let mut client = Packets::new(Box::new(near));
         far.write_all(&[1, 0, 0, 7, 0]).await?;
         assert!(matches!(client.read().await, Err(DriverError::Protocol(_))));
+        Ok(())
+    }
+    #[tokio::test]
+    async fn monitor_packet_limit_rejects_header_before_payload_read() -> Result<(), DriverError> {
+        let (near, mut far) = tokio::io::duplex(64);
+        let mut client = Packets::new(Box::new(near));
+        client.limit(16);
+        far.write_all(&[17, 0, 0, 0]).await?;
+        assert!(
+            matches!(client.read().await, Err(DriverError::Protocol(reason)) if reason == "monitor frame limit exceeded")
+        );
+        assert!(client.write(b"query").await.is_err());
         Ok(())
     }
 }

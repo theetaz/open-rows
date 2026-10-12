@@ -47,9 +47,9 @@ export function TopQueries(props: Props): React.JSX.Element {
   return (
     <>
       <p className={styles.note}>
-        Calls, total time, rows and blocks are rates for the latest valid
-        interval. Window mean is total/calls. Maximum and cumulative mean are
-        statistics since last reset. Rankings use summed covered live-window
+        Calls, total time, rows and I/O/scan counters are rates for the latest
+        valid interval. Window mean is total/calls. Maximum and cumulative mean
+        are statistics since last reset. Rankings use summed covered live-window
         deltas; unknown/reset intervals remain unknown.
       </p>
       <MonitorGrid

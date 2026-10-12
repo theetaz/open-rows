@@ -38,9 +38,9 @@ export function SourcePanel(props: Props): React.JSX.Element {
       />
       {(source === 'tables' || source === 'indexes') && (
         <p className={styles.note}>
-          Statistics since last reset. Scan/tuple counters are cumulative; rate
-          columns cover the latest valid interval. Vacuum/analyze times are
-          unknown when the server reports NULL.
+          {props.profile.engine === 'postgres'
+            ? 'Statistics since last reset. Scan/tuple counters are cumulative; rate columns cover the latest valid interval. Vacuum/analyze times are unknown when the server reports NULL.'
+            : 'Instrumented table/index I/O since reset; rates cover the latest interval. Unused/redundant sys evidence is optional. Zero observed reads never proves an index can be dropped. Vacuum/bloat and per-query memory are unavailable.'}
         </p>
       )}
       {status?.state.kind === 'ok' && table && (

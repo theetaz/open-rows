@@ -248,9 +248,9 @@ These rows specify the owner's database-monitoring request; they do not claim Ta
 
 | Key | Feature | What it does | OpenRows status / FR | Target | OpenRows improvement | Source |
 | --- | --- | --- | --- | --- | --- | --- |
-| PM01 | Monitor workspace | Overview, live sessions, waits/locks, freshness and pause/interval/window controls per connection. | Implemented PostgreSQL workspace (M25-03); engine matrix pending | M2.5 | Overview/sessions/blocking, scope/freshness, accessible charts, pause/interval/ranges; explicit capability states. | ADR-0011, M25-01..04 |
-| PM02 | Slow-query analytics | Rank cumulative deltas and covered terminal events by time, calls, rows, I/O, temp/spill and memory where exposed. | Implemented PostgreSQL live-window investigation (M25-04); PG17 fixtures passed | M2.5 | Weighted window deltas, documented regressions, separately labelled source maxima, blocker navigation and isolated reviewed Explain; measured runs always confirm. | ADR-0011, M25-02/03/04/07a..e |
-| PM03 | Resource/memory view | Engine/server and per-query/thread metrics with documented scope. | Partial PostgreSQL table/index/I/O/replication views (M25-03); broader resource/memory matrix pending | M2.5 | Null lag remains unknown; no invented OS memory or cluster-wide coverage. | ADR-0011, M25-02/03/07a..e |
+| PM01 | Monitor workspace | Overview, live sessions, waits/locks, freshness and pause/interval/window controls per connection. | Implemented PostgreSQL workspace (M25-03) and MySQL/MariaDB collectors (M25-07a); wider engine matrix pending | M2.5 | Overview/sessions/blocking, scope/freshness, accessible charts, pause/interval/ranges; explicit capability states. | ADR-0011, M25-01..04 |
+| PM02 | Slow-query analytics | Rank cumulative deltas and covered terminal events by time, calls, rows, I/O, temp/spill and memory where exposed. | Implemented PostgreSQL live-window investigation (M25-04, PG17 fixtures passed); MySQL/MariaDB digest rankings (M25-07a) | M2.5 | Weighted window deltas, documented regressions, separately labelled source maxima, blocker navigation and isolated reviewed Explain; measured runs always confirm. | ADR-0011, M25-02/03/04/07a..e |
+| PM03 | Resource/memory view | Engine/server and per-query/thread metrics with documented scope. | Partial PostgreSQL and MySQL/MariaDB table/index/I/O/replication views (M25-03/07a); broader resource/memory matrix pending | M2.5 | Null lag remains unknown; no invented OS memory or cluster-wide coverage. | ADR-0011, M25-02/03/07a..e |
 | PM04 | Optimisation advisor | Deterministic rules with metric/plan evidence, confidence and impact/trade-offs. | Implemented PostgreSQL deterministic advisor (M25-10); optional HypoPG off until per-check opt-in | M2.5 | Versioned evidence/confidence/caveats, editor-only revalidated proposals, local dismiss/snooze and safety/auth/production review; isolated HypoPG estimated-plan comparison; no provider calls. | ADR-0011, M25-10 |
 | PM05 | Bounded private collection | Dedicated read-only server sessions, adaptive polling, Arrow/rings, local-history opt-in. | Implemented PostgreSQL collection/history (M25-01/03); reference budgets and engine matrix pending | M2.5 | Default-off scalar history: 24 h, 50/100 MiB caps, expiry/disable/purge, profile isolation; worker/collector cleanup on close/lock. | ADR-0011, M25-01/03/07d/07e |
 
@@ -555,3 +555,11 @@ P08/P09 remain M4.5; P12 remains G11. W07 needs multi-window M6-05/M5-11.
 P27 startup/native distribution and P29 Windows/Linux validation retain their
 separate milestones. Null signed-feed configuration requires M1-31 release
 engineering before any actual updates.
+
+M25-07a implements MySQL/MariaDB Monitor admission and server-scoped overview,
+activity/InnoDB blocking, digest statistics, instrumented table/index/file I/O
+and optional replication state/lag. Disabled instrumentation and missing grants
+produce explicit source states, including PROCESS-restricted activity. `sys`
+index health is optional on both engines when its views probe successfully;
+per-query memory/CPU and percentile evidence remain unavailable. Wider live
+version/provider and reference-hardware budgets remain pending in M25-09.

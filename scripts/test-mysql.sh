@@ -37,6 +37,9 @@ ping_server() {
         \"\$admin\" ping --host=127.0.0.1 --user=root --password=$password --silent" >/dev/null 2>&1
 }
 
+# Monitor digests need performance_schema (MariaDB defaults to OFF); set
+# OPENROWS_TEST_MYSQL_PERFORMANCE_SCHEMA=OFF to exercise the disabled path.
+server_args=(--performance-schema="${OPENROWS_TEST_MYSQL_PERFORMANCE_SCHEMA:-ON}")
 for image in "$@"; do
     case "$image" in
         mariadb*) engine=mariadb ;;
@@ -48,7 +51,7 @@ for image in "$@"; do
     docker run --detach --rm --name "$name" --publish 127.0.0.1::3306 \
         --env MYSQL_ROOT_PASSWORD="$password" --env MARIADB_ROOT_PASSWORD="$password" \
         --env MYSQL_DATABASE=openrows_test --env MARIADB_DATABASE=openrows_test \
-        "$image" >/dev/null
+        "$image" "${server_args[@]}" >/dev/null
     # The images start a socket-only server for initialisation first, so a
     # TCP ping only succeeds once the real server is up.
     deadline=$((SECONDS + 180))

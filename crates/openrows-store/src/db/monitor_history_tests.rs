@@ -100,3 +100,40 @@ fn fixed_byte_caps_evict_oldest_and_raw_text_is_rejected() -> Result<(), Box<dyn
     );
     Ok(())
 }
+
+#[test]
+fn mysql_server_history_allows_only_reviewed_scalars() -> Result<(), Box<dyn std::error::Error>> {
+    let dir = tempfile::tempdir()?;
+    let store = LocalStore::open(&dir.path().join("test.sqlite"))?;
+    store.set_monitor_profiles(&["a".into()], 1)?;
+    let points: Vec<_> = [
+        "queries",
+        "threads_connected",
+        "threads_running",
+        "buffer_pool_hit_ratio",
+        "rows_read",
+        "rows_inserted",
+        "rows_updated",
+        "rows_deleted",
+        "temp_disk_tables",
+        "slow_queries",
+        "aborted_connects",
+        "deadlocks",
+    ]
+    .map(|name| MonitorAggregate {
+        metric: format!("Database:{name}"),
+        ..point(1)
+    })
+    .into();
+    store.record_monitor(("a", "db"), &points, 1)?;
+    assert_eq!(
+        store.monitor_history(("a", "db"), (0, 1))?.len(),
+        points.len()
+    );
+    let raw = MonitorAggregate {
+        metric: "Database:digest_text".into(),
+        ..point(1)
+    };
+    assert!(store.record_monitor(("a", "db"), &[raw], 1).is_err());
+    Ok(())
+}

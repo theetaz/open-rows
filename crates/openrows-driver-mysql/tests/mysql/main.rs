@@ -7,6 +7,8 @@ mod edits;
 mod helpers;
 mod inspection;
 mod inspection_visibility;
+mod monitor;
+mod monitor_bench;
 mod objects;
 mod session;
 mod structure;

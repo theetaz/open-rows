@@ -228,7 +228,10 @@ fn scalar_unit(reading: &Reading, name: &str) -> Option<String> {
     if name.starts_with("sessions:") || name.starts_with("waits:") {
         return Some("count".into());
     }
-    if name == "Database:cache_hit_ratio" {
+    if matches!(
+        name,
+        "Database:cache_hit_ratio" | "Database:buffer_pool_hit_ratio"
+    ) {
         return Some("fraction".into());
     }
     let metric = name.rsplit(':').next()?;
