@@ -185,21 +185,13 @@ it('hides data and stops on lock; unlock needs an explicit resume', async () => 
   expect(ipc.startMonitor).not.toHaveBeenCalled();
 });
 
-it('disconnect hides prior observations and unsupported engines never start collectors', async () => {
+it('disconnect hides prior observations', async () => {
   const mounted = view();
   await loaded();
   mounted.rerender(<MonitorTab {...props} connected={false} />);
   expect(screen.queryByText('2 count')).not.toBeInTheDocument();
   expect(screen.getByRole('status')).toHaveTextContent('Disconnected');
   mounted.unmount();
-  vi.mocked(ipc.startMonitor).mockClear();
-  render(
-    <MonitorTab {...props} profile={{ ...props.profile, engine: 'duckdb' }} />,
-  );
-  expect(
-    await screen.findByText(/Monitoring for duckdb is coming/),
-  ).toBeInTheDocument();
-  expect(ipc.startMonitor).not.toHaveBeenCalled();
 });
 
 it('ignores events for other generations and scopes', async () => {
@@ -227,18 +219,6 @@ it('ignores events for other generations and scopes', async () => {
   expect(ipc.monitorSnapshot).not.toHaveBeenCalled();
 });
 
-it.each(['duckdb'] as const)(
-  'shows the explicit coming state for %s without collector admission',
-  async (engine) => {
-    render(<MonitorTab {...props} profile={{ ...props.profile, engine }} />);
-    expect(
-      await screen.findByText(
-        `Monitoring for ${engine} is coming. This engine is not supported by the current collector.`,
-      ),
-    ).toBeInTheDocument();
-    expect(ipc.startMonitor).not.toHaveBeenCalled();
-  },
-);
 it('cancels pending admission and rejects late samples after tab close', async () => {
   let finish: ((reply: ReturnType<typeof monitorReply>) => void) | undefined;
   vi.mocked(ipc.startMonitor).mockReturnValue(
@@ -388,6 +368,12 @@ it.each([
     'libSQL',
     'Own OpenRows requests only — server-wide metrics unavailable over Hrana.',
     'Round trip',
+  ],
+  [
+    'duckdb',
+    'DuckDB',
+    'Own OpenRows session only — other processes are not visible.',
+    'Memory limit',
   ],
 ] as const)(
   'starts %s own-session monitoring with only measurable panels',

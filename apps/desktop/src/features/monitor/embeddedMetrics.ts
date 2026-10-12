@@ -47,6 +47,44 @@ export const SQLITE_METRICS: readonly Metric[] = [
     scope: 'File',
   },
 ];
+/** DuckDB: own requests plus storage, memory and temp gauges of the owning session. */
+export const DUCKDB_METRICS: readonly Metric[] = [
+  ...OWN_METRICS,
+  {
+    title: 'Database size',
+    names: ['database_bytes'],
+    unit: 'B',
+    scope: 'Database',
+  },
+  {
+    title: 'Used blocks',
+    names: ['used_blocks'],
+    unit: 'count',
+    scope: 'Database',
+  },
+  {
+    title: 'Free blocks',
+    names: ['free_blocks'],
+    unit: 'count',
+    scope: 'Database',
+  },
+  { title: 'WAL size', names: ['wal_bytes'], unit: 'B', scope: 'Database' },
+  { title: 'Memory', names: ['memory_bytes'], unit: 'B', scope: 'Engine' },
+  {
+    title: 'Memory limit',
+    names: ['memory_limit_bytes'],
+    unit: 'B',
+    scope: 'Engine',
+  },
+  {
+    title: 'Temp files',
+    names: ['temp_files'],
+    unit: 'count',
+    scope: 'Engine',
+  },
+  { title: 'Temp size', names: ['temp_bytes'], unit: 'B', scope: 'Engine' },
+  { title: 'Threads', names: ['threads'], unit: 'count', scope: 'Engine' },
+];
 /** Remote libSQL over Hrana: own requests and a measured round trip only. */
 export const LIBSQL_METRICS: readonly Metric[] = [
   {

@@ -69,6 +69,8 @@ impl HostedDriver {
         }
         let mut connection = HostedConnection::new(host);
         connection.duckdb = duckdb;
+        connection.ledger = duckdb
+            .then(|| crate::adapter_monitor::ledger(reservation.as_ref(), connection.process_id()));
         connection.reservation = reservation;
         let reply = connection.call(&Control::Connect(config)).await;
         if let Some(failed) = connection.failed_connect.take() {
@@ -147,6 +149,8 @@ impl Driver for HostedDriver {
 pub struct HostedConnection {
     pub(crate) duckdb: bool,
     pub(crate) reservation: Option<crate::FileReservation>,
+    /// Own statement ledger of a `DuckDB` file; `None` for other engines.
+    pub(crate) ledger: Option<Arc<openrows_monitor::Ledger>>,
     pub(crate) facets: Facets,
     pub(crate) host: HostSession,
     pub(crate) cancel: Arc<Cancellation>,
@@ -177,6 +181,7 @@ impl HostedConnection {
         Self {
             duckdb: false,
             reservation: None,
+            ledger: None,
             facets: Facets {
                 catalog: false,
                 editor: false,
@@ -214,5 +219,8 @@ impl Connection for HostedConnection {
     }
     fn editor(&mut self) -> Option<&mut dyn openrows_driver_api::Editor> {
         self.facets.editor.then_some(self)
+    }
+    fn monitor(&mut self) -> Option<&mut dyn openrows_monitor::MonitorReader> {
+        self.ledger.is_some().then_some(self)
     }
 }

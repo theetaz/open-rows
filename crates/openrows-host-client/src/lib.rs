@@ -3,6 +3,7 @@
 mod adapter;
 mod adapter_connect;
 mod adapter_metrics;
+mod adapter_monitor;
 pub use adapter_metrics::HostMetrics;
 mod adapter_cancel;
 mod adapter_catalog;
@@ -17,6 +18,8 @@ mod binary;
 mod circuit;
 mod duckdb;
 pub use duckdb::{DUCKDB_CAPABILITIES, DuckdbMetadata};
+mod duckdb_monitor;
+pub use duckdb_monitor::duckdb_monitor_descriptors;
 mod failure_signal;
 mod file_reservations;
 pub use file_reservations::{FileReservation, FileReservations};

@@ -137,6 +137,25 @@ pub(crate) async fn borrowed(
     Ok(Some(Box::new(facets)))
 }
 
+/// The Monitor collector of a connected `DuckDB` profile: reads queue on its
+/// one shared session behind user statements; no connection is opened.
+pub(crate) async fn monitor(
+    state: &Connections,
+    profile: &str,
+) -> Result<Box<dyn openrows_monitor::MonitorReader>, IpcError> {
+    if !state.duckdb.known(super::profiles::profile_id(profile)?) {
+        return Err(IpcError::invalid(
+            "Connect to this profile before explicitly starting monitoring",
+        ));
+    }
+    let (session, _) = shared(state, profile, false).await?;
+    let port = state.sessions.facet_port(session)?;
+    Ok(Box::new(openrows_core::FacetMonitor::new(
+        port,
+        openrows_host_client::duckdb_monitor_descriptors(),
+    )))
+}
+
 /// The session a background job (export) runs on and whether the job owns
 /// it: `DuckDB` jobs queue on the shared session and never close it.
 pub(crate) async fn job_session(

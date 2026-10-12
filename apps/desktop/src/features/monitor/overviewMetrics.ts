@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { EngineDto } from '@openrows/ipc';
 import { CLICKHOUSE_METRICS } from './clickhouseMetrics';
-import { LIBSQL_METRICS, SQLITE_METRICS } from './embeddedMetrics';
+import {
+  DUCKDB_METRICS,
+  LIBSQL_METRICS,
+  SQLITE_METRICS,
+} from './embeddedMetrics';
 import { METRICS } from './metrics';
 import type { Metric } from './metrics';
 import type { MonitorData } from './monitorData';
@@ -18,6 +22,8 @@ export function overviewMetrics(
       return SQLITE_METRICS;
     case 'libsql':
       return LIBSQL_METRICS;
+    case 'duckdb':
+      return DUCKDB_METRICS;
     case 'sqlserver':
       return SQLSERVER_METRICS;
     case 'clickhouse':

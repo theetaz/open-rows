@@ -4133,6 +4133,7 @@ dependencies = [
  "openrows-driver-sqlite",
  "openrows-explain",
  "openrows-export",
+ "openrows-monitor",
  "openrows-net",
  "openrows-results",
  "openrows-sql",
@@ -4215,6 +4216,7 @@ dependencies = [
  "openrows-driver-sqlite",
  "openrows-host-client",
  "openrows-host-protocol",
+ "openrows-monitor",
  "openrows-results",
  "openrows-sql",
  "openrows-types",
@@ -4360,9 +4362,12 @@ dependencies = [
 name = "openrows-host-client"
 version = "0.1.0"
 dependencies = [
+ "arrow-array 60.0.0",
+ "arrow-schema 60.0.0",
  "libc",
  "openrows-driver-api",
  "openrows-host-protocol",
+ "openrows-monitor",
  "openrows-sql",
  "ring",
  "same-file",

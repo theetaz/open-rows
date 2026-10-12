@@ -63,6 +63,7 @@ const ENGINE_NAMES: Partial<Record<EngineDto, string>> = {
   sqlite: 'SQLite',
   'libsql-file': 'libSQL file',
   libsql: 'libSQL',
+  duckdb: 'DuckDB',
 };
 type Props = {
   profile: ProfileDto;
@@ -76,11 +77,7 @@ type Props = {
 export function MonitorTab(props: Props): React.JSX.Element {
   const security = useSecurity();
   const target = { profileId: props.profile.id, database: props.database };
-  const supported = monitorSupported(props.profile.engine);
-  const monitor = useMonitor(
-    target,
-    supported && props.connected && !security.locked,
-  );
+  const monitor = useMonitor(target, props.connected && !security.locked);
   const history = useMonitorHistory(target, !security.locked);
   const [panel, setPanel] = useState<Panel>('overview');
   const [selectedIdentity, setSelectedIdentity] = useState<string>();
@@ -99,13 +96,6 @@ export function MonitorTab(props: Props): React.JSX.Element {
   }, [security.locked, setPaused]);
   if (security.locked)
     return <p role="status">Monitor data hidden while the app is locked.</p>;
-  if (!supported)
-    return (
-      <p role="status">
-        Monitoring for {props.profile.engine} is coming. This engine is not
-        supported by the current collector.
-      </p>
-    );
   if (!props.connected)
     return (
       <p role="status">
@@ -261,25 +251,14 @@ function panels(engine: EngineDto): readonly { value: Panel; label: string }[] {
   }));
 }
 
-function monitorSupported(engine: EngineDto): boolean {
-  switch (engine) {
-    case 'postgres':
-    case 'mysql':
-    case 'mariadb':
-    case 'sqlserver':
-    case 'sqlite':
-    case 'libsql':
-    case 'libsql-file':
-    case 'clickhouse':
-      return true;
-    case 'duckdb':
-      return false;
-  }
-}
-
 /** Engines whose collector reads only OpenRows' own statements. */
 function ownSessionsOnly(engine: EngineDto | undefined): boolean {
-  return engine === 'sqlite' || engine === 'libsql-file' || engine === 'libsql';
+  return (
+    engine === 'sqlite' ||
+    engine === 'libsql-file' ||
+    engine === 'libsql' ||
+    engine === 'duckdb'
+  );
 }
 
 function evidenceTarget(

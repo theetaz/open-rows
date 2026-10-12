@@ -2,7 +2,7 @@
 //! Explicit admission/control and bounded binary windows.
 use super::{MonitorChanged, MonitorReply, MonitorStart, MonitorTarget, MonitorWindow, reader};
 use crate::connections::{Connections, IpcError, IpcErrorKind};
-use openrows_monitor::{Descriptor, Monitor, MonitorError, MonitorReader, Source};
+use openrows_monitor::{Descriptor, Monitor, MonitorError, Source};
 use std::{
     sync::{Arc, PoisonError},
     time::Duration,
@@ -81,7 +81,7 @@ async fn prepare(
     target: &MonitorTarget,
     interval: u32,
 ) -> Result<Monitor, IpcError> {
-    let mut reader = reader::open(state, target).await?;
+    let mut reader = reader::open_collector(state, target).await?;
     let descriptors = tokio::time::timeout(Duration::from_secs(16), reader.discover())
         .await
         .map_err(|_| {
@@ -90,7 +90,7 @@ async fn prepare(
                 "Monitoring discovery timed out; session closed",
             )
         })?;
-    Monitor::spawn(Box::new(reader), descriptors, interval).map_err(error)
+    Monitor::spawn(reader, descriptors, interval).map_err(error)
 }
 
 /// Close a view: stop and discard samples unless background monitoring is opted in.

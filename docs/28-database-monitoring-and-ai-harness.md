@@ -961,3 +961,49 @@ standalone SVG parses with gap breaks and escaped labels, that the PNG path
 produces PNG bytes (the canvas is stubbed in jsdom), and that the dialog's
 section, format and item choices reach the save command. The Rust test covers
 the `report_save` file kinds.
+
+## 19. Implemented (M25-07e): DuckDB diagnostics on the owning session
+
+DuckDB is admitted to the Monitor without opening anything. The collector is a
+`FacetMonitor` over the profile's one shared session (ADR-0010 M2-04b facet
+port): every read is a facet call queued on the session actor after the
+statements already queued, and runs on the same hosted connection and file
+reservation. Monitoring starts only after an explicit DuckDB connect; Explain
+and HypoPG diagnostics stay refused for DuckDB. The Overview states the
+boundary: “Own OpenRows session only — other processes are not visible.”, and
+shows the Overview, Incidents and Own queries panels only.
+
+- **Coexistence**: discovery runs no query, so starting the Monitor never waits
+  on a running statement. A read waits at most three quarters of its deadline
+  for the session; if a user statement is still running the sample is a Gap
+  (never a stall), and the queued call is skipped when the actor reaches it, so
+  abandoned reads cannot pile up behind user work. A diagnostic statement that
+  has started is cancelled on the host after its deadline (at most 1 s) and its
+  reply drained, keeping the protocol in step. The collector never cancels the
+  user's statement.
+- **Database** source: one bounded statement reads `pragma_database_size()`
+  (block size, total/used/free blocks and WAL size) for the current database,
+  `sum(memory_usage_bytes)` from `duckdb_memory()`, `memory_limit`, the count
+  and total size of `duckdb_temporary_files()` and `threads`, plus own request
+  totals. Database size is block size × total blocks; formatted sizes are
+  parsed to bytes and an unparsable value stays unknown. In-memory databases
+  report only what DuckDB returns for them.
+- **Own queries**: statements run through the editor, grid or jobs on the
+  hosted session are recorded after they finish in the process-wide ledger
+  from §16 (keyed by the canonical file path, or per host for in-memory
+  databases); monitor and catalog reads are not. DuckDB exposes no step
+  counters, so those columns stay empty.
+- **Unavailable**: sessions/locks, waits/I/O, per-table and per-index
+  statistics and replication carry an explicit reason, never zero.
+- **Host loss**: a host failure or closed session makes the next reading a
+  terminal unavailable state naming the cause (for example “The owning
+  session's driver host exited …”); collection stops until an explicit
+  reconnect and restart.
+
+History keeps the reviewed scalars `database_bytes`, `block_size`,
+`total_blocks`, `used_blocks`, `free_blocks`, `wal_bytes`, `memory_bytes`,
+`memory_limit_bytes`, `temp_files`, `temp_bytes`, `threads` and the own request
+totals. `crates/openrows-driver-host/tests/duckdb_monitor.rs` samples a temp
+DuckDB file idle, during a running query (Gap within the deadline), after
+cancelling it, and after an aborted host (terminal state). Own-query profiling
+through `enable_profiling` and live memory during busy SQL remain follow-up.

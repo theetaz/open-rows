@@ -47,6 +47,7 @@ ignored = ["tauri-build", "proc-macro2", "syn"]
 arrow-cast = "60"
 openrows-driver-conformance = { path = "../openrows-driver-conformance" }
 openrows-core = { path = "../openrows-core" }
+openrows-monitor = { path = "../openrows-monitor" }
 openrows-types = { path = "../openrows-types" }
 openrows-results = { path = "../openrows-results" }
 openrows-driver-host = { path = ".", features = ["test-hooks", "duckdb"] }

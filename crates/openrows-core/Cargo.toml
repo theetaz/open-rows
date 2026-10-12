@@ -16,6 +16,7 @@ arrow-schema = "60"
 openrows-driver-api = { path = "../openrows-driver-api" }
 openrows-explain = { path = "../openrows-explain" }
 openrows-export = { path = "../openrows-export" }
+openrows-monitor = { path = "../openrows-monitor" }
 openrows-results = { path = "../openrows-results" }
 openrows-sql = { path = "../openrows-sql" }
 openrows-types = { path = "../openrows-types" }

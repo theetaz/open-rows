@@ -123,12 +123,16 @@ impl Session for HostedConnection {
             if self.duckdb {
                 crate::duckdb::admit(sql)?;
             }
+            let started = std::time::Instant::now();
             let request = self.begin(&Control::ExecuteBound {
                 sql: sql.into(),
                 params: params.to_vec(),
             })?;
             let result = self.stream(request, sink).await;
             self.cancel.active.store(0, Ordering::SeqCst);
+            if let Some(ledger) = &self.ledger {
+                crate::adapter_monitor::record(ledger, sql, started, &result);
+            }
             result
         })
     }

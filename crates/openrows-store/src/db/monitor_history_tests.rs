@@ -214,3 +214,41 @@ fn embedded_and_libsql_history_allows_only_reviewed_scalars()
     assert!(store.record_monitor(("a", "db"), &[raw], 1).is_err());
     Ok(())
 }
+
+#[test]
+fn duckdb_history_allows_only_reviewed_scalars() -> Result<(), Box<dyn std::error::Error>> {
+    let dir = tempfile::tempdir()?;
+    let store = LocalStore::open(&dir.path().join("test.sqlite"))?;
+    store.set_monitor_profiles(&["a".into()], 1)?;
+    let points: Vec<_> = [
+        "database_bytes",
+        "block_size",
+        "total_blocks",
+        "used_blocks",
+        "free_blocks",
+        "wal_bytes",
+        "memory_bytes",
+        "memory_limit_bytes",
+        "temp_files",
+        "temp_bytes",
+        "threads",
+        "requests",
+        "request_ms",
+    ]
+    .map(|name| MonitorAggregate {
+        metric: format!("Database:{name}"),
+        ..point(1)
+    })
+    .into();
+    store.record_monitor(("a", "db"), &points, 1)?;
+    assert_eq!(
+        store.monitor_history(("a", "db"), (0, 1))?.len(),
+        points.len()
+    );
+    let raw = MonitorAggregate {
+        metric: "Database:database_id".into(),
+        ..point(1)
+    };
+    assert!(store.record_monitor(("a", "db"), &[raw], 1).is_err());
+    Ok(())
+}

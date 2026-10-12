@@ -30,6 +30,21 @@ impl MonitorReader for Reader {
     }
 }
 
+/// The collector for `target`: `DuckDB` borrows its owning shared session,
+/// every other engine opens its own monitoring connection.
+pub(super) async fn open_collector(
+    state: &Connections,
+    target: &super::MonitorTarget,
+) -> Result<Box<dyn MonitorReader>, IpcError> {
+    let profile = state
+        .profiles
+        .get(profiles::profile_id(&target.profile_id)?)?;
+    if profile.driver == openrows_store::profile::Driver::Duckdb {
+        return crate::connections::duckdb::monitor(state, &target.profile_id).await;
+    }
+    Ok(Box::new(open(state, target).await?))
+}
+
 pub(super) async fn open(
     state: &Connections,
     target: &super::MonitorTarget,
@@ -87,7 +102,7 @@ pub(super) fn ensure_engine(engine: openrows_store::profile::Driver) -> Result<(
         | Driver::LibsqlFile
         | Driver::Libsql => return Ok(()),
         Driver::Duckdb => {
-            "DuckDB monitoring requires its owning host/session; no extra connection is opened"
+            "DuckDB diagnostics run only on its owning session; no extra connection is opened"
         }
     };
     Err(IpcError::new(IpcErrorKind::Unsupported, reason))

@@ -405,6 +405,17 @@ explicitly unavailable. The pinned `just test-libsql` script requests amd64
 emulation on arm64; the M25-07d remote fixture ran the multi-arch
 `libsql-server:v0.24.32` image natively instead.
 
+## Implemented (M25-07e): DuckDB evidence
+
+DuckDB monitoring reads through the owning shared session's facet port, so the
+writable file keeps one host, one connection and one reservation. Reads queue
+behind user statements with a bounded wait (a busy session is a Gap), an
+overrunning diagnostic is cancelled on the host, and the collector never
+cancels user work. Ticks read `pragma_database_size()`, `duckdb_memory()`,
+`duckdb_temporary_files()`, `memory_limit` and `threads`; own statements use
+the M25-07d ledger. Host loss is a terminal, named state. Own-query profiling
+with `enable_profiling='no_output'` is not implemented yet.
+
 ## Vendor references
 
 Official references consulted 2026-10-11; version-specific adapters must recheck their server's documentation at implementation.
