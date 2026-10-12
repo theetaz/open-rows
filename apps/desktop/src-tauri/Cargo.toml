@@ -92,7 +92,7 @@ block2 = "0.6"
 objc2-local-authentication = { version = "0.3.2", default-features = false, features = ["std", "LAContext", "LAError", "block2"] }
 objc2 = { version = "0.6", default-features = false, features = ["std"] }
 objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSWorkspace", "NSAccessibility", "NSApplication", "NSResponder", "NSWindow", "NSButton", "NSControl", "NSView"] }
-objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSArray", "NSEnumerator", "NSString", "NSError"] }
+objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSArray", "NSEnumerator", "NSString", "NSError", "NSProcessInfo"] }
 
 [target.'cfg(unix)'.dependencies]
 rustix = { version = "1.1", default-features = false, features = ["process", "time", "std"] }

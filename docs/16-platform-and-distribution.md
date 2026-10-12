@@ -81,7 +81,9 @@ visibility are not restored.
 `apps/desktop/src-tauri/src/material.rs` applies Tauri's `Effect::Sidebar` through
 its existing `window-vibrancy` integration. This installs an `NSVisualEffectView`
 behind the transparent WKWebView. `FollowsWindowActiveState` follows the native
-window; the effect radius is 26 px, native decorations and shadow remain enabled,
+window; the effect radius and the webview's `--or-radius-window` match AppKit's
+titled-window corner (16 pt on macOS 26, 10 pt before, set at runtime from the
+OS version), native decorations and shadow remain enabled,
 and `titleBarStyle: Overlay` retains the real traffic lights. DOM traffic lights
 are not drawn. The webview root is transparent; the table, grid, SQL and sheet
 surfaces use opaque theme tokens for legibility. Rail, sidebar and inspector use

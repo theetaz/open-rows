@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { Button } from '@openrows/ui';
 import type { ObjectDto } from '@openrows/ipc';
 import { objectGroups, supportedGroups } from './catalog';
-import { SidebarFilters } from './SidebarFilters';
 import { SidebarLists } from './SidebarLists';
 import { useSidebarPreferences } from './sidebarPreferences';
 import { AdminTree } from './AdminTree';
@@ -86,7 +85,6 @@ export function ObjectTree(props: {
       {search && noMatches(catalog, search, found) && (
         <p role="status">No matches</p>
       )}
-      <SidebarFilters catalog={catalog} />
       <SidebarLists
         catalog={catalog}
         onOpen={props.onOpen}
