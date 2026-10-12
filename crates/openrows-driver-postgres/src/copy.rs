@@ -153,7 +153,11 @@ impl BulkLoader for PgSession {
         target: BulkTarget<'a>,
         rows: Vec<TextRow>,
     ) -> BoxFuture<'a, Result<u64, DriverError>> {
-        Box::pin(self.copy_in(target, rows))
+        Box::pin(async move {
+            let statement = self.begin_statement().await?;
+            let result = self.copy_in(target, rows).await;
+            self.finish_statement(statement, result).await
+        })
     }
 }
 

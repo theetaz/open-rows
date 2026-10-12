@@ -3,6 +3,7 @@
 //!
 //! Ignored by `just test`; `just test-pg [version]` starts the container, runs
 //! them with `--run-ignored only` and removes it (skipping when Docker is absent).
+mod cancel_race;
 mod catalog;
 mod connect;
 mod diagram;

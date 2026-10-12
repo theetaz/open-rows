@@ -36,6 +36,16 @@ pub(crate) async fn guarded(
     sql: &str,
     deadline_ms: u32,
 ) -> Result<Vec<simple::TextRow>, DriverError> {
+    let statement = session.begin_statement().await?;
+    let result = guarded_query(session, sql, deadline_ms).await;
+    session.finish_statement(statement, result).await
+}
+
+async fn guarded_query(
+    session: &mut PgSession,
+    sql: &str,
+    deadline_ms: u32,
+) -> Result<Vec<simple::TextRow>, DriverError> {
     session.wire.limit_messages(1_024 * 1_024);
     let guard = format!(
         "BEGIN READ ONLY; SET LOCAL search_path = pg_catalog; SET LOCAL statement_timeout = {}; SET LOCAL lock_timeout = 100",

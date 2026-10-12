@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Extended-protocol execution with per-column result formats.
+mod cancellation;
 use crate::cancel::PgCancel;
 use crate::connect::establish;
 use crate::decode::ResultDecoder;
@@ -108,7 +109,9 @@ impl PgSession {
         &mut self,
         sql: &str,
     ) -> Result<Vec<simple::TextRow>, DriverError> {
-        simple::query(&mut self.wire, sql).await
+        let statement = self.begin_statement().await?;
+        let result = simple::query(&mut self.wire, sql).await;
+        self.finish_statement(statement, result).await
     }
 
     async fn run(
@@ -270,7 +273,7 @@ impl Session for PgSession {
         sql: &'a str,
         sink: &'a mut dyn ResultSink,
     ) -> BoxFuture<'a, Result<ExecSummary, DriverError>> {
-        Box::pin(self.run(sql, &[], sink))
+        Box::pin(self.run_guarded(sql, &[], sink))
     }
 
     fn execute_bound<'a>(
@@ -279,7 +282,7 @@ impl Session for PgSession {
         params: &'a [Option<String>],
         sink: &'a mut dyn ResultSink,
     ) -> BoxFuture<'a, Result<ExecSummary, DriverError>> {
-        Box::pin(self.run(sql, params, sink))
+        Box::pin(self.run_guarded(sql, params, sink))
     }
 
     fn cancel_handle(&self) -> Option<Arc<dyn CancelHandle>> {
@@ -290,7 +293,7 @@ impl Session for PgSession {
 
     /// One simple-query round trip instead of Parse/Describe/Execute.
     fn ping(&mut self) -> BoxFuture<'_, Result<(), DriverError>> {
-        Box::pin(async move { simple::query(&mut self.wire, "SELECT 1").await.map(drop) })
+        Box::pin(async move { self.text_query("SELECT 1").await.map(drop) })
     }
 
     fn in_transaction(&self) -> bool {

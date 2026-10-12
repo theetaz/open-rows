@@ -178,7 +178,7 @@ These FR-NET-03 rows document OpenRows scope; no TablePlus adoption/parity claim
 | E04 | Run current | Execute the cursor's statement. | Covered FR-EDIT-03 | M1 | Dialect-aware statement detection. | [S37] |
 | E05 | Run selection | Execute selected SQL. | Covered FR-EDIT-03 | M1 | Clearly show execution scope. | [S37] |
 | E06 | Run all | Execute an editor script. | Covered FR-EDIT-03 | M1 | Per-statement results and status. | [S37] |
-| E07 | Cancel query | Stop active execution. | Covered FR-EDIT-04 | M1 | Send cancellation within 200 ms. | [S37] |
+| E07 | Cancel query | Stop active execution. | Covered FR-EDIT-04 (X-PGCANCEL: a PostgreSQL cancel only affects the statement it was requested for; docs/05 §12) | M1 | Send cancellation within 200 ms. | [S37] |
 | E08 | Beautify SQL | Apply readable formatting. | Covered FR-EDIT-05 | M2 | Configurable style, worker execution. | [S38] |
 | E09 | Minify SQL | Compact formatted statements. | Gap G04 | Post-1.0 | Parse-aware transformation if added. | [S38] |
 | E10 | Split editor panes | Work in independent editors. | New FR-EDIT-11 | M2 | Restore pane context and keyboard focus. | [S39] |
