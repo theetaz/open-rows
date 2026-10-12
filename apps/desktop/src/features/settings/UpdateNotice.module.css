@@ -1,0 +1,23 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.notice {
+  position: fixed;
+  inset-inline-end: var(--or-space-12);
+  inset-block-start: calc(var(--or-toolbar-height) + var(--or-space-12));
+  z-index: 20;
+  max-inline-size: min(420px, calc(100vw - 24px));
+  max-block-size: calc(100vh - var(--or-toolbar-height) - 24px);
+  overflow: auto;
+  padding: var(--or-space-12);
+  color: var(--or-text);
+  background: var(--or-panel-solid);
+  border: var(--or-border-width) solid var(--or-separator);
+  border-radius: var(--or-radius-panel);
+}
+.notice pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+}
+.notice button {
+  margin-inline-end: var(--or-space-8);
+}

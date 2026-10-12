@@ -498,6 +498,13 @@ export const commands = {
 	dataLocationChoose: () => typedError<string | null, IpcError>(__TAURI_INVOKE("data_location_choose")),
 	/**  Schedule an explicitly approved copy, including local history, for the next restart. */
 	dataLocationApply: (path: string) => typedError<null, IpcError>(__TAURI_INVOKE("data_location_apply", { path })),
+	/**  Check a compiled-in channel, never a webview-supplied URL or public key. */
+	updateCheck: (channel: string) => typedError<{
+	rid: number,
+	currentVersion: string,
+	version: string,
+	body: string | null,
+} | null, IpcError>(__TAURI_INVOKE("update_check", { channel })),
 	/**  The text of `settings.json`, or `null` before the first save. */
 	settingsRead: () => typedError<string | null, IpcError>(__TAURI_INVOKE("settings_read")),
 	/**  Replace `settings.json` with `text` (a JSON object with `"openrows": 1`). */
@@ -3828,6 +3835,14 @@ export type UiReport = {
 
 /**  What the webview reports: an error, a rejected promise, or a timing. */
 export type UiReportKind = "error" | "unhandledRejection" | "longTask" | "slowIpc";
+
+/**  Metadata for a Tauri updater resource owned by this webview. */
+export type UpdateReply = {
+	rid: number,
+	currentVersion: string,
+	version: string,
+	body: string | null,
+};
 
 /**  Form fields filled from a pasted URL; only says whether it had a password. */
 export type UrlDraft = {

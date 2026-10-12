@@ -2,7 +2,11 @@
 import { isTauri } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { commands } from './generated/bindings';
-import type { LocationsDto, NativeFileDto } from './generated/bindings';
+import type {
+  LocationsDto,
+  NativeFileDto,
+  UpdateReply,
+} from './generated/bindings';
 import { unwrap } from './connections';
 
 /** Current native data/history/log paths; browser preview has no local storage. */
@@ -32,4 +36,11 @@ export async function onNativeFilesReady(
 /** Reveal a saved connection's database file using the platform file manager. */
 export async function revealDatabase(profileId: string): Promise<void> {
   if (isTauri()) await unwrap(commands.databaseReveal(profileId));
+}
+
+/** Check a release-owned channel and return its signed updater resource. */
+export async function checkForUpdate(
+  channel: 'stable' | 'beta',
+): Promise<UpdateReply | null> {
+  return isTauri() ? unwrap(commands.updateCheck(channel)) : null;
 }

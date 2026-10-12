@@ -8,8 +8,8 @@
   },
   "scripts": {
     "lint": "eslint .",
-    "format": "prettier --write '{apps,packages}/**/*.{ts,tsx,css,json,html}' '*.{json,ts,mjs,yaml}' .github/workflows/ci.yml",
-    "format:check": "prettier --check '{apps,packages}/**/*.{ts,tsx,css,json,html}' '*.{json,ts,mjs,yaml}' .github/workflows/ci.yml",
+    "format": "prettier --write '{apps,packages}/**/*.{ts,tsx,css,json,html}' '*.{json,ts,mjs,yaml}' '.github/workflows/*.yml'",
+    "format:check": "prettier --check '{apps,packages}/**/*.{ts,tsx,css,json,html}' '*.{json,ts,mjs,yaml}' '.github/workflows/*.yml'",
     "typecheck": "pnpm -r typecheck",
     "test": "vitest run",
     "knip": "knip",

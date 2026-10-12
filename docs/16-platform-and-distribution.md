@@ -146,9 +146,17 @@ sequenceDiagram
     App->>App: replace bundle, relaunch (restores session)
 ```
 
-- Tauri updater plugin; channels: `stable`, `beta`, `nightly`.
-- Updates never install silently while queries are running or change sets are pending; the app asks to finish or postpone.
-- Package-manager installs (Homebrew cask, winget, Flathub, apt repo) disable the in-app updater and defer to the package manager.
+- The Tauri updater plugin verifies Ed25519 signatures before installation. The
+  build pins the public key; the webview can select only `stable` or `beta`, not
+  arbitrary URLs or keys. Builds without a release public key/feed make no requests.
+- Settings ▸ General ▸ Update notifications disables launch, daily and manual
+  checks. Update channel selects stable or beta. Checks show a non-blocking notice
+  with release notes rendered as text. “Later” dismisses the current notice.
+- Installation requires explicit “Install and restart” approval, all tabs closed
+  through their existing dirty-tab guards, and every connection disconnected.
+  A modal blocks workspace interaction during download, verification and install.
+  Failed checks/downloads/signature verification report an error and never restart.
+- Homebrew users disable Update notifications and use `brew upgrade`.
 
 ## 7. Distribution channels
 
@@ -162,11 +170,87 @@ sequenceDiagram
 
 ## 8. Release process
 
-1. Release branch cut from `main`; version bumped across Cargo workspace and `package.json` files by a script.
-2. CI builds all targets from the tag, signs, notarizes (macOS), generates SBOM (CycloneDX for Rust and npm), checksums, and updater signatures.
-3. Artifacts uploaded to a draft GitHub Release; smoke tests run against the produced artifacts on each OS.
-4. Maintainer publishes; `latest.json` updated last so clients never see a half-published release.
-5. Changelog generated from Conventional Commits and curated.
+M1-31 builds separate arm64 and x86_64 DMGs, retaining
+`com.prabhavalabs.openrows`. Both the main app and the real production driver-host
+sidecar use hardened runtime and `Entitlements.plist` (no sandbox, JIT or library
+validation exceptions). The bundler signs nested code before the outer app. Oracle
+Instant Client is not bundled; any future helper-only entitlement exception needs
+its own review. Release symbols are archived outside the signed bundle by the
+existing before-bundle hook.
+
+### Local DMG
+
+Install dependencies once with `pnpm install --frozen-lockfile`, then run
+`just release-dmg`. It respects `CARGO_TARGET_DIR`, `RUSTC_WRAPPER` and build jobs,
+stages the native production helper, strips release symbols, creates an ad-hoc
+signed `.app` and DMG, verifies both app/helper signatures, and enforces the decimal
+40,000,000-byte installer ceiling. Output is under
+`$CARGO_TARGET_DIR/<native-triple>/release/bundle/{macos,dmg}`. Local mode removes
+release signing/update credentials from the build environment and does not contact
+Apple. Ad-hoc signing is not Developer ID notarization; downloaded builds require
+local macOS approval. Use `CI=true` (already set by the recipe) to bypass Finder
+layout automation during DMG creation.
+
+### Release secrets and variables
+
+`.github/workflows/release.yml` runs only on `v*` tags or manual dispatch selecting
+an existing version tag, never on branches or pull requests. Bump the workspace
+Cargo version, desktop package version and Tauri version before tagging. The
+workflow checks tag/Cargo/Tauri agreement, builds on arm64 and Intel macOS runners,
+and uploads both architectures to a GitHub Release. It publishes after all assets
+are uploaded. Reruns can resume a draft, but cannot overwrite a published version.
+CI requires the Developer ID certificate, notarization credentials,
+updater private key and matching public key; missing inputs fail before publication.
+Secret-free local builds remain available through `just release-dmg` and have no
+update manifest.
+
+Configure these in GitHub; never place credentials or private keys in the tree:
+
+- `APPLE_CERTIFICATE`: base64 PKCS#12 Developer ID Application certificate;
+  `APPLE_CERTIFICATE_PASSWORD`: its password; `APPLE_SIGNING_IDENTITY`: full
+  Developer ID Application identity. CI imports it into a temporary keychain,
+  removes the import file immediately and deletes the keychain on exit.
+- Notarization: `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_PASSWORD` (app-specific password),
+  **or** `APPLE_API_ISSUER`, `APPLE_API_KEY` (key ID), `APPLE_API_PRIVATE_KEY` (key
+  content). CI writes the API key temporarily with mode 0600 and removes it on exit.
+  Outside CI Tauri also accepts `APPLE_API_KEY_PATH` directly.
+- `TAURI_SIGNING_PRIVATE_KEY` and optional `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`:
+  Tauri updater signing secrets. `TAURI_SIGNING_PUBLIC_KEY` is a repository variable
+  containing the matching Tauri public key. Keep the key pair stable across releases;
+  generating a new key breaks updates for existing installations.
+
+`scripts/release-macos.sh release <triple>` uses these environment variables.
+`scripts/release-config.py` merges only public feed/key configuration into Tauri
+and the frontend. Signing and updater credentials are independent: Apple-only
+builds sign/notarize but omit updater assets; updater-only builds cannot claim
+Developer ID/Gatekeeper acceptance. These partial diagnostic builds do not pass
+the production workflow, which requires all signing inputs. Tauri notarizes/staples
+the app; the workflow additionally signs, notarizes and staples each DMG. Installer size and app/helper
+signature checks fail the build before upload.
+
+`scripts/release-artifacts.py` preserves signed archive bytes while assigning
+architecture-specific names and generates a static manifest only when both
+architectures have non-empty archives/signatures. Notes come from GitHub's release
+notes. Stable manifests live at `/releases/latest/download/stable.json`. Prerelease
+manifests are also uploaded to the prerelease `update-beta` feed tag **after** the
+versioned release is published. That feed tag does not match `v*` and cannot trigger
+a build. Failed/partial builds never advance either channel. Keep `update-beta`
+marked as a prerelease so it cannot take over GitHub's stable latest release.
+
+Before production publication, verify a downloaded DMG on a fresh Mac, run
+`spctl --assess --type execute --verbose OpenRows.app`, test the packaged host,
+and perform an update from the previous signed version on both architectures.
+Actual Developer ID, notarization, Gatekeeper and update installation require the
+owner's credentials and an existing signed release; local ad-hoc builds alone
+cannot prove these gates.
+
+Fill `packaging/homebrew/openrows.rb.template` with version, repository and the
+SHA-256 of each **final stapled** DMG (`shasum -a 256 ...`); publish it in the
+maintainer's Homebrew tap. The template supports both architectures and macOS 12+.
+`just release-test` covers public configuration, manifest assembly, missing
+signatures, bundle policy, workflow triggers and installer-size boundaries.
+See [Tauri signing](https://v2.tauri.app/distribute/sign/macos/) and
+[Tauri updater](https://v2.tauri.app/plugin/updater/) for credential/key formats.
 
 ## Implemented (M2-22b): file handoffs and update preferences
 
@@ -181,17 +265,13 @@ Local database connection menus reveal their saved path using the native launche
 existing export jobs retain Show in Finder/File Manager. Registry shortcuts and
 platform native menu accelerators remain the single command route.
 
-`general.updateChannel` defaults to `stable`; `beta` selects a distinct manifest
-endpoint. `general.updateNotifications` defaults to true. Endpoint selection reads
-`plugins.openrowsUpdates.{stable,beta,publicKey}` from `tauri.conf.json`, requiring
-HTTPS without URL credentials and a configured signing public key. All three are
-currently null: the UI states that no feed is configured. This is configuration
-selection, not implemented download/signature verification/installation. M1-31
-release engineering must supply signed channel manifests and the updater backend;
-no unsigned feed or fabricated release service is used. Notification preference
-is stored for that backend. Opt-in crash reporting remains a stored off-by-default
-preference with no reporting service. Windows/Linux bundle execution and actual
-Finder association registration require packaged-platform verification (M6).
+`general.updateChannel` defaults to `stable`; `beta` selects a distinct manifest.
+`general.updateNotifications` defaults to true and controls the implemented updater
+checks (§6, §8). Feed and public-key configuration is injected only into release
+builds; the default source configuration stays null. Opt-in crash reporting remains
+a stored off-by-default preference with no reporting service. Windows/Linux bundle
+execution and actual Finder association registration require packaged-platform
+verification (M6).
 
 ## 9. Implemented (M2-01c): driver-host packaging
 
@@ -216,14 +296,14 @@ The Tauri before-dev/build hooks also stage for direct CLI use. Raw desktop
 Cargo commands require `just stage-host dev` first, or the matching target
 argument when cross-compiling. Ubuntu CI explicitly stages before Clippy/tests
 and runs the staging-isolation regression tests (`just script-test` locally).
-For direct cross-target Tauri builds set `CARGO_BUILD_TARGET` and stage the
-matching target; universal app/helper assembly remains deferred.
+The release script sets `CARGO_BUILD_TARGET` and stages the matching helper for
+each architecture; universal app/helper assembly is not used.
 
 macOS uses explicit hardened runtime and local `signingIdentity: "-"`.
 `APPLE_SIGNING_IDENTITY` overrides that default when the owner's Developer ID
 exists. Inspection of [Tauri 2.12.1 bundling](https://github.com/tauri-apps/tauri/blob/tauri-cli-v2.12.1/crates/tauri-bundler/src/bundle/macos/app.rs)
 confirms sidecars are signed before the outer app; the same selected identity
-and runtime policy apply. No custom entitlements are needed. Use Tauri's
+and runtime policy apply. The explicit empty entitlement file keeps both binaries strict. Use Tauri's
 [notarization credentials](https://v2.tauri.app/distribute/sign/macos/#notarization)
 and verify/staple the final app/DMG; certificates and credentials stay outside
 Git. `just dev` signs the unsuffixed copied helper and app with the stable dev

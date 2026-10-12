@@ -483,6 +483,7 @@ export type { SecurityStatus } from './generated/bindings';
 
 /** Settings locations and content-validated OS file opening (M2-22b). */
 export {
+  checkForUpdate,
   getDataLocations,
   chooseDataLocation,
   scheduleDataLocation,
@@ -491,7 +492,6 @@ export {
   revealDatabase,
 } from './appParity';
 export type { LocationsDto, NativeFileDto } from './generated/bindings';
-
 /** API-key/local provider settings and metadata-only verification (M45-01). */
 export {
   setAiKey,

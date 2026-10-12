@@ -6,9 +6,14 @@ type FeedConfig = {
   beta: string | null;
   publicKey: string | null;
 };
-const config = (
+const bundled = (
   JSON.parse(configText) as { plugins: { openrowsUpdates: FeedConfig } }
 ).plugins.openrowsUpdates;
+const config: FeedConfig = {
+  stable: import.meta.env.VITE_OPENROWS_UPDATE_STABLE ?? bundled.stable,
+  beta: import.meta.env.VITE_OPENROWS_UPDATE_BETA ?? bundled.beta,
+  publicKey: import.meta.env.VITE_OPENROWS_UPDATE_KEY ?? bundled.publicKey,
+};
 
 /** Select a release-owned HTTPS manifest only when a signing key is configured. */
 export function updateFeed(
