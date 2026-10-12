@@ -572,22 +572,7 @@ export type {
   SqlProposal,
 } from './generated/bindings';
 
-export {
-  runAssistant,
-  cancelAssistant,
-  previewAssistant,
-  explainAssistant,
-} from './assistant';
-export type {
-  AgentEvent,
-  Trace,
-  AssistantRequest,
-  AssistantContext,
-  AssistantContext_Deserialize,
-  AssistantContext_Serialize,
-  AssistantHistory,
-  AssistantScope,
-} from './generated/bindings';
+export * from './assistant';
 
 export type {
   Investigation,
@@ -598,3 +583,5 @@ export type {
   HypoPgRequest,
   HypoPgReply,
 } from './generated/bindings';
+
+export * from './investigations';

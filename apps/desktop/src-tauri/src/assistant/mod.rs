@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! User-triggered generation with a typed channel and the shared read-only tools.
 mod context;
+mod scheduled;
 mod state;
 use crate::{
     ai,
@@ -11,6 +12,7 @@ use openrows_ai::{
     agent::{AgentError, AgentEvent, AgentLimits, AgentRequest, run_agent},
     sharing::{AssistantContext, ContextPreview, Plan},
 };
+pub(crate) use scheduled::*;
 use serde::Deserialize;
 use specta::Type;
 pub(crate) use state::AssistantState;
@@ -20,11 +22,13 @@ use tauri::{AppHandle, Manager, ipc::Channel};
 #[derive(Clone, Deserialize, Type)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct AssistantRequest {
-    id: String,
-    provider: String,
-    model: String,
-    connection: String,
-    database: String,
+    pub(super) id: String,
+    pub(super) provider: String,
+    pub(super) model: String,
+    pub(super) connection: String,
+    pub(super) database: String,
+    #[serde(default)]
+    monitoring: bool,
     schema: String,
     question: AssistantContext,
     query: Option<String>,

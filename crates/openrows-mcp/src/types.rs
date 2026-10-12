@@ -91,6 +91,9 @@ pub struct ToolInput {
     /// Object identifier for details.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub object: Option<String>,
+    /// Structured artifact proposal as bounded JSON text.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub document: Option<String>,
     /// Read or proposal SQL (maximum 16 KiB).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sql: Option<String>,

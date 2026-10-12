@@ -202,6 +202,7 @@ impl AgentTools for Tools {
                 .map_err(|_| AgentError::Refused)?;
             context.record().await?;
             Ok(ToolReply {
+                artifact: None,
                 context,
                 proposal: (call.name == "propose_sql").then(|| sql.into()),
             })

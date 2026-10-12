@@ -2,6 +2,8 @@
 //! `PostgreSQL` read-only enforcement with persisted state verification.
 #[path = "support/read.rs"]
 mod fixture;
+#[path = "support/monitor_postgres.rs"]
+mod monitoring;
 #[tokio::test]
 #[ignore = "requires just test-pg's single native PostgreSQL fixture"]
 async fn postgres_refuses_attacks_with_zero_changes() -> Result<(), Box<dyn std::error::Error>> {

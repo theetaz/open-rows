@@ -37,6 +37,7 @@ rusqlite = { version = "0.40", features = ["bundled"] }
 specta = { version = "=2.0.0-rc.25", optional = true, features = ["derive"] }
 
 [dev-dependencies]
+openrows-monitor = { path = "../openrows-monitor" }
 tempfile = "3.27"
 openrows-driver-sqlite = { path = "../openrows-driver-sqlite" }
 openrows-net = { path = "../openrows-net" }

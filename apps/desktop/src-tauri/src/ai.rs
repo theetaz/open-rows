@@ -140,6 +140,7 @@ pub(crate) async fn ai_key_set(app: AppHandle, id: String, key: String) -> Resul
     let state = app.state::<AiState>();
     state.cancel(&id);
     app.state::<crate::assistant::AssistantState>().cancel(None);
+    app.state::<crate::assistant::ScheduledState>().cancel_all();
     let secrets = Arc::clone(&state.secrets);
     secret_work(move || secrets.set(&SecretKey::ai_provider(&id), &key)).await
 }
@@ -153,6 +154,7 @@ pub(crate) async fn ai_key_delete(app: AppHandle, id: String) -> Result<(), IpcE
     let state = app.state::<AiState>();
     state.cancel(&id);
     app.state::<crate::assistant::AssistantState>().cancel(None);
+    app.state::<crate::assistant::ScheduledState>().cancel_all();
     let secrets = Arc::clone(&state.secrets);
     secret_work(move || secrets.delete(&SecretKey::ai_provider(&id))).await
 }

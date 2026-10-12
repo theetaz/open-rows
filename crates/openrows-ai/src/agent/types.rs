@@ -107,6 +107,8 @@ pub trait AgentProvider: Send + Sync {
 pub struct ToolReply {
     /// Exact redacted tool result.
     pub context: GatedPayload,
+    /// Validated artifact preview; only local explicit acceptance can save it.
+    pub artifact: Option<crate::investigation::ProposedArtifact>,
     /// SQL proposal for local user review; no execution action exists.
     pub proposal: Option<String>,
 }
@@ -177,6 +179,15 @@ pub enum AgentEvent {
     Proposal {
         /// Literal SQL for user review.
         sql: String,
+    },
+    /// Validated plain JSON for local preview and explicit acceptance.
+    Artifact {
+        /// References validated against the exact delivered evidence ledger.
+        evidence: Vec<String>,
+        /// board, report or finding.
+        kind: String,
+        /// Versioned shared document.
+        document: String,
     },
     /// Successful completion and conservative usage.
     Done {

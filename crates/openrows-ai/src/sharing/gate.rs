@@ -134,6 +134,7 @@ impl SharingStore {
         let bundle = &request.bundle;
         if bundle.schema.len() > 128
             || bundle.plan.len() > 200
+            || bundle.evidence.len() > 200
             || bundle.stats.len() > 200
             || bundle.samples.len() > 20
             || bundle
@@ -177,7 +178,7 @@ fn authorize(request: &GateRequest<'_>, policy: &super::SharingPolicy) -> Result
     let bundle = &request.bundle;
     if policy.level == SharingLevel::None
         || (!bundle.samples.is_empty() && policy.level < SharingLevel::SampleRows)
-        || ((!bundle.stats.is_empty() || !bundle.plan.is_empty())
+        || ((!bundle.stats.is_empty() || !bundle.plan.is_empty() || !bundle.evidence.is_empty())
             && policy.level < SharingLevel::SchemaAndStats)
     {
         return Err(Refusal::LevelTooLow);
@@ -195,7 +196,9 @@ fn authorize(request: &GateRequest<'_>, policy: &super::SharingPolicy) -> Result
     if policy.local_only && (!request.provider.kind.is_local() || !loopback) {
         return Err(Refusal::LocalOnly);
     }
-    if (!bundle.stats.is_empty() || !bundle.plan.is_empty()) && !policy.telemetry {
+    if (!bundle.stats.is_empty() || !bundle.plan.is_empty() || !bundle.evidence.is_empty())
+        && !policy.telemetry
+    {
         return Err(Refusal::Telemetry);
     }
     Ok(())

@@ -15,6 +15,7 @@ export type Turn = {
   question: string;
   text: string;
   proposals: readonly string[];
+  artifacts: readonly { kind: string; document: string; evidence: string[] }[];
   traces: readonly TimedTrace[];
   outcome: string;
 };
@@ -109,6 +110,18 @@ function receive(id: string, run: string, event: AgentEvent): void {
     turns: state.turns.map((turn) => {
       if (turn.id !== run) return turn;
       switch (event.type) {
+        case 'artifact':
+          return {
+            ...turn,
+            artifacts: [
+              ...turn.artifacts,
+              {
+                kind: event.kind,
+                document: event.document,
+                evidence: event.evidence,
+              },
+            ].slice(0, 4),
+          };
         case 'text':
           return { ...turn, text: (turn.text + event.delta).slice(0, 32768) };
         case 'proposal':
@@ -151,6 +164,7 @@ export async function sendQuestion(
     question: request.question.question,
     text: '',
     proposals: [],
+    artifacts: [],
     traces: [],
     outcome: 'Running',
   };

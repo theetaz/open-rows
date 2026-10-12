@@ -11,9 +11,9 @@ use tokio::sync::watch;
 /// Local `SQLite` policy/audit store; clones share revisions and the serialized writer.
 #[derive(Clone)]
 pub struct SharingStore {
-    database: Arc<Mutex<Connection>>,
+    pub(super) database: Arc<Mutex<Connection>>,
     pub(super) revision: watch::Sender<u64>,
-    retention: u32,
+    pub(super) retention: u32,
 }
 impl SharingStore {
     /// Open/create private local storage; no provider payload is ever persisted.
@@ -43,7 +43,8 @@ impl SharingStore {
             return Err(Refusal::Invalid);
         }
         connection.execute_batch("CREATE TABLE IF NOT EXISTS sharing(connection TEXT PRIMARY KEY, policy TEXT NOT NULL);
-            CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY, entry TEXT NOT NULL);").map_err(|_| Refusal::Store)?;
+            CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY, entry TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS investigations(id INTEGER PRIMARY KEY, entry TEXT NOT NULL);").map_err(|_| Refusal::Store)?;
         Ok(Self {
             database: Arc::new(Mutex::new(connection)),
             revision: watch::channel(0).0,
@@ -124,7 +125,7 @@ impl SharingStore {
         self.database
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
-            .execute("DELETE FROM audit", [])
+            .execute_batch("DELETE FROM audit; DELETE FROM investigations;")
             .map_err(|_| Refusal::Store)?;
         Ok(())
     }

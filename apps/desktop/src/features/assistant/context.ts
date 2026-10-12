@@ -11,6 +11,7 @@ import type { RunMessage } from '../query/run';
 import { conversationOf } from './conversation';
 /** Inputs attached to the active query tab; SQL is read only when the user acts. */
 export type AssistantProps = {
+  monitoring?: boolean;
   tabId: string;
   profile: ProfileDto;
   database: string;
@@ -87,6 +88,12 @@ export function disabledReason(input: {
     return 'Production sharing requires explicit opt-in.';
   if (!input.policy.providers.includes(input.provider))
     return 'Provider is not allowed for this connection.';
+  if (
+    input.props.monitoring &&
+    (!input.policy.telemetry ||
+      !['schemaAndStats', 'sampleRows'].includes(input.policy.level))
+  )
+    return 'Monitoring requires telemetry consent and SchemaAndStats sharing.';
   if (!input.model) return 'Choose a model.';
   return '';
 }
@@ -100,6 +107,7 @@ export function assistantRequest(
   const code = action === 'fix' ? props.lastError?.code : null;
   return {
     id: crypto.randomUUID(),
+    monitoring: props.monitoring ?? false,
     connection: props.profile.id,
     database: props.database,
     ...selection,

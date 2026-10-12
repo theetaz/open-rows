@@ -4,7 +4,7 @@ use crate::{McpError, ToolInput};
 use rmcp::model::Tool;
 use serde_json::{Value, json};
 
-pub(crate) const NAMES: [&str; 7] = [
+pub(crate) const NAMES: [&str; 15] = [
     "list_connections",
     "list_schemas",
     "list_objects",
@@ -12,13 +12,21 @@ pub(crate) const NAMES: [&str; 7] = [
     "run_read_query",
     "explain_query",
     "propose_sql",
+    "read_health_snapshot",
+    "read_metric_history",
+    "read_query_statistics",
+    "read_lock_graph",
+    "read_monitor_plans",
+    "propose_board",
+    "build_report",
+    "record_health_finding",
 ];
 pub(crate) fn definitions() -> Vec<Tool> {
     NAMES.iter().map(|name| definition(name)).collect()
 }
 fn definition(name: &str) -> Tool {
     let fields = fields(name);
-    let properties: serde_json::Map<String, Value> = fields.iter().map(|field| ((*field).into(), json!({"type":"string", "minLength":1, "maxLength": if *field == "sql" {16384} else {256}}))).collect();
+    let properties: serde_json::Map<String, Value> = fields.iter().map(|field| ((*field).into(), json!({"type":"string", "minLength":1, "maxLength": if *field == "document" {32768} else if *field == "sql" {16384} else {256}}))).collect();
     serde_json::from_value(json!({
         "name":name, "description":description(name),
         "inputSchema":{"type":"object", "properties":properties, "required":fields, "additionalProperties":false},
@@ -27,6 +35,14 @@ fn definition(name: &str) -> Tool {
 }
 fn fields(name: &str) -> Vec<&'static str> {
     match name {
+        "propose_board" | "build_report" | "record_health_finding" => {
+            vec!["connection", "database", "document"]
+        }
+        "read_health_snapshot"
+        | "read_metric_history"
+        | "read_query_statistics"
+        | "read_lock_graph"
+        | "read_monitor_plans" => vec!["connection", "database"],
         "list_schemas" => vec!["connection", "database"],
         "list_objects" => vec!["connection", "database", "schema"],
         "describe_object" => vec!["connection", "database", "schema", "object"],
@@ -53,6 +69,16 @@ fn description(name: &str) -> &'static str {
         "propose_sql" => {
             "Create SQL for user review in the editor. Never execute it; normal user SafetyPlan applies when the user runs it."
         }
+        "read_health_snapshot"
+        | "read_metric_history"
+        | "read_query_statistics"
+        | "read_lock_graph"
+        | "read_monitor_plans" => {
+            "Read bounded timestamped numeric monitor evidence and explicit gaps; requires telemetry consent. Only returned ids can support findings. No SQL execution or activity identities."
+        }
+        "propose_board" | "build_report" | "record_health_finding" => {
+            "Preview a structured artifact tied only to evidence ids already delivered. document is JSON: kind board with board/evidence; kind report with title/findings/evidence/chart; kind finding with finding {interpretation, uncertainty, evidence}. Report evidence must include every finding citation. Never saves or executes. Model values cannot become measured facts."
+        }
         _ => "Unknown tool",
     }
 }
@@ -75,7 +101,13 @@ pub(crate) fn input(
             .get(field)
             .and_then(Value::as_str)
             .ok_or(McpError::Invalid)?;
-        let cap = if field == "sql" { 16384 } else { 256 };
+        let cap = if field == "document" {
+            32768
+        } else if field == "sql" {
+            16384
+        } else {
+            256
+        };
         if text.is_empty() || text.len() > cap || text.contains('\0') {
             return Err(McpError::Invalid);
         }

@@ -16,6 +16,7 @@ pub(super) fn executor(
         crate::settings::current(&app.state::<crate::settings::SettingsFile>()).unwrap_or_default();
     app.state::<AiState>().configure(&value);
     Ok(ToolExecutor {
+        ledger: openrows_ai::investigation::Ledger::default(),
         backend: Arc::new(crate::mcp::backend::Backend(app.clone())),
         sharing: app.state::<SharingStore>().inner().clone(),
         control: app.state::<AiState>().control.clone(),
@@ -58,6 +59,24 @@ pub(super) async fn collect(
         });
     }
     let admitted = executor.gate(&input, bundle.clone())?;
+    if request.monitoring {
+        let permission = ContextBundle {
+            evidence: vec![openrows_ai::investigation::sample(
+                "admission",
+                "telemetry:permission",
+                0.0,
+                None,
+            )],
+            ..bundle.clone()
+        };
+        let admitted = executor.gate(&input, permission)?;
+        bundle.evidence = read(executor, &admitted, "read_health_snapshot", &input)
+            .await?
+            .evidence;
+        let payload = executor.gate(&input, bundle)?;
+        executor.ledger.record(&request.connection, &payload)?;
+        return Ok(payload);
+    }
     bundle.schema = read(executor, &admitted, "list_objects", &input)
         .await?
         .schema;

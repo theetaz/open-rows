@@ -26,6 +26,7 @@ export function AssistantPanel(props: AssistantProps): React.JSX.Element {
       <ProviderPicker controls={controls} busy={busy} />
       <ContextNotice controls={controls} busy={busy} />
       <ConversationView
+        connection={props.profile.id}
         turns={controls.conversation.turns}
         disabled={!!controls.reason || busy}
         actions={{

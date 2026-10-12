@@ -72,7 +72,7 @@ impl Monitors {
         slots.insert(key.clone(), slot.clone());
         Ok((slot, true))
     }
-    pub(super) fn get(&self, key: &Key) -> Result<Arc<Monitor>, MonitorError> {
+    pub(crate) fn get(&self, key: &Key) -> Result<Arc<Monitor>, MonitorError> {
         self.slots
             .lock()
             .unwrap_or_else(PoisonError::into_inner)

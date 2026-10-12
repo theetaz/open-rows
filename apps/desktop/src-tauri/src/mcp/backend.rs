@@ -105,6 +105,11 @@ impl ToolBackend for Backend {
             self.profile(input)?;
             match tool {
                 "run_read_query" | "explain_query" => self.rows(tool, input).await,
+                "read_health_snapshot"
+                | "read_metric_history"
+                | "read_query_statistics"
+                | "read_lock_graph"
+                | "read_monitor_plans" => self.monitoring(tool, input).await,
                 "list_schemas" | "list_objects" | "describe_object" => {
                     self.catalog(tool, input).await
                 }

@@ -32,3 +32,14 @@ export function explainAssistant(
 ): Promise<ContextPreview> {
   return unwrap(commands.assistantExplain(request));
 }
+
+export type {
+  AgentEvent,
+  Trace,
+  AssistantRequest,
+  AssistantContext,
+  AssistantContext_Deserialize,
+  AssistantContext_Serialize,
+  AssistantHistory,
+  AssistantScope,
+} from './generated/bindings';

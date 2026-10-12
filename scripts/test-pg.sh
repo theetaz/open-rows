@@ -26,7 +26,7 @@ cargo build -p openrows-net --bin fake-cloud-hop --features test-helper --locked
 export OPENROWS_FAKE_HELPER="$(cd -- "${CARGO_TARGET_DIR:-target}/debug" && pwd)/fake-cloud-hop"
 # Synthetic credential for a container bound to 127.0.0.1 and removed on exit.
 password="openrows-test-only"
-name="openrows-pg-test-$$"
+name="${OPENROWS_TEST_PG_NAME_PREFIX:-openrows-pg-test}-$$"
 tls_dir="$(mktemp -d "$PWD/.pg-test-tls.XXXXXX")"
 cleanup() {
     docker rm --force --volumes "$name" >/dev/null 2>&1 || true

@@ -6,6 +6,7 @@ import type { WidgetRun } from '../boards/useBoardRuns';
 import type { MonitorData, Point } from '../monitorData';
 import { boardRange, boardSections } from './boardReport';
 import type { Connection } from './connection';
+import { validateReport } from './validate';
 import { REPORT_SCHEMA, REPORT_VERSION } from './model';
 import type { Report, ReportSection } from './model';
 import { monitorSections } from './monitorReport';
@@ -17,7 +18,7 @@ function report(
   range: Report['range'],
   sections: ReportSection[],
 ): Report {
-  return {
+  return validateReport({
     schema: REPORT_SCHEMA,
     version: REPORT_VERSION,
     title,
@@ -25,7 +26,7 @@ function report(
     connection,
     range,
     sections,
-  };
+  });
 }
 
 const message = (failure: unknown): string =>

@@ -13,6 +13,11 @@ import { IncidentsPanel } from './IncidentsPanel';
 import { CLICKHOUSE_HIDDEN, CLICKHOUSE_LABELS } from './clickhouseMetrics';
 import { reportConnection } from './report/connection';
 import styles from './Monitor.module.css';
+const InvestigationPanel = lazy(() =>
+  import('./InvestigationPanel').then((module) => ({
+    default: module.InvestigationPanel,
+  })),
+);
 const AdvisorPanel = lazy(() =>
   import('./AdvisorPanel').then((module) => ({ default: module.AdvisorPanel })),
 );
@@ -33,6 +38,7 @@ const PANELS = [
   { value: 'indexes', label: 'Indexes' },
   { value: 'replication', label: 'Replication' },
   { value: 'io', label: 'I/O' },
+  { value: 'assistant', label: 'Ask assistant' },
   { value: 'boards', label: 'Boards' },
 ] as const;
 type Panel = (typeof PANELS)[number]['value'];
@@ -52,6 +58,7 @@ const SQLSERVER_LABELS: Partial<Record<Panel, string>> = {
 const EMBEDDED_PANELS: ReadonlySet<Panel> = new Set([
   'overview',
   'incidents',
+  'assistant',
   'statements',
 ]);
 const ENGINE_NAMES: Partial<Record<EngineDto, string>> = {
@@ -167,6 +174,15 @@ function MonitorContent(
             target={{ profileId: props.profile.id, database: props.database }}
             connection={reportConnection(props.profile, props.database)}
             active={props.connected}
+          />
+        </Suspense>
+      ) : panel === 'assistant' ? (
+        <Suspense fallback={null}>
+          <InvestigationPanel
+            profile={props.profile}
+            database={props.database}
+            connected={props.connected}
+            onOpen={props.onOpenSql}
           />
         </Suspense>
       ) : panel === 'advisor' ? (

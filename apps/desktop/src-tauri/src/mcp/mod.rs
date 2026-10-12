@@ -2,6 +2,7 @@
 //! App lifecycle and guarded credential commands for the built-in MCP host.
 pub(crate) mod backend;
 mod catalog;
+mod monitoring;
 pub(crate) mod proposals;
 use crate::{
     ai::AiState,
@@ -66,6 +67,9 @@ pub(crate) fn configure(app: &AppHandle) {
     });
 }
 pub(crate) fn pause(app: &AppHandle) {
+    if let Some(state) = app.try_state::<crate::assistant::ScheduledState>() {
+        state.cancel_all();
+    }
     if let Some(state) = app.try_state::<crate::assistant::AssistantState>() {
         state.cancel(None);
     }
