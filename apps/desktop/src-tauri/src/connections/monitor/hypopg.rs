@@ -78,7 +78,7 @@ pub(crate) async fn monitor_hypopg(
     let profile = state.profiles.get(super::super::profiles::profile_id(
         &request.target.profile_id,
     )?)?;
-    reader::ensure_engine(profile.driver)?;
+    reader::ensure_postgres(profile.driver)?;
     let (sql, reply) = reviewed_sql(&monitor, &profile, &request)?;
     if let Some(reply) = reply {
         return Ok(reply);

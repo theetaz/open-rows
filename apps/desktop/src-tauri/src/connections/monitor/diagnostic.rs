@@ -67,7 +67,7 @@ pub(crate) async fn monitor_explain(
     let profile = state.profiles.get(super::super::profiles::profile_id(
         &request.target.profile_id,
     )?)?;
-    reader::ensure_engine(profile.driver)?;
+    reader::ensure_postgres(profile.driver)?;
     let sql = diagnostic_gate::statement(&request)?;
     let expected = monitor
         .investigate(&request.statement_id)

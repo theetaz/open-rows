@@ -78,6 +78,7 @@ function SourceContent(
         revision={`${props.monitor.data?.reply.generation ?? ''}:${props.monitor.data?.reply.sources.map((s) => `${s.source}:${String(s.sequence)}:${s.state.kind}`).join('|') ?? ''}:${String(Math.floor(props.monitor.now / 5000))}`}
         activity={props.monitor.data?.tables.activity}
         initialStatementId={props.selectedIdentity}
+        explain={props.profile.engine === 'postgres'}
         onSession={props.onSession ?? (() => undefined)}
         onEvidence={props.onEvidence ?? (() => undefined)}
         onOpenSql={props.onOpenSql}

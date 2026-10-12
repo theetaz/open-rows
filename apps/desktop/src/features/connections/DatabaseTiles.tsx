@@ -15,7 +15,7 @@ type Props = {
   onClose: (name: string) => void;
   /** Open the database's process list; absent when the engine has none. */
   onProcesses?: ((name: string) => void) | undefined;
-  /** Monitor the database or show the engine capability state. */
+  /** Open the database Monitor. */
   onMonitor?: ((name: string) => void) | undefined;
   /** Run a `.sql` file on the database. */
   onRunFile?: ((name: string) => void) | undefined;

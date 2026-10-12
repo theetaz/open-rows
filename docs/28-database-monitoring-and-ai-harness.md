@@ -1,9 +1,9 @@
 # 28 — Database Monitoring, Analytics and the AI Harness
 
-Status: PostgreSQL monitoring backend, workspace UI and opt-in local history implemented (M25-01/02/03); the remaining engine, analytics and validation matrix is planned. Scope expanded on 2026-10-11. Delivery order:
+Status: M2.5 monitoring and analytics implemented for every engine in §4 (M25-01..08, M25-10; §9–§19); the M25-09 exit audit (§20, 2026-10-12) records what passed and what still needs reference hardware or the live engine matrix. The M4.5 harness is partly implemented (§6–§7). Scope expanded on 2026-10-11. Delivery order:
 finish the current DuckDB host repair, build monitoring and analytics (M2.5),
 then build the database AI harness (M4.5). This document owns the expanded
-FR-ADMIN-03..08 and FR-AI-11..13 scope; [27](27-delivery-plan.md) owns task status. [ADR-0011](adr/0011-performance-monitor.md) is the accepted architecture decision (owner, 2026-10-11), with implementation validation pending. It owns detailed engine sources/grants, counter semantics, budgets, privacy and advisor rules; this document owns product scope and acceptance.
+FR-ADMIN-03..08 and FR-AI-11..13 scope; [27](27-delivery-plan.md) owns task status. [ADR-0011](adr/0011-performance-monitor.md) is the accepted architecture decision (owner, 2026-10-11); its validation results are in §20 and the ADR. It owns detailed engine sources/grants, counter semantics, budgets, privacy and advisor rules; this document owns product scope and acceptance.
 
 ## 1. Product outcome and delivery boundary
 
@@ -63,9 +63,9 @@ negative counters, changed identities and missing intervals.
 
 Collection uses a bounded read-only administrative session and the existing
 SSH/TLS/proxy routes, independently of a user's running query. DuckDB writable
-files must retain their single owning host/session under ADR-0010: queue safe
-reads through that owner once available, or expose Unsupported. Never create a
-hidden second writer or metadata host to implement monitoring.
+files must retain their single owning host/session under ADR-0010: safe reads
+queue through that owner (§19). Never create a hidden second writer or metadata
+host to implement monitoring.
 
 - Default live polling: 5 s; controls Off / 2 / 5 / 10 / 30 / 60 s. The selected
   cadence cannot override ≥ 15 s digest/resource or ≥ 60 s expensive-source
@@ -115,8 +115,8 @@ non-AI UI; it does not create a second collection or reporting implementation.
 
 ## 4. Engine coverage contract
 
-This is the intended product coverage summary, not a shipped capability claim.
-[ADR-0011](adr/0011-performance-monitor.md#data-sources-and-permissions) owns
+Every row below has a collector with integration tests (§9–§19); §20 audits the
+labels. [ADR-0011](adr/0011-performance-monitor.md#data-sources-and-permissions) owns
 the detailed engine/version/source/privilege matrix and official vendor
 references; do not duplicate or weaken it here:
 
@@ -128,7 +128,7 @@ references; do not duplicate or weaken it here:
 | ClickHouse         | Query activity/logs, parts/storage, engine counters and replication where applicable.                                          | Permissions, log configuration, cluster versus node scope and managed-service limits.                   |
 | SQLite/libSQL file | App-observed queries/latency, file/page statistics and supported local engine diagnostics.                                     | No server process list or replication health; never call integrity checks on every tick.                |
 | libSQL remote      | App-observed query/transport health plus explicitly exposed remote diagnostics.                                                | No fabricated remote OS/storage or server metrics.                                                      |
-| DuckDB             | App/host query health and supported engine diagnostics through the owning session after query completion.                                             | Single-writer reservation, unavailable shared-session diagnostics until M2-04b, no server process list. |
+| DuckDB             | Own-session query health and engine diagnostics (database size, memory, temporary files, threads) through the owning session after query completion. | Single-writer reservation; a busy session leaves a gap; no server process list, waits or other processes. |
 
 Each driver publishes a descriptor list with reasons for unsupported metrics.
 Permission loss degrades affected collectors while preserving permitted data;
@@ -227,8 +227,9 @@ scrubbing are tested with loopback mocks; no database context or generation IPC
 is exposed. [23 §10](23-ai-assistant.md#10-implemented-m45-01-api-key-and-local-provider-settings)
 records protocol choices, bounds and manual metadata-only smoke instructions.
 Existing-account/CLI eligibility and isolation remain M45-04; per-connection
-sharing, routing allowlists and context preview are implemented in M45-02 (§7 below), and the harness
-below is still planned. There is no silent alternate-provider/API-billing fallback.
+sharing, routing allowlists and context preview are implemented in M45-02 (§7 below); the
+MCP host, query assistant and read validator are implemented (M45-03/05/08), and the monitoring
+investigation tools, artifacts and schedules (M45-10..12) are still planned. There is no silent alternate-provider/API-billing fallback.
 
 ## 7. Database investigation harness
 
@@ -416,8 +417,8 @@ second activity query. Sample nulls carry explicit unknown/gap/reset states;
 server and selected-database scopes, units and setup guidance accompany samples
 and capabilities. UUID aliases share one profile admission/generation key.
 Statement rankings currently cover the latest valid interval; cumulative mean
-and max-since-reset stay separately labelled. Full-window rankings belong to
-M25-04. Statement coverage includes collector/guard commands where their query
+and max-since-reset stay separately labelled. Full-window rankings were added
+by M25-04 (§11). Statement coverage includes collector/guard commands where their query
 identities cannot be excluded safely.
 
 Evidence and limitations are recorded in [ADR-0011](adr/0011-performance-monitor.md#implemented-m25-0102-evidence).
@@ -455,7 +456,7 @@ Overview, Sessions, Blocking, Top queries, Tables, Indexes, Replication and I/O.
 The header shows scope, live/paused state, sample age and Off/2/5/10/30/60-second
 controls; core continues enforcing the 15/60-second source floors. Closing,
 disconnecting or locking stops collection and disposes the Arrow worker;
-unlocking requires explicit resume. Unsupported engines show a coming state.
+unlocking requires explicit resume. Later slices admit every engine (§12–§16, §19).
 The existing Processes tab and confirmed cancel/kill actions remain in use.
 
 Eleven scalar tiles use bounded SVG trends with gaps for unknown, missing,
@@ -491,7 +492,7 @@ using captured, core-redacted Arrow pages. Source read plus guards p95 was
 11 charts × 300 timestamps over a ten-minute window measured 8.3 ms p95,
 9.3 ms maximum, 16.7 ms frame p95, and no >50 ms reports from the existing dev
 monitor. This is component/Chromium evidence; native WKWebView and mac-low
-reference hardware budgets remain for M25-09. The first PG run failed in an
+reference hardware budgets are not measured yet (§20). The first PG run failed in an
 unrelated custom-hop test and passed on an unmodified rerun.
 
 Vitest covers source and engine capability states, gaps/reset validity,
@@ -590,9 +591,10 @@ mock-session tests. This never installs HypoPG, creates a real index or claims
 measured improvement.
 
 Known gaps: persisted per-statement investigation history is not added; the
-existing default-off local history retains scalar series. Cross-engine
-diagnostics and reference-workload/mac-low exit certification remain M25-07/
-M25-09. A server with HypoPG installed was unavailable for a live what-if
+existing default-off local history retains scalar series. Other engines have
+collectors (§12–§16, §19) but no advisor rules, and Explain/HypoPG from the
+Monitor are PostgreSQL only. Reference-workload/mac-low certification is listed
+as not measured in §20. A server with HypoPG installed was unavailable for a live what-if
 fixture; the isolated path has mock-session coverage.
 
 ## 12. Implemented (M25-07a): MySQL and MariaDB collectors
@@ -637,8 +639,8 @@ threads, InnoDB buffer pool hit ratio, InnoDB rows, temporary disk tables, slow
 queries, aborted connects, deadlocks, applier lag). Integration fixtures on
 native-arm64 MySQL 8.4 and MariaDB 11.4 (Performance Schema on, plus MariaDB's
 default off) and the opt-in overhead benchmark are recorded in ADR-0011. Wider
-live version/provider and reference-load/all-app performance validation remains
-M25-09.
+live version/provider and reference-load/all-app performance validation is not
+measured yet (§20).
 
 ## 13. Implemented (M25-05): incidents and background monitoring
 
@@ -731,7 +733,8 @@ integration fixture runs against native-arm64 Azure SQL Edge (15.x): blocking
 chain, cleared wait statistics, counters, top queries, usage and a login without
 VIEW SERVER STATE. Per-read server time on that fixture is about 8 ms for
 sessions, 15–18 ms for top queries, 5 ms for usage and 2 ms for waits. Live SQL
-Server 2022, Managed Instance and Azure SQL Database validation remains M25-09.
+Server 2022, Managed Instance and Azure SQL Database validation is not measured
+yet (§20).
 
 ## 15. Implemented (M25-07c): ClickHouse collector
 
@@ -791,7 +794,7 @@ over the `default` cluster, and a restricted user. That user has
 `system.processes`/`system.events` only, plus a requested cluster without
 REMOTE. A second run with `OPENROWS_TEST_CLICKHOUSE_QUERY_LOG=OFF` removes
 `query_log` and checks the unavailable state. A live multi-node cluster,
-ClickHouse Cloud and reference-load overhead remain M25-09.
+ClickHouse Cloud and reference-load overhead are not measured yet (§20).
 
 ## 16. Implemented (M25-07d): SQLite and libSQL own-session diagnostics
 
@@ -1007,3 +1010,60 @@ totals. `crates/openrows-driver-host/tests/duckdb_monitor.rs` samples a temp
 DuckDB file idle, during a running query (Gap within the deadline), after
 cancelling it, and after an aborted host (terminal state). Own-query profiling
 through `enable_profiling` and live memory during busy SQL remain follow-up.
+
+## 20. Monitoring exit audit (M25-09)
+
+Audit date 2026-10-12. This section checks M25-01..08 and M25-10 against §8
+items 1–6 and ADR-0011. Items 7–10 belong to the M4.5 harness (M45-09). Code
+was read on the audit branch, and the suites below were run on an Apple Mac mini
+M4 (Mac16,10, 24 GiB, macOS 26.5, native arm64). Performance numbers and the
+commands still to run are in
+[ADR-0011](adr/0011-performance-monitor.md#m25-09-exit-audit--validation-matrix-results).
+"Earlier evidence" means the fixture passed in that slice and was not re-run
+here.
+
+| Area | Criterion | Result | Evidence |
+| --- | --- | --- | --- |
+| Lifecycle | Collection starts only on an explicit Monitor open or resume. Unlock and app launch never restart it. | Pass | `security_unlock` starts nothing. `MonitorTab` sets paused on lock. Monitor tabs are not persisted (`tabStorage.ts`). |
+| Lifecycle | Pause, close, disconnect, profile edit or delete, network change, lock and exit stop collectors and clear the background opt-in. | Pass | `monitor_pause` and `registry::stop_where`; `connection.rs`, `profiles.rs`, `resilient.rs`, `lib.rs` exit hook and `security` lock and idle paths. Lifecycle tests in `openrows-monitor`. |
+| Lifecycle | Reads never overlap and never block the user's query. | Pass | Serial runtime and deadlines (unit tests). DuckDB busy-session gap: `duckdb_monitor.rs` (earlier evidence). |
+| Lifecycle | Incidents are evaluated only for running, unlocked collectors. | Pass | `alerts.rs` lock check; evaluation only from the running collector's event loop. |
+| Permissions | PostgreSQL: restricted role, revoked grant, missing extension and statistics reset are explicit states. | Pass | PG 17.11 monitor fixture, run in this audit. |
+| Permissions | MySQL/MariaDB, SQL Server, ClickHouse, SQLite/libSQL and DuckDB denied or unavailable states. | Pass on tested versions | Earlier evidence: MySQL 8.4, MariaDB 11.4, Azure SQL Edge, ClickHouse 25.3, sqld v0.24.32, temp DuckDB. The wider version matrix is not measured. |
+| Privacy | History stores only allowlisted scalars, with no statement text, rows or credentials. | Pass | Migration 0007 has no text column. `validate` checks names, states and finite values. Store tests (197) passed. Every engine's emitted scalar is on the allowlist. |
+| Privacy | SQL is redacted in core before Arrow, IPC, rings, history and advice. | Pass | `retention_support.rs` normalises query cells before retention and Arrow encoding. Redaction tests in `openrows-monitor`. |
+| Privacy | Logs never contain SQL or server messages. | Pass | The only monitor log line records the error kind of a failed history write. |
+| Privacy | Report export escapes database text, uses no scripts and runs no queries. | Pass | `report/html.ts` CSP `default-src 'none'`. Reports read only shown data, history and incidents. Vitest hostile fixtures. |
+| Board safety | No auto-run on open, import or approval. Unreviewed boards are refused natively, and SQL comes from the store. | Pass | `boards/run.rs` reviewed check and store load; `useBoardRuns`; Vitest no-auto-run tests. |
+| Board safety | Read-only execution, limits, 256 KiB import and unknown-field rejection. | Pass | `protection.rs`, `validate.rs`, `model.rs` with `deny_unknown_fields`. A live-database board run test is not included. |
+| Labels | Own-session boundary text for SQLite/libSQL file, remote libSQL and DuckDB. | Pass | `MonitorOverview.tsx` exact strings. |
+| Labels | Panels match each engine's sources. | Pass | ClickHouse hides Blocking and Indexes. Embedded engines and DuckDB show Overview, Incidents and Own queries only. |
+| Labels | DuckDB shows "Updated after query completion" (ADR-0011 decision 4). | Fixed | The DuckDB overview note did not use this wording; it now starts with it. |
+| Labels | Explain and HypoPG are offered only where they work. | Fixed | Top queries showed **Explain** on every engine, and the native gate let MySQL, SQL Server, ClickHouse, SQLite and libSQL into the PostgreSQL-only diagnostic session. **Explain** is now shown only for PostgreSQL, other engines point to the editor's Explain, and `monitor_explain`/`monitor_hypopg` refuse non-PostgreSQL profiles (`reader::ensure_postgres`, unit-tested). |
+| Performance | 1,000-row analysis p95 ≤ 10 ms, source deadline and retained-bytes caps. | Pass on M4 | ADR-0011 audit table. |
+| Performance | mac-low CPU, all-process footprint, ≤ 1% server overhead, native UI timing. | Not measured | Dev-machine `pgbench` noise exceeds the 1% target. No Monitor-open footprint scenario exists yet. |
+| History | 24 h retention within 50 MiB per connection. | Partial | The caps hold, but at 16 scalars every 5 s the conservative 2 KiB row charge keeps about 133 minutes. Rows are evicted oldest first instead of being downsampled. |
+
+Open gaps, each larger than an audit fix:
+
+1. History downsampling: coarsen old buckets (or charge measured bytes) so that
+   24 h fits within 50 MiB at the default cadence. At-cap writes also take about
+   23 ms under the store lock (ADR-0011 table).
+2. A history batch with an unknown metric name rolls back the whole tick and
+   only logs a warning. Every current engine name is allowlisted; filtering
+   unknown names before the write would make this robust.
+3. Monitor Explain, HypoPG and advisor rules are PostgreSQL only. Other engines
+   have no advisor rules.
+4. The live matrix not run here (PG 12/13/15/16/18, MySQL 5.7/8.0, MariaDB 10.6,
+   SQL Server 2017–2022 and Azure SQL Database, ClickHouse multi-node and Cloud)
+   and the missing PostgreSQL fixtures (managed-provider denial, unloaded
+   extension, replication lag, spill/vacuum, statement reset).
+5. Query Store, Always On, DuckDB `enable_profiling`, `sqlite3_db_status` and
+   Hrana server timings are not implemented. The UI labels them unavailable.
+6. mac-low and reference-workload certification, plus VoiceOver/NVDA and
+   native WKWebView checks.
+
+The M2.5 exit is **not met**. Lifecycle, permission states, privacy, board
+safety and labels pass on the tested versions, with two label defects fixed in
+this audit. The reference-hardware budgets, the history downsampling rule and
+the wider engine matrix remain open.

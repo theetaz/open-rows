@@ -107,3 +107,38 @@ pub(super) fn ensure_engine(engine: openrows_store::profile::Driver) -> Result<(
     };
     Err(IpcError::new(IpcErrorKind::Unsupported, reason))
 }
+
+/// Monitor Explain and `HypoPG` open a `PostgreSQL` diagnostic session; refuse other engines.
+pub(super) fn ensure_postgres(engine: openrows_store::profile::Driver) -> Result<(), IpcError> {
+    if engine == openrows_store::profile::Driver::Postgres {
+        return Ok(());
+    }
+    Err(IpcError::new(
+        IpcErrorKind::Unsupported,
+        "Monitor diagnostics are PostgreSQL only; use the editor's Explain for this engine",
+    ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{IpcErrorKind, ensure_postgres};
+    use openrows_store::profile::Driver;
+
+    #[test]
+    fn monitor_diagnostics_refuse_every_engine_but_postgres() {
+        assert!(ensure_postgres(Driver::Postgres).is_ok());
+        for driver in [
+            Driver::Mysql,
+            Driver::Mariadb,
+            Driver::Sqlserver,
+            Driver::Clickhouse,
+            Driver::Sqlite,
+            Driver::LibsqlFile,
+            Driver::Libsql,
+            Driver::Duckdb,
+        ] {
+            let refused = ensure_postgres(driver).err().map(|error| error.kind);
+            assert_eq!(refused, Some(IpcErrorKind::Unsupported));
+        }
+    }
+}

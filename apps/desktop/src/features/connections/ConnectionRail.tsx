@@ -26,7 +26,7 @@ type RailDatabases = {
   onCloseProfileDatabase?: (id: string, name: string) => void;
   /** Open a database's process list (engines with one only). */
   onProcesses?: ((id: string, name: string) => void) | undefined;
-  /** Open the database Monitor, including explicit unsupported-engine states. */
+  /** Open the database Monitor; every engine has a collector with explicit source states. */
   onMonitor?: ((id: string, name: string) => void) | undefined;
   /** Run a `.sql` file on a database. */
   onRunFile?: ((id: string, name: string) => void) | undefined;

@@ -58,7 +58,7 @@ const OVERVIEWS: Record<EngineDto, EngineOverview> = {
   },
   duckdb: {
     metrics: DUCKDB_METRICS,
-    note: 'Request counters cover statements run from OpenRows editors and grids. Storage, memory, temp and thread values are read on the owning session after the running statement; a busy session leaves a gap.',
+    note: 'Updated after query completion. Request counters cover statements run from OpenRows editors and grids. Storage, memory, temp and thread values are read on the owning session after the running statement; a busy session leaves a gap.',
     boundary: 'Own OpenRows session only — other processes are not visible.',
   },
 };

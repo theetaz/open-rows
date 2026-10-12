@@ -1,6 +1,6 @@
 # 0011 — Database Performance Monitor
 
-- Status: Accepted 2026-10-11 (owner) — validation pending (M25-09)
+- Status: Accepted 2026-10-11 (owner) — M25-09 exit audit recorded 2026-10-12; reference-hardware and live-matrix validation pending (see [M25-09 exit audit](#m25-09-exit-audit--validation-matrix-results))
 - Date: 2026-10-11
 - Deciders: OpenRows maintainer (owner)
 - Requirements: FR-ADMIN-03..08 (P1; M2.5), FR-AI-11..13 (M4.5 integration), NFR-PERF-11, NFR-SEC-08; FR-ADMIN-01, FR-EDIT-07, FR-APP-11, NFR-REL-02/04, NFR-UX-01..03
@@ -16,17 +16,17 @@ A connected database also serves other applications. Its operator needs to see c
 | --- | --- |
 | Process list (#77; FR-ADMIN-01; docs/26 A01–A03; docs/27 M2-15) | [`ProcessesTab.tsx`](../../apps/desktop/src/features/processes/ProcessesTab.tsx), [`processModel.ts`](../../apps/desktop/src/features/processes/processModel.ts) and [`useProcesses.ts`](../../apps/desktop/src/features/processes/useProcesses.ts): filtering/sorting, off/2/5/10 s refresh (5 s default), no overlapping listing, metadata connection. [`processSignals.ts`](../../apps/desktop/src/features/processes/processSignals.ts) supplies capability-gated cancel/kill. Reuse presentation and guarded actions; its current raw-query DTO is not the monitor's privacy contract. |
 | Explain (#86, #96; FR-EDIT-07; M2-06) | [`ExplainView.tsx`](../../apps/desktop/src/features/explain/ExplainView.tsx) and [`PlanFlame.tsx`](../../apps/desktop/src/features/explain/PlanFlame.tsx): tree, hotspots, raw and flame views. [`openrows-explain`](../../crates/openrows-explain/src/command.rs) supports PG/MySQL/MariaDB/SQLite/SQL Server plans; ClickHouse has no equivalent visualiser contract. [`explain/admit.rs`](../../crates/openrows-core/src/explain/admit.rs) currently permits read ANALYZE without confirmation under some policies; this decision requires confirmation for every monitor-initiated measured execution. |
-| Scope and safety | [docs/02](../02-requirements.md#17-administration-fr-admin), [docs/19 M2.5](../19-roadmap.md#m25--database-monitoring-and-analytics) and [docs/26 G07](../26-feature-parity.md#deferred-excluded-and-bounded-alternatives) now plan monitoring and analytics; [docs/28](../28-database-monitoring-and-ai-harness.md) owns the expanded product scope. No slow-query monitor, server resource/memory view or optimisation advisor is implemented. [`safety.rs`](../../crates/openrows-core/src/safety.rs), [`safety/policies.rs`](../../crates/openrows-core/src/safety/policies.rs) and [docs/12](../12-security.md#implemented-m2-22a-connection-safety-and-application-locks) govern proposals and execution (#99). |
-| Engines | [docs/05 matrix](../05-database-drivers.md#4-per-database-strategy): PostgreSQL, MySQL/MariaDB, SQLite, SQL Server, ClickHouse and libSQL (remote/file). DuckDB is hosted work under repair in M2-04a; [ADR-0010](0010-driver-host-process.md#duckdb-file-ownership-and-session-allocation) forbids a second hidden connection for a writable file. Redis and other NoSQL sources need a later specification. |
+| Scope and safety | [docs/02](../02-requirements.md#17-administration-fr-admin), [docs/19 M2.5](../19-roadmap.md#m25--database-monitoring-and-analytics) and [docs/26 G07](../26-feature-parity.md#deferred-excluded-and-bounded-alternatives) now plan monitoring and analytics; [docs/28](../28-database-monitoring-and-ai-harness.md) owns the expanded product scope. When this ADR was accepted no slow-query monitor, server resource/memory view or optimisation advisor existed; M25-01..08 and M25-10 now implement them ([docs/28 §9–§19](../28-database-monitoring-and-ai-harness.md#9-implemented-m25-0102-monitoring-runtime-and-postgresql-backend)). [`safety.rs`](../../crates/openrows-core/src/safety.rs), [`safety/policies.rs`](../../crates/openrows-core/src/safety/policies.rs) and [docs/12](../12-security.md#implemented-m2-22a-connection-safety-and-application-locks) govern proposals and execution (#99). |
+| Engines | [docs/05 matrix](../05-database-drivers.md#4-per-database-strategy): PostgreSQL, MySQL/MariaDB, SQLite, SQL Server, ClickHouse and libSQL (remote/file). DuckDB runs in the driver host (M2-04a/b done) and is monitored through its owning shared session (M25-07e); [ADR-0010](0010-driver-host-process.md#duckdb-file-ownership-and-session-allocation) forbids a second hidden connection for a writable file. Redis and other NoSQL sources need a later specification. |
 
 ## Decision
 
 1. Add a **Monitor** workspace tab per connection, with explicit database/node and visibility scope. Use engine-owned statistics to observe other applications where permitted. Display unsupported, disabled, restricted and stale sources separately from valid zero measurements.
-2. Keep collection, capabilities, counter semantics, sampling and deterministic advice in Tauri-free `crates/`: a planned `openrows-monitor` orchestration/analysis crate, source implementations in driver crates, actor/session ownership in `openrows-core`. The desktop supplies thin typed commands/events, profile policy and UI only. The M25-01/02 backend slice is recorded in the implementation evidence below; later product and engine work remains planned.
+2. Keep collection, capabilities, counter semantics, sampling and deterministic advice in Tauri-free `crates/`: the `openrows-monitor` orchestration/analysis crate, source implementations in driver crates, actor/session ownership in `openrows-core`. The desktop supplies thin typed commands/events, profile policy and UI only. The implementation evidence sections below record each M2.5 slice.
 3. For server engines, own a dedicated read-only monitoring session per connection workspace; never borrow the user's query/transaction session or the existing metadata session. Share one collector between windows/tabs for the same profile, endpoint and credential scope. Switching databases re-probes database-scoped sources, ends the old generation and never merges unrelated scopes. Additional database collectors count against the global limits and require explicit selection.
 4. Embedded engines use **own-session statistics only**: capture counters/profile results through the owning actor and publish observations without a second SQL session. This exception preserves ADR-0010. Do not queue periodic SQL behind a busy embedded query and call it live sampling; show “Updated after query completion”.
 5. Default to bounded memory and no persistence. Default query display is redacted normalised/digest text. Advisor output is a proposal; no collector, rule or refresh executes user SQL, DDL, ANALYZE, VACUUM, instrumentation changes or statistics resets.
-6. Deliver monitoring and analytics at **M2.5 (P1)** immediately after the M2 DuckDB host repair, PostgreSQL first, then the other engines. [docs/28](../28-database-monitoring-and-ai-harness.md) owns charts, boards, alerts and reports; this ADR owns the source, privilege, budget, privacy and advisor contracts. The optional database AI harness follows at **M4.5**, under ADR-0009 and its separately reviewed sharing/tool boundaries. M25-01/02 are partial backend deliveries; docs/27 records the remaining validation.
+6. Deliver monitoring and analytics at **M2.5 (P1)** immediately after the M2 DuckDB host repair, PostgreSQL first, then the other engines. [docs/28](../28-database-monitoring-and-ai-harness.md) owns charts, boards, alerts and reports; this ADR owns the source, privilege, budget, privacy and advisor contracts. The optional database AI harness follows at **M4.5**, under ADR-0009 and its separately reviewed sharing/tool boundaries. docs/27 records task status; M25-01/02 stay partial until their reference-hardware and live-matrix gates pass.
 
 ### Data sources and permissions
 
@@ -148,7 +148,7 @@ Raw source text can contain credentials, personal data, comments, utility litera
 - Operators can see work from other applications where engine permissions/statistics allow it, with explanations for missing data and concrete tuning evidence.
 - Dedicated server sessions preserve query/transaction state; shared collectors, bounded samples and source deadlines bound overhead. Extra connections consume server slots and app memory; existing budgets remain release gates.
 - Engine features, refresh lag, cumulative resets and privacy differ. Capability/coverage states are part of correctness, not optional polish. No guarantee of all short queries, per-query RAM on every engine or exact bloat is made.
-- Embedded own-session capture must integrate with host/actor lifecycle and cannot provide a server-wide substitute. Query-backed boards, alerts and reports are planned in the same M2.5 product scope (docs/28; docs/26 A08–A12/G07), reusing these bounds and privacy rules. External exporters/collectors, NoSQL monitoring and automatic tuning remain separately scoped.
+- Embedded own-session capture must integrate with host/actor lifecycle and cannot provide a server-wide substitute. Query-backed boards, alerts and reports are implemented in the same M2.5 product scope (docs/28 §13, §17, §18; docs/26 A08–A12/G07), reusing these bounds and privacy rules. External exporters/collectors, NoSQL monitoring and automatic tuning remain separately scoped.
 
 ## Alternatives considered
 
@@ -162,7 +162,7 @@ Raw source text can contain credentials, personal data, comments, utility litera
 
 ## Testing and implementation plan
 
-The architecture is accepted; the M25-01/02 backend slice is implemented with validation gaps listed below. The matrix below supplies detailed source/safety gates for [docs/27 M2.5](../27-delivery-plan.md#5a-m25--database-monitoring-and-analytics), which alone owns task status/dependencies. [docs/28 §8](../28-database-monitoring-and-ai-harness.md#8-acceptance-and-verification) adds product/board/report and M4.5 harness acceptance. The matrix remains the full validation contract; the implementation evidence below distinguishes executed tests from pending gates.
+The architecture is accepted; M25-01..08 and M25-10 are implemented, and the M25-09 exit audit below lists each gate's result. The matrix below supplies detailed source/safety gates for [docs/27 M2.5](../27-delivery-plan.md#5a-m25--database-monitoring-and-analytics), which alone owns task status/dependencies. [docs/28 §8](../28-database-monitoring-and-ai-harness.md#8-acceptance-and-verification) adds product/board/report and M4.5 harness acceptance. The matrix remains the full validation contract; the implementation evidence below distinguishes executed tests from pending gates.
 
 | Step | Scope | Done when / evidence required |
 | --- | --- | --- |
@@ -179,7 +179,7 @@ At implementation, disposable fixtures generate external traffic alongside OpenR
 
 ## Owner decisions — 2026-10-11
 
-The owner accepted all ADR-0011 recommended defaults, with the docs/28 placement and expanded scope taking precedence. These decisions bind M2.5; the database AI integration is separately reviewed in M4.5. Validation remains pending.
+The owner accepted all ADR-0011 recommended defaults, with the docs/28 placement and expanded scope taking precedence. These decisions bind M2.5; the database AI integration is separately reviewed in M4.5. The M25-09 exit audit below records partial validation.
 
 1. **Placement and scope — accepted.** Monitoring plus analytics is M2.5 immediately after M2's DuckDB host repair; FR-ADMIN-03..08 are P1. The database AI harness is M4.5 (FR-AI-11..13). ADR-0011 is the architecture decision and docs/28 the product/feature specification.
 2. **Polling and live window — accepted.** 5 s live polling, ≥ 15 s digest/resource and ≥ 60 s expensive sources, adaptive back-off capped at 60 s, 10 min live window; the table above defines source, row, memory and global limits. No background collection by default.
@@ -304,8 +304,8 @@ mac-low aggregate CPU/footprint and matched reference server load. The PG18 I/O
 adapter uses `read_bytes`/`write_bytes` after a column/layout probe; PG16/17 use
 `reads`/`writes × op_bytes`. Older statement reset continuity remains labelled
 best effort. Per-query CPU/memory and latency percentiles are unavailable.
-Statement rankings cover the latest valid sample interval, with full-window
-aggregation deferred to M25-04. Startup SQL is never replayed by the monitor;
+Statement rankings covered the latest valid sample interval in this slice;
+M25-04 added full-window aggregation. Startup SQL is never replayed by the monitor;
 pause/lock requires explicit restart, and profile edits invalidate collection
 until the user reconnects. All samples are in memory only.
 
@@ -393,6 +393,17 @@ grouping) and filter on the `dbid` plan attribute, because ad hoc text has no
 Its `object_name` is padded `nchar`, so suffix matching trims it first. Query
 Store, Always On health and live SQL Server 2022/Azure fixtures remain M25-09.
 
+## Implemented (M25-07c): ClickHouse evidence
+
+[docs/28 §15](../28-database-monitoring-and-ai-harness.md#15-implemented-m25-07c-clickhouse-collector)
+records the sources, guards and fixtures. Every read carries `readonly = 1`,
+`max_execution_time` and read/result caps with `throw` overflow, plus client
+deadline and `KILL QUERY` cancellation; a rejected guard makes the source
+unavailable. Node scope is the default; cluster scope applies only to running
+queries after a successful `clusterAllReplicas` probe. Fixtures pass on
+native-arm64 25.3.9.72 with `query_log` present and removed and with a
+restricted user. Multi-node, ClickHouse Cloud and overhead are not measured.
+
 ## Implemented (M25-07d): SQLite and libSQL evidence
 
 Embedded and remote-libSQL monitoring reads an in-process, own-session ledger
@@ -401,9 +412,9 @@ File ticks are four PRAGMAs, file metadata and the 100-byte WAL-index header
 (both header copies must match), with a 100 ms busy wait on the monitor
 connection; no checkpoint, integrity or quick check is issued. Remote libSQL
 adds a measured `SELECT 1` round trip; server OS/CPU/memory metrics are
-explicitly unavailable. The pinned `just test-libsql` script requests amd64
-emulation on arm64; the M25-07d remote fixture ran the multi-arch
-`libsql-server:v0.24.32` image natively instead.
+explicitly unavailable. The remote fixture runs the multi-arch
+`libsql-server:v0.24.32` image natively; since M2-25, `just test-libsql` no
+longer requests amd64 emulation either.
 
 ## Implemented (M25-07e): DuckDB evidence
 
@@ -519,3 +530,65 @@ cleanup have native mock-session tests. No extension installation, server
 setting changes, provider calls or automatic proposal execution are added.
 A live installed-HypoPG fixture was unavailable. Reference-load/app
 footprint/CPU and mac-low certification remain M25-09.
+
+## M25-09 exit audit — validation matrix results
+
+Audit date 2026-10-12, on an Apple Mac mini M4 (Mac16,10, 24 GiB, macOS 26.5),
+native arm64 only. This is the development machine, not docs/13's mac-low
+reference. [docs/28 §20](../28-database-monitoring-and-ai-harness.md#20-monitoring-exit-audit-m25-09)
+holds the full lifecycle, permission, privacy, board-safety and label table.
+Results against this ADR's budgets:
+
+| Budget (this ADR / NFR-PERF-11) | Result | Evidence |
+| --- | --- | --- |
+| ≤ 1 data query per due source; 5/15/60 s floors | Pass | PG 17.11, 60 s at default cadence: 27 reads (activity 12, database/statements/I/O 4 each, tables/indexes/replication 1 each) |
+| Source deadline ≤ 1 s | Pass | Client read plus guards p95 9.795 ms |
+| 1,000-row analysis p95 ≤ 10 ms | Pass (M4) | Sample ingestion 4.839 ms; advisor 1,000 index rows 3.326 ms (distinct) and 1.632 ms (duplicate) |
+| ≤ 16 MiB retained per monitor | Pass | Retained estimate 429,443 bytes live, 1,621,593 bytes after the 1,000-row case; implementation cap 2 MiB |
+| Mean CPU ≤ 1% of one core over 60 s (mac-low, all processes) | Not certified | Test process (debug build): 0.09 s CPU in 60 s, about 0.15% of one core. Not mac-low, not all app/webview/host processes |
+| Monitor footprint increment ≤ 32 MiB (all processes) | Not measured | Test-process RSS 17,024 → 16,224 KiB is not a physical-footprint increment. `scripts/bench-memory.py` has no Monitor-open scenario yet |
+| Server throughput/latency overhead ≤ 1% (reference workload) | Not certified | See below |
+| Local history 24 h / 50 MiB / 100 MiB | Partial | Caps hold. At 16 scalars per 5 s the conservative 2 KiB row charge keeps only about 133 minutes, so the 24 h range is not reached. History evicts the oldest rows; it does not downsample as this ADR requires |
+| No UI task > 50 ms | Not measured natively | Chromium component evidence (M25-03): 8.3 ms p95 render. History writes run on the backend task, not the UI |
+
+Server overhead attempt: `pgbench -c 4 -j 2` (scale 10, TPC-B-like) in the
+same PostgreSQL 17.11 container while the 60 s collector benchmark ran. An
+unmonitored 60 s run gave 4,335.6 tps (0.923 ms mean latency). The monitored
+window averaged 4,566.8 tps (0.898 ms) and the following unmonitored 30 s
+averaged 5,013.1 tps (0.801 ms). Individual 5 s intervals varied from 3,532
+to 6,269 tps, and the machine's load average was 12–15 from parallel builds.
+This noise is far larger than the 1% target, so the result neither passes nor
+fails. Repeat on idle reference hardware with
+`OPENROWS_BENCH=1 just test-pg 17` and an unmonitored/monitored `pgbench` pair
+of equal length.
+
+Local history timing (`OPENROWS_BENCH=1 cargo test --release -p openrows-store --test monitor_history_bench -- --nocapture`;
+16 points per 5 s tick):
+
+| Operation | p50 | p95 | max |
+| --- | --- | --- | --- |
+| Write, below the 25,600-row connection cap (1,600 ticks) | 0.421 ms | 1.335 ms | 4.507 ms |
+| Write, at the cap (400 ticks) | 22.768 ms | 29.686 ms | 40.794 ms |
+| Read 1 h (20 reads) | 12.272 ms | 18.579 ms | 18.579 ms |
+| Read 6 h | 18.716 ms | 26.477 ms | 26.477 ms |
+| Read 24 h | 19.984 ms | 32.725 ms | 32.725 ms |
+
+At the cap, each write re-counts and window-sorts the profile's rows while it
+holds the store lock, which is about 23 ms per collector event. A debug build
+did not finish 17,280 simulated ticks within nextest's 300 s limit, so only the
+release numbers are recorded.
+
+Not measured here, with the command to run later:
+
+- mac-low CPU and all-process footprint: add a Monitor-open scenario to
+  `scripts/bench-memory.py`, then `just build-app && just bench-memory 3` on the
+  MacBook Air M1 / 8 GB.
+- PostgreSQL 12/13/15/16/18 live suites: `just test-pg <version>`; managed-provider
+  denial, unloaded extension, replication lag, spill/vacuum and statement-reset
+  fixtures still need writing.
+- MySQL 5.7/8.0 and MariaDB 10.6: `just test-mysql mysql:8.0 mariadb:10.6`
+  (MySQL 5.7 has no arm64 image, so it runs only on an x86_64 host).
+- SQL Server 2017/2019/2022 and Azure SQL Database: `just test-mssql` on an
+  x86_64 host (2022 by default); Query Store and Always On are not implemented.
+- ClickHouse multi-node and Cloud: no fixture exists.
+- Native WKWebView UI timing and VoiceOver/NVDA journeys: manual checks.

@@ -21,6 +21,8 @@ type Props = {
   revision: string;
   activity: MonitorTable | undefined;
   initialStatementId?: string | undefined;
+  /** Monitor Explain runs a PostgreSQL diagnostic session; other engines use the editor. */
+  explain?: boolean;
   onSession: (pid: string) => void;
   onEvidence: (link: string) => void;
   onOpenSql: (sql: string) => void;
@@ -122,16 +124,12 @@ function QueryActions(
         >
           Open in editor for review
         </Button>
-        <Button
-          size="sm"
-          disabled={!sql}
-          onClick={() => {
-            if (sql) setReview(sql);
-          }}
-        >
-          Explain
-        </Button>
-        {!sql && (
+        <ExplainAction
+          sql={sql}
+          enabled={props.explain !== false}
+          onReview={setReview}
+        />
+        {!sql && props.explain !== false && (
           <span className={styles.note}>
             Select a statement with safely normalised SQL. Fingerprint-only rows
             cannot be explained.
@@ -154,5 +152,30 @@ function QueryActions(
         </Suspense>
       )}
     </>
+  );
+}
+function ExplainAction(props: {
+  sql: string | null;
+  enabled: boolean;
+  onReview: (sql: string) => void;
+}): React.JSX.Element {
+  const { sql } = props;
+  if (!props.enabled)
+    return (
+      <span className={styles.note}>
+        Explain from the Monitor is PostgreSQL only; use the editor&apos;s
+        Explain for this engine.
+      </span>
+    );
+  return (
+    <Button
+      size="sm"
+      disabled={!sql}
+      onClick={() => {
+        if (sql) props.onReview(sql);
+      }}
+    >
+      Explain
+    </Button>
   );
 }
