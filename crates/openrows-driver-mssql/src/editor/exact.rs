@@ -17,8 +17,8 @@ pub(crate) fn exact_text(quoted: &str, base_type: &str) -> String {
     match base_type {
         "datetime" => format!("CONVERT(NVARCHAR(MAX), {quoted}, 121)"),
         "smalldatetime" => format!("CONVERT(NVARCHAR(MAX), {quoted}, 120)"),
-        // .NET round-trip format: the shortest text that reads back exactly.
-        "float" | "real" => format!("FORMAT({quoted}, 'R')"),
+        // Style 3 is lossless for float/real without requiring server CLR.
+        "float" | "real" => format!("CONVERT(NVARCHAR(MAX), {quoted}, 3)"),
         "money" | "smallmoney" => format!("CONVERT(NVARCHAR(MAX), {quoted}, 2)"),
         "binary" | "varbinary" | "timestamp" => format!("CONVERT(NVARCHAR(MAX), {quoted}, 1)"),
         "image" | "geography" | "geometry" | "hierarchyid" => {
@@ -94,12 +94,13 @@ mod tests {
             &format!("UPDATE [dbo].[t] SET [n] = @P1 WHERE {sql}"),
             &columns,
         );
-        assert!(exact.contains("CONVERT(VARBINARY(MAX), FORMAT([f], 'R'))"));
+        assert!(exact.contains("CONVERT(VARBINARY(MAX), CONVERT(NVARCHAR(MAX), [f], 3))"));
         assert!(!exact.contains("CONVERT(NVARCHAR(MAX), [f])"));
         assert_eq!(
             exact_text("[d]", "datetime"),
             "CONVERT(NVARCHAR(MAX), [d], 121)"
         );
+        assert_eq!(exact_text("[r]", "real"), "CONVERT(NVARCHAR(MAX), [r], 3)");
         assert_eq!(exact_text("[x]", "xml"), "CONVERT(NVARCHAR(MAX), [x])");
     }
 

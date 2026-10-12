@@ -2,6 +2,7 @@
 import { Button } from '@openrows/ui';
 import { EditToolbar } from '../EditToolbar';
 import type { EditBarModel } from '../EditToolbar';
+import { KeySheet } from './KeySheet';
 import { CheckSheet } from './CheckSheet';
 import { ColumnEditor } from './ColumnEditor';
 import { ColumnSheet } from './ColumnSheet';
@@ -177,6 +178,8 @@ function FormSheets({
       return <ConstraintsSheet structure={structure} onClose={onClose} />;
     case 'foreignKey':
       return <ForeignKeySheet structure={structure} onClose={onClose} />;
+    case 'key':
+      return <KeySheet structure={structure} onClose={onClose} />;
     case 'check':
       return <CheckSheet structure={structure} onClose={onClose} />;
     default:

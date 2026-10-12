@@ -163,6 +163,7 @@ export function structureStub(): Record<string, unknown> {
     tableAlter: vi.fn((): Promise<AlterReply> =>
       Promise.resolve({
         kind: 'prepared',
+        transactional: true,
         token: 'review',
         statements: [],
         warnings: [],

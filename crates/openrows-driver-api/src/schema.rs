@@ -5,6 +5,15 @@ mod constraint;
 
 pub use constraint::{Identity, NewCheck, NewForeignKey, ReferentialAction};
 
+/// A primary or unique key to add, with columns in key order.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct NewKey {
+    /// Optional constraint name.
+    pub name: Option<String>,
+    /// Final column names in key order.
+    pub columns: Vec<String>,
+}
+
 /// How a column's value is produced by the server.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum Generated {
@@ -357,6 +366,28 @@ pub enum SchemaChange {
     AddForeignKey(NewForeignKey),
     /// `ADD CONSTRAINT … CHECK`.
     AddCheck(NewCheck),
+    /// Add a primary key to an existing table.
+    AddPrimaryKey(NewKey),
+    /// Add a unique constraint to an existing table.
+    AddUnique(NewKey),
+    /// `PostgreSQL` type conversion using an explicit SQL expression.
+    ColumnTypeUsing {
+        /// Current column name.
+        column: String,
+        /// New SQL type.
+        data_type: String,
+        /// Conversion expression evaluated for each row.
+        expression: String,
+    },
+    /// Build a `PostgreSQL` index outside a transaction.
+    CreateIndexConcurrently(NewIndex),
+    /// Move an existing column; `None` means FIRST (`MySQL`/`MariaDB`).
+    ReorderColumn {
+        /// Current column name.
+        column: String,
+        /// Current name of the preceding column.
+        after: Option<String>,
+    },
     /// `DROP CONSTRAINT` (name).
     DropConstraint(String),
 }

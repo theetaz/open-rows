@@ -46,7 +46,7 @@ for image in "$@"; do
         mysql*) engine=mysql ;;
         *) echo "usage: just test-mysql [mysql:<tag>|mariadb:<tag> ...]" >&2; exit 2 ;;
     esac
-    name="openrows-${engine}-test-$$"
+    name="${OPENROWS_TEST_CONTAINER_PREFIX:-openrows}-${engine}-test-$$"
     names+=("$name")
     docker run --detach --rm --name "$name" --publish 127.0.0.1::3306 \
         --env MYSQL_ROOT_PASSWORD="$password" --env MARIADB_ROOT_PASSWORD="$password" \

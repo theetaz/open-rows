@@ -15,6 +15,27 @@ pub use table::{TableDefinition, TableElement};
 use crate::Dialect;
 use crate::lexer::{Lexer, TokenKind};
 
+/// Whether `PostgreSQL` text is exactly one conversion expression.
+#[must_use]
+pub fn valid_using_expression(sql: &str) -> bool {
+    use sqlparser::{dialect::PostgreSqlDialect, parser::Parser, tokenizer::Token};
+    if sql.trim().is_empty() || sql.len() > 65_536 || sql.contains('\0') {
+        return false;
+    }
+    if Lexer::new(sql, Dialect::Postgres)
+        .any(|token| matches!(token.kind, TokenKind::LineComment | TokenKind::BlockComment))
+    {
+        return false;
+    }
+    let Ok(mut parser) = Parser::new(&PostgreSqlDialect {})
+        .with_recursion_limit(64)
+        .try_with_sql(sql)
+    else {
+        return false;
+    };
+    parser.parse_expr().is_ok() && parser.peek_token().token == Token::EOF
+}
+
 /// Longest accepted type name.
 const MAX_TYPE: usize = 200;
 

@@ -608,3 +608,17 @@ The hosted proxy now advertises Cancel, BindParameters, Schemas, Catalog, RowEdi
 
 Tests: the hosted conformance macro passes all ten groups with Metadata (including macro and sequence fixtures) and Edits now running; `duckdb_facets` covers transaction tracking, catalog reads inside an open transaction, edit refusal and keyless tables; a core unit test covers facet calls on sessions without facets and after close.
 
+
+### Structure options and lifecycle conformance (M2-07 / M2-08)
+
+| Option | PostgreSQL | MySQL/MariaDB | SQLite | SQL Server |
+| --- | --- | --- | --- | --- |
+| Add primary / unique constraint | Yes | Yes | Previewed transactional rebuild | Yes |
+| Explicit USING conversion | Yes | Hidden | Hidden | Hidden |
+| Concurrent index build | Alone, outside a transaction | Hidden | Hidden | Hidden |
+| Column FIRST / AFTER | Hidden: safe rebuild unavailable | Yes; stored clauses preserved | Hidden: safe reorder rebuild unavailable | Hidden: safe rebuild unavailable |
+| Database rename | Yes, home connection | Unsupported | Unsupported | Yes, on master; exclusive-access warning |
+
+`KeyEditing`, `TypeUsing`, `ConcurrentIndexes` and `ColumnReordering` gate the structure forms and are validated again by the generators. The review states whether the plan can roll back. Lifecycle conformance tests now verify triggers, routine definitions and database listings, plus capability-gated rename and advanced structure operations. Container recipes and the SSH test harness accept `OPENROWS_TEST_CONTAINER_PREFIX` for isolated test names on shared Docker; all ports remain random and loopback-only.
+
+SQL Server float/real edit snapshots and guards use lossless `CONVERT` style 3, avoiding CLR-dependent `FORMAT` on Azure SQL Edge. Both sides use the same exact text; the integration test rejects an intervening change to the adjacent float value without updating the row. [Microsoft conversion styles](https://learn.microsoft.com/en-us/sql/t-sql/functions/cast-and-convert-transact-sql?view=sql-server-ver17#float-and-real-styles).

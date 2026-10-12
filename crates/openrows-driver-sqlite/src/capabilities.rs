@@ -23,6 +23,7 @@ pub(crate) const CAPABILITIES: Capabilities = Capabilities {
         Feature::SchemaFingerprint,
         Feature::BulkLoad,
         Feature::TableLifecycle,
+        Feature::KeyEditing,
         Feature::ViewEditing,
         Feature::TriggerEditing,
         Feature::ForeignKeyEditing,

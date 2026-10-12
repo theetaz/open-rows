@@ -34,6 +34,7 @@ pub(crate) fn alter_sql(
     changes: &[SchemaChange],
 ) -> Result<AlterPlan, AlterError> {
     let staged = StagedChanges::stage(target, changes, IndexDrops::NotConstraints)?;
+    openrows_driver_api::structure::validate_options(&staged, Dialect::Sqlite, changes.len())?;
     unsupported(&staged)?;
     let mut plan = Plan {
         target,
@@ -276,3 +277,7 @@ impl Plan<'_> {
 #[cfg(test)]
 #[path = "ddl_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "structure_options_tests.rs"]
+mod option_tests;

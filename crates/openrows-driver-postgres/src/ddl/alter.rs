@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-//! A staged structure change set as ordered DDL for one transaction.
+//! Ordered structure DDL, transactional except for concurrent index builds.
 //!
 //! Columns are named by their current catalog name. Statements run in this
 //! order so each refers to names that exist at that point: drop
@@ -26,6 +26,20 @@ pub fn alter_sql(
     changes: &[SchemaChange],
 ) -> Result<AlterPlan, AlterError> {
     let staged = StagedChanges::stage(target, changes, IndexDrops::NotConstraints)?;
+    openrows_driver_api::structure::validate_options(
+        &staged,
+        openrows_sql::Dialect::Postgres,
+        changes.len(),
+    )?;
+    if !staged.concurrent_indexes.is_empty()
+        && target
+            .detail
+            .info
+            .as_ref()
+            .is_some_and(|i| i.kind == openrows_driver_api::schema::RelationKind::PartitionedTable)
+    {
+        return Err(AlterError::Unsupported("PostgreSQL cannot build an index concurrently on a partitioned parent; build indexes on individual partitions instead.".into()));
+    }
     let mut plan = Plan {
         relation: relation(target.schema, target.table)?,
         schema: target.schema,
@@ -135,6 +149,11 @@ impl Plan<'_> {
         if let Some(collation) = edits.collation {
             action.push_str(&keys::collate(collation.charset, collation.collation)?);
         }
+        if let Some(expression) = edits.using_expression {
+            action.push_str(" USING (");
+            action.push_str(expression);
+            action.push(')');
+        }
         self.alter(&action);
         if edits.data_type.is_some() {
             self.warn(format!(
@@ -214,6 +233,14 @@ impl Plan<'_> {
             let sql = keys::create_index(&self.relation, index)?;
             self.out.statements.push(sql);
         }
+        for index in &staged.concurrent_indexes {
+            let sql = keys::create_index(&self.relation, index)?;
+            self.out
+                .statements
+                .push(sql.replacen("INDEX ", "INDEX CONCURRENTLY ", 1));
+            self.out.run = openrows_driver_api::structure::AlterRun::Autocommit;
+            self.warn("CREATE INDEX CONCURRENTLY runs outside a transaction and permits writes. Failure may leave an invalid index; inspect and drop it before retrying.".into());
+        }
         if !staged.index_adds.is_empty() {
             self.warn("CREATE INDEX blocks writes to the table while it builds.".to_owned());
         }
@@ -221,6 +248,17 @@ impl Plan<'_> {
     }
 
     fn constraints(&mut self, staged: &StagedChanges<'_>) -> Result<(), AlterError> {
+        for (keys, primary) in [(&staged.primary_keys, true), (&staged.unique_keys, false)] {
+            for key in keys {
+                let sql = openrows_driver_api::structure::key_sql(
+                    key,
+                    primary,
+                    openrows_sql::Dialect::Postgres,
+                )?;
+                self.alter(&format!("ADD {sql}"));
+                self.warn("Adding a key scans and locks the table; duplicate values or NULL primary-key values cause failure.".to_owned());
+            }
+        }
         for key in &staged.foreign_keys {
             let clause = keys::foreign_key(key, self.schema)?;
             self.alter(&format!("ADD {clause}"));
@@ -258,3 +296,7 @@ impl Plan<'_> {
 #[cfg(test)]
 #[path = "alter_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "structure_options_tests.rs"]
+mod option_tests;

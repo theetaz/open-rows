@@ -29,6 +29,8 @@ pub(crate) const CAPABILITIES: Capabilities = Capabilities {
         Feature::SchemaFingerprint,
         Feature::ProcessList,
         Feature::TableLifecycle,
+        Feature::KeyEditing,
+        Feature::DatabaseRename,
         Feature::ViewEditing,
         Feature::TriggerEditing,
         Feature::RoutineEditing,

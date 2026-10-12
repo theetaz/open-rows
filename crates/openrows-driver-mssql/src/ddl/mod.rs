@@ -45,6 +45,11 @@ pub(crate) fn alter_sql(
     changes: &[SchemaChange],
 ) -> Result<AlterPlan, AlterError> {
     let staged = StagedChanges::stage(target, changes, IndexDrops::NotConstraints)?;
+    openrows_driver_api::structure::validate_options(
+        &staged,
+        openrows_sql::Dialect::SqlServer,
+        changes.len(),
+    )?;
     let relation = Relation {
         schema: target.schema,
         table: target.table,
@@ -59,13 +64,17 @@ pub(crate) fn alter_sql(
         out: AlterPlan::default(),
     };
     plan.drops(&staged)?;
-    for column in &target.detail.columns {
-        if let Some(edits) = staged.columns.get(column.name.as_str()) {
-            plan.column(column, edits)?;
-        }
-    }
+    plan.existing_columns(target.detail, &staged)?;
     for column in &staged.adds {
-        plan.add_column(column)?;
+        let mut column = (*column).clone();
+        if staged
+            .primary_keys
+            .iter()
+            .any(|key| key.columns.contains(&column.name))
+        {
+            column.nullable = false;
+        }
+        plan.add_column(&column)?;
     }
     plan.renames(target.detail, &staged)?;
     for index in &staged.index_adds {
@@ -135,6 +144,25 @@ impl Plan<'_> {
         if let Some(name) = self.clauses(column).default_constraint {
             let statement = format!("{} DROP CONSTRAINT {}", self.alter(), checked(&name)?);
             self.push(statement);
+        }
+        Ok(())
+    }
+
+    fn existing_columns(
+        &mut self,
+        detail: &TableDetail,
+        staged: &StagedChanges<'_>,
+    ) -> Result<(), AlterError> {
+        for column in &detail.columns {
+            let chosen = staged.columns.get(column.name.as_str());
+            let mut edits = chosen.copied().unwrap_or_default();
+            let primary = column.nullable && staged.primary_column(&column.name);
+            if primary {
+                edits.nullable = Some(false);
+            }
+            if chosen.is_some() || primary {
+                self.column(column, &edits)?;
+            }
         }
         Ok(())
     }
@@ -263,6 +291,17 @@ impl Plan<'_> {
 
     /// Foreign keys and checks, on the final column names.
     fn constraints(&mut self, staged: &StagedChanges<'_>) -> Result<(), AlterError> {
+        for (keys, primary) in [(&staged.primary_keys, true), (&staged.unique_keys, false)] {
+            for key in keys {
+                let sql = openrows_driver_api::structure::key_sql(
+                    key,
+                    primary,
+                    openrows_sql::Dialect::SqlServer,
+                )?;
+                self.push(format!("{} ADD {sql}", self.alter()));
+                self.warn("Adding a key scans and locks the table; duplicate values or NULL primary-key values cause failure.".to_owned());
+            }
+        }
         for key in &staged.foreign_keys {
             let statement = format!("{} ADD {}", self.alter(), foreign_key_spec(key)?);
             self.push(statement);
@@ -314,3 +353,7 @@ impl Plan<'_> {
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "structure_options_tests.rs"]
+mod option_tests;

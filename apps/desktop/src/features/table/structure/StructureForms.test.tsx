@@ -8,6 +8,8 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
+// Load the lazy table module before interactions so transform time is not UI latency.
+import '../TableTab';
 import { ThemeProvider } from '@openrows/ui';
 import { tableAlterPreview } from '@openrows/ipc';
 import type { SchemaChangeDto } from '@openrows/ipc';
@@ -299,4 +301,127 @@ it('opens the trigger editors from the triggers sheet', async () => {
     null,
     false,
   );
+});
+
+it('previews and stages ordered unique and primary key constraints', async () => {
+  const user = await structure();
+  await user.click(screen.getByRole('button', { name: 'Constraints' }));
+  await user.click(screen.getByRole('button', { name: 'Add key…' }));
+  const sheet = screen.getByRole('dialog', { name: 'Add key constraint' });
+  await user.type(
+    within(sheet).getByRole('textbox', { name: 'Name' }),
+    'name_key',
+  );
+  await user.click(within(sheet).getByRole('checkbox', { name: 'name' }));
+  await user.click(
+    within(sheet).getByRole('checkbox', { name: 'customer_id' }),
+  );
+  await waitFor(() => {
+    expect(previewed()).toContainEqual({
+      kind: 'addUnique',
+      key: { name: 'name_key', columns: ['name', 'customer_id'] },
+    });
+  });
+  await user.selectOptions(
+    within(sheet).getByRole('combobox', { name: 'Constraint' }),
+    'addPrimaryKey',
+  );
+  await waitFor(() => {
+    expect(previewed()).toContainEqual({
+      kind: 'addPrimaryKey',
+      key: { name: 'name_key', columns: ['name', 'customer_id'] },
+    });
+  });
+  await user.click(within(sheet).getByRole('button', { name: 'Stage key' }));
+  expect(screen.getByText('1 staged structure change')).toBeVisible();
+});
+
+it('previews explicit PostgreSQL conversion and explains unavailable reordering', async () => {
+  const user = await structure();
+  fireEvent.contextMenu(within(rowOf('name')).getByText('text'));
+  await user.click(screen.getByRole('menuitem', { name: 'Edit column…' }));
+  const sheet = screen.getByRole('dialog', { name: 'Edit column name' });
+  expect(
+    within(sheet).queryByRole('combobox', { name: 'Position' }),
+  ).not.toBeInTheDocument();
+  expect(
+    within(sheet).getByText(/Column reordering is unavailable/),
+  ).toBeVisible();
+  const type = within(sheet).getByRole('combobox', { name: 'Type' });
+  await user.clear(type);
+  await user.type(type, 'integer');
+  await user.type(
+    within(sheet).getByRole('textbox', { name: 'USING conversion expression' }),
+    'length(name)',
+  );
+  await waitFor(() => {
+    expect(previewed()).toEqual([
+      {
+        kind: 'columnTypeUsing',
+        column: 'name',
+        dataType: 'integer',
+        expression: 'length(name)',
+      },
+    ]);
+  });
+});
+
+it('previews a concurrent index as a separate nontransactional change', async () => {
+  const user = await structure();
+  await user.click(screen.getByRole('radio', { name: 'Index' }));
+  await user.click(screen.getByRole('button', { name: /Add index/ }));
+  const sheet = screen.getByRole('dialog', { name: 'Add index' });
+  await user.click(within(sheet).getByRole('checkbox', { name: 'name' }));
+  await user.click(
+    within(sheet).getByRole('checkbox', { name: 'Build concurrently' }),
+  );
+  await waitFor(() => {
+    expect(previewed()).toContainEqual({
+      kind: 'createIndexConcurrently',
+      index: {
+        name: null,
+        columns: ['name'],
+        unique: false,
+        method: 'btree',
+        descending: [],
+        predicate: null,
+      },
+    });
+  });
+  expect(within(sheet).getByText(/outside a transaction/)).toBeVisible();
+});
+
+it('removes an earlier column move when Keep position is selected', async () => {
+  connection.objects.columnReordering = true;
+  try {
+    const user = await structure();
+    const edit = async (): Promise<HTMLElement> => {
+      fireEvent.contextMenu(within(rowOf('name')).getByText('text'));
+      await user.click(screen.getByRole('menuitem', { name: 'Edit column…' }));
+      return screen.getByRole('dialog', { name: 'Edit column name' });
+    };
+    let sheet = await edit();
+    await user.selectOptions(
+      within(sheet).getByRole('combobox', { name: 'Position' }),
+      'first',
+    );
+    await user.click(
+      within(sheet).getByRole('button', { name: 'Stage changes' }),
+    );
+    expect(screen.getByText('1 staged structure change')).toBeVisible();
+    sheet = await edit();
+    await user.selectOptions(
+      within(sheet).getByRole('combobox', { name: 'Position' }),
+      '',
+    );
+    expect(within(sheet).getByText('Nothing to change yet.')).toBeVisible();
+    await user.click(
+      within(sheet).getByRole('button', { name: 'Stage changes' }),
+    );
+    expect(
+      screen.queryByText('1 staged structure change'),
+    ).not.toBeInTheDocument();
+  } finally {
+    connection.objects.columnReordering = false;
+  }
 });

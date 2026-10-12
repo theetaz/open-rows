@@ -371,7 +371,7 @@ export const commands = {
 	tableDetail: (target: TableTarget) => typedError<TableDetailDto, IpcError>(__TAURI_INVOKE("table_detail", { target })),
 	/**
 	 *  Without a matching `confirmToken`, return the generated DDL to review;
-	 *  with it (and the typed table name when asked), run it in one transaction.
+	 *  with it (and the typed table name when asked), execute the reviewed plan.
 	 */
 	tableAlter: (request: AlterRequest) => typedError<AlterReply, IpcError>(__TAURI_INVOKE("table_alter", { request })),
 	/**
@@ -643,7 +643,7 @@ export type AlterPreviewDto = {
 };
 
 /**  The generated DDL to review, or the committed result. */
-export type AlterReply = { kind: "prepared"; token: string; statements: string[]; warnings: string[]; destructive: boolean;
+export type AlterReply = { kind: "prepared"; token: string; statements: string[]; warnings: string[]; destructive: boolean; transactional: boolean;
 /**
  *  Name to type before committing (destructive changes on a
  *  production or confirm-writes connection).
@@ -2357,6 +2357,12 @@ export type NewIndexDto = {
 	predicate: string | null,
 };
 
+/**  A key constraint added to an existing table. */
+export type NewKeyDto = {
+	name: string | null,
+	columns: string[],
+};
+
 /**  The definition of a new table. */
 export type NewTableDto = {
 	columns: NewColumnDto[],
@@ -2412,6 +2418,10 @@ export type ObjectFeaturesDto = {
 	charsets: boolean,
 	identity: boolean,
 	partialIndexes: boolean,
+	keys: boolean,
+	typeUsing: boolean,
+	concurrentIndexes: boolean,
+	columnReordering: boolean,
 };
 
 /**  Identity of one object, including the routine overload. */
@@ -3186,7 +3196,7 @@ export type SchemaChangeDto = { kind: "renameTable"; name: string } | { kind: "t
 /**  Key columns sorted descending. */
 descending?: string[];
 /**  Partial-index predicate. */
-predicate?: string | null } | { kind: "dropIndex"; name: string } | { kind: "columnIdentity"; column: string; identity: IdentityDto } | { kind: "columnCollation"; column: string; charset: string | null; collation: string | null } | { kind: "addForeignKey"; key: NewForeignKeyDto } | { kind: "addCheck"; check: NewCheckDto } | { kind: "dropConstraint"; name: string };
+predicate?: string | null } | { kind: "dropIndex"; name: string } | { kind: "columnIdentity"; column: string; identity: IdentityDto } | { kind: "columnCollation"; column: string; charset: string | null; collation: string | null } | { kind: "addForeignKey"; key: NewForeignKeyDto } | { kind: "addCheck"; check: NewCheckDto } | { kind: "addPrimaryKey"; key: NewKeyDto } | { kind: "addUnique"; key: NewKeyDto } | { kind: "columnTypeUsing"; column: string; dataType: string; expression: string } | { kind: "createIndexConcurrently"; index: NewIndexDto } | { kind: "reorderColumn"; column: string; after: string | null } | { kind: "dropConstraint"; name: string };
 
 /**
  *  Tables and foreign keys of a schema; `truncated` when it has more than

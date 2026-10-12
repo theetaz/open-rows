@@ -21,7 +21,12 @@ export function IndexSheet({
   onClose: () => void;
 }): React.JSX.Element {
   const [draft, setDraft] = useState(emptyIndex);
-  const problem = indexProblem(draft);
+  const [concurrent, setConcurrent] = useState(false);
+  const problem =
+    indexProblem(draft) ??
+    (concurrent && structure.schema.history.current.length
+      ? 'Commit or discard other changes before staging a concurrent index.'
+      : null);
   return (
     <StageSheet
       structure={structure}
@@ -31,14 +36,37 @@ export function IndexSheet({
           ? null
           : {
               kind: 'stage',
-              changes: [{ kind: 'createIndex', ...cleanIndex(draft) }],
+              changes: [
+                concurrent
+                  ? {
+                      kind: 'createIndexConcurrently',
+                      index: cleanIndex(draft),
+                    }
+                  : { kind: 'createIndex', ...cleanIndex(draft) },
+              ],
             }
       }
       problem={problem}
       stageLabel="Stage index"
-      note="The index is built when you commit; building blocks writes to the table until it finishes."
+      note={
+        concurrent
+          ? 'The concurrent index runs alone outside a transaction; failure may leave an invalid index.'
+          : 'The index is built when you commit; building blocks writes to the table until it finishes.'
+      }
       onClose={onClose}
     >
+      {structure.features.concurrentIndexes && (
+        <label>
+          <input
+            type="checkbox"
+            checked={concurrent}
+            onChange={(event) => {
+              setConcurrent(event.target.checked);
+            }}
+          />
+          Build concurrently
+        </label>
+      )}
       <IndexFields
         draft={draft}
         onChange={setDraft}

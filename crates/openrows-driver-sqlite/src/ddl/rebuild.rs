@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 //! The table rebuild for changes `ALTER TABLE` cannot make in `SQLite`.
+#[path = "primary.rs"]
+mod primary;
 use super::constraints;
 use super::{DIALECT, Plan, collation_name, data_type, default_sql, new_column, quote, relation};
 use openrows_driver_api::schema::DefaultValue;
 use openrows_driver_api::schema::{Generated, NewColumn, TableDetail};
 use openrows_driver_api::structure::{AlterError, ColumnEdits, StagedChanges};
 use openrows_sql::ddl::{ColumnDefinition, TableDefinition, TableElement, qualify_created_name};
+use primary::validate_primary_rows;
 
 /// Scope `SQLite`'s pre-3.26 rename behaviour to the staging table's rename.
 pub(crate) const LEGACY_RENAME_ON: &str = "PRAGMA legacy_alter_table = ON";
@@ -19,6 +22,8 @@ pub(super) fn needed(detail: &TableDetail, staged: &StagedChanges<'_>) -> bool {
     staged.columns.values().any(redefines)
         || staged.drops.iter().any(|name| constrained(detail, name))
         || staged.adds.iter().any(|column| !addable(column))
+        || !staged.primary_keys.is_empty()
+        || !staged.unique_keys.is_empty()
         || !staged.foreign_keys.is_empty()
         || !staged.checks.is_empty()
         || !staged.constraint_drops.is_empty()
@@ -74,6 +79,7 @@ pub(super) fn write(plan: &mut Plan<'_>) -> Result<(), AlterError> {
     };
     let current = plan.relation()?;
     let copied = copied_columns(target.detail, staged)?;
+    validate_primary_rows(plan)?;
     plan.push(table.render());
     plan.push(format!(
         "INSERT INTO {staging} ({copied}) SELECT {copied} FROM {current}"
@@ -118,17 +124,34 @@ fn elements(
             continue;
         }
         let mut element = element.clone();
-        if let Some(edits) = staged.columns.get(name).filter(|edits| redefines(edits)) {
+        let mut edits = staged.columns.get(name).copied().unwrap_or_default();
+        let final_name = edits.rename.unwrap_or(name);
+        if staged
+            .primary_keys
+            .iter()
+            .any(|key| key.columns.iter().any(|c| c == final_name))
+        {
+            edits.nullable = Some(false);
+        }
+        if redefines(&edits) {
             let (leading, body, trailing) = element.parts(DIALECT);
-            let text = format!("{leading}{}{trailing}", redefine(plan, name, body, edits)?);
+            let text = format!("{leading}{}{trailing}", redefine(plan, name, body, &edits)?);
             element.text = text;
         }
         elements.push(element);
         after_columns = elements.len();
     }
     for column in &staged.adds {
+        let mut column = (*column).clone();
+        if staged
+            .primary_keys
+            .iter()
+            .any(|key| key.columns.contains(&column.name))
+        {
+            column.nullable = false;
+        }
         let mut added = TableElement {
-            text: format!("\n    {}", new_column(column)?),
+            text: format!("\n    {}", new_column(&column)?),
             column: Some(column.name.clone()),
         };
         // At the end of the list the closing line break moves to the new column.
@@ -165,6 +188,7 @@ fn table_constraints(
         ));
     }
     let mut added = Vec::new();
+    primary::append_keys(plan, &mut added)?;
     for key in &staged.foreign_keys {
         added.push(constraints::foreign_key(key)?);
     }

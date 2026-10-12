@@ -24,10 +24,15 @@ function changeKey(change: SchemaChangeDto): string | null {
       return 'table:comment';
     case 'dropIndex':
       return `dropIndex:${change.name}`;
+    case 'columnTypeUsing':
+      return `columnType:${change.column}`;
     case 'dropConstraint':
       return `dropConstraint:${change.name}`;
     case 'addColumn':
     case 'createIndex':
+    case 'createIndexConcurrently':
+    case 'addPrimaryKey':
+    case 'addUnique':
     case 'addForeignKey':
     case 'addCheck':
       return null;
@@ -83,6 +88,8 @@ function isNoop(change: SchemaChangeDto, base: SchemaBase): boolean {
       return comment(change.comment) === column.comment;
     case 'columnIdentity':
       return change.identity === identityOf(column.generated);
+    case 'columnTypeUsing':
+    case 'reorderColumn':
     case 'columnCollation':
       return false;
   }
@@ -169,6 +176,10 @@ function describeColumn(change: ColumnChange): string {
   switch (change.kind) {
     case 'renameColumn':
       return `Rename column ${change.column} to ${change.name}`;
+    case 'columnTypeUsing':
+      return `Convert ${change.column} to ${change.dataType} USING (${change.expression})`;
+    case 'reorderColumn':
+      return `Move ${change.column} ${change.after === null ? 'first' : `after ${change.after}`}`;
     case 'columnType':
       return `Change type of ${change.column} to ${change.dataType}`;
     case 'columnNullable':
@@ -200,6 +211,36 @@ export function describe(change: SchemaChangeDto): string {
       return `Create index ${change.name ?? ''} on ${change.columns.join(', ')}`;
     case 'dropIndex':
       return `Delete index ${change.name}`;
+    case 'addPrimaryKey':
+    case 'addUnique':
+    case 'createIndexConcurrently':
+    case 'addForeignKey':
+    case 'addCheck':
+    case 'dropConstraint':
+      return describeConstraint(change);
+  }
+}
+
+function describeConstraint(
+  change: Extract<
+    SchemaChangeDto,
+    {
+      kind:
+        | 'addPrimaryKey'
+        | 'addUnique'
+        | 'createIndexConcurrently'
+        | 'addForeignKey'
+        | 'addCheck'
+        | 'dropConstraint';
+    }
+  >,
+): string {
+  switch (change.kind) {
+    case 'addPrimaryKey':
+    case 'addUnique':
+      return `Add ${change.kind === 'addPrimaryKey' ? 'primary key' : 'unique constraint'} (${change.key.columns.join(', ')})`;
+    case 'createIndexConcurrently':
+      return `Create index ${change.index.name ?? ''} concurrently`;
     case 'addForeignKey':
       return `Add foreign key ${change.key.name ?? ''} → ${change.key.target.table}`;
     case 'addCheck':

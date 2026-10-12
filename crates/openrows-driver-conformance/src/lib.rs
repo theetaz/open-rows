@@ -18,7 +18,7 @@
 //! | [`Group::Metadata`] | `Catalog` | The fixture database, schema, table and view are listed with the right kinds; the search index finds them; columns come back in order with types, nullability and the primary key. |
 //! | [`Group::Structure`] | `StructureChanges` | A generated change set (type change, column rename, added column with a default, new index) commits through `commit_ddl` and the table reads back as staged with its row intact; an unknown column is refused before any SQL. |
 //! | [`Group::Edits`] | `RowEdits` | The row key is discovered; snapshots are exact text; generated insert/update/delete commit atomically; a stale guard rolls the whole set back with `40001`; with `TransactionalDdl`, a failing DDL set leaves nothing behind. |
-//! | [`Group::Lifecycle`] | `TableLifecycle` | A table created with `Driver::object_sql`, an index created and dropped with `Driver::alter_sql`, and a view created over the table are listed by the catalog after `commit_ddl` and gone after their drops; a view over a `DELETE` is refused before any SQL runs. |
+//! | [`Group::Lifecycle`] | `TableLifecycle` | A table created with `Driver::object_sql`, an index created and dropped with `Driver::alter_sql`, and a view created over the table are listed by the catalog after `commit_ddl` and gone after their drops; capability-gated key enforcement, USING conversion, concurrent indexes, column positions, triggers, routine definitions and database create/rename/drop are verified; a view over a `DELETE` is refused before any SQL runs. |
 //! | [`Group::Processes`] | `ProcessList` | The listing connection appears exactly once, marked current, with its own process id; a sleeping statement on a second connection is listed with its query text, and cancelling it from the first ends it within seconds with the dialect's cancel SQLSTATE while its session stays usable (SQL Server, which cannot cancel another session's statement, refuses with `Unsupported`); terminating the second connection ends it; signalling a process that is gone is a `Server` error `42704`. |
 //!
 //! A test crate states how to reach its engine and invokes
@@ -33,12 +33,15 @@ mod dialect;
 mod edits;
 mod errors;
 mod lifecycle;
+mod lifecycle_databases;
+mod lifecycle_modules;
 mod metadata;
 mod metadata_objects;
 mod processes;
 mod sink;
 mod streaming;
 mod structure;
+mod structure_options;
 mod types;
 
 use openrows_driver_api::{ConnectRequest, ConnectTrace, Connection, Driver, DriverError, Feature};

@@ -93,6 +93,14 @@ pub enum Feature {
     IdentityColumns,
     /// Indexes can have a `WHERE` predicate.
     PartialIndexes,
+    /// Add primary and unique constraints to an existing table.
+    KeyEditing,
+    /// Explicit USING expressions for column type conversion.
+    TypeUsing,
+    /// Build indexes without blocking writes, outside a transaction.
+    ConcurrentIndexes,
+    /// Move columns with FIRST/AFTER, preserving their definition.
+    ColumnReordering,
     /// User-defined types can be listed and inspected.
     Types,
     /// Installed extensions can be listed and inspected.
@@ -103,7 +111,7 @@ pub enum Feature {
 
 impl Feature {
     /// Every feature, in documentation order.
-    pub const ALL: [Self; 32] = [
+    pub const ALL: [Self; 36] = [
         Self::Cancel,
         Self::BindParameters,
         Self::MultipleDatabases,
@@ -133,6 +141,10 @@ impl Feature {
         Self::ColumnCharset,
         Self::IdentityColumns,
         Self::PartialIndexes,
+        Self::KeyEditing,
+        Self::TypeUsing,
+        Self::ConcurrentIndexes,
+        Self::ColumnReordering,
         Self::Types,
         Self::Extensions,
         Self::Roles,
@@ -185,6 +197,6 @@ mod tests {
             ..FILE
         };
         assert!(!no_catalog.lists(ObjectKind::Table));
-        assert_eq!(Feature::ALL.len(), 32);
+        assert_eq!(Feature::ALL.len(), 36);
     }
 }

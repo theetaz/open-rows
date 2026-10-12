@@ -51,7 +51,11 @@ pub(crate) async fn table_alter_preview(
         (target.schema.clone(), target.table.clone()),
     )
     .await?;
-    let changes: Vec<SchemaChange> = changes.iter().map(Into::into).collect();
+    let changes: Vec<SchemaChange> = changes
+        .iter()
+        .map(SchemaChange::try_from)
+        .collect::<Result<_, _>>()
+        .map_err(|error| IpcError::invalid(error.to_string()))?;
     let plan = driver
         .alter_sql(
             &AlterTable {

@@ -7,8 +7,8 @@
 use openrows_driver_api::schema::{
     DefaultValue, IndexMethod, NewColumn, NewIndex, SchemaChange, TableDetail,
 };
-use openrows_driver_api::structure::AlterTable;
-use openrows_driver_api::{Connection, catalog, editor};
+use openrows_driver_api::structure::{AlterTable, execute_plan};
+use openrows_driver_api::{Connection, catalog};
 
 use crate::dialect::create_table;
 use crate::sink::{query, run_all};
@@ -95,7 +95,7 @@ async fn alter(
         .driver
         .alter_sql(&place(&before), &changes(&index))
         .map_err(|error| Failure::Contract(format!("alter_sql: {error}")))?;
-    editor(connection)?.commit_ddl(&plan.statements).await?;
+    execute_plan(connection, &plan).await?;
     let after = detail(target, connection, table).await?;
     let names: Vec<&str> = after.columns.iter().map(|c| c.name.as_str()).collect();
     ensure(names == ["id", "name", "memo", "qty"], || {

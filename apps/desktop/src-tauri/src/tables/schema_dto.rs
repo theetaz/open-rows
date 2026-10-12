@@ -163,6 +163,23 @@ pub(crate) enum IndexMethodDto {
     Spgist,
 }
 
+/// A key constraint added to an existing table.
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct NewKeyDto {
+    name: Option<String>,
+    columns: Vec<String>,
+}
+
+impl From<NewKeyDto> for openrows_driver_api::schema::NewKey {
+    fn from(key: NewKeyDto) -> Self {
+        Self {
+            name: key.name,
+            columns: key.columns,
+        }
+    }
+}
+
 /// One staged structure change; columns are named by their current name.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, Type)]
 #[serde(tag = "kind", rename_all = "camelCase")]
@@ -241,6 +258,25 @@ pub(crate) enum SchemaChangeDto {
     AddCheck {
         check: NewCheckDto,
     },
+    AddPrimaryKey {
+        key: NewKeyDto,
+    },
+    AddUnique {
+        key: NewKeyDto,
+    },
+    ColumnTypeUsing {
+        column: String,
+        #[serde(rename = "dataType")]
+        data_type: String,
+        expression: String,
+    },
+    CreateIndexConcurrently {
+        index: super::object_dto::NewIndexDto,
+    },
+    ReorderColumn {
+        column: String,
+        after: Option<String>,
+    },
     DropConstraint {
         name: String,
     },
@@ -267,6 +303,7 @@ pub(crate) enum AlterReply {
         statements: Vec<String>,
         warnings: Vec<String>,
         destructive: bool,
+        transactional: bool,
         /// Name to type before committing (destructive changes on a
         /// production or confirm-writes connection).
         #[serde(rename = "confirmName")]
@@ -298,25 +335,15 @@ impl From<IndexMethodDto> for IndexMethod {
     }
 }
 
-impl From<&SchemaChangeDto> for SchemaChange {
-    fn from(change: &SchemaChangeDto) -> Self {
-        match change.clone() {
+impl TryFrom<&SchemaChangeDto> for SchemaChange {
+    type Error = openrows_driver_api::structure::AlterError;
+    fn try_from(change: &SchemaChangeDto) -> Result<Self, Self::Error> {
+        if let Some(column) = column_change(change.clone()) {
+            return Ok(column);
+        }
+        Ok(match change.clone() {
             SchemaChangeDto::RenameTable { name } => Self::RenameTable(name),
             SchemaChangeDto::TableComment { comment } => Self::TableComment(comment),
-            SchemaChangeDto::RenameColumn { column, name } => Self::RenameColumn { column, name },
-            SchemaChangeDto::ColumnType { column, data_type } => {
-                Self::ColumnType { column, data_type }
-            }
-            SchemaChangeDto::ColumnNullable { column, nullable } => {
-                Self::ColumnNullable { column, nullable }
-            }
-            SchemaChangeDto::ColumnDefault { column, default } => Self::ColumnDefault {
-                column,
-                default: (&default).into(),
-            },
-            SchemaChangeDto::ColumnComment { column, comment } => {
-                Self::ColumnComment { column, comment }
-            }
             SchemaChangeDto::AddColumn {
                 name,
                 data_type,
@@ -353,22 +380,62 @@ impl From<&SchemaChangeDto> for SchemaChange {
                 predicate,
             }),
             SchemaChangeDto::DropIndex { name } => Self::DropIndex(name),
-            SchemaChangeDto::ColumnIdentity { column, identity } => Self::ColumnIdentity {
-                column,
-                identity: identity.into(),
-            },
-            SchemaChangeDto::ColumnCollation {
-                column,
-                charset,
-                collation,
-            } => Self::ColumnCollation {
-                column,
-                charset,
-                collation,
-            },
             SchemaChangeDto::AddForeignKey { key } => Self::AddForeignKey(key.into()),
             SchemaChangeDto::AddCheck { check } => Self::AddCheck(check.into()),
+            SchemaChangeDto::AddPrimaryKey { key } => Self::AddPrimaryKey(key.into()),
+            SchemaChangeDto::AddUnique { key } => Self::AddUnique(key.into()),
+            SchemaChangeDto::CreateIndexConcurrently { index } => {
+                Self::CreateIndexConcurrently(index.into())
+            }
             SchemaChangeDto::DropConstraint { name } => Self::DropConstraint(name),
-        }
+            _ => return Err(Self::Error::Unsupported("Unknown column change".into())),
+        })
     }
+}
+
+fn column_change(change: SchemaChangeDto) -> Option<SchemaChange> {
+    Some(match change {
+        SchemaChangeDto::RenameColumn { column, name } => {
+            SchemaChange::RenameColumn { column, name }
+        }
+        SchemaChangeDto::ColumnType { column, data_type } => {
+            SchemaChange::ColumnType { column, data_type }
+        }
+        SchemaChangeDto::ColumnNullable { column, nullable } => {
+            SchemaChange::ColumnNullable { column, nullable }
+        }
+        SchemaChangeDto::ColumnDefault { column, default } => SchemaChange::ColumnDefault {
+            column,
+            default: (&default).into(),
+        },
+        SchemaChangeDto::ColumnComment { column, comment } => {
+            SchemaChange::ColumnComment { column, comment }
+        }
+        SchemaChangeDto::ColumnIdentity { column, identity } => SchemaChange::ColumnIdentity {
+            column,
+            identity: identity.into(),
+        },
+        SchemaChangeDto::ColumnCollation {
+            column,
+            charset,
+            collation,
+        } => SchemaChange::ColumnCollation {
+            column,
+            charset,
+            collation,
+        },
+        SchemaChangeDto::ColumnTypeUsing {
+            column,
+            data_type,
+            expression,
+        } => SchemaChange::ColumnTypeUsing {
+            column,
+            data_type,
+            expression,
+        },
+        SchemaChangeDto::ReorderColumn { column, after } => {
+            SchemaChange::ReorderColumn { column, after }
+        }
+        _ => return None,
+    })
 }

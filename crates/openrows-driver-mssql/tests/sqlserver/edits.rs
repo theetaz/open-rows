@@ -82,7 +82,12 @@ async fn check(session: &mut openrows_driver_mssql::SqlServerSession, name: &str
         .into_iter()
         .collect();
     let value = |column: &str| snapshot.get(column).cloned().flatten().unwrap_or_default();
-    assert_eq!(value("f"), "3.1415926535897931");
+    let floating = value("f");
+    assert_eq!(floating, "3.1415926535897931e+000");
+    assert_eq!(
+        floating.parse::<f64>()?.to_bits(),
+        std::f64::consts::PI.to_bits()
+    );
     assert_eq!(value("m"), "12.3456");
     assert_eq!(value("d"), "2024-01-02 03:04:05.007");
     assert_eq!(value("g"), "00112233-4455-6677-8899-aabbccddeeff");
@@ -108,6 +113,38 @@ async fn check(session: &mut openrows_driver_mssql::SqlServerSession, name: &str
         .await?;
     assert_eq!(sink.batches[0].column(0).as_string::<i32>().value(0), "b");
     assert!(!session.in_transaction());
+    changed_float_rejects_snapshot(session, name, &table).await
+}
+
+async fn changed_float_rejects_snapshot(
+    session: &mut openrows_driver_mssql::SqlServerSession,
+    name: &str,
+    table: &EditTable,
+) -> TestResult {
+    let original = session
+        .edit_snapshot((SCHEMA, name), &[("id".to_owned(), "1".to_owned())])
+        .await?
+        .into_iter()
+        .collect();
+    run(
+        session,
+        &[&format!(
+            "UPDATE dbo.{name} SET f = 3.1415926535897936 WHERE id = 1"
+        )],
+    )
+    .await?;
+    let update = Edit {
+        kind: EditKind::Update,
+        original,
+        values: [("note".to_owned(), CellValue::Text("stale float".into()))].into(),
+    };
+    let stale = session.commit_edits(&generate(table, &[update])?).await;
+    assert_eq!(code(stale), "40001");
+    let mut sink = Collect::default();
+    session
+        .execute(&format!("SELECT note FROM dbo.{name}"), &mut sink)
+        .await?;
+    assert_eq!(sink.batches[0].column(0).as_string::<i32>().value(0), "b");
     Ok(())
 }
 

@@ -2,7 +2,7 @@
 //! Object lifecycle changes as T-SQL (FR-SCHEMA-10, 11, 12): tables, views,
 //! triggers and routines in one transaction (SQL Server DDL is
 //! transactional), databases one by one on `master`. Not available: schema
-//! renames (SQL Server has none), database renames, materialized views and
+//! renames (SQL Server has none), materialized views and
 //! `CASCADE` drops.
 use openrows_driver_api::GenerateError;
 use openrows_driver_api::objects::{
@@ -162,7 +162,7 @@ fn databases(change: &ObjectChange) -> Result<ObjectPlan, GenerateError> {
             Ok(on_home(sql, &[], false))
         }
         ObjectChange::DropDatabase { name } => {
-            if SYSTEM.contains(&name.to_ascii_lowercase().as_str()) {
+            if SYSTEM.contains(&name.trim().to_ascii_lowercase().as_str()) {
                 return Err(GenerateError(format!(
                     "{name} is a system database and cannot be dropped here"
                 )));
@@ -173,6 +173,7 @@ fn databases(change: &ObjectChange) -> Result<ObjectPlan, GenerateError> {
                 true,
             ))
         }
+        ObjectChange::RenameDatabase { name, to } => rename_database(name, to),
         ObjectChange::CreateSchema { name } => {
             Ok(plan(vec![format!("CREATE SCHEMA {}", ident(name)?)], &[]))
         }
@@ -189,10 +190,31 @@ fn databases(change: &ObjectChange) -> Result<ObjectPlan, GenerateError> {
                 .to_owned(),
         )),
         _ => Err(GenerateError(
-            "Renaming a SQL Server database needs exclusive access and is not available here"
-                .to_owned(),
+            "This SQL Server object operation is not supported here".to_owned(),
         )),
     }
+}
+
+fn rename_database(name: &str, to: &str) -> Result<ObjectPlan, GenerateError> {
+    if [name, to]
+        .iter()
+        .any(|name| SYSTEM.contains(&name.trim().to_ascii_lowercase().as_str()))
+    {
+        return Err(GenerateError(
+            "System databases cannot be renamed here.".into(),
+        ));
+    }
+    Ok(on_home(
+        format!(
+            "ALTER DATABASE {} MODIFY NAME = {}",
+            ident(name)?,
+            ident(to)?
+        ),
+        &[
+            "Database rename needs exclusive access and fails while other connections use it. Close them first; connections using the old name must be updated.",
+        ],
+        true,
+    ))
 }
 
 fn fail(error: &AlterError) -> GenerateError {

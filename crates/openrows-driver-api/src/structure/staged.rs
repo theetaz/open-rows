@@ -3,7 +3,7 @@
 //! catalog, shared by every engine's DDL generator.
 use super::AlterTable;
 use crate::schema::{
-    DefaultValue, Identity, NewCheck, NewColumn, NewForeignKey, NewIndex, RelationKind,
+    DefaultValue, Identity, NewCheck, NewColumn, NewForeignKey, NewIndex, NewKey, RelationKind,
     SchemaChange, TableDetail,
 };
 use std::collections::{BTreeMap, BTreeSet};
@@ -44,6 +44,9 @@ pub enum AlterError {
     /// `CREATE INDEX` without columns.
     #[error("an index needs at least one column")]
     NoIndexColumns,
+    /// A primary or unique key without columns.
+    #[error("a key constraint needs at least one column")]
+    NoKeyColumns,
     /// The engine has no such feature (e.g. `SQLite` comments).
     #[error("{0}")]
     Unsupported(String),
@@ -93,6 +96,8 @@ pub struct ColumnEdits<'a> {
     pub rename: Option<&'a str>,
     /// New type as SQL type syntax.
     pub data_type: Option<&'a str>,
+    /// `PostgreSQL` conversion expression, paired with the new type.
+    pub using_expression: Option<&'a str>,
     /// New nullability.
     pub nullable: Option<bool>,
     /// New default.
@@ -126,6 +131,14 @@ pub struct StagedChanges<'a> {
     pub index_drops: Vec<&'a str>,
     /// Indexes to create (final column names).
     pub index_adds: Vec<&'a NewIndex>,
+    /// Indexes that must be built outside a transaction.
+    pub concurrent_indexes: Vec<&'a NewIndex>,
+    /// Primary keys to add.
+    pub primary_keys: Vec<&'a NewKey>,
+    /// Unique constraints to add.
+    pub unique_keys: Vec<&'a NewKey>,
+    /// Column positions, in staging order (current names).
+    pub reorders: Vec<(&'a str, Option<&'a str>)>,
     /// New table name.
     pub rename: Option<&'a str>,
     /// New table comment.
@@ -164,6 +177,19 @@ impl<'a> StagedChanges<'a> {
         }
         staged.validate(target.detail, index_drops)?;
         Ok(staged)
+    }
+
+    /// Whether an existing column's final name is in a new primary key.
+    #[must_use]
+    pub fn primary_column(&self, current: &str) -> bool {
+        let name = self
+            .columns
+            .get(current)
+            .and_then(|edits| edits.rename)
+            .unwrap_or(current);
+        self.primary_keys
+            .iter()
+            .any(|key| key.columns.iter().any(|column| column == name))
     }
 
     fn add(&mut self, change: &'a SchemaChange) -> Result<(), AlterError> {
@@ -227,6 +253,42 @@ impl<'a> StagedChanges<'a> {
                 Ok(())
             }
             SchemaChange::DropConstraint(name) => push_unique(&mut self.constraint_drops, name),
+            other => self.add_option(other),
+        }
+    }
+
+    fn add_option(&mut self, change: &'a SchemaChange) -> Result<(), AlterError> {
+        match change {
+            SchemaChange::AddPrimaryKey(key) => {
+                self.primary_keys.push(key);
+                Ok(())
+            }
+            SchemaChange::AddUnique(key) => {
+                self.unique_keys.push(key);
+                Ok(())
+            }
+            SchemaChange::CreateIndexConcurrently(index) => {
+                self.concurrent_indexes.push(index);
+                Ok(())
+            }
+            SchemaChange::ColumnTypeUsing {
+                column,
+                data_type,
+                expression,
+            } => {
+                keys::expression(expression)?;
+                let edits = self.edits(column);
+                once(&mut edits.data_type, data_type.as_str(), column)?;
+                once(&mut edits.using_expression, expression.as_str(), column)
+            }
+            SchemaChange::ReorderColumn { column, after } => {
+                if self.reorders.iter().any(|(name, _)| *name == column) {
+                    return Err(AlterError::Conflict(column.clone()));
+                }
+                self.reorders.push((column, after.as_deref()));
+                Ok(())
+            }
+            _ => Err(AlterError::Unsupported("Unknown structure option".into())),
         }
     }
 
@@ -249,7 +311,7 @@ impl<'a> StagedChanges<'a> {
             return Err(AlterError::Conflict((*name).to_owned()));
         }
         let finals = self.final_names(&current)?;
-        for index in &self.index_adds {
+        for index in self.index_adds.iter().chain(&self.concurrent_indexes) {
             keys::index(index, &finals)?;
         }
         for key in &self.foreign_keys {
@@ -258,6 +320,8 @@ impl<'a> StagedChanges<'a> {
         for check in &self.checks {
             keys::expression(&check.expression)?;
         }
+        keys::new_keys(self, detail, &finals)?;
+        keys::reorders(self, &current)?;
         keys::constraint_drops(&self.constraint_drops, detail)?;
         self.validate_index_drops(detail, rule)
     }

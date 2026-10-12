@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! `table_detail` (Structure, Index, Triggers, DDL and inspector table info)
 //! and `table_alter`: review, then commit, a typed structure change set as
-//! DDL generated in Rust, in one transaction on a short-lived connection.
+//! DDL generated in Rust, with the planned transaction boundary on a fresh connection.
 use super::alter_checks::{PRODUCTION, null_warnings};
 use super::commands::owned_session;
 use super::dto::TableTarget;
@@ -16,7 +16,7 @@ use crate::connections::{Connections, IpcError, IpcErrorKind};
 use openrows_core::safety::{SafetyPlan, SafetyPolicy};
 use openrows_driver_api::schema::SchemaChange;
 use openrows_driver_api::structure::{AlterPlan, AlterTable};
-use openrows_driver_api::{Connection, Driver, catalog, editor};
+use openrows_driver_api::{Connection, Driver, catalog};
 use openrows_sql::ddl::view_body;
 use openrows_sql::{Dialect, StatementKind, classify, split};
 use openrows_store::profile::EnvKind;
@@ -77,7 +77,7 @@ struct Safety<'a> {
 }
 
 /// Without a matching `confirmToken`, return the generated DDL to review;
-/// with it (and the typed table name when asked), run it in one transaction.
+/// with it (and the typed table name when asked), execute the reviewed plan.
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn table_alter(
@@ -136,7 +136,12 @@ async fn prepare_alter(
         .table_detail(&target.schema, &target.table)
         .await
         .map_err(|error| IpcError::from(&error))?;
-    let changes: Vec<SchemaChange> = request.changes.iter().map(Into::into).collect();
+    let changes: Vec<SchemaChange> = request
+        .changes
+        .iter()
+        .map(SchemaChange::try_from)
+        .collect::<Result<_, _>>()
+        .map_err(|error| IpcError::invalid(error.to_string()))?;
     let plan = driver
         .alter_sql(
             &AlterTable {
@@ -173,9 +178,7 @@ async fn prepare_alter(
         .app
         .state::<crate::security::Security>()
         .admit("table_alter")?;
-    editor(session)
-        .map_err(|error| IpcError::from(&error))?
-        .commit_ddl(&plan.statements)
+    openrows_driver_api::structure::execute_plan(session, &plan)
         .await
         .map_err(|error| IpcError::from(&error))?;
     Ok(AlterReply::Committed)
@@ -191,6 +194,7 @@ fn prepared(token: String, plan: AlterPlan, confirm_name: Option<String>) -> Alt
         statements: plan.statements,
         warnings: plan.warnings,
         destructive: plan.destructive,
+        transactional: plan.run == openrows_driver_api::structure::AlterRun::Transaction,
         confirm_name,
     }
 }
@@ -275,6 +279,7 @@ mod tests {
             statements: vec!["ALTER TABLE t ADD COLUMN n int".into()],
             warnings: vec![],
             destructive: false,
+            run: openrows_driver_api::structure::AlterRun::Transaction,
         };
         for (mode, gate) in [
             (Safety::Unrestricted, Gate::Run),
@@ -342,7 +347,7 @@ mod tests {
     }
 
     #[test]
-    fn change_sets_deserialize_from_camel_case() -> Result<(), serde_json::Error> {
+    fn change_sets_deserialize_from_camel_case() -> Result<(), Box<dyn std::error::Error>> {
         let changes: Vec<SchemaChangeDto> = serde_json::from_value(serde_json::json!([
             { "kind": "columnType", "column": "id", "dataType": "bigint" },
             { "kind": "columnDefault", "column": "at", "default": { "kind": "expression", "sql": "now()" } },
@@ -360,7 +365,10 @@ mod tests {
                 },
             }
         );
-        let model: Vec<SchemaChange> = changes.iter().map(Into::into).collect();
+        let model: Vec<SchemaChange> = changes
+            .iter()
+            .map(SchemaChange::try_from)
+            .collect::<Result<_, _>>()?;
         assert!(
             matches!(&model[0], SchemaChange::ColumnType { data_type, .. } if data_type == "bigint")
         );

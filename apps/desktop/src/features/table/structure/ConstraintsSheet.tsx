@@ -45,6 +45,38 @@ function ConstraintItem({
   );
 }
 
+function AddConstraintButtons({
+  structure,
+}: {
+  structure: Structure;
+}): React.JSX.Element {
+  const choices = [
+    { sheet: 'key', label: 'Add key…', enabled: structure.features.keys },
+    {
+      sheet: 'foreignKey',
+      label: 'Add foreign key…',
+      enabled: structure.features.foreignKeys,
+    },
+    { sheet: 'check', label: 'Add check…', enabled: structure.features.checks },
+  ] as const;
+  return (
+    <>
+      {choices.map(({ sheet, label, enabled }) => (
+        <Button
+          key={sheet}
+          disabled={!structure.schema.enabled || !enabled}
+          title={enabled ? undefined : 'Not supported by this database'}
+          onClick={() => {
+            structure.setSheet(sheet);
+          }}
+        >
+          {label}
+        </Button>
+      ))}
+    </>
+  );
+}
+
 /**
  * The table's constraints (keys, checks, foreign keys) with staged drops
  * and additions, and the forms that add foreign keys and checks.
@@ -56,10 +88,13 @@ export function ConstraintsSheet({
   structure: Structure;
   onClose: () => void;
 }): React.JSX.Element {
-  const { schema, features } = structure;
+  const { schema } = structure;
   const added = schema.history.current.filter(
     (item) =>
-      item.change.kind === 'addForeignKey' || item.change.kind === 'addCheck',
+      item.change.kind === 'addForeignKey' ||
+      item.change.kind === 'addCheck' ||
+      item.change.kind === 'addPrimaryKey' ||
+      item.change.kind === 'addUnique',
   );
   const constraints = schema.detail?.constraints ?? [];
   return (
@@ -91,36 +126,7 @@ export function ConstraintsSheet({
           <p className={styles.note}>This table has no constraints.</p>
         )}
       </div>
-      <SheetActions
-        leading={
-          <>
-            <Button
-              disabled={!schema.enabled || !features.foreignKeys}
-              title={
-                features.foreignKeys
-                  ? undefined
-                  : 'Not supported by this database'
-              }
-              onClick={() => {
-                structure.setSheet('foreignKey');
-              }}
-            >
-              Add foreign key…
-            </Button>
-            <Button
-              disabled={!schema.enabled || !features.checks}
-              title={
-                features.checks ? undefined : 'Not supported by this database'
-              }
-              onClick={() => {
-                structure.setSheet('check');
-              }}
-            >
-              Add check…
-            </Button>
-          </>
-        }
-      >
+      <SheetActions leading={<AddConstraintButtons structure={structure} />}>
         <Button variant="primary" onClick={onClose}>
           Done
         </Button>

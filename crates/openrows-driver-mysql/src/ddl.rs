@@ -30,6 +30,7 @@ pub(crate) fn alter_sql(
     changes: &[SchemaChange],
 ) -> Result<AlterPlan, AlterError> {
     let staged = StagedChanges::stage(target, changes, IndexDrops::NotPrimary)?;
+    openrows_driver_api::structure::validate_options(&staged, Dialect::MySql, changes.len())?;
     let definition = target
         .detail
         .info
@@ -40,13 +41,22 @@ pub(crate) fn alter_sql(
         table: target.table,
         definition,
         specs: Vec::new(),
-        out: AlterPlan::default(),
+        out: AlterPlan {
+            run: openrows_driver_api::structure::AlterRun::Autocommit,
+            ..AlterPlan::default()
+        },
     };
     plan.constraint_drops(target, &staged)?;
     plan.columns(target, &staged)?;
+    plan.reorders(target, &staged)?;
     plan.indexes(&staged)?;
     plan.constraints(target.schema, &staged)?;
     plan.table_options(&staged)?;
+    if !staged.primary_keys.is_empty() {
+        plan.specs.push("ALGORITHM=INPLACE".into());
+        plan.out.run = openrows_driver_api::structure::AlterRun::StrictMySql;
+        plan.warn("Primary-key changes use ALGORITHM=INPLACE to prevent NULLs being replaced with defaults. They require a supporting storage engine and strict SQL mode; incompatible changes must be staged separately.".into());
+    }
     if plan.specs.is_empty() {
         return Err(AlterError::Empty);
     }
@@ -155,6 +165,9 @@ impl Plan<'_> {
             self.out.destructive = true;
         }
         for column in &target.detail.columns {
+            if staged.reorders.iter().any(|(name, _)| *name == column.name) {
+                continue;
+            }
             if let Some(edits) = staged.columns.get(column.name.as_str()) {
                 self.column(column, edits)?;
             }
@@ -274,6 +287,42 @@ impl Plan<'_> {
         Ok(())
     }
 
+    fn reorders(
+        &mut self,
+        target: &AlterTable<'_>,
+        staged: &StagedChanges<'_>,
+    ) -> Result<(), AlterError> {
+        let mut moved = std::collections::BTreeSet::new();
+        for &(name, after) in &staged.reorders {
+            let column = target
+                .detail
+                .columns
+                .iter()
+                .find(|c| c.name == name)
+                .ok_or_else(|| AlterError::UnknownColumn(name.into()))?;
+            let mut definition = self.current_definition(name)?;
+            let edits = staged.columns.get(name);
+            if let Some(edits) = edits {
+                self.redefine(column, edits, &mut definition)?;
+            }
+            let rename = edits.and_then(|e| e.renamed(name));
+            definition.set_name(&quote(rename.unwrap_or(name))?);
+            let position = column_position(staged, &moved, after)?;
+            let action = if rename.is_some() {
+                format!("CHANGE COLUMN {}", quote(name)?)
+            } else {
+                "MODIFY COLUMN".into()
+            };
+            self.specs
+                .push(format!("{action} {} {position}", definition.render()));
+            moved.insert(name);
+        }
+        if !staged.reorders.is_empty() {
+            self.warn("Reordering columns may copy and lock the table; applications using positional inserts or SELECT * must be updated.".into());
+        }
+        Ok(())
+    }
+
     fn indexes(&mut self, staged: &StagedChanges<'_>) -> Result<(), AlterError> {
         for &name in &staged.index_drops {
             self.specs.push(format!("DROP INDEX {}", quote(name)?));
@@ -290,6 +339,13 @@ impl Plan<'_> {
     }
 
     fn constraints(&mut self, schema: &str, staged: &StagedChanges<'_>) -> Result<(), AlterError> {
+        for (keys, primary) in [(&staged.primary_keys, true), (&staged.unique_keys, false)] {
+            for key in keys {
+                let sql = openrows_driver_api::structure::key_sql(key, primary, Dialect::MySql)?;
+                self.specs.push(format!("ADD {sql}"));
+                self.warn("Adding a key scans and locks the table; duplicate values or NULL primary-key values cause failure.".to_owned());
+            }
+        }
         for key in &staged.foreign_keys {
             self.specs
                 .push(format!("ADD {}", keys::foreign_key(key, schema)?));
@@ -323,6 +379,32 @@ impl Plan<'_> {
     }
 }
 
+fn column_position(
+    staged: &StagedChanges<'_>,
+    moved: &std::collections::BTreeSet<&str>,
+    after: Option<&str>,
+) -> Result<String, AlterError> {
+    let Some(anchor) = after else {
+        return Ok("FIRST".into());
+    };
+    let pending =
+        staged.reorders.iter().any(|(name, _)| *name == anchor) && !moved.contains(anchor);
+    let chosen = if pending {
+        anchor
+    } else {
+        staged
+            .columns
+            .get(anchor)
+            .and_then(|edits| edits.rename)
+            .unwrap_or(anchor)
+    };
+    Ok(format!("AFTER {}", quote(chosen)?))
+}
+
 #[cfg(test)]
 #[path = "ddl_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "structure_options_tests.rs"]
+mod option_tests;

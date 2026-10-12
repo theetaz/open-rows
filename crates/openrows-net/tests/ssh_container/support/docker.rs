@@ -60,8 +60,10 @@ pub fn docker_ready() -> bool {
 
 fn unique_name(kind: &str) -> String {
     static COUNTER: AtomicU32 = AtomicU32::new(0);
+    let prefix =
+        std::env::var("OPENROWS_TEST_CONTAINER_PREFIX").unwrap_or_else(|_| "openrows".into());
     format!(
-        "openrows-s4-{kind}-{}-{}",
+        "{prefix}-s4-{kind}-{}-{}",
         std::process::id(),
         COUNTER.fetch_add(1, Ordering::Relaxed)
     )

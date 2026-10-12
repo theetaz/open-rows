@@ -143,6 +143,10 @@ pub(crate) struct ObjectFeaturesDto {
     charsets: bool,
     identity: bool,
     partial_indexes: bool,
+    keys: bool,
+    type_using: bool,
+    concurrent_indexes: bool,
+    column_reordering: bool,
 }
 
 impl ObjectFeaturesDto {
@@ -165,6 +169,10 @@ impl ObjectFeaturesDto {
             charsets: has(Feature::ColumnCharset),
             identity: has(Feature::IdentityColumns),
             partial_indexes: has(Feature::PartialIndexes),
+            keys: has(Feature::KeyEditing),
+            type_using: has(Feature::TypeUsing),
+            concurrent_indexes: has(Feature::ConcurrentIndexes),
+            column_reordering: has(Feature::ColumnReordering),
         }
     }
 }

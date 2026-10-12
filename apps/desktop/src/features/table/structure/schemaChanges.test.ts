@@ -142,3 +142,61 @@ it('ignores staging while a commit is pending', () => {
     stageSchema(pending, { kind: 'dropColumn', column: 'name' }, base),
   ).toBe(pending);
 });
+
+it('replaces implicit casts with explicit conversions and can undo the replacement', () => {
+  const initial = stageAll([
+    { kind: 'columnType', column: 'name', dataType: 'integer' },
+  ]);
+  const converted = stageSchema(
+    initial,
+    {
+      kind: 'columnTypeUsing',
+      column: 'name',
+      dataType: 'integer',
+      expression: 'length(name)',
+    },
+    base,
+  );
+  expect(converted.current).toHaveLength(1);
+  expect(converted.current[0]?.id).toBe('columnType:name');
+  expect(columnRows(sampleDetail, converted.current)[1]?.dataType).toBe(
+    'integer',
+  );
+  expect(travel(converted, 'undo').current).toEqual(initial.current);
+  expect(
+    stageSchema(
+      converted,
+      { kind: 'columnType', column: 'name', dataType: 'text' },
+      base,
+    ).current,
+  ).toEqual([]);
+});
+
+it('overlays staged positions and concurrent indexes without dropping them', () => {
+  const history = stageAll([
+    { kind: 'reorderColumn', column: 'customer_id', after: null },
+    { kind: 'reorderColumn', column: 'name', after: 'customer_id' },
+    {
+      kind: 'createIndexConcurrently',
+      index: {
+        name: 'concurrent',
+        columns: ['name'],
+        unique: false,
+        method: 'btree',
+        descending: [],
+        predicate: null,
+      },
+    },
+  ]);
+  expect(
+    columnRows(sampleDetail, history.current).map((row) => row.name),
+  ).toEqual(['customer_id', 'name', 'id']);
+  expect(indexRows(sampleDetail, history.current).at(-1)).toMatchObject({
+    name: 'concurrent',
+    added: true,
+    columns: 'name',
+  });
+  expect(
+    describe(history.current[2]?.change ?? { kind: 'dropIndex', name: '' }),
+  ).toBe('Create index concurrent concurrently');
+});

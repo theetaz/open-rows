@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useState } from 'react';
+import type { SchemaChangeDto } from '@openrows/ipc';
 import { newColumn } from './columnEdits';
 import type { ColumnRow } from './effective';
+import { ColumnOptions, optionChanges } from './forms/ColumnOptions';
+import { columnType } from './forms/columnDraft';
 import { ColumnFields } from './forms/ColumnFields';
 import {
   addColumnChange,
@@ -27,6 +30,15 @@ function columnOp(
   return { kind: 'stage', changes: columnChanges(draft, row.column, original) };
 }
 
+function schemaChangesFor(
+  structure: Structure,
+  row: ColumnRow | null,
+): SchemaChangeDto[] {
+  return structure.schema.history.current
+    .map((item) => item.change)
+    .filter((change) => 'column' in change && change.column === row?.column);
+}
+
 /**
  * Add or edit one column in a form: every property the engine supports,
  * with the live DDL of all staged changes including this one.
@@ -48,16 +60,55 @@ export function ColumnSheet({
       : emptyColumn(newColumn(structure.rows).name, engine),
   );
   const [draft, setDraft] = useState(original);
+  const [options, setOptions] = useState(() => {
+    const changes = schemaChangesFor(structure, row);
+    const conversion = changes.find(
+      (change) => change.kind === 'columnTypeUsing',
+    );
+    const position = changes.find((change) => change.kind === 'reorderColumn');
+    return {
+      expression: conversion?.expression ?? '',
+      position: position
+        ? position.after === null
+          ? 'first'
+          : `after:${position.after}`
+        : '',
+    };
+  });
   const problem = columnProblem(draft);
+  const op = columnOp(row, draft, original);
+  if (row?.column && op.kind === 'stage') {
+    const staged = schemaChangesFor(structure, row);
+    const hadUsing = staged.some((change) => change.kind === 'columnTypeUsing');
+    if (options.expression.trim() || hadUsing)
+      op.changes = op.changes.filter((change) => change.kind !== 'columnType');
+    op.changes = [
+      ...op.changes,
+      ...optionChanges(row.column, columnType(draft), options, hadUsing),
+    ];
+    if (
+      !options.position &&
+      staged.some((change) => change.kind === 'reorderColumn')
+    )
+      op.remove = [`reorderColumn:${row.column}`];
+  }
   return (
     <StageSheet
       structure={structure}
       title={row ? `Edit column ${row.name}` : 'Add column'}
-      op={problem ? null : columnOp(row, draft, original)}
+      op={problem ? null : op}
       problem={problem}
       stageLabel={row ? 'Stage changes' : 'Stage column'}
       onClose={onClose}
     >
+      {row?.column && (
+        <ColumnOptions
+          structure={structure}
+          column={row.column}
+          draft={options}
+          onChange={setOptions}
+        />
+      )}
       <ColumnFields
         draft={draft}
         onChange={setDraft}

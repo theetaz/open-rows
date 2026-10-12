@@ -9,6 +9,8 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
+// Load the lazy table module before interactions so transform time is not UI latency.
+import '../TableTab';
 import { ThemeProvider } from '@openrows/ui';
 import { tableAlter, tableDetail } from '@openrows/ipc';
 import type { Connections } from '../../connections';
@@ -145,6 +147,7 @@ it('stages inline edits, pickers, deletes and new columns, then reviews and comm
   expect(screen.getByText('4 staged structure changes')).toBeVisible();
   vi.mocked(tableAlter).mockResolvedValueOnce({
     kind: 'prepared',
+    transactional: true,
     token: 'review-1',
     statements: ['ALTER TABLE "public"."orders" DROP COLUMN "customer_id"'],
     warnings: ['Dropping column "customer_id" permanently deletes its data.'],

@@ -36,7 +36,13 @@ type Args = {
 
 /** The open structure sheet. */
 export type StructureSheet =
-  'triggers' | 'index' | 'column' | 'constraints' | 'foreignKey' | 'check';
+  | 'triggers'
+  | 'index'
+  | 'column'
+  | 'constraints'
+  | 'foreignKey'
+  | 'check'
+  | 'key';
 
 /** Everything the Structure and Index modes, their footer and sheets share. */
 export type Structure = StructureActions & {

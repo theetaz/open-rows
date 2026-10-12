@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
-//! [`crate::Group::Lifecycle`]: tables, indexes and views created and dropped
-//! through generated DDL (`Driver::object_sql` and `Driver::alter_sql`,
-//! committed with `Editor::commit_ddl`) appear in and disappear from the
+//! [`crate::Group::Lifecycle`]: tables, indexes, views and capability-gated
+//! triggers, routines and databases created and dropped
+//! through generated DDL (`Driver::object_sql` and `Driver::alter_sql`) with
+//! their planned transaction boundaries appear in and disappear from the
 //! catalog; an invalid view query is refused before any SQL runs.
 
 use openrows_driver_api::catalog::ObjectKind;
 use openrows_driver_api::objects::{NewTable, ObjectChange, ObjectName, PlanRun};
 use openrows_driver_api::schema::{NewColumn, NewIndex, SchemaChange};
-use openrows_driver_api::structure::AlterTable;
+use openrows_driver_api::structure::{AlterTable, execute_plan};
 use openrows_driver_api::{Connection, catalog, editor};
 
 use crate::{Failure, Group, Target, ensure, fixture_name};
@@ -24,10 +25,11 @@ pub(crate) async fn run(target: &Target) -> Result<(), Failure> {
         }
     }
     connection.close().await?;
-    outcome
+    outcome?;
+    crate::lifecycle_databases::run(target).await
 }
 
-fn name(target: &Target, name: &str) -> ObjectName {
+pub(crate) fn name(target: &Target, name: &str) -> ObjectName {
     ObjectName {
         schema: target.schema.clone(),
         name: name.to_owned(),
@@ -45,10 +47,10 @@ fn create_table(target: &Target, table: &str) -> ObjectChange {
         table: name(target, table),
         definition: NewTable {
             columns: vec![
-                column("id", "INTEGER", false),
+                column("id", "BIGINT", true),
                 column("title", "VARCHAR(40)", true),
             ],
-            primary_key: vec!["id".to_owned()],
+            primary_key: Vec::new(),
             ..NewTable::default()
         },
     }
@@ -70,7 +72,7 @@ fn drop_view(target: &Target, view: &str) -> ObjectChange {
 }
 
 /// Generate `change` and commit it in one transaction.
-async fn apply(
+pub(crate) async fn apply(
     target: &Target,
     connection: &mut dyn Connection,
     change: &ObjectChange,
@@ -86,7 +88,7 @@ async fn apply(
     Ok(())
 }
 
-async fn listed(
+pub(crate) async fn listed(
     target: &Target,
     connection: &mut dyn Connection,
     kind: ObjectKind,
@@ -107,7 +109,9 @@ async fn lifecycle(
     ensure(tables.iter().any(|name| name == table), || {
         format!("created table {table} not listed: {tables:?}")
     })?;
+    crate::structure_options::run(target, connection, table).await?;
     index(target, connection, table).await?;
+    crate::lifecycle_modules::run(target, connection, table).await?;
     view_lifecycle(target, connection, (table, view)).await?;
     apply(target, connection, &drop_table(target, table)).await?;
     let tables = listed(target, connection, ObjectKind::Table).await?;
@@ -143,7 +147,7 @@ async fn index(
             .driver
             .alter_sql(&place, std::slice::from_ref(&change))
             .map_err(|error| Failure::Contract(format!("alter_sql: {error}")))?;
-        editor(connection)?.commit_ddl(&plan.statements).await?;
+        execute_plan(connection, &plan).await?;
         let after = catalog(connection)?
             .table_detail(&target.schema, table)
             .await?;

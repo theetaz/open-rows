@@ -23,6 +23,10 @@ export const postgresObjects: ProfileDto['objects'] = {
   charsets: false,
   identity: true,
   partialIndexes: true,
+  keys: true,
+  typeUsing: true,
+  concurrentIndexes: true,
+  columnReordering: false,
 };
 
 /** A saved profile with synthetic, non-secret values. */

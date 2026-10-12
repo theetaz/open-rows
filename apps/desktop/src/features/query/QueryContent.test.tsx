@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
+// Load the lazy tab before interactions so transform time is not UI latency.
+import './QueryTab';
+import '../export/ExportSheet';
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';

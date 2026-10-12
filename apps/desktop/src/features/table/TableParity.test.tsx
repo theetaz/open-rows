@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
+// Load the lazy tab before interactions so transform time is not UI latency.
+import './TableTab';
 import { invalidateLinks } from './links/linkMetadata';
 import { useState } from 'react';
 import { act, render, screen, waitFor, within } from '@testing-library/react';

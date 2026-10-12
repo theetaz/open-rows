@@ -27,7 +27,7 @@ fi
 # Synthetic credential (meets the server's complexity rules) for a container
 # bound to 127.0.0.1 and removed on exit.
 password="Openrows-test-only1"
-name="openrows-mssql-test-$$"
+name="${OPENROWS_TEST_CONTAINER_PREFIX:-openrows}-mssql-test-$$"
 cleanup() {
     docker rm --force --volumes "$name" >/dev/null 2>&1 || true
 }

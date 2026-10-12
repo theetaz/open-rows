@@ -60,6 +60,7 @@ function applyChange(row: ColumnRow, change: ColumnChange): ColumnRow {
   switch (change.kind) {
     case 'renameColumn':
       return { ...row, name: change.name, changed: mark('name') };
+    case 'columnTypeUsing':
     case 'columnType':
       return { ...row, dataType: change.dataType, changed: mark('dataType') };
     case 'columnNullable':
@@ -74,6 +75,7 @@ function applyChange(row: ColumnRow, change: ColumnChange): ColumnRow {
       return { ...row, comment: change.comment, changed: mark('comment') };
     case 'columnIdentity':
       return { ...row, generated: generatedOf(change.identity) };
+    case 'reorderColumn':
     case 'columnCollation':
       return row;
     case 'dropColumn':
@@ -148,6 +150,18 @@ export function columnRows(
   );
   for (const { id, change } of staged)
     if (change.kind === 'addColumn') rows.push(addedRow(id, change));
+  for (const { change } of staged) {
+    if (change.kind !== 'reorderColumn') continue;
+    const at = rows.findIndex((row) => row.column === change.column);
+    const row = rows[at];
+    if (!row) continue;
+    rows.splice(at, 1);
+    const anchor =
+      change.after === null
+        ? -1
+        : rows.findIndex((item) => item.column === change.after);
+    rows.splice(anchor + 1, 0, row);
+  }
   return rows;
 }
 
@@ -169,21 +183,26 @@ export function indexRows(
     added: false,
   }));
   for (const { id, change } of staged)
-    if (change.kind === 'createIndex')
+    if (
+      change.kind === 'createIndex' ||
+      change.kind === 'createIndexConcurrently'
+    ) {
+      const index = change.kind === 'createIndex' ? change : change.index;
       rows.push({
         id,
-        name: change.name ?? '',
-        method: change.method,
-        unique: change.unique,
+        name: index.name ?? '',
+        method: index.method,
+        unique: index.unique,
         primary: false,
         constraint: false,
-        columns: change.columns.join(', '),
+        columns: index.columns.join(', '),
         include: '',
         predicate: null,
         comment: null,
         dropped: false,
         added: true,
       });
+    }
   return rows;
 }
 

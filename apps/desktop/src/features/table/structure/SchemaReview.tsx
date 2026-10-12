@@ -16,10 +16,13 @@ export function SchemaReview({
   if (!review) return null;
   const count = schema.history.current.length;
   const needsName = review.confirmName !== null;
+  const execution = review.transactional
+    ? 'The statements run in one transaction: any error rolls every one of them back.'
+    : 'The statements run outside a transaction. Committed changes cannot be rolled back.';
   return (
     <ReviewSheet
       title="Review structure changes"
-      summary={`${String(count)} staged structure ${count === 1 ? 'change' : 'changes'}. The statements run in one transaction: any error rolls every one of them back.`}
+      summary={`${String(count)} staged structure ${count === 1 ? 'change' : 'changes'}. ${execution}`}
       sql={review.statements.map((statement) => `${statement};`).join('\n')}
       error={schema.error}
       busy={schema.busy}

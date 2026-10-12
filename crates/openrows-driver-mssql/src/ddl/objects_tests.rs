@@ -262,7 +262,7 @@ fn databases_run_on_master_and_unsupported_changes_say_why() -> Result<(), Gener
             collation: Some("bad; DROP".into()),
         },
         ObjectChange::RenameDatabase {
-            name: "a".into(),
+            name: "master".into(),
             to: "b".into(),
         },
         ObjectChange::RenameSchema {
@@ -277,6 +277,45 @@ fn databases_run_on_master_and_unsupported_changes_say_why() -> Result<(), Gener
         },
     ] {
         assert!(object_sql(&refused, None).is_err(), "{refused:?}");
+    }
+    Ok(())
+}
+
+#[test]
+fn rename_database_is_quoted_guarded_and_runs_on_master() -> Result<(), GenerateError> {
+    let renamed = sql(&ObjectChange::RenameDatabase {
+        name: "shop]old".into(),
+        to: "shop]new".into(),
+    })?;
+    assert_eq!(
+        renamed.statements,
+        ["ALTER DATABASE [shop]]old] MODIFY NAME = [shop]]new]"]
+    );
+    assert_eq!(renamed.run, PlanRun::HomeDatabase);
+    assert!(renamed.destructive);
+    assert!(
+        renamed
+            .warnings
+            .iter()
+            .any(|w| w.contains("exclusive access"))
+    );
+    for (name, to) in [
+        ("MASTER", "new"),
+        (" master ", "new"),
+        ("old", "tempdb"),
+        ("", "new"),
+        ("old", "bad\0"),
+    ] {
+        assert!(
+            object_sql(
+                &ObjectChange::RenameDatabase {
+                    name: name.into(),
+                    to: to.into()
+                },
+                None
+            )
+            .is_err()
+        );
     }
     Ok(())
 }

@@ -33,6 +33,10 @@ vi.mock('@openrows/ipc', async () => {
         charsets: false,
         identity: false,
         partialIndexes: false,
+        keys: false,
+        typeUsing: false,
+        concurrentIndexes: false,
+        columnReordering: false,
       },
       file: {
         path: '/test-only.duckdb',
