@@ -35,6 +35,7 @@ mod errors;
 mod lifecycle;
 mod metadata;
 mod metadata_objects;
+mod mongodb;
 mod processes;
 mod sink;
 mod streaming;
@@ -160,6 +161,10 @@ impl Group {
             && !target.driver.capabilities().supports(feature)
         {
             return Ok(Verdict::Skipped(feature));
+        }
+        if target.driver.dialect() == openrows_sql::Dialect::MongoDb {
+            mongodb::run(self, target).await?;
+            return Ok(Verdict::Passed);
         }
         match self {
             Self::Connect => connect::run(target).await?,

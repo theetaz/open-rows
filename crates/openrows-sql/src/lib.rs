@@ -39,6 +39,7 @@ pub mod edit;
 mod explain;
 mod lexer;
 mod limit;
+pub mod mql;
 mod placeholders;
 mod redact;
 pub mod select;
@@ -81,4 +82,6 @@ pub enum Dialect {
     SqlServer,
     /// `ClickHouse` HTTP SQL, with typed `{name:Type}` query parameters.
     ClickHouse,
+    /// `MongoDB` shell-like syntax, parsed without JavaScript execution.
+    MongoDb,
 }

@@ -56,7 +56,8 @@ impl Backend {
         let engine = engine(profile.driver);
         if matches!(
             engine,
-            ReadEngine::Libsql
+            ReadEngine::Mongodb
+                | ReadEngine::Libsql
                 | ReadEngine::Sqlserver
                 | ReadEngine::Clickhouse
                 | ReadEngine::Duckdb
@@ -145,6 +146,7 @@ fn engine(driver: Driver) -> ReadEngine {
         Driver::Mariadb => ReadEngine::Mariadb,
         Driver::Sqlite => ReadEngine::Sqlite,
         Driver::LibsqlFile => ReadEngine::LibsqlFile,
+        Driver::Mongodb => ReadEngine::Mongodb,
         Driver::Libsql => ReadEngine::Libsql,
         Driver::Sqlserver => ReadEngine::Sqlserver,
         Driver::Clickhouse => ReadEngine::Clickhouse,

@@ -65,6 +65,9 @@ pub struct EditTable {
 /// Invalid identifiers, NUL data, unknown columns, a missing stable row
 /// identity, or a `DEFAULT` the dialect cannot express.
 pub fn edit_sql(dialect: Dialect, table: &EditTable, edit: &Edit) -> Result<BoundSql, SelectError> {
+    if dialect == Dialect::MongoDb {
+        return crate::mql::edit::generate(table, edit);
+    }
     if table.key.is_empty() || table.columns.is_empty() {
         return Err(SelectError::NoColumns);
     }
@@ -152,7 +155,8 @@ fn insert_sql(dialect: Dialect, relation: &str, pairs: &[(String, String)]) -> S
             | Dialect::Duckdb
             | Dialect::Sqlite
             | Dialect::SqlServer
-            | Dialect::ClickHouse => {
+            | Dialect::ClickHouse
+            | Dialect::MongoDb => {
                 format!("INSERT INTO {relation} DEFAULT VALUES")
             }
         };

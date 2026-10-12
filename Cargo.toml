@@ -12,6 +12,7 @@ members = [
     "crates/openrows-dump",
     "crates/openrows-driver-api",
     "crates/openrows-driver-conformance",
+    "crates/openrows-driver-mongodb",
     "crates/openrows-driver-libsql",
     "crates/openrows-driver-mssql",
     "crates/openrows-driver-clickhouse",
@@ -41,7 +42,7 @@ rust-version = "1.94"
 
 [workspace.dependencies]
 serde = "1.0"
-serde_json = "1.0"
+serde_json = { version = "1.0", features = ["preserve_order"] }
 thiserror = "2.0"
 uuid = { version = "1.23", features = ["v7"] }
 

@@ -122,6 +122,9 @@ pub(super) fn relation_ident(
         crate::Dialect::Postgres | crate::Dialect::MySql | crate::Dialect::Sqlite => {
             Some(ident.value.clone())
         }
-        crate::Dialect::Duckdb | crate::Dialect::SqlServer | crate::Dialect::ClickHouse => None,
+        crate::Dialect::MongoDb
+        | crate::Dialect::Duckdb
+        | crate::Dialect::SqlServer
+        | crate::Dialect::ClickHouse => None,
     }
 }

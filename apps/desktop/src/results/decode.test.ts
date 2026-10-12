@@ -3,6 +3,9 @@ import { readFileSync } from 'node:fs';
 import {
   Field,
   Int32,
+  Int64,
+  Struct,
+  Utf8,
   IntervalMonthDayNano,
   List,
   Table,
@@ -193,4 +196,33 @@ describe('PostgreSQL arrays and intervals', () => {
     const transfers = transferBuffers(decoded);
     expect(transfers.length).toBeGreaterThan(0);
   });
+});
+
+it('transfers document structs and lists and displays exact JSON integers', () => {
+  const nested = new Struct([
+    new Field('n', new Int64(), true),
+    new Field('text', new Utf8(), true),
+    new Field('items', new List(new Field('item', new Int64(), true)), true),
+  ]);
+  const rows = vectorFromArray(
+    [{ n: 9007199254740993n, text: '"hello"', items: [1n, null, 2n] }, null],
+    nested,
+  );
+  const table = new Table({ document: rows });
+  table.schema.fields[0]?.metadata.set('openrows.source_type', 'EJSON');
+  const bytes = tableToIPC(table, 'stream');
+  const decoded = decodeTile(new Uint8Array(bytes).buffer);
+  const display = convertDisplayTile(decoded.tile, {
+    resultId: 'document',
+    rowStart: 0,
+    rowCount: 2,
+    colStart: 0,
+    colCount: 1,
+  });
+  expect(display.cells[0]?.text).toBe(
+    '{"n":9007199254740993,"text":"hello","items":[1,null,2]}',
+  );
+  expect(display.cells[1]?.text).toBe('NULL');
+  expect(decoded.tile.columns[0]?.chunks[0]?.fields).toHaveLength(3);
+  expect(transferBuffers(decoded).length).toBeGreaterThan(0);
 });

@@ -43,7 +43,7 @@ export const ENGINE_CHOICES: readonly EngineChoice[] = [
     engine: 'libsql-file',
   },
   { id: 'd1', name: 'Cloudflare D1', monogram: 'D1', engine: null },
-  { id: 'mongodb', name: 'MongoDB', monogram: 'Mg', engine: null },
+  { id: 'mongodb', name: 'MongoDB', monogram: 'Mg', engine: 'mongodb' },
   { id: 'snowflake', name: 'Snowflake', monogram: 'Sf', engine: null },
   { id: 'redis', name: 'Redis', monogram: 'Re', engine: null },
   { id: 'sqlite', name: 'SQLite', monogram: 'Sl', engine: 'sqlite' },
@@ -73,6 +73,8 @@ export function defaultPort(engine: EngineDto): number | null {
       return 8123;
     case 'sqlserver':
       return 1433;
+    case 'mongodb':
+      return 27017;
     case 'libsql':
       return 443;
     case 'sqlite':
@@ -85,6 +87,7 @@ export function defaultPort(engine: EngineDto): number | null {
 /** Tier 2 drivers in the docs/05 matrix, shown as beta (FR-APP-07). */
 export function isBetaEngine(engine: EngineDto): boolean {
   switch (engine) {
+    case 'mongodb':
     case 'sqlserver':
     case 'clickhouse':
     case 'duckdb':
@@ -134,6 +137,8 @@ export function editorDialect(engine: EngineDto): EditorDialect {
     case 'libsql':
     case 'libsql-file':
       return 'sqlite';
+    case 'mongodb':
+      return 'mongodb';
     case 'postgres':
     case 'mysql':
     case 'mariadb':

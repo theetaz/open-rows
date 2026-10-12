@@ -182,6 +182,31 @@ it('starts new connections with the engine default port', () => {
   expect(emptyDraft('mariadb').port).toBe('3306');
   expect(emptyDraft('postgres').port).toBe('5432');
   expect(emptyDraft('sqlite').port).toBe('');
+  expect(emptyDraft('mongodb').port).toBe('27017');
+});
+
+it('preserves MongoDB discovery and authentication options from URL to saved form', () => {
+  const parsed = {
+    engine: 'mongodb' as const,
+    file: null,
+    host: 'cluster.test',
+    port: 27017,
+    database: 'reports',
+    user: 'app',
+    mongodb: { srv: true, authSource: 'admin' },
+    tlsMode: 'verify-full' as const,
+    passwordProvided: false,
+  };
+  const draft = withUrl(emptyDraft(), parsed);
+  expect(toInput(draft)).toMatchObject({
+    engine: 'mongodb',
+    host: 'cluster.test',
+    mongodb: parsed.mongodb,
+    tlsMode: 'verify-full',
+  });
+  expect(draftFromProfile(profile('reports', parsed)).mongodb).toEqual(
+    parsed.mongodb,
+  );
 });
 
 it('a saved connection refuses a URL for another engine', () => {

@@ -83,6 +83,7 @@ pub(crate) fn setup_sql(driver: Driver, timeout: Option<Duration>) -> Vec<String
         Driver::Sqlserver
         | Driver::Clickhouse
         | Driver::Sqlite
+        | Driver::Mongodb
         | Driver::Libsql
         | Driver::LibsqlFile
         | Driver::Duckdb => Vec::new(),

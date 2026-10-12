@@ -93,3 +93,48 @@ fn authentication_review_never_authorizes_extra_edited_or_other_session_statemen
     assert!(!plan(vec!["SELECT 2".into()]).allows("session-a", Some(&token)));
     assert!(!plan(vec!["SELECT 1".into(), "SELECT 2".into()]).allows("session-a", Some(&token)));
 }
+
+#[test]
+fn mongodb_native_reads_and_writes_use_all_six_policies() {
+    use openrows_types::safety::Safety;
+    for mode in [
+        Safety::Unrestricted,
+        Safety::ReadOnly,
+        Safety::ConfirmAll,
+        Safety::ConfirmWrites,
+        Safety::AuthenticateAll,
+        Safety::AuthenticateWrites,
+    ] {
+        let policy = SafetyPolicy {
+            mode,
+            dialect: Dialect::MongoDb,
+        };
+        let read = SafetyPlan::check(policy, vec!["db.x.find({a:1}).limit(10)".into()]);
+        assert_eq!(
+            read.gate(),
+            if matches!(mode, Safety::ConfirmAll | Safety::AuthenticateAll) {
+                Gate::Confirm
+            } else {
+                Gate::Run
+            }
+        );
+        for source in [
+            "db.x.insertOne({a:1})",
+            "db.x.updateOne({a:1},{$set:{a:2}})",
+            "db.x.deleteOne({a:1})",
+            "db.x.aggregate([{$out:'x'}])",
+            "db.x.find({$where:'function() { return true; }'})",
+            "db.x.find({}).unknown()",
+        ] {
+            let write = SafetyPlan::check(policy, vec![source.into()]);
+            let expected = if mode == Safety::ReadOnly {
+                Gate::Block
+            } else if mode == Safety::Unrestricted {
+                Gate::Run
+            } else {
+                Gate::Confirm
+            };
+            assert_eq!(write.gate(), expected, "{mode:?} {source}");
+        }
+    }
+}

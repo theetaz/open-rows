@@ -150,10 +150,12 @@ export function substringIndices(text: string, query: string): number[] {
 /** Sections claimed by the driver; unsupported kinds have no disclosure or read. */
 export function supportedGroups(
   supported: readonly ObjectKindDto[],
+  documents = false,
 ): ObjectGroup[] {
   return objectGroups
     .map((group) => ({
       ...group,
+      label: documents && group.id === 'tables' ? 'Collections' : group.label,
       kinds: group.kinds.filter((kind) => supported.includes(kind)),
     }))
     .filter((group) => group.kinds.length > 0);

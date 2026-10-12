@@ -141,6 +141,7 @@ impl Blocks {
     fn opens(&self, token: Token, source: &str) -> bool {
         let is = |keyword: &str| token.is_word(source, keyword);
         match self.dialect {
+            Dialect::MongoDb => false,
             Dialect::Postgres | Dialect::Duckdb => {
                 (self.after_begin && is("ATOMIC")) || (self.depth > 0 && is("CASE"))
             }

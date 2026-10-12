@@ -72,7 +72,9 @@ fn parse(sql: &str, dialect: Dialect) -> Result<Box<Query>, UnsafeAiSql> {
         Dialect::Postgres => &dialect::PostgreSqlDialect {},
         Dialect::MySql => &dialect::MySqlDialect {},
         Dialect::Sqlite => &dialect::SQLiteDialect {},
-        Dialect::Duckdb | Dialect::SqlServer | Dialect::ClickHouse => return Err(UnsafeAiSql),
+        Dialect::MongoDb | Dialect::Duckdb | Dialect::SqlServer | Dialect::ClickHouse => {
+            return Err(UnsafeAiSql);
+        }
     };
     let mut statements = Parser::new(dialect)
         .with_recursion_limit(64)

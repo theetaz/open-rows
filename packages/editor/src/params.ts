@@ -92,6 +92,7 @@ export function findParams(
   dialect: EditorDialect,
   style: PlaceholderStyle,
 ): ParamOccurrence[] {
+  if (dialect === 'mongodb') return [];
   const found: ParamOccurrence[] = [];
   let depth = 0;
   for (const token of tokens(sql, dialect)) {

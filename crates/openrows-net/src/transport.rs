@@ -31,6 +31,12 @@ pub trait Dialer: Send + Sync {
     /// An I/O error whose message names the hop that failed.
     fn dial(&self) -> BoxFuture<'_, io::Result<BoxStream>>;
 
+    /// Derive the same route to a discovered server (`MongoDB` replica/SRV discovery).
+    /// Fixed cloud helpers return `None`; their clients use one direct endpoint.
+    fn retarget(&self, _host: &str, _port: u16) -> Option<Arc<dyn Dialer>> {
+        None
+    }
+
     /// Human-readable route, e.g. `SSH bastion.example.com → db.internal:5432`.
     fn describe(&self) -> String;
 
@@ -147,6 +153,15 @@ fn reopen_failed(error: &SshError) -> io::Error {
 }
 
 impl Dialer for TunnelDialer {
+    fn retarget(&self, host: &str, port: u16) -> Option<Arc<dyn Dialer>> {
+        Some(Arc::new(Self::new(
+            self.shared.clone(),
+            Destination::Tcp {
+                host: host.into(),
+                port,
+            },
+        )))
+    }
     fn dial(&self) -> BoxFuture<'_, io::Result<BoxStream>> {
         Box::pin(self.dial_with_reconnect())
     }

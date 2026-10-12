@@ -250,3 +250,22 @@ resolver's format/build checks; Developer ID/notarization is an open gate.
 ### Implemented (M2-04a): local DuckDB policy
 
 Native DuckDB lives only in the helper. Before any startup/user SQL it disables autoload_known_extensions, autoinstall_known_extensions, allow_persistent_secrets, allow_community_extensions and enable_external_access, then locks configuration. Engine memory/threads are capped. INSTALL/LOAD or attempts to unlock the policy surface native errors; no automatic extension downloads, persistent secrets or external file/network scans are permitted. Database access is the selected file or profile-local memory database. All ATTACH SQL is conservatively rejected before sending, including multi-statement requests, until canonical attached-file reservations exist. Native inter-process file locks are never overridden or stolen. Existing credentials and bootstrap secrets stay on the inherited bounded channel, outside argv/logs.
+
+## MongoDB document safety
+
+MongoDB uses the shared six safety policies through a bounded, data-only MQL
+parser. Unknown syntax remains a write for admission. Aggregation `$out`/`$merge`
+and server JavaScript markers, including nested ones, cannot bypass read-only
+admission or confirmation. Pipeline previews refuse these operations. AI/MCP
+query execution remains unavailable without a server-enforced read-only boundary.
+
+Document changes validate JSON/EJSON, duplicate fields, numeric ranges and BSON
+identity before issuing a review token. Updates/deletes compare both `_id` and
+the complete original document. A replica-set transaction commits the staged
+batch atomically; stale snapshots roll back the whole batch. Mutation batches
+are never replayed. The SDK may resend an idempotent commit using its original
+transaction identity; a final ambiguous outcome is surfaced for verification.
+MongoDB passwords retain the existing keychain/ask/command secret flow.
+Command monitoring retains only a random operation token and server address.
+Cancellation is bound to both that token and server; cursor ownership/cleanup
+stays with the SDK. Index builds are never interrupted with `killOp`.

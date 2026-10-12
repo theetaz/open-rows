@@ -100,6 +100,7 @@ pub(super) fn ensure_engine(engine: openrows_store::profile::Driver) -> Result<(
         | Driver::Clickhouse
         | Driver::Sqlite
         | Driver::LibsqlFile
+        | Driver::Mongodb
         | Driver::Libsql => return Ok(()),
         Driver::Duckdb => {
             "DuckDB diagnostics run only on its owning session; no extra connection is opened"

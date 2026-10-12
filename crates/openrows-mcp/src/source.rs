@@ -27,7 +27,8 @@ pub(crate) async fn validate(
             mysql_table(connection, (schema, table)).await?;
         }
         crate::ReadEngine::Sqlite | crate::ReadEngine::LibsqlFile => {}
-        crate::ReadEngine::Libsql
+        crate::ReadEngine::Mongodb
+        | crate::ReadEngine::Libsql
         | crate::ReadEngine::Sqlserver
         | crate::ReadEngine::Clickhouse
         | crate::ReadEngine::Duckdb => return Err(McpError::Unsafe),

@@ -19,7 +19,7 @@ impl Lexer<'_> {
     pub(super) fn next_token(&mut self, byte: u8) -> Token {
         let special = match self.dialect {
             Dialect::Postgres | Dialect::Duckdb => self.postgres(byte),
-            Dialect::MySql => self.mysql(byte),
+            Dialect::MySql | Dialect::MongoDb => self.mysql(byte),
             Dialect::Sqlite => self.sqlite(byte),
             Dialect::SqlServer => self.sqlserver(byte),
             Dialect::ClickHouse => self.clickhouse(byte),
@@ -43,7 +43,10 @@ impl Lexer<'_> {
                 self.token(TokenKind::BlockComment, self.block_comment_end(nested))
             }
             b'\'' => {
-                let escapes = matches!(self.dialect, Dialect::MySql | Dialect::ClickHouse);
+                let escapes = matches!(
+                    self.dialect,
+                    Dialect::MySql | Dialect::MongoDb | Dialect::ClickHouse
+                );
                 self.token(TokenKind::String, self.quoted_end(self.pos, b'\'', escapes))
             }
             b'"' => self.token(

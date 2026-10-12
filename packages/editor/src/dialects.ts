@@ -10,9 +10,22 @@ import {
 
 /** SQL dialects the editor highlights, one per connection engine. */
 export type EditorDialect =
-  'postgres' | 'mysql' | 'mariadb' | 'sqlserver' | 'sqlite' | 'clickhouse';
+  | 'mongodb'
+  | 'postgres'
+  | 'mysql'
+  | 'mariadb'
+  | 'sqlserver'
+  | 'sqlite'
+  | 'clickhouse';
 
 const DIALECTS: Record<EditorDialect, SQLDialect> = {
+  mongodb: SQLDialect.define({
+    doubleQuotedStrings: true,
+    backslashEscapes: true,
+    keywords:
+      'db find sort limit skip aggregate countDocuments insertOne insertMany updateOne updateMany deleteOne deleteMany replaceOne createIndex dropIndex getIndexes getCollection toArray',
+    types: '',
+  }),
   postgres: PostgreSQL,
   mysql: MySQL,
   mariadb: MariaSQL,

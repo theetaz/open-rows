@@ -107,7 +107,7 @@ The UI reads capabilities to decide which toolbar buttons, tree nodes and editor
 | SQL Server 2017+ / Azure SQL | TDS 7.4 | own client on `openrows-net` streams (M2-02, see §14; `tiberius` was the plan) | — | 2 | `rustls` TLS inside `PRELOGIN`; SQL logins (Windows/Entra ID later); cancel via the TDS attention signal on the same connection; `GO` batch separator handled by the splitter. |
 | ClickHouse 25.3 LTS | HTTP interface (and native later) | own client on `hyper` using `FORMAT ArrowStream` | — | 2 | Implemented in M2-03 (§17): native incremental ArrowStream, HTTP(S) over routes, bound parameters, catalog and query cancellation; read-only grids (no transactional mutations). |
 | DuckDB | embedded in driver host | `duckdb` crate (C++ library) | MIT | 2 | Implemented — M2-04a hosted file/memory query, native Arrow/binding, interrupt, reservations and app path; M2-04b catalog, guarded edits, tracked transactions, export and full Tier 2 conformance on the one shared session (§20, §21). |
-| MongoDB 5.0+ | OP_MSG | official `mongodb` crate | Apache-2.0 | 2 | Shell-like query parser in `openrows-sql/mql`; documents → JSON column + flattened tabular view; `killOp` for cancel. |
+| MongoDB 5.0+ | OP_MSG | official `mongodb` crate | Apache-2.0 | 2 | Beta driver in `openrows-driver-mongodb`; bounded MQL parser, Arrow documents, transactional staged edits on replica sets; comment-scoped `killOp` cancellation (§22). |
 | Redis 6+ / Valkey / KeyDB / Dragonfly | RESP2/RESP3 | `redis` crate | BSD-3 | 2 | `SCAN`-based key browser (never `KEYS *`); type-aware editors; cluster and sentinel support. |
 | Oracle 19c+ | OCI | `oracle` crate (ODPI-C, loads **user-installed** Instant Client at runtime) | UPL/Apache | 3 | Not bundled; app detects/locates Instant Client and guides installation. Runs in driver host. |
 | Cassandra 4+ / ScyllaDB | CQL native protocol | `scylla` crate | MIT/Apache | 3 | Paging via paging state; editing by full primary key only. |
@@ -608,3 +608,59 @@ The hosted proxy now advertises Cancel, BindParameters, Schemas, Catalog, RowEdi
 
 Tests: the hosted conformance macro passes all ten groups with Metadata (including macro and sequence fixtures) and Edits now running; `duckdb_facets` covers transaction tracking, catalog reads inside an open transaction, edit refusal and keyless tables; a core unit test covers facet calls on sessions without facets and after close.
 
+
+## 22. MongoDB beta (M3-01–M3-04)
+
+`openrows-driver-mongodb` uses the official Apache-2.0 `mongodb` Rust driver.
+The connection picker accepts `mongodb://` and `mongodb+srv://`, with URL/form
+sync, an authentication database, existing keychain/ask/command secrets and
+Test connection diagnostics. An authenticated, bounded loopback SOCKS adapter
+routes **all** upstream database sockets through `openrows-net`, including TLS.
+Replica discovery reuses SSH/proxy routes with `Dialer::retarget`. Fixed cloud
+helpers use one direct endpoint. TLS verification retains the logical upstream
+hostname; driver-side TLS is disabled only on the authenticated loopback leg.
+
+The SDK retains cursor server affinity and handles getMore/cleanup. Cancellation
+records only the active token and server address, finds that user's operation
+through `$currentOp`, and interrupts it on the same server. Late cancel requests
+cannot signal a later statement. Index cancellation reports an uncertain outcome
+without `killOp`: verify the build before retrying, following
+[MongoDB's index-build cancellation rule](https://www.mongodb.com/docs/manual/reference/command/killop/).
+
+MQL supports `find` (projection, sort, limit, skip), `aggregate`,
+`countDocuments`, `insertOne/Many`, `updateOne/Many`, `replaceOne`,
+`deleteOne/Many`, `getIndexes`, `createIndex` and `dropIndex`. Arguments accept
+JSON/EJSON and JSON5 shell object spelling, plus the finite `ObjectId`,
+`ISODate` and numeric BSON constructors. No JavaScript is evaluated locally.
+Queries are bounded to 1 MiB and 64 syntax levels; typed projection inference
+uses at most 16 nested levels and preserves deeper values as JSON. The SQL
+formatter is unavailable for MQL. Unknown syntax is never admitted as a read. `$out`/`$merge` aggregation stages,
+including nested ones, are writes. Server JavaScript markers in finds, counts
+or pipelines also require write admission; the shared six safety policies apply.
+
+Databases, collections and views use the existing catalog tree; expanded
+collections list indexes, and MQL creates/drops them. Collection
+pages expose `_id` and a lossless canonical EJSON `__document` column. Query
+results also infer a bounded union of top-level keys into typed Arrow fields,
+including structs and lists, with JSON fallback for heterogeneous values and
+all new shapes retained in `__document`. The result pane offers table, tree and
+JSON views, fetching one complete document on demand. The Pipeline editor
+previews a prefix through stage N with a final 100-document sample limit; it
+refuses write-producing stages and server JavaScript in previews.
+
+Document insert/edit/delete/duplicate use the existing staged change-set,
+review token and commit flow. BSON validates EJSON before review. Updates and
+deletes guard both `_id` and the complete original document, including added
+fields. A conflict rolls back the entire batch. Atomic staged edits require a
+replica set or sharded deployment; a standalone server rejects the transaction
+without applying a partial batch. Mutation commands and transaction bodies are never automatically replayed.
+The official SDK may retry an idempotent commit/abort using the same transaction
+identity; it never starts a replacement transaction. A final ambiguous commit
+or lost/cancelled mutation outcome is explicitly uncertain. DDL,
+Explain, SQL imports/dumps, structure editing, Monitor and AI/MCP query reads
+remain capability-gated or unsupported.
+
+`just test-mongo` starts a uniquely named `mongo:8` replica-set container on a
+random loopback port, runs driver integration and the native conformance subset,
+and removes the container and runtime TLS fixture. The MQL fuzz target lives in
+`fuzz/fuzz_targets/mql.rs`.

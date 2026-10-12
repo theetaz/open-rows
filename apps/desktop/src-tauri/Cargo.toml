@@ -42,6 +42,7 @@ allow_attributes_without_reason = "warn"
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+openrows-driver-mongodb = { path = "../../../crates/openrows-driver-mongodb" }
 openrows-monitor = { path = "../../../crates/openrows-monitor", features = ["ipc"] }
 openrows-mcp = { path = "../../../crates/openrows-mcp", features = ["ipc-types"] }
 arrow-array = "60"

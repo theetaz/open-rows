@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect } from 'react';
 import { Button, Icon } from '@openrows/ui';
 import type { EngineDto } from '@openrows/ipc';
 import type { ExtraResultTab } from '../explain';
+import { DocumentView } from './DocumentResults';
 import { MessagesPanel } from './MessagesPanel';
 import { resultMessages } from './messages';
 import { useResultChoice } from './resultChoice';
@@ -193,19 +194,21 @@ function ResultBody({
         <p className={styles.placeholder}>{placeholder(run, runDefault)}</p>
       ) : current.done || current.rows > 0 ? (
         <Suspense fallback={null}>
-          <ResultGrid
-            key={current.id}
-            result={current}
-            engine={engine}
-            onCell={onCell}
-            onExportRows={
-              exportable
-                ? (rows) => {
-                    onExport?.(exportable, rows);
-                  }
-                : undefined
-            }
-          />
+          <DocumentView result={current}>
+            <ResultGrid
+              key={current.id}
+              result={current}
+              engine={engine}
+              onCell={onCell}
+              onExportRows={
+                exportable
+                  ? (rows) => {
+                      onExport?.(exportable, rows);
+                    }
+                  : undefined
+              }
+            />
+          </DocumentView>
         </Suspense>
       ) : (
         <p className={styles.placeholder} role="status">

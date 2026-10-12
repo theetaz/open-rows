@@ -38,16 +38,24 @@ function mount(): void {
 }
 async function paletteCommand(name: string): Promise<void> {
   fireEvent.keyDown(window, { key: 'p', metaKey: true, shiftKey: true });
+  await settleImports();
   const dialog = await screen.findByRole('dialog', { name: 'Command palette' });
   const input = within(dialog).getByRole('combobox');
   fireEvent.change(input, { target: { value: name } });
   fireEvent.keyDown(input, { key: 'Enter' });
+}
+/** Await the lazy boundary before inspecting its committed UI. */
+async function settleImports(): Promise<void> {
+  await act(async () => {
+    await vi.dynamicImportSettled();
+  });
 }
 it('previews environment and safety before switching and keeps each context’s tabs', async () => {
   const user = userEvent.setup();
   mount();
   await connectTo();
   await user.click(screen.getByRole('button', { name: 'New query tab (⌘T)' }));
+  await settleImports();
   await user.type(
     await screen.findByRole('textbox', { name: 'SQL editor' }),
     'SELECT local_text',
@@ -73,6 +81,7 @@ it('previews environment and safety before switching and keeps each context’s 
     expect(openConnection).toHaveBeenCalledWith('id-analytics-prod');
   });
   await user.click(screen.getByRole('button', { name: 'New query tab (⌘T)' }));
+  await settleImports();
   await user.type(
     await screen.findByRole('textbox', { name: 'SQL editor' }),
     'SELECT prod_text',
@@ -110,6 +119,7 @@ it('quick-open combines objects, local saved queries and cached project query pa
     });
   });
   fireEvent.keyDown(window, { key: 'p', metaKey: true });
+  await settleImports();
   const dialog = await screen.findByRole('dialog', { name: 'Quick open' });
   await within(dialog).findByRole('option', {
     name: /Top customers.*Local query/,

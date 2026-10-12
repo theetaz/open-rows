@@ -54,6 +54,7 @@ export type Draft = {
   port: string;
   database: string;
   user: string;
+  mongodb?: { srv: boolean; authSource: string } | undefined;
   tlsMode: TlsModeDto;
   safety: SafetyDto;
   /** Keep executed statements in History (FR-WS-02). */
@@ -178,6 +179,7 @@ export function draftFromProfile(profile: ProfileDto): Draft {
     port: String(profile.port),
     database: profile.database ?? '',
     user: profile.user ?? '',
+    mongodb: mongoDraft(profile.mongodb),
     tlsMode: profile.tlsMode,
     safety: profile.safety,
     recordHistory: profile.recordHistory,
@@ -243,12 +245,17 @@ export function withUrl(draft: Draft, parsed: UrlDraft): Draft {
     port: String(parsed.port),
     database: parsed.database ?? '',
     user: parsed.user ?? '',
+    mongodb: mongoDraft(parsed.mongodb),
     tlsMode: parsed.tlsMode,
     filePath: file && !memory ? file.path : draft.filePath,
     fileMemory: file ? memory : draft.fileMemory,
     fileReadOnly: file && !memory ? file.readOnly : draft.fileReadOnly,
     fileCreate: file ? false : draft.fileCreate,
   };
+}
+
+function mongoDraft(value: Draft['mongodb'] | null): Draft['mongodb'] {
+  return value ?? undefined;
 }
 
 /** A field edit; typing a name stops the URL from renaming the connection. */
@@ -291,7 +298,7 @@ export function validate(draft: Draft): DraftErrors {
   if (!draft.host.trim()) errors.host = 'Host is required';
   if (!Number.isInteger(port) || port < 1 || port > 65535)
     errors.port = 'Port must be 1–65535';
-  if (draft.engine !== 'libsql' && !draft.user.trim())
+  if (!['libsql', 'mongodb'].includes(draft.engine) && !draft.user.trim())
     errors.user = 'User is required';
   if (draft.envKind === 'custom' && !draft.envLabel.trim())
     errors.envLabel = 'Label is required';
@@ -350,6 +357,9 @@ export function toInput(draft: Draft): ProfileInput {
     port: file ? 1 : Number(draft.port),
     database: optional(draft.database),
     user: optional(draft.user),
+    ...(draft.engine === 'mongodb'
+      ? { mongodb: draft.mongodb ?? { srv: false, authSource: '' } }
+      : {}),
     tlsMode: draft.tlsMode,
     tlsFiles: tlsInput(draft.tls),
     ssh: file ? null : sshInput(draft.ssh),

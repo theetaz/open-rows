@@ -182,3 +182,7 @@ bench-grid repeats="3":
 # Measure CodeMirror keystroke-to-paint on 5000 SQL lines in WKWebView; maintainer-only GUI run.
 bench-editor:
     python3 -B scripts/bench-editor.py
+
+# Run MongoDB document integration and capability conformance on a replica set.
+test-mongo:
+    {{sccache_guard}} bash scripts/test-mongo.sh

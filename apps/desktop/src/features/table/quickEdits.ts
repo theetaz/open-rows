@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { removeDocumentId } from './removeDocumentId';
 import type { EditInfoDto } from '@openrows/ipc';
 import type { ResultMeta } from '../query/run';
 import { cellDraft } from './cellEdits';
@@ -46,12 +47,18 @@ export function duplicateRow(draft: StagedEdit, info: EditInfoDto): StagedEdit {
     number: 0,
     kind: 'insert',
     original: {},
-    values: Object.fromEntries(
-      Object.entries({
-        ...originalValues(draft.original),
-        ...draft.values,
-      }).filter(
-        ([name]) => !info.key.includes(name) && !info.protected.includes(name),
+    values: withoutDocumentId(
+      Object.fromEntries(
+        Object.entries({
+          ...originalValues(draft.original),
+          ...draft.values,
+        }).filter(
+          ([name]) =>
+            !info.key.includes(name) && !info.protected.includes(name),
+        ),
+      ),
+      info.columns.some(
+        (column) => column.name === '__document' && column.dataType === 'EJSON',
       ),
     ),
   };
@@ -66,4 +73,17 @@ function originalValues(
       fromOriginal(value),
     ]),
   );
+}
+
+function withoutDocumentId(
+  values: Record<string, CellValue>,
+  documentColumn: boolean,
+): Record<string, CellValue> {
+  if (!documentColumn) return values;
+  const document = values.__document;
+  if (document?.kind !== 'text') return values;
+  const value = removeDocumentId(document.value);
+  return value === null
+    ? values
+    : { ...values, __document: { kind: 'text', value } };
 }

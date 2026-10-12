@@ -42,6 +42,7 @@ fn profile(app: &AppHandle, id: &str) -> Result<ConnectionProfile, IpcError> {
 }
 fn dialect(driver: Driver) -> Dialect {
     match driver {
+        Driver::Mongodb => Dialect::MongoDb,
         Driver::Duckdb => Dialect::Duckdb,
         Driver::Postgres => Dialect::Postgres,
         Driver::Mysql | Driver::Mariadb => Dialect::MySql,

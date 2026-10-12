@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
@@ -185,10 +185,16 @@ it('edits a view query in the SQL editor', async () => {
     within(sheet).getByRole('textbox', { name: 'Name' }),
     'recent',
   );
-  const query = await within(sheet).findByRole('textbox', {
+  await within(sheet).findByRole('textbox', {
     name: 'View query',
   });
-  await user.type(query, 'orders');
+  await act(async () => {
+    await vi.dynamicImportSettled();
+  });
+  await user.type(
+    within(sheet).getByRole('textbox', { name: 'View query' }),
+    'orders',
+  );
   await user.click(
     within(sheet).getByRole('checkbox', { name: 'Materialized' }),
   );

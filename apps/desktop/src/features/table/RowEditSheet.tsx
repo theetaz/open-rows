@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { DocumentField } from './DocumentField';
 import { useState } from 'react';
 import { Button, TextField } from '@openrows/ui';
 import { Sheet, SheetActions } from '@openrows/ui/sheet';
@@ -18,7 +19,7 @@ function EditForm(props: {
   editing: RowEditing;
 }): React.JSX.Element {
   const { draft, info, editing } = props;
-  const [values, setValues] = useState(draft.values);
+  const [values, setValues] = useState(() => initialValues(draft, info));
   const set = (name: string, value: CellValue): void => {
     setValues((current) => ({ ...current, [name]: value }));
   };
@@ -76,6 +77,14 @@ function EditForm(props: {
   );
 }
 type Values = StagedEdit['values'];
+function initialValues(draft: StagedEdit, info: EditInfoDto): Values {
+  const document = info.columns.some(
+    (column) => column.name === '__document' && column.dataType === 'EJSON',
+  );
+  return draft.kind === 'insert' && document
+    ? { __document: textValue('{}'), ...draft.values }
+    : draft.values;
+}
 function EditFields({
   draft,
   info,
@@ -93,6 +102,8 @@ function EditFields({
   return (
     <div className={styles.editFields}>
       {info.columns.map((column) => {
+        const document =
+          column.name === '__document' && column.dataType === 'EJSON';
         const protectedField = info.protected.includes(column.name);
         const active = Object.hasOwn(values, column.name);
         const value = shownValue(draft, values, column.name);
@@ -102,7 +113,7 @@ function EditFields({
               <span>{column.name}</span>
               <small>{column.dataType}</small>
             </label>
-            {inserting && (
+            {inserting && !document && (
               <label>
                 <input
                   type="checkbox"
@@ -125,18 +136,18 @@ function EditFields({
                 {protectedField ? '(generated)' : '(otherwise DEFAULT)'}
               </label>
             )}
-            <TextField
-              aria-label={`Edit ${column.name}`}
-              data-initial-focus={draft.focusField === column.name}
-              value={value ? editableText(value) : ''}
-              placeholder={placeholder(value)}
+            <EditValue
+              name={column.name}
+              document={document}
+              focus={draft.focusField === column.name}
+              value={value}
               disabled={
                 protectedField ||
                 (inserting && !active) ||
                 value?.kind === 'null'
               }
-              onChange={(event) => {
-                set(column.name, textValue(event.target.value));
+              onChange={(text) => {
+                set(column.name, textValue(text));
               }}
             />
             {column.nullable && !protectedField && (!inserting || active) && (
@@ -248,4 +259,35 @@ function shownValue(
   return draft.kind === 'insert'
     ? undefined
     : fromOriginal(draft.original[name] ?? null);
+}
+
+function EditValue(props: {
+  name: string;
+  document: boolean;
+  focus: boolean;
+  value: CellValue | undefined;
+  disabled: boolean;
+  onChange: (text: string) => void;
+}): React.JSX.Element {
+  const text = props.value ? editableText(props.value) : '';
+  if (props.document)
+    return (
+      <DocumentField
+        value={text}
+        disabled={props.disabled}
+        onChange={props.onChange}
+      />
+    );
+  return (
+    <TextField
+      aria-label={`Edit ${props.name}`}
+      data-initial-focus={props.focus}
+      value={text}
+      placeholder={placeholder(props.value)}
+      disabled={props.disabled}
+      onChange={(event) => {
+        props.onChange(event.target.value);
+      }}
+    />
+  );
 }

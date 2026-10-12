@@ -18,7 +18,7 @@ impl Dialect {
             return Err(SelectError::NulCharacter);
         }
         Ok(match self {
-            Self::Postgres | Self::Duckdb | Self::Sqlite => {
+            Self::Postgres | Self::Duckdb | Self::Sqlite | Self::MongoDb => {
                 format!("\"{}\"", name.replace('"', "\"\""))
             }
             Self::MySql => format!("`{}`", name.replace('`', "``")),
@@ -51,7 +51,7 @@ impl Dialect {
         match self {
             Self::Postgres | Self::Duckdb => format!("{expression}::text"),
             Self::MySql => format!("CAST({expression} AS CHAR)"),
-            Self::Sqlite => format!("CAST({expression} AS TEXT)"),
+            Self::Sqlite | Self::MongoDb => format!("CAST({expression} AS TEXT)"),
             Self::SqlServer => format!("CONVERT(NVARCHAR(MAX), {expression})"),
             Self::ClickHouse => format!("CAST({expression} AS Nullable(String))"),
         }
@@ -62,7 +62,7 @@ impl Dialect {
         match self {
             Self::Postgres | Self::Duckdb => format!("${number}"),
             Self::MySql => "?".to_owned(),
-            Self::Sqlite => format!("?{number}"),
+            Self::Sqlite | Self::MongoDb => format!("?{number}"),
             Self::SqlServer => format!("@P{number}"),
             Self::ClickHouse => format!("{{p{number}:Nullable(String)}}"),
         }
@@ -78,7 +78,9 @@ impl Dialect {
             Self::MySql => {
                 format!("CAST({column} AS CHAR) COLLATE utf8mb4_bin <=> {placeholder}")
             }
-            Self::Sqlite => format!("CAST({column} AS TEXT) COLLATE BINARY IS {placeholder}"),
+            Self::Sqlite | Self::MongoDb => {
+                format!("CAST({column} AS TEXT) COLLATE BINARY IS {placeholder}")
+            }
             Self::ClickHouse => {
                 format!("isNotDistinctFrom({}, {placeholder})", self.text_of(column))
             }
@@ -105,7 +107,7 @@ impl Dialect {
             Self::MySql => format!("{text} {not}LIKE {placeholder}"),
             // No default escape; `SQLite` matches ASCII case-insensitively,
             // SQL Server by the column's (usually case-insensitive) collation.
-            Self::Sqlite | Self::SqlServer => {
+            Self::Sqlite | Self::MongoDb | Self::SqlServer => {
                 format!("{text} {not}LIKE {placeholder} ESCAPE '\\'")
             }
         }
@@ -130,7 +132,7 @@ impl Dialect {
             (Self::ClickHouse, true) => Ok(format!("NOT match({text}, {placeholder})")),
             (Self::MySql, false) => Ok(format!("{text} REGEXP {placeholder}")),
             (Self::MySql, true) => Ok(format!("{text} NOT REGEXP {placeholder}")),
-            (Self::Sqlite, _) => Err(SelectError::Unsupported(
+            (Self::Sqlite | Self::MongoDb, _) => Err(SelectError::Unsupported(
                 "SQLite has no regular-expression filter",
             )),
             (Self::SqlServer, _) => Err(SelectError::Unsupported(

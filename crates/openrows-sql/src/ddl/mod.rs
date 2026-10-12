@@ -30,6 +30,7 @@ pub fn string_literal(dialect: Dialect, text: &str) -> Option<String> {
     Some(match dialect {
         Dialect::MySql | Dialect::ClickHouse => format!("'{}'", doubled.replace('\\', "\\\\")),
         Dialect::Postgres | Dialect::Duckdb | Dialect::Sqlite => format!("'{doubled}'"),
+        Dialect::MongoDb => return None,
         Dialect::SqlServer => format!("N'{doubled}'"),
     })
 }

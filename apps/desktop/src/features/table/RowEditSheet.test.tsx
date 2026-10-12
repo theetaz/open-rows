@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import { RowEditSheet } from './RowEditSheet';
 import type { RowEditing } from './useRowEditing';
@@ -60,3 +60,35 @@ it.each(['precise value', null])(
     expect(screen.getByRole('textbox', { name: 'Edit id' })).not.toHaveFocus();
   },
 );
+
+it('stages an empty MongoDB document through the enabled JSON editor', () => {
+  const change = vi.fn();
+  const editing = {
+    review: null,
+    draft: {
+      id: 'document',
+      number: 0,
+      kind: 'insert',
+      original: {},
+      values: {},
+    },
+    info: {
+      key: ['_id'],
+      protected: ['_id'],
+      columns: [{ name: '__document', dataType: 'EJSON', nullable: false }],
+    },
+    close: vi.fn(),
+    change,
+  } as unknown as RowEditing;
+  render(<RowEditSheet editing={editing} />);
+  const document = screen.getByRole('textbox', { name: 'Edit __document' });
+  expect(document).toBeEnabled();
+  expect(document).toHaveValue('{}');
+  fireEvent.click(screen.getByRole('button', { name: 'Stage changes' }));
+  expect(change).toHaveBeenCalledWith(
+    expect.objectContaining({
+      kind: 'insert',
+      values: { __document: { kind: 'text', value: '{}' } },
+    }),
+  );
+});

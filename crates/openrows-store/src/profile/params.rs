@@ -31,6 +31,8 @@ pub enum Driver {
     Sqlite,
     /// Remote libSQL/Turso through Hrana 3 HTTP.
     Libsql,
+    /// `MongoDB` document databases.
+    Mongodb,
     /// SQLite-compatible local libSQL file.
     #[serde(rename = "libsql-file")]
     LibsqlFile,
@@ -38,7 +40,7 @@ pub enum Driver {
 
 impl Driver {
     /// Every engine, in picker order.
-    pub const ALL: [Self; 9] = [
+    pub const ALL: [Self; 10] = [
         Self::Postgres,
         Self::Mysql,
         Self::Mariadb,
@@ -48,6 +50,7 @@ impl Driver {
         Self::Libsql,
         Self::LibsqlFile,
         Self::Duckdb,
+        Self::Mongodb,
     ];
 
     /// Display name, e.g. `MariaDB`.
@@ -62,6 +65,7 @@ impl Driver {
             Self::Clickhouse => "ClickHouse",
             Self::Sqlite => "SQLite",
             Self::Libsql => "libSQL / Turso (remote)",
+            Self::Mongodb => "MongoDB",
             Self::LibsqlFile => "libSQL file",
         }
     }
@@ -76,6 +80,7 @@ impl Driver {
             Self::Clickhouse => Some(8123),
             Self::Sqlite | Self::LibsqlFile | Self::Duckdb => None,
             Self::Libsql => Some(443),
+            Self::Mongodb => Some(27017),
         }
     }
 

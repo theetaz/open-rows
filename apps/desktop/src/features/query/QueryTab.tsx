@@ -6,6 +6,7 @@ import { editorDialect } from '../connections/engines';
 import type { ProfileDto } from '@openrows/ipc';
 import type { CompletionCatalog, FormatKind } from '@openrows/editor';
 import { useHistoryInsert } from './historyInsert';
+import { PipelineEditor } from './PipelineEditor';
 import { QueryEditor } from './QueryEditor';
 import { EditorBar } from './EditorBar';
 import { FileChangedBar } from './FileChangedBar';
@@ -150,6 +151,7 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
           onName={sheets.startNaming}
           onExplain={explain.run}
         />
+        <MongoPipeline {...props} run={run} />
         <TabParams
           {...props}
           dialect={dialect}
@@ -253,7 +255,9 @@ function TabEditor(
       <FileChangedBar tab={tab} editor={editorRef} tabs={props.tabs} />
       <QueryEditor
         doc={tab.sql}
-        label="SQL editor"
+        label={
+          props.connection.engine === 'mongodb' ? 'MQL editor' : 'SQL editor'
+        }
         dialect={editorDialect(props.connection.engine)}
         settings={props.settings}
         catalog={props.catalog}
@@ -404,4 +408,30 @@ function TabSheets(
       />
     );
   return null;
+}
+
+function MongoPipeline(
+  props: QueryTabProps & { run: RunState },
+): React.JSX.Element | null {
+  if (props.connection.engine !== 'mongodb') return null;
+  return (
+    <PipelineEditor
+      disabled={!props.sessionId || isActive(props.run)}
+      run={(sql) => {
+        if (!props.sessionId) return;
+        void props.runs.execute(props.tab.id, {
+          sql,
+          sessionId: props.sessionId,
+          mode: 'all',
+          confirmToken: null,
+          cursor: null,
+          maxRows: 1000,
+          returnOnError: true,
+          params: null,
+          autoLimit: null,
+          confirmMultiple: false,
+        });
+      }}
+    />
+  );
 }

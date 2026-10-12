@@ -91,8 +91,8 @@ pub(crate) fn target(
             .ok_or_else(|| IpcError::invalid("Choose a database file"))?;
         (file_endpoint(profile.id, file), String::new())
     } else {
-        let user = if profile.driver == Engine::Libsql {
-            String::new()
+        let user = if matches!(profile.driver, Engine::Libsql | Engine::Mongodb) {
+            params.user.clone().unwrap_or_default()
         } else {
             params
                 .user
@@ -134,7 +134,7 @@ pub(crate) fn target(
         tls: tls_files(&profile.tls, secrets.tls_key_passphrase.as_ref()),
         via: None,
         timeouts: ConnectTimeouts::default(),
-        driver_options: params.options.clone(),
+        driver_options: driver_options(profile),
         startup_commands,
     };
     Ok(Target {
@@ -298,3 +298,20 @@ fn with_endpoint(error: DriverError, request: &ConnectRequest) -> DriverError {
 #[cfg(test)]
 #[path = "target_tests.rs"]
 mod tests;
+
+fn driver_options(profile: &ConnectionProfile) -> std::collections::BTreeMap<String, String> {
+    let mut options = profile.params.options.clone();
+    let srv = options
+        .get("mongodb_srv")
+        .is_some_and(|value| value == "true");
+    if profile.driver == Engine::Mongodb && !options.contains_key("authSource") && !srv {
+        let source = profile
+            .params
+            .database
+            .clone()
+            .filter(|source| !source.is_empty())
+            .unwrap_or_else(|| "admin".into());
+        options.insert("authSource".into(), source);
+    }
+    options
+}

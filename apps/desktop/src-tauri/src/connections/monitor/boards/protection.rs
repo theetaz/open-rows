@@ -57,7 +57,7 @@ pub(super) fn protection(driver: Driver, timeout_ms: u32) -> Result<Protection, 
             rollback: true,
             mode: ReadOnlyMode::Classified,
         },
-        Driver::Clickhouse | Driver::Libsql => Protection {
+        Driver::Clickhouse | Driver::Mongodb | Driver::Libsql => Protection {
             setup: Vec::new(),
             rollback: false,
             mode: ReadOnlyMode::Classified,

@@ -20,4 +20,5 @@ function collect(chunk: ColumnChunk, unique: Set<ArrayBuffer>): void {
       unique.add(view.buffer as ArrayBuffer);
   }
   if (chunk.child) collect(chunk.child, unique);
+  for (const field of chunk.fields ?? []) collect(field.chunk, unique);
 }

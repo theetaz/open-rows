@@ -13,6 +13,7 @@ import type { EditorDialect } from './dialects';
 import type { FormatOptions } from './format';
 
 const DIALECTS: Record<EditorDialect, DialectOptions> = {
+  mongodb: postgresql,
   postgres: postgresql,
   mysql,
   mariadb,
@@ -28,6 +29,7 @@ const DIALECTS: Record<EditorDialect, DialectOptions> = {
  * T-SQL `@name` is a variable, which the formatter already keeps whole.
  */
 const PARAMS: Record<EditorDialect, ParamTypes> = {
+  mongodb: {},
   postgres: { numbered: ['$'], named: [':'] },
   mysql: { positional: true, named: [':'] },
   mariadb: { positional: true, named: [':'] },
@@ -38,6 +40,8 @@ const PARAMS: Record<EditorDialect, ParamTypes> = {
 
 /** Pretty-print SQL; loaded on first use so the formatter stays out of startup. */
 export function beautify(sql: string, options: FormatOptions): string {
+  if (options.dialect === 'mongodb')
+    throw new Error('Edit aggregation stages as JSON in the Pipeline editor.');
   return formatDialect(sql, {
     dialect: DIALECTS[options.dialect],
     tabWidth: options.indentWidth,

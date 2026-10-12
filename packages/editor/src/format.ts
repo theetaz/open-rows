@@ -71,6 +71,10 @@ export async function formatInView(
   kind: FormatKind,
   options: FormatOptions,
 ): Promise<void> {
+  if (options.dialect === 'mongodb')
+    throw new Error(
+      'Use the Pipeline or document editor to format MongoDB JSON.',
+    );
   const { from, to } = formatTarget(view);
   const before = view.state.sliceDoc(from, to);
   const text =

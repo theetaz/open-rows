@@ -85,6 +85,7 @@ pub(crate) fn destination(profile: &ConnectionProfile) -> Destination {
         | Driver::Sqlserver
         | Driver::Clickhouse
         | Driver::Sqlite
+        | Driver::Mongodb
         | Driver::Libsql
         | Driver::LibsqlFile
         | Driver::Duckdb => params.host.clone(),

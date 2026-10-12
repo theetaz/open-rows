@@ -133,3 +133,38 @@ it('keeps the libSQL auth token out of remote URLs and uses the local flavour', 
     composeUrl({ ...emptyDraft('libsql-file'), filePath: '/data/app.db' }),
   ).toBe('libsql-file:/data/app.db');
 });
+
+it('composes MongoDB SRV and authentication database fields', () => {
+  const draft = {
+    ...emptyDraft('mongodb'),
+    host: 'cluster.example',
+    database: 'shop',
+    user: 'fixture',
+    mongodb: { srv: true, authSource: 'admin' },
+    tlsMode: 'verify-full' as const,
+  };
+  expect(composeUrl(draft)).toBe(
+    'mongodb+srv://fixture@cluster.example/shop?authSource=admin',
+  );
+});
+
+it('composes native MongoDB TLS options for plain and SRV URLs', () => {
+  const draft = {
+    ...emptyDraft('mongodb'),
+    host: 'db.example',
+    mongodb: { srv: false, authSource: 'admin' },
+  };
+  expect(composeUrl({ ...draft, tlsMode: 'verify-full' })).toBe(
+    'mongodb://db.example:27017/?tls=true&authSource=admin',
+  );
+  expect(composeUrl({ ...draft, tlsMode: 'disable' })).toBe(
+    'mongodb://db.example:27017/?tls=false&authSource=admin',
+  );
+  expect(
+    composeUrl({
+      ...draft,
+      tlsMode: 'disable',
+      mongodb: { srv: true, authSource: 'admin' },
+    }),
+  ).toBe('mongodb+srv://db.example/?tls=false&authSource=admin');
+});

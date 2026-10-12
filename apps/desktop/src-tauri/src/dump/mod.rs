@@ -148,6 +148,12 @@ fn engine(driver: Driver) -> Result<DumpEngineDto, IpcError> {
                 "Backup and restore are not available for ClickHouse yet",
             ));
         }
+        Driver::Mongodb => {
+            return Err(IpcError::new(
+                IpcErrorKind::Unsupported,
+                "This action is not supported for MongoDB",
+            ));
+        }
         Driver::Libsql => {
             return Err(IpcError::new(
                 IpcErrorKind::Unsupported,

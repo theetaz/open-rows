@@ -154,7 +154,9 @@ function CatalogSections(
   const preferences = useSidebarPreferences(catalog.profileId);
   const features = catalog.inspection.capabilities;
   const groups =
-    features.status === 'ready' ? supportedGroups(features.data.kinds) : [];
+    features.status === 'ready'
+      ? supportedGroups(features.data.kinds, catalog.engine === 'mongodb')
+      : [];
   const schemas = preferences.schemas.length
     ? preferences.schemas
     : [catalog.schema];

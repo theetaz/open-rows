@@ -17,6 +17,7 @@ static MYSQL: MySqlDriver = MySqlDriver(Flavour::MySql);
 static MARIADB: MySqlDriver = MySqlDriver(Flavour::MariaDb);
 static SQLITE: SqliteDriver = SqliteDriver;
 static CLICKHOUSE: ClickHouseDriver = ClickHouseDriver;
+static MONGODB: openrows_driver_mongodb::MongoDriver = openrows_driver_mongodb::MongoDriver;
 static LIBSQL: LibsqlDriver = LibsqlDriver;
 static LIBSQL_FILE: LibsqlFileDriver = LibsqlFileDriver;
 static SQL_SERVER: SqlServerDriver = SqlServerDriver;
@@ -33,6 +34,7 @@ pub(crate) fn driver(engine: Engine) -> &'static dyn Driver {
         Engine::Clickhouse => &CLICKHOUSE,
         Engine::Sqlite => &SQLITE,
         Engine::Libsql => &LIBSQL,
+        Engine::Mongodb => &MONGODB,
         Engine::LibsqlFile => &LIBSQL_FILE,
     }
 }

@@ -315,3 +315,15 @@ plus malformed encodings and cipher variants. The randomized test is opt-in:
 4/2,000 P-256 failures before and 0/2,400 failures after; P-384 and P-521 had
 0/200 failures both times. No encoded key material is checked in; runtime fixture generation and mpint lengths are documented
 in `crates/openrows-net/tests/fixtures/ecdsa/README.md`.
+
+## MongoDB streams and discovered destinations
+
+The official MongoDB driver connects to an authenticated loopback SOCKS adapter.
+Only that local leg uses the SDK's socket layer; every upstream stream uses an
+`openrows-net` dialer and TLS client, with certificate verification against the
+logical upstream hostname. SSH and proxy dialers can derive the same route for
+replica-set/SRV-discovered destinations through `Dialer::retarget`; fixed cloud
+helpers remain direct to their configured endpoint. SRV bootstrapping uses the
+system DNS resolver before dialing. Each adapter bounds concurrent streams,
+requires a per-connection random credential and aborts its forwarding tasks
+when the database session closes.

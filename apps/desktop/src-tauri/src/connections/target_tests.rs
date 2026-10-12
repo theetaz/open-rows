@@ -77,6 +77,40 @@ fn metadata_targets_switch_database_and_name_themselves() -> Result<(), IpcError
 }
 
 #[test]
+fn mongodb_authentication_source_survives_database_switches() -> Result<(), IpcError> {
+    let mut base = profile(Some("app"), Some("auth_database"), TlsMode::Disable);
+    base.driver = Engine::Mongodb;
+    let metadata = target(&base, &DriverSecrets::default())?.with_database("reports");
+    assert_eq!(metadata.database(), "reports");
+    assert_eq!(
+        metadata
+            .request
+            .driver_options
+            .get("authSource")
+            .map(String::as_str),
+        Some("auth_database")
+    );
+    base.params
+        .options
+        .insert("authSource".into(), "explicit".into());
+    assert_eq!(
+        driver_options(&base).get("authSource").map(String::as_str),
+        Some("explicit")
+    );
+    Ok(())
+}
+
+#[test]
+fn mongodb_srv_keeps_dns_txt_authentication_source_available() {
+    let mut base = profile(None, Some("reports"), TlsMode::VerifyFull);
+    base.driver = Engine::Mongodb;
+    base.params
+        .options
+        .insert("mongodb_srv".into(), "true".into());
+    assert!(!driver_options(&base).contains_key("authSource"));
+}
+
+#[test]
 fn network_errors_name_the_endpoint() -> Result<(), IpcError> {
     let target = target(
         &profile(Some("app"), None, TlsMode::Disable),

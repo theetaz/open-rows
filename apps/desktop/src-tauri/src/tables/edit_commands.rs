@@ -188,6 +188,9 @@ async fn prepare_commit(
                 .map_err(|error| IpcError::invalid(error.to_string()))
         })
         .collect::<Result<Vec<_>, _>>()?;
+    if dialect == Dialect::MongoDb {
+        openrows_driver_mongodb::validate_edits(&edits).map_err(|error| IpcError::from(&error))?;
+    }
     let token = preview_token(request, &edits, dialect)?;
     if request.confirm_token.as_deref() != Some(token.as_str()) {
         return Ok(EditReply::Prepared {

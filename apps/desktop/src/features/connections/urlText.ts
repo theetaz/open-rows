@@ -110,6 +110,13 @@ const SQL_SERVER_TLS: Partial<Record<TlsModeDto, string>> = {
 };
 
 function tlsQuery(draft: Draft): string {
+  if (
+    draft.engine === 'mongodb' &&
+    ['disable', 'verify-full'].includes(draft.tlsMode)
+  )
+    return draft.mongodb?.srv && draft.tlsMode === 'verify-full'
+      ? ''
+      : `?tls=${String(draft.tlsMode === 'verify-full')}`;
   if (draft.engine === 'clickhouse')
     return ['disable', 'verify-full'].includes(draft.tlsMode)
       ? ''
@@ -138,18 +145,44 @@ export function composeUrl(draft: Draft): string {
     const host = draft.host.includes(':') ? `[${draft.host}]` : draft.host;
     return `${scheme}://${host.trim()}:${draft.port || (scheme === 'http' ? '80' : '443')}`;
   }
+  const query = tlsQuery(draft);
+  return `${serverScheme(draft)}://${serverAuth(draft)}${serverAddress(draft)}${databasePath(draft)}${query}${mongoSource(draft, query)}`;
+}
+
+function serverAuth(draft: Draft): string {
   const user = encodeURIComponent(draft.user.trim());
   const secret = hasPassword(draft) ? `:${PASSWORD_MASK}` : '';
-  const auth = user || secret ? `${user}${secret}@` : '';
+  return user || secret ? `${user}${secret}@` : '';
+}
+
+function serverAddress(draft: Draft): string {
   const host = draft.host.includes(':') ? `[${draft.host}]` : draft.host;
-  const port = draft.port ? `:${draft.port}` : '';
-  const database = draft.database.trim()
+  const srv = draft.engine === 'mongodb' && draft.mongodb?.srv;
+  const port = !srv && draft.port ? `:${draft.port}` : '';
+  return `${host.trim()}${port}`;
+}
+
+function databasePath(draft: Draft): string {
+  return draft.database.trim()
     ? `/${encodeURIComponent(draft.database.trim())}`
-    : '';
-  const scheme =
+    : draft.engine === 'mongodb'
+      ? '/'
+      : '';
+}
+
+function serverScheme(draft: Draft): string {
+  if (
     draft.engine === 'clickhouse' &&
     ['require', 'verify-ca', 'verify-full'].includes(draft.tlsMode)
-      ? 'clickhouse+https'
-      : urlScheme(draft.engine);
-  return `${scheme}://${auth}${host.trim()}${port}${database}${tlsQuery(draft)}`;
+  )
+    return 'clickhouse+https';
+  return draft.engine === 'mongodb' && draft.mongodb?.srv
+    ? 'mongodb+srv'
+    : urlScheme(draft.engine);
+}
+
+function mongoSource(draft: Draft, query: string): string {
+  return draft.engine === 'mongodb' && draft.mongodb?.authSource
+    ? `${query ? '&' : '?'}authSource=${encodeURIComponent(draft.mongodb.authSource)}`
+    : '';
 }

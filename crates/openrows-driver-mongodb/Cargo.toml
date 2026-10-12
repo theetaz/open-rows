@@ -1,0 +1,29 @@
+[package]
+name = "openrows-driver-mongodb"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+mongodb = { version = "3.9", features = ["socks5-proxy"] }
+futures-core = "0.3"
+arrow-schema = "60"
+openrows-results = { path = "../openrows-results" }
+openrows-driver-api = { path = "../openrows-driver-api" }
+openrows-net = { path = "../openrows-net" }
+openrows-sql = { path = "../openrows-sql" }
+serde_json.workspace = true
+uuid.workspace = true
+tokio = { version = "1.53", features = ["net", "io-util", "sync", "time", "rt", "macros"] }
+
+[dev-dependencies]
+tokio = { version = "1.53", features = ["rt-multi-thread"] }
+
+[[test]]
+name = "mongo"
+path = "tests/mongo/main.rs"
