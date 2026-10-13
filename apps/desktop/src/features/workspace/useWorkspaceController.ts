@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: Apache-2.0
-import { selectedDiagramTables } from '../schema/diagramSelection';
 import { useMcpQueryTabs } from './useMcpProposals';
 import { useNativeFiles } from './useNativeFiles';
 import { useState } from 'react';
@@ -144,13 +143,11 @@ function diagramOpener(
     const database = object?.database ?? catalog.database;
     const schema = object?.schema ?? catalog.schema;
     if (!catalog.profileId || !database || !schema) return;
-    const tables = selectedDiagramTables({ ...catalog, database, schema });
     show({
       profileId: catalog.profileId,
       database,
       schema,
       ...(object ? { focus: object.name } : {}),
-      ...(tables.length ? { tables: [...tables] } : {}),
     });
   };
 }

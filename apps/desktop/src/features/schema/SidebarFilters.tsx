@@ -165,7 +165,6 @@ function sectionEntries({
 }: FilterProps): MenuEntry[] {
   const sections = [
     { id: 'favourites', label: 'Favourites' },
-    { id: 'recent', label: 'Recent' },
     ...groups,
   ];
   return sections.map((section): MenuEntry => ({

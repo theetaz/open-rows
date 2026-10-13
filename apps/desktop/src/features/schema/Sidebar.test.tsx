@@ -119,11 +119,30 @@ function mount(catalog: Catalog, search = '') {
   return { ...view, onOpen, user: userEvent.setup() };
 }
 
+/** Favourites start collapsed; expand them unless an earlier test already did. */
+function expandFavourites(): void {
+  const toggle = screen.getByRole('button', { name: /^Favourites/ });
+  if (toggle.getAttribute('aria-expanded') === 'false') fireEvent.click(toggle);
+}
+
+it('keeps favourites collapsed until expanded and shows no recent list', () => {
+  const object = row('orders');
+  recordRecent(saved(object));
+  toggleFavourite(saved(object));
+  mount(fixture([object]));
+  const toggle = screen.getByRole('button', { name: /^Favourites/ });
+  expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  expect(screen.queryByRole('button', { name: /^Recent/ })).toBeNull();
+  fireEvent.click(toggle);
+  expect(toggle).toHaveAttribute('aria-expanded', 'true');
+});
+
 it('keeps a favourite across tree refresh, marks a dropped object missing, and removes it', async () => {
   const object = row('orders');
   toggleFavourite(saved(object));
   const catalog = fixture([object]);
   const view = mount(catalog);
+  expandFavourites();
   expect(
     within(screen.getByRole('tree', { name: 'Favourites' })).getByRole(
       'treeitem',
@@ -148,29 +167,13 @@ it('keeps a favourite across tree refresh, marks a dropped object missing, and r
   expect(catalog.loadObjects).not.toHaveBeenCalled();
 });
 
-it('shows the last 15 recent objects and Clear empties the section', async () => {
-  const objects = Array.from({ length: 20 }, (_, index) =>
-    row(`object${String(index)}`),
-  );
-  for (const object of objects) recordRecent(saved(object));
-  const { user } = mount(fixture(objects));
-  const tree = screen.getByRole('tree', { name: 'Recent' });
-  expect(within(tree).getAllByRole('treeitem')).toHaveLength(15);
-  expect(within(tree).getAllByRole('treeitem')[0]).toHaveAccessibleName(
-    'public.object19',
-  );
-  await user.click(
-    screen.getByRole('button', { name: 'Clear recent objects' }),
-  );
-  expect(within(tree).queryAllByRole('treeitem')).toHaveLength(0);
-});
-
 it('reorders favourites with Alt+arrows, retains focus and opens with Enter', async () => {
   const objects = [row('first'), row('second')];
   objects.forEach((object) => {
     toggleFavourite(saved(object));
   });
   const { user, onOpen } = mount(fixture(objects));
+  expandFavourites();
   const tree = screen.getByRole('tree', { name: 'Favourites' });
   const second = within(tree).getByRole('treeitem', { name: 'public.second' });
   second.focus();

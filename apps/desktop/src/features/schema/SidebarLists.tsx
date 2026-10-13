@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useState } from 'react';
-import { Button, DisclosureSection, Icon, Tree, TreeNode } from '@openrows/ui';
+import { DisclosureSection, Icon, Tree, TreeNode } from '@openrows/ui';
 import { objectLabel } from './catalog';
 import type { ObjectRef } from './catalog';
 import { sidebarObjectKey } from './sidebarIdentity';
 import type { SidebarObject } from './sidebarIdentity';
 import {
-  clearRecent,
   moveFavourite,
   toggleFavourite,
   useSidebarObjects,
@@ -22,32 +21,24 @@ type Props = {
   onMenu?: ((object: ObjectRef, point: MenuPoint) => void) | undefined;
 };
 
-/** Saved identities appear above sections and never cause catalog reads. */
-export function SidebarLists(props: Props): React.JSX.Element {
+/**
+ * Favourites appear above sections and never cause catalog reads. Opened
+ * objects live in tabs, so there is no separate recent list.
+ */
+export function SidebarLists(props: Props): React.JSX.Element | null {
   const saved = useSidebarObjects(
     props.catalog.profileId,
     props.catalog.database,
   );
   const preferences = useSidebarPreferences(props.catalog.profileId);
+  if (preferences.hidden.includes('favourites')) return null;
   return (
-    <>
-      {!preferences.hidden.includes('favourites') && (
-        <SavedSection
-          {...props}
-          label="Favourites"
-          objects={saved.favourites}
-        />
-      )}
-      {!preferences.hidden.includes('recent') && (
-        <SavedSection
-          {...props}
-          label="Recent"
-          objects={saved.recent.slice(0, 15)}
-        />
-      )}
-    </>
+    <SavedSection {...props} label="Favourites" objects={saved.favourites} />
   );
 }
+
+/** Favourites start collapsed; a user expansion survives tree remounts. */
+const expandedLists = new Set<string>();
 
 function SavedSection(
   props: Props & { label: string; objects: readonly SidebarObject[] },
@@ -58,31 +49,23 @@ function SavedSection(
   )
     ? selected
     : null;
-  const favourites = props.label === 'Favourites';
+  const scope = JSON.stringify([
+    props.catalog.profileId,
+    props.catalog.database,
+  ]);
   return (
     <DisclosureSection
       label={props.label}
       count={props.objects.length}
-      defaultOpen
+      defaultOpen={expandedLists.has(scope)}
+      onOpenChange={(open) => {
+        if (open) expandedLists.add(scope);
+        else expandedLists.delete(scope);
+      }}
     >
-      {!favourites && props.objects.length > 0 && (
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => {
-            clearRecent(props.catalog.profileId, props.catalog.database);
-          }}
-        >
-          Clear recent objects
-        </Button>
-      )}
       <div
         onKeyDownCapture={(event) => {
-          if (
-            !favourites ||
-            !event.altKey ||
-            !['ArrowUp', 'ArrowDown'].includes(event.key)
-          )
+          if (!event.altKey || !['ArrowUp', 'ArrowDown'].includes(event.key))
             return;
           const index = props.objects.findIndex(
             (item) => sidebarObjectKey(item) === selected,
@@ -124,7 +107,6 @@ function SavedRow(
   const { object, catalog } = props;
   const key = sidebarObjectKey(object);
   const missing = catalog.available(object) === false;
-  const favourite = props.label === 'Favourites';
   const open = (): void => {
     if (!missing) props.onOpen(object);
   };
@@ -141,16 +123,16 @@ function SavedRow(
         }}
         onOpen={open}
         onPreview={open}
-        icon={favourite ? <Icon name="star" /> : undefined}
+        icon={<Icon name="star" />}
         title={missing ? 'Missing object' : label}
         name={`${label}${missing ? ' (missing)' : ''}`}
         onContextMenu={(event) => {
           event.preventDefault();
           props.onMenu?.(object, { x: event.clientX, y: event.clientY });
         }}
-        drag={favourite ? favouriteDrag(props) : undefined}
+        drag={favouriteDrag(props)}
         detail={
-          missing && favourite ? (
+          missing ? (
             <button
               type="button"
               aria-label={`Remove ${label}`}
@@ -161,8 +143,6 @@ function SavedRow(
             >
               Remove
             </button>
-          ) : missing ? (
-            'missing'
           ) : undefined
         }
       />

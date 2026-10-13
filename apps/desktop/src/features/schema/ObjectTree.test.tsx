@@ -281,36 +281,6 @@ it('lists large sections 5,000 objects at a time', async () => {
   vi.mocked(listObjects).mockReset();
 });
 
-it('sends schema-tree checked table names to the diagram metadata request', async () => {
-  const user = mount();
-  await connectTo();
-  const orderCheck = await sidebar().findByRole('checkbox', {
-    name: 'Select orders for ER diagram',
-  });
-  const customerCheck = await sidebar().findByRole('checkbox', {
-    name: 'Select customers for ER diagram',
-  });
-  fireEvent.click(orderCheck);
-  fireEvent.click(customerCheck);
-  expect(orderCheck).toBeChecked();
-  expect(customerCheck).toBeChecked();
-  const orders = await sidebar().findByRole('treeitem', {
-    name: 'orders ~2.4M',
-  });
-  fireEvent.contextMenu(orders, { clientX: 40, clientY: 80 });
-  const menu = await screen.findByRole('menu', { name: 'orders actions' });
-  await user.click(
-    within(menu).getByRole('menuitem', { name: 'Show ER Diagram' }),
-  );
-  await screen.findByRole('dialog', { name: 'ER Diagram — public' });
-  expect(schemaDiagram).toHaveBeenCalledWith({
-    profileId: 'id-orders-local',
-    database: 'orders',
-    schema: 'public',
-    tables: ['orders', 'customers'],
-  });
-});
-
 it("shows the ER diagram of a table's schema and opens a table from it", async () => {
   const user = mount();
   await connectTo();

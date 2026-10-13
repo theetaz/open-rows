@@ -22,7 +22,6 @@ const defaults: SidebarPreferences = {
 type Profiles = Readonly<Record<string, SidebarPreferences>>;
 const sectionIds = [
   'favourites',
-  'recent',
   ...objectGroups.map((group) => group.id),
 ];
 const strings = (value: unknown): string[] =>
