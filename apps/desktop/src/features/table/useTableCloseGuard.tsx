@@ -13,8 +13,8 @@ type Closing = { kind: 'tab'; id: string } | { kind: 'window' };
 
 /**
  * Guard closing a tab or the window against losing staged or committing
- * edits. Staged edits are journaled locally, so closing the window keeps
- * them for the next launch; a commit in progress must finish first.
+ * edits. Table-tab edits are journaled locally; query-result edits are
+ * held in memory. A commit in progress must finish before closing.
  */
 export function useTableCloseGuard({
   tabs,
@@ -158,5 +158,5 @@ function message(closing: Closing, state: GuardState): string {
       : 'The commit outcome is unknown. Reload the table to check what was saved before quitting.';
   if (closing.kind === 'tab')
     return 'Closing this tab will discard its uncommitted changes. Database data has not been changed.';
-  return `${String(state.staged)} staged ${state.staged === 1 ? 'change has' : 'changes have'} not been committed. Row edits are kept locally and offered for restore when the table is opened again; structure changes are lost.`;
+  return `${String(state.staged)} staged ${state.staged === 1 ? 'change has' : 'changes have'} not been committed. Table-tab row edits are kept locally and offered for restore when the table is opened again; query-result edits and structure changes are lost.`;
 }

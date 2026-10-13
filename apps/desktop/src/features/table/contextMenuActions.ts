@@ -17,6 +17,7 @@ import { rowText } from '../../results/copy/formats';
 import type { TableColumnDto } from '@openrows/ipc';
 import type { CopyTarget } from '../../results/copy/copySelection';
 import type { KeyJumps } from './links/useKeyJumps';
+import { resultColumnKey } from '../../results/projectedResult';
 /** A right-click target plus the grid selection it belongs to, in data coordinates. */
 export type ContextTarget = GridContextTarget & {
   ranges: readonly CellRange[];
@@ -27,6 +28,9 @@ export type GridMenu = {
   copyTarget: CopyTarget;
   pinned: readonly string[];
   togglePin: (name: string) => void;
+  fit?: ((column: number) => void) | undefined;
+  reset?: (() => void) | undefined;
+  exportRows?: ((selection: MenuSelection) => void) | undefined;
 };
 export type ContextMenuProps = {
   selection: MenuSelection;
@@ -91,8 +95,9 @@ function canEdit(editing: RowEditing, result: ResultMeta): boolean {
   );
 }
 /** Pin or unpin the column, when the grid supports frozen columns. */
-function pinActions({ grid, name, run }: Context): Action[] {
+function pinActions({ grid, selection, run }: Context): Action[] {
   if (!grid) return [];
+  const name = resultColumnKey(selection.result, selection.column);
   const pinned = grid.pinned.includes(name);
   return [
     {
@@ -109,11 +114,12 @@ function columnActions(
 ): Action[] {
   const { selection, name, changeView, run } = context;
   const { result } = selection;
+  const key = resultColumnKey(result, selection.column);
   const sort = (descending: boolean): void => {
     changeView((view) => ({
       ...view,
       offset: 0,
-      sort: { column: name, descending },
+      sort: { column: key, descending },
     }));
   };
   return [
@@ -140,7 +146,7 @@ function columnActions(
           {
             label: 'Filter column…',
             run: run(() => {
-              context.onQuickFilter?.(name);
+              context.onQuickFilter?.(key);
             }),
           },
         ]
@@ -150,7 +156,7 @@ function columnActions(
       label: 'Hide column',
       disabled: result.columns.length <= 1,
       run: run(() => {
-        changeView((view) => ({ ...view, hidden: [...view.hidden, name] }));
+        changeView((view) => ({ ...view, hidden: [...view.hidden, key] }));
       }),
     },
   ];
@@ -240,7 +246,13 @@ function cellActions(
       label: 'Filter by value',
       disabled: !field,
       run: run(() => {
-        if (field) changeView((view) => filterValue(view, field));
+        if (field)
+          changeView((view) =>
+            filterValue(view, {
+              ...field,
+              name: resultColumnKey(selection.result, selection.column),
+            }),
+          );
       }),
     },
     ...markerActions(editColumn, cellWritable).map(([label, value, ok]) => ({

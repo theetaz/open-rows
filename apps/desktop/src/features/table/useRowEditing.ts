@@ -26,10 +26,12 @@ type Args = {
   sessionId: string | null;
   views: TableViews;
   offset: number;
+  /** Validated query provenance; null keeps an unsafe result read-only. */
+  info?: EditInfoDto | null;
 };
 /** Exact row snapshots and staged changes survive tab switches in TableViews. */
 export function useRowEditing(args: Args): RowEditing {
-  const io = useEditIo(args.target);
+  const io = useEditIo(args.target, args.info);
   const [draft, setDraft] = useState<StagedEdit | null>(null);
   const [review, setReview] = useState<Extract<
     EditReply,

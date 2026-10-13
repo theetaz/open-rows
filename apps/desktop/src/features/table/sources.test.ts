@@ -157,3 +157,31 @@ it('reports changed column kinds so the grid re-measures text', () => {
   expect(edited.describe([])).toBe(true);
   expect(edited.columns[1]?.kind).toBeUndefined();
 });
+
+it('bounds row numbering and staged-key work to requested windows on a million-row result', async () => {
+  const base = source();
+  base.source.grow(1_000_000);
+  const cells = vi.spyOn(base.source, 'cell');
+  const edited = new EditedSource(base.source, [], {
+    keys: ['id'],
+    names: ['id', 'name'],
+  });
+  const numbered = new NumberedSource(edited, 0, 1_000_000);
+  await numbered.window({ r0: 999_980, r1: 999_999, c0: 0, c1: 2 }, 0);
+  cells.mockClear();
+  edited.stage(
+    [
+      {
+        id: 'last',
+        number: 1_000_000,
+        kind: 'update',
+        original: { id: '1000000', name: 'old' },
+        values: { name: textValue('last') },
+      },
+    ],
+    ['id'],
+  );
+  expect(cells.mock.calls.length).toBeLessThan(300);
+  expect(numbered.cell(999_999, 0)?.text).toBe('1000000');
+  expect(numbered.cell(999_999, 2)).toEqual({ text: 'last', state: 'changed' });
+});

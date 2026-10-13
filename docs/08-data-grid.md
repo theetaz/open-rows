@@ -241,3 +241,44 @@ The builder supports one level of groups: independent AND/OR joins inside each g
 Outgoing foreign keys now come from table-detail constraints, retaining the referenced schema and composite column order. An `a.orders → b.customers` arrow opens `b.customers` with bound equality filters; destination menus show the schema when it differs. Metadata is cached for 60 seconds by profile, database, schema, table, session and engine, with failed reads evicted and catalog changes invalidating the profile. Same-schema incoming links still use bounded ER metadata. Cross-database references are outside this task, including MySQL/MariaDB keys into another database.
 
 SQL unit tests cover PostgreSQL, MySQL, SQLite/libSQL, SQL Server and ClickHouse. PostgreSQL integration tests verify grouped row counts and cross-schema metadata/destination queries; component tests verify the arrow click and schema-qualified table opening.
+
+## 12. SQL result grid parity (D05)
+
+SQL results now mount the table grid and reuse its row-number gutter, resize and
+double-click auto-fit, Fit columns, reorder/pin/hide controls, multi-range selection,
+copy formats, paste, value menus, boolean/enum/date steppers, staged highlighting,
+row form, bulk inspector and selection aggregates. Selecting a result row publishes
+the same Details fields as a table row. Verified source tables supply foreign-key
+navigation. Export… shares the Filter rows toolbar; a result-tab row appears only
+when multiple results or a query plan need it.
+
+Results retain client-side sort/filter and their existing bounded local-row limit.
+A presentation adapter maps every row/column read, copy, inspector value, export
+selection and edit back to its stored coordinates. Hidden columns remain available
+to identify rows. Row-number and change-highlight preparation is bounded to loaded
+windows, including large unsorted results; row data never enters React state.
+Repeated labels keep independent layout identities for resize, reorder, pin, hide
+and sort, while their displayed database labels stay unchanged. Width-only changes
+preserve the mounted canvas and its selection.
+
+Editing is enabled only after streaming completes, for a connected, writable,
+catalog-verified base table with a backend-supported primary or non-null unique key,
+with every key column in the SELECT. The recognizer accepts a single SELECT of
+plain references or one wildcard, a qualified table name, an optional table alias,
+and WHERE/ORDER/LIMIT/OFFSET clauses. It rejects joins, expressions, renamed or
+repeated result columns, DISTINCT, grouping, CTEs, subqueries, set operations,
+locking clauses and unsupported syntax. PostgreSQL source OIDs are not currently
+carried into IPC; unqualified names are therefore read-only with a request to
+qualify the schema, rather than guessing the session search path. Unsupported
+engines, view metadata, missing keys and lookup failures each show a reason.
+
+Inline, inspector and bulk edits, insert/duplicate/delete, undo/redo, discard
+confirmation and SQL review use the existing table change-set flow. No write occurs
+before the reviewed token is committed through `table_edit`; transactional rollback,
+optimistic row guards and uncertain-commit protection remain in that backend.
+Each result owns its changes across tab/result switches. Closing the query tab or
+window includes those changes in the existing guard, and rerunning SQL is blocked
+until they are committed or discarded. Query-result edits are held in memory, not
+in the table-tab crash-recovery journal. After commit the stored snapshot is marked
+out of date and editing is disabled until the SELECT is run again; arbitrary
+multi-statement scripts are never automatically replayed.

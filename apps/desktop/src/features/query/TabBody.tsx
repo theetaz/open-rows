@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { ResultWorkspaceProvider } from './ResultWorkspace';
 import { lazy } from 'react';
 import type { ProfileDto } from '@openrows/ipc';
 import type { CompletionCatalog } from '@openrows/editor';
@@ -88,19 +89,42 @@ export function TabBody(
         }}
       />
     );
+  return <ResultQueryTab {...props} />;
+}
+
+function ResultQueryTab(
+  props: Parameters<typeof TabBody>[0],
+): React.JSX.Element {
+  const { tab, status } = props;
+  const sessionId = sessionOf(status, tab.database);
+  const reason = notice(status, tab.database);
   return (
-    <QueryTab
-      key={tab.id}
-      tab={tab}
-      connection={props.connection}
-      sessionId={sessionId}
-      notice={reason}
-      catalog={completionFor(props, sessionId)}
-      runs={props.runs}
-      tabs={props.tabs}
-      onCell={props.onCell}
-      onConnect={props.connections.connect}
-    />
+    <ResultWorkspaceProvider
+      value={{
+        tabId: tab.id,
+        profileId: props.connection.id,
+        database: tab.database,
+        sessionId,
+        views: props.tables,
+        onRow: props.onRow,
+        onOpenTable: (schema, name) => {
+          props.onOpenTable?.({ database: tab.database, schema, name });
+        },
+      }}
+    >
+      <QueryTab
+        key={tab.id}
+        tab={tab}
+        connection={props.connection}
+        sessionId={sessionId}
+        notice={reason}
+        catalog={completionFor(props, sessionId)}
+        runs={props.runs}
+        tabs={props.tabs}
+        onCell={props.onCell}
+        onConnect={props.connections.connect}
+      />
+    </ResultWorkspaceProvider>
   );
 }
 

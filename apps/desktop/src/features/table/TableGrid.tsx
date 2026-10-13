@@ -12,7 +12,10 @@ import type {
 import type { SortDto } from '@openrows/ipc';
 import { mountCanvas } from '../../results/mountCanvas';
 import { useGridAppearance } from '../../results/useGridAppearance';
-import { displayWindow } from '../../results/displayWindow';
+import {
+  readResultWindow,
+  resultColumnKey,
+} from '../../results/projectedResult';
 import type { ResultMeta } from '../query/run';
 import { EditedSource } from './EditedSource';
 import { storeColumns } from './row';
@@ -31,7 +34,7 @@ import { useCopyEvent } from '../../results/copy/useCopyEvent';
 import { copyFailure, copySelection } from '../../results/copy/copySelection';
 import type { CopyTarget } from '../../results/copy/copySelection';
 import { moved, withWidth } from '../../results/columnLayout';
-import { columnsOf, useLayoutSync } from './tableColumns';
+import { presentationColumns, useLayoutSync } from './tableColumns';
 import { fitColumns, useAutoFit } from './useAutoFit';
 import type { ColumnLayout } from '../../results/columnLayout';
 import { useGridPosition } from './gridPosition';
@@ -42,6 +45,8 @@ const noSelection: SelectionModel = { row: 0, column: 0, ranges: [] };
 
 type Props = {
   result: ResultMeta;
+  /** Share fit controls with the surrounding result toolbar. */
+  onReady?: ((handle: GridHandle | undefined) => void) | undefined;
   sort: SortDto | null;
   /** Header click on a column (sorts server-side). */
   onHeader: (column: number) => void;
@@ -212,11 +217,14 @@ function useTableCanvas({
       theme,
       handle,
       onMounted: () => {
+        latest.current.onReady?.(handle.current);
         initialRow(result.rows, latest.current.onRow);
         setMounted((count) => count + 1);
       },
     });
+    const ready = latest.current.onReady;
     return () => {
+      ready?.(undefined);
       sourceRef.current = undefined;
       mountedProps.current = null;
       unmount();
@@ -325,15 +333,17 @@ function columnHandlers({
   return {
     onColumnResize: (column, width, done) => {
       const target = sourceRef.current?.columns[column - shift];
-      const name = latest.current.result.columns[column - shift]?.name;
-      if (!target || name === undefined) return;
+      const name = resultColumnKey(latest.current.result, column - shift);
+      if (!target) return;
       target.width = width;
       handle.current?.relayout?.();
       if (done)
         latest.current.onLayout((layout) => withWidth(layout, name, width));
     },
     onColumnMove: (from, to) => {
-      const names = latest.current.result.columns.map((column) => column.name);
+      const names = latest.current.result.columns.map((_, index) =>
+        resultColumnKey(latest.current.result, index),
+      );
       latest.current.onLayout((layout) =>
         moved(layout, names, from - shift, to - shift),
       );
@@ -359,9 +369,9 @@ function editedSource(
   sort: SortDto | null,
 ): EditedSource {
   const columns = storeColumns(result);
-  const shown = columnsOf(columns, sort, layout, links);
+  const shown = presentationColumns(result, sort, layout, links);
   shown.forEach((column, index) => {
-    const name = columns[index]?.name ?? '';
+    const name = resultColumnKey(result, index);
     column.width =
       layout.widths[name] ?? fitted.current.get(name) ?? column.width;
   });
@@ -369,7 +379,7 @@ function editedSource(
     result.id,
     result.rows,
     shown,
-    displayWindow,
+    (request) => readResultWindow(result, request),
   );
   return new EditedSource(source, editing.history.current, {
     keys: editing.info?.key ?? noKeys,

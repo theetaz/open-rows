@@ -25,14 +25,24 @@ beforeEach(() => {
   localStorage.clear();
   relayout.mockClear();
   vi.mocked(mountGrid).mockReset();
-  vi.mocked(mountGrid).mockImplementation(
-    () =>
-      ({
-        destroy: vi.fn(),
-        relayout,
-        fitWidth: () => 140,
-      }) as unknown as GridHandle,
-  );
+  vi.mocked(mountGrid).mockImplementation((_host, props) => {
+    void props.source.window(
+      {
+        r0: 0,
+        r1: props.source.rows - 1,
+        c0: 0,
+        c1: props.source.columns.length - 1,
+      },
+      0,
+    );
+    return {
+      destroy: vi.fn(),
+      viewport: { x: 0, y: 0, width: 800, height: 400 },
+      scrollTo: vi.fn(),
+      relayout,
+      fitWidth: () => 140,
+    } as unknown as GridHandle;
+  });
   vi.mocked(displayWindow).mockImplementation((request: WindowRequest) => {
     const cells = values
       .slice(request.rowStart, request.rowStart + request.rowCount)
@@ -68,9 +78,15 @@ function show(meta: ResultMeta, onCell = vi.fn()): ReturnType<typeof render> {
 
 async function mounted(): Promise<GridProps> {
   await waitFor(() => {
-    expect(mountGrid).toHaveBeenCalledOnce();
+    expect(mountGrid).toHaveBeenCalled();
   });
-  return vi.mocked(mountGrid).mock.calls[0]?.[1] as GridProps;
+  return new Proxy({} as GridProps, {
+    get: (_target, property): unknown =>
+      Reflect.get(
+        vi.mocked(mountGrid).mock.calls.at(-1)?.[1] as GridProps,
+        property,
+      ) as unknown,
+  });
 }
 
 it('grows while rows stream, then sorts by header and filters loaded rows', async () => {
@@ -86,9 +102,11 @@ it('grows while rows stream, then sorts by header and filters loaded rows', asyn
       />
     </ThemeProvider>,
   );
-  expect(grid.source.rows).toBe(3);
+  await waitFor(() => {
+    expect(grid.source.rows).toBe(3);
+  });
   act(() => {
-    grid.onHeader?.(0);
+    grid.onHeader?.(1);
   });
   expect(screen.getByRole('status')).toHaveTextContent(/every row has arrived/);
   view.rerender(
@@ -97,13 +115,14 @@ it('grows while rows stream, then sorts by header and filters loaded rows', asyn
     </ThemeProvider>,
   );
   await waitFor(() => {
-    expect(grid.source.cell(0, 0)?.text).toBe('1');
+    expect(grid.source.cell(0, 1)?.text).toBe('1');
   });
-  expect(grid.source.columns[0]).toMatchObject({
+  expect(grid.source.columns[1]).toMatchObject({
     title: 'id',
     sort: 'ascending',
   });
-  expect(mountGrid).toHaveBeenCalledOnce();
+  expect(grid.rowHeaderColumn).toBe(0);
+  expect(grid.source.cell(0, 0)?.text).toBe('1');
   expect(relayout).toHaveBeenCalled();
   const user = userEvent.setup();
   await user.type(screen.getByRole('textbox', { name: 'Filter rows' }), 'an');
@@ -111,16 +130,16 @@ it('grows while rows stream, then sorts by header and filters loaded rows', asyn
     expect(screen.getByRole('status')).toHaveTextContent('1 of 3 rows');
   });
   expect(grid.source.rows).toBe(1);
-  expect(grid.source.cell(0, 1)?.text).toBe('banana');
+  expect(grid.source.cell(0, 2)?.text).toBe('banana');
 });
 
 it('reports the inspector cell in result coordinates and copies from the menu', async () => {
   const onCell = vi.fn();
   show(result(), onCell);
   const grid = await mounted();
-  const ranges = [{ r0: 0, r1: 1, c0: 0, c1: 1 }];
+  const ranges = [{ r0: 0, r1: 1, c0: 1, c1: 2 }];
   act(() => {
-    grid.onSelection({ row: 1, column: 1, ranges });
+    grid.onSelection({ row: 1, column: 2, ranges });
   });
   expect(onCell).toHaveBeenLastCalledWith(
     expect.objectContaining({
@@ -130,12 +149,12 @@ it('reports the inspector cell in result coordinates and copies from the menu', 
       type: 'text',
     }),
   );
+  const user = userEvent.setup();
   const write = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
   act(() => {
-    grid.onContextMenu?.({ row: 1, column: 1, kind: 'cell', x: 10, y: 10 });
+    grid.onContextMenu?.({ row: 1, column: 2, kind: 'cell', x: 10, y: 10 });
   });
-  const user = userEvent.setup();
-  expect(screen.getByRole('menu', { name: 'Result actions' })).toBeVisible();
+  expect(screen.getByRole('menu', { name: 'Table actions' })).toBeVisible();
   await user.click(screen.getByRole('menuitem', { name: 'Copy as' }));
   await user.click(screen.getByRole('menuitem', { name: 'CSV' }));
   await waitFor(() => {
@@ -150,39 +169,46 @@ it('pins, sizes and resets columns from the header menu, persisting the layout',
   const user = userEvent.setup();
   const open = (): void => {
     act(() => {
-      grid.onContextMenu?.({ row: 0, column: 1, kind: 'column', x: 5, y: 5 });
+      grid.onContextMenu?.({ row: 0, column: 2, kind: 'column', x: 5, y: 5 });
     });
   };
   open();
   await user.click(screen.getByRole('menuitem', { name: 'Pin column' }));
   expect(
-    grid.source.columns.map((column) => [column.title, column.pinned]),
+    grid.source.columns.slice(1).map((column) => [column.title, column.pinned]),
   ).toEqual([
     ['fruit', true],
     ['id', false],
   ]);
   act(() => {
-    grid.onContextMenu?.({ row: 0, column: 0, kind: 'column', x: 5, y: 5 });
+    grid.onContextMenu?.({ row: 0, column: 1, kind: 'column', x: 5, y: 5 });
   });
   await user.click(
     screen.getByRole('menuitem', { name: 'Size column to fit' }),
   );
-  expect(grid.source.columns[0]?.width).toBe(140);
+  expect(grid.source.columns[1]?.width).toBe(140);
   expect(localStorage.getItem('openrows.columnLayouts.v1')).toContain(
     '"fruit":140',
   );
   act(() => {
-    grid.onColumnMove?.(1, 0);
+    grid.onColumnMove?.(2, 1);
   });
   // An unpinned column stays after the pinned ones.
-  expect(grid.source.columns[0]?.title).toBe('fruit');
+  expect(grid.source.columns[1]?.title).toBe('fruit');
   open();
   await user.click(screen.getByRole('menuitem', { name: 'Reset columns' }));
-  expect(grid.source.columns.map((column) => column.title)).toEqual([
+  expect(grid.source.columns.slice(1).map((column) => column.title)).toEqual([
     'id',
     'fruit',
   ]);
   expect(localStorage.getItem('openrows.columnLayouts.v1')).toBe('{}');
+  act(() => {
+    grid.onColumnResize?.(2, 215, true);
+  });
+  expect(grid.source.columns[2]?.width).toBe(215);
+  expect(localStorage.getItem('openrows.columnLayouts.v1')).toContain(
+    '"fruit":215',
+  );
 });
 
 it('applies striping settings live without remounting the result canvas', async () => {
@@ -200,7 +226,7 @@ it('opens a header quick filter and applies it to the matching result column', a
   show(result());
   const grid = await mounted();
   act(() => {
-    grid.onContextMenu?.({ row: 0, column: 1, kind: 'column', x: 5, y: 5 });
+    grid.onContextMenu?.({ row: 0, column: 2, kind: 'column', x: 5, y: 5 });
   });
   const user = userEvent.setup();
   await user.click(screen.getByRole('menuitem', { name: 'Filter column…' }));
@@ -209,9 +235,63 @@ it('opens a header quick filter and applies it to the matching result column', a
   await waitFor(() => {
     expect(grid.source.rows).toBe(1);
   });
-  expect(grid.source.cell(0, 1)?.text).toBe('banana');
+  expect(grid.source.cell(0, 2)?.text).toBe('banana');
   await user.click(
     screen.getByRole('button', { name: 'Clear column filters (1)' }),
   );
   expect(grid.source.rows).toBe(3);
+});
+
+it('keeps repeated labels independent when resized, moved, pinned and hidden', async () => {
+  show(
+    result({
+      columns: [
+        { name: 'id', sourceType: 'int4' },
+        { name: 'id', sourceType: 'text' },
+      ],
+    }),
+  );
+  const grid = await mounted();
+  await waitFor(() => {
+    expect(grid.source.cell(0, 2)?.text).toBe('cherry');
+  });
+  act(() => {
+    grid.onColumnResize?.(1, 111, true);
+  });
+  act(() => {
+    grid.onColumnResize?.(2, 222, true);
+  });
+  expect(localStorage.getItem('openrows.columnLayouts.v1')).toContain(
+    '"id 2":222',
+  );
+  expect(grid.source.columns.slice(1).map((column) => column.width)).toEqual([
+    111, 222,
+  ]);
+  expect(mountGrid).toHaveBeenCalledOnce();
+  act(() => {
+    grid.onColumnMove?.(2, 1);
+  });
+  await waitFor(() => {
+    expect(grid.source.cell(0, 1)?.text).toBe('cherry');
+  });
+  expect(grid.source.columns.slice(1).map((column) => column.width)).toEqual([
+    222, 111,
+  ]);
+  act(() => {
+    grid.onContextMenu?.({ row: 0, column: 1, kind: 'column', x: 5, y: 5 });
+  });
+  const user = userEvent.setup();
+  await user.click(screen.getByRole('menuitem', { name: 'Pin column' }));
+  expect(grid.source.columns.slice(1).map((column) => column.pinned)).toEqual([
+    true,
+    false,
+  ]);
+  act(() => {
+    grid.onContextMenu?.({ row: 0, column: 1, kind: 'column', x: 5, y: 5 });
+  });
+  await user.click(screen.getByRole('menuitem', { name: 'Hide column' }));
+  await waitFor(() => {
+    expect(grid.source.columns).toHaveLength(2);
+  });
+  expect(grid.source.cell(0, 1)?.text).toBe('3');
 });

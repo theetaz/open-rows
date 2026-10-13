@@ -129,7 +129,7 @@ These FR-NET-03 rows document OpenRows scope; no TablePlus adoption/parity claim
 | D02 | Insert rows | Stage newly entered rows. | Covered FR-DATA-01 | M1 | Type-aware validation. | [S19] |
 | D03 | Duplicate rows | Create copies of selected rows. | Covered FR-DATA-01 | M1 | Generated keys handled by driver. | [S19] |
 | D04 | Delete rows | Stage row removal. | Covered FR-DATA-01 | M1 | Visible pending deletion state. | [S19] |
-| D05 | Editable query results | Change values in result grids. | Covered FR-DATA-01 | M1 | Read-only explanation when key mapping is unsafe. | [S24] |
+| D05 | Editable query results | Shared table grid, staging and transactional SQL review for safely mapped results. | Implemented FR-DATA-01..05 | M1 | Qualified single-base-table SELECTs with all key columns; explicit read-only reasons for unsafe/unsupported mappings. See docs/08 §12 for conservative syntax and refresh boundaries. | [S24] |
 | D06 | Commit changes | Apply staged GUI edits. | Covered FR-DATA-02, FR-DATA-03 | M1 | Transactional rollback where supported. | [S25] |
 | D07 | Discard changes | Remove pending GUI edits. | New FR-DATA-08 | M2 | Confirm impact; distinguish executed SQL. | [S26] |
 | D08 | Review generated SQL | Inspect writes before committing. | Covered FR-DATA-03 | M1 | Same preview path across drivers. | [S27] |

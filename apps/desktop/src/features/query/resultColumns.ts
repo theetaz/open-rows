@@ -9,10 +9,18 @@ import type { RowOrder } from './localRows';
 /** Column identities for layouts: names, with repeats numbered (`id`, `id 2`). */
 export function columnKeys(columns: readonly ColumnDto[]): string[] {
   const seen = new Map<string, number>();
+  const reserved = new Set(columns.map((column) => column.name));
+  const used = new Set<string>();
   return columns.map((column) => {
-    const count = (seen.get(column.name) ?? 0) + 1;
+    let count = (seen.get(column.name) ?? 0) + 1;
+    let key = count === 1 ? column.name : `${column.name} ${String(count)}`;
+    while (used.has(key) || (count > 1 && reserved.has(key))) {
+      count++;
+      key = `${column.name} ${String(count)}`;
+    }
     seen.set(column.name, count);
-    return count === 1 ? column.name : `${column.name} ${String(count)}`;
+    used.add(key);
+    return key;
   });
 }
 

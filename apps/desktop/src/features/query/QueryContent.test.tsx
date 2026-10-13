@@ -26,9 +26,13 @@ vi.mock('./QueryEditor', async () => ({
   QueryEditor: (await import('./testEditor')).TextareaEditor,
 }));
 vi.mock('./ResultGrid', () => ({
-  ResultGrid: (props: { result: { id: string; rows: number } }) => (
+  ResultGrid: (props: {
+    result: { id: string; rows: number };
+    onExport?: () => void;
+  }) => (
     <div role="grid" aria-label={`Grid ${props.result.id}`}>
       {props.result.rows} rows
+      {props.onExport && <button onClick={props.onExport}>Export…</button>}
     </div>
   ),
 }));

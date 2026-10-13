@@ -7,13 +7,24 @@ import type {
   StatementDto,
 } from '@openrows/ipc';
 
+import type { WindowRequest } from '@openrows/ipc';
+import type { DisplayTile } from '@openrows/grid/display-tile';
+
 /** A result set's shape and size; its rows stay in the core's result store. */
 export type ResultMeta = {
   id: string;
   statement: number;
   columns: readonly ColumnDto[];
+  /** Stable layout identities, including hidden columns, for repeated result labels. */
+  columnKeys?: readonly string[];
   /** Trailing store columns that views never show (a keyless table's rowid). */
   hidden?: readonly ColumnDto[];
+  /** Presentation-only mapping; never sent over IPC or persisted. */
+  projection?: {
+    load: (request: WindowRequest) => Promise<DisplayTile>;
+    rowOf: (row: number) => number;
+    columnOf: (column: number) => number;
+  };
   rows: number;
   done: boolean;
   truncated: boolean;

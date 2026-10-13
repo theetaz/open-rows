@@ -60,7 +60,9 @@ export function gridKinds(
     if (column.sourceType === 'bool' || (edit && BOOLEAN.test(edit.dataType)))
       return 'boolean';
     if (edit?.enumLabels?.length) return 'enum';
-    return edit && temporalKind(edit.dataType) ? 'temporal' : undefined;
+    return temporalKind(edit?.dataType ?? column.sourceType ?? '')
+      ? 'temporal'
+      : undefined;
   });
 }
 

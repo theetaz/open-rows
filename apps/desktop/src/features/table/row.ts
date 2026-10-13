@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { DisplayCell } from '@openrows/grid';
 import type { ColumnDto, TableColumnDto } from '@openrows/ipc';
-import { displayWindow } from '../../results/displayWindow';
+import { readResultWindow, storedColumn } from '../../results/projectedResult';
 import type { ResultMeta } from '../query/run';
 import type { CellValue } from './cellValue';
 import type { BulkRows } from './bulk/bulkRow';
@@ -77,7 +77,7 @@ export async function readRows(
   const first = Math.min(...rows);
   const all = storeColumns(result);
   const columns = all.length;
-  const tile = await displayWindow({
+  const tile = await readResultWindow(result, {
     resultId: result.id,
     rowStart: first,
     rowCount: Math.max(...rows) - first + 1,
@@ -91,7 +91,7 @@ export async function readRows(
         const cell = tile.cells[(row - first) * columns + index];
         const field: RowField = {
           name: column.name,
-          index,
+          index: storedColumn(result, index),
           type: column.sourceType,
           text: cell?.text ?? '',
           state: cell?.state ?? 'normal',

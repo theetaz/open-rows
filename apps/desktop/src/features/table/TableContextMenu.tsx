@@ -179,7 +179,7 @@ function menuEntries(props: Props, actions: readonly Action[]): MenuEntry[] {
     danger: action.danger ?? false,
   }));
   const { grid, selection, editing } = props;
-  entries.push(...keyEntries(props));
+  entries.push(...keyEntries(props), ...layoutEntries(props));
   if (!grid) return entries;
   const source = {
     result: selection.result,
@@ -227,4 +227,30 @@ function keyEntries({ jumps, selection, onClose }: Props): MenuEntry[] {
     ...submenu('Referenced by', jumps.links.incoming),
   ];
   return entries.length ? [{ kind: 'separator' }, ...entries] : [];
+}
+
+/** Additional presentation/export actions supplied by a query-result host. */
+function layoutEntries({ grid, selection, onClose }: Props): MenuEntry[] {
+  if (!grid) return [];
+  const actions: { label: string; run: () => void }[] = [];
+  if (selection.kind === 'column') {
+    if (grid.fit)
+      actions.push({
+        label: 'Size column to fit',
+        run: () => grid.fit?.(selection.column),
+      });
+    if (grid.reset) actions.push({ label: 'Reset columns', run: grid.reset });
+  } else if (grid.exportRows)
+    actions.push({
+      label: 'Export selected rows…',
+      run: () => grid.exportRows?.(selection),
+    });
+  return actions.map(({ label, run }) => ({
+    kind: 'item',
+    label,
+    run: () => {
+      onClose();
+      run();
+    },
+  }));
 }

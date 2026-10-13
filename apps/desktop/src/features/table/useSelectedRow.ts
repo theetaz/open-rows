@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { storedRow } from '../../results/projectedResult';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import type { ResultMeta } from '../query/run';
 import { textValue } from './cellValue';
@@ -54,7 +55,10 @@ export function useSelectedRow(args: {
         edit,
         current.draft?.original ?? null,
       ),
-      source: { resultId: current.result.id, row: current.row },
+      source: {
+        resultId: current.result.id,
+        row: storedRow(current.result, current.row),
+      },
     };
     if (current.error) row.error = current.error;
     else if (writable && editing.info)

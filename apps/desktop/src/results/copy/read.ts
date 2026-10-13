@@ -77,6 +77,7 @@ export async function readSelection(
   load: Load,
 ): Promise<CopyTable> {
   const { result } = source;
+  const read = result.projection?.load ?? load;
   const rowOf = source.rowOf ?? ((row: number) => row);
   const columnOf = source.columnOf ?? ((column: number) => column);
   const rows = viewRows(source.ranges).map(rowOf);
@@ -89,7 +90,7 @@ export async function readSelection(
   await Promise.all(
     spans(sorted).map(async (group) => {
       const start = group[0] ?? 0;
-      const tile = await load({
+      const tile = await read({
         resultId: result.id,
         rowStart: start,
         rowCount: (group.at(-1) ?? start) - start + 1,

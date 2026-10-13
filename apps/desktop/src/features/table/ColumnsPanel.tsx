@@ -10,7 +10,7 @@ export function ColumnsPanel({
 }: {
   columns: readonly string[];
   hidden: readonly string[];
-  actions: TableActions;
+  actions: Pick<TableActions, 'toggleHidden'>;
 }): React.JSX.Element {
   const visible = columns.length - hidden.length;
   return (

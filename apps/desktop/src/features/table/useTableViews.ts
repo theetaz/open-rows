@@ -10,6 +10,7 @@ import {
 } from '@openrows/ipc';
 import type { PageRequest, TableQueryDto } from '@openrows/ipc';
 import { isActive } from '../query/run';
+import { resultEntry, resultEntryIds } from '../query/resultEntries';
 import { emptyEntry, entriesReducer } from './entries';
 import type { EntryAction, TableEntry } from './entries';
 import type { EditHistory, History } from './editHistory';
@@ -203,7 +204,7 @@ export function useTableViews(): TableViews {
       return pending || staged > 0;
     },
     summary,
-    entryOf: (tabId) => entries[tabId] ?? emptyEntry,
+    entryOf: (tabId) => resultEntry(entries, tabId) ?? emptyEntry,
     setEdits: (tabId, change) => {
       send(tabId, { type: 'edits', change });
     },
@@ -241,10 +242,12 @@ export function useTableViews(): TableViews {
       counts.cancel(tabId);
     },
     release: (tabId) => {
-      counts.release(tabId);
-      free(pageIds(entries[tabId]));
-      latest.current[tabId] = undefined;
-      dispatch({ tabId, action: null });
+      for (const id of resultEntryIds(entries, tabId)) {
+        counts.release(id);
+        free(pageIds(entries[id]));
+        latest.current[id] = undefined;
+        dispatch({ tabId: id, action: null });
+      }
     },
   };
 }

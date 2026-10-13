@@ -6,7 +6,10 @@ import type { TableTargetRef } from './model';
 const message = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 /** Ignore completed reads after unmount and expose failures to the user. */
-export function useEditIo(target: TableTargetRef): EditIo {
+export function useEditIo(
+  target: TableTargetRef,
+  supplied?: EditInfoDto | null,
+): EditIo {
   const [info, setInfo] = useState<EditInfoDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -21,6 +24,10 @@ export function useEditIo(target: TableTargetRef): EditIo {
   useEffect(() => {
     let current = true;
     alive.current = true;
+    if (supplied !== undefined)
+      return () => {
+        alive.current = false;
+      };
     tableEditInfo(stableTarget).then(
       (value) => {
         if (current) setInfo(value);
@@ -33,7 +40,7 @@ export function useEditIo(target: TableTargetRef): EditIo {
       current = false;
       alive.current = false;
     };
-  }, [stableTarget]);
+  }, [stableTarget, supplied]);
   const run = async (action: () => Promise<void>): Promise<void> => {
     if (locked.current) return;
     locked.current = true;
@@ -60,7 +67,15 @@ export function useEditIo(target: TableTargetRef): EditIo {
   const fail = (failure: unknown): void => {
     if (alive.current) setError(message(failure));
   };
-  return { info, error, busy, alive, run, queue, fail };
+  return {
+    info: supplied === undefined ? info : supplied,
+    error,
+    busy,
+    alive,
+    run,
+    queue,
+    fail,
+  };
 }
 
 export type EditIo = {

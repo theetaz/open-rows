@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { useResultWorkspace } from './ResultWorkspace';
 import { useRef } from 'react';
 import type { EditorDialect } from '@openrows/editor';
 import { findParams } from '@openrows/editor/params';
@@ -72,6 +73,13 @@ export function useRunActions(
   input: Tab,
 ): RunActions {
   const { tab, runs } = input;
+  const workspace = useResultWorkspace();
+  const pendingEdits = (): boolean => {
+    const history = workspace?.views.entryOf(tab.id).edits;
+    return Boolean(
+      history?.current.length || history?.pending || history?.uncertain,
+    );
+  };
   const execution = executionSettings.useValue();
   const dialect = editorDialect(input.connection.engine);
   const style = effectiveParams(settings.queryParams, dialect);
@@ -81,10 +89,17 @@ export function useRunActions(
   const run = (scope: RunScope, limited = true): void => {
     const current = editor.current;
     const { sessionId } = input;
-    if (!current || !sessionId || isActive(runs.runOf(tab.id))) return;
+    if (
+      !current ||
+      !sessionId ||
+      pendingEdits() ||
+      isActive(runs.runOf(tab.id))
+    )
+      return;
     const handle = withSelection(current, execution.runSelection);
     const request = runRequest(handle, scope, sessionId, settings.rowLimit);
     if (!request) return;
+    workspace?.views.release(tab.id);
     input.tabs.edit(tab.id, handle.text());
     shift.current = anonymousShift(handle, scope, style, dialect);
     void runs.execute(tab.id, {
@@ -111,6 +126,7 @@ export function useRunActions(
     },
     runKey,
     provide: () => {
+      if (pendingEdits()) return;
       const pending = runs.runOf(tab.id).parameters;
       if (!pending) {
         runKey('current');

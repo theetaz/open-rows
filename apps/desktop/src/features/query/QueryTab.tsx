@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { useResultEditNotice } from './ResultWorkspace';
 import { useCallback, useRef, useState } from 'react';
 import { AssistantDock } from '../assistant/AssistantDock';
 import { toggleAssistant } from '../assistant/conversation';
@@ -106,6 +107,7 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
   const files = useTabFiles(tab, editor, props.tabs);
   const run = runs.runOf(tab.id);
   const actions = useRunActions(editor, settings, props);
+  const editNotice = useResultEditNotice(tab.id);
   const explain = useExplain(tab.id, props.sessionId, editor);
   const [act, onExportable, claim] = useTabAction({
     actions,
@@ -146,7 +148,7 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
           actions={actions}
           file={files.act}
           format={format}
-          notice={props.notice ?? formatFailure ?? files.failure}
+          notice={editNotice ?? props.notice ?? formatFailure ?? files.failure}
           onName={sheets.startNaming}
           onExplain={explain.run}
           onAssistant={() => {

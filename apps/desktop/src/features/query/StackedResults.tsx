@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { lazy, Suspense } from 'react';
-import type { EngineDto } from '@openrows/ipc';
+import type { EngineDto, StatementDto } from '@openrows/ipc';
 import type { ResultMeta } from './run';
 import type { SelectedCell } from './cell';
 import styles from './Query.module.css';
@@ -10,6 +10,7 @@ const ResultGrid = lazy(() =>
 
 type GridProps = {
   engine: EngineDto;
+  statements?: readonly StatementDto[] | undefined;
   onCell: (cell: SelectedCell) => void;
   /** Export… of some rows of `result`; omitted while unavailable. */
   onExport?: ((result: ResultMeta, rows?: number[]) => void) | undefined;
@@ -26,6 +27,7 @@ export function ResultContent({
   engine,
   onCell,
   onExport,
+  statements,
 }: GridProps & { result: ResultMeta }): React.JSX.Element {
   if (!result.done && result.rows === 0)
     return (
@@ -39,6 +41,14 @@ export function ResultContent({
         key={result.id}
         result={result}
         engine={engine}
+        statement={statements?.[result.statement]?.sql}
+        onExport={
+          result.done && onExport
+            ? () => {
+                onExport(result);
+              }
+            : undefined
+        }
         onCell={onCell}
         onExportRows={
           result.done && onExport

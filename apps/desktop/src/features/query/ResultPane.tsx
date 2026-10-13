@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect } from 'react';
-import { Button, Icon } from '@openrows/ui';
+import { Icon } from '@openrows/ui';
 import type { EngineDto } from '@openrows/ipc';
 import type { ExtraResultTab } from '../explain';
 import { MessagesPanel } from './MessagesPanel';
@@ -109,8 +109,6 @@ export function ResultPane({
         extra={extra ?? null}
         extraShown={shown !== null}
         onChoose={setChosen}
-        exportable={exportable}
-        onExport={onExport}
       />
       {shown ? (
         shown.content
@@ -131,33 +129,15 @@ export function ResultPane({
   );
 }
 
-/** Result tabs (with the extra tab) and Export…, when there is any. */
-function ResultBar(
-  props: TabsProps & {
-    exportable: ResultMeta | null;
-    onExport: Props['onExport'];
-  },
-): React.JSX.Element | null {
-  const { exportable, extra } = props;
-  const tabs = (!props.stacked && props.results.length > 1) || extra !== null;
-  if (!tabs && !exportable) return null;
-  return (
+/** Result tabs occupy a row only when there is a choice of result or plan. */
+function ResultBar(props: TabsProps): React.JSX.Element | null {
+  const tabs =
+    (!props.stacked && props.results.length > 1) || props.extra !== null;
+  return tabs ? (
     <div className={styles.resultBar}>
-      {tabs && <ResultTabs {...props} />}
-      {exportable && (
-        <Button
-          size="sm"
-          variant="ghost"
-          className={styles.exportButton}
-          onClick={() => {
-            props.onExport?.(exportable);
-          }}
-        >
-          Export…
-        </Button>
-      )}
+      <ResultTabs {...props} />
     </div>
-  );
+  ) : null;
 }
 
 /** Messages and the chosen result's grid, every grid stacked, or why there is none. */
@@ -186,9 +166,13 @@ function ResultBody({
         showNotices={showNotices}
       />
       {stacked ? (
-        <StackedResults {...grid} results={results} />
+        <StackedResults
+          {...grid}
+          statements={run.statements}
+          results={results}
+        />
       ) : current ? (
-        <ResultContent {...grid} result={current} />
+        <ResultContent {...grid} statements={run.statements} result={current} />
       ) : (
         <p className={styles.placeholder}>{placeholder(run, runDefault)}</p>
       )}

@@ -33,6 +33,7 @@ export function stagedInserts(
  * shown but always fetched, so staged rows still match by them.
  */
 export class EditedSource implements GridDataSource {
+  private readonly loaded = new Set<number>();
   private readonly overrides = new Map<number, DisplayCell>();
   private readonly listeners = new Set<() => void>();
   private inserted: readonly (readonly DisplayCell[])[] = [];
@@ -51,6 +52,8 @@ export class EditedSource implements GridDataSource {
       identity.shown === undefined
         ? source.columns
         : source.columns.slice(0, identity.shown);
+    for (let row = 0; row < Math.min(source.rows, 256); row++)
+      this.loaded.add(row);
     this.prepareInserts();
   }
   /** Swap the staged overlay in place so the grid keeps its selection and scroll. */
@@ -95,6 +98,9 @@ export class EditedSource implements GridDataSource {
   /** Staged insert rows are local; only page rows are fetched, through any hidden columns. */
   async window(range: CellRange, direction: number): Promise<void> {
     const last = Math.min(range.r1, this.source.rows - 1);
+    // Match only requested tiles, never scan a million-row result on each keystroke.
+    if (this.loaded.size > 16_384) this.loaded.clear();
+    for (let row = range.r0; row <= last; row++) this.loaded.add(row);
     const hidden = this.source.columns.length > this.shown.length;
     const c1 = hidden ? this.source.columns.length - 1 : range.c1;
     if (last >= 0)
@@ -123,7 +129,7 @@ export class EditedSource implements GridDataSource {
   private prepare(): void {
     this.overrides.clear();
     if (!this.identity.keys.length || !this.changes.length) return;
-    for (let row = 0; row < this.source.rows; row++) {
+    for (const row of this.loaded) {
       const edit = this.changes.find(
         (change) => change.kind !== 'insert' && this.matches(row, change),
       );

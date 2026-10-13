@@ -4,6 +4,7 @@ import type { GridHandle } from '@openrows/grid';
 import type { ColumnLayout } from '../../results/columnLayout';
 import type { ResultMeta } from '../query/run';
 import type { EditedSource } from './EditedSource';
+import { resultColumnKey } from '../../results/projectedResult';
 
 type Args = {
   result: ResultMeta;
@@ -30,7 +31,8 @@ export function fitColumns(
   const grid = handle.current;
   const widths = new Map<string, number>();
   if (!columns || !grid?.fitWidth) return widths;
-  result.columns.forEach(({ name }, index) => {
+  result.columns.forEach((_, index) => {
+    const name = resultColumnKey(result, index);
     const column = columns[index];
     const kept = layout.widths[name] !== undefined || fitted.current.has(name);
     if (!column || (!all && kept)) return;

@@ -8,6 +8,7 @@ import type { ColumnLayout } from '../../results/columnLayout';
 import type { ResultMeta } from '../query/run';
 import type { EditedSource } from './EditedSource';
 import { storeColumns } from './row';
+import { resultColumnKey } from '../../results/projectedResult';
 
 /** The server-side sort direction of a column, painted as a header triangle. */
 function headerSort(
@@ -21,7 +22,7 @@ function headerSort(
 const noLinks: ReadonlySet<string> = new Set();
 
 /** Grid columns of a page: titles with sort, layout widths and pins, key arrows. */
-export function columnsOf(
+function columnsOf(
   columns: readonly ColumnDto[],
   sort: SortDto | null,
   layout: ColumnLayout,
@@ -56,6 +57,25 @@ function columnWidth(type: string | null): number {
   return 96;
 }
 
+/** Use stable layout identities while painting the original database labels. */
+export function presentationColumns(
+  result: ResultMeta,
+  sort: SortDto | null,
+  layout: ColumnLayout,
+  links: ReadonlySet<string> = noLinks,
+): GridColumn[] {
+  const stored = storeColumns(result);
+  return columnsOf(
+    stored.map((column, index) => ({
+      ...column,
+      name: resultColumnKey(result, index),
+    })),
+    sort,
+    layout,
+    links,
+  ).map((column, index) => ({ ...column, title: stored[index]?.name ?? '' }));
+}
+
 /**
  * Apply a changed layout (a pin that needs no reorder, a reset, a stored
  * width) or newly read key arrows to the mounted columns in place; reorders
@@ -83,16 +103,11 @@ export function useLayoutSync({
   useEffect(() => {
     const columns = sourceRef.current?.columns;
     if (!columns) return;
-    const fresh = columnsOf(
-      storeColumns(result),
-      sort,
-      layout,
-      links ?? noLinks,
-    );
+    const fresh = presentationColumns(result, sort, layout, links ?? noLinks);
     columns.forEach((column, index) => {
       const next = fresh[index];
       if (!next) return;
-      const name = result.columns[index]?.name ?? '';
+      const name = resultColumnKey(result, index);
       column.width =
         layout.widths[name] ?? fitted?.current.get(name) ?? next.width;
       column.pinned = next.pinned;
