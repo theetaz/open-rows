@@ -76,22 +76,19 @@ async fn cancellation_during_stdio_initialization_kills_and_reaps_child() -> Tes
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
     let port = listener.local_addr()?.port();
     let script = format!(
-        "import os, socket, sys\ns = socket.create_connection(('127.0.0.1', {port}))\ns.sendall(str(os.getpid()).encode() + b'\\n')\nsys.stdin.readline()\ns.recv(1)"
+        "import os, socket, sys; s = socket.create_connection(('127.0.0.1', {port})); s.sendall(str(os.getpid()).encode() + b'\\n'); sys.stdin.readline(); s.recv(1)"
     );
+    let configured = config(Endpoint::Stdio {
+        command: "/usr/bin/python3".into(),
+        args: vec!["-c".into(), script],
+    });
+    configured.validate()?;
     let cancel = Cancellation::default();
     let other = cancel.clone();
-    let client = tokio::spawn(async move {
-        discover(
-            &config(Endpoint::Stdio {
-                command: "/usr/bin/python3".into(),
-                args: vec!["-c".into(), script],
-            }),
-            &Credentials::default(),
-            &other,
-        )
-        .await
-    });
-    let (mut stream, _) = tokio::time::timeout(std::time::Duration::from_secs(5), listener.accept()).await??;
+    let client =
+        tokio::spawn(async move { discover(&configured, &Credentials::default(), &other).await });
+    let (mut stream, _) =
+        tokio::time::timeout(std::time::Duration::from_secs(5), listener.accept()).await??;
     let mut pid = Vec::new();
     loop {
         let byte = stream.read_u8().await?;

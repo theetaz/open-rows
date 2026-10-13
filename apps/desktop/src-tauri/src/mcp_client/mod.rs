@@ -142,9 +142,13 @@ pub(crate) async fn mcp_server_tools(
     control
         .run(&options, async {
             let secrets = credentials(&id).await?;
-            let tools = openrows_mcp::client::discover(&config, &secrets, &options.cancel)
-                .await
-                .map_err(|_| openrows_ai::AiError::Network)?;
+            let tools = Box::pin(openrows_mcp::client::discover(
+                &config,
+                &secrets,
+                &options.cancel,
+            ))
+            .await
+            .map_err(|_| openrows_ai::AiError::Network)?;
             Ok(tools)
         })
         .await
@@ -199,12 +203,5 @@ fn secret_error() -> IpcError {
 #[specta::specta]
 pub(crate) fn mcp_tool_confirm(app: AppHandle, id: String, allow: bool) -> Result<(), IpcError> {
     admit(&app)?;
-    let send = app
-        .state::<State>()
-        .lock()
-        .pending
-        .remove(&id)
-        .ok_or_else(|| failure(ClientError::Confirmation))?;
-    send.send(allow)
-        .map_err(|_| failure(ClientError::Cancelled))
+    app.state::<State>().respond(&id, allow)
 }

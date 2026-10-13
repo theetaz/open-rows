@@ -603,7 +603,8 @@ asks the user to approve the exact redacted argument object. Approval is scoped
 to the server configuration and tool schema for the current app session; lock,
 settings/credential changes and disabling a tool discard consent. Unsolicited
 confirmation responses are refused. Credential changes also discard discovered
-schemas; discover tools again to filter them with the current credentials.
+schemas and invalidate in-flight catalogue snapshots before consent or invocation;
+discover tools again to filter them with the current credentials.
 Project-file discovery/import is absent.
 
 Public server metadata lives in private `mcp-servers.json` beside the local store;

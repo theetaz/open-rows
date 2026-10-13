@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Combine built-ins with enabled external tools; user servers receive no app capabilities.
-use super::{State, config, credentials};
+use super::{State, credentials};
 use openrows_ai::{
     Cancellation,
     agent::{AgentError, AgentEvent, AgentTools, ToolCall, ToolDefinition, ToolReply},
@@ -19,6 +19,7 @@ pub(crate) struct Router {
     pub cancel: Cancellation,
     pub channel: Channel<AgentEvent>,
     pub tools: Vec<(String, ServerConfig, ClientTool)>,
+    revision: u64,
 }
 impl Router {
     pub fn new(
@@ -27,31 +28,10 @@ impl Router {
         cancel: Cancellation,
         channel: Channel<AgentEvent>,
     ) -> Self {
-        let tools = {
+        let (revision, tools) = {
             let state = app.state::<State>();
             let inner = state.lock();
-            inner
-                .configs
-                .iter()
-                .enumerate()
-                .flat_map(|(server, config)| {
-                    inner
-                        .tools
-                        .get(&config.id)
-                        .into_iter()
-                        .flatten()
-                        .enumerate()
-                        .filter(|(_, tool)| config.enabled_tools.contains(&tool.name))
-                        .map(move |(index, tool)| {
-                            (
-                                format!("user_{server}_{index}"),
-                                config.clone(),
-                                tool.clone(),
-                            )
-                        })
-                })
-                .take(64)
-                .collect()
+            (inner.revision, enabled_tools(&inner))
         };
         Self {
             app,
@@ -59,6 +39,7 @@ impl Router {
             cancel,
             channel,
             tools,
+            revision,
         }
     }
     fn input(&self) -> ToolInput {
@@ -83,7 +64,7 @@ impl Router {
             .gate
             .guard(async {
                 prepared.gate.record().await?;
-                Ok(openrows_mcp::client::call(
+                Ok(Box::pin(openrows_mcp::client::call(
                     saved,
                     &prepared.secrets,
                     CallInput {
@@ -92,7 +73,7 @@ impl Router {
                         consent: &consent,
                     },
                     &self.cancel,
-                )
+                ))
                 .await)
             })
             .await?
@@ -161,7 +142,12 @@ impl Router {
             .state::<crate::security::Security>()
             .admit("mcp_client")
             .map_err(|_| AgentError::Refused)?;
-        if config(&self.app, &saved.id).map_err(|_| AgentError::Refused)? != *saved {
+        if !self
+            .app
+            .state::<State>()
+            .lock()
+            .current(self.revision, saved)
+        {
             return Err(AgentError::Refused);
         }
         Ok(())
@@ -206,12 +192,39 @@ impl Router {
             return Err(AgentError::Refused);
         }
         self.live(saved)?;
-        state
-            .lock()
+        let mut inner = state.lock();
+        if !inner.current(self.revision, saved) {
+            return Err(AgentError::Refused);
+        }
+        inner
             .consent
             .confirm(saved, tool)
             .map_err(|_| AgentError::Refused)
     }
+}
+fn enabled_tools(inner: &super::state::Inner) -> Vec<(String, ServerConfig, ClientTool)> {
+    inner
+        .configs
+        .iter()
+        .enumerate()
+        .flat_map(|(server, config)| {
+            inner
+                .tools
+                .get(&config.id)
+                .into_iter()
+                .flatten()
+                .enumerate()
+                .filter(|(_, tool)| config.enabled_tools.contains(&tool.name))
+                .map(move |(index, tool)| {
+                    (
+                        format!("user_{server}_{index}"),
+                        config.clone(),
+                        tool.clone(),
+                    )
+                })
+        })
+        .take(64)
+        .collect()
 }
 struct Prepared {
     secrets: openrows_mcp::client::Credentials,

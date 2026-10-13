@@ -175,3 +175,32 @@ it('app shortcut overrides retain precedence over the default inline key', () =>
     screen.queryByRole('textbox', { name: 'Inline SQL prompt' }),
   ).toBeNull();
 });
+
+it('accepts at an empty caret without modifying preceding SQL', async () => {
+  const generate = vi.fn<InlineGenerate>().mockResolvedValue('SELECT 2;');
+  const { view } = mount('SELECT 1;\n', generate);
+  view.dispatch({ selection: { anchor: view.state.doc.length } });
+  open();
+  await prompt();
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Accept proposal' }),
+  );
+  expect(generate.mock.calls[0]?.[0].sql).toBe('');
+  expect(view.state.doc.toString()).toBe('SELECT 1;\nSELECT 2;');
+  undo(view);
+  expect(view.state.doc.toString()).toBe('SELECT 1;\n');
+});
+
+it.each(['', 'x'.repeat(16385)])(
+  'refuses empty or oversized proposals',
+  async (proposal) => {
+    const { view } = mount('SELECT 1;', () => Promise.resolve(proposal));
+    open();
+    await prompt();
+    await screen.findByRole('alert');
+    expect(
+      screen.queryByRole('button', { name: 'Accept proposal' }),
+    ).toBeNull();
+    expect(view.state.doc.toString()).toBe('SELECT 1;');
+  },
+);

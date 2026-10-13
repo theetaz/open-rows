@@ -3856,10 +3856,10 @@ export type TokenScope = {
 	expires: number,
 };
 
-/**  A tool trace contains sizes and safe summaries, never raw result data. */
+/**  A tool trace contains safe summaries and policy-filtered external evidence. */
 export type Trace = Trace_Serialize | Trace_Deserialize;
 
-/**  A tool trace contains sizes and safe summaries, never raw result data. */
+/**  A tool trace contains safe summaries and policy-filtered external evidence. */
 export type Trace_Deserialize = {
 	/**  Sequential step number. */
 	step: number,
@@ -3874,12 +3874,12 @@ export type Trace_Deserialize = {
 	/**  Elapsed milliseconds. */
 	durationMs: number,
 	/**  Redacted external tool evidence only; never raw protocol data. */
-	result: string | null,
+	result?: string | null,
 	/**  Running/succeeded/refused/cancelled. */
 	status: string,
 };
 
-/**  A tool trace contains sizes and safe summaries, never raw result data. */
+/**  A tool trace contains safe summaries and policy-filtered external evidence. */
 export type Trace_Serialize = {
 	/**  Sequential step number. */
 	step: number,

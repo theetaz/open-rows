@@ -4,6 +4,7 @@ use crate::connections::{IpcError, IpcErrorKind};
 use openrows_mcp::client::{ClientTool, Consent, ServerConfig};
 use std::{
     collections::HashMap,
+    io::Write,
     path::PathBuf,
     sync::{Mutex, MutexGuard, PoisonError},
 };
@@ -21,6 +22,11 @@ pub(crate) struct Inner {
     pub pending: HashMap<String, oneshot::Sender<bool>>,
     pub sequence: u64,
     pub revision: u64,
+}
+impl Inner {
+    pub fn current(&self, revision: u64, config: &ServerConfig) -> bool {
+        self.revision == revision && self.configs.contains(config)
+    }
 }
 impl State {
     pub fn new(path: PathBuf) -> Result<Self, IpcError> {
@@ -42,6 +48,15 @@ impl State {
     }
     pub fn lock(&self) -> MutexGuard<'_, Inner> {
         self.inner.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+    pub fn respond(&self, id: &str, allow: bool) -> Result<(), IpcError> {
+        let send = self
+            .lock()
+            .pending
+            .remove(id)
+            .ok_or_else(|| super::failure(openrows_mcp::client::ClientError::Confirmation))?;
+        send.send(allow)
+            .map_err(|_| super::failure(openrows_mcp::client::ClientError::Cancelled))
     }
     pub fn invalidate(&self) {
         let mut state = self.lock();
@@ -71,7 +86,6 @@ impl State {
             use std::os::unix::fs::OpenOptionsExt;
             file.mode(0o600);
         }
-        use std::io::Write;
         file.open(&temp)
             .and_then(|mut file| file.write_all(&bytes))
             .map_err(|_| storage())?;
@@ -123,6 +137,26 @@ mod tests {
             },
             enabled_tools: vec!["lookup".into()],
         }
+    }
+    #[test]
+    fn confirmation_responses_require_a_live_pending_request()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let dir = tempfile::tempdir()?;
+        let state = State::new(dir.path().join("mcp-servers.json"))?;
+        assert!(state.respond("unsolicited", true).is_err());
+        for allow in [false, true] {
+            let (send, receive) = oneshot::channel();
+            state.lock().pending.insert("pending".into(), send);
+            state.respond("pending", allow)?;
+            assert_eq!(receive.blocking_recv()?, allow);
+            assert!(state.respond("pending", true).is_err());
+        }
+        let (send, receive) = oneshot::channel();
+        state.lock().pending.insert("expired".into(), send);
+        drop(receive);
+        assert!(state.respond("expired", true).is_err());
+        assert!(state.lock().pending.is_empty());
+        Ok(())
     }
     #[test]
     fn public_metadata_round_trips_without_credential_fields()
@@ -224,7 +258,9 @@ mod tests {
                 inner.pending.insert("pending".into(), send);
                 inner.revision
             };
+            assert!(state.lock().current(revision, &saved));
             state.invalidate_credentials(&saved.id);
+            assert!(!state.lock().current(revision, &saved));
             assert!(receive.blocking_recv().is_err());
             let inner = state.lock();
             assert_ne!(inner.revision, revision);

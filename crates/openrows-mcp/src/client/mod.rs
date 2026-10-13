@@ -105,7 +105,7 @@ pub struct CallInput<'a> {
     /// Native session grant.
     pub consent: &'a Consent,
 }
-/// Call an enabled and confirmed tool. No OpenRows database capability is supplied.
+/// Call an enabled and confirmed tool. No `OpenRows` database capability is supplied.
 /// # Errors
 /// Fixed consent, timeout, cancellation, transport or size failure.
 pub async fn call(
