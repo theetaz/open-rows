@@ -37,7 +37,7 @@ const handle = {
 vi.mock('@openrows/grid/canvas', () => ({ mountGrid: vi.fn(() => handle) }));
 
 const json = JSON.stringify({ items: Array.from({ length: 12 }, (_, i) => i) });
-const longJson = `{"note":"${'x'.repeat(130)}"}`;
+const longJson = `{\n"note":"${'x'.repeat(130)}"}`;
 const draft: StagedEdit = {
   id: '{"id":"7"}',
   number: 1,
@@ -271,7 +271,7 @@ it('enum cells list their labels, without NULL for NOT NULL columns', async () =
   );
 });
 
-it('long JSON opens a popover that pretty-prints and saves with ⌘Enter', async () => {
+it('multi-line JSON opens a popover that pretty-prints and saves with ⌘Enter', async () => {
   const editor = editing({
       draftFor: vi.fn(() =>
         Promise.resolve({

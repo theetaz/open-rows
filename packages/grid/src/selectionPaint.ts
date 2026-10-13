@@ -56,7 +56,7 @@ export class SelectionPainter {
         return true;
     return false;
   }
-  /** A subtle inner ring keeps the focused cell distinguishable inside the row fill. */
+  /** TablePlus-style focus: a 2px danger ring with handles at two corners, visible over any fill. */
   private ring(context: CanvasRenderingContext2D): void {
     const { props, layout, view, dpr } = this.painter;
     const { row, column } = props.selection,
@@ -65,13 +65,20 @@ export class SelectionPainter {
     const x = snap((layout.offsets[column] ?? 0) - (pinned ? 0 : view.x), dpr);
     const y = snap((row + 1) * rowHeight - view.y, dpr),
       width = props.source.columns[column]?.width ?? 0;
-    const filled = this.rowSelected(row) || this.cellSelected(row, column);
     context.save();
     this.painter.clipRegion(context, pinned);
-    context.strokeStyle = filled ? colours['on-accent'] : colours.focus;
-    context.lineWidth = 1;
-    context.globalAlpha = filled ? 0.7 : 1;
-    context.strokeRect(x + 1.5, y + 1.5, width - 3, rowHeight - 3);
+    context.strokeStyle = colours.destructive;
+    context.fillStyle = colours.destructive;
+    context.lineWidth = 2;
+    context.strokeRect(x + 1, y + 1, width - 2, rowHeight - 2);
+    for (const [cx, cy] of [
+      [x + 1, y + 1],
+      [x + width - 1, y + rowHeight - 1],
+    ] as const) {
+      context.beginPath();
+      context.arc(cx, cy, 3, 0, Math.PI * 2);
+      context.fill();
+    }
     context.restore();
   }
 }

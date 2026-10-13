@@ -20,9 +20,6 @@ const BOOLEAN = /^bool(ean)?$/i;
 export function isBooleanType(dataType: string): boolean {
   return BOOLEAN.test(dataType);
 }
-/** Values above this length open the multi-line popover for text and JSON. */
-const LONG_TEXT = 120;
-
 /** A writable column's editor; `null` for unknown or generated columns. */
 export function columnEdit(
   info: EditInfoDto | null,
@@ -69,17 +66,9 @@ export function cellText(cell: DisplayCell | undefined): string {
   return cell.text;
 }
 
-/** Multi-line, long JSON/text, or wider than the cell: edit in a popover. */
-export function isLong(
-  value: string,
-  column: ColumnEdit,
-  room: { width: number; charWidth: number },
-): boolean {
-  return (
-    value.includes('\n') ||
-    (/json|text|char/i.test(column.dataType) && value.length > LONG_TEXT) ||
-    value.length * room.charWidth > room.width
-  );
+/** Only multi-line values need the popover; long single-line values edit in the cell like TablePlus. */
+export function isLong(value: string): boolean {
+  return value.includes('\n');
 }
 
 /** JSON reformatting for the popover; unchanged when the text is not valid JSON. */

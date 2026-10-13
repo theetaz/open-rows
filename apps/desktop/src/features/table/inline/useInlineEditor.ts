@@ -82,7 +82,7 @@ export function useInlineEditor(args: Args): InlineEditor {
       next.draft.then(
         (row) => {
           setOpen((state) =>
-            state?.draft === next.draft ? loaded(state, row, args) : state,
+            state?.draft === next.draft ? loaded(state, row) : state,
           );
         },
         () => {
@@ -153,9 +153,7 @@ function opening(
     seed ?? cellText(args.source.current?.cell(cell.row, cell.column));
   const { fontSize, fontFamily } = args.theme.current;
   const long =
-    !temporalKind(edit.dataType) &&
-    seed === undefined &&
-    isLong(value, edit, room(rect, fontSize));
+    !temporalKind(edit.dataType) && seed === undefined && isLong(value);
   return {
     ...cell,
     edit,
@@ -190,7 +188,7 @@ function editable(
 }
 
 /** Replace the painted text with the exact staged or original value, unless the user typed. */
-function loaded(state: OpenEditor, row: StagedEdit, args: Args): OpenEditor {
+function loaded(state: OpenEditor, row: StagedEdit): OpenEditor {
   if (state.dirty) return { ...state, ready: true };
   const name = state.edit.name;
   const staged = row.values[name];
@@ -199,15 +197,8 @@ function loaded(state: OpenEditor, row: StagedEdit, args: Args): OpenEditor {
   const long =
     state.mode === 'input' &&
     !temporalKind(state.edit.dataType) &&
-    isLong(value, state.edit, room(state.rect, args.theme.current.fontSize));
+    isLong(value);
   return { ...state, value, ready: true, mode: long ? 'popover' : state.mode };
-}
-
-function room(
-  rect: CellRect,
-  fontSize: number,
-): { width: number; charWidth: number } {
-  return { width: rect.width - 16, charWidth: fontSize * 0.6 };
 }
 
 function anchorOf(

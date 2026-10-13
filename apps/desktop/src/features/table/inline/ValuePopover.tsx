@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useEffect, useLayoutEffect, useRef } from 'react';
+import { useEffect, useEffectEvent, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from '@openrows/ui';
 import { reformat } from './cellKind';
@@ -24,6 +24,9 @@ export function ValuePopover({ open, editor }: Props): React.JSX.Element {
   useEffect(() => {
     text.current?.focus({ preventScroll: true });
   }, []);
+  useOutsideCommit(panel, () => {
+    editor.commit(open.value);
+  });
   return createPortal(
     <div
       ref={panel}
@@ -49,6 +52,24 @@ export function ValuePopover({ open, editor }: Props): React.JSX.Element {
     </div>,
     document.body,
   );
+}
+
+/** A press outside the panel stages a changed value (or just closes), like leaving a cell. */
+function useOutsideCommit(
+  panel: React.RefObject<HTMLDivElement | null>,
+  commit: () => void,
+): void {
+  const onOutside = useEffectEvent((event: PointerEvent) => {
+    if (event.target instanceof Node && panel.current?.contains(event.target))
+      return;
+    commit();
+  });
+  useEffect(() => {
+    document.addEventListener('pointerdown', onOutside, true);
+    return () => {
+      document.removeEventListener('pointerdown', onOutside, true);
+    };
+  }, []);
 }
 
 /** JSON reformatting, copy, cancel and save (⌘↩). */
