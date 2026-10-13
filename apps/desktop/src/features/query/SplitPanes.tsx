@@ -132,12 +132,14 @@ export function SplitPanes({
           split.focused('active');
         }}
       >
-        <div className={styles.paneBar}>
-          <span>
-            {connection ?? active.connectionId} · {active.database} ·{' '}
-            {active.title}
-          </span>
-        </div>
+        {layout && (
+          <div className={styles.paneBar}>
+            <span>
+              {connection ?? active.connectionId} · {active.database} ·{' '}
+              {active.title}
+            </span>
+          </div>
+        )}
         {render(active)}
       </section>
     </div>

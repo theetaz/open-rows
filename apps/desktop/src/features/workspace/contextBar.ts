@@ -3,6 +3,8 @@ import type { InsecureReasonDto, ProfileDto } from '@openrows/ipc';
 import { insecureReasons, statusLabel } from '../connections';
 import { routeStatus } from './routeStatus';
 import type { SessionStatus } from '../connections';
+import type { QueryTab } from '../query/tabs';
+import type { SidebarObject } from '../schema/sidebarIdentity';
 
 /** Segments of the toolbar context bar, TablePlus style. */
 export type ContextSegments = {
@@ -60,4 +62,23 @@ export function contextSegments(input: {
     insecure: insecureReasons(profile, status),
     route: routeStatus(profile),
   };
+}
+
+/** The catalog object a table or inspection tab shows, for the context bar's star. */
+export function tabFavourite(
+  tab: QueryTab | undefined,
+  profileId: string | undefined,
+): SidebarObject | undefined {
+  if (!tab || !profileId) return undefined;
+  if (tab.kind === 'table' && tab.table)
+    return {
+      ...tab.table,
+      profileId,
+      kind: tab.table.kind ?? 'table',
+      arguments: null,
+    };
+  const target = tab.kind === 'inspection' ? tab.inspection : undefined;
+  return target?.kind === 'object'
+    ? { ...target.object, profileId, database: tab.database }
+    : undefined;
 }

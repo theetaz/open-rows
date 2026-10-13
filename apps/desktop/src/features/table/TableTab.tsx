@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useRef } from 'react';
-import { FavouriteButton } from '../schema/FavouriteButton';
 import { Button } from '@openrows/ui';
 import type { EngineDto, ObjectFeaturesDto } from '@openrows/ipc';
 import type { TableObject } from '../query/tabs';
@@ -142,7 +141,7 @@ export function TableTab(props: TableTabProps): React.JSX.Element {
       className={styles.table}
       aria-label={`${table.name} table`}
     >
-      <TableHeader {...props} />
+      <Banner {...props} />
       {view.mode === 'data' && <RecoveryBanner recovery={recovery} />}
       {view.mode === 'data' && view.filtersOpen && (
         <Filters state={tab} engine={props.engine} />
@@ -348,23 +347,5 @@ function Banner(props: TableTabProps): React.JSX.Element | null {
         Connect to browse rows
       </Button>
     </p>
-  );
-}
-
-function TableHeader(props: TableTabProps): React.JSX.Element {
-  return (
-    <>
-      <header>
-        <FavouriteButton
-          object={{
-            ...props.table,
-            profileId: props.profileId,
-            kind: props.table.kind ?? 'table',
-            arguments: null,
-          }}
-        />
-      </header>
-      <Banner {...props} />
-    </>
   );
 }

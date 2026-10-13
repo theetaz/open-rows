@@ -12,7 +12,7 @@ import { openQueryFile } from '../query';
 import { reportProjectError } from '../projects';
 import { useWorkspaceController } from './useWorkspaceController';
 import type { DiagramRequest } from './useWorkspaceController';
-import { contextSegments } from './contextBar';
+import { contextSegments, tabFavourite } from './contextBar';
 import { ConnectionSheets, SshPrompts, useConnections } from '../connections';
 import type { SettingsSection } from '../settings';
 import { TableExport } from './TableExport';
@@ -270,6 +270,7 @@ function Toolbar({
         schema: catalog.schema,
         objectPath: tab?.objectPath,
       })}
+      favourite={tabFavourite(tab, profile?.id)}
       documents={<NativeDocuments tabs={controller.tabs} />}
       health={status?.state ?? 'disconnected'}
       onDatabase={() => {

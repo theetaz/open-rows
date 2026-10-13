@@ -14,7 +14,7 @@ vi.mock('@openrows/ipc', async () =>
 const sidebar = () =>
   within(screen.getByRole('complementary', { name: 'Sidebar' }));
 
-it('stars from the context menu and table header, records opens, and routes the favourite shortcut', async () => {
+it('stars from the context menu and context bar, records opens, and routes the favourite shortcut', async () => {
   vi.stubGlobal('innerWidth', 1280);
   const user = userEvent.setup();
   render(
@@ -33,15 +33,17 @@ it('stars from the context menu and table header, records opens, and routes the 
     within(menu).getByRole('menuitem', { name: 'Add favourite' }),
   );
   await user.keyboard('{Escape}');
+  // Favourites start collapsed.
+  await user.click(sidebar().getByRole('button', { name: /^Favourites/ }));
   expect(
     sidebar().getByRole('treeitem', { name: 'public.orders' }),
   ).toBeVisible();
   expect(vi.mocked(listObjects).mock.calls).toHaveLength(reads);
   await user.dblClick(orders);
-  // The header follows the lazy table import, not just the tab descriptor.
   await act(async () => {
     await vi.dynamicImportSettled();
   });
+  // The context bar's star follows the active table tab.
   const header = screen.getByRole('button', { name: 'Remove favourite' });
   expect(readSidebarObjects('id-orders-local', 'orders').recent[0]?.name).toBe(
     'orders',

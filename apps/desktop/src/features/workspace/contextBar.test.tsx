@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
 import { profile, server } from '../../test/ipcStub';
-import { contextSegments } from './contextBar';
+import { readSidebarObjects } from '../schema/sidebarStore';
+import { contextSegments, tabFavourite } from './contextBar';
 import { WorkspaceToolbar } from './WorkspaceToolbar';
 
 const handlers = {
@@ -54,4 +56,53 @@ it('flags an insecure active connection in the window toolbar', () => {
     objectPath: undefined,
   });
   expect(safe.insecure).toEqual([]);
+});
+
+it('stars the active tab object, including the exact routine overload, from the context bar', async () => {
+  const user = userEvent.setup();
+  const object = {
+    database: 'db',
+    schema: 'app',
+    name: 'tax',
+    kind: 'function' as const,
+    arguments: 'numeric',
+  };
+  const favourite = tabFavourite(
+    {
+      id: 't1',
+      connectionId: 'p',
+      database: 'db',
+      title: 'tax',
+      kind: 'inspection',
+      sql: '',
+      inspection: { kind: 'object', object },
+    },
+    'p',
+  );
+  expect(favourite).toEqual({ ...object, profileId: 'p' });
+  render(
+    <WorkspaceToolbar
+      {...handlers}
+      context={contextSegments({
+        profile: undefined,
+        status: undefined,
+        database: '',
+        schema: '',
+        objectPath: undefined,
+      })}
+      favourite={favourite}
+      health="connected"
+      safe={false}
+      prod={false}
+      sidebar
+      inspector={false}
+    />,
+  );
+  await user.click(screen.getByRole('button', { name: 'Add favourite' }));
+  expect(readSidebarObjects('p', 'db').favourites).toEqual([
+    { ...object, profileId: 'p' },
+  ]);
+  expect(
+    screen.getByRole('button', { name: 'Remove favourite' }),
+  ).toHaveAttribute('aria-pressed', 'true');
 });

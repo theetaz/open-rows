@@ -5,11 +5,15 @@ import type { ContextSegments } from './contextBar';
 import { ConnectionStatus } from './ConnectionStatus';
 import { InsecureBadge } from '../connections';
 import { JobsButton } from '../jobs';
+import { FavouriteButton } from '../schema/FavouriteButton';
+import type { SidebarObject } from '../schema/sidebarIdentity';
 import styles from './Workspace.module.css';
 
 type Props = {
   documents?: React.ReactNode;
   context: ContextSegments;
+  /** The active tab's object, starred from the end of the context bar. */
+  favourite?: SidebarObject | undefined;
   /** Connection state for the context bar's health dot. */
   health: string;
   onDatabase?: (() => void) | undefined;
@@ -71,6 +75,7 @@ export function WorkspaceToolbar(props: Props): React.JSX.Element {
       <Context
         context={props.context}
         health={props.health}
+        favourite={props.favourite}
         onDatabase={props.onDatabase}
       />
       <ToolbarGroup aria-label="Workspace actions">
@@ -123,8 +128,12 @@ function ToolButton(props: {
 function Context({
   context,
   health,
+  favourite,
   onDatabase,
-}: Pick<Props, 'context' | 'health' | 'onDatabase'>): React.JSX.Element {
+}: Pick<
+  Props,
+  'context' | 'health' | 'favourite' | 'onDatabase'
+>): React.JSX.Element {
   const { env, engine, name, database, object } = context;
   const address = [engine, name, database, object].filter(Boolean).join(' : ');
   const title = env ? `${env} | ${address}` : address;
@@ -164,6 +173,9 @@ function Context({
         )}
         {object && <span>{` : ${object}`}</span>}
       </span>
+      {favourite && (
+        <FavouriteButton object={favourite} className={styles.star} />
+      )}
     </div>
   );
 }

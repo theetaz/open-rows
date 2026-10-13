@@ -6,7 +6,6 @@ import type {
   DetailSectionDto,
   ObjectDetailDto,
 } from '@openrows/ipc';
-import { FavouriteButton } from '../schema/FavouriteButton';
 import { recordRecent } from '../schema/sidebarStore';
 import { SqlViewer } from '../table/structure/SqlViewer';
 import { useInspection } from './useInspection';
@@ -31,15 +30,6 @@ export function InspectionTab(props: {
     <section className={styles.viewer} aria-label="Object inspection">
       <header className={styles.header}>
         <span>Read-only</span>
-        {props.target.kind === 'object' && (
-          <FavouriteButton
-            object={{
-              ...props.target.object,
-              profileId: props.profileId,
-              database: props.database,
-            }}
-          />
-        )}
         <Button
           size="sm"
           variant="ghost"

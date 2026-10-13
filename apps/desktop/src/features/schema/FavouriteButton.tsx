@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { Button, Icon } from '@openrows/ui';
+import { Icon, IconButton } from '@openrows/ui';
 import {
   isFavourite,
   toggleFavourite,
@@ -7,10 +7,14 @@ import {
 } from './sidebarStore';
 import type { SidebarObject } from './sidebarIdentity';
 
-/** Shared star control for object/table headers and the tree context menu. */
+/**
+ * Shared favourite control: the address bar's star (`className` styles it)
+ * and the tree context menu's item.
+ */
 export function FavouriteButton(props: {
   object: SidebarObject;
   menu?: boolean;
+  className?: string | undefined;
 }): React.JSX.Element {
   useSidebarObjects(props.object.profileId, props.object.database);
   const starred = isFavourite(props.object);
@@ -28,17 +32,18 @@ export function FavouriteButton(props: {
       </button>
     );
   return (
-    <Button
+    <IconButton
       size="sm"
       variant="ghost"
+      className={props.className}
       aria-label={label}
+      title={label}
       aria-pressed={starred}
       onClick={() => {
         toggleFavourite(props.object);
       }}
     >
       <Icon name="star" />
-      {label}
-    </Button>
+    </IconButton>
   );
 }

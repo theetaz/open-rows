@@ -125,7 +125,7 @@ it('restores profile-scoped filters and visibility through the settings file wit
     text: 'orders',
     kinds: ['views'],
     schemas: ['archive'],
-    hidden: ['recent'],
+    hidden: ['favourites'],
     systemObjects: true,
   });
   expect(readSidebarPreferences('other').hidden).toEqual([]);
@@ -136,7 +136,7 @@ it('restores profile-scoped filters and visibility through the settings file wit
     text: 'orders',
     kinds: ['views'],
     schemas: ['archive'],
-    hidden: ['recent'],
+    hidden: ['favourites'],
     systemObjects: true,
   });
   expect(collectSettings().sidebar).toEqual(file.sidebar);
