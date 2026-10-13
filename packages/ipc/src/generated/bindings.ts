@@ -55,19 +55,19 @@ export const commands = {
 	spikeStart: () => typedError<string | null, SpikeError>(__TAURI_INVOKE("spike_start")),
 	spikeProgress: (stage: string, detail: string) => typedError<null, SpikeError>(__TAURI_INVOKE("spike_progress", { stage, detail })),
 	/**  Saved connections, sorted by group then name. */
-	profilesList: () => typedError<ProfileList, IpcError>(__TAURI_INVOKE("profiles_list")),
+	profilesList: () => typedError<ProfileList_Serialize, IpcError>(__TAURI_INVOKE("profiles_list")),
 	/**  Saved connections matching every whitespace-separated term. */
-	profilesSearch: (query: string) => typedError<ProfileDto[], IpcError>(__TAURI_INVOKE("profiles_search", { query })),
+	profilesSearch: (query: string) => typedError<ProfileDto_Serialize[], IpcError>(__TAURI_INVOKE("profiles_search", { query })),
 	/**  Export selected ids, or all when empty, to a native-selected JSON file. */
 	connectionsExport: (ids: string[]) => typedError<string | null, IpcError>(__TAURI_INVOKE("connections_export", { ids })),
 	/**  Parse and validate without writes; passwords remain only in the core preview. */
 	connectionsImportPreview: (source: ImportSource) => typedError<{
 	token: string,
-	rows: ImportRow[],
+	rows: ImportRow_Serialize[],
 	warnings: string[],
 } | null, IpcError>(__TAURI_INVOKE("connections_import_preview", { source })),
 	/**  Apply explicit decisions to the exact preview; stale previews write nothing. */
-	connectionsImportApply: (token: string, decisions: ImportDecisionDto[]) => typedError<ProfileDto[], IpcError>(__TAURI_INVOKE("connections_import_apply", { token, decisions })),
+	connectionsImportApply: (token: string, decisions: ImportDecisionDto[]) => typedError<ProfileDto_Serialize[], IpcError>(__TAURI_INVOKE("connections_import_apply", { token, decisions })),
 	/**  Drop an unconfirmed preview and its optional passwords. */
 	connectionsImportCancel: (token: string) => typedError<null, IpcError>(__TAURI_INVOKE("connections_import_cancel", { token })),
 	/**  Test the draft command with trust, returning success without its value. */
@@ -75,17 +75,17 @@ export const commands = {
 	/**  Cancel the profile's current credential command, including pending trust. */
 	credentialCancel: (profileId: string) => typedError<null, IpcError>(__TAURI_INVOKE("credential_cancel", { profileId })),
 	/**  One saved connection. */
-	profileGet: (id: string) => typedError<ProfileDto, IpcError>(__TAURI_INVOKE("profile_get", { id })),
+	profileGet: (id: string) => typedError<ProfileDto_Serialize, IpcError>(__TAURI_INVOKE("profile_get", { id })),
 	/**  Save a new connection; its password and passphrases go to the keychain. */
-	profileCreate: (input: ProfileInput) => typedError<ProfileDto, IpcError>(__TAURI_INVOKE("profile_create", { input })),
+	profileCreate: (input: ProfileInput) => typedError<ProfileDto_Serialize, IpcError>(__TAURI_INVOKE("profile_create", { input })),
 	/**  Replace a saved connection's fields and apply the secret changes. */
-	profileUpdate: (id: string, input: ProfileInput) => typedError<ProfileDto, IpcError>(__TAURI_INVOKE("profile_update", { id, input })),
+	profileUpdate: (id: string, input: ProfileInput) => typedError<ProfileDto_Serialize, IpcError>(__TAURI_INVOKE("profile_update", { id, input })),
 	/**  Copy a connection (and its secrets) as "<name> copy". */
-	profileDuplicate: (id: string) => typedError<ProfileDto, IpcError>(__TAURI_INVOKE("profile_duplicate", { id })),
+	profileDuplicate: (id: string) => typedError<ProfileDto_Serialize, IpcError>(__TAURI_INVOKE("profile_duplicate", { id })),
 	/**  Delete a connection, its stored secrets and its schema snapshots. */
 	profileDelete: (id: string) => typedError<null, IpcError>(__TAURI_INVOKE("profile_delete", { id })),
 	/**  Form fields from a pasted connection URL, without the password itself. */
-	profileParseUrl: (url: string) => typedError<UrlDraft, IpcError>(__TAURI_INVOKE("profile_parse_url", { url })),
+	profileParseUrl: (url: string) => typedError<UrlDraft_Serialize, IpcError>(__TAURI_INVOKE("profile_parse_url", { url })),
 	/**
 	 *  Read one saved secret of a connection from the keychain because the user
 	 *  clicked Reveal; nothing else ever returns a stored secret.
@@ -100,9 +100,9 @@ export const commands = {
 	 *  saved `SQLite` connection and its open sessions. The file opens read-only
 	 *  when the connection's main file does.
 	 */
-	connectionAttachDatabase: (profileId: string, path: string, alias: string) => typedError<AttachReply, IpcError>(__TAURI_INVOKE("connection_attach_database", { profileId, path, alias })),
+	connectionAttachDatabase: (profileId: string, path: string, alias: string) => typedError<AttachReply_Serialize, IpcError>(__TAURI_INVOKE("connection_attach_database", { profileId, path, alias })),
 	/**  Detach schema `alias` from the saved `SQLite` connection and its open sessions. */
-	connectionDetachDatabase: (profileId: string, alias: string) => typedError<AttachReply, IpcError>(__TAURI_INVOKE("connection_detach_database", { profileId, alias })),
+	connectionDetachDatabase: (profileId: string, alias: string) => typedError<AttachReply_Serialize, IpcError>(__TAURI_INVOKE("connection_detach_database", { profileId, alias })),
 	/**  Answer an open SSH prompt (host-key trust or challenge answers). */
 	sshPromptAnswer: (id: string, answer: SshPromptAnswer) => typedError<null, IpcError>(__TAURI_INVOKE("ssh_prompt_answer", { id, answer })),
 	/**
@@ -748,9 +748,20 @@ export type AssistantScope = {
 };
 
 /**  The saved connection after an attach or detach, and what live sessions said. */
-export type AttachReply = {
+export type AttachReply = AttachReply_Serialize | AttachReply_Deserialize;
+
+/**  The saved connection after an attach or detach, and what live sessions said. */
+export type AttachReply_Deserialize = {
 	/**  The connection as saved. */
-	profile: ProfileDto,
+	profile: ProfileDto_Deserialize,
+	/**  One message per open session that could not follow the change. */
+	warnings: string[],
+};
+
+/**  The saved connection after an attach or detach, and what live sessions said. */
+export type AttachReply_Serialize = {
+	/**  The connection as saved. */
+	profile: ProfileDto_Serialize,
 	/**  One message per open session that could not follow the change. */
 	warnings: string[],
 };
@@ -1422,7 +1433,7 @@ export type EditorRun = {
 };
 
 /**  Database engine of a profile. */
-export type EngineDto = "duckdb" | "postgres" | "mysql" | "mariadb" | "sqlserver" | "clickhouse" | "sqlite" | "libsql" | "libsql-file";
+export type EngineDto = "duckdb" | "postgres" | "mysql" | "mariadb" | "sqlserver" | "clickhouse" | "sqlite" | "libsql" | "mongodb" | "libsql-file";
 
 /**  Environment tag as shown in the rail, header and toolbar. */
 export type EnvDto = {
@@ -1925,11 +1936,7 @@ export type ImportOptionsDto = {
 };
 
 /**  A single-use core-owned preview token and its safe display data. */
-export type ImportPreview = {
-	token: string,
-	rows: ImportRow[],
-	warnings: string[],
-};
+export type ImportPreview = ImportPreview_Serialize | ImportPreview_Deserialize;
 
 /**  The file's columns with inferred types and its first rows. */
 export type ImportPreviewDto = {
@@ -1957,6 +1964,20 @@ export type ImportPreviewRequest = {
 	 *  highlighting values the target would reject.
 	 */
 	types: (string | null)[],
+};
+
+/**  A single-use core-owned preview token and its safe display data. */
+export type ImportPreview_Deserialize = {
+	token: string,
+	rows: ImportRow_Deserialize[],
+	warnings: string[],
+};
+
+/**  A single-use core-owned preview token and its safe display data. */
+export type ImportPreview_Serialize = {
+	token: string,
+	rows: ImportRow_Serialize[],
+	warnings: string[],
 };
 
 /**  The job started; events follow; `import_cancel(importId)` stops it. */
@@ -1987,8 +2008,18 @@ export type ImportRequest = {
 };
 
 /**  One preview row, never carrying an imported password. */
-export type ImportRow = {
-	profile: ProfileDto,
+export type ImportRow = ImportRow_Serialize | ImportRow_Deserialize;
+
+/**  One preview row, never carrying an imported password. */
+export type ImportRow_Deserialize = {
+	profile: ProfileDto_Deserialize,
+	conflict: ConnectionConflictDto,
+	hasPassword: boolean,
+};
+
+/**  One preview row, never carrying an imported password. */
+export type ImportRow_Serialize = {
+	profile: ProfileDto_Serialize,
 	conflict: ConnectionConflictDto,
 	hasPassword: boolean,
 };
@@ -2245,6 +2276,11 @@ export type Model = {
 	name: string,
 	/**  Capabilities without guessed model limits. */
 	capabilities: Capabilities,
+};
+
+export type MongoOptionsDto = {
+	srv: boolean,
+	authSource: string,
 };
 
 /**  Per-generation source status; no sampled rows in events. */
@@ -2752,7 +2788,13 @@ export type ProcessSignalRequest = {
  *  A saved connection without secrets; `hasPassword` says whether the
  *  keychain holds one.
  */
-export type ProfileDto = {
+export type ProfileDto = ProfileDto_Serialize | ProfileDto_Deserialize;
+
+/**
+ *  A saved connection without secrets; `hasPassword` says whether the
+ *  keychain holds one.
+ */
+export type ProfileDto_Deserialize = {
 	id: string,
 	name: string,
 	group: string | null,
@@ -2764,6 +2806,50 @@ export type ProfileDto = {
 	port: number,
 	database: string | null,
 	user: string | null,
+	mongodb: MongoOptionsDto | null,
+	tlsMode: TlsModeDto,
+	tlsFiles: TlsFilesDto,
+	ssh: SshDto | null,
+	proxy: ProxyDto | null,
+	helper: HelperHop | null,
+	hasPassword: boolean,
+	/**  Keychain, or asked on every connect (then `hasPassword` is false). */
+	passwordStorage: PasswordStorageDto,
+	credentialCommand: CredentialCommandDto | null,
+	tags: string[],
+	safety: SafetyDto,
+	/**  Why the connection list flags this connection as insecure. */
+	insecure: InsecureReasonDto[],
+	/**  Executed statements are kept in the local history (FR-WS-02). */
+	recordHistory: boolean,
+	redactHistory: boolean,
+	/**  Statement and idle timeouts (M1-01). */
+	limits: LimitsDto,
+	/**  SQL run after every connect (FR-CONN-10); empty for none. */
+	startupCommands: string,
+	/**  The driver lists server processes and cancels or kills them (FR-ADMIN-01). */
+	processList: boolean,
+	/**  Which structure and object editors the engine supports (FR-SCHEMA-05, 10–12). */
+	objects: ObjectFeaturesDto,
+};
+
+/**
+ *  A saved connection without secrets; `hasPassword` says whether the
+ *  keychain holds one.
+ */
+export type ProfileDto_Serialize = {
+	id: string,
+	name: string,
+	group: string | null,
+	env: EnvDto,
+	engine: EngineDto,
+	/**  The database file of a file engine. */
+	file: FileDto | null,
+	host: string,
+	port: number,
+	database: string | null,
+	user: string | null,
+	mongodb?: MongoOptionsDto | null,
 	tlsMode: TlsModeDto,
 	tlsFiles: TlsFilesDto,
 	ssh: SshDto | null,
@@ -2803,6 +2889,7 @@ export type ProfileInput = {
 	port: number,
 	database: string | null,
 	user: string | null,
+	mongodb?: MongoOptionsDto | null,
 	tlsMode: TlsModeDto,
 	/**  CA and client certificate files (absent: none). */
 	tlsFiles?: TlsFilesInput,
@@ -2829,8 +2916,18 @@ export type ProfileInput = {
 };
 
 /**  Saved profiles plus files that could not be read. */
-export type ProfileList = {
-	profiles: ProfileDto[],
+export type ProfileList = ProfileList_Serialize | ProfileList_Deserialize;
+
+/**  Saved profiles plus files that could not be read. */
+export type ProfileList_Deserialize = {
+	profiles: ProfileDto_Deserialize[],
+	/**  One message per unreadable profile file. */
+	unreadable: string[],
+};
+
+/**  Saved profiles plus files that could not be read. */
+export type ProfileList_Serialize = {
+	profiles: ProfileDto_Serialize[],
 	/**  One message per unreadable profile file. */
 	unreadable: string[],
 };
@@ -3830,13 +3927,30 @@ export type UiReport = {
 export type UiReportKind = "error" | "unhandledRejection" | "longTask" | "slowIpc";
 
 /**  Form fields filled from a pasted URL; only says whether it had a password. */
-export type UrlDraft = {
+export type UrlDraft = UrlDraft_Serialize | UrlDraft_Deserialize;
+
+/**  Form fields filled from a pasted URL; only says whether it had a password. */
+export type UrlDraft_Deserialize = {
 	engine: EngineDto,
 	file: FileDto | null,
 	host: string,
 	port: number,
 	database: string | null,
 	user: string | null,
+	mongodb: MongoOptionsDto | null,
+	tlsMode: TlsModeDto,
+	passwordProvided: boolean,
+};
+
+/**  Form fields filled from a pasted URL; only says whether it had a password. */
+export type UrlDraft_Serialize = {
+	engine: EngineDto,
+	file: FileDto | null,
+	host: string,
+	port: number,
+	database: string | null,
+	user: string | null,
+	mongodb?: MongoOptionsDto | null,
 	tlsMode: TlsModeDto,
 	passwordProvided: boolean,
 };

@@ -619,6 +619,12 @@ routes **all** upstream database sockets through `openrows-net`, including TLS.
 Replica discovery reuses SSH/proxy routes with `Dialer::retarget`. Fixed cloud
 helpers use one direct endpoint. TLS verification retains the logical upstream
 hostname; driver-side TLS is disabled only on the authenticated loopback leg.
+The SDK's required TLS backend uses vendored OpenSSL; its default Rustls backend
+would add runtime CA data outside the build-only licence exception in docs/22.
+Upstream TLS is always provided by the shared network layer.
+Authentication defaults remain bound to the profile's original database while
+browsing other databases. SRV DNS TXT authentication settings override that
+default; an explicit authentication database overrides both.
 
 The SDK retains cursor server affinity and handles getMore/cleanup. Cancellation
 records only the active token and server address, finds that user's operation
@@ -630,13 +636,17 @@ without `killOp`: verify the build before retrying, following
 MQL supports `find` (projection, sort, limit, skip), `aggregate`,
 `countDocuments`, `insertOne/Many`, `updateOne/Many`, `replaceOne`,
 `deleteOne/Many`, `getIndexes`, `createIndex` and `dropIndex`. Arguments accept
-JSON/EJSON and JSON5 shell object spelling, plus the finite `ObjectId`,
+JSON/EJSON and JSON5 shell object spelling with `//` and `/* */` comments,
+plus the finite `ObjectId`,
 `ISODate` and numeric BSON constructors. No JavaScript is evaluated locally.
 Queries are bounded to 1 MiB and 64 syntax levels; typed projection inference
 uses at most 16 nested levels and preserves deeper values as JSON. The SQL
 formatter is unavailable for MQL. Unknown syntax is never admitted as a read. `$out`/`$merge` aggregation stages,
 including nested ones, are writes. Server JavaScript markers in finds, counts
 or pipelines also require write admission; the shared six safety policies apply.
+Update methods require a nonempty modifier document; replacement methods reject
+leading modifiers instead of silently changing operation semantics. BSON-null
+`_id` values remain JSON identity text, so those documents can be staged and edited.
 
 Databases, collections and views use the existing catalog tree; expanded
 collections list indexes, and MQL creates/drops them. Collection

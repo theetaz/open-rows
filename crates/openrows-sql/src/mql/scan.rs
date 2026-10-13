@@ -2,6 +2,44 @@
 use super::ParseError;
 use serde_json::Value;
 
+pub(super) fn without_comments(source: &str) -> Result<String, ParseError> {
+    let mut output = String::with_capacity(source.len());
+    let mut chars = source.chars().peekable();
+    let mut quote = None;
+    let mut escaped = false;
+    while let Some(ch) = chars.next() {
+        if !quoted(ch, &mut quote, &mut escaped) && ch == '/' {
+            match chars.peek() {
+                Some('/') => {
+                    chars.next();
+                    let _ = chars.find(|ch| matches!(*ch, '\n' | '\r' | '\u{2028}' | '\u{2029}'));
+                    output.push('\n');
+                    continue;
+                }
+                Some('*') => {
+                    chars.next();
+                    block_comment(&mut chars)?;
+                    output.push(' ');
+                    continue;
+                }
+                _ => {}
+            }
+        }
+        output.push(ch);
+    }
+    Ok(output)
+}
+
+fn block_comment(chars: &mut std::iter::Peekable<std::str::Chars<'_>>) -> Result<(), ParseError> {
+    while let Some(ch) = chars.next() {
+        if ch == '*' && chars.peek() == Some(&'/') {
+            chars.next();
+            return Ok(());
+        }
+    }
+    Err(ParseError("unclosed comment"))
+}
+
 pub(super) fn validate_size(source: &str) -> Result<(), ParseError> {
     if source.len() > 1024 * 1024 {
         return Err(ParseError("query exceeds 1 MiB"));

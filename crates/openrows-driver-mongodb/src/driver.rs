@@ -2,7 +2,7 @@
 use crate::{MongoSession, error, proxy::Proxy};
 use mongodb::{
     Client,
-    options::{ClientOptions, Credential, ServerAddress, Socks5Proxy, Tls},
+    options::{ClientOptions, ServerAddress, Socks5Proxy, Tls},
 };
 use openrows_driver_api::catalog::ObjectKind;
 use openrows_driver_api::{
@@ -216,42 +216,10 @@ async fn options(request: &ConnectRequest) -> Result<ClientOptions, DriverError>
         )
     };
     let mut options = ClientOptions::parse(&uri).await.map_err(error::mongo)?;
-    options.credential = credential(request, srv, options.credential.as_ref())?;
+    options.credential = crate::credentials::credential(request, options.credential.as_ref())?;
     Ok(options)
 }
-fn credential(
-    request: &ConnectRequest,
-    srv: bool,
-    discovered: Option<&Credential>,
-) -> Result<Option<Credential>, DriverError> {
-    if request.user.is_empty() {
-        return if request.password.is_some() {
-            Err(DriverError::Auth(
-                "Enter a MongoDB user or clear the password".into(),
-            ))
-        } else {
-            Ok(None)
-        };
-    }
-    let fallback = if srv || request.database.is_empty() {
-        "admin".into()
-    } else {
-        request.database.clone()
-    };
-    let source = request
-        .driver_options
-        .get("authSource")
-        .cloned()
-        .or_else(|| discovered.and_then(|c| c.source.clone()))
-        .unwrap_or(fallback);
-    Ok(Some(
-        Credential::builder()
-            .username(request.user.clone())
-            .password(request.password.as_ref().map(|p| p.expose().to_owned()))
-            .source(source)
-            .build(),
-    ))
-}
+
 fn address(address: &ServerAddress) -> Result<(String, u16), DriverError> {
     match address {
         ServerAddress::Tcp { host, port } => Ok((host.clone(), port.unwrap_or(27017))),

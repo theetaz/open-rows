@@ -1,5 +1,34 @@
 // SPDX-License-Identifier: Apache-2.0
 use super::*;
+
+#[test]
+fn shell_comments_do_not_hide_nesting_or_change_string_values() -> Result<(), ParseError> {
+    let query = parse("// read\ndb.x.find({/* ')' */url:'https://example.test',n:1})")?;
+    assert_eq!(query.arguments[0]["url"], "https://example.test");
+    let deeply_nested = format!(
+        "db.x.find({{ /* ' */ n:{}0{} }})",
+        "[".repeat(65),
+        "]".repeat(65)
+    );
+    assert_eq!(
+        parse(&deeply_nested),
+        Err(ParseError("query nesting exceeds 64"))
+    );
+    assert!(parse("db.x.find({/* unclosed })").is_err());
+    Ok(())
+}
+
+#[test]
+fn script_splitting_preserves_shell_comments_and_escaped_strings() -> Result<(), ParseError> {
+    let source =
+        "// comment; ignored\ndb.x.find({s:\"a\\\";b\"}); // after;\ndb.x.countDocuments({})";
+    let statements = crate::split(source, crate::Dialect::MongoDb);
+    assert_eq!(statements.len(), 2);
+    for statement in statements {
+        parse(statement.text(source))?;
+    }
+    Ok(())
+}
 #[test]
 fn shell_find_and_ejson_are_data_only() -> Result<(), ParseError> {
     let q = parse(

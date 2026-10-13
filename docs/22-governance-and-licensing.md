@@ -35,6 +35,22 @@ Enforced by `cargo-deny` (`[licenses]` allowlist) and an npm licence check in CI
 
 Host crates reuse existing serde, thiserror, Tokio, Arrow, zeroize, ring, tempfile and platform dependencies (`libc`, `rustix`, `windows-sys`, `socket2`). Criterion, proptest and flatbuffers are existing test/benchmark dependencies. The lifecycle crate retains all workspace quality lints with `unsafe_code = deny` instead of the workspace's `forbid`, allowing narrowly documented macOS/Windows platform FFI modules; no native database dependency enters the protocol/client or desktop through this change. The host's SQLite dependency is an existing driver. DuckDB and packaging/signing dependencies remain separate tasks.
 
+### MongoDB dependencies (M3-01–M3-04)
+
+`mongodb` 3.9 (Apache-2.0) supplies BSON, authentication, discovery, cursors and
+transaction identity; a bespoke wire driver would duplicate these safety paths.
+Its mandatory TLS backend uses `openssl`/`openssl-sys`/`tokio-openssl` (MIT),
+`openssl-src` (Apache-2.0) and `openssl-probe` (MIT OR Apache-2.0). Vendoring
+avoids a system-library prerequisite. The default Rustls backend would add
+runtime `webpki-roots` CA data outside the build-only exception above. SDK TLS
+is disabled on the authenticated loopback adapter; upstream TLS continues to
+use `openrows-net`. Direct `openssl` is feature-only to enable the vendored build.
+
+`json5` 1.3 (MIT) parses shell object literals without executing JavaScript;
+handwritten literal parsing would duplicate escaping and numeric validation.
+Direct Arrow buffer, serde/serde_json/thiserror, futures-core and Tokio entries
+reuse existing allowed workspace dependencies. No npm dependency is added.
+
 ## 3. Clean-room policy
 
 The project is inspired by the database-client category but must be original.

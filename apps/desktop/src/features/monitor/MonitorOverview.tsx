@@ -40,6 +40,10 @@ const OVERVIEWS: Record<EngineDto, EngineOverview> = {
   postgres: POSTGRES,
   mysql: MYSQL,
   mariadb: MYSQL,
+  mongodb: {
+    metrics: [],
+    note: 'MongoDB monitoring is not available yet.',
+  },
   sqlserver: {
     metrics: SQLSERVER_METRICS,
     note: 'Performance counters cover the whole instance, including collector queries. CPU is the default resource pool share; buffer cache hit ratio and page life expectancy are current values. Missing counters remain unknown.',

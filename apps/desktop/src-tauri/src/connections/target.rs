@@ -304,14 +304,19 @@ fn driver_options(profile: &ConnectionProfile) -> std::collections::BTreeMap<Str
     let srv = options
         .get("mongodb_srv")
         .is_some_and(|value| value == "true");
-    if profile.driver == Engine::Mongodb && !options.contains_key("authSource") && !srv {
+    if profile.driver == Engine::Mongodb && !options.contains_key("authSource") {
         let source = profile
             .params
             .database
             .clone()
             .filter(|source| !source.is_empty())
             .unwrap_or_else(|| "admin".into());
-        options.insert("authSource".into(), source);
+        let key = if srv {
+            "mongodb_default_auth_source"
+        } else {
+            "authSource"
+        };
+        options.insert(key.into(), source);
     }
     options
 }

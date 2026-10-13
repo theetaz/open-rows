@@ -9,8 +9,13 @@ rust-version.workspace = true
 [lints]
 workspace = true
 
+[package.metadata.cargo-machete]
+# Feature-only dependency: build the SDK's required TLS backend without system libraries.
+ignored = ["openssl"]
+
 [dependencies]
-mongodb = { version = "3.9", features = ["socks5-proxy"] }
+mongodb = { version = "3.9", default-features = false, features = ["compat-3-0-0", "dns-resolver", "socks5-proxy", "openssl-tls"] }
+openssl = { version = "0.10", features = ["vendored"] }
 futures-core = "0.3"
 arrow-schema = "60"
 openrows-results = { path = "../openrows-results" }

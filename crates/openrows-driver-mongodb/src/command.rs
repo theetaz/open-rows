@@ -63,7 +63,12 @@ fn array(query: &Query) -> Result<Vec<Bson>, DriverError> {
 fn update(query: &Query) -> Result<Document, DriverError> {
     let filter = document(&query.arguments[0])?;
     let value = document(query.arguments.get(1).ok_or_else(invalid)?)?;
-    if query.method != "replaceOne" && !value.keys().all(|key| key.starts_with('$')) {
+    let invalid_document = if query.method == "replaceOne" {
+        value.keys().next().is_some_and(|key| key.starts_with('$'))
+    } else {
+        value.is_empty() || !value.keys().all(|key| key.starts_with('$'))
+    };
+    if invalid_document {
         return Err(invalid());
     }
     Ok(
@@ -123,4 +128,25 @@ fn check_flags(concern: bool, rejected: bool) -> Result<(), DriverError> {
         return Err(DriverError::Server { code: "HY000".into(), message: "MongoDB rejected a write; a multi-document command may have applied earlier changes".into() });
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn shell_update_and_replacement_semantics_are_not_interchanged()
+    -> Result<(), Box<dyn std::error::Error>> {
+        for source in [
+            "db.x.updateOne({},{})",
+            "db.x.updateMany({},{})",
+            "db.x.replaceOne({},{$set:{n:1}})",
+        ] {
+            assert!(command(&openrows_sql::mql::parse(source)?).is_err());
+        }
+        command(&openrows_sql::mql::parse(
+            "db.x.updateOne({},{$set:{n:1}})",
+        )?)?;
+        command(&openrows_sql::mql::parse("db.x.replaceOne({},{})")?)?;
+        Ok(())
+    }
 }

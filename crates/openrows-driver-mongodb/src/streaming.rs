@@ -46,10 +46,7 @@ fn values(batch: &RawBatch, empty_count: bool) -> Result<Vec<Value>, DriverError
         .into_iter()
         .map(|value| {
             let value = value.map_err(|_| invalid())?;
-            let document = value
-                .as_document()
-                .ok_or_else(invalid)?
-                .to_document()
+            let document = Document::try_from(value.as_document().ok_or_else(invalid)?)
                 .map_err(|_| invalid())?;
             Ok(Bson::Document(document).into_canonical_extjson())
         })

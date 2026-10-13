@@ -1,7 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 import '@testing-library/jest-dom/vitest';
+import { performance as nodePerformance } from 'node:perf_hooks';
 import { cleanup, configure } from '@testing-library/react';
 import { afterEach, beforeEach, vi } from 'vitest';
+
+// JSDOM lacks User Timing; keep its page clock separate from the worker's clock.
+if (typeof performance.mark !== 'function')
+  Object.defineProperty(performance, 'mark', {
+    configurable: true,
+    writable: true,
+    value: nodePerformance.mark.bind(nodePerformance),
+  });
 
 // Lazy chunks resolve slowly on 2-vCPU CI runners.
 configure({ asyncUtilTimeout: process.env.CI ? 5_000 : 1_000 });

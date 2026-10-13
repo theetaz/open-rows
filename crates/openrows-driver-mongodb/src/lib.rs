@@ -3,6 +3,7 @@
 mod cancel;
 mod catalog;
 mod command;
+mod credentials;
 mod driver;
 mod editor;
 mod error;

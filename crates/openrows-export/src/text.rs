@@ -128,9 +128,8 @@ pub(crate) fn push_plain(cell: &Cell<'_>, out: &mut String) {
         Cell::UInt(value) => write!(out, "{value}"),
         Cell::F32(value) => push_float(f64::from(*value), Float::F32(*value), out),
         Cell::F64(value) => push_float(*value, Float::F64(*value), out),
-        Cell::Number(text) => out.write_str(text),
+        Cell::Number(text) | Cell::Json(text) => out.write_str(text),
         Cell::Text(text) => out.write_str(text),
-        Cell::Json(text) => out.write_str(text),
         Cell::Owned(text) => out.write_str(text),
         Cell::Binary(bytes) => {
             out.push_str("\\x");

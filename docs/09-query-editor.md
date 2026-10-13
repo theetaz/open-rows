@@ -166,3 +166,17 @@ flowchart LR
 History offers Insert at the last focused editor's cursor, Copy, Open in a new query tab, Save as query, Delete, and confirmed Clear for this connection or all connections. Reuse opens or edits SQL without executing it and uses the current context's normal read-only, confirmation and parameter checks when Run is chosen. Save opens an editable SQL review with lexer-based string/number/dollar-string highlights, then writes the reviewed text into the active project's first query folder (or project root), otherwise into local queries for the active connection. Saving remains an explicit user action.
 
 Redacted entries show numbered `__OPENROWS_REDACTED_n__` markers. The editor explains that every marker must be filled; both execute and Explain reject remaining markers before opening any session. Parameter values are retained only in the current tab's memory and are excluded from session descriptors.
+
+
+## MongoDB editor and pipelines (M3-02, M3-04)
+
+MongoDB connections use the MQL editor with shell-like collection commands,
+JSON/EJSON literals and BSON constructors (docs/05 §22). Shell comments are
+accepted without executing JavaScript. SQL formatting, parameter binding and
+Explain are unavailable for MQL. The shared read-only and write-confirmation
+policies classify native commands, including write-producing aggregation stages.
+
+The Pipeline editor accepts a JSON stage array and a collection name. Preview
+through a stage executes that prefix with a final 100-document limit; previews
+reject `$out`, `$merge` and server JavaScript, including nested occurrences. Run
+uses the normal admission/confirmation path and displays document results.

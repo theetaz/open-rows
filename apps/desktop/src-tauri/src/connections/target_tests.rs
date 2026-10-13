@@ -101,13 +101,30 @@ fn mongodb_authentication_source_survives_database_switches() -> Result<(), IpcE
 }
 
 #[test]
-fn mongodb_srv_keeps_dns_txt_authentication_source_available() {
+fn mongodb_srv_keeps_dns_txt_authentication_source_available() -> Result<(), IpcError> {
     let mut base = profile(None, Some("reports"), TlsMode::VerifyFull);
     base.driver = Engine::Mongodb;
     base.params
         .options
         .insert("mongodb_srv".into(), "true".into());
     assert!(!driver_options(&base).contains_key("authSource"));
+    let metadata = target(&base, &DriverSecrets::default())?.with_database("other");
+    assert_eq!(
+        metadata
+            .request
+            .driver_options
+            .get("mongodb_default_auth_source")
+            .map(String::as_str),
+        Some("reports")
+    );
+    base.params.database = None;
+    assert_eq!(
+        driver_options(&base)
+            .get("mongodb_default_auth_source")
+            .map(String::as_str),
+        Some("admin")
+    );
+    Ok(())
 }
 
 #[test]

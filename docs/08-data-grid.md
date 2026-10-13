@@ -231,3 +231,13 @@ The builder supports one level of groups: independent AND/OR joins inside each g
 Outgoing foreign keys now come from table-detail constraints, retaining the referenced schema and composite column order. An `a.orders → b.customers` arrow opens `b.customers` with bound equality filters; destination menus show the schema when it differs. Metadata is cached for 60 seconds by profile, database, schema, table, session and engine, with failed reads evicted and catalog changes invalidating the profile. Same-schema incoming links still use bounded ER metadata. Cross-database references are outside this task, including MySQL/MariaDB keys into another database.
 
 SQL unit tests cover PostgreSQL, MySQL, SQLite/libSQL, SQL Server and ClickHouse. PostgreSQL integration tests verify grouped row counts and cross-schema metadata/destination queries; component tests verify the arrow click and schema-qualified table opening.
+
+
+## Document results (M3-01)
+
+MongoDB query results share the Arrow tile/canvas path with SQL results. Nested
+objects and lists display as JSON, and heterogeneous fields retain JSON fallback
+values. The result toolbar switches between table, tree and JSON views; tree and
+JSON load one lossless EJSON document on demand. Collection pages expose `_id`
+and `__document`; edits operate on the whole document through the existing
+staging and review flow. Document exports preserve nested JSON and integer digits.

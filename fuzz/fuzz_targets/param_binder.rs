@@ -32,7 +32,7 @@ fuzz_target!(|data: &[u8]| {
         );
         end = slot.range.end;
     }
-    let Ok(bound) = binder.bind(&sql, &slots, |name| Some(name.to_owned())) else {
+    let Ok(bound) = binder.bind(&sql, &slots, |name| Some(Some(name.to_owned()))) else {
         panic!("a value was supplied for every slot");
     };
     assert_eq!(bound.params.len(), slots.len());

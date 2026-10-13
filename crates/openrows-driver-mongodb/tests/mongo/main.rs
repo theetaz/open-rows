@@ -5,7 +5,9 @@ use openrows_driver_api::{ConnectTrace, DiscardSink, Driver, Endpoint, SslMode};
 use openrows_driver_mongodb::MongoDriver;
 
 mod support;
-use support::{Result, atomic_guards, insert_delete, request, seed_catalog};
+use support::{
+    Result, atomic_guards, insert_delete, mql_mutations, null_identity, request, seed_catalog,
+};
 #[tokio::test]
 #[ignore = "needs MongoDB replica set; run just test-mongo"]
 async fn documents_catalog_indexes_aggregation_and_atomic_edits() -> Result {
@@ -16,6 +18,8 @@ async fn documents_catalog_indexes_aggregation_and_atomic_edits() -> Result {
     seed_catalog(connection.as_mut()).await?;
     atomic_guards(connection.as_mut()).await?;
     insert_delete(connection.as_mut()).await?;
+    mql_mutations(connection.as_mut()).await?;
+    null_identity(connection.as_mut()).await?;
     connection
         .execute("db.documents.deleteMany({})", &mut DiscardSink)
         .await?;

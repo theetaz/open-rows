@@ -196,3 +196,18 @@ for each entire pair of conformance suites. It waits for each load worker to
 start and terminates/reaps them on completion or failure. Its temporary metadata
 is created in the worktree and removed automatically; no extra Cargo target,
 Docker, emulation, test retry or deadline change is involved.
+
+
+## MongoDB verification (M3-01–M3-04)
+
+`just test-mongo` uses `scripts/test-mongo.sh` to create one throwaway `mongo:8`
+replica set on a random loopback port. It verifies document/catalog/index and
+aggregation reads, native mutations, atomic edits and stale-snapshot rollback,
+credential errors, shared-route TLS, active-operation cancellation and idempotent
+commit retry. Applicable native conformance groups run separately. The script
+removes its container and runtime TLS files on exit.
+
+Parser, safety-policy, Arrow mapping and UI tests run in their owning crates and
+packages. Build every fuzz target with `cargo build --manifest-path fuzz/Cargo.toml
+--bins`; the `mql` target exercises parsing/classification. Instrumented fuzz runs
+use the existing `just fuzz-smoke` recipe when nightly and cargo-fuzz are installed.

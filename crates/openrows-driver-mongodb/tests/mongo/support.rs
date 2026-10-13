@@ -166,3 +166,100 @@ pub(super) async fn insert_delete(connection: &mut dyn openrows_driver_api::Conn
     assert!(openrows_driver_mongodb::validate_edits(&[invalid]).is_err());
     Ok(())
 }
+
+pub(super) async fn mql_mutations(connection: &mut dyn openrows_driver_api::Connection) -> Result {
+    connection
+        .execute("db.mutations.deleteMany({})", &mut DiscardSink)
+        .await?;
+    connection
+        .execute(
+            "db.mutations.insertMany([{_id:1,n:1},{_id:2,n:1},{_id:3,n:2}])",
+            &mut DiscardSink,
+        )
+        .await?;
+    invalid_mutations(connection).await?;
+    for (mutation, read, expected) in [
+        (
+            "db.mutations.updateOne({_id:1},{$inc:{n:1}})",
+            "db.mutations.find({n:2})",
+            2,
+        ),
+        (
+            "db.mutations.updateMany({n:1},{$set:{n:3}})",
+            "db.mutations.find({n:3})",
+            1,
+        ),
+        ("db.mutations.deleteOne({n:2})", "db.mutations.find({})", 2),
+        (
+            "db.mutations.deleteMany({n:{$gte:2}})",
+            "db.mutations.find({})",
+            0,
+        ),
+    ] {
+        connection.execute(mutation, &mut DiscardSink).await?;
+        assert_eq!(
+            connection.execute(read, &mut DiscardSink).await?.rows,
+            expected
+        );
+    }
+    Ok(())
+}
+
+async fn invalid_mutations(connection: &mut dyn openrows_driver_api::Connection) -> Result {
+    for source in [
+        "db.mutations.updateOne({_id:1},{})",
+        "db.mutations.replaceOne({_id:1},{$set:{n:5}})",
+    ] {
+        assert!(connection.execute(source, &mut DiscardSink).await.is_err());
+    }
+    assert_eq!(
+        connection
+            .execute("db.mutations.find({n:1})", &mut DiscardSink)
+            .await?
+            .rows,
+        2
+    );
+    Ok(())
+}
+
+pub(super) async fn null_identity(connection: &mut dyn openrows_driver_api::Connection) -> Result {
+    connection
+        .execute(
+            "db.null_identity.insertOne({_id:null,n:1})",
+            &mut DiscardSink,
+        )
+        .await?;
+    let original = connection
+        .editor()
+        .ok_or("missing editor")?
+        .edit_snapshot(
+            ("openrows_test", "null_identity"),
+            &[("_id".into(), "null".into())],
+        )
+        .await?
+        .into_iter()
+        .collect();
+    let mut table = table();
+    table.table.name = "null_identity".into();
+    let update = Edit {
+        kind: EditKind::Update,
+        original,
+        values: BTreeMap::from([("__document".into(), CellValue::Text("{\"n\":2}".into()))]),
+    };
+    connection
+        .editor()
+        .ok_or("missing editor")?
+        .commit_edits(&[edit_sql(Dialect::MongoDb, &table, &update)?])
+        .await?;
+    assert_eq!(
+        connection
+            .execute("db.null_identity.find({_id:null,n:2})", &mut DiscardSink)
+            .await?
+            .rows,
+        1
+    );
+    connection
+        .execute("db.null_identity.deleteMany({})", &mut DiscardSink)
+        .await?;
+    Ok(())
+}

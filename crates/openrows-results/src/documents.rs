@@ -117,6 +117,9 @@ pub fn batch(schema: SchemaRef, rows: &[Value]) -> Result<RecordBatch, ArrowErro
         .fields()
         .iter()
         .map(|field| {
+            if field.name() == "_id" {
+                return Ok(identity(rows));
+            }
             let values: Vec<_> = rows
                 .iter()
                 .map(|row| {
@@ -131,6 +134,14 @@ pub fn batch(schema: SchemaRef, rows: &[Value]) -> Result<RecordBatch, ArrowErro
         })
         .collect::<Result<Vec<_>, _>>()?;
     RecordBatch::try_new(schema, columns)
+}
+
+fn identity(rows: &[Value]) -> ArrayRef {
+    Arc::new(StringArray::from(
+        rows.iter()
+            .map(|row| row.get("_id").map(Value::to_string))
+            .collect::<Vec<_>>(),
+    ))
 }
 
 fn array(ty: &DataType, values: &[&Value]) -> Result<ArrayRef, ArrowError> {
@@ -227,7 +238,22 @@ fn number(value: &Value) -> Option<f64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use arrow_array::Array;
     use serde_json::json;
+    #[test]
+    fn null_document_identity_is_text_while_missing_ids_stay_null() -> Result<(), ArrowError> {
+        let rows = [json!({"_id":null}), json!({"other":true})];
+        let mapped = batch(schema(&rows), &rows)?;
+        let ids = mapped
+            .column(0)
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .ok_or_else(|| ArrowError::InvalidArgumentError("missing document identity".into()))?;
+        assert!(!ids.is_null(0));
+        assert_eq!(ids.value(0), "null");
+        assert!(ids.is_null(1));
+        Ok(())
+    }
     #[test]
     fn mixed_large_json_integers_use_exact_json_instead_of_rounded_floats() -> Result<(), ArrowError>
     {

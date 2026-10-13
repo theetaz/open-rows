@@ -34,12 +34,10 @@ fn engine(driver: Driver) -> Result<Engine, IpcError> {
             IpcErrorKind::Unsupported,
             "Explain plans are not available for ClickHouse yet",
         )),
-        Driver::Mongodb => {
-            return Err(IpcError::new(
-                IpcErrorKind::Unsupported,
-                "This action is not supported for MongoDB",
-            ));
-        }
+        Driver::Mongodb => Err(IpcError::new(
+            IpcErrorKind::Unsupported,
+            "This action is not supported for MongoDB",
+        )),
         Driver::Libsql => Err(IpcError::new(
             IpcErrorKind::Unsupported,
             "Explain is not available for remote libSQL",

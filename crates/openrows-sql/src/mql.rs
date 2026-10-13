@@ -40,6 +40,8 @@ pub struct ParseError(pub &'static str);
 /// Invalid syntax, unknown methods, unsupported chains or oversized input.
 pub fn parse(source: &str) -> Result<Query, ParseError> {
     scan::validate_size(source)?;
+    let source = scan::without_comments(source)?;
+    scan::validate_size(&source)?;
     let source = source.trim().trim_end_matches(';').trim();
     let mut rest = source
         .strip_prefix("db.")
