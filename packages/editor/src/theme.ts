@@ -46,7 +46,12 @@ const editorTheme = EditorView.theme({
     fontFamily: 'var(--or-font-editor, var(--or-font-mono))',
     lineHeight: 'var(--or-editor-line-height, 1.5)',
   },
-  '.cm-content': { caretColor: 'var(--or-accent)' },
+  '.cm-content': { caretColor: 'var(--or-text)' },
+  // drawSelection paints its own caret; without this it stays black in dark themes.
+  '.cm-cursor, .cm-dropCursor': {
+    borderLeftColor: 'var(--or-text)',
+    borderLeftWidth: '1.5px',
+  },
   '.cm-gutters': {
     color: 'var(--or-tertiary)',
     backgroundColor: 'var(--or-page)',
