@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
 set -euo pipefail
+export CARGO_BUILD_TARGET="${CARGO_BUILD_TARGET:-$(rustc -vV | sed -n 's/^host: //p')}"
 pnpm build
 # Only the executable is inspected here; the production helper can be debug.
 # A missing staging prerequisite must still fail rather than skipping the audit.

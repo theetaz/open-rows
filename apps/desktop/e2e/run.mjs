@@ -22,8 +22,16 @@ import { LARGE_ROWS, LARGE_SQL, streamAndExport } from './export.mjs';
 async function build() {
   if (process.env.OPENROWS_E2E_BINARY)
     return resolve(process.env.OPENROWS_E2E_BINARY);
+  const triple =
+    process.env.CARGO_BUILD_TARGET ??
+    command('rustc', ['-vV']).match(/^host: (.+)$/m)?.[1];
+  if (!triple) throw new Error('Cannot resolve the native Rust target');
+  const options = {
+    stdio: 'inherit',
+    env: { ...process.env, CARGO_BUILD_TARGET: triple },
+  };
   command('pnpm', ['build'], { stdio: 'inherit' });
-  command('bash', ['scripts/stage-host.sh', 'dev'], { stdio: 'inherit' });
+  command('bash', ['scripts/stage-host.sh', 'dev'], options);
   command(
     'cargo',
     [
@@ -34,9 +42,8 @@ async function build() {
       'test-automation,tauri/custom-protocol',
       '--locked',
     ],
-    { stdio: 'inherit' },
+    options,
   );
-  const triple = process.env.CARGO_BUILD_TARGET;
   return resolve(
     process.env.CARGO_TARGET_DIR ?? 'target',
     ...(triple ? [triple] : []),
