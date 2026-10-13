@@ -55,6 +55,12 @@ const editorTheme = EditorView.theme({
   '.cm-activeLine, .cm-activeLineGutter, .cm-currentQuery': {
     backgroundColor: 'var(--or-row-stripe)',
   },
+  // An accent tint keeps selected text readable in light and dark themes.
+  '.cm-selectionBackground, &.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-content ::selection':
+    {
+      backgroundColor:
+        'color-mix(in srgb, var(--or-accent) 38%, transparent) !important',
+    },
 });
 
 /** Token-driven theme plus syntax highlighting for every SQL surface. */

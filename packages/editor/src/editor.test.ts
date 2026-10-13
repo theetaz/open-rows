@@ -159,7 +159,7 @@ it('shows completions with kind icons and muted details', async () => {
   expect(acceptCompletion(view)).toBe(false);
   await vi.advanceTimersByTimeAsync(75);
   expect(acceptCompletion(view)).toBe(true);
-  expect(view.state.doc.toString()).toBe('SELECT * FROM users');
+  expect(view.state.doc.toString()).toBe('SELECT * FROM users ');
 });
 
 it('switches preferences and key modes without losing the text', () => {

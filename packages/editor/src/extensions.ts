@@ -9,6 +9,7 @@ import { EditorView, drawSelection, keymap } from '@codemirror/view';
 import type { CompletionCatalog } from './completion/catalog';
 import { completionIcon } from './completion/icons';
 import { sqlCompletionSource } from './completion/source';
+import { spaceAfterCompletion } from './completion/spacing';
 import { completionTheme } from './completion/theme';
 import { multipleCarets } from './multiCursor';
 import { sqlDialect } from './dialects';
@@ -94,6 +95,7 @@ function completion(options: SqlEditorOptions): Extension {
       icons: false,
       addToOptions: [completionIcon],
     }),
+    spaceAfterCompletion,
     completionTheme,
   ];
 }
