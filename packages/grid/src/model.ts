@@ -97,6 +97,8 @@ export interface GridProps {
    * host stores the width in `source.columns` and calls `relayout`.
    */
   onColumnResize?(column: number, width: number, done: boolean): void;
+  /** The row-number header was clicked: size every column to its content. */
+  onFitColumns?(): void;
   /** A header dropped at index `to`; the host reorders and remounts or relayouts. */
   onColumnMove?(from: number, to: number): void;
 }

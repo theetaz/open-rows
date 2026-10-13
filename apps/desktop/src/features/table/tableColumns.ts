@@ -64,6 +64,7 @@ export function useLayoutSync({
   links,
   sourceRef,
   handle,
+  fitted,
 }: {
   result: ResultMeta;
   sort: SortDto | null;
@@ -72,6 +73,8 @@ export function useLayoutSync({
   links?: ReadonlySet<string> | undefined;
   sourceRef: React.RefObject<EditedSource | undefined>;
   handle: React.RefObject<GridHandle | undefined>;
+  /** Auto-fitted widths, kept when no width is stored. */
+  fitted?: React.RefObject<Map<string, number>> | undefined;
 }): void {
   useEffect(() => {
     const columns = sourceRef.current?.columns;
@@ -85,10 +88,12 @@ export function useLayoutSync({
     columns.forEach((column, index) => {
       const next = fresh[index];
       if (!next) return;
-      column.width = next.width;
+      const name = result.columns[index]?.name ?? '';
+      column.width =
+        layout.widths[name] ?? fitted?.current.get(name) ?? next.width;
       column.pinned = next.pinned;
       column.link = next.link ?? false;
     });
     handle.current?.relayout?.();
-  }, [result, sort, layout, links, sourceRef, handle]);
+  }, [result, sort, layout, links, sourceRef, handle, fitted]);
 }

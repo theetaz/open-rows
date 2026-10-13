@@ -23,7 +23,7 @@ export class NumberedSource implements GridDataSource {
     this.columns = [
       {
         id: 'row-number',
-        title: '#',
+        title: '↔',
         width: Math.max(48, String(offset + source.rows).length * 8 + 16),
         pinned: true,
         align: 'end',

@@ -72,12 +72,16 @@ export function pointerFocus({
     else if (glyph === 'link') props.onLink?.(focus);
   };
 }
-/** Shift-click (or the row-number header) selects the column; a click sorts. */
+/** The row-number header fits all columns (or selects them without a host); Shift-click selects a column; a click sorts. */
 function headerClick(
   { props, accessibility, controller }: PointerContext,
   header: number,
   shift: boolean,
 ): void {
+  if (!shift && header === props.rowHeaderColumn && props.onFitColumns) {
+    props.onFitColumns();
+    return;
+  }
   if ((shift || header === props.rowHeaderColumn) && props.source.rows > 0) {
     props.selection = {
       row: 0,

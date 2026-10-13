@@ -32,6 +32,7 @@ import { copyFailure, copySelection } from '../../results/copy/copySelection';
 import type { CopyTarget } from '../../results/copy/copySelection';
 import { moved, withWidth } from '../../results/columnLayout';
 import { columnsOf, useLayoutSync } from './tableColumns';
+import { fitColumns, useAutoFit } from './useAutoFit';
 import type { ColumnLayout } from '../../results/columnLayout';
 import { useGridPosition } from './gridPosition';
 import type { PositionMemory } from './gridPosition';
@@ -68,7 +69,10 @@ type Props = {
   /** The tab's grid position, kept across reloads. */
   position?: React.RefObject<PositionMemory> | undefined;
 };
-type Latest = Props & { editor: InlineEditor };
+type Latest = Props & {
+  editor: InlineEditor;
+  fitted: React.RefObject<Map<string, number>>;
+};
 
 /** Canvas grid over one page's result tiles; rows never enter React state. */
 export function TableGrid(props: Props): React.JSX.Element {
@@ -86,9 +90,10 @@ export function TableGrid(props: Props): React.JSX.Element {
     selection: selectionRef,
     ...props,
   });
-  const latest = useRef<Latest>({ ...props, editor });
+  const fitted = useRef(new Map<string, number>());
+  const latest = useRef<Latest>({ ...props, editor, fitted });
   useEffect(() => {
-    latest.current = { ...props, editor };
+    latest.current = { ...props, editor, fitted };
   });
   const ownPosition = useRef<PositionMemory>({
     position: null,
@@ -114,7 +119,8 @@ export function TableGrid(props: Props): React.JSX.Element {
   });
   useGridEditing({ ...props, handle, source: sourceRef, editor, mounted });
   usePaste(host, latest, selectionRef);
-  useLayoutSync({ ...props, sourceRef, handle });
+  useLayoutSync({ ...props, sourceRef, handle, fitted });
+  useAutoFit({ ...props, sourceRef, handle, fitted, mounted });
   useCopyEvent(host, () => {
     const { result, rowNumbers, copyTarget } = latest.current;
     copySelection(
@@ -252,6 +258,19 @@ function gridProps({
     ...columnHandlers({ latest, rowNumbers, sourceRef, handle }),
     onEdit: (cell, text) => {
       latest.current.editor.start(dataCell(cell, rowNumbers), text);
+    },
+    onFitColumns: () => {
+      const current = latest.current;
+      const widths = fitColumns(
+        { ...current, rowNumbers, sourceRef, handle },
+        true,
+      );
+      current.onLayout((layout) =>
+        [...widths].reduce(
+          (next, [name, width]) => withWidth(next, name, width),
+          layout,
+        ),
+      );
     },
     onStepper: (cell) => {
       latest.current.editor.start(dataCell(cell, rowNumbers), undefined, true);
