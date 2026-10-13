@@ -12,6 +12,7 @@ import type { ResultMeta } from '../../query/run';
 import type { StagedEdit } from '../editHistory';
 import { writableResult } from '../cellEdits';
 import { editableText, fromOriginal } from '../cellValue';
+import type { CellValue } from '../cellValue';
 import type { RowEditing } from '../useRowEditing';
 import { temporalKind } from './temporal';
 import { cellText, columnEdit, isLong } from './cellKind';
@@ -36,12 +37,23 @@ export type OpenEditor = {
   anchor: { x: number; y: number };
   font: string;
   draft: Promise<StagedEdit>;
+  /** Open the date/time picker as soon as the input shows. */
+  pick?: boolean;
 };
 export type InlineEditor = {
   open: OpenEditor | null;
-  start: (cell: { row: number; column: number }, seed?: string) => void;
+  /** `menu` opens the value menu (a ⌃⌄ stepper click) instead of the input. */
+  start: (
+    cell: { row: number; column: number },
+    seed?: string,
+    menu?: boolean,
+  ) => void;
   change: (value: string) => void;
   commit: (value: string | null, move?: Move) => void;
+  /** Stage an exact value (NULL, DEFAULT or text) from the value menu. */
+  stage: (value: CellValue) => void;
+  /** Leave the value menu for typed entry, optionally opening the picker. */
+  manual: (pick: boolean) => void;
   cancel: () => void;
   reposition: () => void;
 };
@@ -73,8 +85,8 @@ export function useInlineEditor(args: Args): InlineEditor {
   };
   return {
     open,
-    start: (cell, seed) => {
-      const next = opening(args, cell, seed);
+    start: (cell, seed, menu) => {
+      const next = opening(args, cell, seed, menu);
       if (!next) return;
       active.current = next.draft;
       setOpen(next);
@@ -98,18 +110,13 @@ export function useInlineEditor(args: Args): InlineEditor {
     commit: (value, move) => {
       if (!open || active.current !== open.draft) return;
       const changed = open.mode === 'menu' || open.dirty || value === null;
-      const many = changed ? selectionAround(args, open) : null;
-      if (many) args.editing.bulk.set(args.result, many, fromOriginal(value));
-      else if (changed)
-        args.editing.stageCell(open.draft, open.edit.name, fromOriginal(value));
-      close(
-        many
-          ? `${open.edit.name} staged for the selection`
-          : changed
-            ? `${open.edit.name} staged`
-            : 'Unchanged',
-        move,
-      );
+      finish(fromOriginal(value), changed, move);
+    },
+    stage: (value) => {
+      if (open && active.current === open.draft) finish(value, true);
+    },
+    manual: (pick) => {
+      setOpen((state) => state && { ...state, mode: 'input', pick });
     },
     cancel: () => {
       if (open && active.current === open.draft) close('Edit cancelled');
@@ -127,6 +134,20 @@ export function useInlineEditor(args: Args): InlineEditor {
       );
     },
   };
+  function finish(value: CellValue, changed: boolean, move?: Move): void {
+    if (!open) return;
+    const many = changed ? selectionAround(args, open) : null;
+    if (many) args.editing.bulk.set(args.result, many, value);
+    else if (changed) args.editing.stageCell(open.draft, open.edit.name, value);
+    close(
+      many
+        ? `${open.edit.name} staged for the selection`
+        : changed
+          ? `${open.edit.name} staged`
+          : 'Unchanged',
+      move,
+    );
+  }
 }
 
 /** The multi-cell selection the edited cell belongs to, if any: the value fills all of it. */
@@ -145,6 +166,7 @@ function opening(
   args: Args,
   cell: { row: number; column: number },
   seed: string | undefined,
+  menu = false,
 ): OpenEditor | null {
   const target = editable(args, cell);
   if (!target) return null;
@@ -157,7 +179,12 @@ function opening(
   return {
     ...cell,
     edit,
-    mode: edit.options ? 'menu' : long ? 'popover' : 'input',
+    mode:
+      edit.options || (menu && temporalKind(edit.dataType))
+        ? 'menu'
+        : long
+          ? 'popover'
+          : 'input',
     value,
     ready: seed !== undefined,
     dirty: seed !== undefined,

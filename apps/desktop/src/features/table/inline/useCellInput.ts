@@ -31,6 +31,10 @@ export function useCellInput(context: Context): CellInput {
   }, []);
   const { open, editor } = context;
   const kind = open.ready ? temporalKind(open.edit.dataType) : null;
+  const pick = open.pick === true && kind !== null;
+  useEffect(() => {
+    if (pick) openerRef.current?.click();
+  }, [pick]);
   return {
     inputRef,
     kind,

@@ -95,3 +95,12 @@ export function fromNative(
   );
   return `${date ? `${date} ` : ''}${seconds}${zone}`;
 }
+
+const pad = (value: number): string => String(value).padStart(2, '0');
+
+/** The current local date/time as typed column text, e.g. `2025-04-17 08:29:53`. */
+export function nowText(kind: TemporalKind, now = new Date()): string {
+  const date = `${String(now.getFullYear())}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const time = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  return kind === 'date' ? date : kind === 'time' ? time : `${date} ${time}`;
+}

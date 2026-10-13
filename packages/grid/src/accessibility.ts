@@ -117,7 +117,8 @@ function editKey(props: GridProps, event: KeyboardEvent): boolean {
   if (props.source.rows === 0 || !props.onEdit || event.isComposing)
     return false;
   const { row, column } = props.selection;
-  const stepper = props.source.columns[column]?.kind !== undefined;
+  const kind = props.source.columns[column]?.kind;
+  const stepper = kind === 'boolean' || kind === 'enum';
   const trigger = editTrigger(event, stepper);
   if (trigger === 'open') props.onEdit({ row, column });
   else if (trigger === 'seed') props.onEdit({ row, column }, event.key);

@@ -68,7 +68,7 @@ export function pointerFocus({
     accessibility.focus();
     if (event.shiftKey || event.metaKey) return;
     const glyph = glyphHit(painter, focus, x);
-    if (glyph === 'stepper') props.onEdit?.(focus);
+    if (glyph === 'stepper') (props.onStepper ?? props.onEdit)?.(focus);
     else if (glyph === 'link') props.onLink?.(focus);
   };
 }

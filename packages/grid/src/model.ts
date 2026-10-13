@@ -9,8 +9,8 @@ export interface GridColumn {
   pinned: boolean;
   /** `end` right-aligns values, e.g. numbers; headers stay start-aligned. */
   align?: 'start' | 'end';
-  /** Booleans paint centred TRUE/FALSE; both kinds show an up/down stepper. */
-  kind?: 'boolean' | 'enum';
+  /** Booleans paint centred TRUE/FALSE; every kind shows an up/down stepper. */
+  kind?: 'boolean' | 'enum' | 'temporal';
   /** A foreign key: non-NULL values paint a → arrow that calls `onLink`. */
   link?: boolean;
 }
@@ -85,6 +85,8 @@ export interface GridProps {
   striped?: boolean;
   /** Enter, double-click, a stepper click, or a typed printable `text` that seeds the editor. */
   onEdit?(cell: { row: number; column: number }, text?: string): void;
+  /** A ⌃⌄ stepper click; falls back to `onEdit` when absent. */
+  onStepper?(cell: { row: number; column: number }): void;
   onContextMenu?(target: GridContextTarget): void;
   /** The → arrow of a `link` column's cell was clicked (open the referenced row). */
   onLink?(cell: { row: number; column: number }): void;

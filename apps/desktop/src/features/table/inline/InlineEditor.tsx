@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { PointMenu } from '../../../shell/PointMenu';
+import { DEFAULT_VALUE, NULL_VALUE, textValue } from '../cellValue';
+import { nowText, temporalKind } from './temporal';
 import { ValuePopover } from './ValuePopover';
 import { useCellInput } from './useCellInput';
 import type { TemporalKind } from './temporal';
@@ -15,7 +17,12 @@ export function InlineEditorView({
 }): React.JSX.Element | null {
   const open = editor.open;
   if (!open) return null;
-  if (open.mode === 'menu') return <ValueMenu open={open} editor={editor} />;
+  if (open.mode === 'menu')
+    return open.edit.options ? (
+      <ValueMenu open={open} editor={editor} />
+    ) : (
+      <TemporalMenu open={open} editor={editor} />
+    );
   if (open.mode === 'popover')
     return <ValuePopover open={open} editor={editor} />;
   return <CellInput open={open} editor={editor} />;
@@ -123,6 +130,45 @@ function ValueMenu({ open, editor }: Props): React.JSX.Element {
           {option.label}
         </button>
       ))}
+    </PointMenu>
+  );
+}
+
+/** TablePlus' date/time stepper menu: NULL, DEFAULT, NOW(), the picker or typed entry. */
+function TemporalMenu({ open, editor }: Props): React.JSX.Element {
+  const kind = temporalKind(open.edit.dataType) ?? 'datetime';
+  const item = (label: string, run: () => void): React.JSX.Element => (
+    <button type="button" role="menuitem" key={label} onClick={run}>
+      {label}
+    </button>
+  );
+  const { nullable, hasDefault } = open.edit;
+  return (
+    <PointMenu
+      x={open.anchor.x}
+      y={open.anchor.y}
+      label={`Values for ${open.edit.name}`}
+      onClose={editor.cancel}
+    >
+      {nullable &&
+        item('NULL', () => {
+          editor.stage(NULL_VALUE);
+        })}
+      {hasDefault &&
+        item('DEFAULT', () => {
+          editor.stage(DEFAULT_VALUE);
+        })}
+      {(nullable || hasDefault) && <hr />}
+      {item('NOW()', () => {
+        editor.stage(textValue(nowText(kind)));
+      })}
+      <hr />
+      {item(kind === 'time' ? 'Time Picker…' : 'Date Picker…', () => {
+        editor.manual(true);
+      })}
+      {item('Manual input…', () => {
+        editor.manual(false);
+      })}
     </PointMenu>
   );
 }

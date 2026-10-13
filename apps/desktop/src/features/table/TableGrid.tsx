@@ -253,6 +253,9 @@ function gridProps({
     onEdit: (cell, text) => {
       latest.current.editor.start(dataCell(cell, rowNumbers), text);
     },
+    onStepper: (cell) => {
+      latest.current.editor.start(dataCell(cell, rowNumbers), undefined, true);
+    },
     onScroll: () => {
       latest.current.editor.reposition();
     },
