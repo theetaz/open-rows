@@ -89,7 +89,7 @@
 .context > .address {
   flex-shrink: 1;
 }
-/* Chrome-style star: a filled favourite always shows; an outline only on hover or focus. */
+/* Chrome-style star: filled for a favourite, an outline otherwise. */
 .star {
   inline-size: 22px;
   min-inline-size: 22px;
@@ -98,16 +98,10 @@
   margin-inline-end: calc(var(--or-space-6) * -1);
   border-radius: var(--or-radius-capsule);
   color: var(--or-secondary);
-  opacity: 0;
 }
 .star svg {
   inline-size: 14px;
   block-size: 14px;
-}
-.context:hover .star,
-.star:focus-visible,
-.star[aria-pressed='true'] {
-  opacity: 1;
 }
 .star[aria-pressed='true'] svg {
   fill: currentColor;
