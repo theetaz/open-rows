@@ -146,6 +146,31 @@ pub(crate) fn investigation_schedules(app: AppHandle) -> Result<Vec<ScheduledJob
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::future::Future;
+    #[test]
+    fn schedule_commands_are_registered_and_allowed() -> Result<(), Box<dyn std::error::Error>> {
+        let manifest = include_str!("../../../build.rs");
+        let capability: serde_json::Value =
+            serde_json::from_str(include_str!("../../../capabilities/main.json"))?;
+        let permissions = capability["permissions"]
+            .as_array()
+            .ok_or("Missing permissions")?;
+        for command in [
+            "investigation_schedule",
+            "investigation_schedule_cancel",
+            "investigation_schedules",
+            "investigation_audit",
+        ] {
+            assert!(manifest.contains(&format!("\"{command}\"")));
+            let permission = format!("allow-{}", command.replace('_', "-"));
+            assert!(
+                permissions
+                    .iter()
+                    .any(|item| item.as_str() == Some(&permission))
+            );
+        }
+        Ok(())
+    }
     #[test]
     fn lock_disconnect_disables_jobs_and_cancels_the_active_generation() {
         let config = InvestigationSchedule {
@@ -158,7 +183,7 @@ mod tests {
             tokens: 10000,
             timeout_secs: 30,
             max_cost_micros: 10000,
-            price_per_million_micros: 1000000,
+            price_per_million_micros: 1_000_000,
             tools: vec!["read_health_snapshot".into()],
         };
         let job = Arc::new(Mutex::new(Job {
@@ -182,7 +207,6 @@ mod tests {
         state.cancel_all();
         let job = job.lock().unwrap_or_else(PoisonError::into_inner);
         assert!(!job.view.config.enabled);
-        use std::future::Future;
         let mut future = std::pin::pin!(job.cancel.cancelled());
         assert!(
             future

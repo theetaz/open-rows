@@ -22,10 +22,14 @@ export function ArtifactPreview(props: {
     [props.kind, props.document],
   );
   const build = useMemo(
-    () => (): Promise<Report> => {
-      if (!report) return Promise.reject(new Error('Report unavailable'));
-      return Promise.resolve(report);
-    },
+    () =>
+      (_range: string, parts: ReadonlySet<string>): Promise<Report> => {
+        if (!report) return Promise.reject(new Error('Report unavailable'));
+        return Promise.resolve({
+          ...report,
+          sections: report.sections.filter((section) => parts.has(section.id)),
+        });
+      },
     [report],
   );
   const save = (): void => {

@@ -15,6 +15,14 @@ export const commands = {
 	aiVerify: (id: string) => typedError<Verification, IpcError>(__TAURI_INVOKE("ai_verify", { id })),
 	/**  Cancel this provider's current verification request without changing settings. */
 	aiCancel: (id: string) => typedError<null, IpcError>(__TAURI_INVOKE("ai_cancel", { id })),
+	/**  Retained payload-free usage/outcome metadata; existing audit purge clears it. */
+	investigationAudit: () => typedError<InvestigationAudit[], IpcError>(__TAURI_INVOKE("investigation_audit")),
+	/**  Enable a finite interval job only after live profile/sharing/telemetry validation. */
+	investigationSchedule: (input: ScheduleRequest_Deserialize) => typedError<null, IpcError>(__TAURI_INVOKE("investigation_schedule", { input })),
+	/**  Cancel removes only the selected job; always available while locked or disconnected. */
+	investigationScheduleCancel: (id: string) => __TAURI_INVOKE<void>("investigation_schedule_cancel", { id }),
+	/**  Results remain in app memory only; locking hides all content. */
+	investigationSchedules: () => typedError<ScheduledJob[], IpcError>(__TAURI_INVOKE("investigation_schedules")),
 	/**  Stream one bounded investigation; SQL events have no execution path. */
 	assistantRun: (request: AssistantRequest_Deserialize, onEvent: Channel<AgentEvent>) => typedError<null, IpcError>(__TAURI_INVOKE("assistant_run", { request, onEvent })),
 	/**  Cancel only this tab's current turn; cancellation remains available while locked. */
@@ -555,6 +563,14 @@ trace: Trace } |
 { type: "proposal";
 /**  Literal SQL for user review. */
 sql: string } |
+/**  Validated plain JSON for local preview and explicit acceptance. */
+{ type: "artifact";
+/**  References validated against the exact delivered evidence ledger. */
+evidence: string[];
+/**  board, report or finding. */
+kind: string;
+/**  Versioned shared document. */
+document: string } |
 /**  Successful completion and conservative usage. */
 { type: "done";
 /**  Conservative total token upper bound. */
@@ -718,6 +734,7 @@ export type AssistantRequest_Deserialize = {
 	model: string,
 	connection: string,
 	database: string,
+	monitoring?: boolean,
 	schema: string,
 	question: AssistantContext_Deserialize,
 	query: string | null,
@@ -731,6 +748,7 @@ export type AssistantRequest_Serialize = {
 	model: string,
 	connection: string,
 	database: string,
+	monitoring: boolean,
 	schema: string,
 	question: AssistantContext_Serialize,
 	query: string | null,
@@ -988,6 +1006,8 @@ export type Category =
 "plan" |
 /**  Numeric aggregates. */
 "stats" |
+/**  Numeric monitoring samples with opaque evidence references. */
+"telemetry" |
 /**  Redacted bounded rows. */
 "samples";
 
@@ -1144,6 +1164,8 @@ export type ContextBundle_Deserialize = {
 	plan?: Plan[],
 	/**  Numeric query aggregates only, no users/addresses/parameters. */
 	stats?: Aggregate[],
+	/**  Timestamped numeric monitoring evidence; no activity identities or raw text. */
+	evidence?: InvestigationEvidence[],
 	/**  Explicit selected row samples. */
 	samples?: Sample[],
 };
@@ -1160,6 +1182,8 @@ export type ContextBundle_Serialize = {
 	plan: Plan[],
 	/**  Numeric query aggregates only, no users/addresses/parameters. */
 	stats: Aggregate[],
+	/**  Timestamped numeric monitoring evidence; no activity identities or raw text. */
+	evidence?: InvestigationEvidence[],
 	/**  Explicit selected row samples. */
 	samples: Sample[],
 };
@@ -1449,6 +1473,25 @@ export type Evidence = {
 	/**  Observed value. */
 	value: number | null,
 };
+
+/**  No raw error, activity user, address, SQL or wait text is representable. */
+export type EvidenceState =
+/**  Observed numeric sample. */
+"ok" |
+/**  Missing baseline or NULL. */
+"unknown" |
+/**  Collector interval missing. */
+"gap" |
+/**  Source absent. */
+"unavailable" |
+/**  Source visibility denied. */
+"permissionDenied" |
+/**  Counters reset. */
+"counterReset" |
+/**  Partial source coverage. */
+"partial" |
+/**  Per-connection redaction removed the value. */
+"redacted";
 
 /**  How `query_execute` answered. */
 export type ExecuteReply =
@@ -2091,6 +2134,70 @@ export type Investigation = {
 	regressions: Regression[],
 	/**  Truncation, unknown baselines or gaps limit coverage. */
 	partial: boolean,
+};
+
+/**  Bounded metadata record for an investigation attempt. */
+export type InvestigationAudit = {
+	/**  Epoch milliseconds. */
+	time: string,
+	/**  Saved connection identity. */
+	connection: string,
+	/**  Saved provider identity. */
+	provider: string,
+	/**  Explicit selected model identifier. */
+	model: string,
+	/**  Static tools used; never arguments. */
+	tools: string[],
+	/**  Delivered opaque references only. */
+	evidence: string[],
+	/**  Conservative accounted token upper bound, not provider-reported billing. */
+	tokens: number,
+	/**  Estimated conservative cost in millionths. */
+	costMicros: number,
+	/**  running, completed, cancelled, refused or failed. */
+	outcome: string,
+};
+
+/**  An opaque, timestamped sample reference. Producers hash native sample identity. */
+export type InvestigationEvidence = {
+	/**  SHA-256 of connection, generation, sample identity and time. */
+	id: string,
+	/**  Application metric identifier, never SQL or a server error. */
+	metric: string,
+	/**  Collection epoch milliseconds. */
+	collectedMs: number | null,
+	/**  Finite observed value; absent for every gap. */
+	value: number | null,
+	/**  Explicit validity/visibility. */
+	state: EvidenceState,
+	/**  Database/server or opaque query/session/plan scope. */
+	scope: string,
+};
+
+/**  Finite recurring investigation configuration; never enabled by default. */
+export type InvestigationSchedule = {
+	/**  Explicit opt-in; false is a stop request. */
+	enabled: boolean,
+	/**  Chosen saved provider, never a fallback. */
+	provider: string,
+	/**  Explicit model selection. */
+	model: string,
+	/**  Recurrence, at least five minutes; first run waits for the interval. */
+	intervalSecs: number,
+	/**  Maximum runs before this opt-in expires. */
+	maxRuns: number,
+	/**  Maximum tool calls and provider rounds. */
+	steps: number,
+	/**  Conservative input/output byte/token ceiling. */
+	tokens: number,
+	/**  Total preparation/tool/provider deadline. */
+	timeoutSecs: number,
+	/**  Maximum estimated per-run spend, millionths of the provider's currency. */
+	maxCostMicros: number,
+	/**  Conservative maximum input/output price per million tokens, in millionths. */
+	pricePerMillionMicros: number,
+	/**  Native static tools selected by the user. */
+	tools: string[],
 };
 
 /**  Typed command failure, safe to render to the user. */
@@ -3179,6 +3286,33 @@ export type SavedQueryDto = {
 	sql: string,
 	createdAtMs: number | null,
 	updatedAtMs: number | null,
+};
+
+export type ScheduleRequest = ScheduleRequest_Serialize | ScheduleRequest_Deserialize;
+
+export type ScheduleRequest_Deserialize = {
+	request: AssistantRequest_Deserialize,
+	config: InvestigationSchedule,
+};
+
+export type ScheduleRequest_Serialize = {
+	request: AssistantRequest_Serialize,
+	config: InvestigationSchedule,
+};
+
+export type ScheduledJob = {
+	id: string,
+	connection: string,
+	database: string,
+	config: InvestigationSchedule,
+	running: boolean,
+	failure: string | null,
+	results: ScheduledResult[],
+};
+
+export type ScheduledResult = {
+	audit: InvestigationAudit,
+	events: AgentEvent[],
 };
 
 /**  One staged structure change; columns are named by their current name. */

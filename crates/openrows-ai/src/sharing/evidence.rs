@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 /// An opaque, timestamped sample reference. Producers hash native sample identity.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[cfg_attr(feature = "ipc-types", derive(specta::Type))]
+#[cfg_attr(feature = "ipc-types", specta(inline))]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Evidence {
     /// SHA-256 of connection, generation, sample identity and time.
@@ -23,6 +24,7 @@ pub struct Evidence {
 /// No raw error, activity user, address, SQL or wait text is representable.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ipc-types", derive(specta::Type))]
+#[cfg_attr(feature = "ipc-types", specta(inline))]
 #[serde(rename_all = "camelCase")]
 pub enum EvidenceState {
     /// Observed numeric sample.

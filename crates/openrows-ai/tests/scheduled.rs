@@ -16,7 +16,7 @@ fn config() -> InvestigationSchedule {
         tokens: 65536,
         timeout_secs: 30,
         max_cost_micros: 1000,
-        price_per_million_micros: 10000000,
+        price_per_million_micros: 10_000_000,
         tools: vec!["read_health_snapshot".into()],
     }
 }

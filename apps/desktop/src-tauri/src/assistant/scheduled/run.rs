@@ -108,12 +108,11 @@ async fn execute(
         allowed: input.config.tools.clone(),
     };
     let mut events = Vec::new();
+    let generation = Box::pin(turn(app, input, (&tools, options.clone()), &mut events));
     let work = tools
         .executor
         .control
-        .run(&options, async {
-            Ok(turn(app, input, (&tools, options.clone()), &mut events).await)
-        })
+        .run(&options, async { Ok(generation.await) })
         .await;
     account(&input.config, (&events, &tools.executor), &work, &mut audit);
     store
@@ -194,7 +193,7 @@ fn retain(events: &mut Vec<AgentEvent>, event: AgentEvent) -> Result<(), IpcErro
     let addition = serde_json::to_vec(&event)
         .map_err(|_| AiError::InvalidResponse)?
         .len();
-    if events.len() >= 256 || before + addition > 131072 {
+    if events.len() >= 256 || before + addition + usize::from(!events.is_empty()) > 131_072 {
         return Err(AiError::InvalidResponse.into());
     }
     if let AgentEvent::Text { delta } = &event
@@ -211,6 +210,23 @@ fn retain(events: &mut Vec<AgentEvent>, event: AgentEvent) -> Result<(), IpcErro
 mod tests {
     use super::*;
     #[test]
+    fn retention_counts_array_separators_before_accepting_an_event() -> Result<(), IpcError> {
+        let mut events = vec![AgentEvent::Done { tokens: 0 }];
+        let before = serde_json::to_vec(&events)
+            .map_err(|_| AiError::InvalidResponse)?
+            .len();
+        let empty = AgentEvent::Proposal { sql: String::new() };
+        let overhead = serde_json::to_vec(&empty)
+            .map_err(|_| AiError::InvalidResponse)?
+            .len();
+        let event = AgentEvent::Proposal {
+            sql: "x".repeat(131_072 - before - overhead),
+        };
+        assert!(retain(&mut events, event).is_err());
+        assert_eq!(events.len(), 1);
+        Ok(())
+    }
+    #[test]
     fn retention_refuses_oversized_events_before_mutating_existing_results() -> Result<(), IpcError>
     {
         let mut events = vec![];
@@ -224,7 +240,7 @@ mod tests {
             retain(
                 &mut events,
                 AgentEvent::Text {
-                    delta: "x".repeat(131072)
+                    delta: "x".repeat(131_072)
                 }
             )
             .is_err()

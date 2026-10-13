@@ -42,8 +42,8 @@ fn fields(name: &str) -> Vec<&'static str> {
         | "read_metric_history"
         | "read_query_statistics"
         | "read_lock_graph"
-        | "read_monitor_plans" => vec!["connection", "database"],
-        "list_schemas" => vec!["connection", "database"],
+        | "read_monitor_plans"
+        | "list_schemas" => vec!["connection", "database"],
         "list_objects" => vec!["connection", "database", "schema"],
         "describe_object" => vec!["connection", "database", "schema", "object"],
         "run_read_query" | "explain_query" | "propose_sql" => vec!["connection", "database", "sql"],

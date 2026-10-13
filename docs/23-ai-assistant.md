@@ -530,8 +530,9 @@ Prior answers are re-redacted on every follow-up. Existing per-field/category/
 byte/row/token bounds still apply; truncation is explicit in preview. Provider
 transport and every tool disclosure append content-free sharing audit entries
 before releasing context (provider/connection/level/bytes/hash/categories).
-Expanded model/usage/evidence/outcome audit metadata and monitoring artifacts
-remain M45-10/12. The audit never stores prompts, rows, proposed SQL or keys.
+Scheduled investigations add model/usage/evidence/outcome audit metadata;
+monitoring artifacts share the same boundary (§14). Neither audit stores
+prompts, rows, proposed SQL or keys.
 
 AI-off, missing provider, None sharing, lock, disconnected database and production
 without opt-in show disabled reasons. Native gating repeats permissions before
@@ -586,8 +587,8 @@ key or live provider request was used in the deterministic test runs.
 ## 14. Monitoring investigations and proposals (M45-10/11/12)
 
 Monitor → Ask assistant uses the shared assistant/executor and exact offline
-preview. `read_health_snapshot`, `read_metric_history` (latest 200 observations
-in the last hour), `read_query_statistics`, `read_lock_graph` and
+preview. `read_health_snapshot`, `read_metric_history` (latest 200 bucketed
+observations across metrics in the last hour), `read_query_statistics`, `read_lock_graph` and
 `read_monitor_plans` read existing bounded monitor generations/history; they
 never start collection, enable instrumentation or run model SQL. Both MCP and
 the assistant gate telemetry before collection and before disclosure. Plans
@@ -610,6 +611,7 @@ with `reviewed=false`; enabling/running remains a separate user action. Validate
 citation ids remain visible beside portable board documents during preview. Reports
 open the existing escaped report export tools on explicit acceptance. Neither
 preview tool has a persistence or execution capability.
+Report exports include only the sections selected in the export dialog.
 
 Scheduled investigations are off by default and explicitly enabled for this
 app session. Each selects provider/model, permitted read/propose tools (health
@@ -636,8 +638,9 @@ SchemaAndStats and telemetry consent. Start Monitor, open Ask assistant and
 preview context before asking for a grounded health finding/report. Review
 artifact JSON and accept a board: it appears paused in Boards. Expand Scheduled
 investigations, choose provider/model/pricing/budgets, enable and leave the app
-open and connected. Refresh results after the interval; lock/disconnect disables
-it. Tests: `cargo nextest run -p openrows-ai -p openrows-mcp` and frontend
+open and connected with Monitor running (background collection can be explicitly
+enabled before closing its view). Refresh results after the interval;
+lock/disconnect disables it. Tests: `cargo nextest run -p openrows-ai -p openrows-mcp` and frontend
 `ArtifactPreview.test.tsx` / `InvestigationSchedulePane.test.tsx`.
 `just test-pg` also verifies real PostgreSQL collector evidence through the
 sharing gate and grounded report proposal boundary.

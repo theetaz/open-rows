@@ -2,10 +2,13 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import type { ScheduleRequest } from '@openrows/ipc';
 import { InvestigationSchedulePane } from './InvestigationSchedulePane';
 import { monitorProfile } from './monitorFixture';
 const { schedule, list } = vi.hoisted(() => ({
-  schedule: vi.fn().mockResolvedValue(undefined),
+  schedule: vi
+    .fn<(request: ScheduleRequest) => Promise<void>>()
+    .mockResolvedValue(undefined),
   list: vi.fn().mockResolvedValue([]),
 }));
 vi.mock('@openrows/ipc', () => ({
@@ -51,20 +54,19 @@ describe('scheduled investigations', () => {
     await userEvent.click(
       screen.getByRole('button', { name: 'Enable scheduled investigation' }),
     );
-    expect(schedule).toHaveBeenCalledWith(
-      expect.objectContaining({
-        config: expect.objectContaining({
-          enabled: true,
-          provider: 'fixture',
-          model: 'fixture-model',
-          maxRuns: 4,
-        }),
-        request: expect.objectContaining({
-          monitoring: true,
-          query: null,
-          connection: monitorProfile.id,
-        }),
-      }),
-    );
+    expect(schedule).toHaveBeenCalledOnce();
+    expect(schedule.mock.calls[0]?.[0]).toMatchObject({
+      config: {
+        enabled: true,
+        provider: 'fixture',
+        model: 'fixture-model',
+        maxRuns: 4,
+      },
+      request: {
+        monitoring: true,
+        query: null,
+        connection: monitorProfile.id,
+      },
+    });
   });
 });

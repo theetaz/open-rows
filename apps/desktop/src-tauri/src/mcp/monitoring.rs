@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-//! Read existing monitor/store evidence after ToolExecutor's telemetry admission.
+//! Read existing monitor/store evidence after `ToolExecutor`'s telemetry admission.
 use crate::connections::Connections;
 use openrows_ai::{
     investigation,
@@ -94,13 +94,24 @@ fn history(
         .monitor_history((&key.0, &key.1), (now.saturating_sub(3_600_000), now))
         .map_err(|_| McpError::Database)?;
     let binding = format!("{}:{}:history", key.0, key.1);
-    Ok(points
+    Ok(history_points(points, &binding))
+}
+fn history_points(
+    mut points: Vec<openrows_store::MonitorAggregate>,
+    binding: &str,
+) -> Vec<openrows_ai::sharing::Evidence> {
+    points.sort_unstable_by(|left, right| {
+        right
+            .collected_ms
+            .cmp(&left.collected_ms)
+            .then_with(|| left.metric.cmp(&right.metric))
+    });
+    points
         .into_iter()
-        .rev()
         .take(200)
         .map(|point| {
             let mut evidence = investigation::sample(
-                &binding,
+                binding,
                 &point.metric,
                 milliseconds(point.collected_ms),
                 point.value,
@@ -118,8 +129,9 @@ fn history(
             apply_state(&mut evidence, &point.state);
             evidence
         })
-        .collect())
+        .collect()
 }
+
 fn apply_state(point: &mut openrows_ai::sharing::Evidence, validity: &str) {
     point.state = match validity {
         "ok" if point.value.is_some() => EvidenceState::Ok,
@@ -131,5 +143,37 @@ fn apply_state(point: &mut openrows_ai::sharing::Evidence, validity: &str) {
     };
     if point.state != EvidenceState::Ok {
         point.value = None;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn history_selects_latest_observations_across_metrics_and_preserves_gaps() {
+        let mut points: Vec<_> = (0..200)
+            .map(|time| openrows_store::MonitorAggregate {
+                metric: "sessions:active".into(),
+                collected_ms: time,
+                value: Some(1.0),
+                state: "ok".into(),
+            })
+            .collect();
+        points.insert(
+            0,
+            openrows_store::MonitorAggregate {
+                metric: "Database:commits".into(),
+                collected_ms: 1000,
+                value: Some(1.0),
+                state: "gap".into(),
+            },
+        );
+        let evidence = history_points(points, "fixture");
+        assert_eq!(evidence.len(), 200);
+        assert_eq!(evidence[0].collected_ms.to_bits(), 1000.0_f64.to_bits());
+        assert_eq!(evidence[0].scope, "database");
+        assert_eq!(evidence[0].state, EvidenceState::Gap);
+        assert_eq!(evidence[0].value, None);
+        assert_eq!(evidence[199].collected_ms.to_bits(), 1.0_f64.to_bits());
     }
 }

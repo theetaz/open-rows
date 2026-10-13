@@ -153,15 +153,7 @@ impl Ledger {
             } => {
                 let points = self.points(connection, &evidence)?;
                 text(&title)?;
-                if findings.len() > 16 {
-                    return Err(AgentError::Malformed);
-                }
-                for finding in &findings {
-                    self.finding(connection, finding)?;
-                    if !finding.evidence.iter().all(|id| evidence.contains(id)) {
-                        return Err(AgentError::Refused);
-                    }
-                }
+                self.findings(connection, &findings, &evidence)?;
                 (
                     "report",
                     report(&title, &findings, &points, (chart, generated_ms()?))?.to_string(),
@@ -182,6 +174,23 @@ impl Ledger {
         text(&finding.interpretation)?;
         text(&finding.uncertainty)?;
         self.points(connection, &finding.evidence).map(drop)
+    }
+    fn findings(
+        &self,
+        connection: &str,
+        findings: &[Finding],
+        evidence: &[String],
+    ) -> Result<(), AgentError> {
+        if findings.len() > 16 {
+            return Err(AgentError::Malformed);
+        }
+        for finding in findings {
+            self.finding(connection, finding)?;
+            if !finding.evidence.iter().all(|id| evidence.contains(id)) {
+                return Err(AgentError::Refused);
+            }
+        }
+        Ok(())
     }
 }
 fn text(value: &str) -> Result<(), AgentError> {

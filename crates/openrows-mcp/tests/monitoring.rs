@@ -17,6 +17,7 @@ use std::sync::{
 use support::TestResult;
 struct Backend {
     reads: AtomicU32,
+    proposals: AtomicU32,
 }
 impl ToolBackend for Backend {
     fn context(&self, _: &str, _: &ToolInput) -> Result<ToolContext, McpError> {
@@ -52,12 +53,14 @@ impl ToolBackend for Backend {
         })
     }
     fn propose(&self, _: &ToolInput) -> Result<(), McpError> {
-        panic!("No model output may save or execute")
+        self.proposals.fetch_add(1, Ordering::SeqCst);
+        Err(McpError::Unsafe)
     }
 }
 fn executor() -> TestResult<(ToolExecutor, Arc<Backend>)> {
     let backend = Arc::new(Backend {
         reads: AtomicU32::new(0),
+        proposals: AtomicU32::new(0),
     });
     let control = AiControl::default();
     control.set_enabled(true);
@@ -143,11 +146,12 @@ async fn authorised_evidence_can_preview_but_cannot_save_or_execute_artifacts() 
     assert_eq!(backend.reads.load(Ordering::SeqCst), 1);
     proposal.arguments["document"]=json!(json!({"kind":"report","title":"Fake","evidence":["f".repeat(64)],"findings":[],"chart":false}).to_string());
     assert!(executor.execute(&proposal).await.is_err());
+    assert_eq!(backend.proposals.load(Ordering::SeqCst), 0);
     Ok(())
 }
 #[tokio::test]
 async fn unsafe_board_sql_and_external_artifact_calls_are_refused() -> TestResult {
-    let (mut executor, _) = executor()?;
+    let (mut executor, backend) = executor()?;
     executor.sharing.save(
         "connection",
         SharingPolicy {
@@ -176,6 +180,7 @@ async fn unsafe_board_sql_and_external_artifact_calls_are_refused() -> TestResul
     assert_eq!(serde_json::to_value(&preview)?["evidence"], json!([id]));
     executor.external = true;
     assert!(executor.execute(&proposal).await.is_err());
+    assert_eq!(backend.proposals.load(Ordering::SeqCst), 0);
     Ok(())
 }
 

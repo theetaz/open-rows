@@ -119,7 +119,7 @@ pub fn locks(binding: &str, input: &AdvisorInput) -> Vec<Evidence> {
                 input.activity_coverage.collected_ms,
                 lock.transaction_ms,
             );
-            age.scope = scope.clone();
+            age.scope.clone_from(&scope);
             let mut points = vec![age];
             for blocker in lock
                 .blockers

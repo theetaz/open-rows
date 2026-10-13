@@ -65,7 +65,7 @@ fn health_preserves_native_scope_and_refusals_without_exposing_probe_details() -
     }];
     let points = investigation::health("fixture", &statuses, &descriptors, 2000.0);
     assert_eq!(points[0].scope, "server");
-    assert_eq!(points[0].collected_ms, 2000.0);
+    assert_eq!(points[0].collected_ms.to_bits(), 2000.0_f64.to_bits());
     assert_eq!(points[0].value, None);
     assert_eq!(points[0].state, EvidenceState::PermissionDenied);
     assert!(!serde_json::to_string(&points)?.contains("private"));

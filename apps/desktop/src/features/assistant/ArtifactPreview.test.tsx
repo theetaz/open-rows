@@ -1,16 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ArtifactPreview } from './ArtifactPreview';
-const { importBoard } = vi.hoisted(() => ({
+import type { ReportFile } from '../monitor/report/formats';
+const { importBoard, saveReport } = vi.hoisted(() => ({
   importBoard: vi.fn().mockResolvedValue({ reviewed: false }),
+  saveReport: vi
+    .fn<(name: string, file: ReportFile) => Promise<string | null>>()
+    .mockResolvedValue(null),
 }));
-vi.mock('@openrows/ipc', () => ({ importBoard, saveReport: vi.fn() }));
+vi.mock('@openrows/ipc', () => ({ importBoard, saveReport }));
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 describe('artifact preview acceptance', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
   it('does not save during preview and saves through the paused import boundary only on acceptance', async () => {
     const document =
       '{"version":1,"name":"Preview","params":[],"widgets":[],"refreshSecs":30}';
@@ -81,5 +85,58 @@ describe('artifact preview acceptance', () => {
       screen.getByRole('button', { name: 'Accept and export report…' }),
     ).toBeEnabled();
     expect(importBoard).not.toHaveBeenCalled();
+  });
+});
+
+it('exports only explicitly selected report sections after acceptance', async () => {
+  const evidence = {
+    source: 'Authorised samples',
+    fromMs: 1000,
+    toMs: 1000,
+    scope: 'Database',
+    gaps: [],
+  };
+  const report = {
+    schema: 'openrows.monitor-report',
+    version: 1,
+    title: 'Health',
+    generatedMs: 1000,
+    connection: { name: 'fixture', engine: 'postgres', database: 'fixture' },
+    range: { fromMs: 1000, toMs: 1000, label: 'One observation' },
+    sections: ['Measured evidence', 'Model interpretation'].map(
+      (title, index) => ({
+        id: String(index),
+        kind: 'summary',
+        title,
+        evidence,
+        items: [],
+      }),
+    ),
+  };
+  render(
+    <ArtifactPreview
+      connection="fixture"
+      kind="report"
+      document={JSON.stringify(report)}
+      disabled={false}
+    />,
+  );
+  expect(saveReport).not.toHaveBeenCalled();
+  await userEvent.click(
+    screen.getByRole('button', { name: 'Accept and export report…' }),
+  );
+  expect(saveReport).not.toHaveBeenCalled();
+  await userEvent.click(
+    screen.getByRole('checkbox', { name: 'Model interpretation' }),
+  );
+  await userEvent.selectOptions(screen.getByLabelText('Format'), 'json');
+  await userEvent.click(screen.getByRole('button', { name: 'Export…' }));
+  await waitFor(() => {
+    expect(saveReport).toHaveBeenCalled();
+  });
+  const file = saveReport.mock.calls[0]?.[1];
+  expect(file && 'text' in file ? JSON.parse(file.text) : null).toEqual({
+    ...report,
+    sections: [report.sections[0]],
   });
 });
