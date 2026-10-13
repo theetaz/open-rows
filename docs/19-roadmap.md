@@ -127,6 +127,8 @@ Meet ADR-0011/NFR-PERF-11/NFR-SEC-08 source, privacy, advisor and overhead gates
 
 ## M4 — API client v1
 
+**Moved out of 1.0 (2026-10-12):** the API client (this milestone and the WebSocket, SSE, gRPC, collection runner, CLI and DB ↔ API items of M5) ships later as a separate product. 1.0 is the database client, including monitoring and database AI. Current status: [29](29-status-and-test-guide.md).
+
 - HTTP/1.1 + HTTP/2, all body types, auth helpers, cookies, proxies, client certs, timing waterfall.
 - Collections as files, environments, secrets in keychain, variables with scopes.
 - Scripts and tests (QuickJS), `pm.*` compatibility shim, restricted mode for untrusted collections.

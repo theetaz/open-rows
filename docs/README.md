@@ -36,6 +36,7 @@ Diagrams are written in [Mermaid](https://mermaid.js.org/) so they render on Git
 | 26 | [Feature inventory and parity plan](26-feature-parity.md) | Public-source TablePlus benchmark, requirement mappings, 1.0 gaps, deliberate deferrals and OpenRows improvements |
 | 27 | [Delivery plan](27-delivery-plan.md) | Ordered task backlog from the current state to 1.0, per milestone, with requirement IDs, dependencies, gates and status |
 | 28 | [Database monitoring and AI harness](28-database-monitoring-and-ai-harness.md) | Live health/performance, history/alerts, analytics boards/reports, provider choices and evidence-backed AI investigations |
+| 29 | [Status snapshot and test guide](29-status-and-test-guide.md) | What is on `main`, parked work-in-progress branches, remaining work and a manual test checklist |
 | — | [Glossary](glossary.md) | Terms used across these docs |
 | — | [ADRs](adr/README.md) | Architecture Decision Records |
 
