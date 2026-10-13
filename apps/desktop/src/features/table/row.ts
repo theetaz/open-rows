@@ -42,8 +42,6 @@ export type RowSource = { resultId: string; row: number };
 /** The selected table row: one row's display values for the Details panel. */
 export type SelectedRow = {
   table: string;
-  /** Row number within the table view, 1-based across pages. */
-  number: number;
   fields: readonly RowField[];
   /** The stored result the row was read from; enables the full-value inspector. */
   source?: RowSource;

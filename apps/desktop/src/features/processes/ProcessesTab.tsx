@@ -37,7 +37,6 @@ function useInspected(process: ProcessDto | undefined, onRow: ShowRow): void {
     if (process)
       latest.current({
         table: processLabel(process),
-        number: 1,
         fields: processFields(process),
       });
   }, [process]);

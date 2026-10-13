@@ -32,7 +32,6 @@ export function RowForm(props: Props): React.JSX.Element {
   const [shown, setShown] = useState<SelectedRow | null>(null);
   const pick = useSelectedRow({
     table: props.table,
-    offset: props.offset,
     editing: props.editing,
     ready: props.ready,
     onRow: setShown,

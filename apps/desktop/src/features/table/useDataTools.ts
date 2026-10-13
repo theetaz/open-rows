@@ -69,7 +69,6 @@ export function useDataTools(args: Args): DataTools {
   });
   const onRow = useSelectedRow({
     table: args.table.name,
-    offset: state.view.offset,
     editing,
     ready,
     onRow: (row) => {

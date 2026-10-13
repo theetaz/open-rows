@@ -57,9 +57,6 @@ function SingleRow({
 }): React.JSX.Element {
   return (
     <>
-      <small className={styles.caption}>
-        {row.table} · row {row.number.toLocaleString('en-US')}
-      </small>
       <div role="list" aria-label="Row fields" className={styles.fields}>
         {fields.map((field) => (
           <div role="listitem" key={field.name}>

@@ -94,7 +94,6 @@ function ResultRow(props: {
   if (!fields) return <p role="status">Loading row…</p>;
   const selected: SelectedRow = {
     table: 'Result',
-    number: row + 1,
     fields,
     source: { resultId: result.id, row },
   };

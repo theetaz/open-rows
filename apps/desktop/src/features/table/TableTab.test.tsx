@@ -279,7 +279,6 @@ it('shows the selected row in the details panel with field search', async () => 
   const list = await screen.findByLabelText('Row fields');
   expect(within(list).getByLabelText('Value of id')).toHaveValue('7');
   expect(list).toHaveTextContent('name');
-  expect(screen.getByText('users · row 7')).toBeVisible();
   await user.type(screen.getByLabelText('Search for field'), 'nam');
   expect(list).not.toHaveTextContent('id');
   const empty = within(list).getByLabelText('Value of name');
@@ -337,7 +336,7 @@ it('edits inspector fields in place: staged values show and the row stays select
     );
   });
   expect(name).toHaveValue('Ada');
-  expect(screen.getByText('users · row 7')).toBeVisible();
+  expect(screen.queryByText(/· row/)).toBeNull();
   await user.click(
     screen.getByRole('button', { name: 'Value options for name' }),
   );

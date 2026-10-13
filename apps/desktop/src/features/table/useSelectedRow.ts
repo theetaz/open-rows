@@ -16,7 +16,6 @@ type Picked = {
   ticket: number;
   result: ResultMeta;
   row: number;
-  number: number;
   fields: readonly RowField[];
   error?: string;
   draft?: StagedEdit;
@@ -30,7 +29,6 @@ type Latest = { editing: RowEditing; picked: Picked | null };
  */
 export function useSelectedRow(args: {
   table: string;
-  offset: number;
   editing: RowEditing;
   ready: boolean;
   onRow: ShowRow;
@@ -51,7 +49,6 @@ export function useSelectedRow(args: {
     );
     const row: SelectedRow = {
       table: args.table,
-      number: current.number,
       fields: withStaged(
         shownFields(current.fields),
         edit,
@@ -74,7 +71,7 @@ export function useSelectedRow(args: {
   }, [picked, changes, info, writable]);
   return (result, row) => {
     const ticket = ++sequence.current;
-    const base = { ticket, result, row, number: args.offset + row + 1 };
+    const base = { ticket, result, row };
     readRow(result, row).then(
       (fields) => {
         if (ticket === sequence.current) setPicked({ ...base, fields });

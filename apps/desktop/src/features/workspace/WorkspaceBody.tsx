@@ -236,12 +236,11 @@ function newTabCommand(
   };
 }
 
-/** Lazy details share the current connection and database context. */
-function Inspector({ connections, controller }: Props): React.JSX.Element {
+/** Lazy details of the active tab's selection. */
+function Inspector({ controller }: Props): React.JSX.Element {
   return (
     <Suspense fallback={null}>
       <WorkspaceInspector
-        context={`${connections.active?.name ?? 'No connection'} · ${controller.scope?.database ?? 'No database'}`}
         cell={controller.cell}
         row={controller.row}
         table={controller.table}

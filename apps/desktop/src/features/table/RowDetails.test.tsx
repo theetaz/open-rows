@@ -74,7 +74,6 @@ function show(row: Partial<SelectedRow> = {}) {
   const user = userEvent.setup();
   const selected: SelectedRow = {
     table: 'users',
-    number: 7,
     fields,
     editor: editor(),
     ...row,
@@ -240,7 +239,6 @@ it('marks staged and deleted fields and hides editing without an editor', () => 
     <RowDetails
       row={{
         table: 'users',
-        number: 1,
         fields: [
           {
             index: 2,
@@ -261,7 +259,7 @@ it('marks staged and deleted fields and hides editing without an editor', () => 
     'changed',
   );
   unmount();
-  render(<RowDetails row={{ table: 'users', number: 1, fields }} />);
+  render(<RowDetails row={{ table: 'users', fields }} />);
   expect(box('name')).toHaveAttribute('readonly');
   expect(
     screen.queryByRole('button', { name: /Value options/ }),
@@ -286,28 +284,13 @@ it('shows booleans as TRUE and FALSE but stages the exact stored text', async ()
   });
 });
 
-it('stages a picked timestamp immediately and does not offer pickers on protected fields', () => {
-  const stage = vi.fn();
+it('leaves date changes to typing and the value menu, with no inline picker', () => {
   show({
-    fields: [
-      text('when', '2024-05-01 13:45:00Z', 'timestamptz'),
-      text('computed', '2024-05-01', 'date'),
-    ],
-    editor: editor({
-      columns: [column('when', 'timestamptz'), column('computed', 'date')],
-      stage,
-    }),
+    fields: [text('when', '2024-05-01 13:45:00Z', 'timestamptz')],
+    editor: editor({ columns: [column('when', 'timestamptz')] }),
   });
+  expect(screen.queryByRole('button', { name: /^Pick date/ })).toBeNull();
   expect(
-    screen.queryByRole('button', { name: 'Pick date for computed' }),
-  ).toBeNull();
-  fireEvent.click(screen.getByRole('button', { name: 'Pick date for when' }));
-  const picker = screen.getByLabelText('Choose datetime for when');
-  fireEvent.change(picker, { target: { value: '2024-06-02T08:30' } });
-  expect(stage).toHaveBeenCalledExactlyOnceWith(
-    'when',
-    textValue('2024-06-02 08:30:00Z'),
-  );
-  fireEvent.blur(picker);
-  expect(stage).toHaveBeenCalledOnce();
+    screen.getByRole('button', { name: 'Value options for when' }),
+  ).toBeVisible();
 });

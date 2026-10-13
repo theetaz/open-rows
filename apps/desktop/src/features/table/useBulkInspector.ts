@@ -54,12 +54,11 @@ export function useBulkInspector(
     };
     readBulk(current.selection, current.rows, writable, latest).then(
       (bulk) => {
-        publish({ table: current.args.table, number: 0, fields: [], bulk });
+        publish({ table: current.args.table, fields: [], bulk });
       },
       (error: unknown) => {
         publish({
           table: current.args.table,
-          number: 0,
           fields: [],
           error: error instanceof Error ? error.message : String(error),
         });
