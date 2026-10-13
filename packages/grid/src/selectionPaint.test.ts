@@ -30,6 +30,7 @@ function layerMock(): Map<string, string[]> {
             'rect',
             'clip',
             'fill',
+            'arc',
           ].map((name) => [name, noop]),
         ),
       } as unknown as CanvasRenderingContext2D;

@@ -141,6 +141,9 @@ it('opens the value menu when the stepper glyph is clicked', () => {
   scroll.dispatchEvent(
     new MouseEvent('pointerdown', { button: 0, clientX: 172, clientY: y }),
   );
+  // The menu opens on release, after the press has moved focus.
+  expect(input.onEdit).not.toHaveBeenCalled();
+  window.dispatchEvent(new MouseEvent('pointerup'));
   expect(input.onEdit).toHaveBeenCalledExactlyOnceWith({ row: 0, column: 1 });
   handle.destroy();
 });
@@ -164,6 +167,7 @@ it('opens the referenced row when a foreign-key arrow is clicked', () => {
   scroll.dispatchEvent(
     new MouseEvent('pointerdown', { button: 0, clientX: 92, clientY: y }),
   );
+  window.dispatchEvent(new MouseEvent('pointerup'));
   expect(input.onLink).toHaveBeenCalledExactlyOnceWith({ row: 0, column: 0 });
   expect(input.onEdit).not.toHaveBeenCalled();
   handle.destroy();

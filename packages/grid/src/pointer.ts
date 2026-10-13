@@ -69,12 +69,30 @@ export function pointerFocus({
     accessibility.focus();
     if (event.shiftKey || event.metaKey) return;
     const glyph = glyphHit(painter, focus, x);
-    // Keep the mouse default from refocusing the grid, which would close the opened menu.
-    if (glyph) event.preventDefault();
-    if (glyph === 'stepper') (props.onStepper ?? props.onEdit)?.(focus);
-    else if (glyph === 'link') props.onLink?.(focus);
+    if (glyph) openOnRelease(props, glyph, focus);
     else startCellDrag(context, event, onRowNumber);
   };
+}
+/**
+ * Run a glyph's action when the press ends. The press itself still moves
+ * focus to the scroller (cancelling pointerdown does not stop that), which
+ * would close a menu opened on pointerdown at once.
+ */
+function openOnRelease(
+  props: GridProps,
+  glyph: 'stepper' | 'link',
+  cell: { row: number; column: number },
+): void {
+  const run = (): void => {
+    window.removeEventListener('pointercancel', drop);
+    if (glyph === 'stepper') (props.onStepper ?? props.onEdit)?.(cell);
+    else props.onLink?.(cell);
+  };
+  const drop = (): void => {
+    window.removeEventListener('pointerup', run);
+  };
+  window.addEventListener('pointerup', run, { once: true });
+  window.addEventListener('pointercancel', drop, { once: true });
 }
 /**
  * Dragging from a cell extends the selection to the cell under the pointer,

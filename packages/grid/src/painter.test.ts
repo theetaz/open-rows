@@ -28,6 +28,7 @@ function canvasMock(): {
         clip: vi.fn(),
         fillRect: vi.fn(),
         fill: vi.fn(),
+        arc: vi.fn(),
       } as unknown as CanvasRenderingContext2D;
     },
   );

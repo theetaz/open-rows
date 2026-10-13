@@ -95,6 +95,8 @@ function cellKey(
   ) {
     event.preventDefault();
     event.stopPropagation();
-    openerRef.current?.click();
+    // The picker mounts only once chosen; ⌥↓ chooses it like the stepper menu.
+    if (openerRef.current) openerRef.current.click();
+    else context.editor.manual(true);
   } else editorKey(event, context, false);
 }
