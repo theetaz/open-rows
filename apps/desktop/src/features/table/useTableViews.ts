@@ -77,24 +77,35 @@ function pageIds(entry: TableEntry | undefined): string[] {
 
 /**
  * Start a page. Events of an older page of the same tab (still finishing
- * after a cancel) are dropped and their results freed.
+ * after a cancel) are dropped and their results freed. The previous page's
+ * results (`stale`) stay readable until this page finishes, so the grid can
+ * keep showing them while it loads.
  */
 function startPage(
   send: Send,
   latest: Record<string, string | undefined>,
-  [tabId, key, request]: [string, string, PageRequest],
+  [tabId, key, request, stale]: [string, string, PageRequest, string[]],
 ): void {
   latest[tabId] = key;
   const current = (): boolean => latest[tabId] === key;
+  let pending = stale;
+  const drop = (): void => {
+    free(pending);
+    pending = [];
+  };
   send(tabId, { type: 'requested', key });
   send(tabId, { type: 'run', action: { type: 'begin' } });
   tablePage(request, (event) => {
+    if (!current() || event.type === 'finished') drop();
     if (current())
       send(tabId, { type: 'run', action: { type: 'event', event } });
     else if (event.type === 'resultBegin') free([event.resultId]);
   }).then(
     (reply) => {
-      if (!current()) return;
+      if (!current()) {
+        drop();
+        return;
+      }
       send(tabId, { type: 'sql', sql: reply.sql });
       send(tabId, {
         type: 'run',
@@ -102,6 +113,7 @@ function startPage(
       });
     },
     (error: unknown) => {
+      drop();
       if (current())
         send(tabId, {
           type: 'run',
@@ -208,8 +220,12 @@ export function useTableViews(): TableViews {
       const previous = entries[tabId]?.run;
       if (previous?.queryId && isActive(previous))
         cancelQuery(previous.queryId).catch(() => undefined);
-      free(pageIds(entries[tabId]));
-      startPage(send, latest.current, [tabId, key, request]);
+      startPage(send, latest.current, [
+        tabId,
+        key,
+        request,
+        pageIds(entries[tabId]),
+      ]);
     },
     cancelPage: (tabId) => {
       const queryId = entries[tabId]?.run.queryId;

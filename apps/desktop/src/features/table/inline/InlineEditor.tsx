@@ -31,8 +31,8 @@ export function InlineEditorView({
 type Props = { open: OpenEditor; editor: InlineEditor };
 
 /**
- * A one-line input drawn exactly over the cell, in the grid's font; date and
- * time columns add a calendar button at the cell's end (FR-DATA-06).
+ * A one-line input drawn exactly over the cell, in the grid's font. Date and
+ * time columns show the picker only when chosen from the stepper menu (FR-DATA-06).
  */
 function CellInput({ open, editor }: Props): React.JSX.Element {
   const { inputRef, openerRef, kind, handlers, onOpen, onPick } = useCellInput({
@@ -63,7 +63,7 @@ function CellInput({ open, editor }: Props): React.JSX.Element {
           editor.change(event.target.value);
         }}
       />
-      {kind && (
+      {kind && open.pick && (
         <CellPicker
           open={open}
           kind={kind}

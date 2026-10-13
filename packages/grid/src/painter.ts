@@ -284,9 +284,10 @@ export class CanvasPainter {
     const column = this.props.source.columns[col];
     if (!column) return;
     const x = (this.layout.offsets[col] ?? 0) - (pinned ? 0 : this.view.x);
+    const arrow = column.sort ? SORT_ROOM : 0;
     context.save();
     context.beginPath();
-    context.rect(x, 0, column.width, this.props.theme.rowHeight);
+    context.rect(x, 0, column.width - arrow, this.props.theme.rowHeight);
     context.clip();
     context.fillText(
       column.title,
@@ -294,5 +295,30 @@ export class CanvasPainter {
       this.props.theme.rowHeight / 2,
     );
     context.restore();
+    if (column.sort)
+      sortTriangle(context, {
+        cx: x + column.width - SORT_ROOM / 2,
+        cy: this.props.theme.rowHeight / 2,
+        up: column.sort === 'ascending',
+      });
   }
+}
+
+/** Header room reserved for the sort triangle. */
+const SORT_ROOM = 18;
+
+/** A small filled ▲/▼ centred on (cx, cy), right-aligned in the header like TablePlus. */
+function sortTriangle(
+  context: CanvasRenderingContext2D,
+  at: { cx: number; cy: number; up: boolean },
+): void {
+  const { cx, cy } = at;
+  const base = at.up ? cy + 2 : cy - 2,
+    apex = at.up ? cy - 2.5 : cy + 2.5;
+  context.beginPath();
+  context.moveTo(cx - 3.5, base);
+  context.lineTo(cx + 3.5, base);
+  context.lineTo(cx, apex);
+  context.closePath();
+  context.fill();
 }

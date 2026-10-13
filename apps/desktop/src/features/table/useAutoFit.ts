@@ -32,7 +32,8 @@ export function fitColumns(
   if (!columns || !grid?.fitWidth) return widths;
   result.columns.forEach(({ name }, index) => {
     const column = columns[index];
-    if (!column || (!all && layout.widths[name] !== undefined)) return;
+    const kept = layout.widths[name] !== undefined || fitted.current.has(name);
+    if (!column || (!all && kept)) return;
     const width = grid.fitWidth?.(index + shift);
     if (width === undefined) return;
     column.width = width;

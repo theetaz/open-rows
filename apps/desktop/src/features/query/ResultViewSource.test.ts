@@ -47,7 +47,7 @@ it('maps arranged view columns to result columns and fetches their span', async 
   );
   view.arrange(arranged.columns, arranged.order);
   expect(view.columns[0]).toMatchObject({ title: 'c25', pinned: true });
-  expect(view.columns[4]).toMatchObject({ title: 'c3 ▼', width: 200 });
+  expect(view.columns[4]).toMatchObject({ title: 'c3', sort: 'descending', width: 200 });
   expect(view.columnOf(0)).toBe(25);
   expect(view.columnOf(1)).toBe(0);
   await view.window({ r0: 0, r1: 2, c0: 1, c1: 2 }, 0);

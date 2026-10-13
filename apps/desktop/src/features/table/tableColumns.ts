@@ -9,10 +9,13 @@ import type { ResultMeta } from '../query/run';
 import type { EditedSource } from './EditedSource';
 import { storeColumns } from './row';
 
-/** Header title with the server-side sort direction, e.g. `name ▲`. */
-function headerTitle(name: string, sort: SortDto | null): string {
-  if (sort?.column !== name) return name;
-  return `${name} ${sort.descending ? '▼' : '▲'}`;
+/** The server-side sort direction of a column, painted as a header triangle. */
+function headerSort(
+  name: string,
+  sort: SortDto | null,
+): Pick<GridColumn, 'sort'> {
+  if (sort?.column !== name) return {};
+  return { sort: sort.descending ? 'descending' : 'ascending' };
 }
 
 const noLinks: ReadonlySet<string> = new Set();
@@ -30,7 +33,8 @@ export function columnsOf(
   );
   return columns.map((column, index) => ({
     id: String(index),
-    title: headerTitle(column.name, sort),
+    title: column.name,
+    ...headerSort(column.name, sort),
     width: widthOf(
       layout,
       column.name,

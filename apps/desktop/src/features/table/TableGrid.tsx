@@ -68,8 +68,10 @@ type Props = {
   onLink?: ((cell: Cell) => void) | undefined;
   /** The tab's grid position, kept across reloads. */
   position?: React.RefObject<PositionMemory> | undefined;
+  /** The tab's auto-fitted widths, kept across re-sorts and pages. */
+  fitted?: React.RefObject<Map<string, number>> | undefined;
 };
-type Latest = Props & {
+type Latest = Omit<Props, 'fitted'> & {
   editor: InlineEditor;
   fitted: React.RefObject<Map<string, number>>;
 };
@@ -90,7 +92,8 @@ export function TableGrid(props: Props): React.JSX.Element {
     selection: selectionRef,
     ...props,
   });
-  const fitted = useRef(new Map<string, number>());
+  const ownFitted = useRef(new Map<string, number>());
+  const fitted = props.fitted ?? ownFitted;
   const latest = useRef<Latest>({ ...props, editor, fitted });
   useEffect(() => {
     latest.current = { ...props, editor, fitted };
@@ -351,14 +354,21 @@ function editedSource(
     editing,
     layout,
     links,
-  }: Pick<Props, 'result' | 'editing' | 'layout' | 'links'>,
+    fitted,
+  }: Pick<Latest, 'result' | 'editing' | 'layout' | 'links' | 'fitted'>,
   sort: SortDto | null,
 ): EditedSource {
   const columns = storeColumns(result);
+  const shown = columnsOf(columns, sort, layout, links);
+  shown.forEach((column, index) => {
+    const name = columns[index]?.name ?? '';
+    column.width =
+      layout.widths[name] ?? fitted.current.get(name) ?? column.width;
+  });
   const source: GridDataSource = new TileSource(
     result.id,
     result.rows,
-    columnsOf(columns, sort, layout, links),
+    shown,
     displayWindow,
   );
   return new EditedSource(source, editing.history.current, {

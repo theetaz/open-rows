@@ -61,6 +61,7 @@ export function pointerFocus({
     }
     const focus = painter.layout.hit(painter.view, x, y);
     if (!focus || focus.row >= props.source.rows) return;
+    const onRowNumber = focus.column === props.rowHeaderColumn;
     selectPointer(props, focus, event);
     props.onSelection(props.selection);
     accessibility.update(props.selection);
@@ -68,9 +69,99 @@ export function pointerFocus({
     accessibility.focus();
     if (event.shiftKey || event.metaKey) return;
     const glyph = glyphHit(painter, focus, x);
+    // Keep the mouse default from refocusing the grid, which would close the opened menu.
+    if (glyph) event.preventDefault();
     if (glyph === 'stepper') (props.onStepper ?? props.onEdit)?.(focus);
     else if (glyph === 'link') props.onLink?.(focus);
+    else startCellDrag(context, event, onRowNumber);
   };
+}
+/**
+ * Dragging from a cell extends the selection to the cell under the pointer,
+ * across rows and columns; from the row numbers it selects whole rows. The
+ * grid scrolls when the pointer leaves its edges.
+ */
+function startCellDrag(
+  context: PointerContext,
+  down: PointerEvent,
+  rows: boolean,
+): void {
+  const { scroll, painter, props } = context;
+  const anchor = props.selection.anchor ?? props.selection;
+  let last = `${String(anchor.row)}:${String(anchor.column)}`;
+  const move = (event: PointerEvent): void => {
+    const bounds = scroll.getBoundingClientRect();
+    edgeScroll(scroll, bounds, event);
+    const x = Math.min(
+        Math.max(event.clientX - bounds.left, 0),
+        bounds.width - 1,
+      ),
+      y = Math.min(
+        Math.max(event.clientY - bounds.top, painter.layout.rowHeight),
+        bounds.height - 1,
+      );
+    const cell = painter.layout.hit(painter.view, x, y);
+    if (!cell || cell.row >= props.source.rows) return;
+    const column = Math.max(
+      cell.column,
+      props.rowHeaderColumn === undefined ? 0 : props.rowHeaderColumn + 1,
+    );
+    const key = `${String(cell.row)}:${String(column)}`;
+    if (key === last) return;
+    last = key;
+    dragTo(context, anchor, { row: cell.row, column }, rows);
+  };
+  const up = (): void => {
+    scroll.removeEventListener('pointermove', move);
+    scroll.removeEventListener('pointerup', up);
+    scroll.removeEventListener('pointercancel', up);
+  };
+  try {
+    scroll.setPointerCapture(down.pointerId);
+  } catch {
+    // Synthetic or finished pointers cannot be captured; moves inside the grid still extend.
+  }
+  scroll.addEventListener('pointermove', move);
+  scroll.addEventListener('pointerup', up);
+  scroll.addEventListener('pointercancel', up);
+}
+/** The rectangle from the anchor to `to`, or whole rows when the drag began on a row number. */
+function dragTo(
+  { props, accessibility, controller }: PointerContext,
+  anchor: { row: number; column: number },
+  to: { row: number; column: number },
+  rows: boolean,
+): void {
+  const first =
+    props.rowHeaderColumn === undefined ? 0 : props.rowHeaderColumn + 1;
+  props.selection = {
+    ...props.selection,
+    ranges: [
+      {
+        r0: Math.min(anchor.row, to.row),
+        r1: Math.max(anchor.row, to.row),
+        c0: rows ? first : Math.min(anchor.column, to.column),
+        c1: rows
+          ? props.source.columns.length - 1
+          : Math.max(anchor.column, to.column),
+      },
+    ],
+  };
+  props.onSelection(props.selection);
+  accessibility.update(props.selection);
+  controller.invalidate();
+}
+/** Scroll a step toward a pointer that has left the grid's edges during a drag. */
+function edgeScroll(
+  scroll: HTMLElement,
+  bounds: DOMRect,
+  event: PointerEvent,
+): void {
+  const step = 24;
+  if (event.clientY > bounds.bottom - 8) scroll.scrollTop += step;
+  else if (event.clientY < bounds.top + 8) scroll.scrollTop -= step;
+  if (event.clientX > bounds.right - 8) scroll.scrollLeft += step;
+  else if (event.clientX < bounds.left + 8) scroll.scrollLeft -= step;
 }
 /** The row-number header fits all columns (or selects them without a host); Shift-click selects a column; a click sorts. */
 function headerClick(

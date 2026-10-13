@@ -11,6 +11,8 @@ export interface GridColumn {
   align?: 'start' | 'end';
   /** Booleans paint centred TRUE/FALSE; every kind shows an up/down stepper. */
   kind?: 'boolean' | 'enum' | 'temporal';
+  /** Sort direction, painted as a triangle at the header's end. */
+  sort?: 'ascending' | 'descending';
   /** A foreign key: non-NULL values paint a → arrow that calls `onLink`. */
   link?: boolean;
 }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useRef, useState } from 'react';
 import { Button } from '@openrows/ui';
 import { isActive } from '../query/run';
 import type { ResultMeta } from '../query/run';
@@ -33,10 +33,18 @@ type Props = {
   table: string;
 };
 
+/** The last finished page and the sort it was read with. */
+type Shown = { result: ResultMeta; sort: TableTabState['view']['sort'] };
+
 /** The page's grid, or why there is none yet (loading, error, no rows). */
 export function TableData(props: Props): React.JSX.Element {
   const { state, editing, tools } = props;
   const { entry, result, view } = state;
+  const fitted = useRef(new Map<string, number>());
+  // While a re-sort, filter or page loads, keep showing the last rows instead of a loading note.
+  const [shown, setShown] = useState<Shown | null>(null);
+  if (result?.done && result !== shown?.result)
+    setShown({ result, sort: view.sort });
   const errors = entry.run.messages.filter((item) => item.level === 'error');
   if (errors.length)
     return (
@@ -48,6 +56,15 @@ export function TableData(props: Props): React.JSX.Element {
           </p>
         ))}
       </div>
+    );
+  if (!result?.done && shown && isActive(entry.run))
+    return (
+      <Grid
+        {...props}
+        result={shown.result}
+        sort={shown.sort}
+        fitted={fitted}
+      />
     );
   if (!result?.done)
     return (
@@ -77,7 +94,7 @@ export function TableData(props: Props): React.JSX.Element {
         onClose={tools.actions.toggleForm}
       />
     );
-  return <Grid {...props} result={result} />;
+  return <Grid {...props} result={result} sort={view.sort} fitted={fitted} />;
 }
 
 /** The page's canvas grid, mounted lazily once per page. */
@@ -90,7 +107,13 @@ function Grid({
   onSelection,
   tools,
   result,
-}: Props & { result: ResultMeta }): React.JSX.Element {
+  sort,
+  fitted,
+}: Props & {
+  result: ResultMeta;
+  sort: Shown['sort'];
+  fitted: React.RefObject<Map<string, number>>;
+}): React.JSX.Element {
   const { view, actions } = state;
   const defaults = tableSettings.useValue();
   return (
@@ -98,7 +121,8 @@ function Grid({
       <TableGrid
         key={result.id}
         result={result}
-        sort={view.sort}
+        fitted={fitted}
+        sort={sort}
         editing={editing}
         layout={columns.layout}
         onLayout={columns.change}

@@ -20,10 +20,13 @@ function defaultWidth(column: ColumnDto): number {
   return Math.min(320, Math.max(88, column.name.length * 8 + 40));
 }
 
-/** Header text with the client-side sort direction, e.g. `name ▲`. */
-function title(name: string, sorted: RowOrder | null, index: number): string {
-  if (sorted?.column !== index) return name;
-  return `${name} ${sorted.descending ? '▼' : '▲'}`;
+/** The client-side sort direction of a column, painted as a header triangle. */
+function headerSort(
+  sorted: RowOrder | null,
+  index: number,
+): Pick<GridColumn, 'sort'> {
+  if (sorted?.column !== index) return {};
+  return { sort: sorted.descending ? 'descending' : 'ascending' };
 }
 
 /**
@@ -46,7 +49,8 @@ export function resultColumns(
       const key = keys[index] ?? '';
       return {
         id: String(index),
-        title: title(column?.name ?? '', sorted, index),
+        title: column?.name ?? '',
+        ...headerSort(sorted, index),
         width: widthOf(layout, key, column ? defaultWidth(column) : 88),
         pinned: position < pins,
         align: columnAlign(column?.sourceType ?? null),
