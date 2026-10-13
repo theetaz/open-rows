@@ -57,11 +57,25 @@ it.each([
   expect(mapping.kind).toBe('readonly');
   if (mapping.kind === 'readonly') expect(mapping.reason).not.toBe('');
 });
-it('does not guess the schema from a default search path', () => {
+it('requires session resolution rather than guessing a default schema', () => {
   const mapping = resultMapping('SELECT * FROM users', columns, 'postgres');
-  expect(mapping.kind).toBe('readonly');
-  if (mapping.kind === 'readonly') expect(mapping.reason).toContain('Qualify');
+  expect(mapping).toMatchObject({ kind: 'unresolved', table: 'users' });
+  expect(mappingReason(mapping, info)).toContain('Resolving');
 });
+it.each([
+  ['SELECT * FROM users', 'users'],
+  ['SELECT u.id, u.name FROM users u WHERE id = 1', 'users'],
+  ['SELECT "U".* FROM "Mixed Case" AS "U"', 'Mixed Case'],
+  ['SELECT * FROM "odd.schema"', 'odd.schema'],
+])(
+  'recognizes unqualified sources without changing their identity: %s',
+  (sql, table) => {
+    expect(resultMapping(sql, columns, 'postgres')).toMatchObject({
+      kind: 'unresolved',
+      table,
+    });
+  },
+);
 it('rejects duplicate labels and result/projection mismatch', () => {
   expect(
     resultMapping(

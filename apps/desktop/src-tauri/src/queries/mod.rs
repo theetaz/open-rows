@@ -20,6 +20,7 @@ pub(crate) mod files;
 pub(crate) mod history;
 pub(crate) mod history_privacy;
 mod params;
+pub(crate) mod resolve;
 pub(crate) mod saved;
 
 use std::collections::HashMap;

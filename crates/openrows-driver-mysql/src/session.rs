@@ -143,6 +143,10 @@ fn tag(sql: &str, count: u64) -> String {
 }
 
 impl Session for MySqlSession {
+    fn connection(&mut self) -> Option<&mut dyn Connection> {
+        Some(self)
+    }
+
     fn execute<'a>(
         &'a mut self,
         sql: &'a str,

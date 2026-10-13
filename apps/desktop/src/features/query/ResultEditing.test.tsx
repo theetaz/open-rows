@@ -6,6 +6,7 @@ import { ThemeProvider } from '@openrows/ui';
 import { mountGrid } from '@openrows/grid/canvas';
 import type { GridHandle, GridProps } from '@openrows/grid';
 import {
+  resolveQuerySource,
   tableEdit,
   tableEditInfo,
   tableEditRow,
@@ -118,8 +119,10 @@ beforeEach(() => {
 
 function App({
   sql = 'SELECT * FROM public.users',
+  nextSql,
 }: {
   sql?: string;
+  nextSql?: string;
 }): React.JSX.Element {
   const views = useTableViews();
   const [row, setRow] = useState<SelectedRow | null>(null);
@@ -128,15 +131,13 @@ function App({
     status: 'completed' as const,
     queryId: 'q',
     results: [result],
-    statements: [
-      {
-        index: 0,
-        sql,
-        kind: 'read' as const,
-        dangerous: false,
-        verdict: 'allow' as const,
-      },
-    ],
+    statements: [sql, ...(nextSql ? [nextSql] : [])].map((sql, index) => ({
+      index,
+      sql,
+      kind: 'read' as const,
+      dangerous: false,
+      verdict: 'allow' as const,
+    })),
   };
   return (
     <ThemeProvider>
@@ -344,4 +345,64 @@ it('keeps hidden keys available for editing and stages insert, duplicate and del
   });
   expect(screen.getByLabelText('Protected edits')).toHaveTextContent('3');
   expect(tableEdit).not.toHaveBeenCalled();
+});
+
+it('resolves an unqualified result and stages the resolved schema in the commit preview', async () => {
+  vi.mocked(resolveQuerySource).mockResolvedValueOnce({
+    kind: 'table',
+    schema: 'tenant',
+    table: 'users',
+  });
+  render(<App sql="SELECT * FROM users" />);
+  await ready();
+  expect(resolveQuerySource).toHaveBeenCalledWith('session', 'users');
+  expect(tableEditInfo).toHaveBeenCalledWith(
+    expect.objectContaining({ schema: 'tenant', table: 'users' }),
+  );
+  await stageName('Unqualified edit');
+  expect(tableEditRow).toHaveBeenCalledWith(
+    expect.objectContaining({ schema: 'tenant', table: 'users' }),
+    { id: '3' },
+  );
+  vi.mocked(tableEdit).mockImplementationOnce((request) =>
+    Promise.resolve({
+      kind: 'prepared',
+      token: 'resolved-preview',
+      statements: [
+        {
+          sql: `UPDATE "${request.target.schema}"."${request.target.table}" SET "name" = $1 WHERE "id" = $2`,
+          params: ['Unqualified edit', '3'],
+        },
+      ],
+    }),
+  );
+  await userEvent
+    .setup()
+    .click(screen.getByRole('button', { name: 'Review & commit' }));
+  expect(await screen.findByLabelText('SQL to commit')).toHaveTextContent(
+    'UPDATE "tenant"."users"',
+  );
+  expect(vi.mocked(tableEdit).mock.calls[0]?.[0]).toMatchObject({
+    target: { schema: 'tenant', table: 'users' },
+    confirmToken: null,
+    changes: [
+      {
+        kind: 'update',
+        original: records[0],
+        values: { name: { kind: 'text', value: 'Unqualified edit' } },
+      },
+    ],
+  });
+});
+
+it('keeps an unqualified batch result read-only when another statement could change its namespace', async () => {
+  render(<App sql="SELECT * FROM users" nextSql="SET search_path = other" />);
+  await waitFor(() => {
+    expect(
+      screen.getByRole('status', { name: 'Result status' }),
+    ).toHaveTextContent('Run this SELECT on its own');
+  });
+  expect(resolveQuerySource).not.toHaveBeenCalled();
+  expect(tableEditInfo).not.toHaveBeenCalled();
+  expect(screen.getByRole('button', { name: '+ Row' })).toBeDisabled();
 });

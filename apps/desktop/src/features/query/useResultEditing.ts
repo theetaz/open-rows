@@ -8,7 +8,9 @@ import type { TableTargetRef } from '../table/model';
 import { useRowEditing } from '../table/useRowEditing';
 import { useTableViews } from '../table/useTableViews';
 import { useResultWorkspace } from './ResultWorkspace';
-import { mappingReason, resultMapping } from './resultMapping';
+import { mappingForBatch, mappingReason } from './resultMapping';
+import type { ResultMapping } from './resultMapping';
+import { useResultMapping } from './useResultMapping';
 import type { ResultMeta } from './run';
 
 /** Catalog lookups never grant editing to a stale SQL/result/session identity. */
@@ -70,13 +72,21 @@ export function useResultEditing(
   result: ResultMeta,
   sql: string,
   engine: EngineDto,
+  statementCount = 1,
 ): ResultEditing {
   const workspace = useResultWorkspace();
   const localViews = useTableViews();
   const views = workspace?.views ?? localViews;
+  const sessionId = workspace?.sessionId ?? null;
+  const source = useResultMapping(
+    result,
+    sql,
+    engine,
+    statementCount === 1 ? sessionId : null,
+  );
   const mapping = useMemo(
-    () => resultMapping(sql, result.columns, engine),
-    [sql, result.columns, engine],
+    () => mappingForBatch(source, statementCount),
+    [source, statementCount],
   );
   const target = useMemo(
     () => ({
@@ -87,7 +97,6 @@ export function useResultEditing(
     }),
     [workspace?.profileId, workspace?.database, mapping],
   );
-  const sessionId = workspace?.sessionId ?? null;
   const tabId = `${workspace?.tabId ?? 'preview'}:result:${result.id}`;
   const revision = views.entryOf(tabId).view.revision;
   const state = useMappingInfo({
@@ -95,14 +104,13 @@ export function useResultEditing(
     enabled: !!sessionId && result.done && mapping.kind === 'table',
     identity: JSON.stringify([result.id, sql, target, sessionId]),
   });
-  const reason =
-    revision > 0
-      ? 'The stored result is out of date after a commit. Run the SELECT again before editing.'
-      : !result.done
-        ? 'Wait until every row has arrived before editing.'
-        : !sessionId
-          ? 'Connect this query tab before editing its results.'
-          : (state.error ?? mappingReason(mapping, state.info));
+  const reason = readOnlyReason({
+    revision,
+    done: result.done,
+    sessionId,
+    mapping,
+    ...state,
+  });
   const info = useMemo(
     () =>
       state.info && reason ? { ...state.info, readOnly: true } : state.info,
@@ -124,4 +132,20 @@ export function useResultEditing(
     ready: reason === null,
     mapped: mapping.kind === 'table',
   };
+}
+
+function readOnlyReason(args: {
+  revision: number;
+  done: boolean;
+  sessionId: string | null;
+  mapping: ResultMapping;
+  info: EditInfoDto | null;
+  error: string | null;
+}): string | null {
+  if (args.revision > 0)
+    return 'The stored result is out of date after a commit. Run the SELECT again before editing.';
+  if (!args.done) return 'Wait until every row has arrived before editing.';
+  if (!args.sessionId)
+    return 'Connect this query tab before editing its results.';
+  return args.error ?? mappingReason(args.mapping, args.info);
 }

@@ -210,3 +210,14 @@ API collections remain outside this delivery.
 History offers Insert at the last focused editor's cursor, Copy, Open in a new query tab, Save as query, Delete, and confirmed Clear for this connection or all connections. Reuse opens or edits SQL without executing it and uses the current context's normal read-only, confirmation and parameter checks when Run is chosen. Save opens an editable SQL review with lexer-based string/number/dollar-string highlights, then writes the reviewed text into the active project's first query folder (or project root), otherwise into local queries for the active connection. Saving remains an explicit user action.
 
 Redacted entries show numbered `__OPENROWS_REDACTED_n__` markers. The editor explains that every marker must be filled; both execute and Explain reject remaining markers before opening any session. Parameter values are retained only in the current tab's memory and are excluded from session descriptors.
+
+## Query result editing: unqualified source names
+
+A completed single-table SELECT of plain columns (or one wildcard) can use the table editing tools when every primary or non-null unique key column is present and the connection is writable. Schema-qualified sources retain their existing catalog checks. For an unqualified source, `query_resolve_source` queues fixed, bound metadata reads through `SessionManager::facet_port` on the query tab's own session. These reads create neither query history nor visible results.
+
+- PostgreSQL uses `to_regclass(quote_ident($1))` and reads its namespace, relation kind and persistence. The session's search path determines the source; temporary and non-base relations are refused.
+- MySQL/MariaDB use `DATABASE()` and a bound catalog lookup. The existing catalog `SHOW CREATE` reader, using escaped server-returned identifiers on that same session, additionally rejects temporary-table shadows on servers that omit them from `information_schema.TABLES`. Catalog-reported temporary tables are rejected before checking name ambiguity.
+- SQLite/local libSQL use `pragma_table_list()` with a bound name. Exactly one permanent base table in `main` is accepted. Duplicate names, temporary/virtual tables, views and attached-only sources remain read-only.
+- Other engines keep unqualified sources read-only with an explanation. Errors and missing objects also stay read-only.
+
+Resolution promises live with the result object and are keyed by result id, statement, engine and session id. Rerenders/remounts share that answer; each new execution gets a new result and resolves again after session namespace changes. Unqualified results from multi-statement batches ask for the SELECT to be run on its own, since later statements might change the namespace before mapping. Staged changes and review SQL always use the resolved schema and table, then follow the existing snapshot, key and commit checks.

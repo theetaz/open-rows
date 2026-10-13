@@ -263,6 +263,9 @@ function profileSearchStub(
 /** Table editing: a writable table keyed by nothing, with no saved edits. */
 function tableEditStub(): Record<string, unknown> {
   return {
+    resolveQuerySource: vi.fn(() =>
+      Promise.resolve({ kind: 'table', schema: 'public', table: 'users' }),
+    ),
     tableEditInfo: vi.fn(() =>
       Promise.resolve({
         key: [],

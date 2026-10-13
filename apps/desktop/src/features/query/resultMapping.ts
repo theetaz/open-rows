@@ -3,11 +3,12 @@ import type { ColumnDto, EditInfoDto, EngineDto } from '@openrows/ipc';
 import { selectSource } from './selectSource';
 
 /** Conservative SQL provenance, before catalog key and connection checks. */
-type ResultMapping =
+export type ResultMapping =
   | { kind: 'table'; schema: string; table: string; columns: readonly string[] }
+  | { kind: 'unresolved'; table: string; columns: readonly string[] }
   | { kind: 'readonly'; reason: string };
 
-/** Only direct columns of one explicitly qualified base relation can map to edits. */
+/** Only direct columns of one base relation can map to edits after resolution. */
 export function resultMapping(
   sql: string,
   columns: readonly ColumnDto[],
@@ -26,6 +27,8 @@ export function resultMapping(
       kind: 'readonly',
       reason: 'Result columns do not match the direct SELECT columns.',
     };
+  if (source.schema === null)
+    return { kind: 'unresolved', table: source.table, columns: names };
   return {
     kind: 'table',
     schema: source.schema,
@@ -40,6 +43,8 @@ export function mappingReason(
   info: EditInfoDto | null,
 ): string | null {
   if (mapping.kind === 'readonly') return mapping.reason;
+  if (mapping.kind === 'unresolved')
+    return 'Resolving the source table on the query session…';
   if (!info) return 'Checking the source table and its unique key…';
   if (info.readOnly) return 'The connection or source relation is read-only.';
   if (!info.key.length || info.rowId)
@@ -53,4 +58,18 @@ export function mappingReason(
   )
     return 'A result column is not a column of the source table.';
   return null;
+}
+
+/** A later statement may change the namespace before an unqualified source is mapped. */
+export function mappingForBatch(
+  mapping: ResultMapping,
+  statementCount: number,
+): ResultMapping {
+  return mapping.kind === 'unresolved' && statementCount !== 1
+    ? {
+        kind: 'readonly',
+        reason:
+          'Run this SELECT on its own to verify the session namespace; another statement in the batch may change it.',
+      }
+    : mapping;
 }

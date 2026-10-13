@@ -2,7 +2,11 @@
 import type { EngineDto } from '@openrows/ipc';
 
 type Token = { text: string; identifier: boolean; keyword: string };
-type Source = { schema: string; table: string; columns: string[] | null };
+type Source = {
+  schema: string | null;
+  table: string;
+  columns: string[] | null;
+};
 const unsupported =
   'Only a single-table SELECT of plain columns is editable; joins, expressions, DISTINCT, grouping and set operations are read-only.';
 const forbidden = new Set(
@@ -45,14 +49,20 @@ export function selectSource(sql: string, engine: EngineDto): Source | string {
     : { schema: table.schema, table: table.table, columns };
 }
 
-type Table = { schema: string; table: string; alias: string };
+type Table = { schema: string | null; table: string; alias: string };
 function fromTable(tail: Token[]): Table | string {
   if (tail.some((token) => token.keyword === 'FROM')) return unsupported;
-  const schema = tail.shift(),
-    dot = tail.shift(),
-    table = tail.shift();
-  if (!schema?.identifier || dot?.text !== '.' || !table?.identifier)
-    return 'Qualify the source table with its schema (for example public.users); the session search path is not available in result metadata.';
+  const firstName = tail.shift();
+  if (!firstName?.identifier) return unsupported;
+  let schema: string | null = null;
+  let table = firstName;
+  if (tail[0]?.text === '.') {
+    tail.shift();
+    const qualified = tail.shift();
+    if (!qualified?.identifier) return unsupported;
+    schema = firstName.text;
+    table = qualified;
+  }
   if (tail[0]?.keyword === 'AS') tail.shift();
   let alias = table.text;
   const next = tail[0];
@@ -62,7 +72,7 @@ function fromTable(tail: Token[]): Table | string {
   }
   const first = tail[0];
   if (first && !clauses.has(first.keyword)) return unsupported;
-  return { schema: schema.text, table: table.text, alias };
+  return { schema, table: table.text, alias };
 }
 
 function projection(tokens: Token[], table: Table): string[] | null | false {
@@ -133,7 +143,11 @@ function tokenOf(raw: string, engine: EngineDto): Token | null {
   };
 }
 
-function qualifies(group: Token[], length: number, name: string): boolean {
+function qualifies(
+  group: Token[],
+  length: number,
+  name: string | null,
+): boolean {
   return (
     group.length === length && group[0]?.text === name && group[1]?.text === '.'
   );

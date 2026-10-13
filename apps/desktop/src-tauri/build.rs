@@ -98,6 +98,7 @@ const COMMANDS: &[&str] = &[
     "connection_open",
     "connection_close",
     "query_execute",
+    "query_resolve_source",
     "query_explain",
     "query_cancel",
     "results_release",

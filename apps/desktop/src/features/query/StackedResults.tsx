@@ -42,6 +42,7 @@ export function ResultContent({
         result={result}
         engine={engine}
         statement={statements?.[result.statement]?.sql}
+        statementCount={statements?.length ?? 1}
         onExport={
           result.done && onExport
             ? () => {

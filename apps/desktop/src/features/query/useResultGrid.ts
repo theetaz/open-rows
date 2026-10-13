@@ -28,6 +28,7 @@ export type ResultGridProps = {
   result: ResultMeta;
   engine: EngineDto;
   statement?: string | undefined;
+  statementCount?: number | undefined;
   onCell: (cell: SelectedCell) => void;
   onExport?: (() => void) | undefined;
   onExportRows?: ((rows: number[]) => void) | undefined;
@@ -54,7 +55,12 @@ export type ResultGridModel = {
 export function useResultGrid(props: ResultGridProps): ResultGridModel {
   const { result, engine } = props;
   const view = useResultView(result);
-  const edits = useResultEditing(result, props.statement ?? '', engine);
+  const edits = useResultEditing(
+    result,
+    props.statement ?? '',
+    engine,
+    props.statementCount,
+  );
   const layoutKey = resultLayoutKey(result.columns);
   const [layout, changeLayout] = useColumnLayout(layoutKey);
   const [hidden, setHidden] = useState<readonly string[]>([]);

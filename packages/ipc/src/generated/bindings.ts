@@ -235,6 +235,8 @@ export const commands = {
 	 *  Otherwise the run starts and events stream over `on_event`.
 	 */
 	queryExecute: (request: ExecuteRequest, onEvent: Channel<QueryEventDto>) => typedError<ExecuteReply, IpcError>(__TAURI_INVOKE("query_execute", { request, onEvent })),
+	/**  Fixed, bounded metadata reads on the owning actor; no user SQL is accepted. */
+	queryResolveSource: (sessionId: string, table: string) => typedError<SourceResolution, IpcError>(__TAURI_INVOKE("query_resolve_source", { sessionId, table })),
 	/**  Cancel a running query and every statement after it; unknown ids are ignored. */
 	queryCancel: (queryId: string) => __TAURI_INVOKE<void>("query_cancel", { queryId }),
 	/**
@@ -3387,6 +3389,9 @@ export type Source =
 "statements" |
 /**  Optional server I/O counters on PG 16+. */
 "io";
+
+/**  A verified permanent base table, or an explanation for keeping the result read-only. */
+export type SourceResolution = { kind: "table"; schema: string; table: string } | { kind: "readonly"; reason: string };
 
 /**  Small status event/snapshot; data windows travel as Arrow bytes. */
 export type SourceStatus = {

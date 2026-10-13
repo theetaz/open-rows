@@ -82,6 +82,7 @@ export {
   clearHistory,
   deleteHistory,
   executeQuery,
+  resolveQuerySource,
   releaseResults,
   searchHistory,
   historyLiterals,
@@ -582,3 +583,5 @@ export type {
   HypoPgRequest,
   HypoPgReply,
 } from './generated/bindings';
+
+export type { SourceResolution } from './generated/bindings';

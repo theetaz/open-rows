@@ -117,6 +117,10 @@ fn deliver(event: Event, sink: &mut dyn ResultSink, stop: &AtomicBool) {
 }
 
 impl Session for SqliteSession {
+    fn connection(&mut self) -> Option<&mut dyn Connection> {
+        Some(self)
+    }
+
     fn execute<'a>(
         &'a mut self,
         sql: &'a str,

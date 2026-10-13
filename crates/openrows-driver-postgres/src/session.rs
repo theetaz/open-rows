@@ -268,6 +268,10 @@ fn send_execute(
 }
 
 impl Session for PgSession {
+    fn connection(&mut self) -> Option<&mut dyn openrows_driver_api::Connection> {
+        Some(self)
+    }
+
     fn execute<'a>(
         &'a mut self,
         sql: &'a str,

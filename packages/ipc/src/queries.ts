@@ -9,6 +9,7 @@ import type {
   LiteralRangeDto,
   HistorySearchRequest,
   QueryEventDto,
+  SourceResolution,
 } from './generated/bindings';
 import { toCommandError, unwrap } from './connections';
 
@@ -73,4 +74,12 @@ export function historyLiterals(
   engine: EngineDto,
 ): Promise<LiteralRangeDto[]> {
   return commands.historyLiterals(sql, engine);
+}
+
+/** Resolve an unqualified table on this query session without visible results or history. */
+export function resolveQuerySource(
+  sessionId: string,
+  table: string,
+): Promise<SourceResolution> {
+  return unwrap(commands.queryResolveSource(sessionId, table));
 }

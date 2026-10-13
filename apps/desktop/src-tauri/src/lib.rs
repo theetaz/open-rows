@@ -135,6 +135,7 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
         monitor::board_delete,
         monitor::board_run,
         queries::commands::query_execute,
+        queries::resolve::query_resolve_source,
         queries::commands::query_cancel,
         queries::explain::query_explain,
         queries::commands::results_release,
