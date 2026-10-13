@@ -38,6 +38,8 @@ type Props = {
   onFormat: (kind: FormatKind) => void;
   /** Explain (`analyze`: Explain Analyze) the statement at the cursor or the selection. */
   onExplain?: ((analyze: boolean) => void) | undefined;
+  /** Opens the AI assistant, which writes or explains queries from plain language. */
+  onAssistant?: (() => void) | undefined;
 };
 
 function CursorText({ store }: { store: CursorStore }): React.JSX.Element {
@@ -117,7 +119,7 @@ function ExplainButton(props: {
 
 /**
  * The bar between editor and results (TablePlus layout): editor settings,
- * cursor position, then row limit, Beautify and Run split buttons.
+ * cursor position, then row limit, Beautify, AI, Explain and Run.
  */
 export function EditorBar(props: Props): React.JSX.Element {
   const { settings, onSettings } = props;
@@ -160,6 +162,17 @@ export function EditorBar(props: Props): React.JSX.Element {
       >
         Beautify
       </SplitButton>
+      {props.onAssistant && (
+        <Button
+          size="sm"
+          className={styles.ai}
+          title="Ask AI to write or explain a query in plain language"
+          onClick={props.onAssistant}
+        >
+          <Icon name="sparkles" />
+          AI
+        </Button>
+      )}
       {props.onExplain && (
         <ExplainButton ready={props.run.ready} onExplain={props.onExplain} />
       )}

@@ -53,6 +53,15 @@
   inline-size: 12px;
   block-size: 12px;
 }
+/* AI features share one button; the sparkles mark them as AI. */
+.ai[data-size] {
+  gap: var(--or-space-6);
+}
+.ai svg {
+  inline-size: 14px;
+  block-size: 14px;
+  color: var(--or-glyph-view);
+}
 .limit[data-size] svg {
   inline-size: 12px;
   block-size: 12px;

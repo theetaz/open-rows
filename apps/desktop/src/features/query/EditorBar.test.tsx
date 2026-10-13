@@ -6,6 +6,9 @@ import { choose, fakeRuns, renderTab } from './testQueryTab';
 vi.mock('@openrows/ipc', async () =>
   (await import('../../test/ipcStub')).ipcStub(),
 );
+vi.mock('../assistant/AssistantPanel', () => ({
+  AssistantPanel: () => <aside aria-label="Query assistant" />,
+}));
 vi.mock('./QueryEditor', async () => ({
   QueryEditor: (await import('./testEditor')).TextareaEditor,
 }));
@@ -80,4 +83,18 @@ it('opens settings submenus by keyboard and toggles checked options', async () =
   ).toHaveAttribute('aria-checked', 'true');
   await user.keyboard('{Escape}');
   expect(screen.queryByRole('menu', { name: 'Editor settings' })).toBeNull();
+});
+
+it('opens the assistant from the AI button in the bar, with no separate corner button', async () => {
+  const { user } = renderTab();
+  expect(screen.queryByRole('button', { name: 'Assistant' })).toBeNull();
+  const bar = within(screen.getByRole('toolbar', { name: 'Query actions' }));
+  await user.click(bar.getByRole('button', { name: 'AI' }));
+  expect(
+    await screen.findByRole('complementary', { name: 'Query assistant' }),
+  ).toBeVisible();
+  await user.click(bar.getByRole('button', { name: 'AI' }));
+  expect(
+    screen.queryByRole('complementary', { name: 'Query assistant' }),
+  ).toBeNull();
 });

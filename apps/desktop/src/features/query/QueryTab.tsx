@@ -149,6 +149,9 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
           notice={props.notice ?? formatFailure ?? files.failure}
           onName={sheets.startNaming}
           onExplain={explain.run}
+          onAssistant={() => {
+            toggleAssistant(tab.id);
+          }}
         />
         <TabParams
           {...props}
@@ -287,6 +290,7 @@ function TabBar(
     notice: string | null;
     onName: () => void;
     onExplain: (analyze: boolean) => void;
+    onAssistant: () => void;
   },
 ): React.JSX.Element {
   const { settings, actions, run } = props;
@@ -320,6 +324,7 @@ function TabBar(
       onExplain={
         props.connection.engine === 'duckdb' ? undefined : props.onExplain
       }
+      onAssistant={props.onAssistant}
     />
   );
 }

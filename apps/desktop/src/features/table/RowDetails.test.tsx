@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
-import { textValue } from './cellValue';
 import type { TableColumnDto } from '@openrows/ipc';
 import { ThemeProvider } from '@openrows/ui';
 import { RowDetails } from './RowDetails';

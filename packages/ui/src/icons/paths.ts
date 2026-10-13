@@ -42,6 +42,8 @@ export const iconPaths = {
   fit: 'M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5',
   jobs: 'M12 4v10M7.5 9.5 12 14l4.5-4.5M4 15v4h16v-4',
   calendar: 'M4 6h16v14H4ZM4 10h16M8 3v5M16 3v5',
+  sparkles:
+    'M10 4l1.6 4.4L16 10l-4.4 1.6L10 16l-1.6-4.4L4 10l4.4-1.6ZM18 14l.8 2.2L21 17l-2.2.8L18 20l-.8-2.2L15 17l2.2-.8Z',
 } as const;
 
 /** Names of the original line icons. */
