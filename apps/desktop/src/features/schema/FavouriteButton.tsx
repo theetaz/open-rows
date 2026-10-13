@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { Icon, IconButton } from '@openrows/ui';
-import {
-  isFavourite,
-  toggleFavourite,
-  useSidebarObjects,
-} from './sidebarStore';
+import { toggleFavourite, useSidebarObjects } from './sidebarStore';
+import { sidebarObjectKey } from './sidebarIdentity';
 import type { SidebarObject } from './sidebarIdentity';
 
 /**
@@ -16,8 +13,16 @@ export function FavouriteButton(props: {
   menu?: boolean;
   className?: string | undefined;
 }): React.JSX.Element {
-  useSidebarObjects(props.object.profileId, props.object.database);
-  const starred = isFavourite(props.object);
+  // Derive from the subscribed snapshot: the React Compiler memoizes a
+  // render-time store read on its unchanged argument, freezing the star.
+  const saved = useSidebarObjects(
+    props.object.profileId,
+    props.object.database,
+  );
+  const key = sidebarObjectKey(props.object);
+  const starred = saved.favourites.some(
+    (item) => sidebarObjectKey(item) === key,
+  );
   const label = starred ? 'Remove favourite' : 'Add favourite';
   if (props.menu)
     return (
