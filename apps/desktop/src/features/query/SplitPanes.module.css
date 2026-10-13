@@ -24,7 +24,7 @@
   gap: var(--or-space-6);
   padding: var(--or-space-2) var(--or-space-6) var(--or-space-2)
     var(--or-space-12);
-  border-block-end: var(--or-border-width) solid var(--or-separator);
+  border-block-end: var(--or-border-width) solid var(--or-pane-separator);
   color: var(--or-secondary);
   font-size: var(--or-text-12);
 }
@@ -36,10 +36,19 @@
   white-space: nowrap;
 }
 .divider {
-  flex: 0 0 var(--or-space-4);
-  background: var(--or-separator);
+  position: relative;
+  flex: 0 0 var(--or-border-width);
+  background: var(--or-pane-separator);
   cursor: col-resize;
   touch-action: none;
+}
+.divider::before {
+  content: '';
+  position: absolute;
+  inset: 0 -3px;
+}
+.panes[data-orientation='down'] > .divider::before {
+  inset: -3px 0;
 }
 .panes[data-orientation='down'] > .divider {
   cursor: row-resize;

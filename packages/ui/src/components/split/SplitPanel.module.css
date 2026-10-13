@@ -21,10 +21,10 @@
   overflow: hidden;
 }
 .panel[data-edge='right'] .inner {
-  border-inline-end: var(--or-border-width) solid var(--or-separator);
+  border-inline-end: var(--or-border-width) solid var(--or-pane-separator);
 }
 .panel[data-edge='left'] .inner {
-  border-inline-start: var(--or-border-width) solid var(--or-separator);
+  border-inline-start: var(--or-border-width) solid var(--or-pane-separator);
 }
 .panel[data-resizing='true'] {
   transition: none;

@@ -190,3 +190,16 @@ it('applies separate editor/grid/sidebar fonts and line height through root toke
   expect(css).toContain('--or-text-grid:14px');
   expect(css).toContain('--or-editor-line-height:1.8');
 });
+
+it('preserves the default sidebar half-pixel size and independent font choices', () => {
+  expect(parseAppearance({})).toEqual(defaultAppearance);
+  saveAppearance(defaultAppearance);
+  expect(readAppearance().sidebarSize).toBe(12.5);
+  expect(appearanceCss(readAppearance())).toContain(
+    '--or-font-sidebar:ui-monospace',
+  );
+  expect(appearanceCss(readAppearance())).toContain('--or-text-sidebar:12.5px');
+  expect(
+    appearanceCss(parseAppearance({ sidebarFont: 'verdana', sidebarSize: 16 })),
+  ).toContain('--or-font-sidebar:Verdana');
+});

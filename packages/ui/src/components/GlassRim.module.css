@@ -1,0 +1,63 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.rim {
+  position: relative;
+  isolation: isolate;
+}
+.rim::before {
+  --rim: var(--or-glass-rim);
+  --specular: var(--or-glass-rim-specular);
+  --shade: var(--or-glass-rim-shade);
+  --cap: calc(var(--or-glass-height) / 2);
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  padding: var(--or-border-width);
+  border-radius: inherit;
+  /* Disjoint caps avoid adding alpha over the straight rim. TL/BR catch light. */
+  background:
+    conic-gradient(
+        at 100% 50%,
+        var(--rim),
+        var(--shade) 45deg,
+        var(--rim) 90deg,
+        var(--specular) 135deg,
+        var(--rim) 180deg,
+        var(--shade) 225deg,
+        var(--rim) 270deg,
+        var(--specular) 315deg,
+        var(--rim)
+      )
+      left / var(--cap) 100% no-repeat,
+    conic-gradient(
+        at 0% 50%,
+        var(--rim),
+        var(--shade) 45deg,
+        var(--rim) 90deg,
+        var(--specular) 135deg,
+        var(--rim) 180deg,
+        var(--shade) 225deg,
+        var(--rim) 270deg,
+        var(--specular) 315deg,
+        var(--rim)
+      )
+      right / var(--cap) 100% no-repeat,
+    linear-gradient(var(--rim) 0 0) center / calc(100% - var(--or-glass-height))
+      100% no-repeat;
+  -webkit-mask:
+    linear-gradient(currentColor 0 0) content-box,
+    linear-gradient(currentColor 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(currentColor 0 0) content-box exclude,
+    linear-gradient(currentColor 0 0);
+  pointer-events: none;
+}
+.rim[data-glass-rim='address']::before {
+  --rim: var(--or-address-rim);
+  --specular: var(--or-address-rim-specular);
+  --shade: var(--or-address-rim-shade);
+}
+:global([data-window-active='false']) .rim::before {
+  opacity: 0;
+}

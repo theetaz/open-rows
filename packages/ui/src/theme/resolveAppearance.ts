@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { light, dark, highContrast } from '../tokens/colours';
 import { typography } from '../tokens/typography';
+import { contrastRatio } from '../tokens/contrast';
 import { fontFamily } from './appearance';
 import type { Appearance } from './appearance';
 import { builtInThemes, mix, rgb } from './palettes';
@@ -70,6 +71,7 @@ function tintedPalette(
   return {
     ...base,
     page: half.canvas,
+    'label-tertiary': readableLabel(base, half.canvas, mode),
     'panel-solid': half.canvas,
     window: lightMode
       ? mix(half.canvas, '#FFFFFF', 0.85)
@@ -93,6 +95,25 @@ function tintedPalette(
       : mix(half.accent, '#FFFFFF', 0.85),
   };
 }
+/** Darken light labels only as far as AA requires on the tinted search fill. */
+function readableLabel(
+  base: Palette,
+  canvas: string,
+  mode: 'light' | 'dark',
+): string {
+  let channels = rgb(base['label-tertiary']);
+  let label = base['label-tertiary'];
+  for (let step = 0; step < 255; step += 1) {
+    if (contrastRatio(label, base['search-fill'], canvas) >= 4.5) break;
+    channels = channels.map((channel) =>
+      Math.max(0, Math.min(255, channel + (mode === 'light' ? -1 : 1))),
+    );
+    label =
+      '#' +
+      channels.map((channel) => channel.toString(16).padStart(2, '0')).join('');
+  }
+  return label;
+}
 function declarations(palette: Record<string, string>): string {
   return Object.entries(palette)
     .map(([key, value]) => `--or-${key}:${value};`)
@@ -106,7 +127,7 @@ function modeStyles(settings: Appearance, mode: 'light' | 'dark'): string {
       ? ':root:not([data-theme="dark"]):not([data-theme="light"])'
       : ':root[data-theme="system"]';
   const overrides = `color-scheme:${mode};` + declarations(palette);
-  const solid = `--or-panel:${palette['panel-solid']};--or-toolbar:${palette.page};`;
+  const solid = `--or-panel:${palette['panel-solid']};--or-toolbar:${palette.page};--or-glass-fill:var(--or-glass-fill-solid);`;
   const contrast = declarations({
     ...highContrast[mode],
     panel: palette['panel-solid'],
@@ -130,9 +151,9 @@ export function appearanceCss(settings: Appearance): string {
     )
     .join('');
   return `:root{--or-font-ui:${fontFamily('ui', settings.uiFont)};--or-font-mono:${fontFamily('mono', settings.monoFont)};
-    --or-font-editor:${fontFamily('mono', settings.editorFont)};--or-font-grid:${fontFamily('mono', settings.gridFont)};--or-font-sidebar:${fontFamily('ui', settings.sidebarFont)};
+    --or-font-editor:${fontFamily('mono', settings.editorFont)};--or-font-grid:${fontFamily('mono', settings.gridFont)};--or-font-sidebar:${fontFamily('sidebar', settings.sidebarFont)};
     --or-text-editor:${String(settings.editorSize)}px;--or-text-grid:${String(settings.gridSize)}px;--or-text-sidebar:${String(settings.sidebarSize)}px;--or-editor-line-height:${String(settings.editorLineHeight)};
     --or-text-mono:${String(settings.monoSize)}px;--or-motion-panel:${String(settings.motion)}ms;${sizes}}
     ${modeStyles(settings, 'light')}${modeStyles(settings, 'dark')}
-    :root[data-transparency="reduced"][data-theme]{--or-panel:var(--or-panel-solid);--or-toolbar:var(--or-page);}`;
+    :root[data-transparency="reduced"][data-theme]{--or-panel:var(--or-panel-solid);--or-toolbar:var(--or-page);--or-glass-fill:var(--or-glass-fill-solid);}`;
 }

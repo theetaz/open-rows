@@ -532,3 +532,36 @@ identity. The library limit is 24. Light canvas luminance must be ≥ 0.75, dark
 accent luminance ≤ 0.1833 keeps white button labels at AA. Custom and default foreground tokens must meet 4.5:1 against the canvas and any custom state fills;
 invalid themes show a warning and cannot save/import. Duplicate, reset, export,
 import and live miniature/syntax preview are available. Remote Git themes remain G11.
+
+### Measured macOS chrome (2026-10-13)
+
+The current chrome supersedes the earlier material and sizing directions above.
+Only the toolbar uses a translucent fill over native window material; the rail,
+sidebar, inspector, editor and grid stay solid. Dark surfaces remain page
+`#1F1F1F`, content `#242424`, raised content `#2A2A2A` and text `#DDDDDD`.
+
+- The toolbar is 52 px high. Clear glass groups and the address capsule are
+  36 px high, inset 8 px, with 10 px gaps. A shared masked 1 px rim has neutral
+  straight edges and brighter top-left/bottom-right caps. No pill adds backdrop
+  blur. Toolbar buttons are 34 × 30 px with 18 px icons; panel toggles retain
+  neutral glyphs. The address uses 11.5 px bold monospace on `#6A6D71`.
+- Radii nest from window 26 to glass 18 to hover capsule 15. Menus keep card 10,
+  padding 4 and item radius 6. Form controls retain regular 28/7 and compact
+  24/6. Source-list segments use 20 px height, radius 5, minimum width 65 and
+  10 px gaps; narrow sidebars allow horizontal keyboard scrolling of this group.
+- Search fields use the shared 26 px capsule variant. Inspector value boxes use
+  26 px minimum height, radius 4 and a half-pixel border; multiline values still
+  grow and scroll. Pane dividers draw a 1 px line with a wider resize hit area.
+- Sidebar rows default to 20 px with 10 px indentation and 12.5 px system
+  monospace. Explicit font/size choices persist. Schema selectors use a 24 px
+  frame, radius 6, 11 px text inset and an original up/down chevron.
+- Inactive windows hide the glass rims, dim toolbar icons and neutralise tree
+  selection. Focus rings remain visible. Reduced transparency makes the header
+  opaque, increased contrast strengthens rims, and reduced motion removes the
+  press scale. Text contrast remains at least 4.5:1: the inferred light tertiary
+  label is darkened to `#69696E` for the search fill, with the nearest passing
+  adjustment for tinted themes. Light glass values are inferred conservatively.
+
+The traffic-light configuration is `(19, 28)`; changes require restarting the
+native application. Browser previews cannot verify AppKit's traffic-light centre
+or its material compositing.

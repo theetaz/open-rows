@@ -27,7 +27,7 @@
   min-height: 24px;
   background: transparent;
   border: 0;
-  border-radius: var(--or-radius-field);
+  border-radius: var(--or-radius-menu-item);
   color: var(--or-text);
   font: inherit;
   text-align: left;

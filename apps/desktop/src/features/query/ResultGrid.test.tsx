@@ -99,7 +99,10 @@ it('grows while rows stream, then sorts by header and filters loaded rows', asyn
   await waitFor(() => {
     expect(grid.source.cell(0, 0)?.text).toBe('1');
   });
-  expect(grid.source.columns[0]).toMatchObject({ title: 'id', sort: 'ascending' });
+  expect(grid.source.columns[0]).toMatchObject({
+    title: 'id',
+    sort: 'ascending',
+  });
   expect(mountGrid).toHaveBeenCalledOnce();
   expect(relayout).toHaveBeenCalled();
   const user = userEvent.setup();

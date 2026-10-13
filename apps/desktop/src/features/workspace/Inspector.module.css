@@ -3,6 +3,7 @@
   border: 0;
   border-radius: 0;
   box-shadow: none;
+  background: var(--or-page);
   display: flex;
   flex-direction: column;
   gap: var(--or-space-8);

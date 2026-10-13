@@ -5,17 +5,38 @@
   align-items: center;
   gap: var(--or-space-6);
 }
-.schema select {
+.picker {
+  position: relative;
   flex: 1;
   min-width: 0;
-  background: var(--or-control-fill);
-  border: var(--or-border-width) solid transparent;
-  border-radius: var(--or-radius-field);
+}
+.schema select {
+  appearance: none;
+  width: 100%;
+  background: var(--or-picker-fill);
+  border: 0;
+  border-radius: var(--or-radius-control-compact);
   color: var(--or-text);
   font: inherit;
   font-family: var(--or-font-ui);
-  min-height: var(--or-control-sm);
-  padding-inline: var(--or-space-8);
+  block-size: var(--or-control-height-compact);
+  padding-inline: 11px 28px;
+  font-size: var(--or-text-13);
+}
+.stepper {
+  position: absolute;
+  inset-inline-end: 8px;
+  inset-block: 0;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+.stepper svg {
+  inline-size: 12px;
+  block-size: 12px;
+}
+.schema > button {
+  color: var(--or-label-tertiary);
 }
 .schema select:focus-visible {
   outline: var(--or-focus-width) solid var(--or-focus);

@@ -34,6 +34,7 @@ export function SchemaPicker({
         aria-label="Create object"
         aria-haspopup="menu"
         size="sm"
+        variant="ghost"
         disabled={!onCreate}
         onClick={(event) => {
           const box = event.currentTarget.getBoundingClientRect();
@@ -42,22 +43,27 @@ export function SchemaPicker({
       >
         +
       </IconButton>
-      <select
-        aria-label="Schema"
-        onContextMenu={(event) => {
-          event.preventDefault();
-          onMenu?.({ x: event.clientX, y: event.clientY });
-        }}
-        value={catalog.schema}
-        disabled={!names.length}
-        onChange={(event) => {
-          catalog.setSchema(event.target.value);
-        }}
-      >
-        {names.map((name) => (
-          <option key={name}>{name}</option>
-        ))}
-      </select>
+      <div className={styles.picker}>
+        <select
+          aria-label="Schema"
+          onContextMenu={(event) => {
+            event.preventDefault();
+            onMenu?.({ x: event.clientX, y: event.clientY });
+          }}
+          value={catalog.schema}
+          disabled={!names.length}
+          onChange={(event) => {
+            catalog.setSchema(event.target.value);
+          }}
+        >
+          {names.map((name) => (
+            <option key={name}>{name}</option>
+          ))}
+        </select>
+        <span className={styles.stepper} aria-hidden="true">
+          <Icon name="chevronUpDown" />
+        </span>
+      </div>
       <IconButton
         aria-label="Show system schemas"
         aria-pressed={systemSchemas}

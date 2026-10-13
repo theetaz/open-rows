@@ -32,11 +32,10 @@
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: var(--or-space-8);
+  gap: var(--or-toolbar-gap);
   height: var(--or-toolbar-height);
   flex-shrink: 0;
-  padding-inline: var(--or-space-10);
-  border-block-end: var(--or-border-width) solid var(--or-separator);
+  padding-inline: var(--or-toolbar-inset);
   background: var(--or-toolbar);
   user-select: none;
   min-width: 0;
@@ -49,42 +48,55 @@
   flex-shrink: 0;
 }
 .toolbar [role='group'] button {
-  inline-size: 30px;
-  min-inline-size: 30px;
-  block-size: 26px;
-  min-block-size: 26px;
-  border-radius: var(--or-radius-capsule);
-  color: var(--or-secondary);
+  inline-size: var(--or-glass-button-width);
+  min-inline-size: var(--or-glass-button-width);
+  block-size: var(--or-glass-button-height);
+  min-block-size: var(--or-glass-button-height);
+  border-radius: var(--or-radius-glass-item);
+  background: transparent;
+  color: var(--or-toolbar-icon);
+  transition:
+    background-color 120ms ease-out,
+    transform 120ms ease-out;
 }
 .toolbar [role='group'] button:hover:not(:disabled) {
   color: var(--or-text);
-  background: var(--or-control-hover);
+  background: var(--or-glass-hover);
 }
 .toolbar [role='group'] button svg {
-  inline-size: 16px;
-  block-size: 16px;
+  inline-size: var(--or-toolbar-icon-size);
+  block-size: var(--or-toolbar-icon-size);
+  stroke-width: 1.4;
 }
-.toolbar [aria-pressed='true'] {
-  color: var(--or-info-fg);
+.toolbar [role='group'] button:active:not(:disabled) {
+  background: var(--or-glass-pressed);
+  filter: none;
+  transform: scale(0.96);
+}
+.toolbar [role='group'] button:disabled {
+  background: transparent;
+  color: var(--or-toolbar-icon-disabled);
+  opacity: 1;
 }
 .toolbar .safe[aria-pressed='true'] {
   color: var(--or-success-fg);
 }
 .context {
+  composes: rim from '@openrows/ui/glass-rim.css';
   flex: 1 1 0;
   min-width: 0;
   overflow: hidden;
-  height: 32px;
+  block-size: var(--or-glass-height);
   display: flex;
   align-items: center;
   gap: var(--or-space-6);
-  padding-inline: var(--or-space-12);
-  border-radius: var(--or-radius-capsule);
+  padding-inline: 13px;
+  border-radius: var(--or-radius-glass);
   background: var(--or-address);
   color: var(--or-address-text);
   font-family: var(--or-font-mono);
-  font-size: var(--or-text-12);
-  font-weight: var(--or-weight-semibold);
+  font-size: var(--or-text-11-5);
+  font-weight: var(--or-weight-bold);
 }
 .context > * {
   flex-shrink: 0;
@@ -110,12 +122,11 @@
   fill: currentColor;
 }
 .env {
-  font-weight: var(--or-weight-semibold);
-  font-size: var(--or-text-12);
+  font: inherit;
   white-space: pre;
 }
 .bar {
-  color: var(--or-secondary);
+  color: inherit;
 }
 .address {
   display: flex;
@@ -125,9 +136,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-family: var(--or-font-mono);
-  font-weight: var(--or-weight-semibold);
-  font-size: var(--or-text-12);
+  font: inherit;
 }
 .address > span {
   overflow: hidden;
@@ -186,6 +195,24 @@
   height: 1px;
   overflow: hidden;
   clip-path: inset(50%);
+}
+
+:global([data-window-active='false']) .toolbar [role='group'] button {
+  color: var(--or-toolbar-icon-inactive);
+}
+:global([data-window-active='false']) .context {
+  background: var(--or-address-inactive);
+}
+:global([data-motion='reduced']) .toolbar [role='group'] button:active {
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .toolbar [role='group'] button {
+    transition: none;
+  }
+  .toolbar [role='group'] button:active:not(:disabled) {
+    transform: none;
+  }
 }
 
 /* Native handoff errors stay visible without occupying a workspace grid cell. */

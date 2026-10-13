@@ -39,8 +39,9 @@ export function generateCss(): string {
       'glass-panel': 'none',
       'glass-toolbar': 'none',
       toolbar: 'var(--or-page)',
+      'glass-fill': 'var(--or-glass-fill-solid)',
     }) +
-    `@media (prefers-reduced-transparency: reduce) {\n${block(':root', { panel: 'var(--or-panel-solid)', 'glass-panel': 'none', 'glass-toolbar': 'none', toolbar: 'var(--or-page)' })}}\n` +
+    `@media (prefers-reduced-transparency: reduce) {\n${block(':root', { panel: 'var(--or-panel-solid)', 'glass-panel': 'none', 'glass-toolbar': 'none', toolbar: 'var(--or-page)', 'glass-fill': 'var(--or-glass-fill-solid)' })}}\n` +
     `@media (prefers-reduced-motion: reduce) {\n${block(':root', { 'motion-panel': '0ms', 'motion-disclosure': '0ms' })}*, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }\n}\n`
   );
 }

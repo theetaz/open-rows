@@ -7,6 +7,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./tokens.css": "./src/tokens/tokens.css",
+    "./glass-rim.css": "./src/components/GlassRim.module.css",
     "./tokens": "./src/tokens/index.ts",
     "./palette": "./src/components/Palette.tsx",
     "./sheet": "./src/components/Sheet.tsx",

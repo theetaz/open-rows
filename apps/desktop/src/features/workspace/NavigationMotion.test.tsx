@@ -57,7 +57,7 @@ it('uses token durations/easing and removes popover animations under reduced mot
   expect(palette).toContain('var(--or-motion-popover) var(--or-motion-easing)');
   expect(palette).toContain('transform: scale(0.96)');
 });
-it('native window buttons use the screenshot-verified inset for the 48 px toolbar', () => {
+it('native window buttons use the configured inset for the 52 px toolbar', () => {
   const config = JSON.parse(
     readFileSync('apps/desktop/src-tauri/tauri.conf.json', 'utf8'),
   ) as {
@@ -70,9 +70,9 @@ it('native window buttons use the screenshot-verified inset for the 48 px toolba
     };
   };
   const window = config.app.windows[0];
-  expect(window?.trafficLightPosition).toEqual({ x: 16, y: 26 });
+  expect(window?.trafficLightPosition).toEqual({ x: 19, y: 28 });
   expect(window?.titleBarStyle).toBe('Overlay');
   expect(window?.decorations).toBe(true);
-  expect(geometry['toolbar-height']).toBe('48px');
-  expect(geometry['traffic-light-clearance']).toBe('86px');
+  expect(geometry['toolbar-height']).toBe('52px');
+  expect(geometry['traffic-light-clearance']).toBe('98px');
 });

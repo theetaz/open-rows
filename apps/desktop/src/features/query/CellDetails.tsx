@@ -33,6 +33,7 @@ export function CellDetails({
     <div className={styles.cell}>
       <SegmentedControl
         aria-label="Details view"
+        variant="source"
         options={views}
         value={view}
         onValueChange={(value) => {

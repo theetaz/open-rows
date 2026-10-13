@@ -47,6 +47,7 @@ function CommentField({ table }: { table: SelectedTable }): React.JSX.Element {
   const [draft, setDraft] = useState(table.comment ?? '');
   return (
     <TextArea
+      controlSize="box"
       aria-label="comment"
       className={styles.value}
       value={draft}

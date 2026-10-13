@@ -1,6 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-.panel,
-.toolbar {
+.panel {
   background: var(--or-panel);
   border: var(--or-border-width) solid var(--or-separator);
   box-shadow: var(--or-panel-shadow);
@@ -10,12 +9,19 @@
   border-radius: var(--or-radius-panel);
 }
 .toolbar {
+  composes: rim from './GlassRim.module.css';
   display: inline-flex;
   align-items: center;
   gap: 0;
-  padding: var(--or-space-2);
+  box-sizing: border-box;
+  block-size: var(--or-glass-height);
+  padding: var(--or-glass-padding);
+  box-shadow: var(--or-glass-shadow);
+  background: var(--or-glass-fill);
+  border: 0;
+  border-radius: var(--or-radius-glass);
+}
+:global([data-window-active='false']) .toolbar {
+  background: var(--or-glass-fill-inactive);
   box-shadow: none;
-  background: var(--or-control-fill);
-  border-color: var(--or-separator);
-  border-radius: var(--or-radius-capsule);
 }

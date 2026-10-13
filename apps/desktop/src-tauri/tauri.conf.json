@@ -24,8 +24,8 @@
         "transparent": true,
         "shadow": true,
         "trafficLightPosition": {
-          "x": 16,
-          "y": 26
+          "x": 19,
+          "y": 28
         },
         "decorations": true
       }

@@ -11,7 +11,7 @@
     var(--or-toolbar) var(--or-toolbar-height),
     var(--or-page) var(--or-toolbar-height)
   );
-  border-inline-end: var(--or-border-width) solid var(--or-separator);
+  border-inline-end: var(--or-border-width) solid var(--or-pane-separator);
 }
 .railTop {
   flex: 0 0 var(--or-toolbar-height);

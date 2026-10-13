@@ -8,6 +8,7 @@ import { JobsButton } from '../jobs';
 import { FavouriteButton } from '../schema/FavouriteButton';
 import type { SidebarObject } from '../schema/sidebarIdentity';
 import styles from './Workspace.module.css';
+import { useWindowActive } from './useWindowActive';
 
 type Props = {
   documents?: React.ReactNode;
@@ -30,6 +31,7 @@ type Props = {
 };
 /** Overlay titlebar right of the workspace sidebar; the context bar flexes. */
 export function WorkspaceToolbar(props: Props): React.JSX.Element {
+  useWindowActive();
   return (
     <header
       className={styles.toolbar}
@@ -140,6 +142,7 @@ function Context({
   return (
     <div
       className={styles.context}
+      data-glass-rim="address"
       aria-label="Connection context"
       title={title}
     >

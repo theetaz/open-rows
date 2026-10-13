@@ -141,6 +141,34 @@
   background: var(--or-accent);
   box-shadow: none;
 }
+.segmented[data-variant='source'] {
+  justify-content: safe center;
+  min-inline-size: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  gap: var(--or-toolbar-gap);
+  block-size: var(--or-segment-height-source);
+  padding: 0;
+  background: transparent;
+}
+.segmented[data-variant='source'] .segment:focus-visible {
+  outline-offset: -2px;
+}
+.segmented[data-variant='source'] .segment {
+  flex: 0 0 auto;
+  min-inline-size: var(--or-segment-min-width-source);
+  block-size: var(--or-segment-height-source);
+  padding-inline: 14px;
+  border-radius: var(--or-radius-segment);
+  font-size: var(--or-text-13);
+  font-weight: var(--or-weight-regular);
+  color: var(--or-label-tertiary);
+  box-shadow: none;
+}
+.segmented[data-variant='source'] .segment[aria-checked='true'],
+.segmented[data-variant='source'] .segment:hover:not(:disabled) {
+  color: var(--or-text);
+}
 .switch {
   display: inline-flex;
   align-items: center;

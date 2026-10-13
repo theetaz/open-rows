@@ -7,6 +7,8 @@ type Props = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'aria-label'> & {
   'aria-label': string;
   /** Accessory pinned to the frame's top trailing corner, such as a menu chevron. */
   trailing?: ReactNode;
+  /** Inspector value box; grows beyond 26 px for multiline content. */
+  controlSize?: 'compact' | 'box';
 };
 
 /**
@@ -16,6 +18,7 @@ type Props = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'aria-label'> & {
 export function TextArea({
   trailing,
   className = '',
+  controlSize = 'compact',
   ...props
 }: Props): React.JSX.Element {
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -36,7 +39,10 @@ export function TextArea({
     };
   }, [value]);
   return (
-    <div className={`${styles.frame ?? ''} ${className}`}>
+    <div
+      className={`${styles.frame ?? ''} ${className}`}
+      data-size={controlSize}
+    >
       <textarea ref={ref} rows={1} {...props} />
       {trailing && <span className={styles.trailing}>{trailing}</span>}
     </div>

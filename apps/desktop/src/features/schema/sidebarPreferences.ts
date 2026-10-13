@@ -20,10 +20,7 @@ const defaults: SidebarPreferences = {
   systemObjects: false,
 };
 type Profiles = Readonly<Record<string, SidebarPreferences>>;
-const sectionIds = [
-  'favourites',
-  ...objectGroups.map((group) => group.id),
-];
+const sectionIds = ['favourites', ...objectGroups.map((group) => group.id)];
 const strings = (value: unknown): string[] =>
   Array.isArray(value)
     ? [

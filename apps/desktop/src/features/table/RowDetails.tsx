@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useState } from 'react';
-import { TextField } from '@openrows/ui';
+import { Icon, TextField } from '@openrows/ui';
 import { BulkDetails } from './BulkDetails';
 import { DetailsField } from './DetailsField';
 import { matchingFields } from './row';
@@ -37,6 +37,8 @@ function SearchField({
       aria-label="Search for field"
       placeholder="Search for field…"
       type="search"
+      controlSize="search"
+      leadingIcon={<Icon name="search" />}
       value={search}
       onChange={(event) => {
         onSearch(event.target.value);

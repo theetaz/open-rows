@@ -163,10 +163,7 @@ function sectionEntries({
   preferences,
   groups,
 }: FilterProps): MenuEntry[] {
-  const sections = [
-    { id: 'favourites', label: 'Favourites' },
-    ...groups,
-  ];
+  const sections = [{ id: 'favourites', label: 'Favourites' }, ...groups];
   return sections.map((section): MenuEntry => ({
     kind: 'item',
     label: section.label,

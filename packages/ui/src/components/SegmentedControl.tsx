@@ -18,6 +18,8 @@ type Props<Value extends string> = {
   size?: 'regular' | 'compact';
   /** `accent` fills the selected segment with the accent colour (view switchers). */
   tone?: 'neutral' | 'accent';
+  /** Trackless 20 px selection pills for sidebar and inspector source lists. */
+  variant?: 'control' | 'source';
 };
 function nextIndex(
   key: string,
@@ -45,6 +47,7 @@ export function SegmentedControl<Value extends string>(
       role="radiogroup"
       data-size={props.size ?? 'regular'}
       data-tone={props.tone ?? 'neutral'}
+      data-variant={props.variant ?? 'control'}
       aria-label={props['aria-label']}
       aria-disabled={props.disabled}
     >

@@ -100,6 +100,7 @@ export function DetailsField({
         <small title={field.type ?? undefined}>{field.type}</small>
       </div>
       <TextArea
+        controlSize="box"
         aria-label={`Value of ${field.name}`}
         className={styles.value}
         value={text}

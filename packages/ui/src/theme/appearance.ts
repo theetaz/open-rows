@@ -51,7 +51,7 @@ export const defaultAppearance: Appearance = {
   sidebarFont: 'system',
   editorSize: 12,
   gridSize: 12,
-  sidebarSize: 13,
+  sidebarSize: 12.5,
   editorLineHeight: 1.5,
 };
 export const appearanceKey = 'openrows.appearance.v1';
@@ -117,7 +117,13 @@ export function saveAppearance(value: Appearance): void {
     /* Preferences remain usable in a restricted webview. */
   }
 }
-export function fontFamily(kind: 'ui' | 'mono', id: string): string {
+export function fontFamily(
+  kind: 'ui' | 'mono' | 'sidebar',
+  id: string,
+): string {
+  if (kind === 'sidebar') {
+    return id === 'system' ? typography['font-sidebar'] : fontFamily('ui', id);
+  }
   const fonts: Record<string, string> = kind === 'ui' ? uiFonts : monoFonts;
   return fonts[id] ?? typography[kind === 'ui' ? 'font-ui' : 'font-mono'];
 }
@@ -152,11 +158,16 @@ function parseFontMetrics(
     sidebarFont: font('sidebarFont', 'ui', v.uiFont),
     editorSize: bounded(v.editorSize ?? v.monoSize, 11, 24, 12),
     gridSize: bounded(v.gridSize ?? v.monoSize, 11, 24, 12),
-    sidebarSize: bounded(v.sidebarSize ?? v.uiSize, 11, 24, 13),
+    sidebarSize: sidebarSize(v.sidebarSize ?? v.uiSize),
     editorLineHeight:
       typeof v.editorLineHeight === 'number' &&
       [1.2, 1.5, 1.8, 2].includes(v.editorLineHeight)
         ? v.editorLineHeight
         : 1.5,
   };
+}
+
+/** Preserve half-pixel sidebar sizes, including the default, across persistence. */
+function sidebarSize(value: unknown): number {
+  return bounded(typeof value === 'number' ? value * 2 : value, 22, 48, 25) / 2;
 }

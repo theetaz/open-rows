@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 /**
  * Spacing in rem respects browser text scaling; radii are concentric
- * (window 26 → panel 12 → control 7 / compact 6). Every text input, select,
- * search field, button and segmented control uses `control-height(-compact)`
- * and `radius-control(-compact)`; `control-sm`/`control-md`/`control-compact`
- * are aliases kept for existing styles.
+ * (window 26 → glass 18 → glass item 15; panel 12 → card 10 → menu item 6).
+ * Forms use control 7 / compact 6; source segments 5 and value boxes 4.
+ * `control-sm`/`control-md`/`control-compact` remain form-size aliases.
  */
 export const geometry = {
   'space-2': '0.125rem',
@@ -23,6 +22,12 @@ export const geometry = {
   'radius-group': '12px',
   'radius-field': '6px',
   'radius-capsule': '999px',
+  'radius-glass': '999px',
+  'radius-glass-item': '999px',
+  'radius-menu-item': '6px',
+  'radius-search': '999px',
+  'radius-segment': '5px',
+  'radius-field-box': '4px',
   'border-width': '1px',
   'focus-width': '2px',
   'focus-offset': '3px',
@@ -30,7 +35,8 @@ export const geometry = {
   'field-focus-width': '1px',
   'radius-status': '6px',
   'grid-row-height': '26px',
-  'tree-row-height': '24px',
+  'tree-row-height': '20px',
+  'tree-indent': '10px',
   'tab-height': '28px',
   'control-compact': 'var(--or-control-height-compact)',
   'rail-tile-size': '36px',
@@ -56,8 +62,19 @@ export const geometry = {
   'control-md': 'var(--or-control-height)',
   'icon-size': '0.9375rem',
   'dot-size': '0.5rem',
-  'toolbar-height': '48px',
-  'traffic-light-clearance': '86px',
+  'toolbar-height': '52px',
+  'traffic-light-clearance': '98px',
+  'toolbar-gap': '10px',
+  'toolbar-inset': '8px',
+  'glass-height': '36px',
+  'glass-padding': '3px',
+  'glass-button-width': '34px',
+  'glass-button-height': '30px',
+  'toolbar-icon-size': '18px',
+  'search-height': '26px',
+  'segment-height-source': '20px',
+  'segment-min-width-source': '65px',
+  'field-box-height': '26px',
   'sidebar-width': '12rem',
   'gallery-width': '64rem',
   'swatch-size': '3rem',

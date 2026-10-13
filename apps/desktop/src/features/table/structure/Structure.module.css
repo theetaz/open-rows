@@ -324,21 +324,25 @@
 .info {
   display: flex;
   flex-direction: column;
-  gap: var(--or-space-6);
+  gap: var(--or-space-4);
   margin: 0;
 }
 .info dt {
   font-family: var(--or-font-ui);
   font-size: var(--or-text-12);
-  color: var(--or-secondary);
+  color: var(--or-label-tertiary);
+  line-height: 15px;
 }
 .info dd {
-  margin: var(--or-space-2) 0 0;
+  margin: 0;
+  min-block-size: var(--or-field-box-height);
   padding: var(--or-space-4) var(--or-space-8);
-  border-radius: var(--or-radius-control);
-  background: var(--or-control-fill);
+  border-radius: var(--or-radius-field-box);
+  border: 0.5px solid var(--or-field-box-stroke);
+  background: var(--or-field-box-fill);
   font-family: var(--or-font-mono);
-  font-size: var(--or-text-mono, var(--or-text-13));
+  font-size: var(--or-text-13);
+  line-height: 17px;
   font-variant-numeric: tabular-nums;
   user-select: text;
 }
@@ -346,6 +350,7 @@
 .info .comment {
   padding: 0;
   background: none;
+  border: 0;
 }
 .value {
   font-family: var(--or-font-mono);

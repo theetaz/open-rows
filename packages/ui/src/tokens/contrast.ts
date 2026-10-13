@@ -42,8 +42,15 @@ function ratio(foreground: string, background: Colour): number {
   return colourRatio(composite(parse(foreground), background), background);
 }
 /** WCAG ratio for a foreground composited over an opaque sRGB background. */
-export function contrastRatio(foreground: string, background: string): number {
-  return ratio(foreground, parse(background));
+export function contrastRatio(
+  foreground: string,
+  background: string,
+  base?: string,
+): number {
+  const fill = base
+    ? composite(parse(background), parse(base))
+    : parse(background);
+  return ratio(foreground, fill);
 }
 type Row = { theme: string; pair: string; ratio: number; minimum: number };
 function surfaces(palette: typeof light): Record<string, Colour> {
@@ -113,8 +120,47 @@ export function paletteRows(theme: string, palette: typeof light): Row[] {
       ratio: ratio(palette['on-accent'], parse(palette[background])),
       minimum: 4.5,
     });
-  rows.push(...railRows(theme, palette));
+  rows.push(...railRows(theme, palette), ...chromeRows(theme, palette));
   return rows;
+}
+
+function chromeRows(theme: string, palette: typeof light): Row[] {
+  const page = parse(palette.page);
+  const toolbar = composite(parse(palette.toolbar), page);
+  const pairs: [keyof typeof light, string, Colour, number][] = [
+    ['label-tertiary', 'page', page, 4.5],
+    [
+      'label-tertiary',
+      'search',
+      composite(parse(palette['search-fill']), page),
+      4.5,
+    ],
+    ['toolbar-icon', 'toolbar', toolbar, 3],
+    [
+      'address-text',
+      'address',
+      composite(parse(palette.address), toolbar),
+      4.5,
+    ],
+    [
+      'address-text',
+      'address-inactive',
+      composite(parse(palette['address-inactive']), toolbar),
+      4.5,
+    ],
+    [
+      'text',
+      'field-box',
+      composite(parse(palette['field-box-fill']), page),
+      4.5,
+    ],
+  ];
+  return pairs.map(([foreground, name, background, minimum]) => ({
+    theme,
+    pair: `${foreground}/${name}`,
+    ratio: ratio(palette[foreground], background),
+    minimum,
+  }));
 }
 /** Full WCAG sRGB coverage of text/focus pairs, composited glass and badge fills. */
 export function contrastRows(): Row[] {

@@ -14,7 +14,7 @@ type Props = Omit<InputHTMLAttributes<HTMLInputElement>, 'aria-label'> &
     /** Accessory inside the frame after the input, such as a reveal button. */
     trailing?: ReactNode;
     error?: string;
-    controlSize?: ControlSize;
+    controlSize?: ControlSize | 'search';
   };
 /** Labelled input with optional original icon and associated validation message. */
 export function TextField({

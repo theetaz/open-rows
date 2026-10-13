@@ -24,6 +24,23 @@
   border-radius: var(--or-radius-control-compact);
   font-size: var(--or-text-12);
 }
+.frame[data-size='search'] {
+  block-size: var(--or-search-height);
+  border-radius: var(--or-radius-search);
+  background: var(--or-search-fill);
+  border-color: var(--or-search-rim);
+}
+.frame[data-size='search'] input::placeholder,
+.frame[data-size='search'] .icon {
+  color: var(--or-label-tertiary);
+}
+.frame[data-size='search'] .icon svg {
+  inline-size: 14px;
+  block-size: 14px;
+}
+.frame[data-size='search'] .icon + input {
+  padding-inline-start: var(--or-space-2);
+}
 .frame input,
 .frame select {
   box-sizing: border-box;

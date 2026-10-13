@@ -33,6 +33,21 @@
 .frame textarea:read-only {
   cursor: default;
 }
+.frame[data-size='box'] {
+  min-block-size: var(--or-field-box-height);
+  border-radius: var(--or-radius-field-box);
+  border: 0.5px solid var(--or-field-box-stroke);
+  background: var(--or-field-box-fill);
+  font-family: var(--or-font-mono);
+  font-size: var(--or-text-13);
+}
+.frame[data-size='box'] textarea {
+  min-block-size: calc(var(--or-field-box-height) - 1px);
+  line-height: 17px;
+}
+.frame[data-size='box'] .trailing {
+  padding: 0;
+}
 .frame textarea::placeholder {
   color: var(--or-secondary);
   opacity: 1;

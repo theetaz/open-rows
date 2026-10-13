@@ -78,11 +78,11 @@ export function WorkspaceSidebar(props: Props): React.JSX.Element {
           options={sidebarSegments}
           value={segment}
           onValueChange={setSegment}
-          className={styles.modes}
+          variant="source"
         />
         {props.header}
         <TextField
-          className={styles.search}
+          controlSize="search"
           leadingIcon={<Icon name="search" />}
           aria-label="Search items"
           placeholder={searchPlaceholder(segment)}
