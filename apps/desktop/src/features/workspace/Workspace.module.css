@@ -13,7 +13,8 @@
   height: 100vh;
   overflow: hidden;
   border-radius: var(--or-radius-window);
-  background: var(--or-page);
+  /* Panes paint themselves; only the header lets the native material through. */
+  background: transparent;
 }
 .workspace:has(nav[data-compact='true']) {
   grid-template-areas:
@@ -36,6 +37,7 @@
   flex-shrink: 0;
   padding-inline: var(--or-space-10);
   border-block-end: var(--or-border-width) solid var(--or-separator);
+  background: var(--or-toolbar);
   user-select: none;
   min-width: 0;
   white-space: nowrap;
@@ -78,10 +80,11 @@
   gap: var(--or-space-6);
   padding-inline: var(--or-space-12);
   border-radius: var(--or-radius-capsule);
-  background: var(--or-control-active);
-  box-shadow: inset 0 0 0 var(--or-border-width) var(--or-separator);
+  background: var(--or-address);
+  color: var(--or-address-text);
   font-family: var(--or-font-mono);
   font-size: var(--or-text-12);
+  font-weight: var(--or-weight-semibold);
 }
 .context > * {
   flex-shrink: 0;
@@ -123,7 +126,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   font-family: var(--or-font-mono);
-  font-weight: var(--or-weight-medium);
+  font-weight: var(--or-weight-semibold);
   font-size: var(--or-text-12);
 }
 .address > span {
@@ -152,6 +155,7 @@
   min-height: 0;
   gap: 0;
   overflow: hidden;
+  background: var(--or-page);
 }
 .gallery {
   flex: 1;

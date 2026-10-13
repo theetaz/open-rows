@@ -6,7 +6,11 @@
   width: var(--or-rail-width);
   min-height: 0;
   padding: 0 var(--or-space-8) var(--or-space-8);
-  background: var(--or-page);
+  /* The traffic-light strip belongs to the translucent header. */
+  background: linear-gradient(
+    var(--or-toolbar) var(--or-toolbar-height),
+    var(--or-page) var(--or-toolbar-height)
+  );
   border-inline-end: var(--or-border-width) solid var(--or-separator);
 }
 .railTop {

@@ -29,7 +29,11 @@ it('panes are edge-to-edge: borderless, unrounded, with a distinct content surfa
     expect(palette.window).not.toBe(palette['panel-solid']);
     expect(palette.window).not.toBe(palette.page);
   }
-  expect(css('Rail')).toContain('background: var(--or-page)');
+  // The rail's traffic-light strip is part of the translucent header.
+  expect(css('Rail')).toMatch(
+    /var\(--or-toolbar\) var\(--or-toolbar-height\),\s+var\(--or-page\)/,
+  );
+  expect(css('Workspace')).toContain('background: var(--or-toolbar)');
   expect(css('Query')).toContain('background: var(--or-window)');
   expect(geometry['radius-field']).toBe('6px');
 });

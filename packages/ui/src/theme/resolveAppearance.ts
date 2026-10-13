@@ -87,6 +87,7 @@ function tintedPalette(
       ? base['danger-fg']
       : mix(base['danger-fg'], '#FFFFFF', 0.14),
     'row-stripe': alpha(half.accent, lightMode ? 0.05 : 0.08),
+    toolbar: alpha(half.canvas, lightMode ? 0.78 : 0.72),
     'info-fg': lightMode
       ? mix(half.accent, '#000000', 0.25)
       : mix(half.accent, '#FFFFFF', 0.85),
@@ -105,13 +106,14 @@ function modeStyles(settings: Appearance, mode: 'light' | 'dark'): string {
       ? ':root:not([data-theme="dark"]):not([data-theme="light"])'
       : ':root[data-theme="system"]';
   const overrides = `color-scheme:${mode};` + declarations(palette);
+  const solid = `--or-panel:${palette['panel-solid']};--or-toolbar:${palette.page};`;
   const contrast = declarations({
     ...highContrast[mode],
     panel: palette['panel-solid'],
   });
   return `${selector}{${overrides}}@media(prefers-color-scheme:${mode}){${system}{${overrides}}}
     @media(prefers-contrast:more){${selector}{${contrast}}@media(prefers-color-scheme:${mode}){${system}{${contrast}}}}
-    @media(prefers-reduced-transparency:reduce){${selector}{--or-panel:${palette['panel-solid']};}@media(prefers-color-scheme:${mode}){${system}{--or-panel:${palette['panel-solid']};}}}`;
+    @media(prefers-reduced-transparency:reduce){${selector}{${solid}}@media(prefers-color-scheme:${mode}){${system}{${solid}}}}`;
 }
 export function appearanceCss(settings: Appearance): string {
   const sizes = Object.entries(typography)
@@ -132,5 +134,5 @@ export function appearanceCss(settings: Appearance): string {
     --or-text-editor:${String(settings.editorSize)}px;--or-text-grid:${String(settings.gridSize)}px;--or-text-sidebar:${String(settings.sidebarSize)}px;--or-editor-line-height:${String(settings.editorLineHeight)};
     --or-text-mono:${String(settings.monoSize)}px;--or-motion-panel:${String(settings.motion)}ms;${sizes}}
     ${modeStyles(settings, 'light')}${modeStyles(settings, 'dark')}
-    :root[data-transparency="reduced"][data-theme]{--or-panel:var(--or-panel-solid);}`;
+    :root[data-transparency="reduced"][data-theme]{--or-panel:var(--or-panel-solid);--or-toolbar:var(--or-page);}`;
 }
