@@ -50,14 +50,9 @@ function mount(): ReturnType<typeof userEvent.setup> {
   );
   return userEvent.setup({ skipHover: true });
 }
-it('connects saved profiles from the rail and forces safe mode for prod', async () => {
+it("connects saved profiles from the rail and shows each one's safety policy", async () => {
   const user = mount();
-  const safe = screen.getByRole('button', { name: 'Safe mode' });
-  expect(safe).toHaveAttribute('aria-pressed', 'false');
-  await user.click(safe);
-  expect(safe).toHaveAttribute('aria-pressed', 'true');
-  await user.click(safe);
-  expect(safe).toHaveAttribute('aria-pressed', 'false');
+  expect(screen.getByRole('button', { name: 'Safe mode' })).toBeDisabled();
   const context = screen.getByLabelText('Connection context');
   expect(context).toHaveTextContent('Not connected : No connection');
   await user.click(
@@ -70,9 +65,9 @@ it('connects saved profiles from the rail and forces safe mode for prod', async 
     );
   });
   expect(openSession).toHaveBeenCalledWith('id-analytics-prod', 'orders');
-  expect(safe).toHaveAttribute('aria-pressed', 'true');
-  await user.click(safe);
-  expect(safe).toHaveAttribute('aria-pressed', 'true');
+  expect(
+    screen.getByRole('button', { name: 'Safe mode: Confirm writes' }),
+  ).toHaveAttribute('data-on', 'true');
   await user.click(
     screen.getByRole('button', { name: 'Switch to events-dev' }),
   );
@@ -81,7 +76,9 @@ it('connects saved profiles from the rail and forces safe mode for prod', async 
       'DEV | PostgreSQL 17.2 : events-dev : orders',
     );
   });
-  expect(safe).toHaveAttribute('aria-pressed', 'false');
+  expect(
+    screen.getByRole('button', { name: 'Safe mode: Unrestricted' }),
+  ).toHaveAttribute('data-on', 'false');
   await screen.findByRole('option', { name: 'archive' });
   await user.selectOptions(
     screen.getByRole('combobox', { name: 'Schema' }),

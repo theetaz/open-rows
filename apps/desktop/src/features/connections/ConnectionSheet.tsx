@@ -21,6 +21,8 @@ import styles from './ConnectionSheet.module.css';
 
 type Props = {
   profile?: ProfileDto | undefined;
+  /** Opened to change this connection's safety policy. */
+  focusSafety?: boolean | undefined;
   filePath?: string;
   /** The engine of a new connection (chosen in the picker). */
   engine?: EngineDto | undefined;
@@ -87,7 +89,7 @@ export function ConnectionSheet(props: Props): React.JSX.Element {
           </>
         )}
         <SessionLimitsFields form={form} />
-        <EnvironmentFields form={form} />
+        <EnvironmentFields form={form} focusSafety={props.focusSafety} />
         <SavedSharing profile={profile} />
         <TestResult state={form.test} />
         {form.saveError && (

@@ -174,3 +174,17 @@ fn forms_without_an_engine_are_postgres() -> Result<(), serde_json::Error> {
     assert!(form.startup_commands.is_empty());
     Ok(())
 }
+
+#[test]
+fn typed_secrets_deserialize_from_plain_strings_and_redact() -> Result<(), serde_json::Error> {
+    let typed: PasswordInput =
+        serde_json::from_value(serde_json::json!({ "kind": "set", "value": "pw-synthetic" }))?;
+    assert!(matches!(&typed, PasswordInput::Set { value } if value.expose() == "pw-synthetic"));
+    assert!(!format!("{typed:?}").contains("pw-synthetic"));
+    let pasted: PasswordInput = serde_json::from_value(serde_json::json!({
+        "kind": "fromUrl", "url": "postgres://app:pw-synthetic@localhost/orders"
+    }))?;
+    assert!(matches!(&pasted, PasswordInput::FromUrl { url } if url.expose().contains("pw-synth")));
+    assert!(!format!("{pasted:?}").contains("pw-synthetic"));
+    Ok(())
+}

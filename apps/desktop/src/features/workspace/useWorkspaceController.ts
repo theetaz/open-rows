@@ -26,6 +26,8 @@ import type { ShellInput } from './shellCommand';
 import { menuEnabled } from './menuState';
 import { useObjectEditing } from './useObjectEditing';
 import type { ObjectEditing } from './useObjectEditing';
+import { safeModeState } from '../security/policies';
+import type { SafeModeState } from '../security/policies';
 import { OBJECT_COMMANDS, objectCommandSupported } from '../objects';
 import type { ObjectEditorRequest } from '../objects';
 import type { PaletteMode } from './WorkspacePalettes';
@@ -181,19 +183,17 @@ function useSidebar(): {
   };
 }
 
-/** The toolbar's safe-mode switch; production connections are always safe. */
+/** The saved safety policy, and the setting that changes it. */
 function useSafeMode(connections: Connections): {
-  prod: boolean;
-  safe: boolean;
-  toggleSafe: () => void;
+  safeMode: SafeModeState | null;
+  openSafety: () => void;
 } {
-  const [safe, setSafe] = useState(false);
-  const prod = connections.active?.env.kind === 'prod';
+  const { active: profile } = connections;
   return {
-    prod,
-    safe: safe || prod,
-    toggleSafe: () => {
-      if (!prod) setSafe(!safe);
+    safeMode: profile ? safeModeState(profile) : null,
+    openSafety: () => {
+      if (profile)
+        connections.setSheet({ kind: 'edit', profile, focus: 'safety' });
     },
   };
 }
@@ -345,7 +345,7 @@ export function useWorkspaceController(input: Input): WorkspaceController {
     scopeOf,
     openQuery: commands.openObject,
   });
-  const { prod, safe, toggleSafe } = useSafeMode(connections);
+  const { safeMode, openSafety } = useSafeMode(connections);
   const showDiagram = diagramOpener(catalog, input.onShowDiagram);
   const importData = importOpener(catalog, active?.table, input.onImport);
   const command = shellCommand({
@@ -358,7 +358,7 @@ export function useWorkspaceController(input: Input): WorkspaceController {
     addQuery: commands.addQuery,
     closeTab: commands.closeTab,
     refresh,
-    toggleSafe,
+    openSafety,
     setTheme,
     onShowDiagram: showDiagram,
     onImport: importData,
@@ -371,7 +371,6 @@ export function useWorkspaceController(input: Input): WorkspaceController {
     connections,
     tab: active,
     scope,
-    prod,
   });
   return {
     jobs: input.jobs,
@@ -381,8 +380,7 @@ export function useWorkspaceController(input: Input): WorkspaceController {
     compact,
     inspector,
     sidebar,
-    safe,
-    prod,
+    safeMode,
     mode,
     setMode,
     refreshes,
@@ -396,7 +394,7 @@ export function useWorkspaceController(input: Input): WorkspaceController {
     ...monitors,
     hiddenCommands: hiddenCommands(connections),
     objects,
-    toggleSafe,
+    openSafety,
     refresh,
     command,
   };
@@ -411,8 +409,7 @@ type WorkspaceController = { jobs: JobActions } & Details &
     compact: boolean;
     inspector: ReturnType<typeof useInspectorOpen>;
     sidebar: boolean;
-    safe: boolean;
-    prod: boolean;
+    safeMode: SafeModeState | null;
     mode: PaletteMode | null;
     setMode: (mode: PaletteMode | null) => void;
     refreshes: number;
@@ -439,7 +436,7 @@ type WorkspaceController = { jobs: JobActions } & Details &
     hiddenCommands: readonly string[];
     /** The open object editor and its commands (M2-08). */
     objects: ObjectEditing;
-    toggleSafe: () => void;
+    openSafety: () => void;
     refresh: () => void;
     command: (id: string) => void;
   };

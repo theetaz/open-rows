@@ -22,7 +22,7 @@ export type SheetState =
   | { kind: 'new-file'; path: string; engine?: 'sqlite' | 'duckdb' }
   | { kind: 'import' }
   | { kind: 'export'; ids?: string[] }
-  | { kind: 'edit'; profile: ProfileDto }
+  | { kind: 'edit'; profile: ProfileDto; focus?: 'safety' }
   | { kind: 'delete'; profile: ProfileDto }
   | null;
 

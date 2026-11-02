@@ -91,7 +91,7 @@ The approved direction refines the skeleton above:
 | **Workspace sidebar** (far left, 220 px, full height under the traffic lights; compact 60 px) | Named server rows use 20 px engine-tinted monograms with a presence dot on the tile's bottom-right corner (grey, amber connecting, green connected, red failed), normal-font connection names and visually hidden status text (failures show it). Environment/folder headings show counts and collapse independently; each connection has a separate disclosure next to its selection control. Its opened databases are indented horizontal rows with database icons. Solid blue selection identifies the active database. Compact mode works like Slack: the toolbar spans the window, the rail sits below it with one 36 px tile per connection (the selected one ringed), short separators between groups and `+` below the tiles; databases are reached from ⌘K and the toolbar. Right-click opens the connection menu at the pointer; the hover ⋯ opens it under the button. Tooltips show the name, environment, address, status and ⌘ shortcut. Both width mode and collapse state persist locally. Tab and ↑/↓ navigate; ⌘1–9 switch, in rail order. New connection, API and settings controls remain available. |
 | **Sidebar header** | Truncating workspace name, environment badge and a mock actions menu (Connection settings…, Duplicate, Disconnect). Below, a database icon/name/chevron opens a glass menu of opened databases: active check, hover/focus close (the last one too), wrapping ↑/↓, Home/End, Enter, Esc/Tab dismissal and opener focus return; the menu takes the selector's width and never leaves the sidebar, long names truncate with a full-name tooltip. Open database… (⌘K) opens the Open database panel. Database and workspace changes preserve per-database tabs. |
 | **Sidebar** (floating rounded panel) | Header above segmented **Items / Queries / History**, search and object tree; schema picker and "create object" at the bottom. |
-| **Toolbar** | One unified, full-width titlebar row that never wraps: traffic lights → sidebar toggle → back/forward → safe mode → context bar (flexes, truncates) → actions → inspector toggle pinned at the far right above the inspector. Contents: back/forward (per-tab navigation history), **Safe mode** toggle (always on for prod), **context bar** like TablePlus: `ENV | PostgreSQL 14.17 : connection : database : schema.object` (route and live latency later). |
+| **Toolbar** | One unified, full-width titlebar row that never wraps: traffic lights → sidebar toggle → back/forward → safe mode → context bar (flexes, truncates) → actions → inspector toggle pinned at the far right above the inspector. Contents: back/forward (per-tab navigation history), **Safe mode** status button (the saved safety policy; it opens the connection's settings at that policy, see "Safe mode in the toolbar"), **context bar** like TablePlus: `ENV | PostgreSQL 14.17 : connection : database : schema.object` (route and live latency later). |
 | **Tabs** | Chrome-style tabs for every table, query, structure view and API request; drag to reorder or tear off into a new window; middle-click closes. |
 | **Table view switcher** | Data · Structure · Indexes · Triggers · DDL inside each table tab; filter chips and "+ Row" next to it. |
 | **Right panel** (floating) | Segmented **Details / Assistant**: row/object details, or the AI assistant with provider switcher, policy chips, tool trace and proposal cards. |
@@ -172,8 +172,51 @@ header shows the real name, environment badge, a live status
 (Not connected / Connecting… / Connected · PostgreSQL x.y / Connection failed
 plus the message) and a **Connection menu**: Connect/Disconnect, Connection
 settings…, Duplicate, Delete… (always confirmed in a sheet). The toolbar
-context bar shows the real connection name, environment and status; Safe mode
-is forced on for prod-tagged connections.
+context bar shows the real connection name, environment and status.
+
+### Safe mode in the toolbar
+
+The button reports the active connection's saved policy (FR-CONN-07): a lock for
+any policy beyond Unrestricted or a read-only database file, an open lock otherwise,
+and the policy's name in its label and tooltip. It reads what enforcement reads, so
+it cannot disagree with it, and a production connection a user explicitly set to
+Unrestricted shows as Unrestricted. It is not a switch: since M2-22a there are six
+policies, so "off" has no defined target, and one click must not loosen protection.
+Clicking it, the palette's **Safe mode settings…** and Connection ▸ **Safe Mode
+Settings…** open the connection sheet with the policy focused; saving there is the
+only way to change it.
+
+### Environment colour
+
+The toolbar shows the tag as text on its tone, a 2 px strip in the tag's colour under
+the toolbar, and every tab of the connection a small mark, with the environment
+named in the tab's tooltip. Standard tags use the theme's `--or-<env>-fg` and
+`--or-<env>-bg`, the tones of `EnvBadge`; `just contrast-report` covers them. The tag
+sits on a solid panel fill so the address bar's glass cannot weaken its contrast.
+Custom tags use a neutral fill, their label and a dot, strip and marks in their own
+colour, which the report cannot check, so the label always carries the meaning. The
+v2 layout has no status bar, so nothing else hosts this colour.
+
+### OS text size (NFR-UX-03): not available on macOS
+
+Font sizes are in-app settings only, because macOS offers no supported way to read
+the Accessibility text size for an app like this (checked on macOS 26.5,
+2026-11-03):
+
+- Apple documents Dynamic Type for iOS, iPadOS, tvOS, visionOS and watchOS, not macOS
+  ([Apple DTS answer](https://developer.apple.com/forums/thread/818858)). System
+  Settings' list of apps it applies to is Apple's own.
+- In a throwaway AppKit + `WKWebView` program, `NSFont.systemFontSize` and
+  `preferredFont(forTextStyle: .body)` return 13 and CSS `-apple-system-body` computes
+  to 13 px, while `com.apple.universalaccess` holds `FontSizeCategory.global = S`.
+- `UIPreferredContentSizeCategoryName` reads `M` on the same machine, so the two
+  undocumented keys disagree. Overriding it for that process changed the value read
+  back and no font.
+
+What was not tried: moving the System Settings slider, which would change the
+owner's machine. Reading `FontSizeCategory` directly would be an undocumented
+preference of another domain with no change notification, so it is not done.
+
 
 The connection sheet has: paste-URL (Enter or **Fill from URL**; the core parses
 it, the password never returns to the webview), name, group, host, port,

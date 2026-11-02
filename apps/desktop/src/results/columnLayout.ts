@@ -1,6 +1,4 @@
 // SPDX-License-Identifier: Apache-2.0
-import { MIN_COLUMN_WIDTH } from '@openrows/grid';
-
 /** A grid's own arrangement of its columns, keyed by column name. */
 export type ColumnLayout = {
   /** Widths the user dragged or auto-sized. */
@@ -37,21 +35,6 @@ export function pinnedCount(
   while (count < shown.length && layout.pinned.includes(shown[count] ?? ''))
     count++;
   return count;
-}
-
-/** Store one column's width. */
-export function withWidth(
-  layout: ColumnLayout,
-  name: string,
-  width: number,
-): ColumnLayout {
-  return {
-    ...layout,
-    widths: {
-      ...layout.widths,
-      [name]: Math.max(MIN_COLUMN_WIDTH, Math.round(width)),
-    },
-  };
 }
 
 /**

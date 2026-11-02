@@ -61,7 +61,7 @@ export type ShellInput = {
   /** Open a `.sql` file into a new tab when no query tab is active. */
   openFile: () => void;
   refresh: () => void;
-  toggleSafe: () => void;
+  openSafety: () => void;
   activeTab?: QueryTab | undefined;
   onGallery: () => void;
   onSettings: (section?: SettingsSection) => void;
@@ -170,7 +170,7 @@ function workActions(input: ShellInput): Actions {
       input.refresh();
       runTableCommand('refresh');
     },
-    safe: input.toggleSafe,
+    safe: input.openSafety,
     'toggle-favourite': () => {
       toggleActiveFavourite(input.activeTab);
     },

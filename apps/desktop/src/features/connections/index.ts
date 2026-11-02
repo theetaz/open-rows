@@ -3,6 +3,7 @@ export { ConnectionHeader } from './ConnectionHeader';
 export { ConnectionRail } from './ConnectionRail';
 export { connectionActions } from './connectionActions';
 export { InsecureBadge } from './InsecureBadge';
+export { environmentColour } from './EnvironmentBadge';
 export { insecureReasons } from './insecure';
 export { ConnectionSheets } from './ConnectionSheets';
 export { openedDatabase, sessionOf, statusLabel } from './sessions';

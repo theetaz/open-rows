@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
+import type { CSSProperties } from 'react';
 import { Icon, IconButton, ToolbarGroup } from '@openrows/ui';
 import type { IconName } from '@openrows/ui';
+import type { SafeModeState } from '../security/policies';
 import type { ContextSegments } from './contextBar';
 import { ConnectionStatus } from './ConnectionStatus';
-import { InsecureBadge } from '../connections';
+import { environmentColour, InsecureBadge } from '../connections';
 import { JobsButton } from '../jobs';
 import { FavouriteButton } from '../schema/FavouriteButton';
 import type { SidebarObject } from '../schema/sidebarIdentity';
@@ -20,9 +22,10 @@ type Props = {
   onDatabase?: (() => void) | undefined;
   onPalette: () => void;
   onRefresh?: (() => void) | undefined;
-  safe: boolean;
-  prod: boolean;
-  onSafe: () => void;
+  /** The active connection's real protection; `null` without a connection. */
+  safeMode: SafeModeState | null;
+  /** Open the connection's settings at its safety policy. */
+  onSafeMode: () => void;
   sidebar: boolean;
   inspector: boolean;
   onSidebar: () => void;
@@ -35,6 +38,7 @@ export function WorkspaceToolbar(props: Props): React.JSX.Element {
   return (
     <header
       className={styles.toolbar}
+      style={tint(props.context)}
       data-tauri-drag-region
       aria-label="Window toolbar"
     >
@@ -51,18 +55,7 @@ export function WorkspaceToolbar(props: Props): React.JSX.Element {
         <ToolButton label="Forward" icon="chevronRight" />
       </ToolbarGroup>
       <ToolbarGroup aria-label="Connection tools">
-        <IconButton
-          aria-label="Safe mode"
-          title={props.safe ? 'Safe mode on' : 'Safe mode off'}
-          className={styles.safe}
-          aria-pressed={props.safe}
-          aria-disabled={props.prod}
-          variant="ghost"
-          size="sm"
-          onClick={props.onSafe}
-        >
-          <Icon name={props.safe ? 'lock' : 'unlock'} />
-        </IconButton>
+        <SafeModeButton state={props.safeMode} onClick={props.onSafeMode} />
         <ToolButton
           label="Open database (⌘K)"
           icon="database"
@@ -101,6 +94,37 @@ export function WorkspaceToolbar(props: Props): React.JSX.Element {
     </header>
   );
 }
+/**
+ * Reports the saved safety policy and opens the setting that changes it. A
+ * toggle here could only guess which of the six policies "off" should mean.
+ */
+function SafeModeButton({
+  state,
+  onClick,
+}: {
+  state: SafeModeState | null;
+  onClick: () => void;
+}): React.JSX.Element {
+  return (
+    <IconButton
+      aria-label={state ? `Safe mode: ${state.label}` : 'Safe mode'}
+      aria-haspopup="dialog"
+      title={
+        state
+          ? `Safe mode: ${state.label}. ${state.detail} Click to change it in connection settings.`
+          : 'Safe mode is not available without a connection.'
+      }
+      className={styles.safe}
+      data-on={state?.on ?? false}
+      disabled={!state}
+      variant="ghost"
+      size="sm"
+      onClick={onClick}
+    >
+      <Icon name={state?.on ? 'lock' : 'unlock'} />
+    </IconButton>
+  );
+}
 /** Icon-only toolbar action; the label doubles as its tooltip. */
 function ToolButton(props: {
   label: string;
@@ -126,6 +150,12 @@ function ToolButton(props: {
     </IconButton>
   );
 }
+/** The environment's colour for the strip under the toolbar and its tag. */
+function tint({ environment }: ContextSegments): CSSProperties | undefined {
+  return environment
+    ? ({ '--env-color': environmentColour(environment) } as CSSProperties)
+    : undefined;
+}
 /** `ENV | PostgreSQL 14.17 : connection : database : schema.object`. */
 function Context({
   context,
@@ -149,7 +179,9 @@ function Context({
       <ConnectionStatus health={health} route={context.route} />
       {env && (
         <span className={styles.env}>
-          {env}
+          <span className={styles.envTag} data-env={context.environment?.kind}>
+            {env}
+          </span>
           <span className={styles.bar} aria-hidden="true">
             {' | '}
           </span>

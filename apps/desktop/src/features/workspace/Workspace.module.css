@@ -28,6 +28,7 @@
   display: contents;
 }
 .toolbar {
+  position: relative;
   grid-area: toolbar;
   display: flex;
   flex-wrap: nowrap;
@@ -40,6 +41,16 @@
   user-select: none;
   min-width: 0;
   white-space: nowrap;
+}
+/* The environment's colour, visible even in a screenshot (FR-CONN-06). */
+.toolbar::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+  block-size: var(--or-env-strip-height);
+  background: var(--env-color, transparent);
+  pointer-events: none;
 }
 .workspace:has(nav[data-compact='true']) .toolbar {
   padding-inline-start: var(--or-traffic-light-clearance);
@@ -78,7 +89,7 @@
   color: var(--or-toolbar-icon-disabled);
   opacity: 1;
 }
-.toolbar .safe[aria-pressed='true'] {
+.toolbar .safe[data-on='true'] {
   color: var(--or-success-fg);
 }
 .context {
@@ -122,8 +133,49 @@
   fill: currentColor;
 }
 .env {
+  display: inline-flex;
+  align-items: center;
   font: inherit;
   white-space: pre;
+}
+/* Colour paired with the tag's text, in the badge tones of docs/20. */
+.envTag {
+  --env-fg: var(--or-neutral-fg);
+  --env-bg: var(--or-neutral-bg);
+  padding-inline: var(--or-space-6);
+  border-radius: var(--or-radius-capsule);
+  /* Tone over solid: the address bar's glass must not change the contrast. */
+  background:
+    linear-gradient(var(--env-bg), var(--env-bg)), var(--or-panel-solid);
+  color: var(--env-fg);
+  font-size: var(--or-text-10);
+  font-weight: var(--or-weight-semibold);
+  line-height: 16px;
+}
+.envTag[data-env='local'] {
+  --env-fg: var(--or-local-fg);
+  --env-bg: var(--or-local-bg);
+}
+.envTag[data-env='dev'] {
+  --env-fg: var(--or-dev-fg);
+  --env-bg: var(--or-dev-bg);
+}
+.envTag[data-env='staging'] {
+  --env-fg: var(--or-staging-fg);
+  --env-bg: var(--or-staging-bg);
+}
+.envTag[data-env='prod'] {
+  --env-fg: var(--or-prod-fg);
+  --env-bg: var(--or-prod-bg);
+}
+.envTag[data-env='custom']::before {
+  content: '';
+  display: inline-block;
+  inline-size: var(--or-dot-size);
+  block-size: var(--or-dot-size);
+  margin-inline-end: var(--or-space-4);
+  border-radius: var(--or-radius-capsule);
+  background: var(--env-color, currentColor);
 }
 .bar {
   color: inherit;

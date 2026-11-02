@@ -7,6 +7,8 @@ import styles from '../connections/ConnectionSheet.module.css';
 export function SafetySelector(props: {
   value: SafetyDto;
   onChange: (value: SafetyDto) => void;
+  /** Take the sheet's initial focus: it was opened to change this. */
+  initialFocus?: boolean | undefined;
 }): React.JSX.Element {
   const security = useSecurity();
   return (
@@ -17,6 +19,7 @@ export function SafetySelector(props: {
       <div>
         <select
           id="connection-safety"
+          data-initial-focus={props.initialFocus}
           aria-describedby="safety-description"
           value={props.value}
           onChange={(e) => {

@@ -40,11 +40,11 @@ fn testing_without_stored_secrets_never_reads_the_keychain()
     assert!(kept.driver.password.is_none());
     assert!(kept.ssh.password.is_none());
     form.password = PasswordInput::Set {
-        value: "typed-synthetic".to_owned(),
+        value: "typed-synthetic".into(),
     };
     form.ssh = Some(SshInput {
         password: SecretInput::Set {
-            value: "ssh-synthetic".to_owned(),
+            value: "ssh-synthetic".into(),
         },
         ..ssh_input(SshAuthDto::Password)
     });
@@ -65,13 +65,13 @@ fn secrets_the_settings_do_not_use_are_ignored() -> Result<(), Box<dyn std::erro
     let mut form = input(EnvKindDto::Local);
     form.ssh = Some(SshInput {
         passphrase: SecretInput::Set {
-            value: "unused-synthetic".to_owned(),
+            value: "unused-synthetic".into(),
         },
         ..ssh_input(SshAuthDto::Agent)
     });
     form.tls_files = TlsFilesInput {
         key_passphrase: SecretInput::Set {
-            value: "unused-synthetic".to_owned(),
+            value: "unused-synthetic".into(),
         },
         ..TlsFilesInput::default()
     };

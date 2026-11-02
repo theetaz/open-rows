@@ -9,7 +9,9 @@ use super::{
     dto::ProfileInput,
     error::{IpcError, IpcErrorKind},
     profiles::profile_id,
+    resilient::FreshPassword,
 };
+use openrows_driver_api::DriverError;
 use openrows_secrets::SecretString;
 use openrows_store::profile::{
     CommandCancellation, CommandPurpose, CommandTrust, ConnectionProfile, CredentialCommand,
@@ -17,9 +19,10 @@ use openrows_store::profile::{
 };
 use std::{
     collections::HashMap,
+    io,
     sync::{Arc, Mutex},
 };
-use tauri::State;
+use tauri::{Manager as _, State};
 use tauri_plugin_dialog::{DialogExt as _, MessageDialogButtons};
 
 /// One profile's attempts in progress and what cancels them all.
@@ -81,6 +84,24 @@ impl CredentialRuns {
                 runs.remove(&id);
             }
         }
+    }
+}
+/// A reconnect's place among a profile's attempts. Dropping it ends the
+/// attempt, because a closing session may drop its reconnect at any await.
+struct Joined<'a> {
+    runs: &'a CredentialRuns,
+    id: ProfileId,
+    cancel: CommandCancellation,
+}
+impl<'a> Joined<'a> {
+    fn new(runs: &'a CredentialRuns, id: ProfileId) -> Result<Self, IpcError> {
+        let cancel = runs.join(id)?;
+        Ok(Self { runs, id, cancel })
+    }
+}
+impl Drop for Joined<'_> {
+    fn drop(&mut self) {
+        self.runs.finish(self.id);
     }
 }
 impl From<CredentialError> for IpcError {
@@ -187,10 +208,75 @@ pub(crate) async fn password(
         .ok_or_else(|| IpcError::invalid("Choose a credential program"))?
         .clone();
     let id = profile.id;
-    let cancel = state.credential_runs.start(id)?;
+    let cancel = begin(&state.credential_runs, &state.command_trust, id, &command)?;
     let result = execute(state, app, (id, command), cancel).await;
     state.credential_runs.finish(id);
     result
+}
+/// Only the trust question is one at a time. An approved command also runs
+/// beside the reconnects of a wake, when metadata sessions reopen too.
+fn begin(
+    runs: &CredentialRuns,
+    trust: &CommandTrust,
+    id: ProfileId,
+    command: &CredentialCommand,
+) -> Result<CommandCancellation, IpcError> {
+    if trust.is_trusted(id, command)? {
+        runs.join(id)
+    } else {
+        runs.start(id)
+    }
+}
+/// What a reconnect calls: new output for every connect, as docs/12 §10 asks.
+/// Sessions reconnect together after a wake, so attempts run side by side. It
+/// never opens a dialog in the background: a command edited since the session
+/// opened fails with a typed error.
+pub(crate) fn fresh_password(
+    state: &Connections,
+    profile: &ConnectionProfile,
+) -> Result<FreshPassword, IpcError> {
+    let command = profile
+        .credential_command
+        .clone()
+        .ok_or_else(|| IpcError::invalid("Choose a credential program"))?;
+    let (app, id) = (state.app.clone(), profile.id);
+    Ok(Arc::new(move || {
+        let (app, command) = (app.clone(), command.clone());
+        Box::pin(async move {
+            let state = app.state::<Connections>();
+            let trust = Arc::clone(&state.command_trust);
+            reconnect_password(&state.credential_runs, trust, (id, command)).await
+        })
+    }))
+}
+
+/// One reconnect's run of a command the user has already approved.
+async fn reconnect_password(
+    runs: &CredentialRuns,
+    trust: Arc<CommandTrust>,
+    invocation: (ProfileId, CredentialCommand),
+) -> Result<openrows_net::SecretString, DriverError> {
+    let (id, command) = invocation;
+    let joined = Joined::new(runs, id).map_err(|error| DriverError::Auth(error.message))?;
+    let cancel = joined.cancel.clone();
+    let password =
+        tauri::async_runtime::spawn_blocking(move || run_credential(&trust, id, &command, &cancel))
+            .await
+            .map_err(|error| DriverError::Auth(error.to_string()))?
+            .map_err(|error| reconnect_failure(&error))?;
+    Ok(password.expose().into())
+}
+
+/// A slow or failing provider may pass (its network after a wake), so the
+/// session retries it; a withdrawn approval or a cancel needs the user.
+fn reconnect_failure(error: &CredentialError) -> DriverError {
+    let message = error.to_string();
+    match error {
+        CredentialError::Timeout | CredentialError::Process(_) | CredentialError::Failed(_) => {
+            DriverError::Network(io::Error::other(message))
+        }
+        _ => DriverError::Auth(message),
+    }
 }
 async fn execute(
     state: &Connections,
@@ -238,3 +324,7 @@ pub(crate) fn credential_cancel(
     state.credential_runs.cancel(self::profile_id(&profile_id)?);
     Ok(())
 }
+
+#[cfg(all(test, unix))]
+#[path = "credentials_tests.rs"]
+mod tests;

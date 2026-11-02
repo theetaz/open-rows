@@ -3,7 +3,7 @@
 use std::str::FromStr;
 
 use openrows_core::{SessionEvent, SessionState};
-use openrows_store::profile::PasswordStorage;
+use openrows_store::profile::{ConnectionProfile, PasswordStorage};
 use openrows_types::SessionId;
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -138,9 +138,12 @@ pub(crate) async fn open_session(
             .await?
     } else {
         let dialect = drivers::driver(profile.driver).dialect();
-        let fresh = (profile.password_storage == PasswordStorage::Cloud)
-            .then(|| super::cloud_tokens::fresh_password(state, profile.clone()));
-        let mut recipe = resilient::recipe(target, dialect, server, fresh);
+        let mut recipe = resilient::recipe(
+            target,
+            dialect,
+            server,
+            reconnect_password(state, &profile)?,
+        );
         // App defaults change per run; do not freeze them into server startup settings.
         recipe.setup = limits::setup_sql(profile.driver, profile.limits.statement_timeout(0));
         state.sessions.open_resilient(recipe).await?
@@ -153,6 +156,18 @@ pub(crate) async fn open_session(
         )
     })?;
     Ok((session, server))
+}
+
+/// Where a reconnect gets its password when the opening one must not be replayed.
+fn reconnect_password(
+    state: &Connections,
+    profile: &ConnectionProfile,
+) -> Result<Option<resilient::FreshPassword>, IpcError> {
+    Ok(match profile.password_storage {
+        PasswordStorage::Cloud => Some(super::cloud_tokens::fresh_password(state, profile.clone())),
+        PasswordStorage::Command => Some(super::credentials::fresh_password(state, profile)?),
+        PasswordStorage::Keychain | PasswordStorage::Ask | PasswordStorage::None => None,
+    })
 }
 
 /// Cancel the session's work and disconnect; the database's metadata session

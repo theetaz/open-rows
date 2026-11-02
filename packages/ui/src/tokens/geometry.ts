@@ -63,6 +63,7 @@ export const geometry = {
   'icon-size': '0.9375rem',
   'dot-size': '0.5rem',
   'toolbar-height': '52px',
+  'env-strip-height': '2px',
   'traffic-light-clearance': '98px',
   'toolbar-gap': '10px',
   'toolbar-inset': '8px',

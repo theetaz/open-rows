@@ -179,7 +179,7 @@ const CONNECTION: &[Entry] = &[
     C("processes", "Show Processes"),
     C("monitor", "Show Monitor"),
     S,
-    C("safe", "Safe Mode"),
+    C("safe", "Safe Mode Settings…"),
 ];
 const NEW_OBJECT: &[Entry] = &[
     C("new-table", "Table…"),

@@ -251,7 +251,7 @@ function Toolbar({
   connections: ReturnType<typeof useConnections>;
   controller: ReturnType<typeof useWorkspaceController>;
 }): React.JSX.Element {
-  const { catalog, inspector, sidebar, safe, prod, setMode } = controller;
+  const { catalog, inspector, sidebar, setMode } = controller;
   const tab = controller.scope
     ? controller.tabs.activeFor(controller.scope)
     : undefined;
@@ -276,9 +276,8 @@ function Toolbar({
         setMode('commands');
       }}
       onRefresh={controller.refresh}
-      safe={safe}
-      prod={prod}
-      onSafe={controller.toggleSafe}
+      safeMode={controller.safeMode}
+      onSafeMode={controller.openSafety}
       sidebar={sidebar}
       inspector={inspector.open}
       onSidebar={controller.toggleSidebar}

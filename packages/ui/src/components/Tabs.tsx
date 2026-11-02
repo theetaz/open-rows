@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useRef } from 'react';
-import type { KeyboardEvent } from 'react';
+import type { CSSProperties, KeyboardEvent } from 'react';
 import { IconButton } from './Button';
 import { Icon } from '../icons/Icon';
 import { startTabDrag } from './tabDrag';
@@ -48,14 +48,23 @@ type Props = {
   onRename?: ((id: string, title: string | null) => void) | undefined;
   /** The overflow button (shown while tabs do not fit) at its bottom-left. */
   onOverflow?: ((x: number, y: number) => void) | undefined;
+  /** Colour of the mark on every tab, e.g. the connection's environment. */
+  markColor?: string | undefined;
 };
 /** Shrinking, then scrolling document tabs with roving keyboard focus. */
 export function Tabs(props: Props): React.JSX.Element {
   const list = useRef<HTMLDivElement>(null);
   const overflowing = useOverflowing(list, props.tabs.length);
-  const { onOverflow } = props;
+  const { onOverflow, markColor } = props;
   return (
-    <div className={styles.tabStrip}>
+    <div
+      className={styles.tabStrip}
+      style={
+        markColor
+          ? ({ '--tab-mark-color': markColor } as CSSProperties)
+          : undefined
+      }
+    >
       <div
         ref={list}
         role="tablist"
@@ -108,6 +117,7 @@ function DocumentTab({
       data-kind={tab.kind ?? 'table'}
       data-pinned={tab.pinned ?? false}
       data-preview={tab.preview ?? false}
+      data-marked={Boolean(owner.markColor)}
       onPointerDown={
         onReorder && !renaming
           ? (event) => {

@@ -14,6 +14,7 @@ use specta::Type;
 
 use super::enums::CloudCaDto;
 use super::proxy_dto::{ProxyInput, proxy_settings};
+use super::secret_ipc::IpcSecret;
 
 /// What to do with an SSH or TLS secret on save or test. `Debug` redacts
 /// the value.
@@ -26,7 +27,10 @@ pub(crate) enum SecretInput {
     /// No secret.
     Clear,
     /// A typed secret.
-    Set { value: String },
+    Set {
+        #[specta(type = String)]
+        value: IpcSecret,
+    },
 }
 
 impl std::fmt::Debug for SecretInput {
@@ -44,7 +48,7 @@ impl SecretInput {
         match self {
             Self::Keep => PasswordChange::Keep,
             Self::Clear => PasswordChange::Clear,
-            Self::Set { value } => PasswordChange::Set(value.as_str().into()),
+            Self::Set { value } => PasswordChange::Set(value.secret()),
         }
     }
 }
@@ -270,7 +274,7 @@ pub(crate) mod tests {
     fn debug_output_never_contains_secrets() {
         let mut input = ssh_input(SshAuthDto::Password);
         input.password = SecretInput::Set {
-            value: "ssh-pw-synthetic".to_owned(),
+            value: "ssh-pw-synthetic".into(),
         };
         assert!(!format!("{input:?}").contains("ssh-pw-synthetic"));
     }
@@ -280,7 +284,7 @@ pub(crate) mod tests {
         assert!(matches!(SecretInput::Keep.change(), PasswordChange::Keep));
         assert!(matches!(SecretInput::Clear.change(), PasswordChange::Clear));
         let set = SecretInput::Set {
-            value: "otp-synthetic".to_owned(),
+            value: "otp-synthetic".into(),
         };
         assert!(
             matches!(set.change(), PasswordChange::Set(value) if value.expose() == "otp-synthetic")

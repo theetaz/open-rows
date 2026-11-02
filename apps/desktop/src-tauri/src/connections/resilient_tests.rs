@@ -14,10 +14,7 @@ fn counting(fetches: &Arc<AtomicUsize>) -> FreshPassword {
 #[tokio::test]
 async fn the_opening_token_is_used_once_and_never_replayed() -> Result<(), DriverError> {
     let fetches = Arc::new(AtomicUsize::new(0));
-    let password = OneTimePassword {
-        first: Mutex::new(Some(SecretString::from("opening"))),
-        fresh: counting(&fetches),
-    };
+    let password = OneTimePassword::new(Some("opening".into()), counting(&fetches));
     assert_eq!(password.next().await?.expose(), "opening");
     assert_eq!(fetches.load(Ordering::SeqCst), 0);
     assert_eq!(password.next().await?.expose(), "fresh-1");

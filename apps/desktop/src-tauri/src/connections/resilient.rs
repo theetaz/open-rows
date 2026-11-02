@@ -7,8 +7,8 @@
 //! wakes or the network changes, every tunnel is pinged (dead ones are
 //! dropped so the next dial reconnects), idle metadata connections are
 //! dropped and every session probes its connection at once. A session on a
-//! short-lived cloud token gets a new one for each connect: its recipe holds
-//! the token only until the first connect uses it.
+//! short-lived cloud token or a credential command gets a new password for
+//! each connect: its recipe holds one only until the first connect uses it.
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
@@ -35,13 +35,20 @@ pub(crate) type FreshPassword =
 
 /// The password of the next connect: the one the session opened with, once,
 /// then always a new one, so an expired token is never replayed.
-struct OneTimePassword {
+pub(super) struct OneTimePassword {
     first: Mutex<Option<SecretString>>,
     fresh: FreshPassword,
 }
 
 impl OneTimePassword {
-    async fn next(&self) -> Result<SecretString, DriverError> {
+    pub(super) fn new(first: Option<SecretString>, fresh: FreshPassword) -> Self {
+        Self {
+            first: Mutex::new(first),
+            fresh,
+        }
+    }
+
+    pub(super) async fn next(&self) -> Result<SecretString, DriverError> {
         let first = self
             .first
             .lock()
@@ -82,12 +89,8 @@ pub(crate) fn recipe(
     server: oneshot::Sender<ServerDto>,
     fresh: Option<FreshPassword>,
 ) -> Resilience {
-    let password = fresh.map(|fresh| {
-        Arc::new(OneTimePassword {
-            first: Mutex::new(target.request.password.take()),
-            fresh,
-        })
-    });
+    let password =
+        fresh.map(|fresh| Arc::new(OneTimePassword::new(target.request.password.take(), fresh)));
     let target = Arc::new(target);
     let first: FirstServer = Arc::new(Mutex::new(Some(server)));
     let reconnect: Reconnect = Arc::new(move || {

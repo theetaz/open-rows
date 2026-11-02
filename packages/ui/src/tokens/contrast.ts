@@ -120,7 +120,11 @@ export function paletteRows(theme: string, palette: typeof light): Row[] {
       ratio: ratio(palette['on-accent'], parse(palette[background])),
       minimum: 4.5,
     });
-  rows.push(...railRows(theme, palette), ...chromeRows(theme, palette));
+  rows.push(
+    ...railRows(theme, palette),
+    ...chromeRows(theme, palette),
+    ...environmentRows(theme, palette),
+  );
   return rows;
 }
 
@@ -161,6 +165,39 @@ function chromeRows(theme: string, palette: typeof light): Row[] {
     ratio: ratio(palette[foreground], background),
     minimum,
   }));
+}
+/**
+ * The environment colour in the window chrome: the context bar's tag is text
+ * on its badge fill over a solid panel, so the glass behind it cannot weaken
+ * it; the tint strip and tab marks are graphics (WCAG 1.4.11).
+ */
+function environmentRows(theme: string, palette: typeof light): Row[] {
+  const toolbar = composite(parse(palette.toolbar), parse(palette.page));
+  const strip = parse(palette['panel-solid']);
+  const marks: [string, Colour][] = [
+    ['toolbar', toolbar],
+    ['tab-strip', strip],
+    ['tab-active', composite(parse(palette['control-active']), strip)],
+    ['tab-hover', composite(parse(palette['control-fill']), strip)],
+  ];
+  return (['local', 'dev', 'staging', 'prod'] as const).flatMap((tag) => {
+    const fg = palette[`${tag}-fg`];
+    const fill = parse(palette[`${tag}-bg`]);
+    return [
+      {
+        theme,
+        pair: `env-tag-${tag}/panel-solid`,
+        ratio: ratio(fg, composite(fill, strip)),
+        minimum: 4.5,
+      },
+      ...marks.map(([name, base]) => ({
+        theme,
+        pair: `env-mark-${tag}/${name}`,
+        ratio: ratio(fg, base),
+        minimum: 3,
+      })),
+    ];
+  });
 }
 /** Full WCAG sRGB coverage of text/focus pairs, composited glass and badge fills. */
 export function contrastRows(): Row[] {

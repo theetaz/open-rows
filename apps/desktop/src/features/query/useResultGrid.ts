@@ -7,7 +7,8 @@ import {
   resultLayoutKey,
   useColumnLayout,
 } from '../../results/columnLayoutStore';
-import { togglePin, withWidth } from '../../results/columnLayout';
+import { togglePin } from '../../results/columnLayout';
+import { withWidth } from '../../results/columnWidth';
 import type { ColumnLayout } from '../../results/columnLayout';
 import type { CopyTarget } from '../../results/copy/copySelection';
 import { resultColumnKey, storedRow } from '../../results/projectedResult';

@@ -69,6 +69,7 @@ export function ConnectionSheets({
     <ConnectionSheet
       key={sheet.profile.id}
       profile={sheet.profile}
+      focusSafety={sheet.focus === 'safety'}
       onClose={close}
       onSaved={connections.saved}
       onDelete={connections.confirmRemove}

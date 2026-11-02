@@ -7,8 +7,8 @@ import {
   pinnedCount,
   togglePin,
   widthOf,
-  withWidth,
 } from './columnLayout';
+import { withWidth } from './columnWidth';
 import {
   readLayout,
   resetLayout,

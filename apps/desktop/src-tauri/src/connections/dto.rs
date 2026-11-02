@@ -3,7 +3,6 @@
 //!
 //! Secrets only travel webview → core ([`PasswordInput`]); nothing here sends
 //! a password back.
-use openrows_secrets::SecretString;
 use openrows_store::profile::{
     ConnectionProfile, EnvKind, EnvTag, ParsedUrl, PasswordChange, Safety, SecretChanges,
     ServerParams, TlsMode, parse_url,
@@ -22,6 +21,7 @@ use super::proxy_dto::{ProxyDto, ProxyInput, proxy_dto};
 use super::route_dto::{
     SshDto, SshInput, TlsFilesDto, TlsFilesInput, apply_route, ssh_dto, tls_files_dto,
 };
+use super::secret_ipc::IpcSecret;
 
 /// Environment tag as shown in the rail, header and toolbar.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Type)]
@@ -251,9 +251,15 @@ pub(crate) enum PasswordInput {
     /// No password.
     Clear,
     /// A typed password.
-    Set { value: String },
+    Set {
+        #[specta(type = String)]
+        value: IpcSecret,
+    },
     /// The password inside a pasted connection URL.
-    FromUrl { url: String },
+    FromUrl {
+        #[specta(type = String)]
+        url: IpcSecret,
+    },
 }
 
 impl std::fmt::Debug for PasswordInput {
@@ -467,8 +473,8 @@ pub(crate) fn password_change(input: &PasswordInput) -> Result<PasswordChange, I
     Ok(match input {
         PasswordInput::Keep => PasswordChange::Keep,
         PasswordInput::Clear => PasswordChange::Clear,
-        PasswordInput::Set { value } => PasswordChange::Set(SecretString::from(value.as_str())),
-        PasswordInput::FromUrl { url } => parse_url(url)?
+        PasswordInput::Set { value } => PasswordChange::Set(value.secret()),
+        PasswordInput::FromUrl { url } => parse_url(url.expose())?
             .password
             .map_or(PasswordChange::Keep, PasswordChange::Set),
     })

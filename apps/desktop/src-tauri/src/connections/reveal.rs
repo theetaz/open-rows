@@ -15,6 +15,7 @@ use tauri::State;
 use super::Connections;
 use super::error::{IpcError, IpcErrorKind};
 use super::profiles::profile_id;
+use super::secret_ipc::IpcSecret;
 
 /// Which saved secret of a connection to reveal.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Type)]
@@ -40,9 +41,10 @@ impl From<SecretFieldDto> for SecretSlot {
 }
 
 /// A secret the user asked to see. `Debug` redacts the value.
-#[derive(Clone, Serialize, Type)]
+#[derive(Serialize, Type)]
 pub(crate) struct RevealedSecret {
-    value: String,
+    #[specta(type = String)]
+    value: IpcSecret,
 }
 
 impl std::fmt::Debug for RevealedSecret {
@@ -57,11 +59,11 @@ fn reveal(
     field: SecretFieldDto,
 ) -> Result<RevealedSecret, IpcError> {
     let profile = service.get(profile_id(id)?)?;
-    let secret = service
+    let value = service
         .secret(&profile, field.into())?
         .ok_or_else(|| IpcError::new(IpcErrorKind::NotFound, "Nothing is saved in the Keychain"))?;
     Ok(RevealedSecret {
-        value: secret.expose().to_owned(),
+        value: value.into(),
     })
 }
 
@@ -98,14 +100,19 @@ mod tests {
         );
         let mut form = input(EnvKindDto::Dev);
         form.password = PasswordInput::Set {
-            value: "pw-reveal-synthetic".to_owned(),
+            value: "pw-reveal-synthetic".into(),
         };
         let mut profile = form.new_profile();
         form.apply(&mut profile)?;
         let created = service.create_with(profile, &form.secret_changes()?)?;
         let id = created.id.to_string();
         let revealed = reveal(&service, &id, SecretFieldDto::Password)?;
-        assert_eq!(revealed.value, "pw-reveal-synthetic");
+        assert_eq!(revealed.value.expose(), "pw-reveal-synthetic");
+        assert_eq!(
+            serde_json::to_value(&revealed)?,
+            serde_json::json!({ "value": "pw-reveal-synthetic" }),
+            "the webview's shape stays a plain string"
+        );
         assert!(!format!("{revealed:?}").contains("pw-reveal"));
         let dto = serde_json::to_string(&ProfileDto::from(&service.get(created.id)?))?;
         assert!(!dto.contains("pw-reveal"), "{dto}");

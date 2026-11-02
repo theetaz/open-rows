@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useState } from 'react';
 import { Tabs } from '@openrows/ui';
+import type { EnvDto } from '@openrows/ipc';
+import { environmentColour } from '../connections/EnvironmentBadge';
 import { PointMenu } from '../../shell/PointMenu';
 import menuStyles from '../../shell/CascadeMenu.module.css';
 import { TabMenu } from './TabMenu';
@@ -57,7 +59,8 @@ export function TabStrip(props: {
   tabs: QueryTabs;
   list: readonly Tab[];
   active: string;
-  connection: string;
+  /** The tabs' owner; a connection's environment marks them, local files have none. */
+  connection: { name: string; env?: EnvDto };
   onAdd: () => void;
   /** Move a tab to another window (the tab menu's Move items). */
   onMove?: MoveTab | undefined;
@@ -68,6 +71,8 @@ export function TabStrip(props: {
     null,
   );
   const [renaming, setRenaming] = useState<string | null>(null);
+  const { name, env } = props.connection;
+  const owner = env ? `${name} (${env.label ?? env.kind})` : name;
   return (
     <>
       <Tabs
@@ -76,11 +81,12 @@ export function TabStrip(props: {
           label: tabLabel(item),
           name: item.title,
           kind: item.kind,
-          title: `${props.connection} · ${item.title}`,
+          title: `${owner} · ${item.title}`,
           pinned: item.pinned ?? false,
           preview: item.preview ?? false,
         }))}
         active={props.active}
+        markColor={env && environmentColour(env)}
         onSelect={tabs.select}
         onClose={tabs.close}
         onAdd={props.onAdd}

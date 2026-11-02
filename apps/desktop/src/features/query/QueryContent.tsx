@@ -113,7 +113,7 @@ export function QueryContent(props: QueryContentProps): React.JSX.Element {
         tabs={split.stripTabs}
         list={list}
         active={tab?.id ?? ''}
-        connection={connection.name}
+        connection={connection}
         onAdd={open}
         onMove={moves.move}
       />

@@ -82,3 +82,32 @@ it('shows the overflow button only while the tabs do not fit', async () => {
     .click(screen.getByRole('button', { name: 'All tabs' }));
   expect(overflow).toHaveBeenCalledOnce();
 });
+
+it('marks every tab in the colour it is given, and none without one', () => {
+  const { rerender } = render(
+    <Tabs
+      tabs={tabs}
+      active="a"
+      markColor="var(--or-prod-fg)"
+      onSelect={vi.fn()}
+      onClose={vi.fn()}
+      onAdd={vi.fn()}
+    />,
+  );
+  const list = screen.getByRole('tablist');
+  const strip = list.parentElement;
+  expect(strip?.style.getPropertyValue('--tab-mark-color')).toBe(
+    'var(--or-prod-fg)',
+  );
+  expect(list.querySelectorAll('[data-marked="true"]')).toHaveLength(2);
+  rerender(
+    <Tabs
+      tabs={tabs}
+      active="a"
+      onSelect={vi.fn()}
+      onClose={vi.fn()}
+      onAdd={vi.fn()}
+    />,
+  );
+  expect(list.querySelectorAll('[data-marked="true"]')).toHaveLength(0);
+});

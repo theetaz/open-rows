@@ -10,6 +10,7 @@ import { nativeEnvironment } from './environment.mjs';
 import { openApplication } from './transport.mjs';
 import { client, connectAndBrowse, scriptAndCancel } from './journeys.mjs';
 import { commitAndRollback, safeMode } from './safety.mjs';
+import { paletteWriteBlocked } from './paletteSafety.mjs';
 import {
   journal,
   lostTransaction,
@@ -217,8 +218,9 @@ async function main() {
     await largeJourney(state);
     await recoveryJourneys(state);
     await safeMode(state.api, state.database);
+    await paletteWriteBlocked(state.api, state.root);
     process.stdout.write(
-      'PASS journey 8: production confirmation, token scope, read-only query/edit denial\n',
+      'PASS journey 8: production confirmation, token scope, read-only query/edit/palette denial\n',
     );
     const seconds = (Date.now() - started) / 1000;
     if (seconds >= 300)

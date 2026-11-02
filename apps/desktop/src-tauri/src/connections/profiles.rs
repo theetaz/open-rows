@@ -50,7 +50,7 @@ pub(crate) fn resolve_password(
 ) -> Result<Option<SecretString>, IpcError> {
     if let PasswordInput::FromUrl { url } = input {
         // A URL without a password means no password, not the stored one.
-        return Ok(parse_url(url)?.password);
+        return Ok(parse_url(url.expose())?.password);
     }
     resolve_secret(
         service,
@@ -252,7 +252,7 @@ pub(crate) mod tests {
         let service = service(&dir);
         let mut form = input(EnvKindDto::Dev);
         form.password = PasswordInput::FromUrl {
-            url: "postgres://app:pw-synthetic@localhost/orders".to_owned(),
+            url: "postgres://app:pw-synthetic@localhost/orders".into(),
         };
         let created = create(&service, &form)?;
         let json = serde_json::to_string(&created)?;
@@ -274,7 +274,7 @@ pub(crate) mod tests {
         let service = service(&dir);
         let mut form = input(EnvKindDto::Prod);
         form.password = PasswordInput::Set {
-            value: "pw-synthetic".to_owned(),
+            value: "pw-synthetic".into(),
         };
         let id = created_id(&serde_json::to_string(&create(&service, &form)?)?)?;
         form.name = "Renamed".to_owned();

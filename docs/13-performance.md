@@ -523,9 +523,11 @@ to lazy panels in #18 is not separable on today's code: warm p50 is 302–319 ms
 machine (the M0-09 target was "near 290 ms"), and the largest phase is WebKit's
 `webview_created` (≈ 160–185 ms p50), outside our JavaScript. The initial JS graph is
 326,450 gzip bytes (28 chunks, gzip level 9) against 326,334 on `main`, within 350,000.
-`just bench-ui` currently stops before its size report on both `main` and this change:
-its heavy-module check finds `packages/grid/src/` (the tile source and display
-conversion, through the `@openrows/grid` barrel) in the initial chunk `src-*.js`.
+`just bench-ui` stopped before its size report at the time, because `results/columnLayout.ts`
+imported one constant through the `@openrows/grid` barrel and pulled the tile source and display
+conversion into the initial chunk. `withWidth` moved to `results/columnWidth.ts`, which only the
+lazy grids import; the budget and deny list are unchanged, and the gate passes at
+325,053 gzip bytes (2026-11-03).
 
 ### M0 S3 PostgreSQL decode measurement boundary
 

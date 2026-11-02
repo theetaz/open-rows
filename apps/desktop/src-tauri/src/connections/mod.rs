@@ -61,6 +61,7 @@ mod resilient;
 pub(crate) mod reveal;
 pub(crate) mod route;
 mod route_dto;
+mod secret_ipc;
 pub(crate) mod sessions;
 pub(crate) mod target;
 mod tunnels;

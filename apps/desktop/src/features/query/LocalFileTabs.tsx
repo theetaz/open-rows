@@ -24,7 +24,7 @@ export function LocalFileTabs({
         tabs={tabs}
         list={tabs.tabsFor(scope)}
         active={tab?.id ?? ''}
-        connection="Local SQL files"
+        connection={{ name: 'Local SQL files' }}
         onAdd={() => {
           tabs.open(scope);
         }}

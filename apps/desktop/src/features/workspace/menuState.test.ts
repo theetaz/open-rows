@@ -13,7 +13,6 @@ it('enables DuckDB browsing and export while gating its pending background featu
     connections,
     tab: { kind: 'query' },
     scope: { connectionId: active.id, database: 'main' },
-    prod: false,
   });
   for (const command of [
     'run-current',

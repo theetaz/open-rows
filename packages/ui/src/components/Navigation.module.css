@@ -41,6 +41,19 @@
   box-shadow: 0 0 0 var(--or-border-width) var(--or-control-stroke);
   color: var(--or-text);
 }
+/* A small colour mark; the tab's tooltip names the environment in words. */
+.document[data-marked='true']::after {
+  content: '';
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-end: var(--or-space-8);
+  inline-size: var(--or-dot-size);
+  block-size: var(--or-dot-size);
+  margin-block-start: calc(var(--or-dot-size) / -2);
+  border-radius: var(--or-radius-capsule);
+  background: var(--tab-mark-color);
+  pointer-events: none;
+}
 .document button {
   font: inherit;
   font-size: var(--or-text-13);

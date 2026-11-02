@@ -203,7 +203,7 @@ export const COMMANDS: readonly CommandSpec[] = [
   { id: 'new-connection', label: 'New connection…', shortcut: null },
   { id: 'connect', label: 'Connect', shortcut: null },
   { id: 'disconnect', label: 'Disconnect', shortcut: null },
-  { id: 'safe', label: 'Toggle safe mode', shortcut: null },
+  { id: 'safe', label: 'Safe mode settings…', shortcut: null },
   {
     id: 'search',
     label: 'Search sidebar',

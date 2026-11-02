@@ -21,7 +21,7 @@ function shell(): {
     onImport: vi.fn(),
     openFile: vi.fn(),
     refresh: vi.fn(),
-    toggleSafe: vi.fn(),
+    openSafety: vi.fn(),
     onGallery: vi.fn(),
     onSettings: vi.fn(),
     setTheme: vi.fn(),

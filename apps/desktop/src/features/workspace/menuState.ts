@@ -15,7 +15,6 @@ export function menuEnabled(input: {
     | { kind: 'query' | 'table' | 'processes' | 'monitor' | 'inspection' }
     | undefined;
   scope: TabScope | undefined;
-  prod: boolean;
 }): Record<string, boolean> {
   const profile = input.connections.active;
   const state = profile
@@ -84,7 +83,7 @@ function objectEnabled(
 
 /** Connection items follow the active connection's state and capabilities. */
 function connectionEnabled(
-  input: { connections: Connections; prod: boolean },
+  input: { connections: Connections },
   state: string,
 ): Record<string, boolean> {
   const profile = input.connections.active;
@@ -98,7 +97,7 @@ function connectionEnabled(
     refresh: connected,
     quick: connected,
     'show-er-diagram': connected,
-    safe: Boolean(profile) && !input.prod,
+    safe: Boolean(profile),
   };
 }
 

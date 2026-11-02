@@ -18,8 +18,10 @@ const environments: readonly { value: EnvKindDto; label: string }[] = [
 /** Environment tag (custom label and colour) and the write-safety switches. */
 export function EnvironmentFields({
   form,
+  focusSafety,
 }: {
   form: ConnectionForm;
+  focusSafety?: boolean | undefined;
 }): React.JSX.Element {
   const { draft, errors, update } = form;
   return (
@@ -59,6 +61,7 @@ export function EnvironmentFields({
       )}
       <SafetySelector
         value={draft.safety}
+        initialFocus={focusSafety}
         onChange={(safety) => {
           update({ safety });
         }}

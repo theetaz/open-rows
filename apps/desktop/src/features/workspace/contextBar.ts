@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { InsecureReasonDto, ProfileDto } from '@openrows/ipc';
+import type { EnvDto, InsecureReasonDto, ProfileDto } from '@openrows/ipc';
 import { insecureReasons, statusLabel } from '../connections';
 import { routeStatus } from './routeStatus';
 import type { SessionStatus } from '../connections';
@@ -10,6 +10,8 @@ import type { SidebarObject } from '../schema/sidebarIdentity';
 export type ContextSegments = {
   /** Environment tag, e.g. `LOCAL`; empty without a connection. */
   env: string;
+  /** The tag itself, for its colour; `null` without a connection. */
+  environment: EnvDto | null;
   /** `PostgreSQL 14.17` once connected, else the connection state. */
   engine: string;
   name: string;
@@ -38,6 +40,7 @@ export function contextSegments(input: {
   if (!profile || !status)
     return {
       env: '',
+      environment: null,
       engine: 'Not connected',
       name: 'No connection',
       database: '',
@@ -55,6 +58,7 @@ export function contextSegments(input: {
     : '';
   return {
     env,
+    environment: profile.env,
     engine,
     name: profile.name,
     database: input.database,

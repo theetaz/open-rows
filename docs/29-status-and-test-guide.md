@@ -58,6 +58,9 @@ None. The last parked lane, `wip/mongodb` (M3-01..M3-04), was finished and merge
 
 ## 5. Known issues
 
+- **FR-CONN-06 names a status bar**, which the approved layout does not have. The environment colour is in the toolbar and on tabs (docs/20 "Environment colour"); the owner decides whether to change the requirement's wording.
+- **OS text size is not followed** (NFR-UX-03): macOS offers no supported way to read it for an app like this, so font sizes stay in Settings ▸ Appearance (evidence in docs/20 "OS text size"). The owner decides whether to accept this.
+- **A production connection can be set to Unrestricted** in the connection sheet. The toolbar now shows that truthfully; docs/20 used to say safe mode is always on for production.
 - Tier 2 engines are labelled beta. SQL Server exact `float`/`real` edit guards need the CLR, which Azure SQL Edge lacks.
 - No signed build yet. M1-31 release engineering is on `main`: `just release-dmg` builds an ad-hoc signed DMG, and `release.yml` signs, notarises and publishes only once the owner adds the Apple and updater secrets listed in [docs/16 §8](16-platform-and-distribution.md#how-to-cut-a-release); without them it skips those stages with a notice. Real signing, notarisation and a fresh-machine install and update test are still open.
 - `just bench-grid` fails on `main` (one 93–159 ms frame per launch): a main-thread block about 30 s after launch, not grid work (docs/13 §4, "M0 S2 grid flings stall"). `just bench-editor` fails its new completion gate at the default 100 ms completion delay, and `just bench-memory --scenario monitor` fails the Monitor increment; both are recorded with numbers in docs/13 §4.
@@ -95,7 +98,7 @@ Work through these on your real databases; note anything that is wrong, slow, co
 3. **Query:** run current/selection/all, cancel a long query, multiple results (try stacked results in Settings), history, formatter, completion settings, Explain plan.
 4. **Table data:** keyboard: Page Up/Down, Home/End, ⌘Home/⌘End, Tab/⇧Tab and ⌃Tab to leave the grid; filters, any-column search, header quick filters, sort, FK jump, row form; copy as TSV/CSV/JSON/HTML/SQL with custom delimiters.
 5. **Edit safely:** edit, insert, duplicate and delete rows; review the generated SQL; commit, then make a change that fails and check the whole commit rolls back; undo/redo; date/time pickers.
-6. **Safe mode:** a read-only profile blocks writes everywhere (editor, grid, palette); confirm-before-write prompts; dangerous statements need confirmation.
+6. **Safe mode:** a read-only profile blocks writes everywhere (editor, grid, palette); confirm-before-write prompts; dangerous statements need confirmation. The toolbar lock names the connection's real policy; clicking it opens the connection's settings with the policy focused and changes nothing until you save. Also check the environment colour: tag, strip under the toolbar and tab marks for each environment, in light, dark and increased contrast. With a credential command, sleep the Mac with several databases open: all of them reconnect, and each run of your command is fresh.
 7. **Structure:** add a primary key or unique constraint, change a column type (PostgreSQL `USING`), add an index concurrently, reorder a MySQL column, check the DDL preview before applying.
 8. **Import/export and backup:** import a CSV, export to xlsx/Parquet, run a `.sql` file, back up and restore with `pg_dump`.
 9. **Monitoring:** open Monitor on PostgreSQL; check live charts, history, query and lock investigation, alerts, a board, and a report export. With history enabled for a connection, leave the Monitor open for a few hours and check that the 6 h and 24 h ranges draw continuous lines with gaps only where collection stopped.

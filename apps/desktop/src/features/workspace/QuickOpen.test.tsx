@@ -80,7 +80,7 @@ it('⌘P searches the Rust name index per keystroke, opens a tab per relation, r
   );
   expect(screen.getByRole('tab', { name: /customers/ })).toHaveAttribute(
     'title',
-    'orders-local · customers',
+    'orders-local (local) · customers',
   );
   await key('p');
   await chooseObject('order_summary');
@@ -155,12 +155,7 @@ it('⌘⇧P lists every command and executes sidebar, inspector, query, refresh 
   expect(
     screen.getByRole('button', { name: 'Toggle sidebar (⌃⌘S)' }),
   ).toHaveAttribute('aria-pressed', 'false');
-  for (const command of [
-    'Toggle inspector',
-    'New query tab',
-    'Refresh',
-    'Toggle safe mode',
-  ]) {
+  for (const command of ['Toggle inspector', 'New query tab', 'Refresh']) {
     await key('p', true);
     choose(command);
   }
@@ -169,10 +164,6 @@ it('⌘⇧P lists every command and executes sidebar, inspector, query, refresh 
   ).toHaveAttribute('aria-pressed', 'false');
   expect(screen.getByRole('tab', { name: /SQL Query 1/ })).toHaveAttribute(
     'aria-selected',
-    'true',
-  );
-  expect(screen.getByRole('button', { name: 'Safe mode' })).toHaveAttribute(
-    'aria-pressed',
     'true',
   );
   expect(screen.getByText('Catalog refreshed (1)')).toBeInTheDocument();
