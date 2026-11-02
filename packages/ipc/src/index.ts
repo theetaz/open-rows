@@ -468,6 +468,7 @@ export type { SecurityStatus } from './generated/bindings';
 
 /** Settings locations and content-validated OS file opening (M2-22b). */
 export {
+  checkForUpdate,
   getDataLocations,
   chooseDataLocation,
   scheduleDataLocation,

@@ -4,6 +4,7 @@ import { SettingRow } from '../appearance/InterfaceSettings';
 import { generalSettings, updateGeneral } from './general';
 import { diagnosticsSettings, updateDiagnostics } from './diagnostics';
 import { updateFeed } from './updateFeed';
+import { UpdateControls } from './UpdateControls';
 import styles from '../appearance/Appearance.module.css';
 
 /** Update/startup preferences, with explicit off-by-default reporting consent. */
@@ -16,13 +17,14 @@ export function StartupSettings(): React.JSX.Element {
       <h3>Startup and updates</h3>
       <p role="status">
         {endpoint
-          ? `Signed ${general.updateChannel} manifest: ${endpoint}`
+          ? `Updates are available on the ${general.updateChannel} channel.`
           : `${general.updateChannel} update feed is not configured in this build.`}
       </p>
+      <UpdateControls />
       <div className={styles.settingsGroup}>
         <SettingRow
           title="Update channel"
-          description="Stable or signed beta releases. The release feed must be configured before updates are available."
+          description="Choose stable releases or early beta versions."
         >
           <SelectField
             aria-label="Update channel"
@@ -38,7 +40,7 @@ export function StartupSettings(): React.JSX.Element {
         </SettingRow>
         <SettingRow
           title="Update notifications"
-          description="Allow notices when a signed release is available; updates require your approval."
+          description="Check for signed releases and show notices. Installation requires your approval."
         >
           <Switch
             aria-label="Update notifications"

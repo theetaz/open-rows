@@ -4,6 +4,7 @@
 /// Every application command the webview may invoke.
 const COMMANDS: &[&str] = &[
     "app_info",
+    "update_check",
     "ai_key_set",
     "ai_key_delete",
     "ai_verify",

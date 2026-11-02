@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { lazy, Suspense, useState } from 'react';
+import { WorkspaceUpdates } from './WorkspaceUpdates';
 import { NativeDocuments } from '../query/NativeDocuments';
 import { WorkspaceToolbar } from './WorkspaceToolbar';
 import { WorkspaceBody, WorkspaceRail } from './WorkspaceBody';
@@ -65,6 +66,7 @@ export function Workspace({
       />
       <div className={styles.main}>
         <Toolbar connections={connections} controller={controller} />
+        <WorkspaceUpdates connections={connections} tabs={controller.tabs} />
         {controller.fileNotice && (
           <p className={styles.fileNotice} role="alert">
             {controller.fileNotice}

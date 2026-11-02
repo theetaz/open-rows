@@ -78,7 +78,6 @@
     "allow-report-save",
     "allow-monitor-window",
     "allow-monitor-top-statements",
-
     "allow-process-signal",
     "allow-connection-open",
     "allow-connection-close",
@@ -197,6 +196,10 @@
     "allow-mcp-token-create",
     "allow-mcp-token-revoke",
     "allow-mcp-client-disconnect",
-    "allow-mcp-proposals-take"
+    "allow-mcp-proposals-take",
+    "allow-update-check",
+    "updater:allow-download",
+    "updater:allow-install",
+    "process:allow-restart"
   ]
 }

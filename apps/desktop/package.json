@@ -17,6 +17,8 @@
     "@openrows/ipc": "workspace:*",
     "@openrows/ui": "workspace:*",
     "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/plugin-process": "^2.4.0",
+    "@tauri-apps/plugin-updater": "^2.13.3",
     "apache-arrow": "^21.2.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"

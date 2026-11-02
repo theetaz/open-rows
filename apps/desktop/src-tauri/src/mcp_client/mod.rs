@@ -20,6 +20,16 @@ use specta::Type;
 pub(crate) use state::State;
 use tauri::{AppHandle, Manager};
 
+/// Load the user MCP server registry stored beside the other data files.
+pub(crate) fn install(app: &tauri::App) -> Result<(), IpcError> {
+    let path = app
+        .state::<crate::locations::Locations>()
+        .data
+        .join("mcp-servers.json");
+    app.manage(State::new(path)?);
+    Ok(())
+}
+
 pub(crate) fn failure(error: ClientError) -> IpcError {
     let kind = match error {
         ClientError::Timeout => IpcErrorKind::Timeout,

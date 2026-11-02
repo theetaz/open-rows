@@ -172,6 +172,9 @@ it('selects different signed HTTPS manifests and refuses unconfigured or credent
       stable: 'https://app:pw@example.invalid/feed',
     }),
   ).toBeNull();
+  const loopback = { ...config, stable: 'http://127.0.0.1:9/stable.json' };
+  expect(updateFeed('stable', loopback, false)).toBeNull();
+  expect(updateFeed('stable', loopback, true)).toContain('127.0.0.1');
 });
 
 it('requests explicit history-copy consent and schedules only after confirmation', async () => {

@@ -37,6 +37,7 @@ mod startup;
 mod startup_report;
 mod tables;
 mod titlebar;
+mod updates;
 mod window_frame;
 mod workspace;
 
@@ -228,6 +229,7 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
         locations::data_locations,
         locations::data_location_choose,
         locations::data_location_apply,
+        updates::update_check,
         settings::settings_read,
         settings::settings_write,
         menu::menu_sync,
@@ -295,6 +297,8 @@ pub fn run() -> Result<(), tauri::Error> {
     startup_report::record(startup_report::Phase::BuilderStart);
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .plugin(window_frame::plugin())
         .manage(native_files::NativeFiles::default())
         .manage(security::Security::default())
@@ -362,11 +366,7 @@ fn install(
     specta.mount_events(app);
     app.manage(ai::AiState::default());
     app.manage(assistant::AssistantState::default());
-    app.manage(mcp_client::State::new(
-        app.state::<locations::Locations>()
-            .data
-            .join("mcp-servers.json"),
-    )?);
+    mcp_client::install(app)?;
     app.manage(assistant::ScheduledState::default());
     settings::install(app);
     result_store::install(app)?;

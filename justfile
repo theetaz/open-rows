@@ -52,6 +52,7 @@ check:
     just bench-ui
     just bench-test
     just script-test
+    just release-test
     pnpm lint
     pnpm format:check
     pnpm typecheck
@@ -79,6 +80,14 @@ dev-cert:
 # Build the unsigned release macOS application in the shared Cargo target.
 build-app: stage-host
     {{sccache_guard}} pnpm --filter @openrows/desktop tauri build --bundles app
+
+# Build an ad-hoc signed DMG without release credentials.
+release-dmg:
+    bash scripts/release-macos.sh local
+
+# Test release configuration, manifest and installer limits.
+release-test:
+    python3 -B -m unittest discover -s scripts -p 'test_release_*.py'
 
 # Regenerate the TypeScript command contract from Rust.
 gen-ipc: (stage-host "dev")

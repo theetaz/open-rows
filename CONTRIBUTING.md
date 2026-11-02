@@ -22,6 +22,8 @@ just --list
 just dev          # native OpenRows window with frontend hot reload
 just dev-cert     # macOS, once: stable dev signing so keychain "Always Allow" sticks
 just build-app    # unsigned release .app in the configured Cargo target
+just release-dmg  # local ad-hoc DMG, helper signature and <= 40 MB checks
+just release-test # release configuration/manifest/installer tests
 just bench-startup # ten release launches and budget gates (macOS GUI only)
 just bench-memory  # all-process idle physical-footprint budget (macOS GUI only)
 just bench-test    # synthetic budgets/reports/cleanup tests (no GUI)
@@ -193,6 +195,15 @@ Every PR carries an **acceptance report** and a **How to try it** section ([docs
 - Semantic Versioning. Pre-1.0 releases are `0.x.y` on `alpha`/`beta` channels.
 - Changelogs are generated from commit types (`feat`, `fix`, `perf`, `revert`, breaking changes) and curated before release.
 - Tags are `vX.Y.Z`, created by maintainers from `main`. Details: [docs/16-platform-and-distribution.md](docs/16-platform-and-distribution.md#8-release-process).
+
+The macOS release workflow runs only for `v*` tags and manual dispatch of an
+existing version tag. It builds separate arm64/Intel DMGs. Developer ID signing,
+notarisation, updater signing and publication run only when the matching GitHub
+secrets are configured; otherwise those stages are skipped with a notice and the
+DMGs stay workflow artifacts. A secret-free local build uses `just release-dmg`;
+it has no configured update feed. The owner's checklist (secrets, tagging,
+fresh-machine and update checks, Homebrew checksums) is in
+[docs/16 §8](docs/16-platform-and-distribution.md#how-to-cut-a-release).
 
 ## 6. Documentation is part of the change
 

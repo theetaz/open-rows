@@ -25,7 +25,7 @@ Current priority: **dogfood the app on `main` and collect feedback** before addi
 | Admin | Process list with cancel/kill, users and roles viewer | Per engine |
 | Monitoring | Monitor workspace with live charts and history, query/lock investigation, deterministic alerts and incidents, analytics boards, health/analytics report export, optimisation advisor; **new:** Ask assistant panel for AI investigations of slow queries, locks and health with cited evidence | PG full; MySQL/MariaDB, SQL Server, ClickHouse, SQLite/libSQL, DuckDB per capability |
 | AI | Provider settings (Anthropic, OpenAI, OpenRouter, Gemini, compatible endpoints, Ollama, LM Studio), data-sharing policy with redaction and audit log, assistant panel with explain/fix/plan actions, read-only MCP server; **new:** inline ⌘I SQL proposals with accept/reject diff (also in the editor bar's AI menu), and your own MCP servers (stdio or HTTP) in Settings → AI → MCP with per-tool enable and first-use confirmation; **new:** read-only monitoring tools (health, history, query statistics, locks, plans) behind telemetry consent, grounded findings that cite evidence, board/report proposals saved only on accept (invalid ones rejected with a reason), and opt-in scheduled read-only investigations with budgets, Run now, Pause/Resume and Cancel that pause while locked or with AI off | — |
-| App | Settings (⌘,), themes, native menus, tabs, session restore, command palette, file associations | — |
+| App | Settings (⌘,), themes, native menus, tabs, session restore, command palette, file associations; **new:** macOS DMG packaging and signed update checks with release notes, approval-gated install and an opt-out in Settings ▸ General (inactive until the owner configures the release key) | — |
 
 **Fixed in this round:** boards, incidents, background monitoring and report saving were exported to the frontend but not registered with Tauri, so the app denied those calls; they are now registered and allowed.
 
@@ -36,7 +36,6 @@ Each branch is one squashable lane, based on `main` as of 2026-10-12 (`a9c45f51`
 | Branch | Tasks | State | To finish |
 | --- | --- | --- | --- |
 | `wip/mongodb` | M3-01..M3-04 MongoDB: document result model and tree/JSON/table views, driver crate, MQL parser and fuzz target, document editing, aggregation pipeline editor | Largest lane (+8.9 k lines); cursor and cancel correctness reworked | `just test-mongo`, fuzz target build, full gate |
-| `wip/release-macos` | M1-31 DMG bundle, Developer ID signing/notarisation from secrets, updater with opt-out, `release.yml`, Homebrew cask template | Implemented | Local unsigned DMG build, full gate; real signing needs Apple certificates as GitHub secrets |
 
 ## 4. Remaining work after feedback (not started)
 
@@ -54,7 +53,7 @@ Each branch is one squashable lane, based on `main` as of 2026-10-12 (`a9c45f51`
 ## 5. Known issues
 
 - Tier 2 engines are labelled beta. SQL Server exact `float`/`real` edit guards need the CLR, which Azure SQL Edge lacks.
-- No signed build yet; `just build-app` produces an unsigned app.
+- No signed build yet. M1-31 release engineering is on `main`: `just release-dmg` builds an ad-hoc signed DMG, and `release.yml` signs, notarises and publishes only once the owner adds the Apple and updater secrets listed in [docs/16 §8](16-platform-and-distribution.md#how-to-cut-a-release); without them it skips those stages with a notice. Real signing, notarisation and a fresh-machine install and update test are still open.
 - **CI is switched off** (the `CI` workflow is disabled on GitHub, 2026-10-13) while a single maintainer dogfoods the app; re-enable it with `gh workflow enable CI`. Earlier runs also could not start because of a GitHub billing/spending-limit problem.
 - The 2026-10-13 merges were not run through the full `just check` or the container suites on the integrated `main`; each lane ran focused checks only. Run `just check` before re-enabling CI.
 
@@ -65,6 +64,7 @@ just setup        # once: tools, toolchain, pnpm deps, git hooks
 just dev-cert     # macOS, once: stable dev signing so keychain "Always Allow" sticks
 just dev          # native window with hot reload
 just build-app    # unsigned release app
+just release-dmg  # ad-hoc signed DMG with the 40 MB installer check
 just e2e          # native E2E journeys 1–6 and 8 against disposable PostgreSQL + OpenSSH containers (docs/17 §7)
 ```
 
