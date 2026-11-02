@@ -7,7 +7,7 @@
 use super::MonitorTarget;
 use crate::connections::{Connections, IpcError, IpcErrorKind};
 use openrows_monitor::Monitor;
-use openrows_store::{LocalStore, MonitorAggregate};
+use openrows_store::{LocalStore, MonitorAggregate, MonitorBucket};
 use serde::Serialize;
 use specta::Type;
 use tauri::{Manager, State};
@@ -21,8 +21,8 @@ pub(crate) struct HistoryPoint {
     value: Option<f64>,
     state: String,
 }
-impl From<MonitorAggregate> for HistoryPoint {
-    fn from(point: MonitorAggregate) -> Self {
+impl From<MonitorBucket> for HistoryPoint {
+    fn from(point: MonitorBucket) -> Self {
         Self {
             metric: point.metric,
             collected_ms: millis(point.collected_ms),
@@ -131,9 +131,14 @@ pub(super) fn persist(
             state,
         })
         .collect();
-    app.state::<LocalStore>()
+    let skipped = app
+        .state::<LocalStore>()
         .record_monitor((&target.profile_id, &target.database), &points, now)
-        .map_err(storage)
+        .map_err(storage)?;
+    if skipped > 0 {
+        tracing::warn!(skipped, "monitor history skipped unknown metric names");
+    }
+    Ok(())
 }
 fn storage(error: openrows_store::StoreError) -> IpcError {
     IpcError::new(IpcErrorKind::Storage, error.to_string())

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-//! Opt-in local monitor history write/read timings at default cadence; no CI assertions.
+//! Opt-in local monitor history write/read timings over a full day at default cadence,
+//! one write per 5 s tick as the collector does it; no CI assertions.
 use openrows_store::{LocalStore, MonitorAggregate};
 use std::time::Instant;
 
@@ -23,39 +24,51 @@ const METRICS: [&str; 16] = [
     "Database:cache_hit_ratio",
 ];
 const TICK_MS: i64 = 5_000;
-// 16 points per 5 s tick reach the 25,600-row (50 MiB at 2 KiB) cap after 1,600 ticks.
-const CAP_TICKS: usize = 1_600;
-const TICKS: i64 = 2_000;
+// A day of ticks plus one more hour, so the last hour writes with every tier full.
+const DAY_TICKS: usize = 17_280;
+const TICKS: i64 = 18_000;
+const BASE: i64 = 1_000 * 86_400_000;
 
 #[test]
-fn monitor_history_default_cadence_to_cap_opt_in() -> TestResult {
+fn monitor_history_full_day_default_cadence_opt_in() -> TestResult {
     if std::env::var_os("OPENROWS_BENCH").is_none() {
         return Ok(());
     }
     let dir = tempfile::tempdir()?;
     let store = LocalStore::open(&dir.path().join("bench.sqlite"))?;
-    store.set_monitor_profiles(&["bench".into()], 0)?;
+    store.set_monitor_profiles(&["bench".into()], BASE)?;
     let mut writes = Vec::with_capacity(usize::try_from(TICKS)?);
     for tick in 1..=TICKS {
-        let now = tick * TICK_MS;
+        let now = BASE + tick * TICK_MS;
         let points: Vec<_> = METRICS.iter().map(|metric| point(metric, now)).collect();
         let began = Instant::now();
         store.record_monitor(("bench", "db"), &points, now)?;
         writes.push(began.elapsed().as_secs_f64() * 1_000.0);
     }
-    let now = TICKS * TICK_MS;
-    let retained = store.monitor_history(("bench", "db"), (0, now))?;
-    let (before_cap, at_cap) = writes.split_at_mut(CAP_TICKS);
-    report("write 16 points below cap", before_cap);
-    report("write 16 points at cap", at_cap);
-    for hours in [1, 6, 24] {
+    let now = BASE + TICKS * TICK_MS;
+    let (first_day, steady) = writes.split_at_mut(DAY_TICKS);
+    report("write 16 points, first day", first_day);
+    report("write 16 points, full tiers", steady);
+    for hours in [1, 2, 6, 12, 24] {
         let mut reads: Vec<_> = (0..20)
             .map(|_| read_ms(&store, now - hours * 3_600_000, now))
             .collect::<Result<_, _>>()?;
         report(&format!("read {hours} h"), &mut reads);
     }
-    let oldest = retained.iter().map(|p| p.collected_ms).min().unwrap_or(now);
-    report_retained(retained.len(), now - oldest);
+    drop(store);
+    let conn = rusqlite::Connection::open(dir.path().join("bench.sqlite"))?;
+    let (rows, oldest): (i64, i64) = conn.query_row(
+        "SELECT count(*), min(collected_ms) FROM monitor_history",
+        [],
+        |row| Ok((row.get(0)?, row.get(1)?)),
+    )?;
+    conn.execute_batch("VACUUM")?;
+    let bytes: i64 = conn.query_row(
+        "SELECT page_count * page_size FROM pragma_page_count, pragma_page_size",
+        [],
+        |row| row.get(0),
+    )?;
+    report_retained(rows, (now - oldest) / 60_000, bytes);
     Ok(())
 }
 
@@ -88,9 +101,11 @@ fn report(case: &str, timings: &mut [f64]) {
 }
 
 #[expect(clippy::print_stderr, reason = "opt-in benchmark retained coverage")]
-fn report_retained(buckets: usize, span_ms: i64) {
+fn report_retained(rows: i64, minutes: i64, bytes: i64) {
     eprintln!(
-        "monitor history retained after {TICKS} ticks: {buckets} read buckets spanning {} min",
-        span_ms / 60_000
+        "monitor history retained after {TICKS} ticks: {rows} rows spanning {minutes} min, \
+         2 KiB charge {} KiB, whole vacuumed store {} KiB",
+        rows * 2,
+        bytes / 1_024
     );
 }

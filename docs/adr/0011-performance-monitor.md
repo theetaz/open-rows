@@ -1,6 +1,6 @@
 # 0011 — Database Performance Monitor
 
-- Status: Accepted 2026-10-11 (owner) — M25-09 exit audit recorded 2026-10-12; reference-hardware and live-matrix validation pending (see [M25-09 exit audit](#m25-09-exit-audit--validation-matrix-results))
+- Status: Accepted 2026-10-11 (owner) — M25-09 exit audit recorded 2026-10-12, history/PostgreSQL follow-up 2026-11-02; reference-hardware, managed-provider and other-engine matrix validation pending (see [M25-09 exit audit](#m25-09-exit-audit--validation-matrix-results))
 - Date: 2026-10-11
 - Deciders: OpenRows maintainer (owner)
 - Requirements: FR-ADMIN-03..08 (P1; M2.5), FR-AI-11..13 (M4.5 integration), NFR-PERF-11, NFR-SEC-08; FR-ADMIN-01, FR-EDIT-07, FR-APP-11, NFR-REL-02/04, NFR-UX-01..03
@@ -297,10 +297,16 @@ same shared target after stale fixture paths referenced another worktree;
 `sccache` and the shared build cache remained in use. The focused monitoring
 suite (15), frontend tests (2,713), workspace Clippy and binding freshness passed.
 
-Pending matrix: PG13/15/16/18 live suites, managed-provider denied probes,
-installed-but-unloaded extension, replication lag, temp spill, vacuum and
-statement/I/O statistics-reset fixtures, minimum-cadence/latency/many-digest workload variants,
-mac-low aggregate CPU/footprint and matched reference server load. The PG18 I/O
+Pending matrix: managed-provider denied probes (RDS/Aurora, Cloud SQL, Azure
+Database for PostgreSQL, Supabase/Neon; cloud accounts, owner item),
+minimum-cadence/latency/many-digest workload variants, mac-low aggregate
+CPU/footprint and matched reference server load. Closed 2026-11-02:
+`just test-pg 13 15 16 17 18` runs serially with fixtures for an
+installed-but-unloaded extension, replication lag on a primary/replica pair,
+temp spill, vacuum and statement/I/O statistics resets, all passing on 13.23,
+15.19, 16.15, 17.11 and 18.6 (docs/28 §20). No collector change was needed;
+on 13/14 a new database's first statistics entry is reported once as a counter
+reset. The PG18 I/O
 adapter uses `read_bytes`/`write_bytes` after a column/layout probe; PG16/17 use
 `reads`/`writes × op_bytes`. Older statement reset continuity remains labelled
 best effort. Per-query CPU/memory and latency percentiles are unavailable.
@@ -548,7 +554,7 @@ Results against this ADR's budgets:
 | Mean CPU ≤ 1% of one core over 60 s (mac-low, all processes) | Not certified | Test process (debug build): 0.09 s CPU in 60 s, about 0.15% of one core. Not mac-low, not all app/webview/host processes |
 | Monitor footprint increment ≤ 32 MiB (all processes) | Fail (M4, 2026-11-02) | `just bench-memory 3 --scenario monitor`: median 107.2 MiB (runs 105.92 / 107.34 / 107.31) with the embedded SQLite collector; GPU process 25.54 → 95.11 MB, WebContent 96.01 → 138.58 MB, app process unchanged. Not mac-low; PostgreSQL collector not measured |
 | Server throughput/latency overhead ≤ 1% (reference workload) | Not certified | See below |
-| Local history 24 h / 50 MiB / 100 MiB | Partial | Caps hold. At 16 scalars per 5 s the conservative 2 KiB row charge keeps only about 133 minutes, so the 24 h range is not reached. History evicts the oldest rows; it does not downsample as this ADR requires |
+| Local history 24 h / 50 MiB / 100 MiB | Pass (follow-up 2026-11-02) | Migration 0009 downsamples on write (raw 10 min, 20 s to 2 h, 2 min to 12 h, 4 min to 24 h; min/max/sum/count/last and missing states kept). A full day of 16 scalars at 5 s keeps 14,896 rows (58% of the 25,600-row charge, 2.1 MiB on disk). The audit itself found about 133 minutes with oldest-first eviction |
 | No UI task > 50 ms | Not measured natively | Chromium component evidence (M25-03): 8.3 ms p95 render. History writes run on the backend task, not the UI |
 
 Server overhead attempt: `pgbench -c 4 -j 2` (scale 10, TPC-B-like) in the
@@ -578,14 +584,38 @@ holds the store lock, which is about 23 ms per collector event. A debug build
 did not finish 17,280 simulated ticks within nextest's 300 s limit, so only the
 release numbers are recorded.
 
+Follow-up 2026-11-02 (migration 0009, downsampling on write). The bench now
+writes a full day plus one hour, one write per 5 s tick (18,000 ticks of 16
+points), on the same Mac mini M4 while another build lane ran (load average
+about 15–40):
+
+| Operation | p50 | p95 | max |
+| --- | --- | --- | --- |
+| Write, first day (17,280 ticks) | 0.532 ms | 2.658 ms | 131.290 ms |
+| Write, all tiers full (720 ticks) | 1.106 ms | 3.738 ms | 13.145 ms |
+| Read 1 h (20 reads) | 8.643 ms | 12.584 ms | 12.584 ms |
+| Read 2 h | 10.204 ms | 15.585 ms | 15.585 ms |
+| Read 6 h | 10.963 ms | 12.409 ms | 12.409 ms |
+| Read 12 h | 14.369 ms | 16.030 ms | 16.030 ms |
+| Read 24 h | 17.016 ms | 18.446 ms | 18.446 ms |
+
+The day is retained in 14,896 rows (58% of the cap; the vacuumed store is
+2,140 KiB). Writes no longer reach the cap, so the audit's 23 ms at-cap path is
+gone from steady state; write p95 stays far below the 50 ms UI-task budget and
+runs on the backend task. Single write maxima (131 ms) come from the shared
+machine and SQLite checkpoints. An earlier run under heavier load measured
+full-tier writes at p95 2.898 ms and one 171 ms read maximum at 12 h; the run
+above does not reproduce it.
+
 Not measured here, with the command to run later:
 
 - mac-low CPU and all-process footprint: `just build-app && just bench-memory 3
   --scenario monitor` on the MacBook Air M1 / 8 GB (the scenario exists since
   2026-11-02; the M4 increment fails, see the table above).
-- PostgreSQL 12/13/15/16/18 live suites: `just test-pg <version>`; managed-provider
-  denial, unloaded extension, replication lag, spill/vacuum and statement-reset
-  fixtures still need writing.
+- PostgreSQL 12 live suite (`just test-pg 12`) and managed-provider denial probes
+  (cloud accounts). PG 13/15/16/17/18 and the unloaded-extension, replication-lag,
+  spill/vacuum and statement/I/O reset fixtures passed on 2026-11-02
+  (`just test-pg 13 15 16 17 18`).
 - MySQL 5.7/8.0 and MariaDB 10.6: `just test-mysql mysql:8.0 mariadb:10.6`
   (MySQL 5.7 has no arm64 image, so it runs only on an x86_64 host).
 - SQL Server 2017/2019/2022 and Azure SQL Database: `just test-mssql` on an

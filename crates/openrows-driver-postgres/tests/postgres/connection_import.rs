@@ -27,7 +27,7 @@ async fn pg_service_import_connects() -> TestResult {
 #[ignore = "needs PostgreSQL; run with just test-pg"]
 async fn none_policy_connects_with_passwordless_trust_authentication() -> TestResult {
     let container = std::env::var("OPENROWS_TEST_PG_CONTAINER")?;
-    let output = std::process::Command::new("docker").args(["exec", &container, "sh", "-c", "printf 'host all openrows_none 0.0.0.0/0 trust\n' | cat - /var/lib/postgresql/data/pg_hba.conf > /tmp/openrows-hba && cat /tmp/openrows-hba > /var/lib/postgresql/data/pg_hba.conf && rm /tmp/openrows-hba"]).output()?;
+    let output = std::process::Command::new("docker").args(["exec", &container, "sh", "-c", "printf 'host all openrows_none 0.0.0.0/0 trust\n' | cat - \"$PGDATA/pg_hba.conf\" > /tmp/openrows-hba && cat /tmp/openrows-hba > \"$PGDATA/pg_hba.conf\" && rm /tmp/openrows-hba"]).output()?;
     if !output.status.success() {
         return Err("cannot configure isolated trust role".into());
     }

@@ -216,14 +216,14 @@ fn assert_source_types(batch: &RecordBatch) -> TestResult {
 async fn times_networks_and_ranges_decode_natively() -> TestResult {
     let sql = "SELECT * FROM (VALUES
         (NULL::time, NULL::timetz, NULL::cidr, NULL::macaddr, NULL::macaddr8,
-         NULL::int4range, NULL::datemultirange),
+         NULL::int4range),
         ('13:05:00.25'::time, '13:05:00+05:30'::timetz, '10.1.0.0/16'::cidr,
          '08:00:2b:01:02:03'::macaddr, '08:00:2b:01:02:03:04:05'::macaddr8,
-         '[1,10)'::int4range, '{[2024-01-01,2024-02-01)}'::datemultirange),
+         '[1,10)'::int4range),
         ('24:00:00'::time, '00:00:00-01'::timetz, '::/0'::cidr,
          'ff:ff:ff:ff:ff:ff'::macaddr, '00:00:00:00:00:00:00:00'::macaddr8,
-         'empty'::int4range, '{}'::datemultirange)
-        ) AS t(tm, tz, net, mac, mac8, r, mr)";
+         'empty'::int4range)
+        ) AS t(tm, tz, net, mac, mac8, r)";
     let batch = single_batch(&mut connect().await?, sql).await?;
     assert_first_row_null(&batch);
     // 24:00:00 has no Time64 value, so the column is tagged text.
@@ -241,7 +241,6 @@ async fn times_networks_and_ranges_decode_natively() -> TestResult {
         ["08:00:2b:01:02:03:04:05", "00:00:00:00:00:00:00:00"]
     );
     assert_eq!(strings(&batch, "r")?, ["[1,10)", "empty"]);
-    assert_eq!(strings(&batch, "mr")?, ["{[2024-01-01,2024-02-01)}", "{}"]);
     for (name, extension) in [("mac", "openrows.macaddr"), ("r", "openrows.range")] {
         assert_eq!(metadata(&batch, name, EXTENSION)?, extension);
     }
@@ -250,6 +249,23 @@ async fn times_networks_and_ranges_decode_natively() -> TestResult {
     assert_eq!(time.data_type(), &DataType::Time64(TimeUnit::Microsecond));
     let micros = time.as_primitive::<Time64MicrosecondType>().value(0);
     assert_eq!(micros, (13 * 3_600 + 5 * 60) * 1_000_000 + 250_000);
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "needs PostgreSQL: run `just test-pg`"]
+async fn multiranges_decode_as_text_from_postgres_14() -> TestResult {
+    let mut session = connect().await?;
+    let sql = "SELECT * FROM (VALUES (NULL::datemultirange),
+        ('{[2024-01-01,2024-02-01)}'::datemultirange), ('{}'::datemultirange)) AS t(mr)";
+    if super::monitor_fixture::server_version(&mut session).await? < 140_000 {
+        // Multiranges arrived in PostgreSQL 14; older servers must refuse the type.
+        assert!(single_batch(&mut session, sql).await.is_err());
+        return Ok(());
+    }
+    let batch = single_batch(&mut session, sql).await?;
+    assert_first_row_null(&batch);
+    assert_eq!(strings(&batch, "mr")?, ["{[2024-01-01,2024-02-01)}", "{}"]);
     Ok(())
 }
 

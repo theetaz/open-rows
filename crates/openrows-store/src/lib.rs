@@ -18,6 +18,6 @@ pub mod profile;
 
 pub use db::{
     BoardRecord, ChangeSetRecord, HistoryEntry, HistoryRecord, HistoryRetention, HistorySource,
-    HistoryStatus, LocalStore, MonitorAggregate, NewBoard, NewSavedQuery, SCHEMA_VERSION,
-    SavedQueryRecord, SchemaSnapshotRecord, StoreError, WorkspaceKey,
+    HistoryStatus, LocalStore, MonitorAggregate, MonitorBucket, NewBoard, NewSavedQuery,
+    SCHEMA_VERSION, SavedQueryRecord, SchemaSnapshotRecord, StoreError, WorkspaceKey,
 };

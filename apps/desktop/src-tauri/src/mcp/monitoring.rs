@@ -97,7 +97,7 @@ fn history(
     Ok(history_points(points, &binding))
 }
 fn history_points(
-    mut points: Vec<openrows_store::MonitorAggregate>,
+    mut points: Vec<openrows_store::MonitorBucket>,
     binding: &str,
 ) -> Vec<openrows_ai::sharing::Evidence> {
     points.sort_unstable_by(|left, right| {
@@ -152,20 +152,26 @@ mod tests {
     #[test]
     fn history_selects_latest_observations_across_metrics_and_preserves_gaps() {
         let mut points: Vec<_> = (0..200)
-            .map(|time| openrows_store::MonitorAggregate {
+            .map(|time| openrows_store::MonitorBucket {
                 metric: "sessions:active".into(),
                 collected_ms: time,
                 value: Some(1.0),
                 state: "ok".into(),
+                min: Some(1.0),
+                max: Some(1.0),
+                mean: Some(1.0),
             })
             .collect();
         points.insert(
             0,
-            openrows_store::MonitorAggregate {
+            openrows_store::MonitorBucket {
                 metric: "Database:commits".into(),
                 collected_ms: 1000,
-                value: Some(1.0),
+                value: None,
                 state: "gap".into(),
+                min: None,
+                max: None,
+                mean: None,
             },
         );
         let evidence = history_points(points, "fixture");

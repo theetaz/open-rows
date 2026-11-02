@@ -541,7 +541,12 @@ per profile, default off. SQLite migration 0007 stores only allowlisted scalar
 aggregates, scoped by profile/database, with no statement text, activity rows,
 user identities or credentials. Expiry runs on startup/read/write/configuration.
 A conservative 2-KiB charge per bounded row limits retained history to 50 MiB
-per connection and 100 MiB app-wide, evicting oldest samples first. SQLite may
+per connection and 100 MiB app-wide. Since migration 0009 (M25-09 follow-up),
+each write downsamples older samples into 20 s, 2 min and 4 min buckets that keep
+minimum, maximum, sum, count, the last valid value and the latest missing state,
+so a default-cadence day fits well inside the cap; oldest-first eviction remains
+only as the safety net. Unknown metric names are skipped and counted instead of
+rolling back the tick. SQLite may
 reuse freed pages; purging does not shrink the shared store file. Disable purges
 atomically; per-profile/all purge and profile deletion remove history. Opt-ins
 are device-local and excluded from portable preferences. History ranges are
@@ -1094,7 +1099,7 @@ here.
 | Lifecycle | Pause, close, disconnect, profile edit or delete, network change, lock and exit stop collectors and clear the background opt-in. | Pass | `monitor_pause` and `registry::stop_where`; `connection.rs`, `profiles.rs`, `resilient.rs`, `lib.rs` exit hook and `security` lock and idle paths. Lifecycle tests in `openrows-monitor`. |
 | Lifecycle | Reads never overlap and never block the user's query. | Pass | Serial runtime and deadlines (unit tests). DuckDB busy-session gap: `duckdb_monitor.rs` (earlier evidence). |
 | Lifecycle | Incidents are evaluated only for running, unlocked collectors. | Pass | `alerts.rs` lock check; evaluation only from the running collector's event loop. |
-| Permissions | PostgreSQL: restricted role, revoked grant, missing extension and statistics reset are explicit states. | Pass | PG 17.11 monitor fixture, run in this audit. |
+| Permissions | PostgreSQL: restricted role, revoked grant, missing extension and statistics reset are explicit states. | Pass | PG 17.11 monitor fixture, run in this audit. Follow-up 2026-11-02: also an unloaded extension, statement and I/O resets, spill, vacuum and a primary/replica pair on PG 13, 15, 16, 17 and 18. |
 | Permissions | MySQL/MariaDB, SQL Server, ClickHouse, SQLite/libSQL and DuckDB denied or unavailable states. | Pass on tested versions | Earlier evidence: MySQL 8.4, MariaDB 11.4, Azure SQL Edge, ClickHouse 25.3, sqld v0.24.32, temp DuckDB. The wider version matrix is not measured. |
 | Privacy | History stores only allowlisted scalars, with no statement text, rows or credentials. | Pass | Migration 0007 has no text column. `validate` checks names, states and finite values. Store tests (197) passed. Every engine's emitted scalar is on the allowlist. |
 | Privacy | SQL is redacted in core before Arrow, IPC, rings, history and advice. | Pass | `retention_support.rs` normalises query cells before retention and Arrow encoding. Redaction tests in `openrows-monitor`. |
@@ -1108,22 +1113,43 @@ here.
 | Labels | Explain and HypoPG are offered only where they work. | Fixed | Top queries showed **Explain** on every engine, and the native gate let MySQL, SQL Server, ClickHouse, SQLite and libSQL into the PostgreSQL-only diagnostic session. **Explain** is now shown only for PostgreSQL, other engines point to the editor's Explain, and `monitor_explain`/`monitor_hypopg` refuse non-PostgreSQL profiles (`reader::ensure_postgres`, unit-tested). |
 | Performance | 1,000-row analysis p95 ≤ 10 ms, source deadline and retained-bytes caps. | Pass on M4 | ADR-0011 audit table. |
 | Performance | mac-low CPU, all-process footprint, ≤ 1% server overhead, native UI timing. | Footprint fails on M4; rest not measured | `just bench-memory 3 --scenario monitor` (2026-11-02, M4, embedded SQLite collector): Monitor increment 107.2 MiB median against 32 MiB, in WebKit GPU (+69.6 MB) and WebContent (+42.6 MB); connected idle 168.56 MB passes (docs/13 §4). Dev-machine `pgbench` noise exceeds the 1% target. mac-low and the PostgreSQL collector variant are not measured. |
-| History | 24 h retention within 50 MiB per connection. | Partial | The caps hold, but at 16 scalars every 5 s the conservative 2 KiB row charge keeps about 133 minutes. Rows are evicted oldest first instead of being downsampled. |
+| History | 24 h retention within 50 MiB per connection. | Pass (follow-up 2026-11-02) | Migration 0009 downsamples on write: raw for 10 min, 20 s buckets to 2 h, 2 min to 12 h, 4 min to 24 h, each keeping min, max, sum, count, last valid value and the latest missing state. A day of 16 scalars at 5 s keeps 14,896 rows, 58% of the 2 KiB-per-row charge (about 2.1 MiB on disk). Store tests prove the fit and exact aggregates on every tier. The audit found about 133 minutes and oldest-first eviction. |
 
 Open gaps, each larger than an audit fix:
 
-1. History downsampling: coarsen old buckets (or charge measured bytes) so that
-   24 h fits within 50 MiB at the default cadence. At-cap writes also take about
-   23 ms under the store lock (ADR-0011 table).
-2. A history batch with an unknown metric name rolls back the whole tick and
-   only logs a warning. Every current engine name is allowlisted; filtering
-   unknown names before the write would make this robust.
+1. ~~History downsampling~~ — closed 2026-11-02 (M25-09 follow-up). Writes roll
+   old samples into 20 s / 2 min / 4 min buckets in the write transaction, so
+   24 h fits at about 58% of the cap. Steady-state writes measure p95 3.738 ms
+   (the audit's at-cap p95 was 29.686 ms) and 24 h reads p95 18.446 ms. Tier widths stay at or below the
+   1/6/24 h views' read buckets, so charts draw no false gaps. The extrema and
+   mean are returned by the store read; the IPC `HistoryPoint`, charts and
+   report still use the last value per bucket.
+2. ~~Unknown metric names roll back the tick~~ — closed 2026-11-02. Unknown
+   names are dropped before the transaction and counted; the desktop logs only
+   the count (`monitor history skipped unknown metric names`), never names or
+   values. Invalid states, values and times still reject the batch.
 3. Monitor Explain, HypoPG and advisor rules are PostgreSQL only. Other engines
    have no advisor rules.
-4. The live matrix not run here (PG 12/13/15/16/18, MySQL 5.7/8.0, MariaDB 10.6,
+4. The live matrix not run here (PG 12, MySQL 5.7/8.0, MariaDB 10.6,
    SQL Server 2017–2022 and Azure SQL Database, ClickHouse multi-node and Cloud)
-   and the missing PostgreSQL fixtures (managed-provider denial, unloaded
-   extension, replication lag, spill/vacuum, statement reset).
+   and PostgreSQL managed-provider denial probes (RDS/Aurora, Cloud SQL,
+   Azure Database for PostgreSQL, Supabase/Neon), which need cloud accounts
+   (owner item). Closed 2026-11-02: `just test-pg 13 15 16 17 18` runs each
+   version serially with the main suite plus monitoring phases, and all
+   monitoring fixtures pass on 13.23, 15.19, 16.15, 17.11 and 18.6: temp spill
+   (database temp files/bytes, their rate, statement temp blocks), manual
+   VACUUM/ANALYZE counters and ages, server-wide `pg_stat_statements_reset()`
+   (statement epoch changes on 14+; on 13 the epoch stays and continuity is
+   best effort, as documented) and `pg_stat_reset_shared('io')` (16+; I/O is
+   explicitly unavailable before 16), an installed but not preloaded
+   `pg_stat_statements` (typed "installed but not preloaded" state, also after
+   `LOAD` in the collector session), and replication lag on a streaming
+   primary/replica pair (the standby applies commits 2 s late, so the primary
+   reports replay lag ≥ 1 s and a known write lag; the standby reports its WAL
+   receiver with lag unknown, never zero).
+   No collector code change was needed. On 13/14 a brand-new database's first
+   statistics entry sets `stats_reset`, so that one interval is reported as a
+   counter reset (null, never a wrong rate).
 5. Query Store, Always On, DuckDB `enable_profiling`, `sqlite3_db_status` and
    Hrana server timings are not implemented. The UI labels them unavailable.
 6. mac-low and reference-workload certification, plus VoiceOver/NVDA and
@@ -1131,8 +1157,10 @@ Open gaps, each larger than an audit fix:
 
 The M2.5 exit is **not met**. Lifecycle, permission states, privacy, board
 safety and labels pass on the tested versions, with two label defects fixed in
-this audit. The reference-hardware budgets, the history downsampling rule and
-the wider engine matrix remain open.
+this audit. The 2026-11-02 follow-up closed history downsampling, unknown-name
+filtering and the PostgreSQL 13–18 fixture matrix. The reference-hardware
+budgets, PostgreSQL managed-provider probes and the other engines' wider
+version matrix remain open.
 
 ### Editor and external-tool boundaries (M45-06/07)
 

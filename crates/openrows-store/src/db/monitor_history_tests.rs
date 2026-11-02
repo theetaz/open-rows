@@ -74,7 +74,7 @@ fn startup_expiry_removes_old_history() -> Result<(), Box<dyn std::error::Error>
     Ok(())
 }
 #[test]
-fn fixed_byte_caps_evict_oldest_and_raw_text_is_rejected() -> Result<(), Box<dyn std::error::Error>>
+fn fixed_byte_caps_evict_oldest_and_raw_text_is_skipped() -> Result<(), Box<dyn std::error::Error>>
 {
     assert_eq!(
         (CONNECTION_ROWS * 2_048, APP_ROWS * 2_048),
@@ -93,16 +93,13 @@ fn fixed_byte_caps_evict_oldest_and_raw_text_is_rejected() -> Result<(), Box<dyn
     assert_eq!(store.monitor_history(("c", "db"), (0, 10))?.len(), 1);
     let mut unsafe_point = point(10);
     unsafe_point.metric = "SELECT 'test-only'".into();
-    assert!(
-        store
-            .record_monitor(("a", "db"), &[unsafe_point], 10)
-            .is_err()
-    );
+    assert_eq!(store.record_monitor(("a", "db"), &[unsafe_point], 10)?, 1);
+    assert_eq!(store.monitor_history(("a", "db"), (0, 10))?.len(), 2);
     Ok(())
 }
 
 #[test]
-fn mysql_server_history_allows_only_reviewed_scalars() -> Result<(), Box<dyn std::error::Error>> {
+fn mysql_server_history_stores_only_reviewed_scalars() -> Result<(), Box<dyn std::error::Error>> {
     let dir = tempfile::tempdir()?;
     let store = LocalStore::open(&dir.path().join("test.sqlite"))?;
     store.set_monitor_profiles(&["a".into()], 1)?;
@@ -134,12 +131,16 @@ fn mysql_server_history_allows_only_reviewed_scalars() -> Result<(), Box<dyn std
         metric: "Database:digest_text".into(),
         ..point(1)
     };
-    assert!(store.record_monitor(("a", "db"), &[raw], 1).is_err());
+    assert_eq!(store.record_monitor(("a", "db"), &[raw], 1)?, 1);
+    assert_eq!(
+        store.monitor_history(("a", "db"), (0, 1))?.len(),
+        points.len()
+    );
     Ok(())
 }
 
 #[test]
-fn sqlserver_counter_history_allows_only_reviewed_scalars() -> Result<(), Box<dyn std::error::Error>>
+fn sqlserver_counter_history_stores_only_reviewed_scalars() -> Result<(), Box<dyn std::error::Error>>
 {
     let dir = tempfile::tempdir()?;
     let store = LocalStore::open(&dir.path().join("test.sqlite"))?;
@@ -173,12 +174,16 @@ fn sqlserver_counter_history_allows_only_reviewed_scalars() -> Result<(), Box<dy
         metric: "Database:query_hash".into(),
         ..point(1)
     };
-    assert!(store.record_monitor(("a", "db"), &[raw], 1).is_err());
+    assert_eq!(store.record_monitor(("a", "db"), &[raw], 1)?, 1);
+    assert_eq!(
+        store.monitor_history(("a", "db"), (0, 1))?.len(),
+        points.len()
+    );
     Ok(())
 }
 
 #[test]
-fn embedded_and_libsql_history_allows_only_reviewed_scalars()
+fn embedded_and_libsql_history_stores_only_reviewed_scalars()
 -> Result<(), Box<dyn std::error::Error>> {
     let dir = tempfile::tempdir()?;
     let store = LocalStore::open(&dir.path().join("test.sqlite"))?;
@@ -211,12 +216,16 @@ fn embedded_and_libsql_history_allows_only_reviewed_scalars()
         metric: "Database:journal_mode".into(),
         ..point(1)
     };
-    assert!(store.record_monitor(("a", "db"), &[raw], 1).is_err());
+    assert_eq!(store.record_monitor(("a", "db"), &[raw], 1)?, 1);
+    assert_eq!(
+        store.monitor_history(("a", "db"), (0, 1))?.len(),
+        points.len()
+    );
     Ok(())
 }
 
 #[test]
-fn duckdb_history_allows_only_reviewed_scalars() -> Result<(), Box<dyn std::error::Error>> {
+fn duckdb_history_stores_only_reviewed_scalars() -> Result<(), Box<dyn std::error::Error>> {
     let dir = tempfile::tempdir()?;
     let store = LocalStore::open(&dir.path().join("test.sqlite"))?;
     store.set_monitor_profiles(&["a".into()], 1)?;
@@ -249,6 +258,10 @@ fn duckdb_history_allows_only_reviewed_scalars() -> Result<(), Box<dyn std::erro
         metric: "Database:database_id".into(),
         ..point(1)
     };
-    assert!(store.record_monitor(("a", "db"), &[raw], 1).is_err());
+    assert_eq!(store.record_monitor(("a", "db"), &[raw], 1)?, 1);
+    assert_eq!(
+        store.monitor_history(("a", "db"), (0, 1))?.len(),
+        points.len()
+    );
     Ok(())
 }

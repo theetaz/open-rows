@@ -162,9 +162,9 @@ bench-schema:
     {{sccache_guard}} cargo bench -p openrows-schema --bench schema_catalog --locked
     python3 -B scripts/bench-schema.py
 
-# Run PostgreSQL integration tests in a throwaway container; skips when Docker is unavailable.
-test-pg version="17":
-    {{sccache_guard}} bash scripts/test-pg.sh "{{version}}"
+# Run PostgreSQL integration tests and the monitoring phases in throwaway containers, one major version at a time (default 17, e.g. `just test-pg 13 15 16 17 18`); skips when Docker is unavailable.
+test-pg *versions="17":
+    {{sccache_guard}} bash scripts/test-pg.sh {{versions}}
 
 # Run MySQL/MariaDB integration tests in throwaway containers (default mysql:8.4 and mariadb:11.4); skips when Docker is unavailable.
 test-mysql *images:
