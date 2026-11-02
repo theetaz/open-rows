@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 /** API-key/local/Codex CLI provider settings and metadata-only verification (M45-01/04). */
 export {
-  setAiKey,
+  promptAiKey,
   deleteAiKey,
   verifyAiProvider,
   cancelAiVerification,
@@ -19,6 +19,7 @@ export type {
   AiError,
   CodexStatus,
   AccountMode,
+  SecretEntry,
 } from './generated/bindings';
 
 /** Connection context sharing, offline preview and metadata-only audit (M45-02). */
@@ -85,8 +86,20 @@ export {
   deleteMcpServer,
   discoverMcpTools,
   confirmMcpTool,
+  listProjectMcpServers,
+  trustProjectMcpServer,
+  revokeProjectMcpServer,
+  enableProjectMcpTools,
+  promptProjectMcpSecret,
 } from './mcpClient';
 export type {
+  ProjectServer,
+  ProjectServer_Deserialize,
+  ProjectServer_Serialize,
+  ProjectServerView,
+  ProjectServerView_Deserialize,
+  ProjectServerView_Serialize,
+  ProjectTrustState,
   ServerConfig,
   McpClientTool,
   Endpoint,

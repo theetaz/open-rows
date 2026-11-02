@@ -17,6 +17,7 @@ const ready = {
   providers: [provider],
   defaultProvider: 'fixture',
   defaultModel: 'model',
+  cliTurnSeconds: 300,
 };
 it('explains each missing setup step and opens AI settings', () => {
   const open = vi.fn();

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { TextField } from '@openrows/ui';
 import { SettingRow } from '../../appearance/InterfaceSettings';
-import { aiSettings } from './aiSettings';
+import { aiSettings, CLI_TURN } from './aiSettings';
 import { saveAiSettings } from './aiActions';
 const useAiSettings = aiSettings.useValue;
 /** Global network switch and explicitly selected default model. */
@@ -41,6 +41,33 @@ export function AiPreferences(props: {
           }}
           onBlur={() => {
             void props.run(() => saveAiSettings(aiSettings.get()));
+          }}
+        />
+      </SettingRow>
+      <SettingRow
+        title="Codex turn deadline"
+        description="Seconds one Codex request may take, including its reasoning and tool calls (60–900). Cancel, lock and AI off still stop it at once."
+      >
+        <TextField
+          aria-label="Codex turn deadline (seconds)"
+          type="number"
+          min={CLI_TURN.min}
+          max={CLI_TURN.max}
+          step={30}
+          defaultValue={settings.cliTurnSeconds}
+          key={settings.cliTurnSeconds}
+          disabled={props.busy}
+          onBlur={(event) => {
+            const seconds = Math.round(Number(event.target.value));
+            const cliTurnSeconds = Math.min(
+              CLI_TURN.max,
+              Math.max(CLI_TURN.min, seconds || CLI_TURN.initial),
+            );
+            event.target.value = String(cliTurnSeconds);
+            if (cliTurnSeconds === settings.cliTurnSeconds) return;
+            void props.run(() =>
+              saveAiSettings({ ...aiSettings.get(), cliTurnSeconds }),
+            );
           }}
         />
       </SettingRow>

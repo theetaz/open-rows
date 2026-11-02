@@ -120,9 +120,10 @@ pub(crate) async fn assistant_run(
     let state = app.state::<AssistantState>();
     let (_run, cancel) = state.start(&request.id)?;
     let executor = context::executor(&app, &request)?;
+    let deadline = ai::turn_deadline(&app, &request.provider)?;
     let options = RequestOptions {
         cancel,
-        timeout: AgentLimits::default().timeout,
+        timeout: deadline,
     };
     let work = Box::pin(async {
         let context = context::prepare(&executor, &request).await?;
@@ -138,7 +139,10 @@ pub(crate) async fn assistant_run(
         let input = AgentRequest {
             model: request.model.clone(),
             context,
-            limits: AgentLimits::default(),
+            limits: AgentLimits {
+                timeout: deadline,
+                ..AgentLimits::default()
+            },
             options: options.clone(),
         };
         forward(provider.as_ref(), &router, &input, on_event).await

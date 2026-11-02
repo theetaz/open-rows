@@ -151,7 +151,8 @@ first-use consent per tool, bound to server, transport and schema. External
 data passes conservative SampleRows sharing, redaction and audit gates; no
 database execution capability, roots or credentials are given to user servers.
 Credential/endpoint changes invalidate the persisted catalogue and grants.
-Project-scoped servers remain open. Details and manual smoke boundaries are in
+Project-scoped servers are implemented too (2026-11-02, below). Details and
+manual smoke boundaries are in
 [23 §14](../23-ai-assistant.md#14-editor-proposals-and-user-mcp-servers-m45-0607).
 
 ## Implementation evidence — M45-04 (2026-11-02)
@@ -174,6 +175,25 @@ deadlines and process-group termination. Fake app-server integration tests,
 an opt-in status-only smoke and real-WebKit checks are recorded in
 [docs/23 §16](../23-ai-assistant.md#16-implemented-m45-04-codex-cli-provider).
 Claude Code, Gemini CLI and Cursor bridges remain disabled (not implemented)
-until provider approval and isolation are validated; M45-09 still owns the
-end-to-end exit validation.
+until provider approval and isolation are validated.
+
+## Implementation evidence — M45-01/07/09 completion (2026-11-02)
+
+- **Native credential entry.** API keys and Project MCP server values are
+  typed into a native `NSAlert` with an `NSSecureTextField` on the main thread
+  and written straight to the keychain; IPC carries only `saved`,
+  `cancelled` or a typed error. The one-way `ai_key_set` command is removed.
+- **Project MCP servers.** `project.yaml` may declare servers by transport and
+  the names of variables and headers, never values. They never start until the
+  user trusts the exact definition on the device; trust is bound to its
+  SHA-256 like credential-command trust, and any change revokes it together
+  with enabled tools, catalogue, grants and stored values.
+- **CLI turn deadline.** CLI providers get their own bounded deadline (Codex:
+  300 s default, 60–900 s setting, 900 s hard ceiling in the agent loop); HTTP
+  providers keep 60 s. Cancellation, lock and AI off still stop work at once.
+- **Exit validation (M45-09).** NL→SQL result-equivalence and health/report
+  grounding evaluations run in CI-style tests with a deterministic replay
+  provider, with an opt-in live mode; the exit audit is in
+  [docs/28 §8](../28-database-monitoring-and-ai-harness.md#m45-exit-audit-m45-09).
+  Live per-provider evaluation with real keys remains an owner step.
 

@@ -7,6 +7,7 @@ import { ProviderDetails } from './ProviderDetails';
 import { REASONS } from './aiReasons';
 import { isCliProvider } from './aiSettings';
 import { CodexSignIn } from './CodexSignIn';
+import { ProviderKey } from './ProviderKey';
 import { codexLocation, codexStatusText } from './codexStatus';
 import styles from './Ai.module.css';
 function health(result: Verification | null): string {
@@ -103,6 +104,11 @@ export function ProviderRow(props: Props): React.JSX.Element {
         >
           Use as default
         </Button>
+        <ProviderKey
+          config={props.config}
+          busy={busy}
+          disabled={props.disabled}
+        />
       </div>
       {failure && <p role="alert">{failure}</p>}
       {result?.cli?.state === 'signedOut' && (

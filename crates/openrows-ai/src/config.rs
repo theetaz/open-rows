@@ -139,7 +139,7 @@ pub fn validate_id(id: &str) -> Result<(), AiError> {
 }
 
 /// Device AI preferences; the owner must explicitly enable network operations.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ipc-types", derive(specta::Type))]
 #[serde(rename_all = "camelCase", default, deny_unknown_fields)]
 pub struct AiSettings {
@@ -151,13 +151,38 @@ pub struct AiSettings {
     pub default_provider: String,
     /// Explicit default model, empty when unset.
     pub default_model: String,
+    /// Whole-loop deadline for CLI providers such as Codex, 60–900 seconds.
+    pub cli_turn_seconds: u32,
 }
+impl Default for AiSettings {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            providers: Vec::new(),
+            default_provider: String::new(),
+            default_model: String::new(),
+            cli_turn_seconds: CLI_TURN_DEFAULT_SECONDS,
+        }
+    }
+}
+/// [`crate::agent::CLI_TURN_DEFAULT`] in whole seconds.
+const CLI_TURN_DEFAULT_SECONDS: u32 = 300;
+/// Accepted CLI deadlines: the HTTP default up to [`crate::agent::CLI_TURN_MAX`].
+const CLI_TURN_SECONDS: std::ops::RangeInclusive<u32> = 60..=900;
 impl AiSettings {
+    /// The CLI provider deadline these settings select.
+    #[must_use]
+    pub fn cli_turn(&self) -> std::time::Duration {
+        std::time::Duration::from_secs(u64::from(self.cli_turn_seconds))
+    }
     /// Validate every provider and default without issuing a network request.
     /// # Errors
     /// Returns `InvalidConfig` for duplicates, invalid defaults or oversized input.
     pub fn validate(&self) -> Result<(), AiError> {
-        if self.providers.len() > 32 || self.default_model.len() > 256 {
+        if self.providers.len() > 32
+            || self.default_model.len() > 256
+            || !CLI_TURN_SECONDS.contains(&self.cli_turn_seconds)
+        {
             return Err(AiError::InvalidConfig);
         }
         let mut ids = std::collections::HashSet::new();

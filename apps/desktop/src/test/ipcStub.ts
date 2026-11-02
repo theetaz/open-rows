@@ -423,6 +423,11 @@ function mcpStub(): Record<string, unknown> {
     setMcpServerSecrets: vi.fn().mockResolvedValue(undefined),
     discoverMcpTools: vi.fn().mockResolvedValue([]),
     confirmMcpTool: vi.fn().mockResolvedValue(undefined),
+    listProjectMcpServers: vi.fn().mockResolvedValue([]),
+    trustProjectMcpServer: vi.fn().mockResolvedValue(undefined),
+    revokeProjectMcpServer: vi.fn().mockResolvedValue(undefined),
+    enableProjectMcpTools: vi.fn().mockResolvedValue(undefined),
+    promptProjectMcpSecret: vi.fn().mockResolvedValue('saved'),
     onMcpProposals: vi.fn().mockResolvedValue(() => undefined),
     investigateStatement: vi.fn().mockResolvedValue({
       statementId: '1',

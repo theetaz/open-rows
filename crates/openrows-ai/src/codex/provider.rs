@@ -23,6 +23,7 @@ pub struct CodexProvider {
     config: ProviderConfig,
     control: AiControl,
     tools: bool,
+    deadline: std::time::Duration,
     session: Mutex<Option<Session>>,
 }
 impl CodexProvider {
@@ -34,6 +35,7 @@ impl CodexProvider {
             config,
             control,
             tools: true,
+            deadline: crate::agent::CLI_TURN_DEFAULT,
             session: Mutex::new(None),
         }
     }
@@ -41,6 +43,15 @@ impl CodexProvider {
     #[must_use]
     pub fn with_tool_calling(mut self, supported: bool) -> Self {
         self.tools = supported;
+        self
+    }
+    /// Use the user's CLI turn deadline, clamped to the documented range.
+    #[must_use]
+    pub fn with_deadline(mut self, deadline: std::time::Duration) -> Self {
+        self.deadline = deadline.clamp(
+            crate::agent::AgentLimits::default().timeout,
+            crate::agent::CLI_TURN_MAX,
+        );
         self
     }
     async fn advance(
@@ -84,6 +95,9 @@ impl CodexProvider {
 impl AgentProvider for CodexProvider {
     fn tool_calling(&self) -> bool {
         self.tools
+    }
+    fn deadline(&self) -> std::time::Duration {
+        self.deadline
     }
     fn turn<'a>(
         &'a self,

@@ -4,7 +4,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
   cancelAiVerification,
-  setAiKey,
+  promptAiKey,
   signInCodex,
   verifyAiProvider,
   writeSettingsFile,
@@ -17,7 +17,7 @@ import { reloadSettings } from '../localSetting';
 vi.mock('@openrows/ipc', async () => ({
   ...(await import('../../../test/ipcStub')).ipcStub(),
   cancelAiVerification: vi.fn().mockResolvedValue(undefined),
-  setAiKey: vi.fn().mockResolvedValue(undefined),
+  promptAiKey: vi.fn().mockResolvedValue('saved'),
   signInCodex: vi.fn(),
   verifyAiProvider: vi.fn(),
 }));
@@ -59,7 +59,7 @@ it('saves a Codex provider without a key or endpoint', async () => {
   await user.click(screen.getByRole('button', { name: 'Add provider' }));
   await user.type(screen.getByLabelText('Provider name'), 'Codex');
   await user.selectOptions(screen.getByLabelText('Provider type'), 'codex');
-  expect(screen.queryByLabelText(/API key/)).not.toBeInTheDocument();
+  expect(screen.queryByLabelText(/Enter an API key/)).not.toBeInTheDocument();
   expect(screen.queryByLabelText('Base URL')).not.toBeInTheDocument();
   expect(
     screen.getByText(/every approval Codex asks for is declined/),
@@ -72,7 +72,7 @@ it('saves a Codex provider without a key or endpoint', async () => {
     baseUrl: '',
     secretRef: '',
   });
-  expect(setAiKey).not.toHaveBeenCalled();
+  expect(promptAiKey).not.toHaveBeenCalled();
 });
 it('names every discovery and account state explicitly', () => {
   expect(codexStatusText({ state: 'notInstalled' })).toMatch(/Not installed/);

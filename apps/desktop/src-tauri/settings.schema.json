@@ -919,6 +919,13 @@
           "maxLength": 256,
           "default": ""
         },
+        "cliTurnSeconds": {
+          "description": "Whole-request deadline in seconds for CLI providers such as Codex.",
+          "type": "integer",
+          "minimum": 60,
+          "maximum": 900,
+          "default": 300
+        },
         "providers": {
           "type": "array",
           "maxItems": 32,

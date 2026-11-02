@@ -7,20 +7,22 @@ use openrows_mcp::client::{ClientTool, ServerConfig};
 /// A provider-facing alias with the server and tool it stands for.
 pub(super) type AliasedTool = (String, ServerConfig, ClientTool);
 
-/// Enabled tools in server order as `user_<server>_<tool>`, at most 64.
+/// Enabled tools in server order (user servers, then trusted Project servers)
+/// as `user_<server>_<tool>`, at most 64.
 pub(super) fn enabled_tools(inner: &Inner) -> Vec<AliasedTool> {
     inner
-        .configs
-        .iter()
+        .servers()
+        .into_iter()
         .enumerate()
         .flat_map(|(server, config)| {
+            let enabled = config.enabled_tools.clone();
             inner
                 .tools
                 .get(&config.id)
                 .into_iter()
                 .flatten()
                 .enumerate()
-                .filter(|(_, tool)| config.enabled_tools.contains(&tool.name))
+                .filter(move |(_, tool)| enabled.contains(&tool.name))
                 .map(move |(index, tool)| {
                     (
                         format!("user_{server}_{index}"),

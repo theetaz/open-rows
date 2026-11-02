@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import {
   cancelAiVerification,
   deleteAiKey,
-  setAiKey,
+  promptAiKey,
   verifyAiProvider,
   writeSettingsFile,
 } from '@openrows/ipc';
@@ -18,7 +18,7 @@ vi.mock('@openrows/ipc', async () => ({
   ...(await import('../../../test/ipcStub')).ipcStub(),
   cancelAiVerification: vi.fn().mockResolvedValue(undefined),
   deleteAiKey: vi.fn().mockResolvedValue(undefined),
-  setAiKey: vi.fn().mockResolvedValue(undefined),
+  promptAiKey: vi.fn().mockResolvedValue('saved'),
   verifyAiProvider: vi.fn(),
 }));
 const result: Verification = {
@@ -52,6 +52,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(writeSettingsFile).mockResolvedValue(undefined);
   vi.mocked(deleteAiKey).mockResolvedValue(undefined);
+  vi.mocked(promptAiKey).mockResolvedValue('saved');
   vi.mocked(verifyAiProvider).mockResolvedValue(result);
   aiSettings.set(parseAiSettings(null));
   reloadSettings();
@@ -62,7 +63,7 @@ async function addProvider(local = false): Promise<void> {
   await user.type(screen.getByLabelText('Provider name'), 'My provider');
   if (local)
     await user.selectOptions(screen.getByLabelText('Provider type'), 'ollama');
-  else await user.type(screen.getByLabelText('API key'), 'test-only');
+  expect(document.querySelector('input[type="password"]')).toBeNull();
   await user.click(screen.getByRole('button', { name: 'Save provider' }));
   await screen.findByRole('region', { name: 'My provider' });
 }
@@ -71,9 +72,12 @@ it('adds keychain references, explicitly enables, verifies, selects defaults, ed
   render(<AiPane />);
   expect(screen.getByLabelText('AI features off')).toBeChecked();
   await addProvider();
-  expect(setAiKey).toHaveBeenCalledWith(expect.any(String), 'test-only');
-  expect(JSON.stringify(collectSettings())).not.toContain('test-only');
-  expect(localStorage.getItem('openrows.ai.v1')).not.toContain('test-only');
+  const id = aiSettings.get().providers[0]?.id;
+  expect(promptAiKey).toHaveBeenCalledWith(id);
+  expect(aiSettings.get().providers[0]?.secretRef).toBe(
+    `ai/${String(id)}/api-key`,
+  );
+  expect(JSON.stringify(collectSettings())).not.toMatch(/"key"|apiKey/);
   expect(screen.getByRole('button', { name: 'Verify' })).toBeDisabled();
   expect(verifyAiProvider).not.toHaveBeenCalled();
   await user.click(screen.getByLabelText('AI features off'));
@@ -99,7 +103,7 @@ it('adds keychain references, explicitly enables, verifies, selects defaults, ed
   await user.type(screen.getByLabelText('Provider name'), 'Edited');
   await user.click(screen.getByRole('button', { name: 'Save provider' }));
   await screen.findByRole('region', { name: 'Edited' });
-  expect(setAiKey).toHaveBeenCalledTimes(1);
+  expect(promptAiKey).toHaveBeenCalledTimes(1);
   await user.click(screen.getByRole('button', { name: 'Remove' }));
   await waitFor(() => {
     expect(
@@ -113,7 +117,7 @@ it('adds keychain references, explicitly enables, verifies, selects defaults, ed
 it('supports keyless local servers and never probes on mount', async () => {
   render(<AiPane />);
   await addProvider(true);
-  expect(setAiKey).not.toHaveBeenCalled();
+  expect(promptAiKey).not.toHaveBeenCalled();
   expect(aiSettings.get().providers[0]?.secretRef).toBe('');
   expect(verifyAiProvider).not.toHaveBeenCalled();
 });
@@ -171,4 +175,46 @@ it('exposes a cancellation action while metadata verification is pending', async
   expect(within(provider).getByRole('status')).toHaveTextContent('Verifying');
   await user.click(screen.getByRole('button', { name: 'Cancel verification' }));
   expect(cancelAiVerification).toHaveBeenCalledWith('fixture');
+});
+it('replaces a key only through the native dialog and reports its outcome', async () => {
+  const user = userEvent.setup();
+  aiSettings.set(parseAiSettings({ providers: [configured] }));
+  render(<AiPane />);
+  const row = screen.getByRole('region', { name: 'Fixture' });
+  await user.click(within(row).getByRole('button', { name: 'Set API key…' }));
+  expect(promptAiKey).toHaveBeenCalledWith('fixture');
+  expect(
+    await within(row).findByText('API key saved in the keychain.'),
+  ).toBeVisible();
+  vi.mocked(promptAiKey).mockResolvedValueOnce('cancelled');
+  await user.click(within(row).getByRole('button', { name: 'Set API key…' }));
+  expect(
+    await within(row).findByText(/No key entered; the stored key is unchanged/),
+  ).toBeVisible();
+  vi.mocked(promptAiKey).mockRejectedValueOnce(new Error('test-only'));
+  await user.click(within(row).getByRole('button', { name: 'Set API key…' }));
+  expect(
+    await within(row).findByText('The API key could not be stored.'),
+  ).toBeVisible();
+  expect(screen.queryByText('test-only')).not.toBeInTheDocument();
+});
+it('saves a bounded Codex turn deadline', async () => {
+  const user = userEvent.setup();
+  render(<AiPane />);
+  const field = screen.getByLabelText('Codex turn deadline (seconds)');
+  expect(field).toHaveValue(300);
+  await user.clear(field);
+  await user.type(field, '600');
+  await user.tab();
+  await waitFor(() => {
+    expect(aiSettings.get().cliTurnSeconds).toBe(600);
+  });
+  expect(writeSettingsFile).toHaveBeenCalled();
+  const next = screen.getByLabelText('Codex turn deadline (seconds)');
+  await user.clear(next);
+  await user.type(next, '5000');
+  await user.tab();
+  await waitFor(() => {
+    expect(aiSettings.get().cliTurnSeconds).toBe(900);
+  });
 });

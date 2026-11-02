@@ -6,6 +6,7 @@
 )]
 pub(crate) mod codex;
 mod generation;
+use crate::security::secret_prompt::{NativePrompt, PromptText, SecretEntry, SecretPrompt, enter};
 use crate::{
     connections::{IpcError, IpcErrorKind},
     settings::{self, SettingsFile},
@@ -15,9 +16,7 @@ use openrows_ai::{
     AiControl, AiError, AiSettings, Cancellation, Health, HttpProvider, NetworkOptions, Provider,
     ProviderConfig, RequestOptions, Verification,
 };
-use openrows_secrets::{
-    CachingSecretStore, KeychainSecretStore, SecretKey, SecretStore, SecretString,
-};
+use openrows_secrets::{CachingSecretStore, KeychainSecretStore, SecretKey, SecretStore};
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex, PoisonError},
@@ -105,6 +104,16 @@ pub(crate) fn config(app: &AppHandle, id: &str) -> Result<ProviderConfig, IpcErr
         .find(|config| config.id == id)
         .ok_or_else(|| IpcError::new(IpcErrorKind::NotFound, "AI provider not found"))
 }
+/// Whole-loop deadline for this provider: the user's CLI setting for Codex,
+/// the fixed 60-second default for every HTTP provider.
+pub(crate) fn turn_deadline(app: &AppHandle, id: &str) -> Result<std::time::Duration, IpcError> {
+    let default = openrows_ai::agent::AgentLimits::default().timeout;
+    if config(app, id)?.kind != openrows_ai::ProviderKind::Codex {
+        return Ok(default);
+    }
+    let value = settings::current(&app.state::<SettingsFile>()).unwrap_or_default();
+    Ok(parse(&value).map_or(default, |settings| settings.cli_turn()))
+}
 impl From<AiError> for IpcError {
     fn from(error: AiError) -> Self {
         let kind = match error {
@@ -132,30 +141,49 @@ async fn secret_work<T: Send + 'static>(
         .map_err(|_| secret_error())
 }
 
-/// Store a replacement key; there is no command to reveal or return it.
+/// Enter a replacement key in the native secure dialog. The key goes from the
+/// dialog straight to the keychain; only the outcome crosses IPC, and there is
+/// no command to reveal or return it.
 #[tauri::command]
 #[specta::specta]
-pub(crate) async fn ai_key_set(app: AppHandle, id: String, key: String) -> Result<(), IpcError> {
+pub(crate) async fn ai_key_prompt(app: AppHandle, id: String) -> Result<SecretEntry, IpcError> {
     app.state::<crate::security::Security>()
-        .admit("ai_key_set")?;
+        .admit("ai_key_prompt")?;
     let config = config(&app, &id)?;
-    let key = SecretString::new(key);
-    if key.expose().is_empty()
-        || key.expose().len() > 4096
-        || key.expose().chars().any(char::is_control)
-    {
+    let prompt = NativePrompt { app: app.clone() };
+    let secrets = Arc::clone(&app.state::<AiState>().secrets);
+    let entry = prompt_key(&prompt, secrets, &config).await?;
+    if entry == SecretEntry::Saved {
+        // Work started with the previous key stops; new work reads the new one.
+        app.state::<AiState>().cancel(&id);
+        app.state::<crate::assistant::AssistantState>().cancel(None);
+        app.state::<crate::assistant::ScheduledState>()
+            .interrupt_all();
+    }
+    Ok(entry)
+}
+/// Ask for and store one provider key; keyless and CLI providers have none.
+async fn prompt_key(
+    prompt: &dyn SecretPrompt,
+    secrets: Arc<dyn SecretStore>,
+    config: &ProviderConfig,
+) -> Result<SecretEntry, IpcError> {
+    if config.secret_ref.is_empty() || config.kind == openrows_ai::ProviderKind::Codex {
         return Err(AiError::InvalidConfig.into());
     }
-    if config.secret_ref.is_empty() {
-        return Err(AiError::InvalidConfig.into());
-    }
-    let state = app.state::<AiState>();
-    state.cancel(&id);
-    app.state::<crate::assistant::AssistantState>().cancel(None);
-    app.state::<crate::assistant::ScheduledState>()
-        .interrupt_all();
-    let secrets = Arc::clone(&state.secrets);
-    secret_work(move || secrets.set(&SecretKey::ai_provider(&id), &key)).await
+    let text = PromptText {
+        title: format!("API key for {}", config.name),
+        message: "OpenRows stores the key only in the macOS keychain. It is never shown again \
+                  or sent to the app window."
+            .into(),
+    };
+    let id = config.id.clone();
+    enter(prompt, &text, move |key| {
+        Box::pin(secret_work(move || {
+            secrets.set(&SecretKey::ai_provider(&id), &key)
+        }))
+    })
+    .await
 }
 /// Remove the key before removing its reference from settings.
 #[tauri::command]
@@ -273,26 +301,4 @@ async fn verify_http(
     Ok(provider.verify(&options).await)
 }
 #[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn secrets_are_rejected_by_settings_and_ipc_errors_are_fixed() {
-        assert!(validate_settings(&serde_json::json!({"ai":{"apiKey":"test-only"}})).is_err());
-        assert!(
-            validate_settings(&serde_json::json!({"ai":{"providers":[{"key":"test-only"}]}}))
-                .is_err()
-        );
-        let error = IpcError::from(AiError::Auth);
-        assert_eq!(error.kind, IpcErrorKind::Auth);
-        assert!(!serde_json::to_string(&error).unwrap().contains("test-only"));
-    }
-    #[test]
-    fn global_permission_defaults_off_and_invalid_settings_revoke_it() {
-        let state = AiState::default();
-        assert!(!state.control.enabled());
-        state.configure(&serde_json::json!({"ai":{"enabled":true}}));
-        assert!(state.control.enabled());
-        state.configure(&serde_json::json!({"ai":{"enabled":true,"key":"test-only"}}));
-        assert!(!state.control.enabled());
-    }
-}
+mod tests;

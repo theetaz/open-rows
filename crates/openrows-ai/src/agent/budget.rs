@@ -120,14 +120,18 @@ impl Budget {
         Ok((turn, text))
     }
 }
-pub(super) fn validate(request: &AgentRequest) -> Result<(), AgentError> {
+/// `deadline` is the provider's own ceiling, never above `CLI_TURN_MAX`.
+pub(super) fn validate(
+    request: &AgentRequest,
+    deadline: std::time::Duration,
+) -> Result<(), AgentError> {
     let hard = AgentLimits::default();
     if request.limits.steps == 0
         || request.limits.steps > hard.steps
         || request.limits.tokens == 0
         || request.limits.tokens > hard.tokens
         || request.limits.timeout.is_zero()
-        || request.limits.timeout > hard.timeout
+        || request.limits.timeout > deadline
         || request.model.is_empty()
         || request.model.len() > 256
     {

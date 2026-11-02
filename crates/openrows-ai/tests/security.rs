@@ -246,3 +246,18 @@ async fn ai_off_never_even_polls_the_outbound_dialer() -> TestResult {
     assert_eq!(dialer.0.load(std::sync::atomic::Ordering::SeqCst), 1);
     Ok(())
 }
+#[test]
+fn the_cli_turn_deadline_defaults_to_five_minutes_and_is_bounded()
+-> Result<(), Box<dyn std::error::Error>> {
+    let settings: AiSettings = serde_json::from_str("{}")?;
+    assert_eq!(settings.cli_turn(), std::time::Duration::from_secs(300));
+    settings.validate()?;
+    for (seconds, valid) in [(59, false), (60, true), (900, true), (901, false)] {
+        let settings = AiSettings {
+            cli_turn_seconds: seconds,
+            ..AiSettings::default()
+        };
+        assert_eq!(settings.validate().is_ok(), valid, "{seconds}");
+    }
+    Ok(())
+}

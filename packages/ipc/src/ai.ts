@@ -1,11 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 import { Channel } from '@tauri-apps/api/core';
 import { commands } from './generated/bindings';
-import type { CodexStatus, Verification } from './generated/bindings';
+import type {
+  CodexStatus,
+  SecretEntry,
+  Verification,
+} from './generated/bindings';
 import { unwrap } from './connections';
-/** Store an API key in the OS keychain; no key is returned. */
-export async function setAiKey(id: string, key: string): Promise<void> {
-  await unwrap(commands.aiKeySet(id, key));
+/**
+ * Open the native secure dialog for a provider's API key. The key goes from the
+ * dialog straight to the OS keychain; only the outcome is returned.
+ */
+export async function promptAiKey(id: string): Promise<SecretEntry> {
+  return unwrap(commands.aiKeyPrompt(id));
 }
 /** Remove a provider's OS keychain entry. */
 export async function deleteAiKey(id: string): Promise<void> {

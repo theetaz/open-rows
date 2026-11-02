@@ -129,7 +129,7 @@ bounded samples and editor proposals cover this task's read/propose contract.
 
 - Users add MCP servers (stdio command or HTTP URL) in Settings → AI → MCP servers, globally or per Project.
 - Tools from those servers are available to API-provider, local-model and Codex conversations. The Codex bridge disables Codex's own MCP configuration; enabled user tools reach it only through the application's executor, with the same first-use confirmation.
-- Each server shows its tool list; tools can be disabled individually; first use of a server's tool asks for confirmation; servers from Project files require the Project to be trusted (same rule as collection scripts).
+- Each server shows its tool list; tools can be disabled individually; first use of a server's tool asks for confirmation; servers from Project files run only after the user trusts that exact definition on this device, and any change to it removes the trust ([§14](#project-mcp-servers-m45-07)).
 
 ## 4. Data-sharing policy (per connection)
 
@@ -199,7 +199,7 @@ Provider HTTP traffic uses `openrows-net` (proxy, custom CA, timeouts) so corpor
 - CLI bridges tested with fake CLIs that emit recorded JSON streams; nightly smoke tests against real CLIs where CI credentials exist.
 - Policy tests: for every level, assert exactly which fields leave the core (golden payloads); redaction property tests.
 - Safety tests: prompts that attempt writes (`DROP`, `DELETE`) must never execute; `run_read_query` rejects write-classified SQL and runs inside read-only transactions.
-- Evaluation set: NL→SQL tasks over fixture schemas per dialect, scored by result equivalence; tracked per provider/model to guide defaults.
+- Evaluation set: NL→SQL tasks over fixture schemas per dialect, scored by result equivalence; tracked per provider/model to guide defaults. Implemented with a deterministic replay provider and an opt-in live mode ([§17](#17-evaluations-m45-09)).
 
 ## 9. Monitoring and investigation delivery
 
@@ -228,10 +228,18 @@ key usage/limits. The global **AI features off** switch defaults on (network
 permission defaults off), including after saving a provider. Disabling it or
 locking cancels active provider work. Nothing auto-verifies on mount.
 
-Key entry uses a one-way `ai_key_set` IPC request from the password field;
-keys are never returned in replies or events. Fully eliminating keys from IPC
-request payloads requires native credential entry, which is not implemented.
-The task's literal no-key-in-any-IPC-payload criterion therefore remains unmet.
+Keys are entered only in a native secure dialog, never in the webview. The
+provider form has no key field: **Enter an API key after saving** (on by
+default for new remote providers) and the row's **Set API key…** button call
+`ai_key_prompt(id)`. On the main thread the app shows an `NSAlert` with an
+`NSSecureTextField` ("API key for <provider>"); a typed key goes straight to
+the keychain and the command returns only `saved` or `cancelled`, or a typed
+error (empty, longer than 4,096 bytes or containing control characters;
+keychain failure). No IPC request, reply or event carries a key. Saving a new
+key cancels running verification, assistant turns and scheduled runs that may
+hold the previous one. The dialog is behind a `SecretPrompt` trait so every
+other step is tested with a fake; on other platforms the command is
+`unsupported` until their native dialogs exist.
 
 Keys use the existing OS keychain under `ai/<provider-id>/api-key`; settings
 contain canonical references only. No reveal-key command exists. Portable preference export/import excludes device AI
@@ -621,8 +629,8 @@ servers: a direct stdio executable with JSON arguments, or a Streamable HTTP
 endpoint, through the official rmcp 3.4.0 client. **Discover tools** is an
 explicit action; every tool starts disabled and is enabled per tool. Enabled
 tools join the assistant panel's bounded native catalogue. Server descriptions
-are not used as instructions. Project-scoped servers and Project-file import
-are not implemented yet (§3.2 remainder).
+are not used as instructions. Servers declared by Projects are described in
+[Project MCP servers](#project-mcp-servers-m45-07).
 
 Public metadata lives in private `mcp-servers.json` beside the local store, and
 the last discovered catalogue (tool names and redacted schemas) in private
@@ -649,7 +657,8 @@ and endpoint changes also discard the discovered catalogue and invalidate
 in-flight catalogue snapshots before consent or invocation.
 
 Discovery and tool exchanges have five-second deadlines. Consent waits have a
-30-second deadline inside the assistant's 60-second request limit. Limits are
+30-second deadline inside the assistant's request limit (60 seconds for HTTP
+providers, the Codex turn deadline for Codex, §16). Limits are
 16 servers, 64 discovered tools per server across eight pages, 8 KiB schemas,
 16 KiB argument objects and 64 KiB decoded results/SSE events. External
 arguments and results are conservatively classified as samples: **SampleRows**
@@ -671,6 +680,53 @@ Protocol/HTTP library diagnostics are excluded from logs. Errors are typed
 `unsupported` when AI is off, `cancelled`) and the settings show recovery text
 for each.
 
+### Project MCP servers (M45-07)
+
+A Project's `.openrows/project.yaml` may declare up to eight servers under
+`mcp_servers`. The file holds only what the user reviews, never secret values:
+
+```yaml
+mcp_servers:
+  - id: docs
+    name: Team docs
+    endpoint: { kind: http, url: "https://mcp.example.com/mcp" }
+    headers: [Authorization]        # names only
+  - id: search
+    name: Search
+    endpoint: { kind: stdio, command: /usr/local/bin/search-mcp, args: [--read-only] }
+    env: [SEARCH_TOKEN]             # names only
+```
+
+Each definition is validated like a user server (direct executable or HTTPS
+URL, loopback-only plaintext, no URL credentials, query or fragment); `env` is
+for stdio and `headers` for HTTP, and both are lists of names. A value map, an
+unknown field or an invalid definition makes the manifest fail to load with a
+fixed message. Never put secrets in arguments.
+
+Loading or opening the Project registers its servers; nothing starts.
+Settings → AI → MCP → **Project MCP servers** lists them separately from user
+servers, showing the Project folder, the exact command and arguments or URL,
+and the variable and header names. A server is **not trusted** until the user
+presses **Trust**; untrusted servers are never discovered, offered or run.
+Trust is device-local (`mcp-project-trust.json`, mode `0600`, beside the
+local store), keyed by a digest of the Project root plus the server id, and
+bound to the SHA-256 of the whole definition the user saw: the command sends
+that digest back and is refused if the file changed in between, like the
+hash-bound credential-command trust in `openrows-store`. When a reloaded
+definition differs, its trust, enabled tools, discovered catalogue and grants
+are removed, its keychain values are deleted, and it shows **Definition
+changed** until reviewed and trusted again. **Revoke trust** does the same on
+request.
+
+Trusted servers behave like user servers: explicit **Discover**, every tool
+off until enabled, first-use confirmation of the exact redacted arguments,
+the same deadlines, limits, redaction, SampleRows sharing and audit, and the
+label "<project>: <server> → <tool>". Values for declared names are typed
+into the native secure dialog (**Set NAME…**, as for API keys) and stored at
+`mcp/<device key>/credentials`; only the declared names are ever passed to the
+server. The enabled tools and last catalogue are kept with the trust record,
+not in the Project.
+
 ### Verification
 
 Deterministic coverage includes both real rmcp transports, including the
@@ -685,6 +741,17 @@ Escape, cancel (native cancel sent, late answer ignored), the AI menu, the
 no-provider prompt, adding/editing/removing a server, toggling a tool and the
 first-use confirmation. Live provider/server/keychain smoke remains a manual
 owner check; no real keys are stored or used by these tests.
+
+Project servers: `cargo nextest run -p openrows-mcp --lib client::` covers
+parsing names-but-no-values, validation, the definition digest, per-Project
+keys, declared-name filtering and the trust store (untrusted by default,
+digest-bound trust, automatic revocation on change, private file);
+`cargo nextest run -p openrows-app -E 'test(/mcp_client|projects::manifest/)'`
+covers registration, trusted-only runnable servers, enabled tools reaching
+the assistant catalogue, restart, change revocation of grants/catalogue/values
+and revoke/unload. `McpProjectServers.test.tsx` covers the review, trust,
+changed-file refusal, discovery, tool enabling, native value entry and
+revoke; the section was also driven in real WebKit over a fake IPC layer.
 
 The client enables rmcp's official reqwest HTTP feature instead of duplicating
 MCP session/SSE framing. Direct dependency reuse is reqwest (MIT OR Apache-2.0),
@@ -908,7 +975,19 @@ write, shell or file capability. `run_read_query` stays a protected read and
 SQL proposals stay editor-only.
 
 Codex works in the assistant panel, inline ⌘I proposals (with tools off) and
-scheduled investigations. Turn failures map to fixed errors: `unauthorized`
+scheduled investigations.
+
+**Turn deadline.** One Codex request (its reasoning, every tool round and the
+consumer) may take **300 seconds by default**, set in Settings → AI →
+**Codex turn deadline** from 60 to 900 seconds (`ai.cliTurnSeconds`). HTTP
+providers keep the fixed 60-second loop deadline. Codex reasons inside a
+single long app-server turn before each tool call, and high-effort reasoning
+models regularly need more than a minute, so the HTTP limit cut off valid
+answers. Five minutes covers multi-tool investigations while still bounding a
+stuck CLI; the 15-minute ceiling (`CLI_TURN_MAX`) is enforced natively and in
+the agent loop, which refuses any longer limit. The deadline never weakens
+cancellation: **Cancel**, locking, turning AI off and quitting still stop the
+turn immediately and kill the CLI's process group. Turn failures map to fixed errors: `unauthorized`
 to authentication, usage or session limits to quota, rate limits or overload
 to rate limit, a missing model to unsupported and connection failures to
 network.
@@ -943,3 +1022,50 @@ also driven in real WebKit through a fake IPC layer. The opt-in smoke
 `OPENROWS_CODEX_LIVE=1 cargo nextest run -p openrows-ai --test codex_live
 --run-ignored only --no-capture` runs discovery and `account/read` against the
 installed CLI only; it sends no prompt.
+`the_cli_deadline_is_longer_bounded_and_still_cancellable` proves the
+five-minute default, the 60–900 second clamp, refusal of longer limits for
+Codex and of anything above 60 seconds for HTTP providers, and that a stalled
+five-minute turn is still cancelled and its process tree reaped.
+
+## 17. Evaluations (M45-09)
+
+**NL→SQL.** `crates/openrows-mcp/tests/eval/nl_sql.json` is a fixed set of
+nine questions over a two-table fixture (`eval_customers`, `eval_orders`)
+created identically in PostgreSQL, MySQL and SQLite. Each task has a gold
+query and a recorded provider proposal written differently (join versus `IN`
+subquery, `NOT EXISTS` versus anti-join, aliases, `COUNT(id)` versus
+`COUNT(*)`); two controls are a wrong answer and a `DELETE`. The harness
+(`tests/eval_support`) asks a provider through the shared agent loop, takes
+the `propose_sql` proposal, runs it and the gold query through the same
+protected read path as `run_read_query` (read-only transaction, validated
+sources, 20-row cap) and scores **equivalent**, **different**, **refused** or
+**failed** by comparing result sets (order-insensitive unless the question
+asks for an order). After the run the fixture must be unchanged.
+
+CI uses the deterministic `Replay` provider, which replays each recorded
+proposal; no network is used:
+`cargo nextest run -p openrows-mcp --test nl_sql_eval` (SQLite), plus the
+PostgreSQL and MySQL variants with `--run-ignored only` against one container
+(`OPENROWS_TEST_PG_PORT`/`_PASSWORD`, `OPENROWS_TEST_MYSQL_PORT`/`_PASSWORD`,
+as `just test-pg` and `just test-mysql` provide).
+
+**Live mode** is opt-in and sends the fixture schema and questions (no rows)
+to a real provider on the SQLite fixture:
+
+```sh
+OPENROWS_EVAL_LIVE=1 OPENROWS_EVAL_PROVIDER=anthropic OPENROWS_EVAL_MODEL=<model> \
+OPENROWS_EVAL_API_KEY=<key> OPENROWS_EVAL_REPORT=/path/eval.json \
+cargo nextest run -p openrows-mcp --test nl_sql_eval --run-ignored only -E 'test(live)'
+```
+
+`OPENROWS_EVAL_BASE_URL` overrides the endpoint. Live scores are written to
+the report file and recorded per provider/model in docs/28 §8; they are not
+asserted. Live mode has not been run with the owner's keys.
+
+**Grounding.** `crates/openrows-ai/tests/eval/grounding.json` replays nine
+recorded finding/report proposals against three samples delivered through the
+sharing gate and the evidence ledger built for monitoring (M45-11). Grounded
+findings and reports must be accepted; fabricated ids, evidence from another
+connection, findings citing evidence outside their report, uncited findings
+and model-supplied measurements must be refused with the documented reason
+(`grounding_eval`).

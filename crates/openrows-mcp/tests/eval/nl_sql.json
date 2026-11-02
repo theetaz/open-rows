@@ -1,0 +1,83 @@
+{
+  "fixture": [
+    "CREATE TABLE eval_customers (id INTEGER PRIMARY KEY, name VARCHAR(64) NOT NULL, country CHAR(2) NOT NULL)",
+    "CREATE TABLE eval_orders (id INTEGER PRIMARY KEY, customer_id INTEGER NOT NULL, total_cents INTEGER NOT NULL, status VARCHAR(16) NOT NULL)",
+    "INSERT INTO eval_customers VALUES (1, 'Ada', 'DE'), (2, 'Grace', 'US'), (3, 'Linus', 'FI'), (4, 'Margaret', 'US'), (5, 'Edsger', 'NL'), (6, 'Barbara', 'DE')",
+    "INSERT INTO eval_orders VALUES (1, 1, 1200, 'paid'), (2, 1, 800, 'paid'), (3, 1, 450, 'cancelled'), (4, 2, 9900, 'paid'), (5, 2, 150, 'pending'), (6, 4, 3000, 'paid'), (7, 4, 2500, 'paid'), (8, 4, 700, 'paid'), (9, 5, 50, 'cancelled'), (10, 6, 6100, 'paid')"
+  ],
+  "teardown": ["DROP TABLE eval_orders", "DROP TABLE eval_customers"],
+  "tasks": [
+    {
+      "id": "count-customers",
+      "question": "How many customers are there?",
+      "gold": "SELECT COUNT(*) FROM {schema}.eval_customers",
+      "recorded": "SELECT COUNT(id) AS customers FROM {schema}.eval_customers",
+      "ordered": false,
+      "expect": "equivalent"
+    },
+    {
+      "id": "customers-in-germany",
+      "question": "List the names of customers in Germany.",
+      "gold": "SELECT name FROM {schema}.eval_customers WHERE country = 'DE'",
+      "recorded": "SELECT c.name FROM {schema}.eval_customers AS c WHERE c.country IN ('DE')",
+      "ordered": false,
+      "expect": "equivalent"
+    },
+    {
+      "id": "revenue-by-country",
+      "question": "What is the total order value per customer country?",
+      "gold": "SELECT c.country, SUM(o.total_cents) FROM {schema}.eval_orders AS o JOIN {schema}.eval_customers AS c ON c.id = o.customer_id GROUP BY c.country",
+      "recorded": "SELECT eval_customers.country, SUM(eval_orders.total_cents) AS revenue FROM {schema}.eval_customers JOIN {schema}.eval_orders ON eval_orders.customer_id = eval_customers.id GROUP BY eval_customers.country",
+      "ordered": false,
+      "expect": "equivalent"
+    },
+    {
+      "id": "more-than-two-orders",
+      "question": "Show customers with more than 2 orders.",
+      "gold": "SELECT c.name FROM {schema}.eval_customers AS c JOIN {schema}.eval_orders AS o ON o.customer_id = c.id GROUP BY c.id, c.name HAVING COUNT(*) > 2",
+      "recorded": "SELECT name FROM {schema}.eval_customers WHERE id IN (SELECT customer_id FROM {schema}.eval_orders GROUP BY customer_id HAVING COUNT(*) > 2)",
+      "ordered": false,
+      "expect": "equivalent"
+    },
+    {
+      "id": "top-three-orders",
+      "question": "Which three orders have the highest totals, largest first?",
+      "gold": "SELECT id, total_cents FROM {schema}.eval_orders ORDER BY total_cents DESC, id LIMIT 3",
+      "recorded": "SELECT o.id, o.total_cents FROM {schema}.eval_orders AS o ORDER BY o.total_cents DESC, o.id ASC LIMIT 3",
+      "ordered": true,
+      "expect": "equivalent"
+    },
+    {
+      "id": "customers-without-orders",
+      "question": "Which customers have never ordered?",
+      "gold": "SELECT c.name FROM {schema}.eval_customers AS c WHERE NOT EXISTS (SELECT 1 FROM {schema}.eval_orders AS o WHERE o.customer_id = c.id)",
+      "recorded": "SELECT c.name FROM {schema}.eval_customers AS c LEFT JOIN {schema}.eval_orders AS o ON o.customer_id = c.id WHERE o.id IS NULL",
+      "ordered": false,
+      "expect": "equivalent"
+    },
+    {
+      "id": "paid-orders-per-customer",
+      "question": "How many paid orders does each customer have?",
+      "gold": "SELECT customer_id, COUNT(*) FROM {schema}.eval_orders WHERE status = 'paid' GROUP BY customer_id",
+      "recorded": "SELECT o.customer_id, COUNT(o.id) AS paid FROM {schema}.eval_orders AS o WHERE o.status IN ('paid') GROUP BY o.customer_id",
+      "ordered": false,
+      "expect": "equivalent"
+    },
+    {
+      "id": "control-wrong-country",
+      "question": "List the names of customers in France.",
+      "gold": "SELECT name FROM {schema}.eval_customers WHERE country = 'FR'",
+      "recorded": "SELECT name FROM {schema}.eval_customers WHERE country = 'DE'",
+      "ordered": false,
+      "expect": "different"
+    },
+    {
+      "id": "control-write-attempt",
+      "question": "Delete the cancelled orders.",
+      "gold": "SELECT COUNT(*) FROM {schema}.eval_orders WHERE status = 'cancelled'",
+      "recorded": "DELETE FROM {schema}.eval_orders WHERE status = 'cancelled'",
+      "ordered": false,
+      "expect": "refused"
+    }
+  ]
+}

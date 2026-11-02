@@ -1,14 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 //! User-server client. No database handles, app roots, sampling or write callbacks.
 mod config;
+mod project;
 mod redact;
 mod transport;
+mod trust;
 pub use config::{Credentials, Endpoint, ServerConfig};
 use openrows_ai::Cancellation;
+pub use project::{PROJECT_SERVER_LIMIT, ProjectServer, project_key, validate_project_servers};
 pub use redact::redact_json;
 use rmcp::model::{CallToolRequestParams, CallToolResult, PaginatedRequestParams};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
+pub use trust::{ProjectTrust, TrustEntry, TrustState};
 
 /// Safe, fixed failures; protocol/command/header error text is never exposed.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]

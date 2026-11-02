@@ -30,6 +30,13 @@ impl Default for AgentLimits {
         }
     }
 }
+/// Ceiling for one CLI-provider turn's whole loop (docs/23 §16). A CLI such as
+/// Codex reasons inside a single long turn before each tool call, so it gets a
+/// longer, user-configurable deadline than HTTP providers, still finite and
+/// still cancellable.
+pub const CLI_TURN_MAX: Duration = Duration::from_secs(900);
+/// Default CLI deadline when the user has not chosen one.
+pub const CLI_TURN_DEFAULT: Duration = Duration::from_secs(300);
 /// Mandatory gated context, explicit model, limits and cancellation.
 pub struct AgentRequest {
     /// User-selected model identifier.
@@ -50,7 +57,7 @@ pub async fn run_agent(
     request: &AgentRequest,
     sink: mpsc::Sender<AgentEvent>,
 ) -> Result<(), AgentError> {
-    budget::validate(request)?;
+    budget::validate(request, provider.deadline().min(CLI_TURN_MAX))?;
     let control = AiControl::default();
     control.set_enabled(true);
     let options = RequestOptions {

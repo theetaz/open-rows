@@ -130,12 +130,14 @@ async fn off_permission_never_launches_the_cli() -> Result {
     assert!(!fixture.launched());
     Ok(())
 }
+/// A stalled Codex turn whose loop allows `options.timeout`.
 async fn stalled(
     options: RequestOptions,
     cancel: bool,
 ) -> Result<(Fixture, std::result::Result<(), AgentError>)> {
     let (fixture, tools, provider) = setup("hang")?;
     let mut request = tools.request()?;
+    request.limits.timeout = options.timeout;
     request.options = options;
     let handle = request.options.cancel.clone();
     let (send, mut receive) = tokio::sync::mpsc::channel(64);
@@ -193,5 +195,42 @@ async fn a_request_without_tools_offers_none() -> Result {
     let (result, _) = run(&provider, &tools, &request).await;
     result?;
     assert_eq!(fixture.recorded("thread")?["dynamicTools"], json!([]));
+    Ok(())
+}
+#[tokio::test]
+async fn the_cli_deadline_is_longer_bounded_and_still_cancellable() -> Result {
+    use openrows_ai::agent::{AgentLimits, AgentProvider, CLI_TURN_DEFAULT, CLI_TURN_MAX};
+    let (fixture, tools, provider) = setup("hang")?;
+    assert_eq!(provider.deadline(), CLI_TURN_DEFAULT);
+    let clamp = |seconds| {
+        CodexProvider::new(
+            fixture.bridge.clone(),
+            tools.config.clone(),
+            tools.control.clone(),
+        )
+        .with_deadline(Duration::from_secs(seconds))
+        .deadline()
+    };
+    assert_eq!(clamp(10_000), CLI_TURN_MAX);
+    assert_eq!(clamp(1), AgentLimits::default().timeout);
+    let mut request = tools.request()?;
+    request.limits.timeout = CLI_TURN_MAX + Duration::from_secs(1);
+    assert_eq!(
+        run(&provider, &tools, &request).await.0,
+        Err(AgentError::Malformed)
+    );
+    let http = agent_support::Provider::new(vec![], true);
+    request.limits.timeout = AgentLimits::default().timeout + Duration::from_secs(1);
+    assert_eq!(
+        run(&http, &tools, &request).await.0,
+        Err(AgentError::Malformed)
+    );
+    let options = RequestOptions {
+        timeout: CLI_TURN_DEFAULT,
+        ..RequestOptions::default()
+    };
+    let (fixture, result) = Box::pin(stalled(options, true)).await?;
+    assert_eq!(result, Err(AgentError::Provider(AiError::Cancelled)));
+    assert!(reaped(&pids(&fixture)?), "CLI and grandchild must exit");
     Ok(())
 }

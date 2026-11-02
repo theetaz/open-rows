@@ -6,6 +6,7 @@ import {
   revokeMcpToken,
 } from '@openrows/ipc';
 import { McpServers } from './McpServers';
+import { McpProjectServers } from './McpProjectServers';
 import { useMcpServer } from './useMcpServer';
 import { AuditViewer } from './AuditViewer';
 import { McpPreferences } from './McpPreferences';
@@ -77,6 +78,7 @@ export default function McpPane(): React.JSX.Element {
       )}
       {failure && <p role="alert">{failure}</p>}
       <McpServers />
+      <McpProjectServers />
       <AuditViewer />
     </section>
   );

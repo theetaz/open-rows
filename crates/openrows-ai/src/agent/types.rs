@@ -95,6 +95,11 @@ pub struct Turn {
 pub trait AgentProvider: Send + Sync {
     /// Whether the configured model explicitly supports tools; unknown falls back.
     fn tool_calling(&self) -> bool;
+    /// Longest whole-loop deadline this provider accepts; HTTP providers keep
+    /// the 60-second default, CLI providers may raise it up to `CLI_TURN_MAX`.
+    fn deadline(&self) -> std::time::Duration {
+        super::AgentLimits::default().timeout
+    }
     /// Stream text deltas and return complete tool calls.
     fn turn<'a>(
         &'a self,

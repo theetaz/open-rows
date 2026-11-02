@@ -12,6 +12,7 @@ use std::process::Command;
 
 use serde::Serialize;
 use specta::Type;
+use tauri::Manager as _;
 use tauri_plugin_dialog::{DialogExt as _, FilePath};
 
 use super::error::ProjectError;
@@ -100,14 +101,28 @@ pub(crate) async fn project_choose(
         .map_err(|error| IpcError::invalid(error.to_string()))?;
     let root = ProjectRoot::new(&folder)?;
     let manifest = manifest::load_or_create(&root)?;
-    Ok(Some(ProjectDto::of(&Project { root, manifest })))
+    let project = Project { root, manifest };
+    register_servers(window.app_handle(), &project);
+    Ok(Some(ProjectDto::of(&project)))
+}
+
+/// Offer the Project's declared MCP servers for review; none starts untrusted.
+fn register_servers(app: &tauri::AppHandle, project: &Project) {
+    crate::mcp_client::projects::register(
+        app,
+        &project.root.path().display().to_string(),
+        &project.manifest.name,
+        &project.manifest.mcp_servers,
+    );
 }
 
 /// Read a project (a recent one, or again after a change).
 #[tauri::command]
 #[specta::specta]
-pub(crate) fn project_load(root: String) -> Result<ProjectDto, IpcError> {
-    Ok(ProjectDto::of(&project(&root)?))
+pub(crate) fn project_load(app: tauri::AppHandle, root: String) -> Result<ProjectDto, IpcError> {
+    let project = project(&root)?;
+    register_servers(&app, &project);
+    Ok(ProjectDto::of(&project))
 }
 
 /// Set or clear the project's default connection.
@@ -217,9 +232,9 @@ mod tests {
     fn commands_work_on_projects_only() -> Result<(), Box<dyn std::error::Error>> {
         let dir = tempfile::tempdir()?;
         let root = dir.path().display().to_string();
-        let error = project_load(root.clone()).err().map(|error| error.kind);
+        let error = project(&root).err().map(|error| IpcError::from(error).kind);
         assert_eq!(error, Some(IpcErrorKind::NotFound));
-        assert!(project_load("relative".to_owned()).is_err());
+        assert!(project("relative").is_err());
         manifest::load_or_create(&ProjectRoot::new(dir.path())?)?;
         let path = project_create_query(
             root.clone(),
@@ -235,7 +250,7 @@ mod tests {
             Some(path)
         );
         assert_eq!(
-            project_load(root)?.default_connection.as_deref(),
+            project(&root)?.manifest.default_connection.as_deref(),
             Some("p1")
         );
         Ok(())

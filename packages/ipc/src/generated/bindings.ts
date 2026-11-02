@@ -7,8 +7,12 @@ import * as __TAURI_EVENT from "@tauri-apps/api/event";
 /** Commands */
 export const commands = {
 	appInfo: () => __TAURI_INVOKE<AppInfo>("app_info"),
-	/**  Store a replacement key; there is no command to reveal or return it. */
-	aiKeySet: (id: string, key: string) => typedError<null, IpcError>(__TAURI_INVOKE("ai_key_set", { id, key })),
+	/**
+	 *  Enter a replacement key in the native secure dialog. The key goes from the
+	 *  dialog straight to the keychain; only the outcome crosses IPC, and there is
+	 *  no command to reveal or return it.
+	 */
+	aiKeyPrompt: (id: string) => typedError<SecretEntry, IpcError>(__TAURI_INVOKE("ai_key_prompt", { id })),
 	/**  Remove the key before removing its reference from settings. */
 	aiKeyDelete: (id: string) => typedError<null, IpcError>(__TAURI_INVOKE("ai_key_delete", { id })),
 	/**  Verify only saved metadata; permission is checked natively and in the provider. */
@@ -52,6 +56,16 @@ export const commands = {
 	aiAuditPurge: () => typedError<null, IpcError>(__TAURI_INVOKE("ai_audit_purge")),
 	/**  List non-secret device-local preferences; never start a server on mount. */
 	mcpServersList: () => typedError<McpServerList, IpcError>(__TAURI_INVOKE("mcp_servers_list")),
+	/**  Servers of every Project loaded this session, for review in Settings. */
+	mcpProjectServers: () => typedError<ProjectServerView_Serialize[], IpcError>(__TAURI_INVOKE("mcp_project_servers")),
+	/**  Trust the reviewed definition; a definition that changed since is refused. */
+	mcpProjectTrust: (key: string, digest: string) => typedError<null, IpcError>(__TAURI_INVOKE("mcp_project_trust", { key, digest })),
+	/**  Withdraw trust and delete the server's keychain values. */
+	mcpProjectRevoke: (key: string) => typedError<null, IpcError>(__TAURI_INVOKE("mcp_project_revoke", { key })),
+	/**  Enable exactly these tools of a trusted Project server. */
+	mcpProjectTools: (key: string, enabled: string[]) => typedError<null, IpcError>(__TAURI_INVOKE("mcp_project_tools", { key, enabled })),
+	/**  Enter one declared variable or header in the native secure dialog. */
+	mcpProjectSecret: (key: string, name: string) => typedError<SecretEntry, IpcError>(__TAURI_INVOKE("mcp_project_secret", { key, name })),
 	/**  Save public preferences; changed endpoints drop catalogues and grants, unchanged tools keep theirs. */
 	mcpServersSave: (servers: ServerConfig[]) => typedError<null, IpcError>(__TAURI_INVOKE("mcp_servers_save", { servers })),
 	/**  Replace environment/headers in the OS keychain, without settings/logging them. */
@@ -748,6 +762,8 @@ export type AiSettings = {
 	defaultProvider?: string,
 	/**  Explicit default model, empty when unset. */
 	defaultModel?: string,
+	/**  Whole-loop deadline for CLI providers such as Codex, 60–900 seconds. */
+	cliTurnSeconds?: number,
 };
 
 /**  A threshold rule with hysteresis, duration, recovery and cooldown. */
@@ -1661,7 +1677,10 @@ export type EditorRun = {
 	samples: KeystrokeSample[],
 };
 
-/**  User-authorised endpoint; never discovered from project files. */
+/**
+ *  User-authorised endpoint. Project files may declare one, but it never
+ *  starts until the user trusts that exact definition ([`super::ProjectTrust`]).
+ */
 export type Endpoint =
 /**  Spawn a direct executable, without a shell or inherited environment. */
 { kind: "stdio";
@@ -3253,12 +3272,85 @@ export type ProjectEntryDto = {
 /**  What a tree entry is. */
 export type ProjectEntryKind = "folder" | "query";
 
+/**  One shared server definition. Unknown fields, and so any value map, are refused. */
+export type ProjectServer = ProjectServer_Serialize | ProjectServer_Deserialize;
+
+/**  A declared server with everything the user reviews before trusting it. */
+export type ProjectServerView = ProjectServerView_Serialize | ProjectServerView_Deserialize;
+
+/**  A declared server with everything the user reviews before trusting it. */
+export type ProjectServerView_Deserialize = {
+	root: string,
+	project: string,
+	/**  Device key used by the other commands and tool discovery. */
+	key: string,
+	/**  Exact command, arguments, URL and the names of required values. */
+	server: ProjectServer_Deserialize,
+	/**  Digest of `server`; trusting sends it back so a changed file is refused. */
+	digest: string,
+	trust: ProjectTrustState,
+	enabledTools: string[],
+	tools: McpClientTool[],
+};
+
+/**  A declared server with everything the user reviews before trusting it. */
+export type ProjectServerView_Serialize = {
+	root: string,
+	project: string,
+	/**  Device key used by the other commands and tool discovery. */
+	key: string,
+	/**  Exact command, arguments, URL and the names of required values. */
+	server: ProjectServer_Serialize,
+	/**  Digest of `server`; trusting sends it back so a changed file is refused. */
+	digest: string,
+	trust: ProjectTrustState,
+	enabledTools: string[],
+	tools: McpClientTool[],
+};
+
+/**  One shared server definition. Unknown fields, and so any value map, are refused. */
+export type ProjectServer_Deserialize = {
+	/**  Identifier unique within the Project. */
+	id: string,
+	/**  Display name. */
+	name: string,
+	/**  Exact transport the user reviews before trusting it. */
+	endpoint: Endpoint,
+	/**  Names of environment variables the user supplies (stdio only). */
+	env?: string[],
+	/**  Names of HTTP headers the user supplies (HTTP only). */
+	headers?: string[],
+};
+
+/**  One shared server definition. Unknown fields, and so any value map, are refused. */
+export type ProjectServer_Serialize = {
+	/**  Identifier unique within the Project. */
+	id: string,
+	/**  Display name. */
+	name: string,
+	/**  Exact transport the user reviews before trusting it. */
+	endpoint: Endpoint,
+	/**  Names of environment variables the user supplies (stdio only). */
+	env?: string[],
+	/**  Names of HTTP headers the user supplies (HTTP only). */
+	headers?: string[],
+};
+
 /**  A visible project query or snippet, read for editor completion. */
 export type ProjectSqlDto = {
 	path: string,
 	sql: string,
 	snippet: boolean,
 };
+
+/**  Device trust of one declared server. */
+export type ProjectTrustState =
+/**  Never trusted here; it never starts. */
+"untrusted" |
+/**  Its definition changed since it was trusted; trust and values were removed. */
+"changed" |
+/**  The exact definition shown was trusted. */
+"trusted";
 
 /**  One provider's non-secret configuration. */
 export type ProviderConfig = {
@@ -3702,6 +3794,13 @@ export type Scope =
 "server" |
 /**  The selected database only. */
 "database";
+
+/**  Outcome reported to the webview; the secret itself is never returned. */
+export type SecretEntry =
+/**  The value was written to the OS keychain. */
+"saved" |
+/**  The user dismissed the dialog; nothing changed. */
+"cancelled";
 
 /**  Which saved secret of a connection to reveal. */
 export type SecretFieldDto = "password" | "sshPassword" | "sshPassphrase" | "tlsKeyPassphrase" | "proxyPassword";

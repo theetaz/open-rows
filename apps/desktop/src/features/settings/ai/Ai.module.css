@@ -58,3 +58,17 @@
   user-select: all;
   overflow-wrap: anywhere;
 }
+.definition {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 12px;
+  margin: 4px 0 8px;
+  font-size: var(--or-text-12);
+}
+.definition dt {
+  color: var(--or-secondary);
+}
+.definition dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}

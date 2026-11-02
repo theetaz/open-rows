@@ -18,7 +18,11 @@ it('defaults AI off and mirrors only reference fields into settings.json', () =>
     providers: [],
     defaultProvider: '',
     defaultModel: '',
+    cliTurnSeconds: 300,
   });
+  expect(parseAiSettings({ cliTurnSeconds: 600 }).cliTurnSeconds).toBe(600);
+  for (const cliTurnSeconds of [59, 901, 120.5, '600'])
+    expect(parseAiSettings({ cliTurnSeconds }).cliTurnSeconds).toBe(300);
   const provider = {
     id: 'fixture',
     name: 'Fixture',

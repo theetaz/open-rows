@@ -40,6 +40,7 @@ beforeEach(() => {
     enabled: true,
     defaultProvider: '',
     defaultModel: '',
+    cliTurnSeconds: 300,
     providers: [
       {
         id: 'provider',

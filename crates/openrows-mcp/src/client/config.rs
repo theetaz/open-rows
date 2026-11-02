@@ -4,7 +4,8 @@ use super::ClientError;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashSet};
 
-/// User-authorised endpoint; never discovered from project files.
+/// User-authorised endpoint. Project files may declare one, but it never
+/// starts until the user trusts that exact definition ([`super::ProjectTrust`]).
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ipc-types", derive(specta::Type))]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]

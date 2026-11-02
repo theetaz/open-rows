@@ -57,7 +57,7 @@ use tauri::Manager;
 fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
     let builder = tauri_specta::Builder::new().commands(tauri_specta::collect_commands![
         commands::app_info,
-        ai::ai_key_set,
+        ai::ai_key_prompt,
         ai::ai_key_delete,
         ai::ai_verify,
         ai::ai_cancel,
@@ -78,6 +78,11 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
         ai_sharing::ai_audit_list,
         ai_sharing::ai_audit_purge,
         mcp_client::mcp_servers_list,
+        mcp_client::projects::mcp_project_servers,
+        mcp_client::projects::mcp_project_trust,
+        mcp_client::projects::mcp_project_revoke,
+        mcp_client::projects::mcp_project_tools,
+        mcp_client::projects::mcp_project_secret,
         mcp_client::mcp_servers_save,
         mcp_client::mcp_server_secrets,
         mcp_client::mcp_server_delete,

@@ -4867,6 +4867,7 @@ dependencies = [
  "openrows-explain",
  "openrows-monitor",
  "openrows-net",
+ "openrows-secrets",
  "openrows-sql",
  "rand 0.10.3",
  "regex",

@@ -3,7 +3,7 @@
 use super::{
     State,
     aliases::{enabled_tools, tool_label},
-    credentials,
+    server_credentials,
 };
 use openrows_ai::{
     Cancellation,
@@ -103,7 +103,7 @@ impl Router {
         })
     }
     async fn prepare(&self, call: &ToolCall, saved: &ServerConfig) -> Result<Prepared, AgentError> {
-        let secrets = credentials(&saved.id).await?;
+        let secrets = server_credentials(&self.app, &saved.id).await?;
         let input = self.input();
         let context = self
             .builtin

@@ -5,6 +5,8 @@ import type {
   McpClientTool,
   McpSecretInput,
   McpServerList,
+  ProjectServerView_Serialize,
+  SecretEntry,
 } from './generated/bindings';
 import { unwrap } from './connections';
 /** Public preferences and the last discovered catalogue; starts no server. */
@@ -36,4 +38,35 @@ export async function confirmMcpTool(
   allow: boolean,
 ): Promise<void> {
   await unwrap(commands.mcpToolConfirm(id, allow));
+}
+/** Servers of every Project loaded this session; untrusted ones never start. */
+export function listProjectMcpServers(): Promise<
+  ProjectServerView_Serialize[]
+> {
+  return unwrap(commands.mcpProjectServers());
+}
+/** Trust the reviewed definition; `digest` must match the file as shown. */
+export async function trustProjectMcpServer(
+  key: string,
+  digest: string,
+): Promise<void> {
+  await unwrap(commands.mcpProjectTrust(key, digest));
+}
+/** Withdraw trust and delete the server's keychain values. */
+export async function revokeProjectMcpServer(key: string): Promise<void> {
+  await unwrap(commands.mcpProjectRevoke(key));
+}
+/** Enable exactly these tools of a trusted Project server. */
+export async function enableProjectMcpTools(
+  key: string,
+  enabled: string[],
+): Promise<void> {
+  await unwrap(commands.mcpProjectTools(key, enabled));
+}
+/** Enter a declared variable or header in the native secure dialog. */
+export function promptProjectMcpSecret(
+  key: string,
+  name: string,
+): Promise<SecretEntry> {
+  return unwrap(commands.mcpProjectSecret(key, name));
 }

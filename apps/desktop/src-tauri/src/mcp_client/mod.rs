@@ -5,6 +5,8 @@
     reason = "Tauri owns command arguments"
 )]
 mod aliases;
+mod project_state;
+pub(crate) mod projects;
 pub(crate) mod router;
 mod state;
 use crate::{
@@ -43,7 +45,17 @@ pub(crate) fn failure(error: ClientError) -> IpcError {
     };
     IpcError::new(kind, error.to_string())
 }
+/// A runnable server: a user server or a trusted Project server.
 pub(crate) fn config(app: &AppHandle, id: &str) -> Result<ServerConfig, IpcError> {
+    app.state::<State>()
+        .lock()
+        .servers()
+        .into_iter()
+        .find(|config| config.id == id)
+        .ok_or_else(|| failure(ClientError::Invalid))
+}
+/// A device-wide user server; Project servers are managed by their own commands.
+fn user_config(app: &AppHandle, id: &str) -> Result<ServerConfig, IpcError> {
     app.state::<State>()
         .lock()
         .configs
@@ -74,6 +86,7 @@ pub(crate) fn mcp_servers_list(app: AppHandle) -> Result<McpServerList, IpcError
     let tools = inner
         .tools
         .iter()
+        .filter(|(id, _)| inner.configs.iter().any(|config| &config.id == *id))
         .map(|(id, tools)| Ok((id.clone(), dtos(tools)?)))
         .collect::<Result<_, IpcError>>()?;
     Ok(McpServerList {
@@ -107,7 +120,7 @@ pub(crate) async fn mcp_server_secrets(
     input: McpSecretInput,
 ) -> Result<(), IpcError> {
     admit(&app)?;
-    config(&app, &id)?;
+    user_config(&app, &id)?;
     let credentials = Credentials {
         env: input.env,
         headers: input.headers,
@@ -131,7 +144,7 @@ pub(crate) async fn mcp_server_secrets(
 #[specta::specta]
 pub(crate) async fn mcp_server_delete(app: AppHandle, id: String) -> Result<(), IpcError> {
     admit(&app)?;
-    config(&app, &id)?;
+    user_config(&app, &id)?;
     app.state::<crate::assistant::AssistantState>().cancel(None);
     app.state::<State>().invalidate();
     let secret_id = id.clone();
@@ -172,7 +185,7 @@ pub(crate) async fn mcp_server_tools(
     };
     let tools = control
         .run(&options, async {
-            let secrets = credentials(&id).await?;
+            let secrets = server_credentials(&app, &id).await?;
             Ok(Box::pin(openrows_mcp::client::discover(
                 &config,
                 &secrets,
@@ -188,7 +201,9 @@ pub(crate) async fn mcp_server_tools(
     app.state::<State>().store_tools(&config, revision, tools)?;
     Ok(public)
 }
-fn dtos(tools: &[openrows_mcp::client::ClientTool]) -> Result<Vec<McpClientTool>, IpcError> {
+pub(crate) fn dtos(
+    tools: &[openrows_mcp::client::ClientTool],
+) -> Result<Vec<McpClientTool>, IpcError> {
     tools
         .iter()
         .map(|tool| {
@@ -200,6 +215,19 @@ fn dtos(tools: &[openrows_mcp::client::ClientTool]) -> Result<Vec<McpClientTool>
         })
         .collect()
 }
+/// Keychain values for a server; a Project server receives only the names it declares.
+pub(super) async fn server_credentials(
+    app: &AppHandle,
+    id: &str,
+) -> Result<Credentials, openrows_ai::AiError> {
+    let secrets = credentials(id).await?;
+    let state = app.state::<State>();
+    let declared = state.lock().project(id).map(|entry| entry.server.clone());
+    Ok(match declared {
+        Some(server) => server.restrict(secrets),
+        None => secrets,
+    })
+}
 pub(super) async fn credentials(id: &str) -> Result<Credentials, openrows_ai::AiError> {
     let id = id.to_owned();
     let secret = secret_work(move |store| store.get(&SecretKey::mcp_server(&id)))
@@ -208,7 +236,7 @@ pub(super) async fn credentials(id: &str) -> Result<Credentials, openrows_ai::Ai
     let value = secret.map_or_else(|| "{}".into(), |value| value.expose().to_owned());
     serde_json::from_str(&value).map_err(|_| openrows_ai::AiError::InvalidConfig)
 }
-async fn secret_work<T: Send + 'static>(
+pub(super) async fn secret_work<T: Send + 'static>(
     work: impl FnOnce(
         CachingSecretStore<KeychainSecretStore>,
     ) -> Result<T, openrows_secrets::SecretError>

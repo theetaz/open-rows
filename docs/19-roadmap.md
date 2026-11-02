@@ -147,6 +147,8 @@ Meet ADR-0011/NFR-PERF-11/NFR-SEC-08 source, privacy, advisor and overhead gates
 **Exit:** policy golden-payload tests green; no write path from model output;
 NL→SQL and health/report evidence evaluations recorded per provider; provider
 isolation, telemetry sharing, cancellation and scheduled-run budgets pass.
+Status (2026-11-02): automated criteria pass; live per-provider evaluation is
+the remaining owner step ([docs/28 §8 exit audit](28-database-monitoring-and-ai-harness.md#m45-exit-audit-m45-09)).
 
 ## M5 — Long tail
 

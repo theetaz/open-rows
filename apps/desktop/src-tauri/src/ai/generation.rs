@@ -20,7 +20,9 @@ pub(crate) async fn provider(
     if config.kind == ProviderKind::Codex {
         let bridge = super::codex::bridge(app, &config)?;
         return Ok(Box::new(
-            CodexProvider::new(bridge, config, state.control.clone()).with_tool_calling(tools),
+            CodexProvider::new(bridge, config, state.control.clone())
+                .with_tool_calling(tools)
+                .with_deadline(super::turn_deadline(app, id)?),
         ));
     }
     let supported = state

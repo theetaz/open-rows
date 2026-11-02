@@ -216,9 +216,8 @@ API-key and local provider settings are implemented by the Tauri-free
 `openrows-ai` crate and lazy Settings → AI pane. The owner explicitly enables
 AI network permission (default off), saves multiple keychain-backed providers,
 sets a default provider/model and verifies only models/auth/key metadata.
-Keys cross only the one-way key-storage command input, never replies/events;
-the stricter no-key-in-any-IPC-payload criterion still needs native credential
-entry. OpenRouter exposes reported key spend/limit/remaining; other missing facts stay
+Keys are typed only into a native secure dialog that writes them straight to
+the keychain; no IPC request, reply or event carries a key. OpenRouter exposes reported key spend/limit/remaining; other missing facts stay
 unknown. Typed model capabilities never imply a paid plan or verified generation
 access. Local endpoint reachability does not attest on-device inference.
 Cancellation, total deadlines, bounded SSE/NDJSON parsing, full existing TLS,
@@ -402,6 +401,44 @@ measured against [13](13-performance.md) at milestone exit, with reference
 hardware and actual numbers. Neither this specification nor the existing
 process-list refresh counts as implementation evidence. M25-09 must meet all accepted ADR-0011/NFR-PERF-11/NFR-SEC-08 budgets and the detailed source/privilege, advisor, Explain, privacy and retention matrix; M45-09 separately validates AI sharing and tool boundaries.
 
+
+### M4.5 exit audit (M45-09)
+
+Audit of the [docs/19 M4.5 exit](19-roadmap.md#m45--native-ai-and-mcp) on
+2026-11-02 (macOS arm64, Rust 1.94, PostgreSQL 17, MySQL 8.4, SQLite bundled).
+Every test below was run for this audit and passed; container suites used one
+throwaway container at a time.
+
+| Exit criterion | Evidence (test names) | Result |
+| --- | --- | --- |
+| Policy golden payloads | `openrows-ai::sharing` `golden_payload_at_every_level_and_caps` (`tests/golden/none, schema, stats, samples.json`), `default_none_and_each_refusal`, `local_endpoint_and_telemetry_refusals`, `cell_utf8_byte_and_token_caps_are_deterministic_and_apply_to_json_envelope`; `openrows-ai::agent_transport` (`golden/assistant.json`); `openrows-ai::sharing_sql` (literal and comment removal for every engine lexer) | pass |
+| No key in any IPC payload | `openrows-ai::security` `settings_keychain_debug_errors_and_ipc_payloads_never_contain_key`; `openrows-app` `ai::tests::prompted_keys_go_to_the_keychain_and_cancel_keeps_the_old_one`, `keyless_and_cli_providers_never_open_the_prompt`, `security::secret_prompt::tests::*` (4); real-app check of the native dialog through the `test-automation` bridge (save, keychain entry present, cancel, cleanup) | pass |
+| No write path from model output | `openrows-ai::agent` `prompt_injection_remains_data_and_writes_are_refused`; `openrows-mcp::read_safety` `sqlite_and_libsql_file_refuse_attacks_with_zero_changes`; `openrows-mcp::postgres` `postgres_refuses_attacks_with_zero_changes`, `postgres_implicit_user_code_tables_fail_closed`; `openrows-mcp::mysql` `mysql_refuses_attacks_with_zero_changes`; `openrows-mcp::monitoring` `unsafe_board_sql_and_external_artifact_calls_are_refused`, `authorised_evidence_can_preview_but_cannot_save_or_execute_artifacts`; NL→SQL control `control-write-attempt` refused with the fixture unchanged on all three engines | pass |
+| Account/CLI isolation (Codex) | `codex::args::tests::every_launch_disables_shell_files_web_and_mcp`; `openrows-ai::codex_status` `the_child_is_isolated_and_maximally_restricted`, `codex_settings_hold_no_key_endpoint_or_remote_opt_in`, `signed_in_reports_mode_plan_and_visible_models_but_never_email`, `an_untrusted_sign_in_url_is_never_released`; `openrows-ai::codex_agent` `every_approval_and_unsupported_request_is_refused`, `off_permission_never_launches_the_cli`, `tool_calls_return_only_gated_redacted_and_audited_results` | pass |
+| External MCP servers and Project trust | `openrows-mcp::client` (consent, redaction, stdio/HTTP round trips), `client::project::tests::*` (4), `client::trust::tests::*` (3); `openrows-app` `mcp_client::project_state::tests::*` (6), `projects::manifest::tests::mcp_servers_declare_names_only_and_round_trip` | pass |
+| Telemetry sharing | `openrows-ai::monitoring` `telemetry_matrix_denies_none_schema_provider_production_and_missing_consent`; `openrows-mcp::monitoring` `policy_refusals_precede_any_native_collection_for_every_monitor_tool` | pass |
+| Cancellation and deadlines | `openrows-ai::agent` `cancellation_revocation_and_total_deadline_are_typed`, `total_deadline_also_bounds_tools_and_consumer_backpressure`; `openrows-ai::security` `disabling_revokes_an_active_request`; `openrows-ai::sharing_audit` `policy_revocation_cancels_active_transport`; `openrows-mcp::security` `revoke_disconnect_ai_off_sharing_change_and_close_cancel_in_flight`; `openrows-ai::codex_agent` `cancel_kills_and_reaps_the_whole_process_tree`, `the_deadline_kills_a_stalled_cli`, `the_cli_deadline_is_longer_bounded_and_still_cancellable` | pass |
+| Scheduled-run policy and budgets | `openrows-ai::scheduled` `cost_bounds_reduce_tokens_before_any_provider_call`, `invalid_limits_unapproved_tools_and_unknown_prices_fail_closed`, `audit_retention_is_scrubbed_bounded_and_purgeable`; `openrows-app` `assistant::scheduled::tests` `lock_or_ai_off_interrupts_the_run_but_keeps_the_job`, `an_interrupted_run_neither_counts_nor_stops_the_job`, `completed_runs_count_until_the_limit_and_failures_stop_the_job`, two retention tests and command registration | pass |
+| NL→SQL evaluation | `openrows-mcp::nl_sql_eval` `sqlite_replayed_proposals_score_by_result_equivalence`, `postgres_replayed_proposals_score_by_result_equivalence`, `mysql_replayed_proposals_score_by_result_equivalence` ([23 §17](23-ai-assistant.md#17-evaluations-m45-09)) | pass (replay) |
+| Health/report grounding evaluation | `openrows-ai::grounding_eval` `recorded_proposals_are_accepted_only_when_grounded_in_delivered_evidence` | pass |
+
+Recorded evaluation scores (nine tasks: seven answerable questions and two
+controls; the expected score of the controls is "different" and "refused"):
+
+| Provider / model | Engine | Equivalent | Different | Refused | Failed | Grounding (accepted / refused as expected) |
+| --- | --- | --- | --- | --- | --- | --- |
+| Replay (recorded proposals) | SQLite 3 | 7 / 7 | 1 (control) | 1 (control) | 0 | 3 / 6 |
+| Replay (recorded proposals) | PostgreSQL 17 | 7 / 7 | 1 (control) | 1 (control) | 0 | — |
+| Replay (recorded proposals) | MySQL 8.4 | 7 / 7 | 1 (control) | 1 (control) | 0 | — |
+| Live providers | SQLite 3 | not run | | | | |
+
+**Exit status: partial.** Every automated criterion passes. The roadmap also
+asks for evaluations *recorded per provider*; that needs the opt-in live mode
+with the owner's own keys, which this audit deliberately did not use. Owner
+step: run the live command in [23 §17](23-ai-assistant.md#17-evaluations-m45-09)
+for each provider/model to be offered as a default, and add a row above.
+Live metadata, MCP-server and keychain smoke remain owner checks as recorded in
+[23 §13–§16](23-ai-assistant.md#13-implemented-m45-05-query-assistant-with-visible-tool-trace).
 
 ## 9. Implemented (M25-01/02): monitoring runtime and PostgreSQL backend
 
@@ -1107,7 +1144,10 @@ subsequently runs it.
 Explicit user MCP servers use the official rmcp stdio/Streamable HTTP client.
 Tools default disabled and require native first-use confirmation per tool,
 bound to server, transport and schema. Environment and header values stay in
-the OS keychain, without a reveal API or project import. External tool
+the OS keychain, without a reveal API. Servers declared by a Project's
+`project.yaml` (names of variables and headers only) never start until the
+user trusts the exact definition on the device; trust is bound to its SHA-256
+and a changed definition loses trust, tools, catalogue and stored values. External tool
 arguments/results require SampleRows sharing and are refused under Local only;
 redaction, content-free audit, bounded transport and assistant cancellation
 apply to both directions. Only filtered results appear in the assistant trace.

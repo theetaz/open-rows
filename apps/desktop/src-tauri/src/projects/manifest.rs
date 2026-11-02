@@ -7,6 +7,7 @@
 use std::fs;
 use std::io::ErrorKind;
 
+use openrows_mcp::client::{ProjectServer, validate_project_servers};
 use serde::{Deserialize, Serialize};
 
 use super::error::ProjectError;
@@ -26,7 +27,7 @@ const DEFAULT_FOLDER: &str = "queries";
 const HEADER: &str = "# OpenRows project (https://github.com/theetaz/open-rows)\n";
 
 /// The parsed manifest.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct Manifest {
     #[serde(default = "version")]
     pub(crate) version: u32,
@@ -43,6 +44,20 @@ pub(crate) struct Manifest {
     /// Relative path to an openrows.connections v1 file, never credentials.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) connections_file: Option<String>,
+    /// Shared MCP server definitions; they run only once trusted on a device.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) mcp_servers: Vec<ProjectServer>,
+}
+
+impl std::fmt::Debug for Manifest {
+    /// Server commands and arguments stay out of logs and assertion output.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Manifest")
+            .field("name", &self.name)
+            .field("query_folders", &self.query_folders)
+            .field("mcp_servers", &self.mcp_servers.len())
+            .finish_non_exhaustive()
+    }
 }
 
 const fn version() -> u32 {
@@ -63,6 +78,7 @@ impl Manifest {
             query_folders: default_folders(),
             snippet_folders: Vec::new(),
             connections_file: None,
+            mcp_servers: Vec::new(),
         }
     }
 }
@@ -96,6 +112,13 @@ pub(crate) fn parse(text: &str) -> Result<Manifest, ProjectError> {
             ));
         }
     }
+    validate_project_servers(&manifest.mcp_servers).map_err(|_| {
+        ProjectError::Manifest(
+            "mcp_servers: at most 8 servers with unique ids, a valid command or https URL, \
+             and only the names of environment variables or headers (never their values)"
+                .into(),
+        )
+    })?;
     manifest.default_connection = manifest
         .default_connection
         .map(|id| id.trim().to_owned())
@@ -237,6 +260,25 @@ mod tests {
         assert!(text.starts_with("# OpenRows project"));
         assert!(text.contains("query_folders:\n- queries\n"));
         assert_eq!(parse(&text)?, manifest);
+        Ok(())
+    }
+
+    #[test]
+    fn mcp_servers_declare_names_only_and_round_trip() -> Result<(), ProjectError> {
+        let text = "name: x\nmcp_servers:\n  - id: docs\n    name: Docs\n    endpoint: {kind: http, url: 'https://mcp.example.test/mcp'}\n    headers: [Authorization]\n  - id: search\n    name: Search\n    endpoint: {kind: stdio, command: /usr/local/bin/search-mcp, args: [--read-only]}\n    env: [SEARCH_TOKEN]\n";
+        let manifest = parse(text)?;
+        assert_eq!(manifest.mcp_servers.len(), 2);
+        assert_eq!(parse(&render(&manifest)?)?, manifest);
+        assert!(parse("name: x").is_ok_and(|minimal| minimal.mcp_servers.is_empty()));
+        assert!(!render(&Manifest::new("x"))?.contains("mcp_servers"));
+        for text in [
+            "name: x\nmcp_servers:\n  - {id: s, name: S, endpoint: {kind: stdio, command: x, args: []}, env: {TOKEN: test-only}}\n",
+            "name: x\nmcp_servers:\n  - {id: d, name: D, endpoint: {kind: http, url: 'https://u:p@mcp.example.test/'}}\n",
+            "name: x\nmcp_servers:\n  - {id: d, name: D, endpoint: {kind: http, url: 'http://mcp.example.test/'}}\n",
+            "name: x\nmcp_servers:\n  - {id: d, name: D, endpoint: {kind: http, url: 'https://a.test/'}}\n  - {id: d, name: E, endpoint: {kind: http, url: 'https://b.test/'}}\n",
+        ] {
+            assert!(parse(text).is_err(), "{text}");
+        }
         Ok(())
     }
 

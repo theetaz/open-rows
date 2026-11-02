@@ -34,12 +34,23 @@ export const PROVIDER_KINDS: readonly {
   },
   { value: 'codex', label: 'Codex CLI (its own sign-in)', url: '' },
 ];
+/** Codex turn deadline bounds in seconds; the native side enforces the same. */
+export const CLI_TURN = { min: 60, max: 900, initial: 300 } as const;
 const defaults: Required<AiSettings> = {
   enabled: false,
   providers: [],
   defaultProvider: '',
   defaultModel: '',
+  cliTurnSeconds: CLI_TURN.initial,
 };
+function cliTurn(value: unknown): number {
+  return typeof value === 'number' &&
+    Number.isInteger(value) &&
+    value >= CLI_TURN.min &&
+    value <= CLI_TURN.max
+    ? value
+    : CLI_TURN.initial;
+}
 /** Local model endpoints do not require a dummy key. */
 export const isLocalProvider = (kind: ProviderKind): boolean =>
   kind === 'ollama' || kind === 'localCompatible';
@@ -98,6 +109,7 @@ export function parseAiSettings(value: unknown): Required<AiSettings> {
       fields.defaultModel.length <= 256
         ? fields.defaultModel
         : '',
+    cliTurnSeconds: cliTurn(fields.cliTurnSeconds),
   };
 }
 /** Shared settings cache contains references, never API-key values or probe responses. */

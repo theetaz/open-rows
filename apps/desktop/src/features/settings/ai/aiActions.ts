@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { deleteAiKey, setAiKey, writeSettingsFile } from '@openrows/ipc';
+import { deleteAiKey, promptAiKey, writeSettingsFile } from '@openrows/ipc';
 import type { AiSettings, ProviderConfig } from '@openrows/ipc';
 import { settingsText } from '../settingsFile';
 import { aiSettings, parseAiSettings } from './aiSettings';
@@ -14,20 +14,20 @@ export async function saveAiSettings(next: AiSettings): Promise<void> {
     throw new Error('AI settings could not be saved.');
   }
 }
-/** Save configuration and send a replacement key directly to the keychain command. */
+/** Save configuration, then optionally open the native key dialog for it. */
 export async function saveProvider(
   config: ProviderConfig,
-  key: string,
+  askKey: boolean,
 ): Promise<void> {
   const settings = aiSettings.get();
   const providers = settings.providers.filter((item) => item.id !== config.id);
   await saveAiSettings({ ...settings, providers: [...providers, config] });
-  if (key) {
+  if (askKey) {
     try {
-      await setAiKey(config.id, key);
+      await promptAiKey(config.id);
     } catch {
       throw new Error(
-        'Provider saved, but the API key could not be stored. Edit it to retry.',
+        'Provider saved, but the API key could not be stored. Use Set API key to retry.',
       );
     }
   }

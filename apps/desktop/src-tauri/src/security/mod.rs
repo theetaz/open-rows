@@ -2,6 +2,7 @@
 //! Application lock and native execution authentication (FR-APP-11).
 mod auth;
 mod lock;
+pub(crate) mod secret_prompt;
 use crate::connections::{IpcError, IpcErrorKind};
 use auth::{Authenticator, NativeAuthenticator};
 use openrows_core::safety::{Gate, SafetyPlan};

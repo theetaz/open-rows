@@ -2,7 +2,9 @@
 //! Private metadata, the discovered catalogue and session-only tool grants.
 //! Credential values never enter either file.
 use crate::connections::{IpcError, IpcErrorKind};
-use openrows_mcp::client::{ClientTool, Consent, ServerConfig};
+use openrows_mcp::client::{
+    ClientTool, Consent, ProjectServer, ProjectTrust, ServerConfig, TrustEntry,
+};
 use std::{
     collections::HashMap,
     io::Write,
@@ -16,7 +18,33 @@ const CATALOGUE_LIMIT: usize = 1 << 20;
 pub(crate) struct State {
     pub path: PathBuf,
     catalogue: PathBuf,
+    /// Hash-bound approvals of Project servers (`mcp-project-trust.json`).
+    pub trust: ProjectTrust,
     pub inner: Mutex<Inner>,
+}
+/// One server declared by a loaded Project, with its device trust.
+#[derive(Clone)]
+pub(crate) struct ProjectEntry {
+    /// Canonical Project root.
+    pub root: String,
+    /// Project display name.
+    pub project: String,
+    pub server: ProjectServer,
+    /// Device key: keychain, catalogue and trust address.
+    pub key: String,
+    /// `None` until the user trusts this exact definition.
+    pub trust: Option<TrustEntry>,
+    /// A previous approval was removed because the definition changed.
+    pub changed: bool,
+}
+impl ProjectEntry {
+    /// Runnable configuration; only trusted entries have one.
+    pub fn config(&self) -> Option<ServerConfig> {
+        self.trust.as_ref().map(|trust| {
+            self.server
+                .effective(&self.key, &self.project, trust.enabled_tools.clone())
+        })
+    }
 }
 #[derive(Default)]
 pub(crate) struct Inner {
@@ -26,10 +54,21 @@ pub(crate) struct Inner {
     pub pending: HashMap<String, oneshot::Sender<bool>>,
     pub sequence: u64,
     pub revision: u64,
+    /// Servers of every Project loaded this session; untrusted ones never start.
+    pub projects: Vec<ProjectEntry>,
 }
 impl Inner {
     pub fn current(&self, revision: u64, config: &ServerConfig) -> bool {
-        self.revision == revision && self.configs.contains(config)
+        self.revision == revision && self.servers().contains(config)
+    }
+    /// User servers, then trusted Project servers with their enabled tools.
+    pub fn servers(&self) -> Vec<ServerConfig> {
+        let projects = self.projects.iter().filter_map(ProjectEntry::config);
+        self.configs.iter().cloned().chain(projects).collect()
+    }
+    /// The loaded Project entry stored under `key`.
+    pub fn project(&self, key: &str) -> Option<&ProjectEntry> {
+        self.projects.iter().find(|entry| entry.key == key)
     }
 }
 impl State {
@@ -46,6 +85,7 @@ impl State {
         let mut tools = load_catalogue(&catalogue);
         tools.retain(|id, _| configs.iter().any(|config| &config.id == id));
         Ok(Self {
+            trust: ProjectTrust::new(&path.with_file_name("mcp-project-trust.json")),
             path,
             catalogue,
             inner: Mutex::new(Inner {
@@ -95,6 +135,12 @@ impl State {
         if !state.current(revision, config) {
             return Err(super::failure(openrows_mcp::client::ClientError::Cancelled));
         }
+        if let Some(entry) = state.project(&config.id).cloned() {
+            let kept = tools.clone();
+            self.trust
+                .edit(&entry.key, &entry.server, |trust| trust.tools = kept)
+                .map_err(super::failure)?;
+        }
         state.tools.insert(config.id.clone(), tools);
         self.persist_catalogue(&state);
         Ok(())
@@ -117,17 +163,31 @@ impl State {
             })
             .map(|config| config.id.clone())
             .collect();
-        state.tools.retain(|id, _| unchanged.contains(id));
-        state.consent.retain(&configs);
+        let projects: std::collections::HashSet<_> = state
+            .projects
+            .iter()
+            .map(|entry| entry.key.clone())
+            .collect();
+        state
+            .tools
+            .retain(|id, _| unchanged.contains(id) || projects.contains(id));
         state.configs = configs;
+        let servers = state.servers();
+        state.consent.retain(&servers);
         state.revision = state.revision.wrapping_add(1);
         state.pending.clear();
         self.persist_catalogue(&state);
         Ok(())
     }
     /// A catalogue that cannot be written is removed, so no stale schema survives restart.
-    fn persist_catalogue(&self, state: &Inner) {
-        let written = serde_json::to_vec(&state.tools)
+    /// Project catalogues live with their trust record instead.
+    pub(super) fn persist_catalogue(&self, state: &Inner) {
+        let user: HashMap<_, _> = state
+            .tools
+            .iter()
+            .filter(|(id, _)| state.configs.iter().any(|config| &config.id == *id))
+            .collect();
+        let written = serde_json::to_vec(&user)
             .ok()
             .filter(|bytes| bytes.len() <= CATALOGUE_LIMIT)
             .is_some_and(|bytes| write_private(&self.catalogue, &bytes).is_ok());

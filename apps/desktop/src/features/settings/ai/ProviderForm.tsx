@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useState } from 'react';
-import { Button, TextField } from '@openrows/ui';
+import { Button } from '@openrows/ui';
 import type { ProviderConfig } from '@openrows/ipc';
 import { isCliProvider, isLocalProvider, PROVIDER_KINDS } from './aiSettings';
 import { ProviderFields } from './ProviderFields';
@@ -22,45 +22,51 @@ function initialConfig(): ProviderConfig {
     secretRef: '',
   };
 }
-function KeyField(props: {
-  value: string;
-  local: boolean;
-  onChange: (value: string) => void;
+/** The key itself is typed into a native dialog after saving, never here. */
+function KeyChoice(props: {
+  checked: boolean;
+  onChange: (value: boolean) => void;
 }): React.JSX.Element {
   return (
-    <TextField
-      label={props.local ? 'API key (optional)' : 'API key'}
-      type="password"
-      autoComplete="off"
-      spellCheck={false}
-      value={props.value}
-      placeholder="Leave empty to keep the stored key"
-      onChange={(event) => {
-        props.onChange(event.target.value);
-      }}
-    />
+    <>
+      <label>
+        <input
+          type="checkbox"
+          checked={props.checked}
+          onChange={(event) => {
+            props.onChange(event.target.checked);
+          }}
+        />{' '}
+        Enter an API key after saving
+      </label>
+      <p className={styles.notice}>
+        The key is typed into a secure system dialog and goes straight to the OS
+        keychain. This window never receives it.
+      </p>
+    </>
   );
 }
-/** Transient password field sends keys only to native keychain IPC; cleared on save. */
+/** Provider settings; keys are entered only in the native dialog. */
 export function ProviderForm(props: Props): React.JSX.Element {
   const [config, setConfig] = useState(props.initial ?? initialConfig);
-  const [key, setKey] = useState('');
+  const [askKey, setAskKey] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // New remote providers ask for a key by default; edits keep the stored one.
+  const ask =
+    askKey ?? (props.initial === null && !isLocalProvider(config.kind));
   const save = async (): Promise<void> => {
     setBusy(true);
     setError('');
     const cli = isCliProvider(config.kind);
     const secretRef =
-      !cli && (key || config.secretRef || !isLocalProvider(config.kind))
+      !cli && (ask || config.secretRef || !isLocalProvider(config.kind))
         ? `ai/${config.id}/api-key`
         : '';
-    const replacement = cli ? '' : key;
-    setKey('');
     try {
       await saveProvider(
         { ...config, name: config.name.trim(), secretRef },
-        replacement,
+        ask && !cli,
       );
       props.onSaved();
     } catch (failure) {
@@ -84,11 +90,7 @@ export function ProviderForm(props: Props): React.JSX.Element {
     >
       <ProviderFields config={config} onChange={setConfig} />
       {!isCliProvider(config.kind) && (
-        <KeyField
-          value={key}
-          local={isLocalProvider(config.kind)}
-          onChange={setKey}
-        />
+        <KeyChoice checked={ask} onChange={setAskKey} />
       )}
       {error && <p role="alert">{error}</p>}
       <div className={styles.actions}>

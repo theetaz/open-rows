@@ -1,0 +1,55 @@
+{
+  "evidence": [
+    { "binding": "pg-main", "metric": "sessions:active", "time": 1000.0, "value": 42.0 },
+    { "binding": "pg-main", "metric": "locks:waiting", "time": 1000.0, "value": 7.0 },
+    { "binding": "pg-main", "metric": "query:total_ms", "time": 2000.0, "value": 1250.0 }
+  ],
+  "cases": [
+    {
+      "id": "finding-cites-delivered-sample",
+      "proposal": { "kind": "finding", "finding": { "interpretation": "Active sessions are high.", "uncertainty": "One sample only.", "evidence": ["@0"] } },
+      "expect": "accepted"
+    },
+    {
+      "id": "report-with-grounded-findings",
+      "proposal": { "kind": "report", "title": "Lock pressure", "findings": [ { "interpretation": "Sessions wait on locks.", "uncertainty": "Point-in-time view.", "evidence": ["@1"] } ], "evidence": ["@0", "@1"], "chart": true },
+      "expect": "accepted"
+    },
+    {
+      "id": "health-report-across-metrics",
+      "proposal": { "kind": "report", "title": "Health", "findings": [ { "interpretation": "Slow queries coincide with waiting locks.", "uncertainty": "Correlation, not cause.", "evidence": ["@1", "@2"] } ], "evidence": ["@0", "@1", "@2"], "chart": false },
+      "expect": "accepted"
+    },
+    {
+      "id": "fabricated-finding-id",
+      "proposal": { "kind": "finding", "finding": { "interpretation": "Disk is full.", "uncertainty": "None.", "evidence": ["pg-main:0:disk:usage"] } },
+      "expect": "unknownEvidence"
+    },
+    {
+      "id": "fabricated-report-evidence",
+      "proposal": { "kind": "report", "title": "Health", "findings": [], "evidence": ["@0", "0123456789abcdef0123456789abcdef"], "chart": true },
+      "expect": "unknownEvidence"
+    },
+    {
+      "id": "evidence-from-another-connection",
+      "connection": "other",
+      "proposal": { "kind": "finding", "finding": { "interpretation": "Sessions are high.", "uncertainty": "Other server.", "evidence": ["@0"] } },
+      "expect": "unknownEvidence"
+    },
+    {
+      "id": "finding-cites-evidence-outside-report",
+      "proposal": { "kind": "report", "title": "Health", "findings": [ { "interpretation": "Queries are slow.", "uncertainty": "One window.", "evidence": ["@2"] } ], "evidence": ["@0"], "chart": false },
+      "expect": "uncitedFinding"
+    },
+    {
+      "id": "uncited-finding",
+      "proposal": { "kind": "finding", "finding": { "interpretation": "Everything is fine.", "uncertainty": "Guess.", "evidence": [] } },
+      "expect": "citationCount"
+    },
+    {
+      "id": "model-supplied-measurement",
+      "proposal": { "kind": "report", "title": "Fake", "findings": [], "evidence": ["@0"], "chart": true, "measurements": [123] },
+      "expect": "invalidDocument"
+    }
+  ]
+}

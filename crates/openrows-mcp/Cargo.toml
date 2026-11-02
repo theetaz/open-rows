@@ -49,3 +49,4 @@ openrows-driver-sqlite = { path = "../openrows-driver-sqlite" }
 openrows-net = { path = "../openrows-net" }
 openrows-driver-postgres = { path = "../openrows-driver-postgres" }
 openrows-driver-mysql = { path = "../openrows-driver-mysql" }
+openrows-secrets = { path = "../openrows-secrets" }
