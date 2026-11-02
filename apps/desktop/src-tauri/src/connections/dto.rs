@@ -11,7 +11,7 @@ use openrows_store::profile::{
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
-use super::credential_dto::CredentialCommandDto;
+use super::credential_dto::{CloudAuthDto, CredentialCommandDto};
 pub(crate) use super::engine_dto::{EngineDto, FileDto};
 pub(crate) use super::enums::{EnvKindDto, PasswordStorageDto, TlsModeDto};
 use super::error::IpcError;
@@ -106,6 +106,7 @@ pub(crate) struct ProfileDto {
     /// Keychain, or asked on every connect (then `hasPassword` is false).
     password_storage: PasswordStorageDto,
     credential_command: Option<CredentialCommandDto>,
+    cloud_auth: Option<CloudAuthDto>,
     tags: Vec<String>,
     safety: SafetyDto,
     /// Why the connection list flags this connection as insecure.
@@ -209,6 +210,7 @@ impl From<&ConnectionProfile> for ProfileDto {
                 .credential_command
                 .as_ref()
                 .map(CredentialCommandDto::from),
+            cloud_auth: profile.cloud_auth.as_ref().map(CloudAuthDto::from),
             tags: profile.tags.clone(),
             insecure: profile_insecurity(profile),
             safety: profile.safety.into(),
@@ -312,6 +314,9 @@ pub(crate) struct ProfileInput {
     pub(crate) password_storage: PasswordStorageDto,
     #[serde(default)]
     pub(crate) credential_command: Option<CredentialCommandDto>,
+    /// Absent in forms written before cloud sign-in: none.
+    #[serde(default)]
+    pub(crate) cloud_auth: Option<CloudAuthDto>,
     #[serde(default)]
     pub(crate) tags: Vec<String>,
     pub(crate) password: PasswordInput,
@@ -400,6 +405,7 @@ impl ProfileInput {
             .clone_into(&mut profile.startup_commands);
         profile.password_storage = self.password_storage.into();
         profile.credential_command = self.credential_command.as_ref().map(Into::into);
+        profile.cloud_auth = self.cloud_auth.as_ref().map(Into::into);
         profile.tags.clone_from(&self.tags);
         profile.limits = self.limits.into();
         Ok(())

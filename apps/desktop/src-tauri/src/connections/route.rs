@@ -143,6 +143,7 @@ pub(crate) async fn profile_target_for(
         PasswordStorage::Command => {
             Some(super::credentials::password(state, &state.app, &profile).await?)
         }
+        PasswordStorage::Cloud => Some(super::cloud_tokens::password(state, &profile).await?),
     };
     let target = target::target(&profile, &secrets)?;
     let target = super::duckdb::hosted(state, &profile, target)?;

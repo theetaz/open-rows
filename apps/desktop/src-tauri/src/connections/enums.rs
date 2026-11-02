@@ -52,6 +52,8 @@ pub(crate) enum PasswordStorageDto {
     None,
     /// Run an explicitly trusted program on each attempt.
     Command,
+    /// Get a short-lived token from a signed-in cloud CLI on each attempt.
+    Cloud,
 }
 
 impl From<PasswordStorage> for PasswordStorageDto {
@@ -61,6 +63,7 @@ impl From<PasswordStorage> for PasswordStorageDto {
             PasswordStorage::Ask => Self::Ask,
             PasswordStorage::None => Self::None,
             PasswordStorage::Command => Self::Command,
+            PasswordStorage::Cloud => Self::Cloud,
         }
     }
 }
@@ -72,6 +75,7 @@ impl From<PasswordStorageDto> for PasswordStorage {
             PasswordStorageDto::Ask => Self::Ask,
             PasswordStorageDto::None => Self::None,
             PasswordStorageDto::Command => Self::Command,
+            PasswordStorageDto::Cloud => Self::Cloud,
         }
     }
 }

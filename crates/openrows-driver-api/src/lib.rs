@@ -38,7 +38,9 @@ pub use admin::{Admin, ProcessId, ProcessInfo, ProcessSignal};
 pub use batch::BatchPolicy;
 pub use bulk::{BulkLoader, BulkTarget, TextRow};
 pub use capabilities::{Capabilities, Feature, Location};
-pub use connect::{ConnectRequest, ConnectTimeouts, Endpoint, SslMode, TlsFiles};
+pub use connect::{
+    ConnectRequest, ConnectTimeouts, ENTRA_ACCESS_TOKEN, Endpoint, SslMode, TlsFiles,
+};
 pub use connection::{
     Catalog, Connection, Editor, RowEditInfo, RowSnapshot, ServerSummary, admin, catalog, editor,
 };

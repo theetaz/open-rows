@@ -9,8 +9,10 @@ use std::{
 use tokio::{io::AsyncReadExt as _, process::Command};
 
 /// Every cloud tool shown alongside database client tools in Settings.
-pub const TOOLS: [(&str, &str); 6] = [
+pub const TOOLS: [(&str, &str); 8] = [
     ("aws", "aws"),
+    ("az", "az"),
+    ("gcloud", "gcloud"),
     ("sessionManagerPlugin", "session-manager-plugin"),
     ("kubectl", "kubectl"),
     ("cloudSqlProxy", "cloud-sql-proxy"),
@@ -36,6 +38,19 @@ pub async fn discover(
     override_path: Option<&Path>,
     dirs: &[PathBuf],
 ) -> Result<HelperTool, HelperError> {
+    version(tool, locate(tool, override_path, dirs)?).await
+}
+
+/// The tool's executable without running it, for per-connect callers that
+/// must not pay for a version probe. An explicit override never falls back.
+///
+/// # Errors
+/// [`HelperError::NotFound`] when no executable exists at the override or in `dirs`.
+pub fn locate(
+    tool: &str,
+    override_path: Option<&Path>,
+    dirs: &[PathBuf],
+) -> Result<PathBuf, HelperError> {
     let paths = override_path.map_or_else(
         || {
             dirs.iter()
@@ -44,12 +59,10 @@ pub async fn discover(
         },
         |path| vec![path.to_path_buf()],
     );
-    for path in paths {
-        if executable(&path) {
-            return version(tool, path).await;
-        }
-    }
-    Err(HelperError::NotFound { tool: tool.into() })
+    paths
+        .into_iter()
+        .find(|path| executable(path))
+        .ok_or_else(|| HelperError::NotFound { tool: tool.into() })
 }
 fn executable(path: &Path) -> bool {
     let Ok(metadata) = std::fs::metadata(path) else {

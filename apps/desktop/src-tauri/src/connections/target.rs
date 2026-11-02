@@ -6,14 +6,15 @@ use std::sync::Arc;
 
 use openrows_driver_api::{
     Attachment, ConnectRequest, ConnectTimeouts, ConnectTrace, Connection, Driver, DriverError,
-    Endpoint, FileSource, ServerSummary, SslMode, TlsFiles,
+    ENTRA_ACCESS_TOKEN, Endpoint, FileSource, ServerSummary, SslMode, TlsFiles,
 };
 use openrows_net::tls::CloudCa as NetCloudCa;
 use openrows_net::{Dialer, SecretString as NetSecret};
 use openrows_secrets::SecretString;
 use openrows_sql::{Dialect, split};
 use openrows_store::profile::{
-    CloudCa, ConnectionProfile, Driver as Engine, FileParams, ProfileId, TlsMode, TlsSettings,
+    CloudAuth, CloudCa, ConnectionProfile, Driver as Engine, FileParams, PasswordStorage,
+    ProfileId, TlsMode, TlsSettings,
 };
 use serde::Serialize;
 use specta::Type;
@@ -91,7 +92,9 @@ pub(crate) fn target(
             .ok_or_else(|| IpcError::invalid("Choose a database file"))?;
         (file_endpoint(profile.id, file), String::new())
     } else {
-        let user = if matches!(profile.driver, Engine::Libsql | Engine::Mongodb) {
+        let user = if matches!(profile.driver, Engine::Libsql | Engine::Mongodb)
+            || uses_entra_token(profile)
+        {
             params.user.clone().unwrap_or_default()
         } else {
             params
@@ -299,8 +302,19 @@ fn with_endpoint(error: DriverError, request: &ConnectRequest) -> DriverError {
 #[path = "target_tests.rs"]
 mod tests;
 
+/// SQL Server logs in with an Entra token itself, without a user or password.
+fn uses_entra_token(profile: &ConnectionProfile) -> bool {
+    profile.driver == Engine::Sqlserver
+        && profile.password_storage == PasswordStorage::Cloud
+        && matches!(profile.cloud_auth, Some(CloudAuth::Azure { .. }))
+}
+
 fn driver_options(profile: &ConnectionProfile) -> std::collections::BTreeMap<String, String> {
     let mut options = profile.params.options.clone();
+    options.remove(ENTRA_ACCESS_TOKEN);
+    if uses_entra_token(profile) {
+        options.insert(ENTRA_ACCESS_TOKEN.to_owned(), "true".to_owned());
+    }
     let srv = options
         .get("mongodb_srv")
         .is_some_and(|value| value == "true");

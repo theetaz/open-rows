@@ -247,6 +247,29 @@
       "required": [],
       "additionalProperties": false
     },
+    "cloudAuth": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "type": "string",
+          "enum": ["aws", "azure", "google"]
+        },
+        "region": {
+          "type": "string"
+        },
+        "profile": {
+          "type": "string"
+        },
+        "tenant": {
+          "type": "string"
+        },
+        "account": {
+          "type": "string"
+        }
+      },
+      "required": ["provider"],
+      "additionalProperties": false
+    },
     "command": {
       "type": "object",
       "properties": {
@@ -310,10 +333,13 @@
         },
         "passwordStorage": {
           "type": "string",
-          "enum": ["keychain", "ask", "none", "command"]
+          "enum": ["keychain", "ask", "none", "command", "cloud"]
         },
         "credentialCommand": {
           "$ref": "#/$defs/command"
+        },
+        "cloudAuth": {
+          "$ref": "#/$defs/cloudAuth"
         },
         "tls": {
           "$ref": "#/$defs/tls"

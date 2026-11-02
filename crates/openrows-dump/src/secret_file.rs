@@ -75,6 +75,25 @@ impl PrivateFile {
         Self::new("mysql", text.as_bytes())
     }
 
+    /// As [`Self::mysql_options`] for a cloud IAM token, which the server asks
+    /// for through `mysql_clear_password`: the tools refuse that plugin unless
+    /// told otherwise. `loose-` keeps tools without the option working.
+    ///
+    /// # Errors
+    /// The file cannot be written.
+    pub fn mysql_token_options(token: &str) -> Result<Self, DumpError> {
+        let escaped = escape(token, |c| match c {
+            '\\' => Some(r"\\"),
+            '"' => Some("\\\""),
+            _ => None,
+        });
+        let text = Zeroizing::new(format!(
+            "[client]\npassword=\"{}\"\nloose-enable-cleartext-plugin\n",
+            escaped.as_str()
+        ));
+        Self::new("mysql", text.as_bytes())
+    }
+
     /// Where the file is.
     #[must_use]
     pub fn path(&self) -> &Path {

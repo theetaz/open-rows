@@ -22,6 +22,8 @@ pub(crate) enum DumpEngineDto {
 #[serde(rename_all = "camelCase")]
 pub(crate) enum DumpToolKindDto {
     Aws,
+    Az,
+    Gcloud,
     SessionManagerPlugin,
     Kubectl,
     CloudSqlProxy,

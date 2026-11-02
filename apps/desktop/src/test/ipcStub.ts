@@ -61,6 +61,7 @@ export function profile(
     hasPassword: false,
     passwordStorage: 'keychain',
     credentialCommand: null,
+    cloudAuth: null,
     tags: [],
     safety: 'unrestricted',
     insecure: [],

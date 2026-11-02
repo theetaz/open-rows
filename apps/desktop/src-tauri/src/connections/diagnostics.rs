@@ -85,6 +85,7 @@ pub(crate) fn plan(
                 profile.password_storage,
                 openrows_store::profile::PasswordStorage::None
                     | openrows_store::profile::PasswordStorage::Command
+                    | openrows_store::profile::PasswordStorage::Cloud
             ) {
                 None
             } else {
@@ -104,6 +105,29 @@ pub(crate) fn plan(
     })
 }
 
+/// Fetch the one-time credential of a command or cloud profile for this test,
+/// under the saved profile's id so its approval applies.
+async fn fresh_password(
+    state: &Connections,
+    plan: &mut TestPlan,
+    saved: Option<&str>,
+) -> Result<(), IpcError> {
+    use openrows_store::profile::PasswordStorage;
+    let storage = plan.profile.password_storage;
+    if !matches!(storage, PasswordStorage::Command | PasswordStorage::Cloud) {
+        return Ok(());
+    }
+    if let Some(id) = saved {
+        plan.profile.id = profile_id(id)?;
+    }
+    plan.driver.password = Some(if storage == PasswordStorage::Cloud {
+        super::cloud_tokens::password(state, &plan.profile).await?
+    } else {
+        super::credentials::password(state, &state.app, &plan.profile).await?
+    });
+    Ok(())
+}
+
 /// Connect with the form values step by step, report, and disconnect.
 #[tracing::instrument(name = "connection.test", skip_all)]
 #[tauri::command]
@@ -114,18 +138,14 @@ pub(crate) async fn connection_test(
     input: ProfileInput,
 ) -> Result<TestReport, IpcError> {
     let mut plan = plan(&state.profiles, profile_id.as_deref(), &input)?;
-    if plan.profile.password_storage == openrows_store::profile::PasswordStorage::Command {
-        if let Some(id) = &profile_id {
-            plan.profile.id = self::profile_id(id)?;
-        }
-        plan.driver.password =
-            Some(super::credentials::password(&state, &state.app, &plan.profile).await?);
-    }
+    fresh_password(&state, &mut plan, profile_id.as_deref()).await?;
     let target = target::target(&plan.profile, &plan.driver)?;
     let target = super::duckdb::hosted(&state, &plan.profile, target)?;
     let started = Instant::now();
     let mut steps = Steps {
         engine: plan.profile.driver,
+        cloud_token: plan.profile.password_storage
+            == openrows_store::profile::PasswordStorage::Cloud,
         proxy: plan.proxy.as_ref().map(|proxy| proxy.describe()),
         ..Steps::default()
     };

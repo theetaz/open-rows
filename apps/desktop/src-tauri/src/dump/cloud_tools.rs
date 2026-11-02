@@ -32,6 +32,8 @@ pub(super) async fn list(app: &tauri::AppHandle) -> Vec<DumpToolDto> {
         };
         let tool = match name {
             "aws" => DumpToolKindDto::Aws,
+            "az" => DumpToolKindDto::Az,
+            "gcloud" => DumpToolKindDto::Gcloud,
             "session-manager-plugin" => DumpToolKindDto::SessionManagerPlugin,
             "kubectl" => DumpToolKindDto::Kubectl,
             "cloud-sql-proxy" => DumpToolKindDto::CloudSqlProxy,

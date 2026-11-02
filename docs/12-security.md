@@ -184,6 +184,16 @@ Insert/Open/Copy retain the visible markers. Execute and Explain refuse any rema
 
 The remote libSQL/Turso auth token uses `conn/<id>/password` with the existing Keychain/Ask/Command credential policy. No token is stored in URL/host/options, profile JSON, diagnostics or exported connections. Ask retains it only in memory; Command reads stdout from a locally trusted provider and never exports its output. Hrana sends the token only in a sensitive bearer header, redacts token reflections from SQL errors and uses payload-free protocol/HTTP/TLS diagnostics. Cross-origin `base_url` changes are refused before another authenticated request. Remote credential-bearing URLs are rejected; use the Auth token field. Tests cover storage, exchange, command trust, request Debug/header isolation and failure diagnostics.
 
+## 15. Implemented (M5-13): cloud IAM tokens
+
+A cloud token is the database password for one connect attempt (docs/24 §19). It is read from the signed-in CLI's stdout into a zeroizing `SecretString` and is not logged, returned to the webview, written to the profile or store, or passed on a command line. The one exception on disk is the 0600 password file the client tools already use for every password (§9), deleted after the job. It is never cached: each connect and reconnect runs the CLI again, and a session holds the opening token only until its first connect. The `LOGIN7` payload buffer that carries an Entra token is wiped when dropped; as with every password, copies inside a driver's framing and TLS buffers are not separately wiped.
+
+**Threat:** Azure and Google tokens are bearer tokens valid for the user's other databases until they expire. An imported or externally edited profile could name an attacker's host with a valid certificate and collect one. **Mitigation:** before the first run, a native confirmation shows the exact program, arguments and destination. Approval is stored in `CommandTrust` under `cloud:<profile-id>` as a hash that includes `host:port`; imports have fresh ids and no entry, and editing the host or arguments invalidates it. AWS tokens are signed for their host, so the same gate is a precaution there. A host allow-list was rejected: Cloud SQL public IPs have no provider name, and custom DNS names and private endpoints are normal.
+
+**Transport:** a token is only sent over verified TLS (`verify-ca`, `verify-full`, or `require` with a CA). This has no loopback exemption, because a local listener may be another process. The one exception is a Google token on PostgreSQL through the Cloud SQL Auth Proxy, whose upstream the proxy encrypts and authenticates. Refusal happens before the CLI runs. Stderr is scrubbed by line for credential markers and JWT shapes and bounded to 400 characters; stdout never appears in errors.
+
+**Limits:** the trust boundary is the configured path, as in §10: changing a CLI's contents at a trusted path is not detected. The CLIs run with the user's permissions and their own credential stores, which OpenRows does not read.
+
 ## Implemented (M2-22a): connection safety and application locks
 
 FR-APP-11 adds one explicit connection policy: Unrestricted, ConfirmAll,

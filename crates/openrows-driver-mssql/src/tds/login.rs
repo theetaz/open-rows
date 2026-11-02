@@ -4,8 +4,14 @@
 //! password is obfuscated as the protocol requires (nibble swap and
 //! `XOR 0xA5`), which is not encryption: the packet itself travels inside
 //! TLS unless encryption is disabled.
+//!
+//! An Entra access token replaces user and password with a `FEDAUTH` feature
+//! (MS-TDS 2.2.6.4 `FeatureExt`): the `Extension` slot holds the offset of the
+//! feature list that follows every string. No Azure server was available to
+//! test against; the layout is from the public specification.
 
 use super::cursor::utf16_bytes;
+use zeroize::Zeroizing;
 
 /// TDS 7.4, as the little-endian `TDSVersion` field.
 const TDS_74: u32 = 0x7400_0004;
@@ -18,6 +24,16 @@ const OPTION_FLAGS_1: u8 = 0xE0;
 /// makes the server apply the ODBC session defaults (`ANSI_DEFAULTS` on,
 /// `TEXTSIZE` unlimited, `IMPLICIT_TRANSACTIONS` off).
 const OPTION_FLAGS_2: u8 = 0x03;
+/// `fExtension`: the `Extension` slot points at the feature list.
+const OPTION_FLAGS_3_EXTENSION: u8 = 0x10;
+/// Index of the `Extension` slot in the string table.
+const EXTENSION_SLOT: usize = 5;
+/// Size of the offset the `Extension` slot holds.
+const EXTENSION_LEN: usize = 4;
+const FEATURE_FED_AUTH: u8 = 0x02;
+const FEATURE_TERMINATOR: u8 = 0xFF;
+/// `bFedAuthLibrary` `SecurityToken`, in the upper seven bits of the options byte.
+const FED_AUTH_SECURITY_TOKEN: u8 = 0x01 << 1;
 /// `us_english`.
 const CLIENT_LCID: u32 = 0x0409;
 /// Library name reported to the server.
@@ -34,36 +50,66 @@ pub(crate) struct Login<'a> {
     /// Database to open; empty for the login's default database.
     pub(crate) database: &'a str,
     pub(crate) packet_size: u32,
+    /// An Entra access token; `user` and `password` are then not sent.
+    pub(crate) token: Option<FedAuth<'a>>,
 }
 
-/// The `LOGIN7` payload.
-pub(crate) fn encode(login: &Login<'_>) -> Vec<u8> {
-    let strings: [Vec<u8>; 9] = [
+/// A security token login.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct FedAuth<'a> {
+    pub(crate) token: &'a str,
+    /// The server's `PRELOGIN` answer, echoed in the options byte.
+    pub(crate) echo: bool,
+}
+
+/// The `LOGIN7` payload, wiped when dropped because it holds the credential.
+pub(crate) fn encode(login: &Login<'_>) -> Zeroizing<Vec<u8>> {
+    let features = login.token.map(fed_auth_features);
+    let (user, password) = if features.is_some() {
+        ("", "")
+    } else {
+        (login.user, login.password)
+    };
+    let strings: Zeroizing<[Vec<u8>; 9]> = Zeroizing::new([
         utf16_bytes(LIBRARY),
-        utf16_bytes(login.user),
-        obfuscate(&utf16_bytes(login.password)),
+        utf16_bytes(user),
+        obfuscate(&utf16_bytes(password)),
         utf16_bytes(login.application),
         utf16_bytes(login.server),
-        Vec::new(),
+        features
+            .as_ref()
+            .map_or_else(Vec::new, |_| vec![0; EXTENSION_LEN]),
         utf16_bytes(LIBRARY),
         Vec::new(),
         utf16_bytes(login.database),
-    ];
-    let mut fixed = Vec::with_capacity(FIXED_LEN);
-    let total = FIXED_LEN + strings.iter().map(Vec::len).sum::<usize>();
-    push_u32(&mut fixed, total);
+    ]);
+    let strings_end = FIXED_LEN + strings.iter().map(Vec::len).sum::<usize>();
+    let feature_len = features.as_ref().map_or(0, |features| features.len());
+    let mut fixed = Zeroizing::new(Vec::with_capacity(strings_end + feature_len));
+    push_u32(&mut fixed, strings_end + feature_len);
     fixed.extend_from_slice(&TDS_74.to_le_bytes());
     fixed.extend_from_slice(&login.packet_size.to_le_bytes());
     fixed.extend_from_slice(&[0, 0, 0, 7]);
     fixed.extend_from_slice(&std::process::id().to_le_bytes());
     fixed.extend_from_slice(&[0; 4]);
-    fixed.extend_from_slice(&[OPTION_FLAGS_1, OPTION_FLAGS_2, 0, 0]);
+    let flags_3 = if features.is_some() {
+        OPTION_FLAGS_3_EXTENSION
+    } else {
+        0
+    };
+    fixed.extend_from_slice(&[OPTION_FLAGS_1, OPTION_FLAGS_2, 0, flags_3]);
     fixed.extend_from_slice(&[0; 4]);
     fixed.extend_from_slice(&CLIENT_LCID.to_le_bytes());
     let mut offset = FIXED_LEN;
     for (index, value) in strings.iter().enumerate() {
         push_u16(&mut fixed, offset);
-        push_u16(&mut fixed, value.len() / 2);
+        // Every slot counts characters, except the extension's byte length.
+        let count = if index == EXTENSION_SLOT {
+            value.len()
+        } else {
+            value.len() / 2
+        };
+        push_u16(&mut fixed, count);
         offset += value.len();
         if index == 8 {
             // ClientID (a MAC address) follows the database name.
@@ -76,8 +122,30 @@ pub(crate) fn encode(login: &Login<'_>) -> Vec<u8> {
         push_u16(&mut fixed, 0);
     }
     fixed.extend_from_slice(&[0; 4]);
-    fixed.extend(strings.into_iter().flatten());
+    for (index, value) in strings.iter().enumerate() {
+        if index == EXTENSION_SLOT && features.is_some() {
+            push_u32(&mut fixed, strings_end);
+        } else {
+            fixed.extend_from_slice(value);
+        }
+    }
+    if let Some(features) = &features {
+        fixed.extend_from_slice(features);
+    }
     fixed
+}
+
+/// `FEDAUTH` with a security token, then the list terminator.
+fn fed_auth_features(login: FedAuth<'_>) -> Zeroizing<Vec<u8>> {
+    let token = Zeroizing::new(utf16_bytes(login.token));
+    let mut features = Zeroizing::new(Vec::with_capacity(token.len() + 11));
+    features.push(FEATURE_FED_AUTH);
+    push_u32(&mut features, 1 + 4 + token.len());
+    features.push(FED_AUTH_SECURITY_TOKEN | u8::from(login.echo));
+    push_u32(&mut features, token.len());
+    features.extend_from_slice(&token);
+    features.push(FEATURE_TERMINATOR);
+    features
 }
 
 /// Swap the nibbles of each byte, then XOR with `0xA5`.
@@ -118,6 +186,7 @@ mod tests {
             server: "db.local",
             database: "shop",
             packet_size: 4096,
+            token: None,
         };
         let packet = encode(&login);
         assert_eq!(&packet[4..8], &[4, 0, 0, 0x74]);
@@ -142,6 +211,53 @@ mod tests {
             &obfuscate(&utf16_bytes("pw"))[..]
         );
         assert_ne!(&packet[offset..offset + 4], &utf16_bytes("pw")[..]);
+    }
+
+    #[test]
+    fn a_token_login_sends_fed_auth_and_no_user_or_password() {
+        let token = "eyJ.t:ken/+=";
+        let packet = encode(&Login {
+            user: "ignored",
+            password: "ignored",
+            application: "OpenRows",
+            server: "x.database.windows.net",
+            database: "shop",
+            packet_size: 4096,
+            token: Some(FedAuth { token, echo: true }),
+        });
+        assert_eq!(packet[27], OPTION_FLAGS_3_EXTENSION);
+        assert_eq!(field(&packet, 1).1, 0, "no user");
+        assert_eq!(field(&packet, 2).1, 0, "no password");
+        let needle = utf16_bytes("ignored");
+        assert!(
+            !packet
+                .windows(needle.len())
+                .any(|window| window == &needle[..])
+        );
+        let (slot, len) = field(&packet, EXTENSION_SLOT);
+        assert_eq!(len, EXTENSION_LEN);
+        let pointer = u32::from_le_bytes([
+            packet[slot],
+            packet[slot + 1],
+            packet[slot + 2],
+            packet[slot + 3],
+        ]);
+        let features = usize::try_from(pointer).unwrap_or(usize::MAX);
+        let encoded = utf16_bytes(token);
+        let mut expected = vec![FEATURE_FED_AUTH];
+        expected.extend_from_slice(&u32::try_from(5 + encoded.len()).unwrap_or(0).to_le_bytes());
+        expected.push(0x03);
+        expected.extend_from_slice(&u32::try_from(encoded.len()).unwrap_or(0).to_le_bytes());
+        expected.extend_from_slice(&encoded);
+        expected.push(FEATURE_TERMINATOR);
+        assert_eq!(&packet[features..], &expected[..]);
+        let total = u32::from_le_bytes([packet[0], packet[1], packet[2], packet[3]]);
+        assert_eq!(usize::try_from(total).unwrap_or(0), packet.len());
+        let (offset, chars) = field(&packet, 8);
+        assert_eq!(
+            &packet[offset..offset + chars * 2],
+            &utf16_bytes("shop")[..]
+        );
     }
 
     #[test]

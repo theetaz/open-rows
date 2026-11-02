@@ -1,4 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
+import {
+  cloudAuthDraft,
+  cloudAuthErrors,
+  cloudAuthFields,
+  emptyCloudAuth,
+  tokenLoginWithoutUser,
+} from './cloudAuthForm';
+import type { CloudAuthDraft } from './cloudAuthForm';
 import { commandFields, commandErrors, commandDraft } from './credentialForm';
 import type { HelperHop } from '@openrows/ipc';
 import { helperError } from './helperForm';
@@ -74,6 +82,8 @@ export type Draft = {
   commandProgram: string;
   commandArgs: string;
   commandTimeout: string;
+  /** Provider and non-secret sign-in settings of a cloud token login. */
+  cloudAuth: CloudAuthDraft;
   tags: string;
   /** The name was derived from the URL, so later URL edits may replace it. */
   nameFromUrl: boolean;
@@ -108,6 +118,7 @@ export type DraftErrors = Partial<
     | 'commandProgram'
     | 'commandArgs'
     | 'commandTimeout'
+    | 'cloudRegion'
     | 'helper',
     string
   >
@@ -152,6 +163,7 @@ export function emptyDraft(engine: EngineDto = 'postgres'): Draft {
     commandProgram: '',
     commandArgs: '[]',
     commandTimeout: '10',
+    cloudAuth: emptyCloudAuth(),
     tags: '',
     nameFromUrl: false,
     ssh: emptySsh(),
@@ -191,6 +203,7 @@ export function draftFromProfile(profile: ProfileDto): Draft {
     hasStoredPassword: profile.hasPassword,
     passwordStorage: profile.passwordStorage,
     ...commandDraft(profile),
+    cloudAuth: cloudAuthDraft(profile),
     tags: profile.tags.join(', '),
     ssh: sshFromProfile(profile),
     helper: profile.helper ?? null,
@@ -308,7 +321,11 @@ export function validate(draft: Draft): DraftErrors {
   if (!draft.host.trim()) errors.host = 'Host is required';
   if (!Number.isInteger(port) || port < 1 || port > 65535)
     errors.port = 'Port must be 1–65535';
-  if (!['libsql', 'mongodb'].includes(draft.engine) && !draft.user.trim())
+  if (
+    !['libsql', 'mongodb'].includes(draft.engine) &&
+    !tokenLoginWithoutUser(draft) &&
+    !draft.user.trim()
+  )
     errors.user = 'User is required';
   if (draft.envKind === 'custom' && !draft.envLabel.trim())
     errors.envLabel = 'Label is required';
@@ -320,6 +337,7 @@ export function validate(draft: Draft): DraftErrors {
   return {
     ...errors,
     ...commandErrors(draft),
+    ...cloudAuthErrors(draft),
     ...validateRoute(draft.ssh, draft.tls, draft.tlsMode),
     ...proxyErrors(draft.proxy, draft.host, draft.ssh.enabled),
   };
@@ -381,6 +399,7 @@ export function toInput(draft: Draft): ProfileInput {
     startupCommands: draft.startupCommands.trim(),
     passwordStorage: draft.passwordStorage,
     credentialCommand: commandFields(draft),
+    cloudAuth: cloudAuthFields(draft),
     tags: draft.tags
       .split(',')
       .map((tag) => tag.trim())
@@ -388,7 +407,8 @@ export function toInput(draft: Draft): ProfileInput {
     password:
       file ||
       draft.passwordStorage === 'none' ||
-      draft.passwordStorage === 'command'
+      draft.passwordStorage === 'command' ||
+      draft.passwordStorage === 'cloud'
         ? { kind: 'clear' }
         : password(draft),
     limits: limitsInput(draft.limits),

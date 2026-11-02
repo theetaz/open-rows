@@ -138,3 +138,32 @@ impl Exchange {
         Ok(Some(first.unwrap_or_default()))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const TOKEN: &[u8] = b"host:3306/?Action=connect&X-Amz-Signature=a+b%2F==";
+
+    fn secrets(secure: bool) -> Secrets<'static> {
+        Secrets {
+            password: TOKEN,
+            secure,
+            scramble: b"",
+        }
+    }
+
+    #[test]
+    fn a_cloud_token_goes_over_tls_as_the_cleartext_plugin_expects() -> Result<(), DriverError> {
+        let (_, first) = Exchange::start(&AuthPlugin::MysqlClearPassword, b"", secrets(true))?;
+        let sent = first.ok_or_else(|| DriverError::Auth("no response".to_owned()))?;
+        assert_eq!(sent.strip_suffix(&[0]), Some(TOKEN));
+        Ok(())
+    }
+
+    #[test]
+    fn the_cleartext_plugin_is_refused_without_tls() {
+        let refused = Exchange::start(&AuthPlugin::MysqlClearPassword, b"", secrets(false));
+        assert!(matches!(refused, Err(DriverError::Auth(_))));
+    }
+}

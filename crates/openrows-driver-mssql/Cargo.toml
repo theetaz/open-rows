@@ -20,6 +20,7 @@ openrows-monitor = { path = "../openrows-monitor" }
 openrows-net = { path = "../openrows-net" }
 openrows-sql = { path = "../openrows-sql" }
 tokio = { version = "1.53", features = ["net", "io-util", "sync", "time"] }
+zeroize = "1.8"
 
 [dev-dependencies]
 # Proxied-route tests use the in-process test proxy.

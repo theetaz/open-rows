@@ -29,6 +29,8 @@ if ! command -v docker >/dev/null 2>&1 || ! docker info >/dev/null 2>&1; then
     exit 0
 fi
 cargo build -p openrows-net --bin fake-cloud-hop --features test-helper --locked
+# The app crate's cloud token test below needs the staged driver host to build.
+bash scripts/stage-host.sh dev ""
 # Resolve the built directory so credential validation also accepts relative Cargo targets.
 helper_dir="${CARGO_TARGET_DIR:-target}"
 if [ -n "${CARGO_BUILD_TARGET:-}" ]; then
@@ -110,6 +112,9 @@ main_suite() {
     record cargo nextest run -p openrows-driver-postgres -p openrows-core -p openrows-schema \
         -p openrows-mcp -p openrows-driver-conformance -p openrows-import -p openrows-dump --locked --test postgres \
         --run-ignored only --no-capture --no-fail-fast -E "not $phase_tests"
+    echo "PostgreSQL ${version}: cloud token login and reconnect through a fake CLI"
+    record cargo nextest run -p openrows-app --locked --run-ignored only --no-capture \
+        -E 'test(/cloud_token_/)'
     echo "PostgreSQL ${version}: serial server-wide statistics reset phase"
     record postgres_tests -E 'test(/server_statistics_reset_/)'
     unset OPENROWS_TEST_PG_CONTAINER OPENROWS_TEST_PG_TLS_DIR

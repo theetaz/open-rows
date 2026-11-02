@@ -3,6 +3,7 @@
 use super::{CommandCancellation, CommandTrust, CredentialCommand, CredentialError, ProfileId};
 use openrows_secrets::SecretString;
 use std::{
+    ffi::OsStr,
     process::{Child, Command, Stdio},
     sync::mpsc,
     time::{Duration, Instant},
@@ -21,10 +22,19 @@ pub fn run_credential(
 ) -> Result<SecretString, CredentialError> {
     command.validate()?;
     trust.require(id, command)?;
+    run_approved(command, None, cancel)
+}
+/// Run a command the caller already holds approval for; `search_path`, when
+/// given, replaces the child's `PATH` (a GUI app inherits a minimal one).
+pub(super) fn run_approved(
+    command: &CredentialCommand,
+    search_path: Option<&OsStr>,
+    cancel: &CommandCancellation,
+) -> Result<SecretString, CredentialError> {
     if cancel.is_cancelled() {
         return Err(CredentialError::Cancelled);
     }
-    let mut child = configured(command)
+    let mut child = configured(command, search_path)
         .spawn()
         .map_err(CredentialError::Process)?;
     let result = collect(&mut child, command, cancel);
@@ -34,13 +44,16 @@ pub fn run_credential(
     let _ = child.wait();
     result
 }
-fn configured(command: &CredentialCommand) -> Command {
+fn configured(command: &CredentialCommand, search_path: Option<&OsStr>) -> Command {
     let mut process = Command::new(&command.program);
     process
         .args(&command.args)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
+    if let Some(search_path) = search_path {
+        process.env("PATH", search_path);
+    }
     for (name, _) in std::env::vars_os() {
         let upper = name.to_string_lossy().to_ascii_uppercase();
         if upper.starts_with("OPENROWS_")

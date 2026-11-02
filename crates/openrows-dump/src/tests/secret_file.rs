@@ -33,6 +33,17 @@ fn mysql_option_file_quotes_the_password() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn mysql_token_file_quotes_the_token_and_allows_the_cleartext_plugin() -> TestResult {
+    let file = PrivateFile::mysql_token_options(r#"to"k\en&X=1"#)?;
+    let text = std::fs::read_to_string(file.path())?;
+    assert_eq!(
+        text,
+        "[client]\npassword=\"to\\\"k\\\\en&X=1\"\nloose-enable-cleartext-plugin\n"
+    );
+    Ok(())
+}
+
 #[cfg(unix)]
 #[test]
 fn files_are_private_and_deleted_on_drop() -> TestResult {

@@ -8,8 +8,8 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::{
-    CredentialCommand, Driver, EnvKind, EnvTag, FileParams, PasswordStorage, ProfileError,
-    ProxySettings, Safety, ServerParams, SessionLimits, SshSettings, TlsSettings,
+    CloudAuth, CredentialCommand, Driver, EnvKind, EnvTag, FileParams, PasswordStorage,
+    ProfileError, ProxySettings, Safety, ServerParams, SessionLimits, SshSettings, TlsSettings,
 };
 
 /// Newest profile file format version (`"openrows": 1`).
@@ -158,6 +158,10 @@ pub struct ConnectionProfile {
     /// Program and literal arguments; execution trust is machine-local.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub credential_command: Option<CredentialCommand>,
+    /// Cloud sign-in settings (provider, region, tenant); the token itself is
+    /// fetched per connect and never stored.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cloud_auth: Option<CloudAuth>,
     /// Imported provenance; never grants command trust.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub imported: bool,
@@ -251,6 +255,7 @@ impl ConnectionProfile {
             secrets: SecretRefs::default(),
             password_storage: PasswordStorage::Keychain,
             credential_command: None,
+            cloud_auth: None,
             imported: false,
             tags: Vec::new(),
             record_history: true,
@@ -307,6 +312,9 @@ impl ConnectionProfile {
                     reason: "choose a program",
                 })?
                 .validate()?;
+        }
+        if self.password_storage == PasswordStorage::Cloud {
+            self.validate_cloud_auth()?;
         }
         if self.driver.is_file() {
             return self.validate_file();

@@ -230,7 +230,7 @@ First slice of M1-02 (local store) and M1-03 (profiles). Nothing here depends on
 }
 ```
 
-Each profile preserves its name, driver, group, string tags, environment label/colour, read-only and confirmation switches, server/file settings, TLS paths/cloud CA, SSH authentication method/key path/jump hosts, proxy settings, history policy and session limits. Optional fields use the defaults of the personal profile model. Password storage is `keychain` (default), `ask`, `none` or `command`. A command adds `credentialCommand: { "program": "/absolute/provider", "args": ["literal", "arguments"], "timeoutSeconds": 10 }`; the timeout range is 1–120 seconds. Program and arguments are configuration and must never contain credentials. Only file **paths** are serialized: no certificate/private-key file is opened by the exporter.
+Each profile preserves its name, driver, group, string tags, environment label/colour, read-only and confirmation switches, server/file settings, TLS paths/cloud CA, SSH authentication method/key path/jump hosts, proxy settings, history policy and session limits. Optional fields use the defaults of the personal profile model. Password storage is `keychain` (default), `ask`, `none`, `command` or `cloud` (M5-13, below). A command adds `credentialCommand: { "program": "/absolute/provider", "args": ["literal", "arguments"], "timeoutSeconds": 10 }`; the timeout range is 1–120 seconds. Program and arguments are configuration and must never contain credentials. Only file **paths** are serialized: no certificate/private-key file is opened by the exporter.
 
 Ids, secret references, passwords, passphrases, tokens, command output and machine-local trust are excluded. Opaque startup SQL and arbitrary driver options are deliberately excluded because they may contain secret literals; the only portable extra option in v1 is `connect_timeout`. Private-key contents and secret-bearing exports remain excluded from 1.0 (G02).
 
@@ -247,6 +247,10 @@ These are configuration, so they must not contain secrets. Local command trust
 is never exported. Import validates the helper, allocates a fresh profile id and
 requires a new hop-purpose approval before execution, including Replace imports.
 This additive v1 extension needs no profile-format migration.
+
+### M5-13 cloud token settings
+
+The v1 schema adds `passwordStorage: "cloud"` and `cloudAuth`: `{ "provider": "aws", "region": "us-east-1", "profile": "dev" }`, `{ "provider": "azure", "tenant": "…" }` or `{ "provider": "google", "account": "…" }`; only `provider` and the AWS `region` are required. These are configuration, and no token is ever part of a profile or export. Import validates the provider against the engine and gives the profile a fresh id, so the first connect asks for approval of the command and destination (docs/12 §15). The additive v1 extension needs no profile-format migration.
 
 ## 10. Sidebar local state (M2-23)
 

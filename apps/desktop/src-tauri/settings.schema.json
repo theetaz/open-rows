@@ -802,6 +802,18 @@
           "maxLength": 1024,
           "description": "Path of kubectl; empty discovers an installed copy."
         },
+        "az": {
+          "type": "string",
+          "default": "",
+          "maxLength": 1024,
+          "description": "Path of az; empty discovers an installed copy."
+        },
+        "gcloud": {
+          "type": "string",
+          "default": "",
+          "maxLength": 1024,
+          "description": "Path of gcloud; empty discovers an installed copy."
+        },
         "cloudSqlProxy": {
           "type": "string",
           "default": "",

@@ -87,7 +87,7 @@ pub(super) fn preview(profile: &ConnectionProfile) -> Result<ConnectionSpec, Ipc
     let has_password = profile.secrets.password.is_some()
         || matches!(
             profile.password_storage,
-            PasswordStorage::Ask | PasswordStorage::Command
+            PasswordStorage::Ask | PasswordStorage::Command | PasswordStorage::Cloud
         );
     if has_password {
         spec.password_file = Some(PathBuf::from(PREVIEW_PASSWORD_FILE));
@@ -119,6 +119,11 @@ pub(super) async fn login(
     tool_connections: usize,
 ) -> Result<Login, IpcError> {
     let target = profile_target(connections, profile_id).await?;
+    let cloud = connections
+        .profiles
+        .get(crate::connections::profiles::profile_id(profile_id)?)?
+        .password_storage
+        == PasswordStorage::Cloud;
     let request = &target.request;
     if request.tls.key_passphrase.is_some() {
         return Err(IpcError::new(
@@ -129,7 +134,7 @@ pub(super) async fn login(
     let password = request
         .password
         .as_ref()
-        .map(|secret| password_file(secret.expose(), mysql))
+        .map(|secret| password_file(secret.expose(), mysql, cloud))
         .transpose()?;
     let ca = match (&request.tls.ca_file, request.tls.cloud_ca) {
         (None, Some(cloud)) => {
@@ -158,8 +163,10 @@ pub(super) async fn login(
     })
 }
 
-fn password_file(password: &str, mysql: bool) -> Result<PrivateFile, IpcError> {
-    let file = if mysql {
+fn password_file(password: &str, mysql: bool, cloud: bool) -> Result<PrivateFile, IpcError> {
+    let file = if mysql && cloud {
+        PrivateFile::mysql_token_options(password)
+    } else if mysql {
         PrivateFile::mysql_options(password)
     } else {
         PrivateFile::pgpass(password)

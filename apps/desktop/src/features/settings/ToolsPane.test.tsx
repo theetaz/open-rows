@@ -58,6 +58,8 @@ it('keeps only string paths of known tools', () => {
     mysqldump: '',
     mysql: '',
     aws: '',
+    az: '',
+    gcloud: '',
     sessionManagerPlugin: '',
     kubectl: '',
     cloudSqlProxy: '',

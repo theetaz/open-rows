@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import { SecureField, SelectField } from '@openrows/ui';
 import type { PasswordStorageDto } from '@openrows/ipc';
+import { CloudAuthFields } from './CloudAuthFields';
+import { cloudProviders } from './cloudAuthForm';
 import { CredentialFields } from './CredentialFields';
 import { SecretField } from './SecretField';
 import type { ConnectionForm } from './useConnectionForm';
@@ -13,6 +15,7 @@ const storageChoices: readonly { value: PasswordStorageDto; label: string }[] =
     { value: 'none', label: 'No password' },
     { value: 'command', label: 'Run a command' },
   ];
+const cloudChoice = { value: 'cloud', label: 'Cloud IAM token' } as const;
 
 /**
  * The database password and where it lives (TablePlus): a [`SecretField`]
@@ -26,7 +29,9 @@ export function PasswordField({
   const { draft } = form;
   return (
     <>
-      {draft.passwordStorage === 'command' ? (
+      {draft.passwordStorage === 'cloud' ? (
+        <CloudAuthFields form={form} />
+      ) : draft.passwordStorage === 'command' ? (
         <CredentialFields form={form} />
       ) : draft.passwordStorage === 'none' ? (
         <small className={styles.hint}>
@@ -59,7 +64,11 @@ export function PasswordField({
           draft.engine === 'libsql' ? 'Auth token storage' : 'Password storage'
         }
         value={draft.passwordStorage}
-        options={storageChoices}
+        options={
+          cloudProviders(draft.engine).length > 0
+            ? [...storageChoices, cloudChoice]
+            : storageChoices
+        }
         onValueChange={(passwordStorage) => {
           form.update({ passwordStorage });
         }}

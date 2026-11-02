@@ -12,6 +12,11 @@ use openrows_net::{
 
 use crate::file::{Attachment, FileSource};
 
+/// `driver_options` key, set by the app (never by users' options): `password`
+/// holds a Microsoft Entra access token. SQL Server sends it as `FEDAUTH`
+/// instead of a SQL login; `PostgreSQL` and `MySQL` send it as a password.
+pub const ENTRA_ACCESS_TOKEN: &str = "entra_access_token";
+
 /// libpq `sslmode`, with libpq's semantics (docs/12 §4.1). `MySQL` `ssl-mode`
 /// maps onto it: `DISABLED`, `PREFERRED`, `REQUIRED`, `VERIFY_CA`, `VERIFY_IDENTITY`.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]

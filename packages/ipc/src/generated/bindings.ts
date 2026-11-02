@@ -1216,6 +1216,15 @@ export type ClientInfo = {
 	active: number,
 };
 
+/**  Non-secret cloud sign-in settings; the token never crosses IPC. */
+export type CloudAuthDto =
+/**  RDS and Aurora IAM through the AWS CLI. */
+{ provider: "aws"; region: string; profile: string | null } |
+/**  Entra ID tokens through the Azure CLI. */
+{ provider: "azure"; tenant: string | null } |
+/**  Cloud SQL IAM through gcloud. */
+{ provider: "google"; account: string | null };
+
 /**  Bundled cloud provider CA sets (docs/24 §4). */
 export type CloudCaDto =
 /**  Amazon RDS and Aurora. */
@@ -1651,7 +1660,7 @@ export type DumpToolDto = {
 };
 
 /**  A client tool. */
-export type DumpToolKindDto = "aws" | "sessionManagerPlugin" | "kubectl" | "cloudSqlProxy" | "alloydbAuthProxy" | "cloudflared" | "pgDump" | "pgRestore" | "psql" | "mysqldump" | "mysql";
+export type DumpToolKindDto = "aws" | "az" | "gcloud" | "sessionManagerPlugin" | "kubectl" | "cloudSqlProxy" | "alloydbAuthProxy" | "cloudflared" | "pgDump" | "pgRestore" | "psql" | "mysqldump" | "mysql";
 
 export type EditInfoDto = {
 	key: string[],
@@ -2988,7 +2997,9 @@ export type PasswordStorageDto =
 /**  Never send or ask for a database password. */
 "none" |
 /**  Run an explicitly trusted program on each attempt. */
-"command";
+"command" |
+/**  Get a short-lived token from a signed-in cloud CLI on each attempt. */
+"cloud";
 
 /**  Why a job is not running; lock and AI off clear by themselves. */
 export type PauseReason =
@@ -3201,6 +3212,7 @@ export type ProfileDto = {
 	/**  Keychain, or asked on every connect (then `hasPassword` is false). */
 	passwordStorage: PasswordStorageDto,
 	credentialCommand: CredentialCommandDto | null,
+	cloudAuth: CloudAuthDto | null,
 	tags: string[],
 	safety: SafetyDto,
 	/**  Why the connection list flags this connection as insecure. */
@@ -3251,6 +3263,8 @@ export type ProfileInput = {
 	/**  Absent in forms written before the choice: the keychain. */
 	passwordStorage?: PasswordStorageDto,
 	credentialCommand?: CredentialCommandDto | null,
+	/**  Absent in forms written before cloud sign-in: none. */
+	cloudAuth?: CloudAuthDto | null,
 	tags?: string[],
 	password: PasswordInput,
 	/**  Absent in forms written before the limits: the defaults. */

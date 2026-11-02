@@ -29,7 +29,7 @@ impl HelperSettings {
             })
             .collect();
     }
-    fn path(&self, tool: &str) -> Option<PathBuf> {
+    pub(super) fn path(&self, tool: &str) -> Option<PathBuf> {
         self.0
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
@@ -70,16 +70,22 @@ pub(crate) async fn acquire(
     acquire_structured(state, profile, hop).await
 }
 
-async fn acquire_structured(
-    state: &Connections,
-    profile: &ConnectionProfile,
-    hop: &openrows_net::helper::HelperHop,
-) -> Result<Arc<Helper>, IpcError> {
+/// Where cloud tools are looked for: `PATH` plus the usual install directories.
+pub(super) fn tool_dirs() -> Vec<PathBuf> {
     let path = std::env::var_os("PATH");
     let mut dirs = openrows_dump::search_dirs(path.as_deref());
     if let Some(home) = std::env::var_os("HOME") {
         dirs.push(PathBuf::from(home).join(".local/bin"));
     }
+    dirs
+}
+
+async fn acquire_structured(
+    state: &Connections,
+    profile: &ConnectionProfile,
+    hop: &openrows_net::helper::HelperHop,
+) -> Result<Arc<Helper>, IpcError> {
+    let mut dirs = tool_dirs();
     let override_path = state.helper_settings.path(hop.tool());
     let found = tools::discover(hop.tool(), override_path.as_deref(), &dirs)
         .await

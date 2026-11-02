@@ -22,31 +22,64 @@ use std::{
 use tauri::State;
 use tauri_plugin_dialog::{DialogExt as _, MessageDialogButtons};
 
+/// One profile's attempts in progress and what cancels them all.
+struct ActiveRuns {
+    cancel: CommandCancellation,
+    count: usize,
+}
+
 /// Live command attempts, cancelled through the existing connection progress action.
 #[derive(Default)]
-pub(crate) struct CredentialRuns(Mutex<HashMap<ProfileId, CommandCancellation>>);
+pub(crate) struct CredentialRuns(Mutex<HashMap<ProfileId, ActiveRuns>>);
 impl CredentialRuns {
     pub(crate) fn cancel(&self, id: ProfileId) {
         if let Ok(runs) = self.0.lock()
-            && let Some(cancel) = runs.get(&id)
+            && let Some(active) = runs.get(&id)
         {
-            cancel.cancel();
+            active.cancel.cancel();
         }
     }
+    fn locked(
+        &self,
+    ) -> Result<std::sync::MutexGuard<'_, HashMap<ProfileId, ActiveRuns>>, IpcError> {
+        self.0
+            .lock()
+            .map_err(|_| IpcError::new(IpcErrorKind::Internal, "Credential attempts unavailable"))
+    }
     fn start(&self, id: ProfileId) -> Result<CommandCancellation, IpcError> {
-        let mut runs = self.0.lock().map_err(|_| {
-            IpcError::new(IpcErrorKind::Internal, "Credential attempts unavailable")
-        })?;
+        let mut runs = self.locked()?;
         if runs.contains_key(&id) {
             return Err(IpcError::invalid("Credential command is already running"));
         }
         let cancel = CommandCancellation::default();
-        runs.insert(id, cancel.clone());
+        runs.insert(
+            id,
+            ActiveRuns {
+                cancel: cancel.clone(),
+                count: 1,
+            },
+        );
         Ok(cancel)
     }
-    fn finish(&self, id: ProfileId) {
-        if let Ok(mut runs) = self.0.lock() {
-            runs.remove(&id);
+    /// Add an attempt that may run beside others, as a profile's sessions do
+    /// when they all reconnect at once.
+    pub(super) fn join(&self, id: ProfileId) -> Result<CommandCancellation, IpcError> {
+        let mut runs = self.locked()?;
+        let active = runs.entry(id).or_insert_with(|| ActiveRuns {
+            cancel: CommandCancellation::default(),
+            count: 0,
+        });
+        active.count += 1;
+        Ok(active.cancel.clone())
+    }
+    pub(super) fn finish(&self, id: ProfileId) {
+        if let Ok(mut runs) = self.0.lock()
+            && let Some(active) = runs.get_mut(&id)
+        {
+            active.count -= 1;
+            if active.count == 0 {
+                runs.remove(&id);
+            }
         }
     }
 }
@@ -79,10 +112,6 @@ pub(crate) async fn confirm_purpose(
     purpose: CommandPurpose,
 ) -> Result<(), IpcError> {
     command.validate()?;
-    let title = match purpose {
-        CommandPurpose::Credential => "Trust credential command?",
-        CommandPurpose::Hop => "Trust custom hop command?",
-    };
     let args =
         serde_json::to_string(&command.args).map_err(|_| IpcError::invalid("Invalid arguments"))?;
     let program = serde_json::to_string(&command.program)
@@ -90,6 +119,20 @@ pub(crate) async fn confirm_purpose(
     let text = format!(
         "This program can access files and the network with your permissions. Only trust commands you recognize. Arguments are literal and must not contain secrets.\n\nProgram: {program}\nArguments: {args}"
     );
+    ask(app, title(purpose), text).await
+}
+
+/// The question a confirmation asks for each execution purpose.
+pub(super) fn title(purpose: CommandPurpose) -> &'static str {
+    match purpose {
+        CommandPurpose::Credential => "Trust credential command?",
+        CommandPurpose::Hop => "Trust custom hop command?",
+        CommandPurpose::CloudToken => "Send a cloud token to this database?",
+    }
+}
+
+/// A native Trust and run / Cancel question; anything but Trust is a refusal.
+pub(super) async fn ask(app: &tauri::AppHandle, title: &str, text: String) -> Result<(), IpcError> {
     let (sender, receiver) = tokio::sync::oneshot::channel();
     app.dialog()
         .message(text)

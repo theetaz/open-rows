@@ -342,6 +342,7 @@ export type {
   AttachedFileDto,
   AttachReply,
   CertificateDto,
+  CloudAuthDto,
   CloudCaDto,
   ConnectionOpened,
   DatabaseDto,

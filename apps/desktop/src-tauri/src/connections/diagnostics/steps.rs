@@ -75,7 +75,12 @@ pub(crate) struct Steps {
     pub(crate) engine: Engine,
     /// `SOCKS5 proxy host:port` in front of the first hop, if any.
     pub(crate) proxy: Option<String>,
+    /// The profile logs in with a cloud token, not a saved password.
+    pub(crate) cloud_token: bool,
 }
+
+/// Why a server turns down a token the CLI just issued (docs/24 §19).
+const CLOUD_TOKEN_REJECTED: &str = "The server rejected the cloud token. Check that this database user is enabled for IAM sign-in (rds_iam on RDS PostgreSQL, AWSAuthenticationPlugin on RDS MySQL, an Entra or Cloud SQL IAM user), that your identity may connect, and that the user name and region are right.";
 
 impl Steps {
     /// Command line, version and last scrubbed stderr of a cloud helper.
@@ -127,7 +132,12 @@ impl Steps {
     }
 
     fn failed(&mut self, kind: TestStepKind, label: String, error: &IpcError) {
-        let advice = hint(kind, error, self.engine).map(str::to_owned);
+        let cloud_login = self.cloud_token && kind == TestStepKind::Authenticate;
+        let advice = if cloud_login {
+            Some(CLOUD_TOKEN_REJECTED.to_owned())
+        } else {
+            hint(kind, error, self.engine).map(str::to_owned)
+        };
         let step = self.push(kind, label, StepStatus::Failed);
         step.detail = Some(error.message.clone());
         step.hint = advice;

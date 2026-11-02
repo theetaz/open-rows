@@ -16,6 +16,8 @@ pub enum CommandPurpose {
     Credential,
     /// A database forwarding process.
     Hop,
+    /// A cloud CLI whose token goes to one database destination.
+    CloudToken,
 }
 impl CommandPurpose {
     fn key(self, id: ProfileId) -> String {
@@ -23,6 +25,7 @@ impl CommandPurpose {
             // Preserve existing credential approvals; old keys cannot authorize hops.
             Self::Credential => id.to_string(),
             Self::Hop => format!("hop:{id}"),
+            Self::CloudToken => format!("cloud:{id}"),
         }
     }
 }

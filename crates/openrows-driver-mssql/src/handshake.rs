@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Opening a session: the stream (direct or through the route), `PRELOGIN`,
 //! the TLS handshake inside `PRELOGIN` packets when encryption was agreed,
-//! and `LOGIN7` with SQL Server authentication.
+//! and `LOGIN7` with SQL Server authentication or an Entra access token.
 //!
 //! The libpq `sslmode` maps onto the `PRELOGIN` encryption offer:
 //! `disable` offers none; `allow` asks to encrypt the login only (the
@@ -10,15 +10,17 @@
 //! Certificates are checked as the mode says (docs/12 §4.1).
 
 use openrows_driver_api::{
-    ConnectRequest, ConnectStage, ConnectTrace, DriverError, Endpoint, SslMode, TlsStatus,
+    ConnectRequest, ConnectStage, ConnectTrace, DriverError, ENTRA_ACCESS_TOKEN, Endpoint, SslMode,
+    TlsStatus,
 };
 use openrows_net::BoxStream;
 use openrows_net::tls::{TlsClient, failure_in};
 use tokio::io::AsyncWriteExt;
+use zeroize::Zeroizing;
 
 use crate::error::login_error;
 use crate::reply::{Env, Ignore, read_reply};
-use crate::tds::login::{self, Login};
+use crate::tds::login::{self, FedAuth, Login};
 use crate::tds::packet::{INITIAL_PACKET_SIZE, PacketType, frame};
 use crate::tds::prelogin::{self, Encryption};
 use crate::tds::tls::PreloginFraming;
@@ -64,7 +66,7 @@ pub(crate) async fn establish(
     let exchange = within(
         request.timeouts.tls,
         "PRELOGIN",
-        exchange_prelogin(&mut stream, offer),
+        exchange_prelogin(&mut stream, offer, uses_token(request)),
     );
     let stage = if offer == Encryption::NotSupported {
         ConnectStage::Authenticate
@@ -73,11 +75,16 @@ pub(crate) async fn establish(
     };
     let reply = trace.stage(stage, exchange).await?;
     let plan = plan(request.ssl_mode, reply.encryption)?;
-    let payload = login_payload(request);
+    if uses_token(request) && plan != Plan::Full {
+        return Err(DriverError::Tls(
+            "an access token is only sent over a fully encrypted connection".to_owned(),
+        ));
+    }
+    let payload = login_payload(request, reply.fed_auth_required);
     let (stream, tls, sent) = match plan {
         Plan::Plain(reason) => (stream, plain_status(reason), false),
         Plan::LoginOnly | Plan::Full => {
-            let secure = encrypt(stream, request, (plan, &payload));
+            let secure = encrypt(stream, request, (plan, &payload[..]));
             let secured = within(request.timeouts.tls, "TLS handshake", secure);
             trace.stage(ConnectStage::Tls, secured).await?
         }
@@ -131,11 +138,12 @@ fn plain_status(reason: PlainReason) -> TlsStatus {
 async fn exchange_prelogin(
     stream: &mut BoxStream,
     offer: Encryption,
+    fed_auth: bool,
 ) -> Result<prelogin::PreloginReply, DriverError> {
     let mut id = 1;
     let request = frame(
         PacketType::PreLogin,
-        &prelogin::request(offer),
+        &prelogin::request(offer, fed_auth),
         INITIAL_PACKET_SIZE,
         &mut id,
     );
@@ -197,11 +205,20 @@ fn server_name(request: &ConnectRequest) -> &str {
     }
 }
 
-fn login_payload(request: &ConnectRequest) -> Vec<u8> {
+/// The app marked `password` as an Entra access token.
+fn uses_token(request: &ConnectRequest) -> bool {
+    request.driver_options.contains_key(ENTRA_ACCESS_TOKEN) && request.password.is_some()
+}
+
+fn login_payload(request: &ConnectRequest, echo: bool) -> Zeroizing<Vec<u8>> {
     let password = request
         .password
         .as_ref()
         .map_or("", |secret| secret.expose());
+    let token = uses_token(request).then_some(FedAuth {
+        token: password,
+        echo,
+    });
     login::encode(&Login {
         user: &request.user,
         password,
@@ -209,6 +226,7 @@ fn login_payload(request: &ConnectRequest) -> Vec<u8> {
         server: server_name(request),
         database: &request.database,
         packet_size: PACKET_SIZE,
+        token,
     })
 }
 

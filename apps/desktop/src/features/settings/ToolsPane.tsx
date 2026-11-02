@@ -18,6 +18,8 @@ const NAMES: Readonly<Record<DumpToolKindDto, string>> = {
   mysqldump: 'mysqldump',
   mysql: 'mysql',
   aws: 'aws',
+  az: 'az',
+  gcloud: 'gcloud',
   sessionManagerPlugin: 'session-manager-plugin',
   kubectl: 'kubectl',
   cloudSqlProxy: 'cloud-sql-proxy',

@@ -289,6 +289,27 @@ fn a_direct_connect_reports_dns_tcp_tls_auth_and_version_in_order() {
 }
 
 #[test]
+fn a_rejected_cloud_token_points_at_the_iam_setup() {
+    let trace = ConnectTrace {
+        failed: Some(ConnectStage::Authenticate),
+        ..ConnectTrace::default()
+    };
+    let error = DriverError::Auth("password authentication failed".to_owned());
+    let mut steps = Steps {
+        cloud_token: true,
+        ..Steps::default()
+    };
+    steps.database(&run(&trace, "db.example", false), Some(&error));
+    let hint = steps
+        .list
+        .iter()
+        .find(|step| step.kind == TestStepKind::Authenticate)
+        .and_then(|step| step.hint.as_deref())
+        .unwrap_or_default();
+    assert!(hint.contains("rds_iam"), "{hint}");
+}
+
+#[test]
 fn an_unknown_host_fails_the_dns_step_with_a_hint() {
     let trace = ConnectTrace {
         failed: Some(ConnectStage::Resolve),

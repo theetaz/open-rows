@@ -9,6 +9,9 @@
 //! and passphrases are keychain items too ([`SecretSlot`]).
 
 mod attached;
+mod cloud_auth;
+mod cloud_auth_error;
+mod cloud_invocation;
 mod conn_url;
 mod credential;
 mod credential_run;
@@ -31,6 +34,9 @@ mod sqlserver_url;
 pub mod tool_import;
 
 pub use attached::AttachedFile;
+pub use cloud_auth::CloudAuth;
+pub use cloud_auth_error::CloudAuthError;
+pub use cloud_invocation::CloudInvocation;
 pub use conn_url::{ParsedUrl, parse_url};
 pub use env::{EnvKind, EnvTag};
 pub use error::{ProfileError, UrlError};

@@ -24,6 +24,7 @@ pub(crate) mod attach;
 pub(crate) mod catalog;
 pub(crate) mod catalog_cache;
 mod catalog_dto;
+pub(crate) mod cloud_tokens;
 pub(crate) use catalog_dto::ObjectKindDto;
 pub(crate) mod connection;
 mod credential_dto;

@@ -22,6 +22,8 @@ pub enum PasswordStorage {
     None,
     /// A locally trusted program supplies an ephemeral password.
     Command,
+    /// A signed-in cloud CLI supplies a short-lived token on every connect.
+    Cloud,
 }
 
 /// A secret of a profile.

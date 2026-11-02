@@ -9,6 +9,7 @@ const ENCRYPTION: u8 = 0x01;
 const INSTANCE: u8 = 0x02;
 const THREAD_ID: u8 = 0x03;
 const MARS: u8 = 0x04;
+const FED_AUTH_REQUIRED: u8 = 0x06;
 const TERMINATOR: u8 = 0xFF;
 
 /// The encryption byte of `PRELOGIN`.
@@ -46,11 +47,15 @@ pub(crate) struct PreloginReply {
     pub(crate) version: (u8, u8, u16),
     /// The encryption level the server chose.
     pub(crate) encryption: Encryption,
+    /// The server answered the federated authentication option with 1; a
+    /// token login must echo this bit.
+    pub(crate) fed_auth_required: bool,
 }
 
-/// A `PRELOGIN` request offering `encryption`.
-pub(crate) fn request(encryption: Encryption) -> Vec<u8> {
-    let options: [(u8, Vec<u8>); 5] = [
+/// A `PRELOGIN` request offering `encryption`, announcing a federated
+/// (Entra token) login when `fed_auth` is set.
+pub(crate) fn request(encryption: Encryption, fed_auth: bool) -> Vec<u8> {
+    let mut options: Vec<(u8, Vec<u8>)> = vec![
         // Client version 1.0.0.0, sub-build 0.
         (VERSION, vec![1, 0, 0, 0, 0, 0]),
         (ENCRYPTION, vec![encryption as u8]),
@@ -60,6 +65,9 @@ pub(crate) fn request(encryption: Encryption) -> Vec<u8> {
         // Multiple active result sets stay off.
         (MARS, vec![0]),
     ];
+    if fed_auth {
+        options.push((FED_AUTH_REQUIRED, vec![1]));
+    }
     let table_len = options.len() * 5 + 1;
     let mut table = Vec::with_capacity(table_len);
     let mut data = Vec::new();
@@ -85,6 +93,7 @@ pub(crate) fn parse_reply(payload: &[u8]) -> Result<PreloginReply, DriverError> 
     let malformed = || DriverError::Protocol("malformed PRELOGIN reply".to_owned());
     let mut version = None;
     let mut encryption = None;
+    let mut fed_auth_required = false;
     let mut at = 0;
     loop {
         let token = *payload.get(at).ok_or_else(malformed)?;
@@ -100,6 +109,7 @@ pub(crate) fn parse_reply(payload: &[u8]) -> Result<PreloginReply, DriverError> 
                 version = Some((*major, *minor, u16::from_be_bytes([*high, *low])));
             }
             (ENCRYPTION, [byte, ..]) => encryption = Some(Encryption::parse(*byte)?),
+            (FED_AUTH_REQUIRED, [byte, ..]) => fed_auth_required = *byte == 1,
             _ => {}
         }
         at += 5;
@@ -107,6 +117,7 @@ pub(crate) fn parse_reply(payload: &[u8]) -> Result<PreloginReply, DriverError> 
     Ok(PreloginReply {
         version: version.ok_or_else(malformed)?,
         encryption: encryption.ok_or_else(malformed)?,
+        fed_auth_required,
     })
 }
 
@@ -116,12 +127,26 @@ mod tests {
 
     #[test]
     fn requests_carry_the_offered_level_and_parse_back() -> Result<(), DriverError> {
-        let bytes = request(Encryption::On);
+        let bytes = request(Encryption::On, false);
         assert_eq!(bytes[0], VERSION);
         assert_eq!(bytes[25], TERMINATOR);
         let reply = parse_reply(&bytes)?;
         assert_eq!(reply.encryption, Encryption::On);
         assert_eq!(reply.version, (1, 0, 0));
+        assert!(!reply.fed_auth_required);
+        Ok(())
+    }
+
+    #[test]
+    fn a_token_login_announces_federated_authentication() -> Result<(), DriverError> {
+        let bytes = request(Encryption::On, true);
+        assert_eq!(bytes[25], FED_AUTH_REQUIRED);
+        assert_eq!(bytes[30], TERMINATOR);
+        assert!(parse_reply(&bytes)?.fed_auth_required);
+        let mut reply = vec![VERSION, 0, 16, 0, 6, ENCRYPTION, 0, 22, 0, 1];
+        reply.extend_from_slice(&[FED_AUTH_REQUIRED, 0, 23, 0, 1, TERMINATOR]);
+        reply.extend_from_slice(&[12, 0, 0, 1, 0, 0, 1, 0]);
+        assert!(!parse_reply(&reply)?.fed_auth_required);
         Ok(())
     }
 

@@ -3,6 +3,7 @@
 use std::str::FromStr;
 
 use openrows_core::{SessionEvent, SessionState};
+use openrows_store::profile::PasswordStorage;
 use openrows_types::SessionId;
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -137,7 +138,9 @@ pub(crate) async fn open_session(
             .await?
     } else {
         let dialect = drivers::driver(profile.driver).dialect();
-        let mut recipe = resilient::recipe(target, dialect, server);
+        let fresh = (profile.password_storage == PasswordStorage::Cloud)
+            .then(|| super::cloud_tokens::fresh_password(state, profile.clone()));
+        let mut recipe = resilient::recipe(target, dialect, server, fresh);
         // App defaults change per run; do not freeze them into server startup settings.
         recipe.setup = limits::setup_sql(profile.driver, profile.limits.statement_timeout(0));
         state.sessions.open_resilient(recipe).await?

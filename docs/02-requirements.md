@@ -18,7 +18,7 @@ IDs are stable so issues, tests and PRs can reference them (`FR-CONN-03`, `NFR-P
 | FR-CONN-08 | Test connection with step-by-step diagnostics (DNS, TCP, SSH, TLS, auth, version). | P0 |
 | FR-CONN-09 | Import connections from common tools' export formats and from `pgpass`/`.my.cnf`/`~/.pg_service.conf` where available. | P1 |
 | FR-CONN-10 | Startup commands per connection (e.g. `SET search_path`, `SET ROLE`). | P1 |
-| FR-CONN-11 | Cloud auth helpers: AWS RDS IAM tokens, Azure AD for SQL Server, GCP Cloud SQL IAM. | P2 |
+| FR-CONN-11 | Cloud auth helpers: AWS RDS and Aurora IAM tokens, Microsoft Entra ID for Azure Database for PostgreSQL and MySQL and Azure SQL, GCP Cloud SQL IAM. | P2 |
 | FR-CONN-12 | Export selected profiles, groups or all profiles in a documented, versioned open format; preserve tags and safety settings, exclude secrets and private-key contents, and validate imports with a conflict preview. Support only publicly specified third-party formats. | P1 |
 | FR-CONN-13 | Choose keychain storage, prompt on each connection, or no stored password; support an explicitly trusted credential command with timeout, cancellation and scrubbed diagnostics. Never run commands from an untrusted imported profile. | P1 |
 

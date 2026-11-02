@@ -6,13 +6,15 @@
 //! through its shared tunnel, which reconnects itself. After the machine
 //! wakes or the network changes, every tunnel is pinged (dead ones are
 //! dropped so the next dial reconnects), idle metadata connections are
-//! dropped and every session probes its connection at once.
+//! dropped and every session probes its connection at once. A session on a
+//! short-lived cloud token gets a new one for each connect: its recipe holds
+//! the token only until the first connect uses it.
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
 use openrows_core::{Reconnect, Resilience, RetryPolicy};
-use openrows_driver_api::{DriverError, Session};
-use openrows_net::watch_path;
+use openrows_driver_api::{BoxFuture, DriverError, Session};
+use openrows_net::{SecretString, watch_path};
 use openrows_sql::Dialect;
 use tauri::{AppHandle, Manager};
 use tokio::sync::oneshot;
@@ -26,6 +28,31 @@ const PATH_TICK: Duration = Duration::from_secs(2);
 const TUNNEL_PROBE: Duration = Duration::from_secs(5);
 
 type FirstServer = Arc<Mutex<Option<oneshot::Sender<ServerDto>>>>;
+
+/// Fetches a new password for every connect after the first.
+pub(crate) type FreshPassword =
+    Arc<dyn Fn() -> BoxFuture<'static, Result<SecretString, DriverError>> + Send + Sync>;
+
+/// The password of the next connect: the one the session opened with, once,
+/// then always a new one, so an expired token is never replayed.
+struct OneTimePassword {
+    first: Mutex<Option<SecretString>>,
+    fresh: FreshPassword,
+}
+
+impl OneTimePassword {
+    async fn next(&self) -> Result<SecretString, DriverError> {
+        let first = self
+            .first
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .take();
+        match first {
+            Some(password) => Ok(password),
+            None => (self.fresh)().await,
+        }
+    }
+}
 
 /// Connect to `target`; the first successful connect reports its server.
 async fn connect(target: &Target, first: &FirstServer) -> Result<Box<dyn Session>, DriverError> {
@@ -48,16 +75,31 @@ pub(crate) async fn connect_once(
 
 /// Reopen `target` after every loss, replaying `dialect`'s search-path and
 /// database statements; the first connect reports its server to `server`.
+/// With `fresh`, each connect after the first uses a newly fetched password.
 pub(crate) fn recipe(
-    target: Target,
+    mut target: Target,
     dialect: Dialect,
     server: oneshot::Sender<ServerDto>,
+    fresh: Option<FreshPassword>,
 ) -> Resilience {
+    let password = fresh.map(|fresh| {
+        Arc::new(OneTimePassword {
+            first: Mutex::new(target.request.password.take()),
+            fresh,
+        })
+    });
     let target = Arc::new(target);
     let first: FirstServer = Arc::new(Mutex::new(Some(server)));
     let reconnect: Reconnect = Arc::new(move || {
-        let (target, first) = (Arc::clone(&target), Arc::clone(&first));
-        Box::pin(async move { connect(&target, &first).await })
+        let (target, first, password) = (Arc::clone(&target), Arc::clone(&first), password.clone());
+        Box::pin(async move {
+            let Some(password) = password else {
+                return connect(&target, &first).await;
+            };
+            let mut attempt = (*target).clone();
+            attempt.request.password = Some(password.next().await?);
+            connect(&attempt, &first).await
+        })
     });
     Resilience {
         reconnect,
@@ -66,6 +108,10 @@ pub(crate) fn recipe(
         setup: Vec::new(),
     }
 }
+
+#[cfg(test)]
+#[path = "resilient_tests.rs"]
+mod tests;
 
 /// Watch for sleep/wake and network changes for the app's lifetime.
 pub(crate) fn watch_network(app: AppHandle) {
