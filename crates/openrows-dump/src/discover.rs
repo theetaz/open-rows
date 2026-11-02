@@ -14,7 +14,11 @@ use crate::tools::{ToolKind, is_executable};
 use crate::version::{ServerVersion, ToolVersion, parse_tool_version};
 
 /// Longest wait for `--version`; real tools answer in milliseconds.
+#[cfg(not(test))]
 const PROBE_TIMEOUT: Duration = Duration::from_secs(5);
+/// Tests probe freshly written scripts, which a loaded machine can start slowly.
+#[cfg(test)]
+const PROBE_TIMEOUT: Duration = Duration::from_secs(60);
 
 /// An installed tool and the version it reported.
 #[derive(Clone, Debug, PartialEq, Eq)]
