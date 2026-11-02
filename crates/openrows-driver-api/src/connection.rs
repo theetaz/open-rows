@@ -9,6 +9,7 @@ use openrows_sql::select::BoundSql;
 
 use crate::admin::Admin;
 use crate::bulk::BulkLoader;
+use crate::capabilities::Capabilities;
 use crate::catalog::TableStructure;
 use crate::catalog::{ColumnSummary, DatabaseSummary, ObjectKind, ObjectSummary, SchemaSummary};
 use crate::diagram::{SchemaDiagram, read_per_table};
@@ -55,6 +56,13 @@ pub type RowSnapshot = Vec<(String, Option<String>)>;
 pub trait Connection: Session {
     /// Product, version, flavour, current database, user and TLS state.
     fn server(&self) -> &ServerSummary;
+
+    /// What this server supports when it differs from the driver's claim: a
+    /// wire-compatible product (`CockroachDB`, `TiDB`) lacks features of the
+    /// engine it imitates. `None` means [`crate::Driver::capabilities`] holds.
+    fn capabilities(&self) -> Option<Capabilities> {
+        None
+    }
 
     /// Catalog reads; `None` when the engine has no browsable catalog.
     fn catalog(&mut self) -> Option<&mut dyn Catalog> {

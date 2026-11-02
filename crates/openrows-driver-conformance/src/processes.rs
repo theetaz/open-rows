@@ -12,7 +12,7 @@ use openrows_sql::Dialect;
 #[cfg(test)]
 mod tests;
 
-use crate::dialect::{cancels_other_sessions, codes, sleep};
+use crate::dialect::{cancels_other_sessions, codes, endless, sleep};
 use crate::sink::{Collect, ping, sqlstate};
 use crate::{Failure, Target, ensure};
 
@@ -66,7 +66,7 @@ async fn cancel_sleeper(
     sleeper_id: ProcessId,
 ) -> Result<(), Failure> {
     let dialect = target.driver.dialect();
-    let sql = sleep(dialect, SLEEP_SECONDS);
+    let sql = sleeper_statement(sleeper, dialect);
     let started = Instant::now();
     let mut sink = Collect::default();
     // Return listing/cancellation failures immediately instead of waiting for the whole sleep.
@@ -84,6 +84,15 @@ async fn cancel_sleeper(
         format!("cancel SQLSTATE {code}, expected {expected}")
     })?;
     ping(sleeper).await
+}
+
+/// `TiDB` folds `SLEEP` while planning, where a cancel cannot reach it, so a long
+/// join runs instead; its comment is what the process list is searched for.
+fn sleeper_statement(sleeper: &dyn Connection, dialect: Dialect) -> String {
+    if sleeper.server().flavour.as_deref() == Some("TiDB") {
+        return format!("/* orc sleep({SLEEP_SECONDS}) */ {}", endless());
+    }
+    sleep(dialect, SLEEP_SECONDS)
 }
 
 /// An engine without statement cancel for other sessions says so.
@@ -140,6 +149,7 @@ async fn terminate(
     sleeper: &mut dyn Connection,
     id: ProcessId,
 ) -> Result<(), Failure> {
+    let tidb = lister.server().flavour.as_deref() == Some("TiDB");
     let facet = admin(lister)?;
     facet.signal_process(id, ProcessSignal::Terminate).await?;
     let deadline = Instant::now() + DEADLINE;
@@ -154,11 +164,14 @@ async fn terminate(
             format!("terminated process {id} is still listed")
         })?;
     }
-    let again = facet.signal_process(id, ProcessSignal::CancelQuery).await;
-    let code = sqlstate(again, "signalling a terminated process")?;
-    ensure(code == "42704", || {
-        format!("signalling a gone process: SQLSTATE {code}, expected 42704")
-    })?;
+    // `TiDB` answers `KILL` of an unknown connection with success.
+    if !tidb {
+        let again = facet.signal_process(id, ProcessSignal::CancelQuery).await;
+        let code = sqlstate(again, "signalling a terminated process")?;
+        ensure(code == "42704", || {
+            format!("signalling a gone process: SQLSTATE {code}, expected 42704")
+        })?;
+    }
     let after = sleeper.execute("SELECT 1", &mut Collect::default()).await;
     ensure(after.is_err(), || {
         "the terminated connection still runs statements".to_owned()

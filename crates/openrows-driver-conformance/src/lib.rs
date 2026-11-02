@@ -21,6 +21,19 @@
 //! | [`Group::Lifecycle`] | `TableLifecycle` | A table created with `Driver::object_sql`, an index created and dropped with `Driver::alter_sql`, and a view created over the table are listed by the catalog after `commit_ddl` and gone after their drops; capability-gated key enforcement, USING conversion, concurrent indexes, column positions, triggers, routine definitions and database create/rename/drop are verified; a view over a `DELETE` is refused before any SQL runs. |
 //! | [`Group::Processes`] | `ProcessList` | The listing connection appears exactly once, marked current, with its own process id; a sleeping statement on a second connection is listed with its query text, and cancelling it from the first ends it within seconds with the dialect's cancel SQLSTATE while its session stays usable (SQL Server, which cannot cancel another session's statement, refuses with `Unsupported`); terminating the second connection ends it; signalling a process that is gone is a `Server` error `42704`. |
 //!
+//! The Tier 1 engines also run the groups below, through
+//! [`tier1_conformance_tests!`]:
+//!
+//! | Group | Needs | Contract |
+//! | --- | --- | --- |
+//! | [`Group::Transactions`] | `RowEdits` | An open transaction is reported and invisible to a second connection; commit publishes it, rollback discards it, a closed connection rolls it back; a failed statement aborts the transaction on `PostgreSQL` (`25P02` until it ends, `COMMIT` rolls back) and only the statement on `MySQL` and `SQLite`; a savepoint recovers from it on every engine; DDL commits implicitly exactly where `TransactionalDdl` is not claimed. |
+//! | [`Group::Notices`] | `Notices` | A server message reaches the sink with its severity, in order, next to the rows of its statement and before a statement's error; the session stays usable. |
+//! | [`Group::Introspection`] | `Catalog` | A fixture schema reads back through the catalog exactly as the checked-in golden file for the product says (`golden/`). |
+//! | [`Group::MillionRows`] | — | 1 000 000 rows of 200-byte text stream with the exact count and sum, batches within the policy, and resident memory growing by far less than the result. |
+//! | [`Group::Explain`] | `Explain` | The engine's plan and analysed plan parse into one operator tree naming the table; analysing a write leaves no change. |
+//! | [`Group::Tls`] | `Tls` | Verified TLS reports the certificate and streams rows; a name the certificate does not cover and an unrelated CA are `Tls` errors at the TLS stage; `sslmode=disable` stays plain. |
+//! | [`Group::Ssh`] | `Routes` | Through an OpenSSH tunnel a connection answers, streams, cancels and, with TLS files, verifies the server inside the tunnel. |
+//!
 //! A test crate states how to reach its engine and invokes
 //! [`conformance_tests!`], which expands to one `#[test]` per group.
 //! Fixture objects are named per process and group (`orc_<group>_<pid>`)
@@ -32,18 +45,28 @@ mod connect;
 mod dialect;
 mod edits;
 mod errors;
+mod explain;
+mod golden;
+mod group;
 mod lifecycle;
 mod lifecycle_databases;
 mod lifecycle_modules;
+mod live;
 mod metadata;
 mod metadata_objects;
+mod million;
 mod mongodb;
+mod notices;
 mod processes;
+mod routes;
 mod sink;
 mod streaming;
 mod structure;
 mod structure_options;
+mod transactions;
 mod types;
+
+pub use group::Group;
 
 use openrows_driver_api::{ConnectRequest, ConnectTrace, Connection, Driver, DriverError, Feature};
 
@@ -101,116 +124,6 @@ pub enum Verdict {
     Skipped(Feature),
 }
 
-/// One group of the suite; see the crate documentation for each contract.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum Group {
-    /// Connect, ping, failure kinds and capability coherence.
-    Connect,
-    /// Typed round-trips of the common types, literal and bound.
-    Types,
-    /// Batching, ordering and early stop.
-    Streaming,
-    /// Out-of-band cancel.
-    Cancel,
-    /// SQLSTATE mapping of common server errors.
-    Errors,
-    /// Catalog listings.
-    Metadata,
-    /// Row keys, snapshots, guarded DML and transactional DDL.
-    Edits,
-    /// Generated structure changes.
-    Structure,
-    /// Generated create and drop of tables, indexes and views.
-    Lifecycle,
-    /// Process list, cancel and terminate from another connection.
-    Processes,
-}
-
-impl Group {
-    /// Every group, in run order.
-    pub const ALL: [Self; 10] = [
-        Self::Connect,
-        Self::Types,
-        Self::Streaming,
-        Self::Cancel,
-        Self::Errors,
-        Self::Metadata,
-        Self::Edits,
-        Self::Structure,
-        Self::Lifecycle,
-        Self::Processes,
-    ];
-
-    /// The feature a driver must claim for the group to run.
-    #[must_use]
-    pub fn requires(self) -> Option<Feature> {
-        match self {
-            Self::Cancel => Some(Feature::Cancel),
-            Self::Metadata => Some(Feature::Catalog),
-            Self::Edits => Some(Feature::RowEdits),
-            Self::Structure => Some(Feature::StructureChanges),
-            Self::Lifecycle => Some(Feature::TableLifecycle),
-            Self::Processes => Some(Feature::ProcessList),
-            Self::Connect | Self::Types | Self::Streaming | Self::Errors => None,
-        }
-    }
-
-    /// Run the group against `target`.
-    ///
-    /// # Errors
-    /// The first broken contract or unexpected driver error.
-    pub async fn run(self, target: &Target) -> Result<Verdict, Failure> {
-        if let Some(feature) = self.requires()
-            && !target.driver.capabilities().supports(feature)
-        {
-            return Ok(Verdict::Skipped(feature));
-        }
-        if target.driver.dialect() == openrows_sql::Dialect::MongoDb {
-            mongodb::run(self, target).await?;
-            return Ok(Verdict::Passed);
-        }
-        match self {
-            Self::Connect => connect::run(target).await?,
-            Self::Types => types::run(target).await?,
-            Self::Streaming => streaming::run(target).await?,
-            Self::Cancel => streaming::cancel(target).await?,
-            Self::Errors if target.driver.dialect() == openrows_sql::Dialect::ClickHouse => {
-                clickhouse::errors(target).await?;
-            }
-            Self::Errors => errors::run(target).await?,
-            Self::Metadata if target.driver.dialect() == openrows_sql::Dialect::ClickHouse => {
-                clickhouse::metadata(target).await?;
-            }
-            Self::Metadata => metadata::run(target).await?,
-            Self::Edits => edits::run(target).await?,
-            Self::Structure => structure::run(target).await?,
-            Self::Lifecycle => lifecycle::run(target).await?,
-            Self::Processes if target.driver.dialect() == openrows_sql::Dialect::ClickHouse => {
-                clickhouse::processes(target).await?;
-            }
-            Self::Processes => processes::run(target).await?,
-        }
-        Ok(Verdict::Passed)
-    }
-
-    /// Lower-case name used in fixture object names.
-    #[must_use]
-    pub fn name(self) -> &'static str {
-        match self {
-            Self::Connect => "connect",
-            Self::Types => "types",
-            Self::Streaming => "streaming",
-            Self::Cancel => "cancel",
-            Self::Errors => "errors",
-            Self::Metadata => "metadata",
-            Self::Edits => "edits",
-            Self::Structure => "structure",
-            Self::Lifecycle => "lifecycle",
-            Self::Processes => "processes",
-        }
-    }
-}
-
 /// A fixture object name unique to this process and group.
 pub(crate) fn fixture_name(group: Group, suffix: &str) -> String {
     format!("orc_{}_{}_{suffix}", group.name(), std::process::id())
@@ -232,9 +145,21 @@ pub fn run_group<G>(
         .build()
         .map_err(|error| Failure::Setup(error.to_string()))?;
     let (target, guard) = prepare()?;
-    let verdict = runtime.block_on(group.run(&target));
+    let verdict = runtime.block_on(async {
+        let target = live::refine(target).await?;
+        group.run(&target).await
+    });
     drop(guard);
+    if let Ok(Verdict::Skipped(feature)) = verdict {
+        note_skip(group, feature);
+    }
     verdict
+}
+
+/// A gated group passes silently otherwise; visible with `--no-capture`.
+#[allow(clippy::print_stderr, reason = "test diagnostics for the report")]
+fn note_skip(group: Group, feature: Feature) {
+    eprintln!("[conformance] {group:?} skipped: {feature:?} is not claimed");
 }
 
 /// One `#[test]` per [`Group`] for the target `prepare` builds; attributes
@@ -271,6 +196,28 @@ macro_rules! conformance_tests {
     };
 }
 
+/// One `#[test]` per [`Group::TIER1`] group, on top of
+/// [`conformance_tests!`]. The TLS and SSH groups read their fixtures from
+/// the environment `just test-pg` and `just test-mysql` export.
+///
+/// ```ignore
+/// openrows_driver_conformance::tier1_conformance_tests!(prepare);
+/// ```
+#[macro_export]
+macro_rules! tier1_conformance_tests {
+    ($(#[$attribute:meta])* $prepare:path) => {
+        $crate::conformance_tests!(@tests [$(#[$attribute])*] $prepare;
+            transaction_contract => Transactions,
+            notice_contract => Notices,
+            golden_introspection => Introspection,
+            million_row_stream => MillionRows,
+            explain_contract => Explain,
+            tls_route => Tls,
+            ssh_route => Ssh,
+        );
+    };
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -287,6 +234,21 @@ mod tests {
                 Feature::StructureChanges,
                 Feature::TableLifecycle,
                 Feature::ProcessList
+            ]
+        );
+        let tier1: Vec<_> = Group::TIER1
+            .into_iter()
+            .filter_map(Group::requires)
+            .collect();
+        assert_eq!(
+            tier1,
+            [
+                Feature::RowEdits,
+                Feature::Notices,
+                Feature::Catalog,
+                Feature::Explain,
+                Feature::Tls,
+                Feature::Routes
             ]
         );
         assert!(fixture_name(Group::Edits, "t").starts_with("orc_edits_"));

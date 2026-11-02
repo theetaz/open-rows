@@ -6,15 +6,18 @@ use openrows_driver_api::metadata::{EXTENSION_NAME, SOURCE_TYPE};
 use openrows_driver_api::{Connection, Feature};
 use openrows_sql::{Dialect, ParamBinder, ParamStyle};
 
-use crate::dialect::{TypeCase, UNICODE, type_cases};
+use crate::dialect::{COCKROACH_ABSENT_TYPES, TypeCase, UNICODE, type_cases};
 use crate::sink::{Collect, query};
 use crate::{Failure, Target, ensure};
 
 pub(crate) async fn run(target: &Target) -> Result<(), Failure> {
     let dialect = target.driver.dialect();
     let mut connection = target.connect().await?;
+    let cockroach = connection.server().product == "CockroachDB";
     for case in type_cases(dialect) {
-        literal(connection.as_mut(), case).await?;
+        if !(cockroach && COCKROACH_ABSENT_TYPES.contains(&case.name)) {
+            literal(connection.as_mut(), case).await?;
+        }
     }
     if target
         .driver

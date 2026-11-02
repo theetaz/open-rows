@@ -29,7 +29,8 @@ pub enum Engine {
 pub enum Format {
     /// `EXPLAIN (FORMAT JSON)`: one row, one JSON array.
     PostgresJson,
-    /// `MySQL` `EXPLAIN FORMAT=JSON` and `MariaDB` `EXPLAIN`/`ANALYZE FORMAT=JSON`.
+    /// `MySQL` `EXPLAIN FORMAT=JSON` (both document versions) and `MariaDB`
+    /// `EXPLAIN`/`ANALYZE FORMAT=JSON`.
     MySqlJson,
     /// `MySQL` `EXPLAIN ANALYZE`: one row of indented `->` tree text.
     MySqlTree,

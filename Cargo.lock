@@ -4579,6 +4579,7 @@ dependencies = [
  "openrows-driver-mysql",
  "openrows-driver-postgres",
  "openrows-driver-sqlite",
+ "openrows-explain",
  "openrows-net",
  "openrows-sql",
  "tempfile",

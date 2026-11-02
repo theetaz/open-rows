@@ -30,6 +30,7 @@ pub(crate) const CAPABILITIES: Capabilities = Capabilities {
         Feature::CheckEditing,
         Feature::ColumnCollation,
         Feature::PartialIndexes,
+        Feature::Explain,
     ],
     object_kinds: &[ObjectKind::Table, ObjectKind::View],
 };

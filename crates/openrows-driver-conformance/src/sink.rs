@@ -3,7 +3,9 @@
 
 use arrow_array::RecordBatch;
 use arrow_schema::SchemaRef;
-use openrows_driver_api::{Connection, DriverError, ExecSummary, ResultSink, SinkFlow};
+use openrows_driver_api::{
+    Connection, DriverError, ExecSummary, NoticeLevel, ResultSink, SinkFlow,
+};
 
 use crate::Failure;
 use crate::cell::text;
@@ -14,6 +16,7 @@ pub(crate) struct Collect {
     pub(crate) schemas: Vec<SchemaRef>,
     pub(crate) batches: Vec<RecordBatch>,
     pub(crate) stop_after: Option<usize>,
+    pub(crate) notices: Vec<(NoticeLevel, String)>,
 }
 
 impl ResultSink for Collect {
@@ -27,6 +30,10 @@ impl ResultSink for Collect {
             Some(limit) if self.batches.len() >= limit => SinkFlow::Stop,
             _ => SinkFlow::Continue,
         }
+    }
+
+    fn notice(&mut self, level: NoticeLevel, message: &str) {
+        self.notices.push((level, message.to_owned()));
     }
 }
 
@@ -49,6 +56,21 @@ impl Collect {
             }
         }
         Ok(values)
+    }
+
+    /// Every row as text cells in column order (`None` is NULL).
+    pub(crate) fn text_rows(&self) -> Result<Vec<Vec<Option<String>>>, Failure> {
+        let columns = self
+            .schemas
+            .last()
+            .map_or(0, |schema| schema.fields().len());
+        let mut rows = vec![Vec::with_capacity(columns); self.rows()];
+        for column in 0..columns {
+            for (row, value) in rows.iter_mut().zip(self.column(column)?) {
+                row.push(value);
+            }
+        }
+        Ok(rows)
     }
 
     /// The only value of a one-row, one-column result.

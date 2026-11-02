@@ -51,7 +51,7 @@ None. The last parked lane, `wip/mongodb` (M3-01..M3-04), was finished and merge
 | Connections | M5-13 live cloud validation (owner steps in §7, item 14); Redshift IAM once the Redshift flavour exists (M5-05) |
 | App shell | M5-12 localisation-ready strings; dragging tabs between windows and Merge All Windows (M5-11 follow-ups); `openrows://` registration on Windows/Linux (M6) |
 | AI | Claude Code, Gemini CLI and Cursor bridges (after provider approval and isolation validation); live NL→SQL evaluation runs per provider/model with your own keys (docs/23 §17) to finish the M4.5 exit |
-| Conformance and monitoring | M1-10/11/12/17 Tier 1 conformance facets (TLS/SSH, transactions, golden introspection, MySQL 9.x); M25 PostgreSQL managed-provider denial probes (need RDS/Aurora, Cloud SQL, Azure and Supabase/Neon accounts) and the other engines' wider version matrix |
+| Conformance and monitoring | Tier 1 conformance (M1-10/11/12/17) is done (2026-11-02); live Supabase and Neon flavour runs need accounts; running the Tier 1 groups on Tier 2 engines; M25 PostgreSQL managed-provider denial probes (need RDS/Aurora, Cloud SQL, Azure and Supabase/Neon accounts) and the other engines' wider version matrix |
 | Windows and Linux | M6-01..05: credential backends, WebView2/WebKitGTK workarounds, packaging, E2E, per-OS capability matrix; M2-01 Windows MSVC host build |
 | Release hardening | Reference-hardware budgets (startup, memory, driver-host cold start ≤ 150 ms), monitoring overhead, accessibility audit, documentation site, beta cycle |
 | Performance follow-ups (2026-11-02) | Monitor view footprint (107 MiB increment against 32 MiB, WebKit GPU/WebContent); default completion delay decision (popup p95 113–146 ms at 100 ms, 20–35 ms at 0 ms); name the ≈ 100–160 ms main-thread block ≈ 30 s after launch that fails `just bench-grid` (Instruments trace), then fix it or add a settle period (docs/13 §4) |
@@ -75,6 +75,8 @@ just build-app    # unsigned release app
 just release-dmg  # ad-hoc signed DMG with the 40 MB installer check
 just e2e          # native E2E journeys 1–6 and 8 against disposable PostgreSQL + OpenSSH containers (docs/17 §7)
 just test-pg 13 15 16 17 18  # PostgreSQL suites and monitoring fixtures, one version (and one container set) at a time
+just test-pg cockroach       # conformance suite on a CockroachDB single node
+just test-mysql              # MySQL 8.4 and 9.7, MariaDB 11.4 and TiDB, one image at a time
 ```
 
 A throwaway PostgreSQL for testing (remove it afterwards with `docker rm -f openrows-try-pg`):

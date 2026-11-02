@@ -5,8 +5,8 @@
 use std::sync::Arc;
 
 use openrows_driver_api::{
-    BatchPolicy, BoxFuture, CancelHandle, Catalog, ConnectRequest, ConnectTrace, Connection,
-    DriverError, Editor, ExecSummary, NoticeLevel, ResultSink, ServerSummary, Session,
+    BatchPolicy, BoxFuture, CancelHandle, Capabilities, Catalog, ConnectRequest, ConnectTrace,
+    Connection, DriverError, Editor, ExecSummary, NoticeLevel, ResultSink, ServerSummary, Session,
 };
 
 use crate::handshake::establish;
@@ -66,6 +66,11 @@ impl MySqlSession {
             self.forward_warnings(sink).await?;
         }
         Ok(summary)
+    }
+
+    /// `TiDB` speaks this protocol but lacks several server features.
+    fn is_tidb(&self) -> bool {
+        self.summary.flavour.as_deref() == Some("TiDB")
     }
 
     /// `SHOW WARNINGS` as notices: `Note` is informational, the rest warn.
@@ -182,8 +187,13 @@ impl Connection for MySqlSession {
         &self.summary
     }
 
+    fn capabilities(&self) -> Option<Capabilities> {
+        self.is_tidb()
+            .then_some(crate::capabilities::TIDB_CAPABILITIES)
+    }
+
     fn monitor(&mut self) -> Option<&mut dyn openrows_monitor::MonitorReader> {
-        Some(self)
+        (!self.is_tidb()).then_some(self as &mut _)
     }
 
     fn admin(&mut self) -> Option<&mut dyn openrows_driver_api::Admin> {

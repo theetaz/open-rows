@@ -10,7 +10,7 @@ WITH t AS (
     JOIN pg_catalog.pg_namespace AS n ON n.oid = c.relnamespace
     WHERE n.nspname = {schema}
       AND c.relkind IN ('r', 'p')
-      AND NOT c.relispartition
+      AND c.relispartition IS NOT TRUE
     ORDER BY c.relname
     LIMIT {limit}
 )

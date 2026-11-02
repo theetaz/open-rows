@@ -23,7 +23,7 @@ FROM (
     JOIN pg_catalog.pg_namespace AS n ON n.oid = c.relnamespace
     WHERE n.nspname = $1
       AND c.relkind IN ('r', 't', 'p', 'v', 'm', 'f', 'S')
-      AND NOT c.relispartition
+      AND c.relispartition IS NOT TRUE
     UNION ALL
     SELECT n.nspname,
            p.proname,

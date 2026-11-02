@@ -104,6 +104,11 @@ impl PgSession {
         &self.info
     }
 
+    /// `CockroachDB` speaks this protocol but has its own catalog and features.
+    pub(crate) fn is_cockroach(&self) -> bool {
+        self.info.flavour == crate::info::Flavour::CockroachDb
+    }
+
     /// Run internal SQL through the simple-query protocol and collect text rows.
     pub(crate) async fn text_query(
         &mut self,

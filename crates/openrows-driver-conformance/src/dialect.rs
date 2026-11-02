@@ -85,7 +85,7 @@ const POSTGRES_TYPES: &[TypeCase] = &[
     ),
     case(
         "int4",
-        "CAST(2147483647 AS integer)",
+        "CAST(2147483647 AS int4)",
         Arrow::Int32,
         Some("2147483647"),
     ),
@@ -141,7 +141,7 @@ const POSTGRES_TYPES: &[TypeCase] = &[
     ),
     case(
         "int4 array",
-        "ARRAY[1, NULL, 3]",
+        "ARRAY[1, NULL, 3]::int4[]",
         Arrow::ListInt32,
         Some("{1,NULL,3}"),
     ),
@@ -159,6 +159,9 @@ const POSTGRES_TYPES: &[TypeCase] = &[
         ..case("int4range", "int4range(1, 10)", Arrow::Utf8, Some("[1,10)"))
     },
 ];
+
+/// [`POSTGRES_TYPES`] that `CockroachDB` has no type for.
+pub(crate) const COCKROACH_ABSENT_TYPES: [&str; 2] = ["cidr", "int4range"];
 
 const MYSQL_TYPES: &[TypeCase] = &[
     case("null", "CAST(NULL AS SIGNED)", Arrow::Int64, None),
@@ -469,6 +472,38 @@ pub(crate) fn cancels_other_sessions(dialect: Dialect) -> bool {
     dialect != Dialect::SqlServer
 }
 
+/// The statement opening a transaction; `MySQL` gives `BEGIN` no `TRANSACTION`
+/// form and `START TRANSACTION` works everywhere it matters.
+pub(crate) fn begin(dialect: Dialect) -> &'static str {
+    match dialect {
+        Dialect::MySql => "START TRANSACTION",
+        _ => "BEGIN",
+    }
+}
+
+/// One million rows of `n` (`1..=1_000_000`, in no promised order) and 200
+/// characters of text.
+pub(crate) fn million_rows(dialect: Dialect) -> String {
+    match dialect {
+        Dialect::Sqlite => "WITH RECURSIVE s(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM s \
+             WHERE n < 1000000) SELECT n, printf('%.*c', 200, 'x') AS payload FROM s"
+            .to_owned(),
+        Dialect::MySql => {
+            let joins = (0..6)
+                .map(|i| format!("{DIGITS} t{i}"))
+                .collect::<Vec<_>>()
+                .join(" CROSS JOIN ");
+            format!(
+                "SELECT t0.d + 10 * t1.d + 100 * t2.d + 1000 * t3.d + 10000 * t4.d \
+                 + 100000 * t5.d + 1 AS n, REPEAT('x', 200) AS payload FROM {joins}"
+            )
+        }
+        _ => {
+            "SELECT n, repeat('x', 200) AS payload FROM generate_series(1, 1000000) AS n".to_owned()
+        }
+    }
+}
+
 /// A keyed fixture table every dialect accepts.
 pub(crate) fn create_table(relation: &str) -> String {
     format!(
@@ -495,6 +530,12 @@ mod tests {
             sleep(Dialect::SqlServer, 61),
             "/* orc sleep(61) */ WAITFOR DELAY '00:01:01'"
         );
+        assert_eq!(begin(Dialect::MySql), "START TRANSACTION");
+        assert_eq!(
+            million_rows(Dialect::MySql).matches("CROSS JOIN").count(),
+            5
+        );
+        assert!(million_rows(Dialect::Sqlite).contains("1000000"));
         assert!(!cancels_other_sessions(Dialect::SqlServer));
         assert!(cancels_other_sessions(Dialect::MySql));
     }

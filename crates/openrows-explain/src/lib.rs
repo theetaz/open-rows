@@ -22,6 +22,7 @@ mod command;
 mod json;
 mod model;
 mod mysql_json;
+mod mysql_json_v2;
 mod mysql_tree;
 mod pg;
 mod sqlite;

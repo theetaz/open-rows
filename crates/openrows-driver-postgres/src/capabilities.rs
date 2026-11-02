@@ -45,6 +45,36 @@ pub(crate) const CAPABILITIES: Capabilities = Capabilities {
         Feature::ColumnCollation,
         Feature::IdentityColumns,
         Feature::PartialIndexes,
+        Feature::Notices,
+        Feature::Explain,
     ],
     object_kinds: &ObjectKind::ALL,
+};
+
+/// What a `CockroachDB` server offers through this driver, as measured by the
+/// conformance suite (`just test-pg cockroach`, docs/05 §12.1).
+pub(crate) const COCKROACH_CAPABILITIES: Capabilities = Capabilities {
+    location: Location::Server,
+    features: &[
+        Feature::Cancel,
+        Feature::BindParameters,
+        Feature::MultipleDatabases,
+        Feature::Schemas,
+        Feature::Catalog,
+        Feature::Types,
+        Feature::Extensions,
+        Feature::Roles,
+        Feature::RowEdits,
+        Feature::StructureChanges,
+        Feature::Tls,
+        Feature::Routes,
+        Feature::StartupCommands,
+        Feature::TableLifecycle,
+    ],
+    object_kinds: &[
+        ObjectKind::Table,
+        ObjectKind::View,
+        ObjectKind::Sequence,
+        ObjectKind::Type,
+    ],
 };

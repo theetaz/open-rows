@@ -8,6 +8,7 @@ use std::time::{Duration, Instant};
 
 use arrow_array::RecordBatch;
 use openrows_driver_api::{BatchPolicy, CancelHandle, Connection, DriverError};
+use openrows_sql::Dialect;
 
 use crate::dialect::{SERIES_ROWS, codes, endless, series};
 use crate::sink::{Collect, ping, sqlstate};
@@ -31,7 +32,7 @@ pub(crate) async fn run(target: &Target) -> Result<(), Failure> {
 }
 
 /// Every row arrives once, in order, as one result with an early first batch.
-async fn all_rows(connection: &mut dyn Connection) -> Result<(), Failure> {
+pub(crate) async fn all_rows(connection: &mut dyn Connection) -> Result<(), Failure> {
     let mut sink = Collect::default();
     let summary = connection.execute(&series(), &mut sink).await?;
     ensure(sink.schemas.len() == 1, || {
@@ -75,9 +76,23 @@ async fn early_stop(connection: &mut dyn Connection) -> Result<(), Failure> {
 
 pub(crate) async fn cancel(target: &Target) -> Result<(), Failure> {
     let mut connection = target.connect().await?;
+    cancel_contract(connection.as_mut(), target.driver.dialect()).await?;
+    connection.close().await?;
+    Ok(())
+}
+
+/// A long statement cancelled from its handle ends early with the dialect's
+/// SQLSTATE and the session stays usable.
+pub(crate) async fn cancel_contract(
+    connection: &mut dyn Connection,
+    dialect: Dialect,
+) -> Result<(), Failure> {
     let handle = connection
         .cancel_handle()
         .ok_or_else(|| Failure::Contract("Cancel claimed without a handle".to_owned()))?;
+    // `TiDB` closes a connection whose `KILL QUERY` arrives once it is idle again
+    // (docs/05 §13.1), so a request after the first may not race the statement's end.
+    let once = connection.server().flavour.as_deref() == Some("TiDB");
     let started = Instant::now();
     let done = AtomicBool::new(false);
     let sql = endless();
@@ -87,7 +102,7 @@ pub(crate) async fn cancel(target: &Target) -> Result<(), Failure> {
             done.store(true, Ordering::Release);
             result
         },
-        cancel_until(&handle, &done),
+        cancel_until(&handle, &done, once),
     );
     cancelled?;
     let elapsed = started.elapsed();
@@ -95,25 +110,29 @@ pub(crate) async fn cancel(target: &Target) -> Result<(), Failure> {
         format!("cancelled statement ran {elapsed:?}")
     })?;
     let code = sqlstate(result, "cancelled statement")?;
-    let expected = codes(target.driver.dialect()).cancelled;
+    let expected = codes(dialect).cancelled;
     ensure(code == expected, || {
         format!("cancel SQLSTATE {code}, expected {expected}")
     })?;
-    ping(connection.as_mut()).await?;
-    connection.close().await?;
-    Ok(())
+    ping(connection).await
 }
 
 /// Send cancel requests until the statement has ended.
 async fn cancel_until(
     handle: &Arc<dyn CancelHandle>,
     done: &AtomicBool,
+    once: bool,
 ) -> Result<(), DriverError> {
     let mut ticks = tokio::time::interval(CANCEL_INTERVAL);
+    // The first tick is immediate: give the statement one interval to start.
+    ticks.tick().await;
     let deadline = Instant::now() + CANCEL_DEADLINE;
     while !done.load(Ordering::Acquire) && Instant::now() < deadline {
         ticks.tick().await;
         handle.cancel().await?;
+        if once {
+            break;
+        }
     }
     Ok(())
 }

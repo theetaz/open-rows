@@ -107,11 +107,16 @@ pub enum Feature {
     Extensions,
     /// Users, roles, memberships and grants can be inspected read-only.
     Roles,
+    /// The server's statement-level messages (`PostgreSQL` `NOTICE`/`WARNING`,
+    /// `MySQL` warnings) reach `ResultSink::notice` with their severity.
+    Notices,
+    /// `openrows_explain` understands the plans this engine prints.
+    Explain,
 }
 
 impl Feature {
     /// Every feature, in documentation order.
-    pub const ALL: [Self; 36] = [
+    pub const ALL: [Self; 38] = [
         Self::Cancel,
         Self::BindParameters,
         Self::MultipleDatabases,
@@ -148,6 +153,8 @@ impl Feature {
         Self::Types,
         Self::Extensions,
         Self::Roles,
+        Self::Notices,
+        Self::Explain,
     ];
 }
 
@@ -197,6 +204,6 @@ mod tests {
             ..FILE
         };
         assert!(!no_catalog.lists(ObjectKind::Table));
-        assert_eq!(Feature::ALL.len(), 36);
+        assert_eq!(Feature::ALL.len(), 38);
     }
 }

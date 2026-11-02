@@ -3,7 +3,7 @@
 use openrows_driver_api::{
     ConnectRequest, ConnectTimeouts, Endpoint, FileSource, SslMode, TlsFiles,
 };
-use openrows_driver_conformance::{Failure, Target, conformance_tests};
+use openrows_driver_conformance::{Failure, Target, conformance_tests, tier1_conformance_tests};
 use openrows_driver_sqlite::SqliteDriver;
 use tempfile::TempDir;
 
@@ -38,3 +38,4 @@ fn prepare() -> Result<(Target, TempDir), Failure> {
 }
 
 conformance_tests!(prepare);
+tier1_conformance_tests!(prepare);

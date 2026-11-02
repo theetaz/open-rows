@@ -24,6 +24,11 @@ pub fn mariadb() -> bool {
     std::env::var("OPENROWS_TEST_MYSQL_ENGINE").is_ok_and(|engine| engine == "mariadb")
 }
 
+/// `true` when the script started `TiDB`.
+pub fn tidb() -> bool {
+    std::env::var("OPENROWS_TEST_MYSQL_ENGINE").is_ok_and(|engine| engine == "tidb")
+}
+
 /// A request for the test server as `root`.
 pub fn request(ssl_mode: SslMode) -> Result<ConnectRequest, DriverError> {
     let port = env("OPENROWS_TEST_MYSQL_PORT")?

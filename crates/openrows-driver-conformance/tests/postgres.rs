@@ -2,7 +2,7 @@
 //! The conformance suite against the container `just test-pg` starts
 //! (ignored in the default run).
 use openrows_driver_api::{ConnectRequest, ConnectTimeouts, Endpoint, SslMode, TlsFiles};
-use openrows_driver_conformance::{Failure, Target, conformance_tests};
+use openrows_driver_conformance::{Failure, Target, conformance_tests, tier1_conformance_tests};
 use openrows_driver_postgres::PgDriver;
 use openrows_net::SecretString;
 
@@ -41,6 +41,11 @@ fn prepare() -> Result<(Target, ()), Failure> {
 }
 
 conformance_tests!(
+    #[ignore = "needs PostgreSQL; run with `just test-pg`"]
+    prepare
+);
+
+tier1_conformance_tests!(
     #[ignore = "needs PostgreSQL; run with `just test-pg`"]
     prepare
 );

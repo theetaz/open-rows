@@ -2,7 +2,7 @@
 //! The conformance suite against the containers `just test-mysql` starts
 //! (ignored in the default run).
 use openrows_driver_api::{ConnectRequest, ConnectTimeouts, Endpoint, SslMode, TlsFiles};
-use openrows_driver_conformance::{Failure, Target, conformance_tests};
+use openrows_driver_conformance::{Failure, Target, conformance_tests, tier1_conformance_tests};
 use openrows_driver_mysql::{Flavour, MySqlDriver};
 use openrows_net::SecretString;
 
@@ -49,6 +49,11 @@ fn prepare() -> Result<(Target, ()), Failure> {
 }
 
 conformance_tests!(
+    #[ignore = "needs MySQL or MariaDB; run with `just test-mysql`"]
+    prepare
+);
+
+tier1_conformance_tests!(
     #[ignore = "needs MySQL or MariaDB; run with `just test-mysql`"]
     prepare
 );

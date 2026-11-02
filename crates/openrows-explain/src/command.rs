@@ -43,6 +43,18 @@ pub enum AnalyzeWrites {
 /// Name of the savepoint used inside a user's open transaction.
 pub const SAVEPOINT: &str = "openrows_explain";
 
+/// `MySQL` 9.7's default JSON document says nothing about `UPDATE` and `DELETE`
+/// (`<not executable by iterator executor>`), so the first version is selected
+/// for one statement. The variable arrived in 8.3; the version comment keeps
+/// this valid on older servers, where only the user variable is set.
+const MYSQL_JSON_V1: &str = "SET @openrows_explain = 1 /*!80300 , \
+    @openrows_explain = @@SESSION.explain_json_format_version, \
+    SESSION explain_json_format_version = 1 */";
+
+/// Puts back what [`MYSQL_JSON_V1`] saved.
+const MYSQL_JSON_RESTORE: &str = "SET @openrows_explain = 0 /*!80300 , \
+    SESSION explain_json_format_version = @openrows_explain */";
+
 /// The statements to run, in order: `before`, then `explain` (whose rows
 /// are the plan), then `after`, which must run even when `explain` failed.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -98,7 +110,14 @@ pub fn command(engine: Engine, mode: Mode, statement: &str, wrap: Wrap) -> Comma
         ),
         (Engine::Postgres, Mode::Analyze) => postgres_analyze(statement, wrap),
         (Engine::SqlServer, mode) => sqlserver(statement, mode, wrap),
-        (Engine::MySql | Engine::MariaDb, Mode::Plan) => plain(
+        (Engine::MySql, Mode::Plan) => Command {
+            before: vec![MYSQL_JSON_V1.to_owned()],
+            explain: format!("EXPLAIN FORMAT=JSON {statement}"),
+            after: vec![MYSQL_JSON_RESTORE.to_owned()],
+            format: Format::MySqlJson,
+            analyzed: false,
+        },
+        (Engine::MariaDb, Mode::Plan) => plain(
             format!("EXPLAIN FORMAT=JSON {statement}"),
             Format::MySqlJson,
             false,
@@ -176,6 +195,15 @@ fn sqlserver(statement: &str, mode: Mode, wrap: Wrap) -> Command {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn mysql_selects_the_json_version_only_on_servers_that_have_the_variable() {
+        let plan = command(Engine::MySql, Mode::Plan, "UPDATE t SET a = 1", Wrap::None);
+        assert_eq!(plan.before, [MYSQL_JSON_V1]);
+        assert_eq!(plan.after, [MYSQL_JSON_RESTORE]);
+        assert!(MYSQL_JSON_V1.starts_with("SET @openrows_explain = 1 /*!80300"));
+        assert!(MYSQL_JSON_RESTORE.ends_with("*/"));
+    }
 
     #[test]
     fn postgres_plans_in_json_and_analyses_inside_a_rolled_back_transaction() {
@@ -256,7 +284,9 @@ mod tests {
         for (engine, mode, sql, format) in cases {
             let command = command(engine, mode, " SELECT 1 ; ", Wrap::Transaction);
             assert_eq!((command.explain.as_str(), command.format), (sql, format));
-            assert!(command.before.is_empty() && command.after.is_empty());
+            let selects_version = (engine, mode) == (Engine::MySql, Mode::Plan);
+            assert_eq!(command.before.is_empty(), !selects_version);
+            assert_eq!(command.after.is_empty(), !selects_version);
         }
     }
 

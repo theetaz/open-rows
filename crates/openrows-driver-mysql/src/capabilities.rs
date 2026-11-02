@@ -35,6 +35,8 @@ pub(crate) const CAPABILITIES: Capabilities = Capabilities {
         Feature::ColumnCollation,
         Feature::ColumnCharset,
         Feature::IdentityColumns,
+        Feature::Notices,
+        Feature::Explain,
     ],
     // `SEQUENCE` objects exist in `MariaDB` only.
     object_kinds: &[
@@ -44,4 +46,29 @@ pub(crate) const CAPABILITIES: Capabilities = Capabilities {
         ObjectKind::Procedure,
         ObjectKind::Sequence,
     ],
+};
+
+/// What a `TiDB` server offers through this driver, as measured by the
+/// conformance suite (`just test-mysql pingcap/tidb:<tag>`, docs/05 §13.1).
+pub(crate) const TIDB_CAPABILITIES: Capabilities = Capabilities {
+    location: Location::Server,
+    features: &[
+        Feature::Cancel,
+        Feature::BindParameters,
+        Feature::MultipleDatabases,
+        Feature::Catalog,
+        Feature::Roles,
+        Feature::RowEdits,
+        Feature::Tls,
+        Feature::Routes,
+        Feature::StartupCommands,
+        Feature::SchemaFingerprint,
+        Feature::ProcessList,
+        Feature::TableLifecycle,
+        Feature::KeyEditing,
+        Feature::ViewEditing,
+        Feature::DatabaseLifecycle,
+        Feature::Notices,
+    ],
+    object_kinds: &[ObjectKind::Table, ObjectKind::View],
 };

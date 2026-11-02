@@ -6,7 +6,8 @@
 //! containers holding a `query_block`. Costs are each operator's own
 //! (`read_cost` + `eval_cost`, `sort_cost`, `MariaDB`'s `cost`) except the
 //! query block's total, so inclusive costs are summed here. `MariaDB`'s
-//! `ANALYZE` adds `r_loops`, `r_rows` and total times (`r_*_time_ms`).
+//! `ANALYZE` adds `r_loops`, `r_rows` and total times (`r_*_time_ms`). `MySQL`'s
+//! newer `query_plan` document is read by [`crate::mysql_json_v2`].
 use crate::ParseError;
 use crate::analysis::inclusive_cost;
 use crate::json::{Object, field_number, field_text, text};
@@ -60,6 +61,15 @@ pub(crate) fn parse(raw: &str) -> Result<Plan, ParseError> {
     let top = value
         .as_object()
         .ok_or(ParseError::Missing("plan document"))?;
+    if let Some(plan) = top.get("query_plan").and_then(Value::as_object) {
+        return Ok(Plan {
+            analyzed: false,
+            root: crate::mysql_json_v2::operator(plan),
+            planning_ms: None,
+            execution_ms: None,
+            summary: Vec::new(),
+        });
+    }
     let block = top
         .get("query_block")
         .and_then(Value::as_object)

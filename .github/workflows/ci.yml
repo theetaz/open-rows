@@ -179,12 +179,13 @@ jobs:
         run: python3 -B scripts/bench_compare.py "$CARGO_TARGET_DIR/criterion"
 
   containers:
-    # PostgreSQL 17, MySQL 8.4 and MariaDB 11.4 in throwaway containers: the
-    # driver integration tests and the driver conformance suite (M1-30). Its
-    # own runner, so the disk-heavy app build above is not shared; only the
-    # driver, core and schema crates are compiled here.
+    # PostgreSQL 17 and CockroachDB, MySQL 8.4 and 9.7, MariaDB 11.4 and TiDB in
+    # throwaway containers: the driver integration tests and the driver
+    # conformance suite (M1-30, M1-10). Its own runner, so the disk-heavy app
+    # build above is not shared; only the driver, core and schema crates are
+    # compiled here.
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     env:
       CARGO_PROFILE_DEV_DEBUG: line-tables-only
       CARGO_PROFILE_TEST_DEBUG: line-tables-only
@@ -201,7 +202,7 @@ jobs:
         with:
           tool: cargo-nextest@0.9.146
       - name: PostgreSQL suites
-        run: bash scripts/test-pg.sh 17
+        run: bash scripts/test-pg.sh 17 cockroach
       - name: MySQL and MariaDB suites
         run: bash scripts/test-mysql.sh
 

@@ -1,0 +1,29 @@
+table orc_golden_customers arguments=None comment=None
+  info kind=Table comment=None partition=None
+  view None
+  definition Some("CREATE TABLE orc_golden_customers (\n    id INTEGER PRIMARY KEY,\n    email TEXT NOT NULL UNIQUE,\n    nick TEXT DEFAULT 'anon'\n);\n")
+  column id type="INTEGER" nullable=false default=None generated=No comment=None
+  column email type="TEXT" nullable=false default=None generated=No comment=None
+  column nick type="TEXT" nullable=true default=Some("'anon'") generated=No comment=None
+  constraint PRIMARY KEY kind=Primary columns=["id"] references=None definition="PRIMARY KEY (id)"
+  constraint sqlite_autoindex_orc_golden_customers_1 kind=Unique columns=["email"] references=None definition="UNIQUE (email)"
+  index sqlite_autoindex_orc_golden_customers_1 method=btree unique=true primary=false constraint=true columns="email" include=[] predicate=None comment=None definition="-- automatic index sqlite_autoindex_orc_golden_customers_1"
+view orc_golden_order_totals arguments=None comment=None
+  info kind=View comment=None partition=None
+  view Some("CREATE VIEW orc_golden_order_totals AS\n    SELECT customer_id, SUM(price) AS spent FROM orc_golden_orders GROUP BY customer_id")
+  definition Some("CREATE VIEW orc_golden_order_totals AS\n    SELECT customer_id, SUM(price) AS spent FROM orc_golden_orders GROUP BY customer_id;\n")
+  column customer_id type="INTEGER" nullable=true default=None generated=No comment=None
+  column spent type="" nullable=true default=None generated=No comment=None
+table orc_golden_orders arguments=None comment=None
+  info kind=Table comment=None partition=None
+  view None
+  definition Some("CREATE TABLE orc_golden_orders (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    customer_id INTEGER NOT NULL REFERENCES orc_golden_customers (id) ON DELETE CASCADE,\n    price NUMERIC CONSTRAINT orders_price_positive CHECK (price > 0),\n    placed TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,\n    total NUMERIC GENERATED ALWAYS AS (price * 2) STORED\n);\nCREATE INDEX orc_golden_orders_placed ON orc_golden_orders (placed DESC) WHERE price > 1;\nCREATE TRIGGER orc_golden_orders_touch BEFORE INSERT ON orc_golden_orders\n    BEGIN SELECT 1; END;\n")
+  column id type="INTEGER" nullable=false default=None generated=No comment=None
+  column customer_id type="INTEGER" nullable=false default=None generated=No comment=None
+  column price type="NUMERIC" nullable=true default=None generated=No comment=None
+  column placed type="TEXT" nullable=false default=Some("CURRENT_TIMESTAMP") generated=No comment=None
+  column total type="NUMERIC" nullable=true default=None generated=Stored comment=None
+  constraint PRIMARY KEY kind=Primary columns=["id"] references=None definition="PRIMARY KEY (id)"
+  constraint fk_orc_golden_orders_0 kind=Foreign columns=["customer_id"] references=Some(ForeignTarget { schema: "main", table: "orc_golden_customers", columns: ["id"] }) definition="FOREIGN KEY (customer_id) REFERENCES orc_golden_customers (id)"
+  index orc_golden_orders_placed method=btree unique=false primary=false constraint=false columns="placed" include=[] predicate=Some("price > 1") comment=None definition="CREATE INDEX orc_golden_orders_placed ON orc_golden_orders (placed DESC) WHERE price > 1"
+  trigger orc_golden_orders_touch timing=Before events=[Insert] row=true function="" enabled=true definition="CREATE TRIGGER orc_golden_orders_touch BEFORE INSERT ON orc_golden_orders\n    BEGIN SELECT 1; END"

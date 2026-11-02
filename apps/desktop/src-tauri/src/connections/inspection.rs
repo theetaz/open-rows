@@ -61,6 +61,7 @@ pub(crate) async fn catalog_capabilities(
             (&profile_id, &database),
             || profile_target(&state, &profile_id),
             move |connection| {
+                let caps = connection.capabilities().unwrap_or(caps);
                 let features = supported(caps, connection.server());
                 Box::pin(async move { Ok(features) })
             },

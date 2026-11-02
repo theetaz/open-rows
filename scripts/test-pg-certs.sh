@@ -3,7 +3,9 @@
 # Generate throwaway TLS material for `just test-pg` into <dir>: a test CA, a
 # server certificate for DNS name `localhost` only (so 127.0.0.1 exercises
 # host-name mismatches), a client certificate for role `certuser`, an
-# unrelated CA, and the init script that adds the TLS test roles.
+# unrelated CA, the init script that adds the TLS test roles, and CockroachDB's
+# file names for the same trust: a node certificate (its CN must be `node`) and
+# the root client certificate of its bootstrap statement.
 set -euo pipefail
 dir="${1:?usage: test-pg-certs.sh <dir>}"
 cd "$dir"
@@ -27,6 +29,9 @@ ca other-ca "OpenRows Unrelated CA"
 leaf server localhost "subjectAltName=DNS:localhost
 extendedKeyUsage=serverAuth"
 leaf client certuser "extendedKeyUsage=clientAuth"
+leaf node node "subjectAltName=DNS:localhost,DNS:node
+extendedKeyUsage=serverAuth,clientAuth"
+leaf client.root root "extendedKeyUsage=clientAuth"
 # Keys are readable only by the owner; the container copies the server key.
 chmod 600 ./*.key
 chmod 644 server.key

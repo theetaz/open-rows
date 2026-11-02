@@ -98,6 +98,10 @@ impl PgSession {
     /// # Errors
     /// As [`PgSession::list_databases`].
     pub async fn schema_fingerprint(&mut self) -> Result<Option<String>, DriverError> {
+        // `CockroachDB`'s catalog rows carry no `xmin` row version.
+        if self.is_cockroach() {
+            return Ok(None);
+        }
         let rows = self.text_query(FINGERPRINT_SQL).await?;
         Ok(rows.first().and_then(|row| optional(row, 0)))
     }

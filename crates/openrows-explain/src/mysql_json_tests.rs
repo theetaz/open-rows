@@ -13,6 +13,29 @@ fn find<'a>(node: &'a PlanNode, name: &str) -> Option<&'a PlanNode> {
 }
 
 #[test]
+fn a_mysql_97_query_plan_document_becomes_the_same_tree() -> TestResult {
+    let plan = parse(include_str!("../fixtures/my_plan_v2.json"))?;
+    assert!(!plan.analyzed);
+    assert_eq!(plan.root.data.node_type, "Limit: 5 row(s)");
+    let scan = find(&plan.root, "Table scan on c").ok_or(ParseError::Missing("scan"))?;
+    assert_eq!(scan.data.relation.as_deref(), Some("c"));
+    assert!(scan.data.full_scan);
+    assert_eq!(scan.data.estimated_rows, Some(2.0));
+    let lookup = find(
+        &plan.root,
+        "Covering index lookup on o using o_c (c = c.id)",
+    )
+    .ok_or(ParseError::Missing("lookup"))?;
+    assert_eq!(lookup.data.index.as_deref(), Some("o_c"));
+    assert_eq!(lookup.data.conditions[0].value, "c = c.id");
+    let filter =
+        find(&plan.root, "Filter: (c.region = 'eu')").ok_or(ParseError::Missing("filter"))?;
+    assert_eq!(filter.data.conditions[0].label, "Condition");
+    assert_eq!(filter.children.len(), 1);
+    Ok(())
+}
+
+#[test]
 fn a_mysql_join_nests_operations_around_the_nested_loop() -> TestResult {
     let plan = parse(include_str!("../fixtures/my_plan.json"))?;
     assert!(!plan.analyzed);

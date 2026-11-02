@@ -18,6 +18,7 @@ const CONSTRAINTS_SQL: &str = include_str!("sql/constraints.sql");
 const INDEXES_SQL: &str = include_str!("sql/index-detail.sql");
 const TRIGGERS_SQL: &str = include_str!("sql/triggers.sql");
 const INFO_SQL: &str = include_str!("sql/table-info.sql");
+const COCKROACH_INFO_SQL: &str = include_str!("sql/table-info-cockroach.sql");
 const PARTITIONS_SQL: &str = include_str!("sql/partitions.sql");
 
 impl PgSession {
@@ -32,11 +33,17 @@ impl PgSession {
         schema: &str,
         name: &str,
     ) -> Result<TableDetail, DriverError> {
+        let cockroach = self.is_cockroach();
+        let info_sql = if cockroach {
+            COCKROACH_INFO_SQL
+        } else {
+            INFO_SQL
+        };
         let mut read = async |template: &str| {
             self.text_query(&relation_sql(template, schema, name)?)
                 .await
         };
-        let info = read(INFO_SQL).await?;
+        let info = read(info_sql).await?;
         let Some(info) = info.first().map(table_info).transpose()? else {
             return Ok(TableDetail::default());
         };
@@ -45,11 +52,17 @@ impl PgSession {
         } else {
             Vec::new()
         };
+        // `CockroachDB` cannot print a trigger's definition.
+        let triggers = if cockroach {
+            Vec::new()
+        } else {
+            rows(&read(TRIGGERS_SQL).await?, trigger)?
+        };
         Ok(TableDetail {
             columns: rows(&read(COLUMNS_SQL).await?, column)?,
             constraints: rows(&read(CONSTRAINTS_SQL).await?, constraint)?,
             indexes: rows(&read(INDEXES_SQL).await?, index)?,
-            triggers: rows(&read(TRIGGERS_SQL).await?, trigger)?,
+            triggers,
             partitions,
             info: Some(info),
         })

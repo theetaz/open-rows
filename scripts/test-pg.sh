@@ -2,20 +2,23 @@
 # SPDX-License-Identifier: Apache-2.0
 # Run the ignored PostgreSQL integration tests (driver, session actor, schema
 # cache, the driver conformance suite, imports and dump/restore) against a throwaway container with
-# TLS enabled, for each requested major version in turn (default 17). After each main suite the
-# monitoring phases run serially: server-wide statistics resets on the same container, then a
-# container without shared_preload_libraries, then a streaming primary/replica pair (one suite).
+# TLS enabled and an OpenSSH container on its Docker network, for each requested major version in
+# turn (default 17). After each main suite the monitoring phases run serially: server-wide
+# statistics resets on the same container, then a container without shared_preload_libraries, then
+# a streaming primary/replica pair (one suite). The target `cockroach` instead runs the conformance
+# suite on a CockroachDB single node, the one PostgreSQL-compatible product with an image here.
 # Every suite and phase runs even after a failure; the exit status reports any failure.
 # Skips (exit 0) when Docker is unavailable (fails with OPENROWS_REQUIRE_DOCKER=1); always removes
 # every container, the network and the generated certificates.
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
+source scripts/test-sshd.sh
 if [ "$#" -eq 0 ]; then
     set -- 17
 fi
 for version in "$@"; do
-    if ! [[ "$version" =~ ^[0-9]+$ ]]; then
-        echo "usage: just test-pg [major version...], e.g. 17 or 13 15 16 17 18" >&2
+    if ! [[ "$version" =~ ^([0-9]+|cockroach)$ ]]; then
+        echo "usage: just test-pg [major version...|cockroach], e.g. 17 or 13 15 16 17 18 cockroach" >&2
         exit 2
     fi
 done
@@ -55,6 +58,7 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 bash scripts/test-pg-certs.sh "$tls_dir"
+build_sshd
 # Every suite and phase runs even after a failure; the script fails at the end.
 status=0
 record() {
@@ -92,7 +96,9 @@ main_suite() {
     # The server key must belong to the postgres user with mode 0600, so it is
     # copied out of the read-only mount before the image's entrypoint starts.
     local ssl_dir=/etc/openrows-ssl
-    docker run --detach --name "$name" --publish 127.0.0.1::5432 \
+    docker network create "$network" >/dev/null
+    docker run --detach --name "$name" --network "$network" --network-alias database \
+        --publish 127.0.0.1::5432 \
         --env POSTGRES_PASSWORD="$password" \
         --volume "$tls_dir:/certs:ro" \
         --volume "$tls_dir/init-tls.sh:/docker-entrypoint-initdb.d/init-tls.sh:ro" \
@@ -104,6 +110,8 @@ main_suite() {
                 -c ssl_cert_file=$ssl_dir/server.crt -c ssl_key_file=$ssl_dir/server.key \
                 -c ssl_ca_file=$ssl_dir/ca.crt" >/dev/null
     wait_ready "$name"
+    start_sshd "$name-sshd" "$network"
+    export_routes "$name-sshd" database 5432 "$tls_dir"
     local port
     port="$(host_port "$name")"
     echo "PostgreSQL ${version} ($(docker exec "$name" postgres --version)) on 127.0.0.1:${port}, TLS on"
@@ -161,7 +169,43 @@ replica_phase() {
     remove_containers
 }
 
+# A secure single node (TLS or plain with a password, like a real deployment); only
+# the bootstrap client uses a certificate. The image's entrypoint checks a certificate
+# against 127.0.0.1 after start-up, which ours deliberately does not cover, so it is bypassed.
+cockroach_suite() {
+    local name="$prefix-cockroach" certs=/certs
+    local image=cockroachdb/cockroach:v25.2.26
+    docker network create "$network" >/dev/null
+    docker run --detach --name "$name" --network "$network" --network-alias database \
+        --publish 127.0.0.1::26257 --volume "$tls_dir:/certs:ro" \
+        --env COCKROACH_SKIP_KEY_PERMISSION_CHECK=true --entrypoint /cockroach/cockroach \
+        "$image" start-single-node --certs-dir="$certs" --accept-sql-without-tls >/dev/null
+    local deadline=$((SECONDS + 120))
+    until docker exec --env COCKROACH_SKIP_KEY_PERMISSION_CHECK=true "$name" ./cockroach sql \
+        --certs-dir="$certs" --host=localhost --user=root --execute \
+        "CREATE USER IF NOT EXISTS postgres WITH PASSWORD '$password'; GRANT admin TO postgres;
+         CREATE DATABASE IF NOT EXISTS postgres" >/dev/null 2>&1; do
+        if (( SECONDS >= deadline )); then
+            docker logs "$name" >&2
+            return 1
+        fi
+    done
+    start_sshd "$name-sshd" "$network"
+    export_routes "$name-sshd" database 26257 "$tls_dir"
+    local port
+    port="$(docker port "$name" 26257/tcp | head -n 1 | sed 's/.*://')"
+    echo "$image on 127.0.0.1:${port}, TLS available"
+    OPENROWS_TEST_PG_PORT="$port" OPENROWS_TEST_PG_PASSWORD="$password" \
+        record cargo nextest run -p openrows-driver-conformance --locked --test postgres \
+        --run-ignored only --no-capture --no-fail-fast
+    remove_containers
+}
+
 for version in "$@"; do
+    if [ "$version" = cockroach ]; then
+        cockroach_suite
+        continue
+    fi
     main_suite "$version"
     preload_phase "$version"
     replica_phase "$version"

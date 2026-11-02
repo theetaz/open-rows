@@ -1,0 +1,35 @@
+table customers arguments=None comment=Some("Who buys")
+  info kind=Table comment=Some("Who buys") partition=None
+  view None
+  definition None
+  column id type="bigint" nullable=false default=None generated=No comment=None
+  column email type="character varying(80)" nullable=false default=None generated=No comment=None
+  column nick type="text" nullable=true default=Some("'anon'::STRING") generated=No comment=Some("Display name")
+  column feeling type="mood" nullable=true default=None generated=No comment=None
+  constraint customers_pkey kind=Primary columns=["id"] references=None definition="PRIMARY KEY (id ASC)"
+  constraint customers_email_key kind=Unique columns=["email"] references=None definition="UNIQUE (email ASC)"
+  index customers_email_key method=prefix unique=true primary=false constraint=true columns="email" include=[] predicate=None comment=None definition="CREATE UNIQUE INDEX customers_email_key ON postgres.orc_golden.customers USING btree (email ASC)"
+  index customers_pkey method=prefix unique=true primary=true constraint=true columns="id" include=[] predicate=None comment=None definition="CREATE UNIQUE INDEX customers_pkey ON postgres.orc_golden.customers USING btree (id ASC)"
+type mood arguments=None comment=None
+view order_totals arguments=None comment=None
+  info kind=View comment=None partition=None
+  view Some("SELECT customer_id, sum(price) AS spent FROM postgres.orc_golden.orders GROUP BY customer_id")
+  definition None
+  column customer_id type="bigint" nullable=true default=None generated=No comment=None
+  column spent type="numeric" nullable=true default=None generated=No comment=None
+table orders arguments=None comment=None
+  info kind=Table comment=None partition=None
+  view None
+  definition None
+  column id type="bigint" nullable=false default=Some("nextval('orc_golden.orders_id_seq'::REGCLASS)") generated=IdentityAlways comment=None
+  column customer_id type="bigint" nullable=false default=None generated=No comment=None
+  column price type="numeric(10,2)" nullable=true default=None generated=No comment=None
+  column placed type="timestamp with time zone" nullable=false default=Some("now()") generated=No comment=None
+  column tags type="text[]" nullable=true default=None generated=No comment=None
+  constraint orders_pkey kind=Primary columns=["id"] references=None definition="PRIMARY KEY (id ASC)"
+  constraint orders_price_positive kind=Check columns=["price"] references=None definition="CHECK ((price > 0))"
+  constraint orders_customer_id_fkey kind=Foreign columns=["customer_id"] references=Some(ForeignTarget { schema: "orc_golden", table: "customers", columns: ["id"] }) definition="FOREIGN KEY (customer_id) REFERENCES orc_golden.customers(id) ON DELETE CASCADE"
+  index orders_pkey method=prefix unique=true primary=true constraint=true columns="id" include=[] predicate=None comment=None definition="CREATE UNIQUE INDEX orders_pkey ON postgres.orc_golden.orders USING btree (id ASC)"
+  index orders_placed_idx method=prefix unique=false primary=false constraint=false columns="placed" include=[] predicate=Some("price > 1") comment=None definition="CREATE INDEX orders_placed_idx ON postgres.orc_golden.orders USING btree (placed DESC) WHERE (price > 1)"
+sequence orders_id_seq arguments=None comment=None
+sequence ticket_seq arguments=None comment=None

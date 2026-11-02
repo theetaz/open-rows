@@ -1,0 +1,73 @@
+{
+  "query": "/* select#1 */ select `t`.`c`.`id` AS `id`,`t`.`c`.`region` AS `region`,`t`.`o`.`id` AS `id`,`t`.`o`.`c` AS `c` from `t`.`c` join `t`.`o` where ((`t`.`o`.`c` = `t`.`c`.`id`) and (`t`.`c`.`region` = 'eu')) order by `t`.`o`.`id` limit 5",
+  "query_plan": {
+    "limit": 5,
+    "inputs": [
+      {
+        "inputs": [
+          {
+            "inputs": [
+              {
+                "inputs": [
+                  {
+                    "inputs": [
+                      {
+                        "operation": "Table scan on c",
+                        "table_name": "c",
+                        "access_type": "table",
+                        "schema_name": "t",
+                        "used_columns": ["id", "region"],
+                        "estimated_rows": 2.0,
+                        "estimated_total_cost": 0.44999999999999996
+                      }
+                    ],
+                    "condition": "(c.region = 'eu')",
+                    "operation": "Filter: (c.region = 'eu')",
+                    "access_type": "filter",
+                    "estimated_rows": 1.0,
+                    "filter_columns": ["t.c.region"],
+                    "estimated_total_cost": 0.44999999999999996
+                  },
+                  {
+                    "covering": true,
+                    "operation": "Covering index lookup on o using o_c (c = c.id)",
+                    "index_name": "o_c",
+                    "table_name": "o",
+                    "access_type": "index",
+                    "key_columns": ["c"],
+                    "schema_name": "t",
+                    "used_columns": ["id", "c"],
+                    "estimated_rows": 1.5,
+                    "lookup_condition": "c = c.id",
+                    "index_access_type": "index_lookup",
+                    "lookup_references": ["t.c.id"],
+                    "estimated_total_cost": 0.4001372118551043
+                  }
+                ],
+                "join_type": "inner join",
+                "operation": "Nested loop inner join",
+                "access_type": "join",
+                "estimated_rows": 1.5,
+                "join_algorithm": "nested_loop",
+                "estimated_total_cost": 0.8501372118551043
+              }
+            ],
+            "operation": "Stream results",
+            "access_type": "stream",
+            "estimated_rows": 1.5,
+            "estimated_total_cost": 0.8501372118551043
+          }
+        ],
+        "operation": "Sort: o.id, limit input to 5 row(s) per chunk",
+        "access_type": "sort",
+        "sort_fields": ["o.id"],
+        "per_chunk_limit": 5
+      }
+    ],
+    "operation": "Limit: 5 row(s)",
+    "access_type": "limit",
+    "limit_offset": 0
+  },
+  "query_type": "select",
+  "json_schema_version": "2.0"
+}

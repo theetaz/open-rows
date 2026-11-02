@@ -107,8 +107,8 @@ just bench-criterion --save-baseline main      # on main: the Criterion benchmar
 just bench-criterion --baseline-lenient main   # on a change, then:
 just bench-compare  # fails when a benchmark regressed beyond its threshold with 95 % confidence
 just test-pg 17     # PostgreSQL integration tests in a throwaway container (skips without Docker)
-just test-mysql     # MySQL 8.4 and MariaDB 11.4 integration tests in throwaway containers (skips without Docker)
-just test-mysql mariadb:10.11 # any mysql:<tag> / mariadb:<tag> images, one after another
+just test-mysql     # MySQL 8.4 and 9.7, MariaDB 11.4 and TiDB integration tests in throwaway containers (skips without Docker)
+just test-mysql mariadb:10.11 # any mysql:<tag> / mariadb:<tag> / pingcap/tidb:<tag> images, one after another
 just e2e            # native E2E journeys 1–6 and 8 on a debug test-automation build (Docker, psql; docs/17 §7)
 just e2e-release-check # release build with test-automation must contain no automation bridge
 pnpm lint           # type-aware ESLint, complexity/size limits, IPC boundary
@@ -242,7 +242,7 @@ GitHub ubuntu-latest runner took about 41 minutes (production staging 16m13s,
 Clippy 3m35s, workspace tests 7m47s), so the job allows 50 minutes. Warm runs restore the native target from the cache,
 which is saved even when a run fails; see ADR-0010's round-4 evidence.
 
-The `containers` job (20-minute timeout, its own runner and Rust cache) builds only the driver, core, schema and conformance crates and runs `scripts/test-pg.sh 17` and `scripts/test-mysql.sh` (MySQL 8.4, MariaDB 11.4) with `OPENROWS_REQUIRE_DOCKER=1`, so a missing Docker daemon fails instead of skipping.
+The `containers` job (30-minute timeout, its own runner and Rust cache) builds only the driver, core, schema and conformance crates and runs `scripts/test-pg.sh 17 cockroach` and `scripts/test-mysql.sh` (MySQL 8.4 and 9.7, MariaDB 11.4, TiDB) with `OPENROWS_REQUIRE_DOCKER=1`, so a missing Docker daemon fails instead of skipping.
 
 Two more jobs cover M1-30 (both validated with `actionlint`; they first run when CI is re-enabled):
 

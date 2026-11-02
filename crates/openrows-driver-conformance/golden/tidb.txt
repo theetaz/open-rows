@@ -1,0 +1,31 @@
+table orc_golden_customers arguments=None comment=Some("Who buys")
+  info kind=Table comment=Some("Who buys") partition=None
+  view None
+  definition Some("CREATE TABLE `orc_golden_customers` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `email` varchar(80) NOT NULL,\n  `nick` varchar(20) DEFAULT 'anon' COMMENT 'Display name',\n  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,\n  UNIQUE KEY `customers_email` (`email`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin COMMENT='Who buys';\n")
+  column id type="int" nullable=false default=None generated=AutoIncrement comment=None
+  column email type="varchar(80)" nullable=false default=None generated=No comment=None
+  column nick type="varchar(20)" nullable=true default=Some("anon") generated=No comment=Some("Display name")
+  constraint PRIMARY kind=Primary columns=["id"] references=None definition="PRIMARY KEY (id)"
+  constraint customers_email kind=Unique columns=["email"] references=None definition="UNIQUE (email)"
+  index PRIMARY method=btree unique=true primary=true constraint=true columns="id" include=[] predicate=None comment=None definition="CREATE UNIQUE INDEX PRIMARY ON orc_golden_customers (id) USING BTREE"
+  index customers_email method=btree unique=true primary=false constraint=true columns="email" include=[] predicate=None comment=None definition="CREATE UNIQUE INDEX customers_email ON orc_golden_customers (email) USING BTREE"
+view orc_golden_order_totals arguments=None comment=Some("VIEW")
+  info kind=View comment=Some("VIEW") partition=None
+  view Some("CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`%` SQL SECURITY DEFINER VIEW `orc_golden_order_totals` (`customer_id`, `spent`) AS SELECT `customer_id` AS `customer_id`,SUM(`price`) AS `spent` FROM `openrows_test`.`orc_golden_orders` GROUP BY `customer_id`;\n")
+  definition Some("CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`%` SQL SECURITY DEFINER VIEW `orc_golden_order_totals` (`customer_id`, `spent`) AS SELECT `customer_id` AS `customer_id`,SUM(`price`) AS `spent` FROM `openrows_test`.`orc_golden_orders` GROUP BY `customer_id`;\n")
+  column customer_id type="int" nullable=true default=None generated=No comment=None
+  column spent type="decimal(32,2)" nullable=true default=None generated=No comment=None
+table orc_golden_orders arguments=None comment=None
+  info kind=Table comment=None partition=None
+  view None
+  definition Some("CREATE TABLE `orc_golden_orders` (\n  `id` bigint NOT NULL AUTO_INCREMENT,\n  `customer_id` int NOT NULL,\n  `price` decimal(10,2) DEFAULT NULL,\n  `placed` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `status` enum('new','paid') NOT NULL DEFAULT 'new',\n  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,\n  KEY `orders_placed` (`placed`),\n  KEY `orders_customer` (`customer_id`),\n  CONSTRAINT `orders_customer` FOREIGN KEY (`customer_id`) REFERENCES `orc_golden_customers` (`id`) ON DELETE CASCADE\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;\n")
+  column id type="bigint" nullable=false default=None generated=AutoIncrement comment=None
+  column customer_id type="int" nullable=false default=None generated=No comment=None
+  column price type="decimal(10,2)" nullable=true default=None generated=No comment=None
+  column placed type="datetime" nullable=false default=Some("CURRENT_TIMESTAMP") generated=No comment=None
+  column status type="enum('new','paid')" nullable=false default=Some("new") generated=No comment=None
+  constraint PRIMARY kind=Primary columns=["id"] references=None definition="PRIMARY KEY (id)"
+  constraint orders_customer kind=Foreign columns=["customer_id"] references=Some(ForeignTarget { schema: "openrows_test", table: "orc_golden_customers", columns: ["id"] }) definition="FOREIGN KEY (customer_id) REFERENCES openrows_test.orc_golden_customers (id)"
+  index PRIMARY method=btree unique=true primary=true constraint=true columns="id" include=[] predicate=None comment=None definition="CREATE UNIQUE INDEX PRIMARY ON orc_golden_orders (id) USING BTREE"
+  index orders_customer method=btree unique=false primary=false constraint=false columns="customer_id" include=[] predicate=None comment=None definition="CREATE INDEX orders_customer ON orc_golden_orders (customer_id) USING BTREE"
+  index orders_placed method=btree unique=false primary=false constraint=false columns="placed" include=[] predicate=None comment=None definition="CREATE INDEX orders_placed ON orc_golden_orders (placed) USING BTREE"

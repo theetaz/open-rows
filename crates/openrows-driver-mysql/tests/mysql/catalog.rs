@@ -45,7 +45,7 @@ async fn the_tree_lists_databases_schemas_and_objects() -> TestResult {
     assert!(
         databases
             .iter()
-            .any(|d| d.name == "information_schema" && d.system)
+            .any(|d| d.name.eq_ignore_ascii_case("information_schema") && d.system)
     );
     let schemas = session.list_schemas().await?;
     assert_eq!(

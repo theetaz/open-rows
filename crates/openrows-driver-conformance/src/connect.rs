@@ -30,7 +30,9 @@ pub(crate) async fn run(target: &Target) -> Result<(), Failure> {
     let product = connection.server().product.clone();
     ensure(!product.is_empty(), || "empty product name".to_owned())?;
     ensure(
-        product == target.driver.product() || connection.server().flavour.is_some(),
+        product == target.driver.product()
+            || connection.server().flavour.is_some()
+            || connection.capabilities().is_some(),
         || {
             format!(
                 "server says {product}, driver says {}",

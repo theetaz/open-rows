@@ -1,0 +1,39 @@
+table customers arguments=None comment=Some("Who buys")
+  info kind=Table comment=Some("Who buys") partition=None
+  view None
+  definition None
+  column id type="integer" nullable=false default=None generated=No comment=None
+  column email type="character varying(80)" nullable=false default=None generated=No comment=None
+  column nick type="text" nullable=true default=Some("'anon'::text") generated=No comment=Some("Display name")
+  column feeling type="orc_golden.mood" nullable=true default=None generated=No comment=None
+  constraint customers_pkey kind=Primary columns=["id"] references=None definition="PRIMARY KEY (id)"
+  constraint customers_email_key kind=Unique columns=["email"] references=None definition="UNIQUE (email)"
+  index customers_email_key method=btree unique=true primary=false constraint=true columns="email" include=[] predicate=None comment=None definition="CREATE UNIQUE INDEX customers_email_key ON orc_golden.customers USING btree (email)"
+  index customers_pkey method=btree unique=true primary=true constraint=true columns="id" include=[] predicate=None comment=None definition="CREATE UNIQUE INDEX customers_pkey ON orc_golden.customers USING btree (id)"
+type mood arguments=None comment=None
+view order_totals arguments=None comment=None
+  info kind=View comment=None partition=None
+  view Some(" SELECT c.id,\n    sum(o.price) AS spent\n   FROM orc_golden.customers c\n     JOIN orc_golden.orders o ON o.customer_id = c.id\n  GROUP BY c.id;")
+  definition None
+  column id type="integer" nullable=true default=None generated=No comment=None
+  column spent type="numeric" nullable=true default=None generated=No comment=None
+table orders arguments=None comment=None
+  info kind=Table comment=None partition=None
+  view None
+  definition None
+  column id type="bigint" nullable=false default=None generated=IdentityAlways comment=None
+  column customer_id type="integer" nullable=false default=None generated=No comment=None
+  column price type="numeric(10,2)" nullable=true default=None generated=No comment=None
+  column placed type="timestamp with time zone" nullable=false default=Some("now()") generated=No comment=None
+  column total type="numeric" nullable=true default=Some("(price * (2)::numeric)") generated=Stored comment=None
+  column tags type="text[]" nullable=true default=None generated=No comment=None
+  constraint orders_pkey kind=Primary columns=["id"] references=None definition="PRIMARY KEY (id)"
+  constraint orders_price_positive kind=Check columns=["price"] references=None definition="CHECK (price > 0::numeric)"
+  constraint orders_customer_id_fkey kind=Foreign columns=["customer_id"] references=Some(ForeignTarget { schema: "orc_golden", table: "customers", columns: ["id"] }) definition="FOREIGN KEY (customer_id) REFERENCES orc_golden.customers(id) ON DELETE CASCADE"
+  index orders_pkey method=btree unique=true primary=true constraint=true columns="id" include=[] predicate=None comment=None definition="CREATE UNIQUE INDEX orders_pkey ON orc_golden.orders USING btree (id)"
+  index orders_placed_idx method=btree unique=false primary=false constraint=false columns="placed" include=[] predicate=Some("price > 1::numeric") comment=None definition="CREATE INDEX orders_placed_idx ON orc_golden.orders USING btree (placed DESC) WHERE (price > (1)::numeric)"
+  trigger orders_touch timing=Before events=[Insert] row=true function="orc_golden.touch()" enabled=true definition="CREATE TRIGGER orders_touch BEFORE INSERT ON orc_golden.orders FOR EACH ROW EXECUTE FUNCTION orc_golden.touch()"
+sequence orders_id_seq arguments=None comment=None
+sequence ticket_seq arguments=None comment=None
+function touch arguments=Some("") comment=None
+  routine Some("CREATE OR REPLACE FUNCTION orc_golden.touch()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$ BEGIN RETURN NEW; END $function$\n")

@@ -21,7 +21,7 @@ FROM (
     FROM pg_catalog.pg_class AS c
     JOIN pg_catalog.pg_namespace AS n ON n.oid = c.relnamespace
     WHERE c.relkind IN ('r', 'p', 'v', 'm', 'f', 'S')
-      AND NOT c.relispartition
+      AND c.relispartition IS NOT TRUE
       AND n.nspname !~ '^pg_'
       AND n.nspname <> 'information_schema'
     UNION ALL

@@ -54,8 +54,8 @@ flowchart TB
 
 | Driver | Tier | CI job | Server / fixture | Local command |
 | --- | --- | --- | --- | --- |
-| PostgreSQL | 1 | `containers` | `postgres:17-alpine` | `just test-pg` |
-| MySQL, MariaDB | 1 | `containers` | MySQL 8.4, MariaDB 11.4 | `just test-mysql` |
+| PostgreSQL | 1 | `containers` | `postgres:17-alpine`, CockroachDB v25.2 single node | `just test-pg`, `just test-pg cockroach` |
+| MySQL, MariaDB | 1 | `containers` | MySQL 8.4 and 9.7, MariaDB 11.4, TiDB v8.5 | `just test-mysql` |
 | SQLite | 1 | `check` (workspace tests) | temporary file | `just test` |
 | SQL Server | 2 | `tier2` (`mssql` leg) | `mcr.microsoft.com/mssql/server:2022-latest` | `just test-mssql` |
 | ClickHouse | 2 | `tier2` (`clickhouse` leg) | `clickhouse/clickhouse-server:25.3.9.72` | `just test-clickhouse` |
@@ -64,6 +64,8 @@ flowchart TB
 | DuckDB (driver host) | 2 | `check` (workspace tests) | temporary file through the host fixture | `just test` |
 
   Each `tier2` matrix leg has its own runner and Rust cache and `fail-fast: false`, so one engine's failure does not hide another's. Local scripts never use x86 emulation: on arm64 `just test-mssql` defaults to the native `mcr.microsoft.com/azure-sql-edge` image, and the libSQL and ClickHouse images are multi-arch. SQL Server readiness and the test database come from the `ready::` Rust test, so images without `sqlcmd` work. Azure SQL Edge is a SQL Server 2019-class engine without the CLR. Its conformance run passes, but the exact `float`/`real` edit-guard integration test fails there (`FORMAT` needs the CLR, docs/05 §14). SQL Server 2022 in CI remains the reference result.
+- **Tier 1 groups (M1-10).** On top of the ten groups every driver runs, PostgreSQL, MySQL/MariaDB and SQLite run transactions, notices, golden introspection, 1 M-row streaming, explain, TLS and SSH (docs/05 §8). No opt-in: the 1 M-row group took 1–11 s in debug builds. The container scripts run them with the database and an OpenSSH container (`crates/openrows-net/tests/fixtures/sshd`, via `scripts/test-sshd.sh`) on one Docker network, with the certificates from `scripts/test-pg-certs.sh` mounted. Each image runs on its own, and every image runs even after a failure. Golden files change with `OPENROWS_UPDATE_GOLDEN=1`; PostgreSQL's held on 12–18, MySQL's on 8.0, 8.4 and 9.7, MariaDB's on 10.11 and 11.4.
+- **DDL round trip (M1-17).** A fixture schema rebuilt from the generated DDL must print the same: `pg_dump --schema-only` (`just test-pg`), `SHOW CREATE TABLE` (`just test-mysql`), `sqlite_master` (`just test`).
 - Fixture schemas per database: all types, composite keys, no-PK tables, views, partitions, unicode names, reserved-word identifiers, huge tables generated server-side (`generate_series`, recursive CTEs).
 - Network fault injection with `toxiproxy`: latency, bandwidth caps, connection resets mid-stream, half-open sockets — verifies reconnection and "never retry writes" rules.
 - SSH tests against an OpenSSH container with key, password, agent and jump-host setups.

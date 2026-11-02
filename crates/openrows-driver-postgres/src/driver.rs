@@ -8,8 +8,8 @@ use openrows_driver_api::objects::{ObjectChange, ObjectPlan, RoutineKind};
 use openrows_driver_api::schema::{SchemaChange, TableDetail};
 use openrows_driver_api::structure::{AlterPlan, AlterTable};
 use openrows_driver_api::{
-    BoxFuture, Catalog, ConnectRequest, ConnectTrace, Connection, Driver, DriverError, Editor,
-    Endpoint, GenerateError, RowEditInfo, RowSnapshot, ServerSummary,
+    BoxFuture, Capabilities, Catalog, ConnectRequest, ConnectTrace, Connection, Driver,
+    DriverError, Editor, Endpoint, GenerateError, RowEditInfo, RowSnapshot, ServerSummary,
 };
 use openrows_sql::Dialect;
 use openrows_sql::select::BoundSql;
@@ -71,7 +71,7 @@ impl Driver for PgDriver {
         HOME_DATABASE
     }
 
-    fn capabilities(&self) -> openrows_driver_api::Capabilities {
+    fn capabilities(&self) -> Capabilities {
         crate::capabilities::CAPABILITIES
     }
 
@@ -118,14 +118,19 @@ impl Driver for PgDriver {
 
 impl Connection for PgSession {
     fn monitor(&mut self) -> Option<&mut dyn openrows_monitor::MonitorReader> {
-        Some(self)
+        (!self.is_cockroach()).then_some(self as &mut _)
     }
     fn server(&self) -> &ServerSummary {
         self.summary()
     }
 
+    fn capabilities(&self) -> Option<Capabilities> {
+        self.is_cockroach()
+            .then_some(crate::capabilities::COCKROACH_CAPABILITIES)
+    }
+
     fn admin(&mut self) -> Option<&mut dyn openrows_driver_api::Admin> {
-        Some(self)
+        (!self.is_cockroach()).then_some(self as &mut _)
     }
 
     fn catalog(&mut self) -> Option<&mut dyn Catalog> {
@@ -137,7 +142,7 @@ impl Connection for PgSession {
     }
 
     fn bulk_loader(&mut self) -> Option<&mut dyn openrows_driver_api::BulkLoader> {
-        Some(self)
+        (!self.is_cockroach()).then_some(self as &mut _)
     }
 }
 
