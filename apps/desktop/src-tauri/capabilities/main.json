@@ -176,6 +176,7 @@
     "allow-ai-key-delete",
     "allow-ai-verify",
     "allow-ai-cancel",
+    "allow-codex-login",
     "allow-investigation-schedule",
     "allow-investigation-schedule-cancel",
     "allow-investigation-schedule-pause",

@@ -126,12 +126,9 @@ pub(crate) async fn assistant_run(
     };
     let work = Box::pin(async {
         let context = context::prepare(&executor, &request).await?;
-        let provider = ai::generation_provider(&app, &request.provider, &request.model).await?;
-        let provider = if request.inline {
-            provider.with_tool_calling(false)
-        } else {
-            provider
-        };
+        let provider =
+            ai::generation_provider(&app, &request.provider, &request.model, !request.inline)
+                .await?;
         let router = crate::mcp_client::router::Router::new(
             app.clone(),
             executor.clone(),
@@ -144,7 +141,7 @@ pub(crate) async fn assistant_run(
             limits: AgentLimits::default(),
             options: options.clone(),
         };
-        forward(&provider, &router, &input, on_event).await
+        forward(provider.as_ref(), &router, &input, on_event).await
     });
     // Covers keychain/schema preparation as well as the agent loop.
     executor

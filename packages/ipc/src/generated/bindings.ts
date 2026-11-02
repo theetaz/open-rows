@@ -15,6 +15,11 @@ export const commands = {
 	aiVerify: (id: string) => typedError<Verification, IpcError>(__TAURI_INVOKE("ai_verify", { id })),
 	/**  Cancel this provider's current verification request without changing settings. */
 	aiCancel: (id: string) => typedError<null, IpcError>(__TAURI_INVOKE("ai_cancel", { id })),
+	/**
+	 *  Run the CLI's own `ChatGPT` sign-in. The browser opens natively and the
+	 *  URL is streamed once so it can be copied; tokens stay with the CLI.
+	 */
+	codexLogin: (id: string, onUrl: Channel<string>) => typedError<CodexStatus, IpcError>(__TAURI_INVOKE("codex_login", { id, onUrl })),
 	/**  Retained payload-free usage/outcome metadata; existing audit purge clears it. */
 	investigationAudit: () => typedError<InvestigationAudit[], IpcError>(__TAURI_INVOKE("investigation_audit")),
 	/**  Enable a finite interval job only after live profile/sharing/telemetry validation. */
@@ -596,6 +601,15 @@ export const events = {
 export const DEFAULT_CUSTOM_ENV_COLOR = "#7c3aed" as const;
 
 /* Types */
+/**  How the CLI reports its own sign-in. */
+export type AccountMode =
+/**  Managed `ChatGPT` sign-in. */
+"chatgpt" |
+/**  An API key stored by the CLI. */
+"apiKey" |
+/**  Another account type this bridge does not interpret. */
+"other";
+
 /**  Ordered, bounded UI events; plain text is never interpreted as HTML. */
 export type AgentEvent = AgentEvent_Serialize | AgentEvent_Deserialize;
 
@@ -1199,6 +1213,37 @@ export type CloudFlavor =
 "cloudsql" |
 /**  `AlloyDB` Auth Proxy. */
 "alloydb";
+
+/**  One explicit state per discovery outcome; installed is not signed in. */
+export type CodexStatus =
+/**  No executable at the configured path or in the probed locations. */
+{ state: "notInstalled" } |
+/**  Installed and supported, but the CLI reports no account. */
+{ state: "signedOut";
+/**  Reported CLI release. */
+version: string;
+/**  Later than the tested release. */
+newer: boolean } |
+/**  Installed, supported and signed in through the CLI. */
+{ state: "signedIn";
+/**  Reported CLI release. */
+version: string;
+/**  Later than the tested release. */
+newer: boolean;
+/**  Reported account type. */
+mode: AccountMode;
+/**  Reported plan, when the CLI knows it. */
+plan: string | null } |
+/**  Older, different-major or unrecognised release, or a missing protocol method. */
+{ state: "unsupported";
+/**  Reported release, when it could be read. */
+version: string | null;
+/**  The release this bridge was tested with. */
+tested: string } |
+/**  The probe failed with a fixed reason. */
+{ state: "error";
+/**  Scrubbed failure category. */
+reason: AiError };
 
 /**  A result column as the grid header shows it. */
 export type ColumnDto = {
@@ -3223,7 +3268,10 @@ export type ProviderConfig = {
 	name: string,
 	/**  Wire protocol. */
 	kind: ProviderKind,
-	/**  Endpoint root, without credentials, query or fragment. */
+	/**
+	 *  Endpoint root, without credentials, query or fragment. For `Codex` it is
+	 *  an optional absolute executable path; empty searches `PATH`.
+	 */
 	baseUrl: string,
 	/**  Explicit warning acknowledgement for remote plaintext/local overrides. */
 	allowInsecureRemote: boolean,
@@ -3246,7 +3294,9 @@ export type ProviderKind =
 /**  Ollama native chat/tags. */
 "ollama" |
 /**  Loopback Chat Completions (LM Studio, llama.cpp, etc.). */
-"localCompatible";
+"localCompatible" |
+/**  The user's installed Codex CLI through its official app-server protocol. */
+"codex";
 
 /**  A saved proxy; says whether its password is stored. */
 export type ProxyDto = {
@@ -4348,6 +4398,8 @@ export type Verification = {
 	models: Model[],
 	/**  Key billing metadata, when exposed by the provider. */
 	usage: Usage | null,
+	/**  Installed-tool discovery and account state for CLI bridges. */
+	cli: CodexStatus | null,
 };
 
 /**  A query-backed visual. */

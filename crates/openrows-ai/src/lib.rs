@@ -2,6 +2,7 @@
 //! Metadata-only verification and cancellable text streaming for BYOK/local AI.
 pub mod agent;
 mod agent_wire;
+pub mod codex;
 mod config;
 mod continuation;
 mod control;

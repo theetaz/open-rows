@@ -152,6 +152,8 @@ fn tool_response(kind: ProviderKind) -> String {
                 json!({"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"\"SELECT 1\"}"}}]}}]}),
             ]
         }
+        // The Codex bridge has no HTTP transport; covered by tests/codex.rs.
+        ProviderKind::Codex => vec![],
     };
     let mut body = frames
         .iter()

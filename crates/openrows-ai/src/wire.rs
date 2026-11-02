@@ -24,6 +24,7 @@ pub(crate) fn request(
         ProviderKind::OpenRouter | ProviderKind::Compatible | ProviderKind::LocalCompatible => {
             ("chat/completions".into(), chat)
         }
+        ProviderKind::Codex => return Err(AiError::Unsupported),
         ProviderKind::Ollama => (
             "api/chat".into(),
             json!({"model": request.model, "messages": [{"role": "user", "content": request.context.text()}], "stream": true, "options": {"num_predict": request.max_output}}),
@@ -75,6 +76,7 @@ pub(crate) fn delta(kind: ProviderKind, value: &Value) -> Result<(Vec<String>, b
         ),
         ProviderKind::Ollama => (value.pointer("/message/content"), value["done"] == true),
         ProviderKind::Gemini => return gemini_delta(value),
+        ProviderKind::Codex => return Err(AiError::Unsupported),
     };
     if let Some(text) = text {
         return Ok((

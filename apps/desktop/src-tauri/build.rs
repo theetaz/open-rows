@@ -9,6 +9,7 @@ const COMMANDS: &[&str] = &[
     "ai_key_delete",
     "ai_verify",
     "ai_cancel",
+    "codex_login",
     "investigation_schedule",
     "investigation_schedule_cancel",
     "investigation_schedule_pause",

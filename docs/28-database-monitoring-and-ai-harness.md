@@ -172,7 +172,7 @@ failure never silently sends data to a different provider.
 
 | Choice                    | Planned integration                                                                                             | Status shown to the user                                                                                       |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| Codex / ChatGPT           | Official Codex app-server account and turn APIs; use its managed account login rather than copying credentials. | Installed version, authenticated account mode, plan when reported, capabilities and usage limits when exposed. |
+| Codex / ChatGPT           | **Implemented (M45-04):** official Codex app-server account and turn APIs; the CLI's own managed login in an isolated home, never copied credentials. | Not installed, signed out, signed in (account mode, plan when reported), unsupported version or typed error; models when signed in; usage stays inside Codex. |
 | Claude installed tool     | Versioned official CLI/SDK bridge only where third-party use and isolation are permitted.                       | Installed/authenticated/unsupported states and a clear approval or API-key requirement.                        |
 | OpenAI API                | Native API adapter with user-selected model.                                                                    | Key configured, verified/unverified, available capabilities and usage.                                         |
 | Anthropic API             | Native Messages adapter.                                                                                        | Key configured, verified/unverified, tool/streaming capability and usage.                                      |
@@ -226,10 +226,39 @@ loopback-by-default local endpoints, warned remote/plaintext opt-in and secret
 scrubbing are tested with loopback mocks; no database context or generation IPC
 is exposed. [23 §10](23-ai-assistant.md#10-implemented-m45-01-api-key-and-local-provider-settings)
 records protocol choices, bounds and manual metadata-only smoke instructions.
-Existing-account/CLI eligibility and isolation remain M45-04; per-connection
+Existing-account/CLI eligibility and isolation are implemented for Codex in M45-04 (below); per-connection
 sharing, routing allowlists and context preview are implemented in M45-02 (§7 below); the
 MCP host, query assistant and read validator are implemented (M45-03/05/08), and the monitoring
 investigation tools, artifacts and session schedules (M45-10..12) are implemented in [23 §15](23-ai-assistant.md#15-monitoring-investigations-and-proposals-m45-101112). There is no silent alternate-provider/API-billing fallback.
+
+### Implemented (M45-04)
+
+The Codex CLI is a provider kind (`codex`) in Settings → AI. The Tauri-free
+`openrows-ai::codex` bridge speaks the official `codex app-server` JSON-RPC
+protocol over stdio, pinned to the schema generated for codex-cli 0.166.0;
+older, different-major or unreadable releases show **Unsupported** and later
+0.x releases are marked "newer than tested". Discovery probes only the saved
+absolute path or the named `codex` tool on `PATH` and its usual install
+folders. Status uses the CLI's own `account/read` (email never kept) and lists
+models only when signed in; sign-in uses the CLI's `account/login/start`
+browser flow. Health checks send no prompt or database context.
+
+Isolation is enforced, not assumed from an empty folder: each provider gets
+its own `CODEX_HOME`, `HOME`, working and temporary directories under app data
+(so the user's Codex configuration, MCP servers, skills and sign-in are not
+loaded), a cleared environment, a read-only sandbox, web search and Codex's
+MCP servers off, shell/exec/apps/plugins/browser/agents and similar features
+off, ephemeral threads, a killed-and-reaped process group on cancel, deadline,
+crash or quit, and bounded output. Every approval, permission and elicitation
+request is declined. Database tools reach Codex only as app-server dynamic
+tools answered by the shared agent loop, so the sharing gate, redaction,
+audit, first-use confirmation, budgets and trace apply unchanged. Claude Code,
+Gemini CLI and Cursor bridges are not implemented and are not shown: their
+third-party eligibility and isolation have not been established. Protocol
+evidence was rechecked on 2026-11-02 against the
+[official app-server documentation](https://learn.chatgpt.com/docs/app-server)
+and the installed CLI's generated schema. Details, limits and tests are in
+[23 §16](23-ai-assistant.md#16-implemented-m45-04-codex-cli-provider).
 
 ## 7. Database investigation harness
 

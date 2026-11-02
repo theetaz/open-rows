@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-/** API-key/local provider settings and metadata-only verification (M45-01). */
+/** API-key/local/Codex CLI provider settings and metadata-only verification (M45-01/04). */
 export {
   setAiKey,
   deleteAiKey,
   verifyAiProvider,
   cancelAiVerification,
+  signInCodex,
 } from './ai';
 export type {
   AiSettings,
@@ -16,6 +17,8 @@ export type {
   Model,
   Usage,
   AiError,
+  CodexStatus,
+  AccountMode,
 } from './generated/bindings';
 
 /** Connection context sharing, offline preview and metadata-only audit (M45-02). */

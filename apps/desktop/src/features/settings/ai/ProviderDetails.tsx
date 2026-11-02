@@ -14,11 +14,15 @@ export function ProviderDetails({
 }): React.JSX.Element {
   return (
     <div className={styles.details}>
-      <p>
-        Usage (USD): {result.usage?.used ?? 'unknown'} · Limit:{' '}
-        {result.usage?.limit ?? 'unknown'} · Remaining:{' '}
-        {result.usage?.remaining ?? 'unknown'}
-      </p>
+      {result.cli ? (
+        <p>Usage: reported only inside Codex; never API billing.</p>
+      ) : (
+        <p>
+          Usage (USD): {result.usage?.used ?? 'unknown'} · Limit:{' '}
+          {result.usage?.limit ?? 'unknown'} · Remaining:{' '}
+          {result.usage?.remaining ?? 'unknown'}
+        </p>
+      )}
       {result.models.length === 0 ? (
         <p>Available models: unknown</p>
       ) : (

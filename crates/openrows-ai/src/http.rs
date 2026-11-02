@@ -53,7 +53,8 @@ impl Http {
         key: Option<SecretString>,
         options: NetworkOptions,
     ) -> Result<Self, AiError> {
-        if options.tls.verification != Verification::Full {
+        // The Codex CLI is a local process bridge, never an HTTP endpoint.
+        if options.tls.verification != Verification::Full || kind == ProviderKind::Codex {
             return Err(AiError::InvalidConfig);
         }
         let host = url
@@ -164,9 +165,8 @@ impl Http {
             | ProviderKind::OpenRouter
             | ProviderKind::Compatible
             | ProviderKind::Ollama
-            | ProviderKind::LocalCompatible => {
-                ("authorization", format!("Bearer {}", key.expose()))
-            }
+            | ProviderKind::LocalCompatible
+            | ProviderKind::Codex => ("authorization", format!("Bearer {}", key.expose())),
         };
         let mut header = HeaderValue::from_str(&value).map_err(|_| AiError::Auth)?;
         header.set_sensitive(true);

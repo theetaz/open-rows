@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Button, TextField } from '@openrows/ui';
 import type { ProviderConfig } from '@openrows/ipc';
-import { isLocalProvider, PROVIDER_KINDS } from './aiSettings';
+import { isCliProvider, isLocalProvider, PROVIDER_KINDS } from './aiSettings';
 import { ProviderFields } from './ProviderFields';
 import { saveProvider } from './aiActions';
 import styles from './Ai.module.css';
@@ -50,11 +50,12 @@ export function ProviderForm(props: Props): React.JSX.Element {
   const save = async (): Promise<void> => {
     setBusy(true);
     setError('');
+    const cli = isCliProvider(config.kind);
     const secretRef =
-      key || config.secretRef || !isLocalProvider(config.kind)
+      !cli && (key || config.secretRef || !isLocalProvider(config.kind))
         ? `ai/${config.id}/api-key`
         : '';
-    const replacement = key;
+    const replacement = cli ? '' : key;
     setKey('');
     try {
       await saveProvider(
@@ -82,11 +83,13 @@ export function ProviderForm(props: Props): React.JSX.Element {
       }}
     >
       <ProviderFields config={config} onChange={setConfig} />
-      <KeyField
-        value={key}
-        local={isLocalProvider(config.kind)}
-        onChange={setKey}
-      />
+      {!isCliProvider(config.kind) && (
+        <KeyField
+          value={key}
+          local={isLocalProvider(config.kind)}
+          onChange={setKey}
+        />
+      )}
       {error && <p role="alert">{error}</p>}
       <div className={styles.actions}>
         <Button type="submit" disabled={busy}>

@@ -79,6 +79,10 @@ pub(crate) fn pause(app: &AppHandle) {
 }
 pub(crate) fn exit(app: &AppHandle) {
     pause(app);
+    // Ends Codex status probes and sign-ins; their CLI process groups are killed.
+    if let Some(state) = app.try_state::<AiState>() {
+        state.cancel_all();
+    }
     if let Some(state) = app.try_state::<McpState>()
         && let Ok(mut running) = state.running.try_lock()
     {

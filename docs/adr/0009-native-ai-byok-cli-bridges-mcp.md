@@ -153,3 +153,27 @@ database execution capability, roots or credentials are given to user servers.
 Credential/endpoint changes invalidate the persisted catalogue and grants.
 Project-scoped servers remain open. Details and manual smoke boundaries are in
 [23 §14](../23-ai-assistant.md#14-editor-proposals-and-user-mcp-servers-m45-0607).
+
+## Implementation evidence — M45-04 (2026-11-02)
+
+The Codex CLI bridge (`openrows-ai::codex`) uses the official `codex
+app-server` JSON-RPC protocol over stdio, pinned to the schema generated for
+codex-cli 0.166.0, with explicit not-installed, signed-out, signed-in,
+unsupported-version and error states read through the CLI's own
+`account/read`; sign-in is the CLI's `account/login/start` browser flow and no
+credential file is read. This revises the Decision's "sandboxed to our MCP
+tools only" for Codex: the application's tools (built-in read/propose and
+enabled user MCP tools) reach it as app-server **dynamic tools** answered by
+the shared agent loop, rather than through the built-in MCP server, so the
+sharing gate, redaction, audit, first-use confirmation, budgets and trace stay
+identical to other providers and no MCP token is placed in the child.
+Isolation is enforced by a per-provider app-data `CODEX_HOME`/working
+directory, a cleared environment, a read-only sandbox, Codex's own shell,
+web, MCP, plugin and agent features off, declined approvals, bounded output,
+deadlines and process-group termination. Fake app-server integration tests,
+an opt-in status-only smoke and real-WebKit checks are recorded in
+[docs/23 §16](../23-ai-assistant.md#16-implemented-m45-04-codex-cli-provider).
+Claude Code, Gemini CLI and Cursor bridges remain disabled (not implemented)
+until provider approval and isolation are validated; M45-09 still owns the
+end-to-end exit validation.
+

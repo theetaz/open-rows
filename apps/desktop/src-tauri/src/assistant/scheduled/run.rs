@@ -209,7 +209,8 @@ async fn turn(
 ) -> Result<(), IpcError> {
     let context = context::prepare(&tools.executor, &input.request).await?;
     let provider =
-        crate::ai::generation_provider(app, &input.config.provider, &input.config.model).await?;
+        crate::ai::generation_provider(app, &input.config.provider, &input.config.model, true)
+            .await?;
     let request = AgentRequest {
         model: input.config.model.clone(),
         context,
@@ -217,7 +218,7 @@ async fn turn(
         options,
     };
     let (send, mut receive) = tokio::sync::mpsc::channel(16);
-    let work = run_agent(&provider, tools, &request, send);
+    let work = run_agent(provider.as_ref(), tools, &request, send);
     tokio::pin!(work);
     loop {
         tokio::select! {

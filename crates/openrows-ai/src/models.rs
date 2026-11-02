@@ -41,6 +41,7 @@ pub(crate) async fn verify(provider: &HttpProvider) -> Result<Verification, AiEr
                 health,
                 models,
                 usage,
+                cli: None,
             });
         };
         path = next;
@@ -70,7 +71,8 @@ fn next_page(kind: ProviderKind, value: &Value) -> Result<Option<String>, AiErro
         | ProviderKind::OpenRouter
         | ProviderKind::Compatible
         | ProviderKind::Ollama
-        | ProviderKind::LocalCompatible => None,
+        | ProviderKind::LocalCompatible
+        | ProviderKind::Codex => None,
     };
     Ok(token.map(|(name, token)| {
         format!(
@@ -179,7 +181,8 @@ fn capabilities(kind: ProviderKind, value: &Value) -> Result<Capabilities, AiErr
         ProviderKind::OpenAi
         | ProviderKind::Compatible
         | ProviderKind::Ollama
-        | ProviderKind::LocalCompatible => {}
+        | ProviderKind::LocalCompatible
+        | ProviderKind::Codex => {}
     }
     Ok(capabilities)
 }
@@ -214,5 +217,6 @@ fn fallback() -> Verification {
         health: Health::Unknown,
         models,
         usage: None,
+        cli: None,
     }
 }

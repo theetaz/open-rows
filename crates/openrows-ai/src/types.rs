@@ -77,4 +77,6 @@ pub struct Verification {
     pub models: Vec<Model>,
     /// Key billing metadata, when exposed by the provider.
     pub usage: Option<Usage>,
+    /// Installed-tool discovery and account state for CLI bridges.
+    pub cli: Option<crate::codex::CodexStatus>,
 }

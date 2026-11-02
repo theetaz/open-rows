@@ -50,8 +50,9 @@ flowchart LR
     end
     orch --> anth & oai & gem & oc & bed
     orch --> oll
-    orch -->|spawn headless, stream JSON| cc & cx & cu & gm
-    cc & cx & cu & gm -->|call tools via MCP| mcpS
+    orch -->|"codex app-server (JSON-RPC, stdio)"| cx
+    cx -->|"dynamic tools answered by the shared executor"| orch
+    orch -.->|"not available yet: terms and isolation"| cc & cu & gm
     orch --> mcpC
 ```
 
@@ -78,12 +79,12 @@ tokens. Eligibility is provider-specific, not implied by installation.
 
 | CLI | Detection | Invocation model |
 | --- | --- | --- |
-| Claude installed tool | Explicit discovery and version/authentication check | Official headless/SDK integration only after third-party eligibility and isolation are verified; API-key support is the baseline. |
-| Codex CLI | Explicit discovery and version check | Official app-server account/turn/event APIs; managed login, only approved application tools. |
-| Cursor CLI | Explicit discovery of `cursor-agent` | Candidate versioned bridge; disabled until current terms and isolation tests pass. |
-| Gemini CLI | Explicit discovery of `gemini` | Candidate versioned bridge; disabled until current terms and isolation tests pass. |
+| Claude installed tool | Not implemented | Official headless/SDK integration only after third-party eligibility and isolation are verified; API-key support is the baseline. Not offered in Settings. |
+| Codex CLI | **Implemented (M45-04):** explicit discovery, version and account check | Official app-server thread/turn/account APIs; the CLI's own sign-in; only the application's tools ([§16](#16-implemented-m45-04-codex-cli-provider)). |
+| Cursor CLI | Not implemented | Candidate versioned bridge; waits for current terms and isolation tests. Not offered in Settings. |
+| Gemini CLI | Not implemented | Candidate versioned bridge; waits for current terms and isolation tests. Not offered in Settings. |
 
-Exact flags differ per CLI and change across versions, so each bridge is a small adapter (`openrows-ai/bridges/<cli>.rs`) with:
+Exact flags differ per CLI and change across versions, so each bridge is a small adapter (`openrows-ai/src/<cli>/`; today only `codex/`) with:
 
 - **Detection & health:** opt-in executable/version/authentication probes; installation, login, plan/entitlement when reported, and unknown/unsupported are separate states. Never scan browser logins or credential files, infer a paid plan, or send DB context during a health check.
 - **Sandboxing:** deny unapproved shell/filesystem/network and external tools, verify configuration isolation and pass only approved app tools. An empty temporary working directory or allowlist alone is insufficient. A bridge without an enforceable boundary stays disabled.
@@ -127,7 +128,7 @@ bounded samples and editor proposals cover this task's read/propose contract.
 ### 3.2 App as MCP client
 
 - Users add MCP servers (stdio command or HTTP URL) in Settings → AI → MCP servers, globally or per Project.
-- Tools from those servers are available to API-provider and local-model conversations (CLI bridges use their own MCP config plus ours).
+- Tools from those servers are available to API-provider, local-model and Codex conversations. The Codex bridge disables Codex's own MCP configuration; enabled user tools reach it only through the application's executor, with the same first-use confirmation.
 - Each server shows its tool list; tools can be disabled individually; first use of a server's tool asks for confirmation; servers from Project files require the Project to be trusted (same rule as collection scripts).
 
 ## 4. Data-sharing policy (per connection)
@@ -814,3 +815,131 @@ with a fabricated citation rejected as `unknownEvidence`. Frontend tests:
 and schedule create/run/pause/lock/AI-off/cancel flows were also driven in
 real WebKit (React Compiler build) against a fake provider; no real key or
 provider request was used.
+
+## 16. Implemented (M45-04): Codex CLI provider
+
+Settings → AI → **Add provider** → **Codex CLI (its own sign-in)** saves a
+provider with no API key and an optional absolute executable path. Empty means
+the named `codex` tool is looked up on `PATH`, then in `~/.local/bin`,
+`/opt/homebrew/bin` and `/usr/local/bin` (GUI apps start with a minimal
+`PATH`). Nothing else is searched, and no credential file is opened.
+
+### Protocol and versions
+
+The bridge (`crates/openrows-ai/src/codex/`) speaks the official
+[`codex app-server`](https://learn.chatgpt.com/docs/app-server) protocol:
+JSON-RPC over stdio, one JSON object per line, without the `"jsonrpc"` member.
+The subset is pinned to the schema that `codex app-server generate-ts` emits
+for **codex-cli 0.166.0** (checked 2026-11-02): `initialize`/`initialized`,
+`account/read`, `model/list`, `account/login/start` with
+`account/login/completed`, `thread/start`, `turn/start`,
+`item/agentMessage/delta`, `turn/completed`, `item/tool/call` and the approval
+requests listed below.
+
+| `codex --version` | Shown state | Behaviour |
+| --- | --- | --- |
+| No executable | Not installed | No process is started. |
+| Below 0.166.0, another major version, or unreadable | Unsupported version (tested with 0.166.0) | App-server is never started. |
+| 0.166.0 | Signed out / Signed in | Normal. |
+| Later 0.x release | Same, marked "newer than tested" | Unknown notifications and fields are ignored; an unknown method (`-32601`, or `-32600` "unknown variant") or a missing experimental capability shows **Unsupported**. |
+
+**Check status** runs `--version`, then `initialize` and `account/read`
+(`refreshToken: false`), and `model/list` only when signed in. It shows
+exactly one of: not installed, signed out, signed in (ChatGPT account, API key
+in Codex or other, plus the plan when Codex reports one), unsupported version,
+or a typed error (timeout, network, invalid response and so on). The email
+address is never read into the app. Usage is shown as "reported only inside
+Codex; never API billing". No status check sends a prompt or database context.
+
+**Sign in with ChatGPT** calls `account/login/start` (`type: chatgpt`). Only
+an HTTPS page on an `openai.com` or `chatgpt.com` host is accepted; the app
+opens it in the default browser and also shows it for copying. The CLI hosts
+its own callback and stores the tokens; the app waits for
+`account/login/completed` and reads the account again. **Cancel sign-in**,
+leaving the row, a five-minute deadline, locking the app, turning AI off or
+quitting stop the CLI. Removing the provider deletes its dedicated directory,
+including the CLI's sign-in for OpenRows.
+
+### Isolation
+
+Every launch (status, sign-in and conversation) runs with:
+
+- a dedicated root under app data, `ai-cli/codex/<provider-id>/`, holding
+  `home/` (`CODEX_HOME` and `HOME`), an empty `work/` (working directory) and
+  `tmp/` (`TMPDIR`), all mode `0700`. The user's own `~/.codex` configuration,
+  MCP servers, skills, hooks and sign-in are therefore never loaded; OpenRows
+  needs its own sign-in.
+- a cleared environment: only `PATH` (the executable's directory and the
+  system directories), `HOME`, `CODEX_HOME`, `TMPDIR` and `LANG`. No API key,
+  cloud credential, proxy or other variable is inherited.
+- `approval_policy="on-request"`, `sandbox_mode="read-only"`,
+  `web_search="disabled"`, `mcp_servers={}`, `history.persistence="none"`,
+  `project_doc_max_bytes=0`, `shell_environment_policy.inherit="none"`,
+  analytics off and file-based CLI credentials inside the dedicated home.
+  The shell, unified exec, apps, plugins, multi-agent, browser, computer use,
+  image generation, image viewing, hooks, memories, skills, goals and
+  code-mode features are switched off. Threads are `ephemeral` and every
+  turn uses `sandboxPolicy: readOnly` with network access off.
+- its own process group: cancel, the agent deadline, a crash, quitting or
+  dropping the conversation kills the whole group and reaps the child.
+- bounded output: 1 MiB per message, 32 MiB per process, 256 queued server
+  messages; `--version` is limited to 4 KiB and five seconds. Error text from
+  the CLI is never shown; it maps to fixed categories.
+
+### Tools, approvals and data
+
+Codex receives the same tools as other providers: the built-in read/propose
+tools and enabled user MCP tools, offered as app-server **dynamic tools**
+(`dynamicTools` on `thread/start`, experimental API). Each `item/tool/call`
+becomes one round of the shared agent loop, so call validation, steps and
+token budgets, the visible trace, first-use confirmation for user MCP tools,
+the sharing gate, redaction and the audit log are unchanged. Only the gated
+result is returned to Codex. The built-in MCP server is not used for this: it
+would need a scoped token and a sidecar inside the child, and Codex would call
+it without the assistant's trace and confirmation. The initial turn input is
+exactly the gated context preview, with the fixed developer instructions used
+for every provider.
+
+Every approval request is declined: command and file-change approvals answer
+`decline`, legacy approvals `denied`, permission requests grant nothing, MCP
+elicitations `decline`, and any other server request (for example user-input
+or token refresh) receives a JSON-RPC error. No request can give Codex a
+write, shell or file capability. `run_read_query` stays a protected read and
+SQL proposals stay editor-only.
+
+Codex works in the assistant panel, inline ⌘I proposals (with tools off) and
+scheduled investigations. Turn failures map to fixed errors: `unauthorized`
+to authentication, usage or session limits to quota, rate limits or overload
+to rate limit, a missing model to unsupported and connection failures to
+network.
+
+### Other CLIs
+
+Claude Code, Gemini CLI and Cursor are **not** implemented and are not offered
+in Settings. docs/28 §6 requires current provider approval of third-party use
+and validated isolation first; neither has been established for them.
+
+### Try it
+
+Install the Codex CLI. In Settings → AI, turn AI on, add a **Codex CLI**
+provider, press **Check status**, then **Sign in with ChatGPT** and finish in
+the browser. Check status again to list models, allow the provider in the
+connection's sharing policy, pick it and a model in the assistant panel and
+ask a question.
+
+### Verification
+
+`cargo nextest run -p openrows-ai --test codex_status --test codex_agent`
+runs the fake app-server (`tests/fakes/codex_app_server.rs`, built as the
+`fake-codex` binary) through discovery, every account state, version gates,
+isolation (exact environment, home, working directory and arguments),
+sign-in and a rejected sign-in URL, streaming, the tool round trip with
+redaction and audit, every refused approval, crash, typed turn failure,
+oversized output, AI-off, cancel and deadline (both kill the CLI and its
+grandchild). Unit tests cover version parsing, error mapping and the
+configuration. `CodexProvider.test.tsx` covers the Settings states and
+sign-in; the Settings states, sign-in and a Codex assistant conversation were
+also driven in real WebKit through a fake IPC layer. The opt-in smoke
+`OPENROWS_CODEX_LIVE=1 cargo nextest run -p openrows-ai --test codex_live
+--run-ignored only --no-capture` runs discovery and `account/read` against the
+installed CLI only; it sends no prompt.

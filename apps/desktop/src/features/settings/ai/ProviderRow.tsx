@@ -1,25 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 import { Button } from '@openrows/ui';
 import { cancelAiVerification } from '@openrows/ipc';
-import type { AiError, ProviderConfig, Verification } from '@openrows/ipc';
+import type { ProviderConfig, Verification } from '@openrows/ipc';
 import { useVerification } from './useVerification';
 import { ProviderDetails } from './ProviderDetails';
+import { REASONS } from './aiReasons';
+import { isCliProvider } from './aiSettings';
+import { CodexSignIn } from './CodexSignIn';
+import { codexLocation, codexStatusText } from './codexStatus';
 import styles from './Ai.module.css';
-const REASONS: Record<AiError['kind'], string> = {
-  audit: 'Audit storage failed',
-  auth: 'Authentication failed',
-  rateLimit: 'Rate limit reached',
-  quota: 'Quota exhausted',
-  network: 'Network failed',
-  unsupported: 'Unsupported',
-  invalidResponse: 'Invalid response',
-  invalidConfig: 'Invalid endpoint',
-  disabled: 'AI features are off',
-  cancelled: 'Cancelled',
-  timeout: 'Timed out',
-};
 function health(result: Verification | null): string {
   if (!result) return 'Configured';
+  if (result.cli) return codexStatusText(result.cli);
   if (result.health.state !== 'failed')
     return result.health.state === 'verified' ? 'Verified' : 'Unknown';
   const reason = result.health.reason;
@@ -28,6 +20,24 @@ function health(result: Verification | null): string {
       ? ` (retry after ${String(reason.retryAfter)}s)`
       : '';
   return `Failed: ${REASONS[reason.kind]}${retry}`;
+}
+/** Installed CLIs are checked for discovery/sign-in; API providers are verified. */
+function labels(config: ProviderConfig): {
+  action: string;
+  running: string;
+  where: string;
+} {
+  return isCliProvider(config.kind)
+    ? {
+        action: 'Check status',
+        running: 'Checking…',
+        where: codexLocation(config.baseUrl),
+      }
+    : {
+        action: 'Verify',
+        running: 'Verifying…',
+        where: `${config.kind} · ${config.baseUrl}`,
+      };
 }
 type Props = {
   config: ProviderConfig;
@@ -41,6 +51,7 @@ type Props = {
 /** Explicit verify action with cancellation; no automatic network calls on mount. */
 export function ProviderRow(props: Props): React.JSX.Element {
   const { result, busy, failure, verify } = useVerification(props.config.id);
+  const words = labels(props.config);
   return (
     <section aria-label={props.config.name} className={styles.provider}>
       <div className={styles.heading}>
@@ -48,11 +59,9 @@ export function ProviderRow(props: Props): React.JSX.Element {
           {props.config.name}
           {props.selected ? ' (default)' : ''}
         </strong>
-        <span role="status">{busy ? 'Verifying…' : health(result)}</span>
+        <span role="status">{busy ? words.running : health(result)}</span>
       </div>
-      <p>
-        {props.config.kind} · {props.config.baseUrl}
-      </p>
+      <p>{words.where}</p>
       <div className={styles.actions}>
         <Button
           size="sm"
@@ -61,7 +70,7 @@ export function ProviderRow(props: Props): React.JSX.Element {
             void verify();
           }}
         >
-          Verify
+          {words.action}
         </Button>
         {busy && (
           <Button
@@ -96,6 +105,15 @@ export function ProviderRow(props: Props): React.JSX.Element {
         </Button>
       </div>
       {failure && <p role="alert">{failure}</p>}
+      {result?.cli?.state === 'signedOut' && (
+        <CodexSignIn
+          id={props.config.id}
+          enabled={props.enabled && !busy}
+          onDone={() => {
+            void verify();
+          }}
+        />
+      )}
       {result && <ProviderDetails result={result} />}
     </section>
   );

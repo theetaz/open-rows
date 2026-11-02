@@ -24,6 +24,7 @@ vi.mock('@openrows/ipc', async () => ({
 const result: Verification = {
   health: { state: 'verified' },
   usage: { used: 2, limit: 10, remaining: 8 },
+  cli: null,
   models: [
     {
       id: 'model',
@@ -128,6 +129,7 @@ it('shows configured, typed failure with retry-after, and unknown discovery stat
       health: { state: 'unknown' },
       models: [],
       usage: null,
+      cli: null,
     });
   render(<AiPane />);
   expect(screen.getByText('Configured')).toBeVisible();

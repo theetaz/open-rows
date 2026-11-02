@@ -61,6 +61,7 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
         ai::ai_key_delete,
         ai::ai_verify,
         ai::ai_cancel,
+        ai::codex::codex_login,
         assistant::investigation_audit,
         assistant::investigation_schedule,
         assistant::investigation_schedule_cancel,

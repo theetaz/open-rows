@@ -22,6 +22,7 @@ pub(crate) fn request(
         ProviderKind::OpenAi => Ok(("responses".into(), responses(request))),
         ProviderKind::Anthropic => Ok(("messages".into(), anthropic(request))),
         ProviderKind::Gemini => gemini(request),
+        ProviderKind::Codex => Err(AiError::Unsupported),
         ProviderKind::Ollama => {
             body.as_object_mut()
                 .ok_or(AiError::InvalidConfig)?

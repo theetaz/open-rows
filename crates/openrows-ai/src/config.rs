@@ -23,6 +23,8 @@ pub enum ProviderKind {
     Ollama,
     /// Loopback Chat Completions (LM Studio, llama.cpp, etc.).
     LocalCompatible,
+    /// The user's installed Codex CLI through its official app-server protocol.
+    Codex,
 }
 impl ProviderKind {
     /// Whether the endpoint must stay loopback unless explicitly opted out.
@@ -38,7 +40,7 @@ impl ProviderKind {
             Self::OpenAi => "https://api.openai.com/v1/",
             Self::OpenRouter => "https://openrouter.ai/api/v1/",
             Self::Gemini => "https://generativelanguage.googleapis.com/v1beta/",
-            Self::Compatible => "",
+            Self::Compatible | Self::Codex => "",
             Self::Ollama => "http://127.0.0.1:11434/",
             Self::LocalCompatible => "http://127.0.0.1:1234/v1/",
         }
@@ -56,7 +58,8 @@ pub struct ProviderConfig {
     pub name: String,
     /// Wire protocol.
     pub kind: ProviderKind,
-    /// Endpoint root, without credentials, query or fragment.
+    /// Endpoint root, without credentials, query or fragment. For `Codex` it is
+    /// an optional absolute executable path; empty searches `PATH`.
     pub base_url: String,
     /// Explicit warning acknowledgement for remote plaintext/local overrides.
     pub allow_insecure_remote: bool,
@@ -69,6 +72,9 @@ impl ProviderConfig {
     /// Returns a fixed error for unsafe URLs or invalid references.
     pub fn validate(&self) -> Result<Url, AiError> {
         validate_id(&self.id)?;
+        if self.kind == ProviderKind::Codex {
+            return self.validate_codex();
+        }
         if self.name.trim().is_empty() || self.name.len() > 80 || self.base_url.len() > 2048 {
             return Err(AiError::InvalidConfig);
         }
@@ -101,6 +107,24 @@ impl ProviderConfig {
             url.set_path(&format!("{}/", url.path()));
         }
         Ok(url)
+    }
+}
+impl ProviderConfig {
+    /// The CLI owns its sign-in: no keychain reference, endpoint or remote opt-in.
+    fn validate_codex(&self) -> Result<Url, AiError> {
+        let path = std::path::Path::new(&self.base_url);
+        if self.name.trim().is_empty()
+            || self.name.len() > 80
+            || !self.secret_ref.is_empty()
+            || self.allow_insecure_remote
+            || self.base_url.len() > 1024
+            || self.base_url.chars().any(char::is_control)
+            || (!self.base_url.is_empty() && !path.is_absolute())
+        {
+            return Err(AiError::InvalidConfig);
+        }
+        // An opaque, host-less identity: never loopback, so local-only refuses it.
+        Url::parse("codex:app-server").map_err(|_| AiError::InvalidConfig)
     }
 }
 /// Validate an identifier before any keychain operation.

@@ -32,6 +32,7 @@ export const PROVIDER_KINDS: readonly {
     label: 'Local / LM Studio',
     url: 'http://127.0.0.1:1234/v1/',
   },
+  { value: 'codex', label: 'Codex CLI (its own sign-in)', url: '' },
 ];
 const defaults: Required<AiSettings> = {
   enabled: false,
@@ -42,6 +43,9 @@ const defaults: Required<AiSettings> = {
 /** Local model endpoints do not require a dummy key. */
 export const isLocalProvider = (kind: ProviderKind): boolean =>
   kind === 'ollama' || kind === 'localCompatible';
+
+/** Installed CLIs own their sign-in: no API key or endpoint. */
+export const isCliProvider = (kind: ProviderKind): boolean => kind === 'codex';
 
 function provider(value: unknown): ProviderConfig | null {
   if (!value || typeof value !== 'object') return null;

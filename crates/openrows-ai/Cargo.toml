@@ -26,11 +26,23 @@ serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 specta = { version = "=2.0.0-rc.25", optional = true, features = ["derive"] }
 thiserror.workspace = true
-tokio = { version = "1.53", features = ["macros", "rt", "sync", "time"] }
+# `process`/`io-util` drive the isolated Codex app-server child over stdio.
+tokio = { version = "1.53", features = ["io-util", "macros", "process", "rt", "sync", "time"] }
 url = "2"
+
+# Kill the Codex child's whole process group; already used by openrows-net/store/dump.
+[target.'cfg(unix)'.dependencies]
+rustix = { version = "1.1", default-features = false, features = ["process", "std"] }
 
 [features]
 ipc-types = ["dep:specta"]
+
+# Test double for `codex app-server`, used only by tests/codex_*.rs.
+[[bin]]
+name = "fake-codex"
+path = "tests/fakes/codex_app_server.rs"
+test = false
+doc = false
 
 [dev-dependencies]
 criterion = { version = "0.8", default-features = false }

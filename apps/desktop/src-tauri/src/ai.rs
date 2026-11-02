@@ -4,6 +4,7 @@
     clippy::needless_pass_by_value,
     reason = "Tauri owns command arguments"
 )]
+pub(crate) mod codex;
 mod generation;
 use crate::{
     connections::{IpcError, IpcErrorKind},
@@ -58,6 +59,17 @@ impl AiState {
     }
     pub(crate) fn revoke(&self) {
         self.control.set_enabled(false);
+    }
+    /// Cancel every verification and sign-in when the app quits.
+    pub(crate) fn cancel_all(&self) {
+        for cancel in self
+            .runs
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .values()
+        {
+            cancel.cancel();
+        }
     }
     fn cancel(&self, id: &str) {
         if let Some(cancel) = self
@@ -151,9 +163,12 @@ pub(crate) async fn ai_key_set(app: AppHandle, id: String, key: String) -> Resul
 pub(crate) async fn ai_key_delete(app: AppHandle, id: String) -> Result<(), IpcError> {
     app.state::<crate::security::Security>()
         .admit("ai_key_delete")?;
-    config(&app, &id)?;
+    let config = config(&app, &id)?;
     let state = app.state::<AiState>();
     state.cancel(&id);
+    if config.kind == openrows_ai::ProviderKind::Codex {
+        return codex::forget(&app, &config);
+    }
     app.state::<crate::assistant::AssistantState>().cancel(None);
     app.state::<crate::assistant::ScheduledState>()
         .interrupt_all();
@@ -212,23 +227,11 @@ pub(crate) async fn ai_verify(app: AppHandle, id: String) -> Result<Verification
         return Err(AiError::Disabled.into());
     }
     let (_run, cancel) = start(&state, &id)?;
-    let secrets = Arc::clone(&state.secrets);
-    let key = if config.secret_ref.is_empty() {
-        None
+    let result = if config.kind == openrows_ai::ProviderKind::Codex {
+        Ok(codex::verify(&app, &config, cancel).await?)
     } else {
-        secret_work(move || secrets.get(&SecretKey::ai_provider(&id))).await?
+        verify_http(&state, &config, cancel).await?
     };
-    let provider = HttpProvider::new(
-        &config,
-        key,
-        state.control.clone(),
-        NetworkOptions::default(),
-    )?;
-    let options = RequestOptions {
-        cancel,
-        ..RequestOptions::default()
-    };
-    let result = provider.verify(&options).await;
     if let Ok(result) = &result {
         state
             .models
@@ -242,7 +245,32 @@ pub(crate) async fn ai_verify(app: AppHandle, id: String) -> Result<Verification
         health: Health::Failed { reason },
         models: Vec::new(),
         usage: None,
+        cli: None,
     }))
+}
+async fn verify_http(
+    state: &AiState,
+    config: &ProviderConfig,
+    cancel: Cancellation,
+) -> Result<Result<Verification, AiError>, IpcError> {
+    let secrets = Arc::clone(&state.secrets);
+    let id = config.id.clone();
+    let key = if config.secret_ref.is_empty() {
+        None
+    } else {
+        secret_work(move || secrets.get(&SecretKey::ai_provider(&id))).await?
+    };
+    let provider = HttpProvider::new(
+        config,
+        key,
+        state.control.clone(),
+        NetworkOptions::default(),
+    )?;
+    let options = RequestOptions {
+        cancel,
+        ..RequestOptions::default()
+    };
+    Ok(provider.verify(&options).await)
 }
 #[cfg(test)]
 mod tests {

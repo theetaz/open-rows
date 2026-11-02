@@ -35,7 +35,10 @@ pub(crate) fn parts(kind: ProviderKind, value: &Value) -> Vec<(Target, Value)> {
                 .map(|part| (Target::Chat, part.clone()))
                 .collect()
         }
-        ProviderKind::OpenAi | ProviderKind::Anthropic | ProviderKind::Ollama => vec![],
+        ProviderKind::OpenAi
+        | ProviderKind::Anthropic
+        | ProviderKind::Ollama
+        | ProviderKind::Codex => vec![],
     }
 }
 pub(crate) fn chat_call(call: &ToolCall, kind: ProviderKind, continuation: &Continuation) -> Value {

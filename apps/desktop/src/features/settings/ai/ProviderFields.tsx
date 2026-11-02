@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 import { SelectField, TextField } from '@openrows/ui';
 import type { ProviderConfig } from '@openrows/ipc';
-import { PROVIDER_KINDS } from './aiSettings';
+import { isCliProvider, PROVIDER_KINDS } from './aiSettings';
 import styles from './Ai.module.css';
-/** Compact editable endpoint fields and an explicit remote/plaintext warning. */
-export function ProviderFields(props: {
+type Props = {
   config: ProviderConfig;
   onChange: (config: ProviderConfig) => void;
-}): React.JSX.Element {
-  const { config, onChange } = props;
+};
+/** Compact editable endpoint fields and an explicit remote/plaintext warning. */
+export function ProviderFields({ config, onChange }: Props): React.JSX.Element {
   return (
     <>
       <TextField
@@ -34,6 +34,17 @@ export function ProviderFields(props: {
           });
         }}
       />
+      {isCliProvider(config.kind) ? (
+        <CodexFields config={config} onChange={onChange} />
+      ) : (
+        <EndpointFields config={config} onChange={onChange} />
+      )}
+    </>
+  );
+}
+function EndpointFields({ config, onChange }: Props): React.JSX.Element {
+  return (
+    <>
       <TextField
         label="Base URL"
         value={config.baseUrl}
@@ -59,6 +70,29 @@ export function ProviderFields(props: {
         Warning: a remote endpoint receives requests and API keys. HTTP sends
         them without encryption. Local servers are restricted to loopback by
         default.
+      </p>
+    </>
+  );
+}
+/** The CLI keeps its own sign-in; only an optional executable path is saved. */
+function CodexFields({ config, onChange }: Props): React.JSX.Element {
+  return (
+    <>
+      <TextField
+        label="Codex executable (optional)"
+        value={config.baseUrl}
+        maxLength={1024}
+        spellCheck={false}
+        placeholder="Found on PATH when empty"
+        onChange={(event) => {
+          onChange({ ...config, baseUrl: event.target.value });
+        }}
+      />
+      <p className={styles.notice}>
+        OpenRows starts <code>codex app-server</code> in its own folder with a
+        separate sign-in, a read-only sandbox and no shell, file, web or MCP
+        tools. Only the database tools your sharing policy allows are offered,
+        and every approval Codex asks for is declined.
       </p>
     </>
   );

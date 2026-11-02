@@ -53,3 +53,8 @@
   text-align: left;
   border-bottom: 1px solid var(--or-separator);
 }
+.link {
+  display: block;
+  user-select: all;
+  overflow-wrap: anywhere;
+}

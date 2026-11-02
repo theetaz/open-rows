@@ -29,6 +29,7 @@ impl Calls {
             }
             ProviderKind::Ollama => self.complete(value.pointer("/message/tool_calls"))?,
             ProviderKind::Gemini => self.gemini(value)?,
+            ProviderKind::Codex => return Err(AiError::Unsupported),
         }
         if self.entries.len() > 8
             || self.entries.values().any(|call| {
