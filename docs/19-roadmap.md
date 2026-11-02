@@ -75,24 +75,24 @@ M1 starts with a PostgreSQL **dogfood track** ([docs/27 §3a](27-delivery-plan.m
 
 **Parity exit:** these M2 P1 requirements pass their complete acceptance text, including raw-filter safety, import trust, discard boundaries, dirty-tab protection, lock bypass tests and performance budgets. No new TablePlus-compatible encrypted format is assumed.
 
-### M2 exit audit (M2-25, 2026-10-12)
+### M2 exit audit (M2-25, 2026-10-12; status refreshed 2026-11-02)
 
-Result: **M2 exit not met.** Tier 2 conformance now runs in CI, but seven M2 rows remain partial against their requirement text. Each row's evidence and precise missing list is in [docs/27 §5](27-delivery-plan.md#5-m2--sql-breadth-and-power-features). Evidence is code and tests on `main` at `7a6ec90f`. The new CI `tier2` job has not yet run on `main`.
+Result: **M2 exit not met.** The audit found seven M2 rows partial at `7a6ec90f`. M2-07, M2-08, M2-10, M2-17, M2-18 and M2-19 closed on 2026-10-13, so M2-01 is the only partial row, and performance budgets stay open. Each row's evidence is in [docs/27 §5](27-delivery-plan.md#5-m2--sql-breadth-and-power-features). The 2026-10-13 merges ran focused checks only, not the full `just check` or the container suites on the integrated `main` (docs/29 §5). The CI `tier2` job is defined but has not run on `main`, because CI is switched off.
 
 | Exit item | Status | Evidence / missing |
 | --- | --- | --- |
 | Tier 2 drivers (SQL Server, ClickHouse, DuckDB, libSQL/Turso) | met | M2-02, M2-03, M2-04, M2-05 done. CI: `tier2` matrix job (`mssql`, `clickhouse`, `libsql`) plus DuckDB host and libSQL file conformance in the `check` job (docs/17 §2.2). |
 | Explain visualiser (PG, MySQL, SQLite, MSSQL) | met | M2-06 |
-| Structure editing with DDL preview and warnings | partial | M2-07. Missing: add a primary-key/unique constraint to an existing table, `USING` casts, `CREATE INDEX CONCURRENTLY`, column reordering. |
+| Structure editing with DDL preview and warnings | met | M2-07 (2026-10-13). |
 | Import with bulk-load fast paths; run SQL file; Excel/Parquet/Markdown export | met | M2-11 (PostgreSQL `COPY`, SQLite prepared batches; engine gaps listed), M2-12, M2-13 |
-| ER diagram (read-only) | partial | M2-10. Missing: selection diagrams; Web Worker layout and canvas above 300 tables. |
+| ER diagram (read-only) | met | M2-10 (2026-10-13). |
 | Process list / kill; users and roles viewer | met | M2-15, M2-09 |
-| Formatter, parameters bar, snippets, file-backed queries, Projects | partial | M2-16 done. M2-17 missing: shared connection definitions in projects, snippets as project `.sql` files, saved-query keyword expansion and Insert/Copy actions. |
-| Driver host process for DuckDB | partial | M2-01. Functional host is done (DuckDB through it). Missing: Windows MSVC compile and the 150 ms cold target. Signing/notarization and Windows/Linux package smoke are release items (M1-31, M6). |
+| Formatter, parameters bar, snippets, file-backed queries, Projects | met | M2-16, M2-17 (2026-10-13). |
+| Driver host process for DuckDB | partial | M2-01. The macOS host is done (DuckDB through it). Missing: Windows MSVC compile and the 150 ms cold target. Signing/notarization and Windows/Linux package smoke are release items (M1-31, M6). |
 | Connection parity (FR-CONN-12, 13) | met | M2-21 |
-| Schema parity (FR-SCHEMA-09..12) | partial | M2-23 done. M2-08 missing: SQL Server database rename; Lifecycle conformance does not cover triggers, routines or databases. |
-| Editor parity (FR-EDIT-11..15) | partial | M2-18. Missing: editor indentation settings, completion schema-qualification/closing-delimiter/acceptance-key controls, stacked results. |
-| Grid parity (FR-GRID-11..14, FR-DATA-08) | partial | M2-19 and FU-03. Missing: any-column search, header quick filters, persisted striping, scrollbar and estimated-count settings, HTML-table copy, configurable delimiter/quote/newline/decimal with ambiguity rejection, and a date/time picker (FR-DATA-06). |
+| Schema parity (FR-SCHEMA-09..12) | met | M2-23, M2-08 (2026-10-13). |
+| Editor parity (FR-EDIT-11..15) | met | M2-18 (2026-10-13). |
+| Grid parity (FR-GRID-11..14, FR-DATA-08) | met | M2-19 (2026-10-13), FU-03. |
 | Transfer parity (FR-IO-04, 05, 06) | met | M2-14, M2-13, M2-11 |
 | Workspace parity (FR-WS-04, 05) | met | M2-20 |
 | App parity (FR-APP-08, 10..14) | met | M2-22. Signed update feed stays M1-31. |
