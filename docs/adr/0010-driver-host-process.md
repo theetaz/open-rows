@@ -600,7 +600,7 @@ This section retains the original trials and failures. The round-2 section below
 supersedes its open licence, prewarm and final native Linux verification items.
 
 M2-04.1 and the connect/query/cancel portion of M2-04.2 are implemented. Production
-staging enables only the `duckdb` feature: `duckdb`/`libduckdb-sys` 1.10506.0 bundles
+staging enables only the `duckdb` feature: `duckdb`/`libduckdb-sys` 1.10506.1 bundles
 DuckDB 1.5.6. Default binding features and optional JSON/Parquet/ICU extensions are
 off. `scripts/check-host-graph.sh` checks normal/build dependency edges and prints:
 

@@ -561,7 +561,7 @@ never add DuckDB's native library to the desktop graph or an in-process fallback
 
 ## 20. Implemented (M2-04a): hosted DuckDB query path
 
-DuckDB 1.5.6 (`duckdb` 1.10506.0, bundled, default features off) is compiled only into the production `openrows-driver-host` feature. The parent carries pure dialect/capability metadata and a hosted proxy. `scripts/check-host-graph.sh` checks normal/build edges: no DuckDB in desktop, no native SQLite in the production helper. SQLite registration remains a test fixture.
+DuckDB 1.5.6 (`duckdb` 1.10506.1, bundled, default features off) is compiled only into the production `openrows-driver-host` feature. The parent carries pure dialect/capability metadata and a hosted proxy. `scripts/check-host-graph.sh` checks normal/build edges: no DuckDB in desktop, no native SQLite in the production helper. SQLite registration remains a test fixture.
 
 The connection tile supports existing/new `.duckdb` files, read-only files and named in-memory profiles. Native document opening validates the DUCK header before opening the DuckDB form. Query tabs share one owning profile session/host. Canonical paths, symlinks and existing file handles detect aliases and hard links; competing writers and readers while a writer exists fail with SQLSTATE `55006`. Separate read-only profiles can have independent hosts. DuckDB's own inter-process lock remains authoritative (`58030` on failed open). Reservations survive proxy Drop until confirmed host reap. All ATTACH statements are refused before transmission until attached-file reservations exist. In-memory contents disappear on close or host loss; the form warns before connect, and host failure requires an explicit reconnect.
 

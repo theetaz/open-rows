@@ -124,9 +124,11 @@ async function openLinux(binary, root, port) {
   try {
     await browser.setTimeout({ script: 150000 });
     const evaluate = async (source) => {
-      const result =
-        await browser.executeAsync(`const done = arguments[arguments.length - 1];
-        Promise.resolve(${source}).then(value => done({ok:true,value}), error => done({ok:false,error:JSON.stringify(error,Object.getOwnPropertyNames(error))}));`);
+      const result = await browser.executeAsyncScript(
+        `const done = arguments[arguments.length - 1];
+        Promise.resolve(${source}).then(value => done({ok:true,value}), error => done({ok:false,error:JSON.stringify(error,Object.getOwnPropertyNames(error))}));`,
+        [],
+      );
       if (!result.ok) throw new Error(result.error);
       return result.value;
     };

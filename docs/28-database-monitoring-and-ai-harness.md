@@ -1096,7 +1096,7 @@ here.
 | Area | Criterion | Result | Evidence |
 | --- | --- | --- | --- |
 | Lifecycle | Collection starts only on an explicit Monitor open or resume. Unlock and app launch never restart it. | Pass | `security_unlock` starts nothing. `MonitorTab` sets paused on lock. Monitor tabs are not persisted (`tabStorage.ts`). |
-| Lifecycle | Pause, close, disconnect, profile edit or delete, network change, lock and exit stop collectors and clear the background opt-in. | Pass | `monitor_pause` and `registry::stop_where`; `connection.rs`, `profiles.rs`, `resilient.rs`, `lib.rs` exit hook and `security` lock and idle paths. Lifecycle tests in `openrows-monitor`. |
+| Lifecycle | Pause, close, disconnect, profile edit or delete, network change, lock and exit stop collectors and clear the background opt-in. | Pass | `monitor_pause` and `registry::stop_where`; `connection.rs`, `profiles.rs`, `resilient.rs`, `runtime.rs` exit hook and `security` lock and idle paths. Lifecycle tests in `openrows-monitor`. |
 | Lifecycle | Reads never overlap and never block the user's query. | Pass | Serial runtime and deadlines (unit tests). DuckDB busy-session gap: `duckdb_monitor.rs` (earlier evidence). |
 | Lifecycle | Incidents are evaluated only for running, unlocked collectors. | Pass | `alerts.rs` lock check; evaluation only from the running collector's event loop. |
 | Permissions | PostgreSQL: restricted role, revoked grant, missing extension and statistics reset are explicit states. | Pass | PG 17.11 monitor fixture, run in this audit. Follow-up 2026-11-02: also an unloaded extension, statement and I/O resets, spill, vacuum and a primary/replica pair on PG 13, 15, 16, 17 and 18. |

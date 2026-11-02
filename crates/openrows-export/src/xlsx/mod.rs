@@ -80,7 +80,7 @@ impl ExcelWriter {
     fn open_sheet(&mut self) -> Result<(), ExportError> {
         self.part += 1;
         let name = unique_name(&self.table, self.part, &mut self.names);
-        let sheet = self.workbook.add_worksheet_with_constant_memory();
+        let sheet = self.workbook.add_worksheet_with_constant_memory()?;
         sheet.set_name(name)?;
         self.sheets += 1;
         self.row = 0;

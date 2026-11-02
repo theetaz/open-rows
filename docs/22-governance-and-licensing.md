@@ -96,7 +96,7 @@ Trademarks: database product names are used nominatively ("connects to PostgreSQ
 
 | Dependency | Purpose | Licence | Alternatives / scope |
 | --- | --- | --- | --- |
-| `duckdb` / `libduckdb-sys` 1.10506.0, bundled only | Host-only DuckDB 1.5.6 native engine with reproducible C++ build | MIT | Direct C API would duplicate lifecycle/Arrow binding work; dynamic system linking would require user installs. Optional JSON/Parquet/ICU extensions and default features are not enabled. |
+| `duckdb` / `libduckdb-sys` 1.10506.1, bundled only | Host-only DuckDB 1.5.6 native engine with reproducible C++ build | MIT | Direct C API would duplicate lifecycle/Arrow binding work; dynamic system linking would require user installs. Optional JSON/Parquet/ICU extensions and default features are not enabled. |
 | `arrow-ipc` 58 (renamed `arrow-ipc-58`) and existing workspace version 60 | Bounded native Arrow 58 → workspace Arrow 60 ABI bridge | Apache-2.0 | Upgrading the entire workspace would be unrelated contract churn; manual per-cell reconstruction loses native nested/type fidelity. Version 58 is a host-only feature dependency; version 60 decodes into the shared representation. |
 | `same-file` 1.0.6 | Parent-only stable cross-platform existing-file identity, including hard links | MIT OR Unlicense (MIT selected) | Path canonicalization alone misses hard links; bespoke platform FFI adds unsafe maintenance. |
 | `arrow-cast` 60 (tests) | Expected-value fidelity formatting through the shared Arrow representation | Apache-2.0 | Formatting SQL strings would not verify values actually received over the host wire. |

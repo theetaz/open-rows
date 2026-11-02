@@ -18,10 +18,10 @@ openrows-sql = { path = "../openrows-sql" }
 # Arrow writer with the pure-Rust Snappy codec only (no C libraries).
 parquet = { version = "60", default-features = false, features = ["arrow", "snap"] }
 # Streaming (constant-memory) xlsx writer.
-rust_xlsxwriter = { version = "0.99", features = ["constant_memory"] }
+rust_xlsxwriter = { version = "0.100", features = ["constant_memory"] }
 thiserror.workspace = true
 
 [dev-dependencies]
 # Reads written workbooks back in tests to check cell types.
-calamine = "0.36"
+calamine = "0.37"
 tempfile = "3.27"
