@@ -66,6 +66,7 @@ export function TabBody(
         tabId={tab.id}
         table={tab.table}
         profileId={props.connection.id}
+        profileName={props.connection.name}
         engine={props.connection.engine}
         features={props.connection.objects}
         sessionId={sessionId}

@@ -7,7 +7,10 @@ import { scheduleHostPrewarm } from './hostPrewarm';
 import { useWindowReady } from './useWindowReady';
 
 vi.mock('@tauri-apps/api/event', () => ({ emitTo: vi.fn() }));
-vi.mock('@openrows/ipc', () => ({ reportUiEvent: vi.fn() }));
+vi.mock('@openrows/ipc', () => ({
+  reportUiEvent: vi.fn(),
+  currentWindowLabel: () => 'main',
+}));
 
 const frames: FrameRequestCallback[] = [];
 let idle: IdleRequestCallback | undefined;

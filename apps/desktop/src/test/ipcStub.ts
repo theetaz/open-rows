@@ -403,6 +403,13 @@ function appParityStub(): Record<string, unknown> {
     scheduleDataLocation: vi.fn().mockResolvedValue(undefined),
     takeNativeFiles: vi.fn().mockResolvedValue([]),
     onNativeFilesReady: vi.fn().mockResolvedValue(() => undefined),
+    currentWindowLabel: vi.fn(() => 'main'),
+    openNewWindow: vi.fn().mockResolvedValue('workspace-2'),
+    listWindows: vi.fn().mockResolvedValue([]),
+    transferTabs: vi.fn().mockResolvedValue('workspace-2'),
+    takeTransfers: vi.fn().mockResolvedValue([]),
+    onTransfersReady: vi.fn().mockResolvedValue(() => undefined),
+    setWindowTitle: vi.fn().mockResolvedValue(undefined),
     revealDatabase: vi.fn().mockResolvedValue(undefined),
   };
 }

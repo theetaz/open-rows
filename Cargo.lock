@@ -4135,6 +4135,7 @@ dependencies = [
  "openrows-sql",
  "openrows-store",
  "openrows-types",
+ "proptest",
  "regex",
  "rustix 1.1.5",
  "serde",
@@ -4155,6 +4156,7 @@ dependencies = [
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
+ "url",
 ]
 
 [[package]]

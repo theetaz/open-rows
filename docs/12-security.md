@@ -108,6 +108,7 @@ Implemented for databases (M1-06, docs/24 §13): the proxy is the first hop, in 
 - Capabilities file per window kind; plugins limited to: dialog (scoped), clipboard, updater, window-state, deep-link (for OAuth redirect), single-instance.
 - External links open in the system browser after URL scheme validation (`https`, `http`, `mailto` only).
 - OAuth 2.0 redirects use a loopback listener with PKCE, or the system browser + `openrows://` deep link; never an embedded login webview (users should see the real browser URL bar).
+- Incoming `openrows://` links (M5-09) are untrusted input. They are parsed natively into a typed request before the webview sees them; anything outside the documented grammar is rejected with a typed error whose message and log line never contain the link. Links refuse user info, credential-like parameter keys, URLs with `user:password@`, raw SQL filters, control characters and oversized values; they never carry secrets and Copy Link never writes one (only the profile id and name). Every link that names a connection waits for an explicit **Connect and Open** with a preview of the connection, environment and server; the connection's safety policy and credential prompts then apply unchanged, and no link executes SQL (docs/16 "Implemented (M5-09)"). On macOS the scheme arrives through LaunchServices and `RunEvent::Opened`, so neither the deep-link nor the single-instance plugin is installed yet.
 
 ## 6. Data at rest
 

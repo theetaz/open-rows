@@ -30,6 +30,8 @@ export type Connections = Databases & {
   /** Database descriptors visible before a connection is activated. */
   restoredDatabases?: (id: string) => readonly string[];
   profiles: readonly ProfileDto[];
+  /** The saved profiles have been read at least once. */
+  profilesLoaded?: boolean;
   reload: () => void;
   problem: string | null;
   active: ProfileDto | undefined;
@@ -127,6 +129,7 @@ export function useConnections(): Connections {
     restoredDatabases: restored.databasesOf,
     ...restoredDatabaseActions(restored, { databases, sessions, active }),
     profiles,
+    profilesLoaded: loaded,
     reload,
     problem: actionError ?? problem,
     active,
@@ -203,7 +206,9 @@ function connectWanted(
 ): void {
   const wanted = database ?? databases.databaseOf(id);
   void sessions.connect(id).then((home) => {
-    if (home && wanted && wanted !== home)
+    // Without a home database (file connections) only an explicitly named one opens.
+    const reachable = home !== null && (home !== '' || database !== undefined);
+    if (reachable && wanted && wanted !== home)
       void sessions.openDatabase(id, wanted);
   });
 }

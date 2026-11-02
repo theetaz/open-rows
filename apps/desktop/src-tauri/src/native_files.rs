@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-//! Native document handoff is queued until the webview is ready; never runs SQL.
+//! Native document and `openrows://` link handoff, queued until the webview is
+//! ready; never runs SQL. Links are parsed here, so the webview only sees
+//! validated requests and rejected links are logged without their contents.
 use crate::connections::{Connections, EngineDto, IpcError, IpcErrorKind};
+use crate::links::{self, OpenLinkDto, ParsedLink};
 use crate::queries::files::OpenedSqlFileDto;
 use serde::Serialize;
 use specta::Type;
@@ -11,29 +14,81 @@ use std::path::{Path, PathBuf};
 use std::sync::{Mutex, PoisonError};
 use tauri::{Emitter, Manager, State};
 
-/// Bounded native paths awaiting frontend handoff (not SQL execution requests).
+/// Most handoffs waiting at once; later ones are dropped.
+const MAX_PENDING: usize = 32;
+
+/// One OS handoff awaiting the webview (never an execution request).
+#[derive(Clone, Debug, PartialEq)]
+enum Handoff {
+    Path(PathBuf),
+    Link(OpenLinkDto),
+    Rejected(String),
+}
+
+/// Bounded handoffs awaiting the frontend.
 #[derive(Default)]
-pub(crate) struct NativeFiles(Mutex<VecDeque<PathBuf>>);
+pub(crate) struct NativeFiles(Mutex<VecDeque<Handoff>>);
 
 /// Validated content or an actionable rejection, never executable instructions.
 #[derive(Clone, Debug, Serialize, Type)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub(crate) enum NativeFileDto {
-    Sql { opened: OpenedSqlFileDto },
-    Database { path: String, engine: EngineDto },
-    Rejected { message: String },
+    Sql {
+        opened: OpenedSqlFileDto,
+    },
+    Database {
+        path: String,
+        engine: EngineDto,
+    },
+    /// An `openrows://` request the user confirms before anything connects.
+    Link {
+        link: OpenLinkDto,
+    },
+    Rejected {
+        message: String,
+    },
 }
 
 /// Queue OS-selected paths and announce readiness without exposing file contents.
-pub(crate) fn enqueue(app: &tauri::AppHandle, paths: impl IntoIterator<Item = PathBuf>) {
+#[cfg(not(target_os = "macos"))]
+fn enqueue(app: &tauri::AppHandle, paths: impl IntoIterator<Item = PathBuf>) {
+    push(app, paths.into_iter().map(Handoff::Path));
+}
+
+/// Route URLs the OS opened the app with: local files and `openrows://` links.
+pub(crate) fn opened(app: &tauri::AppHandle, urls: &[tauri::Url]) {
+    push(app, urls.iter().filter_map(handoff));
+}
+
+fn handoff(url: &tauri::Url) -> Option<Handoff> {
+    if url.scheme() == "file" {
+        return url.to_file_path().ok().map(Handoff::Path);
+    }
+    if url.scheme() != links::SCHEME {
+        return None;
+    }
+    Some(match links::parse_url(url) {
+        Ok(ParsedLink::Open(link)) => Handoff::Link(link),
+        Ok(ParsedLink::File(path)) => Handoff::Path(path),
+        Err(error) => {
+            tracing::warn!(reason = %error, "Rejected an openrows link");
+            Handoff::Rejected(error.to_string())
+        }
+    })
+}
+
+fn push(app: &tauri::AppHandle, handoffs: impl IntoIterator<Item = Handoff>) {
     let state = app.state::<NativeFiles>();
-    let mut pending = state.0.lock().unwrap_or_else(PoisonError::into_inner);
-    for path in paths {
-        if pending.len() < 32 && !pending.contains(&path) {
-            pending.push_back(path);
+    {
+        let mut pending = state.0.lock().unwrap_or_else(PoisonError::into_inner);
+        for handoff in handoffs {
+            if pending.len() < MAX_PENDING && !pending.contains(&handoff) {
+                pending.push_back(handoff);
+            }
         }
     }
-    let _ = app.emit("native-files-ready", ());
+    let target = crate::windows::ensure_window(app);
+    let _ = app.emit_to(target, "native-files-ready", ());
 }
 
 /// Startup argv document paths on platforms without macOS Opened events.
@@ -50,31 +105,36 @@ pub(crate) fn install(app: &mut tauri::App) {
     let _ = app;
 }
 
-/// Drain queued files after startup or a native event; lock guard applies at IPC.
+/// Drain queued handoffs into the window that should receive them (the
+/// focused one); other windows get nothing. The lock guard applies at IPC.
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn native_files_take(
+    window: tauri::WebviewWindow,
     files: State<'_, NativeFiles>,
 ) -> Result<Vec<NativeFileDto>, IpcError> {
-    let paths: Vec<_> = files
+    if !crate::windows::is_target(&window) {
+        return Ok(Vec::new());
+    }
+    let handoffs: Vec<_> = files
         .0
         .lock()
         .unwrap_or_else(PoisonError::into_inner)
         .drain(..)
         .collect();
-    tauri::async_runtime::spawn_blocking(move || {
-        paths
-            .iter()
-            .map(|path| match sniff(path) {
-                Ok(file) => file,
-                Err(error) => NativeFileDto::Rejected {
-                    message: error.message,
-                },
-            })
-            .collect()
-    })
-    .await
-    .map_err(|e| IpcError::new(IpcErrorKind::Internal, e.to_string()))
+    tauri::async_runtime::spawn_blocking(move || handoffs.into_iter().map(resolve).collect())
+        .await
+        .map_err(|e| IpcError::new(IpcErrorKind::Internal, e.to_string()))
+}
+
+fn resolve(handoff: Handoff) -> NativeFileDto {
+    match handoff {
+        Handoff::Path(path) => sniff(&path).unwrap_or_else(|error| NativeFileDto::Rejected {
+            message: error.message,
+        }),
+        Handoff::Link(link) => NativeFileDto::Link { link },
+        Handoff::Rejected(message) => NativeFileDto::Rejected { message },
+    }
 }
 
 fn sniff(path: &Path) -> Result<NativeFileDto, IpcError> {

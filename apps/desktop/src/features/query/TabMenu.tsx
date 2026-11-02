@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
+import type { WindowEntryDto } from '@openrows/ipc';
 import { PointMenu } from '../../shell/PointMenu';
+import { useOtherWindows, windowName } from '../windows/useOtherWindows';
 import { otherTabs, tabsRightOf } from './tabOps';
 import type { QueryTabs } from './useQueryTabs';
+
+/** Move a tab to window `target`, or to a new window when `null`. */
+export type MoveTab = (id: string, target: string | null) => void;
 
 /** Where the tab menu opened, and for which tab. */
 export type TabMenuTarget = { id: string; x: number; y: number };
@@ -13,6 +18,29 @@ type Item = {
   /** Draw a separator before this item. */
   group?: boolean;
 };
+
+/** Move to New Window, then Move to each other open window (FR-APP-03). */
+function moveItems(
+  id: string,
+  move: MoveTab,
+  windows: readonly WindowEntryDto[],
+): Item[] {
+  return [
+    {
+      label: 'Move to New Window',
+      run: () => {
+        move(id, null);
+      },
+      group: true,
+    },
+    ...windows.map((entry) => ({
+      label: `Move to ${windowName(entry)}`,
+      run: () => {
+        move(id, entry.label);
+      },
+    })),
+  ];
+}
 
 /** Close, Close Others, Close Tabs to the Right, Rename, Pin/Unpin and Keep Open. */
 function items(
@@ -82,12 +110,19 @@ export function TabMenu(props: {
   target: TabMenuTarget;
   /** Start editing the tab's title in place. */
   onRename: (id: string) => void;
+  /** Move the tab to another window; no move items without it. */
+  onMove?: MoveTab | undefined;
   onClose: () => void;
 }): React.JSX.Element {
-  const { target, onClose } = props;
+  const { target, onClose, onMove } = props;
+  const windows = useOtherWindows();
+  const all = [
+    ...items(props.tabs, target.id, props.onRename),
+    ...(onMove ? moveItems(target.id, onMove, windows) : []),
+  ];
   return (
     <PointMenu x={target.x} y={target.y} label="Tab actions" onClose={onClose}>
-      {items(props.tabs, target.id, props.onRename).map((item) => (
+      {all.map((item) => (
         <MenuItem key={item.label} item={item} onClose={onClose} />
       ))}
     </PointMenu>

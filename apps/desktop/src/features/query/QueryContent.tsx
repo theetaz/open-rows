@@ -18,6 +18,7 @@ import { SplitPanes } from './SplitPanes';
 import { useSplit } from './useSplit';
 import type { Split } from './useSplit';
 import { usePaneCommands } from '../commands';
+import { useTabMoves } from '../windows/useTabMoves';
 import type { PaneCommand } from '../commands';
 import styles from './Query.module.css';
 const LocalFileTabs = lazy(() =>
@@ -66,6 +67,11 @@ export function QueryContent(props: QueryContentProps): React.JSX.Element {
   const closeGuard = useTableCloseGuard({ tables, runs, tabs: props.tabs });
   const connection = props.connections.active;
   const split = useSplitPanes(props.tabs, connection, props.database);
+  const moves = useTabMoves(
+    { tabs: props.tabs, tables, runs },
+    connection?.id,
+    props.database,
+  );
   if ((!connection || !props.database) && hasLocalFiles(props.tabs))
     return localFileContent(props.tabs, closeGuard);
   if (!connection) return <NoConnection connections={props.connections} />;
@@ -91,6 +97,7 @@ export function QueryContent(props: QueryContentProps): React.JSX.Element {
   return (
     <main className={styles.content}>
       {closeGuard}
+      {moves.sheet}
       {list.length > 0 && (
         <ReconnectBar
           profile={connection}
@@ -108,6 +115,7 @@ export function QueryContent(props: QueryContentProps): React.JSX.Element {
         active={tab?.id ?? ''}
         connection={connection.name}
         onAdd={open}
+        onMove={moves.move}
       />
       {tab ? (
         <Suspense fallback={<p className={styles.empty}>Loading…</p>}>

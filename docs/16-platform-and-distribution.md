@@ -32,7 +32,7 @@ Rules:
 | SSH agent | Uses `SSH_AUTH_SOCK` from launchd; supports macOS Keychain-backed keys via agent; 1Password/Secretive agents work through the same socket. |
 | File access | Not sandboxed (Developer ID distribution) so SSH keys, `~/.ssh/config`, `pgpass`, local SQLite files work without friction. A Mac App Store build (sandboxed, security-scoped bookmarks) is a post-1.0 option. |
 | Signing & notarization | Developer ID Application certificate, hardened runtime, entitlements: `com.apple.security.network.client` is only needed if sandboxed; for hardened runtime we avoid `allow-jit`/`disable-library-validation` unless required by FFI drivers loaded in the driver host (Oracle Instant Client is user-installed and unsigned by us → load inside the separately-signed `openrows-driver-host` helper with `disable-library-validation`, keeping the main app strict). Notarized via `notarytool` in CI; stapled. |
-| Deep links | `openrows://` scheme for OAuth callbacks and "open connection" links (with confirmation). |
+| Deep links | `openrows://` scheme for "open connection", file, object and filtered-table links (with confirmation) and the `openrows open` command (M5-09, see [Implemented (M5-09)](#implemented-m5-09-openrows-links-and-openrows-open)); OAuth callbacks reuse the scheme when an OAuth flow needs it. |
 | Services / Quick actions | P2: "Open in OpenRows" for `.sqlite`/`.db`/`.duckdb` files via document types in `Info.plist`. |
 
 ### M0-T4c toolbar geometry
@@ -60,7 +60,7 @@ and [Tao native inset implementation](https://github.com/tauri-apps/tao/blob/tao
 This establishes the intended alignment; the maintainer must verify the actual
 native frame by screenshot on their macOS version. No synthetic buttons are drawn.
 
-### Main window size and position
+### Workspace window size and position
 
 `tauri.conf.json` keeps 1280 × 800 as a fallback and 900 × 600 as the minimum.
 Before the hidden main window is first revealed, `window_frame.rs` either
@@ -74,7 +74,10 @@ directory (`~/Library/Application Support/com.prabhavalabs.openrows/` on
 macOS); delete that file to get the first-launch size again. A saved frame that
 no longer overlaps a connected monitor by at least a quarter of its width and
 height is ignored and the first-launch sizing is used instead. Full-screen and
-visibility are not restored.
+visibility are not restored. Since M5-11 every workspace window (`main`,
+`workspace-2` … `workspace-12`) keeps its own entry in that file and is placed
+the same way when it is restored; a new window opens 26 pt down and right of
+the focused one, with its size.
 
 ### Implemented M0-T4b native material
 
@@ -334,6 +337,99 @@ builds; the default source configuration stays null. Opt-in crash reporting rema
 a stored off-by-default preference with no reporting service. Windows/Linux bundle
 execution and actual Finder association registration require packaged-platform
 verification (M6).
+
+## Implemented (M5-09): `openrows://` links and `openrows open`
+
+**Registration.** `src-tauri/Info.plist` declares `CFBundleURLTypes` with the
+scheme `openrows`; Tauri merges it into the bundle's `Info.plist` (and embeds it
+in dev binaries). macOS LaunchServices delivers links through
+`application:openURLs:`, which Tauri already surfaces as `RunEvent::Opened`, the
+same event the file associations use. So no plugin is added:
+`tauri-plugin-deep-link` would only wrap this event on macOS, and
+`tauri-plugin-single-instance` is unnecessary because LaunchServices keeps one
+instance per bundle. Windows and Linux need both plugins (docs/12 §5 already
+allows them) with M6. Links only work from a bundled app (`just build-app`, or
+any `.app` LaunchServices has registered); `just dev` runs a bare binary that
+LaunchServices cannot route a scheme to.
+
+**Grammar.** Every parameter is in the query string (`application/x-www-form-urlencoded`),
+known and given once; only `filter` repeats (at most 16):
+
+| Link | Parameters |
+| --- | --- |
+| `openrows://connection?id=…&name=…&database=…` | `id` (profile UUID) and/or `name`; optional `database` |
+| `openrows://file?path=/abs/file.sql` | an absolute path ending in a registered extension (`.sql`, `.sqlite`, `.sqlite3`, `.db`, `.duckdb`) |
+| `openrows://object?id=…&name=…&database=…&schema=…[&object=…&kind=…]` | a schema, or a relation (`kind`: `table`, `view`, `materializedView`, `foreignTable`; default `table`) |
+| `openrows://table?…&object=…[&filter=…]*` | as `object` with a relation, plus filters; each `filter` value is itself form-encoded `column`, `op`, `value`, `second` |
+
+The connection is resolved by `id` first, then by a unique `name`; Copy Link
+writes both, so links stay usable on another machine with the same connection
+name. Filter operators are the grid's typed operators; `raw` (SQL predicates)
+is rejected, and Copy Link is disabled for raw filters and OR groups.
+
+**Validation** (`src-tauri/src/links/`, docs/12 §5). Links are parsed in Rust
+before the webview sees them, into the typed `OpenLinkDto` or a typed
+`LinkError` whose message never repeats the link: longer than 8 KiB, other
+schemes, user info, ports, fragments or paths, unknown or repeated parameters,
+keys that name a credential (`pass`, `pwd`, `secret`, `token`, `key`,
+`credential`, `auth`), values holding a `user:password@` URL, invalid UTF-8,
+control characters, line breaks in identifiers, identifiers over 256 or values
+over 4096 characters, and raw filters. Rejections are logged as
+`Rejected an openrows link` with the error kind only, and shown in the window.
+Unit tests, property tests (round trip of every link Copy Link can write, secret
+keys always refused) and fuzz-style tests (arbitrary text and percent-encoded
+bytes never panic) cover the parser.
+
+**Opening.** Links join the native-file queue and go to the focused window (a
+window is opened when none is). File links reuse the file-association path: SQL
+opens in a new editor, database files open the new-connection form. Connection,
+object and table links show an **Open link?** sheet with the connection, its
+environment, server (engine and host, or file path, never a user or secret),
+database, schema, object and filters; nothing connects before **Connect and
+Open**. Then the connection is selected exactly as from the sidebar (its safety
+policy and credential prompts apply), the schema is selected or the relation's
+data view opens with the filters seeded as a foreign-key jump does. No link
+runs SQL beyond that view's usual parameterised page query. A link that starts
+the app waits until the saved connections are read.
+
+**Copy Link** is in the connection menu, the schema menu, a relation's context
+menu and the table filter bar (the applied filters).
+
+**Command line.** `OpenRows.app/Contents/MacOS/openrows-app open <target>`
+forwards `<target>` with `/usr/bin/open -a <bundle>`, which routes it to the
+running instance or starts the app; the command itself never opens a window.
+Targets: an `openrows://` link (validated first), a file path, or
+`connection <name or id>`. For a shorter `openrows open …`, link the binary:
+`ln -s /Applications/OpenRows.app/Contents/MacOS/openrows-app /usr/local/bin/openrows`.
+Invalid input exits with 2 and a message; a LaunchServices failure exits with 1.
+
+## Implemented (M5-11): multiple windows
+
+Window ▸ New Window (⇧⌘N, also in the command palette) opens an independent
+workspace window: its own connections, sessions, tabs and splits. Windows are
+built from the main window's `tauri.conf.json` entry (same overlay titlebar,
+traffic-light inset, material and first-paint reveal) under slot labels
+`main`, `workspace-2` … `workspace-12`; the capability `main` covers all of
+them. Each window stores its tabs and session in `workspace_state` under its
+label (docs/15 §2), and the open labels under `app`/`windows`; a relaunch
+recreates every window with its frame and tabs. Closing a window forgets its
+workspace, except the last window: macOS keeps the app in the Dock, and a Dock
+click, New Window or a link reopens that workspace. Quitting keeps every
+window. Native menu commands and menu enabled-state sync go to the focused
+window only; the app lock covers every window (shared native lock state,
+broadcast lock events). Each window's native title names its active
+connection and database, for the Window menu and Mission Control.
+
+**Moving tabs.** The tab menu offers Move to New Window and Move to Window N;
+Window ▸ Move Tab to New Window moves the active tab. A tab moves as its
+session descriptor, with its unsaved SQL text; results and parameter values do
+not move. The receiving window selects (and so reconnects) the tab's
+connection and database. A tab with a running commit cannot move; staged
+table-row edits stay in the local journal and the table offers to restore them
+in the other window; staged query-result edits and structure changes are
+listed and discarded only after confirmation. Dragging tabs between windows is
+not implemented: each window is a separate WKWebView and HTML drag data does
+not cross them reliably; it needs a native drag session.
 
 ## 9. Implemented (M2-01c): driver-host packaging
 

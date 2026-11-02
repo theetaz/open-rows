@@ -234,6 +234,17 @@ export { crashRecoveryStatus, openLogsFolder, reportUiEvent } from './app';
 export type { UiReport, UiReportKind } from './generated/bindings';
 /** Native window closing, guarded by the webview (staged edits, running commits). */
 export { onWindowClose, closeWindow } from './window';
+/** Workspace windows: new windows and moving tabs between them (FR-APP-03). */
+export {
+  currentWindowLabel,
+  openNewWindow,
+  listWindows,
+  transferTabs,
+  takeTransfers,
+  onTransfersReady,
+  setWindowTitle,
+} from './windows';
+export type { WindowEntryDto } from './generated/bindings';
 export type {
   CellValueDto,
   EditInfoDto,
@@ -476,7 +487,12 @@ export {
   onNativeFilesReady,
   revealDatabase,
 } from './appParity';
-export type { LocationsDto, NativeFileDto } from './generated/bindings';
+export type {
+  LocationsDto,
+  NativeFileDto,
+  OpenLinkDto,
+  LinkConnectionDto,
+} from './generated/bindings';
 
 /** Provider, sharing, assistant and MCP boundaries. */
 export * from './aiExports';

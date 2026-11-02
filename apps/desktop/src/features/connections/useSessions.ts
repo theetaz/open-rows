@@ -22,7 +22,8 @@ export type Sessions = {
   statusOf: (profileId: string) => SessionStatus;
   /**
    * Reach the server, then open the profile's database when it has one;
-   * resolves that database's name (`null` when none or on failure).
+   * resolves that database's name, `''` when connected without one, and
+   * `null` on failure or cancel.
    */
   connect: (profileId: string) => Promise<string | null>;
   disconnect: (profileId: string) => Promise<void>;
@@ -84,7 +85,7 @@ export function useSessions(askPassword: AskPassword = keychain): Sessions {
       });
       if (opened.database)
         await openIn(setStatuses, profileId, opened.database);
-      return opened.database;
+      return opened.database ?? '';
     } catch (error) {
       set(
         profileId,

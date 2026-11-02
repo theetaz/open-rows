@@ -18,7 +18,7 @@ pub(crate) struct TableTarget {
 }
 
 /// Filter-row comparisons (FR-GRID-11 subset).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Type)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub(crate) enum FilterOperatorDto {
     Equal,
@@ -48,7 +48,7 @@ pub(crate) enum FilterOperatorDto {
 }
 
 /// One enabled filter row; `second` is BETWEEN's upper bound.
-#[derive(Clone, Debug, Deserialize, Type)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct FilterDto {
     pub(crate) column: String,

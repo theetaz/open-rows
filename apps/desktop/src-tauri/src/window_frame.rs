@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
-//! Main-window frame: fit the monitor on first launch, restore the saved frame afterwards.
+//! Workspace-window frames: fit the monitor on first launch, restore each
+//! window's saved frame afterwards, and cascade new windows from the focused one.
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
-use tauri::{LogicalSize, Manager, PhysicalSize, WebviewWindow, WindowEvent};
+use tauri::{LogicalSize, Manager, PhysicalPosition, PhysicalSize, WebviewWindow, WindowEvent};
 use tauri_plugin_window_state::{AppHandleExt, StateFlags, WindowExt};
 use tokio::sync::Notify;
 
@@ -11,7 +12,8 @@ use tokio::sync::Notify;
 const STATE_FLAGS: StateFlags = StateFlags::SIZE
     .union(StateFlags::POSITION)
     .union(StateFlags::MAXIMIZED);
-const MAIN_WINDOW: &str = "main";
+/// Offset of a new window from the one it was opened from, in logical pixels.
+const CASCADE: f64 = 26.0;
 /// Share of the monitor work area used on first launch.
 const FILL: f64 = 0.85;
 const MAX_SIZE: (f64, f64) = (1680.0, 1050.0);
@@ -29,29 +31,65 @@ struct Frame {
     height: u32,
 }
 
-/// Window-state plugin that tracks the main window and saves it on exit.
-/// The initial restore is skipped so [`place`] can choose between restoring and fitting.
+/// Window-state plugin that tracks every window and saves them on exit.
+/// The initial restore is skipped for every workspace slot so [`place`] can
+/// choose between restoring and fitting.
 pub(crate) fn plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
-    let builder = tauri_plugin_window_state::Builder::new();
+    let builder = crate::windows::labels().fold(
+        tauri_plugin_window_state::Builder::new(),
+        |builder, label| builder.skip_initial_state(&label),
+    );
     #[cfg(all(feature = "test-automation", debug_assertions, unix))]
     let builder = match std::env::var("OPENROWS_E2E_ROOT") {
         Ok(root) => builder.with_filename(format!("{root}/window-state.json")),
         Err(_) => builder,
     };
-    builder
-        .with_state_flags(STATE_FLAGS)
-        .skip_initial_state(MAIN_WINDOW)
-        .build()
+    builder.with_state_flags(STATE_FLAGS).build()
 }
 
-/// Size and position the hidden main window before its first reveal.
+/// Size and position a hidden window before its first reveal.
 pub(crate) fn place(window: &WebviewWindow) -> tauri::Result<()> {
-    match saved_frame(window) {
+    match saved_frame(window, window.label()) {
         Some(frame) if is_on_screen(frame, &work_areas(window)?) => {
             window.restore_state(STATE_FLAGS)
         }
         _ => fit_to_monitor(window),
     }
+}
+
+/// Place a window in the frame saved under `label`, whose workspace it took over.
+pub(crate) fn place_as(window: &WebviewWindow, label: &str) -> tauri::Result<()> {
+    match saved_frame(window, label) {
+        Some(frame) if is_on_screen(frame, &work_areas(window)?) => set_frame(window, frame),
+        _ => fit_to_monitor(window),
+    }
+}
+
+/// Open a new window offset down and right from `from`, with its size.
+pub(crate) fn cascade(window: &WebviewWindow, from: &WebviewWindow) -> tauri::Result<()> {
+    let offset = (CASCADE * from.scale_factor()?).round();
+    let position = from.outer_position()?;
+    let size = from.inner_size()?;
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "a cascade offset is a few dozen physical pixels"
+    )]
+    let frame = Frame {
+        x: position.x.saturating_add(offset as i32),
+        y: position.y.saturating_add(offset as i32),
+        width: size.width,
+        height: size.height,
+    };
+    if is_on_screen(frame, &work_areas(window)?) {
+        set_frame(window, frame)
+    } else {
+        fit_to_monitor(window)
+    }
+}
+
+fn set_frame(window: &WebviewWindow, frame: Frame) -> tauri::Result<()> {
+    window.set_size(PhysicalSize::new(frame.width, frame.height))?;
+    window.set_position(PhysicalPosition::new(frame.x, frame.y))
 }
 
 /// Save the frame once the user stops moving or resizing the window, so it also
@@ -103,14 +141,15 @@ fn save_if_visible(window: &WebviewWindow) {
     }
 }
 
-/// A missing or unreadable state file means there is nothing to restore.
-fn saved_frame(window: &WebviewWindow) -> Option<Frame> {
+/// The frame saved under `label`; a missing or unreadable state file means
+/// there is nothing to restore.
+fn saved_frame(window: &WebviewWindow, label: &str) -> Option<Frame> {
     let app = window.app_handle();
     let path = app.path().app_config_dir().ok()?.join(app.filename());
     let bytes = std::fs::read(path).ok()?;
     let mut states: HashMap<String, Frame> = serde_json::from_slice(&bytes).ok()?;
     states
-        .remove(MAIN_WINDOW)
+        .remove(label)
         .filter(|frame| frame.width > 0 && frame.height > 0)
 }
 

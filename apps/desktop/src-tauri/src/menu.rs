@@ -5,6 +5,8 @@
 //! webview owns shortcuts and enabled state and pushes them with
 //! [`menu_sync`], so rebinding a shortcut updates the menu too. Standard
 //! items (Edit, Window, Hide, Quit) are the platform's predefined items.
+//! With several windows, commands go to the focused window and only the
+//! focused window's states reach the menu bar (FR-APP-03).
 #![expect(
     clippy::needless_pass_by_value,
     reason = "Tauri deserialises command arguments into owned values"
@@ -200,7 +202,13 @@ const TABLE_OBJECT: &[Entry] = &[
 const VIEW_OBJECT: &[Entry] = &[C("edit-view", "Edit…"), C("drop-view", "Drop…")];
 const SCHEMA_OBJECT: &[Entry] = &[C("rename-schema", "Rename…"), C("drop-schema", "Drop…")];
 const DATABASE_OBJECT: &[Entry] = &[C("rename-database", "Rename…"), C("drop-database", "Drop…")];
-const WINDOW: &[Entry] = &[N(Native::Minimize), N(Native::Zoom)];
+const WINDOW: &[Entry] = &[
+    C("new-window", "New Window"),
+    C("move-tab-to-new-window", "Move Tab to New Window"),
+    S,
+    N(Native::Minimize),
+    N(Native::Zoom),
+];
 const HELP: &[Entry] = &[
     C("help-search", "Search Commands…"),
     S,
@@ -320,26 +328,36 @@ pub(crate) fn install(app: &mut tauri::App) -> tauri::Result<()> {
     let (menu, items) = build(app.handle())?;
     app.set_menu(menu)?;
     app.manage(items);
-    app.on_menu_event(|app, event| {
-        let id = event.id().as_ref();
-        if id == "lock-app" {
-            let _ = crate::security::security_lock(
-                app.clone(),
-                app.state::<crate::security::Security>(),
-            );
-            return;
-        }
-        if app
-            .state::<crate::security::Security>()
-            .admit("menu_action")
-            .is_ok()
-            && app.state::<MenuItems>().0.contains_key(id)
-        {
-            // Emitting only fails while the webview is gone.
-            let _ = MenuCommand { id: id.to_owned() }.emit(app);
-        }
-    });
+    app.on_menu_event(|app, event| route(app, event.id().as_ref()));
     Ok(())
+}
+
+/// Run a menu command in the focused window. With every window closed only
+/// New Window remains meaningful, and the shell opens one itself.
+fn route(app: &tauri::AppHandle, id: &str) {
+    if id == "lock-app" {
+        let _ =
+            crate::security::security_lock(app.clone(), app.state::<crate::security::Security>());
+        return;
+    }
+    if app
+        .state::<crate::security::Security>()
+        .admit("menu_action")
+        .is_err()
+        || !app.state::<MenuItems>().0.contains_key(id)
+    {
+        return;
+    }
+    match crate::windows::target(app) {
+        // Emitting only fails while the webview is gone.
+        Some(label) => {
+            let _ = MenuCommand { id: id.to_owned() }.emit_to(app, label.as_str());
+        }
+        None if id == "new-window" => {
+            crate::windows::ensure_window(app);
+        }
+        None => {}
+    }
 }
 
 /// Apply the webview's enabled state and shortcuts to the menu items.
@@ -347,11 +365,15 @@ pub(crate) fn install(app: &mut tauri::App) -> tauri::Result<()> {
 #[tauri::command]
 #[specta::specta]
 pub(crate) fn menu_sync(
+    window: tauri::WebviewWindow,
     items: State<'_, MenuItems>,
     security: State<'_, crate::security::Security>,
     states: Vec<MenuItemState>,
 ) -> Vec<String> {
     let mut rejected = Vec::new();
+    if !crate::windows::is_target(&window) {
+        return rejected;
+    }
     for state in states {
         let Some(item) = items.0.get(&state.id) else {
             continue;
@@ -446,6 +468,8 @@ mod tests {
             "restore-database",
             "import-connections",
             "export-connections",
+            "new-window",
+            "move-tab-to-new-window",
         ] {
             assert!(ids.contains(&id), "missing {id}");
         }

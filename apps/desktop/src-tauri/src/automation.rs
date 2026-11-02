@@ -35,7 +35,7 @@ pub(crate) fn install(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Er
         root,
         pending: Mutex::new(None),
     });
-    app.add_capability(r#"{"identifier":"automation","windows":["main"],"permissions":["allow-automation-reply","allow-automation-observations"]}"#)?;
+    app.add_capability(r#"{"identifier":"automation","windows":["main","workspace-*"],"permissions":["allow-automation-reply","allow-automation-observations"]}"#)?;
     let handle = app.handle().clone();
     let window = app
         .get_webview_window("main")

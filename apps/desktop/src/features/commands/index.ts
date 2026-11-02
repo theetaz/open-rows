@@ -16,12 +16,14 @@ export {
 } from './bindings';
 export { comboOf, displayCombo } from './keys';
 export {
+  runMoveCommand,
   runPaneCommand,
   runTabCommand,
   runTableCommand,
   tabCommandOf,
   usePaneCommands,
   useTabCommands,
+  useMoveCommand,
   useTableCommands,
 } from './tabCommands';
 export { markKeyHandled, useMenuBridge } from './useMenuBridge';

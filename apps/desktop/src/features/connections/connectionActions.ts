@@ -2,6 +2,7 @@
 import { revealDatabase } from '@openrows/ipc';
 import type { ProfileDto } from '@openrows/ipc';
 import type { Connections } from './useConnections';
+import { connectionLink, copyLink } from '../links/linkText';
 
 /** A labelled connection command for row menus. */
 export type ConnectionAction = readonly [label: string, run: () => void];
@@ -28,6 +29,12 @@ export function connectionActions(
           },
         ],
     ...revealAction(profile),
+    [
+      'Copy Link',
+      () => {
+        copyLink(connectionLink(profile)).catch(() => undefined);
+      },
+    ],
     [
       'Connection settings…',
       () => {

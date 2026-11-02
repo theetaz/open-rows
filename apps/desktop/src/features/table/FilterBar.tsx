@@ -9,6 +9,7 @@ import { SavedFilters } from './filters/SavedFilters';
 import { WherePreview } from './filters/WherePreview';
 import { withParams } from './filters/whereClause';
 import { toFilters } from './model';
+import { CopyLinkButton } from '../links/CopyLinkButton';
 import type { TableView } from './model';
 import type { TableActions } from './useTableTab';
 import styles from './Table.module.css';
@@ -24,6 +25,8 @@ type Props = {
   actions: TableActions;
   /** The table's presentation key, for its saved filters. */
   storageKey: string;
+  /** `openrows://` link of the table with its applied filters; `null` when they cannot be linked. */
+  link?: string | null | undefined;
 };
 
 const combinators: readonly { value: CombinatorDto; label: string }[] = [
@@ -93,6 +96,7 @@ export function FilterBar(props: Props): React.JSX.Element {
         >
           SQL
         </Button>
+        {props.link !== undefined && <CopyLinkButton link={props.link} />}
         <SelectField<CombinatorDto>
           aria-label="Combine groups"
           controlSize="compact"

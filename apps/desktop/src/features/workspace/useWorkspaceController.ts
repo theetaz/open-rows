@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useMcpQueryTabs } from './useMcpProposals';
-import { useNativeFiles } from './useNativeFiles';
 import { useState } from 'react';
 import { openSqlFile } from '@openrows/ipc';
 import { useTheme } from '@openrows/ui';
@@ -33,6 +32,7 @@ import type { PaletteMode } from './WorkspacePalettes';
 import { importOpener } from './TableImport';
 import type { ImportTarget } from './TableImport';
 import type { JobActions } from './JobActions';
+import { useWorkspaceHandoffs } from './useWorkspaceHandoffs';
 /**
  * Tab scopes of the active connection: the active database's scope (the
  * database last chosen, else the profile's, until one is open, so restored
@@ -327,7 +327,7 @@ export function useWorkspaceController(input: Input): WorkspaceController {
   const tabs = useMcpQueryTabs(input.enabled);
   const { setMode: setTheme } = useTheme();
   const { scope, scopeOf } = scopes(connections);
-  const fileNotice = useNativeFiles({ tabs, scope, ...input });
+  const handoffs = useWorkspaceHandoffs({ ...input, tabs, catalog, scope });
   const { compact, inspector } = useLayoutControls();
   const { sidebar, setSidebar, toggleSidebar } = useSidebar();
   const [mode, setMode] = useState<PaletteMode | null>(null);
@@ -386,7 +386,7 @@ export function useWorkspaceController(input: Input): WorkspaceController {
     mode,
     setMode,
     refreshes,
-    fileNotice,
+    ...handoffs,
     ...details,
     toggleSidebar,
     addQuery: commands.addQuery,
@@ -417,6 +417,8 @@ type WorkspaceController = { jobs: JobActions } & Details &
     setMode: (mode: PaletteMode | null) => void;
     refreshes: number;
     fileNotice: string | null;
+    /** The open `openrows://` link's confirmation, if one waits. */
+    linkSheet: React.JSX.Element | null;
     toggleSidebar: () => void;
     /** Open a query tab on the active connection, optionally with SQL. */
     addQuery: (sql?: string) => void;

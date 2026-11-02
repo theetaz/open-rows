@@ -28,6 +28,7 @@ export function menuEnabled(input: {
     ...tableEnabled(input.tab?.kind === 'table', connected),
     'new-tab': Boolean(input.scope),
     'close-tab': Boolean(input.tab),
+    'move-tab-to-new-window': Boolean(input.tab),
     'open-file': Boolean(input.scope),
     save: query,
     'save-as': query,

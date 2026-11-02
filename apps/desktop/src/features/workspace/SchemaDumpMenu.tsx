@@ -3,46 +3,70 @@ import { PointMenu } from '../../shell/PointMenu';
 import type { Catalog, MenuPoint } from '../schema';
 import type { JobActions } from './JobActions';
 
+/** One schema-menu item that closes the menu first. */
+function Item(props: {
+  label: string;
+  disabled?: boolean;
+  run: () => void;
+  onClose: () => void;
+}): React.JSX.Element {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      disabled={props.disabled}
+      onClick={() => {
+        props.onClose();
+        props.run();
+      }}
+    >
+      {props.label}
+    </button>
+  );
+}
+
 /** Schema actions reuse the database restore gate and preselect backup objects. */
 export function SchemaDumpMenu(props: {
   schema: string;
   point: MenuPoint;
   catalog: Catalog;
   jobs: JobActions;
+  /** Copy the schema's `openrows://` link; omitted without a saved connection. */
+  onCopyLink?: ((schema: string) => void) | undefined;
   onClose: () => void;
 }): React.JSX.Element {
-  const database = props.catalog.database;
+  const { catalog, jobs, schema, onClose } = props;
+  const database = catalog.database;
   return (
-    <PointMenu
-      {...props.point}
-      label={`${props.schema} actions`}
-      onClose={props.onClose}
-    >
-      <button
-        type="button"
-        role="menuitem"
-        disabled={!!props.catalog.offline}
-        onClick={() => {
-          props.onClose();
-          props.jobs.backup(database, { schemas: [props.schema], tables: [] });
+    <PointMenu {...props.point} label={`${schema} actions`} onClose={onClose}>
+      <Item
+        label="Back Up…"
+        disabled={!!catalog.offline}
+        onClose={onClose}
+        run={() => {
+          jobs.backup(database, { schemas: [schema], tables: [] });
         }}
-      >
-        Back Up…
-      </button>
-      <button
-        type="button"
-        role="menuitem"
-        disabled={!!props.catalog.offline}
-        onClick={() => {
-          props.onClose();
-          props.jobs.restore(
+      />
+      <Item
+        label="Restore…"
+        disabled={!!catalog.offline}
+        onClose={onClose}
+        run={() => {
+          jobs.restore(
             database,
-            props.catalog.engine === 'postgres' ? props.schema : undefined,
+            catalog.engine === 'postgres' ? schema : undefined,
           );
         }}
-      >
-        Restore…
-      </button>
+      />
+      {props.onCopyLink && (
+        <Item
+          label="Copy Link"
+          onClose={onClose}
+          run={() => {
+            props.onCopyLink?.(schema);
+          }}
+        />
+      )}
     </PointMenu>
   );
 }

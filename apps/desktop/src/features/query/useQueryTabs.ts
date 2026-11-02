@@ -21,7 +21,7 @@ import type {
   TabsState,
 } from './tabs';
 import { keepTab, moveTab, pinTab, renameTab } from './tabOps';
-import { useSavedTabs } from './useSavedTabs';
+import { mergeSessionTabs, useSavedTabs } from './useSavedTabs';
 import { useEditorSettings } from './editorSettings';
 import { generalSettings } from '../settings/general';
 import { useTabPersistence } from './useTabPersistence';
@@ -66,6 +66,8 @@ export type QueryTabs = {
   state: TabsState;
   /** Persist the per-scope split layouts with tab descriptors. */
   setSplits?: (splits: NonNullable<TabsState['splits']>) => void;
+  /** Add tabs moved from another window; each becomes its scope's active tab. */
+  receive?: (moved: TabsState) => void;
 };
 
 /**
@@ -137,6 +139,9 @@ export function useQueryTabs(): QueryTabs {
     },
     setSplits: (splits) => {
       setState((current) => ({ ...current, splits }));
+    },
+    receive: (moved) => {
+      setState((current) => mergeSessionTabs(current, moved));
     },
     state,
   };

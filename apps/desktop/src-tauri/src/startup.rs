@@ -13,24 +13,38 @@ pub(crate) fn install(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Er
         .get_webview_window("main")
         .ok_or(StartupError::MissingWindow)?;
     crate::window_frame::place(&window)?;
-    crate::window_frame::save_when_settled(&window);
-    crate::titlebar::follow(&window);
+    prepare(&window, true)?;
+    startup_report::record(Phase::SetupComplete);
+    Ok(())
+}
+
+/// Shared setup of every workspace window: frame saving, traffic-light inset
+/// and material, then reveal once its webview painted. Only the launch window
+/// (`launch`) records startup phases and prewarms the driver host.
+pub(crate) fn prepare(window: &tauri::WebviewWindow, launch: bool) -> tauri::Result<()> {
+    crate::window_frame::save_when_settled(window);
+    crate::titlebar::follow(window);
     #[cfg(target_os = "macos")]
-    crate::material::install(&window)?;
-    let handle = app.handle().clone();
-    window.clone().once("openrows:first-paint-ready", move |_| {
-        startup_report::record(Phase::FirstPaintReady);
-        if reveal(&window).is_err() {
+    crate::material::install(window)?;
+    let handle = window.app_handle().clone();
+    let shown = window.clone();
+    window.once("openrows:first-paint-ready", move |_| {
+        if launch {
+            startup_report::record(Phase::FirstPaintReady);
+        }
+        if reveal(&shown).is_err() {
             handle.exit(1);
             return;
         }
+        if !launch {
+            return;
+        }
         startup_report::record(Phase::WindowShown);
-        crate::driver_host::after_paint(&window);
+        crate::driver_host::after_paint(&shown);
         if startup_report::enabled() {
             startup_report::watch_stop(handle);
         }
     });
-    startup_report::record(Phase::SetupComplete);
     Ok(())
 }
 

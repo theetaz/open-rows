@@ -16,7 +16,7 @@ enum TransportError {
     Json(#[from] serde_json::Error),
     #[error("Automation webview: {0}")]
     Webview(#[from] tauri::Error),
-    #[error("Missing main window")]
+    #[error("Missing automation window")]
     MissingWindow,
     #[error("Automation state unavailable")]
     State,
@@ -31,6 +31,9 @@ struct Request {
     source: String,
     #[serde(default)]
     exit: bool,
+    /// The window to evaluate in; the main window by default.
+    #[serde(default)]
+    window: Option<String>,
 }
 
 pub(super) async fn serve(app: tauri::AppHandle, listener: std::os::unix::net::UnixListener) {
@@ -57,7 +60,7 @@ async fn execute(app: &tauri::AppHandle, stream: &mut UnixStream) -> Result<(), 
         .await?;
     let request: Request = serde_json::from_str(&line)?;
     let window = app
-        .get_webview_window("main")
+        .get_webview_window(request.window.as_deref().unwrap_or("main"))
         .ok_or(TransportError::MissingWindow)?;
     let (sender, receiver) = oneshot::channel();
     *app.state::<Automation>()

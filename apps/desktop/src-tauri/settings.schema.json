@@ -380,6 +380,8 @@
           "sidebar",
           "inspector",
           "new-tab",
+          "new-window",
+          "move-tab-to-new-window",
           "close-tab",
           "database",
           "toggle-favourite",

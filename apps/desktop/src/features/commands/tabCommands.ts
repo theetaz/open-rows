@@ -46,6 +46,7 @@ function commandTarget<T extends string>(): {
 const queryTab = commandTarget<TabCommand>();
 const tableTab = commandTarget<TableCommand>();
 const panes = commandTarget<PaneCommand>();
+const moves = commandTarget<'move-tab-to-new-window'>();
 
 /**
  * Register the active query tab as the target of tab commands (run, cancel,
@@ -68,6 +69,12 @@ export const usePaneCommands = panes.useTarget;
 
 /** Run a split pane command; `false` when no query area is shown. */
 export const runPaneCommand = panes.run;
+
+/** Register the query area as the target of Move Tab to New Window. */
+export const useMoveCommand = moves.useTarget;
+
+/** Move the active tab to a new window; `false` when no query area is shown. */
+export const runMoveCommand = moves.run;
 
 /** The tab command bound to a key press, unless something handled it already. */
 export function tabCommandOf(event: {

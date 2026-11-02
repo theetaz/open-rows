@@ -3,6 +3,7 @@ import { lazy, Suspense, useState } from 'react';
 import { WorkspaceUpdates } from './WorkspaceUpdates';
 import { NativeDocuments } from '../query/NativeDocuments';
 import { WorkspaceToolbar } from './WorkspaceToolbar';
+import { FileNotice, RefreshAnnouncement } from './WorkspaceNotices';
 import { WorkspaceBody, WorkspaceRail } from './WorkspaceBody';
 const WorkspacePalettes = lazy(() =>
   import('./WorkspacePalettes').then((module) => ({
@@ -67,18 +68,10 @@ export function Workspace({
       <div className={styles.main}>
         <Toolbar connections={connections} controller={controller} />
         <WorkspaceUpdates connections={connections} tabs={controller.tabs} />
-        {controller.fileNotice && (
-          <p className={styles.fileNotice} role="alert">
-            {controller.fileNotice}
-          </p>
-        )}
+        <FileNotice notice={controller.fileNotice} />
         <WorkspaceBody connections={connections} controller={controller} />
       </div>
-      <span className={styles.announcement} role="status">
-        {controller.refreshes
-          ? `Catalog refreshed (${String(controller.refreshes)})`
-          : ''}
-      </span>
+      <RefreshAnnouncement refreshes={controller.refreshes} />
       <WorkspaceOverlay controller={controller} connections={connections} />
       <TransferSheets
         connections={connections}
@@ -100,6 +93,7 @@ export function Workspace({
         }}
       />
       <WorkspaceEditors connections={connections} controller={controller} />
+      {controller.linkSheet}
       <ConnectionSheets connections={connections} />
       <SshPrompts />
     </div>

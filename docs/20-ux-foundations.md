@@ -311,7 +311,7 @@ The app must feel like it was designed for the current macOS, not merely ported 
 | **Menu bar parity** | Every command in the native menu bar with its shortcut; Help menu search finds commands. |
 | **System iconography** | SF Symbols-style line icons at consistent weight; original artwork (no Apple-proprietary glyphs bundled). |
 | **Appearance** | Light, dark and follow-system; respects accent colour, "Reduce transparency" (glass becomes solid), "Increase contrast" (stronger borders), "Reduce motion" (no slide animations), larger text. |
-| **Window behaviour** | Full screen with auto-hiding toolbar, Stage Manager and Split View friendly, window state restoration, multiple windows per workspace. |
+| **Window behaviour** | Full screen with auto-hiding toolbar, Stage Manager and Split View friendly, window state restoration, multiple windows per workspace: Window ▸ New Window (⇧⌘N) opens an independent workspace window; tabs move between windows from the tab menu; a relaunch restores every window with its tabs and frame; closing the last window keeps the app in the Dock (see "Implemented (M5-11)" below). |
 | **Interaction details** | Hover-reveal controls, context menus everywhere, drag-and-drop (tables into the editor, rows out as CSV), Quick Look (space) on cells and files, inline rename, type-to-select in lists. |
 | **App icon** | Layered icon compatible with macOS light, dark, clear and tinted icon modes. |
 
@@ -488,7 +488,7 @@ File ▸ Export Connections… opens a lazy sheet for selected profiles, a group
 
 Existing multi-database contexts, independent tabs and split panes remain the workspace model. Switch Connection in the command palette opens a keyboard-accessible saved-connection selector and previews the environment colour/label, read-only or read/write state, write confirmation, production status and route summary before an explicit switch. Other contexts' tabs stay open. ⌘K opens the database switcher; ⌘P opens objects, local queries and project queries together; ⌘⇧P opens commands. Sidebar and inspector context labels include connection and database; both split-pane headers carry that context plus their tab title.
 
-Versioned session descriptors restore tabs, inspectors, splits and disconnected database tiles without connecting or executing SQL. Activate a connection or press Connect to reconnect using its current safety and credential policy. Reopen Previous Session restores the launch snapshot on demand, including when automatic restore is disabled. Restoring never restores result sets. History adds cursor insertion and an editable literal review before saving to project/local queries, confirmed per-connection/all clearing, and Settings ▸ General retention controls (docs/09, docs/12, docs/15 §11). Multiple OS windows and moving work between windows remain outside M2-20.
+Versioned session descriptors restore tabs, inspectors, splits and disconnected database tiles without connecting or executing SQL. Activate a connection or press Connect to reconnect using its current safety and credential policy. Reopen Previous Session restores the launch snapshot on demand, including when automatic restore is disabled. Restoring never restores result sets. History adds cursor insertion and an editable literal review before saving to project/local queries, confirmed per-connection/all clearing, and Settings ▸ General retention controls (docs/09, docs/12, docs/15 §11). Multiple OS windows and moving work between windows came with M5-11 (below).
 
 ## Implemented (M2-22b): settings, font roles and theme JSON
 
@@ -565,3 +565,15 @@ sidebar, inspector, editor and grid stay solid. Dark surfaces remain page
 The traffic-light configuration is `(19, 28)`; changes require restarting the
 native application. Browser previews cannot verify AppKit's traffic-light centre
 or its material compositing.
+
+## Implemented (M5-11): multiple windows
+
+- **New Window** (Window menu, ⇧⌘N, command palette) opens an independent workspace window offset from the focused one. Each window has its own connections, sessions, tabs and splits; the native window title names the active connection and database so the Window menu and Mission Control tell windows apart. The title bar stays hidden; no new glass surfaces were added.
+- **Moving tabs.** Right-click a tab: Move to New Window, or Move to Window N · <connection — database>. Window ▸ Move Tab to New Window moves the active tab. The tab arrives with its unsaved SQL, becomes active, and the target window selects its connection and database. Results and parameter values do not move (as with session restore). A running commit blocks the move; staged table-row edits stay in the local journal and are offered for restore in the other window; staged query-result edits and structure changes are discarded only after the "Move tab with changes?" sheet. Dragging tabs between windows is not implemented yet (needs a native drag session).
+- **Focus.** Menu commands, menu enabled states, opened files and `openrows://` links go to the focused window.
+- **Lock.** The app lock is shared: locking (menu, shortcut or inactivity) hides every window behind the lock screen, and a window opened while locked starts locked.
+- **Closing and restore.** Closing a window discards its workspace (the existing close guard asks first about staged edits). Closing the last window keeps the app running in the Dock; a Dock click, New Window or a link reopens that last workspace. Quitting keeps every window, and the next launch restores each with its tabs (disconnected, as in M2-20) and frame. At most 12 windows are open at once.
+
+## Implemented (M5-09): `openrows://` links
+
+Links that name a connection open an **Open link?** sheet with the connection, environment, server, database, schema, relation and filters; nothing connects until **Connect and Open**, and links never run SQL. Malformed or hostile links show their typed rejection in the window's notice line. **Copy Link** is in the connection menu, the schema menu, a relation's context menu and the table filter bar (disabled for raw SQL filters and OR groups). Grammar, validation and the `openrows open` command: docs/16 "Implemented (M5-09)".

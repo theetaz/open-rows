@@ -19,7 +19,33 @@ import { SchemaDumpMenu } from './SchemaDumpMenu';
 import type { JobActions } from './JobActions';
 import { CreateMenu } from './CreateMenu';
 import type { ObjectEditing } from './useObjectEditing';
+import { copyLink, isLinkable, objectLink } from '../links/linkText';
 import styles from './Sidebar.module.css';
+
+/** Copy the link of a schema of the active connection's `database`. */
+function schemaLinkCopier(
+  connections: Connections,
+  database: string,
+): ((schema: string) => void) | undefined {
+  const copy = linkCopier(connections);
+  return (
+    copy &&
+    ((schema) => {
+      copy({ database, schema });
+    })
+  );
+}
+
+/** Copy the link of a schema or relation of the active connection. */
+function linkCopier(
+  connections: Connections,
+): ((target: Parameters<typeof objectLink>[1]) => void) | undefined {
+  const profile = connections.active;
+  if (!profile) return undefined;
+  return (target) => {
+    copyLink(objectLink(profile, target)).catch(() => undefined);
+  };
+}
 
 /** The sidebar's views: catalog objects, saved queries and history. */
 const sidebarSegments = ['Items', 'Queries', 'History'].map((label) => ({
@@ -120,6 +146,7 @@ export function WorkspaceSidebar(props: Props): React.JSX.Element {
           {...schemaMenu}
           catalog={catalog}
           jobs={props.jobs}
+          onCopyLink={schemaLinkCopier(props.connections, catalog.database)}
           onClose={() => {
             setSchemaMenu(null);
           }}
@@ -162,6 +189,9 @@ function SidebarMenus(
         onImport={props.onImport}
         features={objects.features}
         onEditor={objects.open}
+        onCopyLink={(object) => {
+          if (isLinkable(object.kind)) linkCopier(props.connections)?.(object);
+        }}
         onBackup={(object) => {
           props.jobs?.backup(object.database, {
             schemas: [],

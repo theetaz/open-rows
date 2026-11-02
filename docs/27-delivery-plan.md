@@ -281,9 +281,9 @@ slice supplies a working foundation; M25-07a..e expand the collector matrix.
 | M5-06 | WebSocket and SSE with message log, composer, filters | FR-API-07 | M4-01 |
 | M5-07 | gRPC unary and streaming via reflection or `.proto` | FR-API-08 | M4-01 |
 | M5-08 | Collection runner and `openrows` CLI with JUnit/JSON/HTML reports | FR-API-10 | M4-05 |
-| M5-09 | URL handler and CLI open command for profiles, files, object/filter links (never auto-executes SQL) | FR-APP-09 | M1-18 |
+| M5-09 | **done —** `openrows://` handler registered through `Info.plist` and the existing `RunEvent::Opened` path (no new plugin), typed Rust parser with unit, property and fuzz-style tests, confirmation sheet with context preview before any connect, links for profiles (id/name), files, schemas/relations and filtered tables, Copy Link in connection, schema, object and filter-bar menus, and `openrows-app open <link | file | connection NAME>` forwarding through LaunchServices to the single instance (docs/16 "Implemented (M5-09)"). Links never carry secrets or SQL and never execute SQL. Windows/Linux registration stays M6. | FR-APP-09 | M1-18 |
 | M5-10 | DB ↔ API integration features (docs/11) | docs/19 M5 | M4, M1 |
-| M5-11 | Multiple windows; move tabs between windows | FR-APP-03 | M1-27 |
+| M5-11 | **done —** Window ▸ New Window (⇧⌘N), independent per-window workspace state keyed by window label, restore of every window with tabs and frame, focused-window menus and menu sync, shared app lock, macOS last-window/Dock behaviour, and moving tabs through the tab menu and Window ▸ Move Tab to New Window with SQL text, connection context and journaled row edits preserved (other staged changes confirmed). Dragging tabs between windows and Merge All Windows remain open (docs/16 "Implemented (M5-11)"). | FR-APP-03 | M1-27 |
 | M5-12 | Localisation-ready strings | FR-APP-06 | — |
 | M5-13 | Cloud auth helpers (RDS IAM, Azure AD, Cloud SQL IAM) | FR-CONN-11 (P2, optional) | M1-06 |
 

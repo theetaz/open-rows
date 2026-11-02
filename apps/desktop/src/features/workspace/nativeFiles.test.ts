@@ -58,3 +58,22 @@ it('hands DuckDB documents to the DuckDB connection form', () => {
     engine: 'duckdb',
   });
 });
+
+it('hands links to the confirmation and connects nothing itself', () => {
+  const onLink = vi.fn();
+  const connect = vi.fn();
+  const connections = { connect } as unknown as Connections;
+  const link = {
+    kind: 'connection' as const,
+    connection: { id: null, name: 'pg' },
+    database: null,
+  };
+  expect(
+    acceptNativeFile(
+      { kind: 'link', link },
+      { tabs: {} as QueryTabs, connections, onLink },
+    ),
+  ).toBeNull();
+  expect(onLink).toHaveBeenCalledWith(link);
+  expect(connect).not.toHaveBeenCalled();
+});

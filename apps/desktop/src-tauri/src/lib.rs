@@ -5,6 +5,7 @@ mod ai_sharing;
 mod assistant;
 #[cfg(all(feature = "test-automation", debug_assertions, unix))]
 mod automation;
+pub mod cli;
 mod commands;
 mod connections;
 mod diagram;
@@ -15,6 +16,7 @@ mod exports;
 mod grid_report;
 mod imports;
 mod jobs;
+mod links;
 mod locations;
 #[cfg(target_os = "macos")]
 mod material;
@@ -39,6 +41,7 @@ mod tables;
 mod titlebar;
 mod updates;
 mod window_frame;
+mod windows;
 mod workspace;
 
 use connections::{
@@ -184,6 +187,10 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
         projects::commands::project_reveal,
         workspace::workspace_state_read,
         workspace::workspace_state_write,
+        windows::commands::window_new,
+        windows::commands::window_list,
+        windows::commands::window_transfer,
+        windows::commands::window_transfer_take,
         tables::commands::table_structure,
         tables::commands::table_sql,
         tables::commands::table_page,
@@ -382,7 +389,8 @@ fn install(
     security::monitor(app.handle());
     settings_watch::watch(app.handle());
     menu::install(app)?;
-    startup::install(app)
+    startup::install(app)?;
+    windows::install(app)
 }
 
 /// The test webview has a separate storage directory before it is created.
@@ -410,8 +418,9 @@ fn application_context() -> tauri::Context<tauri::Wry> {
 fn on_run_event(app: &tauri::AppHandle, event: tauri::RunEvent) {
     #[cfg(target_os = "macos")]
     if let tauri::RunEvent::Opened { urls } = &event {
-        native_files::enqueue(app, urls.iter().filter_map(|url| url.to_file_path().ok()));
+        native_files::opened(app, urls);
     }
+    windows::on_run_event(app, &event);
     if let tauri::RunEvent::Exit = event {
         mcp::exit(app);
         app.state::<connections::Connections>().monitors.stop_all();

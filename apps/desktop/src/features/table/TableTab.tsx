@@ -28,12 +28,15 @@ import { columnQuickOperators } from './filters/quickFilters';
 import type { TableViews } from './useTableViews';
 import { RecoveryBanner } from './recovery/RecoveryBanner';
 import { useEditRecovery } from './recovery/useEditRecovery';
+import { filterLink } from '../links/linkText';
 import styles from './Table.module.css';
 
 type TableTabProps = {
   tabId: string;
   table: TableObject;
   profileId: string;
+  /** The saved connection's name, for Copy Link. */
+  profileName?: string | undefined;
   /** Engine of the connection: quoting for copied SQL, types and forms. */
   engine: EngineDto;
   /** The structure editors the engine supports. */
@@ -144,7 +147,7 @@ export function TableTab(props: TableTabProps): React.JSX.Element {
       <Banner {...props} />
       {view.mode === 'data' && <RecoveryBanner recovery={recovery} />}
       {view.mode === 'data' && view.filtersOpen && (
-        <Filters state={tab} engine={props.engine} />
+        <Filters state={tab} engine={props.engine} owner={props} />
       )}
       <DataArea
         tab={tab}
@@ -221,10 +224,18 @@ function DataArea({
 function Filters({
   state,
   engine,
+  owner,
 }: {
   state: ReturnType<typeof useTableTab>;
   engine: EngineDto;
+  /** The tab's connection and relation, for Copy Link. */
+  owner: Pick<TableTabProps, 'profileId' | 'profileName' | 'table'>;
 }): React.JSX.Element {
+  const link = filterLink(
+    { id: owner.profileId, name: owner.profileName ?? '' },
+    owner.table,
+    state.view,
+  );
   const { structure } = state.entry;
   const types = new Map(
     structure.status === 'ready'
@@ -240,6 +251,7 @@ function Filters({
       query={state.query}
       actions={state.actions}
       storageKey={state.storageKey}
+      link={link}
     />
   );
 }

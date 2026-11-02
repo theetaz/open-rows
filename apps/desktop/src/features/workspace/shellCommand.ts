@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { lockApp } from '@openrows/ipc';
+import { lockApp, openNewWindow } from '@openrows/ipc';
 import { toggleActiveFavourite } from '../schema/activeFavourite';
 import type { QueryTab } from '../query/tabs';
 import type { ThemeMode } from '@openrows/ui';
@@ -7,6 +7,7 @@ import {
   isPaneCommand,
   isTabCommand,
   isTableCommand,
+  runMoveCommand,
   runPaneCommand,
   runTabCommand,
   runTableCommand,
@@ -159,6 +160,12 @@ function workActions(input: ShellInput): Actions {
       else input.addQuery();
     },
     'close-tab': input.closeTab,
+    'new-window': () => {
+      openNewWindow().catch(() => undefined);
+    },
+    'move-tab-to-new-window': () => {
+      runMoveCommand('move-tab-to-new-window');
+    },
     refresh: () => {
       input.refresh();
       runTableCommand('refresh');

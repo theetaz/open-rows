@@ -58,8 +58,8 @@ These FR-NET-03 rows document OpenRows scope; no TablePlus adoption/parity claim
 | W03 | Connection switcher | Choose another server. | New FR-WS-04 | M2 done (M2-20) | Environment and safety preview. | [S10] |
 | W04 | Open anything (⌘P) | Jump to objects or queries. | Covered FR-SCHEMA-02; new FR-WS-04 | M2 done (M2-20) | Cached search ≤ 50 ms. | [S12] |
 | W05 | Workspaces per window | Separate contexts inside one window. | New FR-WS-04 | M2 done (M2-20) | Independent tabs and result lifetimes. | [S10] |
-| W06 | Multiple windows | Open an independent working window. | Covered FR-APP-03 | M2 | Platform-native window behaviour. | [S10] |
-| W07 | Move workspace/tab | Detach work into another window. | Deferred FR-APP-03, FR-APP-10 (M6-05/M5-11; no multi-window runtime) | M6 | Preserve context and pending changes. | [S10] |
+| W06 | Multiple windows | Open an independent working window. | Covered FR-APP-03 (M5-11: Window ▸ New Window ⇧⌘N, per-window workspace, restore of every window, focused-window menus, shared app lock) | M2 | Platform-native window behaviour. | [S10] |
+| W07 | Move workspace/tab | Detach work into another window. | Covered FR-APP-03 (M5-11: tab menu Move to New Window / Move to Window N and Window ▸ Move Tab to New Window; SQL text and connection context move, journaled row edits are offered for restore, other staged changes need confirmation; drag between windows not yet) | M6 | Preserve context and pending changes. | [S10] |
 | W08 | Preview object tab | Reuse an unmodified tab. | Implemented FR-APP-10 (M1-27, M2-22b dirty protection) | M2 | Dirty text cannot be replaced. | [S10] |
 | W09 | Pin object tab | Keep an object open. | Implemented FR-APP-10 (M1-27 persistence) | M2 | Persistent pin plus accessible state. | [S10] |
 | W10 | Rename tabs | Give editors meaningful labels. | Implemented FR-APP-10 (M1-27, M2-20 restore) | M2 | Labels survive layout restore. | [S10] |
@@ -528,7 +528,7 @@ All URLs below were accessed **2026-10-06**. Public text only: no binaries, priv
 
 ### Implemented (M2-20): W01–W05, W12 and B14–B16
 
-Existing independent connection/database contexts and ⌘K database switching are retained. Connection switching previews environment, safety and routing; ⌘P adds cached local/project queries to objects (50 ms p95 gate at 10k + 1k). Per-pane context labels include connection/database, including both split panes. Versioned descriptor restoration and Reopen Previous Session are disconnected and never execute SQL; inspector/table identities and split layouts restore lazily without results or credentials. History reuse routes through current connection safety, adds cursor insertion and an editable literal review before project/local saving, confirmed scoped/all clearing, count/age/forever retention and production/read-only/explicit lexer redaction. See docs/09, docs/12, docs/15 §11 and docs/20. W06–W07 remain independent window work; W08–W11 reuse prior tab operations and are not expanded by this task.
+Existing independent connection/database contexts and ⌘K database switching are retained. Connection switching previews environment, safety and routing; ⌘P adds cached local/project queries to objects (50 ms p95 gate at 10k + 1k). Per-pane context labels include connection/database, including both split panes. Versioned descriptor restoration and Reopen Previous Session are disconnected and never execute SQL; inspector/table identities and split layouts restore lazily without results or credentials. History reuse routes through current connection safety, adds cursor insertion and an editable literal review before project/local saving, confirmed scoped/all clearing, count/age/forever retention and production/read-only/explicit lexer redaction. See docs/09, docs/12, docs/15 §11 and docs/20. W06–W07 landed with M5-11; W08–W11 reuse prior tab operations and are not expanded by this task.
 
 ### Implemented (M2-22a): D09–D16
 
@@ -551,7 +551,7 @@ font roles and versioned safe theme tokens, general preferences/new-run timeout,
 and content-validated native handoffs without SQL execution. See docs/07, docs/15,
 docs/16 and docs/20. Existing P16/P17 grid presentation/count controls, keyboard
 navigation, P23 native menu shortcuts and export reveal actions are retained.
-P08/P09 remain M4.5; P12 remains G11. W07 needs multi-window M6-05/M5-11.
+P08/P09 remain M4.5; P12 remains G11. W07 landed with M5-11 (drag between windows still open).
 P27 startup/native distribution and P29 Windows/Linux validation retain their
 separate milestones. Null signed-feed configuration requires M1-31 release
 engineering before any actual updates.

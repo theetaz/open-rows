@@ -72,6 +72,12 @@ export const COMMANDS: readonly CommandSpec[] = [
   { id: 'sidebar', label: 'Toggle sidebar', shortcut: 'Ctrl+Cmd+S' },
   { id: 'inspector', label: 'Toggle inspector', shortcut: 'Alt+Cmd+I' },
   { id: 'new-tab', label: 'New query tab', shortcut: 'Cmd+T' },
+  { id: 'new-window', label: 'New window', shortcut: 'Shift+Cmd+N' },
+  {
+    id: 'move-tab-to-new-window',
+    label: 'Move tab to new window',
+    shortcut: null,
+  },
   { id: 'close-tab', label: 'Close current tab', shortcut: 'Cmd+W' },
   { id: 'database', label: 'Open database…', shortcut: 'Cmd+K' },
   {

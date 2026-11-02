@@ -363,6 +363,17 @@ export const commands = {
 	workspaceStateRead: (part: WorkspacePartDto) => typedError<string | null, IpcError>(__TAURI_INVOKE("workspace_state_read", { part })),
 	/**  Save the state of `part`; `null` forgets it (session restore off). */
 	workspaceStateWrite: (part: WorkspacePartDto, state: string | null) => typedError<null, IpcError>(__TAURI_INVOKE("workspace_state_write", { part, state })),
+	/**  Window ▸ New Window: an independent workspace window. */
+	windowNew: () => typedError<string, IpcError>(__TAURI_INVOKE("window_new")),
+	/**  Every open workspace window, in slot order. */
+	windowList: () => __TAURI_INVOKE<WindowEntryDto[]>("window_list"),
+	/**
+	 *  Move tabs to window `target`, or to a new window when `None`. The target
+	 *  takes them with [`window_transfer_take`] and is focused; returns its label.
+	 */
+	windowTransfer: (target: string | null, payload: string) => typedError<string, IpcError>(__TAURI_INVOKE("window_transfer", { target, payload })),
+	/**  The tabs moved to the calling window since it last asked. */
+	windowTransferTake: () => __TAURI_INVOKE<string[]>("window_transfer_take"),
 	/**  Columns, indexes and row estimate of a relation, read on the metadata session. */
 	tableStructure: (target: TableTarget) => typedError<TableStructureDto, IpcError>(__TAURI_INVOKE("table_structure", { target })),
 	/**  The page `SELECT` and its bind parameters, without running it (SQL preview). */
@@ -522,7 +533,10 @@ export const commands = {
 	 *  the check; events follow on `on_event`.
 	 */
 	dumpRestoreStart: (request: RestoreRequest, onEvent: Channel<DumpEventDto>) => typedError<DumpStarted, IpcError>(__TAURI_INVOKE("dump_restore_start", { request, onEvent })),
-	/**  Drain queued files after startup or a native event; lock guard applies at IPC. */
+	/**
+	 *  Drain queued handoffs into the window that should receive them (the
+	 *  focused one); other windows get nothing. The lock guard applies at IPC.
+	 */
 	nativeFilesTake: () => typedError<NativeFileDto[], IpcError>(__TAURI_INVOKE("native_files_take")),
 	/**  Reveal only the local database path of an existing saved connection. */
 	databaseReveal: (profileId: string) => typedError<null, IpcError>(__TAURI_INVOKE("database_reveal", { profileId })),
@@ -2445,6 +2459,18 @@ export type LimitsDto = {
 /**  Record separator of delimited text. */
 export type LineEndingDto = "crlf" | "lf";
 
+/**  The saved connection a link names: its id, its name, or both (the id wins). */
+export type LinkConnectionDto = {
+	id: string | null,
+	name: string | null,
+};
+
+/**  A table-like relation a link opens. */
+export type LinkObjectDto = {
+	name: string,
+	kind: ObjectKindDto,
+};
+
 /**  UTF-16 positions of one SQL literal for the webview's review highlights. */
 export type LiteralRangeDto = {
 	from: number,
@@ -2593,7 +2619,9 @@ export type MonitorWindow = {
 };
 
 /**  Validated content or an actionable rejection, never executable instructions. */
-export type NativeFileDto = { kind: "sql"; opened: OpenedSqlFileDto } | { kind: "database"; path: string; engine: EngineDto } | { kind: "rejected"; message: string };
+export type NativeFileDto = { kind: "sql"; opened: OpenedSqlFileDto } | { kind: "database"; path: string; engine: EngineDto } |
+/**  An `openrows://` request the user confirms before anything connects. */
+{ kind: "link"; link: OpenLinkDto } | { kind: "rejected"; message: string };
 
 /**  A check constraint to add. */
 export type NewCheckDto = {
@@ -2756,6 +2784,15 @@ export type ObjectsRequest = {
 	/**  Re-read from the server instead of serving the cache. */
 	fresh: boolean,
 };
+
+/**  What a link asks the workspace to open, after the user confirms it. */
+export type OpenLinkDto =
+/**  Select (and connect) a saved connection, optionally on one database. */
+{ kind: "connection"; connection: LinkConnectionDto; database: string | null } |
+/**  Show a schema, or open a relation's data view. */
+{ kind: "object"; connection: LinkConnectionDto; database: string; schema: string; object: LinkObjectDto | null } |
+/**  Open a relation's data view with parameterised filters, all of which must match. */
+{ kind: "table"; connection: LinkConnectionDto; database: string; schema: string; object: LinkObjectDto; filters: FilterDto[] };
 
 /**  An opened `.sql` file and its text. */
 export type OpenedSqlFileDto = {
@@ -4319,6 +4356,15 @@ export type WidgetLimits = {
 	timeoutMs: number,
 	/**  Cell text kept, in bytes. */
 	maxBytes: number,
+};
+
+/**  One open workspace window, for "Move to Window". */
+export type WindowEntryDto = {
+	label: string,
+	/**  The native title the window's workspace set (its connection). */
+	title: string,
+	/**  The window that asked. */
+	current: boolean,
 };
 
 export type WindowRequest = {

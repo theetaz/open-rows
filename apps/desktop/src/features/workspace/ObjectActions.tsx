@@ -30,6 +30,7 @@ function RelationItems(props: {
   /** `null` when the relation cannot be imported into. */
   onImport: (() => void) | null;
   onDiagram: () => void;
+  onCopyLink: (() => void) | undefined;
 }): React.JSX.Element {
   return (
     <>
@@ -56,6 +57,11 @@ function RelationItems(props: {
       <button type="button" role="menuitem" onClick={props.onDiagram}>
         Show ER Diagram
       </button>
+      {props.onCopyLink && (
+        <button type="button" role="menuitem" onClick={props.onCopyLink}>
+          Copy Link
+        </button>
+      )}
     </>
   );
 }
@@ -76,6 +82,8 @@ export function ObjectActions(props: {
   features: ObjectFeaturesDto | null;
   onEditor: (request: ObjectEditorRequest) => void;
   onBackup?: ((object: ObjectRef) => void) | undefined;
+  /** Copy a relation's `openrows://` link. */
+  onCopyLink?: ((object: ObjectRef) => void) | undefined;
 }): React.JSX.Element | null {
   const [exporting, setExporting] = useState<ObjectRef | null>(null);
   const { menu } = props;
@@ -175,6 +183,12 @@ function ObjectMenuItems(
           onDiagram={choose(() => {
             props.onDiagram(menu.object);
           })}
+          onCopyLink={
+            props.onCopyLink &&
+            choose(() => {
+              props.onCopyLink?.(menu.object);
+            })
+          }
         />
       )}
     </PointMenu>

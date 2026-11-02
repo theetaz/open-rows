@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useRef, useState } from 'react';
 import { onNativeFilesReady, takeNativeFiles } from '@openrows/ipc';
-import type { NativeFileDto } from '@openrows/ipc';
+import type { NativeFileDto, OpenLinkDto } from '@openrows/ipc';
 import type { Connections } from '../connections';
 import type { QueryTabs, TabScope } from '../query';
 
@@ -11,16 +11,24 @@ export const localFileScope: TabScope = {
   database: 'Files',
 };
 
-/** Route validated handoffs to a new editor or a read-only-by-default connection form. */
+/**
+ * Route validated handoffs to a new editor, a read-only-by-default connection
+ * form or the link confirmation (`onLink`); none of them runs SQL.
+ */
 export function acceptNativeFile(
   file: NativeFileDto,
   input: {
     tabs: QueryTabs;
     scope?: TabScope | undefined;
     connections: Connections;
+    onLink?: ((link: OpenLinkDto) => void) | undefined;
   },
 ): string | null {
   if (file.kind === 'rejected') return file.message;
+  if (file.kind === 'link') {
+    input.onLink?.(file.link);
+    return null;
+  }
   if (file.kind === 'database') {
     if (file.engine !== 'sqlite' && file.engine !== 'duckdb')
       return 'Unsupported local database engine';
@@ -53,6 +61,7 @@ export function useNativeFiles(input: {
   scope?: TabScope | undefined;
   connections: Connections;
   enabled: boolean;
+  onLink?: ((link: OpenLinkDto) => void) | undefined;
 }): string | null {
   const latest = useRef(input);
   useEffect(() => {

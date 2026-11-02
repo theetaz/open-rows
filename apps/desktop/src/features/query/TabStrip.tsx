@@ -4,7 +4,7 @@ import { Tabs } from '@openrows/ui';
 import { PointMenu } from '../../shell/PointMenu';
 import menuStyles from '../../shell/CascadeMenu.module.css';
 import { TabMenu } from './TabMenu';
-import type { TabMenuTarget } from './TabMenu';
+import type { MoveTab, TabMenuTarget } from './TabMenu';
 import type { QueryTab as Tab } from './tabs';
 import type { QueryTabs } from './useQueryTabs';
 
@@ -59,6 +59,8 @@ export function TabStrip(props: {
   active: string;
   connection: string;
   onAdd: () => void;
+  /** Move a tab to another window (the tab menu's Move items). */
+  onMove?: MoveTab | undefined;
 }): React.JSX.Element {
   const { tabs } = props;
   const [menu, setMenu] = useState<TabMenuTarget | null>(null);
@@ -102,6 +104,7 @@ export function TabStrip(props: {
           tabs={tabs}
           target={menu}
           onRename={setRenaming}
+          onMove={props.onMove}
           onClose={() => {
             setMenu(null);
           }}

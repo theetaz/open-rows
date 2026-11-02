@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { trackLiveText } from './liveText';
 import { useResultEditNotice } from './ResultWorkspace';
 import { useCallback, useRef, useState } from 'react';
 import { AssistantDock } from '../assistant/AssistantDock';
@@ -289,6 +290,7 @@ function TabEditor(
         onKey={(event) => tabKey(event, act)}
         onReady={(handle) => {
           editorRef.current = handle;
+          trackLiveText(tab.id, handle ? handle.text : null);
         }}
       />
     </>

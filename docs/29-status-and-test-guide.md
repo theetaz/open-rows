@@ -25,7 +25,7 @@ Current priority: **dogfood the app on `main` and collect feedback** before addi
 | Admin | Process list with cancel/kill, users and roles viewer | Per engine |
 | Monitoring | Monitor workspace with live charts and history, query/lock investigation, deterministic alerts and incidents, analytics boards, health/analytics report export, optimisation advisor; **new:** Ask assistant panel for AI investigations of slow queries, locks and health with cited evidence | PG full; MySQL/MariaDB, SQL Server, ClickHouse, SQLite/libSQL, DuckDB per capability |
 | AI | Provider settings (Anthropic, OpenAI, OpenRouter, Gemini, compatible endpoints, Ollama, LM Studio), data-sharing policy with redaction and audit log, assistant panel with explain/fix/plan actions, read-only MCP server; **new:** inline ⌘I SQL proposals with accept/reject diff (also in the editor bar's AI menu), and your own MCP servers (stdio or HTTP) in Settings → AI → MCP with per-tool enable and first-use confirmation; **new:** read-only monitoring tools (health, history, query statistics, locks, plans) behind telemetry consent, grounded findings that cite evidence, board/report proposals saved only on accept (invalid ones rejected with a reason), and opt-in scheduled read-only investigations with budgets, Run now, Pause/Resume and Cancel that pause while locked or with AI off | — |
-| App | Settings (⌘,), themes, native menus, tabs, session restore, command palette, file associations; **new:** macOS DMG packaging and signed update checks with release notes, approval-gated install and an opt-out in Settings ▸ General (inactive until the owner configures the release key) | — |
+| App | Settings (⌘,), themes, native menus, tabs, session restore, command palette, file associations; **new:** macOS DMG packaging and signed update checks with release notes, approval-gated install and an opt-out in Settings ▸ General (inactive until the owner configures the release key); **new:** multiple windows (Window ▸ New Window ⇧⌘N, move tabs between windows from the tab menu, every window restored on relaunch), `openrows://` links with a confirmation sheet and Copy Link, and `openrows-app open <link or file>` (needs a bundled app: `just build-app`) | — |
 
 **Fixed in this round:** boards, incidents, background monitoring and report saving were exported to the frontend but not registered with Tauri, so the app denied those calls; they are now registered and allowed.
 
@@ -44,7 +44,7 @@ Each branch is one squashable lane, based on `main` as of 2026-10-12 (`a9c45f51`
 | NoSQL | M3-05/06 Redis (key browser, type-aware editors, console, cluster/sentinel, pub/sub); M3-07 NoSQL conformance |
 | Long-tail drivers | M5-01 Oracle (driver host + Instant Client), M5-02 Cassandra/ScyllaDB, M5-03 DynamoDB, M5-04 Elasticsearch/OpenSearch, M5-05 Redshift flavour |
 | Connections | M5-13 cloud IAM auth (RDS/Aurora/Redshift IAM, Entra ID, Cloud SQL IAM) |
-| App shell | M5-11 multiple windows, M5-09 `openrows://` URL handler and CLI open, M5-12 localisation-ready strings |
+| App shell | M5-12 localisation-ready strings; dragging tabs between windows and Merge All Windows (M5-11 follow-ups); `openrows://` registration on Windows/Linux (M6) |
 | AI | M45-04 Codex app-server bridge (eligible CLI adapters); M45-09 exit evaluation |
 | Conformance and monitoring | M1-10/11/12/17 Tier 1 conformance facets (TLS/SSH, transactions, golden introspection, MySQL 9.x), M25 history downsampling and remaining PostgreSQL fixtures |
 | Windows and Linux | M6-01..05: credential backends, WebView2/WebKitGTK workarounds, packaging, E2E, per-OS capability matrix; M2-01 Windows MSVC host build |
@@ -90,5 +90,6 @@ Work through these on your real databases; note anything that is wrong, slow, co
 9. **Monitoring:** open Monitor on PostgreSQL; check live charts, history, query and lock investigation, alerts, a board, and a report export.
 10. **AI:** add a provider key, set the data-sharing policy, ask the assistant to explain or fix a query, check the context preview and audit log. In Monitor → Ask assistant (telemetry consent on), ask why a query is slow or what is blocking, check the cited evidence, accept and reject a board proposal, and create, run, pause and cancel a scheduled investigation.
 11. **App:** settings, themes, tabs, session restore after quitting, app lock.
+12. **Windows and links:** open a second window (⇧⌘N), move a query tab with unsaved SQL and a table tab with staged edits to it, lock the app and check both windows lock, quit and relaunch to see both windows return. In a bundled app (`just build-app`), Copy Link on a connection, a table and a filtered table, run `open '<link>'` in Terminal, check the Open link? preview and that nothing connects before Connect and Open; try `OpenRows.app/Contents/MacOS/openrows-app open connection "<name>"`.
 
 Report each item as: what you did, what you expected, what happened, and a screenshot when it is visual.
