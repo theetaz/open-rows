@@ -4,6 +4,7 @@ import type { Tile } from './tiles';
 import { TileSource } from './source';
 import { gridTheme } from './theme';
 import type { GridProps } from './model';
+import type { GridNavigation } from './accessibility';
 /** Deterministic typed buffers, no node-canvas or million JS row objects. */
 export function tile(request: WindowRequest): Promise<Tile> {
   return Promise.resolve({
@@ -58,4 +59,8 @@ export function props(mode: 'light' | 'dark' = 'light'): GridProps {
     onSelection: () => {},
     onError: () => {},
   };
+}
+/** A 20-row page and no viewport, for shadow-grid tests without a renderer. */
+export function navigation(): GridNavigation {
+  return { pageRows: () => 20, moved: () => undefined };
 }

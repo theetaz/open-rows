@@ -138,7 +138,22 @@ Since D-07 the query tab mounts this grid over real `result_window` tiles (see [
 
 - Ranges: list of rectangles `{ r0, r1, c0, c1 }` + active cell; supports cell, multi-range (⌘-click), full rows, full columns, all.
 - Large selections are **logical**, not materialised: "copy 2 M rows × 5 columns" is sent to the core as a range spec and the core writes to the clipboard (with a size warning past 50 MB).
-- Keyboard: arrows, ⇧+arrows, ⌘/Ctrl+arrows (jump to edge), Page Up/Down, Home/End, Tab/⇧Tab, Enter (edit), Esc, Space (toggle row selection in row mode), ⌘A. Implemented so far: arrows, ⇧+arrows, ⌘/Ctrl+arrows (also with ⇧ to extend to the edge), Enter/F2, typing to edit, Space and ⌘/Ctrl+Space, and the context-menu keys.
+- Keyboard (`packages/grid/src/keyboard.ts`; every move works on logical indices, so it costs the same at 10 M rows, where the scroll spacer is capped):
+
+  | Keys | Action |
+  | --- | --- |
+  | ←↑→↓ | Move the focused cell; ⇧ extends the range from a fixed anchor. |
+  | ⌘/Ctrl+arrows | Jump to the first or last row or column; ⇧ extends to the edge. |
+  | Page Up / Page Down | Move by one viewport of whole rows and scroll the same distance, so the focused row keeps its place on screen (clamped at the ends); ⇧ extends. ⌘/Ctrl/⌥ variants are left to the app. |
+  | Home / End | First or last column of the row; ⇧ extends. |
+  | ⌘/Ctrl+Home, ⌘/Ctrl+End | First or last cell of the grid; ⇧ extends. |
+  | Tab / ⇧Tab | Next or previous cell, wrapping to the next or previous row; collapses the selection. At the last cell (⇧Tab: the first) or in an empty grid the key is not handled, so focus leaves the grid as usual. |
+  | ⌃Tab / ⌃⇧Tab | Leave the grid at once: focus the next or previous tabbable element outside it (the AppKit convention for views that use Tab themselves). The grid's `aria-description` announces this. |
+  | Enter / F2, typing | Edit the focused cell (typing seeds the editor). |
+  | Space, ⌘/Ctrl+Space | Select the focused row or column. |
+  | ContextMenu, ⇧F10 | Open the cell menu. |
+
+  Planned, not handled by the grid key handler yet: Esc and ⌘A.
 
 ## 5. Column behaviour
 
@@ -191,8 +206,8 @@ All staging goes through the core's change-set API ([10-schema-and-data-editing.
 The S2 prototype exposes a shadow ARIA grid beside the canvas layers. It exposes one
 focused logical cell with `aria-activedescendant`, a row index of model row + 2
 (the header counts as row 1), column index + 1, and real row/column totals. Tile
-arrival updates the announced header/value. Tab focuses the shadow grid; arrows
-move its focused cell. Canvas clicks and arrow navigation update the same selection model.
+arrival updates the announced header/value. Tab focuses the shadow grid; arrows,
+Page Up/Down, Home/End and Tab move its focused cell (§4), and ⌃Tab leaves it. Canvas clicks and arrow navigation update the same selection model.
 No million-row DOM is created.
 
 This is a hook prototype, not accessibility certification. Neighbouring rows,

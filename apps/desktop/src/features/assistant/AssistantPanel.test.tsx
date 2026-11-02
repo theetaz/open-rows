@@ -261,7 +261,7 @@ it.each(['off', 'provider', 'none', 'lock', 'production'] as const)(
   },
 );
 
-it('shows policy-filtered external results in the assistant trace', async () => {
+it('names external tools by server and tool and shows their policy-filtered results', async () => {
   const { user } = await ready();
   await user.type(
     screen.getByLabelText('Assistant question'),
@@ -274,6 +274,7 @@ it('shows policy-filtered external results in the assistant trace', async () => 
       trace: {
         step: 2,
         tool: 'user_0_0',
+        label: 'Team docs → search_pages',
         arguments: 'query: 10 bytes',
         bytes: 48,
         redacted: true,
@@ -284,7 +285,10 @@ it('shows policy-filtered external results in the assistant trace', async () => 
     });
     events?.({ type: 'done', tokens: 100 });
   });
-  await user.click(screen.getByText(/user_0_0 · failed/));
+  expect(screen.queryByText(/user_0_0/)).toBeNull();
+  await user.click(
+    screen.getByText('Team docs → search_pages · failed · 2 ms'),
+  );
   expect(screen.getByLabelText('MCP tool result')).toHaveTextContent(
     '‹redacted› tool evidence',
   );

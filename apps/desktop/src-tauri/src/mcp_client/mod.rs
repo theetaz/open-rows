@@ -4,6 +4,7 @@
     clippy::needless_pass_by_value,
     reason = "Tauri owns command arguments"
 )]
+mod aliases;
 pub(crate) mod router;
 mod state;
 use crate::{

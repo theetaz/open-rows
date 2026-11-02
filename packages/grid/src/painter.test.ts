@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { afterEach, expect, it, vi } from 'vitest';
 import { CanvasPainter } from './painter';
-import { props } from './testFixture';
+import { props, navigation } from './testFixture';
 import { shadowGrid } from './accessibility';
 
 function canvasMock(): {
@@ -69,7 +69,7 @@ it('records placeholders and exposes focused indices without materializing rows'
   painter.resize(1040, 600);
   painter.paint();
   expect(painter.metrics.placeholders).toBeGreaterThan(0);
-  const shadow = shadowGrid(host, model),
+  const shadow = shadowGrid(host, model, navigation()),
     grid = host.querySelector<HTMLElement>('[role="grid"]');
   expect(grid?.getAttribute('aria-rowcount')).toBe('1000001');
   expect(

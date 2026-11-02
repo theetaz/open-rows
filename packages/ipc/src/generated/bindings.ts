@@ -4198,6 +4198,11 @@ export type Trace_Deserialize = {
 	step: number,
 	/**  Fixed tool name. */
 	tool: string,
+	/**
+	 *  Display name such as `server → tool` for external tools whose
+	 *  provider-facing name is a short alias; never sent to the provider.
+	 */
+	label?: string | null,
 	/**  Argument field names and byte lengths, without values or SQL literals. */
 	arguments: string,
 	/**  Exact gated result size. */
@@ -4218,6 +4223,11 @@ export type Trace_Serialize = {
 	step: number,
 	/**  Fixed tool name. */
 	tool: string,
+	/**
+	 *  Display name such as `server → tool` for external tools whose
+	 *  provider-facing name is a short alias; never sent to the provider.
+	 */
+	label?: string | null,
 	/**  Argument field names and byte lengths, without values or SQL literals. */
 	arguments: string,
 	/**  Exact gated result size. */

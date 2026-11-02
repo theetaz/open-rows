@@ -35,6 +35,7 @@ pub(super) async fn perform(
     let mut trace = Trace {
         step,
         tool: call.name.clone(),
+        label: tools.label(&call.name),
         arguments: summary(call),
         bytes: 0,
         result: None,
@@ -160,5 +161,40 @@ mod tests {
         assert!(!text.is_empty());
         assert!(!text.contains("synthetic-credential"));
         assert!(!text.contains("synthetic-value"));
+    }
+    struct Labelled;
+    impl AgentTools for Labelled {
+        fn definitions(&self) -> Vec<ToolDefinition> {
+            Vec::new()
+        }
+        fn call<'a>(
+            &'a self,
+            _call: &'a ToolCall,
+        ) -> openrows_net::BoxFuture<'a, Result<super::super::ToolReply, AgentError>> {
+            Box::pin(async { Err(AgentError::Refused) })
+        }
+        fn label(&self, name: &str) -> Option<String> {
+            (name == "user_0_0").then(|| "Docs server → search".into())
+        }
+    }
+    #[tokio::test]
+    async fn traces_show_the_display_label_but_the_model_keeps_the_provider_name() {
+        let (sink, mut events) = mpsc::channel(4);
+        let call = ToolCall {
+            id: "fixture".into(),
+            name: "user_0_0".into(),
+            arguments: serde_json::json!({}),
+        };
+        let message = perform(&Labelled, &call, 1, &sink).await.unwrap();
+        for _ in 0..2 {
+            let event = events.recv().await;
+            assert!(matches!(
+                event,
+                Some(AgentEvent::Trace { ref trace })
+                    if trace.tool == "user_0_0"
+                        && trace.label.as_deref() == Some("Docs server → search")
+            ));
+        }
+        assert!(matches!(message, Message::Tool { name, .. } if name == "user_0_0"));
     }
 }

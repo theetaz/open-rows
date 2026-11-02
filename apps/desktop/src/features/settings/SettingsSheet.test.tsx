@@ -249,3 +249,14 @@ it('applies independent editor, grid and sidebar font tokens with line height', 
   expect(screen.getByTestId('grid-metrics')).toHaveTextContent('Consolas');
   expect(screen.getByTestId('grid-metrics')).toHaveTextContent('/14');
 });
+it('lists every section in the sidebar and moves through it with the vertical arrows', async () => {
+  const user = setup();
+  const sections = screen.getByRole('radiogroup', { name: 'Settings section' });
+  expect(within(sections).getAllByRole('radio')).toHaveLength(14);
+  within(sections).getByRole('radio', { name: 'Appearance' }).focus();
+  await user.keyboard('{ArrowDown}');
+  expect(within(sections).getByRole('radio', { name: 'Editor' })).toHaveFocus();
+  expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+    'Settings / Editor',
+  );
+});

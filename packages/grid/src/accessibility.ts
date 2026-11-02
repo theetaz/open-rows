@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
+import { keyMove, leaveGrid } from './keyboard';
+import type { KeyMove } from './keyboard';
 import type { GridProps, SelectionModel } from './model';
 
 const HIDDEN =
@@ -11,11 +13,18 @@ interface ShadowGrid {
   announce: (message: string) => void;
   destroy: () => void;
 }
+/** Viewport hooks for keyboard moves, supplied by the renderer. */
+export interface GridNavigation {
+  /** Whole data rows that fit below the header: one Page Up/Down step. */
+  pageRows: () => number;
+  /** Scroll by `scrollRows`, then reveal the focused cell. */
+  moved: (selection: SelectionModel, scrollRows: number) => void;
+}
 /** One focused logical cell, not a million DOM rows; indices include the header row. */
 export function shadowGrid(
   host: HTMLElement,
   props: GridProps,
-  onMove?: (selection: SelectionModel) => void,
+  navigation: GridNavigation,
 ): ShadowGrid {
   const grid = document.createElement('div'),
     row = document.createElement('div'),
@@ -35,9 +44,12 @@ export function shadowGrid(
     cell.setAttribute('aria-colindex', String(selection.column + 1));
     cell.textContent = `${props.source.columns[selection.column]?.title ?? ''}: ${props.source.cell(selection.row, selection.column)?.text ?? 'Loading'}`;
   };
-  grid.onkeydown = keyHandler(host, props, (selection) => {
-    update(selection);
-    onMove?.(selection);
+  grid.onkeydown = keyHandler(host, props, {
+    pageRows: navigation.pageRows,
+    moved: (selection, scrollRows) => {
+      update(selection);
+      navigation.moved(selection, scrollRows);
+    },
   });
   const unsubscribe = props.source.subscribe(() => {
     update(props.selection);
@@ -62,9 +74,13 @@ export function shadowGrid(
 function keyHandler(
   host: HTMLElement,
   props: GridProps,
-  update: (selection: SelectionModel) => void,
+  navigation: GridNavigation,
 ): (event: KeyboardEvent) => void {
   return (event): void => {
+    if (event.key === 'Tab' && event.ctrlKey && !event.metaKey) {
+      if (leaveGrid(host, event.shiftKey)) event.preventDefault();
+      return;
+    }
     if (
       event.key === 'ContextMenu' ||
       (event.key === 'F10' && event.shiftKey)
@@ -83,16 +99,24 @@ function keyHandler(
       event.preventDefault();
       return;
     }
-    const selection =
-      event.key === ' '
-        ? selectLine(props, event)
-        : moveFocus(props.selection, event, props);
-    if (!selection) return;
+    const move = keyCommand(props, event, navigation.pageRows());
+    if (!move) return;
     event.preventDefault();
-    props.selection = selection;
-    update(selection);
-    props.onSelection(selection);
+    props.selection = move.selection;
+    navigation.moved(move.selection, move.scrollRows);
+    props.onSelection(move.selection);
   };
+}
+/** Space selects a line; every other navigation key moves the focused cell. */
+function keyCommand(
+  props: GridProps,
+  event: KeyboardEvent,
+  pageRows: number,
+): KeyMove | undefined {
+  if (event.key !== ' ')
+    return keyMove(props.selection, event, props, pageRows);
+  const selection = selectLine(props, event);
+  return selection && { selection, scrollRows: 0 };
 }
 /** Space selects the focused row; Ctrl/Cmd+Space selects the focused column. */
 function selectLine(
@@ -137,46 +161,6 @@ function editTrigger(
   return stepper ? 'open' : 'seed';
 }
 let sequence = 0;
-function moveFocus(
-  current: SelectionModel,
-  event: KeyboardEvent,
-  props: GridProps,
-): SelectionModel | undefined {
-  const delta = {
-    ArrowUp: [-1, 0],
-    ArrowDown: [1, 0],
-    ArrowLeft: [0, -1],
-    ArrowRight: [0, 1],
-  }[event.key];
-  if (!delta) return undefined;
-  // ⌘/Ctrl+arrow jumps to the first or last row or column.
-  const step = event.metaKey || event.ctrlKey ? Number.MAX_SAFE_INTEGER : 1;
-  const row = Math.max(
-    0,
-    Math.min(props.source.rows - 1, current.row + (delta[0] ?? 0) * step),
-  );
-  const column = Math.max(
-    props.rowHeaderColumn === 0 ? 1 : 0,
-    Math.min(
-      props.source.columns.length - 1,
-      current.column + (delta[1] ?? 0) * step,
-    ),
-  );
-  const anchor = event.shiftKey ? (current.anchor ?? current) : { row, column };
-  return {
-    row,
-    column,
-    anchor: { row: anchor.row, column: anchor.column },
-    ranges: [
-      {
-        r0: Math.min(anchor.row, row),
-        r1: Math.max(anchor.row, row),
-        c0: Math.min(anchor.column, column),
-        c1: Math.max(anchor.column, column),
-      },
-    ],
-  };
-}
 
 function initialize(
   grid: HTMLElement,
@@ -187,6 +171,10 @@ function initialize(
   grid.setAttribute('aria-label', 'Result grid');
   grid.setAttribute('aria-rowcount', String(props.source.rows + 1));
   grid.setAttribute('aria-colcount', String(props.source.columns.length));
+  grid.setAttribute(
+    'aria-description',
+    'Tab moves between cells; Control-Tab leaves the grid.',
+  );
   grid.style.cssText = HIDDEN;
   grid.tabIndex = 0;
   cell.id = `grid-focus-${String(++sequence)}`;

@@ -28,8 +28,12 @@ export function mountGrid(host: HTMLElement, props: GridProps): GridHandle {
   };
   fit();
   const controller = new CanvasController(scroll, painter, props, vertical);
-  const accessibility = shadowGrid(host, props, (selection) => {
-    reveal(painter, controller, selection);
+  const accessibility = shadowGrid(host, props, {
+    pageRows: () => pageRows(painter, scroll),
+    moved: (selection, scrollRows) => {
+      scrollByRows(painter, controller, scrollRows);
+      reveal(painter, controller, selection);
+    },
   });
   scroll.tabIndex = -1;
   // A click would otherwise leave focus on the scroller, which ignores arrow keys.
@@ -142,6 +146,23 @@ function cellRect(
     width,
     height,
   };
+}
+
+/** Whole data rows visible below the header row; at least one. */
+function pageRows(painter: CanvasPainter, scroll: HTMLElement): number {
+  const height = painter.props.theme.rowHeight;
+  return Math.max(1, Math.floor(scroll.clientHeight / height) - 1);
+}
+
+/** Page Up/Down keep the focused row at the same height on screen. */
+function scrollByRows(
+  painter: CanvasPainter,
+  { vertical }: CanvasController,
+  rows: number,
+): void {
+  if (rows === 0) return;
+  // Logical offsets: exact even when the native spacer is capped.
+  vertical.scrollTo(vertical.offset() + rows * painter.props.theme.rowHeight);
 }
 
 /** Scroll the least distance that shows a cell below the header and right of pins. */

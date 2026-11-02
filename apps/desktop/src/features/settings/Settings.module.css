@@ -1,4 +1,46 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/* A source list beside the pane, like the macOS Settings sidebar: every
+   section stays visible at the sheet's 868 px minimum without scrolling. */
+.layout {
+  display: grid;
+  grid-template-columns: 168px minmax(0, 1fr);
+  grid-template-areas:
+    'top top'
+    'nav pane';
+  align-items: start;
+  row-gap: var(--or-space-12);
+}
+.top {
+  grid-area: top;
+  justify-content: flex-start;
+}
+.top h1 {
+  flex: 1;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sections[role='radiogroup'] {
+  grid-area: nav;
+  position: sticky;
+  inset-block-start: 0;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--or-space-2);
+  block-size: auto;
+  padding: 0;
+  background: transparent;
+}
+.sections[role='radiogroup'] > button {
+  justify-content: flex-start;
+  block-size: var(--or-control-height);
+  padding-inline: var(--or-space-8);
+}
+.pane {
+  grid-area: pane;
+  min-inline-size: 0;
+}
 .paneHeader {
   display: flex;
   align-items: center;

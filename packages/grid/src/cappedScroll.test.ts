@@ -131,6 +131,40 @@ it('jumps to the last and first rows with Cmd+arrows and hit-tests clicked cells
   expect(handle.viewport.y).toBe(0);
   unmount(grid);
 });
+it('pages by one viewport at 10 M rows, keeping the focused row in place on screen', () => {
+  const grid = mount(10_000_000);
+  const { input, handle, host, scroll } = grid;
+  const height = input.theme.rowHeight,
+    page = Math.floor(VIEWPORT / height) - 1;
+  const press = (key: string, extra: KeyboardEventInit = {}): void => {
+    host
+      .querySelector('[role="grid"]')
+      ?.dispatchEvent(new KeyboardEvent('keydown', { key, ...extra }));
+    scroll.dispatchEvent(new Event('scroll'));
+  };
+  handle.select?.(5_000_000, 2);
+  scroll.dispatchEvent(new Event('scroll'));
+  const top = handle.viewport.y,
+    y = handle.cellRect?.(5_000_000, 2)?.y ?? Number.NaN;
+  press('PageDown');
+  expect(input.selection.row).toBe(5_000_000 + page);
+  expect(handle.viewport.y).toBeCloseTo(top + page * height, 6);
+  expect(handle.cellRect?.(5_000_000 + page, 2)?.y).toBeCloseTo(y, 6);
+  press('PageUp', { shiftKey: true });
+  press('PageUp', { shiftKey: true });
+  expect(input.selection.ranges).toEqual([
+    { r0: 5_000_000 - page, r1: 5_000_000 + page, c0: 2, c1: 2 },
+  ]);
+  press('End', { metaKey: true });
+  expect(input.selection).toMatchObject({ row: 9_999_999, column: 99 });
+  expect(handle.cellRect?.(9_999_999, 99)?.y).toBeCloseTo(VIEWPORT - height);
+  press('PageDown');
+  expect(input.selection.row).toBe(9_999_999);
+  press('Home', { ctrlKey: true });
+  expect(input.selection).toMatchObject({ row: 0, column: 0 });
+  expect(handle.viewport.y).toBe(0);
+  unmount(grid);
+});
 it('remaps a capped scroll offset when the viewport height changes', () => {
   mockCanvas();
   let resized: ResizeObserverCallback | undefined;

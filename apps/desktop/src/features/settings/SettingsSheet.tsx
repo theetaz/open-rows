@@ -106,20 +106,11 @@ export function SettingsSheet(props: {
     : (SECTIONS.find((item) => item.value === section)?.label ?? '');
   return (
     <Sheet title="Settings" size="appearance" onClose={props.onClose}>
-      <div className={styles.page}>
-        <header className={styles.header}>
+      <div className={searchStyles.layout}>
+        <header className={[styles.header, searchStyles.top].join(' ')}>
           <h1>
             <span>Settings /</span> {title}
           </h1>
-          <SegmentedControl
-            aria-label="Settings section"
-            options={SECTIONS}
-            value={section}
-            onValueChange={(next) => {
-              setQuery('');
-              setSection(next);
-            }}
-          />
           <TextField
             className={searchStyles.search}
             type="search"
@@ -135,14 +126,29 @@ export function SettingsSheet(props: {
             Done
           </Button>
         </header>
-        <SettingsActions section={section} />
-        <SettingsQuery value={query}>
-          {searching ? (
-            <SearchResults query={query} panes={SEARCHED} />
-          ) : (
-            <Pane section={section} />
-          )}
-        </SettingsQuery>
+        <SegmentedControl
+          aria-label="Settings section"
+          className={searchStyles.sections}
+          tone="accent"
+          options={SECTIONS}
+          value={section}
+          onValueChange={(next) => {
+            setQuery('');
+            setSection(next);
+          }}
+        />
+        <div className={searchStyles.pane}>
+          <div className={styles.page}>
+            <SettingsActions section={section} />
+            <SettingsQuery value={query}>
+              {searching ? (
+                <SearchResults query={query} panes={SEARCHED} />
+              ) : (
+                <Pane section={section} />
+              )}
+            </SettingsQuery>
+          </div>
+        </div>
       </div>
     </Sheet>
   );

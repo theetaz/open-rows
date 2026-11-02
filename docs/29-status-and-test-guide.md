@@ -27,6 +27,8 @@ Current priority: **dogfood the app on `main` and collect feedback** before addi
 | AI | Provider settings (Anthropic, OpenAI, OpenRouter, Gemini, compatible endpoints, Ollama, LM Studio), data-sharing policy with redaction and audit log, assistant panel with explain/fix/plan actions, read-only MCP server; **new:** inline ⌘I SQL proposals with accept/reject diff (also in the editor bar's AI menu), and your own MCP servers (stdio or HTTP) in Settings → AI → MCP with per-tool enable and first-use confirmation; **new:** read-only monitoring tools (health, history, query statistics, locks, plans) behind telemetry consent, grounded findings that cite evidence, board/report proposals saved only on accept (invalid ones rejected with a reason), and opt-in scheduled read-only investigations with budgets, Run now, Pause/Resume and Cancel that pause while locked or with AI off | — |
 | App | Settings (⌘,), themes, native menus, tabs, session restore, command palette, file associations; **new:** macOS DMG packaging and signed update checks with release notes, approval-gated install and an opt-out in Settings ▸ General (inactive until the owner configures the release key); **new:** multiple windows (Window ▸ New Window ⇧⌘N, move tabs between windows from the tab menu, every window restored on relaunch), `openrows://` links with a confirmation sheet and Copy Link, and `openrows-app open <link or file>` (needs a bundled app: `just build-app`) | — |
 
+**Polish (2026-11-02):** the grid adds Page Up/Down (scrolls with the focus, ⇧ extends), Home/End and ⌘/Ctrl+Home/End, Tab/⇧Tab across cells with row wrapping, and ⌃Tab to leave the grid, also at 10 M rows (docs/08 §4); Settings lists its sections in a sidebar so all of them fit at the sheet's minimum width; assistant traces name external MCP tools "server → tool" instead of `user_0_0` (docs/23).
+
 **Fixed in this round:** boards, incidents, background monitoring and report saving were exported to the frontend but not registered with Tauri, so the app denied those calls; they are now registered and allowed.
 
 ## 3. Work-in-progress branches (not on `main`)
@@ -82,14 +84,14 @@ Work through these on your real databases; note anything that is wrong, slow, co
 1. **Connect:** paste a URL and check the form fills; edit the form and check the URL; Test connection over direct, SSH and TLS; save, reopen and reconnect after sleep.
 2. **Browse:** schema tree, search, favourites; structure, indexes, triggers and DDL views; ER diagram of a whole schema and of selected tables.
 3. **Query:** run current/selection/all, cancel a long query, multiple results (try stacked results in Settings), history, formatter, completion settings, Explain plan.
-4. **Table data:** filters, any-column search, header quick filters, sort, FK jump, row form; copy as TSV/CSV/JSON/HTML/SQL with custom delimiters.
+4. **Table data:** keyboard: Page Up/Down, Home/End, ⌘Home/⌘End, Tab/⇧Tab and ⌃Tab to leave the grid; filters, any-column search, header quick filters, sort, FK jump, row form; copy as TSV/CSV/JSON/HTML/SQL with custom delimiters.
 5. **Edit safely:** edit, insert, duplicate and delete rows; review the generated SQL; commit, then make a change that fails and check the whole commit rolls back; undo/redo; date/time pickers.
 6. **Safe mode:** a read-only profile blocks writes everywhere (editor, grid, palette); confirm-before-write prompts; dangerous statements need confirmation.
 7. **Structure:** add a primary key or unique constraint, change a column type (PostgreSQL `USING`), add an index concurrently, reorder a MySQL column, check the DDL preview before applying.
 8. **Import/export and backup:** import a CSV, export to xlsx/Parquet, run a `.sql` file, back up and restore with `pg_dump`.
 9. **Monitoring:** open Monitor on PostgreSQL; check live charts, history, query and lock investigation, alerts, a board, and a report export.
 10. **AI:** add a provider key, set the data-sharing policy, ask the assistant to explain or fix a query, check the context preview and audit log. In Monitor → Ask assistant (telemetry consent on), ask why a query is slow or what is blocking, check the cited evidence, accept and reject a board proposal, and create, run, pause and cancel a scheduled investigation.
-11. **App:** settings, themes, tabs, session restore after quitting, app lock.
+11. **App:** settings (every section listed in the sidebar at the smallest window size), themes, tabs, session restore after quitting, app lock.
 12. **Windows and links:** open a second window (⇧⌘N), move a query tab with unsaved SQL and a table tab with staged edits to it, lock the app and check both windows lock, quit and relaunch to see both windows return. In a bundled app (`just build-app`), Copy Link on a connection, a table and a filtered table, run `open '<link>'` in Terminal, check the Open link? preview and that nothing connects before Connect and Open; try `OpenRows.app/Contents/MacOS/openrows-app open connection "<name>"`.
 
 Report each item as: what you did, what you expected, what happened, and a screenshot when it is visual.

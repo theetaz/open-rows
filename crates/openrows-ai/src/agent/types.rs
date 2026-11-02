@@ -121,6 +121,11 @@ pub trait AgentTools: Send + Sync {
     fn definitions(&self) -> Vec<ToolDefinition>;
     /// Execute one validated, authorised read or create a review proposal.
     fn call<'a>(&'a self, call: &'a ToolCall) -> BoxFuture<'a, Result<ToolReply, AgentError>>;
+    /// User-facing name for a short provider-facing tool name, shown in
+    /// traces instead of it; `None` keeps the fixed name.
+    fn label(&self, _name: &str) -> Option<String> {
+        None
+    }
 }
 /// Fixed failures; raw database/provider errors never reach the trace.
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error, Serialize)]
@@ -152,6 +157,10 @@ pub struct Trace {
     pub step: u32,
     /// Fixed tool name.
     pub tool: String,
+    /// Display name such as `server → tool` for external tools whose
+    /// provider-facing name is a short alias; never sent to the provider.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
     /// Argument field names and byte lengths, without values or SQL literals.
     pub arguments: String,
     /// Exact gated result size.

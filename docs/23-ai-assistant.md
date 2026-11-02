@@ -659,6 +659,12 @@ transport, trace and provider. The shared gate applies its 512-byte field
 limit; truncated arguments are refused and truncated results are disclosed.
 Content-free audit precedes outbound arguments and provider result disclosure.
 External trace argument summaries contain no model-supplied keys or values.
+Providers see each enabled external tool under a short, safe alias
+(`user_<server>_<tool>`, for example `user_0_0`); the alias is unchanged and
+never shown. Every place the user sees the tool names it as
+"<server name> → <tool name>": the conversation trace (the router fills the
+trace's display-only `label` through `AgentTools::label`) and the first-use
+confirmation. The AI audit log records no tool names.
 Protocol/HTTP library diagnostics are excluded from logs. Errors are typed
 (`timeout`, `network`, `protocol` for limit breaches, `invalid`, `secret`,
 `unsupported` when AI is off, `cancelled`) and the settings show recovery text

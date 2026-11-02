@@ -2,7 +2,7 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { mountGrid } from './canvas';
 import { shadowGrid } from './accessibility';
-import { props } from './testFixture';
+import { props, navigation } from './testFixture';
 import type { DisplayCell, GridDataSource } from './model';
 
 function mockCanvas(): void {
@@ -36,7 +36,7 @@ it('opens the editor on Enter and F2, and seeds it with a typed printable key', 
     input = props(),
     onEdit = vi.fn();
   input.onEdit = onEdit;
-  const shadow = shadowGrid(host, input);
+  const shadow = shadowGrid(host, input, navigation());
   const grid = host.querySelector('[role=grid]');
   key(grid, { key: 'F2' });
   expect(onEdit).toHaveBeenLastCalledWith({ row: 2, column: 2 });
@@ -57,7 +57,7 @@ it('opens value menus on stepper columns with Space or typing, and announces edi
   input.onEdit = onEdit;
   const column = input.source.columns[2];
   if (column) column.kind = 'boolean';
-  const shadow = shadowGrid(host, input);
+  const shadow = shadowGrid(host, input, navigation());
   const grid = host.querySelector('[role=grid]');
   key(grid, { key: ' ' });
   key(grid, { key: 't' });

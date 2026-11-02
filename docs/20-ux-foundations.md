@@ -500,6 +500,13 @@ core cancellation timer for new runs; server startup limits apply only to explic
 profile limits so a prior app default cannot cap a later run. Settings groups and all preferences
 reset only after confirmation. Security remains the M2-22a implementation.
 
+The sheet lists its sections (General, Appearance, AI, Monitoring and the rest)
+in a 168 px sidebar source list with the accent selection used by the workspace
+sidebar, beside the pane; ↑/↓ and Home/End move through it. The title, search
+field and Done sit in one row above. Every section stays visible from the
+sheet's minimum width (868 px in the 900 px minimum window) upwards, with no
+horizontal scrolling and no added glass.
+
 Editor/grid/sidebar each have an independent local font family and 11–24 px size;
 editor line height is 1.2/1.5/1.8/2. UI and other monospace labels keep their existing
 controls. Legacy metrics migrate into the separate roles. Grid and sidebar density

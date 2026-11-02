@@ -40,7 +40,8 @@ export function ConversationView(props: {
               aria-label={`Tool step ${String(trace.step)}`}
             >
               <summary>
-                {trace.tool} · {trace.status} · {trace.durationMs} ms
+                {trace.label ?? trace.tool} · {trace.status} ·{' '}
+                {trace.durationMs} ms
               </summary>
               <p>{trace.arguments}</p>
               {trace.result && (
