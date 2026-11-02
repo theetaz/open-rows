@@ -104,6 +104,8 @@ just fuzz-smoke 20  # each cargo-fuzz target for 20 s (skips without nightly and
 just test-pg 17     # PostgreSQL integration tests in a throwaway container (skips without Docker)
 just test-mysql     # MySQL 8.4 and MariaDB 11.4 integration tests in throwaway containers (skips without Docker)
 just test-mysql mariadb:10.11 # any mysql:<tag> / mariadb:<tag> images, one after another
+just e2e            # native E2E journeys 1–6 and 8 on a debug test-automation build (Docker, psql; docs/17 §7)
+just e2e-release-check # release build with test-automation must contain no automation bridge
 pnpm lint           # type-aware ESLint, complexity/size limits, IPC boundary
 pnpm format:check   # frontend/config formatting
 pnpm build          # production frontend bundle (no native window)

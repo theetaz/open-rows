@@ -5,10 +5,10 @@ use tauri::{Listener, Manager};
 mod bench;
 
 pub(crate) fn install(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
-    let runtime = DriverHostRuntime::new(
-        std::env::current_exe()?,
-        app.path().app_cache_dir()?.join("hosts"),
-    );
+    let cache = app.path().app_cache_dir()?;
+    #[cfg(all(feature = "test-automation", debug_assertions, unix))]
+    let cache = crate::automation::root(app.handle()).map_or(cache, |root| root.join("cache"));
+    let runtime = DriverHostRuntime::new(std::env::current_exe()?, cache.join("hosts"));
     // Developer-only explicit path, compiled out together with the override API in release.
     #[cfg(debug_assertions)]
     let runtime = match std::env::var_os("OPENROWS_DEV_HOST") {

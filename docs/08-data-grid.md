@@ -33,6 +33,35 @@ flowchart TB
     model --> a11y
 ```
 
+### 2.0 Scrolling past WebKit's height limit
+
+WebKit clamps layout heights at 33,554,428 CSS pixels (2^25 − 4), about 1.29 M
+rows at the default 26 px row height. The native vertical spacer is therefore
+capped at 32,000,000 px; up to that height the grid scrolls exactly as before,
+with native wheel, momentum and rubber-band handling. Above it
+(`packages/grid/src/scroll.ts`):
+
+- **Scrollbar drags and other native scrolls** map the capped scrollbar range
+  proportionally onto the full logical range, so dragging the thumb to the end
+  shows the last row and the thumb position always matches the row position.
+- **Wheel and trackpad input** is intercepted (a non-passive listener that is
+  only attached while the spacer is capped) and moves the logical offset by
+  exactly the wheel delta, so small deltas keep 1:1 pixel movement instead of
+  being multiplied by the content-to-spacer ratio (8× at 10 M rows). Line and
+  page delta modes use the row and viewport heights. The step updates the
+  viewport directly, because a sub-pixel native move fires no scroll event.
+  Ctrl+wheel (pinch zoom) is left to the webview.
+- **Scripted moves** (keyboard reveals, ⌘/Ctrl+arrow jumps, drag-selection edge
+  scrolling, restored positions) write the proportional native offset and
+  remember the exact logical target while the native offset still shows it, so
+  rounding of the native offset never hides the revealed row.
+
+Viewport offsets, tile requests, hit testing, cell overlays and selection
+reveals all use logical coordinates. Rubber-band offsets are clamped to the
+valid range and a viewport height change re-maps the position. Verified in
+Playwright WebKit with 2 M and 10 M synthetic rows: thumb drag to the end,
+⌘↓/⌘↑, wheel deltas of 1–120 px and clicks near the top, middle and bottom.
+
 ### 2.1 Canvas layers
 
 | Layer | Content | Repaint trigger |
@@ -109,7 +138,7 @@ Since D-07 the query tab mounts this grid over real `result_window` tiles (see [
 
 - Ranges: list of rectangles `{ r0, r1, c0, c1 }` + active cell; supports cell, multi-range (⌘-click), full rows, full columns, all.
 - Large selections are **logical**, not materialised: "copy 2 M rows × 5 columns" is sent to the core as a range spec and the core writes to the clipboard (with a size warning past 50 MB).
-- Keyboard: arrows, ⇧+arrows, ⌘/Ctrl+arrows (jump to edge), Page Up/Down, Home/End, Tab/⇧Tab, Enter (edit), Esc, Space (toggle row selection in row mode), ⌘A.
+- Keyboard: arrows, ⇧+arrows, ⌘/Ctrl+arrows (jump to edge), Page Up/Down, Home/End, Tab/⇧Tab, Enter (edit), Esc, Space (toggle row selection in row mode), ⌘A. Implemented so far: arrows, ⇧+arrows, ⌘/Ctrl+arrows (also with ⇧ to extend to the edge), Enter/F2, typing to edit, Space and ⌘/Ctrl+Space, and the context-menu keys.
 
 ## 5. Column behaviour
 

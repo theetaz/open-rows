@@ -141,12 +141,15 @@ pub(crate) fn install(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Er
         learned_hosts: data.join("known_hosts"),
         local_user: local_user(),
     };
+    let config = app.path().app_config_dir()?;
+    #[cfg(all(feature = "test-automation", debug_assertions, unix))]
+    let config = crate::automation::root(app.handle()).unwrap_or(config);
     app.manage(Connections {
         duckdb: duckdb::DuckdbSessions::default(),
         profiles,
         app: app.handle().clone(),
         command_trust: Arc::new(openrows_store::profile::CommandTrust::new(
-            &app.path().app_config_dir()?.join("trusted-commands.json"),
+            &config.join("trusted-commands.json"),
         )),
         credential_runs: credentials::CredentialRuns::default(),
         imports: exchange::PendingImports::default(),

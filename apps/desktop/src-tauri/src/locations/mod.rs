@@ -31,6 +31,8 @@ pub(crate) struct LocationsDto {
 /// Apply a requested offline move, preserving the original on failure.
 pub(crate) fn install(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let anchor = app.path().app_data_dir()?;
+    #[cfg(all(feature = "test-automation", debug_assertions, unix))]
+    let anchor = crate::automation::root(app.handle()).map_or(anchor, |root| root.join("data"));
     fs::create_dir_all(&anchor)?;
     let pointer = anchor.join("data-location");
     let source = fs::read_to_string(&pointer).map_or_else(|_| anchor.clone(), PathBuf::from);

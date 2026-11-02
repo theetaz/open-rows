@@ -109,7 +109,7 @@ function startCellDrag(
   let last = `${String(anchor.row)}:${String(anchor.column)}`;
   const move = (event: PointerEvent): void => {
     const bounds = scroll.getBoundingClientRect();
-    edgeScroll(scroll, bounds, event);
+    edgeScroll(context.controller, bounds, event);
     const x = Math.min(
         Math.max(event.clientX - bounds.left, 0),
         bounds.width - 1,
@@ -171,13 +171,15 @@ function dragTo(
 }
 /** Scroll a step toward a pointer that has left the grid's edges during a drag. */
 function edgeScroll(
-  scroll: HTMLElement,
+  { scroll, vertical }: CanvasController,
   bounds: DOMRect,
   event: PointerEvent,
 ): void {
   const step = 24;
-  if (event.clientY > bounds.bottom - 8) scroll.scrollTop += step;
-  else if (event.clientY < bounds.top + 8) scroll.scrollTop -= step;
+  if (event.clientY > bounds.bottom - 8)
+    vertical.scrollTo(vertical.offset() + step);
+  else if (event.clientY < bounds.top + 8)
+    vertical.scrollTo(vertical.offset() - step);
   if (event.clientX > bounds.right - 8) scroll.scrollLeft += step;
   else if (event.clientX < bounds.left + 8) scroll.scrollLeft -= step;
 }

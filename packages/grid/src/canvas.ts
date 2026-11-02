@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { VerticalScroll } from './scroll';
 import { CanvasController } from './canvasController';
 import { CanvasPainter } from './painter';
 import { shadowGrid } from './accessibility';
@@ -21,13 +22,14 @@ export function mountGrid(host: HTMLElement, props: GridProps): GridHandle {
   host.append(scroll, layers);
   const painter = new CanvasPainter(layers, props);
   spacerWidth(scroll, painter);
+  const vertical = new VerticalScroll(scroll, spacer, props);
   const fit = (): void => {
-    spacer.style.height = `${String((props.source.rows + 1) * props.theme.rowHeight)}px`;
+    vertical.fit();
   };
   fit();
-  const controller = new CanvasController(scroll, painter, props);
+  const controller = new CanvasController(scroll, painter, props, vertical);
   const accessibility = shadowGrid(host, props, (selection) => {
-    reveal(painter, scroll, selection);
+    reveal(painter, controller, selection);
   });
   scroll.tabIndex = -1;
   // A click would otherwise leave focus on the scroller, which ignores arrow keys.
@@ -51,6 +53,7 @@ export function mountGrid(host: HTMLElement, props: GridProps): GridHandle {
       unsubscribe();
       scroll.removeEventListener('scroll', scrolled);
       controller.destroy();
+      vertical.destroy();
       host.removeEventListener('keydown', controller.invalidate);
       accessibility.destroy();
       scroll.remove();
@@ -68,7 +71,7 @@ function gridHandle(
     metrics: painter.metrics,
     viewport: painter.view,
     scrollTo: (x, y) => {
-      scroll.scrollTo(x, y);
+      scroll.scrollTo(x, controller.vertical.toNative(y));
     },
     setTheme: (theme) => {
       painter.setTheme(theme);
@@ -87,7 +90,7 @@ function gridHandle(
     },
     fitWidth: (column) =>
       autoWidth({ scroll, painter, props, controller, accessibility }, column),
-    cellRect: (row, column) => cellRect(painter, scroll, row, column),
+    cellRect: (row, column) => cellRect(painter, controller, row, column),
     select: (row, column) => {
       props.selection = {
         row,
@@ -95,7 +98,7 @@ function gridHandle(
         anchor: { row, column },
         ranges: [{ r0: row, r1: row, c0: column, c1: column }],
       };
-      reveal(painter, scroll, props.selection);
+      reveal(painter, controller, props.selection);
       accessibility.update(props.selection);
       props.onSelection(props.selection);
       controller.invalidate();
@@ -125,7 +128,7 @@ function rowCountSync(props: GridProps, changed: () => void): () => void {
 /** Read the live scroll offsets, which scripted reveals update synchronously. */
 function cellRect(
   painter: CanvasPainter,
-  scroll: HTMLElement,
+  { scroll, vertical }: CanvasController,
   row: number,
   column: number,
 ): CellRect | undefined {
@@ -135,7 +138,7 @@ function cellRect(
     height = painter.props.theme.rowHeight;
   return {
     x: (painter.layout.offsets[column] ?? 0) - (pinned ? 0 : scroll.scrollLeft),
-    y: (row + 1) * height - scroll.scrollTop,
+    y: (row + 1) * height - vertical.offset(),
     width,
     height,
   };
@@ -144,14 +147,15 @@ function cellRect(
 /** Scroll the least distance that shows a cell below the header and right of pins. */
 function reveal(
   painter: CanvasPainter,
-  scroll: HTMLElement,
+  { scroll, vertical }: CanvasController,
   { row, column }: { row: number; column: number },
 ): void {
   const height = painter.props.theme.rowHeight,
-    top = (row + 1) * height;
-  if (top - height < scroll.scrollTop) scroll.scrollTop = top - height;
-  else if (top + height > scroll.scrollTop + scroll.clientHeight)
-    scroll.scrollTop = top + height - scroll.clientHeight;
+    top = (row + 1) * height,
+    current = vertical.offset();
+  if (top - height < current) vertical.scrollTo(top - height);
+  else if (top + height > current + scroll.clientHeight)
+    vertical.scrollTo(top + height - scroll.clientHeight);
   const { offsets, pinned, pinnedWidth } = painter.layout;
   if (column < pinned) return;
   const left = (offsets[column] ?? 0) - pinnedWidth,

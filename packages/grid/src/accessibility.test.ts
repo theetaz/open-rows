@@ -28,6 +28,25 @@ it('moves the painted range with keyboard focus and extends from a fixed Shift a
   });
   shadow.destroy();
 });
+it('jumps to the edges with Cmd/Ctrl+arrows and extends to an edge with Shift', () => {
+  const host = document.createElement('div');
+  const input = props();
+  const shadow = shadowGrid(host, input);
+  const grid = host.querySelector('[role=grid]');
+  const press = (key: string, extra: KeyboardEventInit): void => {
+    grid?.dispatchEvent(new KeyboardEvent('keydown', { key, ...extra }));
+  };
+  press('ArrowDown', { metaKey: true, shiftKey: true });
+  expect(input.selection.ranges).toEqual([
+    { r0: 2, r1: 999_999, c0: 2, c1: 2 },
+  ]);
+  press('ArrowRight', { ctrlKey: true });
+  expect(input.selection).toMatchObject({ row: 999_999, column: 99 });
+  press('ArrowUp', { metaKey: true });
+  press('ArrowLeft', { metaKey: true });
+  expect(input.selection.ranges).toEqual([{ r0: 0, r1: 0, c0: 0, c1: 0 }]);
+  shadow.destroy();
+});
 it('selects rows without the number gutter, prevents editing its labels, and invokes editing on Enter', () => {
   const host = document.createElement('div');
   const input = props();

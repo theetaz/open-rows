@@ -34,6 +34,8 @@ logs/
 *.sqlite-journal
 *.sqlite-wal
 *.sqlite-shm
+# Native E2E roots (runtime SSH keys, data, logs); the runner removes them.
+/.e2e-*/
 
 # Benchmarks and profiling output
 perf-results/

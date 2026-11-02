@@ -9,6 +9,7 @@ default-run = "openrows-app"
 
 [features]
 ipc-bindings = []
+test-automation = []
 
 [[bin]]
 name = "gen-ipc"

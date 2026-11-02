@@ -37,9 +37,10 @@ pub(crate) fn install(app: &mut tauri::App) -> tauri::Result<()> {
         max_bytes: budget_bytes(crate::settings::text(app).as_deref()),
         ..Limits::default()
     };
-    let spilling = app
-        .path()
-        .app_cache_dir()
+    let cache = app.path().app_cache_dir();
+    #[cfg(all(feature = "test-automation", debug_assertions, unix))]
+    let cache = crate::automation::root(app.handle()).map_or(cache, |root| Ok(root.join("cache")));
+    let spilling = cache
         .map_err(std::io::Error::other)
         .and_then(|cache| SpillDir::create(&cache.join("results")))
         .and_then(|dir| ResultStore::with_spill(limits, dir));

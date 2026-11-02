@@ -32,7 +32,13 @@ struct Frame {
 /// Window-state plugin that tracks the main window and saves it on exit.
 /// The initial restore is skipped so [`place`] can choose between restoring and fitting.
 pub(crate) fn plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
-    tauri_plugin_window_state::Builder::new()
+    let builder = tauri_plugin_window_state::Builder::new();
+    #[cfg(all(feature = "test-automation", debug_assertions, unix))]
+    let builder = match std::env::var("OPENROWS_E2E_ROOT") {
+        Ok(root) => builder.with_filename(format!("{root}/window-state.json")),
+        Err(_) => builder,
+    };
+    builder
         .with_state_flags(STATE_FLAGS)
         .skip_initial_state(MAIN_WINDOW)
         .build()

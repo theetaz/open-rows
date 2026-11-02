@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import type { VerticalScroll } from './scroll';
 import type { GridProps } from './model';
 import { CanvasPainter } from './painter';
 /** Coalesce native scroll/data events; only tile-window transitions allocate requests. */
@@ -12,25 +13,24 @@ export class CanvasController {
   private readonly observer: ResizeObserver;
   private readonly unsubscribe: () => void;
   constructor(
-    private readonly scroll: HTMLElement,
+    readonly scroll: HTMLElement,
     private readonly painter: CanvasPainter,
     private readonly props: GridProps,
+    /** Logical vertical offsets for spacers capped below WebKit's layout limit. */
+    readonly vertical: VerticalScroll,
   ) {
     this.observer = new ResizeObserver((entries) => {
       const entry = entries[0];
       if (!entry) return;
       painter.resize(entry.contentRect.width, entry.contentRect.height);
-      this.painter.layout.visible(
-        this.painter.range,
-        this.painter.view,
-        props.source.rows,
-      );
-      this.requestWindow(0);
+      // Height changes alter the physical-to-logical mapping for capped spacers.
+      this.update();
       this.prepare();
     });
     this.observer.observe(scroll);
     painter.resize(scroll.clientWidth, scroll.clientHeight);
     scroll.addEventListener('scroll', this.update, { passive: true });
+    vertical.onWheel(this.update);
     this.unsubscribe = props.source.subscribe(this.prepare);
     this.watchDpr();
     this.update();
@@ -44,8 +44,8 @@ export class CanvasController {
   /** Track CSS-pixel offsets and request a new tile window only when it changes. */
   readonly update = (): void => {
     const started = performance.now();
-    // Only native event delivery reads offsets. Scripted writes never call this path.
-    const y = this.scroll.scrollTop,
+    // Native scroll and geometry events read offsets; scripted writes wait for delivery.
+    const y = this.vertical.offset(),
       x = this.scroll.scrollLeft;
     const direction = Math.sign(y - this.previous);
     this.previous = y;

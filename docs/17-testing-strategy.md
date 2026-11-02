@@ -196,3 +196,60 @@ for each entire pair of conformance suites. It waits for each load worker to
 start and terminates/reaps them on completion or failure. Its temporary metadata
 is created in the worktree and removed automatically; no extra Cargo target,
 Docker, emulation, test retry or deadline change is involved.
+
+## 7. Native E2E runner (M1-29)
+
+`just e2e` builds the bundled frontend and a debug `openrows-app` with the
+`test-automation` feature. macOS drives WKWebView through a private Unix-socket
+bridge; Linux drives the real app through WebdriverIO and `tauri-driver`.
+Install `psql`, Docker and `ssh-keygen` on both platforms; Linux also needs
+`tauri-driver` 2.1.0, `WebKitWebDriver` (`webkit2gtk-driver`) and a display
+(`xvfb-run -a just e2e` in headless environments).
+
+The runner owns a fresh PostgreSQL 17 container on a random loopback port and
+an OpenSSH container named `openrows-e2e-*`. SSH keys are generated at runtime;
+only the fixture's public host key is trusted in the isolated app directory.
+`OPENROWS_E2E_PG_PORT` uses an explicitly supplied disposable PostgreSQL service
+instead (CI uses its job-local service). Never point it at a user database.
+`OPENROWS_E2E_BINARY` selects a prebuilt automation binary. The suite's
+five-minute deadline excludes native compilation; no sleeps or query retries
+are used. Readiness follows socket/file events, server state and webview frames.
+
+Coverage is §2.4 journeys 1–6 and 8, the database-client journeys:
+
+| Journey | Automated check |
+| --- | --- |
+| 1 | SSH (key auth, pinned host key) connect, schema/objects/structure, filtered page, staged update/insert/delete committed in one transaction and verified with `psql`; a failing batch rolls back and a changed or stale token only re-prepares |
+| 2 | Three-statement script with a failing middle statement: two results plus a `42P01` error on statement 1 |
+| 3 | Cancel a server-confirmed active `pg_sleep`, then reuse the session |
+| 4 | Run the large query from the restored query tab through the UI, scroll the real grid scroller to its native end and observe a tile request for the last row, then export CSV and compare its SHA-256 with server `COPY` bytes |
+| 5 | Terminate the backend inside an open transaction: "transaction lost" error, no write, journaled pending edits preserved |
+| 6 | Kill the app with pending edits and an unsaved query: the recovery sheet appears and both are restored |
+| 8 | Production profile: dangerous SQL needs confirmation and a token for different SQL is refused; read-only blocks SQL writes and table edits |
+
+Journey 7 (Postman import and CLI) belongs to the API client, which is out of
+1.0 (docs/29 §1), and is not automated. The macOS smoke variant uses 10,000
+rows for journey 4; the Linux release journey always uses 5,000,000. Set
+`OPENROWS_E2E_FULL_ROWS=1` to run 5,000,000 rows on macOS too: that grid is
+above WebKit's 33,554,428 px layout limit, so the scroll step also covers the
+capped spacer and its logical row mapping (docs/08 §2.0). The runner deletes its data, logs,
+exports, runtime keys, owned containers and their anonymous volumes on success
+or failure. Failures stop the suite and are reported as failures.
+
+The bridge requires **both** debug assertions and `test-automation`, plus an
+explicit `OPENROWS_E2E_ROOT` containing `.automation-owned`. It is bound to a
+private socket inside that directory. Data, logs, spill cache, ephemeral
+webview storage, window state, command trust and native export destinations
+use the isolated root. Normal database commands and safety checks remain in
+use. A bounded native snapshot retains the last 64 result-end records and
+grid-window requests so Linux and macOS can observe real UI activity without
+replacing Tauri internals. The automation commands are outside the published
+Specta contract, with a capability granted only to the debug test window.
+`just e2e-release-check` builds the actual release executable **with** the
+feature and rejects its binary if any bridge command, environment or socket
+marker remains. Release builds cannot enable the bridge through environment
+variables. The Linux `e2e` CI job runs only on a push to `main`.
+
+New test dependency: WebdriverIO (MIT) supplies the standard WebDriver client;
+its automatic Edge/Firefox installers are disabled because this suite uses
+`tauri-driver` and the system WebKit driver. No new Rust dependency is needed.

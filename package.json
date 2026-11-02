@@ -8,8 +8,8 @@
   },
   "scripts": {
     "lint": "eslint .",
-    "format": "prettier --write '{apps,packages}/**/*.{ts,tsx,css,json,html}' '*.{json,ts,mjs,yaml}' .github/workflows/ci.yml",
-    "format:check": "prettier --check '{apps,packages}/**/*.{ts,tsx,css,json,html}' '*.{json,ts,mjs,yaml}' .github/workflows/ci.yml",
+    "format": "prettier --write '{apps,packages}/**/*.{ts,tsx,mjs,css,json,html}' '*.{json,ts,mjs,yaml}' .github/workflows/ci.yml",
+    "format:check": "prettier --check '{apps,packages}/**/*.{ts,tsx,mjs,css,json,html}' '*.{json,ts,mjs,yaml}' .github/workflows/ci.yml",
     "typecheck": "pnpm -r typecheck",
     "test": "vitest run",
     "knip": "knip",
@@ -30,7 +30,8 @@
     "prettier": "^3.0.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.71.1",
-    "vitest": "^5.0.3"
+    "vitest": "^5.0.3",
+    "webdriverio": "^9.32.0"
   },
   "type": "module"
 }

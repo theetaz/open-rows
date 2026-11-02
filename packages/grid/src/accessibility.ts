@@ -149,13 +149,18 @@ function moveFocus(
     ArrowRight: [0, 1],
   }[event.key];
   if (!delta) return undefined;
+  // ⌘/Ctrl+arrow jumps to the first or last row or column.
+  const step = event.metaKey || event.ctrlKey ? Number.MAX_SAFE_INTEGER : 1;
   const row = Math.max(
     0,
-    Math.min(props.source.rows - 1, current.row + (delta[0] ?? 0)),
+    Math.min(props.source.rows - 1, current.row + (delta[0] ?? 0) * step),
   );
   const column = Math.max(
     props.rowHeaderColumn === 0 ? 1 : 0,
-    Math.min(props.source.columns.length - 1, current.column + (delta[1] ?? 0)),
+    Math.min(
+      props.source.columns.length - 1,
+      current.column + (delta[1] ?? 0) * step,
+    ),
   );
   const anchor = event.shiftKey ? (current.anchor ?? current) : { row, column };
   return {

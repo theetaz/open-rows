@@ -37,7 +37,6 @@ Each branch is one squashable lane, based on `main` as of 2026-10-12 (`a9c45f51`
 | --- | --- | --- | --- |
 | `wip/mongodb` | M3-01..M3-04 MongoDB: document result model and tree/JSON/table views, driver crate, MQL parser and fuzz target, document editing, aggregation pipeline editor | Largest lane (+8.9 k lines); cursor and cancel correctness reworked | `just test-mongo`, fuzz target build, full gate |
 | `wip/ai-monitoring` | M45-10 monitoring investigation tools, M45-11 report/chart/board proposals, M45-12 scheduled read-only investigations | Implemented; `just test-pg` passed once | Full gate, ipc-check |
-| `wip/e2e` | M1-29 dev-only automation IPC, macOS smoke suite, Linux `tauri-driver` E2E and CI job | Implemented; found the grid spacer bug below | Grid fix, local E2E run, full gate |
 | `wip/release-macos` | M1-31 DMG bundle, Developer ID signing/notarisation from secrets, updater with opt-out, `release.yml`, Homebrew cask template | Implemented | Local unsigned DMG build, full gate; real signing needs Apple certificates as GitHub secrets |
 
 ## 4. Remaining work after feedback (not started)
@@ -55,7 +54,6 @@ Each branch is one squashable lane, based on `main` as of 2026-10-12 (`a9c45f51`
 
 ## 5. Known issues
 
-- **Grid row limit:** WebKit clamps the scroll spacer to 33,554,428 px, so with about 1.3 M+ rows at default density the last rows cannot be scrolled to. The fix (cap the physical spacer and map scroll position to the logical row range) is planned on `wip/e2e`.
 - Tier 2 engines are labelled beta. SQL Server exact `float`/`real` edit guards need the CLR, which Azure SQL Edge lacks.
 - No signed build yet; `just build-app` produces an unsigned app.
 - **CI is switched off** (the `CI` workflow is disabled on GitHub, 2026-10-13) while a single maintainer dogfoods the app; re-enable it with `gh workflow enable CI`. Earlier runs also could not start because of a GitHub billing/spending-limit problem.
@@ -68,6 +66,7 @@ just setup        # once: tools, toolchain, pnpm deps, git hooks
 just dev-cert     # macOS, once: stable dev signing so keychain "Always Allow" sticks
 just dev          # native window with hot reload
 just build-app    # unsigned release app
+just e2e          # native E2E journeys 1–6 and 8 against disposable PostgreSQL + OpenSSH containers (docs/17 §7)
 ```
 
 A throwaway PostgreSQL for testing (remove it afterwards with `docker rm -f openrows-try-pg`):
