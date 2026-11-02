@@ -24,7 +24,7 @@ Current priority: **dogfood the app on `main` and collect feedback** before addi
 | Projects | File-backed saved queries in `.openrows/project.yaml`; **new:** shared non-secret connection definitions, snippets as project `.sql` files, saved-query keyword expansion and Insert/Copy SQL | — |
 | Admin | Process list with cancel/kill, users and roles viewer | Per engine |
 | Monitoring | Monitor workspace with live charts and history, query/lock investigation, deterministic alerts and incidents, analytics boards, health/analytics report export, optimisation advisor | PG full; MySQL/MariaDB, SQL Server, ClickHouse, SQLite/libSQL, DuckDB per capability |
-| AI | Provider settings (Anthropic, OpenAI, OpenRouter, Gemini, compatible endpoints, Ollama, LM Studio), data-sharing policy with redaction and audit log, assistant panel with explain/fix/plan actions, read-only MCP server | — |
+| AI | Provider settings (Anthropic, OpenAI, OpenRouter, Gemini, compatible endpoints, Ollama, LM Studio), data-sharing policy with redaction and audit log, assistant panel with explain/fix/plan actions, read-only MCP server; **new:** inline ⌘I SQL proposals with accept/reject diff (also in the editor bar's AI menu), and your own MCP servers (stdio or HTTP) in Settings → AI → MCP with per-tool enable and first-use confirmation | — |
 | App | Settings (⌘,), themes, native menus, tabs, session restore, command palette, file associations | — |
 
 **Fixed in this round:** boards, incidents, background monitoring and report saving were exported to the frontend but not registered with Tauri, so the app denied those calls; they are now registered and allowed.
@@ -36,7 +36,6 @@ Each branch is one squashable lane, based on `main` as of 2026-10-12 (`a9c45f51`
 | Branch | Tasks | State | To finish |
 | --- | --- | --- | --- |
 | `wip/mongodb` | M3-01..M3-04 MongoDB: document result model and tree/JSON/table views, driver crate, MQL parser and fuzz target, document editing, aggregation pipeline editor | Largest lane (+8.9 k lines); cursor and cancel correctness reworked | `just test-mongo`, fuzz target build, full gate |
-| `wip/ai-editor-mcp` | M45-06 inline ⌘I with accept/reject diff; M45-07 MCP client for user servers | Implemented; credential-change catalogue invalidation added | Full gate |
 | `wip/ai-monitoring` | M45-10 monitoring investigation tools, M45-11 report/chart/board proposals, M45-12 scheduled read-only investigations | Implemented; `just test-pg` passed once | Full gate, ipc-check |
 | `wip/e2e` | M1-29 dev-only automation IPC, macOS smoke suite, Linux `tauri-driver` E2E and CI job | Implemented; found the grid spacer bug below | Grid fix, local E2E run, full gate |
 | `wip/release-macos` | M1-31 DMG bundle, Developer ID signing/notarisation from secrets, updater with opt-out, `release.yml`, Homebrew cask template | Implemented | Local unsigned DMG build, full gate; real signing needs Apple certificates as GitHub secrets |

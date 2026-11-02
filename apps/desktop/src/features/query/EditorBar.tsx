@@ -40,6 +40,8 @@ type Props = {
   onExplain?: ((analyze: boolean) => void) | undefined;
   /** Opens the AI assistant, which writes or explains queries from plain language. */
   onAssistant?: (() => void) | undefined;
+  /** Opens the ⌘I prompt over the selection or current statement. */
+  onInline?: (() => void) | undefined;
 };
 
 function CursorText({ store }: { store: CursorStore }): React.JSX.Element {
@@ -117,6 +119,39 @@ function ExplainButton(props: {
   );
 }
 
+/** One AI control: the assistant panel, with ⌘I inline editing in its menu. */
+function AiButton(props: {
+  onAssistant: () => void;
+  onInline?: (() => void) | undefined;
+}): React.JSX.Element {
+  const { onInline } = props;
+  return (
+    <SplitButton
+      label="AI"
+      title="Open the AI assistant; ⌘I edits the selection or statement inline"
+      className={styles.ai}
+      onClick={props.onAssistant}
+      menuLabel="AI options"
+      entries={[
+        ...(onInline
+          ? [
+              {
+                kind: 'item' as const,
+                label: 'Edit SQL with AI',
+                shortcut: '⌘I',
+                run: onInline,
+              },
+            ]
+          : []),
+        { kind: 'item', label: 'Assistant panel', run: props.onAssistant },
+      ]}
+    >
+      <Icon name="sparkles" />
+      AI
+    </SplitButton>
+  );
+}
+
 /**
  * The bar between editor and results (TablePlus layout): editor settings,
  * cursor position, then row limit, Beautify, AI, Explain and Run.
@@ -153,7 +188,7 @@ export function EditorBar(props: Props): React.JSX.Element {
       </MenuButton>
       <SplitButton
         label="Beautify"
-        title="Beautify the selection or the whole query (⌘I)"
+        title="Beautify the selection or the whole query (⌥⌘B)"
         onClick={() => {
           props.onFormat('beautify');
         }}
@@ -163,15 +198,7 @@ export function EditorBar(props: Props): React.JSX.Element {
         Beautify
       </SplitButton>
       {props.onAssistant && (
-        <Button
-          size="sm"
-          className={styles.ai}
-          title="Ask AI to write or explain a query in plain language"
-          onClick={props.onAssistant}
-        >
-          <Icon name="sparkles" />
-          AI
-        </Button>
+        <AiButton onAssistant={props.onAssistant} onInline={props.onInline} />
       )}
       {props.onExplain && (
         <ExplainButton ready={props.run.ready} onExplain={props.onExplain} />

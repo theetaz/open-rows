@@ -1,0 +1,280 @@
+// SPDX-License-Identifier: Apache-2.0
+import { isolateHistory } from '@codemirror/commands';
+import { StateEffect, StateField } from '@codemirror/state';
+import { Decoration, EditorView, WidgetType } from '@codemirror/view';
+import type { DecorationSet } from '@codemirror/view';
+import type { InlineBlock, InlineTransport } from './inline';
+const PROPOSAL_LIMIT = 16384;
+const STREAM_LIMIT = 32768;
+const replace = StateEffect.define<DecorationSet>();
+export const reviewField = StateField.define<DecorationSet>({
+  create: () => Decoration.none,
+  update: (value, transaction) => {
+    if (transaction.docChanged) return Decoration.none;
+    for (const effect of transaction.effects)
+      if (effect.is(replace)) return effect.value;
+    return value;
+  },
+  provide: (field) => EditorView.decorations.from(field),
+});
+class ReviewWidget extends WidgetType {
+  constructor(private readonly controller: Review) {
+    super();
+  }
+  override toDOM(): HTMLElement {
+    return this.controller.dom();
+  }
+  override ignoreEvent(): boolean {
+    return true;
+  }
+}
+type Status = 'prompt' | 'blocked' | 'running' | 'ready' | 'failed';
+/** One prompt → stream → accept/reject cycle over a fixed original range. */
+export class Review {
+  readonly abort = new AbortController();
+  readonly original: string;
+  private readonly document: string;
+  private text = '';
+  private proposal = '';
+  private status: Status;
+  private failure = '';
+  private block: InlineBlock | null;
+  constructor(
+    private readonly view: EditorView,
+    private readonly transport: InlineTransport,
+    readonly range: { from: number; to: number },
+  ) {
+    this.original = view.state.sliceDoc(range.from, range.to);
+    this.document = view.state.doc.toString();
+    this.block = transport.blocked?.() ?? null;
+    this.status = this.block ? 'blocked' : 'prompt';
+  }
+  show(): void {
+    const { from, to } = this.range;
+    const marks = [
+      Decoration.widget({
+        widget: new ReviewWidget(this),
+        block: true,
+        side: 1,
+      }).range(to),
+    ];
+    if (this.status !== 'blocked' && from !== to)
+      marks.unshift(
+        Decoration.mark({
+          class:
+            this.status === 'prompt'
+              ? 'cm-inline-target'
+              : 'cm-inline-original',
+        }).range(from, to),
+      );
+    this.view.dispatch({ effects: replace.of(Decoration.set(marks, true)) });
+  }
+  /** Reject, Escape or Cancel: stop native work and restore the untouched document view. */
+  cancel(): void {
+    this.abort.abort();
+    this.view.dispatch({ effects: replace.of(Decoration.none) });
+    this.view.focus();
+  }
+  private accept(): void {
+    if (
+      this.status !== 'ready' ||
+      this.abort.signal.aborted ||
+      this.document !== this.view.state.doc.toString()
+    )
+      return;
+    this.abort.abort();
+    this.view.dispatch({
+      changes: { ...this.range, insert: this.proposal },
+      effects: replace.of(Decoration.none),
+      annotations: isolateHistory.of('full'),
+      userEvent: 'input.inline-proposal',
+    });
+    this.view.focus();
+  }
+  private async submit(prompt: string): Promise<void> {
+    if (!prompt.trim() || this.status !== 'prompt') return;
+    this.block = this.transport.blocked?.() ?? null;
+    this.status = this.block ? 'blocked' : 'running';
+    this.show();
+    if (this.block) return;
+    this.view.focus();
+    try {
+      const proposal = await this.transport.generate({
+        prompt,
+        sql: this.original,
+        signal: this.abort.signal,
+        delta: (text) => {
+          if (this.abort.signal.aborted) return;
+          this.text = text.slice(0, STREAM_LIMIT);
+          this.show();
+        },
+      });
+      if (this.abort.signal.aborted) return;
+      if (!proposal.trim() || proposal.length > PROPOSAL_LIMIT)
+        throw new Error('No bounded SQL proposal returned.');
+      this.proposal = proposal;
+      this.status = 'ready';
+    } catch (error) {
+      if (this.abort.signal.aborted) return;
+      this.status = 'failed';
+      this.failure =
+        error instanceof Error ? error.message : 'Inline request failed.';
+    }
+    this.show();
+  }
+  dom(): HTMLElement {
+    const host = document.createElement('section');
+    host.className = 'cm-inline-review';
+    host.setAttribute('aria-label', 'Inline SQL proposal');
+    host.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      event.stopPropagation();
+      this.cancel();
+    });
+    const heading = document.createElement('strong');
+    heading.textContent = `AI · ${this.scope()}`;
+    host.append(heading);
+    if (this.status === 'prompt') this.prompt(host);
+    else if (this.status === 'blocked') this.blocked(host);
+    else this.result(host);
+    return host;
+  }
+  private scope(): string {
+    if (this.range.from === this.range.to) return 'Insert at cursor';
+    const { from, to } = this.view.state.selection.main;
+    return from === this.range.from && to === this.range.to
+      ? 'Edit selection'
+      : 'Edit current statement';
+  }
+  private blocked(host: HTMLElement): void {
+    const block = this.block;
+    host.append(paragraph('alert', block?.reason ?? ''));
+    const action = block?.action;
+    if (action)
+      host.append(
+        button(action.label, () => {
+          this.cancel();
+          action.run();
+        }),
+      );
+    host.append(
+      button('Close', () => {
+        this.cancel();
+      }),
+    );
+  }
+  private result(host: HTMLElement): void {
+    host.append(
+      paragraph(
+        this.status === 'failed' ? 'alert' : 'status',
+        this.failure ||
+          (this.status === 'running'
+            ? 'Generating SQL proposal… Escape cancels.'
+            : 'Proposed SQL — review before running. Nothing runs automatically.'),
+      ),
+    );
+    const code = document.createElement('pre');
+    code.className = 'cm-inline-proposal';
+    code.setAttribute('aria-label', 'Proposed SQL');
+    code.textContent = this.proposal || this.text;
+    host.append(code);
+    if (this.status === 'ready')
+      host.append(
+        button('Accept proposal', () => {
+          this.accept();
+        }),
+      );
+    host.append(
+      button(
+        this.status === 'running' ? 'Cancel proposal' : 'Reject proposal',
+        () => {
+          this.cancel();
+        },
+      ),
+    );
+  }
+  private prompt(host: HTMLElement): void {
+    const form = document.createElement('form');
+    const input = document.createElement('input');
+    input.maxLength = 3500;
+    input.placeholder =
+      'Describe the SQL you want — Enter generates, Esc closes';
+    input.setAttribute('aria-label', 'Inline SQL prompt');
+    form.append(
+      input,
+      button('Generate proposal', () => void this.submit(input.value)),
+      button('Close', () => {
+        this.cancel();
+      }),
+    );
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      void this.submit(input.value);
+    });
+    host.append(form);
+    queueMicrotask(() => {
+      if (input.isConnected) input.focus();
+    });
+  }
+}
+function paragraph(role: 'alert' | 'status', text: string): HTMLElement {
+  const element = document.createElement('p');
+  element.setAttribute('role', role);
+  element.textContent = text;
+  return element;
+}
+function button(label: string, action: () => void): HTMLButtonElement {
+  const element = document.createElement('button');
+  element.type = 'button';
+  element.textContent = label;
+  element.addEventListener('click', action);
+  return element;
+}
+export const inlineTheme = EditorView.baseTheme({
+  '.cm-inline-review': {
+    margin: '4px 0',
+    padding: '8px 12px',
+    whiteSpace: 'normal',
+    fontFamily: 'var(--or-font-ui)',
+    border: '1px solid var(--or-separator)',
+    borderRadius: '6px',
+    background: 'var(--or-panel-solid)',
+    color: 'var(--or-text)',
+  },
+  '.cm-inline-review p': { margin: '4px 0' },
+  '.cm-inline-review pre': {
+    whiteSpace: 'pre-wrap',
+    maxHeight: '240px',
+    overflow: 'auto',
+    margin: '4px 0',
+    padding: '4px 8px',
+    fontFamily: 'var(--or-font-editor)',
+  },
+  '.cm-inline-proposal': {
+    background: 'var(--or-success-bg)',
+    borderLeft: '3px solid var(--or-success-fg)',
+  },
+  '.cm-inline-review input': {
+    width: 'min(480px, 100%)',
+    marginRight: '4px',
+    color: 'inherit',
+    background: 'var(--or-control-fill)',
+    border: '1px solid var(--or-control-stroke)',
+  },
+  '.cm-inline-review button': {
+    margin: '4px 4px 0 0',
+    color: 'inherit',
+    background: 'var(--or-control-fill)',
+    border: '1px solid var(--or-control-stroke)',
+    borderRadius: '4px',
+  },
+  '.cm-inline-target': {
+    outline: '1px dashed var(--or-accent)',
+  },
+  '.cm-inline-original': {
+    textDecoration: 'line-through',
+    background: 'var(--or-danger-bg)',
+    opacity: '0.75',
+  },
+});

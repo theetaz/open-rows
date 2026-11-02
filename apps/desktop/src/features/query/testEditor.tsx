@@ -43,6 +43,10 @@ export function TextareaEditor(props: {
         element.setRangeText(body, at, element.selectionEnd, 'end');
         element.dispatchEvent(new Event('input', { bubbles: true }));
       },
+      // The ⌘I review itself is tested in @openrows/editor; this records the request.
+      promptInline: () => {
+        element.value = `-- inline prompt\n${element.value}`;
+      },
       runStart: () =>
         element.selectionStart === element.selectionEnd
           ? 0

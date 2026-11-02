@@ -17,6 +17,7 @@ import {
   useSettingsRevision,
 } from '../features/settings';
 import type { SettingsSection } from '../features/settings';
+import { onSettingsRequest } from '../features/settings/settingsRequest';
 import {
   applyTableSettings,
   tableSettings,
@@ -70,6 +71,7 @@ export function App(): React.JSX.Element {
   useSettingsKey(() => {
     setSettings((open) => open ?? 'general');
   });
+  useEffect(() => onSettingsRequest(setSettings), []);
   useGeneralSettings();
   const revision = useSettingsRevision();
   useEffect(() => {

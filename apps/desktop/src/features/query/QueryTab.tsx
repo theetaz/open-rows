@@ -3,6 +3,7 @@ import { useResultEditNotice } from './ResultWorkspace';
 import { useCallback, useRef, useState } from 'react';
 import { AssistantDock } from '../assistant/AssistantDock';
 import { toggleAssistant } from '../assistant/conversation';
+import { inlineTransport } from '../assistant/inlineSetup';
 import { editorDialect } from '../connections/engines';
 import type { ProfileDto } from '@openrows/ipc';
 import type { CompletionCatalog, FormatKind } from '@openrows/editor';
@@ -95,6 +96,21 @@ function useFlag(): [boolean, () => void, () => void] {
   return [on, open, close];
 }
 
+/** The AI button and ⌘I: the assistant panel, and the editor's inline prompt. */
+function useAiActions(
+  tabId: string,
+  editor: { current: EditorHandle | null },
+): { inline: () => void; assistant: () => void } {
+  return {
+    inline: () => {
+      editor.current?.promptInline?.();
+    },
+    assistant: () => {
+      toggleAssistant(tabId);
+    },
+  };
+}
+
 /** Editor, bottom bar, results and status for one query tab. */
 export function QueryTab(props: QueryTabProps): React.JSX.Element {
   const { tab, runs } = props;
@@ -109,6 +125,7 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
   const actions = useRunActions(editor, settings, props);
   const editNotice = useResultEditNotice(tab.id);
   const explain = useExplain(tab.id, props.sessionId, editor);
+  const { inline, assistant } = useAiActions(tab.id, editor);
   const [act, onExportable, claim] = useTabAction({
     actions,
     format,
@@ -116,9 +133,8 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
     runs,
     tabId: tab.id,
     onSnippet: sheets.startPicking,
-    onAssistant: () => {
-      toggleAssistant(tab.id);
-    },
+    onInline: inline,
+    onAssistant: assistant,
     onExplain:
       props.connection.engine === 'duckdb' ? () => undefined : explain.run,
   });
@@ -151,9 +167,8 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
           notice={editNotice ?? props.notice ?? formatFailure ?? files.failure}
           onName={sheets.startNaming}
           onExplain={explain.run}
-          onAssistant={() => {
-            toggleAssistant(tab.id);
-          }}
+          onAssistant={assistant}
+          onInline={inline}
         />
         <TabParams
           {...props}
@@ -260,6 +275,10 @@ function TabEditor(
         profileId={props.connection.id}
         doc={tab.sql}
         label="SQL editor"
+        onInline={inlineTransport({
+          profile: props.connection,
+          database: tab.database,
+        })}
         dialect={editorDialect(props.connection.engine)}
         settings={props.settings}
         catalog={props.catalog}
@@ -293,6 +312,7 @@ function TabBar(
     onName: () => void;
     onExplain: (analyze: boolean) => void;
     onAssistant: () => void;
+    onInline: () => void;
   },
 ): React.JSX.Element {
   const { settings, actions, run } = props;
@@ -327,6 +347,7 @@ function TabBar(
         props.connection.engine === 'duckdb' ? undefined : props.onExplain
       }
       onAssistant={props.onAssistant}
+      onInline={props.onInline}
     />
   );
 }

@@ -98,6 +98,7 @@ pub(crate) fn security_lock(
     app.state::<crate::connections::Connections>()
         .monitors
         .stop_all();
+    app.state::<crate::mcp_client::State>().invalidate();
     crate::mcp::pause(&app);
     let _ = app.emit("security-changed", true);
     Ok(())
@@ -265,6 +266,7 @@ pub(crate) fn fallback_import(batch: &mut openrows_store::profile::exchange::Imp
 fn announce_lock(app: &tauri::AppHandle, locked: bool) {
     if locked {
         app.state::<crate::ai::AiState>().revoke();
+        app.state::<crate::mcp_client::State>().invalidate();
         crate::mcp::pause(app);
     }
     let _ = app.emit("security-changed", locked);

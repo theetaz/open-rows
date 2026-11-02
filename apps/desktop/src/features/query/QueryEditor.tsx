@@ -2,6 +2,7 @@
 import { useEffect, useRef } from 'react';
 import type { RefObject } from 'react';
 import type {
+  InlineTransport,
   CompletionCatalog,
   EditorDialect,
   EditorPreferences,
@@ -27,6 +28,8 @@ import styles from './Query.module.css';
 const SAVE_DELAY_MS = 300;
 
 type Props = {
+  /** ⌘I proposals; read through the latest props so scope changes apply. */
+  onInline?: InlineTransport;
   /** Initial text; later edits stay in the editor until saved through `onChange`. */
   doc: string;
   profileId?: string;
@@ -98,6 +101,7 @@ function handleOf(editor: SqlEditor): EditorHandle {
     insertSnippet: editor.insertSnippet,
     insertText: editor.insertText,
     runStart: editor.runStart,
+    promptInline: editor.promptInline,
   };
 }
 
@@ -156,6 +160,7 @@ function mount(
     if (cancelled || !parent) return;
     const props = latest.current;
     const editor = mountSqlEditor(parent, {
+      ...(props.onInline ? { onInline: inlineFor(latest) } : {}),
       doc: props.doc,
       label: props.label,
       dialect: props.dialect,
@@ -231,4 +236,16 @@ export function QueryEditor(props: Props): React.JSX.Element {
       );
   }, [keyBinding]);
   return <div ref={host} className={styles.editor} />;
+}
+
+function inlineFor(latest: RefObject<Props>): InlineTransport {
+  return {
+    generate: (input) => {
+      const transport = latest.current.onInline;
+      return transport
+        ? transport.generate(input)
+        : Promise.reject(new Error('Inline generation unavailable.'));
+    },
+    blocked: () => latest.current.onInline?.blocked?.() ?? null,
+  };
 }

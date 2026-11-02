@@ -260,3 +260,32 @@ it.each(['off', 'provider', 'none', 'lock', 'production'] as const)(
     expect(verifyAiProvider).not.toHaveBeenCalled();
   },
 );
+
+it('shows policy-filtered external results in the assistant trace', async () => {
+  const { user } = await ready();
+  await user.type(
+    screen.getByLabelText('Assistant question'),
+    'Use enabled tool',
+  );
+  await user.click(screen.getByRole('button', { name: 'Send' }));
+  act(() => {
+    events?.({
+      type: 'trace',
+      trace: {
+        step: 2,
+        tool: 'user_0_0',
+        arguments: 'query: 10 bytes',
+        bytes: 48,
+        redacted: true,
+        durationMs: 2,
+        status: 'failed',
+        result: '{"samples":["‹redacted› tool evidence"]}',
+      },
+    });
+    events?.({ type: 'done', tokens: 100 });
+  });
+  await user.click(screen.getByText(/user_0_0 · failed/));
+  expect(screen.getByLabelText('MCP tool result')).toHaveTextContent(
+    '‹redacted› tool evidence',
+  );
+});

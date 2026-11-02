@@ -58,6 +58,7 @@ export function SplitButton(props: {
   entries: readonly MenuEntry[];
   variant?: Variant;
   disabled?: boolean;
+  className?: string | undefined;
   children: ReactNode;
 }): React.JSX.Element {
   const variant = props.variant ?? 'secondary';
@@ -66,6 +67,7 @@ export function SplitButton(props: {
       <Button
         size="sm"
         variant={variant}
+        className={props.className ?? ''}
         aria-label={props.label}
         title={props.title}
         disabled={props.disabled}

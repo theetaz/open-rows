@@ -395,6 +395,7 @@
           "beautify",
           "uglify",
           "insert-snippet",
+          "inline-ai",
           "assistant",
           "open-file",
           "run-sql-file",

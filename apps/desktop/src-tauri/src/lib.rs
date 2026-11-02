@@ -17,6 +17,7 @@ mod locations;
 #[cfg(target_os = "macos")]
 mod material;
 mod mcp;
+mod mcp_client;
 mod menu;
 mod native_files;
 mod observability;
@@ -63,6 +64,12 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
         ai_sharing::ai_context_preview,
         ai_sharing::ai_audit_list,
         ai_sharing::ai_audit_purge,
+        mcp_client::mcp_servers_list,
+        mcp_client::mcp_servers_save,
+        mcp_client::mcp_server_secrets,
+        mcp_client::mcp_server_delete,
+        mcp_client::mcp_server_tools,
+        mcp_client::mcp_tool_confirm,
         mcp::mcp_status,
         mcp::mcp_token_create,
         mcp::mcp_token_revoke,
@@ -329,6 +336,11 @@ pub fn run() -> Result<(), tauri::Error> {
             specta.mount_events(app);
             app.manage(ai::AiState::default());
             app.manage(assistant::AssistantState::default());
+            app.manage(mcp_client::State::new(
+                app.state::<locations::Locations>()
+                    .data
+                    .join("mcp-servers.json"),
+            )?);
             settings::install(app);
             result_store::install(app)?;
             driver_host::install(app)?;
@@ -409,6 +421,34 @@ mod tests {
             checked += 1;
         }
         assert!(checked >= 30, "No command contract was checked");
+        Ok(())
+    }
+    #[test]
+    fn user_mcp_commands_are_registered_and_allowed() -> Result<(), Box<dyn std::error::Error>> {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let manifest = std::fs::read_to_string(root.join("build.rs"))?;
+        let capability: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
+            root.join("capabilities/main.json"),
+        )?)?;
+        let permissions = capability["permissions"]
+            .as_array()
+            .ok_or("Missing permissions")?;
+        for command in [
+            "mcp_servers_list",
+            "mcp_servers_save",
+            "mcp_server_secrets",
+            "mcp_server_delete",
+            "mcp_server_tools",
+            "mcp_tool_confirm",
+        ] {
+            assert!(manifest.contains(&format!("\"{command}\"")));
+            let permission = format!("allow-{}", command.replace('_', "-"));
+            assert!(
+                permissions
+                    .iter()
+                    .any(|item| item.as_str() == Some(&permission))
+            );
+        }
         Ok(())
     }
     #[test]

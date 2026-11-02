@@ -176,7 +176,7 @@ sequenceDiagram
 ## 6. UX surfaces
 
 - **Assistant panel** (right panel tab next to Details): provider switcher, policy chips, conversation, tool-call trace, proposal cards.
-- **Inline (⌘I)** in the SQL editor: prompt bar above the cursor; result appears as a diff to accept/reject.
+- **Inline (⌘I)** in the SQL editor: prompt inside the editor at the target; result appears as a diff to accept/reject (§14). The editor bar's AI button opens the panel; its menu also offers ⌘I.
 - **Error assist**: "Fix" button on query errors.
 - **Settings → AI**: providers (keys, base URLs, models), CLI bridges (detected, health), MCP servers (client), MCP server mode (on/off, port, token, which connections are exposed), per-connection data sharing, redaction rules, usage.
 - AI features are **off until the user configures a provider**; no nagging.
@@ -581,3 +581,107 @@ qualified join/aggregate, inspect tool traces if capability is explicitly suppor
 then Insert/Open/Explain and Cancel. Confirm SQL does not execute automatically.
 Turn AI off or lock the app during a request and confirm cancellation. No real
 key or live provider request was used in the deterministic test runs.
+
+## 14. Editor proposals and user MCP servers (M45-06/07)
+
+### Inline ⌘I proposals (M45-06)
+
+**⌘I** in a query tab (Ctrl+I elsewhere; also **Edit SQL with AI** in the
+editor bar's AI menu, the Query menu and the command palette) opens a prompt
+inside the editor. It targets the selection; otherwise the statement at the
+caret, including a caret just after that statement's `;` on the same line;
+otherwise an empty insert point such as a blank line. The prompt's heading
+names the target. The AI button itself still opens the assistant panel, so
+the panel and ⌘I are two views of one feature.
+
+The proposal streams through the same native assistant, configured default
+provider/model, connection sharing policy, redaction and content-free audit as
+the panel. Inline requests disable tool calling and collect no database schema;
+the context is the selected SQL and the resolved dialect. While streaming, the
+original range is struck through and the proposal's SQL body is shown
+highlighted below it. **Accept proposal** replaces the range with the literal
+SQL as one isolated undo step. **Reject proposal**, **Close** and Escape leave
+the document exactly as it was. **Cancel proposal**, Escape while streaming,
+editing the document, opening another prompt and closing the tab cancel the
+native request; late answers are discarded. Nothing runs automatically and the
+widget has no execution API; Run still applies SafetyPlan.
+
+When AI is off, no provider exists or no default model is chosen, ⌘I shows the
+reason and an **Open AI settings** action instead of a prompt, and makes no
+request. Native refusals are explained: a sharing policy that does not allow
+the provider, a rejected key, a timeout or an unreachable provider.
+
+### User MCP servers (M45-07)
+
+Settings → AI → MCP → **User MCP servers** adds, edits and removes device-wide
+servers: a direct stdio executable with JSON arguments, or a Streamable HTTP
+endpoint, through the official rmcp 3.4.0 client. **Discover tools** is an
+explicit action; every tool starts disabled and is enabled per tool. Enabled
+tools join the assistant panel's bounded native catalogue. Server descriptions
+are not used as instructions. Project-scoped servers and Project-file import
+are not implemented yet (§3.2 remainder).
+
+Public metadata lives in private `mcp-servers.json` beside the local store, and
+the last discovered catalogue (tool names and redacted schemas) in private
+`mcp-tools.json`, so enabled tools stay available after a restart. Environment
+variables and HTTP headers have only write/delete keychain APIs at
+`mcp/<id>/credentials`; editing a server keeps them unless new values are
+typed. Never put credentials in command arguments or URLs. URL credentials,
+query strings and fragments are refused. HTTPS uses the existing ring TLS
+provider and platform trust; plaintext is limited to loopback. Redirects,
+ambient HTTP proxies and automatic session recovery are disabled. Stdio uses a
+direct executable, clears the inherited environment except PATH and the
+configured variables, discards stderr and kills/reaps the child on
+cancellation. No database handles, credentials, OpenRows roots, sampling or SQL
+execution callbacks are passed to user servers. User executables remain
+explicitly trusted local code.
+
+The first call of each enabled tool in a session shows the server, tool and
+exact redacted argument object in the assistant panel with **Allow tool** and
+**Deny tool**. A grant is bound to the server, its transport and the tool's
+schema. Renaming a server or toggling another tool keeps it; disabling the
+tool, changing the endpoint or credentials, a settings change, lock, and
+restart discard it. Unsolicited confirmation responses are refused. Credential
+and endpoint changes also discard the discovered catalogue and invalidate
+in-flight catalogue snapshots before consent or invocation.
+
+Discovery and tool exchanges have five-second deadlines. Consent waits have a
+30-second deadline inside the assistant's 60-second request limit. Limits are
+16 servers, 64 discovered tools per server across eight pages, 8 KiB schemas,
+16 KiB argument objects and 64 KiB decoded results/SSE events. External
+arguments and results are conservatively classified as samples: **SampleRows**
+sharing is required; **Local only** refuses external tools. Credential values
+(also when echoed as JSON numbers, booleans or null), sensitive JSON fields,
+SQL literals and configured redaction rules are scrubbed before confirmation,
+transport, trace and provider. The shared gate applies its 512-byte field
+limit; truncated arguments are refused and truncated results are disclosed.
+Content-free audit precedes outbound arguments and provider result disclosure.
+External trace argument summaries contain no model-supplied keys or values.
+Protocol/HTTP library diagnostics are excluded from logs. Errors are typed
+(`timeout`, `network`, `protocol` for limit breaches, `invalid`, `secret`,
+`unsupported` when AI is off, `cancelled`) and the settings show recovery text
+for each.
+
+### Verification
+
+Deterministic coverage includes both real rmcp transports, including the
+repository's `openrows-mcp` stdio sidecar as a real local server, deadlines and
+cancellation, enable/confirmation/configuration/schema gating, grant retention,
+catalogue persistence and invalidation, nested credential/policy redaction and
+log exclusion; CodeMirror accept/reject/undo isolation, caret targeting and
+stale-response prevention; setup and failure messages; and the settings UI.
+Both flows were also driven in real WebKit (React Compiler build) against a
+fake provider and fake MCP server: ⌘I open → stream → accept → undo, reject,
+Escape, cancel (native cancel sent, late answer ignored), the AI menu, the
+no-provider prompt, adding/editing/removing a server, toggling a tool and the
+first-use confirmation. Live provider/server/keychain smoke remains a manual
+owner check; no real keys are stored or used by these tests.
+
+The client enables rmcp's official reqwest HTTP feature instead of duplicating
+MCP session/SSE framing. Direct dependency reuse is reqwest (MIT OR Apache-2.0),
+rustls (MIT OR Apache-2.0), rustls-platform-verifier (MIT OR Apache-2.0), URL
+(MIT OR Apache-2.0) and regex (MIT OR Apache-2.0); the only new locked package is
+hyper-rustls (MIT OR Apache-2.0). The platform verifier preserves native trust,
+URL parsing rejects credential-bearing endpoints, and bounded regex rules reuse
+sharing-policy semantics. A bespoke Hyper transport would duplicate the official
+client's protocol lifecycle; no npm dependency is added.

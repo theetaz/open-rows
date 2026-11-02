@@ -98,3 +98,19 @@ it('opens the assistant from the AI button in the bar, with no separate corner b
     screen.queryByRole('complementary', { name: 'Query assistant' }),
   ).toBeNull();
 });
+
+it('offers ⌘I inline editing and the assistant panel from the one AI control', async () => {
+  const { user } = renderTab();
+  const bar = within(screen.getByRole('toolbar', { name: 'Query actions' }));
+  await user.click(bar.getByRole('button', { name: 'AI options' }));
+  await user.click(screen.getByRole('menuitem', { name: /Edit SQL with AI/ }));
+  expect(editorText()).toMatch(/^-- inline prompt\n/);
+  await user.click(bar.getByRole('button', { name: 'AI options' }));
+  await user.click(screen.getByRole('menuitem', { name: /Assistant panel/ }));
+  expect(
+    await screen.findByRole('complementary', { name: 'Query assistant' }),
+  ).toBeVisible();
+  await user.click(screen.getByRole('textbox', { name: 'SQL editor' }));
+  await user.keyboard('{Meta>}i{/Meta}');
+  expect(editorText()).toMatch(/^-- inline prompt\n-- inline prompt\n/);
+});

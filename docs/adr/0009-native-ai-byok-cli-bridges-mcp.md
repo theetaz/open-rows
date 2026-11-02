@@ -135,3 +135,21 @@ windows and UNION; all base tables undergo live safety checks. Unknown functions
 remain refused on PostgreSQL, MySQL/MariaDB and SQLite; ambiguous sample provenance
 is fully redacted. No dependency on provider accounts/CLI bridges is introduced.
 Live smoke is opt-in, synthetic and requires the owner's real key; it was not run.
+
+## Implementation evidence — M45-06/07
+
+Inline ⌘I generation uses the same native provider/sharing/audit boundary with
+tool calling disabled. CodeMirror keeps proposals separate until a human
+accepts one isolated, undoable literal edit; reject/Escape leave the document
+untouched, and cancellation and document changes stop the provider request and
+invalidate stale work. Missing AI setup is explained before any request. The
+editor bar's AI button opens the assistant panel and its menu offers ⌘I.
+
+The user MCP client uses official rmcp stdio/Streamable HTTP transports,
+keychain-only environment/headers, disabled-by-default tools and native
+first-use consent per tool, bound to server, transport and schema. External
+data passes conservative SampleRows sharing, redaction and audit gates; no
+database execution capability, roots or credentials are given to user servers.
+Credential/endpoint changes invalidate the persisted catalogue and grants.
+Project-scoped servers remain open. Details and manual smoke boundaries are in
+[23 §14](../23-ai-assistant.md#14-editor-proposals-and-user-mcp-servers-m45-0607).

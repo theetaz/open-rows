@@ -221,3 +221,31 @@ A completed single-table SELECT of plain columns (or one wildcard) can use the t
 - Other engines keep unqualified sources read-only with an explanation. Errors and missing objects also stay read-only.
 
 Resolution promises live with the result object and are keyed by result id, statement, engine and session id. Rerenders/remounts share that answer; each new execution gets a new result and resolves again after session namespace changes. Unqualified results from multi-statement batches ask for the SELECT to be run on its own, since later statements might change the namespace before mapping. Staged changes and review SQL always use the resolved schema and table, then follow the existing snapshot, key and commit checks.
+
+## Inline SQL proposals (M45-06)
+
+In a query tab, press **⌘I** (Ctrl+I on other platforms), or choose **Edit SQL
+with AI** from the editor bar's AI menu, the Query menu or the command palette.
+The prompt opens inside the editor over the selection, else the statement at
+the caret (also when the caret sits just after its `;` on that line), else an
+empty insert point such as a blank line; its heading names the target. The AI
+button itself opens the assistant panel.
+
+The configured default provider/model streams through the native assistant and
+the connection's sharing gate, redaction and audit. Inline mode supplies the
+resolved dialect and the selected SQL, and makes no database reads or tool
+calls. It works with every engine's editor dialect, including libSQL's SQLite
+and DuckDB's PostgreSQL highlighting mappings.
+
+While the proposal streams, the original range is struck through and the
+proposed SQL is shown highlighted under it. **Accept proposal** applies the
+literal SQL as one undo step of its own; **Reject proposal**, **Close** and
+Escape leave the document exactly as it was. Neither action executes SQL.
+**Cancel proposal** or Escape while streaming stops the provider request.
+Editing the document, opening another prompt or closing/switching the tab
+invalidates the original range and cancels pending work; late responses cannot
+be accepted. AI-off, lock and policy revocation retain the native cancellation
+boundary. Without AI set up (AI off, no provider, or no default model) the
+prompt is replaced by the reason and an **Open AI settings** button.
+
+Beautify SQL moves to ⌥⌘B; Uglify keeps ⇧⌘I.

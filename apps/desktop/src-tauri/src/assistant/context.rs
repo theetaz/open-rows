@@ -58,6 +58,11 @@ pub(super) async fn collect(
         });
     }
     let admitted = executor.gate(&input, bundle.clone())?;
+    // Inline editing needs only the selected text and resolved dialect, so it
+    // also works for engines without a separate metadata session.
+    if request.inline {
+        return Ok(admitted);
+    }
     bundle.schema = read(executor, &admitted, "list_objects", &input)
         .await?
         .schema;
