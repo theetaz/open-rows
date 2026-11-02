@@ -140,3 +140,59 @@
 .suggestion summary {
   cursor: pointer;
 }
+.investigation {
+  display: grid;
+  gap: 8px;
+  max-width: 960px;
+}
+.investigation > button {
+  justify-self: start;
+}
+/* The query-tab dock becomes an inline panel inside Monitor. */
+.investigation > aside {
+  width: auto;
+  max-width: none;
+  max-height: 72vh;
+  border: 1px solid var(--or-separator);
+  border-radius: 4px;
+}
+.investigation details > summary {
+  cursor: default;
+  font-weight: 500;
+  padding: 4px 0;
+}
+.investigation fieldset {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px;
+  margin: 8px 0;
+  padding: 8px;
+  border: 1px solid var(--or-separator);
+  border-radius: 4px;
+}
+.investigation legend {
+  color: var(--or-secondary);
+  padding: 0 4px;
+}
+.tool {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-family: var(--or-font-mono);
+}
+.schedule {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0;
+  padding: 8px;
+  border: 1px solid var(--or-separator);
+  border-radius: 4px;
+}
+.schedule p {
+  margin: 0;
+}
+.scheduleActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}

@@ -43,6 +43,7 @@ url = "2"
 regex = "1"
 
 [dev-dependencies]
+openrows-monitor = { path = "../openrows-monitor" }
 tempfile = "3.27"
 openrows-driver-sqlite = { path = "../openrows-driver-sqlite" }
 openrows-net = { path = "../openrows-net" }

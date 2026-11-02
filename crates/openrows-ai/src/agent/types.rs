@@ -109,6 +109,9 @@ pub struct ToolReply {
     pub context: GatedPayload,
     /// Protocol tool failure with a policy-filtered result.
     pub failed: bool,
+    /// Validated artifact preview or its typed rejection; only local explicit
+    /// acceptance can save a preview.
+    pub artifact: Option<crate::investigation::ArtifactReply>,
     /// SQL proposal for local user review; no execution action exists.
     pub proposal: Option<String>,
 }
@@ -193,6 +196,22 @@ pub enum AgentEvent {
         tool: String,
         /// Exact policy-filtered arguments, never credentials.
         arguments: String,
+    },
+    /// Validated plain JSON for local preview and explicit acceptance.
+    Artifact {
+        /// References validated against the exact delivered evidence ledger.
+        evidence: Vec<String>,
+        /// board, report or finding.
+        kind: String,
+        /// Versioned shared document.
+        document: String,
+    },
+    /// A board, report or finding proposal that failed validation.
+    ArtifactRejected {
+        /// board, report or finding.
+        kind: String,
+        /// Typed refusal, never model content.
+        reason: crate::investigation::Rejection,
     },
     /// Successful completion and conservative usage.
     Done {

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { ToolConfirmation } from './ToolConfirmation';
 import { Button } from '@openrows/ui';
+import { ArtifactPreview, ArtifactRejected } from './ArtifactPreview';
 import type { Turn } from './conversation';
 import styles from './Assistant.module.css';
 type Actions = {
@@ -10,6 +11,7 @@ type Actions = {
 };
 /** Plain text plus fenced SQL cards; provider output is never HTML or an execution command. */
 export function ConversationView(props: {
+  connection: string;
   turns: readonly Turn[];
   disabled: boolean;
   actions: Actions;
@@ -60,6 +62,17 @@ export function ConversationView(props: {
               />
             ),
           )}
+          {turn.artifacts.map((artifact, index) => (
+            <ArtifactPreview
+              key={index}
+              {...artifact}
+              connection={props.connection}
+              disabled={props.disabled}
+            />
+          ))}
+          {turn.rejections.map((rejection, index) => (
+            <ArtifactRejected key={index} {...rejection} />
+          ))}
           <p role="status">{turn.outcome}</p>
         </article>
       ))}

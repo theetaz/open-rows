@@ -229,7 +229,7 @@ records protocol choices, bounds and manual metadata-only smoke instructions.
 Existing-account/CLI eligibility and isolation remain M45-04; per-connection
 sharing, routing allowlists and context preview are implemented in M45-02 (§7 below); the
 MCP host, query assistant and read validator are implemented (M45-03/05/08), and the monitoring
-investigation tools, artifacts and schedules (M45-10..12) are still planned. There is no silent alternate-provider/API-billing fallback.
+investigation tools, artifacts and session schedules (M45-10..12) are implemented in [23 §15](23-ai-assistant.md#15-monitoring-investigations-and-proposals-m45-101112). There is no silent alternate-provider/API-billing fallback.
 
 ## 7. Database investigation harness
 
@@ -295,7 +295,7 @@ M45-02 itself adds no live database collection or generation command.
 
 ### Implemented (M45-03/08)
 
-The built-in MCP host now exposes seven bounded catalog/read/plan/proposal
+The built-in MCP host now exposes twelve bounded catalog/read/plan/proposal
 tools through stdio and optional loopback HTTP; tokens are provider/connection
 scoped, expiry checked and stored only as hashes. Every disclosure uses the
 M45-02 gate and content-free audit before release. Read tools share a conservative
@@ -309,7 +309,7 @@ verify unchanged state after smuggling and an injected engine-level write.
 [23 §12](23-ai-assistant.md#12-implemented-m45-0308-built-in-mcp-and-execution-safety)
 records exact bounds, conservative SQL/engine restrictions and Claude Code/Codex
 setup. Query conversations and tool-call traces are implemented below; monitoring
-collectors/scheduling, boards/reports and structured evidence artifacts remain M45-10.
+tools, session scheduling and structured evidence artifacts are implemented in M45-10..12 ([23 §15](23-ai-assistant.md#15-monitoring-investigations-and-proposals-m45-101112)).
 
 ### Implemented (M45-05)
 
@@ -333,7 +333,7 @@ records bounds, tests, engine decisions and opt-in `OPENROWS_AI_LIVE=1` smoke.
 
 Query conversations/traces are session memory only. Persisted audit remains the
 M45-02 content-free disclosure metadata; richer model/usage/evidence/outcome
-records, monitoring tools, scheduled investigations and artifacts remain M45-10/12.
+records for scheduled monitoring investigations and evidence artifacts are implemented in M45-10/12 ([23 §15](23-ai-assistant.md#15-monitoring-investigations-and-proposals-m45-101112)).
 
 ## 8. Acceptance and verification
 
@@ -1085,3 +1085,18 @@ apply to both directions. Only filtered results appear in the assistant trace.
 User servers receive no OpenRows database connection or execution capability.
 See [23 §14](23-ai-assistant.md#14-editor-proposals-and-user-mcp-servers-m45-0607)
 for limits, settings and verification scope.
+
+### Monitoring AI implementation (M45-10/11/12)
+
+[23 §15](23-ai-assistant.md#15-monitoring-investigations-and-proposals-m45-101112)
+records the implemented evidence projection, the exact delivered-citation
+ledger, grounded findings, shared report/board previews with explicit accept or
+reject, typed rejection of invalid proposals, and bounded session schedules.
+Telemetry is separately authorised before collecting or disclosing any evidence.
+Schedules never auto-enable at startup; lock and AI off pause them (in-flight
+work is cancelled and they resume once allowed), and only read/propose tools
+are eligible, so a schedule cannot write. Cost estimates use explicit user
+pricing; provider-reported billing remains separate. Existing monitor
+source/version/visibility gaps apply; the harness adds no collection and does
+not broaden protected SQL admission. Event-triggered schedules (§7) are not
+implemented; schedules are interval-based only.

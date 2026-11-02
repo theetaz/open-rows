@@ -16,6 +16,7 @@ pub(super) fn executor(
         crate::settings::current(&app.state::<crate::settings::SettingsFile>()).unwrap_or_default();
     app.state::<AiState>().configure(&value);
     Ok(ToolExecutor {
+        ledger: openrows_ai::investigation::Ledger::default(),
         backend: Arc::new(crate::mcp::backend::Backend(app.clone())),
         sharing: app.state::<SharingStore>().inner().clone(),
         control: app.state::<AiState>().control.clone(),
@@ -63,11 +64,39 @@ pub(super) async fn collect(
     if request.inline {
         return Ok(admitted);
     }
+    if request.monitoring {
+        return monitoring(executor, request, &input, bundle).await;
+    }
     bundle.schema = read(executor, &admitted, "list_objects", &input)
         .await?
         .schema;
     definitions(executor, &admitted, &input, &mut bundle).await?;
     Ok(executor.gate(&input, bundle)?)
+}
+/// Telemetry context: admit the telemetry permission first, then share only the
+/// gated health snapshot and record it in the evidence ledger findings cite.
+async fn monitoring(
+    executor: &ToolExecutor,
+    request: &AssistantRequest,
+    input: &ToolInput,
+    mut bundle: ContextBundle,
+) -> Result<GatedPayload, IpcError> {
+    let permission = ContextBundle {
+        evidence: vec![openrows_ai::investigation::sample(
+            "admission",
+            "telemetry:permission",
+            0.0,
+            None,
+        )],
+        ..bundle.clone()
+    };
+    let admitted = executor.gate(input, permission)?;
+    bundle.evidence = read(executor, &admitted, "read_health_snapshot", input)
+        .await?
+        .evidence;
+    let payload = executor.gate(input, bundle)?;
+    executor.ledger.record(&request.connection, &payload)?;
+    Ok(payload)
 }
 async fn definitions(
     executor: &ToolExecutor,

@@ -57,6 +57,12 @@ fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
         ai::ai_key_delete,
         ai::ai_verify,
         ai::ai_cancel,
+        assistant::investigation_audit,
+        assistant::investigation_schedule,
+        assistant::investigation_schedule_cancel,
+        assistant::investigation_schedule_pause,
+        assistant::investigation_schedule_run,
+        assistant::investigation_schedules,
         assistant::assistant_run,
         assistant::assistant_cancel,
         assistant::assistant_preview,
@@ -361,6 +367,7 @@ fn install(
             .data
             .join("mcp-servers.json"),
     )?);
+    app.manage(assistant::ScheduledState::default());
     settings::install(app);
     result_store::install(app)?;
     driver_host::install(app)?;

@@ -203,6 +203,7 @@ impl AgentTools for Tools {
             context.record().await?;
             Ok(ToolReply {
                 failed: false,
+                artifact: None,
                 context,
                 proposal: (call.name == "propose_sql").then(|| sql.into()),
             })

@@ -23,8 +23,8 @@ Current priority: **dogfood the app on `main` and collect feedback** before addi
 | ER diagram | Read-only diagram with SVG/PNG export; **new:** diagram of selected tables, Web Worker layout, canvas rendering above 300 tables | All |
 | Projects | File-backed saved queries in `.openrows/project.yaml`; **new:** shared non-secret connection definitions, snippets as project `.sql` files, saved-query keyword expansion and Insert/Copy SQL | — |
 | Admin | Process list with cancel/kill, users and roles viewer | Per engine |
-| Monitoring | Monitor workspace with live charts and history, query/lock investigation, deterministic alerts and incidents, analytics boards, health/analytics report export, optimisation advisor | PG full; MySQL/MariaDB, SQL Server, ClickHouse, SQLite/libSQL, DuckDB per capability |
-| AI | Provider settings (Anthropic, OpenAI, OpenRouter, Gemini, compatible endpoints, Ollama, LM Studio), data-sharing policy with redaction and audit log, assistant panel with explain/fix/plan actions, read-only MCP server; **new:** inline ⌘I SQL proposals with accept/reject diff (also in the editor bar's AI menu), and your own MCP servers (stdio or HTTP) in Settings → AI → MCP with per-tool enable and first-use confirmation | — |
+| Monitoring | Monitor workspace with live charts and history, query/lock investigation, deterministic alerts and incidents, analytics boards, health/analytics report export, optimisation advisor; **new:** Ask assistant panel for AI investigations of slow queries, locks and health with cited evidence | PG full; MySQL/MariaDB, SQL Server, ClickHouse, SQLite/libSQL, DuckDB per capability |
+| AI | Provider settings (Anthropic, OpenAI, OpenRouter, Gemini, compatible endpoints, Ollama, LM Studio), data-sharing policy with redaction and audit log, assistant panel with explain/fix/plan actions, read-only MCP server; **new:** inline ⌘I SQL proposals with accept/reject diff (also in the editor bar's AI menu), and your own MCP servers (stdio or HTTP) in Settings → AI → MCP with per-tool enable and first-use confirmation; **new:** read-only monitoring tools (health, history, query statistics, locks, plans) behind telemetry consent, grounded findings that cite evidence, board/report proposals saved only on accept (invalid ones rejected with a reason), and opt-in scheduled read-only investigations with budgets, Run now, Pause/Resume and Cancel that pause while locked or with AI off | — |
 | App | Settings (⌘,), themes, native menus, tabs, session restore, command palette, file associations | — |
 
 **Fixed in this round:** boards, incidents, background monitoring and report saving were exported to the frontend but not registered with Tauri, so the app denied those calls; they are now registered and allowed.
@@ -36,7 +36,6 @@ Each branch is one squashable lane, based on `main` as of 2026-10-12 (`a9c45f51`
 | Branch | Tasks | State | To finish |
 | --- | --- | --- | --- |
 | `wip/mongodb` | M3-01..M3-04 MongoDB: document result model and tree/JSON/table views, driver crate, MQL parser and fuzz target, document editing, aggregation pipeline editor | Largest lane (+8.9 k lines); cursor and cancel correctness reworked | `just test-mongo`, fuzz target build, full gate |
-| `wip/ai-monitoring` | M45-10 monitoring investigation tools, M45-11 report/chart/board proposals, M45-12 scheduled read-only investigations | Implemented; `just test-pg` passed once | Full gate, ipc-check |
 | `wip/release-macos` | M1-31 DMG bundle, Developer ID signing/notarisation from secrets, updater with opt-out, `release.yml`, Homebrew cask template | Implemented | Local unsigned DMG build, full gate; real signing needs Apple certificates as GitHub secrets |
 
 ## 4. Remaining work after feedback (not started)
@@ -89,7 +88,7 @@ Work through these on your real databases; note anything that is wrong, slow, co
 7. **Structure:** add a primary key or unique constraint, change a column type (PostgreSQL `USING`), add an index concurrently, reorder a MySQL column, check the DDL preview before applying.
 8. **Import/export and backup:** import a CSV, export to xlsx/Parquet, run a `.sql` file, back up and restore with `pg_dump`.
 9. **Monitoring:** open Monitor on PostgreSQL; check live charts, history, query and lock investigation, alerts, a board, and a report export.
-10. **AI:** add a provider key, set the data-sharing policy, ask the assistant to explain or fix a query, check the context preview and audit log.
+10. **AI:** add a provider key, set the data-sharing policy, ask the assistant to explain or fix a query, check the context preview and audit log. In Monitor → Ask assistant (telemetry consent on), ask why a query is slow or what is blocking, check the cited evidence, accept and reject a board proposal, and create, run, pause and cancel a scheduled investigation.
 11. **App:** settings, themes, tabs, session restore after quitting, app lock.
 
 Report each item as: what you did, what you expected, what happened, and a screenshot when it is visual.

@@ -36,7 +36,10 @@ impl ServerHandler for ToolServer {
     ) -> Result<ListToolsResult, rmcp::ErrorData> {
         self.live().map_err(protocol_error)?;
         Ok(ListToolsResult {
-            tools: tools::definitions(),
+            tools: tools::definitions()
+                .into_iter()
+                .filter(|tool| !crate::artifacts::TOOLS.contains(&tool.name.as_ref()))
+                .collect(),
             ..ListToolsResult::default()
         })
     }
@@ -108,6 +111,7 @@ impl ToolServer {
     }
     fn executor(&self) -> crate::ToolExecutor {
         crate::ToolExecutor {
+            ledger: openrows_ai::investigation::Ledger::default(),
             backend: self.backend.clone(),
             sharing: self.sharing.clone(),
             control: self.control.clone(),

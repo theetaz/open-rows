@@ -19,6 +19,9 @@ pub struct ContextBundle {
     pub plan: Vec<Plan>,
     /// Numeric query aggregates only, no users/addresses/parameters.
     pub stats: Vec<Aggregate>,
+    /// Timestamped numeric monitoring evidence; no activity identities or raw text.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub evidence: Vec<super::Evidence>,
     /// Explicit selected row samples.
     pub samples: Vec<Sample>,
 }
@@ -33,6 +36,7 @@ impl ContextBundle {
             (self.query.is_some(), Category::Query),
             (!self.plan.is_empty(), Category::Plan),
             (!self.stats.is_empty(), Category::Stats),
+            (!self.evidence.is_empty(), Category::Telemetry),
             (!self.samples.is_empty(), Category::Samples),
         ]
         .into_iter()
@@ -41,6 +45,9 @@ impl ContextBundle {
     }
     pub(super) fn shrink(&mut self) -> Result<Option<usize>, super::Refusal> {
         if let Some(size) = pop_size(&mut self.samples)? {
+            return Ok(Some(size));
+        }
+        if let Some(size) = pop_size(&mut self.evidence)? {
             return Ok(Some(size));
         }
         if let Some(size) = pop_size(&mut self.stats)? {

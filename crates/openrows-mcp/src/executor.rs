@@ -15,6 +15,8 @@ use std::sync::Arc;
 /// Native identity and scope, never supplied by model tool arguments.
 #[derive(Clone)]
 pub struct ToolExecutor {
+    /// Request-local delivered evidence, never model-provided measurements.
+    pub ledger: openrows_ai::investigation::Ledger,
     /// Existing app catalog/protected-read/proposal implementation.
     pub backend: Arc<dyn ToolBackend>,
     /// Device policy and mandatory audit.
@@ -87,7 +89,10 @@ impl ToolExecutor {
             )
             .map_err(|_| McpError::Unsafe)?;
         }
-        let bundle = if call.name == "propose_sql" {
+        if crate::artifacts::TOOLS.contains(&call.name.as_str()) {
+            return self.artifact(&call.name, &input, admitted).await;
+        }
+        let mut bundle = if call.name == "propose_sql" {
             ContextBundle {
                 query: input.sql.clone(),
                 ..ContextBundle::default()
@@ -100,11 +105,20 @@ impl ToolExecutor {
                 .await
                 .map_err(|_| McpError::Cancelled)??
         };
+        if call.name == "explain_query" {
+            crate::artifacts::plan_evidence(&input, &mut bundle)?;
+        }
         let gated = self.gate(&input, bundle)?;
         gated
             .outbound(&context.provider, async { gated.record().await })
             .await
             .map_err(|_| McpError::Sharing)?;
+        self.ledger
+            .record(
+                input.connection.as_deref().ok_or(McpError::Invalid)?,
+                &gated,
+            )
+            .map_err(|_| McpError::Invalid)?;
         let proposal = if call.name == "propose_sql" {
             if self.external {
                 self.backend.propose(&input)?;
@@ -117,6 +131,7 @@ impl ToolExecutor {
         };
         Ok(ToolReply {
             failed: false,
+            artifact: None,
             context: gated,
             proposal,
         })
@@ -144,6 +159,7 @@ impl ToolExecutor {
             .map_err(|_| McpError::Sharing)?;
         Ok(ToolReply {
             failed: false,
+            artifact: None,
             context,
             proposal: None,
         })
@@ -153,6 +169,7 @@ impl AgentTools for ToolExecutor {
     fn definitions(&self) -> Vec<ToolDefinition> {
         tools::definitions()
             .into_iter()
+            .filter(|tool| !self.external || !crate::artifacts::TOOLS.contains(&tool.name.as_ref()))
             .map(|tool| ToolDefinition {
                 name: tool.name.to_string(),
                 description: tool
@@ -183,6 +200,14 @@ fn minimum(tool: &str) -> ContextBundle {
             columns: vec!["value".into()],
             rows: vec![],
         });
+    }
+    if tool.starts_with("read_") || crate::artifacts::TOOLS.contains(&tool) {
+        bundle.evidence.push(openrows_ai::investigation::sample(
+            "admission",
+            "telemetry:permission",
+            0.0,
+            None,
+        ));
     }
     if tool == "explain_query" {
         bundle.plan.push(Plan {

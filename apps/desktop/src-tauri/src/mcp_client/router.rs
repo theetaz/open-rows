@@ -95,6 +95,7 @@ impl Router {
             failed,
             context,
             proposal: None,
+            artifact: None,
         })
     }
     async fn prepare(&self, call: &ToolCall, saved: &ServerConfig) -> Result<Prepared, AgentError> {

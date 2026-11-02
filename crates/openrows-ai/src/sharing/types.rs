@@ -94,6 +94,8 @@ pub enum Category {
     Plan,
     /// Numeric aggregates.
     Stats,
+    /// Numeric monitoring samples with opaque evidence references.
+    Telemetry,
     /// Redacted bounded rows.
     Samples,
 }

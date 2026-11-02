@@ -100,7 +100,7 @@ falls back to the other.
 
 ### 3.1 App as MCP server (`openrows-mcp`)
 
-**Implemented (M45-03/08).** Seven fixed tools use the existing sharing gate,
+**Implemented (M45-03/08).** Twelve fixed tools use the existing sharing gate,
 metadata paths and SafetyPlan. Stdio clients spawn the Tauri-free `openrows-mcp`
 CLI, which forwards to the authenticated running app. Direct Streamable HTTP
 is separately opt-in. Both settings default off; the listener binds only to
@@ -116,6 +116,7 @@ for setup, bounds and engine restrictions.
 | `run_read_query` | Conservative base-table SELECT in a disposable protected session | SampleRows; normal SafetyPlan must permit execution without confirmation/authentication |
 | `explain_query` | Normalised plan only, never ANALYZE | SchemaAndStats and separate telemetry consent |
 | `propose_sql` | Open an ordinary editor tab; never submit SQL for execution | SchemaOnly or above; scoped open connection |
+| `read_health_snapshot`, `read_metric_history`, `read_query_statistics`, `read_lock_graph`, `read_monitor_plans` | Bounded existing numeric monitoring evidence, timestamps and gaps | SchemaAndStats plus separate telemetry consent |
 
 Tool descriptions are static. Database content remains JSON data; it cannot
 supply instructions or register tools. Proposed writes require the user's
@@ -529,8 +530,9 @@ Prior answers are re-redacted on every follow-up. Existing per-field/category/
 byte/row/token bounds still apply; truncation is explicit in preview. Provider
 transport and every tool disclosure append content-free sharing audit entries
 before releasing context (provider/connection/level/bytes/hash/categories).
-Expanded model/usage/evidence/outcome audit metadata and monitoring artifacts
-remain M45-10/12. The audit never stores prompts, rows, proposed SQL or keys.
+Scheduled investigations add model/usage/evidence/outcome audit metadata;
+monitoring artifacts share the same boundary (§14). Neither audit stores
+prompts, rows, proposed SQL or keys.
 
 AI-off, missing provider, None sharing, lock, disconnected database and production
 without opt-in show disabled reasons. Native gating repeats permissions before
@@ -685,3 +687,124 @@ hyper-rustls (MIT OR Apache-2.0). The platform verifier preserves native trust,
 URL parsing rejects credential-bearing endpoints, and bounded regex rules reuse
 sharing-policy semantics. A bespoke Hyper transport would duplicate the official
 client's protocol lifecycle; no npm dependency is added.
+
+## 15. Monitoring investigations and proposals (M45-10/11/12)
+
+### Investigation tools and context (M45-10)
+
+Monitor → **Ask assistant** → **Open assistant** opens the shared assistant
+panel for the connection and database. Opening it calls no provider; the
+query-tab quick actions are hidden and the prompt asks about health, slow
+queries or locks. The exact offline context preview and the provider/model
+picker are the same as in a query tab.
+
+Five read-only tools read existing bounded monitor generations and history:
+`read_health_snapshot`, `read_metric_history` (the latest 200 bucketed
+observations across metrics in the last hour), `read_query_statistics`,
+`read_lock_graph` and `read_monitor_plans`. They never start collection,
+enable instrumentation or run model SQL; plans come from existing diagnostics,
+and `explain_query` stays protected and plan-only. MCP clients get the same
+five tools.
+
+Every datum passes the existing data-sharing gate, redaction and audit log.
+Telemetry is admitted separately, before any collection and again before
+disclosure: None, SchemaOnly, or a policy without telemetry consent refuses
+these tools. Queries, sessions and lock edges are opaque hashes; users,
+addresses, SQL text and literals, wait text and vendor errors have no field.
+Missing, partial and reset observations keep explicit states and never become
+numeric zero. At most 200 evidence items are admitted; the gate's byte and
+token caps may truncate further, and only what was actually delivered can be
+cited.
+
+`record_health_finding` records a grounded finding: interpretation,
+uncertainty and evidence ids. Every id must exist in this request's exact
+redacted, truncated outbound evidence ledger for the selected connection.
+The panel shows the finding as labelled text with its cited ids and marks it
+an unverified model interpretation. Free text in the answer is also an
+unverified interpretation, never a measured fact.
+
+### Report, chart and board proposals (M45-11)
+
+`build_report` and `propose_board` are assistant-only preview tools; MCP
+clients do not see them. Reports use `openrows.monitor-report` v1, shared with
+the deterministic M25-08 export, and all table and chart values come from the
+ledger. Boards reuse M25-06's strict schema plus the shared AI read validator
+for widget SQL. Validated citation ids stay visible beside the document.
+
+A proposal is only shown. **Accept and save paused board** saves through
+board import with `reviewed=false`; enabling and running the board remain a
+separate user action in Monitor → Boards. **Accept and export report…** opens
+the existing escaped report export dialog, which writes only the selected
+sections. **Reject proposal** discards it and saves nothing. Neither tool has
+a persistence or execution capability.
+
+An invalid proposal is not shown. The tool returns a typed rejection
+(`invalidDocument`, `wrongKind`, `citationCount`, `unknownEvidence`,
+`uncitedFinding`, `unsafeSql`, `invalidText`, `tooLarge`); the panel shows,
+for example, "Board proposal rejected: it cites evidence that was not
+delivered in this investigation." The model receives the same fixed reason
+and may revise the proposal within its step budget.
+
+### Scheduled read-only investigations (M45-12)
+
+Scheduled investigations are off by default and enabled explicitly for this
+app session in Monitor → Ask assistant → **Scheduled read-only
+investigations**. Each schedule chooses its own provider and model, the
+permitted read/propose tools (health snapshot is required), a 5-minute to
+24-hour interval and 1–1,000 runs, and limits of up to 12 steps, 65,536
+conservative tokens and 60 seconds per run. Per-run estimated spend uses the
+user's maximum input/output price per million tokens to lower the token cap
+before any provider request; unknown or zero pricing refuses opt-in. These are
+conservative estimates, not provider-reported invoices.
+
+A schedule can never run a write: only the eight read/propose monitoring
+tools are eligible, `run_read_query` and `propose_sql` are not, and every
+other call is refused before execution. At most four active schedules exist,
+each keeping ten bounded results in app memory.
+
+The first run waits for the interval; **Run now** starts one immediately.
+Missed ticks are skipped and a schedule never overlaps itself. **Pause
+schedule** stops the in-flight run and keeps the schedule until **Resume
+schedule**. Locking the app or turning AI off also pauses every schedule: the
+in-flight provider and read work is cancelled, no run starts while the reason
+lasts, and the schedule resumes on its own once the app is unlocked and AI is
+on. An interrupted run neither counts towards the run limit nor stops the
+schedule. A failed or refused run (for example after a sharing-policy change)
+stops the schedule; it then needs a fresh opt-in. **Cancel schedule** removes
+it. Schedules do not survive a restart.
+
+The private sharing store retains the newest 1,000 scrubbed investigation
+audit records: provider/model, connection, static tools, delivered evidence
+ids, conservative usage and cost, and outcome. Audit must succeed before a
+run and reserves the full usage ceiling; completed runs record actual
+conservative usage, and failed, cancelled or interrupted runs keep the full
+ceiling. The existing audit purge also removes run accounting. No question,
+answer, SQL, tool arguments, payload or key is persisted.
+
+### Try it
+
+Configure a provider in Settings → AI and allow it for the connection with
+SchemaAndStats and telemetry consent. Start Monitor, open **Ask assistant**,
+open the assistant, preview the context and ask why a query is slow or which
+session blocks another. Review the finding's cited ids, then accept or reject
+a board proposal; an accepted board appears paused in Boards. Expand
+**Scheduled read-only investigations**, choose provider, model, pricing and
+budgets, enable it, and use Run now, Pause/Resume and Cancel; lock the app or
+turn AI off to see it pause. Keep Monitor running (or enable background
+collection) so the tools have evidence.
+
+### Verification
+
+`cargo nextest run -p openrows-ai -p openrows-mcp -p openrows-app` covers the
+sharing matrix, ledger citations and typed rejections, artifact tools,
+schedule limits, pause/interrupt/run accounting and audit retention.
+`just test-pg` runs two real PostgreSQL 17 checks: collector health evidence
+through the gate into a grounded report, and a real slow `pg_sleep` statement
+interval plus a real blocking row lock projected, gated (refused without
+telemetry consent, no SQL text or literals disclosed) and cited by a finding,
+with a fabricated citation rejected as `unknownEvidence`. Frontend tests:
+`ArtifactPreview.test.tsx`, `ScheduleResults.test.tsx` and
+`InvestigationSchedulePane.test.tsx`. The panel, finding, board accept/reject
+and schedule create/run/pause/lock/AI-off/cancel flows were also driven in
+real WebKit (React Compiler build) against a fake provider; no real key or
+provider request was used.

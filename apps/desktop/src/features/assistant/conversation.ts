@@ -15,6 +15,8 @@ export type Turn = {
   question: string;
   text: string;
   proposals: readonly string[];
+  artifacts: readonly { kind: string; document: string; evidence: string[] }[];
+  rejections: readonly Extract<AgentEvent, { type: 'artifactRejected' }>[];
   traces: readonly TimedTrace[];
   confirmations: readonly Extract<AgentEvent, { type: 'confirmation' }>[];
   outcome: string;
@@ -116,6 +118,23 @@ function receive(id: string, run: string, event: AgentEvent): void {
             ...turn,
             confirmations: [...turn.confirmations, event].slice(0, 4),
           };
+        case 'artifact':
+          return {
+            ...turn,
+            artifacts: [
+              ...turn.artifacts,
+              {
+                kind: event.kind,
+                document: event.document,
+                evidence: event.evidence,
+              },
+            ].slice(0, 4),
+          };
+        case 'artifactRejected':
+          return {
+            ...turn,
+            rejections: [...turn.rejections, event].slice(0, 4),
+          };
         case 'text':
           return { ...turn, text: (turn.text + event.delta).slice(0, 32768) };
         case 'proposal':
@@ -158,6 +177,8 @@ export async function sendQuestion(
     question: request.question.question,
     text: '',
     proposals: [],
+    artifacts: [],
+    rejections: [],
     traces: [],
     confirmations: [],
     outcome: 'Running',

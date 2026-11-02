@@ -15,6 +15,18 @@ export const commands = {
 	aiVerify: (id: string) => typedError<Verification, IpcError>(__TAURI_INVOKE("ai_verify", { id })),
 	/**  Cancel this provider's current verification request without changing settings. */
 	aiCancel: (id: string) => typedError<null, IpcError>(__TAURI_INVOKE("ai_cancel", { id })),
+	/**  Retained payload-free usage/outcome metadata; existing audit purge clears it. */
+	investigationAudit: () => typedError<InvestigationAudit[], IpcError>(__TAURI_INVOKE("investigation_audit")),
+	/**  Enable a finite interval job only after live profile/sharing/telemetry validation. */
+	investigationSchedule: (input: ScheduleRequest_Deserialize) => typedError<null, IpcError>(__TAURI_INVOKE("investigation_schedule", { input })),
+	/**  Cancel removes only the selected job; always available while locked or disconnected. */
+	investigationScheduleCancel: (id: string) => typedError<null, IpcError>(__TAURI_INVOKE("investigation_schedule_cancel", { id })),
+	/**  Pause stops the in-flight run and keeps the job; Resume lets the next tick run. */
+	investigationSchedulePause: (id: string, paused: boolean) => typedError<null, IpcError>(__TAURI_INVOKE("investigation_schedule_pause", { id, paused })),
+	/**  Start the next run now instead of waiting for the interval; pauses still apply. */
+	investigationScheduleRun: (id: string) => typedError<null, IpcError>(__TAURI_INVOKE("investigation_schedule_run", { id })),
+	/**  Results remain in app memory only; locking hides all content. */
+	investigationSchedules: () => typedError<ScheduledJob_Serialize[], IpcError>(__TAURI_INVOKE("investigation_schedules")),
 	/**  Stream one bounded investigation; SQL events have no execution path. */
 	assistantRun: (request: AssistantRequest_Deserialize, onEvent: Channel<AgentEvent_Deserialize>) => typedError<null, IpcError>(__TAURI_INVOKE("assistant_run", { request, onEvent })),
 	/**  Cancel only this tab's current turn; cancellation remains available while locked. */
@@ -571,15 +583,15 @@ export type AgentEvent_Deserialize =
 /**  Streaming model text. */
 ({ type: "text";
 /**  Incremental plain text. */
-delta: string }) & { arguments?: never; id?: never; server?: never; sql?: never; tokens?: never; tool?: never; trace?: never } |
+delta: string }) & { arguments?: never; document?: never; evidence?: never; id?: never; kind?: never; reason?: never; server?: never; sql?: never; tokens?: never; tool?: never; trace?: never } |
 /**  Visible call start/completion. */
 ({ type: "trace";
 /**  Safe tool metadata. */
-trace: Trace_Deserialize }) & { arguments?: never; delta?: never; id?: never; server?: never; sql?: never; tokens?: never; tool?: never } |
+trace: Trace_Deserialize }) & { arguments?: never; delta?: never; document?: never; evidence?: never; id?: never; kind?: never; reason?: never; server?: never; sql?: never; tokens?: never; tool?: never } |
 /**  User-review-only SQL. */
 ({ type: "proposal";
 /**  Literal SQL for user review. */
-sql: string }) & { arguments?: never; delta?: never; id?: never; server?: never; tokens?: never; tool?: never; trace?: never } |
+sql: string }) & { arguments?: never; delta?: never; document?: never; evidence?: never; id?: never; kind?: never; reason?: never; server?: never; tokens?: never; tool?: never; trace?: never } |
 /**  Native first-use prompt for an enabled user-server tool. */
 ({ type: "confirmation";
 /**  Ephemeral pending consent ID. */
@@ -589,26 +601,40 @@ server: string;
 /**  Discovered enabled tool. */
 tool: string;
 /**  Exact policy-filtered arguments, never credentials. */
-arguments: string }) & { delta?: never; sql?: never; tokens?: never; trace?: never } |
+arguments: string }) & { delta?: never; document?: never; evidence?: never; kind?: never; reason?: never; sql?: never; tokens?: never; trace?: never } |
+/**  Validated plain JSON for local preview and explicit acceptance. */
+({ type: "artifact";
+/**  References validated against the exact delivered evidence ledger. */
+evidence: string[];
+/**  board, report or finding. */
+kind: string;
+/**  Versioned shared document. */
+document: string }) & { arguments?: never; delta?: never; id?: never; reason?: never; server?: never; sql?: never; tokens?: never; tool?: never; trace?: never } |
+/**  A board, report or finding proposal that failed validation. */
+({ type: "artifactRejected";
+/**  board, report or finding. */
+kind: string;
+/**  Typed refusal, never model content. */
+reason: Rejection }) & { arguments?: never; delta?: never; document?: never; evidence?: never; id?: never; server?: never; sql?: never; tokens?: never; tool?: never; trace?: never } |
 /**  Successful completion and conservative usage. */
 ({ type: "done";
 /**  Conservative total token upper bound. */
-tokens: number }) & { arguments?: never; delta?: never; id?: never; server?: never; sql?: never; tool?: never; trace?: never };
+tokens: number }) & { arguments?: never; delta?: never; document?: never; evidence?: never; id?: never; kind?: never; reason?: never; server?: never; sql?: never; tool?: never; trace?: never };
 
 /**  Ordered, bounded UI events; plain text is never interpreted as HTML. */
 export type AgentEvent_Serialize =
 /**  Streaming model text. */
 ({ type: "text";
 /**  Incremental plain text. */
-delta: string }) & { arguments?: never; id?: never; server?: never; sql?: never; tokens?: never; tool?: never; trace?: never } |
+delta: string }) & { arguments?: never; document?: never; evidence?: never; id?: never; kind?: never; reason?: never; server?: never; sql?: never; tokens?: never; tool?: never; trace?: never } |
 /**  Visible call start/completion. */
 ({ type: "trace";
 /**  Safe tool metadata. */
-trace: Trace_Serialize }) & { arguments?: never; delta?: never; id?: never; server?: never; sql?: never; tokens?: never; tool?: never } |
+trace: Trace_Serialize }) & { arguments?: never; delta?: never; document?: never; evidence?: never; id?: never; kind?: never; reason?: never; server?: never; sql?: never; tokens?: never; tool?: never } |
 /**  User-review-only SQL. */
 ({ type: "proposal";
 /**  Literal SQL for user review. */
-sql: string }) & { arguments?: never; delta?: never; id?: never; server?: never; tokens?: never; tool?: never; trace?: never } |
+sql: string }) & { arguments?: never; delta?: never; document?: never; evidence?: never; id?: never; kind?: never; reason?: never; server?: never; tokens?: never; tool?: never; trace?: never } |
 /**  Native first-use prompt for an enabled user-server tool. */
 ({ type: "confirmation";
 /**  Ephemeral pending consent ID. */
@@ -618,11 +644,25 @@ server: string;
 /**  Discovered enabled tool. */
 tool: string;
 /**  Exact policy-filtered arguments, never credentials. */
-arguments: string }) & { delta?: never; sql?: never; tokens?: never; trace?: never } |
+arguments: string }) & { delta?: never; document?: never; evidence?: never; kind?: never; reason?: never; sql?: never; tokens?: never; trace?: never } |
+/**  Validated plain JSON for local preview and explicit acceptance. */
+({ type: "artifact";
+/**  References validated against the exact delivered evidence ledger. */
+evidence: string[];
+/**  board, report or finding. */
+kind: string;
+/**  Versioned shared document. */
+document: string }) & { arguments?: never; delta?: never; id?: never; reason?: never; server?: never; sql?: never; tokens?: never; tool?: never; trace?: never } |
+/**  A board, report or finding proposal that failed validation. */
+({ type: "artifactRejected";
+/**  board, report or finding. */
+kind: string;
+/**  Typed refusal, never model content. */
+reason: Rejection }) & { arguments?: never; delta?: never; document?: never; evidence?: never; id?: never; server?: never; sql?: never; tokens?: never; tool?: never; trace?: never } |
 /**  Successful completion and conservative usage. */
 ({ type: "done";
 /**  Conservative total token upper bound. */
-tokens: number }) & { arguments?: never; delta?: never; id?: never; server?: never; sql?: never; tool?: never; trace?: never };
+tokens: number }) & { arguments?: never; delta?: never; document?: never; evidence?: never; id?: never; kind?: never; reason?: never; server?: never; sql?: never; tool?: never; trace?: never };
 
 /**  Aggregates retain counts, never raw values or activity identities. */
 export type Aggregate = {
@@ -782,6 +822,7 @@ export type AssistantRequest_Deserialize = {
 	model: string,
 	connection: string,
 	database: string,
+	monitoring?: boolean,
 	schema: string,
 	question: AssistantContext_Deserialize,
 	query: string | null,
@@ -796,6 +837,7 @@ export type AssistantRequest_Serialize = {
 	model: string,
 	connection: string,
 	database: string,
+	monitoring: boolean,
 	schema: string,
 	question: AssistantContext_Serialize,
 	query: string | null,
@@ -1054,6 +1096,8 @@ export type Category =
 "plan" |
 /**  Numeric aggregates. */
 "stats" |
+/**  Numeric monitoring samples with opaque evidence references. */
+"telemetry" |
 /**  Redacted bounded rows. */
 "samples";
 
@@ -1210,6 +1254,37 @@ export type ContextBundle_Deserialize = {
 	plan?: Plan[],
 	/**  Numeric query aggregates only, no users/addresses/parameters. */
 	stats?: Aggregate[],
+	/**  Timestamped numeric monitoring evidence; no activity identities or raw text. */
+	evidence?: ({
+		/**  SHA-256 of connection, generation, sample identity and time. */
+		id: string,
+		/**  Application metric identifier, never SQL or a server error. */
+		metric: string,
+		/**  Collection epoch milliseconds. */
+		collectedMs: number | null,
+		/**  Finite observed value; absent for every gap. */
+		value: number | null,
+		/**  Explicit validity/visibility. */
+		state:
+		/**  Observed numeric sample. */
+"ok" |
+		/**  Missing baseline or NULL. */
+"unknown" |
+		/**  Collector interval missing. */
+"gap" |
+		/**  Source absent. */
+"unavailable" |
+		/**  Source visibility denied. */
+"permissionDenied" |
+		/**  Counters reset. */
+"counterReset" |
+		/**  Partial source coverage. */
+"partial" |
+		/**  Per-connection redaction removed the value. */
+"redacted",
+		/**  Database/server or opaque query/session/plan scope. */
+		scope: string,
+	})[],
 	/**  Explicit selected row samples. */
 	samples?: Sample[],
 };
@@ -1226,6 +1301,37 @@ export type ContextBundle_Serialize = {
 	plan: Plan[],
 	/**  Numeric query aggregates only, no users/addresses/parameters. */
 	stats: Aggregate[],
+	/**  Timestamped numeric monitoring evidence; no activity identities or raw text. */
+	evidence?: ({
+		/**  SHA-256 of connection, generation, sample identity and time. */
+		id: string,
+		/**  Application metric identifier, never SQL or a server error. */
+		metric: string,
+		/**  Collection epoch milliseconds. */
+		collectedMs: number | null,
+		/**  Finite observed value; absent for every gap. */
+		value: number | null,
+		/**  Explicit validity/visibility. */
+		state:
+		/**  Observed numeric sample. */
+"ok" |
+		/**  Missing baseline or NULL. */
+"unknown" |
+		/**  Collector interval missing. */
+"gap" |
+		/**  Source absent. */
+"unavailable" |
+		/**  Source visibility denied. */
+"permissionDenied" |
+		/**  Counters reset. */
+"counterReset" |
+		/**  Partial source coverage. */
+"partial" |
+		/**  Per-connection redaction removed the value. */
+"redacted",
+		/**  Database/server or opaque query/session/plan scope. */
+		scope: string,
+	})[],
 	/**  Explicit selected row samples. */
 	samples: Sample[],
 };
@@ -2176,6 +2282,54 @@ export type Investigation = {
 	partial: boolean,
 };
 
+/**  Bounded metadata record for an investigation attempt. */
+export type InvestigationAudit = {
+	/**  Epoch milliseconds. */
+	time: string,
+	/**  Saved connection identity. */
+	connection: string,
+	/**  Saved provider identity. */
+	provider: string,
+	/**  Explicit selected model identifier. */
+	model: string,
+	/**  Static tools used; never arguments. */
+	tools: string[],
+	/**  Delivered opaque references only. */
+	evidence: string[],
+	/**  Conservative accounted token upper bound, not provider-reported billing. */
+	tokens: number,
+	/**  Estimated conservative cost in millionths. */
+	costMicros: number,
+	/**  running, completed, cancelled, refused or failed. */
+	outcome: string,
+};
+
+/**  Finite recurring investigation configuration; never enabled by default. */
+export type InvestigationSchedule = {
+	/**  Explicit opt-in; false is a stop request. */
+	enabled: boolean,
+	/**  Chosen saved provider, never a fallback. */
+	provider: string,
+	/**  Explicit model selection. */
+	model: string,
+	/**  Recurrence, at least five minutes; first run waits for the interval. */
+	intervalSecs: number,
+	/**  Maximum runs before this opt-in expires. */
+	maxRuns: number,
+	/**  Maximum tool calls and provider rounds. */
+	steps: number,
+	/**  Conservative input/output byte/token ceiling. */
+	tokens: number,
+	/**  Total preparation/tool/provider deadline. */
+	timeoutSecs: number,
+	/**  Maximum estimated per-run spend, millionths of the provider's currency. */
+	maxCostMicros: number,
+	/**  Conservative maximum input/output price per million tokens, in millionths. */
+	pricePerMillionMicros: number,
+	/**  Native static tools selected by the user. */
+	tools: string[],
+};
+
 /**  Typed command failure, safe to render to the user. */
 export type IpcError = {
 	/**  Failure category. */
@@ -2224,6 +2378,19 @@ export type IpcErrorKind =
 "unsupported" |
 /**  A bug or broken invariant. */
 "internal";
+
+/**  Lifecycle shown to the user; only `Waiting` and `Running` can reach a provider. */
+export type JobState =
+/**  Enabled; the next run follows the interval or Run now. */
+"waiting" |
+/**  A bounded run is in flight. */
+"running" |
+/**  No run starts until the pause reason clears. */
+"paused" |
+/**  All configured runs completed. */
+"finished" |
+/**  A run failed or was refused; a fresh opt-in is required. */
+"stopped";
 
 /**  A table with journaled edits: where it is and how many staged rows wait. */
 export type JournaledEditsDto = {
@@ -2684,6 +2851,15 @@ export type PasswordStorageDto =
 /**  Run an explicitly trusted program on each attempt. */
 "command";
 
+/**  Why a job is not running; lock and AI off clear by themselves. */
+export type PauseReason =
+/**  Paused by the user until Resume. */
+"user" |
+/**  The app is locked. */
+"locked" |
+/**  AI is turned off in Settings. */
+"aiOff";
+
 /**  Which file the connection form asks for. */
 export type PickFileKind =
 /**  A custom helper executable. */
@@ -3076,6 +3252,25 @@ export type Regression = {
 	currentMeanMs: number | null,
 };
 
+/**  Why an assistant board, report or finding proposal was not shown. */
+export type Rejection =
+/**  JSON does not match the board, report or finding schema. */
+"invalidDocument" |
+/**  The document's kind differs from the tool that was called. */
+"wrongKind" |
+/**  No citation, or more than 100. */
+"citationCount" |
+/**  A citation was never delivered in this investigation. */
+"unknownEvidence" |
+/**  A report finding cites evidence missing from the report's own list. */
+"uncitedFinding" |
+/**  A board widget's SQL is not a validated single read. */
+"unsafeSql" |
+/**  Empty, oversized or NUL-containing title or interpretation. */
+"invalidText" |
+/**  Document, finding or chart limits exceeded. */
+"tooLarge";
+
 /**  A table or view change; `target` is the table or view. */
 export type RelationChangeDto = { kind: "createTable"; target: ObjectNameDto; definition: NewTableDto } | { kind: "renameTable"; target: ObjectNameDto; name: string } | { kind: "duplicateTable"; target: ObjectNameDto; name: string; withData: boolean } | { kind: "truncateTable"; target: ObjectNameDto; cascade: boolean } | { kind: "dropTable"; target: ObjectNameDto; cascade: boolean } | { kind: "saveView"; target: ObjectNameDto; query: string; materialized: boolean; replace: boolean } | { kind: "dropView"; target: ObjectNameDto; materialized: boolean; cascade: boolean };
 
@@ -3299,6 +3494,56 @@ export type SavedQueryDto = {
 	sql: string,
 	createdAtMs: number | null,
 	updatedAtMs: number | null,
+};
+
+export type ScheduleRequest = ScheduleRequest_Serialize | ScheduleRequest_Deserialize;
+
+export type ScheduleRequest_Deserialize = {
+	request: AssistantRequest_Deserialize,
+	config: InvestigationSchedule,
+};
+
+export type ScheduleRequest_Serialize = {
+	request: AssistantRequest_Serialize,
+	config: InvestigationSchedule,
+};
+
+export type ScheduledJob = ScheduledJob_Serialize | ScheduledJob_Deserialize;
+
+export type ScheduledJob_Deserialize = {
+	id: string,
+	connection: string,
+	database: string,
+	config: InvestigationSchedule,
+	state: JobState,
+	pause: PauseReason | null,
+	runs: number,
+	failure: string | null,
+	results: ScheduledResult_Deserialize[],
+};
+
+export type ScheduledJob_Serialize = {
+	id: string,
+	connection: string,
+	database: string,
+	config: InvestigationSchedule,
+	state: JobState,
+	pause: PauseReason | null,
+	runs: number,
+	failure: string | null,
+	results: ScheduledResult_Serialize[],
+};
+
+export type ScheduledResult = ScheduledResult_Serialize | ScheduledResult_Deserialize;
+
+export type ScheduledResult_Deserialize = {
+	audit: InvestigationAudit,
+	events: AgentEvent_Deserialize[],
+};
+
+export type ScheduledResult_Serialize = {
+	audit: InvestigationAudit,
+	events: AgentEvent_Serialize[],
 };
 
 /**  One staged structure change; columns are named by their current name. */

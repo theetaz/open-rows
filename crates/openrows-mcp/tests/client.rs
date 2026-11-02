@@ -215,7 +215,7 @@ async fn stdio_discovery_confirmation_and_call_round_trip() -> TestResult {
 async fn round_trip(config: &ServerConfig, secrets: &Credentials) -> TestResult {
     let cancel = Cancellation::default();
     let tools = discover(config, secrets, &cancel).await?;
-    assert_eq!(tools.len(), 7);
+    assert_eq!(tools.len(), 12);
     assert!(
         !tools
             .iter()

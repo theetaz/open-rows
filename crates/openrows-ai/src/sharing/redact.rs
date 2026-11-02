@@ -88,6 +88,15 @@ impl Redactor {
         for stat in &mut bundle.stats {
             stat.query = self.sql(&stat.query);
         }
+        for evidence in &mut bundle.evidence {
+            evidence.validate()?;
+            if self.matches(&evidence.metric) {
+                evidence.value = None;
+                evidence.metric = MARKER.into();
+                evidence.state = super::EvidenceState::Redacted;
+            }
+            evidence.scope = self.identifier(&evidence.scope);
+        }
         self.samples(&mut bundle)?;
         Ok(bundle)
     }

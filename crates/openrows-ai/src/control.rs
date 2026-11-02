@@ -17,6 +17,11 @@ impl Cancellation {
     pub fn cancel(&self) {
         self.0.send_replace(true);
     }
+    /// Whether cancellation was requested, without waiting.
+    #[must_use]
+    pub fn is_cancelled(&self) -> bool {
+        *self.0.borrow()
+    }
     /// Wait until this operation is cancelled.
     pub async fn cancelled(&self) {
         let mut state = self.0.subscribe();

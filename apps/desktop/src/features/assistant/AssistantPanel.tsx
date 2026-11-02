@@ -11,7 +11,10 @@ export function AssistantPanel(props: AssistantProps): React.JSX.Element {
   const controls = useAssistantPanel(props);
   const busy = controls.conversation.running !== null;
   return (
-    <aside aria-label="Query assistant" className={styles.panel}>
+    <aside
+      aria-label={props.monitoring ? 'Monitoring assistant' : 'Query assistant'}
+      className={styles.panel}
+    >
       <header className={styles.row}>
         <strong>Assistant</strong>
         <Button
@@ -26,6 +29,7 @@ export function AssistantPanel(props: AssistantProps): React.JSX.Element {
       <ProviderPicker controls={controls} busy={busy} />
       <ContextNotice controls={controls} busy={busy} />
       <ConversationView
+        connection={props.profile.id}
         turns={controls.conversation.turns}
         disabled={!!controls.reason || busy}
         actions={{
@@ -36,12 +40,23 @@ export function AssistantPanel(props: AssistantProps): React.JSX.Element {
           },
         }}
       />
-      <QuickActions
+      {!props.monitoring && (
+        <QuickActions
+          controls={controls}
+          props={props}
+          disabled={!!controls.reason || busy}
+        />
+      )}
+      <Composer
         controls={controls}
-        props={props}
-        disabled={!!controls.reason || busy}
+        busy={busy}
+        tabId={props.tabId}
+        label={
+          props.monitoring
+            ? 'Ask about health, slow queries or locks'
+            : 'Ask about this query'
+        }
       />
-      <Composer controls={controls} busy={busy} tabId={props.tabId} />
     </aside>
   );
 }
@@ -86,10 +101,12 @@ function Composer({
   controls,
   busy,
   tabId,
+  label,
 }: {
   controls: Controls;
   busy: boolean;
   tabId: string;
+  label: string;
 }): React.JSX.Element {
   return (
     <form
@@ -99,7 +116,7 @@ function Composer({
       }}
     >
       <label>
-        Ask about this query
+        {label}
         <textarea
           aria-label="Assistant question"
           maxLength={4096}

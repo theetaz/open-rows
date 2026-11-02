@@ -74,3 +74,27 @@
   border: var(--or-border-width) solid var(--or-separator);
   border-radius: var(--or-radius-control);
 }
+
+.reportPreview {
+  width: 100%;
+  height: 320px;
+  border: var(--or-border-width) solid var(--or-separator);
+  border-radius: var(--or-radius-control);
+}
+.finding {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--or-space-4) var(--or-space-8);
+  margin: 0;
+}
+.finding dt {
+  color: var(--or-secondary);
+}
+.finding dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.evidence {
+  margin-inline-end: var(--or-space-6);
+  font-family: var(--or-font-mono);
+}

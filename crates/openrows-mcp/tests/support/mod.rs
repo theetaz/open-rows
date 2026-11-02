@@ -126,6 +126,14 @@ fn response_bundle(tool: &str, input: &ToolInput) -> ContextBundle {
             estimated_rows: 1,
         });
     }
+    if tool.starts_with("read_") {
+        bundle.evidence.push(openrows_ai::investigation::sample(
+            "fixture",
+            "sessions:active",
+            1000.0,
+            Some(1.0),
+        ));
+    }
     bundle
 }
 pub struct Fixture {

@@ -90,3 +90,6 @@ export type {
   McpSecretInput,
   McpServerList,
 } from './generated/bindings';
+
+/** Opt-in scheduled read-only monitoring investigations (M45-12). */
+export * from './investigations';
