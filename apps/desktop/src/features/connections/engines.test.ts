@@ -12,7 +12,7 @@ import {
 } from './engines';
 import { moveSelection } from './useEnginePicker';
 
-it('lists every TablePlus connection type, nine of them implemented', () => {
+it('lists every TablePlus connection type, ten of them implemented', () => {
   expect(ENGINE_CHOICES).toHaveLength(22);
   const implemented = ENGINE_CHOICES.filter((choice) => choice.engine);
   expect(implemented.map((choice) => choice.engine)).toEqual([
@@ -23,6 +23,7 @@ it('lists every TablePlus connection type, nine of them implemented', () => {
     'clickhouse',
     'libsql',
     'libsql-file',
+    'mongodb',
     'sqlite',
     'duckdb',
   ]);
@@ -31,6 +32,8 @@ it('lists every TablePlus connection type, nine of them implemented', () => {
   expect(defaultPort('sqlite')).toBeNull();
   expect(defaultPort('sqlserver')).toBe(1433);
   expect(defaultPort('clickhouse')).toBe(8123);
+  expect(defaultPort('mongodb')).toBe(27017);
+  expect(editorDialect('mongodb')).toBe('mongodb');
   expect(engineName('sqlserver')).toBe('SQL Server');
 });
 
@@ -49,6 +52,7 @@ it('marks the Tier 2 drivers as beta', () => {
     'clickhouse',
     'libsql',
     'libsql-file',
+    'mongodb',
     'duckdb',
   ]);
 });

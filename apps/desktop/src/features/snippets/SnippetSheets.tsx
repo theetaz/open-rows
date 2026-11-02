@@ -15,6 +15,7 @@ export const SCOPE_OPTIONS: readonly { value: SnippetScope; label: string }[] =
     { value: 'sqlserver', label: 'SQL Server' },
     { value: 'sqlite', label: 'SQLite' },
     { value: 'clickhouse', label: 'ClickHouse' },
+    { value: 'mongodb', label: 'MongoDB' },
   ];
 
 /** Add or edit one user snippet; nothing changes until Save. */

@@ -2,6 +2,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { SegmentedControl } from '@openrows/ui';
 import type { EngineDto, ProfileDto } from '@openrows/ipc';
+import { isDocumentEngine } from '../connections/engines';
 import { useSecurity } from '../security/useSecurity';
 import { useMonitor } from './useMonitor';
 import { useMonitorHistory } from './useMonitorHistory';
@@ -80,8 +81,20 @@ type Props = {
   onOpenSql: (sql: string) => void;
 };
 
-/** Lazy per-connection Monitor; lock/disconnect/unmount stop collection and hide data. */
+/** Lazy per-connection Monitor; document engines have no collector. */
 export function MonitorTab(props: Props): React.JSX.Element {
+  if (isDocumentEngine(props.profile.engine))
+    return (
+      <p className={styles.unavailable} role="status">
+        Monitoring and the AI assistant are not available for MongoDB
+        connections. They work with SQL databases.
+      </p>
+    );
+  return <EngineMonitor {...props} />;
+}
+
+/** Lock/disconnect/unmount stop collection and hide data. */
+function EngineMonitor(props: Props): React.JSX.Element {
   const security = useSecurity();
   const target = { profileId: props.profile.id, database: props.database };
   const monitor = useMonitor(target, props.connected && !security.locked);

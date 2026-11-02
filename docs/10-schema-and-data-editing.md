@@ -265,3 +265,26 @@ A filter button inside the sidebar search field opens one menu: **Object kinds**
 System visibility defaults off. Schema metadata hides PostgreSQL catalog/information/TOAST schemas, MySQL/MariaDB internal databases and SQL Server internal schemas; the catalog-layer dialect helper also hides SQLite `sqlite_%` names within ordinary schemas. PostgreSQL TOAST tables (including their column and table metadata), SQLite internal tables and SQL Server system views remain available to explicit section listing when enabled. The quick-open index retains its user-object scope.
 
 Saved rows cause no extra catalog queries. Missing detection indexes settled, complete normal section reads; a dropped or renamed favourite stays dimmed with **Remove** after its section refresh. An unread, still-refreshing or incomplete paginated section cannot establish absence, so its saved identities remain unverified and are retained. This avoids falsely marking unloaded favourites missing. Storage is device-local and versioned (docs/15 §10), excluded from connection export/import and project sync.
+
+## MongoDB collections and document changes (M3-02, M3-03)
+
+The catalog tree lists databases, collections and views; the Tables section is
+labelled **Collections**, and `admin`, `config`, `local` and `system.*` are
+system objects. Expanding a collection loads its indexes; the MQL editor
+provides `createIndex` and `dropIndex`. Views are browsable with no mutation
+key. Unsupported SQL structure operations are hidden.
+
+Insert, edit, delete and duplicate stage whole JSON/EJSON documents for review.
+The row sheet edits `__document` in a monospaced, growing text area. Text that
+is not one JSON object shows the reason under the field and keeps **Stage
+changes** and **Stage duplicate** disabled. A new document starts as `{}`.
+Duplicate removes the original `_id`, preserving all other source text. BSON
+validation (EJSON types, ranges such as a `$numberInt` outside 32 bits,
+duplicate fields) runs natively when **Review & commit** prepares the batch; a
+refusal names the row in the table's message bar and no review token is
+issued. Updates preserve `_id`; both
+updates and deletes compare the complete original snapshot to detect conflicts.
+Commit applies the batch in one transaction on a replica set/sharded deployment.
+Standalone servers reject atomic edits without applying a partial batch. Conflicts
+and statement errors roll back; uncertain commit outcomes require verification
+before retrying. See docs/05 §22 for the beta capability boundary.

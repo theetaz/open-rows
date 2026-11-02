@@ -90,6 +90,20 @@ pub(super) async fn connect(
     Ok(connection.connection)
 }
 
+/// Refuse engines without a collector before a monitor slot is reserved.
+pub(super) fn ensure_profile_engine(
+    state: &Connections,
+    target: &super::MonitorTarget,
+) -> Result<(), IpcError> {
+    let profile = state
+        .profiles
+        .get(profiles::profile_id(&target.profile_id)?)?;
+    if profile.driver == openrows_store::profile::Driver::Duckdb {
+        return Ok(());
+    }
+    ensure_engine(profile.driver)
+}
+
 pub(super) fn ensure_engine(engine: openrows_store::profile::Driver) -> Result<(), IpcError> {
     use openrows_store::profile::Driver;
     let reason = match engine {
@@ -104,6 +118,7 @@ pub(super) fn ensure_engine(engine: openrows_store::profile::Driver) -> Result<(
         Driver::Duckdb => {
             "DuckDB diagnostics run only on its owning session; no extra connection is opened"
         }
+        Driver::Mongodb => "Monitoring is not available for MongoDB connections",
     };
     Err(IpcError::new(IpcErrorKind::Unsupported, reason))
 }
@@ -121,7 +136,7 @@ pub(super) fn ensure_postgres(engine: openrows_store::profile::Driver) -> Result
 
 #[cfg(test)]
 mod tests {
-    use super::{IpcErrorKind, ensure_postgres};
+    use super::{IpcErrorKind, ensure_engine, ensure_postgres};
     use openrows_store::profile::Driver;
 
     #[test]
@@ -136,9 +151,16 @@ mod tests {
             Driver::LibsqlFile,
             Driver::Libsql,
             Driver::Duckdb,
+            Driver::Mongodb,
         ] {
             let refused = ensure_postgres(driver).err().map(|error| error.kind);
             assert_eq!(refused, Some(IpcErrorKind::Unsupported));
         }
+    }
+
+    #[test]
+    fn mongodb_has_no_monitor_collector() {
+        let refused = ensure_engine(Driver::Mongodb).err().map(|error| error.kind);
+        assert_eq!(refused, Some(IpcErrorKind::Unsupported));
     }
 }

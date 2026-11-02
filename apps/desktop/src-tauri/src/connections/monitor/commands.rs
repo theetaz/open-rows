@@ -26,6 +26,7 @@ pub(crate) async fn monitor_start(
         .app
         .state::<crate::security::Security>()
         .admit("monitor_start")?;
+    reader::ensure_profile_engine(&state, &request.target)?;
     let background = state.monitors.background(&key);
     if let Ok(monitor) = state.monitors.get(&key)
         && !monitor.reusable(interval)

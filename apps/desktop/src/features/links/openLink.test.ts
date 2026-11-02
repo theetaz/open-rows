@@ -53,3 +53,30 @@ it('previews where it connects and what it opens, without credentials', () => {
   ]);
   expect(JSON.stringify(rows)).not.toContain('report-reader');
 });
+
+it('previews a MongoDB collection link as a collection, without a schema row', () => {
+  const mongo = profile('catalog', {
+    id: 'id-mongo',
+    engine: 'mongodb',
+    port: 27017,
+  });
+  const link: OpenLinkDto = {
+    kind: 'table',
+    connection: { id: 'id-mongo', name: 'catalog' },
+    database: 'shop',
+    schema: 'shop',
+    object: { name: 'orders', kind: 'table' },
+    filters: [
+      { column: 'status', operator: 'equal', value: 'paid', second: '' },
+    ],
+  };
+  const resolved = resolveLink(link, [mongo]);
+  if (!('profile' in resolved)) throw new Error(resolved.error);
+  expect(linkRows(resolved)).toEqual([
+    ['Connection', 'catalog (local)'],
+    ['Server', 'mongodb · localhost:27017'],
+    ['Database', 'shop'],
+    ['Opens', 'orders (collection)'],
+    ['Filter', 'status = paid'],
+  ]);
+});

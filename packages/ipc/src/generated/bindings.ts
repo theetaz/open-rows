@@ -1630,7 +1630,7 @@ args: string[] } |
 url: string };
 
 /**  Database engine of a profile. */
-export type EngineDto = "duckdb" | "postgres" | "mysql" | "mariadb" | "sqlserver" | "clickhouse" | "sqlite" | "libsql" | "libsql-file";
+export type EngineDto = "duckdb" | "postgres" | "mysql" | "mariadb" | "sqlserver" | "clickhouse" | "sqlite" | "libsql" | "mongodb" | "libsql-file";
 
 /**  Environment tag as shown in the rail, header and toolbar. */
 export type EnvDto = {
@@ -2548,6 +2548,18 @@ export type Model = {
 	capabilities: Capabilities,
 };
 
+export type MongoOptionsDto = {
+	/**  `mongodb+srv`: hosts and options come from DNS. */
+	srv: boolean,
+	/**
+	 *  Talk only to the given server, without replica-set discovery
+	 *  (`directConnection=true`); never with SRV.
+	 */
+	direct: boolean,
+	/**  Authentication database; empty uses the profile's database, else `admin`. */
+	authSource: string,
+};
+
 /**  Per-generation source status; no sampled rows in events. */
 export type MonitorChanged = {
 	target: MonitorTarget,
@@ -3095,6 +3107,8 @@ export type ProfileDto = {
 	port: number,
 	database: string | null,
 	user: string | null,
+	/**  `MongoDB` SRV and authentication-database options; `null` for SQL engines. */
+	mongodb: MongoOptionsDto | null,
 	tlsMode: TlsModeDto,
 	tlsFiles: TlsFilesDto,
 	ssh: SshDto | null,
@@ -3134,6 +3148,7 @@ export type ProfileInput = {
 	port: number,
 	database: string | null,
 	user: string | null,
+	mongodb?: MongoOptionsDto | null,
 	tlsMode: TlsModeDto,
 	/**  CA and client certificate files (absent: none). */
 	tlsFiles?: TlsFilesInput,
@@ -4306,6 +4321,8 @@ export type UrlDraft = {
 	port: number,
 	database: string | null,
 	user: string | null,
+	/**  `MongoDB` SRV and authentication-database options; `null` for SQL engines. */
+	mongodb: MongoOptionsDto | null,
 	tlsMode: TlsModeDto,
 	passwordProvided: boolean,
 };

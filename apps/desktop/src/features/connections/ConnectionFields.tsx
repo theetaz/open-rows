@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { MongoFields } from './MongoFields';
 import { TextField } from '@openrows/ui';
 import { fieldError } from './form';
 import { PasswordField } from './PasswordField';
@@ -58,6 +59,7 @@ export function ConnectionFields({
         />
         <TextField
           label="Port"
+          disabled={draft.engine === 'mongodb' && draft.mongodb?.srv}
           inputMode="numeric"
           {...text('port')}
           className={styles.port}
@@ -72,6 +74,7 @@ export function ConnectionFields({
         />
       )}
       <PasswordField form={form} />
+      {draft.engine === 'mongodb' && <MongoFields form={form} />}
       {draft.engine !== 'libsql' && (
         <TextField
           label="Database"

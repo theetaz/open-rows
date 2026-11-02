@@ -22,6 +22,8 @@ pub enum ReadEngine {
     LibsqlFile,
     /// Remote libSQL protection has not been validated; refuse reads.
     Libsql,
+    /// `MongoDB` requires a dedicated server-enforced AI read boundary.
+    Mongodb,
     /// SQL Server lacks this execution protection; refuse reads.
     Sqlserver,
     /// `ClickHouse` protection has not been validated; refuse reads.
@@ -49,7 +51,7 @@ impl ReadEngine {
                 "START TRANSACTION READ ONLY",
             ]),
             Self::Sqlite | Self::LibsqlFile => Ok(&["PRAGMA query_only=ON", "BEGIN"]),
-            Self::Libsql | Self::Sqlserver | Self::Clickhouse | Self::Duckdb => {
+            Self::Mongodb | Self::Libsql | Self::Sqlserver | Self::Clickhouse | Self::Duckdb => {
                 Err(McpError::Unsafe)
             }
         }
@@ -60,7 +62,7 @@ impl ReadEngine {
             Self::Mysql => Ok((Engine::MySql, Dialect::MySql)),
             Self::Mariadb => Ok((Engine::MariaDb, Dialect::MySql)),
             Self::Sqlite | Self::LibsqlFile => Ok((Engine::Sqlite, Dialect::Sqlite)),
-            Self::Libsql | Self::Sqlserver | Self::Clickhouse | Self::Duckdb => {
+            Self::Mongodb | Self::Libsql | Self::Sqlserver | Self::Clickhouse | Self::Duckdb => {
                 Err(McpError::Unsafe)
             }
         }

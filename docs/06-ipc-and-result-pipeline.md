@@ -229,3 +229,18 @@ No shell plugin, webview launch capability or new IPC command is added.
 DuckDB's Rust binding emits Arrow 58; workspace results use Arrow 60. The host converts one native chunk slice through a capped Arrow IPC buffer, normalizing lossless opaque booleans/128-bit integers and explicit complex text fallbacks (docs/05 §20). It fetches fallibly and honors BatchPolicy and the unchanged one-credit protocol. Sender decoded allowances include the decoder's conservative eight-byte row/node floor, including narrow integers/booleans; decoder validation is unchanged. Oversized multi-row chunks are split; native Arrow rows above 64 MiB fail explicitly before IPC allocation. DuckDB may exhaust the process memory cap while generating a value before Arrow is available; that typed DriverHost/MemoryLimit failure requires explicit reconnect. The desktop receives only workspace Arrow 60 and never links DuckDB.
 
 Typed EngineDto/file-picker variants and native-file handoff identify DuckDB end to end. Unsupported facets are absent, rather than returning fake catalogs or edits. Multiple result barriers and early Stop follow the existing hosted adapter contract.
+
+## Document results (M3-01)
+
+`openrows-results::documents` is the shared JSON/EJSON-to-Arrow boundary for
+MongoDB and future key/value engines. A bounded initial sample determines one
+stable schema. Homogeneous objects become `Struct`, arrays become `List`, and
+heterogeneous fields become JSON-tagged UTF-8. Every result retains a lossless
+`__document` JSON column, so fields or shapes appearing after the sample remain
+available. No lossy union coercion is applied. Arrow workers transfer nested
+buffers once and format structs/document lists as JSON; SQL arrays keep their
+existing engine text. Tree/JSON result views fetch one document cell through
+the existing exact-value byte IPC instead of loading every row into React.
+The shared exporter writes document structs/lists as nested JSON in JSON exports
+and JSON text in CSV/Excel, preserving exact integer digits and null elements;
+SQL array exports retain their existing engine text.

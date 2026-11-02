@@ -15,7 +15,12 @@ export function decodeTile(bytes: ArrayBuffer): DecodedTile {
       name: field.name,
       type: describeType(field.type),
       metadata: Object.fromEntries(field.metadata),
-      chunks: vector.data.map(columnChunk),
+      chunks: vector.data.map((chunk: Data) =>
+        columnChunk(
+          chunk,
+          field.metadata.get('openrows.source_type') === 'EJSON',
+        ),
+      ),
     };
   });
   return {
@@ -25,9 +30,21 @@ export function decodeTile(bytes: ArrayBuffer): DecodedTile {
 }
 
 /** Clone-safe buffers of one Arrow chunk; a list carries its element chunk. */
-function columnChunk(chunk: Data): ColumnChunk {
+function columnChunk(chunk: Data, document = false): ColumnChunk {
   const child = chunk.children[0];
   return {
+    document,
+    fields: DataType.isStruct(chunk.type)
+      ? chunk.type.children.map((field, index) => {
+          const child = chunk.children[index];
+          if (!child) throw new Error('Missing Arrow struct child');
+          return {
+            name: field.name,
+            type: describeType(field.type),
+            chunk: columnChunk(child, document),
+          };
+        })
+      : undefined,
     length: chunk.length,
     offset: chunk.offset,
     stride: chunk.stride,
@@ -36,30 +53,25 @@ function columnChunk(chunk: Data): ColumnChunk {
     validity: chunk.nullBitmap,
     offsets: chunk.valueOffsets as Int32Array | undefined,
     child:
-      DataType.isList(chunk.type) && child ? columnChunk(child) : undefined,
+      DataType.isList(chunk.type) && child
+        ? columnChunk(child, document)
+        : undefined,
   };
 }
 
 function describeType(type: unknown): string {
+  if (DataType.isStruct(type)) {
+    for (const field of type.children) describeType(field.type);
+    return type.toString();
+  }
   if (DataType.isList(type)) {
     describeType(type.children[0]?.type);
     return type.toString();
   }
   if (DataType.isInterval(type) && type.unit === IntervalUnit.MONTH_DAY_NANO)
     return type.toString();
-  if (
-    DataType.isInt(type) ||
-    DataType.isFloat(type) ||
-    DataType.isBool(type) ||
-    DataType.isUtf8(type) ||
-    DataType.isTimestamp(type) ||
-    DataType.isDecimal(type) ||
-    DataType.isBinary(type) ||
-    DataType.isDate(type) ||
-    DataType.isTime(type) ||
-    DataType.isFixedSizeBinary(type)
-  )
-    return type.toString();
+  const primitive = primitiveType(type);
+  if (primitive !== null) return primitive;
   throw new Error('Unsupported Arrow tile type');
 }
 
@@ -75,4 +87,21 @@ function validateStream(bytes: ArrayBuffer): void {
     view.getUint32(bytes.byteLength - 4, true) !== 0
   )
     throw new Error('Invalid Arrow IPC framing');
+}
+
+function primitiveType(type: unknown): string | null {
+  if (
+    DataType.isInt(type) ||
+    DataType.isFloat(type) ||
+    DataType.isBool(type) ||
+    DataType.isUtf8(type) ||
+    DataType.isTimestamp(type) ||
+    DataType.isDecimal(type) ||
+    DataType.isBinary(type) ||
+    DataType.isDate(type) ||
+    DataType.isTime(type) ||
+    DataType.isFixedSizeBinary(type)
+  )
+    return type.toString();
+  return null;
 }

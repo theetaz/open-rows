@@ -10,6 +10,7 @@ import type { QueryParams } from './editorSettings';
  * are variables, so `:name` and `?` stand for parameters there.
  */
 const OFFERED: Record<EditorDialect, readonly ParamStyleDto[]> = {
+  mongodb: [],
   postgres: ['named', 'numbered'],
   mysql: ['named', 'anonymous'],
   mariadb: ['named', 'anonymous'],
@@ -19,6 +20,7 @@ const OFFERED: Record<EditorDialect, readonly ParamStyleDto[]> = {
 };
 
 const LABELS: Record<EditorDialect, Record<ParamStyleDto, string>> = {
+  mongodb: { named: ':name', numbered: '$1', anonymous: '?' },
   postgres: { named: ':name', numbered: '$1', anonymous: '?' },
   mysql: { named: ':name', numbered: '$1', anonymous: '?' },
   mariadb: { named: ':name', numbered: '$1', anonymous: '?' },

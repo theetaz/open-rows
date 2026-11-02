@@ -214,6 +214,9 @@ pub fn page_sql(
     known: &[String],
     page: Page,
 ) -> Result<BoundSql, SelectError> {
+    if dialect == Dialect::MongoDb {
+        return crate::mql::browse::page(query, Some(page));
+    }
     let projection = projection(dialect, query, known)?;
     let mut bound = select(dialect, query, known, &projection)?;
     if let Some(sort) = &query.sort {
@@ -259,6 +262,9 @@ pub fn count_sql(
     query: &TableQuery,
     known: &[String],
 ) -> Result<BoundSql, SelectError> {
+    if dialect == Dialect::MongoDb {
+        return crate::mql::browse::page(query, None);
+    }
     // `COUNT(*)` is an `int` in SQL Server and overflows past 2^31 rows.
     let count = if dialect == Dialect::SqlServer {
         "COUNT_BIG(*)"
@@ -287,6 +293,9 @@ pub fn all_rows_sql(
         sort: None,
         row_id: None,
     };
+    if dialect == Dialect::MongoDb {
+        return Ok(crate::mql::browse::all(&query));
+    }
     select(dialect, &query, known, "*")
 }
 /// `SQLite`'s names for the rowid.

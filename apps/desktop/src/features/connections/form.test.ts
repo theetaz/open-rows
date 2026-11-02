@@ -70,6 +70,7 @@ it('fills fields from a parsed URL; a typed name sticks, a URL-derived one follo
     user: 'app',
     tlsMode: 'require' as const,
     passwordProvided: false,
+    mongodb: null,
     engine: 'postgres' as const,
     file: null,
   };
@@ -111,6 +112,7 @@ it('fills a file connection from a sqlite: URL and validates its path', () => {
     user: null,
     tlsMode: 'disable' as const,
     passwordProvided: false,
+    mongodb: null,
   };
   const draft = withUrl(emptyDraft(), parsed);
   expect(draft).toMatchObject({
@@ -147,6 +149,7 @@ it('an in-memory sqlite: URL needs no path and keeps the typed one', () => {
     user: null,
     tlsMode: 'disable' as const,
     passwordProvided: false,
+    mongodb: null,
   };
   const typed = { ...emptyDraft('sqlite'), filePath: '/data/shop.sqlite' };
   const draft = withUrl({ ...typed, fileReadOnly: true }, parsed);
@@ -182,6 +185,31 @@ it('starts new connections with the engine default port', () => {
   expect(emptyDraft('mariadb').port).toBe('3306');
   expect(emptyDraft('postgres').port).toBe('5432');
   expect(emptyDraft('sqlite').port).toBe('');
+  expect(emptyDraft('mongodb').port).toBe('27017');
+});
+
+it('preserves MongoDB discovery and authentication options from URL to saved form', () => {
+  const parsed = {
+    engine: 'mongodb' as const,
+    file: null,
+    host: 'cluster.test',
+    port: 27017,
+    database: 'reports',
+    user: 'app',
+    mongodb: { srv: true, direct: false, authSource: 'admin' },
+    tlsMode: 'verify-full' as const,
+    passwordProvided: false,
+  };
+  const draft = withUrl(emptyDraft(), parsed);
+  expect(toInput(draft)).toMatchObject({
+    engine: 'mongodb',
+    host: 'cluster.test',
+    mongodb: parsed.mongodb,
+    tlsMode: 'verify-full',
+  });
+  expect(draftFromProfile(profile('reports', parsed)).mongodb).toEqual(
+    parsed.mongodb,
+  );
 });
 
 it('a saved connection refuses a URL for another engine', () => {
@@ -195,6 +223,7 @@ it('a saved connection refuses a URL for another engine', () => {
     user: 'app',
     tlsMode: 'prefer' as const,
     passwordProvided: false,
+    mongodb: null,
   };
   expect(urlConflict(draft, mysql)).toBe(
     'This is a MySQL URL; the connection uses PostgreSQL',

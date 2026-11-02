@@ -196,3 +196,8 @@
   flex-wrap: wrap;
   gap: 4px;
 }
+.unavailable {
+  margin: 0;
+  padding: var(--or-space-16);
+  color: var(--or-secondary);
+}

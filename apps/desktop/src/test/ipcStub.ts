@@ -45,6 +45,7 @@ export function profile(
     port: 5432,
     database: 'orders',
     user: 'app',
+    mongodb: null,
     tlsMode: 'prefer',
     tlsFiles: {
       caFile: null,

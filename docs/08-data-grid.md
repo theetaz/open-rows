@@ -326,3 +326,21 @@ until they are committed or discarded. Query-result edits are held in memory, no
 in the table-tab crash-recovery journal. After commit the stored snapshot is marked
 out of date and editing is disabled until the SELECT is run again; arbitrary
 multi-statement scripts are never automatically replayed.
+
+## 13. Document results (M3-01)
+
+MongoDB query results share the Arrow tile/canvas path with SQL results. Text
+fields hold JSON text (strings keep their quotes), nested objects and lists
+display as JSON, and heterogeneous fields retain JSON fallback values. A result
+with an EJSON `__document` column gets a **Table / Tree / JSON** segmented
+control above the grid (also for each stacked result). Tree and JSON show one
+document at a time with **Document n of N** and previous/next buttons; they load
+that one lossless canonical EJSON value through the exact-value IPC (auto-loaded
+up to the inspector's size limit, otherwise behind **Load document**), never
+every row. JSON is indented; canonical EJSON keeps every number as a string, so
+re-indenting loses no digits. Table is the canvas grid with its usual tools.
+
+MQL query results are read-only (the result toolbar says to edit documents in
+the collection tab). Collection pages expose `_id` and `__document`; edits
+operate on the whole document through the existing staging and review flow
+(docs/10). Document exports preserve nested JSON and integer digits.

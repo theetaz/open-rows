@@ -68,6 +68,12 @@ pub(super) fn protection(driver: Driver, timeout_ms: u32) -> Result<Protection, 
                 "DuckDB boards need their owning session; no extra connection is opened",
             ));
         }
+        Driver::Mongodb => {
+            return Err(IpcError::new(
+                IpcErrorKind::Unsupported,
+                "Boards are not available for MongoDB connections",
+            ));
+        }
     })
 }
 
@@ -97,6 +103,7 @@ mod tests {
             assert_eq!(mode, Some(ReadOnlyMode::Classified));
         }
         assert!(protection(Driver::Duckdb, 15_000).is_err());
+        assert!(protection(Driver::Mongodb, 15_000).is_err());
         let postgres = protection(Driver::Postgres, 2_500).map(|p| p.setup).ok();
         assert_eq!(
             postgres.and_then(|setup| setup.get(1).cloned()).as_deref(),

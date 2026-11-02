@@ -80,6 +80,8 @@ const WINDOWS =
  * MySQL/MariaDB and SQLite built-ins, which have no function catalog.
  */
 const BUILT_INS: Record<EditorDialect, string> = {
+  mongodb:
+    'find sort limit skip aggregate countDocuments insertOne insertMany updateOne updateMany deleteOne deleteMany replaceOne createIndex dropIndex getIndexes getCollection toArray',
   postgres: `${AGGREGATES} ${WINDOWS} now age date_trunc date_part to_char
     to_date to_timestamp make_date make_interval clock_timestamp concat
     concat_ws string_agg array_agg json_agg jsonb_agg json_build_object

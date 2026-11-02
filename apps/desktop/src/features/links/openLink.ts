@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { OpenLinkDto, ProfileDto } from '@openrows/ipc';
+import { isDocumentEngine } from '../connections/engines';
 import { operators } from '../table/model';
 
 /** A link and the saved connection it names. */
@@ -50,9 +51,17 @@ export function linkRows(resolved: ResolvedLink): [string, string][] {
     if (link.database) rows.push(['Database', link.database]);
     return rows;
   }
-  rows.push(['Database', link.database], ['Schema', link.schema]);
-  if (link.object)
-    rows.push(['Opens', `${link.object.name} (${link.object.kind})`]);
+  // A MongoDB database is its only schema; its tables are collections.
+  const documents = isDocumentEngine(profile.engine);
+  rows.push(['Database', link.database]);
+  if (!documents) rows.push(['Schema', link.schema]);
+  if (link.object) {
+    const kind =
+      documents && link.object.kind === 'table'
+        ? 'collection'
+        : link.object.kind;
+    rows.push(['Opens', `${link.object.name} (${kind})`]);
+  }
   if (link.kind === 'table')
     for (const filter of link.filters)
       rows.push([

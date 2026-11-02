@@ -48,6 +48,7 @@ pub(crate) mod limits;
 mod limits_dto;
 mod metadata;
 mod metadata_lifecycle;
+mod mongo_options;
 pub(crate) mod monitor;
 mod owners;
 pub(crate) mod processes;

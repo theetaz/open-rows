@@ -5,6 +5,7 @@
 //! reads a value without allocating, except for `Decimal128`, whose exact
 //! text is built by Arrow, and lists, which become `PostgreSQL` array text.
 use crate::ExportError;
+use crate::documents::Document;
 use crate::text::push_plain;
 use crate::text::{Temporal, is_number};
 use arrow_array::cast::AsArray;
@@ -37,7 +38,7 @@ pub(crate) enum Cell<'a> {
     Number(Cow<'a, str>),
     Text(&'a str),
     /// JSON document text from the server.
-    Json(&'a str),
+    Json(Cow<'a, str>),
     /// Text built for this cell (`PostgreSQL` array text of a list).
     Owned(String),
     Binary(&'a [u8]),
@@ -73,6 +74,7 @@ enum Typed<'a> {
     Time(Vec<i64>, TimeUnit),
     Interval(&'a IntervalMonthDayNanoArray),
     List(&'a ListArray, Box<Column<'a>>),
+    Document(Document<'a>),
 }
 
 /// Integer arrays, widened to `i64`/`u64` per cell.
@@ -142,6 +144,7 @@ impl<'a> Column<'a> {
             }),
             Typed::Interval(array) => Cell::Temporal(Temporal::Interval(array.value(row))),
             Typed::List(array, items) => Cell::Owned(list_text(array, items, row)),
+            Typed::Document(document) => Cell::Json(Cow::Owned(document.json(row))),
         }
     }
 }
@@ -191,7 +194,7 @@ impl Ints<'_> {
 /// Text that only becomes a bare number when it is one.
 fn text(value: &str, role: Role) -> Cell<'_> {
     match role {
-        Role::Json => Cell::Json(value),
+        Role::Json => Cell::Json(Cow::Borrowed(value)),
         Role::Number if is_number(value) => Cell::Number(Cow::Borrowed(value)),
         Role::Text | Role::Number => Cell::Text(value),
     }
@@ -214,6 +217,15 @@ fn role(field: &Field) -> Role {
 }
 
 fn typed<'a>(field: &Field, array: &'a dyn Array) -> Option<Typed<'a>> {
+    if field
+        .metadata()
+        .get("openrows.source_type")
+        .map(String::as_str)
+        == Some("EJSON")
+        && matches!(field.data_type(), DataType::Struct(_) | DataType::List(_))
+    {
+        return Document::new(field, array).map(Typed::Document);
+    }
     Some(match field.data_type() {
         DataType::Null => Typed::Null,
         DataType::Boolean => Typed::Bool(array.as_boolean_opt()?),

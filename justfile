@@ -181,6 +181,10 @@ test-clickhouse image="clickhouse/clickhouse-server:25.3.9.72":
 test-libsql image="ghcr.io/tursodatabase/libsql-server:v0.24.32":
     {{sccache_guard}} bash scripts/test-libsql.sh "{{image}}"
 
+# Run MongoDB document integration and capability conformance on a replica set.
+test-mongo:
+    {{sccache_guard}} bash scripts/test-mongo.sh
+
 # Run each cargo-fuzz target in fuzz/ briefly; skips when nightly or cargo-fuzz is missing.
 fuzz-smoke seconds="20":
     {{sccache_guard}} bash scripts/fuzz-smoke.sh "{{seconds}}"

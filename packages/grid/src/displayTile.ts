@@ -4,6 +4,7 @@ import type { WindowRequest } from '@openrows/ipc';
 import type { ColumnChunk, Tile } from './tiles';
 import type { DisplayCell } from './model';
 import { fixedValue } from './format';
+import { documentValue } from './documentValue';
 import { listValue } from './listValue';
 /** Ready-to-paint worker reply. Conversion time is worker CPU, not main-thread blocking time. */
 export interface DisplayTile {
@@ -79,6 +80,8 @@ function displayValue(
   row: number,
   digits: number | undefined,
 ): string {
+  if (chunk.fields || (chunk.document && type.startsWith('List<')))
+    return documentValue(chunk, type, row, scalarValue);
   if (type.startsWith('List<')) return listValue(chunk, type, row, itemText);
   if (chunk.offsets) return variableValue(chunk, row, type);
   if (type === 'Bool') {
@@ -153,4 +156,8 @@ function variableValue(chunk: ColumnChunk, row: number, type: string): string {
   return type === 'Binary'
     ? `${String(bytes.length)} bytes`
     : decoder.decode(bytes);
+}
+
+function scalarValue(chunk: ColumnChunk, type: string, row: number): string {
+  return displayValue({ ...chunk, document: false }, type, row, undefined);
 }

@@ -249,3 +249,23 @@ boundary. Without AI set up (AI off, no provider, or no default model) the
 prompt is replaced by the reason and an **Open AI settings** button.
 
 Beautify SQL moves to ⌥⌘B; Uglify keeps ⇧⌘I.
+
+## MongoDB editor and pipelines (M3-02, M3-04)
+
+MongoDB connections use the MQL editor (its accessible name is "MQL editor")
+with shell-like collection commands, JSON/EJSON literals and BSON constructors
+(docs/05 §22). Shell comments are accepted without executing JavaScript. SQL
+formatting (Beautify answers "the formatter supports SQL, not MQL"), parameter
+binding and Explain are unavailable for MQL; the Explain button is hidden. The
+AI button and ⌘I stay visible but only show "AI is not available for MongoDB
+connections" in the editor bar, and no assistant panel opens. The shared
+read-only and write-confirmation policies classify native commands, including
+write-producing aggregation stages. Cancel interrupts the server operation.
+
+A collapsible **Pipeline editor** sits under the editor bar of MongoDB tabs. It
+takes a collection name and a JSON stage array. One button per stage, labelled
+with its number and operator (`1 · $match`), previews stages 1–N with a final
+`{"$limit": 100}`; previews reject `$out`, `$merge` and server JavaScript,
+including nested occurrences, with the reason under the buttons. **Run
+pipeline** sends the whole array through the normal admission/confirmation path.
+Both run in the tab, so results, Cancel and history are the editor's.

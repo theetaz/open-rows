@@ -3,12 +3,13 @@ import { trackLiveText } from './liveText';
 import { useResultEditNotice } from './ResultWorkspace';
 import { useCallback, useRef, useState } from 'react';
 import { AssistantDock } from '../assistant/AssistantDock';
-import { toggleAssistant } from '../assistant/conversation';
 import { inlineTransport } from '../assistant/inlineSetup';
-import { editorDialect } from '../connections/engines';
+import { editorDialect, isDocumentEngine } from '../connections/engines';
 import type { ProfileDto } from '@openrows/ipc';
 import type { CompletionCatalog, FormatKind } from '@openrows/editor';
 import { useHistoryInsert } from './historyInsert';
+import { explainable, useAiActions } from './tabAi';
+import { TabPipeline } from './TabPipeline';
 import { QueryEditor } from './QueryEditor';
 import { EditorBar } from './EditorBar';
 import { FileChangedBar } from './FileChangedBar';
@@ -97,21 +98,6 @@ function useFlag(): [boolean, () => void, () => void] {
   return [on, open, close];
 }
 
-/** The AI button and ⌘I: the assistant panel, and the editor's inline prompt. */
-function useAiActions(
-  tabId: string,
-  editor: { current: EditorHandle | null },
-): { inline: () => void; assistant: () => void } {
-  return {
-    inline: () => {
-      editor.current?.promptInline?.();
-    },
-    assistant: () => {
-      toggleAssistant(tabId);
-    },
-  };
-}
-
 /** Editor, bottom bar, results and status for one query tab. */
 export function QueryTab(props: QueryTabProps): React.JSX.Element {
   const { tab, runs } = props;
@@ -126,7 +112,9 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
   const actions = useRunActions(editor, settings, props);
   const editNotice = useResultEditNotice(tab.id);
   const explain = useExplain(tab.id, props.sessionId, editor);
-  const { inline, assistant } = useAiActions(tab.id, editor);
+  const [aiNotice, ai] = useAiActions(props.connection, tab.id, editor);
+  const notice =
+    editNotice ?? props.notice ?? aiNotice ?? formatFailure ?? files.failure;
   const [act, onExportable, claim] = useTabAction({
     actions,
     format,
@@ -134,10 +122,8 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
     runs,
     tabId: tab.id,
     onSnippet: sheets.startPicking,
-    onInline: inline,
-    onAssistant: assistant,
-    onExplain:
-      props.connection.engine === 'duckdb' ? () => undefined : explain.run,
+    ...ai,
+    onExplain: explainable(props.connection) ? explain.run : () => undefined,
   });
   return (
     <div className={styles.withAssistant}>
@@ -165,12 +151,12 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
           actions={actions}
           file={files.act}
           format={format}
-          notice={editNotice ?? props.notice ?? formatFailure ?? files.failure}
+          notice={notice}
           onName={sheets.startNaming}
           onExplain={explain.run}
-          onAssistant={assistant}
-          onInline={inline}
+          {...ai}
         />
+        <TabPipeline {...props} run={run} />
         <TabParams
           {...props}
           dialect={dialect}
@@ -222,8 +208,9 @@ function TabAssistant(
     run: RunState;
     explain: ExplainControls;
   },
-): React.JSX.Element {
+): React.JSX.Element | null {
   const { tab, editorRef, run, explain } = props;
+  if (isDocumentEngine(props.connection.engine)) return null;
   return (
     <AssistantDock
       tabId={tab.id}
@@ -263,6 +250,7 @@ function TabEditor(
   },
 ): React.JSX.Element {
   const { tab, editorRef, act } = props;
+  const documentEngine = isDocumentEngine(props.connection.engine);
   return (
     <>
       {tab.sql.toUpperCase().includes('__OPENROWS_REDACTED_') && (
@@ -275,11 +263,15 @@ function TabEditor(
       <QueryEditor
         profileId={props.connection.id}
         doc={tab.sql}
-        label="SQL editor"
-        onInline={inlineTransport({
-          profile: props.connection,
-          database: tab.database,
-        })}
+        label={documentEngine ? 'MQL editor' : 'SQL editor'}
+        {...(documentEngine
+          ? {}
+          : {
+              onInline: inlineTransport({
+                profile: props.connection,
+                database: tab.database,
+              }),
+            })}
         dialect={editorDialect(props.connection.engine)}
         settings={props.settings}
         catalog={props.catalog}
@@ -345,9 +337,7 @@ function TabBar(
         props.runs.cancel(props.tab.id);
       }}
       onFormat={props.format}
-      onExplain={
-        props.connection.engine === 'duckdb' ? undefined : props.onExplain
-      }
+      onExplain={explainable(props.connection) ? props.onExplain : undefined}
       onAssistant={props.onAssistant}
       onInline={props.onInline}
     />

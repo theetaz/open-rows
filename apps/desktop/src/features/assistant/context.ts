@@ -29,6 +29,7 @@ export function assistantSchema(engine: EngineDto, database: string): string {
       return 'public';
     case 'mysql':
     case 'mariadb':
+    case 'mongodb':
       return database;
     case 'sqlserver':
       return 'dbo';

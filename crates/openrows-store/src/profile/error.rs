@@ -69,7 +69,8 @@ pub enum UrlError {
     /// The scheme names no supported engine.
     #[error(
         "unsupported URL scheme {scheme:?}; expected postgres://, mysql://, mariadb://, \
-         sqlserver://, jdbc:sqlserver://, clickhouse://, sqlite:, libsql:// or libsql-file:"
+         sqlserver://, jdbc:sqlserver://, clickhouse://, mongodb://, mongodb+srv://, sqlite:, \
+         libsql:// or libsql-file:"
     )]
     UnsupportedScheme {
         /// Scheme found (lower-cased).
@@ -116,4 +117,7 @@ pub enum UrlError {
     /// libSQL URLs contain only an endpoint; tokens use the secret policy.
     #[error("libSQL URLs must contain a host only; put the auth token in its secret field")]
     InvalidLibsqlUrl,
+    /// `MongoDB` `directConnection` is `true` or `false`, and never with SRV.
+    #[error("directConnection must be true or false, and cannot be combined with mongodb+srv")]
+    InvalidDirectConnection,
 }

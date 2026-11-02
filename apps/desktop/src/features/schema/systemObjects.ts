@@ -9,11 +9,7 @@ export function isSystemObject(
   const schema = object.schema.toLowerCase();
   switch (engine) {
     case 'postgres':
-      return (
-        schema === 'information_schema' ||
-        schema === 'pg_catalog' ||
-        schema.startsWith('pg_toast')
-      );
+      return isPostgresSystemSchema(schema);
     case 'mysql':
     case 'mariadb':
       return [
@@ -35,5 +31,18 @@ export function isSystemObject(
       return schema === 'information_schema' || schema === 'pg_catalog';
     case 'clickhouse':
       return schema === 'system' || schema === 'information_schema';
+    case 'mongodb':
+      return (
+        ['admin', 'config', 'local'].includes(schema) ||
+        object.name.startsWith('system.')
+      );
   }
+}
+
+function isPostgresSystemSchema(schema: string): boolean {
+  return (
+    schema === 'information_schema' ||
+    schema === 'pg_catalog' ||
+    schema.startsWith('pg_toast')
+  );
 }

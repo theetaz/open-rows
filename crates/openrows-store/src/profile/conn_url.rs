@@ -102,6 +102,7 @@ pub fn parse_url(input: &str) -> Result<ParsedUrl, UrlError> {
     let driver = match url.scheme() {
         "postgres" | "postgresql" => Driver::Postgres,
         "mysql" => Driver::Mysql,
+        "mongodb" | "mongodb+srv" => Driver::Mongodb,
         "mariadb" => Driver::Mariadb,
         "sqlserver" | "mssql" => Driver::Sqlserver,
         "clickhouse" | "clickhouse+https" => Driver::Clickhouse,
@@ -135,6 +136,16 @@ pub fn parse_url(input: &str) -> Result<ParsedUrl, UrlError> {
     };
     if url.scheme() == "clickhouse+https" && url.port().is_none() {
         draft.params.port = 8443;
+    }
+    if url.scheme() == "mongodb+srv" {
+        if url.port().is_some() {
+            return Err(UrlError::MultipleHosts);
+        }
+        draft
+            .params
+            .options
+            .insert("mongodb_srv".into(), "true".into());
+        draft.tls_mode = Some(TlsMode::VerifyFull);
     }
     for (key, value) in query_pairs(url.query().unwrap_or_default())? {
         draft.apply(&key, value)?;
@@ -203,10 +214,44 @@ impl Draft {
         true
     }
 
+    /// `tls` and `directConnection` are `MongoDB` booleans; other keys as usual.
+    fn apply_mongodb(&mut self, key: &str, value: String) -> Result<(), UrlError> {
+        match key {
+            "tls" | "ssl" => {
+                self.tls_mode = Some(match value.as_str() {
+                    "true" => TlsMode::VerifyFull,
+                    "false" => TlsMode::Disable,
+                    _ => return Err(UrlError::InvalidSslMode { value }),
+                });
+            }
+            "directConnection" => {
+                let srv = self.params.options.contains_key("mongodb_srv");
+                match value.as_str() {
+                    "true" if !srv => {
+                        self.params
+                            .options
+                            .insert("mongodb_direct".into(), "true".into());
+                    }
+                    "false" => {}
+                    _ => return Err(UrlError::InvalidDirectConnection),
+                }
+            }
+            _ => self.apply_common(key, value)?,
+        }
+        Ok(())
+    }
+
     pub(super) fn apply(&mut self, key: &str, value: String) -> Result<(), UrlError> {
         if self.driver == Driver::Sqlserver && self.apply_sql_server(key, &value) {
             return Ok(());
         }
+        if self.driver == Driver::Mongodb {
+            return self.apply_mongodb(key, value);
+        }
+        self.apply_common(key, value)
+    }
+
+    fn apply_common(&mut self, key: &str, value: String) -> Result<(), UrlError> {
         match key {
             "password" => self.password = Some(SecretString::new(value)),
             "sslmode" | "ssl-mode" | "ssl_mode" => {
@@ -352,6 +397,57 @@ mod clickhouse_tests {
         let custom = parse_url("clickhouse+https://host:9440/db?sslmode=require")?;
         assert_eq!(custom.params.port, 9440);
         assert_eq!(custom.tls_mode, TlsMode::Require);
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod mongodb_tests {
+    use super::*;
+    #[test]
+    fn mongodb_and_srv_urls_keep_passwords_out_of_options() -> Result<(), UrlError> {
+        let plain =
+            parse_url("mongodb://fixture:synthetic@localhost/test?tls=false&authSource=admin")?;
+        assert_eq!(plain.driver, Driver::Mongodb);
+        assert_eq!(plain.params.port, 27017);
+        assert_eq!(plain.tls_mode, TlsMode::Disable);
+        assert_eq!(
+            plain.params.options.get("authSource").map(String::as_str),
+            Some("admin")
+        );
+        assert!(plain.password.is_some());
+        assert!(!format!("{:?}", plain.params).contains("synthetic"));
+        let srv = parse_url("mongodb+srv://fixture@cluster.example/test")?;
+        assert_eq!(
+            srv.params.options.get("mongodb_srv").map(String::as_str),
+            Some("true")
+        );
+        assert_eq!(srv.tls_mode, TlsMode::VerifyFull);
+        assert!(parse_url("mongodb+srv://cluster.example:27017/test").is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn mongodb_direct_connection_is_a_checked_option() -> Result<(), UrlError> {
+        let direct = parse_url("mongodb://localhost:27018/?directConnection=true")?;
+        assert_eq!(
+            direct
+                .params
+                .options
+                .get("mongodb_direct")
+                .map(String::as_str),
+            Some("true")
+        );
+        let discovered = parse_url("mongodb://localhost/?directConnection=false")?;
+        assert!(!discovered.params.options.contains_key("mongodb_direct"));
+        assert!(matches!(
+            parse_url("mongodb://localhost/?directConnection=yes"),
+            Err(UrlError::InvalidDirectConnection)
+        ));
+        assert!(matches!(
+            parse_url("mongodb+srv://cluster.example/?directConnection=true"),
+            Err(UrlError::InvalidDirectConnection)
+        ));
         Ok(())
     }
 }

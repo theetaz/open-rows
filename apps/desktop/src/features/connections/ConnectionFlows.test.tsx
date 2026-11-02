@@ -55,6 +55,7 @@ it('creates and connects a connection with the keyboard alone', async () => {
     user: 'app',
     tlsMode: 'prefer',
     passwordProvided: false,
+    mongodb: null,
   });
   vi.mocked(createProfile).mockResolvedValueOnce(created);
   render(<Harness />);

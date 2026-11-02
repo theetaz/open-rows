@@ -8,6 +8,7 @@
 //! keeps at most [`Limits::max_bytes`] of Arrow memory and spills the rest
 //! to LZ4-compressed Arrow IPC files (docs/06 §3).
 mod admission;
+pub mod documents;
 pub use admission::Admission;
 mod cache;
 mod cell;

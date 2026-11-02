@@ -16,6 +16,7 @@ pub(crate) fn input(env: EnvKindDto) -> ProfileInput {
         port: 5432,
         database: Some(String::new()),
         user: Some("app".to_owned()),
+        mongodb: None,
         tls_mode: TlsModeDto::Prefer,
         tls_files: TlsFilesInput::default(),
         ssh: None,

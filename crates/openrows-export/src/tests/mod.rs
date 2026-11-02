@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Encoder, literal and file-lifecycle tests on hand-built Arrow batches.
 mod csv;
+mod documents;
 mod excel;
 mod files;
 mod json;

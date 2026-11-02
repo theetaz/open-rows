@@ -17,6 +17,7 @@ pub(crate) use super::enums::{EnvKindDto, PasswordStorageDto, TlsModeDto};
 use super::error::IpcError;
 use super::insecure::{InsecureReasonDto, profile_insecurity};
 use super::limits_dto::LimitsDto;
+use super::mongo_options::MongoOptionsDto;
 use super::proxy_dto::{ProxyDto, ProxyInput, proxy_dto};
 use super::route_dto::{
     SshDto, SshInput, TlsFilesDto, TlsFilesInput, apply_route, ssh_dto, tls_files_dto,
@@ -94,6 +95,8 @@ pub(crate) struct ProfileDto {
     port: u16,
     database: Option<String>,
     user: Option<String>,
+    /// `MongoDB` SRV and authentication-database options; `null` for SQL engines.
+    mongodb: Option<MongoOptionsDto>,
     tls_mode: TlsModeDto,
     tls_files: TlsFilesDto,
     ssh: Option<SshDto>,
@@ -194,6 +197,7 @@ impl From<&ConnectionProfile> for ProfileDto {
             port: profile.params.port,
             database: profile.params.database.clone(),
             user: profile.params.user.clone(),
+            mongodb: MongoOptionsDto::of(profile.driver, &profile.params.options),
             tls_mode: profile.tls.mode.into(),
             tls_files: tls_files_dto(profile),
             ssh: ssh_dto(profile),
@@ -278,6 +282,8 @@ pub(crate) struct ProfileInput {
     pub(crate) port: u16,
     pub(crate) database: Option<String>,
     pub(crate) user: Option<String>,
+    #[serde(default)]
+    pub(crate) mongodb: Option<MongoOptionsDto>,
     pub(crate) tls_mode: TlsModeDto,
     /// CA and client certificate files (absent: none).
     #[serde(default)]
@@ -326,6 +332,10 @@ impl ProfileInput {
             port: self.port,
             database: non_blank(self.database.as_deref()),
             user: non_blank(self.user.as_deref()),
+            options: self
+                .mongodb
+                .as_ref()
+                .map_or_else(Default::default, MongoOptionsDto::options),
             ..ServerParams::default()
         }
     }
@@ -424,6 +434,8 @@ pub(crate) struct UrlDraft {
     port: u16,
     database: Option<String>,
     user: Option<String>,
+    /// `MongoDB` SRV and authentication-database options; `null` for SQL engines.
+    mongodb: Option<MongoOptionsDto>,
     tls_mode: TlsModeDto,
     password_provided: bool,
 }
@@ -437,6 +449,7 @@ impl From<ParsedUrl> for UrlDraft {
             port: parsed.params.port,
             database: parsed.params.database,
             user: parsed.params.user,
+            mongodb: MongoOptionsDto::of(parsed.driver, &parsed.params.options),
             tls_mode: parsed.tls_mode.into(),
             password_provided: parsed.password.is_some(),
         }

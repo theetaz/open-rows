@@ -406,3 +406,16 @@ it.each([
     ).not.toBeInTheDocument();
   },
 );
+
+it('explains that MongoDB has no monitor and starts no collector', () => {
+  render(
+    <MonitorTab
+      {...props}
+      profile={{ ...monitorProfile, engine: 'mongodb' }}
+    />,
+  );
+  expect(screen.getByRole('status')).toHaveTextContent(
+    'Monitoring and the AI assistant are not available for MongoDB connections',
+  );
+  expect(ipc.startMonitor).not.toHaveBeenCalled();
+});

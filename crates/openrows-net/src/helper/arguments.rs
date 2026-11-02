@@ -99,6 +99,7 @@ impl HelperHop {
         if let Some(host) = remote_host {
             parameters["host"] = serde_json::json!([host]);
         }
+        parameters.sort_all_objects();
         let mut args = strings(&[
             "ssm",
             "start-session",

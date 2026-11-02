@@ -15,6 +15,7 @@
 #![forbid(unsafe_code)]
 mod cell;
 mod csv;
+mod documents;
 mod encoding;
 mod error;
 mod exporter;

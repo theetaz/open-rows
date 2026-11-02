@@ -5,7 +5,13 @@ import { BUILTIN_SNIPPETS } from './builtins';
 
 /** Engines a snippet is offered for; MariaDB uses the MySQL snippets. */
 export type SnippetScope =
-  'all' | 'postgres' | 'mysql' | 'sqlserver' | 'sqlite' | 'clickhouse';
+  | 'all'
+  | 'postgres'
+  | 'mysql'
+  | 'sqlserver'
+  | 'sqlite'
+  | 'clickhouse'
+  | 'mongodb';
 
 /** A built-in or user snippet. */
 export type Snippet = SqlSnippet & { id: string; scope: SnippetScope };
@@ -26,6 +32,7 @@ const SCOPES: readonly SnippetScope[] = [
   'sqlserver',
   'sqlite',
   'clickhouse',
+  'mongodb',
 ];
 /** What completion can match as a trigger (letters, digits, `_`, `$`). */
 const PREFIX = /^[\w$]{1,32}$/;

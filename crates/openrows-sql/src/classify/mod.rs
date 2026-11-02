@@ -85,6 +85,9 @@ impl Classification {
 /// because the server runs it.
 #[must_use]
 pub fn classify(statement: &str, dialect: Dialect) -> Classification {
+    if dialect == Dialect::MongoDb {
+        return crate::mql::classify(statement);
+    }
     let tokens = lexer::significant(statement, dialect);
     Sql::new(statement, &tokens, dialect).classify()
 }
@@ -116,6 +119,7 @@ impl<'a> Sql<'a> {
             (Dialect::SqlServer, _) => body.inspect(tsql::dispatch(body)),
             (Dialect::Postgres | Dialect::Duckdb, false) => body.inspect(heads::dispatch(body)),
             (Dialect::MySql, false) => body.inspect(mysql::dispatch(body)),
+            (Dialect::MongoDb, _) => crate::mql::classify(self.source),
             (Dialect::Sqlite, false) => body.inspect(sqlite::dispatch(body)),
         };
         if body.has_kind(TokenKind::Semicolon) {

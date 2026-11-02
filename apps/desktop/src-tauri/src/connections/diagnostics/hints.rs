@@ -71,6 +71,7 @@ fn connect_hint(error: &IpcError, engine: Engine) -> &'static str {
             "Check that SQL Server is running, has TCP/IP enabled and listens on this host \
              and port (named instances need their port), and that no firewall blocks it."
         }
+        Engine::Mongodb => "Check the MongoDB host, port 27017, SRV DNS records and TLS mode.",
         Engine::Libsql => "Check the libSQL host, HTTPS port and any firewall or VPN.",
         Engine::Duckdb => {
             "Check access to the DuckDB file, or choose New File to create it. Close other \

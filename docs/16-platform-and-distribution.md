@@ -362,6 +362,10 @@ known and given once; only `filter` repeats (at most 16):
 | `openrows://object?id=…&name=…&database=…&schema=…[&object=…&kind=…]` | a schema, or a relation (`kind`: `table`, `view`, `materializedView`, `foreignTable`; default `table`) |
 | `openrows://table?…&object=…[&filter=…]*` | as `object` with a relation, plus filters; each `filter` value is itself form-encoded `column`, `op`, `value`, `second` |
 
+A MongoDB collection is a relation of `kind=table` whose `schema` is its
+database; the **Open link?** preview calls it a collection and omits the schema
+row. Its table links carry equality and comparison filters only (docs/05 §22).
+
 The connection is resolved by `id` first, then by a unique `name`; Copy Link
 writes both, so links stay usable on another machine with the same connection
 name. Filter operators are the grid's typed operators; `raw` (SQL predicates)

@@ -8,6 +8,10 @@ rust-version.workspace = true
 description = "Pure SQL toolkit for OpenRows: statement splitting, safety classification and placeholder detection"
 
 [dependencies]
+serde_json.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+json5 = "1.3"
 sqlparser = { version = "=0.63.0", default-features = false, features = ["visitor", "std"] }
 
 [dev-dependencies]

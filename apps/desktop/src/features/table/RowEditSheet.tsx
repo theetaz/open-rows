@@ -9,9 +9,18 @@ import type { StagedEdit } from './editHistory';
 import { editableText, fromOriginal, NULL_VALUE, textValue } from './cellValue';
 import type { CellValue } from './cellValue';
 import type { RowEditing } from './useRowEditing';
-import { duplicateRow } from './quickEdits';
+import { duplicateRow, isDocumentColumn } from './quickEdits';
+import { DocumentField } from './DocumentField';
+import { invalidDocument } from './documentText';
 import { ReviewSheet } from './ReviewSheet';
 import styles from './Table.module.css';
+
+/** A new document starts as `{}` so the JSON editor has an object to edit. */
+function initialValues(draft: StagedEdit, info: EditInfoDto): Values {
+  return draft.kind === 'insert' && info.columns.some(isDocumentColumn)
+    ? { __document: textValue('{}'), ...draft.values }
+    : draft.values;
+}
 
 /** Review precise text values; NULL and DEFAULT are explicit, different choices. */
 function EditForm(props: {
@@ -20,11 +29,12 @@ function EditForm(props: {
   editing: RowEditing;
 }): React.JSX.Element {
   const { draft, info, editing } = props;
-  const [values, setValues] = useState(draft.values);
+  const [values, setValues] = useState(() => initialValues(draft, info));
   const set = (name: string, value: CellValue): void => {
     setValues((current) => ({ ...current, [name]: value }));
   };
   const inserting = draft.kind === 'insert';
+  const invalid = invalidDocument(values.__document);
   return (
     <Sheet
       title={inserting ? 'Add row' : `Edit row ${String(draft.number)}`}
@@ -54,6 +64,7 @@ function EditForm(props: {
               </Button>
               <Button
                 variant="ghost"
+                disabled={invalid}
                 onClick={() => {
                   editing.change(duplicateRow({ ...draft, values }, info));
                 }}
@@ -67,6 +78,7 @@ function EditForm(props: {
         <Button onClick={editing.close}>Cancel</Button>
         <Button
           variant="primary"
+          disabled={invalid}
           onClick={() => {
             editing.change({ ...draft, values });
           }}
@@ -95,6 +107,7 @@ function EditFields({
   return (
     <div className={styles.editFields}>
       {info.columns.map((column) => {
+        const document = isDocumentColumn(column);
         const protectedField = info.protected.includes(column.name);
         const active = Object.hasOwn(values, column.name);
         const value = shownValue(draft, values, column.name);
@@ -104,7 +117,7 @@ function EditFields({
               <span>{column.name}</span>
               <small>{column.dataType}</small>
             </label>
-            {inserting && (
+            {inserting && !document && (
               <label>
                 <input
                   type="checkbox"
@@ -153,7 +166,10 @@ function EditFields({
   );
 }
 
-/** One column's value box, with a date/time picker for temporal types (FR-DATA-06). */
+/**
+ * One column's value box, with a date/time picker for temporal types
+ * (FR-DATA-06) and a validated JSON editor for a MongoDB document.
+ */
 function ValueField({
   column,
   value,
@@ -168,6 +184,16 @@ function ValueField({
   set: (name: string, value: CellValue) => void;
 }): React.JSX.Element {
   const text = value ? editableText(value) : '';
+  if (isDocumentColumn(column))
+    return (
+      <DocumentField
+        value={text}
+        disabled={disabled}
+        onChange={(next) => {
+          set(column.name, textValue(next));
+        }}
+      />
+    );
   const kind = disabled ? null : temporalKind(column.dataType);
   return (
     <TextField

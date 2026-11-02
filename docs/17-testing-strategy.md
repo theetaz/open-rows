@@ -253,3 +253,21 @@ variables. The Linux `e2e` CI job runs only on a push to `main`.
 New test dependency: WebdriverIO (MIT) supplies the standard WebDriver client;
 its automatic Edge/Firefox installers are disabled because this suite uses
 `tauri-driver` and the system WebKit driver. No new Rust dependency is needed.
+
+## 8. MongoDB verification (M3-01–M3-04)
+
+`just test-mongo` uses `scripts/test-mongo.sh` to create one throwaway `mongo:8`
+replica set on a random loopback port. It verifies document/catalog/index and
+aggregation reads, native mutations, atomic edits and stale-snapshot rollback,
+credential errors, shared-route TLS, active-operation cancellation and idempotent
+commit retry. The native conformance groups that apply (connect, metadata,
+streaming, typed round trips, error codes, cancel, edits, lifecycle, structure
+and process list, all capability-gated) run separately against the same
+container. The script removes its container and runtime TLS files on exit.
+`just e2e` journeys remain PostgreSQL-only; a MongoDB journey through the
+`test-automation` bridge is not part of the suite yet.
+
+Parser, safety-policy, Arrow mapping and UI tests run in their owning crates and
+packages. Build every fuzz target with `cargo build --manifest-path fuzz/Cargo.toml
+--bins`; the `mql` target exercises parsing/classification. Instrumented fuzz runs
+use the existing `just fuzz-smoke` recipe when nightly and cargo-fuzz are installed.

@@ -31,19 +31,7 @@ impl JsonEncoder {
     }
 
     fn value(&mut self, cell: &Cell<'_>, out: &mut String) {
-        match cell {
-            Cell::Null => out.push_str("null"),
-            Cell::Bool(_) | Cell::Int(_) | Cell::UInt(_) | Cell::Number(_) | Cell::Json(_) => {
-                push_plain(cell, out);
-            }
-            Cell::F32(value) if value.is_finite() => push_plain(cell, out),
-            Cell::F64(value) if value.is_finite() => push_plain(cell, out),
-            _ => {
-                self.scratch.clear();
-                push_plain(cell, &mut self.scratch);
-                push_string(&self.scratch, out);
-            }
-        }
+        push_value(cell, out, &mut self.scratch);
     }
 
     /// One row object, with its array separator or line end.
@@ -74,6 +62,23 @@ impl JsonEncoder {
             out.push('\n');
         }
         self.rows += 1;
+    }
+}
+
+/// Encode one scalar or nested document without converting exact integers to floats.
+pub(crate) fn push_value(cell: &Cell<'_>, out: &mut String, scratch: &mut String) {
+    match cell {
+        Cell::Null => out.push_str("null"),
+        Cell::Bool(_) | Cell::Int(_) | Cell::UInt(_) | Cell::Number(_) | Cell::Json(_) => {
+            push_plain(cell, out);
+        }
+        Cell::F32(value) if value.is_finite() => push_plain(cell, out),
+        Cell::F64(value) if value.is_finite() => push_plain(cell, out),
+        _ => {
+            scratch.clear();
+            push_plain(cell, scratch);
+            push_string(scratch, out);
+        }
     }
 }
 

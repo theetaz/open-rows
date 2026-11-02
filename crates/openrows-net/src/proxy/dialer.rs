@@ -29,6 +29,9 @@ impl ProxyDialer {
 }
 
 impl Dialer for ProxyDialer {
+    fn retarget(&self, host: &str, port: u16) -> Option<Arc<dyn Dialer>> {
+        Some(Arc::new(Self::new(self.proxy.clone(), host, port)))
+    }
     fn dial(&self) -> BoxFuture<'_, io::Result<BoxStream>> {
         Box::pin(async move {
             let stream = self

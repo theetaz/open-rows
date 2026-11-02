@@ -18,6 +18,8 @@ const clauses = new Set(['WHERE', 'ORDER', 'LIMIT', 'OFFSET', 'FETCH']);
 
 /** Fail closed on syntax whose provenance cannot be proved by this small recognizer. */
 export function selectSource(sql: string, engine: EngineDto): Source | string {
+  if (engine === 'mongodb')
+    return 'MQL results are read-only; edit documents in the collection tab.';
   if (
     ![
       'postgres',

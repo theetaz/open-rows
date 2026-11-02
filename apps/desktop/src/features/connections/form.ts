@@ -40,6 +40,9 @@ import type {
 export type PasswordMode = 'keep' | 'set' | 'clear';
 
 /** Editable connection form values (strings as typed). */
+/** MongoDB SRV, direct connection and authentication database. */
+type MongoOptions = NonNullable<ProfileDto['mongodb']>;
+
 export type Draft = {
   /** The engine; fixed once the profile is saved. */
   engine: EngineDto;
@@ -54,6 +57,7 @@ export type Draft = {
   port: string;
   database: string;
   user: string;
+  mongodb?: MongoOptions | undefined;
   tlsMode: TlsModeDto;
   safety: SafetyDto;
   /** Keep executed statements in History (FR-WS-02). */
@@ -178,6 +182,7 @@ export function draftFromProfile(profile: ProfileDto): Draft {
     port: String(profile.port),
     database: profile.database ?? '',
     user: profile.user ?? '',
+    mongodb: mongoDraft(profile.mongodb),
     tlsMode: profile.tlsMode,
     safety: profile.safety,
     recordHistory: profile.recordHistory,
@@ -243,12 +248,24 @@ export function withUrl(draft: Draft, parsed: UrlDraft): Draft {
     port: String(parsed.port),
     database: parsed.database ?? '',
     user: parsed.user ?? '',
+    mongodb: mongoDraft(parsed.mongodb),
     tlsMode: parsed.tlsMode,
     filePath: file && !memory ? file.path : draft.filePath,
     fileMemory: file ? memory : draft.fileMemory,
     fileReadOnly: file && !memory ? file.readOnly : draft.fileReadOnly,
     fileCreate: file ? false : draft.fileCreate,
   };
+}
+
+/** A MongoDB profile without SRV, direct connection or authentication database. */
+export const NO_MONGO_OPTIONS: MongoOptions = {
+  srv: false,
+  direct: false,
+  authSource: '',
+};
+
+function mongoDraft(value: Draft['mongodb'] | null): Draft['mongodb'] {
+  return value ?? undefined;
 }
 
 /** A field edit; typing a name stops the URL from renaming the connection. */
@@ -291,7 +308,7 @@ export function validate(draft: Draft): DraftErrors {
   if (!draft.host.trim()) errors.host = 'Host is required';
   if (!Number.isInteger(port) || port < 1 || port > 65535)
     errors.port = 'Port must be 1–65535';
-  if (draft.engine !== 'libsql' && !draft.user.trim())
+  if (!['libsql', 'mongodb'].includes(draft.engine) && !draft.user.trim())
     errors.user = 'User is required';
   if (draft.envKind === 'custom' && !draft.envLabel.trim())
     errors.envLabel = 'Label is required';
@@ -350,6 +367,9 @@ export function toInput(draft: Draft): ProfileInput {
     port: file ? 1 : Number(draft.port),
     database: optional(draft.database),
     user: optional(draft.user),
+    ...(draft.engine === 'mongodb'
+      ? { mongodb: draft.mongodb ?? NO_MONGO_OPTIONS }
+      : {}),
     tlsMode: draft.tlsMode,
     tlsFiles: tlsInput(draft.tls),
     ssh: file ? null : sshInput(draft.ssh),

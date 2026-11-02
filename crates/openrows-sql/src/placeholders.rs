@@ -36,6 +36,9 @@ pub struct Placeholder {
 /// variables `:'v'`/`:"v"`, and the `jsonb` operators `?|`, `?&`.
 #[must_use]
 pub fn placeholders(source: &str, dialect: Dialect) -> Vec<Placeholder> {
+    if dialect == Dialect::MongoDb {
+        return Vec::new();
+    }
     let tokens: Vec<Token> = Lexer::new(source, dialect).collect();
     Scanner {
         source,

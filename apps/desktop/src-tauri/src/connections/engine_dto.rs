@@ -20,6 +20,7 @@ pub(crate) enum EngineDto {
     Clickhouse,
     Sqlite,
     Libsql,
+    Mongodb,
     #[serde(rename = "libsql-file")]
     LibsqlFile,
 }
@@ -35,6 +36,7 @@ impl From<Driver> for EngineDto {
             Driver::Clickhouse => Self::Clickhouse,
             Driver::Sqlite => Self::Sqlite,
             Driver::Libsql => Self::Libsql,
+            Driver::Mongodb => Self::Mongodb,
             Driver::LibsqlFile => Self::LibsqlFile,
         }
     }
@@ -51,6 +53,7 @@ impl From<EngineDto> for Driver {
             EngineDto::Clickhouse => Self::Clickhouse,
             EngineDto::Sqlite => Self::Sqlite,
             EngineDto::Libsql => Self::Libsql,
+            EngineDto::Mongodb => Self::Mongodb,
             EngineDto::LibsqlFile => Self::LibsqlFile,
         }
     }

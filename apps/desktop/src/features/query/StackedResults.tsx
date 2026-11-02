@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { lazy, Suspense } from 'react';
 import type { EngineDto, StatementDto } from '@openrows/ipc';
+import { DocumentView } from './DocumentResults';
 import type { ResultMeta } from './run';
 import type { SelectedCell } from './cell';
 import styles from './Query.module.css';
@@ -37,28 +38,30 @@ export function ResultContent({
     );
   return (
     <Suspense fallback={null}>
-      <ResultGrid
-        key={result.id}
-        result={result}
-        engine={engine}
-        statement={statements?.[result.statement]?.sql}
-        statementCount={statements?.length ?? 1}
-        onExport={
-          result.done && onExport
-            ? () => {
-                onExport(result);
-              }
-            : undefined
-        }
-        onCell={onCell}
-        onExportRows={
-          result.done && onExport
-            ? (rows) => {
-                onExport(result, rows);
-              }
-            : undefined
-        }
-      />
+      <DocumentView result={result}>
+        <ResultGrid
+          key={result.id}
+          result={result}
+          engine={engine}
+          statement={statements?.[result.statement]?.sql}
+          statementCount={statements?.length ?? 1}
+          onExport={
+            result.done && onExport
+              ? () => {
+                  onExport(result);
+                }
+              : undefined
+          }
+          onCell={onCell}
+          onExportRows={
+            result.done && onExport
+              ? (rows) => {
+                  onExport(result, rows);
+                }
+              : undefined
+          }
+        />
+      </DocumentView>
     </Suspense>
   );
 }

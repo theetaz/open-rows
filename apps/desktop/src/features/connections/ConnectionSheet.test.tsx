@@ -40,6 +40,7 @@ const PARSED = {
   user: 'app',
   tlsMode: 'prefer' as const,
   passwordProvided: false,
+  mongodb: null,
   engine: 'postgres' as const,
   file: null,
 };

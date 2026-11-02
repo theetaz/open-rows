@@ -11,6 +11,10 @@ export interface ColumnChunk {
   offsets: Int32Array | undefined;
   /** Element values of a `List` chunk; `offsets` index into them. */
   child?: ColumnChunk | undefined;
+  /** Document arrays use JSON brackets rather than SQL array text. */
+  document?: boolean | undefined;
+  /** Named children of an Arrow struct, with their type descriptions. */
+  fields?: { name: string; type: string; chunk: ColumnChunk }[] | undefined;
 }
 /** A typed column with exact type description and extension metadata. */
 export interface TypedColumn {

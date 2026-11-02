@@ -20,6 +20,7 @@ impl Lexer<'_> {
         let special = match self.dialect {
             Dialect::Postgres | Dialect::Duckdb => self.postgres(byte),
             Dialect::MySql => self.mysql(byte),
+            Dialect::MongoDb => self.mongodb(byte),
             Dialect::Sqlite => self.sqlite(byte),
             Dialect::SqlServer => self.sqlserver(byte),
             Dialect::ClickHouse => self.clickhouse(byte),
@@ -43,7 +44,10 @@ impl Lexer<'_> {
                 self.token(TokenKind::BlockComment, self.block_comment_end(nested))
             }
             b'\'' => {
-                let escapes = matches!(self.dialect, Dialect::MySql | Dialect::ClickHouse);
+                let escapes = matches!(
+                    self.dialect,
+                    Dialect::MySql | Dialect::MongoDb | Dialect::ClickHouse
+                );
                 self.token(TokenKind::String, self.quoted_end(self.pos, b'\'', escapes))
             }
             b'"' => self.token(
@@ -107,6 +111,19 @@ impl Lexer<'_> {
             _ => return None,
         };
         Some(token)
+    }
+
+    fn mongodb(&self, byte: u8) -> Option<Token> {
+        match byte {
+            b'/' if self.byte(self.pos + 1) == Some(b'/') => {
+                Some(self.token(TokenKind::LineComment, self.line_comment_end()))
+            }
+            b'"' => Some(self.token(TokenKind::String, self.quoted_end(self.pos, b'"', true))),
+            b'$' if self.byte(self.pos + 1).is_some_and(is_ident_continue) => {
+                Some(self.plain_word())
+            }
+            _ => None,
+        }
     }
 
     /// `/*!50700 … */` and `/*M!100100 … */`: the opener (with its version)

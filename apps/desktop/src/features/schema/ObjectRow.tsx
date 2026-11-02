@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { HighlightText, Icon, TreeNode, TreeNote } from '@openrows/ui';
 import type { ObjectDto, TableColumnDto } from '@openrows/ipc';
 import {
@@ -16,6 +16,12 @@ import type { ObjectRef } from './catalog';
 import type { Catalog } from './useCatalog';
 import type { Resource } from './useResources';
 import { shortType } from './shortType';
+
+const CollectionIndexes = lazy(() =>
+  import('./CollectionIndexes').then((module) => ({
+    default: module.CollectionIndexes,
+  })),
+);
 
 /** Shared by every row of one section tree. */
 type RowContext = {
@@ -111,6 +117,20 @@ export function ObjectRow(
       }
     >
       <ColumnRows context={props} parent={id} columns={columns} onOpen={open} />
+      {catalog.engine === 'mongodb' &&
+        object.kind === 'table' &&
+        disclosure.expanded && (
+          <Suspense fallback={null}>
+            <CollectionIndexes
+              target={{
+                profileId: catalog.profileId,
+                database: catalog.database,
+                schema: object.schema,
+                table: object.name,
+              }}
+            />
+          </Suspense>
+        )}
     </TreeNode>
   );
 }

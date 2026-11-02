@@ -13,7 +13,8 @@ Current priority: **dogfood the app on `main` and collect feedback** before addi
 | Area | What works | Engines |
 | --- | --- | --- |
 | Connections | Profiles, groups, environment tags, keychain secrets, URL ↔ form sync, SSH (password, key, agent, keyboard-interactive, jump hosts, `~/.ssh/config`), TLS modes and client certificates, SOCKS5/HTTP CONNECT proxies, AWS SSM, kubectl, Cloud SQL, cloudflared and custom-command hops, step-by-step Test connection, reconnect with keepalive, export/import of non-secret profiles | All |
-| Engines | Tier 1: PostgreSQL (and compatible flavours), MySQL/MariaDB, SQLite. Tier 2 (beta): SQL Server, ClickHouse, DuckDB (driver host process), libSQL/Turso | — |
+| Engines | Tier 1: PostgreSQL (and compatible flavours), MySQL/MariaDB, SQLite. Tier 2 (beta): SQL Server, ClickHouse, DuckDB (driver host process), libSQL/Turso, MongoDB | — |
+| MongoDB (beta) | **new:** `mongodb://` and `mongodb+srv://` connections (SRV, Direct connection, auth database) over direct, TLS, SSH and proxy routes; Collections/Views tree with indexes; MQL editor with shell-like syntax; query results as Table / Tree / JSON; collection tabs with whole-document editing (JSON/EJSON validation, review, single-transaction commit on a replica set); aggregation Pipeline editor with per-stage previews; Cancel; export; safe mode and read-only profiles. AI, Explain and monitoring are not available and say so | MongoDB 8 tested |
 | Schema | Schema tree with cache and search, favourites and recents, structure/index/trigger/DDL views, routines, types, extensions and roles | All, capability-gated |
 | Structure editing | Column/index/foreign-key/check sheets with DDL preview; **new:** add primary-key and unique constraints, PostgreSQL `USING` casts and `CREATE INDEX CONCURRENTLY`, MySQL/MariaDB column positioning, SQL Server database rename; table/view/trigger/routine/database lifecycle editors | PG, MySQL/MariaDB, SQLite, SQL Server |
 | SQL editor | CodeMirror editor with dialect highlighting and completion, run current/selection/all, cancel, multiple results, history, formatter, parameters bar, snippets, split panes, Explain/Explain Analyze plan view; **new:** editor indentation settings, completion qualification/closing-delimiter/acceptance-key settings, stacked results | All |
@@ -33,11 +34,7 @@ Current priority: **dogfood the app on `main` and collect feedback** before addi
 
 ## 3. Work-in-progress branches (not on `main`)
 
-Each branch is one squashable lane, based on `main` as of 2026-10-12 (`a9c45f51`). The work is implemented but **not yet verified**. To resume: merge `main` into the branch, finish the listed items, run `just check` plus the named container recipe, then squash-merge.
-
-| Branch | Tasks | State | To finish |
-| --- | --- | --- | --- |
-| `wip/mongodb` | M3-01..M3-04 MongoDB: document result model and tree/JSON/table views, driver crate, MQL parser and fuzz target, document editing, aggregation pipeline editor | Largest lane (+8.9 k lines); cursor and cancel correctness reworked | `just test-mongo`, fuzz target build, full gate |
+None. The last parked lane, `wip/mongodb` (M3-01..M3-04), was finished and merged on 2026-11-02 (MongoDB row in §2).
 
 ## 4. Remaining work after feedback (not started)
 
@@ -93,5 +90,7 @@ Work through these on your real databases; note anything that is wrong, slow, co
 10. **AI:** add a provider key, set the data-sharing policy, ask the assistant to explain or fix a query, check the context preview and audit log. In Monitor → Ask assistant (telemetry consent on), ask why a query is slow or what is blocking, check the cited evidence, accept and reject a board proposal, and create, run, pause and cancel a scheduled investigation.
 11. **App:** settings (every section listed in the sidebar at the smallest window size), themes, tabs, session restore after quitting, app lock.
 12. **Windows and links:** open a second window (⇧⌘N), move a query tab with unsaved SQL and a table tab with staged edits to it, lock the app and check both windows lock, quit and relaunch to see both windows return. In a bundled app (`just build-app`), Copy Link on a connection, a table and a filtered table, run `open '<link>'` in Terminal, check the Open link? preview and that nothing connects before Connect and Open; try `OpenRows.app/Contents/MacOS/openrows-app open connection "<name>"`.
+
+13. **MongoDB:** add a `mongodb://` connection (paste a URL; try Direct connection for a single member or a container) and connect directly and over SSH. Browse Collections and a collection's indexes, open a collection, edit a document (try invalid JSON first, then a valid change through Review & commit), run `db.<collection>.find({})` and switch Table / Tree / JSON, preview pipeline stages, cancel a long aggregation, export a result and a collection, and check that a read-only profile blocks writes and that AI and Monitor say they are not available.
 
 Report each item as: what you did, what you expected, what happened, and a screenshot when it is visual.
