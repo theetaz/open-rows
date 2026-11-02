@@ -71,17 +71,14 @@ it('records placeholders and exposes focused indices without materializing rows'
   expect(painter.metrics.placeholders).toBeGreaterThan(0);
   const shadow = shadowGrid(host, model, navigation()),
     grid = host.querySelector<HTMLElement>('[role="grid"]');
+  const active = (): Element | null =>
+    host.querySelector(`#${grid?.getAttribute('aria-activedescendant') ?? ''}`);
   expect(grid?.getAttribute('aria-rowcount')).toBe('1000001');
-  expect(
-    host.querySelector('[role="row"]')?.getAttribute('aria-rowindex'),
-  ).toBe('4');
-  expect(
-    host.querySelector('[role="gridcell"]')?.getAttribute('aria-colindex'),
-  ).toBe('3');
+  expect(active()?.parentElement?.getAttribute('aria-rowindex')).toBe('4');
+  expect(active()?.getAttribute('aria-colindex')).toBe('3');
   grid?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
-  expect(
-    host.querySelector('[role="row"]')?.getAttribute('aria-rowindex'),
-  ).toBe('5');
+  expect(active()?.parentElement?.getAttribute('aria-rowindex')).toBe('5');
+  expect(host.querySelectorAll('[role="row"]')).toHaveLength(4);
   shadow.destroy();
   expect(host.querySelector('[role="grid"]')).toBeNull();
 });

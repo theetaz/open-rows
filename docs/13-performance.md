@@ -137,7 +137,9 @@ and WebKit pages.
 | `grid_scroll_1m` (M0 S2) | `just bench-grid [repeats=3]` after `just build-app`; own Canvas 2D in release WKWebView, S1 tile/worker path; four scenarios per fresh launch/repeat | All repeats: p50/p95/p99/max, >20/>32 counts, frames >32 with tracked work ≥16 ms, refresh, paint, tile/cache/blank counters, raw attribution | Best repeat per scenario: 0 frames >32 ms; every repeat: 0 frames >32 ms with tracked work ≥16 ms. S2 met on supplied M4/60 Hz evidence; [accepted ADR-0004](adr/0004-canvas-data-grid.md) |
 | `query_1m_rows_pg` | integration harness against container | time to first paint, total time, peak RSS | within budgets |
 | `editor_type_5k_lines` (M0 S5) | `just bench-editor` after `just build-app`; CodeMirror 6 in release WKWebView, 5 000-line PostgreSQL document, 240 scripted keystrokes per configuration (`sql`: highlighting + completion; `vim`: plus Vim mode) at top/middle/end | keystroke-to-paint p50/p95/max, >16 ms count, per-phase and per-site p95, wall latency incl. vsync wait; M4 implementer runs 1–4 p95: sql 11/9/10/9 ms, vim 9/9/9/10 ms | p95 ≤ 16 ms per configuration (NFR-PERF-07): M4 PASS on all four valid runs; maintainer confirmation pending; 1 ms page clock; [ADR-0003](adr/0003-codemirror-6-editor.md) |
+| `editor_completion_popup` (M1-21) | `just bench-editor` (same launch, after the keystroke runs); fresh editor on the 5 000-line document with a warm synthetic 50 000-object catalog (5 schemas, 40-column relations); 25 popups each for a keyword (`S` at a statement start), a table (`o` after `FROM`), a schema object (`.` after `sales`) and a column (`.` after an alias) | typed trigger to the first rendering update that shows the popup (MutationObserver insertion + next rAF and posted task), split into open and paint; includes the Settings ▸ Editor completion delay (`completionDelay`, default 100 ms, CodeMirror's activate-on-typing delay) | p95 ≤ 50 ms per trigger kind (NFR-PERF-07): **fails at the default delay** — M4 2026-11-02 (load 4–7) p95 keyword 118, table 146, schema object 128, column 113 ms; with the existing `completionDelay` option 0: 21 / 35 / 20 / 20 ms (pass). See "M1-21 completion popup latency" below |
 | `idle_memory` | `just bench-memory [runs=3]` after `just build-app`; first-paint receipt + 5 s settle, `ps` RSS for app + descendants + responsible WebKit XPC services; required `footprint -f bytes` | per-run totals, per-process medians and informational RSS in decimal MB | median total physical footprint ≤ 200 MB; median WebContent + GPU + Networking ≤ 140 MB (NFR-PERF-02); macOS GUI only, not Linux CI |
+| `monitor_memory` (M25-09) | `just bench-memory [runs] --scenario monitor` after `just build-app`; each launch uses an isolated home folder (`HOME` and `CFFIXED_USER_HOME`, so no user profile, settings or WebKit data is read or written) and a disposable in-memory SQLite connection; `connected` and `monitor` launches alternate and mount the same full-window overlay, `monitor` with the Monitor tab in it after its collector's first sample; footprint at readiness + 5 s | per-mode median totals and webview, per-run increments | connected launch: the idle gates above; median Monitor increment ≤ 32 MiB (ADR-0011): **fails** — M4 2026-11-02, three runs each: connected 168.56 MB total / 127.76 MB webview (pass), Monitor increment 105.92 / 107.34 / 107.31 MiB (median 107.2). See "M25-09 Monitor-open footprint" below |
 | `export_csv_10m` | integration | MB/s vs `psql \copy` baseline | ≥ 80 % |
 
 The startup, memory and IPC harnesses use Python 3's standard library and build nothing.
@@ -421,6 +423,109 @@ the unbalanced intermediate state). Mac-low is still to be measured.
 IME cannot be automated reliably; the manual check is in ADR-0003 and in the S5
 PR's "How to try it".
 
+
+### M0 S2 grid flings stall (2026-11-02)
+
+On `main`, `just bench-grid` fails the flings gate in every repeat: one interval of
+117–159 ms near `fling/page 102–104`, with 0–6 ms paint and no tracked work. Evidence
+from this investigation (Apple M4 Mac mini, macOS 26.5, 60 Hz, release builds, load
+average 4–10 from a parallel agent's builds):
+
+| Run | Long frame | Where | Other facts |
+| --- | --- | --- | --- |
+| `main` (+ the M1-19 shadow grid), 3 repeats | 149 / 149 / 117 ms | flings, pages 102–104 | 168 tiles and 860,160 cell objects allocated before it in every repeat; no tile, apply or conversion work in it or the five frames before it |
+| With the spike's GC/timer probe, 3 repeats | 93 / 142 / 159 ms | flings, 12.23–12.44 s into the scenario | a 4 ms main-thread timer chain has a 95 / 135 / 149 ms gap at the same time; no finalization burst of tenured sentinels after it (full collections are seen only at 1–3 s) |
+| Flings moved first (experimental order, 1 valid repeat) | 117 ms | **smooth**, 10.46 s into the scenario | flings itself has no stall (max 61 ms, a mount-time gap at 190 ms); the main-thread gap (126 ms) moved with the clock, ≈ 25 s after the first scenario started, as before |
+
+Conclusions: the stall is a main-thread block of roughly 100–160 ms (the timer chain
+stops; it is not a compositor or display stall), it is anchored to time since launch
+(≈ 25 s after sampling starts, ≈ 27–30 s after process start), not to the fling
+workload or the tile count, and it is not a full JavaScript collection by the
+finalization probe. Nothing the grid does is in the blocked interval. The release app
+also runs the whole workspace behind the spike, so the block may be app or WebKit work
+scheduled about 30 s after launch; a candidate is anything on a 30 s period from
+startup (for example `connections::limits::watch_idle`, whose sweep interval is 30 s,
+or the update check's 30 s timeout), but no profiler trace attributes it yet.
+
+Budget rule proposal (no budget is changed here): keep both gates, and start the grid
+scenarios only after a post-launch settle period that covers this one-off startup
+work (for example sampling from 35 s after `window_shown`, or after a measured quiet
+period), so a time-anchored launch task cannot land inside whichever scenario runs
+at that moment. Owner/lead next steps: an Instruments Time Profiler trace of the
+WebContent and app processes from 20 to 35 s after launch to name the task, then
+decide between fixing it (if it is ours) and the settle rule. The spike's
+`grid-gc` progress line (finalization windows and the three longest timer gaps per
+scenario, `apps/desktop/src/spike/gcProbe.ts`) stays as diagnostics for that work.
+
+### M1-21 completion popup latency (2026-11-02)
+
+`just bench-editor` measures, after its keystroke runs, 100 completion popups on the
+5 000-line document with a warm synthetic catalog of 50 000 objects (the NFR-PERF-08
+size: five schemas, 40-column relations). Each sample sets the last line to a prefix
+without a popup, types one trigger character through WebKit's editing path and waits
+for the popup element (MutationObserver), then for the next rAF plus a posted task.
+`popupMs = openMs + paintMs`; the gate is p95 ≤ 50 ms per trigger kind.
+
+| Trigger (25 each) | Default `completionDelay` 100 ms: p50 / p95 / max | open p95 | `completionDelay` 0: p50 / p95 / max | open p95 |
+| --- | --- | --- | --- | --- |
+| keyword (`S` at a statement start) | 111 / 118 / 118 | 114 | 19 / 21 / 29 | 8 |
+| table (`o` after `FROM`) | 136 / 146 / 150 | 140 | 29 / 35 / 36 | 33 |
+| schema object (`.` after `sales`) | 118 / 128 / 129 | 124 | 18 / 20 / 27 | 11 |
+| column (`.` after an alias) | 108 / 113 / 114 | 110 | 18 / 20 / 20 | 5 |
+
+M4, load average 4–7. The source, ranking and rendering cost is 5–46 ms; the default
+100 ms typing delay (Settings ▸ Editor ▸ completion delay, choices 0/100/250/500/1000)
+makes the default fail. The 0 ms column is the same harness with only that
+preference set to 0 (an experimental build; the committed harness measures the
+default). Keystroke-to-paint in the same run stayed within budget: p95 sql 10–12 ms,
+vim 10–12 ms. The keystroke runs disable auto-closing brackets
+(`closeDelimiters: false`): since the editor-parity work typed `(` inserts `()` and the
+script's one-change-per-key check failed on `main` at keystroke 10.
+
+### M25-09 Monitor-open footprint (2026-11-02)
+
+`just bench-memory 3 --scenario monitor` (method in §4). M4, load 5–6, three runs per mode:
+
+| Mode | Median total | Median webview | GPU | WebContent | Networking | App |
+| --- | --- | --- | --- | --- | --- | --- |
+| connected (in-memory SQLite, overlay) | 168.56 MB | 127.76 MB | 25.54 MB | 96.01 MB | 6.03 MB | 41.01 MB |
+| Monitor open (first collector sample + 5 s) | 280.96 MB | 240.27 MB | 95.11 MB | 138.58 MB | 6.29 MB | 40.68 MB |
+
+Per-run increments 105.92, 107.34 and 107.31 MiB (median 107.2 MiB) against the
+32 MiB ADR-0011 budget: **fails**. The increment is in WebKit (GPU process +69.6 MB,
+WebContent +42.6 MB); the app process and its embedded SQLite collector do not grow.
+The overlay itself is in both modes (an earlier asymmetric run had 130.78 MB connected),
+so the increment is the Monitor view's rendering and script. The Monitor's charts are
+SVG; the GPU growth points at compositing/backing stores rather than collected data.
+Not measured: the PostgreSQL collector (needs a container) and mac-low.
+
+### M0-09 startup follow-up (2026-11-02)
+
+`just bench-startup 10`, three interleaved rounds of `main` (A) and this change (B) on
+the M4 (user's real workspace state, load 6–12):
+
+| Round | A warm p50 | B warm p50 | A `first_paint_ready` p50 | B `first_paint_ready` p50 |
+| --- | --- | --- | --- | --- |
+| 1 | 312.16 ms | 310.67 ms | 85.15 ms | 80.86 ms |
+| 2 | 319.32 ms | 316.33 ms | 85.34 ms | 81.94 ms |
+| 3 | 308.96 ms | 302.00 ms | 83.97 ms | 81.53 ms |
+
+The first-view lazy chunks were measured first: in a browser build the first render
+requests `LockScreen` (0.7 KB gzip; every launch starts locked until the native status
+arrives), `UpdateNotice` + `updater` (3.7 KB) and the `WorkspaceInspector` wrapper
+(0.4 KB). Inlining them gave no measurable change (two interleaved rounds: A 323.00 /
+308.66 ms, B 313.54 / 339.27 ms warm p50), so they stay lazy. The change kept is in
+`useWindowReady`: the first-paint signal is sent from a layout effect, right after the
+DOM commit, instead of from a passive effect that runs after every descendant's
+passive effects (subscriptions and IPC reads). `first_paint_ready` drops ≈ 3.7 ms
+(≈ 4 %) in every round; warm p50 moves within noise. The ≈ 35 ms regression attributed
+to lazy panels in #18 is not separable on today's code: warm p50 is 302–319 ms on this
+machine (the M0-09 target was "near 290 ms"), and the largest phase is WebKit's
+`webview_created` (≈ 160–185 ms p50), outside our JavaScript. The initial JS graph is
+326,450 gzip bytes (28 chunks, gzip level 9) against 326,334 on `main`, within 350,000.
+`just bench-ui` currently stops before its size report on both `main` and this change:
+its heavy-module check finds `packages/grid/src/` (the tile source and display
+conversion, through the `@openrows/grid` barrel) in the initial chunk `src-*.js`.
 
 ### M0 S3 PostgreSQL decode measurement boundary
 

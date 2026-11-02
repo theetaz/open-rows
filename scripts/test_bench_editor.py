@@ -11,6 +11,7 @@ from bench_editor_metrics import (CONFIGS, editor_budgets, editor_metrics, expec
                                   longest_keystrokes)
 from bench_metrics import BenchmarkError
 from test_bench_commands import load_command
+from test_bench_completion import completion_run
 
 
 def sample(index, position, kind, config, gated=6.0):
@@ -27,7 +28,8 @@ def report(pid=42):
                                               for i, (position, kind) in enumerate(expected_steps())])
             for config in CONFIGS]
     return dict(schema_version=1, pid=pid, mode="editor", error=None,
-                timer=dict(resolutionMs=1, crossOriginIsolated=False), editor=runs)
+                timer=dict(resolutionMs=1, crossOriginIsolated=False), editor=runs,
+                completion=completion_run())
 
 
 def slow(data, config, count, gated):
@@ -131,7 +133,8 @@ class EditorTests(unittest.TestCase):
         self.assertIs(payload["report"], data)
         self.assertIn("vsyncWaitMs", payload["method"])
         printed = str(output.call_args_list)
-        for text in ("resolutionMs", "wall95", "middle", "FAIL: budget exceeded: sql keystroke-to-paint p95", "Estimated duration"):
+        for text in ("resolutionMs", "wall95", "middle", "FAIL: budget exceeded: sql keystroke-to-paint p95",
+                     "Estimated duration", "Completion popup", "schemaObject"):
             self.assertIn(text, printed)
 
     def test_command_passes_and_keeps_invalid_partial_reports(self):

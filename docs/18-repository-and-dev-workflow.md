@@ -92,15 +92,20 @@ just build-app      # unsigned release .app, shared CARGO_TARGET_DIR respected
 just bench-startup  # ten sequential release launches, macOS GUI required
 just bench-startup 20 # optional run count (minimum two)
 just bench-memory   # total idle physical footprint (gate) + RSS (informational), macOS GUI required
+just bench-memory 3 --scenario monitor # connected vs Monitor-open footprint in an isolated home (M25-09)
 just bench-ipc      # S1 Arrow tile round trip in release WKWebView, macOS GUI required
 just bench-grid     # S2 canvas grid scroll scenarios (3 fresh launches), macOS GUI required
-just bench-editor   # S5 editor keystroke-to-paint, 5 000-line SQL, macOS GUI required
+just bench-editor   # S5 editor keystroke-to-paint + completion popup latency, 5 000-line SQL, macOS GUI required
 just bench-test     # synthetic benchmark tests, no GUI
 just script-test    # sccache guard tests with a stub sccache (§2.2)
 just bench-pg-decode # Criterion decode_pg_* + gates (>= 1 M cells/s/core, first batch <= 5 ms)
 just bench-sql-split # Criterion sql_split_* (10 KB and 1 MB scripts per dialect), bytes/s
 just bench-schema   # Criterion schema_* at 50 000 objects + gates (first level <= 300 ms, search <= 50 ms)
 just fuzz-smoke 20  # each cargo-fuzz target for 20 s (skips without nightly and cargo-fuzz)
+just coverage       # cargo-llvm-cov line coverage, >= 80 % for openrows-core, openrows-sql and value codecs
+just bench-criterion --save-baseline main      # on main: the Criterion benchmarks compared in CI
+just bench-criterion --baseline-lenient main   # on a change, then:
+just bench-compare  # fails when a benchmark regressed beyond its threshold with 95 % confidence
 just test-pg 17     # PostgreSQL integration tests in a throwaway container (skips without Docker)
 just test-mysql     # MySQL 8.4 and MariaDB 11.4 integration tests in throwaway containers (skips without Docker)
 just test-mysql mariadb:10.11 # any mysql:<tag> / mariadb:<tag> images, one after another
@@ -237,7 +242,16 @@ GitHub ubuntu-latest runner took about 41 minutes (production staging 16m13s,
 Clippy 3m35s, workspace tests 7m47s), so the job allows 50 minutes. Warm runs restore the native target from the cache,
 which is saved even when a run fails; see ADR-0010's round-4 evidence.
 
-The `containers` job (20-minute timeout, its own runner and Rust cache) builds only the driver, core, schema and conformance crates and runs `scripts/test-pg.sh 17` and `scripts/test-mysql.sh` (MySQL 8.4, MariaDB 11.4) with `OPENROWS_REQUIRE_DOCKER=1`, so a missing Docker daemon fails instead of skipping. Coverage, benchmark comparison and nightly fuzzing are not in CI yet (M1-30).
+The `containers` job (20-minute timeout, its own runner and Rust cache) builds only the driver, core, schema and conformance crates and runs `scripts/test-pg.sh 17` and `scripts/test-mysql.sh` (MySQL 8.4, MariaDB 11.4) with `OPENROWS_REQUIRE_DOCKER=1`, so a missing Docker daemon fails instead of skipping.
+
+Two more jobs cover M1-30 (both validated with `actionlint`; they first run when CI is re-enabled):
+
+| Job | Steps |
+| --- | --- |
+| `coverage` (30-minute timeout) | `llvm-tools-preview`, pinned cargo-nextest and cargo-llvm-cov, then `bash scripts/coverage.sh` (the `just coverage` script): line coverage of `openrows-core`, `openrows-sql` and the drivers' value codecs (the PostgreSQL, MySQL, SQL Server and SQLite `decode` modules and MySQL's `values.rs`), each group ≥ 80 % (NFR-MAINT-03, docs/17 §2.7). Container suites skip here; their crates' unit tests provide the codec coverage |
+| `bench` (60-minute timeout) | Relative Criterion comparison against `main` (docs/25 §5.1): the base commit (the previous `main` for a push, the merge base for a manual run on a branch) runs `scripts/bench-criterion.sh --save-baseline main` in a detached worktree, this commit runs `--baseline-lenient main` with the same target directory, and `scripts/bench_compare.py` fails when the lower bound of a benchmark's 95 % confidence interval for its mean change exceeds its threshold (5 %; `sql_split_*` 10 %, docs/13 §4). Benchmarks: `result_window_encode`, `decode_pg`, `sql_split`, `schema_catalog` |
+
+[.github/workflows/nightly.yml](../.github/workflows/nightly.yml) runs each cargo-fuzz target (`conn_url`, `sql_split`, `param_binder`, `mql`) for ten minutes at 02:17 UTC and on manual dispatch, on nightly Rust with cargo-fuzz 0.13.2. Each target's corpus is restored from the previous run's cache, minimised with `cargo fuzz cmin` and saved again (persisted corpus, docs/17 §2.5); a crash fails the job and uploads its reproducer as an artifact.
 
 ### Implemented (CI-FIX): portable integration helpers and lazy-tab checks
 
@@ -260,7 +274,7 @@ Restored when the repository is made public (the full version is preserved in th
 - `hygiene` job: hygiene script, ShellCheck, actionlint.
 - `ci-ok` aggregate job as the single required status check, plus branch protection on `main` (PRs only, `ci-ok` required, linear history, no force pushes).
 - Dependabot for GitHub Actions and Cargo with `ci(deps)` / `build(deps)` prefixes.
-- Later: frontend browser E2E, more Tier 1 server versions in the container job, benchmarks against `main`, nightly matrix/fuzzing/E2E, and signed release workflows.
+- Later: frontend browser E2E, more Tier 1 server versions in the container job, nightly matrix/E2E, and signed release workflows. Benchmarks against `main`, coverage and nightly fuzzing are in place (§4.1); with PR-triggered CI the `bench` job compares each PR with its merge base.
 
 ## 5. Branching and versioning
 

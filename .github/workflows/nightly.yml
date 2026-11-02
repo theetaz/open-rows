@@ -1,0 +1,75 @@
+name: Nightly
+
+# Scheduled fuzzing (M1-15, M1-30; docs/17 §2.5). Each cargo-fuzz target runs
+# for ten minutes on a corpus restored from the previous night and saved
+# again afterwards, so coverage accumulates. A crash fails the job and keeps
+# the reproducer as an artifact; add it as a regression test before fixing.
+
+on:
+  schedule:
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [conn_url, sql_split, param_binder, mql]
+    env:
+      CARGO_TARGET_DIR: fuzz/target
+      FUZZ_SECONDS: '600'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install nightly Rust
+        # libFuzzer instrumentation needs nightly; the main workspace stays on its pinned toolchain.
+        run: rustup toolchain install nightly --profile minimal
+      - uses: taiki-e/install-action@183e4297cca2404691e9380e1307288dced5c82a # v2.87.25
+        with:
+          tool: cargo-fuzz@0.13.2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: 'fuzz -> target'
+          key: fuzz-${{ matrix.target }}
+      - name: Restore the corpus
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: fuzz/corpus/${{ matrix.target }}
+          key: fuzz-corpus-${{ matrix.target }}-${{ github.run_id }}
+          restore-keys: fuzz-corpus-${{ matrix.target }}-
+      - name: Fuzz ${{ matrix.target }}
+        env:
+          TARGET: ${{ matrix.target }}
+        run: cargo +nightly fuzz run --fuzz-dir fuzz "$TARGET" -- -max_total_time="$FUZZ_SECONDS"
+      - name: Minimise the corpus
+        env:
+          TARGET: ${{ matrix.target }}
+        run: cargo +nightly fuzz cmin --fuzz-dir fuzz "$TARGET"
+      - name: Save the corpus
+        if: always()
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: fuzz/corpus/${{ matrix.target }}
+          key: fuzz-corpus-${{ matrix.target }}-${{ github.run_id }}
+      - name: Keep crash reproducers
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: fuzz-artifacts-${{ matrix.target }}
+          path: fuzz/artifacts/${{ matrix.target }}
+          if-no-files-found: ignore

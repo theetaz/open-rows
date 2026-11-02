@@ -118,6 +118,7 @@ script-test:
     python3 -B -m unittest discover -s scripts -p 'test_sccache_*.py'
     python3 -B -m unittest discover -s scripts -p 'test_stage_host.py'
     python3 -B -m unittest discover -s scripts -p 'test_strip_macos_bundle.py'
+    python3 -B -m unittest discover -s scripts -p 'test_coverage_gate.py'
     node --test apps/desktop/e2e/*.test.mjs
 
 # Emit CSS custom properties from the UI TypeScript token source.
@@ -184,6 +185,18 @@ test-libsql image="ghcr.io/tursodatabase/libsql-server:v0.24.32":
 # Run MongoDB document integration and capability conformance on a replica set.
 test-mongo:
     {{sccache_guard}} bash scripts/test-mongo.sh
+
+# Line coverage of openrows-core, openrows-sql and the drivers' value codecs; fails below 80 % (needs cargo-llvm-cov).
+coverage:
+    {{sccache_guard}} nice -n 10 bash scripts/coverage.sh
+
+# Run the Criterion benchmarks compared against main; args go to Criterion, e.g. `--save-baseline main`.
+bench-criterion *args:
+    {{sccache_guard}} bash scripts/bench-criterion.sh {{args}}
+
+# Compare the last `bench-criterion --baseline-lenient main` run with the saved main baseline.
+bench-compare:
+    python3 -B scripts/bench_compare.py "${CARGO_TARGET_DIR:-target}/criterion"
 
 # Run each cargo-fuzz target in fuzz/ briefly; skips when nightly or cargo-fuzz is missing.
 fuzz-smoke seconds="20":

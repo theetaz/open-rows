@@ -3,27 +3,33 @@
 import json
 import subprocess
 from bench_common import launch_ipc, parser, release_executable, run, write_result
+from bench_completion_metrics import BUDGET_MS as COMPLETION_BUDGET_MS, completion_budgets, completion_metrics
 from bench_editor_metrics import BUDGET_MS, editor_budgets, editor_metrics, longest_keystrokes
 from bench_metrics import BenchmarkError, print_budgets
 
 METHOD = ("Gated keystrokeToPaintMs = scheduling delay + input handling to the CodeMirror document "
           "update + the first rendering update after it (rAF frame start to a task posted from that rAF). "
           "Only the idle wait from the update to the frame start (vsyncWaitMs) is excluded; wallMs keeps it. "
-          f"p95 is nearest rank over all 240 keystrokes per configuration; exactly {BUDGET_MS} ms passes.")
+          f"p95 is nearest rank over all 240 keystrokes per configuration; exactly {BUDGET_MS} ms passes. "
+          "Completion popupMs = typed trigger character to the first rendering update that shows the "
+          "popup (MutationObserver insertion + next rAF and posted task), including CodeMirror's "
+          "activate-on-typing delay; 25 popups per trigger kind on a warm 50 000-object catalog; "
+          f"p95 nearest rank per kind; exactly {COMPLETION_BUDGET_MS} ms passes.")
 
 
 def main():
     options = parser(__doc__).parse_args()
-    print("Estimated duration: ~40 seconds (two configurations x 240 keystrokes); "
+    print("Estimated duration: ~60 seconds (two configurations x 240 keystrokes, then 100 completion popups); "
           "130-second report deadline. Keep the window visible.", flush=True)
-    payload = dict(report=None, metrics={}, budgets=[], method=METHOD)
+    payload = dict(report=None, metrics={}, completion=None, budgets=[], method=METHOD)
     error, executable = None, None
     try:
         executable = release_executable(options.executable)
         with launch_ipc(executable, mode="editor") as (process, report):
             payload["report"] = report
             payload["metrics"] = editor_metrics(report, process.pid)
-        payload["budgets"] = editor_budgets(payload["metrics"])
+            payload["completion"] = completion_metrics(report)
+        payload["budgets"] = editor_budgets(payload["metrics"]) + completion_budgets(payload["completion"])
     except (BenchmarkError, OSError, ValueError, subprocess.SubprocessError) as caught:
         error = str(caught)
     passed = payload["budgets"] and all(budget["passed"] for budget in payload["budgets"])
@@ -31,6 +37,7 @@ def main():
                    verdict="invalid" if error else "passed" if passed else "budget_failed")
     write_result("editor", payload)
     print_metrics(payload["report"], payload["metrics"])
+    print_completion(payload["completion"])
     if error:
         print(f"Benchmark failed: {error}")
         return 1
@@ -51,6 +58,19 @@ def print_metrics(report, metrics):
     print("Ten slowest keystrokes (raw samples retained in JSON):")
     for sample in longest_keystrokes(report):
         print(json.dumps(sample, sort_keys=True))
+
+
+def print_completion(completion):
+    if not completion:
+        return
+    print(f'Completion popup (activate-on-typing delay {completion["activate_delay_ms"]:.0f} ms, '
+          f'refresh {completion["refresh_interval_ms"]:.2f} ms)')
+    print("Trigger        p50     p95     max     >50  open95  paint95  options")
+    for kind, values in completion["kinds"].items():
+        phases = values["phase_p95_ms"]
+        print(f"{kind:<12}" + "".join(f"{values[key]:>8.2f}" for key in ("p50", "p95", "max"))
+              + f"{values['over_budget']:>6}{phases['openMs']:>8.2f}{phases['paintMs']:>9.2f}"
+              + f"{values['options_min']:>9}")
 
 
 if __name__ == "__main__":

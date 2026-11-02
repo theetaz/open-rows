@@ -1287,6 +1287,25 @@ export type Comparison =
 /**  Fires at or below `fire`; healthy at or above `clear`. */
 "below";
 
+/**  Completion popup latency on the 5 000-line document with a warm 50 000-object catalog (M1-21). */
+export type CompletionRun = {
+	objects: number,
+	activateDelayMs: number | null,
+	refreshIntervalMs: number | null,
+	samples: CompletionSample[],
+};
+
+/**  Page-clock phases of one popup: `popupMs` = `openMs` (typed trigger to popup insertion) + `paintMs`. */
+export type CompletionSample = {
+	index: number,
+	kind: string,
+	key: string,
+	options: number,
+	openMs: number | null,
+	paintMs: number | null,
+	popupMs: number | null,
+};
+
 export type ConflictDto = "error" | "skip" | "update";
 
 /**  Classification displayed before any profile or keychain write. */
@@ -3975,6 +3994,7 @@ export type SpikeReport_Deserialize = {
 	error: string | null,
 	grid?: GridRun[] | null,
 	editor?: EditorRun[] | null,
+	completion?: CompletionRun | null,
 };
 
 export type SpikeReport_Serialize = {
@@ -3983,6 +4003,7 @@ export type SpikeReport_Serialize = {
 	error: string | null,
 	grid?: GridRun[] | null,
 	editor?: EditorRun[] | null,
+	completion?: CompletionRun | null,
 };
 
 /**

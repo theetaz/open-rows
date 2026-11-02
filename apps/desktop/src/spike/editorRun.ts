@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-import { mountSqlEditor, parseFully } from '@openrows/editor';
+import {
+  defaultPreferences,
+  mountSqlEditor,
+  parseFully,
+} from '@openrows/editor';
 import type { EditorView } from '@openrows/editor';
 import type { EditorRun, KeystrokeSample } from '@openrows/ipc';
 import {
@@ -37,6 +41,9 @@ export async function runConfig(context: ConfigContext): Promise<EditorRun> {
   const editor = mountSqlEditor(host, {
     doc,
     label: 'SQL benchmark editor',
+    // One document change per scripted key: auto-closing `(` and `'` would
+    // insert two characters and turn the closing keys into caret moves.
+    preferences: { ...defaultPreferences, closeDelimiters: false },
     onDocChange: () => {
       changes.record();
     },

@@ -4,6 +4,7 @@ import { runConfig } from './editorRun';
 import type { VimModule } from './editorRun';
 import { SpikeSession, withTimeout } from './lifecycle';
 import { generateSqlDocument } from './sqlDocument';
+import { runCompletion } from './completionRun';
 
 /** Per-configuration watchdog: 240 keystrokes at ≈ 70 ms plus mount and parse. */
 const CONFIG_DEADLINE_MS = 60_000;
@@ -38,6 +39,13 @@ export async function runEditorSpike(session: SpikeSession): Promise<void> {
       );
       session.progress('editor-config', `${config} complete`);
     }
+    session.progress('editor-completion', 'started');
+    session.completion = await withTimeout(
+      runCompletion(host, session, doc),
+      CONFIG_DEADLINE_MS,
+      'Editor completion',
+    );
+    session.progress('editor-completion', 'complete');
   } catch (caught) {
     error = String(caught);
   } finally {

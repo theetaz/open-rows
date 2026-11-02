@@ -1,6 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Idle physical footprint across the app and its WebKit processes, five seconds after paint."""
+"""Idle physical footprint across the app and its WebKit processes, five seconds after paint.
+
+`--scenario monitor` instead compares a connected launch with one that has the Monitor open (M25-09).
+"""
 from bench_common import clock_ns, launch, parser, release_executable, run, wait_until, write_result
+from bench_monitor_memory import monitor_report, print_monitor, sample_scenarios
 from bench_metrics import BenchmarkError, print_budgets
 from bench_memory_metrics import memory_sample, memory_report
 from bench_processes import Responsibility, add_footprints, app_processes, process_table, require_webcontent
@@ -45,10 +49,13 @@ def sample_run(executable, index):
 def main():
     arguments = parser(__doc__)
     arguments.add_argument("runs", type=int, nargs="?", default=3)
+    arguments.add_argument("--scenario", choices=("idle", "monitor"), default="idle")
     options = arguments.parse_args()
     if options.runs < 1:
         raise BenchmarkError("At least one memory run is required")
     executable = release_executable(options.executable)
+    if options.scenario == "monitor":
+        return monitor_main(executable, options.runs)
     samples = [sample_run(executable, index) for index in range(options.runs)]
     report = memory_report(samples)
     medians = report["process_median_footprint_bytes"]
@@ -60,6 +67,17 @@ def main():
                                method="Sequential launches; first paint + 5 s; footprint -f bytes; "
                                       "ps RSS informational; descendants + process group + direct/inherited "
                                       "XPC responsibility with ps lstart >= root start; decimal MB"))
+    return print_budgets(report["budgets"])
+
+
+def monitor_main(executable, runs):
+    report = monitor_report(sample_scenarios(executable, runs, measure))
+    print_monitor(report)
+    write_result("memory-monitor", dict(report, executable=executable.name,
+                                       method="Isolated HOME/CFFIXED_USER_HOME per launch; in-memory SQLite "
+                                              "connection; connected and Monitor-open launches alternate; "
+                                              "Monitor ready after its first collector sample; ready + 5 s; "
+                                              "footprint -f bytes; increment = difference of medians, MiB"))
     return print_budgets(report["budgets"])
 
 

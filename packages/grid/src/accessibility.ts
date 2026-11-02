@@ -2,6 +2,8 @@
 import { keyMove, leaveGrid } from './keyboard';
 import type { KeyMove } from './keyboard';
 import type { GridProps, SelectionModel } from './model';
+import { announcer } from './announce';
+import { shadowRows } from './shadowRows';
 
 const HIDDEN =
   'position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);';
@@ -9,7 +11,7 @@ const HIDDEN =
 interface ShadowGrid {
   update: (selection: SelectionModel) => void;
   focus: () => void;
-  /** Politely announce edit mode and staging outcomes. */
+  /** Politely announce edit mode and staging outcomes at once. */
   announce: (message: string) => void;
   destroy: () => void;
 }
@@ -20,29 +22,30 @@ export interface GridNavigation {
   /** Scroll by `scrollRows`, then reveal the focused cell. */
   moved: (selection: SelectionModel, scrollRows: number) => void;
 }
-/** One focused logical cell, not a million DOM rows; indices include the header row. */
+/**
+ * One focused logical cell with its column header and neighbouring rows, not a
+ * million DOM rows; indices include the header row.
+ */
 export function shadowGrid(
   host: HTMLElement,
   props: GridProps,
   navigation: GridNavigation,
 ): ShadowGrid {
   const grid = document.createElement('div'),
-    row = document.createElement('div'),
-    cell = document.createElement('div'),
     status = document.createElement('div');
-  initialize(grid, cell, props);
-  row.setAttribute('role', 'row');
-  cell.setAttribute('role', 'gridcell');
+  initialize(grid, props);
+  const rows = shadowRows(grid, props);
+  rows.active.id = `grid-focus-${String(++sequence)}`;
+  grid.setAttribute('aria-activedescendant', rows.active.id);
   status.setAttribute('role', 'status');
   status.style.cssText = HIDDEN;
-  row.append(cell);
-  grid.append(row);
   host.append(grid, status);
+  const announcements = announcer(status, props, props.selection);
   const update = (selection: SelectionModel): void => {
     grid.setAttribute('aria-rowcount', String(props.source.rows + 1));
-    row.setAttribute('aria-rowindex', String(selection.row + 2));
-    cell.setAttribute('aria-colindex', String(selection.column + 1));
-    cell.textContent = `${props.source.columns[selection.column]?.title ?? ''}: ${props.source.cell(selection.row, selection.column)?.text ?? 'Loading'}`;
+    grid.setAttribute('aria-colcount', String(props.source.columns.length));
+    rows.render(selection);
+    announcements.selection(selection);
   };
   grid.onkeydown = keyHandler(host, props, {
     pageRows: navigation.pageRows,
@@ -53,6 +56,7 @@ export function shadowGrid(
   });
   const unsubscribe = props.source.subscribe(() => {
     update(props.selection);
+    announcements.refresh(props.selection);
   });
   update(props.selection);
   return {
@@ -60,11 +64,10 @@ export function shadowGrid(
     focus: () => {
       grid.focus({ preventScroll: true });
     },
-    announce: (message) => {
-      status.textContent = message;
-    },
+    announce: announcements.message,
     destroy: () => {
       unsubscribe();
+      announcements.destroy();
       grid.remove();
       status.remove();
     },
@@ -162,13 +165,10 @@ function editTrigger(
 }
 let sequence = 0;
 
-function initialize(
-  grid: HTMLElement,
-  cell: HTMLElement,
-  props: GridProps,
-): void {
+function initialize(grid: HTMLElement, props: GridProps): void {
   grid.setAttribute('role', 'grid');
   grid.setAttribute('aria-label', 'Result grid');
+  grid.setAttribute('aria-multiselectable', 'true');
   grid.setAttribute('aria-rowcount', String(props.source.rows + 1));
   grid.setAttribute('aria-colcount', String(props.source.columns.length));
   grid.setAttribute(
@@ -177,6 +177,4 @@ function initialize(
   );
   grid.style.cssText = HIDDEN;
   grid.tabIndex = 0;
-  cell.id = `grid-focus-${String(++sequence)}`;
-  grid.setAttribute('aria-activedescendant', cell.id);
 }

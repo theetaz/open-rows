@@ -11,16 +11,19 @@ const mocks = vi.hoisted(() => ({
   finish: vi.fn(),
   progress: vi.fn(),
   run: vi.fn(),
+  completion: vi.fn(),
 }));
 vi.mock('@openrows/ipc', () => ({
   finishSpike: mocks.finish,
   spikeProgress: mocks.progress,
 }));
 vi.mock('./editorRun', () => ({ runConfig: mocks.run }));
+vi.mock('./completionRun', () => ({ runCompletion: mocks.completion }));
 beforeEach(() => {
   vi.resetAllMocks();
   mocks.finish.mockResolvedValue(undefined);
   mocks.progress.mockResolvedValue(undefined);
+  mocks.completion.mockResolvedValue({ objects: 50_000, samples: [] });
 });
 
 it('runs both configurations, Vim only for vim, and reports once', async () => {
@@ -47,9 +50,12 @@ it('runs both configurations, Vim only for vim, and reports once', async () => {
         { config: 'sql', vim: false },
         { config: 'vim', vim: true },
       ],
+      completion: { objects: 50_000, samples: [] },
     }),
   );
+  expect(mocks.completion).toHaveBeenCalledOnce();
   expect(mocks.progress).toHaveBeenCalledWith('editor-config', 'vim complete');
+  expect(mocks.progress).toHaveBeenCalledWith('editor-completion', 'complete');
 });
 
 it('keeps completed runs and reports the failing configuration', async () => {
@@ -63,5 +69,6 @@ it('keeps completed runs and reports the failing configuration', async () => {
       editor: [{ config: 'sql' }],
     }),
   );
+  expect(mocks.completion).not.toHaveBeenCalled();
   expect(document.body.childElementCount).toBe(0);
 });

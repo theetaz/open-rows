@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   run: vi.fn(),
   grid: vi.fn(),
   editor: vi.fn(),
+  memory: vi.fn(),
   finish: vi.fn(),
   progress: vi.fn(),
 }));
@@ -22,6 +23,7 @@ vi.mock('@openrows/ipc', () => ({
 vi.mock('./ipc', () => ({ runIpcSpike: mocks.run }));
 vi.mock('./grid', () => ({ runGridSpike: mocks.grid }));
 vi.mock('./editor', () => ({ runEditorSpike: mocks.editor }));
+vi.mock('./memory', () => ({ runMemorySpike: mocks.memory }));
 beforeEach(() => {
   vi.resetAllMocks();
   vi.useFakeTimers();
@@ -88,4 +90,15 @@ it('routes editor mode to its lazy module and loads no other spike', async () =>
   expect(mocks.grid).not.toHaveBeenCalled();
   expect(mocks.run).not.toHaveBeenCalled();
   expect(vi.getTimerCount()).toBe(0);
+});
+
+it('routes the memory modes to the memory spike, which keeps the app open', async () => {
+  for (const mode of ['connected', 'monitor'] as const) {
+    mocks.start.mockResolvedValueOnce(mode);
+    mocks.memory.mockResolvedValueOnce(undefined);
+    await startIpcSpike();
+    expect(mocks.memory).toHaveBeenLastCalledWith(expect.anything(), mode);
+  }
+  expect(mocks.finish).not.toHaveBeenCalled();
+  expect(mocks.editor).not.toHaveBeenCalled();
 });

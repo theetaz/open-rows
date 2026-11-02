@@ -23,6 +23,15 @@ export async function startIpcSpike(): Promise<void> {
       await runGridSpike(session);
       return;
     }
+    if (mode === 'connected' || mode === 'monitor') {
+      const { runMemorySpike } = await withTimeout(
+        import('./memory'),
+        10_000,
+        'Memory module loading',
+      );
+      await runMemorySpike(session, mode);
+      return;
+    }
     if (mode === 'editor') {
       const { runEditorSpike } = await withTimeout(
         import('./editor'),

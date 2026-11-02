@@ -6,6 +6,7 @@ import { ArrowWorker } from '../results/workerClient';
 import { SpikeSession, withTimeout } from './lifecycle';
 import { SCENARIOS, ROWS, scenarioDuration } from './gridScenarios';
 import { sampleGrid } from './gridSampler';
+import { GcProbe } from './gcProbe';
 
 /** Release-only canvas benchmark; all modules/worker startup precede sampled frames. */
 export async function runGridSpike(session: SpikeSession): Promise<void> {
@@ -82,8 +83,10 @@ async function runScenario(context: Scenario): Promise<void> {
   );
 
   const handle = mount(host, props);
+  const gc = new GcProbe();
   try {
     await withTimeout(nextFrames(3), 2_000, 'Grid first paint');
+    gc.start();
     session.grid.push(
       await withTimeout(
         sampleGrid({
@@ -97,7 +100,10 @@ async function runScenario(context: Scenario): Promise<void> {
         `Grid ${option}/${scenario}`,
       ),
     );
+    // Diagnostic only: dates full collections near long frames (docs/13 §4).
+    session.progress('grid-gc', `${option}/${scenario}: ${gc.summary()}`);
   } finally {
+    gc.stop();
     handle.destroy();
   }
 }

@@ -1107,7 +1107,7 @@ here.
 | Labels | DuckDB shows "Updated after query completion" (ADR-0011 decision 4). | Fixed | The DuckDB overview note did not use this wording; it now starts with it. |
 | Labels | Explain and HypoPG are offered only where they work. | Fixed | Top queries showed **Explain** on every engine, and the native gate let MySQL, SQL Server, ClickHouse, SQLite and libSQL into the PostgreSQL-only diagnostic session. **Explain** is now shown only for PostgreSQL, other engines point to the editor's Explain, and `monitor_explain`/`monitor_hypopg` refuse non-PostgreSQL profiles (`reader::ensure_postgres`, unit-tested). |
 | Performance | 1,000-row analysis p95 ≤ 10 ms, source deadline and retained-bytes caps. | Pass on M4 | ADR-0011 audit table. |
-| Performance | mac-low CPU, all-process footprint, ≤ 1% server overhead, native UI timing. | Not measured | Dev-machine `pgbench` noise exceeds the 1% target. No Monitor-open footprint scenario exists yet. |
+| Performance | mac-low CPU, all-process footprint, ≤ 1% server overhead, native UI timing. | Footprint fails on M4; rest not measured | `just bench-memory 3 --scenario monitor` (2026-11-02, M4, embedded SQLite collector): Monitor increment 107.2 MiB median against 32 MiB, in WebKit GPU (+69.6 MB) and WebContent (+42.6 MB); connected idle 168.56 MB passes (docs/13 §4). Dev-machine `pgbench` noise exceeds the 1% target. mac-low and the PostgreSQL collector variant are not measured. |
 | History | 24 h retention within 50 MiB per connection. | Partial | The caps hold, but at 16 scalars every 5 s the conservative 2 KiB row charge keeps about 133 minutes. Rows are evicted oldest first instead of being downsampled. |
 
 Open gaps, each larger than an audit fix:

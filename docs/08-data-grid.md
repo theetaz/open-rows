@@ -203,16 +203,36 @@ All staging goes through the core's change-set API ([10-schema-and-data-editing.
 
 ## 8. Accessibility
 
-The S2 prototype exposes a shadow ARIA grid beside the canvas layers. It exposes one
-focused logical cell with `aria-activedescendant`, a row index of model row + 2
-(the header counts as row 1), column index + 1, and real row/column totals. Tile
-arrival updates the announced header/value. Tab focuses the shadow grid; arrows,
-Page Up/Down, Home/End and Tab move its focused cell (§4), and ⌃Tab leaves it. Canvas clicks and arrow navigation update the same selection model.
-No million-row DOM is created.
+The canvas has a shadow ARIA grid beside it (`packages/grid/src/accessibility.ts`,
+`shadowRows.ts`, `announce.ts`). It never materialises the result: whatever the row
+count, it holds one header row and three body rows.
 
-This is a hook prototype, not accessibility certification. Neighbouring rows,
-selection live announcements, screen-reader testing and the complete keyboard
-model remain future work; test VoiceOver before production accessibility sign-off.
+- **Structure.** `role="grid"` with `aria-multiselectable`, the real `aria-rowcount`
+  (rows + 1, the header counts as row 1) and `aria-colcount`. The header row
+  (`aria-rowindex` 1) holds the focused column's `columnheader`. The body rows are the
+  focused row (`aria-rowindex` = model row + 2) between its previous and next rows,
+  each with the focused column's cell (`aria-colindex` = column + 1, `aria-selected`
+  when inside a selected range). A neighbour outside the result is hidden. With a
+  row-number gutter each body row starts with a `rowheader` holding the row label
+  (the gutter text, which includes a table page's offset). The grid's
+  `aria-activedescendant` names the focused cell, so VoiceOver reads it with its
+  column and row headers and can move to the neighbouring rows' values.
+- **Keyboard.** Tab focuses the shadow grid; arrows, Page Up/Down, Home/End and Tab
+  move its focused cell (§4), and ⌃Tab leaves it. Canvas clicks, drags and header
+  selections update the same selection model.
+- **Announcements.** A polite `role="status"` region speaks selection changes at most
+  once per 200 ms, always the latest state, so held arrow keys and drags do not
+  queue speech: one cell is "Row 12, name: Alice"; a range is "Selected 3 rows by 2
+  columns"; a whole row "Selected row 12"; a whole column "Selected column name";
+  several ranges "Selected 2 ranges". A focused value whose tile is still loading is
+  announced as "Loading" and spoken again once it arrives. Edit-mode and staging
+  messages from the host (`GridHandle.announce`) are spoken at once and replace a
+  pending selection message. Tile arrivals refresh the shadow cells without speaking.
+
+Verified in WebKit (Playwright, React Compiler build) at 1,000 and 10,000,000 rows: the
+live-region text and the ARIA attributes after arrow, Shift+arrow, ⌘↓ and Space moves.
+A manual VoiceOver pass on macOS remains part of the release accessibility audit
+(docs/29 §4).
 
 ## 9. Performance budget per frame (16.6 ms at 60 Hz)
 

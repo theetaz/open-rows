@@ -101,9 +101,17 @@ flowchart TB
 
 `cargo-fuzz` targets: SQL splitters (each dialect), MQL parser, Redis tokenizer, collection YAML loader, importers (Postman/Insomnia/Bruno/OpenAPI/HAR/cURL), Arrow window encoder bounds, connection URL parsers. Run nightly with corpus persisted; crashes become regression tests.
 
+Implemented targets in `fuzz/`: `conn_url`, `sql_split` (every dialect), `param_binder` and `mql`. `just fuzz-smoke [seconds]` runs each briefly on a machine with nightly Rust and cargo-fuzz. The scheduled `Nightly` workflow (`.github/workflows/nightly.yml`, docs/18 §4.1) fuzzes each target for ten minutes on a corpus restored from the previous night, minimises it with `cargo fuzz cmin` and saves it again; a crash fails the job and keeps the reproducer as an artifact.
+
 ### 2.6 Performance
 
 See [13-performance.md](13-performance.md#4-benchmark-suite). Benchmarks run on every PR (relative comparison on CI) and nightly on reference Macs (absolute budgets).
+
+The relative comparison is the CI `bench` job (docs/18 §4.1): `result_window_encode`, `decode_pg`, `sql_split` and `schema_catalog` run on the base commit with `--save-baseline main` and on the change with `--baseline-lenient main` on one runner, and `scripts/bench_compare.py` fails a benchmark whose mean change has a 95 % confidence interval entirely above its threshold (5 %; `sql_split_*` 10 %). Locally: `just bench-criterion --save-baseline main` on `main`, `just bench-criterion --baseline-lenient main` on the branch, then `just bench-compare`. GUI benchmarks (startup, memory, grid, editor) stay local maintainer runs until a macOS GUI runner exists.
+
+### 2.7 Coverage
+
+NFR-MAINT-03: line coverage ≥ 80 % for `openrows-core`, `openrows-sql` and the drivers' value codecs. The codec group is the `decode` module of the PostgreSQL, MySQL, SQL Server and SQLite drivers plus MySQL's `values.rs` (row values to Arrow); MongoDB, ClickHouse and libSQL map values inside their stream modules and are not gated yet. `just coverage` runs `scripts/coverage.sh`: `cargo llvm-cov nextest` over those four driver crates and the two core crates, then `scripts/coverage_gate.py` groups the per-file line counts (test-only files such as `tests.rs` and `*_tests.rs` excluded), prints each group and fails below 80 %. Container suites skip without their environment, so the numbers come from unit tests; the CI `coverage` job runs the same script. Install `cargo-llvm-cov` (Apache-2.0 OR MIT) and the `llvm-tools-preview` component first.
 
 ## 3. Data-integrity guardrails
 
@@ -121,9 +129,9 @@ See [13-performance.md](13-performance.md#4-benchmark-suite). Benchmarks run on 
 | Tests | Rust unit + Tier 1 integration; frontend unit + Playwright (mock IPC) |
 | Security | `cargo-deny`, `cargo-audit`, `pnpm audit` (high+), secret scanning |
 | Licences | `cargo-deny licenses`, `license-checker` for npm against the allowlist |
-| Perf | Benchmarks vs `main`, thresholds in config |
+| Perf | Benchmarks vs `main` (CI `bench` job, §2.6), thresholds in `scripts/bench_compare.py` |
 | Size | Bundle size check (initial JS chunk ≤ 350 KB gzip) |
-| Coverage | Report on PR; floor enforced for core crates (NFR-MAINT-03) |
+| Coverage | `just coverage` / CI `coverage` job: ≥ 80 % lines per group (§2.7, NFR-MAINT-03) |
 
 ## 5. Manual QA
 

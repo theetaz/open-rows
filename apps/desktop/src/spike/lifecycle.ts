@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 import { finishSpike, spikeProgress } from '@openrows/ipc';
-import type { TileTiming, GridRun, EditorRun } from '@openrows/ipc';
+import type {
+  CompletionRun,
+  EditorRun,
+  GridRun,
+  TileTiming,
+} from '@openrows/ipc';
 import { measurePageTimer } from './timer';
 
 /** Bound a spike operation and clear the watchdog on every settlement. */
@@ -30,6 +35,8 @@ export class SpikeSession {
   readonly samples: TileTiming[] = [];
   readonly grid: GridRun[] = [];
   readonly editor: EditorRun[] = [];
+  /** Completion popup latency, after the editor keystroke runs. */
+  completion: CompletionRun | null = null;
   readonly timer = measurePageTimer();
   private terminal: Promise<void> | undefined;
   private progressQueue = Promise.resolve();
@@ -100,6 +107,7 @@ export class SpikeSession {
       error,
       ...(this.grid.length ? { grid: this.grid } : {}),
       ...(this.editor.length ? { editor: this.editor } : {}),
+      ...(this.completion ? { completion: this.completion } : {}),
     });
   }
 }

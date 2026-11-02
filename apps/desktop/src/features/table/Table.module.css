@@ -183,8 +183,11 @@
   width: 13px;
   height: 13px;
 }
-/* Narrow footers keep icons and the row count; labels return when there is room. */
-@container table-footer (max-width: 760px) {
+/*
+ * Narrow footers keep icons and the row count; labels return when the data
+ * tools, their labels and the centred range all fit (≈ 900 px with Count).
+ */
+@container table-footer (max-width: 900px) {
   .label {
     display: none;
   }
@@ -192,17 +195,20 @@
 .footer > button {
   flex-shrink: 0;
 }
-/* Centred range and count, like TablePlus' "1 of ~5,192,641 rows". */
+/*
+ * Centred range and count, like TablePlus' "1 of ~5,192,641 rows". When it
+ * does not fit, the range truncates instead of spilling over the + Row
+ * button, and the Count button keeps its width (the footer scrolls instead).
+ */
 .status {
   flex: 1;
-  min-width: 0;
+  min-width: min-content;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: safe center;
   gap: var(--or-space-6);
 }
 .range {
-  flex-shrink: 0;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;

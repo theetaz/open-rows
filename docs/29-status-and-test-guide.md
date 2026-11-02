@@ -32,6 +32,8 @@ Current priority: **dogfood the app on `main` and collect feedback** before addi
 
 **Fixed in this round:** boards, incidents, background monitoring and report saving were exported to the frontend but not registered with Tauri, so the app denied those calls; they are now registered and allowed.
 
+**Performance, accessibility and CI tooling (2026-11-02, lane D):** the grid's shadow ARIA grid now exposes the column header and the focused row between its neighbours (row headers from the row-number gutter) and announces selection and range changes politely, throttled to one message per 200 ms ("Row 12, name: Alice", "Selected 3 rows by 2 columns"; docs/08 §8). The table footer no longer lets the row range overlap "+ Row" at medium widths (for example a 1,600 px window with the inspector open): labels hide below a 900 px footer and the range never spills over its neighbours. Quitting the app with a Monitor open no longer panics in the exit handler ("there is no reactor running"). `just bench-editor` works again (auto-closing brackets broke its typing script) and also measures the completion popup; `just bench-memory --scenario monitor` measures the Monitor's footprint in an isolated home folder; `just coverage`, the CI `coverage` and `bench` jobs and the scheduled `Nightly` fuzzing workflow are in place (docs/17, docs/18 §4.1) but have not run on GitHub while CI is off.
+
 ## 3. Work-in-progress branches (not on `main`)
 
 None. The last parked lane, `wip/mongodb` (M3-01..M3-04), was finished and merged on 2026-11-02 (MongoDB row in §2).
@@ -48,11 +50,13 @@ None. The last parked lane, `wip/mongodb` (M3-01..M3-04), was finished and merge
 | Conformance and monitoring | M1-10/11/12/17 Tier 1 conformance facets (TLS/SSH, transactions, golden introspection, MySQL 9.x), M25 history downsampling and remaining PostgreSQL fixtures |
 | Windows and Linux | M6-01..05: credential backends, WebView2/WebKitGTK workarounds, packaging, E2E, per-OS capability matrix; M2-01 Windows MSVC host build |
 | Release hardening | Reference-hardware budgets (startup, memory, driver-host cold start ≤ 150 ms), monitoring overhead, accessibility audit, documentation site, beta cycle |
+| Performance follow-ups (2026-11-02) | Monitor view footprint (107 MiB increment against 32 MiB, WebKit GPU/WebContent); default completion delay decision (popup p95 113–146 ms at 100 ms, 20–35 ms at 0 ms); name the ≈ 100–160 ms main-thread block ≈ 30 s after launch that fails `just bench-grid` (Instruments trace), then fix it or add a settle period (docs/13 §4) |
 
 ## 5. Known issues
 
 - Tier 2 engines are labelled beta. SQL Server exact `float`/`real` edit guards need the CLR, which Azure SQL Edge lacks.
 - No signed build yet. M1-31 release engineering is on `main`: `just release-dmg` builds an ad-hoc signed DMG, and `release.yml` signs, notarises and publishes only once the owner adds the Apple and updater secrets listed in [docs/16 §8](16-platform-and-distribution.md#how-to-cut-a-release); without them it skips those stages with a notice. Real signing, notarisation and a fresh-machine install and update test are still open.
+- `just bench-grid` fails on `main` (one 93–159 ms frame per launch): a main-thread block about 30 s after launch, not grid work (docs/13 §4, "M0 S2 grid flings stall"). `just bench-editor` fails its new completion gate at the default 100 ms completion delay, and `just bench-memory --scenario monitor` fails the Monitor increment; both are recorded with numbers in docs/13 §4.
 - **CI is switched off** (the `CI` workflow is disabled on GitHub, 2026-10-13) while a single maintainer dogfoods the app; re-enable it with `gh workflow enable CI`. Earlier runs also could not start because of a GitHub billing/spending-limit problem.
 - The 2026-10-13 merges were not run through the full `just check` or the container suites on the integrated `main`; each lane ran focused checks only. Run `just check` before re-enabling CI.
 

@@ -39,6 +39,9 @@ pub struct Monitor {
     shared: Arc<Mutex<Shared>>,
     descriptors: Vec<Descriptor>,
     task: tokio::task::JoinHandle<()>,
+    /// The runtime that spawned the actor: `stop` may run on a thread without
+    /// one (the app's exit handler) and still sends the out-of-band cancel.
+    runtime: tokio::runtime::Handle,
     cancellation: Mutex<Option<ReadFuture<'static, ()>>>,
     events: tokio::sync::broadcast::Sender<Vec<SourceStatus>>,
     stopped: tokio::sync::watch::Sender<bool>,
@@ -67,7 +70,8 @@ impl Monitor {
         let (events, _) = tokio::sync::broadcast::channel(4);
         let cancellation = Mutex::new(Some(reader.cancellation()));
         let (stopped, _) = tokio::sync::watch::channel(false);
-        let task = tokio::spawn(actor::run(
+        let runtime = tokio::runtime::Handle::current();
+        let task = runtime.spawn(actor::run(
             reader,
             descriptors.clone(),
             actor::Options {
@@ -86,6 +90,7 @@ impl Monitor {
             shared,
             descriptors,
             task,
+            runtime,
             cancellation,
             events,
         })
@@ -105,7 +110,7 @@ impl Monitor {
             .unwrap_or_else(PoisonError::into_inner)
             .take()
         {
-            tokio::spawn(async {
+            self.runtime.spawn(async {
                 let _ = tokio::time::timeout(Duration::from_secs(1), cancel).await;
             });
         }

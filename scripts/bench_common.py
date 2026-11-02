@@ -108,12 +108,12 @@ def stop_process(process, report, owned):
 
 
 @contextmanager
-def launch(executable):
-    """Cleanup runs on success, invalid report, timeout, failure and Ctrl-C."""
+def launch(executable, extra=None):
+    """Cleanup runs on success, invalid report, timeout, failure and Ctrl-C; `extra` adds environment."""
     owner = Responsibility()
     with tempfile.TemporaryDirectory(prefix=".bench-", dir=ROOT) as directory:
         report = Path(directory) / "startup.json"
-        environment = dict(os.environ, OPENROWS_STARTUP_REPORT=str(report))
+        environment = dict(os.environ, OPENROWS_STARTUP_REPORT=str(report), **(extra or {}))
         started = clock_ns()
         process = subprocess.Popen([str(executable)], env=environment, start_new_session=True)
         owned = []

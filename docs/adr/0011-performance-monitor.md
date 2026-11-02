@@ -546,7 +546,7 @@ Results against this ADR's budgets:
 | 1,000-row analysis p95 ≤ 10 ms | Pass (M4) | Sample ingestion 4.839 ms; advisor 1,000 index rows 3.326 ms (distinct) and 1.632 ms (duplicate) |
 | ≤ 16 MiB retained per monitor | Pass | Retained estimate 429,443 bytes live, 1,621,593 bytes after the 1,000-row case; implementation cap 2 MiB |
 | Mean CPU ≤ 1% of one core over 60 s (mac-low, all processes) | Not certified | Test process (debug build): 0.09 s CPU in 60 s, about 0.15% of one core. Not mac-low, not all app/webview/host processes |
-| Monitor footprint increment ≤ 32 MiB (all processes) | Not measured | Test-process RSS 17,024 → 16,224 KiB is not a physical-footprint increment. `scripts/bench-memory.py` has no Monitor-open scenario yet |
+| Monitor footprint increment ≤ 32 MiB (all processes) | Fail (M4, 2026-11-02) | `just bench-memory 3 --scenario monitor`: median 107.2 MiB (runs 105.92 / 107.34 / 107.31) with the embedded SQLite collector; GPU process 25.54 → 95.11 MB, WebContent 96.01 → 138.58 MB, app process unchanged. Not mac-low; PostgreSQL collector not measured |
 | Server throughput/latency overhead ≤ 1% (reference workload) | Not certified | See below |
 | Local history 24 h / 50 MiB / 100 MiB | Partial | Caps hold. At 16 scalars per 5 s the conservative 2 KiB row charge keeps only about 133 minutes, so the 24 h range is not reached. History evicts the oldest rows; it does not downsample as this ADR requires |
 | No UI task > 50 ms | Not measured natively | Chromium component evidence (M25-03): 8.3 ms p95 render. History writes run on the backend task, not the UI |
@@ -580,9 +580,9 @@ release numbers are recorded.
 
 Not measured here, with the command to run later:
 
-- mac-low CPU and all-process footprint: add a Monitor-open scenario to
-  `scripts/bench-memory.py`, then `just build-app && just bench-memory 3` on the
-  MacBook Air M1 / 8 GB.
+- mac-low CPU and all-process footprint: `just build-app && just bench-memory 3
+  --scenario monitor` on the MacBook Air M1 / 8 GB (the scenario exists since
+  2026-11-02; the M4 increment fails, see the table above).
 - PostgreSQL 12/13/15/16/18 live suites: `just test-pg <version>`; managed-provider
   denial, unloaded extension, replication lag, spill/vacuum and statement-reset
   fixtures still need writing.

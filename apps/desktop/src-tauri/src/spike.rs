@@ -19,11 +19,14 @@ pub(crate) enum SpikeError {
 }
 
 /// Explicit release-app measurement modes; any other value leaves spike mode off.
+/// `Connected` and `Monitor` stay open for `bench-memory --scenario monitor`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum SpikeMode {
     Ipc,
     Grid,
     Editor,
+    Connected,
+    Monitor,
 }
 
 impl SpikeMode {
@@ -32,13 +35,15 @@ impl SpikeMode {
             "ipc" => Some(Self::Ipc),
             "grid" => Some(Self::Grid),
             "editor" => Some(Self::Editor),
+            "connected" => Some(Self::Connected),
+            "monitor" => Some(Self::Monitor),
             _ => None,
         }
     }
 
     /// Only the tile-based spikes read the synthetic result store.
     fn needs_rows(self) -> bool {
-        self != Self::Editor
+        matches!(self, Self::Ipc | Self::Grid)
     }
 }
 
@@ -136,6 +141,8 @@ pub(crate) struct SpikeReport {
     grid: Option<Vec<crate::grid_report::GridRun>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     editor: Option<Vec<crate::editor_report::EditorRun>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    completion: Option<crate::editor_report::CompletionRun>,
 }
 
 #[tauri::command]
@@ -152,6 +159,7 @@ pub(crate) fn spike_finish(app: tauri::AppHandle, report: SpikeReport) -> Result
         "rows": synthetic::SPIKE_ROWS, "cols": synthetic::SPIKE_COLS,
         "tile_rows": 256, "samples": samples["samples"], "error": samples["error"],
         "timer": samples["timer"], "grid": samples["grid"], "editor": samples["editor"],
+        "completion": samples["completion"],
         "mode": std::env::var("OPENROWS_SPIKE").unwrap_or_default(),
         "verdict": if status == 0 { "collected" } else { "invalid" },
         "stage_summary_ms": stage_summary,
@@ -243,14 +251,17 @@ mod tests {
     }
 
     #[test]
-    fn modes_are_explicit_and_editor_skips_synthetic_rows() {
+    fn modes_are_explicit_and_only_tile_spikes_seed_rows() {
         assert_eq!(SpikeMode::parse("ipc"), Some(SpikeMode::Ipc));
         assert_eq!(SpikeMode::parse("grid"), Some(SpikeMode::Grid));
         assert_eq!(SpikeMode::parse("editor"), Some(SpikeMode::Editor));
+        assert_eq!(SpikeMode::parse("connected"), Some(SpikeMode::Connected));
+        assert_eq!(SpikeMode::parse("monitor"), Some(SpikeMode::Monitor));
         assert_eq!(SpikeMode::parse("Editor"), None);
         assert_eq!(SpikeMode::parse(""), None);
         assert!(SpikeMode::Ipc.needs_rows() && SpikeMode::Grid.needs_rows());
         assert!(!SpikeMode::Editor.needs_rows());
+        assert!(!SpikeMode::Connected.needs_rows() && !SpikeMode::Monitor.needs_rows());
     }
 
     #[test]
