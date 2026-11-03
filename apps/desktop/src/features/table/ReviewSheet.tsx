@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { Button } from '@openrows/ui';
 import { Sheet, SheetActions } from '@openrows/ui/sheet';
 import styles from './Table.module.css';
+import { t } from './messages/lazyData';
 
 /** The transactional commit preview shared by row and structure edits. */
 export function ReviewSheet(props: {
@@ -21,21 +22,21 @@ export function ReviewSheet(props: {
   return (
     <Sheet title={props.title} onClose={props.onCancel}>
       <p>{props.summary}</p>
-      <pre className={styles.preview} aria-label="SQL to commit">
+      <pre className={styles.preview} aria-label={t('sqlCommit')}>
         {props.sql}
       </pre>
       {props.children}
       {props.error && <p role="alert">{props.error}</p>}
       <SheetActions>
         <Button disabled={props.busy} onClick={props.onCancel}>
-          Cancel
+          {t('cancel')}
         </Button>
         <Button
           variant="primary"
           disabled={props.busy || props.blocked}
           onClick={props.onCommit}
         >
-          {props.busy ? 'Committing…' : 'Commit changes'}
+          {props.busy ? t('committing') : t('commitChanges')}
         </Button>
       </SheetActions>
     </Sheet>

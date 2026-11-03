@@ -13,6 +13,7 @@ import { InsecureBadge } from './InsecureBadge';
 import { insecureReasons } from './insecure';
 import { useWorkspaceCollapse } from './useWorkspaceCollapse';
 import styles from './Rail.module.css';
+import { t } from './messages/profile';
 
 /** Where the row's action menu is open: under ⋯, or at a right-click. */
 type MenuAt = 'button' | { x: number; y: number } | null;
@@ -62,7 +63,7 @@ export function WorkspaceConnection(props: {
         <button
           type="button"
           className={styles.connection}
-          aria-label={`Switch to ${profile.name}`}
+          aria-label={t('switchName', { name: profile.name })}
           aria-pressed={selected}
           aria-describedby={tooltip.visible ? tooltip.id : undefined}
           data-session={status.state}
@@ -86,7 +87,7 @@ export function WorkspaceConnection(props: {
       {props.actions && menu && menu !== 'button' && (
         <PointMenu
           {...menu}
-          label={`${profile.name} actions`}
+          label={t('nameActions', { name: profile.name })}
           onClose={closePoint}
         >
           <ActionItems actions={props.actions} onClose={closePoint} />
@@ -118,7 +119,11 @@ function DatabasesDisclosure(props: {
     <button
       type="button"
       className={styles.serverDisclosure}
-      aria-label={`${props.collapsed ? 'Expand' : 'Collapse'} ${props.name} databases`}
+      aria-label={
+        props.collapsed
+          ? t('expandNameDatabases', { name: props.name })
+          : t('collapseNameDatabases', { name: props.name })
+      }
       aria-expanded={!props.collapsed}
       disabled={props.disabled}
       onClick={props.onToggle}
@@ -173,7 +178,7 @@ function RowActions(props: {
         ref={opener}
         type="button"
         className={styles.rowMenu}
-        aria-label={`${props.name} actions`}
+        aria-label={t('nameActions', { name: props.name })}
         aria-haspopup="menu"
         aria-expanded={props.open}
         onClick={() => {
@@ -185,7 +190,7 @@ function RowActions(props: {
       {props.open && (
         <SidebarMenu
           id={id}
-          label={`${props.name} actions`}
+          label={t('nameActions', { name: props.name })}
           opener={opener}
           onClose={close}
         >

@@ -13,6 +13,7 @@ import {
   visibleNodes,
 } from './planModel';
 import styles from './Explain.module.css';
+import { t } from './messages';
 
 type Props = {
   plan: PlanDto;
@@ -83,15 +84,15 @@ export function PlanTree({
   return (
     <div className={styles.tree}>
       <div className={styles.header} aria-hidden="true">
-        <span>Operator</span>
-        <span>Share</span>
-        <span>{plan.weight === 'time' ? 'Self time' : 'Self cost'}</span>
-        <span>{plan.analyzed ? 'Rows actual / est.' : 'Rows est.'}</span>
-        <span>Loops</span>
+        <span>{t('operator')}</span>
+        <span>{t('share')}</span>
+        <span>{plan.weight === 'time' ? t('selfTime') : t('selfCost')}</span>
+        <span>{plan.analyzed ? t('rowsActualEst') : t('rowsEst')}</span>
+        <span>{t('loops')}</span>
       </div>
       <div
         role="tree"
-        aria-label="Plan operators"
+        aria-label={t('planOperators')}
         tabIndex={0}
         aria-activedescendant={
           current ? `plan-node-${String(current.id)}` : undefined
@@ -153,7 +154,7 @@ function PlanRow(props: {
             type="button"
             tabIndex={-1}
             className={styles.twisty}
-            aria-label={expanded ? 'Collapse' : 'Expand'}
+            aria-label={expanded ? t('collapse') : t('expand')}
             aria-expanded={expanded}
             onClick={(event) => {
               event.stopPropagation();
@@ -184,9 +185,8 @@ function PlanRow(props: {
 }
 
 function NodeName({ node }: { node: PlanNodeDto }): React.JSX.Element {
-  const object = [node.relation, node.index && `using ${node.index}`]
-    .filter(Boolean)
-    .join(' ');
+  const index = node.index && t('usingIndex', { index: node.index });
+  const object = [node.relation, index].filter(Boolean).join(' ');
   return (
     <>
       <span className={styles.name} title={node.nodeType}>

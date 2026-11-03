@@ -6,26 +6,32 @@ import type { JobHandle } from '../jobs';
 import { sizeText } from '../runfile';
 import { applyDumpEvent, getRun, putRun, showDump } from './dumpStore';
 import type { DumpRun } from './dumpStore';
+import { t, tn } from './messages';
 
 type Starter = (
   onEvent: (event: DumpEventDto) => void,
 ) => Promise<{ jobId: string }>;
 
-const count = (value: number, noun: string): string =>
-  `${value.toLocaleString()} ${noun}${value === 1 ? '' : 's'}`;
-
 /** One line of progress: objects (of total) and bytes. */
 export function progressText(run: DumpRun): string {
   const parts: string[] = [];
   if (run.objects > 0 || run.total !== null) {
-    const of = run.total === null ? '' : ` of ${run.total.toLocaleString()}`;
-    parts.push(`${run.objects.toLocaleString()}${of} objects`);
+    const objects = run.objects.toLocaleString();
+    parts.push(
+      run.total === null
+        ? t('objectsDone', { objects })
+        : t('objectsOfTotal', { objects, total: run.total.toLocaleString() }),
+    );
   }
   if (run.bytes > 0) {
-    const of = run.totalBytes ? ` of ${sizeText(run.totalBytes)}` : '';
-    parts.push(`${sizeText(run.bytes)}${of}`);
+    const size = sizeText(run.bytes);
+    parts.push(
+      run.totalBytes
+        ? t('sizeOfTotal', { size, total: sizeText(run.totalBytes) })
+        : size,
+    );
   }
-  return parts.join(' · ') || 'Starting…';
+  return parts.join(' · ') || t('starting');
 }
 
 /** Share done from 0 to 1, when a total is known. */
@@ -39,16 +45,24 @@ export function progressFraction(run: DumpRun): number | undefined {
 export function outcomeText(run: DumpRun): string {
   const finished = run.finished;
   if (!finished) return '';
-  if (finished.outcome === 'cancelled') return 'Cancelled';
+  if (finished.outcome === 'cancelled') return t('cancelled');
   if (finished.outcome === 'failed') {
-    const code =
-      finished.exitCode === null ? '' : ` (exit ${String(finished.exitCode)})`;
-    return `${finished.message ?? 'Failed'}${code}`;
+    const message = finished.message ?? t('failed');
+    return finished.exitCode === null
+      ? message
+      : t('failedWithExit', { message, exitCode: String(finished.exitCode) });
   }
-  const what = run.kind === 'backup' ? 'Backed up' : 'Restored';
-  const objects = run.objects ? ` ${count(run.objects, 'object')}` : '';
-  const size = run.bytes ? ` · ${sizeText(run.bytes)}` : '';
-  return `${what}${objects}${size}`;
+  const what = outcomeHead(run);
+  return run.bytes ? `${what} · ${sizeText(run.bytes)}` : what;
+}
+
+function outcomeHead(run: DumpRun): string {
+  const backup = run.kind === 'backup';
+  if (!run.objects) return backup ? t('backedUp') : t('restored');
+  const count = run.objects.toLocaleString();
+  return backup
+    ? tn('backedUpObjects', run.objects, { count })
+    : tn('restoredObjects', run.objects, { count });
 }
 
 function report(job: JobHandle, id: string, event: DumpEventDto): void {

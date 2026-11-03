@@ -9,6 +9,7 @@ import { TabMenu } from './TabMenu';
 import type { MoveTab, TabMenuTarget } from './TabMenu';
 import type { QueryTab as Tab } from './tabs';
 import type { QueryTabs } from './useQueryTabs';
+import { t } from './initialMessages';
 
 /** The tab title; a file-bound tab with unsaved changes gets a dot. */
 function tabLabel(tab: Tab): string {
@@ -27,7 +28,7 @@ function OverflowMenu(props: {
     <PointMenu
       x={props.at.x}
       y={props.at.y}
-      label="All tabs"
+      label={t('allTabs')}
       onClose={props.onClose}
     >
       {props.list.map((tab) => (

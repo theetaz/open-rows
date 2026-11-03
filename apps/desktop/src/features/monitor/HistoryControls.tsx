@@ -6,6 +6,7 @@ import { monitorSettings } from '../settings/monitorSettings';
 import { settingsText } from '../settings/settingsFile';
 import { writeSettingsFile } from '@openrows/ipc';
 import styles from './Monitor.module.css';
+import { t } from './messages/lazyDashboard';
 
 /** Explicit per-connection opt-in and deletion; disabling synchronously purges native history. */
 export function HistoryControls(props: {
@@ -32,31 +33,24 @@ export function HistoryControls(props: {
     }
   };
   return (
-    <section aria-label="Local monitor history">
+    <section aria-label={t('localMonitorHistory')}>
       <label>
-        Keep local monitor history{' '}
+        {t('keepLocalMonitor')}{' '}
         <Switch
-          aria-label="Keep local monitor history"
+          aria-label={t('keepLocalMonitor')}
           disabled={busy}
           checked={enabled}
           onCheckedChange={(checked) => {
             void run(async () => {
               await changeHistory({ settings, id, checked });
               setNotice(
-                checked
-                  ? 'Local history enabled.'
-                  : 'History disabled and purged.',
+                checked ? t('localHistoryEnabled') : t('historyDisabledPurged'),
               );
             });
           }}
         />
       </label>
-      <p className={styles.note}>
-        Off by default. Redacted scalar aggregates only; no SQL text or result
-        rows. Retention 24 hours, 50 MiB per connection and 100 MiB app-wide.
-        Oldest observations expire first. Collection stops when Monitor closes.
-        The local store is not encrypted; database names may be sensitive.
-      </p>
+      <p className={styles.note}>{t('offDefaultRedacted')}</p>
       <div className={styles.actions}>
         <Button
           size="sm"
@@ -64,11 +58,11 @@ export function HistoryControls(props: {
           onClick={() => {
             void run(async () => {
               await purgeMonitorHistory(id);
-              setNotice('Connection history purged.');
+              setNotice(t('connectionHistoryPurged'));
             });
           }}
         >
-          Purge connection history
+          {t('purgeConnectionHistory')}
         </Button>
         <Button
           size="sm"
@@ -76,11 +70,11 @@ export function HistoryControls(props: {
           onClick={() => {
             void run(async () => {
               await purgeMonitorHistory(null);
-              setNotice('All monitor history purged.');
+              setNotice(t('allMonitorHistory'));
             });
           }}
         >
-          Purge all monitor history
+          {t('purgeAllMonitor')}
         </Button>
       </div>
       {notice && <p role="status">{notice}</p>}

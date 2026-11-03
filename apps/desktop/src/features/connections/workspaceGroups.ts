@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ProfileDto } from '@openrows/ipc';
+import { t } from './messages/profile';
 
 const names = {
-  local: 'Local',
-  dev: 'Development',
-  staging: 'Staging',
-  prod: 'Production',
-  custom: 'Custom',
+  local: t('local'),
+  dev: t('development'),
+  staging: t('staging'),
+  prod: t('production'),
+  custom: t('custom2'),
 };
 
 /** Group by environment and optional saved folder; identical database names stay connection-scoped. */

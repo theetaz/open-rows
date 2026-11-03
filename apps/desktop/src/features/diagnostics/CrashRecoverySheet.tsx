@@ -5,6 +5,7 @@ import { Sheet, SheetActions } from '@openrows/ui/sheet';
 import { journaledTableEdits, listProfiles } from '@openrows/ipc';
 import type { JournaledEditsDto } from '@openrows/ipc';
 import { openLogs } from './index';
+import { richn, t } from './messages';
 
 type Journal =
   | { kind: 'loading' }
@@ -47,7 +48,7 @@ function JournalList(props: {
   names: Readonly<Record<string, string>>;
 }): React.JSX.Element {
   return (
-    <ul aria-label="Tables with staged edits">
+    <ul aria-label={t('tablesStagedEdits')}>
       {props.entries.map(({ target, rows, savedAtMs }) => (
         <li
           key={[
@@ -57,14 +58,24 @@ function JournalList(props: {
             target.table,
           ].join('/')}
         >
-          <strong>
-            {target.schema}.{target.table}
-          </strong>{' '}
-          on {props.names[target.profileId] ?? 'an unknown connection'}, {rows}{' '}
-          staged {rows === 1 ? 'change' : 'changes'}
           {savedAtMs === null
-            ? ''
-            : `, saved ${new Date(savedAtMs).toLocaleString()}`}
+            ? richn('strongNamesCount', rows, {
+                strong: (
+                  <strong>
+                    {target.schema}.{target.table}
+                  </strong>
+                ),
+                names: props.names[target.profileId] ?? t('unknownConnection'),
+              })
+            : richn('strongNamesCountStaged', rows, {
+                strong: (
+                  <strong>
+                    {target.schema}.{target.table}
+                  </strong>
+                ),
+                names: props.names[target.profileId] ?? t('unknownConnection'),
+                value: new Date(savedAtMs).toLocaleString(),
+              })}
         </li>
       ))}
     </ul>
@@ -72,11 +83,12 @@ function JournalList(props: {
 }
 
 function JournalSummary({ journal }: { journal: Journal }): React.JSX.Element {
-  if (journal.kind === 'loading') return <p>Reading the journal…</p>;
+  if (journal.kind === 'loading') return <p>{t('readingJournal')}</p>;
   if (journal.kind === 'failed')
-    return <p role="alert">The journal cannot be read: {journal.message}</p>;
-  if (journal.entries.length === 0)
-    return <p>No staged edits were left behind.</p>;
+    return (
+      <p role="alert">{t('journalCannotRead', { message: journal.message })}</p>
+    );
+  if (journal.entries.length === 0) return <p>{t('noStagedEdits')}</p>;
   return <JournalList entries={journal.entries} names={journal.names} />;
 }
 
@@ -91,14 +103,11 @@ export function CrashRecoverySheet(props: {
   const [failure, setFailure] = useState<string | null>(null);
   return (
     <Sheet
-      title="OpenRows closed unexpectedly"
+      title={t('openrowsClosedUnexpectedly')}
       size="alert"
       onClose={props.onClose}
     >
-      <p>
-        The last run did not exit cleanly. Staged table edits were kept in the
-        local journal; open each table to review and restore them.
-      </p>
+      <p>{t('lastRunDid')}</p>
       <JournalSummary journal={journal} />
       {failure && <p role="alert">{failure}</p>}
       <SheetActions
@@ -110,12 +119,12 @@ export function CrashRecoverySheet(props: {
               });
             }}
           >
-            Open logs folder
+            {t('openLogsFolder')}
           </Button>
         }
       >
         <Button variant="primary" onClick={props.onClose} data-initial-focus>
-          Done
+          {t('done')}
         </Button>
       </SheetActions>
     </Sheet>

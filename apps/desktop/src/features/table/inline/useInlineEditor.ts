@@ -18,6 +18,7 @@ import { temporalKind } from './temporal';
 import { cellText, columnEdit, isLong } from './cellKind';
 import type { ColumnEdit } from './cellKind';
 import { dataRanges, inRanges, selectedCells } from '../bulk/cells';
+import { t } from '../messages/lazyData';
 
 /** One-line input over the cell, multi-line popover, or a value menu. */
 export type EditorMode = 'input' | 'popover' | 'menu';
@@ -90,7 +91,9 @@ export function useInlineEditor(args: Args): InlineEditor {
       if (!next) return;
       active.current = next.draft;
       setOpen(next);
-      args.handle.current?.announce?.(`Editing ${next.edit.name}`);
+      args.handle.current?.announce?.(
+        t('editingName', { name: next.edit.name }),
+      );
       next.draft.then(
         (row) => {
           setOpen((state) =>
@@ -119,7 +122,7 @@ export function useInlineEditor(args: Args): InlineEditor {
       setOpen((state) => state && { ...state, mode: 'input', pick });
     },
     cancel: () => {
-      if (open && active.current === open.draft) close('Edit cancelled');
+      if (open && active.current === open.draft) close(t('editCancelled'));
     },
     reposition: () => {
       if (!open) return;
@@ -141,10 +144,10 @@ export function useInlineEditor(args: Args): InlineEditor {
     else if (changed) args.editing.stageCell(open.draft, open.edit.name, value);
     close(
       many
-        ? `${open.edit.name} staged for the selection`
+        ? t('nameStagedSelection', { name: open.edit.name })
         : changed
-          ? `${open.edit.name} staged`
-          : 'Unchanged',
+          ? t('nameStaged', { name: open.edit.name })
+          : t('unchanged'),
       move,
     );
   }
@@ -203,14 +206,14 @@ function editable(
   const grid = handle.current;
   if (!grid) return null;
   if (!writableResult(editing.info, editing.history, result)) {
-    grid.announce?.('Rows cannot be edited here');
+    grid.announce?.(t('rowsCannotEdited'));
     return null;
   }
   const name = result.columns[cell.column]?.name;
   const edit = columnEdit(editing.info, name);
   const rect = grid.cellRect?.(cell.row, cell.column + (rowNumbers ? 1 : 0));
   if (edit && rect) return { edit, rect };
-  grid.announce?.(`${name ?? 'This column'} cannot be edited`);
+  grid.announce?.(t('nameCannotEdited', { name: name ?? t('column2') }));
   return null;
 }
 

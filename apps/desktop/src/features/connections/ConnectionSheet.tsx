@@ -18,6 +18,7 @@ import { UrlField } from './UrlField';
 import { NameFields } from './ConnectionFields';
 import { useConnectionForm } from './useConnectionForm';
 import styles from './ConnectionSheet.module.css';
+import { t } from './messages/profile';
 
 type Props = {
   profile?: ProfileDto | undefined;
@@ -51,8 +52,8 @@ export function ConnectionSheet(props: Props): React.JSX.Element {
     <Sheet
       title={
         profile
-          ? `Edit ${profile.name}`
-          : `New ${engineName(engine)} connection`
+          ? t('editName', { name: profile.name })
+          : t('newEngineConnection', { engine: engineName(engine) })
       }
       onClose={props.onClose}
     >
@@ -74,8 +75,7 @@ export function ConnectionSheet(props: Props): React.JSX.Element {
             <DuckdbNotice engine={engine} />
             {engine === 'libsql-file' && (
               <small className={styles.hint}>
-                SQLite-compatible files only. libSQL vector columns, ALTER
-                COLUMN and random rowids are unavailable locally.
+                {t('sqliteCompatibleFiles')}
               </small>
             )}
           </>
@@ -104,11 +104,11 @@ export function ConnectionSheet(props: Props): React.JSX.Element {
             onClick={() => void form.runTest()}
             disabled={form.test.status === 'testing'}
           >
-            Test
+            {t('test')}
           </Button>
-          <Button onClick={props.onClose}>Cancel</Button>
+          <Button onClick={props.onClose}>{t('cancel')}</Button>
           <Button type="submit" variant="primary" disabled={form.saving}>
-            Save
+            {t('save')}
           </Button>
         </SheetActions>
       </form>
@@ -122,7 +122,7 @@ function EngineRow({ engine }: { engine: EngineDto }): React.JSX.Element {
     ENGINE_CHOICES.find((choice) => choice.engine === engine)?.monogram ?? '';
   return (
     <div className={styles.engineRow}>
-      <span className={styles.label}>Type</span>
+      <span className={styles.label}>{t('type')}</span>
       <EngineTile monogram={monogram} size="small" />
       <span>{engineName(engine)}</span>
     </div>
@@ -139,14 +139,14 @@ function ProfileActions(
           props.onDelete(props.profile);
         }}
       >
-        Delete…
+        {t('delete')}
       </Button>
       <Button
         onClick={() => {
           props.onDuplicate(props.profile);
         }}
       >
-        Duplicate
+        {t('duplicate')}
       </Button>
     </>
   );
@@ -160,11 +160,7 @@ function DuckdbNotice({
 }): React.JSX.Element | null {
   if (engine !== 'duckdb') return null;
   return (
-    <small className={styles.hint}>
-      Browsing, editing, transactions and export share one DuckDB session.
-      Import, backup, running SQL files and explain visualization are not
-      available yet.
-    </small>
+    <small className={styles.hint}>{t('browsingEditingTransactions')}</small>
   );
 }
 

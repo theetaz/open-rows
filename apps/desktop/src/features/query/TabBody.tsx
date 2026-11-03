@@ -11,6 +11,7 @@ import type { QueryTabs } from './useQueryTabs';
 import type { QueryRuns } from './useQueryRuns';
 import type { QueryTab as Tab } from './tabs';
 import { completionCatalog } from './completionCatalog';
+import { t } from './initialMessages';
 type SessionStatus = ReturnType<Connections['statusOf']>;
 const QueryTab = lazy(() =>
   import('./QueryTab').then((module) => ({ default: module.QueryTab })),
@@ -148,7 +149,7 @@ function CatalogTab(props: {
       onOpenSql={(sql) => {
         props.tabs.open(
           { connectionId: tab.connectionId, database: tab.database },
-          { sql, title: `${tab.title} DDL` },
+          { sql, title: t('titleDdl', { title: tab.title }) },
         );
       }}
     />
@@ -176,8 +177,8 @@ function completionFor(
 function notice(status: SessionStatus, database: string): string | null {
   if (status.state !== 'connected') return null;
   const opened = status.databases.find((item) => item.name === database);
-  if (!opened) return `${database} is closed; open it again with ⌘K`;
-  if (opened.state === 'opening') return `Opening ${database}…`;
+  if (!opened) return t('databaseClosedOpen', { database });
+  if (opened.state === 'opening') return t('openingDatabase', { database });
   return opened.state === 'failed' ? opened.message : null;
 }
 
@@ -193,7 +194,7 @@ function UtilityTab(props: Parameters<typeof TabBody>[0]): React.JSX.Element {
         connected={status.state === 'connected' && !!sessionId}
         sessionId={sessionId}
         onOpenSql={(sql) => {
-          props.tabs.open(tab, { sql, title: 'Review monitored SQL' });
+          props.tabs.open(tab, { sql, title: t('reviewMonitoredSql') });
         }}
       />
     );

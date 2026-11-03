@@ -7,6 +7,7 @@ import {
 } from './useInvestigationSchedule';
 import { ScheduleResults } from './ScheduleResults';
 import styles from './Monitor.module.css';
+import { t } from './messages/lazyInvestigation';
 /** Explicit provider, tool, recurrence and spend controls; schedules default off. */
 export function InvestigationSchedulePane(props: {
   profile: ProfileDto;
@@ -17,12 +18,12 @@ export function InvestigationSchedulePane(props: {
     controls;
   return (
     <details>
-      <summary>Scheduled read-only investigations (off by default)</summary>
+      <summary>{t('scheduledReadOnly')}</summary>
       <SelectField
-        label="Scheduled provider"
+        label={t('scheduledProvider')}
         value={config.provider}
         options={[
-          { value: '', label: 'Choose provider' },
+          { value: '', label: t('chooseProvider') },
           ...settings.providers.map((provider) => ({
             value: provider.id,
             label: provider.name,
@@ -33,8 +34,8 @@ export function InvestigationSchedulePane(props: {
         }}
       />
       <TextField
-        label="Scheduled model"
-        placeholder="Model id"
+        label={t('scheduledModel')}
+        placeholder={t('modelId')}
         value={config.model}
         onChange={(event) => {
           setConfig({ ...config, model: event.target.value });
@@ -42,13 +43,7 @@ export function InvestigationSchedulePane(props: {
       />
       <Limits config={config} change={setConfig} />
       <ToolSelection config={config} change={setConfig} />
-      <p className={styles.note}>
-        Runs use only the read and propose tools selected above and never write.
-        Cost is a conservative estimate from your maximum input/output price, in
-        millionths of the provider currency; unknown pricing cannot enable a
-        schedule. Locking the app or turning AI off pauses every schedule.
-        Results stay in app memory; scrubbed accounting is retained locally.
-      </p>
+      <p className={styles.note}>{t('runsUseOnly')}</p>
       <Button
         disabled={
           !settings.enabled ||
@@ -60,16 +55,16 @@ export function InvestigationSchedulePane(props: {
           void enable();
         }}
       >
-        Enable scheduled investigation
+        {t('enableScheduledInvestigation')}
       </Button>
       <Button
         onClick={() => {
           void refresh().catch(() => {
-            setStatus('Results unavailable.');
+            setStatus(t('resultsUnavailable'));
           });
         }}
       >
-        Refresh scheduled results
+        {t('refreshScheduledResults')}
       </Button>
       <p role="status">{status}</p>
       <ScheduleResults
@@ -86,20 +81,20 @@ function Limits(props: {
   change: (config: InvestigationSchedule) => void;
 }): React.JSX.Element {
   const fields = [
-    { key: 'intervalSecs', label: 'Interval seconds (300–86400)' },
-    { key: 'maxRuns', label: 'Maximum runs (1–1000)' },
-    { key: 'steps', label: 'Steps (1–12)' },
-    { key: 'tokens', label: 'Tokens (1–65536)' },
-    { key: 'timeoutSecs', label: 'Deadline seconds (1–60)' },
-    { key: 'maxCostMicros', label: 'Maximum cost millionths per run' },
+    { key: 'intervalSecs', label: t('intervalSeconds300') },
+    { key: 'maxRuns', label: t('maximumRuns1') },
+    { key: 'steps', label: t('steps112') },
+    { key: 'tokens', label: t('tokens165536') },
+    { key: 'timeoutSecs', label: t('deadlineSeconds1') },
+    { key: 'maxCostMicros', label: t('maximumCostMillionths') },
     {
       key: 'pricePerMillionMicros',
-      label: 'Maximum price millionths per million tokens',
+      label: t('maximumPriceMillionths'),
     },
   ] as const;
   return (
     <fieldset>
-      <legend>Investigation limits</legend>
+      <legend>{t('investigationLimits')}</legend>
       {fields.map((field) => (
         <TextField
           key={field.key}
@@ -124,7 +119,7 @@ function ToolSelection(props: {
 }): React.JSX.Element {
   return (
     <fieldset>
-      <legend>Permitted read/propose tools</legend>
+      <legend>{t('permittedReadPropose')}</legend>
       {investigationTools.map((tool) => (
         <label key={tool} className={styles.tool}>
           <input

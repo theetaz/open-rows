@@ -3,6 +3,7 @@ import { Button } from '@openrows/ui';
 import { Sheet, SheetActions } from '@openrows/ui/sheet';
 import { signalPrompt } from './processSignals';
 import type { PendingSignal } from './processSignals';
+import { t } from './messages';
 
 /**
  * Compact alert used only when the native macOS alert is unavailable
@@ -18,7 +19,7 @@ export function ProcessSignalSheet(props: {
     <Sheet title={prompt.title} size="alert" onClose={props.onCancel}>
       <p>{prompt.message}</p>
       <SheetActions>
-        <Button onClick={props.onCancel}>Cancel</Button>
+        <Button onClick={props.onCancel}>{t('cancel')}</Button>
         <Button variant="destructive" onClick={props.onConfirm}>
           {prompt.action}
         </Button>

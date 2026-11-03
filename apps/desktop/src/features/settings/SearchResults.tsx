@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useLayoutEffect, useRef, useState } from 'react';
 import styles from './Settings.module.css';
+import { t } from './messages/lazyGeneral';
 
 const ROW = '[data-setting-row]';
 
@@ -31,14 +32,18 @@ export function SearchResults(props: {
   return (
     <div ref={root} className={styles.results}>
       {props.panes.map(({ value, label, pane }) => (
-        <section key={value} data-search-pane aria-label={`${label} settings`}>
+        <section
+          key={value}
+          data-search-pane
+          aria-label={t('labelSettings', { label })}
+        >
           <h2 className={styles.paneTitle}>{label}</h2>
           {pane}
         </section>
       ))}
       {!found && (
         <p role="status" className={styles.noResults}>
-          No settings match “{query.trim()}”.
+          {t('noSettingsMatch', { query: query.trim() })}
         </p>
       )}
     </div>

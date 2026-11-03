@@ -2,6 +2,7 @@
 import { Button, Icon, IconButton, TextField } from '@openrows/ui';
 import type { ExportFormat } from './exportImage';
 import styles from './Erd.module.css';
+import { t, tn } from './messages';
 
 type Props = {
   query: string;
@@ -23,12 +24,12 @@ const ZOOM_STEP = 1.25;
 export function DiagramToolbar(props: Props): React.JSX.Element {
   const { query } = props;
   return (
-    <div className={styles.toolbar} role="toolbar" aria-label="Diagram">
+    <div className={styles.toolbar} role="toolbar" aria-label={t('diagram')}>
       <TextField
         className={styles.search}
         type="search"
-        aria-label="Find table"
-        placeholder="Find table"
+        aria-label={t('findTable')}
+        placeholder={t('findTable')}
         leadingIcon={<Icon name="search" />}
         value={query}
         onChange={(event) => {
@@ -42,7 +43,7 @@ export function DiagramToolbar(props: Props): React.JSX.Element {
       />
       <span className={styles.count} role="status">
         {query.trim()
-          ? `${String(props.matches)} ${props.matches === 1 ? 'match' : 'matches'}`
+          ? tn('countMatches', props.matches, { count: String(props.matches) })
           : ''}
       </span>
       <span className={styles.spacer} />
@@ -54,7 +55,7 @@ export function DiagramToolbar(props: Props): React.JSX.Element {
           props.onExport('svg');
         }}
       >
-        Export SVG…
+        {t('exportSvg')}
       </Button>
       <Button
         size="sm"
@@ -63,10 +64,10 @@ export function DiagramToolbar(props: Props): React.JSX.Element {
           props.onExport('png');
         }}
       >
-        Export PNG…
+        {t('exportPng')}
       </Button>
       <Button size="sm" onClick={props.onDone}>
-        Done
+        {t('done')}
       </Button>
     </div>
   );
@@ -76,7 +77,7 @@ function ZoomControls(props: Props): React.JSX.Element {
   return (
     <>
       <IconButton
-        aria-label="Zoom out"
+        aria-label={t('zoomOut')}
         size="sm"
         variant="ghost"
         onClick={() => {
@@ -89,7 +90,7 @@ function ZoomControls(props: Props): React.JSX.Element {
         {`${String(Math.round(props.scale * 100))}%`}
       </span>
       <IconButton
-        aria-label="Zoom in"
+        aria-label={t('zoom')}
         size="sm"
         variant="ghost"
         onClick={() => {
@@ -99,7 +100,7 @@ function ZoomControls(props: Props): React.JSX.Element {
         <Icon name="plus" />
       </IconButton>
       <IconButton
-        aria-label="Fit to view"
+        aria-label={t('fitView')}
         size="sm"
         variant="ghost"
         onClick={props.onFit}

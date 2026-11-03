@@ -10,12 +10,12 @@ import {
 } from '@openrows/ipc';
 import type { ProjectServerView } from '@openrows/ipc';
 import { mcpFailure } from './mcpFailure';
+import { t } from '../messages/lazyAi';
 
-const CHANGED =
-  'The project file changed after it was shown. Review the definition again before trusting it.';
+const CHANGED = t('projectFileChanged');
 const SECRET = {
-  saved: 'Saved in the keychain.',
-  cancelled: 'Nothing entered; the stored value is unchanged.',
+  saved: t('savedKeychain'),
+  cancelled: t('nothingEnteredStored'),
 } as const;
 
 /** A line under a server: an outcome, or a failure to announce. */
@@ -51,7 +51,7 @@ export function useProjectMcpServers(): ProjectServersControls {
         if (live) setServers(list);
       },
       (error: unknown) => {
-        if (live) note('', mcpFailure(error, 'Project MCP servers'), true);
+        if (live) note('', mcpFailure(error, t('projectMcpServers')), true);
       },
     );
     return () => {

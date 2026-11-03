@@ -12,6 +12,7 @@ use super::{
     error::{IpcError, IpcErrorKind},
     profiles::profile_id,
 };
+use crate::native_text;
 use dto::{ImportDecisionDto, ImportPreview, ImportRow, ImportSource};
 use openrows_store::profile::{
     ConnectionProfile,
@@ -44,8 +45,8 @@ pub(crate) fn connections_export(
     let path = app
         .dialog()
         .file()
-        .set_title("Export connections (no secrets)")
-        .add_filter("OpenRows connections", &["json"])
+        .set_title(native_text::EXPORT_CONNECTIONS)
+        .add_filter(native_text::FILTER_CONNECTIONS, &["json"])
         .set_file_name("openrows-connections.json")
         .blocking_save_file();
     let Some(path) = path else {
@@ -117,8 +118,8 @@ fn load(app: &tauri::AppHandle, source: ImportSource) -> Result<Option<ImportBat
             let picked = app
                 .dialog()
                 .file()
-                .set_title("Import OpenRows connections")
-                .add_filter("OpenRows connections", &["json"])
+                .set_title(native_text::IMPORT_CONNECTIONS)
+                .add_filter(native_text::FILTER_CONNECTIONS, &["json"])
                 .blocking_pick_file();
             return picked
                 .map(|file| {

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { MenuEntry } from '../../shell/CascadeMenu';
 import type { RunScope } from './request';
+import { t } from './lazyMessages';
 
 /** What Run's dropdown can do in the tab right now. */
 export type RunMenu = {
@@ -18,8 +19,8 @@ export type RunMenu = {
 };
 
 const LABELS: Record<RunScope, string> = {
-  current: 'Run Current',
-  all: 'Run All',
+  current: t('runCurrent'),
+  all: t('runAll'),
 };
 
 /** `Run Current` or `Run All`. */
@@ -54,13 +55,13 @@ export function runEntries(menu: RunMenu): MenuEntry[] {
         },
       ),
     ),
-    item('Run Without Limit', menu.onRunUnlimited, {
+    item(t('runWithoutLimit'), menu.onRunUnlimited, {
       shortcut: '⌥⌘↵',
       disabled: !menu.ready,
     }),
     {
       kind: 'submenu',
-      label: 'Default',
+      label: t('default'),
       entries: scopes.map((scope) => ({
         kind: 'item',
         label: LABELS[scope],
@@ -72,8 +73,8 @@ export function runEntries(menu: RunMenu): MenuEntry[] {
       })),
     },
     { kind: 'separator' },
-    item('Save SQL As…', menu.onSaveAs, { shortcut: '⇧⌘S' }),
-    item('Open SQL File…', menu.onOpenFile, { shortcut: '⌘O' }),
-    item('Add to Queries…', menu.onAddToQueries),
+    item(t('saveSql'), menu.onSaveAs, { shortcut: '⇧⌘S' }),
+    item(t('openSqlFile'), menu.onOpenFile, { shortcut: '⌘O' }),
+    item(t('addQueries2'), menu.onAddToQueries),
   ];
 }

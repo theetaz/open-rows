@@ -9,48 +9,46 @@ import {
 } from '../query/executionSettings';
 import type { ExecutionSettings } from '../query/executionSettings';
 import styles from '../appearance/Appearance.module.css';
+import { t } from './messages/lazyPanes';
 
 type Flag = 'runSelection' | 'confirmMultiple' | 'showNotices';
 
 const FLAGS: readonly { key: Flag; title: string; description: string }[] = [
   {
     key: 'runSelection',
-    title: 'Run selection',
-    description: '⌘↵ with text selected runs exactly the selection.',
+    title: t('runSelection'),
+    description: t('textSelectedRuns'),
   },
   {
     key: 'confirmMultiple',
-    title: 'Confirm multiple statements',
-    description: 'Ask before a run of more than one statement starts.',
+    title: t('confirmMultipleStatements'),
+    description: t('askBeforeRun'),
   },
   {
     key: 'showNotices',
-    title: 'Show server notices',
-    description: 'List notices and warnings from the server with the results.',
+    title: t('showServerNotices'),
+    description: t('listNoticesWarnings'),
   },
 ];
 
 const limitLabel = (limit: ExecutionSettings['autoLimit']): string =>
-  limit === null ? 'Off' : `LIMIT ${limit.toLocaleString('en-US')}`;
+  limit === null ? t('off') : `LIMIT ${limit.toLocaleString('en-US')}`;
 
 /** Settings ▸ Execution: what ⌘↵ runs, the automatic LIMIT and confirmations. */
 export function ExecutionPane(): React.JSX.Element {
   const settings = executionSettings.useValue();
   const [editor, updateEditor] = useEditorSettings();
   return (
-    <section aria-label="Execution">
-      <h3>Running queries</h3>
+    <section aria-label={t('execution')}>
+      <h3>{t('runningQueries')}</h3>
       <div className={styles.settingsGroup}>
-        <SettingRow
-          title="⌘↵ runs"
-          description="What the Run button and ⌘↵ run without a selection; ⇧⌘↵ runs the other."
-        >
+        <SettingRow title={t('runs')} description={t('whatRunButton')}>
           <SelectField
-            aria-label="⌘↵ runs"
+            aria-label={t('runs')}
             value={editor.runDefault}
             options={[
-              { value: 'current', label: 'Current statement' },
-              { value: 'all', label: 'All statements' },
+              { value: 'current', label: t('currentStatement') },
+              { value: 'all', label: t('allStatements') },
             ]}
             onValueChange={(value) => {
               updateEditor({ runDefault: value === 'all' ? 'all' : 'current' });
@@ -58,11 +56,11 @@ export function ExecutionPane(): React.JSX.Element {
           />
         </SettingRow>
         <SettingRow
-          title="Limit SELECT results"
-          description="Append LIMIT to SELECT statements without one; Run Without Limit skips it once."
+          title={t('limitSelectResults')}
+          description={t('appendLimitSelect')}
         >
           <SelectField
-            aria-label="Limit SELECT results"
+            aria-label={t('limitSelectResults')}
             value={JSON.stringify(settings.autoLimit)}
             options={AUTO_LIMITS.map((limit) => ({
               value: JSON.stringify(limit),
@@ -91,11 +89,11 @@ export function ExecutionPane(): React.JSX.Element {
           </SettingRow>
         ))}
         <SettingRow
-          title="Return on error"
-          description="Stop a multi-statement run at the first error."
+          title={t('returnError')}
+          description={t('stopMultiStatement')}
         >
           <Switch
-            aria-label="Return on error"
+            aria-label={t('returnError')}
             checked={editor.returnOnError}
             onCheckedChange={(checked) => {
               updateEditor({ returnOnError: checked });

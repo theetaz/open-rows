@@ -5,6 +5,7 @@ import type { ProfileDto, ProjectDto } from '@openrows/ipc';
 import { shareProjectConnections } from '@openrows/ipc';
 import { reloadProject, reportProjectError } from './projectStore';
 import { profilesChanged } from '../connections/useProfiles';
+import { t } from './messages';
 
 const Transfer = lazy(() => import('../connections/ConnectionTransferSheet'));
 
@@ -36,7 +37,7 @@ export function ProjectConnections(props: {
           setMode('share');
         }}
       >
-        Share connections…
+        {t('shareConnections')}
       </Button>
       <Button
         size="sm"
@@ -45,7 +46,7 @@ export function ProjectConnections(props: {
           setMode('import');
         }}
       >
-        Import project connections…
+        {t('importProjectConnections')}
       </Button>
       {mode === 'share' && (
         <ShareChoices
@@ -88,11 +89,8 @@ function ShareChoices(props: {
 }): React.JSX.Element {
   const { ids, busy } = props;
   return (
-    <div role="group" aria-label="Shared connection definitions">
-      <p>
-        Choose non-secret definitions to share. This replaces the project's
-        definitions file.
-      </p>
+    <div role="group" aria-label={t('sharedConnectionDefinitions')}>
+      <p>{t('chooseNonSecret')}</p>
       {props.profiles.map((profile) => (
         <label key={profile.id} style={{ display: 'block' }}>
           <input
@@ -115,7 +113,7 @@ function ShareChoices(props: {
           props.onCancel();
         }}
       >
-        Cancel
+        {t('cancel')}
       </Button>
       <Button
         size="sm"
@@ -124,7 +122,7 @@ function ShareChoices(props: {
           props.onSave();
         }}
       >
-        Save definitions
+        {t('saveDefinitions')}
       </Button>
     </div>
   );

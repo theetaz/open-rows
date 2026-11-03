@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useRef } from 'react';
 import styles from './Navigation.module.css';
+import { t } from '../messages';
 
 /**
  * Inline editor of a tab's title: Enter or leaving the field renames,
@@ -26,7 +27,7 @@ export function TabTitleField(props: {
     <input
       ref={field}
       className={styles.titleField}
-      aria-label="Tab name"
+      aria-label={t('tabName')}
       defaultValue={props.title}
       spellCheck={false}
       onKeyDown={(event) => {

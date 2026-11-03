@@ -7,6 +7,7 @@ import { ResultGridBody } from './ResultGridBody';
 import { useResultGrid } from './useResultGrid';
 import type { ResultGridProps } from './useResultGrid';
 import styles from './Query.module.css';
+import { t } from './lazyMessages';
 /** Query results use the same canvas, inline editor and staged row tools as table tabs. */
 export function ResultGrid(props: ResultGridProps): React.JSX.Element {
   const model = useResultGrid(props);
@@ -22,13 +23,15 @@ export function ResultGrid(props: ResultGridProps): React.JSX.Element {
       <div
         className={styles.resultStatus}
         role="status"
-        aria-label="Result status"
+        aria-label={t('resultStatus')}
       >
-        {reason
-          ? `Read-only: ${reason}`
-          : 'Double-click a cell or press Enter to edit'}
-        {model.view.status && ` · ${model.view.status}`}
-        {model.tools.aggregate && ` · ${model.tools.aggregate}`}
+        {[
+          reason ? t('readOnlyReason', { reason }) : t('doubleClickCellPress'),
+          model.view.status,
+          model.tools.aggregate,
+        ]
+          .filter(Boolean)
+          .join(' · ')}
       </div>
       {editing.error && <p role="alert">{editing.error}</p>}
       <EditToolbar

@@ -43,6 +43,9 @@ const denyList = [
     '@lezer',
     '@replit/codemirror-vim',
     '@dagrejs',
+    // Catalogs of lazily loaded features (docs/07 §10) must stay out of startup.
+    'lazyMessages',
+    '/messages/lazy',
     ...(process.env.BUNDLE_DENY_MODULES ?? '')
       .split(',')
       .map((name) => name.trim())

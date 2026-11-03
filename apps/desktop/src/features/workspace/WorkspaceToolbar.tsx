@@ -11,6 +11,7 @@ import { FavouriteButton } from '../schema/FavouriteButton';
 import type { SidebarObject } from '../schema/sidebarIdentity';
 import styles from './Workspace.module.css';
 import { useWindowActive } from './useWindowActive';
+import { t } from './messages';
 
 type Props = {
   documents?: React.ReactNode;
@@ -40,29 +41,29 @@ export function WorkspaceToolbar(props: Props): React.JSX.Element {
       className={styles.toolbar}
       style={tint(props.context)}
       data-tauri-drag-region
-      aria-label="Window toolbar"
+      aria-label={t('windowToolbar')}
     >
-      <ToolbarGroup aria-label="Sidebar controls">
+      <ToolbarGroup aria-label={t('sidebarControls')}>
         <ToolButton
-          label="Toggle sidebar (⌃⌘S)"
+          label={t('toggleSidebarS')}
           icon="sidebar"
           pressed={props.sidebar}
           onClick={props.onSidebar}
         />
       </ToolbarGroup>
-      <ToolbarGroup aria-label="Navigation">
-        <ToolButton label="Back" icon="chevronLeft" />
-        <ToolButton label="Forward" icon="chevronRight" />
+      <ToolbarGroup aria-label={t('navigation')}>
+        <ToolButton label={t('back')} icon="chevronLeft" />
+        <ToolButton label={t('forward')} icon="chevronRight" />
       </ToolbarGroup>
-      <ToolbarGroup aria-label="Connection tools">
+      <ToolbarGroup aria-label={t('connectionTools')}>
         <SafeModeButton state={props.safeMode} onClick={props.onSafeMode} />
         <ToolButton
-          label="Open database (⌘K)"
+          label={t('openDatabaseK')}
           icon="database"
           onClick={props.onDatabase}
         />
         <ToolButton
-          label="New SQL query"
+          label={t('newSqlQuery')}
           icon="terminal"
           onClick={props.onQuery}
         />
@@ -73,19 +74,23 @@ export function WorkspaceToolbar(props: Props): React.JSX.Element {
         favourite={props.favourite}
         onDatabase={props.onDatabase}
       />
-      <ToolbarGroup aria-label="Workspace actions">
-        <ToolButton label="Refresh" icon="refresh" onClick={props.onRefresh} />
+      <ToolbarGroup aria-label={t('workspaceActions')}>
+        <ToolButton
+          label={t('refresh')}
+          icon="refresh"
+          onClick={props.onRefresh}
+        />
         <JobsButton />
         {props.documents}
         <ToolButton
-          label="Command palette"
+          label={t('commandPalette')}
           icon="command"
           onClick={props.onPalette}
         />
       </ToolbarGroup>
-      <ToolbarGroup aria-label="Inspector controls">
+      <ToolbarGroup aria-label={t('inspectorControls')}>
         <ToolButton
-          label="Toggle inspector (⌥⌘I)"
+          label={t('toggleInspectorI')}
           icon="inspector"
           pressed={props.inspector}
           onClick={props.onInspector}
@@ -107,12 +112,17 @@ function SafeModeButton({
 }): React.JSX.Element {
   return (
     <IconButton
-      aria-label={state ? `Safe mode: ${state.label}` : 'Safe mode'}
+      aria-label={
+        state ? t('safeModeLabel', { label: state.label }) : t('safeMode')
+      }
       aria-haspopup="dialog"
       title={
         state
-          ? `Safe mode: ${state.label}. ${state.detail} Click to change it in connection settings.`
-          : 'Safe mode is not available without a connection.'
+          ? t('safeModeLabelDetail', {
+              label: state.label,
+              detail: state.detail,
+            })
+          : t('safeModeNot')
       }
       className={styles.safe}
       data-on={state?.on ?? false}
@@ -138,7 +148,7 @@ function ToolButton(props: {
       title={
         props.onClick
           ? props.label
-          : `${props.label} is not available for this connection.`
+          : t('labelNotAvailable', { label: props.label })
       }
       disabled={!props.onClick}
       aria-pressed={props.pressed}
@@ -173,7 +183,7 @@ function Context({
     <div
       className={styles.context}
       data-glass-rim="address"
-      aria-label="Connection context"
+      aria-label={t('connectionContext')}
       title={title}
     >
       <ConnectionStatus health={health} route={context.route} />
@@ -192,17 +202,19 @@ function Context({
         <span>
           {engine} : {name}
         </span>
-        {name !== 'No connection' && (
+        {name !== t('noConnection') && (
           <>
             <span aria-hidden="true">{' : '}</span>
             <button
               className={styles.databaseSegment}
               type="button"
-              aria-label={`Open database (${database || 'none'})`}
+              aria-label={t('openDatabaseDatabase', {
+                database: database || t('noDatabaseName'),
+              })}
               onClick={onDatabase}
               disabled={!onDatabase}
             >
-              {database || 'No database'}
+              {database || t('noDatabase')}
             </button>
           </>
         )}

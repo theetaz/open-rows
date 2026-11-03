@@ -4,6 +4,7 @@ import { SidebarMenu } from '../../shell/SidebarMenu';
 import { DEFAULT_VALUE, NULL_VALUE, textValue } from './cellValue';
 import type { CellValue } from './cellValue';
 import type { FieldActions } from './fieldActions';
+import { t } from './messages/initial';
 
 type Item = { label: string; value?: CellValue | undefined; file?: boolean };
 
@@ -11,15 +12,18 @@ type Item = { label: string; value?: CellValue | undefined; file?: boolean };
 function items(actions: FieldActions): Item[][] {
   return [
     [
-      { label: 'NULL', value: actions.null ? NULL_VALUE : undefined },
-      { label: 'DEFAULT', value: actions.default ? DEFAULT_VALUE : undefined },
-      { label: 'EMPTY', value: actions.empty ? textValue('') : undefined },
+      { label: t('null'), value: actions.null ? NULL_VALUE : undefined },
+      {
+        label: t('default'),
+        value: actions.default ? DEFAULT_VALUE : undefined,
+      },
+      { label: t('empty'), value: actions.empty ? textValue('') : undefined },
     ],
     [
-      { label: 'PRETTY', value: json(actions.pretty) },
-      { label: 'MINIFY', value: json(actions.minify) },
+      { label: t('pretty'), value: json(actions.pretty) },
+      { label: t('minify'), value: json(actions.minify) },
     ],
-    [{ label: 'Add a file…', file: actions.file !== null }],
+    [{ label: t('addFile'), file: actions.file !== null }],
   ];
 }
 
@@ -45,7 +49,7 @@ export function FieldMenu(props: {
   return (
     <SidebarMenu
       id={id}
-      label={`Value of ${props.name}`}
+      label={t('valueName', { name: props.name })}
       opener={props.opener}
       onClose={props.onClose}
     >

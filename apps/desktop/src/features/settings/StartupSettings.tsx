@@ -6,6 +6,7 @@ import { diagnosticsSettings, updateDiagnostics } from './diagnostics';
 import { updateFeed } from './updateFeed';
 import { UpdateControls } from './UpdateControls';
 import styles from '../appearance/Appearance.module.css';
+import { t } from './messages/lazyGeneral';
 
 /** Update/startup preferences, with explicit off-by-default reporting consent. */
 export function StartupSettings(): React.JSX.Element {
@@ -13,25 +14,29 @@ export function StartupSettings(): React.JSX.Element {
   const diagnostics = diagnosticsSettings.useValue();
   const endpoint = updateFeed(general.updateChannel);
   return (
-    <section aria-label="Startup and updates">
-      <h3>Startup and updates</h3>
+    <section aria-label={t('startupUpdates')}>
+      <h3>{t('startupUpdates')}</h3>
       <p role="status">
         {endpoint
-          ? `Updates are available on the ${general.updateChannel} channel.`
-          : `${general.updateChannel} update feed is not configured in this build.`}
+          ? t('updatesAvailableUpdatechannel', {
+              updateChannel: general.updateChannel,
+            })
+          : t('updatechannelUpdateFeed', {
+              updateChannel: general.updateChannel,
+            })}
       </p>
       <UpdateControls />
       <div className={styles.settingsGroup}>
         <SettingRow
-          title="Update channel"
-          description="Choose stable releases or early beta versions."
+          title={t('updateChannel')}
+          description={t('chooseStableReleases')}
         >
           <SelectField
-            aria-label="Update channel"
+            aria-label={t('updateChannel')}
             value={general.updateChannel}
             options={[
-              { value: 'stable', label: 'Stable' },
-              { value: 'beta', label: 'Beta' },
+              { value: 'stable', label: t('stable') },
+              { value: 'beta', label: t('beta') },
             ]}
             onValueChange={(updateChannel) => {
               updateGeneral({ updateChannel });
@@ -39,11 +44,11 @@ export function StartupSettings(): React.JSX.Element {
           />
         </SettingRow>
         <SettingRow
-          title="Update notifications"
-          description="Check for signed releases and show notices. Installation requires your approval."
+          title={t('updateNotifications')}
+          description={t('checkSignedReleases')}
         >
           <Switch
-            aria-label="Update notifications"
+            aria-label={t('updateNotifications')}
             checked={general.updateNotifications}
             onCheckedChange={(updateNotifications) => {
               updateGeneral({ updateNotifications });
@@ -51,15 +56,15 @@ export function StartupSettings(): React.JSX.Element {
           />
         </SettingRow>
         <SettingRow
-          title="New tab behaviour"
-          description="Create a query in the active database or open the connection picker."
+          title={t('newTabBehaviour')}
+          description={t('createQueryActive')}
         >
           <SelectField
-            aria-label="New tab behaviour"
+            aria-label={t('newTabBehaviour')}
             value={general.newTab}
             options={[
-              { value: 'query', label: 'New query' },
-              { value: 'connection', label: 'Connection picker' },
+              { value: 'query', label: t('newQuery') },
+              { value: 'connection', label: t('connectionPicker') },
             ]}
             onValueChange={(newTab) => {
               updateGeneral({ newTab });
@@ -67,11 +72,11 @@ export function StartupSettings(): React.JSX.Element {
           />
         </SettingRow>
         <SettingRow
-          title="Crash reporting"
-          description="Opt in to crash reports. Off by default; this build stores consent and has no reporting backend."
+          title={t('crashReporting')}
+          description={t('optCrashReports')}
         >
           <Switch
-            aria-label="Crash reporting"
+            aria-label={t('crashReporting')}
             checked={diagnostics.crashReports}
             onCheckedChange={(crashReports) => {
               updateDiagnostics({ crashReports });

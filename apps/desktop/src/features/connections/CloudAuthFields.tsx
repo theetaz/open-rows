@@ -9,13 +9,12 @@ import type { CloudAuthDraft } from './cloudAuthForm';
 import { fieldError } from './form';
 import type { ConnectionForm } from './useConnectionForm';
 import styles from './ConnectionSheet.module.css';
+import { t } from './messages/routes';
 
 const HINTS = {
-  aws: 'Uses your signed-in AWS CLI (aws rds generate-db-auth-token). Enable IAM on the database user.',
-  azure:
-    'Uses your signed-in Azure CLI (az account get-access-token). Use the Entra user or group as the database user.',
-  google:
-    'Uses your signed-in gcloud (gcloud sql generate-login-token). Use the IAM user as the database user.',
+  aws: t('usesSignedAws'),
+  azure: t('usesSignedAzure'),
+  google: t('usesSignedGcloud'),
 } as const;
 
 /** Where a cloud token comes from; the token itself is never shown or saved. */
@@ -34,8 +33,8 @@ export function CloudAuthFields({
     <div className={styles.stack}>
       <SelectField
         className={styles.row}
-        label="Provider"
-        aria-label="Cloud provider"
+        label={t('provider')}
+        aria-label={t('cloudProvider')}
         value={provider}
         options={cloudProviders(draft.engine)}
         onValueChange={(next) => {
@@ -46,8 +45,8 @@ export function CloudAuthFields({
         <>
           <TextField
             className={styles.row}
-            label="Region"
-            placeholder="us-east-1"
+            label={t('region')}
+            placeholder={t('usEast1')}
             value={draft.cloudAuth.region}
             {...fieldError(form.errors.cloudRegion)}
             onChange={(event) => {
@@ -56,8 +55,8 @@ export function CloudAuthFields({
           />
           <TextField
             className={styles.row}
-            label="AWS profile"
-            placeholder="Default credentials"
+            label={t('awsProfile')}
+            placeholder={t('defaultCredentials')}
             value={draft.cloudAuth.awsProfile}
             onChange={(event) => {
               set({ awsProfile: event.target.value });
@@ -68,8 +67,8 @@ export function CloudAuthFields({
       {provider === 'azure' && (
         <TextField
           className={styles.row}
-          label="Tenant"
-          placeholder="Signed-in default"
+          label={t('tenant')}
+          placeholder={t('signedDefault')}
           value={draft.cloudAuth.tenant}
           onChange={(event) => {
             set({ tenant: event.target.value });
@@ -79,8 +78,8 @@ export function CloudAuthFields({
       {provider === 'google' && (
         <TextField
           className={styles.row}
-          label="Account"
-          placeholder="Active gcloud account"
+          label={t('account')}
+          placeholder={t('activeGcloudAccount')}
           value={draft.cloudAuth.account}
           onChange={(event) => {
             set({ account: event.target.value });
@@ -88,8 +87,7 @@ export function CloudAuthFields({
         />
       )}
       <small className={styles.hint}>
-        {HINTS[provider]} A new token is fetched for every connection and never
-        saved.
+        {t('hintsNewToken', { hint: HINTS[provider] })}
       </small>
       {advice && (
         <p className={styles.error} role="alert">

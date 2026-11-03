@@ -4,6 +4,7 @@ import { NO_MONGO_OPTIONS } from './form';
 import { SwitchRow } from './SwitchRow';
 import type { ConnectionForm } from './useConnectionForm';
 import styles from './ConnectionSheet.module.css';
+import { t } from './messages/profile';
 
 /** MongoDB discovery and authentication database, shared with URL fields. */
 export function MongoFields({
@@ -15,8 +16,8 @@ export function MongoFields({
   return (
     <>
       <SwitchRow
-        label="DNS seed list (SRV)"
-        detail="Connect with mongodb+srv: discover servers and options from DNS. TLS is verified."
+        label={t('dnsSeedList')}
+        detail={t('connectMongodbSrv')}
         checked={value.srv}
         onChange={(srv) => {
           form.update({
@@ -27,8 +28,8 @@ export function MongoFields({
       />
       {!value.srv && (
         <SwitchRow
-          label="Direct connection"
-          detail="Talk only to this server, without replica-set discovery, e.g. one member or a container whose advertised host is unreachable."
+          label={t('directConnection')}
+          detail={t('talkOnlyServer')}
           checked={value.direct}
           onChange={(direct) => {
             form.update({ mongodb: { ...value, direct } });
@@ -37,8 +38,8 @@ export function MongoFields({
       )}
       <TextField
         className={styles.row}
-        label="Auth database"
-        placeholder="Database in URL, or admin"
+        label={t('authDatabase')}
+        placeholder={t('databaseUrlAdmin')}
         value={value.authSource}
         onChange={(event) => {
           form.update({

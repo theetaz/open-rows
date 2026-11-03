@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { Icon, TextField } from '@openrows/ui';
 import styles from './Rail.module.css';
+import { t } from './messages/profile';
 
 /**
  * Filters the rail's connections as the user types. Down moves to the first
@@ -17,8 +18,8 @@ export function RailSearch(props: {
       className={styles.search}
       controlSize="compact"
       type="search"
-      aria-label="Search connections"
-      placeholder="Search connections"
+      aria-label={t('searchConnections')}
+      placeholder={t('searchConnections')}
       autoComplete="off"
       spellCheck={false}
       leadingIcon={<Icon name="search" />}

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { localSetting } from '../../features/settings/localSetting';
+import { t } from '../messages';
 
 /** `format` keeps each format's own convention (TSV: no header, NULL as text; CSV: header, NULL empty). */
 type HeaderSetting = 'format' | 'always' | 'never';
@@ -93,7 +94,7 @@ export function parseCopySettings(stored: unknown): CopySettings {
  */
 export function copyConflict(settings: CopySettings): string | null {
   if (settings.delimiter === 'comma' && settings.decimal === 'comma')
-    return 'The CSV delimiter and the decimal separator cannot both be a comma. Choose a semicolon, tab or pipe delimiter, or a point decimal separator.';
+    return t('csvDelimiterDecimal');
   return null;
 }
 

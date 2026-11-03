@@ -7,13 +7,14 @@ import type { Connection } from '../report/connection';
 import { BoardView } from './BoardView';
 import { useBoards } from './useBoards';
 import styles from './Boards.module.css';
+import { t } from '../messages/lazyBoards';
 
 /** Mirrors the native import limit so oversize files fail before IPC. */
 const MAX_IMPORT_BYTES = 256 * 1024;
 
 const EMPTY: Board = {
   version: 1,
-  name: 'Untitled board',
+  name: t('untitledBoard'),
   params: [],
   widgets: [],
   refreshSecs: null,
@@ -47,7 +48,7 @@ export function BoardsPanel(props: {
     );
   };
   return (
-    <section className={styles.boards} aria-label="Boards">
+    <section className={styles.boards} aria-label={t('boards')}>
       <BoardsToolbar
         boards={boards}
         onCreate={create}
@@ -109,27 +110,27 @@ function BoardsToolbar(props: {
     <div className={styles.toolbar}>
       {selected && (
         <SelectField
-          aria-label="Board"
+          aria-label={t('board')}
           controlSize="compact"
           value={selected.id}
           options={boards.boards.map((board) => ({
             value: board.id,
             label: board.reviewed
               ? board.board.name
-              : `${board.board.name} (paused)`,
+              : t('namePaused', { name: board.board.name }),
           }))}
           onValueChange={boards.select}
         />
       )}
       <Button size="sm" onClick={props.onCreate}>
-        New board
+        {t('newBoard')}
       </Button>
       <Button size="sm" onClick={props.onImport}>
-        Import…
+        {t('import')}
       </Button>
       {selected && (
         <Button size="sm" onClick={props.onExport}>
-          Export…
+          {t('export')}
         </Button>
       )}
     </div>
@@ -139,9 +140,9 @@ function BoardsToolbar(props: {
 function NoBoards(props: { onCreate: () => void }): React.JSX.Element {
   return (
     <div className={styles.empty}>
-      <p>No boards for this connection yet.</p>
+      <p>{t('noBoardsConnection')}</p>
       <Button size="sm" variant="primary" onClick={props.onCreate}>
-        New board
+        {t('newBoard')}
       </Button>
     </div>
   );
@@ -157,7 +158,7 @@ function ImportPanel(props: {
   const choose = (file: File | undefined): void => {
     if (!file) return;
     if (file.size > MAX_IMPORT_BYTES) {
-      setError('Board files are limited to 256 KiB.');
+      setError(t('boardFilesLimited'));
       return;
     }
     void file.text().then((content) => {
@@ -166,21 +167,18 @@ function ImportPanel(props: {
     });
   };
   return (
-    <section className={styles.editor} aria-label="Import board">
-      <p className={styles.note}>
-        Imported boards stay paused: review every query and approve the board
-        before anything runs.
-      </p>
+    <section className={styles.editor} aria-label={t('importBoard')}>
+      <p className={styles.note}>{t('importedBoardsStay')}</p>
       <input
         type="file"
         accept=".json,application/json"
-        aria-label="Board file"
+        aria-label={t('boardFile')}
         onChange={(event) => {
           choose(event.target.files?.[0]);
         }}
       />
       <TextArea
-        aria-label="Board JSON"
+        aria-label={t('boardJson')}
         spellCheck={false}
         value={text}
         onChange={(event) => {
@@ -201,10 +199,10 @@ function ImportPanel(props: {
             props.onImport(text);
           }}
         >
-          Import paused
+          {t('importPaused')}
         </Button>
         <Button size="sm" onClick={props.onCancel}>
-          Cancel
+          {t('cancel')}
         </Button>
       </div>
     </section>
@@ -217,12 +215,8 @@ function ExportPanel(props: {
   onClose: () => void;
 }): React.JSX.Element {
   return (
-    <section className={styles.editor} aria-label="Export board">
-      <p className={styles.note}>
-        The file holds widget SQL exactly as written, which may contain
-        sensitive literals. It holds no results, credentials or connection
-        details.
-      </p>
+    <section className={styles.editor} aria-label={t('exportBoard')}>
+      <p className={styles.note}>{t('fileHoldsWidget')}</p>
       <pre className={styles.sql}>{props.text}</pre>
       <div className={styles.row}>
         <Button
@@ -232,10 +226,10 @@ function ExportPanel(props: {
             void navigator.clipboard.writeText(props.text);
           }}
         >
-          Copy JSON
+          {t('copyJson')}
         </Button>
         <Button size="sm" onClick={props.onClose}>
-          Close
+          {t('close')}
         </Button>
       </div>
     </section>

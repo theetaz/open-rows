@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { SelectField, useTheme } from '@openrows/ui';
 import { SettingRow } from './InterfaceSettings';
+import { t } from './messages';
 
 const roles = ['editor', 'grid', 'sidebar'] as const;
 const monospace = ['system', 'menlo', 'consolas', 'courier'];
@@ -14,11 +15,11 @@ export function FontRoles(): React.JSX.Element {
       {roles.map((role) => (
         <SettingRow
           key={role}
-          title={`${role} font`}
-          description={`Independent ${role} family and size; local fonts fall back to system faces.`}
+          title={t('roleFont', { role })}
+          description={t('independentRoleFamily', { role })}
         >
           <SelectField
-            aria-label={`${role} font`}
+            aria-label={t('roleFont', { role })}
             value={appearance[`${role}Font`]}
             options={(role === 'sidebar'
               ? ['system', 'helvetica', 'arial', 'verdana']
@@ -29,11 +30,11 @@ export function FontRoles(): React.JSX.Element {
             }}
           />
           <SelectField
-            aria-label={`${role} font size`}
+            aria-label={t('roleFontSize', { role })}
             value={String(appearance[`${role}Size`])}
             options={sizes.map((size) => ({
               value: String(size),
-              label: `${String(size)} px`,
+              label: t('sizePx', { size: String(size) }),
             }))}
             onValueChange={(size) => {
               setAppearance({ [`${role}Size`]: Number(size) });
@@ -42,11 +43,11 @@ export function FontRoles(): React.JSX.Element {
         </SettingRow>
       ))}
       <SettingRow
-        title="Editor line height"
-        description="Vertical spacing of SQL lines; applied through a token without rebuilding the editor."
+        title={t('editorLineHeight')}
+        description={t('verticalSpacingSql')}
       >
         <SelectField
-          aria-label="Editor line height"
+          aria-label={t('editorLineHeight')}
           value={String(appearance.editorLineHeight)}
           options={[1.2, 1.5, 1.8, 2].map((height) => ({
             value: String(height),

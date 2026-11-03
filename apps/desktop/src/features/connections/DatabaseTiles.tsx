@@ -4,6 +4,7 @@ import { SidebarMenu } from '../../shell/SidebarMenu';
 import { useSidebarMenu } from '../../shell/useSidebarMenu';
 import type { OpenedDatabase } from './sessions';
 import styles from './Rail.module.css';
+import { t } from './messages/profile';
 
 type Props = {
   onBackup?: ((name: string) => void) | undefined;
@@ -25,12 +26,16 @@ type Props = {
 /** Tooltip: the full name, plus why the database is not usable. */
 function tooltip(database: OpenedDatabase): string {
   if (database.state === 'disconnected')
-    return `${database.name} — disconnected; activate to connect`;
-  if (database.state === 'opening') return `${database.name} — opening…`;
+    return t('nameDisconnectedActivate', { name: database.name });
+  if (database.state === 'opening')
+    return t('nameOpening', { name: database.name });
   if (database.state === 'reconnecting')
-    return `${database.name} — reconnecting: ${database.message}`;
+    return t('nameReconnectingMessage', {
+      name: database.name,
+      message: database.message,
+    });
   if (database.state === 'idle')
-    return `${database.name} — closed while idle, reconnects on next query`;
+    return t('nameClosedWhile', { name: database.name });
   if (database.state === 'failed')
     return `${database.name} — ${database.message}`;
   return database.name;
@@ -42,7 +47,7 @@ export function DatabaseTiles(props: Props): React.JSX.Element | null {
   return (
     <div
       role="group"
-      aria-label="Opened databases"
+      aria-label={t('openedDatabases')}
       className={styles.databases}
     >
       {props.databases.map((database) => (
@@ -63,7 +68,7 @@ function DatabaseTile(
         ref={opener}
         type="button"
         className={styles.database}
-        aria-label={`Database ${name}`}
+        aria-label={t('databaseName', { name })}
         aria-pressed={props.active === name}
         aria-haspopup="menu"
         title={tooltip(props.database)}
@@ -96,7 +101,7 @@ function DatabaseMenu(
   return (
     <SidebarMenu
       id={id}
-      label={`${name} actions`}
+      label={t('nameActions', { name })}
       opener={opener}
       onClose={close}
     >
@@ -110,7 +115,7 @@ function DatabaseMenu(
             props.onBackup?.(name);
           }}
         >
-          Back Up…
+          {t('backUp')}
         </button>
       )}
       {props.onRestore && (
@@ -123,7 +128,7 @@ function DatabaseMenu(
             props.onRestore?.(name);
           }}
         >
-          Restore…
+          {t('restore')}
         </button>
       )}
       {props.onRunFile && (
@@ -135,7 +140,7 @@ function DatabaseMenu(
             props.onRunFile?.(name);
           }}
         >
-          Run SQL file…
+          {t('runSqlFile')}
         </button>
       )}
       <MonitorMenu onMonitor={props.onMonitor} name={name} close={close} />
@@ -148,7 +153,7 @@ function DatabaseMenu(
             props.onProcesses?.(name);
           }}
         >
-          Show processes
+          {t('showProcesses')}
         </button>
       )}
       <button
@@ -159,7 +164,7 @@ function DatabaseMenu(
           props.onClose(name);
         }}
       >
-        Close database
+        {t('closeDatabase')}
       </button>
     </SidebarMenu>
   );
@@ -180,7 +185,7 @@ function MonitorMenu(props: {
         props.onMonitor?.(props.name);
       }}
     >
-      Show Monitor
+      {t('showMonitor')}
     </button>
   );
 }

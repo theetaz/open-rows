@@ -3,6 +3,7 @@
 mod plan;
 
 use crate::connections::{IpcError, IpcErrorKind};
+use crate::native_text;
 use serde::Serialize;
 use specta::Type;
 use std::fs;
@@ -104,7 +105,7 @@ pub(crate) async fn data_location_choose(
         .dialog()
         .file()
         .set_parent(&window)
-        .set_title("Choose empty local data folder")
+        .set_title(native_text::CHOOSE_DATA_FOLDER)
         .pick_folder(move |picked| {
             let _ = sender.send(picked);
         });

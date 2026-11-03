@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { CheckFields, checkProblem, cleanCheck } from './forms/CheckFields';
 import { StageSheet } from './StageSheet';
 import type { Structure } from './useStructure';
+import { t } from '../messages/lazyStructure';
 
 /** `Add check…`: a named or automatic check constraint. */
 export function CheckSheet({
@@ -20,7 +21,7 @@ export function CheckSheet({
   return (
     <StageSheet
       structure={structure}
-      title="Add check"
+      title={t('addCheck')}
       op={
         problem
           ? null
@@ -30,7 +31,7 @@ export function CheckSheet({
             }
       }
       problem={problem}
-      stageLabel="Stage check"
+      stageLabel={t('stageCheck')}
       onClose={onClose}
     >
       <CheckFields check={check} onChange={setCheck} />

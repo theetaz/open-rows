@@ -141,8 +141,58 @@ Native window vibrancy/appearance synchronisation, the canvas grid and CodeMirro
 
 ## 10. Internationalisation
 
-- All strings via an i18n layer (`@lingui/core` or `i18next`, decided in M1) with ICU message format; English source. Dates/numbers through `Intl`.
-- Right-to-left support is a P2 goal; layout uses logical CSS properties from the start to keep it cheap.
+English only today (FR-APP-06, M5-12): no language picker, no second locale and no right-to-left work. Right-to-left support is a P2 goal; layout uses logical CSS properties from the start to keep it cheap. Dates and numbers go through `Intl` at the call site.
+
+**Decision.** Visible text lives in small typed catalogs of our own (`packages/ui/src/i18n/defineMessages.ts`, exported as `@openrows/ui/i18n`), not in `@lingui/core` or `i18next` as first planned. The helper is about 150 lines and adds no dependency. A wrong key or a missing placeholder value is a `tsc` error, which those libraries only offer with a code generator. ICU syntax is not needed for English: a message is plain text with `{name}` placeholders, and plural forms are separate strings chosen by `Intl.PluralRules`. Should a translation later need ICU select or gender forms, this helper is the one place to change.
+
+**Catalogs.** Each feature folder owns its text:
+
+| File | Holds | Loaded |
+| --- | --- | --- |
+| `features/x/messages.ts` | Text of a feature whose code is all in one group | With the code that imports it |
+| `features/x/lazyMessages.ts` | Text of the feature's lazily loaded code, when the rest is in the initial chunk | Lazily |
+| `features/x/messages/<topic>.ts` | The same, split by topic in the four largest features; a `lazy` name prefix marks lazily loaded text | As above |
+
+`query/initialMessages.ts` is the initial catalog of the query feature, because `query/messages.ts` holds the messages panel's logic. `just bench-ui` fails if a `lazyMessages` or `messages/lazy*` module reaches the initial bundle. Native text lives in two small Rust tables: menu titles in `src-tauri/src/menu.rs` and file panel and alert titles in `src-tauri/src/native_text.rs`.
+
+**Adding a string.**
+
+1. Add it to the catalog the component already imports, with a short camelCase key:
+
+   ```ts
+   export const { t, tn, rich } = defineMessages({
+     save: 'Save',
+     deletedTable: 'Deleted {table}.',
+     rowCount: { one: '{count} row', other: '{count} rows' },
+     dropQuestion: 'Drop {name}?',
+   });
+   ```
+
+2. Read it with the matching lookup:
+
+   ```tsx
+   t('save')
+   t('deletedTable', { table })
+   tn('rowCount', rows)                                        // {count} is filled from rows
+   tn('rowCount', rows, { count: rows.toLocaleString() })      // keeps your formatting
+   rich('dropQuestion', { name: <strong>{name}</strong> })     // elements or nullable values
+   richn('…', rows, { table: <code>{table}</code> })           // the same with plural forms
+   ```
+
+Rules:
+
+- A sentence is one message with placeholders, because word order changes between languages. Do not build one from fragments, and do not pass a translated noun into a sentence where the grammar could depend on it.
+- List separators (` · `, `, `) and spaces between whole sentences stay in code; a message has no leading or trailing space.
+- A value may contain braces: filling is one pass and never expands it. To show literal text such as `{local_port}`, pass it as a value.
+- Keys are literal strings. `src/test/messageCatalogs.test.ts` scans sources for them and fails on an unused key, an empty message or padded text.
+
+**What stays out of catalogs:** SQL and code samples (`<code>` and `<pre>` text), identifiers, engine and product names shown as data, unit symbols (`ms`, `s`, `min`, `KB`), log messages, prompts sent to an AI provider, test fixtures and spike code. Text from Rust and drivers (error messages, notices) is shown as it arrives. `packages/grid` and `packages/editor` keep their few strings, such as the grid's accessibility announcements, until they get catalogs of their own.
+
+**The guard.** ESLint rule `openrows/no-hardcoded-ui-text` (`scripts/eslint/no-hardcoded-ui-text.mjs`, tested in `just script-test`) fails `pnpm lint` on letters in JSX text, on string literals and templates in text attributes (`aria-label`, `title`, `placeholder`, `label`, …) and on label-like object properties (`label`, `title`, `description`, `message`, …) in `apps/desktop/src` and `packages/ui/src`, in `.ts` as well as `.tsx`. Its `allow` list in `eslint.config.mjs` is empty; only `<code>`, `<pre>`, `<style>` and `<script>` content, catalogs, tests, fixtures, spikes and design tokens are outside it. It does not see text in other positions, such as `setError('…')`, so review still matters there.
+
+**Startup.** `t` and `tn` are plain lookups. `src/build/messageTypes.ts` tells the React Compiler that they return a primitive, so a call does not take a memo slot. Moving the strings raised the initial bundle from 325,053 to 342,582 gzip bytes (budget 350,000), mostly from keys and calls.
+
+**Known limits for a translator.** A few messages still take a lowercase noun or label as a placeholder, such as `Hide {noun}`, `No {label}` and the cell errors `{column}: {value} {problem}.`. Monitor metric scopes (`Server`, `Database`) are identifiers that are also shown, and `inspection/read.ts` compares an attribute name that comes from Rust. The number formatting at each call site keeps its current locale argument.
 
 ## Implemented (M2-22b): application settings and native documents
 

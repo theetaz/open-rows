@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { listProfiles } from '@openrows/ipc';
 import type { ProfileDto, ProfileList } from '@openrows/ipc';
+import { t } from './messages/profile';
 
 type ProfilesState = {
   profiles: readonly ProfileDto[];
@@ -23,7 +24,7 @@ function loaded(list: ProfileList): Loaded {
   return {
     profiles: list.profiles,
     problem: list.unreadable.length
-      ? `Some connection files could not be read: ${list.unreadable.join('; ')}`
+      ? t('someConnectionFiles', { unreadable: list.unreadable.join('; ') })
       : null,
     loaded: true,
   };
@@ -62,7 +63,7 @@ export function useProfiles(): ProfilesState {
         if (active)
           setState((current) => ({
             ...current,
-            problem: `Could not load connections: ${reason}`,
+            problem: t('couldNotLoad', { reason }),
           }));
       },
     );

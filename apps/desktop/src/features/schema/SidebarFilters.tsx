@@ -12,6 +12,7 @@ import {
 import type { SidebarPreferences } from './sidebarPreferences';
 import type { Catalog } from './useCatalog';
 import styles from './SidebarLists.module.css';
+import { t } from './messages';
 
 type FilterProps = {
   catalog: Catalog;
@@ -43,7 +44,7 @@ export function SidebarFilters({
       <IconButton
         size="sm"
         variant="ghost"
-        aria-label="Filter objects"
+        aria-label={t('filterObjects')}
         aria-haspopup="menu"
         aria-expanded={point !== null}
         data-active={active}
@@ -58,7 +59,7 @@ export function SidebarFilters({
       {point && (
         <CascadeMenu
           {...point}
-          label="Filter objects"
+          label={t('filterObjects')}
           entries={filterEntries({ catalog, preferences, groups })}
           onClose={() => {
             setPoint(null);
@@ -77,13 +78,13 @@ function filterEntries(props: FilterProps): MenuEntry[] {
   const { catalog, preferences } = props;
   const active = preferences.kinds.length + preferences.schemas.length > 0;
   return [
-    { kind: 'submenu', label: 'Object kinds', entries: kindEntries(props) },
-    { kind: 'submenu', label: 'Schemas', entries: schemaEntries(props) },
-    { kind: 'submenu', label: 'Sections', entries: sectionEntries(props) },
+    { kind: 'submenu', label: t('objectKinds'), entries: kindEntries(props) },
+    { kind: 'submenu', label: t('schemas'), entries: schemaEntries(props) },
+    { kind: 'submenu', label: t('sections'), entries: sectionEntries(props) },
     { kind: 'separator' },
     {
       kind: 'item',
-      label: 'Show system objects',
+      label: t('showSystemObjects'),
       checked: preferences.systemObjects,
       run: () => {
         catalog.setSystemSchemas(!preferences.systemObjects);
@@ -94,7 +95,7 @@ function filterEntries(props: FilterProps): MenuEntry[] {
           { kind: 'separator' } as const,
           {
             kind: 'item' as const,
-            label: 'Clear filters',
+            label: t('clearFilters'),
             run: () => {
               write(catalog, { kinds: [], schemas: [] });
             },
@@ -112,7 +113,7 @@ function kindEntries({
   return [
     {
       kind: 'item',
-      label: 'All kinds',
+      label: t('allKinds'),
       checked: preferences.kinds.length === 0,
       run: () => {
         write(catalog, { kinds: [] });
@@ -140,7 +141,7 @@ function schemaEntries({ catalog, preferences }: FilterProps): MenuEntry[] {
   return [
     {
       kind: 'item',
-      label: 'Current schema',
+      label: t('currentSchema'),
       checked: preferences.schemas.length === 0,
       run: () => {
         write(catalog, { schemas: [] });
@@ -163,7 +164,7 @@ function sectionEntries({
   preferences,
   groups,
 }: FilterProps): MenuEntry[] {
-  const sections = [{ id: 'favourites', label: 'Favourites' }, ...groups];
+  const sections = [{ id: 'favourites', label: t('favourites') }, ...groups];
   return sections.map((section): MenuEntry => ({
     kind: 'item',
     label: section.label,

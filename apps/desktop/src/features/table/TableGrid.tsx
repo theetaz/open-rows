@@ -40,6 +40,7 @@ import { fitColumns, useAutoFit } from './useAutoFit';
 import type { ColumnLayout } from '../../results/columnLayout';
 import { useGridPosition } from './gridPosition';
 import type { PositionMemory } from './gridPosition';
+import { t } from './messages/lazyData';
 
 const noKeys: readonly string[] = [];
 const noSelection: SelectionModel = { row: 0, column: 0, ranges: [] };
@@ -406,7 +407,7 @@ function GridFrame({
     <div className={styles.grid} ref={host}>
       {error && (
         <p role="alert" className={styles.gridError}>
-          Could not show rows: {error}
+          {t('couldNotShow', { error })}
         </p>
       )}
       {children}

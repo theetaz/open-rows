@@ -7,6 +7,7 @@ import { StartupCommandsField } from './StartupCommandsField';
 import type { LimitsDraft } from './limitsForm';
 import type { ConnectionForm } from './useConnectionForm';
 import styles from './ConnectionSheet.module.css';
+import { t } from './messages/routes';
 
 /**
  * "Advanced" disclosure: the statement timeout (cancelled and reported as a
@@ -28,14 +29,18 @@ export function SessionLimitsFields({
   const startup = form.draft.startupCommands.trim() !== '';
   return (
     <DisclosureSection
-      label={`Advanced · ${summary}${startup ? ' · Startup SQL' : ''}`}
-      defaultOpen={summary !== 'Defaults' || startup}
+      label={
+        startup
+          ? t('advancedSummaryStartup', { summary })
+          : t('advancedSummary', { summary })
+      }
+      defaultOpen={summary !== t('defaults') || startup}
     >
       <div className={styles.section}>
         <SelectField
           className={styles.row}
-          label="Query timeout"
-          aria-label="Statement timeout"
+          label={t('queryTimeout')}
+          aria-label={t('statementTimeout')}
           value={limits.statementTimeout}
           options={statementOptions(
             limits.statementTimeout,
@@ -45,26 +50,20 @@ export function SessionLimitsFields({
             update({ statementTimeout });
           }}
         />
-        <small className={styles.hint}>
-          A statement running longer is cancelled. The default is set in
-          Settings ▸ General.
-        </small>
+        <small className={styles.hint}>{t('statementRunningLonger')}</small>
         {!isFileEngine(engine) && (
           <>
             <SelectField
               className={styles.row}
-              label="Close if idle"
-              aria-label="Idle timeout"
+              label={t('closeIfIdle')}
+              aria-label={t('idleTimeout')}
               value={limits.idleTimeout}
               options={idleOptions(limits.idleTimeout)}
               onValueChange={(idleTimeout) => {
                 update({ idleTimeout });
               }}
             />
-            <small className={styles.hint}>
-              Disconnects after this long without a query and reconnects on next
-              use. Never while a transaction or staged edits are open.
-            </small>
+            <small className={styles.hint}>{t('disconnectsAfterLong')}</small>
           </>
         )}
         <StartupCommandsField form={form} />

@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react';
 import { Button } from '@openrows/ui';
 import type { ExplainControls } from './useExplain';
 import styles from './Explain.module.css';
+import { t } from './messages';
 const ExplainView = lazy(() =>
   import('./ExplainView').then((module) => ({ default: module.ExplainView })),
 );
@@ -22,7 +23,7 @@ export function explainResultTab(
 ): ExtraResultTab | null {
   const { state } = explain;
   if (!state || state.status === 'confirm') return null;
-  const label = state.analyze ? 'Explain Analyze' : 'Query Plan';
+  const label = state.analyze ? t('explainAnalyze') : t('queryPlan');
   const base = { label, onClose: explain.close };
   switch (state.status) {
     case 'running':
@@ -31,11 +32,9 @@ export function explainResultTab(
         id: state.explainId,
         content: (
           <p className={styles.status} role="status">
-            {state.analyze
-              ? 'Running and measuring the statement…'
-              : 'Explaining…'}
+            {state.analyze ? t('runningMeasuringStatement') : t('explaining')}
             <Button size="sm" onClick={explain.cancel}>
-              Cancel
+              {t('cancel')}
             </Button>
           </p>
         ),

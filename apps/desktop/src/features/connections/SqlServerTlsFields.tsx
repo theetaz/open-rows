@@ -9,6 +9,7 @@ import {
 } from './sqlServerTls';
 import type { ConnectionForm } from './useConnectionForm';
 import styles from './ConnectionSheet.module.css';
+import { t } from './messages/routes';
 
 /**
  * SQL Server's Encrypt and Trust server certificate settings, kept as the
@@ -25,8 +26,8 @@ export function SqlServerTlsFields({
     <>
       <SelectField
         className={styles.row}
-        label="Encrypt"
-        aria-label="Encrypt"
+        label={t('encrypt')}
+        aria-label={t('encrypt')}
         value={encrypt}
         options={ENCRYPT_CHOICES}
         onValueChange={(choice) => {
@@ -36,8 +37,8 @@ export function SqlServerTlsFields({
       />
       {encrypt === 'mandatory' && (
         <SwitchRow
-          label="Trust server certificate"
-          detail="Encrypt without checking the certificate, e.g. a server's self-signed one."
+          label={t('trustServerCertificate')}
+          detail={t('encryptWithoutChecking')}
           checked={trustsCertificate(draft.tlsMode)}
           onChange={(trust) => {
             update({ tlsMode: modeOf('mandatory', trust, draft.tlsMode) });

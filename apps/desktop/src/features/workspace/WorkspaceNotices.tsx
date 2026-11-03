@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import styles from './Workspace.module.css';
+import { t } from './messages';
 
 /** A problem opening a file from Finder, a link or the command line. */
 export function FileNotice({
@@ -23,7 +24,9 @@ export function RefreshAnnouncement({
 }): React.JSX.Element {
   return (
     <span className={styles.announcement} role="status">
-      {refreshes ? `Catalog refreshed (${String(refreshes)})` : ''}
+      {refreshes
+        ? t('catalogRefreshedRefreshes', { refreshes: String(refreshes) })
+        : ''}
     </span>
   );
 }

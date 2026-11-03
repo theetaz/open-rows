@@ -6,6 +6,7 @@ import type { InspectionTarget } from '../inspection/target';
 import type { InspectionCatalog } from './useInspectionCatalog';
 import type { Resource } from './useResources';
 import styles from './ObjectTree.module.css';
+import { t } from './messages';
 
 /** Database extensions and connection users/roles, fetched only on expand. */
 export function AdminTree(props: {
@@ -18,10 +19,10 @@ export function AdminTree(props: {
   return (
     <>
       {features.data.extensions && (
-        <AdminSection {...props} kind="extensions" label="Extensions" />
+        <AdminSection {...props} kind="extensions" label={t('extensions')} />
       )}
       {features.data.roles && (
-        <AdminSection {...props} kind="roles" label="Users & Roles" />
+        <AdminSection {...props} kind="roles" label={t('usersRoles')} />
       )}
     </>
   );
@@ -55,7 +56,7 @@ function AdminSection(props: {
     >
       {resource.status === 'loading' && (
         <p role="status" className={styles.note}>
-          Loading…
+          {t('loading')}
         </p>
       )}
       {resource.status === 'error' && (
@@ -64,7 +65,9 @@ function AdminSection(props: {
         </p>
       )}
       {resource.status === 'ready' && !rows.length && (
-        <p className={styles.note}>No {props.label.toLowerCase()}</p>
+        <p className={styles.note}>
+          {t('noLabel', { label: props.label.toLowerCase() })}
+        </p>
       )}
       <Tree label={props.label}>
         {rows.map((row) => (

@@ -3,6 +3,7 @@ import { Badge, Icon } from '@openrows/ui';
 import type { InsecureReasonDto } from '@openrows/ipc';
 import { insecureDetail } from './insecure';
 import styles from './InsecureBadge.module.css';
+import { rich } from './messages/profile';
 
 /**
  * "Not secure" flag for a connection (docs/12 §4.1): skip-verify or
@@ -28,8 +29,9 @@ export function InsecureBadge({
   return (
     <Badge tone="warning" className={styles.badge} title={detail}>
       <Icon name="unlock" />
-      Not secure
-      <span className={styles.hidden}>{`: ${detail}`}</span>
+      {rich('notSecurevalue', {
+        value: <span className={styles.hidden}>{`: ${detail}`}</span>,
+      })}
     </Badge>
   );
 }

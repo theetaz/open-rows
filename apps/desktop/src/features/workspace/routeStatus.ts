@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ProfileDto } from '@openrows/ipc';
 import { engineName } from '../connections/engines';
+import { t } from './messages';
 
 /** The complete configured route shown in the connection status popover. */
 export function routeStatus(profile: ProfileDto): string {
@@ -9,14 +10,16 @@ export function routeStatus(profile: ProfileDto): string {
   if (helper) {
     switch (helper.kind) {
       case 'ssm':
-        route.push(`AWS SSM ${helper.target}`);
+        route.push(t('awsSsmTarget', { target: helper.target }));
         break;
       case 'kubectl':
-        route.push(`kubectl port-forward ${helper.resource}`);
+        route.push(t('kubectlPortForward', { resource: helper.resource }));
         break;
       case 'cloud':
         route.push(
-          `${helper.flavor === 'cloudsql' ? 'Cloud SQL' : 'AlloyDB'} auth proxy ${helper.instance}`,
+          helper.flavor === 'cloudsql'
+            ? t('cloudSqlAuth', { instance: helper.instance })
+            : t('alloydbAuthProxy', { instance: helper.instance }),
         );
         break;
       case 'cloudflared':
@@ -26,12 +29,12 @@ export function routeStatus(profile: ProfileDto): string {
   }
   if (profile.proxy)
     route.push(
-      `${profile.proxy.kind === 'socks5' ? 'SOCKS5' : 'HTTP CONNECT'} ${profile.proxy.host}`,
+      `${profile.proxy.kind === 'socks5' ? 'SOCKS5' : t('httpConnect')} ${profile.proxy.host}`,
     );
   if (profile.ssh)
     route.push(...profile.ssh.jumpHosts, `SSH ${profile.ssh.host}`);
-  if (!route.length) route.push('Direct');
+  if (!route.length) route.push(t('direct'));
   if (profile.tlsMode !== 'disable') route.push('TLS');
   route.push(engineName(profile.engine));
-  return `Route: ${route.join(' → ')}`;
+  return t('routeRoute', { route: route.join(' → ') });
 }

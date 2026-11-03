@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { SchemaDiagramDto } from '@openrows/ipc';
 import type { DiagramLayout } from './geometry';
+import { t } from './messages';
 
 /** Own one layout job; terminate it when completed, failed or cancelled. */
 export function startLayout(diagram: SchemaDiagramDto): {
@@ -18,15 +19,15 @@ export function startLayout(diagram: SchemaDiagramDto): {
     ) => {
       worker.terminate();
       if (event.data.layout) resolve(event.data.layout);
-      else reject(new Error(event.data.error ?? 'Diagram layout failed'));
+      else reject(new Error(event.data.error ?? t('diagramLayoutFailed')));
     };
     worker.onerror = (event) => {
       worker.terminate();
-      reject(new Error(event.message || 'Diagram layout worker failed'));
+      reject(new Error(event.message || t('diagramLayoutWorker')));
     };
     worker.onmessageerror = () => {
       worker.terminate();
-      reject(new Error('Cannot read diagram worker reply'));
+      reject(new Error(t('cannotReadDiagram')));
     };
     try {
       worker.postMessage(diagram);
@@ -39,7 +40,7 @@ export function startLayout(diagram: SchemaDiagramDto): {
     result,
     cancel: () => {
       worker.terminate();
-      rejectJob(new Error('Diagram layout cancelled'));
+      rejectJob(new Error(t('diagramLayoutCancelled')));
     },
   };
 }

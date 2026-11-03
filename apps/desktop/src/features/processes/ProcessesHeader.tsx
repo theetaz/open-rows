@@ -5,10 +5,11 @@ import type { RefreshInterval } from './processModel';
 import type { Processes } from './useProcesses';
 import structure from '../table/structure/Structure.module.css';
 import styles from './Processes.module.css';
+import { t } from './messages';
 
 const INTERVAL_OPTIONS = REFRESH_INTERVALS.map((value) => ({
   value,
-  label: value === '0' ? 'Off' : `${value} s`,
+  label: value === '0' ? t('off') : t('valueS', { value }),
 }));
 
 /** `Filter… · Auto-refresh Off|2 s|5 s|10 s · ⟳ · n of m processes` above the list. */
@@ -25,25 +26,25 @@ export function ProcessesHeader(props: {
         className={structure.search}
         controlSize="compact"
         type="search"
-        aria-label="Filter processes"
-        placeholder="Filter processes…"
+        aria-label={t('filterProcesses')}
+        placeholder={t('filterProcesses2')}
         leadingIcon={<Icon name="filter" />}
         value={props.filter}
         onChange={(event) => {
           props.onFilter(event.target.value);
         }}
       />
-      <span>Auto-refresh</span>
+      <span>{t('autoRefresh')}</span>
       <SegmentedControl<RefreshInterval>
-        aria-label="Auto-refresh"
+        aria-label={t('autoRefresh')}
         size="compact"
         options={INTERVAL_OPTIONS}
         value={list.interval}
         onValueChange={list.setInterval}
       />
       <IconButton
-        aria-label="Refresh processes"
-        title="Refresh processes"
+        aria-label={t('refreshProcesses')}
+        title={t('refreshProcesses')}
         size="sm"
         variant="ghost"
         onClick={list.reload}
@@ -52,8 +53,11 @@ export function ProcessesHeader(props: {
       </IconButton>
       <span className={styles.count} role="status">
         {list.loading
-          ? 'Loading processes…'
-          : `${String(props.shown)} of ${String(list.processes.length)} processes`}
+          ? t('loadingProcesses')
+          : t('shownCountProcesses', {
+              shown: String(props.shown),
+              count: String(list.processes.length),
+            })}
       </span>
     </div>
   );

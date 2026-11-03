@@ -3,6 +3,7 @@ import type { ImportSummaryDto, RowErrorDto } from '@openrows/ipc';
 import { rowCount } from './job';
 import type { ImportJob, ImportProgress } from './job';
 import styles from './Import.module.css';
+import { rich, t, tn } from './messages';
 
 const count = (value: number | null): string => (value ?? 0).toLocaleString();
 
@@ -18,7 +19,7 @@ export function ImportStatus(props: {
     case 'starting':
       return (
         <p className={styles.status} role="status">
-          {job.mode === 'check' ? 'Checking the file…' : 'Starting the import…'}
+          {job.mode === 'check' ? t('checkingFile') : t('startingImport')}
         </p>
       );
     case 'running':
@@ -28,7 +29,10 @@ export function ImportStatus(props: {
         <CheckSummary summary={job.summary} />
       ) : (
         <Summary
-          text={`Imported ${rowCount(job.summary.inserted)} into ${props.table}.`}
+          text={t('importedInsertedInto', {
+            inserted: rowCount(job.summary.inserted),
+            table: props.table,
+          })}
           summary={job.summary}
         />
       );
@@ -37,8 +41,8 @@ export function ImportStatus(props: {
         <Summary
           text={
             job.mode === 'check'
-              ? 'Check cancelled.'
-              : 'Import cancelled. Uncommitted rows were rolled back.'
+              ? t('checkCancelled')
+              : t('importCancelledUncommitted')
           }
           summary={job.summary}
         />
@@ -55,18 +59,22 @@ function Running(props: {
   const { progress } = props;
   return (
     <div className={styles.status} role="status">
-      <p>{props.mode === 'check' ? 'Checking…' : 'Importing…'}</p>
+      <p>{props.mode === 'check' ? t('checking') : t('importing')}</p>
       <progress
         aria-label={
-          props.mode === 'check' ? 'Check progress' : 'Import progress'
+          props.mode === 'check' ? t('checkProgress') : t('importProgress')
         }
         max={1}
         value={progress.fraction}
       />
       <p className={styles.note}>
-        {Math.round(progress.fraction * 100)}% · {rowCount(progress.rows)} read
-        · {count(progress.inserted)} written · {count(progress.failed)} failed ·{' '}
-        {count(progress.rowsPerSecond)} rows/s
+        {t('mathRowsRead', {
+          percent: Math.round(progress.fraction * 100),
+          rows: rowCount(progress.rows),
+          inserted: count(progress.inserted),
+          failed: count(progress.failed),
+          rowsPerSecond: count(progress.rowsPerSecond),
+        })}
       </p>
     </div>
   );
@@ -79,11 +87,17 @@ function CheckSummary({
 }): React.JSX.Element {
   const conflicts =
     summary.conflicts === null
-      ? 'Conflicts cannot be checked without key columns.'
-      : `${rowCount(summary.conflicts)} ${summary.conflicts === 1 ? 'collides' : 'collide'} with existing keys.`;
+      ? t('conflictsCannotChecked')
+      : tn('countCollideExisting', summary.conflicts, {
+          count: rowCount(summary.conflicts),
+        });
   return (
     <Summary
-      text={`Checked ${rowCount(summary.rows)}: ${count(summary.failed)} with errors. ${conflicts}`}
+      text={t('checkedRowsFailed', {
+        rows: rowCount(summary.rows),
+        failed: count(summary.failed),
+        conflicts,
+      })}
       summary={summary}
     />
   );
@@ -100,8 +114,11 @@ function Summary(props: {
       <p className={props.alert ? styles.error : undefined}>{props.text}</p>
       {summary && (
         <p className={styles.note}>
-          {count(summary.inserted)} inserted · {count(summary.skipped)} skipped
-          · {count(summary.failed)} failed
+          {t('insertedInsertedSkipped', {
+            inserted: count(summary.inserted),
+            skipped: count(summary.skipped),
+            failed: count(summary.failed),
+          })}
         </p>
       )}
       {summary && summary.errors.length > 0 && (
@@ -118,10 +135,12 @@ function ErrorReport(props: {
   const more = props.failed - props.errors.length;
   return (
     <div className={styles.errors}>
-      <ul aria-label="Row errors">
+      <ul aria-label={t('rowErrors')}>
         {props.errors.map((error, index) => (
           <li key={String(index)}>
-            <span className={styles.line}>Line {error.line}</span>
+            <span className={styles.line}>
+              {rich('lineLine', { line: error.line })}
+            </span>
             {error.column && (
               <span className={styles.category}>{error.column}</span>
             )}
@@ -130,7 +149,9 @@ function ErrorReport(props: {
         ))}
       </ul>
       {more > 0 && (
-        <p className={styles.note}>…and {more.toLocaleString()} more.</p>
+        <p className={styles.note}>
+          {t('moreMore', { more: more.toLocaleString() })}
+        </p>
       )}
     </div>
   );

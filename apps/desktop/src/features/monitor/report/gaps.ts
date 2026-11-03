@@ -2,6 +2,7 @@
 import { stateLabel } from '../SourceState';
 import { timeText } from './model';
 import type { ChartPoint } from './model';
+import { t, tn } from '../messages/lazyReport';
 
 /** Most missing-interval lines listed before they are summarised. */
 const MAX_INTERVALS = 20;
@@ -19,13 +20,13 @@ function missingIntervals(
     const end = times[index] ?? 0;
     if (end - start > limit)
       missing.push(
-        `No observation from ${timeText(start)} to ${timeText(end)}`,
+        t('noObservationStart', { start: timeText(start), end: timeText(end) }),
       );
   }
   if (missing.length <= MAX_INTERVALS) return missing;
   return [
     ...missing.slice(0, MAX_INTERVALS),
-    `${String(missing.length - MAX_INTERVALS)} more missing intervals`,
+    t('valueMoreMissing', { value: String(missing.length - MAX_INTERVALS) }),
   ];
 }
 
@@ -38,14 +39,16 @@ export function metricGaps(
   range: { fromMs: number; toMs: number },
   cadence: number,
 ): string[] {
-  if (!points.length) return ['No observations in this range'];
+  if (!points.length) return [t('noObservationsRange')];
   const states = new Map<string, number>();
   for (const point of points)
     if (point.y === null)
       states.set(point.state, (states.get(point.state) ?? 0) + 1);
-  const counted = [...states].map(
-    ([state, count]) =>
-      `${String(count)} observation${count === 1 ? '' : 's'}: ${stateLabel(state)}`,
+  const counted = [...states].map(([state, count]) =>
+    tn('countObservationsState', count, {
+      count: String(count),
+      state: stateLabel(state),
+    }),
   );
   return [...counted, ...missingIntervals(points, range, cadence)];
 }

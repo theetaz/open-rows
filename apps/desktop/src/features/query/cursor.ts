@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useSyncExternalStore } from 'react';
+import { t } from './lazyMessages';
 
 /** Cursor of the editor: 1-based line and column, 0-based document offset. */
 export type CursorPosition = { line: number; column: number; location: number };
@@ -35,7 +36,11 @@ export function createCursorStore(): CursorStore {
 
 /** `line N, column M, location K` like TablePlus' editor footer. */
 export function cursorText(position: CursorPosition): string {
-  return `line ${String(position.line)}, column ${String(position.column)}, location ${String(position.location)}`;
+  return t('lineLineColumn', {
+    line: String(position.line),
+    column: String(position.column),
+    location: String(position.location),
+  });
 }
 
 /** The current cursor position, re-rendering on every move. */

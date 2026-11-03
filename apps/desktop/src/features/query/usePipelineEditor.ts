@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useState } from 'react';
 import { pipelineQuery } from './pipeline';
+import { t } from './lazyMessages';
 
 type PipelineDraft = {
   collection: string;
@@ -22,7 +23,7 @@ export function usePipelineEditor(
   const [error, setError] = useState<string | null>(null);
   const execute = (through?: number): void => {
     try {
-      if (!collection.trim()) throw new Error('Enter a collection name.');
+      if (!collection.trim()) throw new Error(t('enterCollectionName'));
       const source = pipelineQuery(collection, text, through);
       setError(null);
       run(source);

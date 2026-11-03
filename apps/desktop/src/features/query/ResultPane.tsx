@@ -4,6 +4,7 @@ import { Icon } from '@openrows/ui';
 import type { EngineDto } from '@openrows/ipc';
 import type { ExtraResultTab } from '../explain';
 import { MessagesPanel } from './MessagesPanel';
+import { t } from './lazyMessages';
 import { resultMessages } from './messages';
 import { useResultChoice } from './resultChoice';
 import type { ResultMeta, RunState } from './run';
@@ -62,15 +63,15 @@ function placeholder(run: RunState, runDefault: RunScope): string {
     case 'confirm':
     case 'parameters':
       return runDefault === 'all'
-        ? 'Run every statement with ⌘↵, or the statement at the cursor with ⇧⌘↵.'
-        : 'Run the statement at the cursor with ⌘↵, or every statement with ⇧⌘↵.';
+        ? t('runEveryStatement')
+        : t('runStatementCursor');
     case 'starting':
     case 'running':
-      return 'Running…';
+      return t('running');
     case 'completed':
-      return 'The statements returned no rows.';
+      return t('statementsReturnedNo');
     default:
-      return 'No result.';
+      return t('noResult');
   }
 }
 
@@ -101,7 +102,7 @@ export function ResultPane({
   const exportable = current?.done && onExport ? current : null;
   useExportable(onExportable, exportable, onExport);
   return (
-    <section className={styles.results} aria-label="Results">
+    <section className={styles.results} aria-label={t('results')}>
       <ResultBar
         results={results}
         stacked={stacked}
@@ -192,7 +193,11 @@ type TabsProps = {
 function ResultTabs(props: TabsProps): React.JSX.Element {
   const { extra } = props;
   return (
-    <div role="tablist" aria-label="Result sets" className={styles.resultTabs}>
+    <div
+      role="tablist"
+      aria-label={t('resultSets')}
+      className={styles.resultTabs}
+    >
       {props.stacked ? (
         <button
           type="button"
@@ -202,7 +207,7 @@ function ResultTabs(props: TabsProps): React.JSX.Element {
             props.onChoose(null);
           }}
         >
-          Results
+          {t('results')}
         </button>
       ) : (
         props.results.map((result, index) => (
@@ -234,8 +239,8 @@ function ResultTabs(props: TabsProps): React.JSX.Element {
           <button
             type="button"
             className={styles.extraClose}
-            aria-label={`Close ${extra.label}`}
-            title={`Close ${extra.label}`}
+            aria-label={t('closeLabel', { label: extra.label })}
+            title={t('closeLabel', { label: extra.label })}
             onClick={extra.onClose}
           >
             <Icon name="close" />

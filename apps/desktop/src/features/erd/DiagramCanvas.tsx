@@ -4,6 +4,7 @@ import { drawDiagram, tableAt } from './canvasDrawing';
 import type { DiagramLayout } from './geometry';
 import type { View } from './viewport';
 import styles from './Erd.module.css';
+import { t } from './messages';
 
 /** Large diagrams keep column DOM out of the viewport; the selector provides keyboard access. */
 export function DiagramCanvas(props: {
@@ -33,7 +34,7 @@ export function DiagramCanvas(props: {
     <div className={styles.largeCanvas}>
       <canvas
         className={styles.canvas}
-        aria-label="ER diagram canvas"
+        aria-label={t('erDiagramCanvas')}
         role="img"
         ref={(canvas) => {
           ref.current = canvas;
@@ -51,14 +52,14 @@ export function DiagramCanvas(props: {
         }}
       />
       <select
-        aria-label="Open diagram table"
+        aria-label={t('openDiagramTable')}
         value=""
         onChange={(event) => {
           props.onOpen(event.target.value);
         }}
       >
         <option value="" disabled>
-          Open table…
+          {t('openTable')}
         </option>
         {props.layout.nodes.map(({ table }) => (
           <option key={table.name} value={table.name}>

@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { HighlightMatch } from '../settings/HighlightMatch';
 import { useSettingMatch } from '../settings/settingsSearch';
 import styles from './Appearance.module.css';
+import { t } from './messages';
 /** One titled setting; hidden while the Settings search does not match it. */
 export function SettingRow({
   title,
@@ -69,15 +70,15 @@ export function InterfaceSettings(): React.JSX.Element {
   const { appearance: a, setAppearance } = useTheme();
   return (
     <>
-      <section aria-label="Interface">
-        <h3>Interface</h3>
+      <section aria-label={t('interface')}>
+        <h3>{t('interface')}</h3>
         <div className={styles.settingsGroup}>
           <SettingRow
-            title="Contrast"
-            description="Adjust secondary text and borders across the interface."
+            title={t('contrast')}
+            description={t('adjustSecondaryText')}
           >
             <Slider
-              label="Contrast"
+              label={t('contrast')}
               value={a.contrast}
               min={80}
               max={150}
@@ -88,13 +89,13 @@ export function InterfaceSettings(): React.JSX.Element {
             />
           </SettingRow>
           <SettingRow
-            title="Glass opacity"
-            description="Higher values make glass panels and menus more solid."
+            title={t('glassOpacity')}
+            description={t('higherValuesMake')}
           >
             <Button
               size="sm"
               variant="ghost"
-              aria-label="Reset glass opacity"
+              aria-label={t('resetGlassOpacity')}
               onClick={() => {
                 setAppearance({ opacity: 95 });
               }}
@@ -102,7 +103,7 @@ export function InterfaceSettings(): React.JSX.Element {
               ↺
             </Button>
             <Slider
-              label="Glass opacity"
+              label={t('glassOpacity')}
               value={a.opacity}
               min={50}
               max={100}
@@ -113,15 +114,15 @@ export function InterfaceSettings(): React.JSX.Element {
             />
           </SettingRow>
           <SettingRow
-            title="Change colors"
-            description="Distinguish inserted and deleted rows. Labels remain visible."
+            title={t('changeColors')}
+            description={t('distinguishInsertedDeleted')}
           >
             <SelectField
-              aria-label="Change colors"
+              aria-label={t('changeColors')}
               value={a.changeColors}
               options={[
-                { value: 'red-green', label: 'Red & green' },
-                { value: 'blue-orange', label: 'Blue & orange' },
+                { value: 'red-green', label: t('redGreen') },
+                { value: 'blue-orange', label: t('blueOrange') },
               ]}
               onValueChange={(changeColors) => {
                 setAppearance({ changeColors });
@@ -129,9 +130,9 @@ export function InterfaceSettings(): React.JSX.Element {
             />
           </SettingRow>
           <div className={styles.changePreview}>
-            <span data-kind="insert">+ Inserted row</span>
-            <span data-kind="delete">− Deleted row</span>
-            <span data-kind="edit">Edited cell</span>
+            <span data-kind="insert">{t('insertedRow')}</span>
+            <span data-kind="delete">{t('deletedRow')}</span>
+            <span data-kind="edit">{t('editedCell')}</span>
           </div>
         </div>
       </section>
@@ -143,15 +144,15 @@ export function InterfaceSettings(): React.JSX.Element {
 function MotionSettings(): React.JSX.Element {
   const { appearance: a, setAppearance } = useTheme();
   return (
-    <section aria-label="Motion">
-      <h3>Motion</h3>
+    <section aria-label={t('motion')}>
+      <h3>{t('motion')}</h3>
       <div className={styles.settingsGroup}>
         <SettingRow
-          title="Panel animations"
-          description="Control how quickly sidebars open and close. Zero is instant."
+          title={t('panelAnimations')}
+          description={t('controlHowQuickly')}
         >
           <Slider
-            label="Panel animations"
+            label={t('panelAnimations')}
             value={a.motion}
             min={0}
             max={400}

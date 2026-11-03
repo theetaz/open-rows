@@ -4,6 +4,7 @@ import { PointMenu } from '../../shell/PointMenu';
 import { containerEntries, EntryItems, newObjectEntries } from '../objects';
 import type { ObjectEditorRequest } from '../objects';
 import type { MenuPoint } from '../schema';
+import { t } from './messages';
 
 /**
  * The sidebar's `+` menu: new table, view, materialized view, function
@@ -22,7 +23,12 @@ export function CreateMenu(props: {
     props.onChoose(request);
   };
   return (
-    <PointMenu {...props.point} above label="Create" onClose={props.onClose}>
+    <PointMenu
+      {...props.point}
+      above
+      label={t('create')}
+      onClose={props.onClose}
+    >
       <EntryItems
         entries={newObjectEntries(props.place, props.features)}
         onChoose={choose}

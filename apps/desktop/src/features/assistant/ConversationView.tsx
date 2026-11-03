@@ -2,8 +2,10 @@
 import { ToolConfirmation } from './ToolConfirmation';
 import { Button } from '@openrows/ui';
 import { ArtifactPreview, ArtifactRejected } from './ArtifactPreview';
+import { RUNNING_OUTCOME } from './conversation';
 import type { Turn } from './conversation';
 import styles from './Assistant.module.css';
+import { t } from './lazyMessages';
 type Actions = {
   insert: (sql: string) => void;
   open: (sql: string) => void;
@@ -20,7 +22,7 @@ export function ConversationView(props: {
     <div
       className={styles.conversation}
       role="log"
-      aria-label="Assistant conversation"
+      aria-label={t('assistantConversation')}
       aria-live="polite"
     >
       {props.turns.map((turn) => (
@@ -31,25 +33,29 @@ export function ConversationView(props: {
             <ToolConfirmation
               key={prompt.id}
               prompt={prompt}
-              disabled={turn.outcome !== 'Running'}
+              disabled={turn.outcome !== RUNNING_OUTCOME}
             />
           ))}
           {turn.traces.map((trace) => (
             <details
               key={trace.step}
-              aria-label={`Tool step ${String(trace.step)}`}
+              aria-label={t('toolStepStep', { step: String(trace.step) })}
             >
               <summary>
-                {trace.label ?? trace.tool} · {trace.status} ·{' '}
-                {trace.durationMs} ms
+                {t('labelStatusDurationms', {
+                  label: trace.label ?? trace.tool,
+                  status: trace.status,
+                  durationMs: trace.durationMs,
+                })}
               </summary>
               <p>{trace.arguments}</p>
               {trace.result && (
-                <pre aria-label="MCP tool result">{trace.result}</pre>
+                <pre aria-label={t('mcpToolResult')}>{trace.result}</pre>
               )}
               <p>
-                {trace.bytes} bytes ·{' '}
-                {trace.redacted ? 'redacted or truncated' : 'policy filtered'}
+                {trace.redacted
+                  ? t('bytesBytesRedacted', { bytes: trace.bytes })
+                  : t('bytesBytesPolicy', { bytes: trace.bytes })}
               </p>
             </details>
           ))}
@@ -96,9 +102,9 @@ function SqlProposal({
   actions: Actions;
 }): React.JSX.Element {
   return (
-    <section aria-label="SQL proposal" className={styles.proposal}>
+    <section aria-label={t('sqlProposal')} className={styles.proposal}>
       <pre>{sql}</pre>
-      <p>SQL proposal · review before running</p>
+      <p>{t('sqlProposalReview')}</p>
       <div className={styles.row}>
         <Button
           size="sm"
@@ -107,7 +113,7 @@ function SqlProposal({
             actions.insert(sql);
           }}
         >
-          Insert into editor
+          {t('insertIntoEditor')}
         </Button>
         <Button
           size="sm"
@@ -116,7 +122,7 @@ function SqlProposal({
             actions.open(sql);
           }}
         >
-          Open in new tab
+          {t('openNewTab')}
         </Button>
         <Button
           size="sm"
@@ -125,7 +131,7 @@ function SqlProposal({
             actions.explain(sql);
           }}
         >
-          Explain
+          {t('explain')}
         </Button>
       </div>
     </section>

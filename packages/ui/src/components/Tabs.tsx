@@ -7,6 +7,7 @@ import { startTabDrag } from './tabDrag';
 import { TabTitleField } from './TabTitleField';
 import { useOverflowing } from './useOverflowing';
 import styles from './Navigation.module.css';
+import { t } from '../messages';
 
 type Tab = {
   id: string;
@@ -68,7 +69,7 @@ export function Tabs(props: Props): React.JSX.Element {
       <div
         ref={list}
         role="tablist"
-        aria-label="Workspace tabs"
+        aria-label={t('workspaceTabs')}
         className={styles.tabs}
       >
         {props.tabs.map((tab) => (
@@ -77,7 +78,7 @@ export function Tabs(props: Props): React.JSX.Element {
       </div>
       {overflowing && onOverflow && (
         <IconButton
-          aria-label="All tabs"
+          aria-label={t('allTabs')}
           aria-haspopup="menu"
           variant="ghost"
           size="sm"
@@ -90,7 +91,7 @@ export function Tabs(props: Props): React.JSX.Element {
         </IconButton>
       )}
       <IconButton
-        aria-label="New tab"
+        aria-label={t('newTab')}
         variant="ghost"
         size="sm"
         onClick={props.onAdd}
@@ -151,13 +152,13 @@ function DocumentTab({
         <TabButton tab={tab} active={active} owner={owner} />
       )}
       {tab.pinned ? (
-        <span className={styles.pin} aria-label="Pinned" role="img">
+        <span className={styles.pin} aria-label={t('pinned')} role="img">
           <Icon name="pin" />
         </span>
       ) : (
         <button
           type="button"
-          aria-label={`Close ${tab.label}`}
+          aria-label={t('closeLabel', { label: tab.label })}
           onClick={() => {
             owner.onClose(tab.id);
           }}

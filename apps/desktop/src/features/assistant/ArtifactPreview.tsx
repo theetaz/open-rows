@@ -8,6 +8,7 @@ import { reportHtml } from '../monitor/report/html';
 import styles from './Assistant.module.css';
 import { parseReport } from '../monitor/report/validate';
 import type { Report } from '../monitor/report/model';
+import { rich, t } from './lazyMessages';
 type Decision = 'pending' | 'accepted' | 'rejected';
 /** Native validated JSON stays a preview until an explicit user action. */
 export function ArtifactPreview(props: {
@@ -31,44 +32,45 @@ export function ArtifactPreview(props: {
       setExporting(true);
       return;
     }
-    setStatus('Saving…');
+    setStatus(t('saving'));
     void importBoard(props.connection, props.document).then(
       () => {
-        setStatus('Saved paused. Review and enable it in Monitor → Boards.');
+        setStatus(t('savedPausedReview'));
       },
       () => {
         setDecision('pending');
-        setStatus('Board could not be saved.');
+        setStatus(t('boardCouldNot'));
       },
     );
   };
-  const label = `${props.kind} proposal`;
+  const label = proposalLabel(props.kind);
   if (decision === 'rejected')
     return (
       <section aria-label={label} className={styles.proposal}>
-        <p role="status">Proposal rejected. Nothing was saved.</p>
+        <p role="status">{t('proposalRejectedNothing')}</p>
       </section>
     );
   return (
     <section aria-label={label} className={styles.proposal}>
       <p className={styles.question}>
-        {title(props.kind)} · validated against delivered evidence
-        {props.kind === 'finding' && ' · unverified model interpretation'}
+        {props.kind === 'finding'
+          ? t('kindValidatedAgainst', { kind: title(props.kind) })
+          : t('kindValidatedAgainstDelivered', { kind: title(props.kind) })}
       </p>
       {props.kind === 'finding' && <FindingView document={props.document} />}
       <details>
-        <summary>Document and evidence references</summary>
-        <p>Evidence ids: {props.evidence?.join(', ')}</p>
+        <summary>{t('documentEvidenceReferences')}</summary>
+        <p>
+          {rich('evidenceIdsEvidence', {
+            evidence: props.evidence?.join(', '),
+          })}
+        </p>
         <pre>{props.document}</pre>
       </details>
       {report && <ReportPreview report={report} />}
       {savable && (
         <Decision
-          label={
-            report
-              ? 'Accept and export report…'
-              : 'Accept and save paused board'
-          }
+          label={report ? t('acceptExportReport') : t('acceptSavePaused')}
           disabled={props.disabled || decision !== 'pending'}
           accept={accept}
           reject={() => {
@@ -101,21 +103,20 @@ function Decision(props: {
         {props.label}
       </Button>
       <Button size="sm" disabled={props.disabled} onClick={props.reject}>
-        Reject proposal
+        {t('rejectProposal')}
       </Button>
     </div>
   );
 }
 const REASONS: Record<Rejection, string> = {
-  invalidDocument: 'it does not match the board, report or finding schema',
-  wrongKind: 'its kind does not match the tool that was called',
-  citationCount: 'it must cite between 1 and 100 evidence ids',
-  unknownEvidence:
-    'it cites evidence that was not delivered in this investigation',
-  uncitedFinding: 'a finding cites evidence that the report does not include',
-  unsafeSql: "a board widget's SQL is not a validated read-only query",
-  invalidText: 'a title or interpretation is empty or too long',
-  tooLarge: 'it exceeds the document, finding or chart limits',
+  invalidDocument: t('doesNotMatch'),
+  wrongKind: t('kindDoesNot'),
+  citationCount: t('mustCiteBetween'),
+  unknownEvidence: t('citesEvidenceWas'),
+  uncitedFinding: t('findingCitesEvidence'),
+  unsafeSql: t('boardWidgetS'),
+  invalidText: t('titleInterpretationEmpty'),
+  tooLarge: t('exceedsDocumentFinding'),
 };
 /** A refused proposal; nothing was shown for acceptance. */
 export function ArtifactRejected(props: {
@@ -124,25 +125,33 @@ export function ArtifactRejected(props: {
 }): React.JSX.Element {
   return (
     <p role="alert" className={styles.proposal}>
-      {title(props.kind)} rejected: {REASONS[props.reason]}.
+      {t('kindRejectedReasons', {
+        kind: title(props.kind),
+        reason: REASONS[props.reason],
+      })}
     </p>
   );
 }
+function proposalLabel(kind: string): string {
+  if (kind === 'board') return t('boardProposalLabel');
+  if (kind === 'report') return t('reportProposalLabel');
+  return t('findingProposalLabel');
+}
 function title(kind: string): string {
-  if (kind === 'board') return 'Board proposal';
-  if (kind === 'report') return 'Report proposal';
-  return 'Health finding';
+  if (kind === 'board') return t('boardProposal');
+  if (kind === 'report') return t('reportProposal');
+  return t('healthFinding');
 }
 function FindingView(props: { document: string }): React.JSX.Element | null {
   const finding = useMemo(() => parseFinding(props.document), [props.document]);
   if (!finding) return null;
   return (
     <dl className={styles.finding}>
-      <dt>Interpretation</dt>
+      <dt>{t('interpretation')}</dt>
       <dd>{finding.interpretation}</dd>
-      <dt>Uncertainty</dt>
+      <dt>{t('uncertainty')}</dt>
       <dd>{finding.uncertainty}</dd>
-      <dt>Cites</dt>
+      <dt>{t('cites')}</dt>
       <dd>
         {finding.evidence.map((id) => (
           <code key={id} title={id} className={styles.evidence}>
@@ -195,7 +204,7 @@ function ReportPreview(props: { report: Report }): React.JSX.Element {
   const html = useMemo(() => reportHtml(props.report), [props.report]);
   return (
     <iframe
-      title="Report and chart preview"
+      title={t('reportChartPreview')}
       className={styles.reportPreview}
       sandbox=""
       srcDoc={html}

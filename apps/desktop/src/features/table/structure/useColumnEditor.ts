@@ -10,6 +10,7 @@ import type { InlineEdit } from './columnCells';
 import type { Cursor } from './StructureGrid';
 import type { MenuItem } from './ItemMenu';
 import type { Structure } from './useStructure';
+import { t } from '../messages/lazyStructure';
 
 type Shown = { row: ColumnRow; index: number };
 type Picker = 'dataType' | 'nullable' | 'default';
@@ -150,7 +151,7 @@ function pickerItems(
 ): MenuItem[] {
   if (name === 'nullable')
     return [true, false].map((nullable) => ({
-      label: nullable ? 'YES' : 'NO',
+      label: nullable ? t('yes') : t('no'),
       checked: row.nullable === nullable,
       run: () => {
         act.apply({ field: 'nullable', nullable });
@@ -165,18 +166,18 @@ function pickerItems(
           act.apply({ field: 'dataType', text: type });
         },
       })),
-      { label: 'Other type…', run: act.edit(2, false) },
+      { label: t('otherType'), run: act.edit(2, false) },
     ];
   return [
     {
-      label: 'No default',
+      label: t('noDefault'),
       checked: row.default === null,
       run: () => {
         act.apply({ field: 'default', default: { kind: 'none' } });
       },
     },
-    { label: 'SQL expression…', run: act.edit(5, false) },
-    { label: 'Text literal…', run: act.edit(5, true) },
+    { label: t('sqlExpression'), run: act.edit(5, false) },
+    { label: t('textLiteral2'), run: act.edit(5, true) },
     ...defaultPresets(act.engine).map((sql) => ({
       label: sql,
       checked: row.default === sql,

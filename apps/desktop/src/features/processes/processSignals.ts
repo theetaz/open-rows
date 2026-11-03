@@ -7,6 +7,7 @@ import type {
   ProcessSignalDto,
 } from '@openrows/ipc';
 import { processLabel } from './processModel';
+import { t } from './messages';
 
 /** A signal waiting for the in-app confirmation sheet. */
 export type PendingSignal = { process: ProcessDto; signal: ProcessSignalDto };
@@ -22,17 +23,19 @@ export function signalPrompt({
   const label = processLabel(process);
   const cancel = signal === 'cancelQuery';
   const effect = cancel
-    ? 'Its running statement stops with an error; the session stays connected.'
-    : 'Its session is disconnected and any open transaction is rolled back.';
+    ? t('runningStatementStops')
+    : t('sessionDisconnectedAny');
   const own = process.current
-    ? ' This is the connection this process list runs on; the list reconnects on its next refresh.'
+    ? [t('connectionProcessList')]
     : process.app
-      ? ' This is one of OpenRows’ own connections, possibly a query tab of yours.'
-      : '';
+      ? [t('oneOpenrowsOwn')]
+      : [];
   return {
-    title: cancel ? `Cancel the query of ${label}?` : `Kill ${label}?`,
-    message: effect + own,
-    action: cancel ? 'Cancel Query' : 'Kill Process',
+    title: cancel
+      ? t('cancelQueryLabel', { label })
+      : t('killLabel', { label }),
+    message: [effect, ...own].join(' '),
+    action: cancel ? t('cancelQuery') : t('killProcess'),
   };
 }
 
@@ -83,9 +86,7 @@ export function useProcessSignals(input: {
   };
   const request = (process: ProcessDto, signal: ProcessSignalDto): void => {
     if (input.readOnly) {
-      setError(
-        'This connection is read-only: cancelling queries and killing processes are disabled',
-      );
+      setError(t('connectionReadOnlyCancelling'));
       return;
     }
     const asked = { process, signal };

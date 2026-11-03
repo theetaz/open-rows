@@ -4,6 +4,7 @@ import { Icon, IconButton } from '@openrows/ui';
 import { fromNative, NATIVE_TYPE, toNative } from './temporal';
 import type { TemporalKind } from './temporal';
 import styles from './Inline.module.css';
+import { t } from '../messages/lazyData';
 
 type Props = {
   kind: TemporalKind;
@@ -49,8 +50,12 @@ export function TemporalPicker({
         ref={openerRef ?? null}
         size="sm"
         variant="ghost"
-        aria-label={`Pick ${kind === 'time' ? 'time' : 'date'} for ${name}`}
-        title={kind === 'time' ? 'Pick a time' : 'Pick a date'}
+        aria-label={
+          kind === 'time'
+            ? t('pickTimeName', { name })
+            : t('pickDateName', { name })
+        }
+        title={kind === 'time' ? t('pickTime') : t('pickDate')}
         onMouseDown={(event) => {
           // Keep focus (and any typing) in the value box.
           event.preventDefault();
@@ -71,7 +76,7 @@ export function TemporalPicker({
         type={NATIVE_TYPE[kind]}
         step={kind === 'date' ? undefined : 'any'}
         tabIndex={-1}
-        aria-label={`Choose ${kind} for ${name}`}
+        aria-label={t('chooseKindName', { kind, name })}
         className={styles.native}
         onChange={(event) => {
           const text = fromNative(event.target.value, props.value, kind);

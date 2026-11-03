@@ -3,6 +3,7 @@ import { Icon, IconButton } from '@openrows/ui';
 import { toggleFavourite, useSidebarObjects } from './sidebarStore';
 import { sidebarObjectKey } from './sidebarIdentity';
 import type { SidebarObject } from './sidebarIdentity';
+import { t } from './messages';
 
 /**
  * Shared favourite control: the address bar's star (`className` styles it)
@@ -23,7 +24,7 @@ export function FavouriteButton(props: {
   const starred = saved.favourites.some(
     (item) => sidebarObjectKey(item) === key,
   );
-  const label = starred ? 'Remove favourite' : 'Add favourite';
+  const label = starred ? t('removeFavourite') : t('addFavourite');
   if (props.menu)
     return (
       <button

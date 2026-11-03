@@ -11,6 +11,7 @@ import { SqlViewer } from '../table/structure/SqlViewer';
 import { useInspection } from './useInspection';
 import type { InspectionTarget } from './target';
 import styles from './Inspection.module.css';
+import { t } from './messages';
 
 /** Lazy, read-only object metadata with optional definition export. */
 export function InspectionTab(props: {
@@ -27,9 +28,9 @@ export function InspectionTab(props: {
     revision: (props.revision ?? 0) + refresh,
   });
   return (
-    <section className={styles.viewer} aria-label="Object inspection">
+    <section className={styles.viewer} aria-label={t('objectInspection')}>
       <header className={styles.header}>
-        <span>Read-only</span>
+        <span>{t('readOnly')}</span>
         <Button
           size="sm"
           variant="ghost"
@@ -38,15 +39,15 @@ export function InspectionTab(props: {
             setReload((count) => count + 1);
           }}
         >
-          Reload
+          {t('reload')}
         </Button>
       </header>
       {!props.connected ? (
-        <p role="status">Connect to inspect this object.</p>
+        <p role="status">{t('connectInspectObject')}</p>
       ) : resource.status === 'error' ? (
         <p role="alert">{resource.message}</p>
       ) : resource.status !== 'ready' ? (
-        <p role="status">Loading object…</p>
+        <p role="status">{t('loadingObject')}</p>
       ) : (
         <Detail
           detail={resource.data}
@@ -91,7 +92,7 @@ function Attributes(props: {
       {props.attributes.map((attribute) => (
         <div key={attribute.name}>
           <dt>{attribute.name}</dt>
-          <dd>{attribute.value ?? 'Unavailable'}</dd>
+          <dd>{attribute.value ?? t('unavailable')}</dd>
         </div>
       ))}
     </dl>
@@ -118,14 +119,14 @@ function DetailTable(props: { section: DetailSectionDto }): React.JSX.Element {
             {section.rows.map((row, index) => (
               <tr key={index}>
                 {section.columns.map((column, cell) => (
-                  <td key={column}>{row[cell] ?? 'Unavailable'}</td>
+                  <td key={column}>{row[cell] ?? t('unavailable')}</td>
                 ))}
               </tr>
             ))}
           </tbody>
         </table>
       ) : (
-        <p>No {section.name.toLowerCase()}</p>
+        <p>{t('noName', { name: section.name.toLowerCase() })}</p>
       )}
     </section>
   );
@@ -148,10 +149,10 @@ function Definition(props: {
   };
   return (
     <section className={styles.section}>
-      <h2>Definition</h2>
+      <h2>{t('definition')}</h2>
       <div className={styles.actions}>
         <Button size="sm" variant="ghost" onClick={copy}>
-          Copy DDL
+          {t('copyDdl')}
         </Button>
         <Button
           size="sm"
@@ -160,11 +161,11 @@ function Definition(props: {
             props.onOpenSql(props.sql);
           }}
         >
-          Open in Editor
+          {t('openEditor')}
         </Button>
       </div>
       {error && <p role="alert">{error}</p>}
-      <SqlViewer sql={props.sql} label="Object definition SQL" />
+      <SqlViewer sql={props.sql} label={t('objectDefinitionSql')} />
     </section>
   );
 }

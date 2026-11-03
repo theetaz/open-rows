@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { pipelineStages } from './pipelineStages';
+import { t } from './lazyMessages';
 /** Validate a JSON pipeline and build a bounded read-only stage preview. */
 export function pipelineQuery(
   collection: string,
@@ -8,7 +9,7 @@ export function pipelineQuery(
 ): string {
   const stages: unknown = JSON.parse(text);
   if (!Array.isArray(stages) || stages.length > 100)
-    throw new Error('Use a JSON array of at most 100 stages.');
+    throw new Error(t('useJsonArray'));
   if (
     !stages.every(
       (stage: unknown) =>
@@ -18,13 +19,11 @@ export function pipelineQuery(
         Object.keys(stage).length === 1,
     )
   )
-    throw new Error('Each stage must be an object with one operator.');
+    throw new Error(t('eachStageMust'));
   const selected: unknown[] =
     through === undefined ? stages : stages.slice(0, through + 1);
   if (through !== undefined && containsWrite(selected))
-    throw new Error(
-      'Stage previews cannot contain $out, $merge or server JavaScript.',
-    );
+    throw new Error(t('stagePreviewsCannot'));
   const source = pipelineStages(text);
   const sampled =
     through === undefined

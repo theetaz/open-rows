@@ -16,6 +16,7 @@ import type { ObjectRef } from './catalog';
 import type { Catalog } from './useCatalog';
 import type { Resource } from './useResources';
 import { shortType } from './shortType';
+import { t } from './messages';
 
 const CollectionIndexes = lazy(() =>
   import('./CollectionIndexes').then((module) => ({
@@ -145,7 +146,7 @@ const columnTitle = (column: TableColumnDto): string =>
   [
     column.name,
     column.dataType,
-    column.primaryKey ? 'primary key' : '',
+    column.primaryKey ? t('primaryKeyTitle') : '',
     column.nullable ? '' : 'NOT NULL',
     column.comment ?? '',
   ]
@@ -167,8 +168,9 @@ function ColumnRows(props: {
       </TreeNote>
     );
   if (columns.status !== 'ready')
-    return <TreeNote level={2}>Loading columns…</TreeNote>;
-  if (!columns.data.length) return <TreeNote level={2}>No columns</TreeNote>;
+    return <TreeNote level={2}>{t('loadingColumns')}</TreeNote>;
+  if (!columns.data.length)
+    return <TreeNote level={2}>{t('noColumns')}</TreeNote>;
   return (
     <>
       {columns.data.map((column) => {
@@ -176,7 +178,14 @@ function ColumnRows(props: {
         return (
           <TreeNode
             key={column.name}
-            label={`${column.name} ${column.dataType}${column.primaryKey ? ', primary key' : ''}`}
+            label={
+              column.primaryKey
+                ? t('nameDatatypePrimary', {
+                    name: column.name,
+                    dataType: column.dataType,
+                  })
+                : `${column.name} ${column.dataType}`
+            }
             level={2}
             selected={context.selected === id}
             tabStop={context.tabStop === id}

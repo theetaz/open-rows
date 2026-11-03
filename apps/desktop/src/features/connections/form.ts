@@ -43,6 +43,7 @@ import type {
   TlsModeDto,
   UrlDraft,
 } from '@openrows/ipc';
+import { t } from './messages/profile';
 
 /** How the password is handled on save; the value never comes back from the core. */
 export type PasswordMode = 'keep' | 'set' | 'clear';
@@ -232,7 +233,10 @@ export function withEnvironment(draft: Draft, kind: EnvKindDto): Draft {
 /** Why a parsed URL cannot fill this form, or `null` when it can. */
 export function urlConflict(draft: Draft, parsed: UrlDraft): string | null {
   if (!draft.engineLocked || parsed.engine === draft.engine) return null;
-  return `This is a ${engineName(parsed.engine)} URL; the connection uses ${engineName(draft.engine)}`;
+  return t('engineUrlConnection', {
+    engine: engineName(parsed.engine),
+    engine2: engineName(draft.engine),
+  });
 }
 
 /** The last path component, e.g. `app` for `/data/app.sqlite`. */
@@ -299,17 +303,17 @@ export function withPassword(draft: Draft, value: string): Draft {
 function filePathError(draft: Draft): string | undefined {
   const path = draft.filePath.trim();
   if (draft.fileMemory) return undefined;
-  if (!path) return 'Choose a database file';
-  return path.startsWith('/') ? undefined : 'Use an absolute path';
+  if (!path) return t('chooseDatabaseFile2');
+  return path.startsWith('/') ? undefined : t('useAbsolutePath');
 }
 
 function validateFile(draft: Draft): DraftErrors {
   const errors: DraftErrors = {};
   const pathError = filePathError(draft);
-  if (!draft.name.trim()) errors.name = 'Name is required';
+  if (!draft.name.trim()) errors.name = t('nameRequired');
   if (pathError) errors.filePath = pathError;
   if (draft.envKind === 'custom' && !draft.envLabel.trim())
-    errors.envLabel = 'Label is required';
+    errors.envLabel = t('labelRequired');
   return errors;
 }
 
@@ -317,18 +321,18 @@ export function validate(draft: Draft): DraftErrors {
   if (isFileEngine(draft.engine)) return validateFile(draft);
   const errors: DraftErrors = {};
   const port = Number(draft.port);
-  if (!draft.name.trim()) errors.name = 'Name is required';
-  if (!draft.host.trim()) errors.host = 'Host is required';
+  if (!draft.name.trim()) errors.name = t('nameRequired');
+  if (!draft.host.trim()) errors.host = t('hostRequired');
   if (!Number.isInteger(port) || port < 1 || port > 65535)
-    errors.port = 'Port must be 1–65535';
+    errors.port = t('portMust1');
   if (
     !['libsql', 'mongodb'].includes(draft.engine) &&
     !tokenLoginWithoutUser(draft) &&
     !draft.user.trim()
   )
-    errors.user = 'User is required';
+    errors.user = t('userRequired');
   if (draft.envKind === 'custom' && !draft.envLabel.trim())
-    errors.envLabel = 'Label is required';
+    errors.envLabel = t('labelRequired');
   const cloudError = helperError(
     draft.helper,
     draft.ssh.enabled || draft.proxy.enabled || draft.host.startsWith('/'),

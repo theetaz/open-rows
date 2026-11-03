@@ -2,6 +2,7 @@
 //! "Add a file…" for a staged field: Rust shows the native open panel and reads the
 //! picked file, so the webview never holds file-system permissions or chooses paths.
 use crate::connections::{IpcError, IpcErrorKind};
+use crate::native_text;
 use serde::Deserialize;
 use specta::Type;
 use std::fmt::Write as _;
@@ -105,7 +106,7 @@ pub(crate) async fn table_edit_file(
         .dialog()
         .file()
         .set_parent(&window)
-        .set_title("Add a file")
+        .set_title(native_text::ADD_FILE)
         .pick_file(move |picked| {
             // The receiver only disappears when the command was dropped.
             let _ = sender.send(picked);

@@ -6,6 +6,7 @@ import { rankPaletteItems } from '../search/paletteResults';
 import { HighlightText } from './HighlightText';
 import { PalettePopover } from './PalettePopover';
 import styles from './Palette.module.css';
+import { t } from '../messages';
 /** Presentation descriptor for a searchable command or object. */
 export type PaletteItem = {
   id: string;
@@ -68,7 +69,7 @@ export function Palette(props: Props): React.JSX.Element {
               option ? `${id}-${option.item.id}` : undefined
             }
             value={query}
-            placeholder="Type to search…"
+            placeholder={t('typeSearch')}
             onChange={(event) => {
               setQuery(event.target.value);
               setSelected('');
@@ -94,7 +95,7 @@ export function Palette(props: Props): React.JSX.Element {
             onSelect={setSelected}
             onChoose={dismiss}
           />
-          {!results.length && <p role="status">No matches</p>}
+          {!results.length && <p role="status">{t('noMatches')}</p>}
           {props.footer}
         </>
       )}
@@ -136,7 +137,7 @@ function PaletteOptions(props: {
       id={id}
       ref={list}
       role="listbox"
-      aria-label="Results"
+      aria-label={t('results')}
       className={styles.results}
     >
       {results.map(({ item, indices }, position) => (

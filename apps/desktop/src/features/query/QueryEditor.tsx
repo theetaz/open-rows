@@ -23,6 +23,7 @@ import type { CursorStore } from './cursor';
 import type { EditorSettings, KeyBinding } from './editorSettings';
 import type { EditorHandle } from './request';
 import styles from './Query.module.css';
+import { t } from './lazyMessages';
 
 /** Editor text reaches the tab descriptor at most every 300 ms and on unmount. */
 const SAVE_DELAY_MS = 300;
@@ -244,7 +245,7 @@ function inlineFor(latest: RefObject<Props>): InlineTransport {
       const transport = latest.current.onInline;
       return transport
         ? transport.generate(input)
-        : Promise.reject(new Error('Inline generation unavailable.'));
+        : Promise.reject(new Error(t('inlineGenerationUnavailable')));
     },
     blocked: () => latest.current.onInline?.blocked?.() ?? null,
   };

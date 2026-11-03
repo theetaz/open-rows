@@ -6,6 +6,7 @@ import { isCliProvider, isLocalProvider, PROVIDER_KINDS } from './aiSettings';
 import { ProviderFields } from './ProviderFields';
 import { saveProvider } from './aiActions';
 import styles from './Ai.module.css';
+import { t } from '../messages/lazyAi';
 
 type Props = {
   initial: ProviderConfig | null;
@@ -37,12 +38,9 @@ function KeyChoice(props: {
             props.onChange(event.target.checked);
           }}
         />{' '}
-        Enter an API key after saving
+        {t('enterApiKey')}
       </label>
-      <p className={styles.notice}>
-        The key is typed into a secure system dialog and goes straight to the OS
-        keychain. This window never receives it.
-      </p>
+      <p className={styles.notice}>{t('keyTypedInto')}</p>
     </>
   );
 }
@@ -71,9 +69,7 @@ export function ProviderForm(props: Props): React.JSX.Element {
       props.onSaved();
     } catch (failure) {
       setError(
-        failure instanceof Error
-          ? failure.message
-          : 'Provider could not be saved.',
+        failure instanceof Error ? failure.message : t('providerCouldNot'),
       );
     } finally {
       setBusy(false);
@@ -81,7 +77,7 @@ export function ProviderForm(props: Props): React.JSX.Element {
   };
   return (
     <form
-      aria-label={props.initial ? 'Edit AI provider' : 'Add AI provider'}
+      aria-label={props.initial ? t('editAiProvider') : t('addAiProvider')}
       className={styles.form}
       onSubmit={(event) => {
         event.preventDefault();
@@ -95,10 +91,10 @@ export function ProviderForm(props: Props): React.JSX.Element {
       {error && <p role="alert">{error}</p>}
       <div className={styles.actions}>
         <Button type="submit" disabled={busy}>
-          {busy ? 'Saving…' : 'Save provider'}
+          {busy ? t('saving') : t('saveProvider')}
         </Button>
         <Button type="button" disabled={busy} onClick={props.onCancel}>
-          Cancel
+          {t('cancel')}
         </Button>
       </div>
     </form>

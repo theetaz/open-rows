@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@openrows/ui';
 import { cancelAiVerification, signInCodex } from '@openrows/ipc';
 import styles from './Ai.module.css';
+import { t } from '../messages/lazyAi';
 type SignIn = {
   url: string;
   busy: boolean;
@@ -26,11 +27,10 @@ function useCodexSignIn(id: string, onDone: () => void): SignIn {
     setFailure('');
     try {
       const status = await signInCodex(id, setUrl);
-      if (status.state !== 'signedIn')
-        setFailure('Codex did not report a signed-in account.');
+      if (status.state !== 'signedIn') setFailure(t('codexDidNot'));
       onDone();
     } catch {
-      setFailure('Sign-in was cancelled, timed out or failed in Codex.');
+      setFailure(t('signWasCancelled'));
     } finally {
       setBusy(false);
     }
@@ -54,7 +54,7 @@ export function CodexSignIn(props: {
             void start();
           }}
         >
-          Sign in with ChatGPT
+          {t('signChatgpt')}
         </Button>
         {busy && (
           <Button
@@ -63,15 +63,13 @@ export function CodexSignIn(props: {
               void cancelAiVerification(props.id).catch(() => undefined);
             }}
           >
-            Cancel sign-in
+            {t('cancelSign')}
           </Button>
         )}
       </div>
       {busy && (
         <p role="status">
-          {url
-            ? 'Finish signing in in your browser. If it did not open, visit:'
-            : 'Starting Codex sign-in…'}
+          {url ? t('finishSigningBrowser') : t('startingCodexSign')}
           {url && <code className={styles.link}>{url}</code>}
         </p>
       )}

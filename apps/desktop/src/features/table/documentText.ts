@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { CellValue } from './cellValue';
+import { t } from './messages/lazyData';
 
 /**
  * Why `text` cannot be staged as a MongoDB document: it must parse as one
@@ -10,9 +11,9 @@ export function documentError(text: string): string | null {
     const value: unknown = JSON.parse(text);
     return value !== null && typeof value === 'object' && !Array.isArray(value)
       ? null
-      : 'Use a JSON/EJSON object.';
+      : t('useJsonEjson');
   } catch {
-    return 'Enter valid JSON/EJSON. Extended types use $oid, $date and $numberLong.';
+    return t('enterValidJson');
   }
 }
 

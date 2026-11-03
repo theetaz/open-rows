@@ -2,6 +2,7 @@
 import { lazy, Suspense } from 'react';
 import type { AssistantProps } from './context';
 import { useConversation } from './conversation';
+import { t } from './lazyMessages';
 const Panel = lazy(() =>
   import('./AssistantPanel').then((module) => ({
     default: module.AssistantPanel,
@@ -14,7 +15,7 @@ const Panel = lazy(() =>
 export function AssistantDock(props: AssistantProps): React.JSX.Element | null {
   const conversation = useConversation(props.tabId);
   return conversation.open ? (
-    <Suspense fallback={<p>Loading assistant…</p>}>
+    <Suspense fallback={<p>{t('loadingAssistant')}</p>}>
       <Panel {...props} />
     </Suspense>
   ) : null;

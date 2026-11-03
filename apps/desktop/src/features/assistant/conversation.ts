@@ -2,6 +2,10 @@
 import { useSyncExternalStore } from 'react';
 import { cancelAssistant, runAssistant } from '@openrows/ipc';
 import type { AgentEvent, AssistantRequest, Trace } from '@openrows/ipc';
+import { t } from './messages';
+
+/** The label of a turn that has not finished. */
+export const RUNNING_OUTCOME = t('running');
 /** In-memory conversation; no payload or answer is persisted with tab descriptors. */
 type Conversation = {
   open: boolean;
@@ -67,7 +71,7 @@ export function cancelConversation(id: string): void {
   const state = conversationOf(id);
   if (!state.running) return;
   void cancelAssistant(state.running).catch(() => undefined);
-  finish(id, state.running, 'Cancelled');
+  finish(id, state.running, t('cancelled'));
 }
 function finish(id: string, run: string, outcome: string): void {
   const state = conversationOf(id);
@@ -105,7 +109,11 @@ function receive(id: string, run: string, event: AgentEvent): void {
   const state = conversationOf(id);
   if (state.running !== run) return;
   if (event.type === 'done') {
-    finish(id, run, `Completed · ≤ ${String(event.tokens)} tokens`);
+    finish(
+      id,
+      run,
+      t('completedTokensTokens', { tokens: String(event.tokens) }),
+    );
     return;
   }
   update(id, {
@@ -181,7 +189,7 @@ export async function sendQuestion(
     rejections: [],
     traces: [],
     confirmations: [],
-    outcome: 'Running',
+    outcome: RUNNING_OUTCOME,
   };
   update(id, {
     ...state,
@@ -192,12 +200,12 @@ export async function sendQuestion(
     await runAssistant(request, (event) => {
       receive(id, request.id, event);
     });
-    finish(id, request.id, 'Completed');
+    finish(id, request.id, t('completed'));
   } catch (error) {
     finish(
       id,
       request.id,
-      error instanceof Error ? error.message : 'Assistant failed',
+      error instanceof Error ? error.message : t('assistantFailed'),
     );
   }
 }

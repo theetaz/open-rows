@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { isNumberText } from '../../../results/copy/sql';
 import type { CopyTable } from '../../../results/copy/formats';
+import { t } from '../messages/lazyData';
 
 /** Numeric statistics over the non-NULL selected values. */
 type Numeric = { sum: number; avg: number; min: number; max: number };
@@ -61,16 +62,16 @@ const format = (value: number): string =>
 
 /** `Count: 4 · Sum: 10 · Avg: 2.5 · Min: 1 · Max: 4`, or count and distinct. */
 export function aggregateText(result: Aggregate): string {
-  const parts = [`Count: ${format(result.count)}`];
+  const parts = [t('countCount', { count: format(result.count) })];
   if (result.numeric) {
     const { sum, avg, min, max } = result.numeric;
     parts.push(
-      `Sum: ${format(sum)}`,
-      `Avg: ${format(avg)}`,
-      `Min: ${format(min)}`,
-      `Max: ${format(max)}`,
+      t('sumSum', { sum: format(sum) }),
+      t('avgAvg', { avg: format(avg) }),
+      t('minMin', { min: format(min) }),
+      t('maxMax', { max: format(max) }),
     );
   } else if (result.distinct !== null)
-    parts.push(`Distinct: ${format(result.distinct)}`);
+    parts.push(t('distinctDistinct', { distinct: format(result.distinct) }));
   return parts.join(' · ');
 }

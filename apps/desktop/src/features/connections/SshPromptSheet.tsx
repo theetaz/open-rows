@@ -5,6 +5,7 @@ import { Sheet, SheetActions } from '@openrows/ui/sheet';
 import type { SshPromptAnswer, SshPromptDto } from '@openrows/ipc';
 import { useSshPrompt } from './useSshPrompt';
 import styles from './ConnectionSheet.module.css';
+import { t } from './messages/routes';
 
 type HostKey = Extract<SshPromptDto, { kind: 'hostKey' }>;
 type Challenge = Extract<SshPromptDto, { kind: 'challenge' }>;
@@ -33,30 +34,26 @@ function HostKeySheet(props: {
     prompt.port === 22 ? prompt.host : `${prompt.host}:${String(prompt.port)}`;
   return (
     <Sheet
-      title="Trust this SSH server?"
+      title={t('trustSshServer')}
       size="alert"
       onClose={() => {
         answer(cancel);
       }}
     >
       <div className={styles.form}>
-        <p>
-          {`OpenRows has not connected to ${address} before. Compare the fingerprint with the one your administrator gave you before trusting it.`}
-        </p>
+        <p>{t('openrowsNotConnected', { address })}</p>
         <p className={styles.fingerprint}>
           <span>{prompt.algorithm}</span>
           <code>{prompt.fingerprint}</code>
         </p>
         {prompt.otherAlgorithms.length > 0 && (
           <p className={styles.error} role="alert">
-            {`This server is already known with a ${prompt.otherAlgorithms.join(', ')} key. A new key type can mean the connection is being intercepted.`}
+            {t('serverAlreadyKnown', {
+              otherAlgorithms: prompt.otherAlgorithms.join(', '),
+            })}
           </p>
         )}
-        <small className={styles.note}>
-          Trusted keys are saved in OpenRows' own known_hosts file. Connect once
-          does not save the key, and the connection is marked as not secure
-          until it closes.
-        </small>
+        <small className={styles.note}>{t('trustedKeysSaved')}</small>
       </div>
       <SheetActions>
         <Button
@@ -64,14 +61,14 @@ function HostKeySheet(props: {
             answer(cancel);
           }}
         >
-          Cancel
+          {t('cancel')}
         </Button>
         <Button
           onClick={() => {
             answer({ kind: 'trustOnce' });
           }}
         >
-          Connect once
+          {t('connectOnce')}
         </Button>
         <Button
           variant="primary"
@@ -79,7 +76,7 @@ function HostKeySheet(props: {
             answer({ kind: 'trust' });
           }}
         >
-          Trust and connect
+          {t('trustConnect')}
         </Button>
       </SheetActions>
     </Sheet>
@@ -87,7 +84,7 @@ function HostKeySheet(props: {
 }
 
 const promptLabel = (text: string): string =>
-  text.trim().replace(/:$/, '') || 'Response';
+  text.trim().replace(/:$/, '') || t('response');
 
 /** Keyboard-interactive questions: passwords, one-time codes, other MFA. */
 function ChallengeSheet(props: {
@@ -96,7 +93,7 @@ function ChallengeSheet(props: {
 }): React.JSX.Element {
   const { prompt, answer } = props;
   const [values, setValues] = useState(() => prompt.prompts.map(() => ''));
-  const title = prompt.name.trim() || 'SSH authentication';
+  const title = prompt.name.trim() || t('sshAuthentication');
   return (
     <Sheet
       title={title}
@@ -138,10 +135,10 @@ function ChallengeSheet(props: {
               answer(cancel);
             }}
           >
-            Cancel
+            {t('cancel')}
           </Button>
           <Button type="submit" variant="primary">
-            Continue
+            {t('continue')}
           </Button>
         </SheetActions>
       </form>

@@ -17,6 +17,7 @@ use super::plan::{BackupPlan, backup_command, shown};
 use super::tools::{Overrides, Resolved, resolve};
 use super::{DumpJobs, Scope, blocking, dump_error, endpoint, engine_tools, scope};
 use crate::connections::{Connections, IpcError, IpcErrorKind};
+use crate::native_text;
 use crate::settings::{SettingsFile, current};
 
 /// Resolve `kinds` for `server` with the Settings ▸ Tools paths (blocking probes).
@@ -153,7 +154,7 @@ pub(crate) async fn dump_backup_pick(
         .dialog()
         .file()
         .set_parent(&window)
-        .set_title("Back Up Database")
+        .set_title(native_text::BACK_UP_DATABASE)
         .set_can_create_directories(true);
     panel = match extension {
         Some(extension) => panel

@@ -21,6 +21,7 @@ import { TriggersSheet } from './TriggersSheet';
 import type { Structure } from './useStructure';
 import tableStyles from '../Table.module.css';
 import styles from './Structure.module.css';
+import { t, tn } from '../messages/lazyStructure';
 
 /** The pending-changes bar model of staged structure changes. */
 function schemaEditBar(structure: Structure): EditBarModel {
@@ -30,8 +31,8 @@ function schemaEditBar(structure: Structure): EditBarModel {
   return {
     count,
     note: history.uncertain
-      ? 'Commit status unknown; reload before editing.'
-      : `${String(count)} staged structure ${count === 1 ? 'change' : 'changes'}`,
+      ? t('commitStatusUnknown')
+      : tn('countStagedStructureChanges', count, { count: String(count) }),
     canUndo: history.past.length > 0,
     canRedo: history.future.length > 0,
     uncertain: Boolean(history.uncertain),
@@ -47,7 +48,7 @@ function schemaEditBar(structure: Structure): EditBarModel {
       <div
         id={id}
         className={tableStyles.stagedRows}
-        aria-label="Staged changes"
+        aria-label={t('stagedChanges')}
       >
         {history.current.map((item) => (
           <div key={item.id}>
@@ -59,7 +60,7 @@ function schemaEditBar(structure: Structure): EditBarModel {
                 schema.unstage(item.id);
               }}
             >
-              Remove
+              {t('remove')}
             </Button>
           </div>
         ))}
@@ -87,7 +88,7 @@ export function StructurePane({
   if (detail.status !== 'ready')
     return (
       <p role="status" className={styles.note}>
-        Loading structure…
+        {t('loadingStructure')}
       </p>
     );
   return (

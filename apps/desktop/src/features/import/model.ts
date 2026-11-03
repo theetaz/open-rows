@@ -10,6 +10,7 @@ import type {
   TableColumnDto,
   TransactionDto,
 } from '@openrows/ipc';
+import { t } from './messages';
 
 /** Where the import writes: a connected database and schema, maybe a table. */
 export type ImportContext = {
@@ -165,26 +166,26 @@ function newColumns(draft: ImportDraft): ImportMappingDto[] {
 
 /** Why the draft cannot run yet; `null` when it can. */
 export function draftProblem(draft: ImportDraft): string | null {
-  if (!draft.file || !draft.options) return 'Choose a file to import.';
-  if (!draft.table.trim()) return 'Enter the table name.';
+  if (!draft.file || !draft.options) return t('chooseFileImport');
+  if (!draft.table.trim()) return t('enterTableName');
   const batch = Number(draft.batchSize);
   if (!Number.isInteger(batch) || batch < 1 || batch > MAX_BATCH)
-    return `Rows per batch must be between 1 and ${MAX_BATCH.toLocaleString()}.`;
+    return t('rowsPerBatchMust', { maxBatch: MAX_BATCH.toLocaleString() });
   if (draft.target === 'new') return newTableProblem(draft);
-  if (existingColumns(draft).length === 0) return 'Map at least one column.';
+  if (existingColumns(draft).length === 0) return t('mapLeastOne');
   if (draft.conflict !== 'error' && draft.key.length === 0)
-    return 'Choose the key columns that identify existing rows.';
+    return t('chooseKeyColumns');
   return null;
 }
 
 function newTableProblem(draft: ImportDraft): string | null {
   const included = draft.columns.filter((column) => column.include);
-  if (included.length === 0) return 'Include at least one column.';
+  if (included.length === 0) return t('includeLeastOne');
   const names = included.map((column) => column.name.trim());
-  if (names.some((name) => !name)) return 'Every column needs a name.';
-  if (new Set(names).size !== names.length) return 'Column names must differ.';
+  if (names.some((name) => !name)) return t('everyColumnNeeds');
+  if (new Set(names).size !== names.length) return t('columnNamesMust');
   if (included.some((column) => !column.type.trim()))
-    return 'Every column needs a type.';
+    return t('everyColumnNeedsType');
   return null;
 }
 

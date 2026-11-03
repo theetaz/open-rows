@@ -3,6 +3,7 @@ import { themeTokenKeys } from '@openrows/ui';
 import { light, dark } from '@openrows/ui/tokens';
 import type { ThemeDefinition } from '@openrows/ui';
 import styles from './Appearance.module.css';
+import { t } from './messages';
 
 /** Optional safe foreground/state tokens keep edit-state labels and glyphs intact. */
 export function ThemeTokenEditor({
@@ -17,7 +18,7 @@ export function ThemeTokenEditor({
   const palette = mode === 'light' ? light : dark;
   return (
     <details>
-      <summary>Syntax and edit-state colours</summary>
+      <summary>{t('syntaxEditState')}</summary>
       <SyntaxPreview draft={draft} mode={mode} />
       {themeTokenKeys.map((key) => (
         <label className={styles.colorField} key={key}>
@@ -67,7 +68,7 @@ function SyntaxPreview({
             draft[mode].tokens?.['syntax-keyword'] ?? palette['syntax-keyword'],
         }}
       >
-        SELECT
+        {t('select')}
       </span>{' '}
       <span
         style={{
@@ -75,7 +76,7 @@ function SyntaxPreview({
             draft[mode].tokens?.['syntax-string'] ?? palette['syntax-string'],
         }}
       >
-        'example'
+        {t('example')}
       </span>{' '}
       <span
         style={{
@@ -83,7 +84,7 @@ function SyntaxPreview({
             draft[mode].tokens?.['syntax-comment'] ?? palette['syntax-comment'],
         }}
       >
-        -- preview
+        {t('preview')}
       </span>
     </p>
   );

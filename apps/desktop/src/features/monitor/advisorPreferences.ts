@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useState } from 'react';
+import { t } from './messages/lazyInvestigation';
 
 type Preferences = Record<string, number>;
 function read(key: string): Preferences {
@@ -38,9 +39,7 @@ export function useAdvisorPreferences(scope: string): {
       localStorage.setItem(key, JSON.stringify(next));
       setError(null);
     } catch {
-      setError(
-        'Dismissal applies for this view; local storage is unavailable.',
-      );
+      setError(t('dismissalAppliesView'));
     }
   };
   return {

@@ -21,6 +21,7 @@ import { CreateMenu } from './CreateMenu';
 import type { ObjectEditing } from './useObjectEditing';
 import { copyLink, isLinkable, objectLink } from '../links/linkText';
 import styles from './Sidebar.module.css';
+import { t } from './messages';
 
 /** Copy the link of a schema of the active connection's `database`. */
 function schemaLinkCopier(
@@ -48,10 +49,11 @@ function linkCopier(
 }
 
 /** The sidebar's views: catalog objects, saved queries and history. */
-const sidebarSegments = ['Items', 'Queries', 'History'].map((label) => ({
-  value: label,
-  label,
-}));
+const sidebarSegments = [
+  { value: 'Items', label: t('items') },
+  { value: 'Queries', label: t('queries') },
+  { value: 'History', label: t('history') },
+];
 type Props = SidebarQueryProps & {
   catalog: Catalog;
   jobs?: JobActions;
@@ -100,7 +102,7 @@ export function WorkspaceSidebar(props: Props): React.JSX.Element {
     <div {...keyboard} className={styles.container}>
       <GlassPanel className={styles.sidebar}>
         <SegmentedControl
-          aria-label="Sidebar mode"
+          aria-label={t('sidebarMode')}
           options={sidebarSegments}
           value={segment}
           onValueChange={setSegment}
@@ -110,7 +112,7 @@ export function WorkspaceSidebar(props: Props): React.JSX.Element {
         <TextField
           controlSize="search"
           leadingIcon={<Icon name="search" />}
-          aria-label="Search items"
+          aria-label={t('searchItems')}
           placeholder={searchPlaceholder(segment)}
           trailing={segment === 'Items' && <SidebarFilters catalog={catalog} />}
           value={search}
@@ -164,8 +166,8 @@ export function WorkspaceSidebar(props: Props): React.JSX.Element {
 }
 
 const searchPlaceholder = (segment: string): string => {
-  if (segment === 'History') return 'Search history…';
-  return segment === 'Queries' ? 'Search queries…' : 'Search tables, views…';
+  if (segment === 'History') return t('searchHistory');
+  return segment === 'Queries' ? t('searchQueries') : t('searchTablesViews');
 };
 
 /** An object's context menu and the `+` create menu, when open. */

@@ -6,6 +6,7 @@ import { imageMime } from './valueKinds';
 import type { ImageMime } from './valueKinds';
 import { HEX_SHOWN_BYTES, formatBytes } from './valueFormat';
 import styles from './Value.module.css';
+import { t } from './messages';
 
 /** Binary bytes: an image preview when the magic bytes name an image, and the hex view. */
 export function BinaryValue({
@@ -26,10 +27,10 @@ function ImageOrHex(props: {
   return (
     <>
       <SegmentedControl
-        aria-label="Binary view"
+        aria-label={t('binaryView')}
         options={[
-          { value: 'image', label: 'Image' },
-          { value: 'hex', label: 'Hex' },
+          { value: 'image', label: t('image') },
+          { value: 'hex', label: t('hex') },
         ]}
         value={view}
         onValueChange={(value) => {
@@ -50,13 +51,15 @@ function HexView({ bytes }: { bytes: Uint8Array }): React.JSX.Element {
   const dump = useMemo(() => hexDump(bytes, HEX_SHOWN_BYTES), [bytes]);
   return (
     <>
-      <pre className={styles.hex} aria-label="Hex dump">
+      <pre className={styles.hex} aria-label={t('hexDump')}>
         {dump.text}
       </pre>
       {dump.shown < bytes.length && (
         <p className={styles.note}>
-          Showing the first {formatBytes(dump.shown)} of{' '}
-          {formatBytes(bytes.length)}.
+          {t('showingFirstShown', {
+            shown: formatBytes(dump.shown),
+            count: formatBytes(bytes.length),
+          })}
         </p>
       )}
     </>
@@ -85,7 +88,7 @@ function ImagePreview(props: {
     <img
       className={styles.image}
       src={source}
-      alt={`Image value (${props.mime})`}
+      alt={t('imageValueMime', { mime: props.mime })}
     />
   );
 }

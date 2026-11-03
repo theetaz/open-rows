@@ -4,6 +4,7 @@ import type { HelperHop } from '@openrows/ipc';
 import { FileField } from './FileField';
 import styles from './ConnectionSheet.module.css';
 import custom from './CustomHopFields.module.css';
+import { t } from './messages/routes';
 
 type CustomHop = Extract<HelperHop, { kind: 'custom' }>;
 /** Literal command templates with an executable picker and ordered arguments. */
@@ -20,7 +21,7 @@ export function CustomHopFields({
   return (
     <>
       <FileField
-        label="Program"
+        label={t('program')}
         kind="program"
         value={helper.program}
         onChange={(program) => {
@@ -33,11 +34,11 @@ export function CustomHopFields({
           changeArgs([...helper.args, '']);
         }}
       >
-        Add argument
+        {t('addArgument')}
       </Button>
       <TextField
         className={styles.row}
-        label="Readiness timeout (seconds)"
+        label={t('readinessTimeoutSeconds')}
         type="number"
         min={1}
         max={300}
@@ -52,12 +53,11 @@ export function CustomHopFields({
         }}
       />
       <small className={custom.help}>
-        Each row is one literal argument, including spaces. Use {'{local_port}'}{' '}
-        to bind 127.0.0.1 on the allocated port; {'{remote_host}'} and{' '}
-        {'{remote_port}'} come from the database host and port. No shell
-        expansion. Do not put secrets in arguments. Test or connect asks you to
-        Trust and run on this machine; changing the program or arguments
-        requires approval again.
+        {t('eachRowOne', {
+          local_port: '{local_port}',
+          remote_host: '{remote_host}',
+          remote_port: '{remote_port}',
+        })}
       </small>
     </>
   );
@@ -86,7 +86,7 @@ function ArgumentRows({
         <div className={custom.argumentRow} key={index}>
           <TextField
             className={custom.argument}
-            label={`Argument ${String(index + 1)}`}
+            label={t('argumentValue', { value: String(index + 1) })}
             value={arg}
             spellCheck={false}
             onChange={(event) => {
@@ -99,7 +99,7 @@ function ArgumentRows({
           />
           <div className={custom.actions}>
             <Button
-              aria-label={`Move argument ${String(index + 1)} up`}
+              aria-label={t('moveArgumentValue', { value: String(index + 1) })}
               disabled={index === 0}
               onClick={() => {
                 move(index, -1);
@@ -108,7 +108,9 @@ function ArgumentRows({
               ↑
             </Button>
             <Button
-              aria-label={`Move argument ${String(index + 1)} down`}
+              aria-label={t('moveArgumentValueDown', {
+                value: String(index + 1),
+              })}
               disabled={index === args.length - 1}
               onClick={() => {
                 move(index, 1);
@@ -117,12 +119,14 @@ function ArgumentRows({
               ↓
             </Button>
             <Button
-              aria-label={`Remove argument ${String(index + 1)}`}
+              aria-label={t('removeArgumentValue', {
+                value: String(index + 1),
+              })}
               onClick={() => {
                 set(args.filter((_, row) => row !== index));
               }}
             >
-              Remove
+              {t('remove')}
             </Button>
           </div>
         </div>

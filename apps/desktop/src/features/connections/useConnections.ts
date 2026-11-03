@@ -15,6 +15,7 @@ import type { PasswordRequest } from './usePasswordPrompt';
 import { railOrder } from './workspaceGroups';
 import type { Databases } from './useDatabases';
 import type { SessionStatus } from './sessions';
+import { t } from './messages/profile';
 
 /** Which modal sheet is open over the workspace. */
 export type SheetState =
@@ -60,10 +61,9 @@ export function deletePrompt(profile: ProfileDto): {
   action: string;
 } {
   return {
-    title: `Delete “${profile.name}”?`,
-    message:
-      'Its saved password is removed from the Keychain. Databases are not touched.',
-    action: 'Delete',
+    title: t('deleteName', { name: profile.name }),
+    message: t('savedPasswordRemovedKeychain'),
+    action: t('delete2'),
   };
 }
 

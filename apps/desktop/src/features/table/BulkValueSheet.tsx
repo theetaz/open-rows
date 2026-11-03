@@ -5,6 +5,7 @@ import { Sheet, SheetActions } from '@openrows/ui/sheet';
 import { textValue } from './cellValue';
 import type { CellValue } from './cellValue';
 import styles from './Table.module.css';
+import { t } from './messages/lazyData';
 
 /** "Set value for N cells…": one text value staged in every selected cell. */
 export function BulkValueSheet({
@@ -23,16 +24,13 @@ export function BulkValueSheet({
   };
   return (
     <Sheet
-      title={`Set value for ${count.toLocaleString('en-US')} cells`}
+      title={t('setValueCount', { count: count.toLocaleString('en-US') })}
       size="alert"
       onClose={onClose}
     >
-      <p className={styles.editNote}>
-        The value is staged in every selected cell; each cell is checked against
-        its column type first. Nothing is written until you commit.
-      </p>
+      <p className={styles.editNote}>{t('valueStagedEvery')}</p>
       <TextField
-        aria-label="Value for the selected cells"
+        aria-label={t('valueSelectedCells')}
         data-initial-focus
         value={text}
         onChange={(event) => {
@@ -46,9 +44,9 @@ export function BulkValueSheet({
         }}
       />
       <SheetActions>
-        <Button onClick={onClose}>Cancel</Button>
+        <Button onClick={onClose}>{t('cancel')}</Button>
         <Button variant="primary" onClick={apply}>
-          Stage value
+          {t('stageValue')}
         </Button>
       </SheetActions>
     </Sheet>

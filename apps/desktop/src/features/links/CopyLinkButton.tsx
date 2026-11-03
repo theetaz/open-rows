@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Button } from '@openrows/ui';
 import { copyLink } from './linkText';
+import { t } from './lazyMessages';
 
 /**
  * Copy the table's `openrows://` link with its applied filters. Links carry
@@ -15,11 +16,7 @@ export function CopyLinkButton(props: {
     <Button
       size="sm"
       disabled={props.link === null}
-      title={
-        props.link === null
-          ? 'Links carry only filters that must all match, without raw SQL'
-          : 'Copy an openrows:// link to this table with these filters'
-      }
+      title={props.link === null ? t('linksCarryOnly') : t('copyOpenrowsLink')}
       onClick={() => {
         if (props.link === null) return;
         copyLink(props.link).then(
@@ -30,7 +27,7 @@ export function CopyLinkButton(props: {
         );
       }}
     >
-      {copied ? 'Link Copied' : 'Copy Link'}
+      {copied ? t('linkCopied') : t('copyLink')}
     </Button>
   );
 }

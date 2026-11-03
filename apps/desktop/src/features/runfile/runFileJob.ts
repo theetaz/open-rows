@@ -11,10 +11,11 @@ import {
   showRunFile,
 } from './runFileStore';
 import type { RunTarget } from './runFileStore';
+import { t, tn } from './messages';
 
 /** Bytes as KB, MB or GB. */
 export function sizeText(bytes: number): string {
-  if (bytes < 1024) return `${String(bytes)} bytes`;
+  if (bytes < 1024) return t('sizeBytes', { bytes: String(bytes) });
   const units = ['KB', 'MB', 'GB', 'TB'];
   let value = bytes / 1024;
   let unit = 0;
@@ -25,8 +26,36 @@ export function sizeText(bytes: number): string {
   return `${value.toFixed(value < 10 ? 1 : 0)} ${units[unit] ?? 'TB'}`;
 }
 
-const count = (value: number, noun: string): string =>
-  `${value.toLocaleString()} ${noun}${value === 1 ? '' : 's'}`;
+const errorCount = (errors: number): string =>
+  tn('errorCount', errors, { count: errors.toLocaleString() });
+
+function finishJob(
+  job: JobHandle,
+  event: Extract<RunFileEventDto, { type: 'finished' }>,
+): void {
+  const statements = event.statements ?? 0;
+  const count = statements.toLocaleString();
+  if (event.outcome === 'completed') {
+    job.finish(tn('statementsRan', statements, { count }));
+    return;
+  }
+  const ran = tn('statementCount', statements, { count });
+  if (event.outcome === 'cancelled') {
+    job.cancelled(
+      event.rolledBack
+        ? t('cancelledAfterRolledBack', { ran })
+        : t('cancelledAfter', { ran }),
+    );
+    return;
+  }
+  const summary = event.errors
+    ? t('ranWithErrors', { ran, errors: errorCount(event.errors) })
+    : ran;
+  job.fail(
+    event.message ??
+      (event.rolledBack ? t('summaryRolledBack', { summary }) : summary),
+  );
+}
 
 /** File ▸ Run SQL File…: the open panel, then the sheet for the picked file. */
 export async function pickRunFileFor(target: RunTarget): Promise<void> {
@@ -40,21 +69,18 @@ function report(job: JobHandle, id: string, event: RunFileEventDto): void {
   const run = getRun(id);
   if (!run) return;
   if (event.type === 'progress') {
-    const errors = run.errorCount ? ` · ${count(run.errorCount, 'error')}` : '';
+    const done = tn('statementsOfTotal', run.statements, {
+      count: run.statements.toLocaleString(),
+      total: run.total.toLocaleString(),
+    });
     job.update({
-      detail: `${count(run.statements, 'statement')} of ${run.total.toLocaleString()}${errors}`,
+      detail: run.errorCount ? `${done} · ${errorCount(run.errorCount)}` : done,
       fraction: run.size > 0 ? run.bytes / run.size : undefined,
     });
     return;
   }
   if (event.type !== 'finished') return;
-  const ran = count(event.statements ?? 0, 'statement');
-  const errors = event.errors ? `, ${count(event.errors, 'error')}` : '';
-  const rolledBack = event.rolledBack ? '; rolled back' : '';
-  if (event.outcome === 'completed') job.finish(`${ran} ran`);
-  else if (event.outcome === 'cancelled')
-    job.cancelled(`Cancelled after ${ran}${rolledBack}`);
-  else job.fail(event.message ?? `${ran}${errors}${rolledBack}`);
+  finishJob(job, event);
 }
 
 /** Start a checked file; the run shows in its sheet and the jobs popover. */
@@ -71,7 +97,7 @@ export function startFileRun(input: {
   const { file, target, options } = input;
   const job = addJob({
     kind: 'run-file',
-    title: `Run ${file.name}`,
+    title: t('runName', { name: file.name }),
     details: () => {
       showRunFile({ kind: 'run', id: job.id });
     },

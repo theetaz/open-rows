@@ -10,6 +10,7 @@ import type { TableViews } from '../table/useTableViews';
 import { liveText } from '../query/liveText';
 import { moveImpact, transferPayload } from './transfer';
 import type { MoveImpact } from './transfer';
+import { t, tn } from './messages';
 
 type Input = { tabs: QueryTabs; tables: TableViews; runs: QueryRuns };
 
@@ -77,11 +78,11 @@ export function useTabMoves(
     return {
       move,
       sheet: (
-        <Sheet title="The tab was not moved" size="alert" onClose={dismiss}>
+        <Sheet title={t('tabWasNot')} size="alert" onClose={dismiss}>
           <p role="alert">{failure}</p>
           <SheetActions>
             <Button variant="primary" onClick={dismiss}>
-              OK
+              {t('ok')}
             </Button>
           </SheetActions>
         </Sheet>
@@ -110,40 +111,30 @@ function MoveSheet(props: {
   const { impact } = props;
   return (
     <Sheet
-      title={impact.pending ? 'Commit in progress' : 'Move tab with changes?'}
+      title={impact.pending ? t('commitProgress') : t('moveTabChanges')}
       size="alert"
       onClose={props.onKeep}
     >
       <p>{moveText(impact)}</p>
       <SheetActions>
-        <Button onClick={props.onKeep}>Keep tab here</Button>
+        <Button onClick={props.onKeep}>{t('keepTabHere')}</Button>
         <Button
           variant="primary"
           disabled={impact.pending}
           onClick={props.onMove}
         >
-          Move tab
+          {t('moveTab')}
         </Button>
       </SheetActions>
     </Sheet>
   );
 }
 
-const count = (n: number, one: string, many: string): string =>
-  `${String(n)} ${n === 1 ? one : many}`;
-
 /** What the move keeps and what it discards; no database write happens. */
 export function moveText(impact: MoveImpact): string {
-  if (impact.pending)
-    return 'Keep this tab here until the commit finishes; then move it.';
+  if (impact.pending) return t('keepTabHereUntil');
   const parts: string[] = [];
-  if (impact.journaled)
-    parts.push(
-      `${count(impact.journaled, 'staged row edit stays', 'staged row edits stay')} in the local journal; the table offers to restore ${impact.journaled === 1 ? 'it' : 'them'} in the other window.`,
-    );
-  if (impact.lost)
-    parts.push(
-      `${count(impact.lost, 'staged result edit or structure change', 'staged result edits or structure changes')} cannot move and will be discarded.`,
-    );
-  return `${parts.join(' ')} The database is not changed.`;
+  if (impact.journaled) parts.push(tn('journaledEdits', impact.journaled));
+  if (impact.lost) parts.push(tn('lostEdits', impact.lost));
+  return [...parts, t('databaseNotChanged')].join(' ');
 }

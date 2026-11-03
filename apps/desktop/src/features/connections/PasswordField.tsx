@@ -7,15 +7,16 @@ import { CredentialFields } from './CredentialFields';
 import { SecretField } from './SecretField';
 import type { ConnectionForm } from './useConnectionForm';
 import styles from './ConnectionSheet.module.css';
+import { t } from './messages/profile';
 
 const storageChoices: readonly { value: PasswordStorageDto; label: string }[] =
   [
-    { value: 'keychain', label: 'Save in keychain' },
-    { value: 'ask', label: 'Ask every time' },
-    { value: 'none', label: 'No password' },
-    { value: 'command', label: 'Run a command' },
+    { value: 'keychain', label: t('saveKeychain') },
+    { value: 'ask', label: t('askEveryTime') },
+    { value: 'none', label: t('noPassword') },
+    { value: 'command', label: t('runCommand') },
   ];
-const cloudChoice = { value: 'cloud', label: 'Cloud IAM token' } as const;
+const cloudChoice = { value: 'cloud', label: t('cloudIamToken') } as const;
 
 /**
  * The database password and where it lives (TablePlus): a [`SecretField`]
@@ -34,16 +35,13 @@ export function PasswordField({
       ) : draft.passwordStorage === 'command' ? (
         <CredentialFields form={form} />
       ) : draft.passwordStorage === 'none' ? (
-        <small className={styles.hint}>
-          No database password is sent or requested. Use peer, trust, IAM or
-          socket authentication.
-        </small>
+        <small className={styles.hint}>{t('noDatabasePassword')}</small>
       ) : draft.passwordStorage === 'ask' ? (
         <AskedPassword form={form} />
       ) : (
         <SecretField
-          label={draft.engine === 'libsql' ? 'Auth token' : 'Password'}
-          noun={draft.engine === 'libsql' ? 'auth token' : 'password'}
+          label={draft.engine === 'libsql' ? t('authToken') : t('password')}
+          noun={draft.engine === 'libsql' ? t('authToken2') : t('password2')}
           secret={{
             value: draft.password,
             mode: draft.passwordMode,
@@ -59,9 +57,11 @@ export function PasswordField({
       )}
       <SelectField
         className={styles.row}
-        label="Store"
+        label={t('store')}
         aria-label={
-          draft.engine === 'libsql' ? 'Auth token storage' : 'Password storage'
+          draft.engine === 'libsql'
+            ? t('authTokenStorage')
+            : t('passwordStorage')
         }
         value={draft.passwordStorage}
         options={
@@ -84,8 +84,8 @@ function AskedPassword({ form }: { form: ConnectionForm }): React.JSX.Element {
     <div className={styles.stack}>
       <SecureField
         className={styles.row}
-        label={draft.engine === 'libsql' ? 'Auth token' : 'Password'}
-        placeholder="Asked when connecting"
+        label={draft.engine === 'libsql' ? t('authToken') : t('password')}
+        placeholder={t('askedWhenConnecting')}
         value={draft.password}
         onChange={(event) => {
           form.setPassword(event.target.value);
@@ -93,8 +93,8 @@ function AskedPassword({ form }: { form: ConnectionForm }): React.JSX.Element {
       />
       <small className={styles.hint}>
         {draft.hasStoredPassword
-          ? 'The saved password is removed from the Keychain on Save. You are asked for it each time you connect.'
-          : 'Never saved. You are asked for it each time you connect; a password typed here is only used by Test.'}
+          ? t('savedPasswordRemoved')
+          : t('neverSavedYou')}
       </small>
     </div>
   );

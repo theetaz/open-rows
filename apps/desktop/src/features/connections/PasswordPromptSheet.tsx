@@ -4,6 +4,7 @@ import { Button, SecureField } from '@openrows/ui';
 import { Sheet, SheetActions } from '@openrows/ui/sheet';
 import type { PasswordRequest } from './usePasswordPrompt';
 import styles from './ConnectionSheet.module.css';
+import { t } from './messages/profile';
 
 /** Where the connection logs in, e.g. `app@db.internal:5432`. */
 function address(request: PasswordRequest): string {
@@ -22,11 +23,9 @@ export function PasswordPromptSheet({
   request: PasswordRequest;
 }): React.JSX.Element {
   const [password, setPassword] = useState('');
-  const credential =
-    request.profile.engine === 'libsql' ? 'auth token' : 'password';
   return (
     <Sheet
-      title={`Connect to ${request.profile.name}`}
+      title={t('connectName', { name: request.profile.name })}
       size="alert"
       onClose={request.cancel}
     >
@@ -38,11 +37,15 @@ export function PasswordPromptSheet({
           request.submit(password);
         }}
       >
-        <p>{`Enter the ${credential} for ${address(request)}.`}</p>
+        <p>
+          {request.profile.engine === 'libsql'
+            ? t('enterAuthToken', { request: address(request) })
+            : t('enterPassword', { request: address(request) })}
+        </p>
         <SecureField
           className={styles.row}
           label={
-            request.profile.engine === 'libsql' ? 'Auth token' : 'Password'
+            request.profile.engine === 'libsql' ? t('authToken') : t('password')
           }
           autoFocus
           value={password}
@@ -50,13 +53,11 @@ export function PasswordPromptSheet({
             setPassword(event.target.value);
           }}
         />
-        <small className={styles.note}>
-          Used for this connection only and never saved.
-        </small>
+        <small className={styles.note}>{t('usedConnectionOnly')}</small>
         <SheetActions>
-          <Button onClick={request.cancel}>Cancel</Button>
+          <Button onClick={request.cancel}>{t('cancel')}</Button>
           <Button type="submit" variant="primary">
-            Connect
+            {t('connect')}
           </Button>
         </SheetActions>
       </form>

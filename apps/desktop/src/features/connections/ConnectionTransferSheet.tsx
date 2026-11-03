@@ -16,11 +16,12 @@ import type {
 } from '@openrows/ipc';
 import { ConnectionImportPreview } from './ConnectionImportPreview';
 import styles from './ConnectionSheet.module.css';
+import { t } from './messages/lazyTransfer';
 const sources: { value: Extract<ImportSource, string>; label: string }[] = [
-  { value: 'openFile', label: 'OpenRows JSON file…' },
-  { value: 'pgpass', label: 'pgpass (default / PGPASSFILE)' },
-  { value: 'pgService', label: 'pg_service (default / environment)' },
-  { value: 'myCnf', label: 'MySQL ~/.my.cnf' },
+  { value: 'openFile', label: t('openrowsJsonFile') },
+  { value: 'pgpass', label: t('pgpassDefaultPgpassfile') },
+  { value: 'pgService', label: t('pgServiceDefault') },
+  { value: 'myCnf', label: t('mysqlMyCnf') },
 ];
 type Props = {
   mode: 'import' | 'export';
@@ -65,18 +66,15 @@ function ExportSheet(props: Props): React.JSX.Element {
     ),
   ];
   return (
-    <Sheet title="Export connections" onClose={props.onClose}>
+    <Sheet title={t('exportConnections')} onClose={props.onClose}>
       <div className={styles.form}>
-        <p>
-          Exports settings and file paths. Passwords, passphrases, private keys
-          and command output are excluded.
-        </p>
+        <p>{t('exportsSettingsFile')}</p>
         <Button
           onClick={() => {
             setSelected(props.profiles.map((profile) => profile.id));
           }}
         >
-          Select all
+          {t('selectAll')}
         </Button>
         <ExportSelection
           profiles={props.profiles}
@@ -91,13 +89,13 @@ function ExportSheet(props: Props): React.JSX.Element {
         )}
       </div>
       <SheetActions>
-        <Button onClick={props.onClose}>Cancel</Button>
+        <Button onClick={props.onClose}>{t('cancel')}</Button>
         <Button
           variant="primary"
           disabled={busy || selected.length === 0}
           onClick={() => void run()}
         >
-          Export…
+          {t('export')}
         </Button>
       </SheetActions>
     </Sheet>
@@ -173,17 +171,17 @@ function ImportSheet(props: Props): React.JSX.Element {
     }
   };
   return (
-    <Sheet title="Import connections" onClose={props.onClose}>
+    <Sheet title={t('importConnections')} onClose={props.onClose}>
       <div className={styles.form}>
         {!props.projectRoot && (
           <SelectField
-            label="Source"
+            label={t('source')}
             options={sources}
             value={source}
             onValueChange={setSource}
           />
         )}
-        <p>Preview first. Nothing is saved until Confirm import.</p>
+        <p>{t('previewFirstNothing')}</p>
         {state.preview && (
           <ConnectionImportPreview
             preview={state.preview}
@@ -199,17 +197,17 @@ function ImportSheet(props: Props): React.JSX.Element {
       </div>
       <SheetActions>
         <Button disabled={busy} onClick={props.onClose}>
-          Cancel
+          {t('cancel')}
         </Button>
         <Button disabled={busy} onClick={() => void run(false)}>
-          Preview…
+          {t('preview')}
         </Button>
         <Button
           variant="primary"
           disabled={busy || !state.preview || state.preview.rows.length === 0}
           onClick={() => void run(true)}
         >
-          Confirm import
+          {t('confirmImport')}
         </Button>
       </SheetActions>
     </Sheet>
@@ -236,7 +234,7 @@ function ExportSelection(props: {
             );
           }}
         >
-          Select group: {group}
+          {t('selectGroupGroup', { group })}
         </Button>
       ))}
       {props.profiles.map((profile) => (

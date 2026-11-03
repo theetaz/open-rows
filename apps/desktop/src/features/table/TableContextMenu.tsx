@@ -24,6 +24,7 @@ import type {
   ContextTarget,
   MenuSelection as Selection,
 } from './contextMenuActions';
+import { t } from './messages/lazyData';
 
 /** A header quick filter being edited: its column and where the header was clicked. */
 type Quick = { column: string; x: number; y: number };
@@ -154,14 +155,14 @@ function TableContextMenu(props: Props): React.JSX.Element {
   }, [selection]);
   const actions = contextActions(props, fields, (text) => {
     navigator.clipboard.writeText(text).then(props.onClose, () => {
-      props.editing.fail(new Error('Clipboard access was blocked.'));
+      props.editing.fail(new Error(t('clipboardAccessWas')));
     });
   });
   return (
     <CascadeMenu
       x={selection.x}
       y={selection.y}
-      label="Table actions"
+      label={t('tableActions')}
       entries={menuEntries(props, actions)}
       onClose={props.onClose}
       footer={error && <p role="alert">{error}</p>}
@@ -223,8 +224,8 @@ function keyEntries({ jumps, selection, onClose }: Props): MenuEntry[] {
         ]
       : [];
   const entries = [
-    ...submenu('Open referenced row', jumps.links.outgoing),
-    ...submenu('Referenced by', jumps.links.incoming),
+    ...submenu(t('openReferencedRow'), jumps.links.outgoing),
+    ...submenu(t('referenced'), jumps.links.incoming),
   ];
   return entries.length ? [{ kind: 'separator' }, ...entries] : [];
 }
@@ -236,13 +237,13 @@ function layoutEntries({ grid, selection, onClose }: Props): MenuEntry[] {
   if (selection.kind === 'column') {
     if (grid.fit)
       actions.push({
-        label: 'Size column to fit',
+        label: t('sizeColumnFit'),
         run: () => grid.fit?.(selection.column),
       });
-    if (grid.reset) actions.push({ label: 'Reset columns', run: grid.reset });
+    if (grid.reset) actions.push({ label: t('resetColumns'), run: grid.reset });
   } else if (grid.exportRows)
     actions.push({
-      label: 'Export selected rows…',
+      label: t('exportSelectedRows'),
       run: () => grid.exportRows?.(selection),
     });
   return actions.map(({ label, run }) => ({

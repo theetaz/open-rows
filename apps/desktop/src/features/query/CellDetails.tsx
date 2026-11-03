@@ -8,12 +8,13 @@ import { ValueInspector } from '../value/ValueInspector';
 import type { SelectedCell } from './cell';
 import type { ResultMeta } from './run';
 import styles from './Query.module.css';
+import { t } from './initialMessages';
 
 type View = 'value' | 'row';
 
 const views: readonly { value: View; label: string }[] = [
-  { value: 'value', label: 'Value' },
-  { value: 'row', label: 'Row' },
+  { value: 'value', label: t('value') },
+  { value: 'row', label: t('row') },
 ];
 
 /** The focused result cell: its full value, or every column of its row. */
@@ -23,16 +24,11 @@ export function CellDetails({
   cell: SelectedCell | null;
 }): React.JSX.Element {
   const [view, setView] = useState<View>('value');
-  if (!cell)
-    return (
-      <p className={styles.empty}>
-        Select a cell in a result to see its value.
-      </p>
-    );
+  if (!cell) return <p className={styles.empty}>{t('selectCellResult')}</p>;
   return (
     <div className={styles.cell}>
       <SegmentedControl
-        aria-label="Details view"
+        aria-label={t('detailsView')}
         variant="source"
         options={views}
         value={view}
@@ -43,7 +39,7 @@ export function CellDetails({
       {view === 'value' ? (
         <>
           <h2>{cell.column}</h2>
-          <small>Row {cell.row + 1}</small>
+          <small>{t('rowValue', { value: cell.row + 1 })}</small>
           <ValueInspector
             key={`${cell.result.id}:${String(cell.row)}:${String(cell.index)}`}
             address={{
@@ -91,7 +87,7 @@ function ResultRow(props: {
     };
   }, [result, row]);
   if (problem) return <p role="alert">{problem}</p>;
-  if (!fields) return <p role="status">Loading row…</p>;
+  if (!fields) return <p role="status">{t('loadingRow')}</p>;
   const selected: SelectedRow = {
     table: 'Result',
     fields,

@@ -5,6 +5,7 @@ import { tabFile } from './useTabFiles';
 import type { TabFileActions } from './useTabFiles';
 import type { QueryTab } from './tabs';
 import styles from './Query.module.css';
+import { t } from './lazyMessages';
 
 /**
  * The tab's `.sql` file was changed by another program: Reload takes the
@@ -24,7 +25,7 @@ export function FileChangedBar(props: {
   };
   return (
     <div className={styles.reconnect} role="status">
-      <span>{file.name} was changed by another program.</span>
+      <span>{t('nameWasChanged', { name: file.name })}</span>
       <span className={styles.reconnectActions}>
         <Button
           size="sm"
@@ -34,7 +35,7 @@ export function FileChangedBar(props: {
             settle(external);
           }}
         >
-          Reload
+          {t('reload')}
         </Button>
         <Button
           size="sm"
@@ -42,7 +43,7 @@ export function FileChangedBar(props: {
             settle(external);
           }}
         >
-          Keep Mine
+          {t('keepMine')}
         </Button>
       </span>
     </div>

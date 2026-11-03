@@ -3,6 +3,7 @@ import { lazy, Suspense, useState } from 'react';
 import { Button } from '@openrows/ui';
 import { Sheet } from '@openrows/ui/sheet';
 import type { QueryTabs } from './useQueryTabs';
+import { t } from './initialMessages';
 const LocalFileTabs = lazy(() =>
   import('./LocalFileTabs').then((module) => ({
     default: module.LocalFileTabs,
@@ -26,11 +27,11 @@ export function NativeDocuments({
           setOpen(true);
         }}
       >
-        Local SQL files
+        {t('localSqlFiles')}
       </Button>
       {open && (
         <Sheet
-          title="Local SQL files"
+          title={t('localSqlFiles')}
           onClose={() => {
             setOpen(false);
           }}

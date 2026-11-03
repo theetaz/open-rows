@@ -8,6 +8,7 @@ import { exportSettings } from './exportSettings';
 import { startExportJob } from './exportJob';
 import { formatDto, rememberedOptions, sheetOptions } from './options';
 import styles from './Export.module.css';
+import { t } from './lazyMessages';
 
 /** One choice of which rows to export. */
 export type ExportScope = { label: string; source: ExportSourceDto };
@@ -67,13 +68,13 @@ export function ExportSheet(props: ExportSheetProps): React.JSX.Element {
         </p>
       )}
       <SheetActions>
-        <Button onClick={props.onClose}>Cancel</Button>
+        <Button onClick={props.onClose}>{t('cancel')}</Button>
         <Button
           variant="primary"
           disabled={!format || !source || starting}
           onClick={run}
         >
-          Export…
+          {t('export')}
         </Button>
       </SheetActions>
     </Sheet>
@@ -87,7 +88,7 @@ function ScopePicker(props: {
 }): React.JSX.Element {
   return (
     <fieldset className={styles.scope}>
-      <legend>Rows</legend>
+      <legend>{t('rows')}</legend>
       {props.scopes.map((scope, index) => (
         <label key={scope.label}>
           <input

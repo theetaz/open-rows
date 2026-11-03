@@ -3,6 +3,7 @@ import type { ImportPreviewDto } from '@openrows/ipc';
 import { categoryLabel } from './choices';
 import { invalidCells } from './model';
 import styles from './Import.module.css';
+import { t, tn } from './messages';
 
 /** Rows shown in the preview table. */
 const SHOWN = 20;
@@ -24,12 +25,12 @@ export function PreviewGrid(props: {
   const invalid = invalidCells(preview);
   const rejected = preview.invalid.length;
   return (
-    <section className={styles.section} aria-label="Preview">
+    <section className={styles.section} aria-label={t('preview')}>
       <div className={styles.previewScroll}>
-        <table className={styles.preview} aria-label="File preview">
+        <table className={styles.preview} aria-label={t('filePreview')}>
           <thead>
             <tr>
-              <th scope="col">Line</th>
+              <th scope="col">{t('line')}</th>
               {preview.columns.map((column) => (
                 <th key={column.name} scope="col">
                   <span>{column.name}</span>
@@ -54,9 +55,11 @@ export function PreviewGrid(props: {
                       key={String(column)}
                       data-invalid={bad || undefined}
                       data-null={cell === null || undefined}
-                      title={bad && type ? `Not a valid ${type}` : undefined}
+                      title={
+                        bad && type ? t('notValidType', { type }) : undefined
+                      }
                     >
-                      {cell === null ? 'NULL' : shorten(cell)}
+                      {cell === null ? t('null') : shorten(cell)}
                     </td>
                   );
                 })}
@@ -66,11 +69,17 @@ export function PreviewGrid(props: {
         </table>
       </div>
       <p className={styles.note}>
-        Types inferred from {preview.sampled.toLocaleString()} rows.
+        {t('typesInferred', { sampled: preview.sampled.toLocaleString() })}
+        {rejected > 0 && ' '}
         {rejected > 0 &&
-          ` ${rejected.toLocaleString()} previewed ${rejected === 1 ? 'value does' : 'values do'} not fit the target type.`}
+          tn('previewedValuesMisfit', rejected, {
+            count: rejected.toLocaleString(),
+          })}
+        {preview.errors.length > 0 && ' '}
         {preview.errors.length > 0 &&
-          ` ${preview.errors.length.toLocaleString()} malformed ${preview.errors.length === 1 ? 'row' : 'rows'} in the sample.`}
+          tn('malformedRows', preview.errors.length, {
+            count: preview.errors.length.toLocaleString(),
+          })}
       </p>
     </section>
   );

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { lazy, Suspense, useState } from 'react';
 import { Button } from '@openrows/ui';
+import { t } from './messages/profile';
 const ConnectionSharing = lazy(
   () => import('../settings/ai/ConnectionSharing'),
 );
@@ -11,7 +12,7 @@ export function AiSharingDisclosure(props: {
 }): React.JSX.Element {
   const [open, setOpen] = useState(false);
   return (
-    <section aria-label="AI sharing settings">
+    <section aria-label={t('aiSharingSettings')}>
       <Button
         type="button"
         aria-expanded={open}
@@ -19,10 +20,10 @@ export function AiSharingDisclosure(props: {
           setOpen(!open);
         }}
       >
-        AI data sharing
+        {t('aiDataSharing')}
       </Button>
       {open && (
-        <Suspense fallback={<p role="status">Loading sharing settings…</p>}>
+        <Suspense fallback={<p role="status">{t('loadingSharingSettings')}</p>}>
           <ConnectionSharing {...props} />
         </Suspense>
       )}

@@ -8,6 +8,7 @@ import {
 } from './forms/ForeignKeyFields';
 import { StageSheet } from './StageSheet';
 import type { Structure } from './useStructure';
+import { t } from '../messages/lazyStructure';
 
 /** `Add foreign key…`: columns, referenced table and columns, actions. */
 export function ForeignKeySheet({
@@ -23,7 +24,7 @@ export function ForeignKeySheet({
   return (
     <StageSheet
       structure={structure}
-      title="Add foreign key"
+      title={t('addForeignKey2')}
       op={
         problem
           ? null
@@ -33,7 +34,7 @@ export function ForeignKeySheet({
             }
       }
       problem={problem}
-      stageLabel="Stage foreign key"
+      stageLabel={t('stageForeignKey')}
       onClose={onClose}
     >
       <ForeignKeyFields

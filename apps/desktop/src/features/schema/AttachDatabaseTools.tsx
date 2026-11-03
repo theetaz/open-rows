@@ -5,6 +5,7 @@ import { AttachDatabaseSheet } from './AttachDatabaseSheet';
 import { useAttachDatabase } from './useAttachDatabase';
 import type { Catalog } from './useCatalog';
 import styles from './AttachDatabase.module.css';
+import { t } from './messages';
 
 /**
  * Schema-bar buttons of a `SQLite` connection: "Attach Database…" and, on an
@@ -19,8 +20,8 @@ export function AttachDatabaseTools(props: {
   return (
     <>
       <IconButton
-        aria-label="Attach Database…"
-        title="Attach Database…"
+        aria-label={t('attachDatabase2')}
+        title={t('attachDatabase2')}
         size="sm"
         variant="ghost"
         onClick={tools.choose}
@@ -29,8 +30,8 @@ export function AttachDatabaseTools(props: {
       </IconButton>
       {tools.detachable && (
         <IconButton
-          aria-label={`Detach ${tools.detachable}`}
-          title={`Detach ${tools.detachable}`}
+          aria-label={t('detachDetachable', { detachable: tools.detachable })}
+          title={t('detachDetachable', { detachable: tools.detachable })}
           size="sm"
           variant="ghost"
           onClick={tools.detach}

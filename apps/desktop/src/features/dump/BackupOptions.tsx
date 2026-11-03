@@ -7,6 +7,7 @@ import type {
 } from '@openrows/ipc';
 import { FORMATS } from './model';
 import styles from './Dump.module.css';
+import { t } from './messages';
 
 type Flag =
   | 'noOwner'
@@ -20,31 +21,31 @@ const FLAGS: Readonly<
   Record<'postgres' | 'mysql', readonly { key: Flag; label: string }[]>
 > = {
   postgres: [
-    { key: 'noOwner', label: 'Leave out ownership (--no-owner)' },
-    { key: 'noPrivileges', label: 'Leave out grants (--no-privileges)' },
+    { key: 'noOwner', label: t('leaveOutOwnership') },
+    { key: 'noPrivileges', label: t('leaveOutGrants') },
   ],
   mysql: [
     {
       key: 'singleTransaction',
-      label: 'One consistent snapshot (--single-transaction)',
+      label: t('oneConsistentSnapshot'),
     },
-    { key: 'routines', label: 'Procedures and functions (--routines)' },
-    { key: 'triggers', label: 'Triggers' },
-    { key: 'events', label: 'Scheduled events (--events)' },
+    { key: 'routines', label: t('proceduresFunctionsRoutines') },
+    { key: 'triggers', label: t('triggers') },
+    { key: 'events', label: t('scheduledEventsEvents') },
   ],
 };
 
 const CONTENTS: readonly { value: BackupContentDto; label: string }[] = [
-  { value: 'all', label: 'Structure and data' },
-  { value: 'schemaOnly', label: 'Structure only' },
-  { value: 'dataOnly', label: 'Data only' },
+  { value: 'all', label: t('structureData') },
+  { value: 'schemaOnly', label: t('structureOnly') },
+  { value: 'dataOnly', label: t('dataOnly') },
 ];
 
 const LEVELS = [
-  { value: 'default', label: 'Tool default' },
+  { value: 'default', label: t('toolDefault') },
   ...Array.from({ length: 10 }, (_, level) => ({
     value: String(level),
-    label: level === 0 ? '0 (none)' : String(level),
+    label: level === 0 ? t('n0None') : String(level),
   })),
 ];
 
@@ -55,7 +56,7 @@ function Compression(props: {
   const tar = props.options.format === 'tar';
   return (
     <SelectField
-      label="Compression"
+      label={t('compression')}
       value={tar ? 'default' : String(props.options.compression ?? 'default')}
       disabled={tar}
       options={LEVELS}
@@ -78,11 +79,11 @@ export function BackupOptions(props: {
   const postgres = props.engine === 'postgres';
   return (
     <fieldset className={styles.options}>
-      <legend>Options</legend>
+      <legend>{t('options')}</legend>
       <div className={styles.row}>
         {postgres && (
           <SelectField
-            label="Format"
+            label={t('format')}
             value={options.format}
             options={FORMATS}
             onValueChange={(format) => {
@@ -96,7 +97,7 @@ export function BackupOptions(props: {
           />
         )}
         <SelectField
-          label="Content"
+          label={t('content')}
           value={options.content}
           options={CONTENTS}
           onValueChange={(content) => {

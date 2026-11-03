@@ -42,6 +42,7 @@ import type { SelectedCell } from './cell';
 import { ExplainSheet, explainResultTab, useExplain } from '../explain';
 import type { ExplainControls } from '../explain';
 import styles from './Query.module.css';
+import { t } from './lazyMessages';
 
 type QueryTabProps = {
   tab: Tab;
@@ -230,7 +231,7 @@ function TabAssistant(
       onOpen={(sql) => {
         props.tabs.open(
           { connectionId: tab.connectionId, database: tab.database },
-          { title: 'SQL proposal — review', sql },
+          { title: t('sqlProposalReview'), sql },
         );
       }}
     />
@@ -254,16 +255,13 @@ function TabEditor(
   return (
     <>
       {tab.sql.toUpperCase().includes('__OPENROWS_REDACTED_') && (
-        <p role="status">
-          History literals were redacted. Fill every placeholder before running
-          SQL.
-        </p>
+        <p role="status">{t('historyLiteralsWere')}</p>
       )}
       <FileChangedBar tab={tab} editor={editorRef} tabs={props.tabs} />
       <QueryEditor
         profileId={props.connection.id}
         doc={tab.sql}
-        label={documentEngine ? 'MQL editor' : 'SQL editor'}
+        label={documentEngine ? t('mqlEditor') : t('sqlEditor')}
         {...(documentEngine
           ? {}
           : {
@@ -369,7 +367,11 @@ function TabResults(
         explain={props.explain}
         connection={props.connection.name}
       />
-      <footer className={styles.status} role="status" aria-label="Query status">
+      <footer
+        className={styles.status}
+        role="status"
+        aria-label={t('queryStatus')}
+      >
         {statusText(props.run)}
       </footer>
     </>
@@ -403,10 +405,10 @@ function TabSheets(
   if (props.naming)
     return (
       <NameSheet
-        title="Add to Queries"
-        label="Query name"
+        title={t('addQueries')}
+        label={t('queryName')}
         initial={tab.title}
-        action="Add"
+        action={t('add')}
         onSubmit={(name) =>
           addSavedQuery(props.connection.id, name, props.text())
         }

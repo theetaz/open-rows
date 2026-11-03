@@ -2,6 +2,7 @@
 import type { DiagramColumnDto } from '@openrows/ipc';
 import { HEADER_HEIGHT, MAX_COLUMNS, PADDING_X, ROW_HEIGHT } from './geometry';
 import type { DiagramNode } from './geometry';
+import { t } from './messages';
 
 /** Average glyph width of 12 px UI text, for clipping long names. */
 const CHAR_WIDTH = 6.6;
@@ -74,7 +75,7 @@ export function TableNode(props: {
       transform={`translate(${String(node.x)} ${String(node.y)})`}
       role="button"
       tabIndex={0}
-      aria-label={`Open table ${table.name}`}
+      aria-label={t('openTableName', { name: table.name })}
       onClick={() => {
         props.onOpen(table.name);
       }}
@@ -121,7 +122,7 @@ export function TableNode(props: {
           y={HEADER_HEIGHT + shown.length * ROW_HEIGHT + ROW_HEIGHT / 2}
           dominantBaseline="central"
         >
-          {`+${String(node.hidden)} more`}
+          {t('hiddenMore', { hidden: String(node.hidden) })}
         </text>
       )}
     </g>

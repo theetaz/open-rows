@@ -3,26 +3,35 @@ import { cancelQuery, startExport } from '@openrows/ipc';
 import type { ExportEventDto, ExportRequest } from '@openrows/ipc';
 import { addJob, setJobsOpen } from '../jobs';
 import type { JobHandle } from '../jobs';
+import { t, tn } from './messages';
 
 export const rowCount = (rows: number): string =>
-  `${rows.toLocaleString()} ${rows === 1 ? 'row' : 'rows'}`;
+  tn('rowCount', rows, { count: rows.toLocaleString() });
 
 /** Show one export event on its job. */
 function applyExportEvent(job: JobHandle, event: ExportEventDto): void {
   switch (event.type) {
     case 'progress': {
-      const rows = `${rowCount(event.rows ?? 0)} written`;
+      const written = event.rows ?? 0;
+      const rows = tn('rowsWritten', written, {
+        count: written.toLocaleString(),
+      });
       job.update({ detail: event.detail ? `${event.detail} · ${rows}` : rows });
       return;
     }
     case 'finished':
-      job.finish(`${rowCount(event.rows ?? 0)} exported`, event.path);
+      job.finish(
+        tn('rowsExported', event.rows ?? 0, {
+          count: (event.rows ?? 0).toLocaleString(),
+        }),
+        event.path,
+      );
       return;
     case 'failed':
       job.fail(event.error.message);
       return;
     case 'cancelled':
-      job.cancelled('Cancelled. No file was written.');
+      job.cancelled(t('cancelledNoFile'));
   }
 }
 
@@ -42,7 +51,7 @@ export async function startExportJob(request: ExportRequest): Promise<boolean> {
   if (reply.status === 'dismissed') return false;
   const started = addJob({
     kind: 'export',
-    title: `Export ${reply.fileName}`,
+    title: t('exportFilename', { fileName: reply.fileName }),
     cancel: () => {
       void cancelQuery(reply.exportId);
     },

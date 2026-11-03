@@ -5,6 +5,7 @@ import { openSheet, sheetKey } from './sheetFocus';
 import { useReducedMotion } from './useReducedMotion';
 import { material } from '../tokens/material';
 import styles from './Palette.module.css';
+import { t } from '../messages';
 /** Modal glass popover retaining focus and its DOM through the closing animation. */
 export function PalettePopover(props: {
   title: string;
@@ -71,7 +72,7 @@ export function PalettePopover(props: {
           <h2>{props.title}</h2>
           <button
             type="button"
-            aria-label="Close palette"
+            aria-label={t('closePalette')}
             onClick={() => {
               dismiss();
             }}

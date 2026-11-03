@@ -4,6 +4,7 @@ import type { PlanDto, PlanNodeDto } from '@openrows/ipc';
 import { flameLayout, flameNext } from './flameLayout';
 import { nodeLabel, rowsText, selfText } from './planModel';
 import styles from './Flame.module.css';
+import { t } from './messages';
 
 type Props = {
   plan: PlanDto;
@@ -52,14 +53,15 @@ export const PlanFlame = memo(function PlanFlame(
   return (
     <div className={styles.chart}>
       <p className={styles.legend}>
-        Filled width: exclusive {plan.weight === 'time' ? 'time' : 'cost'}.
-        Outlines include inputs.{' '}
-        {plan.weight === 'none' && 'No measures: equal widths.'} Arrow keys
-        explore; Enter opens the operator in Plan.
+        {plan.weight === 'time'
+          ? t('filledWidthExclusiveTime')
+          : plan.weight === 'none'
+            ? t('filledWidthExclusiveCost')
+            : t('filledWidthExclusiveCostOutlines')}
       </p>
       <svg
         role="group"
-        aria-label="Plan icicle"
+        aria-label={t('planIcicle')}
         viewBox={`0 0 1000 ${String((depth + 1) * 32)}`}
         style={{ height: (depth + 1) * 32 }}
       >
@@ -87,7 +89,11 @@ function sameDrawing(before: Props, after: Props): boolean {
 }
 
 function description(plan: PlanDto, node: PlanNodeDto): string {
-  return `${nodeLabel(node)} · Self ${selfText(plan, node)} · Rows ${rowsText(plan, node)}`;
+  return t('nodeSelfPlan', {
+    node: nodeLabel(node),
+    plan: selfText(plan, node),
+    plan2: rowsText(plan, node),
+  });
 }
 
 type Actions = {

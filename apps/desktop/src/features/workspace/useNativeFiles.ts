@@ -4,6 +4,7 @@ import { onNativeFilesReady, takeNativeFiles } from '@openrows/ipc';
 import type { NativeFileDto, OpenLinkDto } from '@openrows/ipc';
 import type { Connections } from '../connections';
 import type { QueryTabs, TabScope } from '../query';
+import { t } from './messages';
 
 /** Files without a selected database stay editable in a disconnected local scope. */
 export const localFileScope: TabScope = {
@@ -31,7 +32,7 @@ export function acceptNativeFile(
   }
   if (file.kind === 'database') {
     if (file.engine !== 'sqlite' && file.engine !== 'duckdb')
-      return 'Unsupported local database engine';
+      return t('unsupportedLocalDatabase');
     input.connections.setSheet({
       kind: 'new-file',
       path: file.path,

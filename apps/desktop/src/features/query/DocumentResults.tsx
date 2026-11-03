@@ -5,13 +5,14 @@ import { JsonTree } from '../value/JsonTree';
 import { useCellValue } from '../value/useCellValue';
 import type { ResultMeta } from './run';
 import styles from './DocumentResults.module.css';
+import { t } from './lazyMessages';
 
 type Mode = 'table' | 'tree' | 'json';
 
 const MODES = [
-  { value: 'table', label: 'Table' },
-  { value: 'tree', label: 'Tree' },
-  { value: 'json', label: 'JSON' },
+  { value: 'table', label: t('table') },
+  { value: 'tree', label: t('tree') },
+  { value: 'json', label: t('json') },
 ] as const;
 
 /** The whole-document EJSON column a MongoDB result carries (M3-01). */
@@ -53,9 +54,9 @@ export function DocumentResults({
   const [row, setRow] = useState(0);
   return (
     <div className={styles.view}>
-      <div className={styles.bar} role="toolbar" aria-label="Document view">
+      <div className={styles.bar} role="toolbar" aria-label={t('documentView')}>
         <SegmentedControl
-          aria-label="Show documents as"
+          aria-label={t('showDocuments')}
           size="compact"
           options={MODES}
           value={mode}
@@ -74,7 +75,7 @@ export function DocumentResults({
           mode={mode}
         />
       ) : (
-        <p className={styles.note}>No documents.</p>
+        <p className={styles.note}>{t('noDocuments')}</p>
       )}
     </div>
   );
@@ -91,7 +92,7 @@ function DocumentPager(props: {
       <IconButton
         size="sm"
         variant="ghost"
-        aria-label="Previous document"
+        aria-label={t('previousDocument')}
         disabled={row === 0}
         onClick={() => {
           props.onRow(row - 1);
@@ -100,12 +101,15 @@ function DocumentPager(props: {
         <Icon name="chevronLeft" />
       </IconButton>
       <span className={styles.position}>
-        Document {(row + 1).toLocaleString()} of {rows.toLocaleString()}
+        {t('documentValueRows', {
+          value: (row + 1).toLocaleString(),
+          rows: rows.toLocaleString(),
+        })}
       </span>
       <IconButton
         size="sm"
         variant="ghost"
-        aria-label="Next document"
+        aria-label={t('nextDocument')}
         disabled={row + 1 >= rows}
         onClick={() => {
           props.onRow(row + 1);
@@ -136,7 +140,7 @@ function DocumentValue({
     return (
       <div className={styles.note}>
         <Button size="sm" onClick={value.load} disabled={value.loading}>
-          {value.loading ? 'Loading document…' : 'Load document'}
+          {value.loading ? t('loadingDocument') : t('loadDocument')}
         </Button>
       </div>
     );

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { LimitsDto, ProfileDto } from '@openrows/ipc';
+import { t } from './messages/routes';
 
 /**
  * Session limits as the connection form edits them: the statement timeout
@@ -42,7 +43,7 @@ export function limitsInput(draft: LimitsDraft): LimitsDto {
 
 /** `30 s`, `5 min` or `1 h`; `Off` for `0`. */
 export function secondsLabel(seconds: number): string {
-  if (seconds === 0) return 'Off';
+  if (seconds === 0) return t('off');
   if (seconds < 60 || seconds % 60 !== 0) return `${String(seconds)} s`;
   const minutes = seconds / 60;
   return minutes < 60 || minutes % 60 !== 0
@@ -67,8 +68,13 @@ export function statementOptions(
   defaultSeconds: number,
 ): Option[] {
   const options = [
-    { value: '', label: `Default (${secondsLabel(defaultSeconds)})` },
-    { value: '0', label: 'No limit' },
+    {
+      value: '',
+      label: t('defaultDefaultseconds', {
+        defaultSeconds: secondsLabel(defaultSeconds),
+      }),
+    },
+    { value: '0', label: t('noLimit') },
     ...STATEMENT_SECONDS.map((seconds) => ({
       value: String(seconds),
       label: secondsLabel(seconds),
@@ -80,7 +86,7 @@ export function statementOptions(
 /** Idle timeout choices in minutes. */
 export function idleOptions(current: string): Option[] {
   const options = [
-    { value: '0', label: 'Never' },
+    { value: '0', label: t('never') },
     ...IDLE_MINUTES.map((minutes) => ({
       value: String(minutes),
       label: secondsLabel(minutes * 60),
@@ -93,8 +99,14 @@ export function idleOptions(current: string): Option[] {
 export function limitsSummary(draft: LimitsDraft): string {
   const parts = [];
   if (draft.statementTimeout !== '')
-    parts.push(`Timeout ${secondsLabel(count(draft.statementTimeout, 0))}`);
+    parts.push(
+      t('timeoutStatementtimeout', {
+        statementTimeout: secondsLabel(count(draft.statementTimeout, 0)),
+      }),
+    );
   if (draft.idleTimeout !== '0')
-    parts.push(`Idle ${secondsLabel(count(draft.idleTimeout, 0) * 60)}`);
-  return parts.length ? parts.join(' · ') : 'Defaults';
+    parts.push(
+      t('idleValue', { value: secondsLabel(count(draft.idleTimeout, 0) * 60) }),
+    );
+  return parts.length ? parts.join(' · ') : t('defaults');
 }

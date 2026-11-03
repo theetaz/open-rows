@@ -19,6 +19,7 @@ import { baseName } from './treeModel';
 import { ProjectConnections } from './ProjectConnections';
 import { ProjectTree } from './ProjectTree';
 import styles from './ProjectSection.module.css';
+import { t } from './messages';
 
 type Props = ProjectHooks & {
   search: string;
@@ -46,7 +47,7 @@ function projectEntries(
   const connection: MenuEntry = active
     ? {
         kind: 'item',
-        label: `Use “${active.name}” by Default`,
+        label: t('useNameDefault', { name: active.name }),
         checked: project.defaultConnection === active.id,
         run: () => {
           setDefault(project, active.id);
@@ -54,15 +55,15 @@ function projectEntries(
       }
     : {
         kind: 'item',
-        label: 'Use Connection by Default',
+        label: t('useConnectionDefault'),
         disabled: true,
         run: () => undefined,
       };
   return [
-    { kind: 'item', label: 'Open Project…', run: openProjectDialog },
+    { kind: 'item', label: t('openProject'), run: openProjectDialog },
     {
       kind: 'submenu',
-      label: 'Open Recent',
+      label: t('openRecent'),
       entries: others.length
         ? others.map((root) => ({
             kind: 'item' as const,
@@ -74,7 +75,7 @@ function projectEntries(
         : [
             {
               kind: 'item',
-              label: 'No Recent Projects',
+              label: t('noRecentProjects'),
               disabled: true,
               run: () => undefined,
             },
@@ -84,15 +85,15 @@ function projectEntries(
     connection,
     {
       kind: 'item',
-      label: 'Clear Default Connection',
+      label: t('clearDefaultConnection'),
       disabled: project.defaultConnection === null,
       run: () => {
         setDefault(project, null);
       },
     },
     { kind: 'separator' },
-    { kind: 'item', label: 'Reload', run: () => void reloadProject() },
-    { kind: 'item', label: 'Close Project', run: closeProject },
+    { kind: 'item', label: t('reload'), run: () => void reloadProject() },
+    { kind: 'item', label: t('closeProject'), run: closeProject },
   ];
 }
 
@@ -100,14 +101,14 @@ function projectEntries(
 function NoProject(props: { recent: readonly string[] }): React.JSX.Element {
   return (
     <div className={styles.empty}>
-      <p>Keep queries as .sql files in a project folder, ready for git.</p>
+      <p>{t('keepQueriesSql')}</p>
       <Button size="sm" onClick={openProjectDialog}>
-        Open Project…
+        {t('openProject')}
       </Button>
       {props.recent.length > 0 && (
         <div
           className={styles.recent}
-          aria-label="Recent projects"
+          aria-label={t('recentProjects')}
           role="group"
         >
           {props.recent.map((root) => (
@@ -163,13 +164,15 @@ export function ProjectSection(props: Props): React.JSX.Element {
     };
   }, []);
   return (
-    <section aria-label="Project">
+    <section aria-label={t('project')}>
       <div className={styles.header}>
         <Icon name="schema" />
-        <span title={project?.root}>{project ? project.name : 'Project'}</span>
+        <span title={project?.root}>
+          {project ? project.name : t('project')}
+        </span>
         {project && (
           <MenuButton
-            label="Project actions"
+            label={t('projectActions')}
             variant="ghost"
             entries={projectEntries(project, recent, props.active)}
           >

@@ -5,6 +5,7 @@ import type { ColumnRow, IndexRow } from './effective';
 import type { MenuItem, MenuState } from './ItemMenu';
 import type { Cursor } from './StructureGrid';
 import type { SchemaEditing } from './useSchemaEditing';
+import { t } from '../messages/lazyStructure';
 
 type Point = { x: number; y: number };
 
@@ -62,7 +63,7 @@ export function structureActions(context: Context): StructureActions {
     openTable,
     rowMenu: (row, at) => ({
       ...at,
-      label: `Column ${row.name}`,
+      label: t('columnName2', { name: row.name }),
       items: rowItems(row, {
         schema,
         dropRow,
@@ -72,7 +73,7 @@ export function structureActions(context: Context): StructureActions {
     }),
     indexMenu: (row, at) => ({
       ...at,
-      label: `Index ${row.name}`,
+      label: t('indexName2', { name: row.name }),
       items: indexItems(row, schema, dropIndex),
     }),
   };
@@ -90,7 +91,7 @@ function rowItems(
   const items: MenuItem[] = [];
   if (!row.dropped)
     items.push({
-      label: 'Edit column…',
+      label: t('editColumn'),
       disabled: !act.schema.enabled,
       run: () => {
         act.edit(row);
@@ -99,7 +100,7 @@ function rowItems(
   if (row.dropped && row.column !== null) {
     const column = row.column;
     items.push({
-      label: 'Restore column',
+      label: t('restoreColumn'),
       disabled: !act.schema.enabled,
       run: () => {
         act.schema.unstage(`dropColumn:${column}`);
@@ -107,7 +108,7 @@ function rowItems(
     });
   } else
     items.push({
-      label: row.column === null ? 'Remove new column' : 'Delete column',
+      label: row.column === null ? t('removeNewColumn') : t('deleteColumn'),
       danger: true,
       disabled: !act.schema.enabled,
       run: () => {
@@ -116,14 +117,14 @@ function rowItems(
     });
   items.push(
     {
-      label: 'Add column…',
+      label: t('addColumn2'),
       disabled: !act.schema.enabled,
       run: () => {
         act.edit(null);
       },
     },
     {
-      label: 'Copy name',
+      label: t('copyName'),
       run: () => {
         copy(row.name);
       },
@@ -131,7 +132,7 @@ function rowItems(
   );
   if (row.foreignKey)
     items.push({
-      label: `Open ${row.foreignKey.table}`,
+      label: t('openTable', { table: row.foreignKey.table }),
       run: () => {
         act.openTable(row);
       },
@@ -146,20 +147,19 @@ function indexItems(
 ): MenuItem[] {
   const drop: MenuItem = row.dropped
     ? {
-        label: 'Restore index',
+        label: t('restoreIndex'),
         disabled: !schema.enabled,
         run: () => {
           schema.unstage(`dropIndex:${row.name}`);
         },
       }
     : {
-        label: row.added ? 'Remove new index' : 'Delete index',
+        label: row.added ? t('removeNewIndex') : t('deleteIndex'),
         danger: true,
         disabled: !schema.enabled || row.constraint,
         ...(row.constraint
           ? {
-              title:
-                'This index backs a constraint; drop the constraint instead',
+              title: t('indexBacksConstraint'),
             }
           : {}),
         run: () => {
@@ -169,7 +169,7 @@ function indexItems(
   return [
     drop,
     {
-      label: 'Copy name',
+      label: t('copyName'),
       disabled: !row.name,
       run: () => {
         copy(row.name);

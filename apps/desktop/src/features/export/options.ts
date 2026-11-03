@@ -9,6 +9,7 @@ import type {
 } from '@openrows/ipc';
 import { MAX_ROWS_PER_STATEMENT } from './exportSettings';
 import type { ExportFormatKind, ExportSettings } from './exportSettings';
+import { t } from './lazyMessages';
 
 /** The export sheet's choices; text fields stay text until validated. */
 export type ExportOptions = ExportSettings & {
@@ -21,48 +22,48 @@ export type ExportOptions = ExportSettings & {
 type Choice<Value extends string> = { value: Value; label: string };
 
 export const formatChoices: readonly Choice<ExportFormatKind>[] = [
-  { value: 'csv', label: 'CSV' },
-  { value: 'tsv', label: 'TSV' },
-  { value: 'json', label: 'JSON' },
-  { value: 'ndjson', label: 'NDJSON' },
-  { value: 'sql', label: 'SQL INSERT' },
-  { value: 'markdown', label: 'Markdown' },
-  { value: 'xlsx', label: 'Excel (.xlsx)' },
-  { value: 'parquet', label: 'Parquet' },
+  { value: 'csv', label: t('csv') },
+  { value: 'tsv', label: t('tsv') },
+  { value: 'json', label: t('json') },
+  { value: 'ndjson', label: t('ndjson') },
+  { value: 'sql', label: t('sqlInsert') },
+  { value: 'markdown', label: t('markdown') },
+  { value: 'xlsx', label: t('excelXlsx') },
+  { value: 'parquet', label: t('parquet') },
 ];
 
 export const delimiterChoices: readonly Choice<CsvDelimiterDto>[] = [
-  { value: 'comma', label: 'Comma ( , )' },
-  { value: 'semicolon', label: 'Semicolon ( ; )' },
-  { value: 'tab', label: 'Tab' },
-  { value: 'pipe', label: 'Pipe ( | )' },
+  { value: 'comma', label: t('comma') },
+  { value: 'semicolon', label: t('semicolon') },
+  { value: 'tab', label: t('tab') },
+  { value: 'pipe', label: t('pipe') },
 ];
 
 export const quoteChoices: readonly Choice<CsvQuoteDto>[] = [
-  { value: 'double', label: 'Double ( " )' },
-  { value: 'single', label: "Single ( ' )" },
+  { value: 'double', label: t('double') },
+  { value: 'single', label: t('single') },
 ];
 
 export const lineEndingChoices: readonly Choice<LineEndingDto>[] = [
-  { value: 'crlf', label: 'CRLF (Windows, RFC 4180)' },
-  { value: 'lf', label: 'LF (macOS, Linux)' },
+  { value: 'crlf', label: t('crlfWindowsRfc') },
+  { value: 'lf', label: t('lfMacosLinux') },
 ];
 
 export const encodingChoices: readonly Choice<TextEncodingDto>[] = [
-  { value: 'utf8', label: 'UTF-8' },
-  { value: 'utf8Bom', label: 'UTF-8 with BOM (Excel)' },
-  { value: 'utf16Le', label: 'UTF-16 LE' },
-  { value: 'latin1', label: 'Latin-1 (ISO 8859-1)' },
+  { value: 'utf8', label: t('utf8') },
+  { value: 'utf8Bom', label: t('utf8Bom') },
+  { value: 'utf16Le', label: t('utf16Le') },
+  { value: 'latin1', label: t('latin1Iso') },
 ];
 
 export const layoutChoices: readonly Choice<'compact' | 'pretty'>[] = [
-  { value: 'compact', label: 'Compact (one object per line)' },
-  { value: 'pretty', label: 'Pretty (indented)' },
+  { value: 'compact', label: t('compactOneObject') },
+  { value: 'pretty', label: t('prettyIndented') },
 ];
 
 export const compressionChoices: readonly Choice<ParquetCompressionDto>[] = [
-  { value: 'snappy', label: 'Snappy' },
-  { value: 'none', label: 'None' },
+  { value: 'snappy', label: t('snappy') },
+  { value: 'none', label: t('none') },
 ];
 
 /** The remembered options with the SQL target `table`. */
@@ -100,13 +101,15 @@ function rowsError(text: string): string | null {
     rows >= 1 &&
     rows <= MAX_ROWS_PER_STATEMENT
     ? null
-    : `Rows per INSERT must be a whole number from 1 to ${MAX_ROWS_PER_STATEMENT.toLocaleString()}.`;
+    : t('rowsPerInsertMust', {
+        maxRowsPerStatement: MAX_ROWS_PER_STATEMENT.toLocaleString(),
+      });
 }
 
 /** Why the SQL options cannot be used, or `null` when they can. */
 export function sqlError(options: ExportOptions): string | null {
   if (options.format !== 'sql') return null;
-  if (!options.table.trim()) return 'Enter the table name to insert into.';
+  if (!options.table.trim()) return t('enterTableName');
   return rowsError(options.rowsText);
 }
 
@@ -129,7 +132,7 @@ export function nullTextError(options: ExportOptions): string | null {
   return [delimiter, quote, '\r', '\n'].some((part) =>
     text.nullText.includes(part),
   ) || text.nullText.length > 32
-    ? 'The NULL text cannot contain the delimiter, the quote or a line break.'
+    ? t('nullTextCannot')
     : null;
 }
 

@@ -11,6 +11,7 @@ import { OBJECT_PAGE } from './useCatalog';
 import type { Catalog, ObjectPage } from './useCatalog';
 import type { Resource } from './useResources';
 import styles from './ObjectTree.module.css';
+import { t } from './messages';
 
 type Props = {
   catalog: Catalog;
@@ -121,19 +122,21 @@ export function ObjectSection(props: Props): React.JSX.Element {
       >
         {resource.status === 'loading' && (
           <p className={styles.note} role="status">
-            Loading…
+            {t('loading')}
           </p>
         )}
         {resource.status === 'error' && (
           <div className={styles.error} role="alert">
             <span>{resource.message}</span>
             <Button size="sm" variant="ghost" onClick={catalog.refresh}>
-              Retry
+              {t('retry')}
             </Button>
           </div>
         )}
         {resource.status === 'ready' && !resource.data.length && (
-          <p className={styles.note}>No {group.label.toLowerCase()}</p>
+          <p className={styles.note}>
+            {t('noLabel', { label: group.label.toLowerCase() })}
+          </p>
         )}
         {visible.length > 0 && (
           <Tree label={group.label}>
@@ -176,7 +179,7 @@ function ShowMore({
   const next = Math.min(more, OBJECT_PAGE).toLocaleString('en-US');
   return (
     <Button size="sm" variant="ghost" onClick={onClick}>
-      Show {next} more of {more.toLocaleString('en-US')}
+      {t('showNextMore', { next, more: more.toLocaleString('en-US') })}
     </Button>
   );
 }

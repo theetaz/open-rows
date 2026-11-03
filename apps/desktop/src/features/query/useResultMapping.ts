@@ -5,6 +5,7 @@ import type { EngineDto, SourceResolution } from '@openrows/ipc';
 import { resultMapping } from './resultMapping';
 import type { ResultMapping } from './resultMapping';
 import type { ResultMeta } from './run';
+import { t } from './lazyMessages';
 
 // The result object lives for one execution. Its cache dies when the result is released.
 const resolutions = new WeakMap<
@@ -26,7 +27,9 @@ function resolve(
   if (!pending) {
     pending = resolveQuerySource(sessionId, table).catch((error: unknown) => ({
       kind: 'readonly',
-      reason: `Could not resolve the source table: ${error instanceof Error ? error.message : String(error)}`,
+      reason: t('couldNotResolve', {
+        message: error instanceof Error ? error.message : String(error),
+      }),
     }));
     cache.set(identity, pending);
   }

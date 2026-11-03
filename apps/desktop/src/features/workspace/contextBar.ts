@@ -5,6 +5,7 @@ import { routeStatus } from './routeStatus';
 import type { SessionStatus } from '../connections';
 import type { QueryTab } from '../query/tabs';
 import type { SidebarObject } from '../schema/sidebarIdentity';
+import { t } from './messages';
 
 /** Segments of the toolbar context bar, TablePlus style. */
 export type ContextSegments = {
@@ -42,11 +43,11 @@ export function contextSegments(input: {
       env: '',
       environment: null,
       engine: 'Not connected',
-      name: 'No connection',
+      name: t('noConnection'),
       database: '',
       object: '',
       insecure: [],
-      route: 'No connection',
+      route: t('noConnection'),
     };
   const env = (profile.env.label ?? profile.env.kind).toUpperCase();
   const engine =

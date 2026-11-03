@@ -4,6 +4,7 @@ import { isNumberText, quoteIdent, sqlLiteral } from './sql';
 import type { ValueKind } from './sql';
 import type { DelimitedOptions } from './copySettings';
 import { htmlTable } from './html';
+import { t } from '../lazyMessages';
 
 /** What a grid selection can be copied as (FR-GRID-03). */
 export type CopyFormat =
@@ -44,12 +45,12 @@ export function rowText(
 
 /** Menu labels of the `Copy as` formats, in TablePlus order. */
 export const COPY_AS: readonly { format: CopyFormat; label: string }[] = [
-  { format: 'csv', label: 'CSV' },
-  { format: 'json', label: 'JSON' },
-  { format: 'markdown', label: 'Markdown' },
-  { format: 'html', label: 'HTML table' },
-  { format: 'insert', label: 'SQL INSERT' },
-  { format: 'whereIn', label: 'WHERE IN' },
+  { format: 'csv', label: t('csv') },
+  { format: 'json', label: t('json') },
+  { format: 'markdown', label: t('markdown') },
+  { format: 'html', label: t('htmlTable') },
+  { format: 'insert', label: t('sqlInsert') },
+  { format: 'whereIn', label: t('where') },
 ];
 
 const TSV_DEFAULTS: DelimitedOptions = {

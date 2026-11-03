@@ -10,6 +10,7 @@ use tauri_plugin_dialog::DialogExt as _;
 
 use crate::connections::IpcError;
 use crate::diagram::commands::with_extension;
+use crate::native_text;
 use crate::queries::files::{choose, file_stem, write_atomic};
 
 /// Largest report written; a 2× PNG of a report chart stays far below.
@@ -69,7 +70,7 @@ pub(crate) async fn report_save(
         .dialog()
         .file()
         .set_parent(&window)
-        .set_title("Export Report")
+        .set_title(native_text::EXPORT_REPORT)
         .add_filter(filter, &[extension])
         .set_file_name(format!("{}.{extension}", file_stem(&name, "report")));
     let Some(path) = choose(panel, true).await? else {

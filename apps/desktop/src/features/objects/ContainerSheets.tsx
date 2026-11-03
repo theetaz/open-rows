@@ -8,6 +8,7 @@ import {
 } from '../table/structure/forms/dialect';
 import { ObjectSheet } from './ObjectSheet';
 import type { ChangeScope } from './useObjectChange';
+import { t } from './messages';
 
 type Props = {
   scope: ChangeScope;
@@ -71,15 +72,15 @@ export function DatabaseSheet(props: Props & OpenDatabases): React.JSX.Element {
     : databaseChange(props.name, name, { encoding, collation });
   return (
     <ObjectSheet
-      title={renamed ? `Rename database ${props.name ?? ''}` : 'New database'}
+      title={
+        renamed
+          ? t('renameDatabaseName', { name: props.name ?? '' })
+          : t('newDatabase')
+      }
       scope={props.scope}
       change={change}
-      problem={
-        open
-          ? `${props.name ?? ''} is open in OpenRows; close it to rename it.`
-          : null
-      }
-      action={renamed ? 'Rename' : 'Create'}
+      problem={open ? t('nameOpenOpenrows', { name: props.name ?? '' }) : null}
+      action={renamed ? t('rename') : t('create')}
       onClose={props.onClose}
       onDone={props.onDone}
     >
@@ -89,11 +90,11 @@ export function DatabaseSheet(props: Props & OpenDatabases): React.JSX.Element {
             if (props.name !== null) props.onCloseDatabase(props.name);
           }}
         >
-          Close {props.name}
+          {t('closeName', { name: props.name })}
         </Button>
       )}
       <TextField
-        label={renamed ? 'New name' : 'Name'}
+        label={renamed ? t('newName') : t('name')}
         value={name}
         autoComplete="off"
         spellCheck={false}
@@ -104,18 +105,18 @@ export function DatabaseSheet(props: Props & OpenDatabases): React.JSX.Element {
       {!renamed && (
         <>
           <TextField
-            label={mysql ? 'Character set' : 'Encoding'}
+            label={mysql ? t('characterSet') : t('encoding')}
             list={encodings}
-            placeholder="Server default"
+            placeholder={t('serverDefault')}
             value={encoding}
             onChange={(event) => {
               setEncoding(event.target.value);
             }}
           />
           <TextField
-            label="Collation"
+            label={t('collation')}
             list={collations}
-            placeholder="Server default"
+            placeholder={t('serverDefault')}
             value={collation}
             onChange={(event) => {
               setCollation(event.target.value);
@@ -144,15 +145,19 @@ export function SchemaSheet(props: Props): React.JSX.Element {
   const change = schemaChange(props.name, name);
   return (
     <ObjectSheet
-      title={renamed ? `Rename schema ${props.name ?? ''}` : 'New schema'}
+      title={
+        renamed
+          ? t('renameSchemaName', { name: props.name ?? '' })
+          : t('newSchema')
+      }
       scope={props.scope}
       change={change}
-      action={renamed ? 'Rename' : 'Create'}
+      action={renamed ? t('rename') : t('create')}
       onClose={props.onClose}
       onDone={props.onDone}
     >
       <TextField
-        label={renamed ? 'New name' : 'Name'}
+        label={renamed ? t('newName') : t('name')}
         value={name}
         autoComplete="off"
         spellCheck={false}

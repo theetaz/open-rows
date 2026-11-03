@@ -13,13 +13,14 @@ import { McpPreferences } from './McpPreferences';
 import { McpTokenForm } from './McpTokenForm';
 import { McpClients } from './McpClients';
 import { mcpSettings, saveMcpSettings } from './mcpSettings';
+import { t } from '../messages/lazyAi';
 const useMcpSettings = mcpSettings.useValue;
 /** Lazy MCP controls; plaintext tokens exist only in the current one-time view. */
 export default function McpPane(): React.JSX.Element {
   const settings = useMcpSettings();
   const { status, value, setValue, failure, busy, run } = useMcpServer();
   return (
-    <section aria-label="MCP settings">
+    <section aria-label={t('mcpSettings')}>
       <McpPreferences
         settings={settings}
         busy={busy}
@@ -29,8 +30,10 @@ export default function McpPane(): React.JSX.Element {
       />
       <p role="status">
         {status?.port
-          ? `Listening on 127.0.0.1:${String(status.port)} · stdio bridge${status.httpEnabled ? ' and HTTP' : ''}`
-          : 'MCP server stopped'}
+          ? status.httpEnabled
+            ? t('listening1270', { port: String(status.port) })
+            : t('listening12700', { port: String(status.port) })
+          : t('mcpServerStopped')}
       </p>
       <Button
         disabled={busy}
@@ -38,7 +41,7 @@ export default function McpPane(): React.JSX.Element {
           void run(async () => {});
         }}
       >
-        Refresh MCP status
+        {t('refreshMcpStatus')}
       </Button>
       <McpTokenForm
         busy={busy}
@@ -52,14 +55,14 @@ export default function McpPane(): React.JSX.Element {
       />
       {value && (
         <div>
-          <p>Copy this token now. It is shown once.</p>
-          <output aria-label="New MCP token">{value}</output>
+          <p>{t('copyTokenNow')}</p>
+          <output aria-label={t('newMcpToken')}>{value}</output>
           <Button
             onClick={() => {
               setValue('');
             }}
           >
-            Hide token
+            {t('hideToken')}
           </Button>
         </div>
       )}

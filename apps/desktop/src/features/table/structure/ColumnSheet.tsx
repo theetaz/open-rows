@@ -17,6 +17,7 @@ import type { ColumnDraft } from './forms/columnDraft';
 import type { StageOp } from './forms/staging';
 import { StageSheet } from './StageSheet';
 import type { Structure } from './useStructure';
+import { t } from '../messages/lazyStructure';
 
 /** The staging of a column form: per-property changes, or a new column. */
 function columnOp(
@@ -95,10 +96,10 @@ export function ColumnSheet({
   return (
     <StageSheet
       structure={structure}
-      title={row ? `Edit column ${row.name}` : 'Add column'}
+      title={row ? t('editColumnName', { name: row.name }) : t('addColumn')}
       op={problem ? null : op}
       problem={problem}
-      stageLabel={row ? 'Stage changes' : 'Stage column'}
+      stageLabel={row ? t('stageChanges') : t('stageColumn')}
       onClose={onClose}
     >
       {row?.column && (

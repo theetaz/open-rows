@@ -2,12 +2,13 @@
 import { Button } from '@openrows/ui';
 import { Sheet, SheetActions } from '@openrows/ui/sheet';
 import styles from './Table.module.css';
+import { t, tn } from './messages/lazyData';
 
 /** What the confirmation is for: Discard Changes, or Reload with edits staged. */
 export type DiscardKind = 'discard' | 'reload';
 
 const changes = (count: number): string =>
-  `${count.toLocaleString('en-US')} staged ${count === 1 ? 'change' : 'changes'}`;
+  tn('stagedChanges', count, { count: count.toLocaleString('en-US') });
 
 /**
  * Confirm dropping staged edits (FR-DATA-08). Discard removes edits that
@@ -32,20 +33,22 @@ export function DiscardSheet({
   const reload = kind === 'reload';
   return (
     <Sheet
-      title={reload ? 'Reload rows?' : `Discard ${changes(count)}?`}
+      title={
+        reload ? t('reloadRows') : t('discardCount', { count: changes(count) })
+      }
       size="alert"
       onClose={onClose}
     >
       <p className={styles.editNote}>
         {reload
-          ? `The table has ${changes(count)}. Reloading reads the rows again from the server; keep the changes staged, or discard them.`
-          : `The ${changes(count)} are removed and the rows reload from the server. Nothing was written yet, so nothing is rolled back; SQL already executed or committed is not undone.`}
+          ? t('tableCountReloading', { count: changes(count) })
+          : t('countRemovedRows', { count: changes(count) })}
       </p>
       <SheetActions>
-        <Button onClick={onClose}>Cancel</Button>
-        {reload && <Button onClick={onKeep}>Reload, keep changes</Button>}
+        <Button onClick={onClose}>{t('cancel')}</Button>
+        {reload && <Button onClick={onKeep}>{t('reloadKeepChanges')}</Button>}
         <Button variant="destructive" onClick={onDiscard}>
-          {reload ? 'Discard & reload' : 'Discard changes'}
+          {reload ? t('discardReload') : t('discardChanges')}
         </Button>
       </SheetActions>
     </Sheet>

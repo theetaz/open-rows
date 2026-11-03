@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { lazy, Suspense, useState } from 'react';
 import { Button } from '@openrows/ui';
+import { t } from '../messages/lazyAi';
 const McpPane = lazy(() => import('./McpPane'));
 /** Load MCP credential/client controls only when requested. */
 export function McpDisclosure(): React.JSX.Element {
@@ -13,10 +14,10 @@ export function McpDisclosure(): React.JSX.Element {
           setOpen(!open);
         }}
       >
-        MCP server
+        {t('mcpServer')}
       </Button>
       {open && (
-        <Suspense fallback={<p role="status">Loading MCP settings…</p>}>
+        <Suspense fallback={<p role="status">{t('loadingMcpSettings')}</p>}>
           <McpPane />
         </Suspense>
       )}

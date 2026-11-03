@@ -8,6 +8,7 @@ import type {
   TlsFilesInput,
   TlsModeDto,
 } from '@openrows/ipc';
+import { t } from './messages/routes';
 
 /**
  * A keychain secret in the form: typed value, what Save does with it, and
@@ -178,22 +179,21 @@ export function validPort(text: string): boolean {
 function sshErrors(ssh: SshDraft): RouteErrors {
   if (!ssh.enabled) return {};
   const errors: RouteErrors = {};
-  if (!ssh.host.trim()) errors.sshHost = 'SSH host is required';
-  if (ssh.port.trim() && !validPort(ssh.port))
-    errors.sshPort = 'Port must be 1–65535';
+  if (!ssh.host.trim()) errors.sshHost = t('sshHostRequired');
+  if (ssh.port.trim() && !validPort(ssh.port)) errors.sshPort = t('portMust1');
   if (ssh.auth === 'privateKey' && !ssh.keyFile.trim())
-    errors.sshKeyFile = 'Choose a private key file';
+    errors.sshKeyFile = t('choosePrivateKey');
   if (jumpList(ssh.jumpHosts).some((jump) => !JUMP.test(jump)))
-    errors.sshJumpHosts = 'Use [user@]host[:port], separated by commas';
+    errors.sshJumpHosts = t('useUserHost');
   return errors;
 }
 
 function tlsErrors(tls: TlsDraft, mode: TlsModeDto): RouteErrors {
   const errors: RouteErrors = {};
   if (mode === 'verify-ca' && !tlsCa(tls))
-    errors.tlsCaFile = 'Verify CA needs a CA certificate';
+    errors.tlsCaFile = t('verifyCaNeeds');
   if (Boolean(tls.clientCert.trim()) !== Boolean(tls.clientKey.trim()))
-    errors.tlsClientKey = 'Choose both a client certificate and its key';
+    errors.tlsClientKey = t('chooseBothClient');
   return errors;
 }
 
@@ -238,21 +238,19 @@ export function tlsWarning(
   if (!unverifiedRemote(host, mode, caFile)) return null;
   if (mode === 'disable')
     return {
-      badge: 'Not encrypted',
-      detail:
-        'TLS is off: traffic to this remote server is readable on the network.',
+      badge: t('notEncrypted'),
+      detail: t('tlsOffTraffic'),
     };
   return {
-    badge: 'Certificate not verified',
-    detail:
-      'The server identity is not checked, so the connection can be intercepted. Use Verify full, or Verify CA with the server CA file.',
+    badge: t('certificateNotVerified'),
+    detail: t('serverIdentityNot'),
   };
 }
 
 /** Collapsed SSH section summary: `Off`, or `user@host:port`. */
 export function sshSummary(ssh: SshDraft): string {
-  if (!ssh.enabled) return 'Off';
+  if (!ssh.enabled) return t('off');
   const user = ssh.user.trim() ? `${ssh.user.trim()}@` : '';
   const port = ssh.port.trim() ? `:${ssh.port.trim()}` : '';
-  return `${user}${ssh.host.trim() || 'no host'}${port}`;
+  return `${user}${ssh.host.trim() || t('noHost')}${port}`;
 }

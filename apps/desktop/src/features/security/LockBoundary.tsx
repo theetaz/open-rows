@@ -5,6 +5,7 @@ import { commandForEvent } from '../commands';
 import { useSecurity } from './useSecurity';
 import { useSuspendedDialogs } from './useSuspendedDialogs';
 import './Security.module.css';
+import { t } from './messages';
 const LockScreen = lazy(() =>
   import('./LockScreen').then((m) => ({ default: m.LockScreen })),
 );
@@ -72,7 +73,9 @@ export function LockBoundary(props: {
         {props.children}
       </div>
       {status.locked && (
-        <Suspense fallback={<p role="status">Checking application lock…</p>}>
+        <Suspense
+          fallback={<p role="status">{t('checkingApplicationLock')}</p>}
+        >
           <LockScreen />
         </Suspense>
       )}

@@ -5,6 +5,7 @@ import { fieldError } from './form';
 import { PasswordField } from './PasswordField';
 import type { ConnectionForm } from './useConnectionForm';
 import styles from './ConnectionSheet.module.css';
+import { t } from './messages/profile';
 
 type TextKey =
   'name' | 'group' | 'host' | 'port' | 'user' | 'database' | 'tags';
@@ -30,12 +31,20 @@ export function NameFields({
   return (
     <>
       <TextField
-        label="Name"
+        label={t('name')}
         {...text('name')}
         {...fieldError(form.errors.name)}
       />
-      <TextField label="Group" placeholder="Optional" {...text('group')} />
-      <TextField label="Tags" placeholder="Comma-separated" {...text('tags')} />
+      <TextField
+        label={t('group')}
+        placeholder={t('optional')}
+        {...text('group')}
+      />
+      <TextField
+        label={t('tags')}
+        placeholder={t('commaSeparated')}
+        {...text('tags')}
+      />
     </>
   );
 }
@@ -53,12 +62,12 @@ export function ConnectionFields({
       <NameFields form={form} />
       <div className={styles.pair}>
         <TextField
-          label="Host"
+          label={t('host')}
           {...text('host')}
           {...fieldError(errors.host)}
         />
         <TextField
-          label="Port"
+          label={t('port')}
           disabled={draft.engine === 'mongodb' && draft.mongodb?.srv}
           inputMode="numeric"
           {...text('port')}
@@ -68,7 +77,7 @@ export function ConnectionFields({
       </div>
       {draft.engine !== 'libsql' && (
         <TextField
-          label="User"
+          label={t('user')}
           {...text('user')}
           {...fieldError(errors.user)}
         />
@@ -77,8 +86,10 @@ export function ConnectionFields({
       {draft.engine === 'mongodb' && <MongoFields form={form} />}
       {draft.engine !== 'libsql' && (
         <TextField
-          label="Database"
-          placeholder={draft.engine === 'postgres' ? 'postgres' : 'Optional'}
+          label={t('database')}
+          placeholder={
+            draft.engine === 'postgres' ? t('postgres') : t('optional')
+          }
           {...text('database')}
         />
       )}

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { HelperHop } from '@openrows/ipc';
+import { t } from './messages/routes';
 
 /** A new structured route; cloud proxies encrypt their upstream connection. */
 export function newHelper(kind: HelperHop['kind']): HelperHop {
@@ -49,7 +50,7 @@ export function helperError(
   chained: boolean,
 ): string | undefined {
   if (!helper) return undefined;
-  if (chained) return 'Cloud routes cannot combine with SSH or a proxy.';
+  if (chained) return t('cloudRoutesCannot');
   if (helper.kind === 'custom') return customError(helper);
   const values = Object.values(helper);
   if (
@@ -60,7 +61,7 @@ export function helperError(
           Array.from(value).some((char) => char.charCodeAt(0) < 32)),
     )
   )
-    return 'Route values cannot start with - or contain control characters.';
+    return t('routeValuesCannot');
   return requiredError(helper);
 }
 
@@ -71,22 +72,22 @@ function requiredError(
     case 'ssm':
       return helper.target.trim() && validPort(helper.remotePort)
         ? undefined
-        : 'Target and remote port are required.';
+        : t('targetRemotePort');
     case 'kubectl':
       return helper.context.trim() &&
         helper.namespace.trim() &&
         /^(pod|svc|deployment)\/.+$/.test(helper.resource) &&
         validPort(helper.remotePort)
         ? undefined
-        : 'Context, namespace, resource (pod/name, svc/name or deployment/name) and remote port are required.';
+        : t('contextNamespaceResource');
     case 'cloud':
       return helper.instance.trim() && !/[?&=#\s]/.test(helper.instance)
         ? undefined
-        : 'Enter an instance connection name or URI without query options.';
+        : t('enterInstanceConnection');
     case 'cloudflared':
       return helper.hostname.trim() && !/[/?@#:\s]/.test(helper.hostname)
         ? undefined
-        : 'Enter an Access hostname without a URL scheme, path or credentials.';
+        : t('enterAccessHostname');
   }
 }
 function customError(
@@ -96,9 +97,9 @@ function customError(
     !/^(\/|[A-Za-z]:[\\/])/.test(helper.program) ||
     helper.program.includes('\0')
   )
-    return 'Program must be an absolute path without NUL.';
+    return t('programMustAbsolute');
   if (!helper.args.some((arg) => arg.includes('{local_port}')))
-    return 'Include {local_port} in an argument to tell the helper where to listen.';
+    return t('includeLocalPort', { local_port: '{local_port}' });
   if (
     helper.args.some(
       (arg) =>
@@ -106,14 +107,18 @@ function customError(
         /\{(?!local_port\}|remote_host\}|remote_port\})/.test(arg),
     )
   )
-    return 'Use only {local_port}, {remote_host} and {remote_port}; arguments cannot contain NUL.';
+    return t('useOnlyLocal', {
+      local_port: '{local_port}',
+      remote_host: '{remote_host}',
+      remote_port: '{remote_port}',
+    });
   const timeout = helper.readyTimeoutSeconds;
   if (
     timeout !== null &&
     timeout !== undefined &&
     (!Number.isInteger(timeout) || timeout < 1 || timeout > 300)
   )
-    return 'Readiness timeout must be 1–300 seconds.';
+    return t('readinessTimeoutMust');
   return undefined;
 }
 

@@ -2,6 +2,7 @@
 import type { EditorDialect, SqlSnippet } from '@openrows/editor';
 import { localSetting } from '../settings/localSetting';
 import { BUILTIN_SNIPPETS } from './builtins';
+import { t } from './messages';
 
 /** Engines a snippet is offered for; MariaDB uses the MySQL snippets. */
 export type SnippetScope =
@@ -48,11 +49,10 @@ export function snippetProblem(
 ): string | null {
   const name = snippet.name.trim();
   if (!name || name.length > MAX_NAME)
-    return `Name must be 1–${String(MAX_NAME)} characters.`;
-  if (!PREFIX.test(snippet.prefix))
-    return 'Prefix must be 1–32 letters, digits, _ or $.';
+    return t('nameMust1', { maxName: String(MAX_NAME) });
+  if (!PREFIX.test(snippet.prefix)) return t('prefixMust1');
   if (!snippet.body.trim() || snippet.body.length > MAX_BODY)
-    return 'Body must not be empty.';
+    return t('bodyMustNot');
   return null;
 }
 
@@ -164,6 +164,6 @@ export function importSnippets(text: string): Snippet[] {
         newId,
       )
     : [];
-  if (!items.length) throw new Error('No valid snippets found in the JSON.');
+  if (!items.length) throw new Error(t('noValidSnippets'));
   return items;
 }

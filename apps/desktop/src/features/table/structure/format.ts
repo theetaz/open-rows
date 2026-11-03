@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
+import { t } from '../messages/initial';
 const units = ['KB', 'MB', 'GB', 'TB'] as const;
 
 /** `81 KB`, `1 MB`: binary units rounded to whole numbers, like TablePlus. */
 export function formatBytes(bytes: number | null): string {
   if (bytes === null) return '—';
-  if (bytes < 1024) return `${String(bytes)} bytes`;
+  if (bytes < 1024) return t('sizeBytes', { bytes: String(bytes) });
   let value = bytes / 1024;
   let unit = 0;
   while (value >= 1024 && unit < units.length - 1) {

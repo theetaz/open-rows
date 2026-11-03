@@ -5,6 +5,7 @@ import type {
   RoutineKindDto,
 } from '@openrows/ipc';
 import type { ObjectEditorRequest } from './requests';
+import { t } from './messages';
 
 /** One menu entry; `request: null` is shown disabled with `reason`. */
 export type EditorEntry = {
@@ -26,7 +27,7 @@ type TreeObject = {
 /** Where new objects go: a database and one of its schemas. */
 type Place = { database: string; schema: string };
 
-const UNSUPPORTED = 'Not supported by this database';
+const UNSUPPORTED = t('notSupportedDatabase');
 
 /** `request` when `supported`, else a disabled entry saying why. */
 function entry(
@@ -53,21 +54,21 @@ export function newObjectEntries(
     arguments: null,
   });
   return [
-    entry('New Table…', features.tables, { kind: 'newTable', ...place }),
-    entry('New View…', features.views, {
+    entry(t('newTable'), features.tables, { kind: 'newTable', ...place }),
+    entry(t('newView'), features.views, {
       kind: 'view',
       ...place,
       name: null,
       materialized: false,
     }),
-    entry('New Materialized View…', features.materializedViews, {
+    entry(t('newMaterializedView'), features.materializedViews, {
       kind: 'view',
       ...place,
       name: null,
       materialized: true,
     }),
-    entry('New Function…', features.routines, routine('function')),
-    entry('New Procedure…', features.routines, routine('procedure')),
+    entry(t('newFunction'), features.routines, routine('function')),
+    entry(t('newProcedure'), features.routines, routine('procedure')),
   ];
 }
 
@@ -78,9 +79,9 @@ function tableEntries(
 ): EditorEntry[] {
   const supported = features.tables;
   return [
-    entry('Rename Table…', supported, { kind: 'renameTable', ...table }),
-    entry('Duplicate Table…', supported, { kind: 'duplicateTable', ...table }),
-    entry('New Trigger…', features.triggers, {
+    entry(t('renameTable'), supported, { kind: 'renameTable', ...table }),
+    entry(t('duplicateTable'), supported, { kind: 'duplicateTable', ...table }),
+    entry(t('newTrigger'), features.triggers, {
       kind: 'trigger',
       database: table.database,
       schema: table.schema,
@@ -88,13 +89,13 @@ function tableEntries(
       name: null,
     }),
     entry(
-      'Truncate Table…',
+      t('truncateTable'),
       supported,
       { kind: 'truncateTable', ...table },
       true,
     ),
     entry(
-      'Drop Table…',
+      t('dropTable'),
       supported,
       { kind: 'drop', target: { object: 'table', ...table } },
       true,
@@ -109,11 +110,15 @@ function viewEntries(
   features: ObjectFeaturesDto,
 ): EditorEntry[] {
   const supported = materialized ? features.materializedViews : features.views;
-  const noun = materialized ? 'Materialized View' : 'View';
+  const noun = materialized ? t('materializedView2') : t('view');
   return [
-    entry(`Edit ${noun}…`, supported, { kind: 'view', ...view, materialized }),
+    entry(t('editNoun', { noun }), supported, {
+      kind: 'view',
+      ...view,
+      materialized,
+    }),
     entry(
-      `Drop ${noun}…`,
+      t('dropNoun', { noun }),
       supported,
       {
         kind: 'drop',
@@ -134,7 +139,7 @@ export function objectEntries(
   switch (object.kind) {
     case 'table':
       return [
-        entry('New Table…', features.tables, { kind: 'newTable', ...place }),
+        entry(t('newTable'), features.tables, { kind: 'newTable', ...place }),
         ...tableEntries(named, features),
       ];
     case 'view':
@@ -143,16 +148,16 @@ export function objectEntries(
     case 'function':
     case 'procedure': {
       const routine = object.kind;
-      const noun = routine === 'function' ? 'Function' : 'Procedure';
+      const noun = routine === 'function' ? t('function') : t('procedure');
       const target = { ...named, arguments: object.arguments };
       return [
-        entry(`Edit ${noun}…`, features.routines, {
+        entry(t('editNoun', { noun }), features.routines, {
           kind: 'routine',
           ...target,
           routine,
         }),
         entry(
-          `Drop ${noun}…`,
+          t('dropNoun', { noun }),
           features.routines,
           { kind: 'drop', target: { object: routine, ...target } },
           true,
@@ -171,18 +176,18 @@ export function containerEntries(
 ): EditorEntry[] {
   const { database, schema } = place;
   return [
-    entry('New Schema…', features.schemas, {
+    entry(t('newSchema2'), features.schemas, {
       kind: 'schema',
       database,
       name: null,
     }),
-    entry('Rename Schema…', features.schemas && Boolean(schema), {
+    entry(t('renameSchema'), features.schemas && Boolean(schema), {
       kind: 'schema',
       database,
       name: schema,
     }),
     entry(
-      'Drop Schema…',
+      t('dropSchema'),
       features.schemas && Boolean(schema),
       {
         kind: 'drop',
@@ -190,18 +195,18 @@ export function containerEntries(
       },
       true,
     ),
-    entry('New Database…', features.databases, {
+    entry(t('newDatabase2'), features.databases, {
       kind: 'database',
       database,
       name: null,
     }),
-    entry('Rename Database…', features.renameDatabases, {
+    entry(t('renameDatabase'), features.renameDatabases, {
       kind: 'database',
       database,
       name: database,
     }),
     entry(
-      'Drop Database…',
+      t('dropDatabase'),
       features.databases,
       {
         kind: 'drop',

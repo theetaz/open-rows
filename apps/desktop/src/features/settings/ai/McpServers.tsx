@@ -6,6 +6,7 @@ import { McpServerForm } from './McpServerForm';
 import { useMcpServers } from './useMcpServers';
 import type { McpServersControls as Controls } from './useMcpServers';
 import styles from './Ai.module.css';
+import { t } from '../messages/lazyAi';
 /** Explicit user-server management; mounting only loads public metadata. */
 export function McpServers(): React.JSX.Element {
   const controls = useMcpServers();
@@ -14,21 +15,16 @@ export function McpServers(): React.JSX.Element {
     setEditing(null);
   };
   return (
-    <section aria-label="User MCP servers">
-      <h3>User MCP servers</h3>
-      <p className={styles.notice}>
-        Tools from your own MCP servers can be offered to the assistant. Each
-        tool starts disabled, and its first use in a session asks you to confirm
-        the exact arguments. Sending arguments or results to a provider needs
-        the connection’s SampleRows sharing level; Local only refuses them.
-      </p>
+    <section aria-label={t('userMcpServers')}>
+      <h3>{t('userMcpServers')}</h3>
+      <p className={styles.notice}>{t('toolsOwnMcp')}</p>
       <Button
         disabled={controls.busy || editing !== null}
         onClick={() => {
           setEditing('new');
         }}
       >
-        Add MCP server
+        {t('addMcpServer')}
       </Button>
       {editing && (
         <McpServerForm
@@ -58,8 +54,10 @@ export function McpServers(): React.JSX.Element {
 function endpointText(server: ServerConfig): string {
   const endpoint = server.endpoint;
   return endpoint.kind === 'http'
-    ? `Streamable HTTP · ${endpoint.url}`
-    : `Stdio · ${[endpoint.command, ...endpoint.args].join(' ')}`;
+    ? t('streamableHttpUrl', { url: endpoint.url })
+    : t('stdioValue', {
+        value: [endpoint.command, ...endpoint.args].join(' '),
+      });
 }
 
 function ServerRow(props: {
@@ -84,28 +82,28 @@ function ServerRow(props: {
           disabled={disabled}
           onClick={() => void controls.discover(server)}
         >
-          Discover {server.name} tools
+          {t('discoverNameTools', { name: server.name })}
         </Button>
         <Button disabled={disabled} onClick={props.edit}>
-          Edit {server.name}
+          {t('editName', { name: server.name })}
         </Button>
         <Button
           disabled={disabled}
           onClick={() => void controls.remove(server)}
         >
-          Remove {server.name}
+          {t('removeName', { name: server.name })}
         </Button>
       </div>
       {!discovered && (
         <p role="status" className={styles.notice}>
           {server.enabledTools.length
-            ? 'Showing enabled tools. Discover tools to see the full list.'
-            : 'Discover tools to choose which ones the assistant may use.'}
+            ? t('showingEnabledTools')
+            : t('discoverToolsChoose')}
         </p>
       )}
       {discovered?.length === 0 && (
         <p role="status" className={styles.notice}>
-          This server offers no tools.
+          {t('serverOffersNo')}
         </p>
       )}
       <div className={styles.form}>

@@ -6,13 +6,14 @@ import type { ConnectionForm } from './useConnectionForm';
 import { SafetySelector } from '../security/SafetySelector';
 import { SwitchRow } from './SwitchRow';
 import styles from './ConnectionSheet.module.css';
+import { t } from './messages/profile';
 
 const environments: readonly { value: EnvKindDto; label: string }[] = [
-  { value: 'local', label: 'Local' },
-  { value: 'dev', label: 'Dev' },
-  { value: 'staging', label: 'Staging' },
-  { value: 'prod', label: 'Prod' },
-  { value: 'custom', label: 'Custom' },
+  { value: 'local', label: t('local') },
+  { value: 'dev', label: t('dev') },
+  { value: 'staging', label: t('staging') },
+  { value: 'prod', label: t('prod') },
+  { value: 'custom', label: t('custom2') },
 ];
 
 /** Environment tag (custom label and colour) and the write-safety switches. */
@@ -27,10 +28,10 @@ export function EnvironmentFields({
   return (
     <>
       <div className={styles.row}>
-        <span className={styles.label}>Environment</span>
+        <span className={styles.label}>{t('environment')}</span>
         <SegmentedControl
           className={styles.segmented}
-          aria-label="Environment"
+          aria-label={t('environment')}
           options={environments}
           value={draft.envKind}
           onValueChange={form.setEnvironment}
@@ -40,7 +41,7 @@ export function EnvironmentFields({
         <div className={styles.pair}>
           <TextField
             className={styles.row}
-            label="Label"
+            label={t('label')}
             value={draft.envLabel}
             {...fieldError(errors.envLabel)}
             onChange={(event) => {
@@ -48,7 +49,7 @@ export function EnvironmentFields({
             }}
           />
           <label className={`${styles.port ?? ''} ${styles.colour ?? ''}`}>
-            <span>Colour</span>
+            <span>{t('colour')}</span>
             <input
               type="color"
               value={draft.envColor}
@@ -67,16 +68,16 @@ export function EnvironmentFields({
         }}
       />
       <SwitchRow
-        label="Record query history"
-        detail="Keep executed statements in History. Off records nothing."
+        label={t('recordQueryHistory')}
+        detail={t('keepExecutedStatements')}
         checked={draft.recordHistory}
         onChange={(recordHistory) => {
           update({ recordHistory });
         }}
       />
       <SwitchRow
-        label="Redact literals in history"
-        detail="Production and read-only connections always redact strings and numbers."
+        label={t('redactLiteralsHistory')}
+        detail={t('productionReadOnly')}
         checked={draft.redactHistory}
         onChange={(redactHistory) => {
           update({ redactHistory });

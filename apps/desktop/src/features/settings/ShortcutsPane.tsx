@@ -16,6 +16,7 @@ import type { Bindings } from '../commands/bindings';
 import type { KeyCombo } from '../commands/keys';
 import { matchesQuery, SettingsQuery } from './settingsSearch';
 import styles from './Settings.module.css';
+import { t } from './messages/lazyGeneral';
 
 /** A shortcut that cannot be used yet: why, and whom it would replace. */
 type Problem = { message: string; combo?: KeyCombo; steal?: string };
@@ -31,17 +32,19 @@ function recorded(
   const combo = comboOf(event);
   if (!combo) return null;
   if (!combo.meta && !combo.ctrl && !/^F\d+$/.test(combo.code))
-    return { problem: { message: 'Use ⌘ or ⌃ with a key.' } };
+    return { problem: { message: t('useKey') } };
   const conflict = conflictOf(bindings, id, combo);
   if (!conflict) return { combo };
   const shown = displayCombo(combo);
   if (conflict.kind === 'reserved')
     return {
-      problem: { message: `${shown} is reserved for ${conflict.owner}.` },
+      problem: {
+        message: t('shownReservedOwner', { shown, owner: conflict.owner }),
+      },
     };
   return {
     problem: {
-      message: `${shown} is used by “${conflict.owner}”.`,
+      message: t('shownUsedOwner', { shown, owner: conflict.owner }),
       combo,
       ...(conflict.id ? { steal: conflict.id } : {}),
     },
@@ -80,7 +83,7 @@ function ShortcutRow(props: {
       <button
         type="button"
         className={styles.recorder}
-        aria-label={`Shortcut for ${props.label}`}
+        aria-label={t('shortcutLabel', { label: props.label })}
         data-recording={recording}
         onClick={() => {
           setRecording(true);
@@ -91,7 +94,7 @@ function ShortcutRow(props: {
         }}
         onKeyDown={onKey}
       >
-        {recording ? 'Type shortcut…' : shortcutText(bindings, id)}
+        {recording ? t('typeShortcut') : shortcutText(bindings, id)}
       </button>
       {problem && <ProblemNote id={id} problem={problem} onDone={setProblem} />}
     </div>
@@ -116,7 +119,7 @@ function ProblemNote(props: {
             props.onDone(null);
           }}
         >
-          Replace
+          {t('replace')}
         </Button>
       )}
     </p>
@@ -131,17 +134,14 @@ export function ShortcutsPane(): React.JSX.Element {
     matchesQuery(query, [label, shortcutText(bindings, id), 'shortcut']),
   );
   return (
-    <section aria-label="Keyboard shortcuts">
+    <section aria-label={t('keyboardShortcuts')}>
       <header className={styles.paneHeader}>
-        <h3>Keyboard shortcuts</h3>
+        <h3>{t('keyboardShortcuts')}</h3>
         <Button size="sm" onClick={resetBindings}>
-          Restore defaults
+          {t('restoreDefaults')}
         </Button>
       </header>
-      <p className={styles.hint}>
-        Click a shortcut, then press the new keys. Delete removes it, Escape
-        cancels.
-      </p>
+      <p className={styles.hint}>{t('clickShortcutThen')}</p>
       <div className={styles.shortcuts}>
         {shown.map(({ id, label }) => (
           <ShortcutRow key={id} id={id} label={label} bindings={bindings} />

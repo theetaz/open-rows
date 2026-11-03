@@ -4,6 +4,7 @@ import type { RefObject } from 'react';
 import type { Update } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { generalSettings } from './general';
+import { t } from './messages/lazyGeneral';
 
 type Context = { update: Update | null; canInstall: boolean };
 type Installation = {
@@ -49,7 +50,7 @@ function failureMessage(failure: unknown): string {
   if (failure instanceof Error) return failure.message;
   return typeof failure === 'string' && failure
     ? failure
-    : 'Update installation failed.';
+    : t('updateInstallationFailed');
 }
 
 async function install(
@@ -66,12 +67,9 @@ async function install(
     latest.current.update !== update
   ) {
     await update.close().catch(() => undefined);
-    throw new Error('Update settings changed. Check for updates again.');
+    throw new Error(t('updateSettingsChanged'));
   }
-  if (!latest.current.canInstall)
-    throw new Error(
-      'Workspace changed. Close all tabs and disconnect before installing.',
-    );
+  if (!latest.current.canInstall) throw new Error(t('workspaceChangedClose'));
   await update.install();
   await relaunch();
 }

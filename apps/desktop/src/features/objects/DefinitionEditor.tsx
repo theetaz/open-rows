@@ -8,6 +8,7 @@ import { routineTemplate, triggerTemplate } from './templates';
 import { useDefinition } from './useDefinition';
 import type { ChangeScope } from './useObjectChange';
 import styles from '../table/structure/forms/Forms.module.css';
+import { t } from './messages';
 
 /** A trigger on a table, or a function or procedure; `name: null` is new. */
 type DefinitionTarget =
@@ -30,7 +31,7 @@ async function triggerDefinition(
     table: target.table,
   });
   const trigger = detail.triggers.find((item) => item.name === target.name);
-  if (!trigger) throw new Error(`The trigger ${target.name} was not found`);
+  if (!trigger) throw new Error(t('triggerNameWas', { name: target.name }));
   return `${trigger.definition};`;
 }
 
@@ -46,7 +47,9 @@ async function readRoutine(
     arguments: target.arguments,
   });
   if (text === null)
-    throw new Error(`The ${target.routine} ${target.name ?? ''} was not found`);
+    throw new Error(
+      t('routineNameWas', { routine: target.routine, name: target.name ?? '' }),
+    );
   return text;
 }
 
@@ -89,12 +92,18 @@ function saveChange(
 }
 
 function title(target: DefinitionTarget): string {
-  const noun = target.kind === 'trigger' ? 'trigger' : target.routine;
-  if (target.name === null)
-    return target.kind === 'trigger'
-      ? `New trigger on ${target.table}`
-      : `New ${noun}`;
-  return `Edit ${noun} ${target.name}`;
+  const name = target.name;
+  if (name === null) {
+    if (target.kind === 'trigger')
+      return t('newTriggerTable', { table: target.table });
+    return target.routine === 'function'
+      ? t('newFunctionTitle')
+      : t('newProcedureTitle');
+  }
+  if (target.kind === 'trigger') return t('editTriggerName', { name });
+  return target.routine === 'function'
+    ? t('editFunctionName', { name })
+    : t('editProcedureName', { name });
 }
 
 /**
@@ -127,20 +136,20 @@ export function DefinitionEditor(props: {
           : null
       }
       problem={loaded.status === 'error' ? loaded.message : null}
-      action={target.name === null ? 'Create' : 'Save'}
+      action={target.name === null ? t('create') : t('save')}
       onClose={props.onClose}
       onDone={props.onDone}
     >
       {loaded.status === 'ready' ? (
         <SqlField
           value={text}
-          label="Definition"
+          label={t('definition')}
           engine={engine}
           onChange={setEdited}
         />
       ) : (
         <p className={styles.note} role="status">
-          {loaded.status === 'loading' ? 'Reading the definition…' : ''}
+          {loaded.status === 'loading' ? t('readingDefinition') : ''}
         </p>
       )}
     </ObjectSheet>

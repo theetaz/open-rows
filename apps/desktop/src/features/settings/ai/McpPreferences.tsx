@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { McpSettings } from '@openrows/ipc';
 import { TextField } from '@openrows/ui';
+import { t } from '../messages/lazyAi';
 /** Explicit local bridge/HTTP choices and OS-selected port by default. */
 export function McpPreferences(props: {
   settings: Required<McpSettings>;
@@ -10,7 +11,7 @@ export function McpPreferences(props: {
   const { settings, busy, change } = props;
   return (
     <fieldset disabled={busy}>
-      <legend>MCP server</legend>
+      <legend>{t('mcpServer')}</legend>
       <label>
         <input
           type="checkbox"
@@ -19,7 +20,7 @@ export function McpPreferences(props: {
             change({ ...settings, enabled: event.target.checked });
           }}
         />{' '}
-        Enable MCP stdio bridge
+        {t('enableMcpStdio')}
       </label>
       <label>
         <input
@@ -29,10 +30,10 @@ export function McpPreferences(props: {
             change({ ...settings, httpEnabled: event.target.checked });
           }}
         />{' '}
-        Allow direct localhost HTTP
+        {t('allowDirectLocalhost')}
       </label>
       <TextField
-        label="MCP port (0 = automatic)"
+        label={t('mcpPort0')}
         type="number"
         min={0}
         max={65535}
@@ -43,11 +44,7 @@ export function McpPreferences(props: {
             change({ ...settings, port });
         }}
       />
-      <p>
-        AI features must be enabled. Only open databases permitted by their
-        data-sharing policy are exposed. Reads are bounded; SQL proposals open
-        for user review.
-      </p>
+      <p>{t('aiFeaturesMust')}</p>
     </fieldset>
   );
 }

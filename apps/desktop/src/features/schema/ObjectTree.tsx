@@ -16,6 +16,7 @@ import { useIndexSearch } from './useCatalogIndex';
 import type { IndexQuery } from './useCatalogIndex';
 import type { Resource } from './useResources';
 import styles from './ObjectTree.module.css';
+import { t } from './messages';
 
 /** Most sidebar search matches listed. */
 const SEARCH_LIMIT = 1_000;
@@ -49,41 +50,37 @@ export function ObjectTree(props: {
   const { offline, schemas } = catalog;
   if (offline) return <p className={styles.note}>{offline}</p>;
   if (!catalog.database)
-    return (
-      <p className={styles.noDatabase}>
-        No database selected, press ⌘K to select a database
-      </p>
-    );
+    return <p className={styles.noDatabase}>{t('noDatabaseSelectedPress')}</p>;
   if (schemas.status === 'error')
     return (
       <div className={styles.error} role="alert">
         <span>{schemas.message}</span>
         <Button size="sm" variant="ghost" onClick={catalog.refresh}>
-          Retry
+          {t('retry')}
         </Button>
       </div>
     );
   if (schemas.status !== 'ready')
     return (
       <p className={styles.note} role="status">
-        Loading schemas…
+        {t('loadingSchemas')}
       </p>
     );
   const features = catalog.inspection.capabilities;
   if (features.status === 'error')
     return <p role="alert">{features.message}</p>;
   if (features.status !== 'ready')
-    return <p role="status">Loading catalog capabilities…</p>;
+    return <p role="status">{t('loadingCatalogCapabilities')}</p>;
   return (
     <div className={styles.tree} onKeyDown={moveAcrossSections}>
-      {!catalog.schema && <p className={styles.note}>No schemas</p>}
+      {!catalog.schema && <p className={styles.note}>{t('noSchemas')}</p>}
       {catalog.refreshing && (
         <p className={styles.refreshing} role="status">
-          Refreshing…
+          {t('refreshing')}
         </p>
       )}
       {search && noMatches(catalog, search, found) && (
-        <p role="status">No matches</p>
+        <p role="status">{t('noMatches')}</p>
       )}
       <SidebarLists
         catalog={catalog}

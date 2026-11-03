@@ -4,6 +4,7 @@
 import { stateLabel } from '../SourceState';
 import { REPORT_SCHEMA, REPORT_VERSION, seriesStats, timeText } from './model';
 import type { Cell, ChartSection, Column, Evidence, Report } from './model';
+import { t } from '../messages/lazyReport';
 
 export type Item = { label: string; value: string };
 
@@ -12,32 +13,42 @@ export function headerItems(report: Report): Item[] {
   const { connection, range } = report;
   return [
     {
-      label: 'Connection',
+      label: t('connection'),
       value: `${connection.name} · ${connection.engine} · ${connection.database}`,
     },
     {
-      label: 'Range',
-      value: `${range.label} (${timeText(range.fromMs)} to ${timeText(range.toMs)})`,
+      label: t('range'),
+      value: t('rangeFromTo', {
+        range: range.label,
+        from: timeText(range.fromMs),
+        to: timeText(range.toMs),
+      }),
     },
-    { label: 'Generated', value: timeText(report.generatedMs) },
-    { label: 'Schema', value: `${REPORT_SCHEMA} v${String(REPORT_VERSION)}` },
+    { label: t('generated'), value: timeText(report.generatedMs) },
+    {
+      label: t('schema'),
+      value: `${REPORT_SCHEMA} v${String(REPORT_VERSION)}`,
+    },
   ];
 }
 
 /** Source, scope and collection range of one section. */
 export function evidenceItems(evidence: Evidence): Item[] {
   return [
-    { label: 'Source', value: evidence.source },
-    { label: 'Scope', value: evidence.scope },
+    { label: t('source'), value: evidence.source },
+    { label: t('scope'), value: evidence.scope },
     {
-      label: 'Collected',
-      value: `${timeText(evidence.fromMs)} to ${timeText(evidence.toMs)}`,
+      label: t('collected'),
+      value: t('timeFromTo', {
+        from: timeText(evidence.fromMs),
+        to: timeText(evidence.toMs),
+      }),
     },
   ];
 }
 
 /** Gaps heading text when a section reports none. */
-export const NO_GAPS = 'None reported.';
+export const NO_GAPS = t('noneReported');
 
 /** Per-series latest/min/max/mean; unknown values stay `null`. */
 export function chartStats(section: ChartSection): {
@@ -47,21 +58,21 @@ export function chartStats(section: ChartSection): {
   const unit = section.unit;
   return {
     columns: [
-      { name: 'Series', unit: '' },
-      { name: 'Latest', unit },
-      { name: 'Latest state', unit: '' },
-      { name: 'Min', unit },
-      { name: 'Max', unit },
-      { name: 'Mean', unit },
-      { name: 'Observed', unit: '' },
-      { name: 'Gaps', unit: '' },
+      { name: t('series'), unit: '' },
+      { name: t('latest'), unit },
+      { name: t('latestState'), unit: '' },
+      { name: t('min'), unit },
+      { name: t('max'), unit },
+      { name: t('mean'), unit },
+      { name: t('observed'), unit: '' },
+      { name: t('gaps'), unit: '' },
     ],
     rows: section.series.map((series) => {
       const stats = seriesStats(series);
       return [
         series.name,
         stats.latest?.y ?? null,
-        stats.latest ? stateLabel(stats.latest.state) : 'No observations',
+        stats.latest ? stateLabel(stats.latest.state) : t('noObservations'),
         stats.min,
         stats.max,
         stats.mean,

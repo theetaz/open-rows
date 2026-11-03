@@ -8,6 +8,7 @@ import { byteLenOf, useCellValue } from './useCellValue';
 import type { CellAddress, CellValueState } from './useCellValue';
 import { formatBytes } from './valueFormat';
 import styles from './Value.module.css';
+import { t } from './messages';
 
 type Props = {
   address: CellAddress;
@@ -30,7 +31,10 @@ export function ValueInspector(props: Props): React.JSX.Element {
   const bytesKnown = kind === 'text' || kind === 'binary';
   const parts = kind === 'null' ? null : valueParts(props.type, props.text);
   return (
-    <section className={styles.inspector} aria-label={`Value of ${props.name}`}>
+    <section
+      className={styles.inspector}
+      aria-label={t('valueName', { name: props.name })}
+    >
       <div className={styles.meta}>
         {props.type && <small>{props.type}</small>}
         {bytesKnown && value.info && (
@@ -50,8 +54,8 @@ function ValueBody(props: {
   const { value, text } = props;
   if (value.problem) return <p role="alert">{value.problem}</p>;
   const { info } = value;
-  if (!info) return <p role="status">Loading…</p>;
-  if (info.kind === 'null') return <p className={styles.null}>NULL</p>;
+  if (!info) return <p role="status">{t('loading')}</p>;
+  if (info.kind === 'null') return <p className={styles.null}>{t('null')}</p>;
   if (info.kind === 'other')
     return <pre className={styles.text}>{text ?? ''}</pre>;
   if (value.bytes)
@@ -60,12 +64,12 @@ function ValueBody(props: {
     ) : (
       <TextValue bytes={value.bytes} />
     );
-  if (value.loading) return <p role="status">Loading full value…</p>;
+  if (value.loading) return <p role="status">{t('loadingFullValue')}</p>;
   return (
     <div className={styles.large}>
-      <p>{formatBytes(byteLenOf(info))}: larger than the automatic preview.</p>
+      <p>{t('infoLargerThan', { info: formatBytes(byteLenOf(info)) })}</p>
       <Button size="sm" onClick={value.load}>
-        Load full value
+        {t('loadFullValue')}
       </Button>
     </div>
   );

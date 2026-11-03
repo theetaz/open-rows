@@ -7,6 +7,7 @@ import type {
   SortDto,
   TableQueryDto,
 } from '@openrows/ipc';
+import { t } from './messages/initial';
 
 /** Rows per page until page size becomes a setting (FR-GRID-08). */
 const PAGE_SIZE = 300;
@@ -95,23 +96,23 @@ export const operators: readonly OperatorInfo[] = [
   { value: 'greater', label: '>', arity: 1 },
   { value: 'lessOrEqual', label: '≤', arity: 1 },
   { value: 'greaterOrEqual', label: '≥', arity: 1 },
-  { value: 'contains', label: 'contains', arity: 1 },
-  { value: 'notContains', label: 'not contains', arity: 1 },
-  { value: 'startsWith', label: 'starts with', arity: 1 },
-  { value: 'endsWith', label: 'ends with', arity: 1 },
-  { value: 'in', label: 'IN', arity: 1 },
-  { value: 'isNull', label: 'IS NULL', arity: 0 },
-  { value: 'isNotNull', label: 'IS NOT NULL', arity: 0 },
-  { value: 'between', label: 'BETWEEN', arity: 2 },
-  { value: 'notBetween', label: 'NOT BETWEEN', arity: 2 },
-  { value: 'notIn', label: 'NOT IN', arity: 1 },
-  { value: 'like', label: 'LIKE pattern', arity: 1 },
-  { value: 'notLike', label: 'NOT LIKE pattern', arity: 1 },
-  { value: 'regex', label: 'Regex', arity: 1 },
-  { value: 'notRegex', label: 'Not regex', arity: 1 },
-  { value: 'isEmpty', label: 'IS EMPTY', arity: 0 },
-  { value: 'isNotEmpty', label: 'IS NOT EMPTY', arity: 0 },
-  { value: 'raw', label: 'Raw SQL', arity: 1 },
+  { value: 'contains', label: t('contains'), arity: 1 },
+  { value: 'notContains', label: t('notContains'), arity: 1 },
+  { value: 'startsWith', label: t('starts'), arity: 1 },
+  { value: 'endsWith', label: t('ends'), arity: 1 },
+  { value: 'in', label: t('in'), arity: 1 },
+  { value: 'isNull', label: t('null2'), arity: 0 },
+  { value: 'isNotNull', label: t('notNull'), arity: 0 },
+  { value: 'between', label: t('between'), arity: 2 },
+  { value: 'notBetween', label: t('notBetween'), arity: 2 },
+  { value: 'notIn', label: t('not'), arity: 1 },
+  { value: 'like', label: t('likePattern'), arity: 1 },
+  { value: 'notLike', label: t('notLikePattern'), arity: 1 },
+  { value: 'regex', label: t('regex'), arity: 1 },
+  { value: 'notRegex', label: t('notRegex'), arity: 1 },
+  { value: 'isEmpty', label: t('empty2'), arity: 0 },
+  { value: 'isNotEmpty', label: t('notEmpty'), arity: 0 },
+  { value: 'raw', label: t('rawSql'), arity: 1 },
 ];
 
 /** How many value fields an operator takes. */
@@ -250,10 +251,16 @@ export type Total = { exact: number | null; estimate: number | null };
 /** Footer text such as `1–300 of ~1,811 rows`. */
 export function rangeLabel(offset: number, rows: number, total: Total): string {
   if (rows === 0)
-    return offset === 0 ? 'No rows' : `No rows after ${number(offset)}`;
+    return offset === 0
+      ? t('noRows')
+      : t('noRowsAfter', { offset: number(offset) });
   const range = `${number(offset + 1)}–${number(offset + rows)}`;
-  if (total.exact !== null) return `${range} of ${number(total.exact)} rows`;
+  if (total.exact !== null)
+    return t('rangeExactRows', { range, exact: number(total.exact) });
   if (total.estimate !== null)
-    return `${range} of ~${number(Math.max(total.estimate, offset + rows))} rows`;
-  return `${range} rows`;
+    return t('rangeMathRows', {
+      range,
+      estimate: number(Math.max(total.estimate, offset + rows)),
+    });
+  return t('rangeRows', { range });
 }

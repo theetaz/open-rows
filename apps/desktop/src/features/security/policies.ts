@@ -1,24 +1,23 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ProfileDto, SafetyDto } from '@openrows/ipc';
+import { t } from './messages';
 /** Compact connection safety names. */
 export const POLICY_LABELS: Record<SafetyDto, string> = {
-  unrestricted: 'Unrestricted',
-  confirmAll: 'Confirm all',
-  confirmWrites: 'Confirm writes',
-  authenticateAll: 'Authenticate all',
-  authenticateWrites: 'Authenticate writes',
+  unrestricted: t('unrestricted'),
+  confirmAll: t('confirmAll'),
+  confirmWrites: t('confirmWrites'),
+  authenticateAll: t('authenticateAll'),
+  authenticateWrites: t('authenticateWrites'),
   readOnly: 'Read-only',
 };
 /** One-line descriptions shown in the connection form. */
 export const POLICY_DETAILS: Record<SafetyDto, string> = {
-  unrestricted:
-    'Run ordinary statements without prompts; dangerous statements still confirm.',
-  confirmAll: 'Confirm every statement, including reads.',
-  confirmWrites:
-    'Confirm operations that may change data; default for production.',
-  authenticateAll: 'Use OS authentication for every statement.',
-  authenticateWrites: 'Use OS authentication for every non-read statement.',
-  readOnly: 'Reject every operation that may change data.',
+  unrestricted: t('runOrdinaryStatements'),
+  confirmAll: t('confirmEveryStatement'),
+  confirmWrites: t('confirmOperationsMay'),
+  authenticateAll: t('useOsAuthentication'),
+  authenticateWrites: t('useOsAuthenticationEvery'),
+  readOnly: t('rejectEveryOperation'),
 };
 
 /** The protection a connection really has, as the toolbar reports it. */
@@ -34,9 +33,8 @@ export function safeModeState(profile: ProfileDto): SafeModeState {
   if (profile.safety === 'unrestricted' && profile.file?.readOnly)
     return {
       on: true,
-      label: 'Read-only file',
-      detail:
-        'The database file is open read-only, so the engine refuses writes.',
+      label: t('readOnlyFile'),
+      detail: t('databaseFileOpen'),
     };
   return {
     on: profile.safety !== 'unrestricted',

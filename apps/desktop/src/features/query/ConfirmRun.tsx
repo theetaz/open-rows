@@ -3,13 +3,14 @@ import { Badge, Button } from '@openrows/ui';
 import { Sheet } from '@openrows/ui/sheet';
 import type { StatementDto } from '@openrows/ipc';
 import styles from './Query.module.css';
+import { rich, richn, t, tn } from './lazyMessages';
 
 const kinds: Record<StatementDto['kind'], string> = {
-  read: 'Read',
-  write: 'Write',
-  ddl: 'Schema change',
-  txControl: 'Transaction',
-  unknown: 'Unrecognised (treated as a write)',
+  read: t('read'),
+  write: t('write'),
+  ddl: t('schemaChange'),
+  txControl: t('transaction'),
+  unknown: t('unrecognisedTreatedWrite'),
 };
 
 type Props = {
@@ -29,18 +30,22 @@ function Lead(props: {
   if (!props.flagged)
     return (
       <p>
-        On <strong>{props.connection}</strong>, this run has{' '}
-        {String(props.total)} statements:
+        {rich('connectionRunTotal', {
+          connection: <strong>{props.connection}</strong>,
+          total: String(props.total),
+        })}
       </p>
     );
   return (
     <p>
-      On <strong>{props.connection}</strong>, these statements may modify the
-      database
       {others > 0
-        ? ` (${String(others)} other statement${others === 1 ? '' : 's'} also run)`
-        : ''}
-      :
+        ? richn('connectionTheseStatements', others, {
+            connection: <strong>{props.connection}</strong>,
+            count: String(others),
+          })
+        : rich('connectionTheseStatementsMay', {
+            connection: <strong>{props.connection}</strong>,
+          })}
     </p>
   );
 }
@@ -59,8 +64,8 @@ export function ConfirmRun(props: Props): React.JSX.Element {
   );
   const dangerous = flagged.some((statement) => statement.dangerous);
   const title = writes.length
-    ? 'Run statements that change data?'
-    : `Run ${String(props.statements.length)} statements?`;
+    ? t('runStatementsChange')
+    : t('runCountStatements', { count: String(props.statements.length) });
   return (
     <Sheet title={title} onClose={props.onCancel}>
       <div className={styles.confirm}>
@@ -69,7 +74,7 @@ export function ConfirmRun(props: Props): React.JSX.Element {
           flagged={writes.length}
           total={props.statements.length}
         />
-        <ol aria-label="Statements to confirm">
+        <ol aria-label={t('statementsConfirm')}>
           {flagged.map((statement) => (
             <li key={statement.index}>
               <span className={styles.confirmTags}>
@@ -82,21 +87,23 @@ export function ConfirmRun(props: Props): React.JSX.Element {
                         : 'neutral'
                   }
                 >
-                  {statement.dangerous ? 'Dangerous' : kinds[statement.kind]}
+                  {statement.dangerous ? t('dangerous') : kinds[statement.kind]}
                 </Badge>
-                <small>Statement {statement.index + 1}</small>
+                <small>
+                  {t('statementValue', { value: statement.index + 1 })}
+                </small>
               </span>
               <pre>{statement.sql}</pre>
             </li>
           ))}
         </ol>
         <footer className={styles.confirmActions}>
-          <Button onClick={props.onCancel}>Cancel</Button>
+          <Button onClick={props.onCancel}>{t('cancel')}</Button>
           <Button
             variant={dangerous ? 'destructive' : 'primary'}
             onClick={props.onConfirm}
           >
-            Run {props.statements.length === 1 ? 'statement' : 'statements'}
+            {tn('runStatements', props.statements.length)}
           </Button>
         </footer>
       </div>

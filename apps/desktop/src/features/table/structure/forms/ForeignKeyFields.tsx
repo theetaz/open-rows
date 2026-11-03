@@ -5,6 +5,7 @@ import type { NewForeignKeyDto, ReferentialActionDto } from '@openrows/ipc';
 import { referentialActions } from './dialect';
 import { useReferenced } from './useReferenced';
 import styles from './Forms.module.css';
+import { t } from '../../messages/initial';
 
 /** What the foreign-key form edits. */
 export type ForeignKeyDraft = NewForeignKeyDto;
@@ -22,10 +23,10 @@ export function emptyForeignKey(schema: string): ForeignKeyDraft {
 
 /** Why the key cannot be staged yet, or `null`. */
 export function foreignKeyProblem(draft: ForeignKeyDraft): string | null {
-  if (!draft.columns.length) return 'Choose the referencing columns.';
-  if (!draft.target.table.trim()) return 'Choose the referenced table.';
+  if (!draft.columns.length) return t('chooseReferencingColumns');
+  if (!draft.target.table.trim()) return t('chooseReferencedTable');
   if (draft.target.columns.length !== draft.columns.length)
-    return 'Choose as many referenced columns as columns, in the same order.';
+    return t('chooseManyReferenced');
   return null;
 }
 
@@ -99,14 +100,14 @@ function TargetFields({
   return (
     <>
       <TextField
-        label="Referenced schema"
+        label={t('referencedSchema')}
         value={draft.target.schema}
         onChange={(event) => {
           onTarget({ schema: event.target.value, table: '', columns: [] });
         }}
       />
       <TextField
-        label="Referenced table"
+        label={t('referencedTable')}
         list={list}
         value={draft.target.table}
         autoComplete="off"
@@ -143,8 +144,8 @@ function Actions({
   );
   return (
     <>
-      {action('On delete', 'onDelete')}
-      {action('On update', 'onUpdate')}
+      {action(t('delete'), 'onDelete')}
+      {action(t('update'), 'onUpdate')}
     </>
   );
 }
@@ -164,10 +165,10 @@ export function ForeignKeyFields(props: FieldsProps): React.JSX.Element {
   return (
     <div className={styles.grid}>
       <TextField
-        label="Name"
+        label={t('name')}
         className={styles.wide}
         value={draft.name ?? ''}
-        placeholder="Automatic"
+        placeholder={t('automatic')}
         autoComplete="off"
         onChange={(event) => {
           onChange({ ...draft, name: event.target.value });
@@ -179,7 +180,7 @@ export function ForeignKeyFields(props: FieldsProps): React.JSX.Element {
         onTarget={setTarget}
       />
       <Picks
-        legend="Columns"
+        legend={t('columns')}
         options={props.columns}
         chosen={draft.columns}
         onChosen={(chosen) => {
@@ -187,7 +188,7 @@ export function ForeignKeyFields(props: FieldsProps): React.JSX.Element {
         }}
       />
       <Picks
-        legend="Referenced columns"
+        legend={t('referencedColumns')}
         options={referenced.columns}
         chosen={draft.target.columns}
         onChosen={(chosen) => {

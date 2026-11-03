@@ -5,6 +5,7 @@ import { Sheet, SheetActions } from '@openrows/ui/sheet';
 import type { QueryTabs } from '../query/useQueryTabs';
 import type { QueryRuns } from '../query/useQueryRuns';
 import type { TableViews } from './useTableViews';
+import { t } from './messages/initial';
 
 type Input = { tabs: QueryTabs; tables: TableViews; runs: QueryRuns };
 
@@ -43,32 +44,25 @@ export function useBulkCloseGuard(input: Input): React.JSX.Element | null {
     dismiss();
   };
   return (
-    <Sheet title="Review closing tabs" onClose={dismiss}>
-      <p>
-        Close {closing.length} tabs? Unsaved SQL and uncommitted changes listed
-        below will be discarded. No database write occurs.
-      </p>
+    <Sheet title={t('reviewClosingTabs')} onClose={dismiss}>
+      <p>{t('closeCountTabs', { count: closing.length })}</p>
       <ul>
         {affected.map((tab) => (
           <li key={tab.id}>
             {tab.title}:{' '}
             {tab.pending
-              ? 'commit in progress'
+              ? t('commitProgress')
               : tab.dirty
-                ? 'unsaved changes'
-                : 'no pending changes'}
+                ? t('unsavedChanges')
+                : t('noPendingChanges')}
           </li>
         ))}
       </ul>
-      {pending && (
-        <p role="alert">
-          Wait for commits to finish before closing these tabs.
-        </p>
-      )}
+      {pending && <p role="alert">{t('waitCommitsFinish')}</p>}
       <SheetActions>
-        <Button onClick={dismiss}>Keep tabs</Button>
+        <Button onClick={dismiss}>{t('keepTabs')}</Button>
         <Button variant="primary" disabled={pending} onClick={confirm}>
-          Discard and close tabs
+          {t('discardCloseTabs')}
         </Button>
       </SheetActions>
     </Sheet>

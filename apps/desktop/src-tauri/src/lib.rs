@@ -25,6 +25,7 @@ mod mcp;
 mod mcp_client;
 mod menu;
 mod native_files;
+mod native_text;
 mod observability;
 mod projects;
 mod queries;

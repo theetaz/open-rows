@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useState } from 'react';
 import styles from './Value.module.css';
+import { t } from './messages';
 
 /** Containers open on first view down to this depth; deeper ones start folded. */
 const OPEN_DEPTH = 2;
@@ -16,7 +17,7 @@ const scalarText = (value: unknown): string => JSON.stringify(value);
 /** A collapsible view of a parsed JSON object or array. */
 export function JsonTree({ value }: { value: object }): React.JSX.Element {
   return (
-    <ul className={styles.tree} aria-label="JSON tree">
+    <ul className={styles.tree} aria-label={t('jsonTree')}>
       <JsonNode label="" value={value} depth={0} />
     </ul>
   );
@@ -39,7 +40,10 @@ function JsonNode(props: {
   const isArray = Array.isArray(value);
   const entries = Object.entries(value as Record<string, unknown>);
   const [opener, closer] = isArray ? ['[', ']'] : ['{', '}'];
-  const folded = `${opener}${String(entries.length)} ${isArray ? 'items' : 'keys'}${closer}`;
+  const count = String(entries.length);
+  const folded = isArray
+    ? t('foldedItems', { opener, count, closer })
+    : t('foldedKeys', { opener, count, closer });
   return (
     <li>
       <button
@@ -60,7 +64,7 @@ function JsonNode(props: {
           ))}
           {entries.length > MAX_CHILDREN && (
             <li className={styles.note}>
-              {entries.length - MAX_CHILDREN} more not shown
+              {t('valueMoreNot', { value: entries.length - MAX_CHILDREN })}
             </li>
           )}
         </ul>

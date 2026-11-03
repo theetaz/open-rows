@@ -6,6 +6,7 @@ import type { QueryTabs } from '../query';
 import { localFileScope } from '../workspace/useNativeFiles';
 import { parseTransfer } from './transfer';
 import type { Transfer } from './transfer';
+import { t } from './messages';
 
 type Input = { tabs: QueryTabs; connections: Connections };
 
@@ -20,8 +21,8 @@ function receiveTransfer(transfer: Transfer, input: Input): void {
     input.tabs.open(
       utility,
       utility.kind === 'monitor'
-        ? { monitor: true, title: 'Monitor' }
-        : { processes: true, title: 'Processes' },
+        ? { monitor: true, title: t('monitor') }
+        : { processes: true, title: t('processes') },
     );
   const { scope } = transfer;
   if (scope && scope.connectionId !== localFileScope.connectionId)

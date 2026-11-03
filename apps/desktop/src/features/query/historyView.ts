@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { HistoryItemDto } from '@openrows/ipc';
+import { t, tn } from './initialMessages';
 
 /** When the entry started, in epoch milliseconds (the wire type allows null). */
 const startOf = (item: HistoryItemDto): Date => new Date(item.startedAtMs ?? 0);
@@ -25,8 +26,8 @@ function dayOffset(now: Date, offset: number): Date {
 
 function labelOf(day: Date, now: Date): string {
   const key = dayKey(day);
-  if (key === dayKey(now)) return 'Today';
-  if (key === dayKey(dayOffset(now, -1))) return 'Yesterday';
+  if (key === dayKey(now)) return t('today');
+  if (key === dayKey(dayOffset(now, -1))) return t('yesterday');
   return day.toLocaleDateString(undefined, {
     weekday: 'long',
     day: 'numeric',
@@ -65,9 +66,9 @@ export function summaryOf(item: HistoryItemDto): string[] {
   if (item.durationMs !== null) parts.push(`${String(item.durationMs)} ms`);
   if (item.rows !== null)
     parts.push(
-      `${item.rows.toLocaleString('en-US')} ${item.rows === 1 ? 'row' : 'rows'}`,
+      tn('rowCount', item.rows, { count: item.rows.toLocaleString('en-US') }),
     );
-  if (item.status === 'error') parts.push('Failed');
-  if (item.status === 'cancelled') parts.push('Cancelled');
+  if (item.status === 'error') parts.push(t('failed'));
+  if (item.status === 'cancelled') parts.push(t('cancelled'));
   return parts;
 }

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { DisplayCell } from '@openrows/grid';
 import type { QuickOperator } from '../table/filters/QuickFilter';
+import { t } from './lazyMessages';
 
 type ColumnOperator =
   'contains' | 'equal' | 'notEqual' | 'isNull' | 'isNotNull';
@@ -14,11 +15,11 @@ export type ColumnFilter = {
 
 /** Operators of a result column's quick filter (client-side, FR-GRID-11). */
 export const COLUMN_OPERATORS: readonly QuickOperator<ColumnOperator>[] = [
-  { value: 'contains', label: 'contains', arity: 1 },
+  { value: 'contains', label: t('contains'), arity: 1 },
   { value: 'equal', label: '=', arity: 1 },
   { value: 'notEqual', label: '≠', arity: 1 },
-  { value: 'isNull', label: 'IS NULL', arity: 0 },
-  { value: 'isNotNull', label: 'IS NOT NULL', arity: 0 },
+  { value: 'isNull', label: t('null2'), arity: 0 },
+  { value: 'isNotNull', label: t('notNull'), arity: 0 },
 ];
 
 /**

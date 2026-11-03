@@ -7,6 +7,7 @@ import {
 } from '@openrows/ipc';
 import type { ObjectDetailDto } from '@openrows/ipc';
 import type { InspectionTarget } from './target';
+import { t } from './messages';
 
 /** Read public metadata for the selected catalog identity. */
 export async function readInspection(input: {
@@ -21,15 +22,14 @@ export async function readInspection(input: {
     const found = (await listExtensions(profileId, database)).find(
       (item) => item.name === target.name,
     );
-    if (!found)
-      throw new Error('Extension no longer exists or is not visible.');
+    if (!found) throw new Error(t('extensionNoLonger'));
     return {
       attributes: [
-        { name: 'Name', value: found.name },
-        { name: 'Installed version', value: found.version },
-        { name: 'Default available version', value: found.availableVersion },
-        { name: 'Schema', value: found.schema },
-        { name: 'Description', value: found.description },
+        { name: t('name'), value: found.name },
+        { name: t('installedVersion'), value: found.version },
+        { name: t('defaultAvailableVersion'), value: found.availableVersion },
+        { name: t('schema'), value: found.schema },
+        { name: t('description'), value: found.description },
       ],
       sections: [],
       definition: null,
@@ -42,26 +42,32 @@ export async function readInspection(input: {
   const role = roles.find(
     (item) => item.name === target.name && item.scope === target.scope,
   );
-  if (!role) throw new Error('Account no longer exists or is not visible.');
+  if (!role) throw new Error(t('accountNoLonger'));
   return {
     attributes: [
-      { name: 'Name', value: role.name },
-      { name: 'Scope', value: role.scope },
+      { name: t('name'), value: role.name },
+      { name: t('scope'), value: role.scope },
       ...role.attributes,
     ],
     sections: [
       {
-        name: 'Member of',
-        columns: ['Role'],
+        name: t('member'),
+        columns: [t('role')],
         rows: role.attributes.some(
           (attribute) => attribute.name === 'Membership visibility',
         )
-          ? [['Not visible to this login']]
+          ? [[t('notVisibleLogin')]]
           : role.memberships.map((membership) => [membership]),
       },
       {
-        name: 'Grants',
-        columns: ['Scope', 'Object', 'Privilege', 'State', 'Grantor'],
+        name: t('grants'),
+        columns: [
+          t('scope'),
+          t('object'),
+          t('privilege'),
+          t('state'),
+          t('grantor'),
+        ],
         rows: grants.map((grant) => [
           grant.scope,
           grant.object,

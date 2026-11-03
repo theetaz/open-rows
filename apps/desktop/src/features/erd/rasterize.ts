@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { Size } from './viewport';
+import { t } from './messages';
 
 /** WebKit refuses larger canvases; stay well inside its limits. */
 const MAX_PIXELS = 16_000_000;
@@ -22,7 +23,7 @@ function loadImage(url: string): Promise<HTMLImageElement> {
       resolve(image);
     };
     image.onerror = () => {
-      reject(new Error('The diagram could not be drawn as an image'));
+      reject(new Error(t('diagramCouldNot')));
     };
     image.src = url;
   });
@@ -40,12 +41,12 @@ export async function svgToPng(svg: string, size: Size): Promise<Uint8Array> {
     canvas.width = Math.max(1, Math.round(size.width * scale));
     canvas.height = Math.max(1, Math.round(size.height * scale));
     const context = canvas.getContext('2d');
-    if (!context) throw new Error('Canvas drawing is unavailable');
+    if (!context) throw new Error(t('canvasDrawingUnavailable'));
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
     const blob = await new Promise<Blob | null>((resolve) => {
       canvas.toBlob(resolve, 'image/png');
     });
-    if (!blob) throw new Error('The diagram is too large for a PNG');
+    if (!blob) throw new Error(t('diagramTooLarge'));
     return new Uint8Array(await blob.arrayBuffer());
   } finally {
     URL.revokeObjectURL(url);

@@ -3,6 +3,7 @@ import type { SafetyDto } from '@openrows/ipc';
 import { POLICY_DETAILS, POLICY_LABELS } from './policies';
 import { useSecurity } from './useSecurity';
 import styles from '../connections/ConnectionSheet.module.css';
+import { t } from './messages';
 /** Explicit safety selector; unsupported authentication never silently becomes unrestricted. */
 export function SafetySelector(props: {
   value: SafetyDto;
@@ -14,7 +15,7 @@ export function SafetySelector(props: {
   return (
     <div className={styles.row}>
       <label htmlFor="connection-safety" className={styles.label}>
-        Safety policy
+        {t('safetyPolicy')}
       </label>
       <div>
         <select
@@ -39,8 +40,7 @@ export function SafetySelector(props: {
         <p id="safety-description">{POLICY_DETAILS[props.value]}</p>
         {security.notice && (
           <p role="status">
-            {security.notice} Authenticate policies use matching Confirm
-            behaviour.
+            {t('noticeAuthenticatePolicies', { notice: security.notice })}
           </p>
         )}
       </div>

@@ -4,6 +4,7 @@ import { Icon, IconButton } from '@openrows/ui';
 import { openExport, revealExport } from '@openrows/ipc';
 import { setJobsOpen, useJobs, useJobsOpen } from './jobStore';
 import styles from './Jobs.module.css';
+import { t } from './messages';
 const JobsPopover = lazy(() =>
   import('./JobsPopover').then((module) => ({ default: module.JobsPopover })),
 );
@@ -20,8 +21,8 @@ export function JobsButton(): React.JSX.Element {
   const opener = useRef<HTMLButtonElement>(null);
   const running = jobs.filter((job) => job.status === 'running').length;
   const label = running
-    ? `Background jobs (${String(running)} running)`
-    : 'Background jobs';
+    ? t('backgroundJobsRunning', { running: String(running) })
+    : t('backgroundJobs');
   return (
     <>
       <IconButton

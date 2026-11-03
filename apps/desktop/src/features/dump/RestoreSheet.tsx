@@ -27,6 +27,7 @@ import {
 import { ArchiveEntries, RestoreOptions, TargetChoice } from './RestoreOptions';
 import { CommandList, ToolList, useDumpContext } from './ToolList';
 import styles from './Dump.module.css';
+import { t } from './messages';
 
 type Loaded<T> =
   | { status: 'loading' }
@@ -98,7 +99,7 @@ function Confirm(props: {
       ))}
       {check.typed && (
         <TextField
-          label={`Type ${check.database} to confirm the restore`}
+          label={t('typeDatabaseConfirm', { database: check.database })}
           spellCheck={false}
           autoComplete="off"
           value={props.typed}
@@ -127,7 +128,7 @@ function ChooseOther(props: {
           choose(false);
         }}
       >
-        Choose File…
+        {t('chooseFile')}
       </Button>
       {props.folders && (
         <Button
@@ -135,7 +136,7 @@ function ChooseOther(props: {
             choose(true);
           }}
         >
-          Choose Folder…
+          {t('chooseFolder')}
         </Button>
       )}
     </>
@@ -150,7 +151,7 @@ function restore(
 ): void {
   const id = startDumpJob({
     kind: 'restore',
-    title: `Restore ${check.database}`,
+    title: t('restoreDatabase', { database: check.database }),
     start: (onEvent) =>
       startRestore(
         {
@@ -214,6 +215,17 @@ function Body(props: {
   );
 }
 
+function restoreSummary(file: PickedDumpDto, target: DumpTarget): string {
+  const into = {
+    kind: FILE_KINDS[file.kind],
+    connection: target.connection,
+    database: target.database,
+  };
+  return file.bytes
+    ? t('fileKindsBytes', { ...into, bytes: sizeText(file.bytes) })
+    : t('fileKindsInto', into);
+}
+
 /**
  * Restore Database…: the picked file, where it goes, the options, the exact
  * commands and the confirmation the gate asks for (the database name on
@@ -251,17 +263,10 @@ export function RestoreSheet(props: {
     showDump(null);
   };
   return (
-    <Sheet title={`Restore ${file.name}`} onClose={close}>
-      <p className={styles.summary}>
-        {FILE_KINDS[file.kind]}
-        {file.bytes ? ` · ${sizeText(file.bytes)}` : ''} into{' '}
-        {target.connection} : {target.database}
-      </p>
+    <Sheet title={t('restoreName', { name: file.name })} onClose={close}>
+      <p className={styles.summary}>{restoreSummary(file, target)}</p>
       {target.restoreSchema && (
-        <p>
-          Restore only schema {target.restoreSchema} (PostgreSQL archive
-          required).
-        </p>
+        <p>{t('restoreOnlySchema', { restoreSchema: target.restoreSchema })}</p>
       )}
       {context.status === 'failed' && (
         <p className={styles.error} role="alert">
@@ -286,7 +291,7 @@ export function RestoreSheet(props: {
       <SheetActions
         leading={<ChooseOther target={target} folders={postgres} />}
       >
-        <Button onClick={close}>Cancel</Button>
+        <Button onClick={close}>{t('cancel')}</Button>
         <Button
           variant="primary"
           disabled={!runnable}
@@ -294,7 +299,7 @@ export function RestoreSheet(props: {
             if (checked) restore(request, checked, typed);
           }}
         >
-          Restore
+          {t('restore')}
         </Button>
       </SheetActions>
     </Sheet>

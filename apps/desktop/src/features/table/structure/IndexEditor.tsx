@@ -3,17 +3,18 @@ import type { IndexRow } from './effective';
 import { StructureGrid } from './StructureGrid';
 import type { CellView, GridColumnDef } from './StructureGrid';
 import type { Structure } from './useStructure';
+import { t } from '../messages/lazyStructure';
 
 const gridColumns: readonly GridColumnDef[] = [
   { key: 'number', title: '#', width: 44 },
-  { key: 'name', title: 'index_name', width: 220 },
-  { key: 'method', title: 'index_algorithm', width: 130 },
-  { key: 'unique', title: 'is_unique', width: 90 },
-  { key: 'primary', title: 'is_primary', width: 90 },
-  { key: 'columns', title: 'column_names', width: 220 },
-  { key: 'predicate', title: 'condition', width: 200 },
-  { key: 'include', title: 'include', width: 150 },
-  { key: 'comment', title: 'comment', width: 200 },
+  { key: 'name', title: t('indexName'), width: 220 },
+  { key: 'method', title: t('indexAlgorithm'), width: 130 },
+  { key: 'unique', title: t('unique2'), width: 90 },
+  { key: 'primary', title: t('primary'), width: 90 },
+  { key: 'columns', title: t('columnNames'), width: 220 },
+  { key: 'predicate', title: t('condition'), width: 200 },
+  { key: 'include', title: t('include'), width: 150 },
+  { key: 'comment', title: t('comment'), width: 200 },
 ];
 
 const yes = (flag: boolean): string => (flag ? 'TRUE' : 'FALSE');
@@ -27,7 +28,7 @@ function indexCell(row: IndexRow, index: number, col: number): CellView {
     case 1:
       return row.name
         ? { content: row.name }
-        : { content: '(automatic name)', muted: true };
+        : { content: t('automaticName'), muted: true };
     case 2:
       return { content: row.method };
     case 3:
@@ -54,7 +55,7 @@ export function IndexEditor({
   const { indexes, indexGrid } = structure;
   return (
     <StructureGrid
-      label="Indexes"
+      label={t('indexes')}
       columns={gridColumns}
       rows={indexes.length}
       rowKey={(row) => indexes[row]?.id ?? String(row)}
@@ -83,7 +84,7 @@ export function IndexEditor({
         if (item) structure.setMenu(structure.indexMenu(item, point));
       }}
       onFiller={structure.schema.enabled ? structure.openIndexSheet : undefined}
-      fillerLabel={structure.schema.enabled ? 'Click to add an index' : ''}
+      fillerLabel={structure.schema.enabled ? t('clickAddIndex') : ''}
     />
   );
 }

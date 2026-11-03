@@ -4,6 +4,7 @@ import { Sheet, SheetActions } from '@openrows/ui/sheet';
 import type { TriggerDto } from '@openrows/ipc';
 import { SqlViewer } from './SqlViewer';
 import styles from './Structure.module.css';
+import { t } from '../messages/lazyStructure';
 
 const timing: Record<TriggerDto['timing'], string> = {
   before: 'BEFORE',
@@ -45,43 +46,45 @@ export function TriggersSheet({
     onTrigger?.(name, drop);
   };
   return (
-    <Sheet title={`Triggers on ${table}`} onClose={onClose}>
+    <Sheet title={t('triggersTable', { table })} onClose={onClose}>
       <div className={styles.triggers}>
         {triggers.length === 0 && (
-          <p className={styles.formNote}>This table has no triggers.</p>
+          <p className={styles.formNote}>{t('tableNoTriggers')}</p>
         )}
         {triggers.map((trigger) => (
           <section
             key={trigger.name}
             className={styles.trigger}
-            aria-label={`Trigger ${trigger.name}`}
+            aria-label={t('triggerName', { name: trigger.name })}
           >
             <h3>{trigger.name}</h3>
             <p>{triggerSummary(trigger)}</p>
             {onTrigger && (
               <p>
                 <Button size="sm" onClick={act(trigger.name, false)}>
-                  Edit…
+                  {t('edit')}
                 </Button>{' '}
                 <Button size="sm" onClick={act(trigger.name, true)}>
-                  Drop…
+                  {t('drop')}
                 </Button>
               </p>
             )}
             <SqlViewer
               sql={`${trigger.definition};`}
-              label={`Definition of ${trigger.name}`}
+              label={t('definitionName', { name: trigger.name })}
             />
           </section>
         ))}
       </div>
       <SheetActions
         leading={
-          onTrigger && <Button onClick={act(null, false)}>New trigger…</Button>
+          onTrigger && (
+            <Button onClick={act(null, false)}>{t('newTrigger')}</Button>
+          )
         }
       >
         <Button variant="primary" onClick={onClose}>
-          Done
+          {t('done')}
         </Button>
       </SheetActions>
     </Sheet>

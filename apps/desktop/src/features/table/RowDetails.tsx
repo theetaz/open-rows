@@ -6,6 +6,7 @@ import { DetailsField } from './DetailsField';
 import { matchingFields } from './row';
 import type { SelectedRow } from './row';
 import styles from './RowDetails.module.css';
+import { t } from './messages/initial';
 
 /** Selected-row fields with search; values edit in place when the table is editable. */
 export function RowDetails({ row }: { row: SelectedRow }): React.JSX.Element {
@@ -34,8 +35,8 @@ function SearchField({
 }): React.JSX.Element {
   return (
     <TextField
-      aria-label="Search for field"
-      placeholder="Search for field…"
+      aria-label={t('searchField')}
+      placeholder={t('searchField2')}
       type="search"
       controlSize="search"
       leadingIcon={<Icon name="search" />}
@@ -57,7 +58,7 @@ function SingleRow({
 }): React.JSX.Element {
   return (
     <>
-      <div role="list" aria-label="Row fields" className={styles.fields}>
+      <div role="list" aria-label={t('rowFields')} className={styles.fields}>
         {fields.map((field) => (
           <div role="listitem" key={field.name}>
             <DetailsField
@@ -68,7 +69,7 @@ function SingleRow({
           </div>
         ))}
       </div>
-      {!fields.length && <p className={styles.note}>No matching fields</p>}
+      {!fields.length && <p className={styles.note}>{t('noMatchingFields')}</p>}
     </>
   );
 }

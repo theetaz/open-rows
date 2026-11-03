@@ -15,6 +15,7 @@ import { SCOPE_OPTIONS, SnippetEditor, SnippetTransfer } from './SnippetSheets';
 import { snippetSettings, updateSnippets } from './snippetStore';
 import type { Snippet, SnippetScope } from './snippetStore';
 import styles from '../appearance/Appearance.module.css';
+import { t } from './lazyMessages';
 
 type Dialog =
   | { kind: 'edit'; snippet: Snippet; isNew: boolean }
@@ -86,11 +87,11 @@ function UserSnippets(props: {
   const searching = useSearching();
   const { items, onDialog } = props;
   return (
-    <section aria-label="Your snippets">
+    <section aria-label={t('snippets')}>
       <div className={styles.sectionHeader}>
         <div>
-          <h3>Your snippets</h3>
-          <p>Type a prefix in the editor, or use Insert Snippet….</p>
+          <h3>{t('snippets')}</h3>
+          <p>{t('typePrefixEditor')}</p>
         </div>
         {!searching && (
           <div className={styles.actions}>
@@ -100,7 +101,7 @@ function UserSnippets(props: {
                 onDialog({ kind: 'edit', snippet: blank(), isNew: true });
               }}
             >
-              Add snippet
+              {t('addSnippet')}
             </Button>
             <Button
               size="sm"
@@ -108,7 +109,7 @@ function UserSnippets(props: {
                 onDialog({ kind: 'import' });
               }}
             >
-              Import…
+              {t('import2')}
             </Button>
             <Button
               size="sm"
@@ -117,12 +118,12 @@ function UserSnippets(props: {
                 onDialog({ kind: 'export' });
               }}
             >
-              Export…
+              {t('export')}
             </Button>
           </div>
         )}
       </div>
-      {!items.length && !searching && <p>No snippets of your own yet.</p>}
+      {!items.length && !searching && <p>{t('noSnippetsOwn')}</p>}
       <div className={styles.settingsGroup}>
         {items.map((snippet) => (
           <UserSnippetRow key={snippet.id} snippet={snippet} {...props} />
@@ -146,17 +147,17 @@ function UserSnippetRow(props: {
     >
       <Button
         size="sm"
-        aria-label={`Edit ${snippet.name}`}
+        aria-label={t('editName', { name: snippet.name })}
         onClick={() => {
           props.onDialog({ kind: 'edit', snippet, isNew: false });
         }}
       >
-        Edit
+        {t('edit')}
       </Button>
       {project && (
         <Button
           size="sm"
-          aria-label={`Save ${snippet.name} to project`}
+          aria-label={t('saveNameProject', { name: snippet.name })}
           onClick={() => {
             createProjectSnippet(
               project.root,
@@ -165,20 +166,20 @@ function UserSnippetRow(props: {
             ).then(() => reloadProject(), reportProjectError);
           }}
         >
-          Save to Project
+          {t('saveProject')}
         </Button>
       )}
       <Button
         size="sm"
         variant="destructive"
-        aria-label={`Delete ${snippet.name}`}
+        aria-label={t('deleteName', { name: snippet.name })}
         onClick={() => {
           updateSnippets({
             items: props.items.filter((item) => item.id !== snippet.id),
           });
         }}
       >
-        Delete
+        {t('delete')}
       </Button>
     </SettingRow>
   );
@@ -192,8 +193,8 @@ function BuiltinSnippets(props: {
     updateSnippets({ disabledBuiltins: enabled ? others : [...others, id] });
   };
   return (
-    <section aria-label="Built-in snippets">
-      <h3>Built-in snippets</h3>
+    <section aria-label={t('builtSnippets')}>
+      <h3>{t('builtSnippets')}</h3>
       <div className={styles.settingsGroup}>
         {BUILTIN_SNIPPETS.map((snippet) => (
           <SettingRow

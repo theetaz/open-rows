@@ -2,6 +2,7 @@
 import type { ProfileDto, ProxyInput, ProxyKindDto } from '@openrows/ipc';
 import { emptySecret, secretInput, validPort } from './routeForm';
 import type { SecretDraft } from './routeForm';
+import { t } from './messages/routes';
 
 /** "Proxy" section values, strings as typed. */
 export type ProxyDraft = {
@@ -69,19 +70,19 @@ export function proxyErrors(
 ): ProxyErrors {
   if (!proxy.enabled) return {};
   const errors: ProxyErrors = {};
-  if (!proxy.host.trim()) errors.proxyHost = 'Proxy host is required';
+  if (!proxy.host.trim()) errors.proxyHost = t('proxyHostRequired');
   else if (host.trim().startsWith('/') && !ssh)
-    errors.proxyHost = 'A proxy cannot reach a local socket; use SSH';
+    errors.proxyHost = t('proxyCannotReach');
   if (proxy.port.trim() && !validPort(proxy.port))
-    errors.proxyPort = 'Port must be 1–65535';
+    errors.proxyPort = t('portMust1');
   return errors;
 }
 
 /** Collapsed section summary: `Off`, or `SOCKS5 · user@host:port`. */
 export function proxySummary(proxy: ProxyDraft): string {
-  if (!proxy.enabled) return 'Off';
+  if (!proxy.enabled) return t('off');
   const kind = proxy.kind === 'socks5' ? 'SOCKS5' : 'HTTP';
   const user = proxy.user.trim() ? `${proxy.user.trim()}@` : '';
   const port = proxy.port.trim() || PROXY_PORTS[proxy.kind];
-  return `${kind} ${user}${proxy.host.trim() || 'no host'}:${port}`;
+  return `${kind} ${user}${proxy.host.trim() || t('noHost')}:${port}`;
 }

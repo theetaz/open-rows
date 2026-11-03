@@ -115,6 +115,7 @@ bench-test:
 
 # Test repository shell tooling against stubbed commands.
 script-test:
+    node --test scripts/eslint/*.test.mjs
     python3 -B -m unittest discover -s scripts -p 'test_sccache_*.py'
     python3 -B -m unittest discover -s scripts -p 'test_stage_host.py'
     python3 -B -m unittest discover -s scripts -p 'test_strip_macos_bundle.py'

@@ -3,6 +3,7 @@ import type { RedactionRule } from '@openrows/ipc';
 import { useState } from 'react';
 import { Button, SelectField, TextField } from '@openrows/ui';
 import styles from './Ai.module.css';
+import { t } from '../messages/lazyAi';
 /** Additional identifier/column rules; built-in sensitive-name rules always apply. */
 export function RedactionControls(props: {
   rules: RedactionRule[];
@@ -11,23 +12,19 @@ export function RedactionControls(props: {
   const [kind, setKind] = useState<'glob' | 'regex'>('glob');
   const [pattern, setPattern] = useState('');
   return (
-    <section aria-label="Redaction rules" className={styles.form}>
-      <p className={styles.notice}>
-        Password, token, secret, SSN, email, phone, card and key fields are
-        always redacted. SQL literals and comments are removed at every sharing
-        level.
-      </p>
+    <section aria-label={t('redactionRules')} className={styles.form}>
+      <p className={styles.notice}>{t('passwordTokenSecret')}</p>
       <SelectField
-        label="Rule type"
+        label={t('ruleType')}
         value={kind}
         options={[
-          { value: 'glob', label: 'Glob' },
-          { value: 'regex', label: 'Regular expression' },
+          { value: 'glob', label: t('glob') },
+          { value: 'regex', label: t('regularExpression') },
         ]}
         onValueChange={setKind}
       />
       <TextField
-        label="Schema.table.column pattern"
+        label={t('schemaTableColumn')}
         value={pattern}
         maxLength={512}
         onChange={(event) => {
@@ -42,7 +39,7 @@ export function RedactionControls(props: {
           setPattern('');
         }}
       >
-        Add redaction rule
+        {t('addRedactionRule')}
       </Button>
       <ul>
         {props.rules.map((rule, index) => (
@@ -53,14 +50,14 @@ export function RedactionControls(props: {
             <Button
               size="sm"
               type="button"
-              aria-label={`Remove rule ${rule.pattern}`}
+              aria-label={t('removeRulePattern', { pattern: rule.pattern })}
               onClick={() => {
                 props.onChange(
                   props.rules.filter((_, position) => position !== index),
                 );
               }}
             >
-              Remove
+              {t('remove')}
             </Button>
           </li>
         ))}

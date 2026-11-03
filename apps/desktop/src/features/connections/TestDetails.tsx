@@ -3,6 +3,7 @@ import { Badge } from '@openrows/ui';
 import type { CertificateDto, LatencyDto } from '@openrows/ipc';
 import { expiryText, latencyQuality } from './testReportText';
 import styles from './TestDetails.module.css';
+import { t } from './messages/profile';
 
 const qualityTone = {
   fast: 'success',
@@ -21,9 +22,12 @@ export function LatencyBadge({
   return (
     <Badge
       tone={qualityTone[quality]}
-      title={`Median of ${String(latency.samples)} SELECT 1 round trips`}
+      title={t('medianSamplesSelect', { samples: String(latency.samples) })}
     >
-      {`Latency ${latency.medianMs.toFixed(1)} ms · ${quality}`}
+      {t('latencyMedianmsMs', {
+        medianMs: latency.medianMs.toFixed(1),
+        quality,
+      })}
     </Badge>
   );
 }
@@ -36,16 +40,18 @@ export function CertificateDetails({
 }): React.JSX.Element {
   const expiry = expiryText(certificate.daysLeft);
   return (
-    <section className={styles.certificate} aria-label="Server certificate">
+    <section className={styles.certificate} aria-label={t('serverCertificate')}>
       <h3>
-        Server certificate
-        {!certificate.verified && <Badge tone="warning">Not verified</Badge>}
+        {t('serverCertificate')}
+        {!certificate.verified && (
+          <Badge tone="warning">{t('notVerified')}</Badge>
+        )}
       </h3>
       <dl>
-        <Row term="Subject" value={certificate.subject} />
-        <Row term="Issuer" value={certificate.issuer} />
-        <Row term="Valid from" value={certificate.notBefore} />
-        <dt>Valid until</dt>
+        <Row term={t('subject')} value={certificate.subject} />
+        <Row term={t('issuer')} value={certificate.issuer} />
+        <Row term={t('valid')} value={certificate.notBefore} />
+        <dt>{t('validUntil')}</dt>
         <dd>
           {certificate.notAfter ?? '—'}
           {expiry && (
@@ -54,7 +60,10 @@ export function CertificateDetails({
             </Badge>
           )}
         </dd>
-        <Row term="Names" value={certificate.altNames.join(', ') || null} />
+        <Row
+          term={t('names')}
+          value={certificate.altNames.join(', ') || null}
+        />
       </dl>
     </section>
   );

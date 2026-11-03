@@ -2,6 +2,7 @@
 import type { EditorDialect } from '@openrows/editor';
 import type { ParamsDto, ParamStyleDto, ParamValueDto } from '@openrows/ipc';
 import type { QueryParams } from './editorSettings';
+import { t } from './lazyMessages';
 
 /**
  * Placeholder styles offered per engine: `$1` is PostgreSQL's own syntax,
@@ -34,7 +35,7 @@ export function paramChoices(
   dialect: EditorDialect,
 ): (readonly [string, QueryParams])[] {
   return [
-    ['Off', 'off'],
+    [t('off'), 'off'],
     ...OFFERED[dialect].map(
       (style) => [LABELS[dialect][style], style] as const,
     ),

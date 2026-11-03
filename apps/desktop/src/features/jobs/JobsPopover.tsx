@@ -6,6 +6,7 @@ import { Button } from '@openrows/ui';
 import { clearEndedJobs, removeJob } from './jobStore';
 import type { Job } from './jobStore';
 import styles from './Jobs.module.css';
+import { t } from './lazyMessages';
 
 /** Open or reveal a job's output; failures are shown on the job's row. */
 type OutputActions = {
@@ -78,24 +79,22 @@ export function JobsPopover(props: Props): React.JSX.Element {
       ref={panel}
       className={styles.anchor}
       role="dialog"
-      aria-label="Background jobs"
+      aria-label={t('backgroundJobs')}
     >
       <div className={styles.panel}>
         <div className={styles.header}>
-          <span>Background Jobs</span>
+          <span>{t('backgroundJobs2')}</span>
           <Button
             size="sm"
             variant="ghost"
             disabled={!ended}
             onClick={clearEndedJobs}
           >
-            Clear
+            {t('clear')}
           </Button>
         </div>
         {props.jobs.length === 0 ? (
-          <p className={styles.empty}>
-            Exports and SQL file runs appear here while they run.
-          </p>
+          <p className={styles.empty}>{t('exportsSqlFile')}</p>
         ) : (
           <ul className={styles.list}>
             {props.jobs.map((job) => (
@@ -127,7 +126,7 @@ function JobRow({
       </div>
       {running && (
         <progress
-          aria-label={`${job.title} progress`}
+          aria-label={t('titleProgress', { title: job.title })}
           {...(job.fraction === undefined ? {} : { value: job.fraction })}
         />
       )}
@@ -140,9 +139,9 @@ function JobRow({
 }
 
 function kindLabel(kind: string): string {
-  if (kind === 'run-file') return 'SQL file';
-  if (kind === 'export') return 'Export';
-  if (kind === 'import') return 'Import';
+  if (kind === 'run-file') return t('sqlFile');
+  if (kind === 'export') return t('export');
+  if (kind === 'import') return t('import');
   return kind;
 }
 
@@ -158,7 +157,7 @@ function JobActions({
     <div className={styles.actions}>
       {job.details && (
         <Button size="sm" onClick={job.details}>
-          Details…
+          {t('details')}
         </Button>
       )}
       {path && (
@@ -167,30 +166,30 @@ function JobActions({
             size="sm"
             onClick={() => void output.open(path).catch(() => undefined)}
           >
-            Open
+            {t('open')}
           </Button>
           <Button
             size="sm"
             onClick={() => void output.reveal(path).catch(() => undefined)}
           >
-            Show in Finder
+            {t('showFinder')}
           </Button>
         </>
       )}
       {job.status === 'running' ? (
         <Button size="sm" disabled={!job.cancel} onClick={job.cancel}>
-          Cancel
+          {t('cancel')}
         </Button>
       ) : (
         <Button
           size="sm"
           variant="ghost"
-          aria-label={`Remove ${job.title}`}
+          aria-label={t('removeTitle', { title: job.title })}
           onClick={() => {
             removeJob(job.id);
           }}
         >
-          Remove
+          {t('remove')}
         </Button>
       )}
     </div>

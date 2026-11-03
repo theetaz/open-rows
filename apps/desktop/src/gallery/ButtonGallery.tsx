@@ -8,6 +8,7 @@ import {
   GlassPanel,
 } from '@openrows/ui';
 import styles from './Gallery.module.css';
+import { t } from './messages';
 
 const variants = ['primary', 'secondary', 'ghost', 'destructive'] as const;
 type Variant = (typeof variants)[number];
@@ -19,11 +20,8 @@ export function ButtonGallery(): React.JSX.Element {
       aria-labelledby="controls-heading"
       className={styles.section}
     >
-      <h2 id="controls-heading">Controls</h2>
-      <p className={styles.secondary}>
-        Hover any action for an inset edge. Tab to see the focus ring; Space or
-        Enter activates.
-      </p>
+      <h2 id="controls-heading">{t('controls')}</h2>
+      <p className={styles.secondary}>{t('hoverAnyAction')}</p>
       <div className={styles.stack}>
         {variants.map((variant) => (
           <ActionExamples key={variant} variant={variant} />
@@ -31,11 +29,8 @@ export function ButtonGallery(): React.JSX.Element {
       </div>
       <ToolbarExamples />
       <GlassPanel>
-        <strong>GlassPanel</strong>
-        <p className={styles.secondary}>
-          30 px blur, a bright inset highlight, and 18 px corners. Reduce
-          Transparency replaces glass with a solid surface.
-        </p>
+        <strong>{t('glasspanel')}</strong>
+        <p className={styles.secondary}>{t('n30PxBlur')}</p>
       </GlassPanel>
     </section>
   );
@@ -45,15 +40,15 @@ function ActionExamples({ variant }: { variant: Variant }): React.JSX.Element {
     <div>
       <div className={styles.row}>
         <span className={styles.label}>{variant}</span>
-        <Button variant={variant}>{variant} · md</Button>
+        <Button variant={variant}>{t('variantMd', { variant })}</Button>
         <Button variant={variant} size="sm">
-          Small
+          {t('small')}
         </Button>
         <Button variant={variant} disabled>
-          Disabled
+          {t('disabled')}
         </Button>
         <Button variant={variant} className={styles.focusPreview}>
-          Focus specimen
+          {t('focusSpecimen')}
         </Button>
       </div>
       <IconExamples variant={variant} />
@@ -61,19 +56,19 @@ function ActionExamples({ variant }: { variant: Variant }): React.JSX.Element {
   );
 }
 const iconStates = [
-  { label: 'default md', size: 'md', disabled: false, focus: false },
-  { label: 'default sm', size: 'sm', disabled: false, focus: false },
-  { label: 'disabled', size: 'md', disabled: true, focus: false },
-  { label: 'focus', size: 'md', disabled: false, focus: true },
+  { label: t('defaultMd'), size: 'md', disabled: false, focus: false },
+  { label: t('defaultSm'), size: 'sm', disabled: false, focus: false },
+  { label: t('disabled2'), size: 'md', disabled: true, focus: false },
+  { label: t('focus'), size: 'md', disabled: false, focus: true },
 ] as const;
 function IconExamples({ variant }: { variant: Variant }): React.JSX.Element {
   return (
     <div className={styles.row}>
-      <span className={styles.label}>IconButton</span>
+      <span className={styles.label}>{t('iconbutton')}</span>
       {iconStates.map((state) => (
         <IconButton
           key={state.label}
-          aria-label={`${variant} icon ${state.label}`}
+          aria-label={t('variantIconLabel', { variant, label: state.label })}
           variant={variant}
           size={state.size}
           disabled={state.disabled}
@@ -88,25 +83,25 @@ function IconExamples({ variant }: { variant: Variant }): React.JSX.Element {
 function ToolbarExamples(): React.JSX.Element {
   return (
     <div className={styles.row}>
-      <ToolbarGroup aria-label="Gallery actions">
-        <IconButton aria-label="Add item">
+      <ToolbarGroup aria-label={t('galleryActions')}>
+        <IconButton aria-label={t('addItem')}>
           <Icon name="plus" />
         </IconButton>
-        <IconButton aria-label="Refresh">
+        <IconButton aria-label={t('refresh')}>
           <Icon name="refresh" />
         </IconButton>
-        <IconButton aria-label="Toggle sidebar" disabled>
+        <IconButton aria-label={t('toggleSidebar')} disabled>
           <Icon name="sidebar" />
         </IconButton>
         <IconButton
-          aria-label="Focused icon specimen"
+          aria-label={t('focusedIconSpecimen')}
           className={styles.focusPreview}
         >
           <Icon name="search" />
         </IconButton>
       </ToolbarGroup>
-      <span>ToolbarGroup · IconButton</span>
-      <Kbd>⌘ K</Kbd>
+      <span>{t('toolbargroupIconbutton')}</span>
+      <Kbd>{t('k')}</Kbd>
     </div>
   );
 }

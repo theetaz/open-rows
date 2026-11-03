@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Icon, TextField } from '@openrows/ui';
 import type { TableTabState } from './useTableTab';
 import extras from './TableExtras.module.css';
+import { t } from './messages/lazyData';
 
 /** Typing pauses this long before the server-side search runs. */
 const SEARCH_DELAY_MS = 400;
@@ -36,13 +37,13 @@ export function TableSearch({
   }, [text, applied, search]);
   return (
     <TextField
-      aria-label="Search all columns"
-      placeholder="Search"
+      aria-label={t('searchAllColumns')}
+      placeholder={t('search')}
       controlSize="compact"
       className={extras.search}
       leadingIcon={<Icon name="search" />}
       value={text}
-      title="Search every column"
+      title={t('searchEveryColumn')}
       onChange={(event) => {
         setText(event.target.value);
       }}

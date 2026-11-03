@@ -5,6 +5,7 @@ import type { EngineDto } from '@openrows/ipc';
 import { fieldError } from './form';
 import type { UrlField as UrlState } from './useUrlField';
 import styles from './ConnectionSheet.module.css';
+import { t } from './messages/profile';
 
 /**
  * Connection URL in sync with the fields: typing fills them after a short
@@ -36,7 +37,7 @@ export function UrlField({
   return (
     <TextField
       className={styles.row}
-      label="URL"
+      label={t('url')}
       placeholder={EXAMPLES[engine]}
       autoComplete="off"
       spellCheck={false}

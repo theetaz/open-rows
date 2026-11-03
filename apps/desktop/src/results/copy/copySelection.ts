@@ -9,6 +9,7 @@ import { CopyError, readSelection } from './read';
 import type { CopySource } from './read';
 import { tableName } from './sql';
 import { copyConflict, copySettings, delimitedOptions } from './copySettings';
+import { t } from '../lazyMessages';
 
 /** Where copied SQL goes: the connection's dialect and the browsed table, if any. */
 export type CopyTarget = {
@@ -92,7 +93,7 @@ async function writeClipboard(
 export function copyAsMenu(run: (format: CopyFormat) => void): MenuEntry {
   return {
     kind: 'submenu',
-    label: 'Copy as',
+    label: t('copy'),
     entries: COPY_AS.map(({ format, label }) => ({
       kind: 'item',
       label,
@@ -107,5 +108,7 @@ export function copyAsMenu(run: (format: CopyFormat) => void): MenuEntry {
 export function copyFailure(error: unknown): string {
   if (error instanceof Error && error.name === 'CopyError')
     return error.message;
-  return `Could not copy: ${error instanceof Error ? error.message : String(error)}`;
+  return t('couldNotCopy', {
+    message: error instanceof Error ? error.message : String(error),
+  });
 }

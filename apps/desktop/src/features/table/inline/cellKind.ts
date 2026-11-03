@@ -2,6 +2,7 @@
 import type { DisplayCell, GridColumn } from '@openrows/grid';
 import type { ColumnDto, EditInfoDto } from '@openrows/ipc';
 import { temporalKind } from './temporal';
+import { t } from '../messages/initial';
 
 /** One choice in a boolean or enum value menu. */
 export type MenuOption = { label: string; value: string | null };
@@ -32,8 +33,8 @@ export function columnEdit(
   if (!info || !column || info.protected.includes(column.name)) return null;
   const choices = BOOLEAN.test(column.dataType)
     ? [
-        { label: 'TRUE', value: 'true' },
-        { label: 'FALSE', value: 'false' },
+        { label: t('true'), value: 'true' },
+        { label: t('false'), value: 'false' },
       ]
     : column.enumLabels?.map((label) => ({ label, value: label }));
   return {
@@ -44,7 +45,7 @@ export function columnEdit(
     options: choices
       ? [
           ...choices,
-          ...(column.nullable ? [{ label: 'NULL', value: null }] : []),
+          ...(column.nullable ? [{ label: t('null'), value: null }] : []),
         ]
       : null,
   };

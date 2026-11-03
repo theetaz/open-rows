@@ -4,9 +4,10 @@ import type { ProfileDto } from '@openrows/ipc';
 import { toggleAssistant } from '../assistant/conversation';
 import { isDocumentEngine } from '../connections/engines';
 import type { EditorHandle } from './request';
+import { t } from './lazyMessages';
 
 /** Why the AI button and ⌘I do nothing on a document engine. */
-const AI_UNAVAILABLE = 'AI is not available for MongoDB connections';
+const AI_UNAVAILABLE = t('aiNotAvailable');
 
 /**
  * The AI button and ⌘I: the assistant panel and the editor's inline prompt.

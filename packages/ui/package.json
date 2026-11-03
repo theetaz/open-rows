@@ -12,6 +12,7 @@
     "./palette": "./src/components/Palette.tsx",
     "./sheet": "./src/components/Sheet.tsx",
     "./format": "./src/format/booleanText.ts",
+    "./i18n": "./src/i18n/defineMessages.ts",
     "./icons": "./src/icons/paths.ts"
   },
   "scripts": {

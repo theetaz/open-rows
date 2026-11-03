@@ -16,6 +16,7 @@ import type { Metric } from './metrics';
 import { MetricChart } from './MetricChart';
 import { SourceState, stateLabel } from './SourceState';
 import styles from './Monitor.module.css';
+import { t } from './messages/lazyDashboard';
 
 type EngineOverview = {
   metrics: readonly Metric[];
@@ -25,16 +26,16 @@ type EngineOverview = {
 };
 const POSTGRES: EngineOverview = {
   metrics: METRICS,
-  note: 'Rows read = returned + fetched; rows written = inserted + updated + deleted. Cache ratio uses interval block hits/reads.',
+  note: t('rowsReadReturned'),
 };
 const MYSQL: EngineOverview = {
   metrics: MYSQL_METRICS,
-  note: 'Server status includes all databases and collector queries. Rows are InnoDB counters; buffer pool hit ratio is 1 − physical reads/read requests. Missing engine counters remain unknown.',
+  note: t('serverStatusIncludes'),
 };
 const EMBEDDED: EngineOverview = {
   metrics: SQLITE_METRICS,
-  note: 'Request counters cover statements run from OpenRows editors and grids against this file. File gauges come from cheap PRAGMAs, file sizes and the WAL index; integrity and quick checks never run automatically. Missing WAL values mean the file is not in WAL mode.',
-  boundary: 'Own OpenRows sessions only — other applications are not visible.',
+  note: t('requestCountersCover'),
+  boundary: t('ownOpenrowsSessions'),
 };
 const OVERVIEWS: Record<EngineDto, EngineOverview> = {
   postgres: POSTGRES,
@@ -42,28 +43,27 @@ const OVERVIEWS: Record<EngineDto, EngineOverview> = {
   mariadb: MYSQL,
   mongodb: {
     metrics: [],
-    note: 'MongoDB monitoring is not available yet.',
+    note: t('mongodbMonitoringNot'),
   },
   sqlserver: {
     metrics: SQLSERVER_METRICS,
-    note: 'Performance counters cover the whole instance, including collector queries. CPU is the default resource pool share; buffer cache hit ratio and page life expectancy are current values. Missing counters remain unknown.',
+    note: t('performanceCountersCover'),
   },
   clickhouse: {
     metrics: CLICKHOUSE_METRICS,
-    note: 'Node counters from system events, metrics and asynchronous metrics include collector queries. Events are interval rates; running queries, merges, parts and memory are gauges. Missing or denied counters remain unknown.',
+    note: t('nodeCountersSystem'),
   },
   sqlite: EMBEDDED,
   'libsql-file': EMBEDDED,
   libsql: {
     metrics: LIBSQL_METRICS,
-    note: 'Request counters and round trip are measured by OpenRows. Server CPU, memory, storage and other clients’ queries are unavailable over Hrana and are never estimated.',
-    boundary:
-      'Own OpenRows requests only — server-wide metrics unavailable over Hrana.',
+    note: t('requestCountersRound'),
+    boundary: t('ownOpenrowsRequests'),
   },
   duckdb: {
     metrics: DUCKDB_METRICS,
-    note: 'Updated after query completion. Request counters cover statements run from OpenRows editors and grids. Storage, memory, temp and thread values are read on the owning session after the running statement; a busy session leaves a gap.',
-    boundary: 'Own OpenRows session only — other processes are not visible.',
+    note: t('updatedAfterQuery'),
+    boundary: t('ownOpenrowsSession'),
   },
 };
 
@@ -100,9 +100,8 @@ export function MonitorOverview(props: {
       )}
       <p className={styles.note}>
         {props.history
-          ? 'Stored aggregate history; each bucket preserves a missing/reset state. Missing collection intervals are gaps. Other panels show live source tables.'
-          : 'Live ten-minute window. Database counters need two samples; no baseline or a reset means unknown.'}{' '}
-        {overview.note}
+          ? t('storedAggregateHistory', { note: overview.note })
+          : t('liveTenMinute', { note: overview.note })}
       </p>
       <div className={styles.tiles}>
         {overview.metrics.map((metric) => (
@@ -140,14 +139,22 @@ function MetricTile({
       <h3>{metric.title}</h3>
       <p className={styles.value}>{metricValue(latest, metric.unit)}</p>
       <p className={styles.note}>
-        {metric.scope} scope · {stateLabel(latest?.state ?? 'unknown')}
         {latest
-          ? ` · ${new Date(latest.collectedMs).toLocaleTimeString()}`
-          : ''}
+          ? t('scopeScopeState', {
+              scope: metric.scope,
+              state: stateLabel(latest.state),
+              value: new Date(latest.collectedMs).toLocaleTimeString(),
+            })
+          : t('scopeScopeState2', {
+              scope: metric.scope,
+              state: stateLabel('unknown'),
+            })}
       </p>
       {window.previous.length > 0 && (
         <p className={styles.note}>
-          Previous window: {metricValue(previous, metric.unit)}
+          {t('previousWindowPrevious', {
+            previous: metricValue(previous, metric.unit),
+          })}
         </p>
       )}
       <MetricChart title={metric.title} points={points} range={range} />

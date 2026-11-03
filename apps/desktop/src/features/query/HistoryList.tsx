@@ -9,6 +9,7 @@ import { useHistory } from './useHistory';
 import type { HistoryState } from './useHistory';
 import { groupByDay } from './historyView';
 import styles from './HistoryList.module.css';
+import { rich, t } from './initialMessages';
 
 /** A saved connection as the History list names it. */
 type HistoryConnection = { id: string; name: string; engine?: EngineDto };
@@ -21,8 +22,8 @@ const HistorySaveReview = lazy(() =>
 type Scope = 'connection' | 'all';
 
 const scopes: readonly { value: Scope; label: string }[] = [
-  { value: 'connection', label: 'This connection' },
-  { value: 'all', label: 'All' },
+  { value: 'connection', label: t('connection') },
+  { value: 'all', label: t('all') },
 ];
 
 type Props = {
@@ -49,9 +50,7 @@ export function HistoryList(props: Props): React.JSX.Element {
     enabled: !scoped || active !== undefined,
   });
   if (scoped && !active)
-    return (
-      <p className={styles.empty}>Select a connection to see its history.</p>
-    );
+    return <p className={styles.empty}>{t('selectConnectionSee')}</p>;
   return (
     <div className={styles.history}>
       <HistoryToolbar
@@ -71,15 +70,11 @@ export function HistoryList(props: Props): React.JSX.Element {
         showConnections={!scoped}
         onOpen={onOpen}
         onInsert={(sql) => {
-          setActionError(
-            insertHistorySql(sql)
-              ? null
-              : 'Open a query editor before inserting history.',
-          );
+          setActionError(insertHistorySql(sql) ? null : t('openQueryEditor'));
         }}
         onSave={(sql) => {
           if (active) setSaving(sql);
-          else setActionError('Select a connection before saving history.');
+          else setActionError(t('selectConnectionBefore'));
         }}
         state={state}
       />
@@ -113,7 +108,7 @@ function HistoryToolbar(props: {
     <>
       <div className={styles.toolbar}>
         <SegmentedControl
-          aria-label="History scope"
+          aria-label={t('historyScope')}
           options={scopes}
           value={props.scope}
           onValueChange={(value) => {
@@ -129,16 +124,21 @@ function HistoryToolbar(props: {
               setConfirming(true);
             }}
           >
-            Clear
+            {t('clear')}
           </Button>
         )}
       </div>
       {confirming && (
-        <div role="group" aria-label="Clear history" className={styles.confirm}>
+        <div
+          role="group"
+          aria-label={t('clearHistory')}
+          className={styles.confirm}
+        >
           <p>
-            Delete every statement of{' '}
-            {props.scope === 'all' ? 'all connections' : connection?.name} from
-            History?
+            {rich('deleteEveryStatement', {
+              value:
+                props.scope === 'all' ? t('allConnections') : connection?.name,
+            })}
           </p>
           <div className={styles.confirmActions}>
             <Button
@@ -151,7 +151,7 @@ function HistoryToolbar(props: {
                 );
               }}
             >
-              Clear history
+              {t('clearHistory')}
             </Button>
             <Button
               size="sm"
@@ -159,7 +159,7 @@ function HistoryToolbar(props: {
                 setConfirming(false);
               }}
             >
-              Cancel
+              {t('cancel')}
             </Button>
           </div>
         </div>
@@ -185,11 +185,11 @@ function HistoryDays(
   if (groups.length === 0)
     return (
       <p role="status" className={styles.empty}>
-        {props.text.trim() ? 'No matching statements' : 'No statements run yet'}
+        {props.text.trim() ? t('noMatchingStatements') : t('noStatementsRun')}
       </p>
     );
   return (
-    <ol aria-label="Query history" className={styles.days}>
+    <ol aria-label={t('queryHistory')} className={styles.days}>
       {groups.map((group) => (
         <li key={group.key}>
           <h3 className={styles.day}>{group.label}</h3>

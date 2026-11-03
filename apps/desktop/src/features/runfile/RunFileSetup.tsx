@@ -8,6 +8,7 @@ import { showRunFile } from './runFileStore';
 import type { RunTarget } from './runFileStore';
 import { sizeText, startFileRun } from './runFileJob';
 import styles from './RunFile.module.css';
+import { rich, t } from './lazyMessages';
 
 type Check =
   | { status: 'checking' }
@@ -69,10 +70,20 @@ export function RunFileSetup(props: {
     showRunFile({ kind: 'run', id });
   };
   return (
-    <Sheet title={`Run ${file.name}`} onClose={close}>
+    <Sheet title={t('runName', { name: file.name })} onClose={close}>
       <p className={styles.summary}>
-        {sizeText(file.bytes ?? 0)} on {target.connection} : {target.database}
-        {ready && ` · ${(ready.statements ?? 0).toLocaleString()} statements`}
+        {ready
+          ? t('bytesConnectionDatabase', {
+              bytes: sizeText(file.bytes ?? 0),
+              connection: target.connection,
+              database: target.database,
+              statements: (ready.statements ?? 0).toLocaleString(),
+            })
+          : t('bytesConnectionDatabase2', {
+              bytes: sizeText(file.bytes ?? 0),
+              connection: target.connection,
+              database: target.database,
+            })}
       </p>
       <CheckResult check={check} />
       {ready && ready.gate !== 'block' && (
@@ -85,9 +96,9 @@ export function RunFileSetup(props: {
         />
       )}
       <SheetActions>
-        <Button onClick={close}>Cancel</Button>
+        <Button onClick={close}>{t('cancel')}</Button>
         <Button variant="primary" disabled={!runnable} onClick={run}>
-          {ready?.gate === 'confirm' ? 'Run Anyway' : 'Run'}
+          {ready?.gate === 'confirm' ? t('runAnyway') : t('run')}
         </Button>
       </SheetActions>
     </Sheet>
@@ -98,7 +109,7 @@ function CheckResult({ check }: { check: Check }): React.JSX.Element | null {
   if (check.status === 'checking')
     return (
       <p className={styles.note} role="status">
-        Checking every statement…
+        {t('checkingEveryStatement')}
       </p>
     );
   if (check.status === 'failed')
@@ -109,20 +120,26 @@ function CheckResult({ check }: { check: Check }): React.JSX.Element | null {
     );
   const { check: result } = check;
   if ((result.statements ?? 0) === 0)
-    return <p className={styles.note}>The file holds no SQL statements.</p>;
+    return <p className={styles.note}>{t('fileHoldsNo')}</p>;
   if (result.gate === 'run') return null;
   const blocked = result.gate === 'block';
   return (
     <div className={styles.safety} role={blocked ? 'alert' : 'status'}>
       <p>
         {blocked
-          ? `This connection is read-only: ${(result.blocked ?? 0).toLocaleString()} statements may modify the database, so nothing will run.`
-          : `${(result.confirm ?? 0).toLocaleString()} statements may modify data or the schema. Review them before running.`}
+          ? t('connectionReadOnly', {
+              blocked: (result.blocked ?? 0).toLocaleString(),
+            })
+          : t('confirmStatementsMay', {
+              confirm: (result.confirm ?? 0).toLocaleString(),
+            })}
       </p>
       <ul className={styles.samples}>
         {result.samples.map((sample) => (
           <li key={`${String(sample.line)}:${sample.preview}`}>
-            <span className={styles.line}>Line {sample.line}</span>
+            <span className={styles.line}>
+              {rich('lineLine', { line: sample.line })}
+            </span>
             <code>{sample.preview}</code>
           </li>
         ))}
@@ -140,7 +157,7 @@ function Options(props: {
 }): React.JSX.Element {
   return (
     <fieldset className={styles.options}>
-      <legend>On error</legend>
+      <legend>{t('error')}</legend>
       <label>
         <input
           type="radio"
@@ -150,7 +167,7 @@ function Options(props: {
             props.onStopOnError(true);
           }}
         />
-        Stop at the first error
+        {t('stopFirstError')}
       </label>
       <label>
         <input
@@ -162,7 +179,7 @@ function Options(props: {
             props.onStopOnError(false);
           }}
         />
-        Continue and list every error
+        {t('continueListEvery')}
       </label>
       <label>
         <input
@@ -173,13 +190,10 @@ function Options(props: {
             props.onTransaction(event.target.checked);
           }}
         />
-        Run everything in one transaction (rolled back on error or cancel)
+        {t('runEverythingOne')}
       </label>
       {!props.check.transactions && (
-        <p className={styles.note}>
-          This database commits schema changes immediately, so a file cannot run
-          in one transaction.
-        </p>
+        <p className={styles.note}>{t('databaseCommitsSchema')}</p>
       )}
     </fieldset>
   );

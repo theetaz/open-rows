@@ -5,6 +5,7 @@ import type { ColumnRow } from './effective';
 import type { CellView } from './StructureGrid';
 import styles from './Structure.module.css';
 import { shortType } from '../../schema/shortType';
+import { t } from '../messages/lazyStructure';
 
 /** An inline editor in progress: the cell, its text and the default mode. */
 export type InlineEdit = {
@@ -65,7 +66,7 @@ export function CellInput({
     <input
       className={styles.input}
       aria-label={label}
-      placeholder={edit.literal ? 'Text literal' : undefined}
+      placeholder={edit.literal ? t('textLiteral') : undefined}
       value={edit.text}
       autoFocus
       spellCheck={false}
@@ -117,7 +118,10 @@ export function columnCell(
   const step = (field: 'dataType' | 'nullable' | 'default'): ReactNode =>
     pickers.editable && !row.dropped ? (
       <Stepper
-        label={`Choose ${field === 'dataType' ? 'type' : field} of ${row.name}`}
+        label={t('chooseValueName', {
+          value: field === 'dataType' ? 'type' : field,
+          name: row.name,
+        })}
         onOpen={(at) => {
           pickers.open(field, index, at);
         }}
@@ -187,8 +191,11 @@ function foreignKeyCell(row: ColumnRow, pickers: CellPickers): CellView {
           type="button"
           tabIndex={-1}
           className={styles.stepper}
-          aria-label={`Open ${key.schema}.${key.table}`}
-          title={`Open ${key.schema}.${key.table}`}
+          aria-label={t('openSchemaTable', {
+            schema: key.schema,
+            table: key.table,
+          })}
+          title={t('openSchemaTable', { schema: key.schema, table: key.table })}
           onMouseDown={(event) => {
             event.preventDefault();
           }}

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { CredentialCommandDto, ProfileDto } from '@openrows/ipc';
 import type { Draft, DraftErrors } from './form';
+import { t } from './messages/profile';
 /** JSON array preserves spaces, empty arguments and metacharacters literally. */
 export function commandArguments(text: string): string[] | null {
   try {
@@ -21,12 +22,12 @@ export function commandErrors(draft: Draft): DraftErrors {
     !draft.commandProgram.startsWith('/') &&
     !/^[A-Za-z]:[\\/]/.test(draft.commandProgram)
   )
-    errors.commandProgram = 'Use an absolute program path';
+    errors.commandProgram = t('useAbsoluteProgram');
   if (!commandArguments(draft.commandArgs))
-    errors.commandArgs = 'Use a JSON array of strings';
+    errors.commandArgs = t('useJsonArray');
   const seconds = Number(draft.commandTimeout);
   if (!Number.isInteger(seconds) || seconds < 1 || seconds > 120)
-    errors.commandTimeout = 'Timeout must be 1–120 seconds';
+    errors.commandTimeout = t('timeoutMust1');
   return errors;
 }
 /** Non-secret configuration; switching policy clears any stored command. */

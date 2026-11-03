@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Button } from '@openrows/ui';
 import { confirmMcpTool } from '@openrows/ipc';
 import type { AgentEvent } from '@openrows/ipc';
+import { t } from './lazyMessages';
 /** No tool executes until a pending native prompt receives an explicit user answer. */
 export function ToolConfirmation(props: {
   prompt: Extract<AgentEvent, { type: 'confirmation' }>;
@@ -15,22 +16,25 @@ export function ToolConfirmation(props: {
     try {
       await confirmMcpTool(props.prompt.id, allow);
     } catch {
-      setFailure('Confirmation expired or cancelled.');
+      setFailure(t('confirmationExpiredCancelled'));
     }
   };
   return (
-    <section aria-label="MCP tool confirmation">
+    <section aria-label={t('mcpToolConfirmation')}>
       <p>
-        Allow {props.prompt.server} → {props.prompt.tool} for this session?
+        {t('allowServerTool', {
+          server: props.prompt.server,
+          tool: props.prompt.tool,
+        })}
       </p>
-      <pre aria-label="MCP tool arguments">{props.prompt.arguments}</pre>
+      <pre aria-label={t('mcpToolArguments')}>{props.prompt.arguments}</pre>
       <Button
         disabled={resolved || props.disabled}
         onClick={() => {
           void respond(true);
         }}
       >
-        Allow tool
+        {t('allowTool')}
       </Button>
       <Button
         disabled={resolved || props.disabled}
@@ -38,7 +42,7 @@ export function ToolConfirmation(props: {
           void respond(false);
         }}
       >
-        Deny tool
+        {t('denyTool')}
       </Button>
       {failure && <p role="alert">{failure}</p>}
     </section>

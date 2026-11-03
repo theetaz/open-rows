@@ -4,6 +4,7 @@ import { Update } from '@tauri-apps/plugin-updater';
 import { checkForUpdate } from '@openrows/ipc';
 import { generalSettings } from './general';
 import { updateFeed } from './updateFeed';
+import { t } from './messages/lazyGeneral';
 
 type Snapshot = { update: Update | null; checking: boolean; message: string };
 let snapshot: Snapshot = { update: null, checking: false, message: '' };
@@ -43,7 +44,7 @@ export async function checkUpdate(): Promise<void> {
     return;
   dismissUpdate();
   const token = generation;
-  publish({ checking: true, message: 'Checking for updates…' });
+  publish({ checking: true, message: t('checkingUpdates') });
   try {
     const result = await checkForUpdate(general.updateChannel);
     const update = result
@@ -63,15 +64,15 @@ export async function checkUpdate(): Promise<void> {
       update,
       checking: false,
       message: update
-        ? `OpenRows ${update.version} is available.`
-        : 'OpenRows is up to date.',
+        ? t('openrowsVersionAvailable', { version: update.version })
+        : t('openrowsUpDate'),
     });
   } catch (error) {
     if (token === generation)
       publish({
         checking: false,
         message:
-          error instanceof Error ? error.message : 'Update check failed.',
+          error instanceof Error ? error.message : t('updateCheckFailed'),
       });
   }
 }

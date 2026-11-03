@@ -3,6 +3,7 @@ import { Button } from '@openrows/ui';
 import { recoveryNote } from './journal';
 import type { EditRecovery } from './useEditRecovery';
 import styles from '../Table.module.css';
+import { t } from '../messages/lazyData';
 
 /** "N unsaved changes from <time> — Restore · Discard" above the rows. */
 export function RecoveryBanner({
@@ -16,15 +17,16 @@ export function RecoveryBanner({
     offer.kind === 'error'
       ? offer.message
       : recoveryNote(offer.edits.length, offer.saved.savedAtMs);
-  const blocked =
-    offer.kind === 'edits' && !canRestore
-      ? ' · cannot be restored: the table key changed'
-      : '';
   return (
-    <div role="status" className={styles.recovery} aria-label="Unsaved changes">
+    <div
+      role="status"
+      className={styles.recovery}
+      aria-label={t('unsavedChanges')}
+    >
       <span className={styles.recoveryNote}>
-        {note}
-        {blocked}
+        {offer.kind === 'edits' && !canRestore
+          ? t('noteCannotRestore', { note })
+          : note}
       </span>
       <span className={styles.spacer} />
       {offer.kind === 'edits' && (
@@ -34,11 +36,11 @@ export function RecoveryBanner({
           disabled={!canRestore}
           onClick={recovery.restore}
         >
-          Restore
+          {t('restore')}
         </Button>
       )}
       <Button size="sm" onClick={recovery.discard}>
-        Discard
+        {t('discard')}
       </Button>
     </div>
   );

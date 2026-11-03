@@ -7,15 +7,16 @@ import { PlanTree } from './PlanTree';
 import { PlanDetails } from './PlanDetails';
 import { hotspotText, hotspotsOf, nodeLabel, planSummary } from './planModel';
 import styles from './Explain.module.css';
+import { t, tn } from './messages';
 
 type ExplainViewProps = { plan: PlanDto };
 
 type Tab = 'plan' | 'raw' | 'flame';
 
 const TABS = [
-  { value: 'plan', label: 'Plan' },
-  { value: 'raw', label: 'Raw' },
-  { value: 'flame', label: 'Flame' },
+  { value: 'plan', label: t('plan') },
+  { value: 'raw', label: t('raw') },
+  { value: 'flame', label: t('flame') },
 ] as const;
 
 /**
@@ -32,11 +33,11 @@ export function ExplainView({ plan }: ExplainViewProps): React.JSX.Element {
   }, []);
   const node = plan.nodes[selected] ?? plan.nodes[0];
   return (
-    <section className={styles.view} aria-label="Query plan">
+    <section className={styles.view} aria-label={t('queryPlan2')}>
       <div className={styles.toolbar}>
         <SegmentedControl
           size="compact"
-          aria-label="Plan view"
+          aria-label={t('planView')}
           options={TABS}
           value={tab}
           onValueChange={setTab}
@@ -45,7 +46,7 @@ export function ExplainView({ plan }: ExplainViewProps): React.JSX.Element {
         <CopyPlan raw={plan.raw} />
       </div>
       {tab === 'raw' ? (
-        <pre className={styles.raw} aria-label="Raw plan" tabIndex={0}>
+        <pre className={styles.raw} aria-label={t('rawPlan')} tabIndex={0}>
           {plan.raw}
         </pre>
       ) : (
@@ -91,7 +92,7 @@ function CopyPlan({ raw }: { raw: string }): React.JSX.Element {
         );
       }}
     >
-      {copied ? 'Copied' : 'Copy Plan'}
+      {copied ? t('copied') : t('copyPlan')}
     </Button>
   );
 }
@@ -103,11 +104,13 @@ function HotspotStrip(props: {
 }): React.JSX.Element {
   const hotspots = hotspotsOf(props.plan);
   return (
-    <ul className={styles.hotspots} aria-label="Hotspots">
+    <ul className={styles.hotspots} aria-label={t('hotspots')}>
       <li className={styles.hotspotCount}>
         {hotspots.length
-          ? `${String(hotspots.length)} hotspot${hotspots.length === 1 ? '' : 's'}:`
-          : 'No hotspots found.'}
+          ? tn('countHotspots', hotspots.length, {
+              count: String(hotspots.length),
+            })
+          : t('noHotspotsFound')}
       </li>
       {hotspots.map(({ node, hotspot }, index) => {
         const text = hotspotText(hotspot);

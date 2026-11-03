@@ -3,6 +3,7 @@ import { Palette } from '@openrows/ui/palette';
 import type { EditorDialect } from '@openrows/editor';
 import { projectSnippet, useProjectSql } from '../projects/projectSql';
 import { snippetSettings, snippetsFor } from './snippetStore';
+import { t } from './lazyMessages';
 
 /**
  * Insert Snippet…: the engine's snippets in a searchable palette; the
@@ -34,7 +35,7 @@ export function SnippetPicker(props: {
   }));
   return (
     <Palette
-      title="Insert snippet"
+      title={t('insertSnippet')}
       items={items}
       onClose={props.onClose}
       onChoose={(id) => {

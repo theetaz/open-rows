@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { TreeNote } from '@openrows/ui';
 import { tableStructure } from '@openrows/ipc';
 import type { TableIndexDto } from '@openrows/ipc';
+import { t } from './lazyMessages';
 type TableTarget = Parameters<typeof tableStructure>[0];
 
 /** Read indexes only while a MongoDB collection is expanded in the schema tree. */
@@ -37,14 +38,18 @@ export function CollectionIndexes({
         {error}
       </TreeNote>
     );
-  if (!indexes) return <TreeNote level={2}>Loading indexes…</TreeNote>;
+  if (!indexes) return <TreeNote level={2}>{t('loadingIndexes')}</TreeNote>;
   return (
     <>
-      <TreeNote level={2}>Indexes</TreeNote>
+      <TreeNote level={2}>{t('indexes')}</TreeNote>
       {indexes.map((index) => (
         <TreeNote key={index.name} level={3}>
-          {index.name} · {index.columns}
-          {index.unique ? ' · unique' : ''}
+          {index.unique
+            ? t('nameColumnsUnique', {
+                name: index.name,
+                columns: index.columns,
+              })
+            : `${index.name} · ${index.columns}`}
         </TreeNote>
       ))}
     </>

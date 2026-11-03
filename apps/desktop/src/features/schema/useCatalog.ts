@@ -28,6 +28,7 @@ import type { NavigationState } from './useNavigation';
 import { isRefreshing, useResources } from './useResources';
 import { useSchemaFingerprint } from './useSchemaFingerprint';
 import type { Resource, Resources } from './useResources';
+import { t } from './messages';
 
 /** The active connection's catalog, served by the schema cache (M1-16). */
 export type Catalog = Omit<NavigationState, 'chosenSchema'> &
@@ -75,11 +76,11 @@ export type ObjectPage = { objects: ObjectDto[]; total: number };
 
 const offlineReason = (connections: Connections): string | null => {
   const profile = connections.active;
-  if (!profile) return 'Choose a connection to browse its objects.';
+  if (!profile) return t('chooseConnectionBrowse');
   const status = connections.statusOf(profile.id);
   if (status.state === 'connected') return null;
-  if (status.state === 'connecting') return 'Connecting…';
-  return 'Connect to browse objects';
+  if (status.state === 'connecting') return t('connecting');
+  return t('connectBrowseObjects');
 };
 
 /** Real databases, schemas and objects of the selected connection. */

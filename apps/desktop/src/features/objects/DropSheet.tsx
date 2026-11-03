@@ -7,6 +7,7 @@ import { ObjectSheet } from './ObjectSheet';
 import { objectNoun } from './requests';
 import type { DropTarget } from './requests';
 import styles from '../table/structure/forms/Forms.module.css';
+import { t } from './messages';
 
 /** The drop statement's request; `cascade` where the object takes it. */
 export function dropChange(
@@ -78,27 +79,23 @@ export function DropSheet(props: {
     target.object === 'database' && props.opened.includes(target.name);
   return (
     <ObjectSheet
-      title={`Drop ${noun} ${target.name}`}
+      title={t('dropNounName', { noun, name: target.name })}
       scope={{ profileId: props.profileId, database: target.database }}
       change={open ? null : dropChange(target, cascade)}
-      problem={
-        open ? `${target.name} is open in OpenRows; close it to drop it.` : null
-      }
-      action="Drop"
+      problem={open ? t('nameOpenOpenrowsClose', { name: target.name }) : null}
+      action={t('drop')}
       destructive
       onClose={props.onClose}
       onDone={props.onDone}
     >
-      <p>
-        The {noun} {target.name} is removed permanently.
-      </p>
+      <p>{t('nounNameRemoved', { noun, name: target.name })}</p>
       {open && (
         <Button
           onClick={() => {
             props.onCloseDatabase(target.name);
           }}
         >
-          Close {target.name}
+          {t('closeName', { name: target.name })}
         </Button>
       )}
       {cascades(props.engine) && cascading.has(target.object) && (
@@ -110,7 +107,7 @@ export function DropSheet(props: {
               setCascade(event.target.checked);
             }}
           />
-          Also drop the objects that depend on it (CASCADE)
+          {t('alsoDropObjects')}
         </label>
       )}
     </ObjectSheet>

@@ -9,6 +9,7 @@ import { ProviderForm } from './ProviderForm';
 import { ProviderRow } from './ProviderRow';
 import styles from './Ai.module.css';
 import { SharingDisclosure } from './SharingDisclosure';
+import { t } from '../messages/lazyAi';
 const useAiSettings = aiSettings.useValue;
 /** Lazy-loaded provider setup; AI network permission starts off until explicitly enabled. */
 export default function AiPane(): React.JSX.Element {
@@ -25,16 +26,16 @@ export default function AiPane(): React.JSX.Element {
       await work();
     } catch (error) {
       setFailure(
-        error instanceof Error ? error.message : 'AI settings unavailable.',
+        error instanceof Error ? error.message : t('aiSettingsUnavailable'),
       );
     } finally {
       setBusy(false);
     }
   };
   return (
-    <section aria-label="AI settings">
+    <section aria-label={t('aiSettings')}>
       <SharingDisclosure />
-      <h3>AI providers</h3>
+      <h3>{t('aiProviders')}</h3>
       <AiPreferences busy={busy} run={run} />
       <div className={styles.actions}>
         <Button
@@ -43,7 +44,7 @@ export default function AiPane(): React.JSX.Element {
             setEditing(null);
           }}
         >
-          Add provider
+          {t('addProvider')}
         </Button>
       </div>
       {editing !== undefined && (
@@ -85,9 +86,7 @@ export default function AiPane(): React.JSX.Element {
         ))}
       </div>
       {failure && <p role="alert">{failure}</p>}
-      {settings.providers.length === 0 && (
-        <p>No providers configured. Keys are stored only in the OS keychain.</p>
-      )}
+      {settings.providers.length === 0 && <p>{t('noProvidersConfigured')}</p>}
     </section>
   );
 }

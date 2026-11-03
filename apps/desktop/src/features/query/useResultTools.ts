@@ -10,6 +10,7 @@ import type { ResultMeta } from './run';
 import type { SelectedCell } from './cell';
 import type { useResultEditing } from './useResultEditing';
 import { storedColumn, storedRow } from '../../results/projectedResult';
+import { t } from './lazyMessages';
 
 type Editing = ReturnType<typeof useResultEditing>;
 type ResultTools = {
@@ -38,7 +39,7 @@ export function useResultTools(
     bulk.current = false;
   }, [args.result]);
   const details = {
-    table: args.target.table || 'Query result',
+    table: args.target.table || t('queryResult'),
     editing: args.editing,
     ready: args.ready,
     onRow: args.workspace?.onRow ?? (() => undefined),

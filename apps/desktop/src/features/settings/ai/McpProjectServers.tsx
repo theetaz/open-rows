@@ -7,30 +7,25 @@ import type {
   Note,
 } from './useProjectMcpServers';
 import styles from './Ai.module.css';
+import { rich, t } from '../messages/lazyAi';
 
 const STATUS = {
-  untrusted: 'Not trusted — it will not start',
-  changed: 'Definition changed — trust and stored values were removed',
-  trusted: 'Trusted on this device',
+  untrusted: t('notTrustedNot'),
+  changed: t('definitionChangedTrust'),
+  trusted: t('trustedDevice'),
 } as const;
 
 /** Servers declared by loaded Projects; each must be trusted before it runs. */
 export function McpProjectServers(): React.JSX.Element {
   const controls = useProjectMcpServers();
   return (
-    <section aria-label="Project MCP servers">
-      <h3>Project MCP servers</h3>
+    <section aria-label={t('projectMcpServers')}>
+      <h3>{t('projectMcpServers')}</h3>
       <p className={styles.notice}>
-        A project’s <code>.openrows/project.yaml</code> can declare MCP servers.
-        They never start until you trust the exact definition below on this
-        device; any change to the file removes that trust. Values for their
-        variables and headers are typed into a secure system dialog and kept in
-        the OS keychain, never in the project.
+        {rich('projectSCode', { code: <code>.openrows/project.yaml</code> })}
       </p>
       {controls.servers.length === 0 && (
-        <p role="status">
-          Open a project that declares MCP servers to see them.
-        </p>
+        <p role="status">{t('openProjectDeclares')}</p>
       )}
       {controls.servers.map((view) => (
         <ProjectServerRow key={view.key} view={view} controls={controls} />
@@ -61,7 +56,7 @@ function ProjectServerRow(props: {
             disabled={controls.busy}
             onClick={() => void controls.trust(view)}
           >
-            Trust {label}
+            {t('trustLabel', { label })}
           </Button>
         </div>
       )}
@@ -85,31 +80,31 @@ function Definition({ view }: { view: ProjectServerView }): React.JSX.Element {
   const { endpoint, env = [], headers = [] } = view.server;
   return (
     <dl className={styles.definition}>
-      <dt>Project folder</dt>
+      <dt>{t('projectFolder')}</dt>
       <dd>{view.root}</dd>
       {endpoint.kind === 'stdio' ? (
         <>
-          <dt>Command</dt>
+          <dt>{t('command')}</dt>
           <dd>
             <code>{endpoint.command}</code>
           </dd>
-          <dt>Arguments</dt>
+          <dt>{t('arguments')}</dt>
           <dd>
             <code>{JSON.stringify(endpoint.args)}</code>
           </dd>
         </>
       ) : (
         <>
-          <dt>URL</dt>
+          <dt>{t('url')}</dt>
           <dd>
             <code>{endpoint.url}</code>
           </dd>
         </>
       )}
-      <dt>Environment variables</dt>
-      <dd>{env.length ? env.join(', ') : 'none'}</dd>
-      <dt>Headers</dt>
-      <dd>{headers.length ? headers.join(', ') : 'none'}</dd>
+      <dt>{t('environmentVariables')}</dt>
+      <dd>{env.length ? env.join(', ') : t('none')}</dd>
+      <dt>{t('headers')}</dt>
+      <dd>{headers.length ? headers.join(', ') : t('none')}</dd>
     </dl>
   );
 }
@@ -128,7 +123,7 @@ function TrustedActions(props: {
           disabled={controls.busy}
           onClick={() => void controls.discover(view)}
         >
-          Discover {label} tools
+          {t('discoverLabelTools', { label })}
         </Button>
         {names.map((name) => (
           <Button
@@ -136,20 +131,18 @@ function TrustedActions(props: {
             disabled={controls.busy}
             onClick={() => void controls.secret(view, name)}
           >
-            Set {name}…
+            {t('setName', { name })}
           </Button>
         ))}
         <Button
           disabled={controls.busy}
           onClick={() => void controls.revoke(view)}
         >
-          Revoke trust in {label}
+          {t('revokeTrustLabel', { label })}
         </Button>
       </div>
       {view.tools.length === 0 && (
-        <p className={styles.notice}>
-          Discover tools to choose which ones the assistant may use.
-        </p>
+        <p className={styles.notice}>{t('discoverToolsChoose')}</p>
       )}
       <div className={styles.form}>
         {view.tools.map((tool) => (

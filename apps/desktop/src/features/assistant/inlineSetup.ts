@@ -3,8 +3,9 @@ import type { InlineBlock, InlineTransport } from '@openrows/editor';
 import type { AiSettings, ProfileDto } from '@openrows/ipc';
 import { aiSettings } from '../settings/ai/aiSettings';
 import { openSettings } from '../settings/settingsRequest';
+import { t } from './lazyMessages';
 const action = {
-  label: 'Open AI settings',
+  label: t('openAiSettings'),
   run: () => {
     openSettings('ai');
   },
@@ -15,8 +16,7 @@ export function inlineBlock(
 ): InlineBlock | null {
   if (!settings.enabled)
     return {
-      reason:
-        'AI features are off. Turn them on and add a provider in Settings → AI to write SQL with ⌘I.',
+      reason: t('aiFeaturesOffTurn'),
       action,
     };
   const provider = settings.providers.find(
@@ -25,13 +25,12 @@ export function inlineBlock(
   );
   if (!provider)
     return {
-      reason:
-        'No AI provider is set up. Add one in Settings → AI to write SQL with ⌘I.',
+      reason: t('noAiProvider'),
       action,
     };
   if (!settings.defaultModel)
     return {
-      reason: `Choose a default model for ${provider.name} in Settings → AI.`,
+      reason: t('chooseDefaultModel', { name: provider.name }),
       action,
     };
   return null;
@@ -44,19 +43,19 @@ export function inlineFailure(error: unknown): string {
       : '';
   switch (kind) {
     case 'unsupported':
-      return 'This connection’s data-sharing policy does not allow this request. Allow the provider (Schema only or higher) under the connection’s Data sharing settings.';
+      return t('connectionSData');
     case 'auth':
-      return 'The provider rejected its API key. Update the key in Settings → AI.';
+      return t('providerRejectedApi');
     case 'timeout':
-      return 'The provider did not answer in time. Try again.';
+      return t('providerDidNotAnswer');
     case 'network':
-      return 'The provider could not be reached. Check the network or base URL in Settings → AI.';
+      return t('providerCouldNot');
     case 'locked':
-      return 'OpenRows is locked. Unlock it and try again.';
+      return t('openrowsLockedUnlock');
     default:
       return error instanceof Error && error.message
         ? error.message
-        : 'Inline request failed.';
+        : t('inlineRequestFailed');
   }
 }
 /** ⌘I transport for a query tab; the generator and its IPC load on first use. */

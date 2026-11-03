@@ -8,6 +8,7 @@ import type { StageOp } from './forms/staging';
 import { useAlterPreview } from './forms/usePreview';
 import type { Structure } from './useStructure';
 import styles from './forms/Forms.module.css';
+import { t } from '../messages/lazyStructure';
 
 /**
  * A structure form sheet: its fields, the live DDL of every staged change
@@ -35,12 +36,9 @@ export function StageSheet(props: {
       {props.children}
       {problem && <p className={styles.problem}>{problem}</p>}
       <DdlPreview state={preview} />
-      <p className={styles.note}>
-        {props.note ??
-          'The change is staged; commit it from the pending-changes bar.'}
-      </p>
+      <p className={styles.note}>{props.note ?? t('changeStagedCommit')}</p>
       <SheetActions>
-        <Button onClick={props.onClose}>Cancel</Button>
+        <Button onClick={props.onClose}>{t('cancel')}</Button>
         <Button
           variant="primary"
           disabled={!op || !schema.enabled}

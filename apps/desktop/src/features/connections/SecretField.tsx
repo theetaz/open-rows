@@ -5,6 +5,7 @@ import { SavedSecret } from './SavedSecret';
 import { withSecret } from './routeForm';
 import type { SecretDraft } from './routeForm';
 import styles from './ConnectionSheet.module.css';
+import { t } from './messages/profile';
 
 type Props = {
   label: string;
@@ -41,7 +42,9 @@ export function SecretField(props: Props): React.JSX.Element {
         className={styles.row}
         label={props.label}
         autoFocus={changing}
-        placeholder={secret.stored ? `New ${props.noun}` : 'Optional'}
+        placeholder={
+          secret.stored ? t('newNoun', { noun: props.noun }) : t('optional')
+        }
         value={secret.value}
         {...(props.error ? { error: props.error } : {})}
         onChange={(event) => {
@@ -49,9 +52,7 @@ export function SecretField(props: Props): React.JSX.Element {
         }}
       />
       {secret.value && (
-        <small className={styles.hint}>
-          Stored in the macOS Keychain on Save, never in the profile file.
-        </small>
+        <small className={styles.hint}>{t('storedMacosKeychain')}</small>
       )}
     </div>
   );
@@ -65,7 +66,7 @@ function ForgottenSecret(props: Props): React.JSX.Element {
         label={props.label}
         readOnly
         value=""
-        placeholder="Removed from Keychain on Save"
+        placeholder={t('removedKeychainSave')}
       />
       <span className={styles.hint}>
         <Button
@@ -75,7 +76,7 @@ function ForgottenSecret(props: Props): React.JSX.Element {
             props.onChange({ ...props.secret, mode: 'keep' });
           }}
         >
-          Undo
+          {t('undo')}
         </Button>
       </span>
     </div>

@@ -15,6 +15,7 @@ import { ThemeEditor, ThemeTransfer } from './ThemeEditor';
 import type { ThemeDefinition } from '@openrows/ui';
 import { useSearching, useSettingMatch } from '../settings/settingsSearch';
 import styles from './Appearance.module.css';
+import { t } from './messages';
 type Editor =
   | { kind: 'edit'; theme: ThemeDefinition }
   | { kind: 'import' }
@@ -27,7 +28,7 @@ export function AppearancePane(): React.JSX.Element {
   const save = (theme: ThemeDefinition): void => {
     setAppearance({
       customThemes: [
-        ...appearance.customThemes.filter((t) => t.id !== theme.id),
+        ...appearance.customThemes.filter((item) => item.id !== theme.id),
         theme,
       ],
       ...(appearance.customThemes.some((item) => item.id === theme.id)
@@ -40,16 +41,16 @@ export function AppearancePane(): React.JSX.Element {
     setReset(false);
   };
   const searching = useSearching();
-  const scheme = useSettingMatch('Color scheme', 'system light dark mode');
+  const scheme = useSettingMatch(t('colorScheme'), t('systemLightDark'));
   const library = useSettingMatch(
-    'Themes palette light dark mode create add',
-    ...[...builtInThemes, ...appearance.customThemes].map((t) => t.name),
+    t('themesPaletteLight'),
+    ...[...builtInThemes, ...appearance.customThemes].map((item) => item.name),
   );
   return (
     <>
       {scheme && (
-        <section aria-label="Color scheme">
-          <h3>Color scheme</h3>
+        <section aria-label={t('colorScheme')}>
+          <h3>{t('colorScheme')}</h3>
           <SchemeCards />
         </section>
       )}
@@ -102,10 +103,8 @@ export function AppearancePane(): React.JSX.Element {
 function AppearanceFooter(props: { onReset: () => void }): React.JSX.Element {
   return (
     <footer className={styles.footer}>
-      <p>
-        Saved in settings.json. System accessibility preferences take priority.
-      </p>
-      <Button onClick={props.onReset}>Reset appearance</Button>
+      <p>{t('savedSettingsJson')}</p>
+      <Button onClick={props.onReset}>{t('resetAppearance')}</Button>
     </footer>
   );
 }
@@ -117,13 +116,10 @@ function ResetAppearance({
 }): React.JSX.Element {
   const { appearance, setAppearance, setMode } = useTheme();
   return (
-    <Sheet title="Reset appearance?" size="alert" onClose={onClose}>
-      <p>
-        Restore default colors, fonts and interface controls. Your custom themes
-        will stay in the library.
-      </p>
+    <Sheet title={t('resetAppearance2')} size="alert" onClose={onClose}>
+      <p>{t('restoreDefaultColors')}</p>
       <div className={styles.actions}>
-        <Button onClick={onClose}>Cancel</Button>
+        <Button onClick={onClose}>{t('cancel')}</Button>
         <Button
           variant="primary"
           onClick={() => {
@@ -135,7 +131,7 @@ function ResetAppearance({
             onClose();
           }}
         >
-          Restore defaults
+          {t('restoreDefaults')}
         </Button>
       </div>
     </Sheet>

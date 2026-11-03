@@ -13,6 +13,7 @@ import { usePanZoom } from './usePanZoom';
 import { centreOn, fitView } from './viewport';
 import type { Size, View } from './viewport';
 import styles from './Erd.module.css';
+import { t, tn } from './messages';
 
 const middle = (node: DiagramNode): Point => ({
   x: node.x + node.width / 2,
@@ -49,7 +50,8 @@ function useExport(
     )
       .then(
         (path) => {
-          if (path) setNotice({ kind: 'saved', text: `Saved ${path}` });
+          if (path)
+            setNotice({ kind: 'saved', text: t('savedPath', { path }) });
         },
         (error: unknown) => {
           const text = error instanceof Error ? error.message : String(error);
@@ -153,7 +155,7 @@ function Drawing(props: {
       ref={attach}
       className={styles.canvas}
       role="group"
-      aria-label={`ER diagram of ${props.schema}`}
+      aria-label={t('erDiagramSchema', { schema: props.schema })}
       onPointerDown={pan.onPointerDown}
     >
       <g
@@ -182,9 +184,13 @@ function Status(props: {
   return (
     <footer className={styles.status}>
       <span>
-        {`${String(tables)} ${tables === 1 ? 'table' : 'tables'} · ${String(keys)} ${keys === 1 ? 'relationship' : 'relationships'}`}
-        {diagram.truncated &&
-          ` · showing the first ${String(diagram.limit)} tables by name`}
+        {[
+          tn('tableCount', tables),
+          tn('relationshipCount', keys),
+          ...(diagram.truncated
+            ? [t('showingFirstTables', { limit: String(diagram.limit) })]
+            : []),
+        ].join(' · ')}
       </span>
       {notice && (
         <span

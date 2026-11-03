@@ -6,6 +6,7 @@ import type { ConnectionForm } from './useConnectionForm';
 import { commandErrors } from './credentialForm';
 import { fieldError, toInput } from './form';
 import styles from './ConnectionSheet.module.css';
+import { t } from './messages/profile';
 /** Credential invocation fields and an explicit, value-free test result. */
 export function CredentialFields({
   form,
@@ -20,9 +21,7 @@ export function CredentialFields({
     setResult(null);
     try {
       await testCredential(form.profileId, toInput(draft));
-      setResult(
-        'Command succeeded. A password was produced; its value is hidden.',
-      );
+      setResult(t('commandSucceededPassword'));
     } catch (error) {
       setResult(error instanceof Error ? error.message : String(error));
     } finally {
@@ -33,7 +32,7 @@ export function CredentialFields({
     <div className={styles.stack}>
       <TextField
         className={styles.row}
-        label="Program"
+        label={t('program')}
         value={draft.commandProgram}
         {...fieldError(form.errors.commandProgram)}
         onChange={(event) => {
@@ -41,9 +40,9 @@ export function CredentialFields({
         }}
       />
       <label className={styles.stacked}>
-        <span>Arguments (JSON array)</span>
+        <span>{t('argumentsJsonArray')}</span>
         <TextArea
-          aria-label="Command arguments"
+          aria-label={t('commandArguments')}
           value={draft.commandArgs}
           onChange={(event) => {
             form.update({ commandArgs: event.target.value });
@@ -52,7 +51,7 @@ export function CredentialFields({
       </label>
       <TextField
         className={styles.row}
-        label="Timeout (seconds)"
+        label={t('timeoutSeconds')}
         inputMode="numeric"
         value={draft.commandTimeout}
         {...fieldError(form.errors.commandTimeout)}
@@ -60,20 +59,16 @@ export function CredentialFields({
           form.update({ commandTimeout: event.target.value });
         }}
       />
-      <small className={styles.hint}>
-        Runs directly with your permissions. Arguments are literal; use a
-        credential provider rather than putting secrets in arguments. Trust is
-        local to this machine.
-      </small>
+      <small className={styles.hint}>{t('runsDirectlyPermissions')}</small>
       <Button
         disabled={busy || Object.keys(commandErrors(draft)).length > 0}
         onClick={() => void run()}
       >
-        Test command
+        {t('testCommand')}
       </Button>
       {busy && form.profileId && (
         <Button onClick={() => void cancelCredential(form.profileId ?? '')}>
-          Cancel command
+          {t('cancelCommand')}
         </Button>
       )}
       {result && <p role="status">{result}</p>}

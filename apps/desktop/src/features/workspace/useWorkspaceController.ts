@@ -35,6 +35,7 @@ import { importOpener } from './TableImport';
 import type { ImportTarget } from './TableImport';
 import type { JobActions } from './JobActions';
 import { useWorkspaceHandoffs } from './useWorkspaceHandoffs';
+import { t } from './messages';
 /**
  * Tab scopes of the active connection: the active database's scope (the
  * database last chosen, else the profile's, until one is open, so restored
@@ -93,7 +94,7 @@ function processesOpener(
       (item) => item.id === target?.connectionId,
     );
     if (target && profile?.processList)
-      tabs.open(target, { processes: true, title: 'Processes' });
+      tabs.open(target, { processes: true, title: t('processes') });
   };
 }
 
@@ -108,7 +109,7 @@ function utilityOpeners(
   return {
     openProcesses: processesOpener(connections, tabs, scope),
     openMonitor: (target = scope) => {
-      if (target) tabs.open(target, { monitor: true, title: 'Monitor' });
+      if (target) tabs.open(target, { monitor: true, title: t('monitor') });
     },
   };
 }

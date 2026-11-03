@@ -7,6 +7,7 @@ import type { FileRunState, RunError } from './runFileStore';
 import { sizeText } from './runFileJob';
 import { elapsedText, useElapsed } from './elapsed';
 import styles from './RunFile.module.css';
+import { t, tn } from './lazyMessages';
 
 /** A started file run: live progress, then the summary and every error. */
 export function RunFileProgress({
@@ -23,7 +24,7 @@ export function RunFileProgress({
   };
   const runId = run.runId;
   return (
-    <Sheet title={`Run ${run.file.name}`} onClose={close}>
+    <Sheet title={t('runName', { name: run.file.name })} onClose={close}>
       {running ? (
         <Running run={run} elapsed={elapsed} />
       ) : (
@@ -38,11 +39,11 @@ export function RunFileProgress({
               if (runId) void cancelQuery(runId);
             }}
           >
-            Cancel Run
+            {t('cancelRun')}
           </Button>
         )}
         <Button variant="primary" onClick={close}>
-          {running ? 'Run in Background' : 'Done'}
+          {running ? t('runBackground') : t('done')}
         </Button>
       </SheetActions>
     </Sheet>
@@ -59,17 +60,22 @@ function Running({
   return (
     <div className={styles.status} role="status">
       <progress
-        aria-label="Run progress"
+        aria-label={t('runProgress')}
         max={Math.max(run.size, 1)}
         value={run.bytes}
       />
       <p className={styles.counts}>
         <span>
-          {run.statements.toLocaleString()} of {run.total.toLocaleString()}{' '}
-          statements
+          {t('statementsTotalStatements', {
+            statements: run.statements.toLocaleString(),
+            total: run.total.toLocaleString(),
+          })}
         </span>
         <span>
-          {sizeText(run.bytes)} of {sizeText(run.size)}
+          {t('bytesCount', {
+            bytes: sizeText(run.bytes),
+            count: sizeText(run.size),
+          })}
         </span>
         <span>{elapsedText(elapsed)}</span>
       </p>
@@ -86,17 +92,25 @@ function outcomeText(run: FileRunState): string {
   if (run.failure) return run.failure;
   const finished = run.finished;
   if (!finished) return '';
-  const ran = `${(finished.statements ?? 0).toLocaleString()} of ${run.total.toLocaleString()} statements ran`;
-  const rows = finished.rowsAffected
-    ? `, ${finished.rowsAffected.toLocaleString()} rows affected`
-    : '';
-  const rolled = finished.rolledBack ? ' The transaction was rolled back.' : '';
-  const took = ` in ${elapsedText(finished.elapsedMs ?? 0)}`;
-  if (finished.outcome === 'completed') return `Done: ${ran}${rows}${took}.`;
+  const counts = {
+    statements: (finished.statements ?? 0).toLocaleString(),
+    total: run.total.toLocaleString(),
+    elapsed: elapsedText(finished.elapsedMs ?? 0),
+  };
+  if (finished.outcome === 'completed')
+    return finished.rowsAffected
+      ? t('doneWithRows', {
+          ...counts,
+          rows: finished.rowsAffected.toLocaleString(),
+        })
+      : t('doneRan', counts);
+  const rolled = finished.rolledBack ? [t('transactionWasRolled')] : [];
   if (finished.outcome === 'cancelled')
-    return `Cancelled: ${ran}${took}.${rolled}`;
-  const reason = finished.message ? ` ${finished.message}.` : '';
-  return `Stopped with errors: ${ran}${took}.${reason}${rolled}`;
+    return [t('cancelledRan', counts), ...rolled].join(' ');
+  const reason = finished.message
+    ? [t('reasonSentence', { reason: finished.message })]
+    : [];
+  return [t('stoppedWithErrors', counts), ...reason, ...rolled].join(' ');
 }
 
 function Summary({ run }: { run: FileRunState }): React.JSX.Element {
@@ -120,16 +134,21 @@ function ErrorList({
 }): React.JSX.Element | null {
   if (!errors.length) return null;
   return (
-    <section className={styles.errors} aria-label="Errors">
+    <section className={styles.errors} aria-label={t('errors')}>
       <h3>
-        {total.toLocaleString()} {total === 1 ? 'error' : 'errors'}
-        {total > errors.length &&
-          ` (first ${errors.length.toLocaleString()} shown)`}
+        {total > errors.length
+          ? tn('countErrorsFirst', total, {
+              count: total.toLocaleString(),
+              count2: errors.length.toLocaleString(),
+            })
+          : tn('countErrors', total, { count: total.toLocaleString() })}
       </h3>
       <ol>
         {errors.map((error) => (
           <li key={error.statement}>
-            <span className={styles.line}>Line {error.line}</span>
+            <span className={styles.line}>
+              {t('lineLine', { line: error.line })}
+            </span>
             <code title={error.preview}>{error.preview}</code>
             <span className={styles.message}>{error.message}</span>
           </li>

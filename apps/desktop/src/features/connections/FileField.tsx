@@ -3,6 +3,7 @@ import { Button, TextField } from '@openrows/ui';
 import { pickConnectionFile } from '@openrows/ipc';
 import type { PickFileKind } from '@openrows/ipc';
 import styles from './ConnectionSheet.module.css';
+import { t } from './messages/profile';
 
 /**
  * A key or certificate path: typed, or chosen in the native open panel. Only
@@ -22,7 +23,7 @@ export function FileField(props: {
         className={styles.row}
         label={props.label}
         value={props.value}
-        placeholder={props.placeholder ?? 'None'}
+        placeholder={props.placeholder ?? t('none')}
         spellCheck={false}
         {...(props.error ? { error: props.error } : {})}
         onChange={(event) => {
@@ -30,7 +31,7 @@ export function FileField(props: {
         }}
       />
       <Button
-        aria-label={`Choose ${props.label.toLowerCase()}`}
+        aria-label={t('chooseLabel', { label: props.label.toLowerCase() })}
         onClick={() => {
           // A panel that fails to open leaves the typed path; nothing to undo.
           pickConnectionFile(props.kind).then(
@@ -41,7 +42,7 @@ export function FileField(props: {
           );
         }}
       >
-        Choose…
+        {t('choose')}
       </Button>
     </div>
   );

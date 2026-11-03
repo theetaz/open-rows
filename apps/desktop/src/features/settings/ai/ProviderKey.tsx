@@ -3,9 +3,10 @@ import { useState } from 'react';
 import { Button } from '@openrows/ui';
 import { promptAiKey } from '@openrows/ipc';
 import type { ProviderConfig } from '@openrows/ipc';
+import { t } from '../messages/lazyAi';
 const OUTCOME = {
-  saved: 'API key saved in the keychain.',
-  cancelled: 'No key entered; the stored key is unchanged.',
+  saved: t('apiKeySaved'),
+  cancelled: t('noKeyEntered'),
 } as const;
 /** Replace a provider's key through the native secure dialog; keyless providers have none. */
 export function ProviderKey(props: {
@@ -21,7 +22,7 @@ export function ProviderKey(props: {
     try {
       setMessage(OUTCOME[await promptAiKey(props.config.id)]);
     } catch {
-      setMessage('The API key could not be stored.');
+      setMessage(t('apiKeyCould'));
     } finally {
       setBusy(false);
     }
@@ -36,7 +37,7 @@ export function ProviderKey(props: {
           void ask();
         }}
       >
-        {busy ? 'Waiting for key…' : 'Set API key…'}
+        {busy ? t('waitingKey') : t('setApiKey')}
       </Button>
       {message && <span role="status">{message}</span>}
     </>

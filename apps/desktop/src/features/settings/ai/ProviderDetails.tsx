@@ -1,10 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { Capabilities, Verification } from '@openrows/ipc';
 import styles from './Ai.module.css';
+import { t } from '../messages/lazyAi';
 const supported = (value: boolean | null): string =>
-  value === null ? 'unknown' : value ? 'yes' : 'no';
+  value === null ? t('unknownValue') : value ? t('yes') : t('no');
 function capabilities(value: Capabilities): string {
-  return `Streaming: ${supported(value.streaming)} · Tools: ${supported(value.toolCalling)} · Structured output: ${supported(value.structuredOutput)} · Vision: ${supported(value.vision)} · Context: ${String(value.contextWindow ?? 'unknown')} · Max output: ${String(value.maxOutput ?? 'unknown')}`;
+  return t('streamingStreamingTools', {
+    streaming: supported(value.streaming),
+    toolCalling: supported(value.toolCalling),
+    structuredOutput: supported(value.structuredOutput),
+    vision: supported(value.vision),
+    contextWindow: String(value.contextWindow ?? t('unknownValue')),
+    maxOutput: String(value.maxOutput ?? t('unknownValue')),
+  });
 }
 /** Only reported model/usage facts; unsupported discovery stays unknown. */
 export function ProviderDetails({
@@ -15,18 +23,20 @@ export function ProviderDetails({
   return (
     <div className={styles.details}>
       {result.cli ? (
-        <p>Usage: reported only inside Codex; never API billing.</p>
+        <p>{t('usageReportedOnly')}</p>
       ) : (
         <p>
-          Usage (USD): {result.usage?.used ?? 'unknown'} · Limit:{' '}
-          {result.usage?.limit ?? 'unknown'} · Remaining:{' '}
-          {result.usage?.remaining ?? 'unknown'}
+          {t('usageUsdUsed', {
+            used: result.usage?.used ?? t('unknownValue'),
+            limit: result.usage?.limit ?? t('unknownValue'),
+            remaining: result.usage?.remaining ?? t('unknownValue'),
+          })}
         </p>
       )}
       {result.models.length === 0 ? (
-        <p>Available models: unknown</p>
+        <p>{t('availableModelsUnknown')}</p>
       ) : (
-        <ul aria-label="Available models">
+        <ul aria-label={t('availableModels')}>
           {result.models.map((model) => (
             <li key={model.id}>
               <strong>{model.name}</strong> <code>{model.id}</code>

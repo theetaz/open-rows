@@ -9,6 +9,7 @@ import { CascadeMenu } from '../../shell/CascadeMenu';
 import { substringIndices } from '../schema';
 import { NameSheet } from './NameSheet';
 import { deleteQuery, renameQuery, useSavedQueries } from './savedQueries';
+import { t } from './initialMessages';
 
 type Props = {
   /** The active connection; none lists nothing. */
@@ -33,9 +34,9 @@ function deletePrompt(query: SavedQueryDto): {
   action: string;
 } {
   return {
-    title: `Delete “${query.name}”?`,
-    message: 'The saved query is removed from this connection.',
-    action: 'Delete',
+    title: t('deleteName', { name: query.name }),
+    message: t('savedQueryRemoved'),
+    action: t('delete'),
   };
 }
 
@@ -146,11 +147,7 @@ function ListNote(props: {
   if (props.error) return <p role="alert">{props.error}</p>;
   if (props.loading || !props.empty) return null;
   return (
-    <p role="status">
-      {props.filtered
-        ? 'No matches'
-        : 'No local queries. Use Run ▸ Add to Queries… in a query tab.'}
-    </p>
+    <p role="status">{props.filtered ? t('noMatches') : t('noLocalQueries')}</p>
   );
 }
 
@@ -172,10 +169,10 @@ function QueryDialog(props: {
   if (dialog.kind === 'rename')
     return (
       <NameSheet
-        title="Rename query"
-        label="Name"
+        title={t('renameQuery')}
+        label={t('name')}
         initial={query.name}
-        action="Rename"
+        action={t('rename')}
         onSubmit={(name) => renameQuery(query.id, name)}
         onClose={props.onClose}
       />
@@ -185,7 +182,7 @@ function QueryDialog(props: {
     <Sheet title={prompt.title} size="alert" onClose={props.onClose}>
       <p>{prompt.message}</p>
       <SheetActions>
-        <Button onClick={props.onClose}>Cancel</Button>
+        <Button onClick={props.onClose}>{t('cancel')}</Button>
         <Button
           variant="destructive"
           onClick={() => {
@@ -210,27 +207,27 @@ function SavedQueryMenu(
     <CascadeMenu
       x={dialog.x}
       y={dialog.y}
-      label={`${query.name} actions`}
+      label={t('nameActions', { name: query.name })}
       onClose={props.onClose}
       entries={[
         {
           kind: 'item',
-          label: 'Open',
+          label: t('open'),
           run: () => {
             props.onOpen(query);
           },
         },
         {
           kind: 'item',
-          label: 'Insert SQL',
+          label: t('insertSql'),
           run: () => {
             if (!insertSavedSql(query.sql))
-              props.onError('Open a query editor before inserting SQL');
+              props.onError(t('openQueryEditorBefore'));
           },
         },
         {
           kind: 'item',
-          label: 'Copy SQL',
+          label: t('copySql'),
           run: () => {
             navigator.clipboard.writeText(query.sql).catch((error: unknown) => {
               props.onError(message(error));
@@ -241,7 +238,7 @@ function SavedQueryMenu(
           ? [
               {
                 kind: 'item' as const,
-                label: 'Move to Project',
+                label: t('moveProject'),
                 run: () => {
                   onMove(query);
                 },
@@ -250,14 +247,14 @@ function SavedQueryMenu(
           : []),
         {
           kind: 'item',
-          label: 'Rename…',
+          label: t('rename2'),
           run: () => {
             props.onRename(query);
           },
         },
         {
           kind: 'item',
-          label: 'Delete…',
+          label: t('delete2'),
           run: () => {
             props.onDelete(query);
           },

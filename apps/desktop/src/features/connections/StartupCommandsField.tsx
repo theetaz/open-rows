@@ -2,6 +2,7 @@
 import { TextArea } from '@openrows/ui';
 import type { ConnectionForm } from './useConnectionForm';
 import styles from './ConnectionSheet.module.css';
+import { t } from './messages/routes';
 
 /**
  * Startup commands in the Advanced section: SQL run after every connect,
@@ -15,20 +16,17 @@ export function StartupCommandsField({
   const { draft, update } = form;
   return (
     <label className={styles.stacked}>
-      <span>Startup commands</span>
+      <span>{t('startupCommands')}</span>
       <TextArea
-        aria-label="Startup commands"
+        aria-label={t('startupCommands')}
         value={draft.startupCommands}
-        placeholder="SET search_path TO app, public;"
+        placeholder={t('setSearchPath')}
         spellCheck={false}
         onChange={(event) => {
           update({ startupCommands: event.target.value });
         }}
       />
-      <small>
-        Run in order after every connect, reconnects included. Separate
-        statements with semicolons; a failing statement fails the connect.
-      </small>
+      <small>{t('runOrderAfter')}</small>
     </label>
   );
 }

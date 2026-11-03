@@ -12,6 +12,7 @@ import { useBoardRuns } from './useBoardRuns';
 import type { BoardRuns } from './useBoardRuns';
 import type { Boards } from './useBoards';
 import styles from './Boards.module.css';
+import { t } from '../messages/lazyBoards';
 const BoardReportDialog = lazy(() =>
   import('../report/ReportEntry').then((module) => ({
     default: module.BoardReportDialog,
@@ -19,11 +20,11 @@ const BoardReportDialog = lazy(() =>
 );
 
 const REFRESH = [
-  { value: '0', label: 'Manual' },
-  { value: '30', label: 'Every 30 s' },
-  { value: '60', label: 'Every 1 min' },
-  { value: '300', label: 'Every 5 min' },
-  { value: '900', label: 'Every 15 min' },
+  { value: '0', label: t('manual') },
+  { value: '30', label: t('every30S') },
+  { value: '60', label: t('every1Min') },
+  { value: '300', label: t('every5Min') },
+  { value: '900', label: t('every15Min') },
 ] as const;
 
 type Editing = { kind: 'widget'; widget: Widget } | { kind: 'params' } | null;
@@ -44,7 +45,7 @@ function BoardReportButton(props: {
           setReporting(true);
         }}
       >
-        Export report…
+        {t('exportReport')}
       </Button>
       {reporting && (
         <Suspense fallback={null}>
@@ -75,7 +76,7 @@ function BoardToolbar(props: {
   return (
     <div className={styles.toolbar}>
       <TextField
-        aria-label="Board name"
+        aria-label={t('boardName')}
         controlSize="compact"
         defaultValue={definition.name}
         onBlur={(event) => {
@@ -85,7 +86,7 @@ function BoardToolbar(props: {
         }}
       />
       <SelectField
-        aria-label="Refresh interval"
+        aria-label={t('refreshInterval')}
         controlSize="compact"
         value={String(definition.refreshSecs ?? 0)}
         options={REFRESH}
@@ -99,11 +100,11 @@ function BoardToolbar(props: {
         disabled={!board.reviewed || !definition.widgets.length}
         onClick={runs.run}
       >
-        Run
+        {t('run')}
       </Button>
       {runs.live && (
         <Button size="sm" onClick={runs.stop}>
-          Stop refresh
+          {t('stopRefresh')}
         </Button>
       )}
       <span className={styles.spacer} />
@@ -114,7 +115,7 @@ function BoardToolbar(props: {
           props.onEdit({ kind: 'params' });
         }}
       >
-        Parameters…
+        {t('parameters')}
       </Button>
       {definition.widgets.length > 0 && (
         <Button
@@ -127,7 +128,7 @@ function BoardToolbar(props: {
             });
           }}
         >
-          Add widget
+          {t('addWidget')}
         </Button>
       )}
       <BoardReportButton
@@ -136,7 +137,7 @@ function BoardToolbar(props: {
         runs={runs}
       />
       <Button size="sm" variant="ghost" onClick={props.onDelete}>
-        Delete board
+        {t('deleteBoard')}
       </Button>
     </div>
   );
@@ -210,10 +211,9 @@ function withWidget(board: Board, widget: Widget): Board {
 
 async function remove(boards: Boards, board: BoardDto): Promise<void> {
   const confirmed = await confirmDestructive({
-    title: `Delete board ${board.board.name}?`,
-    message:
-      'The board and its widget definitions are removed from this device.',
-    action: 'Delete',
+    title: t('deleteBoardName', { name: board.board.name }),
+    message: t('boardWidgetDefinitions'),
+    action: t('delete'),
   });
   if (confirmed !== false) await boards.remove(board.id);
 }

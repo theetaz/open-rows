@@ -5,6 +5,7 @@ import { serverLabel } from './sessions';
 import { CertificateDetails, LatencyBadge } from './TestDetails';
 import type { TestState } from './useConnectionForm';
 import styles from './ConnectionSheet.module.css';
+import { t } from './messages/profile';
 
 const tones = {
   ok: 'success',
@@ -14,7 +15,7 @@ const tones = {
 
 const statusText: Record<StepStatus, string> = {
   ok: 'passed',
-  warning: 'passed with a warning',
+  warning: t('passedWarning'),
   failed: 'failed',
 };
 
@@ -29,7 +30,7 @@ export function TestResult({ state }: { state: TestState }): React.JSX.Element {
     case 'testing':
       return (
         <div role="status" className={styles.test}>
-          <StatusDot tone="info" label="Testing connection…" />
+          <StatusDot tone="info" label={t('testingConnection')} />
         </div>
       );
     case 'done':
@@ -37,7 +38,7 @@ export function TestResult({ state }: { state: TestState }): React.JSX.Element {
     case 'error':
       return (
         <div role="alert" className={styles.test}>
-          <StatusDot tone="danger" label="Connection failed" />
+          <StatusDot tone="danger" label={t('connectionFailed')} />
           <p className={styles.error}>{state.message}</p>
         </div>
       );
@@ -52,14 +53,20 @@ function Report({ report }: { report: TestReport }): React.JSX.Element {
         <span className={styles.stepLine}>
           <StatusDot
             tone="success"
-            label={`Connected · ${serverLabel(report.server)} · ${elapsed}`}
+            label={t('connectedServerElapsed', {
+              server: serverLabel(report.server),
+              elapsed,
+            })}
           />
           <LatencyBadge latency={report.latency} />
         </span>
       ) : (
-        <StatusDot tone="danger" label={`Connection failed · ${elapsed}`} />
+        <StatusDot
+          tone="danger"
+          label={t('connectionFailedElapsed', { elapsed })}
+        />
       )}
-      <ol className={styles.steps} aria-label="Connection steps">
+      <ol className={styles.steps} aria-label={t('connectionSteps')}>
         {report.steps.map((step, index) => (
           <Step key={`${step.kind}-${String(index)}`} step={step} />
         ))}
@@ -82,9 +89,9 @@ function Step({ step }: { step: TestStepDto }): React.JSX.Element {
         <StatusDot tone={tones[step.status]} label={step.label} />
         <span className={styles.visuallyHidden}>{statusText[step.status]}</span>
         {step.elapsedMs !== null && (
-          <span
-            className={styles.stepTime}
-          >{`${String(step.elapsedMs)} ms`}</span>
+          <span className={styles.stepTime}>
+            {t('elapsedmsMs', { elapsedMs: String(step.elapsedMs) })}
+          </span>
         )}
       </span>
       {step.detail && (

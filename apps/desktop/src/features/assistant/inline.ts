@@ -5,6 +5,7 @@ import type { ProfileDto } from '@openrows/ipc';
 import { aiSettings } from '../settings/ai/aiSettings';
 import { assistantSchema } from './context';
 import { inlineBlock, inlineFailure } from './inlineSetup';
+import { t } from './lazyMessages';
 const STREAM_LIMIT = 32768;
 /** The SQL body of a partially streamed fenced answer, for the live diff. */
 export function streamedSql(text: string): string {
@@ -23,7 +24,7 @@ export function inlineGenerator(scope: {
     const settings = aiSettings.get();
     const block = inlineBlock(settings);
     if (block) throw new Error(block.reason);
-    if (signal.aborted) throw new Error('Cancelled');
+    if (signal.aborted) throw new Error(t('cancelled'));
     const provider =
       settings.defaultProvider || settings.providers[0]?.id || '';
     const id = crypto.randomUUID();
@@ -61,10 +62,9 @@ export function inlineGenerator(scope: {
     } finally {
       signal.removeEventListener('abort', cancel);
     }
-    if (isAborted(signal)) throw new Error('Cancelled');
+    if (isAborted(signal)) throw new Error(t('cancelled'));
     const fenced = /```sql[^\n]*\n([\s\S]*?)```/i.exec(text);
-    if (!fenced?.[1])
-      throw new Error('The provider did not return a fenced SQL proposal.');
+    if (!fenced?.[1]) throw new Error(t('providerDidNot'));
     return fenced[1].trim();
   };
 }

@@ -5,6 +5,7 @@ import { ScopeList } from './ScopeList';
 import type { DumpTableDto } from '@openrows/ipc';
 import { sameTable } from './scopeModel';
 import type { ScopeSchema } from './scopeModel';
+import { t } from './messages';
 
 /** PostgreSQL table definitions can be backed up without those tables' data. */
 export function ExcludeTableData(props: {
@@ -22,9 +23,9 @@ export function ExcludeTableData(props: {
     );
   return (
     <details>
-      <summary>Exclude table data (PostgreSQL)</summary>
+      <summary>{t('excludeTableData')}</summary>
       <TextField
-        aria-label="Search data exclusions"
+        aria-label={t('searchDataExclusions')}
         value={search}
         onChange={(event) => {
           setSearch(event.target.value);
@@ -47,7 +48,7 @@ export function ExcludeTableData(props: {
                 );
               }}
             />
-            Exclude data for {table.schema}.{table.name}
+            {t('excludeDataSchema', { schema: table.schema, name: table.name })}
           </label>
         )}
       />

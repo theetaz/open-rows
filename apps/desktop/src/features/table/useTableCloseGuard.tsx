@@ -7,6 +7,7 @@ import { closeWindow, onWindowClose } from '@openrows/ipc';
 import type { QueryTabs } from '../query/useQueryTabs';
 import type { QueryRuns } from '../query/useQueryRuns';
 import type { TableViews } from './useTableViews';
+import { t, tn } from './messages/initial';
 
 /** What is being closed: one tab, or the window (and with it the app). */
 type Closing = { kind: 'tab'; id: string } | { kind: 'window' };
@@ -130,17 +131,19 @@ function CloseSheet({
 }): React.JSX.Element {
   const tab = closing.kind === 'tab';
   const title = state.pending
-    ? 'Commit in progress'
+    ? t('commitProgress2')
     : tab
-      ? 'Discard staged changes?'
-      : 'Quit with staged changes?';
+      ? t('discardStagedChanges')
+      : t('quitStagedChanges');
   return (
     <Sheet title={title} size="alert" onClose={onKeep}>
       <p>{message(closing, state)}</p>
       <SheetActions>
-        <Button onClick={onKeep}>{tab ? 'Keep tab' : 'Keep editing'}</Button>
+        <Button onClick={onKeep}>
+          {tab ? t('keepTab') : t('keepEditing')}
+        </Button>
         <Button disabled={state.pending} variant="primary" onClick={onConfirm}>
-          {tab ? 'Discard changes' : 'Quit'}
+          {tab ? t('discardChanges') : t('quit')}
         </Button>
       </SheetActions>
     </Sheet>
@@ -149,14 +152,13 @@ function CloseSheet({
 
 function message(closing: Closing, state: GuardState): string {
   if (state.pending)
-    return closing.kind === 'tab'
-      ? 'Keep this tab open until the commit finishes.'
-      : 'Wait until the commit finishes; quitting now could leave its outcome unknown.';
+    return closing.kind === 'tab' ? t('keepTabOpen') : t('waitUntilCommit');
   if (state.uncertain)
     return closing.kind === 'tab'
-      ? 'The commit outcome is unknown. Closing this tab discards the staged copy; reload the table to check what was saved.'
-      : 'The commit outcome is unknown. Reload the table to check what was saved before quitting.';
-  if (closing.kind === 'tab')
-    return 'Closing this tab will discard its uncommitted changes. Database data has not been changed.';
-  return `${String(state.staged)} staged ${state.staged === 1 ? 'change has' : 'changes have'} not been committed. Table-tab row edits are kept locally and offered for restore when the table is opened again; query-result edits and structure changes are lost.`;
+      ? t('commitOutcomeUnknown')
+      : t('commitOutcomeUnknownReload');
+  if (closing.kind === 'tab') return t('closingTabDiscard');
+  return tn('countStagedChanges', state.staged, {
+    count: String(state.staged),
+  });
 }

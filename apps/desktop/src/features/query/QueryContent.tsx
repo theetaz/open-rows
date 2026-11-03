@@ -21,6 +21,7 @@ import { usePaneCommands } from '../commands';
 import { useTabMoves } from '../windows/useTabMoves';
 import type { PaneCommand } from '../commands';
 import styles from './Query.module.css';
+import { t } from './initialMessages';
 const LocalFileTabs = lazy(() =>
   import('./LocalFileTabs').then((module) => ({
     default: module.LocalFileTabs,
@@ -80,8 +81,8 @@ export function QueryContent(props: QueryContentProps): React.JSX.Element {
       <main className={styles.content}>
         <EmptyState
           icon="database"
-          title="No database open"
-          detail="Open a database with ⌘K to start a query tab."
+          title={t('noDatabaseOpen')}
+          detail={t('openDatabaseK')}
         />
       </main>
     );
@@ -118,7 +119,7 @@ export function QueryContent(props: QueryContentProps): React.JSX.Element {
         onMove={moves.move}
       />
       {tab ? (
-        <Suspense fallback={<p className={styles.empty}>Loading…</p>}>
+        <Suspense fallback={<p className={styles.empty}>{t('loading')}</p>}>
           <SplitPanes
             split={split}
             connection={connection.name}
@@ -172,9 +173,9 @@ function NoConnection(props: { connections: Connections }): React.JSX.Element {
     <main className={styles.content}>
       <EmptyState
         icon="database"
-        title="No connection selected"
-        detail="Choose a connection in the sidebar to open a query tab."
-        action="New connection…"
+        title={t('noConnectionSelected')}
+        detail={t('chooseConnectionSidebar')}
+        action={t('newConnection')}
         onAction={() => {
           props.connections.setSheet({ kind: 'new' });
         }}
@@ -190,9 +191,9 @@ function NoTabs(props: {
   return (
     <EmptyState
       icon="terminal"
-      title={`No query tabs on ${props.database}.`}
-      detail="Open a table from the sidebar, or start a new query."
-      action="New query tab (⌘T)"
+      title={t('noQueryTabs', { database: props.database })}
+      detail={t('openTableSidebar')}
+      action={t('newQueryTab')}
       onAction={props.onOpen}
     />
   );

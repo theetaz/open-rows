@@ -6,6 +6,7 @@ import { Palette } from '@openrows/ui/palette';
 import { OpenDatabasePanel, QuickOpen } from '../schema';
 import type { Catalog, ObjectRef } from '../schema';
 import { COMMANDS, shortcutText, useBindings } from '../commands';
+import { t } from './lazyMessages';
 export type PaletteMode = 'database' | 'quick' | 'commands' | 'connection';
 /** Open database panel (⌘K), quick open (⌘P) and the command palette (⌘⇧P). */
 export function WorkspacePalettes(props: {
@@ -70,7 +71,7 @@ function CommandPalette(props: {
   }));
   return (
     <Palette
-      title="Command palette"
+      title={t('commandPalette')}
       items={items}
       onClose={props.onClose}
       onChoose={props.onCommand}

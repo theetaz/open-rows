@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { monitorAdvice } from '@openrows/ipc';
 import type { MonitorTarget, Suggestion } from '@openrows/ipc';
+import { t } from './messages/lazyInvestigation';
 
 /** Native evidence refreshes on sample changes and explicit diagnostic completion. */
 export function useAdvisor(
@@ -26,7 +27,7 @@ export function useAdvisor(
       () => {
         if (alive) {
           setSuggestions([]);
-          setError('Advisor evidence unavailable; start or resume monitoring.');
+          setError(t('advisorEvidenceUnavailable'));
         }
       },
     );

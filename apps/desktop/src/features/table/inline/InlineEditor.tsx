@@ -8,6 +8,7 @@ import type { TemporalKind } from './temporal';
 import { TemporalPicker } from './TemporalPicker';
 import type { InlineEditor, OpenEditor } from './useInlineEditor';
 import styles from './Inline.module.css';
+import { t } from '../messages/lazyData';
 
 /** The open in-place editor, if any: input, popover or value menu. */
 export function InlineEditorView({
@@ -46,7 +47,7 @@ function CellInput({ open, editor }: Props): React.JSX.Element {
         ref={inputRef}
         {...handlers}
         className={styles.cellInput}
-        aria-label={`Edit ${open.edit.name}`}
+        aria-label={t('editName', { name: open.edit.name })}
         aria-keyshortcuts={kind ? 'Alt+ArrowDown' : undefined}
         spellCheck={false}
         autoComplete="off"
@@ -115,7 +116,7 @@ function ValueMenu({ open, editor }: Props): React.JSX.Element {
     <PointMenu
       x={open.anchor.x}
       y={open.anchor.y}
-      label={`Values for ${open.edit.name}`}
+      label={t('valuesName', { name: open.edit.name })}
       onClose={editor.cancel}
     >
       {open.edit.options?.map((option) => (
@@ -147,7 +148,7 @@ function TemporalMenu({ open, editor }: Props): React.JSX.Element {
     <PointMenu
       x={open.anchor.x}
       y={open.anchor.y}
-      label={`Values for ${open.edit.name}`}
+      label={t('valuesName', { name: open.edit.name })}
       onClose={editor.cancel}
     >
       {nullable &&
@@ -163,10 +164,10 @@ function TemporalMenu({ open, editor }: Props): React.JSX.Element {
         editor.stage(textValue(nowText(kind)));
       })}
       <hr />
-      {item(kind === 'time' ? 'Time Picker…' : 'Date Picker…', () => {
+      {item(kind === 'time' ? t('timePicker') : t('datePicker'), () => {
         editor.manual(true);
       })}
-      {item('Manual input…', () => {
+      {item(t('manualInput'), () => {
         editor.manual(false);
       })}
     </PointMenu>

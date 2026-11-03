@@ -5,6 +5,7 @@ import { Icon, IconButton } from '@openrows/ui';
 import type { QueryTab } from './tabs';
 import type { Split } from './useSplit';
 import styles from './SplitPanes.module.css';
+import { t } from './initialMessages';
 
 /** Keyboard resize step of the divider. */
 const STEP = 0.05;
@@ -73,6 +74,8 @@ export function SplitPanes({
 }: Props): React.JSX.Element {
   const container = useRef<HTMLDivElement>(null);
   const { layout } = split;
+  const orientation =
+    layout?.orientation === 'right' ? 'vertical' : 'horizontal';
   const style = layout
     ? ({ '--split-ratio': `${String(layout.ratio * 100)}%` } as CSSProperties)
     : undefined;
@@ -88,7 +91,7 @@ export function SplitPanes({
           key={`pane-${layout.pinned.id}`}
           className={styles.pane}
           data-pane="pinned"
-          aria-label={`Split pane: ${layout.pinned.title}`}
+          aria-label={t('splitPaneTitle', { title: layout.pinned.title })}
           tabIndex={-1}
           onFocus={() => {
             split.focused('pinned');
@@ -105,10 +108,8 @@ export function SplitPanes({
       {layout && (
         <div
           role="separator"
-          aria-label="Resize split panes"
-          aria-orientation={
-            layout.orientation === 'right' ? 'vertical' : 'horizontal'
-          }
+          aria-label={t('resizeSplitPanes')}
+          aria-orientation={orientation}
           aria-valuemin={20}
           aria-valuemax={80}
           aria-valuenow={Math.round(layout.ratio * 100)}
@@ -126,22 +127,32 @@ export function SplitPanes({
         key={`pane-${active.id}`}
         className={styles.pane}
         data-pane="active"
-        aria-label={layout ? `Split pane: ${active.title}` : undefined}
+        aria-label={
+          layout ? t('splitPaneTitle', { title: active.title }) : undefined
+        }
         tabIndex={-1}
         onFocus={() => {
           split.focused('active');
         }}
       >
-        {layout && (
-          <div className={styles.paneBar}>
-            <span>
-              {connection ?? active.connectionId} · {active.database} ·{' '}
-              {active.title}
-            </span>
-          </div>
-        )}
+        {layout && <ActiveBar tab={active} connection={connection} />}
         {render(active)}
       </section>
+    </div>
+  );
+}
+
+/** Context of the second pane. */
+function ActiveBar(props: {
+  tab: QueryTab;
+  connection: string | undefined;
+}): React.JSX.Element {
+  const { tab } = props;
+  return (
+    <div className={styles.paneBar}>
+      <span>
+        {props.connection ?? tab.connectionId} · {tab.database} · {tab.title}
+      </span>
     </div>
   );
 }
@@ -159,8 +170,8 @@ function PinnedBar(props: {
         {props.connection ?? tab.connectionId} · {tab.database} · {tab.title}
       </span>
       <IconButton
-        aria-label="Close split pane"
-        title="Close Split"
+        aria-label={t('closeSplitPane')}
+        title={t('closeSplit')}
         size="sm"
         variant="ghost"
         onClick={props.onClose}

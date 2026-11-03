@@ -2,6 +2,7 @@
 import type { FileEncodingDto, TableColumnDto } from '@openrows/ipc';
 import type { CellValue } from './cellValue';
 import { formatJson } from './jsonFormat';
+import { t } from './messages/initial';
 
 const textTypes = new Set([
   'text',
@@ -89,11 +90,11 @@ export function fieldValueError(
   locked: boolean,
   value: CellValue,
 ): string | null {
-  if (!column || locked) return 'This field cannot be edited.';
+  if (!column || locked) return t('fieldCannotEdited');
   const actions = fieldActions(column, false, null);
   if (value.kind === 'null' && !actions.null)
-    return `${column.name} does not accept NULL.`;
+    return t('nameDoesNot', { name: column.name });
   if (value.kind === 'default' && !actions.default)
-    return `${column.name} has no DEFAULT and does not accept NULL.`;
+    return t('nameNoDefault', { name: column.name });
   return null;
 }

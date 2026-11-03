@@ -3,16 +3,17 @@ import { useState } from 'react';
 import { Button } from '@openrows/ui';
 import type { Descriptor, SourceStatus } from '@openrows/ipc';
 import styles from './Monitor.module.css';
+import { t } from './messages/lazyDashboard';
 
 /** Human-readable validity; absent values never acquire a numeric fallback. */
 export function stateLabel(state: string): string {
   const names: Record<string, string> = {
     ok: 'OK',
-    unknown: 'Unknown — awaiting a baseline or server value',
-    gap: 'Gap — no observation',
-    counterReset: 'Statistics reset — awaiting a new baseline',
-    permissionDenied: 'Permission denied',
-    unavailable: 'Unavailable',
+    unknown: t('unknownAwaitingBaseline'),
+    gap: t('gapNoObservation'),
+    counterReset: t('statisticsResetAwaiting'),
+    permissionDenied: t('permissionDenied'),
+    unavailable: t('unavailable'),
   };
   return names[state] ?? state;
 }
@@ -22,23 +23,33 @@ type Props = {
   now: number;
 };
 function freshness(status: SourceStatus | undefined, now: number): string {
-  if (status?.lastSuccessMs == null) return 'No successful sample';
-  return `${String(Math.max(0, Math.floor((now - status.lastSuccessMs) / 1000)))} s since last successful sample`;
+  if (status?.lastSuccessMs == null) return t('noSuccessfulSample');
+  return t('mathSSince', {
+    seconds: String(
+      Math.max(0, Math.floor((now - status.lastSuccessMs) / 1000)),
+    ),
+  });
+}
+function stateText(state: SourceStatus['state'] | undefined): string {
+  const kind = stateLabel(state?.kind ?? 'unknown');
+  return state && 'reason' in state
+    ? t('stateWithReason', { state: kind, reason: state.reason })
+    : kind;
 }
 function sourceSummary({ descriptor, status, now }: Props): string {
-  const state = status?.state ?? descriptor?.state;
-  const reason = state && 'reason' in state ? `: ${state.reason}` : '';
   const cadence = (status?.intervalMs ?? descriptor?.intervalMs ?? 0) / 1000;
-  const duration = sampleDuration(status);
-  return `${stateLabel(state?.kind ?? 'unknown')}${reason} · ${descriptor?.scope ?? 'Unknown'} scope · ${freshness(status, now)} · Every ${String(cadence)} s${duration}${partialCoverage(status)}`;
-}
-function partialCoverage(status: SourceStatus | undefined): string {
-  return status?.partial ? ' · Partial coverage' : '';
-}
-function sampleDuration(status: SourceStatus | undefined): string {
-  return status?.durationMs == null
-    ? ''
-    : ` · Sample ${status.durationMs.toFixed(1)} ms`;
+  const parts = [
+    stateText(status?.state ?? descriptor?.state),
+    t('scopeLabel', { scope: descriptor?.scope ?? t('unknown') }),
+    freshness(status, now),
+    t('everySeconds', { cadence: String(cadence) }),
+  ];
+  if (status?.durationMs != null)
+    parts.push(
+      t('sampleDurationmsMs', { durationMs: status.durationMs.toFixed(1) }),
+    );
+  if (status?.partial) parts.push(t('partialCoverage'));
+  return parts.join(' · ');
 }
 /** Source scope, capabilities, grants, effective cadence and freshness for each panel. */
 export function SourceState(props: Props): React.JSX.Element {
@@ -73,12 +84,9 @@ function Guidance({ sql }: { sql: string }): React.JSX.Element {
           );
         }}
       >
-        {copied ? 'Copied' : 'Copy setup guidance'}
+        {copied ? t('copied') : t('copySetupGuidance')}
       </Button>
-      <p>
-        Review this guidance with your DBA. OpenRows never executes it
-        automatically.
-      </p>
+      <p>{t('reviewGuidanceDba')}</p>
       {error && <p role="alert">{error}</p>}
     </div>
   );

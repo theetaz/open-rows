@@ -3,21 +3,22 @@ import { Switch } from '@openrows/ui';
 import { SettingRow } from '../appearance/InterfaceSettings';
 import { securitySettings } from './securitySettings';
 import { useSecurity } from './useSecurity';
+import { t } from './lazyMessages';
 const usePreferences = securitySettings.useValue;
 /** Settings ▸ Security: OS-authenticated startup and inactivity locks. */
 export function SecurityPane(): React.JSX.Element {
   const preferences = usePreferences();
   const status = useSecurity();
   return (
-    <section aria-label="Security">
-      <h3>Security</h3>
+    <section aria-label={t('security')}>
+      <h3>{t('security')}</h3>
       {status.notice && <p role="status">{status.notice}</p>}
       <SettingRow
-        title="Lock on startup"
-        description="Require OS authentication before showing any data in any window."
+        title={t('lockStartup')}
+        description={t('requireOsAuthentication')}
       >
         <Switch
-          aria-label="Lock on startup"
+          aria-label={t('lockStartup')}
           disabled={!status.available}
           checked={preferences.lockOnStartup}
           onCheckedChange={(lockOnStartup) => {
@@ -26,11 +27,11 @@ export function SecurityPane(): React.JSX.Element {
         />
       </SettingRow>
       <SettingRow
-        title="Lock after inactivity"
-        description="No user input in any window, including time in the background."
+        title={t('lockAfterInactivity')}
+        description={t('noUserInput')}
       >
         <select
-          aria-label="Lock after inactivity"
+          aria-label={t('lockAfterInactivity')}
           disabled={!status.available}
           value={preferences.lockAfterInactivityMinutes ?? ''}
           onChange={(e) => {
@@ -42,10 +43,10 @@ export function SecurityPane(): React.JSX.Element {
             });
           }}
         >
-          <option value="">Off</option>
+          <option value="">{t('off')}</option>
           {[1, 5, 15, 30, 60].map((minutes) => (
             <option key={minutes} value={minutes}>
-              {minutes} minutes
+              {t('minutesMinutes', { minutes })}
             </option>
           ))}
         </select>

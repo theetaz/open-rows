@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { AiSettings, ProviderConfig, ProviderKind } from '@openrows/ipc';
 import { localSetting } from '../localSetting';
+import { t } from '../messages/validation';
 /** Settings-file section; only non-secret fields are copied. */
 export const AI_KEY = 'openrows.ai.v1';
 /** Available protocols and endpoint suggestions; no hard-coded model catalogue. */
@@ -11,28 +12,28 @@ export const PROVIDER_KINDS: readonly {
 }[] = [
   {
     value: 'anthropic',
-    label: 'Anthropic',
+    label: t('anthropic'),
     url: 'https://api.anthropic.com/v1/',
   },
-  { value: 'openAi', label: 'OpenAI', url: 'https://api.openai.com/v1/' },
+  { value: 'openAi', label: t('openai'), url: 'https://api.openai.com/v1/' },
   {
     value: 'openRouter',
-    label: 'OpenRouter',
+    label: t('openrouter'),
     url: 'https://openrouter.ai/api/v1/',
   },
   {
     value: 'gemini',
-    label: 'Google Gemini',
+    label: t('googleGemini'),
     url: 'https://generativelanguage.googleapis.com/v1beta/',
   },
-  { value: 'compatible', label: 'OpenAI-compatible', url: '' },
-  { value: 'ollama', label: 'Ollama', url: 'http://127.0.0.1:11434/' },
+  { value: 'compatible', label: t('openaiCompatible'), url: '' },
+  { value: 'ollama', label: t('ollama'), url: 'http://127.0.0.1:11434/' },
   {
     value: 'localCompatible',
-    label: 'Local / LM Studio',
+    label: t('localLmStudio'),
     url: 'http://127.0.0.1:1234/v1/',
   },
-  { value: 'codex', label: 'Codex CLI (its own sign-in)', url: '' },
+  { value: 'codex', label: t('codexCliOwn'), url: '' },
 ];
 /** Codex turn deadline bounds in seconds; the native side enforces the same. */
 export const CLI_TURN = { min: 60, max: 900, initial: 300 } as const;

@@ -3,12 +3,13 @@ import { useState } from 'react';
 import { Button, SelectField, TextField } from '@openrows/ui';
 import type { BoardParam, ParamKind } from '@openrows/ipc';
 import styles from './Boards.module.css';
+import { t } from '../messages/lazyBoards';
 
 const KINDS = [
-  { value: 'text', label: 'Text' },
-  { value: 'number', label: 'Number' },
-  { value: 'date', label: 'Date' },
-  { value: 'enum', label: 'Enum' },
+  { value: 'text', label: t('text') },
+  { value: 'number', label: t('number') },
+  { value: 'date', label: t('date') },
+  { value: 'enum', label: t('enum') },
 ] as const;
 
 /** Inputs for the board's typed parameters; values are bound natively. */
@@ -19,7 +20,7 @@ export function ParamInputs(props: {
 }): React.JSX.Element | null {
   if (!props.params.length) return null;
   return (
-    <div className={styles.params} aria-label="Board parameters">
+    <div className={styles.params} aria-label={t('boardParameters')}>
       {props.params.map((param) => {
         const value = props.values[param.name] ?? param.default ?? '';
         const change = (next: string): void => {
@@ -69,7 +70,7 @@ function ParamRow(props: {
   return (
     <div className={styles.row}>
       <TextField
-        label="Name"
+        label={t('name')}
         controlSize="compact"
         value={param.name}
         onChange={(event) => {
@@ -77,7 +78,7 @@ function ParamRow(props: {
         }}
       />
       <SelectField
-        label="Type"
+        label={t('type')}
         controlSize="compact"
         value={param.kind}
         options={KINDS}
@@ -86,7 +87,7 @@ function ParamRow(props: {
         }}
       />
       <TextField
-        label="Default"
+        label={t('default')}
         controlSize="compact"
         value={param.default ?? ''}
         onChange={(event) => {
@@ -95,7 +96,7 @@ function ParamRow(props: {
       />
       {param.kind === 'enum' && (
         <TextField
-          label="Options (comma-separated)"
+          label={t('optionsCommaSeparated')}
           controlSize="compact"
           value={param.options.join(', ')}
           onChange={(event) => {
@@ -108,7 +109,7 @@ function ParamRow(props: {
         />
       )}
       <Button size="sm" variant="ghost" onClick={props.onRemove}>
-        Remove
+        {t('remove')}
       </Button>
     </div>
   );
@@ -125,7 +126,7 @@ export function ParamsEditor(props: {
     setDraft([...draft, { name, kind: 'text', default: null, options: [] }]);
   };
   return (
-    <section className={styles.editor} aria-label="Edit parameters">
+    <section className={styles.editor} aria-label={t('editParameters')}>
       {draft.map((param, index) => (
         <ParamRow
           key={index}
@@ -144,7 +145,7 @@ export function ParamsEditor(props: {
       ))}
       <div className={styles.row}>
         <Button size="sm" onClick={add}>
-          Add parameter
+          {t('addParameter')}
         </Button>
         <Button
           size="sm"
@@ -153,7 +154,7 @@ export function ParamsEditor(props: {
             props.onSave(draft);
           }}
         >
-          Save parameters
+          {t('saveParameters')}
         </Button>
       </div>
     </section>

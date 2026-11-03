@@ -9,6 +9,7 @@ import type {
 } from '@openrows/ipc';
 import type { RunMessage } from '../query/run';
 import { conversationOf } from './conversation';
+import { t } from './lazyMessages';
 /** Inputs attached to the active query tab; SQL is read only when the user acts. */
 export type AssistantProps = {
   monitoring?: boolean;
@@ -73,29 +74,26 @@ export function disabledReason(input: {
   props: AssistantProps;
   policy: Required<SharingPolicy> | null;
 }): string {
-  if (!input.enabled)
-    return 'AI features are off. Enable them in Settings → AI.';
-  if (!input.provider)
-    return 'No provider configured. Add one in Settings → AI.';
-  if (input.locked) return 'OpenRows is locked.';
-  if (!input.props.connected) return 'Open this database to use the assistant.';
-  if (!input.policy) return 'Loading sharing policy…';
-  if (input.policy.level === 'none')
-    return 'Data sharing is None. Set a policy in Settings → AI → Data sharing.';
+  if (!input.enabled) return t('aiFeaturesOff');
+  if (!input.provider) return t('noProviderConfigured');
+  if (input.locked) return t('openrowsLocked');
+  if (!input.props.connected) return t('openDatabaseUse');
+  if (!input.policy) return t('loadingSharingPolicy');
+  if (input.policy.level === 'none') return t('dataSharingNone');
   if (
     input.props.profile.env.kind === 'prod' &&
     !input.policy.productionConfirmed
   )
-    return 'Production sharing requires explicit opt-in.';
+    return t('productionSharingRequires');
   if (!input.policy.providers.includes(input.provider))
-    return 'Provider is not allowed for this connection.';
+    return t('providerNotAllowed');
   if (
     input.props.monitoring &&
     (!input.policy.telemetry ||
       !['schemaAndStats', 'sampleRows'].includes(input.policy.level))
   )
-    return 'Monitoring requires telemetry consent and SchemaAndStats sharing.';
-  if (!input.model) return 'Choose a model.';
+    return t('monitoringRequiresTelemetry');
+  if (!input.model) return t('chooseModel');
   return '';
 }
 /** Build a typed request; fix-error shares only a bounded SQLSTATE/vendor code. */

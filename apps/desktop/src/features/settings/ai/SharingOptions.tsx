@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ProviderConfig } from '@openrows/ipc';
 import styles from './Ai.module.css';
+import { t } from '../messages/lazyAi';
 /** Only saved providers are available for a connection allowlist. */
 export function ProviderAllowlist(props: {
   selected: string[];
@@ -9,15 +10,13 @@ export function ProviderAllowlist(props: {
 }): React.JSX.Element {
   return (
     <fieldset>
-      <legend>Allowed providers</legend>
-      {props.providers.length === 0 && (
-        <p>Add a provider in Settings → AI first.</p>
-      )}
+      <legend>{t('allowedProviders')}</legend>
+      {props.providers.length === 0 && <p>{t('addProviderSettings')}</p>}
       {props.providers.map((provider) => (
         <label key={provider.id} className={styles.heading}>
           <span>{provider.name}</span>
           <input
-            aria-label={`Allow ${provider.name}`}
+            aria-label={t('allowName', { name: provider.name })}
             type="checkbox"
             checked={props.selected.includes(provider.id)}
             onChange={(event) => {
@@ -40,10 +39,7 @@ export function ProductionConsent(props: {
 }): React.JSX.Element {
   return (
     <div>
-      <p role="note">
-        Production: sharing is off until you explicitly confirm. The selected
-        providers may receive database context.
-      </p>
+      <p role="note">{t('productionSharingOff')}</p>
       <label>
         <input
           type="checkbox"
@@ -52,7 +48,7 @@ export function ProductionConsent(props: {
             props.onChange(event.target.checked);
           }}
         />{' '}
-        I confirm sharing production context with the allowed providers
+        {t('iConfirmSharing')}
       </label>
     </div>
   );

@@ -7,6 +7,7 @@ import type { EditHistory, StagedEdit } from '../editHistory';
 import type { TableTargetRef } from '../model';
 import { readRows } from '../row';
 import type { RowField } from '../row';
+import { t } from '../messages/lazyData';
 
 type DraftArgs = {
   info: EditInfoDto;
@@ -24,8 +25,7 @@ function keysOf(
   const keys: Record<string, string> = {};
   for (const name of key) {
     const field = fields.find((item) => item.name === name);
-    if (!field || field.state === 'null')
-      throw new Error('Show all unique-key columns before editing these rows.');
+    if (!field || field.state === 'null') throw new Error(t('showAllUnique'));
     keys[name] = field.state === 'empty' ? '' : field.text;
   }
   return keys;
@@ -46,7 +46,7 @@ export async function rowDrafts(
   const page = rows.filter((row) => row < result.rows);
   for (const row of rows.filter((item) => item >= result.rows)) {
     const insert = inserts[row - result.rows];
-    if (!insert) throw new Error('That new row is no longer staged.');
+    if (!insert) throw new Error(t('newRowNo'));
     drafts.set(row, insert);
   }
   if (!page.length) return drafts;
@@ -68,7 +68,7 @@ export async function rowDrafts(
     const existing = history.current.find((item) => item.id === id);
     const at = missing.findIndex((item) => item.id === id);
     const original = existing?.original ?? snapshots[at];
-    if (!original) throw new Error('A selected row could not be read.');
+    if (!original) throw new Error(t('selectedRowCould'));
     drafts.set(
       row,
       existing

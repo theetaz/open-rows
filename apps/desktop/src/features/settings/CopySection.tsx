@@ -8,6 +8,7 @@ import {
 } from '../../results/copy/copySettings';
 import type { CopySettings } from '../../results/copy/copySettings';
 import styles from '../appearance/Appearance.module.css';
+import { t } from './messages/lazyPanes';
 
 type CopyRow = {
   [K in keyof CopySettings]: {
@@ -23,79 +24,76 @@ type CopyRow = {
 const ROWS: readonly CopyRow[] = [
   {
     key: 'headers',
-    title: 'Column headers',
-    description:
-      'Whether copied rows start with the column names. Copy with Headers always includes them.',
-    label: 'Copy column headers',
+    title: t('columnHeaders'),
+    description: t('whetherCopiedRows'),
+    label: t('copyColumnHeaders'),
     options: [
-      { value: 'format', label: 'CSV only' },
-      { value: 'always', label: 'Always' },
-      { value: 'never', label: 'Never' },
+      { value: 'format', label: t('csvOnly') },
+      { value: 'always', label: t('always') },
+      { value: 'never', label: t('never') },
     ],
   },
   {
     key: 'nulls',
-    title: 'NULL values',
-    description: 'How SQL NULL is written in plain, CSV and HTML copies.',
-    label: 'Copy NULL values as',
+    title: t('nullValues'),
+    description: t('howSqlNull'),
+    label: t('copyNullValues'),
     options: [
-      { value: 'format', label: 'NULL in plain copies, empty in CSV' },
-      { value: 'text', label: 'Always NULL' },
-      { value: 'empty', label: 'Always empty' },
+      { value: 'format', label: t('nullPlainCopies') },
+      { value: 'text', label: t('alwaysNull') },
+      { value: 'empty', label: t('alwaysEmpty') },
     ],
   },
   {
     key: 'quote',
-    title: 'Quotes',
-    description:
-      'Quote values that contain a delimiter, quote or line break, or every value. Quotes inside values are doubled.',
-    label: 'Copy quote style',
+    title: t('quotes'),
+    description: t('quoteValuesContain'),
+    label: t('copyQuoteStyle'),
     options: [
-      { value: 'minimal', label: 'Only when needed' },
-      { value: 'all', label: 'Every value' },
+      { value: 'minimal', label: t('onlyWhenNeeded') },
+      { value: 'all', label: t('everyValue') },
     ],
   },
   {
     key: 'quoteChar',
-    title: 'Quote character',
-    description: 'The character that wraps quoted values.',
-    label: 'Copy quote character',
+    title: t('quoteCharacter'),
+    description: t('characterWrapsQuoted'),
+    label: t('copyQuoteCharacter'),
     options: [
-      { value: 'double', label: 'Double quote "' },
-      { value: 'single', label: "Single quote '" },
+      { value: 'double', label: t('doubleQuote') },
+      { value: 'single', label: t('singleQuote') },
     ],
   },
   {
     key: 'delimiter',
-    title: 'CSV delimiter',
-    description: 'Separator between CSV fields; plain copies use tabs.',
-    label: 'CSV delimiter',
+    title: t('csvDelimiter'),
+    description: t('separatorBetweenCsv'),
+    label: t('csvDelimiter'),
     options: [
-      { value: 'comma', label: 'Comma ,' },
-      { value: 'semicolon', label: 'Semicolon ;' },
-      { value: 'tab', label: 'Tab' },
-      { value: 'pipe', label: 'Pipe |' },
+      { value: 'comma', label: t('comma') },
+      { value: 'semicolon', label: t('semicolon') },
+      { value: 'tab', label: t('tab') },
+      { value: 'pipe', label: t('pipe') },
     ],
   },
   {
     key: 'newline',
-    title: 'Line endings',
-    description: 'What ends each copied row.',
-    label: 'Copy line endings',
+    title: t('lineEndings'),
+    description: t('whatEndsEach'),
+    label: t('copyLineEndings'),
     options: [
-      { value: 'lf', label: 'LF (macOS, Linux)' },
-      { value: 'crlf', label: 'CRLF (Windows)' },
+      { value: 'lf', label: t('lfMacosLinux') },
+      { value: 'crlf', label: t('crlfWindows') },
     ],
   },
   {
     key: 'decimal',
-    title: 'Decimal separator',
-    description:
-      'Separator written in numeric columns of plain and CSV copies.',
-    label: 'Copy decimal separator',
+    title: t('decimalSeparator'),
+    description: t('separatorWrittenNumeric'),
+    label: t('copyDecimalSeparator'),
     options: [
-      { value: 'point', label: 'Point 1.5' },
-      { value: 'comma', label: 'Comma 1,5' },
+      { value: 'point', label: t('point15') },
+      { value: 'comma', label: t('comma15') },
     ],
   },
 ];
@@ -105,8 +103,8 @@ export function CopySection(): React.JSX.Element {
   const settings = copySettings.useValue();
   const [conflict, setConflict] = useState<string | null>(null);
   return (
-    <section aria-label="Copy">
-      <h3>Copy</h3>
+    <section aria-label={t('copy')}>
+      <h3>{t('copy')}</h3>
       <div className={styles.settingsGroup}>
         {ROWS.map((row) => (
           <SettingRow

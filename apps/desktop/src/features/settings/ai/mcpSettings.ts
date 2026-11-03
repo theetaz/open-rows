@@ -3,6 +3,7 @@ import type { McpSettings } from '@openrows/ipc';
 import { writeSettingsFile } from '@openrows/ipc';
 import { localSetting } from '../localSetting';
 import { settingsText } from '../settingsFile';
+import { t } from '../messages/validation';
 /** Device-local transport preferences; token values have no field in this type. */
 export const MCP_KEY = 'openrows.mcp.v1';
 /** Keep both transports off by default and discard unknown credential fields. */
@@ -34,6 +35,6 @@ export async function saveMcpSettings(next: McpSettings): Promise<void> {
     await writeSettingsFile(settingsText());
   } catch {
     mcpSettings.set(previous);
-    throw new Error('MCP settings could not be saved.');
+    throw new Error(t('mcpSettingsCould'));
   }
 }

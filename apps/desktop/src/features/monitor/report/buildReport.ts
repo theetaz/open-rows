@@ -11,6 +11,7 @@ import { REPORT_SCHEMA, REPORT_VERSION } from './model';
 import type { Report, ReportSection } from './model';
 import { monitorSections } from './monitorReport';
 import type { MonitorPart, ReportRange } from './monitorReport';
+import { t } from '../messages/lazyReport';
 
 function report(
   title: string,
@@ -60,13 +61,13 @@ export async function monitorReport(request: {
     ? {
         fromMs: toMs - hours * 3_600_000,
         toMs,
-        label: `History · ${String(hours)} h`,
+        label: t('historyHoursH', { hours: String(hours) }),
         history: true,
       }
     : {
         fromMs: toMs - 600_000,
         toMs,
-        label: 'Live · 10 minutes',
+        label: t('live10Minutes'),
         history: false,
       };
   const points = hours
@@ -83,7 +84,7 @@ export async function monitorReport(request: {
     request.parts,
   );
   return report(
-    `Monitor report · ${connection.database}`,
+    t('monitorReportDatabase', { database: connection.database }),
     connection,
     range,
     sections,
@@ -99,9 +100,9 @@ export function boardReport(request: {
 }): Report {
   const { board, runs } = request;
   return report(
-    `Board report · ${board.board.name}`,
+    t('boardReportName', { name: board.board.name }),
     request.connection,
-    { ...boardRange(runs), label: 'Latest widget runs' },
+    { ...boardRange(runs), label: t('latestWidgetRuns') },
     boardSections(board, runs, request.include),
   );
 }

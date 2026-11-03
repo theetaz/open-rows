@@ -31,6 +31,7 @@ import { MONITOR_KEY, parseMonitorSettings } from './monitorSettings';
 import { parseTableSettings, TABLES_KEY } from './tableSettings';
 import { AI_KEY, parseAiSettings } from './ai/aiSettings';
 import { parsePortableSettings } from './settingsValidation';
+import { t } from './messages/validation';
 
 /**
  * `settings.json` (docs/15 §4) mirrors these web-storage keys, which stay
@@ -205,8 +206,7 @@ export async function importSettings(text: string): Promise<void> {
     'mcp',
     'monitoring',
   ]) {
-    if (key in settings)
-      throw new Error(`${key}: excluded from portable settings`);
+    if (key in settings) throw new Error(t('keyExcludedPortable', { key }));
   }
   const previous = collectSettings();
   applySettings(settings);

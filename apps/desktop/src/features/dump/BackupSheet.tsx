@@ -18,6 +18,7 @@ import { startDumpJob } from './dumpJob';
 import { backupTool, defaultBackupOptions, messageOf, scopeOf } from './model';
 import { CommandList, ToolList, useDumpContext } from './ToolList';
 import styles from './Dump.module.css';
+import { t } from './messages';
 
 type Preview =
   | { status: 'loading' }
@@ -69,7 +70,7 @@ async function backUp(
   if (!output) return;
   const id = startDumpJob({
     kind: 'backup',
-    title: `Back up ${target.database}`,
+    title: t('backUpDatabase', { database: target.database }),
     start: (onEvent) =>
       startBackup({ scope: scopeOf(target), options, output }, onEvent),
   });
@@ -108,13 +109,7 @@ function Body(props: {
 }): React.JSX.Element {
   const { context } = props;
   const tool = backupTool(context);
-  if (!tool)
-    return (
-      <p className={styles.note}>
-        The database file is copied with SQLite&apos;s own backup (VACUUM INTO),
-        consistent even while it is in use.
-      </p>
-    );
+  if (!tool) return <p className={styles.note}>{t('databaseFileCopied')}</p>;
   return (
     <>
       <ToolList tools={context.tools} kinds={[tool]} />
@@ -154,13 +149,16 @@ export function BackupSheet({
     showDump(null);
   };
   return (
-    <Sheet title={`Back Up ${target.database}`} onClose={close}>
+    <Sheet
+      title={t('backUpDatabase2', { database: target.database })}
+      onClose={close}
+    >
       <p className={styles.summary}>
         {target.connection} : {target.database}
       </p>
       {state.status === 'loading' && (
         <p className={styles.note} role="status">
-          Finding the client tools…
+          {t('findingClientTools')}
         </p>
       )}
       {state.status === 'failed' && (
@@ -192,7 +190,7 @@ export function BackupSheet({
         </p>
       )}
       <SheetActions>
-        <Button onClick={close}>Cancel</Button>
+        <Button onClick={close}>{t('cancel')}</Button>
         <Button
           variant="primary"
           disabled={!ready}
@@ -202,7 +200,7 @@ export function BackupSheet({
             });
           }}
         >
-          Back Up…
+          {t('backUp')}
         </Button>
       </SheetActions>
     </Sheet>
@@ -218,7 +216,7 @@ function ScopeBody(props: {
   engine: DumpContextDto['engine'];
 }): React.JSX.Element {
   const { scope, selection, settings } = props;
-  if (scope.loading) return <p role="status">Loading backup objects…</p>;
+  if (scope.loading) return <p role="status">{t('loadingBackupObjects')}</p>;
   if (scope.failure) return <p role="alert">{scope.failure}</p>;
   return (
     <>

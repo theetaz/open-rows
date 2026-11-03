@@ -21,6 +21,7 @@ use crate::connections::catalog_cache::after_statements;
 use crate::connections::sessions::open_session;
 use crate::connections::{Connections, IpcError, IpcErrorKind};
 use crate::jobs::{JobScope, job_scope};
+use crate::native_text;
 use crate::queries::Queries;
 
 /// Choose a `.sql` file in the native open panel; `None` when cancelled.
@@ -35,9 +36,9 @@ pub(crate) async fn run_file_pick(
         .dialog()
         .file()
         .set_parent(&window)
-        .set_title("Run SQL File")
-        .add_filter("SQL", &["sql"])
-        .add_filter("All files", &["*"])
+        .set_title(native_text::RUN_SQL_FILE)
+        .add_filter(native_text::FILTER_SQL, &["sql"])
+        .add_filter(native_text::FILTER_ALL_FILES, &["*"])
         .pick_file(move |picked| {
             // The receiver only disappears when the command was dropped.
             let _ = sender.send(picked);

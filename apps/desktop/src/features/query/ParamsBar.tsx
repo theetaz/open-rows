@@ -4,6 +4,7 @@ import { Button, Icon, SelectField, TextField } from '@openrows/ui';
 import { isValidParam } from './paramValues';
 import type { ParamKind, ParamValue, ParamValues } from './paramValues';
 import styles from './ParamsBar.module.css';
+import { rich, t } from './lazyMessages';
 
 type Props = {
   /** Parameter names of the tab's SQL, in order of first use. */
@@ -17,9 +18,9 @@ type Props = {
 };
 
 const KINDS: readonly { value: ParamKind; label: string }[] = [
-  { value: 'text', label: 'Text' },
-  { value: 'number', label: 'Number' },
-  { value: 'null', label: 'NULL' },
+  { value: 'text', label: t('text') },
+  { value: 'number', label: t('number') },
+  { value: 'null', label: t('null') },
 ];
 
 const EMPTY: ParamValue = { kind: 'text', value: '' };
@@ -52,7 +53,7 @@ export function ParamsBar(props: Props): React.JSX.Element {
     props.onChange({ ...props.values, [name]: param });
   };
   return (
-    <section className={styles.bar} aria-label="Query parameters">
+    <section className={styles.bar} aria-label={t('queryParameters')}>
       <header className={styles.header}>
         <button
           type="button"
@@ -63,19 +64,22 @@ export function ParamsBar(props: Props): React.JSX.Element {
             setOpen(!expanded);
           }}
         >
-          <span className={styles.chevron} data-open={expanded}>
-            <Icon name="chevronRight" />
-          </span>
-          Parameters
-          <span className={styles.count}>{props.names.length}</span>
+          {rich('spanparameterscount', {
+            span: (
+              <span className={styles.chevron} data-open={expanded}>
+                <Icon name="chevronRight" />
+              </span>
+            ),
+            count: <span className={styles.count}>{props.names.length}</span>,
+          })}
         </button>
         {props.asking && (
           <span className={styles.hint} role="status">
-            Enter the parameter values, then run.
+            {t('enterParameterValues')}
           </span>
         )}
         <Button size="sm" variant="ghost" onClick={props.onRun}>
-          Run
+          {t('run')}
         </Button>
       </header>
       {expanded && (
@@ -109,7 +113,7 @@ function ParamRow(props: {
     <div className={styles.row}>
       <span className={styles.name}>{props.name}</span>
       <SelectField
-        aria-label={`${props.name} type`}
+        aria-label={t('nameType', { name: props.name })}
         controlSize="compact"
         className={styles.kind}
         value={param.kind}
@@ -119,13 +123,13 @@ function ParamRow(props: {
         }}
       />
       <TextField
-        aria-label={`${props.name} value`}
+        aria-label={t('nameValue', { name: props.name })}
         controlSize="compact"
         className={styles.value}
         data-missing={props.param === undefined}
-        {...(isValidParam(param) ? {} : { error: 'Not a number' })}
+        {...(isValidParam(param) ? {} : { error: t('notNumber') })}
         inputMode={param.kind === 'number' ? 'decimal' : 'text'}
-        placeholder={isNull ? 'NULL' : ''}
+        placeholder={isNull ? t('null') : ''}
         disabled={isNull}
         value={isNull ? '' : param.value}
         onChange={(event) => {

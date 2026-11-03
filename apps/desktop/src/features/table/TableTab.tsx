@@ -30,6 +30,7 @@ import { RecoveryBanner } from './recovery/RecoveryBanner';
 import { useEditRecovery } from './recovery/useEditRecovery';
 import { filterLink } from '../links/linkText';
 import styles from './Table.module.css';
+import { t } from './messages/lazyData';
 
 type TableTabProps = {
   tabId: string;
@@ -142,7 +143,7 @@ export function TableTab(props: TableTabProps): React.JSX.Element {
     <section
       ref={root}
       className={styles.table}
-      aria-label={`${table.name} table`}
+      aria-label={t('nameTable', { name: table.name })}
     >
       <Banner {...props} />
       {view.mode === 'data' && <RecoveryBanner recovery={recovery} />}
@@ -268,7 +269,8 @@ function footerProps(
   if (mode === 'data')
     return {
       add: {
-        label: 'Row',
+        label: t('row'),
+        ariaLabel: t('addRow'),
         run: canEdit(editing, ready) ? editing.insert : undefined,
         title: editingNote(editing),
       },
@@ -284,18 +286,19 @@ function footerProps(
   const indexes = mode === 'indexes';
   return {
     add: {
-      label: indexes ? 'Index' : 'Column',
+      label: indexes ? t('index') : t('column'),
+      ariaLabel: indexes ? t('addIndexLabel') : t('addColumnLabel'),
       run: enabled
         ? indexes
           ? structure.openIndexSheet
           : structure.addColumn
         : undefined,
-      title: note || (indexes ? 'Add an index' : 'Add a column'),
+      title: note || (indexes ? t('addIndex') : t('addColumn')),
     },
     structure: {
       status: indexes
-        ? `${String(structure.indexes.length)} indexes`
-        : `${String(structure.rows.length)} columns`,
+        ? t('indexTotal', { count: String(structure.indexes.length) })
+        : t('columnTotal', { count: String(structure.rows.length) }),
       onConstraints: () => {
         structure.setSheet('constraints');
       },
@@ -354,9 +357,9 @@ function Banner(props: TableTabProps): React.JSX.Element | null {
   if (props.sessionId !== null) return null;
   return (
     <p className={styles.banner}>
-      Not connected.{' '}
+      {t('notConnected')}{' '}
       <Button size="sm" variant="ghost" onClick={props.onConnect}>
-        Connect to browse rows
+        {t('connectBrowseRows')}
       </Button>
     </p>
   );

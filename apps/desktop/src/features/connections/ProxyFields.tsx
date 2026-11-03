@@ -11,10 +11,11 @@ import { SecretField } from './SecretField';
 import { PROXY_PORTS, proxySummary } from './proxyForm';
 import type { ConnectionForm } from './useConnectionForm';
 import styles from './ConnectionSheet.module.css';
+import { rich, t } from './messages/routes';
 
 const kinds: readonly { value: ProxyKindDto; label: string }[] = [
-  { value: 'socks5', label: 'SOCKS5' },
-  { value: 'http', label: 'HTTP (CONNECT)' },
+  { value: 'socks5', label: t('socks5') },
+  { value: 'http', label: t('httpConnect') },
 ];
 
 /**
@@ -30,25 +31,23 @@ export function ProxyFields({
   const invalid = Boolean(form.errors.proxyHost ?? form.errors.proxyPort);
   return (
     <DisclosureSection
-      label={`Proxy · ${proxySummary(proxy)}`}
+      label={t('proxyProxy', { proxy: proxySummary(proxy) })}
       defaultOpen={proxy.enabled}
       forceOpen={invalid}
     >
       <div className={styles.section}>
         <div className={styles.switchRow}>
           <Switch
-            aria-label="Connect through a proxy"
+            aria-label={t('connectThroughProxy')}
             checked={proxy.enabled}
             onCheckedChange={(enabled) => {
               form.updateProxy({ enabled });
             }}
           />
           <span>
-            Connect through a proxy
-            <small>
-              The first hop, before SSH. SOCKS5 resolves host names on the
-              proxy.
-            </small>
+            {rich('connectThroughProxysmall', {
+              small: <small>{t('firstHopBefore')}</small>,
+            })}
           </span>
         </div>
         {proxy.enabled && <ProxyServer form={form} />}
@@ -71,8 +70,8 @@ function ProxyServer({ form }: { form: ConnectionForm }): React.JSX.Element {
     <>
       <SelectField
         className={styles.row}
-        label="Type"
-        aria-label="Proxy type"
+        label={t('type')}
+        aria-label={t('proxyType')}
         value={proxy.kind}
         options={kinds}
         onValueChange={(kind) => {
@@ -82,14 +81,14 @@ function ProxyServer({ form }: { form: ConnectionForm }): React.JSX.Element {
       <div className={styles.pair}>
         <TextField
           className={styles.row}
-          label="Proxy host"
-          placeholder="proxy.example.com"
+          label={t('proxyHost')}
+          placeholder={t('proxyExampleCom')}
           {...text('host')}
           {...fieldError(errors.proxyHost)}
         />
         <TextField
-          label="Port"
-          aria-label="Proxy port"
+          label={t('port')}
+          aria-label={t('proxyPort')}
           inputMode="numeric"
           placeholder={PROXY_PORTS[proxy.kind]}
           className={styles.port}
@@ -99,14 +98,14 @@ function ProxyServer({ form }: { form: ConnectionForm }): React.JSX.Element {
       </div>
       <TextField
         className={styles.row}
-        label="Proxy user"
-        placeholder="Optional"
+        label={t('proxyUser')}
+        placeholder={t('optional')}
         {...text('user')}
       />
       {proxy.user.trim() && (
         <SecretField
-          label="Proxy password"
-          noun="proxy password"
+          label={t('proxyPassword')}
+          noun={t('proxyPassword2')}
           secret={proxy.password}
           reveal={form.reveal('proxyPassword')}
           onChange={(password) => {

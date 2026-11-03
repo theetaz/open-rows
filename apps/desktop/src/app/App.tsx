@@ -23,6 +23,7 @@ import {
   tableSettings,
 } from '../features/settings/tableSettings';
 import styles from './App.module.css';
+import { t } from './messages';
 const SettingsSheet = lazy(() =>
   import('../features/settings/SettingsSheet').then((module) => ({
     default: module.SettingsSheet,
@@ -88,7 +89,7 @@ export function App(): React.JSX.Element {
     <ThemeProvider onChange={settingsChanged} revision={revision}>
       <LockBoundary>
         {startupError ? (
-          <p role="alert">Unable to show the native window.</p>
+          <p role="alert">{t('unableShowNative')}</p>
         ) : (
           <div hidden={gallery}>
             <Workspace
@@ -132,7 +133,7 @@ function GalleryView(props: {
       <header
         className={styles.toolbar}
         data-tauri-drag-region
-        aria-label="Gallery toolbar"
+        aria-label={t('galleryToolbar')}
       >
         <Button
           size="sm"
@@ -140,7 +141,7 @@ function GalleryView(props: {
             props.onBack(false);
           }}
         >
-          Back to workspace
+          {t('backWorkspace')}
         </Button>
       </header>
       <main className={styles.content}>

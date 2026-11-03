@@ -4,6 +4,7 @@ import { SelectField, TextField } from '@openrows/ui';
 import { StageSheet } from './StageSheet';
 import type { Structure } from './useStructure';
 import styles from './forms/Forms.module.css';
+import { t } from '../messages/lazyStructure';
 
 /** Add an ordered primary or unique key with the live DDL preview. */
 export function KeySheet({
@@ -16,11 +17,11 @@ export function KeySheet({
   const [kind, setKind] = useState<'addPrimaryKey' | 'addUnique'>('addUnique');
   const [name, setName] = useState('');
   const [columns, setColumns] = useState<string[]>([]);
-  const problem = !columns.length ? 'Choose at least one key column.' : null;
+  const problem = !columns.length ? t('chooseLeastOne') : null;
   return (
     <StageSheet
       structure={structure}
-      title="Add key constraint"
+      title={t('addKeyConstraint')}
       problem={problem}
       op={
         problem
@@ -30,28 +31,28 @@ export function KeySheet({
               changes: [{ kind, key: { name: name.trim() || null, columns } }],
             }
       }
-      stageLabel="Stage key"
+      stageLabel={t('stageKey')}
       onClose={onClose}
     >
       <SelectField
-        label="Constraint"
+        label={t('constraint')}
         value={kind}
         options={[
-          { value: 'addUnique', label: 'Unique' },
-          { value: 'addPrimaryKey', label: 'Primary key' },
+          { value: 'addUnique', label: t('unique') },
+          { value: 'addPrimaryKey', label: t('primaryKey') },
         ]}
         onValueChange={setKind}
       />
       <TextField
-        label="Name"
+        label={t('name')}
         value={name}
-        placeholder="Automatic"
+        placeholder={t('automatic')}
         onChange={(event) => {
           setName(event.target.value);
         }}
       />
       <fieldset className={styles.keys}>
-        <legend>Columns, in key order</legend>
+        <legend>{t('columnsKeyOrder')}</legend>
         {structure.rows
           .filter((row) => !row.dropped)
           .map((row) => (

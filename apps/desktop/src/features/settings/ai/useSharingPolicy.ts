@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { getAiSharing, saveAiSharing } from '@openrows/ipc';
 import type { SharingPolicy } from '@openrows/ipc';
+import { t } from '../messages/lazyAi';
 /** Load/save a complete native policy with fresh production confirmation for each edit. */
 export function useSharingPolicy(id: string): {
   policy: Required<SharingPolicy> | null;
@@ -24,7 +25,7 @@ export function useSharingPolicy(id: string): {
         if (active) setPolicy({ ...value, productionConfirmed: false });
       },
       () => {
-        if (active) setFailure('Sharing settings could not be loaded.');
+        if (active) setFailure(t('sharingSettingsCould'));
       },
     );
     return () => {
@@ -47,9 +48,7 @@ export function useSharingPolicy(id: string): {
       setSaved(true);
     } catch (error) {
       setFailure(
-        error instanceof Error
-          ? error.message
-          : 'Sharing policy could not be saved.',
+        error instanceof Error ? error.message : t('sharingPolicyCould'),
       );
     } finally {
       setBusy(false);

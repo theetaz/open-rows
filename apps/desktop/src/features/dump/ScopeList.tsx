@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Button } from '@openrows/ui';
 import type { ReactNode } from 'react';
 import styles from './Dump.module.css';
+import { t } from './messages';
 
 const PAGE = 80;
 
@@ -30,10 +31,14 @@ export function ScopeList<T>(props: {
               setPage(current - 1);
             }}
           >
-            Previous objects
+            {t('previousObjects')}
           </Button>
           <span role="status">
-            Page {current + 1} of {last + 1} · {props.rows.length} objects
+            {t('pageValueValue2', {
+              value: current + 1,
+              value2: last + 1,
+              count: props.rows.length,
+            })}
           </span>
           <Button
             size="sm"
@@ -42,7 +47,7 @@ export function ScopeList<T>(props: {
               setPage(current + 1);
             }}
           >
-            Next objects
+            {t('nextObjects')}
           </Button>
         </div>
       )}

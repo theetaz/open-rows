@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Button, SelectField, TextField } from '@openrows/ui';
 import styles from './QuickFilter.module.css';
+import { t } from '../messages/lazyData';
 
 /** An operator the quick filter offers; `arity` 0 takes no value (IS NULL). */
 export type QuickOperator<T extends string> = {
@@ -73,7 +74,7 @@ export function QuickFilter<T extends string>(
     <div
       ref={panel}
       role="dialog"
-      aria-label={`Filter ${props.name}`}
+      aria-label={t('filterName', { name: props.name })}
       className={styles.popover}
       onKeyDown={(event) => {
         if (event.nativeEvent.isComposing) return;
@@ -87,7 +88,7 @@ export function QuickFilter<T extends string>(
       }}
     >
       <SelectField<T>
-        aria-label="Operator"
+        aria-label={t('operator')}
         controlSize="compact"
         className={styles.operator}
         value={operator}
@@ -96,10 +97,10 @@ export function QuickFilter<T extends string>(
       />
       {arity !== 0 && (
         <TextField
-          aria-label={`Value of ${props.name}`}
+          aria-label={t('valueName', { name: props.name })}
           controlSize="compact"
           className={styles.value}
-          placeholder="Value"
+          placeholder={t('value')}
           autoFocus
           value={value}
           onChange={(event) => {
@@ -108,7 +109,7 @@ export function QuickFilter<T extends string>(
         />
       )}
       <Button size="sm" variant="primary" onClick={apply}>
-        Filter
+        {t('filter')}
       </Button>
     </div>,
     document.body,

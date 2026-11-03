@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ObjectDto, ObjectKindDto, SchemaDto } from '@openrows/ipc';
+import { t } from './messages';
 
 /** One disclosure section of the object tree. */
 export type ObjectGroup = {
@@ -10,28 +11,28 @@ export type ObjectGroup = {
 
 /** Tree sections in display order; each loads its kinds on first expand. */
 export const objectGroups: readonly ObjectGroup[] = [
-  { id: 'tables', label: 'Tables', kinds: ['table', 'foreignTable'] },
-  { id: 'views', label: 'Views', kinds: ['view'] },
+  { id: 'tables', label: t('tables'), kinds: ['table', 'foreignTable'] },
+  { id: 'views', label: t('views'), kinds: ['view'] },
   {
     id: 'materializedViews',
-    label: 'Materialized views',
+    label: t('materializedViews'),
     kinds: ['materializedView'],
   },
-  { id: 'functions', label: 'Functions', kinds: ['function'] },
-  { id: 'procedures', label: 'Procedures', kinds: ['procedure'] },
-  { id: 'sequences', label: 'Sequences', kinds: ['sequence'] },
-  { id: 'types', label: 'Types', kinds: ['type'] },
+  { id: 'functions', label: t('functions'), kinds: ['function'] },
+  { id: 'procedures', label: t('procedures'), kinds: ['procedure'] },
+  { id: 'sequences', label: t('sequences'), kinds: ['sequence'] },
+  { id: 'types', label: t('types'), kinds: ['type'] },
 ];
 
 const kinds: Record<ObjectKindDto, { label: string; glyph: string }> = {
-  table: { label: 'Table', glyph: '▦' },
-  foreignTable: { label: 'Foreign table', glyph: '▦' },
-  view: { label: 'View', glyph: '▤' },
-  materializedView: { label: 'Materialized view', glyph: '▥' },
-  function: { label: 'Function', glyph: 'ƒ' },
-  procedure: { label: 'Procedure', glyph: 'ƒ' },
-  sequence: { label: 'Sequence', glyph: '≡' },
-  type: { label: 'Type', glyph: 'T' },
+  table: { label: t('table'), glyph: '▦' },
+  foreignTable: { label: t('foreignTable'), glyph: '▦' },
+  view: { label: t('view'), glyph: '▤' },
+  materializedView: { label: t('materializedView'), glyph: '▥' },
+  function: { label: t('function'), glyph: 'ƒ' },
+  procedure: { label: t('procedure'), glyph: 'ƒ' },
+  sequence: { label: t('sequence'), glyph: '≡' },
+  type: { label: t('type'), glyph: 'T' },
 };
 
 /** Display name and glyph of an object kind. */
@@ -155,7 +156,8 @@ export function supportedGroups(
   return objectGroups
     .map((group) => ({
       ...group,
-      label: documents && group.id === 'tables' ? 'Collections' : group.label,
+      label:
+        documents && group.id === 'tables' ? t('collections') : group.label,
       kinds: group.kinds.filter((kind) => supported.includes(kind)),
     }))
     .filter((group) => group.kinds.length > 0);

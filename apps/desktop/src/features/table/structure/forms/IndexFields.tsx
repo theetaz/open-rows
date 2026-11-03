@@ -8,6 +8,7 @@ import type {
 } from '@openrows/ipc';
 import { indexMethods } from './dialect';
 import styles from './Forms.module.css';
+import { t } from '../../messages/initial';
 
 /** What the index form edits. */
 export type IndexDraft = NewIndexDto;
@@ -24,7 +25,7 @@ export const emptyIndex: IndexDraft = {
 
 /** Why the index cannot be staged yet, or `null`. */
 export function indexProblem(draft: IndexDraft): string | null {
-  return draft.columns.length ? null : 'Choose at least one key column.';
+  return draft.columns.length ? null : t('chooseLeastOne');
 }
 
 /** The draft as sent: blank name and predicate are none. */
@@ -37,8 +38,8 @@ export function cleanIndex(draft: IndexDraft): IndexDraft {
 }
 
 const orders = [
-  { value: 'asc', label: 'ASC' },
-  { value: 'desc', label: 'DESC' },
+  { value: 'asc', label: t('asc') },
+  { value: 'desc', label: t('desc') },
 ] as const;
 
 /**
@@ -65,16 +66,16 @@ export function IndexFields({
   return (
     <div className={styles.grid}>
       <TextField
-        label="Name"
+        label={t('name')}
         value={draft.name ?? ''}
-        placeholder="Automatic"
+        placeholder={t('automatic')}
         autoComplete="off"
         onChange={(event) => {
           set({ name: event.target.value });
         }}
       />
       <SelectField
-        label="Algorithm"
+        label={t('algorithm')}
         value={draft.method}
         options={indexMethods(engine)}
         onValueChange={(method: IndexMethodDto) => {
@@ -90,13 +91,13 @@ export function IndexFields({
             set({ unique: event.target.checked });
           }}
         />
-        Unique
+        {t('unique')}
       </label>
       {features.partialIndexes && (
         <TextField
-          label="Condition (partial index)"
+          label={t('conditionPartialIndex')}
           className={styles.wide}
-          placeholder="deleted_at IS NULL"
+          placeholder={t('deletedNull')}
           value={draft.predicate ?? ''}
           spellCheck={false}
           onChange={(event) => {
@@ -130,7 +131,7 @@ function KeyColumns({
   };
   return (
     <fieldset className={[styles.keys, styles.wide].join(' ')}>
-      <legend>Columns, in key order</legend>
+      <legend>{t('columnsKeyOrder')}</legend>
       {columns.map((column) => {
         const position = draft.columns.indexOf(column);
         return (
@@ -148,7 +149,7 @@ function KeyColumns({
             </label>
             {position >= 0 && (
               <select
-                aria-label={`Order of ${column}`}
+                aria-label={t('orderColumn', { column })}
                 value={draft.descending.includes(column) ? 'desc' : 'asc'}
                 onChange={(event) => {
                   const rest = draft.descending.filter(

@@ -10,6 +10,7 @@ import { ValueInspector } from '../value/ValueInspector';
 import type { TableColumnDto } from '@openrows/ipc';
 import type { RowEditor, RowField, RowSource } from './row';
 import styles from './RowDetails.module.css';
+import { t } from './messages/initial';
 
 /** Typing over the value `base` showed; `staged` once handed to the staging API. */
 type Draft = { base: string; text: string; staged: boolean };
@@ -99,7 +100,7 @@ export function DetailsField({
       </div>
       <TextArea
         controlSize="box"
-        aria-label={`Value of ${field.name}`}
+        aria-label={t('valueName', { name: field.name })}
         className={styles.value}
         value={text}
         placeholder={shown.marker}
@@ -158,7 +159,7 @@ function FieldInspection(props: {
           setInspecting(!inspecting);
         }}
       >
-        {inspecting ? 'Hide full value' : 'Full value'}
+        {inspecting ? t('hideFullValue') : t('fullValue')}
       </Button>
       {inspecting && (
         <ValueInspector
@@ -216,7 +217,7 @@ function ValueMenu(props: {
         size="sm"
         variant="ghost"
         className={styles.chevron}
-        aria-label={`Value options for ${field.name}`}
+        aria-label={t('valueOptionsName', { name: field.name })}
         aria-haspopup="menu"
         aria-expanded={open}
         onMouseDown={(event) => {

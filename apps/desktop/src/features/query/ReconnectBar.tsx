@@ -4,25 +4,32 @@ import type { ProfileDto } from '@openrows/ipc';
 import { needsConsent } from '../connections';
 import type { Connections, OpenedDatabase } from '../connections';
 import styles from './Query.module.css';
+import { t } from './initialMessages';
 
 type Status = ReturnType<Connections['statusOf']>;
 
 /** What the bar says for a connection that is not up; `null` while it is. */
 function message(profile: ProfileDto, status: Status): string | null {
   if (status.state === 'failed')
-    return `Could not connect to ${profile.name}: ${status.message}`;
+    return t('couldNotConnect', {
+      name: profile.name,
+      message: status.message,
+    });
   if (status.state !== 'disconnected') return null;
   if (needsConsent(profile))
-    return `${profile.name} is not connected. It asks before writes, so it was not reconnected automatically.`;
-  return `${profile.name} is not connected.`;
+    return t('nameNotConnected', { name: profile.name });
+  return t('nameNotConnected2', { name: profile.name });
 }
 
 /** What the bar says about the tab's database session; `null` while it is up. */
 function databaseMessage(database: OpenedDatabase | undefined): string | null {
   if (database?.state === 'reconnecting')
-    return `The connection to ${database.name} was lost. Reconnecting… Queries wait until it is back.`;
+    return t('connectionNameWas', { name: database.name });
   if (database?.state === 'failed' && database.lost)
-    return `Lost the connection to ${database.name}: ${database.message}`;
+    return t('lostConnectionName', {
+      name: database.name,
+      message: database.message,
+    });
   return null;
 }
 
@@ -46,7 +53,7 @@ export function ReconnectBar(props: {
       <div className={styles.reconnect} role="status">
         <span>{text}</span>
         <Button size="sm" onClick={props.onConnect}>
-          {props.status.state === 'failed' ? 'Reconnect' : 'Connect'}
+          {props.status.state === 'failed' ? t('reconnect') : t('connect')}
         </Button>
       </div>
     );
@@ -57,7 +64,7 @@ export function ReconnectBar(props: {
       <span>{lost}</span>
       {props.database?.state === 'failed' && props.onReopen && (
         <Button size="sm" onClick={props.onReopen}>
-          Reconnect
+          {t('reconnect')}
         </Button>
       )}
     </div>

@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { Icon, IconButton } from '@openrows/ui';
 import type { Catalog } from './useCatalog';
 import styles from './SchemaPicker.module.css';
+import { t } from './messages';
 
 /**
  * Schema of the active database; system schemas only when toggled on.
@@ -31,7 +32,7 @@ export function SchemaPicker({
   return (
     <div className={styles.schema}>
       <IconButton
-        aria-label="Create object"
+        aria-label={t('createObject')}
         aria-haspopup="menu"
         size="sm"
         variant="ghost"
@@ -45,7 +46,7 @@ export function SchemaPicker({
       </IconButton>
       <div className={styles.picker}>
         <select
-          aria-label="Schema"
+          aria-label={t('schema')}
           onContextMenu={(event) => {
             event.preventDefault();
             onMenu?.({ x: event.clientX, y: event.clientY });
@@ -65,7 +66,7 @@ export function SchemaPicker({
         </span>
       </div>
       <IconButton
-        aria-label="Show system schemas"
+        aria-label={t('showSystemSchemas')}
         aria-pressed={systemSchemas}
         size="sm"
         variant="ghost"

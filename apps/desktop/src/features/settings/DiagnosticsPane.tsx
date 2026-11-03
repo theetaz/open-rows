@@ -6,13 +6,14 @@ import { SettingRow } from '../appearance/InterfaceSettings';
 import { diagnosticsSettings, updateDiagnostics } from './diagnostics';
 import type { LogLevel } from './diagnostics';
 import styles from '../appearance/Appearance.module.css';
+import { t } from './messages/lazyGeneral';
 
 const LEVELS: readonly { value: LogLevel; label: string }[] = [
-  { value: 'error', label: 'Error' },
-  { value: 'warn', label: 'Warn' },
-  { value: 'info', label: 'Info' },
-  { value: 'debug', label: 'Debug' },
-  { value: 'trace', label: 'Trace' },
+  { value: 'error', label: t('error') },
+  { value: 'warn', label: t('warn') },
+  { value: 'info', label: t('info') },
+  { value: 'debug', label: t('debug') },
+  { value: 'trace', label: t('trace') },
 ];
 
 /** Settings ▸ Diagnostics: the log level, the logs folder and the crash-report stub. */
@@ -21,15 +22,12 @@ export function DiagnosticsPane(): React.JSX.Element {
   const [failure, setFailure] = useState<string | null>(null);
   return (
     <>
-      <section aria-label="Logs">
-        <h3>Logs</h3>
+      <section aria-label={t('logs')}>
+        <h3>{t('logs')}</h3>
         <div className={styles.settingsGroup}>
-          <SettingRow
-            title="Log level"
-            description="What the log file records: daily files, seven kept. Logs never hold passwords or query text. OPENROWS_LOG overrides this, and a change applies at the next launch."
-          >
+          <SettingRow title={t('logLevel')} description={t('whatLogFile')}>
             <SegmentedControl
-              aria-label="Log level"
+              aria-label={t('logLevel')}
               options={LEVELS}
               value={diagnostics.logLevel}
               onValueChange={(logLevel) => {
@@ -37,10 +35,7 @@ export function DiagnosticsPane(): React.JSX.Element {
               }}
             />
           </SettingRow>
-          <SettingRow
-            title="Logs folder"
-            description="Open the folder with the log files, for example to attach them to a bug report."
-          >
+          <SettingRow title={t('logsFolder')} description={t('openFolderLog')}>
             <Button
               onClick={() => {
                 openLogs().catch((error: unknown) => {
@@ -50,21 +45,21 @@ export function DiagnosticsPane(): React.JSX.Element {
                 });
               }}
             >
-              Open logs folder
+              {t('openLogsFolder')}
             </Button>
           </SettingRow>
           {failure && <p role="alert">{failure}</p>}
         </div>
       </section>
-      <section aria-label="Crash reports">
-        <h3>Crash reports</h3>
+      <section aria-label={t('crashReports')}>
+        <h3>{t('crashReports')}</h3>
         <div className={styles.settingsGroup}>
           <SettingRow
-            title="Send crash reports"
-            description="Off. OpenRows sends no telemetry and no crash reports. The opt-in reporter is not built yet; this switch only stores your choice."
+            title={t('sendCrashReports')}
+            description={t('offOpenrowsSends')}
           >
             <Switch
-              aria-label="Send crash reports"
+              aria-label={t('sendCrashReports')}
               checked={diagnostics.crashReports}
               onCheckedChange={(crashReports) => {
                 updateDiagnostics({ crashReports });

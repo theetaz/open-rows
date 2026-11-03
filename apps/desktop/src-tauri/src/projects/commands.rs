@@ -21,6 +21,7 @@ use super::ops::Project;
 use super::paths::ProjectRoot;
 use super::tree::{self, ProjectEntryDto};
 use crate::connections::{IpcError, IpcErrorKind};
+use crate::native_text;
 
 /// An open project: its manifest and its query tree.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Type)]
@@ -82,7 +83,7 @@ pub(crate) async fn project_choose(
         .dialog()
         .file()
         .set_parent(&window)
-        .set_title("Open Project")
+        .set_title(native_text::OPEN_PROJECT)
         .pick_folder(move |picked: Option<FilePath>| {
             // The receiver only disappears when the command was dropped.
             let _ = sender.send(picked);

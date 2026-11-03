@@ -4,6 +4,7 @@ import { objectChange } from '@openrows/ipc';
 import type { ObjectChangeDto, ObjectReply } from '@openrows/ipc';
 import { usePreview } from '../table/structure/forms/usePreview';
 import type { PreviewState } from '../table/structure/forms/usePreview';
+import { t } from './messages';
 
 /** A reviewed change: what runs, its token and the name to type, if any. */
 export type Prepared = Extract<ObjectReply, { kind: 'prepared' }>;
@@ -48,14 +49,14 @@ export function useObjectChange(
   }, []);
   const key = change ? JSON.stringify([scope, change]) : null;
   const preview = usePreview<Prepared>(key, async () => {
-    if (!change) throw new Error('Nothing to review');
+    if (!change) throw new Error(t('nothingReview'));
     const reply = await objectChange({
       ...scope,
       change,
       confirmToken: null,
       confirmName: null,
     });
-    if (reply.kind !== 'prepared') throw new Error('Nothing was reviewed');
+    if (reply.kind !== 'prepared') throw new Error(t('nothingWasReviewed'));
     return reply;
   });
   const reviewed = preview.status === 'ready' ? preview : null;
@@ -74,7 +75,7 @@ export function useObjectChange(
       .then((reply) => {
         if (!alive.current) return;
         if (reply.kind === 'committed') onDone(change);
-        else setError('The statements changed; review them again.');
+        else setError(t('statementsChangedReview'));
       })
       .catch((failure: unknown) => {
         if (alive.current) setError(message(failure));

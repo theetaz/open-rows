@@ -6,6 +6,7 @@ import {
   ROW_LIMITS,
 } from '../query/editorSettings';
 import type { EditorSettings } from '../query/editorSettings';
+import { t } from './messages/lazyGeneral';
 
 /** Settings that are on or off. */
 type Flag = {
@@ -18,30 +19,29 @@ export type FlagSpec = { key: Flag; title: string; description: string };
 export const FLAGS: readonly FlagSpec[] = [
   {
     key: 'lineNumbers',
-    title: 'Line numbers',
-    description: 'Number the lines in the gutter.',
+    title: t('lineNumbers'),
+    description: t('numberLinesGutter'),
   },
   {
     key: 'folding',
-    title: 'Code folding',
-    description: 'Fold statements, comments and bracketed blocks.',
+    title: t('codeFolding'),
+    description: t('foldStatementsComments'),
   },
-  { key: 'wrap', title: 'Wrap lines', description: 'Soft-wrap long lines.' },
+  { key: 'wrap', title: t('wrapLines'), description: t('softWrapLong') },
   {
     key: 'invisibles',
-    title: 'Show invisibles',
-    description: 'Mark spaces and tabs.',
+    title: t('showInvisibles'),
+    description: t('markSpacesTabs'),
   },
   {
     key: 'highlightQuery',
-    title: 'Highlight current query',
-    description: 'Tint the statement ⌘↵ runs.',
+    title: t('highlightCurrentQuery'),
+    description: t('tintStatementRuns'),
   },
   {
     key: 'autoSave',
-    title: 'Auto Save',
-    description:
-      'Keep query text across launches and write file-bound tabs as you type.',
+    title: t('autoSave'),
+    description: t('keepQueryText'),
   },
 ];
 
@@ -49,55 +49,55 @@ export const FLAGS: readonly FlagSpec[] = [
 export const COMPLETION_FLAGS: readonly FlagSpec[] = [
   {
     key: 'autocomplete',
-    title: 'Autocomplete',
-    description: 'Open suggestions while typing; ⌃Space always opens them.',
+    title: t('autocomplete'),
+    description: t('openSuggestionsWhile'),
   },
   {
     key: 'upperKeywords',
-    title: 'Uppercase keywords',
-    description: 'Complete keywords in upper case, else lower case.',
+    title: t('uppercaseKeywords'),
+    description: t('completeKeywordsUpper'),
   },
   {
     key: 'completeSchemas',
-    title: 'Suggest schemas',
-    description: 'Include schema names in suggestions.',
+    title: t('suggestSchemas'),
+    description: t('includeSchemaNames'),
   },
   {
     key: 'completeTables',
-    title: 'Suggest tables',
-    description: 'Include tables and views in suggestions.',
+    title: t('suggestTables'),
+    description: t('includeTablesViews'),
   },
   {
     key: 'completeColumns',
-    title: 'Suggest columns',
-    description: 'Include columns in suggestions.',
+    title: t('suggestColumns'),
+    description: t('includeColumnsSuggestions'),
   },
   {
     key: 'completeSnippets',
-    title: 'Suggest snippets',
-    description: 'Offer snippets when their prefix is typed.',
+    title: t('suggestSnippets'),
+    description: t('offerSnippetsWhen'),
   },
   {
     key: 'qualifyNames',
-    title: 'Schema-qualified names',
-    description: 'Insert catalog objects as schema.name.',
+    title: t('schemaQualifiedNames'),
+    description: t('insertCatalogObjects'),
   },
   {
     key: 'closeDelimiters',
-    title: 'Close brackets and quotes',
-    description: 'Type the closing bracket or quote with the opening one.',
+    title: t('closeBracketsQuotes'),
+    description: t('typeClosingBracket'),
   },
 ];
 
 /** Which key accepts a suggestion (FR-EDIT-13). */
 export const ACCEPT_CHOICE: Choice = {
   key: 'acceptKey',
-  title: 'Accept suggestion with',
-  description: 'Key that inserts the highlighted suggestion.',
+  title: t('acceptSuggestion'),
+  description: t('keyInsertsHighlighted'),
   options: [
-    { value: '"enter"', label: 'Return' },
-    { value: '"tab"', label: 'Tab' },
-    { value: '"both"', label: 'Return or Tab' },
+    { value: '"enter"', label: t('return') },
+    { value: '"tab"', label: t('tab') },
+    { value: '"both"', label: t('returnTab') },
   ],
 };
 
@@ -112,22 +112,22 @@ export type Choice = {
 export const CHOICES: readonly Choice[] = [
   {
     key: 'fontSize',
-    title: 'Font size',
-    description: 'Text size of SQL editors.',
+    title: t('fontSize'),
+    description: t('textSizeSql'),
     options: [
-      { value: 'null', label: 'Appearance default' },
+      { value: 'null', label: t('appearanceDefault') },
       ...FONT_SIZES.map((size) => ({
         value: String(size),
-        label: `${String(size)} px`,
+        label: t('sizePx', { size: String(size) }),
       })),
     ],
   },
   {
     key: 'fontFamily',
-    title: 'Font',
-    description: 'Typeface of SQL editors.',
+    title: t('font'),
+    description: t('typefaceSqlEditors'),
     options: [
-      { value: 'null', label: 'Appearance default' },
+      { value: 'null', label: t('appearanceDefault') },
       ...FONT_FAMILIES.map((family) => ({
         value: JSON.stringify(family),
         label: family,
@@ -136,19 +136,19 @@ export const CHOICES: readonly Choice[] = [
   },
   {
     key: 'keyBinding',
-    title: 'Key bindings',
-    description: 'Editing keys of SQL editors.',
+    title: t('keyBindings'),
+    description: t('editingKeysSql'),
     options: [
-      { value: '"default"', label: 'Default' },
-      { value: '"vim"', label: 'Vim' },
+      { value: '"default"', label: t('default') },
+      { value: '"vim"', label: t('vim') },
     ],
   },
   {
     key: 'rowLimit',
-    title: 'Row limit',
-    description: 'Rows kept per result set when running.',
+    title: t('rowLimit'),
+    description: t('rowsKeptPer'),
     options: [
-      { value: 'null', label: 'No limit' },
+      { value: 'null', label: t('noLimit') },
       ...ROW_LIMITS.map((rows) => ({
         value: String(rows),
         label: rows.toLocaleString('en-US'),
@@ -160,11 +160,11 @@ export const CHOICES: readonly Choice[] = [
 /** When suggestions open while typing. */
 export const DELAY_CHOICE: Choice = {
   key: 'completionDelay',
-  title: 'Suggestion delay',
-  description: 'Pause after typing before suggestions open.',
+  title: t('suggestionDelay'),
+  description: t('pauseAfterTyping'),
   options: COMPLETION_DELAYS.map((delay) => ({
     value: String(delay),
-    label: delay ? `${String(delay)} ms` : 'Immediately',
+    label: delay ? t('delayMs', { delay: String(delay) }) : t('immediately'),
   })),
 };
 
@@ -172,21 +172,20 @@ export const DELAY_CHOICE: Choice = {
 export const INDENT_CHOICES: readonly Choice[] = [
   {
     key: 'indentWidth',
-    title: 'Indent width',
-    description:
-      'Spaces per indent level and tab width, in the editor and when beautifying.',
+    title: t('indentWidth'),
+    description: t('spacesPerIndent'),
     options: [
-      { value: '2', label: '2 spaces' },
-      { value: '4', label: '4 spaces' },
+      { value: '2', label: t('n2Spaces') },
+      { value: '4', label: t('n4Spaces') },
     ],
   },
   {
     key: 'indentWith',
-    title: 'Indent with',
-    description: 'What the editor and Beautify indent with.',
+    title: t('indent'),
+    description: t('whatEditorBeautify'),
     options: [
-      { value: '"spaces"', label: 'Spaces' },
-      { value: '"tabs"', label: 'Tabs' },
+      { value: '"spaces"', label: t('spaces') },
+      { value: '"tabs"', label: t('tabs') },
     ],
   },
 ];
@@ -195,28 +194,28 @@ export const INDENT_CHOICES: readonly Choice[] = [
 export const FORMAT_CHOICES: readonly Choice[] = [
   {
     key: 'keywordCase',
-    title: 'Keyword case',
-    description: 'Case of SQL keywords when beautifying.',
+    title: t('keywordCase'),
+    description: t('caseSqlKeywords'),
     options: [
-      { value: '"upper"', label: 'UPPER' },
-      { value: '"lower"', label: 'lower' },
-      { value: '"preserve"', label: 'As typed' },
+      { value: '"upper"', label: t('upper') },
+      { value: '"lower"', label: t('lower') },
+      { value: '"preserve"', label: t('typed') },
     ],
   },
   {
     key: 'indentStyle',
-    title: 'Indent type',
-    description: 'Standard indents, or keywords aligned in a column.',
+    title: t('indentType'),
+    description: t('standardIndentsKeywords'),
     options: [
-      { value: '"standard"', label: 'Standard' },
-      { value: '"tabularLeft"', label: 'Tabular left' },
-      { value: '"tabularRight"', label: 'Tabular right' },
+      { value: '"standard"', label: t('standard') },
+      { value: '"tabularLeft"', label: t('tabularLeft') },
+      { value: '"tabularRight"', label: t('tabularRight') },
     ],
   },
   {
     key: 'linesBetweenQueries',
-    title: 'Lines between queries',
-    description: 'Empty lines between statements.',
+    title: t('linesBetweenQueries'),
+    description: t('emptyLinesBetween'),
     options: [
       { value: '1', label: '1' },
       { value: '2', label: '2' },
@@ -227,6 +226,6 @@ export const FORMAT_CHOICES: readonly Choice[] = [
 
 export const DENSE: FlagSpec = {
   key: 'denseOperators',
-  title: 'Dense operators',
-  description: 'Write operators without surrounding spaces (a=1).',
+  title: t('denseOperators'),
+  description: t('writeOperatorsWithout'),
 };

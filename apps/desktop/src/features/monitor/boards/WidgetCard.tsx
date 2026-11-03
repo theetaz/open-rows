@@ -6,11 +6,12 @@ import { BoardChart } from './BoardChart';
 import { chartData, statValue, tableData } from './boardData';
 import type { WidgetRun } from './useBoardRuns';
 import styles from './Boards.module.css';
+import { t } from '../messages/lazyBoards';
 
 const VISIBLE_ROWS = 200;
 const VIEWS = [
-  { value: 'chart', label: 'Chart' },
-  { value: 'table', label: 'Table' },
+  { value: 'chart', label: t('chart') },
+  { value: 'table', label: t('table') },
 ] as const;
 
 /** The result as an accessible table; the same values the chart draws. */
@@ -23,11 +24,16 @@ function ResultTable(props: {
     <div className={styles.tableWrap}>
       <table className={styles.table}>
         <caption className={styles.note}>
-          {props.title}:{' '}
           {rows.length > VISIBLE_ROWS
-            ? `first ${String(VISIBLE_ROWS)} of `
-            : ''}
-          {String(rows.length)} rows
+            ? t('titleFirstVisible', {
+                title: props.title,
+                visibleRows: String(VISIBLE_ROWS),
+                count: String(rows.length),
+              })
+            : t('titleCountRows', {
+                title: props.title,
+                count: String(rows.length),
+              })}
         </caption>
         <thead>
           <tr>
@@ -54,11 +60,18 @@ function ResultTable(props: {
 
 function summary(reply: BoardRunReply): string {
   const rows = reply.result.rows.length;
-  const truncated = reply.result.truncated
-    ? ` · stopped at the ${reply.result.truncated === 'rows' ? 'row' : 'byte'} limit`
-    : '';
-  const mode = reply.readOnly === 'enforced' ? 'read-only' : 'classified read';
-  return `${String(rows)} rows · ${String(Math.round(reply.elapsedMs ?? 0))} ms · ${mode}${truncated}`;
+  const parts = [
+    t('rowsShown', { rows: String(rows) }),
+    `${String(Math.round(reply.elapsedMs ?? 0))} ms`,
+    reply.readOnly === 'enforced' ? t('readOnlyMode') : t('classifiedRead'),
+  ];
+  if (reply.result.truncated)
+    parts.push(
+      reply.result.truncated === 'rows'
+        ? t('stoppedRowLimit')
+        : t('stoppedByteLimit'),
+    );
+  return parts.join(' · ');
 }
 
 function Body(props: {
@@ -104,7 +117,7 @@ export function WidgetCard(props: {
         <h3 title={widget.title}>{widget.title}</h3>
         {widget.kind === 'chart' && (
           <SegmentedControl
-            aria-label={`${widget.title} view`}
+            aria-label={t('titleView', { title: widget.title })}
             options={VIEWS}
             value={view}
             onValueChange={setView}
@@ -112,15 +125,17 @@ export function WidgetCard(props: {
           />
         )}
         <Button size="sm" variant="ghost" onClick={props.onEdit}>
-          Edit
+          {t('edit')}
         </Button>
         <Button size="sm" variant="ghost" onClick={props.onRemove}>
-          Remove
+          {t('remove')}
         </Button>
       </header>
       <div>
-        {!run && <p className={styles.note}>Not run yet.</p>}
-        {run?.status === 'running' && <p className={styles.note}>Running…</p>}
+        {!run && <p className={styles.note}>{t('notRunYet')}</p>}
+        {run?.status === 'running' && (
+          <p className={styles.note}>{t('running')}</p>
+        )}
         {run?.status === 'error' && (
           <p role="alert" className={styles.error}>
             {run.message}

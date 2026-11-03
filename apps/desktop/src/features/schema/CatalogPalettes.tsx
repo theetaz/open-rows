@@ -10,6 +10,7 @@ import { quickIndex, searchQuick } from './quickSearch';
 import { useQuerySearch } from './useQuerySearch';
 import { useIndexSearch } from './useCatalogIndex';
 import type { Resource } from './useResources';
+import { t } from './messages';
 
 /** Most quick-open matches listed. */
 const QUICK_OPEN_LIMIT = 100;
@@ -19,7 +20,7 @@ const EMPTY_OBJECTS: readonly ObjectDto[] = [];
 function statusText(resource: Resource<unknown>, noun: string): string | null {
   if (resource.status === 'error') return resource.message;
   if (resource.status === 'ready') return null;
-  return `Loading ${noun}…`;
+  return t('loadingNoun', { noun });
 }
 
 const entryId = (object: ObjectDto): string =>
@@ -33,7 +34,13 @@ function entryItem(object: ObjectDto): PaletteItem {
     label: objectLabel(object),
     glyph: kind.glyph,
     searchText: `${object.name} ${object.schema}`,
-    detail: `${kind.label} · ${object.schema}${estimate ? ` · ${estimate} rows (estimate)` : ''}`,
+    detail: estimate
+      ? t('labelSchemaEstimate', {
+          label: kind.label,
+          schema: object.schema,
+          estimate,
+        })
+      : `${kind.label} · ${object.schema}`,
   };
 }
 
@@ -67,10 +74,10 @@ export function QuickOpen(props: {
     catalog.offline ??
     (catalog.database
       ? statusText(failed ?? catalog.index, 'objects')
-      : 'No database selected');
+      : t('noDatabaseSelected'));
   return (
     <Palette
-      title="Quick open"
+      title={t('quickOpen')}
       onClose={props.onClose}
       onQueryChange={setQuery}
       onChoose={(id) => {

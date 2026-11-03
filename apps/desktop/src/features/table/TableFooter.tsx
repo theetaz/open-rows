@@ -11,18 +11,19 @@ import { tableSettings } from '../settings/tableSettings';
 import { TableSearch } from './TableSearch';
 import styles from './Table.module.css';
 import extras from './TableExtras.module.css';
+import { t } from './messages/lazyData';
 
 const modes: readonly { value: ViewMode; label: string }[] = [
-  { value: 'data', label: 'Data' },
-  { value: 'structure', label: 'Structure' },
-  { value: 'indexes', label: 'Index' },
+  { value: 'data', label: t('data') },
+  { value: 'structure', label: t('structure') },
+  { value: 'indexes', label: t('index') },
 ];
 
 /** `1–300 of ~1,811 rows`, or what the page is doing. */
 function pageText(state: TableTabState): string {
   const { entry, result, view, total } = state;
-  if (isActive(entry.run)) return 'Loading rows…';
-  if (!result?.done) return entry.run.status === 'failed' ? 'Failed' : '';
+  if (isActive(entry.run)) return t('loadingRows');
+  if (!result?.done) return entry.run.status === 'failed' ? t('failed') : '';
   return rangeLabel(view.offset, result.rows, total);
 }
 
@@ -37,7 +38,7 @@ function CountControl({
   if (current && count.status === 'counting')
     return (
       <Button size="sm" variant="ghost" onClick={state.cancelCount}>
-        Counting… Cancel
+        {t('countingCancel')}
       </Button>
     );
   if (current && count.status === 'done') return null;
@@ -48,18 +49,19 @@ function CountControl({
       title={
         current && count.status === 'error'
           ? count.message
-          : 'Count rows exactly'
+          : t('countRowsExactly')
       }
       onClick={state.actions.count}
     >
-      Count
+      {t('count')}
     </Button>
   );
 }
 
 /** The footer's `+` button: + Row, + Column or + Index. */
 export type FooterAdd = {
-  label: 'Row' | 'Column' | 'Index';
+  label: string;
+  ariaLabel: string;
   /** Absent when nothing can be added. */
   run?: (() => void) | undefined;
   title: string;
@@ -101,9 +103,9 @@ export function TableFooter({
 }): React.JSX.Element {
   const { view, actions } = state;
   return (
-    <footer className={styles.footer} aria-label="Table footer">
+    <footer className={styles.footer} aria-label={t('tableFooter')}>
       <SegmentedControl
-        aria-label="Table view"
+        aria-label={t('tableView')}
         size="compact"
         tone="accent"
         options={modes}
@@ -112,7 +114,7 @@ export function TableFooter({
       />
       <Button
         size="sm"
-        aria-label={`Add ${add.label.toLowerCase()}`}
+        aria-label={add.ariaLabel}
         disabled={!add.run}
         title={add.title}
         onClick={add.run}
@@ -142,10 +144,10 @@ function StructureTools({
         </span>
       </span>
       <Button size="sm" onClick={structure.onConstraints}>
-        Constraints
+        {t('constraints')}
       </Button>
       <Button size="sm" onClick={structure.onTriggers}>
-        Triggers
+        {t('triggers')}
       </Button>
       <Button
         size="sm"
@@ -156,7 +158,7 @@ function StructureTools({
           structure.onDdl(event.currentTarget.getBoundingClientRect());
         }}
       >
-        DDL
+        {t('ddl')}
       </Button>
     </>
   );
@@ -179,7 +181,7 @@ function DataTools({
           <span
             className={extras.aggregate}
             role="status"
-            aria-label="Selection statistics"
+            aria-label={t('selectionStatistics')}
             title={data.aggregate}
           >
             {data.aggregate}
@@ -188,7 +190,7 @@ function DataTools({
           <span
             className={styles.range}
             role="status"
-            aria-label="Rows shown"
+            aria-label={t('rowsShown')}
             title={pageText(state)}
           >
             {pageText(state)}
@@ -200,23 +202,23 @@ function DataTools({
       {ready && <TableSearch state={state} />}
       <Button
         size="sm"
-        aria-label="Filters"
-        title="Filters (⌘F)"
+        aria-label={t('filters')}
+        title={t('filtersF')}
         aria-pressed={view.filtersOpen}
         onClick={actions.toggleFilters}
       >
         <Icon name="filter" />
-        <span className={styles.label}>Filters</span>
+        <span className={styles.label}>{t('filters')}</span>
       </Button>
       <Button
         size="sm"
-        aria-label="Columns"
-        title="Columns"
+        aria-label={t('columns')}
+        title={t('columns')}
         aria-pressed={view.columnsOpen}
         onClick={actions.toggleColumns}
       >
         <Icon name="columns" />
-        <span className={styles.label}>Columns</span>
+        <span className={styles.label}>{t('columns')}</span>
       </Button>
       <Paging state={state} ready={ready} />
     </>
@@ -238,8 +240,8 @@ function DataActions({
       <IconButton
         size="sm"
         variant="ghost"
-        aria-label="Reload rows (⌘R)"
-        title="Reload rows (⌘R)"
+        aria-label={t('reloadRowsR')}
+        title={t('reloadRowsR')}
         disabled={!ready || isActive(state.entry.run)}
         onClick={data.reload}
       >
@@ -247,14 +249,14 @@ function DataActions({
       </IconButton>
       <Button
         size="sm"
-        aria-label="Row form"
-        title="Show the focused row as a form (⌥⌘F)"
+        aria-label={t('rowForm')}
+        title={t('showFocusedRow')}
         aria-pressed={state.view.form}
         disabled={!state.result?.done}
         onClick={data.toggleForm}
       >
         <Icon name="list" />
-        <span className={styles.label}>Form</span>
+        <span className={styles.label}>{t('form')}</span>
       </Button>
     </>
   );
@@ -274,7 +276,7 @@ function Paging({
       <IconButton
         size="sm"
         variant="ghost"
-        aria-label="Previous page (⌘[)"
+        aria-label={t('previousPage')}
         disabled={!ready || view.offset === 0 || isActive(entry.run)}
         onClick={() => {
           actions.page(-1);
@@ -286,7 +288,7 @@ function Paging({
       <IconButton
         size="sm"
         variant="ghost"
-        aria-label="Next page (⌘])"
+        aria-label={t('nextPage')}
         disabled={!ready || !canNext(entry)}
         onClick={() => {
           actions.page(1);
@@ -307,15 +309,15 @@ function DisplayMenu({
   const [at, setAt] = useState<{ x: number; y: number } | null>(null);
   const defaults = tableSettings.useValue();
   const items = [
-    ['rowNumbers', 'Row numbers', view.rowNumbers],
-    ['striped', 'Alternate row backgrounds', view.striped ?? defaults.striped],
+    ['rowNumbers', t('rowNumbers'), view.rowNumbers],
+    ['striped', t('alternateRowBackgrounds'), view.striped ?? defaults.striped],
   ] as const;
   return (
     <>
       <IconButton
         size="sm"
         variant="ghost"
-        aria-label="Display options"
+        aria-label={t('displayOptions')}
         aria-haspopup="menu"
         aria-expanded={at !== null}
         onClick={(event) => {
@@ -329,7 +331,7 @@ function DisplayMenu({
         <PointMenu
           x={at.x}
           y={at.y - 80}
-          label="Display options"
+          label={t('displayOptions')}
           onClose={() => {
             setAt(null);
           }}

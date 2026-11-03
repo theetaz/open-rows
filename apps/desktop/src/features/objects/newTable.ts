@@ -17,6 +17,7 @@ import { cleanForeignKey } from '../table/structure/forms/ForeignKeyFields';
 import type { ForeignKeyDraft } from '../table/structure/forms/ForeignKeyFields';
 import { cleanIndex } from '../table/structure/forms/IndexFields';
 import type { IndexDraft } from '../table/structure/forms/IndexFields';
+import { t } from './messages';
 
 /** What the new-table editor edits. */
 export type TableDraft = {
@@ -59,15 +60,16 @@ export function emptyTable(
 
 /** Why the table cannot be created yet, or `null`. */
 export function tableProblem(draft: TableDraft): string | null {
-  if (!draft.name.trim()) return 'Name the table.';
-  if (!draft.columns.length) return 'Add at least one column.';
+  if (!draft.name.trim()) return t('nameTable');
+  if (!draft.columns.length) return t('addLeastOne');
   for (const [index, column] of draft.columns.entries()) {
     const problem = columnProblem(column);
-    if (problem) return `Column ${String(index + 1)}: ${problem}`;
+    if (problem)
+      return t('columnValueProblem', { value: String(index + 1), problem });
   }
   const names = draft.columns.map((column) => column.name.trim());
   const twice = names.find((name, index) => names.indexOf(name) !== index);
-  return twice ? `Two columns are named ${twice}.` : null;
+  return twice ? t('twoColumnsNamed', { twice }) : null;
 }
 
 /** Rename a column everywhere the draft names it. */

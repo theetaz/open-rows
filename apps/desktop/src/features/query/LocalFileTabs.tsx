@@ -6,6 +6,7 @@ import { useEditorSettings } from './editorSettings';
 import { TabStrip } from './TabStrip';
 import type { QueryTabs } from './useQueryTabs';
 import styles from './Query.module.css';
+import { t } from './lazyMessages';
 
 const scope = { connectionId: 'local-files', database: 'Files' };
 
@@ -24,15 +25,12 @@ export function LocalFileTabs({
         tabs={tabs}
         list={tabs.tabsFor(scope)}
         active={tab?.id ?? ''}
-        connection={{ name: 'Local SQL files' }}
+        connection={{ name: t('localSqlFiles') }}
         onAdd={() => {
           tabs.open(scope);
         }}
       />
-      <p role="status">
-        Local SQL document. Select a database and open the file there to run SQL
-        explicitly.
-      </p>
+      <p role="status">{t('localSqlDocument')}</p>
       {tab && (
         <QueryEditor
           key={tab.id}

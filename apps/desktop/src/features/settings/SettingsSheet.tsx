@@ -19,6 +19,7 @@ import { SnippetsPane } from '../snippets';
 import { SettingsQuery } from './settingsSearch';
 import styles from '../appearance/Appearance.module.css';
 import searchStyles from './Settings.module.css';
+import { t } from './messages/lazyGeneral';
 
 const MonitorSettingsPane = lazy(
   () => import('../monitor/MonitorSettingsPane'),
@@ -42,32 +43,32 @@ export type SettingsSection =
   | 'json';
 
 const SECTIONS: readonly { value: SettingsSection; label: string }[] = [
-  { value: 'security', label: 'Security' },
-  { value: 'ai', label: 'AI' },
-  { value: 'monitoring', label: 'Monitoring' },
-  { value: 'tables', label: 'Tables' },
-  { value: 'locations', label: 'Locations' },
-  { value: 'general', label: 'General' },
-  { value: 'appearance', label: 'Appearance' },
-  { value: 'editor', label: 'Editor' },
-  { value: 'execution', label: 'Execution' },
-  { value: 'snippets', label: 'Snippets' },
-  { value: 'shortcuts', label: 'Keymap' },
-  { value: 'tools', label: 'Tools' },
-  { value: 'diagnostics', label: 'Diagnostics' },
-  { value: 'json', label: 'JSON' },
+  { value: 'security', label: t('security') },
+  { value: 'ai', label: t('ai') },
+  { value: 'monitoring', label: t('monitoring') },
+  { value: 'tables', label: t('tables') },
+  { value: 'locations', label: t('locations') },
+  { value: 'general', label: t('general') },
+  { value: 'appearance', label: t('appearance') },
+  { value: 'editor', label: t('editor') },
+  { value: 'execution', label: t('execution') },
+  { value: 'snippets', label: t('snippets') },
+  { value: 'shortcuts', label: t('keymap') },
+  { value: 'tools', label: t('tools') },
+  { value: 'diagnostics', label: t('diagnostics') },
+  { value: 'json', label: t('json') },
 ];
 
 function Pane({ section }: { section: SettingsSection }): React.JSX.Element {
   if (section === 'monitoring')
     return (
-      <Suspense fallback={<p>Loading monitoring settings…</p>}>
+      <Suspense fallback={<p>{t('loadingMonitoringSettings')}</p>}>
         <MonitorSettingsPane />
       </Suspense>
     );
   if (section === 'ai')
     return (
-      <Suspense fallback={<p role="status">Loading AI settings…</p>}>
+      <Suspense fallback={<p role="status">{t('loadingAiSettings')}</p>}>
         <AiPane />
       </Suspense>
     );
@@ -102,20 +103,20 @@ export function SettingsSheet(props: {
   const [query, setQuery] = useState('');
   const searching = query.trim() !== '';
   const title = searching
-    ? 'Search'
+    ? t('search')
     : (SECTIONS.find((item) => item.value === section)?.label ?? '');
   return (
-    <Sheet title="Settings" size="appearance" onClose={props.onClose}>
+    <Sheet title={t('settings')} size="appearance" onClose={props.onClose}>
       <div className={searchStyles.layout}>
         <header className={[styles.header, searchStyles.top].join(' ')}>
           <h1>
-            <span>Settings /</span> {title}
+            <span>{t('settings2')}</span> {title}
           </h1>
           <TextField
             className={searchStyles.search}
             type="search"
-            aria-label="Search settings"
-            placeholder="Search"
+            aria-label={t('searchSettings')}
+            placeholder={t('search')}
             leadingIcon={<Icon name="search" />}
             value={query}
             onChange={(event) => {
@@ -123,11 +124,11 @@ export function SettingsSheet(props: {
             }}
           />
           <Button onClick={props.onClose} data-initial-focus="true">
-            Done
+            {t('done')}
           </Button>
         </header>
         <SegmentedControl
-          aria-label="Settings section"
+          aria-label={t('settingsSection')}
           className={searchStyles.sections}
           tone="accent"
           options={SECTIONS}

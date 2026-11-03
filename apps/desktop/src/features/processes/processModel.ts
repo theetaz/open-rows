@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ProcessDto } from '@openrows/ipc';
 import type { RowField } from '../table/row';
+import { t } from './messages';
 
 /** A sortable process-list column. */
 type ProcessColumn = {
@@ -11,16 +12,16 @@ type ProcessColumn = {
 
 /** Columns of the list, left to right. */
 export const PROCESS_COLUMNS: readonly ProcessColumn[] = [
-  { key: 'id', title: 'PID', width: 80 },
-  { key: 'user', title: 'User', width: 110 },
-  { key: 'database', title: 'Database', width: 120 },
-  { key: 'client', title: 'Client', width: 150 },
-  { key: 'application', title: 'Application', width: 160 },
-  { key: 'state', title: 'State', width: 120 },
-  { key: 'wait', title: 'Waiting for', width: 140 },
-  { key: 'durationMs', title: 'Duration', width: 90 },
-  { key: 'queryStart', title: 'Query start', width: 190 },
-  { key: 'query', title: 'Query', width: 420 },
+  { key: 'id', title: t('pid'), width: 80 },
+  { key: 'user', title: t('user'), width: 110 },
+  { key: 'database', title: t('database'), width: 120 },
+  { key: 'client', title: t('client'), width: 150 },
+  { key: 'application', title: t('application'), width: 160 },
+  { key: 'state', title: t('state'), width: 120 },
+  { key: 'wait', title: t('waiting'), width: 140 },
+  { key: 'durationMs', title: t('duration'), width: 90 },
+  { key: 'queryStart', title: t('queryStart'), width: 190 },
+  { key: 'query', title: t('query'), width: 420 },
 ];
 
 /** The sorted column and direction. */
@@ -127,6 +128,6 @@ export function processLabel(process: ProcessDto): string {
     .filter((part): part is string => Boolean(part))
     .join(', ');
   return owner
-    ? `process ${String(process.id)} (${owner})`
-    : `process ${String(process.id)}`;
+    ? t('processIdOwner', { id: String(process.id), owner })
+    : t('processId', { id: String(process.id) });
 }

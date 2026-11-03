@@ -6,6 +6,7 @@ import { cascades } from '../table/structure/forms/dialect';
 import { ObjectSheet } from './ObjectSheet';
 import type { ChangeScope } from './useObjectChange';
 import styles from '../table/structure/forms/Forms.module.css';
+import { t } from './messages';
 
 /** The table a sheet acts on. */
 type TableRef = ChangeScope & { schema: string; name: string };
@@ -32,19 +33,19 @@ export function RenameTableSheet({
   const changed = name.trim() !== '' && name.trim() !== table.name;
   return (
     <ObjectSheet
-      title={`Rename table ${table.name}`}
+      title={t('renameTableName', { name: table.name })}
       scope={table}
       change={
         changed
           ? { kind: 'renameTable', target: target(table), name: name.trim() }
           : null
       }
-      action="Rename"
+      action={t('rename')}
       onClose={onClose}
       onDone={onDone}
     >
       <TextField
-        label="New name"
+        label={t('newName')}
         value={name}
         autoComplete="off"
         spellCheck={false}
@@ -74,15 +75,15 @@ export function DuplicateTableSheet({
     : null;
   return (
     <ObjectSheet
-      title={`Duplicate table ${table.name}`}
+      title={t('duplicateTableName', { name: table.name })}
       scope={table}
       change={change}
-      action="Duplicate"
+      action={t('duplicate')}
       onClose={onClose}
       onDone={onDone}
     >
       <TextField
-        label="Name of the copy"
+        label={t('nameCopy')}
         value={name}
         autoComplete="off"
         spellCheck={false}
@@ -98,7 +99,7 @@ export function DuplicateTableSheet({
             setWithData(event.target.checked);
           }}
         />
-        Copy the rows too
+        {t('copyRowsToo')}
       </label>
     </ObjectSheet>
   );
@@ -114,15 +115,15 @@ export function TruncateTableSheet({
   const [cascade, setCascade] = useState(false);
   return (
     <ObjectSheet
-      title={`Truncate table ${table.name}`}
+      title={t('truncateTableName', { name: table.name })}
       scope={table}
       change={{ kind: 'truncateTable', target: target(table), cascade }}
-      action="Truncate"
+      action={t('truncate')}
       destructive
       onClose={onClose}
       onDone={onDone}
     >
-      <p>Every row of {table.name} is deleted.</p>
+      <p>{t('everyRowName', { name: table.name })}</p>
       {cascades(engine) && (
         <label className={styles.checkRow}>
           <input
@@ -132,7 +133,7 @@ export function TruncateTableSheet({
               setCascade(event.target.checked);
             }}
           />
-          Also truncate tables whose foreign keys reference it (CASCADE)
+          {t('alsoTruncateTables')}
         </label>
       )}
     </ObjectSheet>

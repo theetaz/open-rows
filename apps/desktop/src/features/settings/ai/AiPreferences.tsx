@@ -3,6 +3,7 @@ import { TextField } from '@openrows/ui';
 import { SettingRow } from '../../appearance/InterfaceSettings';
 import { aiSettings, CLI_TURN } from './aiSettings';
 import { saveAiSettings } from './aiActions';
+import { t } from '../messages/lazyAi';
 const useAiSettings = aiSettings.useValue;
 /** Global network switch and explicitly selected default model. */
 export function AiPreferences(props: {
@@ -12,12 +13,9 @@ export function AiPreferences(props: {
   const settings = useAiSettings();
   return (
     <>
-      <SettingRow
-        title="AI features off"
-        description="Off blocks all provider requests and cancels active verification. Verify reads models/authentication metadata only; it never generates text or sends database context."
-      >
+      <SettingRow title={t('aiFeaturesOff')} description={t('offBlocksAll')}>
         <input
-          aria-label="AI features off"
+          aria-label={t('aiFeaturesOff')}
           type="checkbox"
           checked={!settings.enabled}
           disabled={props.busy}
@@ -28,11 +26,11 @@ export function AiPreferences(props: {
         />
       </SettingRow>
       <SettingRow
-        title="Default model"
-        description="Choose a provider below and enter a model ID from Verify. Model capabilities and limits stay unknown unless reported."
+        title={t('defaultModel')}
+        description={t('chooseProviderBelow')}
       >
         <TextField
-          aria-label="Default model"
+          aria-label={t('defaultModel')}
           value={settings.defaultModel}
           maxLength={256}
           disabled={!settings.defaultProvider || props.busy}
@@ -45,11 +43,11 @@ export function AiPreferences(props: {
         />
       </SettingRow>
       <SettingRow
-        title="Codex turn deadline"
-        description="Seconds one Codex request may take, including its reasoning and tool calls (60–900). Cancel, lock and AI off still stop it at once."
+        title={t('codexTurnDeadline')}
+        description={t('secondsOneCodex')}
       >
         <TextField
-          aria-label="Codex turn deadline (seconds)"
+          aria-label={t('codexTurnDeadlineSeconds')}
           type="number"
           min={CLI_TURN.min}
           max={CLI_TURN.max}

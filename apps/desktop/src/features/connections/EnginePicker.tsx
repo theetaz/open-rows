@@ -9,6 +9,7 @@ import type { EngineChoice } from './engines';
 import { useEnginePicker } from './useEnginePicker';
 import type { EnginePicker as PickerState } from './useEnginePicker';
 import styles from './EnginePicker.module.css';
+import { t } from './messages/profile';
 
 /**
  * "New connection", step one (TablePlus): search and a grid of neutral
@@ -21,11 +22,11 @@ export function EnginePicker(props: {
 }): React.JSX.Element {
   const picker = useEnginePicker(props.onCreate);
   return (
-    <Sheet title="New connection" onClose={props.onCancel}>
+    <Sheet title={t('newConnection')} onClose={props.onCancel}>
       <TextField
-        aria-label="Search connection types"
+        aria-label={t('searchConnectionTypes')}
         type="search"
-        placeholder="Search"
+        placeholder={t('search')}
         autoFocus
         autoComplete="off"
         spellCheck={false}
@@ -44,13 +45,13 @@ export function EnginePicker(props: {
         {statusText(picker.current)}
       </p>
       <SheetActions>
-        <Button onClick={props.onCancel}>Cancel</Button>
+        <Button onClick={props.onCancel}>{t('cancel')}</Button>
         <Button
           variant="primary"
           disabled={!picker.current?.engine}
           onClick={picker.create}
         >
-          Create
+          {t('create')}
         </Button>
       </SheetActions>
     </Sheet>
@@ -59,9 +60,9 @@ export function EnginePicker(props: {
 
 function statusText(choice: EngineChoice | undefined): string {
   if (!choice) return '';
-  if (!choice.engine) return `${choice.name} connections are coming soon.`;
+  if (!choice.engine) return t('nameConnectionsComing', { name: choice.name });
   return isBetaEngine(choice.engine)
-    ? `${choice.name} support is in beta (Tier 2); unsupported features say so.`
+    ? t('nameSupportBeta', { name: choice.name })
     : '';
 }
 
@@ -69,11 +70,11 @@ function EngineGrid({ picker }: { picker: PickerState }): React.JSX.Element {
   const id = useId();
   const optionId = (choice: EngineChoice): string => `${id}-${choice.id}`;
   if (!picker.visible.length)
-    return <p className={styles.empty}>No connection type matches.</p>;
+    return <p className={styles.empty}>{t('noConnectionType')}</p>;
   return (
     <div
       role="listbox"
-      aria-label="Connection types"
+      aria-label={t('connectionTypes')}
       tabIndex={0}
       className={styles.grid}
       aria-activedescendant={picker.current && optionId(picker.current)}

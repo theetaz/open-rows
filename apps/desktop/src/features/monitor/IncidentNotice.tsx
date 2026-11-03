@@ -6,6 +6,7 @@ import type { MonitorIncident } from '@openrows/ipc';
 import { useSecurity } from '../security/useSecurity';
 import { formatValue } from './incidentFormat';
 import styles from './IncidentNotice.module.css';
+import { t } from './messages/notices';
 
 type Notice = MonitorIncident & { key: number };
 
@@ -35,7 +36,11 @@ export function IncidentNotice(): React.JSX.Element | null {
   }, [locked]);
   if (locked || !notices.length) return null;
   return (
-    <ul className={styles.notices} role="status" aria-label="Monitor incidents">
+    <ul
+      className={styles.notices}
+      role="status"
+      aria-label={t('monitorIncidents')}
+    >
       {notices.map((notice) => (
         <li key={notice.key} className={styles.notice}>
           <span>{describe(notice)}</span>
@@ -47,7 +52,7 @@ export function IncidentNotice(): React.JSX.Element | null {
               );
             }}
           >
-            Dismiss
+            {t('dismiss')}
           </Button>
         </li>
       ))}
@@ -58,6 +63,11 @@ export function IncidentNotice(): React.JSX.Element | null {
 function describe(notice: Notice): string {
   const { kind, incident } = notice.transition;
   const value = formatValue(incident.rule.metric, incident.last.value);
-  const state = kind === 'opened' ? 'Incident opened' : 'Incident resolved';
-  return `${state}: ${incident.rule.title} on ${notice.target.database} (${value})`;
+  const state = kind === 'opened' ? t('incidentOpened') : t('incidentResolved');
+  return t('stateTitleDatabase', {
+    state,
+    title: incident.rule.title,
+    database: notice.target.database,
+    value,
+  });
 }

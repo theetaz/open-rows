@@ -6,6 +6,7 @@ import { SharingControls } from './SharingControls';
 import { RedactionControls } from './RedactionControls';
 import { ContextPreview } from './ContextPreview';
 import styles from './Ai.module.css';
+import { t } from '../messages/lazyAi';
 /** Connection settings editor backed by native policy storage, separate from portable profiles. */
 export default function ConnectionSharing(props: {
   id: string;
@@ -16,13 +17,13 @@ export default function ConnectionSharing(props: {
     useSharingPolicy(props.id);
   return (
     <section
-      aria-label="Connection data sharing"
+      aria-label={t('connectionDataSharing')}
       aria-busy={busy}
       className={styles.provider}
     >
       {policy && (
         <fieldset disabled={busy}>
-          <legend>AI data sharing</legend>
+          <legend>{t('aiDataSharing')}</legend>
           <SharingControls
             policy={policy}
             providers={settings.providers}
@@ -47,9 +48,9 @@ export default function ConnectionSharing(props: {
               void save();
             }}
           >
-            Save sharing policy
+            {t('saveSharingPolicy')}
           </Button>
-          {saved && <p role="status">Sharing policy saved.</p>}
+          {saved && <p role="status">{t('sharingPolicySaved')}</p>}
           <ContextPreview
             key={JSON.stringify(policy)}
             id={props.id}
@@ -57,10 +58,7 @@ export default function ConnectionSharing(props: {
             disabled={dirty || !settings.enabled}
           />
           {!settings.enabled && (
-            <p className={styles.notice}>
-              AI features are off. Enable them in Settings → AI to preview
-              authorised context.
-            </p>
+            <p className={styles.notice}>{t('aiFeaturesOffEnable')}</p>
           )}
         </fieldset>
       )}

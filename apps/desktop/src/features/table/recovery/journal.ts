@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { SavedEditsDto, StagedRowDto } from '@openrows/ipc';
 import type { EditHistory, StagedEdit } from '../editHistory';
+import { tn } from '../messages/lazyData';
 
 /** The journal payload of the staged rows: exact originals and values, no UI state. */
 export function toSaved(
@@ -46,13 +47,12 @@ export function sameKey(
 
 /** `3 unsaved changes from Oct 8, 2:32 PM`. */
 export function recoveryNote(count: number, savedAtMs: number | null): string {
-  const changes = `${String(count)} unsaved ${count === 1 ? 'change' : 'changes'}`;
-  if (savedAtMs === null) return changes;
+  if (savedAtMs === null) return tn('unsavedChangeCount', count);
   const when = new Intl.DateTimeFormat('en-US', {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
   }).format(new Date(savedAtMs));
-  return `${changes} from ${when}`;
+  return tn('unsavedChangeCountFrom', count, { when });
 }

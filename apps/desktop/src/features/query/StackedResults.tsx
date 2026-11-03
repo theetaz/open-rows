@@ -5,6 +5,7 @@ import { DocumentView } from './DocumentResults';
 import type { ResultMeta } from './run';
 import type { SelectedCell } from './cell';
 import styles from './Query.module.css';
+import { t } from './lazyMessages';
 const ResultGrid = lazy(() =>
   import('./ResultGrid').then((module) => ({ default: module.ResultGrid })),
 );
@@ -19,7 +20,10 @@ type GridProps = {
 
 /** `Result 2 · statement 3`: the caption of a result tab or stacked section. */
 export function resultLabel(result: ResultMeta, index: number): string {
-  return `Result ${String(index + 1)} · statement ${String(result.statement + 1)}`;
+  return t('resultValueStatement', {
+    value: String(index + 1),
+    value2: String(result.statement + 1),
+  });
 }
 
 /** One result's grid once rows arrive, else how many have arrived so far. */
@@ -33,7 +37,7 @@ export function ResultContent({
   if (!result.done && result.rows === 0)
     return (
       <p className={styles.placeholder} role="status">
-        Receiving rows… {result.rows.toLocaleString()} so far
+        {t('receivingRowsRows', { rows: result.rows.toLocaleString() })}
       </p>
     );
   return (

@@ -9,6 +9,7 @@ import type {
 import type { DumpTarget } from './dumpStore';
 import { messageOf, scopeOf } from './model';
 import styles from './Dump.module.css';
+import { t } from './messages';
 
 type ContextState =
   | { status: 'loading' }
@@ -36,7 +37,7 @@ export function useDumpContext(target: DumpTarget): ContextState {
 }
 
 function ToolItem({ tool }: { tool: DumpToolDto }): React.JSX.Element {
-  const where = tool.fromSettings ? ' · set in Settings ▸ Tools' : '';
+  const version = tool.version ?? t('unknownVersion');
   return (
     <li>
       <span>{tool.name}</span>
@@ -46,8 +47,7 @@ function ToolItem({ tool }: { tool: DumpToolDto }): React.JSX.Element {
         </span>
       ) : (
         <span title={tool.path ?? undefined}>
-          {tool.version ?? 'Unknown version'}
-          {where}
+          {tool.fromSettings ? t('versionFromSettings', { version }) : version}
         </span>
       )}
       {tool.warning && (
@@ -70,7 +70,7 @@ export function ToolList(props: {
   const shown = props.tools.filter((tool) => props.kinds.includes(tool.tool));
   if (!shown.length) return null;
   return (
-    <ul className={styles.tools} aria-label="Client tools">
+    <ul className={styles.tools} aria-label={t('clientTools')}>
       {shown.map((tool) => (
         <ToolItem key={tool.tool} tool={tool} />
       ))}
@@ -84,7 +84,7 @@ export function CommandList(props: {
 }): React.JSX.Element | null {
   if (!props.commands.length) return null;
   return (
-    <ul className={styles.commands} aria-label="Commands">
+    <ul className={styles.commands} aria-label={t('commands')}>
       {props.commands.map((command, index) => (
         <li key={`${String(index)}:${command}`}>{command}</li>
       ))}

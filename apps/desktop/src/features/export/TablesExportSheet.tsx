@@ -8,6 +8,7 @@ import { exportSettings } from './exportSettings';
 import { startExportJob } from './exportJob';
 import { formatDto, rememberedOptions, sheetOptions } from './options';
 import styles from './Export.module.css';
+import { t } from './lazyMessages';
 
 /** The schema whose tables to export. */
 export type TablesTarget = {
@@ -115,7 +116,10 @@ export function TablesExportSheet(
     );
   };
   return (
-    <Sheet title={`Export Tables of ${props.schema}`} onClose={props.onClose}>
+    <Sheet
+      title={t('exportTablesSchema', { schema: props.schema })}
+      onClose={props.onClose}
+    >
       <TableChecklist
         tables={tables}
         excluded={excluded}
@@ -133,13 +137,13 @@ export function TablesExportSheet(
         </p>
       )}
       <SheetActions>
-        <Button onClick={props.onClose}>Cancel</Button>
+        <Button onClick={props.onClose}>{t('cancel')}</Button>
         <Button
           variant="primary"
           disabled={!format || chosen.length === 0 || starting}
           onClick={run}
         >
-          Export…
+          {t('export')}
         </Button>
       </SheetActions>
     </Sheet>
@@ -152,14 +156,10 @@ function Layout(props: {
   onWorkbook: (workbook: boolean) => void;
 }): React.JSX.Element {
   if (!props.xlsx)
-    return (
-      <p className={styles.note}>
-        Each table is written to its own file in a folder you choose.
-      </p>
-    );
+    return <p className={styles.note}>{t('eachTableWritten')}</p>;
   return (
     <fieldset className={styles.scope}>
-      <legend>Files</legend>
+      <legend>{t('files')}</legend>
       <label>
         <input
           type="radio"
@@ -169,7 +169,7 @@ function Layout(props: {
             props.onWorkbook(true);
           }}
         />
-        One workbook with a sheet per table
+        {t('oneWorkbookSheet')}
       </label>
       <label>
         <input
@@ -180,7 +180,7 @@ function Layout(props: {
             props.onWorkbook(false);
           }}
         />
-        One workbook per table in a folder
+        {t('oneWorkbookPer')}
       </label>
     </fieldset>
   );
@@ -195,7 +195,7 @@ function TableChecklist(props: {
   if (tables.status === 'loading')
     return (
       <p className={styles.note} role="status">
-        Reading tables…
+        {t('readingTables')}
       </p>
     );
   if (tables.status === 'failed')
@@ -215,7 +215,7 @@ function TableChecklist(props: {
     <>
       <div className={styles.tableTools}>
         <span>
-          {count} of {tables.names.length} tables
+          {t('countCount2Tables', { count, count2: tables.names.length })}
         </span>
         <Button
           size="sm"
@@ -226,10 +226,10 @@ function TableChecklist(props: {
             );
           }}
         >
-          {count === tables.names.length ? 'Select none' : 'Select all'}
+          {count === tables.names.length ? t('selectNone') : t('selectAll')}
         </Button>
       </div>
-      <fieldset className={styles.tables} aria-label="Tables">
+      <fieldset className={styles.tables} aria-label={t('tables')}>
         {tables.names.map((name) => (
           <label key={name}>
             <input

@@ -38,6 +38,8 @@ Current priority: **dogfood the app on `main` and collect feedback** before addi
 
 **Performance, accessibility and CI tooling (2026-11-02, lane D):** the grid's shadow ARIA grid now exposes the column header and the focused row between its neighbours (row headers from the row-number gutter) and announces selection and range changes politely, throttled to one message per 200 ms ("Row 12, name: Alice", "Selected 3 rows by 2 columns"; docs/08 §8). The table footer no longer lets the row range overlap "+ Row" at medium widths (for example a 1,600 px window with the inspector open): labels hide below a 900 px footer and the range never spills over its neighbours. Quitting the app with a Monitor open no longer panics in the exit handler ("there is no reactor running"). `just bench-editor` works again (auto-closing brackets broke its typing script) and also measures the completion popup; `just bench-memory --scenario monitor` measures the Monitor's footprint in an isolated home folder; `just coverage`, the CI `coverage` and `bench` jobs and the scheduled `Nightly` fuzzing workflow are in place (docs/17, docs/18 §4.1) but have not run on GitHub while CI is off.
 
+**Localisation-ready strings (2026-11-03, M5-12):** visible English text now comes from typed per-feature message catalogs instead of components, so a later translation needs no component change; the app looks and reads as before. English only: there is no language picker or second locale. New hard-coded text fails `pnpm lint` (docs/07 §10). Text from Rust and drivers and the grid and editor packages are not converted.
+
 ## 3. Work-in-progress branches (not on `main`)
 
 None. The last parked lane, `wip/mongodb` (M3-01..M3-04), was finished and merged on 2026-11-02 (MongoDB row in §2).
@@ -49,7 +51,7 @@ None. The last parked lane, `wip/mongodb` (M3-01..M3-04), was finished and merge
 | NoSQL | M3-05/06 Redis (key browser, type-aware editors, console, cluster/sentinel, pub/sub); M3-07 NoSQL conformance |
 | Long-tail drivers | M5-01 Oracle (driver host + Instant Client), M5-02 Cassandra/ScyllaDB, M5-03 DynamoDB, M5-04 Elasticsearch/OpenSearch, M5-05 Redshift flavour |
 | Connections | M5-13 live cloud validation (owner steps in §7, item 14); Redshift IAM once the Redshift flavour exists (M5-05) |
-| App shell | M5-12 localisation-ready strings; dragging tabs between windows and Merge All Windows (M5-11 follow-ups); `openrows://` registration on Windows/Linux (M6) |
+| App shell | Dragging tabs between windows and Merge All Windows (M5-11 follow-ups); `openrows://` registration on Windows/Linux (M6) |
 | AI | Claude Code, Gemini CLI and Cursor bridges (after provider approval and isolation validation); live NL→SQL evaluation runs per provider/model with your own keys (docs/23 §17) to finish the M4.5 exit |
 | Conformance and monitoring | Tier 1 conformance (M1-10/11/12/17) is done (2026-11-02); live Supabase and Neon flavour runs need accounts; running the Tier 1 groups on Tier 2 engines; M25 PostgreSQL managed-provider denial probes (need RDS/Aurora, Cloud SQL, Azure and Supabase/Neon accounts) and the other engines' wider version matrix |
 | Windows and Linux | M6-01..05: credential backends, WebView2/WebKitGTK workarounds, packaging, E2E, per-OS capability matrix; M2-01 Windows MSVC host build |

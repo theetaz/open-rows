@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { TableActions } from './useTableTab';
 import styles from './Table.module.css';
+import { t } from './messages/lazyData';
 
 /** Show or hide columns; hidden columns are left out of the page's SELECT. */
 export function ColumnsPanel({
@@ -14,8 +15,8 @@ export function ColumnsPanel({
 }): React.JSX.Element {
   const visible = columns.length - hidden.length;
   return (
-    <fieldset className={styles.columns} aria-label="Columns">
-      <legend>Columns</legend>
+    <fieldset className={styles.columns} aria-label={t('columns')}>
+      <legend>{t('columns')}</legend>
       {columns.map((column) => {
         const shown = !hidden.includes(column);
         return (

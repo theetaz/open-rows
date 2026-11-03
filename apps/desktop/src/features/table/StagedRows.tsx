@@ -2,6 +2,7 @@
 import { Button } from '@openrows/ui';
 import type { RowEditing } from './useRowEditing';
 import styles from './Table.module.css';
+import { t } from './messages/lazyData';
 /** Inserted/deleted rows remain individually reviewable before commit. */
 export function StagedRows({
   editing,
@@ -12,12 +13,16 @@ export function StagedRows({
 }): React.JSX.Element | null {
   if (!editing.history.current.length) return null;
   return (
-    <div id={id} className={styles.stagedRows} aria-label="Staged rows">
+    <div id={id} className={styles.stagedRows} aria-label={t('stagedRows')}>
       {editing.history.current.map((edit) => (
         <div key={edit.id}>
           <span>
-            {edit.kind === 'insert' ? 'New row' : `Row ${String(edit.number)}`}{' '}
-            · {edit.kind}
+            {edit.kind === 'insert'
+              ? t('newRowKind', { kind: edit.kind })
+              : t('rowNumberKind', {
+                  number: String(edit.number),
+                  kind: edit.kind,
+                })}
           </span>
           <Button
             size="sm"
@@ -26,7 +31,7 @@ export function StagedRows({
               editing.editStaged(edit);
             }}
           >
-            Review row
+            {t('reviewRow')}
           </Button>
         </div>
       ))}

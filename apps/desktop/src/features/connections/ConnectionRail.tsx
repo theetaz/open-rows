@@ -12,6 +12,7 @@ import { RailSearch } from './RailSearch';
 import type { ConnectionAction } from './connectionActions';
 import type { OpenedDatabase, SessionStatus } from './sessions';
 import styles from './Rail.module.css';
+import { t } from './messages/profile';
 
 /** Opened databases of the active connection, shown under its tile. */
 type RailDatabases = {
@@ -55,13 +56,17 @@ export function ConnectionRail(
     ? props.profiles.filter((profile) => matches.has(profile.id))
     : props.profiles;
   return (
-    <nav className={styles.rail} aria-label="Workspaces" data-compact={compact}>
+    <nav
+      className={styles.rail}
+      aria-label={t('workspaces')}
+      data-compact={compact}
+    >
       <div className={styles.railTop} data-tauri-drag-region />
       <div className={styles.railHeading}>
-        <span>Connections</span>
+        <span>{t('connections')}</span>
         <IconButton
-          aria-label="New connection"
-          title="New connection"
+          aria-label={t('newConnection')}
+          title={t('newConnection')}
           variant="ghost"
           size="sm"
           onClick={props.onNew}
@@ -79,7 +84,7 @@ export function ConnectionRail(
       />
       {matches && visible.length === 0 ? (
         <p className={styles.noMatches} role="status">
-          No matching connections
+          {t('noMatchingConnections')}
         </p>
       ) : (
         <WorkspaceGroups
@@ -109,26 +114,26 @@ function RailFooter(props: {
     <footer className={styles.railFooter}>
       <button type="button" className={styles.footerRow}>
         <Icon name="code" />
-        <span className={styles.controlLabel}>API client</span>
+        <span className={styles.controlLabel}>{t('apiClient')}</span>
       </button>
       {props.onSettings && (
         <button
           type="button"
           className={styles.footerRow}
-          aria-label="Settings"
+          aria-label={t('settings')}
           onClick={props.onSettings}
         >
           <Icon name="settings" />
-          <span className={styles.controlLabel}>Settings</span>
+          <span className={styles.controlLabel}>{t('settings')}</span>
         </button>
       )}
       <IconButton
         aria-label={
           props.compact
-            ? 'Expand workspace sidebar'
-            : 'Collapse workspace sidebar'
+            ? t('expandWorkspaceSidebar')
+            : t('collapseWorkspaceSidebar')
         }
-        title={props.compact ? 'Expand sidebar' : 'Collapse sidebar'}
+        title={props.compact ? t('expandSidebar') : t('collapseSidebar')}
         variant="ghost"
         size="sm"
         className={styles.collapse}

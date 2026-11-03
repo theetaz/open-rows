@@ -5,6 +5,7 @@ import { DiagramContent } from './DiagramContent';
 import { exportDiagram } from './exportImage';
 import type { ExportFormat } from './exportImage';
 import type { DiagramLayout } from './geometry';
+import { t } from './messages';
 
 /** Materialize SVG only for an export, including every offscreen canvas table. */
 export async function exportLayout(
@@ -30,7 +31,7 @@ export async function exportLayout(
       );
     });
     const content = host.querySelector<SVGGElement>('[data-diagram]');
-    if (!content) throw new Error('Cannot prepare diagram export');
+    if (!content) throw new Error(t('cannotPrepareDiagram'));
     return await exportDiagram(format, name, { content, size: layout });
   } finally {
     root.unmount();

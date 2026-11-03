@@ -3,6 +3,7 @@ import { ProviderAllowlist, ProductionConsent } from './SharingOptions';
 import { SelectField } from '@openrows/ui';
 import type { ProviderConfig, SharingPolicy } from '@openrows/ipc';
 import styles from './Ai.module.css';
+import { t } from '../messages/lazyAi';
 type Props = {
   policy: Required<SharingPolicy>;
   providers: readonly ProviderConfig[];
@@ -19,13 +20,13 @@ export function SharingControls({
   return (
     <div className={styles.form}>
       <SelectField<SharingPolicy['level'] & string>
-        label="Sharing level"
+        label={t('sharingLevel')}
         value={policy.level}
         options={[
-          { value: 'none', label: 'None (default)' },
-          { value: 'schemaOnly', label: 'Schema only' },
-          { value: 'schemaAndStats', label: 'Schema and statistics' },
-          { value: 'sampleRows', label: 'Sample rows' },
+          { value: 'none', label: t('noneDefault') },
+          { value: 'schemaOnly', label: t('schemaOnly') },
+          { value: 'schemaAndStats', label: t('schemaStatistics') },
+          { value: 'sampleRows', label: t('sampleRows') },
         ]}
         onValueChange={(level) => {
           onChange({ ...policy, level });
@@ -39,12 +40,9 @@ export function SharingControls({
             onChange({ ...policy, localOnly: event.target.checked });
           }}
         />{' '}
-        Local models only
+        {t('localModelsOnly')}
       </label>
-      <small>
-        Local endpoints must use a local protocol on loopback. Their inference
-        location remains unverified.
-      </small>
+      <small>{t('localEndpointsMust')}</small>
       <label>
         <input
           type="checkbox"
@@ -53,7 +51,7 @@ export function SharingControls({
             onChange({ ...policy, telemetry: event.target.checked });
           }}
         />{' '}
-        Share aggregate statistics and plans
+        {t('shareAggregateStatistics')}
       </label>
       <ProviderAllowlist
         selected={policy.providers}

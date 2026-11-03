@@ -7,6 +7,7 @@ import type { EditHistory, StagedEdit } from './editHistory';
 import type { TableTargetRef } from './model';
 import type { CellValue } from './cellValue';
 import { holdsColumn } from './row';
+import { t } from './messages/lazyData';
 
 /** Rows and staged changes can be edited: writable, keyed, and not mid-commit. */
 export function writableResult(
@@ -38,7 +39,7 @@ export function cellDraft(args: {
   const insert = stagedInserts(history.current)[row - result.rows];
   return insert
     ? Promise.resolve(insert)
-    : Promise.reject(new Error('That new row is no longer staged.'));
+    : Promise.reject(new Error(t('newRowNo')));
 }
 
 /** Stage one field only, so a draft read before other edits never reverts them. */

@@ -2,6 +2,7 @@
 import type { ReactNode } from 'react';
 import type { PreviewState } from './usePreview';
 import styles from './Forms.module.css';
+import { t } from '../../messages/initial';
 
 /** `a;\nb;`: statements as they run, each ending in `;`. */
 const sqlText = (statements: readonly string[]): string =>
@@ -13,7 +14,7 @@ const sqlText = (statements: readonly string[]): string =>
  */
 export function DdlPreview({
   state,
-  idle = 'Nothing to change yet.',
+  idle = t('nothingChangeYet'),
   children,
 }: {
   state: PreviewState;
@@ -23,12 +24,12 @@ export function DdlPreview({
   children?: ReactNode;
 }): React.JSX.Element {
   return (
-    <section className={styles.preview} aria-label="SQL preview">
-      <h3>SQL preview</h3>
+    <section className={styles.preview} aria-label={t('sqlPreview')}>
+      <h3>{t('sqlPreview')}</h3>
       {state.status === 'idle' && <p className={styles.note}>{idle}</p>}
       {state.status === 'loading' && (
         <p className={styles.note} role="status">
-          Generating…
+          {t('generating')}
         </p>
       )}
       {state.status === 'error' && (
@@ -38,11 +39,11 @@ export function DdlPreview({
       )}
       {state.status === 'ready' && (
         <>
-          <pre className={styles.sql} aria-label="Statements to run">
+          <pre className={styles.sql} aria-label={t('statementsRun')}>
             {sqlText(state.statements)}
           </pre>
           {state.warnings.length > 0 && (
-            <ul className={styles.warnings} aria-label="Warnings">
+            <ul className={styles.warnings} aria-label={t('warnings')}>
               {state.warnings.map((warning) => (
                 <li key={warning}>{warning}</li>
               ))}

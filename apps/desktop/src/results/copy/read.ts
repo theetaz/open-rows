@@ -6,6 +6,7 @@ import type { ResultMeta } from '../../features/query/run';
 import { columnAlign } from '../align';
 import { valueKind } from './sql';
 import type { CopyTable } from './formats';
+import { t } from '../lazyMessages';
 
 /** Most rows one copy reads; larger selections ask for Export instead. */
 export const COPY_ROW_LIMIT = 100_000;
@@ -42,7 +43,9 @@ function viewRows(ranges: readonly CellRange[]): number[] {
 }
 
 function tooMany(): string {
-  return `Copy is limited to ${COPY_ROW_LIMIT.toLocaleString('en-US')} rows; use Export… for more.`;
+  return t('copyLimitedCopy', {
+    copyRowLimit: COPY_ROW_LIMIT.toLocaleString('en-US'),
+  });
 }
 
 /** Distinct ascending view columns of the ranges. */

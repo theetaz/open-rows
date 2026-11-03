@@ -4,6 +4,7 @@ import type {
   ServerDto,
   SessionStateChanged,
 } from '@openrows/ipc';
+import { t } from './messages/profile';
 
 /**
  * One opened database of a connection. PostgreSQL cannot switch databases on
@@ -143,7 +144,7 @@ function afterEvent(
   event: SessionStateChanged,
 ): OpenedDatabase | null {
   const { name, sessionId } = database;
-  const message = event.message ?? 'The connection was lost';
+  const message = event.message ?? t('connectionWasLost');
   switch (event.state) {
     case 'failed':
       return { name, state: 'failed', message, lost: true };
@@ -200,13 +201,13 @@ export function sessionOf(
 export function statusLabel(status: SessionStatus): string {
   switch (status.state) {
     case 'connecting':
-      return 'Connecting…';
+      return t('connecting');
     case 'connected':
       return connectedLabel(status);
     case 'failed':
-      return 'Connection failed';
+      return t('connectionFailed');
     case 'disconnected':
-      return 'Not connected';
+      return t('notConnected');
   }
 }
 
@@ -214,12 +215,12 @@ function connectedLabel(
   status: Extract<SessionStatus, { state: 'connected' }>,
 ): string {
   const now = health(status);
-  if (now === 'reconnecting') return 'Reconnecting…';
-  if (now === 'lost') return 'Connection lost';
-  if (now === 'idle') return 'Idle · reconnects on next query';
+  if (now === 'reconnecting') return t('reconnecting');
+  if (now === 'lost') return t('connectionLost');
+  if (now === 'idle') return t('idleReconnectsNext');
   return status.server.serverVersion
-    ? `Connected · ${serverLabel(status.server)}`
-    : 'Connected';
+    ? t('connectedServer', { server: serverLabel(status.server) })
+    : t('connected');
 }
 
 /** Product, version and flavour, e.g. `PostgreSQL 17.2 · Neon`. */

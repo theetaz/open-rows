@@ -9,22 +9,23 @@ import { tlsCa, tlsWarning } from './routeForm';
 import type { ConnectionForm } from './useConnectionForm';
 import type { Draft } from './form';
 import styles from './ConnectionSheet.module.css';
+import { t } from './messages/routes';
 
 const modes: readonly { value: TlsModeDto; label: string }[] = [
-  { value: 'disable', label: 'Disable' },
-  { value: 'allow', label: 'Allow' },
-  { value: 'prefer', label: 'Prefer' },
-  { value: 'require', label: 'Require (skip verification)' },
-  { value: 'verify-ca', label: 'Verify CA' },
-  { value: 'verify-full', label: 'Verify full' },
+  { value: 'disable', label: t('disable') },
+  { value: 'allow', label: t('allow') },
+  { value: 'prefer', label: t('prefer') },
+  { value: 'require', label: t('requireSkipVerification') },
+  { value: 'verify-ca', label: t('verifyCa') },
+  { value: 'verify-full', label: t('verifyFull') },
 ];
 
 type CloudChoice = CloudCaDto | 'none';
 
 const cloudChoices: readonly { value: CloudChoice; label: string }[] = [
-  { value: 'none', label: 'None' },
-  { value: 'awsRds', label: 'AWS RDS / Aurora' },
-  { value: 'azure', label: 'Azure Database' },
+  { value: 'none', label: t('none') },
+  { value: 'awsRds', label: t('awsRdsAurora') },
+  { value: 'azure', label: t('azureDatabase') },
 ];
 
 const modeLabel = (mode: TlsModeDto): string =>
@@ -46,8 +47,8 @@ export function TlsFields({
   const warning = tlsWarning(draft.host, draft.tlsMode, tlsCa(tls));
   const sqlServer = draft.engine === 'sqlserver';
   const title = sqlServer
-    ? `Encrypt · ${encryptLabel(draft.tlsMode)}`
-    : `TLS · ${modeLabel(draft.tlsMode)}`;
+    ? t('encryptTlsmode', { tlsMode: encryptLabel(draft.tlsMode) })
+    : t('tlsTitle', { mode: modeLabel(draft.tlsMode) });
   return (
     <>
       <DisclosureSection
@@ -60,8 +61,8 @@ export function TlsFields({
           ) : (
             <SelectField
               className={styles.row}
-              label="Mode"
-              aria-label="TLS mode"
+              label={t('mode')}
+              aria-label={t('tlsMode')}
               value={draft.tlsMode}
               options={
                 draft.engine === 'clickhouse'
@@ -77,7 +78,7 @@ export function TlsFields({
           )}
           <CaFields form={form} />
           <FileField
-            label="Client cert"
+            label={t('clientCert')}
             kind="clientCertificate"
             value={tls.clientCert}
             onChange={(clientCert) => {
@@ -85,7 +86,7 @@ export function TlsFields({
             }}
           />
           <FileField
-            label="Client key"
+            label={t('clientKey')}
             kind="clientKey"
             value={tls.clientKey}
             error={errors.tlsClientKey}
@@ -95,8 +96,8 @@ export function TlsFields({
           />
           {tls.clientKey.trim() && (
             <SecretField
-              label="Passphrase"
-              noun="client key passphrase"
+              label={t('passphrase')}
+              noun={t('clientKeyPassphrase')}
               secret={tls.passphrase}
               reveal={form.reveal('tlsKeyPassphrase')}
               onChange={(passphrase) => {
@@ -124,8 +125,8 @@ function CaFields({ form }: { form: ConnectionForm }): React.JSX.Element {
     <>
       <SelectField
         className={styles.row}
-        label="Cloud CA"
-        aria-label="Cloud provider CA"
+        label={t('cloudCa')}
+        aria-label={t('cloudProviderCa')}
         value={tls.cloudCa ?? 'none'}
         options={cloudChoices}
         onValueChange={(choice) => {
@@ -134,10 +135,10 @@ function CaFields({ form }: { form: ConnectionForm }): React.JSX.Element {
       />
       {!tls.cloudCa && (
         <FileField
-          label="CA file"
+          label={t('caFile')}
           kind="caCertificate"
           value={tls.caFile}
-          placeholder="System trust store"
+          placeholder={t('systemTrustStore')}
           error={errors.tlsCaFile}
           onChange={(caFile) => {
             updateTls({ caFile });

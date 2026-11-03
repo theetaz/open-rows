@@ -4,6 +4,7 @@ import { StructureGrid } from '../table/structure/StructureGrid';
 import type { MonitorTable } from './monitorData';
 import { stateLabel } from './SourceState';
 import styles from './Monitor.module.css';
+import { t } from './messages/lazyDashboard';
 
 type Row = MonitorTable['rows'][number];
 /** Null-last numeric/text sorting, without mutating the source window. */
@@ -58,7 +59,7 @@ export function MonitorGrid(props: {
             return {
               content:
                 value == null
-                  ? 'Unknown'
+                  ? t('unknown')
                   : props.table.columns[col]?.name === 'interval_state'
                     ? stateLabel(String(value))
                     : String(value),
@@ -115,12 +116,20 @@ function GridPages(props: {
           props.onPage(props.page - 1);
         }}
       >
-        Previous rows
+        {t('previousRows')}
       </button>
       <span>
-        {String(props.page * 100 + (shown ? 1 : 0))}–
-        {String(props.page * 100 + shown)} of {String(props.count)}
-        {props.partial ? ' · Partial source' : ''}
+        {props.partial
+          ? t('valueValue2Count', {
+              value: String(props.page * 100 + (shown ? 1 : 0)),
+              value2: String(props.page * 100 + shown),
+              count: String(props.count),
+            })
+          : t('valueValue2Count2', {
+              value: String(props.page * 100 + (shown ? 1 : 0)),
+              value2: String(props.page * 100 + shown),
+              count: String(props.count),
+            })}
       </span>
       <button
         type="button"
@@ -129,7 +138,7 @@ function GridPages(props: {
           props.onPage(props.page + 1);
         }}
       >
-        Next rows
+        {t('nextRows')}
       </button>
     </div>
   );

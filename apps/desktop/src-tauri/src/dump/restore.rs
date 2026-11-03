@@ -24,6 +24,7 @@ use super::job::Work;
 use super::plan::{RestorePlan, restore_preview, shown};
 use super::{DumpJobs, Scope, blocking, dump_error, endpoint, scope};
 use crate::connections::{Connections, IpcError, IpcErrorKind};
+use crate::native_text;
 
 /// The first bytes of every `SQLite` 3 database file.
 const SQLITE_MAGIC: &[u8] = b"SQLite format 3\0";
@@ -61,15 +62,17 @@ pub(crate) async fn dump_restore_pick(
         let _ = sender.send(picked);
     };
     if folder {
-        panel.set_title("Restore from Folder").pick_folder(reply);
+        panel
+            .set_title(native_text::RESTORE_FROM_FOLDER)
+            .pick_folder(reply);
     } else {
         panel
-            .set_title("Restore Database")
+            .set_title(native_text::RESTORE_DATABASE)
             .add_filter(
                 "Backups",
                 &["sql", "dump", "backup", "tar", "sqlite", "db", "sqlite3"],
             )
-            .add_filter("All files", &["*"])
+            .add_filter(native_text::FILTER_ALL_FILES, &["*"])
             .pick_file(reply);
     }
     let picked = receiver

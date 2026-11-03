@@ -4,6 +4,7 @@ import { openSqlFile, saveSqlFile, saveSqlFileAs } from '@openrows/ipc';
 import type { EditorHandle, FileAction } from './request';
 import type { QueryTab, TabFile } from './tabs';
 import type { QueryTabs } from './useQueryTabs';
+import { t } from './initialMessages';
 
 /** What a query tab needs from the tab set for its files. */
 export type TabFileActions = Pick<QueryTabs, 'open' | 'bindFile' | 'edit'>;
@@ -35,7 +36,7 @@ export function useTabFiles(
 ): { act: (action: FileAction) => void; failure: string | null } {
   const [failure, setFailure] = useState<string | null>(null);
   const fail = (error: unknown): void => {
-    setFailure(`Could not save: ${message(error)}`);
+    setFailure(t('couldNotSave', { error: message(error) }));
   };
   const bind = (
     file: { path: string; name: string },
@@ -76,7 +77,7 @@ export function useTabFiles(
         });
       },
       (error: unknown) => {
-        setFailure(`Could not open: ${message(error)}`);
+        setFailure(t('couldNotOpen', { error: message(error) }));
       },
     );
   };
@@ -89,7 +90,7 @@ export function useTabFiles(
     else open();
   };
   const autoSaveError = tab.file?.error
-    ? `Could not save ${tab.file.name}: ${tab.file.error}`
+    ? t('couldNotSaveName', { name: tab.file.name, error: tab.file.error })
     : null;
   return { act, failure: failure ?? autoSaveError };
 }

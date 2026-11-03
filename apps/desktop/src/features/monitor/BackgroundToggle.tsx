@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { setMonitorBackground } from '@openrows/ipc';
 import type { MonitorTarget } from '@openrows/ipc';
 import styles from './Monitor.module.css';
+import { t } from './messages/lazyDashboard';
 
 /** Explicit per-connection opt-in; collection continues only while OpenRows is open and unlocked. */
 export function BackgroundToggle(props: {
@@ -15,7 +16,7 @@ export function BackgroundToggle(props: {
   const checked = pending ?? props.enabled;
   return (
     <>
-      <label title="Keep this monitor and its alert rules running after the tab closes, while OpenRows is open. Locking or pausing stops it.">
+      <label title={t('keepMonitorAlert')}>
         <input
           type="checkbox"
           checked={checked}
@@ -35,7 +36,7 @@ export function BackgroundToggle(props: {
             );
           }}
         />
-        Background
+        {t('background')}
       </label>
       {error && (
         <span role="alert" className={styles.error}>

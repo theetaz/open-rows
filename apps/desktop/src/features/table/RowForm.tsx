@@ -7,6 +7,7 @@ import type { SelectedRow } from './row';
 import { useSelectedRow } from './useSelectedRow';
 import type { RowEditing } from './useRowEditing';
 import styles from './TableExtras.module.css';
+import { t } from './messages/lazyData';
 
 type Props = {
   table: string;
@@ -43,10 +44,14 @@ export function RowForm(props: Props): React.JSX.Element {
     select();
   }, [result, row]);
   return (
-    <section className={styles.form} aria-label="Row form">
+    <section className={styles.form} aria-label={t('rowForm')}>
       <FormBar {...props} />
       <div className={styles.formBody}>
-        {shown ? <RowDetails row={shown} /> : <p role="status">Loading row…</p>}
+        {shown ? (
+          <RowDetails row={shown} />
+        ) : (
+          <p role="status">{t('loadingRow')}</p>
+        )}
       </div>
     </section>
   );
@@ -62,11 +67,15 @@ function FormBar({
 }: Props): React.JSX.Element {
   const last = result.rows - 1;
   return (
-    <div className={styles.formBar} role="toolbar" aria-label="Row navigation">
+    <div
+      className={styles.formBar}
+      role="toolbar"
+      aria-label={t('rowNavigation')}
+    >
       <IconButton
         size="sm"
         variant="ghost"
-        aria-label="Previous row"
+        aria-label={t('previousRow')}
         disabled={row <= 0}
         onClick={() => {
           onRow(row - 1);
@@ -74,15 +83,17 @@ function FormBar({
       >
         <Icon name="chevronLeft" />
       </IconButton>
-      <span role="status" aria-label="Current row">
-        Row {(offset + row + 1).toLocaleString('en-US')} ·{' '}
-        {(row + 1).toLocaleString('en-US')} of{' '}
-        {result.rows.toLocaleString('en-US')} on this page
+      <span role="status" aria-label={t('currentRow')}>
+        {t('rowValueValue2', {
+          value: (offset + row + 1).toLocaleString('en-US'),
+          value2: (row + 1).toLocaleString('en-US'),
+          rows: result.rows.toLocaleString('en-US'),
+        })}
       </span>
       <IconButton
         size="sm"
         variant="ghost"
-        aria-label="Next row"
+        aria-label={t('nextRow')}
         disabled={row >= last}
         onClick={() => {
           onRow(row + 1);
@@ -92,7 +103,7 @@ function FormBar({
       </IconButton>
       <span className={styles.spacer} />
       <Button size="sm" onClick={onClose}>
-        Show grid
+        {t('showGrid')}
       </Button>
     </div>
   );

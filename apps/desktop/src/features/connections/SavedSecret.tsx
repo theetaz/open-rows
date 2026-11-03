@@ -3,6 +3,7 @@ import { Button, Icon, IconButton, TextField } from '@openrows/ui';
 import { useRevealedSecret } from './useRevealedSecret';
 import type { SecretDraft } from './routeForm';
 import styles from './ConnectionSheet.module.css';
+import { t } from './messages/profile';
 
 /** Dots shown for a saved secret; its length says nothing about the value. */
 const MASK = '••••••••';
@@ -27,7 +28,8 @@ const block = (event: React.ClipboardEvent): void => {
  * when the sheet closes. Change replaces it, Forget removes it on Save.
  */
 export function SavedSecret(props: SavedSecretProps): React.JSX.Element {
-  const read = props.reveal ?? (() => Promise.reject(new Error('Unavailable')));
+  const read =
+    props.reveal ?? (() => Promise.reject(new Error(t('unavailable'))));
   const revealed = useRevealedSecret(read);
   const shown = revealed.value !== null;
   return (
@@ -43,14 +45,18 @@ export function SavedSecret(props: SavedSecretProps): React.JSX.Element {
         readOnly
         type={shown ? 'text' : 'password'}
         value={revealed.value ?? MASK}
-        title="Saved in Keychain"
+        title={t('savedKeychain')}
         {...(shown ? {} : { onCopy: block, onCut: block })}
         trailing={
           props.reveal && (
             <IconButton
               size="sm"
               variant="ghost"
-              aria-label={shown ? `Hide ${props.noun}` : `Reveal ${props.noun}`}
+              aria-label={
+                shown
+                  ? t('hideNoun', { noun: props.noun })
+                  : t('revealNoun', { noun: props.noun })
+              }
               aria-pressed={shown}
               disabled={revealed.busy}
               onClick={(event) => {
@@ -75,10 +81,10 @@ export function SavedSecret(props: SavedSecretProps): React.JSX.Element {
       <span className={styles.hint}>
         <Button
           size="sm"
-          aria-label={`Change ${props.noun}`}
+          aria-label={t('changeNoun', { noun: props.noun })}
           onClick={props.change}
         >
-          Change…
+          {t('change')}
         </Button>
         <Button
           size="sm"
@@ -87,7 +93,7 @@ export function SavedSecret(props: SavedSecretProps): React.JSX.Element {
             props.onChange({ ...props.secret, value: '', mode: 'clear' });
           }}
         >
-          {`Forget saved ${props.noun}`}
+          {t('forgetSavedNoun', { noun: props.noun })}
         </Button>
       </span>
     </div>

@@ -7,6 +7,7 @@ import { SettingRow } from '../appearance/InterfaceSettings';
 import { settingsText } from './settingsFile';
 import { setToolPath, TOOL_KINDS, toolSettings } from './toolSettings';
 import styles from '../appearance/Appearance.module.css';
+import { t } from './messages/lazyGeneral';
 
 // A hook name keeps React Compiler from memoizing the store's hook call.
 const useToolPaths = toolSettings.useValue;
@@ -55,14 +56,18 @@ function useDetected(revision: number): Detected {
 
 /** One line on the copy in use: path and version, or why there is none. */
 function toolSummary(tool: DumpToolDto | undefined): string {
-  if (!tool) return 'Not checked yet.';
+  if (!tool) return t('notCheckedYet');
   if (tool.error) return tool.error;
-  const found = `${tool.path ?? tool.name} (${tool.version ?? 'unknown version'})`;
-  const source = tool.fromSettings ? 'Set here' : 'Found';
-  const others = tool.others.length
-    ? ` Also installed: ${tool.others.join(', ')}.`
-    : '';
-  return `${source}: ${found}.${others}`;
+  const found = {
+    tool: tool.path ?? tool.name,
+    version: tool.version ?? t('unknownVersion'),
+  };
+  const source = tool.fromSettings
+    ? t('toolSetHere', found)
+    : t('toolFound', found);
+  return tool.others.length
+    ? `${source} ${t('alsoInstalledOthers', { others: tool.others.join(', ') })}`
+    : source;
 }
 
 function ToolRow(props: {
@@ -81,8 +86,8 @@ function ToolRow(props: {
   return (
     <SettingRow title={name} description={toolSummary(props.tool)}>
       <TextField
-        aria-label={`${name} path`}
-        placeholder="Automatic"
+        aria-label={t('namePath', { name })}
+        placeholder={t('automatic')}
         spellCheck={false}
         value={draft}
         onChange={(event) => {
@@ -111,8 +116,8 @@ export function ToolsPane(): React.JSX.Element {
   };
   const tools = detected.status === 'ready' ? detected.tools : [];
   return (
-    <section aria-label="Client tools">
-      <h3>Client tools</h3>
+    <section aria-label={t('clientTools')}>
+      <h3>{t('clientTools')}</h3>
       <div className={styles.settingsGroup}>
         {TOOL_KINDS.map((kind) => (
           <ToolRow
@@ -131,10 +136,10 @@ export function ToolsPane(): React.JSX.Element {
           />
         ))}
         <SettingRow
-          title="Find tools again"
-          description="Search the usual install folders and PATH again, for example after installing a newer version. Leave a path empty to use the installed copy that best matches each server."
+          title={t('findToolsAgain')}
+          description={t('searchUsualInstall')}
         >
-          <Button onClick={recheck}>Check again</Button>
+          <Button onClick={recheck}>{t('checkAgain')}</Button>
         </SettingRow>
         {detected.status === 'failed' && <p role="alert">{detected.message}</p>}
       </div>

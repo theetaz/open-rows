@@ -4,6 +4,7 @@ import type { EditInfoDto, ImportColumnDto } from '@openrows/ipc';
 import { categoryLabel } from './choices';
 import type { ImportDraft, NewColumn, SourceChoice } from './model';
 import styles from './Import.module.css';
+import { t } from './messages';
 
 type Change = (patch: Partial<ImportDraft>) => void;
 
@@ -36,9 +37,9 @@ export function MappingTable(props: {
 }): React.JSX.Element {
   const { draft, table, onChange } = props;
   const sourceOptions = [
-    { value: 'skip', label: 'Skip (column default)' },
-    { value: 'null', label: 'NULL' },
-    { value: 'constant', label: 'Constant…' },
+    { value: 'skip', label: t('skipColumnDefault') },
+    { value: 'null', label: t('null') },
+    { value: 'constant', label: t('constant') },
     ...props.sources.map((source, index) => ({
       value: `column:${String(index)}`,
       label: source.name,
@@ -52,13 +53,13 @@ export function MappingTable(props: {
     onChange({ key: on ? [...key, column] : key });
   };
   return (
-    <table className={styles.mapping} aria-label="Column mapping">
+    <table className={styles.mapping} aria-label={t('columnMapping')}>
       <thead>
         <tr>
-          <th>Column</th>
-          <th>Type</th>
-          <th>Source</th>
-          <th>Key</th>
+          <th>{t('column')}</th>
+          <th>{t('type')}</th>
+          <th>{t('source')}</th>
+          <th>{t('key')}</th>
         </tr>
       </thead>
       <tbody>
@@ -101,7 +102,7 @@ function MappingRow(props: {
       <td className={styles.typeCell}>{props.dataType}</td>
       <td className={styles.sourceCell}>
         <SelectField
-          aria-label={`Source of ${name}`}
+          aria-label={t('sourceName', { name })}
           controlSize="compact"
           disabled={generated}
           value={generated ? 'skip' : choiceValue(choice)}
@@ -112,7 +113,7 @@ function MappingRow(props: {
         />
         {choice?.kind === 'constant' && (
           <TextField
-            aria-label={`Constant for ${name}`}
+            aria-label={t('constantName', { name })}
             controlSize="compact"
             value={choice.value}
             onChange={(event) => {
@@ -124,7 +125,7 @@ function MappingRow(props: {
       <td>
         <input
           type="checkbox"
-          aria-label={`${name} identifies rows`}
+          aria-label={t('nameIdentifiesRows', { name })}
           checked={props.isKey}
           onChange={(event) => {
             props.onKey(event.target.checked);
@@ -150,14 +151,14 @@ export function NewColumnsTable(props: {
     });
   };
   return (
-    <table className={styles.mapping} aria-label="New columns">
+    <table className={styles.mapping} aria-label={t('newColumns')}>
       <thead>
         <tr>
-          <th>Import</th>
-          <th>Column</th>
-          <th>Type</th>
-          <th>Inferred</th>
-          <th>Primary key</th>
+          <th>{t('import')}</th>
+          <th>{t('column')}</th>
+          <th>{t('type')}</th>
+          <th>{t('inferred')}</th>
+          <th>{t('primaryKey')}</th>
         </tr>
       </thead>
       <tbody>
@@ -188,7 +189,7 @@ function NewColumnRow(props: {
       <td>
         <input
           type="checkbox"
-          aria-label={`Import ${label}`}
+          aria-label={t('importLabel', { label })}
           checked={column.include}
           onChange={(event) => {
             onChange({ include: event.target.checked });
@@ -197,7 +198,7 @@ function NewColumnRow(props: {
       </td>
       <td>
         <TextField
-          aria-label={`Name of ${label}`}
+          aria-label={t('nameLabel', { label })}
           controlSize="compact"
           spellCheck={false}
           value={column.name}
@@ -209,7 +210,7 @@ function NewColumnRow(props: {
       </td>
       <td>
         <TextField
-          aria-label={`Type of ${label}`}
+          aria-label={t('typeLabel', { label })}
           controlSize="compact"
           spellCheck={false}
           value={column.type}
@@ -220,13 +221,14 @@ function NewColumnRow(props: {
         />
       </td>
       <td className={styles.typeCell}>
-        {source ? categoryLabel(source.category) : ''}
-        {source?.nullable ? ', nulls' : ''}
+        {source?.nullable
+          ? t('categoryNulls', { category: categoryLabel(source.category) })
+          : source && categoryLabel(source.category)}
       </td>
       <td>
         <input
           type="checkbox"
-          aria-label={`${label} is in the primary key`}
+          aria-label={t('labelPrimaryKey', { label })}
           checked={column.key}
           disabled={!column.include}
           onChange={(event) => {

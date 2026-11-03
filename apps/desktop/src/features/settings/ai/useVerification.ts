@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { cancelAiVerification, verifyAiProvider } from '@openrows/ipc';
 import type { Verification } from '@openrows/ipc';
+import { t } from '../messages/lazyAi';
 /** Probe only after explicit action; cancel native work when its row leaves. */
 export function useVerification(id: string): {
   result: Verification | null;
@@ -24,9 +25,7 @@ export function useVerification(id: string): {
     try {
       setResult(await verifyAiProvider(id));
     } catch {
-      setFailure(
-        'Verification unavailable. Check AI permission and saved settings.',
-      );
+      setFailure(t('verificationUnavailableCheck'));
     } finally {
       setBusy(false);
     }

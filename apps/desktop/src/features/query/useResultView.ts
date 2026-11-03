@@ -7,6 +7,7 @@ import { withColumnFilter } from './columnFilters';
 import type { ColumnFilter } from './columnFilters';
 import type { RowOrder } from './localRows';
 import type { ResultMeta } from './run';
+import { t } from './lazyMessages';
 
 /** Typing pauses this long before the filter runs over loaded rows. */
 const FILTER_DELAY_MS = 150;
@@ -91,12 +92,15 @@ function statusOf(
   filtered: boolean,
 ): string | null {
   if (!wanted) return null;
-  if (failure) return `Could not load rows: ${failure}`;
+  if (failure) return t('couldNotLoad', { failure });
   const limit = localLimit(result);
   if (limit) return limit;
-  if (!local) return 'Loading rows…';
+  if (!local) return t('loadingRows');
   if (filtered && shown)
-    return `${shown.rows.length.toLocaleString('en-US')} of ${result.rows.toLocaleString('en-US')} rows`;
+    return t('countRowsRows', {
+      count: shown.rows.length.toLocaleString('en-US'),
+      rows: result.rows.toLocaleString('en-US'),
+    });
   return null;
 }
 

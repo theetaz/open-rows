@@ -5,6 +5,7 @@ import { Sheet } from '@openrows/ui/sheet';
 import type { MonitorTarget } from '@openrows/ipc';
 import { useDiagnostic } from './useDiagnostic';
 import styles from './Monitor.module.css';
+import { t } from './messages/lazyInvestigation';
 const ExplainView = lazy(() =>
   import('../explain/ExplainView').then((module) => ({
     default: module.ExplainView,
@@ -42,16 +43,13 @@ export function QueryReview(props: {
     diagnostic.clear();
   };
   return (
-    <Sheet title="Review SQL before Explain" onClose={props.onClose}>
+    <Sheet title={t('reviewSqlBefore')} onClose={props.onClose}>
       <div className={styles.review}>
         <p>
-          Collected literals and bindings are redacted. Supply a complete
-          statement. Diagnostics use a separate session on{' '}
-          {props.target.database}, with search path pg_catalog and the reviewed
-          schema; profile startup SQL and your open transaction are excluded.
+          {t('collectedLiteralsBindings', { database: props.target.database })}
         </p>
         <textarea
-          aria-label="Reviewed SQL"
+          aria-label={t('reviewedSql')}
           value={sql}
           disabled={diagnostic.running}
           onChange={(event) => {
@@ -60,7 +58,7 @@ export function QueryReview(props: {
           }}
         />
         <TextField
-          aria-label="Diagnostic schema"
+          aria-label={t('diagnosticSchema')}
           value={schema}
           disabled={diagnostic.running}
           onChange={(event) => {
@@ -69,9 +67,9 @@ export function QueryReview(props: {
           }}
         />
         <label>
-          Statement and bindings reviewed{' '}
+          {t('statementBindingsReviewed')}{' '}
           <Switch
-            aria-label="Statement reviewed"
+            aria-label={t('statementReviewed')}
             checked={reviewed}
             onCheckedChange={setReviewed}
           />
@@ -85,7 +83,7 @@ export function QueryReview(props: {
           analyze={analyze}
           production={props.production}
         />
-        <Button onClick={props.onClose}>Close</Button>
+        <Button onClick={props.onClose}>{t('close')}</Button>
       </div>
     </Sheet>
   );
@@ -103,29 +101,26 @@ function DiagnosticResult({
   return (
     <>
       {diagnostic.reply?.kind === 'confirmationRequired' && (
-        <section role="alertdialog" aria-label="Confirm diagnostic execution">
+        <section
+          role="alertdialog"
+          aria-label={t('confirmDiagnosticExecution')}
+        >
           <p>
             {analyze
-              ? 'Explain analyse executes this reviewed statement. Rollback cannot undo every effect, including sequences and external functions.'
-              : 'Your safety policy requires confirmation before requesting this plan.'}
+              ? t('explainAnalyseExecutes')
+              : t('safetyPolicyRequiresConfirmation')}
           </p>
-          {production && (
-            <p>
-              Production warning: measured execution can add load, take locks
-              and affect production data. Review workload impact before
-              confirming.
-            </p>
-          )}
-          <Button onClick={diagnostic.clear}>Cancel diagnostic</Button>
+          {production && <p>{t('productionWarningMeasured')}</p>}
+          <Button onClick={diagnostic.clear}>{t('cancelDiagnostic')}</Button>
           <Button onClick={diagnostic.confirm}>
-            {analyze ? 'Confirm measured execution' : 'Confirm plan request'}
+            {analyze ? t('confirmMeasuredExecution') : t('confirmPlanRequest')}
           </Button>
         </section>
       )}
       {diagnostic.running && (
         <p role="status">
-          Requesting diagnostic…{' '}
-          <Button onClick={diagnostic.clear}>Cancel diagnostic</Button>
+          {t('requestingDiagnostic')}{' '}
+          <Button onClick={diagnostic.clear}>{t('cancelDiagnostic')}</Button>
         </p>
       )}
       {diagnostic.reply?.kind === 'blocked' && (
@@ -153,7 +148,7 @@ function DiagnosticActions(props: {
           props.run(false);
         }}
       >
-        Explain plan only
+        {t('explainPlanOnly')}
       </Button>
       <Button
         disabled={props.disabled}
@@ -161,7 +156,7 @@ function DiagnosticActions(props: {
           props.run(true);
         }}
       >
-        Explain analyse (runs SQL)
+        {t('explainAnalyseRuns')}
       </Button>
     </div>
   );

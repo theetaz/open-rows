@@ -6,6 +6,7 @@ import type { TableDetailDto } from '@openrows/ipc';
 import { formatRows } from './format';
 import { SqlViewer } from './SqlViewer';
 import styles from './Structure.module.css';
+import { t } from '../messages/lazyStructure';
 
 /** Where the popover sits: above and centred on its footer button, sized to its content. */
 function placement(anchor: DOMRect): React.CSSProperties {
@@ -59,11 +60,11 @@ export function DdlPopover({
     <div
       ref={ref}
       role="dialog"
-      aria-label="Table definition"
+      aria-label={t('tableDefinition')}
       className={styles.popover}
       style={placement(anchor)}
     >
-      <SqlViewer sql={detail.ddl} label="Table definition SQL" />
+      <SqlViewer sql={detail.ddl} label={t('tableDefinitionSql')} />
       <footer className={styles.popoverFooter}>
         <Button
           size="sm"
@@ -71,18 +72,22 @@ export function DdlPopover({
           onClick={() => {
             navigator.clipboard.writeText(detail.ddl).then(
               () => {
-                setCopied('Copied');
+                setCopied(t('copied'));
               },
               () => {
-                setCopied('Clipboard access was blocked');
+                setCopied(t('clipboardAccessWas'));
               },
             );
           }}
         >
           <Icon name="copy" />
-          {copied ?? 'Copy'}
+          {copied ?? t('copy')}
         </Button>
-        <span>Estimated rows {formatRows(detail.info.rowEstimate)}</span>
+        <span>
+          {t('estimatedRowsRowestimate', {
+            rowEstimate: formatRows(detail.info.rowEstimate),
+          })}
+        </span>
       </footer>
     </div>,
     document.body,

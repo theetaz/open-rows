@@ -3,6 +3,7 @@ import { drawEdges, foreignColumns } from './canvasEdges';
 import { HEADER_HEIGHT, MAX_COLUMNS, ROW_HEIGHT } from './geometry';
 import type { DiagramLayout, DiagramNode } from './geometry';
 import type { View } from './viewport';
+import { t } from './messages';
 
 type Paint = {
   page: string;
@@ -39,7 +40,11 @@ function table(
     );
   });
   if (node.hidden)
-    context.fillText(`+${String(node.hidden)} more`, x + 10, y + height - 6);
+    context.fillText(
+      t('hiddenMore', { hidden: String(node.hidden) }),
+      x + 10,
+      y + height - 6,
+    );
 }
 
 function colors(canvas: HTMLCanvasElement): Paint {

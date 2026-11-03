@@ -4,6 +4,7 @@ import { TextField } from '@openrows/ui';
 import { ReviewSheet } from '../ReviewSheet';
 import type { SchemaEditing } from './useSchemaEditing';
 import styles from './Structure.module.css';
+import { t, tn } from '../messages/lazyStructure';
 
 /** The generated DDL, its warnings and (when required) the typed table name. */
 export function SchemaReview({
@@ -17,12 +18,15 @@ export function SchemaReview({
   const count = schema.history.current.length;
   const needsName = review.confirmName !== null;
   const execution = review.transactional
-    ? 'The statements run in one transaction: any error rolls every one of them back.'
-    : 'The statements run outside a transaction. Committed changes cannot be rolled back.';
+    ? t('statementsRunOne')
+    : t('statementsRunOutside');
   return (
     <ReviewSheet
-      title="Review structure changes"
-      summary={`${String(count)} staged structure ${count === 1 ? 'change' : 'changes'}. ${execution}`}
+      title={t('reviewStructureChanges')}
+      summary={tn('countStagedStructure', count, {
+        count: String(count),
+        execution,
+      })}
       sql={review.statements.map((statement) => `${statement};`).join('\n')}
       error={schema.error}
       busy={schema.busy}
@@ -36,7 +40,7 @@ export function SchemaReview({
       }}
     >
       {review.warnings.length > 0 && (
-        <ul className={styles.warnings} aria-label="Warnings">
+        <ul className={styles.warnings} aria-label={t('warnings')}>
           {review.warnings.map((warning) => (
             <li key={warning}>{warning}</li>
           ))}
@@ -44,7 +48,9 @@ export function SchemaReview({
       )}
       {needsName && (
         <TextField
-          label={`This connection confirms destructive changes. Type ${review.confirmName ?? ''} to commit.`}
+          label={t('connectionConfirmsDestructive', {
+            confirmName: review.confirmName ?? '',
+          })}
           value={typed}
           autoComplete="off"
           spellCheck={false}

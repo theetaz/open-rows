@@ -2,6 +2,7 @@
 import type { Connections } from './useConnections';
 import { POLICY_LABELS } from '../security/policies';
 import styles from './ConnectionHeader.module.css';
+import { t } from './messages/profile';
 
 /**
  * Connection/database identity and failures above the object tree.
@@ -21,8 +22,8 @@ export function ConnectionHeader({
   return (
     <div className={styles.header}>
       {active && (
-        <p aria-label="Sidebar context">
-          {active.name} · {database || active.database || 'No database'} ·{' '}
+        <p aria-label={t('sidebarContext')}>
+          {active.name} · {database || active.database || t('noDatabase')} ·{' '}
           {POLICY_LABELS[active.safety]}
         </p>
       )}

@@ -17,6 +17,7 @@ import { insertSavedSql } from '../query/historyInsert';
 import { copyProjectSql } from './sqlClipboard';
 import { absolutePath } from './treeModel';
 import type { ProjectNode } from './treeModel';
+import { t } from './messages';
 
 /** What the tree reports to the workspace: opened queries and moved files. */
 export type ProjectHooks = {
@@ -62,11 +63,9 @@ export function deletePrompt(node: ProjectNode): {
 } {
   const folder = node.kind === 'folder';
   return {
-    title: `Delete “${node.name}”?`,
-    message: folder
-      ? 'The folder and every query in it are deleted from disk.'
-      : 'The query file is deleted from disk.',
-    action: 'Delete',
+    title: t('deleteName', { name: node.name }),
+    message: folder ? t('folderEveryQuery') : t('queryFileDeleted'),
+    action: t('delete'),
   };
 }
 
@@ -134,9 +133,7 @@ function sqlActions(
     insertSql: (path: string): void => {
       readSqlFile(absolute(path)).then((file) => {
         if (!insertSavedSql(file.sql))
-          reportProjectError(
-            new Error('Open a query editor before inserting SQL'),
-          );
+          reportProjectError(new Error(t('openQueryEditor')));
       }, reportProjectError);
     },
     copySql: (path: string): void => {
@@ -162,21 +159,21 @@ export function nodeMenu(input: {
   const folder = node.kind === 'folder';
   const create: MenuEntry[] = folder
     ? [
-        item('New Query…', () => {
+        item(t('newQuery2'), () => {
           ask({ kind: 'newQuery', node });
         }),
-        item('New Folder…', () => {
+        item(t('newFolder2'), () => {
           ask({ kind: 'newFolder', node });
         }),
       ]
     : [
-        item('Open', () => {
+        item(t('open'), () => {
           actions.open(node);
         }),
-        item('Insert SQL', () => {
+        item(t('insertSql'), () => {
           actions.insertSql(node.path);
         }),
-        item('Copy SQL', () => {
+        item(t('copySql'), () => {
           actions.copySql(node.path);
         }),
       ];
@@ -184,15 +181,15 @@ export function nodeMenu(input: {
     ? []
     : [
         { kind: 'separator' },
-        item('Rename…', () => {
+        item(t('rename2'), () => {
           ask({ kind: 'rename', node });
         }),
-        item('Duplicate', () => {
+        item(t('duplicate'), () => {
           actions.duplicate(node.path);
         }),
         {
           kind: 'item',
-          label: 'Delete…',
+          label: t('delete2'),
           danger: true,
           run: () => {
             ask({ kind: 'delete', node });
@@ -203,10 +200,10 @@ export function nodeMenu(input: {
     ...create,
     ...edit,
     { kind: 'separator' },
-    item('Reveal in Finder', () => {
+    item(t('revealFinder'), () => {
       actions.reveal(node.path);
     }),
-    item('Copy Path', () => {
+    item(t('copyPath'), () => {
       actions.copyPath(node.path);
     }),
   ];

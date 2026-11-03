@@ -3,17 +3,18 @@ import { useState } from 'react';
 import { Button, SelectField, TextArea, TextField } from '@openrows/ui';
 import type { ChartMapping, Widget, WidgetKind } from '@openrows/ipc';
 import styles from './Boards.module.css';
+import { t } from '../messages/lazyBoards';
 
 const KINDS = [
-  { value: 'chart', label: 'Chart' },
-  { value: 'stat', label: 'Stat card' },
-  { value: 'table', label: 'Table' },
+  { value: 'chart', label: t('chart') },
+  { value: 'stat', label: t('statCard') },
+  { value: 'table', label: t('table') },
 ] as const;
 const MARKS = [
-  { value: 'line', label: 'Line' },
-  { value: 'area', label: 'Area' },
-  { value: 'bar', label: 'Bar' },
-  { value: 'scatter', label: 'Scatter' },
+  { value: 'line', label: t('line') },
+  { value: 'area', label: t('area') },
+  { value: 'bar', label: t('bar') },
+  { value: 'scatter', label: t('scatter') },
 ] as const;
 
 /** A new chart widget with default limits and a unique id. */
@@ -22,7 +23,7 @@ export function newWidget(taken: readonly Widget[]): Widget {
   while (taken.some((widget) => widget.id === `w${String(index)}`)) index += 1;
   return {
     id: `w${String(index)}`,
-    title: `Widget ${String(index)}`,
+    title: t('widgetIndex', { index: String(index) }),
     kind: 'chart',
     sql: '',
     chart: { mark: 'line', x: '', y: [] },
@@ -57,10 +58,10 @@ export function WidgetEditor(props: {
     );
   };
   return (
-    <section className={styles.editor} aria-label="Edit widget">
+    <section className={styles.editor} aria-label={t('editWidget')}>
       <div className={styles.row}>
         <TextField
-          label="Title"
+          label={t('title')}
           controlSize="compact"
           value={draft.title}
           onChange={(event) => {
@@ -68,7 +69,7 @@ export function WidgetEditor(props: {
           }}
         />
         <SelectField
-          label="Show as"
+          label={t('show')}
           controlSize="compact"
           value={draft.kind}
           options={KINDS}
@@ -76,18 +77,15 @@ export function WidgetEditor(props: {
         />
       </div>
       <TextArea
-        aria-label="Widget SQL"
-        placeholder="SELECT day, count(*) AS orders FROM orders WHERE region = :region GROUP BY day"
+        aria-label={t('widgetSql')}
+        placeholder={t('selectDayCount')}
         spellCheck={false}
         value={draft.sql}
         onChange={(event) => {
           setDraft({ ...draft, sql: event.target.value });
         }}
       />
-      <p className={styles.note}>
-        One read-only query. Reference board parameters as :name; values are
-        bound, never inserted into the SQL.
-      </p>
+      <p className={styles.note}>{t('oneReadOnly')}</p>
       {draft.kind === 'chart' && (
         <ChartFields
           chart={chart}
@@ -101,10 +99,10 @@ export function WidgetEditor(props: {
       <Limits draft={draft} onChange={setDraft} />
       <div className={styles.row}>
         <Button size="sm" variant="primary" onClick={save}>
-          Save widget
+          {t('saveWidget')}
         </Button>
         <Button size="sm" onClick={props.onCancel}>
-          Cancel
+          {t('cancel')}
         </Button>
       </div>
     </section>
@@ -121,7 +119,7 @@ function ChartFields(props: {
   return (
     <div className={styles.row}>
       <SelectField
-        label="Mark"
+        label={t('mark')}
         controlSize="compact"
         value={chart.mark}
         options={MARKS}
@@ -130,7 +128,7 @@ function ChartFields(props: {
         }}
       />
       <TextField
-        label="X column"
+        label={t('xColumn')}
         controlSize="compact"
         value={chart.x}
         onChange={(event) => {
@@ -138,9 +136,9 @@ function ChartFields(props: {
         }}
       />
       <TextField
-        label="Y columns"
+        label={t('yColumns')}
         controlSize="compact"
-        placeholder="orders, revenue"
+        placeholder={t('ordersRevenue')}
         value={props.series}
         onChange={(event) => {
           props.onSeries(event.target.value);
@@ -168,7 +166,7 @@ function Limits(props: {
   return (
     <div className={styles.row}>
       <TextField
-        label="Max rows (≤ 10,000)"
+        label={t('maxRows10')}
         controlSize="compact"
         inputMode="numeric"
         value={String(draft.limits.maxRows)}
@@ -177,7 +175,7 @@ function Limits(props: {
         }}
       />
       <TextField
-        label="Time limit, s (1–60)"
+        label={t('timeLimitS')}
         controlSize="compact"
         inputMode="numeric"
         value={String(draft.limits.timeoutMs / 1_000)}

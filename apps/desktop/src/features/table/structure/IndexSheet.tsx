@@ -8,6 +8,7 @@ import {
 } from './forms/IndexFields';
 import { StageSheet } from './StageSheet';
 import type { Structure } from './useStructure';
+import { t } from '../messages/lazyStructure';
 
 /**
  * `+ Index`: name, key columns with their order, unique, method and a
@@ -25,12 +26,12 @@ export function IndexSheet({
   const problem =
     indexProblem(draft) ??
     (concurrent && structure.schema.history.current.length
-      ? 'Commit or discard other changes before staging a concurrent index.'
+      ? t('commitDiscardOther')
       : null);
   return (
     <StageSheet
       structure={structure}
-      title="Add index"
+      title={t('addIndex')}
       op={
         problem
           ? null
@@ -47,12 +48,8 @@ export function IndexSheet({
             }
       }
       problem={problem}
-      stageLabel="Stage index"
-      note={
-        concurrent
-          ? 'The concurrent index runs alone outside a transaction; failure may leave an invalid index.'
-          : 'The index is built when you commit; building blocks writes to the table until it finishes.'
-      }
+      stageLabel={t('stageIndex')}
+      note={concurrent ? t('concurrentIndexRuns') : t('indexBuiltWhen')}
       onClose={onClose}
     >
       {structure.features.concurrentIndexes && (
@@ -64,7 +61,7 @@ export function IndexSheet({
               setConcurrent(event.target.checked);
             }}
           />
-          Build concurrently
+          {t('buildConcurrently')}
         </label>
       )}
       <IndexFields

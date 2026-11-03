@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import { Badge, EnvBadge } from '@openrows/ui';
 import type { EnvDto } from '@openrows/ipc';
 import styles from './Connections.module.css';
+import { t } from './messages/profile';
 
 /** Standard environments use theme tokens; custom ones show their own colour and label. */
 export function EnvironmentBadge({ env }: { env: EnvDto }): React.JSX.Element {
@@ -14,7 +15,7 @@ export function EnvironmentBadge({ env }: { env: EnvDto }): React.JSX.Element {
         className={styles.customDot}
         style={customColour(env)}
       />
-      {env.label ?? 'custom'}
+      {env.label ?? t('custom')}
     </Badge>
   );
 }

@@ -9,6 +9,7 @@ import {
   nodeLabel,
 } from './planModel';
 import styles from './Explain.module.css';
+import { t } from './messages';
 
 type Row = [label: string, value: string];
 
@@ -23,19 +24,19 @@ function shown(
 /** Measured values of the node; rows without a value are left out. */
 function measures(plan: PlanDto, node: PlanNodeDto): Row[] {
   const rows: [string, string | null][] = [
-    ['Relation', node.relation],
-    ['Index', node.index],
-    ['Share of plan', plan.weight === 'none' ? null : formatShare(node.share)],
-    ['Self time', shown(node.exclusiveMs, formatMs)],
-    ['Total time', shown(node.inclusiveMs, formatMs)],
-    ['Self cost', shown(node.exclusiveCost, formatNumber)],
-    ['Startup cost', shown(node.startupCost, formatNumber)],
-    ['Total cost', shown(node.totalCost, formatNumber)],
-    ['Estimated rows', shown(node.estimatedRows, formatNumber)],
-    ['Actual rows', shown(node.actualRows, formatNumber)],
-    ['Loops', shown(node.loops, formatNumber)],
-    ['First row', shown(node.actualStartupMs, formatMs)],
-    ['All rows (per loop)', shown(node.actualTotalMs, formatMs)],
+    [t('relation'), node.relation],
+    [t('index'), node.index],
+    [t('sharePlan'), plan.weight === 'none' ? null : formatShare(node.share)],
+    [t('selfTime'), shown(node.exclusiveMs, formatMs)],
+    [t('totalTime'), shown(node.inclusiveMs, formatMs)],
+    [t('selfCost'), shown(node.exclusiveCost, formatNumber)],
+    [t('startupCost'), shown(node.startupCost, formatNumber)],
+    [t('totalCost'), shown(node.totalCost, formatNumber)],
+    [t('estimatedRows'), shown(node.estimatedRows, formatNumber)],
+    [t('actualRows'), shown(node.actualRows, formatNumber)],
+    [t('loops'), shown(node.loops, formatNumber)],
+    [t('firstRow'), shown(node.actualStartupMs, formatMs)],
+    [t('allRowsPer'), shown(node.actualTotalMs, formatMs)],
   ];
   return rows.filter((row): row is Row => row[1] !== null);
 }
@@ -44,12 +45,12 @@ function buffers(node: PlanNodeDto): Row[] {
   const buffers = node.buffers;
   if (!buffers) return [];
   return [
-    ['Shared hit', formatNumber(buffers.sharedHit)],
-    ['Shared read', formatNumber(buffers.sharedRead)],
-    ['Shared dirtied', formatNumber(buffers.sharedDirtied)],
-    ['Shared written', formatNumber(buffers.sharedWritten)],
-    ['Temp read', formatNumber(buffers.tempRead)],
-    ['Temp written', formatNumber(buffers.tempWritten)],
+    [t('sharedHit'), formatNumber(buffers.sharedHit)],
+    [t('sharedRead'), formatNumber(buffers.sharedRead)],
+    [t('sharedDirtied'), formatNumber(buffers.sharedDirtied)],
+    [t('sharedWritten'), formatNumber(buffers.sharedWritten)],
+    [t('tempRead'), formatNumber(buffers.tempRead)],
+    [t('tempWritten'), formatNumber(buffers.tempWritten)],
   ];
 }
 
@@ -80,13 +81,13 @@ export function PlanDetails(props: {
   const { plan, node } = props;
   const blocks = buffers(node);
   return (
-    <aside className={styles.details} aria-label="Operator details">
+    <aside className={styles.details} aria-label={t('operatorDetails')}>
       <h3>{nodeLabel(node)}</h3>
       <List rows={measures(plan, node)} />
       {node.hotspots.length > 0 && (
         <>
-          <h4>Hotspots</h4>
-          <ul aria-label="Hotspots">
+          <h4>{t('hotspots')}</h4>
+          <ul aria-label={t('hotspots')}>
             {node.hotspots.map((hotspot, index) => (
               <li key={index}>{hotspotText(hotspot).detail}</li>
             ))}
@@ -95,19 +96,19 @@ export function PlanDetails(props: {
       )}
       {node.conditions.length > 0 && (
         <>
-          <h4>Conditions</h4>
+          <h4>{t('conditions')}</h4>
           <List rows={rowsOf(node.conditions)} code />
         </>
       )}
       {blocks.length > 0 && (
         <>
-          <h4>Buffers (blocks, with inputs)</h4>
+          <h4>{t('buffersBlocksInputs')}</h4>
           <List rows={blocks} />
         </>
       )}
       {node.details.length > 0 && (
         <>
-          <h4>Details</h4>
+          <h4>{t('details')}</h4>
           <List rows={rowsOf(node.details)} code />
         </>
       )}

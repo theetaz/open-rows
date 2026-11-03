@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { MonitorTable } from './monitorData';
 import styles from './Monitor.module.css';
+import { t } from './messages/lazyDashboard';
 type Row = MonitorTable['rows'][number];
 type Graph = Map<string, Row[]>;
 
@@ -25,24 +26,30 @@ function branch(
       {row && context.onSession ? (
         <button
           type="button"
-          aria-label={`Session ${pid}`}
+          aria-label={t('sessionPid', { pid })}
           onClick={() => {
             context.onSession?.(pid);
           }}
         >
-          PID {pid}
+          {t('pidPid', { pid })}
         </button>
       ) : (
-        `PID ${pid}`
+        t('pidPid', { pid })
       )}
+      {' · '}
       {row
-        ? ` · ${String(row.state ?? 'Unknown')} · ${String(row.wait ?? 'No wait')} · query age ${String(row.age_ms ?? 'Unknown')} ms · transaction age ${String(row.transaction_ms ?? 'Unknown')} ms`
-        : ' · Unknown blocker (outside visibility)'}
+        ? t('stateWaitQuery', {
+            state: String(row.state ?? t('unknown')),
+            wait: String(row.wait ?? t('noWait')),
+            age_ms: String(row.age_ms ?? t('unknown')),
+            transaction_ms: String(row.transaction_ms ?? t('unknown')),
+          })
+        : t('unknownBlockerOutside')}
       {row?.query && <pre>{String(row.query)}</pre>}
       {cycle ? (
-        ' · Cycle'
+        <> · {t('cycle')}</>
       ) : next.size > 16 ? (
-        ' · Depth limit'
+        <> · {t('depthLimit')}</>
       ) : (
         <ul>
           {(graph.get(pid) ?? [])
@@ -86,13 +93,9 @@ export function BlockingTree({
   const budget = { remaining: 100 };
   return (
     <>
-      <p className={styles.note}>
-        Blocker → blocked. Query and transaction ages are shown; lock-wait
-        duration is unavailable. Unseen owners, cycles and capped chains remain
-        explicit.
-      </p>
+      <p className={styles.note}>{t('blockerBlockedQuery')}</p>
       {graph.size ? (
-        <ul className={styles.tree} aria-label="Blocking chains">
+        <ul className={styles.tree} aria-label={t('blockingChains')}>
           {roots
             .slice(0, 100)
             .map((pid) =>
@@ -100,9 +103,9 @@ export function BlockingTree({
             )}
         </ul>
       ) : (
-        <p>No blocking edges in this sample.</p>
+        <p>{t('noBlockingEdges')}</p>
       )}
-      {budget.remaining === 0 && <p>Graph display limit (100 nodes)</p>}
+      {budget.remaining === 0 && <p>{t('graphDisplayLimit')}</p>}
     </>
   );
 }

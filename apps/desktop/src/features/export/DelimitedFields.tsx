@@ -10,6 +10,7 @@ import {
 } from './options';
 import type { Section } from './ExportForm';
 import styles from './Export.module.css';
+import { t } from './lazyMessages';
 
 /** CSV and TSV options: delimiter (CSV), quote, header, NULL text, line ends, encoding. */
 export function DelimitedFields({ options, set }: Section): React.JSX.Element {
@@ -24,7 +25,7 @@ export function DelimitedFields({ options, set }: Section): React.JSX.Element {
     <>
       {csv && (
         <SelectField
-          label="Delimiter"
+          label={t('delimiter')}
           value={options.csv.delimiter}
           options={delimiterChoices}
           onValueChange={(delimiter) => {
@@ -34,7 +35,7 @@ export function DelimitedFields({ options, set }: Section): React.JSX.Element {
       )}
       <div className={styles.pair}>
         <SelectField
-          label="Quote"
+          label={t('quote')}
           value={text.quote}
           options={quoteChoices}
           onValueChange={(quote) => {
@@ -42,9 +43,9 @@ export function DelimitedFields({ options, set }: Section): React.JSX.Element {
           }}
         />
         <TextField
-          label="NULL as"
+          label={t('null')}
           value={text.nullText}
-          placeholder="Empty field"
+          placeholder={t('emptyField')}
           spellCheck={false}
           {...(error ? { error } : {})}
           onChange={(event) => {
@@ -54,7 +55,7 @@ export function DelimitedFields({ options, set }: Section): React.JSX.Element {
       </div>
       <div className={styles.pair}>
         <SelectField
-          label="Line endings"
+          label={t('lineEndings')}
           value={text.lineEnding}
           options={lineEndingChoices}
           onValueChange={(lineEnding) => {
@@ -62,7 +63,7 @@ export function DelimitedFields({ options, set }: Section): React.JSX.Element {
           }}
         />
         <SelectField
-          label="Encoding"
+          label={t('encoding')}
           value={text.encoding}
           options={encodingChoices}
           onValueChange={(encoding) => {
@@ -78,7 +79,7 @@ export function DelimitedFields({ options, set }: Section): React.JSX.Element {
             change({ header: event.target.checked });
           }}
         />
-        Column names as the first row
+        {t('columnNamesFirst')}
       </label>
     </>
   );

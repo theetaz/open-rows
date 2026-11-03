@@ -7,6 +7,7 @@ import type {
   TableDetailDto,
 } from '@openrows/ipc';
 import type { History } from '../editHistory';
+import { t } from '../messages/lazyStructure';
 
 /** One staged structure change; keyed changes replace earlier ones. */
 export type StagedSchema = { id: string; change: SchemaChangeDto };
@@ -175,25 +176,42 @@ type ColumnChange = Extract<SchemaChangeDto, { column: string }>;
 function describeColumn(change: ColumnChange): string {
   switch (change.kind) {
     case 'renameColumn':
-      return `Rename column ${change.column} to ${change.name}`;
+      return t('renameColumnColumn', {
+        column: change.column,
+        name: change.name,
+      });
     case 'columnTypeUsing':
-      return `Convert ${change.column} to ${change.dataType} USING (${change.expression})`;
+      return t('convertColumnDatatype', {
+        column: change.column,
+        dataType: change.dataType,
+        expression: change.expression,
+      });
     case 'reorderColumn':
-      return `Move ${change.column} ${change.after === null ? 'first' : `after ${change.after}`}`;
+      return change.after === null
+        ? t('moveColumnFirst', { column: change.column })
+        : t('moveColumnAfter', { column: change.column, after: change.after });
     case 'columnType':
-      return `Change type of ${change.column} to ${change.dataType}`;
+      return t('changeTypeColumn', {
+        column: change.column,
+        dataType: change.dataType,
+      });
     case 'columnNullable':
-      return `${change.nullable ? 'Allow' : 'Disallow'} NULL in ${change.column}`;
+      return change.nullable
+        ? t('allowNull', { column: change.column })
+        : t('disallowNull', { column: change.column });
     case 'columnDefault':
-      return `Change default of ${change.column}`;
+      return t('changeDefaultColumn', { column: change.column });
     case 'columnComment':
-      return `Change comment of ${change.column}`;
+      return t('changeCommentColumn', { column: change.column });
     case 'columnIdentity':
-      return `Change numbering of ${change.column} to ${identityLabel[change.identity]}`;
+      return t('changeNumberingColumn', {
+        column: change.column,
+        identityLabel: identityLabel[change.identity],
+      });
     case 'columnCollation':
-      return `Change collation of ${change.column}`;
+      return t('changeCollationColumn', { column: change.column });
     case 'dropColumn':
-      return `Delete column ${change.column}`;
+      return t('deleteColumnColumn', { column: change.column });
   }
 }
 
@@ -202,15 +220,21 @@ export function describe(change: SchemaChangeDto): string {
   if ('column' in change) return describeColumn(change);
   switch (change.kind) {
     case 'renameTable':
-      return `Rename table to ${change.name}`;
+      return t('renameTableName', { name: change.name });
     case 'tableComment':
-      return 'Change table comment';
+      return t('changeTableComment');
     case 'addColumn':
-      return `Add column ${change.name} ${change.dataType}`;
+      return t('addColumnName', {
+        name: change.name,
+        dataType: change.dataType,
+      });
     case 'createIndex':
-      return `Create index ${change.name ?? ''} on ${change.columns.join(', ')}`;
+      return t('createIndexName', {
+        name: change.name ?? '',
+        columns: change.columns.join(', '),
+      });
     case 'dropIndex':
-      return `Delete index ${change.name}`;
+      return t('deleteIndexName', { name: change.name });
     case 'addPrimaryKey':
     case 'addUnique':
     case 'createIndexConcurrently':
@@ -238,14 +262,23 @@ function describeConstraint(
   switch (change.kind) {
     case 'addPrimaryKey':
     case 'addUnique':
-      return `Add ${change.kind === 'addPrimaryKey' ? 'primary key' : 'unique constraint'} (${change.key.columns.join(', ')})`;
+      return change.kind === 'addPrimaryKey'
+        ? t('addPrimaryKey', { columns: change.key.columns.join(', ') })
+        : t('addUniqueConstraint', { columns: change.key.columns.join(', ') });
     case 'createIndexConcurrently':
-      return `Create index ${change.index.name ?? ''} concurrently`;
+      return t('createIndexNameConcurrently', {
+        name: change.index.name ?? '',
+      });
     case 'addForeignKey':
-      return `Add foreign key ${change.key.name ?? ''} → ${change.key.target.table}`;
+      return t('addForeignKeyName', {
+        name: change.key.name ?? '',
+        table: change.key.target.table,
+      });
     case 'addCheck':
-      return `Add check ${change.check.name ?? change.check.expression}`;
+      return t('addCheckName', {
+        name: change.check.name ?? change.check.expression,
+      });
     case 'dropConstraint':
-      return `Delete constraint ${change.name}`;
+      return t('deleteConstraintName', { name: change.name });
   }
 }

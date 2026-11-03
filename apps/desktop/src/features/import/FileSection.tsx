@@ -9,6 +9,7 @@ import {
 } from './choices';
 import type { PickedFile } from './model';
 import styles from './Import.module.css';
+import { t } from './messages';
 
 /** The picked file and how it is parsed. */
 export function FileSection(props: {
@@ -18,13 +19,13 @@ export function FileSection(props: {
   onOptions: (options: ImportOptionsDto) => void;
 }): React.JSX.Element {
   return (
-    <section className={styles.section} aria-label="File">
+    <section className={styles.section} aria-label={t('file')}>
       <div className={styles.fileRow}>
         <Button onClick={props.onPick}>
-          {props.file ? 'Choose Another File…' : 'Choose File…'}
+          {props.file ? t('chooseAnotherFile') : t('chooseFile')}
         </Button>
         <span className={styles.fileName}>
-          {props.file?.fileName ?? 'CSV, TSV, JSON or NDJSON'}
+          {props.file?.fileName ?? t('csvTsvJson')}
         </span>
       </div>
       {props.options && (
@@ -52,7 +53,7 @@ function ParseOptions(props: {
   return (
     <div className={styles.optionGrid}>
       <SelectField
-        label="Format"
+        label={t('format')}
         value={options.format}
         options={formatChoices}
         onValueChange={(format) => {
@@ -60,7 +61,7 @@ function ParseOptions(props: {
         }}
       />
       <SelectField
-        label="Encoding"
+        label={t('encoding')}
         value={options.encoding}
         options={encodings}
         onValueChange={(encoding) => {
@@ -76,7 +77,7 @@ function ParseOptions(props: {
             set({ emptyAsNull: event.target.checked });
           }}
         />
-        Empty values are NULL
+        {t('emptyValuesNull')}
       </label>
     </div>
   );
@@ -96,7 +97,7 @@ function DelimitedOptions(props: {
   return (
     <>
       <SelectField
-        label="Delimiter"
+        label={t('delimiter')}
         value={options.delimiter}
         options={delimiters}
         onValueChange={(delimiter) => {
@@ -104,7 +105,7 @@ function DelimitedOptions(props: {
         }}
       />
       <SelectField
-        label="Quote"
+        label={t('quote')}
         value={options.quote ?? 'none'}
         options={quoteChoices}
         onValueChange={(quote) => {
@@ -119,7 +120,7 @@ function DelimitedOptions(props: {
             set({ header: event.target.checked });
           }}
         />
-        First row holds column names
+        {t('firstRowHolds')}
       </label>
     </>
   );

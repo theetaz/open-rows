@@ -12,6 +12,7 @@ import type { DataTools } from './useDataTools';
 import { RowForm } from './RowForm';
 import { tableSettings } from '../settings/tableSettings';
 import styles from './Table.module.css';
+import { t } from './messages/lazyData';
 const TableGrid = lazy(() =>
   import('./TableGrid').then((module) => ({ default: module.TableGrid })),
 );
@@ -71,13 +72,13 @@ export function TableData(props: Props): React.JSX.Element {
       <div role="status" className={styles.note}>
         {isActive(entry.run) ? (
           <>
-            Loading rows…{' '}
+            {t('loadingRows')}{' '}
             <Button size="sm" variant="ghost" onClick={state.cancelPage}>
-              Cancel
+              {t('cancel')}
             </Button>
           </>
         ) : (
-          'No rows loaded'
+          t('noRowsLoaded')
         )}
       </div>
     );

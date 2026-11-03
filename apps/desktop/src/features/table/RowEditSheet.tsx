@@ -14,6 +14,7 @@ import { DocumentField } from './DocumentField';
 import { invalidDocument } from './documentText';
 import { ReviewSheet } from './ReviewSheet';
 import styles from './Table.module.css';
+import { t } from './messages/lazyData';
 
 /** A new document starts as `{}` so the JSON editor has an object to edit. */
 function initialValues(draft: StagedEdit, info: EditInfoDto): Values {
@@ -37,12 +38,14 @@ function EditForm(props: {
   const invalid = invalidDocument(values.__document);
   return (
     <Sheet
-      title={inserting ? 'Add row' : `Edit row ${String(draft.number)}`}
+      title={
+        inserting
+          ? t('addRow')
+          : t('editRowNumber', { number: String(draft.number) })
+      }
       onClose={editing.close}
     >
-      <p className={styles.editNote}>
-        Changes are staged until you review and commit them.
-      </p>
+      <p className={styles.editNote}>{t('changesStagedUntil')}</p>
       <EditFields
         draft={draft}
         info={info}
@@ -60,7 +63,7 @@ function EditForm(props: {
                   editing.change({ ...draft, kind: 'delete', values: {} });
                 }}
               >
-                Stage deletion
+                {t('stageDeletion')}
               </Button>
               <Button
                 variant="ghost"
@@ -69,13 +72,13 @@ function EditForm(props: {
                   editing.change(duplicateRow({ ...draft, values }, info));
                 }}
               >
-                Stage duplicate
+                {t('stageDuplicate')}
               </Button>
             </>
           )
         }
       >
-        <Button onClick={editing.close}>Cancel</Button>
+        <Button onClick={editing.close}>{t('cancel')}</Button>
         <Button
           variant="primary"
           disabled={invalid}
@@ -83,7 +86,7 @@ function EditForm(props: {
             editing.change({ ...draft, values });
           }}
         >
-          Stage changes
+          {t('stageChanges')}
         </Button>
       </SheetActions>
     </Sheet>
@@ -121,7 +124,7 @@ function EditFields({
               <label>
                 <input
                   type="checkbox"
-                  aria-label={`Set ${column.name}`}
+                  aria-label={t('setName', { name: column.name })}
                   disabled={protectedField}
                   checked={active}
                   onChange={(event) => {
@@ -136,8 +139,9 @@ function EditFields({
                       );
                   }}
                 />
-                Use a value{' '}
-                {protectedField ? '(generated)' : '(otherwise DEFAULT)'}
+                {protectedField
+                  ? t('useValueGenerated')
+                  : t('useValueOtherwise')}
               </label>
             )}
             <ValueField
@@ -197,7 +201,7 @@ function ValueField({
   const kind = disabled ? null : temporalKind(column.dataType);
   return (
     <TextField
-      aria-label={`Edit ${column.name}`}
+      aria-label={t('editName', { name: column.name })}
       data-initial-focus={focus}
       value={text}
       placeholder={placeholder(value)}
@@ -230,7 +234,7 @@ export function RowEditSheet({
   if (editing.review)
     return (
       <ReviewSheet
-        title="Review table changes"
+        title={t('reviewTableChanges')}
         summary={reviewSummary(editing)}
         sql={editing.review.statements
           .map(
@@ -262,14 +266,14 @@ function reviewSummary(editing: RowEditing): string {
   const counts = { update: 0, insert: 0, delete: 0 };
   for (const change of editing.history.current) counts[change.kind] += 1;
   const parts = [
-    counts.update && `${String(counts.update)} updated`,
-    counts.insert && `${String(counts.insert)} inserted`,
-    counts.delete && `${String(counts.delete)} deleted`,
+    counts.update && t('countUpdated', { count: String(counts.update) }),
+    counts.insert && t('countInserted', { count: String(counts.insert) }),
+    counts.delete && t('countDeleted', { count: String(counts.delete) }),
   ].filter((part): part is string => typeof part === 'string');
-  const where = editing.info?.production
-    ? 'Production connection: these statements change production data. '
-    : '';
-  return `${where}Rows: ${parts.join(', ')}. One transaction: conflicts and statement errors roll everything back. If the connection is lost during commit, reload before retrying.`;
+  const summary = t('rowsSummary', { parts: parts.join(', ') });
+  return editing.info?.production
+    ? `${t('productionConnectionThese')} ${summary}`
+    : summary;
 }
 
 function NullValue({
@@ -287,14 +291,14 @@ function NullValue({
     <label>
       <input
         type="checkbox"
-        aria-label={`NULL ${name}`}
+        aria-label={t('nullName', { name })}
         data-initial-focus={focus && value?.kind === 'null'}
         checked={value?.kind === 'null'}
         onChange={(event) => {
           set(name, event.target.checked ? NULL_VALUE : textValue(''));
         }}
       />
-      NULL
+      {t('null')}
     </label>
   );
 }

@@ -6,15 +6,16 @@ import type {
   ImportPreview,
 } from '@openrows/ipc';
 import styles from './ConnectionSheet.module.css';
+import { t } from './messages/lazyTransfer';
 const labels: Record<ConnectionConflictDto, string> = {
-  new: 'New',
-  sameName: 'Same name exists',
-  identical: 'Identical (skip)',
+  new: t('new'),
+  sameName: t('sameNameExists'),
+  identical: t('identicalSkip'),
 };
 const choices = [
-  { value: 'skip' as const, label: 'Skip' },
-  { value: 'replace' as const, label: 'Replace' },
-  { value: 'keepBoth' as const, label: 'Keep both with suffix' },
+  { value: 'skip' as const, label: t('skip') },
+  { value: 'replace' as const, label: t('replace') },
+  { value: 'keepBoth' as const, label: t('keepBothSuffix') },
 ];
 /** Per-row decisions and optional keychain save; passwords never cross into this sheet. */
 export function ConnectionImportPreview(props: {
@@ -38,7 +39,7 @@ export function ConnectionImportPreview(props: {
           </small>
           {row.conflict === 'sameName' && (
             <SelectField
-              label={`Action for ${row.profile.name}`}
+              label={t('actionName', { name: row.profile.name })}
               options={choices}
               value={props.decisions[index]?.choice ?? 'skip'}
               onValueChange={(choice) => {
@@ -57,16 +58,13 @@ export function ConnectionImportPreview(props: {
                   });
                 }}
               />
-              Save password for {row.profile.name} in keychain
+              {t('savePasswordName', { name: row.profile.name })}
             </label>
           )}
         </div>
       ))}
-      {props.preview.rows.length === 0 && <p>No connections found.</p>}
-      <small className={styles.hint}>
-        Imported commands are untrusted. Their exact program and arguments must
-        be confirmed before execution.
-      </small>
+      {props.preview.rows.length === 0 && <p>{t('noConnectionsFound')}</p>}
+      <small className={styles.hint}>{t('importedCommandsUntrusted')}</small>
     </div>
   );
 }

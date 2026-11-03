@@ -24,6 +24,7 @@ use super::run::{Job, execute};
 use crate::connections::drivers::{driver, profile_driver};
 use crate::connections::profiles::profile_id;
 use crate::connections::{Connections, IpcError, IpcErrorKind, route, target};
+use crate::native_text;
 use crate::tables::TableTarget;
 use crate::tables::commands::owned_session;
 
@@ -75,8 +76,8 @@ pub(crate) async fn import_pick_file(
         .dialog()
         .file()
         .set_parent(&window)
-        .set_title("Import")
-        .add_filter("CSV, TSV, JSON or NDJSON", &EXTENSIONS)
+        .set_title(native_text::IMPORT)
+        .add_filter(native_text::FILTER_IMPORT_FILES, &EXTENSIONS)
         .pick_file(move |picked| {
             // The receiver only disappears when the command was dropped.
             let _ = sender.send(picked);

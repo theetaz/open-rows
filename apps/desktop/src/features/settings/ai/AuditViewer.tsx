@@ -4,6 +4,7 @@ import { Button } from '@openrows/ui';
 import { useAuditHistory } from './useAuditHistory';
 import type { AuditEntry } from '@openrows/ipc';
 import styles from './Ai.module.css';
+import { t } from '../messages/lazyAi';
 /** Bounded local audit metadata, with explicit purge and no payload-content option. */
 export function AuditViewer(): React.JSX.Element {
   const { entries, failure, busy, refresh, purge } = useAuditHistory();
@@ -12,13 +13,9 @@ export function AuditViewer(): React.JSX.Element {
     if (await purge()) setConfirm(false);
   };
   return (
-    <section aria-label="AI audit log" className={styles.form}>
-      <h4>Audit log</h4>
-      <p className={styles.notice}>
-        Last 1,000 outbound attempts. Only time, provider/connection IDs, level,
-        size, hash and categories are recorded. Previews do not send requests or
-        create audit records.
-      </p>
+    <section aria-label={t('aiAuditLog')} className={styles.form}>
+      <h4>{t('auditLog')}</h4>
+      <p className={styles.notice}>{t('last1000')}</p>
       <div className={styles.actions}>
         <Button
           type="button"
@@ -27,7 +24,7 @@ export function AuditViewer(): React.JSX.Element {
             void refresh();
           }}
         >
-          Refresh audit
+          {t('refreshAudit')}
         </Button>
         <Button
           type="button"
@@ -36,7 +33,7 @@ export function AuditViewer(): React.JSX.Element {
             setConfirm(true);
           }}
         >
-          Purge audit…
+          {t('purgeAudit')}
         </Button>
       </div>
       {confirm && (
@@ -52,9 +49,7 @@ export function AuditViewer(): React.JSX.Element {
       )}
       {failure && <p role="alert">{failure}</p>}
       <AuditTable entries={entries} />
-      {entries.length === 0 && (
-        <p>No outbound database context requests recorded.</p>
-      )}
+      {entries.length === 0 && <p>{t('noOutboundDatabase')}</p>}
     </section>
   );
 }
@@ -62,16 +57,16 @@ export function AuditViewer(): React.JSX.Element {
 function AuditTable({ entries }: { entries: AuditEntry[] }): React.JSX.Element {
   return (
     <div className={styles.audit}>
-      <table aria-label="Outbound requests">
+      <table aria-label={t('outboundRequests')}>
         <thead>
           <tr>
-            <th>Time</th>
-            <th>Provider</th>
-            <th>Connection</th>
-            <th>Level</th>
-            <th>Bytes</th>
-            <th>Categories</th>
-            <th>SHA-256</th>
+            <th>{t('time')}</th>
+            <th>{t('provider')}</th>
+            <th>{t('connection')}</th>
+            <th>{t('level')}</th>
+            <th>{t('bytes')}</th>
+            <th>{t('categories')}</th>
+            <th>{t('sha256')}</th>
           </tr>
         </thead>
         <tbody>
@@ -104,8 +99,8 @@ function PurgeConfirmation({
   onCancel: () => void;
 }): React.JSX.Element {
   return (
-    <div role="group" aria-label="Confirm audit purge">
-      <p>Delete all local AI request audit records?</p>
+    <div role="group" aria-label={t('confirmAuditPurge')}>
+      <p>{t('deleteAllLocal')}</p>
       <Button
         type="button"
         disabled={busy}
@@ -113,7 +108,7 @@ function PurgeConfirmation({
           onPurge();
         }}
       >
-        Delete audit records
+        {t('deleteAuditRecords')}
       </Button>
       <Button
         type="button"
@@ -121,7 +116,7 @@ function PurgeConfirmation({
           onCancel();
         }}
       >
-        Cancel purge
+        {t('cancelPurge')}
       </Button>
     </div>
   );

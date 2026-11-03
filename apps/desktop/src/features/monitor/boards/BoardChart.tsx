@@ -4,6 +4,7 @@ import type { Mark } from '@openrows/ipc';
 import { downsample } from './boardData';
 import type { Series, SeriesPoint, XKind } from './boardData';
 import styles from './Boards.module.css';
+import { t } from '../messages/lazyBoards';
 
 const WIDTH = 300;
 const HEIGHT = 120;
@@ -137,11 +138,13 @@ export const BoardChart = memo(function BoardChart(props: {
         viewBox={`0 0 ${String(WIDTH)} ${String(HEIGHT)}`}
         preserveAspectRatio="none"
         role="img"
-        aria-label={`${props.title}: ${props.mark} chart of ${props.series
-          .map((s) => s.name)
-          .join(
-            ', ',
-          )} over ${String(rows)} ${props.xKind} values; NULL values are gaps`}
+        aria-label={t('titleMarkChart', {
+          title: props.title,
+          mark: props.mark,
+          series: props.series.map((s) => s.name).join(', '),
+          rows: String(rows),
+          xKind: props.xKind,
+        })}
       >
         {props.series.map((series, index) => (
           <SeriesMarks

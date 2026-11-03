@@ -4,6 +4,7 @@ import type { EditorDialect, FormatKind } from '@openrows/editor';
 import { formatOptionsOf } from './editorSettings';
 import type { EditorSettings } from './editorSettings';
 import type { EditorHandle } from './request';
+import { t } from './lazyMessages';
 
 const message = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
@@ -21,7 +22,7 @@ export function useFormat(
         setFailure(null);
       },
       (error: unknown) => {
-        setFailure(`Could not format: ${message(error)}`);
+        setFailure(t('couldNotFormat', { error: message(error) }));
       },
     );
   };

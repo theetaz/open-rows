@@ -2,10 +2,11 @@
 import { TextArea, TextField } from '@openrows/ui';
 import type { NewCheckDto } from '@openrows/ipc';
 import styles from './Forms.module.css';
+import { t } from '../../messages/initial';
 
 /** Why the check cannot be staged yet, or `null`. */
 export function checkProblem(check: NewCheckDto): string | null {
-  return check.expression.trim() ? null : 'Write the condition rows must meet.';
+  return check.expression.trim() ? null : t('writeConditionRows');
 }
 
 /** The check as sent: a blank name is none. */
@@ -27,10 +28,10 @@ export function CheckFields({
   return (
     <div className={styles.grid}>
       <TextField
-        label="Name"
+        label={t('name')}
         className={styles.wide}
         value={check.name ?? ''}
-        placeholder="Automatic"
+        placeholder={t('automatic')}
         autoComplete="off"
         onChange={(event) => {
           onChange({ ...check, name: event.target.value });
@@ -38,8 +39,8 @@ export function CheckFields({
       />
       <div className={styles.wide}>
         <TextArea
-          aria-label="Condition"
-          placeholder="price >= 0"
+          aria-label={t('condition')}
+          placeholder={t('price0')}
           value={check.expression}
           spellCheck={false}
           onChange={(event) => {

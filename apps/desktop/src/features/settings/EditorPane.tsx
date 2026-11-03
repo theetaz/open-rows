@@ -15,13 +15,14 @@ import {
 } from './editorPaneSpecs';
 import type { Choice, FlagSpec } from './editorPaneSpecs';
 import styles from '../appearance/Appearance.module.css';
+import { t } from './messages/lazyPanes';
 
 /** Settings ▸ Editor: the SQL editor options of the bottom-bar menus. */
 export function EditorPane(): React.JSX.Element {
   const [settings] = useEditorSettings();
   return (
-    <section aria-label="Editor">
-      <h3>SQL editor</h3>
+    <section aria-label={t('editor')}>
+      <h3>{t('sqlEditor')}</h3>
       <div className={styles.settingsGroup}>
         {[...CHOICES, ...INDENT_CHOICES].map((choice) => (
           <ChoiceRow key={choice.key} choice={choice} settings={settings} />
@@ -30,7 +31,7 @@ export function EditorPane(): React.JSX.Element {
           <FlagRow key={flag.key} flag={flag} settings={settings} />
         ))}
       </div>
-      <h3>Completion</h3>
+      <h3>{t('completion')}</h3>
       <div className={styles.settingsGroup}>
         {COMPLETION_FLAGS.map((flag) => (
           <FlagRow key={flag.key} flag={flag} settings={settings} />
@@ -38,7 +39,7 @@ export function EditorPane(): React.JSX.Element {
         <ChoiceRow choice={DELAY_CHOICE} settings={settings} />
         <ChoiceRow choice={ACCEPT_CHOICE} settings={settings} />
       </div>
-      <h3>Formatter</h3>
+      <h3>{t('formatter')}</h3>
       <div className={styles.settingsGroup}>
         {FORMAT_CHOICES.map((choice) => (
           <ChoiceRow key={choice.key} choice={choice} settings={settings} />

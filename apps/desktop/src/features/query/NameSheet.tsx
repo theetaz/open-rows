@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Button, TextField } from '@openrows/ui';
 import { Sheet, SheetActions } from '@openrows/ui/sheet';
+import { t } from './initialMessages';
 
 const message = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
@@ -48,7 +49,7 @@ export function NameSheet(props: {
         }}
       />
       <SheetActions>
-        <Button onClick={props.onClose}>Cancel</Button>
+        <Button onClick={props.onClose}>{t('cancel')}</Button>
         <Button
           variant="primary"
           disabled={!name.trim() || busy}

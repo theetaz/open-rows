@@ -4,6 +4,7 @@ import { Icon, TextField } from '@openrows/ui';
 import { tableValue } from './effective';
 import type { Structure } from './useStructure';
 import styles from './Structure.module.css';
+import { t } from '../messages/lazyStructure';
 
 /** `Name [table] · Primary [key chips] · Search for column…` above the grid. */
 export function StructureHeader({
@@ -19,7 +20,7 @@ export function StructureHeader({
   const primary = schema.detail?.primaryKey ?? [];
   return (
     <div className={styles.header}>
-      <span>Name</span>
+      <span>{t('name')}</span>
       <NameField
         key={name}
         name={name}
@@ -28,8 +29,8 @@ export function StructureHeader({
           schema.stage({ kind: 'renameTable', name: next });
         }}
       />
-      <span>Primary</span>
-      <span className={styles.primary} aria-label="Primary key">
+      <span>{t('primary2')}</span>
+      <span className={styles.primary} aria-label={t('primaryKey')}>
         {primary.map((column) => (
           <span key={column} className={styles.chip}>
             {column}
@@ -40,8 +41,8 @@ export function StructureHeader({
         <TextField
           className={styles.search}
           controlSize="compact"
-          aria-label="Search for column"
-          placeholder="Search for column…"
+          aria-label={t('searchColumn')}
+          placeholder={t('searchColumn2')}
           leadingIcon={<Icon name="search" />}
           value={structure.search}
           onChange={(event) => {
@@ -71,7 +72,7 @@ function NameField({
     <TextField
       className={styles.name}
       controlSize="compact"
-      aria-label="Table name"
+      aria-label={t('tableName')}
       value={draft}
       readOnly={!enabled}
       onChange={(event) => {

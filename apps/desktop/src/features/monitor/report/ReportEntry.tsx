@@ -8,12 +8,13 @@ import { boardReport, monitorReport } from './buildReport';
 import type { Connection } from './connection';
 import type { MonitorPart } from './monitorReport';
 import { ReportDialog } from './ReportDialog';
+import { t } from '../messages/lazyReport';
 
 const MONITOR_PARTS: readonly { value: MonitorPart; label: string }[] = [
-  { value: 'summary', label: 'Summary and source status' },
-  { value: 'metrics', label: 'Metric charts' },
-  { value: 'queries', label: 'Top queries' },
-  { value: 'incidents', label: 'Incidents' },
+  { value: 'summary', label: t('summarySourceStatus') },
+  { value: 'metrics', label: t('metricCharts') },
+  { value: 'queries', label: t('topQueries') },
+  { value: 'incidents', label: t('incidents') },
 ];
 
 function monitorRanges(
@@ -21,11 +22,11 @@ function monitorRanges(
   hours: number,
 ): { value: string; label: string }[] {
   const ranges = [
-    { value: '0', label: 'Live · 10 minutes' },
+    { value: '0', label: t('live10Minutes') },
     ...(history
       ? [1, 6, 24].map((value) => ({
           value: String(value),
-          label: `History · ${String(value)} h`,
+          label: t('historyValueH', { value: String(value) }),
         }))
       : []),
   ];
@@ -83,7 +84,7 @@ export function BoardReportDialog(props: {
   return (
     <ReportDialog
       parts={[
-        { value: 'summary', label: 'Summary' },
+        { value: 'summary', label: t('summary') },
         ...board.board.widgets.map((w) => ({ value: w.id, label: w.title })),
       ]}
       build={build}

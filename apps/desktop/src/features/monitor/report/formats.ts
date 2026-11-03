@@ -8,18 +8,19 @@ import { reportMarkdown } from './markdown';
 import { sectionRows, tabular } from './model';
 import type { ChartSection, Report, ReportSection } from './model';
 import { CHART_SIZE, chartSvg } from './svg';
+import { t } from '../messages/lazyReport';
 
 /** The file `saveReport` writes. */
 export type ReportFile = Parameters<typeof saveReport>[1];
 export type ReportFormat = 'markdown' | 'html' | 'json' | 'csv' | 'svg' | 'png';
 
 export const FORMATS: readonly { value: ReportFormat; label: string }[] = [
-  { value: 'markdown', label: 'Markdown' },
-  { value: 'html', label: 'HTML' },
-  { value: 'json', label: 'JSON' },
-  { value: 'csv', label: 'CSV (one table)' },
-  { value: 'svg', label: 'SVG (one chart)' },
-  { value: 'png', label: 'PNG (one chart)' },
+  { value: 'markdown', label: t('markdown') },
+  { value: 'html', label: t('html') },
+  { value: 'json', label: t('json') },
+  { value: 'csv', label: t('csvOneTable') },
+  { value: 'svg', label: t('svgOneChart') },
+  { value: 'png', label: t('pngOneChart') },
 ];
 
 /** The versioned JSON document. */
@@ -68,7 +69,7 @@ export async function reportFile(
       return { format, text: item ? sectionCsv(item) : '' };
     case 'svg':
     case 'png': {
-      if (item?.kind !== 'chart') throw new Error('Choose a chart to export');
+      if (item?.kind !== 'chart') throw new Error(t('chooseChartExport'));
       const svg = chartSvg(item);
       if (format === 'svg') return { format, text: svg };
       const bytes = await svgToPng(svg, CHART_SIZE);

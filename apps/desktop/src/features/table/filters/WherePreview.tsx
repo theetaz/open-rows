@@ -4,6 +4,7 @@ import { tableSql } from '@openrows/ipc';
 import type { TableQueryDto } from '@openrows/ipc';
 import { whereClause, withParams } from './whereClause';
 import styles from '../TableExtras.module.css';
+import { t } from '../messages/lazyData';
 
 /** Pause after typing before the predicate is checked again. */
 const CHECK_DELAY_MS = 300;
@@ -60,7 +61,7 @@ export function WherePreview({
   return (
     <pre
       className={styles.where}
-      aria-label="Generated WHERE"
+      aria-label={t('generatedWhere')}
       aria-busy={check.status === 'checking'}
     >
       {check.status === 'valid' ? check.text : 'Checking…'}

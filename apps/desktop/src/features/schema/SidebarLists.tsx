@@ -14,6 +14,7 @@ import { useSidebarPreferences } from './sidebarPreferences';
 import type { Catalog } from './useCatalog';
 import type { MenuPoint } from './ObjectRow';
 import styles from './SidebarLists.module.css';
+import { t } from './messages';
 
 type Props = {
   catalog: Catalog;
@@ -33,7 +34,11 @@ export function SidebarLists(props: Props): React.JSX.Element | null {
   const preferences = useSidebarPreferences(props.catalog.profileId);
   if (preferences.hidden.includes('favourites')) return null;
   return (
-    <SavedSection {...props} label="Favourites" objects={saved.favourites} />
+    <SavedSection
+      {...props}
+      label={t('favourites')}
+      objects={saved.favourites}
+    />
   );
 }
 
@@ -114,7 +119,7 @@ function SavedRow(
   return (
     <div className={missing ? styles.missing : undefined}>
       <TreeNode
-        label={`${label}${missing ? ' (missing)' : ''}`}
+        label={missing ? t('labelMissing', { label }) : label}
         level={1}
         selected={props.selected === key}
         tabStop={props.selected ? props.selected === key : props.index === 0}
@@ -124,7 +129,7 @@ function SavedRow(
         onOpen={open}
         onPreview={open}
         icon={<Icon name="star" />}
-        title={missing ? 'Missing object' : label}
+        title={missing ? t('missingObject') : label}
         name={`${label}${missing ? ' (missing)' : ''}`}
         onContextMenu={(event) => {
           event.preventDefault();
@@ -135,13 +140,13 @@ function SavedRow(
           missing ? (
             <button
               type="button"
-              aria-label={`Remove ${label}`}
+              aria-label={t('removeLabel', { label })}
               onClick={(event) => {
                 event.stopPropagation();
                 toggleFavourite(object);
               }}
             >
-              Remove
+              {t('remove')}
             </button>
           ) : undefined
         }

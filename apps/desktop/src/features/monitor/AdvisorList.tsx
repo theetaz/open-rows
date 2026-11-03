@@ -5,6 +5,7 @@ import { proposeMonitorSql } from '@openrows/ipc';
 import type { MonitorTarget, Suggestion } from '@openrows/ipc';
 import { useAdvisorPreferences } from './advisorPreferences';
 import styles from './Monitor.module.css';
+import { rich, t } from './messages/lazyInvestigation';
 const HypoPgReview = lazy(() =>
   import('./HypoPgReview').then((module) => ({ default: module.HypoPgReview })),
 );
@@ -34,31 +35,16 @@ export function AdvisorList(props: {
         setError(null);
       },
       () => {
-        setError(
-          'Evidence changed or the editor queue is unavailable; refresh the advisor.',
-        );
+        setError(t('evidenceChangedEditor'));
       },
     );
   };
   return (
-    <section aria-label="Optimisation advisor" className={styles.advisor}>
-      <h3>Optimisation advisor</h3>
-      <p className={styles.note}>
-        Proposals open an editor for review. Evidence age and coverage limit
-        advice; plan costs do not measure runtime.
-      </p>
-      {props.production && (
-        <p role="status">
-          Production: review locks, I/O, storage and write cost before running
-          any proposal.
-        </p>
-      )}
-      {!cards.length && (
-        <p>
-          No suggestions with sufficient current evidence. Review Explain for
-          scan/join evidence.
-        </p>
-      )}
+    <section aria-label={t('optimisationAdvisor')} className={styles.advisor}>
+      <h3>{t('optimisationAdvisor')}</h3>
+      <p className={styles.note}>{t('proposalsOpenEditor')}</p>
+      {props.production && <p role="status">{t('productionReviewLocks')}</p>}
+      {!cards.length && <p>{t('noSuggestionsSufficient')}</p>}
       <SuggestionRows
         cards={cards}
         opened={opened}
@@ -82,7 +68,7 @@ export function AdvisorList(props: {
         </Suspense>
       )}
       <Button size="sm" onClick={preferences.reset}>
-        Restore dismissed suggestions
+        {t('restoreDismissedSuggestions')}
       </Button>
       {(error ?? preferences.error) && (
         <p role="alert">{error ?? preferences.error}</p>
@@ -102,7 +88,7 @@ function SuggestionRows(props: {
   onHide: (id: string, until: number) => void;
 }): React.JSX.Element {
   return (
-    <ul aria-label="Advisor suggestions">
+    <ul aria-label={t('advisorSuggestions')}>
       {props.cards.map((card) => (
         <SuggestionCard
           key={card.id}
@@ -134,6 +120,24 @@ function SuggestionRows(props: {
   );
 }
 
+function CardEvidence({ card }: { card: Suggestion }): React.JSX.Element {
+  return (
+    <details className={styles.note}>
+      <summary>{t('evidenceTradeOffs')}</summary>
+      <p>{card.evidence}</p>
+      <p>{card.tradeOffs}</p>
+      <p>
+        {t('collectedValue', {
+          value:
+            card.collectedMs === null
+              ? t('unknown')
+              : new Date(card.collectedMs).toLocaleString(),
+        })}
+      </p>
+    </details>
+  );
+}
+
 function SuggestionCard(props: {
   card: Suggestion;
   opened: boolean;
@@ -146,22 +150,19 @@ function SuggestionCard(props: {
   const { card } = props;
   return (
     <li className={styles.suggestion}>
-      <strong>
-        {card.ruleId} v{String(card.version)}
-      </strong>{' '}
-      · {card.confidence} confidence
+      {rich('strongConfidenceConfidence', {
+        strong: (
+          <strong>
+            {t('ruleidVversion', {
+              ruleId: card.ruleId,
+              version: String(card.version),
+            })}
+          </strong>
+        ),
+        confidence: card.confidence,
+      })}
       <p>{card.impact}</p>
-      <details className={styles.note}>
-        <summary>Evidence and trade-offs</summary>
-        <p>{card.evidence}</p>
-        <p>{card.tradeOffs}</p>
-        <p>
-          Collected{' '}
-          {card.collectedMs === null
-            ? 'unknown'
-            : new Date(card.collectedMs).toLocaleString()}
-        </p>
-      </details>
+      <CardEvidence card={card} />
       <div className={styles.actions}>
         <Button
           size="sm"
@@ -173,7 +174,7 @@ function SuggestionCard(props: {
             );
           }}
         >
-          View evidence
+          {t('viewEvidence')}
         </Button>
         {card.sql && (
           <Button
@@ -182,12 +183,12 @@ function SuggestionCard(props: {
               props.onOpen();
             }}
           >
-            {props.opened ? 'Opened in editor' : 'Open SQL in editor'}
+            {props.opened ? t('openedEditor') : t('openSqlEditor')}
           </Button>
         )}
         {props.onWhatIf && (
           <Button size="sm" onClick={props.onWhatIf}>
-            HypoPG what-if
+            {t('hypopgWhatIf')}
           </Button>
         )}
         <Button
@@ -196,7 +197,7 @@ function SuggestionCard(props: {
             props.onDismiss();
           }}
         >
-          Dismiss
+          {t('dismiss')}
         </Button>
         <Button
           size="sm"
@@ -204,7 +205,7 @@ function SuggestionCard(props: {
             props.onSnooze();
           }}
         >
-          Snooze 1 hour
+          {t('snooze1Hour')}
         </Button>
       </div>
     </li>

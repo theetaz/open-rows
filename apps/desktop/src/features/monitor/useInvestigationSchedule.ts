@@ -11,6 +11,7 @@ import type {
 } from '@openrows/ipc';
 import { aiSettings } from '../settings/ai/aiSettings';
 import { assistantSchema } from '../assistant/context';
+import { t } from './messages/lazyInvestigation';
 /** Static read/propose tools eligible for explicit scheduled selection. */
 export const investigationTools = [
   'read_health_snapshot',
@@ -94,14 +95,10 @@ export function useInvestigationSchedule(props: {
         request,
         config: { ...config, enabled: true },
       });
-      setStatus(
-        'Enabled for this app session. The first run follows the interval; use Run now to start one immediately.',
-      );
+      setStatus(t('enabledAppSession'));
       await refresh();
     } catch {
-      setStatus(
-        'Schedule refused. Check provider, telemetry policy, connection and budgets.',
-      );
+      setStatus(t('scheduleRefusedCheck'));
     }
   };
   return {

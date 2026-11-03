@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Button, Icon, TextArea, TextField } from '@openrows/ui';
 import { usePipelineEditor } from './usePipelineEditor';
 import styles from './PipelineEditor.module.css';
+import { t } from './lazyMessages';
 type Draft = ReturnType<typeof usePipelineEditor>;
 
 /**
@@ -20,7 +21,7 @@ export function PipelineEditor({
   const [open, setOpen] = useState(false);
   const draft = usePipelineEditor(run);
   return (
-    <section className={styles.pipeline} aria-label="Aggregation pipeline">
+    <section className={styles.pipeline} aria-label={t('aggregationPipeline')}>
       <button
         type="button"
         className={styles.header}
@@ -30,7 +31,7 @@ export function PipelineEditor({
         }}
       >
         <Icon name={open ? 'chevronDown' : 'chevronRight'} />
-        Pipeline editor
+        {t('pipelineEditor')}
       </button>
       {open && (
         <div className={styles.body}>
@@ -51,7 +52,7 @@ function PipelineFields({ draft }: { draft: Draft }): React.JSX.Element {
   return (
     <div className={styles.fields}>
       <TextField
-        label="Collection"
+        label={t('collection')}
         controlSize="compact"
         className={styles.collection}
         value={draft.collection}
@@ -60,7 +61,7 @@ function PipelineFields({ draft }: { draft: Draft }): React.JSX.Element {
         }}
       />
       <TextArea
-        aria-label="Pipeline JSON"
+        aria-label={t('pipelineJson')}
         className={styles.stages}
         spellCheck={false}
         value={draft.text}
@@ -81,14 +82,18 @@ function StagePreviews({
   disabled: boolean;
 }): React.JSX.Element {
   return (
-    <div className={styles.previews} role="toolbar" aria-label="Stage previews">
+    <div
+      className={styles.previews}
+      role="toolbar"
+      aria-label={t('stagePreviews')}
+    >
       {draft.stages.map((stage, index) => (
         <Button
           size="sm"
           variant="ghost"
           key={index}
-          aria-label={`Preview stage ${String(index + 1)}`}
-          title={`Run stages 1–${String(index + 1)} on at most 100 documents`}
+          aria-label={t('previewStageValue', { value: String(index + 1) })}
+          title={t('runStages1', { value: String(index + 1) })}
           disabled={disabled}
           onClick={() => {
             draft.execute(index);
@@ -105,7 +110,7 @@ function StagePreviews({
           draft.execute();
         }}
       >
-        Run pipeline
+        {t('runPipeline')}
       </Button>
     </div>
   );

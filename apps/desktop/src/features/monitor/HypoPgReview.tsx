@@ -5,6 +5,7 @@ import { Sheet } from '@openrows/ui/sheet';
 import { validateMonitorIndex } from '@openrows/ipc';
 import type { HypoPgReply, MonitorTarget, Suggestion } from '@openrows/ipc';
 import styles from './Monitor.module.css';
+import { rich, t } from './messages/lazyInvestigation';
 
 type Props = {
   target: MonitorTarget;
@@ -40,9 +41,7 @@ export function HypoPgReview(props: Props): React.JSX.Element {
         setRunning(false);
       },
       () => {
-        setError(
-          'HypoPG is absent, denied, or the evidence changed. Review grants and refresh.',
-        );
+        setError(t('hypopgAbsentDenied'));
         setRunning(false);
       },
     );
@@ -52,14 +51,9 @@ export function HypoPgReview(props: Props): React.JSX.Element {
     setReply(null);
   };
   return (
-    <Sheet title="HypoPG what-if" onClose={props.onClose}>
+    <Sheet title={t('hypopgWhatIf')} onClose={props.onClose}>
       <div className={styles.review}>
-        <p className={styles.note}>
-          Optional and off by default. Requires HypoPG already installed in this
-          database. A separate session compares estimated plan costs, resets
-          hypothetical indexes, then closes. No extension or real index is
-          created.
-        </p>
+        <p className={styles.note}>{t('optionalOffDefault')}</p>
         <ReviewFields
           sql={sql}
           schema={schema}
@@ -84,9 +78,9 @@ export function HypoPgReview(props: Props): React.JSX.Element {
               run(null);
             }}
           >
-            Compare plans
+            {t('comparePlans')}
           </Button>
-          <Button onClick={props.onClose}>Close</Button>
+          <Button onClick={props.onClose}>{t('close')}</Button>
         </div>
         <ReviewResult running={running} error={error} reply={reply} run={run} />
       </div>
@@ -108,7 +102,7 @@ function ReviewFields(props: {
   return (
     <>
       <textarea
-        aria-label="Reviewed what-if SQL"
+        aria-label={t('reviewedWhatIf')}
         value={props.sql}
         disabled={props.running}
         onChange={(event) => {
@@ -116,7 +110,7 @@ function ReviewFields(props: {
         }}
       />
       <TextField
-        aria-label="What-if schema"
+        aria-label={t('whatIfSchema')}
         value={props.schema}
         disabled={props.running}
         onChange={(event) => {
@@ -124,17 +118,17 @@ function ReviewFields(props: {
         }}
       />
       <label>
-        Statement and bindings reviewed{' '}
+        {t('statementBindingsReviewed')}{' '}
         <Switch
-          aria-label="What-if SQL reviewed"
+          aria-label={t('whatIfSql')}
           checked={props.reviewed}
           onCheckedChange={props.onReviewed}
         />
       </label>
       <label>
-        Enable HypoPG for this check{' '}
+        {t('enableHypopgCheck')}{' '}
         <Switch
-          aria-label="Enable HypoPG"
+          aria-label={t('enableHypopg')}
           checked={props.enabled}
           onCheckedChange={props.onEnabled}
         />
@@ -151,13 +145,11 @@ function ReviewResult(props: {
 }): React.JSX.Element {
   return (
     <>
-      {props.running && <p role="status">Comparing estimated plans…</p>}
+      {props.running && <p role="status">{t('comparingEstimatedPlans')}</p>}
       {props.error && <p role="alert">{props.error}</p>}
       {props.reply?.kind === 'confirmationRequired' && (
-        <section role="alertdialog" aria-label="Confirm what-if plan">
-          <p>
-            Your safety policy requires confirmation for this reviewed plan.
-          </p>
+        <section role="alertdialog" aria-label={t('confirmWhatIf')}>
+          <p>{t('safetyPolicyRequires')}</p>
           <Button
             onClick={() => {
               props.run(
@@ -167,15 +159,16 @@ function ReviewResult(props: {
               );
             }}
           >
-            Confirm plan request
+            {t('confirmPlanRequest')}
           </Button>
         </section>
       )}
       {props.reply?.kind === 'estimate' && (
         <p role="status">
-          Estimated total cost: {props.reply.estimate.baselineCost} before →{' '}
-          {props.reply.estimate.hypotheticalCost} with hypothetical index. This
-          is not a measured performance improvement.
+          {rich('estimatedTotalCost', {
+            baselineCost: props.reply.estimate.baselineCost,
+            hypotheticalCost: props.reply.estimate.hypotheticalCost,
+          })}
         </p>
       )}
     </>

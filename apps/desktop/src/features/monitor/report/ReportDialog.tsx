@@ -7,6 +7,7 @@ import { exportable, FORMATS, reportFile } from './formats';
 import type { ReportFormat } from './formats';
 import type { Report, ReportSection } from './model';
 import styles from './Report.module.css';
+import { t } from '../messages/lazyReport';
 
 type Choice = { value: string; label: string };
 type ReportDialogProps = {
@@ -59,7 +60,7 @@ function Parts(props: {
 }): React.JSX.Element {
   return (
     <fieldset className={styles.parts}>
-      <legend>Sections</legend>
+      <legend>{t('sections')}</legend>
       {props.parts.map((part) => (
         <label key={part.value}>
           <input
@@ -95,10 +96,10 @@ function ItemPicker(props: {
   if (!single(format) || !items) return null;
   const noun = format === 'csv' ? 'table' : 'chart';
   if (!items.length)
-    return <p className={styles.note}>The chosen sections have no {noun}.</p>;
+    return <p className={styles.note}>{t('chosenSectionsNo', { noun })}</p>;
   return (
     <SelectField
-      label={format === 'csv' ? 'Table' : 'Chart'}
+      label={format === 'csv' ? t('table') : t('chart')}
       controlSize="compact"
       value={props.chosen?.id ?? ''}
       options={items.map((section) => ({
@@ -169,11 +170,11 @@ export function ReportDialog(props: ReportDialogProps): React.JSX.Element {
     props.onClose,
   );
   return (
-    <Sheet title="Export report" onClose={props.onClose}>
+    <Sheet title={t('exportReport')} onClose={props.onClose}>
       <div className={styles.form}>
         {props.ranges && (
           <SelectField
-            label="Range"
+            label={t('range')}
             controlSize="compact"
             value={range}
             options={props.ranges}
@@ -182,7 +183,7 @@ export function ReportDialog(props: ReportDialogProps): React.JSX.Element {
         )}
         <Parts parts={props.parts} chosen={parts} onChange={setParts} />
         <SelectField
-          label="Format"
+          label={t('format')}
           controlSize="compact"
           value={format}
           options={FORMATS}
@@ -194,20 +195,17 @@ export function ReportDialog(props: ReportDialogProps): React.JSX.Element {
           chosen={item}
           onChoose={setItemId}
         />
-        <p className={styles.note}>
-          Gaps, unknown values and limits are listed with each section; they are
-          never shown as zeros.
-        </p>
+        <p className={styles.note}>{t('gapsUnknownValues')}</p>
         <Failure message={error ?? failure} />
       </div>
       <SheetActions>
-        <Button onClick={props.onClose}>Cancel</Button>
+        <Button onClick={props.onClose}>{t('cancel')}</Button>
         <Button
           variant="primary"
           disabled={!report || saving || (single(format) && !item)}
           onClick={save}
         >
-          Export…
+          {t('export')}
         </Button>
       </SheetActions>
     </Sheet>

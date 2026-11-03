@@ -3,6 +3,7 @@ import { builtInThemes, useTheme } from '@openrows/ui';
 import type { ThemeDefinition } from '@openrows/ui';
 import type { CSSProperties } from 'react';
 import styles from './Appearance.module.css';
+import { t } from './messages';
 /** A miniature database layout, rather than a screenshot of a different product. */
 export function ThemePreview({
   theme,
@@ -50,9 +51,10 @@ export function SchemeCards(): React.JSX.Element {
   const { mode, setMode, appearance } = useTheme();
   const themes = [...builtInThemes, ...appearance.customThemes];
   const day =
-    themes.find((t) => t.id === appearance.lightTheme) ?? builtInThemes[0];
+    themes.find((item) => item.id === appearance.lightTheme) ??
+    builtInThemes[0];
   const night =
-    themes.find((t) => t.id === appearance.darkTheme) ?? builtInThemes[0];
+    themes.find((item) => item.id === appearance.darkTheme) ?? builtInThemes[0];
   return (
     <div className={styles.schemeGrid} data-setting-row>
       {(['system', 'light', 'dark'] as const).map((value) => (
@@ -79,10 +81,10 @@ export function SchemeCards(): React.JSX.Element {
           )}
           <span>
             {value === 'system'
-              ? 'System'
+              ? t('system')
               : value === 'light'
-                ? 'Light'
-                : 'Dark'}
+                ? t('light3')
+                : t('dark3')}
             {mode === value && <b aria-hidden="true">✓</b>}
           </span>
         </button>

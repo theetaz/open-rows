@@ -8,6 +8,7 @@ import type { ColumnDraft } from '../table/structure/forms/columnDraft';
 import type { TableDraft } from './newTable';
 import { renameColumn } from './newTable';
 import styles from '../table/structure/forms/Forms.module.css';
+import { t } from './messages';
 
 type Props = {
   draft: TableDraft;
@@ -48,28 +49,32 @@ function ColumnItem(props: {
       }}
     >
       <span>
-        {column.name || '(unnamed)'} {columnType(column)}
-        {column.nullable ? '' : ' NOT NULL'}
+        {column.nullable
+          ? `${column.name || '(unnamed)'} ${columnType(column)}`
+          : t('nameColumnNot', {
+              name: column.name || '(unnamed)',
+              column: columnType(column),
+            })}
       </span>
       <label className={styles.checkRow}>
         <input
           type="checkbox"
-          aria-label={`Primary key: ${column.name}`}
+          aria-label={t('primaryKeyName', { name: column.name })}
           checked={props.keyed}
           onChange={props.onKey}
         />
-        Key
+        {t('key')}
       </label>
       <Button
         size="sm"
-        aria-label={`Remove column ${column.name}`}
+        aria-label={t('removeColumnName', { name: column.name })}
         disabled={!props.removable}
         onClick={(event) => {
           event.stopPropagation();
           props.onRemove();
         }}
       >
-        Remove
+        {t('remove')}
       </Button>
     </div>
   );
@@ -130,9 +135,9 @@ export function ColumnsSection(props: Props): React.JSX.Element {
   const column = draft.columns[selected];
   const edits = columnEdits(props, [selected, setSelected]);
   return (
-    <section className={styles.section} aria-label="Columns">
+    <section className={styles.section} aria-label={t('columns')}>
       <div className={styles.sectionHead}>
-        <h3>Columns</h3>
+        <h3>{t('columns')}</h3>
         <Button
           size="sm"
           onClick={() => {
@@ -143,10 +148,14 @@ export function ColumnsSection(props: Props): React.JSX.Element {
             setSelected(draft.columns.length);
           }}
         >
-          Add column
+          {t('addColumn')}
         </Button>
       </div>
-      <div className={styles.list} role="listbox" aria-label="Table columns">
+      <div
+        className={styles.list}
+        role="listbox"
+        aria-label={t('tableColumns')}
+      >
         {draft.columns.map((item, index) => (
           <ColumnItem
             key={index}

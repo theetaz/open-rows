@@ -3,6 +3,7 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Button } from '@openrows/ui';
 import styles from '../table/structure/forms/Forms.module.css';
+import { t } from './messages';
 
 /** The inline form that adds an item to a list section. */
 export type ItemForm<T> = {
@@ -33,7 +34,7 @@ function AddForm<T>(props: {
               onDraft(null);
             }}
           >
-            Cancel
+            {t('cancel')}
           </Button>{' '}
           <Button
             size="sm"
@@ -44,7 +45,7 @@ function AddForm<T>(props: {
               onDraft(null);
             }}
           >
-            Add
+            {t('add')}
           </Button>
         </span>
       </div>
@@ -73,12 +74,12 @@ export function ListSection<T>(props: {
         {form && draft === null && (
           <Button
             size="sm"
-            aria-label={`Add to ${props.title}`}
+            aria-label={t('addTitle', { title: props.title })}
             onClick={() => {
               setDraft(form.empty);
             }}
           >
-            Add…
+            {t('add2')}
           </Button>
         )}
       </div>
@@ -96,7 +97,7 @@ export function ListSection<T>(props: {
                 props.onRemove(index);
               }}
             >
-              Remove
+              {t('remove')}
             </Button>
           </div>
         ))}

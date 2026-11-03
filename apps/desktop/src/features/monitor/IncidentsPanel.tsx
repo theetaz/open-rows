@@ -3,6 +3,20 @@ import type { MonitorTarget } from '@openrows/ipc';
 import { useIncidents } from './useIncidents';
 import { clock, evidence, hold, thresholds } from './incidentFormat';
 import styles from './Monitor.module.css';
+import { t } from './messages/lazyDashboard';
+
+function EvidenceCell({
+  incident,
+}: {
+  incident: Parameters<typeof evidence>[0];
+}): React.JSX.Element {
+  return (
+    <td>
+      {evidence(incident)}
+      <span className={styles.note}> · {thresholds(incident.rule)}</span>
+    </td>
+  );
+}
 
 /** Compact open/resolved incident list with evidence; deterministic rules only. */
 export function IncidentsPanel(props: {
@@ -12,24 +26,20 @@ export function IncidentsPanel(props: {
   const { reply, error } = useIncidents(props.target, props.revision);
   const incidents = reply?.incidents ?? [];
   return (
-    <section aria-label="Incidents">
-      <p className={styles.note}>
-        Rules evaluate live samples while this monitor runs. Unknown or missing
-        samples never open or resolve an incident. Notifications stay in
-        OpenRows.
-      </p>
+    <section aria-label={t('incidents')}>
+      <p className={styles.note}>{t('rulesEvaluateLive')}</p>
       {error && <p role="alert">{error}</p>}
-      {reply && !incidents.length && <p>No incidents in this app session.</p>}
+      {reply && !incidents.length && <p>{t('noIncidentsApp')}</p>}
       {incidents.length > 0 && (
-        <table className={styles.table} aria-label="Incident list">
+        <table className={styles.table} aria-label={t('incidentList')}>
           <thead>
             <tr>
-              <th>Status</th>
-              <th>Rule</th>
-              <th>Scope</th>
-              <th>Started</th>
-              <th>Ended</th>
-              <th>Evidence</th>
+              <th>{t('status')}</th>
+              <th>{t('rule')}</th>
+              <th>{t('scope')}</th>
+              <th>{t('started')}</th>
+              <th>{t('ended')}</th>
+              <th>{t('evidence')}</th>
             </tr>
           </thead>
           <tbody>
@@ -37,27 +47,24 @@ export function IncidentsPanel(props: {
               <tr key={incident.id}>
                 <td>
                   {incident.endedMs === null ? (
-                    <strong>Open</strong>
+                    <strong>{t('open')}</strong>
                   ) : (
-                    'Resolved'
+                    t('resolved')
                   )}
                 </td>
                 <td>
-                  {incident.rule.title}
-                  {incident.rule.severity === 'critical' && ' · critical'}
+                  {incident.rule.severity === 'critical'
+                    ? t('titleCritical', { title: incident.rule.title })
+                    : incident.rule.title}
                 </td>
-                <td>{incident.scope === 'server' ? 'Server' : 'Database'}</td>
+                <td>
+                  {incident.scope === 'server' ? t('server') : t('database')}
+                </td>
                 <td>{clock(incident.startedMs)}</td>
                 <td>
                   {incident.endedMs === null ? '—' : clock(incident.endedMs)}
                 </td>
-                <td>
-                  {evidence(incident)}
-                  <span className={styles.note}>
-                    {' '}
-                    · {thresholds(incident.rule)}
-                  </span>
-                </td>
+                <EvidenceCell incident={incident} />
               </tr>
             ))}
           </tbody>
@@ -65,7 +72,9 @@ export function IncidentsPanel(props: {
       )}
       {reply && (
         <details>
-          <summary>Rules ({String(reply.rules.length)})</summary>
+          <summary>
+            {t('rulesCount', { count: String(reply.rules.length) })}
+          </summary>
           <table className={styles.table}>
             <tbody>
               {reply.rules.map((rule) => (
@@ -73,7 +82,10 @@ export function IncidentsPanel(props: {
                   <td>{rule.title}</td>
                   <td>{thresholds(rule)}</td>
                   <td>
-                    Hold {hold(rule.fireAfter)}; recover {hold(rule.clearAfter)}
+                    {t('holdFireafterRecover', {
+                      fireAfter: hold(rule.fireAfter),
+                      clearAfter: hold(rule.clearAfter),
+                    })}
                   </td>
                 </tr>
               ))}

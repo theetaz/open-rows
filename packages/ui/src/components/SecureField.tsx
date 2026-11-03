@@ -5,6 +5,7 @@ import { Icon } from '../icons/Icon';
 import { IconButton } from './Button';
 import { TextField } from './TextField';
 import type { ControlSize } from './TextField';
+import { t } from '../messages';
 
 type Props = Omit<
   InputHTMLAttributes<HTMLInputElement>,
@@ -39,7 +40,7 @@ export function SecureField(props: Props): React.JSX.Element {
         <IconButton
           size="sm"
           variant="ghost"
-          aria-label={shown ? 'Hide password' : 'Show password'}
+          aria-label={shown ? t('hidePassword') : t('showPassword')}
           aria-pressed={shown}
           disabled={!hasValue || props.disabled}
           onClick={() => {

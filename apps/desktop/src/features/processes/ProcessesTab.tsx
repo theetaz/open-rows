@@ -17,6 +17,7 @@ import { ProcessesHeader } from './ProcessesHeader';
 import { ProcessGrid } from './ProcessGrid';
 import { ProcessSignalSheet } from './ProcessSignalSheet';
 import structure from '../table/structure/Structure.module.css';
+import { t } from './messages';
 
 type Props = {
   profile: ProfileDto;
@@ -71,7 +72,10 @@ export function ProcessesTab(props: Props): React.JSX.Element {
   useInspected(shown[row], props.onRow);
   const error = signals.error ?? list.error;
   return (
-    <section className={structure.pane} aria-label={`Processes on ${database}`}>
+    <section
+      className={structure.pane}
+      aria-label={t('processesDatabase', { database })}
+    >
       <ProcessesHeader
         list={list}
         filter={filter}
@@ -79,9 +83,7 @@ export function ProcessesTab(props: Props): React.JSX.Element {
         shown={shown.length}
       />
       {!props.connected && (
-        <p className={structure.note}>
-          Connect to list the server’s processes.
-        </p>
+        <p className={structure.note}>{t('connectListServer')}</p>
       )}
       {error && (
         <p className={structure.error} role="alert">

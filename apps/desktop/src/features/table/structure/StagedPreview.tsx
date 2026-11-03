@@ -2,6 +2,7 @@
 import { DdlPreview } from './forms/DdlPreview';
 import { useAlterPreview } from './forms/usePreview';
 import type { Structure } from './useStructure';
+import { t } from '../messages/lazyStructure';
 
 /** The live DDL of every staged structure change, as the commit would run it. */
 export function StagedPreview({
@@ -11,5 +12,5 @@ export function StagedPreview({
 }): React.JSX.Element {
   const changes = structure.schema.history.current.map((item) => item.change);
   const preview = useAlterPreview(structure.target, changes);
-  return <DdlPreview state={preview} idle="No structure changes are staged." />;
+  return <DdlPreview state={preview} idle={t('noStructureChanges')} />;
 }

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { BoardResult, ChartMapping } from '@openrows/ipc';
+import { t } from '../messages/lazyBoards';
 
 /** One chart observation; `y === null` is a gap, never a zero. */
 export type SeriesPoint = { x: number; label: string; y: number | null };
@@ -31,16 +32,16 @@ export function chartData(
     result.columns.findIndex((column) => column.name === name);
   const x = index(mapping.x);
   if (x < 0)
-    return { kind: 'unsuitable', reason: `No column ${mapping.x} for x.` };
+    return { kind: 'unsuitable', reason: t('noColumnX', { x: mapping.x }) };
   const ys = mapping.y.map(index);
   const missing = mapping.y.find((_, at) => ys[at] === undefined || ys[at] < 0);
   if (missing !== undefined)
-    return { kind: 'unsuitable', reason: `No column ${missing} for y.` };
+    return { kind: 'unsuitable', reason: t('noColumnMissing', { missing }) };
   const textual = ys.find((at) => result.columns[at]?.kind !== 'number');
   if (textual !== undefined)
     return {
       kind: 'unsuitable',
-      reason: `Column ${result.columns[textual]?.name ?? ''} is not numeric; showing the table.`,
+      reason: t('columnNameNot', { name: result.columns[textual]?.name ?? '' }),
     };
   const columnKind = result.columns[x]?.kind;
   const xKind: XKind =
@@ -53,7 +54,7 @@ export function chartData(
     name: result.columns[at]?.name ?? '',
     points: result.rows.map((row, rowIndex) => ({
       x: xValue(xKind, row[x] ?? null, rowIndex),
-      label: row[x] ?? 'NULL',
+      label: row[x] ?? t('null'),
       y: numericCell(row[at]),
     })),
   }));
@@ -74,7 +75,7 @@ export function tableData(result: BoardResult): {
 /** First value of the first row, for a stat card. */
 export function statValue(result: BoardResult): string {
   const cell = result.rows[0]?.[0];
-  if (cell === undefined) return 'No rows';
+  if (cell === undefined) return t('noRows');
   return cell ?? 'NULL';
 }
 

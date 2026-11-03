@@ -3,6 +3,7 @@ import { Button } from '@openrows/ui';
 import { Sheet, SheetActions } from '@openrows/ui/sheet';
 import type { ProfileDto } from '@openrows/ipc';
 import { deletePrompt } from './useConnections';
+import { t } from './messages/profile';
 
 /**
  * Compact alert sheet used only when the native macOS alert is unavailable
@@ -18,7 +19,7 @@ export function DeleteConnectionSheet(props: {
     <Sheet title={prompt.title} size="alert" onClose={props.onCancel}>
       <p>{prompt.message}</p>
       <SheetActions>
-        <Button onClick={props.onCancel}>Cancel</Button>
+        <Button onClick={props.onCancel}>{t('cancel')}</Button>
         <Button
           variant="destructive"
           onClick={() => {

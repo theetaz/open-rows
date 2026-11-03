@@ -2,6 +2,7 @@
 import { lazy, Suspense, useState } from 'react';
 import { McpDisclosure } from './McpDisclosure';
 import { Button } from '@openrows/ui';
+import { t } from '../messages/lazyAi';
 const SharingPane = lazy(() => import('./SharingPane'));
 /** Load connection sharing and audit UI only after an explicit settings action. */
 export function SharingDisclosure(): React.JSX.Element {
@@ -16,10 +17,10 @@ export function SharingDisclosure(): React.JSX.Element {
           setOpen(!open);
         }}
       >
-        Data sharing
+        {t('dataSharing')}
       </Button>
       {open && (
-        <Suspense fallback={<p role="status">Loading data sharing…</p>}>
+        <Suspense fallback={<p role="status">{t('loadingDataSharing')}</p>}>
           <SharingPane />
         </Suspense>
       )}

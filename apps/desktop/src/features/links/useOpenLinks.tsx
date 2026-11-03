@@ -11,6 +11,7 @@ import { seedFilters } from '../table/links/seeds';
 import { tableLayoutKey } from '../../results/columnLayoutStore';
 import { linkRows, resolveLink } from './openLink';
 import type { ResolvedLink } from './openLink';
+import { t } from './messages';
 
 type Input = { connections: Connections; tabs: QueryTabs; catalog: Catalog };
 
@@ -111,18 +112,18 @@ function OpenLinkSheet(props: {
   const { pending } = props;
   if ('error' in pending)
     return (
-      <Sheet title="Cannot open link" size="alert" onClose={props.onCancel}>
+      <Sheet title={t('cannotOpenLink')} size="alert" onClose={props.onCancel}>
         <p role="alert">{pending.error}</p>
         <SheetActions>
           <Button variant="primary" onClick={props.onCancel}>
-            OK
+            {t('ok')}
           </Button>
         </SheetActions>
       </Sheet>
     );
   return (
-    <Sheet title="Open link?" size="alert" onClose={props.onCancel}>
-      <dl aria-label="Link details">
+    <Sheet title={t('openLink')} size="alert" onClose={props.onCancel}>
+      <dl aria-label={t('linkDetails')}>
         {linkRows(pending).map(([label, value], index) => (
           <div key={`${label}-${String(index)}`}>
             <dt>{label}</dt>
@@ -130,19 +131,16 @@ function OpenLinkSheet(props: {
           </div>
         ))}
       </dl>
-      <p>
-        Opening connects with this connection&apos;s saved settings and safety
-        policy. Links never run SQL.
-      </p>
+      <p>{t('openingConnectsConnection')}</p>
       <SheetActions>
-        <Button onClick={props.onCancel}>Cancel</Button>
+        <Button onClick={props.onCancel}>{t('cancel')}</Button>
         <Button
           variant="primary"
           onClick={() => {
             props.onOpen(pending);
           }}
         >
-          Connect and Open
+          {t('connectOpen')}
         </Button>
       </SheetActions>
     </Sheet>

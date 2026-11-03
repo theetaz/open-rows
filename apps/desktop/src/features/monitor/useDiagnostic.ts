@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { cancelQuery, explainMonitorQuery } from '@openrows/ipc';
 import type { ExplainReply, MonitorExplain } from '@openrows/ipc';
+import { t } from './messages/lazyInvestigation';
 
 /** Monitor diagnostics cancel on close and bind confirmation to the immutable reviewed request. */
 export function useDiagnostic(onPlan: () => void): {
@@ -37,7 +38,7 @@ export function useDiagnostic(onPlan: () => void): {
       },
       () => {
         if (current.current?.explainId !== request.explainId) return;
-        setError('Diagnostic failed; review the SQL, permissions and context.');
+        setError(t('diagnosticFailedReview'));
         setRunning(false);
       },
     );

@@ -5,6 +5,7 @@ import { chartData } from '../boards/boardData';
 import type { WidgetRun } from '../boards/useBoardRuns';
 import { roundValue } from './model';
 import type { Evidence, ReportSection, SummarySection } from './model';
+import { t } from '../messages/lazyReport';
 
 type Runs = Readonly<Record<string, WidgetRun>>;
 
@@ -19,18 +20,24 @@ function evidence(
 ): Evidence {
   const at = runTime(run);
   const gaps: string[] = [];
-  if (!run) gaps.push('Not run: no result to report');
-  else if (run.status === 'running')
-    gaps.push('Still running: no result to report');
-  else if (run.status === 'error') gaps.push(`Run failed: ${run.message}`);
+  if (!run) gaps.push(t('notRunNo'));
+  else if (run.status === 'running') gaps.push(t('stillRunningNo'));
+  else if (run.status === 'error')
+    gaps.push(t('runFailedMessage', { message: run.message }));
   else if (run.reply.result.truncated)
-    gaps.push(`Result truncated by the ${run.reply.result.truncated} limit`);
+    gaps.push(
+      t('resultTruncatedTruncated', { truncated: run.reply.result.truncated }),
+    );
   const mode =
     run?.status === 'done' && run.reply.readOnly !== 'enforced'
-      ? 'classified read'
-      : 'read-only';
+      ? t('classifiedRead')
+      : t('readOnlyMode');
   return {
-    source: `Board “${board.board.name}” · widget “${widget.title}” (${mode} query)`,
+    source: t('boardNameWidget', {
+      name: board.board.name,
+      title: widget.title,
+      mode,
+    }),
     fromMs: at,
     toMs: at,
     scope: 'Database',
@@ -47,7 +54,7 @@ function resultSection(
   const id = `widget:${widget.id}`;
   if (widget.kind === 'stat') {
     const cell = result.rows[0]?.[0];
-    const gaps = cell === undefined ? [...base.gaps, 'No rows'] : base.gaps;
+    const gaps = cell === undefined ? [...base.gaps, t('noRows')] : base.gaps;
     return {
       id,
       kind: 'stat',
@@ -113,23 +120,29 @@ function summary(board: BoardDto, runs: Runs): SummarySection {
   return {
     id: 'summary',
     kind: 'summary',
-    title: 'Summary',
+    title: t('summary'),
     evidence: {
-      source: `Board “${board.board.name}”`,
+      source: t('boardName', { name: board.board.name }),
       ...boardRange(runs),
       scope: 'Database',
       gaps:
         done < widgets.length
           ? [
-              `${String(widgets.length - done)} of ${String(widgets.length)} widgets have no result`,
+              t('valueCountWidgets', {
+                value: String(widgets.length - done),
+                count: String(widgets.length),
+              }),
             ]
           : [],
     },
     items: [
-      { label: 'Board', value: board.board.name },
+      { label: t('board'), value: board.board.name },
       {
-        label: 'Widgets with results',
-        value: `${String(done)} of ${String(widgets.length)}`,
+        label: t('widgetsResults'),
+        value: t('doneOfTotal', {
+          done: String(done),
+          total: String(widgets.length),
+        }),
       },
     ],
   };

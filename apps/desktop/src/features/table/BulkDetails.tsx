@@ -6,12 +6,14 @@ import { matchingFields } from './row';
 import type { BulkField, BulkRows } from './bulk/bulkRow';
 import styles from './RowDetails.module.css';
 import extras from './TableExtras.module.css';
+import { t } from './messages/initial';
 
 /** The text a bulk field shows, and its placeholder when there is none. */
 function shown(field: BulkField): { text: string; placeholder: string } {
-  if (!('common' in field)) return { text: '', placeholder: 'Multiple values' };
-  if (field.common === null) return { text: '', placeholder: 'NULL' };
-  if (field.common === '') return { text: '', placeholder: 'EMPTY' };
+  if (!('common' in field))
+    return { text: '', placeholder: t('multipleValues') };
+  if (field.common === null) return { text: '', placeholder: t('null') };
+  if (field.common === '') return { text: '', placeholder: t('empty') };
   return { text: field.common ?? '', placeholder: '' };
 }
 
@@ -65,12 +67,12 @@ function BulkFieldEditor({
           size="sm"
           variant="ghost"
           disabled={!stage}
-          aria-label={`Set ${field.name} to NULL in every selected row`}
+          aria-label={t('setNameNull', { name: field.name })}
           onClick={() => {
             stage?.(field.name, NULL_VALUE);
           }}
         >
-          NULL
+          {t('null')}
         </Button>
       </span>
     </div>
@@ -95,14 +97,19 @@ export function BulkDetails({
   return (
     <>
       <small className={styles.caption}>
-        {table} · {bulk.rows.toLocaleString('en-US')} rows selected
         {bulk.stage
-          ? ' · edits apply to every selected row and are reviewed before commit'
-          : ' · read-only'}
+          ? t('tableRowsRows', {
+              table,
+              rows: bulk.rows.toLocaleString('en-US'),
+            })
+          : t('tableRowsRowsSelected', {
+              table,
+              rows: bulk.rows.toLocaleString('en-US'),
+            })}
       </small>
       <div
         role="list"
-        aria-label="Fields of the selected rows"
+        aria-label={t('fieldsSelectedRows')}
         className={styles.fields}
       >
         {fields.map((field) => (

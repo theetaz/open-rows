@@ -10,11 +10,12 @@ import {
   typeSpecs,
 } from './dialect';
 import styles from './Forms.module.css';
+import { t } from '../../messages/initial';
 
 const defaultModes: readonly { value: DefaultDto['kind']; label: string }[] = [
-  { value: 'none', label: 'No default' },
-  { value: 'expression', label: 'SQL expression' },
-  { value: 'literal', label: 'Text literal' },
+  { value: 'none', label: t('noDefault') },
+  { value: 'expression', label: t('sqlExpression') },
+  { value: 'literal', label: t('textLiteral') },
 ];
 
 type Props = {
@@ -37,7 +38,7 @@ export function ColumnFields(props: Props): React.JSX.Element {
   return (
     <div className={styles.grid}>
       <TextField
-        label="Name"
+        label={t('name')}
         value={draft.name}
         autoComplete="off"
         spellCheck={false}
@@ -48,19 +49,19 @@ export function ColumnFields(props: Props): React.JSX.Element {
       <TypeFields {...props} />
       <label className={styles.switchRow}>
         <Switch
-          aria-label="Allow NULL"
+          aria-label={t('allowNull')}
           checked={draft.nullable}
           onCheckedChange={(nullable) => {
             set({ nullable });
           }}
         />
-        Allow NULL
+        {t('allowNull')}
       </label>
       <DefaultFields draft={draft} onChange={onChange} />
       <NumberingFields {...props} />
       {features.comments && (
         <TextField
-          label="Comment"
+          label={t('comment2')}
           className={styles.wide}
           value={draft.comment}
           onChange={(event) => {
@@ -86,7 +87,7 @@ function TypeFields({ draft, onChange, engine }: Props): React.JSX.Element {
   return (
     <>
       <TextField
-        label="Type"
+        label={t('type')}
         list={list}
         value={draft.type}
         autoComplete="off"
@@ -103,7 +104,7 @@ function TypeFields({ draft, onChange, engine }: Props): React.JSX.Element {
       {sized && (
         <div className={styles.pair}>
           <TextField
-            label={precision ? 'Precision' : 'Length'}
+            label={precision ? t('precision') : t('length')}
             inputMode="numeric"
             value={draft.length}
             onChange={(event) => {
@@ -112,7 +113,7 @@ function TypeFields({ draft, onChange, engine }: Props): React.JSX.Element {
           />
           {precision && (
             <TextField
-              label="Scale"
+              label={t('scale')}
               inputMode="numeric"
               value={draft.scale}
               onChange={(event) => {
@@ -136,7 +137,7 @@ function DefaultFields({
   return (
     <div className={styles.pair}>
       <SelectField
-        label="Default"
+        label={t('default2')}
         value={draft.defaultMode}
         options={defaultModes}
         onValueChange={(defaultMode) => {
@@ -147,10 +148,10 @@ function DefaultFields({
         <TextField
           aria-label={
             draft.defaultMode === 'literal'
-              ? 'Default text'
-              : 'Default expression'
+              ? t('defaultText')
+              : t('defaultExpression')
           }
-          placeholder={draft.defaultMode === 'literal' ? 'Text' : 'now()'}
+          placeholder={draft.defaultMode === 'literal' ? t('text') : t('now')}
           value={draft.defaultText}
           spellCheck={false}
           onChange={(event) => {
@@ -178,7 +179,7 @@ function NumberingFields({
     <>
       {features.identity && (
         <SelectField
-          label="Numbering"
+          label={t('numbering')}
           value={draft.identity}
           options={identityOptions(engine, features)}
           onValueChange={(identity) => {
@@ -188,9 +189,9 @@ function NumberingFields({
       )}
       {features.charsets && (
         <TextField
-          label="Character set"
+          label={t('characterSet')}
           list={charsets}
-          placeholder="Table default"
+          placeholder={t('tableDefault')}
           value={draft.charset}
           onChange={(event) => {
             set({ charset: event.target.value });
@@ -199,9 +200,9 @@ function NumberingFields({
       )}
       {features.collations && (
         <TextField
-          label="Collation"
+          label={t('collation')}
           list={collations}
-          placeholder="Default"
+          placeholder={t('default2')}
           value={draft.collation}
           onChange={(event) => {
             set({ collation: event.target.value });

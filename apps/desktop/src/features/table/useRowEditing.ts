@@ -19,6 +19,7 @@ import type { FieldContext } from './fieldEditing';
 import type { CellValue } from './cellValue';
 import type { FileEncodingDto } from '@openrows/ipc';
 import { cellDraft, fieldEdit, newInsert } from './cellEdits';
+import { t } from './messages/lazyStructure';
 
 type Args = {
   tabId: string;
@@ -301,7 +302,7 @@ function cellEditing({
             target: args.target,
             history,
           })
-        : Promise.reject(new Error('Table editing is not ready yet.'));
+        : Promise.reject(new Error(t('tableEditingNot')));
       draft.catch(io.fail);
       return draft;
     },

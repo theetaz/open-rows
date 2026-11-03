@@ -9,6 +9,7 @@ import {
 } from '@openrows/ipc';
 import type { LocationsDto } from '@openrows/ipc';
 import { SettingRow } from '../appearance/InterfaceSettings';
+import { t } from './messages/lazyGeneral';
 
 /** Explicit history-copy consent and restart-only relocation; keychain stays fixed. */
 export function LocationsPane(): React.JSX.Element {
@@ -33,43 +34,40 @@ export function LocationsPane(): React.JSX.Element {
       await scheduleDataLocation(target);
       setTarget(null);
       setLocations(await getDataLocations());
-      setMessage(
-        'Restart OpenRows to copy data and switch. The original remains available if copying fails.',
-      );
+      setMessage(t('restartOpenrowsCopy'));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : String(error));
     }
   };
   return (
-    <section aria-label="Locations">
-      <h3>Locations</h3>
+    <section aria-label={t('locations')}>
+      <h3>{t('locations')}</h3>
       {(['data', 'history', 'logs'] as const).map((key) => (
         <SettingRow
           key={key}
-          title={`${key} location`}
-          description={locations?.[key] ?? 'Available in the native app'}
+          title={t('keyLocation', { key })}
+          description={locations?.[key] ?? t('availableNativeApp')}
         >
           <code>{locations?.[key] ?? 'Native app only'}</code>
         </SettingRow>
       ))}
       <SettingRow
-        title="Change data directory"
-        description="Choose an empty writable local folder outside app bundles and cloud sync. Copy includes local history; secrets remain in the OS keychain."
+        title={t('changeDataDirectory')}
+        description={t('chooseEmptyWritable')}
       >
         <Button
           onClick={() => {
             void choose();
           }}
         >
-          Choose data folder
+          {t('chooseDataFolder')}
         </Button>
       </SettingRow>
-      <p>
-        Do not choose any synchronised folder: history may contain private SQL.
-        Cloud folder detection is heuristic.
-      </p>
+      <p>{t('doNotChoose')}</p>
       {locations?.pending && (
-        <p role="status">Restart required: {locations.pending}</p>
+        <p role="status">
+          {t('restartRequiredPending', { pending: locations.pending })}
+        </p>
       )}
       {locations?.failure && <p role="alert">{locations.failure}</p>}
       {message && <p role="status">{message}</p>}
@@ -98,23 +96,19 @@ function MoveDialog({
 }): React.JSX.Element {
   return (
     <Sheet
-      title="Copy local data on restart?"
+      title={t('copyLocalData')}
       onClose={() => {
         close();
       }}
     >
-      <p>
-        Copy settings, profiles and local history to {target}? Keychain secrets
-        and logs stay in their current locations. This is a local copy; history
-        is never silently synchronised.
-      </p>
+      <p>{t('copySettingsProfiles', { target })}</p>
       <SheetActions>
         <Button
           onClick={() => {
             close();
           }}
         >
-          Cancel
+          {t('cancel')}
         </Button>
         <Button
           variant="primary"
@@ -122,7 +116,7 @@ function MoveDialog({
             void apply();
           }}
         >
-          Copy on next restart
+          {t('copyNextRestart')}
         </Button>
       </SheetActions>
     </Sheet>

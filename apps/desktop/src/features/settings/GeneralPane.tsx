@@ -15,21 +15,22 @@ import styles from '../appearance/Appearance.module.css';
 import { HistorySection } from './HistorySection';
 import { CopySection } from './CopySection';
 import { StartupSettings } from './StartupSettings';
+import { t } from './messages/lazyGeneral';
 
 const DENSITIES: readonly { value: Density; label: string }[] = [
-  { value: 'compact', label: 'Compact' },
-  { value: 'regular', label: 'Regular' },
-  { value: 'comfortable', label: 'Comfortable' },
+  { value: 'compact', label: t('compact') },
+  { value: 'regular', label: t('regular') },
+  { value: 'comfortable', label: t('comfortable') },
 ];
 
 const GRID_DENSITIES: readonly { value: GridDensity; label: string }[] = [
-  { value: 'compact', label: 'Compact' },
-  { value: 'normal', label: 'Normal' },
-  { value: 'comfortable', label: 'Comfortable' },
+  { value: 'compact', label: t('compact') },
+  { value: 'normal', label: t('normal') },
+  { value: 'comfortable', label: t('comfortable') },
 ];
 
 const keepaliveLabel = (seconds: number): string => {
-  if (seconds === 0) return 'Off';
+  if (seconds === 0) return t('off');
   return seconds < 60 ? `${String(seconds)} s` : `${String(seconds / 60)} min`;
 };
 
@@ -40,7 +41,7 @@ const KEEPALIVE_OPTIONS = KEEPALIVE_CHOICES.map((seconds) => ({
 
 const STATEMENT_TIMEOUT_OPTIONS = STATEMENT_TIMEOUT_CHOICES.map((seconds) => ({
   value: String(seconds),
-  label: seconds === 0 ? 'No limit' : secondsLabel(seconds),
+  label: seconds === 0 ? t('noLimit') : secondsLabel(seconds),
 }));
 
 /**
@@ -51,15 +52,15 @@ export function GeneralPane(): React.JSX.Element {
   const general = generalSettings.useValue();
   return (
     <>
-      <section aria-label="Session">
-        <h3>Session</h3>
+      <section aria-label={t('session')}>
+        <h3>{t('session')}</h3>
         <div className={styles.settingsGroup}>
           <SettingRow
-            title="Restore session on launch"
-            description="Reopen the previous connections, databases and tabs. All restored connections wait for an explicit connect."
+            title={t('restoreSessionLaunch')}
+            description={t('reopenPreviousConnections')}
           >
             <Switch
-              aria-label="Restore session on launch"
+              aria-label={t('restoreSessionLaunch')}
               checked={general.restoreSession}
               onCheckedChange={(restoreSession) => {
                 updateGeneral({ restoreSession });
@@ -71,15 +72,12 @@ export function GeneralPane(): React.JSX.Element {
       <StartupSettings />
       <ConnectionSettings />
       <HistorySection />
-      <section aria-label="Layout">
-        <h3>Layout</h3>
+      <section aria-label={t('layout')}>
+        <h3>{t('layout')}</h3>
         <div className={styles.settingsGroup}>
-          <SettingRow
-            title="Density"
-            description="Row height of the sidebar's object tree and lists."
-          >
+          <SettingRow title={t('density')} description={t('rowHeightSidebar')}>
             <SegmentedControl
-              aria-label="Density"
+              aria-label={t('density')}
               options={DENSITIES}
               value={general.density}
               onValueChange={(density) => {
@@ -87,23 +85,17 @@ export function GeneralPane(): React.JSX.Element {
               }}
             />
           </SettingRow>
-          <SettingRow
-            title="Grid rows"
-            description="Row height of table and query result grids."
-          >
+          <SettingRow title={t('gridRows')} description={t('rowHeightTable')}>
             <SegmentedControl
-              aria-label="Grid rows"
+              aria-label={t('gridRows')}
               options={GRID_DENSITIES}
               value={general.gridDensity}
               onValueChange={setGridDensity}
             />
           </SettingRow>
-          <SettingRow
-            title="Reduce motion"
-            description="Turn off panel, popover and disclosure animations. The system setting always applies."
-          >
+          <SettingRow title={t('reduceMotion')} description={t('turnOffPanel')}>
             <Switch
-              aria-label="Reduce motion"
+              aria-label={t('reduceMotion')}
               checked={general.reduceMotion}
               onCheckedChange={(reduceMotion) => {
                 updateGeneral({ reduceMotion });
@@ -121,15 +113,15 @@ export function GeneralPane(): React.JSX.Element {
 function ConnectionSettings(): React.JSX.Element {
   const general = generalSettings.useValue();
   return (
-    <section aria-label="Connections">
-      <h3>Connections</h3>
+    <section aria-label={t('connections')}>
+      <h3>{t('connections')}</h3>
       <div className={styles.settingsGroup}>
         <SettingRow
-          title="Connection check"
-          description="How often idle connections are checked. A lost connection is reopened before your next query; a running statement is never re-run."
+          title={t('connectionCheck')}
+          description={t('howOftenIdle')}
         >
           <SegmentedControl
-            aria-label="Connection check"
+            aria-label={t('connectionCheck')}
             options={KEEPALIVE_OPTIONS}
             value={String(general.keepaliveSeconds)}
             onValueChange={(seconds) => {
@@ -142,11 +134,11 @@ function ConnectionSettings(): React.JSX.Element {
           />
         </SettingRow>
         <SettingRow
-          title="Statement timeout"
-          description="Cancel a statement that runs longer, for connections without their own limit (Edit Connection ▸ Advanced)."
+          title={t('statementTimeout')}
+          description={t('cancelStatementRuns')}
         >
           <SelectField
-            aria-label="Default statement timeout"
+            aria-label={t('defaultStatementTimeout')}
             value={String(general.statementTimeoutSeconds)}
             options={STATEMENT_TIMEOUT_OPTIONS}
             onValueChange={(seconds) => {

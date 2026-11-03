@@ -5,6 +5,7 @@ import { moveToProject } from '../query/savedQueries';
 import { ProjectSection, useProject } from '../projects';
 import { reloadProject } from '../projects/projectStore';
 import styles from './Sidebar.module.css';
+import { t } from './messages';
 
 /** What the Queries segment opens and reports. */
 export type SidebarQueryProps = {
@@ -40,8 +41,8 @@ export function SidebarQueries(
         onOpenQuery={props.onProjectQuery}
         onMoved={props.onProjectMoved}
       />
-      <section aria-label="Local queries">
-        <h3 className={styles.sectionTitle}>Local</h3>
+      <section aria-label={t('localQueries')}>
+        <h3 className={styles.sectionTitle}>{t('local')}</h3>
         <SavedQueryList
           profileId={props.active?.id}
           search={props.search}

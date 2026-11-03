@@ -4,6 +4,7 @@ import { PointMenu } from '../../shell/PointMenu';
 import { useOtherWindows, windowName } from '../windows/useOtherWindows';
 import { otherTabs, tabsRightOf } from './tabOps';
 import type { QueryTabs } from './useQueryTabs';
+import { t } from './initialMessages';
 
 /** Move a tab to window `target`, or to a new window when `null`. */
 export type MoveTab = (id: string, target: string | null) => void;
@@ -27,14 +28,14 @@ function moveItems(
 ): Item[] {
   return [
     {
-      label: 'Move to New Window',
+      label: t('moveNewWindow'),
       run: () => {
         move(id, null);
       },
       group: true,
     },
     ...windows.map((entry) => ({
-      label: `Move to ${windowName(entry)}`,
+      label: t('moveEntry', { entry: windowName(entry) }),
       run: () => {
         move(id, entry.label);
       },
@@ -62,40 +63,40 @@ function items(
   };
   return [
     {
-      label: 'Close Tab',
+      label: t('closeTab'),
       run: () => {
         tabs.close(id);
       },
     },
     {
-      label: 'Close Other Tabs',
+      label: t('closeOtherTabs'),
       run: () => {
         closeAll(others);
       },
       disabled: !others.length,
     },
     {
-      label: 'Close Tabs to the Right',
+      label: t('closeTabsRight'),
       run: () => {
         closeAll(right);
       },
       disabled: !right.length,
     },
     {
-      label: 'Rename Tab…',
+      label: t('renameTab'),
       run: () => {
         rename(id);
       },
       group: true,
     },
     {
-      label: tab?.pinned ? 'Unpin Tab' : 'Pin Tab',
+      label: tab?.pinned ? t('unpinTab') : t('pinTab'),
       run: () => {
         tabs.pin(id, !tab?.pinned);
       },
     },
     {
-      label: 'Keep Open',
+      label: t('keepOpen'),
       run: () => {
         tabs.keep(id);
       },
@@ -121,7 +122,12 @@ export function TabMenu(props: {
     ...(onMove ? moveItems(target.id, onMove, windows) : []),
   ];
   return (
-    <PointMenu x={target.x} y={target.y} label="Tab actions" onClose={onClose}>
+    <PointMenu
+      x={target.x}
+      y={target.y}
+      label={t('tabActions')}
+      onClose={onClose}
+    >
       {all.map((item) => (
         <MenuItem key={item.label} item={item} onClose={onClose} />
       ))}

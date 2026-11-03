@@ -5,17 +5,18 @@ import { Sheet, SheetActions } from '@openrows/ui/sheet';
 import { exportSnippets, importSnippets, snippetProblem } from './snippetStore';
 import type { Snippet, SnippetScope } from './snippetStore';
 import styles from './Snippets.module.css';
+import { rich, t } from './lazyMessages';
 
 /** Engine choices of a snippet, labelled for people. */
 export const SCOPE_OPTIONS: readonly { value: SnippetScope; label: string }[] =
   [
-    { value: 'all', label: 'All engines' },
-    { value: 'postgres', label: 'PostgreSQL' },
-    { value: 'mysql', label: 'MySQL and MariaDB' },
-    { value: 'sqlserver', label: 'SQL Server' },
-    { value: 'sqlite', label: 'SQLite' },
-    { value: 'clickhouse', label: 'ClickHouse' },
-    { value: 'mongodb', label: 'MongoDB' },
+    { value: 'all', label: t('allEngines') },
+    { value: 'postgres', label: t('postgresql') },
+    { value: 'mysql', label: t('mysqlMariadb') },
+    { value: 'sqlserver', label: t('sqlServer') },
+    { value: 'sqlite', label: t('sqlite') },
+    { value: 'clickhouse', label: t('clickhouse') },
+    { value: 'mongodb', label: t('mongodb') },
   ];
 
 /** Add or edit one user snippet; nothing changes until Save. */
@@ -34,12 +35,12 @@ export function SnippetEditor(props: {
   };
   return (
     <Sheet
-      title={props.isNew ? 'Add snippet' : 'Edit snippet'}
+      title={props.isNew ? t('addSnippet') : t('editSnippet')}
       onClose={props.onClose}
     >
       <div className={styles.form}>
         <TextField
-          label="Name"
+          label={t('name')}
           maxLength={80}
           data-initial-focus
           value={draft.name}
@@ -48,7 +49,7 @@ export function SnippetEditor(props: {
           }}
         />
         <TextField
-          label="Prefix"
+          label={t('prefix')}
           maxLength={32}
           spellCheck={false}
           value={draft.prefix}
@@ -57,7 +58,7 @@ export function SnippetEditor(props: {
           }}
         />
         <SelectField
-          label="Engines"
+          label={t('engines')}
           value={draft.scope}
           options={SCOPE_OPTIONS}
           onValueChange={(scope) => {
@@ -65,9 +66,9 @@ export function SnippetEditor(props: {
           }}
         />
         <label className={styles.bodyLabel}>
-          Body
+          {t('body')}
           <TextArea
-            aria-label="Body"
+            aria-label={t('body')}
             className={styles.body}
             spellCheck={false}
             maxLength={10_000}
@@ -78,15 +79,14 @@ export function SnippetEditor(props: {
           />
         </label>
         <p className={styles.help}>
-          Typing the prefix offers the snippet in completion. Tab stops are
-          written <code>{'${1:name}'}</code>; Tab moves to the next one.
+          {rich('typingPrefixOffers', { value: <code>{'${1:name}'}</code> })}
         </p>
         {tried && problem && <p role="alert">{problem}</p>}
       </div>
       <SheetActions>
-        <Button onClick={props.onClose}>Cancel</Button>
+        <Button onClick={props.onClose}>{t('cancel')}</Button>
         <Button variant="primary" onClick={save}>
-          Save
+          {t('save')}
         </Button>
       </SheetActions>
     </Sheet>
@@ -95,10 +95,10 @@ export function SnippetEditor(props: {
 
 const importMessage = (error: unknown): string =>
   error instanceof SyntaxError
-    ? 'Invalid JSON. Paste snippets exported from OpenRows.'
+    ? t('invalidJsonPaste')
     : error instanceof Error
       ? error.message
-      : 'Could not import snippets.';
+      : t('couldNotImport');
 
 /**
  * Import (paste JSON) or export (copy JSON) user snippets, like themes.
@@ -125,25 +125,21 @@ export function SnippetTransfer(props: {
   const copy = async (): Promise<void> => {
     try {
       await navigator.clipboard.writeText(text);
-      setMessage('Snippets JSON copied.');
+      setMessage(t('snippetsJsonCopied'));
     } catch {
-      setMessage('Select the JSON below and copy it manually.');
+      setMessage(t('selectJsonBelow'));
     }
   };
   return (
     <Sheet
-      title={importing ? 'Import snippets' : 'Export snippets'}
+      title={importing ? t('importSnippets') : t('exportSnippets')}
       onClose={props.onClose}
     >
-      <p>
-        {importing
-          ? 'Paste a JSON array of snippets with name, prefix, body and scope.'
-          : 'Copy this JSON to share your snippets.'}
-      </p>
+      <p>{importing ? t('pasteJsonArray') : t('copyJsonShare')}</p>
       <label className={styles.bodyLabel}>
-        Snippets JSON
+        {t('snippetsJson')}
         <TextArea
-          aria-label="Snippets JSON"
+          aria-label={t('snippetsJson')}
           className={styles.body}
           spellCheck={false}
           readOnly={!importing}
@@ -156,10 +152,12 @@ export function SnippetTransfer(props: {
       </label>
       {message && <p role={importing ? 'alert' : 'status'}>{message}</p>}
       <SheetActions>
-        <Button onClick={props.onClose}>{importing ? 'Cancel' : 'Done'}</Button>
+        <Button onClick={props.onClose}>
+          {importing ? t('cancel') : t('done')}
+        </Button>
         {importing ? (
           <Button variant="primary" disabled={!text.trim()} onClick={submit}>
-            Import
+            {t('import')}
           </Button>
         ) : (
           <Button
@@ -168,7 +166,7 @@ export function SnippetTransfer(props: {
               void copy();
             }}
           >
-            Copy JSON
+            {t('copyJson')}
           </Button>
         )}
       </SheetActions>

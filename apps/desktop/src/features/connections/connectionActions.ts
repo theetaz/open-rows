@@ -3,6 +3,7 @@ import { revealDatabase } from '@openrows/ipc';
 import type { ProfileDto } from '@openrows/ipc';
 import type { Connections } from './useConnections';
 import { connectionLink, copyLink } from '../links/linkText';
+import { t } from './messages/profile';
 
 /** A labelled connection command for row menus. */
 export type ConnectionAction = readonly [label: string, run: () => void];
@@ -17,32 +18,32 @@ export function connectionActions(
   return [
     live
       ? [
-          state === 'connecting' ? 'Cancel connection' : 'Disconnect',
+          state === 'connecting' ? t('cancelConnection') : t('disconnect'),
           () => {
             connections.disconnectProfile(profile.id);
           },
         ]
       : [
-          'Connect',
+          t('connect'),
           () => {
             connections.select(profile.id);
           },
         ],
     ...revealAction(profile),
     [
-      'Copy Link',
+      t('copyLink'),
       () => {
         copyLink(connectionLink(profile)).catch(() => undefined);
       },
     ],
     [
-      'Connection settings…',
+      t('connectionSettings'),
       () => {
         connections.setSheet({ kind: 'edit', profile });
       },
     ],
     [
-      'Export connection…',
+      t('exportConnection'),
       () => {
         connections.setSheet({ kind: 'export', ids: [profile.id] });
       },
@@ -50,7 +51,7 @@ export function connectionActions(
     ...(profile.group
       ? [
           [
-            'Export group…',
+            t('exportGroup'),
             () => {
               connections.setSheet({
                 kind: 'export',
@@ -63,20 +64,20 @@ export function connectionActions(
         ]
       : []),
     [
-      'Export all connections…',
+      t('exportAllConnections'),
       () => {
         connections.setSheet({ kind: 'export' });
       },
     ],
     [
-      'Import connections…',
+      t('importConnections'),
       () => {
         connections.setSheet({ kind: 'import' });
       },
     ],
-    ['Duplicate', () => void connections.duplicate(profile)],
+    [t('duplicate'), () => void connections.duplicate(profile)],
     [
-      'Delete…',
+      t('delete'),
       () => {
         connections.confirmRemove(profile);
       },
@@ -89,7 +90,7 @@ function revealAction(profile: ProfileDto): readonly ConnectionAction[] {
   return profile.file?.path
     ? [
         [
-          'Reveal in Finder / File Manager',
+          t('revealFinderFile'),
           () => {
             revealDatabase(profile.id).catch((error: unknown) => {
               window.dispatchEvent(

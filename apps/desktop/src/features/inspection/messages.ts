@@ -1,0 +1,32 @@
+// SPDX-License-Identifier: Apache-2.0
+import { defineMessages } from '@openrows/ui/i18n';
+
+export const { t } = defineMessages({
+  objectInspection: 'Object inspection',
+  readOnly: 'Read-only',
+  reload: 'Reload',
+  connectInspectObject: 'Connect to inspect this object.',
+  loadingObject: 'Loading object…',
+  unavailable: 'Unavailable',
+  noName: 'No {name}',
+  definition: 'Definition',
+  copyDdl: 'Copy DDL',
+  openEditor: 'Open in Editor',
+  objectDefinitionSql: 'Object definition SQL',
+  extensionNoLonger: 'Extension no longer exists or is not visible.',
+  name: 'Name',
+  installedVersion: 'Installed version',
+  defaultAvailableVersion: 'Default available version',
+  schema: 'Schema',
+  description: 'Description',
+  accountNoLonger: 'Account no longer exists or is not visible.',
+  scope: 'Scope',
+  member: 'Member of',
+  role: 'Role',
+  notVisibleLogin: 'Not visible to this login',
+  grants: 'Grants',
+  object: 'Object',
+  privilege: 'Privilege',
+  state: 'State',
+  grantor: 'Grantor',
+});

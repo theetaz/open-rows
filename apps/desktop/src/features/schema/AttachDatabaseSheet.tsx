@@ -3,6 +3,7 @@ import { Button, TextField } from '@openrows/ui';
 import { Sheet, SheetActions } from '@openrows/ui/sheet';
 import type { PendingAttach } from './useAttachDatabase';
 import styles from './AttachDatabase.module.css';
+import { t } from './messages';
 
 /**
  * Names the schema a chosen `SQLite` file is attached under; Return
@@ -16,12 +17,12 @@ export function AttachDatabaseSheet(props: {
 }): React.JSX.Element {
   const { pending } = props;
   return (
-    <Sheet title="Attach database" size="alert" onClose={props.onCancel}>
+    <Sheet title={t('attachDatabase')} size="alert" onClose={props.onCancel}>
       <p className={styles.path} title={pending.path}>
         {pending.path}
       </p>
       <TextField
-        label="Schema name"
+        label={t('schemaName')}
         value={pending.alias}
         spellCheck={false}
         {...(pending.error ? { error: pending.error } : {})}
@@ -30,13 +31,13 @@ export function AttachDatabaseSheet(props: {
         }}
       />
       <SheetActions>
-        <Button onClick={props.onCancel}>Cancel</Button>
+        <Button onClick={props.onCancel}>{t('cancel')}</Button>
         <Button
           variant="primary"
           disabled={pending.busy || !pending.alias.trim()}
           onClick={props.onAttach}
         >
-          Attach
+          {t('attach')}
         </Button>
       </SheetActions>
     </Sheet>

@@ -9,6 +9,7 @@ import type { ResultMeta } from './run';
 import type { ResultView } from './useResultView';
 import { columnKeys, resultColumns } from './resultColumns';
 import { ResultViewSource } from './ResultViewSource';
+import { t } from './lazyMessages';
 
 /** Give all table tools the same displayed coordinates, retaining hidden key columns. */
 export function projectResult(args: {
@@ -92,8 +93,7 @@ async function projectedWindow(
   for (let row = rowStart; row < rowStart + rowCount; row++)
     for (let column = colStart; column < colStart + colCount; column++) {
       const cell = source.cell(row, column);
-      if (!cell)
-        throw new Error('The selected result window is no longer available.');
+      if (!cell) throw new Error(t('selectedResultWindow'));
       cells.push(cell);
     }
   return { cells, columns: colCount, convertMs: 0 };

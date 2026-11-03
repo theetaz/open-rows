@@ -5,13 +5,14 @@ import type { ConstraintDto } from '@openrows/ipc';
 import { describe } from './schemaChanges';
 import type { Structure } from './useStructure';
 import styles from './forms/Forms.module.css';
+import { t } from '../messages/lazyStructure';
 
 const kindLabel: Record<ConstraintDto['kind'], string> = {
-  primary: 'Primary key',
-  unique: 'Unique',
-  check: 'Check',
-  foreign: 'Foreign key',
-  exclusion: 'Exclusion',
+  primary: t('primaryKey'),
+  unique: t('unique'),
+  check: t('check2'),
+  foreign: t('foreignKey2'),
+  exclusion: t('exclusion'),
 };
 
 /** One catalog constraint with Delete, or Restore once its drop is staged. */
@@ -30,7 +31,7 @@ function ConstraintItem({
       <span title={constraint.definition}>
         {constraint.name} · {constraint.definition}
       </span>
-      <span>{dropped ? 'Deleted' : kindLabel[constraint.kind]}</span>
+      <span>{dropped ? t('deleted') : kindLabel[constraint.kind]}</span>
       <Button
         size="sm"
         disabled={!schema.enabled}
@@ -39,7 +40,7 @@ function ConstraintItem({
           else schema.stage({ kind: 'dropConstraint', name: constraint.name });
         }}
       >
-        {dropped ? 'Restore' : 'Delete'}
+        {dropped ? t('restore') : t('delete')}
       </Button>
     </div>
   );
@@ -51,13 +52,17 @@ function AddConstraintButtons({
   structure: Structure;
 }): React.JSX.Element {
   const choices = [
-    { sheet: 'key', label: 'Add key…', enabled: structure.features.keys },
+    { sheet: 'key', label: t('addKey'), enabled: structure.features.keys },
     {
       sheet: 'foreignKey',
-      label: 'Add foreign key…',
+      label: t('addForeignKey'),
       enabled: structure.features.foreignKeys,
     },
-    { sheet: 'check', label: 'Add check…', enabled: structure.features.checks },
+    {
+      sheet: 'check',
+      label: t('addCheck2'),
+      enabled: structure.features.checks,
+    },
   ] as const;
   return (
     <>
@@ -65,7 +70,7 @@ function AddConstraintButtons({
         <Button
           key={sheet}
           disabled={!structure.schema.enabled || !enabled}
-          title={enabled ? undefined : 'Not supported by this database'}
+          title={enabled ? undefined : t('notSupportedDatabase')}
           onClick={() => {
             structure.setSheet(sheet);
           }}
@@ -98,8 +103,8 @@ export function ConstraintsSheet({
   );
   const constraints = schema.detail?.constraints ?? [];
   return (
-    <Sheet title="Constraints" onClose={onClose}>
-      <div className={styles.list} aria-label="Constraints">
+    <Sheet title={t('constraints')} onClose={onClose}>
+      <div className={styles.list} aria-label={t('constraints')}>
         {constraints.map((constraint) => (
           <ConstraintItem
             key={constraint.name}
@@ -110,7 +115,7 @@ export function ConstraintsSheet({
         {added.map((item) => (
           <div key={item.id} className={styles.item}>
             <span>{describe(item.change)}</span>
-            <span>New</span>
+            <span>{t('new')}</span>
             <Button
               size="sm"
               disabled={!schema.enabled}
@@ -118,17 +123,17 @@ export function ConstraintsSheet({
                 schema.unstage(item.id);
               }}
             >
-              Remove
+              {t('remove')}
             </Button>
           </div>
         ))}
         {!constraints.length && !added.length && (
-          <p className={styles.note}>This table has no constraints.</p>
+          <p className={styles.note}>{t('tableNoConstraints')}</p>
         )}
       </div>
       <SheetActions leading={<AddConstraintButtons structure={structure} />}>
         <Button variant="primary" onClick={onClose}>
-          Done
+          {t('done')}
         </Button>
       </SheetActions>
     </Sheet>

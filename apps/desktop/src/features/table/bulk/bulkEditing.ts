@@ -20,6 +20,7 @@ import {
 import type { Cell } from './cells';
 import { rowDrafts } from './drafts';
 import { cellError, summarize } from './validate';
+import { t } from '../messages/lazyData';
 
 /** Multi-cell and multi-row staging; every action is one undo step and stages nothing on any error. */
 export type BulkEditing = {
@@ -160,7 +161,9 @@ function assign(
       const error = cellError(column, locked, staged);
       if (error)
         problems.push({
-          row: draft.number ? `Row ${String(draft.number)}` : 'New row',
+          row: draft.number
+            ? t('rowNumber', { number: String(draft.number) })
+            : t('newRow'),
           message: error,
         });
       else edits.push(fieldEdit(draft, name, staged));

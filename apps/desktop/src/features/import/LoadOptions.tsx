@@ -3,6 +3,7 @@ import { SelectField, TextField } from '@openrows/ui';
 import { badRowChoices, conflictChoices, transactionChoices } from './choices';
 import type { ImportDraft } from './model';
 import styles from './Import.module.css';
+import { t } from './messages';
 
 /** Conflicts, truncation, transactions, bad rows and batch size. */
 export function LoadOptions(props: {
@@ -12,10 +13,10 @@ export function LoadOptions(props: {
   const { draft, onChange } = props;
   const existing = draft.target === 'existing';
   return (
-    <section className={styles.optionGrid} aria-label="Import options">
+    <section className={styles.optionGrid} aria-label={t('importOptions')}>
       {existing && (
         <SelectField
-          label="When a key already exists"
+          label={t('whenKeyAlready')}
           value={draft.conflict}
           options={conflictChoices}
           onValueChange={(conflict) => {
@@ -24,7 +25,7 @@ export function LoadOptions(props: {
         />
       )}
       <SelectField
-        label="Transaction"
+        label={t('transaction')}
         value={draft.transaction}
         options={transactionChoices}
         onValueChange={(transaction) => {
@@ -32,7 +33,7 @@ export function LoadOptions(props: {
         }}
       />
       <SelectField
-        label="Rows that cannot be read"
+        label={t('rowsCannotRead')}
         value={draft.badRows}
         options={badRowChoices}
         onValueChange={(badRows) => {
@@ -40,7 +41,7 @@ export function LoadOptions(props: {
         }}
       />
       <TextField
-        label="Rows per batch"
+        label={t('rowsPerBatch')}
         value={draft.batchSize}
         inputMode="numeric"
         onChange={(event) => {
@@ -56,7 +57,7 @@ export function LoadOptions(props: {
               onChange({ truncate: event.target.checked });
             }}
           />
-          Delete all rows of the table first
+          {t('deleteAllRows')}
         </label>
       )}
     </section>

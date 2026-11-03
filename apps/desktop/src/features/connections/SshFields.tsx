@@ -12,12 +12,13 @@ import { sshSummary } from './routeForm';
 import type { SshAuthKind, SshDraft } from './routeForm';
 import type { ConnectionForm } from './useConnectionForm';
 import styles from './ConnectionSheet.module.css';
+import { rich, t } from './messages/routes';
 
 const methods: readonly { value: SshAuthKind; label: string }[] = [
-  { value: 'password', label: 'Password' },
-  { value: 'privateKey', label: 'Private key' },
-  { value: 'agent', label: 'SSH agent' },
-  { value: 'keyboardInteractive', label: 'Keyboard-interactive (MFA)' },
+  { value: 'password', label: t('password') },
+  { value: 'privateKey', label: t('privateKey') },
+  { value: 'agent', label: t('sshAgent') },
+  { value: 'keyboardInteractive', label: t('keyboardInteractiveMfa') },
 ];
 
 /**
@@ -39,24 +40,23 @@ export function SshFields({
   );
   return (
     <DisclosureSection
-      label={`SSH · ${sshSummary(ssh)}`}
+      label={t('sshSsh', { ssh: sshSummary(ssh) })}
       defaultOpen={ssh.enabled}
       forceOpen={invalid}
     >
       <div className={styles.section}>
         <div className={styles.switchRow}>
           <Switch
-            aria-label="Connect over SSH"
+            aria-label={t('connectOverSsh')}
             checked={ssh.enabled}
             onCheckedChange={(enabled) => {
               form.updateSsh({ enabled });
             }}
           />
           <span>
-            Connect over SSH
-            <small>
-              Tunnel through an SSH server; no local port is opened.
-            </small>
+            {rich('connectOverSshsmall', {
+              small: <small>{t('tunnelThroughSsh')}</small>,
+            })}
           </span>
         </div>
         {ssh.enabled && <SshServer form={form} />}
@@ -80,14 +80,14 @@ function SshServer({ form }: { form: ConnectionForm }): React.JSX.Element {
       <div className={styles.pair}>
         <TextField
           className={styles.row}
-          label="SSH host"
-          placeholder="Host or ~/.ssh/config alias"
+          label={t('sshHost')}
+          placeholder={t('hostSshConfig')}
           {...text('host')}
           {...fieldError(errors.sshHost)}
         />
         <TextField
-          label="Port"
-          aria-label="SSH port"
+          label={t('port')}
+          aria-label={t('sshPort')}
           inputMode="numeric"
           placeholder="22"
           className={styles.port}
@@ -97,14 +97,14 @@ function SshServer({ form }: { form: ConnectionForm }): React.JSX.Element {
       </div>
       <TextField
         className={styles.row}
-        label="SSH user"
-        placeholder="From ~/.ssh/config or your login"
+        label={t('sshUser')}
+        placeholder={t('sshConfigLogin')}
         {...text('user')}
       />
       <SelectField
         className={styles.row}
-        label="Auth"
-        aria-label="SSH authentication"
+        label={t('auth')}
+        aria-label={t('sshAuthentication')}
         value={ssh.auth}
         options={methods}
         onValueChange={(auth) => {
@@ -114,15 +114,12 @@ function SshServer({ form }: { form: ConnectionForm }): React.JSX.Element {
       <SshCredentials form={form} ssh={ssh} />
       <TextField
         className={styles.row}
-        label="Jump hosts"
-        placeholder="Optional: user@bastion:22, next-hop"
+        label={t('jumpHosts')}
+        placeholder={t('optionalUserBastion')}
         {...text('jumpHosts')}
         {...fieldError(errors.sshJumpHosts)}
       />
-      <small className={styles.hint}>
-        The database host above is resolved on the SSH server, so localhost
-        means the SSH server itself.
-      </small>
+      <small className={styles.hint}>{t('databaseHostAbove')}</small>
     </>
   );
 }
@@ -139,8 +136,8 @@ function SshCredentials({
     case 'password':
       return (
         <SecretField
-          label="SSH password"
-          noun="SSH password"
+          label={t('sshPassword')}
+          noun={t('sshPassword')}
           secret={ssh.password}
           reveal={form.reveal('sshPassword')}
           onChange={(password) => {
@@ -152,18 +149,18 @@ function SshCredentials({
       return (
         <>
           <FileField
-            label="Key file"
+            label={t('keyFile')}
             kind="sshKey"
             value={ssh.keyFile}
-            placeholder="~/.ssh/id_ed25519"
+            placeholder={t('sshIdEd25519')}
             error={errors.sshKeyFile}
             onChange={(keyFile) => {
               updateSsh({ keyFile });
             }}
           />
           <SecretField
-            label="Passphrase"
-            noun="key passphrase"
+            label={t('passphrase')}
+            noun={t('keyPassphrase')}
             secret={ssh.passphrase}
             reveal={form.reveal('sshPassphrase')}
             onChange={(passphrase) => {
@@ -173,16 +170,10 @@ function SshCredentials({
         </>
       );
     case 'agent':
-      return (
-        <small className={styles.hint}>
-          Uses ssh-agent, then the identity files of a ~/.ssh/config alias.
-        </small>
-      );
+      return <small className={styles.hint}>{t('usesSshAgent')}</small>;
     case 'keyboardInteractive':
       return (
-        <small className={styles.hint}>
-          OpenRows asks for passwords and one-time codes when connecting.
-        </small>
+        <small className={styles.hint}>{t('openrowsAsksPasswords')}</small>
       );
   }
 }

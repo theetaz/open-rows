@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { CloudAuthDto, EngineDto, ProfileDto } from '@openrows/ipc';
 import type { Draft, DraftErrors } from './form';
+import { t } from './messages/routes';
 
 type CloudProvider = CloudAuthDto['provider'];
 
@@ -13,9 +14,9 @@ export type CloudAuthDraft = {
   account: string;
 };
 
-const AWS = { value: 'aws', label: 'AWS RDS / Aurora IAM' } as const;
-const AZURE = { value: 'azure', label: 'Microsoft Entra ID' } as const;
-const GOOGLE = { value: 'google', label: 'Google Cloud SQL IAM' } as const;
+const AWS = { value: 'aws', label: t('awsRdsAuroraIam') } as const;
+const AZURE = { value: 'azure', label: t('microsoftEntraId') } as const;
+const GOOGLE = { value: 'google', label: t('googleCloudSql') } as const;
 
 /** The providers that issue tokens this engine can log in with. */
 export function cloudProviders(
@@ -97,7 +98,7 @@ export function cloudAuthErrors(draft: Draft): DraftErrors {
     effectiveProvider(draft) === 'aws' &&
     !/^[a-z0-9][a-z0-9-]*$/.test(draft.cloudAuth.region.trim())
   )
-    return { cloudRegion: 'Use a region such as us-east-1' };
+    return { cloudRegion: t('useRegionSuch') };
   return {};
 }
 
@@ -107,7 +108,7 @@ export function tokenLoginWithoutUser(draft: Draft): boolean {
 }
 
 const VERIFIES: readonly string[] = ['verify-ca', 'verify-full'];
-const VERIFIED_TLS = 'A cloud token is only sent over verified TLS.';
+const VERIFIED_TLS = t('cloudTokenOnly');
 
 /** Mirrors `CloudAuth::require_secure_route` (docs/24 §19). */
 function routeIsSecure(draft: Draft, provider: CloudProvider): boolean {
@@ -127,12 +128,12 @@ export function insecureRouteAdvice(draft: Draft): string | null {
   const provider = effectiveProvider(draft);
   if (routeIsSecure(draft, provider)) return null;
   if (provider === 'aws')
-    return `${VERIFIED_TLS} Choose Verify full with Cloud CA: AWS RDS / Aurora in the TLS section.`;
+    return t('verifiedTlsChoose', { verifiedTls: VERIFIED_TLS });
   if (provider === 'azure')
     return draft.engine === 'sqlserver'
-      ? `${VERIFIED_TLS} Set Encrypt to Mandatory and turn off Trust server certificate.`
-      : `${VERIFIED_TLS} Choose Verify full with Cloud CA: Azure Database in the TLS section.`;
+      ? t('verifiedTlsSet', { verifiedTls: VERIFIED_TLS })
+      : t('verifiedTlsChooseVerify', { verifiedTls: VERIFIED_TLS });
   return draft.engine === 'postgres'
-    ? `${VERIFIED_TLS} Choose Verify CA with the instance's server-ca.pem, or the Cloud SQL Auth Proxy route.`
-    : `${VERIFIED_TLS} Choose Verify CA with the instance's server-ca.pem, or the Cloud SQL Auth Proxy's Automatic IAM with No password.`;
+    ? t('verifiedTlsChooseVerifyCa', { verifiedTls: VERIFIED_TLS })
+    : t('verifiedTlsChooseVerifyCaInstance', { verifiedTls: VERIFIED_TLS });
 }

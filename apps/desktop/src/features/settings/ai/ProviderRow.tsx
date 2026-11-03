@@ -10,17 +10,19 @@ import { CodexSignIn } from './CodexSignIn';
 import { ProviderKey } from './ProviderKey';
 import { codexLocation, codexStatusText } from './codexStatus';
 import styles from './Ai.module.css';
+import { t } from '../messages/lazyAi';
 function health(result: Verification | null): string {
-  if (!result) return 'Configured';
+  if (!result) return t('configured');
   if (result.cli) return codexStatusText(result.cli);
   if (result.health.state !== 'failed')
-    return result.health.state === 'verified' ? 'Verified' : 'Unknown';
+    return result.health.state === 'verified' ? t('verified') : t('unknown');
   const reason = result.health.reason;
-  const retry =
-    reason.kind === 'rateLimit' && reason.retryAfter !== null
-      ? ` (retry after ${String(reason.retryAfter)}s)`
-      : '';
-  return `Failed: ${REASONS[reason.kind]}${retry}`;
+  return reason.kind === 'rateLimit' && reason.retryAfter !== null
+    ? t('failedRetryAfter', {
+        reason: REASONS[reason.kind],
+        retryAfter: String(reason.retryAfter),
+      })
+    : t('failedReason', { reason: REASONS[reason.kind] });
 }
 /** Installed CLIs are checked for discovery/sign-in; API providers are verified. */
 function labels(config: ProviderConfig): {
@@ -30,13 +32,13 @@ function labels(config: ProviderConfig): {
 } {
   return isCliProvider(config.kind)
     ? {
-        action: 'Check status',
-        running: 'Checking…',
+        action: t('checkStatus'),
+        running: t('checking'),
         where: codexLocation(config.baseUrl),
       }
     : {
-        action: 'Verify',
-        running: 'Verifying…',
+        action: t('verify'),
+        running: t('verifying'),
         where: `${config.kind} · ${config.baseUrl}`,
       };
 }
@@ -57,8 +59,9 @@ export function ProviderRow(props: Props): React.JSX.Element {
     <section aria-label={props.config.name} className={styles.provider}>
       <div className={styles.heading}>
         <strong>
-          {props.config.name}
-          {props.selected ? ' (default)' : ''}
+          {props.selected
+            ? t('nameDefault', { name: props.config.name })
+            : props.config.name}
         </strong>
         <span role="status">{busy ? words.running : health(result)}</span>
       </div>
@@ -80,7 +83,7 @@ export function ProviderRow(props: Props): React.JSX.Element {
               void cancelAiVerification(props.config.id).catch(() => undefined);
             }}
           >
-            Cancel verification
+            {t('cancelVerification')}
           </Button>
         )}
         <Button
@@ -88,21 +91,21 @@ export function ProviderRow(props: Props): React.JSX.Element {
           disabled={busy || props.disabled}
           onClick={props.onEdit}
         >
-          Edit
+          {t('edit')}
         </Button>
         <Button
           size="sm"
           disabled={busy || props.disabled}
           onClick={props.onRemove}
         >
-          Remove
+          {t('remove')}
         </Button>
         <Button
           size="sm"
           disabled={props.selected || busy || props.disabled}
           onClick={props.onDefault}
         >
-          Use as default
+          {t('useDefault')}
         </Button>
         <ProviderKey
           config={props.config}

@@ -3,6 +3,7 @@ import { Button, Icon, IconButton } from '@openrows/ui';
 import type { HistoryItemDto } from '@openrows/ipc';
 import { summaryOf } from './historyView';
 import styles from './HistoryList.module.css';
+import { t } from './initialMessages';
 /** Reuse actions available for each history statement. */
 export type HistoryActions = {
   onInsert: (sql: string) => void;
@@ -40,27 +41,27 @@ export function HistoryRow(
         <Button
           size="sm"
           variant="ghost"
-          aria-label={`Insert ${label} at cursor`}
+          aria-label={t('insertLabelCursor', { label })}
           onClick={() => {
             props.onInsert(item.statement);
           }}
         >
-          Insert
+          {t('insert')}
         </Button>
         <Button
           size="sm"
           variant="ghost"
-          aria-label={`Save ${label} as query`}
+          aria-label={t('saveLabelQuery', { label })}
           onClick={() => {
             props.onSave(item.statement);
           }}
         >
-          Save
+          {t('save')}
         </Button>
         <IconButton
           size="sm"
           variant="ghost"
-          aria-label={`Copy ${label}`}
+          aria-label={t('copyLabel', { label })}
           onClick={() => {
             void navigator.clipboard
               .writeText(item.statement)
@@ -73,7 +74,7 @@ export function HistoryRow(
           <IconButton
             size="sm"
             variant="ghost"
-            aria-label={`Delete ${label}`}
+            aria-label={t('deleteLabel', { label })}
             onClick={() => {
               void props.onDelete(id);
             }}

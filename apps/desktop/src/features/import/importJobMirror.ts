@@ -4,6 +4,7 @@ import type { ImportEventDto, ImportRequest } from '@openrows/ipc';
 import { addJob } from '../jobs';
 import type { JobHandle } from '../jobs';
 import { rowCount } from './job';
+import { t } from './messages';
 
 /**
  * Show an import (not a dry run) in the background jobs popover too, with
@@ -18,7 +19,7 @@ export function mirrorImport(request: ImportRequest): {
   if (request.mode !== 'import') return null;
   const job: JobHandle = addJob({
     kind: 'import',
-    title: `Import into ${request.target.table}`,
+    title: t('importIntoTable2', { table: request.target.table }),
   });
   return {
     event: (event) => {
@@ -41,13 +42,19 @@ function reportImport(job: JobHandle, event: ImportEventDto): void {
   switch (event.type) {
     case 'progress':
       job.update({
-        detail: `${rowCount(event.inserted)} written of ${rowCount(event.rows)} read`,
+        detail: t('insertedWrittenRows', {
+          inserted: rowCount(event.inserted),
+          rows: rowCount(event.rows),
+        }),
         fraction: event.fraction ?? undefined,
       });
       return;
     case 'finished':
       job.finish(
-        `${rowCount(event.summary.inserted)} written, ${String(event.summary.failed ?? 0)} failed`,
+        t('insertedWrittenFailed', {
+          inserted: rowCount(event.summary.inserted),
+          failed: String(event.summary.failed ?? 0),
+        }),
       );
       return;
     case 'failed':
@@ -55,7 +62,9 @@ function reportImport(job: JobHandle, event: ImportEventDto): void {
       return;
     case 'cancelled':
       job.cancelled(
-        `Cancelled; ${rowCount(event.summary.inserted)} committed earlier stayed`,
+        t('cancelledInsertedCommitted', {
+          inserted: rowCount(event.summary.inserted),
+        }),
       );
   }
 }

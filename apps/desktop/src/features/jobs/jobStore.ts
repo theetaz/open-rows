@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useSyncExternalStore } from 'react';
+import { t } from './messages';
 
 /** Where a background job is. */
 export type JobStatus = 'running' | 'finished' | 'failed' | 'cancelled';
@@ -80,7 +81,7 @@ export function addJob(input: {
       kind: input.kind,
       title: input.title,
       status: 'running',
-      detail: input.detail ?? 'Starting…',
+      detail: input.detail ?? t('starting'),
       startedAt: Date.now(),
       cancel: input.cancel,
       details: input.details,
@@ -99,7 +100,7 @@ export function addJob(input: {
     fail: (message) => {
       end(id, { status: 'failed', detail: message });
     },
-    cancelled: (detail = 'Cancelled') => {
+    cancelled: (detail = t('cancelled')) => {
       end(id, { status: 'cancelled', detail });
     },
   };

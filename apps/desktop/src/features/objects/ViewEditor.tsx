@@ -13,6 +13,7 @@ import { useDefinition } from './useDefinition';
 import type { Loaded } from './useDefinition';
 import type { ChangeScope } from './useObjectChange';
 import styles from '../table/structure/forms/Forms.module.css';
+import { t } from './messages';
 
 type Props = {
   scope: ChangeScope;
@@ -43,7 +44,7 @@ async function readView(
     kind !== 'materializedView' &&
     detail.viewQuery === null
   )
-    throw new Error(`${name} is not a view`);
+    throw new Error(t('nameNotView', { name }));
   return {
     query: detail.viewQuery ?? '',
     materialized: kind === 'materializedView',
@@ -66,7 +67,7 @@ function ViewFields(props: {
   return (
     <div className={styles.grid}>
       <TextField
-        label="Name"
+        label={t('name')}
         value={props.title}
         readOnly={props.existing}
         autoComplete="off"
@@ -84,7 +85,7 @@ function ViewFields(props: {
               onMaterialized(event.target.checked);
             }}
           />
-          Materialized
+          {t('materialized')}
         </label>
       )}
     </div>
@@ -128,14 +129,14 @@ function QueryArea(props: {
     return (
       <SqlField
         value={props.text}
-        label="View query"
+        label={t('viewQuery')}
         engine={props.engine}
         onChange={props.onChange}
       />
     );
   return (
     <p className={styles.note} role="status">
-      {props.loaded.status === 'loading' ? 'Reading the view…' : ''}
+      {props.loaded.status === 'loading' ? t('readingView') : ''}
     </p>
   );
 }
@@ -146,8 +147,11 @@ function sheetTitle(
   materialized: boolean,
   name: string,
 ): string {
-  const noun = materialized ? 'materialized view' : 'view';
-  return creating ? `New ${noun}` : `Edit ${noun} ${name}`;
+  if (creating)
+    return materialized ? t('newMaterializedViewTitle') : t('newViewTitle');
+  return materialized
+    ? t('editMaterializedViewName', { name })
+    : t('editViewName', { name });
 }
 
 /**
@@ -176,7 +180,7 @@ export function ViewEditor(props: Props): React.JSX.Element {
       scope={scope}
       change={source && saveView({ schema, name: title }, text, options)}
       problem={loaded.status === 'error' ? loaded.message : null}
-      action={creating ? 'Create' : 'Save'}
+      action={creating ? t('create') : t('save')}
       onClose={props.onClose}
       onDone={props.onDone}
     >

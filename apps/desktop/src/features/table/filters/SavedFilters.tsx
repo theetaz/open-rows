@@ -5,6 +5,7 @@ import { useSavedFilters } from '../presentationStore';
 import type { SavedFilter } from '../presentation';
 import type { TableView } from '../model';
 import styles from '../TableExtras.module.css';
+import { t } from '../messages/lazyData';
 
 type Props = {
   /** The table's presentation key (`tableLayoutKey`). */
@@ -47,11 +48,11 @@ export function SavedFilters({
     <span className={styles.saved}>
       {saved.length > 0 && (
         <SelectField
-          aria-label="Saved filters"
+          aria-label={t('savedFilters')}
           controlSize="compact"
           value={chosen}
           options={[
-            { value: '', label: 'Saved filters…' },
+            { value: '', label: t('savedFilters2') },
             ...saved.map((item) => ({ value: item.name, label: item.name })),
           ]}
           onValueChange={(name) => {
@@ -65,7 +66,7 @@ export function SavedFilters({
         <IconButton
           size="sm"
           variant="ghost"
-          aria-label={`Forget saved filter ${chosen}`}
+          aria-label={t('forgetSavedFilter', { chosen })}
           onClick={() => {
             remove(chosen);
             setChosen('');
@@ -81,7 +82,7 @@ export function SavedFilters({
           setNaming(chosen);
         }}
       >
-        Save…
+        {t('save')}
       </Button>
     </span>
   );
@@ -103,9 +104,9 @@ function SaveName({
   return (
     <span className={styles.saved}>
       <TextField
-        aria-label="Saved filter name"
+        aria-label={t('savedFilterName')}
         controlSize="compact"
-        placeholder="Filter name"
+        placeholder={t('filterName2')}
         autoFocus
         value={name}
         onChange={(event) => {
@@ -128,10 +129,10 @@ function SaveName({
           onSave(trimmed);
         }}
       >
-        Save
+        {t('save2')}
       </Button>
       <Button size="sm" variant="ghost" onClick={onCancel}>
-        Cancel
+        {t('cancel')}
       </Button>
     </span>
   );

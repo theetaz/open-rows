@@ -10,6 +10,7 @@ import { jumpFilters, linkedColumns, linkOf } from './foreignKeys';
 import type { KeyLink, KeyValue, TableLinks } from './foreignKeys';
 import { seedFilters } from './seeds';
 import { useTableLinks } from './useTableLinks';
+import { t } from '../messages/lazyData';
 
 /** Foreign-key navigation of a table tab (FR-GRID-07). */
 export type KeyJumps = {
@@ -54,7 +55,7 @@ export function useKeyJumps(args: Args): KeyJumps {
       (fields) => {
         const filters = jumpFilters(link, valuesOf(shownFields(fields)));
         if (!filters) {
-          args.onError(new Error('The key is NULL, so no row is referenced.'));
+          args.onError(new Error(t('keyNullSo')));
           return;
         }
         seedFilters(

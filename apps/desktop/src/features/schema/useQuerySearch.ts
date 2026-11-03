@@ -5,6 +5,7 @@ import { useSavedQueries } from '../query/savedQueries';
 import { useProject } from '../projects';
 import { absolutePath, stem } from '../projects/treeModel';
 import { quickIndex } from './quickSearch';
+import { t } from './messages';
 /** Cache query descriptors; project SQL is read only when a result is opened. */
 export function useQuerySearch(profileId: string): {
   index: ReturnType<typeof quickIndex>;
@@ -18,7 +19,7 @@ export function useQuerySearch(profileId: string): {
       ...saved.queries.map((query) => ({
         id: `saved:${query.id}`,
         label: query.name,
-        detail: 'Local query',
+        detail: t('localQuery'),
         searchText: query.name,
       })),
       ...(project?.entries
@@ -26,7 +27,7 @@ export function useQuerySearch(profileId: string): {
         .map((entry) => ({
           id: `project:${absolutePath(project.root, entry.path)}`,
           label: stem(entry.path.split('/').at(-1) ?? entry.path),
-          detail: `Project query · ${entry.path}`,
+          detail: t('projectQueryPath', { path: entry.path }),
           searchText: `${stem(entry.path.split('/').at(-1) ?? entry.path)} ${entry.path}`,
         })) ?? []),
     ],

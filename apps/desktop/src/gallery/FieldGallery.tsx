@@ -2,11 +2,12 @@
 import { useState } from 'react';
 import { Icon, SegmentedControl, Switch, TextField } from '@openrows/ui';
 import styles from './Gallery.module.css';
+import { t } from './messages';
 
 const options = [
-  { value: 'items', label: 'Items' },
-  { value: 'queries', label: 'Queries' },
-  { value: 'history', label: 'History' },
+  { value: 'items', label: t('items') },
+  { value: 'queries', label: t('queries') },
+  { value: 'history', label: t('history') },
 ] as const;
 /** Controlled fields with labelled default, selected, disabled and error examples. */
 export function FieldGallery(): React.JSX.Element {
@@ -16,7 +17,7 @@ export function FieldGallery(): React.JSX.Element {
       aria-labelledby="fields-heading"
       className={styles.section}
     >
-      <h2 id="fields-heading">Fields & selection</h2>
+      <h2 id="fields-heading">{t('fieldsSelection')}</h2>
       <FieldExamples />
       <SelectionExamples />
       <SwitchExamples />
@@ -27,25 +28,25 @@ export function FieldGallery(): React.JSX.Element {
 function FieldExamples(): React.JSX.Element {
   return (
     <div className={styles.grid}>
-      <TextField label="Connection name" placeholder="My database" />
+      <TextField label={t('connectionName')} placeholder={t('myDatabase')} />
       <TextField
-        label="Search objects"
+        label={t('searchObjects')}
         leadingIcon={<Icon name="search" />}
-        placeholder="Search…"
+        placeholder={t('search')}
       />
       <TextField
-        label="Read-only example"
+        label={t('readOnlyExample')}
         disabled
         defaultValue="Disabled connection"
       />
       <TextField
-        label="Connection URL"
+        label={t('connectionUrl')}
         defaultValue="invalid-url"
-        error="Enter a valid connection URL."
+        error={t('enterValidConnection')}
       />
       <TextField
-        aria-label="Focused field specimen"
-        placeholder="Focus specimen"
+        aria-label={t('focusedFieldSpecimen')}
+        placeholder={t('focusSpecimen')}
         className={styles.fieldFocusPreview}
       />
     </div>
@@ -60,31 +61,29 @@ function SelectionExamples(): React.JSX.Element {
     <>
       <div className={styles.row}>
         <SegmentedControl
-          aria-label="Browse sections"
+          aria-label={t('browseSections')}
           options={options}
           value={selection}
           onValueChange={setSelection}
         />
-        <span>Arrows / Home / End</span>
+        <span>{t('arrowsHomeEnd')}</span>
       </div>
       <div className={styles.row}>
         <SegmentedControl
-          aria-label="Disabled sections"
+          aria-label={t('disabledSections')}
           options={options}
           value="items"
           onValueChange={setSelection}
           disabled
         />
         <SegmentedControl
-          aria-label="Focused segments"
+          aria-label={t('focusedSegments')}
           className={styles.segmentFocusPreview ?? ''}
           options={options}
           value={selection}
           onValueChange={setSelection}
         />
-        <span>
-          Tab to focus the selected segment; hover for its inset edge.
-        </span>
+        <span>{t('tabFocusSelected')}</span>
       </div>
     </>
   );
@@ -96,25 +95,25 @@ function SwitchExamples(): React.JSX.Element {
   return (
     <div className={styles.row}>
       <Switch
-        aria-label="Safe mode"
+        aria-label={t('safeMode')}
         checked={checked}
         onCheckedChange={setChecked}
       />
-      <span>Safe mode {checked ? 'on' : 'off'}</span>
+      <span>{checked ? t('safeMode2') : t('safeModeOff')}</span>
       <Switch
-        aria-label="Disabled switch on"
+        aria-label={t('disabledSwitch')}
         checked
         disabled
         onCheckedChange={setChecked}
       />
       <Switch
-        aria-label="Disabled switch off"
+        aria-label={t('disabledSwitchOff')}
         checked={false}
         disabled
         onCheckedChange={setChecked}
       />
       <Switch
-        aria-label="Focused switch specimen"
+        aria-label={t('focusedSwitchSpecimen')}
         checked={focused}
         onCheckedChange={setFocused}
         className={styles.focusPreview}

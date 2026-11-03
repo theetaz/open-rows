@@ -14,6 +14,7 @@ import { IncidentsPanel } from './IncidentsPanel';
 import { CLICKHOUSE_HIDDEN, CLICKHOUSE_LABELS } from './clickhouseMetrics';
 import { reportConnection } from './report/connection';
 import styles from './Monitor.module.css';
+import { t } from './messages/lazyDashboard';
 const InvestigationPanel = lazy(() =>
   import('./InvestigationPanel').then((module) => ({
     default: module.InvestigationPanel,
@@ -29,31 +30,31 @@ const BoardsPanel = lazy(() =>
 );
 
 const PANELS = [
-  { value: 'overview', label: 'Overview' },
-  { value: 'incidents', label: 'Incidents' },
-  { value: 'activity', label: 'Sessions' },
-  { value: 'blocking', label: 'Blocking' },
-  { value: 'statements', label: 'Top queries' },
-  { value: 'advisor', label: 'Advisor' },
-  { value: 'tables', label: 'Tables' },
-  { value: 'indexes', label: 'Indexes' },
-  { value: 'replication', label: 'Replication' },
-  { value: 'io', label: 'I/O' },
-  { value: 'assistant', label: 'Ask assistant' },
-  { value: 'boards', label: 'Boards' },
+  { value: 'overview', label: t('overview') },
+  { value: 'incidents', label: t('incidents') },
+  { value: 'activity', label: t('sessions') },
+  { value: 'blocking', label: t('blocking') },
+  { value: 'statements', label: t('topQueries') },
+  { value: 'advisor', label: t('advisor') },
+  { value: 'tables', label: t('tables') },
+  { value: 'indexes', label: t('indexes') },
+  { value: 'replication', label: t('replication') },
+  { value: 'io', label: t('iO') },
+  { value: 'assistant', label: t('askAssistant') },
+  { value: 'boards', label: t('boards') },
 ] as const;
 type Panel = (typeof PANELS)[number]['value'];
 /** MySQL/MariaDB table, index and file sources are instrumented I/O summaries. */
 const MYSQL_LABELS: Partial<Record<Panel, string>> = {
-  tables: 'Table I/O',
-  indexes: 'Index I/O',
-  io: 'File I/O',
+  tables: t('tableIO'),
+  indexes: t('indexIO'),
+  io: t('fileIO'),
 };
 /** SQL Server tables/indexes are usage DMVs; the I/O slot carries wait statistics. */
 const SQLSERVER_LABELS: Partial<Record<Panel, string>> = {
-  tables: 'Table usage',
-  indexes: 'Index usage',
-  io: 'Waits',
+  tables: t('tableUsage'),
+  indexes: t('indexUsage'),
+  io: t('waits'),
 };
 /** Embedded and remote libSQL see only OpenRows' own statements. */
 const EMBEDDED_PANELS: ReadonlySet<Panel> = new Set([
@@ -86,8 +87,7 @@ export function MonitorTab(props: Props): React.JSX.Element {
   if (isDocumentEngine(props.profile.engine))
     return (
       <p className={styles.unavailable} role="status">
-        Monitoring and the AI assistant are not available for MongoDB
-        connections. They work with SQL databases.
+        {t('monitoringAiAssistant')}
       </p>
     );
   return <EngineMonitor {...props} />;
@@ -114,18 +114,13 @@ function EngineMonitor(props: Props): React.JSX.Element {
     if (!security.locked) unlocked.current = true;
     else if (unlocked.current) setPaused(true);
   }, [security.locked, setPaused]);
-  if (security.locked)
-    return <p role="status">Monitor data hidden while the app is locked.</p>;
+  if (security.locked) return <p role="status">{t('monitorDataHidden')}</p>;
   if (!props.connected)
-    return (
-      <p role="status">
-        Disconnected. Connect to start monitoring; collection has stopped.
-      </p>
-    );
+    return <p role="status">{t('disconnectedConnectStart')}</p>;
   return (
     <section
       className={styles.workspace}
-      aria-label={`Monitor on ${props.database}`}
+      aria-label={t('monitorDatabase', { database: props.database })}
     >
       <MonitorHeader
         target={target}
@@ -136,7 +131,7 @@ function EngineMonitor(props: Props): React.JSX.Element {
       />
       <nav className={styles.navigation}>
         <SegmentedControl
-          aria-label="Monitor panel"
+          aria-label={t('monitorPanel')}
           options={panels(props.profile.engine)}
           value={panel}
           onValueChange={(value) => {
@@ -232,7 +227,7 @@ function MonitorContent(
         />
       )}
       <details>
-        <summary>Local history settings</summary>
+        <summary>{t('localHistorySettings')}</summary>
         <HistoryControls
           profileId={props.profile.id}
           onPurged={history.refresh}
@@ -264,7 +259,7 @@ function panels(engine: EngineDto): readonly { value: Panel; label: string }[] {
     return PANELS.filter((panel) => EMBEDDED_PANELS.has(panel.value)).map(
       (panel) =>
         panel.value === 'statements'
-          ? { value: panel.value, label: 'Own queries' }
+          ? { value: panel.value, label: t('ownQueries') }
           : panel,
     );
   const labels =

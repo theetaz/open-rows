@@ -4,6 +4,7 @@ import { Button, Icon } from '@openrows/ui';
 import { StagedRows } from './StagedRows';
 import type { RowEditing } from './useRowEditing';
 import styles from './Table.module.css';
+import { t, tn } from './messages/lazyData';
 /** Whether rows can be staged: an editable key and an open session. */
 export function canEdit(editing: RowEditing, ready: boolean): boolean {
   return Boolean(
@@ -70,7 +71,7 @@ export function EditToolbar({
   return (
     <>
       {listOpen && model.list(listId)}
-      <div className={styles.editToolbar} aria-label="Table editing">
+      <div className={styles.editToolbar} aria-label={t('tableEditing')}>
         <Button
           size="sm"
           variant="ghost"
@@ -92,7 +93,7 @@ export function EditToolbar({
           disabled={!model.canUndo || model.busy}
           onClick={model.undo}
         >
-          Undo
+          {t('undo')}
         </Button>
         <Button
           size="sm"
@@ -100,14 +101,14 @@ export function EditToolbar({
           disabled={!model.canRedo || model.busy}
           onClick={model.redo}
         >
-          Redo
+          {t('redo')}
         </Button>
         <Button
           size="sm"
           disabled={!model.count || model.busy}
           onClick={model.discard}
         >
-          {model.uncertain ? 'Reload & discard' : 'Discard'}
+          {model.uncertain ? t('reloadDiscard') : t('discard')}
         </Button>
         <Button
           size="sm"
@@ -115,7 +116,7 @@ export function EditToolbar({
           disabled={!model.enabled || !model.count || model.busy}
           onClick={model.commit}
         >
-          Review &amp; commit
+          {t('reviewCommit')}
         </Button>
       </div>
     </>
@@ -124,12 +125,10 @@ export function EditToolbar({
 
 /** Status of staged edits, or why the table cannot be edited. */
 export function editingNote(editing: RowEditing): string {
-  if (editing.history.uncertain)
-    return 'Commit status unknown; reload before editing.';
+  if (editing.history.uncertain) return t('commitStatusUnknown');
   if (editing.history.current.length)
-    return `${String(editing.history.current.length)} staged ${editing.history.current.length === 1 ? 'change' : 'changes'}`;
-  if (editing.info?.readOnly) return 'Read-only connection';
-  if (editing.info && !editing.info.key.length)
-    return 'Read-only: no supported non-null unique key';
-  return 'Double-click a cell or press Enter to edit · Shift-click a header to select a column';
+    return tn('stagedChanges', editing.history.current.length);
+  if (editing.info?.readOnly) return t('readOnlyConnection');
+  if (editing.info && !editing.info.key.length) return t('readOnlyNo');
+  return t('doubleClickCell');
 }

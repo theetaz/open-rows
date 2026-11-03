@@ -10,6 +10,7 @@ import { PreviewGrid } from './PreviewGrid';
 import { TargetSection } from './TargetSection';
 import type { ImportDraftState } from './useImportDraft';
 import styles from './Import.module.css';
+import { t } from './messages';
 
 /** File, target, mapping, preview and options; dry-run results below. */
 export function ImportSetup(props: {
@@ -68,7 +69,7 @@ export function ImportSetup(props: {
       )}
       {state.loading && !preview && (
         <p className={styles.note} role="status">
-          Reading the file…
+          {t('readingFile')}
         </p>
       )}
       <ImportStatus job={job} table={draft.table} />

@@ -10,6 +10,7 @@ import type { Item } from './content';
 import { escapeMarkdown as md } from './escape';
 import { cellText } from './model';
 import type { Cell, Column, Report, ReportSection } from './model';
+import { t } from '../messages/lazyReport';
 
 function list(items: Item[]): string[] {
   return items.map((item) => `- **${md(item.label)}:** ${md(item.value)}`);
@@ -34,13 +35,13 @@ function body(section: ReportSection): string[] {
     case 'table':
       return section.rows.length
         ? table(section.columns, section.rows)
-        : ['No rows.'];
+        : [t('noRows2')];
     case 'chart': {
       const stats = chartStats(section);
       return [
         ...table(stats.columns, stats.rows),
         '',
-        'Every observation is in the JSON and CSV exports; the chart is in the HTML, SVG and PNG exports.',
+        t('everyObservationJson'),
       ];
     }
   }
@@ -52,7 +53,7 @@ function section(part: ReportSection): string[] {
     `## ${md(part.title)}`,
     '',
     ...list(evidenceItems(part.evidence)),
-    `- **Gaps and unknowns:** ${gaps.length ? '' : NO_GAPS}`,
+    t('gapsUnknownsValue', { value: gaps.length ? '' : NO_GAPS }),
     ...gaps.map((gap) => `  - ${md(gap)}`),
     '',
     ...body(part),

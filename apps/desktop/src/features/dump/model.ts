@@ -9,6 +9,7 @@ import type {
   RestoreOptionsDto,
 } from '@openrows/ipc';
 import type { DumpTarget } from './dumpStore';
+import { t } from './messages';
 
 /** The session and server a request acts on. */
 export function scopeOf(target: DumpTarget): DumpScopeRequest {
@@ -20,10 +21,10 @@ export function scopeOf(target: DumpTarget): DumpScopeRequest {
 }
 
 export const FORMATS: readonly { value: BackupFormatDto; label: string }[] = [
-  { value: 'custom', label: 'Custom archive (.dump)' },
-  { value: 'plain', label: 'Plain SQL (.sql)' },
-  { value: 'directory', label: 'Directory (one file per table)' },
-  { value: 'tar', label: 'Tar archive (.tar)' },
+  { value: 'custom', label: t('customArchiveDump') },
+  { value: 'plain', label: t('plainSqlSql') },
+  { value: 'directory', label: t('directoryOneFile') },
+  { value: 'tar', label: t('tarArchiveTar') },
 ];
 
 /** The tools' own defaults: everything, a consistent MySQL snapshot. */
@@ -75,11 +76,11 @@ export function isArchive(kind: DumpFileKindDto): boolean {
 }
 
 export const FILE_KINDS: Readonly<Record<DumpFileKindDto, string>> = {
-  plainSql: 'SQL script',
-  pgCustom: 'pg_dump custom archive',
-  pgTar: 'pg_dump tar archive',
-  pgDirectory: 'pg_dump directory',
-  sqlite: 'SQLite database',
+  plainSql: t('sqlScript'),
+  pgCustom: t('pgDumpCustom'),
+  pgTar: t('pgDumpTar'),
+  pgDirectory: t('pgDumpDirectory'),
+  sqlite: t('sqliteDatabase'),
 };
 
 export const messageOf = (error: unknown): string =>

@@ -8,6 +8,7 @@ import type {
 } from '@openrows/ipc';
 import type { ColumnRow } from '../effective';
 import { typeSpecs } from './dialect';
+import { t } from '../../messages/initial';
 
 /** What the column form edits; sizes stay text until the type is composed. */
 export type ColumnDraft = {
@@ -115,12 +116,12 @@ export function draftFromRow(row: ColumnRow): ColumnDraft {
 
 /** Why the form cannot be staged yet, or `null`. */
 export function columnProblem(draft: ColumnDraft): string | null {
-  if (!draft.name.trim()) return 'Name the column.';
-  if (!draft.type.trim()) return 'Choose a type.';
+  if (!draft.name.trim()) return t('nameColumn');
+  if (!draft.type.trim()) return t('chooseType');
   if (draft.scale.trim() && !draft.length.trim())
-    return 'A scale needs a precision.';
+    return t('scaleNeedsPrecision');
   if (draft.identity !== 'none' && draftDefault(draft).kind !== 'none')
-    return 'A numbered column has no default.';
+    return t('numberedColumnNo');
   return null;
 }
 

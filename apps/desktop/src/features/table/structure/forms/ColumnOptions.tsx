@@ -2,6 +2,7 @@
 import { SelectField, TextField } from '@openrows/ui';
 import type { SchemaChangeDto } from '@openrows/ipc';
 import type { Structure } from '../useStructure';
+import { t } from '../../messages/lazyStructure';
 
 /** Optional conversion and ordinal position for an existing column. */
 type ColumnOptionsDraft = { expression: string; position: string };
@@ -45,23 +46,23 @@ export function ColumnOptions({
 }): React.JSX.Element {
   const { features } = structure;
   const positions = [
-    { value: '', label: 'Keep position' },
-    { value: 'first', label: 'First' },
+    { value: '', label: t('keepPosition') },
+    { value: 'first', label: t('first') },
     ...structure.rows
       .filter(
         (row) => row.column !== null && row.column !== column && !row.dropped,
       )
       .map((row) => ({
         value: `after:${row.column ?? ''}`,
-        label: `After ${row.name}`,
+        label: t('afterName', { name: row.name }),
       })),
   ];
   return (
     <>
       {features.typeUsing && (
         <TextField
-          label="USING conversion expression"
-          placeholder='"column"::integer'
+          label={t('usingConversionExpression')}
+          placeholder={t('columnInteger')}
           value={draft.expression}
           onChange={(event) => {
             onChange({ ...draft, expression: event.target.value });
@@ -70,7 +71,7 @@ export function ColumnOptions({
       )}
       {features.columnReordering ? (
         <SelectField
-          label="Position"
+          label={t('position')}
           value={draft.position}
           options={positions}
           onValueChange={(position) => {
@@ -78,10 +79,7 @@ export function ColumnOptions({
           }}
         />
       ) : (
-        <p>
-          Column reordering is unavailable: rebuilding this table cannot safely
-          preserve dependent objects and row identity.
-        </p>
+        <p>{t('columnReorderingUnavailable')}</p>
       )}
     </>
   );

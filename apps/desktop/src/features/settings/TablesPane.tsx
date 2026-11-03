@@ -6,14 +6,15 @@ import { tableSettings, updateTableSettings } from './tableSettings';
 import type { GridScrollbars, RowCountMode } from './tableSettings';
 import { CopySection } from './CopySection';
 import styles from '../appearance/Appearance.module.css';
+import { t } from './messages/lazyPanes';
 
 const SCROLLBARS: readonly { value: GridScrollbars; label: string }[] = [
-  { value: 'quiet', label: 'Show when hovered' },
-  { value: 'always', label: 'Always visible' },
+  { value: 'quiet', label: t('showWhenHovered') },
+  { value: 'always', label: t('alwaysVisible') },
 ];
 const COUNTS: readonly { value: RowCountMode; label: string }[] = [
-  { value: 'estimate', label: 'Estimated (~)' },
-  { value: 'exact', label: 'Exact' },
+  { value: 'estimate', label: t('estimated') },
+  { value: 'exact', label: t('exact') },
 ];
 
 /** Shared table presentation (FR-GRID-12); tabs can still toggle stripes and counts. */
@@ -22,30 +23,30 @@ export function TablesPane(): React.JSX.Element {
   const tables = tableSettings.useValue();
   return (
     <>
-      <section aria-label="Tables">
-        <h3>Tables</h3>
+      <section aria-label={t('tables')}>
+        <h3>{t('tables')}</h3>
         <div className={styles.settingsGroup}>
           <SettingRow
-            title="Table row density"
-            description="Compact, default or comfortable row height; changes apply to mounted grids."
+            title={t('tableRowDensity')}
+            description={t('compactDefaultComfortable')}
           >
             <SelectField
-              aria-label="Table row density"
+              aria-label={t('tableRowDensity')}
               value={general.gridDensity}
               options={[
-                { value: 'compact', label: 'Compact' },
-                { value: 'normal', label: 'Default' },
-                { value: 'comfortable', label: 'Comfortable' },
+                { value: 'compact', label: t('compact') },
+                { value: 'normal', label: t('default') },
+                { value: 'comfortable', label: t('comfortable') },
               ]}
               onValueChange={setGridDensity}
             />
           </SettingRow>
           <SettingRow
-            title="Alternate row backgrounds"
-            description="Stripe table and result rows; a table's display menu can still toggle its own."
+            title={t('alternateRowBackgrounds')}
+            description={t('stripeTableResult')}
           >
             <Switch
-              aria-label="Alternate row backgrounds"
+              aria-label={t('alternateRowBackgrounds')}
               checked={tables.striped}
               onCheckedChange={(striped) => {
                 updateTableSettings({ striped });
@@ -53,11 +54,11 @@ export function TablesPane(): React.JSX.Element {
             />
           </SettingRow>
           <SettingRow
-            title="Row count"
-            description="Estimated shows the planner's ~count with a Count action. Exact counts when filters change or rows reload; you can cancel."
+            title={t('rowCount')}
+            description={t('estimatedShowsPlanner')}
           >
             <SelectField
-              aria-label="Row count"
+              aria-label={t('rowCount')}
               value={tables.rowCount}
               options={COUNTS}
               onValueChange={(rowCount) => {
@@ -66,11 +67,11 @@ export function TablesPane(): React.JSX.Element {
             />
           </SettingRow>
           <SettingRow
-            title="Scrollbars"
-            description="Grid scrollbars fade until hovered, or stay visible."
+            title={t('scrollbars')}
+            description={t('gridScrollbarsFade')}
           >
             <SelectField
-              aria-label="Grid scrollbars"
+              aria-label={t('gridScrollbars')}
               value={tables.scrollbars}
               options={SCROLLBARS}
               onValueChange={(scrollbars) => {

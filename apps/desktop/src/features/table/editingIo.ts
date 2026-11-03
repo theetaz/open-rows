@@ -5,6 +5,7 @@ import type { ResultMeta } from '../query/run';
 import { readRow } from './row';
 import type { TableTargetRef } from './model';
 import type { EditHistory, StagedEdit } from './editHistory';
+import { t } from './messages/lazyData';
 
 /** Resolve the displayed stable key, then read a complete exact server snapshot. */
 export async function editDraft(args: {
@@ -20,7 +21,7 @@ export async function editDraft(args: {
   for (const name of args.info.key) {
     const field = fields.find((item) => item.name === name);
     if (!field || field.state === 'null')
-      throw new Error('Show all unique-key columns before editing this row.');
+      throw new Error(t('showAllUniqueKey'));
     keys[name] = field.state === 'empty' ? '' : field.text;
   }
   const id = JSON.stringify(keys);

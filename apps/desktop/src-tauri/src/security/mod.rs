@@ -4,6 +4,7 @@ mod auth;
 mod lock;
 pub(crate) mod secret_prompt;
 use crate::connections::{IpcError, IpcErrorKind};
+use crate::native_text;
 use auth::{Authenticator, NativeAuthenticator};
 use openrows_core::safety::{Gate, SafetyPlan};
 use openrows_store::profile::ConnectionProfile;
@@ -232,7 +233,7 @@ pub(crate) async fn confirm_batch(
                 "Connection: {}\nDatabase: {context}\n\n{text}",
                 profile.name
             ))
-            .title("Confirm execution")
+            .title(native_text::CONFIRM_EXECUTION)
             .buttons(MessageDialogButtons::OkCancel)
             .show(move |answer| {
                 let _ = sender.send(answer);

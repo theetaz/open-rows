@@ -18,6 +18,7 @@ import type { TableColumnDto } from '@openrows/ipc';
 import type { CopyTarget } from '../../results/copy/copySelection';
 import type { KeyJumps } from './links/useKeyJumps';
 import { resultColumnKey } from '../../results/projectedResult';
+import { t } from './messages/lazyData';
 /** A right-click target plus the grid selection it belongs to, in data coordinates. */
 export type ContextTarget = GridContextTarget & {
   ranges: readonly CellRange[];
@@ -101,7 +102,7 @@ function pinActions({ grid, selection, run }: Context): Action[] {
   const pinned = grid.pinned.includes(name);
   return [
     {
-      label: pinned ? 'Unpin column' : 'Pin column',
+      label: pinned ? t('unpinColumn') : t('pinColumn'),
       run: run(() => {
         grid.togglePin(name);
       }),
@@ -124,19 +125,19 @@ function columnActions(
   };
   return [
     {
-      label: 'Copy column name',
+      label: t('copyColumnName'),
       run: () => {
         copy(name);
       },
     },
     {
-      label: 'Sort ascending',
+      label: t('sortAscending'),
       run: run(() => {
         sort(false);
       }),
     },
     {
-      label: 'Sort descending',
+      label: t('sortDescending'),
       run: run(() => {
         sort(true);
       }),
@@ -144,7 +145,7 @@ function columnActions(
     ...(context.onQuickFilter
       ? [
           {
-            label: 'Filter column…',
+            label: t('filterColumn'),
             run: run(() => {
               context.onQuickFilter?.(key);
             }),
@@ -153,7 +154,7 @@ function columnActions(
       : []),
     ...pinActions(context),
     {
-      label: 'Hide column',
+      label: t('hideColumn'),
       disabled: result.columns.length <= 1,
       run: run(() => {
         changeView((view) => ({ ...view, hidden: [...view.hidden, key] }));
@@ -169,7 +170,7 @@ function rowActions(
   const { result } = selection;
   return [
     {
-      label: 'Edit row…',
+      label: t('editRow'),
       disabled: !writable,
       run: run(() => {
         const insert = stagedInserts(editing.history.current)[
@@ -180,22 +181,22 @@ function rowActions(
       }),
     },
     {
-      label: 'Copy row',
+      label: t('copyRow'),
       disabled: !fields,
       run: () => {
         if (fields) copy(rowText(fields));
       },
     },
-    { label: 'Add row', disabled: !writable, run: run(editing.insert) },
+    { label: t('addRow'), disabled: !writable, run: run(editing.insert) },
     {
-      label: 'Duplicate row',
+      label: t('duplicateRow'),
       disabled: !writable,
       run: run(() => {
         editing.quick(result, selection, 'duplicate');
       }),
     },
     {
-      label: 'Delete row',
+      label: t('deleteRow'),
       disabled: !writable,
       danger: true,
       run: run(() => {
@@ -220,21 +221,21 @@ function cellActions(
   };
   return [
     {
-      label: 'Edit value…',
+      label: t('editValue'),
       disabled: !cellWritable,
       run: run(() => {
         editing.edit({ row: selection.row, column: selection.column });
       }),
     },
     {
-      label: 'Copy value',
+      label: t('copyValue'),
       disabled: !field,
       run: () => {
         if (field) copy(field.state === 'empty' ? '' : field.text);
       },
     },
     {
-      label: 'Paste value',
+      label: t('pasteValue'),
       disabled: !cellWritable,
       run: run(() => {
         navigator.clipboard.readText().then((text) => {
@@ -243,7 +244,7 @@ function cellActions(
       }),
     },
     {
-      label: 'Filter by value',
+      label: t('filterValue2'),
       disabled: !field,
       run: run(() => {
         if (field)
@@ -272,9 +273,9 @@ function markerActions(
 ): readonly (readonly [string, CellValue, boolean])[] {
   const allowed = fieldActions(column, !writable, null);
   return [
-    ['Set NULL', NULL_VALUE, allowed.null],
-    ['Set DEFAULT', DEFAULT_VALUE, allowed.default],
-    ['Set EMPTY', textValue(''), allowed.empty],
+    [t('setNull'), NULL_VALUE, allowed.null],
+    [t('setDefault'), DEFAULT_VALUE, allowed.default],
+    [t('setEmpty'), textValue(''), allowed.empty],
   ];
 }
 

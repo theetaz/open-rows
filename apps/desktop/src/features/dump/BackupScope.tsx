@@ -6,6 +6,7 @@ import { sameTable } from './scopeModel';
 import type { BackupSelection, ScopeSchema } from './scopeModel';
 import type { DumpTableDto } from '@openrows/ipc';
 import styles from './Dump.module.css';
+import { t } from './messages';
 
 type Props = {
   catalog: readonly ScopeSchema[];
@@ -21,7 +22,7 @@ export function BackupScope(props: Props): React.JSX.Element {
     name.toLocaleLowerCase().includes(search.toLocaleLowerCase());
   return (
     <fieldset className={styles.options}>
-      <legend>Backup scope</legend>
+      <legend>{t('backupScope')}</legend>
       <label>
         <input
           type="checkbox"
@@ -30,10 +31,10 @@ export function BackupScope(props: Props): React.JSX.Element {
             onChange({ all: event.target.checked, schemas: [], tables: [] });
           }}
         />
-        Whole database
+        {t('wholeDatabase')}
       </label>
       <TextField
-        aria-label="Search backup objects"
+        aria-label={t('searchBackupObjects')}
         value={search}
         onChange={(event) => {
           setSearch(event.target.value);
@@ -50,7 +51,7 @@ export function BackupScope(props: Props): React.JSX.Element {
             });
           }}
         >
-          Select all
+          {t('selectAll')}
         </Button>
         <Button
           size="sm"
@@ -58,7 +59,7 @@ export function BackupScope(props: Props): React.JSX.Element {
             onChange({ all: false, schemas: [], tables: [] });
           }}
         >
-          Select none
+          {t('selectNone')}
         </Button>
       </div>
       <ScopeList
@@ -78,14 +79,9 @@ export function BackupScope(props: Props): React.JSX.Element {
       />
       {!selection.all &&
         !selection.schemas.length &&
-        !selection.tables.length && (
-          <p role="status">Select at least one schema or table.</p>
-        )}
+        !selection.tables.length && <p role="status">{t('selectLeastOne')}</p>}
       {!!selection.schemas.length && !!selection.tables.length && (
-        <p className={styles.note}>
-          Mixed selections include the schemas&apos; tables. Schema-level
-          routines and types require a schema-only selection.
-        </p>
+        <p className={styles.note}>{t('mixedSelectionsInclude')}</p>
       )}
     </fieldset>
   );
@@ -127,7 +123,7 @@ function SchemaCheck(props: Props & { name: string }): React.JSX.Element {
           });
         }}
       />
-      Schema {name}
+      {t('schemaName', { name })}
     </label>
   );
 }
@@ -154,7 +150,7 @@ function TableCheck(props: Props & { table: DumpTableDto }): React.JSX.Element {
           });
         }}
       />
-      Table {table.schema}.{table.name}
+      {t('tableSchemaName', { schema: table.schema, name: table.name })}
     </label>
   );
 }

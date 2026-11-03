@@ -2,6 +2,7 @@
 import { TextArea } from '@openrows/ui';
 import { documentError } from './documentText';
 import styles from './DocumentField.module.css';
+import { t } from './messages/lazyData';
 
 /**
  * The whole document as JSON/EJSON (FR-DATA-07). The text must be one object;
@@ -16,7 +17,7 @@ export function DocumentField(props: {
   return (
     <>
       <TextArea
-        aria-label="Edit __document"
+        aria-label={t('editDocument')}
         className={styles.documentField}
         spellCheck={false}
         value={props.value}

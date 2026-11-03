@@ -2,6 +2,7 @@
 import type { OpenLinkDto, ProfileDto } from '@openrows/ipc';
 import { isDocumentEngine } from '../connections/engines';
 import { operators } from '../table/model';
+import { t } from './messages';
 
 /** A link and the saved connection it names. */
 export type ResolvedLink = { link: OpenLinkDto; profile: ProfileDto };
@@ -21,11 +22,10 @@ export function resolveLink(
   if (named.length === 1 && named[0]) return { link, profile: named[0] };
   if (named.length > 1)
     return {
-      error: `Several saved connections are named “${name ?? ''}”. Copy the link again in OpenRows so it includes the connection's id.`,
+      error: t('severalSavedConnections', { name: name ?? '' }),
     };
   return {
-    error:
-      'No saved connection matches this link. Add or import the connection first.',
+    error: t('noSavedConnection'),
   };
 }
 
@@ -44,28 +44,28 @@ export function linkRows(resolved: ResolvedLink): [string, string][] {
   const { link, profile } = resolved;
   const environment = profile.env.label ?? profile.env.kind;
   const rows: [string, string][] = [
-    ['Connection', `${profile.name} (${environment})`],
-    ['Server', serverText(profile)],
+    [t('connection'), `${profile.name} (${environment})`],
+    [t('server'), serverText(profile)],
   ];
   if (link.kind === 'connection') {
-    if (link.database) rows.push(['Database', link.database]);
+    if (link.database) rows.push([t('database'), link.database]);
     return rows;
   }
   // A MongoDB database is its only schema; its tables are collections.
   const documents = isDocumentEngine(profile.engine);
-  rows.push(['Database', link.database]);
-  if (!documents) rows.push(['Schema', link.schema]);
+  rows.push([t('database'), link.database]);
+  if (!documents) rows.push([t('schema'), link.schema]);
   if (link.object) {
     const kind =
       documents && link.object.kind === 'table'
         ? 'collection'
         : link.object.kind;
-    rows.push(['Opens', `${link.object.name} (${kind})`]);
+    rows.push([t('opens'), `${link.object.name} (${kind})`]);
   }
   if (link.kind === 'table')
     for (const filter of link.filters)
       rows.push([
-        'Filter',
+        t('filter'),
         `${filter.column} ${operatorText(filter.operator)} ${filter.value}${filter.second ? ` … ${filter.second}` : ''}`.trim(),
       ]);
   return rows;

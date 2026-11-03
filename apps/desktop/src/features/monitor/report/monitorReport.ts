@@ -20,6 +20,7 @@ import type {
   SummarySection,
   TableSection,
 } from './model';
+import { t } from '../messages/lazyReport';
 
 export type MonitorPart = 'summary' | 'metrics' | 'queries' | 'incidents';
 export type ReportRange = {
@@ -43,8 +44,8 @@ const MAX_QUERIES = 100;
 const LIVE_WINDOW_MS = 600_000;
 
 function scopeName(scope: Scope | undefined): string {
-  if (!scope) return 'Unknown';
-  return scope === 'server' ? 'Server' : 'Database';
+  if (!scope) return t('unknown');
+  return scope === 'server' ? t('server') : t('database');
 }
 
 function summarySection(input: MonitorReportInput): SummarySection {
@@ -53,35 +54,46 @@ function summarySection(input: MonitorReportInput): SummarySection {
     const scope = reply?.capabilities.find(
       (c) => c.source === status.source,
     )?.scope;
-    const reason = 'reason' in status.state ? `: ${status.state.reason}` : '';
+    const kind = stateLabel(status.state.kind);
+    const state =
+      'reason' in status.state
+        ? t('stateWithReason', { state: kind, reason: status.state.reason })
+        : kind;
     return {
-      label: `Source ${status.source}`,
-      value: `${stateLabel(status.state.kind)}${reason} · ${scopeName(scope)} scope · last success ${timeText(status.lastSuccessMs)}`,
+      label: t('sourceSource', { source: status.source }),
+      value: t('sourceSummary', {
+        state,
+        scope: scopeName(scope),
+        time: timeText(status.lastSuccessMs),
+      }),
     };
   });
   const gaps = (reply?.sources ?? []).flatMap((status) =>
     status.state.kind === 'ok'
       ? []
-      : [`Source ${status.source}: ${stateLabel(status.state.kind)}`],
+      : [
+          t('sourceSourceKind', {
+            source: status.source,
+            kind: stateLabel(status.state.kind),
+          }),
+        ],
   );
   return {
     id: 'summary',
     kind: 'summary',
-    title: 'Summary',
+    title: t('summary'),
     evidence: {
-      source: 'Collector source status',
+      source: t('collectorSourceStatus'),
       fromMs: input.range.fromMs,
       toMs: input.range.toMs,
       scope: 'Connection',
-      gaps: reply
-        ? gaps
-        : ['No collector reply: the live monitor has not sampled yet'],
+      gaps: reply ? gaps : [t('noCollectorReply')],
     },
     items: [
-      { label: 'Engine', value: input.engine },
+      { label: t('engine'), value: input.engine },
       {
-        label: 'Window',
-        value: input.range.history ? 'Stored local history' : 'Live window',
+        label: t('window'),
+        value: input.range.history ? t('storedLocalHistory') : t('liveWindow'),
       },
       ...items,
     ],
@@ -113,8 +125,8 @@ function metricSection(
     title: metric.title,
     evidence: {
       source: range.history
-        ? 'Local history (stored aggregates)'
-        : `Live collector · ${metricSource(metric)} source`,
+        ? t('localHistoryStored')
+        : t('liveCollectorMetric', { metric: metricSource(metric) }),
       fromMs: range.fromMs,
       toMs: range.toMs,
       scope: metric.scope,
@@ -139,27 +151,28 @@ function queryGaps(input: MonitorReportInput, total: number): string[] {
   );
   const table = input.data?.tables.statements;
   const gaps: string[] = [];
-  if (!status)
-    gaps.push(
-      'Statement statistics are not collected for this engine or not sampled yet',
-    );
+  if (!status) gaps.push(t('statementStatisticsNot'));
   else if (status.state.kind !== 'ok')
     gaps.push(
-      `Statements: ${stateLabel(status.state.kind)}${'reason' in status.state ? `: ${status.state.reason}` : ''}`,
+      'reason' in status.state
+        ? t('statementsKindReason', {
+            kind: stateLabel(status.state.kind),
+            reason: status.state.reason,
+          })
+        : t('statementsKind', { kind: stateLabel(status.state.kind) }),
     );
-  if (table?.partial || status?.partial)
-    gaps.push('Partial coverage: rows were truncated or evicted');
+  if (table?.partial || status?.partial) gaps.push(t('partialCoverageRows'));
   if (table && table.state !== 'ok')
-    gaps.push(`Sample state: ${stateLabel(table.state)}`);
+    gaps.push(t('sampleStateState', { state: stateLabel(table.state) }));
   if (total > MAX_QUERIES)
     gaps.push(
-      `Showing the first ${String(MAX_QUERIES)} of ${String(total)} ranked statements`,
+      t('showingFirstMax', {
+        maxQueries: String(MAX_QUERIES),
+        total: String(total),
+      }),
     );
-  if (input.range.history)
-    gaps.push(
-      'Top queries cover the live ten-minute window, not the selected history range',
-    );
-  gaps.push('Unknown or reset intervals are empty cells, never zeros');
+  if (input.range.history) gaps.push(t('topQueriesCover'));
+  gaps.push(t('unknownResetIntervals'));
   return gaps;
 }
 
@@ -176,9 +189,9 @@ function queriesSection(input: MonitorReportInput): TableSection {
   return {
     id: 'queries',
     kind: 'table',
-    title: 'Top queries',
+    title: t('topQueries'),
     evidence: {
-      source: 'Live collector · statements source (summed live-window deltas)',
+      source: t('liveCollectorStatements'),
       fromMs: toMs === null ? null : toMs - LIVE_WINDOW_MS,
       toMs,
       scope: scopeName(scope),
@@ -201,21 +214,21 @@ function overlaps(incident: Incident, fromMs: number, toMs: number): boolean {
 }
 
 const INCIDENT_COLUMNS = [
-  'Status',
-  'Rule',
-  'Severity',
-  'Scope',
-  'Metric',
-  'Started',
-  'Ended',
-  'Onset',
-  'Peak',
-  'Last',
+  t('status'),
+  t('rule'),
+  t('severity'),
+  t('scope'),
+  t('metric'),
+  t('started'),
+  t('ended'),
+  t('onset'),
+  t('peak'),
+  t('last'),
 ];
 
 function incidentRow(incident: Incident): Cell[] {
   return [
-    incident.endedMs === null ? 'Open' : 'Resolved',
+    incident.endedMs === null ? t('open') : t('resolved'),
     incident.rule.title,
     incident.rule.severity,
     scopeName(incident.scope),
@@ -234,19 +247,17 @@ function incidentsSection(input: MonitorReportInput): TableSection {
   const incidents = (reply?.incidents ?? []).filter((i) =>
     overlaps(i, fromMs, toMs),
   );
-  const gaps = [
-    'Incidents are retained for this app session only; earlier incidents are unknown',
-  ];
-  if (error) gaps.push(`Incidents unavailable: ${error}`);
-  else if (!reply) gaps.push('Incidents were not loaded');
+  const gaps = [t('incidentsRetainedApp')];
+  if (error) gaps.push(t('incidentsUnavailableError', { error }));
+  else if (!reply) gaps.push(t('incidentsWereNot'));
   if (incidents.some((i) => i.startedMs === null))
-    gaps.push('Some incident start times are unknown');
+    gaps.push(t('someIncidentStart'));
   return {
     id: 'incidents',
     kind: 'table',
-    title: 'Incidents',
+    title: t('incidents'),
     evidence: {
-      source: 'Deterministic incident rules on live samples',
+      source: t('deterministicIncidentRules'),
       fromMs,
       toMs,
       scope: 'Server and database',

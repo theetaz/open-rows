@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Button, TextArea } from '@openrows/ui';
 import { Sheet, SheetActions } from '@openrows/ui/sheet';
 import { exportSettings, importSettings, resetSettings } from './settingsFile';
+import { t } from './messages/lazyGeneral';
 
 /** Confirm resets and exchange only schema-validated, non-secret preferences. */
 export function SettingsActions({
@@ -39,28 +40,28 @@ export function SettingsActions({
             open('group');
           }}
         >
-          Reset group
+          {t('resetGroup')}
         </Button>
         <Button
           onClick={() => {
             open('all');
           }}
         >
-          Reset all settings
+          {t('resetAllSettings')}
         </Button>
         <Button
           onClick={() => {
             open('export');
           }}
         >
-          Export settings
+          {t('exportSettings')}
         </Button>
         <Button
           onClick={() => {
             open('import');
           }}
         >
-          Import settings
+          {t('importSettings')}
         </Button>
       </div>
       {action && (
@@ -105,8 +106,10 @@ function ActionDialog({
     <Sheet
       title={
         resetting
-          ? 'Reset to defaults?'
-          : `${action === 'import' ? 'Import' : 'Export'} settings`
+          ? t('resetDefaults')
+          : action === 'import'
+            ? t('importSettings')
+            : t('exportSettings')
       }
       onClose={() => {
         close();
@@ -114,12 +117,14 @@ function ActionDialog({
     >
       <p>
         {resetting
-          ? `Reset ${action === 'all' ? 'all preferences' : `${section} preferences`}? Connection profiles, credentials, history entries and data locations remain intact.`
-          : 'Portable preferences exclude credentials, history settings/data, query snippets and device tool paths. Copy or paste the JSON below.'}
+          ? action === 'all'
+            ? t('resetAllPreferences')
+            : t('resetSectionPreferences', { section })
+          : t('portablePreferencesExclude')}
       </p>
       {!resetting && (
         <TextArea
-          aria-label="Portable settings JSON"
+          aria-label={t('portableSettingsJson')}
           value={text}
           readOnly={action === 'export'}
           rows={16}
@@ -135,7 +140,7 @@ function ActionDialog({
             close();
           }}
         >
-          {action === 'export' ? 'Done' : 'Cancel'}
+          {action === 'export' ? t('done') : t('cancel')}
         </Button>
         {action !== 'export' && (
           <Button
@@ -144,7 +149,7 @@ function ActionDialog({
               void submit();
             }}
           >
-            {resetting ? 'Reset defaults' : 'Import preferences'}
+            {resetting ? t('resetDefaults2') : t('importPreferences')}
           </Button>
         )}
       </SheetActions>

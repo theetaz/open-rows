@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useRef } from 'react';
 import styles from './ConnectionStatus.module.css';
+import { t } from './messages';
 
 /** Native light-dismiss status popover anchored to the toolbar health dot. */
 export function ConnectionStatus({
@@ -17,7 +18,7 @@ export function ConnectionStatus({
         type="button"
         className={styles.health}
         data-state={health}
-        aria-label="Connection status"
+        aria-label={t('connectionStatus')}
         aria-haspopup="dialog"
         onClick={(event) => {
           const popover = panel.current;
@@ -35,9 +36,9 @@ export function ConnectionStatus({
         popover="auto"
         className={styles.panel}
         role="dialog"
-        aria-label="Connection status details"
+        aria-label={t('connectionStatusDetails')}
       >
-        <p>Status: {health}</p>
+        <p>{t('statusHealth', { health })}</p>
         <p>{route}</p>
       </div>
     </>

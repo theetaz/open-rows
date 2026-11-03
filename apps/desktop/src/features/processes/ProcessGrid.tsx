@@ -9,6 +9,7 @@ import type { MenuItem, MenuState } from '../table/structure/ItemMenu';
 import { PROCESS_COLUMNS, cellText, processLabel } from './processModel';
 import type { ProcessSort } from './processModel';
 import styles from './Processes.module.css';
+import { t } from './messages';
 
 const GRID_COLUMNS = PROCESS_COLUMNS.map(({ key, title, width }) => ({
   key,
@@ -30,7 +31,7 @@ type Props = {
 /** The list's own connection and the app's other connections carry a badge. */
 function applicationCell(process: ProcessDto): CellView {
   const text = cellText(process, 'application');
-  const badge = process.current ? 'This list' : process.app ? 'OpenRows' : '';
+  const badge = process.current ? t('list') : process.app ? 'OpenRows' : '';
   return {
     content: (
       <span className={styles.cell}>
@@ -55,10 +56,10 @@ function processMenuItems(
   process: ProcessDto,
   props: Pick<Props, 'readOnly' | 'onSignal'>,
 ): MenuItem[] {
-  const refused = props.readOnly ? 'This connection is read-only' : undefined;
+  const refused = props.readOnly ? t('connectionReadOnly') : undefined;
   return [
     {
-      label: 'Copy Query',
+      label: t('copyQuery'),
       disabled: !process.query,
       run: () => {
         navigator.clipboard
@@ -67,7 +68,7 @@ function processMenuItems(
       },
     },
     {
-      label: 'Cancel Query',
+      label: t('cancelQuery'),
       disabled: props.readOnly,
       ...(refused ? { title: refused } : {}),
       run: () => {
@@ -75,7 +76,7 @@ function processMenuItems(
       },
     },
     {
-      label: 'Kill Process',
+      label: t('killProcess'),
       danger: true,
       disabled: props.readOnly,
       ...(refused ? { title: refused } : {}),
@@ -95,14 +96,14 @@ export function ProcessGrid(props: Props): React.JSX.Element {
     if (process)
       setMenu({
         ...at,
-        label: `Actions for ${processLabel(process)}`,
+        label: t('actionsProcess', { process: processLabel(process) }),
         items: processMenuItems(process, props),
       });
   };
   return (
     <>
       <StructureGrid
-        label="Processes"
+        label={t('processes')}
         columns={GRID_COLUMNS}
         rows={processes.length}
         rowKey={(row) => String(processes[row]?.id ?? row)}

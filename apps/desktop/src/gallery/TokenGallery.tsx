@@ -2,6 +2,7 @@
 import type { CSSProperties } from 'react';
 import { typography } from '@openrows/ui/tokens';
 import styles from './Gallery.module.css';
+import { t } from './messages';
 
 const colours = [
   'page',
@@ -28,7 +29,7 @@ export function TokenGallery(): React.JSX.Element {
       aria-labelledby="tokens-heading"
       className={styles.section}
     >
-      <h2 id="tokens-heading">Type & colour tokens</h2>
+      <h2 id="tokens-heading">{t('typeColourTokens')}</h2>
       <div className={styles.grid}>
         <TypeExamples />
         <div className={styles.swatches}>
@@ -55,10 +56,10 @@ function TypeExamples(): React.JSX.Element {
         .filter((key) => key.startsWith('text-'))
         .map((key) => (
           <div key={key} style={{ fontSize: `var(--or-${key})` }}>
-            OpenRows · {key.slice(5).replace('-', '.')} px
+            {t('openrowsKeyPx', { key: key.slice(5).replace('-', '.') })}
           </div>
         ))}
-      <p className={styles.mono}>SF Mono · 0123456789</p>
+      <p className={styles.mono}>{t('sfMono0123456789')}</p>
       <div className={styles.row}>
         {(['regular', 'medium', 'semibold', 'bold'] as const).map((weight) => (
           <span

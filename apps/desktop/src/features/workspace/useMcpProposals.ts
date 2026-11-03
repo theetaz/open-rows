@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import { onMcpProposals, takeMcpProposals } from '@openrows/ipc';
 import { useQueryTabs } from '../query';
 import type { QueryTabs } from '../query';
+import { t } from './messages';
 /** Model proposals only create editor tabs; the user's existing Run path retains SafetyPlan. */
 export function useMcpProposals(tabs: QueryTabs, enabled: boolean): void {
   const latest = useRef(tabs);
@@ -24,7 +25,7 @@ export function useMcpProposals(tabs: QueryTabs, enabled: boolean): void {
                 database: proposal.database,
               },
               {
-                title: 'SQL proposal — review before running',
+                title: t('sqlProposalReview'),
                 sql: proposal.sql,
               },
             );

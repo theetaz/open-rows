@@ -6,6 +6,7 @@ import { urlConflict, withPassword, withUrl } from './form';
 import type { Draft } from './form';
 import { composeUrl, splitUrl } from './urlText';
 import type { UrlPassword } from './urlText';
+import { t } from './messages/profile';
 
 /** Typing pauses this long before the URL is parsed; paste parses at once. */
 const URL_PARSE_DELAY_MS = 250;
@@ -93,8 +94,7 @@ export function useUrlField(
       const split = splitUrl(raw);
       setText(split.masked);
       setDraft((value) => applyPassword(value, split.password));
-      if (split.password.kind === 'invalid')
-        setError('The password is not valid percent-encoding');
+      if (split.password.kind === 'invalid') setError(t('passwordNotValid'));
       else if (!raw.trim()) setQueued(null);
       else if (immediate) now(split.stripped);
       else setQueued(split.stripped);

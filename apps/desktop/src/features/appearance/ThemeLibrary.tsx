@@ -3,6 +3,7 @@ import { Button, builtInThemes, useTheme } from '@openrows/ui';
 import type { ThemeDefinition } from '@openrows/ui';
 import { ThemePreview } from './ThemePreview';
 import styles from './Appearance.module.css';
+import { t } from './messages';
 type Props = {
   onEdit: (theme: ThemeDefinition) => void;
   onImport: () => void;
@@ -12,11 +13,11 @@ export function ThemeLibrary(props: Props): React.JSX.Element {
   const { appearance } = useTheme();
   const full = appearance.customThemes.length >= 24;
   return (
-    <section aria-label="Themes">
+    <section aria-label={t('themes')}>
       <div className={styles.sectionHeader}>
         <div>
-          <h3>Themes</h3>
-          <p>Choose a separate palette for light and dark mode.</p>
+          <h3>{t('themes')}</h3>
+          <p>{t('chooseSeparatePalette')}</p>
         </div>
         <div className={styles.actions}>
           <Button
@@ -28,14 +29,14 @@ export function ThemeLibrary(props: Props): React.JSX.Element {
                 props.onEdit({
                   ...base,
                   id: `custom-${crypto.randomUUID()}`,
-                  name: 'My theme',
+                  name: t('myTheme'),
                 });
             }}
           >
-            Create theme
+            {t('createTheme')}
           </Button>
           <Button size="sm" disabled={full} onClick={props.onImport}>
-            Add theme
+            {t('addTheme')}
           </Button>
         </div>
       </div>
@@ -44,11 +45,7 @@ export function ThemeLibrary(props: Props): React.JSX.Element {
           <ThemeCard key={theme.id} theme={theme} {...props} />
         ))}
       </div>
-      {full && (
-        <p role="status">
-          Your library holds 24 custom themes. Remove one before adding another.
-        </p>
-      )}
+      {full && <p role="status">{t('libraryHolds24')}</p>}
     </section>
   );
 }
@@ -64,7 +61,9 @@ function ThemeCard({
   );
   const remove = (): void => {
     setAppearance({
-      customThemes: appearance.customThemes.filter((t) => t.id !== theme.id),
+      customThemes: appearance.customThemes.filter(
+        (item) => item.id !== theme.id,
+      ),
       lightTheme:
         appearance.lightTheme === theme.id ? 'openrows' : appearance.lightTheme,
       darkTheme:
@@ -80,12 +79,12 @@ function ThemeCard({
           size="sm"
           variant="ghost"
           disabled={appearance.customThemes.length >= 24}
-          aria-label={`Duplicate ${theme.name}`}
+          aria-label={t('duplicateName', { name: theme.name })}
           onClick={() => {
             onEdit({
               ...theme,
               id: `custom-${crypto.randomUUID()}`,
-              name: `${theme.name.slice(0, 40)} copy`,
+              name: t('themeCopy', { name: theme.name.slice(0, 40) }),
             });
           }}
         >
@@ -100,7 +99,7 @@ function ThemeCard({
               onEdit(theme);
             }}
           >
-            Edit
+            {t('edit')}
           </Button>
           <Button
             size="sm"
@@ -108,14 +107,14 @@ function ThemeCard({
               onExport(theme);
             }}
           >
-            Export
+            {t('export')}
           </Button>
           <Button
             size="sm"
-            aria-label={`Remove ${theme.name}`}
+            aria-label={t('removeName', { name: theme.name })}
             onClick={remove}
           >
-            Remove
+            {t('remove')}
           </Button>
         </div>
       )}
@@ -151,7 +150,13 @@ function ThemeVariants({
           >
             <ThemePreview theme={theme} mode={mode} />
             <span>
-              {mode === 'light' ? 'Light' : 'Dark'} {active ? '✓' : ''}
+              {mode === 'light'
+                ? active
+                  ? t('light')
+                  : t('light2')
+                : active
+                  ? t('dark')
+                  : t('dark2')}
             </span>
           </button>
         );

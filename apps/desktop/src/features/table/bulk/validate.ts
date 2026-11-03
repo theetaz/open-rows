@@ -2,6 +2,7 @@
 import type { TableColumnDto } from '@openrows/ipc';
 import type { CellValue } from '../cellValue';
 import { fieldValueError } from '../fieldActions';
+import { t } from '../messages/lazyData';
 
 const INTEGER = /^[+-]?\d+$/;
 const NUMBER = /^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/;
@@ -31,14 +32,14 @@ export function typeError(dataType: string, text: string): string | null {
   if (
     /^(smallint|integer|bigint|int2|int4|int8|(small|big)?serial)$/.test(type)
   )
-    return INTEGER.test(text.trim()) ? null : 'is not an integer';
+    return INTEGER.test(text.trim()) ? null : t('notInteger');
   if (/^(numeric|decimal|real|double precision|float[48]?|money)$/.test(type))
     return NUMBER.test(text.trim()) || SPECIAL_NUMBER.test(text.trim())
       ? null
-      : 'is not a number';
+      : t('notNumber');
   if (type === 'boolean' || type === 'bool')
-    return BOOLEAN.test(text.trim()) ? null : 'is not a boolean';
-  if (type === 'uuid') return UUID.test(text.trim()) ? null : 'is not a UUID';
+    return BOOLEAN.test(text.trim()) ? null : t('notBoolean');
+  if (type === 'uuid') return UUID.test(text.trim()) ? null : t('notUuid');
   if (type === 'json' || type === 'jsonb') return jsonError(text);
   return null;
 }
@@ -48,7 +49,7 @@ function jsonError(text: string): string | null {
     JSON.parse(text);
     return null;
   } catch {
-    return 'is not valid JSON';
+    return t('notValidJson');
   }
 }
 
@@ -78,6 +79,6 @@ export function summarize(
     .slice(0, cap)
     .map((problem) => `${problem.row} · ${problem.message}`);
   const more = problems.length - lines.length;
-  if (more > 0) lines.push(`… and ${String(more)} more`);
-  return `Nothing was staged. ${lines.join('\n')}`;
+  if (more > 0) lines.push(t('moreMore', { more: String(more) }));
+  return t('nothingWasStaged', { lines: lines.join('\n') });
 }

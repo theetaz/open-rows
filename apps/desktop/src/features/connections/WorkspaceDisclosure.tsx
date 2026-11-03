@@ -2,6 +2,7 @@
 import { Icon } from '@openrows/ui';
 import { useWorkspaceCollapse } from './useWorkspaceCollapse';
 import styles from './Rail.module.css';
+import { t } from './messages/profile';
 
 /** Collapsing changes visibility only; no connection/session actions are fired. */
 export function WorkspaceDisclosure(props: {
@@ -19,7 +20,11 @@ export function WorkspaceDisclosure(props: {
       <button
         type="button"
         className={styles.disclosure}
-        aria-label={`${collapsed ? 'Expand' : 'Collapse'} ${props.label}`}
+        aria-label={
+          collapsed
+            ? t('expandLabel', { label: props.label })
+            : t('collapseLabel', { label: props.label })
+        }
         aria-expanded={!collapsed}
         title={props.label}
         onClick={toggle}

@@ -6,6 +6,7 @@ import { ColumnsPanel } from '../table/ColumnsPanel';
 import { ResultTools } from './ResultTools';
 import { columnKeys } from './resultColumns';
 import type { ResultGridModel, ResultGridProps } from './useResultGrid';
+import { t } from './lazyMessages';
 
 /** Presentation toggles surround the same table canvas and row form. */
 export function ResultGridBody({
@@ -53,7 +54,7 @@ export function ResultGridBody({
       )}
       {form ? (
         <RowForm
-          table={model.edits.target.table || 'Query result'}
+          table={model.edits.target.table || t('queryResult')}
           result={model.projected}
           editing={editing}
           ready={model.edits.ready}

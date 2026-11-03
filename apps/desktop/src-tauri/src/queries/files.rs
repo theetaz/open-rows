@@ -15,6 +15,7 @@ use specta::Type;
 use tauri_plugin_dialog::{DialogExt as _, FileDialogBuilder, FilePath};
 
 use crate::connections::{IpcError, IpcErrorKind};
+use crate::native_text;
 
 /// Largest `.sql` file opened into a tab.
 const MAX_FILE_BYTES: u64 = 16 * 1024 * 1024;
@@ -190,8 +191,8 @@ pub(crate) async fn sql_file_save_as(
         .dialog()
         .file()
         .set_parent(&window)
-        .set_title("Save SQL")
-        .add_filter("SQL", &["sql"])
+        .set_title(native_text::SAVE_SQL)
+        .add_filter(native_text::FILTER_SQL, &["sql"])
         .set_file_name(suggested_name(&title));
     let Some(mut path) = choose(panel, true).await? else {
         return Ok(None);
@@ -223,8 +224,8 @@ pub(crate) async fn sql_file_open(
         .dialog()
         .file()
         .set_parent(&window)
-        .set_title("Open SQL File")
-        .add_filter("SQL", &["sql"]);
+        .set_title(native_text::OPEN_SQL_FILE)
+        .add_filter(native_text::FILTER_SQL, &["sql"]);
     let Some(path) = choose(panel, false).await? else {
         return Ok(None);
     };

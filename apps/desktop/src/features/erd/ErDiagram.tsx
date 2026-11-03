@@ -6,6 +6,7 @@ import { Sheet } from '@openrows/ui/sheet';
 import { DiagramView } from './DiagramView';
 import { useSchemaDiagram } from './useSchemaDiagram';
 import styles from './Erd.module.css';
+import { t } from './messages';
 
 export type ErDiagramProps = {
   profileId: string;
@@ -36,7 +37,7 @@ export function ErDiagram(props: ErDiagramProps): React.JSX.Element {
   const state = useSchemaDiagram(target);
   return (
     <Sheet
-      title={`ER Diagram — ${props.schema}`}
+      title={t('erDiagramSchema2', { schema: props.schema })}
       size="appearance"
       onClose={props.onClose}
     >
@@ -46,7 +47,7 @@ export function ErDiagram(props: ErDiagramProps): React.JSX.Element {
           setPicking(true);
         }}
       >
-        Choose tables…
+        {t('chooseTables')}
       </Button>
       {picking && (
         <TablePicker
@@ -75,7 +76,9 @@ export function ErDiagram(props: ErDiagramProps): React.JSX.Element {
             onDone={props.onClose}
           />
         ) : (
-          <p className={styles.note}>{`${props.schema} has no tables`}</p>
+          <p className={styles.note}>
+            {t('schemaNoTables', { schema: props.schema })}
+          </p>
         )
       ) : state.status === 'error' ? (
         <p className={styles.error} role="alert">
@@ -83,7 +86,7 @@ export function ErDiagram(props: ErDiagramProps): React.JSX.Element {
         </p>
       ) : (
         <p className={styles.note} role="status">
-          Loading diagram…
+          {t('loadingDiagram')}
         </p>
       )}
     </Sheet>

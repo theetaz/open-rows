@@ -7,6 +7,7 @@ import { BackgroundToggle } from './BackgroundToggle';
 import type { MonitorControls } from './useMonitor';
 import type { useMonitorHistory } from './useMonitorHistory';
 import styles from './Monitor.module.css';
+import { t } from './messages/lazyDashboard';
 const MonitorReportDialog = lazy(() =>
   import('./report/ReportEntry').then((module) => ({
     default: module.MonitorReportDialog,
@@ -26,9 +27,9 @@ export function MonitorHeader(props: {
       <strong>{props.label}</strong>
       <span role="status">{freshness(monitor)}</span>
       <label>
-        Live interval
+        {t('liveInterval')}
         <select
-          aria-label="Monitor interval"
+          aria-label={t('monitorInterval')}
           value={monitor.paused ? '0' : String(monitor.interval)}
           onChange={(event) => {
             const value = Number(event.target.value);
@@ -36,28 +37,28 @@ export function MonitorHeader(props: {
             if (value) monitor.setInterval(value);
           }}
         >
-          <option value="0">Off</option>
+          <option value="0">{t('off')}</option>
           {[2000, 5000, 10000, 30000, 60000].map((value) => (
             <option key={value} value={value}>
-              {String(value / 1000)} s
+              {t('valueS', { value: String(value / 1000) })}
             </option>
           ))}
         </select>
       </label>
       <label>
-        Time window
+        {t('timeWindow')}
         <select
-          aria-label="Monitor time window"
+          aria-label={t('monitorTimeWindow')}
           value={history.hours}
           onChange={(event) => {
             history.setHours(Number(event.target.value));
           }}
         >
-          <option value="0">Live · 10 minutes</option>
+          <option value="0">{t('live10Minutes')}</option>
           {history.enabled &&
             [1, 6, 24].map((value) => (
               <option key={value} value={value}>
-                History · {String(value)} h
+                {t('historyValueH', { value: String(value) })}
               </option>
             ))}
         </select>
@@ -68,7 +69,7 @@ export function MonitorHeader(props: {
           monitor.setPaused(!monitor.paused);
         }}
       >
-        {monitor.paused ? 'Resume monitor' : 'Pause monitor'}
+        {monitor.paused ? t('resumeMonitor') : t('pauseMonitor')}
       </Button>
       <BackgroundToggle
         target={props.target}
@@ -77,13 +78,11 @@ export function MonitorHeader(props: {
       />
       {history.hours > 0 && (
         <Button size="sm" onClick={history.refresh}>
-          Refresh history range
+          {t('refreshHistoryRange')}
         </Button>
       )}
       <ReportButton {...props} />
-      <span className={styles.note}>
-        Database/statements/I/O ≥15 s; tables/indexes/replication ≥60 s
-      </span>
+      <span className={styles.note}>{t('databaseStatementsI')}</span>
     </header>
   );
 }
@@ -101,7 +100,7 @@ function ReportButton(
           setReporting(true);
         }}
       >
-        Export report…
+        {t('exportReport')}
       </Button>
       {reporting && (
         <Suspense fallback={null}>
@@ -126,11 +125,11 @@ function freshness(monitor: MonitorControls): string {
     monitor.data?.reply.sources.flatMap((source) =>
       source.lastSuccessMs === null ? [] : [source.lastSuccessMs],
     ) ?? [];
-  const state = monitor.paused ? 'Paused — retained samples are stale' : 'Live';
-  if (!times.length) return `${state} · Awaiting first sample`;
+  const state = monitor.paused ? t('pausedRetainedSamples') : t('live');
+  if (!times.length) return t('stateAwaitingFirst', { state });
   const age = Math.max(
     0,
     Math.floor((monitor.now - Math.max(...times)) / 1000),
   );
-  return `${state} · ${String(age)} s since last sample`;
+  return t('stateAgeS', { state, age: String(age) });
 }

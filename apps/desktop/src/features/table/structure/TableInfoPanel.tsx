@@ -4,6 +4,7 @@ import type { TableInfoDto } from '@openrows/ipc';
 import { TextArea } from '@openrows/ui';
 import { formatBytes, formatRows } from './format';
 import styles from './Structure.module.css';
+import { t } from '../messages/initial';
 
 /** What the inspector shows for a table tab in Structure or Index mode. */
 export type SelectedTable = {
@@ -23,16 +24,19 @@ export function TableInfoPanel({
 }): React.JSX.Element {
   const { info } = table;
   return (
-    <dl className={styles.info} aria-label={`${table.name} table info`}>
-      <dt>total_size</dt>
+    <dl
+      className={styles.info}
+      aria-label={t('nameTableInfo', { name: table.name })}
+    >
+      <dt>{t('totalSize')}</dt>
       <dd>{formatBytes(info.totalBytes)}</dd>
-      <dt>data_size</dt>
+      <dt>{t('dataSize')}</dt>
       <dd>{formatBytes(info.dataBytes)}</dd>
-      <dt>index_size</dt>
+      <dt>{t('indexSize')}</dt>
       <dd>{formatBytes(info.indexBytes)}</dd>
-      <dt>estimated_rows</dt>
+      <dt>{t('estimatedRows')}</dt>
       <dd>{formatRows(info.rowEstimate)}</dd>
-      <dt>comment</dt>
+      <dt>{t('comment')}</dt>
       <dd className={styles.comment}>
         <CommentField
           key={`${table.name}:${table.comment ?? ''}`}
@@ -48,10 +52,10 @@ function CommentField({ table }: { table: SelectedTable }): React.JSX.Element {
   return (
     <TextArea
       controlSize="box"
-      aria-label="comment"
+      aria-label={t('comment')}
       className={styles.value}
       value={draft}
-      placeholder="NULL"
+      placeholder={t('null')}
       readOnly={!table.onComment}
       spellCheck={false}
       onChange={(event) => {

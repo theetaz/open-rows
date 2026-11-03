@@ -8,6 +8,7 @@ import type {
   ProviderConfig,
 } from '@openrows/ipc';
 import styles from './Ai.module.css';
+import { t } from '../messages/lazyAi';
 type Props = {
   id: string;
   providers: readonly ProviderConfig[];
@@ -37,23 +38,21 @@ export function ContextPreview(props: Props): React.JSX.Element {
       setResult(await previewAiContext(props.id, provider, bundle));
     } catch (error) {
       setFailure(
-        error instanceof Error
-          ? error.message
-          : 'Context refused by the sharing policy.',
+        error instanceof Error ? error.message : t('contextRefusedSharing'),
       );
     } finally {
       setBusy(false);
     }
   };
   return (
-    <section aria-label="Context preview" className={styles.form}>
+    <section aria-label={t('contextPreview')} className={styles.form}>
       <PreviewIntro />
       <SelectField
         disabled={busy}
-        label="Preview provider"
+        label={t('previewProvider')}
         value={provider}
         options={[
-          { value: '', label: 'Choose provider' },
+          { value: '', label: t('chooseProvider') },
           ...props.providers.map((item) => ({
             value: item.id,
             label: item.name,
@@ -86,7 +85,7 @@ export function ContextPreview(props: Props): React.JSX.Element {
           void preview();
         }}
       >
-        Preview context
+        {t('previewContext')}
       </Button>
       {failure && <p role="alert">{failure}</p>}
       {result && <PreviewPayload result={result} />}
@@ -110,10 +109,10 @@ function ContextInputs({
   return (
     <>
       <label className={styles.form}>
-        Schema definitions
+        {t('schemaDefinitions')}
         <textarea
           disabled={disabled}
-          aria-label="Schema definitions"
+          aria-label={t('schemaDefinitions')}
           value={ddl}
           maxLength={65536}
           onChange={(event) => {
@@ -122,10 +121,10 @@ function ContextInputs({
         />
       </label>
       <label className={styles.form}>
-        Query SQL
+        {t('querySql')}
         <textarea
           disabled={disabled}
-          aria-label="Query SQL"
+          aria-label={t('querySql')}
           value={query}
           maxLength={65536}
           onChange={(event) => {
@@ -141,11 +140,19 @@ function PreviewPayload({ result }: { result: Preview }): React.JSX.Element {
   return (
     <div role="status">
       <p>
-        {result.bytes} bytes · ≤ {result.tokens} estimated tokens ·{' '}
-        {result.categories.join(', ') || 'empty'}
-        {result.truncated ? ' · Truncated to sharing limits' : ''}
+        {result.truncated
+          ? t('bytesBytesTokens', {
+              bytes: result.bytes,
+              tokens: result.tokens,
+              categories: result.categories.join(', ') || 'empty',
+            })
+          : t('bytesBytesTokensEstimated', {
+              bytes: result.bytes,
+              tokens: result.tokens,
+              categories: result.categories.join(', ') || 'empty',
+            })}
       </p>
-      <pre aria-label="Exact context payload" className={styles.payload}>
+      <pre aria-label={t('exactContextPayload')} className={styles.payload}>
         {result.payload}
       </pre>
     </div>
@@ -155,12 +162,8 @@ function PreviewPayload({ result }: { result: Preview }): React.JSX.Element {
 function PreviewIntro(): React.JSX.Element {
   return (
     <>
-      <h4>What will be sent</h4>
-      <p className={styles.notice}>
-        Offline preview only. Paste selected definitions or SQL below; nothing
-        is read from your database or sent to a provider. Save policy changes
-        before previewing.
-      </p>
+      <h4>{t('whatSent')}</h4>
+      <p className={styles.notice}>{t('offlinePreviewOnly')}</p>
     </>
   );
 }

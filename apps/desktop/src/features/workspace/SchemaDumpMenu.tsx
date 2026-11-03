@@ -2,6 +2,7 @@
 import { PointMenu } from '../../shell/PointMenu';
 import type { Catalog, MenuPoint } from '../schema';
 import type { JobActions } from './JobActions';
+import { t } from './messages';
 
 /** One schema-menu item that closes the menu first. */
 function Item(props: {
@@ -38,9 +39,13 @@ export function SchemaDumpMenu(props: {
   const { catalog, jobs, schema, onClose } = props;
   const database = catalog.database;
   return (
-    <PointMenu {...props.point} label={`${schema} actions`} onClose={onClose}>
+    <PointMenu
+      {...props.point}
+      label={t('schemaActions', { schema })}
+      onClose={onClose}
+    >
       <Item
-        label="Back Up…"
+        label={t('backUp')}
         disabled={!!catalog.offline}
         onClose={onClose}
         run={() => {
@@ -48,7 +53,7 @@ export function SchemaDumpMenu(props: {
         }}
       />
       <Item
-        label="Restore…"
+        label={t('restore')}
         disabled={!!catalog.offline}
         onClose={onClose}
         run={() => {
@@ -60,7 +65,7 @@ export function SchemaDumpMenu(props: {
       />
       {props.onCopyLink && (
         <Item
-          label="Copy Link"
+          label={t('copyLink')}
           onClose={onClose}
           run={() => {
             props.onCopyLink?.(schema);

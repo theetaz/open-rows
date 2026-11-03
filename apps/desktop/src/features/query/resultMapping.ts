@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ColumnDto, EditInfoDto, EngineDto } from '@openrows/ipc';
 import { selectSource } from './selectSource';
+import { t } from './lazyMessages';
 
 /** Conservative SQL provenance, before catalog key and connection checks. */
 export type ResultMapping =
@@ -20,12 +21,12 @@ export function resultMapping(
   if (new Set(names).size !== names.length)
     return {
       kind: 'readonly',
-      reason: 'Repeated result column names are ambiguous.',
+      reason: t('repeatedResultColumn'),
     };
   if (source.columns !== null && source.columns.join('\0') !== names.join('\0'))
     return {
       kind: 'readonly',
-      reason: 'Result columns do not match the direct SELECT columns.',
+      reason: t('resultColumnsDo'),
     };
   if (source.schema === null)
     return { kind: 'unresolved', table: source.table, columns: names };
@@ -43,20 +44,18 @@ export function mappingReason(
   info: EditInfoDto | null,
 ): string | null {
   if (mapping.kind === 'readonly') return mapping.reason;
-  if (mapping.kind === 'unresolved')
-    return 'Resolving the source table on the query session…';
-  if (!info) return 'Checking the source table and its unique key…';
-  if (info.readOnly) return 'The connection or source relation is read-only.';
-  if (!info.key.length || info.rowId)
-    return 'The source table has no supported primary or non-null unique key.';
+  if (mapping.kind === 'unresolved') return t('resolvingSourceTable');
+  if (!info) return t('checkingSourceTable');
+  if (info.readOnly) return t('connectionSourceRelation');
+  if (!info.key.length || info.rowId) return t('sourceTableNo');
   if (!info.key.every((key) => mapping.columns.includes(key)))
-    return 'Include every primary or non-null unique key column in the SELECT.';
+    return t('includeEveryPrimary');
   if (
     !mapping.columns.every((name) =>
       info.columns.some((column) => column.name === name),
     )
   )
-    return 'A result column is not a column of the source table.';
+    return t('resultColumnNot');
   return null;
 }
 
@@ -68,8 +67,7 @@ export function mappingForBatch(
   return mapping.kind === 'unresolved' && statementCount !== 1
     ? {
         kind: 'readonly',
-        reason:
-          'Run this SELECT on its own to verify the session namespace; another statement in the batch may change it.',
+        reason: t('runSelectOwn'),
       }
     : mapping;
 }

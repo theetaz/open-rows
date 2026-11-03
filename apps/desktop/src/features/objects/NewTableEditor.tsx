@@ -31,6 +31,7 @@ import type { TableDraft } from './newTable';
 import { ObjectSheet } from './ObjectSheet';
 import type { ChangeScope } from './useObjectChange';
 import styles from '../table/structure/forms/Forms.module.css';
+import { t } from './messages';
 
 type Props = {
   scope: ChangeScope;
@@ -61,7 +62,7 @@ function IndexesSection({
 }: SectionProps): React.JSX.Element {
   return (
     <ListSection<IndexDraft>
-      title="Indexes"
+      title={t('indexes')}
       items={draft.indexes}
       describe={(index) =>
         `${index.unique ? 'UNIQUE ' : ''}${index.name?.trim() || '(automatic)'} (${index.columns.join(', ')})`
@@ -108,7 +109,7 @@ function ForeignKeysSection(props: SectionProps): React.JSX.Element {
   };
   return (
     <ListSection<ForeignKeyDraft>
-      title="Foreign keys"
+      title={t('foreignKeys')}
       items={draft.foreignKeys}
       describe={(key) =>
         `(${key.columns.join(', ')}) → ${key.target.table} (${key.target.columns.join(', ')})`
@@ -133,7 +134,7 @@ function ChecksSection(props: SectionProps): React.JSX.Element {
   };
   return (
     <ListSection<NewCheckDto>
-      title="Checks"
+      title={t('checks')}
       items={draft.checks}
       describe={(check) =>
         `${check.name?.trim() ?? ''} CHECK (${check.expression})`
@@ -158,18 +159,18 @@ export function NewTableEditor(props: Props): React.JSX.Element {
   const problem = tableProblem(draft);
   return (
     <ObjectSheet
-      title={`New table in ${props.schema}`}
+      title={t('newTableSchema', { schema: props.schema })}
       size="editor"
       scope={props.scope}
       change={problem ? null : createTableChange(draft, props.schema)}
       problem={problem}
-      action="Create table"
+      action={t('createTable')}
       onClose={props.onClose}
       onDone={props.onDone}
     >
       <div className={styles.grid}>
         <TextField
-          label="Table name"
+          label={t('tableName')}
           value={draft.name}
           autoComplete="off"
           spellCheck={false}
@@ -179,7 +180,7 @@ export function NewTableEditor(props: Props): React.JSX.Element {
         />
         {props.features.comments && (
           <TextField
-            label="Comment"
+            label={t('comment')}
             value={draft.comment}
             onChange={(event) => {
               setDraft({ ...draft, comment: event.target.value });

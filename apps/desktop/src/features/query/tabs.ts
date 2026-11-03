@@ -3,6 +3,7 @@ import type { ObjectKindDto } from '@openrows/ipc';
 import type { SplitStates } from './splitState';
 import type { ParamValues } from './paramValues';
 import type { InspectionTarget } from '../inspection/target';
+import { t } from './initialMessages';
 
 /**
  * Where a tab set lives: a saved connection and one of its databases. Tabs
@@ -140,7 +141,7 @@ export function openTab(
   const tab: QueryTab = {
     id: `${kind}-${String(state.next)}`,
     kind,
-    title: init.title ?? `SQL Query ${String(state.next)}`,
+    title: init.title ?? t('sqlQueryNext', { next: String(state.next) }),
     connectionId: scope.connectionId,
     database: scope.database,
     sql: init.sql ?? '',

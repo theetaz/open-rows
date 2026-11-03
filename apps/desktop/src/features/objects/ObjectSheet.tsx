@@ -7,6 +7,7 @@ import { DdlPreview } from '../table/structure/forms/DdlPreview';
 import { useObjectChange } from './useObjectChange';
 import type { ChangeScope, ObjectChangeState } from './useObjectChange';
 import styles from '../table/structure/forms/Forms.module.css';
+import { t } from './messages';
 
 type Props = {
   title: string;
@@ -38,12 +39,14 @@ function Confirmation({
     <>
       <p className={styles.note}>
         {preview.transactional
-          ? 'The statements run in one transaction: an error rolls every one back.'
-          : 'The statements run one at a time, outside a transaction.'}
+          ? t('statementsRunOne')
+          : t('statementsRunOneTime')}
       </p>
       {preview.confirmName !== null && (
         <TextField
-          label={`This connection confirms destructive changes. Type ${preview.confirmName} to continue.`}
+          label={t('connectionConfirmsDestructive', {
+            confirmName: preview.confirmName,
+          })}
           value={state.typed}
           autoComplete="off"
           spellCheck={false}
@@ -80,14 +83,14 @@ export function ObjectSheet(props: Props): React.JSX.Element {
       )}
       <SheetActions>
         <Button disabled={state.busy} onClick={props.onClose}>
-          Cancel
+          {t('cancel')}
         </Button>
         <Button
           variant={props.destructive ? 'destructive' : 'primary'}
           disabled={!state.ready}
           onClick={state.run}
         >
-          {state.busy ? 'Running…' : props.action}
+          {state.busy ? t('running') : props.action}
         </Button>
       </SheetActions>
     </Sheet>

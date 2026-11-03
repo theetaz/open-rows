@@ -5,6 +5,7 @@ import { JsonTree } from './JsonTree';
 import { jsonContainer } from './valueKinds';
 import { TEXT_SHOWN_CHARS, clipText, formatBytes } from './valueFormat';
 import styles from './Value.module.css';
+import { t } from './messages';
 
 /** Text bytes: a JSON tree when the text is a JSON object or array, else the text itself. */
 export function TextValue({ bytes }: { bytes: Uint8Array }): React.JSX.Element {
@@ -23,10 +24,10 @@ function JsonOrText(props: {
   return (
     <>
       <SegmentedControl
-        aria-label="JSON view"
+        aria-label={t('jsonView')}
         options={[
-          { value: 'tree', label: 'Tree' },
-          { value: 'text', label: 'Text' },
+          { value: 'tree', label: t('tree') },
+          { value: 'text', label: t('text') },
         ]}
         value={view}
         onValueChange={(value) => {
@@ -52,8 +53,10 @@ function PlainText(props: {
       <pre className={styles.text}>{shown.text}</pre>
       {shown.clipped && (
         <p className={styles.note}>
-          Showing the first {TEXT_SHOWN_CHARS.toLocaleString('en-US')}{' '}
-          characters of {formatBytes(props.byteLen)}.
+          {t('showingFirstText', {
+            textShownChars: TEXT_SHOWN_CHARS.toLocaleString('en-US'),
+            byteLen: formatBytes(props.byteLen),
+          })}
         </p>
       )}
     </>

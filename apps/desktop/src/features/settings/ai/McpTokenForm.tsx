@@ -5,6 +5,7 @@ import type { TokenScope } from '@openrows/ipc';
 import { useProfiles } from '../../connections/useProfiles';
 import { aiSettings } from './aiSettings';
 import styles from './Ai.module.css';
+import { t } from '../messages/lazyAi';
 const useAiSettings = aiSettings.useValue;
 /** Human-selected provider, connection set and bounded expiry for read-only access. */
 export function McpTokenForm(props: {
@@ -18,26 +19,23 @@ export function McpTokenForm(props: {
   const [hours, setHours] = useState('24');
   return (
     <fieldset disabled={props.busy}>
-      <legend>Create read-only token</legend>
+      <legend>{t('createReadOnly')}</legend>
       <SelectField
-        label="MCP provider identity"
+        label={t('mcpProviderIdentity')}
         value={provider}
         options={[
-          { value: '', label: 'Choose saved provider' },
+          { value: '', label: t('chooseSavedProvider') },
           ...providers.map((item) => ({ value: item.id, label: item.name })),
         ]}
         onValueChange={setProvider}
       />
-      <p>
-        The connection allowlist must permit this provider. Local-only sharing
-        is refused for external clients.
-      </p>
+      <p>{t('connectionAllowlistMust')}</p>
       {profiles.map((profile) => (
         <label key={profile.id} className={styles.heading}>
           <span>{profile.name}</span>
           <input
             type="checkbox"
-            aria-label={`Expose ${profile.name}`}
+            aria-label={t('exposeName', { name: profile.name })}
             checked={connections.includes(profile.id)}
             onChange={(event) => {
               setConnections(
@@ -50,12 +48,12 @@ export function McpTokenForm(props: {
         </label>
       ))}
       <SelectField
-        label="Token expiry"
+        label={t('tokenExpiry')}
         value={hours}
         options={[
-          { value: '1', label: '1 hour' },
-          { value: '24', label: '1 day' },
-          { value: '168', label: '7 days' },
+          { value: '1', label: t('n1Hour') },
+          { value: '24', label: t('n1Day') },
+          { value: '168', label: t('n7Days') },
         ]}
         onValueChange={setHours}
       />
@@ -69,7 +67,7 @@ export function McpTokenForm(props: {
           });
         }}
       >
-        Create token
+        {t('createToken')}
       </Button>
     </fieldset>
   );

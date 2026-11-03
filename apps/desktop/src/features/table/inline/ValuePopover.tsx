@@ -6,6 +6,7 @@ import { reformat } from './cellKind';
 import { editorKey } from './editorKey';
 import type { InlineEditor, OpenEditor } from './useInlineEditor';
 import styles from './Inline.module.css';
+import { t } from '../messages/lazyData';
 
 type Props = { open: OpenEditor; editor: InlineEditor };
 
@@ -31,13 +32,13 @@ export function ValuePopover({ open, editor }: Props): React.JSX.Element {
     <div
       ref={panel}
       role="dialog"
-      aria-label={`Edit ${open.edit.name}`}
+      aria-label={t('editName', { name: open.edit.name })}
       className={styles.popover}
     >
       <textarea
         ref={text}
         className={styles.popoverText}
-        aria-label={`Value of ${open.edit.name}`}
+        aria-label={t('valueName', { name: open.edit.name })}
         spellCheck={false}
         readOnly={!open.ready}
         value={open.value}
@@ -86,7 +87,7 @@ function PopoverBar({ open, editor }: Props): React.JSX.Element {
               editor.change(reformat(open.value, true));
             }}
           >
-            Pretty
+            {t('pretty')}
           </Button>
           <Button
             size="sm"
@@ -95,7 +96,7 @@ function PopoverBar({ open, editor }: Props): React.JSX.Element {
               editor.change(reformat(open.value, false));
             }}
           >
-            Minify
+            {t('minify')}
           </Button>
         </>
       )}
@@ -106,22 +107,22 @@ function PopoverBar({ open, editor }: Props): React.JSX.Element {
           void navigator.clipboard.writeText(open.value);
         }}
       >
-        Copy
+        {t('copy')}
       </Button>
       <span className={styles.spacer} />
       <Button size="sm" onClick={editor.cancel}>
-        Cancel
+        {t('cancel')}
       </Button>
       <Button
         size="sm"
         variant="primary"
-        title="Stage (⌘↩)"
+        title={t('stage')}
         disabled={!open.ready}
         onClick={() => {
           editor.commit(open.value);
         }}
       >
-        Save
+        {t('save2')}
       </Button>
     </div>
   );

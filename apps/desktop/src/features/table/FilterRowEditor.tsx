@@ -9,6 +9,7 @@ import type { FilterRow } from './model';
 import type { TableActions } from './useTableTab';
 import styles from './Table.module.css';
 import extras from './TableExtras.module.css';
+import { t } from './messages/lazyData';
 
 type Props = {
   row: FilterRow;
@@ -63,13 +64,13 @@ function Target({
   return (
     <>
       <SelectField
-        aria-label={`Column of ${label}`}
+        aria-label={t('columnLabel', { label })}
         className={styles.picker}
         controlSize="compact"
         value={raw ? RAW_COLUMN : row.column}
         options={[
           ...columns.map((column) => ({ value: column, label: column })),
-          { value: RAW_COLUMN, label: 'Raw SQL' },
+          { value: RAW_COLUMN, label: t('rawSql') },
         ]}
         onValueChange={(column) => {
           edit(columnPatch(row, column, choices(column)));
@@ -77,7 +78,7 @@ function Target({
       />
       {!raw && (
         <SelectField<FilterOperatorDto>
-          aria-label={`Operator of ${label}`}
+          aria-label={t('operatorLabel', { label })}
           className={styles.picker}
           controlSize="compact"
           value={row.operator}
@@ -104,9 +105,9 @@ function withCurrent(
 
 /** Placeholder of the value field for an operator. */
 function hint(operator: FilterOperatorDto): string {
-  if (operator === 'raw') return "e.g. total > 10 AND status <> 'void'";
+  if (operator === 'raw') return t('eGTotal');
   if (operator === 'in' || operator === 'notIn') return 'a, b, c';
-  return 'Value';
+  return t('value');
 }
 
 /** [value] and, for BETWEEN, [upper bound]; NULL checks take no value. */
@@ -117,8 +118,11 @@ function Values({ row, actions, label, edit }: Part): React.JSX.Element {
       <TextField
         className={row.operator === 'raw' ? extras.rawValue : styles.value}
         controlSize="compact"
+        data-filter-value={row.operator === 'raw' ? undefined : ''}
         aria-label={
-          row.operator === 'raw' ? `SQL of ${label}` : `Value of ${label}`
+          row.operator === 'raw'
+            ? t('sqlLabel', { label })
+            : t('valueLabel', { label })
         }
         placeholder={hint(row.operator)}
         disabled={fields === 0}
@@ -132,7 +136,7 @@ function Values({ row, actions, label, edit }: Part): React.JSX.Element {
         <TextField
           className={styles.value}
           controlSize="compact"
-          aria-label={`Upper bound of ${label}`}
+          aria-label={t('upperBoundLabel', { label })}
           value={row.second}
           onChange={(event) => {
             edit({ second: event.target.value });
@@ -147,7 +151,7 @@ function Values({ row, actions, label, edit }: Part): React.JSX.Element {
 /** [enabled] [column ▾] [operator ▾] [value] [Apply] [−] [+] */
 export function FilterRowEditor(props: Props): React.JSX.Element {
   const { row, index, actions } = props;
-  const label = `filter ${String(index + 1)}`;
+  const label = t('filterOrdinal', { index: String(index + 1) });
   const part: Part = {
     ...props,
     label,
@@ -159,12 +163,12 @@ export function FilterRowEditor(props: Props): React.JSX.Element {
     <div
       className={styles.filterRow}
       role="group"
-      aria-label={`Filter ${String(index + 1)}`}
+      aria-label={t('filterValue', { value: String(index + 1) })}
     >
       <input
         type="checkbox"
         className={styles.check}
-        aria-label={`Enable ${label}`}
+        aria-label={t('enableLabel', { label })}
         checked={row.enabled}
         onChange={(event) => {
           part.edit({ enabled: event.target.checked });
@@ -174,17 +178,17 @@ export function FilterRowEditor(props: Props): React.JSX.Element {
       <Values {...part} />
       <Button
         size="sm"
-        aria-label={`Apply ${label}`}
+        aria-label={t('applyLabel', { label })}
         onClick={() => {
           actions.apply(row.id);
         }}
       >
-        Apply
+        {t('apply')}
       </Button>
       <IconButton
         size="sm"
         variant="ghost"
-        aria-label={`Remove ${label}`}
+        aria-label={t('removeLabel', { label })}
         onClick={() => {
           actions.removeRow(row.id);
         }}
@@ -194,7 +198,7 @@ export function FilterRowEditor(props: Props): React.JSX.Element {
       <IconButton
         size="sm"
         variant="ghost"
-        aria-label={`Add filter after ${label}`}
+        aria-label={t('addFilterAfter', { label })}
         onClick={() => {
           actions.addRow(row.id);
         }}

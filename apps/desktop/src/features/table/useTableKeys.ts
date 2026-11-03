@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 import type { RefObject } from 'react';
 import type { TableActions } from './useTableTab';
 
-const FIRST_VALUE = 'input[aria-label^="Value of filter"]';
+const FIRST_VALUE = 'input[data-filter-value]';
 
 /** Focus the first filter value, opening the filter bar first when closed. */
 export function focusFilter(

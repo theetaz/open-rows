@@ -12,6 +12,7 @@ import { mappingForBatch, mappingReason } from './resultMapping';
 import type { ResultMapping } from './resultMapping';
 import { useResultMapping } from './useResultMapping';
 import type { ResultMeta } from './run';
+import { t } from './lazyMessages';
 
 /** Catalog lookups never grant editing to a stale SQL/result/session identity. */
 function useMappingInfo(args: {
@@ -34,10 +35,7 @@ function useMappingInfo(args: {
           setState({
             identity,
             info: detail.info.kind === 'table' ? info : null,
-            error:
-              detail.info.kind === 'table'
-                ? null
-                : 'Only base tables can be edited from query results.',
+            error: detail.info.kind === 'table' ? null : t('onlyBaseTables'),
           });
       },
       (error: unknown) => {
@@ -45,7 +43,9 @@ function useMappingInfo(args: {
           setState({
             identity,
             info: null,
-            error: `Could not verify the source table: ${error instanceof Error ? error.message : String(error)}`,
+            error: t('couldNotVerify', {
+              message: error instanceof Error ? error.message : String(error),
+            }),
           });
       },
     );
@@ -142,10 +142,8 @@ function readOnlyReason(args: {
   info: EditInfoDto | null;
   error: string | null;
 }): string | null {
-  if (args.revision > 0)
-    return 'The stored result is out of date after a commit. Run the SELECT again before editing.';
-  if (!args.done) return 'Wait until every row has arrived before editing.';
-  if (!args.sessionId)
-    return 'Connect this query tab before editing its results.';
+  if (args.revision > 0) return t('storedResultOut');
+  if (!args.done) return t('waitUntilEvery');
+  if (!args.sessionId) return t('connectQueryTab');
   return args.error ?? mappingReason(args.mapping, args.info);
 }

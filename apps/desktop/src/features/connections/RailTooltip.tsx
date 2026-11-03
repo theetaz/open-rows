@@ -6,6 +6,7 @@ import { profileLocation } from './engines';
 import { EnvironmentBadge } from './EnvironmentBadge';
 import { insecureDetail } from './insecure';
 import styles from './Tooltip.module.css';
+import { t } from './messages/profile';
 
 type Position = { left: number; top: number };
 
@@ -36,7 +37,7 @@ export function RailTooltip(props: {
       <small>{props.status}</small>
       {props.insecure.length > 0 && (
         <small className={styles.insecure}>
-          {`Not secure: ${insecureDetail(props.insecure)}`}
+          {t('notSecureInsecure', { insecure: insecureDetail(props.insecure) })}
         </small>
       )}
     </div>,

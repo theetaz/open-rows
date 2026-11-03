@@ -5,6 +5,7 @@ import { Sheet, SheetActions } from '@openrows/ui/sheet';
 import type { Connections } from '../connections';
 import { routeStatus } from './routeStatus';
 import { POLICY_LABELS } from '../security/policies';
+import { t } from './lazyMessages';
 
 /** Preview the target connection's environment and safety before connecting. */
 export function ConnectionSwitcher(props: {
@@ -17,9 +18,9 @@ export function ConnectionSwitcher(props: {
   );
   const profile = connections.profiles.find((item) => item.id === id);
   return (
-    <Sheet title="Switch connection" size="alert" onClose={props.onClose}>
+    <Sheet title={t('switchConnection')} size="alert" onClose={props.onClose}>
       <label>
-        Connection
+        {t('connection')}
         <select
           data-initial-focus
           value={id}
@@ -35,23 +36,26 @@ export function ConnectionSwitcher(props: {
         </select>
       </label>
       {profile && (
-        <div role="group" aria-label="Connection preview">
+        <div role="group" aria-label={t('connectionPreview')}>
           <Badge style={{ borderColor: profile.env.color }}>
             {profile.env.label ?? profile.env.kind}
           </Badge>
           <p>
-            {profile.safety === 'readOnly' ? 'Read-only' : 'Read/write'} ·{' '}
-            {POLICY_LABELS[profile.safety]}
+            {profile.safety === 'readOnly'
+              ? t('readOnlyPolicy', {
+                  policyLabels: POLICY_LABELS[profile.safety],
+                })
+              : t('readWritePolicy', {
+                  policyLabels: POLICY_LABELS[profile.safety],
+                })}
           </p>
-          {profile.env.kind === 'prod' && <p>Production connection</p>}
+          {profile.env.kind === 'prod' && <p>{t('productionConnection')}</p>}
           <p>{routeStatus(profile)}</p>
-          <p>
-            Existing tabs stay open. Switching explicitly connects this profile.
-          </p>
+          <p>{t('existingTabsStay')}</p>
         </div>
       )}
       <SheetActions>
-        <Button onClick={props.onClose}>Cancel</Button>
+        <Button onClick={props.onClose}>{t('cancel')}</Button>
         <Button
           variant="primary"
           disabled={!profile}
@@ -60,7 +64,7 @@ export function ConnectionSwitcher(props: {
             props.onClose();
           }}
         >
-          Switch connection
+          {t('switchConnection')}
         </Button>
       </SheetActions>
     </Sheet>

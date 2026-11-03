@@ -6,6 +6,7 @@ import { Sheet, SheetActions } from '@openrows/ui/sheet';
 import { ThemeTokenEditor } from './ThemeTokenEditor';
 import { ThemePreview } from './ThemePreview';
 import styles from './Appearance.module.css';
+import { t } from './messages';
 type Props = {
   theme: ThemeDefinition;
   onSave: (theme: ThemeDefinition) => void;
@@ -20,9 +21,9 @@ export function ThemeEditor({
   const [draft, setDraft] = useState(theme);
   const valid = validTheme(draft);
   return (
-    <Sheet title="Customize theme" onClose={onClose}>
+    <Sheet title={t('customizeTheme')} onClose={onClose}>
       <TextField
-        label="Theme name"
+        label={t('themeName')}
         maxLength={50}
         value={draft.name}
         onChange={(event) => {
@@ -31,11 +32,13 @@ export function ThemeEditor({
       />
       {(['light', 'dark'] as const).map((mode) => (
         <fieldset className={styles.paletteEditor} key={mode}>
-          <legend>{mode === 'light' ? 'Light palette' : 'Dark palette'}</legend>
+          <legend>
+            {mode === 'light' ? t('lightPalette') : t('darkPalette')}
+          </legend>
           <ThemePreview theme={draft} mode={mode} />
           {(['canvas', 'accent'] as const).map((key) => (
             <label className={styles.colorField} key={key}>
-              <span>{key === 'canvas' ? 'Background' : 'Accent'}</span>
+              <span>{key === 'canvas' ? t('background') : t('accent')}</span>
               <input
                 aria-label={`${mode} ${key}`}
                 type="color"
@@ -53,16 +56,9 @@ export function ThemeEditor({
           <ThemeTokenEditor draft={draft} mode={mode} onChange={setDraft} />
         </fieldset>
       ))}
-      {!valid && (
-        <p role="alert">
-          Keep the light background bright, the dark background dark and accents
-          dark enough for white button labels so text stays readable. Give your
-          theme a name. Text and syntax tokens must meet WCAG AA (4.5:1) on its
-          canvas and custom edit-state backgrounds.
-        </p>
-      )}
+      {!valid && <p role="alert">{t('keepLightBackground')}</p>}
       <SheetActions>
-        <Button onClick={onClose}>Cancel</Button>
+        <Button onClick={onClose}>{t('cancel')}</Button>
         <Button
           variant="primary"
           disabled={!valid}
@@ -70,7 +66,7 @@ export function ThemeEditor({
             onSave({ ...draft, name: draft.name.trim() });
           }}
         >
-          Save theme
+          {t('saveTheme')}
         </Button>
       </SheetActions>
     </Sheet>
@@ -94,32 +90,31 @@ export function ThemeTransfer({
     } catch (error) {
       setMessage(
         error instanceof SyntaxError
-          ? 'Invalid JSON. Paste the complete theme exported from OpenRows.'
+          ? t('invalidJsonPaste')
           : error instanceof Error
             ? error.message
-            : 'Could not import theme.',
+            : t('couldNotImport'),
       );
     }
   };
   const copy = async (): Promise<void> => {
     try {
       await navigator.clipboard.writeText(text);
-      setMessage('Theme JSON copied.');
+      setMessage(t('themeJsonCopied'));
     } catch {
-      setMessage('Select the JSON below and copy it manually.');
+      setMessage(t('selectJsonBelow'));
     }
   };
   return (
-    <Sheet title={importing ? 'Add theme' : 'Export theme'} onClose={onClose}>
-      <p>
-        {importing
-          ? 'Paste an OpenRows theme JSON. Importing creates an independent copy.'
-          : 'Copy this JSON to share your light and dark palettes.'}
-      </p>
+    <Sheet
+      title={importing ? t('addTheme') : t('exportTheme')}
+      onClose={onClose}
+    >
+      <p>{importing ? t('pasteOpenrowsTheme') : t('copyJsonShare')}</p>
       <label className={styles.transfer}>
-        Theme JSON
+        {t('themeJson')}
         <textarea
-          aria-label="Theme JSON"
+          aria-label={t('themeJson')}
           value={text}
           maxLength={20000}
           readOnly={!importing}
@@ -132,10 +127,10 @@ export function ThemeTransfer({
       </label>
       {message && <p role={importing ? 'alert' : 'status'}>{message}</p>}
       <SheetActions>
-        <Button onClick={onClose}>{importing ? 'Cancel' : 'Done'}</Button>
+        <Button onClick={onClose}>{importing ? t('cancel') : t('done')}</Button>
         {importing ? (
           <Button variant="primary" disabled={!text.trim()} onClick={submit}>
-            Import theme
+            {t('importTheme')}
           </Button>
         ) : (
           <Button
@@ -144,7 +139,7 @@ export function ThemeTransfer({
               void copy();
             }}
           >
-            Copy JSON
+            {t('copyJson')}
           </Button>
         )}
       </SheetActions>

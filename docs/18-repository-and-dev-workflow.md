@@ -97,7 +97,7 @@ just bench-ipc      # S1 Arrow tile round trip in release WKWebView, macOS GUI r
 just bench-grid     # S2 canvas grid scroll scenarios (3 fresh launches), macOS GUI required
 just bench-editor   # S5 editor keystroke-to-paint + completion popup latency, 5 000-line SQL, macOS GUI required
 just bench-test     # synthetic benchmark tests, no GUI
-just script-test    # sccache guard tests with a stub sccache (§2.2)
+just script-test    # sccache guard tests with a stub sccache (§2.2), the ESLint text guard (docs/07 §10)
 just bench-pg-decode # Criterion decode_pg_* + gates (>= 1 M cells/s/core, first batch <= 5 ms)
 just bench-sql-split # Criterion sql_split_* (10 KB and 1 MB scripts per dialect), bytes/s
 just bench-schema   # Criterion schema_* at 50 000 objects + gates (first level <= 300 ms, search <= 50 ms)

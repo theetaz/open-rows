@@ -9,6 +9,7 @@ use super::MAX_TABLES;
 use super::dto::{DiagramFileDto, DiagramTarget, SchemaDiagramDto};
 use crate::connections::catalog::read_diagram;
 use crate::connections::{Connections, IpcError};
+use crate::native_text;
 use crate::queries::files::{choose, file_stem, write_atomic};
 
 /// Largest export written (a PNG of a very large diagram stays far below).
@@ -53,7 +54,7 @@ pub(crate) async fn diagram_save(
         .dialog()
         .file()
         .set_parent(&window)
-        .set_title("Export ER Diagram")
+        .set_title(native_text::EXPORT_ER_DIAGRAM)
         .add_filter(filter, &[extension])
         .set_file_name(format!("{}.{extension}", file_stem(&name, "diagram")));
     let Some(path) = choose(panel, true).await? else {

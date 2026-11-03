@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { Point } from './monitorData';
+import { t } from './messages/lazyMetrics';
 /** Overview metric definition; multiple counters are summed only with complete observations. */
 export type Metric = {
   title: string;
@@ -10,19 +11,19 @@ export type Metric = {
 /** Fixed overview series keep chart mapping bounded and explain server/database scope. */
 export const METRICS: readonly Metric[] = [
   {
-    title: 'Active sessions',
+    title: t('activeSessions'),
     names: ['sessions:active'],
     unit: 'count',
     scope: 'Server',
   },
   {
-    title: 'Idle sessions',
+    title: t('idleSessions'),
     names: ['sessions:idle'],
     unit: 'count',
     scope: 'Server',
   },
   {
-    title: 'Idle in transaction',
+    title: t('idleTransaction'),
     names: [
       'sessions:idle in transaction',
       'sessions:idle in transaction (aborted)',
@@ -31,44 +32,49 @@ export const METRICS: readonly Metric[] = [
     scope: 'Server',
   },
   {
-    title: 'Waiting sessions',
+    title: t('waitingSessions'),
     names: ['sessions:waiting'],
     unit: 'count',
     scope: 'Server',
   },
   {
-    title: 'Transactions/s',
+    title: t('transactionsS'),
     names: ['xact_commit', 'xact_rollback'],
     unit: '/s',
     scope: 'Database',
   },
   {
-    title: 'Cache hit ratio',
+    title: t('cacheHitRatio'),
     names: ['cache_hit_ratio'],
     unit: '%',
     scope: 'Database',
   },
   {
-    title: 'Temporary bytes/s',
+    title: t('temporaryBytesS'),
     names: ['temp_bytes'],
     unit: 'B/s',
     scope: 'Database',
   },
-  { title: 'Deadlocks/s', names: ['deadlocks'], unit: '/s', scope: 'Database' },
   {
-    title: 'Rows read/s',
+    title: t('deadlocksS'),
+    names: ['deadlocks'],
+    unit: '/s',
+    scope: 'Database',
+  },
+  {
+    title: t('rowsReadS'),
     names: ['tup_returned', 'tup_fetched'],
     unit: '/s',
     scope: 'Database',
   },
   {
-    title: 'Rows written/s',
+    title: t('rowsWrittenS'),
     names: ['tup_inserted', 'tup_updated', 'tup_deleted'],
     unit: '/s',
     scope: 'Database',
   },
   {
-    title: 'Replication replay lag',
+    title: t('replicationReplayLag'),
     names: ['replay_lag_ms'],
     unit: 'ms',
     scope: 'Server',
@@ -115,6 +121,7 @@ export function metricPoints(
 }
 /** Format a real observation or its explicit missing state. */
 export function metricValue(point: Point | undefined, unit: string): string {
-  if (!point || point.state !== 'ok' || point.value === null) return 'Unknown';
+  if (!point || point.state !== 'ok' || point.value === null)
+    return t('unknown');
   return `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(point.value)} ${unit}`;
 }

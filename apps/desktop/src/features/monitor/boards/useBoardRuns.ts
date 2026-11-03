@@ -8,6 +8,7 @@ import type {
   MonitorTarget,
   ParamValue,
 } from '@openrows/ipc';
+import { t } from '../messages/lazyBoards';
 
 export type WidgetRun =
   | { status: 'running' }
@@ -73,9 +74,7 @@ export function useBoardRuns(
         if (generation.current !== current) return;
         setRuns((all) => ({ ...all, [widget.id]: result }));
         if (result.status === 'done' && result.reply.readOnly !== 'enforced') {
-          setNote(
-            'This engine cannot enforce read-only execution: interval refresh is off; run manually.',
-          );
+          setNote(t('engineCannotEnforce'));
           setLive(false);
         }
       }

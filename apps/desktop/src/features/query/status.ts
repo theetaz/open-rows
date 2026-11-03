@@ -1,20 +1,24 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { RunState } from './run';
-
-const count = (value: number, noun: string): string =>
-  `${value.toLocaleString()} ${noun}${value === 1 ? '' : 's'}`;
+import { t, tn } from './lazyMessages';
 
 /** Rows returned, rows affected and notices of a run, e.g. `120 rows · 3 rows affected`. */
 function totals(run: RunState): string[] {
   const parts: string[] = [];
   const rows = run.results.reduce((sum, result) => sum + result.rows, 0);
-  if (run.results.length) parts.push(count(rows, 'row'));
+  if (run.results.length)
+    parts.push(tn('rowCount', rows, { count: rows.toLocaleString() }));
   if (run.results.some((result) => result.truncated))
-    parts.push('truncated at the row limit');
+    parts.push(t('truncatedRowLimit'));
   if (run.affected !== null)
-    parts.push(`${count(run.affected, 'row')} affected`);
+    parts.push(
+      tn('rowsAffected', run.affected, {
+        count: run.affected.toLocaleString(),
+      }),
+    );
   const notices = run.messages.filter((m) => m.level !== 'error').length;
-  if (notices) parts.push(count(notices, 'notice'));
+  if (notices)
+    parts.push(tn('noticeCount', notices, { count: notices.toLocaleString() }));
   return parts;
 }
 
@@ -25,29 +29,32 @@ export function statusText(run: RunState): string {
   const total = run.statements.length;
   switch (run.status) {
     case 'idle':
-      return 'Ready';
+      return t('ready');
     case 'confirm':
-      return 'Waiting for confirmation';
+      return t('waitingConfirmation');
     case 'parameters':
-      return 'Waiting for parameter values';
+      return t('waitingParameterValues');
     case 'blocked':
-      return 'Blocked: read-only connection';
+      return t('blockedReadOnly');
     case 'starting':
     case 'running':
       return [
         total > 1
-          ? `Running statement ${String(Math.min(run.done + 1, total))} of ${String(total)}`
-          : 'Running…',
+          ? t('runningStatementOf', {
+              done: String(Math.min(run.done + 1, total)),
+              total: String(total),
+            })
+          : t('running'),
         ...totals(run),
       ].join(' · ');
     case 'completed':
       return [
-        total > 1 ? `${String(total)} statements` : 'Done',
+        total > 1 ? t('statementTotal', { total: String(total) }) : t('done'),
         ...totals(run),
         ...elapsed,
       ].join(' · ');
     case 'cancelled':
-      return ['Cancelled', ...totals(run), ...elapsed].join(' · ');
+      return [t('cancelled'), ...totals(run), ...elapsed].join(' · ');
     case 'failed':
       return [failure(run), ...elapsed].join(' · ');
   }
@@ -56,11 +63,11 @@ export function statusText(run: RunState): string {
 /** `Failed in statement 2: <message> (SQLSTATE 42P01)` from the last error. */
 function failure(run: RunState): string {
   const error = run.messages.filter((m) => m.level === 'error').at(-1);
-  if (!error) return 'Failed';
-  const where =
-    run.statements.length > 1
-      ? ` in statement ${String(error.statement + 1)}`
-      : '';
-  const code = error.code ? ` (SQLSTATE ${error.code})` : '';
-  return `Failed${where}: ${error.text}${code}`;
+  if (!error) return t('failed');
+  const text = error.code
+    ? t('textWithSqlstate', { text: error.text, code: error.code })
+    : error.text;
+  return run.statements.length > 1
+    ? t('failedInStatement', { statement: String(error.statement + 1), text })
+    : t('failedText', { text });
 }

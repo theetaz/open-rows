@@ -9,6 +9,7 @@ import {
 import type { ExportOptions } from './options';
 import { DelimitedFields } from './DelimitedFields';
 import styles from './Export.module.css';
+import { t } from './lazyMessages';
 
 type Props = {
   options: ExportOptions;
@@ -28,7 +29,7 @@ export function ExportForm({ options, onOptions }: Props): React.JSX.Element {
   return (
     <fieldset className={styles.form}>
       <SelectField
-        label="Format"
+        label={t('format')}
         value={options.format}
         options={formatChoices}
         onValueChange={(format) => {
@@ -48,7 +49,7 @@ function FormatOptions({ options, set }: Section): React.JSX.Element {
     case 'json':
       return (
         <SelectField
-          label="Layout"
+          label={t('layout')}
           value={options.json.pretty ? 'pretty' : 'compact'}
           options={layoutChoices}
           onValueChange={(layout) => {
@@ -64,30 +65,20 @@ function FormatOptions({ options, set }: Section): React.JSX.Element {
       return (
         <>
           <SelectField
-            label="Compression"
+            label={t('compression')}
             value={options.parquet.compression}
             options={compressionChoices}
             onValueChange={(compression) => {
               set({ parquet: { compression } });
             }}
           />
-          <p className={styles.note}>
-            Columns keep their database types; intervals are written as text.
-          </p>
+          <p className={styles.note}>{t('columnsKeepTheir')}</p>
         </>
       );
     case 'ndjson':
-      return (
-        <p className={styles.note}>
-          One JSON object per line, for streaming tools.
-        </p>
-      );
+      return <p className={styles.note}>{t('oneJsonObject')}</p>;
     case 'markdown':
-      return (
-        <p className={styles.note}>
-          A GitHub-flavoured table; NULL is written as NULL.
-        </p>
-      );
+      return <p className={styles.note}>{t('githubFlavouredTable')}</p>;
   }
 }
 
@@ -102,12 +93,9 @@ function ExcelOptions({ options, set }: Section): React.JSX.Element {
             set({ xlsx: { header: event.target.checked } });
           }}
         />
-        Column names as a bold first row
+        {t('columnNamesBold')}
       </label>
-      <p className={styles.note}>
-        Numbers, dates and booleans keep their types. A sheet holds 1,048,576
-        rows; longer results continue on extra sheets.
-      </p>
+      <p className={styles.note}>{t('numbersDatesBooleans')}</p>
     </>
   );
 }
@@ -117,7 +105,7 @@ function SqlOptions({ options, set }: Section): React.JSX.Element {
   return (
     <>
       <TextField
-        label="Table name"
+        label={t('tableName')}
         value={options.table}
         spellCheck={false}
         onChange={(event) => {
@@ -125,7 +113,7 @@ function SqlOptions({ options, set }: Section): React.JSX.Element {
         }}
       />
       <TextField
-        label="Rows per INSERT"
+        label={t('rowsPerInsert')}
         value={options.rowsText}
         inputMode="numeric"
         {...(error ? { error } : {})}
@@ -133,9 +121,7 @@ function SqlOptions({ options, set }: Section): React.JSX.Element {
           set({ rowsText: event.target.value });
         }}
       />
-      <p className={styles.note}>
-        Names and values are quoted for this connection&apos;s database.
-      </p>
+      <p className={styles.note}>{t('namesValuesQuoted')}</p>
     </>
   );
 }

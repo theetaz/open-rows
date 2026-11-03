@@ -7,6 +7,7 @@ import { ExportSheet, tableExport } from '../export';
 import { EntryItems, objectEntries } from '../objects';
 import type { ObjectEditorRequest } from '../objects';
 import type { MenuPoint, ObjectRef } from '../schema';
+import { t } from './messages';
 
 /** The open session of a database of the active connection, if any. */
 export type SessionLookup = (
@@ -38,28 +39,28 @@ function RelationItems(props: {
         type="button"
         role="menuitem"
         disabled={!props.exportable}
-        title={props.exportable ? undefined : 'Open the database to export'}
+        title={props.exportable ? undefined : t('openDatabaseExport')}
         onClick={props.onExport}
       >
-        Export…
+        {t('export')}
       </button>
       {props.onImport && (
         <button
           type="button"
           role="menuitem"
           disabled={!props.exportable}
-          title={props.exportable ? undefined : 'Open the database to import'}
+          title={props.exportable ? undefined : t('openDatabaseImport')}
           onClick={props.onImport}
         >
-          Import…
+          {t('import')}
         </button>
       )}
       <button type="button" role="menuitem" onClick={props.onDiagram}>
-        Show ER Diagram
+        {t('showErDiagram')}
       </button>
       {props.onCopyLink && (
         <button type="button" role="menuitem" onClick={props.onCopyLink}>
-          Copy Link
+          {t('copyLink')}
         </button>
       )}
     </>
@@ -133,7 +134,7 @@ function ObjectMenuItems(
   return (
     <PointMenu
       {...menu.point}
-      label={`${menu.object.name} actions`}
+      label={t('nameActions', { name: menu.object.name })}
       onClose={props.onClose}
     >
       <button
@@ -143,7 +144,7 @@ function ObjectMenuItems(
           props.onOpen(menu.object);
         })}
       >
-        Open
+        {t('open')}
       </button>
       {menu.object.kind === 'table' && props.onBackup && (
         <button
@@ -154,7 +155,7 @@ function ObjectMenuItems(
             props.onBackup?.(menu.object);
           })}
         >
-          Back Up Table…
+          {t('backUpTable')}
         </button>
       )}
       <MenuFavourite menu={menu} session={session} />

@@ -12,15 +12,16 @@ import { CustomHopFields } from './CustomHopFields';
 import { helperTool, newHelper } from './helperForm';
 import type { ConnectionForm } from './useConnectionForm';
 import styles from './ConnectionSheet.module.css';
+import { t } from './messages/routes';
 
 type Choice = 'off' | HelperHop['kind'];
 const choices: readonly { value: Choice; label: string }[] = [
-  { value: 'custom', label: 'Cloud / zero-trust · Custom command' },
-  { value: 'off', label: 'Direct / SSH / proxy' },
-  { value: 'ssm', label: 'Cloud / zero-trust · AWS SSM' },
-  { value: 'kubectl', label: 'Cloud / zero-trust · Kubernetes' },
-  { value: 'cloud', label: 'Cloud / zero-trust · Cloud SQL / AlloyDB' },
-  { value: 'cloudflared', label: 'Cloud / zero-trust · Cloudflare Access' },
+  { value: 'custom', label: t('cloudZeroTrust') },
+  { value: 'off', label: t('directSshProxy') },
+  { value: 'ssm', label: t('cloudZeroTrustAws') },
+  { value: 'kubectl', label: t('cloudZeroTrustKubernetes') },
+  { value: 'cloud', label: t('cloudZeroTrustCloud') },
+  { value: 'cloudflared', label: t('cloudZeroTrustCloudflare') },
 ];
 
 /** Cloud route settings, including locally trusted command templates. */
@@ -33,13 +34,13 @@ export function HelperFields({
   const warning = useToolWarning(helper);
   return (
     <DisclosureSection
-      label="Route · Cloud / zero-trust"
+      label={t('routeCloudZero')}
       defaultOpen={Boolean(helper)}
       forceOpen={Boolean(form.errors.helper)}
     >
       <div className={styles.section}>
         <SelectField
-          label="Route"
+          label={t('route')}
           value={helper?.kind ?? 'off'}
           options={choices}
           onValueChange={(kind) => {
@@ -53,18 +54,8 @@ export function HelperFields({
         {helper && <HopFields form={form} helper={helper} />}
         {warning && <p role="alert">{warning}</p>}
         {form.errors.helper && <p role="alert">{form.errors.helper}</p>}
-        {helper?.kind === 'cloud' && (
-          <p>
-            The auth proxy encrypts traffic to Google. Database TLS defaults to
-            Off; verify modes use the original database host.
-          </p>
-        )}
-        {helper && (
-          <p>
-            Credentials stay in the tool’s own configuration. Cloud routes
-            cannot combine with SSH or a proxy.
-          </p>
-        )}
+        {helper?.kind === 'cloud' && <p>{t('authProxyEncrypts')}</p>}
+        {helper && <p>{t('credentialsStayTool')}</p>}
       </div>
     </DisclosureSection>
   );
@@ -87,7 +78,7 @@ function useToolWarning(helper: HelperHop | null): string | null {
           setWarning(required.find((found) => found.error)?.error ?? null);
       },
       () => {
-        if (live) setWarning('Could not check tools. Check Settings ▸ Tools.');
+        if (live) setWarning(t('couldNotCheck'));
       },
     );
     return () => {
@@ -147,14 +138,14 @@ function textFields(
     case 'cloud':
       return [
         {
-          label: 'Instance connection name / URI',
+          label: t('instanceConnectionName'),
           value: helper.instance,
           change: (instance) => {
             set({ ...helper, instance });
           },
         },
         {
-          label: 'Credentials file (optional)',
+          label: t('credentialsFileOptional'),
           value: helper.credentialsFile ?? '',
           change: (value) => {
             set({ ...helper, credentialsFile: value || null });
@@ -164,7 +155,7 @@ function textFields(
     case 'cloudflared':
       return [
         {
-          label: 'Access hostname',
+          label: t('accessHostname'),
           value: helper.hostname,
           change: (hostname) => {
             set({ ...helper, hostname });
@@ -188,11 +179,11 @@ function ssmFields(
     },
   });
   return [
-    text('SSM target', 'target'),
-    text('Remote host (optional)', 'remoteHost'),
+    text(t('ssmTarget'), 'target'),
+    text(t('remoteHostOptional'), 'remoteHost'),
     remotePort(helper, set),
-    text('AWS profile (optional)', 'profile'),
-    text('AWS region (optional)', 'region'),
+    text(t('awsProfileOptional'), 'profile'),
+    text(t('awsRegionOptional'), 'region'),
   ];
 }
 function kubeFields(
@@ -210,11 +201,11 @@ function kubeFields(
     },
   });
   return [
-    text('Context', 'context'),
-    text('Namespace', 'namespace'),
-    text('Resource (pod/name, svc/name, deployment/name)', 'resource'),
+    text(t('context'), 'context'),
+    text(t('namespace'), 'namespace'),
+    text(t('resourcePodName'), 'resource'),
     remotePort(helper, set),
-    text('Kubeconfig file (optional)', 'kubeconfig'),
+    text(t('kubeconfigFileOptional'), 'kubeconfig'),
   ];
 }
 function remotePort(
@@ -222,7 +213,7 @@ function remotePort(
   set: (helper: HelperHop) => void,
 ): TextBinding {
   return {
-    label: 'Remote port',
+    label: t('remotePort'),
     value: String(helper.remotePort),
     change: (value) => {
       set({ ...helper, remotePort: Number(value) });
@@ -239,11 +230,11 @@ function CloudOptions({
   return (
     <>
       <SelectField
-        label="Proxy flavour"
+        label={t('proxyFlavour')}
         value={helper.flavor}
         options={[
-          { value: 'cloudsql', label: 'Cloud SQL' },
-          { value: 'alloydb', label: 'AlloyDB' },
+          { value: 'cloudsql', label: t('cloudSql') },
+          { value: 'alloydb', label: t('alloydb') },
         ]}
         onValueChange={(flavor) => {
           set({ ...helper, flavor });
@@ -251,23 +242,23 @@ function CloudOptions({
       />
       <label className={styles.switchRow}>
         <Switch
-          aria-label="IAM authentication"
+          aria-label={t('iamAuthentication')}
           checked={helper.iamAuth}
           onCheckedChange={(iamAuth) => {
             set({ ...helper, iamAuth });
           }}
         />
-        IAM authentication
+        {t('iamAuthentication')}
       </label>
       <label className={styles.switchRow}>
         <Switch
-          aria-label="Private IP"
+          aria-label={t('privateIp')}
           checked={helper.privateIp}
           onCheckedChange={(privateIp) => {
             set({ ...helper, privateIp });
           }}
         />
-        Private IP
+        {t('privateIp')}
       </label>
     </>
   );

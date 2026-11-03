@@ -2,6 +2,7 @@
 import type { StatementDto } from '@openrows/ipc';
 import type { ExportScope, ExportSheetProps } from './ExportSheet';
 import { rowCount } from './exportJob';
+import { t } from './messages';
 
 type SheetSource = Omit<ExportSheetProps, 'onClose'>;
 
@@ -24,12 +25,12 @@ export function resultExport(input: {
     statement.kind === 'read' &&
     !statement.dangerous;
   const received = result.truncated
-    ? `The ${rowCount(result.rows)} received (row limit)`
-    : `Every row of the result (${rowCount(result.rows)})`;
+    ? t('rowsReceivedRow', { rows: rowCount(result.rows) })
+    : t('everyRowResult', { rows: rowCount(result.rows) });
   const scopes: ExportScope[] = [];
   if (selected?.length)
     scopes.push({
-      label: `The ${rowCount(selected.length)} selected`,
+      label: t('countSelected', { count: rowCount(selected.length) }),
       source: {
         kind: 'rows',
         sessionId,
@@ -43,11 +44,11 @@ export function resultExport(input: {
   });
   if (rerun)
     scopes.push({
-      label: 'Every row: run the statement again',
+      label: t('everyRowRun'),
       source: { kind: 'query', sessionId, sql: statement.sql },
     });
   return {
-    title: 'Export Result',
+    title: t('exportResult'),
     fileName: 'result',
     defaultTable: 'result',
     scopes,
@@ -63,12 +64,12 @@ export function tableExport(input: {
   name: string;
 }): SheetSource {
   return {
-    title: `Export ${input.name}`,
+    title: t('exportName', { name: input.name }),
     fileName: input.name,
     defaultTable: input.name,
     scopes: [
       {
-        label: 'Every row of the table',
+        label: t('everyRowTable'),
         source: {
           kind: 'table',
           sessionId: input.sessionId,

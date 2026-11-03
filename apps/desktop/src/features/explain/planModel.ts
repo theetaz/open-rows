@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { PlanDto, PlanHotspotDto, PlanNodeDto } from '@openrows/ipc';
+import { t } from './messages';
 
 /** How hot an operator is, from its share of the plan. */
 type Heat = 'none' | 'low' | 'medium' | 'high';
@@ -38,9 +39,11 @@ export function formatShare(share: number | null): string {
 
 /** `Seq Scan on public.orders using orders_pkey`. */
 export function nodeLabel(node: PlanNodeDto): string {
-  const on = node.relation ? ` on ${node.relation}` : '';
-  const using = node.index ? ` using ${node.index}` : '';
-  return `${node.nodeType}${on}${using}`;
+  const { nodeType: type, relation, index } = node;
+  if (relation && index)
+    return t('nodeOnRelationUsing', { type, relation, index });
+  if (relation) return t('nodeOnRelation', { type, relation });
+  return index ? t('nodeUsingIndex', { type, index }) : type;
 }
 
 /** The node's exclusive measure in the plan's weight, as text. */
@@ -74,30 +77,35 @@ export function hotspotText(hotspot: PlanHotspotDto): HotspotText {
   switch (hotspot.kind) {
     case 'expensive':
       return {
-        label: `${formatShare(hotspot.share)} of plan`,
-        detail: `Takes ${formatShare(hotspot.share)} of the plan on its own.`,
+        label: t('sharePlan2', { share: formatShare(hotspot.share) }),
+        detail: t('takesSharePlan', { share: formatShare(hotspot.share) }),
         tone: 'danger',
       };
     case 'misestimate': {
       const estimated = hotspot.estimated ?? 0;
       const actual = hotspot.actual ?? 0;
       return {
-        label: `Rows ×${String(misestimateFactor(estimated, actual))}`,
-        detail: `Estimated ${formatNumber(estimated)} rows per loop, got ${formatNumber(actual)}: statistics may be stale (run ANALYZE).`,
+        label: t('rowsEstimated', {
+          estimated: String(misestimateFactor(estimated, actual)),
+        }),
+        detail: t('estimatedEstimatedRows', {
+          estimated: formatNumber(estimated),
+          actual: formatNumber(actual),
+        }),
         tone: 'warning',
       };
     }
     case 'fullScan':
       return {
-        label: 'Full scan',
+        label: t('fullScan'),
         detail:
           hotspot.rows === null
-            ? 'Reads the whole table; an index may help.'
-            : `Reads ${formatNumber(hotspot.rows)} rows of the whole table; an index may help.`,
+            ? t('readsWholeTable')
+            : t('readsRowsRows', { rows: formatNumber(hotspot.rows) }),
         tone: 'warning',
       };
     case 'spill':
-      return { label: 'Disk spill', detail: hotspot.reason, tone: 'danger' };
+      return { label: t('diskSpill'), detail: hotspot.reason, tone: 'danger' };
   }
 }
 
@@ -138,12 +146,16 @@ export function visibleNodes(
 
 /** The plan's headline: kind, times and whether changes were rolled back. */
 export function planSummary(plan: PlanDto): string[] {
-  const parts = [plan.analyzed ? 'Explain Analyze' : 'Explain'];
+  const parts = [plan.analyzed ? t('explainAnalyze') : t('explain')];
   if (plan.executionMs !== null)
-    parts.push(`Execution ${formatMs(plan.executionMs)}`);
+    parts.push(
+      t('executionExecutionms', { executionMs: formatMs(plan.executionMs) }),
+    );
   if (plan.planningMs !== null)
-    parts.push(`Planning ${formatMs(plan.planningMs)}`);
-  parts.push(`${String(plan.nodes.length)} operators`);
-  if (plan.rolledBack) parts.push('Changes rolled back');
+    parts.push(
+      t('planningPlanningms', { planningMs: formatMs(plan.planningMs) }),
+    );
+  parts.push(t('operatorCount', { count: String(plan.nodes.length) }));
+  if (plan.rolledBack) parts.push(t('changesRolledBack'));
   return parts;
 }

@@ -4,6 +4,7 @@ import { Button, TextField } from '@openrows/ui';
 import { Sheet, SheetActions } from '@openrows/ui/sheet';
 import { listObjects } from '@openrows/ipc';
 import type { DiagramTarget } from '@openrows/ipc';
+import { t } from './messages';
 
 /** Choose exact table names from the entire schema, independently of the diagram cap. */
 export function TablePicker(props: {
@@ -39,15 +40,15 @@ export function TablePicker(props: {
     };
   }, [props.target]);
   return (
-    <Sheet title="Choose diagram tables" onClose={props.onClose}>
+    <Sheet title={t('chooseDiagramTables')} onClose={props.onClose}>
       <TextField
-        label="Filter tables"
+        label={t('filterTables')}
         value={search}
         onChange={(event) => {
           setSearch(event.target.value);
         }}
       />
-      <p>{String(selected.size)} selected (maximum 400)</p>
+      <p>{t('countSelectedMaximum', { count: String(selected.size) })}</p>
       {error && <p role="alert">{error}</p>}
       <TableChoices
         key={search}
@@ -62,9 +63,9 @@ export function TablePicker(props: {
             props.onSelect(undefined);
           }}
         >
-          Whole schema
+          {t('wholeSchema')}
         </Button>
-        <Button onClick={props.onClose}>Cancel</Button>
+        <Button onClick={props.onClose}>{t('cancel')}</Button>
         <Button
           variant="primary"
           disabled={!selected.size || selected.size > 400}
@@ -72,7 +73,7 @@ export function TablePicker(props: {
             props.onSelect([...selected]);
           }}
         >
-          Show selection
+          {t('showSelection')}
         </Button>
       </SheetActions>
     </Sheet>
@@ -114,7 +115,7 @@ function TableChoices(props: {
             setLimit((current) => current + 200);
           }}
         >
-          Show more tables
+          {t('showMoreTables')}
         </Button>
       )}
     </div>

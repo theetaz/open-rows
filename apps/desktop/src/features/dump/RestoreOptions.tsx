@@ -10,16 +10,18 @@ import type {
 } from '@openrows/ipc';
 import { isArchive } from './model';
 import styles from './Dump.module.css';
+import { t } from './messages';
 
 const CLEANS: readonly { value: RestoreCleanDto; label: string }[] = [
-  { value: 'keep', label: 'Keep existing objects' },
-  { value: 'dropIfExists', label: 'Drop objects first, if they exist' },
-  { value: 'drop', label: 'Drop objects first (--clean)' },
+  { value: 'keep', label: t('keepExistingObjects') },
+  { value: 'dropIfExists', label: t('dropObjectsFirst') },
+  { value: 'drop', label: t('dropObjectsFirstClean') },
 ];
 
 const JOBS = [1, 2, 4, 8].map((jobs) => ({
   value: String(jobs),
-  label: jobs === 1 ? 'One at a time' : `${String(jobs)} parallel jobs`,
+  label:
+    jobs === 1 ? t('oneTime') : t('jobsParallelJobs', { jobs: String(jobs) }),
 }));
 
 /** The session's database, or a new one created before the restore. */
@@ -33,7 +35,7 @@ export function TargetChoice(props: {
   const name = props.target.kind === 'create' ? props.target.name : '';
   return (
     <fieldset className={styles.options}>
-      <legend>Restore into</legend>
+      <legend>{t('restoreInto')}</legend>
       <label>
         <input
           type="radio"
@@ -43,7 +45,7 @@ export function TargetChoice(props: {
             props.onChange({ kind: 'existing' });
           }}
         />
-        {props.database} (the open database)
+        {t('databaseOpenDatabase', { database: props.database })}
       </label>
       <label>
         <input
@@ -54,12 +56,12 @@ export function TargetChoice(props: {
             props.onChange({ kind: 'create', name });
           }}
         />
-        A new database
+        {t('newDatabase')}
       </label>
       {props.target.kind === 'create' && (
         <TextField
-          aria-label="New database name"
-          placeholder="Name"
+          aria-label={t('newDatabaseName')}
+          placeholder={t('name')}
           spellCheck={false}
           value={name}
           onChange={(event) => {
@@ -81,7 +83,7 @@ function ArchiveOptions(props: {
     <>
       <div className={styles.row}>
         <SelectField
-          label="Existing objects"
+          label={t('existingObjects')}
           value={options.clean}
           options={CLEANS}
           onValueChange={(clean) => {
@@ -89,7 +91,7 @@ function ArchiveOptions(props: {
           }}
         />
         <SelectField
-          label="Speed"
+          label={t('speed')}
           value={String(options.jobs)}
           disabled={props.kind === 'pgTar'}
           options={JOBS}
@@ -106,7 +108,7 @@ function ArchiveOptions(props: {
             onChange({ ...options, noOwner: event.target.checked });
           }}
         />
-        Skip ownership (--no-owner)
+        {t('skipOwnershipNo')}
       </label>
       <label>
         <input
@@ -116,7 +118,7 @@ function ArchiveOptions(props: {
             onChange({ ...options, noPrivileges: event.target.checked });
           }}
         />
-        Skip grants (--no-privileges)
+        {t('skipGrantsNo')}
       </label>
     </>
   );
@@ -132,7 +134,7 @@ export function RestoreOptions(props: {
   if (props.kind === 'sqlite') return null;
   return (
     <fieldset className={styles.options}>
-      <legend>Options</legend>
+      <legend>{t('options')}</legend>
       {isArchive(props.kind) && <ArchiveOptions {...props} />}
       <label>
         <input
@@ -142,7 +144,7 @@ export function RestoreOptions(props: {
             onChange({ ...options, stopOnError: event.target.checked });
           }}
         />
-        Stop at the first error
+        {t('stopFirstError')}
       </label>
     </fieldset>
   );
@@ -167,7 +169,7 @@ export function ArchiveEntries(props: {
     );
   };
   return (
-    <ul className={styles.entries} aria-label="Archive contents">
+    <ul className={styles.entries} aria-label={t('archiveContents')}>
       {props.entries.map((entry) => (
         <li key={entry.id}>
           <label title={entry.label}>

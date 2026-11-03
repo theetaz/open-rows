@@ -23,6 +23,7 @@ const WorkspaceInspector = lazy(() =>
   })),
 );
 import styles from './Workspace.module.css';
+import { t } from './messages';
 type Props = {
   connections: Connections;
   controller: ReturnType<typeof useWorkspaceController>;
@@ -53,7 +54,7 @@ function projectOpeners(
   return {
     onProjectQuery: (path) => {
       if (!scope) {
-        reportProjectError('Open a database to open project queries.');
+        reportProjectError(t('openDatabaseOpen'));
         return;
       }
       openQueryFile(tabs, scope, path).catch(reportProjectError);
@@ -71,7 +72,7 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
   return (
     <div className={styles.body}>
       <SplitPanel
-        label="Sidebar"
+        label={t('sidebar')}
         storageKey="openrows.mock.sidebar"
         range={sidebarRange}
         open={controller.sidebar}
@@ -127,7 +128,7 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
         structureRevision={controller.objects.revision}
       />
       <SplitPanel
-        label="Inspector"
+        label={t('inspector')}
         storageKey="openrows.mock.inspector"
         range={inspectorRange}
         open={controller.inspector.open}
@@ -156,8 +157,8 @@ function SchemaTools({ connections, controller }: Props): React.JSX.Element {
   return (
     <>
       <IconButton
-        aria-label="Show ER diagram"
-        title="Show ER Diagram"
+        aria-label={t('showErDiagram2')}
+        title={t('showErDiagram')}
         size="sm"
         variant="ghost"
         disabled={!catalog.schema}

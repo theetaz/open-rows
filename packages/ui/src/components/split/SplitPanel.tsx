@@ -6,6 +6,7 @@ import type { PanelRange } from './width';
 import { ResizeHandle } from './ResizeHandle';
 import styles from './SplitPanel.module.css';
 import { usePanelPresence } from './usePanelPresence';
+import { t } from '../../messages';
 
 type Props = {
   label: string;
@@ -49,7 +50,7 @@ export function SplitPanel(props: Props): React.JSX.Element | null {
     >
       <div className={styles.inner}>{props.children}</div>
       <ResizeHandle
-        label={`Resize ${props.label.toLowerCase()}`}
+        label={t('resizeLabel', { label: props.label.toLowerCase() })}
         width={width}
         range={props.range}
         edge={props.edge}

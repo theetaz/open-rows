@@ -2,6 +2,7 @@
 import { emitTo } from '@tauri-apps/api/event';
 import { reportUiEvent } from '@openrows/ipc';
 import { createReporter } from '../features/diagnostics/reporter';
+import { t } from './messages';
 
 const report = createReporter(reportUiEvent);
 
@@ -15,7 +16,7 @@ export function scheduleHostPrewarm(): () => void {
       report({
         kind: 'error',
         name: 'driverHostPrewarm',
-        message: 'Driver host idle signal failed',
+        message: t('driverHostIdle'),
         durationMs: null,
       });
     });

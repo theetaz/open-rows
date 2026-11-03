@@ -6,16 +6,17 @@ import { StructureGrid } from './StructureGrid';
 import type { GridColumnDef } from './StructureGrid';
 import { useColumnEditor } from './useColumnEditor';
 import type { Structure } from './useStructure';
+import { t } from '../messages/lazyStructure';
 
 const gridColumns: readonly GridColumnDef[] = [
   { key: 'number', title: '#', width: 44 },
-  { key: 'name', title: 'column_name', width: 180 },
-  { key: 'dataType', title: 'data_type', width: 170 },
-  { key: 'nullable', title: 'is_nullable', width: 100 },
-  { key: 'check', title: 'check', width: 150 },
-  { key: 'default', title: 'column_default', width: 230 },
-  { key: 'foreignKey', title: 'foreign_key', width: 170 },
-  { key: 'comment', title: 'comment', width: 240 },
+  { key: 'name', title: t('columnName'), width: 180 },
+  { key: 'dataType', title: t('dataType'), width: 170 },
+  { key: 'nullable', title: t('nullable'), width: 100 },
+  { key: 'check', title: t('check'), width: 150 },
+  { key: 'default', title: t('columnDefault'), width: 230 },
+  { key: 'foreignKey', title: t('foreignKey'), width: 170 },
+  { key: 'comment', title: t('comment'), width: 240 },
 ];
 
 /** Structure mode: the editable column grid (TablePlus Structure tab). */
@@ -31,7 +32,7 @@ export function ColumnEditor({
   return (
     <StructureGrid
       ref={grid}
-      label="Columns"
+      label={t('columns')}
       columns={gridColumns}
       rows={shown.length}
       rowKey={(row) => at(row)?.id ?? String(row)}
@@ -44,7 +45,10 @@ export function ColumnEditor({
             content: (
               <CellInput
                 edit={state.edit}
-                label={`Edit ${gridColumns[col]?.title ?? ''} of ${item.row.name}`}
+                label={t('editTitleName', {
+                  title: gridColumns[col]?.title ?? '',
+                  name: item.row.name,
+                })}
                 onText={(text) => {
                   if (state.edit) state.setEdit({ ...state.edit, text });
                 }}
@@ -71,7 +75,7 @@ export function ColumnEditor({
         if (item) structure.setMenu(structure.rowMenu(item, point));
       }}
       onFiller={schema.enabled ? structure.addColumn : undefined}
-      fillerLabel={schema.enabled ? 'Click to add a column' : ''}
+      fillerLabel={schema.enabled ? t('clickAddColumn') : ''}
     />
   );
 }

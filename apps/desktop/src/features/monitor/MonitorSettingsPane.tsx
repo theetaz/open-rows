@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { listProfiles } from '@openrows/ipc';
 import type { ProfileDto } from '@openrows/ipc';
 import { HistoryControls } from './HistoryControls';
+import { t } from './messages/lazyDashboard';
 /** Settings entry for per-connection local history, without opening a collector. */
 export default function MonitorSettingsPane(): React.JSX.Element {
   const [profiles, setProfiles] = useState<ProfileDto[]>([]);
@@ -22,8 +23,8 @@ export default function MonitorSettingsPane(): React.JSX.Element {
     };
   }, []);
   return (
-    <section aria-label="Monitoring settings">
-      <h2>Local monitor history</h2>
+    <section aria-label={t('monitoringSettings')}>
+      <h2>{t('localMonitorHistory')}</h2>
       {profiles
         .filter((profile) => profile.engine === 'postgres')
         .map((profile) => (

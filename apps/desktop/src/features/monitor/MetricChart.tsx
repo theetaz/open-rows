@@ -3,6 +3,7 @@ import { memo, useState } from 'react';
 import type { Point } from './monitorData';
 import { stateLabel } from './SourceState';
 import styles from './Monitor.module.css';
+import { t } from './messages/lazyDashboard';
 
 /** Gap-preserving SVG path, at most 300 observations and no animation work. */
 export function chartPath(
@@ -44,12 +45,14 @@ export const MetricChart = memo(function MetricChart(props: {
         className={styles.chart}
         viewBox="0 0 300 72"
         role="img"
-        aria-label={`${props.title} trend; missing observations are gaps`}
+        aria-label={t('titleTrendMissing', { title: props.title })}
       >
         <title>
-          {props.title} — {new Date(props.range.start).toLocaleTimeString()} to{' '}
-          {new Date(props.range.end).toLocaleTimeString()}; unknown/reset
-          observations are gaps
+          {t('titleValueValue2', {
+            title: props.title,
+            value: new Date(props.range.start).toLocaleTimeString(),
+            value2: new Date(props.range.end).toLocaleTimeString(),
+          })}
         </title>
         <path d={chartPath(points, props.range)} />
         {points
@@ -78,15 +81,15 @@ export const MetricChart = memo(function MetricChart(props: {
           setTable(event.currentTarget.open);
         }}
       >
-        <summary>Data table for {props.title}</summary>
+        <summary>{t('dataTableTitle', { title: props.title })}</summary>
         {table && (
           <table className={styles.table}>
-            <caption>{props.title} observations</caption>
+            <caption>{t('titleObservations', { title: props.title })}</caption>
             <thead>
               <tr>
-                <th scope="col">Collected</th>
-                <th scope="col">Value</th>
-                <th scope="col">State</th>
+                <th scope="col">{t('collected')}</th>
+                <th scope="col">{t('value')}</th>
+                <th scope="col">{t('state')}</th>
               </tr>
             </thead>
             <tbody>

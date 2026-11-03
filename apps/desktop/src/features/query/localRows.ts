@@ -5,6 +5,7 @@ import type { DisplayTile } from '@openrows/grid/display-tile';
 import type { ResultMeta } from './run';
 import { cellMatches } from './columnFilters';
 import type { ColumnFilter } from './columnFilters';
+import { t } from './lazyMessages';
 
 /**
  * Most cells (rows × columns) a result may have for client-side sort and
@@ -18,9 +19,11 @@ type Load = (request: WindowRequest) => Promise<DisplayTile>;
 
 /** Why sort and filter are unavailable for a result, or `null` when they work. */
 export function localLimit(result: ResultMeta): string | null {
-  if (!result.done) return 'Sort and filter work once every row has arrived.';
+  if (!result.done) return t('sortFilterWork');
   if (result.rows * result.columns.length > LOCAL_CELL_LIMIT)
-    return `Sort and filter work on results up to ${LOCAL_CELL_LIMIT.toLocaleString('en-US')} cells; add ORDER BY or WHERE to the query.`;
+    return t('sortFilterWorkResults', {
+      localCellLimit: LOCAL_CELL_LIMIT.toLocaleString('en-US'),
+    });
   return null;
 }
 

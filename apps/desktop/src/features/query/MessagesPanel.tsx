@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useState } from 'react';
+import { t } from './lazyMessages';
 import { filterLevel } from './messages';
 import type { LevelFilter } from './messages';
 import type { RunMessage } from './run';
 import styles from './MessagesPanel.module.css';
 
 const LEVELS: readonly { value: LevelFilter; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'error', label: 'Errors' },
-  { value: 'warning', label: 'Warnings' },
-  { value: 'info', label: 'Info' },
+  { value: 'all', label: t('all') },
+  { value: 'error', label: t('errors') },
+  { value: 'warning', label: t('warnings') },
+  { value: 'info', label: t('info') },
 ];
 
 const count = (messages: readonly RunMessage[], level: LevelFilter): number =>
@@ -35,9 +36,9 @@ export function MessagesPanel(props: {
   if (!messages.length) return null;
   const shown = filterLevel(messages, level);
   return (
-    <section className={styles.panel} aria-label="Messages panel">
-      <div className={styles.bar} role="toolbar" aria-label="Message level">
-        <strong>Messages</strong>
+    <section className={styles.panel} aria-label={t('messagesPanel')}>
+      <div className={styles.bar} role="toolbar" aria-label={t('messageLevel')}>
+        <strong>{t('messages')}</strong>
         {LEVELS.map((item) => (
           <button
             key={item.value}
@@ -51,7 +52,7 @@ export function MessagesPanel(props: {
           </button>
         ))}
       </div>
-      <ul className={styles.list} aria-label="Messages">
+      <ul className={styles.list} aria-label={t('messages')}>
         {shown.map((message, index) => (
           <li key={index} data-level={message.level}>
             {props.statements > 1 && <small>#{message.statement + 1}</small>}
@@ -59,7 +60,7 @@ export function MessagesPanel(props: {
           </li>
         ))}
         {!shown.length && (
-          <li className={styles.empty}>No messages at this level.</li>
+          <li className={styles.empty}>{t('noMessagesLevel')}</li>
         )}
       </ul>
     </section>

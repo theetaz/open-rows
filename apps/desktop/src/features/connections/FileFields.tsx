@@ -6,6 +6,7 @@ import { fieldError } from './form';
 import { SwitchRow } from './SwitchRow';
 import type { ConnectionForm } from './useConnectionForm';
 import styles from './ConnectionSheet.module.css';
+import { t } from './messages/profile';
 
 /**
  * A local database file (`SQLite`): typed, chosen in the native open panel,
@@ -31,12 +32,8 @@ export function FileFields({
   };
   const memorySwitch = (
     <SwitchRow
-      label="In-memory"
-      detail={
-        duckdb
-          ? 'Shared by this connection’s tabs. Closing the connection or losing the driver process permanently loses all data.'
-          : "A fresh database shared by this connection's tabs until it closes."
-      }
+      label={t('memory')}
+      detail={duckdb ? t('sharedConnectionS') : t('freshDatabaseShared')}
       checked={draft.fileMemory}
       onChange={(fileMemory) => {
         update({ fileMemory });
@@ -50,9 +47,11 @@ export function FileFields({
       <div className={styles.fileRow}>
         <TextField
           className={styles.row}
-          label="Database file"
+          label={t('databaseFile')}
           value={draft.filePath}
-          placeholder={`/path/to/database.${duckdb ? 'duckdb' : 'sqlite'}`}
+          placeholder={
+            duckdb ? t('pathDatabaseDuckdb') : t('pathDatabaseSqlite')
+          }
           spellCheck={false}
           {...fieldError(errors.filePath)}
           onChange={(event) => {
@@ -60,28 +59,28 @@ export function FileFields({
           }}
         />
         <Button
-          aria-label="Choose database file"
+          aria-label={t('chooseDatabaseFile')}
           onClick={() => {
             pick(duckdb ? 'duckdbDatabase' : 'sqliteDatabase', false);
           }}
         >
-          Choose…
+          {t('choose')}
         </Button>
         <Button
-          aria-label="New database file"
+          aria-label={t('newDatabaseFile')}
           onClick={() => {
             pick(duckdb ? 'newDuckdbDatabase' : 'newSqliteDatabase', true);
           }}
         >
-          New…
+          {t('new')}
         </Button>
       </div>
       {draft.fileCreate && (
-        <p className={styles.fileNote}>The file is created when you connect.</p>
+        <p className={styles.fileNote}>{t('fileCreatedWhen')}</p>
       )}
       <SwitchRow
-        label="Open read-only"
-        detail={`${duckdb ? 'DuckDB' : 'SQLite'} refuses every write to this file.`}
+        label={t('openReadOnly')}
+        detail={duckdb ? t('duckdbRefusesEvery') : t('sqliteRefusesEvery')}
         checked={draft.fileReadOnly}
         onChange={(fileReadOnly) => {
           update({ fileReadOnly });

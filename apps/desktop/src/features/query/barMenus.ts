@@ -4,6 +4,7 @@ import type { MenuEntry } from '../../shell/CascadeMenu';
 import { FONT_SIZES, ROW_LIMITS } from './editorSettings';
 import type { EditorSettings } from './editorSettings';
 import { paramChoices } from './queryParams';
+import { t } from './lazyMessages';
 
 type Update = (change: Partial<EditorSettings>) => void;
 
@@ -62,22 +63,22 @@ function runSettings(
   dialect: EditorDialect,
 ): MenuEntry[] {
   return [
-    toggle(settings, update, 'Auto Save SQL Query Tab', 'autoSave'),
+    toggle(settings, update, t('autoSaveSql'), 'autoSave'),
     {
       kind: 'submenu',
-      label: 'Query Params',
+      label: t('queryParams'),
       entries: choices(settings, update, 'queryParams', paramChoices(dialect)),
     },
     {
       kind: 'submenu',
-      label: 'Result View Mode',
+      label: t('resultViewMode'),
       entries: choices(settings, update, 'resultView', [
-        ['One Tab per Result', 'tabs'],
-        ['Stacked Results', 'stacked'],
-        ['Last Result Only', 'last'],
+        [t('oneTabPer'), 'tabs'],
+        [t('stackedResults'), 'stacked'],
+        [t('lastResultOnly'), 'last'],
       ]),
     },
-    toggle(settings, update, 'Return on Error', 'returnOnError'),
+    toggle(settings, update, t('returnError'), 'returnOnError'),
   ];
 }
 
@@ -94,30 +95,30 @@ export function settingsEntries(
   return [
     {
       kind: 'submenu',
-      label: 'Font Size',
+      label: t('fontSize'),
       entries: choices(settings, update, 'fontSize', [
-        ['Default', null],
+        [t('default'), null],
         ...sizes,
       ]),
     },
-    toggle(settings, update, 'Show invisible characters', 'invisibles'),
-    toggle(settings, update, 'Wrap lines to editor width', 'wrap'),
-    toggle(settings, update, 'Highlight current query', 'highlightQuery'),
+    toggle(settings, update, t('showInvisibleCharacters'), 'invisibles'),
+    toggle(settings, update, t('wrapLinesEditor'), 'wrap'),
+    toggle(settings, update, t('highlightCurrentQuery'), 'highlightQuery'),
     { kind: 'separator' },
     {
       kind: 'submenu',
-      label: 'Autocomplete',
+      label: t('autocomplete'),
       entries: [
-        toggle(settings, update, 'Enable autocomplete', 'autocomplete'),
-        toggle(settings, update, 'Uppercase keywords', 'upperKeywords'),
+        toggle(settings, update, t('enableAutocomplete'), 'autocomplete'),
+        toggle(settings, update, t('uppercaseKeywords'), 'upperKeywords'),
       ],
     },
     {
       kind: 'submenu',
-      label: 'Key Binding',
+      label: t('keyBinding'),
       entries: choices(settings, update, 'keyBinding', [
-        ['Default', 'default'],
-        ['Vim', 'vim'],
+        [t('default'), 'default'],
+        [t('vim'), 'vim'],
       ]),
     },
     { kind: 'separator' },
@@ -127,7 +128,9 @@ export function settingsEntries(
 
 /** `No limit` or e.g. `1,000 rows`. */
 export function limitLabel(limit: number | null): string {
-  return limit === null ? 'No limit' : `${limit.toLocaleString('en-US')} rows`;
+  return limit === null
+    ? t('noLimit')
+    : t('limitRows', { limit: limit.toLocaleString('en-US') });
 }
 
 /** Row limit choices for the next run. */
@@ -160,12 +163,12 @@ export function beautifyEntries(
     },
   });
   return [
-    item('Beautify', '⌘I', 'beautify'),
-    item('Uglify', '⇧⌘I', 'uglify'),
+    item(t('beautify'), '⌘I', 'beautify'),
+    item(t('uglify'), '⇧⌘I', 'uglify'),
     { kind: 'separator' },
     {
       kind: 'submenu',
-      label: 'Indent Width',
+      label: t('indentWidth'),
       entries: choices(settings, update, 'indentWidth', [
         ['2 spaces', 2],
         ['4 spaces', 4],
@@ -173,39 +176,39 @@ export function beautifyEntries(
     },
     {
       kind: 'submenu',
-      label: 'Indent With',
+      label: t('indent'),
       entries: choices(settings, update, 'indentWith', [
-        ['Spaces', 'spaces'],
-        ['Tabs', 'tabs'],
+        [t('spaces'), 'spaces'],
+        [t('tabs'), 'tabs'],
       ]),
     },
     {
       kind: 'submenu',
-      label: 'Keyword Case',
+      label: t('keywordCase'),
       entries: choices(settings, update, 'keywordCase', [
-        ['Uppercase', 'upper'],
-        ['Lowercase', 'lower'],
-        ['Preserve', 'preserve'],
+        [t('uppercase'), 'upper'],
+        [t('lowercase'), 'lower'],
+        [t('preserve'), 'preserve'],
       ]),
     },
     {
       kind: 'submenu',
-      label: 'Indent Type',
+      label: t('indentType'),
       entries: choices(settings, update, 'indentStyle', [
-        ['Standard', 'standard'],
-        ['Tabular Left', 'tabularLeft'],
-        ['Tabular Right', 'tabularRight'],
+        [t('standard'), 'standard'],
+        [t('tabularLeft'), 'tabularLeft'],
+        [t('tabularRight'), 'tabularRight'],
       ]),
     },
     {
       kind: 'submenu',
-      label: 'Lines Between Queries',
+      label: t('linesBetweenQueries'),
       entries: choices(settings, update, 'linesBetweenQueries', [
         ['1', 1],
         ['2', 2],
         ['3', 3],
       ]),
     },
-    toggle(settings, update, 'Dense Operators', 'denseOperators'),
+    toggle(settings, update, t('denseOperators'), 'denseOperators'),
   ];
 }

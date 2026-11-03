@@ -5,6 +5,7 @@ import type { FilterRow } from '../model';
 import { groupsOf } from './groups';
 import type { TableView } from '../model';
 import type { TableActions } from '../useTableTab';
+import { t } from '../messages/lazyData';
 
 /** Parenthesised groups with independent row joins and stable row identities. */
 export function FilterGroups(
@@ -19,16 +20,16 @@ export function FilterGroups(
       {groups.map((group, index) => (
         <fieldset
           key={group.id}
-          aria-label={`Filter group ${String(index + 1)}`}
+          aria-label={t('filterGroupValue', { value: String(index + 1) })}
         >
-          <legend>Group {index + 1}</legend>
+          <legend>{t('groupValue', { value: index + 1 })}</legend>
           <SelectField
-            aria-label={`Combine rows in group ${String(index + 1)}`}
+            aria-label={t('combineRowsGroup', { value: String(index + 1) })}
             controlSize="compact"
             value={group.combinator}
             options={[
-              { value: 'and', label: 'AND' },
-              { value: 'or', label: 'OR' },
+              { value: 'and', label: t('and') },
+              { value: 'or', label: t('or') },
             ]}
             onValueChange={(value) => {
               props.actions.combineGroup(group.id, value);
@@ -41,7 +42,7 @@ export function FilterGroups(
               props.actions.addRow(undefined, group.id);
             }}
           >
-            Add filter to group {index + 1}
+            {t('addFilterGroup', { value: index + 1 })}
           </Button>
           {groups.length > 1 && (
             <Button
@@ -50,7 +51,7 @@ export function FilterGroups(
                 props.actions.removeGroup(group.id);
               }}
             >
-              Remove group {index + 1}
+              {t('removeGroupValue', { value: index + 1 })}
             </Button>
           )}
         </fieldset>

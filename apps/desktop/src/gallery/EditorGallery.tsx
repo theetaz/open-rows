@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Switch } from '@openrows/ui';
 import type { SqlEditor } from '@openrows/editor';
 import styles from './Gallery.module.css';
+import { t } from './messages';
 
 const SPECIMEN = `-- Type here to try highlighting, completion, Vim and IME input.
 -- 日本語や中文のコメントも入力できます。
@@ -25,10 +26,14 @@ export function EditorGallery(): React.JSX.Element {
       aria-labelledby="editor-heading"
       className={styles.section}
     >
-      <h2 id="editor-heading">SQL editor</h2>
+      <h2 id="editor-heading">{t('sqlEditor')}</h2>
       <div className={styles.row}>
-        <Switch aria-label="Vim mode" checked={vim} onCheckedChange={setVim} />
-        <span>Vim mode {vim ? 'on' : 'off'}</span>
+        <Switch
+          aria-label={t('vimMode')}
+          checked={vim}
+          onCheckedChange={setVim}
+        />
+        <span>{vim ? t('vimMode2') : t('vimModeOff')}</span>
       </div>
       <EditorSpecimen key={vim ? 'vim' : 'standard'} vim={vim} />
     </section>
@@ -70,7 +75,7 @@ async function mountSpecimen(
     : undefined;
   return mountSqlEditor(element, {
     doc: SPECIMEN,
-    label: 'SQL editor specimen',
+    label: t('sqlEditorSpecimen'),
     ...(keyMode ? { keyMode } : {}),
   });
 }

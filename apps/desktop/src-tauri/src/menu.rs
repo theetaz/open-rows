@@ -218,6 +218,8 @@ const HELP: &[Entry] = &[
 ];
 
 /// The menu bar, left to right.
+const WINDOW_TITLE: &str = "Window";
+const HELP_TITLE: &str = "Help";
 const MENUS: &[(&str, &[Entry])] = &[
     ("OpenRows", APP),
     ("File", FILE),
@@ -225,8 +227,8 @@ const MENUS: &[(&str, &[Entry])] = &[
     ("View", VIEW),
     ("Query", QUERY),
     ("Connection", CONNECTION),
-    ("Window", WINDOW),
-    ("Help", HELP),
+    (WINDOW_TITLE, WINDOW),
+    (HELP_TITLE, HELP),
 ];
 
 /// A menu command chosen by the user; `id` is the registry command id.
@@ -307,8 +309,8 @@ fn build(app: &tauri::AppHandle) -> tauri::Result<(Menu<Wry>, MenuItems)> {
         let sub = submenu(app, title, entries, &mut items)?;
         #[cfg(target_os = "macos")]
         match *title {
-            "Window" => sub.set_as_windows_menu_for_nsapp()?,
-            "Help" => sub.set_as_help_menu_for_nsapp()?,
+            WINDOW_TITLE => sub.set_as_windows_menu_for_nsapp()?,
+            HELP_TITLE => sub.set_as_help_menu_for_nsapp()?,
             _ => {}
         }
         menu.append(&sub)?;

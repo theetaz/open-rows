@@ -13,6 +13,7 @@ import { CopyLinkButton } from '../links/CopyLinkButton';
 import type { TableView } from './model';
 import type { TableActions } from './useTableTab';
 import styles from './Table.module.css';
+import { t } from './messages/lazyData';
 
 type Props = {
   view: TableView;
@@ -30,8 +31,8 @@ type Props = {
 };
 
 const combinators: readonly { value: CombinatorDto; label: string }[] = [
-  { value: 'and', label: 'AND' },
-  { value: 'or', label: 'OR' },
+  { value: 'and', label: t('and') },
+  { value: 'or', label: t('or') },
 ];
 
 /** The full generated SELECT of the draft filters, or why it cannot be built. */
@@ -74,7 +75,7 @@ export function FilterBar(props: Props): React.JSX.Element {
   const [preview, togglePreview] = useSqlPreview(draft, view);
   const raw = view.rows.some((row) => row.enabled && row.operator === 'raw');
   return (
-    <div className={styles.filters} role="search" aria-label="Filters">
+    <div className={styles.filters} role="search" aria-label={t('filters')}>
       <FilterGroups {...props} />
       {raw && <WherePreview draft={draft} />}
       <div className={styles.filterActions}>
@@ -84,21 +85,21 @@ export function FilterBar(props: Props): React.JSX.Element {
             actions.addRow();
           }}
         >
-          Add filter
+          {t('addFilter')}
         </Button>
         <Button size="sm" onClick={actions.addGroup}>
-          Add group
+          {t('addGroup')}
         </Button>
         <Button
           size="sm"
           aria-pressed={preview !== null}
           onClick={togglePreview}
         >
-          SQL
+          {t('sql')}
         </Button>
         {props.link !== undefined && <CopyLinkButton link={props.link} />}
         <SelectField<CombinatorDto>
-          aria-label="Combine groups"
+          aria-label={t('combineGroups')}
           controlSize="compact"
           value={view.combinator}
           options={combinators}
@@ -111,7 +112,7 @@ export function FilterBar(props: Props): React.JSX.Element {
         />
         <span className={styles.spacer} />
         <Button size="sm" variant="ghost" onClick={actions.clear}>
-          Clear
+          {t('clear')}
         </Button>
         <Button
           size="sm"
@@ -120,11 +121,11 @@ export function FilterBar(props: Props): React.JSX.Element {
             actions.apply();
           }}
         >
-          Apply All
+          {t('applyAll')}
         </Button>
       </div>
       {preview !== null && (
-        <pre className={styles.preview} aria-label="Generated SQL">
+        <pre className={styles.preview} aria-label={t('generatedSql')}>
           {preview}
         </pre>
       )}

@@ -6,6 +6,7 @@ import { toggleAssistant, useConversation } from '../assistant/conversation';
 import { InvestigationAudit } from './InvestigationAudit';
 import { InvestigationSchedulePane } from './InvestigationSchedulePane';
 import styles from './Monitor.module.css';
+import { t } from './messages/lazyInvestigation';
 /** Monitoring assistant is user-triggered; mounting never calls a model. */
 export function InvestigationPanel(props: {
   profile: ProfileDto;
@@ -17,18 +18,14 @@ export function InvestigationPanel(props: {
   const conversation = useConversation(tabId);
   return (
     <div className={styles.investigation}>
-      <p className={styles.note}>
-        Ask about health, slow queries, blocking locks or regressions. Findings
-        cite the evidence ids they came from. Plain model text is an unverified
-        interpretation.
-      </p>
+      <p className={styles.note}>{t('askAboutHealth')}</p>
       {!conversation.open && (
         <Button
           onClick={() => {
             toggleAssistant(tabId);
           }}
         >
-          Open assistant
+          {t('openAssistant')}
         </Button>
       )}
       <AssistantDock

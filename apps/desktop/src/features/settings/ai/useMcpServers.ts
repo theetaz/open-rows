@@ -13,6 +13,7 @@ import type {
   ServerConfig,
 } from '@openrows/ipc';
 import { mcpFailure } from './mcpFailure';
+import { t } from '../messages/lazyAi';
 type Tools = Partial<Record<string, McpClientTool[]>>;
 type SetTools = React.Dispatch<React.SetStateAction<Tools>>;
 type SetServers = React.Dispatch<React.SetStateAction<ServerConfig[]>>;
@@ -39,7 +40,7 @@ function useServerList(
         setTools(list.tools);
       },
       (error: unknown) => {
-        if (live) report('', mcpFailure(error, 'MCP servers'));
+        if (live) report('', mcpFailure(error, t('mcpServers')));
       },
     );
     return () => {

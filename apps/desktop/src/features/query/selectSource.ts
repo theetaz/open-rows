@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { EngineDto } from '@openrows/ipc';
+import { t } from './lazyMessages';
 
 type Token = { text: string; identifier: boolean; keyword: string };
 type Source = {
@@ -7,8 +8,7 @@ type Source = {
   table: string;
   columns: string[] | null;
 };
-const unsupported =
-  'Only a single-table SELECT of plain columns is editable; joins, expressions, DISTINCT, grouping and set operations are read-only.';
+const unsupported = t('onlySingleTable');
 const forbidden = new Set(
   'SELECT WITH JOIN UNION INTERSECT EXCEPT MINUS DISTINCT GROUP HAVING WINDOW QUALIFY INTO FOR LOCK RETURNING TABLESAMPLE LATERAL APPLY CURRENT_USER SESSION_USER SYSTEM_USER CURRENT_ROLE CURRENT_CATALOG CURRENT_SCHEMA CURRENT_DATE CURRENT_TIME CURRENT_TIMESTAMP LOCALTIME LOCALTIMESTAMP USER NULL TRUE FALSE'.split(
     ' ',
@@ -18,8 +18,7 @@ const clauses = new Set(['WHERE', 'ORDER', 'LIMIT', 'OFFSET', 'FETCH']);
 
 /** Fail closed on syntax whose provenance cannot be proved by this small recognizer. */
 export function selectSource(sql: string, engine: EngineDto): Source | string {
-  if (engine === 'mongodb')
-    return 'MQL results are read-only; edit documents in the collection tab.';
+  if (engine === 'mongodb') return t('mqlResultsRead');
   if (
     ![
       'postgres',
@@ -32,7 +31,7 @@ export function selectSource(sql: string, engine: EngineDto): Source | string {
       'duckdb',
     ].includes(engine)
   )
-    return 'This engine does not expose safe editable SQL result mapping.';
+    return t('engineDoesNot');
   const tokens = tokenize(sql, engine);
   if (!tokens || tokens.shift()?.keyword !== 'SELECT') return unsupported;
   if (tokens.at(-1)?.text === ';') tokens.pop();

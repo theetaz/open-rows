@@ -7,6 +7,7 @@ import { MetricChart } from './MetricChart';
 import { AdvisorList } from './AdvisorList';
 import { useAdvisor } from './useAdvisor';
 import styles from './Monitor.module.css';
+import { rich, t } from './messages/lazyInvestigation';
 
 /** Per-query evidence uses real weighted deltas and live-window trends; no source percentiles exist. */
 export function QueryInvestigation(props: {
@@ -36,10 +37,9 @@ export function QueryInvestigation(props: {
       alive = false;
     };
   }, [profileId, database, props.statementId, props.revision]);
-  if (!detail)
-    return <p role="status">Query evidence unavailable; start monitoring.</p>;
+  if (!detail) return <p role="status">{t('queryEvidenceUnavailable')}</p>;
   return (
-    <section aria-label="Query investigation">
+    <section aria-label={t('queryInvestigation')}>
       <QueryStatistics detail={detail} now={props.now} />
       <IntervalMetrics detail={detail} />
       <RelatedSessions
@@ -89,27 +89,27 @@ function QueryStatistics({
   );
   return (
     <>
-      <h3>Query investigation · {detail.statementId}</h3>
+      <h3>
+        {t('queryInvestigationStatementid', {
+          statementId: detail.statementId,
+        })}
+      </h3>
       <pre>
         {detail.query ?? 'Fingerprint-only; normalized text unavailable'}
       </pre>
       <p>
-        Live window: {String(detail.calls ?? 'unknown')} calls ·{' '}
-        {String(detail.totalMs ?? 'unknown')} ms total · weighted mean{' '}
-        {String(detail.meanMs ?? 'unknown')} ms · max since reset{' '}
-        {String(detail.maxSinceResetMs ?? 'unknown')} ms.
+        {t('liveWindowCalls', {
+          calls: String(detail.calls ?? t('unknown')),
+          totalMs: String(detail.totalMs ?? t('unknown')),
+          meanMs: String(detail.meanMs ?? t('unknown')),
+          maxSinceResetMs: String(detail.maxSinceResetMs ?? t('unknown')),
+        })}
       </p>
       <p className={styles.note}>
-        p95/p99 unavailable: pg_stat_statements supplies summaries, not observed
-        distributions. Per-query memory and CPU attribution are unavailable.
-        Trends cover the retained live window; persisted history contains
-        database aggregates only.{' '}
-        {detail.partial
-          ? 'Partial coverage: baselines, gaps or evictions are present.'
-          : 'Complete retained interval coverage.'}
+        {detail.partial ? t('p95P99Unavailable') : t('p95P99UnavailablePg')}
       </p>
       <MetricChart
-        title="Query mean latency (ms)"
+        title={t('queryMeanLatency')}
         points={points}
         range={{
           start: now - 600_000,
@@ -122,17 +122,17 @@ function QueryStatistics({
           ),
         }}
       />
-      <p className={styles.note}>
-        Regression: adjacent complete intervals each have ≥ 5 calls, mean ≥ 2×
-        previous and increase ≥ 10 ms.
-      </p>
+      <p className={styles.note}>{t('regressionAdjacentComplete')}</p>
       {detail.regressions.map((regression) => (
         <p key={regression.currentMs}>
-          Regression at{' '}
-          {regression.currentMs === null
-            ? 'unknown'
-            : new Date(regression.currentMs).toLocaleTimeString()}
-          : {regression.previousMeanMs} → {regression.currentMeanMs} ms mean.
+          {rich('regressionValuePreviousmeanms', {
+            value:
+              regression.currentMs === null
+                ? t('unknown')
+                : new Date(regression.currentMs).toLocaleTimeString(),
+            previousMeanMs: regression.previousMeanMs,
+            currentMeanMs: regression.currentMeanMs,
+          })}
         </p>
       ))}
     </>
@@ -145,19 +145,19 @@ function IntervalMetrics({
 }): React.JSX.Element {
   return (
     <table className={styles.table}>
-      <caption>Query interval deltas</caption>
+      <caption>{t('queryIntervalDeltas')}</caption>
       <thead>
         <tr>
           {[
-            'Collected',
-            'State',
-            'Calls',
-            'Total ms',
-            'Rows returned/affected',
-            'Buffer hits',
-            'Buffer reads',
-            'Temp writes (blocks)',
-            'Temp reads (blocks)',
+            t('collected'),
+            t('state'),
+            t('calls'),
+            t('totalMs'),
+            t('rowsReturnedAffected'),
+            t('bufferHits'),
+            t('bufferReads'),
+            t('tempWritesBlocks'),
+            t('tempReadsBlocks'),
           ].map((name) => (
             <th key={name} scope="col">
               {name}
@@ -170,7 +170,7 @@ function IntervalMetrics({
           <tr key={interval.collectedMs}>
             <td>
               {interval.collectedMs === null
-                ? 'unknown'
+                ? t('unknown')
                 : new Date(interval.collectedMs).toLocaleTimeString()}
             </td>
             <td>{interval.state.kind}</td>
@@ -205,15 +205,10 @@ function RelatedSessions(props: {
         row.database === props.database,
     ) ?? [];
   return (
-    <section aria-label="Related waits and blockers">
-      <h4>Related waits and blockers</h4>
-      <p className={styles.note}>
-        Approximate current-sample association by normalized SQL; identities and
-        cross-source snapshots may differ.
-      </p>
-      {!sessions.length && (
-        <p>No matching session in the visible activity sample.</p>
-      )}
+    <section aria-label={t('relatedWaitsBlockers')}>
+      <h4>{t('relatedWaitsBlockers')}</h4>
+      <p className={styles.note}>{t('approximateCurrentSample')}</p>
+      {!sessions.length && <p>{t('noMatchingSession')}</p>}
       {sessions.map((row) => (
         <p key={String(row.pid)}>
           <button
@@ -222,11 +217,13 @@ function RelatedSessions(props: {
               props.onSession(String(row.pid));
             }}
           >
-            Session {String(row.pid)}
+            {t('sessionPid', { pid: String(row.pid) })}
           </button>{' '}
-          · wait {String(row.wait ?? 'none')} · query age{' '}
-          {String(row.age_ms ?? 'unknown')} ms · blockers{' '}
-          {String(row.blockers ?? 'none')}
+          {t('waitWaitQuery', {
+            wait: String(row.wait ?? t('none')),
+            age_ms: String(row.age_ms ?? t('unknown')),
+            blockers: String(row.blockers ?? t('none')),
+          })}
         </p>
       ))}
     </section>

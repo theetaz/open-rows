@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { InsecureReasonDto, ProfileDto } from '@openrows/ipc';
 import type { SessionStatus } from './sessions';
+import { t } from './messages/profile';
 
 const REASON_TEXT: Record<InsecureReasonDto, string> = {
-  tlsDisabled: 'TLS is off, so traffic to the server is readable',
-  tlsUnverified: 'The server certificate is not verified',
-  hostKeyNotSaved: 'The SSH host key was accepted once without saving it',
+  tlsDisabled: t('tlsOffSo'),
+  tlsUnverified: t('serverCertificateNot'),
+  hostKeyNotSaved: t('sshHostKey'),
 };
 
 /**

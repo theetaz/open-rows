@@ -17,6 +17,7 @@ use super::plan::{Plan, resolve};
 use super::run::{Destination, Job, execute};
 use crate::connections::{Connections, IpcError, IpcErrorKind};
 use crate::jobs::job_scope;
+use crate::native_text;
 use crate::queries::Queries;
 
 /// Longest suggested file name, in characters.
@@ -125,7 +126,7 @@ async fn choose_file(
         .dialog()
         .file()
         .set_parent(window)
-        .set_title("Export")
+        .set_title(native_text::EXPORT)
         .set_file_name(format!("{name}.{extension}"))
         .add_filter(label, &[extension])
         .save_file(move |picked| {
@@ -142,7 +143,7 @@ async fn choose_folder(window: &tauri::WebviewWindow) -> Result<Option<PathBuf>,
         .dialog()
         .file()
         .set_parent(window)
-        .set_title("Export Tables to Folder")
+        .set_title(native_text::EXPORT_TABLES_TO_FOLDER)
         .set_can_create_directories(true)
         .pick_folder(move |picked| {
             // The receiver only disappears when the command was dropped.

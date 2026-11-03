@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 import { Badge, EnvBadge, StatusDot } from '@openrows/ui';
 import styles from './Gallery.module.css';
+import { t } from './messages';
 
 const statuses = [
-  { tone: 'warning', label: 'Pending' },
-  { tone: 'success', label: 'Shipped' },
-  { tone: 'info', label: 'Paid' },
-  { tone: 'neutral', label: 'Cancelled' },
-  { tone: 'danger', label: 'Failed' },
+  { tone: 'warning', label: t('pending') },
+  { tone: 'success', label: t('shipped') },
+  { tone: 'info', label: t('paid') },
+  { tone: 'neutral', label: t('cancelled') },
+  { tone: 'danger', label: t('failed') },
 ] as const;
 /** Text-labelled semantic pills and environment identities. */
 export function IndicatorGallery(): React.JSX.Element {
@@ -17,7 +18,7 @@ export function IndicatorGallery(): React.JSX.Element {
       aria-labelledby="indicators-heading"
       className={styles.section}
     >
-      <h2 id="indicators-heading">Environment & status</h2>
+      <h2 id="indicators-heading">{t('environmentStatus')}</h2>
       <div className={styles.row}>
         {(['local', 'dev', 'staging', 'prod'] as const).map((environment) => (
           <EnvBadge key={environment} environment={environment} />

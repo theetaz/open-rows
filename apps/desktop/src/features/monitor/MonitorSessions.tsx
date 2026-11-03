@@ -13,6 +13,7 @@ import {
 } from '../processes/processModel';
 import type { MonitorTable } from './monitorData';
 import styles from './Monitor.module.css';
+import { t } from './messages/lazyDashboard';
 
 /** Convert the shared activity window into the existing process-grid model. */
 function monitoredProcesses(table: MonitorTable | undefined): ProcessDto[] {
@@ -69,12 +70,12 @@ export function MonitorSessions(props: {
       <TextField
         controlSize="compact"
         type="search"
-        aria-label="Filter sessions"
+        aria-label={t('filterSessions')}
         value={filter}
         onChange={(event) => {
           setFilter(event.target.value);
         }}
-        placeholder="Filter sessions…"
+        placeholder={t('filterSessions2')}
       />
       <div className={styles.grid}>
         <ProcessGrid
@@ -93,10 +94,11 @@ export function MonitorSessions(props: {
         />
       </div>
       <p className={styles.note}>
-        {String(processes.length)} sessions. Query literals are redacted.{' '}
         {processes.length > 100
-          ? 'Showing the first 100; filter to narrow the list.'
-          : ''}
+          ? t('countSessionsQuery', { count: String(processes.length) })
+          : t('countSessionsQueryLiterals', {
+              count: String(processes.length),
+            })}
       </p>
       {signals.error && <p role="alert">{signals.error}</p>}
       {signals.pending && (

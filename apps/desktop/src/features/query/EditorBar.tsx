@@ -14,6 +14,7 @@ import { runEntries, runLabel } from './runMenu';
 import type { RunMenu } from './runMenu';
 import { MenuButton, SplitButton } from './SplitButton';
 import styles from './EditorBar.module.css';
+import { t } from './lazyMessages';
 
 type Props = {
   settings: EditorSettings;
@@ -46,7 +47,7 @@ type Props = {
 
 function CursorText({ store }: { store: CursorStore }): React.JSX.Element {
   return (
-    <span className={styles.cursor} aria-label="Cursor position">
+    <span className={styles.cursor} aria-label={t('cursorPosition')}>
       {cursorText(useCursor(store))}
     </span>
   );
@@ -58,24 +59,26 @@ function RunButton(props: Props): React.JSX.Element {
     return (
       <SplitButton
         variant="destructive"
-        label="Cancel query"
-        title="Cancel the running query"
+        label={t('cancelQuery')}
+        title={t('cancelRunningQuery')}
         disabled={!props.cancellable}
         onClick={props.onCancel}
-        menuLabel="Run options"
+        menuLabel={t('runOptions')}
         entries={runEntries(props.run)}
       >
-        Cancel
+        {t('cancel')}
       </SplitButton>
     );
   return (
     <SplitButton
       variant="primary"
-      label={all ? 'Run all statements' : 'Run current statement'}
-      title={`Run ${all ? 'all statements' : 'current statement'} or selection (⌘↵)`}
+      label={all ? t('runAllStatements') : t('runCurrentStatement')}
+      title={
+        all ? t('runAllStatementsSelection') : t('runCurrentStatementSelection')
+      }
       disabled={!props.run.ready}
       onClick={props.onRunDefault}
-      menuLabel="Run options"
+      menuLabel={t('runOptions')}
       entries={runEntries(props.run)}
     >
       {runLabel(props.run.runDefault)}
@@ -102,19 +105,19 @@ function ExplainButton(props: {
   });
   return (
     <SplitButton
-      label="Explain"
-      title="Explain the statement at the cursor or the selection (⌥⌘E)"
+      label={t('explain')}
+      title={t('explainStatementCursor')}
       disabled={!props.ready}
       onClick={() => {
         props.onExplain(false);
       }}
-      menuLabel="Explain options"
+      menuLabel={t('explainOptions')}
       entries={[
-        entry('Explain', false, '⌥⌘E'),
-        entry('Explain Analyze (runs the statement)', true, '⌥⇧⌘E'),
+        entry(t('explain'), false, '⌥⌘E'),
+        entry(t('explainAnalyzeRuns'), true, '⌥⇧⌘E'),
       ]}
     >
-      Explain
+      {t('explain')}
     </SplitButton>
   );
 }
@@ -127,27 +130,27 @@ function AiButton(props: {
   const { onInline } = props;
   return (
     <SplitButton
-      label="AI"
-      title="Open the AI assistant; ⌘I edits the selection or statement inline"
+      label={t('ai')}
+      title={t('openAiAssistant')}
       className={styles.ai}
       onClick={props.onAssistant}
-      menuLabel="AI options"
+      menuLabel={t('aiOptions')}
       entries={[
         ...(onInline
           ? [
               {
                 kind: 'item' as const,
-                label: 'Edit SQL with AI',
+                label: t('editSqlAi'),
                 shortcut: '⌘I',
                 run: onInline,
               },
             ]
           : []),
-        { kind: 'item', label: 'Assistant panel', run: props.onAssistant },
+        { kind: 'item', label: t('assistantPanel'), run: props.onAssistant },
       ]}
     >
       <Icon name="sparkles" />
-      AI
+      {t('ai')}
     </SplitButton>
   );
 }
@@ -159,9 +162,9 @@ function AiButton(props: {
 export function EditorBar(props: Props): React.JSX.Element {
   const { settings, onSettings } = props;
   return (
-    <div className={styles.bar} role="toolbar" aria-label="Query actions">
+    <div className={styles.bar} role="toolbar" aria-label={t('queryActions')}>
       <MenuButton
-        label="Editor settings"
+        label={t('editorSettings')}
         variant="ghost"
         className={styles.icon}
         entries={settingsEntries(settings, onSettings, props.dialect)}
@@ -173,13 +176,13 @@ export function EditorBar(props: Props): React.JSX.Element {
         {props.notice ??
           (props.offline && (
             <Button size="sm" variant="ghost" onClick={props.onConnect}>
-              Connect to run
+              {t('connectRun')}
             </Button>
           ))}
       </span>
       <MenuButton
-        label="Row limit"
-        title="Rows kept per result set"
+        label={t('rowLimit')}
+        title={t('rowsKeptPer')}
         className={styles.limit}
         entries={limitEntries(settings, onSettings)}
       >
@@ -187,15 +190,15 @@ export function EditorBar(props: Props): React.JSX.Element {
         <Icon name="chevronDown" />
       </MenuButton>
       <SplitButton
-        label="Beautify"
-        title="Beautify the selection or the whole query (⌥⌘B)"
+        label={t('beautify')}
+        title={t('beautifySelectionWhole')}
         onClick={() => {
           props.onFormat('beautify');
         }}
-        menuLabel="Format options"
+        menuLabel={t('formatOptions')}
         entries={beautifyEntries(settings, onSettings, props.onFormat)}
       >
-        Beautify
+        {t('beautify')}
       </SplitButton>
       {props.onAssistant && (
         <AiButton onAssistant={props.onAssistant} onInline={props.onInline} />

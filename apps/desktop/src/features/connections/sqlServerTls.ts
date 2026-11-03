@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { TlsModeDto } from '@openrows/ipc';
+import { t } from './messages/routes';
 
 /** SQL Server's `Encrypt` choice, as its own tools name it. */
 type Encrypt = 'mandatory' | 'optional' | 'login' | 'off';
 
 /** Encrypt choices, strongest first. */
 export const ENCRYPT_CHOICES: readonly { value: Encrypt; label: string }[] = [
-  { value: 'mandatory', label: 'Mandatory' },
-  { value: 'optional', label: 'Optional (when the server supports it)' },
-  { value: 'login', label: 'Login only' },
-  { value: 'off', label: 'Off (no TLS)' },
+  { value: 'mandatory', label: t('mandatory') },
+  { value: 'optional', label: t('optionalWhenServer') },
+  { value: 'login', label: t('loginOnly') },
+  { value: 'off', label: t('offNoTls') },
 ];
 
 /** The Encrypt choice a TLS mode stands for. */
@@ -61,5 +62,7 @@ export function encryptLabel(mode: TlsModeDto): string {
     ENCRYPT_CHOICES.find((choice) => choice.value === encrypt)?.label ??
     encrypt;
   if (encrypt !== 'mandatory') return label.replace(/ \(.*\)$/, '');
-  return trustsCertificate(mode) ? `${label}, trusted certificate` : label;
+  return trustsCertificate(mode)
+    ? t('labelTrustedCertificate', { label })
+    : label;
 }

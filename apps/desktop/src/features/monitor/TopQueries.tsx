@@ -13,6 +13,7 @@ const QueryInvestigation = lazy(() =>
   })),
 );
 import styles from './Monitor.module.css';
+import { t } from './messages/lazyInvestigation';
 type Props = {
   table: MonitorTable;
   target: MonitorTarget;
@@ -48,14 +49,9 @@ export function TopQueries(props: Props): React.JSX.Element {
   const sql = typeof chosen?.query === 'string' ? chosen.query : null;
   return (
     <>
-      <p className={styles.note}>
-        Calls, total time, rows and I/O/scan counters are rates for the latest
-        valid interval. Window mean is total/calls. Maximum and cumulative mean
-        are statistics since last reset. Rankings use summed covered live-window
-        deltas; unknown/reset intervals remain unknown.
-      </p>
+      <p className={styles.note}>{t('callsTotalTime')}</p>
       <MonitorGrid
-        label="Top queries"
+        label={t('topQueries')}
         table={props.table}
         onRow={setSelected}
       />
@@ -110,7 +106,7 @@ function QueryActions(
               );
           }}
         >
-          {copied ? 'Copied' : 'Copy normalised SQL'}
+          {copied ? t('copied') : t('copyNormalisedSql')}
         </Button>
         <Button
           size="sm"
@@ -122,7 +118,7 @@ function QueryActions(
               );
           }}
         >
-          Open in editor for review
+          {t('openEditorReview')}
         </Button>
         <ExplainAction
           sql={sql}
@@ -130,10 +126,7 @@ function QueryActions(
           onReview={setReview}
         />
         {!sql && props.explain !== false && (
-          <span className={styles.note}>
-            Select a statement with safely normalised SQL. Fingerprint-only rows
-            cannot be explained.
-          </span>
+          <span className={styles.note}>{t('selectStatementSafely')}</span>
         )}
       </div>
       {error && <p role="alert">{error}</p>}
@@ -161,12 +154,7 @@ function ExplainAction(props: {
 }): React.JSX.Element {
   const { sql } = props;
   if (!props.enabled)
-    return (
-      <span className={styles.note}>
-        Explain from the Monitor is PostgreSQL only; use the editor&apos;s
-        Explain for this engine.
-      </span>
-    );
+    return <span className={styles.note}>{t('explainMonitorPostgresql')}</span>;
   return (
     <Button
       size="sm"
@@ -175,7 +163,7 @@ function ExplainAction(props: {
         if (sql) props.onReview(sql);
       }}
     >
-      Explain
+      {t('explain')}
     </Button>
   );
 }

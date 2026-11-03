@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { mcpStatus } from '@openrows/ipc';
 import type { ServerStatus } from '@openrows/ipc';
+import { t } from '../messages/lazyAi';
 /** Reconcile explicit MCP operations and retain one-time credentials only in this view. */
 export function useMcpServer(): {
   status: ServerStatus | null;
@@ -23,7 +24,7 @@ export function useMcpServer(): {
       setStatus(await mcpStatus());
     } catch (error) {
       setFailure(
-        error instanceof Error ? error.message : 'MCP operation failed.',
+        error instanceof Error ? error.message : t('mcpOperationFailed'),
       );
     } finally {
       setBusy(false);
@@ -36,7 +37,7 @@ export function useMcpServer(): {
         if (alive) setStatus(next);
       },
       () => {
-        if (alive) setFailure('MCP status unavailable.');
+        if (alive) setFailure(t('mcpStatusUnavailable'));
       },
     );
     return () => {

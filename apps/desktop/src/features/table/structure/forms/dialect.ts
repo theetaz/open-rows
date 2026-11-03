@@ -6,6 +6,7 @@ import type {
   ObjectFeaturesDto,
   ReferentialActionDto,
 } from '@openrows/ipc';
+import { t } from '../../messages/initial';
 
 /** A type offered by the type picker, and the size it takes. */
 type TypeSpec = { name: string; size?: 'length' | 'precision' };
@@ -90,12 +91,12 @@ export function typeSpecs(engine: EngineDto): readonly TypeSpec[] {
 }
 
 const allMethods: readonly Option<IndexMethodDto>[] = [
-  { value: 'btree', label: 'B-tree' },
-  { value: 'hash', label: 'Hash' },
-  { value: 'gin', label: 'GIN' },
-  { value: 'gist', label: 'GiST' },
-  { value: 'brin', label: 'BRIN' },
-  { value: 'spgist', label: 'SP-GiST' },
+  { value: 'btree', label: t('bTree') },
+  { value: 'hash', label: t('hash') },
+  { value: 'gin', label: t('gin') },
+  { value: 'gist', label: t('gist') },
+  { value: 'brin', label: t('brin') },
+  { value: 'spgist', label: t('spGist') },
 ];
 
 /** Index access methods `engine` can create. */
@@ -120,14 +121,14 @@ export function identityOptions(
   engine: EngineDto,
   features: ObjectFeaturesDto,
 ): readonly Option<IdentityDto>[] {
-  const none: Option<IdentityDto> = { value: 'none', label: 'None' };
+  const none: Option<IdentityDto> = { value: 'none', label: t('none') };
   if (!features.identity) return [none];
   if (engine === 'mysql' || engine === 'mariadb')
-    return [none, { value: 'autoIncrement', label: 'AUTO_INCREMENT' }];
+    return [none, { value: 'autoIncrement', label: t('autoIncrement') }];
   return [
     none,
-    { value: 'always', label: 'Identity (always)' },
-    { value: 'byDefault', label: 'Identity (by default)' },
+    { value: 'always', label: t('identityAlways') },
+    { value: 'byDefault', label: t('identityDefault') },
   ];
 }
 
@@ -182,11 +183,11 @@ export function defaultPresets(engine: EngineDto): readonly string[] {
 
 /** `ON DELETE` / `ON UPDATE` choices. */
 export const referentialActions: readonly Option<ReferentialActionDto>[] = [
-  { value: 'noAction', label: 'NO ACTION' },
-  { value: 'restrict', label: 'RESTRICT' },
-  { value: 'cascade', label: 'CASCADE' },
-  { value: 'setNull', label: 'SET NULL' },
-  { value: 'setDefault', label: 'SET DEFAULT' },
+  { value: 'noAction', label: t('noAction') },
+  { value: 'restrict', label: t('restrict') },
+  { value: 'cascade', label: t('cascade') },
+  { value: 'setNull', label: t('setNull') },
+  { value: 'setDefault', label: t('setDefault') },
 ];
 
 /** Whether `DROP … CASCADE` and `TRUNCATE … CASCADE` exist (PostgreSQL). */

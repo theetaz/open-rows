@@ -2,6 +2,7 @@
 import { createContext, useContext } from 'react';
 import type { TableViews } from '../table/useTableViews';
 import type { ShowRow } from '../table/row';
+import { t } from './initialMessages';
 
 /** Workspace lifetime and inspector/navigation context of SQL result edits. */
 export type ResultWorkspace = {
@@ -24,6 +25,6 @@ export function useResultWorkspace(): ResultWorkspace | null {
 export function useResultEditNotice(tabId: string): string | null {
   const edits = useResultWorkspace()?.views.entryOf(tabId).edits;
   return edits?.current.length || edits?.pending || edits?.uncertain
-    ? 'Commit or discard the staged result changes before running SQL again.'
+    ? t('commitDiscardStaged')
     : null;
 }

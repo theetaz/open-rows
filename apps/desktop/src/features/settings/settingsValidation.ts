@@ -5,6 +5,7 @@ import {
   parseCopySettings,
 } from '../../results/copy/copySettings';
 import { validTheme } from '@openrows/ui';
+import { t } from './messages/validation';
 const schema = JSON.parse(schemaText) as {
   definitions: Record<string, Schema>;
 } & Schema;
@@ -34,10 +35,10 @@ const fail = (path: string, reason: string): never => {
 
 function scalar(value: unknown, rule: Schema, path: string): void {
   if ('const' in rule && value !== rule.const)
-    fail(path, 'unsupported version');
-  if (rule.enum && !rule.enum.includes(value)) fail(path, 'invalid choice');
+    fail(path, t('unsupportedVersion'));
+  if (rule.enum && !rule.enum.includes(value)) fail(path, t('invalidChoice'));
   if (rule.type === 'integer' && !Number.isSafeInteger(value))
-    fail(path, 'must be an integer');
+    fail(path, t('mustInteger'));
   validateRange(value, rule, path);
 }
 
@@ -48,16 +49,16 @@ function validateRange(value: unknown, rule: Schema, path: string): void {
       value < (rule.minimum ?? -Infinity) ||
       value > (rule.maximum ?? Infinity)
     )
-      fail(path, 'number outside the allowed range');
+      fail(path, t('numberOutsideAllowed'));
   }
   if (typeof value === 'string') {
     if (
       value.length < (rule.minLength ?? 0) ||
       value.length > (rule.maxLength ?? Infinity)
     )
-      fail(path, 'invalid length');
+      fail(path, t('invalidLength'));
     if (rule.pattern && !new RegExp(rule.pattern).test(value))
-      fail(path, 'invalid format');
+      fail(path, t('invalidFormat'));
   }
 }
 
@@ -78,7 +79,7 @@ function object(
       if (rule.propertyNames)
         validate(key, rule.propertyNames, `${path}.${key}`);
       validate(field, rule.additionalProperties, `${path}.${key}`);
-    } else fail(`${path}.${key}`, 'unknown key');
+    } else fail(`${path}.${key}`, t('unknownKey'));
   }
 }
 
@@ -86,7 +87,7 @@ function validate(value: unknown, input: Schema, path: string): void {
   const rule = input.$ref
     ? definitions[input.$ref.split('/').at(-1) ?? '']
     : input;
-  if (!rule) return fail(path, 'unknown schema');
+  if (!rule) return fail(path, t('unknownSchema'));
   if (rule.oneOf) {
     const matches = rule.oneOf.filter((choice) => {
       try {
@@ -96,17 +97,17 @@ function validate(value: unknown, input: Schema, path: string): void {
         return false;
       }
     });
-    if (matches.length !== 1) fail(path, 'invalid value');
+    if (matches.length !== 1) fail(path, t('invalidValue'));
     return;
   }
   const actual =
     value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value;
   if (rule.type && rule.type !== 'integer' && rule.type !== actual)
-    fail(path, `must be ${rule.type}`);
+    fail(path, t('mustType', { type: rule.type }));
   scalar(value, rule, path);
   if (Array.isArray(value)) {
     if (value.length > (rule.maxItems ?? Infinity))
-      fail(path, 'too many items');
+      fail(path, t('tooManyItems'));
     value.forEach((item, index) => {
       if (rule.items) validate(item, rule.items, `${path}[${String(index)}]`);
     });
@@ -116,9 +117,9 @@ function validate(value: unknown, input: Schema, path: string): void {
 
 /** Validate portable settings strictly, including nested unknown and unsafe keys. */
 export function parsePortableSettings(text: string): Record<string, unknown> {
-  if (text.length > 1024 * 1024) fail('Settings', 'larger than 1 MiB');
+  if (text.length > 1024 * 1024) fail(t('settings'), t('largerThan1'));
   const value: unknown = JSON.parse(text);
-  validate(value, schema, 'Settings');
+  validate(value, schema, t('settings'));
   const copy = copyConflict(
     parseCopySettings((value as { copy?: unknown }).copy),
   );
@@ -126,6 +127,6 @@ export function parsePortableSettings(text: string): Record<string, unknown> {
   const themes = (value as { appearance?: { customThemes?: unknown[] } })
     .appearance?.customThemes;
   if (themes?.some((theme) => !validTheme(theme)))
-    fail('Settings.appearance.customThemes', 'theme fails contrast validation');
+    fail('Settings.appearance.customThemes', t('themeFailsContrast'));
   return value as Record<string, unknown>;
 }

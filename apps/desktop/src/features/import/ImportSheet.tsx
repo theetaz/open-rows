@@ -13,6 +13,7 @@ import type { ImportContext, ImportDraft } from './model';
 import { useImportDraft } from './useImportDraft';
 import { useImportJob } from './useImportJob';
 import styles from './Import.module.css';
+import { t } from './messages';
 
 export type ImportSheetProps = {
   context: ImportContext;
@@ -26,16 +27,17 @@ export function confirmation(
 ): { title: string; message: string; action: string } {
   const table = `${context.schema}.${draft.table.trim()}`;
   const steps = [
-    `Rows from ${draft.file?.fileName ?? 'the file'} will be written to ${table}.`,
-    draft.target === 'new' ? 'The table is created first.' : '',
-    draft.target === 'existing' && draft.truncate
-      ? 'Every existing row of the table is deleted first.'
-      : '',
+    t('rowsFilenameWritten', {
+      fileName: draft.file?.fileName ?? t('file2'),
+      table,
+    }),
+    draft.target === 'new' ? t('tableCreatedFirst') : '',
+    draft.target === 'existing' && draft.truncate ? t('everyExistingRow') : '',
   ];
   return {
-    title: `Import into ${draft.table.trim()}?`,
+    title: t('importIntoTable', { table: draft.table.trim() }),
     message: steps.filter(Boolean).join(' '),
-    action: 'Import',
+    action: t('import'),
   };
 }
 
@@ -76,7 +78,10 @@ export function ImportSheet({
   const importing = showsImport(job);
   return (
     <Sheet
-      title={`Import into ${context.database}.${context.schema}`}
+      title={t('importIntoDatabase', {
+        database: context.database,
+        schema: context.schema,
+      })}
       size="appearance"
       onClose={isBusy(job) ? cancel : onClose}
     >
@@ -96,9 +101,7 @@ export function ImportSheet({
         importing={importing}
         confirming={confirming}
         problem={
-          context.readOnly
-            ? 'This connection is read-only: imports are disabled.'
-            : draftProblem(state.draft)
+          context.readOnly ? t('connectionReadOnly') : draftProblem(state.draft)
         }
         checkable={!draftProblem(state.draft)}
         on={{
@@ -142,25 +145,27 @@ function Actions(props: {
           onClick={on.cancel}
           disabled={job.status !== 'running' || !job.importId}
         >
-          {job.mode === 'check' ? 'Stop Check' : 'Cancel Import'}
+          {job.mode === 'check' ? t('stopCheck') : t('cancelImport')}
         </Button>
       </SheetActions>
     );
   if (props.importing)
     return (
       <SheetActions>
-        {job.status === 'failed' && <Button onClick={on.back}>Back</Button>}
+        {job.status === 'failed' && (
+          <Button onClick={on.back}>{t('back')}</Button>
+        )}
         <Button variant="primary" onClick={on.close}>
-          Done
+          {t('done')}
         </Button>
       </SheetActions>
     );
   if (props.confirming)
     return (
       <SheetActions>
-        <Button onClick={on.back}>Back</Button>
+        <Button onClick={on.back}>{t('back')}</Button>
         <Button variant="destructive" onClick={on.confirm}>
-          Import
+          {t('import')}
         </Button>
       </SheetActions>
     );
@@ -170,16 +175,16 @@ function Actions(props: {
         props.problem && <span className={styles.note}>{props.problem}</span>
       }
     >
-      <Button onClick={on.close}>Cancel</Button>
+      <Button onClick={on.close}>{t('cancel')}</Button>
       <Button onClick={on.check} disabled={!props.checkable}>
-        Check Conflicts
+        {t('checkConflicts')}
       </Button>
       <Button
         variant="primary"
         onClick={on.import}
         disabled={Boolean(props.problem)}
       >
-        Import…
+        {t('import2')}
       </Button>
     </SheetActions>
   );

@@ -6,6 +6,7 @@ import type { DatabaseDto } from '@openrows/ipc';
 import { listIndex, visibleDatabases } from './databaseList';
 import type { Catalog } from './useCatalog';
 import styles from './OpenDatabasePanel.module.css';
+import { t } from './messages';
 
 type Props = {
   catalog: Catalog;
@@ -20,8 +21,8 @@ function statusOf(catalog: Catalog, matches: number): string | null {
   if (catalog.offline) return catalog.offline;
   const { databases } = catalog;
   if (databases.status === 'error') return databases.message;
-  if (databases.status !== 'ready') return 'Loading databases…';
-  return matches ? null : 'No matching databases';
+  if (databases.status !== 'ready') return t('loadingDatabases');
+  return matches ? null : t('noMatchingDatabases');
 }
 
 /** Focus the panel's search field once the sheet has focused its first control. */
@@ -67,15 +68,15 @@ export function OpenDatabasePanel(props: Props): React.JSX.Element {
   };
   const status = statusOf(catalog, names.length);
   return (
-    <Sheet title="Open database" onClose={props.onClose}>
+    <Sheet title={t('openDatabase')} onClose={props.onClose}>
       <div ref={panel} className={styles.panel}>
         <TextField
-          aria-label="Search for database"
+          aria-label={t('searchDatabase')}
           role="combobox"
           aria-expanded="true"
           aria-controls={listId}
           aria-activedescendant={current ? `${listId}-${current}` : undefined}
-          placeholder="Search for database…"
+          placeholder={t('searchDatabase2')}
           leadingIcon={<Icon name="search" />}
           value={query}
           onChange={(event) => {
@@ -121,7 +122,7 @@ function DatabaseList(props: {
     <ul
       id={props.id}
       role="listbox"
-      aria-label="Databases"
+      aria-label={t('databases')}
       className={styles.list}
     >
       {props.databases.map(({ name, comment }) => (
@@ -148,7 +149,7 @@ function DatabaseList(props: {
         >
           <Icon name="database" aria-hidden="true" />
           <span>{name}</span>
-          {props.opened.includes(name) && <small>Open</small>}
+          {props.opened.includes(name) && <small>{t('open')}</small>}
         </li>
       ))}
     </ul>
@@ -173,28 +174,24 @@ function PanelFooter(props: {
             props.onSystem(event.target.checked);
           }}
         />
-        Show system databases
+        {t('showSystemDatabases')}
       </label>
       <footer className={styles.footer}>
-        <Button onClick={props.onCancel}>Cancel</Button>
+        <Button onClick={props.onCancel}>{t('cancel')}</Button>
         <span className={styles.spacer} />
         <Button
           disabled={!props.onNew}
-          title={
-            props.onNew
-              ? 'Create a database'
-              : 'This database cannot create databases'
-          }
+          title={props.onNew ? t('createDatabase') : t('databaseCannotCreate')}
           onClick={props.onNew}
         >
-          New…
+          {t('new')}
         </Button>
         <Button
           variant="primary"
           disabled={!props.canOpen}
           onClick={props.onOpen}
         >
-          Open
+          {t('open')}
         </Button>
       </footer>
     </>

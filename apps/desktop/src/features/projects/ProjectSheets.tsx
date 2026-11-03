@@ -5,6 +5,7 @@ import { NameSheet } from '../query/NameSheet';
 import { deletePrompt } from './projectActions';
 import type { ProjectActions, ProjectDialog } from './projectActions';
 import { stem } from './treeModel';
+import { t } from './messages';
 
 /** The in-app delete alert, when the native one is unavailable. */
 function DeleteAlert(props: {
@@ -17,7 +18,7 @@ function DeleteAlert(props: {
     <Sheet title={prompt.title} size="alert" onClose={props.onClose}>
       <p>{prompt.message}</p>
       <SheetActions>
-        <Button onClick={props.onClose}>Cancel</Button>
+        <Button onClick={props.onClose}>{t('cancel')}</Button>
         <Button
           variant="destructive"
           onClick={() => {
@@ -49,10 +50,10 @@ export function ProjectSheets(props: {
   if (dialog.kind === 'rename')
     return (
       <NameSheet
-        title={`Rename ${node.kind === 'folder' ? 'folder' : 'query'}`}
-        label="Name"
+        title={node.kind === 'folder' ? t('renameFolder') : t('renameQuery')}
+        label={t('name')}
         initial={node.kind === 'folder' ? node.name : stem(node.name)}
-        action="Rename"
+        action={t('rename')}
         onSubmit={(name) => actions.rename(node, name)}
         onClose={onClose}
       />
@@ -60,10 +61,10 @@ export function ProjectSheets(props: {
   const folder = dialog.kind === 'newFolder';
   return (
     <NameSheet
-      title={folder ? 'New folder' : 'New query'}
-      label={folder ? 'Folder name' : 'Query name'}
+      title={folder ? t('newFolder') : t('newQuery')}
+      label={folder ? t('folderName') : t('queryName')}
       initial=""
-      action="Create"
+      action={t('create')}
       onSubmit={(name) =>
         folder
           ? actions.newFolder(node.path, name)

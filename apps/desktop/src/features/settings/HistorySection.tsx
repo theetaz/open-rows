@@ -1,16 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 import { Switch, TextField } from '@openrows/ui';
 import { historySettings, parseHistorySettings } from './historySettings';
+import { t } from './messages/lazyPanes';
 /** Settings ▸ General ▸ History; saved changes sweep stored history. */
 export function HistorySection(): React.JSX.Element {
   const settings = historySettings.useValue();
   return (
-    <section aria-label="History retention">
-      <h3>History</h3>
+    <section aria-label={t('historyRetention')}>
+      <h3>{t('history')}</h3>
       <label>
-        Keep forever{' '}
+        {t('keepForever')}{' '}
         <Switch
-          aria-label="Keep history forever"
+          aria-label={t('keepHistoryForever')}
           checked={settings.keepForever}
           onCheckedChange={(keepForever) => {
             historySettings.set({ ...settings, keepForever });
@@ -18,7 +19,7 @@ export function HistorySection(): React.JSX.Element {
         />
       </label>
       <TextField
-        label="Maximum entries per connection"
+        label={t('maximumEntriesPer')}
         type="number"
         min={1}
         max={4294967295}
@@ -34,7 +35,7 @@ export function HistorySection(): React.JSX.Element {
         }}
       />
       <TextField
-        label="Maximum age in days"
+        label={t('maximumAgeDays')}
         type="number"
         min={1}
         max={4294967295}
@@ -49,10 +50,7 @@ export function HistorySection(): React.JSX.Element {
           );
         }}
       />
-      <p>
-        Expired entries are removed on write and startup. Lowering a limit
-        removes matching history.
-      </p>
+      <p>{t('expiredEntriesRemoved')}</p>
     </section>
   );
 }

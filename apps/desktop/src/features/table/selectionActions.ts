@@ -2,9 +2,11 @@
 import { selectedCells, selectedRows } from './bulk/cells';
 import { DEFAULT_VALUE, NULL_VALUE, textValue } from './cellValue';
 import type { Action, Context } from './contextMenuActions';
+import { t, tn } from './messages/lazyData';
 
-const plural = (count: number, noun: string): string =>
-  `${count.toLocaleString('en-US')} ${noun}${count === 1 ? '' : 's'}`;
+const formatted = (count: number): { count: string } => ({
+  count: count.toLocaleString('en-US'),
+});
 
 /**
  * Actions for a multi-cell selection (range, column or several rows). Every
@@ -27,14 +29,14 @@ export function selectionActions({
     });
   return [
     {
-      label: `Set value for ${plural(cells, 'cell')}…`,
+      label: tn('setValueCells', cells, formatted(cells)),
       disabled: !writable,
       run: run(() => {
         onPrompt(cells);
       }),
     },
     {
-      label: `Paste into ${plural(cells, 'cell')}`,
+      label: tn('pasteIntoCells', cells, formatted(cells)),
       disabled: !writable,
       run: run(() => {
         navigator.clipboard.readText().then((text) => {
@@ -42,18 +44,18 @@ export function selectionActions({
         }, editing.fail);
       }),
     },
-    { label: 'Set NULL', disabled: !writable, run: set(NULL_VALUE) },
-    { label: 'Set DEFAULT', disabled: !writable, run: set(DEFAULT_VALUE) },
-    { label: 'Set EMPTY', disabled: !writable, run: set(textValue('')) },
+    { label: t('setNull'), disabled: !writable, run: set(NULL_VALUE) },
+    { label: t('setDefault'), disabled: !writable, run: set(DEFAULT_VALUE) },
+    { label: t('setEmpty'), disabled: !writable, run: set(textValue('')) },
     {
-      label: `Duplicate ${plural(rows, 'row')}`,
+      label: tn('duplicateRows', rows, formatted(rows)),
       disabled: !writable,
       run: run(() => {
         editing.bulk.duplicateRows(result, ranges);
       }),
     },
     {
-      label: `Delete ${plural(rows, 'row')}`,
+      label: tn('deleteRows', rows, formatted(rows)),
       disabled: !writable,
       danger: true,
       run: run(() => {

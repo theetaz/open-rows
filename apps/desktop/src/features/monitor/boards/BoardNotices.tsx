@@ -3,6 +3,7 @@ import { Button } from '@openrows/ui';
 import type { BoardDto } from '@openrows/ipc';
 import type { BoardRuns } from './useBoardRuns';
 import styles from './Boards.module.css';
+import { t } from '../messages/lazyBoards';
 
 /** An imported board: every query shown, nothing runs until approved. */
 export function Review(props: {
@@ -10,11 +11,9 @@ export function Review(props: {
   onApprove: () => void;
 }): React.JSX.Element {
   return (
-    <section className={styles.review} aria-label="Review imported board">
-      <strong>Imported board — paused.</strong>
-      <span>
-        Review every query below. Nothing runs until you approve this board.
-      </span>
+    <section className={styles.review} aria-label={t('reviewImportedBoard')}>
+      <strong>{t('importedBoardPaused')}</strong>
+      <span>{t('reviewEveryQuery')}</span>
       {props.board.board.widgets.map((widget) => (
         <div key={widget.id}>
           <div>{widget.title}</div>
@@ -23,7 +22,7 @@ export function Review(props: {
       ))}
       <div>
         <Button size="sm" variant="primary" onClick={props.onApprove}>
-          Approve and enable
+          {t('approveEnable')}
         </Button>
       </div>
     </section>
@@ -39,7 +38,7 @@ export function RunNotes(props: {
       {props.runs.note && <p className={styles.note}>{props.runs.note}</p>}
       {props.runs.live && (
         <p className={styles.note}>
-          Refreshing every {String(props.seconds)} s while this board is open.
+          {t('refreshingEverySeconds', { seconds: String(props.seconds) })}
         </p>
       )}
     </>
@@ -50,9 +49,9 @@ export function RunNotes(props: {
 export function EmptyBoard(props: { onAdd: () => void }): React.JSX.Element {
   return (
     <div className={styles.empty}>
-      <p>This board has no widgets.</p>
+      <p>{t('boardNoWidgets')}</p>
       <Button size="sm" variant="primary" onClick={props.onAdd}>
-        Add widget
+        {t('addWidget')}
       </Button>
     </div>
   );

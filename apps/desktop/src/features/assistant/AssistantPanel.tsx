@@ -5,6 +5,7 @@ import { cancelConversation, toggleAssistant } from './conversation';
 import { useAssistantPanel } from './useAssistantPanel';
 import { ConversationView } from './ConversationView';
 import styles from './Assistant.module.css';
+import { t } from './lazyMessages';
 type Controls = ReturnType<typeof useAssistantPanel>;
 /** Docked query assistant with explicit proposals, policy and every tool step visible. */
 export function AssistantPanel(props: AssistantProps): React.JSX.Element {
@@ -12,18 +13,20 @@ export function AssistantPanel(props: AssistantProps): React.JSX.Element {
   const busy = controls.conversation.running !== null;
   return (
     <aside
-      aria-label={props.monitoring ? 'Monitoring assistant' : 'Query assistant'}
+      aria-label={
+        props.monitoring ? t('monitoringAssistant') : t('queryAssistant')
+      }
       className={styles.panel}
     >
       <header className={styles.row}>
-        <strong>Assistant</strong>
+        <strong>{t('assistant')}</strong>
         <Button
           size="sm"
           onClick={() => {
             toggleAssistant(props.tabId);
           }}
         >
-          Close assistant
+          {t('closeAssistant')}
         </Button>
       </header>
       <ProviderPicker controls={controls} busy={busy} />
@@ -51,11 +54,7 @@ export function AssistantPanel(props: AssistantProps): React.JSX.Element {
         controls={controls}
         busy={busy}
         tabId={props.tabId}
-        label={
-          props.monitoring
-            ? 'Ask about health, slow queries or locks'
-            : 'Ask about this query'
-        }
+        label={props.monitoring ? t('askAboutHealth') : t('askAboutQuery')}
       />
     </aside>
   );
@@ -70,7 +69,9 @@ function ContextNotice({
   return (
     <>
       <div className={styles.row}>
-        <span>Sharing: {controls.policy?.level ?? 'loading'}</span>
+        <span>
+          {t('sharingLevel', { level: controls.policy?.level ?? 'loading' })}
+        </span>
         <Button
           size="sm"
           disabled={!!controls.reason || busy}
@@ -78,7 +79,7 @@ function ContextNotice({
             void controls.inspect();
           }}
         >
-          Context preview
+          {t('contextPreview')}
         </Button>
       </div>
       {controls.reason && <p role="status">{controls.reason}</p>}
@@ -86,10 +87,11 @@ function ContextNotice({
       {controls.preview && (
         <details open>
           <summary>
-            What will be sent · {controls.preview.bytes} bytes
-            {controls.preview.truncated ? ' · truncated' : ''}
+            {controls.preview.truncated
+              ? t('whatSentBytes', { bytes: controls.preview.bytes })
+              : t('whatSentBytesBytes', { bytes: controls.preview.bytes })}
           </summary>
-          <pre aria-label="Exact assistant context">
+          <pre aria-label={t('exactAssistantContext')}>
             {controls.preview.payload}
           </pre>
         </details>
@@ -118,7 +120,7 @@ function Composer({
       <label>
         {label}
         <textarea
-          aria-label="Assistant question"
+          aria-label={t('assistantQuestion')}
           maxLength={4096}
           value={controls.question}
           disabled={!!controls.reason || busy}
@@ -132,7 +134,7 @@ function Composer({
           type="submit"
           disabled={!!controls.reason || busy || !controls.question.trim()}
         >
-          Send
+          {t('send')}
         </Button>
         <Button
           type="button"
@@ -141,7 +143,7 @@ function Composer({
             cancelConversation(tabId);
           }}
         >
-          Cancel assistant
+          {t('cancelAssistant')}
         </Button>
       </div>
     </form>
@@ -157,11 +159,11 @@ function ProviderPicker({
   return (
     <>
       <SelectField
-        label="Assistant provider"
+        label={t('assistantProvider')}
         value={controls.provider}
         disabled={busy}
         options={[
-          { value: '', label: 'Choose provider' },
+          { value: '', label: t('chooseProvider') },
           ...controls.settings.providers.map((provider) => ({
             value: provider.id,
             label: provider.name,
@@ -170,7 +172,7 @@ function ProviderPicker({
         onValueChange={controls.setProvider}
       />
       <TextField
-        label="Assistant model"
+        label={t('assistantModel')}
         value={controls.model}
         disabled={busy}
         maxLength={256}
@@ -200,13 +202,13 @@ function ProviderPicker({
           void controls.verification.verify();
         }}
       >
-        Verify models
+        {t('verifyModels')}
       </Button>
       {controls.verification.failure && (
         <p role="alert">{controls.verification.failure}</p>
       )}
       <TextField
-        label="Assistant schema"
+        label={t('assistantSchema')}
         value={controls.schema}
         disabled={busy}
         maxLength={256}
@@ -227,7 +229,7 @@ function QuickActions({
   disabled: boolean;
 }): React.JSX.Element {
   return (
-    <div className={styles.row} aria-label="Assistant quick actions">
+    <div className={styles.row} aria-label={t('assistantQuickActions')}>
       <Button
         size="sm"
         disabled={disabled || !props.sql().trim()}
@@ -235,7 +237,7 @@ function QuickActions({
           controls.send('Explain this query');
         }}
       >
-        Explain this query
+        {t('explainQuery')}
       </Button>
       <Button
         size="sm"
@@ -248,7 +250,7 @@ function QuickActions({
           );
         }}
       >
-        Fix this error
+        {t('fixError')}
       </Button>
       <Button
         size="sm"
@@ -260,7 +262,7 @@ function QuickActions({
           );
         }}
       >
-        Optimise from plan
+        {t('optimisePlan')}
       </Button>
     </div>
   );

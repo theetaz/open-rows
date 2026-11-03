@@ -3,6 +3,7 @@ import { Button } from '@openrows/ui';
 import { Sheet } from '@openrows/ui/sheet';
 import type { ExplainControls } from './useExplain';
 import styles from './Explain.module.css';
+import { rich, t } from './messages';
 
 /** Consent before Explain Analyze executes the reviewed statement. */
 function ExplainConfirm(props: {
@@ -12,19 +13,18 @@ function ExplainConfirm(props: {
   onCancel: () => void;
 }): React.JSX.Element {
   return (
-    <Sheet title="Run Explain Analyze?" onClose={props.onCancel}>
+    <Sheet title={t('runExplainAnalyze')} onClose={props.onCancel}>
       <div className={styles.confirm}>
         <p>
-          Explain Analyze runs this statement on{' '}
-          <strong>{props.connection}</strong> to measure it, inside a
-          transaction that is rolled back afterwards. Effects outside the
-          transaction, such as identity or sequence values, are not undone.
+          {rich('explainAnalyzeRuns', {
+            connection: <strong>{props.connection}</strong>,
+          })}
         </p>
-        <pre aria-label="Statement to analyse">{props.statement}</pre>
+        <pre aria-label={t('statementAnalyse')}>{props.statement}</pre>
         <footer>
-          <Button onClick={props.onCancel}>Cancel</Button>
+          <Button onClick={props.onCancel}>{t('cancel')}</Button>
           <Button variant="primary" onClick={props.onConfirm}>
-            Run and Roll Back
+            {t('runRollBack')}
           </Button>
         </footer>
       </div>

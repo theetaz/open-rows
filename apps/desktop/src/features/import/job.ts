@@ -4,6 +4,7 @@ import type {
   ImportRequest,
   ImportSummaryDto,
 } from '@openrows/ipc';
+import { tn } from './messages';
 
 type Mode = ImportRequest['mode'];
 
@@ -129,5 +130,5 @@ export const isBusy = (job: ImportJob): boolean =>
 /** `1 row`, `2,500 rows`. */
 export const rowCount = (rows: number | null): string => {
   const value = rows ?? 0;
-  return `${value.toLocaleString()} ${value === 1 ? 'row' : 'rows'}`;
+  return tn('rowCount', value, { count: value.toLocaleString() });
 };

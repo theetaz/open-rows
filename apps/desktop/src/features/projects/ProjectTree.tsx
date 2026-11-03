@@ -13,6 +13,7 @@ import type {
 } from './projectActions';
 import { canMove, filterTree, projectTree } from './treeModel';
 import type { ProjectNode } from './treeModel';
+import { t } from './messages';
 
 /** MIME type of a dragged project item; its data is the item's path. */
 const DRAG_TYPE = 'application/x-openrows-project-item';
@@ -173,7 +174,7 @@ export function ProjectTree(
   };
   return (
     <>
-      <Tree label={`${project.name} queries`}>
+      <Tree label={t('nameQueries', { name: project.name })}>
         {roots.map((node) => (
           <Row key={node.path} node={node} level={1} context={context} />
         ))}
@@ -182,7 +183,7 @@ export function ProjectTree(
         <CascadeMenu
           x={menu.x}
           y={menu.y}
-          label={`${menu.node.name} actions`}
+          label={t('nameActions', { name: menu.node.name })}
           onClose={() => {
             setMenu(null);
           }}

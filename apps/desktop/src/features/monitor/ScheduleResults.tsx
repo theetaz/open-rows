@@ -11,6 +11,7 @@ import {
   ArtifactRejected,
 } from '../assistant/ArtifactPreview';
 import styles from './Monitor.module.css';
+import { t } from './messages/lazyInvestigation';
 type Props = {
   profile: ProfileDto;
   database: string;
@@ -31,20 +32,28 @@ export function ScheduleResults(props: Props): React.JSX.Element {
         .map((job) => (
           <section
             key={job.id}
-            aria-label="Scheduled investigation"
+            aria-label={t('scheduledInvestigation')}
             className={styles.schedule}
           >
             <p>
-              {job.config.provider} / {job.config.model} · {stateLabel(job)} ·{' '}
-              {job.runs}/{job.config.maxRuns} runs
+              {t('providerModelJob', {
+                provider: job.config.provider,
+                model: job.config.model,
+                job: stateLabel(job),
+                runs: job.runs,
+                maxRuns: job.config.maxRuns,
+              })}
             </p>
             {job.failure && <p role="alert">{job.failure}</p>}
             <JobActions job={job} {...props} />
             {job.results.map((result, index) => (
               <details key={index}>
                 <summary>
-                  {result.audit.outcome} · ≤ {result.audit.tokens} tokens · ≤{' '}
-                  {result.audit.costMicros} cost millionths
+                  {t('outcomeTokensTokens', {
+                    outcome: result.audit.outcome,
+                    tokens: result.audit.tokens,
+                    costMicros: result.audit.costMicros,
+                  })}
                 </summary>
                 {result.events.map((event, item) => (
                   <ResultEvent
@@ -63,17 +72,17 @@ export function ScheduleResults(props: Props): React.JSX.Element {
 function stateLabel(job: ScheduledJob): string {
   switch (job.state) {
     case 'waiting':
-      return 'Waiting for the next interval';
+      return t('waitingNextInterval');
     case 'running':
-      return 'Running';
+      return t('running');
     case 'finished':
-      return 'Finished';
+      return t('finished');
     case 'stopped':
-      return 'Stopped';
+      return t('stopped');
     case 'paused':
-      if (job.pause === 'locked') return 'Paused while the app is locked';
-      if (job.pause === 'aiOff') return 'Paused while AI is off';
-      return 'Paused';
+      if (job.pause === 'locked') return t('pausedWhileApp');
+      if (job.pause === 'aiOff') return t('pausedWhileAi');
+      return t('paused');
   }
 }
 function JobActions(props: Props & { job: ScheduledJob }): React.JSX.Element {
@@ -91,10 +100,10 @@ function JobActions(props: Props & { job: ScheduledJob }): React.JSX.Element {
         size="sm"
         disabled={job.state !== 'waiting'}
         onClick={() => {
-          act(runInvestigationSchedule(job.id), 'Run failed to start.');
+          act(runInvestigationSchedule(job.id), t('runFailedStart'));
         }}
       >
-        Run now
+        {t('runNow')}
       </Button>
       <Button
         size="sm"
@@ -102,19 +111,19 @@ function JobActions(props: Props & { job: ScheduledJob }): React.JSX.Element {
         onClick={() => {
           act(
             pauseInvestigationSchedule(job.id, !paused),
-            paused ? 'Resume failed.' : 'Pause failed.',
+            paused ? t('resumeFailed') : t('pauseFailed'),
           );
         }}
       >
-        {paused ? 'Resume schedule' : 'Pause schedule'}
+        {paused ? t('resumeSchedule') : t('pauseSchedule')}
       </Button>
       <Button
         size="sm"
         onClick={() => {
-          act(cancelInvestigationSchedule(job.id), 'Cancellation failed.');
+          act(cancelInvestigationSchedule(job.id), t('cancellationFailed'));
         }}
       >
-        {ended ? 'Remove schedule' : 'Cancel schedule'}
+        {ended ? t('removeSchedule') : t('cancelSchedule')}
       </Button>
     </div>
   );
@@ -136,7 +145,9 @@ function ResultEvent(props: {
     case 'artifactRejected':
       return <ArtifactRejected {...event} />;
     case 'text':
-      return <p>Unverified interpretation: {event.delta}</p>;
+      return (
+        <p>{t('unverifiedInterpretationDelta', { delta: event.delta })}</p>
+      );
     case 'trace':
       return (
         <p>

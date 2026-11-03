@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { listAiAudit, purgeAiAudit } from '@openrows/ipc';
 import type { AuditEntry } from '@openrows/ipc';
+import { t } from '../messages/lazyAi';
 /** Refresh and purge scrubbed local metadata, preserving visible load failures. */
 export function useAuditHistory(): {
   entries: AuditEntry[];
@@ -20,7 +21,7 @@ export function useAuditHistory(): {
         if (active) setEntries(value);
       },
       () => {
-        if (active) setFailure('Audit history could not be loaded.');
+        if (active) setFailure(t('auditHistoryCould'));
       },
     );
     return () => {
@@ -33,7 +34,7 @@ export function useAuditHistory(): {
     try {
       setEntries(await listAiAudit());
     } catch {
-      setFailure('Audit history could not be loaded.');
+      setFailure(t('auditHistoryCould'));
     } finally {
       setBusy(false);
     }
@@ -46,7 +47,7 @@ export function useAuditHistory(): {
       setEntries([]);
       return true;
     } catch {
-      setFailure('Audit history could not be purged.');
+      setFailure(t('auditHistoryCouldNot'));
       return false;
     } finally {
       setBusy(false);

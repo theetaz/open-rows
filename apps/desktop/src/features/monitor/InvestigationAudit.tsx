@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Button } from '@openrows/ui';
 import { investigationAudit } from '@openrows/ipc';
 import type { InvestigationAudit as Entry } from '@openrows/ipc';
+import { t } from './messages/lazyInvestigation';
 /** Persistent accounting has no question, model response, SQL or payload content. */
 export function InvestigationAudit(props: {
   connection: string;
@@ -11,30 +12,27 @@ export function InvestigationAudit(props: {
   const [failure, setFailure] = useState('');
   return (
     <details>
-      <summary>Retained investigation accounting</summary>
-      <p>
-        Newest 1,000 records. Purge through Settings → AI → Data sharing →
-        Audit.
-      </p>
+      <summary>{t('retainedInvestigationAccounting')}</summary>
+      <p>{t('newest1000')}</p>
       <Button
         onClick={() => {
           void investigationAudit().then(setEntries, () => {
-            setFailure('Audit unavailable.');
+            setFailure(t('auditUnavailable'));
           });
         }}
       >
-        Load accounting
+        {t('loadAccounting')}
       </Button>
       <p role="alert">{failure}</p>
       <table>
-        <caption>Scrubbed usage and outcomes</caption>
+        <caption>{t('scrubbedUsageOutcomes')}</caption>
         <thead>
           <tr>
-            <th>Provider/model</th>
-            <th>Outcome</th>
-            <th>Token ceiling</th>
-            <th>Cost millionths</th>
-            <th>Evidence ids</th>
+            <th>{t('providerModel')}</th>
+            <th>{t('outcome')}</th>
+            <th>{t('tokenCeiling')}</th>
+            <th>{t('costMillionths')}</th>
+            <th>{t('evidenceIds')}</th>
           </tr>
         </thead>
         <tbody>

@@ -8,6 +8,7 @@ import { useProject } from '../projects';
 import { reloadProject } from '../projects/projectStore';
 import { addSavedQuery } from './savedQueries';
 import styles from './HistoryReview.module.css';
+import { t } from './lazyMessages';
 /** Review every literal before history is persisted as a saved query. */
 export function HistorySaveReview(props: {
   sql: string;
@@ -17,7 +18,7 @@ export function HistorySaveReview(props: {
 }): React.JSX.Element {
   const { project } = useProject();
   const [sql, setSql] = useState(props.sql);
-  const [name, setName] = useState('History query');
+  const [name, setName] = useState(t('historyQuery'));
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const save = useHistorySave({
@@ -45,17 +46,18 @@ export function HistorySaveReview(props: {
     };
   }, [sql, props.engine]);
   return (
-    <Sheet title="Review history query" size="form" onClose={props.onClose}>
+    <Sheet title={t('reviewHistoryQuery')} size="form" onClose={props.onClose}>
       <p>
-        Review highlighted literals before saving to{' '}
-        {project?.name ?? 'Local queries'}. Remove sensitive values here.
+        {t('reviewHighlightedLiterals', {
+          name: project?.name ?? t('localQueries'),
+        })}
       </p>
       <LiteralPreview sql={sql} ranges={ranges ?? []} />
       <label>
-        SQL to save
+        {t('sqlSave')}
         <textarea
           className={styles.sql}
-          aria-label="SQL to save"
+          aria-label={t('sqlSave')}
           value={sql}
           onChange={(event) => {
             setSql(event.target.value);
@@ -65,7 +67,7 @@ export function HistorySaveReview(props: {
         />
       </label>
       <TextField
-        label="Query name"
+        label={t('queryName')}
         value={name}
         onChange={(event) => {
           setName(event.target.value);
@@ -74,7 +76,7 @@ export function HistorySaveReview(props: {
       />
       {error && <p role="alert">{error}</p>}
       <SheetActions>
-        <Button onClick={props.onClose}>Cancel</Button>
+        <Button onClick={props.onClose}>{t('cancel')}</Button>
         <Button
           variant="primary"
           disabled={busy || ranges === null || !name.trim()}
@@ -82,7 +84,7 @@ export function HistorySaveReview(props: {
             void save();
           }}
         >
-          Save reviewed query
+          {t('saveReviewedQuery')}
         </Button>
       </SheetActions>
     </Sheet>
@@ -105,7 +107,7 @@ function LiteralPreview({
     );
   });
   return (
-    <pre aria-label="Literal review" className={styles.preview}>
+    <pre aria-label={t('literalReview')} className={styles.preview}>
       <code>
         {parts}
         {sql.slice(ranges.at(-1)?.to ?? 0)}
