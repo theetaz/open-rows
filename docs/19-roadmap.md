@@ -113,7 +113,7 @@ Every P0 row in [docs/02](02-requirements.md), each test read for this audit. **
 | FR-APP-04 Signed auto-update with notes and opt-out | **Partial** | `features/settings/UpdateNotice.test.tsx` "does not install or restart after a rejected download/signature"; `features/settings/updater.test.ts` "respects opt-out", "selects the stored channel and exposes release notes"; `scripts/test_release_macos.py` | Automated tests stub the plugin. The real check was one manual run with a throw-away key (docs/16 §8). No real key, feed or clean-machine update yet (M1-31) |
 | FR-APP-05 Settings as JSON with a UI | Proved | `features/settings/settingsFile.test.ts`: "loads settings.json into the stores", "reloads an externally edited file"; `SettingsSheet.test.tsx` | |
 
-**Docker note.** Tests in `crates/openrows-net/tests/ssh_container` return without asserting when Docker is not running. `just test-ssh` turns that into a failure, and it was not in the final run list, so FR-CONN-04 and FR-NET-02 rest on `just test` with Docker up. Run `just test-ssh` once to record it.
+**Docker note.** Tests in `crates/openrows-net/tests/ssh_container` return without asserting when Docker is not running. `just test-ssh` turns that into a failure; it passed 16 of 16 on 2026-11-03, which records FR-CONN-04 and FR-NET-02.
 
 The NFR tables in docs/02 have no priority column, so this audit does not count them as P0. M1 rows name many of them; the budgets are below.
 

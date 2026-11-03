@@ -45,8 +45,12 @@ Real results from the final run on the integrated `main`, on a local Mac. **GitH
 | `just test-mysql mysql:8.4` | 57 passed |
 | `just test-mssql` | Passes on Azure SQL Edge |
 | `just e2e` | Journeys 1–6 and 8 pass, with journey 4 at the macOS size of 10,000 rows |
+| `just test-ssh` | 16 passed |
+| `just test-mongo` | Passes on MongoDB 8 |
+| `just test-clickhouse` | Passes on ClickHouse 25.3 |
+| `just test-libsql` | Passes on libSQL server 0.24.32 |
 
-Earlier the same day, on their work lanes: `just test-pg 13 15 16 17 18` (PG 16 has a known `pg_restore` 17.4 failure), `just test-mysql` on MySQL 8.4 and 9.7, MariaDB 11.4 and TiDB v8.5.1, and `just test-pg cockroach`. `just test-ssh`, `just test-mongo`, `just test-clickhouse` and `just test-libsql` are not in this run list.
+Earlier the same day, on their work lanes: `just test-pg 13 15 16 17 18` (PG 16 has a known `pg_restore` 17.4 failure), `just test-mysql` on MySQL 8.4 and 9.7, MariaDB 11.4 and TiDB v8.5.1, and `just test-pg cockroach`.
 
 ## 3. Work-in-progress branches (not on `main`)
 
@@ -124,6 +128,8 @@ just test-mysql              # MySQL 8.4 and 9.7, MariaDB 11.4 and TiDB, one ima
 just test-mssql              # SQL Server (Azure SQL Edge on arm64)
 just test-mongo              # MongoDB on a replica set
 just test-ssh                # OpenSSH matrix; fails instead of skipping without Docker
+just test-clickhouse         # ClickHouse in a throwaway container
+just test-libsql             # libSQL server in a throwaway container
 ```
 
 A throwaway PostgreSQL for testing (remove it afterwards with `docker rm -f openrows-try-pg`):
