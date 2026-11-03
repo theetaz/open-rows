@@ -3,6 +3,9 @@
 # until the job limit; the slowest real tests take well under one.
 [profile.default]
 slow-timeout = { period = "60s", terminate-after = 5 }
+# Ten threads on a 10-core Mac time out tests that start processes under 5 s
+# deadlines (stdio MCP, helper tools); each passes alone in about a second.
+test-threads = 4
 
 # Concurrent debug-image launches on macOS can exhaust the unchanged 2 s
 # handshake deadline in dyld, before the helper reaches its runtime.
