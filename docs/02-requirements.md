@@ -1,6 +1,6 @@
 # 02 — Requirements
 
-IDs are stable so issues, tests and PRs can reference them (`FR-CONN-03`, `NFR-PERF-02`). Priority: **P0** = required for first public alpha, **P1** = required for 1.0, **P2** = post-1.0.
+IDs are stable so issues, tests and PRs can reference them (`FR-CONN-03`, `NFR-PERF-02`). Priority: **P0** = required for first public alpha, **P1** = required for 1.0, **P2** = post-1.0. Status and test proof of every P0: [M1 exit audit](19-roadmap.md#m1-exit-audit-m1-32-2026-11-03).
 
 ## 1. Functional requirements
 
