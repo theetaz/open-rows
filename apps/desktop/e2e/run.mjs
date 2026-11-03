@@ -229,6 +229,7 @@ async function main() {
       `PASS E2E (${seconds.toFixed(1)}s, excluding app build)\n`,
     );
   } catch (error) {
+    process.stderr.write(`E2E failed: ${error.stack ?? error}\n`);
     if (state.app) {
       try {
         process.stderr.write(

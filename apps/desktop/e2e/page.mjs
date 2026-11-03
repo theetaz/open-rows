@@ -58,7 +58,8 @@ async function waitFor(condition, timeout = 10000) {
     while (!stopped) {
       const value = await condition();
       if (value) return value;
-      await new Promise(globalThis.requestAnimationFrame);
+      // WebKit runs no animation frames while another window covers this one.
+      await new Promise((resolve) => globalThis.setTimeout(resolve, 16));
     }
   };
   const expired = new Promise((_, reject) => {
