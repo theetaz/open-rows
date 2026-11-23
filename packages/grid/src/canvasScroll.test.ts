@@ -124,6 +124,7 @@ it('updates colors and fonts in place without losing selection, scroll or canvas
     fontSize: 17,
     fontFamily: 'Menlo, monospace',
     rowHeight: 29,
+    headerHeight: 30,
     colours: { ...input.theme.colours, accent: '#7842C1' },
   };
   expect(typeof handle.setTheme).toBe('function');
@@ -133,7 +134,7 @@ it('updates colors and fonts in place without losing selection, scroll or canvas
   expect(handle.viewport.y).toBe(260);
   expect(Array.from(host.querySelectorAll('canvas'))).toEqual(layers);
   expect((scroll.firstElementChild as HTMLElement).style.height).toBe(
-    `${String((input.source.rows + 1) * 29)}px`,
+    `${String(30 + input.source.rows * 29)}px`,
   );
   handle.destroy();
 });

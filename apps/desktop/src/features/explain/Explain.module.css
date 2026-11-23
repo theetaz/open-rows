@@ -165,7 +165,7 @@
   background: var(--or-secondary);
 }
 .bar[data-heat='low'] > span {
-  background: var(--or-accent);
+  background: var(--or-accent-fill);
 }
 .bar[data-heat='medium'] > span {
   background: var(--or-warning-fg);

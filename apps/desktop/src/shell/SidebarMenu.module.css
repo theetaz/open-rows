@@ -35,7 +35,7 @@
 }
 .menu button:hover:not(:disabled),
 .menu button:focus-visible {
-  background: var(--or-accent);
+  background: var(--or-accent-fill);
   color: var(--or-on-accent);
 }
 .menu button:hover:not(:disabled) kbd,

@@ -14,7 +14,8 @@ type Props = {
   range: PanelRange;
   open: boolean;
   edge: 'left' | 'right';
-  overlay?: boolean;
+  /** A hairline on the content side; off for a floating panel. */
+  divider?: boolean;
   children: ReactNode;
 };
 /** Collapsible split region; CSS handles animation and drag previews, never its sibling tree. */
@@ -44,8 +45,8 @@ export function SplitPanel(props: Props): React.JSX.Element | null {
       inert={!props.open}
       className={styles.panel}
       data-open={props.open}
-      data-overlay={props.overlay}
       data-edge={props.edge}
+      data-divider={props.divider ?? true}
       style={{ '--panel-width': `${String(width)}px` } as CSSProperties}
     >
       <div className={styles.inner}>{props.children}</div>

@@ -11,6 +11,7 @@ export class GridLayout {
   constructor(
     readonly columns: readonly GridColumn[],
     readonly rowHeight: number,
+    readonly headerHeight: number = rowHeight,
   ) {
     this.offsets = new Float64Array(columns.length + 1);
     let pinned = 0;
@@ -42,7 +43,7 @@ export class GridLayout {
     target.r0 = Math.max(0, Math.floor(view.y / this.rowHeight) - 1);
     target.r1 = Math.min(
       rows - 1,
-      Math.ceil((view.y + view.height - this.rowHeight) / this.rowHeight),
+      Math.ceil((view.y + view.height - this.headerHeight) / this.rowHeight),
     );
     target.c0 = Math.max(
       this.pinned,
@@ -52,7 +53,7 @@ export class GridLayout {
   }
   /** The model column under a point in the fixed header row, if any. */
   headerHit(view: Viewport, x: number, y: number): number | undefined {
-    if (y < 0 || y >= this.rowHeight || x < 0 || !this.columns.length)
+    if (y < 0 || y >= this.headerHeight || x < 0 || !this.columns.length)
       return undefined;
     const content = x < this.pinnedWidth ? x : x + view.x;
     return content < this.width ? this.columnAt(content) : undefined;
@@ -63,10 +64,11 @@ export class GridLayout {
     x: number,
     y: number,
   ): { row: number; column: number } | undefined {
-    if (y < this.rowHeight || x < 0 || !this.columns.length) return undefined;
+    if (y < this.headerHeight || x < 0 || !this.columns.length)
+      return undefined;
     if ((x < this.pinnedWidth ? x : x + view.x) >= this.width) return undefined;
     return {
-      row: Math.floor((y - this.rowHeight + view.y) / this.rowHeight),
+      row: Math.floor((y - this.headerHeight + view.y) / this.rowHeight),
       column: this.columnAt(x < this.pinnedWidth ? x : x + view.x),
     };
   }
@@ -77,6 +79,10 @@ export interface Viewport {
   y: number;
   width: number;
   height: number;
+}
+/** Top of a body row in content coordinates: below the header row. */
+export function rowTop(layout: GridLayout, row: number): number {
+  return layout.headerHeight + row * layout.rowHeight;
 }
 /** Snap strokes and text origins to physical pixels at fractional DPR. */
 export function snap(value: number, dpr: number): number {

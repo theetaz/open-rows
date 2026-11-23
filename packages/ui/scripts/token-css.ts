@@ -7,6 +7,7 @@ import {
   geometry,
   material,
 } from '../src/tokens/index.ts';
+import { SOLID } from '../src/tokens/solid.ts';
 
 function block(selector: string, tokens: Record<string, string>): string {
   const values = Object.entries(tokens).map(
@@ -34,14 +35,8 @@ export function generateCss(): string {
       { ...dark, 'color-scheme': 'dark' },
     ) +
     `@media (prefers-contrast: more) {\n${themed(highContrast.light, highContrast.dark)}}\n` +
-    block('[data-transparency="reduced"]', {
-      panel: 'var(--or-panel-solid)',
-      'glass-panel': 'none',
-      'glass-toolbar': 'none',
-      toolbar: 'var(--or-page)',
-      'glass-fill': 'var(--or-glass-fill-solid)',
-    }) +
-    `@media (prefers-reduced-transparency: reduce) {\n${block(':root', { panel: 'var(--or-panel-solid)', 'glass-panel': 'none', 'glass-toolbar': 'none', toolbar: 'var(--or-page)', 'glass-fill': 'var(--or-glass-fill-solid)' })}}\n` +
+    block('[data-transparency="reduced"]', SOLID) +
+    `@media (prefers-reduced-transparency: reduce) {\n${block(':root', SOLID)}}\n` +
     `@media (prefers-reduced-motion: reduce) {\n${block(':root', { 'motion-panel': '0ms', 'motion-disclosure': '0ms' })}*, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }\n}\n`
   );
 }

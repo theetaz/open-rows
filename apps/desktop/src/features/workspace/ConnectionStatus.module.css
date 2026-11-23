@@ -1,10 +1,31 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/* The address capsule's health dot: a 7 px dot; the popover says it in words. */
 .health {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 16px;
+  block-size: 16px;
+  padding: 0;
   border: 0;
+  border-radius: var(--or-radius-capsule);
   background: transparent;
-  color: var(--or-secondary);
-  padding: var(--or-space-4);
-  cursor: pointer;
+  color: var(--or-tertiary);
+  cursor: default;
+}
+/* The ● glyph becomes a drawn dot in the state colour. */
+.health > span {
+  display: block;
+  inline-size: var(--or-dot-size);
+  block-size: var(--or-dot-size);
+  border-radius: var(--or-radius-capsule);
+  background: currentColor;
+  font-size: 0;
+}
+.health:hover {
+  background: var(--or-hover);
+}
+.health:focus-visible {
+  outline: var(--or-focus-width) solid var(--or-focus);
 }
 .health[data-state='connected'] {
   color: var(--or-success-fg);
@@ -21,11 +42,12 @@
   margin: 0;
   width: 320px;
   max-width: calc(100vw - 16px);
-  padding: var(--or-space-8);
-  border: 1px solid var(--or-separator);
-  border-radius: var(--or-radius-control);
+  padding: var(--or-space-12);
+  border: 0;
+  border-radius: var(--or-radius-panel);
   background: var(--or-panel);
+  box-shadow: var(--or-panel-shadow);
   color: var(--or-text);
-  font-size: var(--or-text-11-5);
+  font-size: var(--or-text-12);
   overflow-wrap: anywhere;
 }

@@ -193,12 +193,15 @@ it('applies separate editor/grid/sidebar fonts and line height through root toke
 
 it('preserves the default sidebar half-pixel size and independent font choices', () => {
   expect(parseAppearance({})).toEqual(defaultAppearance);
-  saveAppearance(defaultAppearance);
+  saveAppearance({ ...defaultAppearance, sidebarSize: 12.5 });
   expect(readAppearance().sidebarSize).toBe(12.5);
-  expect(appearanceCss(readAppearance())).toContain(
-    '--or-font-sidebar:ui-monospace',
-  );
   expect(appearanceCss(readAppearance())).toContain('--or-text-sidebar:12.5px');
+  saveAppearance(defaultAppearance);
+  expect(readAppearance().sidebarSize).toBe(13);
+  expect(appearanceCss(readAppearance())).toContain(
+    '--or-font-sidebar:-apple-system',
+  );
+  expect(appearanceCss(readAppearance())).toContain('--or-text-sidebar:13px');
   expect(
     appearanceCss(parseAppearance({ sidebarFont: 'verdana', sidebarSize: 16 })),
   ).toContain('--or-font-sidebar:Verdana');

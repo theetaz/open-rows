@@ -68,6 +68,12 @@ it("connects saved profiles from the rail and shows each one's safety policy", a
   expect(
     screen.getByRole('button', { name: 'Safe mode: Confirm writes' }),
   ).toHaveAttribute('data-on', 'true');
+  // The sidebar's connection pop-up names the connection, database and policy.
+  expect(
+    screen.getByRole('button', {
+      name: 'Connections: analytics-prod · orders · Confirm writes',
+    }),
+  ).toHaveAttribute('aria-expanded', 'true');
   await user.click(
     screen.getByRole('button', { name: 'Switch to events-dev' }),
   );

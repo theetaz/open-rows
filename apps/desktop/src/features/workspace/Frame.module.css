@@ -1,0 +1,161 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * The window frame (design/revamp v3 screens/main.html): a floating glass
+ * sidebar inset 8 px from the window edge, the traffic lights in its top row;
+ * beside it a solid main column of toolbar, tabs, content and status line.
+ * The window is transparent over the native material, so the veil under the
+ * sidebar frosts without a CSS backdrop filter.
+ */
+.workspace {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  border-radius: var(--or-radius-window);
+  background: var(--or-page);
+}
+.workspace > aside[aria-label='Sidebar'] {
+  background: linear-gradient(
+    90deg,
+    var(--or-window-veil) calc(100% - 40px),
+    var(--or-page) 100%
+  );
+}
+/* Without the sidebar the toolbar makes room for the traffic lights. */
+.workspace:has(> aside[aria-label='Sidebar'][data-open='false'])
+  header[aria-label='Window toolbar'] {
+  padding-inline-start: var(--or-traffic-light-clearance);
+}
+.main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--or-page);
+}
+.body {
+  display: flex;
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--or-page);
+}
+
+/* The floating glass panel: inset 8, radius 14, the kit's sidebar recipe. */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-8);
+  box-sizing: border-box;
+  block-size: calc(100% - 2 * var(--or-sidebar-inset));
+  margin: var(--or-sidebar-inset);
+  padding: 0 var(--or-space-8) var(--or-space-8);
+  border-radius: var(--or-radius-panel);
+  background: var(--or-glass-sidebar);
+  box-shadow: var(--or-glass-sidebar-edge);
+}
+/* The native traffic lights sit in this row (tauri.conf.json trafficLightPosition). */
+.traffic {
+  flex: 0 0 var(--or-traffic-light-row);
+  margin-block-end: calc(-1 * var(--or-space-4));
+}
+/* The connection pop-up: the environment is a dot and a word, never a tint. */
+.popup {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--or-space-8);
+  inline-size: 100%;
+  block-size: 30px;
+  padding: 0 var(--or-space-6) 0 var(--or-space-10);
+  border: 0;
+  border-radius: var(--or-radius-control);
+  background: var(--or-control-fill);
+  color: var(--or-text);
+  font: inherit;
+  text-align: start;
+  transition: background-color var(--or-motion-quick);
+}
+.popup:hover {
+  background: var(--or-fill-2);
+}
+.popup:focus-visible {
+  outline: var(--or-focus-width) solid var(--or-focus);
+  outline-offset: var(--or-border-width);
+}
+.popup strong {
+  flex: none;
+  max-inline-size: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: var(--or-weight-medium);
+}
+.popupDatabase {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--or-secondary);
+}
+.popup > svg {
+  flex: none;
+  inline-size: 14px;
+  block-size: 14px;
+  margin-inline-start: auto;
+  color: var(--or-secondary);
+}
+.envDot {
+  flex: none;
+  inline-size: var(--or-dot-size);
+  block-size: var(--or-dot-size);
+  border-radius: var(--or-radius-capsule);
+  background: var(--or-tertiary);
+}
+.envDot[data-env='prod'] {
+  background: var(--or-tag-prod);
+}
+.envDot[data-env='staging'] {
+  background: var(--or-tag-staging);
+}
+.envDot[data-env='dev'],
+.envDot[data-env='local'] {
+  background: var(--or-tag-dev);
+}
+/* The connection list the pop-up shows: a bounded, scrolling region. */
+.connections {
+  flex: 0 1 auto;
+  max-block-size: 45%;
+  min-block-size: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.connections[hidden] {
+  display: none;
+}
+
+/* Native handoff errors stay visible without occupying a frame row. */
+.fileNotice {
+  position: fixed;
+  inset-block-end: var(--or-space-32);
+  inset-inline-start: 50%;
+  translate: -50% 0;
+  max-inline-size: calc(100vw - var(--or-space-32));
+  z-index: 50;
+  margin: 0;
+  padding: var(--or-space-8) var(--or-space-16);
+  border-radius: var(--or-radius-capsule);
+  background: var(--or-panel);
+  color: var(--or-text);
+  box-shadow: var(--or-panel-shadow);
+  font-size: var(--or-text-13);
+}
+.announcement {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}

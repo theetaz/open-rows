@@ -31,6 +31,9 @@ function layerMock(): Map<string, string[]> {
             'clip',
             'fill',
             'arc',
+            'moveTo',
+            'lineTo',
+            'closePath',
           ].map((name) => [name, noop]),
         ),
       } as unknown as CanvasRenderingContext2D;
@@ -40,11 +43,11 @@ function layerMock(): Map<string, string[]> {
 }
 afterEach(() => vi.restoreAllMocks());
 
-it('fills a selected row edge to edge with the accent, but only the cells of a column selection', async () => {
+it('tints a selected row edge to edge with the accent, but only the cells of a column selection', async () => {
   const fills = layerMock(),
     model = props();
   await model.source.window({ r0: 0, r1: 30, c0: 0, c1: 19 }, 1);
-  const accent = model.theme.colours.accent;
+  const accent = model.theme.colours['accent-soft'];
   model.selection = {
     row: 2,
     column: 3,

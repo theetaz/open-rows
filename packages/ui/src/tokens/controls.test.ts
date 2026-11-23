@@ -17,12 +17,10 @@ function rule(css: string, selector: string): string {
 }
 
 const regular = [
-  [controls, '.button'],
   [controls, '.segmented'],
   [fields, '.frame'],
 ] as const;
 const compact = [
-  [controls, ".button[data-size='sm']"],
   [controls, ".segmented[data-size='compact']"],
   [fields, ".frame[data-size='compact']"],
 ] as const;
@@ -30,16 +28,24 @@ const compact = [
 describe('control consistency (docs/20 §3.3)', () => {
   it('defines one height and one radius per control size', () => {
     expect(geometry['control-height']).toBe('28px');
-    expect(geometry['control-height-compact']).toBe('24px');
-    expect(geometry['radius-control']).toBe('7px');
+    expect(geometry['control-height-compact']).toBe('22px');
+    expect(geometry['radius-control']).toBe('8px');
     expect(geometry['radius-control-compact']).toBe('6px');
     expect([geometry['switch-width'], geometry['switch-height']]).toEqual([
-      '26px',
-      '15px',
+      '32px',
+      '20px',
     ]);
   });
+  it('buttons are capsules at the regular and compact heights', () => {
+    const body = rule(controls, '.button');
+    expect(body).toContain('block-size: var(--or-control-height);');
+    expect(body).toContain('border-radius: var(--or-radius-capsule);');
+    const small = rule(controls, ".button[data-size='sm']");
+    expect(small).toContain('block-size: var(--or-control-height-compact);');
+    expect(small).toContain('border-radius: var(--or-radius-capsule);');
+  });
   it.each(regular)(
-    '%#: buttons, segmented controls and fields share the regular tokens',
+    '%#: segmented controls and fields share the regular tokens',
     (css, selector) => {
       const body = rule(css, selector);
       expect(body).toContain('block-size: var(--or-control-height);');

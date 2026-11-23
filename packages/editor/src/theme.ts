@@ -10,10 +10,14 @@ import { tags } from '@lezer/highlight';
  * Syntax overrides remain plain colour tokens and never execute theme code.
  */
 export const sqlHighlightStyle = HighlightStyle.define([
-  { tag: tags.keyword, color: 'var(--or-syntax-keyword)', fontWeight: '600' },
+  { tag: tags.keyword, color: 'var(--or-syntax-keyword)' },
   {
-    tag: [tags.typeName, tags.standard(tags.name)],
-    color: 'var(--or-info-fg)',
+    tag: [
+      tags.typeName,
+      tags.standard(tags.name),
+      tags.function(tags.variableName),
+    ],
+    color: 'var(--or-syntax-function)',
   },
   {
     tag: [tags.string, tags.special(tags.string)],
@@ -35,12 +39,13 @@ export const sqlHighlightStyle = HighlightStyle.define([
   { tag: tags.special(tags.name), color: 'var(--or-danger-fg)' },
 ]);
 
+/** The kit's `.code` recipe: 12/20 px mono, quiet gutter, a hover-tint current line. */
 const editorTheme = EditorView.theme({
   '&': {
     height: '100%',
     color: 'var(--or-text)',
     backgroundColor: 'var(--or-page)',
-    fontSize: 'var(--or-text-editor, var(--or-text-mono, var(--or-text-13)))',
+    fontSize: 'var(--or-text-editor, var(--or-text-mono, var(--or-text-12)))',
   },
   '.cm-scroller': {
     fontFamily: 'var(--or-font-editor, var(--or-font-mono))',
@@ -53,18 +58,18 @@ const editorTheme = EditorView.theme({
     borderLeftWidth: '1.5px',
   },
   '.cm-gutters': {
-    color: 'var(--or-tertiary)',
+    color: 'var(--or-placeholder)',
     backgroundColor: 'var(--or-page)',
-    borderRight: 'var(--or-border-width) solid var(--or-separator)',
+    border: 'none',
+    fontSize: 'var(--or-text-11)',
   },
   '.cm-activeLine, .cm-activeLineGutter, .cm-currentQuery': {
-    backgroundColor: 'var(--or-row-stripe)',
+    backgroundColor: 'var(--or-hover)',
   },
-  // An accent tint keeps selected text readable in light and dark themes.
+  // The accent selection tint keeps selected text readable in both themes.
   '.cm-selectionBackground, &.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-content ::selection':
     {
-      backgroundColor:
-        'color-mix(in srgb, var(--or-accent) 38%, transparent) !important',
+      backgroundColor: 'var(--or-accent-soft) !important',
     },
 });
 

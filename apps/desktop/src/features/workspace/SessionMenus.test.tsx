@@ -172,23 +172,23 @@ it('pins, closes others and to the right from the tab menu, and reorders by drag
   const labels = (): string[] =>
     screen.getAllByRole('tab').map((tab) => tab.textContent);
   expect(labels()).toEqual([
-    '›_SQL Query 1',
-    '›_SQL Query 2',
-    '›_SQL Query 3',
-    '›_SQL Query 4',
+    'SQL Query 1',
+    'SQL Query 2',
+    'SQL Query 3',
+    'SQL Query 4',
   ]);
   const menuFor = (name: string): void => {
     fireEvent.contextMenu(screen.getByRole('tab', { name: new RegExp(name) }));
   };
   menuFor('SQL Query 3');
   fireEvent.click(screen.getByRole('menuitem', { name: 'Pin Tab' }));
-  expect(labels()[0]).toBe('›_SQL Query 3');
+  expect(labels()[0]).toBe('SQL Query 3');
   expect(screen.getByRole('img', { name: 'Pinned' })).toBeInTheDocument();
   menuFor('SQL Query 2');
   fireEvent.click(
     screen.getByRole('menuitem', { name: 'Close Tabs to the Right' }),
   );
-  expect(labels()).toEqual(['›_SQL Query 3', '›_SQL Query 1', '›_SQL Query 2']);
+  expect(labels()).toEqual(['SQL Query 3', 'SQL Query 1', 'SQL Query 2']);
   const first = screen.getByRole('tab', { name: /SQL Query 1/ });
   fireEvent.pointerDown(first.parentElement ?? first, {
     button: 0,
@@ -199,10 +199,10 @@ it('pins, closes others and to the right from the tab menu, and reorders by drag
   // The click that ends a drag does not select the dragged tab.
   fireEvent.click(first);
   expect(first).toHaveAttribute('aria-selected', 'false');
-  expect(labels()).toEqual(['›_SQL Query 3', '›_SQL Query 2', '›_SQL Query 1']);
+  expect(labels()).toEqual(['SQL Query 3', 'SQL Query 2', 'SQL Query 1']);
   menuFor('SQL Query 1');
   fireEvent.click(screen.getByRole('menuitem', { name: 'Close Other Tabs' }));
-  expect(labels()).toEqual(['›_SQL Query 3', '›_SQL Query 1']);
+  expect(labels()).toEqual(['SQL Query 3', 'SQL Query 1']);
 });
 
 it('renames a tab from the tab menu and lists every tab when they overflow', async () => {

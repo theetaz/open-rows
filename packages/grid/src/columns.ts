@@ -30,7 +30,7 @@ export function resizeEdge(
   x: number,
   y: number,
 ): number | undefined {
-  if (y < 0 || y >= layout.rowHeight) return undefined;
+  if (y < 0 || y >= layout.headerHeight) return undefined;
   for (const probe of [x - EDGE_SLOP, x + EDGE_SLOP]) {
     const column = layout.columnAt(
       probe < layout.pinnedWidth ? probe : probe + view.x,

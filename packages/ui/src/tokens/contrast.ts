@@ -53,62 +53,107 @@ export function contrastRatio(
   return ratio(foreground, fill);
 }
 type Row = { theme: string; pair: string; ratio: number; minimum: number };
-function surfaces(palette: typeof light): Record<string, Colour> {
+/** Text is 4.5:1; NULL markers, focus outlines and icons are non-text marks at 3:1. */
+const MINIMUM: Partial<Record<keyof typeof light, number>> = {
+  placeholder: 3,
+  focus: 3,
+  tertiary: 3,
+};
+/** Solid content surfaces and row states: text, NULL markers and status pills. */
+function contentSurfaces(palette: typeof light): Record<string, Colour> {
   const page = parse(palette.page);
   const window = parse(palette.window);
-  const panel = composite(parse(palette.panel), page);
-  const panelOnWindow = composite(parse(palette.panel), window);
-  const bases = {
+  return {
     page,
     window,
-    panel,
-    'panel/window': panelOnWindow,
+    panel: composite(parse(palette.panel), page),
+    'panel/window': composite(parse(palette.panel), window),
     'panel-solid': parse(palette['panel-solid']),
+    group: parse(palette.group),
+    sheet: composite(parse(palette['glass-sheet']), page),
+    float: composite(parse(palette['glass-float']), page),
     ...Object.fromEntries(
       (
-        ['row-stripe', 'row-inserted', 'row-deleted', 'cell-edited'] as const
+        [
+          'row-stripe',
+          'row-inserted',
+          'row-deleted',
+          'cell-edited',
+          'accent-soft',
+        ] as const
       ).map((state) => [state, composite(parse(palette[state]), window)]),
     ),
   };
-  const controls = Object.fromEntries(
-    Object.entries(bases).flatMap(([name, base]) => {
-      const fill = composite(parse(palette['control-fill']), base);
-      return [
-        [`fill/${name}`, fill],
-        [
-          `nested-fill/${name}`,
-          composite(parse(palette['control-fill']), fill),
-        ],
-      ];
-    }),
+}
+/** Control fills on the surfaces controls sit on. */
+function controlSurfaces(palette: typeof light): Record<string, Colour> {
+  const over = (key: keyof typeof light, base: Colour): Colour =>
+    composite(parse(palette[key]), base);
+  const page = parse(palette.page);
+  const bases: Record<string, Colour> = {
+    page,
+    group: parse(palette.group),
+    sheet: over('glass-sheet', page),
+    float: over('glass-float', page),
+  };
+  return Object.fromEntries(
+    Object.entries(bases).map(([name, base]) => [
+      `fill/${name}`,
+      over('control-fill', base),
+    ]),
   );
-  return { ...bases, ...controls, active: parse(palette['control-active']) };
+}
+/** Row states painted by the canvas grid, which draws plain text, never pills. */
+const GRID_ONLY = new Set([
+  'row-inserted',
+  'row-deleted',
+  'cell-edited',
+  'accent-soft',
+]);
+type Role = 'text' | 'secondary' | 'danger-fg' | 'placeholder' | 'focus';
+function roleRows(
+  theme: string,
+  palette: typeof light,
+  roles: readonly Role[],
+  backgrounds: Record<string, Colour>,
+): Row[] {
+  return Object.entries(backgrounds).flatMap(([name, background]) =>
+    roles.map((foreground) => ({
+      theme,
+      pair: `${foreground}/${name}`,
+      ratio: ratio(palette[foreground], background),
+      minimum: MINIMUM[foreground] ?? 4.5,
+    })),
+  );
 }
 export function paletteRows(theme: string, palette: typeof light): Row[] {
-  const backgrounds = surfaces(palette);
-  const rows: Row[] = [];
-  for (const [name, background] of Object.entries(backgrounds)) {
-    for (const foreground of [
-      'text',
-      'secondary',
-      'tertiary',
-      'placeholder',
-      'focus',
-      'danger-fg',
-    ] as const) {
-      rows.push({
-        theme,
-        pair: `${foreground}/${name}`,
-        ratio: ratio(palette[foreground], background),
-        minimum:
-          foreground === 'focus' || foreground === 'placeholder' ? 3 : 4.5,
-      });
-    }
-    rows.push(...badgeRows({ theme, palette, name, background }));
-  }
+  const content = contentSurfaces(palette);
+  const controls = controlSurfaces(palette);
+  const page = parse(palette.page);
+  const field = { raised: parse(palette.raised) };
+  const track = composite(parse(palette['control-fill']), page);
+  const nested = {
+    'nested-fill/page': composite(parse(palette['control-fill']), track),
+    'selected-segment': composite(parse(palette['control-active']), track),
+  };
+  const rows: Row[] = [
+    ...roleRows(
+      theme,
+      palette,
+      ['text', 'secondary', 'danger-fg', 'placeholder', 'focus'],
+      content,
+    ),
+    ...roleRows(theme, palette, ['text', 'secondary', 'danger-fg'], controls),
+    ...roleRows(theme, palette, ['text', 'placeholder'], field),
+    ...roleRows(theme, palette, ['text'], nested),
+    ...Object.entries(content)
+      .filter(([name]) => !GRID_ONLY.has(name))
+      .flatMap(([name, background]) =>
+        badgeRows({ theme, palette, name, background }),
+      ),
+  ];
   for (const background of [
-    'accent',
-    'destructive',
+    'accent-fill',
     'connection-pg',
     'connection-prod',
     'connection-ch',
@@ -130,34 +175,19 @@ export function paletteRows(theme: string, palette: typeof light): Row[] {
 
 function chromeRows(theme: string, palette: typeof light): Row[] {
   const page = parse(palette.page);
-  const toolbar = composite(parse(palette.toolbar), page);
+  const over = (key: keyof typeof light, base: Colour): Colour =>
+    composite(parse(palette[key]), base);
+  const capsule = over('glass-fill', page);
   const pairs: [keyof typeof light, string, Colour, number][] = [
     ['label-tertiary', 'page', page, 4.5],
-    [
-      'label-tertiary',
-      'search',
-      composite(parse(palette['search-fill']), page),
-      4.5,
-    ],
-    ['toolbar-icon', 'toolbar', toolbar, 3],
-    [
-      'address-text',
-      'address',
-      composite(parse(palette.address), toolbar),
-      4.5,
-    ],
-    [
-      'address-text',
-      'address-inactive',
-      composite(parse(palette['address-inactive']), toolbar),
-      4.5,
-    ],
-    [
-      'text',
-      'field-box',
-      composite(parse(palette['field-box-fill']), page),
-      4.5,
-    ],
+    ['label-tertiary', 'search', over('control-fill', page), 4.5],
+    ['text', 'toolbar-capsule', capsule, 4.5],
+    ['tertiary', 'page', page, 3],
+    ['address-text', 'address', over('address', over('toolbar', page)), 4.5],
+    ['secondary', 'address', over('address', over('toolbar', page)), 4.5],
+    ['text', 'field-box', over('field-box-fill', page), 4.5],
+    ['accent', 'page', page, 4.5],
+    ['accent', 'group', parse(palette.group), 4.5],
   ];
   return pairs.map(([foreground, name, background, minimum]) => ({
     theme,

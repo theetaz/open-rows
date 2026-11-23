@@ -11,6 +11,7 @@ function recorder(): {
   texts: { text: string; colour: string; align: string; x: number }[];
   rects: string[];
   stroke: ReturnType<typeof vi.fn>;
+  fill: ReturnType<typeof vi.fn>;
 } {
   const texts: { text: string; colour: string; align: string; x: number }[] =
       [],
@@ -28,23 +29,27 @@ function recorder(): {
     arc: vi.fn(),
     moveTo: vi.fn(),
     lineTo: vi.fn(),
+    closePath: vi.fn(),
     stroke: vi.fn(),
+    fill: vi.fn(function (this: { fillStyle: string }) {
+      rects.push(this.fillStyle);
+    }),
   };
   return {
     context: context as unknown as CanvasRenderingContext2D,
     texts,
     rects,
     stroke: context.stroke,
+    fill: context.fill,
   };
 }
 const { colours } = gridTheme('light');
 const text: GridColumn = { id: 't', title: 't', width: 120, pinned: false };
 const flag: GridColumn = { ...text, kind: 'boolean' };
-function paint(cell: DisplayCell, column: GridColumn, selected = false) {
+function paint(cell: DisplayCell, column: GridColumn) {
   const canvas = recorder(),
     painter = new CellPainter(colours);
   Object.assign(painter.box, { x: 0, y: 0, width: 120, height: 24 });
-  painter.selected = selected;
   painter.background(canvas.context, cell);
   painter.content(canvas.context, cell, column, cell.text);
   return canvas;
@@ -65,7 +70,7 @@ it('paints NULL and EMPTY as distinct muted markers, and real text normally', ()
   expect(value.texts[0]?.colour).toBe(colours.text);
 });
 
-it('mutes staged NULL, EMPTY and DEFAULT markers and outlines staged cells', () => {
+it('mutes staged NULL, EMPTY and DEFAULT markers and marks staged cells', () => {
   for (const marker of ['null', 'empty', 'default'] as const)
     expect(isMuted({ text: marker, state: 'changed', marker })).toBe(true);
   expect(isMuted({ text: 'x', state: 'changed' })).toBe(false);
@@ -75,9 +80,8 @@ it('mutes staged NULL, EMPTY and DEFAULT markers and outlines staged cells', () 
   );
   expect(staged.texts[0]?.colour).toBe(colours.placeholder);
   expect(staged.rects).toContain(colours['cell-edited']);
-  expect(
-    staged.rects.filter((fill) => fill === colours.destructive),
-  ).toHaveLength(8);
+  expect(staged.fill).toHaveBeenCalledOnce();
+  expect(staged.rects).toContain(colours['warning-fg']);
   const inserted = paint({ text: 'v', state: 'inserted' }, text);
   expect(inserted.rects).toEqual([colours['row-inserted']]);
 });
@@ -102,14 +106,12 @@ it('centres booleans as TRUE/FALSE with a stepper; NULL booleans stay NULL', () 
   expect(textWidth(flag)).toBe(textWidth(text) - 16);
 });
 
-it('right-aligns numbers and uses on-accent text in selected rows', () => {
+it('right-aligns numbers', () => {
   const number = paint(
     { text: '42', state: 'normal' },
     { ...text, align: 'end' },
   );
   expect(number.texts[0]).toMatchObject({ align: 'right', x: 112 });
-  const selected = paint({ text: 'NULL', state: 'null' }, text, true);
-  expect(selected.texts[0]?.colour).toBe(colours['on-accent']);
 });
 
 it('paints a foreign-key arrow on linked values but not on NULL', () => {

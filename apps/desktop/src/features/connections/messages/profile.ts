@@ -15,8 +15,6 @@ export const { rich, t, tn } = defineMessages({
   user: 'User',
   database: 'Database',
   postgres: 'postgres',
-  sidebarContext: 'Sidebar context',
-  noDatabase: 'No database',
   workspaces: 'Workspaces',
   connections: 'Connections',
   newConnection: 'New connection',

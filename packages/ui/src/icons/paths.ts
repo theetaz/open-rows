@@ -39,6 +39,7 @@ export const iconPaths = {
   schema: 'M3.5 6.5h6l2 2h9v10h-17Z',
   diagram: 'M3 4h7v6H3ZM14 14h7v6h-7ZM6.5 10v7h7.5',
   minus: 'M5 12h14',
+  activity: 'M3 12h4l3-7 4 14 3-7h4',
   fit: 'M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5',
   jobs: 'M12 4v10M7.5 9.5 12 14l4.5-4.5M4 15v4h16v-4',
   calendar: 'M4 6h16v14H4ZM4 10h16M8 3v5M16 3v5',

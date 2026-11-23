@@ -1,32 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { Connections } from './useConnections';
-import { POLICY_LABELS } from '../security/policies';
 import styles from './ConnectionHeader.module.css';
-import { t } from './messages/profile';
 
 /**
- * Connection/database identity and failures above the object tree.
- * Status and actions also live in the workspace sidebar and context bar.
+ * Connection failures above the object tree. Identity (name, database,
+ * policy) lives in the sidebar's connection pop-up and the toolbar.
  */
 export function ConnectionHeader({
   connections,
-  database,
 }: {
   connections: Connections;
-  database?: string | undefined;
 }): React.JSX.Element | null {
   const { active, problem } = connections;
   const status = active ? connections.statusOf(active.id) : undefined;
   const failure = status?.state === 'failed' ? status.message : null;
-  if (!active && !failure && !problem) return null;
+  if (!failure && !problem) return null;
   return (
     <div className={styles.header}>
-      {active && (
-        <p aria-label={t('sidebarContext')}>
-          {active.name} · {database || active.database || t('noDatabase')} ·{' '}
-          {POLICY_LABELS[active.safety]}
-        </p>
-      )}
       {failure && (
         <p className={styles.problem} role="alert">
           {failure}

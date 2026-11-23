@@ -1,15 +1,15 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* The compact text-field frame (docs/20 §3.3), growing with multi-line content. */
+/* The text-field frame (docs/20 §3.3), growing with multi-line content. */
 .frame {
   position: relative;
   display: flex;
   align-items: flex-start;
   box-sizing: border-box;
-  min-block-size: var(--or-control-height-compact);
+  min-block-size: var(--or-control-height);
   min-inline-size: 0;
-  background: var(--or-control-fill);
+  background: var(--or-field-box-fill);
   border: var(--or-border-width) solid var(--or-control-stroke);
-  border-radius: var(--or-radius-control-compact);
+  border-radius: var(--or-radius-control);
 }
 .frame textarea {
   flex: 1;
@@ -17,13 +17,13 @@
   min-inline-size: 0;
   max-block-size: var(--or-text-area-max, 10lh);
   margin: 0;
-  padding: var(--or-space-4) var(--or-control-padding-compact);
+  padding: var(--or-space-6) var(--or-space-8);
   border: none;
   border-radius: inherit;
   background: transparent;
   color: var(--or-text);
   font: inherit;
-  line-height: 1.4;
+  line-height: 18px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   overflow-y: auto;
@@ -36,20 +36,20 @@
 .frame[data-size='box'] {
   min-block-size: var(--or-field-box-height);
   border-radius: var(--or-radius-field-box);
-  border: 0.5px solid var(--or-field-box-stroke);
+  border: var(--or-border-width) solid var(--or-field-box-stroke);
   background: var(--or-field-box-fill);
   font-family: var(--or-font-mono);
-  font-size: var(--or-text-13);
+  font-size: var(--or-text-mono, var(--or-text-12));
 }
 .frame[data-size='box'] textarea {
-  min-block-size: calc(var(--or-field-box-height) - 1px);
-  line-height: 17px;
+  min-block-size: calc(var(--or-field-box-height) - 2px);
+  line-height: 18px;
 }
 .frame[data-size='box'] .trailing {
   padding: 0;
 }
 .frame textarea::placeholder {
-  color: var(--or-secondary);
+  color: var(--or-placeholder);
   opacity: 1;
 }
 .frame:focus-within {

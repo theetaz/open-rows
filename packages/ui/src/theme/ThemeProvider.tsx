@@ -132,6 +132,7 @@ function gridAppearance(
   const colours = resolvePalette(settings, mode);
   if (media.contrast) {
     colours.separator = mode === 'light' ? '#606060' : '#C0C0C0';
+    colours['grid-line'] = colours.separator;
     colours['control-fill'] = mode === 'light' ? '#E4E4E4' : '#383838';
   }
   return {

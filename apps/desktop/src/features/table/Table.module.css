@@ -166,13 +166,13 @@
 }
 .footer {
   flex-shrink: 0;
-  min-height: 38px;
+  min-height: 32px;
   display: flex;
   align-items: center;
   gap: var(--or-space-6);
-  padding: var(--or-space-6) var(--or-space-8);
-  border-top: var(--or-border-width) solid var(--or-separator);
-  background: var(--or-panel-solid);
+  padding: var(--or-space-2) var(--or-space-12);
+  box-shadow: inset 0 var(--or-border-width) 0 var(--or-separator);
+  background: var(--or-page);
   white-space: nowrap;
   overflow-x: auto;
 }
@@ -207,9 +207,15 @@
   align-items: center;
   justify-content: safe center;
   gap: var(--or-space-6);
+  overflow: hidden;
+}
+.status > button {
+  flex-shrink: 0;
 }
 .range {
-  min-width: 0;
+  flex-shrink: 1;
+  min-width: 8ch;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   font-size: var(--or-text-12);
@@ -223,13 +229,15 @@
   color: var(--or-secondary);
 }
 
+/* Pending changes: docked under the grid, solid (the kit's .pending bar). */
 .editToolbar {
   display: flex;
   align-items: center;
-  gap: var(--or-space-6);
-  padding: var(--or-space-6) var(--or-space-8);
-  border-top: var(--or-border-width) solid var(--or-separator);
-  background: var(--or-info-bg);
+  gap: var(--or-space-8);
+  min-height: var(--or-pending-height);
+  padding: 0 var(--or-space-12);
+  box-shadow: inset 0 var(--or-border-width) 0 var(--or-separator);
+  background: var(--or-panel-solid);
   flex-shrink: 0;
   overflow-x: auto;
 }
@@ -242,7 +250,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--or-info-fg);
+  font-size: var(--or-text-12);
+  color: var(--or-secondary);
 }
 .editFields {
   max-height: 55vh;

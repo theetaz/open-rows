@@ -3,6 +3,7 @@ import { useRef } from 'react';
 import type { CSSProperties, KeyboardEvent } from 'react';
 import { IconButton } from './Button';
 import { Icon } from '../icons/Icon';
+import type { IconName } from '../icons/Icon';
 import { startTabDrag } from './tabDrag';
 import { TabTitleField } from './TabTitleField';
 import { useOverflowing } from './useOverflowing';
@@ -21,13 +22,13 @@ type Tab = {
   /** The editable title when `label` adds decorations (e.g. an unsaved dot). */
   name?: string;
 };
-/** The glyph before a tab's title, by kind. */
-const KIND_GLYPHS: Readonly<Record<NonNullable<Tab['kind']>, string>> = {
-  query: '›_',
-  table: '▦',
-  processes: '≡',
-  monitor: '⌁',
-  inspection: '▤',
+/** The icon before a tab's title, by kind. */
+const KIND_ICONS: Readonly<Record<NonNullable<Tab['kind']>, IconName>> = {
+  query: 'terminal',
+  table: 'table',
+  processes: 'list',
+  monitor: 'activity',
+  inspection: 'eye',
 };
 type Props = {
   tabs: readonly Tab[];
@@ -96,7 +97,7 @@ export function Tabs(props: Props): React.JSX.Element {
         size="sm"
         onClick={props.onAdd}
       >
-        +
+        <Icon name="plus" />
       </IconButton>
     </div>
   );
@@ -163,7 +164,7 @@ function DocumentTab({
             owner.onClose(tab.id);
           }}
         >
-          ×
+          <Icon name="close" />
         </button>
       )}
     </div>
@@ -192,7 +193,7 @@ function TabButton({
         navigate(event, tab.id, owner);
       }}
     >
-      <span aria-hidden="true">{KIND_GLYPHS[tab.kind ?? 'table']}</span>
+      <Icon name={KIND_ICONS[tab.kind ?? 'table']} />
       <span>{tab.label}</span>
     </button>
   );

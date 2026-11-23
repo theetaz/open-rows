@@ -346,9 +346,9 @@ The app must feel like it was designed for the current macOS, not merely ported 
 | Principle | How we apply it |
 | --- | --- |
 | **Everything collapsible** | Sidebar (⌃⌘S, standard "Show/Hide Sidebar"), inspector/assistant panel (⌥⌘I), connection rail, results pane, and every sidebar section (disclosure triangles). Panels animate with a spring-like ease (≈360 ms, `cubic-bezier(0.32, 0.72, 0, 1)`), remember their state per window, and can also be collapsed by dragging the divider past a threshold — like `NSSplitView` sidebars. Toolbar toggle buttons reflect state (tinted when open). |
-| **Liquid Glass materials** | Sidebar, inspector and toolbar controls use translucent "glass" panels (blur + saturation, bright top edge highlight, soft shadow) floating above content, with content allowed to scroll beneath the toolbar edge. Implemented natively where possible (window vibrancy / glass effect behind a transparent webview on macOS 26; `NSVisualEffectView` on older versions) with semi-transparent tone tokens on persistent webview surfaces. CSS `backdrop-filter` is reserved for mounted transient palettes, sheets and tooltips to avoid redundant Retina backdrop textures (issue #17). |
-| **Concentric geometry** | Corner radii nest: window (the native titled-window corner: 16 pt on macOS 26, 10 pt before) → floating panels and sheets 12 px → controls 7 px (compact 6 px, see §3.3). Nothing has sharp corners next to a rounded container. |
-| **Grouped controls** | Toolbar buttons are grouped in capsules. Segmented controls, fields and push buttons share the control radius (§3.3). Primary actions use the accent fill. |
+| **Liquid Glass materials** | Only floating things are glass (§5.1): the inset sidebar panel, toolbar capsules, menus, popovers and sheets; content is solid. Implemented natively where possible (window vibrancy / glass effect behind a transparent webview on macOS 26; `NSVisualEffectView` on older versions) with semi-transparent tone tokens on persistent webview surfaces. CSS `backdrop-filter` is reserved for mounted transient palettes, sheets and tooltips to avoid redundant Retina backdrop textures (issue #17). |
+| **Concentric geometry** | Corner radii nest: window 22 → sheets 16 → sidebar, menus, popovers 14 → groups 12 → fields 8 → small controls 6 (§5.1). Nothing has sharp corners next to a rounded container. |
+| **Grouped controls** | Toolbar buttons are grouped in glass capsules. Push buttons are capsules; segmented controls and fields share the control radius (§3.3). One prominent (accent) action per view. |
 | **Toolbar in the titlebar** | Unified titlebar/toolbar; traffic lights stay native; toolbar is user-customisable (add/remove/reorder items, icon/text modes) like `NSToolbar`. |
 | **Native tabs behaviour** | Tabs reorder, tear off to new windows, merge windows (Window → Merge All Windows), ⌘⇧[ / ⌘⇧] to switch, ⌘W closes, "Reopen closed tab" ⌘⇧T. |
 | **Menu bar parity** | Every command in the native menu bar with its shortcut; Help menu search finds commands. |
@@ -364,23 +364,22 @@ These rules are enforced by `packages/ui/src/tokens/controls.test.ts`. Follow th
 
 | Size | Height | Corner radius | Text | Used by |
 | --- | --- | --- | --- | --- |
-| Regular (default) | `--or-control-height` 28 px | `--or-radius-control` 7 px | 13 px | text fields, search fields, selects (`SelectField`), push buttons, segmented controls |
-| Compact | `--or-control-height-compact` 24 px | `--or-radius-control-compact` 6 px | 12 px | toolbar/table controls, inline buttons (`Button size="sm"`, `controlSize="compact"`) |
+| Regular (default) | `--or-control-height` 28 px | `--or-radius-control` 8 px (buttons: capsule) | 13 px | text fields, search fields, selects (`SelectField`, a capsule pop-up button), push buttons, segmented controls |
+| Compact | `--or-control-height-compact` 22 px | `--or-radius-control-compact` 6 px (buttons: capsule) | 12 px | toolbar/table controls, inline buttons (`Button size="sm"`, `controlSize="compact"`) |
 
-- One height and one radius per size. Inputs, selects, buttons and segmented controls of the same size never differ. A select uses the text-field frame, so it is exactly the size of a text input. Do not set heights or radii in feature CSS. Use the shared components or the tokens.
+- One height per size. Inputs, selects and segmented controls of the same size share one radius; push buttons are capsules (bordered = `control-fill`, borderless = `ghost`, prominent = `accent-fill`). The segmented selection slides between equal segments. A select uses the text-field frame, so it is exactly the size of a text input. Do not set heights or radii in feature CSS. Use the shared components or the tokens.
 - Segments sit inside their control with a 2 px inset (`--or-segment-inset`). Their radius is the control radius minus the inset, so the corners are concentric.
 - Segment labels centre horizontally and vertically, including when segments share the available width. Feature styles must not impose a minimum height that exceeds the inset track.
 - Chrome and controls inherit the system UI font. Query action shortcuts use an inline, borderless system-font hint; standalone shortcut hints retain compact keycaps.
-- Table identifiers and values use `font-mono` at `text-13`: object names, table document tabs, grid headers and cells, structure/index data and inspector values. Connection/database/schema selectors, rail labels, context paths, query tabs and inspector labels use the system UI font; inspector types and secondary metadata use 11–12 px. Table glyphs use the theme's soft blue `info-fg`; selected sidebar rows inherit their white selection foreground.
+- Data uses `font-mono` at 12 px: grid cells, structure/index data and inspector values. Chrome uses the system UI font: the sidebar tree (13 px), tabs (12 px), grid headers (11 px medium), context paths and labels. Icons stay grey (`tertiary`) until their row is selected (`accent` on an `accent-soft` pill).
 - Window chrome, navigation labels and opened-database tiles do not select as text. Inputs, editors, SQL previews, inspector values and query diagnostics remain selectable for copying.
-- Switches are macOS-sized: 26 × 15 px track and 13 px knob (`--or-switch-*`).
-- Concentric geometry: window 16 pt (macOS 26) → panels and sheets 12 px → controls 7 / 6 px. Capsules (`--or-radius-capsule`) are only for pills, badges and switch tracks, not for push buttons or fields.
+- Switches: 32 × 20 px track and a 16 px white knob (`--or-switch-*`).
+- Concentric geometry: §5.1 radii. Capsules (`--or-radius-capsule`) are for push buttons, pop-up buttons, toolbar capsules and the address bar, never for fields.
 - Arrow cursor everywhere: never use `cursor: pointer` on buttons, rows or tabs. Text inputs keep the I-beam, and disabled controls dim instead of changing the cursor.
 - Scroll bars are quiet, like macOS overlay scroll bars: a faint thumb until the scrolling area is hovered, clearer then and strongest under the pointer (`app/global.css`).
-- NULL, EMPTY and DEFAULT markers (grid, structure grid, inspector) use the `placeholder` token: quieter than tertiary text, held to a 3:1 contrast minimum in every theme instead of 4.5:1, like TablePlus's dim markers.
-- Menus are solid, ringed `control-active` surfaces with 24 px rows, accent-filled highlight and destructive items last, after a separator.
-- Sheets (`Sheet` + `SheetActions`) have a compact, centred 13 px semibold title and no close button. Push buttons are right-aligned: Cancel, then the default action in blue. Return runs the default action, Escape cancels, and focus starts in the first text field. Destructive confirmations use the native macOS alert (`confirmDestructive`), with Cancel as the safe choice.
-- `control-sm`, `control-md` and `control-compact` are aliases of the regular and compact heights, kept for older styles.
+- NULL, EMPTY and DEFAULT markers (grid, structure grid, inspector) use the `placeholder` token (the kit's `--null`), held to a 3:1 contrast minimum in every theme instead of 4.5:1, like TablePlus's dim markers.
+- Menus and popovers are floating panels (`GlassPanel`: `panel` fill, `panel-shadow` edge, radius 14) with 26 px rows, an accent-filled highlight and destructive items last, after a separator.
+- Sheets (`Sheet` + `SheetActions`) drop from under the toolbar on `glass-sheet` with 16 px corners, a 15 px semibold left-aligned title (alerts: centred 13 px), a hairline above the actions and no close button. Push buttons are right-aligned: Cancel, then the default action in blue. Return runs the default action, Escape cancels, and focus starts in the first text field. Destructive confirmations use the native macOS alert (`confirmDestructive`), with Cancel as the safe choice.
 
 ## 4. Key flows to design
 
@@ -403,10 +402,46 @@ These rules are enforced by `packages/ui/src/tokens/controls.test.ts`. Follow th
 ## 5. Visual language guidance (inputs to the design phase)
 
 - **Typography:** system UI font for chrome (SF Pro on macOS); system monospace (SF Mono) at 12 px, like TablePlus, for table identifiers, table display, SQL editors and inspector values. Appearance settings provide independent local font choices and 11–18 px sizes for interface and monospace content. Bundled open-licence fonts remain future work.
-- **Colour:** neutral graphite surfaces (no hue tint) in dark mode and neutral light surfaces, blue `#2563EB` selection, brighter semantic colours for success/warning/danger; environment tag palette (local=emerald, dev=green, staging=amber, prod=coral, custom) chosen to remain distinguishable for common colour-vision deficiencies and paired with text labels.
+- **Colour:** see §5.1 (v3 supersedes this line): neutral surfaces, a muted blue accent used sparingly, brighter semantic colours for success/warning/danger; environment tag palette (local=emerald, dev=green, staging=amber, prod=coral, custom) chosen to remain distinguishable for common colour-vision deficiencies and paired with text labels.
 - **Iconography:** single consistent line icon set; database "logos" rendered as neutral, original glyphs or official marks only where their trademark guidelines permit use in tooling (checked per vendor).
-- **Motion:** functional opacity/transform only; approved panel timing 360 ms and disclosure 220 ms with `cubic-bezier(0.32, 0.72, 0, 1)`. Palette scale/fade uses 160 ms; other small feedback stays ≤ 150 ms. Animations and transitions are disabled under reduced motion.
+- **Motion:** functional opacity/transform only; panel timing 360 ms and disclosure 220 ms with the kit's `cubic-bezier(0.23, 1, 0.32, 1)`; quick feedback 100 ms (`motion-quick`). Palette scale/fade uses 160 ms; other small feedback stays ≤ 150 ms. Animations and transitions are disabled under reduced motion.
 - **Density modes:** compact / default / comfortable.
+
+### 5.1 Visual language v3 — "quiet native" (UI revamp, 2026-11-23)
+
+The approved reference is the static mockup kit in `design/revamp/v3/` (kept out of Git): `kit.css` holds the values, `screens/*.html` one page per screen. `screens/main.html` was approved by the owner and is the template for every screen; when a screen and this section disagree, the mockups are the screen reference. The style comes from the Handa app's "Native" design language (structure, glass recipe, radii, fills) and TablePlus (neutral greys, a dense grid, very quiet separators, the centred address capsule).
+
+**Glass rules.** Glass only on things that float: the sidebar panel, toolbar capsules, menus, popovers, the palette and sheets. Everything else is solid: the toolbar band, tab strip, grid, inspector, pending bar and status line. The backdrop is flat and neutral; no gradients on content, no card outlines, no shadows on content. The webview is transparent over the native sidebar material, so the sidebar's veil frosts natively; CSS `backdrop-filter` stays limited to mounted overlays (sheets, palette, tooltips). Reduced transparency swaps every glass token for its solid surface (`tokens/solid.ts`).
+
+**Tokens** (`packages/ui/src/tokens/colours.ts`; existing names keep working, new ones are the kit's):
+
+| Role | Token | Light | Dark |
+| --- | --- | --- | --- |
+| Window content, grid (`--bg`) | `page`, `window`, `toolbar` | `#FFFFFF` | `#1C1C1E` |
+| Grouped sections, pending bar (`--group`) | `group`, `panel-solid` | `#F5F5F7` | `#28282B` |
+| A field on a group (`--raised`) | `raised`, `field-box-fill` | `#FFFFFF` | `#37373B` |
+| Control fill / pressed fill (`--fill`, `--fill-2`) | `control-fill` (`address`, `picker-fill`), `fill-2` (`control-hover`, `switch-track`) | 118,118,128 @ 12 % / 20 % | @ 24 % / 36 % |
+| Hover / press | `hover`, `press` | black 4 % / 8 % | white 5 % / 10 % |
+| Label / secondary | `text`, `secondary` (`label-tertiary`) | `#1D1D1F` / `#636366` | `#F5F5F7` / `#A6A6AA`¹ |
+| Icons and marks only | `tertiary`, `glyph-*` | `#8E8E93` | `#6E6E73` |
+| NULL, placeholders (`--null`) | `placeholder`, `syntax-comment` | `#72727A` | `#8A8A92` |
+| Separators | `separator` (`pane-separator`), `separator-strong` (`control-stroke`) | 60,60,67 @ 13 % / 24 % | white 9 % / 20 % |
+| Grid column rules / zebra | `grid-line`, `row-stripe` | 60,60,67 @ 7 % / 118,118,128 @ 5 % | white 5.5 % / 2.8 % |
+| Accent as text / as fill / tint | `accent`, `accent-fill`, `accent-soft` | `#2C64C6` / `#2C64C6` / 13 % | `#6EA6F2` / `#2F6BD0` / 20 % |
+| Focus | `focus` (solid outline ≥ 3:1), `field-focus` (the kit's soft 3 px ring) | `#2C64C6`, 45 % | `#6EA6F2`, 50 % |
+| Status word / soft fill | `success-fg`/`-bg`, `warning-*`, `danger-*`, `info-*`, `neutral-*` | `#287442`¹ `#8A5A12` `#B3362E` | `#6CC08A` `#D9A955` `#EA8D86`¹ |
+| Staged cell (`--edit-soft`) | `cell-edited` | 176,124,30 @ 14 % | 217,169,85 @ 17 % |
+| Environment dots | `tag-prod` / `tag-staging` / `tag-dev`, `tag-local` | danger / warning / success | same |
+| Glass | `window-veil`, `glass-sidebar` + `glass-sidebar-edge`, `glass-fill` + `glass-control-edge`, `glass-float` + `panel-shadow`, `glass-sheet` + `shadow-sheet` | kit recipes | kit recipes |
+| Syntax | `syntax-keyword`, `-string`, `-number`, `-function`, `-comment` | `#7A3E9D` `#9B4A2F` `#2C64C6` `#2F6F73` null | `#C59BDC` `#E0957F` `#6EA6F2` `#79C0C4` null |
+
+¹ The kit's hue, nudged by at most 11 % so every pill and label keeps 4.5:1 on each surface it is drawn on (`tokens/contrast.ts`). Status is never colour alone: pills carry the word.
+
+**Radii** (4 px grid): 6 small control, segment, tab, menu item (`radius-menu-item`, `radius-control-compact`) · 8 field, sidebar item, segmented track (`radius-control`, `radius-field`) · 12 group (`radius-card`) · 14 sidebar panel, menus, popovers (`radius-panel`) · 16 sheets (`radius-sheet`) · 22 window · capsule for buttons, pop-ups, toolbar capsules and the address bar.
+
+**Density.** 13/18 px system type; 12 px `ui-monospace` data; grid rows 24 px with a 25 px header, zebra instead of row rules, column rules at `grid-line`, the selected row in `accent-soft`, a 2 px `accent-fill` ring on the focused cell, staged cells in `cell-edited` with a corner mark. Controls 28 px (compact 22), toolbar 48 px with 32 px capsules and 30 × 26 buttons, tabs 34 px (tab 26), tree rows 26 px, status line 24 px, pending bar 40 px, sidebar column 240 px (panel inset 8), inspector 280 px. Icons: 16 px box, 1.5 px stroke; tertiary in lists and trees, secondary on icon buttons, the label colour in toolbar capsules.
+
+**Frame** (`apps/desktop/src/features/workspace`): the floating glass sidebar holds the traffic lights in its 36 px top row (`trafficLightPosition` 22, 28), the connection pop-up (environment dot, name, database; it shows or hides the connection list), Items / Queries / History, search and the tree. The toolbar puts small glass capsules either side of the centred address capsule (health dot, environment, engine, connection, database, object, star, refresh) and the safety lock with its policy word on the left. The inspector is a column of its own beside the content and never covers it.
 
 ### M0-T4 token values and accessibility adjustments
 

@@ -1,28 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 import { lazy, Suspense } from 'react';
-import { Icon, IconButton, SplitPanel } from '@openrows/ui';
+import { SplitPanel } from '@openrows/ui';
 import type { useWorkspaceController } from './useWorkspaceController';
-import { inspectorRange, sidebarRange } from './layout';
-import {
-  ConnectionHeader,
-  ConnectionRail,
-  connectionActions,
-  sessionOf,
-} from '../connections';
+import { inspectorRange } from './layout';
 import type { Connections } from '../connections';
-import { QueryContent, openQueryFile, rebindFiles } from '../query';
-import { reportProjectError } from '../projects';
-import type { QueryTabs, TabScope } from '../query';
-import { openInspection } from '../inspection/target';
-import { AttachDatabaseTools } from '../schema';
-import { WorkspaceSidebar } from './WorkspaceSidebar';
+import { QueryContent } from '../query';
 import type { ObjectEditorRequest } from '../objects';
 const WorkspaceInspector = lazy(() =>
   import('./WorkspaceInspector').then((module) => ({
     default: module.WorkspaceInspector,
   })),
 );
-import styles from './Workspace.module.css';
+import styles from './Frame.module.css';
 import { t } from './messages';
 type Props = {
   connections: Connections;
@@ -43,73 +32,15 @@ function triggerEditor(
     : { kind: 'trigger', ...at, table: table.name, name };
 }
 
-/** Project queries open in the active scope; bound tabs follow moved files. */
-function projectOpeners(
-  tabs: QueryTabs,
-  scope: TabScope | undefined,
-): {
-  onProjectQuery: (path: string) => void;
-  onProjectMoved: (from: string, to: string) => void;
-} {
-  return {
-    onProjectQuery: (path) => {
-      if (!scope) {
-        reportProjectError(t('openDatabaseOpen'));
-        return;
-      }
-      openQueryFile(tabs, scope, path).catch(reportProjectError);
-    },
-    onProjectMoved: (from, to) => {
-      rebindFiles(tabs, from, to);
-    },
-  };
-}
-
-/** Object browser, query tabs and the inspector. */
+/**
+ * Query tabs and their content, with the inspector as a column of its own
+ * beside them, so it never covers the grid.
+ */
 export function WorkspaceBody(props: Props): React.JSX.Element {
   const { connections, controller } = props;
-  const { catalog, tabs, scope } = controller;
+  const { tabs, scope } = controller;
   return (
     <div className={styles.body}>
-      <SplitPanel
-        label={t('sidebar')}
-        storageKey="openrows.mock.sidebar"
-        range={sidebarRange}
-        open={controller.sidebar}
-        edge="right"
-      >
-        <WorkspaceSidebar
-          header={<SidebarHeader {...props} />}
-          schemaTools={<SchemaTools {...props} />}
-          catalog={catalog}
-          connections={connections}
-          onOpen={controller.openObject}
-          onInspect={(target) => {
-            if (scope) openInspection(tabs, scope, target);
-          }}
-          onDiagram={controller.showDiagram}
-          onImport={controller.importData}
-          jobs={controller.jobs}
-          objects={controller.objects}
-          onOpenSql={(sql) => {
-            controller.addQuery(sql);
-          }}
-          onSavedQuery={(query) => {
-            if (scope) tabs.open(scope, { title: query.name, sql: query.sql });
-          }}
-          {...projectOpeners(tabs, scope)}
-          onConnection={connections.select}
-          sessionFor={(database) => {
-            const profile = connections.active;
-            const sessionId = profile
-              ? sessionOf(connections.statusOf(profile.id), database)
-              : null;
-            return profile && sessionId
-              ? { profileId: profile.id, sessionId }
-              : null;
-          }}
-        />
-      </SplitPanel>
       <QueryContent
         onNewTab={newTabCommand(controller)}
         connections={connections}
@@ -133,98 +64,10 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
         range={inspectorRange}
         open={controller.inspector.open}
         edge="left"
-        overlay={controller.compact}
       >
         <Inspector {...props} />
       </SplitPanel>
     </div>
-  );
-}
-
-/** The sidebar names the connection and its disconnected or active database. */
-function SidebarHeader({ connections, controller }: Props): React.JSX.Element {
-  return (
-    <ConnectionHeader
-      connections={connections}
-      database={controller.scope?.database}
-    />
-  );
-}
-
-/** Tools beside the schema picker: the ER diagram and engine extras. */
-function SchemaTools({ connections, controller }: Props): React.JSX.Element {
-  const { catalog } = controller;
-  return (
-    <>
-      <IconButton
-        aria-label={t('showErDiagram2')}
-        title={t('showErDiagram')}
-        size="sm"
-        variant="ghost"
-        disabled={!catalog.schema}
-        onClick={() => {
-          controller.showDiagram();
-        }}
-      >
-        <Icon name="diagram" />
-      </IconButton>
-      <AttachDatabaseTools connections={connections} catalog={catalog} />
-    </>
-  );
-}
-
-/** Full-height workspace sidebar: connections and their opened databases. */
-export function WorkspaceRail(props: {
-  connections: Connections;
-  onSettings?: (() => void) | undefined;
-  /** Open the process list of a connection's database. */
-  onProcesses?: ((scope: TabScope) => void) | undefined;
-  /** Open a database Monitor. */
-  onMonitor?: ((scope: TabScope) => void) | undefined;
-  /** Run a `.sql` file on a connection's database. */
-  onRunFile?: ((database: string, profileId: string) => void) | undefined;
-  jobs?: import('./JobActions').JobActions;
-}): React.JSX.Element {
-  const { connections } = props;
-  return (
-    <ConnectionRail
-      profiles={connections.profiles}
-      activeId={connections.active?.id}
-      statusOf={connections.statusOf}
-      onSelect={connections.select}
-      databases={connections.databases}
-      restoredDatabases={connections.restoredDatabases}
-      database={connections.database}
-      onDatabase={connections.openDatabase}
-      onCloseDatabase={connections.closeDatabase}
-      onProfileDatabase={(id, name) => {
-        connections.select(id, name);
-      }}
-      onCloseProfileDatabase={connections.closeProfileDatabase}
-      onMonitor={(id, name) => {
-        connections.select(id, name);
-        props.onMonitor?.({ connectionId: id, database: name });
-      }}
-      onProcesses={(id, name) => {
-        connections.select(id, name);
-        props.onProcesses?.({ connectionId: id, database: name });
-      }}
-      onBackup={(id, name) => {
-        props.jobs?.backup(name, undefined, id);
-      }}
-      onRestore={(id, name) => {
-        props.jobs?.restore(name, undefined, id);
-      }}
-      onRunFile={(id, name) => {
-        connections.select(id, name);
-        props.onRunFile?.(name, id);
-      }}
-      onNew={() => {
-        connections.setSheet({ kind: 'new' });
-      }}
-      actionsFor={(profile) => connectionActions(profile, connections)}
-      onSettings={props.onSettings}
-    />
   );
 }
 

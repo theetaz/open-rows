@@ -37,7 +37,7 @@ export function SelectField<Value extends string>({
   return (
     <div className={`${styles.field ?? ''} ${className}`}>
       {label && <label htmlFor={selectId}>{label}</label>}
-      <div className={styles.frame} data-size={controlSize}>
+      <div className={styles.frame} data-size={controlSize} data-kind="popup">
         <select
           {...props}
           id={selectId}

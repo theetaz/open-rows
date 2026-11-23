@@ -2,6 +2,7 @@
 import { VerticalScroll } from './scroll';
 import { CanvasController } from './canvasController';
 import { CanvasPainter } from './painter';
+import { rowTop } from './layout';
 import { shadowGrid } from './accessibility';
 import { contextFocus, hoverEdges, pointerFocus } from './pointer';
 import { autoWidth } from './headerDrag';
@@ -139,10 +140,10 @@ function cellRect(
   const width = painter.props.source.columns[column]?.width;
   if (width === undefined || row < 0) return undefined;
   const pinned = column < painter.layout.pinned,
-    height = painter.props.theme.rowHeight;
+    height = painter.layout.rowHeight;
   return {
     x: (painter.layout.offsets[column] ?? 0) - (pinned ? 0 : scroll.scrollLeft),
-    y: (row + 1) * height - vertical.offset(),
+    y: rowTop(painter.layout, row) - vertical.offset(),
     width,
     height,
   };
@@ -171,10 +172,10 @@ function reveal(
   { scroll, vertical }: CanvasController,
   { row, column }: { row: number; column: number },
 ): void {
-  const height = painter.props.theme.rowHeight,
-    top = (row + 1) * height,
+  const { rowHeight: height, headerHeight } = painter.layout,
+    top = rowTop(painter.layout, row),
     current = vertical.offset();
-  if (top - height < current) vertical.scrollTo(top - height);
+  if (top - headerHeight < current) vertical.scrollTo(top - headerHeight);
   else if (top + height > current + scroll.clientHeight)
     vertical.scrollTo(top + height - scroll.clientHeight);
   const { offsets, pinned, pinnedWidth } = painter.layout;

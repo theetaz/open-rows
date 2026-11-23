@@ -29,6 +29,9 @@ function canvasMock(): {
         fillRect: vi.fn(),
         fill: vi.fn(),
         arc: vi.fn(),
+        moveTo: vi.fn(),
+        lineTo: vi.fn(),
+        closePath: vi.fn(),
       } as unknown as CanvasRenderingContext2D;
     },
   );

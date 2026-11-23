@@ -51,7 +51,7 @@ export const defaultAppearance: Appearance = {
   sidebarFont: 'system',
   editorSize: 12,
   gridSize: 12,
-  sidebarSize: 12.5,
+  sidebarSize: 13,
   editorLineHeight: 1.5,
 };
 export const appearanceKey = 'openrows.appearance.v1';
@@ -169,5 +169,5 @@ function parseFontMetrics(
 
 /** Preserve half-pixel sidebar sizes, including the default, across persistence. */
 function sidebarSize(value: unknown): number {
-  return bounded(typeof value === 'number' ? value * 2 : value, 22, 48, 25) / 2;
+  return bounded(typeof value === 'number' ? value * 2 : value, 22, 48, 26) / 2;
 }

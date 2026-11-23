@@ -1,0 +1,187 @@
+// SPDX-License-Identifier: Apache-2.0
+import { useId, useState } from 'react';
+import { Icon, IconButton, SplitPanel } from '@openrows/ui';
+import { ConnectionHeader, sessionOf } from '../connections';
+import type { Connections } from '../connections';
+import { openQueryFile, rebindFiles } from '../query';
+import type { QueryTabs, TabScope } from '../query';
+import { reportProjectError } from '../projects';
+import { openInspection } from '../inspection/target';
+import { AttachDatabaseTools } from '../schema';
+import { safeModeState } from '../security/policies';
+import { sidebarRange } from './layout';
+import { WorkspaceSidebar } from './WorkspaceSidebar';
+import { WorkspaceRail } from './WorkspaceRail';
+import type { useWorkspaceController } from './useWorkspaceController';
+import styles from './Frame.module.css';
+import { t } from './messages';
+
+type Props = {
+  connections: Connections;
+  controller: ReturnType<typeof useWorkspaceController>;
+};
+type ColumnProps = Props & { onSettings: () => void };
+
+/**
+ * The floating glass sidebar: the traffic lights sit in its top row, then the
+ * connection pop-up (which shows or hides the connection list), then the
+ * Items / Queries / History source list.
+ */
+export function SidebarColumn(props: ColumnProps): React.JSX.Element {
+  const { connections, controller } = props;
+  // Start with the list open until a connection is active (first launch).
+  const [list, setList] = useState(() => !connections.active);
+  const region = useId();
+  return (
+    <SplitPanel
+      label={t('sidebar')}
+      storageKey="openrows.mock.sidebar"
+      range={sidebarRange}
+      open={controller.sidebar}
+      edge="right"
+      divider={false}
+    >
+      <div className={styles.sidebar}>
+        <div className={styles.traffic} data-tauri-drag-region />
+        <ConnectionPopup
+          connections={connections}
+          open={list}
+          controls={region}
+          onToggle={() => {
+            setList(!list);
+          }}
+        />
+        <div id={region} className={styles.connections} hidden={!list}>
+          <WorkspaceRail
+            connections={connections}
+            onSettings={props.onSettings}
+            onProcesses={controller.openProcesses}
+            onMonitor={controller.openMonitor}
+            onRunFile={controller.jobs.runFile}
+            jobs={controller.jobs}
+          />
+        </div>
+        <SidebarItems connections={connections} controller={controller} />
+      </div>
+    </SplitPanel>
+  );
+}
+
+/** The active connection as a pop-up button: a quiet environment dot and a word. */
+function ConnectionPopup(props: {
+  connections: Connections;
+  open: boolean;
+  controls: string;
+  onToggle: () => void;
+}): React.JSX.Element {
+  const { active, database } = props.connections;
+  const name = active?.name ?? t('noConnection');
+  const shown = database || active?.database || '';
+  const context = active
+    ? [name, shown || t('noDatabase'), safeModeState(active).label].join(' · ')
+    : name;
+  return (
+    <button
+      type="button"
+      className={styles.popup}
+      aria-expanded={props.open}
+      aria-controls={props.controls}
+      aria-label={t('connectionsContext', { context })}
+      title={context}
+      onClick={props.onToggle}
+    >
+      <span
+        className={styles.envDot}
+        data-env={active?.env.kind ?? 'none'}
+        aria-hidden="true"
+      />
+      <strong>{name}</strong>
+      <span className={styles.popupDatabase}>{shown}</span>
+      <Icon name="chevronUpDown" />
+    </button>
+  );
+}
+
+/** Object tree of the active database, saved queries and history. */
+function SidebarItems({ connections, controller }: Props): React.JSX.Element {
+  const { catalog, tabs, scope } = controller;
+  return (
+    <WorkspaceSidebar
+      header={<ConnectionHeader connections={connections} />}
+      schemaTools={
+        <SchemaTools connections={connections} controller={controller} />
+      }
+      catalog={catalog}
+      connections={connections}
+      onOpen={controller.openObject}
+      onInspect={(target) => {
+        if (scope) openInspection(tabs, scope, target);
+      }}
+      onDiagram={controller.showDiagram}
+      onImport={controller.importData}
+      jobs={controller.jobs}
+      objects={controller.objects}
+      onOpenSql={(sql) => {
+        controller.addQuery(sql);
+      }}
+      onSavedQuery={(query) => {
+        if (scope) tabs.open(scope, { title: query.name, sql: query.sql });
+      }}
+      {...projectOpeners(tabs, scope)}
+      onConnection={connections.select}
+      sessionFor={(name) => {
+        const profile = connections.active;
+        const sessionId = profile
+          ? sessionOf(connections.statusOf(profile.id), name)
+          : null;
+        return profile && sessionId
+          ? { profileId: profile.id, sessionId }
+          : null;
+      }}
+    />
+  );
+}
+
+/** Tools beside the schema picker: the ER diagram and engine extras. */
+function SchemaTools({ connections, controller }: Props): React.JSX.Element {
+  const { catalog } = controller;
+  return (
+    <>
+      <IconButton
+        aria-label={t('showErDiagram2')}
+        title={t('showErDiagram')}
+        size="sm"
+        variant="ghost"
+        disabled={!catalog.schema}
+        onClick={() => {
+          controller.showDiagram();
+        }}
+      >
+        <Icon name="diagram" />
+      </IconButton>
+      <AttachDatabaseTools connections={connections} catalog={catalog} />
+    </>
+  );
+}
+
+/** Project queries open in the active scope; bound tabs follow moved files. */
+function projectOpeners(
+  tabs: QueryTabs,
+  scope: TabScope | undefined,
+): {
+  onProjectQuery: (path: string) => void;
+  onProjectMoved: (from: string, to: string) => void;
+} {
+  return {
+    onProjectQuery: (path) => {
+      if (!scope) {
+        reportProjectError(t('openDatabaseOpen'));
+        return;
+      }
+      openQueryFile(tabs, scope, path).catch(reportProjectError);
+    },
+    onProjectMoved: (from, to) => {
+      rebindFiles(tabs, from, to);
+    },
+  };
+}

@@ -62,6 +62,10 @@ export interface GridDataSource {
 export interface GridTheme {
   colours: typeof light;
   rowHeight: number;
+  /** The sticky header row; defaults to `rowHeight`. */
+  headerHeight?: number;
+  /** Canvas font of the header titles; defaults to the cell font. */
+  headerFont?: string;
   fontSize: number;
   fontFamily: string;
 }

@@ -107,16 +107,17 @@ it('grows with staged rows, reports cell geometry and selects cells for inline e
     host = document.createElement('div');
   const handle = mountGrid(host, input);
   const spacer = host.firstElementChild?.firstElementChild as HTMLElement;
-  const height = input.theme.rowHeight;
-  expect(spacer.style.height).toBe(`${String(4 * height)}px`);
+  const height = input.theme.rowHeight,
+    header = input.theme.headerHeight ?? height;
+  expect(spacer.style.height).toBe(`${String(header + 3 * height)}px`);
   source.add();
-  expect(spacer.style.height).toBe(`${String(5 * height)}px`);
+  expect(spacer.style.height).toBe(`${String(header + 4 * height)}px`);
   expect(host.querySelector('[role=grid]')?.getAttribute('aria-rowcount')).toBe(
     '5',
   );
   expect(handle.cellRect?.(3, 1)).toEqual({
     x: 100,
-    y: 4 * height,
+    y: header + 3 * height,
     width: 80,
     height,
   });

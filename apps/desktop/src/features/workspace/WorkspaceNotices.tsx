@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import styles from './Workspace.module.css';
+import styles from './Frame.module.css';
 import { t } from './messages';
 
 /** A problem opening a file from Finder, a link or the command line. */

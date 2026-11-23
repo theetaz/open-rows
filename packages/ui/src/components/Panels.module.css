@@ -1,13 +1,13 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/* Floating panels (menus, popovers): nearly solid, 14 px corners, a soft edge. */
 .panel {
   background: var(--or-panel);
-  border: var(--or-border-width) solid var(--or-separator);
+  border: 0;
   box-shadow: var(--or-panel-shadow);
-}
-.panel {
   padding: var(--or-space-16);
   border-radius: var(--or-radius-panel);
 }
+/* A toolbar capsule: glass over the window, small buttons inside. */
 .toolbar {
   composes: rim from './GlassRim.module.css';
   display: inline-flex;
@@ -15,13 +15,8 @@
   gap: 0;
   box-sizing: border-box;
   block-size: var(--or-glass-height);
-  padding: var(--or-glass-padding);
-  box-shadow: var(--or-glass-shadow);
+  padding: 0 var(--or-glass-padding);
   background: var(--or-glass-fill);
   border: 0;
-  border-radius: var(--or-radius-glass);
-}
-:global([data-window-active='false']) .toolbar {
-  background: var(--or-glass-fill-inactive);
-  box-shadow: none;
+  border-radius: var(--or-radius-capsule);
 }

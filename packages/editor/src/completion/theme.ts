@@ -18,9 +18,9 @@ const selected = `${row}[aria-selected]`;
 export const completionTheme = EditorView.theme({
   '& .cm-tooltip': {
     color: 'var(--or-text)',
-    backgroundColor: 'var(--or-panel-solid)',
-    border: 'var(--or-border-width) solid var(--or-separator)',
-    borderRadius: 'var(--or-radius-field)',
+    backgroundColor: 'var(--or-panel)',
+    border: 'none',
+    borderRadius: 'var(--or-radius-card)',
     boxShadow: 'var(--or-panel-shadow)',
   },
   [tooltip]: { overflow: 'hidden' },
@@ -39,11 +39,11 @@ export const completionTheme = EditorView.theme({
     height: ROW,
     lineHeight: ROW,
     padding: '0 var(--or-space-8)',
-    borderRadius: 'var(--or-radius-field)',
+    borderRadius: 'var(--or-radius-menu-item)',
     color: 'var(--or-text)',
   },
   [selected]: {
-    backgroundColor: 'var(--or-accent)',
+    backgroundColor: 'var(--or-accent-fill)',
     color: 'var(--or-on-accent)',
   },
   '& .cm-completionLabel': {

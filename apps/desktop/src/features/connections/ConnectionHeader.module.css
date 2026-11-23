@@ -5,7 +5,7 @@
   min-width: 0;
   padding: var(--or-space-6) var(--or-space-8);
   border-radius: var(--or-radius-control);
-  background: var(--or-control-fill);
+  background: var(--or-danger-bg);
 }
 .header p {
   margin: 0;

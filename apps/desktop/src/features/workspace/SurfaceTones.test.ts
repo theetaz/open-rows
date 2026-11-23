@@ -2,38 +2,55 @@
 import { readFileSync } from 'node:fs';
 import { expect, it } from 'vitest';
 import { dark, light, geometry } from '@openrows/ui/tokens';
-function css(file: string): string {
-  const folder =
-    file === 'Rail'
-      ? 'features/connections'
-      : file === 'Query'
-        ? 'features/query'
-        : 'features/workspace';
+
+function css(folder: string, file: string): string {
   return readFileSync(`apps/desktop/src/${folder}/${file}.module.css`, 'utf8');
 }
-it('panes are edge-to-edge: borderless, unrounded, with a distinct content surface', () => {
-  for (const [file, selector] of [
+/** Declarations of the first rule whose selector is exactly `.name`. */
+function rule(style: string, name: string): string {
+  return style.match(new RegExp(`\\.${name} \\{([^}]+)\\}`))?.[1] ?? '';
+}
+
+it('glass only floats: the sidebar is an inset glass panel, content is solid', () => {
+  const frame = css('features/workspace', 'Frame');
+  const sidebar = rule(frame, 'sidebar');
+  expect(sidebar).toContain('background: var(--or-glass-sidebar);');
+  expect(sidebar).toContain('box-shadow: var(--or-glass-sidebar-edge);');
+  expect(sidebar).toContain('border-radius: var(--or-radius-panel);');
+  expect(sidebar).toContain('margin: var(--or-sidebar-inset);');
+  for (const name of ['main', 'body'])
+    expect(rule(frame, name)).toContain('background: var(--or-page);');
+  // Panes inside never paint glass or outlines of their own.
+  for (const [file, name] of [
     ['Sidebar', 'sidebar'],
     ['Inspector', 'inspector'],
-    ['Query', 'content'],
-  ]) {
-    const style = css(file ?? '');
-    const rule = style.match(
-      new RegExp(`\\.${selector ?? ''} \\{([^}]+)\\}`),
-    )?.[1];
-    expect(rule).toContain('border: 0;');
-    expect(rule).not.toMatch(/outline:/);
-    expect(rule).not.toMatch(/border-radius: var\(--or-radius-(group|panel)\)/);
+  ] as const) {
+    const body = rule(css('features/workspace', file), name);
+    expect(body).toContain('border: 0;');
+    expect(body).toContain('box-shadow: none;');
+    expect(body).not.toMatch(/glass/);
   }
-  for (const palette of [light, dark]) {
-    expect(palette.window).not.toBe(palette['panel-solid']);
-    expect(palette.window).not.toBe(palette.page);
-  }
-  // The rail's traffic-light strip is part of the translucent header.
-  expect(css('Rail')).toMatch(
-    /var\(--or-toolbar\) var\(--or-toolbar-height\),\s+var\(--or-page\)/,
+  expect(css('features/query', 'Query')).toContain(
+    'background: var(--or-window)',
   );
-  expect(css('Workspace')).toContain('background: var(--or-toolbar)');
-  expect(css('Query')).toContain('background: var(--or-window)');
-  expect(geometry['radius-field']).toBe('6px');
+});
+
+it('toolbar capsules are glass; the toolbar and tab strip are solid', () => {
+  expect(rule(css('features/workspace', 'Workspace'), 'toolbar')).toContain(
+    'background: var(--or-toolbar);',
+  );
+  const panels = readFileSync(
+    'packages/ui/src/components/Panels.module.css',
+    'utf8',
+  );
+  expect(rule(panels, 'toolbar')).toContain(
+    'background: var(--or-glass-fill);',
+  );
+  for (const palette of [light, dark]) {
+    expect(palette.toolbar).toBe(palette.page);
+    expect(palette.window).toBe(palette.page);
+    expect(palette['panel-solid']).not.toBe(palette.page);
+  }
+  expect(geometry['radius-panel']).toBe('14px');
+  expect(geometry['radius-field']).toBe('8px');
 });

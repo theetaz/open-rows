@@ -129,7 +129,7 @@ it('collapses to an inert region and uses the shared reduced-motion timing token
   expect(css).toContain('var(--or-motion-panel) var(--or-motion-easing)');
   const tokens = readFileSync('packages/ui/src/tokens/tokens.css', 'utf8');
   expect(tokens).toContain('--or-motion-panel: 360ms');
-  expect(tokens).toContain('cubic-bezier(0.32, 0.72, 0, 1)');
+  expect(tokens).toContain('cubic-bezier(0.23, 1, 0.32, 1)');
   expect(tokens).toContain('@media (prefers-reduced-motion: reduce)');
   expect(tokens).toContain('--or-motion-panel: 0ms');
 });
@@ -144,7 +144,6 @@ it('unmounts closed content at 360 ms and cancels exit when reopened', () => {
         range={range}
         open={open}
         edge="left"
-        overlay
       >
         <p>Panel content</p>
       </SplitPanel>

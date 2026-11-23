@@ -115,7 +115,7 @@ function startCellDrag(
         bounds.width - 1,
       ),
       y = Math.min(
-        Math.max(event.clientY - bounds.top, painter.layout.rowHeight),
+        Math.max(event.clientY - bounds.top, painter.layout.headerHeight),
         bounds.height - 1,
       );
     const cell = painter.layout.hit(painter.view, x, y);

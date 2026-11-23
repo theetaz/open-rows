@@ -1,52 +1,59 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/* Tab strip: solid, 34 px, a hairline below; the selected tab sits on a fill. */
 .tabStrip {
   display: flex;
   align-items: center;
   gap: var(--or-space-2);
   min-inline-size: 0;
-  padding-inline: var(--or-space-4);
-  background: var(--or-panel-solid);
-  border-block-end: var(--or-border-width) solid var(--or-separator);
+  block-size: var(--or-tabs-height);
+  padding-inline: var(--or-space-8) var(--or-space-12);
+  background: var(--or-page);
+  box-shadow: inset 0 calc(-1 * var(--or-border-width)) 0 var(--or-separator);
 }
 .tabs {
   display: flex;
   flex: 1;
+  align-items: center;
   min-inline-size: 0;
   overflow-x: auto;
+  scrollbar-width: none;
   gap: var(--or-space-2);
-  padding-block: var(--or-space-2);
+}
+.tabs::-webkit-scrollbar {
+  display: none;
 }
 .document {
   position: relative;
   display: flex;
   align-items: center;
-  flex: 1 1 0;
-  min-inline-size: 110px;
-  border-radius: var(--or-radius-control-compact);
+  flex: 0 1 auto;
+  min-inline-size: 96px;
+  max-inline-size: 220px;
+  block-size: var(--or-tab-height);
+  border-radius: var(--or-radius-menu-item);
   color: var(--or-secondary);
-}
-.document + .document::before {
-  content: '';
-  position: absolute;
-  inset-inline-start: calc(-1 * var(--or-space-2) / 2 - 0.5px);
-  inset-block: var(--or-space-6);
-  border-inline-start: var(--or-border-width) solid var(--or-separator);
-}
-.document[data-active='true']::before,
-.document[data-active='true'] + .document::before {
-  display: none;
+  transition:
+    background-color var(--or-motion-quick),
+    color var(--or-motion-quick);
 }
 .document[data-active='true'] {
-  background: var(--or-control-active);
-  box-shadow: 0 0 0 var(--or-border-width) var(--or-control-stroke);
+  background: var(--or-control-fill);
+  color: var(--or-text);
+  font-weight: var(--or-weight-medium);
+}
+.document:hover:not([data-active='true']) {
+  background: var(--or-hover);
   color: var(--or-text);
 }
-/* A small colour mark; the tab's tooltip names the environment in words. */
+/* A small colour mark before the close button; the tooltip names the environment. */
+.document[data-marked='true'] button[role='tab'] {
+  padding-inline-end: 38px;
+}
 .document[data-marked='true']::after {
   content: '';
   position: absolute;
   inset-block-start: 50%;
-  inset-inline-end: var(--or-space-8);
+  inset-inline-end: 26px;
   inline-size: var(--or-dot-size);
   block-size: var(--or-dot-size);
   margin-block-start: calc(var(--or-dot-size) / -2);
@@ -56,58 +63,70 @@
 }
 .document button {
   font: inherit;
-  font-size: var(--or-text-13);
   color: inherit;
   border: 0;
   background: transparent;
   cursor: default;
-  block-size: var(--or-control-height-compact);
+  block-size: var(--or-tab-height);
 }
 .document button[role='tab'] {
-  font-family: var(--or-font-ui);
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: var(--or-space-6);
   flex: 1;
   min-inline-size: 0;
-  padding-inline: var(--or-space-24);
+  padding-inline: var(--or-space-8) 26px;
+  font-family: var(--or-font-ui);
+  font-size: var(--or-text-12);
 }
-.document[data-kind='table'] button[role='tab'] > span:first-child {
-  color: var(--or-info-fg);
+.document button[role='tab'] > svg {
+  flex: none;
+  inline-size: 14px;
+  block-size: 14px;
+  color: var(--or-tertiary);
+}
+.document[data-active='true'] button[role='tab'] > svg {
+  color: var(--or-secondary);
 }
 .document button[role='tab'] span:last-child {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.document button:last-child {
+/* The close button sits at the end and shows on hover or on the selected tab. */
+.document button:last-child:not([role='tab']) {
   position: absolute;
-  inset-inline-start: var(--or-space-2);
-  inline-size: var(--or-control-height-compact);
-  border-radius: var(--or-radius-control-compact);
+  inset-inline-end: var(--or-space-6);
+  display: inline-grid;
+  place-items: center;
+  inline-size: 16px;
+  block-size: 16px;
+  padding: 0;
+  border-radius: 4px;
   color: var(--or-secondary);
   opacity: 0;
 }
-.document button:last-child:hover {
-  background: var(--or-control-fill);
+.document button:last-child:not([role='tab']) svg {
+  inline-size: 12px;
+  block-size: 12px;
+}
+.document button:last-child:not([role='tab']):hover {
+  background: var(--or-press);
   color: var(--or-text);
 }
-.document:hover:not([data-active='true']) {
-  background: var(--or-control-fill);
-}
 .document:hover button:last-child,
-.document:focus-within button:last-child {
+.document:focus-within button:last-child,
+.document[data-active='true'] button:last-child {
   opacity: 1;
 }
 /* Pinned tabs show a pin where the close button would be. */
 .pin {
   position: absolute;
-  inset-inline-start: var(--or-space-6);
+  inset-inline-end: var(--or-space-8);
   display: flex;
   inline-size: 12px;
   block-size: 12px;
-  color: var(--or-secondary);
+  color: var(--or-tertiary);
 }
 .pin svg {
   inline-size: 100%;
@@ -118,20 +137,19 @@
   flex: 1;
   min-inline-size: 0;
   block-size: var(--or-control-height-compact);
-  margin-inline: var(--or-space-24);
+  margin-inline: var(--or-space-4) 26px;
   padding-inline: var(--or-space-6);
   border: var(--or-border-width) solid var(--or-control-stroke);
   border-radius: var(--or-radius-control-compact);
-  background: var(--or-panel-solid);
+  background: var(--or-field-box-fill);
   color: var(--or-text);
   font: inherit;
   font-family: var(--or-font-ui);
-  font-size: var(--or-text-13);
-  text-align: center;
+  font-size: var(--or-text-12);
 }
 .titleField:focus-visible {
-  outline: var(--or-focus-width) solid var(--or-focus);
-  outline-offset: -1px;
+  outline: var(--or-field-focus-width) solid var(--or-field-focus);
+  outline-offset: 0;
 }
 .document[data-preview='true'] button[role='tab'] span:last-child {
   font-style: italic;
@@ -148,25 +166,37 @@
   outline: var(--or-focus-width) solid var(--or-focus);
   outline-offset: -2px;
 }
+/* Disclosure section: a quiet group label with a rotating chevron. */
 .section > button {
   display: flex;
   align-items: center;
   gap: var(--or-space-6);
   width: 100%;
+  padding-inline: var(--or-space-6) var(--or-space-8);
   border: 0;
+  border-radius: var(--or-radius-control);
   color: var(--or-secondary);
   background: transparent;
   font: inherit;
-  font-size: var(--or-text-11);
-  font-weight: var(--or-weight-semibold);
+  font-size: var(--or-text-12);
+  font-weight: var(--or-weight-medium);
   min-block-size: var(--or-tree-row-height);
   cursor: default;
 }
+.section > button:hover {
+  background: var(--or-hover);
+}
 .count {
   margin-inline-start: auto;
+  font-size: var(--or-text-11);
+  font-variant-numeric: tabular-nums;
 }
 .chevron {
-  transition: transform var(--or-motion-disclosure) var(--or-motion-easing);
+  display: inline-grid;
+  place-items: center;
+  inline-size: 12px;
+  color: var(--or-tertiary);
+  transition: transform var(--or-motion-popover) var(--or-motion-easing);
 }
 .chevron[data-open='true'] {
   transform: rotate(90deg);
@@ -186,22 +216,24 @@
 .disclosure > div {
   overflow: hidden;
 }
+/* Object rows: 26 px, an inset pill when selected, grey icons until then. */
 .treeItem {
   display: flex;
   align-items: center;
-  gap: var(--or-space-8);
+  gap: var(--or-space-6);
   width: 100%;
   min-block-size: var(--or-tree-row-height);
-  padding-inline: var(--or-space-8);
+  padding-inline: var(--or-space-6) var(--or-space-8);
   border: 0;
-  border-radius: var(--or-radius-control-compact);
+  border-radius: var(--or-radius-control);
   background: transparent;
   color: var(--or-text);
   font: inherit;
-  font-family: var(--or-font-mono);
-  font-size: var(--or-text-mono, var(--or-text-13));
+  font-family: var(--or-font-sidebar, var(--or-font-ui));
+  font-size: var(--or-text-sidebar, var(--or-text-13));
   text-align: start;
   cursor: default;
+  transition: background-color var(--or-motion-quick);
 }
 .treeItem span:nth-child(2) {
   white-space: nowrap;
@@ -212,7 +244,7 @@
   margin-inline-start: auto;
   color: var(--or-secondary);
   font-variant-numeric: tabular-nums;
-  font-size: inherit;
+  font-size: var(--or-text-11);
 }
 .treeItem > span:first-child {
   flex-shrink: 0;
@@ -222,36 +254,22 @@
   display: inline-grid;
   place-items: center;
   inline-size: 16px;
+  color: var(--or-tertiary);
 }
 .treeItem > [data-glyph] svg {
-  inline-size: 15px;
-  block-size: 15px;
-}
-.treeItem > [data-glyph='▦'] {
-  color: var(--or-info-fg);
-}
-.treeItem > [data-glyph='▤'],
-.treeItem > [data-glyph='▥'] {
-  color: var(--or-glyph-view);
-}
-.treeItem > [data-glyph='ƒ'] {
-  color: var(--or-warning-fg);
+  inline-size: 14px;
+  block-size: 14px;
 }
 .treeItem[aria-pressed='true'] {
-  background: var(--or-accent);
-  color: var(--or-on-accent);
-}
-.treeItem[aria-pressed='true'] small {
-  color: inherit;
+  background: var(--or-accent-soft);
+  font-weight: var(--or-weight-medium);
 }
 .treeItem[aria-pressed='true'] > [data-glyph] {
-  color: inherit;
+  color: var(--or-accent);
 }
 .treeItem:hover:not([aria-pressed='true']) {
-  background: var(--or-control-fill);
+  background: var(--or-hover);
 }
-
-.document[data-kind='table'] button[role='tab'] {
-  font-family: var(--or-font-mono);
-  font-size: var(--or-text-mono, var(--or-text-13));
+.treeItem:active:not([aria-pressed='true']) {
+  background: var(--or-press);
 }

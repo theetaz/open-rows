@@ -69,7 +69,8 @@ it('requests the final row when a five-million-row native scrollbar reaches its 
   );
   scroll.scrollTop = SPACER - VIEWPORT;
   scroll.dispatchEvent(new Event('scroll'));
-  expect(handle.viewport.y).toBe((5_000_000 + 1) * input.theme.rowHeight - 800);
+  const { rowHeight, headerHeight = rowHeight } = input.theme;
+  expect(handle.viewport.y).toBe(headerHeight + 5_000_000 * rowHeight - 800);
   expect(request).toHaveBeenLastCalledWith(
     expect.objectContaining({ r1: 4_999_999 }),
     1,
@@ -193,8 +194,11 @@ it('remaps a capped scroll offset when the viewport height changes', () => {
     [{ contentRect: { width: 600, height: 400 } } as ResizeObserverEntry],
     {} as ResizeObserver,
   );
+  // Logical height: the header row plus every data row.
+  const { rowHeight, headerHeight = rowHeight } = input.theme;
+  const content = headerHeight + 5_000_000 * rowHeight;
   expect(handle.viewport.y).toBeCloseTo(
-    (16_000_000 * (130_000_026 - 400)) / (SPACER - 400),
+    (16_000_000 * (content - 400)) / (SPACER - 400),
   );
   handle.destroy();
 });

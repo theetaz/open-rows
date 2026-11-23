@@ -5,6 +5,8 @@ import { booleanText } from '@openrows/ui/format';
 /** Horizontal text inset and the width reserved for a stepper glyph. */
 const CELL_PADDING = 8;
 export const STEPPER_WIDTH = 16;
+/** Side of the staged-cell corner mark. */
+const MARK = 6;
 
 /** Width of the glyphs at a cell's end: a stepper and a link arrow. */
 export function accessoryWidth(column: GridColumn | undefined): number {
@@ -30,8 +32,6 @@ export function isMuted(cell: DisplayCell): boolean {
 export class CellPainter {
   readonly box = { x: 0, y: 0, width: 0, height: 0 };
   dpr = 1;
-  /** Selected rows use on-accent text over the accent fill. */
-  selected = false;
   constructor(private colours: GridTheme['colours']) {}
   setColours(colours: GridTheme['colours']): void {
     this.colours = colours;
@@ -59,11 +59,7 @@ export class CellPainter {
   ): void {
     const { x, y, width, height } = this.box;
     const muted = isMuted(cell);
-    context.fillStyle = this.selected
-      ? this.colours['on-accent']
-      : muted
-        ? this.colours.placeholder
-        : this.colours.text;
+    context.fillStyle = muted ? this.colours.placeholder : this.colours.text;
     this.text(context, column, muted ? text : this.display(column, text));
     if (column?.kind) this.stepper(context, x + width - STEPPER_WIDTH / 2 - 2);
     if (column?.link && cell.state !== 'null' && cell.state !== 'empty')
@@ -110,9 +106,7 @@ export class CellPainter {
   /** A ⌃⌄ pair, like a native pop-up button, centred on `cx`. */
   private stepper(context: CanvasRenderingContext2D, cx: number): void {
     const cy = this.box.y + this.box.height / 2;
-    context.strokeStyle = this.selected
-      ? this.colours['on-accent']
-      : this.colours.secondary;
+    context.strokeStyle = this.colours.secondary;
     context.lineWidth = 1.25;
     context.beginPath();
     context.moveTo(cx - 3, cy - 1.5);
@@ -126,9 +120,7 @@ export class CellPainter {
   /** A → in a small circle, like TablePlus' foreign-key jump, centred on `cx`. */
   private arrow(context: CanvasRenderingContext2D, cx: number): void {
     const cy = this.box.y + this.box.height / 2;
-    context.strokeStyle = this.selected
-      ? this.colours['on-accent']
-      : this.colours.secondary;
+    context.strokeStyle = this.colours.secondary;
     context.lineWidth = 1.25;
     context.beginPath();
     context.arc(cx, cy, 5.5, 0, Math.PI * 2);
@@ -139,18 +131,16 @@ export class CellPainter {
     context.lineTo(cx, cy + 2.5);
     context.stroke();
   }
-  /** TablePlus-style staged cell: a 1px danger border with corner dots. */
+  /** A staged cell: the edit tint (drawn first) plus a small corner mark. */
   private marker(context: CanvasRenderingContext2D): void {
-    const { x, y, width, height } = this.box,
-      line = 1;
-    context.fillStyle = this.colours.destructive;
-    context.fillRect(x, y, width, line);
-    context.fillRect(x, y + height - line, width, line);
-    context.fillRect(x, y, line, height);
-    context.fillRect(x + width - line, y, line, height);
-    context.fillRect(x, y, 3, 3);
-    context.fillRect(x + width - 3, y, 3, 3);
-    context.fillRect(x, y + height - 3, 3, 3);
-    context.fillRect(x + width - 3, y + height - 3, 3, 3);
+    const { x, y, width } = this.box,
+      right = x + width;
+    context.fillStyle = this.colours['warning-fg'];
+    context.beginPath();
+    context.moveTo(right - MARK, y);
+    context.lineTo(right, y);
+    context.lineTo(right, y + MARK);
+    context.closePath();
+    context.fill();
   }
 }

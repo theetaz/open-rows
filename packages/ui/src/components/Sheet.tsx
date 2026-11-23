@@ -6,8 +6,8 @@ import { useSheetDrag } from './sheetDrag';
 import { openSheet, sheetKey } from './sheetFocus';
 
 /**
- * macOS-style sheet: opens centred in the window and moves by dragging its
- * title row; compact centred title, 12 px panel corners, focus containment,
+ * macOS-style sheet: drops from under the toolbar and moves by dragging its
+ * title row; nearly solid glass, 16 px corners, focus containment,
  * Escape cancels, Return runs the default (primary) action and focus returns
  * to the opener. There is no close button, as in AppKit.
  */

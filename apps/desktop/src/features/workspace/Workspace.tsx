@@ -4,7 +4,8 @@ import { WorkspaceUpdates } from './WorkspaceUpdates';
 import { NativeDocuments } from '../query/NativeDocuments';
 import { WorkspaceToolbar } from './WorkspaceToolbar';
 import { FileNotice, RefreshAnnouncement } from './WorkspaceNotices';
-import { WorkspaceBody, WorkspaceRail } from './WorkspaceBody';
+import { WorkspaceBody } from './WorkspaceBody';
+import { SidebarColumn } from './SidebarColumn';
 const WorkspacePalettes = lazy(() =>
   import('./WorkspacePalettes').then((module) => ({
     default: module.WorkspacePalettes,
@@ -24,7 +25,7 @@ import { JobSheets, useJobActions } from './JobActions';
 import type { JobActions } from './JobActions';
 import { ErDiagram } from '../erd';
 import { ObjectEditors } from '../objects';
-import styles from './Workspace.module.css';
+import styles from './Frame.module.css';
 /** Real connections, catalog, query tabs and results. */
 export function Workspace({
   onGallery,
@@ -55,15 +56,12 @@ export function Workspace({
   if (!enabled) return <></>;
   return (
     <div className={styles.workspace}>
-      <WorkspaceRail
+      <SidebarColumn
         connections={connections}
+        controller={controller}
         onSettings={() => {
           onSettings();
         }}
-        onProcesses={controller.openProcesses}
-        onMonitor={controller.openMonitor}
-        onRunFile={jobs.runFile}
-        jobs={jobs}
       />
       <div className={styles.main}>
         <Toolbar connections={connections} controller={controller} />
@@ -243,7 +241,7 @@ function WorkspaceOverlay({
   );
 }
 
-/** The titlebar toolbar: context bar, panels, safe mode and actions. */
+/** The unified toolbar: address capsule, panels, the safety lock and actions. */
 function Toolbar({
   connections,
   controller,

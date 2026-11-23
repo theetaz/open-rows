@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { GridError } from './error';
-import { GridLayout, snap, backingSize } from './layout';
+import { GridLayout, rowTop, snap, backingSize } from './layout';
 import type { Viewport } from './layout';
 import type { CellRange, GridProps, PaintMetrics } from './model';
 import { TextCache } from './text';
@@ -27,7 +27,7 @@ export class CanvasPainter {
     host: HTMLElement,
     readonly props: GridProps,
   ) {
-    this.layout = new GridLayout(props.source.columns, props.theme.rowHeight);
+    this.layout = layoutFor(props);
     this.cells = new CellPainter(props.theme.colours);
     this.cells.dpr = this.dpr;
     this.contexts = ['body', 'pinned', 'header', 'selection'].map((layer) => {
@@ -47,11 +47,12 @@ export class CanvasPainter {
     const metricsChanged =
       previous.fontSize !== theme.fontSize ||
       previous.fontFamily !== theme.fontFamily ||
-      previous.rowHeight !== theme.rowHeight;
+      previous.rowHeight !== theme.rowHeight ||
+      previous.headerHeight !== theme.headerHeight;
     this.props.theme = theme;
     this.cells.setColours(theme.colours);
     if (metricsChanged) {
-      this.layout = new GridLayout(this.props.source.columns, theme.rowHeight);
+      this.layout = layoutFor(this.props);
       this.text = new TextCache();
       for (const context of this.contexts)
         context.font = `${String(theme.fontSize)}px ${theme.fontFamily}`;
@@ -60,10 +61,7 @@ export class CanvasPainter {
   }
   /** Column widths, order or pins changed: rebuild offsets and re-measure. */
   relayout(): void {
-    this.layout = new GridLayout(
-      this.props.source.columns,
-      this.props.theme.rowHeight,
-    );
+    this.layout = layoutFor(this.props);
     this.refresh();
   }
   /** Text width in the cell font; for auto-size, outside painting. */
@@ -191,13 +189,13 @@ export class CanvasPainter {
     context.beginPath();
     context.rect(
       left,
-      this.props.theme.rowHeight,
+      this.layout.headerHeight,
       right - left,
       this.view.height,
     );
     context.clip();
   }
-  /** Paint one cell; selected cells use the accent fill instead of row states. */
+  /** Paint one cell; selected cells take the accent tint instead of row states. */
   cell(
     context: CanvasRenderingContext2D,
     row: number,
@@ -211,7 +209,7 @@ export class CanvasPainter {
       (this.layout.offsets[col] ?? 0) - (pinned ? 0 : this.view.x),
       this.dpr,
     );
-    box.y = snap((row + 1) * theme.rowHeight - this.view.y, this.dpr);
+    box.y = snap(rowTop(this.layout, row) - this.view.y, this.dpr);
     box.width = source.columns[col]?.width ?? 0;
     box.height = theme.rowHeight;
     const cell = source.cell(row, col);
@@ -223,10 +221,14 @@ export class CanvasPainter {
     if (!cell) {
       this.metrics.placeholders++;
       context.fillStyle = theme.colours['control-fill'];
-      context.fillRect(box.x + 8, box.y + 9, box.width - 16, 8);
+      context.fillRect(
+        box.x + 8,
+        box.y + (box.height - 8) / 2,
+        box.width - 16,
+        8,
+      );
     } else {
       if (!selected) this.cells.background(context, cell);
-      this.cells.selected = selected;
       this.cells.content(
         context,
         cell,
@@ -234,18 +236,13 @@ export class CanvasPainter {
         this.text.get(cell),
       );
     }
-    context.fillStyle = theme.colours.separator;
+    // Column rules only: zebra rows separate themselves (TablePlus).
+    context.fillStyle = theme.colours['grid-line'];
     context.fillRect(
       box.x + box.width - 1 / this.dpr,
       box.y,
       1 / this.dpr,
       box.height,
-    );
-    context.fillRect(
-      box.x,
-      box.y + box.height - 1 / this.dpr,
-      box.width,
-      1 / this.dpr,
     );
     context.restore();
   }
@@ -255,26 +252,45 @@ export class CanvasPainter {
     selected: boolean,
   ): void {
     const { colours } = this.props.theme,
-      box = this.cells.box;
-    if (selected) context.fillStyle = colours.accent;
-    else if (this.props.striped !== false && row % 2 === 1)
+      box = this.cells.box,
+      striped = this.props.striped !== false && row % 2 === 1;
+    if (selected) {
+      // The selection layer repaints the cell opaquely, then tints it.
+      context.fillStyle = colours.window;
+      context.fillRect(box.x, box.y, box.width, box.height);
+    }
+    if (striped) {
       context.fillStyle = colours['row-stripe'];
-    else return;
+      context.fillRect(box.x, box.y, box.width, box.height);
+    }
+    if (!selected) return;
+    context.fillStyle = colours['accent-soft'];
     context.fillRect(box.x, box.y, box.width, box.height);
   }
+  /** The sticky header: window colour, 11 px titles, a hairline below. */
   private header(): void {
     const context = this.contexts[2];
     if (!context) return;
-    context.fillStyle = this.props.theme.colours['panel-solid'];
-    context.fillRect(0, 0, this.view.width, this.props.theme.rowHeight);
-    context.fillStyle = this.props.theme.colours.secondary;
-    for (let col = this.range.c0; col <= this.range.c1; col++)
-      this.headerCell(context, col, false);
-    context.fillStyle = this.props.theme.colours['panel-solid'];
-    context.fillRect(0, 0, this.layout.pinnedWidth, this.props.theme.rowHeight);
-    context.fillStyle = this.props.theme.colours.secondary;
-    for (let col = 0; col < this.layout.pinned; col++)
-      this.headerCell(context, col, true);
+    const { colours, headerFont } = this.props.theme,
+      height = this.layout.headerHeight;
+    context.save();
+    if (headerFont) context.font = headerFont;
+    for (const pinned of [false, true]) {
+      context.fillStyle = colours.window;
+      context.fillRect(
+        0,
+        0,
+        pinned ? this.layout.pinnedWidth : this.view.width,
+        height,
+      );
+      const first = pinned ? 0 : this.range.c0,
+        last = pinned ? this.layout.pinned - 1 : this.range.c1;
+      for (let col = first; col <= last; col++)
+        this.headerCell(context, col, pinned);
+    }
+    context.fillStyle = colours.separator;
+    context.fillRect(0, height - 1 / this.dpr, this.view.width, 1 / this.dpr);
+    context.restore();
   }
   private headerCell(
     context: CanvasRenderingContext2D,
@@ -283,25 +299,37 @@ export class CanvasPainter {
   ): void {
     const column = this.props.source.columns[col];
     if (!column) return;
+    const { colours } = this.props.theme,
+      height = this.layout.headerHeight;
     const x = (this.layout.offsets[col] ?? 0) - (pinned ? 0 : this.view.x);
     const arrow = column.sort ? SORT_ROOM : 0;
     context.save();
     context.beginPath();
-    context.rect(x, 0, column.width - arrow, this.props.theme.rowHeight);
+    context.rect(x, 0, column.width - arrow, height);
     context.clip();
-    context.fillText(
-      column.title,
-      snap(x + 8, this.dpr),
-      this.props.theme.rowHeight / 2,
-    );
+    context.fillStyle = column.sort ? colours.text : colours.secondary;
+    context.fillText(column.title, snap(x + 8, this.dpr), height / 2);
     context.restore();
+    context.fillStyle = colours['grid-line'];
+    context.fillRect(x + column.width - 1 / this.dpr, 0, 1 / this.dpr, height);
+    context.fillStyle = colours.secondary;
     if (column.sort)
       sortTriangle(context, {
         cx: x + column.width - SORT_ROOM / 2,
-        cy: this.props.theme.rowHeight / 2,
+        cy: height / 2,
         up: column.sort === 'ascending',
       });
   }
+}
+
+/** Layout for a theme's row and header heights. */
+function layoutFor(props: GridProps): GridLayout {
+  const { rowHeight, headerHeight } = props.theme;
+  return new GridLayout(
+    props.source.columns,
+    rowHeight,
+    headerHeight ?? rowHeight,
+  );
 }
 
 /** Header room reserved for the sort triangle. */

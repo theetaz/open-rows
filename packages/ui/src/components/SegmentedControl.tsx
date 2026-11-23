@@ -14,11 +14,11 @@ type Props<Value extends string> = {
   'aria-label': string;
   disabled?: boolean;
   className?: string | undefined;
-  /** Regular (28 px) or compact (24 px) for toolbars and footers (docs/20 §3.3). */
+  /** Regular (28 px) or compact (22 px) for toolbars and footers (docs/20 §3.3). */
   size?: 'regular' | 'compact';
   /** `accent` fills the selected segment with the accent colour (view switchers). */
   tone?: 'neutral' | 'accent';
-  /** Trackless 20 px selection pills for sidebar and inspector source lists. */
+  /** A compact control spanning a sidebar or inspector source list. */
   variant?: 'control' | 'source';
 };
 function nextIndex(
@@ -33,6 +33,13 @@ function nextIndex(
     return (index - 1 + count) % count;
   return undefined;
 }
+/** Position of the sliding selection: equal segments, so a count and an index. */
+function thumb(count: number, index: number): React.CSSProperties {
+  return {
+    '--segment-count': String(Math.max(count, 1)),
+    '--segment-index': String(Math.max(index, 0)),
+  } as React.CSSProperties;
+}
 /** Single-select radio group with wrapping arrows, Home/End and roving focus. */
 export function SegmentedControl<Value extends string>(
   props: Props<Value>,
@@ -41,10 +48,15 @@ export function SegmentedControl<Value extends string>(
   const active = enabled.some((option) => option.value === props.value)
     ? props.value
     : enabled[0]?.value;
+  const selected = props.options.findIndex(
+    (option) => option.value === props.value,
+  );
   return (
     <div
       className={[styles.segmented, props.className].filter(Boolean).join(' ')}
       role="radiogroup"
+      style={thumb(props.options.length, selected)}
+      data-selected={selected >= 0}
       data-size={props.size ?? 'regular'}
       data-tone={props.tone ?? 'neutral'}
       data-variant={props.variant ?? 'control'}

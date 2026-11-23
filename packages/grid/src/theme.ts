@@ -14,7 +14,15 @@ const DENSITY: Readonly<
   comfortable: { delta: 6, padding: 18 },
 };
 
-/** Match UI tokens without duplicating palette values. rem font tokens use the 16px reference. */
+/** The header is one pixel taller than a row (24 / 25 px at normal density). */
+const HEADER_EXTRA =
+  parseFloat(geometry['grid-header-height']) -
+  parseFloat(geometry['grid-row-height']);
+
+/**
+ * Match UI tokens without duplicating palette values: TablePlus density, 12 px
+ * monospace cells, 11 px medium UI-font titles. rem tokens use the 16px reference.
+ */
 export function gridTheme(
   mode: 'light' | 'dark',
   overrides: Partial<
@@ -23,14 +31,18 @@ export function gridTheme(
   density: GridDensity = 'normal',
 ): GridTheme {
   const spacing = DENSITY[density];
+  const fontSize = parseFloat(typography['text-grid']) * 16;
+  const rowHeight = Math.max(
+    parseFloat(geometry['grid-row-height']) + spacing.delta,
+    (overrides.fontSize ?? fontSize) + spacing.padding,
+  );
   return {
     colours: mode === 'light' ? light : dark,
-    rowHeight: Math.max(
-      parseFloat(geometry['grid-row-height']) + spacing.delta,
-      (overrides.fontSize ?? 13) + spacing.padding,
-    ),
-    fontSize: parseFloat(typography['text-13']) * 16,
-    fontFamily: typography['font-mono'],
+    rowHeight,
+    headerHeight: rowHeight + HEADER_EXTRA,
+    headerFont: `${typography['weight-medium']} ${String(parseFloat(typography['text-11']) * 16)}px ${typography['font-ui']}`,
+    fontSize,
+    fontFamily: typography['font-grid'],
     ...overrides,
   };
 }

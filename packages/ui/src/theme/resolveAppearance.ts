@@ -2,6 +2,7 @@
 import { light, dark, highContrast } from '../tokens/colours';
 import { typography } from '../tokens/typography';
 import { contrastRatio } from '../tokens/contrast';
+import { SOLID } from '../tokens/solid';
 import { fontFamily } from './appearance';
 import type { Appearance } from './appearance';
 import { builtInThemes, mix, rgb } from './palettes';
@@ -41,6 +42,15 @@ export function resolvePalette(
       Math.max(0.08, (mode === 'light' ? 0.12 : 0.18) + contrast * 0.35),
     );
   }
+  for (const key of READABLE)
+    palette[key] = readable(palette[key], labelSurfaces(palette), mode);
+  palette.tertiary = readable(palette.tertiary, [[palette.page]], mode, 3);
+  for (const tone of TONES)
+    palette[`${tone}-fg`] = readable(
+      palette[`${tone}-fg`],
+      badgeSurfaces(palette, tone),
+      mode,
+    );
   palette = changePalette(palette, settings.changeColors, mode);
   return { ...palette, ...half?.tokens };
 }
@@ -71,13 +81,14 @@ function tintedPalette(
   return {
     ...base,
     page: half.canvas,
-    'label-tertiary': readableLabel(base, half.canvas, mode),
     'panel-solid': half.canvas,
     window: lightMode
       ? mix(half.canvas, '#FFFFFF', 0.85)
       : mix(half.canvas, '#000000', 0.3),
     'control-active': lightMode ? '#FFFFFF' : mix(half.canvas, '#FFFFFF', 0.1),
-    accent: half.accent,
+    accent: lightMode ? half.accent : mix(half.accent, '#FFFFFF', 0.45),
+    'accent-fill': half.accent,
+    'accent-soft': alpha(half.accent, lightMode ? 0.13 : 0.2),
     'on-accent': '#FFFFFF',
     // Tinted canvases are lighter or darker; keep NULL/EMPTY markers at 3:1.
     placeholder: mix(base.placeholder, lightMode ? '#000000' : '#FFFFFF', 0.12),
@@ -89,22 +100,92 @@ function tintedPalette(
       ? base['danger-fg']
       : mix(base['danger-fg'], '#FFFFFF', 0.14),
     'row-stripe': alpha(half.accent, lightMode ? 0.05 : 0.08),
-    toolbar: alpha(half.canvas, lightMode ? 0.78 : 0.72),
+    toolbar: lightMode
+      ? mix(half.canvas, '#FFFFFF', 0.85)
+      : mix(half.canvas, '#000000', 0.3),
+    group: half.canvas,
     'info-fg': lightMode
       ? mix(half.accent, '#000000', 0.25)
       : mix(half.accent, '#FFFFFF', 0.85),
   };
 }
-/** Darken light labels only as far as AA requires on the tinted search fill. */
-function readableLabel(
-  base: Palette,
-  canvas: string,
+/** Text roles kept at 4.5:1 whatever canvas, accent or contrast is chosen. */
+const READABLE = [
+  'secondary',
+  'label-tertiary',
+  'danger-fg',
+  'accent',
+] as const;
+/** A translucent `rgba()` (or hex) laid over an opaque hex base, as hex. */
+function flatten(colour: string, base: string): string {
+  if (colour.startsWith('#')) return colour;
+  const [r = 0, g = 0, b = 0, a = 1] = (colour.match(/[\d.]+/g) ?? []).map(
+    Number,
+  );
+  const hex =
+    '#' + [r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('');
+  return mix(base, hex, a);
+}
+/** Surfaces a label sits on: the canvas, groups, floating glass and fills. */
+function labelSurfaces(palette: Palette): [string, string?][] {
+  const bases = [
+    palette.page,
+    palette['panel-solid'],
+    palette.group,
+    flatten(palette['glass-float'], palette.page),
+    flatten(palette['glass-sheet'], palette.page),
+  ];
+  return [
+    ...bases.flatMap((base): [string, string?][] => [
+      [base],
+      [palette['control-fill'], base],
+    ]),
+    [palette['accent-soft'], palette.window],
+    [palette['row-stripe'], palette.window],
+  ];
+}
+/** Status pills: the tone's soft fill on each solid surface. */
+const TONES = [
+  'warning',
+  'success',
+  'info',
+  'neutral',
+  'danger',
+  'local',
+  'dev',
+  'staging',
+  'prod',
+] as const;
+function badgeSurfaces(
+  palette: Palette,
+  tone: (typeof TONES)[number],
+): [string, string?][] {
+  const fill = palette[`${tone}-bg`];
+  return [
+    palette.page,
+    palette.window,
+    palette['panel-solid'],
+    palette.group,
+    flatten(palette['glass-float'], palette.page),
+    flatten(palette['glass-sheet'], palette.page),
+  ].map((base) => [fill, base]);
+}
+/** Darken (light) or lighten (dark) a label only as far as AA requires. */
+function readable(
+  colour: string,
+  surfaces: readonly [string, string?][],
   mode: 'light' | 'dark',
+  minimum = 4.5,
 ): string {
-  let channels = rgb(base['label-tertiary']);
-  let label = base['label-tertiary'];
+  let channels = rgb(colour);
+  let label = colour;
   for (let step = 0; step < 255; step += 1) {
-    if (contrastRatio(label, base['search-fill'], canvas) >= 4.5) break;
+    if (
+      surfaces.every(
+        ([fill, under]) => contrastRatio(label, fill, under) >= minimum + 0.05,
+      )
+    )
+      break;
     channels = channels.map((channel) =>
       Math.max(0, Math.min(255, channel + (mode === 'light' ? -1 : 1))),
     );
@@ -127,7 +208,11 @@ function modeStyles(settings: Appearance, mode: 'light' | 'dark'): string {
       ? ':root:not([data-theme="dark"]):not([data-theme="light"])'
       : ':root[data-theme="system"]';
   const overrides = `color-scheme:${mode};` + declarations(palette);
-  const solid = `--or-panel:${palette['panel-solid']};--or-toolbar:${palette.page};--or-glass-fill:var(--or-glass-fill-solid);`;
+  const solid = declarations({
+    ...SOLID,
+    panel: palette['panel-solid'],
+    toolbar: palette.page,
+  });
   const contrast = declarations({
     ...highContrast[mode],
     panel: palette['panel-solid'],
@@ -155,5 +240,5 @@ export function appearanceCss(settings: Appearance): string {
     --or-text-editor:${String(settings.editorSize)}px;--or-text-grid:${String(settings.gridSize)}px;--or-text-sidebar:${String(settings.sidebarSize)}px;--or-editor-line-height:${String(settings.editorLineHeight)};
     --or-text-mono:${String(settings.monoSize)}px;--or-motion-panel:${String(settings.motion)}ms;${sizes}}
     ${modeStyles(settings, 'light')}${modeStyles(settings, 'dark')}
-    :root[data-transparency="reduced"][data-theme]{--or-panel:var(--or-panel-solid);--or-toolbar:var(--or-page);--or-glass-fill:var(--or-glass-fill-solid);}`;
+    :root[data-transparency="reduced"][data-theme]{${declarations(SOLID)}}`;
 }

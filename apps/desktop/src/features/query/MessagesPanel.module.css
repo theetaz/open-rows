@@ -50,7 +50,7 @@
 }
 .list small {
   margin-inline-end: var(--or-space-6);
-  color: var(--or-tertiary);
+  color: var(--or-secondary);
 }
 .empty {
   color: var(--or-secondary);

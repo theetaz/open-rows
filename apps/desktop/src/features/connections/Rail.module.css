@@ -1,20 +1,16 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Full-height workspace sidebar (traffic lights sit in its top drag region). */
+/* The connection list inside the floating sidebar, under its pop-up. */
 .rail {
   display: flex;
   flex-direction: column;
-  width: var(--or-rail-width);
+  width: 100%;
   min-height: 0;
-  padding: 0 var(--or-space-8) var(--or-space-8);
-  /* The traffic-light strip belongs to the translucent header. */
-  background: linear-gradient(
-    var(--or-toolbar) var(--or-toolbar-height),
-    var(--or-page) var(--or-toolbar-height)
-  );
-  border-inline-end: var(--or-border-width) solid var(--or-pane-separator);
+  padding: 0;
+  background: transparent;
 }
+/* The traffic lights now sit in the sidebar panel's own top row. */
 .railTop {
-  flex: 0 0 var(--or-toolbar-height);
+  display: none;
 }
 .railHeading {
   display: flex;
@@ -121,13 +117,12 @@
   --tile-ring: var(--or-page);
 }
 .serverRow:hover {
-  background: var(--or-control-fill);
+  background: var(--or-hover);
   --tile-ring: color-mix(in srgb, var(--or-page) 95%, var(--or-text));
 }
 .serverRow[data-selected='true'] {
-  background: var(--or-control-active);
-  box-shadow: 0 0 0 var(--or-border-width) var(--or-control-stroke);
-  --tile-ring: var(--or-control-active);
+  background: var(--or-accent-soft);
+  --tile-ring: var(--or-page);
 }
 .serverDisclosure {
   display: inline-grid;
@@ -285,16 +280,16 @@
   min-height: 26px;
   padding: 0 var(--or-space-6) 0 var(--or-space-2);
   border: 0;
-  border-radius: var(--or-radius-control-compact);
+  border-radius: var(--or-radius-control);
   background: transparent;
-  color: var(--or-secondary);
+  color: var(--or-text);
   font: inherit;
-  font-size: var(--or-text-12-5);
+  font-size: var(--or-text-13);
   text-align: start;
   cursor: default;
 }
 .database svg {
-  color: var(--or-info-fg);
+  color: var(--or-tertiary);
   flex-shrink: 0;
   width: 14px;
   height: 14px;
@@ -305,16 +300,17 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* The sidebar's one selection style: an inset accent-soft pill, accent icon. */
 .database[aria-pressed='true'] {
-  background: var(--or-accent);
-  color: var(--or-on-accent);
+  background: var(--or-accent-soft);
+  color: var(--or-text);
+  font-weight: var(--or-weight-medium);
 }
 .database[aria-pressed='true'] svg {
-  color: inherit;
+  color: var(--or-accent);
 }
 .database:hover:not([aria-pressed='true']) {
-  background: var(--or-control-fill);
-  color: var(--or-text);
+  background: var(--or-hover);
 }
 .database[data-state='opening'] {
   opacity: var(--or-rail-inactive-opacity);

@@ -70,6 +70,11 @@ it('dispatches panel, tab and saved-connection shortcuts', async () => {
   expect(
     screen.getByRole('button', { name: 'Toggle inspector (⌥⌘I)' }),
   ).toHaveAttribute('aria-pressed', 'false');
+  // The connection list lives in the sidebar: show it again to read it.
+  key('s', { ctrlKey: true });
+  expect(
+    screen.getByRole('button', { name: 'Toggle sidebar (⌃⌘S)' }),
+  ).toHaveAttribute('aria-pressed', 'true');
   key('t');
   expect(screen.queryByRole('tab', { name: /SQL Query/ })).toBeNull();
   for (const [index, name] of [
@@ -95,7 +100,7 @@ it('dispatches panel, tab and saved-connection shortcuts', async () => {
   expect(screen.queryByRole('tab', { name: /SQL Query 1/ })).toBeNull();
   await screen.findAllByText('Connected · PostgreSQL 17.2');
 });
-it('auto-collapses at 1099 and reopens an overlay at 900 without shrinking content', async () => {
+it('auto-collapses at 1099 and reopens as a column at 900, never over the content', async () => {
   const user = userEvent.setup();
   mount();
   expect(isCompact(1100)).toBe(false);
@@ -105,7 +110,7 @@ it('auto-collapses at 1099 and reopens an overlay at 900 without shrinking conte
   const inspector = (): HTMLElement =>
     screen.getByLabelText('Inspector', { selector: 'aside' });
   expect(inspector()).toHaveAttribute('data-open', 'false');
-  expect(inspector()).toHaveAttribute('data-overlay', 'true');
+  expect(inspector()).not.toHaveAttribute('data-overlay');
   await user.click(
     screen.getByRole('button', { name: 'Toggle inspector (⌥⌘I)' }),
   );
@@ -115,7 +120,7 @@ it('auto-collapses at 1099 and reopens an overlay at 900 without shrinking conte
   });
   vi.stubGlobal('innerWidth', 1100);
   fireEvent(window, new Event('resize'));
-  expect(inspector()).toHaveAttribute('data-overlay', 'false');
+  expect(inspector()).not.toHaveAttribute('data-overlay');
   expect(inspector()).toHaveAttribute('data-open', 'true');
 });
 it('opens and closes both panels with toolbar controls', async () => {

@@ -329,7 +329,7 @@ export function useWorkspaceController(input: Input): WorkspaceController {
   const { setMode: setTheme } = useTheme();
   const { scope, scopeOf } = scopes(connections);
   const handoffs = useWorkspaceHandoffs({ ...input, tabs, catalog, scope });
-  const { compact, inspector } = useLayoutControls();
+  const inspector = useInspectorOpen(useCompact());
   const { sidebar, setSidebar, toggleSidebar } = useSidebar();
   const [mode, setMode] = useState<PaletteMode | null>(null);
   useDatabasePrompt(connections, setMode);
@@ -378,7 +378,6 @@ export function useWorkspaceController(input: Input): WorkspaceController {
     catalog,
     tabs,
     scope,
-    compact,
     inspector,
     sidebar,
     safeMode,
@@ -407,7 +406,6 @@ type WorkspaceController = { jobs: JobActions } & Details &
     tabs: QueryTabs;
     /** Tab scope of the browsed connection and database. */
     scope: TabScope | undefined;
-    compact: boolean;
     inspector: ReturnType<typeof useInspectorOpen>;
     sidebar: boolean;
     safeMode: SafeModeState | null;
@@ -441,12 +439,6 @@ type WorkspaceController = { jobs: JobActions } & Details &
     refresh: () => void;
     command: (id: string) => void;
   };
-
-/** Shared compact/inspector layout controls. */
-function useLayoutControls() {
-  const compact = useCompact();
-  return { compact, inspector: useInspectorOpen(compact) };
-}
 
 /** Details and table metadata share the same active-tab lifetime. */
 function useActiveDetails(id: string | undefined) {

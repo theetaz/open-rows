@@ -37,6 +37,6 @@
 .refreshing {
   margin: 0;
   padding: var(--or-space-2) var(--or-space-8);
-  color: var(--or-tertiary);
+  color: var(--or-secondary);
   font-size: var(--or-text-11);
 }

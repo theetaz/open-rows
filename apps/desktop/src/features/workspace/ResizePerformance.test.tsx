@@ -63,14 +63,15 @@ it('layout CSS never wraps the titlebar and every colour/type variable exists', 
     'apps/desktop/src/features/workspace/Workspace.module.css',
     'utf8',
   );
-  expect(workspace).toContain('flex-wrap: nowrap');
+  expect(workspace).toMatch(/\.toolbar\s*\{[^}]*white-space: nowrap/);
+  expect(workspace).toMatch(/\.toolbar\s*\{[^}]*grid-template-columns/);
   expect(workspace).toContain('text-overflow: ellipsis');
   const split = readFileSync(
     'packages/ui/src/components/split/SplitPanel.module.css',
     'utf8',
   );
-  expect(split).toContain('position: absolute');
-  expect(split).toContain("[data-overlay='true']");
+  // The inspector is a column of its own: it never overlays the content.
+  expect(split).not.toContain('data-overlay');
   const tokens = readFileSync('packages/ui/src/tokens/tokens.css', 'utf8');
   for (const folder of [
     'apps/desktop/src/features/workspace',

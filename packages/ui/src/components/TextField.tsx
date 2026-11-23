@@ -3,7 +3,7 @@ import { useId } from 'react';
 import type { InputHTMLAttributes, ReactNode } from 'react';
 import styles from './TextField.module.css';
 
-/** Regular (28 px) or compact (24 px) control size; see docs/20 §3.3. */
+/** Regular (28 px) or compact (22 px) control size; see docs/20 §3.3. */
 export type ControlSize = 'regular' | 'compact';
 type Name =
   | { label: string; 'aria-label'?: string }

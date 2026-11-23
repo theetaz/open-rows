@@ -9,7 +9,8 @@ const SAME_NATIVE = 1;
 
 /** Logical content height includes the fixed header row. */
 function contentHeight(props: GridProps): number {
-  return (props.source.rows + 1) * props.theme.rowHeight;
+  const { rowHeight, headerHeight = rowHeight } = props.theme;
+  return headerHeight + props.source.rows * rowHeight;
 }
 
 /** Keep the native spacer inside WebKit's representable layout range. */

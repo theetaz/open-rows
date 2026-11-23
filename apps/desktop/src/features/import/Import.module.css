@@ -95,11 +95,11 @@
   display: block;
 }
 .preview tbody th {
-  color: var(--or-tertiary);
+  color: var(--or-placeholder);
   font-weight: var(--or-weight-regular);
 }
 .preview td[data-null] {
-  color: var(--or-tertiary);
+  color: var(--or-placeholder);
 }
 .preview td[data-invalid] {
   background: var(--or-danger-bg);

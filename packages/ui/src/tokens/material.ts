@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
-/** Glass/elevation and functional opacity motion only. */
+/** Glass blur recipes for floating things, and functional motion only. */
 export const material = {
-  'glass-panel': 'blur(30px) saturate(1.8)',
-  'glass-toolbar': 'blur(20px) saturate(1.8)',
+  /** The floating sidebar panel. */
+  'glass-panel': 'blur(30px) saturate(140%)',
+  /** Menus, popovers, sheets and the palette. */
+  'glass-toolbar': 'blur(24px) saturate(140%)',
+  'motion-quick': '100ms',
   'motion-popover': '160ms',
   'motion-panel': '360ms',
   'motion-disclosure': '220ms',
-  'motion-easing': 'cubic-bezier(0.32, 0.72, 0, 1)',
+  'motion-easing': 'cubic-bezier(0.23, 1, 0.32, 1)',
 };
