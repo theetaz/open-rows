@@ -96,7 +96,7 @@ export function DetailsField({
     setDraft({ ...current, staged: true });
   };
   return (
-    <div className={styles.field} data-state={field.state}>
+    <div className={styles.field} data-state={field.state} data-menu-row>
       <div className={styles.label}>
         <span>{field.name}</span>
         <small title={field.type ?? undefined}>{field.type}</small>

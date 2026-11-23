@@ -39,8 +39,31 @@ const item = (
   options: { shortcut?: string; disabled?: boolean } = {},
 ): MenuEntry => ({ kind: 'item', label, run, ...options });
 
-/** Run's dropdown: run commands, the default for ⌘↵, then file and saved-query actions. */
-export function runEntries(menu: RunMenu): MenuEntry[] {
+/** Explain Analyze, which runs the statement, where the engine can explain. */
+function analyzeEntries(
+  menu: RunMenu,
+  explain: ((analyze: boolean) => void) | undefined,
+): MenuEntry[] {
+  if (!explain) return [];
+  const run = (): void => {
+    explain(true);
+  };
+  return [
+    item(t('explainAnalyze'), run, {
+      shortcut: '⌥⇧⌘E',
+      disabled: !menu.ready,
+    }),
+  ];
+}
+
+/**
+ * Run's dropdown: run commands, Explain Analyze, the default for ⌘↵, then
+ * file and saved-query actions.
+ */
+export function runEntries(
+  menu: RunMenu,
+  explain?: (analyze: boolean) => void,
+): MenuEntry[] {
   const scopes: RunScope[] = ['all', 'current'];
   return [
     ...scopes.map((scope) =>
@@ -59,6 +82,7 @@ export function runEntries(menu: RunMenu): MenuEntry[] {
       shortcut: '⌥⌘↵',
       disabled: !menu.ready,
     }),
+    ...analyzeEntries(menu, explain),
     {
       kind: 'submenu',
       label: t('default'),

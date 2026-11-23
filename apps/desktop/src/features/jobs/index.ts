@@ -4,5 +4,5 @@
  * a toolbar popover (M2-12, M2-13).
  */
 export { JobsButton } from './JobsButton';
-export { addJob, setJobsOpen } from './jobStore';
+export { addJob, setJobsOpen, useJobsVisible } from './jobStore';
 export type { JobHandle } from './jobStore';

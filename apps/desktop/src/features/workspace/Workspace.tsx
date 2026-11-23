@@ -56,13 +56,7 @@ export function Workspace({
   if (!enabled) return <></>;
   return (
     <div className={styles.workspace}>
-      <SidebarColumn
-        connections={connections}
-        controller={controller}
-        onSettings={() => {
-          onSettings();
-        }}
-      />
+      <SidebarColumn connections={connections} controller={controller} />
       <div className={styles.main}>
         <Toolbar connections={connections} controller={controller} />
         <WorkspaceUpdates connections={connections} tabs={controller.tabs} />
@@ -241,6 +235,16 @@ function WorkspaceOverlay({
   );
 }
 
+/** The launch-time documents control, only while such documents are open. */
+function documents(
+  tabs: ReturnType<typeof useWorkspaceController>['tabs'],
+): React.JSX.Element | undefined {
+  return tabs.tabsFor({ connectionId: 'local-files', database: 'Files' })
+    .length ? (
+    <NativeDocuments tabs={tabs} />
+  ) : undefined;
+}
+
 /** The unified toolbar: address capsule, panels, the safety lock and actions. */
 function Toolbar({
   connections,
@@ -265,7 +269,7 @@ function Toolbar({
         objectPath: tab?.objectPath,
       })}
       favourite={tabFavourite(tab, profile?.id)}
-      documents={<NativeDocuments tabs={controller.tabs} />}
+      documents={documents(controller.tabs)}
       health={status?.state ?? 'disconnected'}
       onDatabase={() => {
         setMode('database');

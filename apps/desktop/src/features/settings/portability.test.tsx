@@ -109,6 +109,14 @@ it('resets one group or all preferences without deleting profiles or history ent
   });
 });
 
+async function chooseAction(
+  user: ReturnType<typeof userEvent.setup>,
+  name: string,
+): Promise<void> {
+  await user.click(screen.getByRole('button', { name: 'Settings actions' }));
+  await user.click(screen.getByRole('menuitem', { name }));
+}
+
 it('highlights search matches and requires confirmation for group/global resets', async () => {
   const user = userEvent.setup();
   render(
@@ -120,7 +128,7 @@ it('highlights search matches and requires confirmation for group/global resets'
   expect(screen.getByText('beta', { selector: 'mark' })).toBeVisible();
   await user.clear(screen.getByLabelText('Search settings'));
   await user.selectOptions(screen.getByLabelText('Update channel'), 'beta');
-  await user.click(screen.getByRole('button', { name: 'Reset group' }));
+  await chooseAction(user, 'Reset group');
   expect(generalSettings.get().updateChannel).toBe('beta');
   await user.click(
     within(
@@ -129,21 +137,21 @@ it('highlights search matches and requires confirmation for group/global resets'
   );
   expect(generalSettings.get().updateChannel).toBe('stable');
   await user.selectOptions(screen.getByLabelText('Update channel'), 'beta');
-  await user.click(screen.getByRole('button', { name: 'Reset all settings' }));
+  await chooseAction(user, 'Reset all settings');
   await user.click(
     within(
       screen.getByRole('dialog', { name: 'Reset to defaults?' }),
     ).getByRole('button', { name: 'Cancel' }),
   );
   expect(generalSettings.get().updateChannel).toBe('beta');
-  await user.click(screen.getByRole('button', { name: 'Reset all settings' }));
+  await chooseAction(user, 'Reset all settings');
   await user.click(
     within(
       screen.getByRole('dialog', { name: 'Reset to defaults?' }),
     ).getByRole('button', { name: 'Reset defaults' }),
   );
   expect(generalSettings.get().updateChannel).toBe('stable');
-  await user.click(screen.getByRole('button', { name: 'Import settings' }));
+  await chooseAction(user, 'Import settings');
   fireEvent.change(screen.getByLabelText('Portable settings JSON'), {
     target: { value: '{"openrows":1,"credentials":{}}' },
   });

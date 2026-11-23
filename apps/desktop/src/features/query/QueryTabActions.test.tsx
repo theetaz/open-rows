@@ -42,8 +42,8 @@ it('switches the default run and its shortcut labels', async () => {
 it('sends the error policy and the parameter style with a run', async () => {
   const runs = fakeRuns();
   const { user } = renderTab(runs);
-  await choose(user, 'Editor settings', /Return on Error/);
-  await chooseIn(user, 'Editor settings', 'Query Params', /:name/);
+  await choose(user, 'More query actions', /Return on Error/);
+  await chooseIn(user, 'More query actions', 'Query Params', /:name/);
   await user.click(
     screen.getByRole('button', { name: 'Run current statement' }),
   );
@@ -178,7 +178,7 @@ it('adds the tab to Queries under the entered name', async () => {
 
 it('beautifies with the chosen indent type', async () => {
   const { user } = renderTab();
-  await chooseIn(user, 'Format options', 'Indent Type', /Tabular Right/);
+  await chooseIn(user, 'More query actions', 'Indent Type', /Tabular Right/);
   await user.click(screen.getByRole('button', { name: 'Beautify' }));
   expect(editorText()).toMatch(
     /^-- beautify postgres 2 spaces upper tabularRight\n/,
@@ -203,7 +203,7 @@ it('shows one tab per result or only the last result', async () => {
   const { user } = renderTab(runs);
   const sets = screen.getByRole('tablist', { name: 'Result sets' });
   expect(within(sets).getAllByRole('tab')).toHaveLength(2);
-  await chooseIn(user, 'Editor settings', 'Result View Mode', /Last Result/);
+  await chooseIn(user, 'More query actions', 'Result View Mode', /Last Result/);
   expect(screen.queryByRole('tablist', { name: 'Result sets' })).toBeNull();
   // The last result has no rows yet; one with rows would show its grid.
   expect(screen.getByText(/Receiving rows… 0 so far/)).toBeVisible();

@@ -174,6 +174,7 @@ it('⌘⇧P lists every command and executes sidebar, inspector, query, refresh 
 it('toolbar palette returns focus on Escape and exact shortcuts are suspended while modal or disabled', async () => {
   vi.useFakeTimers();
   mount();
+  await connect();
   const opener = screen.getByRole('button', { name: 'Command palette' });
   opener.focus();
   await act(async () => {

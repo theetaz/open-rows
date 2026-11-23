@@ -15,4 +15,8 @@ export const { t } = defineMessages({
   pinned: 'Pinned',
   closeLabel: 'Close {label}',
   resizeLabel: 'Resize {label}',
+  somethingWentWrong: 'Something went wrong',
+  reloadToContinue:
+    'This part of the window failed to draw. Reload to continue.',
+  reload: 'Reload',
 });

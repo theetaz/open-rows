@@ -10,7 +10,7 @@ import {
 import { beforeEach, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
 import { closeSession, listSchemas, openSession } from '@openrows/ipc';
-import { connectTo } from '../../test/connect';
+import { connectTo, showConnections } from '../../test/connect';
 import { Workspace } from '../workspace/Workspace';
 
 vi.mock('@openrows/ipc', async () => {
@@ -112,6 +112,7 @@ it('double-click opens; rail tiles switch databases and keep per-database tab se
   fireEvent.doubleClick(
     panel.getByRole('option', { name: 'analytics_scratch' }),
   );
+  showConnections();
   const rail = within(screen.getByRole('group', { name: 'Opened databases' }));
   await waitFor(() => {
     expect(
@@ -120,10 +121,11 @@ it('double-click opens; rail tiles switch databases and keep per-database tab se
   });
   expect(screen.queryByRole('tab', { name: /SQL Query 1/ })).toBeNull();
   expect(screen.getByLabelText('Connection context')).toHaveTextContent(
-    'LOCAL | PostgreSQL 17.2 : orders-local : analytics_scratch',
+    /orders-local.*analytics_scratch/,
   );
   fireEvent.click(rail.getByRole('button', { name: 'Database orders' }));
   expect(screen.getByRole('tab', { name: /SQL Query 1/ })).toBeVisible();
+  showConnections();
   fireEvent.contextMenu(rail.getByRole('button', { name: 'Database orders' }));
   fireEvent.click(screen.getByRole('menuitem', { name: 'Close database' }));
   await waitFor(() => {

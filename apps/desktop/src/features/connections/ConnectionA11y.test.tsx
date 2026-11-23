@@ -41,7 +41,6 @@ it('the connection rail with its search has zero axe violations', async () => {
           }
           onSelect={vi.fn()}
           onNew={vi.fn()}
-          onSettings={vi.fn()}
         />
       </main>
     </ThemeProvider>,

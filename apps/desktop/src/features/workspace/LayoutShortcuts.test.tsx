@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
@@ -83,13 +83,14 @@ it('dispatches panel, tab and saved-connection shortcuts', async () => {
     'events-dev',
   ].entries()) {
     key(String(index + 1));
+    // Choosing a connection folds the list behind the sidebar pop-up.
     expect(
-      screen.getByRole('button', { name: `Switch to ${name}` }),
+      screen.getByRole('button', { name: `Switch to ${name}`, hidden: true }),
     ).toHaveAttribute('aria-pressed', 'true');
   }
   key('4');
   expect(
-    screen.getByRole('button', { name: 'Switch to events-dev' }),
+    screen.getByRole('button', { name: 'Switch to events-dev', hidden: true }),
   ).toHaveAttribute('aria-pressed', 'true');
   key('t');
   expect(screen.getByRole('tab', { name: /SQL Query 1/ })).toHaveAttribute(
@@ -100,28 +101,26 @@ it('dispatches panel, tab and saved-connection shortcuts', async () => {
   expect(screen.queryByRole('tab', { name: /SQL Query 1/ })).toBeNull();
   await screen.findAllByText('Connected · PostgreSQL 17.2');
 });
-it('auto-collapses at 1099 and reopens as a column at 900, never over the content', async () => {
+it('auto-collapses at 1099, reopens at 900 on request and shows no empty inspector', async () => {
   const user = userEvent.setup();
   mount();
   expect(isCompact(1100)).toBe(false);
   expect(isCompact(1099)).toBe(true);
   vi.stubGlobal('innerWidth', 900);
   fireEvent(window, new Event('resize'));
-  const inspector = (): HTMLElement =>
-    screen.getByLabelText('Inspector', { selector: 'aside' });
-  expect(inspector()).toHaveAttribute('data-open', 'false');
-  expect(inspector()).not.toHaveAttribute('data-overlay');
-  await user.click(
-    screen.getByRole('button', { name: 'Toggle inspector (⌥⌘I)' }),
-  );
-  // A closed panel unmounts after its exit motion, so re-query each time.
-  await waitFor(() => {
-    expect(inspector()).toHaveAttribute('data-open', 'true');
+  const toggle = screen.getByRole('button', {
+    name: 'Toggle inspector (⌥⌘I)',
   });
+  expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  await user.click(toggle);
+  expect(toggle).toHaveAttribute('aria-pressed', 'true');
   vi.stubGlobal('innerWidth', 1100);
   fireEvent(window, new Event('resize'));
-  expect(inspector()).not.toHaveAttribute('data-overlay');
-  expect(inspector()).toHaveAttribute('data-open', 'true');
+  expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  // Nothing is selected, so the inspector takes no room at all.
+  expect(
+    screen.queryByLabelText('Inspector', { selector: 'aside' }),
+  ).toBeNull();
 });
 it('opens and closes both panels with toolbar controls', async () => {
   const user = userEvent.setup();

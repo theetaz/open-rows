@@ -29,5 +29,12 @@ it('keeps the sheet inside the window', () => {
   const { dialog, title } = renderSheet();
   fireEvent.pointerDown(title, { button: 0, clientX: 500, clientY: 210 });
   fireEvent.pointerMove(window, { clientX: -2000, clientY: -2000 });
-  expect(dialog.style.translate).toBe('-300px -200px');
+  expect(dialog.style.translate).toBe('-300px -152px');
+});
+
+it('keeps the sheet below the traffic lights only while it is beside them', () => {
+  const { dialog, title } = renderSheet();
+  fireEvent.pointerDown(title, { button: 0, clientX: 500, clientY: 210 });
+  fireEvent.pointerMove(window, { clientX: 500, clientY: -2000 });
+  expect(dialog.style.translate).toBe('0px -200px');
 });

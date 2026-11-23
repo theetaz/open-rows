@@ -20,18 +20,22 @@ type Props = {
   connections: Connections;
   controller: ReturnType<typeof useWorkspaceController>;
 };
-type ColumnProps = Props & { onSettings: () => void };
 
 /**
- * The floating glass sidebar: the traffic lights sit in its top row, then the
- * connection pop-up (which shows or hides the connection list), then the
+ * The edge-to-edge sidebar: the traffic lights sit in its top row, then the
+ * connection pop-up and one list at a time: the connection list while the
+ * pop-up is expanded (or nothing is connected), otherwise the
  * Items / Queries / History source list.
  */
-export function SidebarColumn(props: ColumnProps): React.JSX.Element {
+export function SidebarColumn(props: Props): React.JSX.Element {
   const { connections, controller } = props;
-  // Start with the list open until a connection is active (first launch).
-  const [list, setList] = useState(() => !connections.active);
+  const [expanded, setExpanded] = useState(false);
   const region = useId();
+  const active = connections.active;
+  const list = expanded || !active;
+  const collapse = (): void => {
+    setExpanded(false);
+  };
   return (
     <SplitPanel
       label={t('sidebar')}
@@ -39,7 +43,6 @@ export function SidebarColumn(props: ColumnProps): React.JSX.Element {
       range={sidebarRange}
       open={controller.sidebar}
       edge="right"
-      divider={false}
     >
       <div className={styles.sidebar}>
         <div className={styles.traffic} data-tauri-drag-region />
@@ -48,38 +51,49 @@ export function SidebarColumn(props: ColumnProps): React.JSX.Element {
           open={list}
           controls={region}
           onToggle={() => {
-            setList(!list);
+            setExpanded(!expanded);
           }}
         />
-        <div id={region} className={styles.connections} hidden={!list}>
+        <div
+          id={region}
+          className={styles.connections}
+          hidden={!list}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape' && !event.defaultPrevented) collapse();
+          }}
+        >
           <WorkspaceRail
             connections={connections}
-            onSettings={props.onSettings}
+            onChosen={collapse}
             onProcesses={controller.openProcesses}
             onMonitor={controller.openMonitor}
             onRunFile={controller.jobs.runFile}
             jobs={controller.jobs}
           />
         </div>
-        <SidebarItems connections={connections} controller={controller} />
+        <div className={styles.items} hidden={list}>
+          <SidebarItems connections={connections} controller={controller} />
+        </div>
       </div>
     </SplitPanel>
   );
 }
 
-/** The active connection as a pop-up button: a quiet environment dot and a word. */
+/** The active connection as a pop-up button: its session state, name and database. */
 function ConnectionPopup(props: {
   connections: Connections;
   open: boolean;
   controls: string;
   onToggle: () => void;
-}): React.JSX.Element {
+}): React.JSX.Element | null {
   const { active, database } = props.connections;
-  const name = active?.name ?? t('noConnection');
-  const shown = database || active?.database || '';
-  const context = active
-    ? [name, shown || t('noDatabase'), safeModeState(active).label].join(' · ')
-    : name;
+  if (!active) return null;
+  const shown = database || active.database || '';
+  const context = [
+    active.name,
+    shown || t('noDatabase'),
+    safeModeState(active).label,
+  ].join(' · ');
   return (
     <button
       type="button"
@@ -91,11 +105,11 @@ function ConnectionPopup(props: {
       onClick={props.onToggle}
     >
       <span
-        className={styles.envDot}
-        data-env={active?.env.kind ?? 'none'}
+        className={styles.stateDot}
+        data-state={props.connections.statusOf(active.id).state}
         aria-hidden="true"
       />
-      <strong>{name}</strong>
+      <strong>{active.name}</strong>
       <span className={styles.popupDatabase}>{shown}</span>
       <Icon name="chevronUpDown" />
     </button>

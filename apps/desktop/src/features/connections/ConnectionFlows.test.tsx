@@ -31,7 +31,6 @@ function Harness(): React.JSX.Element {
         onNew={() => {
           connections.setSheet({ kind: 'new' });
         }}
-        onSettings={undefined}
       />
       <ConnectionSheets connections={connections} />
     </ThemeProvider>

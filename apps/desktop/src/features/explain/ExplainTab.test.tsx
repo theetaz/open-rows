@@ -43,7 +43,7 @@ it('explains from the editor bar into a closable Query Plan result tab', async (
   ).not.toBeInTheDocument();
 });
 
-it('runs Explain Analyze from the menu and the command after consent', async () => {
+it('runs Explain Analyze from the Run menu and the command after consent', async () => {
   explain
     .mockResolvedValueOnce({
       kind: 'confirmationRequired',
@@ -52,7 +52,7 @@ it('runs Explain Analyze from the menu and the command after consent', async () 
     })
     .mockResolvedValueOnce({ kind: 'explained', plan: samplePlan() });
   const { user } = renderTab();
-  await choose(user, 'Explain options', /Explain Analyze/);
+  await choose(user, 'Run options', /Explain Analyze/);
   expect(explain).toHaveBeenLastCalledWith(
     expect.objectContaining({ analyze: true }),
   );

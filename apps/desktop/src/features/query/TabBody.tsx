@@ -124,7 +124,6 @@ function ResultQueryTab(
         runs={props.runs}
         tabs={props.tabs}
         onCell={props.onCell}
-        onConnect={props.connections.connect}
       />
     </ResultWorkspaceProvider>
   );

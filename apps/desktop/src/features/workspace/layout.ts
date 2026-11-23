@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 
 export const sidebarRange = { min: 200, max: 360, initial: 228 };
-export const inspectorRange = { min: 280, max: 440, initial: 316 };
+export const inspectorRange = { min: 240, max: 440, initial: 280 };
 export function isCompact(width: number): boolean {
   return width < 1100;
 }

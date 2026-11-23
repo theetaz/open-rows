@@ -161,3 +161,14 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+/* The `…` actions menu beside Done; it opens below the button, right-aligned. */
+.actionsMenu {
+  position: relative;
+}
+.actionsMenu .actionsPanel {
+  position: absolute;
+  inset-block-start: calc(100% + var(--or-space-4));
+  inset-inline-end: 0;
+  z-index: 3;
+  inline-size: 200px;
+}

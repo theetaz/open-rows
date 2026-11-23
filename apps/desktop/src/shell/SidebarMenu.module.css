@@ -12,7 +12,7 @@
   border: 0;
   border-radius: var(--or-radius-card);
   /* Menus float above the window: an elevated, ringed surface like NSMenu. */
-  background: var(--or-control-active);
+  background: var(--or-glass-fill-solid);
   box-shadow:
     0 0 0 var(--or-border-width) var(--or-control-stroke),
     var(--or-panel-shadow);

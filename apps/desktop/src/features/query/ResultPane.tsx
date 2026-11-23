@@ -9,7 +9,6 @@ import { resultMessages } from './messages';
 import { useResultChoice } from './resultChoice';
 import type { ResultMeta, RunMessage, RunState } from './run';
 import type { ResultView } from './editorSettings';
-import type { RunScope } from './request';
 import type { SelectedCell } from './cell';
 import { ResultContent, StackedResults } from './StackedResults';
 import styles from './Query.module.css';
@@ -18,8 +17,6 @@ type Props = {
   run: RunState;
   /** One result tab per statement, stacked results, or only the last result. */
   view: ResultView;
-  /** What ⌘↵ runs, for the empty-state hint. */
-  runDefault: RunScope;
   /** List server notices and warnings, not only errors. */
   showNotices?: boolean | undefined;
   /** Engine of the connection: quoting for copied SQL. */
@@ -59,14 +56,25 @@ function useExportable(
   }, [report, result, onExport]);
 }
 
-function placeholder(run: RunState, runDefault: RunScope): string {
+/**
+ * Whether a run has anything for the pane to show; before the first run the
+ * editor takes the whole height and the status line carries the hint.
+ */
+export function hasResultPane(
+  run: RunState,
+  extra: ExtraResultTab | null | undefined,
+): boolean {
+  const waiting =
+    run.status === 'idle' ||
+    run.status === 'confirm' ||
+    run.status === 'parameters';
+  return (
+    !waiting || run.results.length > 0 || run.messages.length > 0 || !!extra
+  );
+}
+
+function placeholder(run: RunState): string {
   switch (run.status) {
-    case 'idle':
-    case 'confirm':
-    case 'parameters':
-      return runDefault === 'all'
-        ? t('runEveryStatement')
-        : t('runStatementCursor');
     case 'starting':
     case 'running':
       return t('running');
@@ -114,7 +122,6 @@ function exportableOf(
 export function ResultPane({
   run,
   view,
-  runDefault,
   showNotices,
   engine,
   onCell,
@@ -157,7 +164,6 @@ export function ResultPane({
       ) : (
         <ResultBody
           run={run}
-          runDefault={runDefault}
           messages={messagesShown ? messages : []}
           engine={engine}
           onCell={onCell}
@@ -174,13 +180,12 @@ export function ResultPane({
 /** Messages and the chosen result's grid, every grid stacked, or why there is none. */
 function ResultBody({
   run,
-  runDefault,
   messages,
   results,
   current,
   stacked,
   ...grid
-}: Pick<Props, 'run' | 'runDefault' | 'engine' | 'onCell' | 'onExport'> & {
+}: Pick<Props, 'run' | 'engine' | 'onCell' | 'onExport'> & {
   messages: readonly RunMessage[];
   results: readonly ResultMeta[];
   current: ResultMeta | undefined;
@@ -202,7 +207,7 @@ function ResultBody({
       ) : current ? (
         <ResultContent {...grid} statements={run.statements} result={current} />
       ) : (
-        <p className={styles.placeholder}>{placeholder(run, runDefault)}</p>
+        <p className={styles.placeholder}>{placeholder(run)}</p>
       )}
     </>
   );

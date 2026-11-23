@@ -24,7 +24,7 @@
   padding: var(--or-space-8);
   border-radius: var(--or-radius-panel);
   /* Floats like a menu: the elevated, ringed surface (no live blur here). */
-  background: var(--or-control-active);
+  background: var(--or-glass-fill-solid);
   color: var(--or-text);
   box-shadow:
     0 0 0 var(--or-border-width) var(--or-control-stroke),

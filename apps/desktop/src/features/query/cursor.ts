@@ -2,8 +2,8 @@
 import { useSyncExternalStore } from 'react';
 import { t } from './lazyMessages';
 
-/** Cursor of the editor: 1-based line and column, 0-based document offset. */
-export type CursorPosition = { line: number; column: number; location: number };
+/** Cursor of the editor: 1-based line and column. */
+export type CursorPosition = { line: number; column: number };
 
 /**
  * The editor writes the cursor here on every move; only the bottom bar's
@@ -17,7 +17,7 @@ export type CursorStore = {
 
 /** A store starting at the document start. */
 export function createCursorStore(): CursorStore {
-  let position: CursorPosition = { line: 1, column: 1, location: 0 };
+  let position: CursorPosition = { line: 1, column: 1 };
   const listeners = new Set<() => void>();
   return {
     set: (next) => {
@@ -34,12 +34,11 @@ export function createCursorStore(): CursorStore {
   };
 }
 
-/** `line N, column M, location K` like TablePlus' editor footer. */
+/** `Ln N, Col M` for the status line. */
 export function cursorText(position: CursorPosition): string {
-  return t('lineLineColumn', {
+  return t('lineColumn', {
     line: String(position.line),
     column: String(position.column),
-    location: String(position.location),
   });
 }
 

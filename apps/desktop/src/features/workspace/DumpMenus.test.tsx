@@ -80,7 +80,7 @@ it('database and schema restore menus retain production confirmation and schema 
     confirmToken: 'test-only',
   });
   fireEvent.contextMenu(
-    screen.getByRole('button', { name: 'Database orders' }),
+    screen.getByRole('button', { name: 'Database orders', hidden: true }),
   );
   await user.click(screen.getByRole('menuitem', { name: 'Back Up…' }));
   const backup = await screen.findByRole('dialog', { name: 'Back Up orders' });
@@ -94,7 +94,7 @@ it('database and schema restore menus retain production confirmation and schema 
     showDump(null);
   });
   fireEvent.contextMenu(
-    screen.getByRole('button', { name: 'Database orders' }),
+    screen.getByRole('button', { name: 'Database orders', hidden: true }),
   );
   await user.click(screen.getByRole('menuitem', { name: 'Restore…' }));
   const restore = await screen.findByRole('dialog', {

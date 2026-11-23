@@ -10,7 +10,7 @@ export function WorkspaceDisclosure(props: {
   label: string;
   environment?: string;
   count: number;
-  /** The compact rail hides headings, so every group stays open. */
+  /** A search shows every matching group open. */
   forceOpen?: boolean;
   children: React.ReactNode;
 }): React.JSX.Element {

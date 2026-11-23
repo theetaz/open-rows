@@ -62,6 +62,7 @@
   --or-rail-inactive-opacity: 0.9;
   --or-footer-height: 24px;
   --or-pending-height: 40px;
+  --or-bar-height: 36px;
   --or-tabs-height: 34px;
   --or-tab-height: 26px;
   --or-control-height: 28px;
@@ -80,7 +81,7 @@
   --or-dot-size: 7px;
   --or-toolbar-height: 48px;
   --or-env-strip-height: 2px;
-  --or-traffic-light-row: 36px;
+  --or-traffic-light-row: 48px;
   --or-traffic-light-clearance: 84px;
   --or-toolbar-gap: 8px;
   --or-toolbar-inset: 8px;
@@ -89,7 +90,7 @@
   --or-glass-button-width: 30px;
   --or-glass-button-height: 26px;
   --or-toolbar-icon-size: 16px;
-  --or-address-width: 360px;
+  --or-address-width: 520px;
   --or-sidebar-inset: 8px;
   --or-search-height: 28px;
   --or-segment-height-source: 22px;

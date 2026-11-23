@@ -9,7 +9,7 @@ import {
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
-import { connectTo } from '../../test/connect';
+import { connectTo, showConnections } from '../../test/connect';
 import { Workspace } from './Workspace';
 
 vi.mock('@openrows/ipc', async () =>
@@ -33,16 +33,12 @@ it('closed inspector, palettes, menus and tooltips leave no content DOM', async 
   expect(document.querySelector('dialog')).toBeNull();
   expect(document.querySelector('[role="menu"]')).toBeNull();
   expect(document.querySelector('[role="tooltip"]')).toBeNull();
-  await screen.findByText('Select a cell in a result to see its value.');
-  await user.click(
-    screen.getByRole('button', { name: 'Toggle inspector (⌥⌘I)' }),
-  );
-  await waitFor(() => {
-    expect(
-      screen.queryByText('Select a cell in a result to see its value.'),
-    ).toBeNull();
-  });
+  // An inspector with nothing selected is not rendered at all.
+  expect(
+    screen.queryByLabelText('Inspector', { selector: 'aside' }),
+  ).toBeNull();
   await connectTo();
+  showConnections();
   await user.click(
     screen.getByRole('button', { name: 'orders-local actions' }),
   );
@@ -51,10 +47,10 @@ it('closed inspector, palettes, menus and tooltips leave no content DOM', async 
   const tile = await screen.findByRole('button', {
     name: 'Switch to events-dev',
   });
+  // Rows explain themselves with a native title, never a tooltip card.
   await user.hover(tile);
-  expect(screen.getByRole('tooltip')).toBeVisible();
-  await user.unhover(tile);
   expect(document.querySelector('[role="tooltip"]')).toBeNull();
+  expect(tile).toHaveAttribute('title');
 });
 it('the ⌘K open-database sheet unmounts on Escape', async () => {
   await mount();

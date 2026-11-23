@@ -1,11 +1,12 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /*
- * Unified toolbar (design/revamp v3): glass capsules either side of a centred
- * address capsule, solid behind. Buttons are 30 × 26 inside 32 px capsules.
+ * Unified toolbar (design/revamp v3): glass capsules either side of an
+ * address capsule sized to its content, solid behind. Buttons are 30 × 26
+ * inside 32 px capsules.
  */
 .toolbar {
   display: grid;
-  /* The address capsule takes the room between the two capsule groups. */
+  /* The middle column centres the address capsule between the two sides. */
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--or-space-12);
@@ -14,12 +15,19 @@
   min-inline-size: 0;
   padding-inline: var(--or-toolbar-inset) var(--or-space-12);
   background: var(--or-toolbar);
+  box-shadow: inset 0 calc(-1 * var(--or-border-width)) var(--or-separator);
   user-select: none;
   white-space: nowrap;
   container: toolbar / inline-size;
   position: relative;
+  transition: padding-inline-start var(--or-motion-panel)
+    var(--or-motion-easing);
 }
-/* The environment's colour, visible even in a screenshot (FR-CONN-06). */
+/* With the sidebar closed the traffic lights sit over the toolbar's start. */
+.toolbar[data-sidebar-state='closed'] {
+  padding-inline-start: var(--or-traffic-light-clearance);
+}
+/* Loud environments (prod, staging, custom) get a strip (FR-CONN-06). */
 .toolbar::after {
   content: '';
   position: absolute;
@@ -90,7 +98,10 @@
   block-size: 14px;
   color: var(--or-secondary);
 }
-/* The safety lock shows the saved policy's word; protected, the lock is green. */
+/* Unrestricted, the lock is a quiet open lock; protected, a green lock and its word. */
+.toolbar [role='group'] button.lock svg {
+  color: var(--or-secondary);
+}
 .toolbar [role='group'] button.labelled[data-on='true'] {
   background: transparent;
 }
@@ -98,15 +109,17 @@
   color: var(--or-success-fg);
 }
 
-/* The address capsule: what you are connected to, in one quiet line. */
-/* Takes all room between the capsule groups (≥ 360 px at a 1280 px window). */
+/* The address capsule: what you are connected to, sized to its content. */
 .context {
   display: flex;
   align-items: center;
+  justify-self: center;
   gap: var(--or-space-6);
+  inline-size: fit-content;
   min-inline-size: 0;
-  max-inline-size: 100%;
+  max-inline-size: min(100%, var(--or-address-width));
   block-size: var(--or-control-height);
+  box-sizing: border-box;
   padding: 0 3px 0 var(--or-space-8);
   border-radius: var(--or-radius-capsule);
   background: var(--or-address);
@@ -116,50 +129,48 @@
 .context > * {
   flex-shrink: 0;
 }
-/*
- * Parts shrink in order of importance: the object (schema) first, then the
- * engine, the environment and the database; the connection name never.
- */
-.address {
+/* Parts shrink in order of importance: the object first, then the database. */
+.context > .address {
   display: flex;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   align-items: baseline;
-  justify-content: center;
+  gap: var(--or-space-4);
   min-inline-size: 0;
   overflow: hidden;
   white-space: nowrap;
 }
-.address > [data-part] {
-  min-inline-size: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.address > [data-part='object'] {
-  flex-shrink: 1000;
-}
-.address > [data-part='engine'] {
-  flex-shrink: 100;
-}
-.address > [data-part='env'] {
-  flex-shrink: 10;
-}
-.address > [data-part='database'] {
-  flex-shrink: 1;
-  min-inline-size: 3ch;
-}
 .address > [data-part='name'] {
   flex-shrink: 0;
 }
-.address > .sep {
-  flex-shrink: 0;
+.segment {
+  display: flex;
+  align-items: baseline;
+  gap: var(--or-space-4);
+  overflow: hidden;
+}
+/* The database keeps at least three characters after its `›`. */
+.segment[data-part='database'] {
+  flex-shrink: 1;
+  min-inline-size: calc(4ch + var(--or-space-4));
+}
+.segment[data-part='object'] {
+  flex-shrink: 1000;
+  min-inline-size: 0;
+}
+.text {
+  min-inline-size: 0;
+}
+.text,
+.databaseSegment {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.databaseSegment {
+  min-inline-size: 3ch;
 }
 .address strong {
   color: var(--or-address-text);
   font-weight: var(--or-weight-medium);
-}
-.env {
-  display: inline-flex;
-  align-items: center;
 }
 /* The environment as a word on its soft tone (the kit's status pill). */
 .envTag {
@@ -201,8 +212,8 @@
   background: var(--env-color, currentColor);
 }
 .sep {
+  flex: none;
   color: var(--or-tertiary);
-  white-space: pre;
 }
 .databaseSegment {
   padding: 0 var(--or-space-2);
@@ -243,10 +254,16 @@
 :global([data-window-active='false']) .toolbar [role='group'] button {
   color: var(--or-tertiary);
 }
+:global([data-motion='reduced']) .toolbar {
+  transition: none;
+}
 :global([data-motion='reduced']) .toolbar [role='group'] button:active {
   transform: none;
 }
 @media (prefers-reduced-motion: reduce) {
+  .toolbar {
+    transition: none;
+  }
   .toolbar [role='group'] button:active:not(:disabled) {
     transform: none;
   }

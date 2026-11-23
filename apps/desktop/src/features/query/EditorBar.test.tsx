@@ -43,9 +43,9 @@ it('applies the row limit to runs and remembers it', async () => {
 
 it('beautifies and uglifies with the chosen layout options', async () => {
   const { user } = renderTab();
-  await choose(user, 'Format options', /Uglify/);
+  await choose(user, 'More query actions', /Uglify/);
   expect(editorText()).toMatch(/^-- uglify postgres 2 spaces upper standard\n/);
-  await user.click(screen.getByRole('button', { name: 'Format options' }));
+  await user.click(screen.getByRole('button', { name: 'More query actions' }));
   await user.click(screen.getByRole('menuitem', { name: /Indent Width/ }));
   await user.click(screen.getByRole('menuitemradio', { name: /4 spaces/ }));
   await user.click(screen.getByRole('button', { name: 'Beautify' }));
@@ -57,11 +57,24 @@ it('beautifies and uglifies with the chosen layout options', async () => {
   expect(editorText()).toMatch(/^-- uglify postgres 4 spaces upper standard\n/);
 });
 
+it('keeps Run as the only split button, with Explain, Beautify and AI plain', () => {
+  renderTab();
+  const bar = within(screen.getByRole('toolbar', { name: 'Query actions' }));
+  expect(
+    bar
+      .getAllByRole('button', { name: /options$/ })
+      .map((b) => b.getAttribute('aria-label')),
+  ).toEqual(['Run options']);
+  for (const name of ['Explain', 'Beautify', 'AI', 'Row limit'])
+    expect(bar.getByRole('button', { name })).toBeInTheDocument();
+  expect(bar.queryByText('Connect to run')).toBeNull();
+});
+
 it('opens settings submenus by keyboard and toggles checked options', async () => {
   const { user } = renderTab();
-  await user.click(screen.getByRole('button', { name: 'Editor settings' }));
+  await user.click(screen.getByRole('button', { name: 'More query actions' }));
   const fontSize = screen.getByRole('menuitem', { name: /Font Size/ });
-  expect(fontSize).toHaveFocus();
+  fontSize.focus();
   await user.keyboard('{ArrowRight}');
   const sizes = screen.getByRole('menu', { name: 'Font Size' });
   expect(
@@ -76,13 +89,13 @@ it('opens settings submenus by keyboard and toggles checked options', async () =
   await user.click(
     screen.getByRole('menuitemcheckbox', { name: /Wrap lines/ }),
   );
-  expect(screen.queryByRole('menu', { name: 'Editor settings' })).toBeNull();
-  await user.click(screen.getByRole('button', { name: 'Editor settings' }));
+  expect(screen.queryByRole('menu', { name: 'More query actions' })).toBeNull();
+  await user.click(screen.getByRole('button', { name: 'More query actions' }));
   expect(
     screen.getByRole('menuitemcheckbox', { name: /Wrap lines/ }),
   ).toHaveAttribute('aria-checked', 'true');
   await user.keyboard('{Escape}');
-  expect(screen.queryByRole('menu', { name: 'Editor settings' })).toBeNull();
+  expect(screen.queryByRole('menu', { name: 'More query actions' })).toBeNull();
 });
 
 it('opens the assistant from the AI button in the bar, with no separate corner button', async () => {
@@ -99,17 +112,15 @@ it('opens the assistant from the AI button in the bar, with no separate corner b
   ).toBeNull();
 });
 
-it('offers ⌘I inline editing and the assistant panel from the one AI control', async () => {
+it('offers ⌘I inline editing from the More menu and the shortcut', async () => {
   const { user } = renderTab();
   const bar = within(screen.getByRole('toolbar', { name: 'Query actions' }));
-  await user.click(bar.getByRole('button', { name: 'AI options' }));
+  await user.click(bar.getByRole('button', { name: 'More query actions' }));
+  expect(screen.getAllByRole('menuitem')[0]).toHaveTextContent(
+    /Edit SQL with AI/,
+  );
   await user.click(screen.getByRole('menuitem', { name: /Edit SQL with AI/ }));
   expect(editorText()).toMatch(/^-- inline prompt\n/);
-  await user.click(bar.getByRole('button', { name: 'AI options' }));
-  await user.click(screen.getByRole('menuitem', { name: /Assistant panel/ }));
-  expect(
-    await screen.findByRole('complementary', { name: 'Query assistant' }),
-  ).toBeVisible();
   await user.click(screen.getByRole('textbox', { name: 'SQL editor' }));
   await user.keyboard('{Meta>}i{/Meta}');
   expect(editorText()).toMatch(/^-- inline prompt\n-- inline prompt\n/);

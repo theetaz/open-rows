@@ -83,10 +83,10 @@ function runSettings(
 }
 
 /**
- * The sliders menu: font size, invisibles, wrapping, highlight, completion,
+ * Editor settings: font size, invisibles, wrapping, highlight, completion,
  * keys, then auto save and run options.
  */
-export function settingsEntries(
+function settingsEntries(
   settings: EditorSettings,
   update: Update,
   dialect: EditorDialect,
@@ -144,8 +144,8 @@ export function limitEntries(
   return choices(settings, update, 'rowLimit', limits);
 }
 
-/** Beautify's dropdown: uglify and the layout options of both. */
-export function beautifyEntries(
+/** Beautify, uglify and the layout options of both. */
+function beautifyEntries(
   settings: EditorSettings,
   update: Update,
   format: (kind: FormatKind) => void,
@@ -163,7 +163,7 @@ export function beautifyEntries(
     },
   });
   return [
-    item(t('beautify'), '⌘I', 'beautify'),
+    item(t('beautify'), '⌥⌘B', 'beautify'),
     item(t('uglify'), '⇧⌘I', 'uglify'),
     { kind: 'separator' },
     {
@@ -210,5 +210,32 @@ export function beautifyEntries(
       ]),
     },
     toggle(settings, update, t('denseOperators'), 'denseOperators'),
+  ];
+}
+
+/**
+ * The bar's More menu: Edit SQL with AI, the formatting commands and their
+ * layout options, then the editor settings.
+ */
+export function moreEntries(input: {
+  settings: EditorSettings;
+  update: Update;
+  dialect: EditorDialect;
+  format: (kind: FormatKind) => void;
+  /** The ⌘I prompt; omitted where AI is not offered. */
+  inline?: (() => void) | undefined;
+}): MenuEntry[] {
+  const { settings, update, inline } = input;
+  const ai: MenuEntry[] = inline
+    ? [
+        { kind: 'item', label: t('editSqlAi'), shortcut: '⌘I', run: inline },
+        { kind: 'separator' },
+      ]
+    : [];
+  return [
+    ...ai,
+    ...beautifyEntries(settings, update, input.format),
+    { kind: 'separator' },
+    ...settingsEntries(settings, update, input.dialect),
   ];
 }

@@ -3,18 +3,16 @@ import { useCallback, useState } from 'react';
 import type { EngineDto } from '@openrows/ipc';
 import { ExportSheet, resultExport } from '../export';
 import type { ExtraResultTab } from '../explain';
-import { ResultPane } from './ResultPane';
+import { hasResultPane, ResultPane } from './ResultPane';
 import type { ResultMeta, RunState } from './run';
 import type { SelectedCell } from './cell';
 import type { ResultView } from './editorSettings';
-import type { RunScope } from './request';
 import { executionSettings } from './executionSettings';
 
-/** The result pane and the export sheet of its shown result. */
+/** The result pane and the export sheet of its shown result; nothing before the first run. */
 export function ResultArea(props: {
   run: RunState;
   view: ResultView;
-  runDefault: RunScope;
   /** The tab's open session; export needs it for the connection's dialect. */
   sessionId: string | null;
   /** Engine of the connection: quoting for copied SQL. */
@@ -26,7 +24,7 @@ export function ResultArea(props: {
   extra?: ExtraResultTab | null | undefined;
   /** Switch between result tabs and stacked results. */
   onView?: ((view: ResultView) => void) | undefined;
-}): React.JSX.Element {
+}): React.JSX.Element | null {
   const { run, sessionId } = props;
   const [exporting, setExporting] = useState<{
     result: ResultMeta;
@@ -40,12 +38,12 @@ export function ResultArea(props: {
     [],
   );
   const { showNotices } = executionSettings.useValue();
+  if (!hasResultPane(run, props.extra)) return null;
   return (
     <>
       <ResultPane
         run={run}
         view={props.view}
-        runDefault={props.runDefault}
         showNotices={showNotices}
         engine={props.engine}
         onCell={props.onCell}

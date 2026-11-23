@@ -1,0 +1,26 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* The fallback for a render error: a centred note on the window background. */
+.pane {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--or-space-8);
+  block-size: 100vh;
+  padding: var(--or-space-32);
+  box-sizing: border-box;
+  background: var(--or-page);
+  color: var(--or-text);
+  font-size: var(--or-text-13);
+  text-align: center;
+  cursor: default;
+}
+.pane h1 {
+  margin: 0;
+  font-size: var(--or-text-15);
+  font-weight: var(--or-weight-semibold);
+}
+.pane p {
+  margin: 0 0 var(--or-space-8);
+  color: var(--or-secondary);
+}

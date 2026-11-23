@@ -36,6 +36,11 @@ describe('control consistency (docs/20 §3.3)', () => {
       '20px',
     ]);
   });
+  it('sizes pane bars, the traffic-light row and the address capsule', () => {
+    expect(geometry['bar-height']).toBe('36px');
+    expect(geometry['traffic-light-row']).toBe(geometry['toolbar-height']);
+    expect(geometry['address-width']).toBe('520px');
+  });
   it('buttons are capsules at the regular and compact heights', () => {
     const body = rule(controls, '.button');
     expect(body).toContain('block-size: var(--or-control-height);');

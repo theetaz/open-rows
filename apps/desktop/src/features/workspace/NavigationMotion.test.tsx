@@ -57,7 +57,7 @@ it('uses token durations/easing and removes popover animations under reduced mot
   expect(palette).toContain('var(--or-motion-popover) var(--or-motion-easing)');
   expect(palette).toContain('transform: scale(0.96)');
 });
-it('native window buttons sit in the floating sidebar top row', () => {
+it('native window buttons sit in the sidebar top row, as tall as the toolbar', () => {
   const config = JSON.parse(
     readFileSync('apps/desktop/src-tauri/tauri.conf.json', 'utf8'),
   ) as {
@@ -70,12 +70,12 @@ it('native window buttons sit in the floating sidebar top row', () => {
     };
   };
   const window = config.app.windows[0];
-  // Inset 8 + panel padding 8 + 6 = 22; the row's centre (8 + 36 / 2) is unchanged.
+  // The sidebar's top row matches the 48 px toolbar, so the lights clear both.
   expect(window?.trafficLightPosition).toEqual({ x: 22, y: 28 });
   expect(window?.titleBarStyle).toBe('Overlay');
   expect(window?.decorations).toBe(true);
   expect(geometry['toolbar-height']).toBe('48px');
-  expect(geometry['traffic-light-row']).toBe('36px');
+  expect(geometry['traffic-light-row']).toBe('48px');
   expect(geometry['sidebar-inset']).toBe('8px');
   expect(geometry['traffic-light-clearance']).toBe('84px');
 });

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { Button, ThemeProvider } from '@openrows/ui';
+import { Button, ErrorBoundary, ThemeProvider } from '@openrows/ui';
 import { LockBoundary } from '../features/security/LockBoundary';
 import { IncidentNotice } from '../features/monitor/IncidentNotice';
 import { useWindowReady } from './useWindowReady';
@@ -92,15 +92,17 @@ export function App(): React.JSX.Element {
           <p role="alert">{t('unableShowNative')}</p>
         ) : (
           <div hidden={gallery}>
-            <Workspace
-              enabled={!gallery}
-              onSettings={(section) => {
-                setSettings(section ?? 'general');
-              }}
-              onGallery={() => {
-                setGallery(true);
-              }}
-            />
+            <ErrorBoundary>
+              <Workspace
+                enabled={!gallery}
+                onSettings={(section) => {
+                  setSettings(section ?? 'general');
+                }}
+                onGallery={() => {
+                  setGallery(true);
+                }}
+              />
+            </ErrorBoundary>
           </div>
         )}
         {settings && (

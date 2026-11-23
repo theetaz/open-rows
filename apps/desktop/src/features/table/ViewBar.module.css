@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /*
- * The table pane's view bar (the kit's `.viewbar`): solid, 40 px, the view
+ * The table pane's view bar (the kit's `.viewbar`): solid, 36 px, the view
  * switch on the left, a filled query field that grows, then icon tools.
  */
 .bar {
@@ -9,7 +9,7 @@
   display: flex;
   align-items: center;
   gap: var(--or-space-6);
-  min-block-size: var(--or-pending-height);
+  min-block-size: var(--or-bar-height);
   padding: 0 var(--or-space-12) 0 var(--or-space-8);
   background: var(--or-page);
   white-space: nowrap;

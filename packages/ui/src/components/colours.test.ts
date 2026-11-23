@@ -35,7 +35,6 @@ it('rejects hard-coded hex and functional colour notation', () => {
 const overlayStyles = new Set([
   'packages/ui/src/components/Palette.module.css',
   'packages/ui/src/components/Sheet.module.css',
-  'apps/desktop/src/features/connections/Tooltip.module.css',
 ]);
 async function assertCompositing(directory: string): Promise<void> {
   for (const entry of await readdir(directory, { withFileTypes: true })) {

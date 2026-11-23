@@ -51,7 +51,7 @@ export function ReconnectBar(props: {
   if (text)
     return (
       <div className={styles.reconnect} role="status">
-        <span>{text}</span>
+        <span title={text}>{text}</span>
         <Button size="sm" onClick={props.onConnect}>
           {props.status.state === 'failed' ? t('reconnect') : t('connect')}
         </Button>
@@ -61,7 +61,7 @@ export function ReconnectBar(props: {
   if (!lost) return null;
   return (
     <div className={styles.reconnect} role="status">
-      <span>{lost}</span>
+      <span title={lost}>{lost}</span>
       {props.database?.state === 'failed' && props.onReopen && (
         <Button size="sm" onClick={props.onReopen}>
           {t('reconnect')}

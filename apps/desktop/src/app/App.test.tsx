@@ -43,7 +43,7 @@ async function openGallery(
     (typeof import('@testing-library/user-event'))['default']['setup']
   >,
 ): Promise<void> {
-  await user.click(screen.getByRole('button', { name: 'Command palette' }));
+  await user.keyboard('{Meta>}{Shift>}p{/Shift}{/Meta}');
   await settleView();
   await user.click(
     await screen.findByRole('option', { name: /Open component gallery/ }),
@@ -74,15 +74,16 @@ it('defaults to workspace, opens the gallery from the command palette and return
   await user.keyboard('{Escape}');
   expect(await screen.findByText(/open a query tab/)).toBeVisible();
 });
-it('opens settings by gear or shortcut, preserves the workspace and returns focus', async () => {
+it('opens settings by shortcut, preserves the workspace and returns focus', async () => {
   const { default: userEvent } = await import('@testing-library/user-event');
   const user = userEvent.setup();
   render(<App />);
-  const workspace = await screen.findByRole('navigation', {
-    name: 'Workspaces',
+  const workspace = await screen.findByRole('banner', {
+    name: 'Window toolbar',
   });
-  const opener = screen.getByRole('button', { name: 'Settings' });
-  await user.click(opener);
+  const opener = screen.getAllByRole('button')[0];
+  opener?.focus();
+  await user.keyboard('{Meta>},{/Meta}');
   await settleView();
   expect(await screen.findByRole('dialog', { name: 'Settings' })).toBeVisible();
   expect(workspace.isConnected).toBe(true);
@@ -101,7 +102,8 @@ it('applies Settings density and reduced-motion override live at the app root', 
   const { within } = await import('@testing-library/react');
   const user = userEvent.setup();
   render(<App />);
-  await user.click(await screen.findByRole('button', { name: 'Settings' }));
+  await screen.findByRole('banner', { name: 'Window toolbar' });
+  await user.keyboard('{Meta>},{/Meta}');
   await settleView();
   await screen.findByRole('dialog', { name: 'Settings' });
   await user.click(

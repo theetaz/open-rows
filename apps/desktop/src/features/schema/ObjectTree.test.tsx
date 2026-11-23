@@ -70,11 +70,15 @@ function mount(): ReturnType<typeof userEvent.setup> {
 const sidebar = (): BoundFunctions<typeof queries> =>
   within(screen.getByRole('complementary', { name: 'Sidebar' }));
 
-it('explains the empty tree before a connection is selected', () => {
+it('shows the connection list instead of an empty tree before a connection is selected', () => {
   mount();
   expect(
-    sidebar().getByText('Choose a connection to browse its objects.'),
+    sidebar().getByRole('navigation', { name: 'Workspaces' }),
   ).toBeVisible();
+  expect(sidebar().queryByRole('button', { name: /^Connections:/ })).toBeNull();
+  expect(
+    sidebar().getByText('Choose a connection to browse its objects.'),
+  ).not.toBeVisible();
   expect(listSchemas).not.toHaveBeenCalled();
 });
 

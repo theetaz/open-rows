@@ -43,18 +43,18 @@ export type SettingsSection =
   | 'json';
 
 const SECTIONS: readonly { value: SettingsSection; label: string }[] = [
-  { value: 'security', label: t('security') },
-  { value: 'ai', label: t('ai') },
-  { value: 'monitoring', label: t('monitoring') },
-  { value: 'tables', label: t('tables') },
-  { value: 'locations', label: t('locations') },
   { value: 'general', label: t('general') },
   { value: 'appearance', label: t('appearance') },
   { value: 'editor', label: t('editor') },
   { value: 'execution', label: t('execution') },
-  { value: 'snippets', label: t('snippets') },
+  { value: 'tables', label: t('tables') },
   { value: 'shortcuts', label: t('keymap') },
+  { value: 'snippets', label: t('snippets') },
   { value: 'tools', label: t('tools') },
+  { value: 'locations', label: t('locations') },
+  { value: 'security', label: t('security') },
+  { value: 'ai', label: t('ai') },
+  { value: 'monitoring', label: t('monitoring') },
   { value: 'diagnostics', label: t('diagnostics') },
   { value: 'json', label: t('json') },
 ];
@@ -106,6 +106,7 @@ function SettingsSidebar(props: {
         aria-label={t('searchSettings')}
         placeholder={t('search')}
         controlSize="search"
+        data-initial-focus="true"
         leadingIcon={<Icon name="search" />}
         value={props.query}
         onChange={(event) => {
@@ -153,13 +154,11 @@ export function SettingsSheet(props: {
           <h1>
             <span>{t('settings2')}</span> {title}
           </h1>
-          <Button onClick={props.onClose} data-initial-focus="true">
-            {t('done')}
-          </Button>
+          <SettingsActions section={section} />
+          <Button onClick={props.onClose}>{t('done')}</Button>
         </header>
         <div className={searchStyles.pane}>
           <div className={styles.page}>
-            <SettingsActions section={section} />
             <SettingsQuery value={query}>
               {searching ? (
                 <SearchResults query={query} panes={SEARCHED} />

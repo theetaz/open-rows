@@ -8,9 +8,9 @@ import { workspaceMonogram } from './monogram';
 import { statusLabel, statusTone } from './sessions';
 import type { SessionStatus } from './sessions';
 import type { ConnectionAction } from './connectionActions';
-import { RailTooltip, useTileTooltip } from './RailTooltip';
+import { profileLocation } from './engines';
+import { insecureDetail, insecureReasons } from './insecure';
 import { InsecureBadge } from './InsecureBadge';
-import { insecureReasons } from './insecure';
 import { useWorkspaceCollapse } from './useWorkspaceCollapse';
 import styles from './Rail.module.css';
 import { t } from './messages/profile';
@@ -40,7 +40,6 @@ export function WorkspaceConnection(props: {
   children: React.ReactNode;
 }): React.JSX.Element {
   const { profile, status, selected } = props;
-  const tooltip = useTileTooltip();
   const [menu, setMenu, closePoint] = useRowMenu();
   const [collapsed, toggle] = useWorkspaceCollapse(profile.id);
   return (
@@ -65,11 +64,10 @@ export function WorkspaceConnection(props: {
           className={styles.connection}
           aria-label={t('switchName', { name: profile.name })}
           aria-pressed={selected}
-          aria-describedby={tooltip.visible ? tooltip.id : undefined}
+          title={rowTitle(profile, status, props.shortcut)}
           data-session={status.state}
           onClick={props.onSelect}
           onKeyDown={props.onKeyDown}
-          {...tooltip.events}
         >
           <ServerLabel profile={profile} status={status} />
         </button>
@@ -93,19 +91,28 @@ export function WorkspaceConnection(props: {
           <ActionItems actions={props.actions} onClose={closePoint} />
         </PointMenu>
       )}
-      {tooltip.visible && !menu && (
-        <RailTooltip
-          profile={profile}
-          insecure={insecureReasons(profile, status)}
-          shortcut={props.shortcut}
-          status={statusLabel(status)}
-          id={tooltip.id}
-          position={tooltip.position}
-        />
-      )}
       {!collapsed && props.children}
     </div>
   );
+}
+
+/** The row's native tooltip: name and shortcut, address, status, security. */
+function rowTitle(
+  profile: ProfileDto,
+  status: SessionStatus,
+  shortcut: string | undefined,
+): string {
+  const insecure = insecureReasons(profile, status);
+  return [
+    shortcut ? `${profile.name}  ${shortcut}` : profile.name,
+    profileLocation(profile),
+    statusLabel(status),
+    insecure.length > 0
+      ? t('notSecureInsecure', { insecure: insecureDetail(insecure) })
+      : '',
+  ]
+    .filter(Boolean)
+    .join('\n');
 }
 
 /** Chevron that folds the connection's opened databases. */

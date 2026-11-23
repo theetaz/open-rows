@@ -2,12 +2,14 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { GlassPanel } from '@openrows/ui';
+import { placeFloating } from './menuPlacement';
 import { menuKey } from './SidebarMenu';
 import styles from './SidebarMenu.module.css';
 
 /**
- * Pointer-anchored menu, clamped to the window with keyboard navigation.
- * `above` grows the menu upwards from `y` (bottom-bar buttons); `aside`
+ * Pointer-anchored menu, clamped to the window (`clampToWindow`) with
+ * keyboard navigation. `above` grows the menu upwards from `y` (bottom-bar
+ * buttons) when it fits; `aside`
  * renders next to the menu panel and counts as inside it (submenus).
  */
 export function PointMenu(props: {
@@ -24,9 +26,12 @@ export function PointMenu(props: {
   useLayoutEffect(() => {
     const menu = ref.current;
     if (!menu) return;
-    const top = above ? props.y - menu.offsetHeight : props.y;
-    menu.style.left = `${String(Math.max(8, Math.min(props.x, innerWidth - menu.offsetWidth - 8)))}px`;
-    menu.style.top = `${String(Math.max(8, Math.min(top, innerHeight - menu.offsetHeight - 8)))}px`;
+    const panel = menu.firstElementChild;
+    placeFloating(
+      menu,
+      { x: props.x, y: props.y, above },
+      panel instanceof HTMLElement ? panel : menu,
+    );
   }, [props.x, props.y, above]);
   const { onClose } = props;
   useEffect(() => {

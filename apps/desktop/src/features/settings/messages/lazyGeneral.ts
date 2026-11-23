@@ -67,6 +67,7 @@ export const { t } = defineMessages({
   copyNextRestart: 'Copy on next restart',
   labelSettings: '{label} settings',
   noSettingsMatch: 'No settings match “{query}”.',
+  settingsActions: 'Settings actions',
   resetGroup: 'Reset group',
   resetAllSettings: 'Reset all settings',
   exportSettings: 'Export settings',

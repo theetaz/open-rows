@@ -1,10 +1,9 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /*
- * The window frame (design/revamp v3 screens/main.html): a floating glass
- * sidebar inset 8 px from the window edge, the traffic lights in its top row;
- * beside it a solid main column of toolbar, tabs, content and status line.
- * The window is transparent over the native material, so the veil under the
- * sidebar frosts without a CSS backdrop filter.
+ * The window frame: an edge-to-edge sidebar on the window veil, the traffic
+ * lights in its top row, a 1 px divider, then the main column of toolbar,
+ * tabs, content and status line. The window is transparent over the native
+ * material, so the veil frosts without a CSS backdrop filter.
  */
 .workspace {
   display: flex;
@@ -14,16 +13,7 @@
   background: var(--or-page);
 }
 .workspace > aside[aria-label='Sidebar'] {
-  background: linear-gradient(
-    90deg,
-    var(--or-window-veil) calc(100% - 40px),
-    var(--or-page) 100%
-  );
-}
-/* Without the sidebar the toolbar makes room for the traffic lights. */
-.workspace:has(> aside[aria-label='Sidebar'][data-open='false'])
-  header[aria-label='Window toolbar'] {
-  padding-inline-start: var(--or-traffic-light-clearance);
+  background: var(--or-window-veil);
 }
 .main {
   display: flex;
@@ -43,32 +33,27 @@
   background: var(--or-page);
 }
 
-/* The floating glass panel: inset 8, radius 14, the kit's sidebar recipe. */
+/* The sidebar column: flush with the window edges, blocks 8 px apart. */
 .sidebar {
   display: flex;
   flex-direction: column;
   gap: var(--or-space-8);
   box-sizing: border-box;
-  block-size: calc(100% - 2 * var(--or-sidebar-inset));
-  margin: var(--or-sidebar-inset);
+  block-size: 100%;
   padding: 0 var(--or-space-8) var(--or-space-8);
-  border-radius: var(--or-radius-panel);
-  background: var(--or-glass-sidebar);
-  box-shadow: var(--or-glass-sidebar-edge);
 }
 /* The native traffic lights sit in this row (tauri.conf.json trafficLightPosition). */
 .traffic {
   flex: 0 0 var(--or-traffic-light-row);
-  margin-block-end: calc(-1 * var(--or-space-4));
 }
-/* The connection pop-up: the environment is a dot and a word, never a tint. */
+/* The connection pop-up: a session-state dot, the name and the database. */
 .popup {
   display: flex;
   flex: none;
   align-items: center;
   gap: var(--or-space-8);
   inline-size: 100%;
-  block-size: 30px;
+  block-size: var(--or-control-height);
   padding: 0 var(--or-space-6) 0 var(--or-space-10);
   border: 0;
   border-radius: var(--or-radius-control);
@@ -107,32 +92,32 @@
   margin-inline-start: auto;
   color: var(--or-secondary);
 }
-.envDot {
+.stateDot {
   flex: none;
   inline-size: var(--or-dot-size);
   block-size: var(--or-dot-size);
   border-radius: var(--or-radius-capsule);
   background: var(--or-tertiary);
 }
-.envDot[data-env='prod'] {
-  background: var(--or-tag-prod);
+.stateDot[data-state='connected'] {
+  background: var(--or-success-fg);
 }
-.envDot[data-env='staging'] {
-  background: var(--or-tag-staging);
+.stateDot[data-state='connecting'] {
+  background: var(--or-warning-fg);
 }
-.envDot[data-env='dev'],
-.envDot[data-env='local'] {
-  background: var(--or-tag-dev);
+.stateDot[data-state='failed'] {
+  background: var(--or-danger-fg);
 }
-/* The connection list the pop-up shows: a bounded, scrolling region. */
-.connections {
-  flex: 0 1 auto;
-  max-block-size: 45%;
+/* One list at a time: the connection list or the object browser. */
+.connections,
+.items {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   min-block-size: 0;
-  overflow-y: auto;
-  scrollbar-width: none;
 }
-.connections[hidden] {
+.connections[hidden],
+.items[hidden] {
   display: none;
 }
 

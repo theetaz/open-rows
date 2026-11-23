@@ -48,7 +48,10 @@ export function MenuButton(props: {
   );
 }
 
-/** Main action plus a chevron opening related commands, joined as one control. */
+/**
+ * Main action plus a chevron opening related commands, joined as one control.
+ * While the action is disabled the chevron turns neutral; its menu stays usable.
+ */
 export function SplitButton(props: {
   label: string;
   title: string;
@@ -77,7 +80,7 @@ export function SplitButton(props: {
       <MenuButton
         label={props.menuLabel}
         entries={props.entries}
-        variant={variant}
+        variant={props.disabled ? 'secondary' : variant}
         className={styles.chevron}
       >
         <Icon name="chevronDown" />

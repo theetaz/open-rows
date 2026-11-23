@@ -16,7 +16,7 @@ import {
   searchHistory,
   tablePage,
 } from '@openrows/ipc';
-import { connectTo } from '../../test/connect';
+import { connectTo, showConnections } from '../../test/connect';
 import { Workspace } from './Workspace';
 // Load the real lazy surfaces during collection, outside the test hook deadline.
 import './WorkspacePalettes';
@@ -52,18 +52,22 @@ function mount(): ReturnType<typeof userEvent.setup> {
 }
 it("connects saved profiles from the rail and shows each one's safety policy", async () => {
   const user = mount();
-  expect(screen.getByRole('button', { name: 'Safe mode' })).toBeDisabled();
-  const context = screen.getByLabelText('Connection context');
-  expect(context).toHaveTextContent('Not connected : No connection');
+  // Without a connection the toolbar has no lock and no address.
+  expect(screen.queryByRole('button', { name: /^Safe mode/ })).toBeNull();
+  expect(screen.queryByLabelText('Connection context')).toBeNull();
   await user.click(
     await screen.findByRole('button', { name: 'Switch to analytics-prod' }),
   );
   expect(openConnection).toHaveBeenCalledWith('id-analytics-prod');
+  const context = (): HTMLElement =>
+    screen.getByLabelText('Connection context');
   await waitFor(() => {
-    expect(context).toHaveTextContent(
+    expect(context()).toHaveAttribute(
+      'title',
       'PROD | PostgreSQL 17.2 : analytics-prod : orders : public',
     );
   });
+  expect(context()).toHaveTextContent(/analytics-prod›orders›public/);
   expect(openSession).toHaveBeenCalledWith('id-analytics-prod', 'orders');
   expect(
     screen.getByRole('button', { name: 'Safe mode: Confirm writes' }),
@@ -73,13 +77,15 @@ it("connects saved profiles from the rail and shows each one's safety policy", a
     screen.getByRole('button', {
       name: 'Connections: analytics-prod · orders · Confirm writes',
     }),
-  ).toHaveAttribute('aria-expanded', 'true');
+  ).toHaveAttribute('aria-expanded', 'false');
+  showConnections();
   await user.click(
     screen.getByRole('button', { name: 'Switch to events-dev' }),
   );
   await waitFor(() => {
-    expect(context).toHaveTextContent(
-      'DEV | PostgreSQL 17.2 : events-dev : orders',
+    expect(context()).toHaveAttribute(
+      'title',
+      expect.stringMatching(/^DEV \| PostgreSQL 17\.2 : events-dev : orders/),
     );
   });
   expect(
@@ -90,7 +96,7 @@ it("connects saved profiles from the rail and shows each one's safety policy", a
     screen.getByRole('combobox', { name: 'Schema' }),
     'archive',
   );
-  expect(context).toHaveTextContent('archive');
+  expect(context()).toHaveTextContent('archive');
 });
 /** A single click opens a preview tab, which the next single click replaces. */
 async function expectPreview(
@@ -303,10 +309,12 @@ it('opens, switches and closes query tabs per connection', async () => {
     'aria-selected',
     'true',
   );
+  showConnections();
   await user.click(
     screen.getByRole('button', { name: 'Switch to events-dev' }),
   );
   expect(screen.queryByRole('tab', { name: /SQL Query/ })).toBeNull();
+  showConnections();
   await user.click(
     screen.getByRole('button', { name: 'Switch to orders-local' }),
   );

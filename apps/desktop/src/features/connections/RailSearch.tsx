@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
 import { Icon, TextField } from '@openrows/ui';
-import styles from './Rail.module.css';
 import { t } from './messages/profile';
 
 /**
@@ -15,8 +14,7 @@ export function RailSearch(props: {
 }): React.JSX.Element {
   return (
     <TextField
-      className={styles.search}
-      controlSize="compact"
+      controlSize="search"
       type="search"
       aria-label={t('searchConnections')}
       placeholder={t('searchConnections')}

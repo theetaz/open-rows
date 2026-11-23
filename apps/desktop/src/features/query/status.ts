@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import type { RunScope } from './request';
 import type { RunState } from './run';
 import { t, tn } from './lazyMessages';
 
@@ -22,14 +23,14 @@ function totals(run: RunState): string[] {
   return parts;
 }
 
-/** One-line summary for the query status bar. */
-export function statusText(run: RunState): string {
+/** One-line summary for the query status bar; before a run, how to start one. */
+export function statusText(run: RunState, runDefault: RunScope): string {
   const elapsed =
     run.elapsedMs === null ? [] : [`${run.elapsedMs.toLocaleString()} ms`];
   const total = run.statements.length;
   switch (run.status) {
     case 'idle':
-      return t('ready');
+      return runDefault === 'all' ? t('readyHintAll') : t('readyHint');
     case 'confirm':
       return t('waitingConfirmation');
     case 'parameters':

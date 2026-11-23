@@ -45,9 +45,18 @@
   padding: var(--or-space-12);
   border: 0;
   border-radius: var(--or-radius-panel);
-  background: var(--or-panel);
-  box-shadow: var(--or-panel-shadow);
+  background: var(--or-glass-fill-solid);
+  box-shadow:
+    0 0 0 var(--or-border-width) var(--or-control-stroke),
+    var(--or-panel-shadow);
   color: var(--or-text);
   font-size: var(--or-text-12);
   overflow-wrap: anywhere;
+}
+.panel p {
+  margin: 0;
+}
+.panel p + p {
+  margin-block-start: var(--or-space-4);
+  color: var(--or-secondary);
 }

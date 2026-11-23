@@ -67,7 +67,6 @@ export function renderTab(
       runs={runs}
       tabs={tabs}
       onCell={vi.fn()}
-      onConnect={vi.fn()}
     />,
   );
   return { user, unmount, tabs };

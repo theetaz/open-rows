@@ -6,7 +6,6 @@ import { railOrder, railShortcut, workspaceGroups } from './workspaceGroups';
 import { WorkspaceDisclosure } from './WorkspaceDisclosure';
 import { DatabaseTiles } from './DatabaseTiles';
 import { WorkspaceConnection } from './WorkspaceConnection';
-import { useWorkspaceCollapse } from './useWorkspaceCollapse';
 import { useConnectionSearch } from './useConnectionSearch';
 import { RailSearch } from './RailSearch';
 import type { ConnectionAction } from './connectionActions';
@@ -34,8 +33,8 @@ type RailDatabases = {
 };
 
 /**
- * Full-height workspace sidebar: environment groups, one-line server rows and
- * their opened databases, with app-level actions at the bottom.
+ * The sidebar's connection list: environment groups, one-line server rows and
+ * their opened databases, under a heading with the search field.
  */
 export function ConnectionRail(
   props: RailDatabases & {
@@ -45,23 +44,15 @@ export function ConnectionRail(
     onSelect: (profileId: string) => void;
     onNew: () => void;
     actionsFor?: (profile: ProfileDto) => readonly ConnectionAction[];
-    onSettings?: (() => void) | undefined;
   },
 ): React.JSX.Element {
-  const [compact, toggle] = useWorkspaceCollapse('rail');
   const [query, setQuery] = useState('');
-  // The compact rail has no search field, so it never hides connections.
-  const matches = useConnectionSearch(compact ? '' : query);
+  const matches = useConnectionSearch(query);
   const visible = matches
     ? props.profiles.filter((profile) => matches.has(profile.id))
     : props.profiles;
   return (
-    <nav
-      className={styles.rail}
-      aria-label={t('workspaces')}
-      data-compact={compact}
-    >
-      <div className={styles.railTop} data-tauri-drag-region />
+    <nav className={styles.rail} aria-label={t('workspaces')}>
       <div className={styles.railHeading}>
         <span>{t('connections')}</span>
         <IconButton
@@ -91,57 +82,9 @@ export function ConnectionRail(
           {...props}
           visible={visible}
           searching={matches !== null}
-          compact={compact}
         />
       )}
-      <div className={styles.space} />
-      <RailFooter
-        compact={compact}
-        onToggle={toggle}
-        onSettings={props.onSettings}
-      />
     </nav>
-  );
-}
-
-/** API client, Settings and the collapse toggle. */
-function RailFooter(props: {
-  compact: boolean;
-  onToggle: () => void;
-  onSettings?: (() => void) | undefined;
-}): React.JSX.Element {
-  return (
-    <footer className={styles.railFooter}>
-      <button type="button" className={styles.footerRow}>
-        <Icon name="code" />
-        <span className={styles.controlLabel}>{t('apiClient')}</span>
-      </button>
-      {props.onSettings && (
-        <button
-          type="button"
-          className={styles.footerRow}
-          aria-label={t('settings')}
-          onClick={props.onSettings}
-        >
-          <Icon name="settings" />
-          <span className={styles.controlLabel}>{t('settings')}</span>
-        </button>
-      )}
-      <IconButton
-        aria-label={
-          props.compact
-            ? t('expandWorkspaceSidebar')
-            : t('collapseWorkspaceSidebar')
-        }
-        title={props.compact ? t('expandSidebar') : t('collapseSidebar')}
-        variant="ghost"
-        size="sm"
-        className={styles.collapse}
-        onClick={props.onToggle}
-      >
-        <Icon name={props.compact ? 'chevronRight' : 'chevronLeft'} />
-      </IconButton>
-    </footer>
   );
 }
 
@@ -151,7 +94,6 @@ function WorkspaceGroups(
   props: RailProps & {
     visible: readonly ProfileDto[];
     searching: boolean;
-    compact: boolean;
   },
 ): React.JSX.Element {
   const order = railOrder(props.profiles).map((profile) => profile.id);
@@ -164,7 +106,7 @@ function WorkspaceGroups(
           label={group.label}
           environment={group.environment}
           count={group.profiles.length}
-          forceOpen={props.compact || props.searching}
+          forceOpen={props.searching}
         >
           {group.profiles.map((profile) => {
             const status = props.statusOf(profile.id);

@@ -49,7 +49,7 @@ const props = {
   onGallery: vi.fn(),
 };
 
-it('shows saved connections as tiles with connection-status dots, status tooltips and add', () => {
+it('shows saved connections as tiles with connection-status dots, status titles and add', () => {
   render(<ConnectionRail {...props} />);
   const rail = screen.getByRole('navigation', { name: 'Workspaces' });
   expect(
@@ -70,19 +70,18 @@ it('shows saved connections as tiles with connection-status dots, status tooltip
   });
   expect(selected).toHaveAttribute('aria-pressed', 'true');
   expect(selected).toHaveTextContent('orders-staging');
-  fireEvent.mouseEnter(other);
-  expect(screen.getByRole('tooltip')).toHaveTextContent(
-    'analytics-prodprod⌘2PostgreSQL · db.example.test:5432Connected · PostgreSQL 16.4',
+  expect(other).toHaveAttribute(
+    'title',
+    'analytics-prod  ⌘2\nPostgreSQL · db.example.test:5432\nConnected · PostgreSQL 16.4',
   );
-  fireEvent.mouseLeave(other);
-  expect(screen.queryByRole('tooltip')).toBeNull();
   fireEvent.click(other);
+  expect(screen.queryByRole('tooltip')).toBeNull();
   expect(props.onSelect).toHaveBeenCalledWith('id-analytics-prod');
   fireEvent.click(screen.getByRole('button', { name: 'New connection' }));
   expect(props.onNew).toHaveBeenCalledOnce();
 });
 
-it('supports Tab and wrapping arrows with focus tooltips', async () => {
+it('supports Tab and wrapping arrows', async () => {
   const user = userEvent.setup();
   render(<ConnectionRail {...props} />);
   const tiles = screen.getAllByRole('button', { name: /^Switch to/ });
@@ -98,10 +97,9 @@ it('supports Tab and wrapping arrows with focus tooltips', async () => {
   ).toHaveFocus();
   await user.tab();
   expect(tiles[0]).toHaveFocus();
-  expect(screen.getByRole('tooltip')).toHaveTextContent('Not connected');
+  expect(screen.queryByRole('tooltip')).toBeNull();
   await user.keyboard('{ArrowUp}');
   expect(tiles[2]).toHaveFocus();
-  expect(screen.getByRole('tooltip')).toHaveTextContent('qa box');
   await user.keyboard('{ArrowDown}{Enter}');
   expect(props.onSelect).toHaveBeenCalledWith('id-orders-staging');
 });
@@ -122,36 +120,20 @@ it('opens the connection menu at the pointer on right-click', async () => {
   expect(screen.queryByRole('menu')).toBeNull();
 });
 
-it('keeps folded groups visible as tiles in the compact sidebar', async () => {
-  const user = userEvent.setup();
+it('ignores the retired compact rail flag and has no footer', () => {
+  localStorage.setItem('openrows.workspace.collapsed.rail', 'true');
   render(<ConnectionRail {...props} />);
-  await user.click(screen.getByRole('button', { name: 'Collapse Staging' }));
-  expect(screen.getAllByRole('button', { name: /^Switch to/ })).toHaveLength(2);
-  await user.click(
-    screen.getByRole('button', { name: 'Collapse workspace sidebar' }),
-  );
-  expect(screen.getAllByRole('button', { name: /^Switch to/ })).toHaveLength(3);
-  await user.click(
-    screen.getByRole('button', { name: 'Expand workspace sidebar' }),
-  );
-  await user.click(screen.getByRole('button', { name: 'Expand Staging' }));
-});
-
-it('folds the entire sidebar while keeping database controls and remembering the choice', async () => {
-  const user = userEvent.setup();
-  const first = render(<ConnectionRail {...props} />);
-  await user.click(
-    screen.getByRole('button', { name: 'Collapse workspace sidebar' }),
-  );
+  const rail = screen.getByRole('navigation', { name: 'Workspaces' });
+  expect(rail).not.toHaveAttribute('data-compact');
   expect(
-    screen.getByRole('navigation', { name: 'Workspaces' }),
-  ).toHaveAttribute('data-compact', 'true');
-  expect(screen.getAllByRole('button', { name: /^Switch to/ })).toHaveLength(3);
-  first.unmount();
-  render(<ConnectionRail {...props} />);
+    screen.getByRole('searchbox', { name: 'Search connections' }),
+  ).toBeVisible();
+  expect(rail.querySelector('footer')).toBeNull();
   expect(
-    screen.getByRole('button', { name: 'Expand workspace sidebar' }),
-  ).toBeInTheDocument();
+    screen.queryByRole('button', { name: /workspace sidebar/ }),
+  ).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Settings' })).toBeNull();
+  localStorage.clear();
 });
 
 it('lists the active connection opened databases as tiles with switch and close', async () => {
@@ -244,7 +226,7 @@ it('collapses environment and connection lists without closing sessions, and sco
   localStorage.clear();
 });
 
-it('marks insecure connections in the row and names the reasons in the tooltip', () => {
+it('marks insecure connections in the row and names the reasons in the title', () => {
   const unverified = profile('reports', {
     host: 'db.example.test',
     insecure: ['tlsUnverified'],
@@ -272,8 +254,7 @@ it('marks insecure connections in the row and names the reasons in the tooltip',
   );
   const safe = screen.getByRole('button', { name: 'Switch to safe' });
   expect(safe.querySelector('[title]')).toBeNull();
-  fireEvent.mouseEnter(row);
-  expect(screen.getByRole('tooltip')).toHaveTextContent(
+  expect(row.getAttribute('title')).toContain(
     'Not secure: The server certificate is not verified.',
   );
 });

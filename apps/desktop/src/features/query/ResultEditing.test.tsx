@@ -155,7 +155,6 @@ function App({
         <ResultPane
           run={run}
           view="tabs"
-          runDefault="current"
           engine="postgres"
           onCell={vi.fn()}
           onExport={onExport}

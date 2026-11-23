@@ -34,7 +34,8 @@ function triggerEditor(
 
 /**
  * Query tabs and their content, with the inspector as a column of its own
- * beside them, so it never covers the grid.
+ * beside them (only while it has something to show), so it never covers
+ * the grid.
  */
 export function WorkspaceBody(props: Props): React.JSX.Element {
   const { connections, controller } = props;
@@ -62,13 +63,20 @@ export function WorkspaceBody(props: Props): React.JSX.Element {
         label={t('inspector')}
         storageKey="openrows.mock.inspector"
         range={inspectorRange}
-        open={controller.inspector.open}
+        open={controller.inspector.open && hasContent(controller)}
         edge="left"
       >
         <Inspector {...props} />
       </SplitPanel>
     </div>
   );
+}
+
+/** The inspector only takes room when it has a selection to show. */
+function hasContent(
+  controller: ReturnType<typeof useWorkspaceController>,
+): boolean {
+  return Boolean(controller.cell ?? controller.row ?? controller.table);
 }
 
 /** Toolbar and tab strip share the configured new-tab command. */

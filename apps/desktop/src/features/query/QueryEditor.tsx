@@ -107,13 +107,9 @@ function handleOf(editor: SqlEditor): EditorHandle {
 }
 
 function reportCursor(view: EditorView, cursor: CursorStore): void {
-  const location = view.state.selection.main.head;
-  const line = view.state.doc.lineAt(location);
-  cursor.set({
-    line: line.number,
-    column: location - line.from + 1,
-    location,
-  });
+  const head = view.state.selection.main.head;
+  const line = view.state.doc.lineAt(head);
+  cursor.set({ line: line.number, column: head - line.from + 1 });
 }
 
 /** Install Vim (loaded on first use) or the default keys. */

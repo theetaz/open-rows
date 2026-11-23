@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { SafetyDto } from '@openrows/ipc';
+import { SelectField } from '@openrows/ui';
 import { POLICY_DETAILS, POLICY_LABELS } from './policies';
 import { useSecurity } from './useSecurity';
 import styles from '../connections/ConnectionSheet.module.css';
@@ -18,25 +19,19 @@ export function SafetySelector(props: {
         {t('safetyPolicy')}
       </label>
       <div className={styles.stack}>
-        <select
+        <SelectField
           id="connection-safety"
+          aria-label={t('safetyPolicy')}
           data-initial-focus={props.initialFocus}
           aria-describedby="safety-description"
           value={props.value}
-          onChange={(e) => {
-            props.onChange(e.target.value as SafetyDto);
-          }}
-        >
-          {Object.entries(POLICY_LABELS).map(([value, label]) => (
-            <option
-              key={value}
-              value={value}
-              disabled={value.startsWith('authenticate') && !security.available}
-            >
-              {label}
-            </option>
-          ))}
-        </select>
+          options={Object.entries(POLICY_LABELS).map(([value, label]) => ({
+            value: value as SafetyDto,
+            label,
+            disabled: value.startsWith('authenticate') && !security.available,
+          }))}
+          onValueChange={props.onChange}
+        />
         <p id="safety-description" className={styles.help}>
           {POLICY_DETAILS[props.value]}
         </p>

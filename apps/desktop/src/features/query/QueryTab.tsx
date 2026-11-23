@@ -57,7 +57,6 @@ type QueryTabProps = {
   /** Tab-set actions: text, files and parameter values. */
   tabs: TabFileActions & Pick<QueryTabs, 'setParams' | 'open'>;
   onCell: (cell: SelectedCell) => void;
-  onConnect: () => void;
 };
 
 /** Run's dropdown wired to the tab's run, settings and file actions. */
@@ -290,10 +289,7 @@ function TabEditor(
 
 /** The view bar above the editor: Run and its menu, Cancel, formatting and settings. */
 function TabBar(
-  props: Pick<
-    QueryTabProps,
-    'tab' | 'connection' | 'runs' | 'sessionId' | 'onConnect'
-  > & {
+  props: Pick<QueryTabProps, 'tab' | 'connection' | 'runs' | 'sessionId'> & {
     settings: EditorSettings;
     update: (change: Partial<EditorSettings>) => void;
     run: RunState;
@@ -317,8 +313,6 @@ function TabBar(
       running={active}
       cancellable={run.queryId !== null}
       notice={props.notice}
-      offline={props.sessionId === null}
-      onConnect={props.onConnect}
       run={runMenuOf({
         ready: props.sessionId !== null && !active,
         settings,
@@ -357,7 +351,6 @@ function TabResults(
       <ResultArea
         run={props.run}
         view={props.settings.resultView}
-        runDefault={props.settings.runDefault}
         sessionId={props.sessionId}
         engine={props.connection.engine}
         onCell={props.onCell}
@@ -373,7 +366,7 @@ function TabResults(
       />
       <footer className={styles.status}>
         <span role="status" aria-label={t('queryStatus')}>
-          {statusText(props.run)}
+          {statusText(props.run, props.settings.runDefault)}
         </span>
         <CursorText store={props.cursor} />
       </footer>

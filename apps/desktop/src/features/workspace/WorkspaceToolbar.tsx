@@ -2,11 +2,12 @@
 import type { CSSProperties } from 'react';
 import { Icon, IconButton, ToolbarGroup } from '@openrows/ui';
 import type { IconName } from '@openrows/ui';
+import type { EnvDto } from '@openrows/ipc';
 import type { SafeModeState } from '../security/policies';
 import type { ContextSegments } from './contextBar';
 import { ConnectionStatus } from './ConnectionStatus';
 import { environmentColour, InsecureBadge } from '../connections';
-import { JobsButton } from '../jobs';
+import { JobsButton, useJobsVisible } from '../jobs';
 import { FavouriteButton } from '../schema/FavouriteButton';
 import type { SidebarObject } from '../schema/sidebarIdentity';
 import styles from './Workspace.module.css';
@@ -14,6 +15,7 @@ import { useWindowActive } from './useWindowActive';
 import { t } from './messages';
 
 type Props = {
+  /** The launch-time documents control; `undefined` when there are none. */
   documents?: React.ReactNode;
   context: ContextSegments;
   /** The active tab's object, starred from the end of the context bar. */
@@ -34,15 +36,18 @@ type Props = {
   onQuery: () => void;
 };
 /**
- * Unified toolbar: small glass capsules either side of a centred address
- * capsule (TablePlus), with the safety lock and its policy on the left.
+ * Unified toolbar: small glass capsules either side of an address capsule
+ * sized to its content (TablePlus). Without a connection only the two panel
+ * toggles remain.
  */
 export function WorkspaceToolbar(props: Props): React.JSX.Element {
   useWindowActive();
+  const connected = props.context.environment !== null;
   return (
     <header
       className={styles.toolbar}
-      style={tint(props.context)}
+      style={tint(props.context.environment)}
+      data-sidebar-state={props.sidebar ? 'open' : 'closed'}
       data-tauri-drag-region
       aria-label={t('windowToolbar')}
     >
@@ -55,41 +60,33 @@ export function WorkspaceToolbar(props: Props): React.JSX.Element {
             onClick={props.onSidebar}
           />
         </ToolbarGroup>
-        <ToolbarGroup aria-label={t('navigation')}>
-          <ToolButton label={t('back')} icon="chevronLeft" />
-          <ToolButton label={t('forward')} icon="chevronRight" />
-        </ToolbarGroup>
-        <ToolbarGroup aria-label={t('safety')}>
-          <SafeModeButton state={props.safeMode} onClick={props.onSafeMode} />
-        </ToolbarGroup>
+        {connected && (
+          <ToolbarGroup aria-label={t('safety')}>
+            <SafeModeButton state={props.safeMode} onClick={props.onSafeMode} />
+          </ToolbarGroup>
+        )}
       </div>
-      <Context {...props} />
+      {connected ? <Context {...props} /> : <span />}
       <div
         className={[styles.side, styles.end].join(' ')}
         data-tauri-drag-region
       >
-        <ToolbarGroup aria-label={t('connectionTools')}>
-          <ToolButton
-            label={t('newSqlQuery')}
-            icon="terminal"
-            text={t('sql')}
-            onClick={props.onQuery}
-          />
-          <ToolButton
-            label={t('openDatabaseK')}
-            icon="database"
-            onClick={props.onDatabase}
-          />
-        </ToolbarGroup>
-        <ToolbarGroup aria-label={t('workspaceActions')}>
-          <JobsButton />
-          {props.documents}
-          <ToolButton
-            label={t('commandPalette')}
-            icon="command"
-            onClick={props.onPalette}
-          />
-        </ToolbarGroup>
+        {connected && (
+          <ToolbarGroup aria-label={t('connectionTools')}>
+            <ToolButton
+              label={t('newSqlQuery')}
+              icon="terminal"
+              text={t('sql')}
+              onClick={props.onQuery}
+            />
+            <ToolButton
+              label={t('commandPalette')}
+              icon="command"
+              onClick={props.onPalette}
+            />
+          </ToolbarGroup>
+        )}
+        <WorkspaceActions documents={props.documents} />
         <ToolbarGroup aria-label={t('inspectorControls')}>
           <ToolButton
             label={t('toggleInspectorI')}
@@ -102,9 +99,22 @@ export function WorkspaceToolbar(props: Props): React.JSX.Element {
     </header>
   );
 }
+/** Jobs (only while there are some) and the launch-time documents. */
+function WorkspaceActions({
+  documents,
+}: Pick<Props, 'documents'>): React.JSX.Element | null {
+  const jobs = useJobsVisible();
+  if (!jobs && !documents) return null;
+  return (
+    <ToolbarGroup aria-label={t('workspaceActions')}>
+      {jobs && <JobsButton />}
+      {documents}
+    </ToolbarGroup>
+  );
+}
 /**
- * Reports the saved safety policy (a lock and its word) and opens the setting
- * that changes it. A toggle here could only guess which policy "off" means.
+ * Reports the saved safety policy and opens the setting that changes it: a
+ * quiet open lock when unrestricted, a green lock and its word when on.
  */
 function SafeModeButton({
   state,
@@ -127,7 +137,7 @@ function SafeModeButton({
             })
           : t('safeModeNot')
       }
-      className={styles.labelled}
+      className={state?.on ? styles.labelled : styles.lock}
       data-on={state?.on ?? false}
       disabled={!state}
       variant="ghost"
@@ -135,7 +145,7 @@ function SafeModeButton({
       onClick={onClick}
     >
       <Icon name={state?.on ? 'lock' : 'unlock'} />
-      {state && <span>{state.label}</span>}
+      {state?.on && <span>{state.label}</span>}
     </IconButton>
   );
 }
@@ -145,18 +155,13 @@ function ToolButton(props: {
   icon: IconName;
   text?: string;
   pressed?: boolean;
-  onClick?: (() => void) | undefined;
+  onClick: () => void;
 }): React.JSX.Element {
   return (
     <IconButton
       aria-label={props.label}
-      title={
-        props.onClick
-          ? props.label
-          : t('labelNotAvailable', { label: props.label })
-      }
+      title={props.label}
       className={props.text ? styles.labelled : undefined}
-      disabled={!props.onClick}
       aria-pressed={props.pressed}
       variant="ghost"
       size="sm"
@@ -167,13 +172,15 @@ function ToolButton(props: {
     </IconButton>
   );
 }
+/** Environments loud enough for the strip under the toolbar (FR-CONN-06). */
+const tinted = new Set(['prod', 'staging', 'custom']);
 /** The environment's colour for the strip under the toolbar and its tag. */
-function tint({ environment }: ContextSegments): CSSProperties | undefined {
-  return environment
+function tint(environment: EnvDto | null): CSSProperties | undefined {
+  return environment && tinted.has(environment.kind)
     ? ({ '--env-color': environmentColour(environment) } as CSSProperties)
     : undefined;
 }
-/** `ENV | PostgreSQL 14.17 : connection : database : schema.object`, centred. */
+/** `ENV ● connection › database › schema.object ☆ ⟳`, left aligned. */
 function Context({
   context,
   health,
@@ -186,13 +193,17 @@ function Context({
 >): React.JSX.Element {
   const { env, engine, name, database, object } = context;
   const address = [engine, name, database, object].filter(Boolean).join(' : ');
-  const title = env ? `${env} | ${address}` : address;
   return (
     <div
       className={styles.context}
       aria-label={t('connectionContext')}
-      title={title}
+      title={env ? `${env} | ${address}` : address}
     >
+      {env && (
+        <span className={styles.envTag} data-env={context.environment?.kind}>
+          {env}
+        </span>
+      )}
       <ConnectionStatus health={health} route={context.route} />
       <InsecureBadge reasons={context.insecure} />
       <Address context={context} onDatabase={onDatabase} />
@@ -201,11 +212,7 @@ function Context({
       )}
       <IconButton
         aria-label={t('refresh')}
-        title={
-          onRefresh
-            ? t('refresh')
-            : t('labelNotAvailable', { label: t('refresh') })
-        }
+        title={t('refresh')}
         className={styles.refresh}
         disabled={!onRefresh}
         variant="ghost"
@@ -217,52 +224,45 @@ function Context({
     </div>
   );
 }
-/** The address parts; they shrink by importance, the connection name never. */
+/**
+ * The address parts. Each separator belongs to the part after it, so a part
+ * that shrinks away takes its `›` along; the connection name never shrinks.
+ */
 function Address({
   context,
   onDatabase,
 }: Pick<Props, 'context' | 'onDatabase'>): React.JSX.Element {
-  const { env, engine, name, database, object } = context;
+  const { name, database, object } = context;
   return (
     <span className={styles.address}>
-      {env && (
-        <span className={styles.env} data-part="env">
-          <span className={styles.envTag} data-env={context.environment?.kind}>
-            {env}
-          </span>
-          <span className={styles.sep} aria-hidden="true">
-            {' | '}
-          </span>
+      <strong data-part="name">{name}</strong>
+      <span className={styles.segment} data-part="database">
+        <Separator />
+        <button
+          className={styles.databaseSegment}
+          type="button"
+          aria-label={t('openDatabaseDatabase', {
+            database: database || t('noDatabaseName'),
+          })}
+          onClick={onDatabase}
+          disabled={!onDatabase}
+        >
+          {database || t('noDatabase')}
+        </button>
+      </span>
+      {object && (
+        <span className={styles.segment} data-part="object">
+          <Separator />
+          <span className={styles.text}>{object}</span>
         </span>
       )}
-      <span data-part="engine">{engine}</span>
-      <span className={styles.sep}> : </span>
-      <strong data-part="name">{name}</strong>
-      {name !== t('noConnection') && (
-        <>
-          <span className={styles.sep} aria-hidden="true">
-            {' : '}
-          </span>
-          <button
-            className={styles.databaseSegment}
-            data-part="database"
-            type="button"
-            aria-label={t('openDatabaseDatabase', {
-              database: database || t('noDatabaseName'),
-            })}
-            onClick={onDatabase}
-            disabled={!onDatabase}
-          >
-            {database || t('noDatabase')}
-          </button>
-        </>
-      )}
-      {object && (
-        <>
-          <span className={styles.sep}> : </span>
-          <span data-part="object">{object}</span>
-        </>
-      )}
+    </span>
+  );
+}
+function Separator(): React.JSX.Element {
+  return (
+    <span className={styles.sep} aria-hidden="true">
+      ›
     </span>
   );
 }

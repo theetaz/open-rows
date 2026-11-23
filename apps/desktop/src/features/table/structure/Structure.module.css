@@ -304,7 +304,7 @@
   box-sizing: border-box;
   border-radius: var(--or-radius-panel);
   /* Floats like a menu: the elevated, ringed surface (no live blur here). */
-  background: var(--or-control-active);
+  background: var(--or-glass-fill-solid);
   box-shadow:
     0 0 0 var(--or-border-width) var(--or-control-stroke),
     var(--or-panel-shadow);

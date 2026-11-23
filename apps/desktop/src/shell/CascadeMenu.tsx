@@ -7,6 +7,7 @@ import {
   useState,
 } from 'react';
 import { GlassPanel, Icon } from '@openrows/ui';
+import { clampToWindow } from './menuPlacement';
 import { PointMenu } from './PointMenu';
 import { menuKey } from './SidebarMenu';
 import menuStyles from './SidebarMenu.module.css';
@@ -140,10 +141,18 @@ function placeSubmenu(panel: HTMLElement, opener: HTMLElement): void {
   if (!anchor) return;
   const row = opener.getBoundingClientRect();
   const fits = anchor.right + panel.offsetWidth <= innerWidth - 8;
-  panel.style.left = fits ? '100%' : '';
-  panel.style.right = fits ? '' : '100%';
-  const lowest = innerHeight - 8 - panel.offsetHeight - anchor.top;
-  panel.style.top = `${String(Math.min(row.top - anchor.top, lowest))}px`;
+  const placed = clampToWindow(
+    {
+      x: fits ? anchor.right : anchor.left - panel.offsetWidth,
+      y: row.top,
+      flip: row.bottom,
+      width: panel.offsetWidth,
+      height: panel.offsetHeight,
+    },
+    { width: innerWidth, height: innerHeight },
+  );
+  panel.style.left = `${String(placed.left - anchor.left)}px`;
+  panel.style.top = `${String(placed.top - anchor.top)}px`;
 }
 
 function Submenu(props: {

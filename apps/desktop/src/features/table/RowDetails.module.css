@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* Inspector row fields, after TablePlus: name and muted type above a value box. */
 /*
- * The inspector's row form (the kit's `.group > .field-row`): one grouped
- * list, name and type on the left, the value on the right, compact rows.
+ * The inspector's row form: a plain list with hairline rows, name and type
+ * on the left, the value on the right, compact rows, no inner card.
  */
 .details {
   display: flex;
@@ -15,9 +15,6 @@
   flex-direction: column;
   min-height: 0;
   overflow: auto;
-  padding: 0 var(--or-space-10);
-  border-radius: var(--or-radius-card);
-  background: var(--or-group);
 }
 .field {
   display: grid;

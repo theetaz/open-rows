@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
-import { Switch } from '@openrows/ui';
+import { SelectField, Switch } from '@openrows/ui';
 import { SettingRow } from '../appearance/InterfaceSettings';
 import { securitySettings } from './securitySettings';
 import { useSecurity } from './useSecurity';
 import styles from '../appearance/Appearance.module.css';
 import { t } from './lazyMessages';
 const usePreferences = securitySettings.useValue;
+const INACTIVITY_MINUTES = [1, 5, 15, 30, 60];
 /** Settings ▸ Security: OS-authenticated startup and inactivity locks. */
 export function SecurityPane(): React.JSX.Element {
   const preferences = usePreferences();
@@ -32,26 +33,24 @@ export function SecurityPane(): React.JSX.Element {
           title={t('lockAfterInactivity')}
           description={t('noUserInput')}
         >
-          <select
+          <SelectField
             aria-label={t('lockAfterInactivity')}
             disabled={!status.available}
-            value={preferences.lockAfterInactivityMinutes ?? ''}
-            onChange={(e) => {
+            value={String(preferences.lockAfterInactivityMinutes ?? '')}
+            options={[
+              { value: '', label: t('off') },
+              ...INACTIVITY_MINUTES.map((minutes) => ({
+                value: String(minutes),
+                label: t('minutesMinutes', { minutes }),
+              })),
+            ]}
+            onValueChange={(value) => {
               securitySettings.set({
                 ...preferences,
-                lockAfterInactivityMinutes: e.target.value
-                  ? Number(e.target.value)
-                  : null,
+                lockAfterInactivityMinutes: value ? Number(value) : null,
               });
             }}
-          >
-            <option value="">{t('off')}</option>
-            {[1, 5, 15, 30, 60].map((minutes) => (
-              <option key={minutes} value={minutes}>
-                {t('minutesMinutes', { minutes })}
-              </option>
-            ))}
-          </select>
+          />
         </SettingRow>
       </div>
     </section>

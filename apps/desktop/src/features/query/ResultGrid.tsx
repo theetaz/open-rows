@@ -13,6 +13,13 @@ export function ResultGrid(props: ResultGridProps): React.JSX.Element {
   const model = useResultGrid(props);
   const { editing, reason } = model.edits;
   const [discard, setDiscard] = useState(false);
+  const status = [
+    reason && t('readOnlyReason', { reason }),
+    model.view.status,
+    model.tools.aggregate,
+  ]
+    .filter(Boolean)
+    .join(' · ');
   return (
     <div className={styles.resultView}>
       <ResultGridBody
@@ -20,19 +27,15 @@ export function ResultGrid(props: ResultGridProps): React.JSX.Element {
         result={props.result}
         onExport={props.onExport}
       />
-      <div
-        className={styles.resultStatus}
-        role="status"
-        aria-label={t('resultStatus')}
-      >
-        {[
-          reason ? t('readOnlyReason', { reason }) : t('doubleClickCellPress'),
-          model.view.status,
-          model.tools.aggregate,
-        ]
-          .filter(Boolean)
-          .join(' · ')}
-      </div>
+      {status && (
+        <div
+          className={styles.resultStatus}
+          role="status"
+          aria-label={t('resultStatus')}
+        >
+          {status}
+        </div>
+      )}
       {editing.error && <p role="alert">{editing.error}</p>}
       <EditToolbar
         model={rowEditBar(editing, model.edits.ready, () => {

@@ -5,7 +5,11 @@ import { Icon } from '../icons/Icon';
 import type { ControlSize } from './TextField';
 import styles from './TextField.module.css';
 
-type Option<Value extends string> = { value: Value; label: string };
+type Option<Value extends string> = {
+  value: Value;
+  label: string;
+  disabled?: boolean | undefined;
+};
 /** A visible label, or only an accessible name for inline pickers. */
 type Name =
   | { label: string; 'aria-label'?: string }
@@ -50,7 +54,11 @@ export function SelectField<Value extends string>({
           }}
         >
           {options.map((option) => (
-            <option key={option.value} value={option.value}>
+            <option
+              key={option.value}
+              value={option.value}
+              disabled={option.disabled}
+            >
               {option.label}
             </option>
           ))}

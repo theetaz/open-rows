@@ -2,7 +2,8 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
-import { ResultPane } from './ResultPane';
+import { hasResultPane, ResultPane } from './ResultPane';
+import { statusText } from './status';
 import { idleRun } from './run';
 import type { ResultMeta, RunState } from './run';
 import type { ResultView } from './editorSettings';
@@ -28,7 +29,6 @@ function show(view: ResultView): void {
     <ResultPane
       run={run}
       view={view}
-      runDefault="current"
       engine="postgres"
       onCell={() => undefined}
     />,
@@ -63,7 +63,6 @@ it('keeps the plan beside stacked results and shows notices from every visible r
         ],
       }}
       view="stacked"
-      runDefault="current"
       engine="postgres"
       onCell={vi.fn()}
       extra={{
@@ -88,5 +87,26 @@ it('keeps the plan beside stacked results and shows notices from every visible r
   );
   expect(screen.getByRole('list', { name: 'Messages' })).toHaveTextContent(
     'second notice',
+  );
+});
+
+it('has no pane before the first run; the status line carries the hint', () => {
+  expect(hasResultPane(idleRun, null)).toBe(false);
+  expect(hasResultPane({ ...idleRun, status: 'parameters' }, null)).toBe(false);
+  expect(hasResultPane({ ...idleRun, status: 'running' }, null)).toBe(true);
+  expect(hasResultPane({ ...idleRun, status: 'failed' }, null)).toBe(true);
+  expect(
+    hasResultPane(idleRun, {
+      id: 'plan',
+      label: 'Plan',
+      content: <p />,
+      onClose: vi.fn(),
+    }),
+  ).toBe(true);
+  expect(statusText(idleRun, 'current')).toBe(
+    'Ready · ⌘↵ runs the statement at the cursor · ⇧⌘↵ runs all',
+  );
+  expect(statusText(idleRun, 'all')).toBe(
+    'Ready · ⌘↵ runs all · ⇧⌘↵ runs the statement at the cursor',
   );
 });

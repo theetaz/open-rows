@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
 import type { EnvDto } from '@openrows/ipc';
 import { profile, server } from '../../test/ipcStub';
+import { addJob } from '../jobs';
 import { readSidebarObjects } from '../schema/sidebarStore';
 import { contextSegments, tabFavourite } from './contextBar';
 import { WorkspaceToolbar } from './WorkspaceToolbar';
@@ -84,10 +85,10 @@ it('stars the active tab object, including the exact routine overload, from the 
     <WorkspaceToolbar
       {...handlers}
       context={contextSegments({
-        profile: undefined,
-        status: undefined,
-        database: '',
-        schema: '',
+        profile: profile('reports'),
+        status: { state: 'disconnected' },
+        database: 'db',
+        schema: 'app',
         objectPath: undefined,
       })}
       favourite={favourite}
@@ -106,7 +107,7 @@ it('stars the active tab object, including the exact routine overload, from the 
   ).toHaveAttribute('aria-pressed', 'true');
 });
 
-function toolbarFor(env: EnvDto): HTMLElement {
+function toolbarFor(env: EnvDto, sidebar = true): HTMLElement {
   render(
     <WorkspaceToolbar
       {...handlers}
@@ -119,7 +120,7 @@ function toolbarFor(env: EnvDto): HTMLElement {
       })}
       health="connected"
       safeMode={null}
-      sidebar
+      sidebar={sidebar}
       inspector={false}
     />,
   );
@@ -140,7 +141,34 @@ it('a custom tag keeps its label and uses its own colour', () => {
   expect(screen.getByText('QA')).toHaveAttribute('data-env', 'custom');
 });
 
-it('no connection means no tint', () => {
+it('local and dev connections get no strip, only the hairline', () => {
+  const toolbar = toolbarFor({ kind: 'local', label: null, color: '#16a34a' });
+  expect(toolbar.style.getPropertyValue('--env-color')).toBe('');
+  expect(screen.getByText('LOCAL')).toHaveAttribute('data-env', 'local');
+});
+
+it('shows the address parts with `›` and keeps the engine out of the text', () => {
+  toolbarFor({ kind: 'dev', label: null, color: '#16a34a' });
+  const bar = screen.getByLabelText('Connection context');
+  expect(bar).toHaveTextContent(/^DEV.*reports›orders›public$/);
+  expect(bar).not.toHaveTextContent('Not connected');
+  expect(bar.getAttribute('title')).toBe(
+    'DEV | Not connected : reports : orders : public',
+  );
+  expect(
+    screen.queryByRole('button', { name: /Open database \(/ }),
+  ).toHaveTextContent('orders');
+});
+
+it('clears the traffic lights only while the sidebar is closed', () => {
+  const toolbar = toolbarFor(
+    { kind: 'dev', label: null, color: '#16a34a' },
+    false,
+  );
+  expect(toolbar).toHaveAttribute('data-sidebar-state', 'closed');
+});
+
+it('no connection means no tint and only the two panel toggles', () => {
   render(
     <WorkspaceToolbar
       {...handlers}
@@ -157,9 +185,31 @@ it('no connection means no tint', () => {
       inspector={false}
     />,
   );
+  const toolbar = screen.getByRole('banner', { name: 'Window toolbar' });
+  expect(toolbar.style.getPropertyValue('--env-color')).toBe('');
   expect(
-    screen
-      .getByRole('banner', { name: 'Window toolbar' })
-      .style.getPropertyValue('--env-color'),
-  ).toBe('');
+    screen.getAllByRole('button').map((b) => b.getAttribute('aria-label')),
+  ).toEqual(['Toggle sidebar (⌃⌘S)', 'Toggle inspector (⌥⌘I)']);
+  expect(screen.queryByLabelText('Connection context')).toBeNull();
+});
+
+it('hides back, forward, the database button and an idle jobs button', () => {
+  toolbarFor({ kind: 'dev', label: null, color: '#16a34a' });
+  const names = screen
+    .getAllByRole('button')
+    .map((button) => button.getAttribute('aria-label'));
+  expect(names).not.toContain('Back');
+  expect(names).not.toContain('Forward');
+  expect(names).not.toContain('Open database (⌘K)');
+  expect(names).not.toContain('Background jobs');
+  expect(screen.getByRole('button', { name: 'Safe mode' })).toBeDisabled();
+});
+
+it('shows the jobs button while a job is listed', () => {
+  const job = addJob({ kind: 'export', title: 'orders.csv' });
+  toolbarFor({ kind: 'dev', label: null, color: '#16a34a' });
+  expect(
+    screen.getByRole('button', { name: 'Background jobs (1 running)' }),
+  ).toBeInTheDocument();
+  job.finish('Done');
 });

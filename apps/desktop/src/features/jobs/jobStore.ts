@@ -138,3 +138,11 @@ export function setJobsOpen(open: boolean): void {
 export function useJobsOpen(): boolean {
   return useSyncExternalStore(subscribe, () => popover);
 }
+
+/**
+ * Whether the toolbar shows the jobs button: while any job is listed (running,
+ * or ended and not yet cleared) or the popover is open.
+ */
+export function useJobsVisible(): boolean {
+  return useSyncExternalStore(subscribe, () => popover || jobs.length > 0);
+}

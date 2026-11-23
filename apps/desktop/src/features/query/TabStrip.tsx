@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import { Tabs } from '@openrows/ui';
 import type { EnvDto } from '@openrows/ipc';
-import { environmentColour } from '../connections/EnvironmentBadge';
 import { PointMenu } from '../../shell/PointMenu';
 import menuStyles from '../../shell/CascadeMenu.module.css';
 import { TabMenu } from './TabMenu';
@@ -60,7 +59,7 @@ export function TabStrip(props: {
   tabs: QueryTabs;
   list: readonly Tab[];
   active: string;
-  /** The tabs' owner; a connection's environment marks them, local files have none. */
+  /** The tabs' owner, named in each tab's tooltip with its environment. */
   connection: { name: string; env?: EnvDto };
   onAdd: () => void;
   /** Move a tab to another window (the tab menu's Move items). */
@@ -87,7 +86,6 @@ export function TabStrip(props: {
           preview: item.preview ?? false,
         }))}
         active={props.active}
-        markColor={env && environmentColour(env)}
         onSelect={tabs.select}
         onClose={tabs.close}
         onAdd={props.onAdd}

@@ -41,6 +41,8 @@ export const geometry = {
   'rail-inactive-opacity': '0.9',
   'footer-height': '24px',
   'pending-height': '40px',
+  /** One bar per pane: editor bar, result tools, table view bar, notices. */
+  'bar-height': '36px',
   'tabs-height': '34px',
   'tab-height': '26px',
   'control-height': '28px',
@@ -61,7 +63,7 @@ export const geometry = {
   /** The environment colour under the toolbar (FR-CONN-06). */
   'env-strip-height': '2px',
   /** The native traffic lights sit in the sidebar's top row. */
-  'traffic-light-row': '36px',
+  'traffic-light-row': '48px',
   'traffic-light-clearance': '84px',
   'toolbar-gap': '8px',
   'toolbar-inset': '8px',
@@ -70,8 +72,8 @@ export const geometry = {
   'glass-button-width': '30px',
   'glass-button-height': '26px',
   'toolbar-icon-size': '16px',
-  /** The address capsule's minimum; it grows into the toolbar's free room. */
-  'address-width': '360px',
+  /** The address capsule's maximum; it is sized to its content. */
+  'address-width': '520px',
   'sidebar-inset': '8px',
   'search-height': '28px',
   'segment-height-source': '22px',

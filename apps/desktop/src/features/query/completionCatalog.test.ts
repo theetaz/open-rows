@@ -114,8 +114,6 @@ it('validates persisted editor settings field by field', () => {
   ).toEqual({ ...defaultEditorSettings, rowLimit: 1_000, keyBinding: 'vim' });
 });
 
-it('describes the cursor like TablePlus', () => {
-  expect(cursorText({ line: 3, column: 7, location: 42 })).toBe(
-    'line 3, column 7, location 42',
-  );
+it('describes the cursor as line and column', () => {
+  expect(cursorText({ line: 3, column: 7 })).toBe('Ln 3, Col 7');
 });

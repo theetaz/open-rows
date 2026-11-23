@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useRef } from 'react';
+import { placeFloating } from '../../shell/menuPlacement';
 import styles from './ConnectionStatus.module.css';
 import { t } from './messages';
 
-/** Native light-dismiss status popover anchored to the toolbar health dot. */
+/**
+ * Native light-dismiss status popover under the toolbar health dot, its left
+ * edge just before the dot's, clamped like every menu.
+ */
 export function ConnectionStatus({
   health,
   route,
@@ -24,9 +28,13 @@ export function ConnectionStatus({
           const popover = panel.current;
           if (!popover) return;
           const anchor = event.currentTarget.getBoundingClientRect();
-          popover.style.left = `${String(Math.max(8, anchor.right - 320))}px`;
-          popover.style.top = `${String(anchor.bottom + 4)}px`;
           popover.togglePopover();
+          if (popover.matches(':popover-open'))
+            placeFloating(popover, {
+              x: anchor.left - 12,
+              y: anchor.bottom + 4,
+              flip: anchor.top - 4,
+            });
         }}
       >
         <span aria-hidden="true">●</span>

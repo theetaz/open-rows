@@ -11,13 +11,13 @@ function rule(style: string, name: string): string {
   return style.match(new RegExp(`\\.${name} \\{([^}]+)\\}`))?.[1] ?? '';
 }
 
-it('glass only floats: the sidebar is an inset glass panel, content is solid', () => {
+it('glass only floats: the sidebar is a flat edge-to-edge veil, content is solid', () => {
   const frame = css('features/workspace', 'Frame');
   const sidebar = rule(frame, 'sidebar');
-  expect(sidebar).toContain('background: var(--or-glass-sidebar);');
-  expect(sidebar).toContain('box-shadow: var(--or-glass-sidebar-edge);');
-  expect(sidebar).toContain('border-radius: var(--or-radius-panel);');
-  expect(sidebar).toContain('margin: var(--or-sidebar-inset);');
+  expect(sidebar).not.toMatch(/glass|border-radius|margin|box-shadow/);
+  expect(frame).toMatch(
+    /aside\[aria-label='Sidebar'\] \{\s*background: var\(--or-window-veil\);/,
+  );
   for (const name of ['main', 'body'])
     expect(rule(frame, name)).toContain('background: var(--or-page);');
   // Panes inside never paint glass or outlines of their own.

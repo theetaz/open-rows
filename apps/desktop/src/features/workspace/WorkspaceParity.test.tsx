@@ -16,7 +16,7 @@ import {
   openConnection,
   readSqlFile,
 } from '@openrows/ipc';
-import { connectTo } from '../../test/connect';
+import { connectTo, showConnections } from '../../test/connect';
 import { showProject, closeProject } from '../projects/projectStore';
 import { Workspace } from './Workspace';
 vi.mock('@openrows/ipc', async () =>
@@ -79,12 +79,14 @@ it('previews environment and safety before switching and keeps each context’s 
   await user.click(screen.getByRole('button', { name: 'New query tab (⌘T)' }));
   await user.click(await screen.findByRole('textbox', { name: 'SQL editor' }));
   await user.paste('SELECT prod_text');
+  showConnections();
   await user.click(
     screen.getByRole('button', { name: 'Switch to orders-local' }),
   );
   expect(
     await screen.findByRole('textbox', { name: 'SQL editor' }),
   ).toHaveValue('SELECT local_text');
+  showConnections();
   await user.click(
     screen.getByRole('button', { name: 'Switch to analytics-prod' }),
   );

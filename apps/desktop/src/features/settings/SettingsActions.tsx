@@ -3,17 +3,20 @@ import { useState } from 'react';
 import { Button, TextArea } from '@openrows/ui';
 import { Sheet, SheetActions } from '@openrows/ui/sheet';
 import { exportSettings, importSettings, resetSettings } from './settingsFile';
+import { SettingsMenu } from './SettingsMenu';
+import type { SettingsAction } from './SettingsMenu';
 import { t } from './messages/lazyGeneral';
 
-/** Confirm resets and exchange only schema-validated, non-secret preferences. */
+/**
+ * The settings actions menu: confirm resets and exchange only
+ * schema-validated, non-secret preferences.
+ */
 export function SettingsActions({
   section,
 }: {
   section: string;
 }): React.JSX.Element {
-  const [action, setAction] = useState<
-    'group' | 'all' | 'import' | 'export' | null
-  >(null);
+  const [action, setAction] = useState<SettingsAction | null>(null);
   const [text, setText] = useState('');
   const [message, setMessage] = useState('');
   const resetting = action === 'group' || action === 'all';
@@ -26,44 +29,17 @@ export function SettingsActions({
       setMessage(error instanceof Error ? error.message : String(error));
     }
   };
-  const open = (next: NonNullable<typeof action>): void => {
+  const open = (next: SettingsAction): void => {
     setMessage('');
     setText(next === 'export' ? exportSettings() : '');
     setAction(next);
   };
   return (
     <>
-      <div>
-        <Button
-          disabled={section === 'locations' || section === 'json'}
-          onClick={() => {
-            open('group');
-          }}
-        >
-          {t('resetGroup')}
-        </Button>
-        <Button
-          onClick={() => {
-            open('all');
-          }}
-        >
-          {t('resetAllSettings')}
-        </Button>
-        <Button
-          onClick={() => {
-            open('export');
-          }}
-        >
-          {t('exportSettings')}
-        </Button>
-        <Button
-          onClick={() => {
-            open('import');
-          }}
-        >
-          {t('importSettings')}
-        </Button>
-      </div>
+      <SettingsMenu
+        groupDisabled={section === 'locations' || section === 'json'}
+        onChoose={open}
+      />
       {action && (
         <ActionDialog
           action={action}
@@ -93,7 +69,7 @@ function ActionDialog({
   close,
   submit,
 }: {
-  action: 'group' | 'all' | 'import' | 'export';
+  action: SettingsAction;
   section: string;
   resetting: boolean;
   text: string;

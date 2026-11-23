@@ -15,7 +15,7 @@ import {
   openSession,
   syncMenu,
 } from '@openrows/ipc';
-import { connectTo } from '../../test/connect';
+import { connectTo, showConnections } from '../../test/connect';
 import { server, stubStateKey } from '../../test/ipcStub';
 import { Workspace } from './Workspace';
 
@@ -75,6 +75,7 @@ it('restores every context without connect or execute IPC calls', async () => {
   expect(openSession).not.toHaveBeenCalled();
   expect(openConnection).not.toHaveBeenCalled();
   expect(executeQuery).not.toHaveBeenCalled();
+  showConnections();
   expect(screen.getByRole('button', { name: 'Database sales' })).toBeVisible();
   expect(await screen.findByRole('tab', { name: /invoices/ })).toBeVisible();
   const bar = screen.getByText(/analytics-prod is not connected/);
@@ -148,6 +149,8 @@ it('activates a disconnected database only after the explicit connection finishe
       }),
   );
   mount();
+  await screen.findByRole('button', { name: /^Connections:/ });
+  showConnections();
   const tile = await screen.findByRole('button', { name: 'Database sales' });
   expect(openConnection).not.toHaveBeenCalled();
   fireEvent.click(tile);

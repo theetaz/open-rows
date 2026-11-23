@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /*
- * A sheet drops from under the toolbar: nearly solid glass (--glass-sheet) so
- * forms stay legible, 16 px corners, a hairline-separated footer.
+ * A sheet is centred in the window: nearly solid glass (--glass-sheet) so
+ * forms stay legible, 16 px corners, a sticky title row and a sticky footer.
  */
 .overlay {
   position: fixed;
@@ -17,10 +17,12 @@
 .sheet {
   position: fixed;
   inset: 0;
-  margin: calc(var(--or-toolbar-height) + var(--or-space-8)) auto auto;
+  margin: auto;
   box-sizing: border-box;
   inline-size: min(var(--or-sheet-width), calc(100vw - var(--or-space-32)));
-  max-block-size: calc(100vh - var(--or-toolbar-height) - var(--or-space-32));
+  block-size: fit-content;
+  /* A toolbar's height above and below: a wide sheet never reaches the traffic lights. */
+  max-block-size: calc(100vh - 2 * var(--or-toolbar-height));
   padding: 0;
   color: var(--or-text);
   font-size: var(--or-text-13);
@@ -35,7 +37,6 @@
   animation: sheet-in var(--or-motion-popover) var(--or-motion-easing);
 }
 .sheet[data-size='alert'] {
-  margin-block-start: auto;
   inline-size: min(var(--or-alert-width), calc(100vw - var(--or-space-32)));
 }
 .sheet[data-size='editor'] {
@@ -56,12 +57,27 @@
   font-weight: var(--or-weight-semibold);
   letter-spacing: -0.015em;
 }
-/* The title row is the drag handle; it spans the sheet's top padding. */
+/*
+ * The title row is the drag handle; it spans the sheet's top padding and stays
+ * in view while a long form scrolls under it, with a hairline once scrolled.
+ */
 .body .title {
-  margin: calc(-1 * var(--or-space-16)) calc(-1 * var(--or-space-20)) 0;
-  padding: var(--or-space-16) var(--or-space-20) 0;
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 2;
+  margin: calc(-1 * var(--or-space-16)) calc(-1 * var(--or-space-20))
+    calc(-1 * var(--or-space-8));
+  padding: var(--or-space-16) var(--or-space-20) var(--or-space-8);
+  /* The sheet colour layered three times: opaque, so scrolled fields never show through. */
+  background:
+    linear-gradient(var(--or-glass-sheet), var(--or-glass-sheet)),
+    linear-gradient(var(--or-glass-sheet), var(--or-glass-sheet)),
+    var(--or-glass-sheet);
   user-select: none;
   touch-action: none;
+}
+.sheet[data-scrolled] .title {
+  box-shadow: inset 0 calc(-1 * var(--or-border-width)) 0 var(--or-separator);
 }
 .sheet[data-size='alert'] .body h2 {
   font-size: var(--or-text-13);
@@ -81,7 +97,10 @@
   margin: var(--or-space-4) calc(-1 * var(--or-space-20))
     calc(-1 * var(--or-space-16));
   padding: var(--or-space-12) var(--or-space-20) var(--or-space-16);
-  background: var(--or-glass-sheet);
+  background:
+    linear-gradient(var(--or-glass-sheet), var(--or-glass-sheet)),
+    linear-gradient(var(--or-glass-sheet), var(--or-glass-sheet)),
+    var(--or-glass-sheet);
   box-shadow: inset 0 var(--or-border-width) 0 var(--or-separator);
 }
 .actions button {
@@ -110,6 +129,6 @@
 
 .sheet[data-size='appearance'] {
   inline-size: min(1020px, calc(100vw - var(--or-space-32)));
-  block-size: calc(100vh - var(--or-toolbar-height) - var(--or-space-32));
+  block-size: calc(100vh - 2 * var(--or-toolbar-height));
   background: var(--or-glass-sheet);
 }

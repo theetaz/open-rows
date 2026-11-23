@@ -1,24 +1,19 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* The connection list inside the floating sidebar, under its pop-up. */
+/* The connection list: it fills the sidebar while the pop-up is expanded. */
 .rail {
   display: flex;
   flex-direction: column;
-  width: 100%;
-  min-height: 0;
-  padding: 0;
-  background: transparent;
-}
-/* The traffic lights now sit in the sidebar panel's own top row. */
-.railTop {
-  display: none;
+  flex: 1;
+  gap: var(--or-space-8);
+  min-block-size: 0;
 }
 .railHeading {
   display: flex;
+  flex: none;
   align-items: center;
   justify-content: space-between;
-  min-height: var(--or-control-height-compact);
+  min-block-size: var(--or-control-height-compact);
   padding-inline: var(--or-space-6) 0;
-  margin-block-end: var(--or-space-2);
   color: var(--or-secondary);
   font-size: var(--or-text-12);
   font-weight: var(--or-weight-medium);
@@ -29,16 +24,19 @@
 .railHeading button:hover {
   color: var(--or-text);
 }
-.space {
-  flex: 1;
-}
+/* Scrolls like the object tree: no visible scroll bar. */
 .workspaces {
+  flex: 1;
+  min-block-size: 0;
   overflow-y: auto;
-  min-height: 0;
+  scrollbar-width: none;
+}
+.workspaces::-webkit-scrollbar {
+  display: none;
 }
 .group {
   --workspace-colour: var(--or-info-fg);
-  margin-block: var(--or-space-6) var(--or-space-4);
+  margin-block-end: var(--or-space-6);
 }
 .group[data-environment='local'] {
   --workspace-colour: var(--or-success-fg);
@@ -111,7 +109,7 @@
   position: relative;
   display: flex;
   align-items: center;
-  min-height: 30px;
+  min-block-size: var(--or-tree-row-height);
   border-radius: var(--or-radius-control);
   /* Presence dots are ringed in the colour behind the tile. */
   --tile-ring: var(--or-page);
@@ -147,7 +145,8 @@
   gap: var(--or-space-8);
   min-width: 0;
   flex: 1;
-  padding: var(--or-space-4) var(--or-space-6) var(--or-space-4) 0;
+  align-self: stretch;
+  padding: 0 var(--or-space-6) 0 0;
   border: 0;
   border-radius: var(--or-radius-control);
   background: transparent;
@@ -277,7 +276,7 @@
   gap: var(--or-space-8);
   min-width: 0;
   width: 100%;
-  min-height: 26px;
+  min-block-size: var(--or-tree-row-height);
   padding: 0 var(--or-space-6) 0 var(--or-space-2);
   border: 0;
   border-radius: var(--or-radius-control);
@@ -322,166 +321,13 @@
   color: var(--or-danger-fg);
 }
 
-/* Bottom: API client, settings and the width toggle. */
-.railFooter {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  padding-block-start: var(--or-space-6);
-  border-block-start: var(--or-border-width) solid var(--or-separator);
-}
-.footerRow {
-  display: flex;
-  align-items: center;
-  gap: var(--or-space-8);
-  min-height: 28px;
-  padding-inline: var(--or-space-8);
-  border: 0;
-  border-radius: var(--or-radius-control);
-  background: transparent;
-  color: var(--or-secondary);
-  font: inherit;
-  font-size: var(--or-text-13);
-  text-align: start;
-}
-.footerRow:hover {
-  background: var(--or-control-fill);
-  color: var(--or-text);
-}
-.footerRow svg {
-  flex-shrink: 0;
-  width: 15px;
-  height: 15px;
-}
-.collapse {
-  align-self: flex-end;
-  color: var(--or-secondary);
-}
 .rail button:focus-visible {
   outline: var(--or-focus-width) solid var(--or-focus);
   outline-offset: -2px;
 }
 
-/*
- * Compact, like Slack: the rail sits under the full-width toolbar and shows
- * one large tile per connection, the selected one ringed. Groups are split
- * by short separators; databases are reached from ⌘K and the toolbar.
- */
-.rail[data-compact='true'] {
-  width: var(--or-rail-compact-width);
-  padding: var(--or-space-10) 0 var(--or-space-8);
-}
-.rail[data-compact='true'] .railTop,
-.rail[data-compact='true'] .railHeading > span,
-.rail[data-compact='true'] .disclosure,
-.rail[data-compact='true'] .serverName,
-.rail[data-compact='true'] .insecure,
-.rail[data-compact='true'] .serverDisclosure,
-.rail[data-compact='true'] .controlLabel,
-.rail[data-compact='true'] .rowMenu,
-.rail[data-compact='true'] .databases {
-  display: none;
-}
-.rail[data-compact='true'] .workspaces {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding-block: 4px;
-}
-.rail[data-compact='true'] .group {
-  margin: 0;
-}
-.rail[data-compact='true'] .group + .group::before {
-  content: '';
-  display: block;
-  inline-size: 20px;
-  block-size: var(--or-border-width);
-  margin: var(--or-space-2) auto var(--or-space-10);
-  background: var(--or-separator);
-}
-.rail[data-compact='true'] .server {
-  margin: 0 0 var(--or-space-10);
-}
-.rail[data-compact='true'] .serverRow,
-.rail[data-compact='true'] .serverRow:hover,
-.rail[data-compact='true'] .serverRow[data-selected='true'] {
-  justify-content: center;
-  min-height: 0;
-  background: transparent;
-  box-shadow: none;
-  --tile-ring: var(--or-page);
-}
-.rail[data-compact='true'] .connection {
-  flex: 0 0 auto;
-  padding: 0;
-  border-radius: var(--or-radius-card);
-}
-.rail[data-compact='true'] .tile {
-  flex-basis: 36px;
-  inline-size: 36px;
-  block-size: 36px;
-  border-radius: var(--or-radius-card);
-  font-size: var(--or-text-13);
-  transition: box-shadow var(--or-motion-popover) var(--or-motion-easing);
-}
-.rail[data-compact='true'] .connection:hover .tile {
-  box-shadow:
-    0 0 0 2px var(--or-page),
-    0 0 0 4px color-mix(in srgb, var(--or-text) 25%, transparent);
-}
-.rail[data-compact='true'] .connection[aria-pressed='true'] .tile {
-  box-shadow:
-    0 0 0 2px var(--or-page),
-    0 0 0 4px var(--or-text);
-}
-.rail[data-compact='true'] .status {
-  inset-inline-end: -4px;
-  inset-block-end: -4px;
-  width: 13px;
-  height: 13px;
-  border-width: 3px;
-}
-.rail[data-compact='true'] .railHeading {
-  order: 1;
-  justify-content: center;
-  padding: 0;
-  margin: 0;
-}
-.rail[data-compact='true'] .railHeading button,
-.rail[data-compact='true'] .footerRow {
-  justify-content: center;
-  inline-size: 36px;
-  block-size: 36px;
-  min-height: 0;
-  padding: 0;
-  border-radius: var(--or-radius-card);
-}
-.rail[data-compact='true'] .railHeading button {
-  background: var(--or-control-fill);
-}
-.rail[data-compact='true'] .railHeading button:hover {
-  background: var(--or-control-hover);
-}
-.rail[data-compact='true'] .space {
-  order: 2;
-}
-.rail[data-compact='true'] .railFooter {
-  order: 3;
-  align-items: center;
-  margin-inline: var(--or-space-10);
-}
-.rail[data-compact='true'] .collapse {
-  align-self: center;
-}
-.search {
-  margin: 0 var(--or-space-2) var(--or-space-6);
-}
 .noMatches {
   margin: var(--or-space-6);
   color: var(--or-secondary);
   font-size: var(--or-text-12);
-}
-.rail[data-compact='true'] .search,
-.rail[data-compact='true'] .noMatches {
-  display: none;
 }

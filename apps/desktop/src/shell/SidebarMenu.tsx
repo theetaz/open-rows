@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useRef } from 'react';
 import type { ReactNode, RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { GlassPanel } from '@openrows/ui';
-import { menuPlacement } from './menuPlacement';
+import { menuPlacement, placeFloating } from './menuPlacement';
 import styles from './SidebarMenu.module.css';
 type Props = {
   id: string;
@@ -14,7 +14,11 @@ type Props = {
   fit?: boolean;
   children: ReactNode;
 };
-/** Place the menu below its opener, inside the sidebar (else the window). */
+/**
+ * Place the menu below its opener (or below the opener's `data-menu-row`, so
+ * a field's menu never covers its value), inside the sidebar (else the
+ * window), then clamp it to the window like every other menu.
+ */
 function place(
   menu: HTMLElement | null,
   opener: HTMLElement | null,
@@ -25,14 +29,20 @@ function place(
     left: 0,
     right: window.innerWidth,
   };
+  const box = opener.getBoundingClientRect();
+  const row = opener.closest('[data-menu-row]')?.getBoundingClientRect();
   const { left, top, width } = menuPlacement(
-    opener.getBoundingClientRect(),
+    { left: box.left, right: box.right, bottom: row?.bottom ?? box.bottom },
     area,
     fit,
   );
-  menu.style.setProperty('left', `${String(left)}px`);
-  menu.style.setProperty('top', `${String(top)}px`);
   menu.style.setProperty('width', `${String(width)}px`);
+  const panel = menu.firstElementChild;
+  placeFloating(
+    menu,
+    { x: left, y: top, flip: row?.top ?? box.top },
+    panel instanceof HTMLElement ? panel : menu,
+  );
 }
 /** Anchored glass menu with wrapping keyboard focus and opener restoration. */
 export function SidebarMenu(props: Props): React.JSX.Element {

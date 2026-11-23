@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
+import { useEffect, useRef } from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { readFileSync, readdirSync } from 'node:fs';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
+import type { SelectedCell } from '../query';
 import { Workspace } from './Workspace';
 
 vi.mock('@openrows/ipc', async () =>
@@ -14,10 +16,25 @@ vi.mock('../query', async () => {
   const actual = await vi.importActual<typeof import('../query')>('../query');
   return {
     ...actual,
+    // A selected cell gives the inspector something to show, so it opens.
+    CellDetails: () => null,
     QueryContent: function MeasuredContent(
       props: React.ComponentProps<typeof actual.QueryContent>,
     ) {
       renders.content();
+      const { onCell } = props;
+      const selected = useRef(false);
+      useEffect(() => {
+        if (selected.current) return;
+        selected.current = true;
+        onCell({
+          row: 0,
+          index: 0,
+          column: 'id',
+          type: 'int4',
+          text: '1',
+        } as unknown as SelectedCell);
+      }, [onCell]);
       return <actual.QueryContent {...props} />;
     },
   };

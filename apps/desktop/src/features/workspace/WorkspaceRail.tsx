@@ -7,7 +7,8 @@ import type { JobActions } from './JobActions';
 /** The connection list: environment groups, servers and their opened databases. */
 export function WorkspaceRail(props: {
   connections: Connections;
-  onSettings?: (() => void) | undefined;
+  /** A connection or one of its databases was chosen. */
+  onChosen?: (() => void) | undefined;
   /** Open the process list of a connection's database. */
   onProcesses?: ((scope: TabScope) => void) | undefined;
   /** Open a database Monitor. */
@@ -22,7 +23,10 @@ export function WorkspaceRail(props: {
       profiles={connections.profiles}
       activeId={connections.active?.id}
       statusOf={connections.statusOf}
-      onSelect={connections.select}
+      onSelect={(id) => {
+        connections.select(id);
+        props.onChosen?.();
+      }}
       databases={connections.databases}
       restoredDatabases={connections.restoredDatabases}
       database={connections.database}
@@ -30,6 +34,7 @@ export function WorkspaceRail(props: {
       onCloseDatabase={connections.closeDatabase}
       onProfileDatabase={(id, name) => {
         connections.select(id, name);
+        props.onChosen?.();
       }}
       onCloseProfileDatabase={connections.closeProfileDatabase}
       onMonitor={(id, name) => {
@@ -54,7 +59,6 @@ export function WorkspaceRail(props: {
         connections.setSheet({ kind: 'new' });
       }}
       actionsFor={(profile) => connectionActions(profile, connections)}
-      onSettings={props.onSettings}
     />
   );
 }

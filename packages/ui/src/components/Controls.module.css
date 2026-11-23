@@ -74,6 +74,12 @@
 .switch:disabled {
   opacity: 0.4;
 }
+/* A disabled primary reads as neutral, not as a dim accent. */
+.button[data-variant='primary']:disabled {
+  background: var(--or-control-fill);
+  color: var(--or-tertiary);
+  opacity: 1;
+}
 /* Icon buttons: a 28 (22) px square, secondary until hovered, accent when on. */
 .iconButton {
   padding: 0;

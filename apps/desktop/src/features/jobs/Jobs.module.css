@@ -16,7 +16,7 @@
   max-height: 60vh;
   padding: var(--or-space-10) var(--or-space-12) var(--or-space-12);
   border-radius: var(--or-radius-panel);
-  background: var(--or-control-active);
+  background: var(--or-glass-fill-solid);
   box-shadow:
     0 0 0 var(--or-border-width) var(--or-control-stroke),
     var(--or-panel-shadow);

@@ -6,7 +6,7 @@ import { useSheetDrag } from './sheetDrag';
 import { openSheet, sheetKey } from './sheetFocus';
 
 /**
- * macOS-style sheet: drops from under the toolbar and moves by dragging its
+ * macOS-style sheet: centred in the window and moved by dragging its sticky
  * title row; nearly solid glass, 16 px corners, focus containment,
  * Escape cancels, Return runs the default (primary) action and focus returns
  * to the opener. There is no close button, as in AppKit.
@@ -44,6 +44,12 @@ export function Sheet({
           )
             return;
           sheetKey(event, onClose);
+        }}
+        onScroll={(event) => {
+          event.currentTarget.toggleAttribute(
+            'data-scrolled',
+            event.currentTarget.scrollTop > 0,
+          );
         }}
         onCancel={(event) => {
           event.preventDefault();
