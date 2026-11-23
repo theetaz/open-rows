@@ -313,7 +313,11 @@ export class CanvasPainter {
     context.rect(x, 0, column.width - arrow, height);
     context.clip();
     context.fillStyle = column.sort ? colours.text : colours.secondary;
-    context.fillText(column.title, snap(x + 8, this.dpr), height / 2);
+    // Numeric columns align their title with their values, like the kit's grid.
+    const end = column.align === 'end';
+    context.textAlign = end ? 'right' : 'left';
+    const at = end ? x + column.width - arrow - 8 : x + 8;
+    context.fillText(column.title, snap(at, this.dpr), height / 2);
     context.restore();
     context.fillStyle = colours['grid-line'];
     context.fillRect(x + column.width - 1 / this.dpr, 0, 1 / this.dpr, height);

@@ -7,7 +7,7 @@ export interface GridColumn {
   title: string;
   width: number;
   pinned: boolean;
-  /** `end` right-aligns values, e.g. numbers; headers stay start-aligned. */
+  /** `end` right-aligns values and the header title, e.g. numbers. */
   align?: 'start' | 'end';
   /** Booleans paint centred TRUE/FALSE; every kind shows an up/down stepper. */
   kind?: 'boolean' | 'enum' | 'temporal';

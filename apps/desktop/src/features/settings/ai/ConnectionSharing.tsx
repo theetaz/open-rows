@@ -19,7 +19,7 @@ export default function ConnectionSharing(props: {
     <section
       aria-label={t('connectionDataSharing')}
       aria-busy={busy}
-      className={styles.provider}
+      className={styles.form}
     >
       {policy && (
         <fieldset disabled={busy}>

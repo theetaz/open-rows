@@ -108,3 +108,13 @@
 .actions {
   margin-block-end: var(--or-space-6);
 }
+.sectionHead {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-6);
+  margin-block-end: var(--or-space-6);
+}
+.sectionHead h2 {
+  flex: 1;
+  margin: 0;
+}

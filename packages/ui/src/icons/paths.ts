@@ -53,6 +53,9 @@ export const iconPaths = {
   pause: 'M8.5 5v14M15.5 5v14',
   play: 'M8 5.5v13l10.5-6.5Z',
   download: 'M12 4v11M7.5 11l4.5 4.5 4.5-4.5M4.5 19.5h15',
+  check: 'M5.3 12.8l4.5 4.5 9-10.5',
+  send: 'M20.7 3.3 10.5 13.5M20.7 3.3l-6.4 17.4-3.8-7.2-7.2-3.8Z',
+  plug: 'M9 3v5.3M15 3v5.3M6 8.3h12v3.3a6 6 0 0 1-12 0ZM12 17.6V21',
 } as const;
 
 /** Names of the original line icons. */

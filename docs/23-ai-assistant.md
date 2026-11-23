@@ -177,7 +177,7 @@ sequenceDiagram
 
 ## 6. UX surfaces
 
-- **Assistant panel** (right panel tab next to Details): provider switcher, policy chips, conversation, tool-call trace, proposal cards.
+- **Assistant panel** (a 320 px column beside the query, docs/20 §5.1): a 40 px head with the close button, the provider/model/schema list, the sharing line with Context preview, the conversation as chat bubbles (the question on the accent tint, the answer and its proposal cards on the group fill, tool steps as quiet check lines that expand to their evidence, MCP confirmations as warning notices) and the ask area (quick actions, the composer capsule with Send, Cancel). Complete fenced SQL is shown once, as its proposal card, not repeated in the answer text.
 - **Inline (⌘I)** in the SQL editor: prompt inside the editor at the target; result appears as a diff to accept/reject (§14). The editor bar's AI button opens the panel; its menu also offers ⌘I.
 - **Error assist**: "Fix" button on query errors.
 - **Settings → AI**: providers (keys, base URLs, models), CLI bridges (detected, health), MCP servers (client), MCP server mode (on/off, port, token, which connections are exposed), per-connection data sharing, redaction rules, usage.
@@ -609,8 +609,11 @@ The proposal streams through the same native assistant, configured default
 provider/model, connection sharing policy, redaction and content-free audit as
 the panel. Inline requests disable tool calling and collect no database schema;
 the context is the selected SQL and the resolved dialect. While streaming, the
-original range is struck through and the proposal's SQL body is shown
-highlighted below it. **Accept proposal** replaces the range with the literal
+original range is struck through on the danger tint and the proposal's SQL
+body is shown below it as added lines (a `+` on the success tint), under a bar
+with the target, the status and **Reject** / **Accept** (the accent default).
+The prompt is the kit's composer capsule (sparkles icon, input, the target as
+a tag, Generate proposal, a close button). **Accept proposal** replaces the range with the literal
 SQL as one isolated undo step. **Reject proposal**, **Close** and Escape leave
 the document exactly as it was. **Cancel proposal**, Escape while streaming,
 editing the document, opening another prompt and closing the tab cancel the

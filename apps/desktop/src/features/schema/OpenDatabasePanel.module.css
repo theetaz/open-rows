@@ -12,9 +12,8 @@
   padding: var(--or-space-4);
   overflow-y: auto;
   list-style: none;
-  border: var(--or-border-width) solid var(--or-separator);
-  border-radius: var(--or-radius-field);
-  background: var(--or-panel-solid);
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
 }
 .option {
   display: flex;

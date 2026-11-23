@@ -56,17 +56,23 @@ export function ProviderRow(props: Props): React.JSX.Element {
   const { result, busy, failure, verify } = useVerification(props.config.id);
   const words = labels(props.config);
   return (
-    <section aria-label={props.config.name} className={styles.provider}>
-      <div className={styles.heading}>
+    <section
+      aria-label={props.config.name}
+      className={[styles.row, styles.provider].join(' ')}
+    >
+      <span className={styles.monogram} aria-hidden="true">
+        {props.config.name.slice(0, 2)}
+      </span>
+      <div className={styles.rowBody}>
         <strong>
           {props.selected
             ? t('nameDefault', { name: props.config.name })
             : props.config.name}
         </strong>
-        <span role="status">{busy ? words.running : health(result)}</span>
+        <p>{words.where}</p>
       </div>
-      <p>{words.where}</p>
-      <div className={styles.actions}>
+      <div className={styles.accessory}>
+        <span role="status">{busy ? words.running : health(result)}</span>
         <Button
           size="sm"
           disabled={!props.enabled || busy}
@@ -86,8 +92,34 @@ export function ProviderRow(props: Props): React.JSX.Element {
             {t('cancelVerification')}
           </Button>
         )}
+      </div>
+      <ProviderMore
+        {...props}
+        busy={busy}
+        failure={failure}
+        result={result}
+        verify={verify}
+      />
+    </section>
+  );
+}
+
+/** Edit, remove, default and key actions, then outcomes and reported details. */
+function ProviderMore(
+  props: Props & {
+    busy: boolean;
+    failure: string;
+    result: Verification | null;
+    verify: () => Promise<void>;
+  },
+): React.JSX.Element {
+  const { busy, failure, result, verify } = props;
+  return (
+    <div className={styles.rowFull}>
+      <div className={styles.actions}>
         <Button
           size="sm"
+          variant="ghost"
           disabled={busy || props.disabled}
           onClick={props.onEdit}
         >
@@ -95,6 +127,7 @@ export function ProviderRow(props: Props): React.JSX.Element {
         </Button>
         <Button
           size="sm"
+          variant="ghost"
           disabled={busy || props.disabled}
           onClick={props.onRemove}
         >
@@ -102,6 +135,7 @@ export function ProviderRow(props: Props): React.JSX.Element {
         </Button>
         <Button
           size="sm"
+          variant="ghost"
           disabled={props.selected || busy || props.disabled}
           onClick={props.onDefault}
         >
@@ -124,6 +158,6 @@ export function ProviderRow(props: Props): React.JSX.Element {
         />
       )}
       {result && <ProviderDetails result={result} />}
-    </section>
+    </div>
   );
 }

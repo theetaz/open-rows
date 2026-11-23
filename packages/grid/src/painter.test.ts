@@ -103,3 +103,25 @@ it('does not reassign backing dimensions at an unchanged size, and resizes only 
   expect(painter.metrics.canvasResizeEvents).toBe(20);
   vi.unstubAllGlobals();
 });
+it('right-aligns the header title of an end-aligned (numeric) column', () => {
+  const { fillText } = canvasMock();
+  const titles = new Map<string, { align: string; x: number }>();
+  fillText.mockImplementation(function (
+    this: CanvasRenderingContext2D,
+    text: string,
+    x: number,
+  ) {
+    titles.set(text, { align: this.textAlign, x });
+  });
+  const model = props();
+  const numeric = model.source.columns[3];
+  if (numeric) numeric.align = 'end';
+  const painter = new CanvasPainter(document.createElement('div'), model);
+  painter.resize(1040, 600);
+  painter.paint();
+  expect(titles.get('column_2')?.align).toBe('left');
+  expect(titles.get('column_3')?.align).toBe('right');
+  expect(titles.get('column_3')?.x).toBeGreaterThan(
+    (titles.get('column_2')?.x ?? 0) + 120,
+  );
+});

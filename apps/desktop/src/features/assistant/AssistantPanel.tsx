@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { Button, SelectField, TextField } from '@openrows/ui';
+import { Button, Icon, IconButton, SelectField, TextField } from '@openrows/ui';
 import type { AssistantProps } from './context';
 import { cancelConversation, toggleAssistant } from './conversation';
 import { useAssistantPanel } from './useAssistantPanel';
@@ -18,44 +18,52 @@ export function AssistantPanel(props: AssistantProps): React.JSX.Element {
       }
       className={styles.panel}
     >
-      <header className={styles.row}>
+      <header className={styles.head}>
+        <Icon name="sparkles" />
         <strong>{t('assistant')}</strong>
-        <Button
+        <IconButton
           size="sm"
+          variant="ghost"
+          aria-label={t('closeAssistant')}
+          title={t('closeAssistant')}
           onClick={() => {
             toggleAssistant(props.tabId);
           }}
         >
-          {t('closeAssistant')}
-        </Button>
+          <Icon name="close" />
+        </IconButton>
       </header>
-      <ProviderPicker controls={controls} busy={busy} />
-      <ContextNotice controls={controls} busy={busy} />
-      <ConversationView
-        connection={props.profile.id}
-        turns={controls.conversation.turns}
-        disabled={!!controls.reason || busy}
-        actions={{
-          insert: props.onInsert,
-          open: props.onOpen,
-          explain: (sql) => {
-            void controls.inspect(sql);
-          },
-        }}
-      />
-      {!props.monitoring && (
-        <QuickActions
-          controls={controls}
-          props={props}
+      <div className={styles.body}>
+        <ProviderPicker controls={controls} busy={busy} />
+        <ContextNotice controls={controls} busy={busy} />
+        <ConversationView
+          connection={props.profile.id}
+          turns={controls.conversation.turns}
           disabled={!!controls.reason || busy}
+          actions={{
+            insert: props.onInsert,
+            open: props.onOpen,
+            explain: (sql) => {
+              void controls.inspect(sql);
+            },
+          }}
         />
-      )}
-      <Composer
-        controls={controls}
-        busy={busy}
-        tabId={props.tabId}
-        label={props.monitoring ? t('askAboutHealth') : t('askAboutQuery')}
-      />
+      </div>
+      <div className={styles.ask}>
+        {!props.monitoring && (
+          <QuickActions
+            controls={controls}
+            props={props}
+            disabled={!!controls.reason || busy}
+          />
+        )}
+        <Composer
+          controls={controls}
+          busy={busy}
+          tabId={props.tabId}
+          label={props.monitoring ? t('askAboutHealth') : t('askAboutQuery')}
+        />
+      </div>
     </aside>
   );
 }
@@ -68,12 +76,13 @@ function ContextNotice({
 }): React.JSX.Element {
   return (
     <>
-      <div className={styles.row}>
+      <div className={styles.meta}>
         <span>
           {t('sharingLevel', { level: controls.policy?.level ?? 'loading' })}
         </span>
         <Button
           size="sm"
+          variant="ghost"
           disabled={!!controls.reason || busy}
           onClick={() => {
             void controls.inspect();
@@ -82,10 +91,18 @@ function ContextNotice({
           {t('contextPreview')}
         </Button>
       </div>
-      {controls.reason && <p role="status">{controls.reason}</p>}
-      {controls.failure && <p role="alert">{controls.failure}</p>}
+      {controls.reason && (
+        <p role="status" className={styles.notice}>
+          {controls.reason}
+        </p>
+      )}
+      {controls.failure && (
+        <p role="alert" className={styles.notice}>
+          {controls.failure}
+        </p>
+      )}
       {controls.preview && (
-        <details open>
+        <details open className={styles.preview}>
           <summary>
             {controls.preview.truncated
               ? t('whatSentBytes', { bytes: controls.preview.bytes })
@@ -110,6 +127,7 @@ function Composer({
   tabId: string;
   label: string;
 }): React.JSX.Element {
+  const blocked = !!controls.reason || busy;
   return (
     <form
       onSubmit={(event) => {
@@ -117,27 +135,34 @@ function Composer({
         controls.send(controls.question);
       }}
     >
-      <label>
-        {label}
+      <div className={styles.composer}>
         <textarea
           aria-label={t('assistantQuestion')}
+          placeholder={label}
+          rows={1}
           maxLength={4096}
           value={controls.question}
-          disabled={!!controls.reason || busy}
+          disabled={blocked}
           onChange={(event) => {
             controls.setQuestion(event.target.value);
           }}
         />
-      </label>
-      <div className={styles.row}>
-        <Button
+        <IconButton
           type="submit"
-          disabled={!!controls.reason || busy || !controls.question.trim()}
+          size="sm"
+          variant="ghost"
+          aria-label={t('send')}
+          title={t('send')}
+          disabled={blocked || !controls.question.trim()}
         >
-          {t('send')}
-        </Button>
+          <Icon name="send" />
+        </IconButton>
+      </div>
+      <div className={styles.askFoot}>
         <Button
           type="button"
+          size="sm"
+          variant="ghost"
           disabled={!busy}
           onClick={() => {
             cancelConversation(tabId);
@@ -157,9 +182,12 @@ function ProviderPicker({
   busy: boolean;
 }): React.JSX.Element {
   return (
-    <>
+    <div className={styles.setup}>
       <SelectField
-        label={t('assistantProvider')}
+        className={styles.field}
+        label={t('provider')}
+        aria-label={t('assistantProvider')}
+        controlSize="compact"
         value={controls.provider}
         disabled={busy}
         options={[
@@ -172,7 +200,10 @@ function ProviderPicker({
         onValueChange={controls.setProvider}
       />
       <TextField
-        label={t('assistantModel')}
+        className={styles.field}
+        label={t('model')}
+        aria-label={t('assistantModel')}
+        controlSize="compact"
         value={controls.model}
         disabled={busy}
         maxLength={256}
@@ -188,27 +219,11 @@ function ProviderPicker({
           </option>
         ))}
       </datalist>
-      <Button
-        size="sm"
-        disabled={
-          busy ||
-          (Boolean(controls.reason) && controls.reason !== 'Choose a model.') ||
-          controls.locked ||
-          !controls.settings.enabled ||
-          !controls.provider ||
-          controls.verification.busy
-        }
-        onClick={() => {
-          void controls.verification.verify();
-        }}
-      >
-        {t('verifyModels')}
-      </Button>
-      {controls.verification.failure && (
-        <p role="alert">{controls.verification.failure}</p>
-      )}
       <TextField
-        label={t('assistantSchema')}
+        className={styles.field}
+        label={t('schema')}
+        aria-label={t('assistantSchema')}
+        controlSize="compact"
         value={controls.schema}
         disabled={busy}
         maxLength={256}
@@ -216,6 +231,44 @@ function ProviderPicker({
           controls.setSchema(event.target.value);
         }}
       />
+      <VerifyModels controls={controls} busy={busy} />
+    </div>
+  );
+}
+/** Explicit model discovery for the chosen provider, with its failure. */
+function VerifyModels({
+  controls,
+  busy,
+}: {
+  controls: Controls;
+  busy: boolean;
+}): React.JSX.Element {
+  return (
+    <>
+      <div className={styles.setupFoot}>
+        <Button
+          size="sm"
+          disabled={
+            busy ||
+            (Boolean(controls.reason) &&
+              controls.reason !== 'Choose a model.') ||
+            controls.locked ||
+            !controls.settings.enabled ||
+            !controls.provider ||
+            controls.verification.busy
+          }
+          onClick={() => {
+            void controls.verification.verify();
+          }}
+        >
+          {t('verifyModels')}
+        </Button>
+      </div>
+      {controls.verification.failure && (
+        <p role="alert" className={styles.notice}>
+          {controls.verification.failure}
+        </p>
+      )}
     </>
   );
 }

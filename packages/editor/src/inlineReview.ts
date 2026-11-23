@@ -4,6 +4,8 @@ import { StateEffect, StateField } from '@codemirror/state';
 import { Decoration, EditorView, WidgetType } from '@codemirror/view';
 import type { DecorationSet } from '@codemirror/view';
 import type { InlineBlock, InlineTransport } from './inline';
+import { addedLines, button, icon, paragraph } from './inlineDom';
+export { inlineTheme } from './inlineDom';
 const PROPOSAL_LIMIT = 16384;
 const STREAM_LIMIT = 32768;
 const replace = StateEffect.define<DecorationSet>();
@@ -132,13 +134,16 @@ export class Review {
       event.stopPropagation();
       this.cancel();
     });
-    const heading = document.createElement('strong');
-    heading.textContent = `AI · ${this.scope()}`;
-    host.append(heading);
     if (this.status === 'prompt') this.prompt(host);
     else if (this.status === 'blocked') this.blocked(host);
     else this.result(host);
     return host;
+  }
+  /** `AI · Edit selection`: what the proposal will replace. */
+  private heading(): HTMLElement {
+    const heading = document.createElement('strong');
+    heading.textContent = `AI · ${this.scope()}`;
+    return heading;
   }
   private scope(): string {
     if (this.range.from === this.range.to) return 'Insert at cursor';
@@ -149,23 +154,29 @@ export class Review {
   }
   private blocked(host: HTMLElement): void {
     const block = this.block;
-    host.append(paragraph('alert', block?.reason ?? ''));
+    const bar = document.createElement('div');
+    bar.className = 'cm-inline-bar';
+    bar.append(this.heading(), paragraph('alert', block?.reason ?? ''));
     const action = block?.action;
     if (action)
-      host.append(
+      bar.append(
         button(action.label, () => {
           this.cancel();
           action.run();
         }),
       );
-    host.append(
+    bar.append(
       button('Close', () => {
         this.cancel();
       }),
     );
+    host.append(bar);
   }
   private result(host: HTMLElement): void {
-    host.append(
+    const bar = document.createElement('div');
+    bar.className = 'cm-inline-bar';
+    bar.append(
+      this.heading(),
       paragraph(
         this.status === 'failed' ? 'alert' : 'status',
         this.failure ||
@@ -173,19 +184,6 @@ export class Review {
             ? 'Generating SQL proposal… Escape cancels.'
             : 'Proposed SQL — review before running. Nothing runs automatically.'),
       ),
-    );
-    const code = document.createElement('pre');
-    code.className = 'cm-inline-proposal';
-    code.setAttribute('aria-label', 'Proposed SQL');
-    code.textContent = this.proposal || this.text;
-    host.append(code);
-    if (this.status === 'ready')
-      host.append(
-        button('Accept proposal', () => {
-          this.accept();
-        }),
-      );
-    host.append(
       button(
         this.status === 'running' ? 'Cancel proposal' : 'Reject proposal',
         () => {
@@ -193,20 +191,41 @@ export class Review {
         },
       ),
     );
+    if (this.status === 'ready')
+      bar.append(
+        button(
+          'Accept proposal',
+          () => {
+            this.accept();
+          },
+          'prominent',
+        ),
+      );
+    host.append(bar, addedLines(this.proposal || this.text));
   }
   private prompt(host: HTMLElement): void {
     const form = document.createElement('form');
+    form.className = 'cm-inline-prompt';
     const input = document.createElement('input');
     input.maxLength = 3500;
     input.placeholder =
       'Describe the SQL you want — Enter generates, Esc closes';
     input.setAttribute('aria-label', 'Inline SQL prompt');
+    const scope = document.createElement('span');
+    scope.className = 'cm-inline-tag';
+    scope.textContent = `AI · ${this.scope()}`;
     form.append(
+      icon('sparkles'),
       input,
+      scope,
       button('Generate proposal', () => void this.submit(input.value)),
-      button('Close', () => {
-        this.cancel();
-      }),
+      button(
+        'Close',
+        () => {
+          this.cancel();
+        },
+        'close',
+      ),
     );
     form.addEventListener('submit', (event) => {
       event.preventDefault();
@@ -218,63 +237,3 @@ export class Review {
     });
   }
 }
-function paragraph(role: 'alert' | 'status', text: string): HTMLElement {
-  const element = document.createElement('p');
-  element.setAttribute('role', role);
-  element.textContent = text;
-  return element;
-}
-function button(label: string, action: () => void): HTMLButtonElement {
-  const element = document.createElement('button');
-  element.type = 'button';
-  element.textContent = label;
-  element.addEventListener('click', action);
-  return element;
-}
-export const inlineTheme = EditorView.baseTheme({
-  '.cm-inline-review': {
-    margin: '4px 0',
-    padding: '8px 12px',
-    whiteSpace: 'normal',
-    fontFamily: 'var(--or-font-ui)',
-    border: '1px solid var(--or-separator)',
-    borderRadius: '6px',
-    background: 'var(--or-panel-solid)',
-    color: 'var(--or-text)',
-  },
-  '.cm-inline-review p': { margin: '4px 0' },
-  '.cm-inline-review pre': {
-    whiteSpace: 'pre-wrap',
-    maxHeight: '240px',
-    overflow: 'auto',
-    margin: '4px 0',
-    padding: '4px 8px',
-    fontFamily: 'var(--or-font-editor)',
-  },
-  '.cm-inline-proposal': {
-    background: 'var(--or-success-bg)',
-    borderLeft: '3px solid var(--or-success-fg)',
-  },
-  '.cm-inline-review input': {
-    width: 'min(480px, 100%)',
-    marginRight: '4px',
-    color: 'inherit',
-    background: 'var(--or-control-fill)',
-    border: '1px solid var(--or-control-stroke)',
-  },
-  '.cm-inline-review button': {
-    margin: '4px 4px 0 0',
-    color: 'inherit',
-    background: 'var(--or-control-fill)',
-    border: '1px solid var(--or-control-stroke)',
-    borderRadius: '4px',
-  },
-  '.cm-inline-target': {
-    outline: '1px dashed var(--or-accent)',
-  },
-  '.cm-inline-original': {
-    textDecoration: 'line-through',
-    background: 'var(--or-danger-bg)',
-    opacity: '0.75',
-  },
-});

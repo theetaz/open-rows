@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { Button } from '@openrows/ui';
+import { Button, Icon } from '@openrows/ui';
 import type { ProjectServerView } from '@openrows/ipc';
 import { useProjectMcpServers } from './useProjectMcpServers';
 import type {
@@ -19,18 +19,24 @@ const STATUS = {
 export function McpProjectServers(): React.JSX.Element {
   const controls = useProjectMcpServers();
   return (
-    <section aria-label={t('projectMcpServers')}>
-      <h3>{t('projectMcpServers')}</h3>
-      <p className={styles.notice}>
+    <section aria-label={t('projectMcpServers')} className={styles.block}>
+      <h3 className={styles.title}>{t('projectMcpServers')}</h3>
+      {controls.servers.length > 0 && (
+        <div className={[styles.group, styles.withIcons].join(' ')}>
+          {controls.servers.map((view) => (
+            <ProjectServerRow key={view.key} view={view} controls={controls} />
+          ))}
+        </div>
+      )}
+      {controls.servers.length === 0 && (
+        <p role="status" className={styles.foot}>
+          {t('openProjectDeclares')}
+        </p>
+      )}
+      <NoteLine note={controls.notes['']} />
+      <p className={styles.foot}>
         {rich('projectSCode', { code: <code>.openrows/project.yaml</code> })}
       </p>
-      {controls.servers.length === 0 && (
-        <p role="status">{t('openProjectDeclares')}</p>
-      )}
-      {controls.servers.map((view) => (
-        <ProjectServerRow key={view.key} view={view} controls={controls} />
-      ))}
-      <NoteLine note={controls.notes['']} />
     </section>
   );
 }
@@ -42,25 +48,39 @@ function ProjectServerRow(props: {
   const { view, controls } = props;
   const label = `${view.project}: ${view.server.name}`;
   return (
-    <section aria-label={label} className={styles.provider}>
-      <div className={styles.heading}>
+    <section
+      aria-label={label}
+      className={[styles.row, styles.provider].join(' ')}
+    >
+      <span
+        className={styles.rowIcon}
+        data-tone={view.trust === 'trusted' ? undefined : 'warning'}
+      >
+        <Icon name={view.trust === 'trusted' ? 'plug' : 'warning'} />
+      </span>
+      <div className={styles.rowBody}>
         <strong>{label}</strong>
-        <span role="status">{STATUS[view.trust]}</span>
+        <p role="status">{STATUS[view.trust]}</p>
       </div>
-      <Definition view={view} />
-      {view.trust === 'trusted' ? (
-        <TrustedActions view={view} controls={controls} label={label} />
-      ) : (
-        <div className={styles.actions}>
+      {view.trust !== 'trusted' && (
+        <div className={styles.accessory}>
           <Button
+            size="sm"
             disabled={controls.busy}
+            aria-label={t('trustLabel', { label })}
             onClick={() => void controls.trust(view)}
           >
-            {t('trustLabel', { label })}
+            {t('trust')}
           </Button>
         </div>
       )}
-      <NoteLine note={controls.notes[view.key]} />
+      <div className={styles.rowFull}>
+        <Definition view={view} />
+        {view.trust === 'trusted' && (
+          <TrustedActions view={view} controls={controls} label={label} />
+        )}
+        <NoteLine note={controls.notes[view.key]} />
+      </div>
     </section>
   );
 }
@@ -120,14 +140,18 @@ function TrustedActions(props: {
     <>
       <div className={styles.actions}>
         <Button
+          size="sm"
           disabled={controls.busy}
+          aria-label={t('discoverLabelTools', { label })}
           onClick={() => void controls.discover(view)}
         >
-          {t('discoverLabelTools', { label })}
+          {t('discoverTools')}
         </Button>
         {names.map((name) => (
           <Button
             key={name}
+            size="sm"
+            variant="ghost"
             disabled={controls.busy}
             onClick={() => void controls.secret(view, name)}
           >
@@ -135,6 +159,8 @@ function TrustedActions(props: {
           </Button>
         ))}
         <Button
+          size="sm"
+          variant="destructive"
           disabled={controls.busy}
           onClick={() => void controls.revoke(view)}
         >
@@ -142,20 +168,21 @@ function TrustedActions(props: {
         </Button>
       </div>
       {view.tools.length === 0 && (
-        <p className={styles.notice}>{t('discoverToolsChoose')}</p>
+        <p className={styles.rowSub}>{t('discoverToolsChoose')}</p>
       )}
-      <div className={styles.form}>
+      <div className={styles.tools}>
         {view.tools.map((tool) => (
-          <label key={tool.name}>
+          <label key={tool.name} className={styles.chip}>
             <input
               type="checkbox"
+              aria-label={`${label}: ${tool.name}`}
               checked={view.enabledTools.includes(tool.name)}
               disabled={controls.busy}
               onChange={(event) =>
                 void controls.toggle(view, tool.name, event.target.checked)
               }
-            />{' '}
-            {label}: {tool.name}
+            />
+            {tool.name}
           </label>
         ))}
       </div>

@@ -149,8 +149,8 @@ function Definition(props: {
   };
   return (
     <section className={styles.section}>
-      <h2>{t('definition')}</h2>
-      <div className={styles.actions}>
+      <div className={styles.sectionHead}>
+        <h2>{t('definition')}</h2>
         <Button size="sm" variant="ghost" onClick={copy}>
           {t('copyDdl')}
         </Button>

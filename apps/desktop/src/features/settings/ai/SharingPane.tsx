@@ -4,6 +4,7 @@ import { SelectField } from '@openrows/ui';
 import { useProfiles } from '../../connections/useProfiles';
 import ConnectionSharing from './ConnectionSharing';
 import { AuditViewer } from './AuditViewer';
+import styles from './Ai.module.css';
 import { t } from '../messages/lazyAi';
 /** Lazy settings surface for every saved connection's sharing policy and local audit. */
 export default function SharingPane(): React.JSX.Element {
@@ -11,7 +12,7 @@ export default function SharingPane(): React.JSX.Element {
   const [id, setId] = useState('');
   const profile = profiles.find((item) => item.id === id);
   return (
-    <section aria-label={t('aiDataSharing')}>
+    <section aria-label={t('aiDataSharing')} className={styles.block}>
       <h3>{t('dataSharing')}</h3>
       <p>{t('everyConnectionStarts')}</p>
       {problem && <p role="alert">{problem}</p>}

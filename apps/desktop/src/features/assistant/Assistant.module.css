@@ -1,85 +1,281 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/* The assistant column (docs/20 §5.1 "Assistant"): a solid inspector-like column with
+   a 40 px head, a scrolling chat of bubbles and an ask area pinned at the bottom. */
 .panel {
   display: flex;
   flex-direction: column;
-  gap: var(--or-space-8);
-  width: 340px;
-  min-width: 240px;
-  max-width: 45%;
-  overflow: auto;
-  padding: var(--or-space-12);
-  border-left: var(--or-border-width) solid var(--or-separator);
+  flex: none;
+  inline-size: 320px;
+  min-inline-size: 240px;
+  max-inline-size: 45%;
+  min-block-size: 0;
   background: var(--or-window);
+  box-shadow: inset var(--or-border-width) 0 0 var(--or-separator);
   color: var(--or-text);
-  font-size: var(--or-text-12-5);
-}
-.row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--or-space-6);
+  font-size: var(--or-text-13);
 }
 .panel p {
   margin: 0;
-}
-.panel form,
-.panel label {
-  display: flex;
-  flex-direction: column;
-  gap: var(--or-space-6);
-}
-.panel textarea {
-  resize: vertical;
-  min-height: 64px;
-  padding: var(--or-space-8);
-  background: var(--or-control-fill);
-  color: var(--or-text);
-  border: var(--or-border-width) solid var(--or-separator);
-  border-radius: var(--or-radius-control);
-  font: inherit;
-}
-.panel pre {
-  max-height: 220px;
-  overflow: auto;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  font-size: var(--or-text-12-5);
 }
 .panel :focus-visible {
   outline: var(--or-focus-width) solid var(--or-focus);
   outline-offset: var(--or-focus-offset);
 }
+.head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-8);
+  block-size: 40px;
+  padding: 0 var(--or-space-8) 0 var(--or-space-16);
+}
+.head strong {
+  flex: 1;
+  font-weight: var(--or-weight-semibold);
+}
+.head svg {
+  color: var(--or-secondary);
+}
+.body {
+  flex: 1;
+  min-block-size: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-12);
+  overflow-y: auto;
+  padding: 0 var(--or-space-12) var(--or-space-12);
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--or-space-6);
+}
+.meta {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-6);
+  padding-inline: var(--or-space-4);
+  font-size: var(--or-text-11);
+  color: var(--or-secondary);
+}
+.meta > span {
+  flex: 1;
+}
+/* Provider, model and schema: one grouped inset list, label leading. */
+.setup {
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
+  padding: var(--or-space-4) var(--or-space-12);
+}
+.field {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--or-space-8);
+  padding-block: var(--or-space-4);
+}
+.field label {
+  font-size: var(--or-text-12);
+  color: var(--or-secondary);
+}
+.setupFoot {
+  display: flex;
+  justify-content: flex-end;
+  padding-block: var(--or-space-4);
+}
+.notice,
+.preview {
+  font-size: var(--or-text-12);
+  line-height: 16px;
+  color: var(--or-secondary);
+  overflow-wrap: anywhere;
+}
+.notice[role='alert'] {
+  color: var(--or-danger-fg);
+}
+.preview summary {
+  cursor: default;
+}
+.panel pre,
+.code {
+  margin: 0;
+  max-block-size: 220px;
+  overflow: auto;
+  padding: var(--or-space-6) var(--or-space-8);
+  border-radius: var(--or-radius-control-compact);
+  background: var(--or-raised);
+  color: var(--or-text);
+  font: var(--or-text-12) / 18px var(--or-font-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.preview pre {
+  margin-block-start: var(--or-space-6);
+  background: var(--or-group);
+}
+/* The chat: the question as an accent bubble at the end, answers on group bubbles. */
 .conversation {
   flex: 1;
-  min-height: 100px;
-  overflow: auto;
+  min-block-size: 100px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-12);
 }
 .conversation article {
   display: flex;
   flex-direction: column;
-  gap: var(--or-space-8);
-  padding-block: var(--or-space-8);
-  border-bottom: var(--or-border-width) solid var(--or-separator);
+  gap: var(--or-space-6);
+}
+.question,
+.bubble {
+  max-inline-size: 92%;
+  padding: 7px 10px;
+  border-radius: var(--or-radius-card);
+  line-height: 18px;
+  overflow-wrap: anywhere;
 }
 .question {
-  font-weight: var(--or-weight-medium);
+  align-self: flex-end;
+  background: var(--or-accent-soft);
+}
+.bubble {
+  align-self: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-6);
+  background: var(--or-group);
 }
 .answer {
   white-space: pre-wrap;
+}
+.tool {
+  font-size: var(--or-text-11);
+  line-height: 14px;
+  color: var(--or-secondary);
+}
+.tool summary {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-6);
+  list-style: none;
+  cursor: default;
+}
+.tool summary::-webkit-details-marker {
+  display: none;
+}
+.tool summary svg {
+  flex: none;
+  color: var(--or-success-fg);
+}
+.tool[open] {
+  padding-block-end: var(--or-space-4);
+}
+.tool > :not(summary) {
+  margin: var(--or-space-4) 0 0 22px;
   overflow-wrap: anywhere;
 }
+.outcome {
+  font-size: var(--or-text-11);
+  color: var(--or-secondary);
+}
 .proposal {
-  padding: var(--or-space-8);
-  border: var(--or-border-width) solid var(--or-separator);
-  border-radius: var(--or-radius-control);
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-6);
+}
+.caption {
+  font-size: var(--or-text-11);
+  color: var(--or-secondary);
+}
+/* Tool confirmation: a warning notice with the exact arguments. */
+.confirm {
+  display: flex;
+  gap: 10px;
+  padding: 10px var(--or-space-12);
+  border-radius: var(--or-radius-card);
+  background: var(--or-warning-bg);
+  font-size: var(--or-text-12);
+  line-height: 16px;
+  color: var(--or-secondary);
+}
+.confirm > svg {
+  flex: none;
+  margin-block-start: 1px;
+  color: var(--or-warning-fg);
+}
+.confirm > div {
+  flex: 1;
+  min-inline-size: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-4);
+}
+.confirm strong {
+  font-size: var(--or-text-13);
+  line-height: 18px;
+  font-weight: var(--or-weight-semibold);
+  color: var(--or-text);
+}
+.confirm pre {
+  padding: 0;
+  background: none;
+  font-size: var(--or-text-11);
+  line-height: 15px;
+}
+/* The ask area: quick actions, the composer capsule and a caption line. */
+.ask {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-6);
+  padding: var(--or-space-8) var(--or-space-12) var(--or-space-12);
+  box-shadow: inset 0 var(--or-border-width) 0 var(--or-separator);
+}
+.composer {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--or-space-6);
+  padding: 5px 5px 5px 10px;
+  border-radius: var(--or-radius-card);
+  background: var(--or-control-fill);
+}
+.composer:focus-within {
+  outline: 3px solid var(--or-field-focus);
+}
+.composer textarea {
+  flex: 1;
+  min-inline-size: 0;
+  min-block-size: 22px;
+  max-block-size: 120px;
+  field-sizing: content;
+  padding: 2px 0;
+  border: 0;
+  outline: none;
+  resize: none;
+  background: none;
+  color: var(--or-text);
+  font: inherit;
+  line-height: 18px;
+}
+.composer textarea::placeholder {
+  color: var(--or-placeholder);
+}
+.askFoot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--or-space-8);
+  font-size: var(--or-text-11);
+  color: var(--or-secondary);
 }
 
 .reportPreview {
   width: 100%;
   height: 320px;
-  border: var(--or-border-width) solid var(--or-separator);
+  border: 0;
   border-radius: var(--or-radius-control);
+  background: var(--or-raised);
 }
 .finding {
   display: grid;

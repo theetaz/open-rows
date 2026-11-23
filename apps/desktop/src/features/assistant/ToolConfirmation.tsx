@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useState } from 'react';
-import { Button } from '@openrows/ui';
+import { Button, Icon } from '@openrows/ui';
+import styles from './Assistant.module.css';
 import { confirmMcpTool } from '@openrows/ipc';
 import type { AgentEvent } from '@openrows/ipc';
 import { t } from './lazyMessages';
@@ -20,31 +21,38 @@ export function ToolConfirmation(props: {
     }
   };
   return (
-    <section aria-label={t('mcpToolConfirmation')}>
-      <p>
-        {t('allowServerTool', {
-          server: props.prompt.server,
-          tool: props.prompt.tool,
-        })}
-      </p>
-      <pre aria-label={t('mcpToolArguments')}>{props.prompt.arguments}</pre>
-      <Button
-        disabled={resolved || props.disabled}
-        onClick={() => {
-          void respond(true);
-        }}
-      >
-        {t('allowTool')}
-      </Button>
-      <Button
-        disabled={resolved || props.disabled}
-        onClick={() => {
-          void respond(false);
-        }}
-      >
-        {t('denyTool')}
-      </Button>
-      {failure && <p role="alert">{failure}</p>}
+    <section aria-label={t('mcpToolConfirmation')} className={styles.confirm}>
+      <Icon name="plug" />
+      <div>
+        <strong>
+          {t('allowServerTool', {
+            server: props.prompt.server,
+            tool: props.prompt.tool,
+          })}
+        </strong>
+        <pre aria-label={t('mcpToolArguments')}>{props.prompt.arguments}</pre>
+        <div className={styles.row}>
+          <Button
+            size="sm"
+            disabled={resolved || props.disabled}
+            onClick={() => {
+              void respond(false);
+            }}
+          >
+            {t('denyTool')}
+          </Button>
+          <Button
+            size="sm"
+            disabled={resolved || props.disabled}
+            onClick={() => {
+              void respond(true);
+            }}
+          >
+            {t('allowTool')}
+          </Button>
+        </div>
+        {failure && <p role="alert">{failure}</p>}
+      </div>
     </section>
   );
 }

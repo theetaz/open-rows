@@ -32,6 +32,7 @@ export function ProviderKey(props: {
     <>
       <Button
         size="sm"
+        variant="ghost"
         disabled={busy || props.busy || props.disabled}
         onClick={() => {
           void ask();

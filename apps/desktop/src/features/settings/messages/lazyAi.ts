@@ -133,6 +133,8 @@ export const { rich, t } = defineMessages({
   streamableHttpUrl: 'Streamable HTTP · {url}',
   stdioValue: 'Stdio · {value}',
   discoverNameTools: 'Discover {name} tools',
+  discoverTools: 'Discover tools',
+  trust: 'Trust…',
   removeName: 'Remove {name}',
   showingEnabledTools:
     'Showing enabled tools. Discover tools to see the full list.',

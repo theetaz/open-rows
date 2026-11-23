@@ -13,12 +13,12 @@ export function AuditViewer(): React.JSX.Element {
     if (await purge()) setConfirm(false);
   };
   return (
-    <section aria-label={t('aiAuditLog')} className={styles.form}>
-      <h4>{t('auditLog')}</h4>
-      <p className={styles.notice}>{t('last1000')}</p>
-      <div className={styles.actions}>
+    <section aria-label={t('aiAuditLog')} className={styles.block}>
+      <div className={styles.sectionHead}>
+        <h4>{t('auditLog')}</h4>
         <Button
           type="button"
+          size="sm"
           disabled={busy}
           onClick={() => {
             void refresh();
@@ -28,6 +28,8 @@ export function AuditViewer(): React.JSX.Element {
         </Button>
         <Button
           type="button"
+          size="sm"
+          variant="destructive"
           disabled={busy || entries.length === 0}
           onClick={() => {
             setConfirm(true);
@@ -48,8 +50,11 @@ export function AuditViewer(): React.JSX.Element {
         />
       )}
       {failure && <p role="alert">{failure}</p>}
-      <AuditTable entries={entries} />
-      {entries.length === 0 && <p>{t('noOutboundDatabase')}</p>}
+      {entries.length > 0 && <AuditTable entries={entries} />}
+      {entries.length === 0 && (
+        <p className={styles.foot}>{t('noOutboundDatabase')}</p>
+      )}
+      <p className={styles.foot}>{t('last1000')}</p>
     </section>
   );
 }
@@ -99,10 +104,16 @@ function PurgeConfirmation({
   onCancel: () => void;
 }): React.JSX.Element {
   return (
-    <div role="group" aria-label={t('confirmAuditPurge')}>
+    <div
+      role="group"
+      aria-label={t('confirmAuditPurge')}
+      className={styles.secret}
+    >
       <p>{t('deleteAllLocal')}</p>
       <Button
         type="button"
+        size="sm"
+        variant="destructive"
         disabled={busy}
         onClick={() => {
           onPurge();
@@ -112,6 +123,7 @@ function PurgeConfirmation({
       </Button>
       <Button
         type="button"
+        size="sm"
         onClick={() => {
           onCancel();
         }}

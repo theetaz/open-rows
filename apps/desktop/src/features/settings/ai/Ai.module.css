@@ -1,43 +1,265 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-.form {
+/* Settings ▸ AI (docs/20 §5.1 "AI and MCP settings"): section titles over grouped
+   inset lists. Doubled selectors outrank the settings page's per-item card rule. */
+.block.block {
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+}
+.pane,
+.stack.stack {
   display: grid;
+  gap: var(--or-space-20);
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+}
+/* The disclosure toggles read as the kit's segmented track at the top. */
+.switcher {
+  display: inline-flex;
+  justify-self: start;
+  gap: var(--or-segment-inset);
+  padding: var(--or-segment-inset);
+  border-radius: var(--or-radius-control);
+  background: var(--or-control-fill);
+}
+.switcher > button {
+  block-size: calc(var(--or-control-height) - 2 * var(--or-segment-inset));
+  border-radius: calc(var(--or-radius-control) - var(--or-segment-inset));
+  background: transparent;
+}
+.switcher > button[aria-expanded='true'] {
+  background: var(--or-control-active);
+  box-shadow: var(--or-segment-shadow);
+}
+.sectionHead {
+  display: flex;
+  align-items: center;
   gap: var(--or-space-8);
-  padding: var(--or-space-12);
+  min-block-size: 24px;
+  margin-block-end: var(--or-space-6);
+  padding-inline: var(--or-space-12);
+}
+.sectionHead.sectionHead h3,
+.sectionHead.sectionHead h4 {
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  font-size: var(--or-text-12);
+  font-weight: var(--or-weight-semibold);
+  line-height: 16px;
+  color: var(--or-secondary);
+}
+.rowText {
+  flex: 1;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+.title.title,
+.fieldset > legend {
+  margin: 0 0 var(--or-space-6);
+  padding-inline: var(--or-space-12);
+  font-size: var(--or-text-12);
+  font-weight: var(--or-weight-semibold);
+  line-height: 16px;
+  color: var(--or-secondary);
+}
+.fieldset {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.foot.foot,
+.notice.notice {
+  margin: var(--or-space-6) 0 0;
+  padding-inline: var(--or-space-12);
+  font-size: var(--or-text-12);
+  line-height: 16px;
+  color: var(--or-secondary);
+  overflow-wrap: anywhere;
+}
+/* A grouped inset list: rows on the group fill, hairlines inset from the leading edge. */
+.group.group {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
   border-radius: var(--or-radius-card);
   background: var(--or-group);
+}
+.row.row {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--or-space-4) 10px;
+  box-sizing: border-box;
+  min-block-size: 36px;
+  margin: 0;
+  padding: 5px var(--or-space-12);
+  border-radius: 0;
+  background: none;
+}
+.row + .row::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto var(--or-space-12);
+  block-size: var(--or-border-width);
+  background: var(--or-separator);
+}
+.withIcons .row + .row::before {
+  inset-inline-start: 38px;
+}
+.rowIcon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  inline-size: 16px;
+  color: var(--or-secondary);
+}
+.rowIcon[data-tone='warning'] {
+  color: var(--or-warning-fg);
+}
+.rowIcon[data-tone='success'] {
+  color: var(--or-success-fg);
+}
+.monogram {
+  flex: none;
+  display: grid;
+  place-items: center;
+  inline-size: 24px;
+  block-size: 24px;
+  border-radius: var(--or-radius-menu-item);
+  background: var(--or-fill-2);
+  color: var(--or-secondary);
+  font-size: var(--or-text-11);
+  font-weight: var(--or-weight-semibold);
+}
+.rowBody {
+  flex: 1;
+  min-inline-size: 0;
+  display: flex;
+  flex-direction: column;
+}
+.rowBody > strong {
+  font-weight: var(--or-weight-regular);
+  overflow-wrap: anywhere;
+}
+.rowBody > p,
+.rowSub {
+  margin: 0;
+  padding: 0;
+  font-size: var(--or-text-12);
+  line-height: 16px;
+  color: var(--or-secondary);
+  overflow-wrap: anywhere;
+}
+.mono {
+  font-family: var(--or-font-mono);
+}
+.accessory {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--or-space-8);
+  margin-inline-start: auto;
+  font-size: var(--or-text-12);
+  color: var(--or-secondary);
+}
+/* A row's own extra content (tool toggles, details) spans the full width. */
+.rowFull {
+  flex-basis: 100%;
+  min-inline-size: 0;
+  padding-inline-start: 34px;
+}
+.rowFull:empty {
+  display: none;
+}
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--or-space-4);
+  margin-block: var(--or-space-4);
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--or-space-4);
+  block-size: 22px;
+  padding: 0 var(--or-space-8) 0 var(--or-space-6);
+  border-radius: var(--or-radius-capsule);
+  background: var(--or-control-fill);
+  font-size: var(--or-text-12);
+  white-space: nowrap;
+}
+.chip input {
+  margin: 0;
+  accent-color: var(--or-accent-fill);
+}
+/* Forms in a pane: one grouped block, trailing labels in a column. */
+.form.form {
+  display: grid;
+  gap: var(--or-space-8);
+  margin: 0;
+  padding: var(--or-space-12);
+  border: 0;
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
+}
+.form > div:has(> label + div) {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--or-space-12);
+}
+.form > div:has(> label + div) > label {
+  text-align: end;
+  color: var(--or-secondary);
+}
+.form textarea {
+  min-block-size: 64px;
+  resize: vertical;
+  padding: var(--or-space-6) var(--or-space-8);
+  border: var(--or-border-width) solid var(--or-control-stroke);
+  border-radius: var(--or-radius-control);
+  background: var(--or-field-box-fill);
+  color: var(--or-text);
+  font: var(--or-text-12) / 18px var(--or-font-mono);
 }
 .actions,
 .heading {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--or-space-8);
   flex-wrap: wrap;
 }
 .heading {
   justify-content: space-between;
 }
-.provider {
-  margin-block-end: var(--or-space-8);
-  padding: var(--or-space-8) var(--or-space-12);
-  border-radius: var(--or-radius-card);
-  background: var(--or-group);
+.provider.provider {
+  margin: 0;
+  padding: 5px var(--or-space-12);
+  border-radius: 0;
+  background: none;
 }
-.provider p,
-.notice,
 .details {
   font-size: var(--or-text-12);
   color: var(--or-secondary);
   overflow-wrap: anywhere;
 }
 .details ul {
-  max-height: 240px;
+  max-block-size: 240px;
   overflow: auto;
-  padding-left: 16px;
+  margin: var(--or-space-4) 0 0;
+  padding-inline-start: var(--or-space-16);
 }
-
 .payload,
 .audit {
-  max-height: 280px;
+  max-block-size: 280px;
   overflow: auto;
   font-size: var(--or-text-12);
   border-radius: var(--or-radius-card);
@@ -45,18 +267,36 @@
   color: var(--or-text);
 }
 .payload {
+  margin: 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   padding: var(--or-space-8) var(--or-space-12);
+  font-family: var(--or-font-mono);
 }
 .audit table {
+  inline-size: 100%;
   border-collapse: collapse;
 }
 .audit th,
 .audit td {
-  padding: 4px 8px;
-  text-align: left;
-  border-bottom: 1px solid var(--or-separator);
+  padding: var(--or-space-4) var(--or-space-8);
+  text-align: start;
+  box-shadow: inset 0 calc(-1 * var(--or-border-width)) 0 var(--or-separator);
+}
+.audit th {
+  font-size: var(--or-text-11);
+  font-weight: var(--or-weight-medium);
+  color: var(--or-secondary);
+}
+.audit tr:last-child td {
+  box-shadow: none;
+}
+.audit td:nth-child(5) {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+.audit code {
+  font-family: var(--or-font-mono);
 }
 .link {
   display: block;
@@ -66,8 +306,8 @@
 .definition {
   display: grid;
   grid-template-columns: max-content 1fr;
-  gap: 2px 12px;
-  margin: 4px 0 8px;
+  gap: 2px var(--or-space-12);
+  margin: var(--or-space-4) 0 var(--or-space-4);
   font-size: var(--or-text-12);
 }
 .definition dt {
@@ -76,4 +316,54 @@
 .definition dd {
   margin: 0;
   overflow-wrap: anywhere;
+}
+.secret {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--or-space-8);
+  padding: 10px var(--or-space-12);
+  border-radius: var(--or-radius-card);
+  background: var(--or-warning-bg);
+  font-size: var(--or-text-12);
+}
+.secret output {
+  flex: 1;
+  font-family: var(--or-font-mono);
+  overflow-wrap: anywhere;
+}
+.inlineField {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 200px;
+  align-items: center;
+  gap: var(--or-space-12);
+}
+.inlineField > label {
+  color: var(--or-text);
+}
+.footActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--or-space-8);
+  margin-block-start: var(--or-space-8);
+}
+.secret p {
+  flex: 1;
+}
+.block.block > h3 {
+  padding-inline: var(--or-space-12);
+  font-size: var(--or-text-12);
+  color: var(--or-secondary);
+}
+.form fieldset {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.form legend {
+  margin-block-end: var(--or-space-6);
+  padding: 0;
+  font-weight: var(--or-weight-semibold);
 }
