@@ -1,0 +1,42 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* What a link opens: grouped inset rows, the term leading and the value
+   trailing in monospace, hairlines between rows (docs/20 §5.1). */
+.details {
+  margin: 0;
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
+  overflow: hidden;
+}
+.details > div {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-12);
+  min-block-size: 36px;
+  padding: var(--or-space-4) var(--or-space-12);
+}
+.details > div + div::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto var(--or-space-12);
+  block-size: var(--or-border-width);
+  background: var(--or-separator);
+}
+.details dt {
+  flex: none;
+  color: var(--or-text);
+}
+.details dd {
+  min-inline-size: 0;
+  margin: 0 0 0 auto;
+  font: var(--or-text-12) / 16px var(--or-font-mono);
+  text-align: end;
+  overflow-wrap: anywhere;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.note {
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+  line-height: 16px;
+}

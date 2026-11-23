@@ -91,6 +91,38 @@ const SEARCHED = SECTIONS.filter((item) => item.value !== 'json').map(
   (item) => ({ ...item, pane: <Pane section={item.value} /> }),
 );
 
+/** The source list: search on top, then one row per section. */
+function SettingsSidebar(props: {
+  query: string;
+  section: SettingsSection;
+  onQuery: (query: string) => void;
+  onSection: (section: SettingsSection) => void;
+}): React.JSX.Element {
+  return (
+    <div className={searchStyles.sidebar}>
+      <TextField
+        className={searchStyles.search}
+        type="search"
+        aria-label={t('searchSettings')}
+        placeholder={t('search')}
+        controlSize="search"
+        leadingIcon={<Icon name="search" />}
+        value={props.query}
+        onChange={(event) => {
+          props.onQuery(event.target.value);
+        }}
+      />
+      <SegmentedControl
+        aria-label={t('settingsSection')}
+        className={searchStyles.sections}
+        options={SECTIONS}
+        value={props.section}
+        onValueChange={props.onSection}
+      />
+    </div>
+  );
+}
+
 /**
  * Settings (⌘,): every preference, saved to settings.json and applied live.
  * Typing in the search field lists the matching rows of every pane.
@@ -108,36 +140,23 @@ export function SettingsSheet(props: {
   return (
     <Sheet title={t('settings')} size="appearance" onClose={props.onClose}>
       <div className={searchStyles.layout}>
-        <header className={[styles.header, searchStyles.top].join(' ')}>
-          <h1>
-            <span>{t('settings2')}</span> {title}
-          </h1>
-          <TextField
-            className={searchStyles.search}
-            type="search"
-            aria-label={t('searchSettings')}
-            placeholder={t('search')}
-            leadingIcon={<Icon name="search" />}
-            value={query}
-            onChange={(event) => {
-              setQuery(event.target.value);
-            }}
-          />
-          <Button onClick={props.onClose} data-initial-focus="true">
-            {t('done')}
-          </Button>
-        </header>
-        <SegmentedControl
-          aria-label={t('settingsSection')}
-          className={searchStyles.sections}
-          tone="accent"
-          options={SECTIONS}
-          value={section}
-          onValueChange={(next) => {
+        <SettingsSidebar
+          query={query}
+          section={section}
+          onQuery={setQuery}
+          onSection={(next) => {
             setQuery('');
             setSection(next);
           }}
         />
+        <header className={[styles.header, searchStyles.top].join(' ')}>
+          <h1>
+            <span>{t('settings2')}</span> {title}
+          </h1>
+          <Button onClick={props.onClose} data-initial-focus="true">
+            {t('done')}
+          </Button>
+        </header>
         <div className={searchStyles.pane}>
           <div className={styles.page}>
             <SettingsActions section={section} />

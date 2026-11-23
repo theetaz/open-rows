@@ -1,0 +1,38 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* The journaled tables as grouped inset rows (docs/20 §5.1). */
+.lead {
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+  line-height: 16px;
+}
+.journal {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
+  overflow: hidden;
+}
+.journal li {
+  position: relative;
+  box-sizing: border-box;
+  min-block-size: 36px;
+  padding: var(--or-space-8) var(--or-space-12);
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+  line-height: 16px;
+}
+.journal li strong {
+  display: block;
+  color: var(--or-text);
+  font-size: var(--or-text-13);
+  font-weight: var(--or-weight-regular);
+  line-height: 18px;
+}
+.journal li + li::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto var(--or-space-12);
+  block-size: var(--or-border-width);
+  background: var(--or-separator);
+}

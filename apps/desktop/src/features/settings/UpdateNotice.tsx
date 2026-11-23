@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect } from 'react';
-import { Button } from '@openrows/ui';
+import { Button, Icon } from '@openrows/ui';
 import { Sheet } from '@openrows/ui/sheet';
 import { useUpdateInstall } from './useUpdateInstall';
 import styles from './UpdateNotice.module.css';
@@ -24,24 +24,33 @@ export function UpdateNotice({
   if (!general.updateNotifications || !state.update) return null;
   return (
     <section className={styles.notice} aria-label={t('updateAvailable')}>
-      <p role="status">{state.message}</p>
+      <header className={styles.head}>
+        <Icon name="jobs" aria-hidden="true" />
+        <div>
+          <h2 aria-hidden="true">{t('updateAvailable')}</h2>
+          <p role="status">{state.message}</p>
+        </div>
+      </header>
+      {!canInstall && <p className={styles.note}>{t('closeAllTabs')}</p>}
+      {error && <p role="alert">{error}</p>}
       <details>
         <summary>{t('releaseNotes')}</summary>
         <pre>{state.update.body || 'No release notes provided.'}</pre>
       </details>
-      {!canInstall && <p>{t('closeAllTabs')}</p>}
-      {error && <p role="alert">{error}</p>}
-      <Button
-        disabled={!canInstall || installing}
-        onClick={() => {
-          void start();
-        }}
-      >
-        {t('installRestart')}
-      </Button>
-      <Button disabled={installing} onClick={dismissUpdate}>
-        {t('later')}
-      </Button>
+      <footer className={styles.actions}>
+        <Button disabled={installing} onClick={dismissUpdate}>
+          {t('later')}
+        </Button>
+        <Button
+          variant="primary"
+          disabled={!canInstall || installing}
+          onClick={() => {
+            void start();
+          }}
+        >
+          {t('installRestart')}
+        </Button>
+      </footer>
       {installing && (
         <Sheet title={t('installingUpdate')} onClose={() => undefined}>
           <p role="status" tabIndex={0} data-initial-focus="true">

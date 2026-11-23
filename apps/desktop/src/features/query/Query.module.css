@@ -31,8 +31,9 @@
 }
 .emptyTitle {
   color: var(--or-text);
-  font-size: var(--or-text-13);
-  font-weight: var(--or-weight-medium);
+  font-size: var(--or-text-15);
+  font-weight: var(--or-weight-semibold);
+  line-height: 20px;
 }
 .emptyIcon {
   display: grid;
@@ -192,10 +193,21 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Run confirmation: the statements as grouped inset rows ("Statement 2" and
+   its kind, then the SQL in monospace), the push buttons under a hairline. */
 .confirm {
   display: flex;
   flex-direction: column;
   gap: var(--or-space-12);
+}
+.confirm > p {
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+  line-height: 16px;
+}
+.confirm > p strong {
+  color: var(--or-text);
+  font-weight: var(--or-weight-medium);
 }
 .confirm ol {
   margin: 0;
@@ -205,27 +217,50 @@
   overflow: auto;
   display: flex;
   flex-direction: column;
-  gap: var(--or-space-8);
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
+}
+.confirm li {
+  position: relative;
+  padding: var(--or-space-8) var(--or-space-12);
+}
+.confirm li + li::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto var(--or-space-12);
+  block-size: var(--or-border-width);
+  background: var(--or-separator);
 }
 .confirm pre {
   margin: var(--or-space-4) 0 0;
-  padding: var(--or-space-8);
-  border-radius: var(--or-radius-field);
-  background: var(--or-control-fill);
+  padding: 0;
   font-family: var(--or-font-mono);
-  font-size: var(--or-text-mono, var(--or-text-13));
+  font-size: var(--or-text-12);
+  line-height: 16px;
   white-space: pre-wrap;
   word-break: break-word;
+  user-select: text;
+  -webkit-user-select: text;
 }
 .confirmTags {
   display: flex;
+  flex-direction: row-reverse;
+  justify-content: flex-end;
   align-items: center;
   gap: var(--or-space-6);
+}
+.confirmTags small {
+  color: var(--or-text);
+  font-size: var(--or-text-13);
+  font-weight: var(--or-weight-semibold);
 }
 .confirmActions {
   display: flex;
   justify-content: flex-end;
   gap: var(--or-space-8);
+  margin: var(--or-space-4) calc(-1 * var(--or-space-20)) 0;
+  padding: var(--or-space-12) var(--or-space-20) 0;
+  box-shadow: inset 0 var(--or-border-width) 0 var(--or-separator);
 }
 .cell {
   display: flex;

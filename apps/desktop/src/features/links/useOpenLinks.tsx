@@ -12,6 +12,7 @@ import { tableLayoutKey } from '../../results/columnLayoutStore';
 import { linkRows, resolveLink } from './openLink';
 import type { ResolvedLink } from './openLink';
 import { t } from './messages';
+import styles from './Links.module.css';
 
 type Input = { connections: Connections; tabs: QueryTabs; catalog: Catalog };
 
@@ -122,8 +123,8 @@ function OpenLinkSheet(props: {
       </Sheet>
     );
   return (
-    <Sheet title={t('openLink')} size="alert" onClose={props.onCancel}>
-      <dl aria-label={t('linkDetails')}>
+    <Sheet title={t('openLink')} onClose={props.onCancel}>
+      <dl className={styles.details} aria-label={t('linkDetails')}>
         {linkRows(pending).map(([label, value], index) => (
           <div key={`${label}-${String(index)}`}>
             <dt>{label}</dt>
@@ -131,7 +132,7 @@ function OpenLinkSheet(props: {
           </div>
         ))}
       </dl>
-      <p>{t('openingConnectsConnection')}</p>
+      <p className={styles.note}>{t('openingConnectsConnection')}</p>
       <SheetActions>
         <Button onClick={props.onCancel}>{t('cancel')}</Button>
         <Button

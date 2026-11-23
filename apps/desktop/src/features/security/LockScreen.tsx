@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useState } from 'react';
-import { Button } from '@openrows/ui';
+import { Button, Icon } from '@openrows/ui';
 import { unlockApp } from '@openrows/ipc';
 import styles from './Security.module.css';
 import { t } from './lazyMessages';
@@ -21,12 +21,19 @@ export function LockScreen(): React.JSX.Element {
   };
   return (
     <main className={styles.lock} aria-label={t('openrowsLocked')}>
+      <span className={styles.lockIcon} aria-hidden="true">
+        <Icon name="lock" />
+      </span>
       <h1>{t('openrowsLocked2')}</h1>
       <p>{t('useTouchId')}</p>
-      <Button autoFocus disabled={busy} onClick={unlock}>
+      <Button variant="primary" autoFocus disabled={busy} onClick={unlock}>
         {busy ? t('authenticating') : t('unlockOpenrows')}
       </Button>
-      {error && <p role="alert">{error}</p>}
+      {error && (
+        <p role="alert" className={styles.error}>
+          {error}
+        </p>
+      )}
     </main>
   );
 }

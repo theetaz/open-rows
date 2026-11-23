@@ -70,12 +70,18 @@
 .body p {
   margin: 0;
 }
+/* The footer stays in view while a long form scrolls under it. */
 .actions {
+  position: sticky;
+  inset-block-end: calc(-1 * var(--or-space-16));
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: var(--or-space-8);
-  margin: var(--or-space-4) calc(-1 * var(--or-space-20)) 0;
-  padding: var(--or-space-12) var(--or-space-20) 0;
+  margin: var(--or-space-4) calc(-1 * var(--or-space-20))
+    calc(-1 * var(--or-space-16));
+  padding: var(--or-space-12) var(--or-space-20) var(--or-space-16);
+  background: var(--or-glass-sheet);
   box-shadow: inset 0 var(--or-border-width) 0 var(--or-separator);
 }
 .actions button {

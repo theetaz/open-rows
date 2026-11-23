@@ -1,9 +1,10 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Connection type picker: TablePlus grid of neutral monogram tiles (docs/20). */
+/* Connection type picker: cards on the grouped fill with a neutral monogram
+   (never a brand colour); the chosen card is tinted, its monogram filled. */
 .grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: var(--or-space-4);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--or-space-8);
   padding: var(--or-space-2);
   border-radius: var(--or-radius-card);
   outline: none;
@@ -15,40 +16,54 @@
   display: grid;
   justify-items: center;
   align-content: start;
-  gap: var(--or-space-4);
-  padding: var(--or-space-8) var(--or-space-2);
-  border: var(--or-focus-width) solid transparent;
+  gap: var(--or-space-6);
+  padding: var(--or-space-12) var(--or-space-8);
   border-radius: var(--or-radius-card);
+  background: var(--or-group);
   text-align: center;
   cursor: default;
+  transition: background var(--or-motion-quick);
+}
+.option:hover {
+  background: color-mix(in srgb, var(--or-group), var(--or-text) 4%);
 }
 .option[aria-selected='true'] {
-  border-color: var(--or-accent);
+  background: var(--or-accent-soft);
+}
+.option[aria-selected='true'] .tile {
+  background: var(--or-accent-fill);
+  color: var(--or-on-accent);
 }
 .option[aria-disabled='true'] .tile,
 .option[aria-disabled='true'] .name {
   color: var(--or-secondary);
 }
+.option[aria-disabled='true'] .tile {
+  opacity: 0.7;
+}
 .name {
-  font-size: var(--or-text-12);
-  line-height: 1.25;
+  font-size: var(--or-text-13);
+  font-weight: var(--or-weight-medium);
+  line-height: 18px;
   color: var(--or-text);
 }
+/* The kit's engine monogram: a rounded square on the second fill. */
 .tile {
   display: inline-grid;
   place-items: center;
-  inline-size: calc(var(--or-control-height) * 1.75);
-  block-size: calc(var(--or-control-height) * 1.75);
-  border: var(--or-border-width) solid var(--or-control-stroke);
-  border-radius: var(--or-radius-capsule);
-  background: var(--or-control-fill);
-  color: var(--or-text);
-  font-size: var(--or-text-17);
+  flex: none;
+  inline-size: 36px;
+  block-size: 36px;
+  border-radius: 9px;
+  background: var(--or-fill-2);
+  color: var(--or-secondary);
+  font-size: var(--or-text-15);
   font-weight: var(--or-weight-semibold);
 }
 .tile[data-size='small'] {
-  inline-size: var(--or-control-height);
-  block-size: var(--or-control-height);
+  inline-size: 24px;
+  block-size: 24px;
+  border-radius: var(--or-radius-menu-item);
   font-size: var(--or-text-11);
 }
 .status {

@@ -5,6 +5,7 @@ import { Sheet, SheetActions } from '@openrows/ui/sheet';
 import { journaledTableEdits, listProfiles } from '@openrows/ipc';
 import type { JournaledEditsDto } from '@openrows/ipc';
 import { openLogs } from './index';
+import styles from './CrashRecovery.module.css';
 import { richn, t } from './messages';
 
 type Journal =
@@ -48,7 +49,7 @@ function JournalList(props: {
   names: Readonly<Record<string, string>>;
 }): React.JSX.Element {
   return (
-    <ul aria-label={t('tablesStagedEdits')}>
+    <ul className={styles.journal} aria-label={t('tablesStagedEdits')}>
       {props.entries.map(({ target, rows, savedAtMs }) => (
         <li
           key={[
@@ -102,12 +103,8 @@ export function CrashRecoverySheet(props: {
   const journal = useJournal();
   const [failure, setFailure] = useState<string | null>(null);
   return (
-    <Sheet
-      title={t('openrowsClosedUnexpectedly')}
-      size="alert"
-      onClose={props.onClose}
-    >
-      <p>{t('lastRunDid')}</p>
+    <Sheet title={t('openrowsClosedUnexpectedly')} onClose={props.onClose}>
+      <p className={styles.lead}>{t('lastRunDid')}</p>
       <JournalSummary journal={journal} />
       {failure && <p role="alert">{failure}</p>}
       <SheetActions

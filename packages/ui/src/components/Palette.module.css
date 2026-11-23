@@ -159,3 +159,10 @@
     animation: none;
   }
 }
+/* A footer note (why there are no results yet) reads as the kit's palette foot. */
+.popover span[role='status'] {
+  padding: var(--or-space-8) var(--or-space-16);
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+  box-shadow: inset 0 var(--or-border-width) 0 var(--or-separator);
+}

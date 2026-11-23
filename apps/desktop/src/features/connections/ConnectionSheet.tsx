@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { useId } from 'react';
 import { Button } from '@openrows/ui';
 import { Sheet, SheetActions } from '@openrows/ui/sheet';
 import type { EngineDto, ProfileDto } from '@openrows/ipc';
@@ -17,6 +18,7 @@ import { TlsFields } from './TlsFields';
 import { UrlField } from './UrlField';
 import { NameFields } from './ConnectionFields';
 import { useConnectionForm } from './useConnectionForm';
+import type { ConnectionForm } from './useConnectionForm';
 import styles from './ConnectionSheet.module.css';
 import { t } from './messages/profile';
 
@@ -47,7 +49,6 @@ export function ConnectionSheet(props: Props): React.JSX.Element {
     props.filePath,
   );
   const { engine } = form.draft;
-  const file = isFileEngine(engine);
   return (
     <Sheet
       title={
@@ -55,6 +56,7 @@ export function ConnectionSheet(props: Props): React.JSX.Element {
           ? t('editName', { name: profile.name })
           : t('newEngineConnection', { engine: engineName(engine) })
       }
+      size="editor"
       onClose={props.onClose}
     >
       <form
@@ -65,54 +67,102 @@ export function ConnectionSheet(props: Props): React.JSX.Element {
           void form.save();
         }}
       >
-        <EngineRow engine={engine} />
-        <UrlField url={form.url} engine={engine} />
-        <hr className={styles.separator} />
-        {file ? (
-          <>
-            <NameFields form={form} />
-            <FileFields form={form} />
-            <DuckdbNotice engine={engine} />
-            {engine === 'libsql-file' && (
-              <small className={styles.hint}>
-                {t('sqliteCompatibleFiles')}
-              </small>
-            )}
-          </>
-        ) : (
-          <>
-            <ConnectionFields form={form} />
-            <HelperFields form={form} />
-            <ProxyFields form={form} />
-            <SshFields form={form} />
-            <TlsFields form={form} />
-          </>
-        )}
-        <SessionLimitsFields form={form} />
-        <EnvironmentFields form={form} focusSafety={props.focusSafety} />
-        <SavedSharing profile={profile} />
-        <TestResult state={form.test} />
+        <div className={styles.columns}>
+          <div className={styles.fields}>
+            <SheetFields form={form} {...props} />
+          </div>
+          <TestColumn form={form} />
+        </div>
         {form.saveError && (
           <p className={styles.error} role="alert">
             {form.saveError}
           </p>
         )}
-        <SheetActions
-          leading={profile && <ProfileActions {...props} profile={profile} />}
-        >
+        <FormActions form={form} {...props} />
+      </form>
+    </Sheet>
+  );
+}
+
+/** Test (and, when editing, delete and duplicate) leading; Cancel, then Save. */
+function FormActions(
+  props: Props & { form: ConnectionForm },
+): React.JSX.Element {
+  const { form, profile } = props;
+  return (
+    <SheetActions
+      leading={
+        <>
           <Button
             onClick={() => void form.runTest()}
             disabled={form.test.status === 'testing'}
           >
             {t('test')}
           </Button>
-          <Button onClick={props.onClose}>{t('cancel')}</Button>
-          <Button type="submit" variant="primary" disabled={form.saving}>
-            {t('save')}
-          </Button>
-        </SheetActions>
-      </form>
-    </Sheet>
+          {profile && <ProfileActions {...props} profile={profile} />}
+        </>
+      }
+    >
+      <Button onClick={props.onClose}>{t('cancel')}</Button>
+      <Button type="submit" variant="primary" disabled={form.saving}>
+        {t('save')}
+      </Button>
+    </SheetActions>
+  );
+}
+
+/** Every field of the form, top to bottom; the engine decides the middle. */
+function SheetFields(
+  props: Props & { form: ConnectionForm },
+): React.JSX.Element {
+  const { form } = props;
+  const { engine } = form.draft;
+  return (
+    <>
+      <EngineRow engine={engine} />
+      <UrlField url={form.url} engine={engine} />
+      <hr className={styles.separator} />
+      {isFileEngine(engine) ? (
+        <>
+          <NameFields form={form} />
+          <FileFields form={form} />
+          <DuckdbNotice engine={engine} />
+          {engine === 'libsql-file' && (
+            <small className={styles.hint}>{t('sqliteCompatibleFiles')}</small>
+          )}
+        </>
+      ) : (
+        <>
+          <ConnectionFields form={form} />
+          <HelperFields form={form} />
+          <ProxyFields form={form} />
+          <SshFields form={form} />
+          <TlsFields form={form} />
+        </>
+      )}
+      <SessionLimitsFields form={form} />
+      <hr className={styles.separator} />
+      <EnvironmentFields form={form} focusSafety={props.focusSafety} />
+      <SavedSharing profile={props.profile} />
+    </>
+  );
+}
+
+/** The Test connection steps, in a column beside the form. */
+function TestColumn({ form }: { form: ConnectionForm }): React.JSX.Element {
+  const id = useId();
+  return (
+    <aside className={styles.side} aria-labelledby={id}>
+      <h3 id={id} className={styles.sideTitle}>
+        {t('connectionSteps')}
+      </h3>
+      <div className={styles.sideBody}>
+        {form.test.status === 'idle' && (
+          <p className={styles.note}>{t('testShowsSteps')}</p>
+        )}
+        <TestResult state={form.test} />
+      </div>
+    </aside>
   );
 }
 

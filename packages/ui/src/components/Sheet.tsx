@@ -20,7 +20,7 @@ export function Sheet({
   title: string;
   onClose: () => void;
   children: ReactNode;
-  /** `alert` is the narrow confirmation width; `editor` fits a SQL editor. */
+  /** `alert` is the narrow confirmation width; `editor` (880 px) fits a SQL editor or a form with a side column. */
   size?: 'form' | 'alert' | 'appearance' | 'editor';
 }): React.JSX.Element {
   const ref = useRef<HTMLDialogElement>(null);

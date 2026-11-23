@@ -35,7 +35,6 @@ function HostKeySheet(props: {
   return (
     <Sheet
       title={t('trustSshServer')}
-      size="alert"
       onClose={() => {
         answer(cancel);
       }}

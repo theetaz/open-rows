@@ -1,41 +1,65 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* A source list beside the pane, like the macOS Settings sidebar: every
-   section stays visible at the sheet's 868 px minimum without scrolling. */
+/* Like macOS System Settings: a source list on a grouped panel at the left
+   (search on top, one 28 px row per section, the current one tinted) and the
+   section's grouped inset rows at the right (docs/20 "Settings layout"). */
 .layout {
   display: grid;
-  grid-template-columns: 168px minmax(0, 1fr);
+  grid-template-columns: 216px minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
   grid-template-areas:
-    'top top'
+    'nav top'
     'nav pane';
   align-items: start;
-  row-gap: var(--or-space-12);
+  column-gap: var(--or-space-24);
+  row-gap: var(--or-space-8);
+}
+.sidebar {
+  grid-area: nav;
+  position: sticky;
+  inset-block-start: 0;
+  display: grid;
+  gap: var(--or-space-8);
+  padding: var(--or-space-8);
+  border-radius: var(--or-radius-panel);
+  background: var(--or-group);
 }
 .top {
   grid-area: top;
   justify-content: flex-start;
+  min-block-size: var(--or-control-height);
 }
 .top h1 {
   flex: 1;
   min-inline-size: 0;
   overflow: hidden;
+  font-size: var(--or-text-15);
+  font-weight: var(--or-weight-semibold);
+  letter-spacing: -0.015em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .sections[role='radiogroup'] {
-  grid-area: nav;
-  position: sticky;
-  inset-block-start: 0;
+  display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: var(--or-space-2);
   block-size: auto;
   padding: 0;
   background: transparent;
+  box-shadow: none;
+}
+.sections[role='radiogroup']::before {
+  display: none;
 }
 .sections[role='radiogroup'] > button {
   justify-content: flex-start;
   block-size: var(--or-control-height);
   padding-inline: var(--or-space-8);
+  border-radius: var(--or-radius-menu-item);
+  font-size: var(--or-text-13);
+}
+.sections[role='radiogroup'] > button[aria-checked='true'] {
+  background: var(--or-accent-soft);
 }
 .pane {
   grid-area: pane;
@@ -52,38 +76,41 @@
   margin-block: 0 var(--or-space-12);
 }
 .shortcuts {
-  background: var(--or-control-fill);
-  border: var(--or-border-width) solid var(--or-separator);
-  border-radius: 12px;
+  background: var(--or-group);
+  border-radius: var(--or-radius-card);
   overflow: hidden;
 }
 .shortcutRow {
+  position: relative;
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: center;
   gap: var(--or-space-4) var(--or-space-12);
   min-block-size: 36px;
   padding: var(--or-space-4) var(--or-space-12);
-  border-block-end: var(--or-border-width) solid var(--or-separator);
 }
-.shortcutRow:last-child {
-  border-block-end: 0;
+.shortcutRow + .shortcutRow::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto var(--or-space-12);
+  block-size: var(--or-border-width);
+  background: var(--or-separator);
 }
 .recorder {
   min-inline-size: 120px;
   block-size: var(--or-control-height-compact);
   padding-inline: var(--or-space-8);
-  border: var(--or-border-width) solid var(--or-control-stroke);
-  border-radius: var(--or-radius-control-compact);
-  background: var(--or-control-active);
+  border: 0;
+  border-radius: var(--or-radius-capsule);
+  background: var(--or-control-fill);
   color: var(--or-text);
   font: var(--or-text-12) var(--or-font-ui);
   text-align: center;
   cursor: default;
 }
 .recorder[data-recording='true'] {
-  border-color: var(--or-accent);
-  color: var(--or-secondary);
+  background: var(--or-accent-soft);
+  color: var(--or-accent);
 }
 .recorder:focus-visible {
   outline: var(--or-focus-width) solid var(--or-focus);
@@ -102,16 +129,15 @@
   font: var(--or-text-mono) var(--or-font-mono);
 }
 .search {
-  flex: none;
-  inline-size: 180px;
+  inline-size: 100%;
 }
 .results {
   display: grid;
-  gap: 32px;
+  gap: var(--or-space-24);
 }
 .results [data-search-pane] {
   display: grid;
-  gap: 24px;
+  gap: var(--or-space-20);
 }
 .results [hidden] {
   display: none;
@@ -125,4 +151,13 @@
 .noResults {
   margin: 0;
   text-align: center;
+}
+/* The sheet title already says Settings; the prefix stays for VoiceOver. */
+.top h1 span {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

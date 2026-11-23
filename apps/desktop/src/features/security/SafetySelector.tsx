@@ -13,11 +13,11 @@ export function SafetySelector(props: {
 }): React.JSX.Element {
   const security = useSecurity();
   return (
-    <div className={styles.row}>
+    <div className={`${styles.row ?? ''} ${styles.top ?? ''}`}>
       <label htmlFor="connection-safety" className={styles.label}>
         {t('safetyPolicy')}
       </label>
-      <div>
+      <div className={styles.stack}>
         <select
           id="connection-safety"
           data-initial-focus={props.initialFocus}
@@ -37,9 +37,11 @@ export function SafetySelector(props: {
             </option>
           ))}
         </select>
-        <p id="safety-description">{POLICY_DETAILS[props.value]}</p>
+        <p id="safety-description" className={styles.help}>
+          {POLICY_DETAILS[props.value]}
+        </p>
         {security.notice && (
-          <p role="status">
+          <p role="status" className={styles.help}>
             {t('noticeAuthenticatePolicies', { notice: security.notice })}
           </p>
         )}

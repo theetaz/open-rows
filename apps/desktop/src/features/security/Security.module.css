@@ -1,12 +1,44 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/* The lock screen: solid, centred, one prominent action (docs/20 §5.1). */
 .lock {
   display: grid;
   place-content: center;
   justify-items: center;
+  gap: var(--or-space-6);
   block-size: 100vh;
-  background: var(--or-panel-solid);
+  background: var(--or-page);
   color: var(--or-text);
-  gap: var(--or-space-4);
+  text-align: center;
+}
+.lock h1 {
+  margin: var(--or-space-8) 0 0;
+  font-size: var(--or-text-17);
+  font-weight: var(--or-weight-semibold);
+  line-height: 22px;
+  letter-spacing: -0.015em;
+}
+.lock p {
+  margin: 0 0 var(--or-space-12);
+  color: var(--or-secondary);
+  font-size: var(--or-text-13);
+}
+.lock .error {
+  margin: var(--or-space-8) 0 0;
+  color: var(--or-danger-fg);
+  font-size: var(--or-text-12);
+}
+.lockIcon {
+  display: grid;
+  place-items: center;
+  inline-size: 56px;
+  block-size: 56px;
+  border-radius: var(--or-radius-panel);
+  background: var(--or-control-fill);
+  color: var(--or-secondary);
+}
+.lockIcon svg {
+  inline-size: 24px;
+  block-size: 24px;
 }
 :global(body[data-openrows-locked] > :not(#root)) {
   display: none !important;

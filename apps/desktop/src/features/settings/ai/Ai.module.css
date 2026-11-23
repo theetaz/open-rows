@@ -1,8 +1,10 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 .form {
   display: grid;
-  gap: 8px;
-  padding: 12px 0;
+  gap: var(--or-space-8);
+  padding: var(--or-space-12);
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
 }
 .actions,
 .heading {
@@ -15,8 +17,10 @@
   justify-content: space-between;
 }
 .provider {
-  padding: 12px 0;
-  border-bottom: 1px solid var(--or-separator);
+  margin-block-end: var(--or-space-8);
+  padding: var(--or-space-8) var(--or-space-12);
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
 }
 .provider p,
 .notice,
@@ -36,13 +40,14 @@
   max-height: 280px;
   overflow: auto;
   font-size: var(--or-text-12);
-  background: var(--or-panel);
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
   color: var(--or-text);
 }
 .payload {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  padding: 8px;
+  padding: var(--or-space-8) var(--or-space-12);
 }
 .audit table {
   border-collapse: collapse;

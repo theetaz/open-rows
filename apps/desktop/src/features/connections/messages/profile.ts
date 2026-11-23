@@ -161,6 +161,7 @@ export const { rich, t, tn } = defineMessages({
   connectedServerElapsed: 'Connected · {server} · {elapsed}',
   connectionFailedElapsed: 'Connection failed · {elapsed}',
   connectionSteps: 'Connection steps',
+  testShowsSteps: 'Test the connection to see each step and how long it took.',
   elapsedmsMs: '{elapsedMs} ms',
   url: 'URL',
   switchName: 'Switch to {name}',

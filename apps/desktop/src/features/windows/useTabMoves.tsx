@@ -112,7 +112,6 @@ function MoveSheet(props: {
   return (
     <Sheet
       title={impact.pending ? t('commitProgress') : t('moveTabChanges')}
-      size="alert"
       onClose={props.onKeep}
     >
       <p>{moveText(impact)}</p>

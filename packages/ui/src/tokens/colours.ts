@@ -33,7 +33,7 @@ export const light = {
   /** Menus, popovers, the palette. */
   'glass-float': 'rgba(250,250,252,0.78)',
   /** Sheets and alerts: nearly solid so forms stay legible. */
-  'glass-sheet': 'rgba(255,255,255,0.93)',
+  'glass-sheet': 'rgba(255,255,255,0.98)',
   /** Address capsule in the toolbar and its text. */
   address: 'rgba(118,118,128,0.12)',
   'address-text': '#1D1D1F',
@@ -141,7 +141,7 @@ export const dark: typeof light = {
   'glass-control-edge':
     'inset 0 0 0 1px rgba(255,255,255,0.08), 0 0 0 1px transparent, 0 1px 2px rgba(0,0,0,0.25), 0 3px 8px rgba(0,0,0,0.18)',
   'glass-float': 'rgba(44,44,48,0.8)',
-  'glass-sheet': 'rgba(36,36,39,0.93)',
+  'glass-sheet': 'rgba(36,36,39,0.98)',
   address: 'rgba(118,118,128,0.24)',
   'address-text': '#F5F5F7',
   'label-tertiary': '#A6A6AA',
