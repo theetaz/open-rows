@@ -96,7 +96,7 @@ it('creates folders and renames queries from the row menu', async () => {
   fireEvent.contextMenu(rowBox('reports'));
   await user.click(screen.getByRole('menuitem', { name: 'New Folder…' }));
   await user.type(
-    screen.getByRole('textbox', { name: 'Folder name' }),
+    await screen.findByRole('textbox', { name: 'Folder name' }),
     'daily',
   );
   await user.click(screen.getByRole('button', { name: 'Create' }));
@@ -107,7 +107,7 @@ it('creates folders and renames queries from the row menu', async () => {
   );
   fireEvent.contextMenu(rowBox('top.sql'));
   await user.click(screen.getByRole('menuitem', { name: 'Rename…' }));
-  const name = screen.getByRole('textbox', { name: 'Name' });
+  const name = await screen.findByRole('textbox', { name: 'Name' });
   expect(name).toHaveValue('top');
   await user.clear(name);
   await user.type(name, 'renamed{Enter}');
@@ -139,7 +139,12 @@ it('deletes after confirmation, reveals and keeps query folders fixed', async ()
   fireEvent.contextMenu(rowBox('queries'));
   expect(screen.queryByRole('menuitem', { name: 'Rename…' })).toBeNull();
   await user.click(screen.getByRole('menuitem', { name: 'Reveal in Finder' }));
-  expect(revealProjectItem).toHaveBeenCalledWith('/work/analytics', 'queries');
+  await waitFor(() => {
+    expect(revealProjectItem).toHaveBeenCalledWith(
+      '/work/analytics',
+      'queries',
+    );
+  });
 });
 
 it('moves an item by dragging it onto a folder', () => {

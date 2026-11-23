@@ -235,6 +235,9 @@ function ValueMenu(props: {
 }): React.JSX.Element {
   const opener = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
+  // A press on the chevron while the menu is open closes it as an outside
+  // press; the click that follows must not open it again.
+  const closing = useRef(false);
   const close = useCallback(() => {
     setOpen(false);
     opener.current?.focus();
@@ -250,13 +253,20 @@ function ValueMenu(props: {
         aria-label={t('valueOptionsName', { name: field.name })}
         aria-haspopup="menu"
         aria-expanded={open}
+        onPointerDown={() => {
+          closing.current = open;
+        }}
         onMouseDown={(event) => {
           // Keep focus (and any typing) in the value box until an item is chosen.
           event.preventDefault();
         }}
         onClick={() => {
+          if (closing.current) {
+            closing.current = false;
+            return;
+          }
           if (!editor.ready) editor.load();
-          setOpen(!open);
+          setOpen(true);
         }}
       >
         <Icon name="chevronDown" />

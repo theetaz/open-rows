@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-import { MongoFields } from './MongoFields';
 import { TextField } from '@openrows/ui';
-import { fieldError } from './form';
+import { fieldError, NO_MONGO_OPTIONS } from './form';
+import { MongoAuthField, MongoFields } from './MongoFields';
 import { PasswordField } from './PasswordField';
 import type { ConnectionForm } from './useConnectionForm';
-import styles from './ConnectionSheet.module.css';
+import { derivedName } from './flow/flowDraft';
+import styles from './flow/Form.module.css';
 import { t } from './messages/profile';
 
 type TextKey =
@@ -13,15 +14,18 @@ type TextKey =
 /** Props of a text field bound to one draft value. */
 function binder(form: ConnectionForm) {
   return (key: TextKey) => ({
-    className: styles.row,
     value: form.draft[key],
+    spellCheck: false,
+    autoComplete: 'off',
     onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
       form.update({ [key]: event.target.value });
     },
   });
 }
 
-/** Name and group, shared by every engine. */
+const mono = `${styles.row ?? ''} ${styles.mono ?? ''}`;
+
+/** Identity rows: the name (derived placeholder), group and tags. */
 export function NameFields({
   form,
 }: {
@@ -31,16 +35,20 @@ export function NameFields({
   return (
     <>
       <TextField
+        className={styles.row}
         label={t('name')}
+        placeholder={derivedName(form.draft)}
         {...text('name')}
         {...fieldError(form.errors.name)}
       />
       <TextField
+        className={styles.row}
         label={t('group')}
         placeholder={t('optional')}
         {...text('group')}
       />
       <TextField
+        className={styles.row}
         label={t('tags')}
         placeholder={t('commaSeparated')}
         {...text('tags')}
@@ -49,18 +57,18 @@ export function NameFields({
   );
 }
 
-/** Name, group, address and credentials, labels leading as in AppKit forms. */
-export function ConnectionFields({
+/** Server rows: host and port on one row, the database, MongoDB discovery. */
+export function ServerFields({
   form,
 }: {
   form: ConnectionForm;
 }): React.JSX.Element {
   const { draft, errors } = form;
   const text = binder(form);
+  const srv = (draft.mongodb ?? NO_MONGO_OPTIONS).srv;
   return (
     <>
-      <NameFields form={form} />
-      <div className={styles.pair}>
+      <div className={`${styles.pair ?? ''} ${styles.mono ?? ''}`}>
         <TextField
           label={t('host')}
           {...text('host')}
@@ -68,24 +76,15 @@ export function ConnectionFields({
         />
         <TextField
           label={t('port')}
-          disabled={draft.engine === 'mongodb' && draft.mongodb?.srv}
+          disabled={draft.engine === 'mongodb' && srv}
           inputMode="numeric"
           {...text('port')}
-          className={styles.port}
           {...fieldError(errors.port)}
         />
       </div>
       {draft.engine !== 'libsql' && (
         <TextField
-          label={t('user')}
-          {...text('user')}
-          {...fieldError(errors.user)}
-        />
-      )}
-      <PasswordField form={form} />
-      {draft.engine === 'mongodb' && <MongoFields form={form} />}
-      {draft.engine !== 'libsql' && (
-        <TextField
+          className={mono}
           label={t('database')}
           placeholder={
             draft.engine === 'postgres' ? t('postgres') : t('optional')
@@ -93,6 +92,30 @@ export function ConnectionFields({
           {...text('database')}
         />
       )}
+      {draft.engine === 'mongodb' && <MongoFields form={form} />}
+    </>
+  );
+}
+
+/** Sign-in rows: the user, the password or token and where it lives. */
+export function SignInFields({
+  form,
+}: {
+  form: ConnectionForm;
+}): React.JSX.Element {
+  const { draft, errors } = form;
+  return (
+    <>
+      {draft.engine !== 'libsql' && (
+        <TextField
+          className={mono}
+          label={t('user')}
+          {...binder(form)('user')}
+          {...fieldError(errors.user)}
+        />
+      )}
+      <PasswordField form={form} />
+      {draft.engine === 'mongodb' && <MongoAuthField form={form} />}
     </>
   );
 }

@@ -2,7 +2,7 @@
 import { Button, TextField } from '@openrows/ui';
 import { pickConnectionFile } from '@openrows/ipc';
 import type { PickFileKind } from '@openrows/ipc';
-import styles from './ConnectionSheet.module.css';
+import styles from './flow/Form.module.css';
 import { t } from './messages/profile';
 
 /**
@@ -18,9 +18,8 @@ export function FileField(props: {
   onChange: (path: string) => void;
 }): React.JSX.Element {
   return (
-    <div className={styles.pair}>
+    <div className={`${styles.fileRow ?? ''} ${styles.mono ?? ''}`}>
       <TextField
-        className={styles.row}
         label={props.label}
         value={props.value}
         placeholder={props.placeholder ?? t('none')}
@@ -31,6 +30,7 @@ export function FileField(props: {
         }}
       />
       <Button
+        size="sm"
         aria-label={t('chooseLabel', { label: props.label.toLowerCase() })}
         onClick={() => {
           // A panel that fails to open leaves the typed path; nothing to undo.

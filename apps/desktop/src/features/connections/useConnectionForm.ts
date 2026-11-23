@@ -13,6 +13,7 @@ import type {
   ProfileDto,
   SecretFieldDto,
   TestReport,
+  UrlDraft,
 } from '@openrows/ipc';
 import {
   draftFromProfile,
@@ -22,12 +23,15 @@ import {
   withEnvironment,
   withPassword,
   withPatch,
+  withUrl,
 } from './form';
 import type { Draft, DraftErrors } from './form';
 import type { SshDraft, TlsDraft } from './routeForm';
 import type { ProxyDraft } from './proxyForm';
-import { useUrlField } from './useUrlField';
+import { applyPassword, useUrlField } from './useUrlField';
 import type { UrlField } from './useUrlField';
+import type { UrlPassword } from './urlText';
+import { withEngine } from './flow/flowDraft';
 
 export type TestState =
   | { status: 'idle' }
@@ -55,6 +59,12 @@ export type ConnectionForm = {
   updateProxy: (patch: Partial<ProxyDraft>) => void;
   setEnvironment: (kind: EnvKindDto) => void;
   setPassword: (value: string) => void;
+  /** A new connection's engine changed: that engine's defaults. */
+  chooseEngine: (engine: EngineDto) => void;
+  /** Fill every field from a URL the core parsed, with the password it carried. */
+  applyUrl: (parsed: UrlDraft, password: UrlPassword) => void;
+  /** Show every validation message now and return them (Continue). */
+  showErrors: () => DraftErrors;
   runTest: () => Promise<void>;
   save: () => Promise<void>;
   /** Reads a saved secret for an explicit reveal; absent for a new connection. */
@@ -115,6 +125,11 @@ export function useConnectionForm(
     saveError: saving.error,
     url,
     ...editors(setDraft, url),
+    ...flowEditors(setDraft, url),
+    showErrors: () => {
+      setSubmitted(true);
+      return validate(draft);
+    },
     runTest: test.run,
     save: saving.run,
     reveal: (field) =>
@@ -165,6 +180,23 @@ function editors(
     },
     setPassword: (value) => {
       setDraft((current) => withPassword(current, value));
+      url.release();
+    },
+  };
+}
+
+/** Engine and pasted-URL edits of the new-connection flow. */
+function flowEditors(
+  setDraft: Dispatch<SetStateAction<Draft>>,
+  url: UrlField,
+): Pick<ConnectionForm, 'chooseEngine' | 'applyUrl'> {
+  return {
+    chooseEngine: (engine) => {
+      setDraft((current) => withEngine(current, engine));
+      url.release();
+    },
+    applyUrl: (parsed, password) => {
+      setDraft((current) => applyPassword(withUrl(current, parsed), password));
       url.release();
     },
   };

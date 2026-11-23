@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 import { Button, Icon } from '@openrows/ui';
 import { setProjectConnection } from '@openrows/ipc';
 import type { ProfileDto, ProjectDto } from '@openrows/ipc';
-import type { MenuEntry } from '../../shell/CascadeMenu';
+import type { MenuEntry } from '@openrows/ui';
 import { MenuButton } from '../query/SplitButton';
 import type { ProjectHooks } from './projectActions';
 import {

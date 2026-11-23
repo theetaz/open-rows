@@ -4,7 +4,7 @@ import { Button, SecureField, TextField } from '@openrows/ui';
 import { SavedSecret } from './SavedSecret';
 import { withSecret } from './routeForm';
 import type { SecretDraft } from './routeForm';
-import styles from './ConnectionSheet.module.css';
+import styles from './flow/Form.module.css';
 import { t } from './messages/profile';
 
 type Props = {

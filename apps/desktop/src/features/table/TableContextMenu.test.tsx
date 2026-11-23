@@ -19,7 +19,20 @@ vi.mock('./row', async (importOriginal) => ({
 vi.mock('../../results/displayWindow', () => ({ displayWindow: vi.fn() }));
 beforeEach(() => {
   vi.mocked(readRow).mockResolvedValue([]);
+  // Menus run their command at once instead of after the blink and fade.
+  document.documentElement.dataset.motion = 'reduced';
 });
+/** A menu row by its label; its accessible name may end in the shortcut. */
+const named = (name: string): RegExp =>
+  new RegExp(
+    `^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s?[⌃⌥⇧⌘↩⌫]\\S*)?$`,
+  );
+const item = (name: string): HTMLElement =>
+  screen.getByRole('menuitem', { name: named(name) });
+const expectDisabled = (name: string, disabled = true): void => {
+  if (disabled) expect(item(name)).toHaveAttribute('aria-disabled', 'true');
+  else expect(item(name)).not.toHaveAttribute('aria-disabled', 'true');
+};
 const result = {
   id: 'page',
   rows: 1,
@@ -125,20 +138,22 @@ it('opens inline value editing, stages NULL, EMPTY and pasted values, and restor
   render(<Harness editor={editor} />);
   const opener = screen.getByRole('button', { name: 'Open actions' });
   await user.click(opener);
-  expect(screen.getByRole('menuitem', { name: 'Edit value…' })).toHaveFocus();
+  expect(screen.getByRole('menu', { name: 'Table actions' })).toHaveFocus();
   await user.keyboard('{Escape}');
   expect(screen.queryByRole('menu')).toBeNull();
   expect(opener).toHaveFocus();
   await user.click(opener);
-  await user.click(screen.getByRole('menuitem', { name: 'Edit value…' }));
+  await user.click(item('Edit value…'));
   expect(editor.edit).toHaveBeenCalledWith({ row: 0, column: 1 });
   expect(editor.open).not.toHaveBeenCalled();
   await user.click(opener);
-  await user.click(screen.getByRole('menuitem', { name: 'Set NULL' }));
+  await user.click(item('Set value'));
+  await user.click(item('Set NULL'));
   expect(editor.draftFor).toHaveBeenCalledWith(result, 0);
   expect(editor.stageCell).toHaveBeenLastCalledWith(draft, 'note', NULL_VALUE);
   await user.click(opener);
-  await user.click(screen.getByRole('menuitem', { name: 'Set EMPTY' }));
+  await user.click(item('Set value'));
+  await user.click(item('Set EMPTY'));
   expect(editor.stageCell).toHaveBeenLastCalledWith(
     draft,
     'note',
@@ -146,7 +161,7 @@ it('opens inline value editing, stages NULL, EMPTY and pasted values, and restor
   );
   vi.spyOn(navigator.clipboard, 'readText').mockResolvedValue('pasted');
   await user.click(opener);
-  await user.click(screen.getByRole('menuitem', { name: 'Paste value' }));
+  await user.click(item('Paste value'));
   await waitFor(() => {
     expect(editor.stageCell).toHaveBeenLastCalledWith(
       draft,
@@ -173,11 +188,9 @@ it.each(['null', 'empty'] as const)(
     render(<Harness editor={editing()} />);
     await user.click(screen.getByRole('button', { name: 'Open actions' }));
     await waitFor(() => {
-      expect(
-        screen.getByRole('menuitem', { name: 'Filter by value' }),
-      ).toBeEnabled();
+      expectDisabled('Filter by value', false);
     });
-    await user.click(screen.getByRole('menuitem', { name: 'Filter by value' }));
+    await user.click(item('Filter by value'));
     expect(screen.getByLabelText('Applied filters')).toHaveTextContent(
       state === 'null' ? 'isNull' : 'isEmpty',
     );
@@ -201,18 +214,19 @@ it('keeps copy available while blocking every data mutation on a read-only conne
   for (const name of [
     'Edit value…',
     'Edit row…',
-    'Set NULL',
-    'Set EMPTY',
     'Paste value',
     'Add row',
     'Duplicate row',
     'Delete row',
   ])
-    expect(screen.getByRole('menuitem', { name })).toBeDisabled();
+    expectDisabled(name);
+  await user.click(item('Set value'));
+  expectDisabled('Set NULL');
+  expectDisabled('Set EMPTY');
   await waitFor(() => {
-    expect(screen.getByRole('menuitem', { name: 'Copy value' })).toBeEnabled();
+    expectDisabled('Copy value', false);
   });
-  await user.click(screen.getByRole('menuitem', { name: 'Copy value' }));
+  await user.click(item('Copy value'));
   expect(write).toHaveBeenCalledWith('exact text');
   await waitFor(() => {
     expect(screen.queryByRole('menu')).toBeNull();
@@ -222,8 +236,10 @@ it('right-click header actions set sorting without exposing row edits', async ()
   const user = userEvent.setup();
   render(<Harness editor={editing()} kind="column" />);
   await user.click(screen.getByRole('button', { name: 'Open actions' }));
-  expect(screen.queryByRole('menuitem', { name: 'Delete row' })).toBeNull();
-  await user.click(screen.getByRole('menuitem', { name: 'Sort descending' }));
+  expect(
+    screen.queryByRole('menuitem', { name: named('Delete row') }),
+  ).toBeNull();
+  await user.click(item('Sort descending'));
   expect(screen.getByLabelText('Sort')).toHaveTextContent('"descending":true');
 });
 
@@ -234,27 +250,25 @@ it('offers selection-wide actions for several cells and stages them through bulk
   render(<Harness editor={editor} ranges={block} />);
   const opener = screen.getByRole('button', { name: 'Open actions' });
   await user.click(opener);
-  expect(screen.queryByRole('menuitem', { name: 'Edit value…' })).toBeNull();
-  await user.click(screen.getByRole('menuitem', { name: 'Set NULL' }));
+  expect(
+    screen.queryByRole('menuitem', { name: named('Edit value…') }),
+  ).toBeNull();
+  await user.click(item('Set NULL'));
   expect(editor.bulk.set).toHaveBeenLastCalledWith(result, block, NULL_VALUE);
   await user.click(opener);
-  await user.click(screen.getByRole('menuitem', { name: 'Delete 2 rows' }));
+  await user.click(item('Delete 2 rows'));
   expect(editor.bulk.deleteRows).toHaveBeenCalledWith(result, block);
   await user.click(opener);
-  await user.click(screen.getByRole('menuitem', { name: 'Duplicate 2 rows' }));
+  await user.click(item('Duplicate 2 rows'));
   expect(editor.bulk.duplicateRows).toHaveBeenCalledWith(result, block);
   vi.spyOn(navigator.clipboard, 'readText').mockResolvedValue('a\tb');
   await user.click(opener);
-  await user.click(
-    screen.getByRole('menuitem', { name: 'Paste into 4 cells' }),
-  );
+  await user.click(item('Paste into 4 cells'));
   await waitFor(() => {
     expect(editor.bulk.paste).toHaveBeenCalledWith(result, block, 'a\tb');
   });
   await user.click(opener);
-  await user.click(
-    screen.getByRole('menuitem', { name: 'Set value for 4 cells…' }),
-  );
+  await user.click(item('Set value for 4 cells…'));
   const value = await screen.findByRole('textbox', {
     name: 'Value for the selected cells',
   });
@@ -281,10 +295,8 @@ it('disables every selection-wide mutation on a read-only connection', async () 
     'Duplicate 2 rows',
     'Delete 2 rows',
   ])
-    expect(screen.getByRole('menuitem', { name })).toBeDisabled();
-  expect(
-    screen.getByRole('menuitem', { name: 'Sort ascending' }),
-  ).toBeEnabled();
+    expectDisabled(name);
+  expectDisabled('Sort ascending', false);
 });
 
 function GridHarness({
@@ -343,10 +355,10 @@ it('copies the selection as SQL INSERT for the browsed table, clamped to loaded 
   const user = userEvent.setup();
   render(<GridHarness grid={grid()} kind="cell" />);
   await user.click(screen.getByRole('button', { name: 'Open actions' }));
-  await user.click(screen.getByRole('menuitem', { name: 'Copy as' }));
+  await user.click(item('Copy as'));
   for (const name of ['CSV', 'JSON', 'Markdown', 'SQL INSERT', 'WHERE IN'])
-    expect(screen.getByRole('menuitem', { name })).toBeEnabled();
-  await user.click(screen.getByRole('menuitem', { name: 'SQL INSERT' }));
+    expectDisabled(name, false);
+  await user.click(item('SQL INSERT'));
   await waitFor(() => {
     expect(write).toHaveBeenCalledWith(
       `INSERT INTO "public"."notes" ("id", "note") VALUES (7, 'it''s');`,
@@ -367,12 +379,12 @@ it('pins a column from its header menu', async () => {
   const user = userEvent.setup();
   render(<GridHarness grid={menu} kind="column" />);
   await user.click(screen.getByRole('button', { name: 'Open actions' }));
-  await user.click(screen.getByRole('menuitem', { name: 'Pin column' }));
+  await user.click(item('Pin column'));
   expect(menu.togglePin).toHaveBeenCalledWith('note');
 });
 it('offers Unpin for a pinned column', async () => {
   const user = userEvent.setup();
   render(<GridHarness grid={{ ...grid(), pinned: ['note'] }} kind="column" />);
   await user.click(screen.getByRole('button', { name: 'Open actions' }));
-  expect(screen.getByRole('menuitem', { name: 'Unpin column' })).toBeEnabled();
+  expectDisabled('Unpin column', false);
 });

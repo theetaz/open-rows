@@ -31,7 +31,7 @@ export const light = {
   'glass-fill-solid': '#F8F6F7',
   'glass-control-edge': 'inset 0 0 0 1px rgba(24,20,28,0.07)',
   /** Menus, popovers, pickers and the palette (≥ 0.9 opaque, blurred). */
-  'glass-float': 'rgba(248,246,247,0.92)',
+  'glass-float': 'rgba(248,246,247,0.96)',
   'glass-float-edge': 'rgba(255,255,255,0.7)',
   'glass-sheet': 'rgba(250,248,249,0.94)',
   address: 'rgba(24,20,28,0.055)',
@@ -157,7 +157,7 @@ export const dark: typeof light = {
   'glass-fill': 'rgba(255,255,255,0.07)',
   'glass-fill-solid': '#2E2A32',
   'glass-control-edge': 'inset 0 0 0 1px rgba(255,255,255,0.09)',
-  'glass-float': 'rgba(46,42,50,0.9)',
+  'glass-float': 'rgba(46,42,50,0.96)',
   'glass-float-edge': 'rgba(255,255,255,0.14)',
   'glass-sheet': 'rgba(38,35,41,0.92)',
   address: 'rgba(255,255,255,0.07)',

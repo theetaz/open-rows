@@ -1,30 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
-import { PointMenu } from '../../shell/PointMenu';
+import { Icon } from '@openrows/ui';
+import type { MenuEntry } from '@openrows/ui';
+import { ContextMenu } from '../../shell/ContextMenu';
 import type { Catalog, MenuPoint } from '../schema';
 import type { JobActions } from './JobActions';
 import { t } from './messages';
-
-/** One schema-menu item that closes the menu first. */
-function Item(props: {
-  label: string;
-  disabled?: boolean;
-  run: () => void;
-  onClose: () => void;
-}): React.JSX.Element {
-  return (
-    <button
-      type="button"
-      role="menuitem"
-      disabled={props.disabled}
-      onClick={() => {
-        props.onClose();
-        props.run();
-      }}
-    >
-      {props.label}
-    </button>
-  );
-}
 
 /** Schema actions reuse the database restore gate and preselect backup objects. */
 export function SchemaDumpMenu(props: {
@@ -36,42 +16,52 @@ export function SchemaDumpMenu(props: {
   onCopyLink?: ((schema: string) => void) | undefined;
   onClose: () => void;
 }): React.JSX.Element {
-  const { catalog, jobs, schema, onClose } = props;
+  const { catalog, jobs, schema, onCopyLink } = props;
   const database = catalog.database;
+  const offline = Boolean(catalog.offline);
+  const entries: MenuEntry[] = [
+    {
+      kind: 'item',
+      label: t('backUp'),
+      icon: <Icon name={'database'} />,
+      disabled: offline,
+      run: () => {
+        jobs.backup(database, { schemas: [schema], tables: [] });
+      },
+    },
+    {
+      kind: 'item',
+      label: t('restore'),
+      icon: <Icon name={'history'} />,
+      disabled: offline,
+      run: () => {
+        jobs.restore(
+          database,
+          catalog.engine === 'postgres' ? schema : undefined,
+        );
+      },
+    },
+  ];
+  const link: MenuEntry[] = onCopyLink
+    ? [
+        { kind: 'separator' },
+        {
+          kind: 'item',
+          label: t('copyLink'),
+          icon: <Icon name={'link'} />,
+          run: () => {
+            onCopyLink(schema);
+          },
+        },
+      ]
+    : [];
   return (
-    <PointMenu
-      {...props.point}
+    <ContextMenu
       label={t('schemaActions', { schema })}
-      onClose={onClose}
-    >
-      <Item
-        label={t('backUp')}
-        disabled={!!catalog.offline}
-        onClose={onClose}
-        run={() => {
-          jobs.backup(database, { schemas: [schema], tables: [] });
-        }}
-      />
-      <Item
-        label={t('restore')}
-        disabled={!!catalog.offline}
-        onClose={onClose}
-        run={() => {
-          jobs.restore(
-            database,
-            catalog.engine === 'postgres' ? schema : undefined,
-          );
-        }}
-      />
-      {props.onCopyLink && (
-        <Item
-          label={t('copyLink')}
-          onClose={onClose}
-          run={() => {
-            props.onCopyLink?.(schema);
-          }}
-        />
-      )}
-    </PointMenu>
+      at={props.point}
+      target={props.point.target}
+      entries={[...entries, ...link]}
+      onClose={props.onClose}
+    />
   );
 }

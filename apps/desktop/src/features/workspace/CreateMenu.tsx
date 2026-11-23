@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ObjectFeaturesDto } from '@openrows/ipc';
-import { PointMenu } from '../../shell/PointMenu';
-import { containerEntries, EntryItems, newObjectEntries } from '../objects';
+import { ContextMenu } from '../../shell/ContextMenu';
+import { t as shell } from '../../shell/messages';
+import { containerEntries, newObjectEntries } from '../objects';
 import type { ObjectEditorRequest } from '../objects';
 import type { MenuPoint } from '../schema';
+import { editorSections, hasUnsupported } from './editorMenu';
 import { t } from './messages';
 
 /**
@@ -18,26 +20,23 @@ export function CreateMenu(props: {
   onChoose: (request: ObjectEditorRequest) => void;
   onClose: () => void;
 }): React.JSX.Element {
-  const choose = (request: ObjectEditorRequest): void => {
-    props.onClose();
-    props.onChoose(request);
-  };
+  const objects = newObjectEntries(props.place, props.features);
+  const containers = containerEntries(props.place, props.features);
   return (
-    <PointMenu
-      {...props.point}
-      above
+    <ContextMenu
       label={t('create')}
+      at={props.point}
+      entries={[
+        ...editorSections(objects, props.onChoose),
+        { kind: 'separator' },
+        ...editorSections(containers, props.onChoose),
+      ]}
       onClose={props.onClose}
-    >
-      <EntryItems
-        entries={newObjectEntries(props.place, props.features)}
-        onChoose={choose}
-      />
-      <hr />
-      <EntryItems
-        entries={containerEntries(props.place, props.features)}
-        onChoose={choose}
-      />
-    </PointMenu>
+      footer={
+        hasUnsupported([...objects, ...containers])
+          ? shell('notSupported')
+          : undefined
+      }
+    />
   );
 }

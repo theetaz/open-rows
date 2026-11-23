@@ -17,6 +17,8 @@ import type { Connections } from '../../connections';
 import { profile } from '../../../test/ipcStub';
 import { QueryContent, useQueryTabs } from '../../query';
 import { openTableView } from '../open';
+// Menus run their command at once instead of after the blink and fade.
+document.documentElement.dataset.motion = 'reduced';
 
 vi.mock('@openrows/ipc', async () =>
   (await import('../../../test/ipcStub')).ipcStub(),

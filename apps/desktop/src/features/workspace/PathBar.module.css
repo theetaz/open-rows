@@ -1,0 +1,177 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * The path bar (DESIGN.md §6): a 32 px capsule filling the toolbar,
+ * `[ENV] ⬛ connection › database › schema › object  ☆ ⟳`. Each segment
+ * opens a picker. Only the segments whose text changed animate.
+ */
+.bar {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 1px;
+  min-inline-size: 0;
+  block-size: var(--or-glass-height);
+  box-sizing: border-box;
+  padding: 0 4px 0 5px;
+  border-radius: var(--or-radius-capsule);
+  background: var(--or-control-fill);
+  box-shadow: inset 0 0 0 1px var(--or-control-stroke);
+  color: var(--or-secondary);
+  font-size: var(--or-text-13);
+  transition: box-shadow var(--or-motion-standard) linear;
+}
+.bar[data-env='prod'] {
+  background: color-mix(in srgb, var(--or-tag-prod) 8%, var(--or-control-fill));
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--or-tag-prod) 55%, transparent);
+}
+.bar[data-env='staging'] {
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--or-tag-staging) 40%, transparent);
+}
+.env {
+  flex: none;
+  margin: 0 3px 0 2px;
+}
+/* A custom environment: its word on the neutral tone with its own dot. */
+.custom {
+  flex: none;
+  margin: 0 3px 0 2px;
+  padding-inline: var(--or-space-6);
+  border-radius: var(--or-radius-capsule);
+  background: var(--or-neutral-bg);
+  color: var(--or-neutral-fg);
+  font-size: var(--or-text-10);
+  font-weight: var(--or-weight-semibold);
+  letter-spacing: 0.04em;
+  line-height: 18px;
+  text-transform: uppercase;
+}
+.custom::before {
+  content: '';
+  display: inline-block;
+  inline-size: var(--or-dot-size);
+  block-size: var(--or-dot-size);
+  margin-inline-end: var(--or-space-4);
+  border-radius: var(--or-radius-capsule);
+  background: var(--env-color, currentColor);
+}
+
+.segment {
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 6px;
+  min-inline-size: 0;
+  block-size: 24px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: var(--or-radius-capsule);
+  background: none;
+  color: inherit;
+  font: inherit;
+  white-space: nowrap;
+  transition:
+    background-color var(--or-motion-instant) linear,
+    color var(--or-motion-instant) linear;
+}
+.segment > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.segment > svg {
+  flex: none;
+  inline-size: 14px;
+  block-size: 14px;
+  color: var(--or-tertiary);
+}
+.segment:hover {
+  background: var(--or-hover);
+  color: var(--or-text);
+}
+.segment:focus-visible {
+  outline: var(--or-focus-width) solid var(--or-focus);
+}
+.segment[aria-expanded='true'] {
+  background: var(--or-control-active);
+  color: var(--or-text);
+}
+.segment[data-role='last'] {
+  color: var(--or-text);
+  font-weight: var(--or-weight-current);
+}
+.segment[data-role='todo'] {
+  color: var(--or-accent);
+}
+.segment[data-role='prompt'] {
+  flex: 1 1 auto;
+  color: var(--or-placeholder);
+}
+.segment[data-role='prompt'] > span {
+  flex: 1 1 auto;
+  text-align: start;
+}
+/* Narrow, the schema gives way first and the object last. */
+.segment[data-level='schema'] {
+  flex-shrink: 3;
+}
+.segment[data-level='object'] {
+  flex-shrink: 0.3;
+}
+.bar[data-ready='true'] .swap {
+  animation: segment-in var(--or-motion-standard) var(--or-motion-easing);
+}
+@keyframes segment-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+}
+.separator {
+  flex: none;
+  inline-size: 10px;
+  block-size: 10px;
+  color: var(--or-tertiary);
+  opacity: 0.8;
+}
+.grow {
+  flex: 1 1 0;
+  min-inline-size: var(--or-space-4);
+}
+.tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 1px;
+}
+.tools button {
+  inline-size: 26px;
+  min-inline-size: 26px;
+  block-size: 24px;
+  min-block-size: 24px;
+  border-radius: var(--or-radius-capsule);
+  color: var(--or-secondary);
+}
+.tools button svg {
+  inline-size: 14px;
+  block-size: 14px;
+}
+.tools button[aria-pressed='true'] svg {
+  fill: currentColor;
+  color: var(--or-tag-staging);
+}
+.tools .locked svg {
+  color: var(--or-success-fg);
+}
+.key {
+  margin-inline-end: var(--or-space-8);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar[data-ready='true'] .swap {
+    animation: none;
+  }
+}
+:global([data-motion='reduced']) .bar .swap {
+  animation: none;
+}

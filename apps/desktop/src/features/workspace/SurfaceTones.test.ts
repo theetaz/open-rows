@@ -26,24 +26,27 @@ it('v4 materials: tinted window, veiled content, a floating clear-glass sidebar'
   expect(sidebar).toContain('border-radius: var(--or-radius-panel);');
   // The veil round the panel is its spread shadow, never a fill under it.
   expect(sidebar).toContain('0 0 0 60px var(--or-window-veil)');
-  // Panes inside never paint glass or outlines of their own.
-  for (const [file, name] of [
-    ['Sidebar', 'sidebar'],
-    ['Inspector', 'inspector'],
-  ] as const) {
-    const body = rule(css('features/workspace', file), name);
-    expect(body).toContain('border: 0;');
-    expect(body).toContain('box-shadow: none;');
-    expect(body).not.toMatch(/glass/);
-  }
+  // The pane inside the sidebar paints no glass or outline of its own.
+  const pane = rule(css('features/workspace', 'Sidebar'), 'sidebar');
+  expect(pane).toContain('border: 0;');
+  expect(pane).toContain('box-shadow: none;');
+  expect(pane).not.toMatch(/glass/);
+  // The inspector is an opaque raised card with a hairline, never glass.
+  const inspector = rule(css('features/workspace', 'Inspector'), 'inspector');
+  expect(inspector).toContain('background: var(--or-raised);');
+  expect(inspector).toContain('border-radius: var(--or-radius-panel);');
+  expect(inspector).not.toMatch(/glass/);
   expect(css('features/query', 'Query')).toContain(
     'background: var(--or-window)',
   );
 });
 
-it('toolbar capsules are glass; the toolbar and tab strip are solid', () => {
-  expect(rule(css('features/workspace', 'Workspace'), 'toolbar')).toContain(
-    'background: var(--or-toolbar);',
+it('toolbar capsules are glass; the toolbar and tab strip sit on the veil', () => {
+  expect(rule(css('features/workspace', 'Workspace'), 'toolbar')).not.toMatch(
+    /background/,
+  );
+  expect(rule(css('features/query', 'TabStrip'), 'strip')).not.toMatch(
+    /background/,
   );
   const panels = readFileSync(
     'packages/ui/src/components/Panels.module.css',

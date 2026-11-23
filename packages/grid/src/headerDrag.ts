@@ -141,7 +141,10 @@ export function autoWidth(context: PointerContext, column: number): number {
   const { r0, r1 } = painter.range;
   const first = Math.max(0, r0 - SAMPLE_MARGIN),
     last = Math.min(props.source.rows - 1, r1 + SAMPLE_MARGIN);
-  const widths = [measure(info?.title ?? '')];
+  // The header shows the title and its type caption (about 0.8 of the
+  // cell font's width per character, plus their gap).
+  const caption = info?.caption ? measure(info.caption) * 0.8 + 6 : 0;
+  const widths = [measure(info?.title ?? '') + caption];
   for (let row = first; row <= last; row++) {
     const cell = props.source.cell(row, column);
     if (cell) widths.push(measure(cell.text));

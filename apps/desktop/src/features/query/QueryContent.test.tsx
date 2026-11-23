@@ -18,6 +18,8 @@ import { profile } from '../../test/ipcStub';
 import { runTabCommand } from '../commands';
 import { QueryContent } from './QueryContent';
 import { useQueryTabs } from './useQueryTabs';
+// Menus run their command at once instead of after the blink and fade.
+document.documentElement.dataset.motion = 'reduced';
 
 vi.mock('@openrows/ipc', async () =>
   (await import('../../test/ipcStub')).ipcStub(),
@@ -252,7 +254,10 @@ it('turns Run into Cancel while a query runs', async () => {
   await user.click(screen.getByRole('button', { name: 'Run options' }));
   const options = screen.getByRole('menu', { name: 'Run options' });
   for (const name of [/Run All/, /Run Current/])
-    expect(within(options).getByRole('menuitem', { name })).toBeDisabled();
+    expect(within(options).getByRole('menuitem', { name })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
   await user.keyboard('{Escape}');
   await user.click(screen.getByRole('button', { name: 'Cancel query' }));
   expect(cancelQuery).toHaveBeenCalledWith('q1');

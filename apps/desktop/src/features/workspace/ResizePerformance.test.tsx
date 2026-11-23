@@ -81,8 +81,13 @@ it('layout CSS never wraps the titlebar and every colour/type variable exists', 
     'utf8',
   );
   expect(workspace).toMatch(/\.toolbar\s*\{[^}]*white-space: nowrap/);
-  expect(workspace).toMatch(/\.toolbar\s*\{[^}]*grid-template-columns/);
-  expect(workspace).toContain('text-overflow: ellipsis');
+  expect(workspace).toMatch(/\.toolbar\s*\{[^}]*display: flex/);
+  expect(
+    readFileSync(
+      'apps/desktop/src/features/workspace/PathBar.module.css',
+      'utf8',
+    ),
+  ).toContain('text-overflow: ellipsis');
   const split = readFileSync(
     'packages/ui/src/components/split/SplitPanel.module.css',
     'utf8',

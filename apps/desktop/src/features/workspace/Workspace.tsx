@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import { lazy, Suspense, useState } from 'react';
 import { WorkspaceUpdates } from './WorkspaceUpdates';
-import { NativeDocuments } from '../query/NativeDocuments';
-import { WorkspaceToolbar } from './WorkspaceToolbar';
+import { TabStripHost } from '../query/TabStrip';
+import { WorkspaceTop } from './WorkspaceTop';
 import { FileNotice, RefreshAnnouncement } from './WorkspaceNotices';
 import { WorkspaceBody } from './WorkspaceBody';
 import { SidebarColumn } from './SidebarColumn';
@@ -15,7 +15,6 @@ import { openQueryFile } from '../query';
 import { reportProjectError } from '../projects';
 import { useWorkspaceController } from './useWorkspaceController';
 import type { DiagramRequest } from './useWorkspaceController';
-import { contextSegments, tabFavourite } from './contextBar';
 import { ConnectionSheets, SshPrompts, useConnections } from '../connections';
 import type { SettingsSection } from '../settings';
 import { TableExport } from './TableExport';
@@ -58,10 +57,12 @@ export function Workspace({
     <div className={styles.workspace}>
       <SidebarColumn connections={connections} controller={controller} />
       <div className={styles.main}>
-        <Toolbar connections={connections} controller={controller} />
-        <WorkspaceUpdates connections={connections} tabs={controller.tabs} />
-        <FileNotice notice={controller.fileNotice} />
-        <WorkspaceBody connections={connections} controller={controller} />
+        <TabStripHost value={controller.windowTabs.host}>
+          <WorkspaceTop connections={connections} controller={controller} />
+          <WorkspaceUpdates connections={connections} tabs={controller.tabs} />
+          <FileNotice notice={controller.fileNotice} />
+          <WorkspaceBody connections={connections} controller={controller} />
+        </TabStripHost>
       </div>
       <RefreshAnnouncement refreshes={controller.refreshes} />
       <WorkspaceOverlay controller={controller} connections={connections} />
@@ -86,7 +87,10 @@ export function Workspace({
       />
       <WorkspaceEditors connections={connections} controller={controller} />
       {controller.linkSheet}
-      <ConnectionSheets connections={connections} />
+      <ConnectionSheets
+        connections={connections}
+        onFlow={controller.windowTabs.openFlow}
+      />
       <SshPrompts />
     </div>
   );
@@ -232,61 +236,5 @@ function WorkspaceOverlay({
         }
       />
     </Suspense>
-  );
-}
-
-/** The launch-time documents control, only while such documents are open. */
-function documents(
-  tabs: ReturnType<typeof useWorkspaceController>['tabs'],
-): React.JSX.Element | undefined {
-  return tabs.tabsFor({ connectionId: 'local-files', database: 'Files' })
-    .length ? (
-    <NativeDocuments tabs={tabs} />
-  ) : undefined;
-}
-
-/** The unified toolbar: address capsule, panels, the safety lock and actions. */
-function Toolbar({
-  connections,
-  controller,
-}: {
-  connections: ReturnType<typeof useConnections>;
-  controller: ReturnType<typeof useWorkspaceController>;
-}): React.JSX.Element {
-  const { catalog, inspector, sidebar, setMode } = controller;
-  const tab = controller.scope
-    ? controller.tabs.activeFor(controller.scope)
-    : undefined;
-  const profile = connections.active;
-  const status = profile ? connections.statusOf(profile.id) : undefined;
-  return (
-    <WorkspaceToolbar
-      context={contextSegments({
-        profile,
-        status,
-        database: catalog.database,
-        schema: catalog.schema,
-        objectPath: tab?.objectPath,
-      })}
-      favourite={tabFavourite(tab, profile?.id)}
-      documents={documents(controller.tabs)}
-      health={status?.state ?? 'disconnected'}
-      onDatabase={() => {
-        setMode('database');
-      }}
-      onPalette={() => {
-        setMode('commands');
-      }}
-      onRefresh={controller.refresh}
-      safeMode={controller.safeMode}
-      onSafeMode={controller.openSafety}
-      sidebar={sidebar}
-      inspector={inspector.open}
-      onSidebar={controller.toggleSidebar}
-      onInspector={inspector.toggle}
-      onQuery={() => {
-        controller.command('new-tab');
-      }}
-    />
   );
 }

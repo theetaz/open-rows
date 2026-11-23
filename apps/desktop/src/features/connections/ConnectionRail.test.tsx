@@ -55,8 +55,8 @@ it('shows saved connections as tiles with connection-status dots, status titles 
   expect(
     within(rail).getAllByRole('button', { name: /^Switch to/ }),
   ).toHaveLength(3);
-  for (const monogram of ['OS', 'AP', 'QB'])
-    expect(rail).toHaveTextContent(monogram);
+  // Each row shows its engine's tile instead of a monogram.
+  expect(rail.querySelectorAll('[data-engine="true"]')).toHaveLength(3);
   const dots = Array.from(rail.querySelectorAll('i[data-status]')).map((dot) =>
     dot.getAttribute('data-status'),
   );
@@ -113,10 +113,12 @@ it('opens the connection menu at the pointer on right-click', async () => {
   const row = screen.getByRole('button', { name: 'Switch to analytics-prod' });
   fireEvent.contextMenu(row, { clientX: 120, clientY: 300 });
   const menu = screen.getByRole('menu', { name: 'analytics-prod actions' });
-  expect(menu.parentElement?.style.top).toBe('300px');
+  expect(menu.style.top).toBe('301px');
   expect(screen.queryByRole('tooltip')).toBeNull();
   await user.click(within(menu).getByRole('menuitem', { name: 'Disconnect' }));
-  expect(run).toHaveBeenCalledOnce();
+  await waitFor(() => {
+    expect(run).toHaveBeenCalledOnce();
+  });
   expect(screen.queryByRole('menu')).toBeNull();
 });
 
@@ -169,14 +171,18 @@ it('lists the active connection opened databases as tiles with switch and close'
   );
   fireEvent.contextMenu(tiles[0] as HTMLElement);
   await user.click(screen.getByRole('menuitem', { name: 'Close database' }));
-  expect(rail.onCloseDatabase).toHaveBeenCalledWith('orders');
+  await waitFor(() => {
+    expect(rail.onCloseDatabase).toHaveBeenCalledWith('orders');
+  });
   expect(tiles[0]).toHaveFocus();
   fireEvent.contextMenu(tiles[1] as HTMLElement);
   await user.click(screen.getByRole('menuitem', { name: 'Show processes' }));
-  expect(rail.onProcesses).toHaveBeenCalledWith(
-    rail.activeId,
-    'a_very_long_reporting_database',
-  );
+  await waitFor(() => {
+    expect(rail.onProcesses).toHaveBeenCalledWith(
+      rail.activeId,
+      'a_very_long_reporting_database',
+    );
+  });
 });
 
 it('collapses environment and connection lists without closing sessions, and scopes equal database names', async () => {

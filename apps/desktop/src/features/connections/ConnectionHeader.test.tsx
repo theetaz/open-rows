@@ -14,7 +14,7 @@ import { ThemeProvider } from '@openrows/ui';
 import { profile, sampleProfiles } from '../../test/ipcStub';
 import { ConnectionHeader } from './ConnectionHeader';
 import { ConnectionRail } from './ConnectionRail';
-import { ConnectionSheets } from './ConnectionSheets';
+import { SheetsWithFlow } from './flow/flowTestKit';
 import { connectionActions } from './connectionActions';
 import { useConnections } from './useConnections';
 
@@ -37,7 +37,7 @@ function Harness(): React.JSX.Element {
         actionsFor={(item) => connectionActions(item, connections)}
       />
       <ConnectionHeader connections={connections} />
-      <ConnectionSheets connections={connections} />
+      <SheetsWithFlow connections={connections} />
     </ThemeProvider>
   );
 }
@@ -51,6 +51,9 @@ async function menu(
     await screen.findByRole('button', { name: `${connection} actions` }),
   );
   await user.click(screen.getByRole('menuitem', { name }));
+  await waitFor(() => {
+    expect(screen.queryByRole('menu')).toBeNull();
+  });
 }
 
 it('connects on selection, shows failures and disconnects from the row menu', async () => {
@@ -128,9 +131,11 @@ it('duplicates and deletes only after confirmation', async () => {
   });
 });
 
-it('opens the new connection sheet from the rail', async () => {
+it('opens the new connection flow from the rail', async () => {
   const user = userEvent.setup();
   render(<Harness />);
   await user.click(screen.getByRole('button', { name: 'New connection' }));
-  expect(screen.getByRole('dialog', { name: 'New connection' })).toBeVisible();
+  expect(
+    await screen.findByRole('form', { name: 'New connection' }),
+  ).toBeVisible();
 });

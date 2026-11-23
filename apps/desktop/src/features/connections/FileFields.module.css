@@ -1,0 +1,23 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* The database file well: engine tile, the path, Choose… and New… (DESIGN.md §9). */
+.well {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-12);
+  padding: var(--or-space-12) var(--or-space-12) var(--or-space-12)
+    var(--or-space-16);
+  border: var(--or-border-width) dashed var(--or-separator-strong);
+  border-radius: var(--or-radius-card);
+  background: var(--or-raised);
+}
+.path {
+  display: grid;
+  flex: 1;
+  gap: var(--or-space-2);
+  min-inline-size: 0;
+}
+.path label,
+.path small {
+  color: var(--or-tertiary);
+  font-size: var(--or-text-11);
+}

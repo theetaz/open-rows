@@ -4,6 +4,7 @@ import { inspectionOf } from './inspectionDescriptor';
 import { parseSplits } from './splitState';
 import { emptyTabs, scopeKey } from './tabs';
 import type { QueryTab, TabFile, TableObject, TabsState } from './tabs';
+import { groupsOf, storedGroups } from './tabGroupStorage';
 
 /**
  * Open tabs as stored: query tabs with their text and file (only
@@ -11,11 +12,12 @@ import type { QueryTab, TabFile, TableObject, TabsState } from './tabs';
  */
 export function serializeTabs(state: TabsState, withText = true): string {
   const tabs = state.tabs.flatMap((tab) => {
-    if (tab.kind === 'processes' || tab.kind === 'monitor') return [];
+    if (['processes', 'monitor', 'connection'].includes(tab.kind)) return [];
     if (tab.kind === 'query' && !withText) return [];
     // Allowlist descriptors: parameter values, results and transient file errors never persist.
     const { id, kind, connectionId, database, title, sql, pinned, preview } =
       tab;
+    const group = tab.group;
     const table = tableOf(tab.table);
     const inspection = inspectionOf(tab.inspection);
     const file = tab.file
@@ -39,12 +41,14 @@ export function serializeTabs(state: TabsState, withText = true): string {
         table,
         inspection,
         file,
+        group,
       },
     ];
   });
   return JSON.stringify({
     version: 1,
     tabs,
+    groups: storedGroups(state, tabs),
     active: activeOf(tabs, state.active),
     next: state.next,
     splits: state.splits ? parseSplits(state.splits, tabs) : undefined,
@@ -90,7 +94,10 @@ function contentOf(
 }
 
 /** A stored tab, or `null` when anything essential is missing. */
-function tabOf(value: unknown): QueryTab | null {
+function tabOf(
+  value: unknown,
+  groups: TabsState['groups'] = {},
+): QueryTab | null {
   if (!isRecord(value)) return null;
   const { id, connectionId, database, title, sql } = value;
   const content = contentOf(value);
@@ -108,6 +115,9 @@ function tabOf(value: unknown): QueryTab | null {
     ...(file ? { file } : {}),
     ...(value.pinned === true ? { pinned: true } : {}),
     ...(value.preview === true ? { preview: true } : {}),
+    ...(isString(value.group) && groups[value.group]
+      ? { group: value.group }
+      : {}),
   };
 }
 
@@ -136,7 +146,10 @@ export function restoreTabs(text: string | null): TabsState {
   }
   if (!isRecord(stored) || !Array.isArray(stored.tabs)) return emptyTabs;
   if (stored.version !== undefined && stored.version !== 1) return emptyTabs;
-  const tabs = stored.tabs.map(tabOf).filter((tab) => tab !== null);
+  const groups = groupsOf(stored.groups);
+  const tabs = stored.tabs
+    .map((tab) => tabOf(tab, groups))
+    .filter((tab) => tab !== null);
   const numbers = tabs
     .map((tab) => Number(tab.id.split('-').at(-1)))
     .filter(Number.isSafeInteger);
@@ -151,6 +164,7 @@ export function restoreTabs(text: string | null): TabsState {
     active: activeOf(tabs, stored.active),
     next,
     ...(stored.splits ? { splits: parseSplits(stored.splits, tabs) } : {}),
+    ...(tabs.some((tab) => tab.group) ? { groups } : {}),
   };
 }
 

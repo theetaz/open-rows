@@ -10,7 +10,6 @@ import {
   matchingChoices,
   profileLocation,
 } from './engines';
-import { moveSelection } from './useEnginePicker';
 
 it('lists every TablePlus connection type, ten of them implemented', () => {
   expect(ENGINE_CHOICES).toHaveLength(22);
@@ -71,15 +70,6 @@ it('searches by name, id or monogram', () => {
     'mariadb',
   ]);
   expect(matchingChoices('  ')).toHaveLength(22);
-});
-
-it('arrows move like Finder icon view and stop at the edges', () => {
-  const all = ENGINE_CHOICES;
-  expect(moveSelection(all, 'postgres', 'ArrowRight')).toBe('redshift');
-  expect(moveSelection(all, 'postgres', 'ArrowDown')).toBe('cassandra');
-  expect(moveSelection(all, 'postgres', 'ArrowLeft')).toBe('postgres');
-  expect(moveSelection(all, 'vertica', 'ArrowDown')).toBe('vertica');
-  expect(moveSelection(all, 'postgres', 'Enter')).toBe('postgres');
 });
 
 it('describes where a profile connects', () => {

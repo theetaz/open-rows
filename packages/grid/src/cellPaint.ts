@@ -1,6 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { DisplayCell, GridColumn, GridTheme } from './model';
 import { booleanText } from '@openrows/ui/format';
+import { statusTone } from './statusTone';
+import type { StatusTone } from './statusTone';
+
+/** The status colours of each tone. */
+const TONE_COLOUR = {
+  ok: 'success-fg',
+  bad: 'danger-fg',
+  run: 'info-fg',
+  wait: 'warning-fg',
+} as const;
 
 /** Horizontal text inset and the width reserved for a stepper glyph. */
 const CELL_PADDING = 8;
@@ -45,6 +55,8 @@ export class CellPainter {
   dpr = 1;
   /** The cell being painted is the focused one (set by the painter per cell). */
   focused = false;
+  /** The cell is a row number: tertiary, or accent on a selected row. */
+  gutter: 'plain' | 'selected' | null = null;
   constructor(private colours: GridTheme['colours']) {}
   setColours(colours: GridTheme['colours']): void {
     this.colours = colours;
@@ -72,8 +84,10 @@ export class CellPainter {
   ): void {
     const { x, y, width, height } = this.box;
     const muted = isMuted(cell);
-    context.fillStyle = muted ? this.colours.placeholder : this.colours.text;
-    this.text(context, column, muted ? text : this.display(column, text));
+    context.fillStyle = this.ink(muted);
+    const tone = muted || column?.kind !== 'enum' ? null : statusTone(text);
+    if (tone) this.status(context, tone, text);
+    else this.text(context, column, muted ? text : this.display(column, text));
     if (showsStepper(column, this.focused))
       this.stepper(context, x + width - STEPPER_WIDTH / 2 - 2);
     if (column?.link && cell.state !== 'null' && cell.state !== 'empty')
@@ -91,6 +105,25 @@ export class CellPainter {
       );
     }
     if (cell.state === 'changed') this.marker(context);
+  }
+  private ink(muted: boolean): string {
+    if (this.gutter === 'selected') return this.colours.accent;
+    if (this.gutter) return this.colours.tertiary;
+    return muted ? this.colours.placeholder : this.colours.text;
+  }
+  /** A status-like enum value: a 6 px dot and the value in its tone. */
+  private status(
+    context: CanvasRenderingContext2D,
+    tone: StatusTone,
+    text: string,
+  ): void {
+    const { x, y, height } = this.box;
+    context.fillStyle = this.colours[TONE_COLOUR[tone]];
+    context.beginPath();
+    context.arc(x + CELL_PADDING + 3, y + height / 2, 3, 0, Math.PI * 2);
+    context.fill();
+    context.textAlign = 'left';
+    context.fillText(text, x + CELL_PADDING + 12, y + height / 2);
   }
   private display(column: GridColumn | undefined, text: string): string {
     return column?.kind === 'boolean' ? booleanText(text) : text;

@@ -5,6 +5,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
@@ -72,6 +73,8 @@ it('restores every context without connect or execute IPC calls', async () => {
   localStorage.setItem('openrows.queryTabs', JSON.stringify(storedTabs));
   mount();
   await screen.findByRole('tab', { name: /invoices/ });
+  // The restored session makes analytics-prod active again, still offline.
+  await screen.findByRole('button', { name: /^Connections: analytics-prod/ });
   expect(openSession).not.toHaveBeenCalled();
   expect(openConnection).not.toHaveBeenCalled();
   expect(executeQuery).not.toHaveBeenCalled();
@@ -167,6 +170,14 @@ it('activates a disconnected database only after the explicit connection finishe
   expect(executeQuery).not.toHaveBeenCalled();
 });
 
+/** Choose a menu row and wait for the menu's blink and fade. */
+async function choose(name: string): Promise<void> {
+  fireEvent.click(screen.getByRole('menuitem', { name }));
+  await waitFor(() => {
+    expect(screen.queryByRole('menu')).toBeNull();
+  });
+}
+
 it('pins, closes others and to the right from the tab menu, and reorders by drag', async () => {
   mount();
   await connectTo();
@@ -184,13 +195,13 @@ it('pins, closes others and to the right from the tab menu, and reorders by drag
     fireEvent.contextMenu(screen.getByRole('tab', { name: new RegExp(name) }));
   };
   menuFor('SQL Query 3');
-  fireEvent.click(screen.getByRole('menuitem', { name: 'Pin Tab' }));
+  await choose('Pin Tab');
   expect(labels()[0]).toBe('SQL Query 3');
-  expect(screen.getByRole('img', { name: 'Pinned' })).toBeInTheDocument();
+  expect(
+    screen.getByRole('tab', { name: /SQL Query 3/ }).closest('[data-pinned]'),
+  ).toHaveAttribute('data-pinned', 'true');
   menuFor('SQL Query 2');
-  fireEvent.click(
-    screen.getByRole('menuitem', { name: 'Close Tabs to the Right' }),
-  );
+  await choose('Close Tabs to the Right');
   expect(labels()).toEqual(['SQL Query 3', 'SQL Query 1', 'SQL Query 2']);
   const first = screen.getByRole('tab', { name: /SQL Query 1/ });
   fireEvent.pointerDown(first.parentElement ?? first, {
@@ -204,7 +215,7 @@ it('pins, closes others and to the right from the tab menu, and reorders by drag
   expect(first).toHaveAttribute('aria-selected', 'false');
   expect(labels()).toEqual(['SQL Query 3', 'SQL Query 2', 'SQL Query 1']);
   menuFor('SQL Query 1');
-  fireEvent.click(screen.getByRole('menuitem', { name: 'Close Other Tabs' }));
+  await choose('Close Other Tabs');
   expect(labels()).toEqual(['SQL Query 3', 'SQL Query 1']);
 });
 
@@ -214,23 +225,24 @@ it('renames a tab from the tab menu and lists every tab when they overflow', asy
   for (let count = 0; count < 3; count += 1)
     fireEvent.click(screen.getByRole('button', { name: 'New tab' }));
   fireEvent.contextMenu(screen.getByRole('tab', { name: /SQL Query 2/ }));
-  fireEvent.click(screen.getByRole('menuitem', { name: 'Rename Tab…' }));
+  await choose('Rename Tab…');
   const field = screen.getByRole('textbox', { name: 'Tab name' });
   fireEvent.change(field, { target: { value: 'Monthly totals' } });
   fireEvent.keyDown(field, { key: 'Enter' });
   expect(screen.getByRole('tab', { name: /Monthly totals/ })).toBeVisible();
-  expect(screen.queryByRole('button', { name: 'All tabs' })).toBeNull();
-  vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(900);
   fireEvent.click(screen.getByRole('button', { name: 'New tab' }));
+  // The ⌄ list searches every tab of the window.
   fireEvent.click(screen.getByRole('button', { name: 'All tabs' }));
-  const items = screen.getAllByRole('menuitemradio');
+  const list = screen.getByRole('dialog', { name: 'Search tabs' });
+  const items = within(list).getAllByRole('option');
   expect(items.map((item) => item.textContent)).toEqual([
-    'SQL Query 1',
-    'Monthly totals',
-    'SQL Query 3',
-    '✓SQL Query 4',
+    expect.stringMatching(/^SQL Query 1/),
+    expect.stringMatching(/^Monthly totals/),
+    expect.stringMatching(/^SQL Query 3/),
+    expect.stringMatching(/^SQL Query 4/),
   ]);
-  fireEvent.click(screen.getByRole('menuitemradio', { name: /Monthly/ }));
+  expect(items[3]).toHaveAttribute('aria-selected', 'true');
+  fireEvent.click(within(list).getByRole('option', { name: /Monthly/ }));
   expect(screen.getByRole('tab', { name: /Monthly totals/ })).toHaveAttribute(
     'aria-selected',
     'true',

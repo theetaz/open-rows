@@ -3,9 +3,6 @@ import { defineMessages } from '@openrows/ui/i18n';
 
 export const { t } = defineMessages({
   checkingApplicationLock: 'Checking application lock…',
-  safetyPolicy: 'Safety policy',
-  noticeAuthenticatePolicies:
-    '{notice} Authenticate policies use matching Confirm behaviour.',
   unrestricted: 'Unrestricted',
   confirmAll: 'Confirm all',
   confirmWrites: 'Confirm writes',

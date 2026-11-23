@@ -7,6 +7,7 @@ import { TextCache } from './text';
 import { paintMetrics } from './metrics';
 import { CellPainter, textWidth } from './cellPaint';
 import { SelectionPainter } from './selectionPaint';
+import { HeaderPainter } from './headerPaint';
 
 /** Four canvas layers use persistent contexts and reusable ranges. */
 export class CanvasPainter {
@@ -22,6 +23,7 @@ export class CanvasPainter {
   private selectionModel: GridProps['selection'] | undefined;
   private readonly cells: CellPainter;
   private readonly selected = new SelectionPainter(this);
+  private readonly heading = new HeaderPainter(this);
   dpr = window.devicePixelRatio || 1;
   constructor(
     host: HTMLElement,
@@ -126,6 +128,7 @@ export class CanvasPainter {
         }
       }
     }
+    this.heading.prepare(context);
     this.metrics.prepareMs += performance.now() - started;
   }
   /** Timed complete paint, with no arrays, objects or strings allocated in the hot loop. */
@@ -145,7 +148,8 @@ export class CanvasPainter {
     }
     if (this.dirty || horizontal) {
       this.clear(2);
-      this.header();
+      const context = this.contexts[2];
+      if (context) this.heading.paint(context);
     }
     if (this.dirty || moved || this.selectionModel !== this.props.selection) {
       this.clear(3);
@@ -217,7 +221,8 @@ export class CanvasPainter {
     context.beginPath();
     context.rect(box.x, box.y, box.width, box.height);
     context.clip();
-    this.fill(context, row, selected);
+    const gutter = col === this.props.rowHeaderColumn;
+    this.fill(context, row, selected, gutter);
     if (!cell) {
       this.metrics.placeholders++;
       context.fillStyle = theme.colours['control-fill'];
@@ -230,6 +235,7 @@ export class CanvasPainter {
     } else {
       if (!selected) this.cells.background(context, cell);
       this.cells.focused = selected && this.isFocus(row, col);
+      this.cells.gutter = gutter ? (selected ? 'selected' : 'plain') : null;
       this.cells.content(
         context,
         cell,
@@ -255,13 +261,15 @@ export class CanvasPainter {
     context: CanvasRenderingContext2D,
     row: number,
     selected: boolean,
+    gutter: boolean,
   ): void {
     const { colours } = this.props.theme,
       box = this.cells.box,
-      striped = this.props.striped !== false && row % 2 === 1;
-    if (selected) {
-      // The selection layer repaints the cell opaquely, then tints it.
-      context.fillStyle = colours.window;
+      striped = !gutter && this.props.striped !== false && row % 2 === 1;
+    if (selected || gutter) {
+      // The selection layer repaints the cell opaquely, then tints it; the
+      // row-number gutter sits on the opaque header colour.
+      context.fillStyle = gutter ? colours['grid-head'] : colours.window;
       context.fillRect(box.x, box.y, box.width, box.height);
     }
     if (striped) {
@@ -271,63 +279,6 @@ export class CanvasPainter {
     if (!selected) return;
     context.fillStyle = colours['accent-soft'];
     context.fillRect(box.x, box.y, box.width, box.height);
-  }
-  /** The sticky header: window colour, 11 px titles, a hairline below. */
-  private header(): void {
-    const context = this.contexts[2];
-    if (!context) return;
-    const { colours, headerFont } = this.props.theme,
-      height = this.layout.headerHeight;
-    context.save();
-    if (headerFont) context.font = headerFont;
-    for (const pinned of [false, true]) {
-      context.fillStyle = colours.window;
-      context.fillRect(
-        0,
-        0,
-        pinned ? this.layout.pinnedWidth : this.view.width,
-        height,
-      );
-      const first = pinned ? 0 : this.range.c0,
-        last = pinned ? this.layout.pinned - 1 : this.range.c1;
-      for (let col = first; col <= last; col++)
-        this.headerCell(context, col, pinned);
-    }
-    context.fillStyle = colours.separator;
-    context.fillRect(0, height - 1 / this.dpr, this.view.width, 1 / this.dpr);
-    context.restore();
-  }
-  private headerCell(
-    context: CanvasRenderingContext2D,
-    col: number,
-    pinned: boolean,
-  ): void {
-    const column = this.props.source.columns[col];
-    if (!column) return;
-    const { colours } = this.props.theme,
-      height = this.layout.headerHeight;
-    const x = (this.layout.offsets[col] ?? 0) - (pinned ? 0 : this.view.x);
-    const arrow = column.sort ? SORT_ROOM : 0;
-    context.save();
-    context.beginPath();
-    context.rect(x, 0, column.width - arrow, height);
-    context.clip();
-    context.fillStyle = column.sort ? colours.text : colours.secondary;
-    // Numeric columns align their title with their values, like the kit's grid.
-    const end = column.align === 'end';
-    context.textAlign = end ? 'right' : 'left';
-    const at = end ? x + column.width - arrow - 8 : x + 8;
-    context.fillText(column.title, snap(at, this.dpr), height / 2);
-    context.restore();
-    context.fillStyle = colours['grid-line'];
-    context.fillRect(x + column.width - 1 / this.dpr, 0, 1 / this.dpr, height);
-    context.fillStyle = colours.secondary;
-    if (column.sort)
-      sortTriangle(context, {
-        cx: x + column.width - SORT_ROOM / 2,
-        cy: height / 2,
-        up: column.sort === 'ascending',
-      });
   }
 }
 
@@ -339,23 +290,4 @@ function layoutFor(props: GridProps): GridLayout {
     rowHeight,
     headerHeight ?? rowHeight,
   );
-}
-
-/** Header room reserved for the sort triangle. */
-const SORT_ROOM = 18;
-
-/** A small filled ▲/▼ centred on (cx, cy), right-aligned in the header like TablePlus. */
-function sortTriangle(
-  context: CanvasRenderingContext2D,
-  at: { cx: number; cy: number; up: boolean },
-): void {
-  const { cx, cy } = at;
-  const base = at.up ? cy + 2 : cy - 2,
-    apex = at.up ? cy - 2.5 : cy + 2.5;
-  context.beginPath();
-  context.moveTo(cx - 3.5, base);
-  context.lineTo(cx + 3.5, base);
-  context.lineTo(cx, apex);
-  context.closePath();
-  context.fill();
 }

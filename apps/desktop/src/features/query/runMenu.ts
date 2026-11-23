@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import type { MenuEntry } from '../../shell/CascadeMenu';
+import type { MenuEntry } from '@openrows/ui';
 import type { RunScope } from './request';
 import { t } from './lazyMessages';
 

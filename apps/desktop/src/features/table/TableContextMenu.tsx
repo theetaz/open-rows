@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useCallback, useEffect, useState } from 'react';
-import { CascadeMenu } from '../../shell/CascadeMenu';
-import type { MenuEntry } from '../../shell/CascadeMenu';
+import { Icon, Menu } from '@openrows/ui';
+import type { MenuEntry } from '@openrows/ui';
+import { useBindings } from '../commands';
 import {
   copyAsMenu,
   copyFailure,
@@ -16,10 +17,10 @@ import type { QuickOperator } from './filters/QuickFilter';
 import { quickFiltered } from './filters/quickFilters';
 import type { FilterOperatorDto } from '@openrows/ipc';
 import { contextActions } from './contextMenuActions';
+import { actionEntries, separate, withGlyph } from './contextMenuEntries';
 import { linkLabel } from './links/foreignKeys';
 import type { KeyLink } from './links/foreignKeys';
 import type {
-  Action,
   ContextMenuProps as Props,
   ContextTarget,
   MenuSelection as Selection,
@@ -132,6 +133,7 @@ export function useTableContext(props: ContextArgs): {
 function TableContextMenu(props: Props): React.JSX.Element {
   const [fields, setFields] = useState<readonly RowField[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const bindings = useBindings();
   const { selection } = props;
   useEffect(() => {
     // Staged inserts have no server row to read yet.
@@ -158,65 +160,82 @@ function TableContextMenu(props: Props): React.JSX.Element {
       props.editing.fail(new Error(t('clipboardAccessWas')));
     });
   });
+  const built = actionEntries(actions, bindings);
   return (
-    <CascadeMenu
-      x={selection.x}
-      y={selection.y}
+    <Menu
+      at={{ x: selection.x, y: selection.y }}
       label={t('tableActions')}
-      entries={menuEntries(props, actions)}
+      entries={menuEntries(props, built)}
       onClose={props.onClose}
       footer={error && <p role="alert">{error}</p>}
     />
   );
 }
 
-/** The actions as menu rows in their groups, then `Copy as ▸` for the selection. */
-function menuEntries(props: Props, actions: readonly Action[]): MenuEntry[] {
-  const entries: MenuEntry[] = actions.flatMap((action, index) => {
-    const item: MenuEntry = {
-      kind: 'item',
-      label: action.label,
-      run: action.run,
-      disabled: action.disabled ?? false,
-      danger: action.danger ?? false,
-    };
-    return action.separated && index > 0
-      ? [{ kind: 'separator' as const }, item]
-      : [item];
-  });
+type Built = ReturnType<typeof actionEntries>;
+
+/** Copy the selection (or the one row) in a format, reporting failures. */
+function copyIn(props: Props, ranges: Props['selection']['ranges']) {
   const { grid, selection, editing } = props;
-  entries.push(...keyEntries(props), ...layoutEntries(props));
-  if (!grid) return entries;
   const source = {
     result: selection.result,
-    ranges: selection.ranges.map((range) => ({
+    ranges: ranges.map((range) => ({
       ...range,
       r1: Math.min(range.r1, selection.result.rows - 1),
     })),
   };
-  return [
-    ...entries,
-    { kind: 'separator' },
-    copyAsMenu((format) => {
-      copySelection(format, source, grid.copyTarget).catch(
-        (failure: unknown) => {
-          editing.fail(new Error(copyFailure(failure)));
-        },
-      );
-    }),
-  ];
+  return copyAsMenu((format) => {
+    if (!grid) return;
+    copySelection(format, source, grid.copyTarget).catch((failure: unknown) => {
+      editing.fail(new Error(copyFailure(failure)));
+    });
+  });
+}
+
+/**
+ * The actions' rows, the foreign-key submenus before Edit row…, then the
+ * grid's copy formats: inside `Copy row as ▸` for one cell or row, else as
+ * `Copy as ▸` for the selection; layout and export last.
+ */
+function menuEntries(props: Props, built: Built): MenuEntry[] {
+  const { grid, selection } = props;
+  const entries = [...built.entries];
+  const keys = keyEntries(props);
+  const before = entries.findIndex(
+    (entry) => entry.kind === 'item' && entry.label === t('editRow'),
+  );
+  if (before > 0) entries.splice(before - 1, 0, ...keys);
+  else entries.push(...keys);
+  if (!grid) return entries;
+  const rowCopy = built.groups.get(t('copyRowAs'));
+  const { result, row } = selection;
+  if (rowCopy && row < result.rows) {
+    const last = result.columns.length - 1;
+    const formats = copyIn(props, [{ r0: row, r1: row, c0: 0, c1: last }]);
+    if (formats.kind === 'submenu')
+      rowCopy.push({ kind: 'separator' }, ...formats.entries);
+  } else if (!rowCopy) {
+    separate(entries);
+    entries.push(withGlyph(copyIn(props, selection.ranges), 'copy'));
+  }
+  return [...entries, ...layoutEntries(props)];
 }
 
 /** `Open referenced row ▸` and `Referenced by ▸` for a page row (FR-GRID-07). */
 function keyEntries({ jumps, selection, onClose }: Props): MenuEntry[] {
   const { result, row, kind } = selection;
   if (!jumps || kind === 'column' || row >= result.rows) return [];
-  const submenu = (label: string, links: readonly KeyLink[]): MenuEntry[] =>
+  const submenu = (
+    label: string,
+    links: readonly KeyLink[],
+    icon: React.JSX.Element | null,
+  ): MenuEntry[] =>
     links.length
       ? [
           {
             kind: 'submenu',
             label,
+            ...(icon ? { icon } : {}),
             entries: links.map((link) => ({
               kind: 'item',
               label: linkLabel(link),
@@ -229,8 +248,12 @@ function keyEntries({ jumps, selection, onClose }: Props): MenuEntry[] {
         ]
       : [];
   const entries = [
-    ...submenu(t('openReferencedRow'), jumps.links.outgoing),
-    ...submenu(t('referenced'), jumps.links.incoming),
+    ...submenu(
+      t('openReferencedRow'),
+      jumps.links.outgoing,
+      <Icon name="arrowUpRight" />,
+    ),
+    ...submenu(t('referenced'), jumps.links.incoming, null),
   ];
   return entries.length ? [{ kind: 'separator' }, ...entries] : [];
 }
@@ -238,25 +261,38 @@ function keyEntries({ jumps, selection, onClose }: Props): MenuEntry[] {
 /** Additional presentation/export actions supplied by a query-result host. */
 function layoutEntries({ grid, selection, onClose }: Props): MenuEntry[] {
   if (!grid) return [];
-  const actions: { label: string; run: () => void }[] = [];
+  const actions: {
+    label: string;
+    icon: 'fit' | 'columns' | 'upload';
+    run: () => void;
+  }[] = [];
   if (selection.kind === 'column') {
     if (grid.fit)
       actions.push({
         label: t('sizeColumnFit'),
+        icon: 'fit',
         run: () => grid.fit?.(selection.column),
       });
-    if (grid.reset) actions.push({ label: t('resetColumns'), run: grid.reset });
+    if (grid.reset)
+      actions.push({
+        label: t('resetColumns'),
+        icon: 'columns',
+        run: grid.reset,
+      });
   } else if (grid.exportRows)
     actions.push({
       label: t('exportSelectedRows'),
+      icon: 'upload',
       run: () => grid.exportRows?.(selection),
     });
-  return actions.map(({ label, run }) => ({
+  const rows: MenuEntry[] = actions.map(({ label, icon, run }) => ({
     kind: 'item',
     label,
+    icon: <Icon name={icon} />,
     run: () => {
       onClose();
       run();
     },
   }));
+  return rows.length ? [{ kind: 'separator' }, ...rows] : [];
 }

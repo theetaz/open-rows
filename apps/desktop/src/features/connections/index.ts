@@ -8,6 +8,7 @@ export { insecureReasons } from './insecure';
 export { ConnectionSheets } from './ConnectionSheets';
 export { openedDatabase, sessionOf, statusLabel } from './sessions';
 export { needsConsent } from './sessionState';
+export { NewConnectionFlow } from './flow/NewConnectionFlow';
 export { SshPrompts } from './SshPromptSheet';
 export type { OpenedDatabase, SessionStatus } from './sessions';
 export { useConnections } from './useConnections';

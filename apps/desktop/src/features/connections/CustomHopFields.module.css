@@ -1,19 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-.argumentRow {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--or-space-8);
-}
-.argument {
-  flex: 1;
-  min-width: 0;
-}
+/* Reorder and remove buttons trail an argument row. */
 .actions {
+  grid-column: 3;
+  grid-row: 1;
   display: flex;
   gap: var(--or-space-4);
-}
-
-.help {
-  color: var(--or-secondary);
-  font-size: var(--or-text-11);
 }

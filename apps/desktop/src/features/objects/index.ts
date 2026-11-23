@@ -6,7 +6,6 @@ export {
   OBJECT_COMMANDS,
 } from './commands';
 export type { CommandContext, ObjectCommand } from './commands';
-export { EntryItems } from './EntryItems';
 export { ObjectEditors } from './ObjectEditors';
 export { containerEntries, newObjectEntries, objectEntries } from './menus';
 export type { ObjectEditorRequest } from './requests';

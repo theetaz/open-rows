@@ -1,279 +1,88 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /*
- * Unified toolbar (design/revamp v3): glass capsules either side of an
- * address capsule sized to its content, solid behind. Buttons are 30 × 26
- * inside 32 px capsules.
+ * The window's top (DESIGN.md §6, §7): the tab strip beside the traffic
+ * lights, then the toolbar: sidebar and history, the path bar filling the
+ * row, the query capsule and the inspector. Every control is a 32 px
+ * capsule on one centre line.
  */
-.toolbar {
-  display: grid;
-  /* The middle column centres the address capsule between the two sides. */
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--or-space-12);
-  flex: none;
-  block-size: var(--or-toolbar-height);
-  min-inline-size: 0;
-  padding-inline: var(--or-toolbar-inset) var(--or-space-12);
-  background: var(--or-toolbar);
-  box-shadow: inset 0 calc(-1 * var(--or-border-width)) var(--or-separator);
-  user-select: none;
-  white-space: nowrap;
-  container: toolbar / inline-size;
+.top {
   position: relative;
-  transition: padding-inline-start var(--or-motion-panel)
-    var(--or-motion-easing);
+  flex: none;
 }
-/* With the sidebar closed the traffic lights sit over the toolbar's start. */
-.toolbar[data-sidebar-state='closed'] {
-  padding-inline-start: var(--or-traffic-light-clearance);
-}
-/* Loud environments (prod, staging, custom) get a strip (FR-CONN-06). */
-.toolbar::after {
+/* Loud environments (prod, staging, custom) get a strip across the top (FR-CONN-06). */
+.top::before {
   content: '';
   position: absolute;
   inset-inline: 0;
-  inset-block-end: 0;
+  inset-block-start: 0;
+  z-index: 3;
   block-size: var(--or-env-strip-height);
   background: var(--env-color, transparent);
   pointer-events: none;
 }
 
-.side {
+.toolbar {
   display: flex;
   align-items: center;
   gap: var(--or-toolbar-gap);
+  /* 44 px: the 32 px capsules with 6 px above and below. */
+  block-size: calc(var(--or-glass-height) + 2 * var(--or-space-6));
   min-inline-size: 0;
+  box-sizing: border-box;
+  padding-inline: var(--or-space-10);
+  user-select: none;
+  white-space: nowrap;
+  container: toolbar / inline-size;
 }
-.end {
-  justify-content: flex-end;
-}
-.toolbar [role='group'] {
+.toolbar > [role='group'] {
   flex: none;
 }
-.toolbar [role='group'] button {
-  inline-size: var(--or-glass-button-width);
-  min-inline-size: var(--or-glass-button-width);
-  block-size: var(--or-glass-button-height);
-  min-block-size: var(--or-glass-button-height);
-  border-radius: var(--or-radius-capsule);
-  background: transparent;
-  color: var(--or-text);
+.toolbar > [role='group'] svg {
+  inline-size: var(--or-toolbar-icon-size);
+  block-size: var(--or-toolbar-icon-size);
 }
-.toolbar [role='group'] > button:only-child:not(.labelled) {
-  inline-size: var(--or-glass-button-height);
-  min-inline-size: var(--or-glass-button-height);
-}
-.toolbar [role='group'] button:hover:not(:disabled) {
-  background: var(--or-hover);
-  color: var(--or-text);
-}
-.toolbar [role='group'] button:active:not(:disabled) {
-  background: var(--or-press);
-  filter: none;
-  transform: scale(0.96);
-}
-.toolbar [role='group'] button[aria-pressed='true'] {
-  background: var(--or-fill-2);
-  color: var(--or-text);
-}
-.toolbar [role='group'] button:disabled {
+.toolbar > [role='group'] button:disabled {
   background: transparent;
   color: var(--or-tertiary);
   opacity: 1;
 }
-.toolbar [role='group'] button svg {
-  inline-size: var(--or-toolbar-icon-size);
-  block-size: var(--or-toolbar-icon-size);
+/* The path bar fills the row between the capsules. */
+.path {
+  display: flex;
+  flex: 1 1 auto;
+  min-inline-size: 0;
 }
-/* A capsule button with a word: the safety lock, SQL. */
-.toolbar [role='group'] button.labelled {
+/* A capsule button with a word: Query. */
+.toolbar > [role='group'] > button.labelled {
   inline-size: auto;
   gap: var(--or-space-6);
   padding: 0 var(--or-space-10) 0 var(--or-space-8);
-  font-size: var(--or-text-12);
+  font-size: var(--or-text-13);
   font-weight: var(--or-weight-medium);
 }
-.toolbar [role='group'] button.labelled svg {
+.toolbar > [role='group'] > button.labelled svg {
   inline-size: 14px;
   block-size: 14px;
   color: var(--or-secondary);
-}
-/* Unrestricted, the lock is a quiet open lock; protected, a green lock and its word. */
-.toolbar [role='group'] button.lock svg {
-  color: var(--or-secondary);
-}
-.toolbar [role='group'] button.labelled[data-on='true'] {
-  background: transparent;
-}
-.toolbar [role='group'] button.labelled[data-on='true'] svg {
-  color: var(--or-success-fg);
 }
 
-/* The address capsule: what you are connected to, sized to its content. */
-.context {
-  display: flex;
-  align-items: center;
-  justify-self: center;
-  gap: var(--or-space-6);
-  inline-size: fit-content;
-  min-inline-size: 0;
-  max-inline-size: min(100%, var(--or-address-width));
-  block-size: var(--or-control-height);
-  box-sizing: border-box;
-  padding: 0 3px 0 var(--or-space-8);
-  border-radius: var(--or-radius-capsule);
-  background: var(--or-address);
-  color: var(--or-secondary);
-  font-size: var(--or-text-12);
+/* The query area keeps its place in the layout while a window tab shows. */
+.pane {
+  display: contents;
 }
-.context > * {
-  flex-shrink: 0;
-}
-/* Parts shrink in order of importance: the object first, then the database. */
-.context > .address {
-  display: flex;
-  flex: 0 1 auto;
-  align-items: baseline;
-  gap: var(--or-space-4);
-  min-inline-size: 0;
-  overflow: hidden;
-  white-space: nowrap;
-}
-.address > [data-part='name'] {
-  flex-shrink: 0;
-}
-.segment {
-  display: flex;
-  align-items: baseline;
-  gap: var(--or-space-4);
-  overflow: hidden;
-}
-/* The database keeps at least three characters after its `›`. */
-.segment[data-part='database'] {
-  flex-shrink: 1;
-  min-inline-size: calc(4ch + var(--or-space-4));
-}
-.segment[data-part='object'] {
-  flex-shrink: 1000;
-  min-inline-size: 0;
-}
-.text {
-  min-inline-size: 0;
-}
-.text,
-.databaseSegment {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.databaseSegment {
-  min-inline-size: 3ch;
-}
-.address strong {
-  color: var(--or-address-text);
-  font-weight: var(--or-weight-medium);
-}
-/* The environment as a word on its soft tone (the kit's status pill). */
-.envTag {
-  --env-fg: var(--or-neutral-fg);
-  --env-bg: var(--or-neutral-bg);
-  padding-inline: var(--or-space-6);
-  border-radius: var(--or-radius-status);
-  /* Tone over solid: the address capsule's fill must not change the contrast. */
-  background:
-    linear-gradient(var(--env-bg), var(--env-bg)), var(--or-panel-solid);
-  color: var(--env-fg);
-  font-size: var(--or-text-11);
-  font-weight: var(--or-weight-medium);
-  line-height: 16px;
-}
-.envTag[data-env='local'] {
-  --env-fg: var(--or-local-fg);
-  --env-bg: var(--or-local-bg);
-}
-.envTag[data-env='dev'] {
-  --env-fg: var(--or-dev-fg);
-  --env-bg: var(--or-dev-bg);
-}
-.envTag[data-env='staging'] {
-  --env-fg: var(--or-staging-fg);
-  --env-bg: var(--or-staging-bg);
-}
-.envTag[data-env='prod'] {
-  --env-fg: var(--or-prod-fg);
-  --env-bg: var(--or-prod-bg);
-}
-.envTag[data-env='custom']::before {
-  content: '';
-  display: inline-block;
-  inline-size: var(--or-dot-size);
-  block-size: var(--or-dot-size);
-  margin-inline-end: var(--or-space-4);
-  border-radius: var(--or-radius-capsule);
-  background: var(--env-color, currentColor);
-}
-.sep {
-  flex: none;
-  color: var(--or-tertiary);
-}
-.databaseSegment {
-  padding: 0 var(--or-space-2);
-  border: 0;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--or-address-text);
-  font: inherit;
-  cursor: default;
-}
-.databaseSegment:hover:not(:disabled) {
-  background: var(--or-hover);
-}
-.databaseSegment:focus-visible {
-  outline: var(--or-focus-width) solid var(--or-focus);
-}
-/* Chrome-style star: filled for a favourite, an outline otherwise. */
-.star {
-  inline-size: 22px;
-  min-inline-size: 22px;
-  block-size: 22px;
-  min-block-size: 22px;
-  border-radius: var(--or-radius-capsule);
-  color: var(--or-secondary);
-}
-.star svg,
-.refresh svg {
-  inline-size: 14px;
-  block-size: 14px;
-}
-.star[aria-pressed='true'] svg {
-  fill: currentColor;
-}
-.refresh {
-  border-radius: var(--or-radius-capsule);
+.pane[hidden] {
+  display: none;
 }
 
 :global([data-window-active='false']) .toolbar [role='group'] button {
   color: var(--or-tertiary);
 }
-:global([data-motion='reduced']) .toolbar {
-  transition: none;
-}
-:global([data-motion='reduced']) .toolbar [role='group'] button:active {
-  transform: none;
-}
-@media (prefers-reduced-motion: reduce) {
-  .toolbar {
-    transition: none;
-  }
-  .toolbar [role='group'] button:active:not(:disabled) {
-    transform: none;
-  }
-}
-/* Below ~2 × 360 px the capsule words go first, so the address keeps its room. */
+/* Below ~2 × 360 px the capsule words go first, so the path keeps its room. */
 @container toolbar (max-width: 760px) {
-  .toolbar [role='group'] button.labelled > span {
+  .toolbar > [role='group'] > button.labelled > span {
     display: none;
   }
-  .toolbar [role='group'] button.labelled {
+  .toolbar > [role='group'] > button.labelled {
     padding: 0;
     inline-size: var(--or-glass-button-width);
   }

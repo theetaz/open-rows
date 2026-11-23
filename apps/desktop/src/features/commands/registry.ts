@@ -80,6 +80,26 @@ export const COMMANDS: readonly CommandSpec[] = [
     shortcut: null,
   },
   { id: 'close-tab', label: t('closeCurrentTab'), shortcut: 'Cmd+W' },
+  {
+    id: 'close-other-tabs',
+    label: t('closeOtherTabs'),
+    shortcut: 'Alt+Cmd+W',
+  },
+  {
+    id: 'next-tab',
+    label: t('selectNextTab'),
+    shortcut: 'Shift+Cmd+BracketRight',
+  },
+  {
+    id: 'previous-tab',
+    label: t('selectPreviousTab'),
+    shortcut: 'Shift+Cmd+BracketLeft',
+  },
+  { id: 'duplicate-tab', label: t('duplicateTab'), shortcut: 'Shift+Cmd+K' },
+  { id: 'pin-tab', label: t('pinTab'), shortcut: null },
+  { id: 'go-back', label: t('goBack'), shortcut: 'Ctrl+Cmd+ArrowLeft' },
+  { id: 'go-forward', label: t('goForward'), shortcut: 'Ctrl+Cmd+ArrowRight' },
+  { id: 'open-location', label: t('openLocation'), shortcut: 'Cmd+L' },
   { id: 'database', label: t('openDatabase'), shortcut: 'Cmd+K' },
   {
     id: 'toggle-favourite',
@@ -270,6 +290,12 @@ export const RESERVED: Readonly<Record<string, string>> = {
   ...Object.fromEntries(
     Array.from({ length: 9 }, (_, index) => [
       `Cmd+${String(index + 1)}`,
+      t('selectTabNumber'),
+    ]),
+  ),
+  ...Object.fromEntries(
+    Array.from({ length: 9 }, (_, index) => [
+      `Alt+Cmd+${String(index + 1)}`,
       t('switchConnection2'),
     ]),
   ),

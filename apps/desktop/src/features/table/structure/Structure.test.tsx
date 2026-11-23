@@ -20,6 +20,8 @@ import { QueryContent, useQueryTabs } from '../../query';
 import { openTableView } from '../open';
 import { TableInfoPanel } from './TableInfoPanel';
 import type { SelectedTable } from './TableInfoPanel';
+// Menus run their command at once instead of after the blink and fade.
+document.documentElement.dataset.motion = 'reduced';
 
 vi.mock('@openrows/ipc', async () =>
   (await import('../../../test/ipcStub')).ipcStub(),
@@ -264,7 +266,9 @@ it('stages new and dropped indexes, never constraint indexes', async () => {
   await user.click(screen.getByRole('radio', { name: 'Index' }));
   const grid = screen.getByRole('grid', { name: 'Indexes' });
   fireEvent.contextMenu(within(grid).getByText('orders_pkey'));
-  expect(screen.getByRole('menuitem', { name: 'Delete index' })).toBeDisabled();
+  expect(
+    screen.getByRole('menuitem', { name: 'Delete index' }),
+  ).toHaveAttribute('aria-disabled', 'true');
   await user.keyboard('{Escape}');
   fireEvent.contextMenu(within(grid).getByText('orders_name_idx'));
   await user.click(screen.getByRole('menuitem', { name: 'Delete index' }));

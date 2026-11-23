@@ -8,7 +8,7 @@ import {
 import type { CloudAuthDraft } from './cloudAuthForm';
 import { fieldError } from './form';
 import type { ConnectionForm } from './useConnectionForm';
-import styles from './ConnectionSheet.module.css';
+import styles from './flow/Form.module.css';
 import { t } from './messages/routes';
 
 const HINTS = {

@@ -11,7 +11,7 @@ import {
   readSqlFile,
 } from '@openrows/ipc';
 import type { ProjectDto } from '@openrows/ipc';
-import type { MenuEntry } from '../../shell/CascadeMenu';
+import type { MenuEntry } from '@openrows/ui';
 import { reloadProject, reportProjectError } from './projectStore';
 import { insertSavedSql } from '../query/historyInsert';
 import { copyProjectSql } from './sqlClipboard';

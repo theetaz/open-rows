@@ -39,7 +39,6 @@ export { Icon } from './icons/Icon';
 export type { IconName } from './icons/Icon';
 export { ThemeProvider, useTheme } from './theme/ThemeProvider';
 export type { ThemeMode } from './theme/storage';
-export { Tabs } from './components/Tabs';
 export { DisclosureSection } from './components/DisclosureSection';
 export { TreeItem } from './components/TreeItem';
 export { Tree, TreeNode, TreeNote } from './components/Tree';

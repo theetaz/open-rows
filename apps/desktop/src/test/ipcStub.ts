@@ -299,7 +299,7 @@ export function ipcStub(
     ...mcpStub(),
     ...appParityStub(),
 
-    ...connectionTransferStub(),
+    ...connectionTransferStub(profiles),
     listProfiles: vi.fn(() =>
       Promise.resolve({ profiles: [...profiles], unreadable: [] }),
     ),
@@ -374,8 +374,16 @@ export function ipcStub(
   };
 }
 
-function connectionTransferStub(): Record<string, unknown> {
+function connectionTransferStub(
+  profiles: readonly ProfileDto[],
+): Record<string, unknown> {
   return {
+    getProfile: vi.fn((id: string) => {
+      const found = profiles.find((item) => item.id === id);
+      return found
+        ? Promise.resolve(found)
+        : Promise.reject(new Error('Unknown connection'));
+    }),
     cancelCredential: vi.fn().mockResolvedValue(undefined),
     testCredential: vi.fn().mockResolvedValue(undefined),
     exportConnections: vi.fn().mockResolvedValue(null),

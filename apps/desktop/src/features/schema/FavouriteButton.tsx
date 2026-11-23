@@ -5,38 +5,37 @@ import { sidebarObjectKey } from './sidebarIdentity';
 import type { SidebarObject } from './sidebarIdentity';
 import { t } from './messages';
 
-/**
- * Shared favourite control: the address bar's star (`className` styles it)
- * and the tree context menu's item.
- */
-export function FavouriteButton(props: {
-  object: SidebarObject;
-  menu?: boolean;
-  className?: string | undefined;
-}): React.JSX.Element {
+/** Whether `object` is a favourite, its toggle's label and the toggle. */
+export function useFavourite(object: SidebarObject | null): {
+  starred: boolean;
+  label: string;
+  toggle: () => void;
+} {
   // Derive from the subscribed snapshot: the React Compiler memoizes a
   // render-time store read on its unchanged argument, freezing the star.
   const saved = useSidebarObjects(
-    props.object.profileId,
-    props.object.database,
+    object?.profileId ?? '',
+    object?.database ?? '',
   );
-  const key = sidebarObjectKey(props.object);
+  const key = object ? sidebarObjectKey(object) : '';
   const starred = saved.favourites.some(
     (item) => sidebarObjectKey(item) === key,
   );
-  const label = starred ? t('removeFavourite') : t('addFavourite');
-  if (props.menu)
-    return (
-      <button
-        type="button"
-        role="menuitem"
-        onClick={() => {
-          toggleFavourite(props.object);
-        }}
-      >
-        {label}
-      </button>
-    );
+  return {
+    starred,
+    label: starred ? t('removeFavourite') : t('addFavourite'),
+    toggle: () => {
+      if (object) toggleFavourite(object);
+    },
+  };
+}
+
+/** The address bar's favourite star (`className` styles it). */
+export function FavouriteButton(props: {
+  object: SidebarObject;
+  className?: string | undefined;
+}): React.JSX.Element {
+  const { starred, label, toggle } = useFavourite(props.object);
   return (
     <IconButton
       size="sm"
@@ -45,9 +44,7 @@ export function FavouriteButton(props: {
       aria-label={label}
       title={label}
       aria-pressed={starred}
-      onClick={() => {
-        toggleFavourite(props.object);
-      }}
+      onClick={toggle}
     >
       <Icon name="star" />
     </IconButton>

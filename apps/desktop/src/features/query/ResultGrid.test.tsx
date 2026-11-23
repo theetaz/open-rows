@@ -10,6 +10,8 @@ import { displayWindow } from '../../results/displayWindow';
 import { updateTableSettings } from '../settings/tableSettings';
 import { ResultGrid } from './ResultGrid';
 import type { ResultMeta } from './run';
+// Menus run their command at once instead of after the blink and fade.
+document.documentElement.dataset.motion = 'reduced';
 
 vi.mock('@openrows/grid/canvas', () => ({ mountGrid: vi.fn() }));
 vi.mock('../../results/displayWindow', () => ({ displayWindow: vi.fn() }));

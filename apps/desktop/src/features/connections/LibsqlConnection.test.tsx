@@ -5,7 +5,7 @@ import { expect, it, vi } from 'vitest';
 import { createProfile } from '@openrows/ipc';
 import { ThemeProvider } from '@openrows/ui';
 import { profile } from '../../test/ipcStub';
-import { ConnectionSheet } from './ConnectionSheet';
+import { mountFlow, saveFlow } from './flow/flowTestKit';
 import { PasswordPromptSheet } from './PasswordPromptSheet';
 
 vi.mock('@openrows/ipc', async () =>
@@ -13,18 +13,7 @@ vi.mock('@openrows/ipc', async () =>
 );
 
 it('saves a remote endpoint with its token policy and no user or database', async () => {
-  const user = userEvent.setup();
-  render(
-    <ThemeProvider>
-      <ConnectionSheet
-        engine="libsql"
-        onClose={vi.fn()}
-        onSaved={vi.fn()}
-        onDelete={vi.fn()}
-        onDuplicate={vi.fn()}
-      />
-    </ThemeProvider>,
-  );
+  const { user } = await mountFlow({ engine: 'libsql' });
   expect(screen.queryByLabelText('User')).not.toBeInTheDocument();
   expect(screen.queryByLabelText('Database')).not.toBeInTheDocument();
   const token = screen.getByLabelText('Auth token');
@@ -33,7 +22,7 @@ it('saves a remote endpoint with its token policy and no user or database', asyn
   await user.clear(screen.getByLabelText('Host'));
   await user.type(screen.getByLabelText('Host'), 'db.test');
   await user.type(token, 'test-only');
-  await user.click(screen.getByRole('button', { name: 'Save' }));
+  await saveFlow(user);
   expect(createProfile).toHaveBeenCalledWith(
     expect.objectContaining({
       engine: 'libsql',

@@ -6,6 +6,8 @@ import { samplePlan } from '../../test/planStub';
 import { choose, renderTab } from '../query/testQueryTab';
 import { runTabCommand } from '../commands';
 import { setExplain } from './explainStore';
+// Menus run their command at once instead of after the blink and fade.
+document.documentElement.dataset.motion = 'reduced';
 
 vi.mock('@openrows/ipc', async () =>
   (await import('../../test/ipcStub')).ipcStub(),

@@ -66,6 +66,7 @@ function RunButton(props: Props): React.JSX.Element {
       menuLabel={t('runOptions')}
       entries={entries}
     >
+      <Icon name="play" />
       {runLabel(props.run.runDefault)}
       <Kbd variant="inline" aria-hidden="true">
         ⌘↵
@@ -74,14 +75,23 @@ function RunButton(props: Props): React.JSX.Element {
   );
 }
 
-/** Explain, Beautify and AI: plain buttons; their other commands live in the Run and More menus. */
+/** Beautify, Explain and AI: plain buttons; their other commands live in the Run and More menus. */
 function ActionButtons(props: Props): React.JSX.Element {
   const { onExplain, onAssistant } = props;
   return (
     <>
+      <Button
+        variant="secondary"
+        title={t('beautifySelectionWhole')}
+        onClick={() => {
+          props.onFormat('beautify');
+        }}
+      >
+        <Icon name="wand" />
+        {t('beautify')}
+      </Button>
       {onExplain && (
         <Button
-          size="sm"
           variant="secondary"
           title={t('explainStatementCursor')}
           disabled={!props.run.ready}
@@ -89,24 +99,13 @@ function ActionButtons(props: Props): React.JSX.Element {
             onExplain(false);
           }}
         >
+          <Icon name="activity" />
           {t('explain')}
         </Button>
       )}
-      <Button
-        size="sm"
-        variant="secondary"
-        title={t('beautifySelectionWhole')}
-        onClick={() => {
-          props.onFormat('beautify');
-        }}
-      >
-        {t('beautify')}
-      </Button>
       {onAssistant && (
         <Button
-          size="sm"
           variant="secondary"
-          className={styles.ai}
           aria-label={t('ai')}
           title={t('openAiAssistant')}
           onClick={onAssistant}
@@ -120,8 +119,9 @@ function ActionButtons(props: Props): React.JSX.Element {
 }
 
 /**
- * The editor's view bar above the SQL (the kit's `.viewbar`): Run, Explain,
- * Beautify and AI on the left, then the notice, the row limit and More.
+ * The editor's bar between the SQL and its results (the prototype's
+ * `.qbar`): Run, Beautify, Explain and AI on the left, then the notice, the
+ * row limit and More, all 28 px capsules.
  */
 export function EditorBar(props: Props): React.JSX.Element {
   const { settings, onSettings } = props;
@@ -134,6 +134,7 @@ export function EditorBar(props: Props): React.JSX.Element {
         label={t('rowLimit')}
         title={t('rowsKeptPer')}
         className={styles.limit}
+        align="end"
         entries={limitEntries(settings, onSettings)}
       >
         {limitLabel(settings.rowLimit)}
@@ -144,6 +145,7 @@ export function EditorBar(props: Props): React.JSX.Element {
         title={t('more')}
         variant="ghost"
         className={styles.icon}
+        align="end"
         entries={moreEntries({
           settings,
           update: onSettings,

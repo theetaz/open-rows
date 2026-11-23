@@ -29,10 +29,10 @@ function four(): TabsState {
 const ids = (state: TabsState): string[] =>
   tabsOf(state, scope).map((tab) => tab.id);
 
-it('reorders within a scope and leaves other scopes in place', () => {
+it('reorders among the window’s tabs, whatever their scope', () => {
   const state = moveTab(four(), 'query-5', 0);
   expect(ids(state)).toEqual(['query-5', 'query-1', 'query-3', 'query-4']);
-  expect(state.tabs[1]?.id).toBe('query-2');
+  expect(state.tabs[2]?.id).toBe('query-2');
   expect(ids(moveTab(state, 'query-5', 99))).toEqual([
     'query-1',
     'query-3',
@@ -44,9 +44,14 @@ it('reorders within a scope and leaves other scopes in place', () => {
 it('keeps pinned tabs first and out of Close Others and Close to the Right', () => {
   let state = pinTab(four(), 'query-4', true);
   expect(ids(state)).toEqual(['query-4', 'query-1', 'query-3', 'query-5']);
-  expect(otherTabs(state, 'query-3')).toEqual(['query-1', 'query-5']);
+  expect(otherTabs(state, 'query-3')).toEqual([
+    'query-1',
+    'query-2',
+    'query-5',
+  ]);
   expect(tabsRightOf(state, 'query-4')).toEqual([
     'query-1',
+    'query-2',
     'query-3',
     'query-5',
   ]);

@@ -119,4 +119,13 @@ export const { t } = defineMessages({
   enterFullScreen: 'Enter Full Screen',
   find: 'Find',
   switchConnection2: 'Switch connection',
+  selectTabNumber: 'Select tab by position',
+  closeOtherTabs: 'Close other tabs',
+  selectNextTab: 'Select next tab',
+  selectPreviousTab: 'Select previous tab',
+  duplicateTab: 'Duplicate tab',
+  pinTab: 'Pin or unpin tab',
+  goBack: 'Back',
+  goForward: 'Forward',
+  openLocation: 'Open location (path bar)',
 });

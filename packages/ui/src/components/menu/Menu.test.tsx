@@ -56,20 +56,21 @@ it('opens a submenu on → at its first row and goes back on ←', () => {
   vi.useFakeTimers();
   mount(true);
   const menu = screen.getByRole('menu', { name: 'Table' });
-  expect(screen.getByRole('menuitem', { name: /Open/ })).toHaveFocus();
+  // The shortcut glyph is not part of the row's name.
+  expect(screen.getByRole('menuitem', { name: 'Open' })).toHaveFocus();
   fireEvent.keyDown(menu, { key: 'ArrowDown' });
   fireEvent.keyDown(menu, { key: 'ArrowRight' });
   expect(screen.getByRole('menu', { name: 'Copy As' })).toBeInTheDocument();
   expect(screen.getByRole('menuitem', { name: 'CSV' })).toHaveFocus();
   fireEvent.keyDown(menu, { key: 'ArrowLeft' });
   expect(screen.queryByRole('menu', { name: 'Copy As' })).toBeNull();
-  expect(screen.getByRole('menuitem', { name: /Copy As/ })).toHaveFocus();
+  expect(screen.getByRole('menuitem', { name: 'Copy As' })).toHaveFocus();
 });
 
 it('blinks, fades, closes and then runs the chosen command', () => {
   vi.useFakeTimers();
   const onClose = mount(true);
-  const row = screen.getByRole('menuitem', { name: /Open/ });
+  const row = screen.getByRole('menuitem', { name: 'Open' });
   fireEvent.keyDown(row, { key: 'Enter' });
   expect(row).toHaveAttribute('data-chosen', 'true');
   act(() => {
@@ -113,7 +114,7 @@ it('finds rows by type-ahead and marks destructive rows', () => {
     state: { open: [], active: [5] },
   });
   mount();
-  expect(screen.getByRole('menuitem', { name: /Drop Table/ })).toHaveAttribute(
+  expect(screen.getByRole('menuitem', { name: 'Drop Table…' })).toHaveAttribute(
     'data-danger',
     'true',
   );

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { defineMessages } from '@openrows/ui/i18n';
 
-export const { rich, t } = defineMessages({
+export const { t } = defineMessages({
   usesSignedAws:
     'Uses your signed-in AWS CLI (aws rds generate-db-auth-token). Enable IAM on the database user.',
   usesSignedAzure:
@@ -30,14 +30,12 @@ export const { rich, t } = defineMessages({
   moveArgumentValueDown: 'Move argument {value} down',
   removeArgumentValue: 'Remove argument {value}',
   remove: 'Remove',
-  cloudZeroTrust: 'Cloud / zero-trust · Custom command',
-  directSshProxy: 'Direct / SSH / proxy',
-  cloudZeroTrustAws: 'Cloud / zero-trust · AWS SSM',
-  cloudZeroTrustKubernetes: 'Cloud / zero-trust · Kubernetes',
-  cloudZeroTrustCloud: 'Cloud / zero-trust · Cloud SQL / AlloyDB',
-  cloudZeroTrustCloudflare: 'Cloud / zero-trust · Cloudflare Access',
-  routeCloudZero: 'Route · Cloud / zero-trust',
-  route: 'Route',
+  hop: 'Hop',
+  hopAwsSsm: 'AWS SSM',
+  hopKubernetes: 'Kubernetes',
+  hopCloudSql: 'Cloud SQL / AlloyDB',
+  hopCloudflare: 'Cloudflare Access',
+  hopCustom: 'Custom command',
   authProxyEncrypts:
     'The auth proxy encrypts traffic to Google. Database TLS defaults to Off; verify modes use the original database host.',
   credentialsStayTool:
@@ -62,9 +60,7 @@ export const { rich, t } = defineMessages({
   privateIp: 'Private IP',
   socks5: 'SOCKS5',
   httpConnect: 'HTTP (CONNECT)',
-  proxyProxy: 'Proxy · {proxy}',
   connectThroughProxy: 'Connect through a proxy',
-  connectThroughProxysmall: 'Connect through a proxy{small}',
   type: 'Type',
   proxyType: 'Proxy type',
   proxyHost: 'Proxy host',
@@ -75,8 +71,6 @@ export const { rich, t } = defineMessages({
   optional: 'Optional',
   proxyPassword: 'Proxy password',
   proxyPassword2: 'proxy password',
-  advancedSummaryStartup: 'Advanced · {summary} · Startup SQL',
-  advancedSummary: 'Advanced · {summary}',
   queryTimeout: 'Query timeout',
   statementTimeout: 'Statement timeout',
   statementRunningLonger:
@@ -93,9 +87,7 @@ export const { rich, t } = defineMessages({
   privateKey: 'Private key',
   sshAgent: 'SSH agent',
   keyboardInteractiveMfa: 'Keyboard-interactive (MFA)',
-  sshSsh: 'SSH · {ssh}',
   connectOverSsh: 'Connect over SSH',
-  connectOverSshsmall: 'Connect over SSH{small}',
   sshHost: 'SSH host',
   hostSshConfig: 'Host or ~/.ssh/config alias',
   sshPort: 'SSH port',
@@ -141,9 +133,15 @@ export const { rich, t } = defineMessages({
   none: 'None',
   awsRdsAurora: 'AWS RDS / Aurora',
   azureDatabase: 'Azure Database',
-  encryptTlsmode: 'Encrypt · {tlsMode}',
-  mode: 'Mode',
   tlsMode: 'TLS mode',
+  tlsHintDisable: 'Traffic is not encrypted.',
+  tlsHintAllow:
+    'Encrypt only when the server insists; do not verify the certificate.',
+  tlsHintPrefer:
+    'Encrypt when the server offers it; do not verify the certificate.',
+  tlsHintRequire: 'Always encrypt; do not verify the certificate.',
+  tlsHintVerifyCa: 'Encrypt and check the certificate against your CA.',
+  tlsHintVerifyFull: 'Encrypt, check the CA and that the host name matches.',
   clientCert: 'Client cert',
   clientKey: 'Client key',
   clientKeyPassphrase: 'client key passphrase',
@@ -212,5 +210,4 @@ export const { rich, t } = defineMessages({
   firstHopBefore:
     'The first hop, before SSH. SOCKS5 resolves host names on the proxy.',
   tunnelThroughSsh: 'Tunnel through an SSH server; no local port is opened.',
-  tlsTitle: 'TLS · {mode}',
 });

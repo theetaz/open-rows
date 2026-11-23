@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { TextArea } from '@openrows/ui';
 import type { ConnectionForm } from './useConnectionForm';
-import styles from './ConnectionSheet.module.css';
+import styles from './flow/Form.module.css';
 import { t } from './messages/routes';
 
 /**

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 /** Original 24×24 line geometry, stroked with the current colour. */
-export const iconPaths = {
+const iconPaths = {
   star: 'M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9Z',
   search: 'M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13Zm4.6-1.9L21 21',
   plus: 'M12 5v14M5 12h14',
@@ -58,5 +58,50 @@ export const iconPaths = {
   plug: 'M9 3v5.3M15 3v5.3M6 8.3h12v3.3a6 6 0 0 1-12 0ZM12 17.6V21',
 } as const;
 
-/** Names of the original line icons. */
-export type IconName = keyof typeof iconPaths;
+/**
+ * Line geometry drawn in a 16 px box, as the v4 prototype draws its menu, tree
+ * and data-view icons; `Icon` scales it to the same 1.5 px stroke.
+ */
+const smallIconPaths = {
+  folder:
+    'M2 5a1.5 1.5 0 0 1 1.5-1.5h2.3c.4 0 .8.2 1.1.5l.7.8h4.9A1.5 1.5 0 0 1 14 6.3v4.9a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 11.2Z',
+  trash:
+    'M3 4.5h10M6.2 4.5V3.2h3.6v1.3M4.3 4.5l.6 8a1 1 0 0 0 1 .9h4.2a1 1 0 0 0 1-.9l.6-8',
+  pencil: 'M10.8 2.9a1.4 1.4 0 0 1 2 2L5.6 12.1l-2.9.9.9-2.9Z',
+  upload: 'M8 10.5V3M5 5.5l3-3 3 3M3 13h10',
+  duplicate:
+    'M4.3 4.5h4.9a1.8 1.8 0 0 1 1.8 1.8v5.4a1.8 1.8 0 0 1-1.8 1.8H4.3a1.8 1.8 0 0 1-1.8-1.8V6.3a1.8 1.8 0 0 1 1.8-1.8ZM5.5 2.5h6.2a1.8 1.8 0 0 1 1.8 1.8v6.7M6.75 7.5v3M5.25 9h3',
+  paste:
+    'M5.3 3.5h5.4a1.8 1.8 0 0 1 1.8 1.8v6.4a1.8 1.8 0 0 1-1.8 1.8H5.3a1.8 1.8 0 0 1-1.8-1.8V5.3a1.8 1.8 0 0 1 1.8-1.8ZM6 3.5V3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v.5M6 8h4M6 10.5h2.5',
+  wand: 'M3 13 10.5 5.5M9 4l3 3M12 2.2v1.6M11.2 3h1.6M4 3.2v1.6M3.2 4h1.6M12.5 10.2v1.6M11.7 11h1.6',
+  arrowUp: 'M8 13V3M4 7l4-4 4 4',
+  arrowDown: 'M8 3v10M4 9l4 4 4-4',
+  arrowUpRight: 'M6 4h6v6M12 4 4.5 11.5',
+  tabs: 'M4 3.5h8a2 2 0 0 1 2 2V11a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5.5a2 2 0 0 1 2-2ZM2 6.5h12M6.5 3.5v3',
+  drop: 'M8 2.2c2.3 2.7 3.8 4.6 3.8 6.6a3.8 3.8 0 0 1-7.6 0c0-2 1.5-3.9 3.8-6.6Z',
+  link: 'M6.8 9.2a2.6 2.6 0 0 0 3.7 0l2.2-2.2a2.6 2.6 0 0 0-3.7-3.7l-.7.7M9.2 6.8a2.6 2.6 0 0 0-3.7 0L3.3 9a2.6 2.6 0 0 0 3.7 3.7l.7-.7',
+  file: 'M4.5 2.5h4.6L12 5.4v7.1a1 1 0 0 1-1 1H4.5a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1ZM9 2.5v3h3',
+  history: 'M2.8 8a5.2 5.2 0 1 0 1.6-3.7M2.5 2.8v2.6h2.6M8 5.2V8l2 1.3',
+  undo: 'M5.5 3 2.5 6l3 3M2.5 6h6.8a3.7 3.7 0 0 1 0 7.4H7',
+  external:
+    'M9 2.8h4.2V7M13.2 2.8 7.5 8.5M11.5 9.5v2.7a1 1 0 0 1-1 1H3.8a1 1 0 0 1-1-1V5.5a1 1 0 0 1 1-1h2.7',
+  power: 'M8 2.5V8M4.6 4.4a5 5 0 1 0 6.8 0',
+  schemaTree:
+    'M3.5 2.5H6a1 1 0 0 1 1 1V5a1 1 0 0 1-1 1H3.5a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1ZM10 4.5h2.5a1 1 0 0 1 1 1V7a1 1 0 0 1-1 1H10a1 1 0 0 1-1-1V5.5a1 1 0 0 1 1-1ZM10 10h2.5a1 1 0 0 1 1 1v1.5a1 1 0 0 1-1 1H10a1 1 0 0 1-1-1V11a1 1 0 0 1 1-1ZM4.75 6v4.75a1 1 0 0 0 1 1H9M4.75 6.25H9',
+} as const;
+
+type SmallIconName = keyof typeof smallIconPaths;
+
+/** Names of the original line icons, in either box. */
+export type IconName = keyof typeof iconPaths | SmallIconName;
+
+function isSmallIcon(name: IconName): name is SmallIconName {
+  return name in smallIconPaths;
+}
+
+/** An icon's path and the side of the square box it is drawn in. */
+export function iconGeometry(name: IconName): { path: string; box: 16 | 24 } {
+  return isSmallIcon(name)
+    ? { path: smallIconPaths[name], box: 16 }
+    : { path: iconPaths[name], box: 24 };
+}

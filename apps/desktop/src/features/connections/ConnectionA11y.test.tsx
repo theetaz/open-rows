@@ -5,7 +5,7 @@ import { expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
 import { profile, sampleProfiles, server } from '../../test/ipcStub';
 import { ConnectionRail } from './ConnectionRail';
-import { ConnectionSheet } from './ConnectionSheet';
+import { mountFlow, openStep } from './flow/flowTestKit';
 import { PasswordPromptSheet } from './PasswordPromptSheet';
 import type { SessionStatus } from './sessions';
 
@@ -50,24 +50,24 @@ it('the connection rail with its search has zero axe violations', async () => {
 });
 
 it.each([
-  ['a new connection', undefined],
-  ['a saved password', profile('orders', { hasPassword: true })],
-  ['ask every time', profile('vault', { passwordStorage: 'ask' })],
-])('the connection sheet for %s has zero axe violations', async (_, saved) => {
-  const { container } = render(
-    <ThemeProvider>
-      <ConnectionSheet
-        profile={saved}
-        onClose={vi.fn()}
-        onSaved={vi.fn()}
-        onDelete={vi.fn()}
-        onDuplicate={vi.fn()}
-      />
-    </ThemeProvider>,
-  );
-  expect(screen.getByRole('dialog')).toBeInTheDocument();
-  expect(await violations(container)).toEqual([]);
+  ['the engine step', {}],
+  ['new server details', { engine: 'postgres' as const }],
+  ['new file details', { engine: 'duckdb' as const }],
+  ['a saved password', { profile: profile('orders', { hasPassword: true }) }],
+  ['ask every time', { profile: profile('vault', { passwordStorage: 'ask' }) }],
+])('the connection flow for %s has zero axe violations', async (_, options) => {
+  await mountFlow(options);
+  expect(await violations(document.body)).toEqual([]);
 });
+
+it.each(['Security', 'Options', 'Test and save'])(
+  'the connection flow step %s has zero axe violations',
+  async (step) => {
+    const { user } = await mountFlow({ profile: profile('orders') });
+    await openStep(user, step);
+    expect(await violations(document.body)).toEqual([]);
+  },
+);
 
 it('the password prompt sheet has zero axe violations', async () => {
   const { container } = render(

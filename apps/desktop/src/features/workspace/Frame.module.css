@@ -55,51 +55,82 @@
 .traffic {
   flex: 0 0 calc(var(--or-traffic-light-row) - var(--or-sidebar-inset));
 }
-/* The connection pop-up: a session-state dot, the name and the database. */
+/*
+ * The connection header (prototype `.switcher`): engine tile, name and
+ * session dot over database · host, the environment tag and ⌃⌄.
+ */
 .popup {
   display: flex;
   flex: none;
   align-items: center;
-  gap: var(--or-space-8);
+  gap: 9px;
   inline-size: 100%;
-  block-size: var(--or-control-height);
-  padding: 0 var(--or-space-6) 0 var(--or-space-10);
+  padding: 6px 8px;
   border: 0;
-  border-radius: var(--or-radius-capsule);
-  background: var(--or-control-fill);
+  border-radius: var(--or-radius-card);
+  background: transparent;
   color: var(--or-text);
   font: inherit;
   text-align: start;
-  transition: background-color var(--or-motion-instant);
+  transition: background-color var(--or-motion-instant) linear;
 }
-.popup:hover {
-  background: var(--or-fill-2);
+.popup:hover,
+.popup[aria-expanded='true'] {
+  background: var(--or-hover);
 }
 .popup:focus-visible {
-  outline: var(--or-focus-width) solid var(--or-focus);
-  outline-offset: var(--or-border-width);
+  outline: 0;
+  box-shadow: inset 0 0 0 2px var(--or-focus);
 }
-.popup strong {
-  flex: none;
-  max-inline-size: 60%;
+.popupLines {
+  display: grid;
+  flex: 1;
+  min-inline-size: 0;
+  line-height: 1.25;
+}
+.popupName {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-inline-size: 0;
+}
+.popupName strong {
+  min-inline-size: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: var(--or-weight-medium);
+  font-weight: var(--or-weight-semibold);
 }
 .popupDatabase {
   min-inline-size: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--or-secondary);
+  color: var(--or-tertiary);
+  font-size: var(--or-text-11);
 }
 .popup > svg {
   flex: none;
   inline-size: 14px;
   block-size: 14px;
-  margin-inline-start: auto;
+  color: var(--or-tertiary);
+}
+.envTag {
+  flex: none;
+}
+.engineFallback {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  inline-size: 24px;
+  block-size: 24px;
+  border-radius: 6px;
+  background: var(--or-control-fill);
   color: var(--or-secondary);
+}
+.engineFallback svg {
+  inline-size: 15px;
+  block-size: 15px;
 }
 .stateDot {
   flex: none;
@@ -128,6 +159,59 @@
 .connections[hidden],
 .items[hidden] {
   display: none;
+}
+
+/* The last row: New connection (with its shortcut) and Settings. */
+.footer {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  margin: 0 calc(-1 * var(--or-space-8)) calc(-1 * var(--or-space-8));
+  padding: 6px 8px;
+  border-block-start: var(--or-border-width) solid var(--or-separator);
+}
+.footerRow {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 7px;
+  min-inline-size: 0;
+  block-size: var(--or-tree-row-height);
+  padding: 0 8px 0 6px;
+  border: 0;
+  border-radius: var(--or-radius-control);
+  background: transparent;
+  color: var(--or-secondary);
+  font: inherit;
+  text-align: start;
+  transition: background-color var(--or-motion-instant) linear;
+}
+.footerRow:hover {
+  background: var(--or-hover);
+}
+.footerRow:focus-visible {
+  outline: 0;
+  box-shadow: inset 0 0 0 2px var(--or-focus);
+}
+.footerRow svg {
+  flex: none;
+  inline-size: 15px;
+  block-size: 15px;
+}
+.footerRow kbd {
+  margin-inline-start: auto;
+  color: var(--or-tertiary);
+  font: inherit;
+  font-size: var(--or-text-11);
+  letter-spacing: 0.08em;
+}
+.footer > button:last-child {
+  color: var(--or-secondary);
+}
+/* The row a context menu acts on keeps an accent ring while it is open. */
+.sidebar [data-menu-target='true'] {
+  box-shadow: inset 0 0 0 1.5px var(--or-accent-fill);
 }
 
 /* Native handoff errors stay visible without occupying a frame row. */

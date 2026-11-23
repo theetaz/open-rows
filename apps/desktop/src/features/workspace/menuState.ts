@@ -11,9 +11,7 @@ import type { TabScope } from '../query';
  */
 export function menuEnabled(input: {
   connections: Connections;
-  tab:
-    | { kind: 'query' | 'table' | 'processes' | 'monitor' | 'inspection' }
-    | undefined;
+  tab: { kind: string } | undefined;
   scope: TabScope | undefined;
 }): Record<string, boolean> {
   const profile = input.connections.active;
@@ -62,9 +60,7 @@ const relationCommands = new Set<ObjectCommand>([
 function objectEnabled(
   input: {
     connections: Connections;
-    tab:
-      | { kind: 'query' | 'table' | 'processes' | 'monitor' | 'inspection' }
-      | undefined;
+    tab: { kind: string } | undefined;
     scope: TabScope | undefined;
   },
   connected: boolean,

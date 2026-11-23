@@ -8,7 +8,7 @@ import type { ObjectEditorRequest } from './requests';
 import { t } from './messages';
 
 /** One menu entry; `request: null` is shown disabled with `reason`. */
-export type EditorEntry = {
+type EditorEntry = {
   label: string;
   request: ObjectEditorRequest | null;
   reason?: string;

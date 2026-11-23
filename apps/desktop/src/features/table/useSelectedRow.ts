@@ -50,6 +50,7 @@ export function useSelectedRow(args: {
     );
     const row: SelectedRow = {
       table: args.table,
+      number: current.row + 1,
       fields: withStaged(
         shownFields(current.fields),
         edit,

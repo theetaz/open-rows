@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
-import { Fragment, useId } from 'react';
-import { SidebarMenu } from '../../shell/SidebarMenu';
+import { Icon, Menu } from '@openrows/ui';
+import type { MenuEntry } from '@openrows/ui';
 import { DEFAULT_VALUE, NULL_VALUE, textValue } from './cellValue';
 import type { CellValue } from './cellValue';
 import type { FieldActions } from './fieldActions';
+import { separate } from './contextMenuEntries';
 import { t } from './messages/initial';
 
 type Item = {
@@ -61,38 +62,32 @@ export function FieldMenu(props: {
   /** Present when the row came from a stored result: offers the full value. */
   inspect?: FieldInspect | undefined;
 }): React.JSX.Element {
-  const id = useId();
   const choose = (item: Item): void => {
-    props.onClose();
     if (item.inspect) props.inspect?.toggle();
     else if (item.value) props.onValue(item.value);
     else if (item.file) props.onFile();
   };
+  const entries: MenuEntry[] = [];
+  for (const group of items(props.actions, props.inspect)) {
+    separate(entries);
+    for (const item of group)
+      entries.push({
+        kind: 'item',
+        label: item.label,
+        disabled: !item.value && !item.file && !item.inspect,
+        ...(item.inspect ? { icon: <Icon name="eye" /> } : {}),
+        run: () => {
+          choose(item);
+        },
+      });
+  }
   return (
-    <SidebarMenu
-      id={id}
+    <Menu
       label={t('valueName', { name: props.name })}
-      opener={props.opener}
+      anchor={props.opener.current}
+      align="end"
+      entries={entries}
       onClose={props.onClose}
-    >
-      {items(props.actions, props.inspect).map((group, index) => (
-        <Fragment key={index}>
-          {index > 0 && <hr />}
-          {group.map((item) => (
-            <button
-              key={item.label}
-              type="button"
-              role="menuitem"
-              disabled={!item.value && !item.file && !item.inspect}
-              onClick={() => {
-                choose(item);
-              }}
-            >
-              {item.label}
-            </button>
-          ))}
-        </Fragment>
-      ))}
-    </SidebarMenu>
+    />
   );
 }

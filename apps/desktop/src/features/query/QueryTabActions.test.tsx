@@ -6,6 +6,8 @@ import type { ExecuteRequest } from '@openrows/ipc';
 import { choose, chooseIn, fakeRuns, renderTab } from './testQueryTab';
 import { idleRun } from './run';
 import { runTabCommand } from '../commands';
+// Menus run their command at once instead of after the blink and fade.
+document.documentElement.dataset.motion = 'reduced';
 
 vi.mock('@openrows/ipc', async () =>
   (await import('../../test/ipcStub')).ipcStub(),

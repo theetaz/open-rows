@@ -1,59 +1,46 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useState } from 'react';
-import { Tabs } from '@openrows/ui';
+import { createContext, useContext, useEffect } from 'react';
 import type { EnvDto } from '@openrows/ipc';
-import { PointMenu } from '../../shell/PointMenu';
-import menuStyles from '../../shell/CascadeMenu.module.css';
-import { TabMenu } from './TabMenu';
-import type { MoveTab, TabMenuTarget } from './TabMenu';
+import { WindowTabStrip } from './WindowTabStrip';
+import type { MoveTab } from './TabMenu';
 import type { QueryTab as Tab } from './tabs';
 import type { QueryTabs } from './useQueryTabs';
-import { t } from './initialMessages';
 
-/** The tab title; a file-bound tab with unsaved changes gets a dot. */
-function tabLabel(tab: Tab): string {
-  return tab.file && tab.file.saved !== tab.sql ? `${tab.title} •` : tab.title;
-}
+/** What a pane hands to the window's tab strip. */
+export type StripPane = {
+  /** The pane's tab set: choosing a tab of its scope fills the focused split pane. */
+  tabs: QueryTabs;
+  /** Move a tab to another window. */
+  onMove?: MoveTab | undefined;
+};
 
-/** Every tab of the strip, for when they do not all fit. */
-function OverflowMenu(props: {
-  list: readonly Tab[];
-  active: string;
-  at: { x: number; y: number };
-  onSelect: (id: string) => void;
-  onClose: () => void;
-}): React.JSX.Element {
-  return (
-    <PointMenu
-      x={props.at.x}
-      y={props.at.y}
-      label={t('allTabs')}
-      onClose={props.onClose}
-    >
-      {props.list.map((tab) => (
-        <button
-          type="button"
-          role="menuitemradio"
-          aria-checked={tab.id === props.active}
-          key={tab.id}
-          onClick={() => {
-            props.onClose();
-            props.onSelect(tab.id);
-          }}
-        >
-          <span className={menuStyles.check} aria-hidden="true">
-            {tab.id === props.active ? '✓' : ''}
-          </span>
-          {tabLabel(tab)}
-        </button>
-      ))}
-    </PointMenu>
-  );
+/** Holds the active pane's strip actions for the window's strip. */
+export type StripSlot = {
+  set: (pane: StripPane | null) => void;
+  get: () => StripPane | null;
+};
+
+/** An empty slot; the workspace keeps one per window. */
+export function stripSlot(): StripSlot {
+  let pane: StripPane | null = null;
+  return {
+    set: (next) => {
+      pane = next;
+    },
+    get: () => pane,
+  };
 }
 
 /**
- * Document tabs with drag reordering, the tab menu, preview tabs, in-place
- * rename (double-click or Rename Tab) and the overflow menu.
+ * Where a pane's strip goes: the workspace draws one strip for the whole
+ * window above its toolbar, and panes hand it their actions.
+ */
+export const TabStripHost = createContext<StripSlot | null>(null);
+
+/**
+ * A pane's document tabs. Inside the workspace they join the window's strip
+ * above the toolbar (this renders nothing); on its own (local `.sql` files,
+ * tests) the pane draws its own strip.
  */
 export function TabStrip(props: {
   tabs: QueryTabs;
@@ -64,68 +51,31 @@ export function TabStrip(props: {
   onAdd: () => void;
   /** Move a tab to another window (the tab menu's Move items). */
   onMove?: MoveTab | undefined;
-}): React.JSX.Element {
-  const { tabs } = props;
-  const [menu, setMenu] = useState<TabMenuTarget | null>(null);
-  const [overflow, setOverflow] = useState<{ x: number; y: number } | null>(
-    null,
-  );
-  const [renaming, setRenaming] = useState<string | null>(null);
+  /** Draw the strip here even inside the workspace. */
+  inline?: boolean;
+}): React.JSX.Element | null {
+  const host = useContext(TabStripHost);
+  const joined = Boolean(host) && !props.inline;
+  const { tabs, onMove } = props;
+  useEffect(() => {
+    if (!joined || !host) return;
+    host.set({ tabs, onMove });
+    return () => {
+      host.set(null);
+    };
+  }, [joined, host, tabs, onMove]);
+  if (joined) return null;
   const { name, env } = props.connection;
-  const owner = env ? `${name} (${env.label ?? env.kind})` : name;
   return (
-    <>
-      <Tabs
-        tabs={props.list.map((item) => ({
-          id: item.id,
-          label: tabLabel(item),
-          name: item.title,
-          kind: item.kind,
-          title: `${owner} · ${item.title}`,
-          pinned: item.pinned ?? false,
-          preview: item.preview ?? false,
-        }))}
-        active={props.active}
-        onSelect={tabs.select}
-        onClose={tabs.close}
-        onAdd={props.onAdd}
-        onReorder={tabs.move}
-        onKeep={tabs.keep}
-        renaming={renaming}
-        onRenameStart={setRenaming}
-        onRename={(id, title) => {
-          setRenaming(null);
-          if (title !== null) tabs.rename(id, title);
-        }}
-        onMenu={(id, x, y) => {
-          setMenu({ id, x, y });
-        }}
-        onOverflow={(x, y) => {
-          setOverflow({ x, y });
-        }}
-      />
-      {menu && (
-        <TabMenu
-          tabs={tabs}
-          target={menu}
-          onRename={setRenaming}
-          onMove={props.onMove}
-          onClose={() => {
-            setMenu(null);
-          }}
-        />
-      )}
-      {overflow && (
-        <OverflowMenu
-          list={props.list}
-          active={props.active}
-          at={overflow}
-          onSelect={tabs.select}
-          onClose={() => {
-            setOverflow(null);
-          }}
-        />
-      )}
-    </>
+    <WindowTabStrip
+      tabs={tabs}
+      list={props.list}
+      active={props.active}
+      profiles={[]}
+      owner={env ? `${name} (${env.label ?? env.kind})` : name}
+      onSelect={tabs.select}
+      onAdd={props.onAdd}
+      onMove={onMove}
+    />
   );
 }

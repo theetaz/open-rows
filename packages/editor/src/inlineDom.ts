@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { EditorView } from '@codemirror/view';
-import { iconPaths } from '@openrows/ui/icons';
+import { iconGeometry } from '@openrows/ui/icons';
 import type { IconName } from '@openrows/ui/icons';
 
 const SVG = 'http://www.w3.org/2000/svg';
@@ -32,11 +32,12 @@ export function button(
 
 export function icon(name: IconName): SVGSVGElement {
   const svg = document.createElementNS(SVG, 'svg');
-  svg.setAttribute('viewBox', '0 0 24 24');
+  const { path: d, box } = iconGeometry(name);
+  svg.setAttribute('viewBox', `0 0 ${String(box)} ${String(box)}`);
   svg.setAttribute('aria-hidden', 'true');
   svg.setAttribute('class', 'cm-inline-icon');
   const path = document.createElementNS(SVG, 'path');
-  path.setAttribute('d', iconPaths[name]);
+  path.setAttribute('d', d);
   svg.append(path);
   return svg;
 }

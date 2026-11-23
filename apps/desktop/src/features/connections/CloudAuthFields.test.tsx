@@ -1,28 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { screen } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import { createProfile } from '@openrows/ipc';
 import type { ProfileDto } from '@openrows/ipc';
-import { ThemeProvider } from '@openrows/ui';
 import { profile } from '../../test/ipcStub';
-import { ConnectionSheet } from './ConnectionSheet';
+import { mountFlow, saveFlow } from './flow/flowTestKit';
 vi.mock('@openrows/ipc', async () =>
   (await import('../../test/ipcStub')).ipcStub(),
 );
-function mount(editing?: ProfileDto): ReturnType<typeof userEvent.setup> {
-  render(
-    <ThemeProvider>
-      <ConnectionSheet
-        {...(editing ? { profile: editing } : {})}
-        onClose={vi.fn()}
-        onSaved={vi.fn()}
-        onDelete={vi.fn()}
-        onDuplicate={vi.fn()}
-      />
-    </ThemeProvider>,
+async function mount(editing?: ProfileDto) {
+  const { user } = await mountFlow(
+    editing ? { profile: editing } : { engine: 'postgres' },
   );
-  return userEvent.setup();
+  return user;
 }
 const storage = (): HTMLElement =>
   screen.getByRole('combobox', { name: 'Password storage' });
@@ -31,7 +21,7 @@ const choices = (select: HTMLElement): (string | null)[] =>
 
 it('saves only the provider settings and warns until TLS is verified', async () => {
   vi.mocked(createProfile).mockResolvedValue(profile('iam'));
-  const user = mount();
+  const user = await mount();
   await user.type(screen.getByRole('textbox', { name: 'Name' }), 'iam');
   await user.type(screen.getByRole('textbox', { name: 'User' }), 'iam_user');
   await user.selectOptions(storage(), 'cloud');
@@ -41,7 +31,7 @@ it('saves only the provider settings and warns until TLS is verified', async () 
   ).not.toBeInTheDocument();
   await user.type(screen.getByRole('textbox', { name: 'Region' }), 'us-east-1');
   await user.type(screen.getByRole('textbox', { name: 'AWS profile' }), 'dev');
-  await user.click(screen.getByRole('button', { name: 'Save' }));
+  await saveFlow(user);
   const [input] = vi.mocked(createProfile).mock.calls.at(-1) ?? [];
   expect(input?.passwordStorage).toBe('cloud');
   expect(input?.cloudAuth).toEqual({
@@ -53,7 +43,7 @@ it('saves only the provider settings and warns until TLS is verified', async () 
 });
 
 it('swaps the settings with the provider and hides the warning when verified', async () => {
-  const user = mount(
+  const user = await mount(
     profile('saved', {
       engine: 'postgres',
       passwordStorage: 'cloud',
@@ -75,13 +65,13 @@ it('swaps the settings with the provider and hides the warning when verified', a
   ).not.toBeInTheDocument();
 });
 
-it('offers cloud tokens only for engines that accept them', () => {
-  mount(profile('m', { engine: 'mariadb' }));
+it('offers cloud tokens only for engines that accept them', async () => {
+  await mount(profile('m', { engine: 'mariadb' }));
   expect(choices(storage())).not.toContain('Cloud IAM token');
 });
 
-it('offers only Entra ID on SQL Server', () => {
-  mount(
+it('offers only Entra ID on SQL Server', async () => {
+  await mount(
     profile('s', {
       engine: 'sqlserver',
       passwordStorage: 'cloud',

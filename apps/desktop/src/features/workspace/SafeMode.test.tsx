@@ -11,7 +11,12 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
 import type { ProfileDto } from '@openrows/ipc';
-import { executeQuery, listProfiles, updateProfile } from '@openrows/ipc';
+import {
+  executeQuery,
+  getProfile,
+  listProfiles,
+  updateProfile,
+} from '@openrows/ipc';
 import { profile } from '../../test/ipcStub';
 import { connectTo } from '../../test/connect';
 import { safeModeState } from '../security/policies';
@@ -30,6 +35,12 @@ const READ_ONLY = 'This connection is read-only: nothing was run.';
 
 function mount(...profiles: ProfileDto[]): ReturnType<typeof userEvent.setup> {
   vi.mocked(listProfiles).mockResolvedValue({ profiles, unreadable: [] });
+  vi.mocked(getProfile).mockImplementation((id) => {
+    const found = profiles.find((item) => item.id === id);
+    return found
+      ? Promise.resolve(found)
+      : Promise.reject(new Error('Unknown connection'));
+  });
   vi.stubGlobal('innerWidth', 1280);
   render(
     <ThemeProvider>
@@ -52,6 +63,16 @@ async function palette(command: string): Promise<void> {
   });
 }
 
+/** The edit connection flow tab, opened at its safety policy. */
+async function safetyFlow(): Promise<HTMLElement> {
+  const flow = await screen.findByRole('form', { name: 'Edit connection' });
+  await within(flow).findByRole('radiogroup', { name: 'Safety policy' });
+  return flow;
+}
+
+const policy = (flow: HTMLElement, name: RegExp): HTMLElement =>
+  within(flow).getByRole('radio', { name });
+
 beforeEach(() => {
   vi.mocked(executeQuery).mockReset();
   vi.mocked(updateProfile).mockReset();
@@ -64,13 +85,12 @@ it('reports a read-only non-prod connection as protected and clicking loosens no
   expect(safe).toHaveAttribute('data-on', 'true');
   expect(safe).not.toHaveAttribute('aria-pressed');
   await user.click(safe);
-  const sheet = await screen.findByRole('dialog', {
-    name: 'Edit orders-local',
-  });
-  const policy = within(sheet).getByRole('combobox', { name: 'Safety policy' });
-  expect(policy).toHaveValue('readOnly');
-  expect(policy).toHaveFocus();
-  await user.click(within(sheet).getByRole('button', { name: 'Cancel' }));
+  const flow = await safetyFlow();
+  const readOnly = policy(flow, /^Read-only/);
+  expect(readOnly).toHaveAttribute('aria-checked', 'true');
+  expect(readOnly).toHaveFocus();
+  await user.click(within(flow).getByRole('button', { name: 'Cancel' }));
+  expect(screen.queryByRole('form', { name: 'Edit connection' })).toBeNull();
   expect(updateProfile).not.toHaveBeenCalled();
   expect(
     screen.getByRole('button', { name: 'Safe mode: Read-only' }),
@@ -84,9 +104,7 @@ it('changes the state only when the saved policy changes', async () => {
   await user.click(
     screen.getByRole('button', { name: 'Safe mode: Unrestricted' }),
   );
-  const sheet = await screen.findByRole('dialog', {
-    name: 'Edit orders-local',
-  });
+  const flow = await safetyFlow();
   vi.mocked(updateProfile).mockImplementation((_id, input) => {
     const updated = { ...saved, safety: input.safety };
     vi.mocked(listProfiles).mockResolvedValue({
@@ -95,11 +113,8 @@ it('changes the state only when the saved policy changes', async () => {
     });
     return Promise.resolve(updated);
   });
-  await user.selectOptions(
-    within(sheet).getByRole('combobox', { name: 'Safety policy' }),
-    'confirmWrites',
-  );
-  await user.click(within(sheet).getByRole('button', { name: 'Save' }));
+  await user.click(policy(flow, /^Confirm writes/));
+  await user.click(within(flow).getByRole('button', { name: 'Save' }));
   await screen.findByRole('button', { name: 'Safe mode: Confirm writes' });
   expect(vi.mocked(updateProfile).mock.calls[0]?.[1]).toMatchObject({
     safety: 'confirmWrites',
@@ -139,9 +154,10 @@ it('the palette opens the setting instead of switching protection', async () => 
   mount(profile('orders-local', { safety: 'readOnly' }));
   await connectTo();
   await palette('Safe mode settings');
-  expect(
-    await screen.findByRole('dialog', { name: 'Edit orders-local' }),
-  ).toBeVisible();
+  expect(policy(await safetyFlow(), /^Read-only/)).toHaveAttribute(
+    'aria-checked',
+    'true',
+  );
   expect(updateProfile).not.toHaveBeenCalled();
 });
 

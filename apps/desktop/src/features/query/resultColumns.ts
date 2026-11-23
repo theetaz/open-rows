@@ -5,6 +5,7 @@ import { columnAlign } from '../../results/align';
 import { arrange, pinnedCount, widthOf } from '../../results/columnLayout';
 import type { ColumnLayout } from '../../results/columnLayout';
 import type { RowOrder } from './localRows';
+import { captionRoom } from '../table/tableColumns';
 
 /** Column identities for layouts: names, with repeats numbered (`id`, `id 2`). */
 export function columnKeys(columns: readonly ColumnDto[]): string[] {
@@ -25,7 +26,8 @@ export function columnKeys(columns: readonly ColumnDto[]): string[] {
 }
 
 function defaultWidth(column: ColumnDto): number {
-  return Math.min(320, Math.max(88, column.name.length * 8 + 40));
+  const caption = captionRoom(column.sourceType);
+  return Math.min(320, Math.max(88, column.name.length * 8 + caption + 40));
 }
 
 /** The client-side sort direction of a column, painted as a header triangle. */
@@ -58,6 +60,7 @@ export function resultColumns(
       return {
         id: String(index),
         title: column?.name ?? '',
+        ...(column?.sourceType ? { caption: column.sourceType } : {}),
         ...headerSort(sorted, index),
         width: widthOf(layout, key, column ? defaultWidth(column) : 88),
         pinned: position < pins,

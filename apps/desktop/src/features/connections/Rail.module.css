@@ -171,6 +171,12 @@
 .server[data-environment='prod'] .tile {
   background: var(--or-connection-prod);
 }
+/* Engine tiles bring their own colour and corners. */
+.tile[data-engine] {
+  flex-basis: 18px;
+  height: 18px;
+  background: transparent;
+}
 .serverName {
   flex: 1;
   min-width: 0;

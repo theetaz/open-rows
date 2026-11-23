@@ -125,3 +125,30 @@ it('right-aligns the header title of an end-aligned (numeric) column', () => {
     (titles.get('column_2')?.x ?? 0) + 120,
   );
 });
+it('paints each type caption after its title, and before the title edge for numbers', () => {
+  const { fillText } = canvasMock();
+  const drawn = new Map<string, { align: string; x: number }>();
+  fillText.mockImplementation(function (
+    this: CanvasRenderingContext2D,
+    text: string,
+    x: number,
+  ) {
+    drawn.set(text, { align: this.textAlign, x });
+  });
+  const model = props();
+  const [, text, , numeric] = model.source.columns;
+  if (text) text.caption = 'varchar';
+  if (numeric) {
+    numeric.caption = 'int8';
+    numeric.align = 'end';
+  }
+  const painter = new CanvasPainter(document.createElement('div'), model);
+  painter.resize(1040, 600);
+  painter.prepare();
+  painter.paint();
+  const title = drawn.get('column_1'),
+    caption = drawn.get('varchar');
+  expect(caption?.x).toBeGreaterThan(title?.x ?? Infinity);
+  expect(drawn.get('int8')?.align).toBe('right');
+  expect(drawn.get('column_3')?.x).toBeLessThan(drawn.get('int8')?.x ?? 0);
+});

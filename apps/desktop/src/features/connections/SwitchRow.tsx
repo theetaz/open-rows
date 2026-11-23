@@ -1,25 +1,25 @@
 // SPDX-License-Identifier: Apache-2.0
 import { Switch } from '@openrows/ui';
-import styles from './ConnectionSheet.module.css';
+import styles from './flow/Form.module.css';
 
-/** A small switch with a label and a one-line explanation, aligned with the fields. */
+/** A row of an inset group: label and one-line explanation, the small switch trailing. */
 export function SwitchRow(props: {
   label: string;
-  detail: string;
+  detail?: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
 }): React.JSX.Element {
   return (
     <div className={styles.switchRow}>
+      <span className={styles.stack}>
+        <span>{props.label}</span>
+        {props.detail && <small>{props.detail}</small>}
+      </span>
       <Switch
         aria-label={props.label}
         checked={props.checked}
         onCheckedChange={props.onChange}
       />
-      <span>
-        {props.label}
-        <small>{props.detail}</small>
-      </span>
     </div>
   );
 }

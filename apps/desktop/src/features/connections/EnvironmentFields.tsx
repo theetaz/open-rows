@@ -3,10 +3,10 @@ import { SegmentedControl, TextField } from '@openrows/ui';
 import type { EnvKindDto } from '@openrows/ipc';
 import { fieldError } from './form';
 import type { ConnectionForm } from './useConnectionForm';
-import { SafetySelector } from '../security/SafetySelector';
 import { SwitchRow } from './SwitchRow';
-import styles from './ConnectionSheet.module.css';
+import styles from './flow/Form.module.css';
 import { t } from './messages/profile';
+import { t as flow } from './flow/messages';
 
 const environments: readonly { value: EnvKindDto; label: string }[] = [
   { value: 'local', label: t('local') },
@@ -16,21 +16,30 @@ const environments: readonly { value: EnvKindDto; label: string }[] = [
   { value: 'custom', label: t('custom2') },
 ];
 
-/** Environment tag (custom label and colour) and the write-safety switches. */
+/** What each environment does to the window chrome. */
+const effects: Record<EnvKindDto, string> = {
+  local: flow('envLocal'),
+  dev: flow('envDev'),
+  staging: flow('envStaging'),
+  prod: flow('envProd'),
+  custom: flow('envCustom'),
+};
+
+/** Environment rows: the tag and what it does, and a custom label and colour. */
 export function EnvironmentFields({
   form,
-  focusSafety,
 }: {
   form: ConnectionForm;
-  focusSafety?: boolean | undefined;
 }): React.JSX.Element {
   const { draft, errors, update } = form;
   return (
     <>
-      <div className={styles.row}>
-        <span className={styles.label}>{t('environment')}</span>
+      <div className={styles.choiceRow}>
+        <span className={styles.stack}>
+          <span>{flow('colourAndLabel')}</span>
+          <small>{effects[draft.envKind]}</small>
+        </span>
         <SegmentedControl
-          className={styles.segmented}
           aria-label={t('environment')}
           options={environments}
           value={draft.envKind}
@@ -38,9 +47,8 @@ export function EnvironmentFields({
         />
       </div>
       {draft.envKind === 'custom' && (
-        <div className={styles.pair}>
+        <div className={styles.fileRow}>
           <TextField
-            className={styles.row}
             label={t('label')}
             value={draft.envLabel}
             {...fieldError(errors.envLabel)}
@@ -48,10 +56,10 @@ export function EnvironmentFields({
               update({ envLabel: event.target.value });
             }}
           />
-          <label className={`${styles.port ?? ''} ${styles.colour ?? ''}`}>
-            <span>{t('colour')}</span>
+          <label className={styles.colour}>
             <input
               type="color"
+              aria-label={t('colour')}
               value={draft.envColor}
               onChange={(event) => {
                 update({ envColor: event.target.value });
@@ -60,13 +68,19 @@ export function EnvironmentFields({
           </label>
         </div>
       )}
-      <SafetySelector
-        value={draft.safety}
-        initialFocus={focusSafety}
-        onChange={(safety) => {
-          update({ safety });
-        }}
-      />
+    </>
+  );
+}
+
+/** History rows: record executed statements, and redact their literals. */
+export function HistoryFields({
+  form,
+}: {
+  form: ConnectionForm;
+}): React.JSX.Element {
+  const { draft, update } = form;
+  return (
+    <>
       <SwitchRow
         label={t('recordQueryHistory')}
         detail={t('keepExecutedStatements')}

@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { act, fireEvent, screen } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { revealSecret } from '@openrows/ipc';
-import { ThemeProvider } from '@openrows/ui';
 import { profile } from '../../test/ipcStub';
-import { ConnectionSheet } from './ConnectionSheet';
+import { mountFlow } from './flow/flowTestKit';
 import { REVEAL_TIMEOUT_MS } from './useRevealedSecret';
 
 vi.mock('@openrows/ipc', async () =>
@@ -19,23 +17,11 @@ afterEach(() => {
 });
 
 function mount() {
-  const existing = profile('orders', { hasPassword: true });
-  return render(
-    <ThemeProvider>
-      <ConnectionSheet
-        profile={existing}
-        onClose={vi.fn()}
-        onSaved={vi.fn()}
-        onDelete={vi.fn()}
-        onDuplicate={vi.fn()}
-      />
-    </ThemeProvider>,
-  );
+  return mountFlow({ profile: profile('orders', { hasPassword: true }) });
 }
 
 it('reads a saved password only when Reveal is clicked and hides it again on blur', async () => {
-  const user = userEvent.setup();
-  mount();
+  const { user } = await mount();
   const field = screen.getByLabelText('Password');
   expect(field).toHaveAttribute('type', 'password');
   expect(field).not.toHaveValue(SECRET);
@@ -56,9 +42,9 @@ it('reads a saved password only when Reveal is clicked and hides it again on blu
   expect(screen.queryByDisplayValue(SECRET)).toBeNull();
 });
 
-it('hides a revealed password after the timeout and forgets it when the sheet closes', async () => {
+it('hides a revealed password after the timeout and forgets it when the tab closes', async () => {
+  const view = await mount();
   vi.useFakeTimers();
-  const view = mount();
   fireEvent.click(screen.getByRole('button', { name: 'Reveal password' }));
   await act(async () => {
     await Promise.resolve();
@@ -78,11 +64,10 @@ it('hides a revealed password after the timeout and forgets it when the sheet cl
 });
 
 it('reports a Keychain read that fails and stays masked', async () => {
-  const user = userEvent.setup();
   vi.mocked(revealSecret).mockRejectedValueOnce(
     new Error('The Keychain denied access'),
   );
-  mount();
+  const { user } = await mount();
   await user.click(screen.getByRole('button', { name: 'Reveal password' }));
   expect(await screen.findByRole('alert')).toHaveTextContent(
     'The Keychain denied access',

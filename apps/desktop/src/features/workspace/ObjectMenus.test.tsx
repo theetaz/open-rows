@@ -53,7 +53,9 @@ it('drops a table from its context menu, then closes its tab', async () => {
     within(menu).getByRole('menuitem', { name: 'Rename Table…' }),
   ).toBeEnabled();
   await user.click(within(menu).getByRole('menuitem', { name: 'Drop Table…' }));
-  const sheet = screen.getByRole('dialog', { name: 'Drop table orders' });
+  const sheet = await screen.findByRole('dialog', {
+    name: 'Drop table orders',
+  });
   const drop = within(sheet).getByRole('button', { name: 'Drop' });
   await waitFor(() => {
     expect(drop).toBeEnabled();
@@ -78,7 +80,9 @@ it('edits and drops routines from their context menu', async () => {
   await user.click(
     within(menu).getByRole('menuitem', { name: 'Drop Function…' }),
   );
-  const sheet = screen.getByRole('dialog', { name: 'Drop function calc_tax' });
+  const sheet = await screen.findByRole('dialog', {
+    name: 'Drop function calc_tax',
+  });
   await waitFor(() => {
     expect(vi.mocked(objectChange).mock.lastCall?.[0].change).toEqual({
       kind: 'dropRoutine',
@@ -103,7 +107,9 @@ it('creates objects from the sidebar + menu and the command palette', async () =
     within(menu).getByRole('menuitem', { name: 'Drop Database…' }),
   ).toBeEnabled();
   await user.click(within(menu).getByRole('menuitem', { name: 'New Table…' }));
-  const table = screen.getByRole('dialog', { name: 'New table in public' });
+  const table = await screen.findByRole('dialog', {
+    name: 'New table in public',
+  });
   fireEvent.keyDown(table, { key: 'Escape' });
   await act(async () => {
     fireEvent.keyDown(window, { key: 'p', metaKey: true, shiftKey: true });

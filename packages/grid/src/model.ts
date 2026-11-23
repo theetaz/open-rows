@@ -5,6 +5,8 @@ import type { light } from '@openrows/ui/tokens';
 export interface GridColumn {
   id: string;
   title: string;
+  /** A quiet caption after the title, e.g. the column's type. */
+  caption?: string;
   width: number;
   pinned: boolean;
   /** `end` right-aligns values and the header title, e.g. numbers. */
@@ -66,6 +68,8 @@ export interface GridTheme {
   headerHeight?: number;
   /** Canvas font of the header titles; defaults to the cell font. */
   headerFont?: string;
+  /** Canvas font of the header captions; defaults to the title font. */
+  captionFont?: string;
   fontSize: number;
   fontFamily: string;
 }

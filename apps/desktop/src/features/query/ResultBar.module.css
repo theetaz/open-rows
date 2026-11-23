@@ -1,14 +1,15 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /*
- * The bar over the results (the kit's 36 px `barline`): result sets, the plan
- * and Messages in one compact segmented track, the layout switch trailing.
+ * The bar over the results (one bar height): result sets, the plan and
+ * Messages in one 28 px capsule track, the layout switch trailing, so it
+ * matches the other bars' capsule family.
  */
 .bar {
   display: flex;
   align-items: center;
   gap: var(--or-space-8);
-  min-block-size: 36px;
-  padding: 0 var(--or-space-12) 0 var(--or-space-8);
+  min-block-size: var(--or-bar-height);
+  padding: 0 var(--or-space-10);
   flex-shrink: 0;
   overflow-x: auto;
   scrollbar-width: none;
@@ -28,9 +29,12 @@
   flex-shrink: 0;
   align-items: center;
   gap: var(--or-segment-inset);
+  box-sizing: border-box;
+  block-size: var(--or-control-height);
   padding: var(--or-segment-inset);
-  border-radius: var(--or-radius-control);
+  border-radius: var(--or-radius-capsule);
   background: var(--or-control-fill);
+  box-shadow: inset 0 0 0 var(--or-border-width) var(--or-control-stroke);
 }
 .tabs {
   display: contents;
@@ -39,16 +43,14 @@
   display: inline-flex;
   align-items: center;
   gap: var(--or-space-6);
-  block-size: calc(
-    var(--or-control-height-compact) - 2 * var(--or-segment-inset)
-  );
-  padding: 0 var(--or-space-10);
+  block-size: calc(var(--or-control-height) - 2 * var(--or-segment-inset));
+  padding: 0 var(--or-space-12);
   border: 0;
-  border-radius: var(--or-radius-menu-item);
+  border-radius: var(--or-radius-capsule);
   background: transparent;
   color: var(--or-text);
   font: inherit;
-  font-size: var(--or-text-12);
+  font-size: var(--or-text-13);
   white-space: nowrap;
   cursor: default;
 }
@@ -98,7 +100,7 @@
   margin-inline-start: var(--or-space-2);
   padding: 0;
   border: 0;
-  border-radius: var(--or-radius-status);
+  border-radius: var(--or-radius-capsule);
   background: transparent;
   color: var(--or-secondary);
 }

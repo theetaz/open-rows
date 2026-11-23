@@ -1,0 +1,46 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Choice cards (route, safety policy): three to a row, the choice outlined. */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: var(--or-space-8);
+}
+.card {
+  display: grid;
+  align-content: start;
+  gap: var(--or-space-2);
+  padding: var(--or-space-10) var(--or-space-12);
+  border: 0;
+  border-radius: var(--or-radius-card);
+  background: var(--or-raised);
+  box-shadow: inset 0 0 0 var(--or-border-width) var(--or-separator);
+  color: var(--or-text);
+  font: inherit;
+  text-align: start;
+  transition: background-color var(--or-motion-instant) linear;
+}
+.card:hover:not(:disabled) {
+  background: var(--or-raised-2);
+}
+.card:disabled {
+  opacity: 0.5;
+}
+.card svg {
+  margin-block-end: var(--or-space-4);
+  color: var(--or-secondary);
+}
+.card b {
+  font-weight: var(--or-weight-semibold);
+}
+.card span {
+  color: var(--or-tertiary);
+  font-size: var(--or-text-11);
+  line-height: 1.35;
+}
+.card[aria-checked='true'] {
+  background: var(--or-accent-soft);
+  box-shadow: inset 0 0 0 1.5px var(--or-accent-fill);
+}
+.card[aria-checked='true'] svg {
+  color: var(--or-accent);
+}

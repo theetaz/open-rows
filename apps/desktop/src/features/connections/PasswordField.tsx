@@ -6,7 +6,7 @@ import { cloudProviders } from './cloudAuthForm';
 import { CredentialFields } from './CredentialFields';
 import { SecretField } from './SecretField';
 import type { ConnectionForm } from './useConnectionForm';
-import styles from './ConnectionSheet.module.css';
+import styles from './flow/Form.module.css';
 import { t } from './messages/profile';
 
 const storageChoices: readonly { value: PasswordStorageDto; label: string }[] =

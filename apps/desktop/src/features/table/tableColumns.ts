@@ -35,13 +35,17 @@ function columnsOf(
   return columns.map((column, index) => ({
     id: String(index),
     title: column.name,
+    ...(column.sourceType ? { caption: column.sourceType } : {}),
     ...headerSort(column.name, sort),
     width: widthOf(
       layout,
       column.name,
       Math.min(
         320,
-        Math.max(columnWidth(column.sourceType), column.name.length * 8 + 56),
+        Math.max(
+          columnWidth(column.sourceType),
+          column.name.length * 8 + captionRoom(column.sourceType) + 56,
+        ),
       ),
     ),
     pinned: index < pins,
@@ -49,6 +53,11 @@ function columnsOf(
     ...(column.sourceType === 'bool' ? { kind: 'boolean' as const } : {}),
     ...(links.has(column.name) ? { link: true } : {}),
   }));
+}
+
+/** Header room for a column's type caption after its name. */
+export function captionRoom(type: string | null): number {
+  return type ? type.length * 6 + 6 : 0;
 }
 
 function columnWidth(type: string | null): number {

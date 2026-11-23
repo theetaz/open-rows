@@ -25,7 +25,8 @@ export type UrlField = {
 const message = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
-function applyPassword(draft: Draft, password: UrlPassword): Draft {
+/** A password typed inside a URL replaces the field's; a URL without one clears a typed one. */
+export function applyPassword(draft: Draft, password: UrlPassword): Draft {
   if (password.kind === 'typed') return withPassword(draft, password.value);
   if (password.kind === 'none' && draft.passwordMode === 'set')
     return withPassword(draft, '');

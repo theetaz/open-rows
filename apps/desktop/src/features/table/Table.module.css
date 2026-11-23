@@ -215,6 +215,9 @@
   font-variant-numeric: tabular-nums;
 }
 .timing {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--or-space-6);
   flex-shrink: 0;
   font-variant-numeric: tabular-nums;
 }

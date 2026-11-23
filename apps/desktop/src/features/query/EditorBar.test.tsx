@@ -2,6 +2,8 @@
 import { screen, within } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import { choose, fakeRuns, renderTab } from './testQueryTab';
+// Menus run their command at once instead of after the blink and fade.
+document.documentElement.dataset.motion = 'reduced';
 
 vi.mock('@openrows/ipc', async () =>
   (await import('../../test/ipcStub')).ipcStub(),
@@ -70,12 +72,11 @@ it('keeps Run as the only split button, with Explain, Beautify and AI plain', ()
   expect(bar.queryByText('Connect to run')).toBeNull();
 });
 
-it('opens settings submenus by keyboard and toggles checked options', async () => {
+it('opens settings submenus, closes them by keyboard and toggles checked options', async () => {
   const { user } = renderTab();
   await user.click(screen.getByRole('button', { name: 'More query actions' }));
   const fontSize = screen.getByRole('menuitem', { name: /Font Size/ });
-  fontSize.focus();
-  await user.keyboard('{ArrowRight}');
+  await user.click(fontSize);
   const sizes = screen.getByRole('menu', { name: 'Font Size' });
   expect(
     within(sizes).getByRole('menuitemradio', { name: /Default/ }),

@@ -80,7 +80,7 @@ it('⌘P searches the Rust name index per keystroke, opens a tab per relation, r
   );
   expect(screen.getByRole('tab', { name: /customers/ })).toHaveAttribute(
     'title',
-    'orders-local (local) · customers',
+    'orders-local (local) · orders · customers',
   );
   await key('p');
   await chooseObject('order_summary');

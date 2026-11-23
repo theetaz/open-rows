@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useState } from 'react';
-import { DisclosureSection, Icon, Tree, TreeNode } from '@openrows/ui';
+import { Icon, Tree, TreeNode } from '@openrows/ui';
 import { objectLabel } from './catalog';
+import { TreeSection } from './TreeSection';
+import { menuTarget } from '../../shell/ContextMenu';
 import type { ObjectRef } from './catalog';
 import { sidebarObjectKey } from './sidebarIdentity';
 import type { SidebarObject } from './sidebarIdentity';
@@ -59,7 +61,7 @@ function SavedSection(
     props.catalog.database,
   ]);
   return (
-    <DisclosureSection
+    <TreeSection
       label={props.label}
       count={props.objects.length}
       defaultOpen={expandedLists.has(scope)}
@@ -95,7 +97,7 @@ function SavedSection(
           ))}
         </Tree>
       </div>
-    </DisclosureSection>
+    </TreeSection>
   );
 }
 
@@ -133,7 +135,11 @@ function SavedRow(
         name={`${label}${missing ? ' (missing)' : ''}`}
         onContextMenu={(event) => {
           event.preventDefault();
-          props.onMenu?.(object, { x: event.clientX, y: event.clientY });
+          props.onMenu?.(object, {
+            x: event.clientX,
+            y: event.clientY,
+            target: menuTarget(event.currentTarget),
+          });
         }}
         drag={favouriteDrag(props)}
         detail={

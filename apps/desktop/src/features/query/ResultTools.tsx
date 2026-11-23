@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
-import { Button, Icon, IconButton, TextField } from '@openrows/ui';
+import { Button, ButtonGroup, Icon, IconButton, TextField } from '@openrows/ui';
 import type { ResultView } from './useResultView';
 import styles from './Query.module.css';
 import { t } from './lazyMessages';
 
 /**
- * One compact result toolbar (the kit's barline): a filled filter field,
- * + Row, then Fit columns, Columns and Form as quiet icon buttons, and
- * Export trailing.
+ * The result toolbar, one 28 px capsule family like the table view bar: the
+ * filter field, + Row, then Fit columns, Columns and Form in one icon group,
+ * and Export trailing.
  */
 export function ResultTools(props: {
   view: ResultView;
@@ -31,7 +31,7 @@ export function ResultTools(props: {
       <TextField
         aria-label={t('filterRows')}
         placeholder={t('filterRows')}
-        controlSize="compact"
+        controlSize="search"
         className={styles.resultFilter}
         leadingIcon={<Icon name="search" />}
         value={view.needle}
@@ -40,22 +40,23 @@ export function ResultTools(props: {
         }}
       />
       {view.columnFilters.length > 0 && (
-        <Button size="sm" variant="ghost" onClick={view.clearColumnFilters}>
+        <Button variant="ghost" onClick={view.clearColumnFilters}>
           {t('clearColumnFilters', { count: view.columnFilters.length })}
         </Button>
       )}
       <Button
-        size="sm"
-        variant="ghost"
+        aria-label={t('row')}
         disabled={!props.ready}
         onClick={props.onInsert}
       >
-        {t('row')}
+        <Icon name="plus" />
+        {t('rowShort')}
       </Button>
       <ViewButtons {...props} />
       <span className={styles.toolsSpacer} />
       {props.onExport && (
-        <Button size="sm" variant="ghost" onClick={props.onExport}>
+        <Button onClick={props.onExport}>
+          <Icon name="upload" />
           {t('export')}
         </Button>
       )}
@@ -63,7 +64,7 @@ export function ResultTools(props: {
   );
 }
 
-/** Fit columns, the Columns panel and the row form as quiet icon buttons. */
+/** Fit columns, the Columns panel and the row form in one icon group. */
 function ViewButtons(
   props: Pick<
     Parameters<typeof ResultTools>[0],
@@ -71,10 +72,8 @@ function ViewButtons(
   >,
 ): React.JSX.Element {
   return (
-    <>
+    <ButtonGroup aria-label={t('resultView')}>
       <IconButton
-        size="sm"
-        variant="ghost"
         aria-label={t('fitColumns')}
         title={t('fitColumns')}
         onClick={props.onFit}
@@ -82,8 +81,6 @@ function ViewButtons(
         <Icon name="fit" />
       </IconButton>
       <IconButton
-        size="sm"
-        variant="ghost"
         aria-label={t('columns')}
         title={t('columns')}
         aria-pressed={props.open.columns}
@@ -92,8 +89,6 @@ function ViewButtons(
         <Icon name="columns" />
       </IconButton>
       <IconButton
-        size="sm"
-        variant="ghost"
         aria-label={t('form')}
         title={t('form')}
         aria-pressed={props.open.form}
@@ -102,6 +97,6 @@ function ViewButtons(
       >
         <Icon name="list" />
       </IconButton>
-    </>
+    </ButtonGroup>
   );
 }

@@ -9,7 +9,7 @@ import {
 import { ObjectTree, SchemaPicker, SidebarFilters } from '../schema';
 import type { Catalog, MenuPoint, ObjectRef } from '../schema';
 import { HistoryList } from '../query';
-import { SidebarQueries } from './SidebarQueries';
+import { SavedQueriesSection, SidebarQueries } from './SidebarQueries';
 import type { SidebarQueryProps } from './SidebarQueries';
 import type { Connections } from '../connections';
 import type { InspectionTarget } from '../inspection/target';
@@ -19,34 +19,10 @@ import { SchemaDumpMenu } from './SchemaDumpMenu';
 import type { JobActions } from './JobActions';
 import { CreateMenu } from './CreateMenu';
 import type { ObjectEditing } from './useObjectEditing';
-import { copyLink, isLinkable, objectLink } from '../links/linkText';
+import { isLinkable } from '../links/linkText';
+import { linkCopier, schemaLinkCopier } from './sidebarLinks';
 import styles from './Sidebar.module.css';
 import { t } from './messages';
-
-/** Copy the link of a schema of the active connection's `database`. */
-function schemaLinkCopier(
-  connections: Connections,
-  database: string,
-): ((schema: string) => void) | undefined {
-  const copy = linkCopier(connections);
-  return (
-    copy &&
-    ((schema) => {
-      copy({ database, schema });
-    })
-  );
-}
-
-/** Copy the link of a schema or relation of the active connection. */
-function linkCopier(
-  connections: Connections,
-): ((target: Parameters<typeof objectLink>[1]) => void) | undefined {
-  const profile = connections.active;
-  if (!profile) return undefined;
-  return (target) => {
-    copyLink(objectLink(profile, target)).catch(() => undefined);
-  };
-}
 
 /** The sidebar's views: catalog objects, saved queries and history. */
 const sidebarSegments = [
@@ -101,13 +77,6 @@ export function WorkspaceSidebar(props: Props): React.JSX.Element {
   return (
     <div {...keyboard} className={styles.container}>
       <GlassPanel className={styles.sidebar}>
-        <SegmentedControl
-          aria-label={t('sidebarMode')}
-          options={sidebarSegments}
-          value={segment}
-          onValueChange={setSegment}
-          variant="source"
-        />
         {props.header}
         <TextField
           controlSize="search"
@@ -120,6 +89,14 @@ export function WorkspaceSidebar(props: Props): React.JSX.Element {
             setSearch(event.target.value);
           }}
         />
+        <SegmentedControl
+          aria-label={t('sidebarMode')}
+          options={sidebarSegments}
+          value={segment}
+          onValueChange={setSegment}
+          size="compact"
+          variant="source"
+        />
         <SidebarItems
           {...props}
           segment={segment}
@@ -130,18 +107,8 @@ export function WorkspaceSidebar(props: Props): React.JSX.Element {
           onMenu={(object, point) => {
             setMenu({ object, point });
           }}
+          onCreate={props.objects.features ? setCreate : undefined}
         />
-        {catalog.database && (
-          <SchemaPicker
-            catalog={catalog}
-            onMenu={(point) => {
-              setSchemaMenu({ schema: catalog.schema, point });
-            }}
-            onCreate={props.objects.features ? setCreate : undefined}
-          >
-            {props.schemaTools}
-          </SchemaPicker>
-        )}
       </GlassPanel>
       {schemaMenu && props.jobs && (
         <SchemaDumpMenu
@@ -184,6 +151,7 @@ function SidebarMenus(
     <>
       <ObjectActions
         menu={props.menu}
+        engine={catalog.engine}
         onClose={props.onCloseMenu}
         sessionFor={props.sessionFor}
         onOpen={props.onOpen}
@@ -221,19 +189,41 @@ function SidebarItems(
     search: string;
     onMenu: (object: ObjectRef, point: MenuPoint) => void;
     onSchemaMenu: (schema: string, point: MenuPoint) => void;
+    onCreate: ((point: MenuPoint) => void) | undefined;
   },
 ): React.JSX.Element {
+  const { catalog } = props;
   return (
     <div className={styles.objects}>
       {props.segment === 'Items' && (
-        <ObjectTree
-          catalog={props.catalog}
-          search={props.search}
-          onInspect={props.onInspect}
-          onOpen={props.onOpen}
-          onMenu={props.onMenu}
-          onSchemaMenu={props.onSchemaMenu}
-        />
+        <>
+          {catalog.database && (
+            <SchemaPicker
+              catalog={catalog}
+              onMenu={(point) => {
+                props.onSchemaMenu(catalog.schema, point);
+              }}
+              onCreate={props.onCreate}
+            >
+              {props.schemaTools}
+            </SchemaPicker>
+          )}
+          <ObjectTree
+            catalog={catalog}
+            search={props.search}
+            onInspect={props.onInspect}
+            onOpen={props.onOpen}
+            onMenu={props.onMenu}
+            onSchemaMenu={props.onSchemaMenu}
+          />
+          <SavedQueriesSection
+            {...props}
+            active={props.connections.active}
+            onNew={() => {
+              props.onOpenSql('');
+            }}
+          />
+        </>
       )}
       {props.segment === 'Queries' && (
         <SidebarQueries

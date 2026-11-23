@@ -42,7 +42,8 @@ export function ConnectionRail(
     activeId: string | undefined;
     statusOf: (profileId: string) => SessionStatus;
     onSelect: (profileId: string) => void;
-    onNew: () => void;
+    /** The heading's `+`; omitted where the sidebar footer offers it. */
+    onNew?: (() => void) | undefined;
     actionsFor?: (profile: ProfileDto) => readonly ConnectionAction[];
   },
 ): React.JSX.Element {
@@ -55,15 +56,17 @@ export function ConnectionRail(
     <nav className={styles.rail} aria-label={t('workspaces')}>
       <div className={styles.railHeading}>
         <span>{t('connections')}</span>
-        <IconButton
-          aria-label={t('newConnection')}
-          title={t('newConnection')}
-          variant="ghost"
-          size="sm"
-          onClick={props.onNew}
-        >
-          <Icon name="plus" />
-        </IconButton>
+        {props.onNew && (
+          <IconButton
+            aria-label={t('newConnection')}
+            title={t('newConnection')}
+            variant="ghost"
+            size="sm"
+            onClick={props.onNew}
+          >
+            <Icon name="plus" />
+          </IconButton>
+        )}
       </div>
       <RailSearch
         query={query}

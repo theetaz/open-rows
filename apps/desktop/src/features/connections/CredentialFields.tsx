@@ -5,7 +5,7 @@ import { cancelCredential, testCredential } from '@openrows/ipc';
 import type { ConnectionForm } from './useConnectionForm';
 import { commandErrors } from './credentialForm';
 import { fieldError, toInput } from './form';
-import styles from './ConnectionSheet.module.css';
+import styles from './flow/Form.module.css';
 import { t } from './messages/profile';
 /** Credential invocation fields and an explicit, value-free test result. */
 export function CredentialFields({
@@ -60,18 +60,24 @@ export function CredentialFields({
         }}
       />
       <small className={styles.hint}>{t('runsDirectlyPermissions')}</small>
-      <Button
-        disabled={busy || Object.keys(commandErrors(draft)).length > 0}
-        onClick={() => void run()}
-      >
-        {t('testCommand')}
-      </Button>
-      {busy && form.profileId && (
-        <Button onClick={() => void cancelCredential(form.profileId ?? '')}>
-          {t('cancelCommand')}
+      <div className={styles.actions}>
+        <Button
+          disabled={busy || Object.keys(commandErrors(draft)).length > 0}
+          onClick={() => void run()}
+        >
+          {t('testCommand')}
         </Button>
+        {busy && form.profileId && (
+          <Button onClick={() => void cancelCredential(form.profileId ?? '')}>
+            {t('cancelCommand')}
+          </Button>
+        )}
+      </div>
+      {result && (
+        <p role="status" className={styles.hint}>
+          {result}
+        </p>
       )}
-      {result && <p role="status">{result}</p>}
       {form.errors.commandArgs && (
         <p className={styles.error} role="alert">
           {form.errors.commandArgs}

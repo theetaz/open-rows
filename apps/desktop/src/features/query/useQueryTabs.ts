@@ -17,9 +17,11 @@ import type {
   QueryTab,
   QueryTabInit,
   TabFile,
+  TabPlace,
   TabScope,
   TabsState,
 } from './tabs';
+import { useTabNavigation } from './useTabNavigation';
 import { keepTab, moveTab, pinTab, renameTab } from './tabOps';
 import { mergeSessionTabs, useSavedTabs } from './useSavedTabs';
 import { useEditorSettings } from './editorSettings';
@@ -55,7 +57,7 @@ export type QueryTabs = {
   bindFile: (id: string, file: TabFile) => void;
   /** Remember a query tab's last parameter values. */
   setParams: (id: string, params: ParamValues) => void;
-  /** Move a tab to a position among its scope's tabs. */
+  /** Move a tab to a position among the window's tabs. */
   move: (id: string, index: number) => void;
   pin: (id: string, pinned: boolean) => void;
   /** Turn a preview tab into a normal tab. */
@@ -68,6 +70,13 @@ export type QueryTabs = {
   setSplits?: (splits: NonNullable<TabsState['splits']>) => void;
   /** Add tabs moved from another window; each becomes its scope's active tab. */
   receive?: (moved: TabsState) => void;
+  /** Apply a pure change to the whole tab set (groups, order, duplicates). */
+  apply?: (change: (state: TabsState) => TabsState) => void;
+  /**
+   * Show another place in a table tab (path bar, back, forward). A tab with
+   * staged edits keeps them: the place opens in a new tab beside it.
+   */
+  navigate?: (id: string, to: TabPlace | 'back' | 'forward') => void;
 };
 
 /**
@@ -92,6 +101,7 @@ export function useQueryTabs(): QueryTabs {
   const edit = useCallback((id: string, sql: string) => {
     setState((current) => editTab(current, id, sql));
   }, []);
+  const navigate = useTabNavigation(state, setState, guard);
   return {
     tabsFor: (scope) => tabsOf(state, scope),
     activeFor: (scope) => {
@@ -143,6 +153,8 @@ export function useQueryTabs(): QueryTabs {
     receive: (moved) => {
       setState((current) => mergeSessionTabs(current, moved));
     },
+    apply: setState,
+    navigate,
     state,
   };
 }

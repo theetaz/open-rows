@@ -119,12 +119,19 @@ it('double-click opens; rail tiles switch databases and keep per-database tab se
       rail.getByRole('button', { name: 'Database analytics_scratch' }),
     ).toHaveAttribute('aria-pressed', 'true');
   });
-  expect(screen.queryByRole('tab', { name: /SQL Query 1/ })).toBeNull();
-  expect(screen.getByLabelText('Connection context')).toHaveTextContent(
+  // The other database's tab stays in the window's strip, not shown.
+  expect(screen.getByRole('tab', { name: /SQL Query 1/ })).toHaveAttribute(
+    'aria-selected',
+    'false',
+  );
+  expect(screen.getByRole('group', { name: 'Path' })).toHaveTextContent(
     /orders-local.*analytics_scratch/,
   );
   fireEvent.click(rail.getByRole('button', { name: 'Database orders' }));
-  expect(screen.getByRole('tab', { name: /SQL Query 1/ })).toBeVisible();
+  expect(screen.getByRole('tab', { name: /SQL Query 1/ })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
   showConnections();
   fireEvent.contextMenu(rail.getByRole('button', { name: 'Database orders' }));
   fireEvent.click(screen.getByRole('menuitem', { name: 'Close database' }));

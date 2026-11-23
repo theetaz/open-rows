@@ -76,7 +76,13 @@ function Harness(): React.JSX.Element {
         <TabMenu
           tabs={tabs}
           target={{ id: 'query-1', x: 0, y: 0 }}
-          onRename={vi.fn()}
+          actions={{
+            newRight: vi.fn(),
+            newGroup: vi.fn(),
+            rename: vi.fn(),
+            reload: vi.fn(),
+            copyPath: vi.fn(),
+          }}
           onClose={() => {
             setMenu(false);
           }}
@@ -93,8 +99,12 @@ it.each(['Close Other Tabs', 'Close Tabs to the Right'])(
     const user = userEvent.setup();
     render(<Harness />);
     await user.click(screen.getByRole('button', { name: 'Menu' }));
-    await user.click(screen.getByRole('menuitem', { name: action }));
-    const review = screen.getByRole('dialog', { name: 'Review closing tabs' });
+    await user.click(
+      screen.getByRole('menuitem', { name: new RegExp(`^${action}`) }),
+    );
+    const review = await screen.findByRole('dialog', {
+      name: 'Review closing tabs',
+    });
     expect(within(review).getAllByRole('listitem')).toHaveLength(2);
     expect(review).toHaveTextContent('First dirty: unsaved changes');
     expect(review).toHaveTextContent('Second dirty: unsaved changes');
@@ -102,9 +112,11 @@ it.each(['Close Other Tabs', 'Close Tabs to the Right'])(
     await user.click(screen.getByRole('button', { name: 'Keep tabs' }));
     expect(screen.queryByRole('dialog')).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Menu' }));
-    await user.click(screen.getByRole('menuitem', { name: action }));
     await user.click(
-      screen.getByRole('button', { name: 'Discard and close tabs' }),
+      screen.getByRole('menuitem', { name: new RegExp(`^${action}`) }),
+    );
+    await user.click(
+      await screen.findByRole('button', { name: 'Discard and close tabs' }),
     );
     expect(screen.getByLabelText('Open tabs')).toHaveTextContent(/^Keep$/);
   },
@@ -117,7 +129,7 @@ it('blocks the whole group while any affected tab is committing', async () => {
   await user.click(screen.getByRole('button', { name: 'Menu' }));
   await user.click(screen.getByRole('menuitem', { name: 'Close Other Tabs' }));
   expect(
-    screen.getByRole('button', { name: 'Discard and close tabs' }),
+    await screen.findByRole('button', { name: 'Discard and close tabs' }),
   ).toBeDisabled();
   expect(screen.getByLabelText('Open tabs')).toHaveTextContent('Second dirty');
 });

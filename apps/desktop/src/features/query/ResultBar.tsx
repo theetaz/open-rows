@@ -79,7 +79,6 @@ export function ResultBar(props: ResultBarProps): React.JSX.Element | null {
       <span className={styles.spacer} />
       {props.layout && (
         <SegmentedControl
-          size="compact"
           aria-label={t('resultLayout')}
           options={LAYOUTS}
           value={props.layout.view}

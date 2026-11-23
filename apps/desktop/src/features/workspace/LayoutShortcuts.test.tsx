@@ -55,9 +55,29 @@ it('handles the exact shortcut modifiers and ignores composing or shifted input'
     { ctrlKey: true },
   ])
     expect(shortcut({ ...event, ...override })).toBeUndefined();
-  for (const number of [1, 2, 3, 4, 5, 6, 7, 8, 9])
-    expect(shortcut({ ...event, key: String(number) })).toBe(number - 1);
+  for (const number of [1, 2, 3, 4, 5, 6, 7, 8, 9]) {
+    const digit = { key: String(number), code: `Digit${String(number)}` };
+    expect(shortcut({ ...event, ...digit })).toBe(
+      `select-tab-${String(number)}`,
+    );
+    // ⌥ types another character; the physical key still names the connection.
+    expect(
+      shortcut({ ...event, key: '¡', code: digit.code, altKey: true }),
+    ).toBe(number - 1);
+  }
   expect(shortcut({ ...event, key: '0' })).toBeUndefined();
+  expect(
+    shortcut({ ...event, key: 'Tab', metaKey: false, ctrlKey: true }),
+  ).toBe('next-tab');
+  expect(
+    shortcut({
+      ...event,
+      key: 'Tab',
+      metaKey: false,
+      ctrlKey: true,
+      shiftKey: true,
+    }),
+  ).toBe('previous-tab');
 });
 it('dispatches panel, tab and saved-connection shortcuts', async () => {
   mount();
@@ -82,13 +102,13 @@ it('dispatches panel, tab and saved-connection shortcuts', async () => {
     'analytics-prod',
     'events-dev',
   ].entries()) {
-    key(String(index + 1));
+    key(String(index + 1), { altKey: true });
     // Choosing a connection folds the list behind the sidebar pop-up.
     expect(
       screen.getByRole('button', { name: `Switch to ${name}`, hidden: true }),
     ).toHaveAttribute('aria-pressed', 'true');
   }
-  key('4');
+  key('4', { altKey: true });
   expect(
     screen.getByRole('button', { name: 'Switch to events-dev', hidden: true }),
   ).toHaveAttribute('aria-pressed', 'true');

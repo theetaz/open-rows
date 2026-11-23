@@ -1,26 +1,26 @@
 // SPDX-License-Identifier: Apache-2.0
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { screen } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import { createProfile, dumpTools, pickConnectionFile } from '@openrows/ipc';
-import { ThemeProvider } from '@openrows/ui';
 import { profile } from '../../test/ipcStub';
-import { ConnectionSheet } from './ConnectionSheet';
+import { continueButton, mountFlow, saveFlow } from './flow/flowTestKit';
 vi.mock('@openrows/ipc', async () =>
   (await import('../../test/ipcStub')).ipcStub(),
 );
-function mount(): ReturnType<typeof userEvent.setup> {
-  render(
-    <ThemeProvider>
-      <ConnectionSheet
-        onClose={vi.fn()}
-        onSaved={vi.fn()}
-        onDelete={vi.fn()}
-        onDuplicate={vi.fn()}
-      />
-    </ThemeProvider>,
-  );
-  return userEvent.setup();
+async function mount() {
+  const { user } = await mountFlow({ engine: 'postgres' });
+  return user;
+}
+/** Continue to Security and choose a route card and its hop. */
+async function route(
+  user: Awaited<ReturnType<typeof mount>>,
+  card: RegExp,
+  hop: string,
+): Promise<void> {
+  await user.type(screen.getByRole('textbox', { name: 'User' }), 'app');
+  await user.click(continueButton());
+  await user.click(screen.getByRole('radio', { name: card }));
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Hop' }), hop);
 }
 it('saves a structured kubectl route and shows missing tool advice inline', async () => {
   vi.mocked(dumpTools).mockResolvedValue([
@@ -36,16 +36,9 @@ it('saves a structured kubectl route and shows missing tool advice inline', asyn
     },
   ]);
   vi.mocked(createProfile).mockResolvedValue(profile('routed'));
-  const user = mount();
+  const user = await mount();
   await user.type(screen.getByRole('textbox', { name: 'Name' }), 'routed');
-  await user.type(screen.getByRole('textbox', { name: 'User' }), 'app');
-  await user.click(
-    screen.getByRole('button', { name: 'Route · Cloud / zero-trust' }),
-  );
-  await user.selectOptions(
-    screen.getByRole('combobox', { name: 'Route' }),
-    'kubectl',
-  );
+  await route(user, /^Cloud provider/, 'kubectl');
   await user.type(screen.getByRole('textbox', { name: 'Context' }), 'test');
   await user.type(
     screen.getByRole('textbox', {
@@ -56,7 +49,7 @@ it('saves a structured kubectl route and shows missing tool advice inline', asyn
   expect(
     await screen.findByText('kubectl was not found. Check Settings ▸ Tools.'),
   ).toBeVisible();
-  await user.click(screen.getByRole('button', { name: 'Save' }));
+  await saveFlow(user);
   expect(createProfile).toHaveBeenCalledWith(
     expect.objectContaining({
       helper: {
@@ -71,16 +64,9 @@ it('saves a structured kubectl route and shows missing tool advice inline', asyn
   );
 });
 it('defaults Google proxy database TLS to off with an encryption hint', async () => {
-  const user = mount();
-  await user.click(
-    screen.getByRole('button', { name: 'Route · Cloud / zero-trust' }),
-  );
-  await user.selectOptions(
-    screen.getByRole('combobox', { name: 'Route' }),
-    'cloud',
-  );
+  const user = await mount();
+  await route(user, /^Cloud provider/, 'cloud');
   expect(screen.getByText(/auth proxy encrypts traffic/)).toBeVisible();
-  await user.click(screen.getByRole('button', { name: /^TLS/ }));
   expect(screen.getByRole('combobox', { name: 'TLS mode' })).toHaveValue(
     'disable',
   );
@@ -89,16 +75,9 @@ it('defaults Google proxy database TLS to off with an encryption hint', async ()
 it('picks a custom program and adds, reorders, removes and saves literal argument rows', async () => {
   vi.mocked(pickConnectionFile).mockResolvedValue('/tools/hop');
   vi.mocked(createProfile).mockResolvedValue(profile('custom'));
-  const user = mount();
+  const user = await mount();
   await user.type(screen.getByRole('textbox', { name: 'Name' }), 'custom');
-  await user.type(screen.getByRole('textbox', { name: 'User' }), 'app');
-  await user.click(
-    screen.getByRole('button', { name: 'Route · Cloud / zero-trust' }),
-  );
-  await user.selectOptions(
-    screen.getByRole('combobox', { name: 'Route' }),
-    'custom',
-  );
+  await route(user, /^Zero-trust/, 'custom');
   await user.click(screen.getByRole('button', { name: 'Choose program' }));
   expect(await screen.findByRole('textbox', { name: 'Program' })).toHaveValue(
     '/tools/hop',
@@ -121,7 +100,7 @@ it('picks a custom program and adds, reorders, removes and saves literal argumen
     screen.getByRole('spinbutton', { name: 'Readiness timeout (seconds)' }),
     '45',
   );
-  await user.click(screen.getByRole('button', { name: 'Save' }));
+  await saveFlow(user);
   expect(createProfile).toHaveBeenCalledWith(
     expect.objectContaining({
       helper: {

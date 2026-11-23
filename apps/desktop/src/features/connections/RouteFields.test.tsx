@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { render, screen, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { screen, within } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import {
   createProfile,
@@ -9,40 +8,37 @@ import {
   updateProfile,
 } from '@openrows/ipc';
 import type { TestReport } from '@openrows/ipc';
-import { ThemeProvider } from '@openrows/ui';
 import { profile, server } from '../../test/ipcStub';
-import { ConnectionSheet } from './ConnectionSheet';
+import {
+  continueButton,
+  mountFlow,
+  openStep,
+  runTest,
+  saveFlow,
+  summary,
+} from './flow/flowTestKit';
 
 vi.mock('@openrows/ipc', async () =>
   (await import('../../test/ipcStub')).ipcStub(),
 );
 
-function mount(existing?: ReturnType<typeof profile>) {
-  render(
-    <ThemeProvider>
-      <ConnectionSheet
-        profile={existing}
-        onClose={vi.fn()}
-        onSaved={vi.fn()}
-        onDelete={vi.fn()}
-        onDuplicate={vi.fn()}
-      />
-    </ThemeProvider>,
+async function mount(existing?: ReturnType<typeof profile>) {
+  const { user } = await mountFlow(
+    existing ? { profile: existing } : { engine: 'postgres' },
   );
-  return userEvent.setup();
+  return user;
 }
 
-it('keeps SSH collapsed until asked, then saves a key-file tunnel with its passphrase', async () => {
+it('reveals the SSH rows only when switched on, then saves a key-file tunnel with its passphrase', async () => {
   vi.mocked(createProfile).mockResolvedValue(profile('tunnelled'));
   vi.mocked(pickConnectionFile).mockResolvedValueOnce(
     '/Users/me/.ssh/id_ed25519',
   );
-  const user = mount();
+  const user = await mount();
   await user.type(screen.getByRole('textbox', { name: 'Name' }), 'tunnelled');
   await user.type(screen.getByRole('textbox', { name: 'User' }), 'app');
-  const section = screen.getByRole('button', { name: 'SSH · Off' });
-  expect(section).toHaveAttribute('aria-expanded', 'false');
-  await user.click(section);
+  await user.click(continueButton());
+  expect(screen.queryByRole('textbox', { name: 'SSH host' })).toBeNull();
   await user.click(screen.getByRole('switch', { name: 'Connect over SSH' }));
   await user.type(screen.getByRole('textbox', { name: 'SSH host' }), 'bastion');
   await user.type(screen.getByRole('textbox', { name: 'SSH user' }), 'ops');
@@ -60,10 +56,8 @@ it('keeps SSH collapsed until asked, then saves a key-file tunnel with its passp
     'type',
     'password',
   );
-  expect(
-    screen.getByRole('button', { name: 'SSH · ops@bastion' }),
-  ).toBeVisible();
-  await user.click(screen.getByRole('button', { name: 'Save' }));
+  expect(summary()).toHaveTextContent('SSH ops@bastion');
+  await saveFlow(user);
   expect(createProfile).toHaveBeenCalledWith(
     expect.objectContaining({
       ssh: {
@@ -79,41 +73,36 @@ it('keeps SSH collapsed until asked, then saves a key-file tunnel with its passp
   );
 });
 
-it('opens a section with invalid fields and blocks saving', async () => {
-  const user = mount();
-  await user.click(screen.getByRole('button', { name: 'SSH · Off' }));
+it('keeps Continue on Security while SSH or TLS fields are invalid', async () => {
+  const user = await mount();
+  await user.type(screen.getByRole('textbox', { name: 'User' }), 'app');
+  await user.click(continueButton());
   await user.click(screen.getByRole('switch', { name: 'Connect over SSH' }));
-  const section = screen.getByRole('button', { name: 'SSH · no host' });
-  await user.click(section);
-  expect(section).toHaveAttribute('aria-expanded', 'false');
-  await user.click(screen.getByRole('button', { name: /^TLS/ }));
   await user.selectOptions(
     screen.getByRole('combobox', { name: 'TLS mode' }),
     'verify-ca',
   );
-  await user.click(screen.getByRole('button', { name: 'Save' }));
-  expect(section).toHaveAttribute('aria-expanded', 'true');
+  await user.click(continueButton());
+  expect(screen.getByRole('heading', { name: 'Security' })).toBeVisible();
   expect(screen.getByText('SSH host is required')).toBeVisible();
   expect(screen.getByText('Verify CA needs a CA certificate')).toBeVisible();
   expect(createProfile).not.toHaveBeenCalled();
 });
 
-it('flags unverified TLS to a remote host even while the section is collapsed', async () => {
-  const user = mount();
-  expect(screen.queryByText('Certificate not verified')).toBeNull();
+it('flags unverified TLS to a remote host until a verify mode is chosen', async () => {
+  const user = await mount();
   const host = screen.getByRole('textbox', { name: 'Host' });
   await user.clear(host);
   await user.type(host, 'db.example.com');
+  await user.type(screen.getByRole('textbox', { name: 'User' }), 'app');
+  await user.click(continueButton());
   expect(screen.getByText('Certificate not verified')).toBeVisible();
-  await user.click(screen.getByRole('button', { name: /^TLS/ }));
   await user.selectOptions(
     screen.getByRole('combobox', { name: 'TLS mode' }),
     'verify-full',
   );
   expect(screen.queryByText('Certificate not verified')).toBeNull();
-  expect(
-    screen.getByRole('button', { name: 'TLS · Verify full' }),
-  ).toBeVisible();
+  expect(summary()).toHaveTextContent('Verify full');
 });
 
 it('edits a saved tunnel without reading its stored SSH password', async () => {
@@ -129,15 +118,16 @@ it('edits a saved tunnel without reading its stored SSH password', async () => {
       hasPassphrase: false,
     },
   });
-  const user = mount(saved);
-  const section = screen.getByRole('button', {
-    name: 'SSH · ops@bastion:2222',
-  });
-  expect(section).toHaveAttribute('aria-expanded', 'true');
+  const user = await mount(saved);
+  expect(summary()).toHaveTextContent('SSH ops@bastion:2222');
+  await openStep(user, 'Security');
+  expect(
+    screen.getByRole('switch', { name: 'Connect over SSH' }),
+  ).toBeChecked();
   await user.click(
     screen.getByRole('button', { name: 'Forget saved SSH password' }),
   );
-  await user.click(screen.getByRole('button', { name: 'Save' }));
+  await saveFlow(user);
   const [id, input] = vi.mocked(updateProfile).mock.calls[0] ?? [];
   expect(id).toBe('id-db');
   expect(input?.ssh?.password).toEqual({ kind: 'clear' });
@@ -171,8 +161,8 @@ const failedReport: TestReport = {
 
 it('shows Test connection step by step with timings, the failing step and its hint', async () => {
   vi.mocked(testConnection).mockResolvedValueOnce(failedReport);
-  const user = mount(profile('db'));
-  await user.click(screen.getByRole('button', { name: 'Test' }));
+  const user = await mount(profile('db'));
+  await runTest(user);
   const report = await screen.findByRole('alert');
   expect(report).toHaveTextContent('Connection failed · 52 ms');
   const steps = within(report).getAllByRole('listitem');
@@ -189,7 +179,7 @@ it('shows Test connection step by step with timings, the failing step and its hi
     latency: null,
     elapsedMs: 9,
   });
-  await user.click(screen.getByRole('button', { name: 'Test' }));
+  await runTest(user);
   expect(
     await screen.findByText('Connected · PostgreSQL 17.2 · 9 ms'),
   ).toBeVisible();

@@ -19,9 +19,13 @@ const HEADER_EXTRA =
   parseFloat(geometry['grid-header-height']) -
   parseFloat(geometry['grid-row-height']);
 
+/** Header title and type caption sizes (v4 grid: 11.5 / 10.5 px). */
+const HEADER_SIZE = parseFloat(typography['text-11-5']) * 16;
+const CAPTION_SIZE = HEADER_SIZE - 1;
+
 /**
  * Match UI tokens without duplicating palette values: TablePlus density, 12 px
- * monospace cells, 11 px medium UI-font titles. rem tokens use the 16px reference.
+ * monospace cells, 11.5 px semibold UI-font titles with a 10.5 px type caption. rem tokens use the 16px reference.
  */
 export function gridTheme(
   mode: 'light' | 'dark',
@@ -40,7 +44,8 @@ export function gridTheme(
     colours: mode === 'light' ? light : dark,
     rowHeight,
     headerHeight: rowHeight + HEADER_EXTRA,
-    headerFont: `${typography['weight-medium']} ${String(parseFloat(typography['text-11']) * 16)}px ${typography['font-ui']}`,
+    headerFont: `${typography['weight-semibold']} ${String(HEADER_SIZE)}px ${typography['font-ui']}`,
+    captionFont: `${typography['weight-regular']} ${String(CAPTION_SIZE)}px ${typography['font-ui']}`,
     fontSize,
     fontFamily: typography['font-grid'],
     ...overrides,

@@ -39,27 +39,31 @@ export const sqlHighlightStyle = HighlightStyle.define([
   { tag: tags.special(tags.name), color: 'var(--or-danger-fg)' },
 ]);
 
-/** The kit's `.code` recipe: 12/20 px mono, quiet gutter, a hover-tint current line. */
+/**
+ * The v4 editor: 12 px mono on its host's fill (the query tab's
+ * `--or-editor-fill` well), a tertiary gutter, an iris caret and a hover-tint
+ * current line.
+ */
 const editorTheme = EditorView.theme({
   '&': {
     height: '100%',
     color: 'var(--or-text)',
-    backgroundColor: 'var(--or-page)',
+    backgroundColor: 'transparent',
     fontSize: 'var(--or-text-editor, var(--or-text-mono, var(--or-text-12)))',
   },
   '.cm-scroller': {
     fontFamily: 'var(--or-font-editor, var(--or-font-mono))',
     lineHeight: 'var(--or-editor-line-height, 1.5)',
   },
-  '.cm-content': { caretColor: 'var(--or-text)' },
+  '.cm-content': { caretColor: 'var(--or-accent)' },
   // drawSelection paints its own caret; without this it stays black in dark themes.
   '.cm-cursor, .cm-dropCursor': {
-    borderLeftColor: 'var(--or-text)',
+    borderLeftColor: 'var(--or-accent)',
     borderLeftWidth: '1.5px',
   },
   '.cm-gutters': {
-    color: 'var(--or-placeholder)',
-    backgroundColor: 'var(--or-page)',
+    color: 'var(--or-tertiary)',
+    backgroundColor: 'transparent',
     border: 'none',
     fontSize: 'var(--or-text-11)',
   },

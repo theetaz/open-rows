@@ -2,7 +2,7 @@
 import { Button, TextField } from '@openrows/ui';
 import type { HelperHop } from '@openrows/ipc';
 import { FileField } from './FileField';
-import styles from './ConnectionSheet.module.css';
+import styles from './flow/Form.module.css';
 import custom from './CustomHopFields.module.css';
 import { t } from './messages/routes';
 
@@ -29,13 +29,16 @@ export function CustomHopFields({
         }}
       />
       <ArgumentRows args={helper.args} set={changeArgs} />
-      <Button
-        onClick={() => {
-          changeArgs([...helper.args, '']);
-        }}
-      >
-        {t('addArgument')}
-      </Button>
+      <div className={styles.actions}>
+        <Button
+          size="sm"
+          onClick={() => {
+            changeArgs([...helper.args, '']);
+          }}
+        >
+          {t('addArgument')}
+        </Button>
+      </div>
       <TextField
         className={styles.row}
         label={t('readinessTimeoutSeconds')}
@@ -52,7 +55,7 @@ export function CustomHopFields({
           });
         }}
       />
-      <small className={custom.help}>
+      <small className={styles.hint}>
         {t('eachRowOne', {
           local_port: '{local_port}',
           remote_host: '{remote_host}',
@@ -83,9 +86,11 @@ function ArgumentRows({
   return (
     <>
       {args.map((arg, index) => (
-        <div className={custom.argumentRow} key={index}>
+        <div
+          className={`${styles.fileRow ?? ''} ${styles.mono ?? ''}`}
+          key={index}
+        >
           <TextField
-            className={custom.argument}
             label={t('argumentValue', { value: String(index + 1) })}
             value={arg}
             spellCheck={false}
@@ -99,6 +104,7 @@ function ArgumentRows({
           />
           <div className={custom.actions}>
             <Button
+              size="sm"
               aria-label={t('moveArgumentValue', { value: String(index + 1) })}
               disabled={index === 0}
               onClick={() => {
@@ -108,6 +114,7 @@ function ArgumentRows({
               ↑
             </Button>
             <Button
+              size="sm"
               aria-label={t('moveArgumentValueDown', {
                 value: String(index + 1),
               })}
@@ -119,6 +126,7 @@ function ArgumentRows({
               ↓
             </Button>
             <Button
+              size="sm"
               aria-label={t('removeArgumentValue', {
                 value: String(index + 1),
               })}

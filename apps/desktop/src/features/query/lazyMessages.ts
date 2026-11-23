@@ -121,6 +121,8 @@ export const { rich, richn, t, tn } = defineMessages({
   filterRows: 'Filter rows',
   clearColumnFilters: 'Clear column filters ({count})',
   row: '+ Row',
+  rowShort: 'Row',
+  resultView: 'Result view',
   fitColumns: 'Fit columns',
   columns: 'Columns',
   form: 'Form',

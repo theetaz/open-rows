@@ -1,21 +1,20 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /*
- * The query editor's view bar (the kit's `.viewbar`, like the table pane's):
- * solid, one bar height, Run and the plain actions on the left, the row
- * limit and More trailing.
+ * The query editor's bar between the SQL and the results (the prototype's
+ * `.qbar`): one capsule family at the regular 28 px control height with
+ * aligned centres; Run and the plain actions lead, the limit and More trail.
  */
 .bar {
-  container: editor-bar / inline-size;
   display: flex;
   align-items: center;
   gap: var(--or-space-8);
   block-size: var(--or-bar-height);
-  padding: 0 var(--or-space-12) 0 var(--or-space-8);
+  padding: 0 var(--or-space-10);
   flex-shrink: 0;
   white-space: nowrap;
   overflow-x: auto;
   scrollbar-width: none;
-  background: var(--or-page);
+  box-shadow: inset 0 var(--or-border-width) 0 var(--or-separator);
 }
 .bar::-webkit-scrollbar {
   display: none;
@@ -25,13 +24,13 @@
   flex-shrink: 0;
 }
 .bar svg {
-  inline-size: var(--or-icon-size);
-  block-size: var(--or-icon-size);
+  inline-size: var(--or-icon-size-control);
+  block-size: var(--or-icon-size-control);
 }
+/* More: an icon-only circle of the control height. */
 .icon[data-size] {
   padding: 0;
-  inline-size: var(--or-control-height-compact);
-  border-radius: var(--or-radius-menu-item);
+  inline-size: var(--or-control-height);
   color: var(--or-secondary);
 }
 /* The status line's cursor position (`Ln 7, Col 26`). */
@@ -44,6 +43,7 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-align: end;
   font-size: var(--or-text-12);
   color: var(--or-secondary);
 }
@@ -56,10 +56,10 @@
   gap: var(--or-space-6);
   border-start-end-radius: 0;
   border-end-end-radius: 0;
-  padding-inline-end: var(--or-space-8);
+  padding-inline: var(--or-space-10) var(--or-space-8);
 }
 .split > .chevron[data-size] {
-  padding: 0 var(--or-space-6) 0 var(--or-space-4);
+  padding: 0 var(--or-space-8) 0 var(--or-space-6);
   border-start-start-radius: 0;
   border-end-start-radius: 0;
 }
@@ -74,25 +74,20 @@
   padding: 0;
   background: none;
   color: inherit;
-  opacity: 0.78;
+  opacity: 0.7;
   font-size: var(--or-text-11);
 }
-/* The AI button; the sparkles mark it as AI. */
-.ai[data-size] {
-  gap: var(--or-space-6);
-}
-.ai svg {
-  inline-size: 14px;
-  block-size: 14px;
+/* Icons in the plain actions take the secondary colour, like the prototype. */
+.bar > button[data-variant='secondary'] svg {
   color: var(--or-secondary);
 }
 /* The row limit: the kit's pop-up button with an up-down chevron. */
 .limit[data-size] {
   gap: var(--or-space-4);
-  padding: 0 var(--or-space-6) 0 var(--or-space-10);
+  padding: 0 var(--or-space-8) 0 var(--or-space-12);
 }
 .limit[data-size] svg {
   inline-size: 12px;
   block-size: 12px;
-  color: var(--or-secondary);
+  color: var(--or-tertiary);
 }

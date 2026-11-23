@@ -3,10 +3,10 @@ import { TextField } from '@openrows/ui';
 import { NO_MONGO_OPTIONS } from './form';
 import { SwitchRow } from './SwitchRow';
 import type { ConnectionForm } from './useConnectionForm';
-import styles from './ConnectionSheet.module.css';
+import styles from './flow/Form.module.css';
 import { t } from './messages/profile';
 
-/** MongoDB discovery and authentication database, shared with URL fields. */
+/** MongoDB discovery: DNS seed list or a direct connection, shared with URL fields. */
 export function MongoFields({
   form,
 }: {
@@ -36,17 +36,28 @@ export function MongoFields({
           }}
         />
       )}
-      <TextField
-        className={styles.row}
-        label={t('authDatabase')}
-        placeholder={t('databaseUrlAdmin')}
-        value={value.authSource}
-        onChange={(event) => {
-          form.update({
-            mongodb: { ...value, authSource: event.target.value },
-          });
-        }}
-      />
     </>
+  );
+}
+
+/** The MongoDB authentication database, a sign-in row. */
+export function MongoAuthField({
+  form,
+}: {
+  form: ConnectionForm;
+}): React.JSX.Element {
+  const value = form.draft.mongodb ?? NO_MONGO_OPTIONS;
+  return (
+    <TextField
+      className={`${styles.row ?? ''} ${styles.mono ?? ''}`}
+      label={t('authDatabase')}
+      placeholder={t('databaseUrlAdmin')}
+      value={value.authSource}
+      onChange={(event) => {
+        form.update({
+          mongodb: { ...value, authSource: event.target.value },
+        });
+      }}
+    />
   );
 }

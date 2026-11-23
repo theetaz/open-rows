@@ -2,48 +2,12 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
-import { Tabs } from './Tabs';
 import { DisclosureSection } from './DisclosureSection';
 import { TreeItem } from './TreeItem';
 import { Sheet, SheetActions } from './Sheet';
 import { Button } from './Button';
 import { TextField } from './TextField';
 
-it('document tabs wrap keyboard focus and support Home, End, close and add', async () => {
-  const select = vi.fn();
-  const close = vi.fn();
-  const add = vi.fn();
-  const user = userEvent.setup();
-  render(
-    <Tabs
-      tabs={[
-        { id: 'a', label: 'orders' },
-        { id: 'b', label: 'query' },
-      ]}
-      active="a"
-      onSelect={select}
-      onClose={close}
-      onAdd={add}
-    />,
-  );
-  const orders = screen.getByRole('tab', { name: /orders/ });
-  orders.focus();
-  await user.keyboard('{ArrowRight}');
-  expect(select).toHaveBeenLastCalledWith('b');
-  expect(screen.getByRole('tab', { name: /query/ })).toHaveFocus();
-  await user.keyboard('{ArrowRight}');
-  expect(select).toHaveBeenLastCalledWith('a');
-  await user.keyboard('{End}');
-  expect(select).toHaveBeenLastCalledWith('b');
-  await user.keyboard('{Home}');
-  expect(select).toHaveBeenLastCalledWith('a');
-  fireEvent(orders, new MouseEvent('auxclick', { button: 1, bubbles: true }));
-  expect(close).toHaveBeenCalledWith('a');
-  await user.click(screen.getByRole('button', { name: 'Close query' }));
-  expect(close).toHaveBeenCalledWith('b');
-  await user.click(screen.getByRole('button', { name: 'New tab' }));
-  expect(add).toHaveBeenCalledOnce();
-});
 it('disclosures make collapsed children inert and tree rows activate by keyboard', async () => {
   const select = vi.fn();
   const user = userEvent.setup();

@@ -80,7 +80,9 @@ export function ObjectTree(props: {
         </p>
       )}
       {search && noMatches(catalog, search, found) && (
-        <p role="status">{t('noMatches')}</p>
+        <p className={styles.note} role="status">
+          {t('noMatches')}
+        </p>
       )}
       <SidebarLists
         catalog={catalog}

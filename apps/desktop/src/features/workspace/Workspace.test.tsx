@@ -54,20 +54,21 @@ it("connects saved profiles from the rail and shows each one's safety policy", a
   const user = mount();
   // Without a connection the toolbar has no lock and no address.
   expect(screen.queryByRole('button', { name: /^Safe mode/ })).toBeNull();
-  expect(screen.queryByLabelText('Connection context')).toBeNull();
+  expect(screen.getByRole('group', { name: 'Path' })).toHaveTextContent(
+    'Choose a connection…',
+  );
   await user.click(
     await screen.findByRole('button', { name: 'Switch to analytics-prod' }),
   );
   expect(openConnection).toHaveBeenCalledWith('id-analytics-prod');
   const context = (): HTMLElement =>
-    screen.getByLabelText('Connection context');
+    screen.getByRole('group', { name: 'Path' });
   await waitFor(() => {
-    expect(context()).toHaveAttribute(
-      'title',
-      'PROD | PostgreSQL 17.2 : analytics-prod : orders : public',
+    expect(context()).toHaveTextContent(
+      /prod.*analytics-prod.*orders.*public/i,
     );
   });
-  expect(context()).toHaveTextContent(/analytics-prod›orders›public/);
+  expect(context()).toHaveAttribute('data-env', 'prod');
   expect(openSession).toHaveBeenCalledWith('id-analytics-prod', 'orders');
   expect(
     screen.getByRole('button', { name: 'Safe mode: Confirm writes' }),
@@ -83,10 +84,7 @@ it("connects saved profiles from the rail and shows each one's safety policy", a
     screen.getByRole('button', { name: 'Switch to events-dev' }),
   );
   await waitFor(() => {
-    expect(context()).toHaveAttribute(
-      'title',
-      expect.stringMatching(/^DEV \| PostgreSQL 17\.2 : events-dev : orders/),
-    );
+    expect(context()).toHaveTextContent(/dev.*events-dev.*orders/i);
   });
   expect(
     screen.getByRole('button', { name: 'Safe mode: Unrestricted' }),
@@ -239,7 +237,11 @@ it('opens a table from another database in its own tab set and session', async (
     await screen.findByRole('treeitem', { name: 'orders_2024 ~820K' }),
   );
   await settleTab();
-  expect(screen.queryByRole('tab', { name: /SQL Query 1/ })).toBeNull();
+  // The other database's tab stays in the window's strip, not selected.
+  expect(screen.queryByRole('tab', { name: /SQL Query 1/ })).toHaveAttribute(
+    'aria-selected',
+    'false',
+  );
   expect(screen.getByRole('tab', { name: /orders_2024/ })).toHaveAttribute(
     'aria-selected',
     'true',
@@ -313,7 +315,9 @@ it('opens, switches and closes query tabs per connection', async () => {
   await user.click(
     screen.getByRole('button', { name: 'Switch to events-dev' }),
   );
-  expect(screen.queryByRole('tab', { name: /SQL Query/ })).toBeNull();
+  // Another connection's tabs stay in the strip; none of them is shown.
+  for (const other of screen.getAllByRole('tab', { name: /SQL Query/ }))
+    expect(other).toHaveAttribute('aria-selected', 'false');
   showConnections();
   await user.click(
     screen.getByRole('button', { name: 'Switch to orders-local' }),

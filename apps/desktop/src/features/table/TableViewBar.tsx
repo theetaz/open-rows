@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useState } from 'react';
 import {
   Button,
   ButtonGroup,
   Icon,
   IconButton,
+  Menu,
   SegmentedControl,
 } from '@openrows/ui';
-import { PointMenu } from '../../shell/PointMenu';
 import { isActive } from '../query/run';
 import type { TableTabState } from './useTableTab';
 import type { ViewMode } from './model';
 import { tableSettings } from '../settings/tableSettings';
 import { TableSearch } from './TableSearch';
+import { usePullDown } from './usePullDown';
 import styles from './ViewBar.module.css';
 import { t } from './messages/lazyData';
 
@@ -207,7 +207,7 @@ function DisplayMenu({
 }: {
   state: TableTabState;
 }): React.JSX.Element {
-  const [at, setAt] = useState<{ x: number; y: number } | null>(null);
+  const { anchor, button, close } = usePullDown();
   const defaults = tableSettings.useValue();
   const items = [
     ['rowNumbers', t('rowNumbers'), view.rowNumbers],
@@ -219,38 +219,25 @@ function DisplayMenu({
         aria-label={t('displayOptions')}
         title={t('displayOptions')}
         aria-haspopup="menu"
-        aria-expanded={at !== null}
-        onClick={(event) => {
-          const box = event.currentTarget.getBoundingClientRect();
-          setAt({ x: box.right - 200, y: box.bottom + 4 });
-        }}
+        {...button}
       >
         <Icon name="more" />
       </IconButton>
-      {at && (
-        <PointMenu
-          x={at.x}
-          y={at.y}
+      {anchor && (
+        <Menu
+          anchor={anchor}
+          align="end"
           label={t('displayOptions')}
-          onClose={() => {
-            setAt(null);
-          }}
-        >
-          {items.map(([key, label, checked]) => (
-            <button
-              key={key}
-              type="button"
-              role="menuitemcheckbox"
-              aria-checked={checked}
-              onClick={() => {
-                actions.display(key);
-              }}
-            >
-              {label}
-              <kbd>{checked ? '✓' : ''}</kbd>
-            </button>
-          ))}
-        </PointMenu>
+          entries={items.map(([key, label, checked]) => ({
+            kind: 'item',
+            label,
+            checked,
+            run: () => {
+              actions.display(key);
+            },
+          }))}
+          onClose={close}
+        />
       )}
     </>
   );

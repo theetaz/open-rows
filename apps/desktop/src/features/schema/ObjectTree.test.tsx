@@ -272,7 +272,7 @@ it('lists large sections 5,000 objects at a time', async () => {
     name: 'Show 5,000 more of 7,499',
   });
   expect(sidebar().getByRole('button', { name: /^Tables/ })).toHaveTextContent(
-    '7500',
+    '7,500',
   );
   await user.click(more);
   expect(listObjects).toHaveBeenLastCalledWith(

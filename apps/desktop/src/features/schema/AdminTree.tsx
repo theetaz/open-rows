@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useState } from 'react';
-import { Button, DisclosureSection, Tree } from '@openrows/ui';
+import { Button, Tree } from '@openrows/ui';
+import { TreeSection } from './TreeSection';
 import type { ExtensionDto, RoleDto } from '@openrows/ipc';
 import type { InspectionTarget } from '../inspection/target';
 import type { InspectionCatalog } from './useInspectionCatalog';
@@ -49,11 +50,7 @@ function AdminSection(props: {
         )
       : [];
   return (
-    <DisclosureSection
-      label={props.label}
-      defaultOpen={false}
-      onOpenChange={setOpen}
-    >
+    <TreeSection label={props.label} defaultOpen={false} onOpenChange={setOpen}>
       {resource.status === 'loading' && (
         <p role="status" className={styles.note}>
           {t('loading')}
@@ -78,7 +75,7 @@ function AdminSection(props: {
           />
         ))}
       </Tree>
-    </DisclosureSection>
+    </TreeSection>
   );
 }
 

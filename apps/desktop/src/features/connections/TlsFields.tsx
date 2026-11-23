@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
-import { Badge, DisclosureSection, SelectField } from '@openrows/ui';
+import { Badge, SelectField } from '@openrows/ui';
 import type { CloudCaDto, TlsModeDto } from '@openrows/ipc';
 import { FileField } from './FileField';
 import { SqlServerTlsFields } from './SqlServerTlsFields';
-import { encryptLabel } from './sqlServerTls';
 import { SecretField } from './SecretField';
 import { tlsCa, tlsWarning } from './routeForm';
 import type { ConnectionForm } from './useConnectionForm';
 import type { Draft } from './form';
-import styles from './ConnectionSheet.module.css';
+import styles from './flow/Form.module.css';
 import { t } from './messages/routes';
 
 const modes: readonly { value: TlsModeDto; label: string }[] = [
@@ -28,92 +27,101 @@ const cloudChoices: readonly { value: CloudChoice; label: string }[] = [
   { value: 'azure', label: t('azureDatabase') },
 ];
 
-const modeLabel = (mode: TlsModeDto): string =>
-  modes.find((option) => option.value === mode)?.label ?? mode;
+const hints: Record<TlsModeDto, string> = {
+  disable: t('tlsHintDisable'),
+  allow: t('tlsHintAllow'),
+  prefer: t('tlsHintPrefer'),
+  require: t('tlsHintRequire'),
+  'verify-ca': t('tlsHintVerifyCa'),
+  'verify-full': t('tlsHintVerifyFull'),
+};
+
+/** TLS mode label, e.g. `Verify full`. */
+export function tlsModeLabel(mode: TlsModeDto): string {
+  return modes.find((option) => option.value === mode)?.label ?? mode;
+}
 
 /**
- * "TLS" disclosure: mode, a bundled cloud provider CA or a CA file, and
- * the client certificate. A remote
- * connection whose certificate is not verified stays flagged next to the
- * section even when it is collapsed (docs/12 §4.1).
+ * Encryption rows: the mode with its consequence (SQL Server's Encrypt and
+ * Trust instead), a bundled cloud CA or a CA file, and the client
+ * certificate. Unverified TLS to a remote host stays flagged (docs/12 §4.1).
  */
 export function TlsFields({
   form,
 }: {
   form: ConnectionForm;
 }): React.JSX.Element {
-  const { draft, errors, update, updateTls } = form;
+  const { draft, errors, updateTls } = form;
   const { tls } = draft;
   const warning = tlsWarning(draft.host, draft.tlsMode, tlsCa(tls));
-  const sqlServer = draft.engine === 'sqlserver';
-  const title = sqlServer
-    ? t('encryptTlsmode', { tlsMode: encryptLabel(draft.tlsMode) })
-    : t('tlsTitle', { mode: modeLabel(draft.tlsMode) });
   return (
     <>
-      <DisclosureSection
-        label={title}
-        forceOpen={Boolean(errors.tlsCaFile ?? errors.tlsClientKey)}
-      >
-        <div className={styles.section}>
-          {sqlServer ? (
-            <SqlServerTlsFields form={form} />
-          ) : (
-            <SelectField
-              className={styles.row}
-              label={t('mode')}
-              aria-label={t('tlsMode')}
-              value={draft.tlsMode}
-              options={
-                draft.engine === 'clickhouse'
-                  ? modes.filter(
-                      ({ value }) => !['allow', 'prefer'].includes(value),
-                    )
-                  : modes
-              }
-              onValueChange={(tlsMode) => {
-                update(tlsUpdate(draft, tlsMode));
-              }}
-            />
-          )}
-          <CaFields form={form} />
-          <FileField
-            label={t('clientCert')}
-            kind="clientCertificate"
-            value={tls.clientCert}
-            onChange={(clientCert) => {
-              updateTls({ clientCert });
-            }}
-          />
-          <FileField
-            label={t('clientKey')}
-            kind="clientKey"
-            value={tls.clientKey}
-            error={errors.tlsClientKey}
-            onChange={(clientKey) => {
-              updateTls({ clientKey });
-            }}
-          />
-          {tls.clientKey.trim() && (
-            <SecretField
-              label={t('passphrase')}
-              noun={t('clientKeyPassphrase')}
-              secret={tls.passphrase}
-              reveal={form.reveal('tlsKeyPassphrase')}
-              onChange={(passphrase) => {
-                updateTls({ passphrase });
-              }}
-            />
-          )}
-        </div>
-      </DisclosureSection>
+      {draft.engine === 'sqlserver' ? (
+        <SqlServerTlsFields form={form} />
+      ) : (
+        <TlsModeRow form={form} />
+      )}
       {warning && (
-        <p className={styles.warning} role="note">
+        <p className={styles.hint} role="note">
           <Badge tone="warning">{warning.badge}</Badge>
           <span>{warning.detail}</span>
         </p>
       )}
+      <CaFields form={form} />
+      <FileField
+        label={t('clientCert')}
+        kind="clientCertificate"
+        value={tls.clientCert}
+        onChange={(clientCert) => {
+          updateTls({ clientCert });
+        }}
+      />
+      <FileField
+        label={t('clientKey')}
+        kind="clientKey"
+        value={tls.clientKey}
+        error={errors.tlsClientKey}
+        onChange={(clientKey) => {
+          updateTls({ clientKey });
+        }}
+      />
+      {tls.clientKey.trim() && (
+        <SecretField
+          label={t('passphrase')}
+          noun={t('clientKeyPassphrase')}
+          secret={tls.passphrase}
+          reveal={form.reveal('tlsKeyPassphrase')}
+          onChange={(passphrase) => {
+            updateTls({ passphrase });
+          }}
+        />
+      )}
     </>
+  );
+}
+
+/** The mode pop-up with a one-line consequence; ClickHouse has no allow or prefer. */
+function TlsModeRow({ form }: { form: ConnectionForm }): React.JSX.Element {
+  const { draft, update } = form;
+  return (
+    <div className={styles.choiceRow}>
+      <span className={styles.stack}>
+        <span>{t('tlsMode')}</span>
+        <small>{hints[draft.tlsMode]}</small>
+      </span>
+      <SelectField
+        aria-label={t('tlsMode')}
+        value={draft.tlsMode}
+        options={
+          draft.engine === 'clickhouse'
+            ? modes.filter(({ value }) => !['allow', 'prefer'].includes(value))
+            : modes
+        }
+        onValueChange={(tlsMode) => {
+          update(tlsUpdate(draft, tlsMode));
+        }}
+      />
+    </div>
   );
 }
 

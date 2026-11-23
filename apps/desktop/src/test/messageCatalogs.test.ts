@@ -11,8 +11,8 @@ const SOURCES = ['apps/desktop/src', 'packages/ui/src'].map((folder) =>
 const SOURCE_FILE = /\.tsx?$/;
 const TEST_FILE = /\.test\.tsx?$/;
 const CATALOG_IMPORT =
-  /import \{[^}]*\} from '(\.[^']*[mM]essages(?:\/\w+)?)'/g;
-const LOOKUP = /\b(?:t|tn|rich|richn)\(\s*['"](\w+)['"]/g;
+  /import \{([^}]*)\} from '(\.[^']*[mM]essages(?:\/\w+)?)'/g;
+const LOOKUPS = new Set(['t', 'tn', 'rich', 'richn']);
 const DEFINE = 'defineMessages';
 
 function allSources(): string[] {
@@ -52,17 +52,34 @@ function catalogEntries(file: string, text: string): Map<string, string[]> {
   return entries;
 }
 
+/** Local names of the lookups an import binds, e.g. `t as shell` → `shell`. */
+function lookupNames(specifiers: string): string[] {
+  return specifiers
+    .split(',')
+    .map((specifier) => specifier.trim().split(/\s+as\s+/))
+    .filter(([name]) => LOOKUPS.has(name ?? ''))
+    .map(([name, alias]) => alias ?? name ?? '');
+}
+
+/** Keys looked up through any of `names`, e.g. `t('key')` or `shell('key')`. */
+function lookedUp(text: string, names: readonly string[]): string[] {
+  if (!names.length) return [];
+  const call = new RegExp(
+    `\\b(?:${names.join('|')})\\(\\s*['"](\\w+)['"]`,
+    'g',
+  );
+  return [...text.matchAll(call)].map((match) => match[1] ?? '');
+}
+
 function usedKeysByCatalog(files: readonly string[]): Map<string, Set<string>> {
   const used = new Map<string, Set<string>>();
   for (const file of files) {
     const text = readFileSync(file, 'utf8');
-    const catalogs = [...text.matchAll(CATALOG_IMPORT)].map((match) =>
-      join(dirname(file), `${match[1] ?? ''}.ts`),
-    );
-    const keys = [...text.matchAll(LOOKUP)].map((match) => match[1] ?? '');
-    for (const catalog of catalogs) {
+    for (const match of text.matchAll(CATALOG_IMPORT)) {
+      const catalog = join(dirname(file), `${match[2] ?? ''}.ts`);
       const set = used.get(catalog) ?? new Set<string>();
-      for (const key of keys) set.add(key);
+      for (const key of lookedUp(text, lookupNames(match[1] ?? '')))
+        set.add(key);
       used.set(catalog, set);
     }
   }

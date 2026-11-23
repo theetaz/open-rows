@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-import { PointMenu } from '../../../shell/PointMenu';
+import { Menu } from '@openrows/ui';
+import type { MenuEntry } from '@openrows/ui';
 
 /** One menu command; `checked` makes it a radio choice. */
 export type MenuItem = {
@@ -8,6 +9,7 @@ export type MenuItem = {
   checked?: boolean;
   danger?: boolean;
   disabled?: boolean;
+  /** Why the command is unavailable; shown under the menu's rows. */
   title?: string;
 };
 
@@ -19,6 +21,19 @@ export type MenuState = {
   items: readonly MenuItem[];
 };
 
+function entryOf(item: MenuItem): MenuEntry {
+  return {
+    kind: 'item',
+    label: item.label,
+    run: item.run,
+    disabled: item.disabled ?? false,
+    danger: item.danger ?? false,
+    ...(item.checked === undefined
+      ? {}
+      : { checked: item.checked, radio: true }),
+  };
+}
+
 /** Pointer-anchored menu of commands; choosing one runs it and closes. */
 export function ItemMenu({
   menu,
@@ -27,26 +42,16 @@ export function ItemMenu({
   menu: MenuState;
   onClose: () => void;
 }): React.JSX.Element {
+  const notes = menu.items.flatMap((item) =>
+    item.disabled && item.title ? [item.title] : [],
+  );
   return (
-    <PointMenu x={menu.x} y={menu.y} label={menu.label} onClose={onClose}>
-      {menu.items.map((item) => (
-        <button
-          key={item.label}
-          type="button"
-          role={item.checked === undefined ? 'menuitem' : 'menuitemradio'}
-          aria-checked={item.checked}
-          disabled={item.disabled}
-          title={item.title}
-          data-danger={item.danger}
-          onClick={() => {
-            onClose();
-            item.run();
-          }}
-        >
-          {item.label}
-          {item.checked !== undefined && <kbd>{item.checked ? '✓' : ''}</kbd>}
-        </button>
-      ))}
-    </PointMenu>
+    <Menu
+      at={{ x: menu.x, y: menu.y }}
+      label={menu.label}
+      entries={menu.items.map(entryOf)}
+      onClose={onClose}
+      footer={notes.length ? <p>{notes.join(' ')}</p> : undefined}
+    />
   );
 }

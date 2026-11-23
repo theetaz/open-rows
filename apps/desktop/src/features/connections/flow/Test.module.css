@@ -1,0 +1,200 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * Test and save: each hop arrives waiting → tick with its real timing, one
+ * after another (`--i` delays), a progress line fills, a banner gives the
+ * total. Only transform and opacity animate; reduced motion shows all at once.
+ */
+.card {
+  display: grid;
+  gap: var(--or-space-6);
+  margin-block-end: var(--or-space-10);
+  padding: var(--or-space-12) 14px;
+  border-radius: var(--or-radius-card);
+  background: var(--or-raised);
+  box-shadow: inset 0 0 0 var(--or-border-width) var(--or-separator);
+}
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--or-space-8);
+}
+.header b {
+  font-weight: var(--or-weight-semibold);
+}
+.header svg {
+  inline-size: 14px;
+  block-size: 14px;
+}
+.idle {
+  margin: var(--or-space-4) 0 0;
+  color: var(--or-tertiary);
+  font-size: var(--or-text-12);
+}
+.report {
+  --stagger: 90ms;
+  display: grid;
+  gap: var(--or-space-8);
+}
+.bar {
+  display: block;
+  block-size: 3px;
+  margin-block: var(--or-space-6) var(--or-space-2);
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--or-control-fill);
+}
+.bar i {
+  display: block;
+  block-size: 100%;
+  background: var(--or-accent-fill);
+  transform-origin: 0 50%;
+  animation: fill calc(var(--count, 1) * var(--stagger) + 160ms)
+    var(--or-motion-easing) both;
+}
+.bar[data-state='ok'] i {
+  background: var(--or-tag-local);
+}
+.bar[data-state='failed'] i {
+  background: var(--or-destructive-fill);
+}
+.bar[data-state='running'] i {
+  inline-size: 40%;
+  animation: sweep 1.1s ease-in-out infinite;
+}
+@keyframes fill {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+.steps {
+  display: grid;
+  gap: var(--or-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.step {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--or-space-8);
+  min-block-size: 30px;
+  padding: var(--or-space-4) 0;
+  animation: arrive var(--or-motion-standard) var(--or-motion-easing) both;
+  animation-delay: calc(var(--i) * var(--stagger));
+}
+.indicator {
+  display: grid;
+  place-items: center;
+  color: var(--or-success-fg);
+}
+.indicator svg {
+  inline-size: 15px;
+  block-size: 15px;
+  animation: tick 260ms var(--or-motion-spring) both;
+  animation-delay: calc(var(--i) * var(--stagger) + 60ms);
+}
+.step[data-status='warning'] .indicator {
+  color: var(--or-warning-fg);
+}
+.step[data-status='failed'] .indicator {
+  color: var(--or-danger-fg);
+}
+@keyframes arrive {
+  from {
+    opacity: 0.35;
+  }
+}
+@keyframes tick {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+.lines {
+  display: grid;
+  min-inline-size: 0;
+  line-height: 1.3;
+}
+.detail,
+.sub {
+  color: var(--or-tertiary);
+  font-size: var(--or-text-11);
+  overflow-wrap: anywhere;
+}
+.step[data-status='failed'] .detail {
+  color: var(--or-danger-fg);
+}
+.ms {
+  color: var(--or-tertiary);
+  font: var(--or-weight-regular) var(--or-text-12) / 1 var(--or-font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+.banner {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-8);
+  padding: var(--or-space-10) var(--or-space-12);
+  border-radius: var(--or-radius-card);
+  background: var(--or-success-bg);
+  color: var(--or-success-fg);
+  font-weight: var(--or-weight-medium);
+  animation: arrive var(--or-motion-standard) var(--or-motion-easing) both;
+  animation-delay: calc(var(--count, 0) * var(--stagger, 0ms));
+}
+.banner[data-state='failed'] {
+  background: var(--or-danger-bg);
+  color: var(--or-danger-fg);
+}
+.banner > svg {
+  flex: none;
+}
+.banner .lines {
+  flex: 1;
+}
+.banner .sub {
+  font-weight: var(--or-weight-regular);
+}
+.running {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-8);
+  margin: 0;
+  color: var(--or-secondary);
+}
+.spinner {
+  color: var(--or-accent);
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+.visuallyHidden {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bar i,
+  .step,
+  .indicator svg,
+  .banner,
+  .spinner {
+    animation: none;
+  }
+}

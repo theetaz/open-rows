@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
+import { useCallback, useState } from 'react';
 import { Icon } from '@openrows/ui';
-import { SidebarMenu } from '../../shell/SidebarMenu';
-import { useSidebarMenu } from '../../shell/useSidebarMenu';
+import type { IconName, MenuEntry } from '@openrows/ui';
+import { ContextMenu } from '../../shell/ContextMenu';
 import type { OpenedDatabase } from './sessions';
 import styles from './Rail.module.css';
 import { t } from './messages/profile';
@@ -60,12 +61,18 @@ export function DatabaseTiles(props: Props): React.JSX.Element | null {
 function DatabaseTile(
   props: Props & { database: OpenedDatabase },
 ): React.JSX.Element {
-  const { opener, id, open, close, toggle } = useSidebarMenu();
+  const [menu, setMenu] = useState<{
+    x: number;
+    y: number;
+    target: Element;
+  } | null>(null);
+  const close = useCallback(() => {
+    setMenu(null);
+  }, []);
   const { name } = props.database;
   return (
     <>
       <button
-        ref={opener}
         type="button"
         className={styles.database}
         aria-label={t('databaseName', { name })}
@@ -78,114 +85,97 @@ function DatabaseTile(
         }}
         onContextMenu={(event) => {
           event.preventDefault();
-          toggle();
+          event.currentTarget.focus();
+          setMenu({
+            x: event.clientX,
+            y: event.clientY,
+            target: event.currentTarget,
+          });
         }}
         onKeyDown={props.onKeyDown}
       >
         <Icon name="database" aria-hidden="true" />
         <span>{name}</span>
       </button>
-      {open && <DatabaseMenu {...props} menu={{ opener, id, close }} />}
+      {menu && (
+        <ContextMenu
+          label={t('nameActions', { name })}
+          at={menu}
+          target={menu.target}
+          entries={databaseEntries(props, props.database)}
+          onClose={close}
+        />
+      )}
     </>
   );
 }
 
-function DatabaseMenu(
-  props: Props & {
-    database: OpenedDatabase;
-    menu: Pick<ReturnType<typeof useSidebarMenu>, 'opener' | 'id' | 'close'>;
-  },
-): React.JSX.Element {
-  const { opener, id, close } = props.menu;
-  const { name } = props.database;
-  return (
-    <SidebarMenu
-      id={id}
-      label={t('nameActions', { name })}
-      opener={opener}
-      onClose={close}
-    >
-      {props.onBackup && (
-        <button
-          type="button"
-          role="menuitem"
-          disabled={props.database.state !== 'open'}
-          onClick={() => {
-            close();
-            props.onBackup?.(name);
-          }}
-        >
-          {t('backUp')}
-        </button>
-      )}
-      {props.onRestore && (
-        <button
-          type="button"
-          role="menuitem"
-          disabled={props.database.state !== 'open'}
-          onClick={() => {
-            close();
-            props.onRestore?.(name);
-          }}
-        >
-          {t('restore')}
-        </button>
-      )}
-      {props.onRunFile && (
-        <button
-          type="button"
-          role="menuitem"
-          onClick={() => {
-            close();
-            props.onRunFile?.(name);
-          }}
-        >
-          {t('runSqlFile')}
-        </button>
-      )}
-      <MonitorMenu onMonitor={props.onMonitor} name={name} close={close} />
-      {props.onProcesses && (
-        <button
-          type="button"
-          role="menuitem"
-          onClick={() => {
-            close();
-            props.onProcesses?.(name);
-          }}
-        >
-          {t('showProcesses')}
-        </button>
-      )}
-      <button
-        type="button"
-        role="menuitem"
-        onClick={() => {
-          close();
-          props.onClose(name);
-        }}
-      >
-        {t('closeDatabase')}
-      </button>
-    </SidebarMenu>
-  );
+const item = (
+  label: string,
+  icon: IconName,
+  run: () => void,
+  disabled = false,
+): MenuEntry => ({
+  kind: 'item',
+  label,
+  icon: <Icon name={icon} />,
+  run,
+  disabled,
+});
+
+/** One optional command: shown only when the rail offers it. */
+function optional(
+  action: ((name: string) => void) | undefined,
+  build: (run: () => void) => MenuEntry,
+  name: string,
+): MenuEntry[] {
+  return action
+    ? [
+        build(() => {
+          action(name);
+        }),
+      ]
+    : [];
 }
 
-function MonitorMenu(props: {
-  onMonitor: Props['onMonitor'];
-  name: string;
-  close: () => void;
-}): React.JSX.Element | null {
-  if (!props.onMonitor) return null;
-  return (
-    <button
-      type="button"
-      role="menuitem"
-      onClick={() => {
-        props.close();
-        props.onMonitor?.(props.name);
-      }}
-    >
-      {t('showMonitor')}
-    </button>
-  );
+/** Monitor and processes, back up, restore and run a file, then Close. */
+function databaseEntries(props: Props, database: OpenedDatabase): MenuEntry[] {
+  const { name } = database;
+  const closed = database.state !== 'open';
+  const inspect = [
+    ...optional(
+      props.onMonitor,
+      (run) => item(t('showMonitor'), 'activity', run),
+      name,
+    ),
+    ...optional(
+      props.onProcesses,
+      (run) => item(t('showProcesses'), 'list', run),
+      name,
+    ),
+  ];
+  const jobs = [
+    ...optional(
+      props.onBackup,
+      (run) => item(t('backUp'), 'database', run, closed),
+      name,
+    ),
+    ...optional(
+      props.onRestore,
+      (run) => item(t('restore'), 'history', run, closed),
+      name,
+    ),
+    ...optional(
+      props.onRunFile,
+      (run) => item(t('runSqlFile'), 'file', run),
+      name,
+    ),
+  ];
+  const groups = [inspect, jobs].filter((group) => group.length > 0);
+  return [
+    ...groups.flatMap((group) => [...group, { kind: 'separator' as const }]),
+    item(t('closeDatabase'), 'close', () => {
+      props.onClose(name);
+    }),
+  ];
 }

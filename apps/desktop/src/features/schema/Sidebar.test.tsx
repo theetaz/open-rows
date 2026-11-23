@@ -1,5 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
@@ -196,6 +202,9 @@ it('combines PostgreSQL kind, multi-schema and text filters without filtering sa
     await user.click(screen.getByRole('button', { name: 'Filter objects' }));
     await user.click(screen.getByRole('menuitem', { name: submenu }));
     await user.click(screen.getByRole('menuitemcheckbox', { name: item }));
+    await waitFor(() => {
+      expect(screen.queryByRole('menu')).toBeNull();
+    });
   };
   await choose('Object kinds', 'Views');
   await choose('Schemas', 'public');
@@ -273,7 +282,9 @@ it('persists section hiding from the header menu and keeps quick open independen
   await user.click(screen.getByRole('button', { name: 'Filter objects' }));
   await user.click(screen.getByRole('menuitem', { name: 'Sections' }));
   await user.click(screen.getByRole('menuitemcheckbox', { name: 'Tables' }));
-  expect(screen.queryByRole('tree', { name: 'Tables' })).toBeNull();
+  await waitFor(() => {
+    expect(screen.queryByRole('tree', { name: 'Tables' })).toBeNull();
+  });
   unmount();
   mount(catalog);
   expect(screen.queryByRole('tree', { name: 'Tables' })).toBeNull();

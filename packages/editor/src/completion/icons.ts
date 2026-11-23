@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { Completion } from '@codemirror/autocomplete';
-import { iconPaths } from '@openrows/ui/icons';
+import { iconGeometry } from '@openrows/ui/icons';
 import type { IconName } from '@openrows/ui/icons';
 import type { CompletionKind } from './catalog';
 
@@ -24,11 +24,12 @@ function isKind(type: string | undefined): type is CompletionKind {
 function renderIcon(completion: Completion): Node {
   const kind = isKind(completion.type) ? completion.type : 'keyword';
   const svg = document.createElementNS(SVG, 'svg');
-  svg.setAttribute('viewBox', '0 0 24 24');
+  const { path: d, box } = iconGeometry(ICONS[kind]);
+  svg.setAttribute('viewBox', `0 0 ${String(box)} ${String(box)}`);
   svg.setAttribute('aria-hidden', 'true');
   svg.setAttribute('class', `cm-sqlIcon cm-sqlIcon-${kind}`);
   const path = document.createElementNS(SVG, 'path');
-  path.setAttribute('d', iconPaths[ICONS[kind]]);
+  path.setAttribute('d', d);
   svg.append(path);
   return svg;
 }

@@ -1,5 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@openrows/ui';
@@ -32,7 +39,9 @@ it('stars from the context menu and context bar, records opens, and routes the f
   await user.click(
     within(menu).getByRole('menuitem', { name: 'Add favourite' }),
   );
-  await user.keyboard('{Escape}');
+  await waitFor(() => {
+    expect(screen.queryByRole('menu')).toBeNull();
+  });
   // Favourites start collapsed.
   await user.click(sidebar().getByRole('button', { name: /^Favourites/ }));
   expect(

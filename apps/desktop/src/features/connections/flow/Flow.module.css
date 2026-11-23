@@ -1,0 +1,247 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * The new-connection tab (DESIGN.md §9): step rail (236) · form (max 600,
+ * centred) · live summary (328) · footer. Narrow tabs drop the summary,
+ * then fold the rail into the footer's step count.
+ */
+.host {
+  container-type: inline-size;
+  flex: 1 1 auto;
+  inline-size: 100%;
+  min-inline-size: 0;
+  block-size: 100%;
+  min-block-size: 0;
+  font-size: var(--or-text-13);
+}
+.flow {
+  display: grid;
+  grid-template-columns: 236px minmax(0, 1fr) 328px;
+  grid-template-rows: minmax(0, 1fr) auto;
+  block-size: 100%;
+  border-block-start: var(--or-border-width) solid var(--or-separator);
+}
+.rail {
+  display: grid;
+  align-content: start;
+  gap: var(--or-space-2);
+  padding: 18px var(--or-space-10);
+  border-inline-end: var(--or-border-width) solid var(--or-separator);
+  overflow-y: auto;
+}
+.railTitle,
+.side h2 {
+  margin: 0 var(--or-space-8) var(--or-space-10);
+  color: var(--or-tertiary);
+  font-size: var(--or-text-11);
+  font-weight: var(--or-weight-semibold);
+}
+.side h2 {
+  margin: 0 0 var(--or-space-8);
+}
+.step {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-10);
+  inline-size: 100%;
+  block-size: 44px;
+  padding: 0 var(--or-space-8);
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--or-text);
+  font: inherit;
+  text-align: start;
+  transition: background-color var(--or-motion-instant) linear;
+}
+.step:hover:not(:disabled) {
+  background: var(--or-hover);
+}
+.step:disabled {
+  opacity: 0.5;
+}
+.step + .step::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 19.5px;
+  inset-block-start: -9px;
+  block-size: 16px;
+  inline-size: var(--or-border-width);
+  background: var(--or-separator-strong);
+}
+.step[aria-current='step'] {
+  background: var(--or-accent-soft);
+}
+.badge {
+  display: grid;
+  flex: none;
+  place-items: center;
+  inline-size: 24px;
+  block-size: 24px;
+  border-radius: 50%;
+  background: var(--or-control-fill);
+  box-shadow: inset 0 0 0 var(--or-border-width) var(--or-control-stroke);
+  color: var(--or-secondary);
+  font-size: var(--or-text-11);
+  font-weight: var(--or-weight-title);
+}
+.badge svg {
+  inline-size: 12px;
+  block-size: 12px;
+  stroke-width: 2;
+}
+.step[aria-current='step'] .badge {
+  background: var(--or-accent-fill);
+  box-shadow: none;
+  color: var(--or-on-accent);
+}
+.step[data-done='true']:not([aria-current='step']) .badge {
+  background: var(--or-success-bg);
+  box-shadow: none;
+  color: var(--or-success-fg);
+}
+.lines {
+  display: grid;
+  min-inline-size: 0;
+  line-height: 1.25;
+}
+.sub {
+  overflow: hidden;
+  color: var(--or-tertiary);
+  font-size: var(--or-text-11);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.main {
+  min-block-size: 0;
+  padding: 22px 28px 28px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.page {
+  max-inline-size: 600px;
+  margin: 0 auto;
+}
+.page[data-direction='forward'] {
+  animation: step-forward var(--or-motion-standard) var(--or-motion-easing);
+}
+.page[data-direction='back'] {
+  animation: step-back var(--or-motion-standard) var(--or-motion-easing);
+}
+@keyframes step-forward {
+  from {
+    opacity: 0;
+    transform: translateX(18px);
+  }
+}
+@keyframes step-back {
+  from {
+    opacity: 0;
+    transform: translateX(-18px);
+  }
+}
+.title {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-10);
+  margin: 0 0 3px;
+  font-size: var(--or-text-17);
+  font-weight: var(--or-weight-title);
+  letter-spacing: -0.015em;
+}
+.lede {
+  margin: 0 0 18px;
+  color: var(--or-secondary);
+}
+.notice {
+  margin: 0 0 var(--or-space-16);
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+}
+.urlRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--or-space-8);
+}
+.urlField {
+  flex: 1;
+  min-inline-size: 0;
+}
+.urlField input {
+  font-family: var(--or-font-mono);
+  font-size: var(--or-text-12);
+  letter-spacing: 0;
+}
+.sync {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  min-inline-size: 72px;
+  block-size: var(--or-control-height);
+  color: var(--or-success-fg);
+  font-size: var(--or-text-11);
+}
+.sync[data-state='bad'] {
+  color: var(--or-warning-fg);
+}
+.sync svg {
+  inline-size: 12px;
+  block-size: 12px;
+}
+.footer {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  gap: var(--or-space-8);
+  block-size: 52px;
+  padding: 0 var(--or-space-16);
+  border-block-start: var(--or-border-width) solid var(--or-separator);
+}
+.spacer {
+  flex: 1;
+}
+.hint {
+  color: var(--or-tertiary);
+  font-size: var(--or-text-12);
+}
+.error {
+  max-inline-size: 40%;
+  overflow: hidden;
+  color: var(--or-danger-fg);
+  font-size: var(--or-text-12);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px var(--or-space-16);
+  border-inline-start: var(--or-border-width) solid var(--or-separator);
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.loading {
+  display: grid;
+  place-items: center;
+  block-size: 100%;
+  color: var(--or-secondary);
+}
+/* Narrow tabs: drop the summary, then the rail (after the base rules). */
+@container (max-width: 1080px) {
+  .flow {
+    grid-template-columns: 212px minmax(0, 1fr);
+  }
+  .side {
+    display: none;
+  }
+}
+@container (max-width: 760px) {
+  .flow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rail {
+    display: none;
+  }
+}

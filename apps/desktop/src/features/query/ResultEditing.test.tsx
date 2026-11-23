@@ -21,6 +21,8 @@ import { ResultPane } from './ResultPane';
 import { ResultWorkspaceProvider } from './ResultWorkspace';
 import { idleRun } from './run';
 import type { ResultMeta } from './run';
+// Menus run their command at once instead of after the blink and fade.
+document.documentElement.dataset.motion = 'reduced';
 
 vi.mock('@openrows/ipc', async () =>
   (await import('../../test/ipcStub')).ipcStub(),
@@ -334,7 +336,7 @@ it('keeps hidden keys available for editing and stages insert, duplicate and del
   act(() => {
     grid().onContextMenu?.({ kind: 'row', row: 1, column: 0, x: 10, y: 10 });
   });
-  await user.click(screen.getByRole('menuitem', { name: 'Delete row' }));
+  await user.click(screen.getByRole('menuitem', { name: /^Delete row/ }));
   await waitFor(() => {
     expect(grid().source.cell(1, 1)?.state).toBe('deleted');
   });

@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ReactNode } from 'react';
-import { Button, Icon } from '@openrows/ui';
-import { CascadeMenu, useMenuAnchor } from '../../shell/CascadeMenu';
-import type { MenuEntry } from '../../shell/CascadeMenu';
+import { Button, Icon, Menu } from '@openrows/ui';
+import type { MenuEntry } from '@openrows/ui';
+import { usePullDown } from '../table/usePullDown';
 import styles from './EditorBar.module.css';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'destructive';
 
-/** A small button whose menu opens below it (the bars sit at the top of a pane). */
+/** A bar button whose pull-down menu opens under it. */
 export function MenuButton(props: {
   label: string;
   title?: string | undefined;
@@ -15,30 +15,28 @@ export function MenuButton(props: {
   variant?: Variant | undefined;
   disabled?: boolean | undefined;
   className?: string | undefined;
+  /** Align the menu to the button's leading (default) or trailing edge. */
+  align?: 'start' | 'end' | undefined;
   children: ReactNode;
 }): React.JSX.Element {
-  const { at, openAt, close } = useMenuAnchor(true);
+  const { anchor, button, close } = usePullDown();
   return (
     <>
       <Button
-        size="sm"
         variant={props.variant ?? 'secondary'}
         className={props.className ?? ''}
         aria-label={props.label}
         title={props.title ?? props.label}
         aria-haspopup="menu"
-        aria-expanded={at !== null}
         disabled={props.disabled}
-        onClick={(event) => {
-          openAt(event.currentTarget);
-        }}
+        {...button}
       >
         {props.children}
       </Button>
-      {at && (
-        <CascadeMenu
-          x={at.x}
-          y={at.y}
+      {anchor && (
+        <Menu
+          anchor={anchor}
+          align={props.align ?? 'start'}
           label={props.label}
           entries={props.entries}
           onClose={close}
@@ -67,7 +65,6 @@ export function SplitButton(props: {
   return (
     <span className={styles.split}>
       <Button
-        size="sm"
         variant={variant}
         className={props.className ?? ''}
         aria-label={props.label}

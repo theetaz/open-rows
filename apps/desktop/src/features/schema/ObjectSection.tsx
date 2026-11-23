@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useState } from 'react';
-import { Button, DisclosureSection, Tree } from '@openrows/ui';
+import { Button, Tree } from '@openrows/ui';
 import type { ObjectDto } from '@openrows/ipc';
 import { isSystemObject } from './systemObjects';
 import { nodeKey, objectLabel } from './catalog';
 import type { ObjectGroup, ObjectRef } from './catalog';
 import { ObjectRow } from './ObjectRow';
+import { RowBlocks } from './RowBlocks';
+import { TreeSection } from './TreeSection';
 import type { MenuPoint } from './ObjectRow';
 import { OBJECT_PAGE } from './useCatalog';
 import type { Catalog, ObjectPage } from './useCatalog';
@@ -108,7 +110,7 @@ export function ObjectSection(props: Props): React.JSX.Element {
   const stop = tabStop(visible, props.selected, catalog);
   return (
     <div hidden={!!search && resource.status === 'ready' && !visible.length}>
-      <DisclosureSection
+      <TreeSection
         label={group.label}
         {...sectionCount(
           resource,
@@ -140,18 +142,24 @@ export function ObjectSection(props: Props): React.JSX.Element {
         )}
         {visible.length > 0 && (
           <Tree label={group.label}>
-            {visible.map((object) => (
-              <ObjectRow
-                {...props}
-                key={nodeKey(object)}
-                object={object}
-                tabStop={stop}
-              />
-            ))}
+            <RowBlocks
+              items={visible}
+              keyOf={nodeKey}
+              pinned={(object) => pinned(object, props.selected, catalog)}
+            >
+              {(object) => (
+                <ObjectRow
+                  {...props}
+                  key={nodeKey(object)}
+                  object={object}
+                  tabStop={stop}
+                />
+              )}
+            </RowBlocks>
           </Tree>
         )}
         {!indexed && <ShowMore more={pages.more} onClick={pages.showMore} />}
-      </DisclosureSection>
+      </TreeSection>
     </div>
   );
 }
@@ -181,6 +189,20 @@ function ShowMore({
     <Button size="sm" variant="ghost" onClick={onClick}>
       {t('showNextMore', { next, more: more.toLocaleString('en-US') })}
     </Button>
+  );
+}
+
+/** Rows that keep their block mounted: the selection and open relations. */
+function pinned(
+  object: ObjectDto,
+  selected: string | null,
+  catalog: Catalog,
+): boolean {
+  const id = nodeKey(object);
+  return (
+    selected === id ||
+    Boolean(selected?.startsWith(`${id}\n`)) ||
+    catalog.expanded(object)
   );
 }
 

@@ -30,6 +30,8 @@ export function selectionActions({
   return [
     {
       label: tn('setValueCells', cells, formatted(cells)),
+      icon: 'wand',
+      separated: true,
       disabled: !writable,
       run: run(() => {
         onPrompt(cells);
@@ -37,6 +39,7 @@ export function selectionActions({
     },
     {
       label: tn('pasteIntoCells', cells, formatted(cells)),
+      icon: 'paste',
       disabled: !writable,
       run: run(() => {
         navigator.clipboard.readText().then((text) => {
@@ -49,6 +52,8 @@ export function selectionActions({
     { label: t('setEmpty'), disabled: !writable, run: set(textValue('')) },
     {
       label: tn('duplicateRows', rows, formatted(rows)),
+      icon: 'duplicate',
+      separated: true,
       disabled: !writable,
       run: run(() => {
         editing.bulk.duplicateRows(result, ranges);
@@ -56,6 +61,7 @@ export function selectionActions({
     },
     {
       label: tn('deleteRows', rows, formatted(rows)),
+      icon: 'trash',
       disabled: !writable,
       danger: true,
       run: run(() => {

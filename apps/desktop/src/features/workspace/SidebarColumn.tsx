@@ -1,6 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useId, useState } from 'react';
-import { Icon, IconButton, SplitPanel } from '@openrows/ui';
+import {
+  Badge,
+  EngineIcon,
+  EnvBadge,
+  Icon,
+  IconButton,
+  isEngineId,
+  SplitPanel,
+} from '@openrows/ui';
+import type { ProfileDto } from '@openrows/ipc';
+import { displayCombo, useBindings } from '../commands';
+import { t as shell } from '../../shell/messages';
 import { ConnectionHeader, sessionOf } from '../connections';
 import type { Connections } from '../connections';
 import { openQueryFile, rebindFiles } from '../query';
@@ -74,12 +85,24 @@ export function SidebarColumn(props: Props): React.JSX.Element {
         <div className={styles.items} hidden={list}>
           <SidebarItems connections={connections} controller={controller} />
         </div>
+        <SidebarFooter onCommand={controller.command} />
       </div>
     </SplitPanel>
   );
 }
 
-/** The active connection as a pop-up button: its session state, name and database. */
+/** The environment tag: LOCAL, DEV, STAGING, PROD, or a custom label. */
+function EnvTag({ env }: { env: ProfileDto['env'] }): React.JSX.Element {
+  if (env.kind === 'custom')
+    return <Badge className={styles.envTag}>{env.label ?? env.kind}</Badge>;
+  return <EnvBadge environment={env.kind} className={styles.envTag} />;
+}
+
+/**
+ * The connection header (prototype `.switcher`): engine tile, name with its
+ * session dot, database · host, environment tag and ⌃⌄. It switches the
+ * sidebar between the connection list and the object browser.
+ */
 function ConnectionPopup(props: {
   connections: Connections;
   open: boolean;
@@ -94,6 +117,7 @@ function ConnectionPopup(props: {
     shown || t('noDatabase'),
     safeModeState(active).label,
   ].join(' · ');
+  const place = active.file?.path ?? active.host;
   return (
     <button
       type="button"
@@ -104,15 +128,71 @@ function ConnectionPopup(props: {
       title={context}
       onClick={props.onToggle}
     >
-      <span
-        className={styles.stateDot}
-        data-state={props.connections.statusOf(active.id).state}
-        aria-hidden="true"
-      />
-      <strong>{active.name}</strong>
-      <span className={styles.popupDatabase}>{shown}</span>
+      {isEngineId(active.engine) ? (
+        <EngineIcon engine={active.engine} size="md" />
+      ) : (
+        <span className={styles.engineFallback}>
+          <Icon name="database" />
+        </span>
+      )}
+      <span className={styles.popupLines}>
+        <span className={styles.popupName}>
+          <strong>{active.name}</strong>
+          <span
+            className={styles.stateDot}
+            data-state={props.connections.statusOf(active.id).state}
+            aria-hidden="true"
+          />
+        </span>
+        <span className={styles.popupDatabase}>
+          {[shown || t('noDatabase'), place].filter(Boolean).join(' · ')}
+        </span>
+      </span>
+      <EnvTag env={active.env} />
       <Icon name="chevronUpDown" />
     </button>
+  );
+}
+
+/** The sidebar's last row: New connection and Settings. */
+function SidebarFooter(props: {
+  onCommand: (id: string) => void;
+}): React.JSX.Element {
+  const bindings = useBindings();
+  const keys = (id: string): string => {
+    const combo = bindings[id];
+    return combo ? displayCombo(combo) : '';
+  };
+  const shortcut = keys('new-connection');
+  const settings = keys('settings');
+  return (
+    <div className={styles.footer}>
+      <button
+        type="button"
+        className={styles.footerRow}
+        title={shortcut ? `${shell('newConnection')}  ${shortcut}` : undefined}
+        onClick={() => {
+          props.onCommand('new-connection');
+        }}
+      >
+        <Icon name="plus" />
+        <span>{shell('newConnection')}</span>
+        {shortcut && <kbd aria-hidden="true">{shortcut}</kbd>}
+      </button>
+      <IconButton
+        aria-label={shell('settings')}
+        title={
+          settings ? `${shell('settings')}  ${settings}` : shell('settings')
+        }
+        size="sm"
+        variant="ghost"
+        onClick={() => {
+          props.onCommand('settings');
+        }}
+      >
+        <Icon name="settings" />
+      </IconButton>
+    </div>
   );
 }
 

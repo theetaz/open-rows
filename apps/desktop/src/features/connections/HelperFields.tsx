@@ -1,63 +1,90 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useState } from 'react';
-import {
-  DisclosureSection,
-  SelectField,
-  TextField,
-  Switch,
-} from '@openrows/ui';
+import { SelectField, TextField } from '@openrows/ui';
 import { dumpTools } from '@openrows/ipc';
 import type { HelperHop } from '@openrows/ipc';
 import { CustomHopFields } from './CustomHopFields';
 import { helperTool, newHelper } from './helperForm';
+import { SwitchRow } from './SwitchRow';
 import type { ConnectionForm } from './useConnectionForm';
-import styles from './ConnectionSheet.module.css';
+import styles from './flow/Form.module.css';
 import { t } from './messages/routes';
 
-type Choice = 'off' | HelperHop['kind'];
-const choices: readonly { value: Choice; label: string }[] = [
-  { value: 'custom', label: t('cloudZeroTrust') },
-  { value: 'off', label: t('directSshProxy') },
-  { value: 'ssm', label: t('cloudZeroTrustAws') },
-  { value: 'kubectl', label: t('cloudZeroTrustKubernetes') },
-  { value: 'cloud', label: t('cloudZeroTrustCloud') },
-  { value: 'cloudflared', label: t('cloudZeroTrustCloudflare') },
-];
+type HopKind = HelperHop['kind'];
+/** The route a connection takes: no helper, a cloud provider hop or a zero-trust hop. */
+export type RouteKind = 'direct' | 'cloud' | 'zero';
 
-/** Cloud route settings, including locally trusted command templates. */
+const HOPS: Record<Exclude<RouteKind, 'direct'>, readonly HopKind[]> = {
+  cloud: ['ssm', 'kubectl', 'cloud'],
+  zero: ['cloudflared', 'custom'],
+};
+const HOP_LABELS: Record<HopKind, string> = {
+  ssm: t('hopAwsSsm'),
+  kubectl: t('hopKubernetes'),
+  cloud: t('hopCloudSql'),
+  cloudflared: t('hopCloudflare'),
+  custom: t('hopCustom'),
+};
+
+export function routeOf(helper: HelperHop | null): RouteKind {
+  if (!helper) return 'direct';
+  return HOPS.cloud.includes(helper.kind) ? 'cloud' : 'zero';
+}
+
+/** The helper fields of a route; a Cloud SQL proxy turns database TLS off. */
+function setHop(form: ConnectionForm, kind: HopKind | null): void {
+  form.update({
+    helper: kind ? newHelper(kind) : null,
+    ...(kind === 'cloud' ? { tlsMode: 'disable' } : {}),
+  });
+}
+
+/** Choose a route card: direct clears the helper, a hop route starts at its first hop. */
+export function chooseRoute(form: ConnectionForm, route: RouteKind): void {
+  if (route === routeOf(form.draft.helper)) return;
+  setHop(form, route === 'direct' ? null : (HOPS[route][0] ?? null));
+}
+
+/** Rows of a cloud or zero-trust route: the hop, its settings and tool advice. */
 export function HelperFields({
   form,
 }: {
   form: ConnectionForm;
-}): React.JSX.Element {
+}): React.JSX.Element | null {
   const helper = form.draft.helper;
   const warning = useToolWarning(helper);
+  if (!helper) return null;
+  const route = routeOf(helper);
   return (
-    <DisclosureSection
-      label={t('routeCloudZero')}
-      defaultOpen={Boolean(helper)}
-      forceOpen={Boolean(form.errors.helper)}
-    >
-      <div className={styles.section}>
-        <SelectField
-          label={t('route')}
-          value={helper?.kind ?? 'off'}
-          options={choices}
-          onValueChange={(kind) => {
-            const helper = kind === 'off' ? null : newHelper(kind);
-            form.update({
-              helper,
-              ...(kind === 'cloud' ? { tlsMode: 'disable' } : {}),
-            });
-          }}
-        />
-        {helper && <HopFields form={form} helper={helper} />}
-        {warning && <p role="alert">{warning}</p>}
-        {form.errors.helper && <p role="alert">{form.errors.helper}</p>}
-        {helper?.kind === 'cloud' && <p>{t('authProxyEncrypts')}</p>}
-        {helper && <p>{t('credentialsStayTool')}</p>}
-      </div>
-    </DisclosureSection>
+    <>
+      <SelectField
+        className={styles.row}
+        label={t('hop')}
+        value={helper.kind}
+        options={(route === 'direct' ? [] : HOPS[route]).map((kind) => ({
+          value: kind,
+          label: HOP_LABELS[kind],
+        }))}
+        onValueChange={(kind) => {
+          setHop(form, kind);
+        }}
+      />
+      <HopFields form={form} helper={helper} />
+      {warning && (
+        <p className={styles.error} role="alert">
+          {warning}
+        </p>
+      )}
+      {form.errors.helper && (
+        <p className={styles.error} role="alert">
+          {form.errors.helper}
+        </p>
+      )}
+      {helper.kind === 'cloud' && (
+        <p className={styles.hint}>{t('authProxyEncrypts')}</p>
+      )}
+      <p className={styles.hint}>{t('credentialsStayTool')}</p>
+    </>
   );
 }
 
@@ -111,7 +138,7 @@ function HopFields({
       {fields.map((field) => (
         <TextField
           key={field.label}
-          className={styles.row}
+          className={`${styles.row ?? ''} ${styles.mono ?? ''}`}
           label={field.label}
           value={field.value}
           spellCheck={false}
@@ -230,6 +257,7 @@ function CloudOptions({
   return (
     <>
       <SelectField
+        className={styles.row}
         label={t('proxyFlavour')}
         value={helper.flavor}
         options={[
@@ -240,26 +268,20 @@ function CloudOptions({
           set({ ...helper, flavor });
         }}
       />
-      <label className={styles.switchRow}>
-        <Switch
-          aria-label={t('iamAuthentication')}
-          checked={helper.iamAuth}
-          onCheckedChange={(iamAuth) => {
-            set({ ...helper, iamAuth });
-          }}
-        />
-        {t('iamAuthentication')}
-      </label>
-      <label className={styles.switchRow}>
-        <Switch
-          aria-label={t('privateIp')}
-          checked={helper.privateIp}
-          onCheckedChange={(privateIp) => {
-            set({ ...helper, privateIp });
-          }}
-        />
-        {t('privateIp')}
-      </label>
+      <SwitchRow
+        label={t('iamAuthentication')}
+        checked={helper.iamAuth}
+        onChange={(iamAuth) => {
+          set({ ...helper, iamAuth });
+        }}
+      />
+      <SwitchRow
+        label={t('privateIp')}
+        checked={helper.privateIp}
+        onChange={(privateIp) => {
+          set({ ...helper, privateIp });
+        }}
+      />
     </>
   );
 }

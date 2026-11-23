@@ -1,14 +1,30 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* The inspector: a solid column beside the content, a hairline on its left. */
+/*
+ * The inspector (the prototype's `.inspector`): a raised card with the panel
+ * radius and a hairline rim, inset from the window edge, a heading on top and
+ * the details scrolling below it.
+ */
 .inspector {
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-  background: var(--or-page);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  height: calc(100% - var(--or-space-8));
+  margin: 0 var(--or-space-8) var(--or-space-8) 0;
+  overflow: hidden;
+  border-radius: var(--or-radius-panel);
+  background: var(--or-raised);
+  box-shadow: inset 0 0 0 var(--or-border-width) var(--or-separator);
+}
+.body {
   display: flex;
   flex-direction: column;
   gap: var(--or-space-8);
-  height: 100%;
-  padding: var(--or-space-12);
+  flex: 1;
+  min-height: 0;
+  padding: 0 var(--or-space-12) var(--or-space-8);
   overflow-y: auto;
+  scrollbar-width: none;
+}
+.inspector > .body:first-child {
+  padding-top: var(--or-space-12);
 }

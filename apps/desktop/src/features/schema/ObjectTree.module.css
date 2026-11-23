@@ -1,5 +1,11 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * The v4 object tree: 26 px rows, a schema row, folder rows indented one
+ * step (chevron, folder, label, count) and object rows two steps
+ * (icon, name, count). Icons are secondary grey, accent on the selection.
+ */
 .tree {
+  display: grid;
   font-family: var(--or-font-sidebar);
   font-size: var(--or-text-sidebar);
 }
@@ -39,4 +45,118 @@
   padding: var(--or-space-2) var(--or-space-8);
   color: var(--or-secondary);
   font-size: var(--or-text-11);
+}
+
+/* ---------- folder rows (sections) ---------- */
+.section {
+  display: grid;
+}
+.folder {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  inline-size: 100%;
+  block-size: var(--or-tree-row-height);
+  padding: 0 var(--or-space-8) 0 20px;
+  border: 0;
+  border-radius: var(--or-radius-control);
+  background: transparent;
+  color: var(--or-text);
+  font: inherit;
+  text-align: start;
+  cursor: default;
+  transition: background-color var(--or-motion-instant) linear;
+}
+.folder:hover {
+  background: var(--or-hover);
+}
+.folder:focus-visible {
+  outline: 0;
+  box-shadow: inset 0 0 0 2px var(--or-focus);
+}
+.chevron {
+  display: inline-flex;
+  margin-inline-end: -3px;
+  color: var(--or-tertiary);
+  transition: transform var(--or-motion-quick) var(--or-motion-easing);
+}
+.chevron svg {
+  inline-size: 12px;
+  block-size: 12px;
+}
+.folder[aria-expanded='true'] .chevron {
+  transform: rotate(90deg);
+}
+.folderIcon {
+  display: inline-flex;
+  color: var(--or-secondary);
+}
+.folderIcon svg {
+  inline-size: 15px;
+  block-size: 15px;
+}
+.folderLabel {
+  flex: 1;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.count {
+  flex: none;
+  padding-inline-start: var(--or-space-8);
+  color: var(--or-tertiary);
+  font-size: var(--or-text-11);
+  font-variant-numeric: tabular-nums;
+}
+.rows {
+  display: grid;
+}
+/* Rows a user just opened arrive with a short fade; nothing animates layout. */
+.rows[data-arrive] {
+  animation: arrive var(--or-motion-standard) var(--or-motion-easing) backwards;
+}
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+/* ---------- object and column rows (TreeNode) ---------- */
+.tree :global([role='treeitem']) > div:first-child {
+  gap: 7px;
+  block-size: var(--or-tree-row-height);
+  min-block-size: 0;
+  padding-inline: 24px var(--or-space-8);
+  transition: background-color var(--or-motion-instant) linear;
+}
+.tree :global([role='treeitem'][aria-level='2']) > div:first-child {
+  padding-inline-start: 38px;
+}
+.tree :global([role='treeitem']) > div:first-child > span:first-child {
+  flex-basis: 10px;
+  margin-inline-end: -4px;
+  color: var(--or-tertiary);
+}
+.tree :global([role='treeitem']) > div:first-child > span:nth-child(2) {
+  flex-basis: 15px;
+  color: var(--or-secondary);
+}
+.tree :global([role='treeitem']) > div:first-child > span:nth-child(2) svg {
+  inline-size: 15px;
+  block-size: 15px;
+}
+.tree
+  :global([role='treeitem'][aria-selected='true'])
+  > div:first-child
+  > span:nth-child(2) {
+  color: var(--or-accent);
+}
+.tree :global([role='treeitem']) > div:first-child > small {
+  color: var(--or-tertiary);
+}
+/* The row a context menu acts on keeps an accent ring while it is open. */
+.tree :global([data-menu-target='true']) {
+  box-shadow: inset 0 0 0 1.5px var(--or-accent-fill);
 }

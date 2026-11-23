@@ -202,6 +202,18 @@ const TABLE_OBJECT: &[Entry] = &[
 const VIEW_OBJECT: &[Entry] = &[C("edit-view", "Edit…"), C("drop-view", "Drop…")];
 const SCHEMA_OBJECT: &[Entry] = &[C("rename-schema", "Rename…"), C("drop-schema", "Drop…")];
 const DATABASE_OBJECT: &[Entry] = &[C("rename-database", "Rename…"), C("drop-database", "Drop…")];
+const TAB: &[Entry] = &[
+    C("next-tab", "Select Next Tab"),
+    C("previous-tab", "Select Previous Tab"),
+    S,
+    C("duplicate-tab", "Duplicate Tab"),
+    C("pin-tab", "Pin or Unpin Tab"),
+    C("close-other-tabs", "Close Other Tabs"),
+    S,
+    C("go-back", "Back"),
+    C("go-forward", "Forward"),
+    C("open-location", "Open Location…"),
+];
 const WINDOW: &[Entry] = &[
     C("new-window", "New Window"),
     C("move-tab-to-new-window", "Move Tab to New Window"),
@@ -227,6 +239,7 @@ const MENUS: &[(&str, &[Entry])] = &[
     ("View", VIEW),
     ("Query", QUERY),
     ("Connection", CONNECTION),
+    ("Tab", TAB),
     (WINDOW_TITLE, WINDOW),
     (HELP_TITLE, HELP),
 ];
@@ -472,6 +485,14 @@ mod tests {
             "export-connections",
             "new-window",
             "move-tab-to-new-window",
+            "next-tab",
+            "previous-tab",
+            "duplicate-tab",
+            "pin-tab",
+            "close-other-tabs",
+            "go-back",
+            "go-forward",
+            "open-location",
         ] {
             assert!(ids.contains(&id), "missing {id}");
         }

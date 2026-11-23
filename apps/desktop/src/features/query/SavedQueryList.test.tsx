@@ -1,5 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
 import {
@@ -39,7 +45,7 @@ it('renames from the context menu and reloads the list', async () => {
   const row = await screen.findByRole('button', { name: 'Top customers' });
   fireEvent.contextMenu(row);
   await user.click(screen.getByRole('menuitem', { name: /Rename/ }));
-  const name = screen.getByRole('textbox', { name: 'Name' });
+  const name = await screen.findByRole('textbox', { name: 'Name' });
   await user.clear(name);
   await user.type(name, 'Best customers{Enter}');
   expect(renameSavedQuery).toHaveBeenCalledWith('saved-1', 'Best customers');
@@ -66,6 +72,8 @@ it('copies literal saved SQL from its menu without executing it', async () => {
     await screen.findByRole('button', { name: 'Top customers' }),
   );
   await user.click(screen.getByRole('menuitem', { name: 'Copy SQL' }));
-  expect(writeText).toHaveBeenCalledWith(expect.stringContaining('SELECT'));
+  await waitFor(() => {
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining('SELECT'));
+  });
   expect(executeQuery).not.toHaveBeenCalled();
 });

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { EditorDialect, FormatKind } from '@openrows/editor';
-import type { MenuEntry } from '../../shell/CascadeMenu';
+import type { MenuEntry } from '@openrows/ui';
 import { FONT_SIZES, ROW_LIMITS } from './editorSettings';
 import type { EditorSettings } from './editorSettings';
 import { paramChoices } from './queryParams';

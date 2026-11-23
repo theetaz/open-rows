@@ -1,0 +1,213 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * System Settings forms (DESIGN.md §9): a section label, an inset rounded
+ * group, 40 px rows with hairlines inset from the left, quiet fields that
+ * fill on hover and ring on focus. Field components render rows straight
+ * into a `.group`; `TextField` and `SelectField` keep their own structure
+ * (label, frame, error), laid out here by position.
+ */
+.section {
+  --label-column: 132px;
+  --row-inset: var(--or-space-12);
+  display: grid;
+  gap: var(--or-space-6);
+  margin-block-end: var(--or-space-20);
+}
+.heading {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-6);
+  margin: 0;
+  padding-inline-start: var(--or-space-2);
+  color: var(--or-secondary);
+  font-size: var(--or-text-13);
+  font-weight: var(--or-weight-semibold);
+}
+.heading svg {
+  inline-size: 14px;
+  block-size: 14px;
+  color: var(--or-tertiary);
+}
+.group {
+  display: grid;
+  border-radius: var(--or-radius-card);
+  background: var(--or-raised);
+  box-shadow: inset 0 0 0 var(--or-border-width) var(--or-separator);
+}
+.note {
+  margin: 0;
+  padding-inline: var(--or-space-2);
+  color: var(--or-tertiary);
+  font-size: var(--or-text-12);
+}
+/* Every row draws a hairline inset from the leading edge, except the group's first. */
+.group :is(.row, .pair, .fileRow, .switchRow, .stacked, .choiceRow, .actions) {
+  background: linear-gradient(var(--or-separator), var(--or-separator))
+    no-repeat var(--row-inset) 0 / calc(100% - var(--row-inset))
+    var(--or-border-width);
+}
+.group > :first-child,
+.group > :first-child > :first-child {
+  background: none;
+}
+.row,
+.pair,
+.fileRow,
+.switchRow,
+.stacked,
+.choiceRow {
+  box-sizing: border-box;
+  min-block-size: 40px;
+  padding: var(--or-space-6) var(--or-space-12);
+}
+.row,
+.pair,
+.fileRow {
+  display: grid;
+  grid-template-columns: var(--label-column) minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--or-space-8);
+  row-gap: var(--or-space-2);
+}
+.pair {
+  grid-template-columns: var(--label-column) minmax(0, 1fr) auto 84px;
+}
+.fileRow {
+  grid-template-columns: var(--label-column) minmax(0, 1fr) auto;
+}
+.pair > div,
+.fileRow > div:first-child {
+  display: contents;
+}
+.row label,
+.pair label,
+.fileRow label,
+.label {
+  color: var(--or-text);
+  font-weight: var(--or-weight-regular);
+}
+.pair > div:last-child > label {
+  grid-column: 3;
+  grid-row: 1;
+  color: var(--or-secondary);
+}
+.pair > div:first-child > div,
+.fileRow > div:first-child > div {
+  grid-column: 2;
+  grid-row: 1;
+}
+.pair > div:last-child > div {
+  grid-column: 4;
+  grid-row: 1;
+}
+.pair > div > span,
+.fileRow > div:first-child > span,
+.row > span:last-child:not(:nth-child(2)) {
+  grid-column: 2 / -1;
+  font-size: var(--or-text-12);
+}
+.fileRow > :not(div) {
+  grid-column: 3;
+  grid-row: 1;
+}
+/* Quiet fields: no box until hover; the shared focus ring on focus. */
+.row > div:not([data-kind='popup']),
+.pair > div > div,
+.fileRow > div:first-child > div {
+  border-color: transparent;
+  background: transparent;
+  transition: background-color var(--or-motion-instant) linear;
+}
+.row > div:not([data-kind='popup']):hover,
+.pair > div > div:hover,
+.fileRow > div:first-child > div:hover {
+  background: var(--or-control-fill);
+}
+.row > div[data-invalid='true'],
+.pair > div > div[data-invalid='true'],
+.fileRow > div:first-child > div[data-invalid='true'] {
+  border-color: var(--or-danger-fg);
+}
+/* Pop-up buttons keep their capsule and sit at the trailing edge. */
+.row > div[data-kind='popup'] {
+  justify-self: end;
+  inline-size: auto;
+  max-inline-size: 100%;
+}
+.mono input {
+  font-family: var(--or-font-mono);
+  font-size: var(--or-text-12);
+  letter-spacing: 0;
+}
+.switchRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--or-space-12);
+}
+.stack {
+  display: grid;
+  gap: var(--or-space-2);
+  min-inline-size: 0;
+}
+.stack small,
+.hint {
+  color: var(--or-tertiary);
+  font-size: var(--or-text-12);
+}
+.hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--or-space-6);
+  margin: 0;
+  padding: 0 var(--or-space-12) var(--or-space-8)
+    calc(var(--label-column) + var(--or-space-20));
+}
+.error {
+  margin: 0;
+  padding: 0 var(--or-space-12) var(--or-space-8)
+    calc(var(--label-column) + var(--or-space-20));
+  color: var(--or-danger-fg);
+  font-size: var(--or-text-12);
+  overflow-wrap: anywhere;
+}
+.stacked {
+  display: grid;
+  gap: var(--or-space-6);
+}
+.stacked textarea {
+  font-family: var(--or-font-mono);
+  font-size: var(--or-text-12);
+}
+.stacked small {
+  color: var(--or-tertiary);
+  font-size: var(--or-text-12);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--or-space-6);
+  padding: var(--or-space-6) var(--or-space-12);
+}
+.colour input {
+  inline-size: var(--or-control-height);
+  block-size: var(--or-control-height);
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.colour input:focus-visible {
+  outline: var(--or-focus-width) solid var(--or-focus);
+  outline-offset: var(--or-border-width);
+}
+.choiceRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--or-space-12);
+}
+.choiceRow > :last-child {
+  flex: none;
+}

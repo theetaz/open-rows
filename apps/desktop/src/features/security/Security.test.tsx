@@ -5,15 +5,17 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import { onSecurityChanged, securityStatus, unlockApp } from '@openrows/ipc';
 import { ThemeProvider } from '@openrows/ui';
 import { LockBoundary } from './LockBoundary';
-import { SafetySelector } from './SafetySelector';
 import { SecurityPane } from './SecurityPane';
 import { parseSecurity } from './securitySettings';
 import { ConfirmRun } from '../query/ConfirmRun';
+import { mountFlow } from '../connections/flow/flowTestKit';
+import { profile } from '../../test/ipcStub';
 import { COMMANDS } from '../commands/registry';
 vi.mock('@openrows/ipc', async () =>
   (await import('../../test/ipcStub')).ipcStub(),
@@ -25,20 +27,19 @@ it('offers six policies and disables unavailable authentication with a visible f
     available: false,
     notice: 'OS authentication is unavailable.',
   });
-  const changed = vi.fn();
-  render(<SafetySelector value="confirmAll" onChange={changed} />);
-  await screen.findByText(/OS authentication is unavailable/);
-  expect(screen.getAllByRole('option')).toHaveLength(6);
-  expect(
-    screen.getByRole('option', { name: 'Authenticate all' }),
-  ).toBeDisabled();
-  expect(
-    screen.getByRole('option', { name: 'Authenticate writes' }),
-  ).toBeDisabled();
-  fireEvent.change(screen.getByRole('combobox'), {
-    target: { value: 'readOnly' },
+  const { user } = await mountFlow({
+    profile: profile('orders'),
+    focus: 'safety',
   });
-  expect(changed).toHaveBeenCalledWith('readOnly');
+  await screen.findByText(/OS authentication is unavailable/);
+  const policies = screen.getByRole('radiogroup', { name: 'Safety policy' });
+  const policy = (name: RegExp): HTMLElement =>
+    within(policies).getByRole('radio', { name });
+  expect(within(policies).getAllByRole('radio')).toHaveLength(6);
+  expect(policy(/^Authenticate all/)).toBeDisabled();
+  expect(policy(/^Authenticate writes/)).toBeDisabled();
+  await user.click(policy(/^Read-only/));
+  expect(policy(/^Read-only/)).toHaveAttribute('aria-checked', 'true');
 });
 
 it('confirms reads with classification and connection/database target', () => {

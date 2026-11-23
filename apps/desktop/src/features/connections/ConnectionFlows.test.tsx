@@ -7,13 +7,14 @@ import {
   listProfiles,
   openConnection,
   parseConnectionUrl,
+  testConnection,
   updateProfile,
 } from '@openrows/ipc';
 import { ThemeProvider } from '@openrows/ui';
-import { profile, sampleProfiles } from '../../test/ipcStub';
+import { profile, sampleProfiles, server } from '../../test/ipcStub';
 import { ConnectionRail } from './ConnectionRail';
-import { ConnectionSheets } from './ConnectionSheets';
 import { useConnections } from './useConnections';
+import { mountFlow, saveFlow, SheetsWithFlow } from './flow/flowTestKit';
 
 vi.mock('@openrows/ipc', async () =>
   (await import('../../test/ipcStub')).ipcStub(),
@@ -32,7 +33,7 @@ function Harness(): React.JSX.Element {
           connections.setSheet({ kind: 'new' });
         }}
       />
-      <ConnectionSheets connections={connections} />
+      <SheetsWithFlow connections={connections} />
     </ThemeProvider>
   );
 }
@@ -57,28 +58,44 @@ it('creates and connects a connection with the keyboard alone', async () => {
     mongodb: null,
   });
   vi.mocked(createProfile).mockResolvedValueOnce(created);
+  vi.mocked(testConnection).mockResolvedValueOnce({
+    steps: [],
+    server: server('17.2'),
+    error: null,
+    certificate: null,
+    latency: null,
+    elapsedMs: 12,
+  });
   render(<Harness />);
   await user.tab();
   expect(screen.getByRole('button', { name: 'New connection' })).toHaveFocus();
   await user.keyboard('{Enter}');
   expect(
-    screen.getByRole('searchbox', { name: /connection types/ }),
+    await screen.findByRole('textbox', { name: 'Paste a connection URL' }),
   ).toHaveFocus();
-  await user.keyboard('{Enter}');
-  expect(screen.getByRole('textbox', { name: 'URL' })).toHaveFocus();
   await user.keyboard('postgres://app@db.test:6543/orders');
-  expect(await screen.findByDisplayValue('db.test')).toBeVisible();
+  expect(
+    await screen.findByText(/Detected PostgreSQL at db\.test:6543/),
+  ).toBeVisible();
+  // Return fills every field in and runs the test; Tab reaches Save.
+  await user.keyboard('{Enter}');
+  const save = await screen.findByRole('button', { name: 'Save' });
+  for (let step = 0; step < 20 && document.activeElement !== save; step += 1)
+    await user.tab();
+  expect(save).toHaveFocus();
   await user.keyboard('{Enter}');
   await waitFor(() => {
     expect(createProfile).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'orders', host: 'db.test', port: 6543 }),
     );
   });
-  const tile = await screen.findByRole('button', { name: 'Switch to orders' });
+  // Saving closes the flow tab and selects the new connection, which connects.
   await waitFor(() => {
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(openConnection).toHaveBeenCalledWith('id-orders');
   });
-  // The form's opener (the type picker) is gone, so Tab starts at the rail.
+  const tile = await screen.findByRole('button', { name: 'Switch to orders' });
+  expect(screen.queryByRole('form')).toBeNull();
+  // The flow is gone, so Tab starts at the rail again.
   await user.tab();
   expect(screen.getByRole('button', { name: 'New connection' })).toHaveFocus();
   await user.tab();
@@ -87,10 +104,6 @@ it('creates and connects a connection with the keyboard alone', async () => {
   ).toHaveFocus();
   await user.keyboard('{ArrowDown}');
   expect(tile).toHaveFocus();
-  await user.keyboard('{Enter}');
-  await waitFor(() => {
-    expect(openConnection).toHaveBeenCalledWith('id-orders');
-  });
 });
 
 it('asks for the password of an "ask every time" connection and never keeps it', async () => {
@@ -127,20 +140,10 @@ it('asks for the password of an "ask every time" connection and never keeps it',
 });
 
 it('switches a saved connection to ask every time', async () => {
-  const user = userEvent.setup();
-  const { ConnectionSheet } = await import('./ConnectionSheet');
   vi.mocked(updateProfile).mockResolvedValueOnce(asking);
-  render(
-    <ThemeProvider>
-      <ConnectionSheet
-        profile={profile('orders', { hasPassword: true })}
-        onClose={vi.fn()}
-        onSaved={vi.fn()}
-        onDelete={vi.fn()}
-        onDuplicate={vi.fn()}
-      />
-    </ThemeProvider>,
-  );
+  const { user } = await mountFlow({
+    profile: profile('orders', { hasPassword: true }),
+  });
   await user.selectOptions(
     screen.getByRole('combobox', { name: 'Password storage' }),
     'ask',
@@ -149,7 +152,7 @@ it('switches a saved connection to ask every time', async () => {
     screen.getByText(/saved password is removed from the Keychain on Save/),
   ).toBeVisible();
   expect(screen.getByLabelText('Password')).toHaveValue('');
-  await user.click(screen.getByRole('button', { name: 'Save' }));
+  await saveFlow(user);
   expect(updateProfile).toHaveBeenCalledWith(
     'id-orders',
     expect.objectContaining({ passwordStorage: 'ask' }),

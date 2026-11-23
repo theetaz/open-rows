@@ -1,18 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
-import {
-  DisclosureSection,
-  SelectField,
-  Switch,
-  TextField,
-} from '@openrows/ui';
+import { SelectField, TextField } from '@openrows/ui';
 import { fieldError } from './form';
 import { FileField } from './FileField';
 import { SecretField } from './SecretField';
-import { sshSummary } from './routeForm';
+import { SwitchRow } from './SwitchRow';
 import type { SshAuthKind, SshDraft } from './routeForm';
 import type { ConnectionForm } from './useConnectionForm';
-import styles from './ConnectionSheet.module.css';
-import { rich, t } from './messages/routes';
+import styles from './flow/Form.module.css';
+import { t } from './messages/routes';
 
 const methods: readonly { value: SshAuthKind; label: string }[] = [
   { value: 'password', label: t('password') },
@@ -22,8 +17,8 @@ const methods: readonly { value: SshAuthKind; label: string }[] = [
 ];
 
 /**
- * "SSH" disclosure: tunnel the connection through an SSH server, with jump
- * hosts. Collapsed until the profile uses SSH or a field in it is invalid.
+ * SSH tunnel rows: a switch that reveals the server, its sign-in and the
+ * jump hosts, first hop first.
  */
 export function SshFields({
   form,
@@ -31,37 +26,18 @@ export function SshFields({
   form: ConnectionForm;
 }): React.JSX.Element {
   const { ssh } = form.draft;
-  const { errors } = form;
-  const invalid = Boolean(
-    errors.sshHost ??
-    errors.sshPort ??
-    errors.sshKeyFile ??
-    errors.sshJumpHosts,
-  );
   return (
-    <DisclosureSection
-      label={t('sshSsh', { ssh: sshSummary(ssh) })}
-      defaultOpen={ssh.enabled}
-      forceOpen={invalid}
-    >
-      <div className={styles.section}>
-        <div className={styles.switchRow}>
-          <Switch
-            aria-label={t('connectOverSsh')}
-            checked={ssh.enabled}
-            onCheckedChange={(enabled) => {
-              form.updateSsh({ enabled });
-            }}
-          />
-          <span>
-            {rich('connectOverSshsmall', {
-              small: <small>{t('tunnelThroughSsh')}</small>,
-            })}
-          </span>
-        </div>
-        {ssh.enabled && <SshServer form={form} />}
-      </div>
-    </DisclosureSection>
+    <>
+      <SwitchRow
+        label={t('connectOverSsh')}
+        detail={t('tunnelThroughSsh')}
+        checked={ssh.enabled}
+        onChange={(enabled) => {
+          form.updateSsh({ enabled });
+        }}
+      />
+      {ssh.enabled && <SshServer form={form} />}
+    </>
   );
 }
 
@@ -77,9 +53,8 @@ function SshServer({ form }: { form: ConnectionForm }): React.JSX.Element {
   });
   return (
     <>
-      <div className={styles.pair}>
+      <div className={`${styles.pair ?? ''} ${styles.mono ?? ''}`}>
         <TextField
-          className={styles.row}
           label={t('sshHost')}
           placeholder={t('hostSshConfig')}
           {...text('host')}
@@ -90,13 +65,12 @@ function SshServer({ form }: { form: ConnectionForm }): React.JSX.Element {
           aria-label={t('sshPort')}
           inputMode="numeric"
           placeholder="22"
-          className={styles.port}
           {...text('port')}
           {...fieldError(errors.sshPort)}
         />
       </div>
       <TextField
-        className={styles.row}
+        className={`${styles.row ?? ''} ${styles.mono ?? ''}`}
         label={t('sshUser')}
         placeholder={t('sshConfigLogin')}
         {...text('user')}
@@ -113,7 +87,7 @@ function SshServer({ form }: { form: ConnectionForm }): React.JSX.Element {
       />
       <SshCredentials form={form} ssh={ssh} />
       <TextField
-        className={styles.row}
+        className={`${styles.row ?? ''} ${styles.mono ?? ''}`}
         label={t('jumpHosts')}
         placeholder={t('optionalUserBastion')}
         {...text('jumpHosts')}

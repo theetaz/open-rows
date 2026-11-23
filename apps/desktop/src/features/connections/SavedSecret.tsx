@@ -2,7 +2,7 @@
 import { Button, Icon, IconButton, TextField } from '@openrows/ui';
 import { useRevealedSecret } from './useRevealedSecret';
 import type { SecretDraft } from './routeForm';
-import styles from './ConnectionSheet.module.css';
+import styles from './flow/Form.module.css';
 import { t } from './messages/profile';
 
 /** Dots shown for a saved secret; its length says nothing about the value. */

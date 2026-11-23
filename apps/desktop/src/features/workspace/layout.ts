@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useState } from 'react';
 
-export const sidebarRange = { min: 200, max: 360, initial: 228 };
+export const sidebarRange = { min: 208, max: 368, initial: 252 };
 export const inspectorRange = { min: 240, max: 440, initial: 280 };
 export function isCompact(width: number): boolean {
   return width < 1100;

@@ -8,12 +8,7 @@ export const { t } = defineMessages({
   closePalette: 'Close palette',
   hidePassword: 'Hide password',
   showPassword: 'Show password',
-  tabName: 'Tab name',
-  workspaceTabs: 'Workspace tabs',
-  allTabs: 'All tabs',
   newTab: 'New tab',
-  pinned: 'Pinned',
-  closeLabel: 'Close {label}',
   resizeLabel: 'Resize {label}',
   somethingWentWrong: 'Something went wrong',
   reloadToContinue:

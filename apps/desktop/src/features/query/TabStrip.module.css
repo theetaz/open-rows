@@ -1,0 +1,378 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * The window's tab strip (DESIGN.md §7): the top row of the main column,
+ * beside the native traffic lights. Tabs flex 204 → 78 px, then the strip
+ * scrolls; pinned tabs are 36 px icons; groups are a coloured chip and a
+ * 2 px underline. Only transform and opacity animate.
+ */
+.strip {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--or-space-4);
+  block-size: var(--or-tabs-height);
+  min-inline-size: 0;
+  box-sizing: border-box;
+  padding: var(--or-space-6) var(--or-space-10) 0 var(--or-space-4);
+  user-select: none;
+  transition: padding-inline-start var(--or-motion-panel)
+    var(--or-motion-easing);
+}
+/* With the sidebar closed the traffic lights sit at the strip's start. */
+.strip[data-sidebar='closed'] {
+  padding-inline-start: var(--or-traffic-light-clearance);
+}
+.tabs {
+  position: relative;
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: var(--or-space-2);
+  block-size: 100%;
+  min-inline-size: 0;
+  padding: 0 var(--or-space-2);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+.drag {
+  flex: 1 1 0;
+  min-inline-size: 12px;
+  block-size: 100%;
+}
+
+.tab {
+  position: relative;
+  display: flex;
+  flex: 1 1 176px;
+  align-items: center;
+  gap: 7px;
+  min-inline-size: 78px;
+  max-inline-size: 204px;
+  block-size: var(--or-tab-height);
+  box-sizing: border-box;
+  padding: 0 5px 0 9px;
+  border-radius: var(--or-radius-tab);
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+  font-weight: var(--or-weight-medium);
+  /* Size containment for the narrow-tab query; the intrinsic width keeps 176 px. */
+  container-type: inline-size;
+  contain-intrinsic-inline-size: 176px;
+  transition: background-color var(--or-motion-instant) linear;
+}
+.tab:hover {
+  background: var(--or-hover);
+}
+.tab[data-active='true'] {
+  background: var(--or-tab-active);
+  color: var(--or-text);
+  box-shadow: var(--or-segment-shadow), var(--or-rim);
+}
+.tab[data-menu='true'] {
+  box-shadow: inset 0 0 0 1.5px var(--or-accent-fill);
+}
+/* Hairlines between tabs, hidden next to the active, hovered or dragged tab. */
+.tab + .tab::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: -1.5px;
+  inset-block: 8px;
+  inline-size: 1px;
+  background: var(--or-separator-strong);
+}
+.tab[data-active='true']::before,
+.tab[data-active='true'] + .tab::before,
+.tab:hover::before,
+.tab:hover + .tab::before,
+.tab[data-dragging='true']::before,
+.tab[data-dragging='true'] + .tab::before {
+  opacity: 0;
+}
+/* A grouped tab carries its group's underline. */
+.tab[data-group]::after {
+  content: '';
+  position: absolute;
+  inset-inline: -2px 0;
+  inset-block-end: -4px;
+  block-size: 2px;
+  border-radius: 1px;
+  background: var(--group);
+}
+.tab[data-pinned='true'] {
+  flex: 0 0 36px;
+  justify-content: center;
+  min-inline-size: 36px;
+  padding: 0;
+}
+.tab[data-pinned='true'] .title,
+.tab[data-pinned='true'] .close,
+.tab[data-pinned='true'] .prod {
+  display: none;
+}
+.tab[data-dragging='true'] {
+  z-index: 6;
+  background: var(--or-grid-head);
+  color: var(--or-text);
+  box-shadow: var(--or-shadow-float), var(--or-rim);
+}
+
+/* The tab's own button covers icon and title; the close button sits after it. */
+.select {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 7px;
+  min-inline-size: 0;
+  block-size: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+}
+.select:focus-visible {
+  outline: none;
+}
+.tab:has(.select:focus-visible) {
+  box-shadow: 0 0 0 var(--or-focus-width) var(--or-focus);
+}
+.select > svg {
+  flex: none;
+  inline-size: 14px;
+  block-size: 14px;
+}
+.tab[data-active='true'] .select > svg {
+  color: var(--or-accent);
+}
+.tab[data-pinned='true'] .select {
+  flex: none;
+  justify-content: center;
+  inline-size: 100%;
+}
+/* Titles fade out at the end instead of an ellipsis. */
+.title {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  mask-image: linear-gradient(90deg, black calc(100% - 14px), transparent);
+}
+.tab[data-preview='true'] .title {
+  font-style: italic;
+}
+.prod {
+  flex: none;
+  inline-size: 6px;
+  block-size: 6px;
+  margin-inline-start: -2px;
+  border-radius: 50%;
+  background: var(--or-tag-prod);
+}
+.close {
+  display: grid;
+  flex: none;
+  place-items: center;
+  inline-size: 18px;
+  block-size: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--or-radius-capsule);
+  background: none;
+  color: var(--or-tertiary);
+  opacity: 0;
+}
+.close svg {
+  inline-size: 10px;
+  block-size: 10px;
+  stroke-width: 2;
+}
+.close:hover {
+  background: var(--or-control-hover);
+  color: var(--or-text);
+}
+.tab:hover .close,
+.tab[data-active='true'] .close,
+.close:focus-visible {
+  opacity: 1;
+}
+/* Under 104 px inactive tabs drop their close button. */
+@container (max-width: 104px) {
+  .tab:not([data-active='true']) .close {
+    display: none;
+  }
+}
+.rename {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  block-size: 22px;
+  padding: 0 var(--or-space-6);
+  border: 0;
+  border-radius: var(--or-radius-capsule);
+  background: var(--or-field-box-fill);
+  box-shadow: inset 0 0 0 1px var(--or-field-box-stroke);
+  color: var(--or-text);
+  font: inherit;
+}
+.rename:focus {
+  outline: none;
+  box-shadow: 0 0 0 var(--or-focus-width) var(--or-focus);
+}
+
+/* A group's chip: its name (or count when collapsed) on its colour. */
+.chip {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  block-size: 20px;
+  margin: 0 3px 0 5px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: var(--or-radius-capsule);
+  background: color-mix(in srgb, var(--group) 20%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--group) 28%, transparent);
+  color: var(--group);
+  font-size: var(--or-text-11);
+  font-weight: var(--or-weight-title);
+  letter-spacing: 0.01em;
+}
+.chip:hover {
+  background: color-mix(in srgb, var(--group) 30%, transparent);
+}
+.chip:focus-visible {
+  outline: var(--or-focus-width) solid var(--or-focus);
+}
+.chip[data-collapsed='false']::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0 -5px;
+  inset-block-end: -9px;
+  block-size: 2px;
+  border-radius: 1px;
+  background: var(--group);
+}
+.count {
+  font-weight: var(--or-weight-medium);
+  opacity: 0.8;
+  font-variant-numeric: tabular-nums;
+}
+.chip[data-unnamed='true']:not([data-collapsed='true']) {
+  inline-size: 12px;
+  padding: 0;
+  justify-content: center;
+}
+
+/* The strip's buttons: new tab and the list of all tabs. */
+.button {
+  display: grid;
+  flex: none;
+  place-items: center;
+  inline-size: 28px;
+  block-size: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--or-radius-capsule);
+  background: none;
+  color: var(--or-secondary);
+  transition: background-color var(--or-motion-instant) linear;
+}
+.button:hover {
+  background: var(--or-hover);
+  color: var(--or-text);
+}
+.button:active {
+  background: var(--or-press);
+}
+.button:focus-visible {
+  outline: var(--or-focus-width) solid var(--or-focus);
+}
+.button svg {
+  inline-size: 16px;
+  block-size: 16px;
+}
+
+/* Group editor popover: name, eight colours and the group's actions. */
+.editor {
+  inline-size: 236px;
+  padding: var(--or-space-10);
+  box-sizing: border-box;
+}
+.swatches {
+  display: flex;
+  gap: 7px;
+  padding: var(--or-space-10) 2px var(--or-space-8);
+}
+.swatch {
+  inline-size: 20px;
+  block-size: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--swatch);
+}
+.swatch[aria-checked='true'] {
+  box-shadow:
+    0 0 0 2px var(--or-glass-float),
+    0 0 0 3.5px var(--swatch);
+}
+.swatch:focus-visible {
+  outline: var(--or-focus-width) solid var(--or-focus);
+  outline-offset: 3px;
+}
+.separator {
+  block-size: 1px;
+  margin: var(--or-space-4) 0;
+  background: var(--or-separator);
+}
+.action {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-8);
+  inline-size: 100%;
+  block-size: var(--or-menu-item-height);
+  padding: 0 var(--or-space-8);
+  border: 0;
+  border-radius: var(--or-radius-menu-item);
+  background: none;
+  color: var(--or-text);
+  font: inherit;
+  text-align: start;
+}
+.action svg {
+  inline-size: 14px;
+  block-size: 14px;
+  color: var(--or-secondary);
+}
+.action:hover,
+.action:focus-visible {
+  outline: none;
+  background: var(--or-accent-fill);
+  color: var(--or-on-accent);
+}
+.action:hover svg,
+.action:focus-visible svg {
+  color: inherit;
+}
+.action[data-danger='true'] {
+  color: var(--or-destructive);
+}
+.action[data-danger='true']:hover,
+.action[data-danger='true']:focus-visible {
+  background: var(--or-destructive-fill);
+  color: var(--or-on-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .strip {
+    transition: none;
+  }
+}
+:global([data-motion='reduced']) .strip {
+  transition: none;
+}

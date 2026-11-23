@@ -57,10 +57,10 @@
   min-width: 0;
 }
 .editor {
-  flex: 0 0 38%;
-  min-height: 96px;
+  flex: 0 0 42%;
+  min-height: 120px;
   overflow: hidden;
-  background: var(--or-page);
+  background: var(--or-editor-fill);
   box-shadow: inset 0 var(--or-border-width) 0 var(--or-separator);
 }
 /* Before the first run there is no results pane: the editor fills the tab. */
@@ -127,9 +127,9 @@
 .resultTools {
   display: flex;
   align-items: center;
-  gap: var(--or-space-4);
+  gap: var(--or-space-8);
   min-block-size: var(--or-bar-height);
-  padding: 0 var(--or-space-12) 0 var(--or-space-8);
+  padding: 0 var(--or-space-10);
   box-shadow: inset 0 var(--or-border-width) 0 var(--or-separator);
   flex-shrink: 0;
   overflow-x: auto;
@@ -143,23 +143,15 @@
   flex-shrink: 0;
 }
 .resultFilter {
-  inline-size: 220px;
+  inline-size: 240px;
   min-inline-size: 120px;
-  margin-inline-end: var(--or-space-4);
-}
-.resultFilter div[data-size] {
-  border-color: transparent;
-  background: var(--or-control-fill);
 }
 .toolsSpacer {
   flex: 1 0 0;
 }
-.resultTools [aria-pressed='true'] {
-  color: var(--or-accent);
-}
 .resultTools svg {
-  inline-size: var(--or-icon-size);
-  block-size: var(--or-icon-size);
+  inline-size: var(--or-icon-size-control);
+  block-size: var(--or-icon-size-control);
 }
 /* The result's quiet status line: editability, rows and selection totals. */
 .resultStatus {

@@ -43,7 +43,9 @@ it('closed inspector, palettes, menus and tooltips leave no content DOM', async 
     screen.getByRole('button', { name: 'orders-local actions' }),
   );
   await user.keyboard('{Escape}');
-  expect(document.querySelector('[role="menu"]')).toBeNull();
+  await waitFor(() => {
+    expect(document.querySelector('[role="menu"]')).toBeNull();
+  });
   const tile = await screen.findByRole('button', {
     name: 'Switch to events-dev',
   });

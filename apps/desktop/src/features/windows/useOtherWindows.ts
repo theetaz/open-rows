@@ -21,7 +21,9 @@ export function useOtherWindows(): readonly WindowEntryDto[] {
     let live = true;
     listWindows().then(
       (list) => {
-        if (live) setWindows(list.filter((entry) => !entry.current));
+        // A shell without window listing answers nothing: no other windows.
+        if (live && Array.isArray(list))
+          setWindows(list.filter((entry) => !entry.current));
       },
       () => undefined,
     );

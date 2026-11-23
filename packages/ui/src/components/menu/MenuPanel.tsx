@@ -74,7 +74,9 @@ function Row(props: {
         <Lead entry={entry} />
       </span>
       <span className={styles.label}>{entry.label}</span>
-      <span className={styles.shortcut}>{item?.shortcut}</span>
+      <span className={styles.shortcut} aria-hidden="true">
+        {item?.shortcut}
+      </span>
       <span className={styles.chevron} aria-hidden="true">
         {entry.kind === 'submenu' && <Icon name="chevronRight" />}
       </span>

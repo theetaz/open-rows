@@ -119,7 +119,12 @@ function DataStatus({
       )}
       {ready && <CountControl state={state} />}
       <span className={styles.spacer} />
-      {elapsed && <span className={styles.timing}>{elapsed}</span>}
+      {elapsed && (
+        <span className={styles.timing}>
+          <Icon name="clock" />
+          {elapsed}
+        </span>
+      )}
       <Paging state={state} ready={ready} />
     </>
   );

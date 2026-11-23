@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { expect, it, vi } from 'vitest';
+import { beforeEach, expect, it, vi } from 'vitest';
 import type { TableColumnDto } from '@openrows/ipc';
 import { ThemeProvider } from '@openrows/ui';
 import { RowDetails } from './RowDetails';
+beforeEach(() => {
+  // Menus run their command at once instead of after the blink and fade.
+  document.documentElement.dataset.motion = 'reduced';
+});
 import type { RowEditor, RowField, SelectedRow } from './row';
 
 const column = (
@@ -186,20 +190,44 @@ it('stages NULL, DEFAULT and EMPTY from the value menu', async () => {
 it('disables NULL for NOT NULL, DEFAULT without one, EMPTY for non-text', async () => {
   const { user } = show();
   const name = within(await menu(user, 'name'));
-  expect(name.getByRole('menuitem', { name: 'NULL' })).toBeDisabled();
-  expect(name.getByRole('menuitem', { name: 'DEFAULT' })).toBeDisabled();
-  expect(name.getByRole('menuitem', { name: 'EMPTY' })).toBeEnabled();
-  expect(name.getByRole('menuitem', { name: 'PRETTY' })).toBeDisabled();
+  expect(name.getByRole('menuitem', { name: 'NULL' })).toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
+  expect(name.getByRole('menuitem', { name: 'DEFAULT' })).toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
+  expect(name.getByRole('menuitem', { name: 'EMPTY' })).toHaveAttribute(
+    'aria-disabled',
+    'false',
+  );
+  expect(name.getByRole('menuitem', { name: 'PRETTY' })).toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
   await user.keyboard('{Escape}');
   const total = within(await menu(user, 'total'));
-  expect(total.getByRole('menuitem', { name: 'NULL' })).toBeDisabled();
-  expect(total.getByRole('menuitem', { name: 'DEFAULT' })).toBeEnabled();
-  expect(total.getByRole('menuitem', { name: 'EMPTY' })).toBeDisabled();
-  expect(total.getByRole('menuitem', { name: 'Add a file…' })).toBeDisabled();
+  expect(total.getByRole('menuitem', { name: 'NULL' })).toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
+  expect(total.getByRole('menuitem', { name: 'DEFAULT' })).toHaveAttribute(
+    'aria-disabled',
+    'false',
+  );
+  expect(total.getByRole('menuitem', { name: 'EMPTY' })).toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
+  expect(total.getByRole('menuitem', { name: 'Add a file…' })).toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
   await user.keyboard('{Escape}');
   const computed = within(await menu(user, 'computed'));
   for (const item of computed.getAllByRole('menuitem'))
-    expect(item).toBeDisabled();
+    expect(item).toHaveAttribute('aria-disabled', 'true');
 });
 
 it('pretty-prints and minifies valid JSON exactly, never invalid JSON', async () => {
@@ -219,8 +247,14 @@ it('pretty-prints and minifies valid JSON exactly, never invalid JSON', async ()
     value: '{"b":[1,12345678901234567890],"a":{}}',
   });
   const bad = within(await menu(user, 'bad'));
-  expect(bad.getByRole('menuitem', { name: 'PRETTY' })).toBeDisabled();
-  expect(bad.getByRole('menuitem', { name: 'MINIFY' })).toBeDisabled();
+  expect(bad.getByRole('menuitem', { name: 'PRETTY' })).toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
+  expect(bad.getByRole('menuitem', { name: 'MINIFY' })).toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
 });
 
 it('adds a file through the native picker for bytea and text fields', async () => {

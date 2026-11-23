@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useState } from 'react';
-import { Icon, IconButton } from '@openrows/ui';
-import { CascadeMenu } from '../../shell/CascadeMenu';
-import type { MenuEntry } from '../../shell/CascadeMenu';
+import { Icon, IconButton, Menu } from '@openrows/ui';
+import type { MenuEntry } from '@openrows/ui';
+import { useMenuButton } from '../../shell/useMenuButton';
 import { supportedGroups } from './catalog';
 import type { ObjectGroup } from './catalog';
 import {
@@ -34,7 +33,7 @@ export function SidebarFilters({
   catalog: Catalog;
 }): React.JSX.Element | null {
   const preferences = useSidebarPreferences(catalog.profileId);
-  const [point, setPoint] = useState<{ x: number; y: number } | null>(null);
+  const { anchor, close, button } = useMenuButton();
   const features = catalog.inspection.capabilities;
   if (features.status !== 'ready' || !catalog.profileId) return null;
   const groups = supportedGroups(features.data.kinds);
@@ -45,25 +44,19 @@ export function SidebarFilters({
         size="sm"
         variant="ghost"
         aria-label={t('filterObjects')}
-        aria-haspopup="menu"
-        aria-expanded={point !== null}
         data-active={active}
         className={styles.filterButton}
-        onClick={(event) => {
-          const box = event.currentTarget.getBoundingClientRect();
-          setPoint({ x: box.right - 240, y: box.bottom + 4 });
-        }}
+        {...button}
       >
         <Icon name="filter" />
       </IconButton>
-      {point && (
-        <CascadeMenu
-          {...point}
+      {anchor && (
+        <Menu
           label={t('filterObjects')}
+          anchor={anchor}
+          align="end"
           entries={filterEntries({ catalog, preferences, groups })}
-          onClose={() => {
-            setPoint(null);
-          }}
+          onClose={close}
         />
       )}
     </>
@@ -78,9 +71,24 @@ function filterEntries(props: FilterProps): MenuEntry[] {
   const { catalog, preferences } = props;
   const active = preferences.kinds.length + preferences.schemas.length > 0;
   return [
-    { kind: 'submenu', label: t('objectKinds'), entries: kindEntries(props) },
-    { kind: 'submenu', label: t('schemas'), entries: schemaEntries(props) },
-    { kind: 'submenu', label: t('sections'), entries: sectionEntries(props) },
+    {
+      kind: 'submenu',
+      label: t('objectKinds'),
+      icon: <Icon name={'table'} />,
+      entries: kindEntries(props),
+    },
+    {
+      kind: 'submenu',
+      label: t('schemas'),
+      icon: <Icon name={'schemaTree'} />,
+      entries: schemaEntries(props),
+    },
+    {
+      kind: 'submenu',
+      label: t('sections'),
+      icon: <Icon name={'folder'} />,
+      entries: sectionEntries(props),
+    },
     { kind: 'separator' },
     {
       kind: 'item',
@@ -96,6 +104,7 @@ function filterEntries(props: FilterProps): MenuEntry[] {
           {
             kind: 'item' as const,
             label: t('clearFilters'),
+            icon: <Icon name={'close'} />,
             run: () => {
               write(catalog, { kinds: [], schemas: [] });
             },

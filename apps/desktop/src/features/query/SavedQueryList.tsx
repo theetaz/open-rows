@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useCallback, useState } from 'react';
-import { Button, HighlightText, TreeItem } from '@openrows/ui';
+import { Button, HighlightText, Icon, TreeItem } from '@openrows/ui';
+import type { IconName, MenuEntry } from '@openrows/ui';
 import { Sheet, SheetActions } from '@openrows/ui/sheet';
 import { confirmDestructive } from '@openrows/ipc';
 import type { SavedQueryDto } from '@openrows/ipc';
 import { insertSavedSql } from './historyInsert';
-import { CascadeMenu } from '../../shell/CascadeMenu';
+import { ContextMenu } from '../../shell/ContextMenu';
 import { substringIndices } from '../schema';
 import { NameSheet } from './NameSheet';
 import { deleteQuery, renameQuery, useSavedQueries } from './savedQueries';
@@ -22,7 +23,13 @@ type Props = {
 };
 
 type Dialog =
-  | { kind: 'menu'; query: SavedQueryDto; x: number; y: number }
+  | {
+      kind: 'menu';
+      query: SavedQueryDto;
+      x: number;
+      y: number;
+      target: Element | null;
+    }
   | { kind: 'rename' | 'delete'; query: SavedQueryDto };
 
 const message = (error: unknown): string =>
@@ -73,33 +80,13 @@ export function SavedQueryList(props: Props): React.JSX.Element {
   return (
     <>
       {shown.map((query) => (
-        <div
+        <SavedRow
           key={query.id}
-          onContextMenu={(event) => {
-            event.preventDefault();
-            setDialog({
-              kind: 'menu',
-              query,
-              x: event.clientX,
-              y: event.clientY,
-            });
-          }}
-        >
-          <TreeItem
-            label={query.name}
-            glyph="≡"
-            title={query.sql}
-            selected={false}
-            onSelect={() => {
-              props.onOpen(query);
-            }}
-          >
-            <HighlightText
-              text={query.name}
-              indices={substringIndices(query.name, props.search)}
-            />
-          </TreeItem>
-        </div>
+          query={query}
+          search={props.search}
+          onOpen={props.onOpen}
+          onMenu={setDialog}
+        />
       ))}
       <ListNote
         loading={loading}
@@ -122,6 +109,45 @@ export function SavedQueryList(props: Props): React.JSX.Element {
         />
       )}
     </>
+  );
+}
+
+/** One saved query: click opens it, right-click opens its menu. */
+function SavedRow(props: {
+  query: SavedQueryDto;
+  search: string;
+  onOpen: (query: SavedQueryDto) => void;
+  onMenu: (dialog: Dialog) => void;
+}): React.JSX.Element {
+  const { query } = props;
+  return (
+    <div
+      onContextMenu={(event) => {
+        event.preventDefault();
+        props.onMenu({
+          kind: 'menu',
+          query,
+          x: event.clientX,
+          y: event.clientY,
+          target: event.currentTarget.firstElementChild,
+        });
+      }}
+    >
+      <TreeItem
+        label={query.name}
+        glyph="≡"
+        title={query.sql}
+        selected={false}
+        onSelect={() => {
+          props.onOpen(query);
+        }}
+      >
+        <HighlightText
+          text={query.name}
+          indices={substringIndices(query.name, props.search)}
+        />
+      </TreeItem>
+    </div>
   );
 }
 
@@ -196,69 +222,79 @@ function QueryDialog(props: {
   );
 }
 
-function SavedQueryMenu(
-  props: Parameters<typeof QueryDialog>[0] & {
-    dialog: Extract<Dialog, { kind: 'menu' }>;
-  },
-): React.JSX.Element {
-  const { dialog, onMove } = props;
+type MenuProps = Parameters<typeof QueryDialog>[0] & {
+  dialog: Extract<Dialog, { kind: 'menu' }>;
+};
+
+const item = (
+  label: string,
+  icon: IconName,
+  run: () => void,
+  danger = false,
+): MenuEntry => ({
+  kind: 'item',
+  label,
+  icon: <Icon name={icon} />,
+  run,
+  danger,
+});
+
+/** Open, Insert SQL and Copy SQL. */
+function runEntries(props: MenuProps, query: SavedQueryDto): MenuEntry[] {
+  return [
+    item(t('open'), 'terminal', () => {
+      props.onOpen(query);
+    }),
+    item(t('insertSql'), 'arrowRight', () => {
+      if (!insertSavedSql(query.sql)) props.onError(t('openQueryEditorBefore'));
+    }),
+    item(t('copySql'), 'copy', () => {
+      navigator.clipboard.writeText(query.sql).catch((error: unknown) => {
+        props.onError(message(error));
+      });
+    }),
+  ];
+}
+
+/** Move to Project and Rename, then the destructive Delete. */
+function editEntries(props: MenuProps, query: SavedQueryDto): MenuEntry[] {
+  const { onMove } = props;
+  return [
+    ...(onMove
+      ? [
+          item(t('moveProject'), 'folder', () => {
+            onMove(query);
+          }),
+        ]
+      : []),
+    item(t('rename2'), 'pencil', () => {
+      props.onRename(query);
+    }),
+    { kind: 'separator' },
+    item(
+      t('delete2'),
+      'trash',
+      () => {
+        props.onDelete(query);
+      },
+      true,
+    ),
+  ];
+}
+
+function SavedQueryMenu(props: MenuProps): React.JSX.Element {
+  const { dialog } = props;
   const { query } = dialog;
   return (
-    <CascadeMenu
-      x={dialog.x}
-      y={dialog.y}
+    <ContextMenu
+      at={{ x: dialog.x, y: dialog.y }}
+      target={dialog.target}
       label={t('nameActions', { name: query.name })}
       onClose={props.onClose}
       entries={[
-        {
-          kind: 'item',
-          label: t('open'),
-          run: () => {
-            props.onOpen(query);
-          },
-        },
-        {
-          kind: 'item',
-          label: t('insertSql'),
-          run: () => {
-            if (!insertSavedSql(query.sql))
-              props.onError(t('openQueryEditorBefore'));
-          },
-        },
-        {
-          kind: 'item',
-          label: t('copySql'),
-          run: () => {
-            navigator.clipboard.writeText(query.sql).catch((error: unknown) => {
-              props.onError(message(error));
-            });
-          },
-        },
-        ...(onMove
-          ? [
-              {
-                kind: 'item' as const,
-                label: t('moveProject'),
-                run: () => {
-                  onMove(query);
-                },
-              },
-            ]
-          : []),
-        {
-          kind: 'item',
-          label: t('rename2'),
-          run: () => {
-            props.onRename(query);
-          },
-        },
-        {
-          kind: 'item',
-          label: t('delete2'),
-          run: () => {
-            props.onDelete(query);
-          },
-        },
+        ...runEntries(props, query),
+        { kind: 'separator' },
+        ...editEntries(props, query),
       ]}
     />
   );

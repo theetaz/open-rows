@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { lazy, Suspense, useEffect } from 'react';
 import { HighlightText, Icon, TreeNode, TreeNote } from '@openrows/ui';
+import type { IconName } from '@openrows/ui';
 import type { ObjectDto, TableColumnDto } from '@openrows/ipc';
 import {
   columnKey,
@@ -16,7 +17,20 @@ import type { ObjectRef } from './catalog';
 import type { Catalog } from './useCatalog';
 import type { Resource } from './useResources';
 import { shortType } from './shortType';
+import { menuTarget } from '../../shell/ContextMenu';
 import { t } from './messages';
+
+/** The line icon of each object kind. */
+const kindIcons: Record<ObjectDto['kind'], IconName> = {
+  table: 'table',
+  foreignTable: 'table',
+  view: 'eye',
+  materializedView: 'eye',
+  function: 'function',
+  procedure: 'function',
+  sequence: 'list',
+  type: 'code',
+};
 
 const CollectionIndexes = lazy(() =>
   import('./CollectionIndexes').then((module) => ({
@@ -39,8 +53,13 @@ type RowContext = {
   onMenu?: ((object: ObjectRef, point: MenuPoint) => void) | undefined;
 };
 
-/** Window coordinates of a context-menu click. */
-export type MenuPoint = { x: number; y: number };
+/** Window coordinates of a context-menu click, and the row it acts on. */
+export type MenuPoint = {
+  x: number;
+  y: number;
+  /** Ringed while the menu is open. */
+  target?: Element | undefined;
+};
 
 type Disclosure =
   | { expanded: boolean; onExpandedChange: (open: boolean) => void }
@@ -81,7 +100,6 @@ export function ObjectRow(
   const id = nodeKey(object);
   const target = objectRef(catalog.database, object);
   const count = formatEstimate(object.rowEstimate);
-  const { glyph } = kindInfo(object.kind);
   const { disclosure, columns } = useDisclosure(catalog, object);
   const open = (): void => {
     props.onOpen(target);
@@ -91,7 +109,11 @@ export function ObjectRow(
     ? (event: React.MouseEvent): void => {
         event.preventDefault();
         props.onSelect(id);
-        onMenu(target, { x: event.clientX, y: event.clientY });
+        onMenu(target, {
+          x: event.clientX,
+          y: event.clientY,
+          target: menuTarget(event.currentTarget),
+        });
       }
     : undefined;
   return (
@@ -109,8 +131,7 @@ export function ObjectRow(
         props.onOpen(target, true);
       }}
       {...disclosure}
-      icon={glyph}
-      iconTone={glyph === '▦' ? 'info' : undefined}
+      icon={<Icon name={kindIcons[object.kind]} />}
       detail={count}
       title={objectTitle(catalog.database, object)}
       name={

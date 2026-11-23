@@ -55,9 +55,6 @@ export function WorkspaceRail(props: {
         connections.select(id, name);
         props.onRunFile?.(name, id);
       }}
-      onNew={() => {
-        connections.setSheet({ kind: 'new' });
-      }}
       actionsFor={(profile) => connectionActions(profile, connections)}
     />
   );

@@ -1,42 +1,23 @@
 // SPDX-License-Identifier: Apache-2.0
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { screen } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import { createProfile, pickConnectionFile } from '@openrows/ipc';
-import { ThemeProvider } from '@openrows/ui';
 import { profile } from '../../test/ipcStub';
-import { ConnectionSheet } from './ConnectionSheet';
+import { mountFlow, saveFlow } from './flow/flowTestKit';
 
 vi.mock('@openrows/ipc', async () =>
   (await import('../../test/ipcStub')).ipcStub(),
 );
 
-function mount(engine: 'sqlite' | 'mysql') {
-  const onSaved = vi.fn();
-  render(
-    <ThemeProvider>
-      <ConnectionSheet
-        engine={engine}
-        onClose={vi.fn()}
-        onSaved={onSaved}
-        onDelete={vi.fn()}
-        onDuplicate={vi.fn()}
-      />
-    </ThemeProvider>,
-  );
-  return { user: userEvent.setup(), onSaved };
-}
-
 it('a SQLite connection names a file instead of a server and route', async () => {
   vi.mocked(pickConnectionFile).mockResolvedValueOnce('/data/new.sqlite');
   vi.mocked(createProfile).mockResolvedValue(profile('new'));
-  const { user, onSaved } = mount('sqlite');
+  const { user, onDone } = await mountFlow({ engine: 'sqlite' });
   expect(
-    screen.getByRole('dialog', { name: 'New SQLite connection' }),
+    screen.getByRole('heading', { name: 'SQLite details' }),
   ).toBeInTheDocument();
   expect(screen.queryByRole('textbox', { name: 'Host' })).toBeNull();
-  expect(screen.queryByText(/^SSH/)).toBeNull();
-  expect(screen.queryByText(/^TLS/)).toBeNull();
+  expect(screen.queryByRole('button', { name: /Security/ })).toBeNull();
   await user.click(screen.getByRole('button', { name: 'New database file' }));
   expect(pickConnectionFile).toHaveBeenCalledWith('newSqliteDatabase');
   expect(
@@ -50,7 +31,7 @@ it('a SQLite connection names a file instead of a server and route', async () =>
   );
   await user.click(screen.getByRole('switch', { name: 'Open read-only' }));
   await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Local');
-  await user.click(screen.getByRole('button', { name: 'Save' }));
+  await saveFlow(user);
   expect(createProfile).toHaveBeenCalledWith(
     expect.objectContaining({
       engine: 'sqlite',
@@ -63,12 +44,12 @@ it('a SQLite connection names a file instead of a server and route', async () =>
       ssh: null,
     }),
   );
-  expect(onSaved).toHaveBeenCalled();
+  expect(onDone).toHaveBeenCalled();
 });
 
 it('the in-memory switch hides the file controls and syncs the URL', async () => {
   vi.mocked(createProfile).mockResolvedValue(profile('scratch'));
-  const { user } = mount('sqlite');
+  const { user } = await mountFlow({ engine: 'sqlite' });
   const url = screen.getByRole('textbox', { name: 'URL' });
   await user.click(screen.getByRole('switch', { name: 'In-memory' }));
   expect(screen.queryByRole('textbox', { name: 'Database file' })).toBeNull();
@@ -84,7 +65,7 @@ it('the in-memory switch hides the file controls and syncs the URL', async () =>
   expect(url).toHaveValue('sqlite:');
   await user.click(screen.getByRole('switch', { name: 'In-memory' }));
   await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Scratch');
-  await user.click(screen.getByRole('button', { name: 'Save' }));
+  await saveFlow(user);
   expect(createProfile).toHaveBeenCalledWith(
     expect.objectContaining({
       file: { path: '', memory: true, readOnly: false, create: false },
@@ -92,13 +73,14 @@ it('the in-memory switch hides the file controls and syncs the URL', async () =>
   );
 });
 
-it('a MySQL connection starts on port 3306 with a mysql:// URL', () => {
-  mount('mysql');
-  expect(
-    screen.getByRole('dialog', { name: 'New MySQL connection' }),
-  ).toBeInTheDocument();
-  expect(screen.getByRole('textbox', { name: 'Port' })).toHaveValue('3306');
-  expect(screen.getByRole('textbox', { name: 'URL' })).toHaveValue(
-    'mysql://localhost:3306',
+it('a file opened from Finder starts at its details, read-only and named after it', async () => {
+  await mountFlow({ engine: 'sqlite', filePath: '/data/notes.sqlite' });
+  expect(screen.getByText('Step 2 of 4')).toBeVisible();
+  expect(screen.getByRole('textbox', { name: 'Database file' })).toHaveValue(
+    '/data/notes.sqlite',
+  );
+  expect(screen.getByRole('switch', { name: 'Open read-only' })).toBeChecked();
+  expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue(
+    'notes.sqlite',
   );
 });

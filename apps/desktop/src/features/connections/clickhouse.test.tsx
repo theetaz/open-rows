@@ -1,42 +1,38 @@
 // SPDX-License-Identifier: Apache-2.0
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { screen } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
-import { ThemeProvider } from '@openrows/ui';
-import { ConnectionSheet } from './ConnectionSheet';
+import { continueButton, mountFlow, openStep } from './flow/flowTestKit';
 
 vi.mock('@openrows/ipc', async () =>
   (await import('../../test/ipcStub')).ipcStub(),
 );
 
 it('offers explicit HTTP/TLS modes and changes only default ports', async () => {
-  render(
-    <ThemeProvider>
-      <ConnectionSheet
-        engine="clickhouse"
-        onClose={vi.fn()}
-        onSaved={vi.fn()}
-        onDelete={vi.fn()}
-        onDuplicate={vi.fn()}
-      />
-    </ThemeProvider>,
-  );
-  const user = userEvent.setup();
+  const { user } = await mountFlow({ engine: 'clickhouse' });
   expect(
-    screen.getByRole('heading', { name: 'New ClickHouse connection' }),
+    screen.getByRole('heading', { name: 'ClickHouse details' }),
   ).toBeVisible();
-  const port = screen.getByRole('textbox', { name: 'Port' });
-  expect(port).toHaveValue('8123');
-  await user.click(screen.getByRole('button', { name: /^TLS/ }));
+  const port = (): HTMLElement => screen.getByRole('textbox', { name: 'Port' });
+  expect(port()).toHaveValue('8123');
+  await user.type(screen.getByRole('textbox', { name: 'User' }), 'default');
+  await user.click(continueButton());
   const mode = screen.getByRole('combobox', { name: 'TLS mode' });
   expect(mode).toHaveValue('disable');
   expect(screen.queryByRole('option', { name: /Prefer/ })).toBeNull();
   await user.selectOptions(mode, 'verify-full');
-  expect(port).toHaveValue('8443');
+  expect(
+    screen.getByRole('complementary', { name: 'Summary' }),
+  ).toHaveTextContent(':8443');
   await user.selectOptions(mode, 'disable');
-  expect(port).toHaveValue('8123');
-  await user.clear(port);
-  await user.type(port, '9443');
-  await user.selectOptions(mode, 'require');
-  expect(port).toHaveValue('9443');
+  await openStep(user, 'Details');
+  expect(port()).toHaveValue('8123');
+  await user.clear(port());
+  await user.type(port(), '9443');
+  await openStep(user, 'Security');
+  await user.selectOptions(
+    screen.getByRole('combobox', { name: 'TLS mode' }),
+    'require',
+  );
+  await openStep(user, 'Details');
+  expect(port()).toHaveValue('9443');
 });

@@ -98,7 +98,7 @@ function useFlag(): [boolean, () => void, () => void] {
   return [on, open, close];
 }
 
-/** View bar, editor, results and status for one query tab. */
+/** Editor, its bar, results and status for one query tab. */
 export function QueryTab(props: QueryTabProps): React.JSX.Element {
   const { tab, runs } = props;
   const editor = useRef<EditorHandle | null>(null);
@@ -135,6 +135,13 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
           tabKey(event, act);
         }}
       >
+        <TabEditor
+          {...props}
+          settings={settings}
+          cursor={cursor}
+          editorRef={editor}
+          act={act}
+        />
         <TabBar
           {...props}
           settings={settings}
@@ -147,13 +154,6 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
           onName={sheets.startNaming}
           onExplain={explain.run}
           {...ai}
-        />
-        <TabEditor
-          {...props}
-          settings={settings}
-          cursor={cursor}
-          editorRef={editor}
-          act={act}
         />
         <TabPipeline {...props} run={run} />
         <TabParams
@@ -287,7 +287,7 @@ function TabEditor(
   );
 }
 
-/** The view bar above the editor: Run and its menu, Cancel, formatting and settings. */
+/** The bar under the editor: Run and its menu, Cancel, formatting and settings. */
 function TabBar(
   props: Pick<QueryTabProps, 'tab' | 'connection' | 'runs' | 'sessionId'> & {
     settings: EditorSettings;

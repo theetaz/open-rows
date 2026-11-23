@@ -3,21 +3,17 @@ import type { CellRange, GridContextTarget } from '@openrows/grid';
 import type { ResultMeta } from '../query/run';
 import { holdsColumn } from './row';
 import type { RowField } from './row';
-import { filterRow } from './model';
-import { withQuickFilter } from './filters/groups';
 import type { TableView } from './model';
 import type { RowEditing } from './useRowEditing';
 import { stagedInserts } from './EditedSource';
-import { DEFAULT_VALUE, NULL_VALUE, textValue } from './cellValue';
-import type { CellValue } from './cellValue';
-import { fieldActions } from './fieldActions';
 import { selectionActions } from './selectionActions';
 import { selectedCells } from './bulk/cells';
+import { cellActions } from './cellMenuActions';
 import { rowText } from '../../results/copy/formats';
-import type { TableColumnDto } from '@openrows/ipc';
 import type { CopyTarget } from '../../results/copy/copySelection';
 import type { KeyJumps } from './links/useKeyJumps';
 import { resultColumnKey } from '../../results/projectedResult';
+import type { IconName } from '@openrows/ui';
 import { t } from './messages/lazyData';
 /** A right-click target plus the grid selection it belongs to, in data coordinates. */
 export type ContextTarget = GridContextTarget & {
@@ -47,12 +43,22 @@ export type ContextMenuProps = {
   onQuickFilter?: ((column: string) => void) | undefined;
   onClose: () => void;
 };
+/** A submenu that collects the actions naming it, placed at the first one. */
+export type ActionGroup = { label: string; icon?: IconName };
 export type Action = {
   label: string;
   disabled?: boolean;
   danger?: boolean;
   /** Starts a new group: the menu draws a separator above it. */
   separated?: boolean;
+  /** Leading glyph of the menu row. */
+  icon?: IconName;
+  /** A fixed shortcut hint (`↩`)… */
+  shortcut?: string;
+  /** …or the command whose (rebindable) shortcut the row shows. */
+  command?: string;
+  /** Shown inside this submenu instead of at the top level. */
+  group?: ActionGroup;
   run: () => void;
 };
 export type Context = ContextMenuProps & {
@@ -82,9 +88,21 @@ export function contextActions(
     return [...columnActions(context, copy), ...selectionActions(context)];
   if (cells > 1) return selectionActions(context);
   const rows = rowActions(context, fields, copy);
-  return selection.kind === 'row'
-    ? rows
-    : [...cellActions(context, fields?.[selection.column], copy), ...rows];
+  if (selection.kind === 'row') return rows;
+  // Copy value, then Copy row as ▸, then the other cell commands.
+  const [copyValue, ...cell] = cellActions(
+    context,
+    fields?.[selection.column],
+    copy,
+  );
+  const [copyRow, ...row] = rows;
+  return [
+    ...(copyValue ? [copyValue] : []),
+    ...(copyRow ? [copyRow] : []),
+    ...cell,
+    ...sortActions(context, true),
+    ...row,
+  ];
 }
 function canEdit(editing: RowEditing, result: ResultMeta): boolean {
   const info = editing.info;
@@ -105,10 +123,47 @@ function pinActions({ grid, selection, run }: Context): Action[] {
   return [
     {
       label: pinned ? t('unpinColumn') : t('pinColumn'),
+      icon: 'pin',
+      separated: true,
       run: run(() => {
         grid.togglePin(name);
       }),
     },
+  ];
+}
+/** Sort the view by the menu's column; `cell` adds Filter column… after. */
+function sortActions(context: Context, cell: boolean): Action[] {
+  const { selection, changeView, run } = context;
+  const key = resultColumnKey(selection.result, selection.column);
+  const sort = (descending: boolean): (() => void) =>
+    run(() => {
+      changeView((view) => ({
+        ...view,
+        offset: 0,
+        sort: { column: key, descending },
+      }));
+    });
+  const filter: Action[] = context.onQuickFilter
+    ? [
+        {
+          label: t('filterColumn'),
+          ...(cell ? {} : { icon: 'filter' as const }),
+          run: run(() => {
+            context.onQuickFilter?.(key);
+          }),
+        },
+      ]
+    : [];
+  return [
+    ...(cell ? filter : []),
+    {
+      label: t('sortAscending'),
+      icon: 'arrowUp',
+      separated: !cell,
+      run: sort(false),
+    },
+    { label: t('sortDescending'), icon: 'arrowDown', run: sort(true) },
+    ...(cell ? [] : filter),
   ];
 }
 function columnActions(
@@ -118,45 +173,19 @@ function columnActions(
   const { selection, name, changeView, run } = context;
   const { result } = selection;
   const key = resultColumnKey(result, selection.column);
-  const sort = (descending: boolean): void => {
-    changeView((view) => ({
-      ...view,
-      offset: 0,
-      sort: { column: key, descending },
-    }));
-  };
   return [
     {
       label: t('copyColumnName'),
+      icon: 'copy',
       run: () => {
         copy(name);
       },
     },
-    {
-      label: t('sortAscending'),
-      run: run(() => {
-        sort(false);
-      }),
-    },
-    {
-      label: t('sortDescending'),
-      run: run(() => {
-        sort(true);
-      }),
-    },
-    ...(context.onQuickFilter
-      ? [
-          {
-            label: t('filterColumn'),
-            run: run(() => {
-              context.onQuickFilter?.(key);
-            }),
-          },
-        ]
-      : []),
+    ...sortActions(context, false),
     ...pinActions(context),
     {
       label: t('hideColumn'),
+      icon: 'eyeOff',
       disabled: result.columns.length <= 1,
       run: run(() => {
         changeView((view) => ({ ...view, hidden: [...view.hidden, key] }));
@@ -164,6 +193,11 @@ function columnActions(
     },
   ];
 }
+/** The `Copy row as ▸` submenu; the grid's formats join it. */
+const copyRowGroup = (): ActionGroup => ({
+  label: t('copyRowAs'),
+  icon: 'duplicate',
+});
 function rowActions(
   { selection, editing, writable, run }: Context,
   fields: readonly RowField[] | null,
@@ -172,7 +206,16 @@ function rowActions(
   const { result } = selection;
   return [
     {
+      label: t('tabSeparated'),
+      group: copyRowGroup(),
+      disabled: !fields,
+      run: () => {
+        if (fields) copy(rowText(fields));
+      },
+    },
+    {
       label: t('editRow'),
+      icon: 'pencil',
       disabled: !writable,
       separated: true,
       run: run(() => {
@@ -184,15 +227,15 @@ function rowActions(
       }),
     },
     {
-      label: t('copyRow'),
-      disabled: !fields,
-      run: () => {
-        if (fields) copy(rowText(fields));
-      },
+      label: t('addRow'),
+      icon: 'plus',
+      command: 'insert-row',
+      disabled: !writable,
+      run: run(editing.insert),
     },
-    { label: t('addRow'), disabled: !writable, run: run(editing.insert) },
     {
       label: t('duplicateRow'),
+      icon: 'duplicate',
       disabled: !writable,
       run: run(() => {
         editing.quick(result, selection, 'duplicate');
@@ -200,6 +243,8 @@ function rowActions(
     },
     {
       label: t('deleteRow'),
+      icon: 'trash',
+      command: 'delete-row',
       disabled: !writable,
       danger: true,
       separated: true,
@@ -208,95 +253,4 @@ function rowActions(
       }),
     },
   ];
-}
-function cellActions(
-  { selection, name, editing, changeView, writable, run }: Context,
-  field: RowField | undefined,
-  copy: (text: string) => void,
-): Action[] {
-  const editColumn = editing.info?.columns.find((item) => item.name === name);
-  const cellWritable = writable && !editing.info?.protected.includes(name);
-  const set = (value: CellValue): void => {
-    editing.stageCell(
-      editing.draftFor(selection.result, selection.row),
-      name,
-      value,
-    );
-  };
-  return [
-    {
-      label: t('editValue'),
-      disabled: !cellWritable,
-      run: run(() => {
-        editing.edit({ row: selection.row, column: selection.column });
-      }),
-    },
-    {
-      label: t('copyValue'),
-      disabled: !field,
-      run: () => {
-        if (field) copy(field.state === 'empty' ? '' : field.text);
-      },
-    },
-    {
-      label: t('pasteValue'),
-      disabled: !cellWritable,
-      run: run(() => {
-        navigator.clipboard.readText().then((text) => {
-          set(textValue(text));
-        }, editing.fail);
-      }),
-    },
-    {
-      label: t('filterValue2'),
-      disabled: !field,
-      separated: true,
-      run: run(() => {
-        if (field)
-          changeView((view) =>
-            filterValue(view, {
-              ...field,
-              name: resultColumnKey(selection.result, selection.column),
-            }),
-          );
-      }),
-    },
-    ...markerActions(editColumn, cellWritable).map(
-      ([label, value, ok], at) => ({
-        label,
-        disabled: !ok,
-        separated: at === 0,
-        run: run(() => {
-          set(value);
-        }),
-      }),
-    ),
-  ];
-}
-
-/** Set NULL / DEFAULT / EMPTY with the inspector menu's enablement rules. */
-function markerActions(
-  column: TableColumnDto | undefined,
-  writable: boolean,
-): readonly (readonly [string, CellValue, boolean])[] {
-  const allowed = fieldActions(column, !writable, null);
-  return [
-    [t('setNull'), NULL_VALUE, allowed.null],
-    [t('setDefault'), DEFAULT_VALUE, allowed.default],
-    [t('setEmpty'), textValue(''), allowed.empty],
-  ];
-}
-
-function filterValue(view: TableView, field: RowField): TableView {
-  const row = {
-    ...filterRow(view.nextRow, field.name),
-    operator:
-      field.state === 'null'
-        ? ('isNull' as const)
-        : field.state === 'empty'
-          ? ('isEmpty' as const)
-          : ('equal' as const),
-    value: field.state === 'normal' ? field.text : '',
-  };
-  return withQuickFilter(view, row);
 }

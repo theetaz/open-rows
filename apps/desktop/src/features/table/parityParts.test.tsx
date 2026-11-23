@@ -12,6 +12,8 @@ import { initialView } from './model';
 import { useTableContext } from './TableContextMenu';
 import { useDiscardReload } from './useDiscardReload';
 import type { RowEditing } from './useRowEditing';
+// Menus run their command at once instead of after the blink and fade.
+document.documentElement.dataset.motion = 'reduced';
 
 vi.mock('./row', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./row')>()),

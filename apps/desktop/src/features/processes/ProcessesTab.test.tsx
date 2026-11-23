@@ -1,5 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import {
@@ -106,9 +113,14 @@ it('cancels a query after the native confirmation, then reloads', async () => {
   await userEvent.click(
     within(menu).getByRole('menuitem', { name: 'Cancel Query' }),
   );
-  expect(confirmDestructive).toHaveBeenCalledWith(
-    expect.objectContaining({ action: 'Cancel Query' }),
-  );
+  await waitFor(() => {
+    expect(confirmDestructive).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'Cancel Query' }),
+    );
+  });
+  await waitFor(() => {
+    expect(listProcesses).toHaveBeenCalledTimes(2);
+  });
   expect(signalProcess).toHaveBeenCalledWith({
     profileId: 'id-orders-local',
     database: 'orders',
@@ -126,7 +138,9 @@ it('sends nothing when the confirmation is declined', async () => {
   await userEvent.click(
     within(menu).getByRole('menuitem', { name: 'Kill Process' }),
   );
-  expect(confirmDestructive).toHaveBeenCalled();
+  await waitFor(() => {
+    expect(confirmDestructive).toHaveBeenCalled();
+  });
   expect(signalProcess).not.toHaveBeenCalled();
 });
 
@@ -163,14 +177,16 @@ it('copies the query and disables signals on read-only connections', async () =>
   const menu = await openMenu('42');
   expect(
     within(menu).getByRole('menuitem', { name: 'Cancel Query' }),
-  ).toBeDisabled();
+  ).toHaveAttribute('aria-disabled', 'true');
   expect(
     within(menu).getByRole('menuitem', { name: 'Kill Process' }),
-  ).toBeDisabled();
+  ).toHaveAttribute('aria-disabled', 'true');
   await userEvent.click(
     within(menu).getByRole('menuitem', { name: 'Copy Query' }),
   );
-  expect(writeText).toHaveBeenCalledWith(sleeper.query);
+  await waitFor(() => {
+    expect(writeText).toHaveBeenCalledWith(sleeper.query);
+  });
   expect(signalProcess).not.toHaveBeenCalled();
 });
 

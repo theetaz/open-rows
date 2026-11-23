@@ -1,38 +1,34 @@
 // SPDX-License-Identifier: Apache-2.0
-import { render, screen, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { screen, within } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import { createProfile, testConnection } from '@openrows/ipc';
 import type { TestReport } from '@openrows/ipc';
-import { ThemeProvider } from '@openrows/ui';
 import { profile, server } from '../../test/ipcStub';
-import { ConnectionSheet } from './ConnectionSheet';
+import {
+  continueButton,
+  mountFlow,
+  runTest,
+  saveFlow,
+  summary,
+} from './flow/flowTestKit';
 
 vi.mock('@openrows/ipc', async () =>
   (await import('../../test/ipcStub')).ipcStub(),
 );
 
-function mount(existing?: ReturnType<typeof profile>) {
-  render(
-    <ThemeProvider>
-      <ConnectionSheet
-        profile={existing}
-        onClose={vi.fn()}
-        onSaved={vi.fn()}
-        onDelete={vi.fn()}
-        onDuplicate={vi.fn()}
-      />
-    </ThemeProvider>,
+async function mount(existing?: ReturnType<typeof profile>) {
+  const { user } = await mountFlow(
+    existing ? { profile: existing } : { engine: 'postgres' },
   );
-  return userEvent.setup();
+  return user;
 }
 
 it('saves an HTTP proxy with a user and its password for the keychain', async () => {
   vi.mocked(createProfile).mockResolvedValue(profile('proxied'));
-  const user = mount();
+  const user = await mount();
   await user.type(screen.getByRole('textbox', { name: 'Name' }), 'proxied');
   await user.type(screen.getByRole('textbox', { name: 'User' }), 'app');
-  await user.click(screen.getByRole('button', { name: 'Proxy · Off' }));
+  await user.click(continueButton());
   await user.click(
     screen.getByRole('switch', { name: 'Connect through a proxy' }),
   );
@@ -47,10 +43,8 @@ it('saves an HTTP proxy with a user and its password for the keychain', async ()
   await user.type(screen.getByRole('textbox', { name: 'Proxy port' }), '3128');
   await user.type(screen.getByRole('textbox', { name: 'Proxy user' }), 'ops');
   await user.type(screen.getByLabelText('Proxy password'), 'pw-synthetic');
-  expect(
-    screen.getByRole('button', { name: 'Proxy · HTTP ops@proxy.corp:3128' }),
-  ).toBeVisible();
-  await user.click(screen.getByRole('button', { name: 'Save' }));
+  expect(summary()).toHaveTextContent('HTTP ops@proxy.corp:3128');
+  await saveFlow(user);
   expect(createProfile).toHaveBeenCalledWith(
     expect.objectContaining({
       proxy: {
@@ -66,10 +60,10 @@ it('saves an HTTP proxy with a user and its password for the keychain', async ()
 
 it('offers bundled cloud CAs instead of a CA file and accepts them for Verify CA', async () => {
   vi.mocked(createProfile).mockResolvedValue(profile('rds'));
-  const user = mount();
+  const user = await mount();
   await user.type(screen.getByRole('textbox', { name: 'Name' }), 'rds');
   await user.type(screen.getByRole('textbox', { name: 'User' }), 'app');
-  await user.click(screen.getByRole('button', { name: /^TLS/ }));
+  await user.click(continueButton());
   await user.selectOptions(
     screen.getByRole('combobox', { name: 'TLS mode' }),
     'verify-ca',
@@ -80,7 +74,7 @@ it('offers bundled cloud CAs instead of a CA file and accepts them for Verify CA
     'awsRds',
   );
   expect(screen.queryByRole('button', { name: 'Choose ca file' })).toBeNull();
-  await user.click(screen.getByRole('button', { name: 'Save' }));
+  await saveFlow(user);
   const [input] = vi.mocked(createProfile).mock.calls.at(-1) ?? [];
   expect(input?.tlsMode).toBe('verify-ca');
   expect(input?.tlsFiles).toMatchObject({ caFile: null, cloudCa: 'awsRds' });
@@ -124,8 +118,8 @@ const report: TestReport = {
 
 it('shows the certificate with its expiry warning and the latency', async () => {
   vi.mocked(testConnection).mockResolvedValueOnce(report);
-  const user = mount(profile('db'));
-  await user.click(screen.getByRole('button', { name: 'Test' }));
+  const user = await mount(profile('db'));
+  await runTest(user);
   expect(await screen.findByText('Latency 2.4 ms · fast')).toBeVisible();
   const certificate = screen.getByRole('region', {
     name: 'Server certificate',

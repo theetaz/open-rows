@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { EngineDto } from '@openrows/ipc';
 import { displayWindow } from '../displayWindow';
-import type { MenuEntry } from '../../shell/CascadeMenu';
+import type { MenuEntry } from '@openrows/ui';
 import { COPY_AS, formatTable } from './formats';
 import type { CopyFormat } from './formats';
 import type { CopySettings } from './copySettings';

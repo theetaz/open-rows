@@ -35,6 +35,9 @@ import { importOpener } from './TableImport';
 import type { ImportTarget } from './TableImport';
 import type { JobActions } from './JobActions';
 import { useWorkspaceHandoffs } from './useWorkspaceHandoffs';
+import { useWindowTabs } from './useWindowTabs';
+import type { WindowTabs } from './useWindowTabs';
+import { OPEN_LOCATION } from './usePathPicker';
 import { t } from './messages';
 /**
  * Tab scopes of the active connection: the active database's scope (the
@@ -321,6 +324,21 @@ function fileCommands(
   };
 }
 
+/** ⌘L: the path bar opens its last segment. */
+function onLocation(): void {
+  window.dispatchEvent(new Event(OPEN_LOCATION));
+}
+
+/** Tab and history commands first, then the shell's. */
+function routed(
+  windowTabs: WindowTabs,
+  shell: (id: string) => void,
+): (id: string) => void {
+  return (id) => {
+    if (!windowTabs.command(id)) shell(id);
+  };
+}
+
 /** Shell state and command wiring, isolated from rendering. */
 export function useWorkspaceController(input: Input): WorkspaceController {
   const { connections } = input;
@@ -349,7 +367,8 @@ export function useWorkspaceController(input: Input): WorkspaceController {
   const { safeMode, openSafety } = useSafeMode(connections);
   const showDiagram = diagramOpener(catalog, input.onShowDiagram);
   const importData = importOpener(catalog, active?.table, input.onImport);
-  const command = shellCommand({
+  const windowTabs = useWindowTabs({ connections, tabs, scope, onLocation });
+  const shell = shellCommand({
     ...input,
     catalog,
     inspector,
@@ -368,6 +387,7 @@ export function useWorkspaceController(input: Input): WorkspaceController {
     onObjectCommand: objects.command,
     activeTab: active,
   });
+  const command = routed(windowTabs, shell);
   useCommandRoutes(command, input.enabled && !mode, {
     connections,
     tab: active,
@@ -377,6 +397,7 @@ export function useWorkspaceController(input: Input): WorkspaceController {
     jobs: input.jobs,
     catalog,
     tabs,
+    windowTabs,
     scope,
     inspector,
     sidebar,
@@ -404,6 +425,8 @@ type WorkspaceController = { jobs: JobActions } & Details &
   TableInfoState & {
     catalog: Catalog;
     tabs: QueryTabs;
+    /** The window's strip: tabs of every scope and the connection flow. */
+    windowTabs: WindowTabs;
     /** Tab scope of the browsed connection and database. */
     scope: TabScope | undefined;
     inspector: ReturnType<typeof useInspectorOpen>;

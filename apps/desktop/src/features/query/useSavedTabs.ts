@@ -74,9 +74,11 @@ export function mergeSessionTabs(
     ]),
   );
   return {
+    ...current,
     tabs: [...current.tabs, ...added],
     active: { ...current.active, ...active },
     next,
     splits: { ...current.splits, ...splits },
+    groups: { ...saved.groups, ...current.groups },
   };
 }

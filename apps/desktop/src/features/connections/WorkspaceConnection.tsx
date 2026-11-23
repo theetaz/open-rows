@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
-import { Fragment, useCallback, useId, useRef, useState } from 'react';
-import { Icon } from '@openrows/ui';
+import { useCallback, useState } from 'react';
+import { EngineIcon, Icon, isEngineId } from '@openrows/ui';
+import type { IconName, MenuEntry } from '@openrows/ui';
 import type { ProfileDto } from '@openrows/ipc';
-import { SidebarMenu } from '../../shell/SidebarMenu';
-import { PointMenu } from '../../shell/PointMenu';
+import { ContextMenu } from '../../shell/ContextMenu';
+import { useMenuButton } from '../../shell/useMenuButton';
 import { workspaceMonogram } from './monogram';
 import { statusLabel, statusTone } from './sessions';
 import type { SessionStatus } from './sessions';
@@ -15,8 +16,8 @@ import { useWorkspaceCollapse } from './useWorkspaceCollapse';
 import styles from './Rail.module.css';
 import { t } from './messages/profile';
 
-/** Where the row's action menu is open: under ⋯, or at a right-click. */
-type MenuAt = 'button' | { x: number; y: number } | null;
+/** Where the row's context menu is open: at a right-click. */
+type MenuAt = { x: number; y: number; target: Element } | null;
 
 function useRowMenu(): [MenuAt, (menu: MenuAt) => void, () => void] {
   const [menu, setMenu] = useState<MenuAt>(null);
@@ -50,7 +51,11 @@ export function WorkspaceConnection(props: {
         onContextMenu={(event) => {
           if (!props.actions) return;
           event.preventDefault();
-          setMenu({ x: event.clientX, y: event.clientY });
+          setMenu({
+            x: event.clientX,
+            y: event.clientY,
+            target: event.currentTarget,
+          });
         }}
       >
         <DatabasesDisclosure
@@ -72,24 +77,17 @@ export function WorkspaceConnection(props: {
           <ServerLabel profile={profile} status={status} />
         </button>
         {props.actions && (
-          <RowActions
-            name={profile.name}
-            actions={props.actions}
-            open={menu === 'button'}
-            onOpenChange={(open) => {
-              setMenu(open ? 'button' : null);
-            }}
-          />
+          <RowActions name={profile.name} actions={props.actions} />
         )}
       </div>
-      {props.actions && menu && menu !== 'button' && (
-        <PointMenu
-          {...menu}
+      {props.actions && menu && (
+        <ContextMenu
           label={t('nameActions', { name: profile.name })}
+          at={menu}
+          target={menu.target}
+          entries={actionEntries(props.actions)}
           onClose={closePoint}
-        >
-          <ActionItems actions={props.actions} onClose={closePoint} />
-        </PointMenu>
+        />
       )}
       {!collapsed && props.children}
     </div>
@@ -147,8 +145,16 @@ function ServerLabel(props: {
 }): React.JSX.Element {
   return (
     <>
-      <span className={styles.tile} aria-hidden="true">
-        {workspaceMonogram(props.profile.name)}
+      <span
+        className={styles.tile}
+        data-engine={isEngineId(props.profile.engine) || undefined}
+        aria-hidden="true"
+      >
+        {isEngineId(props.profile.engine) ? (
+          <EngineIcon engine={props.profile.engine} size="sm" />
+        ) : (
+          workspaceMonogram(props.profile.name)
+        )}
         <i className={styles.status} data-status={statusTone(props.status)} />
       </span>
       <span className={styles.serverName}>
@@ -169,70 +175,68 @@ function ServerLabel(props: {
 function RowActions(props: {
   name: string;
   actions: readonly ConnectionAction[];
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
 }): React.JSX.Element {
-  const opener = useRef<HTMLButtonElement>(null);
-  const id = useId();
-  const { onOpenChange } = props;
-  const close = useCallback(() => {
-    onOpenChange(false);
-    opener.current?.focus();
-  }, [onOpenChange]);
+  const { anchor, close, button } = useMenuButton();
   return (
     <>
       <button
-        ref={opener}
         type="button"
         className={styles.rowMenu}
         aria-label={t('nameActions', { name: props.name })}
-        aria-haspopup="menu"
-        aria-expanded={props.open}
-        onClick={() => {
-          onOpenChange(!props.open);
-        }}
+        {...button}
       >
         <Icon name="more" />
       </button>
-      {props.open && (
-        <SidebarMenu
-          id={id}
+      {anchor && (
+        <ContextMenu
           label={t('nameActions', { name: props.name })}
-          opener={opener}
+          anchor={anchor}
+          align="end"
+          target={anchor.parentElement}
+          entries={actionEntries(props.actions)}
           onClose={close}
-        >
-          <ActionItems actions={props.actions} onClose={close} />
-        </SidebarMenu>
+        />
       )}
     </>
   );
 }
 
-function ActionItems(props: {
-  actions: readonly ConnectionAction[];
-  onClose: () => void;
-}): React.JSX.Element {
-  return (
-    <>
-      {props.actions.map(([name, run]) => {
-        const danger = name.startsWith('Delete');
-        return (
-          <Fragment key={name}>
-            {danger && <hr />}
-            <button
-              type="button"
-              role="menuitem"
-              data-danger={danger || undefined}
-              onClick={() => {
-                props.onClose();
-                run();
-              }}
-            >
-              {name}
-            </button>
-          </Fragment>
-        );
-      })}
-    </>
+/** Icon and group of each connection command, by its label. */
+const actionStyle = new Map<string, [IconName, number]>([
+  [t('connect'), ['plug', 0]],
+  [t('disconnect'), ['power', 0]],
+  [t('cancelConnection'), ['close', 0]],
+  [t('revealFinderFile'), ['external', 1]],
+  [t('copyLink'), ['link', 1]],
+  [t('connectionSettings'), ['settings', 2]],
+  [t('duplicate'), ['duplicate', 2]],
+  [t('exportConnection'), ['upload', 3]],
+  [t('exportGroup'), ['upload', 3]],
+  [t('exportAllConnections'), ['upload', 3]],
+  [t('importConnections'), ['download', 3]],
+  [t('delete'), ['trash', 4]],
+]);
+
+/** The connection's commands, grouped, with Delete… last and red. */
+function actionEntries(actions: readonly ConnectionAction[]): MenuEntry[] {
+  const style = (label: string): [IconName, number] =>
+    actionStyle.get(label) ?? ['more', 3];
+  const sorted = [...actions].sort(
+    ([left], [right]) => style(left)[1] - style(right)[1],
   );
+  const entries: MenuEntry[] = [];
+  let group = -1;
+  for (const [label, run] of sorted) {
+    const [icon, next] = style(label);
+    if (group >= 0 && next !== group) entries.push({ kind: 'separator' });
+    group = next;
+    entries.push({
+      kind: 'item',
+      label,
+      icon: <Icon name={icon} />,
+      danger: label === t('delete'),
+      run,
+    });
+  }
+  return entries;
 }

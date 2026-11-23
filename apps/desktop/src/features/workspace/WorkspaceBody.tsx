@@ -5,6 +5,8 @@ import type { useWorkspaceController } from './useWorkspaceController';
 import { inspectorRange } from './layout';
 import type { Connections } from '../connections';
 import { QueryContent } from '../query';
+import { NewConnectionFlow } from '../connections';
+import type { QueryTab } from '../query/tabs';
 import type { ObjectEditorRequest } from '../objects';
 const WorkspaceInspector = lazy(() =>
   import('./WorkspaceInspector').then((module) => ({
@@ -12,6 +14,7 @@ const WorkspaceInspector = lazy(() =>
   })),
 );
 import styles from './Frame.module.css';
+import own from './Workspace.module.css';
 import { t } from './messages';
 type Props = {
   connections: Connections;
@@ -40,35 +43,65 @@ function triggerEditor(
 export function WorkspaceBody(props: Props): React.JSX.Element {
   const { connections, controller } = props;
   const { tabs, scope } = controller;
+  const flow = controller.windowTabs.shown;
+  const flowShown = flow?.kind === 'connection';
   return (
     <div className={styles.body}>
-      <QueryContent
-        onNewTab={newTabCommand(controller)}
-        connections={connections}
-        tabs={tabs}
-        database={scope?.database ?? ''}
-        onCell={controller.onCell}
-        onRow={controller.onRow}
-        onTableInfo={controller.onTable}
-        catalogRevision={controller.catalog.revision}
-        onOpenTable={(table) => {
-          controller.openObject({ ...table, kind: 'table', arguments: null });
-        }}
-        onTrigger={(table, name, drop) => {
-          controller.objects.open(triggerEditor(table, name, drop));
-        }}
-        structureRevision={controller.objects.revision}
-      />
+      {flowShown && <ConnectionTab tab={flow} controller={controller} />}
+      <div className={own.pane} hidden={flowShown}>
+        <QueryContent
+          onNewTab={newTabCommand(controller)}
+          connections={connections}
+          tabs={tabs}
+          database={scope?.database ?? ''}
+          onCell={controller.onCell}
+          onRow={controller.onRow}
+          onTableInfo={controller.onTable}
+          catalogRevision={controller.catalog.revision}
+          onOpenTable={(table) => {
+            controller.openObject({ ...table, kind: 'table', arguments: null });
+          }}
+          onTrigger={(table, name, drop) => {
+            controller.objects.open(triggerEditor(table, name, drop));
+          }}
+          structureRevision={controller.objects.revision}
+        />
+      </div>
       <SplitPanel
         label={t('inspector')}
         storageKey="openrows.mock.inspector"
         range={inspectorRange}
-        open={controller.inspector.open && hasContent(controller)}
+        open={controller.inspector.open && hasContent(controller) && !flowShown}
         edge="left"
       >
         <Inspector {...props} />
       </SplitPanel>
     </div>
+  );
+}
+
+/** The connection flow as a tab (new, or editing a saved connection). */
+function ConnectionTab(props: {
+  tab: QueryTab;
+  controller: Props['controller'];
+}): React.JSX.Element {
+  const { tab, controller } = props;
+  const flow = tab.flow;
+  return (
+    <NewConnectionFlow
+      key={tab.id}
+      mode={flow?.mode ?? 'new'}
+      {...(flow?.profileId ? { profileId: flow.profileId } : {})}
+      engine={flow?.engine}
+      filePath={flow?.filePath}
+      focus={flow?.focus}
+      onDone={(profileId) => {
+        controller.windowTabs.finishFlow(tab.id, profileId);
+      }}
+      onCancel={() => {
+        controller.tabs.close(tab.id);
+      }}
+    />
   );
 }
 
@@ -96,6 +129,7 @@ function Inspector({ controller }: Props): React.JSX.Element {
         cell={controller.cell}
         row={controller.row}
         table={controller.table}
+        onHide={controller.inspector.toggle}
       />
     </Suspense>
   );
