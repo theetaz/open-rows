@@ -2,8 +2,8 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import type { ReactNode, RefObject } from 'react';
 import { createPortal } from 'react-dom';
-import { GlassPanel } from '@openrows/ui';
-import { menuPlacement, placeFloating } from './menuPlacement';
+import { GlassPanel, placeFloating } from '@openrows/ui';
+import { menuPlacement } from './menuPlacement';
 import styles from './SidebarMenu.module.css';
 type Props = {
   id: string;

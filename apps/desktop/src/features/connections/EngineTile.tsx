@@ -1,17 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
+import { EngineIcon, isEngineId } from '@openrows/ui';
 import styles from './EnginePicker.module.css';
 
-/** Neutral round tile with the engine's two-letter monogram (no vendor logos). */
+/** The engine's original glyph tile (no vendor logos); `id` is an engine choice id. */
 export function EngineTile({
-  monogram,
+  id,
   size = 'large',
 }: {
-  monogram: string;
+  id: string;
   size?: 'large' | 'small';
-}): React.JSX.Element {
+}): React.JSX.Element | null {
+  if (!isEngineId(id)) return null;
   return (
-    <span className={styles.tile} data-size={size} aria-hidden="true">
-      {monogram}
-    </span>
+    <EngineIcon
+      engine={id}
+      size={size === 'large' ? 'lg' : 'md'}
+      className={styles.tile}
+    />
   );
 }

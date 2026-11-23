@@ -83,7 +83,7 @@ it.each(['p', 'P'])('palette %s unmounts at the exit duration', async (key) => {
       { key: 'Escape' },
     );
     act(() => {
-      vi.advanceTimersByTime(159);
+      vi.advanceTimersByTime(109);
     });
     expect(document.querySelector('dialog')).not.toBeNull();
     act(() => {

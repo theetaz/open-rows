@@ -7,16 +7,17 @@ it('all interactive component selectors have a visible focus ring from tokens', 
     'packages/ui/src/components/Controls.module.css',
     'utf8',
   );
+  const segmented = readFileSync(
+    'packages/ui/src/components/Segmented.module.css',
+    'utf8',
+  );
   const field = readFileSync(
     'packages/ui/src/components/TextField.module.css',
     'utf8',
   );
-  for (const selector of [
-    '.button:focus-visible',
-    '.segment:focus-visible',
-    '.switch:focus-visible',
-  ])
+  for (const selector of ['.button:focus-visible', '.switch:focus-visible'])
     expect(controls).toContain(selector);
+  expect(segmented).toContain('.segment:focus-visible');
   expect(field).toContain('.frame:focus-within');
   expect(controls).toContain(
     'outline: var(--or-focus-width) solid var(--or-focus)',

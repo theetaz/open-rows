@@ -1,0 +1,40 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Engine tiles: an original glyph on the engine colour at 18, 24 or 36 px. */
+.tile {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  inline-size: 24px;
+  block-size: 24px;
+  border-radius: 7px;
+  background: var(--engine-bg);
+  color: var(--engine-ink);
+  box-shadow: var(--or-shadow-tile);
+}
+.tile svg {
+  inline-size: 18px;
+  block-size: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.tile[data-size='sm'] {
+  inline-size: 18px;
+  block-size: 18px;
+  border-radius: var(--or-radius-menu-item);
+}
+.tile[data-size='sm'] svg {
+  inline-size: 14px;
+  block-size: 14px;
+}
+.tile[data-size='lg'] {
+  inline-size: 36px;
+  block-size: 36px;
+  border-radius: var(--or-radius-card);
+}
+.tile[data-size='lg'] svg {
+  inline-size: 26px;
+  block-size: 26px;
+}

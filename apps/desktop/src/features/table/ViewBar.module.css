@@ -1,40 +1,43 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /*
- * The table pane's view bar (the kit's `.viewbar`): solid, 36 px, the view
- * switch on the left, a filled query field that grows, then icon tools.
+ * The table pane's view bar (the kit's `.viewbar`): 38 px on the veil, one
+ * capsule family at the regular 28 px control height with aligned centres:
+ * the view switch, a query capsule that grows, + Row, then the tool group.
  */
 .bar {
   container: table-view-bar / inline-size;
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: var(--or-space-6);
+  gap: var(--or-space-8);
   min-block-size: var(--or-bar-height);
-  padding: 0 var(--or-space-12) 0 var(--or-space-8);
-  background: var(--or-page);
+  padding: 0 var(--or-space-10);
   white-space: nowrap;
 }
 .bar > * {
   flex-shrink: 0;
 }
-.bar [aria-pressed='true'] {
-  color: var(--or-accent);
-}
 .spacer {
   flex: 1;
 }
-/* The kit's `.search-field.grow`: the filter toggle and the search share one fill. */
+/* The kit's `.field.search`: the filter toggle and the search share one capsule. */
 .query {
   flex: 1 1 auto;
   min-inline-size: 120px;
+  max-inline-size: 460px;
   display: flex;
   align-items: center;
   gap: var(--or-space-2);
+  box-sizing: border-box;
   block-size: var(--or-control-height);
   padding-inline-start: var(--or-space-2);
-  border-radius: var(--or-radius-control);
+  border-radius: var(--or-radius-capsule);
   background: var(--or-control-fill);
-  color: var(--or-secondary);
+  box-shadow: inset 0 0 0 var(--or-border-width) var(--or-control-stroke);
+  color: var(--or-tertiary);
+}
+.query > button[aria-pressed='true'] {
+  color: var(--or-accent);
 }
 .query:focus-within {
   outline: var(--or-field-focus-width) solid var(--or-field-focus);

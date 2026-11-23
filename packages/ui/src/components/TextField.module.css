@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /*
- * Text inputs, search fields and selects share one frame (docs/20 §3.3):
- * a raised well with a quiet hairline and the kit's soft 3 px focus ring.
+ * Text inputs, search fields and selects share one capsule frame (v4, owner
+ * rule 1): one height per size, a quiet hairline and a soft 3 px focus ring.
  */
 .field {
   display: grid;
@@ -19,27 +19,28 @@
   block-size: var(--or-control-height);
   min-inline-size: 0;
   background: var(--or-field-box-fill);
-  border: var(--or-border-width) solid var(--or-control-stroke);
-  border-radius: var(--or-radius-control);
+  border: var(--or-border-width) solid var(--or-field-box-stroke);
+  border-radius: var(--or-radius-capsule);
+  transition: border-color var(--or-motion-instant) linear;
 }
 .frame[data-size='compact'] {
   block-size: var(--or-control-height-compact);
-  border-radius: var(--or-radius-control-compact);
+  border-radius: var(--or-radius-capsule);
   font-size: var(--or-text-12);
 }
-/* Search: a borderless fill, like a source-list search field. */
+/* Search: a borderless capsule on the control fill. */
 .frame[data-size='search'] {
   block-size: var(--or-search-height);
   border-color: transparent;
-  border-radius: var(--or-radius-control);
+  border-radius: var(--or-radius-capsule);
   background: var(--or-control-fill);
 }
 .frame[data-size='search'] .icon {
-  color: var(--or-secondary);
+  color: var(--or-tertiary);
 }
 .frame[data-size='search'] .icon svg {
-  inline-size: 14px;
-  block-size: 14px;
+  inline-size: var(--or-icon-size-control);
+  block-size: var(--or-icon-size-control);
 }
 .frame[data-size='search'] .icon + input {
   padding-inline-start: var(--or-space-6);
@@ -49,6 +50,11 @@
   border-color: transparent;
   border-radius: var(--or-radius-capsule);
   background: var(--or-control-fill);
+  box-shadow: inset 0 0 0 var(--or-border-width) var(--or-control-stroke);
+  font-weight: var(--or-weight-medium);
+}
+.frame[data-kind='popup']:hover {
+  background: var(--or-control-hover);
 }
 .frame[data-kind='popup'] select {
   padding-inline-start: var(--or-space-12);
@@ -59,7 +65,7 @@
   inline-size: 100%;
   min-inline-size: 0;
   block-size: 100%;
-  padding: 0 var(--or-space-8);
+  padding: 0 var(--or-space-10);
   border: none;
   border-radius: inherit;
   background: transparent;
@@ -80,8 +86,13 @@
 }
 /* Native text fields ring on any focus; the ring wraps icon and accessories. */
 .frame:focus-within {
+  border-color: var(--or-accent-fill);
   outline: var(--or-field-focus-width) solid var(--or-field-focus);
   outline-offset: 0;
+}
+.frame[data-size='search']:focus-within,
+.frame[data-kind='popup']:focus-within {
+  border-color: transparent;
 }
 .frame input:focus-visible,
 .frame select:focus-visible {
@@ -97,33 +108,32 @@
 }
 .icon {
   display: inline-flex;
-  padding-inline-start: var(--or-space-8);
-  color: var(--or-secondary);
+  padding-inline-start: var(--or-space-10);
+  color: var(--or-tertiary);
 }
 .icon + input {
   padding-inline-start: var(--or-space-6);
 }
-.icon svg,
-.chevron svg {
-  inline-size: var(--or-icon-size);
-  block-size: var(--or-icon-size);
+.icon svg {
+  inline-size: var(--or-icon-size-control);
+  block-size: var(--or-icon-size-control);
 }
 .chevron {
   position: absolute;
-  inset-inline-end: var(--or-space-6);
+  inset-inline-end: var(--or-space-8);
   display: inline-flex;
-  color: var(--or-secondary);
+  color: var(--or-tertiary);
   pointer-events: none;
 }
 .chevron svg {
-  inline-size: 14px;
-  block-size: 14px;
+  inline-size: 12px;
+  block-size: 12px;
 }
 .trailing {
   display: inline-flex;
   align-items: center;
   gap: var(--or-space-2);
-  padding-inline-end: var(--or-space-2);
+  padding-inline-end: var(--or-space-4);
 }
 .error {
   color: var(--or-danger-fg);

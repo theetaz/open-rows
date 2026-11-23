@@ -1,0 +1,31 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Popovers and pickers: float material (≥ 0.9 opaque, blurred), 12 px corners. */
+.popover {
+  position: fixed;
+  z-index: 50;
+  box-sizing: border-box;
+  max-inline-size: calc(100vw - 2 * var(--or-float-inset));
+  border-radius: var(--or-radius-popover);
+  background: var(--or-glass-float);
+  box-shadow: var(--or-panel-shadow);
+  -webkit-backdrop-filter: var(--or-blur-float);
+  backdrop-filter: var(--or-blur-float);
+  color: var(--or-text);
+  font-size: var(--or-text-13);
+  transform-origin: var(--or-origin-x, 24px) 0;
+  animation: popover-in var(--or-motion-popover) var(--or-motion-easing);
+}
+.popover[data-state='closing'] {
+  opacity: 0;
+  transform: translateY(-2px) scale(0.985);
+  pointer-events: none;
+  transition:
+    opacity var(--or-motion-popover-out) var(--or-motion-exit),
+    transform var(--or-motion-popover-out) var(--or-motion-exit);
+}
+@keyframes popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
+}

@@ -1,19 +1,21 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /*
- * The window frame: an edge-to-edge sidebar on the window veil, the traffic
- * lights in its top row, a 1 px divider, then the main column of toolbar,
- * tabs, content and status line. The window is transparent over the native
- * material, so the veil frosts without a CSS backdrop filter.
+ * The window frame (v4 materials, DESIGN.md §3): the window is transparent
+ * over the native material and tinted (`--or-window-tint`); the main column
+ * sits on the near-opaque veil; the sidebar is a floating panel of clear
+ * glass with no veil under it, so the material shows through it more
+ * strongly. The veil around the panel is its own spread shadow, clipped by
+ * the column, so the panel itself never sits on the veil.
  */
 .workspace {
   display: flex;
   height: 100vh;
   overflow: hidden;
   border-radius: var(--or-radius-window);
-  background: var(--or-page);
+  background: var(--or-window-tint);
 }
 .workspace > aside[aria-label='Sidebar'] {
-  background: var(--or-window-veil);
+  background: transparent;
 }
 .main {
   display: flex;
@@ -21,7 +23,7 @@
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  background: var(--or-page);
+  background: var(--or-window-veil);
 }
 .body {
   display: flex;
@@ -30,21 +32,28 @@
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  background: var(--or-page);
 }
 
-/* The sidebar column: flush with the window edges, blocks 8 px apart. */
+/* The floating sidebar panel, inset 8 px from the window edges. */
 .sidebar {
   display: flex;
   flex-direction: column;
   gap: var(--or-space-8);
   box-sizing: border-box;
-  block-size: 100%;
+  inline-size: calc(100% - var(--or-sidebar-inset));
+  block-size: calc(100% - 2 * var(--or-sidebar-inset));
+  margin: var(--or-sidebar-inset) 0 var(--or-sidebar-inset)
+    var(--or-sidebar-inset);
   padding: 0 var(--or-space-8) var(--or-space-8);
+  border-radius: var(--or-radius-panel);
+  background: var(--or-glass-sidebar);
+  box-shadow:
+    var(--or-glass-sidebar-edge),
+    0 0 0 60px var(--or-window-veil);
 }
 /* The native traffic lights sit in this row (tauri.conf.json trafficLightPosition). */
 .traffic {
-  flex: 0 0 var(--or-traffic-light-row);
+  flex: 0 0 calc(var(--or-traffic-light-row) - var(--or-sidebar-inset));
 }
 /* The connection pop-up: a session-state dot, the name and the database. */
 .popup {
@@ -56,12 +65,12 @@
   block-size: var(--or-control-height);
   padding: 0 var(--or-space-6) 0 var(--or-space-10);
   border: 0;
-  border-radius: var(--or-radius-control);
+  border-radius: var(--or-radius-capsule);
   background: var(--or-control-fill);
   color: var(--or-text);
   font: inherit;
   text-align: start;
-  transition: background-color var(--or-motion-quick);
+  transition: background-color var(--or-motion-instant);
 }
 .popup:hover {
   background: var(--or-fill-2);

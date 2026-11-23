@@ -6,6 +6,7 @@ import { geometry } from './geometry';
 
 const read = (path: string): string => readFileSync(path, 'utf8');
 const controls = read('packages/ui/src/components/Controls.module.css');
+const segmented = read('packages/ui/src/components/Segmented.module.css');
 const fields = read('packages/ui/src/components/TextField.module.css');
 
 /** Declarations of the rule whose whole selector list is exactly `selector`. */
@@ -17,56 +18,63 @@ function rule(css: string, selector: string): string {
 }
 
 const regular = [
-  [controls, '.segmented'],
+  [segmented, '.segmented'],
   [fields, '.frame'],
+  [controls, '.group'],
 ] as const;
 const compact = [
-  [controls, ".segmented[data-size='compact']"],
+  [segmented, ".segmented[data-size='compact']"],
   [fields, ".frame[data-size='compact']"],
 ] as const;
 
-describe('control consistency (docs/20 §3.3)', () => {
-  it('defines one height and one radius per control size', () => {
+describe('control consistency (v4, owner rule 1)', () => {
+  it('defines one height per control size; every control is a capsule', () => {
     expect(geometry['control-height']).toBe('28px');
     expect(geometry['control-height-compact']).toBe('22px');
-    expect(geometry['radius-control']).toBe('8px');
-    expect(geometry['radius-control-compact']).toBe('6px');
+    expect(geometry['glass-height']).toBe('32px');
+    expect(geometry['radius-capsule']).toBe('999px');
     expect([geometry['switch-width'], geometry['switch-height']]).toEqual([
-      '32px',
-      '20px',
+      '30px',
+      '18px',
     ]);
   });
   it('sizes pane bars, the traffic-light row and the address capsule', () => {
-    expect(geometry['bar-height']).toBe('36px');
+    expect(geometry['bar-height']).toBe('38px');
     expect(geometry['traffic-light-row']).toBe(geometry['toolbar-height']);
     expect(geometry['address-width']).toBe('520px');
   });
   it('buttons are capsules at the regular and compact heights', () => {
     const body = rule(controls, '.button');
-    expect(body).toContain('block-size: var(--or-control-height);');
+    expect(body).toContain('--control-height: var(--or-control-height);');
+    expect(body).toContain('block-size: var(--control-height);');
     expect(body).toContain('border-radius: var(--or-radius-capsule);');
     const small = rule(controls, ".button[data-size='sm']");
     expect(small).toContain('block-size: var(--or-control-height-compact);');
     expect(small).toContain('border-radius: var(--or-radius-capsule);');
   });
   it.each(regular)(
-    '%#: segmented controls and fields share the regular tokens',
+    '%#: segmented controls, fields and groups are regular capsules',
     (css, selector) => {
       const body = rule(css, selector);
-      expect(body).toContain('block-size: var(--or-control-height);');
-      expect(body).toContain('border-radius: var(--or-radius-control);');
+      expect(body).toMatch(
+        /block-size: var\(--(or-control-height|control-height)\);/,
+      );
+      expect(body).toContain('border-radius: var(--or-radius-capsule);');
     },
   );
   it.each(compact)(
-    '%#: compact variants share the compact tokens',
+    '%#: compact variants are compact capsules',
     (css, selector) => {
       const body = rule(css, selector);
       expect(body).toContain('block-size: var(--or-control-height-compact);');
-      expect(body).toContain(
-        'border-radius: var(--or-radius-control-compact);',
-      );
+      expect(body).toContain('border-radius: var(--or-radius-capsule);');
     },
   );
+  it('the segmented thumb is a capsule too', () => {
+    expect(rule(segmented, '.segmented::before')).toContain(
+      'border-radius: var(--or-radius-capsule);',
+    );
+  });
   it('selects and search fields reuse the text-field frame', () => {
     const select = read('packages/ui/src/components/SelectField.tsx');
     expect(select).toContain("from './TextField.module.css'");

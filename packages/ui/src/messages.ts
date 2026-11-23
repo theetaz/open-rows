@@ -19,4 +19,8 @@ export const { t } = defineMessages({
   reloadToContinue:
     'This part of the window failed to draw. Reload to continue.',
   reload: 'Reload',
+  pickerNavigate: 'Navigate',
+  pickerOpen: 'Open',
+  pickerNoMatches: 'No matches for “{query}”',
+  pickerMore: 'Showing {shown} of {total}: type to narrow',
 });

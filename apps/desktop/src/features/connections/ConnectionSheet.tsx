@@ -168,12 +168,12 @@ function TestColumn({ form }: { form: ConnectionForm }): React.JSX.Element {
 
 /** The engine as a read-only line: a saved connection keeps its engine. */
 function EngineRow({ engine }: { engine: EngineDto }): React.JSX.Element {
-  const monogram =
-    ENGINE_CHOICES.find((choice) => choice.engine === engine)?.monogram ?? '';
+  const id =
+    ENGINE_CHOICES.find((choice) => choice.engine === engine)?.id ?? engine;
   return (
     <div className={styles.engineRow}>
       <span className={styles.label}>{t('type')}</span>
-      <EngineTile monogram={monogram} size="small" />
+      <EngineTile id={id} size="small" />
       <span>{engineName(engine)}</span>
     </div>
   );

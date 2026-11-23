@@ -1,5 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* A floating glass palette under the toolbar: search row, then the results. */
+/*
+ * The command palette: a modal centred in the window on both axes (owner
+ * rule 2), moved by dragging its title row; search row, then the results.
+ */
 .overlay {
   position: fixed;
   inset: 0;
@@ -8,21 +11,22 @@
 }
 .popover {
   position: fixed;
-  inset-block-start: calc(var(--or-toolbar-height) + 48px);
-  margin-block: 0;
-  width: min(600px, 90vw);
-  max-height: calc(100vh - 140px);
+  inset: 0;
+  margin: auto;
+  width: min(600px, calc(100vw - var(--or-space-32)));
+  height: fit-content;
+  max-height: calc(100vh - 2 * var(--or-toolbar-height));
   overflow: hidden;
   display: flex;
   flex-direction: column;
   padding: 0;
   border: 0;
-  border-radius: var(--or-radius-panel);
+  border-radius: var(--or-radius-popover);
   background: var(--or-glass-float);
   color: var(--or-text);
   box-shadow: var(--or-panel-shadow);
-  -webkit-backdrop-filter: var(--or-glass-toolbar);
-  backdrop-filter: var(--or-glass-toolbar);
+  -webkit-backdrop-filter: var(--or-blur-float);
+  backdrop-filter: var(--or-blur-float);
   animation: enter var(--or-motion-popover) var(--or-motion-easing);
 }
 .popover[open] {
@@ -45,6 +49,8 @@
   align-items: center;
   justify-content: space-between;
   padding: var(--or-space-8) var(--or-space-8) 0 var(--or-space-16);
+  user-select: none;
+  touch-action: none;
 }
 .popover h2 {
   margin: 0;
@@ -59,7 +65,7 @@
   block-size: var(--or-control-height-compact);
   padding: 0;
   border: 0;
-  border-radius: var(--or-radius-menu-item);
+  border-radius: var(--or-radius-capsule);
   background: transparent;
   color: var(--or-secondary);
   font: inherit;

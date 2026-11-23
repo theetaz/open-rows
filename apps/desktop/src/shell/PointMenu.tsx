@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { GlassPanel } from '@openrows/ui';
-import { placeFloating } from './menuPlacement';
+import { GlassPanel, placeFloating } from '@openrows/ui';
 import { menuKey } from './SidebarMenu';
 import styles from './SidebarMenu.module.css';
 

@@ -32,9 +32,13 @@ it('rejects hard-coded hex and functional colour notation', () => {
   ).toBe(false);
 });
 
+/** Floating surfaces that are mounted only while open (menus, popovers, sheets). */
 const overlayStyles = new Set([
   'packages/ui/src/components/Palette.module.css',
   'packages/ui/src/components/Sheet.module.css',
+  'packages/ui/src/components/menu/Menu.module.css',
+  'packages/ui/src/components/popover/Popover.module.css',
+  'apps/desktop/src/shell/SidebarMenu.module.css',
 ]);
 async function assertCompositing(directory: string): Promise<void> {
   for (const entry of await readdir(directory, { withFileTypes: true })) {

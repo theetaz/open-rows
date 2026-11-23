@@ -1,14 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
 /**
- * Native system chrome (13/18 px) and independently overridable content font
- * roles: data, SQL and identifiers in 12 px ui-monospace.
+ * Native system chrome: the system font (SF Pro) at 13 px / 1.385 with
+ * −0.006 em tracking, and independently overridable content font roles: data,
+ * SQL and identifiers in 12 px ui-monospace (SF Mono) with tabular numbers.
+ * Scale 10 · 11 · 12 · 13 · 17 · 22; weights 400 body, 500 controls and tabs,
+ * 550–600 current item and headings, 650 titles (DESIGN.md §4).
  */
 export const typography = {
   'font-ui':
-    '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", sans-serif',
-  'font-mono': 'ui-monospace, "SF Mono", Menlo, Consolas, monospace',
-  'font-editor': 'ui-monospace, "SF Mono", Menlo, Consolas, monospace',
-  'font-grid': 'ui-monospace, "SF Mono", Menlo, Consolas, monospace',
+    '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Helvetica Neue", "Segoe UI", sans-serif',
+  'font-mono':
+    'ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace',
+  'font-editor':
+    'ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace',
+  'font-grid':
+    'ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace',
   'font-sidebar':
     '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", sans-serif',
   'text-editor': '0.75rem',
@@ -32,6 +38,9 @@ export const typography = {
   'text-30': '1.875rem',
   'weight-regular': '400',
   'weight-medium': '500',
+  /** The current item: the active tab, the selected path segment. */
+  'weight-current': '550',
   'weight-semibold': '600',
+  'weight-title': '650',
   'weight-bold': '700',
 };

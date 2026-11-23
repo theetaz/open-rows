@@ -98,7 +98,7 @@ function EngineGrid({ picker }: { picker: PickerState }): React.JSX.Element {
             picker.create();
           }}
         >
-          <EngineTile monogram={choice.monogram} />
+          <EngineTile id={choice.id} />
           <span className={styles.name}>{choice.name}</span>
         </div>
       ))}

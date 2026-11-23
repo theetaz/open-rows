@@ -1,0 +1,112 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * Segmented control: a capsule track with a capsule thumb that slides under
+ * the selected segment. Equal segments sized to the widest label.
+ */
+.segmented {
+  position: relative;
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--or-segment-inset);
+  box-sizing: border-box;
+  block-size: var(--or-control-height);
+  padding: var(--or-segment-inset);
+  border-radius: var(--or-radius-capsule);
+  background: var(--or-control-fill);
+  box-shadow: inset 0 0 0 var(--or-border-width) var(--or-control-stroke);
+  isolation: isolate;
+}
+.segmented::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset-block: var(--or-segment-inset);
+  inset-inline-start: var(--or-segment-inset);
+  inline-size: calc(
+    (
+        100% - 2 * var(--or-segment-inset) - (var(--segment-count, 1) - 1) *
+          var(--or-segment-inset)
+      ) /
+      var(--segment-count, 1)
+  );
+  border-radius: var(--or-radius-capsule);
+  background: var(--or-control-active);
+  box-shadow: var(--or-segment-shadow);
+  transform: translateX(
+    calc(var(--segment-index, 0) * (100% + var(--or-segment-inset)))
+  );
+  transition: transform var(--or-motion-standard) var(--or-motion-easing);
+}
+.segmented[data-selected='false']::before {
+  visibility: hidden;
+}
+.segment {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--or-space-6);
+  min-inline-size: 0;
+  block-size: calc(var(--or-control-height) - 2 * var(--or-segment-inset));
+  padding: 0 var(--or-space-12);
+  font: inherit;
+  font-size: var(--or-text-12);
+  font-weight: var(--or-weight-medium);
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border: 0;
+  border-radius: var(--or-radius-capsule);
+  background: transparent;
+  color: var(--or-secondary);
+  cursor: default;
+  transition: color var(--or-motion-instant) linear;
+}
+.segment:hover:not(:disabled),
+.segment[aria-checked='true'] {
+  color: var(--or-text);
+}
+.segment:focus-visible {
+  outline: var(--or-focus-width) solid var(--or-focus);
+  outline-offset: var(--or-border-width);
+}
+.segment:disabled {
+  opacity: 0.45;
+}
+.segmented[data-size='compact'] {
+  block-size: var(--or-control-height-compact);
+  border-radius: var(--or-radius-capsule);
+}
+.segmented[data-size='compact'] .segment {
+  block-size: calc(
+    var(--or-control-height-compact) - 2 * var(--or-segment-inset)
+  );
+  padding: 0 var(--or-control-padding-compact);
+  font-size: var(--or-text-11);
+}
+.segmented[data-tone='accent']::before {
+  background: var(--or-accent-fill);
+  box-shadow: none;
+}
+.segmented[data-tone='accent'] .segment[aria-checked='true'] {
+  color: var(--or-on-accent);
+}
+/* Source lists (sidebar, inspector): the compact control across the panel. */
+.segmented[data-variant='source'] {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  inline-size: 100%;
+  block-size: var(--or-segment-height-source);
+  min-inline-size: 0;
+}
+.segmented[data-variant='source'] .segment {
+  block-size: calc(
+    var(--or-segment-height-source) - 2 * var(--or-segment-inset)
+  );
+  padding-inline: var(--or-space-4);
+  font-size: var(--or-text-12);
+}

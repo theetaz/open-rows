@@ -63,9 +63,13 @@ const MINIMUM: Partial<Record<keyof typeof light, number>> = {
 function contentSurfaces(palette: typeof light): Record<string, Colour> {
   const page = parse(palette.page);
   const window = parse(palette.window);
+  // The material under the window is unknown: approximate it with the page.
+  const tinted = composite(parse(palette['window-tint']), page);
   return {
     page,
     window,
+    veil: composite(parse(palette['window-veil']), tinted),
+    sidebar: composite(parse(palette['glass-sidebar']), tinted),
     panel: composite(parse(palette.panel), page),
     'panel/window': composite(parse(palette.panel), window),
     'panel-solid': parse(palette['panel-solid']),
@@ -154,6 +158,7 @@ export function paletteRows(theme: string, palette: typeof light): Row[] {
   ];
   for (const background of [
     'accent-fill',
+    'destructive-fill',
     'connection-pg',
     'connection-prod',
     'connection-ch',

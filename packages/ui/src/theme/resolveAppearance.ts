@@ -126,12 +126,18 @@ function flatten(colour: string, base: string): string {
     '#' + [r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('');
   return mix(base, hex, a);
 }
+/** The floating sidebar's clear glass over the tinted window, as hex. */
+function sidebarSurface(palette: Palette): string {
+  const tinted = flatten(palette['window-tint'], palette.page);
+  return flatten(palette['glass-sidebar'], tinted);
+}
 /** Surfaces a label sits on: the canvas, groups, floating glass and fills. */
 function labelSurfaces(palette: Palette): [string, string?][] {
   const bases = [
     palette.page,
     palette['panel-solid'],
     palette.group,
+    sidebarSurface(palette),
     flatten(palette['glass-float'], palette.page),
     flatten(palette['glass-sheet'], palette.page),
   ];
@@ -166,6 +172,7 @@ function badgeSurfaces(
     palette.window,
     palette['panel-solid'],
     palette.group,
+    sidebarSurface(palette),
     flatten(palette['glass-float'], palette.page),
     flatten(palette['glass-sheet'], palette.page),
   ].map((base) => [fill, base]);

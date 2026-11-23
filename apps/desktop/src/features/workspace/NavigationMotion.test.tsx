@@ -49,9 +49,9 @@ it('uses token durations/easing and removes popover animations under reduced mot
     'packages/ui/src/components/Palette.module.css',
     'utf8',
   );
-  expect(material['motion-disclosure']).toBe('220ms');
-  expect(material['motion-popover']).toBe('160ms');
-  expect(material['motion-easing']).toBe('cubic-bezier(0.23, 1, 0.32, 1)');
+  expect(material['motion-disclosure']).toBe('140ms');
+  expect(material['motion-popover']).toBe('110ms');
+  expect(material['motion-easing']).toBe('cubic-bezier(0.22, 1, 0.36, 1)');
   expect(palette).toContain('prefers-reduced-motion: reduce');
   expect(palette).toContain("[data-motion='reduced']");
   expect(palette).toContain('var(--or-motion-popover) var(--or-motion-easing)');

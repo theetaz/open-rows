@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { KeyboardEvent } from 'react';
-import styles from './Controls.module.css';
+import styles from './Segmented.module.css';
 
 type Option<Value extends string> = {
   value: Value;

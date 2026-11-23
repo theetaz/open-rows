@@ -129,6 +129,8 @@ export const { t, tn } = defineMessages({
   rowNumbers: 'Row numbers',
   alternateRowBackgrounds: 'Alternate row backgrounds',
   displayOptions: 'Display options',
+  tableTools: 'Table tools',
+  structureTools: 'Structure tools',
   couldNotShow: 'Could not show rows: {error}',
   searchAllColumns: 'Search all columns',
   search: 'Search',

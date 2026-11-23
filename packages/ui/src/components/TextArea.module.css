@@ -8,8 +8,9 @@
   min-block-size: var(--or-control-height);
   min-inline-size: 0;
   background: var(--or-field-box-fill);
-  border: var(--or-border-width) solid var(--or-control-stroke);
-  border-radius: var(--or-radius-control);
+  border: var(--or-border-width) solid var(--or-field-box-stroke);
+  /* Multi-line fields keep the concentric well radius, not a capsule. */
+  border-radius: var(--or-radius-field);
 }
 .frame textarea {
   flex: 1;

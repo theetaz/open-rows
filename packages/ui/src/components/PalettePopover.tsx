@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useSheetDrag } from './sheetDrag';
 import { openSheet, sheetKey } from './sheetFocus';
 import { useReducedMotion } from './useReducedMotion';
 import { material } from '../tokens/material';
 import styles from './Palette.module.css';
 import { t } from '../messages';
-/** Modal glass popover retaining focus and its DOM through the closing animation. */
+/**
+ * Modal glass palette, centred in the window and dragged by its title row,
+ * retaining focus and its DOM through the closing animation.
+ */
 export function PalettePopover(props: {
   title: string;
   onClose: () => void;
@@ -18,6 +22,7 @@ export function PalettePopover(props: {
   const { onClose, onChoose } = props;
   const [closing, setClosing] = useState(false);
   const reduced = useReducedMotion();
+  const startDrag = useSheetDrag(ref);
   useEffect(() => {
     if (!ref.current) return;
     const release = openSheet(ref.current);
@@ -68,7 +73,7 @@ export function PalettePopover(props: {
           if (event.target === event.currentTarget) dismiss();
         }}
       >
-        <header>
+        <header onPointerDown={startDrag}>
           <h2>{props.title}</h2>
           <button
             type="button"

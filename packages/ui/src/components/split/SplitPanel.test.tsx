@@ -128,13 +128,13 @@ it('collapses to an inert region and uses the shared reduced-motion timing token
   );
   expect(css).toContain('var(--or-motion-panel) var(--or-motion-easing)');
   const tokens = readFileSync('packages/ui/src/tokens/tokens.css', 'utf8');
-  expect(tokens).toContain('--or-motion-panel: 360ms');
-  expect(tokens).toContain('cubic-bezier(0.23, 1, 0.32, 1)');
+  expect(tokens).toContain('--or-motion-panel: 180ms');
+  expect(tokens).toContain('cubic-bezier(0.22, 1, 0.36, 1)');
   expect(tokens).toContain('@media (prefers-reduced-motion: reduce)');
   expect(tokens).toContain('--or-motion-panel: 0ms');
 });
 
-it('unmounts closed content at 360 ms and cancels exit when reopened', () => {
+it('unmounts closed content at 180 ms and cancels exit when reopened', () => {
   vi.useFakeTimers();
   try {
     const renderPanel = (open: boolean): React.JSX.Element => (
@@ -153,7 +153,7 @@ it('unmounts closed content at 360 ms and cancels exit when reopened', () => {
     rerender(renderPanel(true));
     rerender(renderPanel(false));
     act(() => {
-      vi.advanceTimersByTime(359);
+      vi.advanceTimersByTime(179);
     });
     expect(screen.getByText('Panel content')).toBeInTheDocument();
     rerender(renderPanel(true));
@@ -163,7 +163,7 @@ it('unmounts closed content at 360 ms and cancels exit when reopened', () => {
     expect(screen.getByText('Panel content')).toBeVisible();
     rerender(renderPanel(false));
     act(() => {
-      vi.advanceTimersByTime(360);
+      vi.advanceTimersByTime(180);
     });
     expect(screen.queryByText('Panel content')).toBeNull();
     expect(document.querySelector('[aria-label="Inspector"]')).toBeNull();

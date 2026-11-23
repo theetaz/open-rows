@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useState } from 'react';
-import { Button, Icon, IconButton, SegmentedControl } from '@openrows/ui';
+import {
+  Button,
+  ButtonGroup,
+  Icon,
+  IconButton,
+  SegmentedControl,
+} from '@openrows/ui';
 import { PointMenu } from '../../shell/PointMenu';
 import { isActive } from '../query/run';
 import type { TableTabState } from './useTableTab';
@@ -67,7 +73,6 @@ export function TableViewBar({
     <div className={styles.bar}>
       <SegmentedControl
         aria-label={t('tableView')}
-        size="compact"
         options={modes}
         value={view.mode}
         onValueChange={actions.mode}
@@ -81,6 +86,7 @@ export function TableViewBar({
       ) : (
         <>
           <QueryField state={state} ready={ready} />
+          <span className={styles.spacer} />
           <AddButton add={add} />
           {data && <DataTools state={state} ready={ready} data={data} />}
         </>
@@ -92,8 +98,6 @@ export function TableViewBar({
 function AddButton({ add }: { add: BarAdd }): React.JSX.Element {
   return (
     <Button
-      size="sm"
-      variant="ghost"
       aria-label={add.ariaLabel}
       disabled={!add.run}
       title={add.title}
@@ -137,16 +141,10 @@ function StructureTools({
   structure: BarStructure;
 }): React.JSX.Element {
   return (
-    <>
-      <Button size="sm" variant="ghost" onClick={structure.onConstraints}>
-        {t('constraints')}
-      </Button>
-      <Button size="sm" variant="ghost" onClick={structure.onTriggers}>
-        {t('triggers')}
-      </Button>
+    <ButtonGroup aria-label={t('structureTools')}>
+      <Button onClick={structure.onConstraints}>{t('constraints')}</Button>
+      <Button onClick={structure.onTriggers}>{t('triggers')}</Button>
       <Button
-        size="sm"
-        variant="ghost"
         data-ddl-button
         aria-pressed={structure.ddlOpen}
         aria-haspopup="dialog"
@@ -156,7 +154,7 @@ function StructureTools({
       >
         {t('ddl')}
       </Button>
-    </>
+    </ButtonGroup>
   );
 }
 
@@ -172,10 +170,8 @@ function DataTools({
 }): React.JSX.Element {
   const { view, actions } = state;
   return (
-    <>
+    <ButtonGroup aria-label={t('tableTools')}>
       <IconButton
-        size="sm"
-        variant="ghost"
         aria-label={t('reloadRowsR')}
         title={t('reloadRowsR')}
         disabled={!ready || isActive(state.entry.run)}
@@ -184,8 +180,6 @@ function DataTools({
         <Icon name="refresh" />
       </IconButton>
       <IconButton
-        size="sm"
-        variant="ghost"
         aria-label={t('rowForm')}
         title={t('showFocusedRow')}
         aria-pressed={view.form}
@@ -195,8 +189,6 @@ function DataTools({
         <Icon name="list" />
       </IconButton>
       <IconButton
-        size="sm"
-        variant="ghost"
         aria-label={t('columns')}
         title={t('columns')}
         aria-pressed={view.columnsOpen}
@@ -205,7 +197,7 @@ function DataTools({
         <Icon name="columns" />
       </IconButton>
       <DisplayMenu state={state} />
-    </>
+    </ButtonGroup>
   );
 }
 
@@ -224,8 +216,6 @@ function DisplayMenu({
   return (
     <>
       <IconButton
-        size="sm"
-        variant="ghost"
         aria-label={t('displayOptions')}
         title={t('displayOptions')}
         aria-haspopup="menu"

@@ -10,15 +10,15 @@
   font-size: var(--or-text-12);
   font-weight: var(--or-weight-medium);
 }
-/* A status word on a soft fill: the word carries the meaning, colour helps. */
+/* A status word on a soft capsule: the word carries the meaning, colour helps. */
 .badge {
   gap: var(--or-space-4);
-  block-size: 16px;
-  padding: 0 var(--or-space-6);
-  border-radius: var(--or-radius-status);
+  block-size: 18px;
+  padding: 0 7px;
+  border-radius: var(--or-radius-capsule);
   background: var(--indicator-bg);
   font-size: var(--or-text-11);
-  line-height: 16px;
+  line-height: 18px;
   letter-spacing: 0;
   white-space: nowrap;
   vertical-align: middle;
@@ -92,4 +92,38 @@
 [data-tone='prod'] {
   --indicator-fg: var(--or-prod-fg);
   --indicator-bg: var(--or-prod-bg);
+}
+/* Environment tag: 18 px uppercase capsule; production is a solid red tag. */
+.env {
+  --env: var(--or-tag-local);
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  box-sizing: border-box;
+  block-size: 18px;
+  padding: 0 7px;
+  border-radius: var(--or-radius-capsule);
+  color: var(--or-local-fg);
+  background: var(--or-local-bg);
+  box-shadow: inset 0 0 0 var(--or-border-width)
+    color-mix(in srgb, var(--env) 30%, transparent);
+  font: var(--or-weight-title) var(--or-text-10) / 1 var(--or-font-ui);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.env[data-env='dev'] {
+  --env: var(--or-tag-dev);
+  color: var(--or-dev-fg);
+  background: var(--or-dev-bg);
+}
+.env[data-env='staging'] {
+  --env: var(--or-tag-staging);
+  color: var(--or-staging-fg);
+  background: var(--or-staging-bg);
+}
+.env[data-env='prod'] {
+  color: var(--or-on-accent);
+  background: var(--or-destructive-fill);
+  box-shadow: none;
 }

@@ -32,8 +32,16 @@ function clampSheet(
   return { x, y };
 }
 
+/** Buttons and fields in a title row keep their own pointer behaviour. */
+function isControl(target: EventTarget): boolean {
+  return (
+    target instanceof Element &&
+    target.closest('button, input, select, textarea, a') !== null
+  );
+}
+
 /**
- * Drag a centred sheet by its title row. The sheet stays fully inside the
+ * Drag a centred modal (sheet, alert, palette) by its title row. The sheet stays fully inside the
  * window and clear of the traffic lights; each sheet opens centred again because the offset lives on the node.
  */
 export function useSheetDrag(
@@ -42,7 +50,7 @@ export function useSheetDrag(
   return useCallback(
     (event) => {
       const dialog = ref.current;
-      if (!dialog || event.button !== 0) return;
+      if (!dialog || event.button !== 0 || isControl(event.target)) return;
       event.preventDefault();
       const rect = dialog.getBoundingClientRect();
       const start = { x: event.clientX, y: event.clientY };

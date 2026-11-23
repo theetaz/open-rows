@@ -60,7 +60,7 @@ function mount(): HTMLInputElement {
   fireEvent.click(opener);
   return screen.getByRole('combobox');
 }
-function finish(milliseconds = 160): void {
+function finish(milliseconds = 110): void {
   act(() => {
     vi.advanceTimersByTime(milliseconds);
   });
@@ -68,7 +68,7 @@ function finish(milliseconds = 160): void {
 afterEach(() => {
   vi.useRealTimers();
 });
-it('supports combobox navigation, selection and retains the closing state for 160 ms', () => {
+it('supports combobox navigation, selection and retains the closing state for 110 ms', () => {
   const input = mount();
   expect(input).toHaveFocus();
   expect(input).toHaveAttribute('aria-expanded', 'true');
@@ -91,7 +91,7 @@ it('supports combobox navigation, selection and retains the closing state for 16
   fireEvent.keyDown(input, { key: 'ArrowDown' });
   fireEvent.keyDown(input, { key: 'Enter' });
   expect(screen.getByRole('dialog')).toHaveAttribute('data-state', 'closing');
-  finish(159);
+  finish(109);
   expect(choose).not.toHaveBeenCalled();
   finish(1);
   expect(choose).toHaveBeenCalledWith('customers');

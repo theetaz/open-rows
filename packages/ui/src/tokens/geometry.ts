@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 /**
- * Spacing in rem respects browser text scaling. Radii follow the kit's 4 px grid:
- * 6 small control, segment, tab, menu item · 8 field, sidebar item, segmented
- * track · 12 group · 14 sidebar panel, menus, popovers · 16 sheets · 22 window ·
- * capsule for buttons, pop-ups, toolbar capsules and the address bar.
- * Controls are 28 px (compact 22 px).
+ * Spacing in rem respects browser text scaling. v4 geometry (design/revamp/v4
+ * DESIGN.md §4): every control is a capsule with one height per size: regular
+ * 28 px, compact 22 px, toolbar capsule 32 px. Cards and wells keep concentric
+ * radii: 5 menu item · 7 inner well and multi-line field · 8 tab · 9 menu ·
+ * 10 card and form group · 11 sidebar panel · 12 popover and sheet · window
+ * from the native corner (material.rs).
  */
 export const geometry = {
   'space-2': '0.125rem',
@@ -17,15 +18,18 @@ export const geometry = {
   'space-20': '1.25rem',
   'space-24': '1.5rem',
   'space-32': '2rem',
-  'radius-window': '22px',
-  'radius-panel': '14px',
-  'radius-sheet': '16px',
-  'radius-card': '12px',
-  'radius-field': '8px',
+  'radius-window': '12px',
+  'radius-panel': '11px',
+  'radius-sheet': '12px',
+  'radius-card': '10px',
+  'radius-field': '7px',
   'radius-capsule': '999px',
-  'radius-menu-item': '6px',
-  'radius-segment': '6px',
-  'radius-field-box': '8px',
+  'radius-menu-item': '5px',
+  'radius-menu': '9px',
+  'radius-popover': '12px',
+  'radius-tab': '8px',
+  'radius-segment': '999px',
+  'radius-field-box': '7px',
   'radius-status': '5px',
   'border-width': '1px',
   'focus-width': '2px',
@@ -39,25 +43,27 @@ export const geometry = {
   'rail-width': '220px',
   'rail-compact-width': '60px',
   'rail-inactive-opacity': '0.9',
-  'footer-height': '24px',
+  'footer-height': '26px',
   'pending-height': '40px',
   /** One bar per pane: editor bar, result tools, table view bar, notices. */
-  'bar-height': '36px',
-  'tabs-height': '34px',
-  'tab-height': '26px',
+  'bar-height': '38px',
+  'tabs-height': '42px',
+  'tab-height': '30px',
   'control-height': '28px',
   'control-height-compact': '22px',
-  'radius-control': '8px',
-  'radius-control-compact': '6px',
-  'control-padding': '14px',
-  'control-padding-compact': '10px',
+  'radius-control': '7px',
+  'radius-control-compact': '5px',
+  'control-padding': '12px',
+  'control-padding-compact': '8px',
   'segment-inset': '2px',
-  'switch-width': '32px',
-  'switch-height': '20px',
-  'switch-thumb': '16px',
+  'switch-width': '30px',
+  'switch-height': '18px',
+  'switch-thumb': '14px',
   'sheet-width': '520px',
   'alert-width': '300px',
   'icon-size': '16px',
+  /** Icons inside controls, fields and menus. */
+  'icon-size-control': '14px',
   'dot-size': '7px',
   'toolbar-height': '48px',
   /** The environment colour under the toolbar (FR-CONN-06). */
@@ -79,8 +85,22 @@ export const geometry = {
   'segment-height-source': '22px',
   'segment-min-width-source': '65px',
   'field-box-height': '28px',
-  'sidebar-width': '240px',
-  'inspector-width': '280px',
+  'sidebar-width': '244px',
+  'inspector-width': '300px',
+  /** Menus: 24 px rows in a 5 px padded panel, 22 px leading column (§8). */
+  'menu-item-height': '24px',
+  'menu-padding': '5px',
+  'menu-lead-width': '22px',
+  'menu-min-width': '208px',
+  'menu-max-width': '320px',
+  'menu-separator-inset': '9px',
+  /** Pickers: search row, 28 px rows (40 px with a second line). */
+  'picker-width': '320px',
+  'picker-search-height': '38px',
+  'picker-row-height': '28px',
+  'picker-row-two-height': '40px',
+  /** Floating surfaces stay this far inside the window. */
+  'float-inset': '6px',
   'gallery-width': '64rem',
   'swatch-size': '3rem',
 };

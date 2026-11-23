@@ -3,6 +3,7 @@
   color-scheme: var(--or-color-scheme);
   font-family: var(--or-font-ui);
   font-size: 100%;
+  letter-spacing: var(--or-letter-spacing-ui);
   color: var(--or-text);
   background: transparent;
   -webkit-font-smoothing: var(--or-font-smoothing);

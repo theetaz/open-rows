@@ -18,15 +18,19 @@ export function Badge({
     />
   );
 }
-/** Named environment pill; never communicates deployment risk by colour alone. */
+/**
+ * Environment tag (LOCAL, DEV, STAGING, PROD): an uppercase capsule in the
+ * environment colour; production is solid red. The word carries the meaning.
+ */
 export function EnvBadge({
   environment,
+  className = '',
 }: {
   environment: Environment;
+  className?: string | undefined;
 }): React.JSX.Element {
   return (
-    <span className={styles.badge} data-tone={environment}>
-      <span className={styles.dot} aria-hidden="true" />
+    <span className={`${styles.env ?? ''} ${className}`} data-env={environment}>
       {environment}
     </span>
   );

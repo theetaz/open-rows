@@ -25,6 +25,16 @@ function themed(
     `@media (prefers-color-scheme: dark) {\n${block('[data-theme="system"]', darkValues)}}\n`
   );
 }
+/** Every motion duration collapses to 0 ms under reduced motion. */
+function stillMotion(): Record<string, string> {
+  return Object.fromEntries(
+    Object.keys(material)
+      .filter(
+        (key) => key.startsWith('motion-') && !/easing|spring|exit/.test(key),
+      )
+      .map((key) => [key, '0ms']),
+  );
+}
 /** Deterministically generate the stylesheet exclusively from TypeScript tokens. */
 export function generateCss(): string {
   return (
@@ -37,6 +47,6 @@ export function generateCss(): string {
     `@media (prefers-contrast: more) {\n${themed(highContrast.light, highContrast.dark)}}\n` +
     block('[data-transparency="reduced"]', SOLID) +
     `@media (prefers-reduced-transparency: reduce) {\n${block(':root', SOLID)}}\n` +
-    `@media (prefers-reduced-motion: reduce) {\n${block(':root', { 'motion-panel': '0ms', 'motion-disclosure': '0ms' })}*, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }\n}\n`
+    `@media (prefers-reduced-motion: reduce) {\n${block(':root', stillMotion())}*, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }\n}\n`
   );
 }

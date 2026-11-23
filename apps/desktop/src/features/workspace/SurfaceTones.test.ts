@@ -11,15 +11,21 @@ function rule(style: string, name: string): string {
   return style.match(new RegExp(`\\.${name} \\{([^}]+)\\}`))?.[1] ?? '';
 }
 
-it('glass only floats: the sidebar is a flat edge-to-edge veil, content is solid', () => {
+it('v4 materials: tinted window, veiled content, a floating clear-glass sidebar', () => {
   const frame = css('features/workspace', 'Frame');
-  const sidebar = rule(frame, 'sidebar');
-  expect(sidebar).not.toMatch(/glass|border-radius|margin|box-shadow/);
-  expect(frame).toMatch(
-    /aside\[aria-label='Sidebar'\] \{\s*background: var\(--or-window-veil\);/,
+  expect(rule(frame, 'workspace')).toContain(
+    'background: var(--or-window-tint);',
   );
-  for (const name of ['main', 'body'])
-    expect(rule(frame, name)).toContain('background: var(--or-page);');
+  expect(frame).toMatch(
+    /aside\[aria-label='Sidebar'\] \{\s*background: transparent;/,
+  );
+  expect(rule(frame, 'main')).toContain('background: var(--or-window-veil);');
+  expect(rule(frame, 'body')).not.toMatch(/background/);
+  const sidebar = rule(frame, 'sidebar');
+  expect(sidebar).toContain('background: var(--or-glass-sidebar);');
+  expect(sidebar).toContain('border-radius: var(--or-radius-panel);');
+  // The veil round the panel is its spread shadow, never a fill under it.
+  expect(sidebar).toContain('0 0 0 60px var(--or-window-veil)');
   // Panes inside never paint glass or outlines of their own.
   for (const [file, name] of [
     ['Sidebar', 'sidebar'],
@@ -51,6 +57,6 @@ it('toolbar capsules are glass; the toolbar and tab strip are solid', () => {
     expect(palette.window).toBe(palette.page);
     expect(palette['panel-solid']).not.toBe(palette.page);
   }
-  expect(geometry['radius-panel']).toBe('14px');
-  expect(geometry['radius-field']).toBe('8px');
+  expect(geometry['radius-panel']).toBe('11px');
+  expect(geometry['radius-field']).toBe('7px');
 });

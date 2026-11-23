@@ -6,8 +6,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { GlassPanel, Icon } from '@openrows/ui';
-import { clampToWindow } from './menuPlacement';
+import { clampToWindow, GlassPanel, Icon } from '@openrows/ui';
 import { PointMenu } from './PointMenu';
 import { menuKey } from './SidebarMenu';
 import menuStyles from './SidebarMenu.module.css';

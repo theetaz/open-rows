@@ -1,5 +1,31 @@
 // SPDX-License-Identifier: Apache-2.0
-export { Button, IconButton } from './components/Button';
+export {
+  Bar,
+  BarSpacer,
+  Button,
+  ButtonGroup,
+  IconButton,
+  PopUpButton,
+} from './components/Button';
+export { Menu } from './components/menu/Menu';
+export type { MenuProps } from './components/menu/Menu';
+export type { MenuEntry } from './components/menu/menuModel';
+export {
+  belowAnchor,
+  clampToWindow,
+  placeFloating,
+} from './components/menu/placement';
+export type { FloatingBox } from './components/menu/placement';
+export { Popover } from './components/popover/Popover';
+export type { PopoverProps } from './components/popover/Popover';
+export { Picker } from './components/popover/Picker';
+export type { PickerProps } from './components/popover/Picker';
+export type {
+  PickerItem,
+  PickerSection,
+} from './components/popover/pickerModel';
+export { EngineIcon, isEngineId } from './components/engine/EngineIcon';
+export type { EngineId } from './components/engine/EngineIcon';
 export { GlassPanel, ToolbarGroup } from './components/Panels';
 export { SegmentedControl } from './components/SegmentedControl';
 export { TextField } from './components/TextField';

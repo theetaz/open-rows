@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useRef } from 'react';
-import { placeFloating } from '../../shell/menuPlacement';
+import { placeFloating } from '@openrows/ui';
 import styles from './ConnectionStatus.module.css';
 import { t } from './messages';
 

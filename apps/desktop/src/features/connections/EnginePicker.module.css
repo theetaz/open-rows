@@ -30,11 +30,6 @@
 .option[aria-selected='true'] {
   background: var(--or-accent-soft);
 }
-.option[aria-selected='true'] .tile {
-  background: var(--or-accent-fill);
-  color: var(--or-on-accent);
-}
-.option[aria-disabled='true'] .tile,
 .option[aria-disabled='true'] .name {
   color: var(--or-secondary);
 }
@@ -46,25 +41,6 @@
   font-weight: var(--or-weight-medium);
   line-height: 18px;
   color: var(--or-text);
-}
-/* The kit's engine monogram: a rounded square on the second fill. */
-.tile {
-  display: inline-grid;
-  place-items: center;
-  flex: none;
-  inline-size: 36px;
-  block-size: 36px;
-  border-radius: 9px;
-  background: var(--or-fill-2);
-  color: var(--or-secondary);
-  font-size: var(--or-text-15);
-  font-weight: var(--or-weight-semibold);
-}
-.tile[data-size='small'] {
-  inline-size: 24px;
-  block-size: 24px;
-  border-radius: var(--or-radius-menu-item);
-  font-size: var(--or-text-11);
 }
 .status {
   min-block-size: 1.2em;

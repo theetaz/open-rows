@@ -1,0 +1,146 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * Native-feeling menus (DESIGN.md §8): float material (≥ 0.9 opaque, blurred,
+ * so text underneath is never legible), 9 px corners, 5 px padding, 24 px rows
+ * with a 22 px leading column, a solid accent highlight with white text.
+ */
+.menu {
+  display: contents;
+}
+.panel {
+  position: fixed;
+  z-index: 60;
+  box-sizing: border-box;
+  min-inline-size: var(--or-menu-min-width);
+  max-inline-size: var(--or-menu-max-width);
+  max-block-size: calc(100vh - 2 * var(--or-float-inset));
+  overflow-y: auto;
+  padding: var(--or-menu-padding);
+  border-radius: var(--or-radius-menu);
+  background: var(--or-glass-float);
+  box-shadow: var(--or-panel-shadow);
+  -webkit-backdrop-filter: var(--or-blur-float);
+  backdrop-filter: var(--or-blur-float);
+  color: var(--or-text);
+  font-family: var(--or-font-ui);
+  font-size: var(--or-text-13);
+  line-height: 1;
+  outline: none;
+  cursor: default;
+  user-select: none;
+  transform-origin: var(--or-origin-x, 0) var(--or-origin-y, 0);
+  animation: menu-in var(--or-motion-menu) var(--or-motion-easing);
+}
+.panel[data-state='closing'] {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--or-motion-quick) var(--or-motion-exit);
+}
+.row {
+  display: grid;
+  grid-template-columns: var(--or-menu-lead-width) minmax(0, 1fr) auto 12px;
+  align-items: center;
+  block-size: var(--or-menu-item-height);
+  padding: 0 6px 0 5px;
+  border-radius: var(--or-radius-menu-item);
+  color: var(--or-text);
+  white-space: nowrap;
+  outline: none;
+}
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lead {
+  display: inline-grid;
+  place-items: center;
+  color: var(--or-secondary);
+}
+.lead svg {
+  inline-size: var(--or-icon-size-control);
+  block-size: var(--or-icon-size-control);
+}
+.swatch {
+  inline-size: 9px;
+  block-size: 9px;
+  border-radius: var(--or-radius-capsule);
+}
+.shortcut {
+  margin-inline-start: 28px;
+  color: var(--or-tertiary);
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+}
+.chevron {
+  display: inline-grid;
+  justify-self: end;
+  color: var(--or-tertiary);
+}
+.chevron svg {
+  inline-size: 10px;
+  block-size: 10px;
+}
+.row[data-open='true']:not([data-active='true']) {
+  background: var(--or-control-hover);
+}
+.row[data-active='true'] {
+  background: var(--or-accent-fill);
+  color: var(--or-on-accent);
+}
+.row[data-active='true'] .lead,
+.row[data-active='true'] .shortcut,
+.row[data-active='true'] .chevron {
+  color: var(--or-on-accent);
+}
+.row[aria-disabled='true'],
+.row[aria-disabled='true'] .lead {
+  color: var(--or-tertiary);
+}
+.row[data-danger='true'],
+.row[data-danger='true'] .lead {
+  color: var(--or-destructive);
+}
+.row[data-danger='true'][data-active='true'] {
+  background: var(--or-destructive-fill);
+}
+.row[data-danger='true'][data-active='true'] .lead {
+  color: var(--or-on-accent);
+}
+/* macOS confirms a choice with one blink before the menu fades. */
+.row[data-chosen='true'] {
+  animation: menu-blink 110ms steps(1, end);
+}
+.separator {
+  block-size: 1px;
+  margin: 5px var(--or-menu-separator-inset);
+  background: var(--or-separator-strong);
+}
+.header {
+  padding: 4px 10px 3px;
+  color: var(--or-tertiary);
+  font-size: var(--or-text-11);
+  font-weight: var(--or-weight-semibold);
+}
+.footer {
+  padding: 6px 10px 3px;
+  color: var(--or-tertiary);
+  font-size: var(--or-text-11);
+  line-height: 1.35;
+  white-space: normal;
+}
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+}
+@keyframes menu-blink {
+  0% {
+    background: transparent;
+    color: var(--or-text);
+  }
+  50% {
+    background: var(--or-accent-fill);
+    color: var(--or-on-accent);
+  }
+}
