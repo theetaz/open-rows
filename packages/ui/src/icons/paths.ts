@@ -10,6 +10,8 @@ export const iconPaths = {
   settings: 'M3 7h9m6 0h3M3 17h3m6 0h9M15 4v6M9 14v6',
   chevronDown: 'M6 9l6 6 6-6',
   chevronUpDown: 'M8 9l4-4 4 4M8 15l4 4 4-4',
+  clock: 'M12 20.5a8.5 8.5 0 1 0 0-17 8.5 8.5 0 0 0 0 17ZM12 7.5V12l3.2 2',
+  warning: 'M12 4l9 15.5H3ZM12 10v4M12 17h.01',
   eye: 'M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z',
   eyeOff:
     'M2 12s3.6-7 10-7c2 0 3.8.7 5.2 1.6M22 12s-3.6 7-10 7c-2 0-3.8-.7-5.2-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2M4 4l16 16',

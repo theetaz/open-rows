@@ -166,16 +166,19 @@ function PlanRow(props: {
         )}
         <NodeName node={node} />
       </span>
-      <span
-        className={styles.bar}
-        data-heat={heat}
-        title={formatShare(node.share)}
-      >
+      <span className={styles.share}>
         <span
-          style={{
-            inlineSize: `${String(Math.round((node.share ?? 0) * 100))}%`,
-          }}
-        />
+          className={styles.bar}
+          data-heat={heat}
+          title={formatShare(node.share)}
+        >
+          <span
+            style={{
+              inlineSize: `${String(Math.round((node.share ?? 0) * 100))}%`,
+            }}
+          />
+        </span>
+        <span className={styles.percent}>{formatShare(node.share)}</span>
       </span>
       <span>{selfText(plan, node)}</span>
       <span>{rowsText(plan, node)}</span>

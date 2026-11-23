@@ -1,25 +1,45 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * Save from history: the literals to review on a grouped fill (each one
+ * marked and underlined), then the editable SQL as a raised text area.
+ */
 .preview,
 .sql {
   box-sizing: border-box;
   width: 100%;
   max-height: 240px;
   overflow: auto;
-  padding: var(--or-space-8);
-  border: var(--or-border-width) solid var(--or-separator);
-  border-radius: var(--or-radius-field);
-  background: var(--or-control-fill);
+  margin: 0;
+  padding: var(--or-space-8) var(--or-space-12);
+  border-radius: var(--or-radius-control);
   color: var(--or-text);
   font-family: var(--or-font-mono);
   font-size: var(--or-text-12);
+  line-height: 20px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+.preview {
+  border: 0;
+  background: var(--or-group);
+  -webkit-user-select: text;
+  user-select: text;
+}
 .sql {
+  display: block;
   min-height: 120px;
+  margin-block-start: var(--or-space-6);
+  border: var(--or-border-width) solid var(--or-separator-strong);
+  background: var(--or-raised);
+  resize: vertical;
+}
+.sql:focus {
+  outline: var(--or-field-focus-width) solid var(--or-field-focus);
 }
 .preview mark {
-  background: var(--or-control-active);
+  border-radius: var(--or-radius-status);
+  background: var(--or-accent-soft);
   color: var(--or-text);
   text-decoration: underline;
+  text-underline-offset: 2px;
 }

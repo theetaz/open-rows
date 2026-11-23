@@ -109,6 +109,7 @@ function HistoryToolbar(props: {
       <div className={styles.toolbar}>
         <SegmentedControl
           aria-label={t('historyScope')}
+          variant="source"
           options={scopes}
           value={props.scope}
           onValueChange={(value) => {

@@ -21,7 +21,6 @@ type Props = {
   onSettings: (change: Partial<EditorSettings>) => void;
   /** Engine of the tab, for the parameter styles it offers. */
   dialect: EditorDialect;
-  cursor: CursorStore;
   /** A statement is running; Run becomes Cancel. */
   running: boolean;
   /** The running query can be cancelled (its id is known). */
@@ -44,14 +43,6 @@ type Props = {
   /** Opens the ⌘I prompt over the selection or current statement. */
   onInline?: (() => void) | undefined;
 };
-
-function CursorText({ store }: { store: CursorStore }): React.JSX.Element {
-  return (
-    <span className={styles.cursor} aria-label={t('cursorPosition')}>
-      {cursorText(useCursor(store))}
-    </span>
-  );
-}
 
 function RunButton(props: Props): React.JSX.Element {
   const all = props.run.runDefault === 'all';
@@ -156,39 +147,18 @@ function AiButton(props: {
 }
 
 /**
- * The bar between editor and results (TablePlus layout): editor settings,
- * cursor position, then row limit, Beautify, AI, Explain and Run.
+ * The editor's view bar above the SQL (the kit's `.viewbar`): Run, Explain,
+ * Beautify and AI on the left, then the notice, the row limit and the
+ * editor settings.
  */
 export function EditorBar(props: Props): React.JSX.Element {
   const { settings, onSettings } = props;
   return (
     <div className={styles.bar} role="toolbar" aria-label={t('queryActions')}>
-      <MenuButton
-        label={t('editorSettings')}
-        variant="ghost"
-        className={styles.icon}
-        entries={settingsEntries(settings, onSettings, props.dialect)}
-      >
-        <Icon name="settings" />
-      </MenuButton>
-      <CursorText store={props.cursor} />
-      <span className={styles.notice}>
-        {props.notice ??
-          (props.offline && (
-            <Button size="sm" variant="ghost" onClick={props.onConnect}>
-              {t('connectRun')}
-            </Button>
-          ))}
-      </span>
-      <MenuButton
-        label={t('rowLimit')}
-        title={t('rowsKeptPer')}
-        className={styles.limit}
-        entries={limitEntries(settings, onSettings)}
-      >
-        {limitLabel(settings.rowLimit)}
-        <Icon name="chevronDown" />
-      </MenuButton>
+      <RunButton {...props} />
+      {props.onExplain && (
+        <ExplainButton ready={props.run.ready} onExplain={props.onExplain} />
+      )}
       <SplitButton
         label={t('beautify')}
         title={t('beautifySelectionWhole')}
@@ -203,10 +173,47 @@ export function EditorBar(props: Props): React.JSX.Element {
       {props.onAssistant && (
         <AiButton onAssistant={props.onAssistant} onInline={props.onInline} />
       )}
-      {props.onExplain && (
-        <ExplainButton ready={props.run.ready} onExplain={props.onExplain} />
-      )}
-      <RunButton {...props} />
+      <span className={styles.notice}>
+        {props.notice ??
+          (props.offline && (
+            <Button size="sm" variant="ghost" onClick={props.onConnect}>
+              {t('connectRun')}
+            </Button>
+          ))}
+      </span>
+      <span className={styles.limitLabel} aria-hidden="true">
+        {t('rowLimit')}
+      </span>
+      <MenuButton
+        label={t('rowLimit')}
+        title={t('rowsKeptPer')}
+        className={styles.limit}
+        entries={limitEntries(settings, onSettings)}
+      >
+        {limitLabel(settings.rowLimit)}
+        <Icon name="chevronUpDown" />
+      </MenuButton>
+      <MenuButton
+        label={t('editorSettings')}
+        variant="ghost"
+        className={styles.icon}
+        entries={settingsEntries(settings, onSettings, props.dialect)}
+      >
+        <Icon name="settings" />
+      </MenuButton>
     </div>
+  );
+}
+
+/** The cursor's line and column, for the tab's status line. */
+export function CursorText({
+  store,
+}: {
+  store: CursorStore;
+}): React.JSX.Element {
+  return (
+    <span className={styles.cursor} aria-label={t('cursorPosition')}>
+      {cursorText(useCursor(store))}
+    </span>
   );
 }

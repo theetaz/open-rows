@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { Button } from '@openrows/ui';
-import { Sheet } from '@openrows/ui/sheet';
+import { Sheet, SheetActions } from '@openrows/ui/sheet';
 import type { ExplainControls } from './useExplain';
 import styles from './Explain.module.css';
 import { rich, t } from './messages';
@@ -21,12 +21,12 @@ function ExplainConfirm(props: {
           })}
         </p>
         <pre aria-label={t('statementAnalyse')}>{props.statement}</pre>
-        <footer>
+        <SheetActions>
           <Button onClick={props.onCancel}>{t('cancel')}</Button>
           <Button variant="primary" onClick={props.onConfirm}>
             {t('runRollBack')}
           </Button>
-        </footer>
+        </SheetActions>
       </div>
     </Sheet>
   );

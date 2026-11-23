@@ -24,7 +24,10 @@ export function FileChangedBar(props: {
     tabs.bindFile(tab.id, tabFile(file, saved, file.modifiedMs));
   };
   return (
-    <div className={styles.reconnect} role="status">
+    <div
+      className={`${styles.reconnect ?? ''} ${styles.fileChanged ?? ''}`}
+      role="status"
+    >
       <span>{t('nameWasChanged', { name: file.name })}</span>
       <span className={styles.reconnectActions}>
         <Button

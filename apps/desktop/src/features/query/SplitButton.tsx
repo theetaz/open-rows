@@ -7,7 +7,7 @@ import styles from './EditorBar.module.css';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'destructive';
 
-/** A small button whose menu opens above it (the bar sits low in the window). */
+/** A small button whose menu opens below it (the bars sit at the top of a pane). */
 export function MenuButton(props: {
   label: string;
   title?: string | undefined;
@@ -17,7 +17,7 @@ export function MenuButton(props: {
   className?: string | undefined;
   children: ReactNode;
 }): React.JSX.Element {
-  const { at, openAt, close } = useMenuAnchor();
+  const { at, openAt, close } = useMenuAnchor(true);
   return (
     <>
       <Button
@@ -39,7 +39,6 @@ export function MenuButton(props: {
         <CascadeMenu
           x={at.x}
           y={at.y}
-          above
           label={props.label}
           entries={props.entries}
           onClose={close}

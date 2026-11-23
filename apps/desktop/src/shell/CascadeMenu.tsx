@@ -243,8 +243,8 @@ export function CascadeMenu(props: {
   );
 }
 
-/** Where a button's menu opens (above the button) and how it closes. */
-export function useMenuAnchor(): {
+/** Where a button's menu opens (above the button, or below it) and how it closes. */
+export function useMenuAnchor(below = false): {
   at: { x: number; y: number } | null;
   openAt: (button: HTMLElement) => void;
   close: () => void;
@@ -253,9 +253,12 @@ export function useMenuAnchor(): {
   const close = useCallback(() => {
     setAt(null);
   }, []);
-  const openAt = useCallback((button: HTMLElement) => {
-    const box = button.getBoundingClientRect();
-    setAt({ x: box.left, y: box.top - 4 });
-  }, []);
+  const openAt = useCallback(
+    (button: HTMLElement) => {
+      const box = button.getBoundingClientRect();
+      setAt({ x: box.left, y: below ? box.bottom + 4 : box.top - 4 });
+    },
+    [below],
+  );
   return { at, openAt, close };
 }

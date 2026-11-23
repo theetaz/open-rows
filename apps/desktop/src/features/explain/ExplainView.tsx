@@ -97,7 +97,7 @@ function CopyPlan({ raw }: { raw: string }): React.JSX.Element {
   );
 }
 
-/** Every hotspot as a chip selecting its operator. */
+/** Every hotspot as a notice card (label, operator, why) selecting its operator. */
 function HotspotStrip(props: {
   plan: PlanDto;
   onSelect: (id: number) => void;
@@ -119,12 +119,16 @@ function HotspotStrip(props: {
             <button
               type="button"
               className={styles.hotspot}
+              data-tone={text.tone}
               title={text.detail}
               onClick={() => {
                 props.onSelect(node.id);
               }}
             >
-              <strong>{text.label}</strong> {nodeLabel(node)}
+              <strong>
+                {text.label} · {nodeLabel(node)}
+              </strong>
+              <span>{text.detail}</span>
             </button>
           </li>
         );

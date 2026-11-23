@@ -56,15 +56,13 @@
 .canvas :global(.erd-table) {
   cursor: pointer;
 }
-/* The one floating thing on the canvas: a glass zoom capsule. */
+/* The one floating thing on the canvas: a zoom capsule (solid: blur is reserved for overlays). */
 .zoomGroup {
   position: absolute;
   inset-block-end: var(--or-space-12);
   inset-inline-start: 50%;
   transform: translateX(-50%);
   box-shadow: var(--or-panel-shadow);
-  -webkit-backdrop-filter: var(--or-glass-toolbar);
-  backdrop-filter: var(--or-glass-toolbar);
 }
 .status {
   display: flex;

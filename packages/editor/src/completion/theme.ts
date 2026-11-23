@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 import { EditorView } from '@codemirror/view';
 
-/** Ten 24 px rows plus the list padding. */
-const ROW = '24px';
-const LIST_HEIGHT = '248px';
+/** Ten 26 px rows (the kit's menu item) plus the list padding. */
+const ROW = '26px';
+const LIST_HEIGHT = '270px';
 
 const tooltip = '& .cm-tooltip.cm-tooltip-autocomplete';
 const row = `${tooltip} > ul > li`;
@@ -12,15 +12,16 @@ const selected = `${row}[aria-selected]`;
 
 /**
  * Completion popup in `@openrows/ui` tokens, so light and dark themes follow
- * the root `data-theme` cascade: panel surface, separator ring, UI font,
- * accent selection with on-accent text and per-kind icon tints.
+ * the root `data-theme` cascade: the menu surface (14 px corners, panel
+ * shadow), UI font, 26 px rows, accent selection with on-accent text and
+ * per-kind icon tints.
  */
 export const completionTheme = EditorView.theme({
   '& .cm-tooltip': {
     color: 'var(--or-text)',
     backgroundColor: 'var(--or-panel)',
     border: 'none',
-    borderRadius: 'var(--or-radius-card)',
+    borderRadius: 'var(--or-radius-panel)',
     boxShadow: 'var(--or-panel-shadow)',
   },
   [tooltip]: { overflow: 'hidden' },
@@ -29,7 +30,7 @@ export const completionTheme = EditorView.theme({
     fontSize: 'var(--or-text-13)',
     maxHeight: LIST_HEIGHT,
     minWidth: '280px',
-    padding: 'var(--or-space-4)',
+    padding: '5px',
     boxSizing: 'border-box',
   },
   [row]: {

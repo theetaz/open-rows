@@ -60,7 +60,8 @@
   flex: 0 0 38%;
   min-height: 96px;
   overflow: hidden;
-  border-bottom: var(--or-border-width) solid var(--or-separator);
+  background: var(--or-page);
+  box-shadow: inset 0 var(--or-border-width) 0 var(--or-separator);
 }
 .editor :global(.cm-editor) {
   height: 100%;
@@ -71,53 +72,16 @@
   flex: 1;
   min-height: 0;
 }
-.resultBar {
-  display: flex;
-  align-items: center;
-  gap: var(--or-space-6);
-  padding-inline-end: var(--or-space-6);
-  flex-shrink: 0;
-}
-.resultTabs {
-  display: flex;
-  gap: var(--or-space-2);
-  padding: var(--or-space-4) var(--or-space-6);
-  overflow-x: auto;
-  flex-shrink: 0;
-  min-inline-size: 0;
-}
-.exportButton {
-  margin-inline-start: auto;
-  margin-block: var(--or-space-2);
-}
-.resultTabs button {
-  padding: var(--or-space-2) var(--or-space-8);
-  border: 0;
-  border-radius: var(--or-radius-capsule);
-  background: transparent;
-  color: var(--or-secondary);
-  font-size: var(--or-text-12);
-  white-space: nowrap;
-}
-.resultTabs button[aria-selected='true'] {
-  background: var(--or-control-active);
-  color: var(--or-text);
-}
-.extraTab {
-  display: inline-flex;
-  align-items: center;
-}
-.resultTabs .extraClose {
-  display: inline-flex;
-  padding: var(--or-space-2);
-}
-.extraClose svg {
-  inline-size: 10px;
-  block-size: 10px;
-}
+/* Why there is no grid yet: centred, like the kit's `.empty`. */
 .placeholder {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  margin: 0;
   padding: var(--or-space-16);
   color: var(--or-secondary);
+  font-size: var(--or-text-12);
+  text-align: center;
 }
 .grid {
   flex: 1;
@@ -138,14 +102,15 @@
   min-height: 220px;
 }
 .stackItem + .stackItem {
-  border-top: 1px solid var(--or-separator);
+  box-shadow: inset 0 var(--or-border-width) 0 var(--or-separator);
 }
+/* A stacked result's caption: the kit's section title, 12 px semibold. */
 .stackTitle {
   margin: 0;
-  padding: var(--or-space-2) var(--or-space-8);
+  padding: var(--or-space-8) var(--or-space-12) var(--or-space-4);
   color: var(--or-secondary);
-  font-size: var(--or-text-11-5);
-  font-weight: var(--or-weight-medium);
+  font-size: var(--or-text-12);
+  font-weight: var(--or-weight-semibold);
 }
 .resultView {
   display: flex;
@@ -153,25 +118,57 @@
   flex: 1;
   min-height: 0;
 }
+/* A result's tools (the kit's 36 px barline): a filled filter field, then
+   quiet icon buttons; Export trails. */
 .resultTools {
   display: flex;
   align-items: center;
-  gap: var(--or-space-8);
-  padding: var(--or-space-4) var(--or-space-6);
-  border-bottom: 1px solid var(--or-separator);
+  gap: var(--or-space-4);
+  min-block-size: 36px;
+  padding: 0 var(--or-space-12) 0 var(--or-space-8);
+  box-shadow: inset 0 var(--or-border-width) 0 var(--or-separator);
   flex-shrink: 0;
   overflow-x: auto;
+  scrollbar-width: none;
+  white-space: nowrap;
+}
+.resultTools::-webkit-scrollbar {
+  display: none;
+}
+.resultTools > * {
+  flex-shrink: 0;
 }
 .resultFilter {
   inline-size: 220px;
   min-inline-size: 120px;
+  margin-inline-end: var(--or-space-4);
 }
+.resultFilter div[data-size] {
+  border-color: transparent;
+  background: var(--or-control-fill);
+}
+.toolsSpacer {
+  flex: 1 0 0;
+}
+.resultTools [aria-pressed='true'] {
+  color: var(--or-accent);
+}
+.resultTools svg {
+  inline-size: var(--or-icon-size);
+  block-size: var(--or-icon-size);
+}
+/* The result's quiet status line: editability, rows and selection totals. */
 .resultStatus {
   min-inline-size: 0;
   flex-shrink: 0;
-  padding: var(--or-space-4) var(--or-space-6);
+  min-block-size: var(--or-footer-height);
+  padding: var(--or-space-4) var(--or-space-16) var(--or-space-4)
+    var(--or-space-12);
+  box-shadow: inset 0 var(--or-border-width) 0 var(--or-separator);
   color: var(--or-secondary);
-  font-size: var(--or-text-12);
+  font-size: var(--or-text-11);
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
 .gridError {
@@ -179,17 +176,26 @@
   inset: var(--or-space-8);
   color: var(--or-danger-fg);
 }
+/* The tab's status line (the kit's `.statusline`): the run summary, then
+   the cursor position trailing. */
 .status {
   flex-shrink: 0;
   height: var(--or-footer-height);
   display: flex;
   align-items: center;
+  gap: var(--or-space-8);
   padding-inline: var(--or-space-12) var(--or-space-16);
   background: var(--or-page);
   box-shadow: inset 0 var(--or-border-width) 0 var(--or-separator);
   font-size: var(--or-text-11);
   color: var(--or-secondary);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.status > [role='status'] {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -280,11 +286,12 @@
 }
 .cell pre {
   margin: 0;
-  padding: var(--or-space-8);
-  border-radius: var(--or-radius-field);
-  background: var(--or-control-fill);
+  padding: var(--or-space-8) var(--or-space-12);
+  border-radius: var(--or-radius-control);
+  background: var(--or-group);
   font-family: var(--or-font-mono);
-  font-size: var(--or-text-mono, var(--or-text-13));
+  font-size: var(--or-text-12);
+  line-height: 20px;
   white-space: pre-wrap;
   word-break: break-word;
   overflow: auto;
@@ -292,20 +299,33 @@
 .cell pre[data-null='true'] {
   color: var(--or-placeholder);
 }
-/* Tabs of a connection that is not up (session restore, dropped connection). */
+/* Tabs of a connection that is not up (session restore, dropped connection),
+   and a bound file changed on disk: the kit's inset notice on a group fill. */
 .reconnect {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--or-space-12);
-  padding: var(--or-space-4) var(--or-space-12);
-  border-block-end: var(--or-border-width) solid var(--or-separator);
-  background: var(--or-panel-solid);
-  color: var(--or-secondary);
+  margin: var(--or-space-8) var(--or-space-12) var(--or-space-8)
+    var(--or-space-8);
+  padding: var(--or-space-8) var(--or-space-8) var(--or-space-8)
+    var(--or-space-12);
+  flex-shrink: 0;
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
+  color: var(--or-text);
   font-size: var(--or-text-12);
+  line-height: 16px;
+}
+.fileChanged {
+  background: var(--or-warning-bg);
+}
+.fileChanged > span:first-child {
+  font-weight: var(--or-weight-semibold);
 }
 .reconnectActions {
   display: flex;
+  flex-shrink: 0;
   gap: var(--or-space-6);
 }
 

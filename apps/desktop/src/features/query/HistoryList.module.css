@@ -5,35 +5,51 @@
   gap: var(--or-space-6);
   min-height: 0;
 }
+/* The scope switch spans the sidebar; Clear sits under it, trailing. */
 .toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--or-space-4);
+  justify-content: flex-end;
+  gap: var(--or-space-2) var(--or-space-4);
+  padding-inline: var(--or-space-2);
 }
 .toolbar [role='radiogroup'] {
+  flex: 1 0 100%;
   min-width: 0;
-  font-size: var(--or-text-12-5);
 }
+.toolbar > button {
+  block-size: 20px;
+  min-block-size: 20px;
+  color: var(--or-accent);
+}
+.toolbar [role='radiogroup'] button {
+  font-size: var(--or-text-12);
+}
+/* Clear history: an inline confirmation on a grouped fill. */
 .confirm {
   display: flex;
   flex-direction: column;
-  gap: var(--or-space-4);
-  padding: var(--or-space-6);
-  border-radius: var(--or-radius-field);
-  background: var(--or-control-fill);
+  gap: var(--or-space-8);
+  padding: var(--or-space-8) var(--or-space-12);
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
 }
 .confirm p {
   margin: 0;
-  font-size: var(--or-text-12-5);
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+  line-height: 16px;
 }
 .confirmActions {
   display: flex;
-  gap: var(--or-space-4);
+  justify-content: flex-end;
+  gap: var(--or-space-6);
 }
 .empty {
+  padding: var(--or-space-4) var(--or-space-8);
   color: var(--or-secondary);
-  font-size: var(--or-text-12-5);
+  font-size: var(--or-text-12);
 }
 .days,
 .days ul {
@@ -41,39 +57,66 @@
   padding: 0;
   list-style: none;
 }
+/* Day headings: the kit's sidebar `.nav-label`. */
 .day {
-  margin: var(--or-space-6) 0 var(--or-space-2);
+  margin: 0;
+  padding: var(--or-space-10) var(--or-space-8) var(--or-space-4);
   color: var(--or-secondary);
   font-size: var(--or-text-11);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-weight: var(--or-weight-semibold);
+  line-height: 14px;
 }
+/* One statement: a clock (a warning when it failed), the SQL in monospace
+   over its time, rows and duration; actions float in on hover. */
 .row {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: var(--or-space-2);
-  border-radius: var(--or-radius-field);
+  border-radius: var(--or-radius-control);
 }
 .row:hover {
-  background: var(--or-control-fill);
+  background: var(--or-hover);
 }
 .open {
   display: flex;
   flex: 1;
-  flex-direction: column;
-  gap: var(--or-space-2);
+  align-items: flex-start;
+  gap: var(--or-space-8);
   min-width: 0;
-  padding: var(--or-space-4) var(--or-space-6);
+  padding: var(--or-space-4) var(--or-space-8) var(--or-space-4)
+    var(--or-space-6);
   border: 0;
+  border-radius: var(--or-radius-control);
   background: transparent;
   color: var(--or-text);
+  font: inherit;
   text-align: start;
+}
+.open:focus-visible {
+  outline: var(--or-focus-width) solid var(--or-focus);
+  outline-offset: calc(-1 * var(--or-focus-width));
+}
+.open > svg {
+  flex-shrink: 0;
+  inline-size: 14px;
+  block-size: 14px;
+  margin-block-start: var(--or-space-2);
+  color: var(--or-tertiary);
+}
+.row[data-status='error'] .open > svg {
+  color: var(--or-danger-fg);
+}
+.text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
 }
 .open code {
   overflow: hidden;
   font-family: var(--or-font-mono);
   font-size: var(--or-text-12);
+  line-height: 16px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -81,18 +124,25 @@
   overflow: hidden;
   color: var(--or-secondary);
   font-size: var(--or-text-11);
+  line-height: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.row[data-status='error'] .open small {
-  color: var(--or-danger-fg);
-}
 .actions {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
   display: flex;
-  flex-shrink: 0;
+  align-items: center;
+  gap: var(--or-space-2);
+  padding-inline: var(--or-space-6) var(--or-space-4);
+  border-radius: var(--or-radius-control);
+  background: var(--or-panel-solid);
   opacity: 0;
+  pointer-events: none;
 }
 .row:hover .actions,
 .row:focus-within .actions {
   opacity: 1;
+  pointer-events: auto;
 }

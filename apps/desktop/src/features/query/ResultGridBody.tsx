@@ -36,6 +36,7 @@ export function ResultGridBody({
         }}
         hasRows={model.projected.rows > 0}
         onExport={onExport}
+        open={{ columns, form }}
       />
       {columns && (
         <ColumnsPanel

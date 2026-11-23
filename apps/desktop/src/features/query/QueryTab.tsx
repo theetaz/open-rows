@@ -11,7 +11,7 @@ import { useHistoryInsert } from './historyInsert';
 import { explainable, useAiActions } from './tabAi';
 import { TabPipeline } from './TabPipeline';
 import { QueryEditor } from './QueryEditor';
-import { EditorBar } from './EditorBar';
+import { CursorText, EditorBar } from './EditorBar';
 import { FileChangedBar } from './FileChangedBar';
 import { ResultArea } from './ResultArea';
 import { ConfirmRun } from './ConfirmRun';
@@ -99,7 +99,7 @@ function useFlag(): [boolean, () => void, () => void] {
   return [on, open, close];
 }
 
-/** Editor, bottom bar, results and status for one query tab. */
+/** View bar, editor, results and status for one query tab. */
 export function QueryTab(props: QueryTabProps): React.JSX.Element {
   const { tab, runs } = props;
   const editor = useRef<EditorHandle | null>(null);
@@ -136,18 +136,10 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
           tabKey(event, act);
         }}
       >
-        <TabEditor
-          {...props}
-          settings={settings}
-          cursor={cursor}
-          editorRef={editor}
-          act={act}
-        />
         <TabBar
           {...props}
           settings={settings}
           update={updateSettings}
-          cursor={cursor}
           run={run}
           actions={actions}
           file={files.act}
@@ -156,6 +148,13 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
           onName={sheets.startNaming}
           onExplain={explain.run}
           {...ai}
+        />
+        <TabEditor
+          {...props}
+          settings={settings}
+          cursor={cursor}
+          editorRef={editor}
+          act={act}
         />
         <TabPipeline {...props} run={run} />
         <TabParams
@@ -171,6 +170,8 @@ export function QueryTab(props: QueryTabProps): React.JSX.Element {
           settings={settings}
           onExportable={onExportable}
           explain={explain}
+          cursor={cursor}
+          update={updateSettings}
         />
         {sheets.element}
       </section>
@@ -287,7 +288,7 @@ function TabEditor(
   );
 }
 
-/** The bottom bar: editor settings, Run and its menu, Cancel and formatting. */
+/** The view bar above the editor: Run and its menu, Cancel, formatting and settings. */
 function TabBar(
   props: Pick<
     QueryTabProps,
@@ -295,7 +296,6 @@ function TabBar(
   > & {
     settings: EditorSettings;
     update: (change: Partial<EditorSettings>) => void;
-    cursor: CursorStore;
     run: RunState;
     actions: RunActions;
     file: (action: FileAction) => void;
@@ -314,7 +314,6 @@ function TabBar(
       settings={settings}
       onSettings={props.update}
       dialect={editorDialect(props.connection.engine)}
-      cursor={props.cursor}
       running={active}
       cancellable={run.queryId !== null}
       notice={props.notice}
@@ -342,13 +341,15 @@ function TabBar(
   );
 }
 
-/** Results of the latest run and its one-line status. */
+/** Results of the latest run, its one-line status and the cursor position. */
 function TabResults(
   props: Pick<QueryTabProps, 'sessionId' | 'onCell' | 'connection'> & {
     run: RunState;
     settings: EditorSettings;
     onExportable: (exportShown: (() => void) | null) => void;
     explain: ExplainControls;
+    cursor: CursorStore;
+    update: (change: Partial<EditorSettings>) => void;
   },
 ): React.JSX.Element {
   return (
@@ -362,17 +363,19 @@ function TabResults(
         onCell={props.onCell}
         onExportable={props.onExportable}
         extra={explainResultTab(props.explain)}
+        onView={(resultView) => {
+          props.update({ resultView });
+        }}
       />
       <ExplainSheet
         explain={props.explain}
         connection={props.connection.name}
       />
-      <footer
-        className={styles.status}
-        role="status"
-        aria-label={t('queryStatus')}
-      >
-        {statusText(props.run)}
+      <footer className={styles.status}>
+        <span role="status" aria-label={t('queryStatus')}>
+          {statusText(props.run)}
+        </span>
+        <CursorText store={props.cursor} />
       </footer>
     </>
   );

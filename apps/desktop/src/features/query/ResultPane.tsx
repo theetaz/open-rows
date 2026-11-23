@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect } from 'react';
-import { Icon } from '@openrows/ui';
 import type { EngineDto } from '@openrows/ipc';
 import type { ExtraResultTab } from '../explain';
 import { MessagesPanel } from './MessagesPanel';
+import { ResultBar, useMessagesShown } from './ResultBar';
 import { t } from './lazyMessages';
 import { resultMessages } from './messages';
 import { useResultChoice } from './resultChoice';
-import type { ResultMeta, RunState } from './run';
+import type { ResultMeta, RunMessage, RunState } from './run';
 import type { ResultView } from './editorSettings';
 import type { RunScope } from './request';
 import type { SelectedCell } from './cell';
-import { ResultContent, resultLabel, StackedResults } from './StackedResults';
+import { ResultContent, StackedResults } from './StackedResults';
 import styles from './Query.module.css';
 
 type Props = {
@@ -34,6 +34,8 @@ type Props = {
   onExportable?: ((exportShown: (() => void) | null) => void) | undefined;
   /** A tab beside the result sets (the query plan), shown when it arrives. */
   extra?: ExtraResultTab | null | undefined;
+  /** Switch between result tabs and stacked results. */
+  onView?: ((view: ResultView) => void) | undefined;
 };
 
 /** Report Export… of `result`, or `null` while there is none. */
@@ -75,6 +77,36 @@ function placeholder(run: RunState, runDefault: RunScope): string {
   }
 }
 
+/** The results in view, whether they stack, and the shown plan or result. */
+function shownResult(
+  run: RunState,
+  view: ResultView,
+  extra: ExtraResultTab | null,
+  chosen: string | null,
+): {
+  results: readonly ResultMeta[];
+  stacked: boolean;
+  shown: ExtraResultTab | null;
+  current: ResultMeta | undefined;
+} {
+  const results = view === 'last' ? run.results.slice(-1) : run.results;
+  const stacked = view === 'stacked' && results.length > 1;
+  const shown = extra && chosen === extra.id ? extra : null;
+  if (shown) return { results, stacked, shown, current: undefined };
+  const current = stacked
+    ? results.at(-1)
+    : (results.find((result) => result.id === chosen) ?? results.at(-1));
+  return { results, stacked, shown, current };
+}
+
+/** The shown result while it can be exported. */
+function exportableOf(
+  current: ResultMeta | undefined,
+  onExport: Props['onExport'],
+): ResultMeta | null {
+  return current?.done && onExport ? current : null;
+}
+
 /**
  * One result tab per result-producing statement (the newest is shown first),
  * every result stacked, or only the last result.
@@ -89,18 +121,23 @@ export function ResultPane({
   onExport,
   onExportable,
   extra,
+  onView,
 }: Props): React.JSX.Element {
   const [chosen, setChosen] = useResultChoice(extra?.id ?? null, run.queryId);
-  const results = view === 'last' ? run.results.slice(-1) : run.results;
-  const stacked = view === 'stacked' && results.length > 1;
-  const shown = extra && chosen === extra.id ? extra : null;
-  const current = shown
-    ? undefined
-    : stacked
-      ? results.at(-1)
-      : (results.find((result) => result.id === chosen) ?? results.at(-1));
-  const exportable = current?.done && onExport ? current : null;
-  useExportable(onExportable, exportable, onExport);
+  const { results, stacked, shown, current } = shownResult(
+    run,
+    view,
+    extra ?? null,
+    chosen,
+  );
+  useExportable(onExportable, exportableOf(current, onExport), onExport);
+  const [messagesShown, toggleMessages] = useMessagesShown(run.queryId);
+  const messages = resultMessages({
+    messages: run.messages,
+    results,
+    current: stacked ? undefined : current,
+    showNotices: showNotices ?? true,
+  });
   return (
     <section className={styles.results} aria-label={t('results')}>
       <ResultBar
@@ -110,6 +147,10 @@ export function ResultPane({
         extra={extra ?? null}
         extraShown={shown !== null}
         onChoose={setChosen}
+        messages={shown ? 0 : messages.length}
+        messagesShown={messagesShown}
+        onMessages={toggleMessages}
+        layout={onView && run.results.length > 1 ? { view, onView } : null}
       />
       {shown ? (
         shown.content
@@ -117,7 +158,7 @@ export function ResultPane({
         <ResultBody
           run={run}
           runDefault={runDefault}
-          showNotices={showNotices}
+          messages={messagesShown ? messages : []}
           engine={engine}
           onCell={onCell}
           onExport={onExport}
@@ -130,41 +171,27 @@ export function ResultPane({
   );
 }
 
-/** Result tabs occupy a row only when there is a choice of result or plan. */
-function ResultBar(props: TabsProps): React.JSX.Element | null {
-  const tabs =
-    (!props.stacked && props.results.length > 1) || props.extra !== null;
-  return tabs ? (
-    <div className={styles.resultBar}>
-      <ResultTabs {...props} />
-    </div>
-  ) : null;
-}
-
 /** Messages and the chosen result's grid, every grid stacked, or why there is none. */
 function ResultBody({
   run,
   runDefault,
-  showNotices,
+  messages,
   results,
   current,
   stacked,
   ...grid
-}: Pick<
-  Props,
-  'run' | 'runDefault' | 'showNotices' | 'engine' | 'onCell' | 'onExport'
-> & {
+}: Pick<Props, 'run' | 'runDefault' | 'engine' | 'onCell' | 'onExport'> & {
+  messages: readonly RunMessage[];
   results: readonly ResultMeta[];
   current: ResultMeta | undefined;
   stacked: boolean;
 }): React.JSX.Element {
   return (
     <>
-      <ResultMessages
-        run={run}
-        results={results}
-        current={stacked ? undefined : current}
-        showNotices={showNotices}
+      <MessagesPanel
+        key={current?.id}
+        messages={messages}
+        statements={run.statements.length}
       />
       {stacked ? (
         <StackedResults
@@ -178,97 +205,5 @@ function ResultBody({
         <p className={styles.placeholder}>{placeholder(run, runDefault)}</p>
       )}
     </>
-  );
-}
-
-type TabsProps = {
-  results: readonly ResultMeta[];
-  current: ResultMeta | undefined;
-  extra: ExtraResultTab | null;
-  extraShown: boolean;
-  stacked: boolean;
-  onChoose: (id: string | null) => void;
-};
-
-function ResultTabs(props: TabsProps): React.JSX.Element {
-  const { extra } = props;
-  return (
-    <div
-      role="tablist"
-      aria-label={t('resultSets')}
-      className={styles.resultTabs}
-    >
-      {props.stacked ? (
-        <button
-          type="button"
-          role="tab"
-          aria-selected={!props.extraShown}
-          onClick={() => {
-            props.onChoose(null);
-          }}
-        >
-          {t('results')}
-        </button>
-      ) : (
-        props.results.map((result, index) => (
-          <button
-            key={result.id}
-            type="button"
-            role="tab"
-            aria-selected={result === props.current}
-            onClick={() => {
-              props.onChoose(result.id);
-            }}
-          >
-            {resultLabel(result, index)}
-          </button>
-        ))
-      )}
-      {extra && (
-        <span className={styles.extraTab}>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={props.extraShown}
-            onClick={() => {
-              props.onChoose(extra.id);
-            }}
-          >
-            {extra.label}
-          </button>
-          <button
-            type="button"
-            className={styles.extraClose}
-            aria-label={t('closeLabel', { label: extra.label })}
-            title={t('closeLabel', { label: extra.label })}
-            onClick={extra.onClose}
-          >
-            <Icon name="close" />
-          </button>
-        </span>
-      )}
-    </div>
-  );
-}
-
-/** Messages of the shown result; notices unless turned off. */
-function ResultMessages(props: {
-  run: RunState;
-  results: readonly ResultMeta[];
-  current: ResultMeta | undefined;
-  showNotices: boolean | undefined;
-}): React.JSX.Element {
-  const { run, results, current } = props;
-  return (
-    <MessagesPanel
-      key={current?.id}
-      messages={resultMessages({
-        messages: run.messages,
-        results,
-        current,
-        showNotices: props.showNotices ?? true,
-      })}
-      statements={run.statements.length}
-    />
   );
 }

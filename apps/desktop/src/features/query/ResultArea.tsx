@@ -24,6 +24,8 @@ export function ResultArea(props: {
   onExportable?: ((exportShown: (() => void) | null) => void) | undefined;
   /** A tab beside the result sets (the query plan). */
   extra?: ExtraResultTab | null | undefined;
+  /** Switch between result tabs and stacked results. */
+  onView?: ((view: ResultView) => void) | undefined;
 }): React.JSX.Element {
   const { run, sessionId } = props;
   const [exporting, setExporting] = useState<{
@@ -50,6 +52,7 @@ export function ResultArea(props: {
         onExport={sessionId ? exportResult : undefined}
         onExportable={props.onExportable}
         extra={props.extra}
+        onView={props.onView}
       />
       {exporting && sessionId && (
         <ExportSheet

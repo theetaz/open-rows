@@ -34,8 +34,11 @@ export function HistoryRow(
           props.onOpen(item.statement);
         }}
       >
-        <code>{label}</code>
-        <small>{meta.filter(Boolean).join(' · ')}</small>
+        <Icon name={item.status === 'error' ? 'warning' : 'clock'} />
+        <span className={styles.text}>
+          <code>{label}</code>
+          <small>{meta.filter(Boolean).join(' · ')}</small>
+        </span>
       </button>
       <span className={styles.actions}>
         <Button

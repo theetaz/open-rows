@@ -167,8 +167,9 @@ export function ProjectSection(props: Props): React.JSX.Element {
     <section aria-label={t('project')}>
       <div className={styles.header}>
         <Icon name="schema" />
-        <span title={project?.root}>
-          {project ? project.name : t('project')}
+        <span className={styles.title} title={project?.root}>
+          <strong>{project ? project.name : t('project')}</strong>
+          {project && <small>{project.root}</small>}
         </span>
         {project && (
           <MenuButton

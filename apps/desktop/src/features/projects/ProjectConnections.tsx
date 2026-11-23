@@ -5,6 +5,7 @@ import type { ProfileDto, ProjectDto } from '@openrows/ipc';
 import { shareProjectConnections } from '@openrows/ipc';
 import { reloadProject, reportProjectError } from './projectStore';
 import { profilesChanged } from '../connections/useProfiles';
+import styles from './ProjectSection.module.css';
 import { t } from './messages';
 
 const Transfer = lazy(() => import('../connections/ConnectionTransferSheet'));
@@ -30,9 +31,10 @@ export function ProjectConnections(props: {
     }
   };
   return (
-    <div>
+    <div className={styles.connections}>
       <Button
         size="sm"
+        variant="ghost"
         onClick={() => {
           setMode('share');
         }}
@@ -41,6 +43,7 @@ export function ProjectConnections(props: {
       </Button>
       <Button
         size="sm"
+        variant="ghost"
         disabled={!props.project.connectionsFile}
         onClick={() => {
           setMode('import');
@@ -89,10 +92,14 @@ function ShareChoices(props: {
 }): React.JSX.Element {
   const { ids, busy } = props;
   return (
-    <div role="group" aria-label={t('sharedConnectionDefinitions')}>
+    <div
+      role="group"
+      aria-label={t('sharedConnectionDefinitions')}
+      className={styles.share}
+    >
       <p>{t('chooseNonSecret')}</p>
       {props.profiles.map((profile) => (
-        <label key={profile.id} style={{ display: 'block' }}>
+        <label key={profile.id}>
           <input
             type="checkbox"
             checked={ids.includes(profile.id)}
