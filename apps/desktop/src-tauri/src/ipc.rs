@@ -55,6 +55,14 @@ pub(crate) fn command_builder() -> tauri_specta::Builder<tauri::Wry> {
         mcp::mcp_token_create,
         mcp::mcp_token_revoke,
         mcp::mcp_client_disconnect,
+        mcp::apps::agent_apps,
+        mcp::apps::agent_app_check,
+        mcp::apps::agent_app_plan,
+        mcp::apps::agent_app_test,
+        mcp::apps::agent_activity,
+        mcp::apps_connect::agent_app_connect,
+        mcp::apps_connect::agent_app_disconnect,
+        mcp::apps_connect::agent_app_renew,
         mcp::proposals::mcp_proposals_take,
         security::security_status,
         security::security_lock,
@@ -230,7 +238,8 @@ fn with_events_and_types(
             menu::MenuCommand,
             monitor::MonitorChanged,
             monitor::MonitorIncident,
-            settings_watch::SettingsChanged
+            settings_watch::SettingsChanged,
+            mcp::McpActivity
         ])
         .constant(
             "DEFAULT_CUSTOM_ENV_COLOR",

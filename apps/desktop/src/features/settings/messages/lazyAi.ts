@@ -4,6 +4,10 @@ import { defineMessages } from '@openrows/ui/i18n';
 export const { rich, t } = defineMessages({
   aiSettingsUnavailable: 'AI settings unavailable.',
   aiSettings: 'AI settings',
+  aiPages: 'AI settings pages',
+  providersPage: 'Providers',
+  appsPage: 'Apps',
+  loadingApps: 'Loading apps…',
   aiProviders: 'AI providers',
   addProvider: 'Add provider',
   noProvidersConfigured:

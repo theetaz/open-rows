@@ -24,14 +24,18 @@ profile = args[args.index("--profile") + 1]
 profile = "debug" if profile == "dev" else profile
 target = args[args.index("--target") + 1] if "--target" in args else ""
 suffix = ".exe" if "-windows-" in target else ""
-binary = root / target / profile / ("openrows-driver-host" + suffix)
+name = args[args.index("--bin") + 1]
+binary = root / target / profile / (name + suffix)
 binary.parent.mkdir(parents=True, exist_ok=True)
-binary.write_bytes(b"production registry")
-Path(os.environ["STUB_LOG"]).write_text(json.dumps({
+binary.write_bytes(b"production registry" if name == "openrows-driver-host" else b"production bridge")
+log = Path(os.environ["STUB_LOG"])
+calls = json.loads(log.read_text()) if log.exists() else []
+calls.append({
     "args": args,
     "wrapper": os.environ.get("RUSTC_WRAPPER"),
     "jobs": os.environ.get("CARGO_BUILD_JOBS"),
-}))
+})
+log.write_text(json.dumps(calls))
 """
 
 
@@ -93,12 +97,17 @@ class StageHostTest(unittest.TestCase):
         self.assertFalse(staged.samefile(fixture))
         built = self.cache / target / folder / f"openrows-driver-host{suffix}"
         self.assertEqual(built.read_bytes(), staged.read_bytes())
-        call = json.loads(self.log.read_text())
-        self.assertIn("--no-default-features", call["args"])
-        self.assertIn("--features", call["args"])
-        self.assertEqual(call["args"][call["args"].index("--features") + 1], "duckdb")
-        self.assertEqual(call["args"][-2:], ["--target", target])
-        self.assertEqual((call["wrapper"], call["jobs"]), ("test-wrapper", "4"))
+        bridge = staged.with_name(f"openrows-mcp-{target}{suffix}")
+        self.assertEqual(bridge.read_bytes(), b"production bridge")
+        host, mcp = json.loads(self.log.read_text())
+        self.assertIn("--no-default-features", host["args"])
+        self.assertIn("--features", host["args"])
+        self.assertEqual(host["args"][host["args"].index("--features") + 1], "duckdb")
+        self.assertEqual(mcp["args"][mcp["args"].index("--bin") + 1], "openrows-mcp")
+        self.assertNotIn("--features", mcp["args"])
+        for call in (host, mcp):
+            self.assertEqual(call["args"][-2:], ["--target", target])
+            self.assertEqual((call["wrapper"], call["jobs"]), ("test-wrapper", "4"))
 
     def test_native_debug_staging_preserves_test_helper(self) -> None:
         self.check_staging("dev", "")

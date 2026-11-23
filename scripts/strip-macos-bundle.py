@@ -50,10 +50,11 @@ def main():
     apps = [app for app in apps if app.is_file()]
     if not apps:
         raise FileNotFoundError("Release application missing before bundling")
-    helper = ROOT / "apps/desktop/src-tauri/binaries" / f"openrows-driver-host-{triple}"
-    for binary in [*apps, helper]:
+    binaries = ROOT / "apps/desktop/src-tauri/binaries"
+    helpers = [binaries / f"{name}-{triple}" for name in ("openrows-driver-host", "openrows-mcp")]
+    for binary in [*apps, *helpers]:
         strip_binary(binary, target)
-    print(f"strip-macos-bundle: stripped {len(apps)} release app image(s) and helper; dSYMs retained")
+    print(f"strip-macos-bundle: stripped {len(apps)} release app image(s) and helpers; dSYMs retained")
 
 
 if __name__ == "__main__":

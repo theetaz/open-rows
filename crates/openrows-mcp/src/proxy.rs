@@ -7,7 +7,7 @@ use hyper_util::rt::TokioIo;
 use rmcp::{
     RoleServer, ServerHandler, ServiceExt,
     model::{
-        CallToolRequestParams, CallToolResponse, CallToolResult, ListToolsResult,
+        CallToolRequestParams, CallToolResponse, CallToolResult, Implementation, ListToolsResult,
         PaginatedRequestParams, ServerCapabilities, ServerConfig,
     },
     service::RequestContext,
@@ -53,7 +53,7 @@ impl Bridge {
     ) -> Result<T, rmcp::ErrorData> {
         tokio::select! {
             () = context.ct.cancelled() => Err(protocol_error(McpError::Cancelled)),
-            result = tokio::time::timeout(Duration::from_secs(6), post(self.port, &self.credential, method, params)) => {
+            result = tokio::time::timeout(Duration::from_secs(6), self.post(method, params, context.client_info())) => {
                 result.map_err(|_| protocol_error(McpError::Limit))?.map_err(protocol_error)
             }
         }
@@ -68,27 +68,44 @@ pub async fn stdio_bridge(port: u16, credential: String) -> Result<(), McpError>
     if credential.len() != 64 {
         return Err(McpError::Auth);
     }
+    let bridge = Bridge { port, credential };
     let _: ListToolsResult = tokio::time::timeout(
         Duration::from_secs(6),
-        post(port, &credential, "tools/list", json!({})),
+        bridge.post("tools/list", json!({}), None),
     )
     .await
     .map_err(|_| McpError::Limit)??;
-    let service = Bridge { port, credential }
+    let service = bridge
         .serve(rmcp::transport::stdio())
         .await
         .map_err(|_| McpError::Transport)?;
     service.waiting().await.map_err(|_| McpError::Transport)?;
     Ok(())
 }
-async fn post<T: DeserializeOwned>(
+impl Bridge {
+    /// Forward one request; the downstream client's self-reported identity
+    /// (name and version only) labels activity in the app.
+    async fn post<T: DeserializeOwned>(
+        &self,
+        method: &str,
+        params: impl Serialize,
+        client: Option<Implementation>,
+    ) -> Result<T, McpError> {
+        let mut params = serde_json::to_value(params).map_err(|_| McpError::Invalid)?;
+        let client = client.map_or_else(
+            || json!({"name":"openrows-mcp","version":"0.1.0"}),
+            |info| json!({"name": short(&info.name), "version": short(&info.version)}),
+        );
+        params["_meta"] = json!({"io.modelcontextprotocol/protocolVersion":"2026-07-28", "io.modelcontextprotocol/clientInfo":client, "io.modelcontextprotocol/clientCapabilities":{}});
+        send(self.port, &self.credential, method, params).await
+    }
+}
+async fn send<T: DeserializeOwned>(
     port: u16,
     credential: &str,
     method: &str,
-    params: impl Serialize,
+    params: serde_json::Value,
 ) -> Result<T, McpError> {
-    let mut params = serde_json::to_value(params).map_err(|_| McpError::Invalid)?;
-    params["_meta"] = json!({"io.modelcontextprotocol/protocolVersion":"2026-07-28", "io.modelcontextprotocol/clientInfo":{"name":"openrows-mcp","version":"0.1.0"}, "io.modelcontextprotocol/clientCapabilities":{}});
     let message = json!({"jsonrpc":"2.0","id":1,"method":method,"params":params});
     let stream = TcpStream::connect(bridge_address(port)?)
         .await
@@ -150,6 +167,9 @@ impl Drop for Abort {
     fn drop(&mut self) {
         self.0.abort();
     }
+}
+fn short(text: &str) -> String {
+    text.chars().take(64).collect()
 }
 fn protocol_error(error: McpError) -> rmcp::ErrorData {
     rmcp::ErrorData::internal_error(error.to_string(), None)

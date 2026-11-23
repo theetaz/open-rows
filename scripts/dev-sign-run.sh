@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: Apache-2.0
 # Cargo target runner for `just dev` on macOS: re-sign the debug openrows-app with the stable
-# local identity from `just dev-cert`, sign its staged helper, then run it.
+# local identity from `just dev-cert`, sign its staged helpers, then run it.
 #
 # Debug builds are ad-hoc signed, so each rebuild changes the code signature and the keychain
 # forgets "Always Allow". A stable identity keeps the signature's designated requirement, so
@@ -62,6 +62,9 @@ if [[ "$(uname -s)" == Darwin && "$(basename -- "$1")" == openrows-app ]]; then
         exit 1
     fi
     sign "$helper" com.prabhavalabs.openrows.driver-host.dev
+    # The agent bridge owns its keychain items; a stable signature keeps them readable.
+    bridge="$(dirname -- "$1")/openrows-mcp"
+    [[ ! -f "$bridge" ]] || sign "$bridge" com.prabhavalabs.openrows.mcp.dev
     sign "$1"
 fi
 exec "$@"

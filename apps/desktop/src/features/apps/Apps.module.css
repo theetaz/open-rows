@@ -1,0 +1,350 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Settings ▸ AI ▸ Apps: a directory of agent apps as grouped cards, then a
+   quiet activity list. Doubled selectors outrank the settings page rules. */
+.page.page {
+  display: grid;
+  gap: var(--or-space-16);
+}
+.intro.intro {
+  margin: 0;
+  padding-inline: var(--or-space-12);
+  color: var(--or-secondary);
+  font-size: var(--or-text-12-5);
+  line-height: 1.45;
+}
+.status.status {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-8);
+  margin: 0;
+  padding-inline: var(--or-space-12);
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+}
+.dot {
+  inline-size: var(--or-dot-size);
+  block-size: var(--or-dot-size);
+  border-radius: var(--or-radius-capsule);
+  background: var(--or-tertiary);
+}
+.dot[data-on='true'] {
+  background: var(--or-success-fg);
+}
+.callout {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-12);
+  padding: var(--or-space-10) var(--or-space-12);
+  border-radius: var(--or-radius-card);
+  background: var(--or-warning-bg);
+}
+.callout p {
+  flex: 1;
+  margin: 0;
+  color: var(--or-text);
+  font-size: var(--or-text-12);
+}
+.reason.reason {
+  margin: 0;
+  color: var(--or-warning-fg);
+  font-size: var(--or-text-12);
+  line-height: 16px;
+}
+
+/* Directory grid: three cards across at the settings width, one when narrow. */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: var(--or-space-12);
+}
+.cell {
+  display: flex;
+  min-inline-size: 0;
+}
+.card {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--or-space-10);
+  min-inline-size: 0;
+  padding: var(--or-space-12);
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
+  box-shadow: 0 0 0 var(--or-border-width) var(--or-separator);
+}
+.cardHead {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-10);
+  min-inline-size: 0;
+}
+.cardTitle {
+  display: grid;
+  gap: var(--or-space-4);
+  justify-items: start;
+  min-inline-size: 0;
+}
+.cardTitle h4 {
+  margin: 0;
+  color: var(--or-text);
+  font-size: var(--or-text-13);
+  font-weight: var(--or-weight-semibold);
+  line-height: 16px;
+}
+.meta.meta {
+  flex: 1;
+  margin: 0;
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+  line-height: 16px;
+}
+.card > .reason {
+  flex: 1;
+}
+.cardActions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* App glyph tiles: the app tint at low strength under a full-strength mark. */
+.glyph {
+  --glyph-tint: var(--or-secondary);
+  flex: none;
+  display: grid;
+  place-items: center;
+  inline-size: 34px;
+  block-size: 34px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--glyph-tint) 16%, transparent);
+  color: var(--glyph-tint);
+}
+.glyph[data-size='small'] {
+  inline-size: 20px;
+  block-size: 20px;
+  border-radius: 6px;
+}
+.glyph svg {
+  inline-size: 60%;
+  block-size: 60%;
+}
+.glyph[data-app='claude'] {
+  --glyph-tint: var(--or-group-orange);
+}
+.glyph[data-app='codex'] {
+  --glyph-tint: var(--or-text);
+}
+.glyph[data-app='gemini'] {
+  --glyph-tint: var(--or-group-blue);
+}
+.glyphGap {
+  inline-size: 20px;
+}
+
+/* Activity: one row per call; new rows rise in briefly. */
+.activity {
+  margin: 0;
+  padding: var(--or-space-4) 0;
+  list-style: none;
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
+}
+.activityRow {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-10);
+  min-block-size: 36px;
+  padding: var(--or-space-4) var(--or-space-12);
+  animation: rise var(--or-motion-quick) var(--or-motion-easing);
+}
+.activityMain {
+  display: grid;
+  flex: 1;
+  min-inline-size: 0;
+}
+.tool {
+  overflow: hidden;
+  color: var(--or-text);
+  font-family: var(--or-font-mono);
+  font-size: var(--or-text-12);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.activitySub,
+.activityTime {
+  overflow: hidden;
+  color: var(--or-secondary);
+  font-size: var(--or-text-11);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.activityTime {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+.empty.empty {
+  margin: 0;
+  padding: var(--or-space-12);
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .activityRow {
+    animation: none;
+  }
+}
+.link.link {
+  justify-self: start;
+}
+
+/* Sheets */
+.sheetBody {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--or-space-12);
+  min-inline-size: 0;
+}
+.sheetBody > p {
+  margin: 0;
+  font-size: var(--or-text-12);
+}
+.sheetLead {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-12);
+}
+.sheetLead p {
+  margin: 0;
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+  line-height: 1.45;
+}
+.label.label {
+  margin: var(--or-space-4) 0 0;
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+  font-weight: var(--or-weight-semibold);
+}
+.command {
+  display: flex;
+  min-inline-size: 0;
+  align-items: flex-start;
+  gap: var(--or-space-8);
+  padding: var(--or-space-8) var(--or-space-8) var(--or-space-8)
+    var(--or-space-12);
+  border-radius: var(--or-radius-card);
+  background: var(--or-editor-fill);
+  box-shadow: 0 0 0 var(--or-border-width) var(--or-separator);
+}
+.command pre {
+  display: grid;
+  flex: 1;
+  gap: var(--or-space-4);
+  min-inline-size: 0;
+  margin: 0;
+  color: var(--or-text);
+  font-family: var(--or-font-mono);
+  font-size: var(--or-text-11-5);
+  line-height: 1.5;
+  white-space: pre;
+  overflow-x: auto;
+  user-select: text;
+}
+.notes {
+  display: grid;
+  gap: var(--or-space-4);
+  margin: 0;
+  padding-inline-start: var(--or-space-20);
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+  line-height: 16px;
+}
+.scope {
+  display: grid;
+  gap: var(--or-space-8);
+  min-inline-size: 0;
+  margin: 0;
+  padding: var(--or-space-12);
+  border: 0;
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
+}
+.scope legend {
+  float: left;
+  margin-block-end: var(--or-space-4);
+  padding: 0;
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+  font-weight: var(--or-weight-semibold);
+}
+.hint.hint {
+  margin: 0;
+  color: var(--or-secondary);
+  font-size: var(--or-text-11);
+  line-height: 15px;
+}
+.checks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: var(--or-space-4) var(--or-space-12);
+  max-block-size: 160px;
+  overflow-y: auto;
+}
+.check {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-6);
+  min-inline-size: 0;
+  font-size: var(--or-text-12);
+}
+.check span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--or-space-8) var(--or-space-16);
+  align-items: baseline;
+  margin: 0;
+  font-size: var(--or-text-12);
+}
+.facts dt {
+  color: var(--or-secondary);
+}
+.facts dd {
+  min-inline-size: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.facts code {
+  font-family: var(--or-font-mono);
+  font-size: var(--or-text-11-5);
+}
+.sharing {
+  display: grid;
+  gap: var(--or-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sharing li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--or-space-8);
+}
+.confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--or-space-8);
+  font-size: var(--or-text-12);
+}

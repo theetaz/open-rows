@@ -37,3 +37,4 @@ bash scripts/sccache-guard.sh pnpm --filter @openrows/desktop tauri build "${opt
 python3 -B scripts/check-installer-size.py "$output"/dmg/*.dmg
 codesign --verify --deep --strict "$output/macos/OpenRows.app"
 codesign --verify --strict "$output/macos/OpenRows.app/Contents/MacOS/openrows-driver-host"
+codesign --verify --strict "$output/macos/OpenRows.app/Contents/MacOS/openrows-mcp"

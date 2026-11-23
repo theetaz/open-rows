@@ -44,6 +44,15 @@ impl SecretKey {
         }
     }
 
+    /// Account for the bearer token of an agent app registered with the
+    /// built-in MCP server; the `openrows-mcp` bridge reads it by client id.
+    #[must_use]
+    pub fn mcp_client(client_id: &str) -> Self {
+        Self {
+            account: format!("mcp-client/{client_id}/token"),
+        }
+    }
+
     /// The keychain account string.
     #[must_use]
     pub fn account(&self) -> &str {
@@ -67,6 +76,14 @@ mod tests {
         assert_eq!(
             SecretKey::for_profile("abc", "ssh-passphrase").account(),
             "conn/abc/ssh-passphrase"
+        );
+    }
+
+    #[test]
+    fn mcp_client_account_is_scoped_by_client_id() {
+        assert_eq!(
+            SecretKey::mcp_client("claude-0a1b").account(),
+            "mcp-client/claude-0a1b/token"
         );
     }
 }

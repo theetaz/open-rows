@@ -8,6 +8,7 @@ import type { ContextSegments } from './contextBar';
 import { ConnectionStatus } from './ConnectionStatus';
 import { environmentColour, InsecureBadge } from '../connections';
 import { JobsButton, useJobsVisible } from '../jobs';
+import { AgentActivityButton } from '../apps/AgentActivityButton';
 import { FavouriteButton } from '../schema/FavouriteButton';
 import type { SidebarObject } from '../schema/sidebarIdentity';
 import styles from './Workspace.module.css';
@@ -99,17 +100,21 @@ export function WorkspaceToolbar(props: Props): React.JSX.Element {
     </header>
   );
 }
-/** Jobs (only while there are some) and the launch-time documents. */
+/** External agent activity, jobs (only while there are some) and the launch-time documents. */
 function WorkspaceActions({
   documents,
-}: Pick<Props, 'documents'>): React.JSX.Element | null {
+}: Pick<Props, 'documents'>): React.JSX.Element {
   const jobs = useJobsVisible();
-  if (!jobs && !documents) return null;
   return (
-    <ToolbarGroup aria-label={t('workspaceActions')}>
-      {jobs && <JobsButton />}
-      {documents}
-    </ToolbarGroup>
+    <>
+      <AgentActivityButton />
+      {(jobs || documents) && (
+        <ToolbarGroup aria-label={t('workspaceActions')}>
+          {jobs && <JobsButton />}
+          {documents}
+        </ToolbarGroup>
+      )}
+    </>
   );
 }
 /**

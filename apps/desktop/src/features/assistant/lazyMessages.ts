@@ -2,6 +2,9 @@
 import { defineMessages } from '@openrows/ui/i18n';
 
 export const { rich, t } = defineMessages({
+  useOwnAgent:
+    'Prefer Claude Code, Codex or Gemini CLI? Let them use this database over MCP.',
+  connectAgentApps: 'Connect apps…',
   saving: 'Saving…',
   savedPausedReview: 'Saved paused. Review and enable it in Monitor → Boards.',
   boardCouldNot: 'Board could not be saved.',

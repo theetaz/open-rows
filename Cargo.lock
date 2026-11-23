@@ -4856,6 +4856,7 @@ dependencies = [
  "reqwest",
  "rmcp",
  "rusqlite",
+ "rustix 1.1.5",
  "rustls",
  "rustls-platform-verifier",
  "serde",

@@ -62,6 +62,33 @@ export type {
   SqlProposal,
 } from './generated/bindings';
 
+/** Connect the user's agent CLIs to the built-in MCP server (Apps page). */
+export {
+  listAgentApps,
+  checkAgentApp,
+  planAgentApp,
+  connectAgentApp,
+  disconnectAgentApp,
+  renewAgentApp,
+  testAgentApp,
+  listAgentActivity,
+  onAgentActivity,
+} from './agentApps';
+export type {
+  ActivityEvent,
+  ActivityOutcome,
+  AgentApp,
+  AppCard,
+  AppCheck,
+  AppInstall,
+  AppPlan,
+  AppsOverview,
+  ConnectRequest,
+  LinkView,
+  Registration,
+  TokenUsage,
+} from './generated/bindings';
+
 export {
   runAssistant,
   cancelAssistant,

@@ -84,6 +84,25 @@ export const commands = {
 	mcpTokenRevoke: (id: string) => typedError<null, IpcError>(__TAURI_INVOKE("mcp_token_revoke", { id })),
 	/**  Disconnect a credential's client immediately; a later reconnect needs its valid token. */
 	mcpClientDisconnect: (id: string) => typedError<null, IpcError>(__TAURI_INVOKE("mcp_client_disconnect", { id })),
+	/**  Detect the three CLIs (path and `--version`) and read local links. */
+	agentApps: () => typedError<AppsOverview, IpcError>(__TAURI_INVOKE("agent_apps")),
+	/**  Ask the tool for its `openrows` entry (Claude and Gemini health-check it). */
+	agentAppCheck: (agent: AgentApp) => typedError<AppCheck, IpcError>(__TAURI_INVOKE("agent_app_check", { agent })),
+	/**  Pick a client id and stable port and list the exact commands to run. */
+	agentAppPlan: (agent: AgentApp) => typedError<AppPlan, IpcError>(__TAURI_INVOKE("agent_app_plan", { agent })),
+	/**  Call `list_connections` through the registered launch line, as the app would. */
+	agentAppTest: (agent: AgentApp) => typedError<string, IpcError>(__TAURI_INVOKE("agent_app_test", { agent })),
+	/**  Recent external tool calls, newest first. */
+	agentActivity: () => typedError<ActivityEvent[], IpcError>(__TAURI_INVOKE("agent_activity")),
+	/**
+	 *  Issue a token, let the bridge store it, register with the tool, then link.
+	 *  The saved MCP settings must already be on at `port` (the click is the consent).
+	 */
+	agentAppConnect: (request: ConnectRequest) => typedError<null, IpcError>(__TAURI_INVOKE("agent_app_connect", { request })),
+	/**  Remove the tool's entry and revoke this app's access. */
+	agentAppDisconnect: (agent: AgentApp) => typedError<string | null, IpcError>(__TAURI_INVOKE("agent_app_disconnect", { agent })),
+	/**  Replace an expiring credential with the same scope; the tool's entry is unchanged. */
+	agentAppRenew: (agent: AgentApp) => typedError<null, IpcError>(__TAURI_INVOKE("agent_app_renew", { agent })),
 	/**  Take pending SQL into editor tabs; this command never submits a statement. */
 	mcpProposalsTake: () => typedError<SqlProposal[], IpcError>(__TAURI_INVOKE("mcp_proposals_take")),
 	/**  Current lock state; this command never counts as activity. */
@@ -603,6 +622,7 @@ export const commands = {
 /** Events */
 export const events = {
 	catalogChanged: makeEvent<CatalogChanged>("catalog-changed"),
+	mcpActivity: makeEvent<McpActivity>("mcp-activity"),
 	menuCommand: makeEvent<MenuCommand>("menu-command"),
 	monitorChanged: makeEvent<MonitorChanged>("monitor-changed"),
 	monitorIncident: makeEvent<MonitorIncident>("monitor-incident"),
@@ -623,6 +643,40 @@ export type AccountMode =
 "apiKey" |
 /**  Another account type this bridge does not interpret. */
 "other";
+
+/**  One external tool call, attributed to its credential. */
+export type ActivityEvent = {
+	/**  Unix seconds. */
+	at: number,
+	/**  Credential id that made the call. */
+	token: string,
+	/**  Agent app registered with this credential (`claude`, `codex`, `gemini`). */
+	app: string | null,
+	/**  Fixed tool name, or `unknown`. */
+	tool: string,
+	/**  Validated connection id from the arguments, when present. */
+	connection: string | null,
+	/**  Result class. */
+	outcome: ActivityOutcome,
+};
+
+/**  Result class of one external tool call. */
+export type ActivityOutcome =
+/**  The tool returned data or opened a proposal. */
+"ok" |
+/**  Policy, review, safety or credential checks refused it. */
+"refused" |
+/**  Cancelled, timed out or failed in the database or transport. */
+"failed";
+
+/**  An agent CLI that can use `OpenRows` as an MCP server. */
+export type AgentApp =
+/**  Anthropic's Claude Code CLI. */
+"claude" |
+/**  The Codex CLI. */
+"codex" |
+/**  Google's Gemini CLI. */
+"gemini";
 
 /**  Ordered, bounded UI events; plain text is never interpreted as HTML. */
 export type AgentEvent = AgentEvent_Serialize | AgentEvent_Deserialize;
@@ -815,10 +869,51 @@ export type AlterRequest = {
 	confirmName: string | null,
 };
 
+/**  One agent app: its install and, when connected from here, its credential. */
+export type AppCard = {
+	app: AgentApp,
+	install: AppInstall | null,
+	link: LinkView | null,
+};
+
+/**  The tool's own view of the entry and the launch line the server expects. */
+export type AppCheck = {
+	registration: Registration,
+	expected: string | null,
+};
+
 export type AppInfo = {
 	name: string,
 	version: string,
 	buildProfile: BuildProfile,
+};
+
+/**  A located CLI and the version it reports. */
+export type AppInstall = {
+	/**  Absolute executable path. */
+	path: string,
+	/**  Version from `--version`, when it answered. */
+	version: string | null,
+};
+
+/**  The commands Connect will run, shown before the user confirms. */
+export type AppPlan = {
+	client: string,
+	port: number,
+	commands: string[],
+	/**  An `openrows` entry already exists and will be replaced. */
+	replaces: boolean,
+};
+
+/**  Everything the Apps page shows before the slower per-app checks. */
+export type AppsOverview = {
+	apps: AppCard[],
+	/**  The `openrows-mcp` path entries launch, when it is installed. */
+	bridge: string | null,
+	/**  Why there is no usable bridge. */
+	bridgeProblem: string | null,
+	/**  Running server port; `None` while it is off. */
+	port: number | null,
 };
 
 /**  One entry of an archive's table of contents. */
@@ -1316,6 +1411,15 @@ export type CompletionSample = {
 };
 
 export type ConflictDto = "error" | "skip" | "update";
+
+/**  A confirmed plan plus the credential scope chosen in the sheet. */
+export type ConnectRequest = {
+	app: AgentApp,
+	client: string,
+	port: number,
+	provider: string,
+	connections: string[],
+};
 
 /**  Classification displayed before any profile or keychain write. */
 export type ConnectionConflictDto = "new" | "sameName" | "identical";
@@ -2563,6 +2667,15 @@ export type LinkObjectDto = {
 	kind: ObjectKindDto,
 };
 
+/**  The registered client id, its credential's scope and usage. */
+export type LinkView = {
+	client: string,
+	token: string,
+	/**  `None` when the credential was revoked elsewhere. */
+	scope: TokenScope | null,
+	usage: TokenUsage | null,
+};
+
 /**  UTF-16 positions of one SQL literal for the webview's review highlights. */
 export type LiteralRangeDto = {
 	from: number,
@@ -2588,6 +2701,11 @@ export type Mark =
 "bar" |
 /**  Unconnected points. */
 "scatter";
+
+/**  An external agent called a tool; carries no SQL, rows or error text. */
+export type McpActivity = {
+	event: ActivityEvent,
+};
 
 /**  Public catalogue DTO keeps schema JSON lossless across the JavaScript boundary. */
 export type McpClientTool = {
@@ -3473,6 +3591,16 @@ export type RedactionRule =
 
 /**  `ON DELETE` / `ON UPDATE` action of a foreign key. */
 export type ReferentialActionDto = "noAction" | "restrict" | "cascade" | "setNull" | "setDefault";
+
+/**  What the tool reports for the `openrows` entry. */
+export type Registration = {
+	/**  The entry exists in the tool's configuration. */
+	present: boolean,
+	/**  Its launch line, command then arguments separated by spaces. */
+	line: string | null,
+	/**  The tool's own health check, when it ran one. */
+	healthy: boolean | null,
+};
 
 /**  A deterministic comparison between two complete adjacent intervals. */
 export type Regression = {
@@ -4386,6 +4514,18 @@ export type TokenScope = {
 	connections: string[],
 	/**  Absolute Unix expiry in seconds (maximum 30 days). */
 	expires: number,
+};
+
+/**  Persisted per-credential counters. */
+export type TokenUsage = {
+	/**  Credential id. */
+	token: string,
+	/**  Tool calls made with this credential. */
+	calls: number,
+	/**  Last request of any kind, Unix seconds. */
+	seen: number | null,
+	/**  Client name and version as reported by the client (untrusted label). */
+	client: string | null,
 };
 
 /**  A tool trace contains safe summaries and policy-filtered external evidence. */

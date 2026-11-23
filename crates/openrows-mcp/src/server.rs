@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Gate every response and audit it before any database content leaves the app.
-use crate::{McpError, ToolBackend, ToolInput, tokens::Grant, tools};
+use crate::{
+    McpError, ToolBackend, ToolInput,
+    activity::{ActivityEvent, ActivityOutcome},
+    tokens::Grant,
+    tools,
+};
 use openrows_ai::{
     AiControl,
     sharing::{ContextBundle, GatedPayload, SharingStore},
@@ -32,9 +37,12 @@ impl ServerHandler for ToolServer {
     async fn list_tools(
         &self,
         _: Option<PaginatedRequestParams>,
-        _: RequestContext<RoleServer>,
+        context: RequestContext<RoleServer>,
     ) -> Result<ListToolsResult, rmcp::ErrorData> {
         self.live().map_err(protocol_error)?;
+        self.grant
+            .store
+            .seen(&self.grant.info.id, reported(&context).as_deref());
         Ok(ListToolsResult {
             tools: tools::definitions()
                 .into_iter()
@@ -53,7 +61,9 @@ impl ServerHandler for ToolServer {
         request: CallToolRequestParams,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResponse, rmcp::ErrorData> {
+        let connection = connection_of(request.arguments.as_ref());
         let result = self.call(&request.name, request.arguments, &context).await;
+        self.observe(&request.name, connection, &result, &context);
         let result = match result {
             Ok(text) => CallToolResult::success(vec![ContentBlock::text(text)]),
             Err(error) => CallToolResult::error(vec![ContentBlock::text(error.to_string())]),
@@ -62,6 +72,31 @@ impl ServerHandler for ToolServer {
     }
 }
 impl ToolServer {
+    /// Count and publish one call: fixed tool name, validated id, outcome class only.
+    fn observe(
+        &self,
+        tool: &str,
+        connection: Option<String>,
+        result: &Result<String, McpError>,
+        context: &RequestContext<RoleServer>,
+    ) {
+        let store = &self.grant.store;
+        let token = self.grant.info.id.clone();
+        let event = ActivityEvent {
+            at: crate::tokens::now().unwrap_or_default(),
+            app: store.app_of(&token),
+            token,
+            tool: if tools::NAMES.contains(&tool) {
+                tool
+            } else {
+                "unknown"
+            }
+            .to_owned(),
+            connection,
+            outcome: ActivityOutcome::of(result),
+        };
+        store.record(event, reported(context).as_deref());
+    }
     pub(crate) fn live(&self) -> Result<(), McpError> {
         if !self.control.enabled() || self.grant.cancel.is_cancelled() {
             return Err(McpError::Cancelled);
@@ -130,6 +165,19 @@ impl ToolServer {
     }
 }
 
+fn connection_of(arguments: Option<&serde_json::Map<String, serde_json::Value>>) -> Option<String> {
+    arguments?
+        .get("connection")?
+        .as_str()
+        .filter(|id| openrows_ai::validate_id(id).is_ok())
+        .map(str::to_owned)
+}
+/// The client's self-reported name, from per-request metadata (bridges forward it).
+fn reported(context: &RequestContext<RoleServer>) -> Option<String> {
+    context
+        .client_info()
+        .and_then(|info| crate::activity::label(&info.name, &info.version))
+}
 fn protocol_error(error: McpError) -> rmcp::ErrorData {
     rmcp::ErrorData::invalid_request(error.to_string(), None)
 }

@@ -94,6 +94,11 @@ async fn valid_calls(fixture: &Fixture, tools: &[Value]) -> TestResult {
 #[tokio::test]
 async fn stdio_sidecar_initialize_list_and_call_round_trip() -> TestResult {
     let fixture = Fixture::new(false).await?;
+    fixture.host.tokens.link(&openrows_mcp::AppLink {
+        client: "claude-fixture".into(),
+        app: "claude".into(),
+        token: fixture.token.info.id.clone(),
+    })?;
     let mut child = tokio::process::Command::new(env!("CARGO_BIN_EXE_openrows-mcp"))
         .args(["--port", &fixture.server.port().to_string()])
         .env("OPENROWS_MCP_TOKEN", &fixture.token.value)
@@ -133,8 +138,29 @@ async fn stdio_sidecar_initialize_list_and_call_round_trip() -> TestResult {
             .load(std::sync::atomic::Ordering::SeqCst),
         1
     );
+    recorded_with_forwarded_label(&fixture)?;
     child.kill().await?;
     child.wait().await?;
+    Ok(())
+}
+/// The bridge forwards the agent's own name; the event holds no SQL or rows.
+fn recorded_with_forwarded_label(fixture: &Fixture) -> TestResult {
+    let events = fixture.host.tokens.activity().recent(None);
+    assert_eq!(events.len(), 1);
+    let event = &events[0];
+    assert_eq!(
+        (
+            event.app.as_deref(),
+            event.tool.as_str(),
+            event.connection.as_deref()
+        ),
+        (Some("claude"), "propose_sql", Some("connection"))
+    );
+    assert_eq!(event.outcome, openrows_mcp::ActivityOutcome::Ok);
+    assert!(!serde_json::to_string(event)?.contains("DROP"));
+    let usage = fixture.host.tokens.usage()?;
+    assert_eq!(usage[0].calls, 1);
+    assert_eq!(usage[0].client.as_deref(), Some("fixture 1"));
     Ok(())
 }
 async fn send(input: &mut tokio::process::ChildStdin, value: Value) -> TestResult {

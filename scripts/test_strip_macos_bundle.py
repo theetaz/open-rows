@@ -31,9 +31,10 @@ class StripBundleTest(unittest.TestCase):
     def check_release(self, root):
         target = root / "cache"
         apps = [target / "release/openrows-app", target / TRIPLE / "release/openrows-app"]
-        helper = root / "apps/desktop/src-tauri/binaries" / f"openrows-driver-host-{TRIPLE}"
+        binaries = root / "apps/desktop/src-tauri/binaries"
+        helpers = [binaries / f"{name}-{TRIPLE}" for name in ("openrows-driver-host", "openrows-mcp")]
         debug = target / "debug/openrows-app"
-        for path in [*apps, helper, debug]:
+        for path in [*apps, *helpers, debug]:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(b"symbols and code")
         calls = []
@@ -44,10 +45,10 @@ class StripBundleTest(unittest.TestCase):
             BUNDLE.main()
         self.assertEqual(debug.read_bytes(), b"symbols and code")
         self.assertEqual([cmd[1] for cmd in calls if cmd[0] == "strip"],
-                         [str(path) for path in [*apps, helper]] * 2)
-        self.assertEqual(sum(cmd[0] == "dsymutil" for cmd in calls), 3)
+                         [str(path) for path in [*apps, *helpers]] * 2)
+        self.assertEqual(sum(cmd[0] == "dsymutil" for cmd in calls), 4)
         images = list((target / "bundle-symbols").glob("*.macho"))
-        self.assertEqual(len(images), 3)
+        self.assertEqual(len(images), 4)
         self.assertTrue(all(image.read_bytes() == b"symbols and code" for image in images))
         for index, cmd in enumerate(calls):
             if cmd[0] == "dsymutil":
@@ -61,7 +62,8 @@ class StripBundleTest(unittest.TestCase):
             output = json.dumps({"target_directory": str(target)})
         elif command[0] == "dwarfdump":
             image = Path(command[-1])
-            digit = "B" if image.parent.name == "binaries" else ("A" if image.parent.parent == target else "C")
+            helper = "D" if image.name.startswith("openrows-mcp") else "B"
+            digit = helper if image.parent.name == "binaries" else ("A" if image.parent.parent == target else "C")
             output = f"UUID: {digit * 8}-{digit * 4}-{digit * 4}-{digit * 4}-{digit * 12} (arm64)"
         elif command[0] == "dsymutil":
             Path(command[-1]).mkdir()

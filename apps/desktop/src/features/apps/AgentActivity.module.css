@@ -1,0 +1,42 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Toolbar indicator while an external agent is working, and its popover. */
+.button {
+  position: relative;
+  color: var(--or-accent);
+}
+/* A small dot that breathes in opacity only; still when motion is reduced. */
+.pulse {
+  position: absolute;
+  inset-block-start: 4px;
+  inset-inline-end: 4px;
+  inline-size: 6px;
+  block-size: 6px;
+  border-radius: var(--or-radius-capsule);
+  background: var(--or-success-fg);
+  animation: breathe 1.6s var(--or-motion-easing) infinite alternate;
+}
+@keyframes breathe {
+  from {
+    opacity: 0.35;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pulse {
+    animation: none;
+  }
+}
+.panel {
+  display: grid;
+  gap: var(--or-space-6);
+  inline-size: 340px;
+  max-inline-size: 100%;
+  padding: var(--or-space-8);
+}
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-inline: var(--or-space-6);
+  font-size: var(--or-text-13);
+  font-weight: var(--or-weight-semibold);
+}

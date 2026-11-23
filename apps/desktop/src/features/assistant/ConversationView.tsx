@@ -7,6 +7,7 @@ import type { Turn } from './conversation';
 type Step = Turn['traces'][number];
 import styles from './Assistant.module.css';
 import { t } from './lazyMessages';
+import { showAgentApps } from '../settings/ai/aiPage';
 type Actions = {
   insert: (sql: string) => void;
   open: (sql: string) => void;
@@ -26,6 +27,7 @@ export function ConversationView(props: {
       aria-label={t('assistantConversation')}
       aria-live="polite"
     >
+      {props.turns.length === 0 && <AppsHint />}
       {props.turns.map((turn) => (
         <article key={turn.id}>
           <p className={styles.question}>{turn.question}</p>
@@ -61,6 +63,17 @@ export function ConversationView(props: {
         </article>
       ))}
     </div>
+  );
+}
+/** Empty state: point to Settings → AI → Apps for the owner's own agent. */
+function AppsHint(): React.JSX.Element {
+  return (
+    <p className={styles.appsHint}>
+      {t('useOwnAgent')}{' '}
+      <Button size="sm" variant="ghost" onClick={showAgentApps}>
+        {t('connectAgentApps')}
+      </Button>
+    </p>
   );
 }
 /** The streamed answer on a bubble, with its SQL proposals inside it. */

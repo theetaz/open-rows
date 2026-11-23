@@ -68,7 +68,7 @@ class ReleaseTests(unittest.TestCase):
         self.assertNotIn("echo $APPLE", workflow)
         bundle = json.loads((ROOT / "apps/desktop/src-tauri/tauri.conf.json").read_text())["bundle"]
         self.assertTrue(bundle["macOS"]["hardenedRuntime"])
-        self.assertEqual(bundle["externalBin"], ["binaries/openrows-driver-host"])
+        self.assertEqual(bundle["externalBin"], ["binaries/openrows-driver-host", "binaries/openrows-mcp"])
 
     def test_webview_can_only_download_and_install_backend_checked_updates(self):
         permissions = json.loads((ROOT / "apps/desktop/src-tauri/capabilities/main.json").read_text())["permissions"]

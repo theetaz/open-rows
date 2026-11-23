@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-import { useState } from 'react';
-import { Button, Icon } from '@openrows/ui';
+import { lazy, Suspense, useState } from 'react';
+import { Button, Icon, SegmentedControl } from '@openrows/ui';
 import type { ProviderConfig } from '@openrows/ipc';
 import { AiPreferences } from './AiPreferences';
 import { aiSettings } from './aiSettings';
@@ -10,9 +10,44 @@ import { ProviderRow } from './ProviderRow';
 import styles from './Ai.module.css';
 import { SharingDisclosure } from './SharingDisclosure';
 import { t } from '../messages/lazyAi';
+import { setAiPage, useAiPage } from './aiPage';
+import type { AiPage } from './aiPage';
 const useAiSettings = aiSettings.useValue;
-/** Lazy-loaded provider setup; AI network permission starts off until explicitly enabled. */
+const AppsPage = lazy(() => import('../../apps/AppsPage'));
+
+/** Settings → AI: providers (with MCP and sharing) and the agent Apps page. */
 export default function AiPane(): React.JSX.Element {
+  const page = useAiPage();
+  const pages: readonly { value: AiPage; label: string }[] = [
+    { value: 'providers', label: t('providersPage') },
+    { value: 'apps', label: t('appsPage') },
+  ];
+  return (
+    <section aria-label={t('aiSettings')} className={styles.pane}>
+      <SegmentedControl
+        aria-label={t('aiPages')}
+        className={styles.pages}
+        options={pages}
+        value={page}
+        onValueChange={setAiPage}
+      />
+      {page === 'apps' ? (
+        <Suspense fallback={<p role="status">{t('loadingApps')}</p>}>
+          <AppsPage
+            onProviders={() => {
+              setAiPage('providers');
+            }}
+          />
+        </Suspense>
+      ) : (
+        <ProvidersPage />
+      )}
+    </section>
+  );
+}
+
+/** Lazy-loaded provider setup; AI network permission starts off until explicitly enabled. */
+function ProvidersPage(): React.JSX.Element {
   const settings = useAiSettings();
   const [editing, setEditing] = useState<ProviderConfig | null | undefined>(
     undefined,
@@ -33,7 +68,7 @@ export default function AiPane(): React.JSX.Element {
     }
   };
   return (
-    <section aria-label={t('aiSettings')} className={styles.pane}>
+    <div className={styles.pane}>
       <SharingDisclosure />
       <div>
         <AiPreferences busy={busy} run={run} />
@@ -75,7 +110,7 @@ export default function AiPane(): React.JSX.Element {
           <p className={styles.foot}>{t('noProvidersConfigured')}</p>
         )}
       </div>
-    </section>
+    </div>
   );
 }
 

@@ -92,6 +92,14 @@ Exact flags differ per CLI and change across versions, so each bridge is a small
 - **Lifecycle:** one process per conversation turn (or a long-lived session where the CLI supports resume), killed on cancel; timeouts apply.
 - **Compliance:** the bridge only automates the user's own locally installed CLI for the user's own requests; it never extracts tokens, proxies the CLI for other users, or bypasses the vendor's terms. If a vendor disallows headless use, the bridge is disabled for that CLI.
 
+Bringing the user's own agent to OpenRows is a different direction and is
+implemented: Settings → AI → **Apps** registers OpenRows as an MCP server in
+Claude Code, Codex CLI or Gemini CLI with each tool's own `mcp add` command
+([§18](#18-implemented-v4-connected-apps)). There, the tool runs under the
+user's own account and calls OpenRows' read/propose tools; OpenRows never
+drives the tool or uses its subscription, so the eligibility rules below do
+not apply to it and are unchanged.
+
 Current provider eligibility evidence and the conditional Claude subscription
 boundary are recorded in [28 §6](28-database-monitoring-and-ai-harness.md#6-ai-provider-setup-and-existing-subscriptions).
 Installed-tool access and API billing are separate choices; one never silently
@@ -105,7 +113,9 @@ falls back to the other.
 metadata paths and SafetyPlan. Stdio clients spawn the Tauri-free `openrows-mcp`
 CLI, which forwards to the authenticated running app. Direct Streamable HTTP
 is separately opt-in. Both settings default off; the listener binds only to
-`127.0.0.1`. See [§12](#12-implemented-m45-0308-built-in-mcp-and-execution-safety)
+`127.0.0.1`. The Apps page connects Claude Code, Codex and Gemini CLI in one
+confirmed step without putting a token in their configuration
+([§18](#18-implemented-v4-connected-apps)). See [§12](#12-implemented-m45-0308-built-in-mcp-and-execution-safety)
 for setup, bounds and engine restrictions.
 
 | Tool | Behaviour | Policy gate |
@@ -345,7 +355,9 @@ manual opt-in validation.
 `crates/openrows-mcp` has no Tauri dependency. The app owns the listener and
 resolves saved profiles, provider identities, sharing policies and current open
 databases. The CLI requires an explicit `--port`; it never discovers app files,
-credentials or databases. Its token comes only from `OPENROWS_MCP_TOKEN`.
+credentials or databases. Its token comes from `OPENROWS_MCP_TOKEN`, or, for a
+client registered from the Apps page, from the OS keychain item named by
+`--client <id>` ([§18](#18-implemented-v4-connected-apps)); never from argv.
 `/bridge` is the authenticated local channel for stdio; `/mcp` is available only
 when direct HTTP is enabled. All browser Origin headers are refused, requests
 are capped at 32 KiB, sockets at 16, concurrent requests per token at four, and
@@ -997,9 +1009,11 @@ network.
 
 ### Other CLIs
 
-Claude Code, Gemini CLI and Cursor are **not** implemented and are not offered
-in Settings. docs/28 §6 requires current provider approval of third-party use
-and validated isolation first; neither has been established for them.
+Claude Code, Gemini CLI and Cursor are **not** implemented as assistant
+providers and are not offered as providers in Settings. docs/28 §6 requires
+current provider approval of third-party use and validated isolation first;
+neither has been established for them. The Apps page (§18) only registers
+OpenRows as an MCP server inside those tools; it does not run them.
 
 ### Try it
 
@@ -1072,3 +1086,109 @@ findings and reports must be accepted; fabricated ids, evidence from another
 connection, findings citing evidence outside their report, uncited findings
 and model-supplied measurements must be refused with the documented reason
 (`grounding_eval`).
+
+## 18. Implemented (v4): connected apps
+
+Settings → AI has two pages, **Providers** (providers, the MCP server and token
+controls, data sharing; unchanged) and **Apps**. The assistant's empty
+conversation links to Apps. Apps lets the agent tools the owner already uses
+call OpenRows over MCP, and shows what they do, live.
+
+### Flow
+
+1. **Detect (on opening Apps only).** For `claude`, `codex` and `gemini` the
+   app searches `PATH`, then `~/.local/bin`, `~/.claude/local`, `~/.bun/bin`,
+   `~/.npm-global/bin`, `~/.volta/bin`, `~/Library/pnpm`, nvm's
+   `versions/node/*/bin`, `/opt/homebrew/bin` and `/usr/local/bin`, and reads
+   `--version`. No configuration, credential or browser file is read.
+   States: **Not installed**, **Installed** (version), **Connected**, **Needs
+   attention** (tool missing, access revoked or expired, server off, entry
+   missing, entry pointing at another bridge/port, or the check failed).
+2. **Check.** For an app connected from here, the tool's own read-only command
+   reports the `openrows` entry: `claude mcp get openrows`,
+   `codex mcp get --json openrows`, `gemini mcp list`. Claude and Gemini
+   health-check the entry, which starts the bridge. Only the `openrows` line is
+   kept; other servers' output is discarded and never logged.
+3. **Connect (centred sheet, explicit confirmation).** The sheet shows the
+   exact commands, what changes, the provider identity the app counts as
+   (preselected: the app's vendor kind, else the default provider) and the
+   saved connections it may use (all, at most 32; each connection's
+   data-sharing policy still decides what is shared). Confirming is the
+   consent to turn the MCP server on: it saves `enabled: true` and a stable
+   port (the configured one, else the first free port from 32123), then:
+   - issues a 30-day token for that scope (the existing token store limits),
+   - runs `openrows-mcp --client <id> --store` and writes the token to its
+     stdin; the bridge saves it in the OS keychain as
+     `mcp-client/<id>/token` (service `com.prabhavalabs.openrows`),
+   - if an `openrows` entry exists, runs the tool's `mcp remove`, then
+   - runs the tool's own `mcp add` (verified against `--help` of Claude Code
+     2.1.330, codex-cli 0.171.0 and Gemini CLI 0.68.0):
+
+   ```sh
+   claude mcp add --scope user openrows -- <bridge> --port <port> --client <id>
+   codex mcp add openrows -- <bridge> --port <port> --client <id>
+   gemini mcp add --scope user openrows <bridge> -- --port <port> --client <id>
+   ```
+
+   A failure revokes the token and deletes the keychain item. Commands run as
+   argv (never a shell) in the temporary folder, with the user's environment
+   plus the search folders on `PATH`, no colour, a 60 s deadline, 64 KiB of
+   output and the whole process group killed on overrun.
+4. **Details.** Install path, the registered launch line as the tool reports
+   it, the client's self-reported name, provider, expiry, each scoped
+   connection's sharing level, its own recent activity, and **Test**, which
+   starts the registered launch line itself and calls `list_connections`
+   through it exactly as the app would.
+5. **Renew** (last three days, or expired) issues a new token with the same
+   scope and replaces the keychain item; the tool's entry is unchanged.
+   **Reconnect** repeats Connect (for a moved bridge or changed port).
+   **Disconnect** runs `claude mcp remove --scope user openrows`,
+   `codex mcp remove openrows` or `gemini mcp remove --scope user openrows`,
+   revokes the token and deletes the keychain item; if the tool cannot remove
+   its entry, access is still revoked and the page says so.
+
+### No secrets in other tools
+
+The entry holds only the bridge path, port and a random client id
+(`claude-3f9a0c1d2b4e`). The bridge itself writes, reads and deletes its
+keychain item, so the keychain trusts the item's creator and does not prompt
+when the agent starts it (`just dev` signs the bridge with the dev identity for
+the same reason; unsigned rebuilds can prompt once). Revocation is enforced by
+the server's token store, not by deleting the item. The environment-variable
+path (`--port P` with `OPENROWS_MCP_TOKEN`) is unchanged.
+
+### Activity
+
+The server records, per token, the number of tool calls, the last request and
+the client's self-reported name and version (the stdio bridge forwards the
+agent's MCP `clientInfo`, at most 64 characters each, as an untrusted label).
+Each call becomes an event with the time, fixed tool name, validated
+connection id, app and an outcome class (OK, refused, failed): never SQL,
+rows, arguments or error text. The last 200 events stay in memory and are
+pushed to the webview as `mcp-activity`. While an agent called a tool in the
+last two minutes, a small toolbar indicator appears; it opens the recent
+activity. Proposals still arrive as ordinary editor tabs (§12).
+
+### Packaging
+
+`openrows-mcp` is a Tauri `externalBin` next to the driver host:
+`scripts/stage-host.sh` builds and stages both, so a bundle has
+`Contents/MacOS/openrows-mcp` and `just dev` has `target/debug/openrows-mcp`.
+The app resolves the bridge beside its own executable and refuses a
+translocated copy (move OpenRows to Applications first).
+
+### Verification
+
+`crates/openrows-mcp`: unit tests for command building (`apps::commands`),
+output parsing for each tool including missing entries and other servers'
+lines (`apps::verify`), version parsing and search folders (`apps::detect`),
+argv-only runs with deadline and group kill (`apps::run`), client ids and
+stable ports (`apps::plan`), bridge arguments and keychain store/forget with
+an in-memory store (`bridge_cli`), links/usage/revocation (`links`) and the
+activity ring (`activity`); `tests/protocol.rs` checks a stdio call is
+recorded with the forwarded client name and no SQL. The app's Vitest suite
+covers state derivation, the confirmation-before-connect flow, attention
+reasons, inline disconnect confirmation and the toolbar indicator. Real
+registration with the installed CLIs is not automated (it would change the
+user's configuration); only their `--help` output was checked.
+

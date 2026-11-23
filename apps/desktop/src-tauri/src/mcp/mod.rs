@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //! App lifecycle and guarded credential commands for the built-in MCP host.
+pub(crate) mod apps;
+pub(crate) mod apps_connect;
 pub(crate) mod backend;
 mod catalog;
 mod monitoring;
@@ -15,6 +17,17 @@ use openrows_mcp::{
 };
 use std::sync::Arc;
 use tauri::{AppHandle, Manager};
+use tauri_specta::Event as _;
+
+/// An external agent called a tool; carries no SQL, rows or error text.
+#[derive(Clone, Debug, serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct McpActivity {
+    event: openrows_mcp::ActivityEvent,
+}
+impl tauri_specta::Event for McpActivity {
+    const NAME: &'static str = "mcp-activity";
+}
 
 pub(crate) struct McpState {
     host: McpHost,
@@ -46,12 +59,40 @@ pub(crate) fn install(app: &mut tauri::App) -> Result<(), McpError> {
         control: app.state::<AiState>().control.clone(),
         backend: Arc::new(backend::Backend(app.handle().clone())),
     };
+    forward_activity(app.handle(), &host.tokens);
     app.manage(McpState {
         host,
         running: tokio::sync::Mutex::new(None),
     });
     app.manage(proposals::Proposals::default());
     Ok(())
+}
+/// Push every recorded tool call to the webview so activity appears live.
+fn forward_activity(app: &AppHandle, tokens: &TokenStore) {
+    let mut events = tokens.activity().subscribe();
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        loop {
+            match events.recv().await {
+                // Emitting only fails while the webview is gone.
+                Ok(event) => drop(McpActivity { event }.emit(&app)),
+                Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {}
+                Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
+            }
+        }
+    });
+}
+/// Saved transport settings.
+pub(crate) fn saved(app: &AppHandle) -> Result<McpSettings, IpcError> {
+    parse(&settings::current(&app.state::<SettingsFile>()).unwrap_or_default())
+}
+/// Reconcile saved settings, then the port the server listens on, if any.
+pub(crate) async fn running_port(app: &AppHandle) -> Option<u16> {
+    // A refusal (off, locked, bind failure) simply leaves the server stopped.
+    let _ = synchronize(app).await;
+    let state = app.state::<McpState>();
+    let running = state.running.lock().await;
+    running.as_ref().map(|(_, server)| server.port())
 }
 pub(crate) fn parse(value: &serde_json::Value) -> Result<McpSettings, IpcError> {
     value

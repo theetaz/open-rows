@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //! Private hashed credentials and live cancellation, independent of settings JSON.
-use crate::{ClientInfo, CreatedToken, McpError, TokenInfo, TokenScope};
+use crate::{ClientInfo, CreatedToken, McpError, TokenInfo, TokenScope, activity::ActivityLog};
 use rusqlite::{Connection, OptionalExtension, params};
 use sha2::{Digest, Sha256};
 use std::{
@@ -14,8 +14,9 @@ use tokio_util::sync::CancellationToken;
 /// Clones share local persistence and connected-client cancellation.
 #[derive(Clone)]
 pub struct TokenStore {
-    database: Arc<Mutex<Connection>>,
+    pub(crate) database: Arc<Mutex<Connection>>,
     clients: Arc<Mutex<HashMap<String, Client>>>,
+    pub(crate) activity: ActivityLog,
 }
 struct Client {
     cancel: Arc<CancellationToken>,
@@ -25,7 +26,7 @@ struct Client {
 pub(crate) struct Grant {
     pub(crate) info: TokenInfo,
     pub(crate) cancel: Arc<CancellationToken>,
-    store: TokenStore,
+    pub(crate) store: TokenStore,
 }
 impl Drop for Grant {
     fn drop(&mut self) {
@@ -63,9 +64,11 @@ impl TokenStore {
     }
     fn new(database: Connection) -> Result<Self, McpError> {
         database.execute_batch("CREATE TABLE IF NOT EXISTS tokens(id TEXT PRIMARY KEY, hash BLOB UNIQUE NOT NULL, scope TEXT NOT NULL)").map_err(|_| McpError::Store)?;
+        crate::links::migrate(&database)?;
         Ok(Self {
             database: Arc::new(Mutex::new(database)),
             clients: Arc::default(),
+            activity: ActivityLog::default(),
         })
     }
     /// Create a cryptographically random token, returned once with its metadata.
@@ -123,10 +126,11 @@ impl TokenStore {
         // Serialize lookup/revoke/client registration so revocation cannot miss an admission.
         let database = self.database.lock().unwrap_or_else(PoisonError::into_inner);
         self.disconnect(id);
+        self.activity.forget(id);
         database
             .execute("DELETE FROM tokens WHERE id=?1", [id])
             .map_err(|_| McpError::Store)?;
-        Ok(())
+        crate::links::forget(&database, id)
     }
     /// Disconnect a client; its token remains valid for a later explicit reconnect.
     pub fn disconnect(&self, id: &str) {
