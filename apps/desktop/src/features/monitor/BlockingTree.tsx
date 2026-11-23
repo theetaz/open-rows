@@ -1,9 +1,41 @@
 // SPDX-License-Identifier: Apache-2.0
+import { Badge } from '@openrows/ui';
 import type { MonitorTable } from './monitorData';
 import styles from './Monitor.module.css';
+import parts from './MonitorParts.module.css';
 import { t } from './messages/lazyDashboard';
 type Row = MonitorTable['rows'][number];
 type Graph = Map<string, Row[]>;
+
+/** `Blocker`/`Blocked`, then the PID as a link to its session when visible. */
+function NodeLabel(props: {
+  pid: string;
+  root: boolean;
+  onSession: ((pid: string) => void) | undefined;
+}): React.JSX.Element {
+  const { pid, onSession } = props;
+  return (
+    <>
+      <Badge tone={props.root ? 'danger' : 'warning'}>
+        {props.root ? t('blocker') : t('blocked')}
+      </Badge>
+      {onSession ? (
+        <button
+          type="button"
+          className={parts.linkButton}
+          aria-label={t('sessionPid', { pid })}
+          onClick={() => {
+            onSession(pid);
+          }}
+        >
+          {t('pidPid', { pid })}
+        </button>
+      ) : (
+        t('pidPid', { pid })
+      )}
+    </>
+  );
+}
 
 function branch(
   pid: string,
@@ -23,19 +55,11 @@ function branch(
   const next = new Set([...seen, pid]);
   return (
     <li key={pid}>
-      {row && context.onSession ? (
-        <button
-          type="button"
-          aria-label={t('sessionPid', { pid })}
-          onClick={() => {
-            context.onSession?.(pid);
-          }}
-        >
-          {t('pidPid', { pid })}
-        </button>
-      ) : (
-        t('pidPid', { pid })
-      )}
+      <NodeLabel
+        pid={pid}
+        root={!seen.size}
+        onSession={row ? context.onSession : undefined}
+      />
       {' · '}
       {row
         ? t('stateWaitQuery', {
@@ -95,7 +119,7 @@ export function BlockingTree({
     <>
       <p className={styles.note}>{t('blockerBlockedQuery')}</p>
       {graph.size ? (
-        <ul className={styles.tree} aria-label={t('blockingChains')}>
+        <ul className={parts.tree} aria-label={t('blockingChains')}>
           {roots
             .slice(0, 100)
             .map((pid) =>

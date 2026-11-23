@@ -43,10 +43,24 @@ function applicationCell(process: ProcessDto): CellView {
   };
 }
 
+/** A lock wait or an idle transaction stands out; the word carries it. */
+function stateTone(process: ProcessDto): 'danger' | 'warning' | 'neutral' {
+  if (/idle in transaction/i.test(process.state ?? '')) return 'danger';
+  return /^lock/i.test(process.wait ?? '') ? 'warning' : 'neutral';
+}
+
+/** The state as a pill: the status word on a soft fill. */
+function stateCell(process: ProcessDto): CellView {
+  const text = cellText(process, 'state');
+  if (!text) return { content: 'NULL', muted: true };
+  return { content: <Badge tone={stateTone(process)}>{text}</Badge> };
+}
+
 function cell(process: ProcessDto | undefined, col: number): CellView {
   const key = PROCESS_COLUMNS[col]?.key;
   if (!process || !key) return { content: '' };
   if (key === 'application') return applicationCell(process);
+  if (key === 'state') return stateCell(process);
   const text = cellText(process, key);
   return { content: text || 'NULL', muted: !text };
 }

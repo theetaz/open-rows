@@ -31,14 +31,32 @@ export function chartPath(
   return path;
 }
 
+/** The newest valid observation, marked in the accent colour. */
+function latestMark(
+  points: readonly Point[],
+  range: { start: number; end: number },
+): { x: number; y: number } | null {
+  const valid = points.filter((p) => p.state === 'ok' && p.value !== null);
+  const last = valid.at(-1);
+  if (!last || last.value === null) return null;
+  const maximum = Math.max(1, ...points.map((point) => point.value ?? 0));
+  return {
+    x:
+      ((last.collectedMs - range.start) /
+        Math.max(1, range.end - range.start)) *
+      300,
+    y: 64 - (last.value / maximum) * 60,
+  };
+}
+
 /** Accessible bounded chart with lazily mounted keyboard-readable observations. */
 export const MetricChart = memo(function MetricChart(props: {
   title: string;
   points: readonly Point[];
   range: { start: number; end: number; cadence: number };
 }): React.JSX.Element {
-  const [table, setTable] = useState(false);
   const points = props.points.slice(-300);
+  const mark = latestMark(points, props.range);
   return (
     <>
       <svg
@@ -55,6 +73,14 @@ export const MetricChart = memo(function MetricChart(props: {
           })}
         </title>
         <path d={chartPath(points, props.range)} />
+        {mark && (
+          <circle
+            className={styles.chartMark}
+            cx={mark.x}
+            cy={mark.y}
+            r="2.5"
+          />
+        )}
         {points
           .filter((point) => point.state !== 'ok' || point.value === null)
           .map((point) => (
@@ -76,38 +102,50 @@ export const MetricChart = memo(function MetricChart(props: {
             </circle>
           ))}
       </svg>
-      <details
-        onToggle={(event) => {
-          setTable(event.currentTarget.open);
-        }}
-      >
-        <summary>{t('dataTableTitle', { title: props.title })}</summary>
-        {table && (
-          <table className={styles.table}>
-            <caption>{t('titleObservations', { title: props.title })}</caption>
-            <thead>
-              <tr>
-                <th scope="col">{t('collected')}</th>
-                <th scope="col">{t('value')}</th>
-                <th scope="col">{t('state')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {points.map((point) => (
-                <tr key={point.collectedMs}>
-                  <td>{new Date(point.collectedMs).toLocaleString()}</td>
-                  <td>
-                    {point.state === 'ok' && point.value !== null
-                      ? String(point.value)
-                      : '—'}
-                  </td>
-                  <td>{stateLabel(point.state)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </details>
+      <Observations title={props.title} points={points} />
     </>
   );
 });
+
+/** The chart's observations as a table, mounted only while open. */
+function Observations(props: {
+  title: string;
+  points: readonly Point[];
+}): React.JSX.Element {
+  const [table, setTable] = useState(false);
+  return (
+    <details
+      className={styles.dataTable}
+      onToggle={(event) => {
+        setTable(event.currentTarget.open);
+      }}
+    >
+      <summary>{t('dataTableTitle', { title: props.title })}</summary>
+      {table && (
+        <table className={styles.table}>
+          <caption>{t('titleObservations', { title: props.title })}</caption>
+          <thead>
+            <tr>
+              <th scope="col">{t('collected')}</th>
+              <th scope="col">{t('value')}</th>
+              <th scope="col">{t('state')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {props.points.map((point) => (
+              <tr key={point.collectedMs}>
+                <td>{new Date(point.collectedMs).toLocaleString()}</td>
+                <td>
+                  {point.state === 'ok' && point.value !== null
+                    ? String(point.value)
+                    : '—'}
+                </td>
+                <td>{stateLabel(point.state)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </details>
+  );
+}

@@ -81,24 +81,26 @@ export function MonitorOverview(props: {
   const overview = props.engine ? OVERVIEWS[props.engine] : POSTGRES;
   return (
     <>
-      {['activity', 'database', 'replication'].map((source) => (
-        <SourceState
-          key={source}
-          descriptor={props.data?.reply.capabilities.find(
-            (item) => item.source === source,
-          )}
-          status={props.data?.reply.sources.find(
-            (item) => item.source === source,
-          )}
-          now={props.now}
-        />
-      ))}
+      <div className={styles.sources}>
+        {['activity', 'database', 'replication'].map((source) => (
+          <SourceState
+            key={source}
+            descriptor={props.data?.reply.capabilities.find(
+              (item) => item.source === source,
+            )}
+            status={props.data?.reply.sources.find(
+              (item) => item.source === source,
+            )}
+            now={props.now}
+          />
+        ))}
+      </div>
       {overview.boundary && (
         <p role="note" className={styles.note}>
           {overview.boundary}
         </p>
       )}
-      <p className={styles.note}>
+      <p className={styles.lead}>
         {props.history
           ? t('storedAggregateHistory', { note: overview.note })
           : t('liveTenMinute', { note: overview.note })}
@@ -136,9 +138,10 @@ function MetricTile({
       className={styles.tile}
       aria-label={metric.title}
     >
-      <h3>{metric.title}</h3>
+      <h3 className={styles.statLabel}>{metric.title}</h3>
       <p className={styles.value}>{metricValue(latest, metric.unit)}</p>
-      <p className={styles.note}>
+      <MetricChart title={metric.title} points={points} range={range} />
+      <p className={styles.statNote}>
         {latest
           ? t('scopeScopeState', {
               scope: metric.scope,
@@ -151,13 +154,12 @@ function MetricTile({
             })}
       </p>
       {window.previous.length > 0 && (
-        <p className={styles.note}>
+        <p className={styles.statNote}>
           {t('previousWindowPrevious', {
             previous: metricValue(previous, metric.unit),
           })}
         </p>
       )}
-      <MetricChart title={metric.title} points={points} range={range} />
     </article>
   );
 }

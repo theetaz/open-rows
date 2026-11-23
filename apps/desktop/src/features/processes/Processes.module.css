@@ -1,9 +1,18 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* The Processes tab: the Structure view's header and grid, plus a status line. */
+/* The Processes tab: the table pane's view bar, the Structure grid, state pills. */
 .count {
-  margin-inline-start: auto;
+  flex-shrink: 1;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
   font-variant-numeric: tabular-nums;
+}
+.label {
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
 }
 .cell {
   display: flex;

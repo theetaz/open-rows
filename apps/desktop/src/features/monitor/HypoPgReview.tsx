@@ -5,6 +5,7 @@ import { Sheet } from '@openrows/ui/sheet';
 import { validateMonitorIndex } from '@openrows/ipc';
 import type { HypoPgReply, MonitorTarget, Suggestion } from '@openrows/ipc';
 import styles from './Monitor.module.css';
+import parts from './MonitorParts.module.css';
 import { rich, t } from './messages/lazyInvestigation';
 
 type Props = {
@@ -52,7 +53,7 @@ export function HypoPgReview(props: Props): React.JSX.Element {
   };
   return (
     <Sheet title={t('hypopgWhatIf')} onClose={props.onClose}>
-      <div className={styles.review}>
+      <div className={parts.review}>
         <p className={styles.note}>{t('optionalOffDefault')}</p>
         <ReviewFields
           sql={sql}

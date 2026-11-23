@@ -148,6 +148,7 @@
   --or-separator: rgba(60,60,67,0.13);
   --or-separator-strong: rgba(60,60,67,0.24);
   --or-grid-line: rgba(60,60,67,0.07);
+  --or-chart-mark: rgba(142,142,147,0.6);
   --or-control-fill: rgba(118,118,128,0.12);
   --or-fill-2: rgba(118,118,128,0.2);
   --or-hover: rgba(0,0,0,0.04);
@@ -238,6 +239,7 @@
   --or-separator: rgba(255,255,255,0.09);
   --or-separator-strong: rgba(255,255,255,0.2);
   --or-grid-line: rgba(255,255,255,0.055);
+  --or-chart-mark: rgba(142,142,147,0.55);
   --or-control-fill: rgba(118,118,128,0.24);
   --or-fill-2: rgba(118,118,128,0.36);
   --or-hover: rgba(255,255,255,0.05);
@@ -329,6 +331,7 @@
   --or-separator: rgba(255,255,255,0.09);
   --or-separator-strong: rgba(255,255,255,0.2);
   --or-grid-line: rgba(255,255,255,0.055);
+  --or-chart-mark: rgba(142,142,147,0.55);
   --or-control-fill: rgba(118,118,128,0.24);
   --or-fill-2: rgba(118,118,128,0.36);
   --or-hover: rgba(255,255,255,0.05);

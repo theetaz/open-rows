@@ -10,7 +10,7 @@ import {
   ArtifactPreview,
   ArtifactRejected,
 } from '../assistant/ArtifactPreview';
-import styles from './Monitor.module.css';
+import parts from './MonitorParts.module.css';
 import { t } from './messages/lazyInvestigation';
 type Props = {
   profile: ProfileDto;
@@ -33,7 +33,7 @@ export function ScheduleResults(props: Props): React.JSX.Element {
           <section
             key={job.id}
             aria-label={t('scheduledInvestigation')}
-            className={styles.schedule}
+            className={parts.schedule}
           >
             <p>
               {t('providerModelJob', {
@@ -95,7 +95,7 @@ function JobActions(props: Props & { job: ScheduledJob }): React.JSX.Element {
   const ended = job.state === 'finished' || job.state === 'stopped';
   const paused = job.pause === 'user';
   return (
-    <div className={styles.scheduleActions}>
+    <div className={parts.scheduleActions}>
       <Button
         size="sm"
         disabled={job.state !== 'waiting'}

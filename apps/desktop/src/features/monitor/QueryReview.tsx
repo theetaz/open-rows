@@ -5,6 +5,7 @@ import { Sheet } from '@openrows/ui/sheet';
 import type { MonitorTarget } from '@openrows/ipc';
 import { useDiagnostic } from './useDiagnostic';
 import styles from './Monitor.module.css';
+import parts from './MonitorParts.module.css';
 import { t } from './messages/lazyInvestigation';
 const ExplainView = lazy(() =>
   import('../explain/ExplainView').then((module) => ({
@@ -44,7 +45,7 @@ export function QueryReview(props: {
   };
   return (
     <Sheet title={t('reviewSqlBefore')} onClose={props.onClose}>
-      <div className={styles.review}>
+      <div className={parts.review}>
         <p>
           {t('collectedLiteralsBindings', { database: props.target.database })}
         </p>

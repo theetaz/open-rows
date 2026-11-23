@@ -1197,3 +1197,40 @@ pricing; provider-reported billing remains separate. Existing monitor
 source/version/visibility gaps apply; the harness adds no collection and does
 not broaden protected SQL admission. Event-triggered schedules (§7) are not
 implemented; schedules are interval-based only.
+
+## 21. Monitor layout (UI revamp v3, lane w4a)
+
+The Monitor tab follows `design/revamp/v3/screens/monitor.html` and
+`incidents.html` ([20 §5.1](20-ux-foundations.md#51-visual-language-v3--quiet-native-ui-revamp-2026-11-23)).
+A 184 px **section list** on the left replaces the segmented control: one 26 px
+row per section with its icon (Overview, Incidents, Sessions, Blocking, Top
+queries, Advisor, Tables, Indexes, Replication, I/O, Ask assistant, Boards, under
+each engine's own names), the current one on `accent-soft`, and the open
+incident count on Incidents. It stays a radio group (arrows, Home/End, roving
+focus). The 40 px **view bar** shows the live dot, the live/paused state with
+the sample age, the scope, then Live interval and Time window pop-ups,
+Background, Pause/Resume (icon) and Export report (icon). The source cadence
+note moved to a 24 px status line at the bottom.
+
+Overview opens with the **open-incident banner** (danger notice: rule, severity,
+onset → peak → last evidence and start time, "Open incident" switches to
+Incidents). Incidents are read once per published sample for the banner and the
+count (the same `monitorIncidents` read the Incidents section already did while
+open), so the list is no longer read separately. Metric tiles sit on `group`
+fills, four to a row on a wide pane; the label, a 22 px value, a 48 px chart,
+scope/state and the previous-window note. Charts draw one muted line
+(`tertiary`), gap marks in the new `chart-mark` token and only the newest valid
+sample in the accent. Incidents list with the data grid's header and status
+pills (Open danger, Resolved neutral); blocking chains are tiles with
+Blocker/Blocked pills and blocked sessions on a hairline under their blocker;
+advisor proposals, scheduled investigations and accounting are grouped cards;
+regressions are warning notices; board widgets are tiles with muted series and
+one accent series. Native disclosures read as quiet rows with a turning chevron.
+Grids are sized to their rows (4–14, then scroll).
+
+Not built from the mockups, because the app has no such feature: the Processes,
+Statements and "Users and roles" rows and the saved "Reports" list in the
+section list, min/max axis labels under each tile, per-tile alert colouring,
+Cancel/Kill buttons inside blocking-chain tiles (cancel and kill stay on the
+Sessions grid and in Processes), the advisor as an inspector column beside the
+incident list, and rule counts in the status line.

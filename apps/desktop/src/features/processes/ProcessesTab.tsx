@@ -78,6 +78,7 @@ export function ProcessesTab(props: Props): React.JSX.Element {
     >
       <ProcessesHeader
         list={list}
+        database={database}
         filter={filter}
         onFilter={setFilter}
         shown={shown.length}

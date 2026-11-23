@@ -15,6 +15,8 @@ type Props = {
   sessionId: string | null;
   onOpenSql: (sql: string) => void;
   panel: Source | 'blocking';
+  /** The section's name in the Monitor's list; the source id otherwise. */
+  title?: string | undefined;
   monitor: MonitorControls;
   selectedIdentity?: string | undefined;
   onSession?: ((pid: string) => void) | undefined;
@@ -31,7 +33,7 @@ export function SourcePanel(props: Props): React.JSX.Element {
   const table = data?.tables[source];
   return (
     <section aria-label={props.panel}>
-      <h2>{props.panel}</h2>
+      <h2>{props.title ?? props.panel}</h2>
       <SourceState
         descriptor={descriptor}
         status={status}

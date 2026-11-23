@@ -1,0 +1,224 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * Monitor detail parts (design/revamp v3 incidents.html): blocking chains as
+ * tiles, advisor proposals and scheduled investigations as grouped cards.
+ */
+.tree pre {
+  margin: var(--or-space-2) 0;
+  padding: 0;
+  background: transparent;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Blocking chains: each session a tile, blocked sessions indented under their blocker. */
+.tree,
+.tree ul {
+  display: grid;
+  gap: var(--or-space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tree {
+  margin-block: var(--or-space-8);
+}
+.tree ul {
+  margin-block-start: var(--or-space-8);
+  padding-inline-start: var(--or-space-12);
+}
+.tree li {
+  min-inline-size: 0;
+  padding: var(--or-space-10) var(--or-space-12);
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+  line-height: 16px;
+}
+/* A blocked session sits under its blocker on a hairline, not in a nested box. */
+.tree li li {
+  padding: var(--or-space-2) 0 var(--or-space-2) var(--or-space-12);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: inset var(--or-border-width) 0 0 var(--or-separator-strong);
+}
+.tree li > button,
+.linkButton {
+  margin-inline-end: var(--or-space-4);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--or-accent);
+  font: inherit;
+  font-weight: var(--or-weight-semibold);
+  cursor: default;
+}
+.tree li > [data-tone] {
+  margin-inline-end: var(--or-space-6);
+}
+/* Advisor proposals: one grouped card each. */
+.advisor {
+  display: grid;
+  gap: var(--or-space-8);
+}
+.advisor ul {
+  display: grid;
+  gap: var(--or-space-10);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.suggestion {
+  padding: var(--or-space-12);
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
+}
+/* Block flow keeps the rule name and its confidence on one line. */
+.suggestion > * + *:not(strong) {
+  margin-block-start: var(--or-space-6);
+}
+.suggestion p {
+  margin-block-end: 0;
+}
+.suggestion summary,
+.investigation summary {
+  cursor: default;
+}
+/* The assistant's monitoring investigation inside Monitor. */
+.investigation {
+  display: grid;
+  gap: var(--or-space-10);
+  max-inline-size: 960px;
+}
+.investigation > button {
+  justify-self: start;
+}
+/* The query-tab dock becomes an inline panel inside Monitor. */
+.investigation > aside {
+  inline-size: auto;
+  max-inline-size: none;
+  max-block-size: 72vh;
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
+}
+.investigation details > summary {
+  padding: var(--or-space-4) 0;
+  font-weight: var(--or-weight-medium);
+}
+.investigation fieldset {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--or-space-8);
+  margin: var(--or-space-8) 0;
+  padding: var(--or-space-12);
+  border: 0;
+  border-radius: var(--or-radius-field);
+  background: var(--or-raised);
+}
+.investigation legend {
+  float: left;
+  grid-column: 1 / -1;
+  padding: 0;
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+  font-weight: var(--or-weight-semibold);
+}
+.tool {
+  display: flex;
+  gap: var(--or-space-6);
+  align-items: center;
+  font-family: var(--or-font-mono);
+  font-size: var(--or-text-12);
+}
+.tool input {
+  margin: 0;
+  accent-color: var(--or-accent-fill);
+}
+.schedule {
+  display: grid;
+  gap: var(--or-space-6);
+  margin: var(--or-space-8) 0;
+  padding: var(--or-space-12);
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
+}
+.schedule p {
+  margin: 0;
+}
+.scheduleActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--or-space-6);
+}
+.advisor > button {
+  justify-self: start;
+}
+/* Accounting and the schedule form: grouped cards with a quiet summary row. */
+.investigation > details {
+  padding: var(--or-space-10) var(--or-space-12);
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
+  font-size: var(--or-text-12);
+}
+.investigation > details > summary {
+  color: var(--or-text);
+  font-size: var(--or-text-13);
+  font-weight: var(--or-weight-semibold);
+}
+.investigation > details > :not(summary) {
+  margin-block: var(--or-space-8) 0;
+}
+.investigation > details > p {
+  color: var(--or-secondary);
+}
+.investigation > details > p:empty {
+  display: none;
+}
+.investigation table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.investigation caption {
+  padding-block-end: var(--or-space-4);
+  color: var(--or-secondary);
+  text-align: start;
+}
+.investigation th {
+  padding: var(--or-space-4) var(--or-space-8);
+  box-shadow: inset 0 calc(-1 * var(--or-border-width)) 0 var(--or-separator);
+  color: var(--or-secondary);
+  font-weight: var(--or-weight-medium);
+  text-align: start;
+}
+.investigation td {
+  padding: var(--or-space-4) var(--or-space-8);
+}
+.investigation fieldset input[type='number'] {
+  inline-size: 100%;
+}
+/* Explain and HypoPG review sheets: the statement on a well, switches trailing. */
+.review {
+  display: grid;
+  gap: var(--or-space-10);
+}
+.review label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--or-space-12);
+}
+.review textarea {
+  min-block-size: 120px;
+  inline-size: 100%;
+  padding: var(--or-space-8) var(--or-space-12);
+  border: 0;
+  border-radius: var(--or-radius-field);
+  background: var(--or-group);
+  color: var(--or-text);
+  font: var(--or-text-12) / 18px var(--or-font-mono);
+}
+.review textarea:focus-visible {
+  outline: var(--or-field-focus-width) solid var(--or-field-focus);
+}

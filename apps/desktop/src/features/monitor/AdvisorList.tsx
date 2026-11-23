@@ -5,6 +5,7 @@ import { proposeMonitorSql } from '@openrows/ipc';
 import type { MonitorTarget, Suggestion } from '@openrows/ipc';
 import { useAdvisorPreferences } from './advisorPreferences';
 import styles from './Monitor.module.css';
+import parts from './MonitorParts.module.css';
 import { rich, t } from './messages/lazyInvestigation';
 const HypoPgReview = lazy(() =>
   import('./HypoPgReview').then((module) => ({ default: module.HypoPgReview })),
@@ -40,10 +41,14 @@ export function AdvisorList(props: {
     );
   };
   return (
-    <section aria-label={t('optimisationAdvisor')} className={styles.advisor}>
+    <section aria-label={t('optimisationAdvisor')} className={parts.advisor}>
       <h3>{t('optimisationAdvisor')}</h3>
       <p className={styles.note}>{t('proposalsOpenEditor')}</p>
-      {props.production && <p role="status">{t('productionReviewLocks')}</p>}
+      {props.production && (
+        <p role="status" className={styles.notice} data-tone="warning">
+          {t('productionReviewLocks')}
+        </p>
+      )}
       {!cards.length && <p>{t('noSuggestionsSufficient')}</p>}
       <SuggestionRows
         cards={cards}
@@ -67,7 +72,7 @@ export function AdvisorList(props: {
           />
         </Suspense>
       )}
-      <Button size="sm" onClick={preferences.reset}>
+      <Button size="sm" variant="ghost" onClick={preferences.reset}>
         {t('restoreDismissedSuggestions')}
       </Button>
       {(error ?? preferences.error) && (
@@ -149,7 +154,7 @@ function SuggestionCard(props: {
 }): React.JSX.Element {
   const { card } = props;
   return (
-    <li className={styles.suggestion}>
+    <li className={parts.suggestion}>
       {rich('strongConfidenceConfidence', {
         strong: (
           <strong>
@@ -191,8 +196,10 @@ function SuggestionCard(props: {
             {t('hypopgWhatIf')}
           </Button>
         )}
+        <span className={styles.spacer} />
         <Button
           size="sm"
+          variant="ghost"
           onClick={() => {
             props.onDismiss();
           }}
@@ -201,6 +208,7 @@ function SuggestionCard(props: {
         </Button>
         <Button
           size="sm"
+          variant="ghost"
           onClick={() => {
             props.onSnooze();
           }}

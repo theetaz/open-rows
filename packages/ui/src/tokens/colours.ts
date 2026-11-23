@@ -66,6 +66,8 @@ export const light = {
   'separator-strong': 'rgba(60,60,67,0.24)',
   /** Column rules in the grid. */
   'grid-line': 'rgba(60,60,67,0.07)',
+  /** Neutral chart marks (bars, secondary series); one accent series at most. */
+  'chart-mark': 'rgba(142,142,147,0.6)',
   /** Control fills (`--fill`) and pressed fills or tracks (`--fill-2`). */
   'control-fill': 'rgba(118,118,128,0.12)',
   'fill-2': 'rgba(118,118,128,0.2)',
@@ -167,6 +169,7 @@ export const dark: typeof light = {
   separator: 'rgba(255,255,255,0.09)',
   'separator-strong': 'rgba(255,255,255,0.2)',
   'grid-line': 'rgba(255,255,255,0.055)',
+  'chart-mark': 'rgba(142,142,147,0.55)',
   'control-fill': 'rgba(118,118,128,0.24)',
   'fill-2': 'rgba(118,118,128,0.36)',
   hover: 'rgba(255,255,255,0.05)',

@@ -7,6 +7,7 @@ import { MetricChart } from './MetricChart';
 import { AdvisorList } from './AdvisorList';
 import { useAdvisor } from './useAdvisor';
 import styles from './Monitor.module.css';
+import parts from './MonitorParts.module.css';
 import { rich, t } from './messages/lazyInvestigation';
 
 /** Per-query evidence uses real weighted deltas and live-window trends; no source percentiles exist. */
@@ -124,7 +125,11 @@ function QueryStatistics({
       />
       <p className={styles.note}>{t('regressionAdjacentComplete')}</p>
       {detail.regressions.map((regression) => (
-        <p key={regression.currentMs}>
+        <p
+          key={regression.currentMs}
+          className={styles.notice}
+          data-tone="warning"
+        >
           {rich('regressionValuePreviousmeanms', {
             value:
               regression.currentMs === null
@@ -213,6 +218,7 @@ function RelatedSessions(props: {
         <p key={String(row.pid)}>
           <button
             type="button"
+            className={parts.linkButton}
             onClick={() => {
               props.onSession(String(row.pid));
             }}

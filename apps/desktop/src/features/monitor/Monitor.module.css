@@ -1,200 +1,290 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-.workspace {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  color: var(--or-text);
-  background: var(--or-panel-solid);
-}
-.header {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--or-separator);
-  font-size: 12px;
-}
-.header label {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.header select,
-.review textarea {
-  color: var(--or-text);
-  background: var(--or-panel-solid);
-  border: 1px solid var(--or-separator);
-  border-radius: 4px;
-}
-.navigation {
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--or-separator);
-}
-.panel {
-  padding: 12px;
-  font-size: 12px;
-}
-.panel h2 {
-  font-size: 13px;
-  margin: 0 0 8px;
-}
-.note {
+/*
+ * Monitor content (design/revamp v3 monitor.html, incidents.html): stat
+ * tiles and lists on `group` fills, the data grid's header for tables,
+ * notices on soft status fills. No outlines, no shadows on content.
+ */
+.note,
+.lead {
+  margin: 0;
   color: var(--or-secondary);
-  font-size: 12px;
+  font-size: var(--or-text-12);
+  line-height: 16px;
+}
+.lead {
+  margin-block-end: var(--or-space-10);
+  padding-inline: var(--or-space-4);
 }
 .error {
   color: var(--or-danger-fg);
 }
-.tiles {
+.empty {
+  margin: 0;
+  padding: var(--or-space-24) var(--or-space-16);
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
+  color: var(--or-secondary);
+  text-align: center;
+}
+.spacer {
+  flex: 1;
+}
+.filter {
+  max-inline-size: 320px;
+}
+.number {
+  font-variant-numeric: tabular-nums;
+}
+/* A section's 13 px semibold head (`.head` in the mockups). */
+.content h2,
+.content h3,
+.content h4 {
+  margin: var(--or-space-16) 0 var(--or-space-6);
+  padding-inline: var(--or-space-4);
+  font-size: var(--or-text-13);
+  font-weight: var(--or-weight-semibold);
+}
+.content h2:first-child,
+.content h3:first-child,
+.content h4:first-child {
+  margin-block-start: 0;
+}
+/* Source state lines: one quiet 12 px block per source. */
+.sources {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-  gap: 8px;
+  gap: var(--or-space-2);
+  margin-block-end: var(--or-space-8);
+  padding-inline: var(--or-space-4);
 }
-.tile {
-  border: 1px solid var(--or-separator);
-  border-radius: 4px;
-  padding: 8px;
-  min-width: 0;
-}
-.tile h3 {
-  font-size: 12px;
-  font-weight: 500;
+.sources p,
+.note p {
   margin: 0;
 }
-.value {
-  font-variant-numeric: tabular-nums;
-  font-size: 20px;
-  margin: 8px 0;
+/* The open-incident banner and other notices (the kit's `.notice`). */
+.notice {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-10);
+  margin-block-end: var(--or-space-12);
+  padding: var(--or-space-10) var(--or-space-12);
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
 }
-.chart {
-  display: block;
-  width: 100%;
-  height: 72px;
+.notice > svg {
+  flex: none;
+  inline-size: var(--or-icon-size);
+  block-size: var(--or-icon-size);
   color: var(--or-secondary);
 }
-.chart path {
-  stroke: currentColor;
-  fill: none;
-  stroke-width: 1.5;
+.notice[data-tone='danger'] {
+  background: var(--or-danger-bg);
 }
-.table {
-  border-collapse: collapse;
-  width: 100%;
-  font-size: 12px;
+.notice[data-tone='danger'] > svg {
+  color: var(--or-danger-fg);
+}
+.notice[data-tone='warning'] {
+  background: var(--or-warning-bg);
+}
+.notice[data-tone='warning'] > svg {
+  color: var(--or-warning-fg);
+}
+.noticeBody {
+  flex: 1;
+  min-inline-size: 0;
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+  line-height: 16px;
+}
+.noticeBody strong {
+  display: block;
+  color: var(--or-text);
+  font-size: var(--or-text-13);
+  line-height: 18px;
+  font-weight: var(--or-weight-semibold);
+}
+/* Metric tiles: four to a row on a wide pane, `group` fills, 12 px gaps. */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--or-space-12);
+}
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-2);
+  min-inline-size: 0;
+  padding: var(--or-space-12);
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
+}
+.statLabel {
+  margin: 0;
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+  font-weight: var(--or-weight-regular);
+  line-height: 16px;
+}
+.content .tile > h3.statLabel {
+  margin: 0;
+  padding: 0;
+  font-size: var(--or-text-12);
+  font-weight: var(--or-weight-regular);
+}
+.value {
+  margin: 0;
+  font-size: var(--or-text-22);
+  font-weight: var(--or-weight-semibold);
+  line-height: 26px;
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
-.table th,
-.table td {
-  text-align: left;
-  padding: 4px 8px;
-  border-bottom: 1px solid var(--or-separator);
+.statNote {
+  margin: 0;
+  color: var(--or-secondary);
+  font-size: var(--or-text-11);
+  line-height: 14px;
 }
+/* Live charts: one muted line, the newest sample in the accent, gaps as dots. */
+.chart {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+  max-block-size: 120px;
+  aspect-ratio: 300 / 72;
+  margin-block: var(--or-space-6) var(--or-space-4);
+  color: var(--or-tertiary);
+  overflow: visible;
+}
+.tile .chart {
+  block-size: 48px;
+  aspect-ratio: auto;
+}
+.chart path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.chart circle {
+  fill: var(--or-chart-mark);
+}
+.chart circle.chartMark {
+  fill: var(--or-accent);
+}
+.dataTable {
+  order: 9;
+  margin-block-start: var(--or-space-2);
+  color: var(--or-secondary);
+  font-size: var(--or-text-11);
+}
+/* Lists and evidence tables: the data grid's header, gentle zebra, no rules. */
+.table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: var(--or-text-12);
+  font-variant-numeric: tabular-nums;
+}
+.table caption {
+  padding: 0 var(--or-space-4) var(--or-space-6);
+  color: var(--or-secondary);
+  text-align: start;
+}
+.table th {
+  block-size: var(--or-grid-header-height);
+  padding: 0 var(--or-space-8);
+  box-shadow: inset 0 calc(-1 * var(--or-border-width)) 0 var(--or-separator);
+  color: var(--or-secondary);
+  font-weight: var(--or-weight-medium);
+  text-align: start;
+  white-space: nowrap;
+}
+.table td {
+  block-size: 30px;
+  padding: var(--or-space-4) var(--or-space-8);
+  text-align: start;
+  vertical-align: middle;
+}
+.table tbody tr:nth-child(even) {
+  background: var(--or-row-stripe);
+}
+/* Native disclosures read as quiet heading rows with a turning chevron. */
+.disclosure {
+  margin-block-start: var(--or-space-16);
+}
+.disclosure > summary {
+  padding: var(--or-space-4);
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+  font-weight: var(--or-weight-semibold);
+}
+/* Every native disclosure in Monitor: no marker, a turning chevron. */
+.content summary {
+  list-style: none;
+  cursor: default;
+}
+.content summary::-webkit-details-marker {
+  display: none;
+}
+.content summary::before {
+  content: '›';
+  display: inline-block;
+  inline-size: 12px;
+  color: var(--or-tertiary);
+  transition: transform var(--or-motion-quick) var(--or-motion-easing);
+}
+.content details[open] > summary::before {
+  transform: rotate(90deg);
+}
+.disclosure > :not(summary) {
+  margin-block-start: var(--or-space-6);
+}
+.disclosure > section {
+  padding: var(--or-space-12);
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
+}
+/* Sized to its rows (at most 14) so short lists leave no empty stripes. */
 .grid {
   display: flex;
   flex-direction: column;
-  height: 360px;
-  min-height: 200px;
+  block-size: calc(
+    var(--or-grid-header-height) + var(--grid-rows, 14) *
+      var(--or-grid-row-height) + var(--or-space-16)
+  );
+  margin-block: var(--or-space-8);
+  border-radius: var(--or-radius-field);
+  overflow: hidden;
 }
 .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: var(--or-space-6);
   align-items: center;
-  margin: 8px 0;
+  margin: var(--or-space-8) 0;
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
 }
-.review {
-  display: grid;
-  gap: 8px;
-}
-.review textarea {
-  min-height: 120px;
-  width: 100%;
-  padding: 8px;
-  font: inherit;
-}
-.tree {
-  margin: 8px 0;
-  padding-left: 24px;
-}
-.guidance {
+/* Code and guidance on a well. */
+.guidance,
+.content pre {
+  margin: var(--or-space-6) 0;
+  padding: var(--or-space-8) var(--or-space-12);
+  border-radius: var(--or-radius-field);
+  background: var(--or-group);
+  color: var(--or-text);
+  font: var(--or-text-12) / 18px var(--or-font-mono);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-
-.advisor {
-  display: grid;
-  gap: 8px;
-}
-.advisor ul {
-  list-style: none;
+.tile pre {
+  background: transparent;
   padding: 0;
-}
-.suggestion {
-  padding: 8px 0;
-  border-bottom: 1px solid var(--or-separator);
-}
-.suggestion p {
-  margin: 4px 0;
-}
-.suggestion summary {
-  cursor: pointer;
-}
-.investigation {
-  display: grid;
-  gap: 8px;
-  max-width: 960px;
-}
-.investigation > button {
-  justify-self: start;
-}
-/* The query-tab dock becomes an inline panel inside Monitor. */
-.investigation > aside {
-  width: auto;
-  max-width: none;
-  max-height: 72vh;
-  border: 1px solid var(--or-separator);
-  border-radius: 4px;
-}
-.investigation details > summary {
-  cursor: default;
-  font-weight: 500;
-  padding: 4px 0;
-}
-.investigation fieldset {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 8px;
-  margin: 8px 0;
-  padding: 8px;
-  border: 1px solid var(--or-separator);
-  border-radius: 4px;
-}
-.investigation legend {
-  color: var(--or-secondary);
-  padding: 0 4px;
-}
-.tool {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  font-family: var(--or-font-mono);
-}
-.schedule {
-  display: grid;
-  gap: 6px;
-  margin: 8px 0;
-  padding: 8px;
-  border: 1px solid var(--or-separator);
-  border-radius: 4px;
-}
-.schedule p {
-  margin: 0;
-}
-.scheduleActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
+  margin: var(--or-space-2) 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .unavailable {
   margin: 0;

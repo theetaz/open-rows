@@ -1,19 +1,31 @@
 // SPDX-License-Identifier: Apache-2.0
 import { lazy, Suspense, useState } from 'react';
-import { Button } from '@openrows/ui';
+import { Icon, IconButton, SelectField } from '@openrows/ui';
 import type { MonitorTarget } from '@openrows/ipc';
 import type { Connection } from './report/connection';
 import { BackgroundToggle } from './BackgroundToggle';
 import type { MonitorControls } from './useMonitor';
 import type { useMonitorHistory } from './useMonitorHistory';
-import styles from './Monitor.module.css';
+import layout from './MonitorLayout.module.css';
 import { t } from './messages/lazyDashboard';
 const MonitorReportDialog = lazy(() =>
   import('./report/ReportEntry').then((module) => ({
     default: module.MonitorReportDialog,
   })),
 );
-/** Scope and explicit cadence/window controls; heavier source floors remain core-owned. */
+const INTERVALS = [
+  { value: '0', label: t('off') },
+  ...[2000, 5000, 10000, 30000, 60000].map((value) => ({
+    value: String(value),
+    label: t('valueS', { value: String(value / 1000) }),
+  })),
+];
+
+/**
+ * The Monitor's view bar (the kit's `.viewbar`): live state and scope on the
+ * left; cadence, window, background, pause and export on the right. Heavier
+ * source floors remain core-owned.
+ */
 export function MonitorHeader(props: {
   target: MonitorTarget;
   label: string;
@@ -23,67 +35,86 @@ export function MonitorHeader(props: {
 }): React.JSX.Element {
   const { monitor, history } = props;
   return (
-    <header className={styles.header}>
-      <strong>{props.label}</strong>
-      <span role="status">{freshness(monitor)}</span>
-      <label>
-        {t('liveInterval')}
-        <select
-          aria-label={t('monitorInterval')}
-          value={monitor.paused ? '0' : String(monitor.interval)}
-          onChange={(event) => {
-            const value = Number(event.target.value);
-            monitor.setPaused(!value);
-            if (value) monitor.setInterval(value);
-          }}
-        >
-          <option value="0">{t('off')}</option>
-          {[2000, 5000, 10000, 30000, 60000].map((value) => (
-            <option key={value} value={value}>
-              {t('valueS', { value: String(value / 1000) })}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label>
-        {t('timeWindow')}
-        <select
-          aria-label={t('monitorTimeWindow')}
-          value={history.hours}
-          onChange={(event) => {
-            history.setHours(Number(event.target.value));
-          }}
-        >
-          <option value="0">{t('live10Minutes')}</option>
-          {history.enabled &&
-            [1, 6, 24].map((value) => (
-              <option key={value} value={value}>
-                {t('historyValueH', { value: String(value) })}
-              </option>
-            ))}
-        </select>
-      </label>
-      <Button
-        size="sm"
-        onClick={() => {
-          monitor.setPaused(!monitor.paused);
+    <header className={layout.bar}>
+      <span
+        className={layout.liveDot}
+        data-paused={monitor.paused}
+        aria-hidden="true"
+      />
+      <strong className={layout.freshness} role="status">
+        {freshness(monitor)}
+      </strong>
+      <span className={layout.scope}>{props.label}</span>
+      <span className={layout.spacer} />
+      <span className={layout.barLabel}>{t('liveInterval')}</span>
+      <SelectField
+        aria-label={t('monitorInterval')}
+        controlSize="compact"
+        value={monitor.paused ? '0' : String(monitor.interval)}
+        options={INTERVALS}
+        onValueChange={(value) => {
+          monitor.setPaused(!Number(value));
+          if (Number(value)) monitor.setInterval(Number(value));
         }}
-      >
-        {monitor.paused ? t('resumeMonitor') : t('pauseMonitor')}
-      </Button>
+      />
+      <WindowPicker history={history} />
       <BackgroundToggle
         target={props.target}
         enabled={monitor.data?.reply.background ?? false}
         disabled={monitor.paused || !monitor.data}
       />
-      {history.hours > 0 && (
-        <Button size="sm" onClick={history.refresh}>
-          {t('refreshHistoryRange')}
-        </Button>
-      )}
+      <IconButton
+        aria-label={monitor.paused ? t('resumeMonitor') : t('pauseMonitor')}
+        title={monitor.paused ? t('resumeMonitor') : t('pauseMonitor')}
+        size="sm"
+        variant="ghost"
+        onClick={() => {
+          monitor.setPaused(!monitor.paused);
+        }}
+      >
+        <Icon name={monitor.paused ? 'play' : 'pause'} />
+      </IconButton>
       <ReportButton {...props} />
-      <span className={styles.note}>{t('databaseStatementsI')}</span>
     </header>
+  );
+}
+
+/** `Time window`: the live ten minutes, or stored history when it is on. */
+function WindowPicker(props: {
+  history: ReturnType<typeof useMonitorHistory>;
+}): React.JSX.Element {
+  const { history } = props;
+  const options = [
+    { value: '0', label: t('live10Minutes') },
+    ...(history.enabled ? [1, 6, 24] : []).map((value) => ({
+      value: String(value),
+      label: t('historyValueH', { value: String(value) }),
+    })),
+  ];
+  return (
+    <>
+      <span className={layout.barLabel}>{t('timeWindow')}</span>
+      <SelectField
+        aria-label={t('monitorTimeWindow')}
+        controlSize="compact"
+        value={String(history.hours)}
+        options={options}
+        onValueChange={(value) => {
+          history.setHours(Number(value));
+        }}
+      />
+      {history.hours > 0 && (
+        <IconButton
+          aria-label={t('refreshHistoryRange')}
+          title={t('refreshHistoryRange')}
+          size="sm"
+          variant="ghost"
+          onClick={history.refresh}
+        >
+          <Icon name="refresh" />
+        </IconButton>
+      )}
+    </>
   );
 }
 
@@ -94,14 +125,17 @@ function ReportButton(
   const [reporting, setReporting] = useState(false);
   return (
     <>
-      <Button
+      <IconButton
+        aria-label={t('exportReport')}
+        title={t('exportReport')}
         size="sm"
+        variant="ghost"
         onClick={() => {
           setReporting(true);
         }}
       >
-        {t('exportReport')}
-      </Button>
+        <Icon name="download" />
+      </IconButton>
       {reporting && (
         <Suspense fallback={null}>
           <MonitorReportDialog

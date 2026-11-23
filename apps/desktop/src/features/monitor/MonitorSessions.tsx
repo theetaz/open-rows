@@ -12,6 +12,7 @@ import {
   sortProcesses,
 } from '../processes/processModel';
 import type { MonitorTable } from './monitorData';
+import { gridRows } from './MonitorGrid';
 import styles from './Monitor.module.css';
 import { t } from './messages/lazyDashboard';
 
@@ -68,6 +69,7 @@ export function MonitorSessions(props: {
   return (
     <>
       <TextField
+        className={styles.filter}
         controlSize="compact"
         type="search"
         aria-label={t('filterSessions')}
@@ -77,7 +79,7 @@ export function MonitorSessions(props: {
         }}
         placeholder={t('filterSessions2')}
       />
-      <div className={styles.grid}>
+      <div className={styles.grid} style={gridRows(processes.length)}>
         <ProcessGrid
           processes={processes.slice(0, 100)}
           cursor={{

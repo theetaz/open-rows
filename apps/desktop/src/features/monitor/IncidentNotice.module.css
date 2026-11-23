@@ -1,23 +1,30 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/* In-app incident notices float bottom right on the menu surface (glass: it floats). */
 .notices {
   position: fixed;
-  right: 12px;
-  bottom: 12px;
+  right: var(--or-space-12);
+  bottom: calc(var(--or-footer-height) + var(--or-space-8));
   z-index: 20;
   display: grid;
-  gap: 4px;
+  gap: var(--or-space-6);
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: 12px;
+  font-size: var(--or-text-12);
 }
 .notice {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
+  gap: var(--or-space-10);
+  max-inline-size: 420px;
+  padding: var(--or-space-8) var(--or-space-8) var(--or-space-8)
+    var(--or-space-12);
+  border-radius: var(--or-radius-panel);
+  background: var(--or-glass-float);
+  box-shadow: var(--or-panel-shadow);
   color: var(--or-text);
-  background: var(--or-panel-solid);
-  border: 1px solid var(--or-separator);
-  border-radius: 4px;
+}
+.notice > span {
+  flex: 1;
+  min-inline-size: 0;
 }

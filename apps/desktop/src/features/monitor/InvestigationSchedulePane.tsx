@@ -7,6 +7,7 @@ import {
 } from './useInvestigationSchedule';
 import { ScheduleResults } from './ScheduleResults';
 import styles from './Monitor.module.css';
+import parts from './MonitorParts.module.css';
 import { t } from './messages/lazyInvestigation';
 /** Explicit provider, tool, recurrence and spend controls; schedules default off. */
 export function InvestigationSchedulePane(props: {
@@ -121,7 +122,7 @@ function ToolSelection(props: {
     <fieldset>
       <legend>{t('permittedReadPropose')}</legend>
       {investigationTools.map((tool) => (
-        <label key={tool} className={styles.tool}>
+        <label key={tool} className={parts.tool}>
           <input
             type="checkbox"
             checked={props.config.tools.includes(tool)}

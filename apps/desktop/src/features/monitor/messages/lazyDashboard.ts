@@ -15,6 +15,8 @@ export const { t } = defineMessages({
   blockerBlockedQuery:
     'Blocker → blocked. Query and transaction ages are shown; lock-wait duration is unavailable. Unseen owners, cycles and capped chains remain explicit.',
   blockingChains: 'Blocking chains',
+  blocker: 'Blocker',
+  blocked: 'Blocked',
   noBlockingEdges: 'No blocking edges in this sample.',
   graphDisplayLimit: 'Graph display limit (100 nodes)',
   localMonitorHistory: 'Local monitor history',
@@ -134,6 +136,9 @@ export const { t } = defineMessages({
     'Disconnected. Connect to start monitoring; collection has stopped.',
   monitorDatabase: 'Monitor on {database}',
   monitorPanel: 'Monitor panel',
+  monitor: 'Monitor',
+  showIncident: 'Open incident',
+  openIncidentsMore: '{count} more open',
   localHistorySettings: 'Local history settings',
   ownQueries: 'Own queries',
   activePartsPer:

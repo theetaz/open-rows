@@ -47,6 +47,12 @@ export const iconPaths = {
   calendar: 'M4 6h16v14H4ZM4 10h16M8 3v5M16 3v5',
   sparkles:
     'M10 4l1.6 4.4L16 10l-4.4 1.6L10 16l-1.6-4.4L4 10l4.4-1.6ZM18 14l.8 2.2L21 17l-2.2.8L18 20l-.8-2.2L15 17l2.2-.8Z',
+  bell: 'M6 16.8V11a6 6 0 0 1 12 0v5.8l1.5 2H4.5ZM10 20.8a2.1 2.1 0 0 0 4 0',
+  server: 'M4 4.5h16v6H4ZM4 13.5h16v6H4ZM7.5 7.5h.01M7.5 16.5h.01',
+  chart: 'M4 20h16M7 16.5V12M12 16.5V7M17 16.5V10',
+  pause: 'M8.5 5v14M15.5 5v14',
+  play: 'M8 5.5v13l10.5-6.5Z',
+  download: 'M12 4v11M7.5 11l4.5 4.5 4.5-4.5M4.5 19.5h15',
 } as const;
 
 /** Names of the original line icons. */
