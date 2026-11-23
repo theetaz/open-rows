@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useMemo, useState } from 'react';
-import { Button, TextField } from '@openrows/ui';
+import { Button } from '@openrows/ui';
 import { Sheet, SheetActions } from '@openrows/ui/sheet';
 import { checkRestore, restoreContents, startRestore } from '@openrows/ipc';
 import type {
@@ -25,7 +25,8 @@ import {
   scopeOf,
 } from './model';
 import { ArchiveEntries, RestoreOptions, TargetChoice } from './RestoreOptions';
-import { CommandList, ToolList, useDumpContext } from './ToolList';
+import { RestoreConfirm } from './RestoreConfirm';
+import { ToolList, useDumpContext } from './ToolList';
 import styles from './Dump.module.css';
 import { t } from './messages';
 
@@ -75,41 +76,6 @@ function useContents(
     [target, file],
   );
   return useLoaded(request, restoreContents);
-}
-
-function Confirm(props: {
-  check: RestoreCheckDto;
-  typed: string;
-  onTyped: (typed: string) => void;
-}): React.JSX.Element {
-  const { check } = props;
-  if (check.blocked)
-    return (
-      <p className={styles.error} role="alert">
-        {check.blocked}
-      </p>
-    );
-  return (
-    <>
-      <CommandList commands={check.commands} />
-      {check.warnings.map((warning) => (
-        <p key={warning} className={styles.warning} role="status">
-          {warning}
-        </p>
-      ))}
-      {check.typed && (
-        <TextField
-          label={t('typeDatabaseConfirm', { database: check.database })}
-          spellCheck={false}
-          autoComplete="off"
-          value={props.typed}
-          onChange={(event) => {
-            props.onTyped(event.target.value);
-          }}
-        />
-      )}
-    </>
-  );
 }
 
 /** Pick another backup file, or a `pg_dump` directory on PostgreSQL. */
@@ -170,9 +136,8 @@ function Body(props: {
   file: PickedDumpDto;
   request: RestoreRequest;
   onRequest: (request: RestoreRequest) => void;
-  entries: Loaded<ArchiveEntryDto[]>;
 }): React.JSX.Element {
-  const { context, file, request, onRequest, entries } = props;
+  const { context, file, request, onRequest } = props;
   return (
     <>
       <ToolList
@@ -194,10 +159,49 @@ function Body(props: {
           onRequest({ ...request, options });
         }}
       />
+    </>
+  );
+}
+
+/** The gate's answer: why it failed, or the commands and the confirmation. */
+function Checked(props: {
+  check: Loaded<RestoreCheckDto>;
+  typed: string;
+  onTyped: (typed: string) => void;
+}): React.JSX.Element | null {
+  const { check } = props;
+  if (check.status === 'failed')
+    return (
+      <p className={styles.error} role="alert">
+        {check.message}
+      </p>
+    );
+  if (check.status !== 'ready') return null;
+  return (
+    <RestoreConfirm
+      check={check.value}
+      typed={props.typed}
+      onTyped={props.onTyped}
+    />
+  );
+}
+
+/** The archive's entries to pick, under their subhead. */
+function Entries(props: {
+  request: RestoreRequest;
+  onRequest: (request: RestoreRequest) => void;
+  entries: Loaded<ArchiveEntryDto[]>;
+}): React.JSX.Element {
+  const { request, onRequest, entries } = props;
+  return (
+    <>
       {entries.status === 'failed' && (
         <p className={styles.error} role="alert">
           {entries.message}
         </p>
+      )}
+      {entries.status === 'ready' && entries.value.length > 0 && (
+        <h3 className={styles.subhead}>{t('archiveContents')}</h3>
       )}
       {entries.status === 'ready' && (
         <ArchiveEntries
@@ -226,6 +230,24 @@ function restoreSummary(file: PickedDumpDto, target: DumpTarget): string {
     : t('fileKindsInto', into);
 }
 
+/** Into the open database with the default options (or only the chosen schema). */
+function initialRequest(
+  target: DumpTarget,
+  file: PickedDumpDto,
+): RestoreRequest {
+  return {
+    scope: scopeOf(target),
+    path: file.path,
+    target: { kind: 'existing' },
+    options: {
+      ...defaultRestoreOptions,
+      schemas: target.restoreSchema ? [target.restoreSchema] : [],
+    },
+    confirmToken: null,
+    typedName: null,
+  };
+}
+
 /**
  * Restore Database…: the picked file, where it goes, the options, the exact
  * commands and the confirmation the gate asks for (the database name on
@@ -239,17 +261,7 @@ export function RestoreSheet(props: {
   const { target, file } = props;
   const context = useDumpContext(target);
   const entries = useContents(target, file);
-  const [request, setRequest] = useState<RestoreRequest>(() => ({
-    scope: scopeOf(target),
-    path: file.path,
-    target: { kind: 'existing' },
-    options: {
-      ...defaultRestoreOptions,
-      schemas: target.restoreSchema ? [target.restoreSchema] : [],
-    },
-    confirmToken: null,
-    typedName: null,
-  }));
+  const [request, setRequest] = useState(() => initialRequest(target, file));
   const ready = context.status === 'ready' ? context.context : null;
   const check = useLoaded(ready ? request : null, checkRestore);
   const [typed, setTyped] = useState('');
@@ -263,31 +275,42 @@ export function RestoreSheet(props: {
     showDump(null);
   };
   return (
-    <Sheet title={t('restoreName', { name: file.name })} onClose={close}>
+    <Sheet
+      title={t('restoreName', { name: file.name })}
+      size="editor"
+      onClose={close}
+    >
       <p className={styles.summary}>{restoreSummary(file, target)}</p>
       {target.restoreSchema && (
         <p>{t('restoreOnlySchema', { restoreSchema: target.restoreSchema })}</p>
       )}
-      {context.status === 'failed' && (
-        <p className={styles.error} role="alert">
-          {context.message}
-        </p>
-      )}
-      {ready && (
-        <Body
-          context={ready}
-          file={file}
-          request={request}
-          onRequest={setRequest}
-          entries={entries}
-        />
-      )}
-      {check.status === 'failed' && ready && (
-        <p className={styles.error} role="alert">
-          {check.message}
-        </p>
-      )}
-      {checked && <Confirm check={checked} typed={typed} onTyped={setTyped} />}
+      <div className={styles.halves} data-split="">
+        <section className={styles.half}>
+          {context.status === 'failed' && (
+            <p className={styles.error} role="alert">
+              {context.message}
+            </p>
+          )}
+          {ready && (
+            <Body
+              context={ready}
+              file={file}
+              request={request}
+              onRequest={setRequest}
+            />
+          )}
+        </section>
+        {ready && (
+          <section className={styles.half}>
+            <Entries
+              request={request}
+              onRequest={setRequest}
+              entries={entries}
+            />
+            <Checked check={check} typed={typed} onTyped={setTyped} />
+          </section>
+        )}
+      </div>
       <SheetActions
         leading={<ChooseOther target={target} folders={postgres} />}
       >

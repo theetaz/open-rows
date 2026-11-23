@@ -21,20 +21,28 @@ export function TargetSection(props: {
     ? props.tables
     : [draft.table, ...props.tables];
   return (
-    <section className={styles.section} aria-label={t('target')}>
-      <SegmentedControl
-        aria-label={t('target')}
-        options={targetChoices}
-        value={draft.target}
-        onValueChange={(target) => {
-          onChange({
-            target,
-            table: target === draft.target ? draft.table : '',
-          });
-        }}
-      />
+    <section className={styles.form} aria-label={t('target')}>
+      <div className={styles.row}>
+        <span className={styles.rowLabel} aria-hidden="true">
+          {t('target')}
+        </span>
+        <SegmentedControl
+          className={styles.segmented}
+          size="compact"
+          aria-label={t('target')}
+          options={targetChoices}
+          value={draft.target}
+          onValueChange={(target) => {
+            onChange({
+              target,
+              table: target === draft.target ? draft.table : '',
+            });
+          }}
+        />
+      </div>
       {draft.target === 'existing' && props.tables.length > 0 ? (
         <SelectField
+          className={styles.row}
           label={t('tableSchema', { schema: props.schema })}
           value={draft.table}
           options={options.map((name) => ({
@@ -47,6 +55,7 @@ export function TargetSection(props: {
         />
       ) : (
         <TextField
+          className={styles.row}
           label={
             draft.target === 'new'
               ? t('newTableSchema', { schema: props.schema })

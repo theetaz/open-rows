@@ -56,6 +56,7 @@ function Compression(props: {
   const tar = props.options.format === 'tar';
   return (
     <SelectField
+      className={styles.row}
       label={t('compression')}
       value={tar ? 'default' : String(props.options.compression ?? 'default')}
       disabled={tar}
@@ -78,34 +79,34 @@ export function BackupOptions(props: {
   if (props.engine === 'sqlite') return null;
   const postgres = props.engine === 'postgres';
   return (
-    <fieldset className={styles.options}>
+    <fieldset className={styles.form}>
       <legend>{t('options')}</legend>
-      <div className={styles.row}>
-        {postgres && (
-          <SelectField
-            label={t('format')}
-            value={options.format}
-            options={FORMATS}
-            onValueChange={(format) => {
-              const tar = format === 'tar';
-              onChange({
-                ...options,
-                format,
-                compression: tar ? null : options.compression,
-              });
-            }}
-          />
-        )}
+      {postgres && (
         <SelectField
-          label={t('content')}
-          value={options.content}
-          options={CONTENTS}
-          onValueChange={(content) => {
-            onChange({ ...options, content });
+          className={styles.row}
+          label={t('format')}
+          value={options.format}
+          options={FORMATS}
+          onValueChange={(format) => {
+            const tar = format === 'tar';
+            onChange({
+              ...options,
+              format,
+              compression: tar ? null : options.compression,
+            });
           }}
         />
-        {postgres && <Compression options={options} onChange={onChange} />}
-      </div>
+      )}
+      <SelectField
+        className={styles.row}
+        label={t('content')}
+        value={options.content}
+        options={CONTENTS}
+        onValueChange={(content) => {
+          onChange({ ...options, content });
+        }}
+      />
+      {postgres && <Compression options={options} onChange={onChange} />}
       {FLAGS[props.engine].map((flag) => (
         <label key={flag.key}>
           <input

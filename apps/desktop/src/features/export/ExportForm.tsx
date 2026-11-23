@@ -29,6 +29,7 @@ export function ExportForm({ options, onOptions }: Props): React.JSX.Element {
   return (
     <fieldset className={styles.form}>
       <SelectField
+        className={styles.row}
         label={t('format')}
         value={options.format}
         options={formatChoices}
@@ -49,6 +50,7 @@ function FormatOptions({ options, set }: Section): React.JSX.Element {
     case 'json':
       return (
         <SelectField
+          className={styles.row}
           label={t('layout')}
           value={options.json.pretty ? 'pretty' : 'compact'}
           options={layoutChoices}
@@ -65,6 +67,7 @@ function FormatOptions({ options, set }: Section): React.JSX.Element {
       return (
         <>
           <SelectField
+            className={styles.row}
             label={t('compression')}
             value={options.parquet.compression}
             options={compressionChoices}
@@ -72,13 +75,13 @@ function FormatOptions({ options, set }: Section): React.JSX.Element {
               set({ parquet: { compression } });
             }}
           />
-          <p className={styles.note}>{t('columnsKeepTheir')}</p>
+          <p className={styles.help}>{t('columnsKeepTheir')}</p>
         </>
       );
     case 'ndjson':
-      return <p className={styles.note}>{t('oneJsonObject')}</p>;
+      return <p className={styles.help}>{t('oneJsonObject')}</p>;
     case 'markdown':
-      return <p className={styles.note}>{t('githubFlavouredTable')}</p>;
+      return <p className={styles.help}>{t('githubFlavouredTable')}</p>;
   }
 }
 
@@ -95,7 +98,7 @@ function ExcelOptions({ options, set }: Section): React.JSX.Element {
         />
         {t('columnNamesBold')}
       </label>
-      <p className={styles.note}>{t('numbersDatesBooleans')}</p>
+      <p className={styles.help}>{t('numbersDatesBooleans')}</p>
     </>
   );
 }
@@ -105,6 +108,7 @@ function SqlOptions({ options, set }: Section): React.JSX.Element {
   return (
     <>
       <TextField
+        className={styles.row}
         label={t('tableName')}
         value={options.table}
         spellCheck={false}
@@ -113,6 +117,7 @@ function SqlOptions({ options, set }: Section): React.JSX.Element {
         }}
       />
       <TextField
+        className={styles.row}
         label={t('rowsPerInsert')}
         value={options.rowsText}
         inputMode="numeric"
@@ -121,7 +126,7 @@ function SqlOptions({ options, set }: Section): React.JSX.Element {
           set({ rowsText: event.target.value });
         }}
       />
-      <p className={styles.note}>{t('namesValuesQuoted')}</p>
+      <p className={styles.help}>{t('namesValuesQuoted')}</p>
     </>
   );
 }

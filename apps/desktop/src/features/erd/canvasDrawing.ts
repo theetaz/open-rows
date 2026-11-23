@@ -52,10 +52,10 @@ function colors(canvas: HTMLCanvasElement): Paint {
   const color = (token: string): string => css.getPropertyValue(token).trim();
   return {
     page: color('--or-page'),
-    box: color('--or-window'),
+    box: color('--or-group'),
     head: color('--or-control-fill'),
     text: color('--or-text'),
-    line: color('--or-control-stroke'),
+    line: color('--or-separator-strong'),
     accent: color('--or-accent'),
   };
 }

@@ -1,43 +1,68 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * Run a .sql file (docs/20 §5.1): a secondary lead, the safety check as a
+ * notice, the options as a grouped inset list, then the progress bar and
+ * the failed statements as grouped rows.
+ */
 .summary {
+  margin: calc(-1 * var(--or-space-8)) 0 0;
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+  line-height: 16px;
+}
+.done {
   margin: 0;
+  font-weight: var(--or-weight-semibold);
+  overflow-wrap: anywhere;
 }
 .note {
   margin: 0;
   color: var(--or-secondary);
   font-size: var(--or-text-12);
+  line-height: 16px;
 }
 .error {
   margin: 0;
   color: var(--or-danger-fg);
   overflow-wrap: anywhere;
 }
+
+/* Statements that need a confirmation (or are blocked): a notice. */
 .safety {
+  min-inline-size: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--or-space-6);
+  gap: var(--or-space-8);
+  padding: var(--or-space-10) var(--or-space-12);
+  border-radius: var(--or-radius-card);
+  background: var(--or-warning-bg);
+}
+.safety[role='alert'] {
+  background: var(--or-danger-bg);
 }
 .safety p {
   margin: 0;
+  font-weight: var(--or-weight-semibold);
 }
 .samples,
 .errors ol {
   display: flex;
   flex-direction: column;
-  gap: var(--or-space-4);
   margin: 0;
-  padding: var(--or-space-6);
+  padding: 0;
   list-style: none;
-  border: var(--or-border-width) solid var(--or-control-stroke);
-  border-radius: var(--or-radius-field);
   font-size: var(--or-text-12);
+}
+.samples {
+  gap: var(--or-space-2);
 }
 .samples li,
 .errors li {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
   column-gap: var(--or-space-8);
-  min-width: 0;
+  min-inline-size: 0;
 }
 .samples code,
 .errors code,
@@ -46,6 +71,8 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--or-font-mono);
+  font-size: var(--or-text-12);
+  letter-spacing: 0;
 }
 .line {
   color: var(--or-secondary);
@@ -56,52 +83,81 @@
   color: var(--or-danger-fg);
   overflow-wrap: anywhere;
 }
-.errors {
-  display: flex;
-  flex-direction: column;
-  gap: var(--or-space-4);
-}
-.errors h3 {
-  margin: 0;
-  font-size: var(--or-text-12);
-  font-weight: 600;
-}
-.errors ol {
-  max-block-size: 200px;
-  overflow-y: auto;
-}
+
+/* Options: one grouped inset list, a 36 px row per choice. */
 .options {
   display: flex;
   flex-direction: column;
-  gap: var(--or-space-4);
   margin: 0;
   padding: 0;
   border: 0;
+  min-inline-size: 0;
 }
-.options legend {
-  padding: 0;
-  margin-block-end: var(--or-space-4);
+.options legend,
+.errors h3 {
+  margin: 0 0 var(--or-space-6);
+  padding: 0 var(--or-space-12);
   color: var(--or-secondary);
   font-size: var(--or-text-12);
+  font-weight: var(--or-weight-semibold);
 }
 .options label {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: var(--or-space-6);
+  gap: var(--or-space-8);
+  min-block-size: 36px;
+  padding: var(--or-space-6) var(--or-space-12);
+  background: var(--or-group);
+}
+.options label:first-of-type {
+  border-start-start-radius: var(--or-radius-card);
+  border-start-end-radius: var(--or-radius-card);
+}
+.options label:last-of-type {
+  border-end-start-radius: var(--or-radius-card);
+  border-end-end-radius: var(--or-radius-card);
+}
+.options label + label::before,
+.errors li + li::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto var(--or-space-12);
+  block-size: var(--or-border-width);
+  background: var(--or-separator);
 }
 .options input {
   margin: 0;
   accent-color: var(--or-accent);
 }
+.options .note {
+  margin-block-start: var(--or-space-6);
+  padding-inline: var(--or-space-12);
+}
+
+/* Progress: the counts over a 4 px bar, then the running statement. */
 .status {
   display: flex;
   flex-direction: column;
-  gap: var(--or-space-8);
+  gap: var(--or-space-6);
+  min-inline-size: 0;
 }
-.status progress {
+.status progress:not(:indeterminate) {
+  appearance: none;
   inline-size: 100%;
   block-size: 4px;
-  accent-color: var(--or-accent);
+  border: 0;
+  border-radius: 2px;
+  background: var(--or-fill-2);
+  overflow: hidden;
+}
+.status progress::-webkit-progress-bar {
+  border-radius: 2px;
+  background: var(--or-fill-2);
+}
+.status progress::-webkit-progress-value {
+  border-radius: 2px;
+  background: var(--or-accent-fill);
 }
 .counts {
   display: flex;
@@ -115,5 +171,32 @@
 .current {
   display: block;
   color: var(--or-secondary);
-  font-size: var(--or-text-12);
+}
+
+/* Failed statements: line pill, the statement, the message below. */
+.errors {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+.errors ol {
+  max-block-size: 200px;
+  overflow-y: auto;
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
+}
+.errors li {
+  position: relative;
+  padding: var(--or-space-6) var(--or-space-12);
+  row-gap: var(--or-space-2);
+}
+.errors .line {
+  padding: 0 var(--or-space-6);
+  border-radius: var(--or-radius-capsule);
+  background: var(--or-danger-bg);
+  color: var(--or-danger-fg);
+  font-size: var(--or-text-11);
+  line-height: 16px;
+  font-weight: var(--or-weight-medium);
+  white-space: nowrap;
 }

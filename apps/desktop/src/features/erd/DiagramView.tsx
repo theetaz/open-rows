@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import type { SchemaDiagramDto } from '@openrows/ipc';
 import { DiagramContent } from './DiagramContent';
-import { DiagramToolbar } from './DiagramToolbar';
+import { DiagramToolbar, ZoomControls } from './DiagramToolbar';
 import { exportDiagram } from './exportImage';
 import { exportLayout } from './exportLayout';
 import { DiagramCanvas } from './DiagramCanvas';
@@ -67,6 +68,8 @@ function useExport(
 
 /** Toolbar, pannable canvas and status line of a loaded diagram. */
 export function DiagramView(props: {
+  /** Controls before the search field (Choose tables…). */
+  leading?: ReactNode;
   schema: string;
   diagram: SchemaDiagramDto;
   layout: DiagramLayout;
@@ -94,6 +97,7 @@ export function DiagramView(props: {
   return (
     <div className={styles.view}>
       <DiagramToolbar
+        leading={props.leading}
         query={query}
         onQuery={(next) => {
           setQuery(next);
@@ -107,24 +111,28 @@ export function DiagramView(props: {
           reveal(found, cursor + 1);
         }}
         matches={found.length}
-        scale={pan.view.scale}
-        onZoom={pan.zoomBy}
-        onFit={() => {
-          pan.fit(layout);
-        }}
         exporting={exporter.busy}
         onExport={exporter.run}
         onDone={props.onDone}
       />
-      <Drawing
-        layout={layout}
-        pan={pan}
-        attach={attach}
-        matches={matches}
-        content={content}
-        schema={props.schema}
-        onOpen={props.onOpen}
-      />
+      <div className={styles.stage}>
+        <Drawing
+          layout={layout}
+          pan={pan}
+          attach={attach}
+          matches={matches}
+          content={content}
+          schema={props.schema}
+          onOpen={props.onOpen}
+        />
+        <ZoomControls
+          scale={pan.view.scale}
+          onZoom={pan.zoomBy}
+          onFit={() => {
+            pan.fit(layout);
+          }}
+        />
+      </div>
       <Status diagram={props.diagram} notice={exporter.notice} />
     </div>
   );

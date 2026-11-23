@@ -123,6 +123,11 @@ function JobRow({
           {job.title}
         </span>
         <span className={styles.kind}>{kindLabel(job.kind)}</span>
+        {running && job.fraction !== undefined && (
+          <span className={styles.percent}>
+            {`${String(Math.round(job.fraction * 100))}%`}
+          </span>
+        )}
       </div>
       {running && (
         <progress
@@ -138,11 +143,17 @@ function JobRow({
   );
 }
 
+/** The small label of each job kind; unknown kinds show as they are. */
+const KIND_LABELS: Readonly<Record<string, string>> = {
+  'run-file': t('sqlFile'),
+  export: t('export'),
+  import: t('import'),
+  backup: t('backup'),
+  restore: t('restore'),
+};
+
 function kindLabel(kind: string): string {
-  if (kind === 'run-file') return t('sqlFile');
-  if (kind === 'export') return t('export');
-  if (kind === 'import') return t('import');
-  return kind;
+  return KIND_LABELS[kind] ?? kind;
 }
 
 function JobActions({

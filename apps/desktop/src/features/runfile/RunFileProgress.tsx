@@ -34,6 +34,7 @@ export function RunFileProgress({
       <SheetActions>
         {running && (
           <Button
+            variant="destructive"
             disabled={!runId}
             onClick={() => {
               if (runId) void cancelQuery(runId);
@@ -59,11 +60,6 @@ function Running({
 }): React.JSX.Element {
   return (
     <div className={styles.status} role="status">
-      <progress
-        aria-label={t('runProgress')}
-        max={Math.max(run.size, 1)}
-        value={run.bytes}
-      />
       <p className={styles.counts}>
         <span>
           {t('statementsTotalStatements', {
@@ -79,6 +75,11 @@ function Running({
         </span>
         <span>{elapsedText(elapsed)}</span>
       </p>
+      <progress
+        aria-label={t('runProgress')}
+        max={Math.max(run.size, 1)}
+        value={run.bytes}
+      />
       {run.current && (
         <code className={styles.current} title={run.current}>
           {run.current}
@@ -117,7 +118,7 @@ function Summary({ run }: { run: FileRunState }): React.JSX.Element {
   const failed = !!run.failure || run.finished?.outcome === 'failed';
   return (
     <p
-      className={failed ? styles.error : styles.summary}
+      className={failed ? styles.error : styles.done}
       role={failed ? 'alert' : 'status'}
     >
       {outcomeText(run)}

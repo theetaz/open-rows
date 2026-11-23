@@ -1,26 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useState } from 'react';
-import { Button, TextField } from '@openrows/ui';
+import { Button, Icon, TextField } from '@openrows/ui';
 import { Sheet, SheetActions } from '@openrows/ui/sheet';
 import { listObjects } from '@openrows/ipc';
 import type { DiagramTarget } from '@openrows/ipc';
+import styles from './Erd.module.css';
 import { t } from './messages';
 
-/** Choose exact table names from the entire schema, independently of the diagram cap. */
-export function TablePicker(props: {
-  target: DiagramTarget;
-  onSelect: (names: string[] | undefined) => void;
-  onClose: () => void;
-}): React.JSX.Element {
+/** Every table name of the schema, or why they could not be listed. */
+function useTableNames(target: DiagramTarget): {
+  names: string[];
+  error: string | null;
+} {
   const [names, setNames] = useState<string[]>([]);
-  const [selected, setSelected] = useState(
-    () => new Set(props.target.tables ?? []),
-  );
-  const [search, setSearch] = useState('');
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     let live = true;
-    const { profileId, database, schema } = props.target;
+    const { profileId, database, schema } = target;
     listObjects(
       profileId,
       database,
@@ -38,18 +34,41 @@ export function TablePicker(props: {
     return () => {
       live = false;
     };
-  }, [props.target]);
+  }, [target]);
+  return { names, error };
+}
+
+/** Choose exact table names from the entire schema, independently of the diagram cap. */
+export function TablePicker(props: {
+  target: DiagramTarget;
+  onSelect: (names: string[] | undefined) => void;
+  onClose: () => void;
+}): React.JSX.Element {
+  const { names, error } = useTableNames(props.target);
+  const [selected, setSelected] = useState(
+    () => new Set(props.target.tables ?? []),
+  );
+  const [search, setSearch] = useState('');
   return (
     <Sheet title={t('chooseDiagramTables')} onClose={props.onClose}>
       <TextField
-        label={t('filterTables')}
+        aria-label={t('filterTables')}
+        placeholder={t('filterTables')}
+        controlSize="search"
+        leadingIcon={<Icon name="search" />}
         value={search}
         onChange={(event) => {
           setSearch(event.target.value);
         }}
       />
-      <p>{t('countSelectedMaximum', { count: String(selected.size) })}</p>
-      {error && <p role="alert">{error}</p>}
+      <p className={styles.count}>
+        {t('countSelectedMaximum', { count: String(selected.size) })}
+      </p>
+      {error && (
+        <p className={styles.error} role="alert">
+          {error}
+        </p>
+      )}
       <TableChoices
         key={search}
         names={names}
@@ -92,9 +111,9 @@ function TableChoices(props: {
     name.toLowerCase().includes(search.toLowerCase()),
   );
   return (
-    <div style={{ maxHeight: '45vh', overflow: 'auto' }}>
+    <div className={styles.choices}>
       {shown.slice(0, limit).map((name) => (
-        <label key={name} style={{ display: 'block' }}>
+        <label key={name}>
           <input
             type="checkbox"
             checked={selected.has(name)}
@@ -104,7 +123,7 @@ function TableChoices(props: {
               else next.delete(name);
               props.onChange(next);
             }}
-          />{' '}
+          />
           {name}
         </label>
       ))}

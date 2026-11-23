@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { Button, SelectField } from '@openrows/ui';
+import { Button, Icon, SelectField } from '@openrows/ui';
 import type { ImportOptionsDto } from '@openrows/ipc';
 import {
   delimiterChoices,
@@ -21,12 +21,16 @@ export function FileSection(props: {
   return (
     <section className={styles.section} aria-label={t('file')}>
       <div className={styles.fileRow}>
-        <Button onClick={props.onPick}>
-          {props.file ? t('chooseAnotherFile') : t('chooseFile')}
-        </Button>
-        <span className={styles.fileName}>
+        <Icon name="code" />
+        <span
+          className={styles.fileName}
+          data-empty={props.file ? undefined : ''}
+        >
           {props.file?.fileName ?? t('csvTsvJson')}
         </span>
+        <Button size="sm" onClick={props.onPick}>
+          {props.file ? t('chooseAnotherFile') : t('chooseFile')}
+        </Button>
       </div>
       {props.options && (
         <ParseOptions options={props.options} onOptions={props.onOptions} />
@@ -51,8 +55,9 @@ function ParseOptions(props: {
         { value: options.encoding, label: options.encoding },
       ];
   return (
-    <div className={styles.optionGrid}>
+    <div className={styles.form}>
       <SelectField
+        className={styles.row}
         label={t('format')}
         value={options.format}
         options={formatChoices}
@@ -61,6 +66,7 @@ function ParseOptions(props: {
         }}
       />
       <SelectField
+        className={styles.row}
         label={t('encoding')}
         value={options.encoding}
         options={encodings}
@@ -97,6 +103,7 @@ function DelimitedOptions(props: {
   return (
     <>
       <SelectField
+        className={styles.row}
         label={t('delimiter')}
         value={options.delimiter}
         options={delimiters}
@@ -105,6 +112,7 @@ function DelimitedOptions(props: {
         }}
       />
       <SelectField
+        className={styles.row}
         label={t('quote')}
         value={options.quote ?? 'none'}
         options={quoteChoices}

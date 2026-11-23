@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useState } from 'react';
-import { TextField } from '@openrows/ui';
+import { Icon, TextField } from '@openrows/ui';
 import { ScopeList } from './ScopeList';
 import type { DumpTableDto } from '@openrows/ipc';
 import { sameTable } from './scopeModel';
 import type { ScopeSchema } from './scopeModel';
+import styles from './Dump.module.css';
 import { t } from './messages';
 
 /** PostgreSQL table definitions can be backed up without those tables' data. */
@@ -22,10 +23,13 @@ export function ExcludeTableData(props: {
         .includes(search.toLocaleLowerCase()),
     );
   return (
-    <details>
+    <details className={styles.exclude}>
       <summary>{t('excludeTableData')}</summary>
       <TextField
         aria-label={t('searchDataExclusions')}
+        placeholder={t('searchDataExclusions')}
+        controlSize="search"
+        leadingIcon={<Icon name="search" />}
         value={search}
         onChange={(event) => {
           setSearch(event.target.value);

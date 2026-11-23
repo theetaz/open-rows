@@ -15,11 +15,11 @@ function Running(props: { run: DumpRun; elapsed: number }): React.JSX.Element {
   const fraction = progressFraction(props.run);
   return (
     <div className={styles.status} role="status">
-      <progress aria-label={t('progress')} max={1} value={fraction} />
       <p className={styles.counts}>
         <span>{progressText(props.run)}</span>
         <span>{elapsedText(props.elapsed)}</span>
       </p>
+      <progress aria-label={t('progress')} max={1} value={fraction} />
     </div>
   );
 }
@@ -35,7 +35,7 @@ function Summary({ run }: { run: DumpRun }): React.JSX.Element {
   const output = run.finished?.output ? ` · ${run.finished.output}` : '';
   return (
     <p
-      className={failed ? styles.error : styles.summary}
+      className={failed ? styles.error : styles.done}
       role={failed ? 'alert' : 'status'}
     >
       {run.failure ?? `${took}${output}`}
@@ -79,6 +79,7 @@ export function DumpLog({ id }: { id: string }): React.JSX.Element | null {
       <SheetActions>
         {running && (
           <Button
+            variant="destructive"
             disabled={!jobId}
             onClick={() => {
               if (jobId) void cancelDump(jobId).catch(() => undefined);

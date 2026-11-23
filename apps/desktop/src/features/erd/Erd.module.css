@@ -1,4 +1,9 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * ER diagram (docs/20 §5.1): a quiet view bar, the solid canvas with table
+ * cards on grouped fills, one glass zoom capsule floating over it, and a
+ * status line under it.
+ */
 /* The sheet's height minus its title row and padding. */
 .view {
   display: grid;
@@ -10,31 +15,37 @@
 .toolbar {
   display: flex;
   align-items: center;
-  gap: var(--or-space-6);
+  gap: var(--or-space-8);
+  min-block-size: 32px;
 }
 .search {
   inline-size: 14rem;
 }
 .count,
 .zoom {
+  margin: 0;
   color: var(--or-secondary);
   font-size: var(--or-text-12);
   font-variant-numeric: var(--or-font-numeric);
 }
 .zoom {
   min-inline-size: 3em;
+  padding: 0 var(--or-space-4);
   text-align: center;
 }
 .spacer {
   flex: 1;
+}
+.stage {
+  position: relative;
+  min-block-size: 0;
 }
 .canvas {
   display: block;
   inline-size: 100%;
   block-size: 100%;
   background: var(--or-page);
-  border: var(--or-border-width) solid var(--or-separator);
-  border-radius: var(--or-radius-card);
+  box-shadow: inset 0 var(--or-border-width) 0 var(--or-separator);
   cursor: grab;
   touch-action: none;
   user-select: none;
@@ -45,12 +56,23 @@
 .canvas :global(.erd-table) {
   cursor: pointer;
 }
+/* The one floating thing on the canvas: a glass zoom capsule. */
+.zoomGroup {
+  position: absolute;
+  inset-block-end: var(--or-space-12);
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+  box-shadow: var(--or-panel-shadow);
+  -webkit-backdrop-filter: var(--or-glass-toolbar);
+  backdrop-filter: var(--or-glass-toolbar);
+}
 .status {
   display: flex;
   justify-content: space-between;
   gap: var(--or-space-12);
   color: var(--or-secondary);
-  font-size: var(--or-text-12);
+  font-size: var(--or-text-11);
+  line-height: 14px;
 }
 .status span:last-child {
   overflow: hidden;
@@ -69,5 +91,42 @@
 .largeCanvas {
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
+  gap: var(--or-space-8);
+  block-size: 100%;
   min-block-size: 0;
+}
+.largeCanvas select {
+  justify-self: start;
+}
+
+/* Choose diagram tables: names in columns on a grouped well. */
+.choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--or-space-6) var(--or-space-10);
+  max-block-size: 45vh;
+  overflow: auto;
+  padding: var(--or-space-12);
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
+  font-family: var(--or-font-mono);
+  font-size: var(--or-text-12);
+  letter-spacing: 0;
+}
+.choices label {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-8);
+  min-inline-size: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.choices input {
+  margin: 0;
+  accent-color: var(--or-accent);
+}
+.choices button {
+  grid-column: 1 / -1;
+  justify-self: start;
+  font-family: var(--or-font-ui);
 }

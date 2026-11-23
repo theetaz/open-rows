@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useState } from 'react';
-import { Button, TextField } from '@openrows/ui';
+import { Button, Icon, TextField } from '@openrows/ui';
 import { ScopeList } from './ScopeList';
 import { sameTable } from './scopeModel';
 import type { BackupSelection, ScopeSchema } from './scopeModel';
@@ -35,12 +35,15 @@ export function BackupScope(props: Props): React.JSX.Element {
       </label>
       <TextField
         aria-label={t('searchBackupObjects')}
+        placeholder={t('searchBackupObjects')}
+        controlSize="search"
+        leadingIcon={<Icon name="search" />}
         value={search}
         onChange={(event) => {
           setSearch(event.target.value);
         }}
       />
-      <div className={styles.row}>
+      <div className={styles.buttons}>
         <Button
           size="sm"
           onClick={() => {
@@ -64,6 +67,7 @@ export function BackupScope(props: Props): React.JSX.Element {
       </div>
       <ScopeList
         key={search}
+        columns
         rows={scopeRows(props.catalog, match)}
         render={(row) =>
           row.kind === 'schema' ? (

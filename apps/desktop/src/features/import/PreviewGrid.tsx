@@ -26,7 +26,8 @@ export function PreviewGrid(props: {
   const rejected = preview.invalid.length;
   return (
     <section className={styles.section} aria-label={t('preview')}>
-      <div className={styles.previewScroll}>
+      <h3 className={styles.subhead}>{t('filePreview')}</h3>
+      <div className={`${styles.well ?? ''} ${styles.previewScroll ?? ''}`}>
         <table className={styles.preview} aria-label={t('filePreview')}>
           <thead>
             <tr>

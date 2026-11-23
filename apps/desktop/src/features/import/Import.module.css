@@ -1,62 +1,190 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * Import sheet (docs/20 §5.1): file, parsing, target and load options as a
+ * form with trailing labels on the left; the column mapping, the file
+ * preview and the check result on grouped wells on the right.
+ */
 .body {
   display: flex;
   flex: 1;
   flex-direction: column;
   gap: var(--or-space-16);
   min-block-size: 0;
-  overflow: auto;
+}
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: var(--or-space-20);
+}
+.columns[data-split] {
+  grid-template-columns: 380px minmax(0, 1fr);
+}
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-12);
+  min-inline-size: 0;
 }
 .section {
   display: flex;
   flex-direction: column;
-  gap: var(--or-space-10);
+  gap: var(--or-space-6);
   margin: 0;
   padding: 0;
   border: 0;
   min-inline-size: 0;
 }
+.subhead {
+  display: flex;
+  align-items: baseline;
+  gap: var(--or-space-8);
+  margin: 0;
+  font-size: var(--or-text-13);
+  font-weight: var(--or-weight-semibold);
+}
+.subhead span {
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+  font-weight: var(--or-weight-regular);
+}
+
+/* The picked file: one grouped inset row with its Choose button. */
 .fileRow {
   display: flex;
   align-items: center;
   gap: var(--or-space-10);
+  min-block-size: 44px;
+  padding: var(--or-space-6) var(--or-space-12);
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
+}
+.fileRow > svg {
+  flex: none;
+  color: var(--or-secondary);
+}
+.fileRow + .form {
+  margin-block-start: var(--or-space-6);
 }
 .fileName {
-  color: var(--or-secondary);
-  overflow-wrap: anywhere;
+  flex: 1;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.optionGrid {
+.fileName[data-empty] {
+  color: var(--or-secondary);
+}
+
+/* Form rows: a 120 px trailing label column, then the control. */
+.form {
+  --label-column: 150px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  align-items: end;
-  gap: var(--or-space-10);
+  gap: var(--or-space-8);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-inline-size: 0;
+}
+.form .row {
+  display: grid;
+  grid-template-columns: var(--label-column) minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--or-space-12);
+}
+.form .row > label,
+.rowLabel {
+  color: var(--or-secondary);
+  text-align: end;
+}
+/* Pop-up buttons size to their value, like AppKit's; text fields fill. */
+.form .row > div:nth-child(2) {
+  justify-self: start;
+  min-inline-size: 120px;
+  max-inline-size: 100%;
+}
+.form .row > div:nth-child(2):has(input) {
+  justify-self: stretch;
+}
+.form .short > div:nth-child(2):has(input) {
+  justify-self: start;
+  inline-size: 88px;
+}
+.form .row > span:last-child:not(:nth-child(2)) {
+  grid-column: 2;
+}
+.form .segmented {
+  justify-self: start;
+}
+.separator {
+  block-size: var(--or-border-width);
+  margin: var(--or-space-6) 0;
+  background: var(--or-separator);
 }
 .checkRow {
   display: flex;
   align-items: center;
-  gap: var(--or-space-6);
-  min-block-size: var(--or-control-height);
+  gap: var(--or-space-8);
+  min-block-size: var(--or-control-height-compact);
+  margin-inline-start: calc(var(--label-column) + var(--or-space-12));
 }
 .checkRow input,
 .mapping input[type='checkbox'] {
   margin: 0;
   accent-color: var(--or-accent);
 }
-.mapping {
+
+/* Mapping and preview: the data grid's header, rules and rows on a well. */
+.well {
+  overflow: auto;
+  border-radius: var(--or-radius-control);
+  background: var(--or-group);
+}
+.mapping,
+.preview {
   inline-size: 100%;
   border-collapse: collapse;
+  font-family: var(--or-font-mono);
   font-size: var(--or-text-12);
+  letter-spacing: 0;
 }
-.mapping th {
-  padding: var(--or-space-4) var(--or-space-6);
+.mapping th,
+.preview thead th {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 1;
+  block-size: var(--or-grid-header-height);
+  padding: 0 var(--or-space-8);
+  background: var(--or-group);
+  box-shadow: inset 0 calc(-1 * var(--or-border-width)) 0 var(--or-separator);
   color: var(--or-secondary);
-  font-weight: var(--or-weight-medium);
+  font-family: var(--or-font-ui);
+  font-weight: var(--or-weight-semibold);
   text-align: start;
+  white-space: nowrap;
+}
+.mapping td,
+.preview td,
+.preview tbody th {
+  block-size: var(--or-grid-row-height);
+  padding: 0 var(--or-space-8);
+  vertical-align: middle;
+}
+.mapping td + td,
+.mapping th + th,
+.preview td,
+.preview thead th + th {
+  box-shadow: inset var(--or-border-width) 0 0 var(--or-grid-line);
+}
+.mapping thead th + th,
+.preview thead th + th {
+  box-shadow:
+    inset var(--or-border-width) 0 0 var(--or-grid-line),
+    inset 0 calc(-1 * var(--or-border-width)) 0 var(--or-separator);
 }
 .mapping td {
-  padding: var(--or-space-2) var(--or-space-6);
-  border-block-start: var(--or-border-width) solid var(--or-separator);
-  vertical-align: middle;
+  padding-block: var(--or-space-2);
 }
 .sourceCell {
   display: flex;
@@ -65,38 +193,30 @@
 .typeCell,
 .category {
   color: var(--or-secondary);
+}
+.category {
   font-size: var(--or-text-11);
+  font-weight: var(--or-weight-regular);
 }
 .previewScroll {
   max-block-size: 260px;
-  overflow: auto;
-  border: var(--or-border-width) solid var(--or-separator);
-  border-radius: var(--or-radius-field);
 }
 .preview {
-  border-collapse: collapse;
-  font-family: var(--or-font-mono);
-  font-size: var(--or-text-11-5);
   white-space: pre;
-}
-.preview th,
-.preview td {
-  padding: var(--or-space-2) var(--or-space-8);
-  border-block-end: var(--or-border-width) solid var(--or-separator);
-  text-align: start;
-}
-.preview thead th {
-  position: sticky;
-  inset-block-start: 0;
-  background: var(--or-panel-solid);
-  font-family: var(--or-font-ui);
 }
 .preview thead th span {
   display: block;
+  line-height: 14px;
+}
+.preview thead th {
+  block-size: auto;
+  padding-block: var(--or-space-4);
 }
 .preview tbody th {
   color: var(--or-placeholder);
   font-weight: var(--or-weight-regular);
+  text-align: end;
+  font-variant-numeric: tabular-nums;
 }
 .preview td[data-null] {
   color: var(--or-placeholder);
@@ -106,45 +226,86 @@
   color: var(--or-danger-fg);
 }
 .note {
+  margin: 0;
   color: var(--or-secondary);
   font-size: var(--or-text-12);
+  line-height: 16px;
 }
 .error {
+  margin: 0;
   color: var(--or-danger-fg);
+  overflow-wrap: anywhere;
 }
 .confirm {
-  padding: var(--or-space-12);
+  margin: 0;
+  padding: var(--or-space-10) var(--or-space-12);
   border-radius: var(--or-radius-card);
   background: var(--or-warning-bg);
-  color: var(--or-warning-fg);
 }
+
+/* Progress, summary and row errors: a notice on a grouped fill. */
 .status {
   display: flex;
   flex-direction: column;
-  gap: var(--or-space-8);
+  gap: var(--or-space-6);
+  margin: 0;
+  padding: var(--or-space-10) var(--or-space-12);
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
+  font-size: var(--or-text-12);
 }
-.status progress {
+.status[data-tone='warning'] {
+  background: var(--or-warning-bg);
+}
+.status[role='alert'] {
+  background: var(--or-danger-bg);
+}
+.status p {
+  margin: 0;
+}
+.status > p:first-child {
+  font-size: var(--or-text-13);
+  font-weight: var(--or-weight-semibold);
+}
+.status progress:not(:indeterminate) {
+  appearance: none;
   inline-size: 100%;
   block-size: 4px;
-  accent-color: var(--or-accent);
+  border: 0;
+  border-radius: 2px;
+  background: var(--or-fill-2);
+  overflow: hidden;
+}
+.status progress::-webkit-progress-bar {
+  border-radius: 2px;
+  background: var(--or-fill-2);
+}
+.status progress::-webkit-progress-value {
+  border-radius: 2px;
+  background: var(--or-accent-fill);
 }
 .errors ul {
   display: flex;
   flex-direction: column;
-  gap: var(--or-space-4);
   max-block-size: 200px;
   margin: 0;
   padding: 0;
   overflow: auto;
   list-style: none;
-  font-size: var(--or-text-12);
+  border-radius: var(--or-radius-control);
+  background: var(--or-raised);
 }
 .errors li {
   display: flex;
+  align-items: baseline;
   gap: var(--or-space-8);
+  padding: var(--or-space-4) var(--or-space-10);
+}
+.errors li + li {
+  box-shadow: inset 0 var(--or-border-width) 0 var(--or-separator);
 }
 .line {
   color: var(--or-secondary);
-  font-family: var(--or-font-numeric);
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }

@@ -82,7 +82,7 @@ export function ImportSheet({
         database: context.database,
         schema: context.schema,
       })}
-      size="appearance"
+      size="editor"
       onClose={isBusy(job) ? cancel : onClose}
     >
       <div className={styles.body}>

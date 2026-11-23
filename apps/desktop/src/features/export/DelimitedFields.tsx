@@ -25,6 +25,7 @@ export function DelimitedFields({ options, set }: Section): React.JSX.Element {
     <>
       {csv && (
         <SelectField
+          className={styles.row}
           label={t('delimiter')}
           value={options.csv.delimiter}
           options={delimiterChoices}
@@ -33,44 +34,44 @@ export function DelimitedFields({ options, set }: Section): React.JSX.Element {
           }}
         />
       )}
-      <div className={styles.pair}>
-        <SelectField
-          label={t('quote')}
-          value={text.quote}
-          options={quoteChoices}
-          onValueChange={(quote) => {
-            change({ quote });
-          }}
-        />
-        <TextField
-          label={t('null')}
-          value={text.nullText}
-          placeholder={t('emptyField')}
-          spellCheck={false}
-          {...(error ? { error } : {})}
-          onChange={(event) => {
-            change({ nullText: event.target.value });
-          }}
-        />
-      </div>
-      <div className={styles.pair}>
-        <SelectField
-          label={t('lineEndings')}
-          value={text.lineEnding}
-          options={lineEndingChoices}
-          onValueChange={(lineEnding) => {
-            change({ lineEnding });
-          }}
-        />
-        <SelectField
-          label={t('encoding')}
-          value={text.encoding}
-          options={encodingChoices}
-          onValueChange={(encoding) => {
-            change({ encoding });
-          }}
-        />
-      </div>
+      <SelectField
+        className={styles.row}
+        label={t('quote')}
+        value={text.quote}
+        options={quoteChoices}
+        onValueChange={(quote) => {
+          change({ quote });
+        }}
+      />
+      <TextField
+        className={styles.row}
+        label={t('null')}
+        value={text.nullText}
+        placeholder={t('emptyField')}
+        spellCheck={false}
+        {...(error ? { error } : {})}
+        onChange={(event) => {
+          change({ nullText: event.target.value });
+        }}
+      />
+      <SelectField
+        className={styles.row}
+        label={t('lineEndings')}
+        value={text.lineEnding}
+        options={lineEndingChoices}
+        onValueChange={(lineEnding) => {
+          change({ lineEnding });
+        }}
+      />
+      <SelectField
+        className={styles.row}
+        label={t('encoding')}
+        value={text.encoding}
+        options={encodingChoices}
+        onValueChange={(encoding) => {
+          change({ encoding });
+        }}
+      />
       <label className={styles.checkRow}>
         <input
           type="checkbox"

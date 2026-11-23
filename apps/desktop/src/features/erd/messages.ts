@@ -14,6 +14,7 @@ export const { t, tn } = defineMessages({
   zoomOut: 'Zoom out',
   zoom: 'Zoom in',
   fitView: 'Fit to view',
+  zoomControls: 'Zoom',
   savedPath: 'Saved {path}',
   erDiagramSchema: 'ER diagram of {schema}',
   erDiagramSchema2: 'ER Diagram — {schema}',

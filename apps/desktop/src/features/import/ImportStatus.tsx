@@ -99,6 +99,7 @@ function CheckSummary({
         conflicts,
       })}
       summary={summary}
+      warning={(summary.failed ?? 0) > 0 || (summary.conflicts ?? 0) > 0}
     />
   );
 }
@@ -107,10 +108,16 @@ function Summary(props: {
   text: string;
   summary: ImportSummaryDto | null;
   alert?: boolean;
+  /** Rows failed or collide: the summary reads as a warning notice. */
+  warning?: boolean;
 }): React.JSX.Element {
   const { summary } = props;
   return (
-    <div className={styles.status} role={props.alert ? 'alert' : 'status'}>
+    <div
+      className={styles.status}
+      role={props.alert ? 'alert' : 'status'}
+      data-tone={props.warning ? 'warning' : undefined}
+    >
       <p className={props.alert ? styles.error : undefined}>{props.text}</p>
       {summary && (
         <p className={styles.note}>

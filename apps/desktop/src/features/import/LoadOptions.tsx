@@ -13,9 +13,10 @@ export function LoadOptions(props: {
   const { draft, onChange } = props;
   const existing = draft.target === 'existing';
   return (
-    <section className={styles.optionGrid} aria-label={t('importOptions')}>
+    <section className={styles.form} aria-label={t('importOptions')}>
       {existing && (
         <SelectField
+          className={styles.row}
           label={t('whenKeyAlready')}
           value={draft.conflict}
           options={conflictChoices}
@@ -25,6 +26,7 @@ export function LoadOptions(props: {
         />
       )}
       <SelectField
+        className={styles.row}
         label={t('transaction')}
         value={draft.transaction}
         options={transactionChoices}
@@ -33,6 +35,7 @@ export function LoadOptions(props: {
         }}
       />
       <SelectField
+        className={styles.row}
         label={t('rowsCannotRead')}
         value={draft.badRows}
         options={badRowChoices}
@@ -41,6 +44,7 @@ export function LoadOptions(props: {
         }}
       />
       <TextField
+        className={`${styles.row ?? ''} ${styles.short ?? ''}`}
         label={t('rowsPerBatch')}
         value={draft.batchSize}
         inputMode="numeric"

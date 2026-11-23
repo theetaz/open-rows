@@ -81,25 +81,25 @@ function ArchiveOptions(props: {
   const { options, onChange } = props;
   return (
     <>
-      <div className={styles.row}>
-        <SelectField
-          label={t('existingObjects')}
-          value={options.clean}
-          options={CLEANS}
-          onValueChange={(clean) => {
-            onChange({ ...options, clean });
-          }}
-        />
-        <SelectField
-          label={t('speed')}
-          value={String(options.jobs)}
-          disabled={props.kind === 'pgTar'}
-          options={JOBS}
-          onValueChange={(jobs) => {
-            onChange({ ...options, jobs: Number(jobs) });
-          }}
-        />
-      </div>
+      <SelectField
+        className={styles.row}
+        label={t('existingObjects')}
+        value={options.clean}
+        options={CLEANS}
+        onValueChange={(clean) => {
+          onChange({ ...options, clean });
+        }}
+      />
+      <SelectField
+        className={styles.row}
+        label={t('speed')}
+        value={String(options.jobs)}
+        disabled={props.kind === 'pgTar'}
+        options={JOBS}
+        onValueChange={(jobs) => {
+          onChange({ ...options, jobs: Number(jobs) });
+        }}
+      />
       <label>
         <input
           type="checkbox"
@@ -133,7 +133,7 @@ export function RestoreOptions(props: {
   const { options, onChange } = props;
   if (props.kind === 'sqlite') return null;
   return (
-    <fieldset className={styles.options}>
+    <fieldset className={styles.form}>
       <legend>{t('options')}</legend>
       {isArchive(props.kind) && <ArchiveOptions {...props} />}
       <label>

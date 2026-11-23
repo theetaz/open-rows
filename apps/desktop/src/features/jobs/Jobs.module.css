@@ -1,15 +1,21 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * Background jobs popover (docs/20 §5.1): the menu surface with 14 px
+ * corners; each job is its title and kind, a 4 px progress bar and a small
+ * secondary detail line, with no rules between jobs.
+ */
 .anchor {
   position: fixed;
   z-index: 15;
-  width: 340px;
+  width: 320px;
 }
 .panel {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   max-height: 60vh;
-  border-radius: var(--or-radius-card);
+  padding: var(--or-space-10) var(--or-space-12) var(--or-space-12);
+  border-radius: var(--or-radius-panel);
   background: var(--or-control-active);
   box-shadow:
     0 0 0 var(--or-border-width) var(--or-control-stroke),
@@ -21,31 +27,29 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--or-space-6) var(--or-space-10);
-  border-bottom: var(--or-border-width) solid var(--or-control-stroke);
-  font-weight: 600;
+  margin-block-end: var(--or-space-8);
+  font-weight: var(--or-weight-semibold);
 }
 .list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-12);
   margin: 0;
-  padding: var(--or-space-4);
+  padding: 0;
   list-style: none;
   overflow-y: auto;
 }
 .empty {
   margin: 0;
-  padding: var(--or-space-12) var(--or-space-10);
+  padding: var(--or-space-12) 0;
   color: var(--or-secondary);
+  font-size: var(--or-text-12);
   text-align: center;
 }
 .job {
   display: flex;
   flex-direction: column;
   gap: var(--or-space-4);
-  padding: var(--or-space-6);
-  border-radius: var(--or-radius-field);
-}
-.job + .job {
-  border-top: var(--or-border-width) solid var(--or-control-stroke);
 }
 .titleRow {
   display: flex;
@@ -60,24 +64,48 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.kind {
+.job[data-status='finished'] .title,
+.job[data-status='cancelled'] .title {
+  color: var(--or-secondary);
+}
+.kind,
+.percent {
   color: var(--or-secondary);
   font-size: var(--or-text-11);
-  text-transform: uppercase;
+}
+.percent {
+  font-variant-numeric: tabular-nums;
 }
 .detail {
   margin: 0;
   color: var(--or-secondary);
-  font-size: var(--or-text-12);
+  font-size: var(--or-text-11);
+  line-height: 14px;
   overflow-wrap: anywhere;
 }
 .job[data-status='failed'] .detail {
   color: var(--or-danger-fg);
 }
-.job progress {
+.job progress:not(:indeterminate) {
+  appearance: none;
   inline-size: 100%;
   block-size: 4px;
-  accent-color: var(--or-accent);
+  margin: var(--or-space-2) 0;
+  border: 0;
+  border-radius: 2px;
+  background: var(--or-fill-2);
+  overflow: hidden;
+}
+.job progress::-webkit-progress-bar {
+  border-radius: 2px;
+  background: var(--or-fill-2);
+}
+.job progress::-webkit-progress-value {
+  border-radius: 2px;
+  background: var(--or-accent-fill);
+}
+.job progress:indeterminate {
+  inline-size: 100%;
 }
 .actions {
   display: flex;

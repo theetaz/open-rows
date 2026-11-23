@@ -1,94 +1,130 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * Export sheets (docs/20 §5.1): the rows to export as a titled radio list,
+ * then the format and its options as a form with trailing labels; the
+ * tables of a schema on a grouped well.
+ */
 .form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--or-space-10);
+  --label-column: 100px;
+  display: grid;
+  gap: var(--or-space-8);
   margin: 0;
   padding: 0;
   border: 0;
   min-inline-size: 0;
 }
+.form .row {
+  display: grid;
+  grid-template-columns: var(--label-column) minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--or-space-12);
+}
+.form .row > label {
+  color: var(--or-secondary);
+  text-align: end;
+}
+/* Pop-up buttons size to their value; text fields keep a field's width. */
+.form .row > div:nth-child(2) {
+  justify-self: start;
+  min-inline-size: 120px;
+  max-inline-size: 100%;
+}
+.form .row > div:nth-child(2):has(input) {
+  inline-size: 180px;
+}
+.form .row > span:last-child:not(:nth-child(2)) {
+  grid-column: 2;
+}
+.checkRow,
+.help {
+  margin-inline-start: calc(var(--label-column) + var(--or-space-12));
+}
 .checkRow {
   display: flex;
   align-items: center;
-  gap: var(--or-space-6);
+  gap: var(--or-space-8);
+  min-block-size: var(--or-control-height-compact);
 }
 .checkRow input,
-.scope input {
+.scope input,
+.tables input {
   margin: 0;
   accent-color: var(--or-accent);
+}
+.help {
+  margin-block: 0;
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
+  line-height: 16px;
 }
 .scope {
   display: flex;
   flex-direction: column;
-  gap: var(--or-space-4);
+  gap: var(--or-space-6);
   margin: 0;
   padding: 0;
   border: 0;
+  min-inline-size: 0;
 }
-.scope legend {
+.scope legend,
+.subhead {
+  margin: 0 0 var(--or-space-6);
   padding: 0;
-  margin-block-end: var(--or-space-4);
-  color: var(--or-secondary);
-  font-size: var(--or-text-12);
+  font-size: var(--or-text-13);
+  font-weight: var(--or-weight-semibold);
 }
 .scope label {
   display: flex;
   align-items: center;
-  gap: var(--or-space-6);
-}
-.note {
-  color: var(--or-secondary);
-  font-size: var(--or-text-12);
-}
-.error {
-  color: var(--or-danger-fg);
-}
-.status {
-  display: flex;
-  flex-direction: column;
   gap: var(--or-space-8);
 }
-.status progress {
-  inline-size: 100%;
-  block-size: 4px;
-  accent-color: var(--or-accent);
-}
-.path {
+.note {
+  margin: 0;
   color: var(--or-secondary);
   font-size: var(--or-text-12);
+  line-height: 16px;
+}
+.error {
+  margin: 0;
+  color: var(--or-danger-fg);
   overflow-wrap: anywhere;
 }
-.pair {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--or-space-10);
+
+/* Export tables of a schema: a count and Select all over a grouped well. */
+.tableTools {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-8);
+}
+.tableTools .subhead {
+  margin: 0;
+}
+.tableTools span:not(.subhead) {
+  flex: 1;
+  color: var(--or-secondary);
+  font-size: var(--or-text-12);
 }
 .tables {
-  display: flex;
-  flex-direction: column;
-  gap: var(--or-space-2);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--or-space-6) var(--or-space-10);
   max-block-size: 200px;
   overflow-y: auto;
   margin: 0;
-  padding: var(--or-space-6);
-  border: var(--or-border-width) solid var(--or-control-stroke);
-  border-radius: var(--or-radius-field);
+  padding: var(--or-space-12);
+  border: 0;
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
+  font-family: var(--or-font-mono);
+  font-size: var(--or-text-12);
+  letter-spacing: 0;
 }
 .tables label {
   display: flex;
   align-items: center;
-  gap: var(--or-space-6);
-}
-.tables input,
-.scope input {
-  margin: 0;
-  accent-color: var(--or-accent);
-}
-.tableTools {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  color: var(--or-secondary);
-  font-size: var(--or-text-12);
+  gap: var(--or-space-8);
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

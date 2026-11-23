@@ -11,19 +11,24 @@ const PAGE = 80;
 export function ScopeList<T>(props: {
   rows: readonly T[];
   render: (row: T) => ReactNode;
+  /** Tables flow in columns under their full-width schema rows. */
+  columns?: boolean;
 }): React.JSX.Element {
   const [page, setPage] = useState(0);
   const last = Math.max(0, Math.ceil(props.rows.length / PAGE) - 1);
   const current = Math.min(page, last);
   return (
     <>
-      <div className={styles.scopeList}>
+      <div
+        className={styles.scopeList}
+        data-columns={props.columns ? '' : undefined}
+      >
         {props.rows
           .slice(current * PAGE, (current + 1) * PAGE)
           .map(props.render)}
       </div>
       {last > 0 && (
-        <div className={styles.row}>
+        <div className={styles.buttons}>
           <Button
             size="sm"
             disabled={current === 0}

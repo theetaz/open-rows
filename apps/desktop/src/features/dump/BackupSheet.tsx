@@ -132,18 +132,8 @@ export function BackupSheet({
 }: {
   target: DumpTarget;
 }): React.JSX.Element {
-  const {
-    state,
-    context,
-    options,
-    preview,
-    ready,
-    scope,
-    selection,
-    setSelection,
-    settings,
-    setOptions,
-  } = useBackupForm(target);
+  const form = useBackupForm(target);
+  const { state, context, options, ready } = form;
   const [failure, setFailure] = useState<string | null>(null);
   const close = (): void => {
     showDump(null);
@@ -151,6 +141,7 @@ export function BackupSheet({
   return (
     <Sheet
       title={t('backUpDatabase2', { database: target.database })}
+      size="editor"
       onClose={close}
     >
       <p className={styles.summary}>
@@ -166,24 +157,7 @@ export function BackupSheet({
           {state.message}
         </p>
       )}
-      {context && context.engine !== 'sqlite' && (
-        <ScopeBody
-          scope={scope}
-          selection={selection}
-          onSelection={setSelection}
-          settings={settings}
-          onOptions={setOptions}
-          engine={context.engine}
-        />
-      )}
-      {context && (
-        <Body
-          context={context}
-          options={options}
-          onOptions={setOptions}
-          preview={preview}
-        />
-      )}
+      {context && <Halves form={form} context={context} />}
       {failure && (
         <p className={styles.error} role="alert">
           {failure}
@@ -204,6 +178,43 @@ export function BackupSheet({
         </Button>
       </SheetActions>
     </Sheet>
+  );
+}
+
+type BackupForm = ReturnType<typeof useBackupForm>;
+
+/** The objects on the left (not on SQLite); tools, options and command on the right. */
+function Halves({
+  form,
+  context,
+}: {
+  form: BackupForm;
+  context: DumpContextDto;
+}): React.JSX.Element {
+  const split = context.engine !== 'sqlite';
+  return (
+    <div className={styles.halves} data-split={split ? '' : undefined}>
+      {split && (
+        <section className={styles.half}>
+          <ScopeBody
+            scope={form.scope}
+            selection={form.selection}
+            onSelection={form.setSelection}
+            settings={form.settings}
+            onOptions={form.setOptions}
+            engine={context.engine}
+          />
+        </section>
+      )}
+      <section className={styles.half}>
+        <Body
+          context={context}
+          options={form.options}
+          onOptions={form.setOptions}
+          preview={form.preview}
+        />
+      </section>
+    </div>
   );
 }
 

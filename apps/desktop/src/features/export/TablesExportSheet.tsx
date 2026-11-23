@@ -214,6 +214,7 @@ function TableChecklist(props: {
   return (
     <>
       <div className={styles.tableTools}>
+        <span className={styles.subhead}>{t('tables')}</span>
         <span>
           {t('countCount2Tables', { count, count2: tables.names.length })}
         </span>

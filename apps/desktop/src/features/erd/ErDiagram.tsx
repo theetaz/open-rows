@@ -35,20 +35,24 @@ export function ErDiagram(props: ErDiagramProps): React.JSX.Element {
     ...(tables ? { tables } : {}),
   };
   const state = useSchemaDiagram(target);
+  const ready = state.status === 'ready' && state.diagram.tables.length > 0;
+  const choose = (
+    <Button
+      size="sm"
+      onClick={() => {
+        setPicking(true);
+      }}
+    >
+      {t('chooseTables')}
+    </Button>
+  );
   return (
     <Sheet
       title={t('erDiagramSchema2', { schema: props.schema })}
       size="appearance"
       onClose={props.onClose}
     >
-      <Button
-        size="sm"
-        onClick={() => {
-          setPicking(true);
-        }}
-      >
-        {t('chooseTables')}
-      </Button>
+      {!ready && choose}
       {picking && (
         <TablePicker
           target={target}
@@ -65,6 +69,7 @@ export function ErDiagram(props: ErDiagramProps): React.JSX.Element {
         state.diagram.tables.length ? (
           <DiagramView
             key={JSON.stringify(tables)}
+            leading={choose}
             schema={props.schema}
             diagram={state.diagram}
             layout={state.layout}

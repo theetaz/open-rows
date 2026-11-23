@@ -10,6 +10,8 @@ export const { t } = defineMessages({
   sqlFile: 'SQL file',
   export: 'Export',
   import: 'Import',
+  backup: 'Backup',
+  restore: 'Restore',
   details: 'Details…',
   open: 'Open',
   showFinder: 'Show in Finder',

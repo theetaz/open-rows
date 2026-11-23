@@ -38,7 +38,14 @@ function ColumnRow(props: {
           {mark}
         </text>
       )}
-      <text x={PADDING_X + MARK_WIDTH} y={y} dominantBaseline="central">
+      <text
+        className={
+          column.primaryKey ? 'erd-pk' : props.foreign ? 'erd-fk' : undefined
+        }
+        x={PADDING_X + MARK_WIDTH}
+        y={y}
+        dominantBaseline="central"
+      >
         {clip(column.name, Math.max(room - type.length - 1, 4))}
       </text>
       <text
@@ -86,10 +93,10 @@ export function TableNode(props: {
         props.onOpen(table.name);
       }}
     >
-      <rect className="erd-box" width={width} height={height} rx={6} />
+      <rect className="erd-box" width={width} height={height} rx={8} />
       <path
         className="erd-head"
-        d={`M0 6a6 6 0 0 1 6-6h${String(width - 12)}a6 6 0 0 1 6 6v${String(HEADER_HEIGHT - 6)}H0Z`}
+        d={`M0 8a8 8 0 0 1 8-8h${String(width - 16)}a8 8 0 0 1 8 8v${String(HEADER_HEIGHT - 8)}H0Z`}
       />
       <line
         className="erd-rule"
