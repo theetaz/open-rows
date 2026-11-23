@@ -11,9 +11,9 @@
   display: flex;
   align-items: center;
   gap: var(--or-space-8);
-  padding: var(--or-space-6) var(--or-space-8);
-  border-bottom: var(--or-border-width) solid var(--or-separator);
-  background: var(--or-panel-solid);
+  padding: var(--or-space-6) var(--or-space-12);
+  box-shadow: inset 0 var(--or-border-width) 0 var(--or-separator);
+  background: var(--or-page);
   font-size: var(--or-text-12);
   color: var(--or-secondary);
 }
@@ -79,20 +79,24 @@
   height: var(--or-grid-row-height);
   padding: 0 var(--or-space-8);
   box-sizing: border-box;
-  border-right: var(--or-border-width) solid var(--or-separator);
-  border-bottom: var(--or-border-width) solid var(--or-separator);
+  border-right: var(--or-border-width) solid var(--or-grid-line);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   text-align: start;
 }
+/* The kit's grid header: window colour, 11 px medium UI titles, a hairline below. */
 .grid th {
   position: sticky;
   top: 0;
   z-index: 1;
-  background: var(--or-panel-solid);
+  height: var(--or-grid-header-height);
+  background: var(--or-window);
+  box-shadow: inset 0 calc(-1 * var(--or-border-width)) 0 var(--or-separator);
   color: var(--or-secondary);
-  font-weight: var(--or-weight-regular);
+  font-family: var(--or-font-ui);
+  font-size: var(--or-text-11);
+  font-weight: var(--or-weight-medium);
 }
 .sort {
   all: unset;
@@ -128,7 +132,7 @@
   background: var(--or-row-inserted);
 }
 .grid td[data-active='true'] {
-  box-shadow: inset 0 0 0 var(--or-focus-width) var(--or-focus);
+  box-shadow: inset 0 0 0 2px var(--or-accent-fill);
 }
 .scroll:not(:focus-within) .grid td[data-active='true'] {
   box-shadow: inset 0 0 0 var(--or-border-width) var(--or-separator);
@@ -164,6 +168,10 @@
 }
 .stepper:hover {
   background: var(--or-control-hover);
+}
+/* Pickers show on the hovered row and the active cell only, so the grid stays quiet. */
+.grid tbody tr:not(:hover) td:not([data-active='true']) .stepper {
+  opacity: 0;
 }
 .stepper svg {
   width: 11px;
@@ -225,9 +233,10 @@
   max-height: 200px;
   overflow: auto;
   margin: 0;
-  padding: var(--or-space-6) var(--or-space-8);
-  border: var(--or-border-width) solid var(--or-separator);
-  border-radius: var(--or-radius-field);
+  padding: var(--or-space-6) var(--or-space-10);
+  border: none;
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
   font-family: var(--or-font-mono);
   font-size: var(--or-text-mono, var(--or-text-13));
 }
@@ -286,17 +295,19 @@
 .code[data-loaded='true'] pre {
   display: none;
 }
-/* DDL popover above its footer button, like TablePlus. */
+/* DDL popover under its view-bar button, like TablePlus. */
 .popover {
   position: fixed;
   z-index: 20;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  border: var(--or-border-width) solid var(--or-separator);
   border-radius: var(--or-radius-panel);
-  background: var(--or-window);
-  box-shadow: var(--or-panel-shadow);
+  /* Floats like a menu: the elevated, ringed surface (no live blur here). */
+  background: var(--or-control-active);
+  box-shadow:
+    0 0 0 var(--or-border-width) var(--or-control-stroke),
+    var(--or-panel-shadow);
   overflow: hidden;
 }
 .popover .code {

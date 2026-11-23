@@ -57,6 +57,8 @@ it('clamps fitted and dragged widths', () => {
   expect(fitWidth([10, 70, 30])).toBe(86);
   expect(fitWidth([70], 16)).toBe(102);
   expect(fitWidth([])).toBe(MIN_COLUMN_WIDTH);
+  // A measured 37.09 px value needs 54 px, not a rounded-down 53 that truncates it.
+  expect(fitWidth([37.09])).toBe(54);
   expect(fitWidth([5000])).toBe(MAX_AUTO_WIDTH);
   expect(dragWidth(120, 35.4)).toBe(155);
   expect(dragWidth(120, -500)).toBe(MIN_COLUMN_WIDTH);

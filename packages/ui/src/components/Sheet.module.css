@@ -9,6 +9,11 @@
   z-index: 20;
   background: var(--or-sheet-scrim);
 }
+/* The dialog itself is not a control: focus rings belong to its fields and buttons. */
+.sheet:focus,
+.sheet:focus-visible {
+  outline: none;
+}
 .sheet {
   position: fixed;
   inset: 0;

@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* Structure and object editor forms: two-column field grids, the live DDL
-   preview and its warnings, and the lists of the new-table editor. */
+   preview and its warnings, and the lists of the new-table editor. Lists and
+   previews sit on grouped fills (the kit's `.group`), never in outlined boxes. */
 .grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -50,10 +51,10 @@
 .sql {
   max-block-size: 180px;
   margin: 0;
-  padding: var(--or-space-8);
+  padding: var(--or-space-8) var(--or-space-10);
   overflow: auto;
-  border: var(--or-border-width) solid var(--or-separator);
-  border-radius: var(--or-radius-field);
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
   font-family: var(--or-font-mono);
   font-size: var(--or-text-mono, var(--or-text-12));
   white-space: pre-wrap;
@@ -70,10 +71,11 @@
   gap: var(--or-space-2);
   max-block-size: 180px;
   margin: 0;
-  padding: var(--or-space-6) var(--or-space-8);
+  padding: var(--or-space-6) var(--or-space-10);
   overflow: auto;
-  border: var(--or-border-width) solid var(--or-separator);
-  border-radius: var(--or-radius-field);
+  border: none;
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
 }
 .keys legend {
   color: var(--or-secondary);
@@ -99,9 +101,9 @@
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: var(--or-space-8);
-  padding: var(--or-space-4) var(--or-space-8);
-  border: var(--or-border-width) solid var(--or-separator);
-  border-radius: var(--or-radius-field);
+  padding: var(--or-space-4) var(--or-space-10);
+  border-radius: var(--or-radius-control);
+  background: var(--or-group);
   font-family: var(--or-font-mono);
   font-size: var(--or-text-12);
 }
@@ -129,9 +131,8 @@
   min-block-size: 220px;
   max-block-size: 45vh;
   overflow: auto;
-  border: var(--or-border-width) solid var(--or-control-stroke);
-  border-radius: var(--or-radius-control);
-  background: var(--or-control-fill);
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
 }
 .editor textarea {
   box-sizing: border-box;

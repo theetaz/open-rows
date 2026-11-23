@@ -5,12 +5,14 @@
   flex: 1;
   min-height: 0;
 }
+/* The results' view bar: Table / Tree / JSON on the kit's 40 px bar. */
 .bar {
   display: flex;
   align-items: center;
   gap: var(--or-space-8);
-  padding: var(--or-space-4) var(--or-space-6);
-  border-bottom: 1px solid var(--or-separator);
+  min-block-size: var(--or-pending-height);
+  padding: 0 var(--or-space-12) 0 var(--or-space-8);
+  box-shadow: inset 0 calc(-1 * var(--or-border-width)) 0 var(--or-separator);
   flex-shrink: 0;
 }
 .pager {
@@ -27,7 +29,7 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: var(--or-space-6) var(--or-space-8);
+  padding: var(--or-space-8) var(--or-space-12);
 }
 .json {
   margin: 0;

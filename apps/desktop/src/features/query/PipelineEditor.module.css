@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+/* The aggregation pipeline (the mockup's pipeline bar): solid, a view-bar head, grouped stages. */
 .pipeline {
-  border-top: 1px solid var(--or-separator);
+  box-shadow: inset 0 var(--or-border-width) 0 var(--or-separator);
+  background: var(--or-page);
   flex-shrink: 0;
 }
 .header {
@@ -8,12 +10,14 @@
   align-items: center;
   gap: var(--or-space-4);
   inline-size: 100%;
-  padding: var(--or-space-4) var(--or-space-6);
+  min-block-size: var(--or-pending-height);
+  padding: 0 var(--or-space-12);
   border: 0;
   background: transparent;
-  color: var(--or-secondary);
+  color: var(--or-text);
   font: inherit;
-  font-size: var(--or-text-11);
+  font-size: var(--or-text-13);
+  font-weight: var(--or-weight-semibold);
   text-align: start;
   cursor: default;
 }
@@ -21,12 +25,13 @@
   inline-size: 12px;
   block-size: 12px;
   flex-shrink: 0;
+  color: var(--or-secondary);
 }
 .body {
   display: flex;
   flex-direction: column;
-  gap: var(--or-space-6);
-  padding: 0 var(--or-space-8) var(--or-space-8);
+  gap: var(--or-space-8);
+  padding: 0 var(--or-space-12) var(--or-space-12);
 }
 .fields {
   display: flex;
@@ -35,6 +40,12 @@
 }
 .collection {
   max-inline-size: 320px;
+}
+/* Stages sit on a grouped fill, like the kit's stage cards; no outline. */
+.fields .stages[data-size] {
+  border-color: transparent;
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
 }
 .stages textarea {
   font-family: var(--or-font-mono);

@@ -16,8 +16,9 @@ import type { SelectedTable } from './structure/TableInfoPanel';
 import type { TriggerAction } from './structure/TriggersSheet';
 import { TableData } from './TableData';
 import { TableFooter } from './TableFooter';
+import { TableViewBar } from './TableViewBar';
 import type { ShowRow } from './row';
-import type { FooterAdd, FooterData, FooterStructure } from './TableFooter';
+import type { BarAdd, BarData, BarStructure } from './TableViewBar';
 import { useDataTools } from './useDataTools';
 import type { DataTools } from './useDataTools';
 import { useTableKeys } from './useTableKeys';
@@ -139,6 +140,7 @@ export function TableTab(props: TableTabProps): React.JSX.Element {
     quickOperators: (column) =>
       columnQuickOperators(state.entry.structure, column, props.engine),
   });
+  const parts: TabParts = { state: tab, editing, structure, ready, tools };
   return (
     <section
       ref={root}
@@ -146,6 +148,7 @@ export function TableTab(props: TableTabProps): React.JSX.Element {
       aria-label={t('nameTable', { name: table.name })}
     >
       <Banner {...props} />
+      <TableViewBar {...barProps(parts)} />
       {view.mode === 'data' && <RecoveryBanner recovery={recovery} />}
       {view.mode === 'data' && view.filtersOpen && (
         <Filters state={tab} engine={props.engine} owner={props} />
@@ -172,13 +175,7 @@ export function TableTab(props: TableTabProps): React.JSX.Element {
       )}
       {context.menu}
       {tools.flow.sheet}
-      <EditingFooter
-        state={tab}
-        editing={editing}
-        structure={structure}
-        ready={ready}
-        tools={tools}
-      />
+      <EditingFooter {...parts} />
     </section>
   );
 }
@@ -257,17 +254,28 @@ function Filters({
   );
 }
 
-/** The footer's `+` button and Structure/Index tools for the current mode. */
-function footerProps(
-  state: ReturnType<typeof useTableTab>,
-  editing: ReturnType<typeof useRowEditing>,
-  structure: Structure,
-  ready: boolean,
-  tools: DataTools,
-): { add: FooterAdd; structure?: FooterStructure; data?: FooterData } {
+/** What the view bar and the editing footer read from the tab. */
+type TabParts = {
+  state: ReturnType<typeof useTableTab>;
+  editing: ReturnType<typeof useRowEditing>;
+  structure: Structure;
+  ready: boolean;
+  tools: DataTools;
+};
+
+/** The view bar's `+` button and Structure/Index tools for the current mode. */
+function barProps({ state, editing, structure, ready, tools }: TabParts): {
+  state: TabParts['state'];
+  ready: boolean;
+  add: BarAdd;
+  structure?: BarStructure;
+  data?: BarData;
+} {
   const { mode } = state.view;
   if (mode === 'data')
     return {
+      state,
+      ready,
       add: {
         label: t('row'),
         ariaLabel: t('addRow'),
@@ -275,7 +283,6 @@ function footerProps(
         title: editingNote(editing),
       },
       data: {
-        aggregate: tools.aggregate,
         reload: tools.actions.reload,
         toggleForm: tools.actions.toggleForm,
       },
@@ -285,6 +292,8 @@ function footerProps(
   const note = schema.detail?.editable === false ? 'Read-only' : '';
   const indexes = mode === 'indexes';
   return {
+    state,
+    ready,
     add: {
       label: indexes ? t('index') : t('column'),
       ariaLabel: indexes ? t('addIndexLabel') : t('addColumnLabel'),
@@ -296,9 +305,6 @@ function footerProps(
       title: note || (indexes ? t('addIndex') : t('addColumn')),
     },
     structure: {
-      status: indexes
-        ? t('indexTotal', { count: String(structure.indexes.length) })
-        : t('columnTotal', { count: String(structure.rows.length) }),
       onConstraints: () => {
         structure.setSheet('constraints');
       },
@@ -311,20 +317,24 @@ function footerProps(
   };
 }
 
-/** Staged rows, the pending-changes bar, edit errors and the table footer. */
+/** `9 columns` or `3 indexes` for the structure views' status line. */
+function structureTotal(
+  state: ReturnType<typeof useTableTab>,
+  structure: Structure,
+): string {
+  return state.view.mode === 'indexes'
+    ? t('indexTotal', { count: String(structure.indexes.length) })
+    : t('columnTotal', { count: String(structure.rows.length) });
+}
+
+/** Staged rows, the pending-changes bar, edit errors and the status line. */
 function EditingFooter({
   state,
   editing,
   structure,
   ready,
   tools,
-}: {
-  state: ReturnType<typeof useTableTab>;
-  editing: ReturnType<typeof useRowEditing>;
-  structure: Structure;
-  ready: boolean;
-  tools: DataTools;
-}): React.JSX.Element {
+}: TabParts): React.JSX.Element {
   const data = state.view.mode === 'data';
   return (
     <>
@@ -340,7 +350,8 @@ function EditingFooter({
       <TableFooter
         state={state}
         ready={ready}
-        {...footerProps(state, editing, structure, ready, tools)}
+        aggregate={tools.aggregate}
+        structureStatus={data ? undefined : structureTotal(state, structure)}
       />
     </>
   );

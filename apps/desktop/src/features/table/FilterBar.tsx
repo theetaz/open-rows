@@ -76,8 +76,33 @@ export function FilterBar(props: Props): React.JSX.Element {
   const raw = view.rows.some((row) => row.enabled && row.operator === 'raw');
   return (
     <div className={styles.filters} role="search" aria-label={t('filters')}>
-      <FilterGroups {...props} />
+      <div className={styles.filterActions}>
+        <strong className={styles.filterTitle}>{t('filters')}</strong>
+        <span className={styles.filterNote}>{t('rowsMustMatch')}</span>
+        <SelectField<CombinatorDto>
+          aria-label={t('combineGroups')}
+          controlSize="compact"
+          value={view.combinator}
+          options={combinators}
+          onValueChange={actions.combine}
+        />
+        <span className={styles.spacer} />
+        <SavedFilters
+          storageKey={props.storageKey}
+          view={view}
+          onApply={actions.applySaved}
+        />
+        {props.link !== undefined && <CopyLinkButton link={props.link} />}
+      </div>
+      <div className={styles.filterGroups}>
+        <FilterGroups {...props} />
+      </div>
       {raw && <WherePreview draft={draft} />}
+      {preview !== null && (
+        <pre className={styles.preview} aria-label={t('generatedSql')}>
+          {preview}
+        </pre>
+      )}
       <div className={styles.filterActions}>
         <Button
           size="sm"
@@ -92,24 +117,12 @@ export function FilterBar(props: Props): React.JSX.Element {
         </Button>
         <Button
           size="sm"
+          variant="ghost"
           aria-pressed={preview !== null}
           onClick={togglePreview}
         >
           {t('sql')}
         </Button>
-        {props.link !== undefined && <CopyLinkButton link={props.link} />}
-        <SelectField<CombinatorDto>
-          aria-label={t('combineGroups')}
-          controlSize="compact"
-          value={view.combinator}
-          options={combinators}
-          onValueChange={actions.combine}
-        />
-        <SavedFilters
-          storageKey={props.storageKey}
-          view={view}
-          onApply={actions.applySaved}
-        />
         <span className={styles.spacer} />
         <Button size="sm" variant="ghost" onClick={actions.clear}>
           {t('clear')}
@@ -124,11 +137,6 @@ export function FilterBar(props: Props): React.JSX.Element {
           {t('applyAll')}
         </Button>
       </div>
-      {preview !== null && (
-        <pre className={styles.preview} aria-label={t('generatedSql')}>
-          {preview}
-        </pre>
-      )}
     </div>
   );
 }

@@ -8,6 +8,7 @@ import {
 } from './forms/IndexFields';
 import { StageSheet } from './StageSheet';
 import type { Structure } from './useStructure';
+import forms from './forms/Forms.module.css';
 import { t } from '../messages/lazyStructure';
 
 /**
@@ -53,7 +54,7 @@ export function IndexSheet({
       onClose={onClose}
     >
       {structure.features.concurrentIndexes && (
-        <label>
+        <label className={forms.checkRow}>
           <input
             type="checkbox"
             checked={concurrent}

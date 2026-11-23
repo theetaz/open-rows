@@ -170,15 +170,20 @@ function TableContextMenu(props: Props): React.JSX.Element {
   );
 }
 
-/** The actions as menu rows, then `Copy as ▸` for the selection. */
+/** The actions as menu rows in their groups, then `Copy as ▸` for the selection. */
 function menuEntries(props: Props, actions: readonly Action[]): MenuEntry[] {
-  const entries: MenuEntry[] = actions.map((action) => ({
-    kind: 'item',
-    label: action.label,
-    run: action.run,
-    disabled: action.disabled ?? false,
-    danger: action.danger ?? false,
-  }));
+  const entries: MenuEntry[] = actions.flatMap((action, index) => {
+    const item: MenuEntry = {
+      kind: 'item',
+      label: action.label,
+      run: action.run,
+      disabled: action.disabled ?? false,
+      danger: action.danger ?? false,
+    };
+    return action.separated && index > 0
+      ? [{ kind: 'separator' as const }, item]
+      : [item];
+  });
   const { grid, selection, editing } = props;
   entries.push(...keyEntries(props), ...layoutEntries(props));
   if (!grid) return entries;

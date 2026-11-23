@@ -16,16 +16,30 @@
   font-size: var(--or-text-11-5);
   color: var(--or-secondary);
 }
+/* The filter editor under the view bar: solid, grouped sections, no outlines. */
 .filters {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--or-space-4);
-  padding: var(--or-space-6) var(--or-space-8);
-  border-bottom: var(--or-border-width) solid var(--or-separator);
-  background: var(--or-panel-solid);
-  max-height: 40%;
+  gap: var(--or-space-8);
+  padding: var(--or-space-8) var(--or-space-12) var(--or-space-10);
+  box-shadow: inset 0 var(--or-border-width) 0 var(--or-separator);
+  background: var(--or-page);
+  max-height: 45%;
   overflow: auto;
+}
+.filterTitle {
+  font-size: var(--or-text-13);
+  font-weight: var(--or-weight-semibold);
+}
+.filterNote {
+  font-size: var(--or-text-12);
+  color: var(--or-secondary);
+}
+.filterGroups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--or-space-8);
 }
 .filterRow,
 .filterActions {
@@ -52,9 +66,8 @@
   accent-color: var(--or-accent);
 }
 /* Toggle buttons (Filters, Columns, SQL) show their pressed state like the toolbar. */
-.filters [aria-pressed='true'],
-.footer [aria-pressed='true'] {
-  color: var(--or-info-fg);
+.filters [aria-pressed='true'] {
+  color: var(--or-accent);
 }
 .spacer {
   flex: 1;
@@ -136,7 +149,7 @@
 .columns {
   position: absolute;
   right: var(--or-space-8);
-  bottom: calc(var(--or-footer-height) + var(--or-space-4));
+  top: calc(var(--or-pending-height) + var(--or-space-4));
   z-index: 1;
   display: flex;
   flex-direction: column;
@@ -146,10 +159,13 @@
   margin: 0;
   padding: var(--or-space-8);
   overflow: auto;
-  border: var(--or-border-width) solid var(--or-separator);
+  border: none;
   border-radius: var(--or-radius-panel);
-  background: var(--or-panel-solid);
-  box-shadow: var(--or-panel-shadow);
+  /* Floats like a menu: the elevated, ringed surface (no live blur here). */
+  background: var(--or-control-active);
+  box-shadow:
+    0 0 0 var(--or-border-width) var(--or-control-stroke),
+    var(--or-panel-shadow);
   font-size: var(--or-text-12);
 }
 .columns legend {
@@ -164,53 +180,30 @@
   align-items: center;
   gap: var(--or-space-6);
 }
+/* The quiet status line (the kit's `.statusline`): 24 px, secondary text. */
 .footer {
   flex-shrink: 0;
-  min-height: 32px;
+  min-block-size: var(--or-footer-height);
   display: flex;
   align-items: center;
   gap: var(--or-space-6);
-  padding: var(--or-space-2) var(--or-space-12);
+  padding: 0 var(--or-space-6) 0 var(--or-space-12);
   box-shadow: inset 0 var(--or-border-width) 0 var(--or-separator);
   background: var(--or-page);
+  font-size: var(--or-text-11-5);
+  color: var(--or-secondary);
   white-space: nowrap;
-  overflow-x: auto;
-}
-.footer {
-  container: table-footer / inline-size;
-}
-.footer svg {
-  width: 13px;
-  height: 13px;
-}
-/*
- * Narrow footers keep icons and the row count; labels return when the data
- * tools, their labels and the centred range all fit (≈ 900 px with Count).
- */
-@container table-footer (max-width: 900px) {
-  .label {
-    display: none;
-  }
-}
-.footer > button {
-  flex-shrink: 0;
-}
-/*
- * Centred range and count, like TablePlus' "1 of ~5,192,641 rows". When it
- * does not fit, the range truncates instead of spilling over the + Row
- * button, and the Count button keeps its width (the footer scrolls instead).
- */
-.status {
-  flex: 1;
-  min-width: min-content;
-  display: flex;
-  align-items: center;
-  justify-content: safe center;
-  gap: var(--or-space-6);
   overflow: hidden;
 }
-.status > button {
+.footer svg {
+  width: 12px;
+  height: 12px;
+}
+.footer > button,
+.footer button {
   flex-shrink: 0;
+  block-size: 20px;
+  font-size: var(--or-text-11-5);
 }
 .range {
   flex-shrink: 1;
@@ -218,8 +211,11 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: var(--or-text-12);
   color: var(--or-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.timing {
+  flex-shrink: 0;
   font-variant-numeric: tabular-nums;
 }
 .paging {
@@ -244,6 +240,13 @@
 .editToolbar svg {
   width: 12px;
   height: 12px;
+}
+.dot {
+  flex-shrink: 0;
+  inline-size: 7px;
+  block-size: 7px;
+  border-radius: 50%;
+  background: var(--or-warning-fg);
 }
 .editNote {
   min-width: 0;

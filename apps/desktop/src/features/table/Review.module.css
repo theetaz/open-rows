@@ -1,0 +1,85 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Review & commit: production banner, staged rows, then the SQL to commit. */
+.warning {
+  margin: 0;
+  padding: var(--or-space-8) var(--or-space-12);
+  border-radius: var(--or-radius-card);
+  background: var(--or-warning-bg);
+  color: var(--or-warning-fg);
+  font-size: var(--or-text-12);
+  font-weight: var(--or-weight-medium);
+}
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-6);
+  min-inline-size: 0;
+}
+.title {
+  margin: 0;
+  font-size: var(--or-text-12);
+  font-weight: var(--or-weight-semibold);
+}
+.rows {
+  inline-size: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
+  font-size: var(--or-text-12);
+}
+.rows th {
+  padding: var(--or-space-4) var(--or-space-8);
+  box-shadow: inset 0 calc(-1 * var(--or-border-width)) 0 var(--or-separator);
+  color: var(--or-secondary);
+  font-weight: var(--or-weight-medium);
+  text-align: start;
+}
+.rows td {
+  padding: var(--or-space-4) var(--or-space-8);
+  vertical-align: top;
+}
+.rows tbody tr + tr td {
+  box-shadow: inset 0 var(--or-border-width) 0 var(--or-separator);
+}
+.mono {
+  font-family: var(--or-font-mono);
+  user-select: text;
+}
+.change {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--or-space-4);
+  margin-inline-end: var(--or-space-12);
+}
+.name {
+  color: var(--or-secondary);
+}
+.old {
+  color: var(--or-placeholder);
+}
+.new {
+  padding: 0 var(--or-space-4);
+  border-radius: var(--or-radius-menu-item);
+  background: var(--or-cell-edited);
+}
+.sql {
+  margin: 0;
+  padding: var(--or-space-8) var(--or-space-10);
+  max-block-size: 200px;
+  overflow: auto;
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
+  font-family: var(--or-font-mono);
+  font-size: var(--or-text-mono, var(--or-text-12));
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+}
+.summary {
+  margin: 0;
+  font-size: var(--or-text-12);
+  color: var(--or-secondary);
+}

@@ -51,6 +51,8 @@ export type Action = {
   label: string;
   disabled?: boolean;
   danger?: boolean;
+  /** Starts a new group: the menu draws a separator above it. */
+  separated?: boolean;
   run: () => void;
 };
 export type Context = ContextMenuProps & {
@@ -172,6 +174,7 @@ function rowActions(
     {
       label: t('editRow'),
       disabled: !writable,
+      separated: true,
       run: run(() => {
         const insert = stagedInserts(editing.history.current)[
           selection.row - result.rows
@@ -199,6 +202,7 @@ function rowActions(
       label: t('deleteRow'),
       disabled: !writable,
       danger: true,
+      separated: true,
       run: run(() => {
         editing.quick(result, selection, 'delete');
       }),
@@ -246,6 +250,7 @@ function cellActions(
     {
       label: t('filterValue2'),
       disabled: !field,
+      separated: true,
       run: run(() => {
         if (field)
           changeView((view) =>
@@ -256,13 +261,16 @@ function cellActions(
           );
       }),
     },
-    ...markerActions(editColumn, cellWritable).map(([label, value, ok]) => ({
-      label,
-      disabled: !ok,
-      run: run(() => {
-        set(value);
+    ...markerActions(editColumn, cellWritable).map(
+      ([label, value, ok], at) => ({
+        label,
+        disabled: !ok,
+        separated: at === 0,
+        run: run(() => {
+          set(value);
+        }),
       }),
-    })),
+    ),
   ];
 }
 

@@ -90,7 +90,6 @@ function StagePreviews({
       {draft.stages.map((stage, index) => (
         <Button
           size="sm"
-          variant="ghost"
           key={index}
           aria-label={t('previewStageValue', { value: String(index + 1) })}
           title={t('runStages1', { value: String(index + 1) })}
@@ -104,6 +103,7 @@ function StagePreviews({
       ))}
       <Button
         size="sm"
+        variant="primary"
         className={styles.run}
         disabled={disabled}
         onClick={() => {

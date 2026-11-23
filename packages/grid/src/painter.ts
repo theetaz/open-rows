@@ -229,6 +229,7 @@ export class CanvasPainter {
       );
     } else {
       if (!selected) this.cells.background(context, cell);
+      this.cells.focused = selected && this.isFocus(row, col);
       this.cells.content(
         context,
         cell,
@@ -245,6 +246,10 @@ export class CanvasPainter {
       box.height,
     );
     context.restore();
+  }
+  private isFocus(row: number, col: number): boolean {
+    const { selection } = this.props;
+    return selection.row === row && selection.column === col;
   }
   private fill(
     context: CanvasRenderingContext2D,

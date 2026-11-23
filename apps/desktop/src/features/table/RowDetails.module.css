@@ -1,5 +1,9 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* Inspector row fields, after TablePlus: name and muted type above a value box. */
+/*
+ * The inspector's row form (the kit's `.group > .field-row`): one grouped
+ * list, name and type on the left, the value on the right, compact rows.
+ */
 .details {
   display: flex;
   flex-direction: column;
@@ -9,24 +13,31 @@
 .fields {
   display: flex;
   flex-direction: column;
-  gap: var(--or-space-4);
   min-height: 0;
   overflow: auto;
+  padding: 0 var(--or-space-10);
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
 }
 .field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--or-space-4);
+  display: grid;
+  grid-template-columns: minmax(56px, 34%) minmax(0, 1fr);
+  align-items: start;
+  column-gap: var(--or-space-8);
+  padding: var(--or-space-4) 0;
+  box-shadow: inset 0 calc(-1 * var(--or-border-width)) 0 var(--or-separator);
+}
+[role='listitem']:last-child > .field {
+  box-shadow: none;
 }
 .label {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--or-space-8);
+  flex-direction: column;
   min-width: 0;
-  color: var(--or-label-tertiary);
-  font-size: var(--or-text-12);
-  line-height: 15px;
+  padding-block: var(--or-space-4);
+  color: var(--or-text);
+  font-size: var(--or-text-13);
+  line-height: 16px;
 }
 .label span {
   min-width: 0;
@@ -35,27 +46,63 @@
   white-space: nowrap;
 }
 .label small {
-  flex-shrink: 0;
-  max-width: 50%;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: var(--or-text-11-5);
+  color: var(--or-secondary);
+  font-size: var(--or-text-11);
+  line-height: 14px;
 }
+/* The value reads as plain right-aligned text until it is focused for typing. */
 .value {
   --or-text-area-max: none;
   font-family: var(--or-font-mono);
-  font-size: var(--or-text-13);
+  font-size: var(--or-text-12);
+}
+.field .value[data-size] {
+  border-color: transparent;
+  background: transparent;
+}
+.field .value[data-size] textarea {
+  text-align: end;
+}
+.field .value[data-size]:focus-within {
+  background: var(--or-raised);
+}
+.field .value[data-size]:focus-within textarea {
+  text-align: start;
 }
 /* The grid's staged-cell marker, so a staged field reads the same in both places. */
-.field[data-state='changed'] .value {
+.field[data-state='changed'] .value[data-size] {
   background: var(--or-cell-edited);
 }
-.field[data-state='deleted'] .value {
+.field[data-state='deleted'] .value[data-size] {
   background: var(--or-row-deleted);
+}
+/* The value menu chevron floats at the value's end and appears on hover and focus. */
+.field .value[data-size] > :last-child:not(textarea) {
+  position: absolute;
+  inset-block-start: var(--or-space-2);
+  inset-inline-end: 0;
+}
+.field:hover .value[data-size] textarea,
+.field:focus-within .value[data-size] textarea {
+  padding-inline-end: var(--or-space-24);
 }
 .chevron {
   color: var(--or-secondary);
+  opacity: 0;
+}
+.field:hover .chevron,
+.field:focus-within .chevron,
+.chevron[aria-expanded='true'] {
+  opacity: 1;
+}
+.full {
+  grid-column: 1 / -1;
+  min-width: 0;
+  padding-block: var(--or-space-4);
 }
 .note {
   margin: 0;

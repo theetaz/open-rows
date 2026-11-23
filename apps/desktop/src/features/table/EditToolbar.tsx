@@ -84,6 +84,9 @@ export function EditToolbar({
           }}
         >
           <Icon name={listOpen ? 'chevronDown' : 'chevronRight'} />
+          {model.count > 0 && (
+            <span className={styles.dot} aria-hidden="true" />
+          )}
           {model.note}
         </Button>
         <span className={styles.spacer} />

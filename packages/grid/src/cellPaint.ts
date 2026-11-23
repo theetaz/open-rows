@@ -21,6 +21,17 @@ export function textWidth(column: GridColumn | undefined): number {
   return column.width - CELL_PADDING * 2 - accessoryWidth(column);
 }
 
+/**
+ * Whether a cell paints its stepper: boolean and enum cells always do; a
+ * date or time cell only while focused, so a column of timestamps stays quiet.
+ */
+export function showsStepper(
+  column: GridColumn | undefined,
+  focused: boolean,
+): boolean {
+  return column?.kind !== undefined && (column.kind !== 'temporal' || focused);
+}
+
 /** Muted markers: NULL, EMPTY and DEFAULT, distinct from real values. */
 export function isMuted(cell: DisplayCell): boolean {
   return (
@@ -32,6 +43,8 @@ export function isMuted(cell: DisplayCell): boolean {
 export class CellPainter {
   readonly box = { x: 0, y: 0, width: 0, height: 0 };
   dpr = 1;
+  /** The cell being painted is the focused one (set by the painter per cell). */
+  focused = false;
   constructor(private colours: GridTheme['colours']) {}
   setColours(colours: GridTheme['colours']): void {
     this.colours = colours;
@@ -61,7 +74,8 @@ export class CellPainter {
     const muted = isMuted(cell);
     context.fillStyle = muted ? this.colours.placeholder : this.colours.text;
     this.text(context, column, muted ? text : this.display(column, text));
-    if (column?.kind) this.stepper(context, x + width - STEPPER_WIDTH / 2 - 2);
+    if (showsStepper(column, this.focused))
+      this.stepper(context, x + width - STEPPER_WIDTH / 2 - 2);
     if (column?.link && cell.state !== 'null' && cell.state !== 'empty')
       this.arrow(
         context,

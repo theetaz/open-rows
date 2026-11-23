@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { expect, it, vi } from 'vitest';
-import { CellPainter, isMuted, textWidth } from './cellPaint';
+import { CellPainter, isMuted, showsStepper, textWidth } from './cellPaint';
 import { booleanText } from '@openrows/ui/format';
 import { gridTheme } from './theme';
 import type { DisplayCell, GridColumn } from './model';
@@ -124,4 +124,18 @@ it('paints a foreign-key arrow on linked values but not on NULL', () => {
   ).not.toHaveBeenCalled();
   expect(textWidth(link)).toBe(textWidth(text) - 16);
   expect(textWidth({ ...link, kind: 'enum' })).toBe(textWidth(text) - 32);
+});
+
+it('paints a date cell picker glyph only on the focused cell', () => {
+  const date: GridColumn = { ...text, kind: 'temporal' };
+  const cell: DisplayCell = { text: '2026-11-23 09:41', state: 'normal' };
+  expect(paint(cell, date).stroke).not.toHaveBeenCalled();
+  const canvas = recorder(),
+    painter = new CellPainter(colours);
+  Object.assign(painter.box, { x: 0, y: 0, width: 120, height: 24 });
+  painter.focused = true;
+  painter.content(canvas.context, cell, date, cell.text);
+  expect(canvas.stroke).toHaveBeenCalledOnce();
+  expect(showsStepper({ ...text, kind: 'enum' }, false)).toBe(true);
+  expect(showsStepper(date, false)).toBe(false);
 });

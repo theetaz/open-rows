@@ -8,7 +8,7 @@ import { SqlViewer } from './SqlViewer';
 import styles from './Structure.module.css';
 import { t } from '../messages/lazyStructure';
 
-/** Where the popover sits: above and centred on its footer button, sized to its content. */
+/** Where the popover sits: below and centred on its view-bar button, sized to its content. */
 function placement(anchor: DOMRect): React.CSSProperties {
   const width = Math.min(820, innerWidth - 32);
   const left = Math.max(
@@ -21,12 +21,15 @@ function placement(anchor: DOMRect): React.CSSProperties {
   return {
     left,
     width,
-    bottom: innerHeight - anchor.top + 8,
-    maxHeight: Math.max(160, Math.min(innerHeight * 0.7, anchor.top - 56)),
+    top: anchor.bottom + 8,
+    maxHeight: Math.max(
+      160,
+      Math.min(innerHeight * 0.7, innerHeight - anchor.bottom - 24),
+    ),
   };
 }
 
-/** The rebuilt table definition above the DDL button (TablePlus' DDL popover). */
+/** The rebuilt table definition under the DDL button (TablePlus' DDL popover). */
 export function DdlPopover({
   detail,
   anchor,

@@ -73,11 +73,14 @@ export function dropLine(
   return slot <= layout.pinned ? offset : offset - view.x;
 }
 
-/** Width that fits the widest measured text, clamped to sane bounds. */
+/**
+ * Width that fits the widest measured text, clamped to sane bounds. Rounds
+ * up: a fractional text width rounded down would truncate the widest value.
+ */
 export function fitWidth(widths: Iterable<number>, extra = 0): number {
   let widest = 0;
   for (const width of widths) widest = Math.max(widest, width);
-  return Math.round(
+  return Math.ceil(
     Math.min(
       MAX_AUTO_WIDTH,
       Math.max(MIN_COLUMN_WIDTH, widest + TEXT_INSET + extra),

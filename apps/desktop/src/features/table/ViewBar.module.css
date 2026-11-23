@@ -1,0 +1,61 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * The table pane's view bar (the kit's `.viewbar`): solid, 40 px, the view
+ * switch on the left, a filled query field that grows, then icon tools.
+ */
+.bar {
+  container: table-view-bar / inline-size;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-6);
+  min-block-size: var(--or-pending-height);
+  padding: 0 var(--or-space-12) 0 var(--or-space-8);
+  background: var(--or-page);
+  white-space: nowrap;
+}
+.bar > * {
+  flex-shrink: 0;
+}
+.bar [aria-pressed='true'] {
+  color: var(--or-accent);
+}
+.spacer {
+  flex: 1;
+}
+/* The kit's `.search-field.grow`: the filter toggle and the search share one fill. */
+.query {
+  flex: 1 1 auto;
+  min-inline-size: 120px;
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-2);
+  block-size: var(--or-control-height);
+  padding-inline-start: var(--or-space-2);
+  border-radius: var(--or-radius-control);
+  background: var(--or-control-fill);
+  color: var(--or-secondary);
+}
+.query:focus-within {
+  outline: var(--or-field-focus-width) solid var(--or-field-focus);
+}
+.query > :last-child:not(button) {
+  flex: 1;
+  min-inline-size: 0;
+}
+/* The search field sits inside the fill: no second fill or ring of its own. */
+.query div[data-size],
+.query div[data-size]:focus-within {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  outline: none;
+}
+.label {
+  margin-inline-start: var(--or-space-2);
+}
+@container table-view-bar (max-width: 520px) {
+  .label {
+    display: none;
+  }
+}

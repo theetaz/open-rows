@@ -74,9 +74,8 @@
   user-select: text;
 }
 .search {
-  inline-size: 150px;
-  flex-shrink: 1;
-  min-inline-size: 90px;
+  flex: 1;
+  min-inline-size: 0;
 }
 .search input[data-blocked='true'] {
   text-decoration: line-through;

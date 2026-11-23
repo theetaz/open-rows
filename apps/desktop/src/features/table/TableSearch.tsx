@@ -9,7 +9,7 @@ import { t } from './messages/lazyData';
 const SEARCH_DELAY_MS = 400;
 
 /**
- * The footer's any-column search (FR-GRID-11): searches every column
+ * The view bar's any-column search (FR-GRID-11): searches every column
  * server-side after a pause in typing, Return at once, Escape clears.
  */
 export function TableSearch({
@@ -39,7 +39,7 @@ export function TableSearch({
     <TextField
       aria-label={t('searchAllColumns')}
       placeholder={t('search')}
-      controlSize="compact"
+      controlSize="search"
       className={extras.search}
       leadingIcon={<Icon name="search" />}
       value={text}

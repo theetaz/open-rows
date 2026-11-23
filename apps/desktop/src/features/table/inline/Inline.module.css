@@ -6,7 +6,7 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0 calc(var(--or-space-8) - 2px);
-  border: 2px solid var(--or-focus);
+  border: 2px solid var(--or-accent-fill);
   border-radius: 0;
   background: var(--or-window);
   color: var(--or-text);
@@ -22,8 +22,9 @@
   width: min(480px, calc(100vw - 16px));
   max-height: 320px;
   padding: var(--or-space-8);
-  border-radius: var(--or-radius-card);
-  background: var(--or-window);
+  border-radius: var(--or-radius-panel);
+  /* Floats like a menu: the elevated, ringed surface (no live blur here). */
+  background: var(--or-control-active);
   color: var(--or-text);
   box-shadow:
     0 0 0 var(--or-border-width) var(--or-control-stroke),
@@ -38,7 +39,7 @@
   padding: var(--or-space-6) var(--or-space-8);
   border: var(--or-border-width) solid var(--or-control-stroke);
   border-radius: var(--or-radius-field);
-  background: var(--or-window);
+  background: var(--or-raised);
   color: var(--or-text);
   font-family: var(--or-font-mono);
   font-size: var(--or-text-mono);

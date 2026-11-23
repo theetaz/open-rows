@@ -1,0 +1,43 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* A filter group as a quiet grouped section (the kit's `.group`), no outline. */
+.group {
+  flex: 1 1 360px;
+  min-inline-size: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--or-space-4);
+  margin: 0;
+  padding: var(--or-space-6) var(--or-space-10) var(--or-space-8);
+  border: none;
+  border-radius: var(--or-radius-card);
+  background: var(--or-group);
+}
+/* The fieldset keeps its legend for assistive tech; the head shows the name. */
+.legend {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--or-space-8);
+}
+.title {
+  font-size: var(--or-text-12);
+  font-weight: var(--or-weight-medium);
+}
+.spacer {
+  flex: 1;
+}
+.add {
+  align-self: flex-start;
+  color: var(--or-accent);
+}
+.add svg {
+  inline-size: 12px;
+  block-size: 12px;
+}

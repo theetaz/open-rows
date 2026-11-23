@@ -3,7 +3,7 @@ import type { CanvasController } from './canvasController';
 import type { CanvasPainter } from './painter';
 import type { shadowGrid } from './accessibility';
 import type { GridProps } from './model';
-import { STEPPER_WIDTH } from './cellPaint';
+import { STEPPER_WIDTH, showsStepper } from './cellPaint';
 import { autoWidth, edgeUnder, startPress, startResize } from './headerDrag';
 
 export interface PointerContext {
@@ -61,6 +61,9 @@ export function pointerFocus({
     }
     const focus = painter.layout.hit(painter.view, x, y);
     if (!focus || focus.row >= props.source.rows) return;
+    const wasFocused =
+      props.selection.row === focus.row &&
+      props.selection.column === focus.column;
     const onRowNumber = focus.column === props.rowHeaderColumn;
     selectPointer(props, focus, event);
     props.onSelection(props.selection);
@@ -68,7 +71,7 @@ export function pointerFocus({
     controller.invalidate();
     accessibility.focus();
     if (event.shiftKey || event.metaKey) return;
-    const glyph = glyphHit(painter, focus, x);
+    const glyph = glyphHit(painter, focus, x, wasFocused);
     if (glyph) openOnRelease(props, glyph, focus);
     else startCellDrag(context, event, onRowNumber);
   };
@@ -221,6 +224,8 @@ function glyphHit(
   painter: CanvasPainter,
   cell: { row: number; column: number },
   x: number,
+  /** The cell had focus before the press: a date cell's picker shows only then. */
+  focused: boolean,
 ): 'stepper' | 'link' | undefined {
   const column = painter.props.source.columns[cell.column];
   if (!column?.kind && !column?.link) return undefined;
@@ -229,7 +234,8 @@ function glyphHit(
     (painter.layout.offsets[cell.column + 1] ?? 0) -
     (pinned ? 0 : painter.view.x);
   const stepper = column.kind ? STEPPER_WIDTH : 0;
-  if (stepper && x >= right - STEPPER_WIDTH - 4 && x <= right) return 'stepper';
+  const onStepper = x >= right - STEPPER_WIDTH - 4 && x <= right;
+  if (showsStepper(column, focused) && onStepper) return 'stepper';
   const end = right - stepper;
   const onArrow = column.link && x >= end - STEPPER_WIDTH - 4 && x <= end;
   return onArrow && linked(painter, cell) ? 'link' : undefined;

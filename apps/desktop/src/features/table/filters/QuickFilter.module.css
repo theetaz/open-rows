@@ -8,8 +8,9 @@
   gap: var(--or-space-4);
   width: 300px;
   padding: var(--or-space-6);
-  border-radius: var(--or-radius-card);
-  background: var(--or-window);
+  border-radius: var(--or-radius-panel);
+  /* Floats like a menu: the elevated, ringed surface (no live blur here). */
+  background: var(--or-control-active);
   box-shadow:
     0 0 0 var(--or-border-width) var(--or-control-stroke),
     var(--or-panel-shadow);

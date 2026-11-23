@@ -13,6 +13,7 @@ import { duplicateRow, isDocumentColumn } from './quickEdits';
 import { DocumentField } from './DocumentField';
 import { invalidDocument } from './documentText';
 import { ReviewSheet } from './ReviewSheet';
+import { ReviewRows } from './ReviewRows';
 import styles from './Table.module.css';
 import { t } from './messages/lazyData';
 
@@ -236,6 +237,15 @@ export function RowEditSheet({
       <ReviewSheet
         title={t('reviewTableChanges')}
         summary={reviewSummary(editing)}
+        warning={
+          editing.info?.production ? t('productionConnectionThese') : undefined
+        }
+        items={
+          <ReviewRows
+            edits={editing.history.current}
+            keyColumns={editing.info?.key ?? []}
+          />
+        }
         sql={editing.review.statements
           .map(
             (statement) =>
@@ -261,7 +271,7 @@ export function RowEditSheet({
   ) : null;
 }
 
-/** Counts per operation, with the environment named when the connection is production. */
+/** Counts per operation; production is named in the sheet's banner. */
 function reviewSummary(editing: RowEditing): string {
   const counts = { update: 0, insert: 0, delete: 0 };
   for (const change of editing.history.current) counts[change.kind] += 1;
@@ -270,10 +280,7 @@ function reviewSummary(editing: RowEditing): string {
     counts.insert && t('countInserted', { count: String(counts.insert) }),
     counts.delete && t('countDeleted', { count: String(counts.delete) }),
   ].filter((part): part is string => typeof part === 'string');
-  const summary = t('rowsSummary', { parts: parts.join(', ') });
-  return editing.info?.production
-    ? `${t('productionConnectionThese')} ${summary}`
-    : summary;
+  return t('rowsSummary', { parts: parts.join(', ') });
 }
 
 function NullValue({

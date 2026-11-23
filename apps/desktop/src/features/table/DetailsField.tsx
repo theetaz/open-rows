@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useCallback, useRef, useState } from 'react';
-import { booleanText, Button, Icon, IconButton, TextArea } from '@openrows/ui';
+import { booleanText, Icon, IconButton, TextArea } from '@openrows/ui';
 import { editableText, stagedDisplay, textValue } from './cellValue';
 import type { CellValue } from './cellValue';
 import { fieldActions } from './fieldActions';
 import { FieldMenu } from './FieldMenu';
+import type { FieldInspect } from './FieldMenu';
 import { isBooleanType } from './inline/cellKind';
 import { ValueInspector } from '../value/ValueInspector';
 import type { TableColumnDto } from '@openrows/ipc';
@@ -63,9 +64,10 @@ function access(
 }
 
 /**
- * One inspector field: name, type, the value box and its value menu. Typing
- * then blur or Enter (⌘Enter once the value has several lines) stages the
- * text; Escape reverts the typing.
+ * One inspector field row: name and type on the left, the value box and its
+ * value menu on the right; the menu also opens the exact full value under
+ * the row. Typing then blur or Enter (⌘Enter once the value has several
+ * lines) stages the text; Escape reverts the typing.
  */
 export function DetailsField({
   field,
@@ -81,6 +83,7 @@ export function DetailsField({
   const shown = shownOf(field, isBoolean(field, column));
   const base = `${field.state}\u0000${shown.marker}\u0000${shown.text}`;
   const [draft, setDraft] = useState<Draft | null>(null);
+  const inspect = useInspect(source);
   // A newly staged or reloaded value replaces any typing that produced it.
   const current = draft?.base === base ? draft : null;
   const text = current?.text ?? shown.text;
@@ -122,8 +125,7 @@ export function DetailsField({
           });
         }}
         trailing={
-          editor &&
-          column && (
+          editor && column ? (
             <ValueMenu
               field={field}
               editor={editor}
@@ -133,48 +135,75 @@ export function DetailsField({
                 current ? textValue(current.text) : (field.value ?? null),
               )}
               onValue={stage}
+              inspect={inspect}
             />
+          ) : (
+            inspect && <FullValueButton name={field.name} inspect={inspect} />
           )
         }
       />
-      {source && <FieldInspection field={field} source={source} />}
+      {source && inspect?.open && (
+        <FieldInspection field={field} source={source} />
+      )}
     </div>
   );
 }
 
-/** The "Full value" toggle of a field and, when open, its exact value. */
+/** Whether the field's exact value is shown; only rows from a stored result offer it. */
+function useInspect(source: RowSource | undefined): FieldInspect | undefined {
+  const [open, setOpen] = useState(false);
+  if (!source) return undefined;
+  return {
+    open,
+    toggle: () => {
+      setOpen(!open);
+    },
+  };
+}
+
+/** A read-only field's own affordance for its exact value (no value menu). */
+function FullValueButton({
+  name,
+  inspect,
+}: {
+  name: string;
+  inspect: FieldInspect;
+}): React.JSX.Element {
+  return (
+    <IconButton
+      size="sm"
+      variant="ghost"
+      className={styles.chevron}
+      aria-label={inspect.open ? t('hideFullValue') : t('fullValue')}
+      title={name}
+      aria-expanded={inspect.open}
+      onClick={inspect.toggle}
+    >
+      <Icon name="eye" />
+    </IconButton>
+  );
+}
+
+/** A field's exact stored value, opened from its value menu. */
 function FieldInspection(props: {
   field: RowField;
   source: RowSource;
 }): React.JSX.Element {
   const { field, source } = props;
-  const [inspecting, setInspecting] = useState(false);
   return (
-    <>
-      <Button
-        size="sm"
-        variant="ghost"
-        aria-expanded={inspecting}
-        onClick={() => {
-          setInspecting(!inspecting);
+    <div className={styles.full}>
+      <ValueInspector
+        key={`${source.resultId}:${String(source.row)}:${String(field.index)}`}
+        address={{
+          resultId: source.resultId,
+          row: source.row,
+          column: field.index,
         }}
-      >
-        {inspecting ? t('hideFullValue') : t('fullValue')}
-      </Button>
-      {inspecting && (
-        <ValueInspector
-          key={`${source.resultId}:${String(source.row)}:${String(field.index)}`}
-          address={{
-            resultId: source.resultId,
-            row: source.row,
-            column: field.index,
-          }}
-          name={field.name}
-          type={field.type}
-          text={field.text}
-        />
-      )}
-    </>
+        name={field.name}
+        type={field.type}
+        text={field.text}
+      />
+    </div>
   );
 }
 
@@ -202,6 +231,7 @@ function ValueMenu(props: {
   editor: RowEditor;
   actions: ReturnType<typeof fieldActions>;
   onValue: (value: CellValue) => void;
+  inspect: FieldInspect | undefined;
 }): React.JSX.Element {
   const opener = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
@@ -241,6 +271,7 @@ function ValueMenu(props: {
             editor.addFile(field.name);
           }}
           onClose={close}
+          inspect={props.inspect}
         />
       )}
     </>
